@@ -20,9 +20,10 @@ const type_config<config_type>* configuration_manager::get_config(
 	
 	if(config == nullptr)
 	{
-		printf("[%s]:%d: Warning: config should not be nullptr\n",
+		printf("[%s]:%d: Warning: config \"%s\" should not be nullptr\n",
 		       __FILE__,
-		       __LINE__);
+		       __LINE__,
+		       name.c_str());
 	}
 
 	return config;
@@ -42,9 +43,10 @@ type_config<config_type>* configuration_manager::get_mutable_config(
 	
 	if(config == nullptr)
 	{
-		printf("[%s]:%d: Warning: config should not be nullptr\n",
+		printf("[%s]:%d: Warning: config \"%s\" should not be nullptr\n",
 		       __FILE__,
-		       __LINE__);
+		       __LINE__,
+		       name.c_str());
 	}
 
 	return config;

@@ -175,9 +175,10 @@ const configuration_unit* configuration_manager::get_configuration_unit(
 
 	if(config == nullptr)
 	{
-		printf("[%s]:%d: Warning: config should not be nullptr\n",
+		printf("[%s]:%d: Warning: config \"%s\" should not be nullptr\n",
 		       __FILE__,
-		       __LINE__);
+		       __LINE__,
+		       name.c_str());
 	}
 
 	return config;
@@ -196,9 +197,10 @@ configuration_unit* configuration_manager::get_mutable_configuration_unit(
 
 	if(config == nullptr)
 	{
-		printf("[%s]:%d: Warning: config should not be nullptr\n",
+		printf("[%s]:%d: Warning: config \"%s\" should not be nullptr\n",
 		       __FILE__,
-		       __LINE__);
+		       __LINE__,
+		       name.c_str());
 	}
 
 	return config;

@@ -11,20 +11,36 @@ const unsigned LEGACY_STATSD_METRIC_HARD_LIMIT = 3000;
 const unsigned LEGACY_APP_METRICS_HARD_LIMIT = 3000;
 const unsigned LEGACY_JMX_METRICS_HARD_LIMIT = 3000;
 
-type_config<bool>::ptr c_feature_flag =
+// Legacy backends don't support the number of metrics that the customer will
+// be able to send with this config.  Default to off and allow the backend to
+// turn it on.
+type_config<bool>::ptr c_enabled =
    type_config_builder<bool>(false /*default*/,
-			     "Feature flag to turn on metric forwarding. This can be deleted once the feature is validated.",
-			     "feature_flag_metric_forwarding_configuration")
+			     "Whether the limit for one type of metric can be "
+			     "raised by lowering the limit for another type.",
+			     "flexible_metric_limits",
+			     "enabled")
 	.hidden()
 	.mutable_only_in_internal_build()
 	.get();
 
 type_config<int>::ptr c_metric_forwarding_sum =
    type_config_builder<int>(10000 /*default*/,
-			    "The maximum total of all prometheus, jmx, statsd and app check metrics.",
+			    "The maximum total of all prometheus, jmx, statsd "
+			    "and app check metrics.",
 			    "metric_forwarding_limit")
 	.min(0)
 	.max(10000)
+	.hidden()
+	.get();
+
+type_config<bool>::ptr c_fill_metric_headroom =
+   type_config_builder<bool>(true /*default*/,
+			     "Whether to automatically raise metric limits "
+			     "proportionally to send the maximum allowed number"
+			     "of metrics",
+			     "flexible_metric_limits",
+			     "fill_headroom")
 	.hidden()
 	.get();
 
@@ -37,12 +53,12 @@ int configured_limit_sum()
 }
 
 /**
- * The sum of all of the metrics must be below the
- * c_metric_forwarding_sum.  If they are not, then the max values
- * are dropped proportionally.
+ * The sum of all of the metrics must be below the c_metric_forwarding_sum.
+ * If they are not, then the max values are dropped proportionally.
+ * Optionally, the limits can be raised to fill up any available headroom.
  *
- * Returns the value which is used to change the given config to
- * the allowed config.
+ * Returns the value which is used to change the given config to the allowed
+ * config.
  */
 float metric_divisor()
 {
@@ -55,7 +71,7 @@ float metric_divisor()
 	float divisor = static_cast<float>(configured_limit_sum()) /
 			static_cast<float>(c_metric_forwarding_sum->configured());
 
-	if(divisor < 1.0)
+	if((!c_fill_metric_headroom->get()) && divisor < 1.0)
 	{
 		return 1.0;
 	}
@@ -65,7 +81,7 @@ float metric_divisor()
 
 void adjust_limit(int& limit, const int legacy_hard_limit)
 {
-	if(!c_feature_flag->get())
+	if(!c_enabled->get())
 	{
 		limit =  limit < legacy_hard_limit ?
 		   limit : legacy_hard_limit;
@@ -141,13 +157,15 @@ type_config<int>::ptr c_app_checks_max =
 
 void print()
 {
-	if(!c_feature_flag->get())
+	if(!c_enabled->get())
 	{
 		return;
 	}
 
-	const float divisor = metric_divisor();
-	if(divisor > 1.0)
+	if (c_prometheus_max->get() != c_prometheus_max->configured() ||
+	    c_statsd_max->get() != c_statsd_max->configured() ||
+	    c_app_checks_max->get() != c_app_checks_max->configured() ||
+	    c_jmx_max->get() != c_jmx_max->configured())
 	{
 		SINSP_WARNING("%s:%d: Limits have been adjusted.\n"
 			      "Your total allowed metric limit is %d per agent sample for this node, but it is currently configured to %d. The limits have been adjusted as follows:\n"

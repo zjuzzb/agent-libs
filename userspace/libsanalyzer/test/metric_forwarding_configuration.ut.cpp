@@ -12,7 +12,12 @@ namespace
 
 bool is_enabled()
 {
-	return configuration_manager::instance().get_config<bool>("feature_flag_metric_forwarding_configuration")->get();
+	return configuration_manager::instance().get_config<bool>("flexible_metric_limits.enabled")->get();
+}
+
+bool is_fill_headroom()
+{
+	return configuration_manager::instance().get_config<bool>("flexible_metric_limits.fill_headroom")->get();
 }
 
 int get_limit()
@@ -24,7 +29,7 @@ int get_limit()
 
 TEST(metric_forwarding_configuration_test, defaults)
 {
-	scoped_config<bool> config("feature_flag_metric_forwarding_configuration", true);
+	scoped_config<bool> config("flexible_metric_limits.enabled", true);
 
 	ASSERT_TRUE(is_enabled());
 	ASSERT_EQ(10000, get_limit());
@@ -34,11 +39,12 @@ TEST(metric_forwarding_configuration_test, defaults)
 	ASSERT_EQ(500, metric_forwarding_configuration::c_app_checks_max->get());
 }
 
-TEST(metric_forwarding_configuration_test, override_under_default_max)
+TEST(metric_forwarding_configuration_test, override_under_default_max_fill_headroom)
 {
 	// Default max is 10,000. We want the total to be lower than that
 	scoped_configuration config(R"(
-feature_flag_metric_forwarding_configuration: true
+flexible_metric_limits:
+  enabled: true
 prometheus:
   max_metrics: 100
 jmx:
@@ -48,10 +54,39 @@ statsd:
 app_checks_limit: 103
 )");
 
+	// since we are filling the headroom, all values will go up
 	ASSERT_TRUE(config.loaded());
 	ASSERT_TRUE(is_enabled());
+	ASSERT_TRUE(is_fill_headroom());
 	ASSERT_EQ(10000, get_limit());
-	ASSERT_EQ(100, metric_forwarding_configuration::c_prometheus_max->get() );
+	ASSERT_EQ(2463, metric_forwarding_configuration::c_prometheus_max->get() );
+	ASSERT_EQ(2487, metric_forwarding_configuration::c_jmx_max->get());
+	ASSERT_EQ(2512, metric_forwarding_configuration::c_statsd_max->get());
+	ASSERT_EQ(2536, metric_forwarding_configuration::c_app_checks_max->get());
+}
+
+TEST(metric_forwarding_configuration_test, override_under_default_max_dont_fill_headroom)
+{
+	// Default max is 10,000. We want the total to be lower than that
+	scoped_configuration config(R"(
+flexible_metric_limits:
+  enabled: true
+  fill_headroom: false
+prometheus:
+  max_metrics: 100
+jmx:
+  limit: 101
+statsd:
+  limit: 102
+app_checks_limit: 103
+)");
+
+	// since we are not filling the headroom, all values will stay the same
+	ASSERT_TRUE(config.loaded());
+	ASSERT_TRUE(is_enabled());
+	ASSERT_FALSE(is_fill_headroom());
+	ASSERT_EQ(10000, get_limit());
+	ASSERT_EQ(100, metric_forwarding_configuration::c_prometheus_max->get());
 	ASSERT_EQ(101, metric_forwarding_configuration::c_jmx_max->get());
 	ASSERT_EQ(102, metric_forwarding_configuration::c_statsd_max->get());
 	ASSERT_EQ(103, metric_forwarding_configuration::c_app_checks_max->get());
@@ -63,7 +98,8 @@ TEST(metric_forwarding_configuration_test, override_over_default_max)
 	// will be 1.1 and all metrics should drop.
 
 	scoped_configuration config(R"(
-feature_flag_metric_forwarding_configuration: true
+flexible_metric_limits:
+  enabled: true
 prometheus:
   max_metrics: 0
 jmx:
@@ -97,7 +133,8 @@ TEST(metric_forwarding_configuration_test, override_matches_overriden_max)
 	// Metrics add up to 9000. Set the limit to 9000
 
 	scoped_configuration config(R"(
-feature_flag_metric_forwarding_configuration: true
+flexible_metric_limits:
+  enabled: true
 metric_forwarding_limit: 9000
 prometheus:
   max_metrics: 0
@@ -121,7 +158,7 @@ TEST(metric_forwarding_configuration_test, hidden_configs)
 {
 
 	ASSERT_TRUE(configuration_manager::instance().get_config<int>("metric_forwarding_limit")->hidden());
-	ASSERT_TRUE(configuration_manager::instance().get_config<bool>("feature_flag_metric_forwarding_configuration")->hidden());
+	ASSERT_TRUE(configuration_manager::instance().get_config<bool>("flexible_metric_limits.enabled")->hidden());
 }
 
 TEST(metric_forwarding_configuration_test, sum_is_zero)
@@ -132,7 +169,8 @@ TEST(metric_forwarding_configuration_test, sum_is_zero)
 	// Set statsd very high.
 
 	scoped_configuration config(R"(
-feature_flag_metric_forwarding_configuration: true
+flexible_metric_limits:
+  enabled: true
 metric_forwarding_limit: 0
 prometheus:
   max_metrics: 4000
@@ -163,11 +201,6 @@ TEST(metric_forwarding_configuration_test, feature_off_defaults)
 
 TEST(metric_forwarding_configuration_test, feature_off_configured)
 {
-	// Set the values between the old hard limit and the new hard limit
-	// and they should fall back to the old hard limit when the feature
-	// is off.
-	// Set statsd very high.
-
 	scoped_configuration config(R"(
 prometheus:
   max_metrics: 500
@@ -213,7 +246,7 @@ app_checks_limit: 4000
 
 TEST(metric_forwarding_configuration_test, print_values)
 {
-	scoped_config<bool> config("feature_flag_metric_forwarding_configuration", true);
+	scoped_config<bool> config("flexible_metric_limits.enabled", true);
 	ASSERT_TRUE(is_enabled());
 
 	scoped_sinsp_logger_capture capture;
@@ -225,7 +258,8 @@ TEST(metric_forwarding_configuration_test, print_values)
 TEST(metric_forwarding_configuration_test, print_adjusted)
 {
 	scoped_configuration config(R"(
-feature_flag_metric_forwarding_configuration: true
+flexible_metric_limits:
+  enabled: true
 prometheus:
   max_metrics: 4000
 jmx:

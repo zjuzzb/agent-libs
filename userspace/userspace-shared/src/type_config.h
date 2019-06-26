@@ -222,7 +222,7 @@ public:
 
 	/**
 	 * Our yaml interface has three levels of keys possible. If a given
-	 * value only requries fewer values, set the other strings to "". This
+	 * value only requires fewer values, set the other strings to "". This
 	 * constructor should register this object with the configuration_manager
 	 * class.
 	 *
