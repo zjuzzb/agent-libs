@@ -4809,7 +4809,8 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, analyzer_emitter::flush_flags
 	//
 	if(evt->m_tinfo == NULL ||
 		etype == PPME_SCHEDSWITCH_1_E ||
-		etype == PPME_SCHEDSWITCH_6_E)
+		etype == PPME_SCHEDSWITCH_6_E ||
+		etype == PPME_CONTAINER_JSON_E)
 	{
 		//
 		// No thread associated to this event, nothing to do
