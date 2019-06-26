@@ -12,6 +12,10 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 add_executable(unit-test-userspace-shared
 	main.cpp
 	configuration_manager.ut.cpp
+	fault_handler_registry.ut.cpp
+	fault_handler.ut.cpp
+	fault_injection_macro_set.ut.cpp
+	fault_injection_macro_unset.ut.cpp
 	filter.ut.cpp
 	scoped_config.ut.cpp
 	scoped_configuration.ut.cpp
