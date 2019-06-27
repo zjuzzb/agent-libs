@@ -41,6 +41,37 @@ TEST(dummy_server_request_test, stream_does_not_throw_an_exception)
 }
 
 /**
+ * Ensure that when no body is supplied to the constructor, stream() return
+ * the empty string.
+ */
+TEST(dummy_server_request_test, stream_empty_body_returns_empty_string)
+{
+	dummy_server_request request(DEFAULT_URI);
+	std::string body;
+
+	request.stream() >> body;
+
+	ASSERT_EQ("", body);
+}
+
+/**
+ * Ensure that when a body is supplied to the constructor, stream() return
+ * the given body.
+ */
+TEST(dummy_server_request_test, stream_returns_body)
+{
+	// operator>>() will stop at whitespace.  To simplify life, we do
+	// not include whitespace in the body of the test.
+	const std::string expected_body = "this_is_the_body";
+	dummy_server_request request(DEFAULT_URI, expected_body);
+	std::string body;
+
+	request.stream() >> body;
+
+	ASSERT_EQ(expected_body, body);
+}
+
+/**
  * Ensure that clientAddress() throws a std::runtime_error.
  */
 TEST(dummy_server_request_test, clientAddress_throws_runtime_error)

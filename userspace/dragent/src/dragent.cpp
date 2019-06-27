@@ -4,6 +4,8 @@
 #include "dragent.h"
 #include "crash_handler.h"
 #include "configuration.h"
+#include "config_data_rest_request_handler.h"
+#include "config_data_message_handler.h"
 #include "config_rest_request_handler.h"
 #include "configlist_rest_request_handler.h"
 #include "connection_manager.h"
@@ -110,7 +112,7 @@ std::unique_ptr<librest::rest_server> s_rest_server;
 /**
  * Enable the REST server (if enabled); otherwise, do nothing.
  */
-void enable_rest_server()
+void enable_rest_server(config_data_message_handler& handler)
 {
 	if(!c_rest_feature_flag.get())
 	{
@@ -129,6 +131,9 @@ void enable_rest_server()
 	factory->register_path_handler<configlist_rest_request_handler>();
 	factory->register_path_handler<config_rest_request_handler>();
 	factory->register_path_handler<metrics_rest_request_handler>();
+	factory->register_path_handler<config_data_rest_request_handler>();
+
+	config_data_rest_request_handler::set_config_data_message_handler(&handler);
 
 	s_rest_server = make_unique<librest::rest_server>(factory,
 	                                                  c_rest_port->get());
@@ -174,6 +179,7 @@ dragent_app::dragent_app():
 
 dragent_app::~dragent_app()
 {
+	config_data_rest_request_handler::set_config_data_message_handler(nullptr);
 	google::protobuf::ShutdownProtobufLibrary();
 }
 
@@ -858,7 +864,7 @@ int dragent_app::sdagent_main()
 
 	uint64_t uptime_s = 0;
 
-	enable_rest_server();
+	enable_rest_server(m_connection_manager);
 
 	while(!dragent_configuration::m_terminate)
 	{

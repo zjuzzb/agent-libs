@@ -22,7 +22,7 @@ public:
 	/**
 	 * Creates a new dummy_server_request with the given URI
 	 */
-	dummy_server_request(const std::string& uri);
+	dummy_server_request(const std::string& uri, const std::string& body = "");
 
 	/** Returns m_stream */
 	std::istream& stream() override;

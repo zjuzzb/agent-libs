@@ -972,15 +972,20 @@ void connection_manager::handle_dump_request_stop(uint8_t* buf, uint32_t size)
 	m_sinsp_worker->queue_job_request(job_request);
 }
 
-void connection_manager::handle_config_data(uint8_t* buf, uint32_t size)
+bool connection_manager::handle_config_data(const uint8_t* const buf,
+                                            const uint32_t size)
 {
 	if(m_configuration->m_auto_config)
 	{
 		draiosproto::config_data request;
+
 		if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
 		{
-			return;
+			return false;
 		}
+
+		bool all_files_handled = true;
+
 		for(const auto& config_file_proto : request.config_files())
 		{
 			std::string errstr;
@@ -990,12 +995,16 @@ void connection_manager::handle_config_data(uint8_t* buf, uint32_t size)
 							     errstr) < 0)
 			{
 				LOG_ERROR(errstr);
+				all_files_handled = false;
 			}
 		}
+
+		return all_files_handled;
 	}
 	else
 	{
 		LOG_DEBUG("Auto config disabled, ignoring CONFIG_DATA message");
+		return false;
 	}
 }
 

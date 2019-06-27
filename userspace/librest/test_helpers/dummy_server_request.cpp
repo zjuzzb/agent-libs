@@ -12,9 +12,15 @@
 namespace test_helpers
 {
 
-dummy_server_request::dummy_server_request(const std::string& uri)
+dummy_server_request::dummy_server_request(const std::string& uri,
+                                           const std::string& body)
 {
 	setURI(uri);
+
+	if(!body.empty())
+	{
+		m_stream << body;
+	}
 }
 
 std::istream& dummy_server_request::stream()

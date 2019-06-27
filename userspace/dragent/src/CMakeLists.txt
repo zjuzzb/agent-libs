@@ -30,6 +30,7 @@ list(APPEND targetfiles
 	compliance_mgr.cpp
 	configlist_rest_request_handler.cpp
 	configuration.cpp
+	config_data_rest_request_handler.cpp
 	config_rest_request_handler.cpp
 	connection_manager.cpp
 	crash_handler.cpp

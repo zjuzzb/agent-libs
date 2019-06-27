@@ -4,6 +4,7 @@
 #include <memory>
 #include "blocking_queue.h"
 #include "capture_job_handler.h"
+#include "config_data_message_handler.h"
 #include "sinsp_worker.h"
 #include "watchdog_runnable.h"
 
@@ -17,7 +18,8 @@ class sinsp_worker;
 
 using socket_ptr = std::shared_ptr<StreamSocket>;
 
-class connection_manager : public dragent::watchdog_runnable
+class connection_manager : public dragent::config_data_message_handler,
+                           public dragent::watchdog_runnable
 {
 public:
 	connection_manager(dragent_configuration* configuration,
@@ -30,6 +32,8 @@ public:
 	{
 		return m_connected && m_socket;
 	}
+
+	bool handle_config_data(const uint8_t* buf, uint32_t size);
 
 	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000;
 	static const uint32_t SOCKET_TIMEOUT_AFTER_CONNECT_US = 100 * 1000;
@@ -54,7 +58,6 @@ private:
 	bool receive_message();
 	void handle_dump_request_start(uint8_t* buf, uint32_t size);
 	void handle_dump_request_stop(uint8_t* buf, uint32_t size);
-	void handle_config_data(uint8_t* buf, uint32_t size);
 	void handle_error_message(uint8_t* buf, uint32_t size) const;
 
 	static const std::string& get_openssldir();

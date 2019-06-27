@@ -34,6 +34,7 @@ add_executable(unit-test-dragent
 	main.cpp
 	blocking_queue.ut.cpp
 	configlist_rest_request_handler.ut.cpp
+	config_data_rest_request_handler.ut.cpp
 	config_rest_request_handler.ut.cpp
 	crash_handler.ut.cpp
 	dragent_memdump_logger.ut.cpp
