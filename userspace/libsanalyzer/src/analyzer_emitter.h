@@ -1,4 +1,5 @@
 #pragma once
+#include <unordered_set>
 
 /**
  * analyzer emitter namespace holds types that are required by analyzer during flush.

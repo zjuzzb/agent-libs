@@ -3,7 +3,8 @@
 #include "base_filter.h"
 #include "sinsp.h"
 #include <vector>
-#include "infrastructure_state.h"
+
+class infrastructure_state;
 
 /**
  * all the information that an object filter could make a decision on.

@@ -4,6 +4,7 @@
 #include <grpc_channel_registry.h>
 
 #include "compliance_mgr.h"
+#include "infrastructure_state.h"
 
 using namespace std;
 

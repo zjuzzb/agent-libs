@@ -2,6 +2,7 @@
 #include <google/protobuf/text_format.h>
 
 #include "sinsp_worker.h"
+#include "infrastructure_state.h"
 #include "logger.h"
 
 #include "security_mgr.h"

@@ -2,6 +2,7 @@
 #include <string>
 #include <memory>
 
+#include "infrastructure_state.h"
 #include "logger.h"
 #include "json_evt.h"
 

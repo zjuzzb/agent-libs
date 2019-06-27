@@ -1,6 +1,7 @@
 #include "object_filter.h"
 #include <fnmatch.h>
 #include "analyzer_thread.h"
+#include "infrastructure_state.h"
 
 std::string process_name_filter::no_data = "";
 std::string container_name_filter::no_data = "";

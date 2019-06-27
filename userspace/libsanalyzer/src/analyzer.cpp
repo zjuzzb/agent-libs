@@ -61,6 +61,7 @@ using namespace google::protobuf::io;
 #include "container_events/containerd.h"
 #include "container_info.h"
 #include "cri.h"
+#include "infrastructure_state.h"
 #include "k8s.h"
 #include "k8s_delegator.h"
 #include "k8s_state.h"

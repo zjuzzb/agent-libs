@@ -25,7 +25,6 @@
 #include "mounted_fs.h"
 #ifndef CYGWING_AGENT
 #include "coclient.h"
-#include "infrastructure_state.h"
 #include "custom_container.h"
 #else
 #include "Poco/RegularExpression.h"
@@ -67,9 +66,11 @@ class sinsp_analyzer_parsers;
 class sinsp_chisel;
 class sinsp_chisel_details;
 #ifndef CYGWING_AGENT
+class infrastructure_state;
 class k8s;
 class k8s_delegator;
 class mesos;
+class new_k8s_delegator;
 class docker;
 class containerd_events;
 #endif

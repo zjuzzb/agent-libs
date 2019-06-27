@@ -1,6 +1,7 @@
 #include "sinsp_worker.h"
 #include "configuration_manager.h"
 #include "error_handler.h"
+#include "infrastructure_state.h"
 #include "logger.h"
 #include "memdumper.h"
 #include "sinsp_factory.h"
