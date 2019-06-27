@@ -63,11 +63,22 @@ public:
 	}
 
 	static void run(run_callback_t run_function,
-	                captured_event_callback_t captured_event_callback,
-	                event_filter_t filter, before_open_t before_open)
+			captured_event_callback_t captured_event_callback,
+			event_filter_t filter, before_open_t before_open)
 	{
 		sinsp_configuration configuration;
-		run(run_function, captured_event_callback, filter, configuration, NULL, 0, 0, 0, SCAP_MODE_LIVE, before_open);
+		run(run_function, captured_event_callback, filter, configuration,
+			NULL, 0, 0, 0, SCAP_MODE_LIVE, before_open);
+	}
+
+	static void run(run_callback_t run_function,
+	                captured_event_callback_t captured_event_callback,
+	                event_filter_t filter, before_open_t before_open,
+	                before_close_t before_close)
+	{
+		sinsp_configuration configuration;
+		run(run_function, captured_event_callback, filter, configuration,
+			NULL, 0, 0, 0, SCAP_MODE_LIVE, before_open, before_close);
 	}
 
 	static void run(run_callback_t run_function,

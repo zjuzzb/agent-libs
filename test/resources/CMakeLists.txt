@@ -90,3 +90,10 @@ if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
         endif("${ARCH}" STREQUAL "s390x")
 
 endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
+
+install(
+		CODE "execute_process(
+			COMMAND tar xzf ${CMAKE_CURRENT_SOURCE_DIR}/fake-proc.tar.gz
+			WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/test/resources
+		)"
+		COMPONENT tests)

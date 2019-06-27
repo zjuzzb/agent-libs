@@ -32,6 +32,7 @@
 #include <unistd.h>
 
 #include "setns.h"
+#include "scap-int.h"
 
 using namespace std;
 
@@ -2451,4 +2452,127 @@ TEST_F(sys_call_test, clone_tid_vtid)
 		}
 		fprintf(stderr, "%d runs remaining\n", loops);
 	}
+}
+
+TEST_F(sys_call_test, thread_lookup_static)
+{
+	struct stat s = {};
+	char proc[] = "resources/_proc";
+	if (stat(proc, &s) != 0)
+	{
+		fprintf(stderr, "%s not found, skipping test\n", proc);
+		FAIL();
+	}
+
+	char err_buf[SCAP_LASTERR_SIZE];
+	int rc = 0;
+	scap_open_args oargs;
+	oargs.mode = SCAP_MODE_LIVE;
+	oargs.fname = nullptr;
+	oargs.proc_callback = nullptr;
+	oargs.proc_callback_context = nullptr;
+	oargs.bpf_probe = nullptr;
+	oargs.import_users = false;
+	oargs.suppressed_comms[0] = nullptr;
+
+	scap_t* scap = scap_open(oargs, err_buf, &rc);
+	ASSERT_NE(nullptr, scap);
+
+	scap_threadinfo* scap_tinfo = nullptr;
+	ASSERT_EQ(SCAP_SUCCESS, scap_proc_read_thread(scap, proc, 1, &scap_tinfo, err_buf, false));
+	EXPECT_EQ(1, scap_tinfo->tid);
+	EXPECT_EQ(1, scap_tinfo->pid);
+	EXPECT_EQ(1, scap_tinfo->vtid);
+	EXPECT_EQ(0, scap_tinfo->ptid);
+
+	ASSERT_EQ(SCAP_SUCCESS, scap_proc_read_thread(scap, proc, 62725, &scap_tinfo, err_buf, false));
+	EXPECT_EQ(62725, scap_tinfo->tid);
+	EXPECT_EQ(62725, scap_tinfo->pid);
+	EXPECT_EQ(62725, scap_tinfo->vtid);
+	EXPECT_EQ(1, scap_tinfo->ptid);
+
+	ASSERT_EQ(SCAP_SUCCESS, scap_proc_read_thread(scap, proc, 62727, &scap_tinfo, err_buf, false));
+	EXPECT_EQ(62727, scap_tinfo->tid);
+	EXPECT_EQ(62725, scap_tinfo->pid);
+	EXPECT_EQ(62727, scap_tinfo->vtid);
+	EXPECT_EQ(1, scap_tinfo->ptid);
+
+	scap_close(scap);
+}
+
+TEST_F(sys_call_test, thread_lookup_live)
+{
+	char err_buf[SCAP_LASTERR_SIZE];
+	int rc = 0;
+	scap_open_args oargs;
+	oargs.mode = SCAP_MODE_LIVE;
+	oargs.fname = nullptr;
+	oargs.proc_callback = nullptr;
+	oargs.proc_callback_context = nullptr;
+	oargs.bpf_probe = nullptr;
+	oargs.import_users = false;
+	oargs.suppressed_comms[0] = nullptr;
+
+	scap_t* scap = scap_open(oargs, err_buf, &rc);
+	ASSERT_NE(nullptr, scap);
+
+	scap_threadinfo* scap_tinfo = nullptr;
+	char proc[] = "/proc";
+
+	std::unordered_set<int64_t> seen_tids;
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return evt->get_type() != PPME_PROCEXIT_1_E && evt->get_tid() > 0;
+	};
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		// a very short sleep to gather some events,
+		// we'll take much longer than this to process them all
+		usleep(1000);
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		auto tid = e->get_tid();
+		if (!seen_tids.insert(tid).second)
+		{
+			return;
+		}
+		fprintf(stderr, "looking up tid %ld in /proc\n", tid);
+		if (scap_proc_read_thread(scap, proc, tid, &scap_tinfo, err_buf, false) == SCAP_SUCCESS)
+		{
+			auto tinfo = e->get_thread_info(false);
+			if(!tinfo)
+			{
+				return;
+			}
+			EXPECT_NE(0, scap_tinfo->tid);
+			EXPECT_NE(0, scap_tinfo->pid);
+			EXPECT_NE(0, scap_tinfo->vtid);
+			EXPECT_NE(0, scap_tinfo->ptid);
+			EXPECT_EQ(tinfo->m_tid, scap_tinfo->tid);
+			EXPECT_EQ(tinfo->m_pid, scap_tinfo->pid);
+			EXPECT_EQ(tinfo->m_vtid, scap_tinfo->vtid);
+			EXPECT_EQ(tinfo->m_ptid, scap_tinfo->ptid);
+		}
+	};
+	before_close_t before_close = [&](sinsp* inspector) {
+		// close scap to maintain the num_consumers at exit == 0 assertion
+		scap_close(scap);
+	};
+
+	ASSERT_EQ(SCAP_SUCCESS, scap_proc_read_thread(scap, proc, getpid(), &scap_tinfo, err_buf, false));
+	EXPECT_EQ(getpid(), scap_tinfo->tid);
+	EXPECT_EQ(getpid(), scap_tinfo->pid);
+	EXPECT_EQ(getpid(), scap_tinfo->vtid);
+	EXPECT_EQ(getppid(), scap_tinfo->ptid);
+
+	ASSERT_EQ(SCAP_SUCCESS, scap_proc_read_thread(scap, proc, 1, &scap_tinfo, err_buf, false));
+	EXPECT_EQ(1, scap_tinfo->tid);
+	EXPECT_EQ(1, scap_tinfo->pid);
+	EXPECT_EQ(1, scap_tinfo->vtid);
+	EXPECT_EQ(0, scap_tinfo->ptid);
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, event_capture::do_nothing, before_close);});
 }
