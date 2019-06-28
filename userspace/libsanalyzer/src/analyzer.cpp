@@ -5989,34 +5989,37 @@ sinsp_analyzer::emit_container(const string &container_id,
 		ASSERT(false);
 	}
 
-	if(!it->second.m_name.empty())
+	if(it->second.m_metadata_complete)
 	{
-		container->set_name(it->second.m_name);
-	}
+		if(!it->second.m_name.empty())
+		{
+			container->set_name(it->second.m_name);
+		}
 
-	if(!it->second.m_image.empty())
-	{
-		container->set_image(it->second.m_image);
-	}
+		if(!it->second.m_image.empty())
+		{
+			container->set_image(it->second.m_image);
+		}
 
-	if(!it->second.m_imageid.empty())
-	{
-		container->set_image_id(it->second.m_imageid.substr(0, 12));
-	}
+		if(!it->second.m_imageid.empty())
+		{
+			container->set_image_id(it->second.m_imageid.substr(0, 12));
+		}
 
-	if(!it->second.m_imagerepo.empty())
-	{
-		container->set_image_repo(it->second.m_imagerepo);
-	}
+		if(!it->second.m_imagerepo.empty())
+		{
+			container->set_image_repo(it->second.m_imagerepo);
+		}
 
-	if(!it->second.m_imagetag.empty())
-	{
-		container->set_image_tag(it->second.m_imagetag);
-	}
+		if(!it->second.m_imagetag.empty())
+		{
+			container->set_image_tag(it->second.m_imagetag);
+		}
 
-	if(!it->second.m_imagedigest.empty())
-	{
-		container->set_image_digest(it->second.m_imagedigest);
+		if(!it->second.m_imagedigest.empty())
+		{
+			container->set_image_digest(it->second.m_imagedigest);
+		}
 	}
 
 #ifndef CYGWING_AGENT
