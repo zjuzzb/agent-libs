@@ -44,7 +44,6 @@ using namespace google::protobuf::io;
 #include "analyzer_callback_interface.h"
 #include "metric_serializer.h"
 #include "metric_serializer_factory.h"
-#include "fault_injection.h"
 #include "connectinfo.h"
 #include "metrics.h"
 #include "draios.pb.h"
@@ -107,10 +106,6 @@ typedef container_emitter<sinsp_analyzer, analyzer_emitter::flush_flags> analyze
 
 namespace
 {
-
-DEFINE_FAULT_INJECTOR(fh_flush_delay_ms,
-                      "agent.libsanalyzer.analyzer.flush_delay",
-                      "Inject a delay into sinsp_analyzer::flush()");
 
 template<typename T>
 void init_host_level_percentiles(T &metrics, const std::set<double> &pctls)
@@ -3627,20 +3622,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 	m_cputime_analyzer.begin_flush();
 	uint32_t j;
 	uint64_t flush_start_ns = sinsp_utils::get_current_time_ns();
-
-	FAULT_FIRED_INVOKE(fh_flush_delay_ms,
-		([](const uint64_t sleep_time)
-		 {
-			if(sleep_time != 0)
-			{
-				g_logger.format(sinsp_logger::SEV_INFO,
-				                "Fault-injected sleep: %lu",
-				                sleep_time);
-				std::this_thread::sleep_for(
-						std::chrono::milliseconds(sleep_time));
-			}
-		 })
-	);
 
 	//
 	// Skip the events if the analyzer has not been initialized yet
