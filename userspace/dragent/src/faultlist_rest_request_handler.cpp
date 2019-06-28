@@ -5,6 +5,8 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
+#if defined(FAULT_INJECTION_ENABLED)
+
 #include "faultlist_rest_request_handler.h"
 #include "fault_handler_registry.h"
 
@@ -42,3 +44,5 @@ faultlist_rest_request_handler* faultlist_rest_request_handler::create()
 
 
 } // namespace dragent
+
+#endif // defined(FAULT_INJECTION_ENABLED)

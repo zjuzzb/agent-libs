@@ -5,6 +5,8 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
+#if defined(FAULT_INJECTION_ENABLED)
+
 #include "dummy_server_request.h"
 #include "dummy_server_response.h"
 #include "fault_handler.h"
@@ -244,3 +246,5 @@ TEST(fault_rest_request_handler_test, PUT_valid_update)
 	ASSERT_EQ(19, fh.get_n_count());
 	ASSERT_EQ(27, fh.get_fault_probability());
 }
+
+#endif // defined(FAULT_INJECTION_ENABLED)

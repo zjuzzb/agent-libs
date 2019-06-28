@@ -6,6 +6,8 @@
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
 #pragma once
+#if defined(FAULT_INJECTION_ENABLED)
+
 #include "rest_request_handler.h"
 
 namespace dragent
@@ -44,3 +46,5 @@ protected:
 };
 
 } // namespace dragent
+
+#endif // defined(FAULT_INJECTION_ENABLED)

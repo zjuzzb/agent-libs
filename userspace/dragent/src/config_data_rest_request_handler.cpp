@@ -120,5 +120,4 @@ config_data_rest_request_handler* config_data_rest_request_handler::create()
 	return new config_data_rest_request_handler();
 }
 
-
 } // namespace dragent

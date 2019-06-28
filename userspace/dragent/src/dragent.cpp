@@ -134,8 +134,10 @@ void enable_rest_server(config_data_message_handler& handler)
 	factory->register_path_handler<config_rest_request_handler>();
 	factory->register_path_handler<metrics_rest_request_handler>();
 	factory->register_path_handler<config_data_rest_request_handler>();
+#if defined(FAULT_INJECTION_ENABLED)
 	factory->register_path_handler<faultlist_rest_request_handler>();
 	factory->register_path_handler<fault_rest_request_handler>();
+#endif // defined(FAULT_INJECTION_ENABLED)
 
 	config_data_rest_request_handler::set_config_data_message_handler(&handler);
 

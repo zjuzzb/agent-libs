@@ -5,6 +5,8 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
+#if defined(FAULT_INJECTION_ENABLED)
+
 #include "dummy_server_request.h"
 #include "dummy_server_response.h"
 #include "faultlist_rest_request_handler.h"
@@ -83,3 +85,5 @@ TEST(faultlist_rest_request_handler_test, GET_returns_list_of_registered_faults)
 	ASSERT_NE(std::string::npos, response_string.find("fault.name.2"));
 	ASSERT_NE(std::string::npos, response_string.find("description2"));
 }
+
+#endif // defined(FAULT_INJECTION_ENABLED)
