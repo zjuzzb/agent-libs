@@ -11,6 +11,8 @@
 #include "connection_manager.h"
 #include "dragent_memdump_logger.h"
 #include "dragent_user_event_callback.h"
+#include "faultlist_rest_request_handler.h"
+#include "fault_rest_request_handler.h"
 #include "user_event_channel.h"
 #include "blocking_queue.h"
 #include "error_handler.h"
@@ -132,6 +134,8 @@ void enable_rest_server(config_data_message_handler& handler)
 	factory->register_path_handler<config_rest_request_handler>();
 	factory->register_path_handler<metrics_rest_request_handler>();
 	factory->register_path_handler<config_data_rest_request_handler>();
+	factory->register_path_handler<faultlist_rest_request_handler>();
+	factory->register_path_handler<fault_rest_request_handler>();
 
 	config_data_rest_request_handler::set_config_data_message_handler(&handler);
 

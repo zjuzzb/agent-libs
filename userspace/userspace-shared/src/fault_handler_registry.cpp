@@ -12,6 +12,7 @@
 #include <assert.h>
 #include <map>
 #include <string>
+#include <json/json.h>
 
 namespace
 {
@@ -92,6 +93,36 @@ fault_handler* fault_handler_registry::find(const std::string& name)
 	}
 
 	return handler;
+}
+
+std::string fault_handler_registry::to_json() const
+{
+	Json::Value result;
+	Json::Value fiji_list;
+	int i = 0;
+
+	for(const auto& itr : get_map())
+	{
+		Json::Value value;
+		Json::Reader reader;
+
+		if(reader.parse(itr.second->to_json(), value))
+		{
+			fiji_list[i++] = value;
+		}
+		else
+		{
+			fprintf(stderr,
+			        "[%s]:%d: Failed to parse '%s' into JSON",
+			        __FUNCTION__,
+			        __LINE__,
+			        itr.second->to_json().c_str());
+		}
+	}
+
+	result["fault_injections"] = fiji_list;
+
+	return result.toStyledString();
 }
 
 fault_handler_registry::exception::exception(const std::string& msg):

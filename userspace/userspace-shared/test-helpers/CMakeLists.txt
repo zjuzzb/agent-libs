@@ -5,6 +5,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
 
 add_library(test-helpers-userspace-shared STATIC
 	scoped_configuration.cpp
+	scoped_fault.cpp
 )
 
 target_compile_definitions(test-helpers-userspace-shared PUBLIC SYSDIG_TEST)

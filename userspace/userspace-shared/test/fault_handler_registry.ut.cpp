@@ -75,4 +75,23 @@ TEST(fault_handler_registry_test, double_registration_exception)
 	}, fault_handler_registry::exception);
 }
 
+/**
+ * Ensure that to_json() returns a JSON representation of all registered
+ * fault handlers.
+ */
+TEST(fault_handler_registry_test, to_json)
+{
+	fault_handler fh("to_json_test_filename.cpp",
+	                 1492,
+	                 "to_json_test_name",
+	                 "to_json_test_description");
+
+	const std::string json = fault_handler_registry::instance().to_json();
+
+	ASSERT_NE(json.find("to_json_test_filename.cpp"), std::string::npos);
+	ASSERT_NE(json.find("1492"), std::string::npos);
+	ASSERT_NE(json.find("to_json_test_name"), std::string::npos);
+	ASSERT_NE(json.find("to_json_test_description"), std::string::npos);
+}
+
 #endif /* defined(FAULT_INJECTION_ENABLED) */

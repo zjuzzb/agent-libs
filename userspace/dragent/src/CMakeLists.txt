@@ -38,6 +38,8 @@ list(APPEND targetfiles
 	dragent_memdump_logger.cpp
 	dragent_user_event_callback.cpp
 	error_handler.cpp
+	faultlist_rest_request_handler.cpp
+	fault_rest_request_handler.cpp
 	logger.cpp
 	metrics_rest_request_handler.cpp
 	monitor.cpp

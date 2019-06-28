@@ -8,6 +8,7 @@
 #pragma once
 #if defined(FAULT_INJECTION_ENABLED)
 
+#include <memory>
 #include <string>
 #include <functional>
 
@@ -23,6 +24,22 @@ namespace userspace_shared
 class fault_handler
 {
 public:
+	/**
+	 * Exception thrown when errors are encountered by fault_handler APIs.
+	 */
+	class exception : public std::runtime_error
+	{
+	public:
+		exception(const std::string& message);
+	};
+
+	/** Interface class for mementos produced by fault_handler%s. */
+	class memento {
+	public:
+		virtual ~memento() = default;
+	};
+	using memento_ptr = std::shared_ptr<memento>;
+
 	/**
 	 * The fault modes exposed by fault_handler%s.
 	 */
@@ -231,6 +248,30 @@ public:
 	 * Clears the fired_count and hit_count counters.
 	 */
 	void clear_counters();
+
+	/**
+	 * Returns a JSON-formatted string representation of this fault_handler.
+	 */
+	std::string to_json() const;
+
+	/**
+	 * Update this fault_handler based on the given json.
+	 *
+	 * @throws fault_handler::exception if JSON parsing fails.  The
+	 *         associated message will contain the error details.
+	 */
+	void from_json(const std::string& json);
+
+	/**
+	 * Return the current state of this fault_handler in a memento.
+	 */
+	memento_ptr get_state() const;
+
+	/**
+	 * Restore the state of this fault_handler to that previously saved
+	 * using get_state().
+	 */
+	void restore_state(memento_ptr memento);
 
 	/**
 	 * Returns a string representation of the given fault mode.

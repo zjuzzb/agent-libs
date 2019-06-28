@@ -39,6 +39,8 @@ add_executable(unit-test-dragent
 	crash_handler.ut.cpp
 	dragent_memdump_logger.ut.cpp
 	dragent_user_event_callback.ut.cpp
+	faultlist_rest_request_handler.ut.cpp
+	fault_rest_request_handler.ut.cpp
 	logger.ut.cpp
 	metrics_rest_request_handler.ut.cpp
 	sinsp_worker.ut.cpp

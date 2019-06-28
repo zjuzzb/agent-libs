@@ -1194,4 +1194,203 @@ TEST(fault_handler_test, afterNMode_enabled_fired)
 	ASSERT_EQ(0, fh.get_n_count());
 }
 
+/**
+ * Ensure that to_json() returns a properly-formatted JSON representation
+ * of the fault_handler.
+ */
+TEST(fault_handler_test, to_json)
+{
+	fault_handler fh(FILENAME, LINE, NAME, DESCRIPTION);
+
+	fh.set_fault_string("Robert is your mother's brother");
+	fh.set_fault_uint64(42);
+	fh.fired();
+	fh.set_enabled(true);
+	fh.fired();
+
+	const std::string json = fh.to_json();
+	const std::string expected = R"EOF({
+   "this.that" : {
+      "description" : "some description",
+      "enabled" : true,
+      "fault_string" : "Robert is your mother's brother",
+      "fault_uint64" : 42,
+      "filename" : "foo.cpp",
+      "fired_count" : 1,
+      "hit_count" : 2,
+      "line" : 18,
+      "mode" : "ALWAYS",
+      "n_count" : 0,
+      "probability" : 100
+   }
+}
+)EOF";
+
+	ASSERT_EQ(expected, json);
+}
+
+/**
+ * Ensure that from_json() can successfully update the fault_string.
+ */
+TEST(fault_handler_test, from_json_fault_string)
+{
+	fault_handler fh(FILENAME, LINE, NAME, DESCRIPTION);
+
+	ASSERT_NO_THROW(fh.from_json(R"EOF({ "fault_string": "waa" })EOF"));
+
+	ASSERT_EQ("waa", fh.get_fault_string());
+}
+
+/**
+ * Ensure that from_json() can successfully update the fault_uint64.
+ */
+TEST(fault_handler_test, from_json_fault_uint64)
+{
+	fault_handler fh(FILENAME, LINE, NAME, DESCRIPTION);
+
+	ASSERT_NO_THROW(fh.from_json(R"EOF({ "fault_uint64": 1234 })EOF"));
+
+	ASSERT_EQ(1234, fh.get_fault_uint64());
+}
+
+/**
+ * Ensure that from_json() can successfully update the mode.
+ */
+TEST(fault_handler_test, from_json_fault_mode)
+{
+	fault_handler fh(FILENAME, LINE, NAME, DESCRIPTION);
+
+	ASSERT_NO_THROW(fh.from_json(R"EOF({ "mode": "ONE_SHOT" })EOF"));
+
+	ASSERT_EQ(fault_handler::fault_mode::ONE_SHOT, fh.get_fault_mode());
+}
+
+/**
+ * Ensure that from_json() can successfully update the n_count.
+ */
+TEST(fault_handler_test, from_json_n_count)
+{
+	fault_handler fh(FILENAME, LINE, NAME, DESCRIPTION);
+
+	ASSERT_NO_THROW(fh.from_json(R"EOF({ "n_count": 7 })EOF"));
+
+	ASSERT_EQ(7, fh.get_n_count());
+}
+
+/**
+ * Ensure that from_json() can successfully update the probability.
+ */
+TEST(fault_handler_test, from_json_fault_probability)
+{
+	fault_handler fh(FILENAME, LINE, NAME, DESCRIPTION);
+
+	ASSERT_NO_THROW(fh.from_json(R"EOF({ "probability": 52 })EOF"));
+
+	ASSERT_EQ(52, fh.get_fault_probability());
+}
+
+/**
+ * Ensure that if a client gives from_json() bad JSON, the method throws a
+ * fault_handler::exception.
+ */
+TEST(fault_handler_test, from_json_bad_json_throws_exception)
+{
+	fault_handler fh(FILENAME, LINE, NAME, DESCRIPTION);
+
+	ASSERT_THROW(fh.from_json("This is not json"), fault_handler::exception);
+}
+
+/**
+ * Ensure that get_state() returns a non-nullptr object.
+ */
+TEST(fault_handler_test, get_state)
+{
+	fault_handler fh(FILENAME, LINE, NAME, DESCRIPTION);
+	fault_handler::memento_ptr memento = fh.get_state();
+
+	ASSERT_NE(nullptr, memento.get());
+}
+
+/**
+ * Ensure that restore_state() throws a fault_handler::exception if the
+ * given memento is nullptr.
+ */
+TEST(fault_handler_test, restore_state_null_memento_throws_exception)
+{
+	fault_handler fh(FILENAME, LINE, NAME, DESCRIPTION);
+	fault_handler::memento_ptr memento;
+
+	ASSERT_THROW(fh.restore_state(memento), fault_handler::exception);
+}
+
+/**
+ * Ensure that if a client supplies restore_state() with an unsupported
+ * concrete memento, it throws a fault_handler::exception.
+ */
+TEST(fault_handler_test, restore_state_wrong_type_throws_exception)
+{
+	class dummy_memento : public fault_handler::memento { };
+
+	fault_handler fh(FILENAME, LINE, NAME, DESCRIPTION);
+	fault_handler::memento_ptr memento = std::make_shared<dummy_memento>();
+
+	ASSERT_THROW(fh.restore_state(memento), fault_handler::exception);
+}
+
+/**
+ * Ensure that if a client tried to use a memento created by one instance of
+ * a fault_handler to restore the state of a different fault handler, the
+ * fault_handler throws an exception.
+ */
+TEST(fault_handler_test, restore_state_from_different_handler_throws_exception)
+{
+	fault_handler fh1(FILENAME, LINE, "name1", DESCRIPTION);
+	fault_handler fh2(FILENAME, LINE, "name2", DESCRIPTION);
+
+	fault_handler::memento_ptr memento = fh1.get_state();
+
+	ASSERT_THROW(fh2.restore_state(memento), fault_handler::exception);
+}
+
+/**
+ * Ensure that a restore_state() restores the state of a fault_handler when
+ * the given memento is from the target fault_handler.
+ */
+TEST(fault_handler_test, restore_state_restores_state)
+{
+	fault_handler fh(FILENAME, LINE, NAME, DESCRIPTION);
+
+	fh.set_fault_string("taco");
+	fh.set_fault_uint64(27);
+	fh.set_fault_mode(fault_handler::fault_mode::PROBABILITY);
+	fh.set_enabled(true);
+	fh.set_fault_probability(100);
+	fh.set_n_count(5);
+
+	fh.fired();
+	fh.fired();
+
+	fault_handler::memento_ptr memento = fh.get_state();
+
+	fh.fired();
+
+	fh.set_fault_string("bell");
+	fh.set_fault_uint64(72);
+	fh.set_fault_mode(fault_handler::fault_mode::ONE_SHOT);
+	fh.set_enabled(false);
+	fh.set_fault_probability(52);
+	fh.set_n_count(10);
+
+	ASSERT_NO_THROW(fh.restore_state(memento));
+
+	ASSERT_EQ("taco", fh.get_fault_string());
+	ASSERT_EQ(27, fh.get_fault_uint64());
+	ASSERT_EQ(fault_handler::fault_mode::PROBABILITY, fh.get_fault_mode());
+	ASSERT_TRUE(fh.is_enabled());
+	ASSERT_EQ(100, fh.get_fault_probability());
+	ASSERT_EQ(5, fh.get_n_count());
+	ASSERT_EQ(2, fh.get_fired_count());
+	ASSERT_EQ(2, fh.get_hit_count());
+}
+
 #endif /* defined(FAULT_INJECTION_ENABLED) */

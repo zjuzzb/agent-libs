@@ -19,6 +19,7 @@ add_executable(unit-test-userspace-shared
 	filter.ut.cpp
 	scoped_config.ut.cpp
 	scoped_configuration.ut.cpp
+	scoped_fault.ut.cpp
 	type_config.ut.cpp
 	yaml_configuration.ut.cpp
 )

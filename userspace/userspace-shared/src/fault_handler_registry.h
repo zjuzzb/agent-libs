@@ -58,6 +58,12 @@ public:
 	 *          nullptr if no fault with the given name is registered.
 	 */
 	fault_handler* find(const std::string& name);
+
+	/**
+	 * Returns a JSON-formatted representation of all registered fault
+	 * injection points.
+	 */
+	std::string to_json() const;
 private:
 	fault_handler_registry() = default;
 	fault_handler_registry(const fault_handler_registry&) = delete;
