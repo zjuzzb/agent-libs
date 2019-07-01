@@ -151,6 +151,7 @@ RUN curl -s https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public |
  && apt-get install -y --no-install-recommends draios-agent-slim \
 {% endif %}
  && apt-get clean \
+ && rm -rf /opt/draios/lib/python-deps2.6 \
  && rm -rf /var/lib/apt/lists/* \
  && apt-get remove -y --purge apt-transport-https software-properties-common \
  && apt-get autoremove -y --purge
@@ -173,7 +174,7 @@ RUN curl -s -o binutils_2.30-22_amd64.deb https://s3.amazonaws.com/download.drai
 {% endif %}
 {% if p.include_agent_package == "local" %}
 ADD draios-${AGENT_VERSION}-x86_64-agent.deb /
-RUN dpkg -i /draios-${AGENT_VERSION}-x86_64-agent.deb
+RUN dpkg -i /draios-${AGENT_VERSION}-x86_64-agent.deb && rm -rf /opt/draios/lib/python-deps2.6
 
 {% endif %}
 COPY ./docker-entrypoint.sh /
