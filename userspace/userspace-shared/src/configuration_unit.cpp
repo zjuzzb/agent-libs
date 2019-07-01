@@ -90,3 +90,38 @@ std::string configuration_unit::to_json() const
 
 	return root.toStyledString();
 }
+
+void configuration_unit::from_json(const std::string& json)
+{
+	Json::Value root;
+	Json::Reader reader;
+
+	if(!reader.parse(json, root))
+	{
+		throw configuration_unit::exception("Failed to parse json");
+	}
+
+	Json::Value value = root["value"];
+
+	if(value.isNull())
+	{
+		throw configuration_unit::exception(
+				"Root element does not contain a value");
+	}
+
+	if(!value.isString())
+	{
+		throw configuration_unit::exception(
+				"Value is not a string");
+	}
+
+	if(!string_to_value(value.asString()))
+	{
+		throw configuration_unit::exception(
+				"Unable to parse given value to expected type");
+	}
+}
+
+configuration_unit::exception::exception(const std::string& msg):
+	std::runtime_error("configuration_unit::exception: " + msg)
+{ }

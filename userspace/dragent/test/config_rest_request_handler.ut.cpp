@@ -48,7 +48,7 @@ TEST(config_rest_request_handler_test, create)
  * Ensure that we can fetch a config item by name using the non-versioned
  * path.
  */
-TEST(config_rest_request_handler_test, existing_config_via_path)
+TEST(config_rest_request_handler_test, GET_existing_config_via_path)
 {
 	const std::string path = config_rest_request_handler::get_path() +
 	                         "/ut-test-key";
@@ -81,7 +81,7 @@ TEST(config_rest_request_handler_test, existing_config_via_path)
  * Ensure that we can fetch a config item by name using the versioned
  * path.
  */
-TEST(config_rest_request_handler_test, existing_config_via_versioned_path)
+TEST(config_rest_request_handler_test, GET_existing_config_via_versioned_path)
 {
 	const std::string path = config_rest_request_handler::get_versioned_path() +
 	                         "/ut-test-key";
@@ -115,7 +115,7 @@ TEST(config_rest_request_handler_test, existing_config_via_versioned_path)
  * actually allow, but...), the config_rest_request_handler returns the
  * expected result.
  */
-TEST(config_rest_request_handler_test, no_slash_bad_request)
+TEST(config_rest_request_handler_test, GET_no_slash_bad_request)
 {
 	const std::string path = config_rest_request_handler::get_versioned_path() +
 	                         "/ut-test-key";
@@ -145,11 +145,135 @@ TEST(config_rest_request_handler_test, no_slash_bad_request)
  * Ensure that if a client requests a config key that does not exist, we
  * get 404 with the expected error message.
  */
-TEST(config_rest_request_handler_test, config_name_not_found)
+TEST(config_rest_request_handler_test, GET_config_name_not_found)
 {
 	const std::string path = config_rest_request_handler::get_versioned_path() +
 	                         "/missing-ut-test-key";
 	const std::string& method = Poco::Net::HTTPRequest::HTTP_GET;
+	const Poco::Net::HTTPResponse::HTTPStatus expected_status =
+		Poco::Net::HTTPResponse::HTTPStatus::HTTP_NOT_FOUND;
+	const std::string expected_response = R"EOF({
+   "error" : "Configuration option 'missing-ut-test-key' not found"
+}
+)EOF";
+
+	dummy_server_request request(path);
+	dummy_server_response response;
+	config_rest_request_handler handler;
+
+	request.setMethod(method);
+
+	handler.handleRequest(request, response);
+
+	ASSERT_EQ(expected_status, response.getStatus());
+	ASSERT_EQ(expected_response, response.m_stream.str());
+}
+
+/**
+ * Ensure that we can PUT a config item by name using the non-versioned
+ * path.
+ */
+TEST(config_rest_request_handler_test, PUT_existing_config_via_path)
+{
+	const std::string path = config_rest_request_handler::get_path() +
+	                         "/ut-test-key";
+	const std::string& method = Poco::Net::HTTPRequest::HTTP_PUT;
+	const Poco::Net::HTTPResponse::HTTPStatus expected_status =
+		Poco::Net::HTTPResponse::HTTPStatus::HTTP_OK;
+	const std::string body = R"EOF({ "value": "true" })EOF";
+	const std::string expected_response = R"EOF({
+   "ut-test-key" : {
+      "description" : "some description",
+      "value" : "true"
+   }
+}
+)EOF";
+
+	type_config<bool> config(false, "some description", "ut-test-key");
+
+	dummy_server_request request(path, body);
+	dummy_server_response response;
+	config_rest_request_handler handler;
+
+	request.setMethod(method);
+
+	handler.handleRequest(request, response);
+
+	ASSERT_EQ(expected_status, response.getStatus());
+	ASSERT_EQ(expected_response, response.m_stream.str());
+}
+
+/**
+ * Ensure that we can PUT a config item using malformed JSON, we get an
+ * appropriate error response.
+ */
+TEST(config_rest_request_handler_test, PUT_existing_config_bad_json)
+{
+	const std::string path = config_rest_request_handler::get_path() +
+	                         "/ut-test-key";
+	const std::string& method = Poco::Net::HTTPRequest::HTTP_PUT;
+	const Poco::Net::HTTPResponse::HTTPStatus expected_status =
+		Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST;
+	const std::string body = R"EOF(this is not json)EOF";
+	const std::string expected_response = R"EOF({
+   "error" : "configuration_unit::exception: Failed to parse json"
+}
+)EOF";
+
+	type_config<bool> config(false, "some description", "ut-test-key");
+
+	dummy_server_request request(path, body);
+	dummy_server_response response;
+	config_rest_request_handler handler;
+
+	request.setMethod(method);
+
+	handler.handleRequest(request, response);
+
+	ASSERT_EQ(expected_status, response.getStatus());
+	ASSERT_EQ(expected_response, response.m_stream.str());
+}
+
+/**
+ * Ensure that if the URI doesn't include any slash (which Poco might not
+ * actually allow, but...), the config_rest_request_handler returns the
+ * expected result on a PUT.
+ */
+TEST(config_rest_request_handler_test, PUT_no_slash_bad_request)
+{
+	const std::string path = config_rest_request_handler::get_versioned_path() +
+	                         "/ut-test-key";
+	const std::string& method = Poco::Net::HTTPRequest::HTTP_PUT;
+	const Poco::Net::HTTPResponse::HTTPStatus expected_status =
+		Poco::Net::HTTPResponse::HTTPStatus::HTTP_BAD_REQUEST;
+	const std::string expected_response = R"EOF({
+   "error" : "Configuration option name not found"
+}
+)EOF";
+
+	type_config<bool> config(false, "some description", "ut-test-key");
+
+	dummy_server_request request(""); // <- no slash
+	dummy_server_response response;
+	config_rest_request_handler handler;
+
+	request.setMethod(method);
+
+	handler.handleRequest(request, response);
+
+	ASSERT_EQ(expected_status, response.getStatus());
+	ASSERT_EQ(expected_response, response.m_stream.str());
+}
+
+/**
+ * Ensure that if a client PUTs a config key that does not exist, we
+ * get 404 with the expected error message.
+ */
+TEST(config_rest_request_handler_test, PUT_config_name_not_found)
+{
+	const std::string path = config_rest_request_handler::get_versioned_path() +
+	                         "/missing-ut-test-key";
+	const std::string& method = Poco::Net::HTTPRequest::HTTP_PUT;
 	const Poco::Net::HTTPResponse::HTTPStatus expected_status =
 		Poco::Net::HTTPResponse::HTTPStatus::HTTP_NOT_FOUND;
 	const std::string expected_response = R"EOF({

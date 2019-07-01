@@ -7,7 +7,10 @@
  */
 #pragma once
 
+#include <algorithm>
+#include <cctype>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <sstream>
 #include <type_traits>
@@ -57,6 +60,12 @@ class yaml_configuration;
 class configuration_unit
 {
 public:
+	class exception : public std::runtime_error
+	{
+	public:
+		exception(const std::string& msg);
+	};
+
 	/**
 	 * Our yaml interface has three levels of keys possible. If a given
 	 * value requires fewer values, set the other strings to "".
@@ -85,6 +94,18 @@ public:
 	 * Returns a string representation of the value of this config.
 	 */
 	virtual std::string value_to_string() const = 0;
+
+	/**
+	 * Updates this configuration_unit%'s value based on the content of
+	 * the given string.
+	 *
+	 * @param[in] value A string representation of the new value of this
+	 *                  configuration_unit.
+	 *
+	 * @returns true if the given value could be parsed into the type
+	 *          modeled by this configuration_unit; false otherwise.
+	 */
+	virtual bool string_to_value(const std::string& value) = 0;
 
 	/**
 	 * Initializes the value stored in the raw config.
@@ -130,6 +151,14 @@ public:
 	 */
 	std::string to_json() const;
 
+	/**
+	 * Update the state of this configuration_unit based on the json.
+	 *
+	 * @throws configuration_unit::exception if it fails to update
+	 *         this configuration_unit based on the given json.
+	 */
+	void from_json(const std::string& json);
+
 protected:
 	/**
 	 * Returns a string representation for anything that std::to_string() can
@@ -169,6 +198,40 @@ protected:
 		out << "]";
 
 		return out.str();
+	}
+
+	/**
+	 * Convert the given str to the given value of the given value_type.
+	 *
+	 * @tparam value_type The type of the value to get from the string
+	 *
+	 * @param[in]  str   The string representation of the value.
+	 * @param[out] value The output value
+	 *
+	 * @returns true if the given str was parsed into a value of the
+	 *          given value_type, false otherwise.
+	 */
+	template<typename value_type>
+	static bool get_value(const std::string& str, value_type& value)
+	{
+		std::stringstream out;
+
+		out << str;
+		out >> value;
+
+		return !out.fail();
+	}
+
+	/**
+	 * Override of get_value() for type std::vector<value_type>.
+	 *
+	 * Current we do not support parsing string->vector<value> so this
+	 * always returns false.
+	 */
+	template<typename value_type>
+	static bool get_value(const std::string& str, std::vector<value_type>& value)
+	{
+		return false;
 	}
 
 private:
@@ -236,7 +299,9 @@ public:
 		    const std::string& subsubkey = "");
 
 public: // stuff for configuration_unit
+
 	std::string value_to_string() const override;
+	bool string_to_value(const std::string& value) override;
 	void init(const yaml_configuration& raw_config) override;
 
 	/**
@@ -415,5 +480,47 @@ public:
 private:
 	typename type_config<data_type>::mutable_ptr m_type_config;
 };
+
+/**
+ * Specialization of get_value() for type std::string.
+ */
+template<>
+inline bool configuration_unit::get_value<std::string>(const std::string& str, std::string& value)
+{
+	value = str;
+	return true;
+}
+
+/**
+ * Specialization of get_value for type bool
+ */
+template<>
+inline bool configuration_unit::get_value<bool>(const std::string& str, bool& value)
+{
+	bool parse_successful = true;
+	std::string lower_str = str;
+
+	std::transform(lower_str.begin(),
+	               lower_str.end(),
+	               lower_str.begin(),
+	               [](char c) { return std::tolower(c); });
+
+	if(lower_str == "true")
+	{
+		value = true;
+	}
+	else if(lower_str == "false")
+	{
+		value = false;
+	}
+	else
+	{
+		parse_successful = false;
+	}
+
+	return parse_successful;
+}
+
+
 #include "type_config.hpp"
 

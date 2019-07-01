@@ -39,6 +39,12 @@ protected:
 	 */
 	std::string handle_get_request(Poco::Net::HTTPServerRequest&,
 	                               Poco::Net::HTTPServerResponse&) override;
+
+	/**
+	 * Handle HTTP PUT request for the requested endpoint.
+	 */
+	std::string handle_put_request(Poco::Net::HTTPServerRequest&,
+	                               Poco::Net::HTTPServerResponse&) override;
 };
 
 } // namespace dragent

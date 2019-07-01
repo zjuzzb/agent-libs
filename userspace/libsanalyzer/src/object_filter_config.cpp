@@ -158,6 +158,13 @@ std::string object_filter_config_data::value_to_string() const
 	return "";
 }
 
+bool object_filter_config_data::string_to_value(const std::string& value)
+{
+	g_logger.format(sinsp_logger::SEV_DEBUG,
+	                "string_to_value() unsupported for object_filter_config_data");
+	return false;
+}
+
 void object_filter_config_data::init(const yaml_configuration& raw_config)
 {
 	if (get_subkey().empty())

@@ -162,6 +162,7 @@ public:
 
 public: // stuff for configuration_unit
         std::string value_to_string() const override;
+	bool string_to_value(const std::string& value) override;
         void init(const yaml_configuration& raw_config) override;
 	void post_init() override { /*no-op*/}
 

@@ -549,3 +549,163 @@ TEST_F(type_config_test, to_json)
 
       	ASSERT_EQ(expected_json, json);
 }
+
+/**
+ * Ensure that string_to_value() will update a config value of type int when
+ * the given string is an int.
+ */
+TEST_F(type_config_test, string_to_value_int_valid)
+{
+	type_config<int> c(42, "some description", "some_test_key");
+	
+	ASSERT_TRUE(c.string_to_value("17"));
+	ASSERT_EQ(17, c.get());
+}
+
+/**
+ * Ensure that string_to_value() will not update a config value of type int when
+ * the given string is not an int.
+ */
+TEST_F(type_config_test, string_to_value_int_invalid)
+{
+	type_config<int> c(42, "some description", "some_test_key");
+	
+	ASSERT_FALSE(c.string_to_value("true"));
+	ASSERT_EQ(42, c.get());
+}
+
+/**
+ * Ensure that string_to_value() will update a config value of type string
+ */
+TEST_F(type_config_test, string_to_value_string)
+{
+	type_config<std::string> c("original value", "some description", "some_test_key");
+	
+	ASSERT_TRUE(c.string_to_value("new value"));
+	ASSERT_EQ("new value", c.get());
+}
+
+/**
+ * Ensure that string_to_value() will update a config value of type bool when
+ * the given string is a bool.
+ */
+TEST_F(type_config_test, string_to_value_bool_valid)
+{
+	type_config<bool> c(true, "some description", "some_test_key");
+	
+	ASSERT_TRUE(c.string_to_value("false"));
+	ASSERT_FALSE(c.get());
+}
+
+/**
+ * Ensure that string_to_value() will update a config value of type bool when
+ * the given string is a bool (mixed case).
+ */
+TEST_F(type_config_test, string_to_value_bool_valid_mixed_case)
+{
+	type_config<bool> c(true, "some description", "some_test_key");
+	
+	ASSERT_TRUE(c.string_to_value("fAlSe"));
+	ASSERT_FALSE(c.get());
+}
+
+/**
+ * Ensure that string_to_value() will not update a config value of type bool when
+ * the given string is not a bool.
+ */
+TEST_F(type_config_test, string_to_value_bool_invalid)
+{
+	type_config<bool> c(true, "some description", "some_test_key");
+	
+	ASSERT_FALSE(c.string_to_value("0"));
+	ASSERT_TRUE(c.get());
+}
+
+/**
+ * string_to_value() doesn't currently support config of type vector.
+ * Ensure that it returns false.
+ */
+TEST_F(type_config_test, string_to_value_vector_invalid)
+{
+	type_config<std::vector<int>> c({1, 2, 3}, "some description", "some_test_key");
+	
+	ASSERT_FALSE(c.string_to_value("[4, 5, 6]"));
+	ASSERT_EQ((std::vector<int>{1, 2, 3}), c.get());
+}
+
+/**
+ * Ensure that if a client calls from_json() with invalid JSON, the method
+ * throws a configuration_unit::exception.
+ */
+TEST_F(type_config_test, from_json_invalid_json)
+{
+	type_config<int> c(1, "some description", "some_test_key");
+
+	ASSERT_THROW(c.from_json("this is not json"),
+	             configuration_unit::exception);
+}
+
+/**
+ * Ensure that if a client calls from_json() with valid JSON, but omits the
+ * "value" element, the method throws a configuration_unit::exception.
+ */
+TEST_F(type_config_test, from_json_valid_json_no_value)
+{
+	type_config<int> c(1, "some description", "some_test_key");
+
+	ASSERT_THROW(c.from_json(R"EOF({ "name": "bob" })EOF"),
+	             configuration_unit::exception);
+}
+
+/**
+ * Ensure that if a client calls from_json() with valid JSON, with a "value"
+ * element, but the type of the value doesn't match the type of the config,
+ * the method throws a configuration_unit::exception.
+ */
+TEST_F(type_config_test, from_json_valid_json_value_wrong_type)
+{
+	type_config<int> c(1, "some description", "some_test_key");
+
+	ASSERT_THROW(c.from_json(R"EOF({ "value": "this is not an int" })EOF"),
+	             configuration_unit::exception);
+}
+
+/**
+ * Ensure that if a client calls from_json() with valid JSON, with a "value"
+ * element, and the type of the value matches the type of the config, the
+ * method updates the config's value.
+ */
+TEST_F(type_config_test, from_json_valid_json_value_correct_type_int)
+{
+	type_config<int> c(1, "some description", "some_test_key");
+
+	ASSERT_NO_THROW(c.from_json(R"EOF({ "value": "27" })EOF"));
+	ASSERT_EQ(27, c.get());
+}
+
+/**
+ * Ensure that if a client calls from_json() with valid JSON, with a "value"
+ * element, and the type of the value matches the type of the config, the
+ * method updates the config's value.
+ */
+TEST_F(type_config_test, from_json_valid_json_value_correct_type_bool)
+{
+	type_config<bool> c(true, "some description", "some_test_key");
+
+	ASSERT_NO_THROW(c.from_json(R"EOF({ "value": "false" })EOF"));
+	ASSERT_FALSE(c.get());
+}
+
+/**
+ * Ensure that if a client calls from_json() with valid JSON, with a "value"
+ * element, and the type of the value matches the type of the config, the
+ * method updates the config's value.
+ */
+TEST_F(type_config_test, from_json_valid_json_value_correct_type_string)
+{
+	type_config<std::string> c("start value", "some description", "some_test_key");
+
+	ASSERT_NO_THROW(c.from_json(R"EOF({ "value": "new value" })EOF"));
+	ASSERT_EQ("new value", c.get());
+}
+
