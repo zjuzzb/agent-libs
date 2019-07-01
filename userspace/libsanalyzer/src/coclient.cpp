@@ -40,7 +40,10 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 
 	string tmp;
 	m_print.PrintToString(*request_msg, &tmp);
-	g_logger.log("Sending message to cointerface: " + tmp, sinsp_logger::SEV_DEBUG);
+	g_logger.format(sinsp_logger::SEV_DEBUG,
+			"Sending message (%d) to cointerface: %s",
+			msg_type,
+			tmp.c_str());
 
 	call_context *call = new call_context();
 
@@ -55,6 +58,7 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 		sdc_internal::docker_command *docker_command;
 		sdc_internal::swarm_state_command *sscmd;
 		sdc_internal::orchestrator_events_stream_command *orchestrator_events_stream_command;
+		sdc_internal::orchestrator_attach_user_events_stream_command *orchestrator_attach_user_events_stream_command;
 
 	case sdc_internal::PING:
 		// Start the rpc call and have the pong reader read the response when
@@ -102,6 +106,16 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 		call->response_msg = make_unique<sdc_internal::array_congroup_update_event>();
 
 		break;
+	case sdc_internal::ORCHESTRATOR_EVENT_MESSAGE_STREAM_COMMAND:
+		call->is_streaming = true;
+
+		orchestrator_attach_user_events_stream_command = static_cast<sdc_internal::orchestrator_attach_user_events_stream_command *>(request_msg);
+		call->orchestrator_event_message_reader = m_stub->AsyncPerformOrchestratorEventMessageStream(&call->ctx, *orchestrator_attach_user_events_stream_command, &m_cq, (void *)call);
+
+		call->response_msg = make_unique<sdc_internal::k8s_user_event>();
+
+		break;
+
 	default:
 		g_logger.log("Unknown message type " + to_string(msg_type), sinsp_logger::SEV_ERROR);
 		break;
@@ -183,6 +197,9 @@ int32_t coclient::next()
 			count_evts = static_cast<int32_t>(array_cue->events_size());
 			g_logger.log("[CoClient] Number of events processed with current tick: " + to_string(count_evts), sinsp_logger::SEV_DEBUG);
 			call->orchestrator_events_reader->Read(array_cue, (void *)call);
+			break;
+		case(sdc_internal::ORCHESTRATOR_EVENT_MESSAGE_STREAM_COMMAND):
+			call->orchestrator_event_message_reader->Read(static_cast<sdc_internal::k8s_user_event *>(call->response_msg.get()), (void *)call);
 			break;
 		default:
 			g_logger.log("Unknown streaming message type " + to_string(call->msg_type) + ", can't read response", sinsp_logger::SEV_ERROR);
@@ -273,5 +290,11 @@ void coclient::get_orchestrator_events(sdc_internal::orchestrator_events_stream_
 				       response_cb_t response_cb)
 {
 	prepare(&cmd, sdc_internal::ORCHESTRATOR_EVENTS_STREAM_COMMAND, response_cb);
+}
+
+void coclient::get_orchestrator_event_messages(sdc_internal::orchestrator_attach_user_events_stream_command cmd,
+					       response_cb_t response_cb)
+{
+	prepare(&cmd, sdc_internal::ORCHESTRATOR_EVENT_MESSAGE_STREAM_COMMAND, response_cb);
 }
 #endif // CYGWING_AGENT

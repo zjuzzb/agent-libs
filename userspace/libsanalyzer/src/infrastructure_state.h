@@ -18,6 +18,8 @@
 typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
 typedef google::protobuf::RepeatedPtrField<draiosproto::container_group> container_groups;
 
+class event_scope;
+
 class infrastructure_state
 {
 public:
@@ -85,6 +87,11 @@ public:
 		std::unordered_set<uid_t> visited;
 		return find_tag(uid, tag, value, visited);
 	}
+	int get_scope_names(uid_t uid, event_scope *scope) const
+	{
+		std::unordered_set<uid_t> visited;
+		return get_scope_names(uid, scope, visited);
+	}
 
 	void scrape_mesos_env(const sinsp_container_info& container, sinsp_threadinfo *tinfo);
 	void get_orch_labels(const uid_t uid, google::protobuf::RepeatedPtrField<draiosproto::container_label>* labels, std::unordered_set<uid_t> *visited = nullptr);
@@ -131,6 +138,8 @@ private:
 		      container_groups* state,
 		      std::unordered_set<uid_t>& visited, uint64_t ts);
 
+	// Get object names from object and its parents and add them to scope
+	int get_scope_names(uid_t uid, event_scope *scope, std::unordered_set<uid_t> &visited) const;
 	bool find_parent_kind(const uid_t child_id, string kind, uid_t &found_id,
 		std::unordered_set<uid_t> &visited) const;
 

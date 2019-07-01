@@ -1207,6 +1207,9 @@ k8s_extra_resources:
       - services
       - resourcequotas
 
+# Set to add scope to events from k8s hierarchy, such as pod.name etc.
+add_event_scopes: true
+
 # configuration files to monitor for updates
 monitor_files:
   check_frequency_s: 5

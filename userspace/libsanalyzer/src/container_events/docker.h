@@ -31,6 +31,8 @@ limitations under the License.
 #include <utility>
 #include <unordered_map>
 
+class infrastructure_state;
+
 class docker
 {
 public:
@@ -41,7 +43,8 @@ public:
 
 	static const int default_timeout_ms = 1000L;
 
-	docker(std::string url = "",
+	docker(infrastructure_state *infra_state,
+		std::string url = "",
 		const std::string& path = "/v1.24/events",
 		const std::string& http_version = "1.0",
 		int timeout_ms = default_timeout_ms,
@@ -154,6 +157,8 @@ private:
 	// set to true if we ever connect successfully
 	static bool m_ever_connected;
 #endif
+
+	infrastructure_state *m_infrastructure_state;
 };
 
 #ifdef HAS_CAPTURE

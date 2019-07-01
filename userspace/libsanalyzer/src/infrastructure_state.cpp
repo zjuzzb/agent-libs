@@ -440,6 +440,12 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			{
 				cmd.add_annotation_filter(annot);
 			}
+
+			// Convert these to new config
+			cmd.set_collect_events(m_inspector->m_analyzer->m_configuration->get_go_k8s_user_events());
+			cmd.set_user_event_queue_len(c_orchestrator_queue_len.get());
+			cmd.set_collect_debug_events(m_inspector->m_analyzer->m_configuration->get_go_k8s_debug_events());
+
 			*cmd.mutable_include_types() = {c_k8s_include_types.get().begin(), c_k8s_include_types.get().end()};
 			cmd.set_event_counts_log_time(c_k8s_event_counts_log_time.get());
 
@@ -1887,6 +1893,62 @@ bool infrastructure_state::match_scope_all_containers(const scope_predicates &pr
 void infrastructure_state::add_annotation_filter(const string &ann)
 {
 	m_annotation_filter.emplace(ann);
+}
+
+static bool match_name(std::string str)
+{
+	// These are name tags as sent from cointerface
+	// Make sure this list is up to date, at least for those objects that
+	// need to be added to event scopes
+	static const set<std::string> name_map =
+	{
+		"kubernetes.daemonSet.name",
+		"kubernetes.deployment.name",
+		"kubernetes.hpa.name",
+		"kubernetes.namespace.name",
+		"kubernetes.node.name",
+		"kubernetes.pod.name",
+		"kubernetes.replicaSet.name",
+		"kubernetes.replicationController.name",
+		"kubernetes.resourcequota.name",
+		"kubernetes.service.name",
+		"kubernetes.statefulset.name"
+	};
+
+	return name_map.find(str) != name_map.end();
+}
+
+int infrastructure_state::get_scope_names(uid_t uid, event_scope *scope, std::unordered_set<uid_t> &visited) const
+{
+	int ret = 0;
+
+	if (!has(uid) || (visited.find(uid) != visited.end())) {
+		return ret;
+	}
+	visited.emplace(uid);
+
+	auto *cg = m_state.find(uid)->second.get();
+
+	if (!cg) {	// Shouldn't happen
+		return ret;
+	}
+	// Look for object name tags and add them to the scope
+	for (const auto &tag : cg->tags()) {
+		if (match_name(tag.first))
+		{
+			glogf(sinsp_logger::SEV_DEBUG, "scope_name: %s:%s tag %s added to scope", uid.first.c_str(), uid.second.c_str(), tag.first.c_str());
+			scope->add(tag.first, tag.second);
+			ret++;
+		}
+	}
+
+	for(const auto &p_uid : cg->parents()) {
+		auto pkey = make_pair(p_uid.kind(), p_uid.id());
+
+		ret += get_scope_names(pkey, scope, visited);
+	}
+
+	return ret;
 }
 
 bool infrastructure_state::find_parent_kind(const uid_t uid, string kind,

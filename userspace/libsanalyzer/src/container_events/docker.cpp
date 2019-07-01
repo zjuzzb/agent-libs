@@ -25,6 +25,7 @@ limitations under the License.
 #include <container_events/docker.h>
 #include "memdump_logger.h"
 #include "user_event.h"
+#include "infrastructure_state.h"
 
 const std::string docker::DOCKER_SOCKET_FILE = "/var/run/docker.sock";
 #ifdef HAS_CAPTURE
@@ -32,7 +33,8 @@ int docker::m_connection_id = 0;
 bool docker::m_ever_connected = false;
 #endif
 
-docker::docker(std::string url,
+docker::docker(infrastructure_state *infra_state,
+	std::string url,
 	const std::string& path,
 	const std::string& http_version,
 	int timeout_ms,
@@ -134,7 +136,8 @@ docker::docker(std::string url,
 			{ "connect",    "Connected"    },
 			{ "disconnect", "Disconnected" }
 			// { "destroy"     "Destroyed"    } duplicate
-		}
+		},
+		m_infrastructure_state(infra_state)
 {
 	m_connection_id++;
 	g_logger.log(std::string("Creating Docker object for " +
@@ -339,6 +342,19 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 		if(id.length() >= 12)
 		{
 			scope.add("container.id", id.substr(0, 12));
+
+			if (m_infrastructure_state)
+			{
+				// Add scope from infrastructure_state, like pod.name, deployment.name, etc.
+				infrastructure_state::uid_t uid = make_pair("container", id.substr(0, 12));
+				m_infrastructure_state->get_scope_names(uid, &scope);
+
+				string k8s_cluster_name = m_infrastructure_state->get_k8s_cluster_name();
+				if (!k8s_cluster_name.empty())
+				{
+					scope.add("kubernetes.cluster.name", k8s_cluster_name);
+				}
+			}
 		}
 	}
 	if(status.length())

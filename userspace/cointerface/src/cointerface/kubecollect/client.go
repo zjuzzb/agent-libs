@@ -32,20 +32,21 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
-// XXX make these into one map and/or remove them if
-// HasSynced checking works instead of using receiveMap
-var startedMap map[string]bool
-var startedMutex sync.RWMutex
-var receiveMap map[string]bool
-var receiveMutex sync.RWMutex
-var annotFilter map[string]bool
-
 const (
 	EVENT_ADD = iota
 	EVENT_UPDATE = iota
 	EVENT_UPDATE_AND_SEND = iota
 	EVENT_DELETE = iota
 )
+
+// stores which informers have been allocated, so at least we don't segfault
+// does not imply we've successfully registered with the API server
+var startedMap map[string]bool
+var startedMutex sync.RWMutex
+
+var receiveMap map[string]bool
+var receiveMutex sync.RWMutex
+var annotFilter map[string]bool
 
 var eventCountsLogTime uint32
 var eventMapAdd map[string]int
@@ -56,6 +57,34 @@ var eventMapUpds map[string]int
 var emUpdsMutex sync.RWMutex
 var eventMapDel map[string]int
 var emDelMutex sync.RWMutex
+
+const (
+	ChannelTypeInformer = iota
+	ChannelTypeUserEvent = iota
+)
+
+// Given that we depend on global contexts, we need a hard guarantee that we won't have
+// two users trying to attach to channels at the same time. Further, we need to ensure
+// that we're not trying to attach to both channels at the same time (informer must happen
+// before user). These things enable that. Note the informer-before-user is implicit since
+// the user channel will return an error if you try to listen to it without having
+// created it yet.
+var ChannelMutex sync.Mutex
+
+// Represents both whether the informer is attached, and equivalently, whether the user
+// event channel exists
+var InformerChannelInUse = false
+
+// Represents whether the user event channel is attached
+var UserEventChannelInUse = false
+
+// Represents whether the dummy user event channel is in use
+// this must be separate from the above because of the multiple ways the dummy can exit...
+// graceful or not
+var DummyEventChannelActive = false
+
+var InformerChannel chan draiosproto.CongroupUpdateEvent
+var UserEventChannel chan sdc_internal.K8SUserEvent
 
 func addEvent(restype string, evtype int) {
 	profile.NewEvent()
@@ -94,8 +123,12 @@ func logEvents() {
 	emDelMutex.RLock()
 
 	for k := range eventMapAdd {
-		log.Infof("%s Events: %d adds, %d updates, %d updates sent, %d deletes", k, eventMapAdd[k],
-			eventMapUpd[k], eventMapUpds[k], eventMapDel[k])
+		log.Infof("%s Events: %d adds, %d updates, %d updates sent, %d deletes",
+			  k,
+			  eventMapAdd[k],
+			  eventMapUpd[k],
+			  eventMapUpds[k],
+			  eventMapDel[k])
 	}
 
 	emDelMutex.RUnlock()
@@ -210,10 +243,14 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	if opts.GetUrl() != "" {
 		log.Infof("Connecting to k8s server at %s", opts.GetUrl())
 		var err error
-		kubeClient, err = createKubeClient(opts.GetUrl(), opts.GetCaCert(),
-			opts.GetClientCert(), opts.GetClientKey(),
-			opts.GetSslVerifyCertificate(), opts.GetAuthToken())
+		kubeClient, err = createKubeClient(opts.GetUrl(),
+						   opts.GetCaCert(),
+						   opts.GetClientCert(),
+						   opts.GetClientKey(),
+						   opts.GetSslVerifyCertificate(),
+						   opts.GetAuthToken())
 		if err != nil {
+			InformerChannelInUse = false
 			log.Errorf("Cannot create k8s client: %s", err)
 			return nil, nil, err
 		}
@@ -222,6 +259,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 		var err error
 		kubeClient, err = createInClusterKubeClient()
 		if err != nil {
+			InformerChannelInUse = false
 			log.Errorf("Cannot create k8s client: %s", err)
 			return nil, nil, err
 		}
@@ -229,6 +267,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	log.Infof("Testing communication with server")
 	srvVersion, err := kubeClient.Discovery().ServerVersion()
 	if err != nil {
+		InformerChannelInUse = false
 		log.Errorf("K8s server not responding: %s", err)
 		return nil, nil, err
 	}
@@ -236,15 +275,15 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 
 	resources, err := kubeClient.Discovery().ServerResources()
 	if err != nil {
+		InformerChannelInUse = false
 		log.Errorf("K8s server returned error: %s", err)
 		return nil, nil, err
 	}
 
-	// Reset all globals
-	// XXX better yet, make them not package globals
+	// These get reset when either events or listeners channel is reset
 	startedMap = make(map[string]bool)
 	receiveMap = make(map[string]bool)
-	setAnnotFilt(opts.AnnotationFilter)
+	setAnnotFilt( opts.AnnotationFilter)
 
 	eventMapAdd = make(map[string]int)
 	eventMapUpd = make(map[string]int)
@@ -253,12 +292,15 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	eventCountsLogTime = opts.GetEventCountsLogTime()
 	log.Infof("Event Counts log time: %d s", eventCountsLogTime)
 
+
 	// Get a vector of all resource types
 	// from the resourceList in resources.
 	resourceTypes := getResourceTypes(resources, opts.IncludeTypes)
 
-	// Caller is responsible for draining the chan
-	evtc := make(chan draiosproto.CongroupUpdateEvent, opts.GetQueueLen())
+	// if dragent asks for events, we spin up the channel here, and then they can attach to it later
+	if (opts.GetCollectEvents()) {
+		resourceTypes = append(resourceTypes, "events")
+	}
 
 	// Make a channel that takes in an Array of CongroupUpdateEvents
 	// Make it of capacity 1. At any given instance we should send
@@ -290,10 +332,18 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	// Else, return nil and spawn a goroutine to monitor the watch
 	err = startWatchdog(parentCtx, cancel, kubeClient)
 	if err != nil {
+		InformerChannelInUse = false
 		// startWatchdog() may later hit an async error,
 		// so it's responsible for all error logging
 		return nil, nil, err
 	}
+
+	InformerChannel = make(chan draiosproto.CongroupUpdateEvent,
+			       opts.GetQueueLen())
+
+	// create even if we don't use it just to make tear-down logic easier
+        UserEventChannel = make(chan sdc_internal.K8SUserEvent, opts.GetUserEventQueueLen())
+
 
 	fetchDone := make(chan struct{})
 	var wg sync.WaitGroup
@@ -305,13 +355,13 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	
 	// Start informers in a separate routine so we can return the
 	// evt chan and let the below goroutine start reading/draining events
-	go startInformers(ctx, kubeClient, &wg, evtc, fetchDone, opts, resourceTypes, &queueLength)
+	go startInformers(ctx, kubeClient, &wg, fetchDone, opts, resourceTypes, &queueLength)
 
 	// as soon as we start the go routine to start informers;
 	// we need to kick off the routine to start reading events
-	// from evtc and then batching them into an array and sending
+	// from Informerchannel and then batching them into an array and sending
 	// that array on the evtArrayChan
-	go batchEvents(ctx, evtArrayChan, evtc, batchMsgsQueueLen, batchMsgsTickMs, &queueLength)
+	go batchEvents(ctx, evtArrayChan, batchMsgsQueueLen, batchMsgsTickMs, &queueLength)
 
 	if (eventCountsLogTime > 0) {
 		go func() {
@@ -392,29 +442,28 @@ func startWatchdog(parentCtx context.Context, cancel context.CancelFunc, kubeCli
 	return nil
 }
 
-// Go routine that is responsible for reading events off the evtc chan
+// Go routine that is responsible for reading events off the Informer channel
 // and batching them into an array of CongroupUpdateEvents. Then send this
 // array on the evtArrayChan.
 // Perform this periodically (based on a timer) or if the array is full.
 func batchEvents(
 	ctx context.Context,
 	evtArrayChan chan<- sdc_internal.ArrayCongroupUpdateEvent,
-	evtc <-chan draiosproto.CongroupUpdateEvent,
 	batchMsgsQueueLen uint32,
 	batchMsgsTickMs uint32,
 	queueLength *uint32) {
-	
+
 	// Periodic timer to drain the events
 	msTickTimer := time.NewTicker(time.Duration(batchMsgsTickMs) * time.Millisecond)
 	defer msTickTimer.Stop()
 
 	// before reading defer a function to completely
-	// drain evtc chan to unblock informers
+	// drain Informer channel to unblock informers
 	// Also close the evtArrayChan
 	defer func() {
-		// Drain the evtc chan fully
-		DrainChan(evtc)
-		
+		// Drain the Informer channel fully
+		DrainChan(InformerChannel)
+
 		// Close the evtArrayChan
 		close(evtArrayChan)
 	}()
@@ -425,7 +474,7 @@ func batchEvents(
 	for {
 		timerTick := false
 		select {
-		case evt, ok := <-evtc:
+		case evt, ok := <-InformerChannel:
 			if !ok {
 				log.Debugf("[PerformOrchestratorEventsStream] event stream is closed")
 				return
@@ -468,12 +517,11 @@ func startInformers(
 	ctx context.Context,
 	kubeClient kubeclient.Interface,
 	wg *sync.WaitGroup,
-	evtc chan<- draiosproto.CongroupUpdateEvent,
 	fetchDone chan<- struct{},
 	opts *sdc_internal.OrchestratorEventsStreamCommand,
 	resourceTypes []string,
 	queueLength *uint32) {
-	
+
 	filterEmpty := opts.GetFilterEmpty()
 
 	for _, resource := range resourceTypes {
@@ -492,47 +540,54 @@ func startInformers(
 		log.Debugf("Checking kubecollect support for %v", resource)
 		// The informers are responsible for Add()'ing to the wg
 		infStarted := true
+		channelType := ChannelTypeInformer
 		switch resource {
 		case "cronjobs":
-			startCronJobsSInformer(ctx, kubeClient, wg, evtc)
+			startCronJobsSInformer(ctx, kubeClient, wg, InformerChannel)
 		case "daemonsets":
-			startDaemonSetsSInformer(ctx, kubeClient, wg, evtc)
+			startDaemonSetsSInformer(ctx, kubeClient, wg, InformerChannel)
 		case "deployments":
-			startDeploymentsSInformer(ctx, kubeClient, wg, evtc)
+			startDeploymentsSInformer(ctx, kubeClient, wg, InformerChannel)
 		case "horizontalpodautoscalers":
-			startHorizontalPodAutoscalersSInformer(ctx, kubeClient, wg, evtc)
+			startHorizontalPodAutoscalersSInformer(ctx, kubeClient, wg, InformerChannel)
 		case "ingress":
-			startIngressSInformer(ctx, kubeClient, wg, evtc)
+			startIngressSInformer(ctx, kubeClient, wg, InformerChannel)
 		case "jobs":
-			startJobsSInformer(ctx, kubeClient, wg, evtc)
+			startJobsSInformer(ctx, kubeClient, wg, InformerChannel)
 		case "namespaces":
-			startNamespacesSInformer(ctx, kubeClient, wg, evtc)
+			startNamespacesSInformer(ctx, kubeClient, wg, InformerChannel)
 		case "nodes":
-			startNodesSInformer(ctx, kubeClient, wg, evtc)
+			startNodesSInformer(ctx, kubeClient, wg, InformerChannel)
 		case "pods":
-			startPodsSInformer(ctx, kubeClient, wg, evtc)
+			startPodsSInformer(ctx, kubeClient, wg, InformerChannel)
 		case "replicasets":
-			startReplicaSetsSInformer(ctx, kubeClient, wg, evtc, filterEmpty)
+			startReplicaSetsSInformer(ctx, kubeClient, wg, InformerChannel, filterEmpty)
 		case "replicationcontrollers":
-			startReplicationControllersSInformer(ctx, kubeClient, wg, evtc, filterEmpty)
+			startReplicationControllersSInformer(ctx, kubeClient, wg, InformerChannel, filterEmpty)
 		case "services":
-			startServicesSInformer(ctx, kubeClient, wg, evtc)
+			startServicesSInformer(ctx, kubeClient, wg, InformerChannel)
 		case "statefulsets":
-			startStatefulSetsSInformer(ctx, kubeClient, wg, evtc)
+			startStatefulSetsSInformer(ctx, kubeClient, wg, InformerChannel)
 		case "resourcequotas":
-			startResourceQuotasSInformer(ctx, kubeClient, wg, evtc)
+			startResourceQuotasSInformer(ctx, kubeClient, wg, InformerChannel)
+		case "events":
+			startUserEventsSInformer(ctx,
+						 kubeClient,
+						 wg,
+						 UserEventChannel,
+						 opts.GetCollectDebugEvents())
+			channelType = ChannelTypeUserEvent
 		case "persistentvolumes":
-			startPersistentVolumesInformer(ctx, kubeClient, wg, evtc)
+			startPersistentVolumesInformer(ctx, kubeClient, wg, InformerChannel)
 		case "persistentvolumeclaims":
-			startPersistentVolumeClaimsInformer(ctx, kubeClient, wg, evtc)
-
+			startPersistentVolumeClaimsInformer(ctx, kubeClient, wg, InformerChannel)
 		default:
 			log.Debugf("No kubecollect support for %v", resource)
 			infStarted = false
 		}
 
 		if infStarted {
-			// assume it's still startup if len(evtc) > threshold
+			// assume it's still startup if len(channel) > threshold
 			totalWaitTime := time.Duration(opts.GetStartupInfWaitTimeS()) * time.Second
 			tickInterval := time.Duration(opts.GetStartupTickIntervalMs()) * time.Millisecond
 			lowTicksNeeded := int(opts.GetStartupLowTicksNeeded())
@@ -547,10 +602,14 @@ func startInformers(
 				evtcLen := 0
 				select {
 				case lastTick = <-ticker.C:
-					// Number of events is length of evtc chan
-					// plus length of events in SdcEvtArray
-					lenQueue := int(atomic.LoadUint32(queueLength))
-					evtcLen = len(evtc) + lenQueue
+					if (channelType == ChannelTypeInformer) {
+						// Number of events is length of Informer channel
+						// plus length of events in SdcEvtArray
+						lenQueue := int(atomic.LoadUint32(queueLength))
+						evtcLen = len(InformerChannel) + lenQueue
+					} else {
+						evtcLen = len(UserEventChannel)
+					}
 				}
 
 				// XXX should use resourceReady()
@@ -588,11 +647,17 @@ func startInformers(
 	close(fetchDone)
 
 	// In a separate goroutine, wait for the informers and
-	// close evtc once they're done to notify the caller
+	// close Informer channel once they're done to notify the caller
 	go func() {
 		wg.Wait()
 		log.Info("All K8s informers have exited, closing the events channel")
-		close(evtc)
+
+		// don't THINK we need to flush channels here...assume go does this
+		// when we close
+
+		InformerChannelInUse = false
+		close(InformerChannel)
+		close(UserEventChannel)
 	}()
 }
 
@@ -614,39 +679,6 @@ func resourceReady(resource string) bool {
 	ret := startedMap[resource]
 	startedMutex.RUnlock()
 	return ret
-
-/*
-	switch resource {
-	case "cronjobs":
-		return cronJobInf != nil && cronJobInf.HasSynced()
-	case "daemonsets":
-		return daemonSetInf != nil && daemonSetInf.HasSynced()
-	case "deployments":
-		return deploymentInf != nil && deploymentInf.HasSynced()
-	case "ingress":
-		return ingressInf != nil && ingressInf.HasSynced()
-	case "jobs":
-		return jobInf != nil && jobInf.HasSynced()
-	case "namespaces":
-		return namespaceInf != nil && namespaceInf.HasSynced()
-	case "nodes":
-		return nodeInf != nil && nodeInf.HasSynced()
-	case "pods":
-		return podInf != nil && podInf.HasSynced()
-	case "replicasets":
-		return replicaSetInf != nil && replicaSetInf.HasSynced()
-	case "replicationcontrollers":
-		return replicationControllerInf != nil && replicationControllerInf.HasSynced()
-	case "resourcequotas":
-		return resourceQuotaInf != nil && resourceQuotaInf.HasSynced()
-	case "services":
-		return serviceInf != nil && serviceInf.HasSynced()
-	case "statefulsets":
-		return statefulSetInf != nil && statefulSetInf.HasSynced()
-	default:
-		return false
-	}
-*/
 }
 
 func createKubeClient(apiServer string, caCert string, clientCert string, clientKey string, sslVerify bool, authToken string) (kubeClient kubeclient.Interface, err error) {

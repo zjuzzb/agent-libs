@@ -642,6 +642,9 @@ void dragent_configuration::init()
 	m_container_filter->set_rules(m_config->get_first_deep_sequence<vector<object_filter_config::filter_rule>>("container_filter"));
 	m_smart_container_reporting = m_config->get_scalar<bool>("smart_container_reporting", false);
 
+	m_go_k8s_user_events = m_config->get_scalar<bool>("go_k8s_user_events", false);
+	m_add_event_scopes = m_config->get_scalar<bool>("add_event_scopes", false);
+
 	m_dragent_cpu_profile_enabled = m_config->get_scalar<bool>("dragent_cpu_profile_enabled", false);
 	m_dragent_profile_time_seconds = m_config->get_scalar<int32_t>("dragent_profile_time_seconds", 120);
 	m_dragent_total_profiles = m_config->get_scalar<int32_t>("dragent_total_profiles", 30);

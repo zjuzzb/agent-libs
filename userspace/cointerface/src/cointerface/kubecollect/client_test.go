@@ -253,6 +253,7 @@ func TestEvtArrayChanEvents(t* testing.T) {
 	t.Skip("skipping test for now during compile time.")
 	
 	evtChan , evtArrChan, ctx := setupChanTestInfra()
+	InformerChannel = evtChan
 
 	numNamespaces := 1000
 	queueLen := uint32(0)
@@ -260,7 +261,7 @@ func TestEvtArrayChanEvents(t* testing.T) {
 	go startNamespaceSends(evtChan, numNamespaces)
 	
 	// Call the batchEvents in client.go to UT it. Use defaults for batchsizes (for now)
-	go batchEvents(ctx, evtArrChan, evtChan, uint32(100), uint32(100), &queueLen)
+	go batchEvents(ctx, evtArrChan, uint32(100), uint32(100), &queueLen)
 
 	nameSpace := 0
 
@@ -319,6 +320,7 @@ func TestDrainChanOnEvtArrayChan(t* testing.T){
 	t.Skip("skipping test for now during compile time.")
 	
 	evtChan , evtArrChan, ctx := setupChanTestInfra()
+	InformerChannel = evtChan
 	queueLen := uint32(0)
 
 	// Now let's do this same test with batchEvents and
@@ -326,7 +328,7 @@ func TestDrainChanOnEvtArrayChan(t* testing.T){
 	go startNamespaceSends(evtChan, 300)
 
 	// Call the batchEvents in client.go to UT it. Use defaults for batchsizes (for now)
-	go batchEvents(ctx, evtArrChan, evtChan, uint32(100), uint32(100), &queueLen)
+	go batchEvents(ctx, evtArrChan, uint32(100), uint32(100), &queueLen)
 
 	// Test DrainChan on evtArrChan by sending full chan
 	// This should return back without draining a single event
