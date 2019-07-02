@@ -70,8 +70,10 @@ public:
 	void delete_rate_metrics(const uid_t &key);
 
 	void state_of(const std::vector<std::string> &container_ids, container_groups* state, const uint64_t ts);
+	void state_of(const std::vector<std::string> &container_ids, draiosproto::k8s_state* state, const uint64_t ts);
 
 	void get_state(container_groups* state, const uint64_t ts);
+	void get_state(draiosproto::k8s_state* state, uint64_t ts);
 
 	void on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo);
 	void on_remove_container(const sinsp_container_info& container_info);
@@ -151,13 +153,12 @@ private:
 
 	void configure_k8s_environment();
 
-	std::unordered_map<std::string, std::string> host_children {
-		{"k8s_node", "kubernetes.node.name"}
-		// other orchestrators nodes
-	};
-
 	// These return true if the new entry has been added, false if it already existed
 	bool add(uid_t key);
+
+	void emit(const draiosproto::container_group *grp, draiosproto::k8s_state *state, uint64_t ts);
+
+	void resolve_names(draiosproto::k8s_state *state);
 
 	void state_of(const draiosproto::container_group *grp,
 		      container_groups* state,
@@ -165,7 +166,12 @@ private:
 
 	// Get object names from object and its parents and add them to scope
 	int get_scope_names(uid_t uid, event_scope *scope, std::unordered_set<uid_t> &visited) const;
-	bool find_parent_kind(const uid_t child_id, std::string kind, uid_t &found_id,
+
+	void state_of(const draiosproto::container_group *grp,
+		      draiosproto::k8s_state *state,
+		      std::unordered_set<uid_t>& visited, uint64_t ts);
+
+	bool find_parent_kind(const uid_t child_id, string kind, uid_t &found_id,
 		std::unordered_set<uid_t> &visited) const;
 
 	bool find_tag(uid_t uid, std::string tag, std::string &value, std::unordered_set<uid_t> &visited) const;
@@ -237,13 +243,17 @@ private:
 	std::string m_k8s_node_uid;
 	bool m_k8s_node_actual;	// True if node found from following a running container
 
-	typedef struct {
+	struct rate_metric_state_t {
+		rate_metric_state_t() : val(0), ts(0), last_rate(0) {}
 		double val;
 		time_t ts;
 		double last_rate;
-	} rate_metric_state_t;
+	};
 
-	std::unordered_map<uid_t, std::map<std::string, rate_metric_state_t>> m_rate_metric_state;
+	std::unordered_map<uid_t, std::unordered_map<std::string, rate_metric_state_t>> m_rate_metric_state;
+	std::unordered_map<std::string, rate_metric_state_t> m_pod_restart_rate;
+	static double calculate_rate(rate_metric_state_t& prev, double value, uint64_t ts);
+
 	std::set<std::string> m_annotation_filter;
 
 	std::string m_root_dir;

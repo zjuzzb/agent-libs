@@ -1918,7 +1918,7 @@ message metrics {
     optional orchestrator_state_t global_orchestrator_state = 32;
     optional k8s_state global_kubernetes = 33; // used for storing entire cluster metrics/metadata
     optional orchestrator_state_t orchestrator_state = 34;
-    // 35 is free to reuse
+    optional k8s_state local_kubernetes = 35;
     repeated ipv4_connection ipv4_incomplete_connections = 36; // The list of incomplete IPv4 connections. not used if 10s flush is enabled
     repeated id_map userdb = 37; // uid->username mapping
     repeated environment environments = 38; // map of hash -> list of vars

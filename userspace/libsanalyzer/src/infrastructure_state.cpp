@@ -11,6 +11,7 @@
 #include "Poco/File.h"
 #include "Poco/Path.h"
 #include "configuration_manager.h"
+#include "legacy_k8s_protobuf.h"
 
 using namespace std;
 
@@ -116,6 +117,13 @@ type_config<uint32_t>::ptr infrastructure_state::c_k8s_max_rnd_conn_delay =
 	.min(0)
 	.max(900)
 	.build();
+
+namespace {
+const std::unordered_map<std::string, std::string> host_children {
+	{"k8s_node", "kubernetes.node.name"}
+	// other orchestrators nodes
+};
+}
 
 std::string infrastructure_state::normalize_path(const std::string& path) const
 {
@@ -1294,6 +1302,39 @@ bool infrastructure_state::is_valid_for_export(const draiosproto::container_grou
 	return has_k8s_namespace;
 }
 
+void infrastructure_state::state_of(const draiosproto::container_group *grp,
+				    draiosproto::k8s_state *state,
+				    std::unordered_set<uid_t>& visited, const uint64_t ts)
+{
+	uid_t uid = make_pair(grp->uid().kind(), grp->uid().id());
+
+	if(visited.find(uid) != visited.end()) {
+		// Group already visited, skip it
+		return;
+	}
+	visited.emplace(uid);
+
+	for (const auto &p_uid : grp->parents()) {
+		auto pkey = make_pair(p_uid.kind(), p_uid.id());
+
+		if(!has(pkey)) {
+			// We don't have this parent (yet...)
+			continue;
+		}
+
+		//
+		// Build parent state
+		//
+		state_of(m_state[pkey].get(), state, visited, ts);
+	}
+
+	//
+	// Export a congroup only if it obeys the rules
+	// of the valid for export method above
+	if(is_valid_for_export(grp)) {
+		emit(grp, state, ts);
+	}
+}
 
 void infrastructure_state::state_of(const draiosproto::container_group *grp,
 				    container_groups* state,
@@ -1336,36 +1377,60 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 		x->mutable_internal_tags()->clear();
 
 		calculate_rate_metrics(x, ts);
-
-		// x->mutable_metrics()->erase(x->mutable_metrics()->begin(), x->mutable_metrics()->end());
-		// // Put back legacy metrics
-		// auto add_metric_if_found = [grp](const string& metric_name, draiosproto::container_group* dest)
-		// {
-		// 	auto it = find_if(grp->metrics().cbegin(), grp->metrics().cend(), [&metric_name](const draiosproto::app_metric& m)
-		// 	{
-		// 		return m.name() == metric_name;
-		// 	});
-		// 	if(it != grp->metrics().cend())
-		// 	{
-		// 		dest->mutable_metrics()->Add()->CopyFrom(*it);
-		// 	}
-		// };
-
-		// if(x->uid().kind() == "k8s_pod")
-		// {
-		// 	add_metric_if_found("kubernetes.pod.container.status.restarts", x);
-		// }
-		// else if(x->uid().kind() == "k8s_replicaset")
-		// {
-		// 	add_metric_if_found("kubernetes.replicaset.status.replicas", x);
-		// 	add_metric_if_found("kubernetes.replicaset.spec.replicas", x);
-		// }
-		// else if(x->uid().kind() == "k8s_replicationcontroller")
-		// {
-		// 	add_metric_if_found("kubernetes.replicationcontroller.status.replicas", x);
-		// 	add_metric_if_found("kubernetes.replicationcontroller.spec.replicas", x);
-		// }
 	}
+}
+
+void infrastructure_state::state_of(const std::vector<std::string> &container_ids, draiosproto::k8s_state* state, uint64_t ts)
+{
+	std::unordered_set<uid_t, std::hash<uid_t>> visited;
+
+	//
+	// Retrieve the state of every container
+	//
+	for(const auto &c_id : container_ids) {
+		auto pos = m_state.find(make_pair("container", c_id));
+		if (pos == m_state.end()) {
+			//
+			// This container is not in the orchestrator state
+			//
+			continue;
+		}
+
+		state_of(pos->second.get(), state, visited, ts);
+	}
+
+	//
+	// Add everything running on this node that hasn't been added yet
+	// (like pods without containers)
+	//
+	if (!m_k8s_node_uid.empty())
+	{
+		auto node_key = make_pair("k8s_node", m_k8s_node_uid);
+		if (has(node_key))
+		{
+			const auto *node = m_state[node_key].get();
+
+			for (const auto &c_uid : node->children()) {
+
+				glogf(sinsp_logger::SEV_DEBUG, "infra_state: node %s has %s:%s", m_k8s_node_uid.c_str(), c_uid.kind().c_str(), c_uid.id().c_str());
+				auto ckey = make_pair(c_uid.kind(), c_uid.id());
+
+				if(!has(ckey)) {
+					// We don't have this child (yet...)
+					continue;
+				}
+
+				if(visited.find(ckey) == visited.end()) {
+					// state_of() looks at visited too
+					// We just want to do it here for logging purposes
+					glogf(sinsp_logger::SEV_DEBUG, "infra_state: adding state for (container-less) %s:%s", c_uid.kind().c_str(), c_uid.id().c_str());
+					state_of(m_state[ckey].get(), state, visited, ts);
+				}
+			}
+		}
+	}
+
+	resolve_names(state);
 }
 
 void infrastructure_state::state_of(const std::vector<std::string> &container_ids, container_groups* state, uint64_t ts)
@@ -1443,6 +1508,35 @@ void infrastructure_state::state_of(const std::vector<std::string> &container_id
 	}
 }
 
+double infrastructure_state::calculate_rate(rate_metric_state_t& prev, double value, uint64_t ts)
+{
+	// Set rate to 0 if we don't have a previous value yet
+	double rate = 0.0;
+	if(prev.ts != 0)
+	{
+		uint64_t timediff = ts - prev.ts;
+		if (timediff < (ONE_SECOND_IN_NS / 2))
+		{
+			// If we're called again during the same cycle, timediff should be 0
+			// We'll just repeat the rate value from last calculation
+			if (timediff)
+			{
+				// This shouldn't happen. We're either called more than
+				// twice per second or with a different time source.
+				glogf(sinsp_logger::SEV_WARNING, "Time difference too small for rate calculation: %" PRIu64 " ns, time now: %" PRIu64 ", last: %" PRIu64, timediff, ts, prev.ts);
+			}
+			return prev.last_rate;
+		}
+		rate = (value - prev.val) * (double)ONE_SECOND_IN_NS / (double)timediff;
+	}
+
+	prev.last_rate = rate;
+	prev.ts = ts;
+	prev.val = value;
+
+	return rate;
+}
+
 void infrastructure_state::calculate_rate_metrics(draiosproto::container_group *cg, const uint64_t ts)
 {
 	auto cgkey = make_pair(cg->uid().kind(), cg->uid().id());
@@ -1450,33 +1544,8 @@ void infrastructure_state::calculate_rate_metrics(draiosproto::container_group *
 	{
 		if (it->type() != draiosproto::app_metric_type::APP_METRIC_TYPE_RATE)
 			continue;
-		// Set rate to 0 if we don't have a previous value yet
-		double rate = 0.0;
-		if (m_rate_metric_state.find(cgkey) != m_rate_metric_state.end())
-		{
-			auto rms_it = m_rate_metric_state[cgkey].find(it->name());
-			if (rms_it != m_rate_metric_state[cgkey].end())
-			{
-				uint64_t timediff = ts - rms_it->second.ts;
-				if (timediff < (ONE_SECOND_IN_NS / 2))
-				{
-					// If we're called again during the same cycle, timediff should be 0
-					// We'll just repeat the rate value from last calculation
-					if (timediff)
-					{
-						// This shouldn't happen. We're either called more than
-						// twice per second or with a different time source.
-						glogf(sinsp_logger::SEV_WARNING, "Time difference too small for rate calculation: %" PRIu64 " ns, time now: %" PRIu64 ", last: %" PRIu64, timediff, ts, rms_it->second.ts);
-					}
-					it->set_value(rms_it->second.last_rate);
-					continue;
-				}
-				rate = (it->value() - rms_it->second.val ) * (double)ONE_SECOND_IN_NS / (double)timediff;
-			}
-		}
-		m_rate_metric_state[cgkey][it->name()].val = it->value();
-		m_rate_metric_state[cgkey][it->name()].ts = ts;
-		m_rate_metric_state[cgkey][it->name()].last_rate = rate;
+
+		double rate = calculate_rate(m_rate_metric_state[cgkey][it->name()], it->value(), ts);
 		it->set_value(rate);
 	}
 }
@@ -1484,6 +1553,10 @@ void infrastructure_state::calculate_rate_metrics(draiosproto::container_group *
 void infrastructure_state::delete_rate_metrics(const uid_t& key)
 {
 	m_rate_metric_state.erase(key);
+	if(key.first == "k8s_pod")
+	{
+		m_pod_restart_rate.erase(key.second);
+	}
 }
 
 void infrastructure_state::get_state(container_groups* state, const uint64_t ts)
@@ -1502,17 +1575,231 @@ void infrastructure_state::get_state(container_groups* state, const uint64_t ts)
 					}
 				}
 			}
-			// Clean children links, backend will reconstruct them from parent ones
-			if(cg->uid().kind() != "k8s_pod")
-			{
-				x->mutable_children()->Clear();
-			}
-			// Internal_tags are meant for use inside agent only
-			x->mutable_internal_tags()->clear();
-
-			calculate_rate_metrics(x, ts);
 		}
 	}
+}
+
+void infrastructure_state::resolve_names(draiosproto::k8s_state *state)
+{
+	// uid -> name
+	std::unordered_map<std::string, std::string> job_names;
+	std::unordered_map<std::string, std::string> node_names;
+	std::unordered_map<std::string, std::string> ns_names;
+
+	for (const auto& job : state->jobs())
+	{
+		job_names[job.common().uid()] = job.common().name();
+	}
+
+	for (const auto& node : state->nodes())
+	{
+		node_names[node.common().uid()] = node.common().name();
+	}
+
+	for (const auto& ns : state->namespaces())
+	{
+		ns_names[ns.common().uid()] = ns.common().name();
+	}
+
+	for(auto& pod : *(state->mutable_pods()))
+	{
+		const auto& job_name = job_names.find(pod.job_name());
+		if(job_name != job_names.end())
+		{
+			pod.set_job_name(job_name->second);
+		}
+
+		const auto& node_name = node_names.find(pod.node_name());
+		if(node_name != node_names.end())
+		{
+			pod.set_node_name(node_name->second);
+		}
+
+		legacy_k8s::set_namespace(pod.mutable_common(), ns_names);
+	}
+
+	for(auto& obj : *(state->mutable_controllers()))
+	{
+		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
+	}
+	for(auto& obj : *(state->mutable_services()))
+	{
+		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
+	}
+	for(auto& obj : *(state->mutable_replica_sets()))
+	{
+		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
+	}
+	for(auto& obj : *(state->mutable_deployments()))
+	{
+		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
+	}
+	for(auto& obj : *(state->mutable_daemonsets()))
+	{
+		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
+	}
+	for(auto& obj : *(state->mutable_statefulsets()))
+	{
+		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
+	}
+	for(auto& obj : *(state->mutable_resourcequotas()))
+	{
+		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
+	}
+	for(auto& obj : *(state->mutable_persistentvolumes())) // XXX they aren't namespaced
+	{
+		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
+	}
+	for(auto& obj : *(state->mutable_persistentvolumeclaims()))
+	{
+		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
+	}
+	for(auto& obj : *(state->mutable_hpas()))
+	{
+		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
+	}
+}
+
+void infrastructure_state::emit(const draiosproto::container_group* cg, draiosproto::k8s_state *state, uint64_t ts)
+{
+	if(!is_valid_for_export(cg))
+	{
+		return;
+	}
+
+	const std::string& kind = cg->uid().kind();
+
+	if(kind == "k8s_job")
+	{
+		auto job = state->add_jobs();
+		legacy_k8s::export_k8s_object(cg, job);
+	}
+	else if(kind == "k8s_cronjob")
+	{
+		// no protobuf for these
+		return;
+	}
+	else if(kind == "k8s_daemonset")
+	{
+		legacy_k8s::export_k8s_object(cg, state->add_daemonsets());
+	}
+	else if(kind == "k8s_deployment")
+	{
+		legacy_k8s::export_k8s_object(cg, state->add_deployments());
+	}
+	else if(kind == "k8s_hpa")
+	{
+		legacy_k8s::export_k8s_object(cg, state->add_hpas());
+	}
+	else if(kind == "k8s_ingress")
+	{
+		// no protobuf for these
+		return;
+	}
+	else if(kind == "k8s_namespace")
+	{
+		auto ns = state->add_namespaces();
+		legacy_k8s::fill_common(cg, ns->mutable_common(), "kubernetes.namespace.");
+	}
+	else if(kind == "k8s_node")
+	{
+		auto node = state->add_nodes();
+		legacy_k8s::export_k8s_object(cg, node);
+		node->mutable_host_ips()->CopyFrom(cg->ip_addresses());
+	}
+	else if(kind == "k8s_persistentvolumeclaim")
+	{
+		legacy_k8s::export_k8s_object(cg, state->add_persistentvolumeclaims());
+	}
+	else if(kind == "k8s_persistentvolume")
+	{
+		legacy_k8s::export_k8s_object(cg, state->add_persistentvolumes());
+	}
+	else if(kind == "k8s_pod")
+	{
+		auto pod = state->add_pods();
+		legacy_k8s::export_k8s_object(cg, pod);
+		for(const auto& parent : cg->parents())
+		{
+			if(parent.kind() == "k8s_node")
+			{
+				// will be overwritten in the second pass
+				pod->set_node_name(parent.id());
+				break;
+			}
+		}
+
+		for(const auto& ip : cg->ip_addresses())
+		{
+			// a pod cannot have more than one IP, right?
+			pod->set_internal_ip(ip);
+			break;
+		}
+
+		for(const auto& child : cg->children())
+		{
+			if(child.kind() == "container")
+			{
+				pod->add_container_ids("internal://" + child.id());
+			}
+		}
+		// TODO I don't think cointerface exposes this
+//			optional string host_ip = 4;
+
+		calculate_rate(m_pod_restart_rate[cg->uid().id()], pod->restart_rate(), ts);
+	}
+	else if(kind == "k8s_replicaset")
+	{
+		legacy_k8s::export_k8s_object(cg, state->add_replica_sets());
+	}
+	else if(kind == "k8s_replicationcontroller")
+	{
+		legacy_k8s::export_k8s_object(cg, state->add_controllers());
+	}
+	else if(kind == "k8s_resourcequota")
+	{
+		legacy_k8s::export_k8s_object(cg, state->add_resourcequotas());
+	}
+	else if(kind == "k8s_service")
+	{
+		auto service = state->add_services();
+		legacy_k8s::fill_common(cg, service->mutable_common(), "kubernetes.service.");
+
+		for(const auto& cg_port : cg->ports())
+		{
+			auto port = service->add_ports();
+			port->set_port(cg_port.port());
+			port->set_target_port(cg_port.target_port());
+			port->set_protocol(cg_port.protocol());
+			port->set_node_port(cg_port.node_port());
+			// TODO what about published_port?
+		}
+
+		for(const auto& ip : cg->ip_addresses())
+		{
+			// a service cannot have more than one IP, right?
+			service->set_cluster_ip(ip);
+			break;
+		}
+	}
+	else if(kind == "k8s_statefulset")
+	{
+		legacy_k8s::export_k8s_object(cg, state->add_statefulsets());
+	}
+	else
+	{
+		g_logger.format(sinsp_logger::SEV_NOTICE, "Unsupported k8s resource type %s", kind.c_str());
+		return;
+	}
+}
+
+void infrastructure_state::get_state(draiosproto::k8s_state* state, uint64_t ts)
+{
+	for(const auto& it : m_state)
+	{
+		emit(it.second.get(), state, ts);
+	}
+	resolve_names(state);
 }
 
 void infrastructure_state::on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo)

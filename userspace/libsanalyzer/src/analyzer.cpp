@@ -60,6 +60,7 @@ using namespace google::protobuf::io;
 #include "cri.h"
 #include "infrastructure_state.h"
 #include "k8s.h"
+#include "k8s_config.h"
 #include "k8s_delegator.h"
 #include "k8s_state.h"
 #include "k8s_proto.h"
@@ -98,6 +99,7 @@ using namespace google::protobuf::io;
 #include "null_statsd_emitter.h"
 #include "type_config.h"
 #include "analyzer_flush_message.h"
+#include "configuration_manager.h"
 
 #include <gperftools/profiler.h>
 
@@ -1609,21 +1611,38 @@ sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 	if(m_flushes_since_k8_local_flush >= m_k8s_local_update_frequency)
 	{
 		m_flushes_since_k8_local_flush = 0;
-		g_logger.log("sinsp_analyzer:: Emitting k8s metadata for local node", sinsp_logger::SEV_DEBUG);
-
 		// Try to find out our k8s node id & name
 		m_infrastructure_state->find_our_k8s_node(&emitted_containers);
 
-		// Build the orchestrator state of the emitted containers (without metrics)
-		// This is the k8 data for the local node
-		m_metrics->mutable_orchestrator_state()->set_cluster_id(cluster_id);
-		m_metrics->mutable_orchestrator_state()->set_cluster_name(cluster_name);
-		m_infrastructure_state->state_of(emitted_containers,
-						 m_metrics->mutable_orchestrator_state()->mutable_groups(),
-						 m_prev_flush_time_ns);
-		check_dump_infrastructure_state(*m_metrics->mutable_orchestrator_state(),
-						"local",
-						m_dump_local_infrastructure_state_on_next_flush);
+		if(c_new_k8s_local_export_format.get_value() == k8s_export_format::DEDICATED)
+		{
+			g_logger.log("sinsp_analyzer:: Emitting k8s metadata for local node (local_kubernetes)", sinsp_logger::SEV_DEBUG);
+
+			auto k8s_state = m_metrics->mutable_local_kubernetes();
+			// Build the orchestrator state of the emitted containers (without metrics)
+			// This is the k8 data for the local node
+			k8s_state->set_cluster_id(cluster_id);
+			k8s_state->set_cluster_name(cluster_name);
+			m_infrastructure_state->state_of(emitted_containers,
+							 k8s_state,
+							 m_prev_flush_time_ns);
+		}
+		else
+		{
+			g_logger.log("sinsp_analyzer:: Emitting k8s metadata for local node (congroups)", sinsp_logger::SEV_DEBUG);
+
+			auto k8s_state = m_metrics->mutable_orchestrator_state();
+			// Build the orchestrator state of the emitted containers (without metrics)
+			// This is the k8 data for the local node
+			k8s_state->set_cluster_id(cluster_id);
+			k8s_state->set_cluster_name(cluster_name);
+			m_infrastructure_state->state_of(emitted_containers,
+							 k8s_state->mutable_groups(),
+							 m_prev_flush_time_ns);
+			check_dump_infrastructure_state(*k8s_state,
+							"local",
+							m_dump_local_infrastructure_state_on_next_flush);
+		}
 	}
 
 	// Check whether this node is a delegate node. If it is then it is
@@ -1636,18 +1655,30 @@ sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 	++m_flushes_since_k8_cluster_flush;
 	if(m_flushes_since_k8_cluster_flush >= m_k8s_cluster_update_frequency)
 	{
-		m_flushes_since_k8_cluster_flush = 0;
-		g_logger.log("sinsp_analyzer:: Emitting k8s metadata for cluster", sinsp_logger::SEV_DEBUG);
-
-
-		m_metrics->mutable_global_orchestrator_state()->set_cluster_id(cluster_id);
-		m_metrics->mutable_global_orchestrator_state()->set_cluster_name(cluster_name);
 		// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
-		m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups(),
-						  m_prev_flush_time_ns);
-		check_dump_infrastructure_state(*m_metrics->mutable_global_orchestrator_state(),
-						"global",
-						m_dump_global_infrastructure_state_on_next_flush);
+
+		m_flushes_since_k8_cluster_flush = 0;
+		if(c_new_k8s_global_export_format.get_value() == k8s_export_format::DEDICATED)
+		{
+			g_logger.log("sinsp_analyzer:: Emitting k8s metadata for cluster (global_kubernetes)", sinsp_logger::SEV_DEBUG);
+			auto k8s_state = m_metrics->mutable_global_kubernetes();
+
+			k8s_state->set_cluster_id(cluster_id);
+			k8s_state->set_cluster_name(cluster_name);
+			m_infrastructure_state->get_state(k8s_state, m_prev_flush_time_ns);
+		}
+		else
+		{
+			g_logger.log("sinsp_analyzer:: Emitting k8s metadata for cluster (congroups)", sinsp_logger::SEV_DEBUG);
+			auto k8s_state = m_metrics->mutable_global_orchestrator_state();
+
+			k8s_state->set_cluster_id(cluster_id);
+			k8s_state->set_cluster_name(cluster_name);
+			m_infrastructure_state->get_state(k8s_state->mutable_groups(), m_prev_flush_time_ns);
+			check_dump_infrastructure_state(*k8s_state,
+							"global",
+							m_dump_global_infrastructure_state_on_next_flush);
+		}
 	}
 #endif
 }
