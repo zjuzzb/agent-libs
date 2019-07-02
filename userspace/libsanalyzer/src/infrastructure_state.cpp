@@ -989,7 +989,7 @@ void infrastructure_state::remove(infrastructure_state::uid_t& key, bool update)
 		}
 
 		if (!erased) {
-			glogf(sinsp_logger::SEV_WARNING, "infra_state: Container groups inconsistency detected. <%s,%s> should be a child of <%s,%s>.",
+			glogf(sinsp_logger::SEV_DEBUG, "infra_state: Container groups inconsistency detected. <%s,%s> should be a child of <%s,%s>.",
 				m_state[key]->uid().kind().c_str(), m_state[key]->uid().id().c_str(), m_state[pkey]->uid().kind().c_str(), m_state[pkey]->uid().id().c_str());
 		}
 	}
