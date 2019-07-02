@@ -7,9 +7,20 @@
  */
 #include "metrics_rest_request_handler.h"
 #include "draios.pb.h"
+#include "fault_injection.h"
 #include "metric_store.h"
 #include <google/protobuf/util/json_util.h>
 #include <json/json.h>
+
+namespace
+{
+
+DEFINE_FAULT_INJECTOR(
+	fh_message_to_json_error,
+	"agent.userspace.dragent.metrics_rest_request_handler.message_to_json_error",
+	"Simulate a failure in MessageToJsonString()");
+
+} // end namespace
 
 namespace dragent
 {
@@ -33,17 +44,24 @@ std::string metrics_rest_request_handler::handle_get_request(
 
 	if(metrics != nullptr)
 	{
+		using ::google::protobuf::util::Status;
+
 		std::string json_string;
 
-		const ::google::protobuf::util::Status status =
+		Status status =
 			::google::protobuf::util::MessageToJsonString(*metrics,
 			                                              &json_string);
+
+		FAULT_FIRED_INVOKE(fh_message_to_json_error,
+				   ([&status]() { status = Status::UNKNOWN; }));
+
 		if(status.ok())
 		{
 			return json_string;
 		}
 
-		value["error"] = status.error_message().ToString();
+		value["error"] = "MessageToJsonString error: '" +
+		                 status.error_message().ToString() + "'";
 		http_status = Poco::Net::HTTPResponse::HTTPStatus::HTTP_INTERNAL_SERVER_ERROR;
 	}
 	else

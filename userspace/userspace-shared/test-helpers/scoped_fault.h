@@ -33,6 +33,14 @@ public:
 	 */
 	~scoped_fault();
 
+	/**
+	 * Returns a pointer to the fault_handler with which this scoped_fault
+	 * is associated.  If the fault_handler with which this scoped_fault
+	 * was destroyed before this method is called, then this method will
+	 * return nullptr.
+	 */
+	userspace_shared::fault_handler* handler();
+
 private:
 	std::string m_name;
 	userspace_shared::fault_handler::memento_ptr m_memento;

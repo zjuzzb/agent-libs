@@ -14,6 +14,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/librest/test_helpers)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/test_helpers)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/test-helpers)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/test_helpers/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/fake-collector/src)
 include_directories(${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine)
@@ -58,6 +59,7 @@ target_link_libraries(unit-test-dragent
 	test_helpers
 	test-helpers-librest
 	test-helpers-libsanalyzer
+	test-helpers-userspace-shared
 	userspace-shared
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 )

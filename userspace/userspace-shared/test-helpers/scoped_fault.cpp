@@ -20,29 +20,32 @@ scoped_fault::scoped_fault(const std::string& name):
 	m_name(name),
 	m_memento()
 {
-	const fault_handler* const handler =
-		fault_handler_registry::instance().find(name);
+	const fault_handler* const f_handler = handler();
 
-	if(handler == nullptr)
+	if(f_handler == nullptr)
 	{
 		throw std::runtime_error("Cannot find handler with name " + name);
 	}
 
-	m_memento = handler->get_state();
+	m_memento = f_handler->get_state();
 }
 
 scoped_fault::~scoped_fault()
 {
 	if(m_memento)
 	{
-		fault_handler* const handler =
-			fault_handler_registry::instance().find(m_name);
+		fault_handler* const f_handler = handler();
 
-		if(handler != nullptr)
+		if(f_handler != nullptr)
 		{
-			handler->restore_state(m_memento);
+			f_handler->restore_state(m_memento);
 		}
 	}
+}
+
+userspace_shared::fault_handler* scoped_fault::handler()
+{
+	return fault_handler_registry::instance().find(m_name);
 }
 
 } // namespace test_helpers

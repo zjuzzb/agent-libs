@@ -64,3 +64,19 @@ TEST(scoped_fault_test, saves_on_construction_restores_on_destruction)
 	ASSERT_EQ(2, fh.get_hit_count());
 
 }
+
+/**
+ * Ensure that handler() returns a pointer to the fault_handler with which
+ * the scoped_fault is associated.
+ */
+TEST(scoped_fault_test, handler_returns_fault_handler)
+{
+	fault_handler fh("filename.cpp",
+	                 42,
+	                 "test.scoped_fault_test.handler",
+	                 "test handler");
+
+	scoped_fault fault_state("test.scoped_fault_test.handler");
+
+	ASSERT_EQ(&fh, fault_state.handler());
+}

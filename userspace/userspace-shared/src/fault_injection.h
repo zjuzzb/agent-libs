@@ -103,15 +103,14 @@
 #else // !defined(FAULT_INJECTION_ENABLED)
 
 // If FAULT_INJECTION_ENABLED is not defined, all fault injection macros are
-// defined to have no effect.  APIs that accept a default value must evaluate
-// to the default value.
+// defined to have no effect.
 
 // Forward declare a non-existant struct to consume the trailing semicolon
 #define DEFINE_FAULT_INJECTOR(fault_handler, name, description) \
 	struct DUMMY_FAULT_FORWARD_DECL
 
-#define FAULT_FIRED(fault_handler)                       false
-#define FAULT_FIRED_INVOKE(fault_handler, function)      false
+#define FAULT_FIRED(fault_handler)                       ({ const bool _handled = false; _handled; })
+#define FAULT_FIRED_INVOKE(fault_handler, function)      ({ const bool _handled = false; _handled; })
 #define FAULT_RETURN(fault_handler, expr)
 
 #endif // defined(FAULT_INJECTION_ENABLED)
