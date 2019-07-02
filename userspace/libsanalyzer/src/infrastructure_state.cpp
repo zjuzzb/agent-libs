@@ -1568,7 +1568,7 @@ void infrastructure_state::get_state(container_groups* state, const uint64_t ts)
 			x->CopyFrom(*cg);
 			// clean up host links
 			if(host_children.find(cg->uid().kind()) != host_children.end()) {
-				for(auto j = x->mutable_parents()->begin(), j_end = x->mutable_parents()->end(); j != j_end; ++i) {
+				for(auto j = x->mutable_parents()->begin(), j_end = x->mutable_parents()->end(); j != j_end; ++j) {
 					if(j->kind() == "host") {
 						x->mutable_parents()->erase(j);
 						break;
