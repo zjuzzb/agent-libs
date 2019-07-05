@@ -12,7 +12,8 @@ using namespace runtime::v1alpha2;
 
 class FakeCRIServer final : public runtime::v1alpha2::RuntimeService::Service {
 public:
-	FakeCRIServer(ContainerStatusResponse&& cs, PodSandboxStatusResponse&& ps, const std::string& runtime_name) :
+	FakeCRIServer(int delay_us, ContainerStatusResponse&& cs, PodSandboxStatusResponse&& ps, const std::string& runtime_name) :
+		m_delay_us(delay_us),
 		m_container_status_response(cs),
 		m_pod_sandbox_status_response(ps),
 		m_runtime_name(runtime_name)
@@ -22,6 +23,7 @@ public:
 				     const ContainerStatusRequest* req,
 				     ContainerStatusResponse* resp)
 	{
+		usleep(m_delay_us);
 		resp->CopyFrom(m_container_status_response);
 		resp->mutable_status()->set_id(req->container_id());
 		return grpc::Status::OK;
@@ -32,6 +34,7 @@ public:
 		const PodSandboxStatusRequest* req,
 		PodSandboxStatusResponse* resp)
 	{
+		usleep(m_delay_us);
 		resp->CopyFrom(m_pod_sandbox_status_response);
 		resp->mutable_status()->set_id(req->pod_sandbox_id());
 		return grpc::Status::OK;
@@ -48,6 +51,7 @@ public:
 		return grpc::Status::OK;
 	}
 private:
+	int m_delay_us;
 	ContainerStatusResponse m_container_status_response;
 	PodSandboxStatusResponse m_pod_sandbox_status_response;
 	std::string m_runtime_name;
@@ -73,11 +77,31 @@ private:
 int main(int argc, char** argv)
 {
 	google::protobuf::io::FileOutputStream pb_stdout(1);
+	int delay_us = 0;
 
 	if (argc < 3)
 	{
-		fprintf(stderr, "Usage: fake_cri listen_addr pb_file_prefix [runtime_name]\n");
+		fprintf(stderr, "Usage: fake_cri [--nodelay|--slow|--veryslow] listen_addr pb_file_prefix [runtime_name]\n");
 		return 1;
+	}
+
+	if(argv[1] == std::string("--nodelay"))
+	{
+		// no delay, the default
+		delay_us = 0;
+		argv++;
+	}
+	else if(argv[1] == std::string("--slow"))
+	{
+		// 500 ms is slow but not slow enough to trigger the timeout
+		delay_us = 500000;
+		argv++;
+	}
+	else if(argv[1] == std::string("--veryslow"))
+	{
+		// 1200 ms is beyond the default 1 sec timeout so queries will fail
+		delay_us = 1200000;
+		argv++;
 	}
 
 	const char* addr = argv[1];
@@ -114,7 +138,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-	FakeCRIServer service(std::move(cs), std::move(ps), runtime);
+	FakeCRIServer service(delay_us, std::move(cs), std::move(ps), runtime);
 	FakeCRIImageServer image_service(std::move(is));
 
 	grpc::ServerBuilder builder;
