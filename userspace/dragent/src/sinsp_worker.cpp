@@ -460,6 +460,7 @@ void sinsp_worker::init()
 		m_inspector->suppress_events_comm(comm);
 	}
 
+	m_inspector->set_docker_socket_path(c_docker_socket_path.get());
 	m_inspector->set_query_docker_image_info(m_configuration->m_query_docker_image_info);
 	m_inspector->set_cri_socket_path(c_cri_socket_path->get());
 	m_inspector->set_cri_timeout(c_cri_timeout_ms.get());

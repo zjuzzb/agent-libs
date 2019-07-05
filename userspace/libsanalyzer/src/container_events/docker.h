@@ -116,7 +116,6 @@ private:
 
 private:
 
-	static const std::string DOCKER_SOCKET_FILE;
 	typedef std::vector<json_ptr_t> event_list_t;
 	typedef user_event_logger::severity severity_t;
 	typedef std::unordered_map<std::string, severity_t> severity_map_t;

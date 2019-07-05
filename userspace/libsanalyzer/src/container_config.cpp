@@ -64,3 +64,8 @@ type_config<std::string>::ptr c_cri_socket_path = type_config_builder<std::strin
 			config.set("");
 		}
 	}).get();
+
+type_config<std::string> c_docker_socket_path(
+	"/var/run/docker.sock",
+	"Path to the docker daemon socket",
+	"docker", "socket_path");

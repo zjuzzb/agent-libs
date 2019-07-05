@@ -26,8 +26,8 @@ limitations under the License.
 #include "memdump_logger.h"
 #include "user_event.h"
 #include "infrastructure_state.h"
+#include "container_config.h"
 
-const std::string docker::DOCKER_SOCKET_FILE = "/var/run/docker.sock";
 #ifdef HAS_CAPTURE
 int docker::m_connection_id = 0;
 bool docker::m_ever_connected = false;
@@ -146,7 +146,7 @@ docker::docker(infrastructure_state *infra_state,
 #ifdef HAS_CAPTURE
 	if(url.empty())
 	{
-		url = std::string("file://").append(scap_get_host_root()).append(DOCKER_SOCKET_FILE);
+		url = std::string("file://").append(scap_get_host_root()).append(c_docker_socket_path.get());
 	}
 	m_event_http = std::make_shared<handler_t>(*this, "docker", url, path, http_version,
 					timeout_ms, nullptr, nullptr, true, false, 524288u, false);
@@ -538,7 +538,7 @@ std::string docker::get_socket_file()
 			sock_file.clear();
 		}
 	}
-	sock_file.append(DOCKER_SOCKET_FILE);
+	sock_file.append(c_docker_socket_path.get());
 	return sock_file;
 }
 #endif // HAS_CAPTURE
