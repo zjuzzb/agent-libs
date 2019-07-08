@@ -2613,13 +2613,40 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					m_inspector->m_thread_manager->m_threadtable, m_app_metrics, m_prev_flush_time_ns);
 			}
 			// Get our own thread info to match for prometheus host_filter
+			// (for scraping remote endpoints)
 			sinsp_threadinfo *our_tinfo = m_inspector->m_thread_manager->m_threadtable.get(getpid());
 			if(!our_tinfo) {
 				g_logger.format(sinsp_logger::SEV_WARNING, "Couldn't find threadinfo for our pid %d", getpid());
 			}
 			else
 			{
-				match_prom_checks(our_tinfo, our_tinfo->get_main_thread(), prom_procs, true);
+				// Check if we need to scrape remote prometheus endpoints.
+				// Enforce interval by looking to see if we have any non-expired
+				// prometheus metrics associated with our pid.
+				// If we have multiple endpoints configured they will all be scraped
+				// in the same cycle
+				// XXX: This will have to be revisited if we're going to allow
+				// different intervals for different endpoints or if we want to start
+				// interleaving multiple endpoints.
+				bool have_prometheus_metrics = false;
+				auto app_metrics_pid = m_app_metrics.find(our_tinfo->m_pid);
+
+				if(app_metrics_pid != m_app_metrics.end())
+				{
+					for(const auto& app_met : app_metrics_pid->second)
+					{
+						if((app_met.second.type() == app_check_data::check_type::PROMETHEUS) &&
+							(app_met.second.expiration_ts() > (m_prev_flush_time_ns/ONE_SECOND_IN_NS)))
+						{
+							have_prometheus_metrics = true;
+							break;
+						}
+					}
+				}
+				if (!have_prometheus_metrics)
+				{
+					match_prom_checks(our_tinfo, our_tinfo->get_main_thread(), prom_procs, true);
+				}
 			}
 
 			if(!app_checks_processes.empty() || !prom_procs.empty())
