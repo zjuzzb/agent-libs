@@ -48,7 +48,9 @@ func fixture() {
 }
 
 
-func createV1PersistentVolumeClaim()(*v1.PersistentVolumeClaim) {
+// if pointers argmument is false, do not instantiate pointer type members.
+// This will help to test versus null pointer dereferencing
+func createV1PersistentVolumeClaim(pointers bool)(*v1.PersistentVolumeClaim) {
 	storageClassName := "StorageClassName"
 	ret := &v1.PersistentVolumeClaim{
 		ObjectMeta: v1meta.ObjectMeta {
@@ -65,7 +67,6 @@ func createV1PersistentVolumeClaim()(*v1.PersistentVolumeClaim) {
 				v1.ReadWriteOnce,
 			},
 			VolumeName: "ATestVolume",
-			StorageClassName: &storageClassName,
 		},
 		Status: v1.PersistentVolumeClaimStatus{
 			Phase: v1.ClaimBound,
@@ -87,6 +88,34 @@ func createV1PersistentVolumeClaim()(*v1.PersistentVolumeClaim) {
 	}
 
 	ret.SetNamespace(namespaceName)
+
+	if pointers == true {
+		ret.Spec.StorageClassName = &storageClassName
+
+		ret.Spec.Selector = &v1meta.LabelSelector{
+			MatchLabels: map[string]string{
+				"key1": "value1",
+				"key2": "value2",
+			},
+			MatchExpressions: []v1meta.LabelSelectorRequirement{
+				{
+					Key:      "laChiave",
+					Operator: v1meta.LabelSelectorOpIn,
+					Values: []string {"maramao", "perche", "sei", "morto"},
+				},
+			},
+		}
+
+		vm := v1.PersistentVolumeBlock
+		ret.Spec.VolumeMode = &vm
+
+		ag := "apiGroup"
+		ret.Spec.DataSource = &v1.TypedLocalObjectReference{
+			APIGroup: &ag,
+			Kind:     "",
+			Name:     "",
+		}
+	}
 
 	return ret
 }
@@ -126,11 +155,7 @@ func getPVCExpected() *draiosproto.ContainerGroup {
 	return ret
 }
 
-func TestPVCCreation(t *testing.T) {
-	fixture()
-	pvcCongroup := newPersistentVolumeClaimCongroup(createV1PersistentVolumeClaim())
-	expected := getPVCExpected()
-
+func checkEquality(t *testing.T, expected *draiosproto.ContainerGroup, pvcCongroup *draiosproto.ContainerGroup) {
 	if !areEqual(expected, pvcCongroup, t) {
 		// For a better understanding of differences, output the two object
 		// in json form
@@ -139,4 +164,18 @@ func TestPVCCreation(t *testing.T) {
 		t.Logf("Expected: %s\n\nActual: %s", string(tmp_exp), string(tmp_act))
 		t.Fail()
 	}
+}
+
+func TestPVCCreation(t *testing.T) {
+	fixture()
+	pvcCongroup := newPersistentVolumeClaimCongroup(createV1PersistentVolumeClaim(true))
+	expected := getPVCExpected()
+
+	checkEquality(t, expected, pvcCongroup)
+
+	// Now creates pvc leaving all pointers as nil
+	nilPvcCongroup := newPersistentVolumeClaimCongroup(createV1PersistentVolumeClaim(false))
+	// nilPvcCongoup created with pointers false does not have StorageClassName
+	delete(expected.Tags, create_pvc_label_key("storageclassname"))
+	checkEquality(t, expected, nilPvcCongroup)
 }

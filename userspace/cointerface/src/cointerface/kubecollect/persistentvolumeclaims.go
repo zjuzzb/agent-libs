@@ -54,7 +54,11 @@ func newPersistentVolumeClaimCongroup(pv *v1.PersistentVolumeClaim) (*draiosprot
 	tags[internal_tag_name + "accessmode"] = string(accessMode)
 
 	tags[internal_tag_name + "volumename"] = pv.Spec.VolumeName
-	tags[internal_tag_name + "storageclassname"] = *pv.Spec.StorageClassName
+
+	if pv.Spec.StorageClassName != nil {
+		tags[internal_tag_name + "storageclassname"] = *pv.Spec.StorageClassName
+	}
+
 	tags[internal_tag_name + "status.phase"] = string(pv.Status.Phase)
 	storage := pv.Status.Capacity["storage"]
 	tags[internal_tag_name + "storage"] = storage.String()
