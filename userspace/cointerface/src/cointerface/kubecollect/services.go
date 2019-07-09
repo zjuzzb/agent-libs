@@ -17,15 +17,39 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+// Globals are reset in startServicesSInformer
+var svcSelectorCache *selectorCache
+
+type coService struct {
+	*v1.Service
+}
+
+func (svc coService) Selector() labels.Selector {
+	return labels.Set(svc.Spec.Selector).AsSelector()
+}
+
+func (svc coService) Filtered() bool {
+	return false
+}
+
+// If the optional selector field is defined, it means we could have
+// pod children but don't know, so always return >0 in that case
+func (svc coService) ActiveChildren() int32 {
+	if len(svc.Spec.Selector) == 0 {
+		return 0
+	}
+	return 1
+}
+
 // make this a library function?
-func serviceEvent(ns *v1.Service, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
+func serviceEvent(svc coService, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
-		Object: newServiceCongroup(ns, setLinks),
+		Object: newServiceCongroup(svc, setLinks),
 	}
 }
 
-func serviceEquals(lhs *v1.Service, rhs *v1.Service) (bool, bool) {
+func serviceEquals(lhs coService, rhs coService) (bool, bool) {
 	in := true
 	out := true
 
@@ -45,14 +69,6 @@ func serviceEquals(lhs *v1.Service, rhs *v1.Service) (bool, bool) {
 	return in, out
 }
 
-func serviceSelector(service *v1.Service) (labels.Selector, error) {
-	lselector := &v1meta.LabelSelector{}
-	for k, v := range service.Spec.Selector {
-		v1meta.AddLabelToSelector(lselector, k, v)
-	}
-	return v1meta.LabelSelectorAsSelector(lselector)
-}
-
 func lookupServiceByName(serviceName, namespace string) string {
 	// Probably we should map them by name somehow
 	for _, obj := range serviceInf.GetStore().List() {
@@ -64,7 +80,7 @@ func lookupServiceByName(serviceName, namespace string) string {
 	return ""
 }
 
-func newServiceCongroup(service *v1.Service, setLinks bool) (*draiosproto.ContainerGroup) {
+func newServiceCongroup(service coService, setLinks bool) (*draiosproto.ContainerGroup) {
 	tags := GetTags(service.ObjectMeta, "kubernetes.service.")
 	inttags := GetAnnotations(service.ObjectMeta, "kubernetes.service.")
 
@@ -84,8 +100,8 @@ func newServiceCongroup(service *v1.Service, setLinks bool) (*draiosproto.Contai
 		AddIngressParents(&ret.Parents, service)
 		AddStatefulSetParentsFromService(&ret.Parents, service)
 		// ref: https://kubernetes.io/docs/concepts/services-networking/service/#services-without-selectors
-		if len(service.Spec.Selector) > 0 {
-			selector, _ := serviceSelector(service)
+		selector, ok := svcSelectorCache.Get(service)
+		if ok {
 			AddPodChildren(&ret.Children, selector, service.GetNamespace())
 		}
 	}
@@ -96,7 +112,7 @@ var serviceInf cache.SharedInformer
 var portmapMutex = &sync.Mutex{}
 var unresolvedPorts = map[types.UID]bool{}
 
-func addServicePorts(ports *[]*draiosproto.CongroupNetPort, service *v1.Service) {
+func addServicePorts(ports *[]*draiosproto.CongroupNetPort, service coService) {
 	for _, port := range service.Spec.Ports {
 		sPort := draiosproto.CongroupNetPort{
 			Port: proto.Uint32(uint32(port.Port)),
@@ -107,8 +123,8 @@ func addServicePorts(ports *[]*draiosproto.CongroupNetPort, service *v1.Service)
 		if port.TargetPort.Type == intstr.Int {
 			p = uint32(port.TargetPort.IntValue())
 		} else {
-			if len(service.Spec.Selector) > 0 {
-				selector, _ := serviceSelector(service)
+			selector, ok := svcSelectorCache.Get(service)
+			if ok {
 				p = resolveTargetPort(port.TargetPort.String(),
 					selector, service.GetNamespace())
 				// Resolving may have failed if we race
@@ -136,16 +152,15 @@ func AddServiceParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 		return
 	}
 
+	podLabels := labels.Set(pod.GetLabels())
 	for _, obj := range serviceInf.GetStore().List() {
-		service := obj.(*v1.Service)
-		//log.Debugf("AddNSParents: %v", nsObj.GetName())
-
-		if len(service.Spec.Selector) == 0 {
+		service := coService{obj.(*v1.Service)}
+		if pod.GetNamespace() != service.GetNamespace() {
 			continue
 		}
 
-		selector, _ := serviceSelector(service)
-		if pod.GetNamespace() == service.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
+		selector, ok := svcSelectorCache.Get(service)
+		if ok && selector.Matches(podLabels) {
 			*parents = append(*parents, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_service"),
 				Id:proto.String(string(service.GetUID()))})
@@ -177,6 +192,7 @@ func AddServiceChildrenFromServiceName(children *[]*draiosproto.CongroupUid, nam
 }
 
 func startServicesSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
+	svcSelectorCache = newSelectorCache()
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "Services", v1meta.NamespaceAll, fields.Everything())
 	serviceInf = cache.NewSharedInformer(lw, &v1.Service{}, RsyncInterval)
@@ -196,13 +212,13 @@ func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				eventReceived("services")
-				evtc <- serviceEvent(obj.(*v1.Service),
+				evtc <- serviceEvent(coService{obj.(*v1.Service)},
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
 				addEvent("Service", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				oldService := oldObj.(*v1.Service)
-				newService := newObj.(*v1.Service)
+				oldService := coService{oldObj.(*v1.Service)}
+				newService := coService{newObj.(*v1.Service)}
 
 				sameEntity, sameLinks := true, true
 				if oldService.GetResourceVersion() != newService.GetResourceVersion() {
@@ -216,6 +232,9 @@ func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					portmapMutex.Unlock()
 				}
 
+				if !sameLinks {
+					svcSelectorCache.Update(newService)
+				}
 				if !sameEntity || !sameLinks {
 					evtc <- serviceEvent(newService,
 						draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
@@ -224,25 +243,26 @@ func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				addEvent("Service", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
-				oldService := (*v1.Service)(nil)
+				oldService := coService{nil}
 				switch obj.(type) {
 				case *v1.Service:
-					oldService = obj.(*v1.Service)
+					oldService = coService{obj.(*v1.Service)}
 				case cache.DeletedFinalStateUnknown:
 					d := obj.(cache.DeletedFinalStateUnknown)
 					o, ok := (d.Obj).(*v1.Service)
 					if ok {
-						oldService = o
+						oldService = coService{o}
 					} else {
 						log.Warn("DeletedFinalStateUnknown without service object")
 					}
 				default:
 					log.Warn("Unknown object type in service DeleteFunc")
 				}
-				if oldService == nil {
+				if oldService.Service == nil {
 					return
 				}
 
+				svcSelectorCache.Remove(oldService)
 				// We may not have an unresolved port, but delete is still safe
 				portmapMutex.Lock()
 				delete(unresolvedPorts, oldService.GetUID())

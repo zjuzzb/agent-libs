@@ -18,18 +18,34 @@ import (
 
 // Globals are reset in startJobsSInformer
 var jobInf cache.SharedInformer
-var jobSelectors map[string]labels.Selector
-var jobCacheMutex sync.RWMutex
+var jobSelectorCache *selectorCache
+
+type coJob struct {
+	*v1batch.Job
+}
+
+func (job coJob) Selector() labels.Selector {
+	s, _ := v1meta.LabelSelectorAsSelector(job.Spec.Selector)
+	return s
+}
+
+func (job coJob) Filtered() bool {
+	return false
+}
+
+func (job coJob) ActiveChildren() int32 {
+	return job.Status.Active
+}
 
 // make this a library function?
-func jobEvent(job *v1batch.Job, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
+func jobEvent(job coJob, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
 		Object: newJobConGroup(job, setLinks),
 	}
 }
 
-func jobEquals(lhs *v1batch.Job, rhs *v1batch.Job) (bool, bool) {
+func jobEquals(lhs coJob, rhs coJob) (bool, bool) {
 	sameEntity := true
 	sameLinks := true
 
@@ -66,7 +82,7 @@ func jobEquals(lhs *v1batch.Job, rhs *v1batch.Job) (bool, bool) {
 	return sameEntity, sameLinks
 }
 
-func newJobConGroup(job *v1batch.Job, setLinks bool) (*draiosproto.ContainerGroup) {
+func newJobConGroup(job coJob, setLinks bool) (*draiosproto.ContainerGroup) {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_job"),
@@ -77,7 +93,7 @@ func newJobConGroup(job *v1batch.Job, setLinks bool) (*draiosproto.ContainerGrou
 	addJobMetrics(&ret.Metrics, job)
 	if setLinks {
 		AddNSParents(&ret.Parents, job.GetNamespace())
-		selector, ok := getJobChildSelector(job)
+		selector, ok := jobSelectorCache.Get(job)
 		if ok {
 			AddPodChildren(&ret.Children, selector, job.GetNamespace())
 		}
@@ -86,7 +102,7 @@ func newJobConGroup(job *v1batch.Job, setLinks bool) (*draiosproto.ContainerGrou
 	return ret
 }
 
-func addJobMetrics(metrics *[]*draiosproto.AppMetric, job *v1batch.Job) {
+func addJobMetrics(metrics *[]*draiosproto.AppMetric, job coJob) {
 	prefix := "kubernetes.job."
 
 	AppendMetricPtrInt32(metrics, prefix+"spec.parallelism", job.Spec.Parallelism)
@@ -103,12 +119,12 @@ func AddJobParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 
 	podLabels := labels.Set(pod.GetLabels())
 	for _, obj := range jobInf.GetStore().List() {
-		job := obj.(*v1batch.Job)
+		job := coJob{obj.(*v1batch.Job)}
 		if pod.GetNamespace() != job.GetNamespace() {
 			continue
 		}
 
-		selector, ok := getJobChildSelector(job)
+		selector, ok := jobSelectorCache.Get(job)
 		if ok && selector.Matches(podLabels) {
 			*parents = append(*parents, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_job"),
@@ -124,7 +140,7 @@ func AddJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespace
 	}
 
 	for _, obj := range jobInf.GetStore().List() {
-		job := obj.(*v1batch.Job)
+		job := coJob{obj.(*v1batch.Job)}
 		if job.GetNamespace() == namespaceName {
 			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_job"),
@@ -137,7 +153,7 @@ func startJobsSInformer(ctx context.Context,
 			kubeClient kubeclient.Interface,
 			wg *sync.WaitGroup,
 			evtc chan<- draiosproto.CongroupUpdateEvent) {
-	jobSelectors = make(map[string]labels.Selector)
+	jobSelectorCache = newSelectorCache()
 	client := kubeClient.BatchV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "jobs", v1meta.NamespaceAll, fields.Everything())
 	jobInf = cache.NewSharedInformer(lw, &v1batch.Job{}, RsyncInterval)
@@ -157,14 +173,14 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				eventReceived("jobs")
-				evtc <- jobEvent(obj.(*v1batch.Job),
+				evtc <- jobEvent(coJob{obj.(*v1batch.Job)},
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
 				addEvent("Job", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				addEvent("Job", EVENT_UPDATE)
-				oldJob := oldObj.(*v1batch.Job)
-				newJob := newObj.(*v1batch.Job)
+				oldJob := coJob{oldObj.(*v1batch.Job)}
+				newJob := coJob{newObj.(*v1batch.Job)}
 				if oldJob.GetResourceVersion() == newJob.GetResourceVersion() {
 					return
 				}
@@ -174,7 +190,7 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					(!sameEntity &&
 					oldJob.Status.Active > 0 &&
 					newJob.Status.Active == 0) {
-					updateJobSelectorCache(newJob)
+					jobSelectorCache.Update(newJob)
 				}
 				if !sameEntity || !sameLinks {
 					evtc <- jobEvent(newJob,
@@ -183,76 +199,30 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				job := (*v1batch.Job)(nil)
+				job := coJob{nil}
 				switch obj.(type) {
 				case *v1batch.Job:
-					job = obj.(*v1batch.Job)
+					job = coJob{obj.(*v1batch.Job)}
 				case cache.DeletedFinalStateUnknown:
 					d := obj.(cache.DeletedFinalStateUnknown)
 					o, ok := (d.Obj).(*v1batch.Job)
 					if ok {
-						job = o
+						job = coJob{o}
 					} else {
 						log.Warn("DeletedFinalStateUnknown without job object")
 					}
 				default:
 					log.Warn("Unknown object type in job DeleteFunc")
 				}
-				if job == nil {
+				if job.Job == nil {
 					return
 				}
 
-				clearJobSelectorCache(job)
+				jobSelectorCache.Remove(job)
 				evtc <- jobEvent(job,
 					draiosproto.CongroupEventType_REMOVED.Enum(), false)
 				addEvent("Job", EVENT_DELETE)
 			},
 		},
 	)
-}
-
-func getJobChildSelector(job *v1batch.Job) (labels.Selector, bool) {
-	// Only cache selectors for jobs with pods currently scheduled
-	if job.Status.Active == 0 {
-		var zeroVal labels.Selector
-		return zeroVal, false
-	}
-
-	jobCacheMutex.RLock()
-	s, ok := jobSelectors[string(job.GetUID())]
-	jobCacheMutex.RUnlock()
-
-	if !ok {
-		s = populateJobSelectorCache(job)
-	}
-	return s, true
-}
-
-func populateJobSelectorCache(job *v1batch.Job) labels.Selector {
-	// This is the cpu-heavy piece, so keep it outside the lock
-	s, _ := v1meta.LabelSelectorAsSelector(job.Spec.Selector)
-
-	jobCacheMutex.Lock()
-	// It's possible another thread added the selector between
-	// locks, but checking requires a second lookup in most cases
-	// so always copy the newly created selector
-	jobSelectors[string(job.GetUID())] = s
-	jobCacheMutex.Unlock()
-	return s
-}
-
-func clearJobSelectorCache(job *v1batch.Job) {
-	jobCacheMutex.Lock()
-	delete(jobSelectors, string(job.GetUID()))
-	jobCacheMutex.Unlock()
-}
-
-// If we know the selector will be used again,
-// it's cheaper to update while we have the lock
-func updateJobSelectorCache(job *v1batch.Job) {
-	if job.Status.Active == 0 {
-		clearJobSelectorCache(job)
-	} else {
-		populateJobSelectorCache(job)
-	}
 }

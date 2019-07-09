@@ -66,7 +66,7 @@ func AddStatefulSetParentsFromPod(parents *[]*draiosproto.CongroupUid, pod *v1.P
 	}
 }
 
-func AddStatefulSetParentsFromService(parents *[]*draiosproto.CongroupUid, service *v1.Service) {
+func AddStatefulSetParentsFromService(parents *[]*draiosproto.CongroupUid, service coService) {
 	if !resourceReady("statefulsets") {
 		return
 	}

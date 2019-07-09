@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	v1batch "k8s.io/api/batch/v1"
 	"k8s.io/api/batch/v2alpha1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -52,7 +51,7 @@ func newCronJobConGroup(cronjob *v2alpha1.CronJob) (*draiosproto.ContainerGroup)
 
 var cronJobInf cache.SharedInformer
 
-func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job *v1batch.Job) {
+func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job coJob) {
 	if !resourceReady("cronjobs") {
 		return
 	}

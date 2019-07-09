@@ -17,10 +17,26 @@ import (
 
 // Globals are reset in startDeploymentsSInformer
 var deploymentInf cache.SharedInformer
-var deploySelectors map[string]labels.Selector
-var deployCacheMutex sync.RWMutex
+var deploySelectorCache *selectorCache
 
-func deploymentEvent(dep *v1beta1.Deployment, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
+type coDeployment struct {
+	*v1beta1.Deployment
+}
+
+func (deploy coDeployment) Selector() labels.Selector {
+	s, _ := v1meta.LabelSelectorAsSelector(deploy.Spec.Selector)
+	return s
+}
+
+func (deploy coDeployment) Filtered() bool {
+	return false
+}
+
+func (deploy coDeployment) ActiveChildren() int32 {
+	return deploy.Status.Replicas
+}
+
+func deploymentEvent(dep coDeployment, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
 		Object: newDeploymentCongroup(dep, setLinks),
@@ -28,7 +44,11 @@ func deploymentEvent(dep *v1beta1.Deployment, eventType *draiosproto.CongroupEve
 }
 
 // sameEntity will always be false when sameLinks is false
-func deploymentEquals(lhs *v1beta1.Deployment, rhs *v1beta1.Deployment) (sameEntity bool, sameLinks bool) {
+func deploymentEquals(lhs coDeployment, rhs coDeployment) (sameEntity bool, sameLinks bool) {
+	if rhs.Deployment == nil || lhs.Deployment == nil {
+		return false, false
+	}
+
 	// Check sameLinks fields first
 	if lhs.GetNamespace() != rhs.GetNamespace() {
 		return false, false
@@ -65,7 +85,7 @@ func deploymentEquals(lhs *v1beta1.Deployment, rhs *v1beta1.Deployment) (sameEnt
 	return true, true
 }
 
-func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*draiosproto.ContainerGroup) {
+func newDeploymentCongroup(deployment coDeployment, setLinks bool) (*draiosproto.ContainerGroup) {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_deployment"),
@@ -77,7 +97,7 @@ func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*drai
 	addDeploymentMetrics(&ret.Metrics, deployment)
 	if setLinks {
 		AddNSParents(&ret.Parents, deployment.GetNamespace())
-		selector, ok := getDeployChildSelector(deployment)
+		selector, ok := deploySelectorCache.Get(deployment)
 		if ok {
 			AddReplicaSetChildren(&ret.Children, selector, deployment.GetNamespace())
 		}
@@ -86,7 +106,7 @@ func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*drai
 	return ret
 }
 
-func addDeploymentMetrics(metrics *[]*draiosproto.AppMetric, deployment *v1beta1.Deployment) {
+func addDeploymentMetrics(metrics *[]*draiosproto.AppMetric, deployment coDeployment) {
 	prefix := "kubernetes.deployment."
 	AppendMetricInt32(metrics, prefix+"status.replicas", deployment.Status.Replicas)
 	// kube-state-metrics uses "kube_deployment_status_replicas_available" but
@@ -102,23 +122,23 @@ func addDeploymentMetrics(metrics *[]*draiosproto.AppMetric, deployment *v1beta1
 	//}
 }
 
-func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, replicaSet *v1beta1.ReplicaSet) {
+func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, rs coReplicaSet) {
 	if !resourceReady("deployments") {
 		return
 	}
 
-	rsLabels := labels.Set(replicaSet.GetLabels())
+	rsLabels := labels.Set(rs.GetLabels())
 	for _, obj := range deploymentInf.GetStore().List() {
-		deployment := obj.(*v1beta1.Deployment)
-		if replicaSet.GetNamespace() != deployment.GetNamespace() {
+		deploy := coDeployment{obj.(*v1beta1.Deployment)}
+		if rs.GetNamespace() != deploy.GetNamespace() {
 			continue
 		}
 
-		selector, ok := getDeployChildSelector(deployment)
+		selector, ok := deploySelectorCache.Get(deploy)
 		if ok && selector.Matches(rsLabels) {
 			*parents = append(*parents, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_deployment"),
-				Id:proto.String(string(deployment.GetUID()))})
+				Id:proto.String(string(deploy.GetUID()))})
 			break
 		}
 	}
@@ -156,7 +176,7 @@ func AddDeploymentChildrenByName(children *[]*draiosproto.CongroupUid, namespace
 }
 
 func startDeploymentsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
-	deploySelectors = make(map[string]labels.Selector)
+	deploySelectorCache = newSelectorCache()
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "Deployments", v1meta.NamespaceAll, fields.Everything())
 	deploymentInf = cache.NewSharedInformer(lw, &v1beta1.Deployment{}, RsyncInterval)
@@ -176,21 +196,21 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				eventReceived("deployments")
-				evtc <- deploymentEvent(obj.(*v1beta1.Deployment),
+				evtc <- deploymentEvent(coDeployment{obj.(*v1beta1.Deployment)},
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
 				addEvent("Deployment", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				addEvent("Deployment", EVENT_UPDATE)
-				oldDeployment := oldObj.(*v1beta1.Deployment)
-				newDeployment := newObj.(*v1beta1.Deployment)
+				oldDeployment := coDeployment{oldObj.(*v1beta1.Deployment)}
+				newDeployment := coDeployment{newObj.(*v1beta1.Deployment)}
 				if oldDeployment.GetResourceVersion() == newDeployment.GetResourceVersion() {
 					return
 				}
 
 				sameEntity, sameLinks := deploymentEquals(oldDeployment, newDeployment)
 				if !sameLinks {
-					updateDeploySelectorCache(newDeployment)
+					deploySelectorCache.Update(newDeployment)
 				}
 				if !sameEntity || !sameLinks {
 					evtc <- deploymentEvent(newDeployment,
@@ -199,25 +219,25 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				oldDeployment := (*v1beta1.Deployment)(nil)
+				oldDeployment := coDeployment{nil}
 				switch obj.(type) {
 				case *v1beta1.Deployment:
-					oldDeployment = obj.(*v1beta1.Deployment)
+					oldDeployment = coDeployment{obj.(*v1beta1.Deployment)}
 				case cache.DeletedFinalStateUnknown:
 					d := obj.(cache.DeletedFinalStateUnknown)
 					o, ok := (d.Obj).(*v1beta1.Deployment)
 					if ok {
-						oldDeployment = o
+						oldDeployment = coDeployment{o}
 					} else {
 						log.Warn("DeletedFinalStateUnknown without deployment object")
 					}
 				default:
 					log.Warn("Unknown object type in deployment DeleteFunc")
 				}
-				if oldDeployment == nil {
+				if oldDeployment.Deployment == nil {
 					return
 				}
-				clearDeploySelectorCache(oldDeployment)
+				deploySelectorCache.Remove(oldDeployment)
 				evtc <- draiosproto.CongroupUpdateEvent {
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{
@@ -230,50 +250,4 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 		},
 	)
-}
-
-func getDeployChildSelector(deploy *v1beta1.Deployment) (labels.Selector, bool) {
-	// Only cache selectors for deploy with pods currently scheduled
-	if deploy.Status.Replicas == 0 {
-		var zeroVal labels.Selector
-		return zeroVal, false
-	}
-
-	deployCacheMutex.RLock()
-	s, ok := deploySelectors[string(deploy.GetUID())]
-	deployCacheMutex.RUnlock()
-
-	if !ok {
-		s = populateDeploySelectorCache(deploy)
-	}
-	return s, true
-}
-
-func populateDeploySelectorCache(deploy *v1beta1.Deployment) labels.Selector {
-	// This is the cpu-heavy piece, so keep it outside the lock
-	s, _ := v1meta.LabelSelectorAsSelector(deploy.Spec.Selector)
-
-	deployCacheMutex.Lock()
-	// It's possible another thread added the selector between
-	// locks, but checking requires a second lookup in most cases
-	// so always copy the newly created selector
-	deploySelectors[string(deploy.GetUID())] = s
-	deployCacheMutex.Unlock()
-	return s
-}
-
-func clearDeploySelectorCache(deploy *v1beta1.Deployment) {
-	deployCacheMutex.Lock()
-	delete(deploySelectors, string(deploy.GetUID()))
-	deployCacheMutex.Unlock()
-}
-
-// If we know the selector will be used again,
-// it's cheaper to update while we have the lock
-func updateDeploySelectorCache(deploy *v1beta1.Deployment) {
-	if deploy.Status.Replicas == 0 {
-		clearDeploySelectorCache(deploy)
-	} else {
-		populateDeploySelectorCache(deploy)
-	}
 }

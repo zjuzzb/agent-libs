@@ -18,18 +18,48 @@ import (
 
 // Globals are reset in startReplicaSetsSInformer
 var replicaSetInf cache.SharedInformer
-var rsSelectors map[string]labels.Selector
-var rsCacheMutex sync.RWMutex
+var rsSelectorCache *selectorCache
 var filterEmptyRs bool
 
-func replicaSetEvent(rs *v1beta1.ReplicaSet, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
+type coReplicaSet struct {
+	*v1beta1.ReplicaSet
+}
+
+func (rs coReplicaSet) Selector() labels.Selector {
+	s, _ := v1meta.LabelSelectorAsSelector(rs.Spec.Selector)
+	return s
+}
+
+// Some common k8s practices leave a lot of old replicasets that have been
+// scaled down to 0 pods in the spec. Those objects are rarely useful and
+// can grow to a majority of the objects in the cluster, so we filter them
+// out to keep load down in infra_state and the protobuf/backend.
+func (rs coReplicaSet) Filtered() bool {
+	if filterEmptyRs && rs.specReplicas() == 0 {
+		return true
+	}
+	return false
+}
+
+func (rs coReplicaSet) ActiveChildren() int32 {
+	return rs.Status.Replicas
+}
+
+func (rs coReplicaSet) specReplicas() int32 {
+	if rs.Spec.Replicas == nil {
+		return 1
+	}
+	return *rs.Spec.Replicas
+}
+
+func replicaSetEvent(rs coReplicaSet, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
 		Object: newReplicaSetCongroup(rs, setLinks),
 	}
 }
 
-func replicaSetEquals(lhs *v1beta1.ReplicaSet, rhs *v1beta1.ReplicaSet) (bool, bool) {
+func replicaSetEquals(lhs coReplicaSet, rhs coReplicaSet) (bool, bool) {
 	sameEntity := true
 	sameLinks := true
 
@@ -74,7 +104,7 @@ func replicaSetEquals(lhs *v1beta1.ReplicaSet, rhs *v1beta1.ReplicaSet) (bool, b
 	return sameEntity, sameLinks
 }
 
-func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*draiosproto.ContainerGroup) {
+func newReplicaSetCongroup(replicaSet coReplicaSet, setLinks bool) (*draiosproto.ContainerGroup) {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_replicaset"),
@@ -87,7 +117,7 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*drai
 	if setLinks {
 		AddNSParents(&ret.Parents, replicaSet.GetNamespace())
 		AddDeploymentParents(&ret.Parents, replicaSet)
-		selector, ok := getRsChildSelector(replicaSet)
+		selector, ok := rsSelectorCache.Get(replicaSet)
 		if ok {
 			AddPodChildren(&ret.Children, selector, replicaSet.GetNamespace())
 		}
@@ -96,7 +126,7 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*drai
 	return ret
 }
 
-func addReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet *v1beta1.ReplicaSet) {
+func addReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet coReplicaSet) {
 	prefix := "kubernetes.replicaset."
 	AppendMetricInt32(metrics, prefix+"status.replicas", replicaSet.Status.Replicas)
 	AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicaSet.Status.FullyLabeledReplicas)
@@ -111,16 +141,16 @@ func AddReplicaSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 
 	podLabels := labels.Set(pod.GetLabels())
 	for _, obj := range replicaSetInf.GetStore().List() {
-		replicaSet := obj.(*v1beta1.ReplicaSet)
-		if pod.GetNamespace() != replicaSet.GetNamespace() {
+		rs := coReplicaSet{obj.(*v1beta1.ReplicaSet)}
+		if pod.GetNamespace() != rs.GetNamespace() {
 			continue
 		}
 
-		selector, ok := getRsChildSelector(replicaSet)
+		selector, ok := rsSelectorCache.Get(rs)
 		if ok && selector.Matches(podLabels) {
 			*parents = append(*parents, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_replicaset"),
-				Id:proto.String(string(replicaSet.GetUID()))})
+				Id:proto.String(string(rs.GetUID()))})
 			break
 		}
 	}
@@ -177,7 +207,7 @@ func AddReplicaSetChildrenByName(children *[]*draiosproto.CongroupUid, namespace
 }
 
 func startReplicaSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty bool) {
-	rsSelectors = make(map[string]labels.Selector)
+	rsSelectorCache = newSelectorCache()
 	filterEmptyRs = filterEmpty
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicaSets", v1meta.NamespaceAll, fields.Everything())
@@ -199,8 +229,8 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			AddFunc: func(obj interface{}) {
 				eventReceived("replicasets")
 
-				rs := obj.(*v1beta1.ReplicaSet)
-				if rsFiltered(rs) {
+				rs := coReplicaSet{obj.(*v1beta1.ReplicaSet)}
+				if rs.Filtered() {
 					return
 				}
 
@@ -210,14 +240,14 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				addEvent("ReplicaSet", EVENT_UPDATE)
-				oldRS := oldObj.(*v1beta1.ReplicaSet)
-				newRS := newObj.(*v1beta1.ReplicaSet)
+				oldRS := coReplicaSet{oldObj.(*v1beta1.ReplicaSet)}
+				newRS := coReplicaSet{newObj.(*v1beta1.ReplicaSet)}
 				if oldRS.GetResourceVersion() == newRS.GetResourceVersion() {
 					return
 				}
 
-				newReplicas := rsSpecReplicas(newRS)
-				oldReplicas := rsSpecReplicas(oldRS)
+				newReplicas := newRS.specReplicas()
+				oldReplicas := oldRS.specReplicas()
 				if filterEmptyRs && oldReplicas == 0 && newReplicas == 0 {
 					return
 				} else if filterEmptyRs && oldReplicas == 0 && newReplicas > 0 {
@@ -226,7 +256,7 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					addEvent("ReplicaSet", EVENT_UPDATE_AND_SEND)
 					return
 				} else if filterEmptyRs && oldReplicas > 0 && newReplicas == 0 {
-					clearRsSelectorCache(newRS)
+					rsSelectorCache.Remove(newRS)
 					evtc <- draiosproto.CongroupUpdateEvent {
 						Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 						Object: &draiosproto.ContainerGroup{
@@ -240,7 +270,7 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				} else {
 					sameEntity, sameLinks := replicaSetEquals(oldRS, newRS)
 					if !sameLinks {
-						updateRsSelectorCache(newRS)
+						rsSelectorCache.Update(newRS)
 					}
 					if !sameEntity || !sameLinks {
 						evtc <- replicaSetEvent(newRS,
@@ -250,30 +280,30 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				rs := (*v1beta1.ReplicaSet)(nil)
+				rs := coReplicaSet{nil}
 				switch obj.(type) {
 				case *v1beta1.ReplicaSet:
-					rs = obj.(*v1beta1.ReplicaSet)
+					rs = coReplicaSet{obj.(*v1beta1.ReplicaSet)}
 				case cache.DeletedFinalStateUnknown:
 					d := obj.(cache.DeletedFinalStateUnknown)
 					o, ok := (d.Obj).(*v1beta1.ReplicaSet)
 					if ok {
-						rs = o
+						rs = coReplicaSet{o}
 					} else {
 						log.Warn("DeletedFinalStateUnknown without replicaset object")
 					}
 				default:
 					log.Warn("Unknown object type in replicaset DeleteFunc")
 				}
-				if rs == nil {
+				if rs.ReplicaSet == nil {
 					return
 				}
 
-				if rsFiltered(rs) {
+				if rs.Filtered() {
 					return
 				}
 
-				clearRsSelectorCache(rs)
+				rsSelectorCache.Remove(rs)
 				evtc <- draiosproto.CongroupUpdateEvent {
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{
@@ -286,68 +316,4 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 		},
 	)
-}
-
-func getRsChildSelector(rs *v1beta1.ReplicaSet) (labels.Selector, bool) {
-	// RSs with Status.Replicas==0 (aka active) never go in the cache to keep
-	// memory consumption down, and Spec.Replicas==0 RSs can be filtered by config
-	//
-	// We have to check for both instead of just status because
-	// an rs can have >0 status and 0 spec just after scaling down
-	if rsFiltered(rs) || rs.Status.Replicas == 0 {
-		var zeroVal labels.Selector
-		return zeroVal, false
-	}
-
-	rsCacheMutex.RLock()
-	s, ok := rsSelectors[string(rs.GetUID())]
-	rsCacheMutex.RUnlock()
-
-	if !ok {
-		s = populateRsSelectorCache(rs)
-	}
-	return s, true
-}
-
-func populateRsSelectorCache(rs *v1beta1.ReplicaSet) labels.Selector {
-	// This is the cpu-heavy piece, so keep it outside the lock
-	s, _ := v1meta.LabelSelectorAsSelector(rs.Spec.Selector)
-
-	rsCacheMutex.Lock()
-	// It's possible another thread added the selector between
-	// locks, but checking requires a second lookup in most cases
-	// so always copy the newly created selector
-	rsSelectors[string(rs.GetUID())] = s
-	rsCacheMutex.Unlock()
-	return s
-}
-
-func clearRsSelectorCache(rs *v1beta1.ReplicaSet) {
-	rsCacheMutex.Lock()
-	delete(rsSelectors, string(rs.GetUID()))
-	rsCacheMutex.Unlock()
-}
-
-// If we know the selector will be used again,
-// it's cheaper to update while we have the lock
-func updateRsSelectorCache(rs *v1beta1.ReplicaSet) {
-	if rs.Status.Replicas == 0 {
-		clearRsSelectorCache(rs)
-	} else {
-		populateRsSelectorCache(rs)
-	}
-}
-
-func rsSpecReplicas(rs *v1beta1.ReplicaSet) int32 {
-	if rs.Spec.Replicas == nil {
-		return 1
-	}
-	return *rs.Spec.Replicas
-}
-
-func rsFiltered(rs *v1beta1.ReplicaSet) bool {
-	if filterEmptyRs && rsSpecReplicas(rs) == 0 {
-		return true
-	}
-	return false
 }

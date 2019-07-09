@@ -2,17 +2,16 @@ package kubecollect
 
 import (
 	"testing"
-	//"k8s.io/api/core/v1"
+
 	"k8s.io/api/extensions/v1beta1"
-	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	//"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Creates two deployment objects that are DeepEqual
-func createDeploymentCopies() (*v1beta1.Deployment, *v1beta1.Deployment) {
+func createDeploymentCopies() (coDeployment, coDeployment) {
 	var numReplicas int32 = 5
-	orig := &v1beta1.Deployment{
-		ObjectMeta: v1meta.ObjectMeta{
+	deploy := &v1beta1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "oldDeployment",
 			Labels: map[string]string{
 				"label_key0":"label_val0",
@@ -36,11 +35,13 @@ func createDeploymentCopies() (*v1beta1.Deployment, *v1beta1.Deployment) {
 			UpdatedReplicas: numReplicas,
 		},
 	}
-	copy := orig.DeepCopy()
+
+	orig := coDeployment{ Deployment: deploy }
+	copy := coDeployment{ Deployment: deploy.DeepCopy() }
 	return orig, copy
 }
 
-func deploymentEqualsHelper(t *testing.T, old *v1beta1.Deployment, new *v1beta1.Deployment, expected bool) {
+func deploymentEqualsHelper(t *testing.T, old coDeployment, new coDeployment, expected bool) {
 	sameEntity, sameLinks := deploymentEquals(old, new)
 	res := sameEntity && sameLinks
 	if (!sameLinks && sameEntity) || (res != expected)  {

@@ -17,19 +17,48 @@ import (
 
 // Globals are reset in startReplicationControllersSInformer
 var replicationControllerInf cache.SharedInformer
-var rcSelectors map[string]labels.Selector
-var rcCacheMutex sync.RWMutex
+var rcSelectorCache *selectorCache
 var filterEmptyRc bool
 
+type coReplicationController struct {
+	*v1.ReplicationController
+}
+
+func (rc coReplicationController) Selector() labels.Selector {
+	return labels.Set(rc.Spec.Selector).AsSelector()
+}
+
+// Some common k8s practices leave a lot of old rc's that have been
+// scaled down to 0 pods in the spec. Those objects are rarely useful and
+// can grow to a majority of the objects in the cluster, so we filter them
+// out to keep load down in infra_state and the protobuf/backend.
+func (rc coReplicationController) Filtered() bool {
+	if filterEmptyRc && rc.specReplicas() == 0 {
+		return true
+	}
+	return false
+}
+
+func (rc coReplicationController) ActiveChildren() int32 {
+	return rc.Status.Replicas
+}
+
+func (rc coReplicationController) specReplicas() int32 {
+	if rc.Spec.Replicas == nil {
+		return 1
+	}
+	return *rc.Spec.Replicas
+}
+
 // make this a library function?
-func replicationControllerEvent(rc *v1.ReplicationController, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
+func replicationControllerEvent(rc coReplicationController, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
 		Object: newReplicationControllerCongroup(rc, setLinks),
 	}
 }
 
-func rcEquals(lhs *v1.ReplicationController, rhs *v1.ReplicationController) (bool, bool) {
+func rcEquals(lhs coReplicationController, rhs coReplicationController) (bool, bool) {
 	sameEntity := true
 	sameLinks := true
 
@@ -74,7 +103,7 @@ func rcEquals(lhs *v1.ReplicationController, rhs *v1.ReplicationController) (boo
 	return sameEntity, sameLinks
 }
 
-func newReplicationControllerCongroup(replicationController *v1.ReplicationController, setLinks bool) (*draiosproto.ContainerGroup) {
+func newReplicationControllerCongroup(replicationController coReplicationController, setLinks bool) (*draiosproto.ContainerGroup) {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_replicationcontroller"),
@@ -86,7 +115,7 @@ func newReplicationControllerCongroup(replicationController *v1.ReplicationContr
 	addReplicationControllerMetrics(&ret.Metrics, replicationController)
 	if setLinks {
 		AddNSParents(&ret.Parents, replicationController.GetNamespace())
-		selector, ok := getRcChildSelector(replicationController)
+		selector, ok := rcSelectorCache.Get(replicationController)
 		if ok {
 			AddPodChildren(&ret.Children, selector, replicationController.GetNamespace())
 		}
@@ -95,7 +124,7 @@ func newReplicationControllerCongroup(replicationController *v1.ReplicationContr
 	return ret
 }
 
-func addReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicationController *v1.ReplicationController) {
+func addReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicationController coReplicationController) {
 	prefix := "kubernetes.replicationController."
 	AppendMetricInt32(metrics, prefix+"status.replicas", replicationController.Status.Replicas)
 	AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicationController.Status.FullyLabeledReplicas)
@@ -111,15 +140,15 @@ func AddReplicationControllerParents(parents *[]*draiosproto.CongroupUid, pod *v
 
 	podLabels := labels.Set(pod.GetLabels())
 	for _, obj := range replicationControllerInf.GetStore().List() {
-		replicationController := obj.(*v1.ReplicationController)
-		if pod.GetNamespace() != replicationController.GetNamespace() {
+		rc := coReplicationController{obj.(*v1.ReplicationController)}
+		if pod.GetNamespace() != rc.GetNamespace() {
 			continue
 		}
-		selector, ok := getRcChildSelector(replicationController)
+		selector, ok := rcSelectorCache.Get(rc)
 		if ok && selector.Matches(podLabels) {
 			*parents = append(*parents, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_replicationcontroller"),
-				Id:proto.String(string(replicationController.GetUID()))})
+				Id:proto.String(string(rc.GetUID()))})
 			break
 		}
 	}
@@ -157,7 +186,7 @@ func AddReplicationControllerChildrenByName(children *[]*draiosproto.CongroupUid
 }
 
 func startReplicationControllersSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty bool) {
-	rcSelectors = make(map[string]labels.Selector)
+	rcSelectorCache = newSelectorCache()
 	filterEmptyRc = filterEmpty
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicationControllers", v1meta.NamespaceAll, fields.Everything())
@@ -179,8 +208,8 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			AddFunc: func(obj interface{}) {
 				eventReceived("replicationcontrollers")
 
-				rc := obj.(*v1.ReplicationController)
-				if rcFiltered(rc) {
+				rc := coReplicationController{obj.(*v1.ReplicationController)}
+				if rc.Filtered() {
 					return
 				}
 
@@ -190,14 +219,14 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				addEvent("ReplicationController", EVENT_UPDATE)
-				oldRC := oldObj.(*v1.ReplicationController)
-				newRC := newObj.(*v1.ReplicationController)
+				oldRC := coReplicationController{oldObj.(*v1.ReplicationController)}
+				newRC := coReplicationController{newObj.(*v1.ReplicationController)}
 				if oldRC.GetResourceVersion() == newRC.GetResourceVersion() {
 					return
 				}
 
-				newReplicas := rcSpecReplicas(newRC)
-				oldReplicas := rcSpecReplicas(oldRC)
+				newReplicas := newRC.specReplicas()
+				oldReplicas := oldRC.specReplicas()
 				if filterEmptyRc && oldReplicas == 0 && newReplicas == 0 {
 					return
 				} else if filterEmptyRc && oldReplicas == 0 && newReplicas > 0 {
@@ -206,7 +235,7 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					addEvent("ReplicationController", EVENT_UPDATE_AND_SEND)
 					return
 				} else if filterEmptyRc && oldReplicas > 0 && newReplicas == 0 {
-					clearRcSelectorCache(newRC)
+					rcSelectorCache.Remove(newRC)
 					evtc <- draiosproto.CongroupUpdateEvent {
 						Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 						Object: &draiosproto.ContainerGroup{
@@ -220,7 +249,7 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				} else {
 					sameEntity, sameLinks := rcEquals(oldRC, newRC)
 					if !sameLinks {
-						updateRcSelectorCache(newRC)
+						rcSelectorCache.Update(newRC)
 					}
 					if !sameEntity || !sameLinks {
 						evtc <- replicationControllerEvent(newRC,
@@ -230,30 +259,30 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				rc := (*v1.ReplicationController)(nil)
+				rc := coReplicationController{nil}
 				switch obj.(type) {
 				case *v1.ReplicationController:
-					rc = obj.(*v1.ReplicationController)
+					rc = coReplicationController{obj.(*v1.ReplicationController)}
 				case cache.DeletedFinalStateUnknown:
 					d := obj.(cache.DeletedFinalStateUnknown)
 					o, ok := (d.Obj).(*v1.ReplicationController)
 					if ok {
-						rc = o
+						rc = coReplicationController{o}
 					} else {
 						log.Warn("DeletedFinalStateUnknown without replicationcontroller object")
 					}
 				default:
 					log.Warn("Unknown object type in replicationcontroller DeleteFunc")
 				}
-				if rc == nil {
+				if rc.ReplicationController == nil {
 					return
 				}
 
-				if rcFiltered(rc) {
+				if rc.Filtered() {
 					return
 				}
 
-				clearRcSelectorCache(rc)
+				rcSelectorCache.Remove(rc)
 				evtc <- draiosproto.CongroupUpdateEvent {
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{
@@ -266,68 +295,4 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 		},
 	)
-}
-
-func getRcChildSelector(rc *v1.ReplicationController) (labels.Selector, bool) {
-	// RCs with Status.Replicas==0 (aka active) never go in the cache to keep
-	// memory consumption down, and Spec.Replicas==0 RCs can be filtered by config
-	//
-	// We have to check for both instead of just status because
-	// an rc can have >0 status and 0 spec just after scaling down
-	if rcFiltered(rc) || rc.Status.Replicas == 0 {
-		var zeroVal labels.Selector
-		return zeroVal, false
-	}
-
-	rcCacheMutex.RLock()
-	s, ok := rcSelectors[string(rc.GetUID())]
-	rcCacheMutex.RUnlock()
-
-	if !ok {
-		s = populateRcSelectorCache(rc)
-	}
-	return s, true
-}
-
-func populateRcSelectorCache(rc *v1.ReplicationController) labels.Selector {
-	// This is the cpu-heavy piece, so keep it outside the lock
-	s := labels.Set(rc.Spec.Selector).AsSelector()
-
-	rcCacheMutex.Lock()
-	// It's possible another thread added the selector between
-	// locks, but checking requires a second lookup in most cases
-	// so always copy the newly created selector
-	rcSelectors[string(rc.GetUID())] = s
-	rcCacheMutex.Unlock()
-	return s
-}
-
-func clearRcSelectorCache(rc *v1.ReplicationController) {
-	rcCacheMutex.Lock()
-	delete(rcSelectors, string(rc.GetUID()))
-	rcCacheMutex.Unlock()
-}
-
-// If we know the selector will be used again,
-// it's cheaper to update while we have the lock
-func updateRcSelectorCache(rc *v1.ReplicationController) {
-	if rc.Status.Replicas == 0 {
-		clearRcSelectorCache(rc)
-	} else {
-		populateRcSelectorCache(rc)
-	}
-}
-
-func rcSpecReplicas(rc *v1.ReplicationController) int32 {
-	if rc.Spec.Replicas == nil {
-		return 1
-	}
-	return *rc.Spec.Replicas
-}
-
-func rcFiltered(rc *v1.ReplicationController) bool {
-	if filterEmptyRc && rcSpecReplicas(rc) == 0 {
-		return true
-	}
-	return false
 }

@@ -1,15 +1,16 @@
 package kubecollect
 import (
 	"testing"
+
 	"k8s.io/api/extensions/v1beta1"
-	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Creates two replicaset objects that are DeepEqual
-func createReplicaSetCopies() (*v1beta1.ReplicaSet, *v1beta1.ReplicaSet) {
+func createReplicaSetCopies() (coReplicaSet, coReplicaSet) {
 	var numReplicas int32 = 5
-	orig := &v1beta1.ReplicaSet{
-		ObjectMeta: v1meta.ObjectMeta{
+	rs := &v1beta1.ReplicaSet{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "oldReplicaSet",
 			Labels: map[string]string{
 				"label_key0":"label_val0",
@@ -31,11 +32,13 @@ func createReplicaSetCopies() (*v1beta1.ReplicaSet, *v1beta1.ReplicaSet) {
 			ReadyReplicas: numReplicas,
 		},
 	}
-	copy := orig.DeepCopy()
+
+	orig := coReplicaSet{ ReplicaSet: rs }
+	copy := coReplicaSet{ ReplicaSet: rs.DeepCopy() }
 	return orig, copy
 }
 
-func replicaSetEqualsHelper(t *testing.T, old *v1beta1.ReplicaSet, new *v1beta1.ReplicaSet, expected bool) {
+func replicaSetEqualsHelper(t *testing.T, old coReplicaSet, new coReplicaSet, expected bool) {
 	sameEntity, sameLinks := replicaSetEquals(old, new)
 	res := sameEntity && sameLinks
 	if (!sameLinks && sameEntity) || (res != expected)  {

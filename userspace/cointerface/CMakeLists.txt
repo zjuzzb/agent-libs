@@ -89,6 +89,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/replicationcontrollers.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/resourcequotas.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/statefulsets.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/selector_cache.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/services.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/jobs.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/events.go
@@ -114,6 +115,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface_test_success.t
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/nodes_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/replicasets_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/resourcequotas_test.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/selector_cache_test.go
 		)
 
 add_custom_target(compclient ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compclient)

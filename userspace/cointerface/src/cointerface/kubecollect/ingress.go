@@ -11,7 +11,6 @@ import (
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/api/extensions/v1beta1"
-	"k8s.io/api/core/v1"
 )
 
 // make this a library function?
@@ -63,7 +62,7 @@ func newIngressCongroup(ingress *v1beta1.Ingress) (*draiosproto.ContainerGroup) 
 
 var ingressInf cache.SharedInformer
 
-func AddIngressParents(parents *[]*draiosproto.CongroupUid, service *v1.Service) {
+func AddIngressParents(parents *[]*draiosproto.CongroupUid, service coService) {
 	if !resourceReady("ingress") {
 		return
 	}
