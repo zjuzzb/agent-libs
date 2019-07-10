@@ -322,3 +322,57 @@ func TestPodDeleteFuncBadType(t *testing.T) {
 	var someInt int = 0
 	podDeleteFuncHelper(t, someInt, false)
 }
+
+func testResourceHelper(t *testing.T, actual float64, expected float64, log string) {
+	if actual != expected {
+		t.Log(log)
+		t.Fail()
+	}
+}
+
+func TestGetPodContainerResources(t *testing.T) {
+	// Create a pod object
+	pod, _ := createPodCopies()
+
+	// we expect limits and requests are the pod's containers requests and limits sum
+	// (because init containers requests and limits are much smaller than containers)
+
+	// Lets do a simple calculation. This will be in handy for testing
+	// resourceVal() as well
+	expectedRequestsCpu := float64(pod.Spec.Containers[0].Resources.Requests.Cpu().MilliValue())/1000 +
+		float64(pod.Spec.Containers[1].Resources.Requests.Cpu().MilliValue())/1000
+
+	expectedRequestsMemory := float64(pod.Spec.Containers[0].Resources.Requests.Memory().MilliValue())/1000 +
+		float64(pod.Spec.Containers[1].Resources.Requests.Memory().MilliValue())/1000
+
+	expectedLimitsCpu := float64(pod.Spec.Containers[0].Resources.Limits.Cpu().MilliValue())/1000 +
+		float64(pod.Spec.Containers[1].Resources.Limits.Cpu().MilliValue())/1000
+
+	expectedLimitsMemory := float64(pod.Spec.Containers[0].Resources.Limits.Memory().MilliValue())/1000 +
+		float64(pod.Spec.Containers[1].Resources.Limits.Memory().MilliValue())/1000
+
+	rc, lc, rm, lm := getPodContainerResources(pod)
+
+	testResourceHelper(t, rc, expectedRequestsCpu, "Cpu Request calculation is wrong")
+	testResourceHelper(t, lc, expectedLimitsCpu, "Cpu Limits calculation is wrong")
+	testResourceHelper(t, rm, expectedRequestsMemory, "Memory Request calculation is wrong")
+	testResourceHelper(t, lm, expectedLimitsMemory, "Memory Limits calculation is wrong")
+
+
+	//Not let's change a bit a init cantainer CPU request, so that it wins over
+	//the sum of normal containers CPU requests
+
+	pod.Spec.InitContainers[0].Resources.Requests[v1.ResourceCPU] = resource.MustParse("1000")
+	pod.Spec.InitContainers[0].Resources.Requests[v1.ResourceMemory] = resource.MustParse("100G")
+	pod.Spec.InitContainers[0].Resources.Limits[v1.ResourceCPU] = resource.MustParse("1000")
+	pod.Spec.InitContainers[0].Resources.Limits[v1.ResourceMemory] = resource.MustParse("100G")
+
+	// recall again getPodContainersResources
+	rc, lc, rm, lm = getPodContainerResources(pod)
+
+	testResourceHelper(t, rc, 1000, "Cpu Request calculation with huge init container is wrong")
+	testResourceHelper(t, lc, 1000, "Cpu Limits calculation huge init container is wrong")
+	testResourceHelper(t, rm, 100E9, "Memory Request calculation huge init container is wrong")
+	testResourceHelper(t, lm, 100E9, "Memory Limits calculation huge init container is wrong")
+
+}

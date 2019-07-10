@@ -437,11 +437,11 @@ func getPodContainerResources(pod *v1.Pod) (requestsCpu float64, limitsCpu float
 		if initLimitsCpu > limitsCpu {
 			limitsCpu = initLimitsCpu
 		}
-		initRequestsMem := resourceVal(c.Resources.Requests, v1.ResourceCPU)
+		initRequestsMem := resourceVal(c.Resources.Requests, v1.ResourceMemory)
 		if initRequestsMem > requestsMem {
 			requestsMem = initRequestsMem
 		}
-		initLimitsMem := resourceVal(c.Resources.Limits, v1.ResourceCPU)
+		initLimitsMem := resourceVal(c.Resources.Limits, v1.ResourceMemory)
 		if initLimitsMem > limitsMem {
 			limitsMem = initLimitsMem
 		}
