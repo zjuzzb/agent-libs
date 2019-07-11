@@ -4430,10 +4430,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 	//
 	m_io_net.clear();
 
-	//
-	// Clear the executed command list
-	//
-	m_executed_commands.clear();
+	// Since we don't subsample EXECVE_X, it's safe to keep the executed
+	// commands list. It will be sent in the next flush
+	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT) {
+		//
+		// Clear the executed command list
+		//
+		m_executed_commands.clear();
+	}
 
 	if(is_jmx_flushtime())
 	{

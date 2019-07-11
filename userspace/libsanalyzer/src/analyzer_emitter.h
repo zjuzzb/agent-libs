@@ -8,6 +8,16 @@
  * with other *_emitter class philosophies.
  */
 namespace analyzer_emitter {
+/**
+ * When subsampling, the kernel module sends a PPME_DROP_{E_X} event when we start dropping.
+ * When this happens, we flush with the FORCE_FLUSH flush before the end of the interval.
+ * Then at the end of the interval we flush with the BUT_DONT_EMIT flag. This lets us clean up
+ * buffers so that the next flush doesn't take into account incomplete data. However, there are
+ * many parts of the code that where we explicitly don't clean up the data because we know it's
+ * safe to keep and send in the next flush.
+ *
+ * See https://github.com/draios/agent/pull/1360#issuecomment-487236553 for more information.
+ */
 enum flush_flags
 {
 	DF_NONE = 0,
