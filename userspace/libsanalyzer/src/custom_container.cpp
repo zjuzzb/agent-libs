@@ -1,7 +1,7 @@
 #include "custom_container.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
-#include "logger.h"
+#include "common_logger.h"
 
 #include <Poco/Exception.h>
 

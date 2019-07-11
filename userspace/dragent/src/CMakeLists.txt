@@ -25,6 +25,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include
 add_definitions( -DHAS_ANALYZER )
 
 list(APPEND targetfiles
+	avoid_block_channel.cpp
 	baseline_mgr.cpp
 	capture_job_handler.cpp
 	compliance_mgr.cpp
@@ -40,7 +41,6 @@ list(APPEND targetfiles
 	error_handler.cpp
 	faultlist_rest_request_handler.cpp
 	fault_rest_request_handler.cpp
-	logger.cpp
 	metrics_rest_request_handler.cpp
 	monitor.cpp
 	protocol.cpp

@@ -16,7 +16,7 @@
 // From sysdig, for g_logger
 #include "sinsp.h"
 #include "sinsp_int.h"
-#include "logger.h"
+#include "common_logger.h"
 #include "grpc_channel_registry.h"
 
 #include "sdc_internal.grpc.pb.h"

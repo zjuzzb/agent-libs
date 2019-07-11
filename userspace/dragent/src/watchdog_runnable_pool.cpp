@@ -1,8 +1,8 @@
 
 #include "watchdog_runnable_pool.h"
-#include "logger.h"
+#include "common_logger.h"
 
-DRAGENT_LOGGER();
+COMMON_LOGGER();
 
 namespace dragent
 {

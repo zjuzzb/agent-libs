@@ -1,5 +1,5 @@
 #include "subprocesses_logger.h"
-#include "logger.h"
+#include "common_logger.h"
 #include "utils.h"
 #include "dragent.h"
 
@@ -317,7 +317,44 @@ void sinsp_encoded_parser::operator()(const string& s)
 		return;
 	}
 	assert(s.length() > sev_len);
-	g_log->log(m_prefix + s.substr(sev_len), sev);
+	Poco::Message::Priority priority = Poco::Message::Priority::PRIO_TRACE;
+
+	switch(sev)
+	{
+	case sinsp_logger::SEV_FATAL:
+		priority = Poco::Message::Priority::PRIO_FATAL;
+		break;
+
+	case sinsp_logger::SEV_CRITICAL:
+		priority = Poco::Message::Priority::PRIO_CRITICAL;
+		break;
+
+	case sinsp_logger::SEV_ERROR:
+		priority = Poco::Message::Priority::PRIO_ERROR;
+		break;
+
+	case sinsp_logger::SEV_WARNING:
+		priority = Poco::Message::Priority::PRIO_WARNING;
+		break;
+
+	case sinsp_logger::SEV_NOTICE:
+		priority = Poco::Message::Priority::PRIO_NOTICE;
+		break;
+
+	case sinsp_logger::SEV_INFO:
+		priority = Poco::Message::Priority::PRIO_INFORMATION;
+		break;
+
+	case sinsp_logger::SEV_DEBUG:
+		priority = Poco::Message::Priority::PRIO_DEBUG;
+		break;
+
+	case sinsp_logger::SEV_TRACE:
+		priority = Poco::Message::Priority::PRIO_TRACE;
+		break;
+	}
+
+	g_log->log(m_prefix + s.substr(sev_len), priority);
 }
 
 const unsigned subprocesses_logger::READ_BUFFER_SIZE = 4096;

@@ -1,5 +1,5 @@
 #include "connection_manager.h"
-#include "logger.h"
+#include "common_logger.h"
 #include "protocol.h"
 #include "draios.pb.h"
 #include "utils.h"
@@ -20,7 +20,7 @@
 
 #define US_TO_S(_usec) ((_usec) / (1000 * 1000))
 
-DRAGENT_LOGGER();
+COMMON_LOGGER();
 
 const chrono::seconds connection_manager::WORKING_INTERVAL_S(10);
 const uint32_t connection_manager::RECONNECT_MIN_INTERVAL_S = 1;

@@ -1,8 +1,8 @@
 #define VISIBILITY_PRIVATE
 
-#include <gtest.h>
-#include <dragent/src/logger.h>
+#include "common_logger.h"
 #include "sys_call_test.h"
+#include <gtest.h>
 
 static const std::string cri_container_id = "575371e74864";
 static const std::string fake_cri_socket = "/tmp/fake-cri.sock";
@@ -48,7 +48,7 @@ TEST_F(container_cri, fake_cri_no_server) {
 	before_open_t setup = [&](sinsp* inspector)
 	{
 		inspector->set_cri_socket_path(fake_cri_socket);
-		inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
+		inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -105,7 +105,7 @@ TEST_F(container_cri, fake_cri) {
 	before_open_t setup = [&](sinsp* inspector)
 	{
 		inspector->set_cri_socket_path(fake_cri_socket);
-		inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
+		inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -159,7 +159,7 @@ TEST_F(container_cri, fake_cri_crio_extra_queries) {
 	before_open_t setup = [&](sinsp* inspector)
 	{
 		inspector->set_cri_socket_path(fake_cri_socket);
-		inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
+		inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -214,7 +214,7 @@ TEST_F(container_cri, fake_cri_crio) {
 	{
 		inspector->set_cri_socket_path(fake_cri_socket);
 		inspector->set_cri_extra_queries(false);
-		inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
+		inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -268,7 +268,7 @@ TEST_F(container_cri, fake_cri_unknown_runtime) {
 	before_open_t setup = [&](sinsp* inspector)
 	{
 		inspector->set_cri_socket_path(fake_cri_socket);
-		inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
+		inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});

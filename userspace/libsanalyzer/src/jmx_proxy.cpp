@@ -5,7 +5,7 @@
 
 #ifndef _WIN32
 #include <unistd.h>
-#include "logger.h"
+#include "common_logger.h"
 #include "fcntl.h"
 
 java_bean_attribute::java_bean_attribute(const Json::Value& json):

@@ -1,5 +1,6 @@
 #include <time.h>
 
+#include "avoid_block_channel.h"
 #include "main.h"
 #include "dragent.h"
 #include "crash_handler.h"
@@ -18,7 +19,7 @@
 #include "error_handler.h"
 #include "capture_job_handler.h"
 #include "sinsp_worker.h"
-#include "logger.h"
+#include "common_logger.h"
 #include "memdump_logger.h"
 #include "metrics_rest_request_handler.h"
 #include "monitor.h"
@@ -47,7 +48,7 @@ using namespace dragent;
 namespace
 {
 
-DRAGENT_LOGGER();
+COMMON_LOGGER();
 
 type_config<bool> c_use_statsite_forwarder(
 		false,
@@ -1447,10 +1448,10 @@ void dragent_app::initialize_logging()
 					m_configuration.m_user_max_burst_events));
 	}
 
-	g_log = unique_ptr<dragent_logger>(
-			new dragent_logger(&loggerf, make_console_channel(formatter)));
+	g_log = unique_ptr<common_logger>(
+			new common_logger(&loggerf, make_console_channel(formatter)));
 
-	g_log->set_internal_metrics(m_internal_metrics);
+	g_log->set_observer(m_internal_metrics);
 }
 
 void dragent_app::monitor_files(uint64_t uptime_s)

@@ -114,7 +114,7 @@ protected:
 			AutoPtr<Channel> null_channel(new NullChannel());
 			Logger &nullc = Logger::create("NullC", null_channel, -1);
 
-			g_log = std::unique_ptr<dragent_logger>(new dragent_logger(&nullc, &loggerc));
+			g_log = std::unique_ptr<common_logger>(new common_logger(&nullc, &loggerc));
 		}
 
 		std::string cointerface_root = "./resources";

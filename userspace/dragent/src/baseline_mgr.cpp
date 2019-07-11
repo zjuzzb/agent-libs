@@ -1,5 +1,6 @@
 #include "baseline_mgr.h"
 #include "infrastructure_state.h"
+#include "common_logger.h"
 
 #ifndef CYGWING_AGENT
 security_baseline::security_baseline(const draiosproto::baseline &baseline)

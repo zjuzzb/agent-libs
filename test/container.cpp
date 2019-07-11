@@ -23,7 +23,7 @@
 #include <memory>
 #include <atomic>
 #include "scap-int.h"
-#include <dragent/src/logger.h>
+#include "common_logger.h"
 #include "docker_utils.h"
 
 TEST_F(sys_call_test, container_cgroups)
@@ -1623,7 +1623,7 @@ static void healthcheck_helper(const char *dockerfile,
 
 	before_open_t setup = [&](sinsp* inspector)
 	{
-		inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
+		inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});

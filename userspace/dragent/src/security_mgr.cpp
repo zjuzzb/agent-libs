@@ -3,7 +3,7 @@
 
 #include "sinsp_worker.h"
 #include "infrastructure_state.h"
-#include "logger.h"
+#include "common_logger.h"
 
 #include "security_mgr.h"
 

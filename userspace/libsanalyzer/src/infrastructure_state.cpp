@@ -4,7 +4,7 @@
 #ifndef CYGWING_AGENT
 #include "infrastructure_state.h"
 #include "user_event.h"
-#include "logger.h"
+#include "common_logger.h"
 #include "utils.h"
 #include "analyzer.h"
 #include "Poco/File.h"

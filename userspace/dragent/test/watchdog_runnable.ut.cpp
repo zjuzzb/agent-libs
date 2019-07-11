@@ -2,12 +2,12 @@
 #include <exception>
 #include <gtest.h>
 #include "configuration.h"
-#include "logger.h"
+#include "common_logger.h"
 #include "watchdog_runnable.h"
 #include "watchdog_runnable_fatal_error.h"
 #include "watchdog_runnable_pool.h"
 
-DRAGENT_LOGGER();
+COMMON_LOGGER();
 
 using namespace dragent;
 

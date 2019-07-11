@@ -1,7 +1,22 @@
+#include "avoid_block_channel.h"
+#include "common_logger.h"
 #include <cstdlib>
+#include <memory>
 #include <gtest.h>
 #include <SimpleOpt.h>
-#include <dragent/src/logger.h> /*full path because there are multiple files with this name*/
+#include <Poco/AutoPtr.h>
+#include <Poco/Channel.h>
+#include <Poco/ConsoleChannel.h>
+#include <Poco/File.h>
+#include <Poco/Formatter.h>
+#include <Poco/FormattingChannel.h>
+#include <Poco/FileChannel.h>
+#include <Poco/Logger.h>
+#include <Poco/Message.h>
+#include <Poco/Path.h>
+#include <Poco/PatternFormatter.h>
+
+using namespace Poco;
 
 namespace {
 
@@ -14,7 +29,7 @@ public:
 
 private:
 
-	void setup_dragent_logger()
+	void setup_common_logger()
 	{
 		std::string logDir  = "/tmp";
 		File d(logDir);
@@ -44,12 +59,12 @@ private:
 
 		Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, Message::Priority::PRIO_DEBUG);
 
-		g_log = unique_ptr<dragent_logger>(new dragent_logger(&loggerf, loggerc));
+		g_log = std::unique_ptr<common_logger>(new common_logger(&loggerf, loggerc));
 	}
 
 	void SetUp() override
 	{
-		setup_dragent_logger();
+		setup_common_logger();
 	}
 
 	bool m_log_to_console;

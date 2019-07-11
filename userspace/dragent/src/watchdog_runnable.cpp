@@ -1,11 +1,11 @@
 
 #include "watchdog_runnable.h"
 #include "configuration.h"
-#include "logger.h"
+#include "common_logger.h"
 #include "uptime.h"
 #include "watchdog_runnable_fatal_error.h"
 
-DRAGENT_LOGGER();
+COMMON_LOGGER();
 
 namespace dragent
 {

@@ -1,37 +1,50 @@
+/**
+ * @file
+ *
+ * Interface to common_logger.
+ *
+ * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
+ */
 #pragma once
 
+#include "logger.h"
+#include <atomic>
 #include <exception>
+#include <memory>
 #include <stdarg.h>
+#include <string>
 #include <vector>
-#include "main.h"
+#include <Poco/Message.h>
 
-class avoid_block_channel : public Poco::Channel
+namespace Poco
+{
+class Logger;
+}
+
+class common_logger
 {
 public:
-	avoid_block_channel(const AutoPtr<Poco::FileChannel>& file_channel, const std::string& machine_id);
-
-	virtual void log(const Poco::Message& message) override;
-	virtual void open() override;
-	virtual void close() override;
-
-private:
-	AutoPtr<Poco::FileChannel> m_file_channel;
-	std::string m_machine_id;
-	atomic<bool> m_error_event_sent;
-};
-
-class dragent_logger
-{
-public:
-	dragent_logger(Logger* file_log, Logger* console_log);
-
-	void set_internal_metrics(internal_metrics::sptr_t im)
+	/**
+	 * Interface to an object that can be notified when a log of a given
+	 * priority is generated.
+	 */
+	class log_observer
 	{
-		m_internal_metrics = im;
-	}
+	public:
+		using ptr = std::shared_ptr<log_observer>;
 
-	// regular logging
-	void log(const std::string& str, uint32_t sev);
+		virtual ~log_observer() = default;
+		virtual void notify(Poco::Message::Priority priority) = 0;
+	};
+
+	common_logger(Poco::Logger* file_log, Poco::Logger* console_log);
+
+	/**
+	 * Set the observer that will get notified of logs that get written.
+	 */
+	void set_observer(log_observer::ptr observer);
+
+	void log(const std::string& str, Poco::Message::Priority sev);
 	void trace(const std::string& str);
 	void debug(const std::string& str);
 	void information(const std::string& str);
@@ -41,30 +54,20 @@ public:
 	void critical(const std::string& str);
 	void fatal(const std::string& str);
 
-	void trace(std::string&& str);
-	void debug(std::string&& str);
-	void information(std::string&& str);
-	void notice(std::string&& str);
-	void warning(std::string&& str);
-	void error(std::string&& str);
-	void critical(std::string&& str);
-	void fatal(std::string&& str);
-
 	static void sinsp_logger_callback(std::string&& str, sinsp_logger::severity sev);
 
-
-	bool is_enabled(int severity) const;
+	bool is_enabled(Poco::Message::Priority severity) const;
 
 private:
-	Logger* m_file_log;
-	Logger* m_console_log;
-	internal_metrics::sptr_t m_internal_metrics;
+	Poco::Logger* const m_file_log;
+	Poco::Logger* const m_console_log;
+	std::shared_ptr<log_observer> m_observer;
 };
 
 /**
  * Meant to be used inside a cpp file to provide logs targeted
  * to that compilation unit. Do not use this class. Use the
- * DRAGENT_LOGGER and LOG_XYZ macros.
+ * COMMON_LOGGER and LOG_XYZ macros.
  */
 class log_sink
 {
@@ -73,15 +76,19 @@ public:
 
 	log_sink(const std::string& file, const std::string& component);
 
-	void log(uint32_t severity, int line, const char *fmt, ...) const __attribute__ ((format (printf, 4, 5)));
-	void log(uint32_t severity, int line, const std::string& str) const;
+	void log(Poco::Message::Priority severity,
+	         int line,
+	         const char *fmt, ...) const __attribute__ ((format (printf, 4, 5)));
+	void log(Poco::Message::Priority severity,
+	         int line,
+	         const std::string& str) const;
 	std::string build(const char *fmt, ...) const;
 	const std::string& tag() const { return m_tag; };
 
 private:
 	std::string::size_type generate_log(std::vector<char>& log_buffer,
-	                                    const int line,
-	                                    const char* const fmt,
+	                                    int line,
+	                                    const char* fmt,
 	                                    va_list& args) const;
 	std::string build(int line, const char *fmt, va_list& args) const;
 
@@ -89,18 +96,18 @@ private:
 	const std::string m_tag;
 };
 
-extern std::unique_ptr<dragent_logger> g_log;
+extern std::unique_ptr<common_logger> g_log;
 
 // Make an instance of a logger in a component that will always print
 // the filename and the line number. If prefix is provided then that will
 // proceed the filename.
-#define DRAGENT_LOGGER(__optional_prefix) \
+#define COMMON_LOGGER(__optional_prefix) \
 	static const log_sink s_log_sink(__FILE__, "" __optional_prefix)
 
 #define LOG_AT_PRIO_(priority, ...)                                            \
 	do                                                                     \
 	{                                                                      \
-		if(g_log->is_enabled(priority))                                \
+		if(g_log && g_log->is_enabled(priority))                       \
 		{                                                              \
 			s_log_sink.log((priority), __LINE__, __VA_ARGS__);     \
 		}                                                              \

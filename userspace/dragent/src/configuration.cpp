@@ -8,7 +8,7 @@
 #include "Poco/File.h"
 
 #include "json_error_log.h"
-#include "logger.h"
+#include "common_logger.h"
 #include "uri.h"
 #include "windows_helpers.h"
 #ifdef CYGWING_AGENT
@@ -25,7 +25,7 @@
 using namespace Poco;
 using namespace Poco::Net;
 
-DRAGENT_LOGGER("dragent");
+COMMON_LOGGER("dragent");
 
 std::atomic<bool> dragent_configuration::m_signal_dump(false);
 std::atomic<bool> dragent_configuration::m_enable_trace(false);

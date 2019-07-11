@@ -6,6 +6,7 @@
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
 #include "configuration_manager.h"
+#include "common_logger.h"
 #include "type_config.h"
 #include <assert.h>
 #include <map>
@@ -13,6 +14,8 @@
 
 namespace
 {
+
+COMMON_LOGGER();
 
 configuration_manager* s_instance = nullptr;
 
@@ -149,11 +152,8 @@ std::string configuration_manager::to_json() const
 		}
 		else
 		{
-			fprintf(stderr,
-			        "[%s]:%d: Failed to parse '%s' into JSON",
-			        __FUNCTION__,
-			        __LINE__,
-			        itr.second->to_json().c_str());
+			LOG_WARNING("Failed to parse '%s' into JSON",
+			            itr.second->to_json().c_str());
 		}
 	}
 
@@ -175,10 +175,8 @@ const configuration_unit* configuration_manager::get_configuration_unit(
 
 	if(config == nullptr)
 	{
-		printf("[%s]:%d: Warning: config \"%s\" should not be nullptr\n",
-		       __FILE__,
-		       __LINE__,
-		       name.c_str());
+		LOG_WARNING("config \"%s\" should not be nullptr",
+		            name.c_str());
 	}
 
 	return config;
@@ -197,10 +195,8 @@ configuration_unit* configuration_manager::get_mutable_configuration_unit(
 
 	if(config == nullptr)
 	{
-		printf("[%s]:%d: Warning: config \"%s\" should not be nullptr\n",
-		       __FILE__,
-		       __LINE__,
-		       name.c_str());
+		LOG_WARNING("config \"%s\" should not be nullptr",
+		            name.c_str());
 	}
 
 	return config;

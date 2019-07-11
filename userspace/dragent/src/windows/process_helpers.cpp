@@ -1,7 +1,7 @@
 #include "../process_helpers.h"
 #include "../logger.h"
 
-DRAGENT_LOGGER("dragent");
+COMMON_LOGGER("dragent");
 
 namespace process_helpers
 {

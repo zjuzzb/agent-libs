@@ -7,7 +7,7 @@
  */
 #include "statsite_statsd_emitter.h"
 #include "draios.pb.h"
-#include "logger.h"
+#include "common_logger.h"
 #include "utils.h"
 #include <memory>
 #include <string>

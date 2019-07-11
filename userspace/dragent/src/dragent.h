@@ -17,7 +17,7 @@
 #include "error_handler.h"
 #include "capture_job_handler.h"
 #include "sinsp_worker.h"
-#include "logger.h"
+#include "common_logger.h"
 #include "monitor.h"
 #include "subprocesses_logger.h"
 #include "internal_metrics.h"

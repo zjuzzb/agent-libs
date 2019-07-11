@@ -6,7 +6,7 @@
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
 #include "dragent_user_event_callback.h"
-#include "dragent/src/logger.h"
+#include "common_logger.h"
 #include "user_event_logger.h"
 #include <string>
 #include <gtest.h>

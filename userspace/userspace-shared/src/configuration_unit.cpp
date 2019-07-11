@@ -7,6 +7,7 @@
  */
 #include "type_config.h"
 #include "configuration_manager.h"
+#include "common_logger.h"
 #include <string>
 #include <json/json.h>
 

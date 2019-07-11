@@ -8,6 +8,7 @@
 #if defined(FAULT_INJECTION_ENABLED)
 
 #include "fault_handler_registry.h"
+#include "common_logger.h"
 #include "fault_handler.h"
 #include <assert.h>
 #include <map>
@@ -16,6 +17,7 @@
 
 namespace
 {
+COMMON_LOGGER();
 
 typedef std::map<std::string, userspace_shared::fault_handler*> fault_map;
 
@@ -112,11 +114,8 @@ std::string fault_handler_registry::to_json() const
 		}
 		else
 		{
-			fprintf(stderr,
-			        "[%s]:%d: Failed to parse '%s' into JSON",
-			        __FUNCTION__,
-			        __LINE__,
-			        itr.second->to_json().c_str());
+			LOG_WARNING("Failed to parse '%s' into JSON",
+			            itr.second->to_json().c_str());
 		}
 	}
 

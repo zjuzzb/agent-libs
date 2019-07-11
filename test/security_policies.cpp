@@ -65,7 +65,7 @@ public:
 		  m_mgr(mgr),
 		  m_inspector(inspector)
 	{
-		m_inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
+		m_inspector->set_log_callback(common_logger::sinsp_logger_callback);
 		m_inspector->start_dropping_mode(1);
 	}
 
@@ -212,7 +212,7 @@ protected:
 			AutoPtr<Channel> null_channel(new Poco::NullChannel());
 			Logger &nullc = Logger::create("NullC", null_channel, -1);
 
-			g_log = std::unique_ptr<dragent_logger>(new dragent_logger(&nullc, &loggerc));
+			g_log = std::unique_ptr<common_logger>(new common_logger(&nullc, &loggerc));
 		}
 
 		m_inspector = new sinsp();

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Poco/Message.h"
-#include "Poco/RWLock.h"
+#include <Poco/Message.h>
+#include <Poco/RWLock.h>
 #include <string>
 #include <sstream>
 #include <memory>
@@ -9,6 +9,7 @@
 #include <map>
 #include <atomic>
 #include <ctime>
+#include "common_logger.h"
 #include "draios.pb.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -31,7 +32,7 @@ namespace draiosproto
 // (eg. counter being off-by-one). Such inaccuracy is acceptable, eg. instead
 // of 100 log entries, we may see 99
 //
-class internal_metrics
+class internal_metrics : public common_logger::log_observer
 {
 public:
 	typedef std::shared_ptr<internal_metrics> sptr_t;
@@ -42,7 +43,8 @@ public:
 	// logger-related interface; thread-safe (only accesses atomic member variables)
 	// !!! WARNING !!!: never log using global logger from this function,
 	// logger will call it back and overflow the stack
-	void notify(Poco::Message::Priority sev);
+	void notify(Poco::Message::Priority sev) override;
+
 	uint64_t logs() const
 	{
 		return m_log.err + m_log.warn + m_log.info + m_log.debug;

@@ -2,7 +2,7 @@
 
 #include "main.h"
 
-#include "logger.h"
+#include "common_logger.h"
 
 template<class T>
 class blocking_queue

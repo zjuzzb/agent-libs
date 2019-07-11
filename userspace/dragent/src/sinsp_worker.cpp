@@ -1,8 +1,8 @@
 #include "sinsp_worker.h"
+#include "common_logger.h"
 #include "configuration_manager.h"
 #include "error_handler.h"
 #include "infrastructure_state.h"
-#include "logger.h"
 #include "memdumper.h"
 #include "sinsp_factory.h"
 #include "utils.h"
@@ -20,7 +20,7 @@ type_config<uint16_t> config_increased_snaplen_port_range_end(0,
 						   "Ending port in the range of ports to enable a larger snaplen on",
 						   "increased_snaplen_port_range_end");
 
-DRAGENT_LOGGER();
+COMMON_LOGGER();
 
 const string sinsp_worker::m_name = "sinsp_worker";
 
@@ -146,7 +146,7 @@ void sinsp_worker::init()
 	//
 	// Plug the sinsp logger into our one
 	//
-	m_inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
+	m_inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	g_logger.disable_timestamps();
 	if(m_configuration->m_min_console_priority > m_configuration->m_min_file_priority)
 	{

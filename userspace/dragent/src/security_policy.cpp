@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "infrastructure_state.h"
-#include "logger.h"
+#include "common_logger.h"
 #include "json_evt.h"
 
 #include "security_mgr.h"

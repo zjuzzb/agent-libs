@@ -5,6 +5,7 @@
 #include "third-party/jsoncpp/json/json.h"
 #include "error_handler.h"
 #include "noncopyable.h"
+#include <Poco/Message.h>
 
 class watchdog_state;
 class pipe_manager: noncopyable
@@ -128,7 +129,7 @@ public:
 	void operator()(const string&);
 private:
 	string m_last_pid_str;
-	uint32_t m_last_sev;
+	Poco::Message::Priority m_last_sev;
 };
 
 class subprocesses_logger : public dragent::watchdog_runnable

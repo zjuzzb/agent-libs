@@ -1,6 +1,5 @@
 #include "protocol.h"
-
-#include "logger.h"
+#include "common_logger.h"
 
 std::shared_ptr<protocol_queue_item> dragent_protocol::message_to_buffer(uint64_t ts_ns, uint8_t message_type,
 									 const google::protobuf::MessageLite& message, bool compressed,

@@ -2,7 +2,7 @@
 #include <fstream>
 #include "error_handler.h"
 
-#include "logger.h"
+#include "common_logger.h"
 #include "utils.h"
 
 volatile bool dragent_error_handler::m_exception = false;

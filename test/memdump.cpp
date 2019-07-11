@@ -216,7 +216,7 @@ protected:
 			AutoPtr<Channel> null_channel(new Poco::NullChannel());
 			Logger &nullc = Logger::create("NullC", null_channel, -1);
 
-			g_log = std::unique_ptr<dragent_logger>(new dragent_logger(&nullc, &loggerc));
+			g_log = std::unique_ptr<common_logger>(new common_logger(&nullc, &loggerc));
 		}
 
 		m_capture_job_handler = new capture_job_handler(&m_configuration, m_queue, &m_enable_autodrop);

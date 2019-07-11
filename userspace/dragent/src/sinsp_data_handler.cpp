@@ -3,12 +3,12 @@
 #include "sinsp_data_handler.h"
 #include "configuration.h"
 #include "utils.h"
-#include "logger.h"
+#include "common_logger.h"
 
 #include "draios.pb.h"
 #include "tap.pb.h"
 
-DRAGENT_LOGGER();
+COMMON_LOGGER();
 
 sinsp_data_handler::sinsp_data_handler(const dragent_configuration* configuration,
 				       protocol_queue* queue) :
