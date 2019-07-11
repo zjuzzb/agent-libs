@@ -59,7 +59,15 @@ private:
 	inline void extend_req_buffer_len(uint32_t len);
 	inline void req_assign(const char** dest, const char* src, uint32_t len);
 	inline void extend_resp_buffer_len(uint32_t len);
+	inline void req_build_url(const char** dest, const char* url, uint32_t url_len, char method);
 	inline void resp_assign(const char** dest, const char* src, uint32_t len);
+	inline bool is_absoluteURI(const char* URI, uint32_t len);
+	inline bool decompose_URI(const char* URI_in,
+	                          uint32_t URI_len,
+	                          const char** host_out,
+	                          uint32_t& host_len,
+	                          const char** path_out,
+	                          uint32_t& path_len);
 
 	char* m_req_storage;
 	uint32_t m_req_storage_size;

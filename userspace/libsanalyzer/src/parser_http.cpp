@@ -112,6 +112,18 @@ inline void sinsp_http_parser::req_assign(const char** dest, const char *src, ui
 	m_req_storage_pos += (len + 1);
 }
 
+//
+// Builds the URL string and prepends the method character to it
+inline void sinsp_http_parser::req_build_url(const char** dest, const char* url, uint32_t url_len, char method)
+{
+	extend_req_buffer_len(url_len + 2);
+	m_req_storage[m_req_storage_pos] = method;
+	memcpy(m_req_storage + m_req_storage_pos + 1, url, url_len);
+	*dest = m_req_storage + m_req_storage_pos;
+	*(m_req_storage + m_req_storage_pos + url_len + 1) = '\0';
+	m_req_storage_pos += (url_len + 2);
+}
+
 inline void sinsp_http_parser::extend_resp_buffer_len(uint32_t len)
 {
 	if(m_resp_storage_pos + len >= m_resp_storage_size)
@@ -155,6 +167,7 @@ bool sinsp_http_parser::parse_request(const char* buf, uint32_t buflen)
 	m_is_req_valid = false;
 	bool hostvalid = false;
 	bool agentvalid = false;
+	bool absoluteURI = false;
 
 	for(j = 0; j < buflen; j++)
 	{
@@ -174,10 +187,11 @@ bool sinsp_http_parser::parse_request(const char* buf, uint32_t buflen)
 				{
 					path = buf + j + 1;
 				}
-				else if(m_is_req_valid == false)
+				else
 				{
 					pathlen = (uint32_t)(buf + j - path);
 					m_is_req_valid = true;
+					absoluteURI = is_absoluteURI(path, pathlen);
 				}
 			}
 		}
@@ -187,11 +201,11 @@ bool sinsp_http_parser::parse_request(const char* buf, uint32_t buflen)
 			// http request, we can pull out useragent and host
 			if((!agentvalid) &&
 				buf[j - 1] == '\n' &&
-				((str = check_and_extract(buf + j,
-					buflen - j,
-					(char*)"user-agent:",
-					sizeof("user-agent:")-1,
-					&strlen)) != NULL))
+			    ((str = check_and_extract(buf + j,
+			                              buflen - j,
+			                              (char*)"user-agent:",
+			                              sizeof("user-agent:") - 1,
+			                              &strlen)) != NULL))
 			{
 				agentvalid = true;
 				req_assign(&m_result.agent, str, strlen);
@@ -204,14 +218,19 @@ bool sinsp_http_parser::parse_request(const char* buf, uint32_t buflen)
 				continue;
 			}
 			else if((!hostvalid) &&
-				buf[j - 1] == '\n' &&
-				((str = check_and_extract(buf + j, 
-					buflen - j,
-					(char*)"host:",
-					sizeof("host:")-1,
-					&strlen)) != NULL))
+			        buf[j - 1] == '\n' &&
+			        ((str = check_and_extract(buf + j,
+			                                  buflen - j,
+			                                  (char*)"host:",
+			                                  sizeof("host:") - 1,
+			                                  &strlen)) != NULL))
 			{
-				hostvalid = true;
+				// We ignore the host header if the URI is absolute in
+				// obedience to RFC 2616 (section 5.2)
+				if(!absoluteURI)
+				{
+					hostvalid = true;
+				}
 				host = str;
 				hostlen = strlen;
 				n_extracted++;
@@ -229,7 +248,7 @@ bool sinsp_http_parser::parse_request(const char* buf, uint32_t buflen)
 	{
 		m_req_storage[m_req_storage_pos++] = (char)m_result.method;
 
-		if(host)
+		if(host && hostvalid)
 		{
 			// If we found a host string then use it as the start
 			// of the url and append the path to it.
@@ -246,11 +265,27 @@ bool sinsp_http_parser::parse_request(const char* buf, uint32_t buflen)
 		}
 		else
 		{
-			// If we didn't find a host string then use the path
-			// as the url
 			req_assign(&m_result.url, path, pathlen);
 			ASSERT(m_result.url > m_req_storage);
 			m_result.url--;
+
+			// If we have been given an absolute URI, we can parse the
+			// host and path components ourselves
+			if(absoluteURI)
+			{
+				if(decompose_URI(m_result.url, pathlen, &host, hostlen, &path, pathlen))
+				{
+					req_build_url(&m_result.url, host, hostlen + pathlen, m_result.url[0]);
+					if(pathlen > 0)
+					{
+						req_assign(&m_result.path, path, pathlen);
+					}
+					else
+					{
+						m_result.path = nullptr;
+					}
+				}
+			}
 		}
 	}
 
@@ -375,5 +410,121 @@ sinsp_protocol_parser::msg_type sinsp_http_parser::should_parse(sinsp_fdinfo_t* 
 	}
 
 	return sinsp_protocol_parser::MSG_NONE;
+}
 
+bool sinsp_http_parser::is_absoluteURI(const char* URI, uint32_t len)
+{
+	// RFC 2396, section 3: An absoluteURI is in the general form of
+	// <scheme>:<scheme-specific-part>
+	// This gets a little murkier because <scheme-specific-part> can also
+	// contain a : character, so the only 100% reliable way to do this is to
+	// know every possible scheme identifier. However, a quick and dirty
+	// heuristic is to look for the :// sequence.
+	// We also only scan the first 16 characters as a heuristic performance
+	// improvement.
+	if(len > 16)
+	{
+		len = 16;
+	}
+	for(uint32_t i = 0; i < len; ++i)
+	{
+		if(URI[i] == ':')
+		{
+			if(URI[i + 1] == '/' && URI[i + 2] == '/')
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+inline bool sinsp_http_parser::decompose_URI(const char* URI,
+                                             uint32_t URI_len,
+                                             const char** host_out,
+                                             uint32_t& host_len,
+                                             const char** path_out,
+                                             uint32_t& path_len)
+{
+	enum
+	{
+		START,
+		HOST,
+		PATH,
+		END
+	} state = START;
+
+	host_len = 0;
+	path_len = 0;
+	*host_out = nullptr;
+	*path_out = nullptr;
+
+	for(uint32_t i = 0; i <= URI_len; ++i)
+	{
+		switch(state)
+		{
+		case START:
+			// Parse until we find :// and then start parsing the host
+			if(URI[i] == ':')
+			{
+				if(i < URI_len + 2 && URI[i + 1] == '/' && URI[i + 2] == '/')
+				{
+					i += 3;
+					state = HOST;
+					host_len = 1;
+					*host_out = &URI[i];
+				}
+			}
+			break;
+
+		case HOST:
+			// Parse until we find / and then start parsing the path
+			if(URI[i] == '/')
+			{
+				state = PATH;
+				path_len = 1;
+				*path_out = &URI[i];
+			}
+			else
+			{
+				++host_len;
+			}
+			break;
+
+		case PATH:
+			// Parse until we find a path delimiter
+			if(URI[i] == ' ' || URI[i] == '?' || URI[i] == ';')
+			{
+				state = END;
+				i = URI_len;
+			}
+			else
+			{
+				++path_len;
+			}
+			break;
+		case END:
+			ASSERT("Invalid parsing state" == 0);
+			return false;
+			break;
+		}
+	}
+
+	if(host_len == 0 && path_len == 0)
+	{
+		// If we haven't found a host, we're not an absoluteURI and parsing failed
+		return false;
+	}
+	if(*host_out == nullptr && *path_out == nullptr)
+	{
+		// If we couldn't parse out a host and path, parsing failed
+		return false;
+	}
+	if((host_len > 0 && *host_out == nullptr) || (path_len > 0 && *path_out == nullptr))
+	{
+		ASSERT(false);
+		// We should never get here, but if we do we don't want to blow up
+		return false;
+	}
+	return state != START;
 }

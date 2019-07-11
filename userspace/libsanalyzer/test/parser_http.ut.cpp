@@ -630,10 +630,8 @@ TEST(parse_http_test, variety)
 		// Request result
 		EXPECT_TRUE(parser.m_is_req_valid);
 		EXPECT_EQ(sinsp_http_parser::http_method::GET, result.method);
-		EXPECT_EQ(std::string("http://www.amazon.com/index.html"), result.path);
-		// Bad URL, tracked in SMAGENT-1215
-		//EXPECT_EQ(std::string("ghttp://www.amazon.com/index.html"), result.m_url);
-		EXPECT_EQ(std::string("gwww.amazon.comhttp://www.amazon.com/index.html"), result.url);
+		EXPECT_EQ(std::string("/index.html"), result.path);
+		EXPECT_EQ(std::string("gwww.amazon.com/index.html"), result.url);
 		EXPECT_EQ(nullptr, result.agent);
 
 		// Response result
@@ -720,10 +718,8 @@ TEST(parse_http_test, variety)
 		// Request result
 		EXPECT_TRUE(parser.m_is_req_valid);
 		EXPECT_EQ(sinsp_http_parser::http_method::OPTIONS, result.method);
-		EXPECT_EQ(std::string("http://www.amazon.com/"), result.path);
-		// Bad URL, tracked in SMAGENT-1215
-		//EXPECT_EQ(std::string("ohttp://www.amazon.com/"), parser.m_url);
-		EXPECT_EQ(std::string("owww.amazon.comhttp://www.amazon.com/"), result.url);
+		EXPECT_EQ(std::string("/"), result.path);
+		EXPECT_EQ(std::string("owww.amazon.com/"), result.url);
 		EXPECT_EQ(nullptr, result.agent);
 
 		// Response result
@@ -766,10 +762,52 @@ TEST(parse_http_test, variety)
 		// Request result
 		EXPECT_TRUE(parser.m_is_req_valid);
 		EXPECT_EQ(sinsp_http_parser::http_method::TRACE, result.method);
-		EXPECT_EQ(std::string("http://www.amazon.com/"), result.path);
-		// Bad URL, tracked in SMAGENT-1215
-		//EXPECT_EQ(std::string("thttp://www.amazon.com/"), parser.m_url);
-		EXPECT_EQ(std::string("twww.amazon.comhttp://www.amazon.com/"), result.url);
+		EXPECT_EQ(std::string("/"), result.path);
+		EXPECT_EQ(std::string("twww.amazon.com/"), result.url);
+		EXPECT_EQ(nullptr, result.agent);
+
+		// Response result
+		EXPECT_FALSE(parser.m_is_valid);
+		EXPECT_EQ(nullptr, result.content_type);
+		EXPECT_EQ(0, result.status_code);
+	}
+
+	// "GET" Request with an absoluteURI and a path
+	{
+		sinsp_http_parser parser;
+		const std::string http_request =
+		   "GET http://www.sysdig.com/my/cool/path.html HTTP/1.1\n";
+		bool success = run_parser(http_request, parser);
+		EXPECT_TRUE(success);
+		const sinsp_http_parser::Result& result = parser.result();
+
+		// Request result
+		EXPECT_TRUE(parser.m_is_req_valid);
+		EXPECT_EQ(sinsp_http_parser::http_method::GET, result.method);
+		EXPECT_EQ(std::string("/my/cool/path.html"), result.path);
+		EXPECT_EQ(std::string("gwww.sysdig.com/my/cool/path.html"), result.url);
+		EXPECT_EQ(nullptr, result.agent);
+
+		// Response result
+		EXPECT_FALSE(parser.m_is_valid);
+		EXPECT_EQ(nullptr, result.content_type);
+		EXPECT_EQ(0, result.status_code);
+	}
+
+	// "GET" Request with an absoluteURI but no path
+	{
+		sinsp_http_parser parser;
+		const std::string http_request =
+		   "GET http://www.sysdig.com HTTP/1.1\n";
+		bool success = run_parser(http_request, parser);
+		EXPECT_TRUE(success);
+		const sinsp_http_parser::Result& result = parser.result();
+
+		// Request result
+		EXPECT_TRUE(parser.m_is_req_valid);
+		EXPECT_EQ(sinsp_http_parser::http_method::GET, result.method);
+		EXPECT_EQ(nullptr, result.path);
+		EXPECT_EQ(std::string("gwww.sysdig.com"), result.url);
 		EXPECT_EQ(nullptr, result.agent);
 
 		// Response result
