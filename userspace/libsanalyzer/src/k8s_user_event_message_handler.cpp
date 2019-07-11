@@ -201,7 +201,7 @@ void k8s_user_event_message_handler::handle_event(sdc_internal::k8s_user_event *
 
 	m_event_limit_exceeded = false;
 
-	glogf(sinsp_logger::SEV_INFO,
+	glogf(sinsp_logger::SEV_DEBUG,
       "k8s_user_event: filter match for %s, %s", evt->obj().kind().c_str(), evt->reason().c_str());
 	time_t ts = evt->last_timestamp();
 
@@ -230,12 +230,12 @@ void k8s_user_event_message_handler::handle_event(sdc_internal::k8s_user_event *
 					// no other entities were found in the hierarchy.
 				}
 
-				glogf(sinsp_logger::SEV_INFO, "k8s_user_event: got %d scopes for %s:%s",
+				glogf(sinsp_logger::SEV_DEBUG, "k8s_user_event: got %d scopes for %s:%s",
 					scope_names, kind.c_str(), evt->obj().uid().c_str());
 			}
 			if (scope_names < 1)
 			{
-				glogf(sinsp_logger::SEV_INFO, "k8s_user_event: falling back to legacy scope for %s:%s",
+				glogf(sinsp_logger::SEV_DEBUG, "k8s_user_event: falling back to legacy scope for %s:%s",
 					evt->obj().kind().c_str(), evt->obj().uid().c_str());
 				// Didn't find scope through infra-state,
 				// fall back to constructing scope the old way
@@ -261,7 +261,7 @@ void k8s_user_event_message_handler::handle_event(sdc_internal::k8s_user_event *
 							    std::move(message),
 							    std::move(scope),
 							    std::move(tags));
-		glogf(sinsp_logger::SEV_INFO,
+		glogf(sinsp_logger::SEV_DEBUG,
 			"k8s_user_event: new event update: %s", logstr.c_str());
 
 		// The specifial severities here are picked up by the glooger infrastructure and sent to the right queue
