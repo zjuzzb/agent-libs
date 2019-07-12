@@ -117,7 +117,7 @@ std::unique_ptr<librest::rest_server> s_rest_server;
  */
 void enable_rest_server(config_data_message_handler& handler)
 {
-	if(!c_rest_feature_flag.get())
+	if(!c_rest_feature_flag->get())
 	{
 		return;
 	}
