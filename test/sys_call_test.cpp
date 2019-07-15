@@ -2540,7 +2540,11 @@ TEST_F(sys_call_test, thread_lookup_live)
 			return;
 		}
 		fprintf(stderr, "looking up tid %ld in /proc\n", tid);
-		if (scap_proc_read_thread(scap, proc, tid, &scap_tinfo, err_buf, false) == SCAP_SUCCESS)
+		// In some cases scap_proc_read_thread can return SCAP_SUCCESS without
+		// filling in scap_tinfo
+		scap_tinfo = nullptr;
+		if ((scap_proc_read_thread(scap, proc, tid, &scap_tinfo, err_buf, false) == SCAP_SUCCESS)
+			&& scap_tinfo)
 		{
 			auto tinfo = e->get_thread_info(false);
 			if(!tinfo)
@@ -2550,11 +2554,10 @@ TEST_F(sys_call_test, thread_lookup_live)
 			EXPECT_NE(0, scap_tinfo->tid);
 			EXPECT_NE(0, scap_tinfo->pid);
 			EXPECT_NE(0, scap_tinfo->vtid);
-			EXPECT_NE(0, scap_tinfo->ptid);
 			EXPECT_EQ(tinfo->m_tid, scap_tinfo->tid);
 			EXPECT_EQ(tinfo->m_pid, scap_tinfo->pid);
 			EXPECT_EQ(tinfo->m_vtid, scap_tinfo->vtid);
-			EXPECT_EQ(tinfo->m_ptid, scap_tinfo->ptid);
+			// Not testing scap_tinfo->ptid because it can change in between event and lookup
 		}
 	};
 	before_close_t before_close = [&](sinsp* inspector) {
