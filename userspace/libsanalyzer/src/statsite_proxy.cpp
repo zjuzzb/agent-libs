@@ -1,15 +1,18 @@
+#include "common_logger.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "analyzer_int.h"
 #include "statsite_proxy.h"
 #include "subprocess.h"
+#include "type_config.h"
+#include <algorithm>
 #include <Poco/Net/NetException.h>
 #include <Poco/Thread.h>
-#include <algorithm>
-#include "type_config.h"
 
 namespace
 {
+
+COMMON_LOGGER();
 
 type_config<uint64_t> config_buffer_warning_length(
 		512,
@@ -264,6 +267,63 @@ string statsd_metric::desanitize_container_id(string container_id)
 	return container_id;
 }
 
+namespace
+{
+
+std::string type_to_string(const statsd_metric::type_t type)
+{
+	switch(type)
+	{
+	case statsd_metric::type_t::NONE:
+		return "NONE";
+	case statsd_metric::type_t::COUNT:
+		return "COUNT";
+	case statsd_metric::type_t::HISTOGRAM:
+		return "HISTOGRAM";
+	case statsd_metric::type_t::GAUGE:
+		return "GAUGE";
+	case statsd_metric::type_t::SET:
+		return "SET";
+	}
+
+	return "??";
+}
+
+}
+
+std::string statsd_metric::to_debug_string() const
+{
+	std::stringstream out;
+
+	out << "-- statsd metric --------------------------------" << std::endl;
+	out << "timestamp:      " << m_timestamp            << std::endl;
+	out << "name:           " << m_name                 << std::endl;
+	out << "container_id:   " << m_container_id         << std::endl;
+	out << "type:           " << type_to_string(m_type) << std::endl;
+	out << "full id parsed: " << (m_full_identifier_parsed ? "true" : "false") << std::endl;
+	out << "value:          " << m_value                << std::endl;
+	out << "sum:            " << m_sum                  << std::endl;
+	out << "mean:           " << m_mean                 << std::endl;
+	out << "min:            " << m_min                  << std::endl;
+	out << "max:            " << m_max                  << std::endl;
+	out << "count:          " << m_count                << std::endl;
+	out << "stdev:          " << m_stdev                << std::endl;
+	out << "tags: {" << std::endl;
+	for(const auto& i : m_tags)
+	{
+		out << "  [" << i.first << ", " << i.second << "]" << std::endl;
+	}
+	out << "}" << std::endl;
+	out << "percentiles: {" << std::endl;
+	for(const auto& i : m_percentiles)
+	{
+		out << "  [" << i.first << ", " << i.second << "]" << std::endl;
+	}
+	out << "}" << std::endl;
+
+	return out.str();
+}
+
 statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds,
 			       bool check_format):
 		m_input_fd(fds.first),
@@ -310,9 +370,8 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 				// if we've exceeded our configured buffer size, log it
 				if(dyn_buffer.size() >= config_buffer_warning_length.get())
 				{
-					g_logger.format(sinsp_logger::SEV_ERROR,
-							"Trace longer than warning size.: %s",
-							&dyn_buffer[0]);
+					LOG_ERROR("Trace longer than warning size: %s",
+					          &dyn_buffer[0]);
 				}
 
 				// we have to grow the buffer. So grow it by the default buffer
@@ -347,7 +406,7 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 			// point. -zipper 1/7/19
 			char *buffer = &dyn_buffer[0];
 
-			g_logger.format(sinsp_logger::SEV_TRACE, "Received from statsite: %s", buffer);
+			LOG_TRACE("Received from statsite: %s", buffer);
 			try {
 				bool parsed = m_metric.parse_line(buffer);
 				if(!parsed)
@@ -396,9 +455,8 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 			}
 			catch(const statsd_metric::parse_exception& ex)
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR,
-						"parser exception on statsd, buffer: %s",
-						buffer);
+				LOG_ERROR("Parser exception on statsd, buffer: %s",
+				          buffer);
 			}
 		}
 
@@ -407,8 +465,7 @@ BREAK_LOOP:
 		if(m_metric.timestamp() &&
 		   (timestamp == 0 || timestamp == m_metric.timestamp()))
 		{
-			g_logger.log("statsite_proxy, Adding last sample",
-				     sinsp_logger::SEV_DEBUG);
+			LOG_DEBUG("Adding last sample");
 
 			std::string filter;
 			++std::get<1>(ret[m_metric.container_id()]);
@@ -435,24 +492,20 @@ BREAK_LOOP:
 			m_metric = statsd_metric();
 		}
 
-		g_logger.format(sinsp_logger::SEV_DEBUG,
-				"statsite_proxy, ret vector size is: %u",
-				metric_count);
+		LOG_DEBUG("Ret vector size is: %u", metric_count);
 
 		if(m_metric.timestamp() > 0)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-					"statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu",
-					m_metric.timestamp(),
-					ret.size() > 0 ? std::get<0>(ret.at("")).at(0).timestamp() : 0);
-			g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric name is: %s",
-					m_metric.name().c_str());
+			LOG_DEBUG("m_metric timestamp is: %lu, vector timestamp: %lu",
+			          m_metric.timestamp(),
+			          ret.size() > 0 ? std::get<0>(ret.at("")).at(0).timestamp() : 0);
+			LOG_DEBUG("m_metric name is: %s",
+			          m_metric.name().c_str());
 		}
 	}
 	else
 	{
-		g_logger.log("statsite_proxy: cannot read metrics (file is null)",
-			     sinsp_logger::SEV_ERROR);
+		LOG_ERROR("Cannot read metrics (file is null)");
 	}
 	return ret;
 }
@@ -487,12 +540,10 @@ void statsite_proxy::send_metric(const char *buf, uint64_t len)
 	if (m_check_format && !validate_buffer(buf, len))
 	{
 		std::string string_buf(buf, len);
-		g_logger.format("statsite_proxy: invalid buffer format. Dropping. %s", string_buf.c_str(), sinsp_logger::SEV_ERROR);
+		LOG_ERROR("Invalid buffer format. Dropping. %s", string_buf.c_str());
 		return;
 	}
 
-	//string buf_p(buf, len);
-	//g_logger.format(sinsp_logger::SEV_INFO, "Sending statsd metric: %s", buf_p.c_str());
 	if(buf && len && m_input_fd)
 	{
 		fwrite_unlocked(buf, sizeof(char), len, m_input_fd);
@@ -504,7 +555,7 @@ void statsite_proxy::send_metric(const char *buf, uint64_t len)
 	}
 	else
 	{
-		g_logger.log("statsite_proxy: cannot send metrics (file or buf is null)", sinsp_logger::SEV_ERROR);
+		LOG_ERROR("Cannot send metrics (file or buf is null)");
 	}
 }
 
@@ -526,8 +577,6 @@ void statsite_proxy::send_container_metric(const string &container_id, const cha
 		metric_data.insert(endline_pos+1, container_prefix);
 		endline_pos = metric_data.find('\n', endline_pos+1);
 	}
-	//g_logger.format(sinsp_logger::SEV_DEBUG, "Generated metric for container: %s", metric_data.c_str());
-	// send_metric does not need final \0
 	send_metric(metric_data.data(), metric_data.size());
 }
 
@@ -548,7 +597,7 @@ int statsite_forwarder::run()
 #ifndef CYGWING_AGENT
 	ErrorHandler::set(this);
 
-	g_logger.format(sinsp_logger::SEV_INFO, "Info Starting with pid=%d\n", getpid());
+	LOG_INFO("Info Starting with pid=%d\n", getpid());
 
 	Poco::Thread reactor_thread;
 	reactor_thread.start(m_reactor);
@@ -567,13 +616,13 @@ int statsite_forwarder::run()
 			continue;
 		}
 
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Received msg=%s", msg.c_str());
+		LOG_DEBUG("Received msg=%s", msg.c_str());
 
 		Json::Reader json_reader;
 		Json::Value root;
 		if(!json_reader.parse(msg, root))
 		{
-			g_logger.format(sinsp_logger::SEV_ERROR, "Error parsing msg=%s", msg.c_str());
+			LOG_ERROR("Error parsing msg=%s", msg.c_str());
 			continue;
 		}
 
@@ -588,12 +637,20 @@ int statsite_forwarder::run()
 				try
 				{
 					nsenter enter(container_pid, "net");
-					g_logger.format(sinsp_logger::SEV_DEBUG, "Starting statsd server on container=%s pid=%d", containerid.c_str(), container_pid);
-					m_sockets[containerid] = make_unique<statsd_server>(containerid, m_proxy, m_reactor, m_port);
+					LOG_DEBUG("Starting statsd server on container=%s pid=%lld",
+					          containerid.c_str(),
+					          container_pid);
+					m_sockets[containerid] =
+						make_unique<statsd_server>(containerid,
+						                           m_proxy,
+						                           m_reactor,
+						                           m_port);
 				}
 				catch (const sinsp_exception& ex)
 				{
-					g_logger.format(sinsp_logger::SEV_WARNING, "Warning, cannot init statsd server on container=%s pid=%d", containerid.c_str(), container_pid);
+					LOG_WARNING("Cannot init statsd server on container=%s pid=%lld",
+					            containerid.c_str(),
+					            container_pid);
 				}
 			}
 		}
@@ -603,9 +660,11 @@ int statsite_forwarder::run()
 		{
 			if(containerids.find(it->first) == containerids.end())
 			{
-				// this container does not exists anymore, turning off statsd
-				// server so we can release resources
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Stopping statsd server on container=%s", it->first.c_str());
+				// This container does not exists anymore,
+				// turning off statsd server so we can release
+				// resources
+				LOG_DEBUG("Stopping statsd server on container=%s",
+				          it->first.c_str());
 				it = m_sockets.erase(it);
 			}
 			else
@@ -640,7 +699,7 @@ void statsite_forwarder::exception()
 
 void statsite_forwarder::terminate(int code, const string& reason)
 {
-	g_logger.format(sinsp_logger::SEV_ERROR, "Fatal error occurred: %s, terminating", reason.c_str());
+	LOG_ERROR("Fatal error occurred: %s, terminating", reason.c_str());
 	m_reactor.stop();
 	m_terminate = true;
 	m_exitcode = code;
@@ -651,7 +710,8 @@ statsd_server::statsd_server(const string &containerid, statsite_proxy &proxy, P
 	m_statsite(proxy),
 	m_reactor(reactor),
 	m_read_obs(*this, &statsd_server::on_read),
-	m_error_obs(*this, &statsd_server::on_error)
+	m_error_obs(*this, &statsd_server::on_error),
+	m_read_buffer(INITIAL_READ_SIZE)
 {
 	try
 	{
@@ -659,24 +719,25 @@ statsd_server::statsd_server(const string &containerid, statsite_proxy &proxy, P
 	}
 	catch (const Poco::Net::NetException& ex)
 	{
-		auto reason = ex.displayText();
-		g_logger.format(sinsp_logger::SEV_WARNING, "statsite_forwarder, Warning, Unable to bind ipv4 on containerid=%s reason=%s", containerid.c_str(), reason.c_str());
+		LOG_WARNING("Unable to bind ipv4 on containerid=%s reason=%s",
+		            containerid.c_str(),
+		            ex.displayText().c_str());
 	}
+
 	try
 	{
 		m_ipv6_socket = make_socket(Poco::Net::SocketAddress("::1", port));
 	}
 	catch (const Poco::Net::NetException& ex)
 	{
-		auto reason = ex.displayText();
-		g_logger.format(sinsp_logger::SEV_WARNING, "statsite_forwarder, Warning, Unable to bind ipv6 on containerid=%s reason=%s", containerid.c_str(), reason.c_str());
+		LOG_WARNING("Unable to bind ipv6 on containerid=%s reason=%s",
+		            containerid.c_str(),
+		            ex.displayText().c_str());
 	}
-	m_read_buffer = new char[MAX_READ_SIZE];
 }
 
 statsd_server::~statsd_server()
 {
-	delete[] m_read_buffer;
 	if(m_ipv4_socket)
 	{
 		m_reactor.removeEventHandler(*m_ipv4_socket, m_read_obs);
@@ -689,30 +750,57 @@ statsd_server::~statsd_server()
 	}
 }
 
-unique_ptr<Poco::Net::DatagramSocket> statsd_server::make_socket(const Poco::Net::SocketAddress& address)
+unique_ptr<Poco::Net::DatagramSocket> statsd_server::make_socket(
+		const Poco::Net::SocketAddress& address)
 {
-	unique_ptr<Poco::Net::DatagramSocket> socket = make_unique<Poco::Net::DatagramSocket>(address);
+	std::unique_ptr<Poco::Net::DatagramSocket> socket =
+		make_unique<Poco::Net::DatagramSocket>(address);
+
 	socket->setBlocking(false);
+
 	m_reactor.addEventHandler(*socket, m_read_obs);
 	m_reactor.addEventHandler(*socket, m_error_obs);
+
 	return socket;
 }
 
-void statsd_server::on_read(Poco::Net::ReadableNotification* notification)
+void statsd_server::on_read(Poco::Net::ReadableNotification* const notification)
 {
 	// Either ipv4 or ipv6 datagram socket will come here
 	Poco::Net::DatagramSocket datagram_socket(notification->socket());
-	auto len = datagram_socket.receiveBytes(m_read_buffer, MAX_READ_SIZE);
-	if( len > 0)
+	const std::vector<char>::size_type bytes_available = datagram_socket.available();
+
+	LOG_DEBUG("bytes_available: %zu", bytes_available);
+	LOG_DEBUG("ReceiveBufferSize: %d", datagram_socket.getReceiveBufferSize());
+
+	if(bytes_available > m_read_buffer.capacity())
 	{
-		m_statsite.send_container_metric(m_containerid, m_read_buffer, len);
-		m_statsite.send_metric(m_read_buffer, len);
+		LOG_INFO("Resizing data buffer for %s from %zu to %zu",
+		         m_containerid.c_str(),
+		         m_read_buffer.capacity(),
+		         bytes_available);
+
+		// Allocate a little more than bytes_available to give a little
+		// extra room so that we can hopefully avoid reallocations if
+		// a future packet is just a little bigger.
+		m_read_buffer.reserve(bytes_available * 1.2);
+	}
+
+	const int bytes_received = datagram_socket.receiveBytes(m_read_buffer.data(),
+	                                                        m_read_buffer.capacity());
+
+	if(bytes_received > 0)
+	{
+		m_statsite.send_container_metric(m_containerid,
+		                                 m_read_buffer.data(),
+		                                 bytes_received);
+		m_statsite.send_metric(m_read_buffer.data(), bytes_received);
 	}
 }
 
 void statsd_server::on_error(Poco::Net::ErrorNotification* notification)
 {
-	g_logger.format(sinsp_logger::SEV_ERROR, "statsite_forwarder, Unexpected error on statsd server");
+	LOG_ERROR("Unexpected error on statsd server");
 }
 
 #endif // _WIN32
