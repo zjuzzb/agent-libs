@@ -11,12 +11,10 @@ sinsp_configuration::sinsp_configuration():
 {
 	set_connection_timeout_in_sec(DEFAULT_CONNECTION_TIMEOUT_SEC);
 	m_connection_pruning_interval_ns = 30 * ONE_SECOND_IN_NS;
-	set_emit_metrics_to_file(false);
 	m_machine_id = "<NA>";
 	m_customer_id = "<NA>";
 	m_analyzer_sample_len_ns = ANALYZER_DEFAULT_SAMPLE_LENGTH_NS;
 	m_analyzer_original_sample_len_ns = ANALYZER_DEFAULT_SAMPLE_LENGTH_NS;
-	m_metrics_directory = string(".") + DIR_PATH_SEPARATOR;
 	m_max_connection_table_size = MAX_CONNECTION_TABLE_SIZE;
 	m_max_connections_in_proto = DEFAULT_MAX_CONNECTIONS_IN_PROTO;
 	m_aggregate_connections_in_proto = AGGREGATE_CONNECTIONS_IN_PROTO;
@@ -68,30 +66,6 @@ uint64_t sinsp_configuration::get_connection_pruning_interval_ns() const
 void sinsp_configuration::set_connection_pruning_interval_ns(uint64_t interval_ns)
 {
 	m_connection_pruning_interval_ns = interval_ns;
-}
-
-bool sinsp_configuration::get_emit_metrics_to_file() const
-{
-	return m_emit_metrics_to_file;
-}
-
-void sinsp_configuration::set_emit_metrics_to_file(bool emit)
-{
-	m_emit_metrics_to_file = emit;
-}
-
-const string& sinsp_configuration::get_metrics_directory() const
-{
-	return m_metrics_directory;
-}
-
-void sinsp_configuration::set_metrics_directory(string metrics_directory)
-{
-	m_metrics_directory = metrics_directory;
-	if(m_metrics_directory[m_metrics_directory.size() - 1] != DIR_PATH_SEPARATOR)
-	{
-		m_metrics_directory += DIR_PATH_SEPARATOR;
-	}
 }
 
 const string& sinsp_configuration::get_machine_id() const

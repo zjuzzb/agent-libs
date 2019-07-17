@@ -34,11 +34,11 @@ public:
 	 * @param[in] stats_source     The source from which to fetch stats.
 	 * @param[in] internal_metrics The internal_metrics that might be
 	 *                             serialized.
-	 * @param[in] configuraiton    The current sinsp_configuration.
+	 * @param[in] root_dir The root dir base of the application 
 	 */
 	protobuf_metric_serializer(capture_stats_source* stats_source,
 	                           const internal_metrics::sptr_t& internal_metrics,
-				   const sinsp_configuration* configuration);
+				   const std::string& root_dir);
 
 	~protobuf_metric_serializer() override;
 

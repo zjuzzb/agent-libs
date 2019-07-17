@@ -18,7 +18,7 @@ namespace libsanalyzer
 metric_serializer* metric_serializer_factory::build(
 		capture_stats_source* const stats_source,
 		const internal_metrics::sptr_t& internal_metrics,
-		const sinsp_configuration* configuration)
+		const std::string& root_dir)
 {
 	// Note: This currently returns only a pointer to a concrete
 	//       protobuf_metric_serializer.  The intention here is to
@@ -27,7 +27,7 @@ metric_serializer* metric_serializer_factory::build(
 	//       realization of this interface.
 	return new protobuf_metric_serializer(stats_source,
 	                                      internal_metrics,
-	                                      configuration);
+	                                      root_dir);
 
 }
 

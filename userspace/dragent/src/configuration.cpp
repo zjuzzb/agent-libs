@@ -540,11 +540,6 @@ void dragent_configuration::init()
 	// init the configurations
 	configuration_manager::instance().init_config(*m_config);
 
-	if(!m_config->get_scalar<string>("metricsfile", "location", "").empty())
-	{
-		m_metrics_dir = Path(c_root_dir.get()).append(m_config->get_scalar<string>("metricsfile", "location", "")).toString();
-	}
-
 	m_log_dir = Path(c_root_dir.get()).append(m_config->get_scalar<string>("log", "location", "logs")).toString();
 
 	m_log_rotate = m_config->get_scalar("log", "rotate", 10);
@@ -1195,7 +1190,6 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("machine id: " + m_machine_id_prefix + m_machine_id);
 	LOG_INFO("rootdir: " + c_root_dir.get());
 	LOG_INFO("conffile: " + m_conf_file);
-	LOG_INFO("metricsfile.location: " + m_metrics_dir);
 	LOG_INFO("log.location: " + m_log_dir);
 	LOG_INFO("customerid: " + m_customer_id);
 	LOG_INFO("collector: " + m_server_addr);

@@ -31,7 +31,7 @@ namespace metric_serializer_factory
  */
 metric_serializer* build(capture_stats_source* stats_source,
                          const internal_metrics::sptr_t& internal_metrics,
-                         const sinsp_configuration* configuration);
+                         const std::string& root_dir);
 
 } // namespace metric_serializer_factory
 

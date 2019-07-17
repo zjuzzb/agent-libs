@@ -827,6 +827,10 @@ public:
 	 */
 	void coalesce_unemitted_stats(const vector<std::string>& emitted_containers);
 
+	/**
+	 * sets the metrics dir for serializing to a file
+	 */
+	void set_metrics_dir(const std::string& metrics_dir);
 
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);

@@ -65,8 +65,8 @@ namespace libsanalyzer
 protobuf_metric_serializer::protobuf_metric_serializer(
 		capture_stats_source* const stats_source,
 		const internal_metrics::sptr_t& internal_metrics,
-		const sinsp_configuration* const configuration):
-	metric_serializer(internal_metrics, configuration),
+		const std::string& root_dir) :
+	metric_serializer(internal_metrics, root_dir),
 	m_data(),
 	m_data_mutex(),
 	m_data_available_condition(),

@@ -7,11 +7,11 @@
  */
 #include "metric_serializer.h"
 #include "analyzer_callback_interface.h"
-#include "config.h"
 #include "internal_metrics.h"
 #include "metric_serializer_factory.h"
 #include <memory>
 #include <gtest.h>
+#include "scoped_config.h"
 
 class capture_stats_source;
 
@@ -50,41 +50,31 @@ public:
  */
 TEST(metric_serializer_test, initial_state)
 {
-	const bool EMIT_METRICS_TO_FILE = false;
-	const std::string METRICS_DIRECTORY = "./";
-
-	sinsp_configuration config;
-
-	config.set_emit_metrics_to_file(EMIT_METRICS_TO_FILE);
-
 	capture_stats_source* stats_source = nullptr;
 	internal_metrics::sptr_t int_metrics(new internal_metrics());
 
 	std::unique_ptr<metric_serializer> s(
 		metric_serializer_factory::build(stats_source,
 		                                 int_metrics,
-						 &config));
+						 "."));
 
 	ASSERT_NE(s.get(), nullptr);
 	ASSERT_EQ(int_metrics.get(), s->get_internal_metrics().get());
 	ASSERT_EQ(nullptr, s->get_sample_callback());
-	ASSERT_EQ(EMIT_METRICS_TO_FILE, s->get_emit_metrics_to_file());
-	ASSERT_EQ(METRICS_DIRECTORY, s->get_metrics_directory());
+
+	// non-null metrics dir implies emit to file
+	ASSERT_EQ(metric_serializer::c_metrics_dir.get() != "", s->get_emit_metrics_to_file());
 }
 
 
 /**
- * Ensure that update_configuration() updates the changes the values
- * of the config values of interest.
+ * ensure we deal with configuring the metrics directory correctly
  */
-TEST(metric_serializer_test, update_configuration)
-{
-	bool emit_metrics_to_file = false;
-	std::string metrics_directory = "./";
-
-	sinsp_configuration config;
-
-	config.set_emit_metrics_to_file(emit_metrics_to_file);
+TEST(metric_serializer_test, configuration)
+{	
+	const std::string root_dir = "/foo";
+	const std::string metrics_directory = "/tmp";
+	test_helpers::scoped_config<std::string> config("metricsfile.location", metrics_directory);
 
 	capture_stats_source* stats_source = nullptr;
 	internal_metrics::sptr_t int_metrics(new internal_metrics());
@@ -92,20 +82,21 @@ TEST(metric_serializer_test, update_configuration)
 	std::unique_ptr<metric_serializer> s(
 		metric_serializer_factory::build(stats_source,
 		                                 int_metrics,
-						 &config));
-
-	emit_metrics_to_file = true;
-	metrics_directory = "/tmp/";
-
-	sinsp_configuration new_config;
-	new_config.set_emit_metrics_to_file(emit_metrics_to_file);
-	new_config.set_metrics_directory(metrics_directory);
-
-	s->update_configuration(&new_config);
+						 root_dir));
 
 	// Make sure that update_configuration() updates the values
-	ASSERT_EQ(emit_metrics_to_file, s->get_emit_metrics_to_file());
-	ASSERT_EQ(metrics_directory, s->get_metrics_directory());
+	ASSERT_TRUE(s->get_emit_metrics_to_file());
+	ASSERT_EQ("/foo/tmp/", s->get_metrics_directory());
+
+	// Check that the set_metrics_directory API works
+	s->set_metrics_directory("/bar/");
+	ASSERT_TRUE(s->get_emit_metrics_to_file());
+	ASSERT_EQ("/bar/", s->get_metrics_directory());
+
+	// Check that we can disable it
+	s->set_metrics_directory("");
+	ASSERT_FALSE(s->get_emit_metrics_to_file());
+	ASSERT_EQ("", s->get_metrics_directory());
 }
 
 /**
@@ -116,12 +107,11 @@ TEST(metric_serializer_test, set_internal_metrics)
 	capture_stats_source* stats_source = nullptr;
 	internal_metrics::sptr_t int_metrics(new internal_metrics());
 	internal_metrics::sptr_t int_metrics2(new internal_metrics());
-	sinsp_configuration config;
 
 	std::unique_ptr<metric_serializer> s(
 		metric_serializer_factory::build(stats_source,
 		                                 int_metrics,
-		                                 &config));
+		                                 ""));
 
 
 	s->set_internal_metrics(int_metrics2);
@@ -136,12 +126,11 @@ TEST(metric_serializer_test, set_sample_callback)
 	capture_stats_source* stats_source = nullptr;
 	internal_metrics::sptr_t int_metrics(new internal_metrics());
 	null_analyzer_callback_interface cb;
-	sinsp_configuration config;
 
 	std::unique_ptr<metric_serializer> s(
 		metric_serializer_factory::build(stats_source,
 		                                 int_metrics,
-		                                 &config));
+		                                 ""));
 
 
 	s->set_sample_callback(&cb);

@@ -157,21 +157,6 @@ void sinsp_worker::init()
 		m_inspector->set_min_log_severity(static_cast<sinsp_logger::severity>(m_configuration->m_min_file_priority));
 	}
 
-	if(!m_configuration->m_metrics_dir.empty())
-	{
-		//
-		// Create the metrics directory if it doesn't exist
-		//
-		File md(m_configuration->m_metrics_dir);
-		md.createDirectories();
-		m_analyzer->get_configuration()->set_emit_metrics_to_file(true);
-		m_analyzer->get_configuration()->set_metrics_directory(m_configuration->m_metrics_dir);
-	}
-	else
-	{
-		g_log->information("metricsfile.location not specified, metrics won't be saved to disk.");
-	}
-
 	//
 	// The machine id is the MAC address of the first physical adapter
 	//

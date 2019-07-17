@@ -130,7 +130,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_serializer(metric_serializer_factory::build(
 				m_inspector,
 				m_internal_metrics,
-				m_configuration)),
+				root_dir)),
 	m_async_serialize_enabled(true)
 {
 	m_initialized = false;
@@ -7217,6 +7217,11 @@ uint64_t sinsp_analyzer::get_prev_flush_time_ns() const
 bool sinsp_analyzer::has_statsite_proxy() const
 {
 	return m_statsite_proxy != nullptr;
+}
+
+void sinsp_analyzer::set_metrics_dir(const std::string& metrics_dir)
+{
+	m_serializer->set_metrics_directory(metrics_dir);
 }
 
 uint64_t self_cputime_analyzer::read_cputime()

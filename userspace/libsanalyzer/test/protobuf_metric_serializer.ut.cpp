@@ -9,7 +9,6 @@
 #include "protobuf_metric_serializer.h"
 #include "analyzer_utils.h"
 #include "capture_stats_source.h"
-#include "config.h"
 #include "internal_metrics.h"
 #include "scoped_temp_directory.h"
 
@@ -215,7 +214,6 @@ draiosproto::metrics* const dummy_analyzer_callback::UNSET_METRICS = nullptr;
 
 } // end namespace
 
-
 /**
  * Ensure that a newly-constructed protobuf_metric_serializer is in the
  * expected initial state.
@@ -224,12 +222,11 @@ TEST(protobuf_metric_serializer_test, initial_state)
 {
 	precanned_capture_stats_source stats_source;
 	internal_metrics::sptr_t int_metrics(new internal_metrics());
-	sinsp_configuration config;
 
 	std::unique_ptr<protobuf_metric_serializer> s(
 			new protobuf_metric_serializer(&stats_source,
 			                               int_metrics,
-			                               &config));
+			                               ""));
 
 	ASSERT_EQ(0, s->get_prev_sample_evtnum());
 	ASSERT_EQ(0, s->get_prev_sample_time());
@@ -238,12 +235,11 @@ TEST(protobuf_metric_serializer_test, initial_state)
 }
 
 /**
- * Ensure that serialize() corrected serializes the data.
+ * Ensure that serialize() correctly serializes the data.
  */
 TEST(protobuf_metric_serializer_test, serialize)
 {
 	test_helpers::scoped_temp_directory temp_dir;
-	sinsp_configuration configuration;
 	precanned_capture_stats_source stats_source;
 	internal_metrics::sptr_t int_metrics(new internal_metrics());
 	dummy_analyzer_callback analyzer_callback;
@@ -258,16 +254,12 @@ TEST(protobuf_metric_serializer_test, serialize)
 	const bool EXTRA_INTERNAL_METRICS = true;
 	draiosproto::metrics metrics;
 
-	// Update the configuration so that the serializer will emit the
-	// metrics to file.  Use the configuration object mainly to get
-	// the metrics directory with the required trailing path delimiter.
-	configuration.set_emit_metrics_to_file(true);
-	configuration.set_metrics_directory(temp_dir.get_directory());
+	metric_serializer::c_metrics_dir.set(temp_dir.get_directory());
 
 	std::unique_ptr<protobuf_metric_serializer> s(
 			new protobuf_metric_serializer(&stats_source,
 			                               int_metrics,
-			                               &configuration));
+			                               ""));
 
 	s->set_sample_callback(&analyzer_callback);
 	s->serialize(make_unique<metric_serializer::data>(
@@ -344,7 +336,7 @@ TEST(protobuf_metric_serializer_test, serialize)
 	//
 	const std::string dam_file =
 		protobuf_metric_serializer::generate_dam_filename(
-				configuration.get_metrics_directory(),
+				s->get_metrics_directory(),
 				TIMESTAMP);
 
 	//
@@ -375,7 +367,6 @@ TEST(protobuf_metric_serializer_test, serialize)
 TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 {
 	test_helpers::scoped_temp_directory temp_dir;
-	sinsp_configuration configuration;
 	precanned_capture_stats_source stats_source;
 	internal_metrics::sptr_t int_metrics(new internal_metrics());
 	const uint32_t sleep_time_ms = 3;
@@ -394,13 +385,12 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	// Update the configuration so that the serializer will emit the
 	// metrics to file.  Use the configuration object mainly to get
 	// the metrics directory with the required trailing path delimiter.
-	configuration.set_emit_metrics_to_file(true);
-	configuration.set_metrics_directory(temp_dir.get_directory());
+	metric_serializer::c_metrics_dir.set(temp_dir.get_directory());
 
 	std::unique_ptr<protobuf_metric_serializer> s(
 			new protobuf_metric_serializer(&stats_source,
 			                               int_metrics,
-			                               &configuration));
+			                               ""));
 
 	s->set_sample_callback(&analyzer_callback);
 	s->serialize(make_unique<metric_serializer::data>(

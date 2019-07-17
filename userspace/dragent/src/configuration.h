@@ -150,7 +150,6 @@ public:
 	unique_ptr<yaml_configuration> m_config;
 
 	string m_defaults_conf_file;
-	string m_metrics_dir;
 	string m_log_dir;
 	uint16_t m_log_rotate;
 	// Log size in megabytes

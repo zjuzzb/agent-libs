@@ -566,8 +566,7 @@ int main(int argc, char **argv)
 				}
 				break;
 			case 'm':
-				analyzer->get_configuration()->set_emit_metrics_to_file(true);
-				analyzer->get_configuration()->set_metrics_directory(optarg);
+				analyzer->set_metrics_dir(optarg);
 				break;
 			case 'M':
 				analyzer->get_configuration()->set_machine_id(optarg);

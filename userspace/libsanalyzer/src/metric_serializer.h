@@ -12,11 +12,11 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include "type_config.h"
 
 namespace draiosproto { class metrics; }
 
 class analyzer_callback_interface;
-class sinsp_configuration;
 
 namespace libsanalyzer
 {
@@ -67,11 +67,10 @@ public:
 	 * Initialize this metric_serializer.
 	 *
 	 * @param[in] internal_metrics The internal metrics to serialize.
-	 * @param[in] configuration    The current state of the
-	 *                             sinsp configuration.
+	 * @param[in] root_dir    The root dir base of the application
 	 */
 	metric_serializer(const internal_metrics::sptr_t& internal_metrics,
-			  const sinsp_configuration* configuration);
+			  const std::string& root_dir);
 
 	virtual ~metric_serializer() = default;
 
@@ -120,20 +119,26 @@ public:
 	 * will write metrics to file.  This method's return value is
 	 * meaningful only when get_emit_metrics_to_file() returns true.
 	 */
-	const std::string& get_metrics_directory() const;
+	std::string get_metrics_directory() const;
 
 	/**
-	 * Updates the configuration state of this metric_serializer.
+	 * set the absolute path to the metrics directory.
 	 *
-	 * @param[in] configuration A pointer to the new configuration.
+	 * Setting this to "" terminates logging to file.
+	 * The directory will be created if it does not exist.
 	 */
-	void update_configuration(const sinsp_configuration* configuration);
+	void set_metrics_directory(const std::string&);
 
 private:
 	mutable std::mutex m_mutex;
 	internal_metrics::sptr_t m_internal_metrics;
-	const sinsp_configuration* m_configuration;
 	analyzer_callback_interface* m_sample_callback;
+	std::string m_root_dir;
+	std::string m_metrics_dir;
+
+public: // configs
+	static type_config<std::string> c_metrics_dir;
+
 };
 
 } // end namespace libsanalyzer

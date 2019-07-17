@@ -46,10 +46,6 @@ public:
 	void set_connection_timeout_in_sec(uint64_t timeout_sec);
 	uint64_t get_connection_pruning_interval_ns() const;
 	void set_connection_pruning_interval_ns(uint64_t interval_ns);
-	bool get_emit_metrics_to_file() const;
-	void set_emit_metrics_to_file(bool emit);
-	const string& get_metrics_directory() const;
-	void set_metrics_directory(string metrics_directory);
 	const string& get_machine_id() const;
 	void set_machine_id(string machine_id);
 	const string& get_customer_id() const;
@@ -252,12 +248,10 @@ private:
 
 	uint64_t m_connection_pruning_interval_ns;
 	uint64_t m_connection_timeout_ns;
-	bool m_emit_metrics_to_file;
 	string m_machine_id;
 	string m_customer_id;
 	uint64_t m_analyzer_sample_len_ns;
 	uint64_t m_analyzer_original_sample_len_ns;
-	string m_metrics_directory;
 	uint32_t m_max_connection_table_size;
 	uint32_t m_max_connections_in_proto;
 	bool m_aggregate_connections_in_proto;
