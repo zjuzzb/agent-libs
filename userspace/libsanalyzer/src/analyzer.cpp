@@ -2944,11 +2944,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 
 	if(reduced_ipv4_connections.size() > m_top_connections_in_sample)
 	{
-		size_t num_conns = 0;
-		size_t num_incomplete_conns = 0;
-		size_t reported_conns = 0;
-		size_t reported_incomplete_conns = 0;
-
 		//
 		// Prepare the sortable list
 		//
@@ -2966,8 +2961,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 				sortable_incomplete_conns.push_back(sortable_conns_entry);
 			}
 		}
-		num_conns = sortable_conns.size();
-		num_incomplete_conns = sortable_incomplete_conns.size();
+		size_t num_conns = sortable_conns.size();
+		size_t num_incomplete_conns = sortable_incomplete_conns.size();
 
 		auto conns_to_report = std::min(m_top_connections_in_sample, (uint32_t)sortable_conns.size());
 		if(conns_to_report > 0)
@@ -3002,7 +2997,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 					*(sortable_conns[j].second);
 			}
 		}
-		reported_conns = reduced_and_filtered_ipv4_connections.size();
+		size_t reported_conns = reduced_and_filtered_ipv4_connections.size();
 
 		conns_to_report = std::min(m_top_connections_in_sample, (uint32_t)sortable_incomplete_conns.size());
 		if(conns_to_report > 0)
@@ -3022,6 +3017,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 					*(sortable_incomplete_conns[j].second);
 			}
 		}
+		size_t reported_incomplete_conns = reduced_and_filtered_ipv4_connections.size() - reported_conns;
 
 		uint64_t now = sinsp_utils::get_current_time_ns() / ONE_SECOND_IN_NS;
 		if(m_connection_truncate_report_interval > 0 || m_connection_truncate_log_interval > 0) {
@@ -3094,7 +3090,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 				}
 			}
 		}
-		reported_incomplete_conns = reduced_and_filtered_ipv4_connections.size() - reported_conns;
 		connection_to_emit = std::move(reduced_and_filtered_ipv4_connections);
 
 	}
