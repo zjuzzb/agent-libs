@@ -34,6 +34,10 @@ ADD http://download.draios.com/apt-draios-priority /etc/apt/preferences.d/
 
 {% endif %}
 
+{% if p.sysdig_repository == "dev" %}
+RUN printenv
+{% endif %}
+
 RUN apt-get update -o Acquire::Check-Valid-Until=false \
  && apt-get dist-upgrade -y \
  && apt-get install -y --no-install-recommends \
