@@ -51,6 +51,7 @@ list(APPEND libsanalyzer_uts
 	scoped_sinsp_logger_capture.ut.cpp
 	statsd_emitter.ut.cpp
 	statsd_emitter_factory.ut.cpp
+	statsd_metric.ut.cpp
 	statsite_config.ut.cpp
 	statsite_statsd_emitter.ut.cpp
 )

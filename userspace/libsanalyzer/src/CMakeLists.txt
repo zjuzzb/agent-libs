@@ -224,6 +224,9 @@ set(SANALYZER_SOURCES
 	statsite_config.cpp
 	statsite_proxy.cpp
 	statsite_statsd_emitter.cpp
+	statsd_metric.cpp
+	statsd_server.cpp
+	statsite_forwarder.cpp
 	null_statsd_emitter.cpp
 	statsd_emitter_factory.cpp
 	statsd_emitter.cpp

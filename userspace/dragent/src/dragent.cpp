@@ -26,7 +26,9 @@
 #include "process_helpers.h"
 #include "rest_request_handler_factory.h"
 #include "rest_server.h"
+#include "statsd_server.h"
 #include "statsite_config.h"
+#include "statsite_forwarder.h"
 #include "type_config.h"
 #include "utils.h"
 #ifndef CYGWING_AGENT

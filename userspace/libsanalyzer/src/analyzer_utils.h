@@ -3,6 +3,7 @@
 #include <memory>
 #include <chrono>
 #include <iostream>
+#include <unordered_map>
 #include "utils.h"
 
 class sinsp_evttables;
