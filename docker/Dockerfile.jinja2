@@ -69,7 +69,9 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false \
  && apt-get update \
  && apt-get install --no-install-recommends docker-ce-cli \
 {% endif %}
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* \
+ && printenv \
+ && env
 
 {% if p.build_kernel_module %}
 
