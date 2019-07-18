@@ -48,10 +48,10 @@ metric_serializer::data::data(const uint64_t evt_num,
 metric_serializer::metric_serializer(const internal_metrics::sptr_t& internal_metrics,
                                      const std::string& root_dir):
 	m_mutex(),
-	m_internal_metrics(internal_metrics),
 	m_sample_callback(nullptr),
 	m_root_dir(root_dir),
-	m_metrics_dir("")
+	m_metrics_dir(""),
+	m_internal_metrics(internal_metrics)
 { 
 	if (!c_metrics_dir.get().empty())
 	{
@@ -97,20 +97,6 @@ std::string metric_serializer::get_metrics_directory() const
 	std::unique_lock<std::mutex> lock(m_mutex);
 
 	return m_metrics_dir;
-}
-
-void metric_serializer::set_internal_metrics(const internal_metrics::sptr_t im)
-{
-	std::unique_lock<std::mutex> lock(m_mutex);
-
-	m_internal_metrics = im;
-}
-
-const internal_metrics::sptr_t& metric_serializer::get_internal_metrics() const
-{
-	std::unique_lock<std::mutex> lock(m_mutex);
-
-	return m_internal_metrics;
 }
 
 void metric_serializer::set_sample_callback(analyzer_callback_interface* const cb)

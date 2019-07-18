@@ -491,7 +491,8 @@ int main(int argc, char **argv)
 
 	{
 		g_inspector = new sinsp();
-		sinsp_analyzer* analyzer = new sinsp_analyzer(g_inspector, "/opt/draios");
+		internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+		sinsp_analyzer* analyzer = new sinsp_analyzer(g_inspector, "/opt/draios", int_metrics);
 		g_inspector->m_analyzer = analyzer;
 
 		//

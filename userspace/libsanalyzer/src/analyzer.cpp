@@ -116,7 +116,9 @@ void init_host_level_percentiles(T &metrics, const std::set<double> &pctls)
 
 } // end namespace
 
-sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
+sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
+			       std::string root_dir,
+			       const internal_metrics::sptr_t& internal_metrics):
 	m_configuration(new sinsp_configuration()),
 	m_inspector(inspector),
 #ifndef CYGWING_AGENT
@@ -126,13 +128,15 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_last_total_evts_by_cpu(sinsp::num_possible_cpus(), 0),
 	m_total_evts_switcher("driver overhead"),
 	m_very_high_cpu_switcher("agent cpu usage with sr=128"),
+	m_internal_metrics(internal_metrics),
 	m_statsd_emitter(new null_statsd_emitter()),
 	m_serializer(metric_serializer_factory::build(
 				m_inspector,
-				m_internal_metrics,
+				internal_metrics,
 				root_dir)),
 	m_async_serialize_enabled(true)
 {
+	ASSERT(m_internal_metrics);
 	m_initialized = false;
 	m_n_flushes = 0;
 	m_prev_flushes_duration_ns = 0;
@@ -2201,7 +2205,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_REGULAR;
 	}
 
-	if(m_internal_metrics)
+	if (m_internal_metrics)
 	{
 		// update internal metrics
 		m_internal_metrics->set_process(process_count);
@@ -3465,10 +3469,9 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 			commands->end(),
 			executed_command_cmp);
 
-		// The metrics are based on the number of command
-		// lines identified, not returned.
-		if(m_internal_metrics)
-		{
+		if (m_internal_metrics) {
+			// The metrics are based on the number of command
+			// lines identified, not returned.
 			m_internal_metrics->set_n_command_lines(commands->size());
 
 			// command line categories stored separately as
@@ -5361,8 +5364,7 @@ void sinsp_analyzer::reset_mesos(const std::string& errmsg)
 	m_mesos_last_failure_ns = m_prev_flush_time_ns;
 	m_mesos.reset();
 	m_configuration->set_mesos_state_uri(m_configuration->get_mesos_state_original_uri());
-	if(m_internal_metrics)
-	{
+	if (m_internal_metrics) {
 		m_internal_metrics->set_mesos_detected(false);
 	}
 }
@@ -5447,7 +5449,7 @@ void sinsp_analyzer::emit_mesos()
 		{
 			detect_mesos();
 		}
-		if(m_internal_metrics && m_mesos && m_mesos->is_alive())
+		if(m_mesos && m_mesos->is_alive() && m_internal_metrics)
 		{
 			m_internal_metrics->set_mesos_detected(true);
 		}
@@ -6911,12 +6913,6 @@ bool sinsp_analyzer::driver_stopped_dropping()
 void sinsp_analyzer::set_driver_stopped_dropping(const bool driver_stopped_dropping)
 {
 	m_driver_stopped_dropping = driver_stopped_dropping;
-}
-
-void sinsp_analyzer::set_internal_metrics(internal_metrics::sptr_t im)
-{
-	m_internal_metrics = im;
-	m_serializer->set_internal_metrics(im);
 }
 
 #ifndef _WIN32

@@ -242,7 +242,9 @@ public:
 
 	// only use default root_dir if you don't need coclient
 	// (it needs root_dir properly set to locate the cointerface server socket)
-	sinsp_analyzer(sinsp* inspector, std::string root_dir);
+	sinsp_analyzer(sinsp* inspector,
+		       std::string root_dir,
+		       const internal_metrics::sptr_t& internal_metrics);
 	~sinsp_analyzer();
 
 	void set_sample_callback(analyzer_callback_interface* cb);
@@ -487,7 +489,6 @@ public:
 	}
 
 	void set_emit_tracers(bool enabled);
-	void set_internal_metrics(internal_metrics::sptr_t im);
 
 	void set_percentiles();
 	void emit_percentiles_config();
@@ -1160,6 +1161,8 @@ VISIBILITY_PRIVATE
 	vector<statsd_metric> m_chisel_metrics;
 	bool m_run_chisels;
 
+	internal_metrics::sptr_t m_internal_metrics;
+
 	libsanalyzer::statsd_emitter::ptr m_statsd_emitter;
 
 #ifndef _WIN32
@@ -1263,8 +1266,6 @@ VISIBILITY_PRIVATE
 	//
 	// So in short, it's a pretty flaky chain of things that have to happen in order, but so it is.
 	user_event_queue::ptr_t m_user_event_queue;
-
-	internal_metrics::sptr_t m_internal_metrics;
 
 	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
 

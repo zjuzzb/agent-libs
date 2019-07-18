@@ -42,7 +42,7 @@ public:
 		  sinsp_analyzer *analyzer,
 		  capture_job_handler *capture_job_handler,
 		  dragent_configuration *configuration,
-		  internal_metrics::sptr_t &metrics);
+		  const internal_metrics::sptr_t& metrics);
 
 	bool load_policies_file(const char *filename, std::string &errstr);
 

@@ -17,8 +17,9 @@ TEST(analyzer_test, end_to_end_basic)
 	inspector.build_event().tid(55).ts(ts).count(5).commit();
 	inspector.build_event().tid(55).ts(ts).count(1000).commit();
 	inspector.build_event().tid(75).count(1).commit();
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 
-	sinsp_analyzer analyzer(&inspector, "/" /*root dir*/);
+	sinsp_analyzer analyzer(&inspector, "/" /*root dir*/, int_metrics);
 	run_sinsp_with_analyzer(inspector, analyzer);
 
 	// TODO bryan NOW WHAT?!?!?
@@ -87,7 +88,8 @@ public:
 TEST(analyzer_test, coalesce_containers_null)
 {
 	sinsp_mock inspector;
-	sinsp_analyzer analyzer(&inspector, "/");
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(&inspector, "/", int_metrics);
 	vector<std::string> emitted_containers;
 	container_stuff unemitted_container_1(inspector, analyzer, "unemitted_container_1");
 	container_stuff unemitted_container_2(inspector, analyzer, "unemitted_container_2");
@@ -103,7 +105,8 @@ TEST(analyzer_test, coalesce_containers_null)
 TEST(analyzer_test, coalesce_containers_test)
 {
 	sinsp_mock inspector;
-	sinsp_analyzer analyzer(&inspector, "/");
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(&inspector, "/", int_metrics);
 
 	vector<std::string> emitted_containers;
 

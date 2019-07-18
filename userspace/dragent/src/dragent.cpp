@@ -174,7 +174,7 @@ dragent_app::dragent_app():
 #endif
 	m_queue(MAX_SAMPLE_STORE_SIZE),
 	m_enable_autodrop(true),
-	m_internal_metrics(new internal_metrics()),
+	m_internal_metrics(std::make_shared<internal_metrics>()),
 	m_sinsp_worker(&m_configuration, m_internal_metrics, &m_queue, &m_enable_autodrop, &m_capture_job_handler),
 	m_capture_job_handler(&m_configuration, &m_queue, &m_enable_autodrop),
 	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker, &m_capture_job_handler),

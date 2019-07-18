@@ -221,7 +221,7 @@ draiosproto::metrics* const dummy_analyzer_callback::UNSET_METRICS = nullptr;
 TEST(protobuf_metric_serializer_test, initial_state)
 {
 	precanned_capture_stats_source stats_source;
-	internal_metrics::sptr_t int_metrics(new internal_metrics());
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 
 	std::unique_ptr<protobuf_metric_serializer> s(
 			new protobuf_metric_serializer(&stats_source,
@@ -241,7 +241,7 @@ TEST(protobuf_metric_serializer_test, serialize)
 {
 	test_helpers::scoped_temp_directory temp_dir;
 	precanned_capture_stats_source stats_source;
-	internal_metrics::sptr_t int_metrics(new internal_metrics());
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 	dummy_analyzer_callback analyzer_callback;
 
 	const uint64_t TIMESTAMP = static_cast<uint64_t>(0x0000000000654321);
@@ -368,7 +368,7 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 {
 	test_helpers::scoped_temp_directory temp_dir;
 	precanned_capture_stats_source stats_source;
-	internal_metrics::sptr_t int_metrics(new internal_metrics());
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 	const uint32_t sleep_time_ms = 3;
 	dummy_analyzer_callback analyzer_callback(sleep_time_ms);
 

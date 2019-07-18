@@ -63,7 +63,7 @@ void security_mgr::init(sinsp *inspector,
 			sinsp_analyzer *analyzer,
 			capture_job_handler *capture_job_handler,
 			dragent_configuration *configuration,
-			internal_metrics::sptr_t &metrics)
+			const internal_metrics::sptr_t& metrics)
 
 {
 	m_inspector = inspector;

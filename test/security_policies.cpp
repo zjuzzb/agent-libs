@@ -216,10 +216,9 @@ protected:
 		}
 
 		m_inspector = new sinsp();
-		m_analyzer = new sinsp_analyzer(m_inspector, "/opt/draios");
 		m_internal_metrics = make_shared<internal_metrics>();
+		m_analyzer = new sinsp_analyzer(m_inspector, "/opt/draios", m_internal_metrics);
 		m_inspector->m_analyzer = m_analyzer;
-		m_analyzer->set_internal_metrics(m_internal_metrics);
 		m_analyzer->get_configuration()->set_security_enabled(m_configuration.m_security_enabled);
 		m_analyzer->set_containers_labels_max_len(m_configuration.m_containers_labels_max_len);
 

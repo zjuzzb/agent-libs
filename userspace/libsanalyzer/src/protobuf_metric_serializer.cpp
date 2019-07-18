@@ -79,6 +79,8 @@ protobuf_metric_serializer::protobuf_metric_serializer(
 	m_prev_sample_num_drop_events(0),
 	m_thread(&protobuf_metric_serializer::serialization_thread, this)
 {
+	ASSERT(internal_metrics);
+
 	m_protobuf_file.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 }
 
@@ -255,29 +257,28 @@ void protobuf_metric_serializer::invoke_callback(const scap_stats& st,
                                                  const uint64_t nevts,
                                                  const uint64_t num_drop_events)
 {
-	if(get_internal_metrics().get() != nullptr)
-	{
-		get_internal_metrics()->set_n_evts(st.n_evts);
-		get_internal_metrics()->set_n_drops(st.n_drops);
-		get_internal_metrics()->set_n_drops_buffer(st.n_drops_buffer);
-		get_internal_metrics()->set_n_preemptions(st.n_preemptions);
+	if (m_internal_metrics) {
+		m_internal_metrics->set_n_evts(st.n_evts);
+		m_internal_metrics->set_n_drops(st.n_drops);
+		m_internal_metrics->set_n_drops_buffer(st.n_drops_buffer);
+		m_internal_metrics->set_n_preemptions(st.n_preemptions);
 
-		get_internal_metrics()->set_fp(
-				static_cast<int64_t>(round(
-						m_data->m_prev_flush_cpu_pct * 100)));
-		get_internal_metrics()->set_sr(m_data->m_sampling_ratio);
-		get_internal_metrics()->set_fl(m_data->m_prev_flushes_duration_ns / 1000000);
+		m_internal_metrics->set_fp(
+					   static_cast<int64_t>(round(
+								      m_data->m_prev_flush_cpu_pct * 100)));
+		m_internal_metrics->set_sr(m_data->m_sampling_ratio);
+		m_internal_metrics->set_fl(m_data->m_prev_flushes_duration_ns / 1000000);
 
 		bool sent;
 		if(m_data->m_extra_internal_metrics)
 		{
-			sent = get_internal_metrics()->send_all(
-					m_data->m_metrics->mutable_protos()->mutable_statsd());
+			sent = m_internal_metrics->send_all(
+							    m_data->m_metrics->mutable_protos()->mutable_statsd());
 		}
 		else
 		{
-			sent = get_internal_metrics()->send_some(
-					m_data->m_metrics->mutable_protos()->mutable_statsd());
+			sent = m_internal_metrics->send_some(
+							     m_data->m_metrics->mutable_protos()->mutable_statsd());
 		}
 
 		if(sent)
@@ -294,6 +295,7 @@ void protobuf_metric_serializer::invoke_callback(const scap_stats& st,
 				     sinsp_logger::SEV_WARNING);
 		}
 	}
+
 	metric_store::store(m_data->m_metrics);
 	m_data->m_metrics_sent.exchange(true);
 	get_sample_callback()->sinsp_analyzer_data_ready(m_data->m_ts,

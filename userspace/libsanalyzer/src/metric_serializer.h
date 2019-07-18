@@ -89,16 +89,6 @@ public:
 	virtual void drain() const = 0;
 
 	/**
-	 * Update the internal metrics to the given value.
-	 *
-	 * @param[in] im The new internal metrics.
-	 */
-	void set_internal_metrics(internal_metrics::sptr_t im);
-
-	/** Returns a smart pointer to the current internal metrics. */
-	const internal_metrics::sptr_t& get_internal_metrics() const;
-
-	/**
 	 * Update the sample callback handler to th given cb.
 	 *
 	 * @param[in] cb The new callback handler.
@@ -131,10 +121,12 @@ public:
 
 private:
 	mutable std::mutex m_mutex;
-	internal_metrics::sptr_t m_internal_metrics;
 	analyzer_callback_interface* m_sample_callback;
 	std::string m_root_dir;
 	std::string m_metrics_dir;
+
+protected:
+	internal_metrics::sptr_t m_internal_metrics;
 
 public: // configs
 	static type_config<std::string> c_metrics_dir;

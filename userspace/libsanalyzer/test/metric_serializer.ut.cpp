@@ -51,7 +51,7 @@ public:
 TEST(metric_serializer_test, initial_state)
 {
 	capture_stats_source* stats_source = nullptr;
-	internal_metrics::sptr_t int_metrics(new internal_metrics());
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 
 	std::unique_ptr<metric_serializer> s(
 		metric_serializer_factory::build(stats_source,
@@ -59,7 +59,6 @@ TEST(metric_serializer_test, initial_state)
 						 "."));
 
 	ASSERT_NE(s.get(), nullptr);
-	ASSERT_EQ(int_metrics.get(), s->get_internal_metrics().get());
 	ASSERT_EQ(nullptr, s->get_sample_callback());
 
 	// non-null metrics dir implies emit to file
@@ -77,7 +76,7 @@ TEST(metric_serializer_test, configuration)
 	test_helpers::scoped_config<std::string> config("metricsfile.location", metrics_directory);
 
 	capture_stats_source* stats_source = nullptr;
-	internal_metrics::sptr_t int_metrics(new internal_metrics());
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 
 	std::unique_ptr<metric_serializer> s(
 		metric_serializer_factory::build(stats_source,
@@ -100,31 +99,12 @@ TEST(metric_serializer_test, configuration)
 }
 
 /**
- * Ensure that set_internal_metrics updates the internal_metrics.
- */
-TEST(metric_serializer_test, set_internal_metrics)
-{
-	capture_stats_source* stats_source = nullptr;
-	internal_metrics::sptr_t int_metrics(new internal_metrics());
-	internal_metrics::sptr_t int_metrics2(new internal_metrics());
-
-	std::unique_ptr<metric_serializer> s(
-		metric_serializer_factory::build(stats_source,
-		                                 int_metrics,
-		                                 ""));
-
-
-	s->set_internal_metrics(int_metrics2);
-	ASSERT_EQ(int_metrics2.get(), s->get_internal_metrics().get());
-}
-
-/**
  * Ensure that set_sample_callback updates the sample callback.
  */
 TEST(metric_serializer_test, set_sample_callback)
 {
 	capture_stats_source* stats_source = nullptr;
-	internal_metrics::sptr_t int_metrics(new internal_metrics());
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 	null_analyzer_callback_interface cb;
 
 	std::unique_ptr<metric_serializer> s(

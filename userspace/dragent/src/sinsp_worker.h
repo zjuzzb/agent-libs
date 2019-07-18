@@ -32,7 +32,7 @@ class sinsp_worker : public Runnable
 {
 public:
 	sinsp_worker(dragent_configuration* configuration,
-		     internal_metrics::sptr_t im,
+		     const internal_metrics::sptr_t& im,
 		     protocol_queue* queue,
 		     atomic<bool> *enable_autodrop,
 		     capture_job_handler *handler);

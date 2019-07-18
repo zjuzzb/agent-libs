@@ -25,7 +25,7 @@ COMMON_LOGGER();
 const string sinsp_worker::m_name = "sinsp_worker";
 
 sinsp_worker::sinsp_worker(dragent_configuration* configuration,
-			   internal_metrics::sptr_t im,
+			   const internal_metrics::sptr_t& im,
 			   protocol_queue* queue,
 			   atomic<bool> *enable_autodrop,
 			   capture_job_handler *capture_job_handler):
@@ -81,7 +81,9 @@ void sinsp_worker::init()
 	m_initialized = true;
 
 	m_inspector = sinsp_factory::build();
-	m_analyzer = new sinsp_analyzer(m_inspector.get(), m_configuration->c_root_dir.get());
+	m_analyzer = new sinsp_analyzer(m_inspector.get(),
+					m_configuration->c_root_dir.get(),
+					m_internal_metrics);
 
 	m_analyzer->set_procfs_scan_thread(m_configuration->m_procfs_scan_thread);
 	m_analyzer->get_configuration()->set_procfs_scan_delay_ms(m_configuration->m_procfs_scan_delay_ms);
@@ -101,7 +103,6 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_mounts_limit_size(m_configuration->m_mounts_limit_size);
 	m_analyzer->get_configuration()->set_excess_metrics_log(m_configuration->m_excess_metric_log);
 	m_analyzer->get_configuration()->set_metrics_cache(m_configuration->m_metrics_cache);
-	m_analyzer->set_internal_metrics(m_internal_metrics);
 #ifndef CYGWING_AGENT
 	m_analyzer->init_k8s_limits();
 #endif

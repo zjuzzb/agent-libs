@@ -20,6 +20,8 @@ metric_serializer* metric_serializer_factory::build(
 		const internal_metrics::sptr_t& internal_metrics,
 		const std::string& root_dir)
 {
+	ASSERT(internal_metrics);
+
 	// Note: This currently returns only a pointer to a concrete
 	//       protobuf_metric_serializer.  The intention here is to
 	//       decouple client code from the concrete class, so that we can
