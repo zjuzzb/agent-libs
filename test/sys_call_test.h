@@ -17,8 +17,6 @@
 
 #define UNIT_TEST_BINARY
 
-using namespace std;
-
 using Poco::SharedPtr;
 using Poco::Net::X509Certificate;
 using Poco::Net::PrivateKeyPassphraseHandler;
@@ -28,8 +26,8 @@ using Poco::Net::InvalidCertificateHandler;
 class proc;
 class args;
 
-typedef list<Poco::ProcessHandle> process_handles_t;
-typedef list<proc> process_list_t;
+typedef std::list<Poco::ProcessHandle> process_handles_t;
+typedef std::list<proc> process_list_t;
 bool ends_with(std::string const &s, std::string const &ending);
 void run_processes(process_list_t & processes);
 void wait_for_message(Poco::Pipe & pipe, const char *msg);
@@ -37,8 +35,8 @@ void wait_for_process_start(Poco::Pipe & pipe);
 void wait_for_all(process_handles_t & handles);
 uint32_t parse_ipv4_addr(const char *dotted_notation);
 uint32_t get_server_address();
-tuple<Poco::ProcessHandle,Poco::Pipe*> start_process(proc* process);
-tuple<Poco::ProcessHandle,Poco::Pipe*,Poco::Pipe*> start_process_sync(proc* process);
+std::tuple<Poco::ProcessHandle,Poco::Pipe*> start_process(proc* process);
+std::tuple<Poco::ProcessHandle,Poco::Pipe*,Poco::Pipe*> start_process_sync(proc* process);
 
 class proc_started_filter
 {
@@ -48,7 +46,7 @@ public:
         if(!m_child_ready && evt->get_type() == PPME_SYSCALL_WRITE_X)
         {
             auto buffer = evt->get_param_value_str("data", false);
-            if(buffer.find("STARTED") != string::npos)
+            if(buffer.find("STARTED") != std::string::npos)
             {
                 m_child_ready = true;
             }
@@ -109,7 +107,7 @@ using sys_call_test32 = sys_call_test;
 class args
 {
 public:
-    args& operator<< (const string& arg) {
+    args& operator<< (const std::string& arg) {
         m_data.push_back(arg);
         return *this;
     }
@@ -124,13 +122,13 @@ private:
 class proc
 {
 public:
-    proc(const string & command, const Poco::Process::Args & arguments)
+    proc(const std::string & command, const Poco::Process::Args & arguments)
     {
         m_command = command;
         m_arguments = arguments;
     }
     
-    const string & get_command()
+    const std::string & get_command()
     {
         return m_command;
     }
@@ -141,7 +139,7 @@ public:
     }
     
 private:
-    string m_command;
+    std::string m_command;
     Poco::Process::Args m_arguments;
 };
 

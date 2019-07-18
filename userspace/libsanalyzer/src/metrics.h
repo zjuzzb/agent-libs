@@ -321,7 +321,7 @@ inline bool sinsp_transaction_counters::has_percentiles() const
 class sinsp_error_counters
 {
 public:
-//	unordered_map<int32_t, sinsp_counter_cnt> m_table;
+//	std::unordered_map<int32_t, sinsp_counter_cnt> m_table;
 	uint32_t m_count; // Syscall errors count
     uint32_t m_count_file;	// Number of file errors
     uint32_t m_count_file_open;	// Number of file open errors

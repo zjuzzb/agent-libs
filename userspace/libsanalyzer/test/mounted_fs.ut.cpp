@@ -15,7 +15,7 @@ TEST_F(mounted_fs_test, get_mounted_fs_list_etc_mtab)
 					 {"*|ignore|*", false}, {"*|rootfs|*", false}, {"*|none|*", false}, {"*|*|*", true}});
 
 	mounted_fs_reader reader(false, filters, 15);
-	vector<mounted_fs> fs_list = reader.get_mounted_fs_list();
+	std::vector<mounted_fs> fs_list = reader.get_mounted_fs_list();
 	EXPECT_EQ(reader.get_limits()->get_filters().size(), filters.size());
 	EXPECT_GE(fs_list.size(), 1u);
 }
@@ -37,7 +37,7 @@ TEST_F(mounted_fs_test, get_mounted_fs_list) {
 	EXPECT_EQ(strlen(mtab_contents), write(fd, mtab_contents, strlen(mtab_contents)));
 
 	mounted_fs_reader reader(false, filters, 15);
-	vector<mounted_fs> fs_list = reader.get_mounted_fs_list(mtab);
+	std::vector<mounted_fs> fs_list = reader.get_mounted_fs_list(mtab);
 
 	auto num_fs = fs_list.size();
 	EXPECT_EQ(2, num_fs);
@@ -84,7 +84,7 @@ TEST_F(mounted_fs_test, get_mounted_fs_list_remote) {
 	EXPECT_EQ(strlen(mtab_contents), write(fd, mtab_contents, strlen(mtab_contents)));
 
 	mounted_fs_reader reader(true, filters, 15);
-	vector<mounted_fs> fs_list = reader.get_mounted_fs_list(mtab);
+	std::vector<mounted_fs> fs_list = reader.get_mounted_fs_list(mtab);
 
 	auto num_fs = fs_list.size();
 	EXPECT_EQ(3, num_fs);

@@ -137,21 +137,21 @@ TEST(statsite_proxy, parser)
 	ASSERT_TRUE(output_file != NULL);
 
 	// 300 chosen so to be bigger than anything in the above file.
-	statsite_proxy proxy(make_pair(input_fd, output_file), false);
+	statsite_proxy proxy(std::make_pair(input_fd, output_file), false);
 
 	auto ret = proxy.read_metrics();
 	EXPECT_EQ(2U, ret.size());
 	EXPECT_EQ(10U, std::get<0>(ret.at("")).size());
 	EXPECT_EQ(10U, std::get<0>(ret.at("3ce9120d8307")).size());
 
-	set<string> reference_set;
+	std::set<std::string> reference_set;
 	for(unsigned j = 1; j < 11; ++j)
 	{
-		reference_set.insert(string("totam.sunt.consequatur.numquam.aperiam") + to_string(j));
+		reference_set.insert(std::string("totam.sunt.consequatur.numquam.aperiam") + std::to_string(j));
 	}
 	for(const auto& item : ret)
 	{
-		set<string> found_set;
+		std::set<std::string> found_set;
 		for(const auto& m : std::get<0>(item.second))
 		{
 			found_set.insert(m.name());
@@ -173,21 +173,21 @@ TEST(statsite_proxy, parser_long)
 	ASSERT_TRUE(output_file != NULL);
 
 	// 300 chosen to be smaller than the longest string in the above file
-	statsite_proxy proxy(make_pair(input_fd, output_file), false);
+	statsite_proxy proxy(std::make_pair(input_fd, output_file), false);
 
 	auto ret = proxy.read_metrics();
 	ASSERT_EQ(1U, ret.size());
 	EXPECT_EQ(1U, std::get<0>(ret.at("")).size());
 
-	set<string> reference_set;
+	std::set<std::string> reference_set;
 
 	// must match the string in the above file. Chosen to be longer than the
 	// default max length above which we have to reallocate a larger buffer and
 	// log a comment
-	reference_set.insert(string("totam.sunt.consequatur.numquam.aperiamRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRREEEEEEEEEEEEEEEEEEEEEEEEEEEEEALLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYLLLLLLLLLLLLLLLLLLLLLLOOOOOOOOOOOOOOOOOOOOOOOONNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGG"));
+	reference_set.insert(std::string("totam.sunt.consequatur.numquam.aperiamRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRREEEEEEEEEEEEEEEEEEEEEEEEEEEEEALLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYLLLLLLLLLLLLLLLLLLLLLLOOOOOOOOOOOOOOOOOOOOOOOONNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGG"));
 	for(const auto& item : ret)
 	{
-		set<string> found_set;
+		std::set<std::string> found_set;
 		for(const auto& m : std::get<0>(item.second))
 		{
 			found_set.insert(m.name());
@@ -225,7 +225,7 @@ void do_statsite_proxy_validation(const std::string& stats,
 	ASSERT_TRUE(out != nullptr);
 
 	ASSERT_NO_THROW({
-		statsite_proxy proxy(make_pair(in, out), true);
+		statsite_proxy proxy(std::make_pair(in, out), true);
 
 		proxy.send_metric(stats.c_str(), stats.size());
 	});
@@ -520,7 +520,7 @@ TEST(statsite_proxy, filter)
 	auto output_file = fopen("resources/statsite_output.txt", "r");
 	auto input_fd = fopen("/dev/null", "w");
 	ASSERT_TRUE(output_file != NULL);
-	statsite_proxy proxy(make_pair(input_fd, output_file), false);
+	statsite_proxy proxy(std::make_pair(input_fd, output_file), false);
 
 	filter_vec_t f({{"totam.sunt.consequatur.numquam.aperiam5", true}, {"totam.*", false}});
 	metric_limits::sptr_t ml(new metric_limits(f));
@@ -535,7 +535,7 @@ TEST(statsite_proxy, filter)
 	output_file = fopen("resources/statsite_output.txt", "r");
 	input_fd = fopen("/dev/null", "w");
 	ASSERT_TRUE(output_file != NULL);
-	statsite_proxy proxy2(make_pair(input_fd, output_file), false);
+	statsite_proxy proxy2(std::make_pair(input_fd, output_file), false);
 
 	f = {{"*1?", true}, {"totam.sunt.consequatur.numquam.aperiam7", true}, {"*", false}};
 	ml.reset(new metric_limits(f));

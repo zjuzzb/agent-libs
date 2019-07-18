@@ -13,9 +13,9 @@ class sinsp_evttables;
 ///////////////////////////////////////////////////////////////////////////////
 namespace std
 {
-  template<typename S, typename T> struct hash<pair<S, T>>
+  template<typename S, typename T> struct hash<std::pair<S, T>>
   {
-    inline size_t operator()(const pair<S, T> & v) const
+    inline size_t operator()(const std::pair<S, T> & v) const
     {
       size_t seed = 0;
       ::hash_combine(seed, v.first);

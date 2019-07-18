@@ -302,7 +302,7 @@ public:
 	/// @param group the set of regexes we that define the groups
 	void update_group_set(const std::set<std::string>& group);
 private:
-	std::map<std::string, shared_ptr<sinsp_url_group>> m_matched_groups; // list of all URL groups which
+	std::map<std::string, std::shared_ptr<sinsp_url_group>> m_matched_groups; // list of all URL groups which
 								   // have been previously matched
 								   // with all URLs in the url list
 };
@@ -334,12 +334,12 @@ public:
 
 	/// adds a group to this URL. Since URL groups are currently static, this
 	/// is a permanent action
-	void add_group(const shared_ptr<sinsp_url_group>& group)
+	void add_group(const std::shared_ptr<sinsp_url_group>& group)
 	{
 		m_url_groups.insert(group);
 	}
 
-	std::unordered_set<shared_ptr<sinsp_url_group>>* get_group_list()
+	std::unordered_set<std::shared_ptr<sinsp_url_group>>* get_group_list()
 	{
 		return &m_url_groups;
 	}
@@ -347,7 +347,7 @@ public:
 private:
 	bool m_matched; // indicates whether this URL has already been matched against existing
 	// URL groups
-	std::unordered_set<shared_ptr<sinsp_url_group>> m_url_groups; // set of groups this URL matches
+	std::unordered_set<std::shared_ptr<sinsp_url_group>> m_url_groups; // set of groups this URL matches
 };
 
 class sinsp_query_details : public sinsp_request_details
@@ -582,7 +582,7 @@ private:
 		std::unordered_map<const G*, uint64_t> counts_per_group;
 		for (auto item = sortable_list->begin(); item != sortable_list->end(); ++item)
 		{
-			for (typename std::unordered_set<shared_ptr<G>>::iterator group = (*item)->second.get_group_list()->begin(); group != (*item)->second.get_group_list()->end(); ++group)
+			for (typename std::unordered_set<std::shared_ptr<G>>::iterator group = (*item)->second.get_group_list()->begin(); group != (*item)->second.get_group_list()->end(); ++group)
 			{
 				if (!excluder(&((*item)->second)) && counts_per_group[&**group] < limit)
 				{
@@ -753,7 +753,7 @@ public:
 private:
 	friend class sinsp_mongodb_marker;
 	void collections_to_protobuf(std::unordered_map<std::string, sinsp_query_details>& map,
-									const function<draiosproto::mongodb_collection_details*(void)> get_cd,
+									const std::function<draiosproto::mongodb_collection_details*(void)> get_cd,
 								 uint32_t sampling_ratio, uint32_t limit);
 	// MongoDB
 	std::unordered_map<uint32_t, sinsp_query_details> m_server_ops;

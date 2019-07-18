@@ -349,7 +349,7 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 				infrastructure_state::uid_t uid = make_pair("container", id.substr(0, 12));
 				m_infrastructure_state->get_scope_names(uid, &scope);
 
-				string k8s_cluster_name = m_infrastructure_state->get_k8s_cluster_name();
+				std::string k8s_cluster_name = m_infrastructure_state->get_k8s_cluster_name();
 				if (!k8s_cluster_name.empty())
 				{
 					scope.add("kubernetes.cluster.name", k8s_cluster_name);
@@ -525,7 +525,7 @@ void docker::handle_event(Json::Value&& root)
 
 std::string docker::get_socket_file()
 {
-	string sock_file = scap_get_host_root();
+	std::string sock_file = scap_get_host_root();
 	std::string::size_type len = sock_file.length();
 	if(len && sock_file[len - 1] == '/')
 	{

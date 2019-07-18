@@ -30,8 +30,6 @@
 #define SERVER_PORT_STR "3555"
 #define FALSE           0
 
-using namespace std;
-
 typedef enum iotype
 {
 	READWRITE,
@@ -45,13 +43,13 @@ class std_event
 public:
 	void set()
 	{
-		lock_guard<mutex> lock(m_mutex);
+		std::lock_guard<std::mutex> lock(m_mutex);
 		m_is_set = true;
 		m_cond.notify_one();
 	}
 	void wait()
 	{
-		unique_lock<mutex> lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		if(m_is_set)
 		{
 			return;
@@ -62,8 +60,8 @@ public:
 		}
 	}
 private:
-	mutex m_mutex;
-	condition_variable m_cond;
+	std::mutex m_mutex;
+	std::condition_variable m_cond;
 	bool m_is_set{false};
 };
 
@@ -136,7 +134,7 @@ public:
 #endif
 			return;
 		}
-		cout << "SERVER UP" << endl;
+		std::cout << "SERVER UP" << std::endl;
 		do
 		{
 			/* Set the size of the in-out parameter */
@@ -290,7 +288,7 @@ class tcp_client
 public:
 	tcp_client(uint32_t server_ip_address,
 			   iotype iot,
-			   const string& payload = "0123456789QWERTYUIOPASDFGHJKLZXCVBNM",
+			   const std::string& payload = "0123456789QWERTYUIOPASDFGHJKLZXCVBNM",
 			   bool on_thread = false,
 			   uint32_t ntransactions = 1,
 			   bool exit_no_close = false)
@@ -478,5 +476,5 @@ private:
 	bool m_on_thread;
 	uint32_t m_ntransactions;
 	bool m_exit_no_close;
-	string m_payload;
+	std::string m_payload;
 };

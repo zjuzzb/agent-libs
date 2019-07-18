@@ -34,7 +34,7 @@
 class SINSP_PUBLIC security_mgr
 {
 public:
-	security_mgr(const string& install_root);
+	security_mgr(const std::string& install_root);
 	virtual ~security_mgr();
 
 	void init(sinsp *inspector,
@@ -70,22 +70,22 @@ public:
 	// the pending events list or reporting it immediately,
 	// depending on send_now).
 	//
-	void send_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now);
+	void send_policy_event(uint64_t ts_ns, std::shared_ptr<draiosproto::policy_event> &event, bool send_now);
 
 	// Start a sysdig capture. Returns true on success, false (and
 	// fills in errstr) if the capture couldn't be started.
 	bool start_capture(uint64_t ts_ns,
-			   const string &policy,
-			   const string &token, const string &filter,
+			   const std::string &policy,
+			   const std::string &token, const std::string &filter,
 			   uint64_t before_event_ns, uint64_t after_event_ns,
 			   bool apply_scope,
 			   std::string &container_id,
 			   uint64_t pid,
 			   std::string &errstr);
 
-	void start_sending_capture(const string &token);
+	void start_sending_capture(const std::string &token);
 
-	void stop_capture(const string &token);
+	void stop_capture(const std::string &token);
 
 	void load_k8s_audit_server();
 	void start_k8s_audit_server_tasks();
@@ -209,7 +209,7 @@ private:
 			}
 
 			// Also do counts by policy name, sorted by count decreasing, capped at 10.
-			vector<string> top_policies;
+			std::vector<std::string> top_policies;
 			for(auto &pair : m_policy_evts_by_name)
 			{
 				top_policies.push_back(pair.first);
@@ -221,14 +221,14 @@ private:
 				partial_sort(top_policies.begin(),
 					     top_policies.begin() + len,
 					     top_policies.end(),
-					     [this](const string &a, const string &b) {
+					     [this](const std::string &a, const std::string &b) {
 						     return (m_policy_evts_by_name[a] > m_policy_evts_by_name[b]);
 					     });
 			}
 
 			for(uint32_t i=0; i < len; i++)
 			{
-				std::map<std::string,std::string> tags = {{string("name"), top_policies[i]}};
+				std::map<std::string,std::string> tags = {{std::string("name"), top_policies[i]}};
 				internal_metrics::write_metric(statsd_info,
 							       "security_policy_evts.by_name",
 							       tags,
@@ -377,7 +377,7 @@ private:
 				{
 					str += p.key() + " " +
 					       draiosproto::scope_operator_Name(p.op()) + " " +
-					       p.values(0) + string((p.op() == draiosproto::IN_SET || p.op() == draiosproto::NOT_IN_SET)?"...":"") +
+					       p.values(0) + std::string((p.op() == draiosproto::IN_SET || p.op() == draiosproto::NOT_IN_SET)?"...":"") +
 					       " and ";
 				}
 				str = str.substr(0, str.size() - 5);
@@ -387,7 +387,7 @@ private:
 				str = "Entire infrastructure";
 			}
 
-			return string(host_scope && container_scope?"h&c":(host_scope?"hosts":"containers")) + " matching \"" + str + "\"";
+			return std::string(host_scope && container_scope?"h&c":(host_scope?"hosts":"containers")) + " matching \"" + str + "\"";
 		}
 	};
 
@@ -515,9 +515,9 @@ private:
 
 	std::shared_ptr<coclient> m_coclient;
 
-	unique_ptr<run_on_interval> m_actions_poll_interval;
+	std::unique_ptr<run_on_interval> m_actions_poll_interval;
 
-	unique_ptr<run_on_interval> m_metrics_report_interval;
+	std::unique_ptr<run_on_interval> m_metrics_report_interval;
 
 	double m_policy_events_rate;
 	uint32_t m_policy_events_max_burst;

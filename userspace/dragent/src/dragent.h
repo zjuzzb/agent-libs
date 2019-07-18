@@ -127,22 +127,22 @@ private:
 	windows_helpers m_windows_helpers;
 	bool m_windows_service_parent;
 #endif
-	string m_pidfile;
+	std::string m_pidfile;
 #ifndef CYGWING_AGENT
 	bool m_unshare_ipcns;
 #endif
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
 	protocol_queue m_queue;
-	atomic<bool> m_enable_autodrop;
+	std::atomic<bool> m_enable_autodrop;
 
-	unique_ptr<errpipe_manager> m_jmx_pipes;
-	shared_ptr<pipe_manager> m_statsite_pipes;
-	unique_ptr<errpipe_manager> m_sdchecks_pipes;
-	unique_ptr<errpipe_manager> m_mounted_fs_reader_pipe;
-	unique_ptr<errpipe_manager> m_statsite_forwarder_pipe;
-	unique_ptr<pipe_manager> m_cointerface_pipes;
-	unique_ptr<pipe_manager> m_promex_pipes;
+	std::unique_ptr<errpipe_manager> m_jmx_pipes;
+	std::shared_ptr<pipe_manager> m_statsite_pipes;
+	std::unique_ptr<errpipe_manager> m_sdchecks_pipes;
+	std::unique_ptr<errpipe_manager> m_mounted_fs_reader_pipe;
+	std::unique_ptr<errpipe_manager> m_statsite_forwarder_pipe;
+	std::unique_ptr<pipe_manager> m_cointerface_pipes;
+	std::unique_ptr<pipe_manager> m_promex_pipes;
 
 	internal_metrics::sptr_t m_internal_metrics;
 	sinsp_worker m_sinsp_worker;
@@ -150,7 +150,7 @@ private:
 	connection_manager m_connection_manager;
 	log_reporter m_log_reporter;
 	subprocesses_logger m_subprocesses_logger;
-	typedef std::unordered_map<string, watchdog_state> ProcessStateMap;
+	typedef std::unordered_map<std::string, watchdog_state> ProcessStateMap;
 	ProcessStateMap m_subprocesses_state;
 	uint64_t m_last_dump_s;
 #ifndef CYGWING_AGENT

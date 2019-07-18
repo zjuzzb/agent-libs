@@ -18,10 +18,10 @@ bool process_cmd_line_filter::matches(const object_filter_args& arg,
 	}
 
 	// Should this match include exe and arguments?
-	if (arg.m_tinfo->m_exe.find(m_pattern) == string::npos &&
+	if (arg.m_tinfo->m_exe.find(m_pattern) == std::string::npos &&
 	    find_if(arg.m_tinfo->m_args.begin(),
 		    arg.m_tinfo->m_args.end(),
-		    [this](const string& candidate) {
+		    [this](const std::string& candidate) {
 			    return !fnmatch(m_pattern.c_str(),
 					    candidate.c_str(),
 					    FNM_EXTMATCH);
@@ -62,7 +62,7 @@ bool port_filter::matches(const object_filter_args& arg,
 }
 
 std::set<uint16_t> port_filter::filter_ports(const std::set<uint16_t>& sports,
-					     const vector<object_filter_config::port_filter_rule>& rules)
+					     const std::vector<object_filter_config::port_filter_rule>& rules)
 {
 	std::set<uint16_t> start_ports = sports;
 	std::set<uint16_t> filtered_ports;
@@ -74,7 +74,7 @@ std::set<uint16_t> port_filter::filter_ports(const std::set<uint16_t>& sports,
 			break;
 		}
 
-		set<uint16_t> matched_ports;
+		std::set<uint16_t> matched_ports;
 		for (const auto& port : start_ports)
 		{
 			if (portrule.m_use_set) {

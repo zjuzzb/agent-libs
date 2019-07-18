@@ -24,7 +24,7 @@ public:
 		      sinsp_threadinfo& tinfo,
 		      draiosproto::process& proc);
 private:
-	const unordered_map<int, java_process>& m_jmx_metrics;
+	const std::unordered_map<int, java_process>& m_jmx_metrics;
 	const uint32_t m_jmx_sampling;
 	uint32_t m_jmx_limit_remaining;
 	const uint32_t m_jmx_limit;

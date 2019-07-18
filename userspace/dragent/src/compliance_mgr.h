@@ -18,7 +18,7 @@
 class SINSP_PUBLIC compliance_mgr
 {
 public:
-	compliance_mgr(const string& run_root);
+	compliance_mgr(const std::string& run_root);
 	virtual ~compliance_mgr();
 
 	void init(sinsp_data_handler *sinsp_handler,

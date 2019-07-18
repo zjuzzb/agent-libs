@@ -23,7 +23,7 @@ protected:
 
 	bool has_congroup(const std::string cg_kind, const std::string cg_id) const
 	{
-		return m_infra_state->has(make_pair(cg_kind, cg_id));
+		return m_infra_state->has(std::make_pair(cg_kind, cg_id));
 	}
 
 	bool has_congroup(const uid_t& key) const
@@ -33,14 +33,14 @@ protected:
 	
 	bool has_congroup(const draiosproto::congroup_uid& key) const
 	{
-		uid_t cg = make_pair(key.kind(), key.id());
+		uid_t cg = std::make_pair(key.kind(), key.id());
 		return m_infra_state->has(cg);
 	}
 
 	cue_t add_congroup(const std::string& kind) {
 		cue_t cue;
 
-		std::string id = kind + to_string(++m_map_of_counts[kind]);
+		std::string id = kind + std::to_string(++m_map_of_counts[kind]);
 		// Add Entity
 		cue.set_type(draiosproto::ADDED);
 		cue.mutable_object()->mutable_uid()->set_kind(kind);
@@ -135,7 +135,7 @@ TEST_F(inf_state_test, EmptyStateTest)
 
 	// Test empty Infrastructure State
 	// returns false for any key test
-	uid_t cont = make_pair("container","123");
+	uid_t cont = std::make_pair("container","123");
 	ASSERT_FALSE(has_congroup(cont));
 	ASSERT_FALSE(has_congroup("k8s_pod","234"));
 
@@ -446,7 +446,7 @@ TEST_F(inf_state_test, ComprehensiveTest)
 	// and see if this returns lesser size
 	// than get_state
 	// This simulates delegated agents
-	std::vector<string> single_cont(m_containers.begin(), m_containers.begin()+1);
+	std::vector<std::string> single_cont(m_containers.begin(), m_containers.begin()+1);
 	m_infra_state->state_of(single_cont, &result, 0);
 	ASSERT_EQ(result.size(), 6);
 	result.Clear();

@@ -11,15 +11,15 @@ typedef struct wh_t wh_t;
 
 struct sinsp_proc_stat
 {
-	vector<double> m_user;
-	vector<double> m_nice;
-	vector<double> m_system;
-	vector<double> m_idle;
-	vector<double> m_iowait;
-	vector<double> m_irq;
-	vector<double> m_softirq;
-	vector<double> m_steal;
-	vector<double> m_loads;
+	std::vector<double> m_user;
+	std::vector<double> m_nice;
+	std::vector<double> m_system;
+	std::vector<double> m_idle;
+	std::vector<double> m_iowait;
+	std::vector<double> m_irq;
+	std::vector<double> m_softirq;
+	std::vector<double> m_steal;
+	std::vector<double> m_loads;
 	uint64_t m_btime = 0;
 	uint64_t m_uptime = 0;
 };
@@ -97,32 +97,32 @@ public:
 	// returns the stolen percentage of total cpu usage
 	uint64_t global_steal_pct();
 
-	vector<string> read_process_cmdline(uint64_t pid);
-	string read_process_name(uint64_t pid);
-	int64_t read_cgroup_used_memory(const string& container_memory_cgroup);
-	double read_cgroup_used_cpu(const string& container_cpuacct_cgroup, string& last_cpuacct_cgroup, int64_t *last_cpu_time);
-	pair<uint32_t, uint32_t> read_network_interfaces_stats();
-	pair<uint32_t, uint32_t> read_proc_network_stats(int64_t pid, uint64_t *old_last_in_bytes,
+	std::vector<std::string> read_process_cmdline(uint64_t pid);
+	std::string read_process_name(uint64_t pid);
+	int64_t read_cgroup_used_memory(const std::string& container_memory_cgroup);
+	double read_cgroup_used_cpu(const std::string& container_cpuacct_cgroup, std::string& last_cpuacct_cgroup, int64_t *last_cpu_time);
+	std::pair<uint32_t, uint32_t> read_network_interfaces_stats();
+	std::pair<uint32_t, uint32_t> read_proc_network_stats(int64_t pid, uint64_t *old_last_in_bytes,
 													 uint64_t *old_last_out_bytes);
 	sinsp_proc_file_stats read_proc_file_stats(int64_t pid, sinsp_proc_file_stats* old);
-	string read_proc_root(int64_t pid);
+	std::string read_proc_root(int64_t pid);
 
-	static int add_ports_from_proc_fs(string fname, const set<uint16_t> &oldports, set<uint16_t> &ports, const std::set<uint64_t> &inodes);
-	static int read_process_serverports(int64_t pid, const set<uint16_t> &oldports, set<uint16_t> &ports);
+	static int add_ports_from_proc_fs(std::string fname, const std::set<uint16_t> &oldports, std::set<uint16_t> &ports, const std::set<uint64_t> &inodes);
+	static int read_process_serverports(int64_t pid, const std::set<uint16_t> &oldports, std::set<uint16_t> &ports);
 private:
 #ifndef CYGWING_AGENT
 	void lookup_memory_cgroup_dir();
 	void lookup_cpuacct_cgroup_dir();
-	unique_ptr<string> lookup_cgroup_dir(const string& subsys);
-	void assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies);
+	std::unique_ptr<std::string> lookup_cgroup_dir(const std::string& subsys);
+	void assign_jiffies(std::vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies);
 	bool get_cpus_load(OUT sinsp_proc_stat *proc_stat, char *line, int cpu_num);
 	bool get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line);
 #endif
-	pair<uint32_t, uint32_t> read_net_dev(const string& path, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes, const vector<const char*>& bad_interface_names = {});
+	std::pair<uint32_t, uint32_t> read_net_dev(const std::string& path, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes, const std::vector<const char*>& bad_interface_names = {});
 
     // Current implementation for read_cgroup_used_memory()
-    int64_t read_cgroup_used_memory_vmrss(const string &container_memory_cgroup);
-    double read_cgroup_used_cpuacct_cpu_time(const string &container_memory_cgroup, string& last_cpuacct_cgroup, int64_t *last_cpu_time);
+    int64_t read_cgroup_used_memory_vmrss(const std::string &container_memory_cgroup);
+    double read_cgroup_used_cpuacct_cpu_time(const std::string &container_memory_cgroup, std::string& last_cpuacct_cgroup, int64_t *last_cpu_time);
 
 	uint32_t m_ncpus = 0;
 	int64_t m_physical_memory_kb = 0;
@@ -132,11 +132,11 @@ private:
 	uint64_t m_last_out_bytes;
 	// nullptr means that lookup have not yet take place
 	// "" means that it cannot find cgroup mount point
-	unique_ptr<string> m_memory_cgroup_dir;
-	unique_ptr<string> m_cpuacct_cgroup_dir;
+	std::unique_ptr<std::string> m_memory_cgroup_dir;
+	std::unique_ptr<std::string> m_cpuacct_cgroup_dir;
 
 	static const char* m_cpu_labels[];
-	vector<uint64_t> m_old_cpu[CPU_NUM_COUNTERS];
+	std::vector<uint64_t> m_old_cpu[CPU_NUM_COUNTERS];
 
 #ifdef CYGWING_AGENT
 	wh_t* m_whhandle;
@@ -192,7 +192,7 @@ inline void sinsp_procfs_parser::lookup_cpuacct_cgroup_dir()
 	m_cpuacct_cgroup_dir = lookup_cgroup_dir("cpuacct");
 }
 
-inline void sinsp_procfs_parser::assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies)
+inline void sinsp_procfs_parser::assign_jiffies(std::vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies)
 {
 	double val = (double)delta_jiffies * 100 / delta_tot_jiffies;
 	vec.push_back(std::min(val, 100.0));

@@ -15,9 +15,9 @@ public:
 	~pipe_manager();
 
 	// Get File descriptor to communicate with the child
-	pair<FILE*, FILE*> get_io_fds()
+	std::pair<FILE*, FILE*> get_io_fds()
 	{
-		return make_pair(m_input_fd, m_output_fd);
+		return std::make_pair(m_input_fd, m_output_fd);
 	}
 
 	FILE* get_err_fd()
@@ -89,7 +89,7 @@ private:
 class sdjagent_parser
 {
 public:
-	void operator()(const string&);
+	void operator()(const std::string&);
 private:
 	Json::Reader m_json_reader;
 };
@@ -97,7 +97,7 @@ private:
 class cointerface_parser
 {
 public:
-	void operator()(const string&);
+	void operator()(const std::string&);
 private:
 	Json::Reader m_json_reader;
 };
@@ -105,10 +105,10 @@ private:
 class sinsp_logger_parser
 {
 public:
-	sinsp_logger_parser(const string& procname, bool default_is_error=false);
-	void operator()(const string&);
+	sinsp_logger_parser(const std::string& procname, bool default_is_error=false);
+	void operator()(const std::string&);
 private:
-	string m_prefix;
+	std::string m_prefix;
 	bool m_default_is_error;
 };
 
@@ -116,19 +116,19 @@ private:
 class sinsp_encoded_parser
 {
 public:
-	sinsp_encoded_parser(const string& procname);
-	void operator()(const string&);
+	sinsp_encoded_parser(const std::string& procname);
+	void operator()(const std::string&);
 private:
-	string m_prefix;
+	std::string m_prefix;
 };
 
 class sdchecks_parser
 {
 public:
 	sdchecks_parser();
-	void operator()(const string&);
+	void operator()(const std::string&);
 private:
-	string m_last_pid_str;
+	std::string m_last_pid_str;
 	Poco::Message::Priority m_last_sev;
 };
 
@@ -138,9 +138,9 @@ public:
 	class log_state {
 	public:
 		log_state();
-		log_state(function<void(const string&)> parser, watchdog_state *state);
+		log_state(std::function<void(const std::string&)> parser, watchdog_state *state);
 		virtual ~log_state();
-		function<void(const string&)> m_parser_f;
+		std::function<void(const std::string&)> m_parser_f;
 		std::shared_ptr<std::string> m_curbuf;
 		watchdog_state *m_state;
 	};
@@ -149,7 +149,7 @@ public:
 
 	// `parser` is an rvalue reference because we expect a lambda
 	// or a custom object created on the fly
-	void add_logfd(FILE* fd, function<void(const string&)>&& parser, watchdog_state* state = nullptr);
+	void add_logfd(FILE* fd, std::function<void(const std::string&)>&& parser, watchdog_state* state = nullptr);
 
 	void do_run() override;
 
@@ -157,6 +157,6 @@ public:
 private:
 	dragent_configuration *m_configuration;
 	log_reporter* m_log_reporter;
-	map<FILE *, log_state> m_error_fds;
+	std::map<FILE *, log_state> m_error_fds;
 };
 

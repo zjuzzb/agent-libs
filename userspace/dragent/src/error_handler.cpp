@@ -76,23 +76,23 @@ void log_reporter::send_report(uint64_t ts_ns)
 
 	p.setFileName("draios.log");
 
-	ifstream fp(p.toString());
+	std::ifstream fp(p.toString());
 	if (!fp)
 	{
-		g_log->error(string("fopen: ") + strerror(errno));
+		g_log->error(std::string("fopen: ") + strerror(errno));
 		return;
 	}
 
-	if (!fp.seekg(0, ios_base::end))
+	if (!fp.seekg(0, std::ios_base::end))
 	{
-		g_log->error(string("fseek (1): ") + strerror(errno));
+		g_log->error(std::string("fseek (1): ") + strerror(errno));
 		return;
 	}
 
 	long offset = fp.tellg();
 	if(offset == -1)
 	{
-		g_log->error(string("ftell: ") + strerror(errno));
+		g_log->error(std::string("ftell: ") + strerror(errno));
 		return;
 	}
 
@@ -101,9 +101,9 @@ void log_reporter::send_report(uint64_t ts_ns)
 		offset = m_configuration->m_dirty_shutdown_report_log_size_b;
 	}
 
-	if (!fp.seekg(-offset, ios_base::end))
+	if (!fp.seekg(-offset, std::ios_base::end))
 	{
-		g_log->error(string("fseek (2): ") + strerror(errno));
+		g_log->error(std::string("fseek (2): ") + strerror(errno));
 		return;
 	}
 

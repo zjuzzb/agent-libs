@@ -44,13 +44,13 @@ mounted_fs_proxy::mounted_fs_proxy():
 mounted_fs_list mounted_fs_proxy::receive_mounted_fs_list()
 {
 #ifndef CYGWING_AGENT
-	unordered_map<string, vector<mounted_fs>> fs_map;
-	unordered_map<dev_t, string> device_map;
+	std::unordered_map<std::string, std::vector<mounted_fs>> fs_map;
+	std::unordered_map<dev_t, std::string> device_map;
 	auto last_msg = m_input.receive();
 	decltype(last_msg) msg;
 	while(!last_msg.empty())
 	{
-		msg = move(last_msg);
+		msg = std::move(last_msg);
 		last_msg = m_input.receive();
 	}
 	if(!msg.empty())
@@ -62,12 +62,12 @@ mounted_fs_list mounted_fs_proxy::receive_mounted_fs_list()
 			fs_map.clear();
 			for(const auto& c : response_proto.containers())
 			{
-				vector<mounted_fs> fslist;
+				std::vector<mounted_fs> fslist;
 				for( const auto& m : c.mounts())
 				{
 					fslist.emplace_back(m);
 				}
-				fs_map.emplace(c.container_id(), move(fslist));
+				fs_map.emplace(c.container_id(), std::move(fslist));
 			}
 			for(const auto& d : response_proto.devices())
 			{
@@ -82,7 +82,7 @@ mounted_fs_list mounted_fs_proxy::receive_mounted_fs_list()
 #endif
 }
 
-bool mounted_fs_proxy::send_container_list(const vector<sinsp_threadinfo*> &containers)
+bool mounted_fs_proxy::send_container_list(const std::vector<sinsp_threadinfo*> &containers)
 {
 #ifndef CYGWING_AGENT
 	sdc_internal::mounted_fs_request req;
@@ -118,7 +118,7 @@ bool mounted_fs_proxy::send_container_list(const vector<sinsp_threadinfo*> &cont
 }
 
 mounted_fs_reader::mounted_fs_reader(bool remotefs, const mount_points_filter_vec& filters, unsigned mounts_limit_size):
-	m_mount_points(make_shared<mount_points_limits>(filters, mounts_limit_size)),
+	m_mount_points(std::make_shared<mount_points_limits>(filters, mounts_limit_size)),
 	m_remotefs(remotefs)
 {
 }
@@ -176,7 +176,7 @@ int mounted_fs_reader::handle_mounted_fs_request(const char* root_dir, int home_
 				auto res = chroot(container_proto.root().c_str());
 				if(res != 0)
 				{
-					throw sinsp_exception(string("chroot on ") + container_proto.root() + " failed: " + strerror(errno));
+					throw sinsp_exception(std::string("chroot on ") + container_proto.root() + " failed: " + strerror(errno));
 				}
 			}
 			char filename[SCAP_MAX_PATH_SIZE];
@@ -335,7 +335,7 @@ int mounted_fs_reader::run()
 	};
 
 	char root_dir[PATH_MAX];
-	string root_dir_link = "/proc/" + to_string(getppid()) + "/root";
+	std::string root_dir_link = "/proc/" + std::to_string(getppid()) + "/root";
 	ssize_t root_dir_sz = readlink(root_dir_link.c_str(), root_dir, PATH_MAX - 1);
 	if (root_dir_sz <= 0)
 	{
@@ -391,9 +391,9 @@ int mounted_fs_reader::run()
 #endif
 }
 
-vector<mounted_fs> mounted_fs_reader::get_mounted_fs_list(const string& mtab)
+std::vector<mounted_fs> mounted_fs_reader::get_mounted_fs_list(const std::string& mtab)
 {
-	map<string, mounted_fs> mount_points;
+	std::map<std::string, mounted_fs> mount_points;
 
 #if !defined(_WIN32) && !defined(CYGWING_AGENT)
 	FILE* fp = setmntent(mtab.c_str(), "r");
@@ -442,7 +442,7 @@ vector<mounted_fs> mounted_fs_reader::get_mounted_fs_list(const string& mtab)
 		struct statvfs statfs;
 		if(statvfs(entry->mnt_dir, &statfs) < 0)
 		{
-			g_logger.log("unable to get details for " + string(entry->mnt_dir) + ": " + strerror(errno), sinsp_logger::SEV_DEBUG);
+			g_logger.log("unable to get details for " + std::string(entry->mnt_dir) + ": " + strerror(errno), sinsp_logger::SEV_DEBUG);
 			continue;
 		}
 
@@ -473,7 +473,7 @@ vector<mounted_fs> mounted_fs_reader::get_mounted_fs_list(const string& mtab)
 		fs.used_bytes = blocksize * (statfs.f_blocks - statfs.f_bfree);
 		fs.total_inodes = statfs.f_files;
 		fs.used_inodes = statfs.f_files - statfs.f_ffree;
-		mount_points[entry->mnt_dir] = move(fs);
+		mount_points[entry->mnt_dir] = std::move(fs);
 	}
 
 	endmntent(fp);
@@ -484,7 +484,7 @@ vector<mounted_fs> mounted_fs_reader::get_mounted_fs_list(const string& mtab)
 	wh_mountlist mtable = wh_wmi_get_mounts(m_whhandle);
 	if(mtable.m_result == 0)
 	{
-		throw sinsp_exception(string("error calling wh_wmi_get_mounts:") + wh_getlasterror(m_whhandle));
+		throw sinsp_exception(std::string("error calling wh_wmi_get_mounts:") + wh_getlasterror(m_whhandle));
 	}
 
 	m_mount_points->reset();
@@ -503,13 +503,13 @@ vector<mounted_fs> mounted_fs_reader::get_mounted_fs_list(const string& mtab)
 		fs.total_inodes = 0;
 		fs.used_inodes = 0;
 
-		mount_points[fs.mount_dir] = move(fs);
+		mount_points[fs.mount_dir] = std::move(fs);
 	}
 #endif // CYGWING_AGENT
 #endif // !defined(_WIN32) && !defined(CYGWING_AGENT)
-	vector<mounted_fs> ret;
+	std::vector<mounted_fs> ret;
 	for (auto& mp : mount_points)
-		ret.emplace_back(move(mp.second));
+		ret.emplace_back(std::move(mp.second));
 	return ret;
 }
 

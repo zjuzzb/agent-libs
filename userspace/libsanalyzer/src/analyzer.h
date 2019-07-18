@@ -154,16 +154,16 @@ public:
 
 	uint32_t m_flags;
 	uint64_t m_ts;
-	string m_exe;
+	std::string m_exe;
 	uint64_t m_shell_id; // this is equivalent to the shell ID in spy_users
 	uint32_t m_login_shell_distance; // This is equivalent to the indentation in spy_users
-	string m_cmdline;
+	std::string m_cmdline;
 	uint32_t m_count; // how many times this command has been repeated
-	string m_comm; // program executable name
+	std::string m_comm; // program executable name
 	uint64_t m_pid; // process pid
 	uint64_t m_ppid; // parent process pid
 	uint64_t m_uid; // user ID
-	string m_cwd; // process' current working directory
+	std::string m_cwd; // process' current working directory
 	uint32_t m_tty; // tty
 	draiosproto::command_category m_category;
 };
@@ -190,8 +190,8 @@ private:
 		m_index = (m_index + 1) % LAST_SAMPLES;
 	}
 
-	array<uint64_t, LAST_SAMPLES> m_flushtime;
-	array<uint64_t, LAST_SAMPLES> m_othertime;
+	std::array<uint64_t, LAST_SAMPLES> m_flushtime;
+	std::array<uint64_t, LAST_SAMPLES> m_othertime;
 	unsigned m_index;
 	uint64_t m_previouscputime;
 };
@@ -208,7 +208,7 @@ public:
 		//
 	}
 
-	bool match(string comm)
+	bool match(std::string comm)
 	{
 		for(auto it = m_comm_list.begin(); it != m_comm_list.end(); ++it)
 		{
@@ -221,9 +221,9 @@ public:
 		return false;
 	}
 
-	static void set_comm_list(const vector<string>& comms);
+	static void set_comm_list(const std::vector<std::string>& comms);
 private:
-	static vector<string> m_comm_list;
+	static std::vector<std::string> m_comm_list;
 };
 
 //
@@ -359,7 +359,7 @@ public:
 		m_jmx_sampling = sampling;
 	}
 
-	void set_statsd_iofds(const pair<FILE*, FILE*>& iofds, bool forwarder);
+	void set_statsd_iofds(const std::pair<FILE*, FILE*>& iofds, bool forwarder);
 #endif
 
 	void set_protocols_enabled(bool value)
@@ -395,14 +395,14 @@ public:
 	void set_statsd_capture_localhost(bool value)
 	{
 #ifndef _WIN32
-		m_statsd_capture_localhost.store(value, memory_order_relaxed);
+		m_statsd_capture_localhost.store(value, std::memory_order_relaxed);
 #endif
 	}
 
 #ifndef _WIN32
-	void set_app_checks(const vector<app_check>& checks)
+	void set_app_checks(const std::vector<app_check>& checks)
 	{
-		unordered_set<string> check_unique_names;
+		std::unordered_set<std::string> check_unique_names;
 		m_app_checks.clear();
 		for(const auto& c : checks)
 		{
@@ -446,7 +446,7 @@ public:
 		return m_inspector->get_thread(m_inspector->m_sysdig_pid);
 	}
 
-	inline sinsp_container_info* get_container(const string& container_id)
+	inline sinsp_container_info* get_container(const std::string& container_id)
 	{
 		return m_inspector->m_container_manager.get_container(container_id);
 	}
@@ -456,7 +456,7 @@ public:
 		m_containers_limit = std::min(value, CONTAINERS_HARD_LIMIT);
 	}
 
-	void set_container_patterns(const vector<string>& patterns)
+	void set_container_patterns(const std::vector<std::string>& patterns)
 	{
 		m_container_patterns = patterns;
 	}
@@ -587,7 +587,7 @@ public:
 	void set_top_processes_in_sample(uint32_t val) { m_top_processes_in_sample = val; }
 	void set_top_processes_per_container(uint32_t val) { m_top_processes_per_container = val; }
 	void set_report_source_port(bool val) { m_report_source_port = val; }
-	void set_url_groups(const std::set<string>& groups) { sinsp_protostate::set_url_groups(groups); }
+	void set_url_groups(const std::set<std::string>& groups) { sinsp_protostate::set_url_groups(groups); }
 	void set_connection_truncate_report_interval(int sec) { m_connection_truncate_report_interval = sec; }
 	void set_connection_truncate_log_interval(int sec) { m_connection_truncate_log_interval = sec; }
 
@@ -826,7 +826,7 @@ public:
 	 * coalesce all stats from containers which weren't emitted into the proper
 	 * protobuf
 	 */
-	void coalesce_unemitted_stats(const vector<std::string>& emitted_containers);
+	void coalesce_unemitted_stats(const std::vector<std::string>& emitted_containers);
 
 	/**
 	 * sets the metrics dir for serializing to a file
@@ -834,7 +834,7 @@ public:
 	void set_metrics_dir(const std::string& metrics_dir);
 
 VISIBILITY_PRIVATE
-	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
+	typedef bool (sinsp_analyzer::*server_check_func_t)(std::string&);
 
 	//
 	// Test tool detection state
@@ -879,7 +879,7 @@ VISIBILITY_PRIVATE
 				       analyzer_emitter::flush_flags flushflags,
 				       const analyzer_emitter::progtable_t& progtable,
 				       const analyzer_emitter::progtable_by_container_t& progtable_by_container,
-				       const vector<std::string>& emitted_containers,
+				       const std::vector<std::string>& emitted_containers,
 				       tracer_emitter& proc_trc,
 				       jmx_emitter& jmx_emitter_instance,
 				       app_check_emitter& app_check_emitter_instance,
@@ -888,7 +888,7 @@ VISIBILITY_PRIVATE
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
-	string detect_local_server(const string& protocol, uint32_t port, server_check_func_t check_func);
+	std::string detect_local_server(const std::string& protocol, uint32_t port, server_check_func_t check_func);
 	void log_timed_error(time_t& last_attempt, const std::string& err);
 #ifndef CYGWING_AGENT
 	typedef sinsp_configuration::k8s_ext_list_t k8s_ext_list_t;
@@ -915,10 +915,10 @@ VISIBILITY_PRIVATE
 #endif
 	sinsp_threadinfo* get_main_thread_info(int64_t& tid);
 	std::string& detect_mesos(std::string& mesos_api_server, uint32_t port);
-	string detect_mesos(sinsp_threadinfo* main_tinfo = 0);
-	bool check_mesos_server(string& addr);
-	void make_mesos(string&& json);
-	void get_mesos(const string& mesos_uri);
+	std::string detect_mesos(sinsp_threadinfo* main_tinfo = 0);
+	bool check_mesos_server(std::string& addr);
+	void make_mesos(std::string&& json);
+	void get_mesos(const std::string& mesos_uri);
 	void get_mesos_data();
 	void emit_mesos();
 	void reset_mesos(const std::string& errmsg = "");
@@ -932,23 +932,23 @@ VISIBILITY_PRIVATE
 
 	void update_percentile_data_serialization(const analyzer_emitter::progtable_by_container_t&);
 	void gather_k8s_infrastructure_state(uint32_t flushflags,
-					     const vector<string>& emitted_containers);
+					     const std::vector<std::string>& emitted_containers);
 	void clean_containers(const analyzer_emitter::progtable_by_container_t&);
 
 	void check_dump_infrastructure_state(const draiosproto::orchestrator_state_t& state);
 
 	// deprecated in favor of smart container filtering
-	vector<string> emit_containers_deprecated(const analyzer_emitter::progtable_by_container_t& active_containers,
+	std::vector<std::string> emit_containers_deprecated(const analyzer_emitter::progtable_by_container_t& active_containers,
 				       analyzer_emitter::flush_flags flushflags);
 
 
 	void tune_drop_mode(analyzer_emitter::flush_flags flushflags, double threshold_metric);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
-	void emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, vector<sinsp_executed_command>* commands);
+	void emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, std::vector<sinsp_executed_command>* commands);
 
 #ifndef _WIN32
-	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
-					unsigned limit, unsigned max_limit, const string& context);
+	static unsigned emit_statsd(const std::vector<statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
+					unsigned limit, unsigned max_limit, const std::string& context);
 	bool is_jmx_flushtime() {
 		return (m_prev_flush_time_ns / ONE_SECOND_IN_NS) % m_jmx_sampling == 0;
 	}
@@ -956,14 +956,14 @@ VISIBILITY_PRIVATE
 	void emit_chisel_metrics();
 	void emit_user_events();
 	void match_prom_checks(sinsp_threadinfo *tinfo,
-				sinsp_threadinfo *mtinfo, vector<prom_process> &prom_procs,
+				sinsp_threadinfo *mtinfo, std::vector<prom_process> &prom_procs,
 				bool use_host_filter);
 	void match_checks_list(sinsp_threadinfo *tinfo,
 				sinsp_threadinfo *mtinfo,
-				const vector<app_check> &checks,
-				vector<app_process> &app_checks_processes,
+				const std::vector<app_check> &checks,
+				std::vector<app_process> &app_checks_processes,
 				const char *location);
-	vector<long> get_n_tracepoint_diff();
+	std::vector<long> get_n_tracepoint_diff();
 
 	template<typename SMART_PTR_T, typename vect_t, typename... Args>
 	void check_limits(SMART_PTR_T&& ptr, const vect_t&& vec, bool log_enabled, Args&&... args)
@@ -1049,7 +1049,7 @@ VISIBILITY_PRIVATE
 	//
 	// Installation root
 	//
-	string m_root_dir;
+	std::string m_root_dir;
 
 	//
 	// The callback we invoke when a sample is ready
@@ -1093,11 +1093,11 @@ VISIBILITY_PRIVATE
 	//
 	// Transaction-related state
 	//
-	set<uint64_t> m_server_programs;
+	std::set<uint64_t> m_server_programs;
 	sinsp_transaction_counters m_host_transaction_counters;
 	uint64_t m_client_tr_time_by_servers;
-	vector<vector<sinsp_trlist_entry>> m_host_server_transactions;
-	vector<vector<sinsp_trlist_entry>> m_host_client_transactions;
+	std::vector<std::vector<sinsp_trlist_entry>> m_host_server_transactions;
+	std::vector<std::vector<sinsp_trlist_entry>> m_host_client_transactions;
 	// Network I/O info for the whole host.
 	// We calculate this separately because we want to exclude intra-host traffic
 	sinsp_counter_time_bytes m_io_net;
@@ -1111,16 +1111,16 @@ VISIBILITY_PRIVATE
 	//
 	// Command list
 	//
-	unordered_map<string, vector<sinsp_executed_command> > m_executed_commands;
+	std::unordered_map<std::string, std::vector<sinsp_executed_command> > m_executed_commands;
 
 	//
 	// Container metrics
 	//
-	unordered_map<string, analyzer_container_state> m_containers;
+	std::unordered_map<std::string, analyzer_container_state> m_containers;
 	run_on_interval m_containers_cleaner_interval = {60*ONE_SECOND_IN_NS};
 	run_on_interval m_containers_check_interval = {60*ONE_SECOND_IN_NS};
 
-	vector<sinsp_threadinfo*> m_threads_to_remove;
+	std::vector<sinsp_threadinfo*> m_threads_to_remove;
 
 	// Local cache for k8s_cluster_name
 	std::string m_k8s_cluster_name;
@@ -1134,7 +1134,7 @@ VISIBILITY_PRIVATE
 	uint32_t m_sampling_ratio;
 	uint32_t m_new_sampling_ratio;
 	uint64_t m_last_dropmode_switch_time;
-	vector<long> m_last_total_evts_by_cpu;
+	std::vector<long> m_last_total_evts_by_cpu;
 	threshold_filter<long> m_total_evts_switcher;
 	threshold_filter<double> m_very_high_cpu_switcher;
 	uint32_t m_seconds_above_thresholds;
@@ -1157,8 +1157,8 @@ VISIBILITY_PRIVATE
 	//
 	// Chisel-generated metrics infrastructure
 	//
-	vector<sinsp_chisel*> m_chisels;
-	vector<statsd_metric> m_chisel_metrics;
+	std::vector<sinsp_chisel*> m_chisels;
+	std::vector<statsd_metric> m_chisel_metrics;
 	bool m_run_chisels;
 
 	internal_metrics::sptr_t m_internal_metrics;
@@ -1166,30 +1166,30 @@ VISIBILITY_PRIVATE
 	libsanalyzer::statsd_emitter::ptr m_statsd_emitter;
 
 #ifndef _WIN32
-	unique_ptr<jmx_proxy> m_jmx_proxy;
+	std::unique_ptr<jmx_proxy> m_jmx_proxy;
 	unsigned int m_jmx_sampling;
 	// indexed by pid
-	unordered_map<int, java_process> m_jmx_metrics;
+	std::unordered_map<int, java_process> m_jmx_metrics;
 	// sent and total jmx metrics indexed by container (empty string if host)
-	unordered_map<string, tuple<unsigned, unsigned>> m_jmx_metrics_by_containers;
+	std::unordered_map<std::string, std::tuple<unsigned, unsigned>> m_jmx_metrics_by_containers;
 
 	std::shared_ptr<statsite_proxy> m_statsite_proxy;
-	unique_ptr<posix_queue> m_statsite_forwader_queue;
+	std::unique_ptr<posix_queue> m_statsite_forwader_queue;
 
 	// sent and total app checks indexed by container (empty string if host)
-	unordered_map<string, tuple<unsigned, unsigned>> m_app_checks_by_containers;
-	unordered_map<string, tuple<unsigned, unsigned>> m_prometheus_by_containers;
+	std::unordered_map<std::string, std::tuple<unsigned, unsigned>> m_app_checks_by_containers;
+	std::unordered_map<std::string, std::tuple<unsigned, unsigned>> m_prometheus_by_containers;
 
-	atomic<bool> m_statsd_capture_localhost;
+	std::atomic<bool> m_statsd_capture_localhost;
 
-	vector<app_check> m_app_checks;
-	unique_ptr<app_checks_proxy> m_app_proxy;
+	std::vector<app_check> m_app_checks;
+	std::unique_ptr<app_checks_proxy> m_app_proxy;
 	decltype(m_app_proxy->read_metrics()) m_app_metrics;
 
-	unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
-	unordered_map<string, vector<mounted_fs>> m_mounted_fs_map;
-	unique_ptr<mounted_fs_reader> m_mounted_fs_reader;
-	unordered_map<dev_t, string> m_device_map;
+	std::unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
+	std::unordered_map<std::string, std::vector<mounted_fs>> m_mounted_fs_map;
+	std::unique_ptr<mounted_fs_reader> m_mounted_fs_reader;
+	std::unordered_map<dev_t, std::string> m_device_map;
 
 #ifndef CYGWING_AGENT
 	prometheus_conf m_prom_conf;
@@ -1198,29 +1198,29 @@ VISIBILITY_PRIVATE
 #endif
 
 #ifndef CYGWING_AGENT
-	unique_ptr<k8s> m_k8s;
+	std::unique_ptr<k8s> m_k8s;
 	bool m_use_new_k8s;
-	unique_ptr<k8s_delegator> m_k8s_delegator;
+	std::unique_ptr<k8s_delegator> m_k8s_delegator;
 #ifndef _WIN32
 	sinsp_ssl::ptr_t          m_k8s_ssl;
 	sinsp_bearer_token::ptr_t m_k8s_bt;
 #endif
-	shared_ptr<k8s_handler::collector_t> m_k8s_collector;
-	unique_ptr<k8s_api_handler>          m_k8s_api_handler;
+	std::shared_ptr<k8s_handler::collector_t> m_k8s_collector;
+	std::unique_ptr<k8s_api_handler>          m_k8s_api_handler;
 	bool                                 m_k8s_api_detected = false;
-	unique_ptr<k8s_api_handler>          m_k8s_ext_handler;
+	std::unique_ptr<k8s_api_handler>          m_k8s_ext_handler;
 	k8s_ext_list_ptr_t                   m_ext_list_ptr;
 	bool                                 m_k8s_ext_detect_done = false;
 	int                                  m_k8s_retry_seconds = 60; // TODO move to config?
 
-	unique_ptr<draiosproto::swarm_state> m_docker_swarm_state;
-	unique_ptr<mesos> m_mesos;
+	std::unique_ptr<draiosproto::swarm_state> m_docker_swarm_state;
+	std::unique_ptr<mesos> m_mesos;
 
 	// Used to generate mesos-specific app check state
-	shared_ptr<app_process_conf_vals> m_mesos_conf_vals;
+	std::shared_ptr<app_process_conf_vals> m_mesos_conf_vals;
 
 	// Used to generate marathon-specific app check state
-	shared_ptr<app_process_conf_vals> m_marathon_conf_vals;
+	std::shared_ptr<app_process_conf_vals> m_marathon_conf_vals;
 
 	// flag indicating that mesos connection either exist or has existed once
 	// used to filter logs about Mesos API server unavailablity
@@ -1232,16 +1232,16 @@ VISIBILITY_PRIVATE
 	const uint32_t MESOS_MASTER_PORT = 5050;
 	const uint32_t MESOS_SLAVE_PORT = 5051;
 
-	unique_ptr<docker> m_docker;
+	std::unique_ptr<docker> m_docker;
 	bool m_has_docker;
 
-	unique_ptr<containerd_events> m_containerd_events;
+	std::unique_ptr<containerd_events> m_containerd_events;
 
 	int m_detect_retry_seconds = 60; // TODO move to config?
-	unique_ptr<new_k8s_delegator> m_new_k8s_delegator;
+	std::unique_ptr<new_k8s_delegator> m_new_k8s_delegator;
 #endif // CYGWING_AGENT
 
-	vector<string> m_container_patterns;
+	std::vector<std::string> m_container_patterns;
 	uint32_t m_containers_limit;
 	uint32_t m_containers_labels_max_len;
 #ifndef _WIN32

@@ -9,6 +9,8 @@
 #include "infrastructure_state.h"
 #include <utils.h>
 
+using namespace std;
+
 namespace {
 
 string replace_tokens(const string src, const sinsp_container_info *container,

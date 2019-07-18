@@ -54,7 +54,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 #endif
 									)
 {
-	unordered_map<int64_t, vector<sinsp_transaction > >::iterator it;
+	std::unordered_map<int64_t, std::vector<sinsp_transaction > >::iterator it;
 
 	sinsp_partial_transaction::direction startdir;
 	sinsp_partial_transaction::direction enddir;
@@ -217,7 +217,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 			tfi.m_comm = ptinfo->get_comm();
 			if(tfi.m_trinfo.is_unix_flow())
 			{
-				string &name = ptinfo->get_fd(tr->m_fd)->m_name;
+				std::string &name = ptinfo->get_fd(tr->m_fd)->m_name;
 				tfi.m_fd_desc = name.substr(name.find_first_of(' ') + 1);
 			}
 		}
@@ -255,7 +255,8 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 		it = m_table.find(tr->m_tid);
 		if(it == m_table.end())
 		{
-			vector<sinsp_transaction> tv;
+			std::vector<sinsp_transaction> tv;
+
 
 			tv.push_back(tfi);
 			m_table[tr->m_tid] = tv;

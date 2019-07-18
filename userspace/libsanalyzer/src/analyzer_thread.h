@@ -52,8 +52,8 @@ public:
 	// number of minor page faults since start
 	uint64_t m_pfminor;
 	// list of processes that are part of this program
-	set<int64_t> m_program_pids;
-	set<int64_t> m_program_uids;
+	std::set<int64_t> m_program_pids;
+	std::set<int64_t> m_program_uids;
 	// Number of child threads or processes that served transactions
 	uint64_t m_n_transaction_threads;
 	// The metrics for transaction coming from the external world
@@ -167,7 +167,7 @@ public:
 
 	const proc_config& get_proc_config();
 
-	inline const set<uint16_t>& listening_ports()
+	inline const std::set<uint16_t>& listening_ports()
 	{
 		if(!m_listening_ports)
 		{
@@ -244,7 +244,7 @@ public:
 	// Syscall error table
 	sinsp_error_counters m_syscall_errors;
 	// Completed transactions lists
-	unique_ptr<proc_config> m_proc_config;
+	std::unique_ptr<proc_config> m_proc_config;
 
 	bool m_called_execve;
 	uint64_t m_last_cmdline_sync_ns;
@@ -282,15 +282,15 @@ public:
 private:
 	static const uint32_t RESCAN_PORT_INTERVAL_SECS = 20;
 	using time_point_t = std::chrono::time_point<std::chrono::steady_clock>;
-	unique_ptr<main_thread_analyzer_info> m_main_thread_ainfo;
-	unique_ptr<set<uint16_t>> m_listening_ports;
-	set<uint16_t> m_procfs_found_ports;
-	set<std::string> m_app_checks_found;
+	std::unique_ptr<main_thread_analyzer_info> m_main_thread_ainfo;
+	std::unique_ptr<std::set<uint16_t>> m_listening_ports;
+	std::set<uint16_t> m_procfs_found_ports;
+	std::set<std::string> m_app_checks_found;
 	bool m_prom_check_found;
 	time_point_t m_last_port_scan;
 	time_point_t m_last_procfs_port_scan;
 
-	static std::string ports_to_string(const set<uint16_t> &ports);
+	static std::string ports_to_string(const std::set<uint16_t> &ports);
 
 	friend class test_helper;
 };

@@ -45,7 +45,7 @@ void sinsp_procinfo::clear()
 	m_pfminor = 0;
 	m_n_transaction_threads = 0;
 
-	vector<uint64_t>::iterator it;
+	std::vector<uint64_t>::iterator it;
 	for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); it++)
 	{
 		*it = 0;
@@ -57,7 +57,7 @@ void sinsp_procinfo::clear()
 
 	m_syscall_errors.clear();
 
-	vector<vector<sinsp_trlist_entry>>::iterator sts;
+	std::vector<std::vector<sinsp_trlist_entry>>::iterator sts;
 	for(sts = m_server_transactions_per_cpu.begin(); 
 		sts != m_server_transactions_per_cpu.end(); sts++)
 	{
@@ -83,7 +83,7 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 {
 	uint64_t res = 0;
 
-	vector<uint64_t>::iterator it;
+	std::vector<uint64_t>::iterator it;
 	for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); it++)
 	{
 		res += *it;
@@ -345,7 +345,7 @@ void thread_analyzer_info::clear_all_metrics()
 	m_old_pfmajor = m_tinfo->m_pfmajor;
 	m_old_pfminor = m_tinfo->m_pfminor;
 
-	vector<uint64_t>::iterator it;
+	std::vector<uint64_t>::iterator it;
 	for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); ++it)
 	{
 		*it = 0;
@@ -355,14 +355,14 @@ void thread_analyzer_info::clear_all_metrics()
 
 	if(m_main_thread_ainfo)
 	{
-		vector<vector<sinsp_trlist_entry>>::iterator sts;
+		std::vector<std::vector<sinsp_trlist_entry>>::iterator sts;
 		for(sts = m_main_thread_ainfo->m_server_transactions_per_cpu.begin();
 			sts != m_main_thread_ainfo->m_server_transactions_per_cpu.end(); sts++)
 		{
 			sts->clear();
 		}
 
-		vector<vector<sinsp_trlist_entry>>::iterator cts;
+		std::vector<std::vector<sinsp_trlist_entry>>::iterator cts;
 		for(cts = m_main_thread_ainfo->m_client_transactions_per_cpu.begin();
 			cts != m_main_thread_ainfo->m_client_transactions_per_cpu.end(); cts++)
 		{
@@ -401,7 +401,7 @@ void thread_analyzer_info::scan_listening_ports(bool scan_procfs, uint32_t procf
 		}
 	}
 
-	m_listening_ports = make_unique<set<uint16_t>>();
+	m_listening_ports = make_unique<std::set<uint16_t>>();
 	auto fd_table = m_tinfo->get_fd_table();
 	for(const auto& fd : fd_table->m_table)
 	{
@@ -455,7 +455,7 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 
 	if(fdtable == &m_tinfo->m_fdtable)
 	{
-		unordered_map<int64_t, sinsp_fdinfo_t>::iterator it;
+		std::unordered_map<int64_t, sinsp_fdinfo_t>::iterator it;
 
 		for(it = m_tinfo->m_fdtable.m_table.begin(); it != m_tinfo->m_fdtable.m_table.end(); it++)
 		{
@@ -602,7 +602,7 @@ void thread_analyzer_info::add_completed_client_transaction(sinsp_partial_transa
 		tr->m_prev_end_time, flags));
 }
 
-bool thread_analyzer_info::found_app_check_by_fnmatch(const string& pattern)
+bool thread_analyzer_info::found_app_check_by_fnmatch(const std::string& pattern)
 {
 #ifndef CYGWING_AGENT
 	for (const auto& ac_found : m_app_checks_found)
@@ -617,7 +617,7 @@ bool thread_analyzer_info::found_app_check_by_fnmatch(const string& pattern)
 	return false;
 }
 
-std::string thread_analyzer_info::ports_to_string(const set<uint16_t> &ports)
+std::string thread_analyzer_info::ports_to_string(const std::set<uint16_t> &ports)
 {
 	std::string ret;
 	for(auto port : ports)

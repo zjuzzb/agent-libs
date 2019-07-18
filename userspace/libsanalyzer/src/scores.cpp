@@ -19,7 +19,7 @@ sinsp_scores::sinsp_scores(sinsp* inspector, sinsp_sched_analyzer2* sched_analyz
 	m_sample_length_ns = 0;
 }
 
-// int32_t sinsp_scores::get_system_capacity_score_global(vector<pair<uint64_t,pair<uint64_t, uint16_t>>>* transactions, 
+// int32_t sinsp_scores::get_system_capacity_score_global(std::vector<std::pair<uint64_t,std::pair<uint64_t, uint16_t>>>* transactions, 
 // 	uint32_t n_server_threads,
 // 	uint64_t sample_end_time, uint64_t sample_duration)
 // {
@@ -58,7 +58,7 @@ sinsp_scores::sinsp_scores(sinsp* inspector, sinsp_sched_analyzer2* sched_analyz
 // //		uint64_t endtime = m_transactions[trsize - 1].second / CONCURRENCY_OBSERVATION_INTERVAL_NS * CONCURRENCY_OBSERVATION_INTERVAL_NS; // starttime + sample_duration; 
 // 		int64_t actual_sample_duration = (endtime > starttime)? endtime - starttime : 0;
 // 		uint32_t concurrency;
-// 		vector<uint64_t> time_by_concurrency;
+// 		std::vector<uint64_t> time_by_concurrency;
 // 		int64_t rest_time;
 
 // 		//
@@ -69,7 +69,7 @@ sinsp_scores::sinsp_scores(sinsp* inspector, sinsp_sched_analyzer2* sched_analyz
 // 			time_by_concurrency.push_back(0);
 // 		}
 // /*
-// vector<uint64_t>v;
+// std::vector<uint64_t>v;
 // uint64_t tot = 0;
 // for(k = 0; k < trsize; k++)
 // {
@@ -223,8 +223,8 @@ sinsp_scores::sinsp_scores(sinsp* inspector, sinsp_sched_analyzer2* sched_analyz
 // 	float tot_score1 = 0;
 // 	uint32_t n_scores1 = 0;
 
-// 	vector<uint64_t> time_by_concurrency;
-// 	vector<int64_t> cpu_counters;
+// 	std::vector<uint64_t> time_by_concurrency;
+// 	std::vector<int64_t> cpu_counters;
 
 // 	//
 // 	// Go through the CPUs and calculate the rest time for each of them
@@ -469,8 +469,8 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
 	float tot_score1 = 0;
 	uint32_t n_scores1 = 0;
 
-	vector<uint64_t> time_by_concurrency;
-	vector<int64_t> cpu_counters;
+	std::vector<uint64_t> time_by_concurrency;
+	std::vector<int64_t> cpu_counters;
 
 	//
 	// Go through the CPUs and calculate the rest time for each of them

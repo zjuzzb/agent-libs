@@ -5,12 +5,12 @@ class cpustate
 public:
 	cpustate();
 	void init();
-	inline vector<pair<int64_t, uint64_t>>::iterator find_thread(int64_t tid);
+	inline std::vector<std::pair<int64_t, uint64_t>>::iterator find_thread(int64_t tid);
 	void add_to_last_interval(int64_t tid, uint64_t delta);
 	void complete_interval();
 
 	// Each value is the pid of the process that used the most CPU during the interval
-	vector<int64_t> m_time_segments;
+	std::vector<int64_t> m_time_segments;
 	uint64_t m_last_switch_time;
 	int64_t m_last_switch_tid;
 	uint32_t m_last_time_segment;
@@ -19,7 +19,7 @@ public:
 	// The first element in the pair is the tid, the second one is the amount of
 	// time the thread has been active during the last interval
 	//
-	vector<pair<int64_t, uint64_t>> m_last_interval_threads;
+	std::vector<std::pair<int64_t, uint64_t>> m_last_interval_threads;
 };
 
 class sinsp_sched_analyzer
@@ -44,7 +44,7 @@ public:
 	//
 	void on_capture_start();
 
-	vector<cpustate> m_cpu_states;
+	std::vector<cpustate> m_cpu_states;
 
 private:
 	void update(uint64_t ts, int16_t cpu, int64_t nexttid);
@@ -103,7 +103,7 @@ public:
 	//
 	void on_capture_start();
 
-	vector<cpustate2> m_cpu_states;
+	std::vector<cpustate2> m_cpu_states;
 
 private:
 	void update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t cpu, int64_t nexttid);

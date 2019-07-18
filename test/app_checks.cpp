@@ -34,16 +34,16 @@ protected:
 
 	void use_json(const char *json)
 	{
-		string resource("resources/");
+		std::string resource("resources/");
 		resource += json;
-		ifstream json_file(resource);
+		std::ifstream json_file(resource);
 		getline(json_file, m_jsondata);
 		m_inqueue->send(m_jsondata);
 	}
 
-	unique_ptr<posix_queue> m_inqueue;
-	unique_ptr<app_checks_proxy> app_checks;
-	string m_jsondata;
+	std::unique_ptr<posix_queue> m_inqueue;
+	std::unique_ptr<app_checks_proxy> app_checks;
+	std::string m_jsondata;
 };
 
 TEST_F(app_checks_proxy_f, read_ok)
@@ -53,10 +53,10 @@ TEST_F(app_checks_proxy_f, read_ok)
 	EXPECT_EQ(2U, metrics.size());
 }
 
-string print(const app_checks_proxy::metric_map_t& metrics)
+std::string print(const app_checks_proxy::metric_map_t& metrics)
 {
-	stringstream out;
-	//unordered_map<int, map<string, app_check_data>>
+	std::stringstream out;
+	//std::unordered_map<int, std::map<std::string, app_check_data>>
 	for(auto app : metrics)
 	{
 		int metric = 0, services = 0;
@@ -75,6 +75,7 @@ string print(const app_checks_proxy::metric_map_t& metrics)
 				++services;
 			}
 			out << acd.second.total_metrics() << " total metrics" << std::endl;
+
 		}
 		out << "-------" << std::endl;
 		out << metric << " metrics" << std::endl;

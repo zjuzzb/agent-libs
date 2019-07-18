@@ -13,7 +13,7 @@
 #include "mesos.h"
 #endif
 
-using ports_set = bitset<numeric_limits<uint16_t>::max()+1>;
+using ports_set = std::bitset<std::numeric_limits<uint16_t>::max()+1>;
 
 // fwd declaration
 namespace proc_filter {
@@ -32,7 +32,7 @@ public:
 	};
 
 	typedef std::set<std::string>      k8s_ext_list_t;
-	typedef shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
+	typedef std::shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
 
 	sinsp_configuration();
 
@@ -46,10 +46,10 @@ public:
 	void set_connection_timeout_in_sec(uint64_t timeout_sec);
 	uint64_t get_connection_pruning_interval_ns() const;
 	void set_connection_pruning_interval_ns(uint64_t interval_ns);
-	const string& get_machine_id() const;
-	void set_machine_id(string machine_id);
-	const string& get_customer_id() const;
-	void set_customer_id(string customer_id);
+	const std::string& get_machine_id() const;
+	void set_machine_id(std::string machine_id);
+	const std::string& get_customer_id() const;
+	void set_customer_id(std::string customer_id);
 	uint64_t get_analyzer_sample_len_ns() const;
 	uint64_t get_analyzer_original_sample_len_ns() const;
 	void set_analyzer_sample_len_ns(uint64_t analyzer_sample_length_ns);
@@ -67,23 +67,23 @@ public:
 	void set_drop_lower_threshold(uint32_t drop_lower_threshold);
 	uint32_t get_drop_threshold_consecutive_seconds() const;
 	void set_drop_threshold_consecutive_seconds(uint32_t drop_threshold_consecutive_seconds);
-	const string& get_host_custom_name() const;
-	void set_host_custom_name(string host_custom_name);
-	const string& get_host_tags() const;
-	void set_host_tags(const string& host_tags);
+	const std::string& get_host_custom_name() const;
+	void set_host_custom_name(std::string host_custom_name);
+	const std::string& get_host_tags() const;
+	void set_host_tags(const std::string& host_tags);
 	bool get_host_hidden() const;
 	void set_host_hidden(bool host_hidden);
-	const string& get_hidden_processes() const;
-	void set_hidden_processes(string hidden_processes);
-	const string& get_host_custom_map() const;
-	void set_host_custom_map(string host_custom_map);
-	const string& get_version() const;
-	void set_version(const string& version);
-	const string& get_instance_id() const;
-	void set_instance_id(const string& instance_id);
+	const std::string& get_hidden_processes() const;
+	void set_hidden_processes(std::string hidden_processes);
+	const std::string& get_host_custom_map() const;
+	void set_host_custom_map(std::string host_custom_map);
+	const std::string& get_version() const;
+	void set_version(const std::string& version);
+	const std::string& get_instance_id() const;
+	void set_instance_id(const std::string& instance_id);
 	void set_known_ports(const ports_set & v);
 	const ports_set & get_known_ports() const;
-	void set_blacklisted_ports(const vector<uint16_t> & v);
+	void set_blacklisted_ports(const std::vector<uint16_t> & v);
 	void set_blacklisted_ports(const ports_set & v);
 	const ports_set & get_blacklisted_ports() const;
 #ifndef CYGWING_AGENT
@@ -93,11 +93,11 @@ public:
 	const std::set<std::string>& get_k8s_extensions() const;
 	void set_k8s_cluster_name(const std::string &k8s_cluster_name);
 	const std::string& get_k8s_cluster_name() const;
-	string get_mesos_state_uri() const;
-	void set_mesos_state_uri(const string & uri);
-	string get_mesos_state_original_uri() const;
-	const vector<string> & get_marathon_uris() const;
-	void set_marathon_uris(const vector<string> & uris);
+	std::string get_mesos_state_uri() const;
+	void set_mesos_state_uri(const std::string & uri);
+	std::string get_mesos_state_original_uri() const;
+	const std::vector<std::string> & get_marathon_uris() const;
+	void set_marathon_uris(const std::vector<std::string> & uris);
 	bool get_mesos_autodetect_enabled() const;
 	void set_mesos_autodetect_enabled(bool enabled);
 	void set_mesos_timeout_ms(int mesos_timeout_ms);
@@ -155,22 +155,22 @@ public:
 	void set_command_lines_capture_mode(command_capture_mode_t capture_mode);
 	void set_command_lines_include_container_healthchecks(bool enabled);
 	bool get_command_lines_include_container_healthchecks() const;
-	set<string> get_command_lines_valid_ancestors() const;
-	void set_command_lines_valid_ancestors(const set<string>& valid_ancestors);
-	bool is_command_lines_valid_ancestor(const string& ancestor) const;
+	std::set<std::string> get_command_lines_valid_ancestors() const;
+	void set_command_lines_valid_ancestors(const std::set<std::string>& valid_ancestors);
+	bool is_command_lines_valid_ancestor(const std::string& ancestor) const;
 	bool get_capture_dragent_events() const;
 	void set_capture_dragent_events(bool enabled);
 	uint64_t get_memdump_size() const;
 	void set_memdump_size(uint64_t size);
 	const std::set<double>& get_percentiles() const;
-	shared_ptr<proc_filter::group_pctl_conf> get_group_pctl_conf() const;
-	void set_percentiles(const std::set<double>&, shared_ptr<proc_filter::group_pctl_conf>);
-	shared_ptr<proc_filter::conf> get_container_filter() const;
+	std::shared_ptr<proc_filter::group_pctl_conf> get_group_pctl_conf() const;
+	void set_percentiles(const std::set<double>&, std::shared_ptr<proc_filter::group_pctl_conf>);
+	std::shared_ptr<proc_filter::conf> get_container_filter() const;
 
 	void set_log_dir(const std::string& dir);
-	string& get_log_dir();
+	std::string& get_log_dir();
 
-	void set_container_filter(shared_ptr<proc_filter::conf>);
+	void set_container_filter(std::shared_ptr<proc_filter::conf>);
 
 	void set_smart_container_reporting(bool);
 	bool get_smart_container_reporting() const;
@@ -208,9 +208,9 @@ public:
 	uint64_t get_security_baseline_report_interval_ns() const;
 	void set_security_baseline_report_interval_ns(uint64_t report_interval);
 
-	const pair<long, unsigned>& get_tracepoint_hits_threshold() const;
+	const std::pair<long, unsigned>& get_tracepoint_hits_threshold() const;
 	void set_tracepoint_hits_threshold(long, unsigned);
-	const pair<double, unsigned>& get_cpu_max_sr_threshold() const;
+	const std::pair<double, unsigned>& get_cpu_max_sr_threshold() const;
 	void set_cpu_max_sr_threshold(double, unsigned);
 
 	uint32_t get_orch_queue_len() const;
@@ -237,19 +237,19 @@ public:
 	void set_orch_batch_msgs_queue_len(uint32_t batch_queue_len);
 	uint32_t get_orch_batch_msgs_tick_interval_ms() const;
 	void set_orch_batch_msgs_tick_interval_ms(uint32_t batch_tick_interval_ms);
-	void set_procfs_scan_procs(const set<string> &procs, uint32_t interval);
-	const set<string> &get_procfs_scan_procs();
+	void set_procfs_scan_procs(const std::set<std::string> &procs, uint32_t interval);
+	const std::set<std::string> &get_procfs_scan_procs();
 	uint32_t get_procfs_scan_interval();
 private:
-	string get_mesos_uri(const std::string& sought_url) const;
-	void set_mesos_uri(string& url, const string & new_url);
-	void set_mesos_state_original_uri(const string & uri);
+	std::string get_mesos_uri(const std::string& sought_url) const;
+	void set_mesos_uri(std::string& url, const std::string & new_url);
+	void set_mesos_state_original_uri(const std::string & uri);
 	friend class sinsp_worker;
 
 	uint64_t m_connection_pruning_interval_ns;
 	uint64_t m_connection_timeout_ns;
-	string m_machine_id;
-	string m_customer_id;
+	std::string m_machine_id;
+	std::string m_customer_id;
 	uint64_t m_analyzer_sample_len_ns;
 	uint64_t m_analyzer_original_sample_len_ns;
 	uint32_t m_max_connection_table_size;
@@ -259,19 +259,19 @@ private:
 	uint32_t m_drop_upper_threshold;
 	uint32_t m_drop_lower_threshold;
 	uint32_t m_drop_threshold_consecutive_seconds;
-	string m_host_custom_name;
-	string m_host_tags;
+	std::string m_host_custom_name;
+	std::string m_host_tags;
 	bool m_host_hidden;
-	string m_hidden_processes;
-	string m_host_custom_map;
-	string m_version;
-	string m_instance_id;
+	std::string m_hidden_processes;
+	std::string m_host_custom_map;
+	std::string m_version;
+	std::string m_instance_id;
 	ports_set m_known_ports;
 	ports_set m_blacklisted_ports;
 
 	std::set<double> m_percentiles;
-	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
-	shared_ptr<proc_filter::conf> m_container_filter;
+	std::shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
+	std::shared_ptr<proc_filter::conf> m_container_filter;
 	bool m_smart_container_reporting = false;
 
 	/**
@@ -284,7 +284,7 @@ private:
 	bool m_add_event_scopes = false;
 	std::string m_root_dir = "";
 
-	string m_log_dir;
+	std::string m_log_dir;
 
 	bool m_dragent_cpu_profile_enabled;
 	uint32_t m_dragent_profile_time_seconds;
@@ -297,9 +297,9 @@ private:
 	std::set<std::string> m_k8s_extensions;
 	std::string m_k8s_cluster_name;
 
-	string m_mesos_state_uri;
-	string m_mesos_state_original_uri;
-	mutable vector<string> m_marathon_uris;
+	std::string m_mesos_state_uri;
+	std::string m_mesos_state_original_uri;
+	mutable std::vector<std::string> m_marathon_uris;
 	bool m_mesos_autodetect;
 	int m_mesos_timeout_ms;
 	bool m_mesos_follow_leader;
@@ -316,7 +316,7 @@ private:
 	bool m_command_lines_capture_enabled;
 	command_capture_mode_t m_command_lines_capture_mode;
 	bool m_command_lines_include_container_healthchecks;
-	set<string> m_command_lines_valid_ancestors;
+	std::set<std::string> m_command_lines_valid_ancestors;
 	bool m_capture_dragent_events;
 	uint64_t m_memdump_size;
 
@@ -350,8 +350,8 @@ private:
 
 	uint64_t m_security_baseline_report_interval_ns;
 
-	pair<long, unsigned> m_tracepoint_hits_threshold;
-	pair<double, unsigned> m_cpu_max_sr_threshold;
+	std::pair<long, unsigned> m_tracepoint_hits_threshold;
+	std::pair<double, unsigned> m_cpu_max_sr_threshold;
 
 	uint32_t m_procfs_scan_delay_ms;
 	uint32_t m_procfs_scan_interval_ms;
@@ -360,6 +360,6 @@ private:
 	uint32_t m_orch_batch_msgs_queue_len;
 	uint32_t m_orch_batch_msgs_tick_interval_ms;
 
-	set<string> m_procfs_scan_procs;
+	std::set<std::string> m_procfs_scan_procs;
 	uint32_t m_procfs_scan_interval;
 };

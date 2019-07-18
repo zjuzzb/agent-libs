@@ -8,6 +8,8 @@
 #include <utils.h>
 #include <sstream>
 
+using namespace std;
+
 namespace {
 
 template<typename T>

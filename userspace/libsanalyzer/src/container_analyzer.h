@@ -16,9 +16,9 @@ public:
 	sinsp_counters m_req_metrics;
 	sinsp_transaction_counters m_transaction_counters;
 	sinsp_delays_info m_transaction_delays;
-	vector<vector<sinsp_trlist_entry>> m_server_transactions;
-	vector<vector<sinsp_trlist_entry>> m_client_transactions;
-	unique_ptr<unordered_map<uint16_t, sinsp_connection_aggregator>> m_connections_by_serverport;
+	std::vector<std::vector<sinsp_trlist_entry>> m_server_transactions;
+	std::vector<std::vector<sinsp_trlist_entry>> m_client_transactions;
+	std::unique_ptr<std::unordered_map<uint16_t, sinsp_connection_aggregator>> m_connections_by_serverport;
 	analyzer_top_file_stat_map m_files_stat;
 	analyzer_top_device_stat_map m_devs_stat;
 
@@ -42,7 +42,7 @@ public:
 	uint64_t m_last_bytes_in;
 	uint64_t m_last_bytes_out;
 	int64_t m_last_cpu_time;
-	string m_last_cpuacct_cgroup;
+	std::string m_last_cpuacct_cgroup;
 
 	uint64_t m_reported_count;
 

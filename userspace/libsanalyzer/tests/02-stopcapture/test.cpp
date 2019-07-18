@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 	}
 	catch(sinsp_exception e)
 	{
-		cerr << e.what();
+		std::cerr << e.what();
 		return -1;
 	}
 	catch(...)

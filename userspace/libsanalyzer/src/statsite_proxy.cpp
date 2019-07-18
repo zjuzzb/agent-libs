@@ -152,7 +152,7 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 							     nullptr,
 							     "statsd"))
 						{
-							std::get<0>(ret[m_metric.container_id()]).push_back(move(m_metric));
+							std::get<0>(ret[m_metric.container_id()]).push_back(std::move(m_metric));
 							++metric_count;
 						}
 					}
@@ -163,7 +163,7 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 								   true,
 								   metric_limits::log_enabled(),
 								   " ");
-						std::get<0>(ret[m_metric.container_id()]).push_back(move(m_metric));
+						std::get<0>(ret[m_metric.container_id()]).push_back(std::move(m_metric));
 						++metric_count;
 					}
 					m_metric = statsd_metric();
@@ -198,7 +198,7 @@ BREAK_LOOP:
 				// allow() will log if logging is enabled
 				if(ml->allow(m_metric.name(), filter, nullptr, "statsd"))
 				{
-					std::get<0>(ret[m_metric.container_id()]).push_back(move(m_metric));
+					std::get<0>(ret[m_metric.container_id()]).push_back(std::move(m_metric));
 					++metric_count;
 				}
 			}
@@ -209,7 +209,7 @@ BREAK_LOOP:
 						   true,
 						   metric_limits::log_enabled(),
 						   " ");
-				std::get<0>(ret[m_metric.container_id()]).push_back(move(m_metric));
+				std::get<0>(ret[m_metric.container_id()]).push_back(std::move(m_metric));
 				++metric_count;
 			}
 			m_metric = statsd_metric();

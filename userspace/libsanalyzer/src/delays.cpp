@@ -10,6 +10,8 @@
 #include "delays.h"
 #include "analyzer_thread.h"
 
+using std::vector;
+
 sinsp_delays::sinsp_delays(uint32_t ncpus)
 {
 	m_num_cpus = ncpus;

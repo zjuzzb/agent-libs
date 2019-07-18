@@ -70,10 +70,10 @@ public:
 		// If true, send a keepalive message immediately.
 		bool m_send_initial_keepalive;
 
-		string m_filter;
+		std::string m_filter;
 		bool m_delete_file_when_done;
 		bool m_send_file;
-		string m_file;
+		std::string m_file;
 		sinsp_dumper *m_dumper;
 	};
 
@@ -92,40 +92,40 @@ public:
 			JOB_SEND_START
 		};
 
-		static string request_type_str(request_type &type)
+		static std::string request_type_str(request_type &type)
 		{
 			switch(type)
 			{
 			case JOB_START :
-				return string("start");
+				return std::string("start");
 				break;
 			case JOB_STOP :
-				return string("stop");
+				return std::string("stop");
 				break;
 			case JOB_SEND_START :
-				return string("send_start");
+				return std::string("send_start");
 				break;
 			default:
-				return string("unknown");
+				return std::string("unknown");
 				break;
 			}
 		}
 
 		dump_job_request() {};
 
-		string m_token;
+		std::string m_token;
 		request_type m_request_type;
 
 		// Only valid when type == JOB_START
-		unique_ptr<start_job_details> m_start_details;
+		std::unique_ptr<start_job_details> m_start_details;
 
 		// Only valid when type == JOB_STOP
-		unique_ptr<stop_job_details> m_stop_details;
+		std::unique_ptr<stop_job_details> m_stop_details;
 	};
 
 	capture_job_handler(dragent_configuration *configuration,
 			    protocol_queue *queue,
-			    atomic<bool> *enable_autodrop);
+			    std::atomic<bool> *enable_autodrop);
 
 	virtual ~capture_job_handler();
 
@@ -167,14 +167,14 @@ public:
 		return m_jobs_lock;
 	}
 
-	void send_error(const string& token, const string& error);
+	void send_error(const std::string& token, const std::string& error);
 
 	// Inject a notification event into the event stream (at least
 	// the part that's visible by capture jobs). This will make
 	// sure it's present in the memdump buffer and any active
 	// capture jobs. It will not be handled by the analyzer or
 	// sinsp_worker.
-	void push_notification(uint64_t ts, uint64_t tid, string id, string description);
+	void push_notification(uint64_t ts, uint64_t tid, std::string id, std::string description);
 	void push_infra_event(uint64_t ts,
 	                      uint64_t tid,
 	                      const std::string& source,
@@ -195,10 +195,10 @@ private:
 	// Clean up all jobs
 	void cleanup();
 
-	static const string m_name;
+	static const std::string m_name;
 
 	void process_job_requests();
-	void start_job(string &token,
+	void start_job(std::string &token,
 		       const start_job_details& request);
 
 	void add_job(std::shared_ptr<capture_job> &job);
@@ -209,7 +209,7 @@ private:
 
 	bool can_send(uint32_t buffer_size, uint64_t ts_ns);
 
-	void prepare_response(const string& token, draiosproto::dump_response* response);
+	void prepare_response(const std::string& token, draiosproto::dump_response* response);
 	std::shared_ptr<protocol_queue_item> dump_response_to_queue_item(const draiosproto::dump_response& response);
 	bool queue_item(std::shared_ptr<protocol_queue_item> &item, protocol_queue::item_priority priority);
 	bool queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority);
@@ -224,17 +224,17 @@ private:
 	sinsp *m_inspector;
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
-	atomic<bool> *m_enable_autodrop;
+	std::atomic<bool> *m_enable_autodrop;
 	uint64_t m_max_chunk_size;
 	blocking_queue<std::shared_ptr<dump_job_request>> m_dump_job_requests;
 
 	// Mutex that protects access to the list of jobs
 	Poco::RWLock m_jobs_lock;
 
-	vector<std::shared_ptr<capture_job>> m_jobs;
+	std::vector<std::shared_ptr<capture_job>> m_jobs;
 	token_bucket m_sysdig_captures_tb;
-	atomic<uint64_t> m_last_job_check_ns;
-	atomic<uint64_t> m_last_event_ns;
+	std::atomic<uint64_t> m_last_job_check_ns;
+	std::atomic<uint64_t> m_last_event_ns;
 
 	sinsp_evt m_notification_evt;
 	uint8_t m_notification_scap_evt_storage[4096];

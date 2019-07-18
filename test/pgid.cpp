@@ -76,8 +76,8 @@ static void run_setpgid_test(bool use_pid_namespace)
 	//
 	// FILTER
 	//
-	sinsp_filter_compiler compiler(NULL, "evt.type=execve and proc.apid=" + to_string(getpid()));
-	unique_ptr<sinsp_filter> is_subprocess_setpgid(compiler.compile());
+	sinsp_filter_compiler compiler(NULL, "evt.type=execve and proc.apid=" + std::to_string(getpid()));
+	std::unique_ptr<sinsp_filter> is_subprocess_setpgid(compiler.compile());
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
 		return is_subprocess_setpgid->run(evt);

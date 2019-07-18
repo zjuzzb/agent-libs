@@ -3,6 +3,7 @@
 #include "procfs_scanner.h"
 #include "procfs_parser.h"
 
+using namespace std;
 using namespace proc_metrics;
 
 bool procfs_scanner_utils::get_procfs_status(const char *text, const char *name, uint32_t *val) {

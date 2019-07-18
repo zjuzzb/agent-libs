@@ -16,7 +16,7 @@
 class sinsp_memory_dumper_state
 {
 public:
-	sinsp_memory_dumper_state(sinsp* inspector, uint64_t bufsize, string shm_name)
+	sinsp_memory_dumper_state(sinsp* inspector, uint64_t bufsize, std::string shm_name)
 		: m_inspector(inspector),
 		m_shm_name(shm_name),
 		m_shm_fd(0),
@@ -56,7 +56,7 @@ public:
 		m_shm_fd = shm_open(m_shm_name.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRWXU);
 		if(m_shm_fd == -1)
 		{
-			errstr = string("could not reset shared memory segment: ") + strerror(errno);
+			errstr = std::string("could not reset shared memory segment: ") + strerror(errno);
 			return false;
 		}
 
@@ -76,7 +76,7 @@ public:
 		catch(sinsp_exception e)
 		{
 			errstr = "capture memory buffer too small to store process information. Current size: " +
-				to_string(m_bufsize);
+				std::to_string(m_bufsize);
 			return false;
 		}
 
@@ -201,10 +201,10 @@ public:
 
 	uint64_t m_start_time;
 	uint64_t m_end_time;
-	string m_filterstr;
-	string m_filename;
+	std::string m_filterstr;
+	std::string m_filename;
 	state m_state;
-	string m_lasterr;
+	std::string m_lasterr;
 	sinsp_dumper* m_dumper;
 	sinsp_filter* m_filter;
 	uint64_t m_n_events;
@@ -231,7 +231,7 @@ public:
 	// buffer. The caller will unlock the mutex when the job has
 	// been added to the list of jobs.
 
-	sinsp_memory_dumper_job* add_job(uint64_t ts, string filename, string filter,
+	sinsp_memory_dumper_job* add_job(uint64_t ts, std::string filename, std::string filter,
 					 uint64_t delta_time_past_ns, uint64_t delta_time_future_ns,
 					 Poco::Mutex *membuf_mtx);
 
@@ -322,7 +322,7 @@ private:
 	memdump_state m_states;
 	memdump_state::iterator m_active_state;
 	memdump_state::const_reverse_iterator m_reader_state;
-	atomic<bool> m_reader_active;
+	std::atomic<bool> m_reader_active;
 	uint32_t m_file_id;
 	FILE* m_f;
 	FILE* m_cf;
@@ -332,8 +332,8 @@ private:
 	uint32_t m_max_disk_size;
 	uint64_t m_bsize;
 
-	atomic<bool> m_delayed_switch_states_needed;
-	atomic<bool> m_delayed_switch_states_ready;
+	std::atomic<bool> m_delayed_switch_states_needed;
+	std::atomic<bool> m_delayed_switch_states_ready;
 	uint64_t m_delayed_switch_states_missed_events;
 
 	// Mutex that protects access to the list of states

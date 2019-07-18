@@ -9,6 +9,8 @@
 #include "analyzer_thread.h"
 #include <utils.h>
 
+using namespace std;
+
 Json::Value yaml_to_json(const YAML::Node& yaml)
 {
 	Json::Value ret;

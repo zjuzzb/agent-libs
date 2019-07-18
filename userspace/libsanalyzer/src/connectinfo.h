@@ -66,12 +66,12 @@ public:
 	int64_t m_spid;
 	int64_t m_stid;
 	int64_t m_sfd;
-	string m_scomm;
+	std::string m_scomm;
 
 	int64_t m_dpid;
 	int64_t m_dtid;
 	int64_t m_dfd;
-	string m_dcomm;
+	std::string m_dcomm;
 
 	uint64_t m_timestamp;
 	int8_t m_refcount;
@@ -106,7 +106,7 @@ public:
 	void add_client(sinsp_connection* conn);
 	void add_server(sinsp_connection* conn);
 	template<typename ProtobufType>
-	static void filter_and_emit(const unordered_map<uint16_t, sinsp_connection_aggregator>& map,
+	static void filter_and_emit(const std::unordered_map<uint16_t, sinsp_connection_aggregator>& map,
 							ProtobufType* proto, uint16_t top, uint32_t sampling_ratio);
 private:
 	bool is_active() const
@@ -123,12 +123,12 @@ private:
 };
 
 template<typename ProtobufType>
-void sinsp_connection_aggregator::filter_and_emit(const unordered_map<uint16_t, sinsp_connection_aggregator> &map,
+void sinsp_connection_aggregator::filter_and_emit(const std::unordered_map<uint16_t, sinsp_connection_aggregator> &map,
 												  ProtobufType *proto, uint16_t top, uint32_t sampling_ratio)
 {
 	// Filter the top N
-	using map_it_t = unordered_map<uint16_t, sinsp_connection_aggregator>::const_iterator;
-	vector<map_it_t> to_emit_connections;
+	using map_it_t = std::unordered_map<uint16_t, sinsp_connection_aggregator>::const_iterator;
+	std::vector<map_it_t> to_emit_connections;
 	for(auto agcit = map.begin(); agcit != map.end(); ++agcit)
 	{
 		to_emit_connections.push_back(agcit);
@@ -164,7 +164,7 @@ class SINSP_PUBLIC sinsp_connection_manager
 {
 public:
 #ifndef _WIN32
-	typedef class unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator iterator_t;
+	typedef class std::unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator iterator_t;
 #endif
 
 	// Returns the pointer to the new connection
@@ -172,7 +172,7 @@ public:
 	{
 		m_n_drops = 0;
 	}
-	sinsp_connection* add_connection(const TKey& key, string* comm, int64_t pid, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp, uint8_t flags, int32_t error_code);
+	sinsp_connection* add_connection(const TKey& key, std::string* comm, int64_t pid, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp, uint8_t flags, int32_t error_code);
 	sinsp_connection* remove_connection(const TKey &key);
 	sinsp_connection* get_connection(const TKey& key, uint64_t timestamp);
 	void remove_expired_connections(uint64_t current_ts);
@@ -202,7 +202,7 @@ public:
 		m_n_drops = 0;
 	}
 
-	unordered_map<TKey, sinsp_connection, THash, TCompare> m_connections;
+	std::unordered_map<TKey, sinsp_connection, THash, TCompare> m_connections;
 	sinsp * m_inspector;
 	uint64_t m_last_connection_removal_ts;
 	uint32_t m_n_drops;
@@ -211,10 +211,10 @@ public:
 
 template<class TKey, class THash, class TCompare>
 sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
-	const TKey& key, string* comm, int64_t pid, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp,
+	const TKey& key, std::string* comm, int64_t pid, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp,
 	uint8_t flags, int32_t error_code)
 {
-	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
+	typename std::unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
 
 	//
 	// First of all, make sure there's space for this connection in the table
@@ -233,7 +233,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	sinsp_connection& conn = m_connections[key];
 
 	conn.m_record_state_history = m_inspector->m_analyzer->audit_tap_enabled();
-	shared_ptr<sinsp_threadinfo> proc = nullptr;
+	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
 	if(conn.m_record_state_history)
 	{
 		proc = m_inspector->get_thread_ref(pid, false, true);
@@ -362,7 +362,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 template<class TKey, class THash, class TCompare>
 sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey &key)
 {
-	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
+	typename std::unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
 
 	cit = m_connections.find(key);
 	if(cit == m_connections.end())
@@ -390,7 +390,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::remove_connecti
 template<class TKey,class THash,class TCompare>
 sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::get_connection(const TKey& key, uint64_t timestamp)
 {
-	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
+	typename std::unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
 	cit = m_connections.find(key);
 	if(cit != m_connections.end())
 	{
@@ -422,7 +422,7 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_expired_connections(u
 
 	uint64_t connection_timeout_ns = get_configuration()->get_connection_timeout_ns();
 
-	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit = m_connections.begin();
+	typename std::unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit = m_connections.begin();
 	while(cit != m_connections.end())
 	{
 		if(current_ts - cit->second.m_timestamp > connection_timeout_ns)
@@ -459,7 +459,7 @@ public:
 	}
 };
 
-class SINSP_PUBLIC sinsp_pipe_connection_manager : public sinsp_connection_manager<uint64_t, hash<uint64_t>, equal_to<uint64_t>>
+class SINSP_PUBLIC sinsp_pipe_connection_manager : public sinsp_connection_manager<uint64_t, std::hash<uint64_t>, std::equal_to<uint64_t>>
 {
 public:
 	sinsp_pipe_connection_manager(sinsp* inspector)

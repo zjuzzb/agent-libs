@@ -19,6 +19,7 @@
 //#define __STDC_FORMAT_MACROS
 //#include <inttypes.h>
 
+using namespace std;
 using Poco::StringTokenizer;
 using Poco::NumberParser;
 

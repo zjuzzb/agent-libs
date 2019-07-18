@@ -13,6 +13,8 @@
 
 #include <grpc_channel_registry.h>
 
+using namespace std;
+
 #ifndef TCP_USER_TIMEOUT
 // Define it here because old glibc versions do not have this flag (eg, Centos6)
 #define TCP_USER_TIMEOUT	 18 /* How long for loss retry before timeout */

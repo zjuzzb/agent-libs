@@ -28,19 +28,19 @@ TEST(analyzer_test, end_to_end_basic)
 class test_helper
 {
 public:
-	static unordered_map<std::string, analyzer_container_state>&
+	static std::unordered_map<std::string, analyzer_container_state>&
 	get_analyzer_containers(sinsp_analyzer& analyzer)
 	{
 		return analyzer.m_containers;
 	}
 
-	static unordered_map<std::string, sinsp_container_info>&
+	static std::unordered_map<std::string, sinsp_container_info>&
 	get_inspector_containers(sinsp& inspector)
 	{
 		return inspector.m_container_manager.m_containers;
 	}
 
-	static void coalesce(sinsp_analyzer& analyzer, vector<std::string>& emitted)
+	static void coalesce(sinsp_analyzer& analyzer, std::vector<std::string>& emitted)
 	{
 		analyzer.coalesce_unemitted_stats(emitted);
 	}
@@ -90,7 +90,7 @@ TEST(analyzer_test, coalesce_containers_null)
 	sinsp_mock inspector;
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 	sinsp_analyzer analyzer(&inspector, "/", int_metrics);
-	vector<std::string> emitted_containers;
+	std::vector<std::string> emitted_containers;
 	container_stuff unemitted_container_1(inspector, analyzer, "unemitted_container_1");
 	container_stuff unemitted_container_2(inspector, analyzer, "unemitted_container_2");
 
@@ -108,7 +108,7 @@ TEST(analyzer_test, coalesce_containers_test)
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 	sinsp_analyzer analyzer(&inspector, "/", int_metrics);
 
-	vector<std::string> emitted_containers;
+	std::vector<std::string> emitted_containers;
 
 	// create 3 containers. we'll "emit" one of them and coalesce the other two
 	container_stuff emitted_container(inspector, analyzer, "emitted_container");

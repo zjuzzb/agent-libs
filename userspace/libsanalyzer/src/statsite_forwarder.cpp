@@ -145,7 +145,7 @@ void statsite_forwarder::exception()
 	terminate(1, "Unknown exception");
 }
 
-void statsite_forwarder::terminate(const int code, const string& reason)
+void statsite_forwarder::terminate(const int code, const std::string& reason)
 {
 	LOG_ERROR("Fatal error occurred: %s, terminating", reason.c_str());
 	m_reactor.stop();

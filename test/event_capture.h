@@ -11,9 +11,6 @@
 #include <gtest.h>
 #include <inttypes.h>
 
-
-using namespace std;
-
 class callback_param
 {
 public:
@@ -21,16 +18,16 @@ public:
 	sinsp *m_inspector;
 };
 
-typedef function<void (sinsp *inspector)> before_open_t;
-typedef function<void (sinsp *inspector)> before_close_t;
-typedef function<bool (sinsp_evt *evt) > event_filter_t;
-typedef function<void (const callback_param &param) > captured_event_callback_t;
+typedef std::function<void (sinsp *inspector)> before_open_t;
+typedef std::function<void (sinsp *inspector)> before_close_t;
+typedef std::function<bool (sinsp_evt *evt) > event_filter_t;
+typedef std::function<void (const callback_param &param) > captured_event_callback_t;
 
 // Returns true/false to indicate whether the capture should continue
 // or stop
-typedef function<bool () > capture_continue_t;
+typedef std::function<bool () > capture_continue_t;
 
-typedef function<void (sinsp* inspector) > run_callback_t;
+typedef std::function<void (sinsp* inspector) > run_callback_t;
 
 class event_capture
 {
@@ -213,7 +210,7 @@ private:
 		}
 		if(!res || ::testing::Test::HasNonfatalFailure())
 		{
-			cerr << "failed on event " << event->get_num() << endl;
+			std::cerr << "failed on event " << event->get_num() << std::endl;
 		}
 		return res;
 	}
@@ -231,8 +228,8 @@ private:
 	uint64_t m_thread_timeout_ns;
 	uint64_t m_inactive_thread_scan_time_ns;
 	bool m_start_failed;
-	string m_start_failure_message;
-	string m_dump_filename;
+	std::string m_start_failure_message;
+	std::string m_dump_filename;
 	callback_param m_param;
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;

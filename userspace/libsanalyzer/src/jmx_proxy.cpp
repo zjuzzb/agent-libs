@@ -246,7 +246,7 @@ java_process::java_process(const Json::Value& json, metric_limits::cref_sptr_t m
 		m_total_metrics += jb.total_metrics();
 		if(jb.attribute_count())
 		{
-			m_beans.push_back(move(jb));
+			m_beans.push_back(std::move(jb));
 		}
 	}
 }
@@ -291,12 +291,12 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	// do a gross filtering and let sdjagent parse them
 	// otherwise we can move the whole parsing here
 	Json::Value args_json(Json::arrayValue);
-	string args;
+	std::string args;
 	bool read_jar_arg = false;
 	for(const auto& arg : tinfo->m_args) {
 		// Do a gross filtering of args
-		if((arg.find("-D") == 0 && arg.find("jmx") != string::npos && arg.size() < MAX_ARG_SIZE) ||
-		   (arg.find("UsePerfData") != string::npos) ||
+		if((arg.find("-D") == 0 && arg.find("jmx") != std::string::npos && arg.size() < MAX_ARG_SIZE) ||
+		   (arg.find("UsePerfData") != std::string::npos) ||
 		   (read_jar_arg == true))
 		{
 			args_json.append(read_jar_arg ? "-jar:" + arg : arg);
@@ -333,7 +333,7 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	return ret;
 }
 
-void jmx_proxy::send_get_metrics(const vector<sinsp_threadinfo*>& processes)
+void jmx_proxy::send_get_metrics(const std::vector<sinsp_threadinfo*>& processes)
 {
 	Json::Value command_obj;
 	command_obj["command"] = "getMetrics";
@@ -348,7 +348,7 @@ void jmx_proxy::send_get_metrics(const vector<sinsp_threadinfo*>& processes)
 		++tinfo_count;
 	}
 	command_obj["body"] = body;
-	string command_data = m_json_writer.write(command_obj);
+	std::string command_data = m_json_writer.write(command_obj);
 	g_logger.format(sinsp_logger::SEV_DEBUG, "Sending JMX getMetrics command for %u "
 					"processes, command size %u bytes", tinfo_count, command_data.size());
 
@@ -356,7 +356,7 @@ void jmx_proxy::send_get_metrics(const vector<sinsp_threadinfo*>& processes)
 }
 
 
-unordered_map<int, java_process> jmx_proxy::read_metrics(metric_limits::cref_sptr_t ml)
+std::unordered_map<int, java_process> jmx_proxy::read_metrics(metric_limits::cref_sptr_t ml)
 {
 	process_map_t processes;
 	try
@@ -377,7 +377,7 @@ unordered_map<int, java_process> jmx_proxy::read_metrics(metric_limits::cref_spt
 				for(const auto& process_data : json_obj["body"])
 				{
 					java_process process(process_data, ml);
-					processes.emplace(process.pid(), move(process));
+					processes.emplace(process.pid(), std::move(process));
 				}
 			}
 			else

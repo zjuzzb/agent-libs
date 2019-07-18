@@ -32,5 +32,5 @@ using progtable_t = std::unordered_set<sinsp_threadinfo*,
 				       sinsp_threadinfo::hasher,
 				       sinsp_threadinfo::comparer>;
 
-using progtable_by_container_t = unordered_map<string, vector<sinsp_threadinfo*>>;
+using progtable_by_container_t = std::unordered_map<std::string, std::vector<sinsp_threadinfo*>>;
 }

@@ -6,6 +6,8 @@
 #include <connectinfo.h>
 #include <proc_filter.h>
 
+using namespace std;
+
 // test class that allows us to give information about the contaienrs required
 // for emitting without forcing us to create the entire analyzer
 static const uint32_t test_statsd_limit = 345;

@@ -332,9 +332,9 @@ void send_subprocess_heartbeat()
 }
 
 #ifndef CYGWING_AGENT
-unordered_map<string, int> nsenter::m_home_ns;
+std::unordered_map<std::string, int> nsenter::m_home_ns;
 
-nsenter::nsenter(int pid, const string& type):
+nsenter::nsenter(int pid, const std::string& type):
 	m_type(type)
 {
 	auto home_ns_it = m_home_ns.find(m_type);
@@ -353,13 +353,13 @@ nsenter::nsenter(int pid, const string& type):
 	auto fd = open_ns_fd(pid, m_type);
 	if(fd <= 0)
 	{
-		throw sinsp_exception("Cannot open namespace fd for pid=" + to_string(pid));
+		throw sinsp_exception("Cannot open namespace fd for pid=" + std::to_string(pid));
 	}
 	auto ret = setns(fd, 0);
 	close(fd);
 	if(ret != 0)
 	{
-		throw sinsp_exception("Cannot setns to pid=" + to_string(pid));
+		throw sinsp_exception("Cannot setns to pid=" + std::to_string(pid));
 	}
 }
 
@@ -373,7 +373,7 @@ nsenter::~nsenter()
 	}
 }
 
-int nsenter::open_ns_fd(int pid, const string& type)
+int nsenter::open_ns_fd(int pid, const std::string& type)
 {
 	char filename[SCAP_MAX_PATH_SIZE];
 	snprintf(filename, sizeof(filename), "%s/proc/%d/ns/%s", scap_get_host_root(), pid, type.c_str());

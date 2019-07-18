@@ -38,9 +38,9 @@ public:
 	void to_protobuf(draiosproto::mounted_fs* proto) const;
 
 MOUNTED_FS_H_VISIBILITY_PRIVATE
-	string device;
-	string mount_dir;
-	string type;
+	std::string device;
+	std::string mount_dir;
+	std::string type;
 	uint64_t size_bytes;
 	uint64_t used_bytes;
 	uint64_t available_bytes;
@@ -66,7 +66,7 @@ class mounted_fs_proxy
 public:
 	explicit mounted_fs_proxy();
 	mounted_fs_list receive_mounted_fs_list();
-	bool send_container_list(const vector<sinsp_threadinfo*>& containers);
+	bool send_container_list(const std::vector<sinsp_threadinfo*>& containers);
 private:
 	posix_queue m_input;
 	posix_queue m_output;
@@ -77,7 +77,7 @@ class mounted_fs_reader
 public:
 	mounted_fs_reader(bool remotefs, const mount_points_filter_vec& mount_points, unsigned mounts_limit_size);
 	int run();
-	vector<mounted_fs> get_mounted_fs_list(const string& mtab="/etc/mtab");
+	std::vector<mounted_fs> get_mounted_fs_list(const std::string& mtab="/etc/mtab");
 	const mount_points_limits::sptr_t& get_limits() const {
 		return m_mount_points;
 	}

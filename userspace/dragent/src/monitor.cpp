@@ -13,6 +13,8 @@
 #include <thread>
 #include <posix_queue.h>
 
+using namespace std;
+
 static int g_signal_received = 0;
 
 static void g_monitor_signal_callback(int sig)

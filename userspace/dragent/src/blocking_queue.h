@@ -27,7 +27,7 @@ public:
 
 private:
 	const uint32_t m_max_size;
-	queue<T> m_queues[BQ_PRIORITY_SIZE];
+	std::queue<T> m_queues[BQ_PRIORITY_SIZE];
 	Mutex m_mutex;
 	Semaphore m_semaphore;
 };

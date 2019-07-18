@@ -7,8 +7,8 @@ class pipe_manager;
 class monitored_process
 {
 public:
-	monitored_process(string name, function<int(void)>&& exec, bool is_main=false):
-		m_name(move(name)),
+	monitored_process(std::string name, std::function<int(void)>&& exec, bool is_main=false):
+		m_name(std::move(name)),
 		m_main(is_main),
 		m_exec(exec),
 		m_pid(0),
@@ -44,9 +44,9 @@ public:
 	}
 
 private:
-	string m_name;
+	std::string m_name;
 	bool m_main;
-	function<int(void)> m_exec;
+	std::function<int(void)> m_exec;
 	pid_t m_pid;
 	bool m_enabled;
 };
@@ -55,19 +55,19 @@ class monitor
 {
 public:
 #ifndef CYGWING_AGENT
-	monitor(string pidfile, string self);
+	monitor(std::string pidfile, std::string self);
 #else
-	monitor(string pidfile, bool windows_service_parent);
+	monitor(std::string pidfile, bool windows_service_parent);
 #endif
 	int run();
 
 	template<typename... Ts>
 	void emplace_process(Ts&&... args)
 	{
-		m_processes.emplace_back(forward<Ts>(args)...);
+		m_processes.emplace_back(std::forward<Ts>(args)...);
 	}
 
-	void set_cleanup_function(function<void(void)>&& f)
+	void set_cleanup_function(std::function<void(void)>&& f)
 	{
 		m_cleanup_function = f;
 	}
@@ -76,11 +76,11 @@ public:
 	static const uint8_t CONFIG_UPDATE_EXIT_CODE = 18;
 	static const uint8_t DONT_SEND_LOG_REPORT_EXIT_CODE = 19;
 private:
-	function<void(void)> m_cleanup_function;
-	string m_pidfile;
-	vector<monitored_process> m_processes;
+	std::function<void(void)> m_cleanup_function;
+	std::string m_pidfile;
+	std::vector<monitored_process> m_processes;
 #ifndef CYGWING_AGENT
-	string m_self_binary;
+	std::string m_self_binary;
 #else
 	bool m_windows_service_parent = true;
 #endif

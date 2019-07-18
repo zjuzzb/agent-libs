@@ -1,14 +1,14 @@
 
 template <typename callback_type, typename callback_arg_type>
 container_emitter<callback_type,callback_arg_type>::container_emitter(callback_type& t,
-					unordered_map<string, analyzer_container_state>& containers,
+					std::unordered_map<std::string, analyzer_container_state>& containers,
 					unsigned statsd_limit,
-					const unordered_map<string, vector<sinsp_threadinfo*>>& progtable_by_container,
-					const vector<string>& container_patterns,
+					const std::unordered_map<std::string, std::vector<sinsp_threadinfo*>>& progtable_by_container,
+					const std::vector<std::string>& container_patterns,
 					callback_arg_type flshflags,
 					uint32_t limit,
 					bool nodriver,
-					vector<string>& emitted_containers)
+					std::vector<std::string>& emitted_containers)
 	: m_t(t),
 	  m_containers(containers),
 	  m_must_report(),
@@ -57,7 +57,7 @@ uint64_t container_emitter<callback_type,callback_arg_type>::age_extractor(const
 }
 
 template <typename callback_type, typename callback_arg_type>
-void container_emitter<callback_type,callback_arg_type>::check_and_emit_containers(vector<string>& containers,
+void container_emitter<callback_type,callback_arg_type>::check_and_emit_containers(std::vector<std::string>& containers,
 										   const uint32_t containers_limit,
 										   bool high_priority)
 {
@@ -154,7 +154,7 @@ void container_emitter<callback_type,callback_arg_type>::emit_containers()
 	uint64_t total_cpu_shares = 0;
 	for(const auto& item : m_progtable_by_container)
 	{
-		const string& container_id = item.first;
+		const std::string& container_id = item.first;
 		const sinsp_container_info* sinsp_container_info_instance = m_t.get_container(container_id);
 		if(sinsp_container_info_instance && !sinsp_container_info_instance->is_pod_sandbox())
 		{

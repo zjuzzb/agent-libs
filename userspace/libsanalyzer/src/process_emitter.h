@@ -21,7 +21,7 @@ public:
 			const bool nodriver,
 			tracer_emitter& proc_trc,
 			const uint32_t top_files_per_prog,
-			const unordered_map<dev_t, string>& device_map,
+			const std::unordered_map<dev_t, std::string>& device_map,
 			const bool username_lookups,
 			const bool track_environment,
 			const uint32_t top_file_devices_per_prog,
@@ -42,7 +42,7 @@ public:
 	void emit_processes(analyzer_emitter::flush_flags flushflags,
 			    const analyzer_emitter::progtable_t& progtable,
 			    const analyzer_emitter::progtable_by_container_t& progtable_by_container,
-			    const vector<std::string>& emitted_containers,
+			    const std::vector<std::string>& emitted_containers,
 			    draiosproto::metrics& metrics,
 			    std::set<uint64_t>& all_uids,
 			    std::set<sinsp_threadinfo*>& emitted_processes);

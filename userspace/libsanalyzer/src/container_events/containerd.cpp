@@ -250,7 +250,7 @@ void containerd_events::emit_tasks_exit(Envelope& event, event_scope& scope)
 			return;
 		}
 		name = "Container died";
-		desc += "; ExitCode = " + to_string(exit_status);
+		desc += "; ExitCode = " + std::to_string(exit_status);
 		log_level = user_event_logger::SEV_EVT_WARNING;
 	}
 

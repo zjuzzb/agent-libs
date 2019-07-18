@@ -479,7 +479,7 @@ sinsp_connection* sinsp_analyzer_fd_listener::get_ipv4_connection(sinsp_fdinfo_t
 	// XXX: what about AF_REUSED connections? given the comments (and code) in patch_network_role,
 	// XXX: we expect it to return true and not fall into the `return connection` path, which would mean
 	// XXX: we ignore that preexisting connection and create a new one
-	string scomm = evt->m_tinfo->get_comm();
+	std::string scomm = evt->m_tinfo->get_comm();
 	connection = m_ipv4_connections->add_connection(
 		fdinfo->m_sockinfo.m_ipv4info,
 		&scomm,
@@ -785,7 +785,7 @@ void sinsp_analyzer_fd_listener::add_client_ipv4_connection(sinsp_evt *evt)
 	//
 	// Add the tuple to the connection table
 	//
-	string scomm = evt->m_tinfo->get_comm();
+	std::string scomm = evt->m_tinfo->get_comm();
 
 	m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
 	                                   &scomm,
@@ -842,7 +842,7 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 
 void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_t* packed_data, sinsp_fdinfo_t* new_fdinfo)
 {
-	string scomm = evt->m_tinfo->get_comm();
+	std::string scomm = evt->m_tinfo->get_comm();
 	int64_t tid = evt->get_tid();
 
 	//
@@ -993,7 +993,7 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 	}
 }
 
-void sinsp_analyzer_fd_listener::on_file_open(sinsp_evt* evt, const string& fullpath, uint32_t flags)
+void sinsp_analyzer_fd_listener::on_file_open(sinsp_evt* evt, const std::string& fullpath, uint32_t flags)
 {
 	//
 	// File open count update
@@ -1018,7 +1018,7 @@ void sinsp_analyzer_fd_listener::on_file_open(sinsp_evt* evt, const string& full
 	// Baseline update
 	//
 	ASSERT(m_falco_baseliner != NULL);
-	m_falco_baseliner->on_file_open(evt, (string&)fullpath, flags);
+	m_falco_baseliner->on_file_open(evt, (std::string&)fullpath, flags);
 }
 
 
@@ -1147,7 +1147,7 @@ inline bool sinsp_analyzer_fd_listener::should_account_io(const sinsp_threadinfo
 #endif
 	return true;
 }
-void sinsp_analyzer_fd_listener::account_io(sinsp_threadinfo *tinfo, const string &name, uint32_t dev, uint32_t bytes, uint64_t time_ns)
+void sinsp_analyzer_fd_listener::account_io(sinsp_threadinfo *tinfo, const std::string &name, uint32_t dev, uint32_t bytes, uint64_t time_ns)
 {
 	if (!should_account_io(tinfo))
 	{
@@ -1175,7 +1175,7 @@ void sinsp_analyzer_fd_listener::account_io(sinsp_threadinfo *tinfo, const strin
 	}
 }
 
-void sinsp_analyzer_fd_listener::account_file_open(sinsp_threadinfo* tinfo, const string& name, uint32_t dev)
+void sinsp_analyzer_fd_listener::account_file_open(sinsp_threadinfo* tinfo, const std::string& name, uint32_t dev)
 {
 	if (!should_account_io(tinfo))
 	{
@@ -1203,7 +1203,8 @@ void sinsp_analyzer_fd_listener::account_file_open(sinsp_threadinfo* tinfo, cons
 	}
 }
 
-void sinsp_analyzer_fd_listener::account_error(sinsp_threadinfo* tinfo, const string& name, uint32_t dev) {
+void sinsp_analyzer_fd_listener::account_error(sinsp_threadinfo* tinfo, const std::string& name, uint32_t dev) {
+
 	if (!should_account_io(tinfo))
 	{
 		return;

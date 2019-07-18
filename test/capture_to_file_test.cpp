@@ -25,7 +25,7 @@ TEST(capture_on_file,can_consume_a_capture_file)
 	}
 	inspector.stop_capture();
 	inspector.close();
-	cerr << "stopped capture" << endl;
+	std::cerr << "stopped capture" << std::endl;
 	inspector.open("/tmp/can_consume_a_capture_file.scap");
 	for(int j=0; j < 1000; j++)
 	{

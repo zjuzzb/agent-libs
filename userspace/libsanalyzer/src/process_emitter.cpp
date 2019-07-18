@@ -8,7 +8,7 @@ process_emitter::process_emitter(const process_manager& the_process_manager,
 				 const bool nodriver,
 				 tracer_emitter& proc_trc,
 				 const uint32_t top_files_per_prog,
-				 const unordered_map<dev_t, string>& device_map,
+				 const std::unordered_map<dev_t, std::string>& device_map,
 				 const bool username_lookups,
 				 const bool track_environment,
 				 const uint32_t top_file_devices_per_prog,
@@ -51,7 +51,7 @@ template<class Iterator> void process_emitter::filter_top_programs(Iterator prog
 								   std::set<sinsp_threadinfo*>& processes_to_emit)
 {
 	// build the list of things we can emit here based on cs_only and driver type
-	vector<sinsp_threadinfo*> prog_sortable_list;
+	std::vector<sinsp_threadinfo*> prog_sortable_list;
 
 	for (auto ptit = progtable_begin; ptit != progtable_end; ++ptit)
 	{
@@ -210,7 +210,7 @@ void process_emitter::filter_process(sinsp_threadinfo* tinfo,
 void process_emitter::emit_processes(analyzer_emitter::flush_flags flushflags,
 				     const analyzer_emitter::progtable_t& progtable,
 				     const analyzer_emitter::progtable_by_container_t& progtable_by_container,
-				     const vector<std::string>& emitted_containers,
+				     const std::vector<std::string>& emitted_containers,
 				     draiosproto::metrics& metrics,
 				     std::set<uint64_t>& all_uids,
 				     std::set<sinsp_threadinfo*>& emitted_processes)
@@ -419,7 +419,7 @@ void process_emitter::emit_process(sinsp_threadinfo& tinfo,
 
 	proc->mutable_details()->set_comm(main_thread->m_comm);
 	proc->mutable_details()->set_exe(main_thread->m_exe);
-	for(vector<string>::const_iterator arg_it = main_thread->m_args.begin();
+	for(std::vector<std::string>::const_iterator arg_it = main_thread->m_args.begin();
 	    arg_it != main_thread->m_args.end(); ++arg_it)
 	{
 		if(*arg_it != "")

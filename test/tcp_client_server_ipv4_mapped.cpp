@@ -341,7 +341,7 @@ public:
 			}
 			else if(m_iot == READVWRITEV)
 			{
-				string ps(PAYLOAD);
+				std::string ps(PAYLOAD);
 				int wv_count;
 				char msg1[BUFFER_LENGTH / 3 + 1];
 				char msg2[BUFFER_LENGTH / 3 + 1];
@@ -445,7 +445,7 @@ void runtest_ipv4m(iotype iot,
 	server_in_addr.s_addr = get_server_address();
 
 	char *server_address = inet_ntoa(server_in_addr);
-	string sport;
+	std::string sport;
 	int state = 0;
 	int ctid;
 
@@ -482,7 +482,7 @@ void runtest_ipv4m(iotype iot,
 		tee(-1, -1, 0, 0);		
 	};
 
-	function<void (const callback_param&) > log_param = [](const callback_param& param)
+	std::function<void (const callback_param&) > log_param = [](const callback_param& param)
 	{
 //		cerr << param.m_evt->get_name() << endl;
 	};
@@ -495,7 +495,7 @@ void runtest_ipv4m(iotype iot,
 		sinsp_evt* evt = param.m_evt;
 		if(evt->get_type() == PPME_SOCKET_CONNECT_X)
 		{
-			string tuple = evt->get_param_value_str("tuple");
+			std::string tuple = evt->get_param_value_str("tuple");
 
 			EXPECT_NE((sinsp_fdinfo_t*)NULL, evt->m_fdinfo);
 
@@ -510,8 +510,8 @@ void runtest_ipv4m(iotype iot,
 
 			StringTokenizer tst(tuple, ">");
 			EXPECT_EQ(2, (int)tst.count());
-			string srcstr = tst[0].substr(0, tst[0].size() - 1);
-			string dststr = tst[1];
+			std::string srcstr = tst[0].substr(0, tst[0].size() - 1);
+			std::string dststr = tst[1];
 			StringTokenizer sst(srcstr, ":");
 			StringTokenizer dst(dststr, ":");
 
@@ -568,8 +568,8 @@ void runtest_ipv4m(iotype iot,
 			StringTokenizer tst(evt->get_param_value_str("tuple"), ">");
 			EXPECT_EQ(2, (int)tst.count());
 
-			string srcstr = tst[0].substr(0, tst[0].size() - 1);
-			string dststr = tst[1];
+			std::string srcstr = tst[0].substr(0, tst[0].size() - 1);
+			std::string dststr = tst[1];
 			StringTokenizer sst(srcstr, ":");
 			StringTokenizer dst(dststr, ":");
 
@@ -625,8 +625,8 @@ void runtest_ipv4m(iotype iot,
 			StringTokenizer tst(evt->get_param_value_str("fd"), ">");
 			EXPECT_EQ(3, (int)tst.count());
 
-			string srcstr = tst[1].substr(0, tst[1].size() - 1);
-			string dststr = tst[2];
+			std::string srcstr = tst[1].substr(0, tst[1].size() - 1);
+			std::string dststr = tst[2];
 			StringTokenizer sst(srcstr, ":");
 			StringTokenizer dst(dststr, ":");
 
@@ -661,7 +661,7 @@ void runtest_ipv4m(iotype iot,
 		}
 		else if(evt->get_type() == PPME_SYSCALL_READV_X)
 		{
-			string ds = evt->get_param_value_str("data");
+			std::string ds = evt->get_param_value_str("data");
 			//ds = ds.substr(0, BUFFER_LENGTH / 3);
 
 			EXPECT_EQ(ds, evt->get_param_value_str("data"));

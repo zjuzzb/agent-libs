@@ -20,6 +20,8 @@
 #include <unistd.h>
 #endif
 
+using namespace std;
+
 static inline string clone_flags_to_str(uint32_t flags);
 
 bool ctrl_c_pressed = false;

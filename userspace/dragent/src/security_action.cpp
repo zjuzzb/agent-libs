@@ -8,6 +8,7 @@
 #ifndef CYGWING_AGENT
 #include "security_action.h"
 
+using namespace std;
 
 security_actions::security_actions()
 	: m_has_outstanding_actions(false)

@@ -23,7 +23,7 @@ TEST_F(mounted_fs_reader_test, container_mounts)
 	int home_fd = mounted_fs_reader::open_ns_fd(getpid());
 
 	char root_dir[PATH_MAX];
-	string root_dir_link = "/proc/" + to_string(getppid()) + "/root";
+	std::string root_dir_link = "/proc/" + std::to_string(getppid()) + "/root";
 	ssize_t root_dir_sz = readlink(root_dir_link.c_str(), root_dir, PATH_MAX - 1);
 	ASSERT_GT(root_dir_sz, 0);
 	root_dir[root_dir_sz] = '\0';

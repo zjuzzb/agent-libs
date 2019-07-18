@@ -233,7 +233,7 @@ public:
 	// if we (eventually) allow multiple custom container configs (matching
 	// multiple configurations), this method should return a set<string>
 	// (or get one as a reference and modify it in place)
-	string get_labels() const;
+	std::string get_labels() const;
 
 
 protected:

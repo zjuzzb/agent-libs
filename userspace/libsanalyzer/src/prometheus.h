@@ -37,10 +37,10 @@ public:
 	{}
 
 	typedef struct {
-		set<uint16_t> ports;
-		string path;
-		map<string, string> options;
-		map<string, string> tags;
+		std::set<uint16_t> ports;
+		std::string path;
+		std::map<std::string, std::string> options;
+		std::map<std::string, std::string> tags;
 	} prom_params_t;
 
 	// match_and_fill() finds if the current process matches a filtering rule and
@@ -49,7 +49,7 @@ public:
 	// additions to prom_procs
 	bool match_and_fill(const sinsp_threadinfo* tinfo, sinsp_threadinfo* mtinfo,
 			    const sinsp_container_info *container, const infrastructure_state &is,
-			    vector<prom_process> &prom_procs, bool use_host_filter) const;
+			    std::vector<prom_process> &prom_procs, bool use_host_filter) const;
 
 private:
 	// Function to get called when a filtering rule matches in order to determine
@@ -102,26 +102,26 @@ private:
 	bool m_histograms;
 	bool m_ingest_raw;
 	bool m_ingest_calculated;
-	vector<object_filter_config::filter_rule> m_host_rules;
+	std::vector<object_filter_config::filter_rule> m_host_rules;
 };
 
 class prom_process
 {
 public:
-	explicit prom_process(const string name, int pid, int vpid, const set<uint16_t> &ports, const string path, const map<string, string> &options, const map<string, string> &tags) :
+	explicit prom_process(const std::string name, int pid, int vpid, const std::set<uint16_t> &ports, const std::string path, const std::map<std::string, std::string> &options, const std::map<std::string, std::string> &tags) :
 		m_name(name), m_pid(pid), m_vpid(vpid), m_ports(ports), m_path(path), m_options(options), m_tags(tags) { }
 
 	Json::Value to_json(const prometheus_conf &conf) const;
 
-	static void filter_procs(vector<prom_process> &procs, threadinfo_map_t &threadtable, const app_checks_proxy::metric_map_t &app_metrics, uint64_t now);
+	static void filter_procs(std::vector<prom_process> &procs, threadinfo_map_t &threadtable, const app_checks_proxy::metric_map_t &app_metrics, uint64_t now);
 private:
-	string m_name;	// Just for debugging
+	std::string m_name;	// Just for debugging
 	int m_pid;
 	int m_vpid;
-	set<uint16_t> m_ports;
-	string m_path;
-	map<string, string> m_options;
-	map<string, string> m_tags;
+	std::set<uint16_t> m_ports;
+	std::string m_path;
+	std::map<std::string, std::string> m_options;
+	std::map<std::string, std::string> m_tags;
 };
 
 #endif // _WIN32

@@ -43,7 +43,7 @@
 template<class Stub> std::shared_ptr<Stub> grpc_connect(const std::string& socket_url)
 {
 	g_logger.log("CONNECTING TO SOCKET " + socket_url, sinsp_logger::SEV_INFO);
-	return make_shared<Stub>(libsinsp::grpc_channel_registry::get_channel(socket_url));
+	return std::make_shared<Stub>(libsinsp::grpc_channel_registry::get_channel(socket_url));
 }
 
 template<class Stub> std::shared_ptr<Stub> grpc_connect(const std::string& socket_url, int connect_timeout_ms)
@@ -56,7 +56,7 @@ template<class Stub> std::shared_ptr<Stub> grpc_connect(const std::string& socke
 	if(connected)
 	{
 		g_logger.log("Connected to " + socket_url, sinsp_logger::SEV_INFO);
-		return make_shared<Stub>(channel);
+		return std::make_shared<Stub>(channel);
 	}
 	else
 	{
@@ -65,12 +65,12 @@ template<class Stub> std::shared_ptr<Stub> grpc_connect(const std::string& socke
 	}
 }
 
-template <typename R, typename S, typename C, typename W, typename Q> S get_unary_stub_type(unique_ptr<grpc::ClientAsyncResponseReader<R>> (S::*)(C, const W&, Q));
-template <typename R, typename S, typename C, typename W, typename Q> W get_unary_request_type(unique_ptr<grpc::ClientAsyncResponseReader<R>> (S::*)(C, const W&, Q));
-template <typename R, typename S, typename C, typename W, typename Q> R get_unary_response_type(unique_ptr<grpc::ClientAsyncResponseReader<R>> (S::*)(C, const W&, Q));
+template <typename R, typename S, typename C, typename W, typename Q> S get_unary_stub_type(std::unique_ptr<grpc::ClientAsyncResponseReader<R>> (S::*)(C, const W&, Q));
+template <typename R, typename S, typename C, typename W, typename Q> W get_unary_request_type(std::unique_ptr<grpc::ClientAsyncResponseReader<R>> (S::*)(C, const W&, Q));
+template <typename R, typename S, typename C, typename W, typename Q> R get_unary_response_type(std::unique_ptr<grpc::ClientAsyncResponseReader<R>> (S::*)(C, const W&, Q));
 #define unary_grpc_client(Method) unary_grpc_client_<decltype(get_unary_request_type(Method)), decltype(get_unary_response_type(Method)), decltype(get_unary_stub_type(Method)), Method>
 
-template<class RequestMsg, class ResponseMsg, class Stub, unique_ptr<grpc::ClientAsyncResponseReader<ResponseMsg>> (Stub::*Method)(grpc::ClientContext*, const RequestMsg&, grpc::CompletionQueue*)>
+template<class RequestMsg, class ResponseMsg, class Stub, std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseMsg>> (Stub::*Method)(grpc::ClientContext*, const RequestMsg&, grpc::CompletionQueue*)>
 class unary_grpc_client_
 {
 public:
@@ -179,14 +179,14 @@ protected:
 	}
 
 	std::shared_ptr<Stub> m_stub;
-	unique_ptr<grpc::CompletionQueue> m_cq;
+	std::unique_ptr<grpc::CompletionQueue> m_cq;
 
-	unique_ptr<grpc::ClientAsyncResponseReader<ResponseMsg>> m_reader;
+	std::unique_ptr<grpc::ClientAsyncResponseReader<ResponseMsg>> m_reader;
 	// This can be used to pass additional options to the server
 	// that control how the RPC should be performed (like add
 	// compression, set a deadline for a response, etc). We don't
 	// use it.
-	unique_ptr<grpc::ClientContext> m_ctx;
+	std::unique_ptr<grpc::ClientContext> m_ctx;
 	grpc::Status m_status;
 	ResponseMsg m_response_msg;
 	response_cb_t m_response_cb;

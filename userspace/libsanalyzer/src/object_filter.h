@@ -129,7 +129,7 @@ public:
 
 
 	static std::set<uint16_t> filter_ports(const std::set<uint16_t>& sports,
-					       const vector<object_filter_config::port_filter_rule>& rules);
+					       const std::vector<object_filter_config::port_filter_rule>& rules);
 
 private:
 	std::vector<object_filter_config::port_filter_rule> m_ports;

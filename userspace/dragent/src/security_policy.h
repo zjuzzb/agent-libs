@@ -343,7 +343,7 @@ protected:
 	dragent_configuration *m_configuration;
 	sinsp *m_inspector;
 
-	unique_ptr<sinsp_evt_formatter_cache> m_formatters;
+	std::unique_ptr<sinsp_evt_formatter_cache> m_formatters;
 
 private:
 	// This check is built from qualifies() and can be used to
@@ -527,7 +527,7 @@ protected:
 	// and return a filter_value using that allocated storage.
         filter_value_t add_filter_value(uint8_t *val, uint32_t len);
 
-	vector<vector<uint8_t>> m_val_storages;
+	std::vector<std::vector<uint8_t>> m_val_storages;
 
 	// The event attribute to extract. This is used to find the
 	// set of possible policies that match the event. For example,

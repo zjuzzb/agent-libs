@@ -603,9 +603,9 @@ void sinsp_sql_parser::parse(const char *statement, size_t statement_len)
 	parse_statement({statement, statement + statement_len});
 }
 
-string sinsp_sql_parser::tables() const
+std::string sinsp_sql_parser::tables() const
 {
-	string s;
+	std::string s;
 	for (const auto& tab : m_tables) {
 		if (!s.empty()) {
 			s.append(", ");

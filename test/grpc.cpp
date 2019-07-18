@@ -22,7 +22,7 @@ public:
 		ASSERT_NE(nullptr, m_grpc_conn);
 		ASSERT_EQ(nullptr, m_grpc_ping);
 
-		m_grpc_ping = make_shared<unary_grpc_client(&sdc_internal::CoInterface::Stub::AsyncPerformPing)>(m_grpc_conn);
+		m_grpc_ping = std::make_shared<unary_grpc_client(&sdc_internal::CoInterface::Stub::AsyncPerformPing)>(m_grpc_conn);
 
 		sdc_internal::ping ping_req;
 		ping_req.set_token(token);
@@ -88,7 +88,7 @@ public:
 		ASSERT_NE(nullptr, m_grpc_conn);
 		ASSERT_EQ(nullptr, m_grpc_stream);
 
-		m_grpc_stream = make_shared<streaming_grpc_client(&sdc_internal::CoInterface::Stub::AsyncPerformOrchestratorEventsStream)>(m_grpc_conn);
+		m_grpc_stream = std::make_shared<streaming_grpc_client(&sdc_internal::CoInterface::Stub::AsyncPerformOrchestratorEventsStream)>(m_grpc_conn);
 
 		auto req = stream_request();
 
@@ -136,7 +136,7 @@ TEST_F(grpc_test, sync_grpc_stream) {
 	context.set_deadline(deadline);
 
 	int received = 0;
-	unique_ptr<grpc::ClientReader<sdc_internal::array_congroup_update_event>> reader = cointerface->PerformOrchestratorEventsStream(&context, req);
+	std::unique_ptr<grpc::ClientReader<sdc_internal::array_congroup_update_event>> reader = cointerface->PerformOrchestratorEventsStream(&context, req);
 	while (reader->Read(&event))
 	{
 		++received;

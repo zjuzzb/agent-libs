@@ -72,7 +72,7 @@ void sinsp_data_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draios
 {
 	if(m_configuration->m_print_protobuf)
 	{
-		LOG_INFO(string("Security Events:") + events->DebugString());
+		LOG_INFO(std::string("Security Events:") + events->DebugString());
 	}
 
 	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
@@ -102,7 +102,7 @@ void sinsp_data_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
 {
 	if(m_configuration->m_print_protobuf)
 	{
-		LOG_INFO(string("Throttled Security Events:") + tevents->DebugString());
+		LOG_INFO(std::string("Throttled Security Events:") + tevents->DebugString());
 	}
 
 	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
@@ -131,7 +131,7 @@ void sinsp_data_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const d
 {
 	if(m_configuration->m_print_protobuf)
 	{
-		LOG_INFO(string("Compliance Results:") + results->DebugString());
+		LOG_INFO(std::string("Compliance Results:") + results->DebugString());
 	}
 
 	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
@@ -159,7 +159,7 @@ void sinsp_data_handler::audit_tap_data_ready(uint64_t ts_ns, const tap::AuditLo
 {
 	if(m_configuration->m_print_protobuf || m_configuration->m_audit_tap_debug_only)
 	{
-		LOG_INFO(string("Audit tap data:") + audit_log->DebugString());
+		LOG_INFO(std::string("Audit tap data:") + audit_log->DebugString());
 	}
 
 	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(

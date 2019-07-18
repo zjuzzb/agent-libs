@@ -147,7 +147,7 @@ k8s_user_event_message_handler::~k8s_user_event_message_handler()
 {
 }
 
-string k8s_user_event_message_handler::translate_name(const string &name) const
+std::string k8s_user_event_message_handler::translate_name(const std::string &name) const
 {
 	const auto& translation = m_name_translation.find(name);
 	if (translation != m_name_translation.end())
@@ -217,12 +217,12 @@ void k8s_user_event_message_handler::handle_event(sdc_internal::k8s_user_event *
 			if (!evt->obj().kind().empty() && !evt->obj().uid().empty() && infra_state)
 			{
 				// Translate kind to string as used in infra_state
-				string kind = "k8s_" + evt->obj().kind();
+				std::string kind = "k8s_" + evt->obj().kind();
 				transform(kind.begin()+4, kind.end(), kind.begin()+4, ::tolower);
-				auto uid = make_pair(kind, evt->obj().uid());
+				auto uid = std::make_pair(kind, evt->obj().uid());
 				scope_names = infra_state->get_scope_names(uid, &scope);
 
-				string k8s_cluster_name = infra_state->get_k8s_cluster_name();
+				std::string k8s_cluster_name = infra_state->get_k8s_cluster_name();
 				if (!k8s_cluster_name.empty()) {
 					scope.add("kubernetes.cluster.name", k8s_cluster_name);
 					// Don't increment scope_names for cluster name because we
@@ -245,7 +245,7 @@ void k8s_user_event_message_handler::handle_event(sdc_internal::k8s_user_event *
 				}
 				if (!evt->obj().kind().empty() && !evt->obj().name().empty())
 				{
-					string kind = evt->obj().kind();
+					std::string kind = evt->obj().kind();
 					// Only transform first character to lowercase: ReplicaSet -> replicaSet
 					// I THINK this is because k8s_state parses the events this way (see k8s_event.cpp and
 					// k8s_component.cpp). It is hideous.
@@ -254,9 +254,9 @@ void k8s_user_event_message_handler::handle_event(sdc_internal::k8s_user_event *
 				}
 			}
 		}
-		string name = translate_name(evt->reason());
-		string message = evt->message();
-		string logstr = sinsp_user_event::to_string(ts,
+		std::string name = translate_name(evt->reason());
+		std::string message = evt->message();
+		std::string logstr = sinsp_user_event::to_string(ts,
 							    std::move(name),
 							    std::move(message),
 							    std::move(scope),

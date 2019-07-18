@@ -10,17 +10,17 @@
 
 class proc_config {
 public:
-	inline proc_config(const string& conf);
+	inline proc_config(const std::string& conf);
 
-	const vector<app_check>& app_checks() const
+	const std::vector<app_check>& app_checks() const
 	{
 		return m_app_checks;
 	}
 private:
-	vector<app_check> m_app_checks;
+	std::vector<app_check> m_app_checks;
 };
 
-proc_config::proc_config(const string &conf)
+proc_config::proc_config(const std::string &conf)
 {
 	try
 	{

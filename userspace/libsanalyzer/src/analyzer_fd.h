@@ -19,7 +19,7 @@ public:
 	void on_sendfile(sinsp_evt *evt, int64_t fdin, uint32_t len);
 	void on_connect(sinsp_evt *evt, uint8_t* packed_data);
 	void on_accept(sinsp_evt *evt, int64_t newfd, uint8_t* packed_data, sinsp_fdinfo_t* new_fdinfo);
-	void on_file_open(sinsp_evt* evt, const string& fullpath, uint32_t flags);
+	void on_file_open(sinsp_evt* evt, const std::string& fullpath, uint32_t flags);
 	void on_error(sinsp_evt* evt);
 	void on_erase_fd(erase_fd_params* params);
 	void on_socket_shutdown(sinsp_evt *evt);
@@ -41,9 +41,9 @@ private:
 	sinsp_connection* get_ipv4_connection(sinsp_fdinfo_t* fdinfo, const ipv4tuple& tuple, sinsp_evt* evt, int64_t tid, int64_t fd, bool incoming);
 	void add_client_ipv4_connection(sinsp_evt *evt);
 
-	void account_io(sinsp_threadinfo* tinfo, const string& name, uint32_t dev, uint32_t bytes, uint64_t time_ns);
-	void account_file_open(sinsp_threadinfo* tinfo, const string& name, uint32_t dev);
-	void account_error(sinsp_threadinfo* tinfo, const string& name, uint32_t dev);
+	void account_io(sinsp_threadinfo* tinfo, const std::string& name, uint32_t dev, uint32_t bytes, uint64_t time_ns);
+	void account_file_open(sinsp_threadinfo* tinfo, const std::string& name, uint32_t dev);
+	void account_error(sinsp_threadinfo* tinfo, const std::string& name, uint32_t dev);
 
 #ifndef _WIN32
 	void handle_statsd_write(sinsp_evt *evt, sinsp_fdinfo_t *fdinfo, const char *data, uint32_t len) const;

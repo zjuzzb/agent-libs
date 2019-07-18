@@ -37,12 +37,12 @@ public:
 
 	bool match(sinsp_threadinfo* tinfo) const;
 
-	const string& name() const
+	const std::string& name() const
 	{
 		return m_name;
 	}
 
-	const string& module() const
+	const std::string& module() const
 	{
 		return m_check_module;
 	}
@@ -56,12 +56,12 @@ public:
 private:
 	friend class YAML::convert<app_check>;
 
-	string m_comm_pattern;
-	string m_exe_pattern;
+	std::string m_comm_pattern;
+	std::string m_exe_pattern;
 	uint16_t m_port_pattern;
-	string m_arg_pattern;
-	string m_name;
-	string m_check_module;
+	std::string m_arg_pattern;
+	std::string m_name;
+	std::string m_check_module;
 	bool m_enabled;
 	bool m_log_errors;
 	bool m_retry;
@@ -96,11 +96,11 @@ class app_process
 public:
 	explicit app_process(const app_check& check, sinsp_threadinfo* tinfo);
 
-	void set_conf_vals(shared_ptr<app_process_conf_vals> &conf_vals);
+	void set_conf_vals(std::shared_ptr<app_process_conf_vals> &conf_vals);
 
 	Json::Value to_json() const;
 
-	inline const string& name() const
+	inline const std::string& name() const
 	{
 		return m_check.name();
 	}
@@ -108,9 +108,9 @@ public:
 private:
 	int m_pid;
 	int m_vpid;
-	set<uint16_t> m_ports;
+	std::set<uint16_t> m_ports;
 	const app_check& m_check;
-	shared_ptr<app_process_conf_vals> m_conf_vals;
+	std::shared_ptr<app_process_conf_vals> m_conf_vals;
 
 	// Solr temporary patch
 	std::uint16_t m_solr_port;
@@ -144,14 +144,14 @@ public:
 	void to_protobuf(draiosproto::app_metric* proto) const;
 	const std::string& name() const;
 private:
-	string m_name;
+	std::string m_name;
 	double m_value;
 	type_t m_type;
 	prometheus_type_t m_prometheus_type;
-	map<string, string> m_tags;
-	map<string, uint64_t> m_buckets;
+	std::map<std::string, std::string> m_tags;
+	std::map<std::string, uint64_t> m_buckets;
 
-	static const std::unordered_map<string, std::pair<type_t, prometheus_type_t>> metric_type_mapping;
+	static const std::unordered_map<std::string, std::pair<type_t, prometheus_type_t>> metric_type_mapping;
 };
 
 inline const std::string& app_metric::name() const
@@ -175,9 +175,9 @@ public:
 	const std::string& name() const;
 private:
 	status_t m_status;
-	map<string, string> m_tags;
-	string m_name;
-	string m_message;
+	std::map<std::string, std::string> m_tags;
+	std::string m_name;
+	std::string m_message;
 };
 
 inline const std::string& app_service_check::name() const
@@ -188,8 +188,8 @@ inline const std::string& app_service_check::name() const
 class app_check_data
 {
 public:
-	typedef vector<app_metric> metrics_t;
-	typedef vector<app_service_check> services_t;
+	typedef std::vector<app_metric> metrics_t;
+	typedef std::vector<app_service_check> services_t;
 
 	enum check_type
 	{
@@ -229,7 +229,7 @@ public:
 	unsigned to_protobuf(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const;
 
 
-	const string& name() const
+	const std::string& name() const
 	{
 		return m_process_name;
 	}
@@ -257,7 +257,7 @@ public:
 private:
 	check_type m_type;
 	int m_pid;
-	string m_process_name;
+	std::string m_process_name;
 	metrics_t m_metrics;
 	services_t m_service_checks;
 	uint64_t m_expiration_ts;
@@ -268,13 +268,13 @@ class app_checks_proxy
 {
 public:
 	// hash table keyed by PID, containing maps keyed by app_check name
-	typedef unordered_map<int, map<string, app_check_data>> metric_map_t;
+	typedef std::unordered_map<int, std::map<std::string, app_check_data>> metric_map_t;
 
 	app_checks_proxy();
 
-	// void send_get_metrics_cmd(const vector<app_process>& processes);
-	void send_get_metrics_cmd(const vector<app_process>& processes,
-		const vector<prom_process>& prom_procs, const prometheus_conf &conf);
+	// void send_get_metrics_cmd(const std::vector<app_process>& processes);
+	void send_get_metrics_cmd(const std::vector<app_process>& processes,
+		const std::vector<prom_process>& prom_procs, const prometheus_conf &conf);
 
 	metric_map_t read_metrics(metric_limits::cref_sptr_t ml = nullptr);
 

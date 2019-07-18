@@ -24,7 +24,7 @@ struct dragent_protocol_header
 #pragma pack(pop)
 
 typedef struct {
-	string buffer;
+	std::string buffer;
 	uint64_t ts_ns;
 	uint8_t message_type;
 } protocol_queue_item;

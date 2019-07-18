@@ -23,9 +23,9 @@ void cpustate::init()
 	m_last_interval_threads.clear();
 }
 
-vector<pair<int64_t, uint64_t>>::iterator cpustate::find_thread(int64_t tid)
+std::vector<std::pair<int64_t, uint64_t>>::iterator cpustate::find_thread(int64_t tid)
 {
-	vector<pair<int64_t, uint64_t>>::iterator it;
+	std::vector<std::pair<int64_t, uint64_t>>::iterator it;
 
 	for(it = m_last_interval_threads.begin(); it != m_last_interval_threads.end(); ++it)
 	{
@@ -40,11 +40,11 @@ vector<pair<int64_t, uint64_t>>::iterator cpustate::find_thread(int64_t tid)
 
 void cpustate::add_to_last_interval(int64_t tid, uint64_t delta)
 {
-	vector<pair<int64_t, uint64_t>>::iterator it = find_thread(tid);
+	std::vector<std::pair<int64_t, uint64_t>>::iterator it = find_thread(tid);
 
 	if(it == m_last_interval_threads.end())
 	{
-		m_last_interval_threads.push_back(pair<int64_t, uint64_t>(tid, delta));
+		m_last_interval_threads.push_back(std::pair<int64_t, uint64_t>(tid, delta));
 	}
 	else
 	{
@@ -54,7 +54,7 @@ void cpustate::add_to_last_interval(int64_t tid, uint64_t delta)
 
 void cpustate::complete_interval()
 {
-	vector<pair<int64_t, uint64_t>>::iterator it;
+	std::vector<std::pair<int64_t, uint64_t>>::iterator it;
 	uint64_t max = 0;
 	int64_t max_pid = -1;
 #ifdef _DEBUG
@@ -90,7 +90,7 @@ sinsp_sched_analyzer::sinsp_sched_analyzer(sinsp* inspector, uint32_t ncpus)
 	ASSERT(inspector != NULL);
 	m_ncpus = ncpus;
 	m_inspector = inspector;
-	m_cpu_states = vector<cpustate>(ncpus);
+	m_cpu_states = std::vector<cpustate>(ncpus);
 }
 
 void sinsp_sched_analyzer::on_capture_start()
@@ -101,7 +101,7 @@ void sinsp_sched_analyzer::on_capture_start()
 	for(j = 0; j < m_ncpus; j++)
 	{
 		m_cpu_states[j].m_time_segments = 
-			vector<int64_t>((size_t)m_sample_length_ns / CONCURRENCY_OBSERVATION_INTERVAL_NS, 0);
+			std::vector<int64_t>((size_t)m_sample_length_ns / CONCURRENCY_OBSERVATION_INTERVAL_NS, 0);
 	}
 }
 
@@ -279,7 +279,7 @@ sinsp_sched_analyzer2::sinsp_sched_analyzer2(sinsp* inspector, uint32_t ncpus)
 	ASSERT(inspector != NULL);
 	m_ncpus = ncpus;
 	m_inspector = inspector;
-	m_cpu_states = vector<cpustate2>(ncpus);
+	m_cpu_states = std::vector<cpustate2>(ncpus);
 }
 
 void sinsp_sched_analyzer2::on_capture_start()

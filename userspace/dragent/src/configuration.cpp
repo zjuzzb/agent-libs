@@ -22,6 +22,7 @@
 #include "user_event_logger.h"
 #include "statsite_config.h"
 
+using namespace std;
 using namespace Poco;
 using namespace Poco::Net;
 

@@ -83,12 +83,12 @@ public:
 		m_failed.clear();
 	}
 
-	inline void insert(set<string>* table, string* name)
+	inline void insert(std::set<std::string>* table, std::string* name)
 	{
 		table->insert(*name);
 	}
 
-	inline void erase_from_uncategorized(string* name)
+	inline void erase_from_uncategorized(std::string* name)
 	{
 		if(m_uncategorized.size() != 0)
 		{
@@ -101,7 +101,7 @@ public:
 		}
 	}
 
-	inline void erase_from_r(string* name)
+	inline void erase_from_r(std::string* name)
 	{
 		if(m_r.size() != 0)
 		{
@@ -114,7 +114,7 @@ public:
 		}
 	}
 
-	inline void add(string& name, file_category cat)
+	inline void add(std::string& name, file_category cat)
 	{
 		if(cat & FAILED_OPS)
 		{
@@ -184,21 +184,21 @@ public:
 	// Convert a filename into a directory by filtering out the last part and 
 	// then add it as we would add a normal file
 	//
-	inline static string file_to_dir(string& filename)
+	inline static std::string file_to_dir(std::string& filename)
 	{
 		size_t pos = filename.rfind('/');
 
-		if(pos != string::npos)
+		if(pos != std::string::npos)
 		{
 			if(pos < filename.size() - 1)
 			{
-				string ts(filename, 0, pos + 1);
+				std::string ts(filename, 0, pos + 1);
 				return ts;
 			}
 		}
 		else
 		{
-			string ts("/");
+			std::string ts("/");
 			return ts;
 		}
 
@@ -209,21 +209,21 @@ public:
 	// Convert a filename into a directory by filtering out the last part and 
 	// then add it as we would add a normal file
 	//
-	inline static string reduce_dir(string& filename)
+	inline static std::string reduce_dir(std::string& filename)
 	{
 		size_t pos = filename.rfind('/');
 
-		if(pos != string::npos)
+		if(pos != std::string::npos)
 		{
 			if(pos < filename.size() - 1)
 			{
-				string ts(filename, 0, pos + 1);
+				std::string ts(filename, 0, pos + 1);
 				return ts;
 			}
 		}
 		else
 		{
-			string ts("/");
+			std::string ts("/");
 			return ts;
 		}
 
@@ -379,12 +379,12 @@ public:
 			(m_failed.size() != 0);
 	}
 
-	set<string> m_r;	// entries opened for reading only
-	set<string> m_rw;	// entries opened for read and write
-	set<string> m_c;	// entries opened with the create flag
-	set<string> m_other; // entries that have only flags different from read or write
-	set<string> m_uncategorized; // entries not categorized yet, likely because they come from scanning proc, where we don't extract open flags yet
-	set<string> m_failed; // entries coming from failed operations
+	std::set<std::string> m_r;	// entries opened for reading only
+	std::set<std::string> m_rw;	// entries opened for read and write
+	std::set<std::string> m_c;	// entries opened with the create flag
+	std::set<std::string> m_other; // entries that have only flags different from read or write
+	std::set<std::string> m_uncategorized; // entries not categorized yet, likely because they come from scanning proc, where we don't extract open flags yet
+	std::set<std::string> m_failed; // entries coming from failed operations
 	bool m_is_r_full;
 	bool m_is_rw_full;
 	bool m_is_c_full;
@@ -407,7 +407,7 @@ public:
 		m_regular_table.clear();
 	}
 
-	inline void add(string& name, file_category cat, uint64_t time_from_clone)
+	inline void add(std::string& name, file_category cat, uint64_t time_from_clone)
 	{
 		if(time_from_clone < BL_STARTUP_TIME_NS)
 		{
@@ -477,7 +477,7 @@ public:
 		m_p.clear();
 	}
 
-	inline void add(string& name)
+	inline void add(std::string& name)
 	{
 		if(!m_is_p_full)
 		{
@@ -525,7 +525,7 @@ public:
 		return (m_p.size() != 0);
 	}
 
-	set<string> m_p;
+	std::set<std::string> m_p;
 	bool m_is_p_full;
 };
 
@@ -615,7 +615,7 @@ public:
 		return (m_p.size() != 0);
 	}
 
-	set<uint32_t> m_p;
+	std::set<uint32_t> m_p;
 	bool m_is_p_full;
 };
 
@@ -804,7 +804,7 @@ public:
 
 			for(auto it : m_l_tcp)
 			{
-				sl_tcp->add_d(to_string(it));
+				sl_tcp->add_d(std::to_string(it));
 			}
 		}
 
@@ -816,7 +816,7 @@ public:
 
 			for(auto it : m_r_tcp)
 			{
-				sr_tcp->add_d(to_string(it));
+				sr_tcp->add_d(std::to_string(it));
 			}
 		}
 
@@ -828,7 +828,7 @@ public:
 
 			for(auto it : m_l_udp)
 			{
-				sl_udp->add_d(to_string(it));
+				sl_udp->add_d(std::to_string(it));
 			}
 		}
 
@@ -840,7 +840,7 @@ public:
 
 			for(auto it : m_r_udp)
 			{
-				sr_udp->add_d(to_string(it));
+				sr_udp->add_d(std::to_string(it));
 			}
 		}
 	}
@@ -853,7 +853,7 @@ public:
 		{
 			for(auto it : m_l_tcp)
 			{
-				echild[to_string(it)] = 1;
+				echild[std::to_string(it)] = 1;
 			}
 			element["l_tcp"]["d"] = echild;
 			element["l_tcp"]["full"] = m_is_l_tcp_full;
@@ -864,7 +864,7 @@ public:
 		{
 			for(auto it : m_r_tcp)
 			{
-				echild[to_string(it)] = 1;
+				echild[std::to_string(it)] = 1;
 			}
 			element["r_tcp"]["d"] = echild;
 			element["r_tcp"]["full"] = m_is_r_tcp_full;
@@ -875,7 +875,7 @@ public:
 		{
 			for(auto it : m_l_udp)
 			{
-				echild[to_string(it)] = 1;
+				echild[std::to_string(it)] = 1;
 			}
 			element["l_udp"]["d"] = echild;
 			element["l_udp"]["full"] = m_is_l_udp_full;
@@ -886,7 +886,7 @@ public:
 		{
 			for(auto it : m_r_udp)
 			{
-				echild[to_string(it)] = 1;
+				echild[std::to_string(it)] = 1;
 			}
 			element["r_udp"]["d"] = echild;
 			element["r_udp"]["full"] = m_is_r_udp_full;
@@ -902,10 +902,10 @@ public:
 			(m_r_udp.size() != 0);
 	}
 
-	set<uint16_t> m_l_tcp;	// local TCP server ports
-	set<uint16_t> m_r_tcp;	// remote TCP server ports
-	set<uint16_t> m_l_udp;	// local TCP server ports
-	set<uint16_t> m_r_udp;	// remote TCP server ports
+	std::set<uint16_t> m_l_tcp;	// local TCP server ports
+	std::set<uint16_t> m_r_tcp;	// remote TCP server ports
+	std::set<uint16_t> m_l_udp;	// local TCP server ports
+	std::set<uint16_t> m_r_udp;	// remote TCP server ports
 	bool m_is_l_tcp_full;
 	bool m_is_r_tcp_full;
 	bool m_is_l_udp_full;
@@ -1193,9 +1193,9 @@ public:
 			(m_udp.size() != 0);
 	}
 
-	set<uint32_t> m_c_tcp;	// TCP client endpoints
-	set<uint32_t> m_s_tcp;	// TCP server endpoints
-	set<uint32_t> m_udp;	// UDP endpoints
+	std::set<uint32_t> m_c_tcp;	// TCP client endpoints
+	std::set<uint32_t> m_s_tcp;	// TCP server endpoints
+	std::set<uint32_t> m_udp;	// UDP endpoints
 	bool m_is_c_tcp_full;
 	bool m_is_s_tcp_full;
 	bool m_is_udp_full;
@@ -1303,22 +1303,22 @@ public:
 		m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 	}
 
-	blprogram(string& comm)
+	blprogram(std::string& comm)
 	{
 		m_comm = comm;
 	}
 
-	string m_comm; // Command name (e.g. "top")
-	string m_exe; // argv[0] (e.g. "sshd: user@pts/4")
-	vector<uint64_t> m_pids;
-	//string m_parent_comm; // Parent command name (e.g. "top")
-	//vector<string> m_args; // Command line arguments (e.g. "-d1")
-	//vector<string> m_env; // Environment variables
-	string m_container_id; // heuristic-based container id
+	std::string m_comm; // Command name (e.g. "top")
+	std::string m_exe; // argv[0] (e.g. "sshd: user@pts/4")
+	std::vector<uint64_t> m_pids;
+	//std::string m_parent_comm; // Parent command name (e.g. "top")
+	//std::vector<std::string> m_args; // Command line arguments (e.g. "-d1")
+	//std::vector<std::string> m_env; // Environment variables
+	std::string m_container_id; // heuristic-based container id
 	uint32_t m_user_id; // user id
 	blfiletable_split m_files;
 	blfiletable_split m_dirs;
-	simpletable_split<blprogtable, string&> m_executed_programs;
+	simpletable_split<blprogtable, std::string&> m_executed_programs;
 	blporttable_split m_server_ports;
 	blporttable_split m_bound_ports;
 	bl_ip_endpoint_table_split m_ip_endpoints;
@@ -1332,7 +1332,7 @@ public:
 class blcontainer
 {
 public:
-	blcontainer(string name, string image_name, string image_id)
+	blcontainer(std::string name, std::string image_name, std::string image_id)
 	{
 		m_name = name;
 		m_image_name = image_name;
@@ -1343,9 +1343,9 @@ public:
 	{
 	}
 
-	string m_name;
-	string m_image_name;
-	string m_image_id;
+	std::string m_name;
+	std::string m_image_name;
+	std::string m_image_id;
 };
 
 //
@@ -1361,14 +1361,14 @@ public:
 	void load_tables(uint64_t time);
 	void clear_tables();
 	void register_callbacks(sinsp_fd_listener* listener);
-	void serialize_json(string filename);
+	void serialize_json(std::string filename);
 #ifdef ASYNC_PROC_PARSING
 	void merge_proc_data();
 #endif
 	void serialize_protobuf(draiosproto::falco_baseline* pbentry);
 	void emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry);
 
-	void on_file_open(sinsp_evt *evt, string& name, uint32_t openflags);
+	void on_file_open(sinsp_evt *evt, std::string& name, uint32_t openflags);
 	void on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo);
 	void on_connect(sinsp_evt *evt);
 	void on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo);
@@ -1389,8 +1389,8 @@ public:
 private:
 	sinsp* m_inspector;
 	sinsp_network_interfaces* m_ifaddr_list;
-	unordered_map<size_t, blprogram*> m_progtable;
-	unordered_map<string, blcontainer> m_container_table;
+	std::unordered_map<size_t, blprogram*> m_progtable;
+	std::unordered_map<std::string, blcontainer> m_container_table;
 #ifdef ASYNC_PROC_PARSING
 	std::thread* m_procparser_thread;
 	proc_parser_state* m_procparser_state;

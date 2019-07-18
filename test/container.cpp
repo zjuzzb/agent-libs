@@ -26,6 +26,8 @@
 #include "common_logger.h"
 #include "docker_utils.h"
 
+using namespace std;
+
 TEST_F(sys_call_test, container_cgroups)
 {
 	int ctid;

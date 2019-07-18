@@ -11,6 +11,8 @@
 #include "Poco/Path.h"
 #include "configuration_manager.h"
 
+using namespace std;
+
 #define DEFAULT_CONNECT_INTERVAL (60 * ONE_SECOND_IN_NS)
 
 type_config<uint32_t> infrastructure_state::c_orchestrator_queue_len(

@@ -63,6 +63,8 @@
 #include <thread>
 #include <memory>
 
+using namespace std;
+
 using Poco::NumberFormatter;
 using Poco::NumberParser;
 using Poco::SharedPtr;

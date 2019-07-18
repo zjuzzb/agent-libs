@@ -82,7 +82,7 @@ public:
 
 	void load_single_event(const draiosproto::congroup_update_event &evt, bool overwrite = false);
 
-	bool find_tag(uid_t uid, string tag, string &value) const
+	bool find_tag(uid_t uid, std::string tag, std::string &value) const
 	{
 		std::unordered_set<uid_t> visited;
 		return find_tag(uid, tag, value, visited);
@@ -106,8 +106,8 @@ public:
 	std::string get_k8s_cluster_id() const;
 	void init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size);
 
-	void add_annotation_filter(const string &ann);
-	bool find_parent_kind(const uid_t uid, string kind, uid_t &found_id)
+	void add_annotation_filter(const std::string &ann);
+	bool find_parent_kind(const uid_t uid, std::string kind, uid_t &found_id)
 	{
 		std::unordered_set<uid_t> visited;
 		return find_parent_kind(uid, kind, found_id, visited);
@@ -115,7 +115,7 @@ public:
 
 	// Find our k8s node from our current container, any of the given container ids
 	// or from IP address, in that order, if not found already
-	void find_our_k8s_node(const std::vector<string> *container_ids);
+	void find_our_k8s_node(const std::vector<std::string> *container_ids);
 
 	const std::string& get_k8s_url();
 	const std::string& get_k8s_ca_certificate();
@@ -140,10 +140,10 @@ private:
 
 	// Get object names from object and its parents and add them to scope
 	int get_scope_names(uid_t uid, event_scope *scope, std::unordered_set<uid_t> &visited) const;
-	bool find_parent_kind(const uid_t child_id, string kind, uid_t &found_id,
+	bool find_parent_kind(const uid_t child_id, std::string kind, uid_t &found_id,
 		std::unordered_set<uid_t> &visited) const;
 
-	bool find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited) const;
+	bool find_tag(uid_t uid, std::string tag, std::string &value, std::unordered_set<uid_t> &visited) const;
 	bool walk_and_match(draiosproto::container_group *congroup,
 			    scope_predicates &preds,
 			    std::unordered_set<uid_t> &visited_groups);
@@ -207,8 +207,8 @@ private:
 	run_on_interval m_k8s_refresh_interval;
 	run_on_interval m_k8s_connect_interval;
 	int m_k8s_prev_connect_state;
-	string m_k8s_node;
-	string m_k8s_node_uid;
+	std::string m_k8s_node;
+	std::string m_k8s_node_uid;
 	bool m_k8s_node_actual;	// True if node found from following a running container
 
 	typedef struct {
@@ -217,7 +217,7 @@ private:
 		double last_rate;
 	} rate_metric_state_t;
 
-	std::unordered_map<uid_t, std::map<string, rate_metric_state_t>> m_rate_metric_state;
+	std::unordered_map<uid_t, std::map<std::string, rate_metric_state_t>> m_rate_metric_state;
 	std::set<std::string> m_annotation_filter;
 
 	std::string m_root_dir;

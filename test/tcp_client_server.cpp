@@ -24,6 +24,7 @@
 #include <arpa/inet.h>
 #include <sys/syscall.h>
 
+using namespace std;
 using Poco::StringTokenizer;
 using Poco::NumberFormatter;
 using Poco::NumberParser;

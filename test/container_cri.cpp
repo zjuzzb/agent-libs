@@ -27,7 +27,7 @@ TEST_F(container_cri, fake_cri_no_server) {
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		auto handle = start_process(&test_proc);
-		get<0>(handle).wait();
+		std::get<0>(handle).wait();
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -76,7 +76,7 @@ TEST_F(container_cri, fake_cri) {
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		auto handle = start_process(&test_proc);
-		get<0>(handle).wait();
+		std::get<0>(handle).wait();
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -134,7 +134,7 @@ TEST_F(container_cri, fake_cri_crio_extra_queries) {
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		auto handle = start_process(&test_proc);
-		get<0>(handle).wait();
+		std::get<0>(handle).wait();
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -188,7 +188,7 @@ TEST_F(container_cri, fake_cri_crio) {
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		auto handle = start_process(&test_proc);
-		get<0>(handle).wait();
+		std::get<0>(handle).wait();
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -243,7 +243,7 @@ TEST_F(container_cri, fake_cri_unknown_runtime) {
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		auto handle = start_process(&test_proc);
-		get<0>(handle).wait();
+		std::get<0>(handle).wait();
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)

@@ -139,7 +139,7 @@ using Poco::DigestEngine;
 	{ \
 		if(g_log) \
 		{ \
-			g_log->error(Poco::format("ASSERTION %s at %s:%d", string(#X), string(__FILE__), __LINE__)); \
+			g_log->error(Poco::format("ASSERTION %s at %s:%d", std::string(#X), std::string(__FILE__), __LINE__)); \
 		} \
 		assert(X); \
 	}

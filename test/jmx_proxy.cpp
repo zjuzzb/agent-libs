@@ -36,17 +36,17 @@ protected:
 
 	void use_json(const char *json)
 	{
-		string resource("resources/");
+		std::string resource("resources/");
 		resource += json;
-		ifstream json_file(resource);
+		std::ifstream json_file(resource);
 		m_jsondata.clear();
 		json_file >> m_jsondata;
 		m_inqueue->send(m_jsondata);
 	}
 
-	unique_ptr<posix_queue> m_inqueue;
-	unique_ptr<jmx_proxy> jmx;
-	string m_jsondata;
+	std::unique_ptr<posix_queue> m_inqueue;
+	std::unique_ptr<jmx_proxy> jmx;
+	std::string m_jsondata;
 };
 
 TEST_F(jmx_proxy_f, test_read_ok)
@@ -137,7 +137,7 @@ TEST(jmx_bean, test_filter)
 	ASSERT_TRUE(ml->has("NumberOfRelationshipTypeIdsInUse"));
 }
 
-jmx_proxy::process_map_t run_filtering(unique_ptr<jmx_proxy>& jmx, const filter_vec_t& f)
+jmx_proxy::process_map_t run_filtering(std::unique_ptr<jmx_proxy>& jmx, const filter_vec_t& f)
 {
 	metric_limits::sptr_t ml(new metric_limits(f));
 	jmx_proxy::process_map_t metrics = jmx->read_metrics(ml);

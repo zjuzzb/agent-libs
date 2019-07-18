@@ -13,6 +13,8 @@
 #include <grpc/support/log.h>
 #include <Poco/DateTimeFormatter.h>
 
+using namespace std;
+
 type_config<uint16_t> config_increased_snaplen_port_range_start(0,
 						   "Starting port in the range of ports to enable a larger snaplen on",
 						   "increased_snaplen_port_range_start");

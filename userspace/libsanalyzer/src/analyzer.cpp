@@ -100,6 +100,7 @@ using namespace google::protobuf::io;
 
 #include <gperftools/profiler.h>
 
+using namespace std;
 using namespace libsanalyzer;
 
 typedef container_emitter<sinsp_analyzer, analyzer_emitter::flush_flags> analyzer_container_emitter;

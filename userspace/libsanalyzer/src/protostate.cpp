@@ -15,6 +15,8 @@
 #include "draios.pb.h"
 #include "protostate.h"
 
+using namespace std;
+
 sinsp_url_groups* sinsp_protostate::s_url_groups;
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -53,7 +53,7 @@ protected:
 		{
 		}
 
-		shared_ptr<draiosproto::policy_event> m_event;
+		std::shared_ptr<draiosproto::policy_event> m_event;
 		uint32_t m_num_remaining_actions;
 
 		// If true, this policy event must be sent as soon as
@@ -81,7 +81,7 @@ protected:
 
 	// Ensures that only a single docker action (of any type) can
 	// be performed on a container at once
-	std::map<string,uint64_t> m_active_docker_actions;
+	std::map<std::string,uint64_t> m_active_docker_actions;
 
 	security_mgr *m_mgr;
 	bool m_has_outstanding_actions;

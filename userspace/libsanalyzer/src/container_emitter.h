@@ -34,8 +34,8 @@ public:
 	container_emitter(callback_type& t,
 			  std::unordered_map<std::string, analyzer_container_state>& containers,
 			  unsigned statsd_limit,
-			  const std::unordered_map<string, vector<sinsp_threadinfo*>>& progtable_by_container,
-			  const vector<string>& container_patterns,
+			  const std::unordered_map<std::string, std::vector<sinsp_threadinfo*>>& progtable_by_container,
+			  const std::vector<std::string>& container_patterns,
 			  callback_arg_type flshflags,
 			  uint32_t limit,
 			  bool nodriver,
@@ -62,7 +62,7 @@ private:
 	std::set<std::string> m_emitted_containers; // set of emitted containers...set for fast lookup
 	std::vector<std::string>& m_emitted_containers_out; //ref to std::vector that we ultimately have to return
 	uint64_t m_total_cpu_shares;
-	const std::unordered_map<string, vector<sinsp_threadinfo*>>& m_progtable_by_container;
+	const std::unordered_map<std::string, std::vector<sinsp_threadinfo*>>& m_progtable_by_container;
 	callback_arg_type m_flshflags;
 	const std::vector<std::string>& m_container_patterns;
 	uint64_t m_container_limit;

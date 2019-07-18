@@ -46,7 +46,7 @@ public:
 	{}
 
 	uint32_t m_public_ipv4; // http://169.254.169.254/latest/meta-data/public-ipv4
-	string m_instance_id; // http://169.254.169.254/latest/meta-data/public-ipv4
+	std::string m_instance_id; // http://169.254.169.254/latest/meta-data/public-ipv4
 };
 
 class dragent_configuration;
@@ -122,9 +122,9 @@ public:
 	void init();
 
 	void print_configuration() const;
-	static Message::Priority string_to_priority(const string& priostr);
+	static Message::Priority string_to_priority(const std::string& priostr);
 	static bool get_memory_usage_mb(uint64_t* memory);
-	static string get_distribution();
+	static std::string get_distribution();
 	bool load_error() const { return m_load_error; }
 
 	// Static so that the signal handler can reach it
@@ -146,26 +146,26 @@ public:
 	static type_config<std::string> c_root_dir;
 	std::string m_default_root_dir;
 
-	string m_conf_file;
-	unique_ptr<yaml_configuration> m_config;
+	std::string m_conf_file;
+	std::unique_ptr<yaml_configuration> m_config;
 
-	string m_defaults_conf_file;
-	string m_log_dir;
+	std::string m_defaults_conf_file;
+	std::string m_log_dir;
 	uint16_t m_log_rotate;
 	// Log size in megabytes
 	uint16_t m_max_log_size;
-	string m_customer_id;
-	string m_server_addr;
+	std::string m_customer_id;
+	std::string m_server_addr;
 	uint16_t m_server_port;
 	uint32_t m_transmitbuffer_size;
 	bool m_ssl_enabled;
 	bool m_ssl_verify_certificate;
-	string m_ssl_ca_certificate;
-	vector<string> m_ssl_ca_cert_paths;
+	std::string m_ssl_ca_certificate;
+	std::vector<std::string> m_ssl_ca_cert_paths;
 	bool m_compression_enabled;
 	bool m_emit_full_connections;
-	string m_dump_dir;
-	string m_input_filename;
+	std::string m_dump_dir;
+	std::string m_input_filename;
 	uint64_t m_evtcnt;
 	bool m_config_test;
 
@@ -179,14 +179,14 @@ public:
 	double m_cpu_usage_max_sr_threshold;
 	unsigned m_cpu_usage_max_sr_ntimes;
 
-	string m_host_custom_name;
-	string m_host_tags;
-	string m_host_custom_map;
+	std::string m_host_custom_name;
+	std::string m_host_tags;
+	std::string m_host_custom_map;
 	bool m_host_hidden;
-	string m_hidden_processes;
+	std::string m_hidden_processes;
 	bool m_autoupdate_enabled;
 	bool m_print_protobuf;
-	string m_json_parse_errors_logfile;
+	std::string m_json_parse_errors_logfile;
 	double m_json_parse_errors_events_rate;
 	uint32_t m_json_parse_errors_events_max_burst;
 	bool m_watchdog_enabled;
@@ -205,8 +205,8 @@ public:
 	uint64_t m_dirty_shutdown_default_report_log_size_b;
 	uint64_t m_dirty_shutdown_trace_report_log_size_b;
 
-	typedef std::map<string, uint64_t> ProcessValue64Map;
-	typedef std::map<string, int> ProcessValueMap;
+	typedef std::map<std::string, uint64_t> ProcessValue64Map;
+	typedef std::map<std::string, int> ProcessValueMap;
 
 	/**
 	 * The amount of memory that each subprocess is allowed to use.
@@ -237,8 +237,8 @@ public:
 	bool m_protocols_enabled;
 	uint32_t m_protocols_truncation_size;
 	bool m_remotefs_enabled;
-	string m_java_binary;
-	string m_sdjagent_opts;
+	std::string m_java_binary;
+	std::string m_sdjagent_opts;
 	bool m_agent_installed;
 	bool m_sysdig_capture_enabled;
 	uint32_t m_max_sysdig_captures;
@@ -246,28 +246,28 @@ public:
 	int32_t m_sysdig_capture_compression_level;
 
 	bool m_sdjagent_enabled;
-	vector<app_check> m_app_checks;
-	string m_python_binary;
+	std::vector<app_check> m_app_checks;
+	std::string m_python_binary;
 	bool m_app_checks_enabled;
 	bool m_app_checks_always_send;
 	uint32_t m_containers_limit;
 	uint32_t m_containers_labels_max_len;
-	vector<string> m_container_patterns;
+	std::vector<std::string> m_container_patterns;
 	ports_set m_known_server_ports;
-	vector<uint16_t> m_blacklisted_ports;
-	vector<sinsp_chisel_details> m_chisel_details;
+	std::vector<uint16_t> m_blacklisted_ports;
+	std::vector<sinsp_chisel_details> m_chisel_details;
 	bool m_system_supports_containers;
 #ifndef CYGWING_AGENT
 	prometheus_conf m_prom_conf;
 	bool m_promex_enabled;
-	string m_promex_url;
-	string m_promex_connect_url;
-	string m_promex_container_labels;
+	std::string m_promex_url;
+	std::string m_promex_connect_url;
+	std::string m_promex_container_labels;
 	custom_container::resolver m_custom_container;
 #endif
 
 	typedef std::set<std::string>      k8s_ext_list_t;
-	typedef shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
+	typedef std::shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
 
 	int m_k8s_delegated_nodes = 0;
 	k8s_ext_list_t m_k8s_extensions;
@@ -287,8 +287,8 @@ public:
 
 	std::string m_k8s_cluster_name;
 
-	string m_mesos_state_uri;
-	vector<string> m_marathon_uris;
+	std::string m_mesos_state_uri;
+	std::vector<std::string> m_marathon_uris;
 	bool m_mesos_autodetect;
 	int m_mesos_timeout_ms;
 	bool m_mesos_follow_leader;
@@ -303,7 +303,7 @@ public:
 	bool m_falco_baselining_enabled;
 	bool m_command_lines_capture_enabled;
 	sinsp_configuration::command_capture_mode_t m_command_lines_capture_mode;
-	set<string> m_command_lines_valid_ancestors;
+	std::set<std::string> m_command_lines_valid_ancestors;
 	bool m_command_lines_include_container_healthchecks;
 	bool m_memdump_enabled;
 	uint64_t m_memdump_size;
@@ -332,10 +332,10 @@ public:
 	unsigned long m_rlimit_msgqueue;
 
 	bool m_enable_falco_engine;
-	string m_falco_default_rules_filename;
-	string m_falco_fallback_default_rules_filename;
-	string m_falco_auto_rules_filename;
-	string m_falco_rules_filename;
+	std::string m_falco_default_rules_filename;
+	std::string m_falco_fallback_default_rules_filename;
+	std::string m_falco_auto_rules_filename;
+	std::string m_falco_rules_filename;
 	double m_falco_engine_sampling_multiplier;
 	std::set<std::string> m_falco_engine_disabled_rule_patterns;
 
@@ -347,16 +347,16 @@ public:
 	std::atomic_bool m_reset_falco_engine;
 
 	bool m_security_enabled;
-	string m_security_policies_file;
-	string m_security_baselines_file;
+	std::string m_security_policies_file;
+	std::string m_security_baselines_file;
 	uint64_t m_security_report_interval_ns;
 	uint64_t m_security_throttled_report_interval_ns;
 	uint64_t m_actions_poll_interval_ns;
 	double m_policy_events_rate;
 	uint32_t m_policy_events_max_burst;
 	bool m_security_send_monitor_events;
-	vector<string> m_suppressed_comms;
-	vector<uint16_t> m_suppressed_types;
+	std::vector<std::string> m_suppressed_comms;
+	std::vector<uint16_t> m_suppressed_types;
 	std::string m_security_default_compliance_schedule;
 	bool m_security_send_compliance_events;
 	bool m_security_send_compliance_results;
@@ -370,19 +370,19 @@ public:
 	bool m_k8s_audit_server_enabled;
 	uint64_t m_k8s_audit_server_refresh_interval;
 	// Plain HTTP endpoint
-	string m_k8s_audit_server_url;
+	std::string m_k8s_audit_server_url;
 	uint16_t m_k8s_audit_server_port;
 	// Optional HTTPS configurations
 	bool m_k8s_audit_server_tls_enabled;
-	string m_k8s_audit_server_x509_cert_file;
-	string m_k8s_audit_server_x509_key_file;
+	std::string m_k8s_audit_server_x509_cert_file;
+	std::string m_k8s_audit_server_x509_key_file;
 
 
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;
 	dragent_mode_t m_mode;
 	bool m_detect_stress_tools = false;
-	vector<string> m_stress_tools;
+	std::vector<std::string> m_stress_tools;
 	bool m_large_envs;
 
 	/**
@@ -399,8 +399,8 @@ public:
 	std::set<double> m_percentiles;
 	static const unsigned MAX_PERCENTILES = 4;
 	std::vector<double> m_ignored_percentiles;
-	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
-	shared_ptr<proc_filter::conf> m_container_filter;
+	std::shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
+	std::shared_ptr<proc_filter::conf> m_container_filter;
 	bool m_smart_container_reporting = false;
 
 	/**
@@ -523,9 +523,9 @@ public:
 	// Returns 0 if already up-to-date, 1 if updated, -1 if
 	// error. On error, &errstr is updated with the source of the
 	// error.
-	int save_auto_config(const string &config_filename, const string& config_data, string &errstr);
+	int save_auto_config(const std::string &config_filename, const std::string& config_data, std::string &errstr);
 
-	void set_auto_config_directory(const string &config_directory);
+	void set_auto_config_directory(const std::string &config_directory);
 
 	bool k8s_audit_server_tls_enabled() const
 	{
@@ -554,8 +554,8 @@ public:
 
 
 private:
-	inline static bool is_executable(const string& path);
-	inline static bool is_socket(const string &path);
+	inline static bool is_executable(const std::string& path);
+	inline static bool is_socket(const std::string &path);
 	void write_statsite_configuration();
 	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
 	void add_percentiles();
@@ -568,8 +568,8 @@ private:
 
 	friend class aws_metadata_refresher;
 
-	string m_machine_id;
-	string m_machine_id_prefix;
+	std::string m_machine_id;
+	std::string m_machine_id_prefix;
 };
 
 class aws_metadata_refresher: public Runnable
@@ -583,29 +583,29 @@ public:
 
 	void run()
 	{
-		m_running.store(true, memory_order_relaxed);
+		m_running.store(true, std::memory_order_relaxed);
 		m_configuration.refresh_aws_metadata();
-		m_refreshed.store(true, memory_order_relaxed);
+		m_refreshed.store(true, std::memory_order_relaxed);
 	}
 
 	void reset()
 	{
-		m_running.store(false, memory_order_relaxed);
-		m_refreshed.store(false, memory_order_relaxed);
+		m_running.store(false, std::memory_order_relaxed);
+		m_refreshed.store(false, std::memory_order_relaxed);
 	}
 
 	bool done()
 	{
-		return m_refreshed.load(memory_order_relaxed);
+		return m_refreshed.load(std::memory_order_relaxed);
 	}
 
 	bool is_running()
 	{
-		return m_running.load(memory_order_relaxed);
+		return m_running.load(std::memory_order_relaxed);
 	}
 
 private:
-	atomic<bool> m_refreshed;
-	atomic<bool> m_running;
+	std::atomic<bool> m_refreshed;
+	std::atomic<bool> m_running;
 	dragent_configuration &m_configuration;
 };

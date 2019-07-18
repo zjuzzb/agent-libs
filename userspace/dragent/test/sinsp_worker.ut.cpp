@@ -22,7 +22,7 @@ void run_sinsp_worker(const sinsp::ptr& inspector,
 
 	dragent_configuration::m_terminate = false;
 	internal_metrics::sptr_t im = std::make_shared<internal_metrics>();
-	atomic<bool> enable_autodrop;
+	std::atomic<bool> enable_autodrop;
 
 	capture_job_handler job_handler(&config, &queue, &enable_autodrop);
 	sinsp_worker worker(&config, im, &queue, &enable_autodrop, &job_handler);

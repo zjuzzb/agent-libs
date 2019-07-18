@@ -10,17 +10,17 @@
 
 namespace proc_filter{
 
-set<uint16_t> filter_ports(const set<uint16_t>& sports,
-		const vector<object_filter_config::port_filter_rule>& rules)
+std::set<uint16_t> filter_ports(const std::set<uint16_t>& sports,
+		const std::vector<object_filter_config::port_filter_rule>& rules)
 {
-	set<uint16_t> start_ports = sports;
-	set<uint16_t> filtered_ports;
+	std::set<uint16_t> start_ports = sports;
+	std::set<uint16_t> filtered_ports;
 
 	for (const auto& portrule: rules)
 	{
 		if (start_ports.empty())
 			break;
-		set<uint16_t> matched_ports;
+		std::set<uint16_t> matched_ports;
 		for (const auto& port : start_ports)
 		{
 			if (portrule.m_use_set) {
@@ -128,9 +128,9 @@ std::pair<bool, bool> conf::match_rule(const object_filter_config::filter_rule &
 				}
 
 				// Should this match include exe and arguments?
-				if ((tinfo->m_exe.find(cond.m_pattern) == string::npos) &&
+				if ((tinfo->m_exe.find(cond.m_pattern) == std::string::npos) &&
 				    find_if(tinfo->m_args.begin(), tinfo->m_args.end(),
-					    [&cond](const string& arg)
+					    [&cond](const std::string& arg)
 					    {
 					    return !fnmatch(cond.m_pattern.c_str(),
 							    arg.c_str(), FNM_EXTMATCH);
@@ -166,7 +166,7 @@ std::pair<bool, bool> conf::match_rule(const object_filter_config::filter_rule &
 			break;
 		case object_filter_config::filter_condition::param_type::container_label:
 			{
-				const string *lbl = object_filter_config::get_cont_label(container, cond.m_param);
+				const std::string *lbl = object_filter_config::get_cont_label(container, cond.m_param);
 				if(!lbl || fnmatch(cond.m_pattern.c_str(),
 						   lbl->c_str(), FNM_EXTMATCH))
 				{
@@ -180,12 +180,12 @@ std::pair<bool, bool> conf::match_rule(const object_filter_config::filter_rule &
 		case object_filter_config::filter_condition::param_type::k8s_annotation:
 		case object_filter_config::filter_condition::param_type::tag:
 			{
-				string val;
+				std::string val;
 				if (!container) {
 					matchcond = false;
 					break;
 				}
-				infrastructure_state::uid_t c_uid = make_pair("container", container->m_id);
+				infrastructure_state::uid_t c_uid = std::make_pair("container", container->m_id);
 
 				bool found = infra_state.find_tag(c_uid, cond.m_param, val);
 				if(!found || fnmatch(cond.m_pattern.c_str(),

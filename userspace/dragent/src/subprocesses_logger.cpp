@@ -3,6 +3,8 @@
 #include "utils.h"
 #include "dragent.h"
 
+using namespace std;
+
 // On systems with kernel < 2.6.35 we don't have this flag
 // so define it and compile our code anyway as we need it when
 // running on most recent kernels

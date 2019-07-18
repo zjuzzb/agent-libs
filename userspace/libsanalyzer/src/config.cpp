@@ -3,6 +3,8 @@
 #include "analyzer_int.h"
 #include "proc_filter.h"
 
+using namespace std;
+
 sinsp_configuration::sinsp_configuration():
 	m_tracepoint_hits_threshold(N_TRACEPOINT_HITS_THRESHOLD, SWITCHER_NSECONDS),
 	m_cpu_max_sr_threshold(CPU_MAX_SR_THRESHOLD, SWITCHER_NSECONDS),

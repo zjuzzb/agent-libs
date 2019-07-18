@@ -34,7 +34,7 @@ public:
 	sinsp_worker(dragent_configuration* configuration,
 		     const internal_metrics::sptr_t& im,
 		     protocol_queue* queue,
-		     atomic<bool> *enable_autodrop,
+		     std::atomic<bool> *enable_autodrop,
 		     capture_job_handler *handler);
 	~sinsp_worker();
 
@@ -74,7 +74,7 @@ public:
 		return &m_sinsp_handler;
 	}
 
-	void set_statsite_pipes(shared_ptr<pipe_manager> pipes)
+	void set_statsite_pipes(std::shared_ptr<pipe_manager> pipes)
 	{
 		m_statsite_pipes = pipes;
 	}
@@ -124,14 +124,14 @@ private:
 
 	bool get_statsd_limit() const;
 
-	static const string m_name;
+	static const std::string m_name;
 
 	run_on_interval m_job_requests_interval;
 
 	bool m_initialized;
 	dragent_configuration *m_configuration;
 	protocol_queue* m_queue;
-	atomic<bool> *m_enable_autodrop;
+	std::atomic<bool> *m_enable_autodrop;
 	bool m_autodrop_currently_enabled;
 	sinsp::ptr m_inspector;
 	sinsp_analyzer* m_analyzer;
@@ -144,7 +144,7 @@ private:
 	blocking_queue<std::shared_ptr<capture_job_handler::dump_job_request>> m_dump_job_requests;
 	std::atomic<uint64_t> m_last_loop_ns;
 	std::atomic<pthread_t> m_pthread_id;
-	shared_ptr<pipe_manager> m_statsite_pipes;
+	std::shared_ptr<pipe_manager> m_statsite_pipes;
 	bool m_statsd_capture_localhost;
 	bool m_app_checks_enabled;
 	bool m_grpc_trace_enabled;

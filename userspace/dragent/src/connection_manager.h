@@ -78,7 +78,7 @@ private:
 	static const uint32_t RECONNECT_MIN_INTERVAL_S;
 	static const uint32_t RECONNECT_MAX_INTERVAL_S;
 	static const unsigned int SOCKET_TCP_TIMEOUT_MS = 60 * 1000;
-	static const chrono::seconds WORKING_INTERVAL_S;
+	static const std::chrono::seconds WORKING_INTERVAL_S;
 
 	socket_ptr m_socket;
 	bool m_connected;
@@ -90,7 +90,7 @@ private:
 	capture_job_handler *m_capture_job_handler;
 
 	uint32_t m_reconnect_interval;
-	chrono::time_point<std::chrono::system_clock> m_last_connection_failure;
+	std::chrono::time_point<std::chrono::system_clock> m_last_connection_failure;
 
 #ifndef CYGWING_AGENT
 	// communication with Prometheus exporter

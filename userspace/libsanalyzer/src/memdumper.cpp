@@ -15,6 +15,8 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 
+using namespace std;
+
 extern sinsp_evttables g_infotables;
 
 sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector)

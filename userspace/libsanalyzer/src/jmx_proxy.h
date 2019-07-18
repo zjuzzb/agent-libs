@@ -14,7 +14,7 @@ class java_bean;
 class java_bean_attribute
 {
 public:
-	typedef vector<java_bean_attribute> subattribute_list_t;
+	typedef std::vector<java_bean_attribute> subattribute_list_t;
 
 	void to_protobuf(draiosproto::jmx_attribute *attribute, unsigned sampling) const;
 	explicit java_bean_attribute(const Json::Value&);
@@ -30,8 +30,8 @@ private:
 	{
 		return json.isMember(name) && json[name].isConvertibleTo(type);
 	}
-	string m_name;
-	string m_alias;
+	std::string m_name;
+	std::string m_alias;
 	double m_value;
 	uint16_t m_unit;
 	uint16_t m_scale;
@@ -42,11 +42,11 @@ private:
 
 class java_bean {
 public:
-	typedef vector<java_bean_attribute> attribute_list_t;
+	typedef std::vector<java_bean_attribute> attribute_list_t;
 
 	java_bean(const Json::Value&, metric_limits::cref_sptr_t ml);
 
-	inline const string& name() const
+	inline const std::string& name() const
 	{
 		return m_name;
 	}
@@ -68,7 +68,7 @@ public:
 	}
 
 private:
-	string m_name;
+	std::string m_name;
 	attribute_list_t m_attributes;
 	unsigned m_total_metrics;
 	friend class java_process;
@@ -81,12 +81,12 @@ public:
 		return m_pid;
 	}
 
-	inline const string& name() const
+	inline const std::string& name() const
 	{
 		return m_name;
 	}
 
-	inline const list<java_bean>& beans() const
+	inline const std::list<java_bean>& beans() const
 	{
 		return m_beans;
 	}
@@ -101,8 +101,8 @@ public:
 private:
 	java_process(const Json::Value&, metric_limits::cref_sptr_t ml);
 	int m_pid;
-	string m_name;
-	list<java_bean> m_beans;
+	std::string m_name;
+	std::list<java_bean> m_beans;
 	unsigned m_total_metrics;
 	friend class jmx_proxy;
 };
@@ -110,11 +110,11 @@ private:
 class jmx_proxy
 {
 public:
-	typedef unordered_map<int, java_process> process_map_t;
+	typedef std::unordered_map<int, java_process> process_map_t;
 
 	jmx_proxy();
 
-	void send_get_metrics(const vector<sinsp_threadinfo*>& processes);
+	void send_get_metrics(const std::vector<sinsp_threadinfo*>& processes);
 
 	process_map_t read_metrics(metric_limits::cref_sptr_t ml = nullptr);
 

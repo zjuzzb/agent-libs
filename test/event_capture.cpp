@@ -75,7 +75,7 @@ void event_capture::capture()
 
 	if(m_mode != SCAP_MODE_NODRIVER)
 	{
-		m_dump_filename = string("./captures/") + test_info->test_case_name() + "_" + test_info->name() + ".scap";
+		m_dump_filename = std::string("./captures/") + test_info->test_case_name() + "_" + test_info->name() + ".scap";
 		try
 		{
 			m_inspector->autodump_start(m_dump_filename, false);
@@ -83,7 +83,7 @@ void event_capture::capture()
 		catch(std::exception &e)
 		{
 			m_start_failed = true;
-			m_start_failure_message = string("couldn't start dumping to ") + m_dump_filename + ": " + e.what();
+			m_start_failure_message = std::string("couldn't start dumping to ") + m_dump_filename + ": " + e.what();
 			m_capture_started.set();
 			delete m_inspector;
 			delete m_analyzer;

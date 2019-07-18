@@ -32,7 +32,7 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 	// Map of app_check data by app-check name and how long the
 	// metrics have been expired to ensure we serve the most recent
 	// metrics available
-	map<string, map<int, const app_check_data *>> app_data_to_send;
+	std::map<std::string, std::map<int, const app_check_data *>> app_data_to_send;
 	for(auto pid: procinfo.m_program_pids)
 	{
 		auto datamap_it = m_app_metrics.find(pid);
@@ -84,7 +84,7 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 					{
 						g_logger.log("Starting export of Prometheus metrics",
 							     sinsp_logger::SEV_INFO);
-						const string &metricname = metrics[0].name();
+						const std::string &metricname = metrics[0].name();
 						g_logger.format(sinsp_logger::SEV_DEBUG,
 								"First prometheus metrics since agent start: pid %d: %d metrics including: %s",
 								app_data.second->pid(), metric_count, metricname.c_str());

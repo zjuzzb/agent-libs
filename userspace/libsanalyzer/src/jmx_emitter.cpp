@@ -3,7 +3,7 @@
 #include "analyzer_thread.h"
 #include "metric_forwarding_configuration.h"
 
-jmx_emitter::jmx_emitter(const unordered_map<int, java_process>& jmx_metrics,
+jmx_emitter::jmx_emitter(const std::unordered_map<int, java_process>& jmx_metrics,
 			 const uint32_t jmx_sampling,
 			 const uint32_t jmx_limit,
 			 std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& jmx_metrics_by_container)

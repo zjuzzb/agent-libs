@@ -41,9 +41,9 @@ static void test_helper_quotactl(test_helper_args &hargs)
 	if(hargs.start_before)
 	{
 		auto test_proc_handle = start_process_sync(&test_proc);
-		test_helper_h = make_shared<Poco::ProcessHandle>(get<0>(test_proc_handle));
-		test_helper_stdin = get<1>(test_proc_handle);
-		delete get<2>(test_proc_handle);
+		test_helper_h = std::make_shared<Poco::ProcessHandle>(std::get<0>(test_proc_handle));
+		test_helper_stdin = std::get<1>(test_proc_handle);
+		delete std::get<2>(test_proc_handle);
 		test_helper_pid = test_helper_h->id();
 	}
 
@@ -55,7 +55,7 @@ static void test_helper_quotactl(test_helper_args &hargs)
 	{
 		if(hargs.suppress_before)
 		{
-			inspector->suppress_events_comm(string((hargs.spawn_with_bash ? "test_helper.sh" : "test_helper")));
+			inspector->suppress_events_comm(std::string((hargs.spawn_with_bash ? "test_helper.sh" : "test_helper")));
 		}
 	};
 
@@ -75,15 +75,15 @@ static void test_helper_quotactl(test_helper_args &hargs)
 	{
 		if(!hargs.suppress_before)
 		{
-			inspector->suppress_events_comm(string((hargs.spawn_with_bash ? "test_helper.sh" : "test_helper")));
+			inspector->suppress_events_comm(std::string((hargs.spawn_with_bash ? "test_helper.sh" : "test_helper")));
 		}
 
 		if(!hargs.start_before)
 		{
 			auto test_proc_handle = start_process_sync(&test_proc);
-			test_helper_h = make_shared<Poco::ProcessHandle>(get<0>(test_proc_handle));
-			test_helper_stdin = get<1>(test_proc_handle);
-			delete get<2>(test_proc_handle);
+			test_helper_h = std::make_shared<Poco::ProcessHandle>(std::get<0>(test_proc_handle));
+			test_helper_stdin = std::get<1>(test_proc_handle);
+			delete std::get<2>(test_proc_handle);
 			test_helper_pid = test_helper_h->id();
 		}
 
@@ -206,9 +206,9 @@ protected:
 	static bool is_target_call(uint16_t type);
 	void do_syscalls();
 	bool is_suppressed(uint16_t type) const;
-	void run_test(vector<string> supp_types);
+	void run_test(std::vector<std::string> supp_types);
 
-	vector<uint16_t> m_suppressed_types;
+	std::vector<uint16_t> m_suppressed_types;
 	int m_expected_calls;
 };
 
@@ -258,7 +258,7 @@ bool suppress_types::is_suppressed(uint16_t type) const
 	return false;
 }
 
-void suppress_types::run_test(vector<string> supp_types)
+void suppress_types::run_test(std::vector<std::string> supp_types)
 {
 	sinsp_utils::parse_suppressed_types(supp_types, &m_suppressed_types);
 	int callnum = 0;

@@ -290,7 +290,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 						//
 						// Add the entry to the directory tables
 						//
-						string sdir = blfiletable::file_to_dir(fdinfo->m_name);
+						std::string sdir = blfiletable::file_to_dir(fdinfo->m_name);
 						np->m_dirs.add(sdir, category, cdelta);
 
 						break;
@@ -300,7 +300,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 						//
 						// Add the entry to the directory tables
 						//
-						string sdir = fdinfo->m_name + '/';
+						std::string sdir = fdinfo->m_name + '/';
 						file_category category = blfiletable::flags2filecategory(UNCATEGORIZED, fdinfo->m_openflags);
 						np->m_dirs.add(sdir, category, cdelta);
 
@@ -460,7 +460,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 
 void sinsp_baseliner::init_containers()
 {
-	const unordered_map<string, sinsp_container_info>* containers = m_inspector->m_container_manager.get_containers();
+	const std::unordered_map<std::string, sinsp_container_info>* containers = m_inspector->m_container_manager.get_containers();
 
 	for(auto& it : *containers)
 	{
@@ -477,7 +477,7 @@ void sinsp_baseliner::register_callbacks(sinsp_fd_listener* listener)
 	m_inspector->m_parser->m_fd_listener = listener;
 }
 
-void sinsp_baseliner::serialize_json(string filename)
+void sinsp_baseliner::serialize_json(std::string filename)
 {
 	Json::Value root;
 	Json::Value econt;
@@ -839,7 +839,7 @@ inline blprogram* sinsp_baseliner::get_program(sinsp_threadinfo* tinfo)
 // Table update methods
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-void sinsp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openflags)
+void sinsp_baseliner::on_file_open(sinsp_evt *evt, std::string& name, uint32_t openflags)
 {
 	// We do baseline calculatation only if the agent's resource usage is low
 	if(!m_do_baseline_calculation)
@@ -894,7 +894,7 @@ void sinsp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openfl
 	//
 	// Add the entry to the directory tables
 	//
-	string sdir = blfiletable::file_to_dir(name);
+	std::string sdir = blfiletable::file_to_dir(name);
 	pinfo->m_dirs.add(sdir, cat, evt->get_ts() - clone_ts);
 }
 
@@ -1340,12 +1340,12 @@ inline void sinsp_baseliner::extract_from_event(sinsp_evt *evt)
 		uint32_t len;
 
 		val = it->second->extract(evt, &len);
-		string name((const char *)val);
+		std::string name((const char *)val);
 
 		//
 		// Add the parent directory to the directory table
 		//
-		string sdir = blfiletable::file_to_dir(name);
+		std::string sdir = blfiletable::file_to_dir(name);
 		pinfo->m_dirs.add(sdir, cat, time_from_clone);
 
 		if((etype != PPME_SYSCALL_UNLINK_2_X && etype != PPME_SYSCALL_UNLINKAT_2_X) ||

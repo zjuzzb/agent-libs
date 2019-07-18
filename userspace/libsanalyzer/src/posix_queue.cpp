@@ -8,9 +8,9 @@
 #include <sys/resource.h>
 #include <limits.h>
 
-posix_queue::posix_queue(string name, direction_t dir, long maxmsgs):
+posix_queue::posix_queue(std::string name, direction_t dir, long maxmsgs):
 	m_direction(dir),
-	m_name(move(name))
+	m_name(std::move(name))
 {
 	m_readbuffer = new char[MAX_MSGSIZE];
 	ASSERT(name.size() <= NAME_MAX);
@@ -42,7 +42,7 @@ posix_queue::~posix_queue()
 	delete[] m_readbuffer;
 }
 
-bool posix_queue::send(const string &msg)
+bool posix_queue::send(const std::string &msg)
 {
 	if(m_queue_d)
 	{
@@ -73,7 +73,7 @@ bool posix_queue::send(const string &msg)
 	return false;
 }
 
-string posix_queue::receive(uint64_t timeout_s)
+std::string posix_queue::receive(uint64_t timeout_s)
 {
 	if(m_queue_d)
 	{
@@ -84,7 +84,7 @@ string posix_queue::receive(uint64_t timeout_s)
 		auto res = mq_timedreceive(m_queue_d, m_readbuffer, MAX_MSGSIZE, &prio, &ts);
 		if(res >= 0)
 		{
-			return string(m_readbuffer, res);
+			return std::string(m_readbuffer, res);
 		} else if (errno == ETIMEDOUT || errno == EINTR) {
 			return "";
 		} else {
@@ -112,7 +112,7 @@ string posix_queue::receive(uint64_t timeout_s)
 
 }
 
-bool posix_queue::remove(const string &name)
+bool posix_queue::remove(const std::string &name)
 {
 	return mq_unlink(name.c_str()) == 0;
 }

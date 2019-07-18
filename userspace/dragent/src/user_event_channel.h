@@ -7,7 +7,7 @@
 class user_event_channel: public Poco::Channel
 {
 public:
-	typedef std::unordered_map<string, string> tag_map_t;
+	typedef std::unordered_map<std::string, std::string> tag_map_t;
 
 	user_event_channel();
 	void log(const Poco::Message& msg);
@@ -37,10 +37,10 @@ inline void user_event_channel::log(const Message& msg)
 		uint64_t ts = yaml.get_scalar<uint64_t>("timestamp", msg.getTime().epochTime());
 		uint32_t prio = yaml.get_scalar<uint32_t>("priority", static_cast<uint32_t>(msg.getPriority()));
 		add(ts,
-			yaml.get_scalar<string>("name"),
-			yaml.get_scalar<string>("description", ""),
-			yaml.get_scalar<string>("scope", ""),
-			yaml.get_merged_map<string>("tags"),
+			yaml.get_scalar<std::string>("name"),
+			yaml.get_scalar<std::string>("description", ""),
+			yaml.get_scalar<std::string>("scope", ""),
+			yaml.get_merged_map<std::string>("tags"),
 			prio);
 	}
 	catch(YAML::ParserException& ex)
