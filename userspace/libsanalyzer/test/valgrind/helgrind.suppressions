@@ -39,3 +39,17 @@
    fun:_ZN12libsanalyzer26protobuf_metric_serializerD1Ev
    ...
 }
+
+{
+   poco_socketreactor_stop
+   Helgrind:Race
+   fun:_ZN4Poco3Net13SocketReactor4stopEv
+   ...
+}
+
+{
+   poco_socketreactor_run
+   Helgrind:Race
+   fun:_ZN4Poco3Net13SocketReactor3runEv
+   ...
+}

@@ -8,7 +8,9 @@
 #include "statsd_server.h"
 #include "analyzer_utils.h"
 #include "common_logger.h"
+#include "fault_injection.h"
 #include "statsd_stats_destination.h"
+#include <Poco/AbstractObserver.h>
 #include <Poco/Net/DatagramSocket.h>
 #include <Poco/Net/NetException.h>
 #include <Poco/Net/SocketAddress.h>
@@ -20,7 +22,21 @@ namespace
 
 COMMON_LOGGER();
 
+DEFINE_FAULT_INJECTOR(
+		fh_cannot_create_ipv4_socket,
+		"agent.userspace.libsanalyzer.statsd_server.no_ipv4_socket",
+		"Mimic a failure to create an IPv4 socket");
+
+DEFINE_FAULT_INJECTOR(
+		fh_cannot_create_ipv6_socket,
+		"agent.userspace.libsanalyzer.statsd_server.no_ipv6_socket",
+		"Mimic a failure to create an IPv6 socket");
+      
+
 } // end namespace
+
+const std::vector<char>::size_type statsd_server::INITIAL_READ_SIZE = 512;
+const double statsd_server::RESIZE_SCALE_FACTOR = 1.2;
 
 statsd_server::statsd_server(const std::string &containerid,
                              statsd_stats_destination& proxy,
@@ -33,11 +49,17 @@ statsd_server::statsd_server(const std::string &containerid,
 	m_error_obs(*this, &statsd_server::on_error),
 	m_read_buffer(INITIAL_READ_SIZE)
 {
+	using Poco::Net::NetException;
+
 	try
 	{
-		m_ipv4_socket = make_socket(Poco::Net::SocketAddress("127.0.0.1", port));
+		FAULT_FIRED_INVOKE(fh_cannot_create_ipv4_socket,
+				   []() { throw NetException("Injected fault"); });
+
+		m_ipv4_socket = make_socket("127.0.0.1", port);
+
 	}
-	catch (const Poco::Net::NetException& ex)
+	catch(const NetException& ex)
 	{
 		LOG_WARNING("Unable to bind ipv4 on containerid=%s reason=%s",
 		            containerid.c_str(),
@@ -46,9 +68,12 @@ statsd_server::statsd_server(const std::string &containerid,
 
 	try
 	{
-		m_ipv6_socket = make_socket(Poco::Net::SocketAddress("::1", port));
+		FAULT_FIRED_INVOKE(fh_cannot_create_ipv6_socket,
+				   []() { throw NetException("Injected fault"); });
+
+		m_ipv6_socket = make_socket("::1", port);
 	}
-	catch (const Poco::Net::NetException& ex)
+	catch(const NetException& ex)
 	{
 		LOG_WARNING("Unable to bind ipv6 on containerid=%s reason=%s",
 		            containerid.c_str(),
@@ -71,11 +96,61 @@ statsd_server::~statsd_server()
 	}
 }
 
+const std::string& statsd_server::get_container_id() const
+{
+	return m_containerid;
+}
+
+uint16_t statsd_server::get_ipv4_port() const
+{
+	if(m_ipv4_socket != nullptr)
+	{
+		return m_ipv4_socket->address().port();
+	}
+	return 0;
+}
+
+uint16_t statsd_server::get_ipv6_port() const
+{
+	if(m_ipv6_socket != nullptr)
+	{
+		return m_ipv6_socket->address().port();
+	}
+	return 0;
+}
+
+size_t statsd_server::get_data_buffer_capacity() const
+{
+	return m_read_buffer.capacity();
+}
+
+const Poco::Net::DatagramSocket* statsd_server::get_ipv4_socket() const
+{
+	return m_ipv4_socket.get();
+}
+
+const Poco::Net::DatagramSocket* statsd_server::get_ipv6_socket() const
+{
+	return m_ipv6_socket.get();
+}
+
+const Poco::AbstractObserver& statsd_server::get_read_observer() const
+{
+	return m_read_obs;
+}
+
+const Poco::AbstractObserver& statsd_server::get_error_observer() const
+{
+	return m_error_obs;
+}
+
 std::unique_ptr<Poco::Net::DatagramSocket> statsd_server::make_socket(
-		const Poco::Net::SocketAddress& address)
+		const std::string& address,
+		const uint16_t port)
 {
 	std::unique_ptr<Poco::Net::DatagramSocket> socket =
-		make_unique<Poco::Net::DatagramSocket>(address);
+		make_unique<Poco::Net::DatagramSocket>(
+				Poco::Net::SocketAddress(address, port));
 
 	socket->setBlocking(false);
 
@@ -104,7 +179,7 @@ void statsd_server::on_read(Poco::Net::ReadableNotification* const notification)
 		// Allocate a little more than bytes_available to give a little
 		// extra room so that we can hopefully avoid reallocations if
 		// a future packet is just a little bigger.
-		m_read_buffer.reserve(bytes_available * 1.2);
+		m_read_buffer.reserve(bytes_available * RESIZE_SCALE_FACTOR);
 	}
 
 	const int bytes_received = datagram_socket.receiveBytes(m_read_buffer.data(),

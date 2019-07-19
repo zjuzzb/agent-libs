@@ -15,10 +15,10 @@
 class statsd_stats_destination;
 
 namespace Poco {
-namespace Net {
+class AbstractObserver;
 
+namespace Net {
 class DatagramSocket;
-class SocketAddress;
 class ErrorNotification;
 class ReadableNotification;
 class SocketReactor;
@@ -35,6 +35,18 @@ class SocketReactor;
 class statsd_server
 {
 public:
+	/**
+	 * The initial size of m_read_buffer.  The buffer will grow, as needed.
+	 */
+	static const std::vector<char>::size_type INITIAL_READ_SIZE;
+
+	/**
+	 * If m_read_buffer needs to be resized, this is the scale factor
+	 * that statsd_server will apply to the new size to allow for
+	 * future growth.
+	 */
+	static const double RESIZE_SCALE_FACTOR;
+
 	/**
 	 * Initializes this statsd_server by attempting to create IPv4 and
 	 * IPv6 UDP sockets on localhost:port.
@@ -61,12 +73,57 @@ public:
 	statsd_server(const statsd_server&) = delete;
 	statsd_server& operator=(const statsd_server&) = delete;
 
-private:
 	/**
-	 * The initial size of m_read_buffer.  The buffer will grow, as needed.
+	 * Returns the container ID which which this statsd_server is
+	 * associated.
 	 */
-	static const std::vector<char>::size_type INITIAL_READ_SIZE = 512;
+	const std::string& get_container_id() const;
 
+	/**
+	 * Returns the IPv4 port to which this statsd_server is bound, or 0
+	 * if this statsd_server was unable to create a listening IPv4 socket
+	 * during construction.
+	 */
+	uint16_t get_ipv4_port() const;
+
+	/**
+	 * Returns the IPv6 port to which this statsd_server is bound, or 0
+	 * if this statsd_server was unable to create a listening IPv6 socket
+	 * during construction.
+	 */
+	uint16_t get_ipv6_port() const;
+
+	/**
+	 * Returns the current capacity of this statsd_server%'s
+	 * data buffer.
+	 */
+	size_t get_data_buffer_capacity() const;
+
+	/**
+	 * Returns a pointer to the IPv4 socket, if one exists, otherwise
+	 * returns nullptr.
+	 */
+	const Poco::Net::DatagramSocket* get_ipv4_socket() const;
+
+	/**
+	 * Returns a pointer to the IPv6 socket, if one exists, otherwise
+	 * returns nullptr.
+	 */
+	const Poco::Net::DatagramSocket* get_ipv6_socket() const;
+
+	/**
+	 * Returns the read observer associated with any sockets owned by
+	 * this statsd_server.
+	 */
+	const Poco::AbstractObserver& get_read_observer() const;
+
+	/**
+	 * Returns the error observer associated with any sockets owned by
+	 * this statsd_server.
+	 */
+	const Poco::AbstractObserver& get_error_observer() const;
+
+private:
 	/** Invoked by the reactor when there is data to read. */
 	void on_read(Poco::Net::ReadableNotification* notification);
 
@@ -76,9 +133,14 @@ private:
 	/**
 	 * Creates a DatagramSocket, either IPv4 or IPv6, depending on the
 	 * given address.
+	 *
+	 * @param[in] address The IP address on which to listen (either IPv4
+	 *                    or IPv6).
+	 * @param[in] port    The port on which to listen.
 	 */
 	std::unique_ptr<Poco::Net::DatagramSocket> make_socket(
-			const Poco::Net::SocketAddress& address);
+			const std::string& address,
+			uint16_t port);
 
 	const std::string m_containerid;
 	statsd_stats_destination& m_statsite;

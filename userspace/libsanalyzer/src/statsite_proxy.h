@@ -7,18 +7,10 @@
  */
 #pragma once
 
-//#include "percentile.h"
-//#include "posix_queue.h"
 #include "metric_limits.h"
-//#include "statsite_proxy.h"
 #include "statsd_stats_destination.h"
 #include "statsd_stats_source.h"
-//#include <atomic>
 #include <vector>
-//#include <Poco/Net/SocketReactor.h>
-//#include <Poco/Net/DatagramSocket.h>
-//#include <Poco/Net/SocketNotification.h>
-//#include <Poco/ErrorHandler.h>
 #include <Poco/RegularExpression.h>
 
 class statsite_proxy : public statsd_stats_source,
