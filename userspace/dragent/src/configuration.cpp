@@ -160,21 +160,32 @@ class dragent_yaml_auto_configuration
 	: public dragent_auto_configuration
 {
 public:
-	dragent_yaml_auto_configuration(const std::string &config_directory)
-		: dragent_auto_configuration("dragent.auto.yaml",
+	dragent_yaml_auto_configuration(const std::string& filename,
+	                                const std::string& config_directory)
+		: dragent_auto_configuration(filename,
 					     config_directory,
-					     "#\n"
-					     "# WARNING: Sysdig Agent auto configuration, don't edit. Please use \"dragent.yaml\" instead\n"
-					     "#          To disable it, put \"auto_config: false\" on \"dragent.yaml\" and then delete this file.\n"
-					     "#\n"),
-		  m_forbidden_keys { "auto_config", "customerid", "collector", "collector_port",
-			"ssl", "ssl_verify_certificate", "ca_certificate", "compression" }
+					     R"EOF(#
+# WARNING: Sysdig Agent auto configuration, don't edit.
+#          Please use "dragent.yaml" instead. To disable it, put
+#          "auto_config: false" on "dragent.yaml" and then delete this file.
+#
+)EOF"),
+		  m_forbidden_keys {
+		  	  "auto_config",
+		  	  "customerid",
+		  	  "collector",
+			  "collector_port",
+			  "ssl",
+			  "ssl_verify_certificate",
+			  "ca_certificate",
+			  "compression"
+		  }
 	{
-	};
+	}
 
 	~dragent_yaml_auto_configuration()
 	{
-	};
+	}
 
 	bool validate(const string &config_data, string &errstr)
 	{
@@ -191,7 +202,8 @@ public:
 		}
 		for(const auto& key : m_forbidden_keys)
 		{
-			if(new_conf.get_scalar<string>(key, "default") != "default" || !new_conf.errors().empty()) {
+			if(new_conf.get_scalar<string>(key, "default") != "default" ||
+			   !new_conf.errors().empty()) {
 				errstr = "Overriding key=" + key + " on autoconfig is forbidden";
 				return false;
 			}
@@ -515,16 +527,33 @@ void dragent_configuration::init()
 	bool is_windows = false;
 #endif
 
-	unique_ptr<dragent_auto_configuration> autocfg(new dragent_yaml_auto_configuration(Path(m_default_root_dir).append("etc").toString()));
+	std::unique_ptr<dragent_auto_configuration> autocfg(
+			new dragent_yaml_auto_configuration(
+				"dragent.auto.yaml",
+				Path(m_default_root_dir).append("etc").toString()));
+	std::unique_ptr<dragent_auto_configuration> injected_autocfg(
+			new dragent_yaml_auto_configuration(
+				"dragent.auto.injected.yaml",
+				Path(m_default_root_dir).append("etc").toString()));
 
 	const string kubernetes_dragent_yaml = m_default_root_dir + "/etc/kubernetes/config/dragent.yaml";
 	if(m_auto_config)
 	{
-		m_config.reset(new yaml_configuration({ m_conf_file, kubernetes_dragent_yaml, autocfg->config_path(), m_defaults_conf_file }));
+		m_config.reset(new yaml_configuration({
+			m_conf_file,
+			kubernetes_dragent_yaml,
+			injected_autocfg->config_path(),
+			autocfg->config_path(),
+			m_defaults_conf_file
+		}));
 	}
 	else
 	{
-		m_config.reset(new yaml_configuration({ m_conf_file, kubernetes_dragent_yaml, m_defaults_conf_file }));
+		m_config.reset(new yaml_configuration({
+			m_conf_file,
+			kubernetes_dragent_yaml,
+			m_defaults_conf_file
+		}));
 	}
 	// The yaml_configuration catches exceptions so m_config will always be
 	// a valid pointer, but set m_load_error so dragent will see the error
@@ -533,10 +562,13 @@ void dragent_configuration::init()
 		m_load_error = true;
 	}
 
-	m_supported_auto_configs[string("dragent.auto.yaml")] = unique_ptr<dragent_auto_configuration>(std::move(autocfg));
+	m_supported_auto_configs[string("dragent.auto.yaml")] =
+		unique_ptr<dragent_auto_configuration>(std::move(autocfg));
+
+	m_supported_auto_configs[string("dragent.auto.injected.yaml")] =
+		unique_ptr<dragent_auto_configuration>(std::move(injected_autocfg));
 
 	c_root_dir.set_default(m_default_root_dir);
-
 
 	// init the configurations
 	configuration_manager::instance().init_config(*m_config);
