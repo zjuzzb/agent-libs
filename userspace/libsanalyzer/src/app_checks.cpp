@@ -7,7 +7,16 @@
 #include "sinsp_int.h"
 #include "analyzer_int.h"
 #include "analyzer_thread.h"
+#include "type_config.h"
 #include <utils.h>
+#include <zlib.h>
+
+type_config<bool> c_sdagent_compression_enabled(
+		false,
+		"sdagent sends compressed metrics",
+		"app_checks_compress_data"
+		);
+
 
 using namespace std;
 
@@ -279,7 +288,7 @@ Json::Value app_process::to_json() const
 
 app_checks_proxy::app_checks_proxy():
 	m_outqueue("/sdc_app_checks_in", posix_queue::SEND, 1),
-	m_inqueue("/sdc_app_checks_out", posix_queue::RECEIVE, 1)
+	m_inqueue("/sdc_app_checks_out", posix_queue::RECEIVE, 2)
 {
 }
 
@@ -309,9 +318,82 @@ void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes
 app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cref_sptr_t ml)
 {
 	metric_map_t ret;
+	std::string msg;
 	try
 	{
-		auto msg = m_inqueue.receive();
+		if(c_sdagent_compression_enabled.get())
+		{
+			// read the header
+			uLongf uncompressed_size = 0;
+			uLongf num_compressed_segments = 0;
+			auto msg_header = m_inqueue.receive();
+			if(!msg_header.empty())
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks (compressed header): %lu bytes", msg_header.size());
+				// extract metadata from header
+				Json::Value msg_header_json;
+				if(m_json_reader.parse(msg_header, msg_header_json, false))
+				{
+					std::string magic;
+					if(msg_header_json.isMember("magic") &&
+						msg_header_json.isMember("uncompressed_size") &&
+						msg_header_json.isMember("num_compressed_segments"))
+					{
+						magic = msg_header_json["magic"].asString();
+						uncompressed_size = msg_header_json["uncompressed_size"].asUInt();
+						num_compressed_segments = msg_header_json["num_compressed_segments"].asUInt();
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Header magic=%s, uncompressed_size=%lu, num_compressed_segments=%lu",
+								magic.c_str(), uncompressed_size, num_compressed_segments);
+					}
+					else
+					{
+						g_logger.format(sinsp_logger::SEV_ERROR, "Unable to parse json in header for compressed message");
+						return ret;
+					}
+					// validate metadata
+					if(magic != "SDAGENT")
+					{
+						g_logger.format(sinsp_logger::SEV_ERROR, "Invalid magic in header, expected SDAGENT, found %s", magic.c_str());
+						return ret;
+					}
+					if(num_compressed_segments != 1)
+					{
+						// We don't support more than 1 compressed segments
+						// Add support for multiple segments in the future, if required
+						g_logger.format(sinsp_logger::SEV_ERROR, "Invalid num_compressed_segments in header, expected 1, found %lu",
+								num_compressed_segments);
+						return ret;
+					}
+
+				}
+			}
+			// process the compressed data segment(s)
+			// Note: Today, we support only 1 compressed segment
+			auto compressed_msg = m_inqueue.receive();
+			if(!compressed_msg.empty())
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks (commpressed message): %lu bytes", compressed_msg.size());
+				// Allocate memory for the uncompressed data
+				// Note: reserve() throws std::length_error exception if storage allocation fails,
+				// which should be caught below
+				std::vector<Bytef> uncompressed_msg;
+				uncompressed_msg.reserve(uncompressed_size);
+				// Uncompress the message
+				int res = uncompress(&(uncompressed_msg[0]), &uncompressed_size, (const Bytef*)(compressed_msg.c_str()), compressed_msg.size());
+				if (res != Z_OK)
+				{
+					g_logger.format(sinsp_logger::SEV_ERROR, "uncompress error %d", res);
+					return ret;
+				}
+				msg = reinterpret_cast<char*>(&uncompressed_msg[0]);
+				msg.erase(uncompressed_size, std::string::npos);
+			}
+		}
+		else
+		{
+			msg = m_inqueue.receive();
+		}
+
 		if(!msg.empty())
 		{
 			g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %lu bytes", msg.size());
@@ -614,3 +696,4 @@ void app_service_check::to_protobuf_as_metric(draiosproto::app_metric *proto) co
 		}
 	}
 }
+

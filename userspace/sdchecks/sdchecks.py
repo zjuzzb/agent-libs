@@ -29,6 +29,7 @@ from sysdig_tracers import Tracer
 import simplejson as json
 import posix_ipc
 import yaml
+import zlib
 try:
     from yaml import FullLoader as yLoader
 except ImportError:
@@ -459,12 +460,31 @@ class PosixQueue:
                                             read=(self.direction == PosixQueueType.RECEIVE),
                                             write=(self.direction == PosixQueueType.SEND))
 
+    def compress_msg(self, data):
+        try:
+            compressed_data = zlib.compress(data)
+            return compressed_data
+        except Exception as err:
+            logging.error("Unable to compress the data : ", err)
+            return False
+
     def close(self):
         self.queue.close()
         self.queue = None
 
-    def send(self, msg):
+    def send(self, msg, compress_flag=False):
         try:
+            if compress_flag:
+                compressed_data = self.compress_msg(msg)
+                # Note: Support only 1 compressed segment today. If necessary, in the future, we can
+                # chop up extra large compressed data into multiple segments.
+                if len(compressed_data) > self.MSGSIZE:
+                    logging.error("Compressed msg size %d > max msg size %d, cannot send", len(compressed_data), self.MSGSIZE)
+                    return False
+                msg_dict = {"magic": "SDAGENT", "uncompressed_size": len(msg), "num_compressed_segments": 1}
+                msg_header = json.dumps(msg_dict)
+                self.queue.send(msg_header, timeout=0)
+                msg = compressed_data
             self.queue.send(msg, timeout=0)
             return True
         except posix_ipc.BusyError:
@@ -591,6 +611,8 @@ class Application:
         self.last_request_pidnames = set()
         self.exclude_localhost_from_proxy()
 
+        self.compress_data_flag = self.config._yaml_config.get_single("app_checks_compress_data")
+
     @staticmethod
     def exclude_localhost_from_proxy():
         # Excluding localhost from proxy
@@ -622,7 +644,7 @@ class Application:
 
     def initialize_queues(self):
         self.inqueue = PosixQueue("/sdc_app_checks_in", PosixQueueType.RECEIVE, 1)
-        self.outqueue = PosixQueue("/sdc_app_checks_out", PosixQueueType.SEND, 1)
+        self.outqueue = PosixQueue("/sdc_app_checks_out", PosixQueueType.SEND, 2)
 
     def heartbeat(self, pid, force=False):
 
@@ -756,7 +778,7 @@ class Application:
         response_s = json.dumps(response_body)
         logging.debug("Response size is %d", len(response_s))
         if self.outqueue:
-            self.outqueue.send(response_s)
+            self.outqueue.send(response_s, self.compress_data_flag)
 
     def main_loop(self):
         pid = os.getpid()
