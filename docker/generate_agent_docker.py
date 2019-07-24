@@ -52,7 +52,7 @@ elif image == "local":
     p['build_kernel_module'] = 1
     p['launch_dragent'] = 1
 elif image == "agent-slim":
-    p['base_docker_image'] = "bitnami/minideb:stretch"
+    p['base_docker_image'] = "bitnami/minideb:latest"
     p['sysdig_repository'] = repo
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 0
