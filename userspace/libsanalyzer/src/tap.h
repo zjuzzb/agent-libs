@@ -16,6 +16,10 @@ class sinsp_threadinfo;
 class sinsp;
 class userdb;
 
+/**
+ * A special view of process data built for Goldman that is sent out via
+ * the AuditLog protobuf.
+ */
 class audit_tap {
 public:
 	audit_tap(env_hash_config *config, const std::string &machine_id, bool emit_local_connections);

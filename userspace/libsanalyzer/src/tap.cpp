@@ -143,6 +143,10 @@ void audit_tap::emit_process(sinsp_threadinfo *tinfo, userdb *userdb)
 
 	auto proc = m_event_batch->add_newprocessevents();
 	proc->set_pid(tinfo->m_pid);
+	// To get the parent, first go to the main thread (the first thread
+	// that was forked), then take the m_ptid which is the process from
+	// which this thread was forked.
+	proc->set_parentpid(tinfo->get_main_thread()->m_ptid);
 	proc->set_name(tinfo->m_comm);
 	for(const auto& arg : tinfo->m_args)
 	{
