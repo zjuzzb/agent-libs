@@ -81,6 +81,7 @@ TEST_F(sys_call_test, analyzer_errors)
 		close(3333);
 		execve(pnt2, pnt1, pnt1); // generates EFAULT
 		execve(pnt2, pnt1, pnt1);
+		accept(3333, NULL, NULL); // generates EBADF
 
 		// We use a random call to tee to signal that we're done
 		tee(-1, -1, 0, 0);
@@ -102,7 +103,7 @@ TEST_F(sys_call_test, analyzer_errors)
 				EXPECT_LE((size_t)10, ec->m_count);
 				EXPECT_LE((size_t)5, ec->m_count_file);
 				EXPECT_LE((size_t)5, ec->m_count_file_open);
-				EXPECT_LE((size_t)0, ec->m_count_net);
+				EXPECT_LE((size_t)1, ec->m_count_net);
 
 				sinsp_threadinfo* tinfo = param.m_inspector->find_thread_test(getpid(), true);
 				ec = &tinfo->m_ainfo->m_syscall_errors;
@@ -110,7 +111,7 @@ TEST_F(sys_call_test, analyzer_errors)
 				EXPECT_LE((size_t)10, ec->m_count);
 				EXPECT_LE((size_t)5, ec->m_count_file);
 				EXPECT_LE((size_t)5, ec->m_count_file_open);
-				EXPECT_LE((size_t)0, ec->m_count_net);
+				EXPECT_LE((size_t)1, ec->m_count_net);
 			}
 		}
 	};

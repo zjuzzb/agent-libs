@@ -366,8 +366,7 @@ public:
 				etype == PPME_SOCKET_CONNECT_X ||
 				etype == PPME_SOCKET_BIND_X)
 			{
-				m_count_file_open++;
-				m_count_file++;
+				m_count_net++;
 			}
 		}
 	}
