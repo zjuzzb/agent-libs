@@ -24,7 +24,8 @@ protected:
 		float docker_delay,
 		const std::function<void(const callback_param& param, std::atomic<bool>& done)>& callback,
 		const std::function<void(const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done)>& new_cb,
-		bool want_events=true);
+		bool want_events=true,
+		bool async=true);
 };
 
 TEST_F(container_cri, fake_cri_no_server) {
@@ -208,7 +209,8 @@ void container_cri::fake_cri_test_timing(
 	float docker_delay,
 	const std::function<void(const callback_param& param, std::atomic<bool>& done)>& callback,
 	const std::function<void(const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done)>& new_cb,
-	bool want_events)
+	bool want_events,
+	bool async)
 {
 	std::atomic<bool> done_events(!want_events);
 	std::atomic<bool> done_callbacks(false);
@@ -241,6 +243,8 @@ void container_cri::fake_cri_test_timing(
 	before_open_t setup = [&](sinsp* inspector)
 	{
 		inspector->set_docker_socket_path(fake_docker_socket);
+		inspector->set_cri_async(async);
+		inspector->set_cri_async_limits(async);
 		inspector->set_cri_socket_path(fake_cri_socket);
 		inspector->set_cri_extra_queries(false);
 		inspector->set_log_callback(common_logger::sinsp_logger_callback);
@@ -253,6 +257,8 @@ void container_cri::fake_cri_test_timing(
 	before_close_t cleanup = [&](sinsp* inspector)
 	{
 		inspector->set_docker_socket_path(default_docker_socket);
+		inspector->set_cri_async(true);
+		inspector->set_cri_async_limits(false);
 	};
 
 	EXPECT_NO_FATAL_FAILURE({event_capture::run(test, cri_callback, filter, setup, cleanup);});
@@ -487,6 +493,179 @@ TEST_F(container_cri, fake_docker_fail_then_cri_fail) {
 		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
 			expect_callbacks(exp_callbacks, container, done);
 		},
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+
+TEST_F(container_cri, fake_cri_then_docker_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_DOCKER, false, false},
+		{CT_CONTAINERD, true, true},
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--nodelay",
+		"containerd",
+		0.5,
+		expect_cri_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		true,
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_docker_then_cri_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_DOCKER, false, false},
+		{CT_DOCKER, true, true},
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--slow",
+		"containerd",
+		0.0,
+		expect_docker_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		true,
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_cri_fail_then_docker_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_DOCKER, false, false},
+		{CT_CONTAINERD, true, false},
+		{CT_DOCKER, true, true},
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--veryslow",
+		"containerd",
+		2.0,
+		expect_docker_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		true,
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_docker_then_cri_fail_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_DOCKER, false, false},
+		{CT_DOCKER, true, true},
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--veryslow",
+		"containerd",
+		0.0,
+		expect_docker_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		true,
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_cri_then_docker_fail_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_DOCKER, false, false},
+		{CT_CONTAINERD, true, true},
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--nodelay",
+		"containerd",
+		-0.5,
+		expect_cri_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		true,
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_docker_fail_then_cri_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_DOCKER, false, false},
+		{CT_DOCKER, true, false},
+		{CT_CONTAINERD, true, true},
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--slow",
+		"containerd",
+		-0.1,
+		expect_cri_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		true,
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_cri_fail_then_docker_fail_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_DOCKER, false, false},
+		{CT_CONTAINERD, true, false},
+		{CT_DOCKER, true, false}
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--veryslow",
+		"containerd",
+		-2.0,
+		expect_no_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		false,
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_docker_fail_then_cri_fail_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_DOCKER, false, false},
+		{CT_DOCKER, true, false},
+		{CT_CONTAINERD, true, false}
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--veryslow",
+		"containerd",
+		-0.1,
+		expect_no_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		false,
 		false);
 
 	ASSERT_TRUE(exp_callbacks.empty());
