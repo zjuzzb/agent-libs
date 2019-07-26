@@ -517,9 +517,9 @@ def create_filter(args):
         return f(args.filter_args)
     elif args.jq_filter:
         jq_filter = jq(args.jq_filter)
-        return lambda m, mobj: jq_filter.transform(m, multiple_output=True)
+        return lambda m, mobj, path: jq_filter.transform(m, multiple_output=True)
     else:
-        return lambda m, mobj: m
+        return lambda m, mobj, path: m
 
 
 def analyze_proto(args, path, filter_f):
