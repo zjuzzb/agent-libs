@@ -59,8 +59,13 @@ TEST_F(container_cri, fake_cri_no_server) {
 
 		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 
-		// This can either be null or a container reporting a failed lookup
-		EXPECT_TRUE((container_info == nullptr || !container_info->m_successful));
+		// This can either be null or a container reporting
+		// - a failed lookup
+		// - a lookup that is still pending (and will fail eventually)
+		if(container_info != nullptr)
+		{
+			EXPECT_NE(sinsp_container_lookup_state::SUCCESSFUL, container_info->m_status);
+		}
 
 		done = true;
 	};
@@ -318,8 +323,7 @@ void expect_no_container(const callback_param& param, std::atomic<bool>& done)
 
 struct callback_params {
 	sinsp_container_type type;
-	bool complete;
-	bool successful;
+	sinsp_container_lookup_state status;
 };
 
 void expect_callbacks(std::vector<callback_params>& params, const sinsp_container_info& container, std::atomic<bool>& done)
@@ -328,8 +332,7 @@ void expect_callbacks(std::vector<callback_params>& params, const sinsp_containe
 
 	auto exp = params[0];
 	EXPECT_EQ(exp.type, container.m_type);
-	EXPECT_EQ(exp.complete, container.m_metadata_complete);
-	EXPECT_EQ(exp.successful, container.m_successful);
+	EXPECT_EQ(exp.status, container.m_status);
 
 	params.erase(params.begin());
 	if(params.empty())
@@ -342,8 +345,8 @@ void expect_callbacks(std::vector<callback_params>& params, const sinsp_containe
 
 TEST_F(container_cri, fake_cri_then_docker) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_CONTAINERD, true, true},
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_CONTAINERD, sinsp_container_lookup_state::SUCCESSFUL},
 	};
 
 	fake_cri_test_timing(
@@ -361,8 +364,8 @@ TEST_F(container_cri, fake_cri_then_docker) {
 
 TEST_F(container_cri, fake_docker_then_cri) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_DOCKER, true, true},
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_DOCKER, sinsp_container_lookup_state::SUCCESSFUL},
 	};
 
 	fake_cri_test_timing(
@@ -380,9 +383,9 @@ TEST_F(container_cri, fake_docker_then_cri) {
 
 TEST_F(container_cri, fake_cri_fail_then_docker) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_CONTAINERD, true, false},
-		{CT_DOCKER, true, true},
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_CONTAINERD, sinsp_container_lookup_state::FAILED},
+		{CT_DOCKER, sinsp_container_lookup_state::SUCCESSFUL},
 	};
 
 	fake_cri_test_timing(
@@ -400,8 +403,8 @@ TEST_F(container_cri, fake_cri_fail_then_docker) {
 
 TEST_F(container_cri, fake_docker_then_cri_fail) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_DOCKER, true, true},
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_DOCKER, sinsp_container_lookup_state::SUCCESSFUL},
 	};
 
 	fake_cri_test_timing(
@@ -419,8 +422,8 @@ TEST_F(container_cri, fake_docker_then_cri_fail) {
 
 TEST_F(container_cri, fake_cri_then_docker_fail) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_CONTAINERD, true, true},
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_CONTAINERD, sinsp_container_lookup_state::SUCCESSFUL},
 	};
 
 	fake_cri_test_timing(
@@ -438,9 +441,9 @@ TEST_F(container_cri, fake_cri_then_docker_fail) {
 
 TEST_F(container_cri, fake_docker_fail_then_cri) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_DOCKER, true, false},
-		{CT_CONTAINERD, true, true},
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_DOCKER, sinsp_container_lookup_state::FAILED},
+		{CT_CONTAINERD, sinsp_container_lookup_state::SUCCESSFUL},
 	};
 
 	fake_cri_test_timing(
@@ -458,9 +461,9 @@ TEST_F(container_cri, fake_docker_fail_then_cri) {
 
 TEST_F(container_cri, fake_cri_fail_then_docker_fail) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_CONTAINERD, true, false},
-		{CT_DOCKER, true, false}
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_CONTAINERD, sinsp_container_lookup_state::FAILED},
+		{CT_DOCKER, sinsp_container_lookup_state::FAILED}
 	};
 
 	fake_cri_test_timing(
@@ -479,9 +482,9 @@ TEST_F(container_cri, fake_cri_fail_then_docker_fail) {
 
 TEST_F(container_cri, fake_docker_fail_then_cri_fail) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_DOCKER, true, false},
-		{CT_CONTAINERD, true, false}
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_DOCKER, sinsp_container_lookup_state::FAILED},
+		{CT_CONTAINERD, sinsp_container_lookup_state::FAILED}
 	};
 
 	fake_cri_test_timing(
@@ -501,8 +504,8 @@ TEST_F(container_cri, fake_docker_fail_then_cri_fail) {
 
 TEST_F(container_cri, fake_cri_then_docker_sync) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_CONTAINERD, true, true},
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_CONTAINERD, sinsp_container_lookup_state::SUCCESSFUL},
 	};
 
 	fake_cri_test_timing(
@@ -522,8 +525,8 @@ TEST_F(container_cri, fake_cri_then_docker_sync) {
 
 TEST_F(container_cri, fake_docker_then_cri_sync) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_DOCKER, true, true},
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_DOCKER, sinsp_container_lookup_state::SUCCESSFUL},
 	};
 
 	fake_cri_test_timing(
@@ -543,9 +546,9 @@ TEST_F(container_cri, fake_docker_then_cri_sync) {
 
 TEST_F(container_cri, fake_cri_fail_then_docker_sync) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_CONTAINERD, true, false},
-		{CT_DOCKER, true, true},
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_CONTAINERD, sinsp_container_lookup_state::FAILED},
+		{CT_DOCKER, sinsp_container_lookup_state::SUCCESSFUL},
 	};
 
 	fake_cri_test_timing(
@@ -565,8 +568,8 @@ TEST_F(container_cri, fake_cri_fail_then_docker_sync) {
 
 TEST_F(container_cri, fake_docker_then_cri_fail_sync) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_DOCKER, true, true},
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_DOCKER, sinsp_container_lookup_state::SUCCESSFUL},
 	};
 
 	fake_cri_test_timing(
@@ -586,8 +589,8 @@ TEST_F(container_cri, fake_docker_then_cri_fail_sync) {
 
 TEST_F(container_cri, fake_cri_then_docker_fail_sync) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_CONTAINERD, true, true},
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_CONTAINERD, sinsp_container_lookup_state::SUCCESSFUL},
 	};
 
 	fake_cri_test_timing(
@@ -607,9 +610,9 @@ TEST_F(container_cri, fake_cri_then_docker_fail_sync) {
 
 TEST_F(container_cri, fake_docker_fail_then_cri_sync) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_DOCKER, true, false},
-		{CT_CONTAINERD, true, true},
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_DOCKER, sinsp_container_lookup_state::FAILED},
+		{CT_CONTAINERD, sinsp_container_lookup_state::SUCCESSFUL},
 	};
 
 	fake_cri_test_timing(
@@ -629,9 +632,9 @@ TEST_F(container_cri, fake_docker_fail_then_cri_sync) {
 
 TEST_F(container_cri, fake_cri_fail_then_docker_fail_sync) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_CONTAINERD, true, false},
-		{CT_DOCKER, true, false}
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_CONTAINERD, sinsp_container_lookup_state::FAILED},
+		{CT_DOCKER, sinsp_container_lookup_state::FAILED}
 	};
 
 	fake_cri_test_timing(
@@ -651,9 +654,9 @@ TEST_F(container_cri, fake_cri_fail_then_docker_fail_sync) {
 
 TEST_F(container_cri, fake_docker_fail_then_cri_fail_sync) {
 	std::vector<callback_params> exp_callbacks = {
-		{CT_DOCKER, false, false},
-		{CT_DOCKER, true, false},
-		{CT_CONTAINERD, true, false}
+		{CT_DOCKER, sinsp_container_lookup_state::STARTED},
+		{CT_DOCKER, sinsp_container_lookup_state::FAILED},
+		{CT_CONTAINERD, sinsp_container_lookup_state::FAILED}
 	};
 
 	fake_cri_test_timing(

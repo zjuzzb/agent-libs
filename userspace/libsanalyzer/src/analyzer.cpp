@@ -6053,7 +6053,7 @@ sinsp_analyzer::emit_container(const string &container_id,
 		ASSERT(false);
 	}
 
-	if(it->second.m_metadata_complete)
+	if(it->second.m_status != sinsp_container_lookup_state::STARTED)
 	{
 		if(!it->second.m_name.empty())
 		{

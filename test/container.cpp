@@ -400,8 +400,7 @@ static void run_container_docker_test(bool fork_after_container_start)
 		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_TRUE(container_info != NULL);
 
-		EXPECT_EQ(true, container_info->m_successful);
-		EXPECT_EQ(true, container_info->m_metadata_complete);
+		EXPECT_EQ(sinsp_container_lookup_state::SUCCESSFUL, container_info->m_status);
 		EXPECT_EQ(sinsp_container_type::CT_DOCKER, container_info->m_type);
 		EXPECT_EQ("ilovesysdig_docker", container_info->m_name);
 #ifdef __s390x__
@@ -502,7 +501,7 @@ TEST_F(sys_call_test, container_docker_bad_socket)
 		ASSERT_TRUE(container_info != NULL);
 		if(container_info->m_type == CT_DOCKER)
 		{
-			EXPECT_FALSE(container_info->m_successful);
+			EXPECT_NE(sinsp_container_lookup_state::SUCCESSFUL, container_info->m_status);
 			done = true;
 		}
 	};
