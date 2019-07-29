@@ -104,7 +104,7 @@ k8s_event_counts_log_time: 162
 TEST(infrastructure_state_test, config_post_processing)
 {
 	std::string yaml_string = R"(
-k8s_uri: url_path
+k8s_uri: https://yaml_host:54321
 k8s_bt_auth_token: at_path
 k8s_ca_certificate: ca_path
 k8s_ssl_cert: cert_path
@@ -118,7 +118,7 @@ k8s_ssl_key: key_path
 	// check that we properly normalize path
 	test_helpers::sinsp_mock inspector;
 	infrastructure_state is(&inspector, "/foo/bar");
-	EXPECT_EQ(is.get_k8s_url(), "/foo/bar/url_path");
+	EXPECT_EQ("https://yaml_host:54321", is.get_k8s_url());
 	EXPECT_EQ(is.get_k8s_ca_certificate(), "/foo/bar/ca_path");
 	EXPECT_EQ(is.get_k8s_bt_auth_token(), "/foo/bar/at_path");
 	EXPECT_EQ(is.get_k8s_ssl_certificate(), "/foo/bar/cert_path");
