@@ -372,9 +372,7 @@ TEST_F(container_cri, fake_docker_then_cri) {
 	ASSERT_TRUE(exp_callbacks.empty());
 }
 
-// this is temporarily disabled as we need a patch to libsinsp to fix this
-// that's coming in a subsequent PR
-TEST_F(container_cri, DISABLED_fake_cri_fail_then_docker) {
+TEST_F(container_cri, fake_cri_fail_then_docker) {
 	std::vector<callback_params> exp_callbacks = {
 		{CT_DOCKER, false, false},
 		{CT_CONTAINERD, true, false},
@@ -452,9 +450,7 @@ TEST_F(container_cri, fake_docker_fail_then_cri) {
 	ASSERT_TRUE(exp_callbacks.empty());
 }
 
-// this is temporarily disabled as we need a patch to libsinsp to fix this
-// that's coming in a subsequent PR
-TEST_F(container_cri, DISABLED_fake_cri_fail_then_docker_fail) {
+TEST_F(container_cri, fake_cri_fail_then_docker_fail) {
 	std::vector<callback_params> exp_callbacks = {
 		{CT_DOCKER, false, false},
 		{CT_CONTAINERD, true, false},
@@ -475,9 +471,7 @@ TEST_F(container_cri, DISABLED_fake_cri_fail_then_docker_fail) {
 	ASSERT_TRUE(exp_callbacks.empty());
 }
 
-// this is temporarily disabled as we need a patch to libsinsp to fix this
-// that's coming in a subsequent PR
-TEST_F(container_cri, DISABLED_fake_docker_fail_then_cri_fail) {
+TEST_F(container_cri, fake_docker_fail_then_cri_fail) {
 	std::vector<callback_params> exp_callbacks = {
 		{CT_DOCKER, false, false},
 		{CT_DOCKER, true, false},
