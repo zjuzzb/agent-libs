@@ -286,7 +286,7 @@ infrastructure_state::infrastructure_state(sinsp* inspector,
 	, m_k8s_prev_connect_state(-1)
 	, m_k8s_node_actual(false)
 	, m_root_dir(rootdir)
-	, m_k8s_url(normalize_path(c_k8s_url.get()))
+	, m_k8s_url(c_k8s_url.get())
 	, m_k8s_bt_auth_token(normalize_path(c_k8s_bt_auth_token.get()))
 	, m_k8s_ca_certificate(normalize_path(c_k8s_ca_certificate.get()))
 	, m_k8s_ssl_certificate(normalize_path(c_k8s_ssl_certificate.get()))
