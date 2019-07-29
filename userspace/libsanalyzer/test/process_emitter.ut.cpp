@@ -11,8 +11,11 @@
 #include <unordered_set>
 #include <string>
 #include <tuple>
+#include <scoped_config.h>
 #include <stdint.h>
 #include "analyzer.h"
+
+using namespace test_helpers;
 
 class test_helper
 {
@@ -204,6 +207,48 @@ TEST(process_emitter_test, emit_process)
 				false /*not high priority*/);
 
 	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().comm(), "my_process_name");
+	// low priority process doesn't get a group
+	EXPECT_EQ(emitter.m_metrics.programs()[0].program_reporting_group_id().size(), 0);
+}
+
+TEST(process_emitter_test, max_command_arg_length)
+{
+	const int LIMIT = 22;
+	scoped_config<unsigned int> config("process_emitter.max_command_arg_length", LIMIT);
+
+	easy_process_emitter emitter(false, false);
+
+	fake_thread hi_stats1;
+	hi_stats1.m_ainfo->m_cpuload = 100;
+	hi_stats1.m_comm = "my_process_name";
+	hi_stats1.m_args.push_back(std::string(14, 'y'));
+	hi_stats1.m_args.push_back(std::string(40, 'z'));
+	hi_stats1.m_ainfo->m_procinfo->m_cpuload = 100;
+
+	analyzer_emitter::progtable_by_container_t progtable_by_container;
+	std::vector<std::string> emitted_containers;
+
+	// set so we skip the top per host
+	test_helper::set_config(process_manager::c_top_processes_per_host, 1);
+	test_helper::set_config(process_manager::c_process_limit, 1);
+
+	std::set<uint64_t> all_uids;
+
+	sinsp_counter_time tot;
+	hi_stats1.m_ainfo->m_procinfo->m_proc_metrics.get_total(&tot);
+	(*emitter).emit_process(hi_stats1,
+				*emitter.m_metrics.add_programs(),
+				progtable_by_container,
+				*hi_stats1.m_ainfo->m_procinfo,
+				tot,
+				emitter.m_metrics,
+				all_uids,
+				false /*not high priority*/);
+
+	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().comm(), "my_process_name");
+	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().args_size(), 2);
+	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().args(0), hi_stats1.m_args[0]);
+	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().args(1), std::string(LIMIT, 'z'));
 	// low priority process doesn't get a group
 	EXPECT_EQ(emitter.m_metrics.programs()[0].program_reporting_group_id().size(), 0);
 }

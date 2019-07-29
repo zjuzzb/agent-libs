@@ -88,7 +88,7 @@ using namespace google::protobuf::io;
 #include "metric_limits.h"
 #include "label_limits.h"
 #include "container_emitter.h"
-#include "tap.h"
+#include "audit_tap.h"
 #include "jmx_emitter.h"
 #include "app_check_emitter.h"
 #include "environment_emitter.h"

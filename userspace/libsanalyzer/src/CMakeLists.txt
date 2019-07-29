@@ -108,6 +108,7 @@ set(SANALYZER_SOURCES
 	analyzer_parsers.cpp
 	analyzer_thread.cpp
 	analyzer_utils.cpp
+	audit_tap.cpp
 	baseliner.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel_api.cpp
@@ -247,8 +248,7 @@ set(SANALYZER_SOURCES
 	k8s_limits.cpp
 	userdb.cpp
 	blake2/blake2b.c
-	env_hash.cpp
-	tap.cpp)
+	env_hash.cpp)
 
 if(NOT CYGWIN)
 list(APPEND SANALYZER_SOURCES

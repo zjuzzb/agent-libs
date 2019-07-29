@@ -2,6 +2,19 @@
 #include "analyzer_thread.h"
 #include "tracer_emitter.h"
 
+namespace {
+
+type_config<unsigned int>::ptr c_max_argument_length =
+   type_config_builder<unsigned int>(100 /*default*/,
+				     "The maximum length to send for arguments to the command line",
+				     "process_emitter",
+				     "max_command_arg_length")
+	.min(10)
+	.max(64 * 1024)
+	.get();
+
+}
+
 process_emitter::process_emitter(const process_manager& the_process_manager,
 				 sinsp& inspector,
 				 const bool simpledriver_enabled,
@@ -424,13 +437,13 @@ void process_emitter::emit_process(sinsp_threadinfo& tinfo,
 	{
 		if(*arg_it != "")
 		{
-			if(arg_it->size() <= ARG_SIZE_LIMIT)
+			if(arg_it->size() <= max_command_argument_length())
 			{
 				proc->mutable_details()->add_args(*arg_it);
 			}
 			else
 			{
-				auto arg_capped = arg_it->substr(0, ARG_SIZE_LIMIT);
+				auto arg_capped = arg_it->substr(0, max_command_argument_length());
 				proc->mutable_details()->add_args(arg_capped);
 			}
 		}
@@ -580,4 +593,10 @@ void process_emitter::emit_process(sinsp_threadinfo& tinfo,
 		proc->set_start_count(procinfo.m_start_count);
 		proc->set_count_processes(procinfo.m_proc_count);
 	}
+}
+
+// static
+unsigned int process_emitter::max_command_argument_length()
+{
+	return c_max_argument_length->get();
 }

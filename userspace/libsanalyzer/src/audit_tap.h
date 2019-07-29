@@ -22,12 +22,36 @@ class userdb;
  */
 class audit_tap {
 public:
-	audit_tap(env_hash_config *config, const std::string &machine_id, bool emit_local_connections);
 
+	audit_tap(env_hash_config *config, const std::string& machine_id, bool emit_local_connections);
+
+	/**
+	 * Called when the process exits. This will all special process exit events
+	 * to the buffer.
+	 */
 	void on_exit(uint64_t pid);
+
+	/**
+	 * Using the given connection table, emit the network connections between
+	 * processes.
+	 */
 	void emit_connections(sinsp_ipv4_connection_manager* conn_manager, userdb* userdb);
+
+	/**
+	 * When connections are emitted, we limit the number of environments
+	 * that we emit at once.  If previous emissions had unsent environments
+	 * then this is used to grab them to send at a later time.
+	 */
 	void emit_pending_envs(sinsp* inspector);
+
+	/**
+	 * Put the events into the audit log.
+	 */
 	const tap::AuditLog* get_events();
+
+	/**
+	 * After a batch of events is sent, this is called to clear the buffer.
+	 */
 	void clear();
 
 private:

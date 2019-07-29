@@ -1,14 +1,12 @@
-#include "tap.h"
 
+#include "audit_tap.h"
 #include <sinsp_int.h>
-#include <analyzer.h>
-#include <analyzer_thread.h>
-
+#include "analyzer.h"
+#include "analyzer_thread.h"
 #include "connectinfo.h"
+#include "process_emitter.h"
+#include <tap.pb.h>
 
-#include "tap.pb.h"
-
-namespace {
 tap::ConnectionStatus conn_status(uint8_t flags, int errorcode)
 {
 	switch(flags & ~sinsp_connection::AF_REUSED) {
@@ -18,7 +16,6 @@ tap::ConnectionStatus conn_status(uint8_t flags, int errorcode)
 			tap::ConnectionStatus::ESTABLISHED:
 			tap::ConnectionStatus::FAILED;
 	}
-}
 }
 
 audit_tap::audit_tap(env_hash_config *config, const std::string &machine_id, bool emit_local_connections) :
@@ -155,13 +152,13 @@ void audit_tap::emit_process(sinsp_threadinfo *tinfo, userdb *userdb)
 			continue;
 		}
 
-		if(arg.size() <= ARG_SIZE_LIMIT)
+		if(arg.size() <= process_emitter::max_command_argument_length())
 		{
 			proc->add_commandline(arg);
 		}
 		else
 		{
-			auto arg_capped = arg.substr(0, ARG_SIZE_LIMIT);
+			auto arg_capped = arg.substr(0, process_emitter::max_command_argument_length());
 			proc->add_commandline(arg_capped);
 		}
 	}

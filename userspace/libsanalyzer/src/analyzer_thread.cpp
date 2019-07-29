@@ -23,7 +23,7 @@
 #include "sched_analyzer.h"
 #include "analyzer_thread.h"
 #include "proc_config.h"
-#include "tap.h"
+#include "audit_tap.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_procinfo implementation

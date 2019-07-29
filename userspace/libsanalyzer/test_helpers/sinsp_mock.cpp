@@ -25,6 +25,20 @@ sinsp_mock::~sinsp_mock()
 	m_thread_manager->set_listener(nullptr);
 }
 
+thread_builder sinsp_mock::build_thread()
+{
+	// Create a thread builder that will commit into this class
+	return thread_builder(std::bind(&sinsp_mock::commit_thread,
+				       this,
+				       std::placeholders::_1));
+}
+
+void sinsp_mock::commit_thread(sinsp_threadinfo *thread_info)
+{
+	thread_info->m_inspector = this;
+	m_temporary_threadinfo_list.push_back(thread_info_ptr(thread_info));
+}
+
 event_builder sinsp_mock::build_event()
 {
 	// Create an event builder that will commit into this class
@@ -50,6 +64,13 @@ void sinsp_mock::open(uint32_t timeout_ms) /*override*/
 
 	if(m_analyzer) {
 		m_analyzer->on_capture_start();
+	}
+
+	// Pass ownership of the threads to the thread_manager
+	while (!m_temporary_threadinfo_list.empty())
+	{
+		add_thread(m_temporary_threadinfo_list.front().release());
+		m_temporary_threadinfo_list.pop_front();
 	}
 }
 

@@ -15,6 +15,7 @@
  */
 class process_emitter {
 public:
+
 	process_emitter(const process_manager& the_process_manager,
 			sinsp& inspector,
 			const bool simpledriver_enabled,
@@ -59,6 +60,11 @@ public:
 			  std::set<uint64_t>& all_uids,
 			  bool high_priority);
 
+	/**
+	 * Return the (configured) maximum length to send for arguments to the
+	 * command line.
+	 */
+	static unsigned int max_command_argument_length();
 
 private:
 

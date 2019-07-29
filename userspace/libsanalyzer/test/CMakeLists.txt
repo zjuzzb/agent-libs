@@ -35,6 +35,7 @@ list(APPEND libsanalyzer_test_helpers_uts
 list(APPEND libsanalyzer_uts
 	analyzer_file_stat.ut.cpp
 	analyzer.ut.cpp
+	audit_tap.ut.cpp
 	infrastructure_state.ut.cpp
 	main.cpp
 	metric_serializer.ut.cpp

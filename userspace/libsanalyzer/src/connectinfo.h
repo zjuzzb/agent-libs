@@ -1,5 +1,7 @@
 #pragma once
 
+#include "metrics.h"
+
 class sinsp_analyzer;
 
 //
@@ -236,7 +238,9 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
 	if(conn.m_record_state_history)
 	{
-		proc = m_inspector->get_thread_ref(pid, false, true);
+		proc = m_inspector->get_thread_ref(pid,
+						   false /*don't query the os if not found*/,
+						   true /*lookup only*/);
 	}
 
 	if(m_percentiles.size() && !conn.m_transaction_metrics.has_percentiles())
