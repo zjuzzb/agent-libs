@@ -144,7 +144,7 @@ void audit_tap::emit_process(sinsp_threadinfo *tinfo, userdb *userdb)
 	// that was forked), then take the m_ptid which is the process from
 	// which this thread was forked.
 	proc->set_parentpid(tinfo->get_main_thread()->m_ptid);
-	proc->set_name(tinfo->m_comm);
+	proc->set_name(tinfo->m_exe);
 	for(const auto& arg : tinfo->m_args)
 	{
 		if(arg.empty())

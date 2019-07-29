@@ -83,6 +83,15 @@ public:
 	}
 
 	/**
+	 * Set the exe
+	 */
+	thread_builder& exe(const std::string& value)
+	{
+		m_threadinfo->m_exe = value;
+		return *this;
+	}
+
+	/**
 	 * Add an argument
 	 */
 	thread_builder& arg(const std::string &value)

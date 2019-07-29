@@ -89,7 +89,7 @@ void add_connection(sinsp &inspector,
 TEST(audit_tap_test, DISABLED_basic)
 {
 	const int64_t expected_pid = 4;
-	const std::string expected_comm = "gcc";
+	const std::string expected_name = "/usr/bin/gcc";
 	const std::string expected_arg_1 = "-o";
 	const std::string expected_arg_2 = "a.out";
 	const std::string expected_arg_3 = "hello_world.cpp";
@@ -111,7 +111,8 @@ TEST(audit_tap_test, DISABLED_basic)
 	(void)inspector.build_thread().commit();
 	const sinsp_threadinfo *thread1 = inspector.build_thread()
 		.pid(expected_pid)
-		.comm(expected_comm)
+		.comm("gcc")
+		.exe(expected_name)
 		.arg(expected_arg_1)
 		.arg(expected_arg_2)
 		.arg(expected_arg_3).commit();
@@ -122,7 +123,7 @@ TEST(audit_tap_test, DISABLED_basic)
 	// Sanity checks
 	ASSERT_EQ(expected_pid, thread1->m_pid);
 	ASSERT_EQ(expected_pid, thread1->m_tid);
-	ASSERT_EQ(expected_comm, thread1->m_comm);
+	ASSERT_EQ(expected_name, thread1->m_exe);
 
 	// Even though the analyzer has it's own tap, let's make our own
 	// and it can pull data from sinsp and the analyzer thread.
@@ -139,7 +140,7 @@ TEST(audit_tap_test, DISABLED_basic)
 	// Validate newprocessevents
 	ASSERT_EQ(1, log->newprocessevents_size() );
 	ASSERT_EQ(expected_pid, log->newprocessevents(0) .pid());
-	ASSERT_EQ(expected_comm, log->newprocessevents(0).name());
+	ASSERT_EQ(expected_name, log->newprocessevents(0).name());
 	ASSERT_EQ(3, log->newprocessevents(0).commandline_size());
 	ASSERT_EQ(expected_arg_1, log->newprocessevents(0).commandline(0));
 	ASSERT_EQ(expected_arg_2, log->newprocessevents(0).commandline(1));
