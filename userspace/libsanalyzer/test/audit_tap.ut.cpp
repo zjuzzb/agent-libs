@@ -57,11 +57,11 @@ void add_connection(sinsp &inspector,
 				   6 /*fd*/,
 				   true /*isclient*/,
 				   12345678 /*timestamp*/,
-				   1 /*flags*/,
+				   sinsp_connection::AF_NONE /*flags*/,
 				   99 /*error_code*/);
 
 	ASSERT_NE(connection, nullptr);
-	// This is fundemental to audit_tap so make sure it is happening
+	// This is fundamental to audit_tap so make sure it is happening
 	ASSERT_TRUE(connection->m_record_state_history);
 
 	auto two_seconds_ago = sinsp_utils::get_current_time_ns() - 2000000000;
@@ -86,7 +86,7 @@ void add_connection(sinsp &inspector,
 // a small piece of code. This can be improved by pulling apart analyzer,
 // analyzer_thread, sinsp_threadinfo, sinsp_ipv4_connection_manager and
 // audit_tap.
-TEST(audit_tap_test, basic)
+TEST(audit_tap_test, DISABLED_basic)
 {
 	const int64_t expected_pid = 4;
 	const std::string expected_comm = "gcc";
@@ -180,7 +180,7 @@ TEST(audit_tap_test, basic)
 }
 
 
-TEST(audit_tap_test, configurable_command_length)
+TEST(audit_tap_test, DISABLED_configurable_command_length)
 {
    ARG_LENGTH_TEST(10);
    ARG_LENGTH_TEST(99);
