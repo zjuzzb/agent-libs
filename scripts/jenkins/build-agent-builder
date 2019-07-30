@@ -10,7 +10,7 @@ docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
 
 docker pull quay.io/sysdig/agent-builder:latest
 docker tag quay.io/sysdig/agent-builder:latest quay.io/sysdig/agent-builder:prev_latest
-docker build -t quay.io/sysdig/agent-builder:latest --pull $AGENT_SOURCE
+docker build -t quay.io/sysdig/agent-builder:latest --pull $AGENT_SOURCE/docker/builder
 
 LATEST_ID=`docker images --format '{{.ID}}' quay.io/sysdig/agent-builder:latest`
 PREV_ID=`docker images --format '{{.ID}}' quay.io/sysdig/agent-builder:prev_latest`
