@@ -3,6 +3,7 @@
 //
 
 #include "app_checks.h"
+#include "common_logger.h"
 #include "prometheus.h"
 #include "sinsp_int.h"
 #include "analyzer_int.h"
@@ -11,11 +12,18 @@
 #include <utils.h>
 #include <zlib.h>
 
+namespace
+{
+
+COMMON_LOGGER();
+
 type_config<bool> c_sdagent_compression_enabled(
 		false,
 		"sdagent sends compressed metrics",
 		"app_checks_compress_data"
 		);
+
+}
 
 
 using namespace std;
@@ -572,8 +580,24 @@ app_metric::app_metric(const Json::Value &obj):
 				// obj[2] is a map of <label, count>
 				const auto &buckets(obj[2]);
 				const auto labels = buckets.getMemberNames();
-				for (auto &l: labels) {
-					m_buckets.emplace(l, buckets[l].asUInt64());
+				for (const auto& l: labels)
+				{
+					try
+					{
+						m_buckets.emplace(l, buckets[l].asUInt64());
+					}
+					catch(const Json::LogicError& ex)
+					{
+						// This can happen if we try to parse
+						// a negative value
+						LOG_ERROR("Cannot convert bucket value for "
+						          "metric '%s' to UInt64: \"%s\": %s; dropping. "
+						          "Error: %s",
+						          Json::FastWriter().write(obj).c_str(),
+						          l.c_str(),
+						          Json::FastWriter().write(buckets[l]).c_str(),
+						          ex.what());
+					}
 				}
 			}
 		} else {
