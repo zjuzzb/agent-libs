@@ -186,6 +186,11 @@ TEST(analyzer_test, coalesce_containers_test)
 	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_threads_count = 16;
 	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name].m_metrics.m_threads_count = 15;
 
+	// syscalls
+	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_metrics.m_unknown.m_count = 5;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_metrics.m_unknown.m_count = 17;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name].m_metrics.m_metrics.m_unknown.m_count = 16;
+
 	// coalesce
 	test_helper::coalesce(analyzer, emitted_containers);
 
@@ -204,6 +209,7 @@ TEST(analyzer_test, coalesce_containers_test)
 	EXPECT_EQ(27, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().count_processes());
 	EXPECT_EQ(29, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().proc_start_count());
 	EXPECT_EQ(31, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().threads_count());
+	EXPECT_EQ(33, test_helper::get_metrics(analyzer)->unreported_counters().syscall_count());
 
 	// check that we added the names
 	EXPECT_EQ(2, test_helper::get_metrics(analyzer)->unreported_counters().names().size());

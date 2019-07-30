@@ -4080,6 +4080,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 					it->to_protobuf(fs);
 				}
 			}
+
+			m_metrics->mutable_hostinfo()->set_syscall_count(m_host_metrics.m_syscall_count.total_calls());
+
 #ifndef CYGWING_AGENT
 			//
 			// Executed commands
@@ -6330,7 +6333,13 @@ sinsp_analyzer::emit_container(const string &container_id,
 	it_analyzer->second.m_devs_stat.emit(container, m_device_map, m_top_file_devices_per_container);
 
 	sinsp_connection_aggregator::filter_and_emit(*it_analyzer->second.m_connections_by_serverport,
-												 container, TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER, m_sampling_ratio);
+						     container,
+						     TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER,
+						     m_sampling_ratio);
+
+	sinsp_counter_time totals;
+	it_analyzer->second.m_metrics.m_metrics.get_total(&totals);
+	container->set_syscall_count(totals.m_count);
 
 	it_analyzer->second.clear();
 }
@@ -6424,6 +6433,10 @@ void sinsp_analyzer::coalesce_unemitted_stats(const vector<std::string>& emitted
 										 container_buffer->mutable_max_transaction_counters(),
 										 m_sampling_ratio);
 #endif
+
+		sinsp_counter_time totals;
+		analyzer_container_data.m_metrics.m_metrics.get_total(&totals);
+		container_buffer->set_syscall_count(container_buffer->syscall_count() + totals.m_count);
 
 		container_buffer->add_names(container_name);
 

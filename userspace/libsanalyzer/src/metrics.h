@@ -17,7 +17,7 @@ class sinsp_protostate;
 
 namespace draiosproto
 {
-    class metrics;
+	class metrics;
 	class time_categories;
 	class counter_time;
 	class counter_time_bidirectional;

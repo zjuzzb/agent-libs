@@ -700,6 +700,7 @@ message host {
     optional uint32 system_load_1 = 41; // avg system load 1 minute
     optional uint32 system_load_5 = 42; // avg system load 5 minutes
     optional uint32 system_load_15 = 43; // avg system load 15 minutes
+    optional uint64 syscall_count = 44; // total number of syscalls on the host
     reserved 125;
     reserved 132 to 138;
     reserved 141 to 143;
@@ -742,6 +743,7 @@ message process {
     optional uint64 count_processes = 23; // number of instances with same command line
     repeated file_stat top_files = 24;
     repeated file_stat top_devices = 25;
+    optional uint64 syscall_count = 26; // total number of syscalls for this process
     reserved 123;
 }
 
@@ -922,6 +924,7 @@ message container {
     repeated uint32 container_reporting_group_id = 30; // maps to the group under which this group was reported
     repeated file_stat top_files = 31;
     repeated file_stat top_devices = 32;
+    optional uint64 syscall_count = 33; // total number of syscalls for this container
 }
 
 //
@@ -1201,6 +1204,7 @@ message unreported_stats {
     optional proto_info protos = 6;
     repeated string names = 7; // names of all containers herein reported
     optional counter_time_bidirectional transaction_counters = 8;
+    optional uint64 syscall_count = 9; // total number of syscalls for all unreported containers
 }
 // ENTRY POINT MESSAGE
 //

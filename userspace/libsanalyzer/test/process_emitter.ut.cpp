@@ -866,4 +866,50 @@ process:
 	}
 }
 
+TEST(process_emitter_test, syscall_count)
+{
+	easy_process_emitter emitter(false, false);
 
+	analyzer_emitter::progtable_t progtable(10,
+						sinsp_threadinfo::hasher(),
+						sinsp_threadinfo::comparer());
+	std::set<sinsp_threadinfo*> processes_to_emit;
+
+	fake_thread thread_1;
+	thread_1.m_ainfo->m_cpuload = 100;
+	thread_1.m_ainfo->m_procinfo->m_cpuload = 100;
+	thread_1.m_ainfo->m_procinfo->m_proc_metrics.m_unknown.m_count = 7;
+	progtable.insert(&thread_1);
+
+	analyzer_emitter::progtable_by_container_t progtable_by_container;
+	std::vector<std::string> emitted_containers;
+
+	std::set<uint64_t> all_uids;
+	std::set<sinsp_threadinfo*> emitted_processes;
+	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
+				  progtable,
+				  progtable_by_container,
+				  emitted_containers,
+				  emitter.m_metrics,
+				  all_uids,
+				  emitted_processes);
+
+	// double check we got the thread emitted
+	EXPECT_EQ(emitted_processes.size(), 1);
+	EXPECT_NE(emitted_processes.find(&thread_1), emitted_processes.end());
+
+	// check that we got syscall count
+	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().syscall_count(),
+		  7);
+
+	// we can't easily check that host/container metrics emit correctly as those aren't
+	// as nicely wrapped, but at least check that the proc count is propagated correctly
+	// when you call add. Containers use the same metrics type.
+	thread_1.m_ainfo->m_procinfo->m_proc_metrics.m_unknown.m_count = 8;
+	sinsp_host_metrics host_metrics;
+	host_metrics.add(thread_1.m_ainfo->m_procinfo);
+	sinsp_counter_time tc;
+	host_metrics.m_metrics.get_total(&tc);
+	EXPECT_EQ(tc.m_count,
+		  8);
+}
