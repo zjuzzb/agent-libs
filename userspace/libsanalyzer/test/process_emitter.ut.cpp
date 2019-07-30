@@ -211,6 +211,18 @@ TEST(process_emitter_test, emit_process)
 	EXPECT_EQ(emitter.m_metrics.programs()[0].program_reporting_group_id().size(), 0);
 }
 
+TEST(process_emitter_test, max_command_arg_config_default)
+{
+	ASSERT_EQ(100, process_emitter::max_command_argument_length());
+}
+
+TEST(process_emitter_test, max_command_arg_config_configured)
+{
+	const int LIMIT = 22800;
+	scoped_config<unsigned int> config("process_emitter.max_command_arg_length", LIMIT);
+	ASSERT_EQ(LIMIT, process_emitter::max_command_argument_length());
+}
+
 TEST(process_emitter_test, max_command_arg_length)
 {
 	const int LIMIT = 22;
@@ -853,3 +865,5 @@ process:
 		EXPECT_EQ(emitter.m_metrics.programs()[1].program_reporting_group_id().size(), 1);
 	}
 }
+
+

@@ -150,9 +150,21 @@ TEST(audit_tap_test, DISABLED_basic)
 	ASSERT_EQ(TRANSITION_COUNT + 1, log->connectionevents_size());
 }
 
+TEST(audit_tap_test, max_command_arg_config_default)
+{
+	ASSERT_EQ(100, audit_tap::max_command_argument_length());
+}
+
+TEST(audit_tap_test, max_command_arg_configured)
+{
+	const int LIMIT = 24400;
+	scoped_config<unsigned int> config("audit_tap.max_command_arg_length", LIMIT);
+	ASSERT_EQ(LIMIT, audit_tap::max_command_argument_length());
+}
+
 #define ARG_LENGTH_TEST(__limit)                                               \
 {                                                                              \
-	scoped_config<unsigned int> config("process_emitter.max_command_arg_length", __limit);\
+	scoped_config<unsigned int> config("audit_tap.max_command_arg_length", __limit);\
 									       \
 	const std::string arg_150(150, 'x');                                   \
 									       \

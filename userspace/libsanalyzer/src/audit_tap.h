@@ -54,6 +54,12 @@ public:
 	 */
 	void clear();
 
+	/**
+	 * Return the (configured) maximum length to send for arguments to the
+	 * command line.
+	 */
+	static unsigned int max_command_argument_length();
+
 private:
 	void emit_process(sinsp_threadinfo *tinfo, userdb *userdb);
 	bool emit_environment(tap::NewProcess *proc, sinsp_threadinfo *tinfo);

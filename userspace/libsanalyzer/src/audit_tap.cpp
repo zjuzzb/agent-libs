@@ -4,8 +4,21 @@
 #include "analyzer.h"
 #include "analyzer_thread.h"
 #include "connectinfo.h"
-#include "process_emitter.h"
 #include <tap.pb.h>
+
+namespace {
+
+type_config<unsigned int>::ptr c_max_argument_length =
+   type_config_builder<unsigned int>(100 /*default*/,
+				     "The maximum length to send for arguments to the command line",
+				     "audit_tap",
+				     "max_command_arg_length")
+	.min(10)
+	.max(64 * 1024)
+	.get();
+
+}
+
 
 tap::ConnectionStatus conn_status(uint8_t flags, int errorcode)
 {
@@ -152,13 +165,13 @@ void audit_tap::emit_process(sinsp_threadinfo *tinfo, userdb *userdb)
 			continue;
 		}
 
-		if(arg.size() <= process_emitter::max_command_argument_length())
+		if(arg.size() <= max_command_argument_length())
 		{
 			proc->add_commandline(arg);
 		}
 		else
 		{
-			auto arg_capped = arg.substr(0, process_emitter::max_command_argument_length());
+			auto arg_capped = arg.substr(0, max_command_argument_length());
 			proc->add_commandline(arg_capped);
 		}
 	}
@@ -275,4 +288,10 @@ void audit_tap::clear()
 	m_event_batch->set_hostmac(m_machine_id);
 	m_event_batch->set_hostname(m_hostname);
 	m_num_envs_sent = 0;
+}
+
+// static
+unsigned int audit_tap::max_command_argument_length()
+{
+	return c_max_argument_length->get();
 }
