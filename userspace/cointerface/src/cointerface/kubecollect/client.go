@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"math/rand"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -240,6 +241,13 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	// TODO: refactor error messages
 	var kubeClient kubeclient.Interface
 
+	if opts.GetMaxRndConnDelay() != 0 {
+		rand.Seed(time.Now().UnixNano())
+		delay := rand.Uint32() % opts.GetMaxRndConnDelay()
+		log.Infof("Waiting to connect to k8s server for %d seconds", delay)
+		time.Sleep(time.Duration(delay) * time.Second)
+	}
+
 	if opts.GetUrl() != "" {
 		log.Infof("Connecting to k8s server at %s", opts.GetUrl())
 		var err error
@@ -352,7 +360,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	// batchEvents and startInformers. This var will hold
 	// the length of the sdcEvtArray at any given time.
 	queueLength := uint32(0)
-	
+
 	// Start informers in a separate routine so we can return the
 	// evt chan and let the below goroutine start reading/draining events
 	go startInformers(ctx, kubeClient, &wg, fetchDone, opts, resourceTypes, &queueLength)

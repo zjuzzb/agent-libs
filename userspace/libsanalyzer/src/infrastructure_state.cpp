@@ -86,7 +86,7 @@ type_config<std::string> infrastructure_state::c_k8s_ssl_key(
 	"k8s_ssl_key");
 type_config<uint64_t> infrastructure_state::c_k8s_timeout_s(
 	60,
-	"K8S connection timeout [sec]",
+	"K8S reconnection interval [sec]",
 	"k8s_timeout_s");
 type_config<std::string>::ptr infrastructure_state::c_k8s_ssl_key_password =
 	type_config_builder<std::string>("",
@@ -103,9 +103,17 @@ type_config<bool> infrastructure_state::c_k8s_autodetect(
 	"k8s_autodetect");
 type_config<uint64_t> infrastructure_state::c_k8s_refresh_interval(
 	ONE_SECOND_IN_NS / 500,
-	"time between reattempting connection to cointerface",
+	"cointerface queue processing interval (in ns)",
 	"infra_state",
-	"cointerface_reconnect_interval");
+	"cointerface_refresh_interval");
+type_config<uint32_t>::ptr infrastructure_state::c_k8s_max_rnd_conn_delay =
+	type_config_builder<uint32_t>(
+		0,
+		"maximum random delay (in seconds) before connecting to K8s API server",
+		"k8s_max_rnd_conn_delay")
+	.min(0)
+	.max(900)
+	.get();
 
 std::string infrastructure_state::normalize_path(const std::string& path) const
 {
@@ -450,6 +458,7 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 
 			*cmd.mutable_include_types() = {c_k8s_include_types.get().begin(), c_k8s_include_types.get().end()};
 			cmd.set_event_counts_log_time(c_k8s_event_counts_log_time.get());
+			cmd.set_max_rnd_conn_delay(c_k8s_max_rnd_conn_delay->get());
 
 			m_k8s_subscribed = true;
 			m_k8s_connected = true;

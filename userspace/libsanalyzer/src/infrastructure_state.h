@@ -255,6 +255,7 @@ public: // configs
 	static type_config<std::string> c_k8s_ssl_certificate_type;
 	static type_config<bool> c_k8s_autodetect;
 	static type_config<uint64_t> c_k8s_refresh_interval;
+	static type_config<uint32_t>::ptr c_k8s_max_rnd_conn_delay;
 
 private: // configs which have non-static fields that we actually use. You probably don't
 	 // want these. In almost all cases, you'll probably want to use the normalized

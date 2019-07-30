@@ -109,6 +109,7 @@ message orchestrator_events_stream_command {
     required bool collect_events = 20;
     required uint32 user_event_queue_len = 21;
     required bool collect_debug_events = 22; // by default, only collect a few events. If set, collect everything
+    required uint32 max_rnd_conn_delay = 23;
 }
 
 message orchestrator_attach_user_events_stream_command {
