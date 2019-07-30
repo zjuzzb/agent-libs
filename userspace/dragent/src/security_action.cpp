@@ -88,12 +88,13 @@ void security_actions::perform_docker_action(uint64_t ts_ns,
 
 void security_actions::perform_actions(uint64_t ts_ns,
 				       sinsp_threadinfo *tinfo,
-				       const security_policy *policy,
+				       const std::string &policy_name,
+				       const actions &actions,
 				       draiosproto::policy_event *event)
 {
 	google::protobuf::TextFormat::Printer print;
 
-	m_outstanding_actions.emplace_back(make_shared<actions_state>(event, policy->actions().size()));
+	m_outstanding_actions.emplace_back(make_shared<actions_state>(event, actions.size()));
 	shared_ptr<actions_state> astate = m_outstanding_actions.back();
 
 	sinsp_container_info container_info;
@@ -106,7 +107,7 @@ void security_actions::perform_actions(uint64_t ts_ns,
 		pid = tinfo->m_pid;
 	}
 
-	for(auto &action : policy->actions())
+	for(auto &action : actions)
 	{
 		draiosproto::action_result *result = astate->m_event->add_action_results();
 		result->set_type(action.type());
@@ -127,7 +128,7 @@ void security_actions::perform_actions(uint64_t ts_ns,
 			}
 
 			if(!m_mgr->start_capture(ts_ns,
-						 policy->name(),
+						 policy_name,
 						 result->token(),
 						 (action.capture().has_filter() ? action.capture().filter() : ""),
 						 action.capture().before_event_ns(),

@@ -7,6 +7,7 @@
 
 #ifndef CYGWING_AGENT
 #include "security_policy.h"
+#include "infrastructure_state.h"
 
 //
 // Wrapper around draiosproto::baseline that add a numeric id and mantains

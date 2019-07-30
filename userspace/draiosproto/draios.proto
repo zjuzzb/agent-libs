@@ -827,6 +827,7 @@ enum message_type {
     COMP_CALENDAR = 19;
     AUDIT_TAP = 20;
     COMP_RUN = 21;
+    POLICIES_V2 = 22;
 }
 
 //
@@ -1515,6 +1516,22 @@ message falco_rules_files {
     repeated falco_rules_file files = 2;
 }
 
+message fastengine_rules_file {
+    optional string filename = 1;
+
+    // This is a json array containing rule objects that exactly match
+    // the format defined by swagger.
+    optional string json_content = 2;
+}
+
+// Structurally very similar to falco_rules_files, but keeping separate
+// in case we want to extend either without changing both
+message fastengine_rules_files {
+    // Not really needed by the agent, but might be used for logging.
+    optional string tag = 1;
+    repeated fastengine_rules_file files = 2;
+}
+
 message falco_rules_group {
     optional falco_rules_files default_files = 1;
     optional falco_rules_files custom_files = 2;
@@ -1531,6 +1548,35 @@ message policies {
     // set of user rules files, with each file having multiple
     // variants for different falco engine versions.
     optional falco_rules_group falco_group = 3;
+}
+
+message policy_v2 {
+    required uint64 id = 1;
+    required string name = 2;
+
+    // all scope_predicates must match against the entity
+    repeated scope_predicate scope_predicates = 3;
+
+    optional uint64 severity = 4;
+
+    // The names of rules to use for this policy
+    repeated string rule_names = 5;
+
+    repeated action actions = 6;
+
+    required bool enabled = 7;
+}
+
+message policies_v2 {
+    repeated policy_v2 policy_list = 1;
+
+    // New format, which supports a set of system rules files and a
+    // set of user rules files, with each file having multiple
+    // variants for different falco engine versions.
+    optional falco_rules_group falco_group = 2;
+
+    // A list of files containing "fast engine" rules.
+    optional fastengine_rules_files fastengine_files = 3;
 }
 
 message falco_event_detail {
@@ -1618,6 +1664,10 @@ message policy_event {
     // If true, there were inspector events dropped recently, which
     // might have affected the details in this policy event.
     optional bool sinsp_events_dropped = 8;
+
+    // The policy version that policy_id refers to. If not present, 1
+    // is assumed.
+    optional uint64 policy_version = 10;
 }
 
 message policy_events {

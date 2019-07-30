@@ -26,6 +26,7 @@
 #include "analyzer.h"
 #include "sinsp_data_handler.h"
 #include "security_policy.h"
+#include "security_rule.h"
 #include "security_action.h"
 #include "baseline_mgr.h"
 #include "internal_metrics.h"
@@ -45,12 +46,20 @@ public:
 		  const internal_metrics::sptr_t& metrics);
 
 	bool load_policies_file(const char *filename, std::string &errstr);
+	bool load_policies_v2_file(const char *filename, std::string &errstr);
 
 	bool load_baselines_file(const char *filename, std::string &errstr);
+
+	// Helpers used by load_policies/load_policies_v2
+	void load_initial_steps();
 
 	// Returns true if loaded successfully, false otherwise. Sets
 	// errstr when returning false.
 	bool load_policies(const draiosproto::policies &policies, std::string &errstr);
+
+	// Returns true if loaded successfully, false otherwise. Sets
+	// errstr when returning false.
+	bool load_policies_v2(const draiosproto::policies_v2 &policies_v2, std::string &errstr);
 
 	// Reload policies using the last policies passed to
 	// load_policies(). Returns true if loaded successfully, false
@@ -273,28 +282,55 @@ private:
 	// Returns false if the policy event was throttled,
 	// meaning that it will be added to the periodic throttled
 	// events message. In this case, the event should be discarded.
-        bool throttle_policy_event(uint64_t ts_ns, std::string &container_id, uint64_t policy_id);
+        bool throttle_policy_event(uint64_t ts_ns,
+				   std::string &container_id,
+				   uint64_t policy_id, const std::string &policy_name);
 
 	void add_policy_event_metrics(const security_policies::match_result &res);
+	void add_policy_event_metrics(const security_rules::match_result &res);
 
 	draiosproto::policy_event * create_policy_event(int64_t ts_ns,
 							std::string &container_id,
 							uint64_t policy_id,
-							draiosproto::event_detail *details);
+							draiosproto::event_detail *details,
+							uint64_t policy_version);
+
+	draiosproto::policy_event * create_policy_event(int64_t ts_ns,
+							std::string &container_id,
+							uint64_t policy_id,
+							draiosproto::event_detail &details,
+							uint64_t policy_version);
 
 	void load_policy(const security_policy &spolicy, std::list<std::string> &ids);
+	void load_policy_v2(std::shared_ptr<security_policy_v2> spolicy_v2, std::list<std::string> &ids);
 
 	bool load_falco_rules_files(const draiosproto::falco_rules_files &files, std::string &errstr);
 
-	bool load(const draiosproto::policies &policies, const draiosproto::baselines &baselines, std::string &errstr);
+	bool load(std::string &errstr);
+
+	bool load_v1(const draiosproto::policies &policies, const draiosproto::baselines &baselines, std::string &errstr);
+
+	bool load_v2(const draiosproto::policies_v2 &policies_v2, std::string &errstr);
+
+	void log_rules_group_info();
 
 	bool event_qualifies(sinsp_evt *evt);
 	bool event_qualifies(json_event *evt);
 
 	void check_periodic_tasks(uint64_t ts_ns);
 
+	bool should_evaluate_event(gen_event *evt,
+				   std::string *container_id,
+				   sinsp_evt **sevt,
+				   sinsp_threadinfo **tinfo);
+
+	void process_event_v1(gen_event *evt);
+	void process_event_v2(gen_event *evt);
+
 	// Send the latest events to the backend
 	void report_events(uint64_t ts_ns);
+
+	void perform_periodic_tasks(uint64_t ts_ns);
 
 	// Send a set of events to the backend immediately without
 	// waiting for the next policy event flush.
@@ -307,8 +343,9 @@ private:
 	void on_remove_container(const sinsp_container_info& container_info);
 
 	// The last policies/baselines we loaded
-	draiosproto::policies m_policies_msg;
-	draiosproto::baselines m_baselines_msg;
+	std::unique_ptr<draiosproto::policies> m_policies_msg;
+	std::unique_ptr<draiosproto::policies_v2> m_policies_v2_msg;
+	std::unique_ptr<draiosproto::baselines> m_baselines_msg;
 
 	// Holds the token buckets that enforce rate limiting for
 	// policy events for a given policy + container.
@@ -358,6 +395,7 @@ private:
 			{
 				return false;
 			}
+
 			for(int i=0; i < preds.size(); i++)
 			{
 				if(preds[i].SerializeAsString() != sinfo.preds[i].SerializeAsString())
@@ -407,6 +445,7 @@ private:
 					       &m_net_inbound_policies, &m_net_outbound_policies,
 					       &m_tcp_listenport_policies, &m_udp_listenport_policies,
 					       &m_syscall_policies, &m_falco_policies};
+
 			m_evttypes.assign(PPM_EVENT_MAX+1, false);
 			m_evtsources.assign(ESRC_MAX+1, false);
 		};
@@ -504,14 +543,158 @@ private:
 		dragent_configuration *m_configuration;
 	};
 
-	// container id -> list(security_policies_group) for every scope matched
+	// A security rules group holds a
+	// set of *security_rules objects
+	// that share the same scope.
+	class security_rules_group
+	{
+	public:
+		security_rules_group(const scope_predicates &preds, sinsp *inspector, dragent_configuration *configuration)
+			: m_scope_predicates(preds),
+			  m_inspector(inspector),
+			  m_configuration(configuration)
+		{
+			m_security_rules = {&m_process_rules, &m_container_rules,
+					       &m_readonly_fs_rules, &m_readwrite_fs_rules, &m_nofd_readwrite_fs_rules,
+					       &m_net_inbound_rules, &m_net_outbound_rules,
+					       &m_tcp_listenport_rules, &m_udp_listenport_rules,
+					       &m_syscall_rules, &m_falco_rules};
+			m_evttypes.assign(PPM_EVENT_MAX+1, false);
+			m_evtsources.assign(ESRC_MAX+1, false);
+		};
+		virtual ~security_rules_group() {};
+
+		void init(std::shared_ptr<falco_engine> falco_engine,
+			  std::shared_ptr<security_rule_library> library,
+			  std::list<std::shared_ptr<security_evt_metrics>> &metrics)
+		{
+			m_falco_rules.set_engine(falco_engine);
+
+			auto s_it = m_security_rules.begin();
+			auto m_it = metrics.begin();
+			for (; s_it != m_security_rules.end(), m_it != metrics.end(); s_it++, m_it++)
+			{
+				security_rules *srule = *s_it;
+				srule->init(m_configuration, m_inspector, library, *m_it);
+				srule->reset();
+			}
+		}
+
+		void init_metrics(std::list<std::shared_ptr<security_evt_metrics>> &metrics)
+		{
+			auto s_it = m_security_rules.begin();
+			auto m_it = metrics.begin();
+			for (; s_it != m_security_rules.end(), m_it != metrics.end(); s_it++, m_it++)
+			{
+				security_rules *srule = *s_it;
+				(*m_it)->init(srule->name(), (srule->name() == "falco"));
+			}
+		}
+
+		void add_policy(std::shared_ptr<security_policy_v2> policy)
+		{
+			if(m_loaded_policies.find(policy->id()) != m_loaded_policies.end())
+			{
+				return;
+			}
+
+			m_loaded_policies.insert(policy->id());
+
+			for (auto &srule : m_security_rules)
+			{
+				srule->add_policy(policy);
+
+				for(uint32_t evttype = 0; evttype < PPM_EVENT_MAX; evttype++)
+				{
+					m_evttypes[evttype] = m_evttypes[evttype] | srule->m_evttypes[evttype];
+				}
+
+				for(uint32_t evtsource = 0; evtsource < ESRC_MAX; evtsource++)
+				{
+					m_evtsources[evtsource] = m_evtsources[evtsource] | srule->m_evtsources[evtsource];
+				}
+			}
+		}
+
+		std::list<security_rules::match_result> match_event(gen_event *evt)
+		{
+			std::list<security_rules::match_result> results;
+			for (const auto &srule : m_security_rules)
+			{
+				if(srule->m_evtsources[evt->get_source()] &&
+				   srule->m_evttypes[evt->get_type()])
+				{
+					std::list<security_rules::match_result> rules_results;
+
+					rules_results = srule->match_event(evt);
+
+					results.splice(results.end(), rules_results);
+				}
+			}
+
+			return results;
+		}
+
+		std::string to_string()
+		{
+			std::string str;
+
+			for (auto &pred : m_scope_predicates)
+			{
+				if(!str.empty())
+				{
+					str += " ";
+				}
+
+				str += pred.DebugString();
+			}
+
+			for (auto &srule : m_security_rules)
+			{
+				str += " " + srule->name() + "=" + std::to_string(srule->num_loaded_rules());
+			}
+
+			return str;
+		}
+
+		std::vector<bool> m_evttypes;
+		std::vector<bool> m_evtsources;
+		scope_predicates m_scope_predicates;
+	private:
+		std::list<security_rules *> m_security_rules;
+		std::set<uint64_t> m_loaded_policies;
+
+		falco_security_rules m_falco_rules;
+		readonly_fs_rules m_readonly_fs_rules;
+		readwrite_fs_rules m_readwrite_fs_rules;
+		nofd_readwrite_fs_rules m_nofd_readwrite_fs_rules;
+		net_inbound_rules m_net_inbound_rules;
+		net_outbound_rules m_net_outbound_rules;
+		tcp_listenport_rules m_tcp_listenport_rules;
+		udp_listenport_rules m_udp_listenport_rules;
+		syscall_rules m_syscall_rules;
+		container_rules m_container_rules;
+		process_rules m_process_rules;
+
+		sinsp* m_inspector;
+		dragent_configuration *m_configuration;
+	};
+
+	// container id -> set(security_policies_group) for every scope matched
 	// "" is used as host key
-	std::unordered_map<std::string, std::set<std::shared_ptr<security_policies_group>>> m_security_policies;
+	std::unordered_map<std::string, std::set<std::shared_ptr<security_policies_group>>> m_scoped_security_policies;
 	std::list<std::shared_ptr<security_policies_group>> m_policies_groups;
+
+	std::unordered_map<std::string, std::set<std::shared_ptr<security_rules_group>>> m_scoped_security_rules;
+	std::list<std::shared_ptr<security_rules_group>> m_rules_groups;
 
 	std::shared_ptr<security_policies_group> get_policies_group_of(scope_info &sinfo);
 
+	std::shared_ptr<security_rules_group> get_rules_group_of(const scope_predicates &preds);
+
 	std::map<uint64_t,std::shared_ptr<security_policy>> m_policies;
+
+	std::map<uint64_t,std::shared_ptr<security_policy_v2>> m_policies_v2;
 
 	std::shared_ptr<coclient> m_coclient;
 
@@ -532,8 +715,10 @@ private:
 	std::vector<bool> m_evttypes;
 	std::vector<bool> m_evtsources;
 
-	// must be initialized in the same order of security_policies_group::m_security_policies
+	// must be initialized in the same order of security_policies_group::m_security_policies/m_security_rules
 	std::list<std::shared_ptr<security_evt_metrics>> m_security_evt_metrics;
+
+	std::shared_ptr<security_rule_library> m_fastengine_rules_library;
 
 	security_evt_metrics m_falco_metrics;
 	security_evt_metrics m_readonly_fs_metrics;

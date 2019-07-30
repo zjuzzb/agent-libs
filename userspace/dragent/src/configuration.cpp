@@ -1010,6 +1010,9 @@ void dragent_configuration::init()
 	}
 	m_security_policies_file = m_config->get_scalar<string>("security", "policies_file", "");
 	m_security_baselines_file = m_config->get_scalar<string>("security", "baselines_file", "");
+
+	m_security_policies_v2_file = m_config->get_scalar<string>("security", "policies_v2_file", "");
+
 	// 1 second
 	m_security_report_interval_ns = m_config->get_scalar<uint64_t>("security" "report_interval", 1000000000);
 	// 10 seconds
@@ -1448,7 +1451,10 @@ void dragent_configuration::print_configuration() const
 	{
 		LOG_INFO("Security Features: Enabled");
 
-		if(m_security_policies_file != "")
+		if(m_security_policies_v2_file != "")
+		{
+			LOG_INFO("Using security policies v2 file: " + m_security_policies_v2_file);
+		} else if(m_security_policies_file != "")
 		{
 			LOG_INFO("Using security policies file: " + m_security_policies_file);
 		}

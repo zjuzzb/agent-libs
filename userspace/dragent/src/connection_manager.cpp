@@ -849,6 +849,11 @@ bool connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header),
 					header->len - sizeof(dragent_protocol_header));
 				break;
+			case draiosproto::message_type::POLICIES_V2:
+				handle_policies_v2_message(
+					m_buffer.begin() + sizeof(dragent_protocol_header),
+					header->len - sizeof(dragent_protocol_header));
+				break;
 			case draiosproto::message_type::COMP_CALENDAR:
 				handle_compliance_calendar_message(
 					m_buffer.begin() + sizeof(dragent_protocol_header),
@@ -1082,6 +1087,36 @@ void connection_manager::handle_policies_message(uint8_t* buf, uint32_t size)
 	if (!m_sinsp_worker->load_policies(policies, errstr))
 	{
 		LOG_ERROR("Could not load policies message: " + errstr);
+		return;
+	}
+}
+
+void connection_manager::handle_policies_v2_message(uint8_t* buf, uint32_t size)
+{
+	draiosproto::policies_v2 policies_v2;
+	string errstr;
+
+	if(!m_configuration->m_security_enabled)
+	{
+		LOG_DEBUG("Security disabled, ignoring POLICIES message");
+		return;
+	}
+
+	if(m_configuration->m_security_policies_v2_file != "")
+	{
+		LOG_INFO("Security policies file configured in dragent.yaml, ignoring POLICIES_V2 message");
+		return;
+	}
+
+	if(!dragent_protocol::buffer_to_protobuf(buf, size, &policies_v2))
+	{
+		LOG_ERROR("Could not parse policies_v2 message");
+		return;
+	}
+
+	if (!m_sinsp_worker->load_policies_v2(policies_v2, errstr))
+	{
+		LOG_ERROR("Could not load policies_v2 message: " + errstr);
 		return;
 	}
 }

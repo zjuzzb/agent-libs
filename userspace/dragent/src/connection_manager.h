@@ -67,6 +67,7 @@ private:
 	static std::string find_ca_cert_path(const std::vector<std::string>& search_paths);
 #ifndef CYGWING_AGENT
 	void handle_policies_message(uint8_t* buf, uint32_t size);
+	void handle_policies_v2_message(uint8_t* buf, uint32_t size);
 	void handle_compliance_calendar_message(uint8_t* buf, uint32_t size);
 	void handle_compliance_run_message(uint8_t* buf, uint32_t size);
 	void handle_orchestrator_events(uint8_t* buf, uint32_t size);

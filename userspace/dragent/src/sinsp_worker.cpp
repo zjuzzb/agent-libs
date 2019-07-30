@@ -387,7 +387,15 @@ void sinsp_worker::init()
 				     m_configuration,
 				     m_internal_metrics);
 
-		if(m_configuration->m_security_policies_file != "")
+		if(m_configuration->m_security_policies_v2_file != "")
+		{
+			string errstr;
+
+			if(!m_security_mgr->load_policies_v2_file(m_configuration->m_security_policies_v2_file.c_str(), errstr))
+			{
+				LOGGED_THROW(sinsp_exception, "Could not load policies_v2 from file: %s", errstr.c_str());
+			}
+		} else if(m_configuration->m_security_policies_file != "")
 		{
 			string errstr;
 
@@ -823,6 +831,19 @@ bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &e
 	if(m_security_mgr)
 	{
 		return m_security_mgr->load_policies(policies, errstr);
+	}
+	else
+	{
+		errstr = "No Security Manager object created";
+		return false;
+	}
+}
+
+bool sinsp_worker::load_policies_v2(draiosproto::policies_v2 &policies_v2, std::string &errstr)
+{
+	if(m_security_mgr)
+	{
+		return m_security_mgr->load_policies_v2(policies_v2, errstr);
 	}
 	else
 	{

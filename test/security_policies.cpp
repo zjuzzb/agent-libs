@@ -60,10 +60,17 @@ class test_sinsp_worker : public Runnable
 {
 public:
 	test_sinsp_worker(sinsp *inspector,
-			  security_mgr *mgr)
+			  security_mgr *mgr,
+			  bool load_v1_policies,
+			  std::string baselines_file,
+			  std::string policies_file)
 		: m_ready(false),
 		  m_mgr(mgr),
-		  m_inspector(inspector)
+		  m_inspector(inspector),
+		  m_load_v1_policies(load_v1_policies),
+		  m_baselines_file(baselines_file),
+		  m_policies_file(policies_file),
+		  m_policies_loaded(false)
 	{
 		m_inspector->set_log_callback(common_logger::sinsp_logger_callback);
 		m_inspector->start_dropping_mode(1);
@@ -99,12 +106,32 @@ public:
 				throw sinsp_exception(m_inspector->getlasterr().c_str());
 			}
 
+			// At this point infra state has been initialized with
+			// host information, so we can load policies.
+			if(!m_policies_loaded)
+			{
+				std::string errstr;
+				if(m_load_v1_policies)
+				{
+					ASSERT_TRUE(m_mgr->load_baselines_file(m_baselines_file.c_str(), errstr))
+						<< "Could not load security baselines file: " + errstr;
+					ASSERT_TRUE(m_mgr->load_policies_file(m_policies_file.c_str(), errstr))
+						<< "Could not load v1 security policies file: " + errstr;
+				}
+				else
+				{
+					ASSERT_TRUE(m_mgr->load_policies_v2_file(m_policies_file.c_str(), errstr))
+						<< "Could not load v2 security policies file: " + errstr;
+				}
+				m_policies_loaded = true;
+			}
+
 			m_mgr->process_event(ev);
 
 			if(!m_ready)
 			{
 				g_log->information("test_sinsp_worker: ready");
-				string filter = "(proc.name = tests or proc.aname = tests) or container.name in (sec_ut, fs-root-image, blacklisted_image, baseline-test, denyme, inout_test, fs_usecase, mycurl, overlap_test, helloworld) or container.image = swarm_service_ut_image:latest";
+				string filter = "(proc.name = tests or proc.aname = tests) or container.name in (sec_ut, fs-root-image, blacklisted_image, non_alpine, busybox_some_tag, baseline-test, denyme, inout_test, fs_usecase, mycurl, overlap_test, helloworld) or container.image = swarm_service_ut_image:latest";
 				m_inspector->set_filter(filter.c_str());
 				m_ready = true;
 			}
@@ -120,6 +147,10 @@ public:
 private:
 	security_mgr *m_mgr;
 	sinsp *m_inspector;
+	bool m_load_v1_policies;
+	std::string m_baselines_file;
+	std::string m_policies_file;
+	bool m_policies_loaded;
 };
 }
 
@@ -170,7 +201,14 @@ public:
 	{
 	}
 
+
 protected:
+
+	virtual std::string policies_file()
+	{
+		return string("./resources/security_policies_messages/all_policy_v2_types.txt");
+	}
+
 	void SetUpTest(bool delayed_reports=false)
 	{
 		// With the 10k packet size and our relatively slow
@@ -190,6 +228,7 @@ protected:
 		m_configuration.m_autodrop_enabled = false;
 		m_configuration.m_security_policies_file = "./resources/security_policies_messages/all_policy_types.txt";
 		m_configuration.m_security_baselines_file = "./resources/security_policies_messages/baseline.txt";
+		m_configuration.m_security_policies_v2_file = policies_file();
 		m_configuration.m_falco_engine_sampling_multiplier = 0;
 		m_configuration.m_containers_labels_max_len = 100;
 		if(delayed_reports)
@@ -220,6 +259,7 @@ protected:
 		m_analyzer = new sinsp_analyzer(m_inspector, "/opt/draios", m_internal_metrics);
 		m_inspector->m_analyzer = m_analyzer;
 		m_analyzer->get_configuration()->set_security_enabled(m_configuration.m_security_enabled);
+		m_analyzer->get_configuration()->set_machine_id(m_configuration.machine_id());
 		m_analyzer->set_containers_labels_max_len(m_configuration.m_containers_labels_max_len);
 
 		m_inspector->set_debug_mode(true);
@@ -232,12 +272,8 @@ protected:
 
 		// Note that capture job handler is NULL. So no actions that perform captures.
 		m_mgr.init(m_inspector, m_data_handler, m_analyzer, NULL, &m_configuration, m_internal_metrics);
-		string errstr;
-		ASSERT_TRUE(m_mgr.load_baselines_file(m_configuration.m_security_baselines_file.c_str(), errstr))
-			<< "Could not load security baselines file: " + errstr;
-		ASSERT_TRUE(m_mgr.load_policies_file(m_configuration.m_security_policies_file.c_str(), errstr))
-			<< "Could not load security policies file: " + errstr;
-		m_sinsp_worker = new test_sinsp_worker(m_inspector, &m_mgr);
+		string policies_file = (m_load_v1_policies ? m_configuration.m_security_policies_file : m_configuration.m_security_policies_v2_file);
+		m_sinsp_worker = new test_sinsp_worker(m_inspector, &m_mgr, m_load_v1_policies, m_configuration.m_security_baselines_file, policies_file);
 
 		Poco::ErrorHandler::set(&m_error_handler);
 
@@ -257,7 +293,7 @@ protected:
 		fs.close();
 	}
 
-	virtual void SetUp()
+	void initFiles()
 	{
 		// create files/dirs used to test fs policies
 		createFile("/tmp/sample-sensitive-file-1.txt");
@@ -273,6 +309,13 @@ protected:
 		mkdir("/tmp/one/two/three", 0777);
 		mkdir("/tmp/two", 0777);
 		mkdir("/tmp/two/three", 0777);
+	}
+
+	virtual void SetUp()
+	{
+		initFiles();
+
+		m_load_v1_policies = true;
 
 		SetUpTest();
 	}
@@ -310,6 +353,7 @@ protected:
 		rmdir("/tmp/two");
 	}
 
+public:
 	struct expected_policy_event
 	{
 		expected_policy_event(uint64_t p,
@@ -426,7 +470,7 @@ protected:
 		}
 	};
 
-	std::string expected_as_string(std::map<string,expected_internal_metric> &expected)
+ 	std::string expected_as_string(std::map<string,expected_internal_metric> &expected)
 	{
 		string str;
 		for(auto &pair : expected)
@@ -524,11 +568,21 @@ protected:
 		pe.reset((draiosproto::policy_events *) (msg.release()));
 	}
 
+protected:
+
 	// Helper used by several test cases that have a similar test setup/validation.
-	void multiple_falco_files_test(std::string policies_file, std::string expected_output)
+	void multiple_falco_files_test(std::string policies_file, std::string expected_output, bool v1_metrics)
 	{
 		string errstr;
-		ASSERT_TRUE(m_mgr.load_policies_file("./resources/security_policies_messages/multiple_falco_variants.txt", errstr));
+
+		if(v1_metrics)
+		{
+			ASSERT_TRUE(m_mgr.load_policies_file(policies_file.c_str(), errstr));
+		}
+		else
+		{
+			ASSERT_TRUE(m_mgr.load_policies_v2_file(policies_file.c_str(), errstr));
+		}
 		ASSERT_STREQ(errstr.c_str(), "");
 
 		int fd = open("/tmp/sample-sensitive-file-2.txt", O_RDONLY);
@@ -544,16 +598,26 @@ protected:
 		ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.name") > 0);
 		ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.cmdline") > 0);
 
-		string expected_output = "v2 output";
 		ASSERT_EQ(pe->events(0).event_details().output_details().output(), expected_output);
 
-		std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_EQ, 1}},
-								     {"security.falco.match.accept", {expected_internal_metric::CMP_EQ, 0}},
-								     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+		std::map<string,expected_internal_metric> metrics;
+
+		if(v1_metrics)
+		{
+			metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_EQ, 1}},
+				   {"security.falco.match.accept", {expected_internal_metric::CMP_EQ, 0}},
+				   {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+		}
+		else
+		{
+			metrics = {{"security.falco.match.match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+				   {"security.falco.match.not_match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+		}
 
 		check_expected_internal_metrics(metrics);
 	}
 
+	bool m_load_v1_policies = true;
 	protocol_queue *m_queue;
 	sinsp *m_inspector;
 	sinsp_analyzer *m_analyzer;
@@ -651,7 +715,64 @@ private:
 	shared_ptr<ProcessHandle> m_cointerface;
 };
 
-TEST_F(security_policies_test, readonly_fs_only)
+class security_policies_v2_test_cointerface : public security_policies_test_cointerface
+{
+public:
+	virtual void SetUp()
+	{
+		m_load_v1_policies = false;
+
+		security_policies_test_cointerface::SetUp();
+	}
+};
+
+class security_policies_v2_test : public security_policies_test
+{
+public:
+	virtual void SetUp()
+	{
+		initFiles();
+
+		m_load_v1_policies = false;
+
+		SetUpTest();
+	}
+};
+
+
+class security_policies_v2_dont_match_container_test : public security_policies_test
+{
+public:
+        std::string policies_file()
+	{
+		return string("./resources/security_policies_messages/v2_policy_dont_match_container.txt");
+	}
+
+	virtual void SetUp()
+	{
+		m_load_v1_policies = false;
+
+		SetUpTest();
+	}
+};
+
+class security_policies_v2_dont_match_container_test_multi : public security_policies_test
+{
+public:
+        std::string policies_file()
+	{
+		return string("./resources/security_policies_messages/v2_policy_dont_match_container_multi.txt");
+	}
+
+	virtual void SetUp()
+	{
+		m_load_v1_policies = false;
+
+		SetUpTest();
+	}
+};
+
+static void readonly_fs_test(security_policies_test *ptest, bool v1_metrics)
 {
 	if(!dutils_check_docker())
 	{
@@ -673,17 +794,43 @@ TEST_F(security_policies_test, readonly_fs_only)
 	fd = open("/tmp/sample-sensitive-file-3.txt", O_RDONLY);
 	close(fd);
 
-	std::vector<expected_policy_event> expected = {{2,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/sample-sensitive-file-1.txt"}, {"evt.type", "open"}, {"proc.name", "tests"}}}};
-	check_policy_events(expected);
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{2,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/sample-sensitive-file-1.txt"},
+								{"evt.type", "open"}, {"proc.name", "tests"}}}};
+	ptest->check_policy_events(expected);
 
-	std::map<string,expected_internal_metric> metrics = {{"security.files-readonly.match.deny", {expected_internal_metric::CMP_EQ, 1}},
-							     {"security.files-readonly.match.accept", {expected_internal_metric::CMP_EQ, 0}},
-							     {"security.files-readonly.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+	if(v1_metrics)
+	{
+		std::map<string,security_policies_test::expected_internal_metric> metrics =
+			{{"security.files-readonly.match.deny", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			 {"security.files-readonly.match.accept", {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+			 {"security.files-readonly.match.next", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
 
-	check_expected_internal_metrics(metrics);
+		ptest->check_expected_internal_metrics(metrics);
+	}
+	else
+	{
+		std::map<string,security_policies_test::expected_internal_metric> metrics =
+			{{"security.files-readonly.match.match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			 {"security.files-readonly.match.not_match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+
+		ptest->check_expected_internal_metrics(metrics);
+	}
 };
 
-TEST_F(security_policies_test, readwrite_fs_only)
+TEST_F(security_policies_test, readonly_fs_only)
+{
+	bool v1_metrics = true;
+	return readonly_fs_test(this, v1_metrics);
+}
+
+TEST_F(security_policies_v2_test, readonly_fs_only)
+{
+	bool v1_metrics = false;
+	return readonly_fs_test(this, v1_metrics);
+}
+
+static void readwrite_fs_test(security_policies_test *ptest, bool v1_metrics)
 {
 	if(!dutils_check_docker())
 	{
@@ -698,20 +845,44 @@ TEST_F(security_policies_test, readwrite_fs_only)
 	fd = open("/tmp/sample-sensitive-file-3.txt", O_RDWR);
 	close(fd);
 
-	ASSERT_EQ(system("docker run -d --name sec_ut --rm busybox:latest sh -c 'while true; do echo '' > /tmp/sample-sensitive-file-3.txt || true; done' > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run -d --name sec_ut --rm busybox:latest sh -c 'while true; do echo '' > /tmp/sample-sensitive-file-3.txt || true; sleep 1; done' > /dev/null 2>&1"), 0);
 
 	sleep(5);
 
 	dutils_kill_container("sec_ut");
 
-	std::vector<expected_policy_event> expected = {{3,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/sample-sensitive-file-3.txt"}, {"evt.type", "open"}, {"proc.name", "tests"}}}};
-	check_policy_events(expected);
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{3,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/sample-sensitive-file-3.txt"},
+								{"evt.type", "open"}, {"proc.name", "tests"}}}};
+	ptest->check_policy_events(expected);
 
-	std::map<string,expected_internal_metric> metrics = {{"security.files-readwrite.match.deny", {expected_internal_metric::CMP_EQ, 1}},
-							     {"security.files-readwrite.match.accept", {expected_internal_metric::CMP_EQ, 0}},
-							     {"security.files-readwrite.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
+	if(v1_metrics)
+	{
+		metrics = {{"security.files-readwrite.match.deny", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.files-readwrite.match.accept", {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+			   {"security.files-readwrite.match.next", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
 
-	check_expected_internal_metrics(metrics);
+	}
+	else
+	{
+		metrics = {{"security.files-readwrite.match.match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.files-readwrite.match.not_match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+
+	ptest->check_expected_internal_metrics(metrics);
+}
+
+TEST_F(security_policies_test, readwrite_fs_only)
+{
+	bool v1_metrics = true;
+	return readwrite_fs_test(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, readwrite_fs_only)
+{
+	bool v1_metrics = false;
+	return readwrite_fs_test(this, v1_metrics);
 };
 
 TEST_F(security_policies_test, mixed_r_rw)
@@ -732,7 +903,7 @@ TEST_F(security_policies_test, mixed_r_rw)
 	check_policy_events(expected);
 };
 
-TEST_F(security_policies_test, fs_prefixes)
+static void fs_prefixes_test(security_policies_test *ptest, bool v1_metrics)
 {
 	int fd = open("/tmp/one", O_RDONLY);
 	close(fd);
@@ -749,16 +920,29 @@ TEST_F(security_policies_test, fs_prefixes)
 	fd = open("/tmp/two/three", O_RDONLY);
 	close(fd);
 
-	std::vector<expected_policy_event> expected = {{12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/one"}, {"evt.type", "open"}}},
-						       {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/one/two"}, {"evt.type", "open"}}},
-						       {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/one/two/three"}, {"evt.type", "open"}}},
-						       {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/two"}, {"evt.type", "open"}}},
-						       {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/two/three"}, {"evt.type", "open"}}}};
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/one"}, {"evt.type", "open"}}},
+		 {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/one/two"}, {"evt.type", "open"}}},
+		 {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/one/two/three"}, {"evt.type", "open"}}},
+		 {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/two"}, {"evt.type", "open"}}},
+		 {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/two/three"}, {"evt.type", "open"}}}};
 
-	check_policy_events(expected);
+	ptest->check_policy_events(expected);
 };
 
-TEST_F(security_policies_test, fs_root_dir)
+TEST_F(security_policies_test, fs_prefixes)
+{
+	bool v1_metrics = true;
+	return fs_prefixes_test(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, fs_prefixes)
+{
+	bool v1_metrics = false;
+	return fs_prefixes_test(this, v1_metrics);
+};
+
+static void fs_root_dir(security_policies_test *ptest, bool v1_metrics)
 {
 	if(!dutils_check_docker())
 	{
@@ -779,13 +963,25 @@ TEST_F(security_policies_test, fs_root_dir)
 
 	dutils_kill_image("busybox:test-root-writes");
 
-	std::vector<expected_policy_event> expected = {{19,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/not-allowed"}, {"evt.type", "open"}}}};
-	check_policy_events(expected);
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{19,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/not-allowed"}, {"evt.type", "open"}}}};
+
+	ptest->check_policy_events(expected);
 };
 
+TEST_F(security_policies_test, fs_root_dir)
+{
+	bool v1_metrics = true;
+	return fs_root_dir(this, v1_metrics);
+};
 
+TEST_F(security_policies_v2_test, fs_root_dir)
+{
+	bool v1_metrics = false;
+	return fs_root_dir(this, v1_metrics);
+};
 
-TEST_F(security_policies_test, tcp_listenport_only)
+static void tcp_listenport_only(security_policies_test *ptest, bool v1_metrics)
 {
 	int rc;
 	int sock = socket(PF_INET, SOCK_STREAM, 0);
@@ -805,18 +1001,41 @@ TEST_F(security_policies_test, tcp_listenport_only)
 
 	close(sock);
 
-	std::vector<expected_policy_event> expected = {{4,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "1234"}, {"fd.sip", "127.0.0.1"}, {"fd.l4proto", "tcp"}}}};
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{4,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "1234"}, {"fd.sip", "127.0.0.1"}, {"fd.l4proto", "tcp"}}}};
 
-	check_policy_events(expected);
+	ptest->check_policy_events(expected);
 
-	std::map<string,expected_internal_metric> metrics = {{"security.listenports-tcp.match.deny", {expected_internal_metric::CMP_EQ, 1}},
-							     {"security.listenports-tcp.match.accept", {expected_internal_metric::CMP_EQ, 0}},
-							     {"security.listenports-tcp.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
 
-	check_expected_internal_metrics(metrics);
+	if(v1_metrics)
+	{
+		metrics = {{"security.listenports-tcp.match.deny", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.listenports-tcp.match.accept", {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+			   {"security.listenports-tcp.match.next", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+	else
+	{
+		metrics = {{"security.listenports-tcp.match.match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.listenports-tcp.match.not_match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+
+	ptest->check_expected_internal_metrics(metrics);
 };
 
-TEST_F(security_policies_test, udp_listenport_only)
+TEST_F(security_policies_test, tcp_listenport_only)
+{
+	bool v1_metrics = true;
+	return tcp_listenport_only(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, tcp_listenport_only)
+{
+	bool v1_metrics = false;
+	return tcp_listenport_only(this, v1_metrics);
+};
+
+static void udp_listenport_only(security_policies_test *ptest, bool v1_metrics)
 {
 	int rc;
 	int sock = socket(PF_INET, SOCK_DGRAM, 0);
@@ -842,14 +1061,38 @@ TEST_F(security_policies_test, udp_listenport_only)
 
 	close(sock);
 
-	std::vector<expected_policy_event> expected = {{5,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "12345"}, {"fd.sip", "127.0.0.1"}, {"fd.l4proto", "udp"}}}};
-	check_policy_events(expected);
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{5,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "12345"}, {"fd.sip", "127.0.0.1"}, {"fd.l4proto", "udp"}}}};
+	ptest->check_policy_events(expected);
 
-	std::map<string,expected_internal_metric> metrics = {{"security.listenports-udp.match.deny", {expected_internal_metric::CMP_EQ, 1}},
-							     {"security.listenports-udp.match.accept", {expected_internal_metric::CMP_EQ, 0}},
-							     {"security.listenports-udp.match.next", {expected_internal_metric::CMP_EQ, 0}}};
 
-	check_expected_internal_metrics(metrics);
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
+
+	if(v1_metrics)
+	{
+		metrics = {{"security.listenports-udp.match.deny", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.listenports-udp.match.accept", {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+			   {"security.listenports-udp.match.next", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+	else
+	{
+		metrics = {{"security.listenports-udp.match.match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.listenports-udp.match.not_match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+
+	ptest->check_expected_internal_metrics(metrics);
+};
+
+TEST_F(security_policies_test, udp_listenport_only)
+{
+	bool v1_metrics = true;
+	return udp_listenport_only(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, udp_listenport_only)
+{
+	bool v1_metrics = false;
+	return udp_listenport_only(this, v1_metrics);
 };
 
 TEST_F(security_policies_test, matchlist_order)
@@ -907,23 +1150,47 @@ TEST_F(security_policies_test, overall_order)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(security_policies_test, syscall_only)
+static void syscall_only(security_policies_test *ptest, bool v1_metrics)
 {
 	// It doesn't matter that the quotactl fails, just that it attempts
 	struct dqblk quota;
 	quotactl(Q_GETQUOTA, "/no/such/file", 0, (caddr_t) &quota);
 
-	std::vector<expected_policy_event> expected = {{6,draiosproto::policy_type::PTYPE_SYSCALL,{{"evt.type", "quotactl"}}}};
-	check_policy_events(expected);
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{6,draiosproto::policy_type::PTYPE_SYSCALL,{{"evt.type", "quotactl"}}}};
 
-	std::map<string,expected_internal_metric> metrics = {{"security.syscalls.match.deny", {expected_internal_metric::CMP_EQ, 1}},
-							     {"security.syscalls.match.accept", {expected_internal_metric::CMP_EQ, 0}},
-							     {"security.syscalls.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+	ptest->check_policy_events(expected);
 
-	check_expected_internal_metrics(metrics);
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
+
+	if(v1_metrics)
+	{
+		metrics = {{"security.syscalls.match.deny", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.syscalls.match.accept", {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+			   {"security.syscalls.match.next", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+	else
+	{
+		metrics = {{"security.syscalls.match.match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.syscalls.match.not_match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+
+	ptest->check_expected_internal_metrics(metrics);
 };
 
-TEST_F(security_policies_test, container_only)
+TEST_F(security_policies_test, syscall_only)
+{
+	bool v1_metrics = true;
+	return syscall_only(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, syscall_only)
+{
+	bool v1_metrics = false;
+	return syscall_only(this, v1_metrics);
+};
+
+static void container_only(security_policies_test *ptest, bool v1_metrics)
 {
 	if(!dutils_check_docker())
 	{
@@ -943,40 +1210,174 @@ TEST_F(security_policies_test, container_only)
 
 	dutils_kill_image("blacklist-image-name");
 
-	std::vector<expected_policy_event> expected = {{7,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "blacklist-image-name"},
-												     {"container.name", "blacklisted_image"},
-												     {"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"}}}};
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{7,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "blacklist-image-name"},
+							       {"container.name", "blacklisted_image"},
+							       {"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"}}}};
+	ptest->check_policy_events(expected);
+
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
+
+	if(v1_metrics)
+	{
+		metrics = {{"security.containers.match.deny", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.containers.match.accept", {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+			   {"security.containers.match.next", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+	else
+	{
+		metrics = {{"security.containers.match.match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.containers.match.not_match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+
+	ptest->check_expected_internal_metrics(metrics);
+}
+
+TEST_F(security_policies_test, container_only)
+{
+	bool v1_metrics = true;
+	return container_only(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, container_only)
+{
+	bool v1_metrics = false;
+	return container_only(this, v1_metrics);
+};
+
+static void run_non_alpine_container(security_policies_test *ptest, bool both_policies_match)
+{
+	if(!dutils_check_docker())
+	{
+		return;
+	}
+
+	ASSERT_EQ(system("docker pull busybox:1.27.2 > /dev/null 2>&1"), 0);
+	dutils_kill_container("non_alpine");
+
+	if(system("docker run --rm --name non_alpine busybox:1.27.2 sleep 5 > /dev/null 2>&1") != 0)
+	{
+		ASSERT_TRUE(false);
+	}
+
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{3001,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "busybox:1.27.2"},
+							       {"container.name", "non_alpine"},
+							       {"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"}}}};
+
+	uint64_t num_matches = 1;
+	if(both_policies_match)
+	{
+		num_matches = 2;
+
+		expected.push_back(
+			{3002,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "busybox:1.27.2"},
+								       {"container.name", "non_alpine"},
+								       {"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"}}});
+	}
+
+	ptest->check_policy_events(expected);
+
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
+
+	metrics = {{"security.containers.match.match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+		   {"security.containers.match.not_match_items", {security_policies_test::expected_internal_metric::CMP_EQ, num_matches}}};
+
+	ptest->check_expected_internal_metrics(metrics);
+}
+
+TEST_F(security_policies_v2_dont_match_container_test, container_dont_match)
+{
+	bool both_policies_match = false;
+	return run_non_alpine_container(this, both_policies_match);
+};
+
+TEST_F(security_policies_v2_dont_match_container_test_multi, container_dont_match)
+{
+	bool both_policies_match = true;
+	return run_non_alpine_container(this, both_policies_match);
+};
+
+TEST_F(security_policies_v2_test, container_match_multi_policies_one_rule)
+{
+	if(!dutils_check_docker())
+	{
+		return;
+	}
+
+	ASSERT_EQ(system("docker pull busybox:1.27.2 > /dev/null 2>&1"), 0);
+	dutils_create_tag("busybox:some-tag", "busybox:1.27.2");
+	dutils_kill_container("busybox_some_tag");
+
+	if(system("docker run --rm --name busybox_some_tag busybox:some-tag sleep 5 > /dev/null 2>&1") != 0)
+	{
+		ASSERT_TRUE(false);
+	}
+
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{31,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "busybox:some-tag"},
+								  {"container.name", "busybox_some_tag"},
+								  {"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"}}},
+		 {32,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "busybox:some-tag"},
+								  {"container.name", "busybox_some_tag"},
+								  {"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"}}}};
+
 	check_policy_events(expected);
 
-	std::map<string,expected_internal_metric> metrics = {{"security.containers.match.deny", {expected_internal_metric::CMP_EQ, 1}},
-							     {"security.containers.match.accept", {expected_internal_metric::CMP_EQ, 0}},
-							     {"security.containers.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
+
+	metrics = {{"security.containers.match.match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 2}},
+		   {"security.containers.match.not_match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
 
 	check_expected_internal_metrics(metrics);
+};
+
+static void process_only(security_policies_test *ptest, bool v1_metrics)
+{
+	ASSERT_EQ(system("ls > /dev/null 2>&1"), 0);
+
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{8,draiosproto::policy_type::PTYPE_PROCESS,{{"proc.name", "ls"}, {"proc.cmdline", "ls"}}}};
+
+	ptest->check_policy_events(expected);
+
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
+
+	if(v1_metrics)
+	{
+		metrics = {{"security.processes.match.deny", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.processes.match.accept", {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+			   {"security.processes.match.next", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+	else
+	{
+		metrics = {{"security.processes.match.match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.processes.match.not_match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+
+	ptest->check_expected_internal_metrics(metrics);
 }
 
 TEST_F(security_policies_test, process_only)
 {
-	ASSERT_EQ(system("ls > /dev/null 2>&1"), 0);
+	bool v1_metrics = true;
+	return process_only(this, v1_metrics);
+};
 
-	std::vector<expected_policy_event> expected = {{8,draiosproto::policy_type::PTYPE_PROCESS,{{"proc.name", "ls"}, {"proc.cmdline", "ls"}}}};
-	check_policy_events(expected);
+TEST_F(security_policies_v2_test, process_only)
+{
+	bool v1_metrics = false;
+	return process_only(this, v1_metrics);
+};
 
-	std::map<string,expected_internal_metric> metrics = {{"security.processes.match.deny", {expected_internal_metric::CMP_EQ, 1}},
-							     {"security.processes.match.accept", {expected_internal_metric::CMP_EQ, 0}},
-							     {"security.processes.match.next", {expected_internal_metric::CMP_EQ, 0}}};
-
-	check_expected_internal_metrics(metrics);
-}
-
-TEST_F(security_policies_test, falco_only)
+static void falco_only(security_policies_test *ptest, bool v1_metrics)
 {
 	int fd = open("/tmp/sample-sensitive-file-2.txt", O_RDONLY);
 	close(fd);
 
 	// Not using check_policy_events for this, as it is checking keys only
 	unique_ptr<draiosproto::policy_events> pe;
-	get_policy_evts_msg(pe);
+	ptest->get_policy_evts_msg(pe);
 	ASSERT_EQ(pe->events_size(), 1);
 	ASSERT_EQ(pe->events(0).policy_id(), 1u);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
@@ -990,21 +1391,43 @@ TEST_F(security_policies_test, falco_only)
 	string prefix = "tests read /tmp/sample-sensitive-file-*.txt";
 	ASSERT_EQ(pe->events(0).event_details().output_details().output().compare(0, prefix.size(), prefix), 0);
 
-	std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_EQ, 1}},
-							     {"security.falco.match.accept", {expected_internal_metric::CMP_EQ, 0}},
-							     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
 
-	check_expected_internal_metrics(metrics);
+	if(v1_metrics)
+	{
+		metrics = {{"security.falco.match.deny", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.falco.match.accept", {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+			   {"security.falco.match.next", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+	else
+	{
+		metrics = {{"security.falco.match.match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.falco.match.not_match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+
+	ptest->check_expected_internal_metrics(metrics);
 };
 
-TEST_F(security_policies_test, falco_no_evttype)
+TEST_F(security_policies_test, falco_only)
+{
+	bool v1_metrics = true;
+	return falco_only(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, falco_only)
+{
+	bool v1_metrics = false;
+	return falco_only(this, v1_metrics);
+};
+
+static void falco_no_evttype(security_policies_test *ptest, bool v1_metrics)
 {
 	int fd = open("/tmp/banned-file.txt", O_RDONLY);
 	close(fd);
 
 	// Not using check_policy_events for this, as it is checking keys only
 	unique_ptr<draiosproto::policy_events> pe;
-	get_policy_evts_msg(pe);
+	ptest->get_policy_evts_msg(pe);
 	ASSERT_TRUE(pe->events_size() >= 1);
 	ASSERT_EQ(pe->events(0).policy_id(), 26u);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
@@ -1018,20 +1441,41 @@ TEST_F(security_policies_test, falco_no_evttype)
 	string prefix = "some operation related to /tmp/banned-file.txt";
 	ASSERT_EQ(pe->events(0).event_details().output_details().output().compare(0, prefix.size(), prefix), 0);
 
-	std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_EQ, 1}},
-							     {"security.falco.match.accept", {expected_internal_metric::CMP_EQ, 0}},
-							     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
 
-	check_expected_internal_metrics(metrics);
+	if(v1_metrics)
+	{
+		metrics = {{"security.falco.match.deny", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.falco.match.accept", {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+			   {"security.falco.match.next", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+	else
+	{
+		metrics = {{"security.falco.match.match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.falco.match.not_match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+	ptest->check_expected_internal_metrics(metrics);
 };
 
-TEST_F(security_policies_test, DISABLED_falco_fqdn)
+TEST_F(security_policies_test, falco_no_evttype)
+{
+	bool v1_metrics = true;
+	return falco_no_evttype(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, falco_no_evttype)
+{
+	bool v1_metrics = false;
+	return falco_no_evttype(this, v1_metrics);
+};
+
+static void falco_fqdn(security_policies_test *ptest, bool v1_metrics)
 {
 	ASSERT_EQ(system("echo 'ping' | timeout 2 nc github.com 80 > /dev/null 2>&1"), 0);
 
 	// Not using check_policy_events for this, as it is checking keys only
 	unique_ptr<draiosproto::policy_events> pe;
-	get_policy_evts_msg(pe);
+	ptest->get_policy_evts_msg(pe);
 	ASSERT_TRUE(pe->events_size() >= 1);
 	ASSERT_EQ(pe->events(0).policy_id(), 27u);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
@@ -1045,56 +1489,115 @@ TEST_F(security_policies_test, DISABLED_falco_fqdn)
 	string prefix = "tests contacted the blacklisted host github.com";
 	ASSERT_EQ(pe->events(0).event_details().output_details().output().compare(0, prefix.size(), prefix), 0);
 
-	std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_GE, 1}},
-							     {"security.falco.match.accept", {expected_internal_metric::CMP_EQ, 0}},
-							     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
 
-	check_expected_internal_metrics(metrics);
+	if(v1_metrics)
+	{
+		metrics= {{"security.falco.match.deny", {security_policies_test::expected_internal_metric::CMP_GE, 1}},
+			  {"security.falco.match.accept", {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+			  {"security.falco.match.next", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+	else
+	{
+		metrics = {{"security.falco.match.match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.falco.match.not_match_items", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+
+	ptest->check_expected_internal_metrics(metrics);
 }
+
+TEST_F(security_policies_test, DISABLED_falco_fqdn)
+{
+	bool v1_metrics = true;
+	return falco_fqdn(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, DISABLED_falco_fqdn)
+{
+	bool v1_metrics = false;
+	return falco_fqdn(this, v1_metrics);
+};
 
 
 TEST_F(security_policies_test, multiple_falco_variants)
 {
-	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_variants.txt", "v2 output");
+	bool v1_metrics = true;
+	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_variants.txt", "v2 output", v1_metrics);
+}
+
+TEST_F(security_policies_v2_test, multiple_falco_variants)
+{
+	bool v1_metrics = false;
+	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_variants_v2.txt", "v2 output", v1_metrics);
 }
 
 TEST_F(security_policies_test, multiple_falco_files)
 {
-	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_files.txt", "some output");
+	bool v1_metrics = true;
+	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_files.txt", "some output", v1_metrics);
+}
+
+TEST_F(security_policies_v2_test, multiple_falco_files)
+{
+	bool v1_metrics = false;
+	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_files_v2.txt", "some output", v1_metrics);
 }
 
 TEST_F(security_policies_test, multiple_falco_files_override)
 {
-	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_files_override.txt", "some output");
+	bool v1_metrics = true;
+	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_files_override.txt", "some output", v1_metrics);
+}
+
+TEST_F(security_policies_v2_test, multiple_falco_files_override)
+{
+	bool v1_metrics = false;
+	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_files_override_v2.txt", "some output", v1_metrics);
 }
 
 TEST_F(security_policies_test, custom_falco_files)
 {
-	multiple_falco_files_test("./resources/security_policies_messages/custom_falco_files.txt", "some output");
+	bool v1_metrics = true;
+	multiple_falco_files_test("./resources/security_policies_messages/custom_falco_files.txt", "some output", v1_metrics);
+}
+
+TEST_F(security_policies_v2_test, custom_falco_files)
+{
+	bool v1_metrics = false;
+	multiple_falco_files_test("./resources/security_policies_messages/custom_falco_files_v2.txt", "some output", v1_metrics);
 }
 
 TEST_F(security_policies_test, custom_falco_files_override)
 {
-	multiple_falco_files_test("./resources/security_policies_messages/custom_falco_files_override.txt", "some output");
+	bool v1_metrics = true;
+	multiple_falco_files_test("./resources/security_policies_messages/custom_falco_files_override.txt", "some output", v1_metrics);
+}
+
+TEST_F(security_policies_v2_test, custom_falco_files_override)
+{
+	bool v1_metrics = false;
+	multiple_falco_files_test("./resources/security_policies_messages/custom_falco_files_override_v2.txt", "some output", v1_metrics);
 }
 
 TEST_F(security_policies_test, falco_old_rules_message)
 {
-	multiple_falco_files_test("./resources/security_policies_messages/falco_old_rules_message.txt", "some old output");
+	bool v1_metrics = true;
+	multiple_falco_files_test("./resources/security_policies_messages/falco_old_rules_message.txt", "some old output", v1_metrics);
 }
 
 TEST_F(security_policies_test, falco_old_new_rules_message)
 {
-	multiple_falco_files_test("./resources/security_policies_messages/falco_old_new_rules_message.txt", "some new output");
+	bool v1_metrics = true;
+	multiple_falco_files_test("./resources/security_policies_messages/falco_old_new_rules_message.txt", "some new output", v1_metrics);
 }
 
-TEST_F(security_policies_test_cointerface, falco_k8s_audit)
+static void falco_k8s_audit(security_policies_test_cointerface *ptest, bool v1_metrics)
 {
 	// send a single event (the first line of the file)
 	ASSERT_EQ(system("timeout 2 curl -X POST localhost:7765/k8s_audit -d $(head -1 ./resources/k8s_audit_events.txt) > /dev/null 2>&1"), 0);
 
 	unique_ptr<draiosproto::policy_events> pe;
-	get_policy_evts_msg(pe);
+	ptest->get_policy_evts_msg(pe);
 	ASSERT_TRUE(pe->events_size() >= 1);
 	ASSERT_EQ(pe->events(0).policy_id(), 28u);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
@@ -1105,19 +1608,43 @@ TEST_F(security_policies_test_cointerface, falco_k8s_audit)
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.target.namespace"), "default");
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.user.name"), "minikube-user");
 
-	std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_GE, 1}},
-							     {"security.falco.match.accept", {expected_internal_metric::CMP_EQ, 0}},
-							     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
-	check_expected_internal_metrics(metrics);
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
+
+	if(v1_metrics)
+	{
+		metrics = {{"security.falco.match.deny", {security_policies_test::expected_internal_metric::CMP_GE, 1}},
+			   {"security.falco.match.accept", {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+			   {"security.falco.match.next", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+	else
+	{
+		metrics = {{"security.falco.match.match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.falco.match.not_match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+
+	ptest->check_expected_internal_metrics(metrics);
 }
 
-TEST_F(security_policies_test_cointerface, falco_k8s_audit_multi_events)
+TEST_F(security_policies_test_cointerface, falco_k8s_audit)
+{
+	bool v1_metrics = true;
+	return falco_k8s_audit(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit)
+{
+	bool v1_metrics = false;
+	return falco_k8s_audit(this, v1_metrics);
+};
+
+
+static void falco_k8s_audit_multi_events(security_policies_test_cointerface *ptest, bool v1_metrics)
 {
 	// send a bunch of events (one per line of the file)
 	ASSERT_EQ(system("timeout 2 xargs -0 -d '\n' -I{} curl -X POST localhost:7765/k8s_audit -d {} < ./resources/k8s_audit_events.txt > /dev/null 2>&1"), 0);
 
 	unique_ptr<draiosproto::policy_events> pe;
-	get_policy_evts_msg(pe);
+	ptest->get_policy_evts_msg(pe);
 	ASSERT_TRUE(pe->events_size() >= 1);
 	ASSERT_EQ(pe->events(0).policy_id(), 28u);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
@@ -1128,11 +1655,34 @@ TEST_F(security_policies_test_cointerface, falco_k8s_audit_multi_events)
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.target.namespace"), "default");
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.user.name"), "minikube-user");
 
-	std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_GE, 1}},
-							     {"security.falco.match.accept", {expected_internal_metric::CMP_EQ, 0}},
-							     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
-	check_expected_internal_metrics(metrics);
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
+
+	if(v1_metrics)
+	{
+		metrics = {{"security.falco.match.deny", {security_policies_test::expected_internal_metric::CMP_GE, 1}},
+			   {"security.falco.match.accept", {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+			   {"security.falco.match.next", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+	else
+	{
+		metrics = {{"security.falco.match.match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.falco.match.not_match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+
+	ptest->check_expected_internal_metrics(metrics);
 }
+
+TEST_F(security_policies_test_cointerface, falco_k8s_audit_multi_events)
+{
+	bool v1_metrics = true;
+	return falco_k8s_audit_multi_events(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_multi_events)
+{
+	bool v1_metrics = false;
+	return falco_k8s_audit_multi_events(this, v1_metrics);
+};
 
 TEST_F(security_policies_test_cointerface, falco_k8s_audit_messy_client)
 {
@@ -1225,7 +1775,7 @@ TEST_F(security_policies_test, baseline_deviate_cat_dockerenv)
 	check_policy_events(expected);
 }
 
-TEST_F(security_policies_test, container_prefixes)
+static void container_prefixes(security_policies_test *ptest, bool v1_metrics)
 {
 	if(!dutils_check_docker())
 	{
@@ -1268,25 +1818,38 @@ TEST_F(security_policies_test, container_prefixes)
 
 	dutils_kill_image("my.third.domain.name/tutum/curl:alpine");
 
-	std::vector<expected_policy_event> expected = {{07,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "blacklist-image-name:0.0.1"},
-												      {"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"},
-												      {"container.name", "denyme"}}},
-						       {14,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.domain.name/busybox:1.27.2"},
-												      {"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"},
-												      {"container.name", "denyme"}}},
-						       {15,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.other.domain.name:12345/cirros:0.3.3"},
-												      {"container.image.id", "231974f01f06befaa720909c29baadb586d6e6708e386190873a0d4cc5af033a"},
-												      {"container.name", "denyme"}}},
-						       {16,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.third.domain.name/cirros:0.3.3"},
-												      {"container.image.id", "231974f01f06befaa720909c29baadb586d6e6708e386190873a0d4cc5af033a"},
-												      {"container.name", "denyme"}}},
-						       {17,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.third.domain.name/tutum/curl:alpine"},
-												      {"container.image.id", "b91cd13456bbd3d65f00d0a0be24c95b802ad1f9cd0dc2b8889c4c7fbb599fef"},
-												      {"container.name", "denyme"}}}};
-	check_policy_events(expected);
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{07,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "blacklist-image-name:0.0.1"},
+								{"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"},
+								{"container.name", "denyme"}}},
+		 {14,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.domain.name/busybox:1.27.2"},
+								{"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"},
+								{"container.name", "denyme"}}},
+		 {15,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.other.domain.name:12345/cirros:0.3.3"},
+								{"container.image.id", "231974f01f06befaa720909c29baadb586d6e6708e386190873a0d4cc5af033a"},
+								{"container.name", "denyme"}}},
+		 {16,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.third.domain.name/cirros:0.3.3"},
+								{"container.image.id", "231974f01f06befaa720909c29baadb586d6e6708e386190873a0d4cc5af033a"},
+								{"container.name", "denyme"}}},
+		 {17,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.third.domain.name/tutum/curl:alpine"},
+								{"container.image.id", "b91cd13456bbd3d65f00d0a0be24c95b802ad1f9cd0dc2b8889c4c7fbb599fef"},
+								{"container.name", "denyme"}}}};
+	ptest->check_policy_events(expected);
 }
 
-TEST_F(security_policies_test, net_inbound_outbound_tcp)
+TEST_F(security_policies_test, container_prefixes)
+{
+	bool v1_metrics = true;
+	return container_prefixes(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, container_prefixes)
+{
+	bool v1_metrics = false;
+	return container_prefixes(this, v1_metrics);
+};
+
+static void net_inbound_outbound_tcp(security_policies_test *ptest, bool v1_metrics)
 {
 	if(!dutils_check_docker())
 	{
@@ -1303,21 +1866,35 @@ TEST_F(security_policies_test, net_inbound_outbound_tcp)
 	dutils_kill_container("inout_test");
 	dutils_kill_image("curl:inout_test");
 
-	std::vector<expected_policy_event> expected = {{18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
-												    {"fd.sip", "0.0.0.0"},
-												    {"fd.l4proto", "tcp"},
-												    {"proc.name", "nc"}}}, // listen
-						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
-												    {"fd.l4proto", "tcp"},
-												    {"proc.name", "nc"}}}, // connect
-						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
-												    {"fd.l4proto", "tcp"},
-												    {"proc.name", "nc"}}}  // accept
-	};
-	check_policy_events(expected);
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
+							      {"fd.sip", "0.0.0.0"},
+							      {"fd.l4proto", "tcp"},
+							      {"proc.name", "nc"}}}, // listen
+		 {18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
+							      {"fd.l4proto", "tcp"},
+							      {"proc.name", "nc"}}}, // connect
+		 {18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
+							      {"fd.l4proto", "tcp"},
+							      {"proc.name", "nc"}}}  // accept
+		};
+
+	ptest->check_policy_events(expected);
 }
 
-TEST_F(security_policies_test, net_inbound_outbound_udp)
+TEST_F(security_policies_test, net_inbound_outbound_tcp)
+{
+	bool v1_metrics = true;
+	return net_inbound_outbound_tcp(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, net_inbound_outbound_tcp)
+{
+	bool v1_metrics = false;
+	return net_inbound_outbound_tcp(this, v1_metrics);
+};
+
+static void net_inbound_outbound_udp(security_policies_test *ptest, bool v1_metrics)
 {
 	if(!dutils_check_docker())
 	{
@@ -1334,18 +1911,32 @@ TEST_F(security_policies_test, net_inbound_outbound_udp)
 	dutils_kill_container("inout_test");
 	dutils_kill_image("curl:inout_test");
 
-	std::vector<expected_policy_event> expected = {{18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
-												    {"proc.name", "nc"},
-												    {"fd.l4proto", "udp"}}}, // connect
-						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
-												    {"proc.name", "ncserver"},
-												    {"fd.l4proto", "udp"}}}, // recvfrom
-						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
-												    {"proc.name", "ncserver"},
-												    {"fd.l4proto", "udp"}}}  // connect, used internally during libc getaddrinfo to lookup the local address via getsockname
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
+							      {"proc.name", "nc"},
+							      {"fd.l4proto", "udp"}}}, // connect
+		 {18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
+							      {"proc.name", "ncserver"},
+							      {"fd.l4proto", "udp"}}}, // recvfrom
+		 {18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
+							      {"proc.name", "ncserver"},
+							      {"fd.l4proto", "udp"}}}  // connect, used internally during libc getaddrinfo to lookup the local address via getsockname
 	};
-	check_policy_events(expected);
+
+	ptest->check_policy_events(expected);
 }
+
+TEST_F(security_policies_test, net_inbound_outbound_udp)
+{
+	bool v1_metrics = true;
+	return net_inbound_outbound_udp(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, net_inbound_outbound_udp)
+{
+	bool v1_metrics = false;
+	return net_inbound_outbound_udp(this, v1_metrics);
+};
 
 TEST_F(security_policies_test, baseline_without_syscalls)
 {
@@ -1368,7 +1959,7 @@ TEST_F(security_policies_test, baseline_without_syscalls)
 	check_policy_events(expected);
 }
 
-TEST_F(security_policies_test, fs_usecase)
+static void fs_usecase(security_policies_test *ptest, bool v1_metrics)
 {
 	if(!dutils_check_docker())
 	{
@@ -1385,10 +1976,25 @@ TEST_F(security_policies_test, fs_usecase)
 	dutils_kill_container("fs_usecase");
 	dutils_kill_image("busybox:fs_usecase");
 
-	std::vector<expected_policy_event> expected = {{21,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/etc/passwd"}, {"evt.type", "open"}}},
-						       {21,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/bin/not-allowed"}, {"evt.type", "open"}}}};
-	check_policy_events(expected);
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{21,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/etc/passwd"}, {"evt.type", "open"}}},
+		 {21,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/bin/not-allowed"}, {"evt.type", "open"}}}};
+
+	ptest->check_policy_events(expected);
 };
+
+TEST_F(security_policies_test, fs_usecase)
+{
+	bool v1_metrics = true;
+	return fs_usecase(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, fs_usecase)
+{
+	bool v1_metrics = false;
+	return fs_usecase(this, v1_metrics);
+};
+
 
 TEST_F(security_policies_test, image_name_priority)
 {
@@ -1439,7 +2045,7 @@ TEST_F(security_policies_test, overlapping_syscall)
 	check_policy_events(expected);
 };
 
-TEST_F(security_policies_test, nofd_operations)
+static void nofd_operations(security_policies_test *ptest, bool v1_metrics)
 {
 	DIR *dirp;
 
@@ -1462,26 +2068,52 @@ TEST_F(security_policies_test, nofd_operations)
 	rmdir("/tmp/test_nofd_ops/four");
 	rmdir("/tmp/test_nofd_ops");
 
-	std::vector<expected_policy_event> expected = {{25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/"}, {"evt.type", "mkdir"}}},
-						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/one"}, {"evt.type", "mkdirat"}}},
-						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/two"}, {"evt.type", "mkdirat"}}},
-						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/one"}, {"evt.type", "unlinkat"}}},
-						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/two"}, {"evt.abspath.dst", "/tmp/test_nofd_ops/three"}, {"evt.type", "renameat"}}},
-						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/three"}, {"evt.arg[2]", "/tmp/test_nofd_ops/four"}, {"evt.type", "rename"}}},
-						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/test_nofd_ops/file"}, {"evt.type", "open"}}},
-						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/file"}, {"evt.type", "unlink"}}},
-						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/four"}, {"evt.type", "rmdir"}}},
-						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops"}, {"evt.type", "rmdir"}}}};
-	check_policy_events(expected);
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/"}, {"evt.type", "mkdir"}}},
+		 {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/one"}, {"evt.type", "mkdirat"}}},
+		 {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/two"}, {"evt.type", "mkdirat"}}},
+		 {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/one"}, {"evt.type", "unlinkat"}}},
+		 {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/two"}, {"evt.abspath.dst", "/tmp/test_nofd_ops/three"}, {"evt.type", "renameat"}}},
+		 {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/three"}, {"evt.arg[2]", "/tmp/test_nofd_ops/four"}, {"evt.type", "rename"}}},
+		 {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/test_nofd_ops/file"}, {"evt.type", "open"}}},
+		 {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/file"}, {"evt.type", "unlink"}}},
+		 {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/four"}, {"evt.type", "rmdir"}}},
+		 {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops"}, {"evt.type", "rmdir"}}}};
 
-	std::map<string,expected_internal_metric> metrics = {{"security.files-readwrite.match.deny", {expected_internal_metric::CMP_EQ, 1}},
-							     {"security.files-readwrite-nofd.match.deny", {expected_internal_metric::CMP_EQ, 9}},
-							     {"security.files-readwrite.match.accept", {expected_internal_metric::CMP_EQ, 0}},
-							     {"security.files-readwrite.match.next", {expected_internal_metric::CMP_EQ, 0}}};
-	check_expected_internal_metrics(metrics);
+	ptest->check_policy_events(expected);
+
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
+
+	if(v1_metrics)
+	{
+		metrics = {{"security.files-readwrite.match.deny", {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.files-readwrite-nofd.match.deny", {security_policies_test::expected_internal_metric::CMP_EQ, 9}},
+			   {"security.files-readwrite.match.accept", {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+			   {"security.files-readwrite.match.next", {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+	else
+	{
+		metrics = {{"security.files-readwrite.match.match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+			   {"security.files-readwrite-nofd.match.match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 9}},
+			   {"security.files-readwrite.match.not_match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+	}
+
+	ptest->check_expected_internal_metrics(metrics);
 };
 
-TEST_F(security_policies_test_delayed_reports, DISABLED_events_flood)
+TEST_F(security_policies_test, nofd_operations)
+{
+	bool v1_metrics = true;
+	return nofd_operations(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, nofd_operations)
+{
+	bool v1_metrics = false;
+	return nofd_operations(this, v1_metrics);
+};
+
+static void events_flood(security_policies_test *ptest, bool v1_metrics)
 {
 	shared_ptr<protocol_queue_item> item;
 
@@ -1520,7 +2152,7 @@ TEST_F(security_policies_test_delayed_reports, DISABLED_events_flood)
 	{
 		unique_ptr<::google::protobuf::Message> msg;
 
-		get_next_msg(100, mtype, msg);
+		ptest->get_next_msg(100, mtype, msg);
 
 		if(msg == NULL)
 		{
@@ -1569,7 +2201,19 @@ TEST_F(security_policies_test_delayed_reports, DISABLED_events_flood)
 	ASSERT_EQ(event_count, 1000);
 }
 
-TEST_F(security_policies_test, docker_swarm)
+TEST_F(security_policies_test, DISABLED_events_flood)
+{
+	bool v1_metrics = true;
+	return events_flood(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, DISABLED_events_flood)
+{
+	bool v1_metrics = false;
+	return events_flood(this, v1_metrics);
+};
+
+static void docker_swarm(security_policies_test *ptest, bool v1_metrics)
 {
 	if(!dutils_check_docker())
 	{
@@ -1591,7 +2235,7 @@ TEST_F(security_policies_test, docker_swarm)
 
 	// Not using check_policy_events for this, as it is checking keys only
 	unique_ptr<draiosproto::policy_events> pe;
-	get_policy_evts_msg(pe);
+	ptest->get_policy_evts_msg(pe);
 	ASSERT_TRUE(pe.get() != NULL);
 	ASSERT_GE(pe->events_size(), 1);
 	ASSERT_EQ(pe->events(0).policy_id(), 29u);
@@ -1604,4 +2248,14 @@ TEST_F(security_policies_test, docker_swarm)
 	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.name") > 0);
 }
 
+TEST_F(security_policies_test, docker_swarm)
+{
+	bool v1_metrics = true;
+	return docker_swarm(this, v1_metrics);
+};
 
+TEST_F(security_policies_v2_test, docker_swarm)
+{
+	bool v1_metrics = false;
+	return docker_swarm(this, v1_metrics);
+};

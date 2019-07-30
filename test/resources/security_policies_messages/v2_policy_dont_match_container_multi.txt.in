@@ -1,0 +1,36 @@
+policy_list {
+  id: 3001
+  name: "policy using container don't match alpine 1"
+  rule_names: "match anything other than alpine"
+  enabled: 1
+  scope_predicates {
+    key: "container.id"
+    values: ""
+    op: NOT_EQ
+  }
+}
+policy_list {
+  id: 3002
+  name: "policy using container don't match alpine 2"
+  rule_names: "match anything other than alpine"
+  enabled: 1
+  scope_predicates {
+    key: "container.id"
+    values: ""
+    op: NOT_EQ
+  }
+}
+falco_group {
+  default_files {
+    tag: "0.1.1test"
+    files {
+      filename: "falco_rules.yaml"
+      variants {
+        required_engine_version: 2
+	content: "- required_engine_version: 2\n"
+      }
+    }
+  }
+  custom_files {
+  }
+}

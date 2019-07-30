@@ -19,8 +19,6 @@
 
 class security_baseline;
 
-typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
-
 //
 // Simple wrapper around draiosproto::policy that adds an order that
 // reflects its position compared to other policies and a few
@@ -79,6 +77,8 @@ public:
 		EVM_MISS_FALCO_EVTTYPE,
 		EVM_MISS_QUAL,
 		EVM_MISS_CONDS,
+		EVM_MATCH_ITEMS,
+		EVM_NOT_MATCH_ITEMS,
 		EVM_MAX
 	};
 
@@ -141,7 +141,9 @@ private:
 			"miss.ef_drop_falco",
 			"miss.falco_evttype",
 			"miss.qual",
-			"miss.conds"};
+			"miss.conds",
+			"match.match_items",
+			"match.not_match_items"};
 };
 
 //
@@ -286,7 +288,7 @@ public:
 	virtual draiosproto::policy_subtype policies_subtype() = 0;
 
 	virtual std::set<std::string> default_output_fields_keys(sinsp_evt *evt) = 0;
-	
+
 	// Given an event, match against the set of policies. Returns
 	// the policy that matches the event, if any. If multiple
 	// policies match the event, returns the one with the lowest

@@ -104,6 +104,7 @@ public:
 
 #ifndef CYGWING_AGENT
 	bool load_policies(draiosproto::policies &policies, std::string &errstr);
+	bool load_policies_v2(draiosproto::policies_v2 &policies_v2, std::string &errstr);
 	bool set_compliance_calendar(draiosproto::comp_calendar &calendar,
 				     bool send_results,
 				     bool send_events,

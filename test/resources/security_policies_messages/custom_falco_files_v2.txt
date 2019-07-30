@@ -1,0 +1,33 @@
+policy_list {
+  id: 1
+  name: "Reading sensitive file"
+  rule_names: "read_sensitive_file"
+  enabled: 1
+  scope_predicates {
+    key: "container.id"
+    values: ""
+    op: EQ
+  }
+}
+falco_group {
+  default_files {
+    tag: "0.1.1test"
+    files {
+      filename: "falco_rules_1.yaml"
+      variants {
+        required_engine_version: 2
+	content: "- required_engine_version: 2\n- macro: is_open_read\n  condition: evt.type in (open, openat) and evt.is_open_read=true\n"
+      }
+    }
+  }
+  custom_files {
+    tag: "0.1.1test-custom"
+    files {
+      filename: "falco_rules_2.yaml"
+      variants {
+        required_engine_version: 2
+	content: "- required_engine_version: 2\n- rule: read_sensitive_file\n  desc: some desc\n  condition: proc.name in (tests,memcheck-amd64-) and is_open_read and evt.arg.name in (/tmp/sample-sensitive-file-2.txt)\n  output: some output\n  priority: WARNING\n"
+      }
+    }
+  }
+}

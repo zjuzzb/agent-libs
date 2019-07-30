@@ -9,6 +9,8 @@ class security_mgr;
 class SINSP_PUBLIC security_actions
 {
 public:
+	typedef google::protobuf::RepeatedPtrField<draiosproto::action> actions;
+
 	security_actions();
 	virtual ~security_actions();
 
@@ -24,7 +26,8 @@ public:
 	//
 	void perform_actions(uint64_t ts_ns,
 			     sinsp_threadinfo *tinfo,
-			     const security_policy *policy,
+			     const std::string &policy_name,
+			     const actions &actions,
 			     draiosproto::policy_event *event);
 
 	// Check the list of outstanding actions and see if any are

@@ -47,6 +47,7 @@ list(APPEND targetfiles
 	security_action.cpp
 	security_mgr.cpp
 	security_policy.cpp
+	security_rule.cpp
 	sinsp_data_handler.cpp
 	sinsp_factory.cpp
 	sinsp_worker.cpp

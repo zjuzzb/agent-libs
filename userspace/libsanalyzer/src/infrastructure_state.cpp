@@ -588,6 +588,8 @@ void infrastructure_state::refresh(uint64_t ts)
 
 void infrastructure_state::reset()
 {
+	glogf(sinsp_logger::SEV_DEBUG, "infra_state (%x): reset()", this);
+
 	m_policy_cache.clear();
 	m_orphans.clear();
 	m_state.clear();
