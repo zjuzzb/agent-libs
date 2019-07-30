@@ -49,14 +49,14 @@ fi
 
 build_docker_image()
 {
-	cp docker/local/docker-entrypoint.sh /out
+	cp docker/local/docker-entrypoint.sh "$1"
 	if [ -n "$AGENT_VERSION" ]
 	then
-		awk -v "new_ver=$AGENT_VERSION" '/^ENV AGENT_VERSION/ { $3 = new_ver } { print }' < docker/local/$DOCKERFILE > /out/$DOCKERFILE
+		awk -v "new_ver=$AGENT_VERSION" '/^ENV AGENT_VERSION/ { $3 = new_ver } { print }' < docker/local/$DOCKERFILE > "$1/$DOCKERFILE"
 	else
-	        cp docker/local/$DOCKERFILE /out/$DOCKERFILE
+	        cp docker/local/$DOCKERFILE "$1/$DOCKERFILE"
 	fi
-	cd /out
+	cd "$1"
 	docker build -t $AGENT_IMAGE -f $DOCKERFILE --pull .
 }
 
@@ -93,9 +93,17 @@ build_package()
 
 build_container()
 {
+	DOCKER_CONTEXT=$(mktemp -d /out/agent-container.XXXXXX)
 	make -j$MAKE_JOBS package
+
 	cp *.deb /out
-	build_docker_image
+
+	# copy the agent package to a temporary directory so that we don't send
+	# the whole /out directory as the Docker build context
+	cp draios-*-agent.deb "$DOCKER_CONTEXT"
+	build_docker_image "$DOCKER_CONTEXT"
+
+	rm -rf "$DOCKER_CONTEXT"
 }
 
 build_release()
