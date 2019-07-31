@@ -66,8 +66,8 @@ function build_components {
 		run_falco_docker_builder $btype package
 	    done
 
-            cp build/falco/Debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
-            cp build/falco/Release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
+            cp build/falco/debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
+            cp build/falco/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
             ;;
         *)
             false
