@@ -9,6 +9,7 @@ set(LIBREST_SOURCES
 	rest_request_handler.cpp
 	rest_request_handler_factory.cpp
 	rest_server.cpp
+	rest_util.cpp
 )
 
 list(APPEND librest_link_libraries

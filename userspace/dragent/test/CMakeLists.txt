@@ -37,16 +37,19 @@ add_executable(unit-test-dragent
 	configlist_rest_request_handler.ut.cpp
 	config_data_rest_request_handler.ut.cpp
 	config_rest_request_handler.ut.cpp
+	connection_manager.ut.cpp
 	crash_handler.ut.cpp
 	dragent_memdump_logger.ut.cpp
 	dragent_user_event_callback.ut.cpp
 	faultlist_rest_request_handler.ut.cpp
 	fault_rest_request_handler.ut.cpp
+	file_rest_registry.ut.cpp
+	file_rest_request_handler.ut.cpp
 	metrics_rest_request_handler.ut.cpp
 	sinsp_worker.ut.cpp
 	spinlock.ut.cpp
 	watchdog_runnable.ut.cpp
-	connection_manager.ut.cpp
+	webpage_rest_request_handler.ut.cpp
 )
 
 target_link_libraries(unit-test-dragent

@@ -14,6 +14,7 @@ add_executable(unit-test-librest
 	rest_request_handler.ut.cpp
 	rest_request_handler_factory.ut.cpp
 	rest_server.ut.cpp
+	rest_util.ut.cpp
 )
 
 target_link_libraries(unit-test-librest

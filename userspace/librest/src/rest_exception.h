@@ -9,6 +9,18 @@
 #include <exception>
 #include <string>
 
+// Shorthand macro to log and throw a rest exception for with a particular
+// error code. This is meant to be used with the common logger.
+#define THROW_REST_ERROR(__code, __fmt, ...)                                   \
+do {                                                                           \
+	std::string c_err_ = s_log_sink.build(__fmt,                           \
+					      ##__VA_ARGS__);                  \
+	s_log_sink.log(Poco::Message::Priority::PRIO_ERROR,                    \
+		       __LINE__,                                               \
+		       "Throwing: " + c_err_);                                 \
+	throw librest::rest_exception(c_err_.c_str(), __code);                 \
+} while(false)
+
 namespace librest
 {
 

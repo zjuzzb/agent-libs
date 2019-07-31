@@ -8,23 +8,11 @@
 #include "config_rest_request_handler.h"
 #include "configuration_manager.h"
 #include "type_config.h"
+#include <rest_util.h>
 #include <json/json.h>
 
 namespace
 {
-
-std::string get_config_name(const std::string& uri)
-{
-	const std::size_t last_slash = uri.rfind("/");
-	std::string fault_name;
-
-	if(last_slash != std::string::npos)
-	{
-		fault_name = uri.substr(last_slash + 1);
-	}
-
-	return fault_name;
-}
 
 /**
  * Returns a JSON-formatted error with the given message.
@@ -54,7 +42,7 @@ std::string config_rest_request_handler::handle_get_request(
 		Poco::Net::HTTPServerRequest& request,
 		Poco::Net::HTTPServerResponse& response)
 {
-	const std::string config_name = get_config_name(request.getURI());
+	const std::string config_name = librest::post_last_slash(request.getURI());
 
 	if(config_name.empty())
 	{
@@ -83,7 +71,7 @@ std::string config_rest_request_handler::handle_put_request(
 		Poco::Net::HTTPServerResponse& response)
 {
 	Json::Value error_value;
-	const std::string config_name = get_config_name(request.getURI());
+	const std::string config_name = librest::post_last_slash(request.getURI());
 
 	if(config_name.empty())
 	{

@@ -20,7 +20,8 @@ namespace test_helpers
 class scoped_temp_file
 {
 public:
-	scoped_temp_file();
+	scoped_temp_file(const std::string& initial_content = "",
+			 const std::string& extension = "");
 	~scoped_temp_file();
 
 	const std::string& get_filename() const;

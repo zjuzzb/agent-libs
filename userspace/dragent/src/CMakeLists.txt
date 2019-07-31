@@ -41,6 +41,8 @@ list(APPEND targetfiles
 	error_handler.cpp
 	faultlist_rest_request_handler.cpp
 	fault_rest_request_handler.cpp
+	file_rest_registry.cpp
+	file_rest_request_handler.cpp
 	metrics_rest_request_handler.cpp
 	monitor.cpp
 	protocol.cpp
@@ -55,7 +57,10 @@ list(APPEND targetfiles
 	uptime.cpp
 	user_event_channel.cpp
 	watchdog_runnable_pool.cpp
-	watchdog_runnable.cpp)
+	watchdog_runnable.cpp
+	webpage.cpp
+	webpage_rest_request_handler.cpp
+)
 
 if(CYGWIN)
 	# windows specific implementation
