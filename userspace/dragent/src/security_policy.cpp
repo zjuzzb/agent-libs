@@ -309,7 +309,7 @@ void falco_security_policies::add_policy(const security_policy &policy, std::sha
 		// Use the name to create a ruleset. We'll use this
 		// ruleset to run only the subset of rules we're
 		// interested in.
-		string all_rules = ".*";
+		string all_rules = "";
 		string ruleset = policy.name();
 
 		// TODO: if this ruleset is already present, don't do again this initialization

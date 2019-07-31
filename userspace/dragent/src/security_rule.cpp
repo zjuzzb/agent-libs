@@ -635,7 +635,7 @@ void falco_security_rules::add_policy(policy_v2_sptr policy)
 		// Use the name to create a ruleset. We'll use this
 		// ruleset to run only the subset of rules we're
 		// interested in.
-		string all_rules = ".*";
+		string all_rules = "";
 		string ruleset = policy->name();
 
 		// TODO: if this ruleset is already present, don't do again this initialization
