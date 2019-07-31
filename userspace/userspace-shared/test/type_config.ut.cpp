@@ -374,6 +374,283 @@ TEST_F(type_config_test, config_vector_uint16)
 	ASSERT_EQ(expected_value, some_config.get());
 }
 
+TEST_F(type_config_test, alternate_key_single_yaml)
+{
+	const std::string alternate_key = "some_string";
+	const std::string default_value = "xxxx";
+	const std::string expected_value = "hello, world!";
+
+	type_config<std::string> some_config(default_value,
+					     DEFAULT_DESCRIPTION,
+					     "actual_key_does",
+					     "not_exist");
+	some_config.alternate_key(alternate_key);
+
+	yaml_configuration config_yaml({ get_conf_file() });
+	ASSERT_EQ(0, config_yaml.errors().size());
+
+	some_config.init(config_yaml);
+
+	ASSERT_EQ(expected_value, some_config.get());
+}
+
+TEST_F(type_config_test, alternate_subkey_single_yaml)
+{
+	const std::string alternate_key = "bool_nested";
+	const std::string alternate_subkey = "bool_true_nested";
+	const bool expected_value = true;
+	const bool default_value = !expected_value;
+
+	type_config<bool> some_config(default_value,
+				      DEFAULT_DESCRIPTION,
+				      "actual",
+				      "key_does",
+				      "not_exist");
+	some_config.alternate_key(alternate_key, alternate_subkey);
+
+	yaml_configuration config_yaml({ get_conf_file() });
+	ASSERT_EQ(0, config_yaml.errors().size());
+
+	some_config.init(config_yaml);
+
+	ASSERT_EQ(expected_value, some_config.get());
+}
+
+TEST_F(type_config_test, alternate_subsubkey_single_yaml)
+{
+	const std::string alternate_key = "bool_double_nested";
+	const std::string alternate_subkey = "bool_double_nested_sub";
+	const std::string alternate_subsubkey = "bool_false_double_nested";
+	const bool expected_value = false;
+	const bool default_value = !expected_value;
+
+	type_config<bool> some_config(default_value,
+				      DEFAULT_DESCRIPTION,
+				      "actual_key_does_not_exist");
+	some_config.alternate_key(alternate_key, alternate_subkey, alternate_subsubkey);
+
+	yaml_configuration config_yaml({ get_conf_file()});
+	ASSERT_TRUE(config_yaml.errors().empty());
+
+	some_config.init(config_yaml);
+
+	ASSERT_EQ(expected_value, some_config.get());
+}
+
+TEST_F(type_config_test, key_takes_priority_in_shallower_yaml)
+{
+	test_helpers::scoped_temp_file primary_config;
+	{
+		std::ofstream out(primary_config.get_filename() .c_str());
+
+		out << R"(
+primary_key1: 22
+)";
+	}
+	test_helpers::scoped_temp_file secondary_config;
+	{
+		std::ofstream out(secondary_config.get_filename() .c_str());
+
+		out << R"(
+primary_key1: 99
+)";
+	}
+
+	const std::string primary_key = "primary_key1";
+	const std::string alternate_key = "alternate_key1";
+	const int default_value = 10;
+	const int expected_value = 22;
+
+	type_config<int> some_config(default_value,
+				     DEFAULT_DESCRIPTION,
+				     primary_key);
+	some_config.alternate_key(alternate_key);
+
+	yaml_configuration config_yaml({ primary_config.get_filename(),
+					 secondary_config.get_filename() });
+	ASSERT_TRUE(config_yaml.errors().empty());
+
+	some_config.init(config_yaml);
+
+	ASSERT_EQ(expected_value, some_config.get());
+}
+
+#define MULTI_YAML_TEST_EXPECT_22                                            \
+type_config<int> some_config(10,                                               \
+			     DEFAULT_DESCRIPTION,                              \
+			     "primary_key1");                                  \
+some_config.alternate_key("alternate_key1", "alternate_subkey1");              \
+                                                                               \
+yaml_configuration config_yaml({ primary_config.get_filename(),                \
+	secondary_config.get_filename(),                                       \
+	tertiary_config.get_filename()});                                      \
+ASSERT_TRUE(config_yaml.errors() .empty());                                    \
+                                                                               \
+some_config.init(config_yaml);                                                 \
+ASSERT_EQ(22, some_config.get() )
+
+TEST_F(type_config_test, multiple_yaml_1)
+{
+	test_helpers::scoped_temp_file primary_config;
+	{
+		std::ofstream out(primary_config.get_filename() .c_str());
+
+		out << R"(
+unknown_key: 99
+)";
+	}
+	test_helpers::scoped_temp_file secondary_config;
+	{
+		std::ofstream out(secondary_config.get_filename() .c_str());
+
+		out << R"(
+alternate_key1:
+  alternate_subkey1: 22
+)";
+	}
+	test_helpers::scoped_temp_file tertiary_config;
+	{
+		std::ofstream out(tertiary_config.get_filename().c_str());
+
+		out << R"(
+primary_key1: 77
+)";
+	}
+
+	MULTI_YAML_TEST_EXPECT_22;
+}
+
+TEST_F(type_config_test, multiple_yaml_2)
+{
+	test_helpers::scoped_temp_file primary_config;
+	{
+		std::ofstream out(primary_config.get_filename() .c_str());
+
+		out << R"(
+alternate_key1:
+  alternate_subkey2: 23
+)";
+	}
+	test_helpers::scoped_temp_file secondary_config;
+	{
+		std::ofstream out(secondary_config.get_filename() .c_str());
+
+		out << R"(
+alternate_key1:
+  alternate_subkey1: 22
+)";
+	}
+	test_helpers::scoped_temp_file tertiary_config;
+	{
+		std::ofstream out(tertiary_config.get_filename().c_str());
+
+		out << R"(
+primary_key1: 77
+)";
+	}
+
+	MULTI_YAML_TEST_EXPECT_22;
+}
+
+TEST_F(type_config_test, multiple_yaml_3)
+{
+	test_helpers::scoped_temp_file primary_config;
+	{
+		std::ofstream out(primary_config.get_filename().c_str());
+
+		out << R"(
+primary_key1: 22
+)";
+	}
+	test_helpers::scoped_temp_file secondary_config;
+	{
+		std::ofstream out(secondary_config.get_filename().c_str());
+
+		out << R"(
+alternate_key1:
+  alternate_subkey1: 88
+)";
+	}
+	test_helpers::scoped_temp_file tertiary_config;
+	{
+		std::ofstream out(tertiary_config.get_filename().c_str());
+
+		out << R"(
+primary_key1: 77
+)";
+	}
+
+	MULTI_YAML_TEST_EXPECT_22;
+}
+
+TEST_F(type_config_test, multiple_yaml_4)
+{
+	test_helpers::scoped_temp_file primary_config;
+	{
+		std::ofstream out(primary_config.get_filename().c_str());
+
+		out << R"(
+alternate_key1:
+  alternate_subkey1: 22
+)";
+	}
+	test_helpers::scoped_temp_file secondary_config;
+	{
+		std::ofstream out(secondary_config.get_filename().c_str());
+
+		out << R"(
+alternate_key1:
+  alternate_subkey1: 44
+)";
+	}
+	test_helpers::scoped_temp_file tertiary_config;
+	{
+		std::ofstream out(tertiary_config.get_filename().c_str());
+
+		out << R"(
+primary_key1: 77
+)";
+	}
+
+	MULTI_YAML_TEST_EXPECT_22;
+}
+
+TEST_F(type_config_test, config_has_both_primary_and_alternate_key)
+{
+	test_helpers::scoped_temp_file primary_config;
+	{
+		std::ofstream out(primary_config.get_filename() .c_str());
+
+		out << R"(
+primary_key1: 99
+alternate_key1: 22
+)";
+	}
+	test_helpers::scoped_temp_file secondary_config;
+	{
+		std::ofstream out(secondary_config.get_filename() .c_str());
+
+		out << R"(
+primary_key1: 99
+)";
+	}
+
+	const std::string primary_key = "primary_key1";
+	const std::string alternate_key = "alternate_key1";
+	const int default_value = 10;
+
+	type_config<int> some_config(default_value,
+				     DEFAULT_DESCRIPTION,
+				     primary_key);
+	some_config.alternate_key(alternate_key);
+
+	yaml_configuration config_yaml({ primary_config.get_filename(),
+					 secondary_config.get_filename() });
+	ASSERT_EQ(0, config_yaml.errors().size());
+
+	EXPECT_THROW(some_config.init(config_yaml), yaml_configuration_exception);
+}
+
 TEST_F(type_config_test, builder_defaults)
 {
 	const std::string key = "int_12345";

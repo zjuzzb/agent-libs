@@ -34,7 +34,6 @@ class yaml_configuration;
  *
  * OR if using the optional fields (like min and max)
  *
- *
  * type_config<uint64_t>::ptr  my_config_variable_name =
  *      type_config_builder<int>(some_default_value, "key_name_in_yaml")
  *          .min(10).max(50).get();
@@ -125,13 +124,13 @@ public:
 	 */
 	const std::string& get_key_string() const;
 
-	/** Returns the key for this configuration_unit. */
+	/** Returns the primary key for this configuration_unit. */
 	const std::string& get_key() const;
 
-	/** Returns the subkey for this configuration_unit. */
+	/** Returns the primary subkey for this configuration_unit. */
 	const std::string& get_subkey() const;
 
-	/** Returns the subsubkey for this configuration_unit. */
+	/** Returns the primary subsubkey for this configuration_unit. */
 	const std::string& get_subsubkey() const;
 
 	/** Returns the description for this configuration_unit. */
@@ -142,6 +141,14 @@ public:
 
 	/** Returns whether the value is hidden from logs */
 	bool hidden() const;
+
+	/** Set alternate key; this is useful for legacy key names */
+	void alternate_key(const std::string& key,
+			   const std::string& subkey = std::string(),
+			   const std::string& subsubkey = std::string())
+	{
+		m_keys.push_back(config_key(key, subkey, subsubkey));
+	}
 
 	/** Called after all configuration params have been init'd */
 	virtual void post_init() = 0;
@@ -160,6 +167,43 @@ public:
 	void from_json(const std::string& json);
 
 protected:
+
+	struct config_key
+	{
+		config_key(const std::string& key_value,
+			   const std::string& subkey_value,
+			   const std::string& subsubkey_value) :
+		   key(key_value),
+		   subkey(subkey_value),
+		   subsubkey(subsubkey_value)
+		{
+		}
+
+		std::string to_string() const
+		{
+			if (subkey.empty())
+			{
+				return key;
+			}
+			else if (subsubkey.empty())
+			{
+				return key + "." + subkey;
+			}
+			else
+			{
+				return key + "." + subkey + "." + subsubkey;
+			}
+		}
+
+		const std::string key;
+		const std::string subkey;
+		const std::string subsubkey;
+	};
+	const std::vector<config_key> &keys()
+	{
+		return m_keys;
+	}
+
 	/**
 	 * Returns a string representation for anything that std::to_string() can
 	 * handle.
@@ -235,9 +279,15 @@ protected:
 	}
 
 private:
-	const std::string m_key;
-	const std::string m_subkey;
-	const std::string m_subsubkey;
+	const config_key& primary_key() const
+	{
+		return m_keys[0];
+	}
+
+	// The primary key is kept at index 0 and is populated by the
+	// constructor so it should always exist. Alternate keys, if they exist,
+	// are at later indexes.
+	std::vector<config_key> m_keys;
 	const std::string m_description;
 	std::string m_keystring;
 	bool m_hidden;
@@ -335,9 +385,9 @@ public: // other stuff
 	const data_type& configured() const;
 
 	/**
-	 * sets a new default value. While it shouldn't be common,
-	 * is required for a very small number of configs that have their default
-	 * value determined dynamically.
+	 * Sets a new default value. While it shouldn't be common, is required for a
+	 * very small number of configs that have their default value determined
+	 * dynamically.
 	 */
 	void set_default(const data_type& value);
 
@@ -364,10 +414,16 @@ public: // other stuff
 	bool mutable_only_in_internal_build() { return m_mutable_only_in_internal; }
 
 	/**
-	 * Set the post_init delegate. This allows the configuration
-	 * value to be changed after all init functions are called for
-	 * all configuration parameters. This is useful if one value
-	 * depends on another.
+	 *
+	 *
+	 * Set the post_init delegate. This allows the configuration value to be
+	 * changed after all init functions are called for all configuration
+	 * parameters. This is useful if one config depends on another. Example
+	 * usage:
+	 * .post_init([](type_config<int>& config)
+	 * {
+	 *	config.get() = c_other_config.configured() == 0 ? 0 : config.get();
+	 * });
 	 */
 	using post_init_delegate = std::function<void(type_config<data_type> &)>;
 	void post_init(const post_init_delegate& value);
@@ -381,6 +437,10 @@ private:
 	data_type m_default;
 	data_type m_data;
 
+	/**
+	 * The value configured by the user. This can vary from m_data when
+	 * m_data is overriden in the post_init delegate.
+	 */
 	data_type m_configured;
 	bool m_mutable_only_in_internal;
 
@@ -434,6 +494,15 @@ public:
 	type_config_builder& hidden()
 	{
 		m_type_config->hidden(true);
+		return *this;
+	}
+
+	/** Set alternate key; this is useful for legacy key names */
+	void alternate_key(const std::string& key,
+			   const std::string& subkey = std::string(),
+			   const std::string& subsubkey = std::string())
+	{
+		m_type_config->alternate_key(key, subkey, subsubkey);
 		return *this;
 	}
 

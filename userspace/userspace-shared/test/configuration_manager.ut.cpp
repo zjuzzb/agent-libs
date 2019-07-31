@@ -57,7 +57,7 @@ TEST_F(configuration_manager_test, instance_returns_same_object)
 TEST_F(configuration_manager_test, register_config)
 {
 	type_config<bool> c(true, "description", "key");
-	ASSERT_TRUE(configuration_manager::instance().is_registered(&c));
+	ASSERT_TRUE(configuration_manager::instance().is_registered(c.get_key_string()));
 }
 
 /**
@@ -66,14 +66,13 @@ TEST_F(configuration_manager_test, register_config)
  */
 TEST_F(configuration_manager_test, deregister_config)
 {
-	type_config<bool>* c_p;
-
+	std::string key_string;
 	{
 		type_config<bool> c(true, "description", "key");
-		c_p = &c;
+		key_string = c.get_key_string();
 	}
 
-	ASSERT_FALSE(configuration_manager::instance().is_registered(c_p));
+	ASSERT_FALSE(configuration_manager::instance().is_registered(key_string));
 }
 
 /**
@@ -228,6 +227,7 @@ TEST_F(configuration_manager_test, to_yaml)
 	type_config<bool> c1(true, "description", "key1", "subkey1A");
 	type_config<uint16_t> c2(2, "description", "key1", "subkey1B", "subsubkey1BA");
 	type_config<uint16_t> c3(3, "description", "key1", "subkey1B", "subsubkey1BB");
+	c3.alternate_key("alternate_keys_dont_go_in_output");
 	type_config<uint16_t> c4(4, "description", "key3");
 
 	std::string expected = R"(

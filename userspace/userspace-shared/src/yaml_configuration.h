@@ -185,20 +185,23 @@ public:
 	}
 
 	/**
-	* Get a scalar value from config, like:
-	* customerid: "578c60dc-c8b2-11e4-a615-6c4008aec9fe"
+	* Get a scalar value and return the how far down the list of configs that we
+	* needed to search to find the key.
+	* Returns 0 if found in the first level, 1 for the second level, etc.
 	*/
 	template<typename T>
-	T get_scalar(const std::string& key, const T& default_value) const
+	int get_scalar_depth(const std::string& key, T &value) const
 	{
-		for(const auto& root : m_roots)
+		for(auto itr = m_roots.begin(); itr != m_roots.end(); ++itr)
 		{
+
 			try
 			{
-				auto node = root[key];
+				auto node = (*itr)[key];
 				if (node.IsDefined())
 				{
-					return node.as<T>();
+					value = node.as<T>();
+					return std::distance(m_roots.begin(), itr);
 				}
 			} catch (const YAML::BadConversion& ex)
 			{
@@ -206,7 +209,51 @@ public:
 			}
 		}
 
-		return default_value;
+		return -1;
+	}
+
+	/**
+	* Get a scalar value from config, like:
+	* customerid: "578c60dc-c8b2-11e4-a615-6c4008aec9fe"
+	*/
+	template<typename T>
+	T get_scalar(const std::string& key, const T &default_value) const
+	{
+		T value;
+		if(get_scalar_depth(key, value) < 0)
+		{
+			return default_value;
+		}
+
+		return value;
+	}
+
+	/**
+	* Get a scalar value and return the how far down the list of configs that we
+	* needed to search to find the key and the subkey.
+	* Returns 0 if found in the first level, 1 for the second level, etc.
+	*/
+	template<typename T>
+	int get_scalar_depth(const std::string& key, const std::string& subkey, T& value) const
+	{
+		for(auto itr = m_roots.begin(); itr != m_roots.end(); ++itr)
+		{
+			try
+			{
+				auto node = (*itr)[key][subkey];
+				if (node.IsDefined())
+				{
+					value = node.as<T>();
+					return std::distance(m_roots.begin(), itr);
+				}
+			}
+			catch (const YAML::BadConversion& ex)
+			{
+				m_errors.emplace_back(std::string("Config file error at key: ") + key + "." + subkey);
+			}
+		}
+
+		return -1;
 	}
 
 	/**
@@ -220,14 +267,32 @@ public:
 	template<typename T>
 	T get_scalar(const std::string& key, const std::string& subkey, const T& default_value) const
 	{
-		for(const auto& root : m_roots)
+		T value;
+		if (get_scalar_depth(key, subkey, value) < 0)
+		{
+			return default_value;
+		}
+
+		return value;
+	}
+
+	/**
+	* Get a scalar value and return the how far down the list of configs that we
+	* needed to search to find the key, the subkey and the subsubkey.
+	* Returns 0 if found in the first level, 1 for the second level, etc.
+	*/
+	template<typename T>
+	int get_scalar_depth(const std::string& key, const std::string& subkey, const std::string& subsubkey, T& value) const
+	{
+		for(auto itr = m_roots.begin(); itr != m_roots.end(); ++itr)
 		{
 			try
 			{
-				auto node = root[key][subkey];
+				auto node = (*itr)[key][subkey][subsubkey];
 				if (node.IsDefined())
 				{
-					return node.as<T>();
+					value = node.as<T>();
+					return std::distance(m_roots.begin(), itr);
 				}
 			}
 			catch (const YAML::BadConversion& ex)
@@ -236,29 +301,19 @@ public:
 			}
 		}
 
-		return default_value;
+		return -1;
 	}
 
 	template<typename T>
 	T get_scalar(const std::string& key, const std::string& subkey, const std::string& subsubkey, const T& default_value) const
 	{
-		for(const auto& root : m_roots)
+		T value;
+		if (get_scalar_depth(key, subkey, subsubkey, value) < 0)
 		{
-			try
-			{
-				auto node = root[key][subkey][subsubkey];
-				if (node.IsDefined())
-				{
-					return node.as<T>();
-				}
-			}
-			catch (const YAML::BadConversion& ex)
-			{
-				m_errors.emplace_back(std::string("Config file error at key: ") + key + "." + subkey);
-			}
+			return default_value;
 		}
 
-		return default_value;
+		return value;
 	}
 
 	/**

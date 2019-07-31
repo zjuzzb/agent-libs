@@ -15,24 +15,13 @@ configuration_unit::configuration_unit(const std::string& key,
 				       const std::string& subkey,
 				       const std::string& subsubkey,
 				       const std::string& description) :
-	m_key(key),
-	m_subkey(subkey),
-	m_subsubkey(subsubkey),
-	m_description(description),
-	m_hidden(false)
+   m_description(description),
+   m_hidden(false)
 {
-	if (m_subkey.empty())
-	{
-		m_keystring = m_key;
-	}
-	else if (m_subsubkey.empty())
-	{
-		m_keystring = m_key + "." + m_subkey;
-	}
-	else
-	{
-		m_keystring = m_key + "." + m_subkey + "." + m_subsubkey;
-	}
+
+	m_keys.push_back(config_key(key, subkey, subsubkey));
+
+	m_keystring = primary_key().to_string();
 
 	configuration_manager::instance().register_config(this);
 }
@@ -54,17 +43,17 @@ const std::string& configuration_unit::get_key_string() const
 
 const std::string& configuration_unit::get_key() const
 {
-	return m_key;
+	return primary_key().key;
 }
 
 const std::string& configuration_unit::get_subkey() const
 {
-	return m_subkey;
+	return primary_key().subkey;
 }
 
 const std::string& configuration_unit::get_subsubkey() const
 {
-	return m_subsubkey;
+	return primary_key().subsubkey;
 }
 
 const std::string& configuration_unit::get_description() const

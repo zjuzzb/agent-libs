@@ -83,9 +83,9 @@ void configuration_manager::deregister_config(configuration_unit* config)
 	m_config_map.erase(config->get_key_string());
 }
 
-bool configuration_manager::is_registered(configuration_unit* config)
+bool configuration_manager::is_registered(const std::string& key_string)
 {
-	return m_config_map.find(config->get_key_string()) != m_config_map.end();
+	return m_config_map.find(key_string) != m_config_map.end();
 }
 
 std::string configuration_manager::to_yaml() const
@@ -155,6 +155,7 @@ std::string configuration_manager::to_json() const
 			LOG_WARNING("Failed to parse '%s' into JSON",
 			            itr.second->to_json().c_str());
 		}
+
 	}
 
 	result["configs"] = config_list;
@@ -183,20 +184,20 @@ const configuration_unit* configuration_manager::get_configuration_unit(
 }
 
 configuration_unit* configuration_manager::get_mutable_configuration_unit(
-		const std::string& name)
+   const std::string& name)
 {
-	configuration_unit* config = nullptr;
+	configuration_unit *config = nullptr;
 	config_map_t::const_iterator itr = m_config_map.find(name);
-	
-	if(itr != m_config_map.end())
+
+	if (itr != m_config_map.end())
 	{
 		config = itr->second;
 	}
 
-	if(config == nullptr)
+	if (config == nullptr)
 	{
 		LOG_WARNING("config \"%s\" should not be nullptr",
-		            name.c_str());
+			    name.c_str());
 	}
 
 	return config;

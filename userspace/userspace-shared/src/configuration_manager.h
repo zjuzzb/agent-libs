@@ -90,9 +90,10 @@ public:
 	void deregister_config(configuration_unit* config);
 
 	/**
-	 * Returns true if the given config is registered, false otherwise.
+	 * Returns true if a config with the given key is registered, false
+	 * otherwise. This only works for the primary key.
 	 */
-	bool is_registered(configuration_unit *config);
+	bool is_registered(const std::string &key_string);
 
 	/**
 	 * Returns a read-only pointer to the configuration_unit with the given
