@@ -546,25 +546,28 @@ void sinsp_analyzer::on_capture_start()
 
 			if (m_configuration->get_go_k8s_user_events())
 			{
-				if (!m_k8s_user_event_handler) {
-					m_k8s_user_event_handler = new k8s_user_event_message_handler(K8S_EVENTS_POLL_INTERVAL_NS,
-						m_configuration->get_root_dir(), m_configuration->get_add_event_scopes() ? infra_state() : nullptr);
-				}
-
-				glogf("initializing k8s event message handler");
-				m_k8s_user_event_handler->set_machine_id(m_configuration->get_machine_id());
-				m_k8s_user_event_handler->set_user_event_queue(m_user_event_queue);
-
+				init_k8s_user_event_handler();
 
 				m_k8s_user_event_handler->subscribe(infrastructure_state::c_k8s_timeout_s.get(),
 								    m_configuration->get_k8s_event_filter());
 				glogf("k8s event message handler is now subscribed to the k8s APi server");
 			}
-
 		}
 	}
 
 #endif
+}
+
+void sinsp_analyzer::init_k8s_user_event_handler()
+{
+	if (!m_k8s_user_event_handler) {
+		m_k8s_user_event_handler = new k8s_user_event_message_handler(K8S_EVENTS_POLL_INTERVAL_NS,
+			m_root_dir, m_configuration->get_add_event_scopes() ? infra_state() : nullptr);
+	}
+
+	glogf("initializing k8s event message handler");
+	m_k8s_user_event_handler->set_machine_id(m_configuration->get_machine_id());
+	m_k8s_user_event_handler->set_user_event_queue(m_user_event_queue);
 }
 
 void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
@@ -4106,15 +4109,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			    !k8s_url.empty() &&
 			    !m_k8s_user_event_handler) {
 
-				m_k8s_user_event_handler = new k8s_user_event_message_handler(K8S_EVENTS_POLL_INTERVAL_NS,
-										    m_configuration->get_root_dir(), infra_state());
-
-				glogf("initializing k8s event message handler");
-				m_k8s_user_event_handler->set_machine_id(m_configuration->get_machine_id());
-				m_k8s_user_event_handler->set_user_event_queue(m_user_event_queue);
+				init_k8s_user_event_handler();
 				m_k8s_user_event_handler->subscribe(infrastructure_state::c_k8s_timeout_s.get(),
 								    m_configuration->get_k8s_event_filter());
-
 				glogf("k8s event message handler is now subscribed to the k8s APi server");
 			}
 

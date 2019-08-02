@@ -182,9 +182,6 @@ public:
 	void set_add_event_scopes(bool);
 	bool get_add_event_scopes() const;
 
-	void set_root_dir(std::string&);
-	const std::string& get_root_dir() const;
-
 	void set_dragent_cpu_profile_enabled(bool enabled);
 	void set_dragent_profile_time_seconds(uint32_t seconds);
 	void set_dragent_total_profiles(uint32_t count);
@@ -282,7 +279,6 @@ private:
 	bool m_go_k8s_user_events = false;
 	bool m_go_k8s_debug_events = false;
 	bool m_add_event_scopes = false;
-	std::string m_root_dir = "";
 
 	std::string m_log_dir;
 

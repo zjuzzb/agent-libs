@@ -478,6 +478,8 @@ public:
 		}
 	}
 
+	void init_k8s_user_event_handler();
+
 	void set_simpledriver_mode()
 	{
 		m_simpledriver_enabled = true;
