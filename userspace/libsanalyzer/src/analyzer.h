@@ -829,7 +829,15 @@ public:
 	void coalesce_unemitted_stats(const std::vector<std::string>& emitted_containers);
 
 	/**
-	 * sets the metrics dir for serializing to a file
+	 * Accessor for metrics
+	 */
+	const draiosproto::metrics* metrics()
+	{
+		return m_metrics;
+	}
+
+	/**
+	 * Sets the metrics dir for serializing to a file
 	 */
 	void set_metrics_dir(const std::string& metrics_dir);
 
@@ -1328,7 +1336,7 @@ VISIBILITY_PRIVATE
 	 */
 	bool m_dump_infrastructure_state_on_next_flush = false;
 
-	audit_tap* m_tap;
+	std::shared_ptr<audit_tap> m_tap;
 
 	/**
 	 * Kill flag.  If this is set to true, the agent will restart.

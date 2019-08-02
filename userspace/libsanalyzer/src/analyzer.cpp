@@ -286,7 +286,7 @@ sinsp_analyzer::~sinsp_analyzer()
 	if(m_k8s_user_event_handler)
 	{
 		delete m_k8s_user_event_handler;
-	}	
+	}
 }
 
 /// calculate analyzer thread CPU usage in percent
@@ -7000,7 +7000,7 @@ uint64_t sinsp_analyzer::flush_tracer_timeout()
 
 void sinsp_analyzer::enable_audit_tap(bool emit_local_connections)
 {
-	m_tap = new audit_tap(&m_env_hash_config,
+	m_tap = std::make_shared<audit_tap>(&m_env_hash_config,
 	                      m_configuration->get_machine_id(),
 	                      emit_local_connections);
 	m_threadtable_listener->set_audit_tap(m_tap);
@@ -7038,7 +7038,6 @@ bool sinsp_analyzer::should_terminate() const
 {
 	return m_die;
 }
-
 
 size_t sinsp_analyzer::num_server_programs() const
 {

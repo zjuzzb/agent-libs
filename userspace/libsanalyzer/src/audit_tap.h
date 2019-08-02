@@ -24,6 +24,7 @@ class audit_tap {
 public:
 
 	audit_tap(env_hash_config *config, const std::string& machine_id, bool emit_local_connections);
+	~audit_tap();
 
 	/**
 	 * Called when the process exits. This will all special process exit events
@@ -68,7 +69,7 @@ private:
 	std::string m_hostname;
 	bool m_emit_local_connections;
 
-	tap::AuditLog* m_event_batch;
+	tap::AuditLog *m_event_batch;
 	std::unordered_set<uint64_t> m_pids;
 	std::unordered_set<uint64_t> m_unsent_envs;
 	std::unordered_map<env_hash, uint64_t> m_sent_envs;

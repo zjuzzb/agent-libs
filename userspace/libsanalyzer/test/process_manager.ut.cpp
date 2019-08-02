@@ -40,4 +40,6 @@ app_checks_always_send: true
 	matches = my_manager.get_flush_filter().matches(NULL, &tinfo, NULL, NULL, &generic_match, NULL);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(generic_match, false);
+
+	delete tinfo.m_ainfo;
 }

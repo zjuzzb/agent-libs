@@ -76,6 +76,11 @@ target_link_libraries(unit-test-libsanalyzer
 target_compile_definitions(unit-test-libsanalyzer PUBLIC SYSDIG_TEST)
 
 file(
+	COPY valgrind/valgrind.suppressions
+	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+file(
 	COPY valgrind/helgrind.suppressions
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
 )
@@ -93,13 +98,13 @@ else()
 	if(CMAKE_BUILD_TYPE STREQUAL "DebugInternal")
 		add_custom_target(run-unit-test-libsanalyzer
 			DEPENDS unit-test-libsanalyzer
-			COMMAND valgrind --error-exitcode=1 --track-origins=yes --gen-suppressions=all  ./unit-test-libsanalyzer
+			COMMAND valgrind --error-exitcode=1 --suppressions=./valgrind.suppressions --track-origins=yes --gen-suppressions=all  ./unit-test-libsanalyzer
 			COMMAND valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind --soname-synonyms=somalloc=tcmalloc ./unit-test-libsanalyzer
 		)
 	else()
 		add_custom_target(run-unit-test-libsanalyzer
 			DEPENDS unit-test-libsanalyzer
-			COMMAND valgrind --error-exitcode=1 --track-origins=yes --gen-suppressions=all ./unit-test-libsanalyzer
+			COMMAND valgrind --error-exitcode=1 --suppressions=./valgrind.suppressions --track-origins=yes --gen-suppressions=all ./unit-test-libsanalyzer
 		)
 	endif()
 endif()

@@ -662,7 +662,7 @@ void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* const 
 	}
 }
 
-void analyzer_threadtable_listener::set_audit_tap(audit_tap* const tap)
+void analyzer_threadtable_listener::set_audit_tap(const std::shared_ptr<audit_tap> &tap)
 {
 	m_tap = tap;
 }

@@ -42,6 +42,11 @@ audit_tap::audit_tap(env_hash_config *config, const std::string &machine_id, boo
 	clear();
 }
 
+audit_tap::~audit_tap()
+{
+	delete m_event_batch;
+}
+
 void audit_tap::on_exit(uint64_t pid)
 {
 	if(m_pids.erase(pid))

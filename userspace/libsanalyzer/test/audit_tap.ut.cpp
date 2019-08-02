@@ -43,6 +43,7 @@ void add_connection(sinsp &inspector,
 	sinsp_ipv4_connection_manager mgr(&inspector);
 
 	_ipv4tuple ipv4;
+	memset(ipv4.m_all, 0, sizeof ipv4.m_all);
 	ipv4.m_fields.m_sip = 0x12345678;
 	ipv4.m_fields.m_sport = 888;
 	ipv4.m_fields.m_dip = 0x44000044;
@@ -86,7 +87,7 @@ void add_connection(sinsp &inspector,
 // a small piece of code. This can be improved by pulling apart analyzer,
 // analyzer_thread, sinsp_threadinfo, sinsp_ipv4_connection_manager and
 // audit_tap.
-TEST(audit_tap_test, DISABLED_basic)
+TEST(audit_tap_test, basic)
 {
 	const int64_t expected_pid = 4;
 	const std::string expected_name = "/usr/bin/gcc";
@@ -94,31 +95,31 @@ TEST(audit_tap_test, DISABLED_basic)
 	const std::string expected_arg_2 = "a.out";
 	const std::string expected_arg_3 = "hello_world.cpp";
 
-	sinsp_mock inspector;
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
 	// The ipv4_connection_manager relies on the circular dependency to the
-	// analyzer so we need to set up inspector.m_analyzer to add connections.
+	// analyzer so we need to set up inspector->m_analyzer to add connections.
 	// Also audit_tap uses tinfo->m_ainfo which is collected by the
 	// analyzer_thread.
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(&inspector, "/" /*root dir*/, int_metrics);
+	sinsp_analyzer analyzer(inspector.get(), "/" /*root dir*/, int_metrics);
 	// For this test, we don't use the audit_tap in the analyzer, but if
 	// we don't enable it the the ipv4_connection_manager won't record the
 	// correct data.
 	analyzer.enable_audit_tap(true /*emit local connections*/);
-	inspector.m_analyzer = &analyzer;
+	inspector->m_analyzer = &analyzer;
 
 	// Build some threads that we'll add connections to.
-	(void)inspector.build_thread().commit();
-	const sinsp_threadinfo *thread1 = inspector.build_thread()
+	(void)inspector->build_thread().commit();
+	const sinsp_threadinfo *thread1 = inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
 		.exe(expected_name)
 		.arg(expected_arg_1)
 		.arg(expected_arg_2)
 		.arg(expected_arg_3).commit();
-	(void)inspector.build_thread().pid(expected_pid).tid(1234).commit();
-	(void)inspector.build_thread().commit();
-	inspector.open();
+	(void)inspector->build_thread().pid(expected_pid).tid(1234).commit();
+	(void)inspector->build_thread().commit();
+	inspector->open();
 
 	// Sanity checks
 	ASSERT_EQ(expected_pid, thread1->m_pid);
@@ -133,7 +134,7 @@ TEST(audit_tap_test, DISABLED_basic)
 
 
 	const int TRANSITION_COUNT = 5;
-	add_connection(inspector, tap, thread1, TRANSITION_COUNT);
+	add_connection(*inspector, tap, thread1, TRANSITION_COUNT);
 
 	const tap::AuditLog *log = tap.get_events();
 
@@ -148,6 +149,10 @@ TEST(audit_tap_test, DISABLED_basic)
 
 	// Validate the connectionevents
 	ASSERT_EQ(TRANSITION_COUNT + 1, log->connectionevents_size());
+
+	// For legacy reasons, the inspector must be deleted before the
+	// analyzer.
+	inspector.reset();
 }
 
 TEST(audit_tap_test, max_command_arg_config_default)
@@ -168,32 +173,35 @@ TEST(audit_tap_test, max_command_arg_configured)
 									       \
 	const std::string arg_150(150, 'x');                                   \
 									       \
-	sinsp_mock inspector;                                                  \
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);                 \
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();\
-	sinsp_analyzer analyzer(& inspector, "/" /*root dir*/, int_metrics);   \
+	sinsp_analyzer analyzer(inspector.get(), "/" /*root dir*/, int_metrics);\
 	analyzer.enable_audit_tap(true /*emit local connections*/);            \
-	inspector.m_analyzer = &analyzer;                                      \
+	inspector->m_analyzer = &analyzer;                                     \
 									       \
-	const sinsp_threadinfo *thread1 = inspector.build_thread()             \
+	const sinsp_threadinfo *thread1 = inspector->build_thread()            \
 					  .pid(22)                             \
 					  .comm("dragent")                     \
 					  .arg(arg_150).commit();              \
-	inspector.open();                                                      \
+	inspector->open();                                                     \
 									       \
 	audit_tap tap(default_hash_config(),                                   \
 		      MACHINE_ID_FOR_TEST,                                     \
 		      true /*emit local connections*/);                        \
                                                                                \
-	add_connection(inspector, tap, thread1, 2);                            \
+	add_connection(*inspector, tap, thread1, 2);                           \
                                                                                \
 	const tap::AuditLog *log = tap.get_events();                           \
 	int expected_length = std::min(static_cast<int>(arg_150.length()), __limit);\
 	std::string expected_arg(expected_length, 'x');                        \
 	ASSERT_EQ(expected_arg, log->newprocessevents(0) .commandline(0));     \
+                                                                               \
+	/*delete the inspector before the analyzer*/                           \
+	inspector.reset();                                                     \
 }
 
 
-TEST(audit_tap_test, DISABLED_configurable_command_length)
+TEST(audit_tap_test, configurable_command_length)
 {
    ARG_LENGTH_TEST(10);
    ARG_LENGTH_TEST(99);

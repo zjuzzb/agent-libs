@@ -20,9 +20,7 @@ sinsp_mock::sinsp_mock() :
 
 sinsp_mock::~sinsp_mock()
 {
-	// The listener can be destroyed before sinsp's thread_manager is destroyed
-	// so we disconnect them here to avoid a SEGFAULT.
-	m_thread_manager->set_listener(nullptr);
+
 }
 
 thread_builder sinsp_mock::build_thread()

@@ -131,6 +131,9 @@ private:
 	{
 		m_threadinfo->m_pid = 0;
 		m_threadinfo->m_tid = 0;
+		m_threadinfo->m_uid = 200;
+		m_threadinfo->m_container_id = 201;
+		m_threadinfo->m_clone_ts = sinsp_utils::get_current_time_ns() - 1000000;
 	}
 
 	commit_delegate m_commit;

@@ -11,18 +11,28 @@ using namespace test_helpers;
 
 TEST(analyzer_test, end_to_end_basic)
 {
-	sinsp_mock inspector;
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock());
+
 	// Make some fake events
 	uint64_t ts = 1095379199000000000ULL;
-	inspector.build_event().tid(55).ts(ts).count(5).commit();
-	inspector.build_event().tid(55).ts(ts).count(1000).commit();
-	inspector.build_event().tid(75).count(1).commit();
+	inspector->build_event().tid(55).ts(ts).count(5).commit();
+	inspector->build_event().tid(55).ts(ts).count(1000).commit();
+	inspector->build_event().tid(75).count(1).commit();
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 
-	sinsp_analyzer analyzer(&inspector, "/" /*root dir*/, int_metrics);
-	run_sinsp_with_analyzer(inspector, analyzer);
+	sinsp_analyzer analyzer(inspector.get(), "/" /*root dir*/, int_metrics);
+	run_sinsp_with_analyzer(*inspector, analyzer);
 
-	// TODO bryan NOW WHAT?!?!?
+	draiosproto::metrics metrics = *analyzer.metrics();
+
+ 	ASSERT_EQ(1, metrics.programs_size());
+	ASSERT_EQ(2, metrics.programs(0).pids_size());
+	ASSERT_EQ(55, metrics.programs(0).pids(0));
+	ASSERT_EQ(75, metrics.programs(0).pids(1));
+
+	// For legacy reasons, the inspector must be deleted before the
+	// analyzer.
+	inspector.reset();
 }
 
 class test_helper
