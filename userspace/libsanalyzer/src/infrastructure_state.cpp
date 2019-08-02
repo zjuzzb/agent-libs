@@ -1585,20 +1585,37 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state *state)
 	std::unordered_map<std::string, std::string> job_names;
 	std::unordered_map<std::string, std::string> node_names;
 	std::unordered_map<std::string, std::string> ns_names;
+	std::unordered_map<std::string, draiosproto::k8s_namespace*> namespaces;
+
+	state->set_namespace_count(state->namespaces_size());
+
+	for (auto& ns : *(state->mutable_namespaces()))
+	{
+		ns_names[ns.common().uid()] = ns.common().name();
+		ns.set_deployment_count(0);
+		ns.set_service_count(0);
+		ns.set_replicaset_count(0);
+		ns.set_job_count(0);
+		ns.set_statefulset_count(0);
+		ns.set_resourcequota_count(0);
+		ns.set_persistentvolumeclaim_count(0);
+		ns.set_hpa_count(0);
+		namespaces[ns.common().uid()] = &ns;
+	}
 
 	for (const auto& job : state->jobs())
 	{
 		job_names[job.common().uid()] = job.common().name();
+		auto ns = namespaces.find(job.common().namespace_());
+		if(ns != namespaces.end())
+		{
+			ns->second->set_job_count(ns->second->job_count() + 1);
+		}
 	}
 
 	for (const auto& node : state->nodes())
 	{
 		node_names[node.common().uid()] = node.common().name();
-	}
-
-	for (const auto& ns : state->namespaces())
-	{
-		ns_names[ns.common().uid()] = ns.common().name();
 	}
 
 	for(auto& pod : *(state->mutable_pods()))
@@ -1624,14 +1641,29 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state *state)
 	}
 	for(auto& obj : *(state->mutable_services()))
 	{
+		auto ns = namespaces.find(obj.common().namespace_());
+		if(ns != namespaces.end())
+		{
+			ns->second->set_service_count(ns->second->service_count() + 1);
+		}
 		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
 	}
 	for(auto& obj : *(state->mutable_replica_sets()))
 	{
+		auto ns = namespaces.find(obj.common().namespace_());
+		if(ns != namespaces.end())
+		{
+			ns->second->set_replicaset_count(ns->second->replicaset_count() + 1);
+		}
 		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
 	}
 	for(auto& obj : *(state->mutable_deployments()))
 	{
+		auto ns = namespaces.find(obj.common().namespace_());
+		if(ns != namespaces.end())
+		{
+			ns->second->set_deployment_count(ns->second->deployment_count() + 1);
+		}
 		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
 	}
 	for(auto& obj : *(state->mutable_daemonsets()))
@@ -1640,10 +1672,20 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state *state)
 	}
 	for(auto& obj : *(state->mutable_statefulsets()))
 	{
+		auto ns = namespaces.find(obj.common().namespace_());
+		if(ns != namespaces.end())
+		{
+			ns->second->set_statefulset_count(ns->second->statefulset_count() + 1);
+		}
 		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
 	}
 	for(auto& obj : *(state->mutable_resourcequotas()))
 	{
+		auto ns = namespaces.find(obj.common().namespace_());
+		if(ns != namespaces.end())
+		{
+			ns->second->set_resourcequota_count(ns->second->resourcequota_count() + 1);
+		}
 		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
 	}
 	for(auto& obj : *(state->mutable_persistentvolumes())) // XXX they aren't namespaced
@@ -1652,10 +1694,20 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state *state)
 	}
 	for(auto& obj : *(state->mutable_persistentvolumeclaims()))
 	{
+		auto ns = namespaces.find(obj.common().namespace_());
+		if(ns != namespaces.end())
+		{
+			ns->second->set_persistentvolumeclaim_count(ns->second->persistentvolumeclaim_count() + 1);
+		}
 		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
 	}
 	for(auto& obj : *(state->mutable_hpas()))
 	{
+		auto ns = namespaces.find(obj.common().namespace_());
+		if(ns != namespaces.end())
+		{
+			ns->second->set_hpa_count(ns->second->hpa_count() + 1);
+		}
 		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
 	}
 }
