@@ -7,7 +7,7 @@
  */
 #include "dragent_memdump_logger.h"
 #include "infra_event_sink.h"
-#include "yaml_configuration.h"
+#include "user_event.h"
 #include <gtest.h>
 #include <limits>
 #include <string>
@@ -80,13 +80,15 @@ TEST(dragent_memdump_logger_test, valid_log)
 	test_infra_sink sink;
 	dragent_memdump_logger logger(&sink);
 
-	const std::string message = R"EOS(
-name: "some name"
-description: "some description"
-scope: "some scope"
-	)EOS";
+	sinsp_user_event evt(
+		time(nullptr),
+		"some name",
+		"some description",
+		"some scope",
+		{},
+		sinsp_user_event::UNKNOWN_SEVERITY);
 
-	logger.log(source, message);
+	logger.log(source, evt);
 
 	ASSERT_NE(sink.m_ts, test_infra_sink::DEFAULT_UINT_VALUE);
 	ASSERT_EQ(0, sink.m_tid);
@@ -97,61 +99,6 @@ scope: "some scope"
 }
 
 /**
- * Ensure that if the name is missing from the log, the dragent_memdump_logger
- * throws a yaml_configuration_exception.
- */
-TEST(dragent_memdump_logger_test, log_fails_if_name_is_missing)
-{
-	test_infra_sink sink;
-	dragent_memdump_logger logger(&sink);
-
-	const std::string message = R"EOS(
-description: "some description"
-scope: "some scope"
-	)EOS";
-
-	ASSERT_THROW(logger.log("source", message), yaml_configuration_exception);
-}
-
-/**
- * Ensure that if the description is missing from the log, the 
- * dragent_memdump_logger fills in an empty description.
- */
-TEST(dragent_memdump_logger_test, missing_description_gets_empty_string)
-{
-	test_infra_sink sink;
-	dragent_memdump_logger logger(&sink);
-
-	const std::string message = R"EOS(
-name: "some name"
-scope: "some scope"
-	)EOS";
-
-	logger.log("source", message);
-
-	ASSERT_EQ("", sink.m_description);
-}
-
-/**
- * Ensure that if the scope is missing from the log, the dragent_memdump_logger
- * fills in an empty description.
- */
-TEST(dragent_memdump_logger_test, missing_scope_gets_empty_string)
-{
-	test_infra_sink sink;
-	dragent_memdump_logger logger(&sink);
-
-	const std::string message = R"EOS(
-name: "some name"
-description: "some description"
-	)EOS";
-
-	logger.log("source", message);
-
-	ASSERT_EQ("", sink.m_scope);
-}
-
-/**
  * Ensure that if the infra_event_sink given to the dragent_memdump_logger
  * is nullptr, logs are silently dropped.
  */
@@ -159,12 +106,14 @@ TEST(dragent_memdump_logger_test, null_sink_does_nothing)
 {
 	dragent_memdump_logger logger(nullptr);
 
-	const std::string message = R"EOS(
-name: "some name"
-description: "some description"
-scope: "some scope"
-	)EOS";
+	sinsp_user_event evt(
+		time(nullptr),
+		"some name",
+		"some description",
+		"some scope",
+		{},
+		sinsp_user_event::UNKNOWN_SEVERITY);
 
 	// This shouldn't crash the program :)
-	ASSERT_NO_FATAL_FAILURE(logger.log("source", message));
+	ASSERT_NO_FATAL_FAILURE(logger.log("source", evt));
 }

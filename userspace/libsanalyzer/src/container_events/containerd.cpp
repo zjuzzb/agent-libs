@@ -262,14 +262,19 @@ void containerd_events::emit_event(user_event_logger::severity severity, uint64_
 	sinsp_user_event::tag_map_t tags;
 	tags["source"] = "containerd";
 
-	std::string evt = sinsp_user_event::to_string(
-		ts, std::move(name), std::move(desc), std::move(scope), std::move(tags));
+	auto evt = sinsp_user_event(
+		ts,
+		std::move(name),
+		std::move(desc),
+		std::move(scope.get_ref()),
+		std::move(tags),
+		severity);
 
 	user_event_logger::log(evt, severity);
 
 	if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 	{
-		g_logger.log("CRI EVENT: scheduled for sending\n" + evt, sinsp_logger::SEV_TRACE);
+		g_logger.log("CRI EVENT: scheduled for sending\n" + evt.to_string(), sinsp_logger::SEV_TRACE);
 	}
 }
 

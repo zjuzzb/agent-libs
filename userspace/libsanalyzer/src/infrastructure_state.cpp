@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cinttypes>
 
 #include "user_event_logger.h"
 #ifndef CYGWING_AGENT
@@ -545,14 +546,16 @@ void infrastructure_state::k8s_generate_user_event(const bool success)
 		event_desc += " (" + config_info + ")";
 	}
 
-	string event_str = sinsp_user_event::to_string(
-											now,
-											std::move(event_name),
-											std::move(event_desc),
-											std::move(scope),
-											std::move(event_tags));
-	g_logger.log("Logging user event: " + event_str, sinsp_logger::SEV_DEBUG);
-	user_event_logger::log(event_str, event_sev);
+	auto evt = sinsp_user_event(
+		now,
+		std::move(event_name),
+		std::move(event_desc),
+		std::move(scope.get_ref()),
+		std::move(event_tags),
+		event_sev);
+
+	g_logger.log("Logging user event: " + evt.to_string(), sinsp_logger::SEV_DEBUG);
+	user_event_logger::log(evt, event_sev);
 }
 
 void infrastructure_state::init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size)

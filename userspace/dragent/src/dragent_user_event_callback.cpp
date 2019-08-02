@@ -7,9 +7,9 @@
  */
 #include "dragent_user_event_callback.h"
 #include "common_logger.h"
-#include "token_bucket.h"
 #include "user_event_logger.h"
 #include <Poco/Logger.h>
+#include <yaml-cpp/yaml.h>
 
 dragent_user_event_callback::dragent_user_event_callback(
 		Poco::Logger& event_logger,
@@ -22,9 +22,11 @@ dragent_user_event_callback::dragent_user_event_callback(
 }
 
 void dragent_user_event_callback::log(
-		std::string&& str,
+		const sinsp_user_event& evt,
 		const user_event_logger::severity severity)
 {
+	std::string str = format_event(evt);
+
 	// For user event severities, only log the event if allowed by
 	// the token bucket.
 	if(!m_token_bucket.claim())
@@ -64,4 +66,34 @@ void dragent_user_event_callback::log(
 		break;
 
 	}
+}
+
+std::string dragent_user_event_callback::format_event(const sinsp_user_event &evt)
+{
+	YAML::Emitter yaml;
+	yaml << YAML::BeginMap;
+	yaml << YAML::Key << "timestamp" << YAML::Value << evt.epoch_time_s();
+	yaml << YAML::Key << "name" << YAML::Value << evt.name();
+	yaml << YAML::Key << "description" << YAML::Value << evt.description();
+	yaml << YAML::Key << "scope" << YAML::Value << evt.scope();
+
+	if(evt.severity() != sinsp_user_event::UNKNOWN_SEVERITY)
+	{
+		yaml << YAML::Key << "priority" << YAML::Value << evt.severity();
+	}
+
+	if(!evt.tags().empty())
+	{
+		yaml << YAML::Key << "tags";
+		yaml << YAML::Value << YAML::BeginMap;
+		for(auto& tag : evt.tags())
+		{
+			yaml << YAML::Key << tag.first << YAML::Value << tag.second;
+		}
+		yaml << YAML::EndMap;
+	}
+
+	std::string yaml_str = yaml.c_str();
+	g_logger.log(yaml_str, sinsp_logger::SEV_DEBUG);
+	return yaml_str;
 }

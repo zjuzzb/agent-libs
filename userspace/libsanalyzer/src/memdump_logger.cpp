@@ -16,7 +16,7 @@ namespace
 class null_callback : public memdump_logger::callback
 {
 public:
-        void log(const std::string& source, const std::string& msg) override
+        void log(const std::string& source, const sinsp_user_event& evt) override
 	{ }
 
         bool is_null() const override { return true; }
@@ -27,9 +27,9 @@ memdump_logger::callback::ptr_t s_callback = std::make_shared<null_callback>();
 } // end namespace
 
 
-void memdump_logger::log(const std::string& source, const std::string& msg)
+void memdump_logger::log(const std::string& source, const sinsp_user_event& evt)
 {
-	s_callback->log(source, msg);
+	s_callback->log(source, evt);
 }
 
 void memdump_logger::register_callback(memdump_logger::callback::ptr_t callback)

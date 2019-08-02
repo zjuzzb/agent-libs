@@ -398,8 +398,14 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 			event_name.insert(0, "Docker ");
 		}
 	}
-	std::string evt = sinsp_user_event::to_string(epoch_time_s, std::move(event_name),
-						std::move(status), std::move(scope), std::move(tags));
+
+	auto evt = sinsp_user_event(
+		epoch_time_s,
+		std::move(event_name),
+		std::move(status),
+		std::move(scope.get_ref()),
+		std::move(tags),
+		severity);
 
 	if(send_to_backend)
 	{
@@ -412,7 +418,7 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 
 			if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 			{
-				g_logger.log("Docker EVENT: scheduled for sending\n" + evt, sinsp_logger::SEV_TRACE);
+				g_logger.log("Docker EVENT: scheduled for sending\n" + evt.to_string(), sinsp_logger::SEV_TRACE);
 			}
 		}
 		else

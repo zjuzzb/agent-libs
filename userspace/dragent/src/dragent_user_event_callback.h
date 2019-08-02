@@ -23,13 +23,15 @@ class dragent_user_event_callback : public user_event_logger::callback
 {
 public:
 	dragent_user_event_callback(Poco::Logger& event_logger,
-	                            const double rate,
-	                            const double max_tokens);
+	                            double rate,
+	                            double max_tokens);
 
-	void log(std::string&& str,
-	         const user_event_logger::severity severity) override;
+	void log(const sinsp_user_event& evt,
+	         user_event_logger::severity severity) override;
 
 private:
+	static std::string format_event(const sinsp_user_event& evt);
+
 	Poco::Logger& m_event_logger;
 	token_bucket m_token_bucket;
 };

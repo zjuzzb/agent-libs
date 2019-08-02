@@ -16,24 +16,22 @@ namespace
 class test_user_event_callback : public user_event_logger::callback
 {
 public:
-	const static std::string DEFAULT_MESSAGE;
 	const static user_event_logger::severity DEFAULT_SEVERITY;
 
 	test_user_event_callback():
-		m_message(DEFAULT_MESSAGE),
+		m_message(nullptr),
 		m_severity(DEFAULT_SEVERITY)
 	{ }
 
-	void log(std::string&& str, user_event_logger::severity sev) override
+	void log(const sinsp_user_event& evt, user_event_logger::severity sev) override
 	{
-		m_message = str;
+		m_message = &evt;
 		m_severity = sev;
 	}
 
-	std::string m_message;
+	const sinsp_user_event* m_message;
 	user_event_logger::severity m_severity;
 };
-const std::string test_user_event_callback::DEFAULT_MESSAGE = "--default--";
 const user_event_logger::severity test_user_event_callback::DEFAULT_SEVERITY = user_event_logger::SEV_EVT_DEBUG;
 
 } // end namespace
@@ -86,14 +84,21 @@ TEST_F(user_event_logger_test, register_nullptr_callback)
  */
 TEST_F(user_event_logger_test, log_to_registered_callback)
 {
+	sinsp_user_event evt(
+		time(nullptr),
+		"some name",
+		"some description",
+		"some scope",
+		{},
+		sinsp_user_event::UNKNOWN_SEVERITY);
+
 	std::shared_ptr<test_user_event_callback> cb = std::make_shared<test_user_event_callback>();
 	user_event_logger::register_callback(cb);
 
-	const std::string message = "hello, world";
 	const user_event_logger::severity severity = user_event_logger::SEV_EVT_ERROR;
 
-	user_event_logger::log(message, severity);
+	user_event_logger::log(evt, severity);
 
-	ASSERT_EQ(message, cb->m_message);
+	ASSERT_EQ(&evt, cb->m_message);
 	ASSERT_EQ(severity, cb->m_severity);
 }

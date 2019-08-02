@@ -3087,14 +3087,15 @@ void sinsp_analyzer::emit_aggregated_connections()
 					event_scope scope;
 					scope.add("host.mac", m_configuration->get_machine_id());
 
-					auto event_str = sinsp_user_event::to_string(
+					auto evt = sinsp_user_event(
 						now,
 						std::move(evt_name),
 						std::move(evt_desc),
-						std::move(scope),
-						{});
+						std::move(scope.get_ref()),
+						{},
+						user_event_logger::SEV_EVT_INFORMATION);
 
-					user_event_logger::log(event_str, user_event_logger::SEV_EVT_INFORMATION);
+					user_event_logger::log(evt, user_event_logger::SEV_EVT_INFORMATION);
 					m_connection_truncate_report_last = (int)now;
 				}
 			}

@@ -1312,12 +1312,16 @@ void dragent_configuration::print_configuration() const
 		LOG_WARNING(os.str());
 		sinsp_user_event::tag_map_t tags;
 		tags["source"] = "dragent";
-		user_event_logger::log(sinsp_user_event::to_string(get_epoch_utc_seconds_now(),
-		                                                   std::string("PercentileLimitExceeded"),
-		                                                   std::string(os.str()),
-		                                                   std::string(),
-		                                                   std::move(tags)),
-		                       user_event_logger::SEV_EVT_WARNING);
+
+		auto evt = sinsp_user_event(
+			get_epoch_utc_seconds_now(),
+			std::string("PercentileLimitExceeded"),
+			std::string(os.str()),
+			std::string(),
+			std::move(tags),
+			user_event_logger::SEV_EVT_WARNING);
+
+		user_event_logger::log(evt, user_event_logger::SEV_EVT_WARNING);
 
 	}
 	LOG_INFO("protocols: " + bool_as_text(m_protocols_enabled));

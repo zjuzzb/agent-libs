@@ -49,14 +49,15 @@ void avoid_block_channel::log(const Poco::Message &message)
 					"disk free=" << buf.f_bsize * buf.f_bfree / 1024 << " kb";
 				std::unordered_map<std::string, std::string> tags{{"source", "dragent"}};
 
-				user_event_logger::log(
-						sinsp_user_event::to_string(
-							get_epoch_utc_seconds_now(),
-							"DragentLoggerError",
-							os.str(),
-							event_scope("host.mac", m_machine_id),
-							move(tags)),
-						user_event_logger::SEV_EVT_ERROR);
+				auto event = sinsp_user_event(
+					get_epoch_utc_seconds_now(),
+					"DragentLoggerError",
+					os.str(),
+					std::move(event_scope("host.mac", m_machine_id).get_ref()),
+					move(tags),
+					user_event_logger::SEV_EVT_ERROR);
+
+				user_event_logger::log(event, user_event_logger::SEV_EVT_ERROR);
 			}
 		}
 	}

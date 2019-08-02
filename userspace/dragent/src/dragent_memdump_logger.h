@@ -31,7 +31,7 @@ public:
 	/**
 	 * Write the given msg from the given source to the memdump log.
 	 */
-	void log(const std::string& source, const std::string& msg) override;
+	void log(const std::string& source, const sinsp_user_event& evt) override;
 
 private:
 	/**

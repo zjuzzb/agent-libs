@@ -256,16 +256,19 @@ void k8s_user_event_message_handler::handle_event(sdc_internal::k8s_user_event *
 		}
 		std::string name = translate_name(evt->reason());
 		std::string message = evt->message();
-		std::string logstr = sinsp_user_event::to_string(ts,
-							    std::move(name),
-							    std::move(message),
-							    std::move(scope),
-							    std::move(tags));
-		glogf(sinsp_logger::SEV_DEBUG,
-			"k8s_user_event: new event update: %s", logstr.c_str());
+		auto severity = (evt->type() == "Warning") ? user_event_logger::SEV_EVT_WARNING : user_event_logger::SEV_EVT_INFORMATION;
+		auto evt = sinsp_user_event(
+			ts,
+			std::move(name),
+			std::move(message),
+			std::move(scope.get_ref()),
+			std::move(tags),
+			severity);
+		auto evt_str = evt.to_string();
+		glogf(sinsp_logger::SEV_DEBUG, "k8s_user_event: new event update: %s", evt_str.c_str());
 
 		// The specifial severities here are picked up by the glooger infrastructure and sent to the right queue
-		user_event_logger::log(logstr, (evt->type() == "Warning") ? user_event_logger::SEV_EVT_WARNING : user_event_logger::SEV_EVT_INFORMATION);
+		user_event_logger::log(evt, severity);
 	} else {
 		glogf(sinsp_logger::SEV_INFO,
 			"k8s_user_event: new event, bad timestamp %ld", evt->last_timestamp());

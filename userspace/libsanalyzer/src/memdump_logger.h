@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include "user_event.h"
 
 namespace memdump_logger
 {
@@ -23,14 +24,14 @@ public:
 
 	virtual ~callback() = default;
 
-	virtual void log(const std::string& source, const std::string& msg) = 0;
+	virtual void log(const std::string& source, const sinsp_user_event& evt) = 0;
 	virtual bool is_null() const { return false; }
 };
 
 /**
  * Write the given msg from the given source to memdump.
  */
-void log(const std::string& source, const std::string& msg);
+void log(const std::string& source, const sinsp_user_event& evt);
 
 /**
  * Register the given callback.  If a callback is already registered, it will
