@@ -1565,6 +1565,9 @@ sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 		m_infrastructure_state->state_of(emitted_containers,
 						 m_metrics->mutable_orchestrator_state()->mutable_groups(),
 						 m_prev_flush_time_ns);
+		check_dump_infrastructure_state(*m_metrics->mutable_orchestrator_state(),
+						"local",
+						m_dump_local_infrastructure_state_on_next_flush);
 	}
 
 	// Check whether this node is a delegate node. If it is then it is
@@ -1584,8 +1587,11 @@ sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 		m_metrics->mutable_global_orchestrator_state()->set_cluster_id(cluster_id);
 		m_metrics->mutable_global_orchestrator_state()->set_cluster_name(cluster_name);
 		// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
-		m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups(), m_prev_flush_time_ns);
-		check_dump_infrastructure_state(*m_metrics->mutable_global_orchestrator_state());
+		m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups(),
+						  m_prev_flush_time_ns);
+		check_dump_infrastructure_state(*m_metrics->mutable_global_orchestrator_state(),
+						"global",
+						m_dump_global_infrastructure_state_on_next_flush);
 	}
 #endif
 }
@@ -5721,15 +5727,18 @@ private:
 	Extractor m_extractor;
 };
 
-void sinsp_analyzer::check_dump_infrastructure_state(const draiosproto::orchestrator_state_t& state)
+void sinsp_analyzer::check_dump_infrastructure_state(const draiosproto::orchestrator_state_t& state,
+						     const std::string& descriptor,
+						     bool& should_dump)
 {
-	if(!m_dump_infrastructure_state_on_next_flush) {
+	if (!should_dump)
+	{
 		return;
 	}
 
- 	m_dump_infrastructure_state_on_next_flush = false;
+	should_dump = false;
 
- 	g_logger.log("Dumping infrastructure state... STARTED", sinsp_logger::SEV_INFO);
+	g_logger.format(sinsp_logger::SEV_INFO, "Dumping %s infrastructure state... STARTED", descriptor.c_str());
 
  	time_t rawtime;
 	struct tm * timeinfo;
@@ -5743,6 +5752,8 @@ void sinsp_analyzer::check_dump_infrastructure_state(const draiosproto::orchestr
 	std::ostringstream oss;
 	oss << m_configuration->get_log_dir() + "/";
 	oss << time_buffer;
+	oss << "_";
+	oss << descriptor;
 	oss << "_orchestrator_state_t.json";
 	const std::string fileName = oss.str();
 
@@ -5756,7 +5767,7 @@ void sinsp_analyzer::check_dump_infrastructure_state(const draiosproto::orchestr
 
  	out.close();
 
- 	g_logger.log("Dumping infrastructure state... COMPLETE", sinsp_logger::SEV_INFO);
+	g_logger.format(sinsp_logger::SEV_INFO, "Dumping %s infrastructure state... COMPLETE", descriptor.c_str());
 }
 
 vector<string>
@@ -7006,7 +7017,8 @@ void sinsp_analyzer::enable_audit_tap(bool emit_local_connections)
 void sinsp_analyzer::dump_infrastructure_state_on_next_flush()
 {
 	g_logger.log("Will dump infrastructure state on next flush", sinsp_logger::SEV_INFO);
-	m_dump_infrastructure_state_on_next_flush = true;
+	m_dump_local_infrastructure_state_on_next_flush = true;
+	m_dump_global_infrastructure_state_on_next_flush = true;
 }
 
 void sinsp_analyzer::incr_command_lines_category(draiosproto::command_category cat, uint64_t delta)

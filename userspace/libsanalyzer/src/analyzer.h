@@ -945,7 +945,9 @@ VISIBILITY_PRIVATE
 					     const std::vector<std::string>& emitted_containers);
 	void clean_containers(const analyzer_emitter::progtable_by_container_t&);
 
-	void check_dump_infrastructure_state(const draiosproto::orchestrator_state_t& state);
+	void check_dump_infrastructure_state(const draiosproto::orchestrator_state_t& state,
+					     const std::string& descriptor,
+					     bool& should_dump);
 
 	// deprecated in favor of smart container filtering
 	std::vector<std::string> emit_containers_deprecated(const analyzer_emitter::progtable_by_container_t& active_containers,
@@ -1332,11 +1334,16 @@ VISIBILITY_PRIVATE
 	uint16_t m_flushes_since_k8_cluster_flush = 0;
 
 	/**
-	 * Set to true to dump the infrastructure state to a file on
-	 * next flush. This is expected to be called from signal handler
-	 * so it is not atomic.
+	 * Set to true to dump the local infrastructure state to a file on
+	 * next flush.
 	 */
-	bool m_dump_infrastructure_state_on_next_flush = false;
+	bool m_dump_local_infrastructure_state_on_next_flush = false;
+
+	/**
+	 * Set to true to dump the global infrastructure state to a file on
+	 * next flush.
+	 */
+	bool m_dump_global_infrastructure_state_on_next_flush = false;
 
 	std::shared_ptr<audit_tap> m_tap;
 
