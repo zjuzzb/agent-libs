@@ -59,9 +59,10 @@ except KeyError:
     SYSDIG_HOST_ROOT = ""
 
 # Loading this now to ensure we have it before potential namespace change
-_LIBNSS_DNS = ctypes.CDLL('libnss_dns.so.2')
-_LIBNSS_FILES = ctypes.CDLL('libnss_files.so.2')
-_LIBC = ctypes.CDLL('libc.so.6', use_errno=True)
+import pwd; pwd.getpwnam('root')
+
+# load libc from None
+_LIBC = ctypes.CDLL(None, use_errno=True)
 __NR_setns = 308
 
 # This handler is triggered when sdchecks has stalled
