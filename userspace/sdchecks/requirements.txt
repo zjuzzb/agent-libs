@@ -3,7 +3,24 @@ ntplib==0.3.3
 # note: simplejson is used in many checks to inteface APIs
 # This library bundles a .so dependency but does not depend
 # on python version so we install it here
-simplejson==3.6.5
+simplejson==3.16.0
+
+# used by many appchecks
+requests==2.22.0
+
+# checks.d/docker.py
+# docker-py pulls in requests
+docker-py==1.10.6
+
+# sdchecks.py
+sysdig-tracers==0.1.2
+
+# checks.d/network.py
+psutil==5.6.2
+
+pyopenssl==19.0.0
+netifaces==0.10.9
+posix_ipc==1.0.0
 
 ###########################################################
 # These modules are for checks. But they are
@@ -11,8 +28,6 @@ simplejson==3.6.5
 # them all. They're usually pure python and don't
 # need any external deps.
 ###########################################################
-
-pyopenssl==18.0.0
 
 # checks.d/riak.py
 httplib2==0.9
@@ -47,18 +62,13 @@ boto==2.36.0
 # checks.d/prometheus.py
 prometheus_client==0.0.21
 
-# sdchecks.py
-sysdig-tracers==0.1.2
-
 # checks.d/mongo.py
 pymongo==3.2
 
 # checks.d/spark.py
 beautifulsoup4==4.5.1
 
-# checks.d/network.py
-psutil==4.4.1
-
 # solr/solr_5.py
 enum34==1.1.6
-netifaces==0.10.7
+
+

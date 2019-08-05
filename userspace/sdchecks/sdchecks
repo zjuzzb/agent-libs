@@ -5,11 +5,18 @@ import os.path
 
 install_prefix = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# Get python version
+python_version = "%d.%d" % sys.version_info[:2]
+
 # Add our path, before system ones to avoid collisions
-bin_deps_dir = install_prefix + '/lib/python-deps%d.%d' % sys.version_info[:2]
+bin_deps_dir = install_prefix + '/lib/python-deps%s' % python_version
 sys.path.insert(0, install_prefix + '/lib/python')
-sys.path.insert(1, install_prefix + '/lib/python-deps')
-sys.path.insert(2, bin_deps_dir)
+
+if python_version == "2.6":
+    sys.path.insert(1, bin_deps_dir)
+else:
+    sys.path.insert(1, install_prefix + '/lib/python-deps')
+    sys.path.insert(2, bin_deps_dir)
 
 # Add site dirs so .pth files are evaluated
 site.addsitedir(install_prefix + '/lib/python-deps')
