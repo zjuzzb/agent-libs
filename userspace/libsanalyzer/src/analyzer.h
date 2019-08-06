@@ -977,7 +977,8 @@ VISIBILITY_PRIVATE
 					     const std::vector<std::string>& emitted_containers);
 	void clean_containers(const analyzer_emitter::progtable_by_container_t&);
 
-	void check_dump_infrastructure_state(const draiosproto::orchestrator_state_t& state,
+	template<class S>
+	void check_dump_infrastructure_state(const S& state,
 					     const std::string& descriptor,
 					     bool& should_dump);
 

@@ -1626,6 +1626,9 @@ sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 			m_infrastructure_state->state_of(emitted_containers,
 							 k8s_state,
 							 m_prev_flush_time_ns);
+			check_dump_infrastructure_state(*k8s_state,
+							"local",
+							m_dump_local_infrastructure_state_on_next_flush);
 		}
 		else
 		{
@@ -1666,6 +1669,9 @@ sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 			k8s_state->set_cluster_id(cluster_id);
 			k8s_state->set_cluster_name(cluster_name);
 			m_infrastructure_state->get_state(k8s_state, m_prev_flush_time_ns);
+			check_dump_infrastructure_state(*k8s_state,
+							"global",
+							m_dump_global_infrastructure_state_on_next_flush);
 		}
 		else
 		{
@@ -5909,7 +5915,8 @@ private:
 	Extractor m_extractor;
 };
 
-void sinsp_analyzer::check_dump_infrastructure_state(const draiosproto::orchestrator_state_t& state,
+template<class S>
+void sinsp_analyzer::check_dump_infrastructure_state(const S& state,
 						     const std::string& descriptor,
 						     bool& should_dump)
 {
