@@ -346,38 +346,8 @@ public:
 	 */
 	std::atomic_bool m_reset_falco_engine;
 
-	bool m_security_enabled;
-	std::string m_security_policies_file;
-	std::string m_security_baselines_file;
-	std::string m_security_policies_v2_file;
-	uint64_t m_security_report_interval_ns;
-	uint64_t m_security_throttled_report_interval_ns;
-	uint64_t m_actions_poll_interval_ns;
-	double m_policy_events_rate;
-	uint32_t m_policy_events_max_burst;
-	bool m_security_send_monitor_events;
 	std::vector<std::string> m_suppressed_comms;
 	std::vector<uint16_t> m_suppressed_types;
-	std::string m_security_default_compliance_schedule;
-	bool m_security_send_compliance_events;
-	bool m_security_send_compliance_results;
-	bool m_security_include_desc_in_compliance_results;
-	bool m_security_compliance_send_failed_results;
-	bool m_security_compliance_save_temp_files;
-	uint64_t m_security_compliance_refresh_interval;
-	std::string m_security_compliance_kube_bench_variant;
-
-	// K8s Audit Server
-	bool m_k8s_audit_server_enabled;
-	uint64_t m_k8s_audit_server_refresh_interval;
-	// Plain HTTP endpoint
-	std::string m_k8s_audit_server_url;
-	uint16_t m_k8s_audit_server_port;
-	// Optional HTTPS configurations
-	bool m_k8s_audit_server_tls_enabled;
-	std::string m_k8s_audit_server_x509_cert_file;
-	std::string m_k8s_audit_server_x509_key_file;
-
 
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;
@@ -524,32 +494,6 @@ public:
 	int save_auto_config(const std::string &config_filename, const std::string& config_data, std::string &errstr);
 
 	void set_auto_config_directory(const std::string &config_directory);
-
-	bool k8s_audit_server_tls_enabled() const
-	{
-		return m_k8s_audit_server_tls_enabled;
-	}
-
-	const std::string& k8s_audit_server_url() const
-	{
-		return m_k8s_audit_server_url;
-	}
-
-	std::uint16_t k8s_audit_server_port() const
-	{
-		return m_k8s_audit_server_port;
-	}
-
-	const std::string& k8s_audit_server_x509_cert_file() const
-	{
-		return m_k8s_audit_server_x509_cert_file;
-	}
-
-	const std::string& k8s_audit_server_x509_key_file() const
-	{
-		return m_k8s_audit_server_x509_key_file;
-	}
-
 
 private:
 	inline static bool is_executable(const std::string& path);

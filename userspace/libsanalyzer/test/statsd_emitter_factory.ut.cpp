@@ -39,12 +39,10 @@ public:
  */
 TEST(statsd_emitter_factory_test, create_returns_concrete_emitter)
 {
-	const bool security_enabled = false;
 	statsd_stats_source::ptr source = std::make_shared<null_statsd_stats_source>();
 	metric_limits::sptr_t limits;
 
 	statsd_emitter::ptr emitter = libsanalyzer::statsd_emitter_factory::create(
-			security_enabled,
 			source,
 			limits);
 
@@ -60,12 +58,10 @@ TEST(statsd_emitter_factory_test, inject_injects_correct_emitter)
 	statsd_emitter::ptr expected_emitter(new null_statsd_emitter());
 	libsanalyzer::statsd_emitter_factory::inject(expected_emitter);
 
-	const bool security_enabled = false;
 	statsd_stats_source::ptr source = std::make_shared<null_statsd_stats_source>();
 	metric_limits::sptr_t limits;
 
 	statsd_emitter::ptr emitter = libsanalyzer::statsd_emitter_factory::create(
-			security_enabled,
 			source,
 			limits);
 
@@ -82,18 +78,15 @@ TEST(statsd_emitter_factory_test, injected_emitter_is_not_returned_multiple_time
 	statsd_emitter::ptr original_emitter(new null_statsd_emitter());
 	libsanalyzer::statsd_emitter_factory::inject(original_emitter);
 
-	const bool security_enabled = false;
 	statsd_stats_source::ptr source = std::make_shared<null_statsd_stats_source>();
 	metric_limits::sptr_t limits;
 
 	statsd_emitter::ptr emitter = libsanalyzer::statsd_emitter_factory::create(
-			security_enabled,
 			source,
 			limits);
 
 	// The second call to create() should not return the same emitter.
 	emitter = libsanalyzer::statsd_emitter_factory::create(
-			security_enabled,
 			source,
 			limits);
 

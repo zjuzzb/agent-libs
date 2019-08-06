@@ -26,15 +26,11 @@ public:
 	/**
 	 * Initialize this new statsite_statsd_emitter.
 	 *
-	 * @param[in] security_enabled if true, the limits on the number of
-	 *                             metrics is increased to allow for
-	 *                             security-related metrics.
-	 * @param[in] stats_source     The source of the stats
-	 *                             (e.g., statsite_proxy).
-	 * @param[in] limits           Configured metric limits, if any.
+	 * @param[in] stats_source The source of the stats
+	 *                         (e.g., statsite_proxy).
+	 * @param[in] limits       Configured metric limits, if any.
 	 */
-	statsite_statsd_emitter(bool security_enabled,
-	                        const statsd_stats_source::ptr& stats_source,
+	statsite_statsd_emitter(const statsd_stats_source::ptr& stats_source,
 	                        const metric_limits::sptr_t& limits);
 
 	/**
@@ -62,7 +58,6 @@ public:
 	              unsigned limit) override;
 
 private:
-	const bool m_security_enabled;
 	statsd_stats_source::container_statsd_map m_statsd_metrics;
 	statsd_stats_source::ptr m_statsd_stats_source;
 	metric_limits::sptr_t m_metric_limits;

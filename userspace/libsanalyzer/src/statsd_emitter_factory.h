@@ -21,14 +21,12 @@ namespace statsd_emitter_factory {
         /**
          * Create a new concrete statsd_emitter.
          *
-         * @param[in] security_enabled Is security enabled?
-         * @param[in] source           A reference to a source of statsd metrics
-         * @param[in] metric_limit     Configured metric limits (if any).
+         * @param[in] source       A reference to a source of statsd metrics
+         * @param[in] metric_limit Configured metric limits (if any).
          *
          * @returns a smart pointer to the newly-created statsd_emitter.
          */
-	statsd_emitter::ptr create(bool security_enabled,
-	                           const statsd_stats_source::ptr& source,
+	statsd_emitter::ptr create(const statsd_stats_source::ptr& source,
 	                           const metric_limits::sptr_t& metric_limits);
 
 #if defined(SYSDIG_TEST)

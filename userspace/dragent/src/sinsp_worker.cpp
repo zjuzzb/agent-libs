@@ -5,6 +5,7 @@
 #include "error_handler.h"
 #include "infrastructure_state.h"
 #include "memdumper.h"
+#include "security_config.h"
 #include "sinsp_factory.h"
 #include "utils.h"
 #include "user_event_logger.h"
@@ -15,6 +16,7 @@
 #include <Poco/DateTimeFormatter.h>
 
 using namespace std;
+namespace security_config = libsanalyzer::security_config;
 
 type_config<uint16_t> config_increased_snaplen_port_range_start(0,
 						   "Starting port in the range of ports to enable a larger snaplen on",
@@ -343,7 +345,6 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_protocols_truncation_size(m_configuration->m_protocols_truncation_size);
 	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);
 
-	m_analyzer->get_configuration()->set_security_enabled(m_configuration->m_security_enabled);
 	m_analyzer->get_configuration()->set_cointerface_enabled(m_configuration->m_cointerface_enabled);
 	m_analyzer->get_configuration()->set_swarm_enabled(m_configuration->m_swarm_enabled);
 	m_analyzer->get_configuration()->set_security_baseline_report_interval_ns(m_configuration->m_security_baseline_report_interval_ns);
@@ -373,7 +374,7 @@ void sinsp_worker::init()
 	m_analyzer->initialize_chisels();
 
 #ifndef CYGWING_AGENT
-	if(m_configuration->m_security_enabled)
+	if(security_config::is_enabled())
 	{
 		if(!m_configuration->m_cointerface_enabled)
 		{
@@ -388,29 +389,34 @@ void sinsp_worker::init()
 				     m_configuration,
 				     m_internal_metrics);
 
-		if(m_configuration->m_security_policies_v2_file != "")
+		if(security_config::get_policies_v2_file() != "")
 		{
 			string errstr;
 
-			if(!m_security_mgr->load_policies_v2_file(m_configuration->m_security_policies_v2_file.c_str(), errstr))
+			if(!m_security_mgr->load_policies_v2_file(
+						security_config::get_policies_v2_file().c_str(),
+						errstr))
 			{
 				LOGGED_THROW(sinsp_exception, "Could not load policies_v2 from file: %s", errstr.c_str());
 			}
-		} else if(m_configuration->m_security_policies_file != "")
+		}
+		else if(security_config::get_policies_file() != "")
 		{
 			string errstr;
 
-			if(!m_security_mgr->load_policies_file(m_configuration->m_security_policies_file.c_str(), errstr))
+			if(!m_security_mgr->load_policies_file(
+						security_config::get_policies_file().c_str(),
+						errstr))
 			{
 				LOGGED_THROW(sinsp_exception, "Could not load policies from file: %s", errstr.c_str());
 			}
 		}
 
-		if(m_configuration->m_security_baselines_file != "")
+		if(security_config::get_baselines_file() != "")
 		{
 			string errstr;
 
-			if(!m_security_mgr->load_baselines_file(m_configuration->m_security_baselines_file.c_str(), errstr))
+			if(!m_security_mgr->load_baselines_file(security_config::get_baselines_file().c_str(), errstr))
 			{
 				LOGGED_THROW(sinsp_exception, "Could not load baselines from file: %s", errstr.c_str());
 			}
@@ -425,7 +431,7 @@ void sinsp_worker::init()
 				       m_analyzer,
 				       m_configuration);
 
-		if(m_configuration->m_security_default_compliance_schedule != "")
+		if(security_config::get_default_compliance_schedule() != "")
 		{
 			string errstr;
 			draiosproto::comp_calendar cal;
@@ -435,14 +441,14 @@ void sinsp_worker::init()
 			k8s_task->set_name("Check K8s Environment");
 			k8s_task->set_mod_name("kube-bench");
 			k8s_task->set_enabled(true);
-			k8s_task->set_schedule(m_configuration->m_security_default_compliance_schedule);
+			k8s_task->set_schedule(security_config::get_default_compliance_schedule());
 
 			draiosproto::comp_task *docker_task = cal.add_tasks();
 		        docker_task->set_id(2);
 			docker_task->set_name("Check Docker Environment");
 			docker_task->set_mod_name("docker-bench-security");
 			docker_task->set_enabled(true);
-			docker_task->set_schedule(m_configuration->m_security_default_compliance_schedule);
+			docker_task->set_schedule(security_config::get_default_compliance_schedule());
 
 			// When using a default calendar, never send results or events
 			if(! set_compliance_calendar(cal, false, false, errstr))

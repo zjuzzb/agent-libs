@@ -41,3 +41,17 @@ key3:
 	ASSERT_EQ(4, config4.get());
 	ASSERT_EQ(5, config5.get());
 }
+
+TEST(scoped_configuration_test, default_constructor)
+{
+	type_config<int> config1(1, "description", "key1", "subkey1");
+
+	{
+		scoped_configuration config;
+
+		config1.set(42);
+		ASSERT_EQ(42, config1.get());
+	}
+
+	ASSERT_EQ(1, config1.get());
+}

@@ -27,6 +27,12 @@ class statsd_emitter : public noncopyable
 public:
 	using ptr = std::shared_ptr<statsd_emitter>;
 
+	/**
+	 * The maximum number of security-related metrics to allow over the
+	 * configured max.
+	 */
+	static const unsigned MAX_SECURITY_METRICS;
+
 	virtual ~statsd_emitter() = default;
 
 	/**
@@ -58,7 +64,7 @@ public:
 	/**
 	 * Get the configured limit for statsd messages.
 	 */
-	static unsigned get_limit(bool security_enabled);
+	static unsigned get_limit();
 };
 
 } // namespace libsanalyzer

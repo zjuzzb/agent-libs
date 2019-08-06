@@ -206,6 +206,7 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/protodecoder.cpp
 	protostate.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/threadinfo.cpp
+	security_config.cpp
 	sched_analyzer.cpp
 	scores.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp.cpp

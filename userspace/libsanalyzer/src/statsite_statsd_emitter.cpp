@@ -67,10 +67,8 @@ namespace libsanalyzer
 {
 
 statsite_statsd_emitter::statsite_statsd_emitter(
-		const bool security_enabled,
 		const statsd_stats_source::ptr& stats_source,
 		const metric_limits::sptr_t& limits):
-	m_security_enabled(security_enabled),
 	m_statsd_metrics(),
 	m_statsd_stats_source(stats_source),
 	m_metric_limits(limits)
@@ -111,7 +109,7 @@ void statsite_statsd_emitter::fetch_metrics(const uint64_t prev_flush_time_ns)
 void statsite_statsd_emitter::emit(::draiosproto::host* const host,
                                    ::draiosproto::statsd_info* const metrics)
 {
-	const unsigned limit = statsd_emitter::get_limit(m_security_enabled);
+	const unsigned limit = statsd_emitter::get_limit();
 
 	const std::string HOST_KEY = "";
 
@@ -138,7 +136,7 @@ unsigned statsite_statsd_emitter::emit(const std::string& container_id,
                                        ::draiosproto::container* const container,
                                        const unsigned limit)
 {
-	const unsigned max_limit = statsd_emitter::get_limit(m_security_enabled);
+	const unsigned max_limit = statsd_emitter::get_limit();
 
 	unsigned new_limit = limit;
 	::google::protobuf::uint64 statsd_total = 0;

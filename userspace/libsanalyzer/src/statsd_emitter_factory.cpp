@@ -26,7 +26,6 @@ namespace libsanalyzer
 {
 
 statsd_emitter::ptr statsd_emitter_factory::create(
-		const bool security_enabled,
 	        const statsd_stats_source::ptr& source,
 		const metric_limits::sptr_t& metric_limits)
 {
@@ -42,8 +41,7 @@ statsd_emitter::ptr statsd_emitter_factory::create(
 #if defined(_WIN32) || defined(CYGWING_AGENT)
 	emitter.reset(new null_statsd_emitter());
 #else
-	emitter.reset(new statsite_statsd_emitter(security_enabled,
-	                                          source,
+	emitter.reset(new statsite_statsd_emitter(source,
 	                                          metric_limits));
 #endif
 

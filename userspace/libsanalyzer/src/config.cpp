@@ -40,7 +40,6 @@ sinsp_configuration::sinsp_configuration():
 	m_command_lines_include_container_healthchecks = true;
 	m_capture_dragent_events = false;
 	m_detect_stress_tools = false;
-	m_security_enabled = false;
 	m_cointerface_enabled = true;
 	m_swarm_enabled = true;
 }
@@ -856,16 +855,6 @@ bool sinsp_configuration::get_app_checks_always_send() const
 void sinsp_configuration::set_app_checks_always_send(bool value)
 {
 	m_app_checks_always_send = value;
-}
-
-bool sinsp_configuration::get_security_enabled() const
-{
-	return m_security_enabled;
-}
-
-void sinsp_configuration::set_security_enabled(bool val)
-{
-	m_security_enabled = val;
 }
 
 bool sinsp_configuration::get_cointerface_enabled() const

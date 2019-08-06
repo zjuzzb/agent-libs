@@ -50,6 +50,7 @@ list(APPEND libsanalyzer_uts
 	process_manager.ut.cpp
 	prometheus.ut.cpp
 	protobuf_metric_serializer.ut.cpp
+	security_config.ut.cpp
 	scoped_sinsp_logger_capture.ut.cpp
 	statsd_emitter.ut.cpp
 	statsd_emitter_factory.ut.cpp

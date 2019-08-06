@@ -70,6 +70,7 @@ using namespace google::protobuf::io;
 #include "mesos.h"
 #include "mesos_state.h"
 #include "mesos_proto.h"
+#include "security_config.h"
 #else // CYGWING_AGENT
 #include "dragent_win_hal_public.h"
 #include "proc_filter.h"
@@ -515,7 +516,7 @@ void sinsp_analyzer::on_capture_start()
 	}
 
 #ifndef CYGWING_AGENT
-	if(m_configuration->get_security_enabled() || m_use_new_k8s || m_prom_conf.enabled())
+	if(security_config::is_enabled() || m_use_new_k8s || m_prom_conf.enabled())
 	{
 		glogf("initializing infrastructure state");
 		m_infrastructure_state->init(m_configuration->get_machine_id(), get_host_tags_with_cluster());
@@ -2465,13 +2466,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	vector<string> emitted_containers;
 	if(m_configuration->get_smart_container_reporting())
 	{
-		const bool security_enabled = m_configuration->get_security_enabled();
 		update_percentile_data_serialization(progtable_by_container);
 
 		analyzer_container_emitter emitter(
 				*this,
 				m_containers,
-				statsd_emitter::get_limit(security_enabled),
+				statsd_emitter::get_limit(),
 				progtable_by_container,
 				m_container_patterns,
 				flushflags,
@@ -3315,7 +3315,7 @@ void sinsp_analyzer::tune_drop_mode(analyzer_emitter::flush_flags flushflags, do
 		return;
 	}
 
-	if(m_inspector->is_live() && m_configuration->get_security_enabled() == false)
+	if(m_inspector->is_live() && !security_config::is_enabled())
 	{
 		auto evts_per_second_by_cpu = get_n_tracepoint_diff();
 		auto max_iter = max_element(evts_per_second_by_cpu.begin(), evts_per_second_by_cpu.end());
@@ -4798,7 +4798,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, analyzer_emitter::flush_flags
 	m_falco_baseliner->process_event(evt);
 
 #ifndef CYGWING_AGENT
-	if(m_infrastructure_state && (m_configuration->get_security_enabled() || m_infrastructure_state->subscribed()))
+	if(m_infrastructure_state && (security_config::is_enabled() || m_infrastructure_state->subscribed()))
 	{
 		//
 		// Refresh the infrastructure state with pending orchestrators or hosts events
@@ -5903,8 +5903,7 @@ sinsp_analyzer::emit_containers_deprecated(const analyzer_emitter::progtable_by_
 
 	const auto containers_limit_by_type = m_containers_limit/4;
 	const auto containers_limit_by_type_remainder = m_containers_limit % 4;
-	const bool security_enabled = m_configuration->get_security_enabled();
-	unsigned statsd_limit = statsd_emitter::get_limit(security_enabled);
+	unsigned statsd_limit = statsd_emitter::get_limit();
 	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit,
 	                                  &emitted_containers, &total_cpu_shares, &progtable_by_container,
 	                                  flushflags]
@@ -6456,44 +6455,6 @@ void sinsp_analyzer::coalesce_unemitted_stats(const vector<std::string>& emitted
 	g_logger.format(sinsp_logger::SEV_DEBUG, "Total Containers Found: %d, Emitted: %d, Unemitted: %d, Coalesced: %d", m_containers.size(), emitted_containers.size(), unemitted_containers.size(), count);
 }
 
-
-#ifndef _WIN32
-unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
-					unsigned limit, unsigned max_limit, const string& context)
-{
-	unsigned metrics_found = 0;
-	for(const auto& metric : statsd_metrics)
-	{
-		if(metrics_found >= limit)
-		{
-			if(metric_limits::log_enabled())
-			{
-				g_logger.format(sinsp_logger::SEV_INFO, "[statsd] metric over limit (total, %u max): %s", max_limit,
-					metric.name().c_str());
-			}
-			else
-			{
-				g_logger.format(sinsp_logger::SEV_WARNING, "statsd metrics over limit, giving up");
-				break;
-			}
-		}
-		else
-		{
-			auto statsd_proto = statsd_info->add_statsd_metrics();
-			metric.to_protobuf(statsd_proto);
-			++metrics_found;
-		}
-	}
-
-	if(metrics_found > 0)
-	{
-		g_logger.format(sinsp_logger::SEV_INFO, "Added %d statsd metrics for %s", metrics_found, context.c_str());
-	}
-
-	return metrics_found;
-}
-#endif
-
 void sinsp_analyzer::emit_chisel_metrics()
 {
 	uint32_t j = 0;
@@ -6943,10 +6904,10 @@ void sinsp_analyzer::set_statsd_iofds(const std::pair<FILE*, FILE*>& iofds,
 			iofds,
 			m_configuration->get_statsite_check_format());
 
-	m_statsd_emitter = statsd_emitter_factory::create(
-			m_configuration->get_security_enabled(),
-			m_statsite_proxy,
-			m_metric_limits);
+	g_logger.format(sinsp_logger::SEV_INFO, "Creating statsd_emitter, security_enabled:  %s", (security_config::is_enabled() ? "true" : "false"));
+
+	m_statsd_emitter = statsd_emitter_factory::create(m_statsite_proxy,
+	                                                  m_metric_limits);
 
 	if(forwarder)
 	{

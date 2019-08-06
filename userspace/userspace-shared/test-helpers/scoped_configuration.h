@@ -17,6 +17,7 @@ namespace test_helpers
 class scoped_configuration
 {
 public:
+	scoped_configuration();
 	scoped_configuration(const std::string& yaml);
 	~scoped_configuration();
 

@@ -28,8 +28,10 @@
 #include <thread>
 
 #include "docker_utils.h"
+#include "security_config.h"
 
 using namespace std;
+namespace security_config = libsanalyzer::security_config;
 
 class security_policy_error_handler : public Poco::ErrorHandler
 {
@@ -223,18 +225,18 @@ protected:
 
 		m_configuration.m_capture_dragent_events  = true;
 		m_configuration.m_memdump_enabled = false;
-		m_configuration.m_security_enabled = true;
+		security_config::set_enabled(true);
 		m_configuration.m_max_sysdig_captures = 10;
 		m_configuration.m_autodrop_enabled = false;
-		m_configuration.m_security_policies_file = "./resources/security_policies_messages/all_policy_types.txt";
-		m_configuration.m_security_baselines_file = "./resources/security_policies_messages/baseline.txt";
-		m_configuration.m_security_policies_v2_file = policies_file();
+		security_config::set_policies_file("./resources/security_policies_messages/all_policy_types.txt");
+		security_config::set_baselines_file("./resources/security_policies_messages/baseline.txt");
+		security_config::set_policies_v2_file(policies_file());
 		m_configuration.m_falco_engine_sampling_multiplier = 0;
 		m_configuration.m_containers_labels_max_len = 100;
 		if(delayed_reports)
 		{
-			m_configuration.m_security_throttled_report_interval_ns = 1000000000;
-			m_configuration.m_security_report_interval_ns = 15000000000;
+			security_config::set_throttled_report_interval_ns(1000000000);
+			security_config::set_report_interval_ns(15000000000);
 		}
 
 		// The (global) logger only needs to be set up once
@@ -258,7 +260,6 @@ protected:
 		m_internal_metrics = make_shared<internal_metrics>();
 		m_analyzer = new sinsp_analyzer(m_inspector, "/opt/draios", m_internal_metrics);
 		m_inspector->m_analyzer = m_analyzer;
-		m_analyzer->get_configuration()->set_security_enabled(m_configuration.m_security_enabled);
 		m_analyzer->get_configuration()->set_machine_id(m_configuration.machine_id());
 		m_analyzer->set_containers_labels_max_len(m_configuration.m_containers_labels_max_len);
 
@@ -272,8 +273,14 @@ protected:
 
 		// Note that capture job handler is NULL. So no actions that perform captures.
 		m_mgr.init(m_inspector, m_data_handler, m_analyzer, NULL, &m_configuration, m_internal_metrics);
-		string policies_file = (m_load_v1_policies ? m_configuration.m_security_policies_file : m_configuration.m_security_policies_v2_file);
-		m_sinsp_worker = new test_sinsp_worker(m_inspector, &m_mgr, m_load_v1_policies, m_configuration.m_security_baselines_file, policies_file);
+		std::string policies_file = (m_load_v1_policies
+				? security_config::get_policies_file()
+				: security_config::get_policies_v2_file());
+		m_sinsp_worker = new test_sinsp_worker(m_inspector,
+		                                       &m_mgr,
+		                                       m_load_v1_policies,
+		                                       security_config::get_baselines_file(),
+		                                       policies_file);
 
 		Poco::ErrorHandler::set(&m_error_handler);
 

@@ -959,8 +959,6 @@ VISIBILITY_PRIVATE
 	void emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, std::vector<sinsp_executed_command>* commands);
 
 #ifndef _WIN32
-	static unsigned emit_statsd(const std::vector<statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
-					unsigned limit, unsigned max_limit, const std::string& context);
 	bool is_jmx_flushtime() {
 		return (m_prev_flush_time_ns / ONE_SECOND_IN_NS) % m_jmx_sampling == 0;
 	}

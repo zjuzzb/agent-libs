@@ -27,7 +27,6 @@ TEST(statsite_statsd_emitter_test, emit_host_counter_metric)
 	const double value = 42.7;
 	const uint64_t ts = 8123456789LL;
 	const std::string container_id = "";
-	const bool security_enabled = true;
 	const metric_limits::sptr_t limits;
 
 	std::shared_ptr<dummy_statsd_stats_source> source =
@@ -37,7 +36,7 @@ TEST(statsite_statsd_emitter_test, emit_host_counter_metric)
 
 	source->add_counter(name, value, ts, container_id, {"a:b", "c:d"});
 
-	statsite_statsd_emitter emitter(security_enabled, source, limits);
+	statsite_statsd_emitter emitter(source, limits);
 
 	emitter.fetch_metrics(ts);
 	emitter.emit(&host, &metrics);
@@ -70,7 +69,6 @@ TEST(statsite_statsd_emitter_test, emit_container_counter_metric)
 	const uint64_t ts = 8123456789LL;
 	const std::string container_id = "aaabbbcccddd";
 	const std::string container_name = "bobs_container";
-	const bool security_enabled = true;
 	const metric_limits::sptr_t limits;
 	const unsigned limit = 1000;
 
@@ -80,7 +78,7 @@ TEST(statsite_statsd_emitter_test, emit_container_counter_metric)
 
 	source->add_counter(name, value, ts, container_id, {"a:b", "c:d"});
 
-	statsite_statsd_emitter emitter(security_enabled, source, limits);
+	statsite_statsd_emitter emitter(source, limits);
 
 	emitter.fetch_metrics(ts);
 	ASSERT_EQ(limit - 1,
@@ -113,7 +111,6 @@ TEST(statsite_statsd_emitter_test, emit_host_gauge_metric)
 	const double value = 42.7;
 	const uint64_t ts = 8123456789LL;
 	const std::string container_id = "";
-	const bool security_enabled = true;
 	const metric_limits::sptr_t limits;
 
 	std::shared_ptr<dummy_statsd_stats_source> source =
@@ -123,7 +120,7 @@ TEST(statsite_statsd_emitter_test, emit_host_gauge_metric)
 
 	source->add_gauge(name, value, ts, container_id, {"a:b", "c:d"});
 
-	statsite_statsd_emitter emitter(security_enabled, source, limits);
+	statsite_statsd_emitter emitter(source, limits);
 
 	emitter.fetch_metrics(ts);
 	emitter.emit(&host, &metrics);
@@ -156,7 +153,6 @@ TEST(statsite_statsd_emitter_test, emit_container_gauge_metric)
 	const uint64_t ts = 8123456789LL;
 	const std::string container_id = "aaabbbcccddd";
 	const std::string container_name = "bobs_container";
-	const bool security_enabled = true;
 	const metric_limits::sptr_t limits;
 	const unsigned limit = 1000;
 
@@ -166,7 +162,7 @@ TEST(statsite_statsd_emitter_test, emit_container_gauge_metric)
 
 	source->add_gauge(name, value, ts, container_id, {"a:b", "c:d"});
 
-	statsite_statsd_emitter emitter(security_enabled, source, limits);
+	statsite_statsd_emitter emitter(source, limits);
 
 	emitter.fetch_metrics(ts);
 	ASSERT_EQ(limit - 1,
@@ -199,7 +195,6 @@ TEST(statsite_statsd_emitter_test, emit_host_set_metric)
 	const double value = 42.7;
 	const uint64_t ts = 8123456789LL;
 	const std::string container_id = "";
-	const bool security_enabled = true;
 	const metric_limits::sptr_t limits;
 
 	std::shared_ptr<dummy_statsd_stats_source> source =
@@ -209,7 +204,7 @@ TEST(statsite_statsd_emitter_test, emit_host_set_metric)
 
 	source->add_set(name, value, ts, container_id, {"a:b", "c:d"});
 
-	statsite_statsd_emitter emitter(security_enabled, source, limits);
+	statsite_statsd_emitter emitter(source, limits);
 
 	emitter.fetch_metrics(ts);
 	emitter.emit(&host, &metrics);
@@ -242,7 +237,6 @@ TEST(statsite_statsd_emitter_test, emit_container_set_metric)
 	const uint64_t ts = 8123456789LL;
 	const std::string container_id = "aaabbbcccddd";
 	const std::string container_name = "bobs_container";
-	const bool security_enabled = true;
 	const metric_limits::sptr_t limits;
 	const unsigned limit = 1000;
 
@@ -252,7 +246,7 @@ TEST(statsite_statsd_emitter_test, emit_container_set_metric)
 
 	source->add_set(name, value, ts, container_id, {"a:b", "c:d"});
 
-	statsite_statsd_emitter emitter(security_enabled, source, limits);
+	statsite_statsd_emitter emitter(source, limits);
 
 	emitter.fetch_metrics(ts);
 	ASSERT_EQ(limit - 1, emitter.emit(container_id, container_name, &container, limit));
@@ -284,7 +278,6 @@ TEST(statsite_statsd_emitter_test, emit_host_histogram_metric)
 	const double value = 42.7;
 	const uint64_t ts = 8123456789LL;
 	const std::string container_id = "";
-	const bool security_enabled = true;
 	const metric_limits::sptr_t limits;
 
 	std::shared_ptr<dummy_statsd_stats_source> source =
@@ -294,7 +287,7 @@ TEST(statsite_statsd_emitter_test, emit_host_histogram_metric)
 
 	source->add_histogram(name, value, ts, container_id, {"a:b", "c:d"});
 
-	statsite_statsd_emitter emitter(security_enabled, source, limits);
+	statsite_statsd_emitter emitter(source, limits);
 
 	emitter.fetch_metrics(ts);
 	emitter.emit(&host, &metrics);
@@ -344,7 +337,6 @@ TEST(statsite_statsd_emitter_test, emit_container_histogram_metric)
 	const uint64_t ts = 8123456789LL;
 	const std::string container_id = "aaabbbcccddd";
 	const std::string container_name = "bobs_container";
-	const bool security_enabled = true;
 	const unsigned limit = 1000;
 	const metric_limits::sptr_t limits;
 
@@ -354,7 +346,7 @@ TEST(statsite_statsd_emitter_test, emit_container_histogram_metric)
 
 	source->add_histogram(name, value, ts, container_id, {"a:b", "c:d"});
 
-	statsite_statsd_emitter emitter(security_enabled, source, limits);
+	statsite_statsd_emitter emitter(source, limits);
 
 	emitter.fetch_metrics(ts);
 	ASSERT_EQ(limit - 1,
@@ -409,7 +401,6 @@ TEST(statsite_statsd_emitter_test, emit_host_cannot_exceed_limit)
 	const double value = 42.7;
 	const uint64_t ts = 8123456789LL;
 	const std::string container_id = "";
-	const bool security_enabled = false;
 	const metric_limits::sptr_t limits;
 
 	std::shared_ptr<dummy_statsd_stats_source> source =
@@ -420,7 +411,7 @@ TEST(statsite_statsd_emitter_test, emit_host_cannot_exceed_limit)
 
 	source->add_counter(name, value, ts, container_id, {"a:b", "c:d"});
 
-	statsite_statsd_emitter emitter(security_enabled, source, limits);
+	statsite_statsd_emitter emitter(source, limits);
 
 	emitter.fetch_metrics(ts);
 	emitter.emit(&host, &metrics);
@@ -447,7 +438,6 @@ TEST(statsite_statsd_emitter_test, emit_container_cannot_exceed_limit)
 	const uint64_t ts = 8123456789LL;
 	const std::string container_id = "aaabbbcccddd";
 	const std::string container_name = "bobs_container";
-	const bool security_enabled = true;
 	const metric_limits::sptr_t limits;
 	const unsigned limit = 0;
 
@@ -457,7 +447,7 @@ TEST(statsite_statsd_emitter_test, emit_container_cannot_exceed_limit)
 
 	source->add_counter(name, value, ts, container_id, {"a:b", "c:d"});
 
-	statsite_statsd_emitter emitter(security_enabled, source, limits);
+	statsite_statsd_emitter emitter(source, limits);
 
 	emitter.fetch_metrics(ts);
 	ASSERT_EQ(limit,

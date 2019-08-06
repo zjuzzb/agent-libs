@@ -1,7 +1,8 @@
 #include "connection_manager.h"
 #include "common_logger.h"
-#include "protocol.h"
 #include "draios.pb.h"
+#include "protocol.h"
+#include "security_config.h"
 #include "utils.h"
 #include "watchdog_runnable_fatal_error.h"
 #include <future>
@@ -14,6 +15,7 @@
 #include <grpc_channel_registry.h>
 
 using namespace std;
+namespace security_config = libsanalyzer::security_config;
 
 #ifndef TCP_USER_TIMEOUT
 // Define it here because old glibc versions do not have this flag (eg, Centos6)
@@ -1066,15 +1068,16 @@ void connection_manager::handle_policies_message(uint8_t* buf, uint32_t size)
 	draiosproto::policies policies;
 	string errstr;
 
-	if(!m_configuration->m_security_enabled)
+	if(!security_config::is_enabled())
 	{
 		LOG_DEBUG("Security disabled, ignoring POLICIES message");
 		return;
 	}
 
-	if(m_configuration->m_security_policies_file != "")
+	if(security_config::get_policies_file() != "")
 	{
-		LOG_INFO("Security policies file configured in dragent.yaml, ignoring POLICIES message");
+		LOG_INFO("Security policies file configured in dragent.yaml, "
+		         "ignoring POLICIES message");
 		return;
 	}
 
@@ -1094,17 +1097,18 @@ void connection_manager::handle_policies_message(uint8_t* buf, uint32_t size)
 void connection_manager::handle_policies_v2_message(uint8_t* buf, uint32_t size)
 {
 	draiosproto::policies_v2 policies_v2;
-	string errstr;
+	std::string errstr;
 
-	if(!m_configuration->m_security_enabled)
+	if(!security_config::is_enabled())
 	{
 		LOG_DEBUG("Security disabled, ignoring POLICIES message");
 		return;
 	}
 
-	if(m_configuration->m_security_policies_v2_file != "")
+	if(security_config::get_policies_v2_file() != "")
 	{
-		LOG_INFO("Security policies file configured in dragent.yaml, ignoring POLICIES_V2 message");
+		LOG_INFO("Security policies file configured in dragent.yaml, "
+		         "ignoring POLICIES_V2 message");
 		return;
 	}
 
@@ -1126,7 +1130,7 @@ void connection_manager::handle_compliance_calendar_message(uint8_t* buf, uint32
 	draiosproto::comp_calendar calendar;
 	string errstr;
 
-	if(!m_configuration->m_security_enabled)
+	if(!security_config::is_enabled())
 	{
 		LOG_DEBUG("Security disabled, ignoring COMP_CALENDAR message");
 		return;
@@ -1139,8 +1143,8 @@ void connection_manager::handle_compliance_calendar_message(uint8_t* buf, uint32
 	}
 
 	if (!m_sinsp_worker->set_compliance_calendar(calendar,
-						     m_configuration->m_security_send_compliance_results,
-						     m_configuration->m_security_send_compliance_events,
+						     security_config::get_send_compliance_results(),
+						     security_config::get_send_compliance_events(),
 						     errstr))
 	{
 		LOG_ERROR("Could not set compliance calendar: " + errstr);
@@ -1153,7 +1157,7 @@ void connection_manager::handle_compliance_run_message(uint8_t* buf, uint32_t si
 	draiosproto::comp_run run;
 	string errstr;
 
-	if(!m_configuration->m_security_enabled)
+	if(!security_config::is_enabled())
 	{
 		LOG_DEBUG("Security disabled, ignoring COMP_RUN message");
 		return;
@@ -1178,7 +1182,7 @@ void connection_manager::handle_orchestrator_events(uint8_t* buf, uint32_t size)
 {
 	draiosproto::orchestrator_events evts;
 
-	if(!m_configuration->m_security_enabled)
+	if(!security_config::is_enabled())
 	{
 		LOG_DEBUG("Security disabled, ignoring ORCHESTRATOR_EVENTS message");
 		return;
@@ -1200,13 +1204,13 @@ void connection_manager::handle_baselines_message(uint8_t* buf, uint32_t size)
 	draiosproto::baselines baselines;
 	string errstr;
 
-	if(!m_configuration->m_security_enabled)
+	if(!security_config::is_enabled())
 	{
 		LOG_DEBUG("Security disabled, ignoring BASELINES message");
 		return;
 	}
 
-	if(m_configuration->m_security_baselines_file != "")
+	if(security_config::get_baselines_file() != "")
 	{
 		LOG_INFO("Security baselines file configured in dragent.yaml, ignoring BASELINES message");
 		return;

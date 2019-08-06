@@ -20,6 +20,7 @@
 
 #include "configuration_manager.h"
 #include "user_event_logger.h"
+#include "security_config.h"
 #include "statsite_config.h"
 
 using namespace std;
@@ -281,30 +282,6 @@ dragent_configuration::dragent_configuration()
 	m_enable_coredump = false;
 	m_rlimit_msgqueue = posix_queue::min_msgqueue_limit();
 	m_auto_config = true;
-	m_security_enabled = false;
-	m_security_policies_file = "";
-	m_security_baselines_file = "";
-	m_security_report_interval_ns = 1000000000;
-	m_security_throttled_report_interval_ns = 10000000000;
-	m_actions_poll_interval_ns = 1000000000;
-	m_security_send_monitor_events = false;
-	m_security_default_compliance_schedule = "";
-	m_security_send_compliance_events = false;
-	m_security_send_compliance_results = false;
-	m_security_include_desc_in_compliance_results = true;
-	m_security_compliance_send_failed_results = true;
-	m_security_compliance_refresh_interval = 120000000000;
-	m_security_compliance_kube_bench_variant = "";
-	m_security_compliance_save_temp_files = false;
-	m_k8s_audit_server_enabled = true;
-	m_k8s_audit_server_refresh_interval = 120000000000;
-	m_k8s_audit_server_url = "localhost";
-	m_k8s_audit_server_port = 7765;
-	m_k8s_audit_server_tls_enabled = false;
-	m_k8s_audit_server_x509_cert_file = "";
-	m_k8s_audit_server_x509_key_file = "";
-	m_policy_events_rate = 0.5;
-	m_policy_events_max_burst = 50;
 	m_user_events_rate = 1;
 	m_user_max_burst_events = 1000;
 	m_load_error = false;
@@ -732,7 +709,7 @@ void dragent_configuration::init()
 	m_cpu_usage_max_sr_ntimes = m_config->get_scalar<unsigned>("cpu_usage_max_sr_seconds", 5);
 
 	m_host_custom_name = m_config->get_scalar<string>("ui", "customname", "");
-	// m_security_enabled may add a tag so make sure to set m_host_tags first
+	// security_config::is_enabled() may add a tag so make sure to set m_host_tags first
 	m_host_tags = m_config->get_scalar<string>("tags", "");
 	m_host_custom_map = m_config->get_scalar<string>("ui", "custommap", "");
 	m_host_hidden = m_config->get_scalar<bool>("ui", "is_hidden", false);
@@ -998,8 +975,8 @@ void dragent_configuration::init()
 	m_user_events_rate = m_config->get_scalar<uint64_t>("events", "rate", 1);
 	m_user_max_burst_events = m_config->get_scalar<uint64_t>("events", "max_burst", 1000);
 
-	m_security_enabled = m_config->get_scalar<bool>("security", "enabled", false);
-	if (m_security_enabled) {
+	if(libsanalyzer::security_config::is_enabled())
+	{
 		// Note that this agent has secure enabled by adding to the host tags
 		// Must be done after we set m_host_tags so it doesn't get overwritten
 		if(m_host_tags != "")
@@ -1008,21 +985,7 @@ void dragent_configuration::init()
 		}
 		m_host_tags += "sysdig_secure.enabled:true";
 	}
-	m_security_policies_file = m_config->get_scalar<string>("security", "policies_file", "");
-	m_security_baselines_file = m_config->get_scalar<string>("security", "baselines_file", "");
 
-	m_security_policies_v2_file = m_config->get_scalar<string>("security", "policies_v2_file", "");
-
-	// 1 second
-	m_security_report_interval_ns = m_config->get_scalar<uint64_t>("security" "report_interval", 1000000000);
-	// 10 seconds
-	m_security_throttled_report_interval_ns = m_config->get_scalar<uint64_t>("security" "throttled_report_interval", 10000000000);
-	// 100 ms
-	m_actions_poll_interval_ns = m_config->get_scalar<uint64_t>("security" "actions_poll_interval_ns", 100000000);
-
-	m_policy_events_rate = m_config->get_scalar<double>("security", "policy_events_rate", 0.5);
-	m_policy_events_max_burst = m_config->get_scalar<uint64_t>("security", "policy_events_max_burst", 50);
-	m_security_send_monitor_events = m_config->get_scalar<bool>("security", "send_monitor_events", false);
 	auto suppressed_comms = m_config->get_merged_sequence<string>("skip_events_by_process");
 	for(auto &comm : suppressed_comms)
 	{
@@ -1036,24 +999,6 @@ void dragent_configuration::init()
 	m_mounts_filter = m_config->get_merged_sequence<user_configured_filter>("mounts_filter");
 	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
 
-	// By default runs once per day at 8am utc
-	m_security_default_compliance_schedule = m_config->get_scalar<string>("security", "default_compliance_schedule", "08:00:00Z/P1D");
-
-	m_security_send_compliance_events = m_config->get_scalar<bool>("security", "send_compliance_events", false);
-	m_security_send_compliance_results = m_config->get_scalar<bool>("security", "send_compliance_results", true);
-	m_security_include_desc_in_compliance_results = m_config->get_scalar<bool>("security", "include_desc_compliance_results", true);
-	m_security_compliance_refresh_interval = m_config->get_scalar<uint64_t>("security", "compliance_refresh_interval", 120000000000);
-	m_security_compliance_kube_bench_variant = m_config->get_scalar<string>("security", "compliance_kube_bench_variant", "");
-	m_security_compliance_send_failed_results = m_config->get_scalar<bool>("security", "compliance_send_failed_results", true);
-	m_security_compliance_save_temp_files = m_config->get_scalar<bool>("security", "compliance_save_temp_files", false);
-
-	m_k8s_audit_server_enabled = m_config->get_scalar<bool>("security", "k8s_audit_server_enabled", true);
-	m_k8s_audit_server_refresh_interval = m_config->get_scalar<uint64_t>("security", "k8s_audit_server_refresh_interval", 120000000000);
-	m_k8s_audit_server_url = m_config->get_scalar<string>("security", "k8s_audit_server_url", "localhost");
-	m_k8s_audit_server_port = m_config->get_scalar<uint16_t>("security", "k8s_audit_server_port", 7765);
-	m_k8s_audit_server_tls_enabled = m_config->get_scalar<bool>("security", "k8s_audit_server_tls_enabled", false);
-	m_k8s_audit_server_x509_cert_file = m_config->get_scalar<string>("security", "k8s_audit_server_x509_cert_file", "");
-	m_k8s_audit_server_x509_key_file = m_config->get_scalar<string>("security", "k8s_audit_server_x509_key_file", "");
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
 	m_system_supports_containers = (m_mounts_limit_size > 0) && nsfile.exists();
@@ -1432,64 +1377,7 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("coredump enabled: " + bool_as_text(m_enable_coredump));
 	LOG_INFO("POSIX queue limit: %lu", m_rlimit_msgqueue);
 
-	if(m_security_enabled)
-	{
-		LOG_INFO("Security Features: Enabled");
-
-		if(m_security_policies_v2_file != "")
-		{
-			LOG_INFO("Using security policies v2 file: " + m_security_policies_v2_file);
-		} else if(m_security_policies_file != "")
-		{
-			LOG_INFO("Using security policies file: " + m_security_policies_file);
-		}
-
-		if(m_security_baselines_file != "")
-		{
-			LOG_INFO("Using security baselines file: " + m_security_baselines_file);
-		}
-
-		LOG_INFO("Security Report Interval (ms)" + NumberFormatter::format(m_security_report_interval_ns / 1000000));
-		LOG_INFO("Security Throttled Report Interval (ms)" + NumberFormatter::format(m_security_throttled_report_interval_ns / 1000000));
-		LOG_INFO("Security Actions Poll Interval (ms)" + NumberFormatter::format(m_actions_poll_interval_ns / 1000000));
-
-		LOG_INFO("Policy events rate: " + NumberFormatter::format(m_policy_events_rate));
-		LOG_INFO("Policy events max burst: " + NumberFormatter::format(m_policy_events_max_burst));
-		LOG_INFO(string("Will ") + (m_security_send_monitor_events ? "" : "not ") + "send sysdig monitor events when policies trigger");
-
-		LOG_INFO(string("Will ") + (m_security_send_compliance_events ? "" : "not ") + "send compliance events");
-		LOG_INFO(string("Will ") + (m_security_send_compliance_results ? "" : "not ") + "send compliance results");
-		LOG_INFO(string("Will check for new compliance tasks to run every ") +
-				   NumberFormatter::format(m_security_compliance_refresh_interval / 1000000000) + " seconds");
-
-		LOG_INFO(string("Increased statsd metric limit by 100 for compliance tasks"));
-
-		if(m_security_compliance_kube_bench_variant != "")
-		{
-			LOG_INFO(string("Will force kube-bench compliance check to run " + m_security_compliance_kube_bench_variant + " variant"));
-		}
-
-		LOG_INFO(string("Will ") + (m_security_compliance_save_temp_files ? "" : "not ") + "keep temporary files for compliance tasks on disk");
-
-
-		if (m_k8s_audit_server_enabled)
-		{
-			LOG_INFO(string("K8s Audit Server configured"));
-			LOG_INFO(string("K8s Audit Server tls enabled:  ") + std::to_string(m_k8s_audit_server_tls_enabled));
-			LOG_INFO(string("K8s Audit Server URL:  ") + m_k8s_audit_server_url);
-			LOG_INFO(string("K8s Audit Server port: ") + std::to_string(m_k8s_audit_server_port));
-			if (m_k8s_audit_server_tls_enabled)
-			{
-				LOG_INFO(string("K8s Audit Server X509 crt file: ") + m_k8s_audit_server_x509_cert_file);
-				LOG_INFO(string("K8s Audit Server X509 key file: ") + m_k8s_audit_server_x509_key_file);
-			}
-		}
-	}
-
-	if(m_security_default_compliance_schedule != "")
-	{
-		LOG_INFO("When not otherwise specified, will run compliance tasks with schedule: " + m_security_default_compliance_schedule);
-	}
+	libsanalyzer::security_config::generate_status_log();
 
 	if(m_suppressed_comms.size() > 0)
 	{

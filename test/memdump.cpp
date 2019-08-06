@@ -17,8 +17,10 @@
 #include <sinsp_worker.h>
 #include <configuration.h>
 #include <protocol.h>
+#include "security_config.h"
 
 using namespace std;
+namespace security_config = libsanalyzer::security_config;
 
 class memdump_error_handler : public Poco::ErrorHandler
 {
@@ -197,7 +199,7 @@ protected:
 
 		m_configuration.m_capture_dragent_events  = capture_dragent_events;
 		m_configuration.m_memdump_enabled = true;
-		m_configuration.m_security_enabled = false;
+		security_config::set_enabled(false);
 		m_configuration.m_max_sysdig_captures = max_captures;
 		m_configuration.m_autodrop_enabled = false;
 		m_configuration.m_memdump_max_init_attempts = 10;
