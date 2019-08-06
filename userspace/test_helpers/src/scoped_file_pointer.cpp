@@ -24,6 +24,10 @@ scoped_file_pointer::scoped_file_pointer(const std::string& filename,
 	}
 }
 
+scoped_file_pointer::scoped_file_pointer(FILE* const file):
+	m_file(file)
+{ }
+
 scoped_file_pointer::~scoped_file_pointer()
 {
 	if(m_file != nullptr)

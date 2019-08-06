@@ -57,6 +57,7 @@ list(APPEND libsanalyzer_uts
 	statsd_metric.ut.cpp
 	statsd_server.ut.cpp
 	statsite_config.ut.cpp
+	statsite_proxy.ut.cpp
 	statsite_statsd_emitter.ut.cpp
 )
 

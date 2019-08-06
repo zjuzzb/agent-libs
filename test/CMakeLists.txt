@@ -86,7 +86,6 @@ add_executable(tests
 	yaml_configuration.cpp
 	main.cpp
 	configuration_test.cpp
-	statsd.cpp
 	suppress_events.cpp
 	jmx_proxy.cpp
 	token_bucket_test.cpp

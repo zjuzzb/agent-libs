@@ -161,6 +161,32 @@ TEST(statsd_metric_test, parse_line_host_count_name)
 }
 
 /**
+ * Ensure that parse_line() can correctly parse a host counter metric's
+ * name when there is no name.
+ */
+TEST(statsd_metric_test, parse_line_host_count_no_name)
+{
+	statsd_metric metric;
+
+	// It's not clear if this *should* work, but this was a legacy
+	// test, so we include it for now.
+	ASSERT_TRUE(metric.parse_line("counts.#|42.000000|1563315016"));
+	ASSERT_EQ("", metric.name());
+}
+
+/**
+ * Ensure that parse_line() can correct parse a host counter metric's name
+ * when that name contains dots.
+ */
+TEST(statsd_metric_test, parse_line_host_count_name_with_dots)
+{
+	statsd_metric metric;
+
+	ASSERT_TRUE(metric.parse_line("count.metric_name.with.dots|42.000000|1563315016"));
+	ASSERT_EQ("metric_name.with.dots", metric.name());
+}
+
+/**
  * Ensure that parse_line() leaves a host counter metric's container_id
  * unset.
  */
@@ -206,6 +232,18 @@ TEST(statsd_metric_test, parse_line_host_count_no_tags)
 
 	ASSERT_TRUE(metric.parse_line("counts.metric_name|42.000000|1563315016"));
 	ASSERT_TRUE(metric.tags().empty());
+}
+
+/**
+ * Ensure that if no tags are included in a counter metric (but the hash is
+ * there), then parse_line correctly parses that tag.
+ */
+TEST(statsd_metric_test, parse_line_host_count_zero_tags)
+{
+	statsd_metric metric;
+
+	ASSERT_TRUE(metric.parse_line("counts.metric_name#|42.000000|1563315016"));
+	ASSERT_EQ(0, metric.tags().size());
 }
 
 /**
@@ -282,6 +320,20 @@ TEST(statsd_metric_test, parse_line_host_gauge_name)
 }
 
 /**
+ * Ensure that parse_line() can correctly parse a host gauge metric's
+ * name when there is no name.
+ */
+TEST(statsd_metric_test, parse_line_host_gauge_no_name)
+{
+	statsd_metric metric;
+
+	// It's not clear if this *should* work, but this was a legacy
+	// test, so we include it for now.
+	ASSERT_TRUE(metric.parse_line("gauges.#|42.000000|1563315016"));
+	ASSERT_EQ("", metric.name());
+}
+
+/**
  * Ensure that parse_line() leaves a host gauge metric's container_id
  * unset.
  */
@@ -327,6 +379,18 @@ TEST(statsd_metric_test, parse_line_host_gauge_no_tags)
 
 	ASSERT_TRUE(metric.parse_line("gauges.metric_name|42.000000|1563315016"));
 	ASSERT_TRUE(metric.tags().empty());
+}
+
+/**
+ * Ensure that if no tags are included in a gauge metric (but the hash is
+ * there), then parse_line correctly parses that tag.
+ */
+TEST(statsd_metric_test, parse_line_host_gauge_zero_tags)
+{
+	statsd_metric metric;
+
+	ASSERT_TRUE(metric.parse_line("gauge.metric_name#|42.000000|1563315016"));
+	ASSERT_EQ(0, metric.tags().size());
 }
 
 /**
@@ -403,6 +467,20 @@ TEST(statsd_metric_test, parse_line_host_set_name)
 }
 
 /**
+ * Ensure that parse_line() can correctly parse a host set metric's
+ * name when there is no name.
+ */
+TEST(statsd_metric_test, parse_line_host_set_no_name)
+{
+	statsd_metric metric;
+
+	// It's not clear if this *should* work, but this was a legacy
+	// test, so we include it for now.
+	ASSERT_TRUE(metric.parse_line("sets.#|42.000000|1563315016"));
+	ASSERT_EQ("", metric.name());
+}
+
+/**
  * Ensure that parse_line() leaves a host set metric's container_id
  * unset.
  */
@@ -448,6 +526,18 @@ TEST(statsd_metric_test, parse_line_host_set_no_tags)
 
 	ASSERT_TRUE(metric.parse_line("sets.metric_name|42.000000|1563315016"));
 	ASSERT_TRUE(metric.tags().empty());
+}
+
+/**
+ * Ensure that if no tags are included in a sets metric (but the hash is
+ * there), then parse_line correctly parses that tag.
+ */
+TEST(statsd_metric_test, parse_line_host_set_zero_tags)
+{
+	statsd_metric metric;
+
+	ASSERT_TRUE(metric.parse_line("sets.metric_name#|42.000000|1563315016"));
+	ASSERT_EQ(0, metric.tags().size());
 }
 
 /**
@@ -547,6 +637,34 @@ TEST(statsd_metric_test, parse_line_host_histogram_name)
 	ASSERT_TRUE(metric.parse_line("timers.metric_name.sample_rate|13.000000|1563315016"));
 
 	ASSERT_EQ("metric_name", metric.name());
+}
+
+
+/**
+ * Ensure that parse_line() can correctly parse a host histogram metric's
+ * name when there is no name.
+ */
+TEST(statsd_metric_test, parse_line_host_histogram_no_name)
+{
+	statsd_metric metric;
+
+	// It's not clear if this *should* work, but this was a legacy
+	// test, so we include it for now.
+	ASSERT_TRUE(metric.parse_line("timers.#.sum|1.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.#.sum_sq|2.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.#.mean|3.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.#.lower|4.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.#.upper|5.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.#.count|6|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.#.stdev|7.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.#.median|8.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.#.p50|9.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.#.p95|10.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.#.p99|11.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.#.rate|12.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.#.sample_rate|13.000000|1563315016"));
+
+	ASSERT_EQ("", metric.name());
 }
 
 /**
@@ -931,6 +1049,31 @@ TEST(statsd_metric_test, parse_line_host_histogram_no_tags)
 }
 
 /**
+ * Ensure that if no tags are included in a histogram metric (but the hash is
+ * there), then parse_line correctly parses that tag.
+ */
+TEST(statsd_metric_test, parse_line_host_histogram_zero_tags)
+{
+	statsd_metric metric;
+
+	ASSERT_TRUE(metric.parse_line("timers.metric_name.sum#|1.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.metric_name.sum_sq#|2.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.metric_name.mean#|3.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.metric_name.lower#|4.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.metric_name.upper#|5.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.metric_name.count#|6|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.metric_name.stdev#|7.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.metric_name.median#|8.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.metric_name.p50#|9.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.metric_name.p95#|10.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.metric_name.p99#|11.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.metric_name.rate#|12.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.metric_name.sample_rate#|13.000000|1563315016"));
+
+	ASSERT_EQ(0, metric.tags().size());
+}
+
+/**
  * Ensure that if one tag is included in a histogram metric, then parse_line
  * correctly parses that tag.
  */
@@ -1108,6 +1251,18 @@ TEST(statsd_metric_test, parse_line_container_count_name)
 }
 
 /**
+ * Ensure that parse_line() can correctly parse a container counter metric's
+ * name when that name contains dots.
+ */
+TEST(statsd_metric_test, parse_line_container_count_name_with_dots)
+{
+	statsd_metric metric;
+
+	ASSERT_TRUE(metric.parse_line("counts.123456789abc$metric_name.with.dots|42.000000|1563315016"));
+	ASSERT_EQ("metric_name.with.dots", metric.name());
+}
+
+/**
  * Ensure that parse_line() leaves a container counter metric's container_id
  * unset.
  */
@@ -1153,6 +1308,18 @@ TEST(statsd_metric_test, parse_line_container_count_no_tags)
 
 	ASSERT_TRUE(metric.parse_line("counts.123456789abc$metric_name|42.000000|1563315016"));
 	ASSERT_TRUE(metric.tags().empty());
+}
+
+/**
+ * Ensure that if no tags are included in a counter metric for a container
+ * (but the hash is there), then parse_line correctly parses that tag.
+ */
+TEST(statsd_metric_test, parse_line_container_count_zero_tags)
+{
+	statsd_metric metric;
+
+	ASSERT_TRUE(metric.parse_line("counts.123456789abc$metric_name#|42.000000|1563315016"));
+	ASSERT_EQ(0, metric.tags().size());
 }
 
 /**
@@ -1277,6 +1444,18 @@ TEST(statsd_metric_test, parse_line_container_gauge_no_tags)
 }
 
 /**
+ * Ensure that if no tags are included in a gauge metric for a container
+ * (but the hash is there), then parse_line correctly parses that tag.
+ */
+TEST(statsd_metric_test, parse_line_container_gauge_zero_tags)
+{
+	statsd_metric metric;
+
+	ASSERT_TRUE(metric.parse_line("gauges.123456789abc$metric_name#|42.000000|1563315016"));
+	ASSERT_EQ(0, metric.tags().size());
+}
+
+/**
  * Ensure that if one tag is included in a gauge metric, then parse_line
  * correctly parses that tag.
  */
@@ -1395,6 +1574,18 @@ TEST(statsd_metric_test, parse_line_container_set_no_tags)
 
 	ASSERT_TRUE(metric.parse_line("sets.123456789abc$metric_name|42.000000|1563315016"));
 	ASSERT_TRUE(metric.tags().empty());
+}
+
+/**
+ * Ensure that if no tags are included in a set metric for a container
+ * (but the hash is there), then parse_line correctly parses that tag.
+ */
+TEST(statsd_metric_test, parse_line_container_set_zero_tags)
+{
+	statsd_metric metric;
+
+	ASSERT_TRUE(metric.parse_line("sets.123456789abc$metric_name#|42.000000|1563315016"));
+	ASSERT_EQ(0, metric.tags().size());
 }
 
 /**
@@ -1875,6 +2066,31 @@ TEST(statsd_metric_test, parse_line_container_histogram_no_tags)
 	ASSERT_TRUE(metric.parse_line("timers.123456789abc$metric_name.sample_rate|13.000000|1563315016"));
 
 	ASSERT_TRUE(metric.tags().empty());
+}
+
+/**
+ * Ensure that if no tags are included in a histogram metric for a container
+ * (but the hash is there), then parse_line correctly parses that tag.
+ */
+TEST(statsd_metric_test, parse_line_container_histogram_zero_tags)
+{
+	statsd_metric metric;
+
+	ASSERT_TRUE(metric.parse_line("timers.123456789abc$metric_name.sum#|1.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.123456789abc$metric_name.sum_sq#|2.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.123456789abc$metric_name.mean#|3.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.123456789abc$metric_name.lower#|4.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.123456789abc$metric_name.upper#|5.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.123456789abc$metric_name.count#|6|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.123456789abc$metric_name.stdev#|7.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.123456789abc$metric_name.median#|8.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.123456789abc$metric_name.p50#|9.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.123456789abc$metric_name.p95#|10.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.123456789abc$metric_name.p99#|11.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.123456789abc$metric_name.rate#|12.000000|1563315016"));
+	ASSERT_TRUE(metric.parse_line("timers.123456789abc$metric_name.sample_rate#|13.000000|1563315016"));
+
+	ASSERT_EQ(0, metric.tags().size());
 }
 
 /**

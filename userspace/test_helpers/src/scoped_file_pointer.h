@@ -30,6 +30,12 @@ public:
 	 */
 	scoped_file_pointer(const std::string& filename,
 	                    const std::string& mode);
+	/**
+	 * Initialize this scoped_file_pointer with the given file.
+	 *
+	 * @param[in] file The FILE pointer to protect.
+	 */
+	scoped_file_pointer(FILE* file);
 
 	/**
 	 * Closes the associated file.
@@ -47,7 +53,7 @@ public:
 	FILE* get() const;
 
 private:
-	FILE* m_file;
+	FILE* const m_file;
 };
 
 } // end test_helpers
