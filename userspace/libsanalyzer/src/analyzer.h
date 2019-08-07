@@ -918,9 +918,6 @@ VISIBILITY_PRIVATE
 	// Append the cluster name as a "cluster:$NAME" tag
 	// if no "cluster:*" tag is already configured
 	std::string get_host_tags_with_cluster();
-	// If the agent tags contain a tag for:
-	// cluster:$NAME ; then extract $NAME and return it
-	std::string get_cluster_name_from_agent_tags() const;
 	uint32_t get_mesos_api_server_port(sinsp_threadinfo* main_tinfo);
 #endif
 	sinsp_threadinfo* get_main_thread_info(int64_t& tid);
@@ -1131,9 +1128,6 @@ VISIBILITY_PRIVATE
 	run_on_interval m_containers_check_interval = {60*ONE_SECOND_IN_NS};
 
 	std::vector<sinsp_threadinfo*> m_threads_to_remove;
-
-	// Local cache for k8s_cluster_name
-	std::string m_k8s_cluster_name;
 
 	//
 	// Subsampling-related stuff

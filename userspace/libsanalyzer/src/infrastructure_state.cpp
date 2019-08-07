@@ -300,6 +300,7 @@ infrastructure_state::infrastructure_state(sinsp* inspector,
 	, m_k8s_ca_certificate(normalize_path(c_k8s_ca_certificate.get()))
 	, m_k8s_ssl_certificate(normalize_path(c_k8s_ssl_certificate.get()))
 	, m_k8s_ssl_key(normalize_path(c_k8s_ssl_key.get()))
+	, m_k8s_cluster_name(std::string())
 {
 	if (c_k8s_autodetect.get())
 	{
@@ -1838,14 +1839,67 @@ void infrastructure_state::print_obj(const uid_t &key) const
 	}
 }
 
-// TODO: If and when we change the below function to get
-// us the correct name from GKE; we should update the
-// sinsp_analyzer::get_k8s_cluster_name() method correspondingly.
-// See SMAGENT-1164
-std::string infrastructure_state::get_k8s_cluster_name() const
+// Main method to extract the value of $NAME in "cluster:$NAME"
+// IFF a tag called "cluster:" exists in the agent tags.
+std::string infrastructure_state::get_cluster_name_from_agent_tags() const
+{	
+	std::string cluster_tag("");
+	std::string tags = m_inspector->m_analyzer->m_configuration->get_host_tags();
+       
+	// Matches for pattern:
+	// cluster:$NAME    OR
+	// ,  cluster:$NAME OR
+	// ,cluster:$NAME   OR
+	//,cluster :$NAME
+	// This is needed to prevent false positive matches
+	// for tags like:    foocluster:barvalue
+	// The reg_exp captures the value of $NAME
+	Poco::RegularExpression reg_exp("(^|,)\\s*cluster:\\s*([A-Za-z0-9]+)");
+	std::vector<std::string> match_strings;
+
+	reg_exp.split(tags, match_strings);
+
+	if(match_strings.size() > 0)
+	{
+		// We have a match ! Match is last entry in
+		// the vector of strings.
+		cluster_tag = match_strings[match_strings.size() - 1];
+	}
+
+	return cluster_tag;
+}
+
+// Get the cluster name from 1 of 3 sources.
+// Priority order:
+// 1.) Get k8s_cluster_name from the config map; if it exists.
+// 2.) Get cluster name from "cluster:$NAME" agent tag; if it exists.
+// 3.) if above 2 don't exist, get name from GKE cluster or
+//     other cluster name source. for now, this is always "default"
+std::string infrastructure_state::get_k8s_cluster_name()
 {
-	// XXX get the cluster name from GKE if possible
-	return "default";
+	// Check local cache first. if not empty return it.
+	if(!m_k8s_cluster_name.empty())
+	{
+		return m_k8s_cluster_name;
+	}
+
+	// Priority 1 : get cluster name from k8s_cluster_name config
+	if(!m_inspector->m_analyzer->m_configuration->get_k8s_cluster_name().empty())
+	{
+		m_k8s_cluster_name = m_inspector->m_analyzer->m_configuration->get_k8s_cluster_name();
+	} // Priority 2: get it from agent tag "cluster:*" 
+	else if(!get_cluster_name_from_agent_tags().empty())
+	{
+		m_k8s_cluster_name = get_cluster_name_from_agent_tags();
+	} // Priority 3: Get from infra state
+	else
+	{
+		// For now this is always "default".
+		// In future this could be obtained from GKE for example.
+		m_k8s_cluster_name = "default";
+	}
+	
+ 	return m_k8s_cluster_name;
 }
 
 // The UID of the default namespace is used as the cluster id

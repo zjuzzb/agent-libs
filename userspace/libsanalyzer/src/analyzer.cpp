@@ -169,7 +169,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 
 	m_ipv4_connections = NULL;
 	m_trans_table = NULL;
-	m_k8s_cluster_name = std::string();
 	m_is_sampling = false;
 	m_capture_in_progress = false;
 	m_driver_stopped_dropping = false;
@@ -5227,70 +5226,10 @@ void sinsp_analyzer::emit_k8s()
 	}
 }
 
-// Main method to extract the value of $NAME in "cluster:$NAME"
-// IFF a tag called "cluster:" exists in the agent tags.
-std::string sinsp_analyzer::get_cluster_name_from_agent_tags() const
-{	
-	std::string cluster_tag("");
-	std::string tags = m_configuration->get_host_tags();
-       
-	// Matches for pattern:
-	// cluster:$NAME    OR
-	// ,  cluster:$NAME OR
-	// ,cluster:$NAME   OR
-	//,cluster :$NAME
-	// This is needed to prevent false positive matches
-	// for tags like:    foocluster:barvalue
-	// The reg_exp captures the value of $NAME
-	Poco::RegularExpression reg_exp("(^|,)\\s*cluster:\\s*([A-Za-z0-9]+)");
-	std::vector<std::string> match_strings;
-
-	reg_exp.split(tags, match_strings);
-
-	if(match_strings.size() > 0)
-	{
-		// We have a match ! Match is last entry in
-		// the vector of strings.
-		cluster_tag = match_strings[match_strings.size() - 1];
-	}
-
-	return cluster_tag;
-}
-
-// Get the cluster name from 1 of 3 sources.
-// Priority order:
-// 1.) Get k8s_cluster_name from the config map; if it exists.
-// 2.) Get cluster name from "cluster:$NAME" agent tag; if it exists.
-// 3.) if above 2 don't exist, get name from GKE cluster or
-//     other cluster name source. for now, this is always "default"
+// Get the cluster name from infrastructure state
 std::string sinsp_analyzer::get_k8s_cluster_name()
 {
-	// Check local cache first. ifnot empty return it.
-	// TODO: Once infrastate is connected to GKE or other cluster name
-	// source & we get cluster names from there, this can change dynamically.
-	// We need to check forchanges and update cache before returning
-	// this value. for now, the infrastate name is always "default".
-	// So this is safe for now. See SMAGENT-1164
-	if(!m_k8s_cluster_name.empty())
-	{
-		return m_k8s_cluster_name;
-	}
-
-	// Priority 1 : get cluster name from k8s_cluster_name config
-	if(!m_configuration->get_k8s_cluster_name().empty())
-	{
-		m_k8s_cluster_name = m_configuration->get_k8s_cluster_name();
-	} // Priority 2: get it from agent tag "cluster:*" 
-	else if(!get_cluster_name_from_agent_tags().empty())
-	{
-		m_k8s_cluster_name = get_cluster_name_from_agent_tags();
-	} // Priority 3: Get from infra state
-	else
-	{
-		m_k8s_cluster_name = m_infrastructure_state->get_k8s_cluster_name();
-	}
-	
- 	return m_k8s_cluster_name;
+	return  m_infrastructure_state->get_k8s_cluster_name();
 }
 
 // if user has not configured an agent "cluster:" tag,
@@ -5310,7 +5249,7 @@ std::string sinsp_analyzer::get_host_tags_with_cluster()
  	const string tag_str("cluster:");
 
  	// No user-defined agent cluster tag so it's safe to append
- 	if(get_cluster_name_from_agent_tags().empty())
+ 	if(m_infrastructure_state->get_cluster_name_from_agent_tags().empty())
  	{
  		if(!tags.empty())
  		{

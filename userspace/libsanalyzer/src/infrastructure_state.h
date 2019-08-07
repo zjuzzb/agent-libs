@@ -101,7 +101,13 @@ public:
 	bool has(uid_t uid) const;
 	unsigned int size();
 
-	std::string get_k8s_cluster_name() const;
+	// Return the cluster name that must be set
+	// for the orch state. This is what will be
+	// displayed on the front end.
+	std::string get_k8s_cluster_name();
+	// If the agent tags contain a tag for:
+	// cluster:$NAME ; then extract $NAME and return it
+	std::string get_cluster_name_from_agent_tags() const;
 	// The UID of the default namespace is used as the cluster id
 	std::string get_k8s_cluster_id() const;
 	void init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size);
@@ -230,6 +236,8 @@ private:
 	std::string m_k8s_ca_certificate;
 	std::string m_k8s_ssl_certificate;
 	std::string m_k8s_ssl_key;
+	// Local cache for k8s_cluster_name
+	std::string m_k8s_cluster_name;
 
 private:
 	/**
