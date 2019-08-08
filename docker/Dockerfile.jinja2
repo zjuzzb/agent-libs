@@ -2,14 +2,14 @@ FROM {{ p.base_docker_image }}
 
 MAINTAINER Sysdig <support@sysdig.com>
 
+ENV SYSDIG_BUILD_KERNEL_MODULE={{ p.build_kernel_module }} \
+    SYSDIG_LAUNCH_DRAGENT={{ p.launch_dragent }} \
+    SYSDIG_HOST_ROOT=/host
+
 {% if p.include_agent_package is defined %}
 ENV SYSDIG_REPOSITORY {{ p.sysdig_repository }}
 
 {% endif %}
-ENV SYSDIG_BUILD_KERNEL_MODULE {{ p.build_kernel_module }}
-
-ENV SYSDIG_LAUNCH_DRAGENT {{ p.launch_dragent }}
-
 {% if p.build_kernel_module and not p.include_agent_package is defined %}
 COPY ./sysdigcloud-probe-loader /opt/draios/bin/
 
@@ -18,8 +18,6 @@ COPY ./sysdigcloud-probe-loader /opt/draios/bin/
 ENV SYSDIG_VERSION {{ p.agent_version }}
 
 {% endif %}
-ENV SYSDIG_HOST_ROOT /host
-
 {% if p.build_kernel_module == 1 %}
 {% if p.include_agent_package == "local" %}
 ENV AGENT_VERSION 0.1.1dev
@@ -29,13 +27,10 @@ ENV HOME /root
 
 {% endif %}
 
+{% if p.base_docker_image != "adoptopenjdk/openjdk8:alpine-slim" %}
 {% if p.include_agent_package == "apt" %}
 ADD http://download.draios.com/apt-draios-priority /etc/apt/preferences.d/
 
-{% endif %}
-
-{% if p.sysdig_repository == "dev" %}
-RUN printenv
 {% endif %}
 
 RUN apt-get update -o Acquire::Check-Valid-Until=false \
@@ -69,12 +64,9 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false \
  && apt-get update \
  && apt-get install --no-install-recommends docker-ce-cli \
 {% endif %}
- && rm -rf /var/lib/apt/lists/* \
- && printenv \
- && env
+ && rm -rf /var/lib/apt/lists/*
 
 {% if p.build_kernel_module %}
-
 # gcc 6 is no longer included in debian unstable, but we need it to
 # build kernel modules on the default debian-based ami used by
 # kops. So grab copies we've saved from debian snapshots with the
@@ -181,6 +173,25 @@ RUN curl -s -o binutils_2.30-22_amd64.deb https://s3.amazonaws.com/download.drai
 {% if p.include_agent_package == "local" %}
 ADD draios-${AGENT_VERSION}-x86_64-agent.deb /
 RUN dpkg -i /draios-${AGENT_VERSION}-x86_64-agent.deb && rm -rf /opt/draios/lib/python-deps2.6
+
+{% endif %}
+{% else %}
+COPY ./opt/draios /opt/draios
+
+RUN apk update \
+&& apk add --no-cache curl \
+python \
+bash \
+procps \
+iproute2 \
+openssl \
+docker-cli \
+&& mkdir /opt/draios/run \
+&& rm -rf /tmp/*.apk /var/cache/apk/* \
+&& rm -rf /opt/draios/lib/python-deps2.6 \
+&& chown -R root:root "${JAVA_HOME}" \
+&& (cd "${JAVA_HOME}/bin" && for i in $(ls); do ln -sf "${JAVA_HOME}/bin/$i" "/usr/bin/$i"; done) \
+&& true
 
 {% endif %}
 COPY ./docker-entrypoint.sh /

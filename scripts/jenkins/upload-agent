@@ -188,13 +188,24 @@ function trigger_docker_builds {
 	mkdir -p "${DOCKERFILES_ROOT_DIR}"
 	tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "${BINARIES_DIR}"/release/draios-*-dockerfiles.tar.gz
 
-	for IMAGE_NAME in agent-kmodule agent-slim agent; do
+	for IMAGE_NAME in agent-kmodule agent-slim agent agent-slim-v2; do
 
 		pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${IMAGE_NAME}/${REPOSITORY_BASENAME}"
 
 		VERSION_SUFFIX=""
 		if [[ "${REPOSITORY_BASENAME}" == "rc" ]]; then
 			VERSION_SUFFIX="-rc"
+		fi
+
+		# We have some pre-work for agent-slim-v2
+		# 1. Copy the agent-slim.tar.gz that was generated to the local docker directory
+		# 2. Extract the tar ball and strip the agent binaries of debug symbols
+		if [[ "${IMAGE_NAME}" == "agent-slim-v2" ]]; then
+			echo "Extracting agent-slim.tar.gz for 'agent-slim-v2'"
+			cp "${BINARIES_DIR}"/release/*agent-slim.tar.gz .
+			tar -xzf *agent-slim.tar.gz
+			find ./opt/draios/bin -type f | xargs file | awk '/ELF/ { sub(/:$/, "", $1); print $1 }' | xargs strip -g
+			rm -rf ./opt/draios/lib/python-deps2.6/
 		fi
 
 		VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}${VERSION_SUFFIX}"

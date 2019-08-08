@@ -63,6 +63,10 @@ elif image == "agent-kmodule":
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 1
     p['launch_dragent'] = 0
+elif image == "agent-slim-v2":
+    p['base_docker_image'] = "adoptopenjdk/openjdk8:alpine-slim"
+    p['build_kernel_module'] = 0
+    p['launch_dragent'] = 1
 
 if agent_version != "":
     p['agent_version'] = agent_version
