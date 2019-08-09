@@ -5851,10 +5851,29 @@ sinsp_analyzer::emit_containers_deprecated(const analyzer_emitter::progtable_by_
 		{
 			const auto& containerid = containers_ids.front();
 			// We need any pid of a process running within this container
-			// to get net stats via /proc, using .at() because it will never fail
-			// since we are getting containerids from that table
-			// same tinfo is used also to get memory cgroup path
-			auto tinfo = progtable_by_container.at(containerid).front();
+			// to get net stats via /proc
+			// Since we're using it also to read cgroups, try to pick vpid=1
+			// first.
+			const auto& container_progs = progtable_by_container.at(containerid);
+			auto container_init = find_if(
+				container_progs.begin(),
+				container_progs.end(),
+				[](sinsp_threadinfo* tinfo) {
+					return tinfo->m_vtid == 1;
+				});
+
+			sinsp_threadinfo* tinfo;
+			if(container_init != container_progs.end())
+			{
+				tinfo = *container_init;
+			}
+			else
+			{
+				tinfo = progtable_by_container.at(containerid).front();
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Failed to find container init for %s, "
+					     "using process %s (vtid=%ld)", containerid.c_str(),
+					     tinfo->m_comm.c_str(), tinfo->m_vtid);
+			}
 			std::list<uint32_t> groups;
 			this->emit_container(containerid, &statsd_limit, total_cpu_shares, tinfo, flushflags, groups);
 			emitted_containers.emplace_back(containerid);
