@@ -252,7 +252,7 @@ protected:
 				switch (hdr->messagetype)
 				{
 				case draiosproto::message_type::COMP_RESULTS:
-					ASSERT_TRUE(dragent_protocol::buffer_to_protobuf(buf, size, &res));
+					dragent_protocol::buffer_to_protobuf(buf, size, &res);
 					break;
 
 				default:

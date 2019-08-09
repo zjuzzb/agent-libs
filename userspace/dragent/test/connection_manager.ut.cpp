@@ -9,7 +9,6 @@ using namespace std;
 #include <ctime>
 
 #include "configuration.h"
-#include "sinsp_worker.h"
 #include "sinsp_mock.h"
 #include "watchdog_runnable.h"
 #include "connection_manager.h"
@@ -82,10 +81,7 @@ TEST(connection_manager_test, failure_to_connect)
 	// Create and spin up the connection manager
 	thread t([&queue, &config]()
 	{
-		connection_manager cm(&config,
-		                      &queue,
-		                      nullptr,  // sinsp_worker
-		                      nullptr); // capture_job_handler
+		connection_manager cm(&config, &queue);
 		ASSERT_NO_THROW(cm.test_run());
 	});
 
@@ -133,12 +129,7 @@ TEST(connection_manager_test, connection_timeout)
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
 
-	sinsp_worker* worker = nullptr;
-	capture_job_handler* capture_handler = nullptr;
-	connection_manager cm(&config,
-	                      &queue,
-	                      worker,
-	                      capture_handler);
+	connection_manager cm(&config, &queue);
 	cm.set_connection_timeout(4 * 1000 * 1000);
 
 	// Create and spin up the connection manager
@@ -189,12 +180,7 @@ TEST(connection_manager_test, connect_transmit)
 		// The sinsp_worker and c_j_h are only used when processing
 		// push messages from the backend. For the moment these can
 		// be null.
-		sinsp_worker* worker = nullptr;
-		capture_job_handler* capture_handler = nullptr;
-		connection_manager cm(&config,
-		                      &queue,
-		                      worker,
-		                      capture_handler);
+		connection_manager cm(&config, &queue);
 		cm.test_run();
 	});
 

@@ -7,13 +7,10 @@
  */
 #pragma once
 #include "rest_request_handler.h"
-
-class connection_manager;
+#include "connection_manager.h"
 
 namespace dragent
 {
-
-class config_data_message_handler;
 
 /**
  * Request handler to inject a new config_data protobuf.  The URI is in the
@@ -41,13 +38,13 @@ public:
 	 * Set the config data message handler that will accept incoming
 	 * requests to update the config data.
 	 */
-	static void set_config_data_message_handler(config_data_message_handler* cm);
+	static void set_config_data_message_handler(connection_manager::message_handler::ptr cm);
 
 	/**
 	 * Returns the currently registered config data message handler, or
 	 * nullptr if non is currently registered.
 	 */
-	static config_data_message_handler* get_config_data_message_handler();
+	static connection_manager::message_handler::ptr get_config_data_message_handler();
 
 protected:
 	/**
@@ -57,7 +54,7 @@ protected:
 	                               Poco::Net::HTTPServerResponse&) override;
 
 private:
-	static config_data_message_handler* s_config_data_message_handler;
+	static connection_manager::message_handler::ptr s_config_data_message_handler;
 };
 
 } // namespace dragent

@@ -1,4 +1,6 @@
 #include "connection_manager.h"
+#include "blocking_queue.h"
+#include "capture_job_handler.h"
 #include "common_logger.h"
 #include "draios.pb.h"
 #include "protocol.h"
@@ -11,6 +13,7 @@
 #include <Poco/File.h>
 #include <Poco/Net/InvalidCertificateHandler.h>
 #include <Poco/Net/SSLException.h>
+
 
 #include <grpc_channel_registry.h>
 
@@ -63,19 +66,18 @@ public:
  * connect again, looping until the agent is terminated.
  */
 
-connection_manager::connection_manager(dragent_configuration* configuration,
-				       protocol_queue* queue,
-				       sinsp_worker* sinsp_worker,
-				       capture_job_handler *capture_job_handler) :
+connection_manager::connection_manager(
+		dragent_configuration* configuration,
+		protocol_queue* queue,
+		std::initializer_list<message_handler_map::value_type> message_handlers):
 	dragent::watchdog_runnable("connection_manager"),
+	m_handler_map(message_handlers),
 	m_socket(nullptr),
 	m_connected(false),
 	m_buffer(RECEIVER_BUFSIZE),
 	m_buffer_used(0),
 	m_configuration(configuration),
 	m_queue(queue),
-	m_sinsp_worker(sinsp_worker),
-	m_capture_job_handler(capture_job_handler),
 	m_reconnect_interval(0)
 {
 	Poco::Net::initializeSSL();
@@ -603,10 +605,16 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 
 		draiosproto::metrics msg;
 		promex_pb::PrometheusExporterResponse response;
-		if (parse_protocol_queue_item(*item, &msg))
+
+		try
 		{
+			parse_protocol_queue_item(*item, &msg);
 			// XXX: this is blocking
 			m_prom_conn->EmitMetrics(&context, msg, &response);
+		}
+		catch(const dragent_protocol::protocol_error& ex)
+		{
+			LOG_WARNING("%s", ex.what());
 		}
 	}
 #endif
@@ -823,63 +831,20 @@ bool connection_manager::receive_message()
 			         NumberFormatter::format(header->messagetype) +
 			         " (" + draiosproto::message_type_Name((draiosproto::message_type) header->messagetype) + ")");
 
-			switch(header->messagetype)
+			draiosproto::message_type type = static_cast<draiosproto::message_type>(header->messagetype);
+			message_handler_map::const_iterator itr = m_handler_map.find(type);
+
+			if(itr != m_handler_map.end())
 			{
-			case draiosproto::message_type::DUMP_REQUEST_START:
-				handle_dump_request_start(
+				itr->second->handle_message(
+						type,
 						m_buffer.begin() + sizeof(dragent_protocol_header),
 						header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::DUMP_REQUEST_STOP:
-				handle_dump_request_stop(
-						m_buffer.begin() + sizeof(dragent_protocol_header),
-						header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::CONFIG_DATA:
-				handle_config_data(
-						m_buffer.begin() + sizeof(dragent_protocol_header),
-						header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::ERROR_MESSAGE:
-				handle_error_message(
-					m_buffer.begin() + sizeof(dragent_protocol_header),
-					header->len - sizeof(dragent_protocol_header));
-				break;
-#ifndef CYGWING_AGENT
-			case draiosproto::message_type::POLICIES:
-				handle_policies_message(
-					m_buffer.begin() + sizeof(dragent_protocol_header),
-					header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::POLICIES_V2:
-				handle_policies_v2_message(
-					m_buffer.begin() + sizeof(dragent_protocol_header),
-					header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::COMP_CALENDAR:
-				handle_compliance_calendar_message(
-					m_buffer.begin() + sizeof(dragent_protocol_header),
-					header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::COMP_RUN:
-				handle_compliance_run_message(
-					m_buffer.begin() + sizeof(dragent_protocol_header),
-					header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::ORCHESTRATOR_EVENTS:
-				handle_orchestrator_events(
-					m_buffer.begin() + sizeof(dragent_protocol_header),
-					header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::BASELINES:
-				handle_baselines_message(
-					m_buffer.begin() + sizeof(dragent_protocol_header),
-					header->len - sizeof(dragent_protocol_header));
-				break;
-#endif
-			default:
-				LOG_ERROR("Unknown message type: "
-							 + NumberFormatter::format(header->messagetype));
+			}
+			else
+			{
+				LOG_ERROR("Unknown message type: %d",
+				          header->messagetype);
 				ASSERT(false);
 			}
 		}
@@ -890,6 +855,12 @@ bool connection_manager::receive_message()
 			ASSERT(false);
 			return false;
 		}
+	}
+	catch(const dragent_protocol::protocol_error& e)
+	{
+		// The message handle failed to take the buffer and convert it
+		// into the relevant message type.
+		LOG_ERROR("Protocol error: %s", e.what());
 	}
 	catch(const Poco::IOException& e)
 	{
@@ -904,328 +875,3 @@ bool connection_manager::receive_message()
 	}
 	return true;
 }
-
-void connection_manager::handle_dump_request_start(uint8_t* buf, uint32_t size)
-{
-	draiosproto::dump_request_start request;
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
-	{
-		return;
-	}
-
-	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
-		make_shared<capture_job_handler::dump_job_request>();
-
-	job_request->m_start_details = make_unique<capture_job_handler::start_job_details>();
-
-	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
-	job_request->m_token = request.token();
-
-	if(request.has_filters())
-	{
-		job_request->m_start_details->m_filter = request.filters();
-	}
-
-	if(request.has_duration_ns())
-	{
-		job_request->m_start_details->m_duration_ns = request.duration_ns();
-	}
-
-	if(request.has_max_size())
-	{
-		job_request->m_start_details->m_max_size = request.max_size();
-	}
-
-	if(request.has_past_duration_ns())
-	{
-		job_request->m_start_details->m_past_duration_ns = request.past_duration_ns();
-	}
-
-	if(request.has_past_size())
-	{
-		job_request->m_start_details->m_past_size = request.past_size();
-	}
-
-	// Note: sending request via sinsp_worker so it can add on
-	// needed state (e.g. sinsp_dumper)
-	m_sinsp_worker->queue_job_request(job_request);
-}
-
-void connection_manager::handle_dump_request_stop(uint8_t* buf, uint32_t size)
-{
-	draiosproto::dump_request_stop request;
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
-	{
-		return;
-	}
-
-	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
-		make_shared<capture_job_handler::dump_job_request>();
-
-	job_request->m_stop_details = make_unique<capture_job_handler::stop_job_details>();
-
-	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_STOP;
-	job_request->m_token = request.token();
-
-	// For captures created by the connection manager,
-	// m_defer_send is never true, so there isn't any need to
-	// worry about stopping a deferred capture. But set this for
-	// completeness.
-	job_request->m_stop_details->m_remove_unsent_job = false;
-
-	// This could go directly to the capture handler as there's no
-	// need to add any state when stopping a job. However, still
-	// sending it via the sinsp_worker so there's no chance of the
-	// stop message arriving at the capture handler before the
-	// start. (Unlikely, but just being safe).
-	m_sinsp_worker->queue_job_request(job_request);
-}
-
-bool connection_manager::handle_config_data(const uint8_t* const buf,
-                                            const uint32_t size)
-{
-	if(m_configuration->m_auto_config)
-	{
-		draiosproto::config_data request;
-
-		if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
-		{
-			return false;
-		}
-
-		bool all_files_handled = true;
-
-		for(const auto& config_file_proto : request.config_files())
-		{
-			std::string errstr;
-
-			if(m_configuration->save_auto_config(config_file_proto.name(),
-							     config_file_proto.content(),
-							     errstr) < 0)
-			{
-				LOG_ERROR(errstr);
-				all_files_handled = false;
-			}
-		}
-
-		return all_files_handled;
-	}
-	else
-	{
-		LOG_DEBUG("Auto config disabled, ignoring CONFIG_DATA message");
-		return false;
-	}
-}
-
-void connection_manager::handle_error_message(uint8_t* buf, uint32_t size) const
-{
-	draiosproto::error_message err_msg;
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &err_msg))
-	{
-		LOG_ERROR("received unparsable error message");
-		return;
-	}
-
-	string err_str = "unknown error";
-	bool term = false;
-
-	// Log as much useful info as possible from the error_message
-	if(err_msg.has_type())
-	{
-		const draiosproto::error_type err_type = err_msg.type();
-		if (draiosproto::error_type_IsValid(err_type)) {
-			err_str = draiosproto::error_type_Name(err_type);
-
-			if(err_msg.has_description() && !err_msg.description().empty())
-			{
-				err_str += " (" + err_msg.description() + ")";
-			}
-
-			if(err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY ||
-			   err_type == draiosproto::error_type::ERR_PROTO_MISMATCH)
-			{
-				term = true;
-				err_str += ", terminating the agent";
-			}
-		}
-		else
-		{
-			err_str = ": received invalid error type: " + std::to_string(err_type);
-		}
-	}
-
-	LOG_ERROR("received " + err_str);
-
-	if(term)
-	{
-		dragent_configuration::m_terminate = true;
-	}
-}
-
-#ifndef CYGWING_AGENT
-void connection_manager::handle_policies_message(uint8_t* buf, uint32_t size)
-{
-	draiosproto::policies policies;
-	string errstr;
-
-	if(!security_config::is_enabled())
-	{
-		LOG_DEBUG("Security disabled, ignoring POLICIES message");
-		return;
-	}
-
-	if(security_config::get_policies_file() != "")
-	{
-		LOG_INFO("Security policies file configured in dragent.yaml, "
-		         "ignoring POLICIES message");
-		return;
-	}
-
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &policies))
-	{
-		LOG_ERROR("Could not parse policies message");
-		return;
-	}
-
-	if (!m_sinsp_worker->load_policies(policies, errstr))
-	{
-		LOG_ERROR("Could not load policies message: " + errstr);
-		return;
-	}
-}
-
-void connection_manager::handle_policies_v2_message(uint8_t* buf, uint32_t size)
-{
-	draiosproto::policies_v2 policies_v2;
-	std::string errstr;
-
-	if(!security_config::is_enabled())
-	{
-		LOG_DEBUG("Security disabled, ignoring POLICIES message");
-		return;
-	}
-
-	if(security_config::get_policies_v2_file() != "")
-	{
-		LOG_INFO("Security policies file configured in dragent.yaml, "
-		         "ignoring POLICIES_V2 message");
-		return;
-	}
-
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &policies_v2))
-	{
-		LOG_ERROR("Could not parse policies_v2 message");
-		return;
-	}
-
-	if (!m_sinsp_worker->load_policies_v2(policies_v2, errstr))
-	{
-		LOG_ERROR("Could not load policies_v2 message: " + errstr);
-		return;
-	}
-}
-
-void connection_manager::handle_compliance_calendar_message(uint8_t* buf, uint32_t size)
-{
-	draiosproto::comp_calendar calendar;
-	string errstr;
-
-	if(!security_config::is_enabled())
-	{
-		LOG_DEBUG("Security disabled, ignoring COMP_CALENDAR message");
-		return;
-	}
-
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &calendar))
-	{
-		LOG_ERROR("Could not parse comp_calendar message");
-		return;
-	}
-
-	if (!m_sinsp_worker->set_compliance_calendar(calendar,
-						     security_config::get_send_compliance_results(),
-						     security_config::get_send_compliance_events(),
-						     errstr))
-	{
-		LOG_ERROR("Could not set compliance calendar: " + errstr);
-		return;
-	}
-}
-
-void connection_manager::handle_compliance_run_message(uint8_t* buf, uint32_t size)
-{
-	draiosproto::comp_run run;
-	string errstr;
-
-	if(!security_config::is_enabled())
-	{
-		LOG_DEBUG("Security disabled, ignoring COMP_RUN message");
-		return;
-	}
-
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &run))
-	{
-		LOG_ERROR("Could not parse comp_run message");
-		return;
-	}
-
-	if (!m_sinsp_worker->run_compliance_tasks(run, errstr))
-	{
-		LOG_ERROR("Could not run compliance tasks: " + errstr);
-		return;
-	}
-}
-#endif
-
-#ifndef CYGWING_AGENT
-void connection_manager::handle_orchestrator_events(uint8_t* buf, uint32_t size)
-{
-	draiosproto::orchestrator_events evts;
-
-	if(!security_config::is_enabled())
-	{
-		LOG_DEBUG("Security disabled, ignoring ORCHESTRATOR_EVENTS message");
-		return;
-	}
-
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &evts))
-	{
-		LOG_ERROR("Could not parse orchestrator_events message");
-		return;
-	}
-
-	m_sinsp_worker->receive_hosts_metadata(evts);
-}
-#endif
-
-#ifndef CYGWING_AGENT
-void connection_manager::handle_baselines_message(uint8_t* buf, uint32_t size)
-{
-	draiosproto::baselines baselines;
-	string errstr;
-
-	if(!security_config::is_enabled())
-	{
-		LOG_DEBUG("Security disabled, ignoring BASELINES message");
-		return;
-	}
-
-	if(security_config::get_baselines_file() != "")
-	{
-		LOG_INFO("Security baselines file configured in dragent.yaml, ignoring BASELINES message");
-		return;
-	}
-
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &baselines))
-	{
-		LOG_ERROR("Could not parse baselines message");
-		return;
-	}
-
-	if (!m_sinsp_worker->load_baselines(baselines, errstr))
-	{
-		LOG_ERROR("Could not load baselines message: " + errstr);
-		return;
-	}
-}
-#endif

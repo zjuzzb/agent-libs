@@ -845,7 +845,8 @@ void sinsp_worker::queue_job_request(std::shared_ptr<capture_job_handler::dump_j
 }
 
 #ifndef CYGWING_AGENT
-bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &errstr)
+bool sinsp_worker::load_policies(const draiosproto::policies &policies,
+                                 std::string &errstr)
 {
 	if(m_security_mgr)
 	{
@@ -858,7 +859,8 @@ bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &e
 	}
 }
 
-bool sinsp_worker::load_policies_v2(draiosproto::policies_v2 &policies_v2, std::string &errstr)
+bool sinsp_worker::load_policies_v2(const draiosproto::policies_v2 &policies_v2,
+                                    std::string &errstr)
 {
 	if(m_security_mgr)
 	{
@@ -878,7 +880,7 @@ bool sinsp_worker::is_stall_fatal() const
 	return m_configuration->m_input_filename.empty();
 }
 
-bool sinsp_worker::set_compliance_calendar(draiosproto::comp_calendar &calendar,
+bool sinsp_worker::set_compliance_calendar(const draiosproto::comp_calendar &calendar,
 					   bool send_results,
 					   bool send_events,
 					   std::string &errstr)
@@ -897,7 +899,8 @@ bool sinsp_worker::set_compliance_calendar(draiosproto::comp_calendar &calendar,
 	}
 }
 
-bool sinsp_worker::run_compliance_tasks(draiosproto::comp_run &run, std::string &errstr)
+bool sinsp_worker::run_compliance_tasks(const draiosproto::comp_run &run,
+                                        std::string &errstr)
 {
 	if(m_compliance_mgr)
 	{
@@ -911,7 +914,8 @@ bool sinsp_worker::run_compliance_tasks(draiosproto::comp_run &run, std::string 
 	}
 }
 
-bool sinsp_worker::load_baselines(draiosproto::baselines &baselines, std::string &errstr)
+bool sinsp_worker::load_baselines(const draiosproto::baselines &baselines,
+                                  std::string &errstr)
 {
 	if(m_security_mgr)
 	{
@@ -924,7 +928,7 @@ bool sinsp_worker::load_baselines(draiosproto::baselines &baselines, std::string
 	}
 }
 
-void sinsp_worker::receive_hosts_metadata(draiosproto::orchestrator_events &evts)
+void sinsp_worker::receive_hosts_metadata(const draiosproto::orchestrator_events &evts)
 {
 	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
 	m_compliance_mgr->request_refresh_compliance_tasks();

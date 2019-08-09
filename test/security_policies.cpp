@@ -549,13 +549,13 @@ public:
 		{
 		case draiosproto::message_type::THROTTLED_POLICY_EVENTS:
 			tpe = new draiosproto::throttled_policy_events();
-			ASSERT_TRUE(dragent_protocol::buffer_to_protobuf(buf, size, tpe));
+			dragent_protocol::buffer_to_protobuf(buf, size, tpe);
 			msg.reset(tpe);
 			break;
 
 		case draiosproto::message_type::POLICY_EVENTS:
 			pe = new draiosproto::policy_events();
-			ASSERT_TRUE(dragent_protocol::buffer_to_protobuf(buf, size, pe));
+			dragent_protocol::buffer_to_protobuf(buf, size, pe);
 			msg.reset(pe);
 			break;
 

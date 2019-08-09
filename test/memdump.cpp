@@ -282,9 +282,10 @@ protected:
 	// Parse a generic queue item into a dump response object.
 	void parse_dump_response(std::shared_ptr<protocol_queue_item> item, draiosproto::dump_response &response)
 	{
-		ASSERT_TRUE(dragent_protocol::buffer_to_protobuf((uint8_t *) item->buffer.data() + sizeof(dragent_protocol_header),
-								 (uint32_t) item->buffer.size()-sizeof(dragent_protocol_header),
-								 &response));
+		dragent_protocol::buffer_to_protobuf(
+				(uint8_t *) item->buffer.data() + sizeof(dragent_protocol_header),
+				(uint32_t) item->buffer.size()-sizeof(dragent_protocol_header),
+				&response);
 
 		g_log->debug("Dump response token=" + response.token()
 			     + " chunk_no=" + to_string(response.chunk_no())

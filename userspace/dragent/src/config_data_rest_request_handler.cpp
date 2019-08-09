@@ -7,7 +7,6 @@
  */
 #include "config_data_rest_request_handler.h"
 #include "draios.pb.h"
-#include "config_data_message_handler.h"
 #include "draios.pb.h"
 #include <streambuf>
 #include <string>
@@ -19,7 +18,7 @@
 namespace dragent
 {
 
-config_data_message_handler* config_data_rest_request_handler::s_config_data_message_handler = nullptr;
+connection_manager::message_handler::ptr config_data_rest_request_handler::s_config_data_message_handler;
 
 config_data_rest_request_handler::config_data_rest_request_handler():
 	librest::rest_request_handler(get_path(),
@@ -29,12 +28,13 @@ config_data_rest_request_handler::config_data_rest_request_handler():
 { }
 
 void config_data_rest_request_handler::set_config_data_message_handler(
-		config_data_message_handler* const cm)
+		connection_manager::message_handler::ptr cm)
 {
 	s_config_data_message_handler = cm;
 }
 
-config_data_message_handler* config_data_rest_request_handler::get_config_data_message_handler()
+connection_manager::message_handler::ptr
+config_data_rest_request_handler::get_config_data_message_handler()
 {
 	return s_config_data_message_handler;
 }
@@ -78,8 +78,9 @@ std::string config_data_rest_request_handler::handle_put_request(
 		{
 			gzstream.Close();
 
-			if(s_config_data_message_handler->handle_config_data(
-					reinterpret_cast<const uint8_t*>(data.data()),
+			if(s_config_data_message_handler->handle_message(
+					draiosproto::message_type::CONFIG_DATA,
+					const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(data.data())),
 					data.size()))
 			{
 				return body;

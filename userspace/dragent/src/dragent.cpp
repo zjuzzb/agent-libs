@@ -5,13 +5,16 @@
 #include "dragent.h"
 #include "crash_handler.h"
 #include "configuration.h"
-#include "config_data_rest_request_handler.h"
 #include "config_data_message_handler.h"
+#include "config_data_rest_request_handler.h"
 #include "config_rest_request_handler.h"
 #include "configlist_rest_request_handler.h"
 #include "connection_manager.h"
 #include "dragent_memdump_logger.h"
 #include "dragent_user_event_callback.h"
+#include "dump_request_start_message_handler.h"
+#include "dump_request_stop_message_handler.h"
+#include "error_message_handler.h"
 #include "faultlist_rest_request_handler.h"
 #include "fault_rest_request_handler.h"
 #include "file_rest_request_handler.h"
@@ -28,6 +31,12 @@
 #include "process_helpers.h"
 #include "rest_request_handler_factory.h"
 #include "rest_server.h"
+#include "security_baselines_message_handler.h"
+#include "security_compliance_calendar_message_handler.h"
+#include "security_compliance_run_message_handler.h"
+#include "security_orchestrator_events_message_handler.h"
+#include "security_policies_message_handler.h"
+#include "security_policies_v2_message_handler.h"
 #include "statsd_server.h"
 #include "statsite_config.h"
 #include "statsite_forwarder.h"
@@ -119,7 +128,7 @@ std::unique_ptr<librest::rest_server> s_rest_server;
 /**
  * Enable the REST server (if enabled); otherwise, do nothing.
  */
-void enable_rest_server(config_data_message_handler& handler)
+void enable_rest_server(dragent_configuration& configuration)
 {
 	if(!c_rest_feature_flag->get())
 	{
@@ -146,7 +155,8 @@ void enable_rest_server(config_data_message_handler& handler)
 	factory->register_path_handler<fault_rest_request_handler>();
 #endif // defined(FAULT_INJECTION_ENABLED)
 
-	config_data_rest_request_handler::set_config_data_message_handler(&handler);
+	config_data_rest_request_handler::set_config_data_message_handler(
+			std::make_shared<config_data_message_handler>(configuration));
 
 	s_rest_server = make_unique<librest::rest_server>(factory,
 	                                                  c_rest_port->get());
@@ -176,14 +186,37 @@ dragent_app::dragent_app():
 	m_windows_service_parent(false),
 #endif
 #ifndef CYGWING_AGENT
-    m_unshare_ipcns(true),
+	m_unshare_ipcns(true),
 #endif
 	m_queue(MAX_SAMPLE_STORE_SIZE),
 	m_enable_autodrop(true),
 	m_internal_metrics(std::make_shared<internal_metrics>()),
 	m_sinsp_worker(&m_configuration, m_internal_metrics, &m_queue, &m_enable_autodrop, &m_capture_job_handler),
 	m_capture_job_handler(&m_configuration, &m_queue, &m_enable_autodrop),
-	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker, &m_capture_job_handler),
+	m_connection_manager(&m_configuration,
+	                     &m_queue,
+	                     {
+	                             { draiosproto::message_type::DUMP_REQUEST_START,
+				       std::make_shared<dump_request_start_message_handler>(m_sinsp_worker) },
+				     { draiosproto::message_type::DUMP_REQUEST_STOP,
+				       std::make_shared<dump_request_stop_message_handler>(m_sinsp_worker) },
+				     { draiosproto::message_type::CONFIG_DATA,
+				       std::make_shared<config_data_message_handler>(m_configuration) },
+				     { draiosproto::message_type::ERROR_MESSAGE,
+				       std::make_shared<error_message_handler>() },
+				     { draiosproto::message_type::POLICIES,
+				       std::make_shared<security_policies_message_handler>(m_sinsp_worker) },
+				     { draiosproto::message_type::POLICIES_V2,
+				       std::make_shared<security_policies_v2_message_handler>(m_sinsp_worker) },
+				     { draiosproto::message_type::COMP_CALENDAR,
+				       std::make_shared<security_compliance_calendar_message_handler>(m_sinsp_worker) },
+				     { draiosproto::message_type::COMP_RUN,
+				       std::make_shared<security_compliance_run_message_handler>(m_sinsp_worker) },
+				     { draiosproto::message_type::ORCHESTRATOR_EVENTS,
+				       std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker) },
+				     { draiosproto::message_type::BASELINES,
+				       std::make_shared<security_baselines_message_handler>(m_sinsp_worker) },
+	                     }),
 	m_log_reporter(&m_queue, &m_configuration),
 	m_subprocesses_logger(&m_configuration, &m_log_reporter),
 	m_last_dump_s(0)
@@ -192,7 +225,9 @@ dragent_app::dragent_app():
 
 dragent_app::~dragent_app()
 {
-	config_data_rest_request_handler::set_config_data_message_handler(nullptr);
+	std::shared_ptr<config_data_message_handler> ptr;
+
+	config_data_rest_request_handler::set_config_data_message_handler(ptr);
 	google::protobuf::ShutdownProtobufLibrary();
 }
 
@@ -877,7 +912,7 @@ int dragent_app::sdagent_main()
 
 	uint64_t uptime_s = 0;
 
-	enable_rest_server(m_connection_manager);
+	enable_rest_server(m_configuration);
 
 	while(!dragent_configuration::m_terminate)
 	{

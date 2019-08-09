@@ -31,6 +31,7 @@ list(APPEND targetfiles
 	compliance_mgr.cpp
 	configlist_rest_request_handler.cpp
 	configuration.cpp
+	config_data_message_handler.cpp
 	config_data_rest_request_handler.cpp
 	config_rest_request_handler.cpp
 	connection_manager.cpp
@@ -38,7 +39,10 @@ list(APPEND targetfiles
 	dragent.cpp
 	dragent_memdump_logger.cpp
 	dragent_user_event_callback.cpp
+	dump_request_start_message_handler.cpp
+	dump_request_stop_message_handler.cpp
 	error_handler.cpp
+	error_message_handler.cpp
 	faultlist_rest_request_handler.cpp
 	fault_rest_request_handler.cpp
 	file_rest_registry.cpp
@@ -47,8 +51,14 @@ list(APPEND targetfiles
 	monitor.cpp
 	protocol.cpp
 	security_action.cpp
+	security_baselines_message_handler.cpp
+	security_compliance_calendar_message_handler.cpp
+	security_compliance_run_message_handler.cpp
 	security_mgr.cpp
+	security_orchestrator_events_message_handler.cpp
 	security_policy.cpp
+	security_policies_message_handler.cpp
+	security_policies_v2_message_handler.cpp
 	security_rule.cpp
 	sinsp_data_handler.cpp
 	sinsp_factory.cpp

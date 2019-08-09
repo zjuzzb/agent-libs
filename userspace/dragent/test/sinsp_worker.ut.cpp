@@ -63,8 +63,7 @@ TEST(sinsp_worker_test, DISABLED_end_to_end_basic)
 	ASSERT_EQ(draiosproto::message_type::METRICS, item->message_type);
 
 	draiosproto::metrics metrics;
-	bool result = parse_protocol_queue_item(*item, &metrics);
-	ASSERT_TRUE(result);
+	parse_protocol_queue_item(*item, &metrics);
 
 	ASSERT_EQ(1, metrics.programs_size());
 	ASSERT_EQ(2, metrics.programs(0).pids_size());

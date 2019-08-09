@@ -6,7 +6,7 @@
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
 #include "config_data_rest_request_handler.h"
-#include "config_data_message_handler.h"
+#include "connection_manager.h"
 #include "dummy_server_request.h"
 #include "dummy_server_response.h"
 #include <memory>
@@ -22,17 +22,19 @@ namespace
 {
 
 /**
- * Dummy realization of the config_data_message_handler.  handle_config_data
+ * Dummy realization of the message_handler.  handle_config_data
  * does nothing, and returns the value passed to the constructor.
  */
-class dummy_config_data_message_handler : public config_data_message_handler
+class dummy_config_data_message_handler : public connection_manager::message_handler
 {
 public:
 	dummy_config_data_message_handler(const bool success = true):
 		m_success(success)
 	{ }
 
-	bool handle_config_data(const uint8_t* buf, uint32_t size) override
+	bool handle_message(const draiosproto::message_type,
+	                    uint8_t* const,
+	                    const size_t) override
 	{
 		return m_success;
 	}
@@ -58,7 +60,7 @@ public:
 	}
 
 private:
-	config_data_message_handler* const m_old;
+	connection_manager::message_handler::ptr m_old;
 };
 
 } // end namespace
@@ -109,10 +111,11 @@ TEST(config_data_rest_request_handler_test, config_data_message_handler_set_get)
 {
 	scoped_config_data_rest_request_message_handler scoped_handler;
 
-	dummy_config_data_message_handler message_handler;
-	config_data_rest_request_handler::set_config_data_message_handler(&message_handler);
+	std::shared_ptr<dummy_config_data_message_handler> message_handler =
+		std::make_shared<dummy_config_data_message_handler>();
+	config_data_rest_request_handler::set_config_data_message_handler(message_handler);
 
-	ASSERT_EQ(&message_handler,
+	ASSERT_EQ(message_handler,
 	          config_data_rest_request_handler::get_config_data_message_handler());
 }
 
@@ -158,7 +161,9 @@ TEST(config_data_rest_request_handler_test, cannot_parse_request_json)
    "error" : "Failed to parse config data json: Expected : between key:value pair.\n{ this is not json }\n       ^"
 }
 )EOF";
-	dummy_config_data_message_handler message_handler;
+	std::shared_ptr<dummy_config_data_message_handler> message_handler =
+		std::make_shared<dummy_config_data_message_handler>();
+
 	const std::string path = config_data_rest_request_handler::get_path();
 	const std::string& method = Poco::Net::HTTPRequest::HTTP_PUT;
 	const Poco::Net::HTTPResponse::HTTPStatus expected_status =
@@ -170,7 +175,7 @@ TEST(config_data_rest_request_handler_test, cannot_parse_request_json)
 
 	request.setMethod(method);
 
-	config_data_rest_request_handler::set_config_data_message_handler(&message_handler);
+	config_data_rest_request_handler::set_config_data_message_handler(message_handler);
 	handler.handleRequest(request, response);
 
 	const std::string response_str = response.m_stream.str();
@@ -193,7 +198,8 @@ TEST(config_data_rest_request_handler_test, config_not_accepted)
 }
 )EOF";
 	const bool accept_config = false;
-	dummy_config_data_message_handler message_handler(accept_config);
+	std::shared_ptr<dummy_config_data_message_handler> message_handler =
+		std::make_shared<dummy_config_data_message_handler>(accept_config);
 	const std::string path = config_data_rest_request_handler::get_path();
 	const std::string& method = Poco::Net::HTTPRequest::HTTP_PUT;
 	const Poco::Net::HTTPResponse::HTTPStatus expected_status =
@@ -205,7 +211,7 @@ TEST(config_data_rest_request_handler_test, config_not_accepted)
 
 	request.setMethod(method);
 
-	config_data_rest_request_handler::set_config_data_message_handler(&message_handler);
+	config_data_rest_request_handler::set_config_data_message_handler(message_handler);
 	handler.handleRequest(request, response);
 
 	const std::string response_str = response.m_stream.str();
@@ -222,7 +228,8 @@ TEST(config_data_rest_request_handler_test, config_accepted)
 	scoped_config_data_rest_request_message_handler scoped_handler;
 	const std::string body = 
 		R"EOF({"config_files":[{"name":"dragent.auto.yaml","content":"this:\n  that: true"}]})EOF";
-	dummy_config_data_message_handler message_handler;
+	std::shared_ptr<dummy_config_data_message_handler> message_handler =
+		std::make_shared<dummy_config_data_message_handler>();
 	const std::string path = config_data_rest_request_handler::get_path();
 	const std::string& method = Poco::Net::HTTPRequest::HTTP_PUT;
 	const Poco::Net::HTTPResponse::HTTPStatus expected_status =
@@ -234,7 +241,7 @@ TEST(config_data_rest_request_handler_test, config_accepted)
 
 	request.setMethod(method);
 
-	config_data_rest_request_handler::set_config_data_message_handler(&message_handler);
+	config_data_rest_request_handler::set_config_data_message_handler(message_handler);
 	handler.handleRequest(request, response);
 
 	const std::string response_str = response.m_stream.str();

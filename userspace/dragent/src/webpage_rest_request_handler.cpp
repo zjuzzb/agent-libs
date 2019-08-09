@@ -6,7 +6,6 @@
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
 #include "webpage_rest_request_handler.h"
-#include "config_data_message_handler.h"
 #include "draios.pb.h"
 #include "webpage.h"
 #include <streambuf>

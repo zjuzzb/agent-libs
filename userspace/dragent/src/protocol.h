@@ -23,47 +23,65 @@ struct dragent_protocol_header
 };
 #pragma pack(pop)
 
-typedef struct {
+struct protocol_queue_item
+{
 	std::string buffer;
 	uint64_t ts_ns;
 	uint8_t message_type;
-} protocol_queue_item;
+};
 
 typedef blocking_queue<std::shared_ptr<protocol_queue_item>> protocol_queue;
 
-class dragent_protocol
+namespace dragent_protocol
 {
-public:
-	static const uint8_t PROTOCOL_VERSION_NUMBER = 4;
+	class protocol_error : public std::runtime_error
+	{
+	public:
+		protocol_error(const std::string& message):
+			std::runtime_error(message)
+		{ }
+	};
 
-	static std::shared_ptr<protocol_queue_item> message_to_buffer(uint64_t ts_ns, uint8_t message_type,
-								      const google::protobuf::MessageLite& message, bool compressed,
-								      int compression_level = Z_DEFAULT_COMPRESSION);
+	const uint8_t PROTOCOL_VERSION_NUMBER = 4;
 
+	std::shared_ptr<protocol_queue_item> message_to_buffer(
+			uint64_t ts_ns,
+			uint8_t message_type,
+			const google::protobuf::MessageLite& message,
+			bool compressed,
+			int compression_level = Z_DEFAULT_COMPRESSION);
+
+	/**
+	 * @throws protocol_error if the given buffer cannot be converted into
+	 *         the given message.
+	 */
 	template<class T>
-	static bool buffer_to_protobuf(const uint8_t* buf, uint32_t size, T* message);
+	void buffer_to_protobuf(const uint8_t* buf, uint32_t size, T* message);
 };
 
 template<class T>
-bool dragent_protocol::buffer_to_protobuf(const uint8_t* buf, uint32_t size, T* message)
+void dragent_protocol::buffer_to_protobuf(const uint8_t* const buf,
+                                          const uint32_t size,
+                                          T* const message)
 {
 	google::protobuf::io::ArrayInputStream stream(buf, size);
 	google::protobuf::io::GzipInputStream gzstream(&stream);
 
-	bool res = message->ParseFromZeroCopyStream(&gzstream);
-	if(!res)
+	if(!message->ParseFromZeroCopyStream(&gzstream))
 	{
 		g_log->error("Error reading request");
 		ASSERT(false);
-		return false;
+		throw protocol_error("Failed to parse message to type: " +
+		                     message->GetTypeName());
 	}
-
-	return true;
 }
 
-template<class T> bool parse_protocol_queue_item(const protocol_queue_item& item, T* message)
+template<class T>
+void parse_protocol_queue_item(const protocol_queue_item& item, T* message)
 {
-	const uint8_t * buf = reinterpret_cast<const uint8_t *>(item.buffer.c_str()) + sizeof(dragent_protocol_header);
+	const uint8_t* const buf = reinterpret_cast<const uint8_t *>(item.buffer.c_str()) +
+		sizeof(dragent_protocol_header);
 	size_t size = item.buffer.size() - sizeof(dragent_protocol_header);
-	return dragent_protocol::buffer_to_protobuf(buf, size, message);
+
+	dragent_protocol::buffer_to_protobuf(buf, size, message);
 }

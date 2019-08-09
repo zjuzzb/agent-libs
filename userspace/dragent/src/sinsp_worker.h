@@ -6,7 +6,14 @@
 #include <token_bucket.h>
 
 #include "main.h"
+#include "dump_job_request_queue.h"
 #include "configuration.h"
+#include "security_baselines_loader.h"
+#include "security_compliance_calender_receiver.h"
+#include "security_compliance_task_runner.h"
+#include "security_host_metadata_receiver.h"
+#include "security_policy_loader.h"
+#include "security_policy_v2_loader.h"
 #include "sinsp_data_handler.h"
 #include "subprocesses_logger.h"
 #include "internal_metrics.h"
@@ -28,7 +35,14 @@ public:
 	uint64_t m_time;
 };
 
-class sinsp_worker : public Runnable
+class sinsp_worker : public Poco::Runnable,
+                     public dragent::dump_job_request_queue,
+                     public dragent::security_baselines_loader,
+                     public dragent::security_compliance_calender_receiver,
+                     public dragent::security_compliance_task_runner,
+                     public dragent::security_host_metadata_receiver,
+                     public dragent::security_policy_loader,
+                     public dragent::security_policy_v2_loader
 {
 public:
 	sinsp_worker(dragent_configuration* configuration,
@@ -45,7 +59,7 @@ public:
 	// request along to the capture_job_handler thread, but does
 	// some necessary prep work such as creating sinsp_dumper
 	// objects, etc.
-	void queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request);
+	void queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request) override;
 
 	uint64_t get_last_loop_ns() const
 	{
@@ -103,16 +117,20 @@ public:
 	}
 
 #ifndef CYGWING_AGENT
-	bool load_policies(draiosproto::policies &policies, std::string &errstr);
-	bool load_policies_v2(draiosproto::policies_v2 &policies_v2, std::string &errstr);
-	bool set_compliance_calendar(draiosproto::comp_calendar &calendar,
+	bool load_policies(const draiosproto::policies &policies,
+	                   std::string &errstr) override;
+	bool load_policies_v2(const draiosproto::policies_v2 &policies_v2,
+	                      std::string &errstr) override;
+	bool set_compliance_calendar(const draiosproto::comp_calendar &calendar,
 				     bool send_results,
 				     bool send_events,
-				     std::string &errstr);
-	bool run_compliance_tasks(draiosproto::comp_run &run, std::string &errstr);
-	void receive_hosts_metadata(draiosproto::orchestrator_events &evts);
+				     std::string &errstr) override;
+	bool run_compliance_tasks(const draiosproto::comp_run &run,
+	                          std::string &errstr) override;
+	void receive_hosts_metadata(const draiosproto::orchestrator_events &evts) override;
 #endif
-	bool load_baselines(draiosproto::baselines &baselines, std::string &errstr);
+	bool load_baselines(const draiosproto::baselines &baselines,
+	                    std::string &errstr) override;
 
 private:
 	void init();

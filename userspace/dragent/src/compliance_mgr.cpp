@@ -75,7 +75,9 @@ void compliance_mgr::check_tasks()
 	}
 }
 
-void compliance_mgr::set_compliance_calendar(draiosproto::comp_calendar &calendar, bool send_results, bool send_events)
+void compliance_mgr::set_compliance_calendar(const draiosproto::comp_calendar &calendar,
+                                             const bool send_results,
+                                             const bool send_events)
 {
 	m_compliance_calendar = calendar;
 	m_send_compliance_results = send_results;
@@ -88,7 +90,7 @@ void compliance_mgr::request_refresh_compliance_tasks()
 	m_should_refresh_compliance_tasks = true;
 }
 
-void compliance_mgr::set_compliance_run(draiosproto::comp_run &run)
+void compliance_mgr::set_compliance_run(const draiosproto::comp_run &run)
 {
 	m_compliance_run = run;
 }

@@ -1,11 +1,6 @@
 #pragma once
 
-#include <chrono>
-#include <memory>
-#include "blocking_queue.h"
-#include "capture_job_handler.h"
-#include "config_data_message_handler.h"
-#include "sinsp_worker.h"
+#include "protocol.h"
 #include "watchdog_runnable.h"
 
 #ifndef CYGWING_AGENT
@@ -13,27 +8,46 @@
 #include "promex.grpc.pb.h"
 #endif
 
+#include <chrono>
+#include <initializer_list>
+#include <memory>
+#include <map>
+
 class dragent_configuration;
-class sinsp_worker;
 
-using socket_ptr = std::shared_ptr<StreamSocket>;
+namespace Poco {
+namespace Net {
+class StreamSocket;
+} // namespace Net
+} // namespace Poco
 
-class connection_manager : public dragent::config_data_message_handler,
-                           public dragent::watchdog_runnable
+
+class connection_manager : public dragent::watchdog_runnable
 {
 public:
+	class message_handler
+	{
+	public:
+		using ptr = std::shared_ptr<message_handler>;
+
+		virtual ~message_handler() = default;
+
+		virtual bool handle_message(draiosproto::message_type type,
+		                            uint8_t* buffer,
+		                            size_t buffer_size) = 0;
+	};
+
+	using message_handler_map = std::map<draiosproto::message_type, message_handler::ptr>;
+
 	connection_manager(dragent_configuration* configuration,
 			   protocol_queue* queue,
-			   sinsp_worker* sinsp_worker,
-			   capture_job_handler *capture_job_handler);
+			   std::initializer_list<message_handler_map::value_type> message_handlers = {});
 	~connection_manager();
 
 	bool is_connected() const
 	{
 		return m_connected && m_socket;
 	}
-
-	bool handle_config_data(const uint8_t* buf, uint32_t size);
 
 	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000;
 	static const uint32_t SOCKET_TIMEOUT_AFTER_CONNECT_US = 100 * 1000;
@@ -49,6 +63,8 @@ public:
 #endif
 
 private:
+	using socket_ptr = std::shared_ptr<Poco::Net::StreamSocket>;
+
 	bool init();
 	void do_run() override;
 	bool connect();
@@ -56,22 +72,14 @@ private:
 	void disconnect(socket_ptr& ssp);
 	bool transmit_buffer(uint64_t now, std::shared_ptr<protocol_queue_item> &item);
 	bool receive_message();
-	void handle_dump_request_start(uint8_t* buf, uint32_t size);
-	void handle_dump_request_stop(uint8_t* buf, uint32_t size);
-	void handle_error_message(uint8_t* buf, uint32_t size) const;
 
 	static const std::string& get_openssldir();
 	// Walk over the CA path search list and return the first one that exists
 	// Note: we have to return a new string by value as we potentially alter
 	// the string in the search path (substituting $OPENSSLDIR with the actual path)
 	static std::string find_ca_cert_path(const std::vector<std::string>& search_paths);
+
 #ifndef CYGWING_AGENT
-	void handle_policies_message(uint8_t* buf, uint32_t size);
-	void handle_policies_v2_message(uint8_t* buf, uint32_t size);
-	void handle_compliance_calendar_message(uint8_t* buf, uint32_t size);
-	void handle_compliance_run_message(uint8_t* buf, uint32_t size);
-	void handle_orchestrator_events(uint8_t* buf, uint32_t size);
-	void handle_baselines_message(uint8_t* buf, uint32_t size);
 	bool prometheus_connected() const;
 #endif
 	static const uint32_t MAX_RECEIVER_BUFSIZE = 1 * 1024 * 1024; // 1MiB
@@ -81,14 +89,13 @@ private:
 	static const unsigned int SOCKET_TCP_TIMEOUT_MS = 60 * 1000;
 	static const std::chrono::seconds WORKING_INTERVAL_S;
 
+	message_handler_map m_handler_map;
 	socket_ptr m_socket;
 	bool m_connected;
 	Buffer<uint8_t> m_buffer;
 	uint32_t m_buffer_used;
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
-	sinsp_worker* m_sinsp_worker;
-	capture_job_handler *m_capture_job_handler;
 
 	uint32_t m_reconnect_interval;
 	std::chrono::time_point<std::chrono::system_clock> m_last_connection_failure;

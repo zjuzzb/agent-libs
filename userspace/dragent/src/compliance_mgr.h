@@ -31,9 +31,9 @@ public:
 	// Check the status of new configuration and in-progress rpc calls.
 	void check_tasks();
 
-	void set_compliance_calendar(draiosproto::comp_calendar &calendar, bool send_results, bool send_events);
+	void set_compliance_calendar(const draiosproto::comp_calendar &calendar, bool send_results, bool send_events);
 	void request_refresh_compliance_tasks();
-	void set_compliance_run(draiosproto::comp_run &run);
+	void set_compliance_run(const draiosproto::comp_run &run);
 
 	void stop_compliance_tasks();
 
