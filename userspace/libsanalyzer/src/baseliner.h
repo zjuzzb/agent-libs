@@ -181,7 +181,7 @@ public:
 	}
 
 	//
-	// Convert a filename into a directory by filtering out the last part and 
+	// Convert a filename into a directory by filtering out the last part and
 	// then add it as we would add a normal file
 	//
 	inline static std::string file_to_dir(std::string& filename)
@@ -206,7 +206,7 @@ public:
 	}
 
 	//
-	// Convert a filename into a directory by filtering out the last part and 
+	// Convert a filename into a directory by filtering out the last part and
 	// then add it as we would add a normal file
 	//
 	inline static std::string reduce_dir(std::string& filename)
@@ -1323,7 +1323,7 @@ public:
 	blporttable_split m_bound_ports;
 	bl_ip_endpoint_table_split m_ip_endpoints;
 	bl_ip_endpoint_table_split m_c_subnet_endpoints;
-	simpletable_split<syscallstable, uint32_t> m_syscalls; 
+	simpletable_split<syscallstable, uint32_t> m_syscalls;
 };
 
 //

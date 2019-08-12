@@ -21,14 +21,14 @@ extern sinsp_filter_check_list g_filterlist;
 void proc_parser(proc_parser_state* state)
 {
 	sinsp* inspector_ori = state->m_bl->get_inspector();
-	
+
 	//
 	// Create and open the secondary inspector used for /proc parsing
 	//
 	state->m_inspector = new sinsp();
 	state->m_inspector->set_hostname_and_port_resolution_mode(false);
 
-	g_logger.format(sinsp_logger::SEV_INFO, 
+	g_logger.format(sinsp_logger::SEV_INFO,
 		"baseliner /proc scanner thread started");
 
 	try
@@ -44,7 +44,7 @@ void proc_parser(proc_parser_state* state)
 	}
 	catch(...)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR, 
+		g_logger.format(sinsp_logger::SEV_ERROR,
 			"baseliner proc parser failure: can't open inspector %s",
 			state->m_inspector->getlasterr().c_str());
 		return;
@@ -136,7 +136,7 @@ void sinsp_baseliner::load_tables(uint64_t time)
 	if(m_procparser_thread != NULL)
 	{
 		//
-		// Note: if we get there, the m_done flag of the thread state is guaranteed 
+		// Note: if we get there, the m_done flag of the thread state is guaranteed
 		//       to be set to true, so we are sure that the join returns immediately.
 		//       we still call it because otherwise, based on specification of C++11
 		//       threads, the delete will crash.
@@ -248,7 +248,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 
 			//
 			// Calculate the delta from program creation.
-			// Note: we don't search for the main process thread because this loop already makes 
+			// Note: we don't search for the main process thread because this loop already makes
 			//       sure to go through main threads only.
 			//
 			uint64_t cdelta = 0;
@@ -464,7 +464,7 @@ void sinsp_baseliner::init_containers()
 
 	for(auto& it : *containers)
 	{
-		m_container_table[it.first] = blcontainer(it.second.m_name, 
+		m_container_table[it.first] = blcontainer(it.second.m_name,
 			it.second.m_image, it.second.m_imageid);
 	}
 }
@@ -598,7 +598,7 @@ void sinsp_baseliner::serialize_json(std::string filename)
 	}
 
 	root["progs"] = table;
-	
+
 	for(auto& it : m_container_table)
 	{
 		Json::Value cinfo;
@@ -754,12 +754,12 @@ void sinsp_baseliner::merge_proc_data()
 	}
 
 	//
-	// If m_procparser_state->m_inspector is not NULL, it means that 
+	// If m_procparser_state->m_inspector is not NULL, it means that
 	// the data hasn't been flushed yet
 	//
 	if(m_procparser_state->m_inspector != NULL)
 	{
-		g_logger.format(sinsp_logger::SEV_INFO, 
+		g_logger.format(sinsp_logger::SEV_INFO,
 			"merging baseliner /proc data during interval switch");
 
 		//
@@ -767,7 +767,7 @@ void sinsp_baseliner::merge_proc_data()
 		//
 		if(!m_procparser_state->m_done)
 		{
-			g_logger.format(sinsp_logger::SEV_ERROR, 
+			g_logger.format(sinsp_logger::SEV_ERROR,
 				"baseliner proc parser thread not done after a full interval. Skipping baseline emission.");
 			return;
 		}
@@ -775,7 +775,7 @@ void sinsp_baseliner::merge_proc_data()
 		//
 		// Merge the data extracted by the /proc scanner
 		//
-		init_programs(m_procparser_state->m_inspector, 
+		init_programs(m_procparser_state->m_inspector,
 			m_procparser_state->m_time, false);
 
 		//
@@ -1024,7 +1024,7 @@ void sinsp_baseliner::on_connect(sinsp_evt *evt)
 
 		if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
 		{
-			pinfo->m_server_ports.add_r_tcp(tuple.m_fields.m_dport, 
+			pinfo->m_server_ports.add_r_tcp(tuple.m_fields.m_dport,
 				cdelta);
 			pinfo->m_ip_endpoints.add_s_tcp(tuple.m_fields.m_dip,
 				cdelta);
@@ -1185,8 +1185,8 @@ void sinsp_baseliner::on_bind(sinsp_evt *evt)
 
 void sinsp_baseliner::on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo)
 {
-	m_container_table[container_info.m_id] = blcontainer(container_info.m_name, 
-		container_info.m_image, 
+	m_container_table[container_info.m_id] = blcontainer(container_info.m_name,
+		container_info.m_image,
 		container_info.m_imageid);
 }
 
@@ -1402,13 +1402,13 @@ void sinsp_baseliner::process_event(sinsp_evt *evt)
 	//
 	if(m_procparser_state->m_inspector != NULL && m_procparser_state->m_done)
 	{
-		g_logger.format(sinsp_logger::SEV_INFO, 
+		g_logger.format(sinsp_logger::SEV_INFO,
 			"merging baseliner /proc data during syscall parsing");
 
 		//
 		// Merge the data extracted by the /proc scanner
 		//
-		init_programs(m_procparser_state->m_inspector, 
+		init_programs(m_procparser_state->m_inspector,
 			m_procparser_state->m_time, false);
 
 		//
