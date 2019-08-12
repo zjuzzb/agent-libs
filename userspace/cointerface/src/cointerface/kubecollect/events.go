@@ -104,8 +104,12 @@ func watchUserEvents(userEventChannel chan<- sdc_internal.K8SUserEvent) cache.Sh
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				log.Debugf("Event: Event delete: %+v", obj)
-				userEventChannel <- newUserEvent(obj.(*v1.Event))
+				// What does it mean for an event to be deleted?
+				// The legacy code ignores event deletions, so we will do the same.
+				// If we some day decide to pass these events along make sure to
+				// handle the case where the obj is a cache.DeletedFinalStateUnknown
+				// instead of a v1.Event
+				log.Debugf("Event: Ignoring event deletion: %+v", obj)
 			},
 		},
 	)
