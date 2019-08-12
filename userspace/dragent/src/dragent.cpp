@@ -1353,7 +1353,6 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector)
 
 	sconfig->set_cointerface_enabled(m_configuration.m_cointerface_enabled);
 	sconfig->set_swarm_enabled(m_configuration.m_swarm_enabled);
-	sconfig->set_security_baseline_report_interval_ns(m_configuration.m_security_baseline_report_interval_ns);
 
 #ifndef CYGWING_AGENT
 	analyzer->set_prometheus_conf(m_configuration.m_prom_conf);

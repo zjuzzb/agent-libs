@@ -439,7 +439,7 @@ public:
 	{
 		std::swap(m_custom_container, conf);
 	}
-#endif	
+#endif
 #endif // _WIN32
 
 	inline const sinsp_threadinfo* get_agent_thread()
@@ -819,7 +819,7 @@ public:
         void emit_container(const std::string& container_id,
 	                    unsigned* statsd_limit,
 	                    uint64_t total_cpu_shares,
-	                    sinsp_threadinfo* tinfo, 
+	                    sinsp_threadinfo* tinfo,
 	                    analyzer_emitter::flush_flags flushflags,
 			    const std::list<uint32_t>& groups);
 
@@ -866,8 +866,8 @@ VISIBILITY_PRIVATE
 							 uint32_t howmany);
 	template<class Iterator>
 	inline void filter_top_programs_deprecated(Iterator progtable_begin,
-						   Iterator progtable_end, 
-						   bool cs_only, 
+						   Iterator progtable_end,
+						   bool cs_only,
 						   uint32_t howmany);
 
 	/**
@@ -1200,7 +1200,7 @@ VISIBILITY_PRIVATE
 #ifndef CYGWING_AGENT
 	prometheus_conf m_prom_conf;
 	custom_container::resolver m_custom_container;
-#endif	
+#endif
 #endif
 
 #ifndef CYGWING_AGENT

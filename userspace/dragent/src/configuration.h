@@ -301,6 +301,10 @@ public:
 #endif
 
 	bool m_falco_baselining_enabled;
+	uint64_t m_falco_baselining_report_interval_ns;
+	uint64_t m_falco_baselining_autodisable_interval_ns;
+	uint32_t m_falco_baselining_max_drops_full_buffer;
+
 	bool m_command_lines_capture_enabled;
 	sinsp_configuration::command_capture_mode_t m_command_lines_capture_mode;
 	std::set<std::string> m_command_lines_valid_ancestors;
@@ -364,8 +368,6 @@ public:
 
 	uint32_t m_coclient_max_loop_evts = 100;
 	bool m_swarm_enabled;
-
-	uint64_t m_security_baseline_report_interval_ns;
 
 	std::set<double> m_percentiles;
 	static const unsigned MAX_PERCENTILES = 4;

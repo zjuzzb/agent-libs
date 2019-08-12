@@ -17,7 +17,7 @@
 #define ANALYZER_DEFAULT_SAMPLE_LENGTH_NS 1000000000ULL
 
 //
-// The min and max size for the memory buffer used as a target for protobuf 
+// The min and max size for the memory buffer used as a target for protobuf
 // serialization. Min is the starting value, while max is the growth limit.
 // This imposes a limit to the number of bytes that can be sent out by
 // the agent.
@@ -26,7 +26,7 @@
 #define MAX_SERIALIZATION_BUF_SIZE_BYTES 32000000
 
 //
-// The time after which a connection is considered stale and is removed from 
+// The time after which a connection is considered stale and is removed from
 // the connection table.
 //
 #define DEFAULT_CONNECTION_TIMEOUT_SEC 90
@@ -138,7 +138,7 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 #define TRANSACTION_READ_LIMIT_NS 500000000
 
 //
-// Minimum size of a socket buffer containing actual protocol information  
+// Minimum size of a socket buffer containing actual protocol information
 //
 #define MIN_VALID_PROTO_BUF_SIZE 5
 
@@ -160,23 +160,23 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 //
 // Falco baseline emit interval
 //
-#define DEFAULT_FALCOBL_DUMP_DELTA_NS (60LL * 15LL * 1000000000)
+#define DEFAULT_FALCO_BASELINING_DUMP_DELTA_NS (60LL * 15LL * 1000000000)
 
 //
-// Time after which we should try to reenable the falco baseliner after
-// we disable it for mperformance reasons.
+// Time after which we should try to re-enable the falco baseliner,
+// that has been previously disabled for performance reasons.
 //
-#define FALCOBL_DISABLE_TIME (60LL * 30LL * 1000000000)
+#define DEFAULT_FALCO_BASELINING_DISABLE_TIME_NS (60LL * 30LL * 1000000000)
 
 //
-// Max number of dropped events(because of full ring buffer).
-// After that, the baseline is disabled.
+// Max number of dropped events (because of full ring buffer). Upon
+// reaching this limit, the falco baseliner is disabled.
 //
-#define FALCOBL_MAX_DROPS_FULLBUF 64
+#define DEFAULT_FALCO_BASELINING_MAX_DROPS_FULL_BUFFER 64
 
 //
-// Time after which we should try to reenable the falco baseliner after
-// we disable it for mperformance reasons.
+// Max number of program names stored in the falco baseliner internal
+// table. Currently not in use.
 //
 #define FALCOBL_MAX_PROG_TABLE_SIZE 2000
 
