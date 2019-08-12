@@ -24,17 +24,17 @@ type_config<int64_t> c_cri_timeout_ms(
 	"cri", "timeout_ms");
 
 type_config<bool> c_cri_async(
-	false,
+	true,
 	"Use asynchronous lookups of CRI metadata",
 	"cri", "async");
 
 type_config<bool> c_cri_async_limits(
-	false,
+	true,
 	"Use asynchronous lookups of CRI resource limits (non-containerd)",
 	"cri", "async_limits");
 
 type_config<bool> c_cri_extra_queries(
-	false,
+	true,
 	"Enable additional CRI queries for extra metadata",
 	"cri", "extra_queries");
 
