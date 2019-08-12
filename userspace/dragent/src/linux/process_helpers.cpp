@@ -181,8 +181,11 @@ void subprocess_cgroup::set_value(const std::string &name, int64_t value)
 
 void subprocess_cpu_cgroup::create()
 {
-	subprocess_cgroup::create();
-	set_value("cpu.shares", m_shares);
+	if(m_shares > 0)
+	{
+		subprocess_cgroup::create();
+		set_value("cpu.shares", m_shares);
+	}
 }
 
 }
