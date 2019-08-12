@@ -22,7 +22,6 @@ namespace process_helpers
  */
 bool change_priority(int pid, int prio);
 
-// TODO stub windows impl
 class subprocess_cgroup {
 public:
 	/**
