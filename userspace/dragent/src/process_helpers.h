@@ -4,7 +4,9 @@
 #include "type_config.h"
 
 extern type_config<int64_t> c_default_cpu_shares;
+extern type_config<int64_t> c_default_cpu_quota;
 extern type_config<int64_t> c_cointerface_cpu_shares;
+extern type_config<int64_t> c_cointerface_cpu_quota;
 extern type_config<int64_t> c_cgroup_cleanup_timeout_ms;
 
 namespace process_helpers
@@ -72,18 +74,23 @@ class subprocess_cpu_cgroup : public subprocess_cgroup {
 public:
 	/**
 	 * an object to manage cpu cgroup resource limits
-	 * @param name
-	 * @param shares
+	 * @param name name of the sub-cgroup
+	 * @param shares cpu.shares value
+	 * @param quota percentage of CPU (100=1 full core) to assign to the cgroup
 	 */
-	explicit subprocess_cpu_cgroup(const std::string& name, int64_t shares):
+	explicit subprocess_cpu_cgroup(const std::string& name, int64_t shares, int64_t quota):
 		subprocess_cgroup("cpu", name),
-		m_shares(shares)
+		m_shares(shares),
+		m_quota(quota)
 	{}
 
 	void create() override;
 
 private:
 	int64_t m_shares;
+	int64_t m_quota;
+
+	static constexpr const int64_t CPU_QUOTA_PERIOD = 100000;
 };
 
 

@@ -14,12 +14,28 @@ type_config<int64_t> c_default_cpu_shares(
 	"cpu_shares"
 );
 
+type_config<int64_t> c_default_cpu_quota(
+	-1,
+	"CPU quota for the default cgroup (-1 to disable, 100 = 1 full core)",
+	"subprocess_resource_limits",
+	"default",
+	"cpu_quota"
+);
+
 type_config<int64_t> c_cointerface_cpu_shares(
 	-1,
 	"CPU shares for the cointerface cgroup (-1 to disable)",
 	"subprocess_resource_limits",
 	"cointerface",
 	"cpu_shares"
+);
+
+type_config<int64_t> c_cointerface_cpu_quota(
+	-1,
+	"CPU quota for the cointerface cgroup (-1 to disable, 100 = 1 full core)",
+	"subprocess_resource_limits",
+	"cointerface",
+	"cpu_quota"
 );
 
 type_config<int64_t> c_cgroup_cleanup_timeout_ms(
@@ -113,7 +129,7 @@ subprocess_cgroup::subprocess_cgroup(const std::string &subsys, const std::strin
 
 void subprocess_cgroup::create()
 {
-	if(m_full_path.empty())
+	if(m_full_path.empty() || m_created)
 	{
 		return;
 	}
@@ -185,6 +201,13 @@ void subprocess_cpu_cgroup::create()
 	{
 		subprocess_cgroup::create();
 		set_value("cpu.shares", m_shares);
+	}
+	if(m_quota > 0)
+	{
+		subprocess_cgroup::create();
+		int64_t quota = m_quota * CPU_QUOTA_PERIOD / 100;
+		set_value("cpu.cfs_quota_us", quota);
+		set_value("cpu.cfs_period_us", CPU_QUOTA_PERIOD);
 	}
 }
 

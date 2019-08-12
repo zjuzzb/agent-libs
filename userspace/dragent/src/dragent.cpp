@@ -523,10 +523,16 @@ int dragent_app::main(const std::vector<std::string>& args)
 		std::cerr << "Cannot set msgqueue limits: " << strerror(errno) << '\n';
 	}
 
-	process_helpers::subprocess_cpu_cgroup default_cpu_cgroup("/default", c_default_cpu_shares.get());
+	process_helpers::subprocess_cpu_cgroup default_cpu_cgroup(
+		"/default",
+		c_default_cpu_shares.get(),
+		c_default_cpu_quota.get());
 	default_cpu_cgroup.create();
 
-	process_helpers::subprocess_cpu_cgroup cointerface_cpu_cgroup("/cointerface", c_cointerface_cpu_shares.get());
+	process_helpers::subprocess_cpu_cgroup cointerface_cpu_cgroup(
+		"/cointerface",
+		c_cointerface_cpu_shares.get(),
+		c_cointerface_cpu_quota.get());
 	cointerface_cpu_cgroup.create();
 
 	// Add our main process
