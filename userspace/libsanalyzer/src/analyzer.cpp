@@ -3649,7 +3649,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 					// It's safe to turn baselining on again.
 					// Reset the tables and restart the baseline time counter.
 					//
-					m_falco_baseliner->set_baseline_calculation_enabled(false);
+					m_falco_baseliner->set_baseline_calculation_enabled(true);
 					m_falco_baseliner->clear_tables();
 					m_falco_baseliner->load_tables(evt->get_ts());
 					m_last_falco_dump_ts = evt->get_ts();
