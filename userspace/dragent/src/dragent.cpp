@@ -523,9 +523,17 @@ int dragent_app::main(const std::vector<std::string>& args)
 		std::cerr << "Cannot set msgqueue limits: " << strerror(errno) << '\n';
 	}
 
+	process_helpers::subprocess_cpu_cgroup default_cpu_cgroup("/default", c_default_cpu_shares.get());
+	default_cpu_cgroup.create();
+
+	process_helpers::subprocess_cpu_cgroup cointerface_cpu_cgroup("/cointerface", c_cointerface_cpu_shares.get());
+	cointerface_cpu_cgroup.create();
+
 	// Add our main process
-	monitor_process.emplace_process("sdagent",[this]()
+	monitor_process.emplace_process("sdagent",[=]()
 	{
+		default_cpu_cgroup.enter();
+
 		// only set to get agent show in the watchdog loop
 		m_subprocesses_state["sdagent"].set_name("sdagent");
 
@@ -564,8 +572,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 		state->set_name("sdjagent");
 		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_file(), sdjagent_parser(), state);
 
-		monitor_process.emplace_process("sdjagent", [this]() -> int
+		monitor_process.emplace_process("sdjagent", [=]() -> int
 		{
+			default_cpu_cgroup.enter();
 			static const auto MAX_SDJAGENT_ARGS = 50;
 			this->m_jmx_pipes->attach_child();
 
@@ -627,8 +636,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 		});
 
-		monitor_process.emplace_process("statsite", [this]() -> int
+		monitor_process.emplace_process("statsite", [=]() -> int
 		{
+			default_cpu_cgroup.enter();
 			this->m_statsite_pipes->attach_child_stdio();
 			if(this->m_configuration.m_agent_installed)
 			{
@@ -680,8 +690,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 		}
 		else
 		{
-			monitor_process.emplace_process("sdchecks", [this]()
+			monitor_process.emplace_process("sdchecks", [=]()
 			{
+				default_cpu_cgroup.enter();
 				this->m_sdchecks_pipes->attach_child();
 
 				setenv("LD_LIBRARY_PATH", (m_configuration.c_root_dir.get() + "/lib").c_str(), 1);
@@ -702,8 +713,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 		auto* state = &m_subprocesses_state["mountedfs_reader"];
 		state->set_name("mountedfs_reader");
 		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), sinsp_encoded_parser("mountedfs_reader"), state);
-		monitor_process.emplace_process("mountedfs_reader", [this]()
+		monitor_process.emplace_process("mountedfs_reader", [=]()
 		{
+			default_cpu_cgroup.enter();
 			m_mounted_fs_reader_pipe->attach_child();
 			auto sev = static_cast<sinsp_logger::severity>(std::max(
 				this->m_configuration.m_min_file_priority,
@@ -727,8 +739,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 		state->set_name("cointerface");
 		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_err_fd(), cointerface_parser(), state);
 		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_out_fd(), cointerface_parser(), state);
-		monitor_process.emplace_process("cointerface", [this]()
+		monitor_process.emplace_process("cointerface", [=]()
 		{
+			cointerface_cpu_cgroup.enter();
 			m_cointerface_pipes->attach_child_stdio();
 
 			if(m_configuration.m_cointerface_cpu_profile_enabled)
@@ -755,8 +768,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 		state->set_name("promex");
 		m_subprocesses_logger.add_logfd(m_promex_pipes->get_out_fd(), sinsp_logger_parser("promex", true), state);
 		m_subprocesses_logger.add_logfd(m_promex_pipes->get_err_fd(), sinsp_logger_parser("promex", true), state);
-		monitor_process.emplace_process("promex", [this]()
+		monitor_process.emplace_process("promex", [=]()
 		{
+			default_cpu_cgroup.enter();
 			m_promex_pipes->attach_child_stdio();
 
 			execl((m_configuration.c_root_dir.get() + "/bin/promex").c_str(), "promex",
@@ -770,7 +784,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 #endif
 
 	monitor_process.set_cleanup_function(
-			[this](void)
+			[=]()
 			{
 				this->m_sdchecks_pipes.reset();
 				this->m_jmx_pipes.reset();
@@ -787,6 +801,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 				}
 
 				coclient::cleanup();
+				default_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get());
+				cointerface_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get());
 #endif
 			});
 
