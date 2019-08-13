@@ -69,6 +69,8 @@ public:
 	void set_n_drops(int64_t val);
 	void set_n_drops_buffer(int64_t val);
 	void set_n_preemptions(int64_t val);
+	void set_n_proc_lookups(int64_t val);
+	void set_n_main_thread_lookups(int64_t val);
 
 	void set_n_command_lines(int64_t val);
 	void set_command_categories(std::map<draiosproto::command_category,uint64_t> &cats);
@@ -156,7 +158,9 @@ public:
 		  const scap_stats& capture_stats,
 		  double flush_share,
 		  uint32_t sampling_ratio,
-		  uint64_t flush_duration_ns);
+		  uint64_t flush_duration_ns,
+		  uint64_t n_proc_lookups,
+		  uint64_t n_main_thread_lookups);
 
 private: // helper methods used during emit
 	// adds statsd-emulated metrics directly to protobuf
@@ -263,6 +267,8 @@ private:
 		int64_t n_drops = -1;
 		int64_t n_drops_buffer = -1;
 		int64_t n_preemptions = -1;
+		int64_t n_proc_lookups = -1;
+		int64_t n_main_thread_lookups = -1;
 
 		int64_t n_command_lines = -1;
 		std::map<draiosproto::command_category,uint64_t> m_command_categories;
@@ -434,6 +440,16 @@ inline void internal_metrics::set_n_drops_buffer(int64_t val)
 inline void internal_metrics::set_n_preemptions(int64_t val)
 {
 	m_analyzer.n_preemptions = val;
+}
+
+inline void internal_metrics::set_n_proc_lookups(int64_t val)
+{
+	m_analyzer.n_proc_lookups = val;
+}
+
+inline void internal_metrics::set_n_main_thread_lookups(int64_t val)
+{
+	m_analyzer.n_main_thread_lookups = val;
 }
 
 inline void internal_metrics::set_n_command_lines(int64_t val)

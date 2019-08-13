@@ -250,6 +250,8 @@ TEST(protobuf_metric_serializer_test, serialize)
 	std::atomic<uint64_t> prev_flushes_duration_ns(INITIAL_PREV_FLUSH_DURATION_NS);
 	std::atomic<bool> metrics_sent(false);
 	const double CPU_LOAD = 0.12;
+	const int64_t N_PROC_LOOKUPS = 5;
+	const int64_t N_MAIN_THREAD_LOOKUPS = 2;
 	test_helpers::scoped_config<bool> extra_internal_metrics("extra_internal_metrics", true);
 	draiosproto::metrics metrics;
 
@@ -269,6 +271,8 @@ TEST(protobuf_metric_serializer_test, serialize)
 				prev_flushes_duration_ns,
 				metrics_sent,
 				CPU_LOAD,
+				N_PROC_LOOKUPS,
+				N_MAIN_THREAD_LOOKUPS,
 				metrics));
 
 
@@ -377,6 +381,8 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	std::atomic<uint64_t> prev_flushes_duration_ns(INITIAL_PREV_FLUSH_DURATION_NS);
 	std::atomic<bool> metrics_sent(false);
 	const double CPU_LOAD = 0.12;
+	const int64_t N_PROC_LOOKUPS = 5;
+	const int64_t N_MAIN_THREAD_LOOKUPS = 2;
 	test_helpers::scoped_config<bool> extra_internal_metrics("extra_internal_metrics", true);
 	draiosproto::metrics metrics;
 
@@ -399,6 +405,8 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 				prev_flushes_duration_ns,
 				metrics_sent,
 				CPU_LOAD,
+				N_PROC_LOOKUPS,
+				N_MAIN_THREAD_LOOKUPS,
 				metrics));
 
 	s->serialize(make_unique<metric_serializer::data>(
@@ -409,6 +417,8 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 				prev_flushes_duration_ns,
 				metrics_sent,
 				CPU_LOAD,
+				N_PROC_LOOKUPS,
+				N_MAIN_THREAD_LOOKUPS,
 				metrics));
 
 

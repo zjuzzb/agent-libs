@@ -32,6 +32,8 @@ metric_serializer::data::data(const uint64_t evt_num,
                               const uint64_t prev_flushes_duration_ns,
                               std::atomic<bool>& metrics_sent,
                               const double my_cpuload,
+                              const int64_t n_proc_lookups,
+                              const int64_t n_main_thread_lookups,
                               const draiosproto::metrics& metrics):
 	m_evt_num(evt_num),
 	m_ts(ts),
@@ -40,6 +42,8 @@ metric_serializer::data::data(const uint64_t evt_num,
 	m_prev_flushes_duration_ns(prev_flushes_duration_ns),
 	m_metrics_sent(metrics_sent),
 	m_my_cpuload(my_cpuload),
+	m_n_proc_lookups(n_proc_lookups),
+	m_n_main_thread_lookups(n_main_thread_lookups),
 	m_metrics(std::make_shared<draiosproto::metrics>(metrics))
 {
 }

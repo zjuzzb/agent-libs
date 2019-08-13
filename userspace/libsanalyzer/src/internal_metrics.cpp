@@ -122,13 +122,17 @@ void internal_metrics::emit(draiosproto::statsd_info* statsd_info,
 			    const scap_stats& capture_stats,
 			    double flush_share,
 			    uint32_t sampling_ratio,
-			    uint64_t flush_duration_ns)
+			    uint64_t flush_duration_ns,
+			    uint64_t n_proc_lookups,
+			    uint64_t n_main_thread_lookups)
 {
 
         set_n_evts(capture_stats.n_evts);
         set_n_drops(capture_stats.n_drops);
         set_n_drops_buffer(capture_stats.n_drops_buffer);
         set_n_preemptions(capture_stats.n_preemptions);
+        set_n_proc_lookups(n_proc_lookups);
+        set_n_main_thread_lookups(n_main_thread_lookups);
 
         set_fp(static_cast<int64_t>(round(flush_share * 100)));
         set_sr(sampling_ratio);
@@ -189,6 +193,9 @@ bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info)
 		write_metric(statsd_info, "dragent.analyzer.n_drops_buffer", draiosproto::STATSD_GAUGE,  m_analyzer.n_drops_buffer);
 		write_metric(statsd_info, "dragent.analyzer.n_preemptions", draiosproto::STATSD_GAUGE,  m_analyzer.n_preemptions);
 
+		write_metric(statsd_info, "dragent.analyzer.n_proc_lookups", draiosproto::STATSD_GAUGE, m_analyzer.n_proc_lookups);
+		write_metric(statsd_info, "dragent.analyzer.n_main_thread_lookups", draiosproto::STATSD_GAUGE, m_analyzer.n_main_thread_lookups);
+
 		write_metric(statsd_info, "dragent.analyzer.n_command_lines", draiosproto::STATSD_GAUGE, m_analyzer.n_command_lines);
 
 		write_metric(statsd_info, "dragent.analyzer.baseliner_enabled", draiosproto::STATSD_GAUGE, m_analyzer.baseliner_enabled ? 1 : 0);
@@ -232,6 +239,7 @@ bool internal_metrics::send_some(draiosproto::statsd_info* statsd_info)
 		write_metric(statsd_info, "dragent.analyzer.n_evts", draiosproto::STATSD_GAUGE,  m_analyzer.n_evts);
 		write_metric(statsd_info, "dragent.analyzer.n_drops", draiosproto::STATSD_GAUGE,  m_analyzer.n_drops);
 		write_metric(statsd_info, "dragent.analyzer.n_drops_buffer", draiosproto::STATSD_GAUGE,  m_analyzer.n_drops_buffer);
+		write_metric(statsd_info, "dragent.analyzer.n_main_thread_lookups", draiosproto::STATSD_GAUGE, m_analyzer.n_main_thread_lookups);
 
 		write_metric(statsd_info, "dragent.analyzer.n_command_lines", draiosproto::STATSD_GAUGE, m_analyzer.n_command_lines);
 

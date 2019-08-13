@@ -4363,6 +4363,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 								m_prev_flushes_duration_ns,
 								m_sent_metrics,
 								m_my_cpuload,
+								m_inspector->m_n_proc_lookups,
+								m_inspector->m_n_main_thread_lookups,
 								*m_metrics));
 
 				// If the client doesn't want async protobuf
@@ -4430,6 +4432,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 	//
 	m_inspector->m_n_proc_lookups = 0;
 	m_inspector->m_n_proc_lookups_duration_ns = 0;
+	m_inspector->m_n_main_thread_lookups = 0;
 
 	//
 	// Clear the network I/O counter

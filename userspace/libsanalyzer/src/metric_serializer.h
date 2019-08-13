@@ -49,6 +49,8 @@ public:
 		     uint64_t prev_flushes_duration_ns,
 		     std::atomic<bool>& metrics_sent,
 		     double my_cpuload,
+		     int64_t n_proc_lookups,
+		     int64_t n_main_thread_lookups,
 		     const draiosproto::metrics& metrics);
 
 		const uint64_t m_evt_num;
@@ -58,6 +60,8 @@ public:
 		const uint64_t m_prev_flushes_duration_ns;
 		std::atomic<bool>& m_metrics_sent;
 		const double m_my_cpuload;
+		const int64_t m_n_proc_lookups;
+		const int64_t m_n_main_thread_lookups;
 		std::shared_ptr<draiosproto::metrics> m_metrics;
 	};
 

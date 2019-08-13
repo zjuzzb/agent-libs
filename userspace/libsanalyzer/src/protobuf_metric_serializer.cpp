@@ -191,7 +191,9 @@ void protobuf_metric_serializer::do_serialization()
 					 st,
 					 m_data->m_prev_flush_cpu_pct,
 					 m_data->m_sampling_ratio,
-					 m_data->m_prev_flushes_duration_ns);
+					 m_data->m_prev_flushes_duration_ns,
+					 m_data->m_n_proc_lookups,
+					 m_data->m_n_main_thread_lookups);
 	}
 
 	metric_store::store(m_data->m_metrics);
