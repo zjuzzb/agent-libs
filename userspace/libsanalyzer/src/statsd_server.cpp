@@ -9,13 +9,18 @@
 #include "analyzer_utils.h"
 #include "common_logger.h"
 #include "fault_injection.h"
+#include "statsd_logger.h"
 #include "statsd_stats_destination.h"
+#include "type_config.h"
 #include <Poco/AbstractObserver.h>
 #include <Poco/Net/DatagramSocket.h>
 #include <Poco/Net/NetException.h>
 #include <Poco/Net/SocketAddress.h>
 #include <Poco/Net/SocketNotification.h>
 #include <Poco/Net/SocketReactor.h>
+
+FILE* s_statsd_log_file = nullptr;
+bool s_statsd_log_enabled = false;
 
 namespace
 {
@@ -31,7 +36,14 @@ DEFINE_FAULT_INJECTOR(
 		fh_cannot_create_ipv6_socket,
 		"agent.userspace.libsanalyzer.statsd_server.no_ipv6_socket",
 		"Mimic a failure to create an IPv6 socket");
-      
+
+type_config<bool>::ptr c_statsd_log_enabled =
+	type_config_builder<bool>(false,
+	                          "Enhanced statsd logging enabled",
+	                          "debug_statsd_logging")
+	.post_init([](type_config<bool>& c) { s_statsd_log_enabled = c.get(); })
+	.hidden()
+	.get();
 
 } // end namespace
 
@@ -49,6 +61,8 @@ statsd_server::statsd_server(const std::string &containerid,
 	m_error_obs(*this, &statsd_server::on_error),
 	m_read_buffer(INITIAL_READ_SIZE)
 {
+	STATSD_LOG("container_id: %s, port: %u", m_containerid.c_str(), port);
+
 	using Poco::Net::NetException;
 
 	try
@@ -83,6 +97,8 @@ statsd_server::statsd_server(const std::string &containerid,
 
 statsd_server::~statsd_server()
 {
+	STATSD_LOG("container_id: %s", m_containerid.c_str());
+
 	if(m_ipv4_socket)
 	{
 		m_reactor.removeEventHandler(*m_ipv4_socket, m_read_obs);
@@ -157,6 +173,7 @@ std::unique_ptr<Poco::Net::DatagramSocket> statsd_server::make_socket(
 	m_reactor.addEventHandler(*socket, m_read_obs);
 	m_reactor.addEventHandler(*socket, m_error_obs);
 
+	STATSD_LOG("Bound to %s:%u", address.c_str(), port);
 	return socket;
 }
 
@@ -169,9 +186,16 @@ void statsd_server::on_read(Poco::Net::ReadableNotification* const notification)
 	LOG_DEBUG("bytes_available: %zu", bytes_available);
 	LOG_DEBUG("ReceiveBufferSize: %d", datagram_socket.getReceiveBufferSize());
 
+	STATSD_LOG("bytes_available: %zu", bytes_available);
+	STATSD_LOG("ReceiveBufferSize: %d", datagram_socket.getReceiveBufferSize());
+
 	if(bytes_available > m_read_buffer.capacity())
 	{
 		LOG_INFO("Resizing data buffer for %s from %zu to %zu",
+		         m_containerid.c_str(),
+		         m_read_buffer.capacity(),
+		         bytes_available);
+		STATSD_LOG("Resizing data buffer for %s from %zu to %zu",
 		         m_containerid.c_str(),
 		         m_read_buffer.capacity(),
 		         bytes_available);
@@ -184,6 +208,8 @@ void statsd_server::on_read(Poco::Net::ReadableNotification* const notification)
 
 	const int bytes_received = datagram_socket.receiveBytes(m_read_buffer.data(),
 	                                                        m_read_buffer.capacity());
+	STATSD_LOG("bytes_received: %d", bytes_received);
+	STATSD_LOG("received:\n%s", std::string(m_read_buffer.data(), bytes_received).c_str());
 
 	if(bytes_received > 0)
 	{
@@ -197,5 +223,6 @@ void statsd_server::on_read(Poco::Net::ReadableNotification* const notification)
 void statsd_server::on_error(Poco::Net::ErrorNotification* notification)
 {
 	LOG_ERROR("Unexpected error on statsd server");
+	STATSD_LOG("Unexpected error on statsd server");
 }
 

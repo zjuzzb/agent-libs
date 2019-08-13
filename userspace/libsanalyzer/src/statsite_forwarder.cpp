@@ -10,6 +10,7 @@
 #include "common_logger.h"
 #include "posix_queue.h"
 #include "statsite_proxy.h"
+#include "statsd_logger.h"
 #include "statsd_server.h"
 #include "subprocess.h"
 #include <json/json.h>
@@ -62,12 +63,14 @@ int statsite_forwarder::run()
 		}
 
 		LOG_DEBUG("Received msg=%s", msg.c_str());
+		STATSD_LOG("Received msg=%s", msg.c_str());
 
 		Json::Reader json_reader;
 		Json::Value root;
 		if(!json_reader.parse(msg, root))
 		{
 			LOG_ERROR("Error parsing msg=%s", msg.c_str());
+			STATSD_LOG("Error parsing msg=%s", msg.c_str());
 			continue;
 		}
 
@@ -88,6 +91,9 @@ int statsite_forwarder::run()
 					LOG_DEBUG("Starting statsd server on container=%s pid=%lld",
 					          containerid.c_str(),
 					          container_pid);
+					STATSD_LOG("Starting statsd server on container=%s pid=%lld",
+					          containerid.c_str(),
+					          container_pid);
 					m_sockets[containerid] =
 						make_unique<statsd_server>(containerid,
 						                           *m_proxy,
@@ -97,6 +103,9 @@ int statsite_forwarder::run()
 				catch(const sinsp_exception& ex)
 				{
 					LOG_WARNING("Cannot init statsd server on container=%s pid=%lld",
+					            containerid.c_str(),
+					            container_pid);
+					STATSD_LOG("Cannot init statsd server on container=%s pid=%lld",
 					            containerid.c_str(),
 					            container_pid);
 				}
@@ -112,6 +121,8 @@ int statsite_forwarder::run()
 				// turning off statsd server so we can release
 				// resources
 				LOG_DEBUG("Stopping statsd server on container=%s",
+				          it->first.c_str());
+				STATSD_LOG("Stopping statsd server on container=%s",
 				          it->first.c_str());
 				it = m_sockets.erase(it);
 			}

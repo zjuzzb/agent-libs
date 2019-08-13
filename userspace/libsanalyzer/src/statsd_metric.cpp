@@ -8,6 +8,7 @@
 #include "statsd_metric.h"
 #include "draios.pb.h"
 #include "percentile.h"
+#include "statsd_logger.h"
 #include "utils.h"
 #include <string>
 #include <sstream>
@@ -221,6 +222,7 @@ void statsd_metric::to_protobuf(draiosproto::statsd_metric* const proto) const
 {
 	ASSERT(m_type != type_t::NONE);
 
+	STATSD_LOG("sending to collector:\n%s", to_debug_string().c_str());
 	proto->set_name(m_name);
 
 	for(const auto& tag : m_tags)
