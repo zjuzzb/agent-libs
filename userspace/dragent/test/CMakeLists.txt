@@ -47,6 +47,7 @@ add_executable(unit-test-dragent
 	file_rest_registry.ut.cpp
 	file_rest_request_handler.ut.cpp
 	metrics_rest_request_handler.ut.cpp
+	process_helpers.ut.cpp
 	sinsp_worker.ut.cpp
 	spinlock.ut.cpp
 	watchdog_runnable.ut.cpp

@@ -35,6 +35,16 @@ void subprocess_cgroup::set_value(const std::string &name, int64_t value)
 {
 }
 
+std::string subprocess_cgroup::parse_cgroup(std::istream& s, const std::string& subsys)
+{
+	return "";
+}
+
+std::string get_current_cgroup(const std::string& subsys)
+{
+	return "";
+}
+
 void subprocess_cpu_cgroup::create()
 {
 	if(m_shares > 0 || m_quota > 0)

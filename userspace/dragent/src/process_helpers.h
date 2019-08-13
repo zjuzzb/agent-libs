@@ -61,6 +61,25 @@ public:
 	 */
 	virtual void enter() const;
 
+	/**
+	 * Parse /proc/<pid>/cgroup contents and find the cgroup name
+	 * for a particular subsystem
+	 *
+	 * @param s stream to read the file from
+	 * @param subsys subsystem
+	 * @return the cgroup path (without mount point)
+	 */
+	static std::string parse_cgroup(std::istream& s, const std::string& subsys);
+
+	/**
+	 * Get full path to the current thread's cgroup in subsystem `subsys`
+	 * @param subsys the cgroup subsystem
+	 * @return full path to the cgroup (with mount point)
+	 *
+	 * If `subsys` isn't a valid mounted cgroup subsystem, return ""
+	 */
+	static std::string get_current_cgroup(const std::string& subsys);
+
 protected:
 	virtual void set_value(const std::string& name, int64_t value);
 

@@ -46,67 +46,6 @@ type_config<int64_t> c_cgroup_cleanup_timeout_ms(
 );
 
 
-namespace
-{
-// TODO this is a duplicate of a hard-to-access method in scap_procs.c (scap_proc_fill_cgroups)
-// TODO it's a perfect candidate for a unit test
-std::string get_current_cgroup(const std::string& subsys)
-{
-	std::ifstream cgroups("/proc/self/cgroup");
-	char buf[1024];
-	while(true)
-	{
-		cgroups.getline(buf, sizeof(buf));
-		if(!*buf)
-		{
-			return "";
-		}
-
-		// the lines in /proc/self/cgroup look like this:
-		// 10:cpu,cpuacct:/user.slice/user-0.slice/session-5832.scope
-		// first, we skip the cgroup id
-		char *p = strchr(buf, ':');
-		if(!p)
-		{
-			continue;
-		}
-		p++;
-
-		// and remember the pointer to the end of the subsys list
-		char *cgroup = strchr(p, ':');
-		if(!cgroup)
-		{
-			continue;
-		}
-		*cgroup = 0;
-		cgroup++;
-
-		// then, try to find the matching subsys (separated by commas);
-		char *found_subsys;
-		char *save;
-		bool found = false;
-
-		while((found_subsys = strtok_r(p, ",", &save)) != nullptr)
-		{
-			if(!strcmp(found_subsys, subsys.c_str()))
-			{
-				found = true;
-				break;
-			}
-			p = nullptr;
-		}
-		if(!found)
-		{
-			continue;
-		}
-
-		// okay, we found the right subsys, now store the cgroup value
-		auto subsys_path = sinsp::lookup_cgroup_dir("cpu");
-		return *subsys_path + cgroup;
-	}
-}
-}
-
 namespace process_helpers
 {
 
@@ -194,6 +133,78 @@ void subprocess_cgroup::set_value(const std::string &name, int64_t value)
 	std::ofstream cg_value(m_full_path + "/" + name);
 	cg_value << value;
 }
+
+std::string subprocess_cgroup::parse_cgroup(std::istream &s, const std::string& subsys)
+{
+	char buf[1024];
+	while(true)
+	{
+		s.getline(buf, sizeof(buf));
+		if(!*buf)
+		{
+			return "";
+		}
+
+		// the lines in /proc/self/cgroup look like this:
+		// 10:cpu,cpuacct:/user.slice/user-0.slice/session-5832.scope
+		// first, we skip the cgroup id
+		char *p = strchr(buf, ':');
+		if(!p)
+		{
+			continue;
+		}
+		p++;
+
+		// and remember the pointer to the end of the subsys list
+		char *cgroup = strchr(p, ':');
+		if(!cgroup)
+		{
+			continue;
+		}
+		*cgroup = 0;
+		cgroup++;
+
+		// then, try to find the matching subsys (separated by commas);
+		char *found_subsys;
+		char *save;
+		bool found = false;
+
+		while((found_subsys = strtok_r(p, ",", &save)) != nullptr)
+		{
+			if(!strcmp(found_subsys, subsys.c_str()))
+			{
+				found = true;
+				break;
+			}
+			p = nullptr;
+		}
+		if(!found)
+		{
+			continue;
+		}
+
+		return cgroup;
+	}
+
+}
+
+std::string subprocess_cgroup::get_current_cgroup(const std::string& subsys)
+{
+	std::ifstream cgroups("/proc/self/cgroup");
+	auto cgroup = parse_cgroup(cgroups, subsys);
+	if(!cgroup.empty())
+	{
+		auto subsys_path = sinsp::lookup_cgroup_dir(subsys);
+
+		if(!subsys_path->empty())
+		{
+			return *subsys_path + cgroup;
+		}
+	}
+
+	return "";
+}
+
 
 void subprocess_cpu_cgroup::create()
 {
