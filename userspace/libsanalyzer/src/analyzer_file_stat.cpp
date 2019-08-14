@@ -8,4 +8,6 @@ void analyzer_file_stat::to_protobuf(draiosproto::file_stat *protobuf) const
 	protobuf->set_time_ns(m_time_ns);
 	protobuf->set_open_count(m_open_count);
 	protobuf->set_errors(m_errors);
+	protobuf->set_bytes_in(m_bytes_in);
+	protobuf->set_bytes_out(m_bytes_out);
 }

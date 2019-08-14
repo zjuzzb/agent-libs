@@ -493,14 +493,24 @@ sinsp_connection* sinsp_analyzer_fd_listener::get_ipv4_connection(sinsp_fdinfo_t
 	return connection;
 }
 
-void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd, sinsp_fdinfo_t* fdinfo,
-										 char *data, uint32_t original_len, uint32_t len)
+void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt,
+                                         int64_t tid,
+                                         int64_t fd,
+                                         sinsp_fdinfo_t* fdinfo,
+                                         char *data,
+                                         uint32_t original_len,
+                                         uint32_t len)
 {
 	evt->set_iosize(original_len);
 
 	if(fdinfo->is_file())
 	{
-		account_io(evt->get_thread_info(), fdinfo->m_name, fdinfo->m_dev, original_len, evt->m_tinfo->m_latency);
+		account_io(evt->get_thread_info(),
+		           fdinfo->m_name,
+		           fdinfo->m_dev,
+		           original_len,
+		           evt->m_tinfo->m_latency,
+		           analyzer_file_stat::io_direction::READ);
 	}
 	else if(fdinfo->is_ipv4_socket())
 	{
@@ -559,14 +569,24 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 	}
 }
 
-void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t fd, sinsp_fdinfo_t* fdinfo,
-										  char *data, uint32_t original_len, uint32_t len)
+void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt,
+                                          int64_t tid,
+                                          int64_t fd,
+                                          sinsp_fdinfo_t* fdinfo,
+                                          char *data,
+                                          uint32_t original_len,
+                                          uint32_t len)
 {
 	evt->set_iosize(original_len);
 
 	if(fdinfo->is_file())
 	{
-		account_io(evt->get_thread_info(), fdinfo->m_name, fdinfo->m_dev, original_len, evt->m_tinfo->m_latency);
+		account_io(evt->get_thread_info(),
+		           fdinfo->m_name,
+		           fdinfo->m_dev,
+		           original_len,
+		           evt->m_tinfo->m_latency,
+		           analyzer_file_stat::io_direction::WRITE);
 	}
 	else if(fdinfo->is_ipv4_socket())
 	{
@@ -1147,30 +1167,35 @@ inline bool sinsp_analyzer_fd_listener::should_account_io(const sinsp_threadinfo
 #endif
 	return true;
 }
-void sinsp_analyzer_fd_listener::account_io(sinsp_threadinfo *tinfo, const std::string &name, uint32_t dev, uint32_t bytes, uint64_t time_ns)
+void sinsp_analyzer_fd_listener::account_io(sinsp_threadinfo* const tinfo,
+                                            const std::string& name,
+                                            const uint32_t dev,
+                                            const uint32_t bytes,
+                                            const uint64_t time_ns,
+                                            const analyzer_file_stat::io_direction direction)
 {
 	if (!should_account_io(tinfo))
 	{
 		return;
 	}
 
-	m_files_stat[name].account_io(bytes, time_ns);
+	m_files_stat[name].account_io(bytes, time_ns, direction);
 
 	auto mt_ainfo = tinfo->m_ainfo->main_thread_ainfo();
 	if (m_analyzer->detailed_fileio_reporting())
 	{
-		mt_ainfo->m_files_stat[name].account_io(bytes, time_ns);
+		mt_ainfo->m_files_stat[name].account_io(bytes, time_ns, direction);
 	}
 
 	if (dev != 0)
 	{
 		if (m_analyzer->fileio_device_reporting())
 		{
-			m_devs_stat[dev].account_io(bytes, time_ns);
+			m_devs_stat[dev].account_io(bytes, time_ns, direction);
 		}
 		if (m_analyzer->detailed_fileio_device_reporting())
 		{
-			mt_ainfo->m_devs_stat[dev].account_io(bytes, time_ns);
+			mt_ainfo->m_devs_stat[dev].account_io(bytes, time_ns, direction);
 		}
 	}
 }

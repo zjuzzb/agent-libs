@@ -41,7 +41,12 @@ private:
 	sinsp_connection* get_ipv4_connection(sinsp_fdinfo_t* fdinfo, const ipv4tuple& tuple, sinsp_evt* evt, int64_t tid, int64_t fd, bool incoming);
 	void add_client_ipv4_connection(sinsp_evt *evt);
 
-	void account_io(sinsp_threadinfo* tinfo, const std::string& name, uint32_t dev, uint32_t bytes, uint64_t time_ns);
+	void account_io(sinsp_threadinfo* tinfo,
+	                const std::string& name,
+	                uint32_t dev,
+	                uint32_t bytes,
+	                uint64_t time_ns,
+	                analyzer_file_stat::io_direction direction);
 	void account_file_open(sinsp_threadinfo* tinfo, const std::string& name, uint32_t dev);
 	void account_error(sinsp_threadinfo* tinfo, const std::string& name, uint32_t dev);
 

@@ -858,6 +858,8 @@ message file_stat {
     required uint32 open_count = 4;
     required uint32 errors = 5;
     reserved 6 to 9;
+    optional uint32 bytes_in = 10;
+    optional uint32 bytes_out = 11;
 }
 
 enum container_type {

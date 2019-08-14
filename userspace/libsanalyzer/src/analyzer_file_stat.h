@@ -27,19 +27,38 @@ class file_stat;
 class analyzer_file_stat
 {
 public:
+	enum class io_direction
+	{
+		READ,
+		WRITE,
+	};
+
 	analyzer_file_stat() :
 		m_time_ns(0),
 		m_bytes(0),
+		m_bytes_in(0),
+		m_bytes_out(0),
 		m_errors(0),
 		m_open_count(0),
 		m_include_in_sample(false)
 	{
 	}
 
-	inline void account_io(uint32_t bytes, uint64_t time_ns)
+	inline void account_io(uint32_t bytes, uint64_t time_ns, io_direction direction)
 	{
 		m_bytes += bytes;
 		m_time_ns += time_ns;
+
+		switch(direction)
+		{
+		case io_direction::READ:
+			m_bytes_in += bytes;
+			break;
+
+		case io_direction::WRITE:
+			m_bytes_out += bytes;
+			break;
+		}
 	}
 
 	inline void account_file_open()
@@ -56,6 +75,8 @@ public:
 	{
 		m_time_ns += rhs.m_time_ns;
 		m_bytes += rhs.m_bytes;
+		m_bytes_in += rhs.m_bytes_in;
+		m_bytes_out += rhs.m_bytes_out;
 		m_errors += rhs.m_errors;
 		m_open_count += rhs.m_open_count;
 		return *this;
@@ -95,12 +116,16 @@ public:
 
 	uint64_t time_ns() const { return m_time_ns; }
 	uint32_t bytes() const { return m_bytes; }
+	uint32_t bytes_in() const { return m_bytes_in; }
+	uint32_t bytes_out() const { return m_bytes_out; }
 	uint32_t errors() const { return m_errors; }
 	uint32_t open_count() const { return m_open_count; }
 
 private:
 	uint64_t m_time_ns;
 	uint32_t m_bytes;
+	uint32_t m_bytes_in;
+	uint32_t m_bytes_out;
 	uint32_t m_errors;
 	uint32_t m_open_count;
 	bool m_include_in_sample;
