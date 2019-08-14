@@ -258,8 +258,10 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	}
 
 	tinfo->m_container_id = container_info.m_id;
+	auto num_containers = manager->get_containers()->size();
 	auto container = manager->get_container(container_info.m_id);
-	if (!container && m_num >= m_max)
+
+	if (!container && num_containers >= m_max)
 	{
 		if (!m_limit_logged)
 		{

@@ -184,16 +184,6 @@ public:
 		}
 	}
 
-	void inc_count()
-	{
-		++m_num;
-	}
-
-	void dec_count()
-	{
-		--m_num;
-	}
-
 	void set_max(int max)
 	{
 		if (max >= CUSTOM_CONTAINER_HARD_LIMIT)
@@ -246,7 +236,6 @@ protected:
 	bool m_incremental_metadata = false;
 
 	bool m_config_test = false;
-	int m_num = 0;
 	int m_max = 0;
 	int m_max_id_length = 0;
 	std::unique_ptr<Poco::RegularExpression> m_cgroup_match;
