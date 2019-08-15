@@ -116,7 +116,6 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cyclewriter.cpp
 	connectinfo.cpp 
 	config.cpp
-	container_config.cpp
 	container_events/docker.cpp
 	custom_container.cpp
 	delays.cpp
@@ -254,7 +253,6 @@ set(SANALYZER_SOURCES
 
 if(NOT CYGWIN)
 list(APPEND SANALYZER_SOURCES
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/async_cgroup.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/bpm.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/cri.cpp

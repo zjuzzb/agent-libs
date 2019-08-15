@@ -103,7 +103,7 @@ protected:
 		container_info.m_imagerepo = s_container_stub;
 		container_info.m_imagetag = s_container_stub;
 		container_info.m_imagedigest = s_container_stub;
-		container_info.m_status = sinsp_container_lookup_state::STARTED;
+		container_info.m_metadata_complete = false;
 
 		return container_info;
 	}
