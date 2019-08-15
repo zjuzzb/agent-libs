@@ -259,11 +259,18 @@ protected:
 	static bool get_value(const std::string& str, value_type& value)
 	{
 		std::stringstream out;
+		value_type value_in;
 
 		out << str;
-		out >> value;
+		out >> value_in;
 
-		return !out.fail();
+		if(out)
+		{
+			value = value_in;
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
