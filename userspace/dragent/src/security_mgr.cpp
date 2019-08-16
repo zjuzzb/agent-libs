@@ -410,7 +410,7 @@ bool security_mgr::load_v1(const draiosproto::policies &policies, const draiospr
 	std::list<std::string> ids{
 		"" // tinfo.m_container_id is empty for host events
 	};
-	const unordered_map<string, sinsp_container_info> &containers = *m_inspector->m_container_manager.get_containers();
+	const auto &containers = *m_inspector->m_container_manager.get_containers();
 	for (const auto &c : containers)
 	{
 		ids.push_back(c.first);
@@ -540,7 +540,7 @@ bool security_mgr::load_v2(const draiosproto::policies_v2 &policies_v2, std::str
 	std::list<std::string> ids{
 		"" // tinfo.m_container_id is empty for host events
 	};
-	const unordered_map<string, sinsp_container_info> &containers = *m_inspector->m_container_manager.get_containers();
+	const auto &containers = *m_inspector->m_container_manager.get_containers();
 	for (const auto &c : containers)
 	{
 		ids.push_back(c.first);
@@ -665,7 +665,7 @@ bool security_mgr::event_qualifies(sinsp_evt *evt)
 		return true;
 	}
 
-	const sinsp_container_info *container_info = m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+	const auto container_info = m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 	if(!container_info)
 	{
 		return true;

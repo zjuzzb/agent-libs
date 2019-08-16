@@ -240,12 +240,11 @@ void process_emitter::emit_processes(analyzer_emitter::flush_flags flushflags,
 	std::set<sinsp_threadinfo*> blacklist_processes;
 
 	// first step: get list of emittable processes
-	for(auto container_it = progtable_by_container.begin(); container_it != progtable_by_container.end(); ++container_it)
+	for(const auto& container_it : progtable_by_container)
 	{
-		const sinsp_container_info* container_info = m_inspector.m_container_manager.get_container(container_it->first);
-		for (auto thread_it = container_it->second.begin(); thread_it != container_it->second.end(); ++thread_it)
+		const auto container_info = m_inspector.m_container_manager.get_container(container_it.first);
+		for (auto& thread_info : container_it.second)
 		{
-			sinsp_threadinfo* thread_info = *thread_it;
 			filter_process(thread_info,
 				       container_info,
 				       high_priority_processes,

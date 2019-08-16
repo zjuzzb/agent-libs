@@ -460,9 +460,9 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 
 void sinsp_baseliner::init_containers()
 {
-	const std::unordered_map<std::string, sinsp_container_info>* containers = m_inspector->m_container_manager.get_containers();
+	const auto containers = m_inspector->m_container_manager.get_containers();
 
-	for(auto& it : *containers)
+	for(const auto& it : *containers)
 	{
 		m_container_table[it.first] = blcontainer(it.second.m_name,
 			it.second.m_image, it.second.m_imageid);

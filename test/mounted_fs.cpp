@@ -71,7 +71,7 @@ TEST_F(mounted_fs_reader_test, container_mounts)
 	{
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != nullptr);
-		const sinsp_container_info *container_info =
+		const auto container_info =
 			param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_TRUE(container_info != nullptr);
 

@@ -37,7 +37,7 @@ TEST_F(container_cri, fake_cri_no_server) {
 
 		EXPECT_EQ(cri_container_id, tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 
 		// This can either be null or a container with incomplete metadata
 		EXPECT_TRUE((container_info == nullptr || container_info->m_metadata_complete == false));
@@ -86,7 +86,7 @@ TEST_F(container_cri, fake_cri) {
 
 		EXPECT_EQ(cri_container_id, tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CONTAINERD, container_info->m_type);
@@ -144,7 +144,7 @@ TEST_F(container_cri, fake_cri_crio_extra_queries) {
 
 		EXPECT_EQ(cri_container_id, tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CRIO, container_info->m_type);
@@ -198,7 +198,7 @@ TEST_F(container_cri, fake_cri_crio) {
 
 		EXPECT_EQ(cri_container_id, tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CRIO, container_info->m_type);
@@ -253,7 +253,7 @@ TEST_F(container_cri, fake_cri_unknown_runtime) {
 
 		EXPECT_EQ(cri_container_id, tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CRI, container_info->m_type);

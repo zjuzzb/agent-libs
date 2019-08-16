@@ -1879,7 +1879,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			if(container)
 			{
 #ifndef CYGWING_AGENT
-				const sinsp_container_info *cinfo = m_inspector->m_container_manager.get_container(tinfo.m_container_id);
+				const auto cinfo = m_inspector->m_container_manager.get_container(tinfo.m_container_id);
 				bool optional;
 				if(cinfo && !container->should_report_container(m_configuration,
 										 cinfo,
@@ -2493,18 +2493,18 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	if(!m_inspector->is_capture() && m_mounted_fs_proxy)
 	{
 		vector<sinsp_threadinfo*> containers_for_mounted_fs;
-		for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
+		for(const auto& it : progtable_by_container)
 		{
-			const sinsp_container_info *container_info =
-				m_inspector->m_container_manager.get_container(it->first);
+			const auto container_info =
+				m_inspector->m_container_manager.get_container(it.first);
 			if(container_info && !container_info->is_pod_sandbox())
 			{
-				auto long_running_proc = find_if(it->second.begin(), it->second.end(), [this](sinsp_threadinfo* tinfo)
+				auto long_running_proc = find_if(it.second.begin(), it.second.end(), [this](sinsp_threadinfo* tinfo)
 								 {
 								 return !(tinfo->m_flags & PPM_CL_CLOSED) && (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >= ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
 								 });
 
-				if(long_running_proc != it->second.end())
+				if(long_running_proc != it.second.end())
 				{
 					if(!(*long_running_proc)->m_ainfo->m_root_refreshed)
 					{
@@ -2517,7 +2517,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							(*long_running_proc)->get_comm().c_str(),
 							(*long_running_proc)->m_tid,
 							(*long_running_proc)->m_vtid,
-							it->first.c_str(),
+							it.first.c_str(),
 							(*long_running_proc)->m_container_id.c_str());
 
 					containers_for_mounted_fs.push_back(*long_running_proc);
@@ -5747,7 +5747,7 @@ sinsp_analyzer::emit_containers_deprecated(const analyzer_emitter::progtable_by_
 	for(const auto& item : progtable_by_container)
 	{
 		const auto& container_id = item.first;
-		const sinsp_container_info *container_info =
+		const auto container_info =
 			m_inspector->m_container_manager.get_container(container_id);
 		if(container_info)
 		{
@@ -6486,7 +6486,7 @@ void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 	if(!m_prom_conf.enabled() || mtinfo->m_ainfo->found_prom_check())
 		return;
 
-	const sinsp_container_info *container =
+	const auto container =
 		m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 
 	m_prom_conf.match_and_fill(tinfo, mtinfo, container, *infra_state(), prom_procs, use_host_filter);

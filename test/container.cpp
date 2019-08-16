@@ -396,7 +396,7 @@ static void run_container_docker_test(bool fork_after_container_start)
 
 		ASSERT_TRUE(tinfo->m_container_id.length() == 12);
 
-		const sinsp_container_info *container_info =
+		const auto container_info =
 		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_TRUE(container_info != NULL);
 
@@ -477,7 +477,7 @@ TEST_F(sys_call_test, container_custom)
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -538,7 +538,7 @@ TEST_F(sys_call_test, container_custom_env_match)
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -602,7 +602,7 @@ TEST_F(sys_call_test, container_custom_env_match_last)
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -666,7 +666,7 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -731,7 +731,7 @@ TEST_F(sys_call_test, container_custom_env_match_flipped)
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -797,7 +797,7 @@ TEST_F(sys_call_test, container_custom_halfnhalf)
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -866,7 +866,7 @@ TEST_F(sys_call_test, container_custom_huge_env)
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -936,7 +936,7 @@ TEST_F(sys_call_test, container_custom_huge_env_echo)
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -1004,7 +1004,7 @@ TEST_F(sys_call_test, container_custom_huge_env_echo_proc)
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -1078,7 +1078,7 @@ TEST_F(sys_call_test, container_custom_huge_env_at_end)
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -1172,7 +1172,7 @@ TEST_F(sys_call_test, container_rkt_after)
 
 		ASSERT_EQ(42u, tinfo->m_container_id.length()) << "container_id is " << tinfo->m_container_id;
 
-		const sinsp_container_info *container_info =
+		const auto container_info =
 		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_TRUE(container_info != NULL);
 
@@ -1250,7 +1250,7 @@ TEST_F(sys_call_test, container_rkt_before)
 
 		ASSERT_EQ(42u, tinfo->m_container_id.length()) << "container_id is " << tinfo->m_container_id;
 
-		const sinsp_container_info *container_info =
+		const auto container_info =
 		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_TRUE(container_info != NULL);
 
@@ -1320,7 +1320,7 @@ TEST_F(sys_call_test, DISABLED_container_lxc)
 
 		ASSERT_TRUE(tinfo->m_container_id == "ilovesysdig_lxc");
 
-		const sinsp_container_info *container_info =
+		const auto container_info =
 		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_TRUE(container_info != NULL);
 
@@ -1404,7 +1404,7 @@ TEST_F(sys_call_test, container_libvirt)
 		ASSERT_TRUE(tinfo->m_container_id.find("libvirt\\x2dcontainer") != string::npos ||
 		            sscanf(tinfo->m_container_id.c_str(), "lxc-%u-libvirt-container", &lxc_id) == 1);
 
-		const sinsp_container_info *container_info =
+		const auto container_info =
 		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_TRUE(container_info != NULL);
 
@@ -1552,7 +1552,7 @@ static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_s
 		return;
 	}
 
-	const sinsp_container_info *container_info =
+	const auto container_info =
 		inspector->m_container_manager.get_container(tinfo->m_container_id);
 
 	if(container_info)
@@ -1899,9 +1899,9 @@ TEST_F(sys_call_test, docker_container_large_json)
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
-		const sinsp_container_info *container_info =
+		const auto container_info =
 			param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
-		ASSERT_TRUE(container_info);
+		ASSERT_NE(nullptr, container_info);
 		ASSERT_EQ(container_info->m_type, CT_DOCKER);
 
 		ASSERT_STREQ(container_info->m_name.c_str(), "large_container_ut");

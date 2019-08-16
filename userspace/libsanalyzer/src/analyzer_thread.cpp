@@ -572,7 +572,7 @@ const proc_config& thread_analyzer_info::get_proc_config()
 		// 2. As last chance, use the Env coming from Docker
 		if(conf.empty() && !m_tinfo->m_container_id.empty())
 		{
-			const sinsp_container_info *container_info =
+			const auto container_info =
 				m_inspector->m_container_manager.get_container(m_tinfo->m_container_id);
 			if(container_info)
 			{

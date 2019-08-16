@@ -2065,7 +2065,7 @@ void infrastructure_state::find_our_k8s_node(const std::vector<string> *containe
 	sinsp_threadinfo *tinfo = m_inspector->m_thread_manager->get_threads()->get(getpid());
 	if (tinfo)
 	{
-		const sinsp_container_info *container =
+		const auto container =
 			m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		if (container && !container->m_id.empty())
 		{
