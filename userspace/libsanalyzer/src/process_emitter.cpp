@@ -246,7 +246,7 @@ void process_emitter::emit_processes(analyzer_emitter::flush_flags flushflags,
 		for (auto& thread_info : container_it.second)
 		{
 			filter_process(thread_info,
-				       container_info,
+				       container_info.get(),
 				       high_priority_processes,
 				       low_priority_processes,
 				       blacklist_processes);

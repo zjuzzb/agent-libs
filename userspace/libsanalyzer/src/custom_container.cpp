@@ -209,6 +209,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	render_context render_ctx;
 	container_info.m_type = CT_CUSTOM;
 	bool metadata_complete = true;
+	bool new_container = false;
 
 	if (!m_enabled)
 	{
@@ -278,7 +279,8 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 		}
 	} else {
 		container_info.m_metadata_deadline = sinsp_utils::get_current_time_ns() + (10 * ONE_SECOND_IN_NS);
-		container = &container_info;
+		container = make_shared<sinsp_container_info>(container_info);
+		new_container = true;
 	}
 
 	if (m_name_pattern.empty())
@@ -366,10 +368,10 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	{
 		container->m_metadata_deadline = 0;
 	}
-	if (container == &container_info)
+	if (new_container)
 	{
-		manager->add_container(container_info, tinfo);
-		manager->notify_new_container(container_info);
+		manager->add_container(*container.get(), tinfo);
+		manager->notify_new_container(*container.get());
 	}
 	return true;
 }

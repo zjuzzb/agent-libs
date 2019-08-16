@@ -584,9 +584,9 @@ void sinsp_baseliner::serialize_json(std::string filename)
 	for(const auto& it : *m_inspector->m_container_manager.get_containers())
 	{
 		Json::Value cinfo;
-		cinfo["name"] = it.second.m_name;
-		cinfo["image_name"] = it.second.m_image;
-		cinfo["image_id"] = it.second.m_imageid;
+		cinfo["name"] = it.second->m_name;
+		cinfo["image_name"] = it.second->m_image;
+		cinfo["image_id"] = it.second->m_imageid;
 
 		ctable[it.first] = cinfo;
 	}
@@ -706,16 +706,16 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 		draiosproto::falco_container* cont = pbentry->add_containers();
 
 		cont->set_id(it.first);
-		cont->set_name(it.second.m_name);
+		cont->set_name(it.second->m_name);
 
-		if (!it.second.m_image.empty())
+		if (!it.second->m_image.empty())
 		{
-			cont->set_image_name(it.second.m_image);
+			cont->set_image_name(it.second->m_image);
 		}
 
-		if (!it.second.m_imageid.empty())
+		if (!it.second->m_imageid.empty())
 		{
-			cont->set_image_id(it.second.m_imageid);
+			cont->set_image_id(it.second->m_imageid);
 		}
 	}
 }

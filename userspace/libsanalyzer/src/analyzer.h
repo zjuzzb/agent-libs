@@ -447,7 +447,7 @@ public:
 		return m_inspector->get_thread(m_inspector->m_sysdig_pid);
 	}
 
-	inline sinsp_container_info* get_container(const std::string& container_id)
+	inline sinsp_container_info::ptr_t get_container(const std::string& container_id)
 	{
 		return m_inspector->m_container_manager.get_container(container_id);
 	}
