@@ -4415,6 +4415,16 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 		m_host_client_transactions[j].clear();
 	}
 
+	if(m_inspector->m_n_main_thread_lookups)
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "Looked up %d main thread(s) in /proc",
+			m_inspector->m_n_main_thread_lookups);
+	}
+	if(m_inspector->m_n_proc_lookups)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Looked up %d thread(s) in /proc (total time %lu ns)",
+			m_inspector->m_n_proc_lookups, m_inspector->m_n_proc_lookups_duration_ns);
+	}
 	//
 	// Reset the proc lookup counter
 	//
