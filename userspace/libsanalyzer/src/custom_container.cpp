@@ -370,7 +370,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	}
 	if (new_container)
 	{
-		manager->add_container(*container.get(), tinfo);
+		manager->add_container(container, tinfo);
 		manager->notify_new_container(*container.get());
 	}
 	return true;

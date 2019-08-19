@@ -640,7 +640,8 @@ process:
 	container.m_name = "my_container_name";
 	container.m_id = "my_container_id";
 	progtable_by_container[container.m_id].emplace_back(&matching_container_process);
-	emitter.m_inspector.m_container_manager.add_container(container, &matching_container_process);
+	auto container_ptr = std::make_shared<sinsp_container_info>(container);
+	emitter.m_inspector.m_container_manager.add_container(container_ptr, &matching_container_process);
 
 	progtable.insert(&hi_stats);
 	emitted_processes.clear();
@@ -684,7 +685,8 @@ TEST(process_emitter_test, container_procs)
 	container.m_id = "my_container_id";
 	analyzer_emitter::progtable_by_container_t progtable_by_container;
 	progtable_by_container[container.m_id].emplace_back(&matching_container_process);
-	emitter.m_inspector.m_container_manager.add_container(container, &matching_container_process);
+	auto container_ptr = std::make_shared<sinsp_container_info>(container);
+	emitter.m_inspector.m_container_manager.add_container(container_ptr, &matching_container_process);
 	std::vector<std::string> emitted_containers;
 	emitted_containers.push_back(container.m_id);
 
