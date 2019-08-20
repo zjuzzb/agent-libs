@@ -65,7 +65,6 @@ sinsp_baseliner::sinsp_baseliner():
 	m_inspector(nullptr),
 	m_ifaddr_list(nullptr),
 	m_progtable(),
-	m_container_table(),
 #ifdef ASYNC_PROC_PARSING
 	m_procparser_thread(nullptr),
 	m_procparser_state(nullptr),
@@ -80,9 +79,6 @@ void sinsp_baseliner::init(sinsp* inspector)
 	m_procparser_thread = NULL;
 #endif
 	m_inspector = inspector;
-	m_inspector->m_container_manager.subscribe_on_new_container([this](const sinsp_container_info &container_info, sinsp_threadinfo *tinfo) {
-		on_new_container(container_info, tinfo);
-	});
 	m_ifaddr_list = m_inspector->get_ifaddr_list();
 	load_tables(0);
 
@@ -128,8 +124,6 @@ sinsp_baseliner::~sinsp_baseliner()
 
 void sinsp_baseliner::load_tables(uint64_t time)
 {
-	init_containers();
-
 #ifdef ASYNC_PROC_PARSING
 	init_programs(m_inspector, time, true);
 
@@ -171,7 +165,6 @@ void sinsp_baseliner::clear_tables()
 	// Clear the tables
 	//
 	m_progtable.clear();
-	m_container_table.clear();
 }
 
 void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_fds)
@@ -458,17 +451,6 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 
 }
 
-void sinsp_baseliner::init_containers()
-{
-	const auto containers = m_inspector->m_container_manager.get_containers();
-
-	for(const auto& it : *containers)
-	{
-		m_container_table[it.first] = blcontainer(it.second.m_name,
-			it.second.m_image, it.second.m_imageid);
-	}
-}
-
 void sinsp_baseliner::register_callbacks(sinsp_fd_listener* listener)
 {
 	//
@@ -599,12 +581,12 @@ void sinsp_baseliner::serialize_json(std::string filename)
 
 	root["progs"] = table;
 
-	for(auto& it : m_container_table)
+	for(const auto& it : *m_inspector->m_container_manager.get_containers())
 	{
 		Json::Value cinfo;
 		cinfo["name"] = it.second.m_name;
-		cinfo["image_name"] = it.second.m_image_name;
-		cinfo["image_id"] = it.second.m_image_id;
+		cinfo["image_name"] = it.second.m_image;
+		cinfo["image_id"] = it.second.m_imageid;
 
 		ctable[it.first] = cinfo;
 	}
@@ -719,21 +701,21 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 	//
 	// Serialize the containers
 	//
-	for (auto& it : m_container_table)
+	for (const auto& it : *m_inspector->m_container_manager.get_containers())
 	{
 		draiosproto::falco_container* cont = pbentry->add_containers();
 
 		cont->set_id(it.first);
 		cont->set_name(it.second.m_name);
 
-		if (it.second.m_image_name != "")
+		if (!it.second.m_image.empty())
 		{
-			cont->set_image_name(it.second.m_image_name);
+			cont->set_image_name(it.second.m_image);
 		}
 
-		if (it.second.m_image_id != "")
+		if (!it.second.m_imageid.empty())
 		{
-			cont->set_image_id(it.second.m_image_id);
+			cont->set_image_id(it.second.m_imageid);
 		}
 	}
 }
@@ -1181,13 +1163,6 @@ void sinsp_baseliner::on_bind(sinsp_evt *evt)
 		pinfo->m_bound_ports.add_l_tcp(tuple.m_port,
 					       evt->get_ts() - clone_ts);
 	}
-}
-
-void sinsp_baseliner::on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo)
-{
-	m_container_table[container_info.m_id] = blcontainer(container_info.m_name,
-		container_info.m_image,
-		container_info.m_imageid);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

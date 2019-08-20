@@ -1327,28 +1327,6 @@ public:
 };
 
 //
-// Container Information
-//
-class blcontainer
-{
-public:
-	blcontainer(std::string name, std::string image_name, std::string image_id)
-	{
-		m_name = name;
-		m_image_name = image_name;
-		m_image_id = image_id;
-	}
-
-	blcontainer()
-	{
-	}
-
-	std::string m_name;
-	std::string m_image_name;
-	std::string m_image_id;
-};
-
-//
 // The baseliner class
 //
 class sinsp_baseliner
@@ -1373,12 +1351,10 @@ public:
 	void on_connect(sinsp_evt *evt);
 	void on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo);
 	void on_bind(sinsp_evt *evt);
-	void on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo);
 	inline void extract_from_event(sinsp_evt *evt);
 	void process_event(sinsp_evt *evt);
 
 	void init_programs(sinsp* inspector, uint64_t time, bool skip_fds);
-	void init_containers();
 	inline blprogram* get_program(sinsp_threadinfo* tinfo);
 	inline void add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category category);
 
@@ -1390,7 +1366,6 @@ private:
 	sinsp* m_inspector;
 	sinsp_network_interfaces* m_ifaddr_list;
 	std::unordered_map<size_t, blprogram*> m_progtable;
-	std::unordered_map<std::string, blcontainer> m_container_table;
 #ifdef ASYNC_PROC_PARSING
 	std::thread* m_procparser_thread;
 	proc_parser_state* m_procparser_state;
