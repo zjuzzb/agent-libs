@@ -1,7 +1,15 @@
 #pragma once
 
+//
+// Decorator to denote an out parameter
+//
+#ifndef OUT
+#define OUT
+#endif
+
 #include "tuples.h"
 #include "transactinfo.h" // for sinsp_partial_transaction/sinsp_fdinfo_t
+
 
 //
 // The analyzer emit interval

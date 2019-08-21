@@ -40,6 +40,7 @@ add_executable(tests
 	app_checks.cpp
 	baseliner.cpp
 	capture_to_file_test.cpp
+	configuration_test.cpp
 	container.cpp
 	container_cgroup.cpp
 	container_cri.cpp
@@ -58,41 +59,40 @@ add_executable(tests
 	grpc.cpp
 	# infrastructure_state_test.cpp
 	inf_state_test.cpp
+	internal_metrics.cpp
+	ipv6.cpp
+	jmx_proxy.cpp
+	json_query.cpp
+	k8s_limits.cpp
+	label_limits.cpp
+	main.cpp
 	memdump.cpp
 	metric_limits.cpp
 	mounted_fs.cpp
-	label_limits.cpp
-	k8s_limits.cpp
-	internal_metrics.cpp
-	ipv6.cpp
 	net.cpp
+	nodriver.cpp
 	paths.cpp
-	pipe.cpp
+	percentile.cpp
 	pgid.cpp
+	pipe.cpp
 	prefix_search_test.cpp
 	process.cpp
-	percentile.cpp
 	security_policies.cpp
 	sql.cpp
+	suppress_events.cpp
 	sys_call_test.cpp
 	tcp_client_server.cpp
 	tcp_client_server_ipv4_mapped.cpp
 	thread_state.cpp
 	threadinfo.cpp
+	token_bucket_test.cpp
 	tracers.cpp
 	udp_client_server.cpp
 	unix_client_server.cpp
 	unix_udp_client_server.cpp
-	yaml_configuration.cpp
-	main.cpp
-	configuration_test.cpp
-	suppress_events.cpp
-	jmx_proxy.cpp
-	token_bucket_test.cpp
-	user_event.cpp
 	uri.cpp
-	json_query.cpp
-	nodriver.cpp
+	user_event.cpp
+	yaml_configuration.cpp
 	sysdig/userspace/async/async_key_value_source.ut.cpp
 	sysdig/userspace/libsinsp/logger.ut.cpp
 	sysdig/userspace/libsinsp/user_event_logger.ut.cpp

@@ -8,10 +8,11 @@
 #include "promex.grpc.pb.h"
 #endif
 
-#include <chrono>
 #include <initializer_list>
 #include <memory>
 #include <map>
+
+#include <Poco/Buffer.h>
 
 class dragent_configuration;
 
@@ -92,7 +93,7 @@ private:
 	message_handler_map m_handler_map;
 	socket_ptr m_socket;
 	bool m_connected;
-	Buffer<uint8_t> m_buffer;
+	Poco::Buffer<uint8_t> m_buffer;
 	uint32_t m_buffer_used;
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;

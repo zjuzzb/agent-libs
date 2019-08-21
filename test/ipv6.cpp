@@ -7,6 +7,8 @@
 
 #include <sinsp.h>
 
+#include "scap_file_reader.h"
+
 using namespace std;
 
 typedef function<bool (string &output)> validate_func_t;
@@ -33,12 +35,14 @@ protected:
 	{
 	}
 
-	void read_file(const char *filename, const char *extra_filter, std::function<void(sinsp_evt *)> evtcb, bool generate_ip_net_filters=true)
+	virtual void read_file(const char *filename,
+	                       const char *extra_filter,
+	                       std::function<void(sinsp_evt *)> evtcb,
+	                       bool generate_ip_net_filters = true)
 	{
-		m_inspector = make_shared<sinsp>();
-		m_formatter_cache = make_shared<sinsp_evt_formatter_cache>(m_inspector.get());
-		m_inspector->set_hostname_and_port_resolution_mode(true);
-		m_inspector->open(filename);
+		auto inspector = file_reader.setup_read_file();
+
+		m_formatter_cache = make_shared<sinsp_evt_formatter_cache>(inspector.get());
 		m_socket_connected = false;
 		m_check_local_remote = false;
 		m_check_is_server = false;
@@ -55,32 +59,7 @@ protected:
 			filter += extra_filter;
 		}
 
-		m_inspector->set_filter(filter.c_str());
-
-		while(1)
-		{
-			int32_t res;
-			sinsp_evt* evt;
-
-			res = m_inspector->next(&evt);
-
-			if(res == SCAP_TIMEOUT)
-			{
-				continue;
-			}
-			else if(res == SCAP_EOF)
-			{
-				break;
-			}
-			else if(res != SCAP_SUCCESS)
-			{
-				break;
-			}
-
-			evtcb(evt);
-		}
-
-		m_inspector->close();
+		file_reader.run_inspector(filename, filter, evtcb);
 	}
 
 	void check_ipv6_filterchecks(sinsp_evt *evt)
@@ -169,33 +148,31 @@ protected:
 
 	void gen_ip_net_filters()
 	{
-		sinsp_filter_compiler ip_client(m_inspector.get(), "fd.ip=" + m_client_ip);
+		auto inspector = file_reader.setup_read_file();
+		sinsp_filter_compiler ip_client(inspector.get(), "fd.ip=" + m_client_ip);
 		m_ip_client_filter.reset(ip_client.compile());
 
-		sinsp_filter_compiler ip_server(m_inspector.get(), "fd.ip=" + m_server_ip);
+		sinsp_filter_compiler ip_server(inspector.get(), "fd.ip=" + m_server_ip);
 		m_ip_server_filter.reset(ip_server.compile());
 
-		sinsp_filter_compiler net_client(m_inspector.get(), "fd.net=" + m_client_net);
+		sinsp_filter_compiler net_client(inspector.get(), "fd.net=" + m_client_net);
 		m_net_client_filter.reset(net_client.compile());
 
-		sinsp_filter_compiler net_server(m_inspector.get(), "fd.net=" + m_server_net);
+		sinsp_filter_compiler net_server(inspector.get(), "fd.net=" + m_server_net);
 		m_net_server_filter.reset(net_server.compile());
 
-		sinsp_filter_compiler cnet(m_inspector.get(), "fd.cnet=" + m_client_net);
+		sinsp_filter_compiler cnet(inspector.get(), "fd.cnet=" + m_client_net);
 		m_cnet_filter.reset(cnet.compile());
 
-		sinsp_filter_compiler snet(m_inspector.get(), "fd.snet=" + m_server_net);
+		sinsp_filter_compiler snet(inspector.get(), "fd.snet=" + m_server_net);
 		m_snet_filter.reset(snet.compile());
 
-		sinsp_filter_compiler lnet(m_inspector.get(), "fd.lnet=" + m_client_net);
+		sinsp_filter_compiler lnet(inspector.get(), "fd.lnet=" + m_client_net);
 		m_lnet_filter.reset(lnet.compile());
 
-		sinsp_filter_compiler rnet(m_inspector.get(), "fd.rnet=" + m_server_net);
+		sinsp_filter_compiler rnet(inspector.get(), "fd.rnet=" + m_server_net);
 		m_rnet_filter.reset(rnet.compile());
 	}
-
-	shared_ptr<sinsp> m_inspector;
-	shared_ptr<sinsp_evt_formatter_cache> m_formatter_cache;
 
 	string m_client_ip;
 	string m_server_ip;
@@ -217,6 +194,8 @@ protected:
 	shared_ptr<sinsp_filter> m_snet_filter;
 	shared_ptr<sinsp_filter> m_lnet_filter;
 	shared_ptr<sinsp_filter> m_rnet_filter;
+	shared_ptr<sinsp_evt_formatter_cache> m_formatter_cache;
+	scap_file_reader file_reader;
 	bool m_socket_connected;
 	bool m_check_local_remote;
 	bool m_check_is_server;

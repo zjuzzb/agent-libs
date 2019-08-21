@@ -24,6 +24,8 @@
 #include <unordered_map>
 #include <chrono>
 
+#include <protocol.h>
+
 using msecs = std::chrono::milliseconds;
 
 bool fake_collector::should_connect(int fd)

@@ -6,7 +6,11 @@
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 #include <google/protobuf/io/gzip_stream.h>
 
-#include "main.h"
+#include <string>
+
+#include <common_logger.h>
+
+#include "common_assert.h"
 #include "blocking_queue.h"
 
 #if defined _MSC_VER
@@ -57,7 +61,7 @@ namespace dragent_protocol
 	 */
 	template<class T>
 	void buffer_to_protobuf(const uint8_t* buf, uint32_t size, T* message);
-};
+}
 
 template<class T>
 void dragent_protocol::buffer_to_protobuf(const uint8_t* const buf,
@@ -82,6 +86,5 @@ void parse_protocol_queue_item(const protocol_queue_item& item, T* message)
 	const uint8_t* const buf = reinterpret_cast<const uint8_t *>(item.buffer.c_str()) +
 		sizeof(dragent_protocol_header);
 	size_t size = item.buffer.size() - sizeof(dragent_protocol_header);
-
 	dragent_protocol::buffer_to_protobuf(buf, size, message);
 }

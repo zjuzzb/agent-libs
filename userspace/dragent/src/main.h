@@ -128,21 +128,5 @@ using Poco::StringTokenizer;
 using Poco::SHA1Engine;
 using Poco::DigestEngine;
 
-#ifdef ASSERT
-#undef ASSERT
-#endif // ASSERT
+#include "common_assert.h"
 
-// Only assert on DEBUG builds
-#ifdef _DEBUG
-#define ASSERT(X) \
-	if(!(X)) \
-	{ \
-		if(g_log) \
-		{ \
-			g_log->error(Poco::format("ASSERTION %s at %s:%d", std::string(#X), std::string(__FILE__), __LINE__)); \
-		} \
-		assert(X); \
-	}
-#else // _DEBUG
-#define ASSERT(X)
-#endif // _DEBUG

@@ -1,8 +1,19 @@
 #pragma once
 
-#include "main.h"
+#include <queue>
+
+#include <Poco/Semaphore.h>
+#include <Poco/Mutex.h>
 
 #include "common_logger.h"
+#ifndef ASSERT
+#include "common_assert.h"
+#endif
+
+using std::queue;
+using Poco::Semaphore;
+using Poco::Mutex;
+
 
 template<class T>
 class blocking_queue
