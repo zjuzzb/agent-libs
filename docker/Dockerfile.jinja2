@@ -54,6 +54,7 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false \
 	libelf1 \
 	llvm-7 \
 	xz-utils \
+	libmpx2 \
 {% endif %}
 {% if p.include_agent_package is defined %}
 	gnupg2 \
