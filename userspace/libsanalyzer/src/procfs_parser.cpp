@@ -28,9 +28,41 @@
 #endif
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
+#include <sstream>
+#include <fstream>
+#include <memory>
 
 using namespace std;
 using Poco::StringTokenizer;
+
+namespace
+{
+/**
+ * Read in an entire file as a string.
+ *
+ * This function was written for debug tracing, and as such was not written
+ * with an eye to performance.
+ *
+ * @param filename  The file to read.
+ *
+ * @return The contents of the file as a string.
+ */
+std::unique_ptr<std::string> slurp_file(const std::string& filename)
+{
+	std::ifstream infile(filename);
+	if(!infile)
+	{
+		return nullptr;
+	}
+	std::unique_ptr<std::string> out;
+
+	std::stringstream sstream;
+	sstream << infile.rdbuf();
+	*out = sstream.str();
+
+	return out;
+}
+}
 
 #ifndef CYGWING_AGENT
 const uint64_t sinsp_procfs_parser::jiffies_t::NO_JIFFIES = ~0;
@@ -889,10 +921,11 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(const string &contain
 
     int64_t ret_val = stat_val_rss + stat_val_cache - stat_val_inactive_file;
     if (ret_val < 0) {
-        g_logger.format(sinsp_logger::SEV_ERROR, "%s: Calculation failed with values "
+        g_logger.format(sinsp_logger::SEV_INFO, "%s: Calculation failed with values "
                         "%" PRId64 ", %" PRId64 ", %" PRId64 " from file %s", __func__,
                         stat_val_cache, stat_val_rss, stat_val_inactive_file,
                         mem_stat_filename);
+        g_logger.format(sinsp_logger::SEV_DEBUG, "memory.stat contents:\n%s\n", ::slurp_file(mem_stat_filename)->c_str());
         return -1;
     }
 
