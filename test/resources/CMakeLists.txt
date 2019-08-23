@@ -28,6 +28,7 @@ file(COPY fake_backend.cert
 		app_checks_ok.json
 		fake_backend.key
 		fake_backend.py
+		fake_docker.py
 		jmx_fail.json
 		jmx_ok.json
 		jmx_segfault.json
