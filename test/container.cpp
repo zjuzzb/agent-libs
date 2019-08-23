@@ -400,6 +400,7 @@ static void run_container_docker_test(bool fork_after_container_start)
 		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_TRUE(container_info != NULL);
 
+		EXPECT_EQ(sinsp_container_lookup_state::SUCCESSFUL, container_info->m_lookup_state);
 		EXPECT_EQ(sinsp_container_type::CT_DOCKER, container_info->m_type);
 		EXPECT_EQ("ilovesysdig_docker", container_info->m_name);
 #ifdef __s390x__

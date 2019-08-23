@@ -5998,7 +5998,7 @@ sinsp_analyzer::emit_container(const string &container_id,
 		ASSERT(false);
 	}
 
-	if(container_info->m_metadata_complete)
+	if(container_info->is_successful())
 	{
 		if(!container_info->m_name.empty())
 		{
