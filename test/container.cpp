@@ -1553,16 +1553,16 @@ static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_s
 		return;
 	}
 
-	const auto container_info =
-		inspector->m_container_manager.get_container(tinfo->m_container_id);
-
-	if(container_info)
+	if(inspector->m_container_manager.container_exists(tinfo->m_container_id))
 	{
 		std::string cmdline;
 
 		sinsp_threadinfo::populate_cmdline(cmdline, tinfo);
 
-		if(!container_info->m_health_probes.empty())
+		const auto container_info =
+			inspector->m_container_manager.get_container(tinfo->m_container_id);
+
+		if(container_info && !container_info->m_health_probes.empty())
 		{
 			cstate.container_w_health_probe = true;
 		}

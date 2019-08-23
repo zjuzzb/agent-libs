@@ -73,9 +73,8 @@ TEST_F(mounted_fs_reader_test, container_mounts)
 		ASSERT_TRUE(tinfo != nullptr);
 		const auto container_info =
 			param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
-		ASSERT_TRUE(container_info != nullptr);
 
-		if(done || container_info->m_name != "ilovesysdig_docker")
+		if(done || !container_info || container_info->m_name != "ilovesysdig_docker")
 		{
 			return;
 		}
