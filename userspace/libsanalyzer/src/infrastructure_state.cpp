@@ -691,6 +691,38 @@ bool infrastructure_state::find_tag(uid_t uid, string tag, string &value, std::u
 	return false;
 }
 
+int infrastructure_state::find_tag_list(uid_t uid, std::unordered_set<string> &tags_set, std::unordered_map<string,string> &labels, std::unordered_set<uid_t> &visited) const
+{
+	int ret = 0;
+
+	if (!has(uid) || (visited.find(uid) != visited.end())) {
+		return ret;
+	}
+	visited.emplace(uid);
+
+	auto *cg = m_state.find(uid)->second.get();
+
+	if (!cg) {	// Shouldn't happen
+		return ret;
+	}
+	// Look for object name tags and add them to the scope
+	for (const auto &tag : cg->tags()) {
+		if (tags_set.find(tag.first) != tags_set.end())// match_name(tag.first))
+		{
+			labels[tag.first] = tag.second;
+			ret++;
+		}
+	}
+
+	for(const auto &p_uid : cg->parents()) {
+		auto pkey = make_pair(p_uid.kind(), p_uid.id());
+
+		ret += find_tag_list(pkey, tags_set, labels, visited);
+	}
+
+	return ret;
+}
+
 bool infrastructure_state::is_mesos_label(const std::string &lbl)
 {
 	static const std::string mesos = "mesos";
