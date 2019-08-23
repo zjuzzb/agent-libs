@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"k8s.io/apimachinery/pkg/types"
 	"sync"
 	"github.com/gogo/protobuf/proto"
 	"reflect"
@@ -127,20 +128,38 @@ func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, rs coReplicaSet) 
 		return
 	}
 
-	rsLabels := labels.Set(rs.GetLabels())
-	for _, obj := range deploymentInf.GetStore().List() {
-		deploy := coDeployment{obj.(*v1beta1.Deployment)}
-		if rs.GetNamespace() != deploy.GetNamespace() {
-			continue
-		}
+	uid := types.UID("")
 
-		selector, ok := deploySelectorCache.Get(deploy)
-		if ok && selector.Matches(rsLabels) {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_deployment"),
-				Id:proto.String(string(deploy.GetUID()))})
+	// Start looking for the owner reference
+	for _, owner := range rs.GetOwnerReferences() {
+		if owner.Kind == "Deployment" {
+			uid = owner.UID
 			break
 		}
+	}
+
+	if string(uid) == "" {
+		// did not find an owner reference. Use usual selector, label mechanism
+		rsLabels := labels.Set(rs.GetLabels())
+		for _, obj := range deploymentInf.GetStore().List() {
+			deploy := coDeployment{obj.(*v1beta1.Deployment)}
+			if rs.GetNamespace() != deploy.GetNamespace() {
+				continue
+			}
+
+			selector, ok := deploySelectorCache.Get(deploy)
+
+			if ok && selector.Matches(rsLabels) {
+				uid = deploy.GetUID()
+				break
+			}
+		}
+	}
+
+	if string(uid) != "" {
+		*parents = append(*parents, &draiosproto.CongroupUid{
+			Kind: proto.String("k8s_deployment"),
+			Id:   proto.String(string(uid))})
 	}
 }
 

@@ -117,9 +117,15 @@ func newReplicaSetCongroup(replicaSet coReplicaSet, setLinks bool) (*draiosproto
 	if setLinks {
 		AddNSParents(&ret.Parents, replicaSet.GetNamespace())
 		AddDeploymentParents(&ret.Parents, replicaSet)
-		selector, ok := rsSelectorCache.Get(replicaSet)
-		if ok {
-			AddPodChildren(&ret.Children, selector, replicaSet.GetNamespace())
+
+		AddPodChildrenFromOwnerRef(&ret.Children, replicaSet.ObjectMeta)
+
+		// For compatibility with old k8s versions
+		if len(ret.Children) == 0 {
+			selector, ok := rsSelectorCache.Get(replicaSet)
+			if ok {
+				AddPodChildren(&ret.Children, selector, replicaSet.GetNamespace())
+			}
 		}
 		AddHorizontalPodAutoscalerParents(&ret.Parents, replicaSet.GetNamespace(), replicaSet.APIVersion, replicaSet.Kind, replicaSet.GetName() )
 	}

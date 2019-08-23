@@ -1,10 +1,65 @@
 package kubecollect
 import (
+	"cointerface/draiosproto"
+	"k8s.io/client-go/kubernetes/fake"
 	"testing"
 
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clientgoInformersLib "k8s.io/client-go/informers"
 )
+
+var rsTestreplicaset coReplicaSet
+
+func replicaset_fixture() {
+	// Initialize some variables used in kubecollect package
+	if startedMap == nil {
+		startedMap = make(map[string]bool)
+	}
+
+	// Make resource "pod" ready
+	startedMap["pods"] = true
+
+	// Create a selector cache
+	deploySelectorCache = newSelectorCache()
+
+	// Run the pod informer with a fake client.
+	// This is needed by AddPodChildrenFromOwnerRef to work properly
+	client := fake.NewSimpleClientset()
+	informers := clientgoInformersLib.NewSharedInformerFactory(client, 0)
+	podInf = informers.Core().V1().Pods().Informer()
+	rsTestreplicaset, _ = createReplicaSetCopies()
+	podOwned, podNotOwned := createPodCopies()
+
+	isController := true
+
+	// Change pods a little bit
+	podOwned.OwnerReferences = append(podOwned.OwnerReferences, metav1.OwnerReference{
+		APIVersion:         "",
+		Kind:               "Replicaset",
+		Name:               rsTestreplicaset.GetName(),
+		UID:                rsTestreplicaset.GetUID(),
+		Controller:         &isController,
+		BlockOwnerDeletion: nil,
+	})
+	podNotOwned.OwnerReferences = append(podNotOwned.OwnerReferences, metav1.OwnerReference{
+		APIVersion:         "",
+		Kind:               "Replicaset",
+		Name:               "Maramap",
+		UID:                "percheSeiMorto",
+		Controller:         &isController,
+		BlockOwnerDeletion: nil,
+	})
+
+	podNotOwned.UID = "pastaCaSassa"
+	podNotOwned.Name = "BondJamesBond"
+	podOwned.UID = "podOwnedUID"
+	podOwned.Name = "podOwnedName"
+
+	// Add the pods in the informe
+	podInf.GetStore().Add(podOwned)
+	podInf.GetStore().Add(podNotOwned)
+}
 
 // Creates two replicaset objects that are DeepEqual
 func createReplicaSetCopies() (coReplicaSet, coReplicaSet) {
@@ -96,4 +151,13 @@ func TestReplicaSetEqualsStatusReadyReplicas(t *testing.T) {
 	new.Status.ReadyReplicas = 2
 
 	replicaSetEqualsHelper(t, old, new, false)
+}
+
+func TestAddPodChildrenFromOwnerRef(t *testing.T) {
+	var children []*draiosproto.CongroupUid
+	AddPodChildrenFromOwnerRef(&children, rsTestreplicaset.ObjectMeta)
+
+	if len(children) != 1 && *children[0].Id != "podOwnedUID" {
+		t.Fail()
+	}
 }

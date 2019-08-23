@@ -1,17 +1,67 @@
 package kubecollect
 
 import (
+	"cointerface/draiosproto"
+	"k8s.io/apimachinery/pkg/types"
+	clientgoInformersLib "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes/fake"
+	"os"
 	"testing"
 
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var replicaset coReplicaSet
+
+func deployment_fixture() {
+	// Initialize some variables used in kubecollect package
+	if startedMap == nil {
+		startedMap = make(map[string]bool)
+	}
+
+	// Make resource "deployment" ready
+	startedMap["deployments"] = true
+
+	// Create a selector cache
+	deploySelectorCache = newSelectorCache()
+
+	// Run the deployment informer with a fake client.
+	// This is needed by AddDeploymentParents to work properly
+	client := fake.NewSimpleClientset()
+	informers := clientgoInformersLib.NewSharedInformerFactory(client, 0)
+	deploymentInf = informers.Apps().V1().Deployments().Informer()
+	deployment, _ := createDeploymentCopies()
+	deployment.Namespace = "OSoleMioStanFronteAMe"
+	replicaset, _ = createReplicaSetCopies()
+
+	isController := true
+
+	replicaset.OwnerReferences = append(replicaset.OwnerReferences, metav1.OwnerReference{
+		APIVersion:         "",
+		Kind:               "Deployment",
+		Name:               deployment.GetName(),
+		UID:                deployment.GetUID(),
+		Controller:         &isController,
+		BlockOwnerDeletion: nil,
+	})
+
+	deploymentInf.GetStore().Add(deployment.Deployment)
+}
+
+func TestMain (m *testing.M) {
+	deployment_fixture()
+	replicaset_fixture()
+	code := m.Run()
+	os.Exit(code)
+}
+
 // Creates two deployment objects that are DeepEqual
 func createDeploymentCopies() (coDeployment, coDeployment) {
 	var numReplicas int32 = 5
 	deploy := &v1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
+			UID: types.UID("MaramaoPercheSeiMorto"),
 			Name: "oldDeployment",
 			Labels: map[string]string{
 				"label_key0":"label_val0",
@@ -111,4 +161,37 @@ func TestDeploymentEqualsStatusUpdatedReplicas(t *testing.T) {
 	new.Status.UpdatedReplicas = 3
 
 	deploymentEqualsHelper(t, old, new, false)
+}
+
+func TestAddDeploymentParents(t *testing.T) {
+	var parents []*draiosproto.CongroupUid
+	// Owner reference is not null here (See the fixture)
+	AddDeploymentParents(&parents, replicaset)
+
+	// Check that the rs parent id is the deployment uid
+	if len(parents) != 1 || (*parents[0].Id != string(deploymentInf.GetStore().List()[0].(*v1beta1.Deployment).UID)) {
+		t.Fail()
+	}
+
+	// Test now the old label-selector mechanism
+	replicaset.OwnerReferences = nil
+	parents = []*draiosproto.CongroupUid{}
+
+	deployment := deploymentInf.GetStore().List()[0].(*v1beta1.Deployment)
+
+	// Add selector specs
+	deployment.Spec.Selector = &metav1.LabelSelector{
+		MatchLabels: map[string]string{"key1": "value1","key2": "value2"},
+		MatchExpressions: nil,
+	}
+
+	// Add labels matching with deployment selector
+	replicaset.Labels = map[string]string{"key1": "value1", "key2": "value2", "key3": "value3"}
+	replicaset.Namespace = deployment.Namespace
+
+	AddDeploymentParents(&parents, replicaset)
+
+	if len(parents) != 1 || (*parents[0].Id != string(deploymentInf.GetStore().List()[0].(*v1beta1.Deployment).UID)) {
+		t.Fail()
+	}
 }

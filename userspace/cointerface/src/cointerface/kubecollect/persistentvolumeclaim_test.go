@@ -24,7 +24,9 @@ func fixture() {
 
 	// Inizialize some variables used in kubecollect package
 	// Make resource "namespace" ready
-	startedMap = make(map[string]bool)
+	if startedMap == nil {
+		startedMap = make(map[string]bool)
+	}
 	startedMap["namespaces"] = true
 	// Add a namespace in the namespace informer. Otherwise
 	// AddNSParents does not work
