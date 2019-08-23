@@ -1343,7 +1343,7 @@ void security_mgr::set_event_labels(std::string &container_id,
 	// Process Name
 	if (m_event_labels.find("process.name") != m_event_labels.end())
 	{
-		if (tinfo->m_tid > 0)
+		if (tinfo != nullptr && tinfo->m_tid > 0)
 		{
 			std::string cmdline;
 			sinsp_threadinfo::populate_cmdline(cmdline, tinfo);
