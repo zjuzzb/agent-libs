@@ -70,6 +70,12 @@ type_config<bool> c_use_statsite_forwarder(
 		"use_forwarder");
 
 
+type_config<bool> c_sdagent_app_checks_python_26_supported(
+                false,
+                "sdagent check the python 2.6 support",
+                "app_checks_python_26_supported"
+                );
+
 type_config<bool>::ptr c_rest_feature_flag =
     type_config_builder<bool>(false /*default*/,
 			      "Feature flag to turn on the REST server.",
@@ -663,19 +669,30 @@ int dragent_app::main(const std::vector<std::string>& args)
 		auto state = &m_subprocesses_state["sdchecks"];
 		state->set_name("sdchecks");
 		m_subprocesses_logger.add_logfd(m_sdchecks_pipes->get_file(), sdchecks_parser(), state);
-		monitor_process.emplace_process("sdchecks", [this]()
+		if(!c_sdagent_app_checks_python_26_supported.get() &&
+		    m_configuration.check_python_version26())
 		{
-			this->m_sdchecks_pipes->attach_child();
-
-			setenv("LD_LIBRARY_PATH", (m_configuration.c_root_dir.get() + "/lib").c_str(), 1);
-			const char *python = this->m_configuration.m_python_binary.c_str();
-			execl(python, python, (m_configuration.c_root_dir.get() + "/bin/sdchecks").c_str(), "run", NULL);
-
-			return (EXIT_FAILURE);
-		});
-		if (m_configuration.m_app_checks_enabled)
+		    // LOG_ERROR can't be used this early in startup and that's why cerr is being used.
+			std::cerr << "Error : Python 2.6 is not a supported environment for App Checks. "
+			             "Please upgrade to Python 2.7. "
+			             "Contact Sysdig Support for additional help." << std::endl;
+		}
+		else
 		{
-			m_sinsp_worker.set_app_checks_enabled(true);
+			monitor_process.emplace_process("sdchecks", [this]()
+			{
+				this->m_sdchecks_pipes->attach_child();
+
+				setenv("LD_LIBRARY_PATH", (m_configuration.c_root_dir.get() + "/lib").c_str(), 1);
+				const char *python = this->m_configuration.m_python_binary.c_str();
+				execl(python, python, (m_configuration.c_root_dir.get() + "/bin/sdchecks").c_str(), "run", NULL);
+
+				return (EXIT_FAILURE);
+			});
+			if (m_configuration.m_app_checks_enabled)
+			{
+				m_sinsp_worker.set_app_checks_enabled(true);
+			}
 		}
 	}
 	if(m_configuration.m_system_supports_containers)

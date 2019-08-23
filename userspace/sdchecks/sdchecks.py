@@ -52,6 +52,7 @@ SIGHUP_HANDLER_EXIT_CODE = DONT_SEND_LOG_REPORT
 
 BLACKLISTED_APP_CHECKS_FOR_PYTHON_2_6 = ('consul', 'couchdb', 'elasticsearch', 'haproxy', 'kafka', 'pgbouncer',
                                          'rabbitmq')
+UNSUPPORTED_PYTHON_VERSIONS_LIST = ['2.6']
 
 try:
     SYSDIG_HOST_ROOT = os.environ["SYSDIG_HOST_ROOT"]
@@ -421,6 +422,9 @@ class Config:
             if check["name"] == name:
                 return check
         return None
+
+    def check_python_support_conf(self, python_support):
+        return self._yaml_config.get_single(python_support)
 
     def set_percentiles(self):
         global GLOBAL_PERCENTILES
@@ -807,6 +811,15 @@ class Application:
         logging.info("Container support: %s", str(AppCheckInstance.CONTAINER_SUPPORT))
         self.config.set_percentiles()
         logging.debug("sdchecks percentiles: %s", str(GLOBAL_PERCENTILES))
+        # Python version check should already be done in C++ code before sdagent is started and
+        # that this additional check is just a safety measure that we don't expect to ever be actually used.
+        logging.info("Checking Python version")
+        if not self.config.check_python_support_conf("app_checks_python_26_supported") and \
+                self.python_version[:3] in UNSUPPORTED_PYTHON_VERSIONS_LIST:
+            logging.error("Python 2.6 is not a supported environment for App Checks. "
+                          "Please upgrade to Python 2.7. Contact Sysdig Support for additional help.")
+            exit(1)
+
         if len(sys.argv) > 1:
 
             if sys.argv[1] == "runCheck":

@@ -1663,6 +1663,39 @@ void dragent_configuration::refresh_aws_metadata()
 	}
 }
 
+bool dragent_configuration::check_python_version26()
+{
+	bool ret = false;
+	FILE *out = popen("python --version -d 2>&1", "r");
+	if (!out)
+	{
+		return ret;
+	}
+
+	// Sample output:
+	// $ python --version -d
+	// Python x.x.x+
+
+	// It should only be one line
+	char buf[256];
+	fgets(buf, sizeof(buf), out);
+	pclose(out);
+	std::string out_str(buf);
+	int pos = out_str.find(" ");
+	if (pos == std::string::npos)
+	{
+		return ret;
+	}
+	auto version = out_str.substr(pos+1, out_str.length());
+	auto dotPos = version.rfind(".");
+	std::string major_version = version.substr(0, dotPos);
+	if (!major_version.compare("2.6"))
+	{
+		ret = true;
+	}
+	return ret;
+}
+
 bool dragent_configuration::get_memory_usage_mb(uint64_t* memory)
 {
 	struct rusage usage;
