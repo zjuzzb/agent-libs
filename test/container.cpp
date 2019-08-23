@@ -444,6 +444,81 @@ TEST_F(sys_call_test, container_docker_fork)
 	run_container_docker_test(fork_after_container_start);
 }
 
+TEST_F(sys_call_test, container_docker_bad_socket)
+{
+	bool done = false;
+
+	if(!dutils_check_docker())
+	{
+		printf("Docker not running, skipping test\n");
+		return;
+	}
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		if(evt->get_type() == PPME_CONTAINER_JSON_E)
+		{
+			return true;
+		}
+		auto tinfo = evt->get_thread_info();
+		if(tinfo)
+		{
+			return !tinfo->m_container_id.empty();
+		}
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		ASSERT_TRUE(system("docker kill ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
+		ASSERT_TRUE(system("docker rm -v ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
+
+#ifdef __s390x__
+		if(system("docker run -d --name ilovesysdig_docker s390x/busybox") != 0)
+#else
+		if(system("docker run -d --name ilovesysdig_docker busybox") != 0)
+#endif
+		{
+			ASSERT_TRUE(false);
+		}
+
+		sleep(2);
+
+		ASSERT_TRUE(system("docker kill ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
+		ASSERT_TRUE(system("docker rm -v ilovesysdig_docker > /dev/null 2>&1") == 0);
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		// can't get a container event for failed lookup
+		ASSERT_NE(PPME_CONTAINER_JSON_E, param.m_evt->get_type());
+
+		sinsp_threadinfo* tinfo = param.m_evt->get_thread_info(false);
+		ASSERT_TRUE(tinfo->m_container_id.length() == 12);
+		ASSERT_TRUE(param.m_inspector->m_container_manager.container_exists(tinfo->m_container_id));
+		const auto container_info =
+			param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		if(container_info && container_info->m_type == CT_DOCKER)
+		{
+			EXPECT_EQ(sinsp_container_lookup_state::FAILED, container_info->m_lookup_state);
+			done = true;
+		}
+	};
+
+	before_open_t setup = [&](sinsp* inspector)
+	{
+		inspector->set_docker_socket_path("/invalid/path");
+	};
+
+	before_close_t cleanup = [&](sinsp* inspector)
+	{
+		inspector->set_docker_socket_path("/var/run/docker.sock");
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup, cleanup);});
+	ASSERT_TRUE(done);
+}
+
 TEST_F(sys_call_test, container_custom)
 {
 	volatile bool done = false;
