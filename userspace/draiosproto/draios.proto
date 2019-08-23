@@ -1674,10 +1674,6 @@ message policy_event {
     // The policy version that policy_id refers to. If not present, 1
     // is assumed.
     optional uint64 policy_version = 10;
-
-    // Used to provide extra context to the event
-    // adding a list of predefined labels
-    map<string,string> event_labels = 11;
 }
 
 message policy_events {

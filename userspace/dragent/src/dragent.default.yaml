@@ -1207,21 +1207,6 @@ k8s_extra_resources:
       - services
       - resourcequotas
 
-event_labels:
-  enabled: true
-  max_agent_labels: 30
-  include:
-    - process.name
-    - host.hostName
-    - agent.tag
-    - container.name
-    - kubernetes.cluster.name
-    - kubernetes.namespace.name
-    - kubernetes.deployment.name
-    - kubernetes.pod.name
-    - kubernetes.node.name
-  exclude:
-
 # configuration files to monitor for updates
 monitor_files:
   check_frequency_s: 5

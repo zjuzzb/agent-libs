@@ -87,17 +87,6 @@ public:
 		std::unordered_set<uid_t> visited;
 		return find_tag(uid, tag, value, visited);
 	}
-
-	/// Find list of key-value tags present in infrastructure_state
-	/// \param uid  UID of the starting node of the graph
-	/// \param tags_set  Set of tags we are looking for
-	/// \param labels  Populated key/value map containing found tags
-	/// \return
-	int find_tag_list(uid_t uid, std::unordered_set<string> &tags_set, std::unordered_map<string, string> &labels) const
-	{
-		std::unordered_set<uid_t> visited;
-		return find_tag_list(uid, tags_set, labels, visited);
-	}
 	int get_scope_names(uid_t uid, event_scope *scope) const
 	{
 		std::unordered_set<uid_t> visited;
@@ -161,7 +150,6 @@ private:
 		std::unordered_set<uid_t> &visited) const;
 
 	bool find_tag(uid_t uid, std::string tag, std::string &value, std::unordered_set<uid_t> &visited) const;
-	int find_tag_list(uid_t uid, std::unordered_set<string> &tags_set, std::unordered_map<string,string> &labels, std::unordered_set<uid_t> &visited) const;
 	bool walk_and_match(draiosproto::container_group *congroup,
 			    scope_predicates &preds,
 			    std::unordered_set<uid_t> &visited_groups);

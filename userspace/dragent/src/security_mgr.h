@@ -103,26 +103,6 @@ public:
 	sinsp_analyzer *analyzer();
 
 	baseline_mgr &baseline_manager();
-
-	// configs
-	static type_config<bool> c_event_labels_enabled;
-	static type_config<int> c_event_labels_max_agent_tags;
-	static type_config<std::vector<std::string>> c_event_labels_include;
-	static type_config<std::vector<std::string>> c_event_labels_exclude;
-
-	std::unordered_set<std::string> m_event_labels = std::unordered_set<std::string>({
-		"process.name",
-		"host.hostName",
-		"agent.tag",
-		"container.name",
-		"kubernetes.cluster.name",
-		"kubernetes.namespace.name",
-		"kubernetes.deployment.name",
-		"kubernetes.pod.name",
-		"kubernetes.node.name"});
-
-	void configure_event_labels_set();
-
 private:
 
 	class metrics : public internal_metrics::ext_source
@@ -311,14 +291,12 @@ private:
 
 	draiosproto::policy_event * create_policy_event(int64_t ts_ns,
 							std::string &container_id,
-							sinsp_threadinfo *tinfo,
 							uint64_t policy_id,
 							draiosproto::event_detail *details,
 							uint64_t policy_version);
 
 	draiosproto::policy_event * create_policy_event(int64_t ts_ns,
 							std::string &container_id,
-							sinsp_threadinfo *tinfo,
 							uint64_t policy_id,
 							draiosproto::event_detail &details,
 							uint64_t policy_version);
@@ -357,8 +335,6 @@ private:
 	// Send a set of events to the backend immediately without
 	// waiting for the next policy event flush.
 	void report_events_now(uint64_t ts_ns, draiosproto::policy_events &events);
-
-	void set_event_labels(std::string &container_id, sinsp_threadinfo *tinfo, draiosproto::policy_event *event);
 
 	// Send counts of throttled policy events to the backend
 	void report_throttled_events(uint64_t ts_ns);
