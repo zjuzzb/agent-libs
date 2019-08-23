@@ -1,0 +1,16 @@
+This is pushed to docker.internal.sysdig.com/agent-helpers/statsd-generator:latest
+by the agent-build-postsubmit job.
+
+------
+
+To build the container yourself, cd into the statsd-generator directory and call
+
+> docker build -t statsd-generator:latest .
+
+To run the container, call
+
+> docker run -d statsd-generator
+
+In your logs you should see something like...
+
+"Added 5 statsd metrics for container=compassionate_tereshkova"

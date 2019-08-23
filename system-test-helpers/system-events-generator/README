@@ -1,0 +1,13 @@
+This is pushed to docker.internal.sysdig.com/agent-helpers/system-events-generator:latest
+by the agent-build-postsubmit job.
+
+------
+
+To build the container, cd into the system-events-generator directory and call
+
+> docker build -t system-events-generator:latest .
+
+To run the container, call
+
+> docker run -d system-events-generator
+

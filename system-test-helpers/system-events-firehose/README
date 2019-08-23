@@ -1,7 +1,0 @@
-To build the container, cd into the system-events-firehose directory and call
-
-> docker build -t system-events-firehose:latest .
-
-To run the container, call
-
-> docker run -d system-events-firehose

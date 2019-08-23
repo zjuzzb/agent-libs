@@ -1,0 +1,25 @@
+#!/bin/bash
+
+SCRIPTS_DIR=$(dirname $(readlink -f $0))
+if [ -z "$WORKSPACE" ]
+then
+	WORKSPACE=$SCRIPTS_DIR/../../../..
+fi
+
+cd $WORKSPACE/agent/system-test-helpers/prometheus-generator/
+docker build -t prometheus-generator:latest .
+docker tag prometheus-generator:latest docker.internal.sysdig.com/agent-helpers/prometheus-generator:latest
+docker push docker.internal.sysdig.com/agent-helpers/prometheus-generator:latest
+
+
+cd $WORKSPACE/agent/system-test-helpers/statsd-generator/
+docker build -t statsd-generator:latest .
+docker tag statsd-generator:latest docker.internal.sysdig.com/agent-helpers/statsd-generator:latest
+docker push docker.internal.sysdig.com/agent-helpers/statsd-generator:latest
+
+
+cd $WORKSPACE/agent/system-test-helpers/system-events-generator/
+docker build -t system-events-generator:latest .
+docker tag system-events-generator:latest docker.internal.sysdig.com/agent-helpers/system-events-generator:latest
+docker push docker.internal.sysdig.com/agent-helpers/system-events-generator:latest
+

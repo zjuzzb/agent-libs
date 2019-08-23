@@ -25,6 +25,15 @@ pipeline {
 				}
 			}
 		}
+		stage('Build Helper Containers') {
+			steps {
+				script{
+					docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
+						sh('./agent/scripts/jenkins/agent-build-postsubmit/generate-helpers-and-push')
+					}
+				}
+			}
+		}
 	}
 	post {
 		always {
