@@ -11,7 +11,24 @@ else
   SCRIPT=$(readlink -f $0)
 fi
 
-AGENT_SOURCEDIR=$(dirname $SCRIPT)/../..
+# this script is called in two different contexts:
+# - during the agent-builder image build it's copied
+#   directly to /code/agent/build
+# - during an actual agent build it's symlinked from
+#   the agent repo (i.e. it's a symlink that points to
+#   docker/builder/bootstrap-agent)
+# this means that the readlink -f call above will return
+# two different values based on the context this script
+# is called, but we need to get a matching value of
+# AGENT_SOURCEDIR in both cases. So detect when $SCRIPT
+# points to inside the docker/builder directory
+# and if so, go back up two directories to end up
+# in /code/agent again
+AGENT_SOURCEDIR=$(dirname $SCRIPT)
+if [[ "$AGENT_SOURCEDIR" = */docker/builder ]]
+then
+	AGENT_SOURCEDIR=$AGENT_SOURCEDIR/../..
+fi
 ROOT_SOURCEDIR=$AGENT_SOURCEDIR/..
 ARCH=$(uname -m)
 
