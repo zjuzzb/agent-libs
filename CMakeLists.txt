@@ -187,7 +187,7 @@ set(CPACK_DEBIAN_AGENT_PACKAGE_DEPENDS "dkms (>= 2.1.0.0), python")
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_BINARY_DIR}/scripts/debian/postinst;${CMAKE_BINARY_DIR}/scripts/debian/prerm;${PROJECT_SOURCE_DIR}/scripts/debian/postrm")
 
 set(CPACK_RPM_COMPONENT_INSTALL "ON")
-set(CPACK_RPM_agent-slim_PACKAGE_REQUIRES "python")
+set(CPACK_RPM_agent-slim_PACKAGE_REQUIRES "python2")
 set(CPACK_RPM_agent-slim_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall.slim")
 set(CPACK_RPM_agent-slim_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall.slim")
 set(CPACK_RPM_agent-slim_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")
@@ -196,7 +196,7 @@ set(CPACK_RPM_agent-kmodule_PACKAGE_REQUIRES "dkms, gcc, make, kernel-devel, per
 set(CPACK_RPM_agent-kmodule_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall.kmodule")
 set(CPACK_RPM_agent-kmodule_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall.kmodule")
 
-set(CPACK_RPM_agent_PACKAGE_REQUIRES "dkms, gcc, make, kernel-devel, perl, python")
+set(CPACK_RPM_agent_PACKAGE_REQUIRES "dkms, gcc, make, kernel-devel, perl, python2")
 set(CPACK_RPM_agent_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall")
 set(CPACK_RPM_agent_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall")
 set(CPACK_RPM_agent_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")
