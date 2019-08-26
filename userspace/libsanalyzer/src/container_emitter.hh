@@ -194,8 +194,20 @@ void container_emitter<callback_type,callback_arg_type>::emit_containers()
 		}
 	}
 
-	m_t.found_emittable_containers(m_t, m_must_report, m_progtable_by_container);
-	m_t.found_emittable_containers(m_t, m_can_report, m_progtable_by_container);
+	// Merge the two lists into one; anytime we send a set of containers
+	// to statsite_forwarder, it ensures it has listeners only for that
+	// set.
+	std::vector<std::string> all_containers;
+
+	all_containers.insert(all_containers.end(),
+	                      m_must_report.begin(),
+	                      m_must_report.end());
+	all_containers.insert(all_containers.end(),
+	                      m_can_report.begin(),
+	                      m_can_report.end());
+	m_t.send_containers_to_statsite_fowarder(m_t,
+	                                         all_containers,
+	                                         m_progtable_by_container);
 
 	g_logger.format(sinsp_logger::SEV_DEBUG, "total_cpu_shares=%lu", total_cpu_shares);
 	containers_protostate_marker.mark_top(CONTAINERS_PROTOS_TOP_LIMIT);

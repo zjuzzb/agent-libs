@@ -15,14 +15,32 @@
 
 class posix_queue;
 class statsd_server;
-class statsite_proxy;
+class statsd_stats_destination;
 
+/**
+ * Manages a collection of statsd_server objects, one for each known container.
+ * Forwards any messages received by those statsd_servers to the output end
+ * of the pipes provided to the constructor.
+ */
 class statsite_forwarder: public Poco::ErrorHandler
 {
 public:
+	/**
+	 * Initializes this statsite_forwarder.
+	 *
+	 * @param[in] pipes        A pair of FILE* assocaited with some process
+	 *                         that will read and process statsd messages
+	 *                         that this statsite_forwarder forwards to it.
+	 * @param[in] statsd_port  The port on which statsd_servers will listen.
+	 * @param[in] check_format If true, this statsite_forwarder will
+	 *                         validate the format of any statsd messages
+	 *                         received before forwarding them.
+	 */
 	statsite_forwarder(const std::pair<FILE*, FILE*>& pipes,
-			   uint16_t statsd_port,
-			   bool check_format);
+	                   uint16_t statsd_port,
+	                   bool check_format);
+	~statsite_forwarder();
+
 
 	/**
 	 * @see Poco::ErrorHandler
@@ -46,14 +64,15 @@ public:
 	int run();
 
 private:
+	class statsd_server_wrapper;
+
 	void terminate(int code, const std::string& reason);
 
-	std::unique_ptr<statsite_proxy> m_proxy;
-	std::unique_ptr<posix_queue> m_inqueue;
-
-	std::unordered_map<std::string, std::unique_ptr<statsd_server>> m_sockets;
+	const std::unique_ptr<statsd_stats_destination> m_proxy;
+	const std::unique_ptr<posix_queue> m_inqueue;
+	std::unordered_map<std::string, std::unique_ptr<statsd_server_wrapper>> m_servers;
 	Poco::Net::SocketReactor m_reactor;
 	int m_exitcode;
-	uint16_t m_port;
+	const uint16_t m_port;
 	std::atomic<bool> m_terminate;
 };

@@ -75,9 +75,10 @@ public:
 	uint64_t m_prev_flush_time_ns;
 
 	vector<string> emittable_containers;
-	static void found_emittable_containers(fake_analyzer_t& fake_analyzer,
-					       const vector<string>& containers,
-					       const unordered_map<string, vector<sinsp_threadinfo*>> progtable)
+	static void send_containers_to_statsite_fowarder(
+			fake_analyzer_t& fake_analyzer,
+			const vector<string>& containers,
+			const unordered_map<string, vector<sinsp_threadinfo*>> progtable)
 	{
 		fake_analyzer.emittable_containers.insert(fake_analyzer.emittable_containers.end(),
 							  containers.begin(),

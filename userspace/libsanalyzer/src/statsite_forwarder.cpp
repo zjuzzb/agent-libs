@@ -12,7 +12,9 @@
 #include "statsite_proxy.h"
 #include "statsd_logger.h"
 #include "statsd_server.h"
+#include "statsd_stats_destination.h"
 #include "subprocess.h"
+#include "type_config.h"
 #include <json/json.h>
 #include <unordered_set>
 #include <Poco/Thread.h>
@@ -22,7 +24,118 @@ namespace
 
 COMMON_LOGGER();
 
+type_config<uint32_t> c_statsd_start_delay_sec(
+		10,
+		"The number of seconds the agent will wait between identifying"
+		" a new container and creating a statsd server within the"
+		" context of that container.  This applies only when the"
+		" use_forward option is true",
+		"statsd",
+		"container_server_creation_delay_s");
+
+/**
+ * Returns the current time, in seconds, from a monotonic clock (i.e.,
+ * a clock that will never run "backwards" because of a host time change).
+ */
+uint64_t get_monotonic_time_seconds()
+{
+	using namespace std::chrono;
+
+	return duration_cast<seconds>(steady_clock::now().time_since_epoch()).count();
+}
+
 } // end namespace
+
+/**
+ * Wrapper over a statsd_server.  Instances of statsd_server_wrapper record
+ * the time at which they are created.  Their needs_starting() method will
+ * return true only after c_statsd_start_delay_sec seconds have passed since
+ * the object was created.
+ */
+class statsite_forwarder::statsd_server_wrapper
+{
+public:
+	statsd_server_wrapper():
+		m_creation_time_sec(get_monotonic_time_seconds()),
+		m_server()
+	{ }
+
+	/**
+	 * Returns true if (1) this statsd_server_wrapper has no server and
+	 * (2) if at least c_statsd_start_delay_sec seconds has passed since
+	 * this statsd_server_wrapper was created.
+	 */
+	bool needs_starting() const
+	{
+		const uint64_t time_since_creation = get_monotonic_time_seconds() -
+		                                     m_creation_time_sec;
+
+		if(m_server == nullptr)
+		{
+			STATSD_LOG("time since creation: %lu",
+			           time_since_creation);
+		}
+
+		return (m_server == nullptr) &&
+		       (time_since_creation >= c_statsd_start_delay_sec.get());
+	}
+
+	/**
+	 * Starts the underlying statsd_server for the given container.
+	 *
+	 * @param[in] containerid   The ID of the container
+	 * @param[in] container_pid The process ID of some process in the
+	 *                          network namespace of the given container.
+	 * @param[in] proxy         The object to which received statsd messages
+	 *                          will be forwarded (e.g., statsite_proxy).
+	 * @param[in] reactor       The Poco Reactor with which the newly
+	 *                          created statsd_server will register for
+	 *                          socket events.
+	 * @param[in] port          The UDP port on which the statsd_server
+	 *                          will listen.
+	 */
+	void start(const std::string& containerid,
+	           const uint64_t container_pid,
+	           statsd_stats_destination& proxy,
+	           Poco::Net::SocketReactor& reactor,
+	           const uint16_t port)
+	{
+		try
+		{
+			// We enter the network namespace of the container so
+			// that we start the statsd_server in that network
+			// namespace.  Once the socket is bound to the port,
+			// we can switch back to the previous network namespace.
+			nsenter enter(container_pid, "net");
+
+			LOG_DEBUG("Starting statsd server on container=%s pid=%lu",
+				  containerid.c_str(),
+				  container_pid);
+			STATSD_LOG("Starting statsd server on container=%s pid=%lu",
+				  containerid.c_str(),
+				  container_pid);
+
+			m_server = make_unique<statsd_server>(containerid,
+			                                      proxy,
+			                                      reactor,
+			                                      port);
+		}
+		catch(const sinsp_exception& ex)
+		{
+			m_server.reset();
+			LOG_WARNING("Cannot init statsd server on container=%s pid=%lu",
+				    containerid.c_str(),
+				    container_pid);
+			STATSD_LOG("Cannot init statsd server on container=%s pid=%lu",
+				    containerid.c_str(),
+				    container_pid);
+		}
+	}
+
+private:
+	const uint64_t m_creation_time_sec;
+	std::unique_ptr<statsd_server> m_server;
+};
 
 statsite_forwarder::statsite_forwarder(const std::pair<FILE*, FILE*>& pipes,
 				       const uint16_t port,
@@ -30,12 +143,28 @@ statsite_forwarder::statsite_forwarder(const std::pair<FILE*, FILE*>& pipes,
 	m_proxy(make_unique<statsite_proxy>(pipes, check_format)),
 	m_inqueue(make_unique<posix_queue>("/sdc_statsite_forwarder_in",
 	                                   posix_queue::RECEIVE,
-	                                   1)),
+	                                   0)),
+	m_servers(),
+	m_reactor(),
 	m_exitcode(0),
 	m_port(port),
 	m_terminate(false)
 {
 	g_logger.add_stderr_log();
+}
+
+statsite_forwarder::~statsite_forwarder()
+{
+	// This doesn't do anything explicitly, so it might appear as though
+	// it's not needed, but it is.  Without this, the  compiler will try to
+	// automatically generate an inline destructor wherever
+	// statsite_forwarder is destroyed.  With that, it needs the
+	// complete definition of statsd_server_wrapper, which isn't available
+	// at that point.
+	//
+	// Putting this here will cause the compiler to generate the automatic
+	// stuff here --- where it knows the full type of the wrapper --- and
+	// this will get called when statsite_forwarder is destroyed.
 }
 
 int statsite_forwarder::run()
@@ -74,48 +203,45 @@ int statsite_forwarder::run()
 			continue;
 		}
 
-		std::unordered_set<std::string> containerids;
+		std::unordered_set<std::string> containers_in_msg;
+
+		// Add any new containers and start any servers that need to
+		// be started
 		for(const auto& container : root["containers"])
 		{
-			auto containerid = container["id"].asString();
-			auto container_pid = container["pid"].asInt64();
+			const std::string containerid = container["id"].asString();
 
-			containerids.emplace(containerid);
+			containers_in_msg.emplace(containerid);
 
-			if(m_sockets.find(containerid) == m_sockets.end())
+			auto server_itr = m_servers.find(containerid);
+			if(server_itr == m_servers.end())
 			{
-				try
-				{
-					nsenter enter(container_pid, "net");
+				// This is the first time we've seen this
+				// container, create the wrapper
+				STATSD_LOG("Creating wrapper for %s",
+				           containerid.c_str());
+				m_servers[containerid] = make_unique<statsd_server_wrapper>();
+				server_itr = m_servers.find(containerid);
+			}
 
-					LOG_DEBUG("Starting statsd server on container=%s pid=%lld",
-					          containerid.c_str(),
-					          container_pid);
-					STATSD_LOG("Starting statsd server on container=%s pid=%lld",
-					          containerid.c_str(),
-					          container_pid);
-					m_sockets[containerid] =
-						make_unique<statsd_server>(containerid,
-						                           *m_proxy,
-						                           m_reactor,
-						                           m_port);
-				}
-				catch(const sinsp_exception& ex)
-				{
-					LOG_WARNING("Cannot init statsd server on container=%s pid=%lld",
-					            containerid.c_str(),
-					            container_pid);
-					STATSD_LOG("Cannot init statsd server on container=%s pid=%lld",
-					            containerid.c_str(),
-					            container_pid);
-				}
+			if(server_itr->second->needs_starting())
+			{
+				// The wrapper was created more than
+				// c_statsd_start_delay_sec ago, and still has
+				// no statsd_server, so create one now.
+				server_itr->second->start(containerid,
+				                          container["pid"].asUInt64(),
+				                          *m_proxy,
+				                          m_reactor,
+				                          m_port);
 			}
 		}
 
-		auto it = m_sockets.begin();
-		while(it != m_sockets.end())
+		// Remove servers for any containers that no longer exist
+		// in the container list provided by the agent
+		for (auto it = m_servers.begin(); it != m_servers.end(); )
 		{
-			if(containerids.find(it->first) == containerids.end())
+			if(containers_in_msg.find(it->first) == containers_in_msg.end())
 			{
 				// This container does not exists anymore,
 				// turning off statsd server so we can release
@@ -124,19 +250,22 @@ int statsite_forwarder::run()
 				          it->first.c_str());
 				STATSD_LOG("Stopping statsd server on container=%s",
 				          it->first.c_str());
-				it = m_sockets.erase(it);
+				it = m_servers.erase(it);
 			}
 			else
 			{
-				// container still exists, keep iterating
 				++it;
 			}
 		}
 	}
+
 	reactor_thread.join();
+
 	return m_exitcode;
+
 #else // CYGWING_AGENT
 	ASSERT(false);
+
 	throw sinsp_exception("statsite_forwarder::run not implemented on Windows");
 #endif // CYGWING_AGENT
 }

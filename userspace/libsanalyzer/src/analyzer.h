@@ -802,13 +802,13 @@ public:
 	bool has_statsite_proxy() const;
 
 	/**
-	 * Called on all containers that are eligible to be emitted, regardless
-	 * of whether they actually ARE emitted. It is guaranteed to be called
-	 * before emit_container() (if emit_container() is called).
+	 * Notifies statsite_fowarder of the current list of containers
+	 * (if statsite_fowarder is enabled); otherwise does nothing.
 	 */
-	static void found_emittable_containers(sinsp_analyzer& m_analyzer,
-					       const std::vector<std::string>& containers,
-					       const analyzer_emitter::progtable_by_container_t& progtable_by_container);
+	static void send_containers_to_statsite_fowarder(
+			sinsp_analyzer& m_analyzer,
+			const std::vector<std::string>& containers,
+			const analyzer_emitter::progtable_by_container_t& progtable_by_container);
 
 	/**
 	 * The container_emitter class is responsible for sorting and deciding

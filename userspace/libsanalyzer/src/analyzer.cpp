@@ -5593,44 +5593,43 @@ void sinsp_analyzer::emit_containerd_events()
 #endif // CYGWING_AGENT
 
 void
-sinsp_analyzer::found_emittable_containers(sinsp_analyzer& analyzer,
-                                           const vector<string>& containers,
-                                           const analyzer_emitter::progtable_by_container_t& progtable_by_container)
+sinsp_analyzer::send_containers_to_statsite_fowarder(
+		sinsp_analyzer& analyzer,
+		const std::vector<std::string>& containers,
+		const analyzer_emitter::progtable_by_container_t& progtable_by_container)
 {
-	// This queue is initialized only if statsd is enabled and we are in nodriver mode
 	if(!analyzer.m_statsite_forwader_queue)
 	{
 		return;
 	}
 
+	const auto agent_container_id = (analyzer.get_agent_thread() != nullptr)
+	                                ? analyzer.get_agent_thread()->m_container_id
+	                                : "";
 	Json::Value root(Json::objectValue);
+
 	root["containers"] = Json::arrayValue;
-	auto agent_tinfo = analyzer.get_agent_thread();
-	auto agent_container_id = agent_tinfo? agent_tinfo->m_container_id : "";
+
 	for(const auto& id : containers)
 	{
-		const auto& container_processes = progtable_by_container.at(id);
-		// skip agent container itself
 		if(id == agent_container_id)
 		{
 			continue;
 		}
-		// Make sure the container is old enough so all the processes
-		// have already had a chance to bind on 8125 if they need it
-		auto old_proc_it = find_if(container_processes.begin(),
-					   container_processes.end(),
-					   [&analyzer](sinsp_threadinfo* tinfo)
-					   {
-						   return (analyzer.m_prev_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
-					   });
-		if(old_proc_it != container_processes.end())
-		{
-			Json::Value c(Json::objectValue);
-			c["id"] = id;
-			c["pid"] = static_cast<Json::Int64>((*old_proc_it)->m_pid);
-			root["containers"].append(c);
-		}
+
+		const auto& container_processes = progtable_by_container.at(id);
+		Json::Value c(Json::objectValue);
+
+		// We need some representativate process from the network
+		// namespace of the target container.  Here, we pick the
+		// first process; there's nothing particularly special about
+		// that process.
+		c["id"] = id;
+		c["pid"] = static_cast<Json::Int64>(container_processes[0]->m_pid);
+
+		root["containers"].append(c);
 	}
+
 	Json::FastWriter json_writer;
 	analyzer.m_statsite_forwader_queue->send(json_writer.write(root));
 }
@@ -5798,39 +5797,10 @@ sinsp_analyzer::emit_containers_deprecated(const analyzer_emitter::progtable_by_
 		}
 	}
 
-	// This queue is initialized only if  statsd is enabled and we are in nodriver mode
-	if(m_statsite_forwader_queue)
-	{
-		Json::Value root(Json::objectValue);
-		root["containers"] = Json::arrayValue;
-		auto agent_tinfo = m_inspector->get_thread(m_inspector->m_sysdig_pid);
-		auto agent_container_id = agent_tinfo? agent_tinfo->m_container_id : "";
-		for(const auto& id : containers_ids)
-		{
-			const auto& container_processes = progtable_by_container.at(id);
-			// skip agent container itself
-			if(id == agent_container_id)
-			{
-				continue;
-			}
-			// Make sure the container is old enough so all the processes
-			// have already had a chance to bind on 8125 if they need it
-			auto old_proc_it = find_if(container_processes.begin(),
-										container_processes.end(), [this](sinsp_threadinfo* tinfo)
-										{
-											return (m_prev_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
-										});
-			if(old_proc_it != container_processes.end())
-			{
-				Json::Value c(Json::objectValue);
-				c["id"] = id;
-				c["pid"] = static_cast<Json::Int64>((*old_proc_it)->m_pid);
-				root["containers"].append(c);
-			}
-		}
-		Json::FastWriter json_writer;
-		m_statsite_forwader_queue->send(json_writer.write(root));
-	}
+	send_containers_to_statsite_fowarder(*this,
+	                                     containers_ids,
+	                                     progtable_by_container);
+
 	g_logger.format(sinsp_logger::SEV_DEBUG, "total_cpu_shares=%lu", total_cpu_shares);
 	containers_protostate_marker.mark_top(CONTAINERS_PROTOS_TOP_LIMIT);
 	// Emit containers on protobuf, our logic is:
