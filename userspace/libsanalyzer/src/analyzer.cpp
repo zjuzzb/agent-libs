@@ -3653,6 +3653,11 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 			}
 		}
 	}
+	if (m_internal_metrics)
+	{
+	    m_internal_metrics->set_baseliner_enabled(m_falco_baseliner->is_baseline_calculation_enabled());
+	}
+
 	falco_trc.stop();
 }
 

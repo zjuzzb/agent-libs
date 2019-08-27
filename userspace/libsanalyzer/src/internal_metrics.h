@@ -73,6 +73,8 @@ public:
 	void set_n_command_lines(int64_t val);
 	void set_command_categories(std::map<draiosproto::command_category,uint64_t> &cats);
 
+	void set_baseliner_enabled(bool val);
+
 	int64_t get_process() const;
 	int64_t get_thread() const;
 	int64_t get_thread_drops() const;
@@ -265,6 +267,8 @@ private:
 		int64_t n_command_lines = -1;
 		std::map<draiosproto::command_category,uint64_t> m_command_categories;
 
+		bool baseliner_enabled = false;
+
 		int64_t agent_cpu;
 		int64_t agent_memory;
 		int64_t java_cpu;
@@ -440,6 +444,11 @@ inline void internal_metrics::set_n_command_lines(int64_t val)
 inline void internal_metrics::set_command_categories(std::map<draiosproto::command_category,uint64_t> &cats)
 {
 	m_analyzer.m_command_categories = cats;
+}
+
+inline void internal_metrics::set_baseliner_enabled(bool val)
+{
+	m_analyzer.baseliner_enabled = val;
 }
 
 inline int64_t internal_metrics::get_process() const
