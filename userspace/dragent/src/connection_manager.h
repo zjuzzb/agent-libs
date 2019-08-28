@@ -14,6 +14,7 @@
 #include <map>
 
 #include <Poco/Buffer.h>
+#include <grpc_channel_registry.h>
 
 class dragent_configuration;
 
@@ -22,7 +23,6 @@ namespace Net {
 class StreamSocket;
 } // namespace Net
 } // namespace Poco
-
 
 class connection_manager : public dragent::watchdog_runnable
 {

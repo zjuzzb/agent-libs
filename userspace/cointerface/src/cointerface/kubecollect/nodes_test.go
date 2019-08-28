@@ -43,7 +43,7 @@ func createNodeCopies() (*v1.Node, *v1.Node) {
 					Status: v1.ConditionTrue,
 				},
 				v1.NodeCondition{
-					Type: v1.NodeOutOfDisk,
+					Type: v1.NodePIDPressure,
 					Status: v1.ConditionTrue,
 				},
 				v1.NodeCondition{
@@ -200,11 +200,11 @@ func helperNodeEqualsConditions(t *testing.T,
 }
 
 func TestNodeEqualsConditionsTrueToFalse(t *testing.T) {
-	helperNodeEqualsConditions(t, v1.NodeOutOfDisk, v1.ConditionTrue, v1.ConditionFalse)
+	helperNodeEqualsConditions(t, v1.NodePIDPressure, v1.ConditionTrue, v1.ConditionFalse)
 }
 
 func TestNodeEqualsConditionsTrueToUnknown(t *testing.T) {
-	helperNodeEqualsConditions(t, v1.NodeOutOfDisk, v1.ConditionTrue, v1.ConditionUnknown)
+	helperNodeEqualsConditions(t, v1.NodePIDPressure, v1.ConditionTrue, v1.ConditionUnknown)
 }
 
 func TestNodeEqualsConditionsFalseToTrue(t *testing.T) {

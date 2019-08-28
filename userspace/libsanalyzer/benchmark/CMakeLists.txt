@@ -1,5 +1,5 @@
 
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/benchmark/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/async)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
@@ -33,8 +33,8 @@ target_link_libraries(benchmark-libsanalyzer
 	sanalyzer
 	draiosproto
 	test-helpers-libsanalyzer
-	${DRAIOS_DEPENDENCIES_DIR}/benchmark/build/src/libbenchmark.a
-	${DRAIOS_DEPENDENCIES_DIR}/benchmark/build/src/libbenchmark_main.a
+	${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/build/src/libbenchmark.a
+	${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/build/src/libbenchmark_main.a
 )
 
 target_compile_definitions(benchmark-libsanalyzer PUBLIC SYSDIG_TEST)

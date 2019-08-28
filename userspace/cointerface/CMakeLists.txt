@@ -16,6 +16,17 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${target}
 	)
 endfunction()
 
+# Keep this version in sync with the various go.mod files
+set(GOGO_PROTOBUF_VER "v1.3.1")
+set(GOGO_PROTOBUF_PATH "github.com/gogo/protobuf/protoc-gen-gofast")
+set(GOGO_PROTOBUF_VER_FILE "${CMAKE_CURRENT_BINARY_DIR}/gogo_protobuf_${GOGO_PROTOBUF_VER}.txt")
+add_custom_target(install_go_generate_deps ALL
+	DEPENDS ${GOGO_PROTOBUF_VER_FILE})
+add_custom_command(OUTPUT ${GOGO_PROTOBUF_VER_FILE}
+	COMMAND ${GOENV} go get ${GOGO_PROTOBUF_PATH}@${GOGO_PROTOBUF_VER}
+	COMMAND ${CMAKE_COMMAND} -E touch ${GOGO_PROTOBUF_VER_FILE}
+	)
+
 # draiosproto can't be part of the GoGenerate auto-generated code because it
 # has two outputs, rather than just the one.
 add_custom_target(generate_draiosproto ALL
@@ -29,6 +40,8 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/go.mod
                 ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
                 ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/common.proto
+                ${GOGO_PROTOBUF_VER_FILE}
+                install_go_generate_deps
                 ${ARGN}
 		)
 
@@ -42,6 +55,8 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/${pbgofile}
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/go.mod
                 ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
                 ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/common.proto
+                ${GOGO_PROTOBUF_VER_FILE}
+                install_go_generate_deps
                 ${ARGN}
 		)
 endfunction()

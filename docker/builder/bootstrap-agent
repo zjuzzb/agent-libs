@@ -130,14 +130,14 @@ if [ ! -d "$DPKG_DIR" ]; then
 fi
 fi
 
-PROTOBUF_V3_DIR=$DEPENDENCIES/protobuf-3.6.1
+PROTOBUF_V3_DIR=$DEPENDENCIES/protobuf-3.9.2
 if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://github.com/google/protobuf/releases/download/v3.6.1/protobuf-cpp-3.6.1.tar.gz
-	tar -xzf protobuf-cpp-3.6.1.tar.gz
+	wget https://github.com/google/protobuf/releases/download/v3.9.2/protobuf-cpp-3.9.2.tar.gz
+	tar -xzf protobuf-cpp-3.9.2.tar.gz
 	cd $PROTOBUF_V3_DIR
 	if [[ "$ARCH" == "s390x" ]]; then
-	    # XXX 3.6.1 is untested on s390x
+	    # XXX 3.9.2 is untested on s390x
 	    wget $DEPENDENCIES_URL/protobuf-3.5.0-s390x.patch
 	    patch -p1 < protobuf-3.5.0-s390x.patch
 	    aclocal
@@ -148,6 +148,8 @@ if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	else
 		CPPFLAGS=-I$ZLIB_DIR LDFLAGS="-L$ZLIB_DIR -L/cygdrive/c/cygwin64/bin -L/bin" ./configure --with-zlib --prefix=$PROTOBUF_V3_DIR/target
 	fi
+	make -j $MAKE_JOBS
+	make -j $MAKE_JOBS check
 	make -j $MAKE_JOBS install
 fi
 
@@ -165,13 +167,6 @@ else
 fi
 if [ ! -d "$GOPATH" ]; then
 	mkdir $GOPATH
-fi
-
-GOGO_PROTOBUF_VER=v1.2.0
-GOGO_PROTOBUF_PATH=github.com/gogo/protobuf/protoc-gen-gofast
-GOGO_PROTOBUF_BIN=$GOPATH/bin/protoc-gen-gofast
-if [ ! -f "$GOGO_PROTOBUF_BIN" ]; then
-	scl enable rh-git29 -- env GOPATH=${GOPATH} GO111MODULE=on go get ${GOGO_PROTOBUF_PATH}@${GOGO_PROTOBUF_VER}
 fi
 
 OPENSSL_VER=1.0.2n
@@ -206,13 +201,13 @@ if [ $OS != "Windows_NT" ]; then
 	# a "system" protobuf/openssl instead, using pkg-config. The Makefile
 	# does require one small change to properly set LDFLAGS to the
 	# protobuf lib path returned by pkg-config. Hence the patch.
-	GRPC_DIR=$DEPENDENCIES/grpc-1.8.1
+	GRPC_DIR=$DEPENDENCIES/grpc-1.23.1
 	if [ ! -d "$GRPC_DIR" ]; then
 		cd $DEPENDENCIES
-		wget $DEPENDENCIES_URL/grpc-1.8.1.tar.gz
-		tar -xzf grpc-1.8.1.tar.gz
-		rm -rf grpc-1.8.1/third_party/zlib
-		ln -s $ZLIB_DIR grpc-1.8.1/third_party/zlib
+		wget https://github.com/grpc/grpc/archive/v1.23.1.tar.gz
+		tar -xzf v1.23.1.tar.gz
+		rm -rf grpc-1.23.1/third_party/zlib
+		ln -s $ZLIB_DIR grpc-1.23.1/third_party/zlib
 		if [[ "$ARCH" == "s390x" ]]; then
 			# Boringssl build fails on s390x, rely on openssl instead
 			rm -rf $GRPC_DIR/third_party/boringssl $GRPC_DIR/third_party/boringssl-with-bazel
@@ -269,24 +264,22 @@ if [ ! -d "$DEPENDENCIES/simpleopt" ]; then
 fi
 
 if [ $OS != "Windows_NT" ]; then
-	CMAKE_DIR=$DEPENDENCIES/cmake-3.3.2
+	CMAKE_DIR=$DEPENDENCIES/cmake-3.5.2
 	if [ ! -d "$CMAKE_DIR" ]; then
 		cd $DEPENDENCIES
-		wget $DEPENDENCIES_URL/cmake-3.3.2.tar.gz
-		tar -xzf cmake-3.3.2.tar.gz
+		wget https://github.com/Kitware/CMake/releases/download/v3.5.2/cmake-3.5.2.tar.gz
+		tar -xzf cmake-3.5.2.tar.gz
 		cd $CMAKE_DIR
 		./bootstrap
 		make -j $MAKE_JOBS
 	fi
 
-	if [ ! -d "$DEPENDENCIES/benchmark" ]; then
-		# v1.4.1 doesn't work with our old CMake but there was a fix later
-		BENCHMARK_COMMIT=b8ca0c42179b7b5d656494e61dda8b861057122f
+	BENCHMARK_DIR=$DEPENDENCIES/benchmark-1.5.0
+	if [ ! -d "$BENCHMARK_DIR" ]; then
 		cd $DEPENDENCIES
-		wget $DEPENDENCIES_URL/google-benchmark-$BENCHMARK_COMMIT.zip
-		unzip google-benchmark-$BENCHMARK_COMMIT.zip
-		mv benchmark-$BENCHMARK_COMMIT benchmark
-		cd benchmark
+		wget https://github.com/google/benchmark/archive/v1.5.0.zip
+		unzip v1.5.0.zip
+		cd $BENCHMARK_DIR
 		mkdir build
 		cd build
 		$CMAKE_DIR/bin/cmake -DBENCHMARK_ENABLE_GTEST_TESTS=OFF -DCMAKE_BUILD_TYPE=Release ..
