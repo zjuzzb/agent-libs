@@ -14,6 +14,7 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "procfs_parser.h"
+#include "type_config.h"
 
 namespace draiosproto
 {
@@ -138,6 +139,24 @@ public:
 
 	void add_ext_source(ext_source *src);
 
+	/**
+	 * emit the status of the internal metrics to the provided protobuf
+	 *
+	 * exactly which stats are emitted depends on configuration
+	 *
+	 * @param[in|out] the protobuf to stuff the metrics in
+	 * @param[in] capture_stats current capture stats
+	 * @param[in] flush_share the proportion of time which the analyzer spent in flush
+	 * @param[in] sampling_ratio the sampling ratio of the last sample
+	 * @param[in] flush_duration_ns the time taken during the previous flush
+	 */
+	void emit(draiosproto::statsd_info* statsd_info,
+		  const scap_stats& capture_stats,
+		  double flush_share,
+		  uint32_t sampling_ratio,
+		  uint64_t flush_duration_ns);
+
+private: // helper methods used during emit
 	// adds statsd-emulated metrics directly to protobuf
 	// returns false if statsd_info is null
 	bool send_all(draiosproto::statsd_info* statsd_info);
@@ -145,6 +164,7 @@ public:
 	// Add a limited set of metrics to the provided protobuf.
 	bool send_some(draiosproto::statsd_info* statsd_info);
 
+public:
 	template<typename T>
 	static draiosproto::statsd_metric* write_metric(draiosproto::statsd_info* statsd_info,
 							const std::string& name,
@@ -270,6 +290,11 @@ private:
 	analyzer m_analyzer;
 	std::list<ext_source *> m_ext_sources;
 	log m_log;
+
+public: // configs
+	static type_config<bool> c_extra_internal_metrics;
+
+	friend class test_helper;
 };
 
 inline void internal_metrics::set_process(int64_t val)

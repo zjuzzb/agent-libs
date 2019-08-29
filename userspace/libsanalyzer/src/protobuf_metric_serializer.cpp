@@ -116,6 +116,20 @@ void protobuf_metric_serializer::serialization_thread()
 	{
 		try
 		{
+			tracer_emitter ser_trc("serialize");
+			std::unique_lock<std::mutex> lock(m_data_mutex);
+
+			// Wait for work to do
+			while(!m_stop_thread && (m_data.get() == nullptr))
+			{
+				m_data_available_condition.wait(lock);
+			}
+
+			if(m_stop_thread)
+			{
+				return;
+			}
+
 			do_serialization();
 		}
 		catch(const std::ifstream::failure& ex)
@@ -139,19 +153,6 @@ void protobuf_metric_serializer::serialization_thread()
 
 void protobuf_metric_serializer::do_serialization()
 {
-	tracer_emitter ser_trc("serialize");
-	std::unique_lock<std::mutex> lock(m_data_mutex);
-
-	// Wait for work to do
-	while(!m_stop_thread && (m_data.get() == nullptr))
-	{
-		m_data_available_condition.wait(lock);
-	}
-
-	if(m_stop_thread)
-	{
-		return;
-	}
 
 	scoped_duration_logger scoped_log("protobuf serialization",
 	                                  sinsp_logger::SEV_DEBUG);
@@ -184,7 +185,26 @@ void protobuf_metric_serializer::do_serialization()
 	num_drop_events = st.n_drops - m_prev_sample_num_drop_events;
 	m_prev_sample_num_drop_events = st.n_drops;
 
-	invoke_callback(st, nevts, num_drop_events);
+	if (m_internal_metrics)
+	{
+		m_internal_metrics->emit(m_data->m_metrics->mutable_protos()->mutable_statsd(),
+					 st,
+					 m_data->m_prev_flush_cpu_pct,
+					 m_data->m_sampling_ratio,
+					 m_data->m_prev_flushes_duration_ns);
+	}
+
+	metric_store::store(m_data->m_metrics);
+	m_data->m_metrics_sent.exchange(true);
+	m_uncompressed_sample_handler.handle_uncompressed_sample(m_data->m_ts,
+								 nevts,
+								 num_drop_events,
+								 m_data->m_metrics,
+								 m_data->m_sampling_ratio,
+								 m_data->m_my_cpuload,
+								 m_data->m_prev_flush_cpu_pct,
+								 m_data->m_prev_flushes_duration_ns,
+								 st.n_tids_suppressed);
 
 	if(get_emit_metrics_to_file())
 	{
@@ -251,62 +271,6 @@ void protobuf_metric_serializer::drain() const
 		d = m_data.get();
 	}
 	while(d != nullptr);
-}
-
-void protobuf_metric_serializer::invoke_callback(const scap_stats& st,
-                                                 const uint64_t nevts,
-                                                 const uint64_t num_drop_events)
-{
-	if (m_internal_metrics) {
-		m_internal_metrics->set_n_evts(st.n_evts);
-		m_internal_metrics->set_n_drops(st.n_drops);
-		m_internal_metrics->set_n_drops_buffer(st.n_drops_buffer);
-		m_internal_metrics->set_n_preemptions(st.n_preemptions);
-
-		m_internal_metrics->set_fp(
-					   static_cast<int64_t>(round(
-								      m_data->m_prev_flush_cpu_pct * 100)));
-		m_internal_metrics->set_sr(m_data->m_sampling_ratio);
-		m_internal_metrics->set_fl(m_data->m_prev_flushes_duration_ns / 1000000);
-
-		bool sent;
-		if(m_data->m_extra_internal_metrics)
-		{
-			sent = m_internal_metrics->send_all(
-							    m_data->m_metrics->mutable_protos()->mutable_statsd());
-		}
-		else
-		{
-			sent = m_internal_metrics->send_some(
-							     m_data->m_metrics->mutable_protos()->mutable_statsd());
-		}
-
-		if(sent)
-		{
-			if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
-			{
-				g_logger.log(m_data->m_metrics->protos().statsd().DebugString(),
-					     sinsp_logger::SEV_TRACE);
-			}
-		}
-		else
-		{
-			g_logger.log("Error processing agent internal metrics.",
-				     sinsp_logger::SEV_WARNING);
-		}
-	}
-
-	metric_store::store(m_data->m_metrics);
-	m_data->m_metrics_sent.exchange(true);
-	m_uncompressed_sample_handler.handle_uncompressed_sample(m_data->m_ts,
-								 nevts,
-								 num_drop_events,
-								 m_data->m_metrics.get(),
-								 m_data->m_sampling_ratio,
-								 m_data->m_my_cpuload,
-								 m_data->m_prev_flush_cpu_pct,
-								 m_data->m_prev_flushes_duration_ns,
-								 st.n_tids_suppressed);
 }
 
 void protobuf_metric_serializer::emit_metrics_to_file()

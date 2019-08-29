@@ -12,6 +12,16 @@ using Poco::Message;
 const char* allstr();
 const char* logstr();
 
+class test_helper
+{
+public:
+	static bool send_all(internal_metrics& im,
+			     draiosproto::statsd_info* statsd_info)
+	{
+		return im.send_all(statsd_info);
+	}
+};
+
 TEST(internal_metrics, metrics)
 {
 	internal_metrics im;
@@ -66,7 +76,7 @@ TEST(internal_metrics, metrics)
 	EXPECT_EQ(4u, im.logs());
 
 	draiosproto::statsd_info info;
-	ASSERT_TRUE(im.send_all(&info));
+	ASSERT_TRUE(test_helper::send_all(im, &info));
 	EXPECT_EQ(info.DebugString(), logstr());
 	EXPECT_EQ(0u, im.logs());
 
@@ -130,7 +140,7 @@ TEST(internal_metrics, metrics)
 	EXPECT_EQ(999, im.get_cointerface_memory());
 
 	info.Clear();
-	ASSERT_TRUE(im.send_all(&info));
+	ASSERT_TRUE(test_helper::send_all(im, &info));
 	EXPECT_EQ(info.DebugString(), allstr());
 	EXPECT_EQ(0u, im.logs());
 

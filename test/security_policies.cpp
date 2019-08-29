@@ -33,6 +33,16 @@
 using namespace std;
 namespace security_config = libsanalyzer::security_config;
 
+class test_helper
+{
+public:
+        static bool send_all(internal_metrics& im,
+                             draiosproto::statsd_info* statsd_info)
+        {
+                return im.send_all(statsd_info);
+        }
+};
+
 class security_policy_error_handler : public Poco::ErrorHandler
 {
 public:
@@ -498,7 +508,7 @@ public:
 		draiosproto::statsd_info statsd_info;
 		uint32_t num_match = 0;
 
-		m_internal_metrics->send_all(&statsd_info);
+		test_helper::send_all(*m_internal_metrics, &statsd_info);
 
 		for(auto &metric : statsd_info.statsd_metrics())
 		{

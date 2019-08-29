@@ -30,7 +30,7 @@ public: // functions from uncompressed_sample_handler
 	void handle_uncompressed_sample(uint64_t ts_ns,
 					uint64_t nevts,
 					uint64_t num_drop_events,
-					draiosproto::metrics* metrics,
+					std::shared_ptr<draiosproto::metrics>& metrics,
 					uint32_t sampling_ratio,
 					double analyzer_cpu_pct,
 					double flush_cpu_pct,

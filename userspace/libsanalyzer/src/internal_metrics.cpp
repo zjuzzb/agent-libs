@@ -2,6 +2,11 @@
 
 #include "internal_metrics.h"
 
+type_config<bool> internal_metrics::c_extra_internal_metrics(
+	false,
+	"set to true to send full complement of internal metrics",
+	"extra_internal_metrics");
+
 internal_metrics::internal_metrics()
 {
 }
@@ -111,6 +116,48 @@ void internal_metrics::send_command_categories(draiosproto::statsd_info* statsd_
 
 		write_metric(statsd_info, "dragent.analyzer.command_line_cats.n_" + name, draiosproto::STATSD_GAUGE, pair.second);
 	}
+}
+
+void internal_metrics::emit(draiosproto::statsd_info* statsd_info,
+			    const scap_stats& capture_stats,
+			    double flush_share,
+			    uint32_t sampling_ratio,
+			    uint64_t flush_duration_ns)
+{
+
+        set_n_evts(capture_stats.n_evts);
+        set_n_drops(capture_stats.n_drops);
+        set_n_drops_buffer(capture_stats.n_drops_buffer);
+        set_n_preemptions(capture_stats.n_preemptions);
+
+        set_fp(static_cast<int64_t>(round(flush_share * 100)));
+        set_sr(sampling_ratio);
+        set_fl(flush_duration_ns / 1000000);
+
+        bool sent;
+        if(c_extra_internal_metrics.get())
+        {
+                sent = send_all(statsd_info);
+        }
+        else
+        {
+                sent = send_some(statsd_info);
+        }
+
+        if(sent)
+        {
+                if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
+                {
+                        g_logger.log(statsd_info->DebugString(),
+                                     sinsp_logger::SEV_TRACE);
+                }
+        }
+        else
+        {
+                g_logger.log("Error processing agent internal metrics.",
+                             sinsp_logger::SEV_WARNING);
+        }
+
 }
 
 bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info)

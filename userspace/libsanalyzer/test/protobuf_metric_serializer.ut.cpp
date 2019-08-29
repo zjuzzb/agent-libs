@@ -11,6 +11,7 @@
 #include "internal_metrics.h"
 #include "scoped_temp_directory.h"
 #include "uncompressed_sample_handler.h"
+#include "scoped_config.h"
 
 #include <chrono>
 #include <memory>
@@ -159,7 +160,7 @@ public:
 	void handle_uncompressed_sample(const uint64_t ts_ns,
 					const uint64_t nevts,
 					const uint64_t num_drop_events,
-					draiosproto::metrics* const metrics,
+					std::shared_ptr<draiosproto::metrics>& metrics,
 					const uint32_t sampling_ratio,
 					const double analyzer_cpu_pct,
 					const double flush_cpu_cpt,
@@ -191,7 +192,7 @@ public:
 	uint64_t m_ts_ns;
 	uint64_t m_nevts;
 	uint64_t m_num_drop_events;
-	draiosproto::metrics* m_metrics;
+	std::shared_ptr<draiosproto::metrics> m_metrics;
 	uint32_t m_sampling_ratio;
 	double m_analyzer_cpu_pct;
 	double m_flush_cpu_cpt;
@@ -249,7 +250,7 @@ TEST(protobuf_metric_serializer_test, serialize)
 	std::atomic<uint64_t> prev_flushes_duration_ns(INITIAL_PREV_FLUSH_DURATION_NS);
 	std::atomic<bool> metrics_sent(false);
 	const double CPU_LOAD = 0.12;
-	const bool EXTRA_INTERNAL_METRICS = true;
+	test_helpers::scoped_config<bool> extra_internal_metrics("extra_internal_metrics", true);
 	draiosproto::metrics metrics;
 
 	metric_serializer::c_metrics_dir.set(temp_dir.get_directory());
@@ -268,7 +269,6 @@ TEST(protobuf_metric_serializer_test, serialize)
 				prev_flushes_duration_ns,
 				metrics_sent,
 				CPU_LOAD,
-				EXTRA_INTERNAL_METRICS,
 				metrics));
 
 
@@ -377,7 +377,7 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	std::atomic<uint64_t> prev_flushes_duration_ns(INITIAL_PREV_FLUSH_DURATION_NS);
 	std::atomic<bool> metrics_sent(false);
 	const double CPU_LOAD = 0.12;
-	const bool EXTRA_INTERNAL_METRICS = true;
+	test_helpers::scoped_config<bool> extra_internal_metrics("extra_internal_metrics", true);
 	draiosproto::metrics metrics;
 
 	// Update the configuration so that the serializer will emit the
@@ -399,7 +399,6 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 				prev_flushes_duration_ns,
 				metrics_sent,
 				CPU_LOAD,
-				EXTRA_INTERNAL_METRICS,
 				metrics));
 
 	s->serialize(make_unique<metric_serializer::data>(
@@ -410,7 +409,6 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 				prev_flushes_duration_ns,
 				metrics_sent,
 				CPU_LOAD,
-				EXTRA_INTERNAL_METRICS,
 				metrics));
 
 

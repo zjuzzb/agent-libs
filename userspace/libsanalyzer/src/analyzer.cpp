@@ -4358,7 +4358,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 								m_prev_flushes_duration_ns,
 								m_sent_metrics,
 								m_my_cpuload,
-								m_extra_internal_metrics,
 								*m_metrics));
 
 				// If the client doesn't want async protobuf

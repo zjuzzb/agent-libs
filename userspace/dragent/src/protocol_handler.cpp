@@ -40,13 +40,14 @@ protocol_handler::~protocol_handler()
 void protocol_handler::handle_uncompressed_sample(uint64_t ts_ns,
 						  uint64_t nevts,
 						  uint64_t num_drop_events,
-						  draiosproto::metrics* metrics,
+						  std::shared_ptr<draiosproto::metrics>& metrics,
 						  uint32_t sampling_ratio,
 						  double analyzer_cpu_pct,
 						  double flush_cpu_pct,
 						  uint64_t analyzer_flush_duration_ns,
 						  uint64_t num_suppressed_threads)
 {
+	ASSERT(metrics);
 	m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
 	if(c_print_protobuf.get())

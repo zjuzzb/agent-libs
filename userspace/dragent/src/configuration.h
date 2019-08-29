@@ -463,8 +463,6 @@ public:
 	int m_top_file_devices_per_container = 0;
 	int m_top_file_devices_per_host = 0;
 
-	bool m_extra_internal_metrics = false;
-
 	std::set<std::string> m_procfs_scan_procs;
 	uint32_t m_procfs_scan_interval = 20;
 

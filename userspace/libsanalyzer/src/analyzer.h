@@ -623,8 +623,6 @@ public:
 	 */
 	void dump_infrastructure_state_on_next_flush();
 
-	void set_extra_internal_metrics(bool val) { m_extra_internal_metrics = val; }
-
 	void incr_command_lines_category(draiosproto::command_category cat, uint64_t delta=1);
 
 	/**
@@ -1292,8 +1290,6 @@ VISIBILITY_PRIVATE
 	int m_top_file_devices_per_prog = 0;
 	int m_top_file_devices_per_container = 0;
 	int m_top_file_devices_per_host = 0;
-
-	bool m_extra_internal_metrics = false;
 
 	std::map<draiosproto::command_category,uint64_t> m_command_categories;
 

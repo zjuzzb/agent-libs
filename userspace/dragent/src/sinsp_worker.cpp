@@ -480,8 +480,6 @@ void sinsp_worker::init()
 		m_analyzer->enable_audit_tap(m_configuration->m_audit_tap_emit_local_connections);
 	}
 
-	m_analyzer->set_extra_internal_metrics(m_configuration->m_extra_internal_metrics);
-
 	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 	//
 	// Start the capture with sinsp

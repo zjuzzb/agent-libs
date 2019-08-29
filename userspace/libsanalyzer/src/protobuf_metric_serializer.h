@@ -106,13 +106,6 @@ private:
 	void do_serialization();
 
 	/**
-	 * Helper method that invokes the callback during serialization.
-	 */
-	void invoke_callback(const scap_stats& st,
-	                     uint64_t nevts,
-	                     uint64_t num_dropped_events);
-
-	/**
 	 * Writes the dam file during serialization.
 	 */
 	void emit_metrics_to_file();

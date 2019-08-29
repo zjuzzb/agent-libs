@@ -1152,8 +1152,6 @@ void dragent_configuration::init()
 	{
 		m_track_environment = false;
 	}
-	m_extra_internal_metrics = m_config->get_scalar<bool>("extra_internal_metrics", false);
-
 	m_procfs_scan_procs = m_config->get_first_deep_sequence<set<string>>("procfs_scan_procs");
 	m_procfs_scan_interval = m_config->get_scalar<uint32_t>("procfs_scan_interval",
 		DEFAULT_PROCFS_SCAN_INTERVAL_SECS );
@@ -1586,8 +1584,6 @@ void dragent_configuration::print_configuration() const
 	{
 		LOG_INFO("Reporting top %d devices for file I/O per host.", m_top_file_devices_per_host);
 	}
-
-	LOG_INFO("Extra internal metrics: " + bool_as_text(m_extra_internal_metrics));
 
 	configuration_manager::instance().print_config(log_config);
 
