@@ -5890,13 +5890,11 @@ sinsp_analyzer::emit_container(const string &container_id,
 			       analyzer_emitter::flush_flags flushflags,
 			       const std::list<uint32_t>& groups)
 {
-	const auto containers_info = m_inspector->m_container_manager.get_containers();
-	auto it = containers_info->find(container_id);
-	if(it == containers_info->end())
+	const auto container_info = m_inspector->m_container_manager.get_container(container_id);
+	if(!container_info)
 	{
 		return;
 	}
-	const auto container_info = it->second;
 	unordered_map<string, analyzer_container_state>::iterator it_analyzer = m_containers.find(container_info->m_id);
 	if(it_analyzer == m_containers.end())
 	{
