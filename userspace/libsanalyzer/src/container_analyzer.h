@@ -61,7 +61,7 @@ public:
 				    // rule.
 
 	bool should_report_container(const sinsp_configuration *config,
-				     const sinsp_container_info *cinfo,
+				     const sinsp_container_info &cinfo,
 				     const infrastructure_state *infra_state,
 				     uint64_t ts,
 				     bool& optional);

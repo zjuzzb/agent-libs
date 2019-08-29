@@ -1869,7 +1869,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				const auto cinfo = m_inspector->m_container_manager.get_container(tinfo.m_container_id);
 				bool optional;
 				if(cinfo && !container->should_report_container(m_configuration,
-										 cinfo.get(),
+										 *cinfo,
 										 infra_state(),
 										 m_prev_flush_time_ns,
 										 optional))
@@ -5753,7 +5753,7 @@ sinsp_analyzer::emit_containers_deprecated(const analyzer_emitter::progtable_by_
 					bool optional;
 					if(analyzer_it != m_containers.end() &&
 					   analyzer_it->second.should_report_container(m_configuration,
-										       container_info.get(),
+										       *container_info,
 										       infra_state(),
 										       m_prev_flush_time_ns,
 										       optional))
@@ -7158,7 +7158,7 @@ void stress_tool_matcher::set_comm_list(const vector<string> &comms)
 }
 
 bool analyzer_container_state::should_report_container(const sinsp_configuration *config,
-						       const sinsp_container_info *cinfo,
+						       const sinsp_container_info &cinfo,
 						       const infrastructure_state *infra_state,
 						       uint64_t ts,
 						       bool& optional)
@@ -7176,13 +7176,13 @@ bool analyzer_container_state::should_report_container(const sinsp_configuration
 	const auto filters = config->get_container_filter();
 	if(!filters || !filters->enabled())
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "container %s, no filter configured", cinfo->m_id.c_str());
+		g_logger.format(sinsp_logger::SEV_DEBUG, "container %s, no filter configured", cinfo.m_id.c_str());
 		m_filter_state = FILT_INCL;
 		optional = true;
 		return true;
 	}
 
-	bool include = filters->match(nullptr, nullptr, cinfo, *infra_state, nullptr, &m_matched_generically);
+	bool include = filters->match(nullptr, nullptr, &cinfo, *infra_state, nullptr, &m_matched_generically);
 #else
 	bool include = true;
 #endif
@@ -7190,7 +7190,7 @@ bool analyzer_container_state::should_report_container(const sinsp_configuration
 	m_filter_state = include ? FILT_INCL : FILT_EXCL;
 	optional = m_matched_generically;
 
-	g_logger.format(sinsp_logger::SEV_DEBUG, "container %s, %s in report", cinfo->m_id.c_str(),
+	g_logger.format(sinsp_logger::SEV_DEBUG, "container %s, %s in report", cinfo.m_id.c_str(),
 		(m_filter_state == FILT_INCL) ? "include" : "exclude");
 	return m_filter_state == FILT_INCL;
 }
