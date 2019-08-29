@@ -5896,7 +5896,8 @@ sinsp_analyzer::emit_container(const string &container_id,
 	{
 		return;
 	}
-	unordered_map<string, analyzer_container_state>::iterator it_analyzer = m_containers.find(it->second->m_id);
+	const auto container_info = it->second;
+	unordered_map<string, analyzer_container_state>::iterator it_analyzer = m_containers.find(container_info->m_id);
 	if(it_analyzer == m_containers.end())
 	{
 		return;
@@ -5904,14 +5905,14 @@ sinsp_analyzer::emit_container(const string &container_id,
 
 	draiosproto::container* container = m_metrics->add_containers();
 
-	container->set_id(it->second->m_id);
+	container->set_id(container_info->m_id);
 
 	for (auto& i : groups)
 	{
 		container->add_container_reporting_group_id(i);
 	}
 
-	switch(it->second->m_type)
+	switch(container_info->m_type)
 	{
 	case CT_DOCKER:
 		container->set_type(draiosproto::DOCKER);
@@ -5925,12 +5926,12 @@ sinsp_analyzer::emit_container(const string &container_id,
 	case CT_MESOS:
 		container->set_type(draiosproto::MESOS);
 		// Sanity check the mesos task id. if it's trivially small, log a warning.
-		if(it->second->m_mesos_task_id.length() < 3)
+		if(container_info->m_mesos_task_id.length() < 3)
 		{
 			g_logger.format(sinsp_logger::SEV_WARNING,
 					"Suspicious mesos task id for container id '%s': '%s'",
 					container_id.c_str(),
-					it->second->m_mesos_task_id.c_str());
+					container_info->m_mesos_task_id.c_str());
 		}
 		break;
 	case CT_RKT:
@@ -5955,43 +5956,43 @@ sinsp_analyzer::emit_container(const string &container_id,
 		ASSERT(false);
 	}
 
-	if(it->second->m_metadata_complete)
+	if(container_info->m_metadata_complete)
 	{
-		if(!it->second->m_name.empty())
+		if(!container_info->m_name.empty())
 		{
-			container->set_name(it->second->m_name);
+			container->set_name(container_info->m_name);
 		}
 
-		if(!it->second->m_image.empty())
+		if(!container_info->m_image.empty())
 		{
-			container->set_image(it->second->m_image);
+			container->set_image(container_info->m_image);
 		}
 
-		if(!it->second->m_imageid.empty())
+		if(!container_info->m_imageid.empty())
 		{
-			container->set_image_id(it->second->m_imageid.substr(0, 12));
+			container->set_image_id(container_info->m_imageid.substr(0, 12));
 		}
 
-		if(!it->second->m_imagerepo.empty())
+		if(!container_info->m_imagerepo.empty())
 		{
-			container->set_image_repo(it->second->m_imagerepo);
+			container->set_image_repo(container_info->m_imagerepo);
 		}
 
-		if(!it->second->m_imagetag.empty())
+		if(!container_info->m_imagetag.empty())
 		{
-			container->set_image_tag(it->second->m_imagetag);
+			container->set_image_tag(container_info->m_imagetag);
 		}
 
-		if(!it->second->m_imagedigest.empty())
+		if(!container_info->m_imagedigest.empty())
 		{
-			container->set_image_digest(it->second->m_imagedigest);
+			container->set_image_digest(container_info->m_imagedigest);
 		}
 	}
 
 #ifndef CYGWING_AGENT
-	if(!it->second->m_mesos_task_id.empty())
+	if(!container_info->m_mesos_task_id.empty())
 	{
-		container->set_mesos_task_id(it->second->m_mesos_task_id);
+		container->set_mesos_task_id(container_info->m_mesos_task_id);
 	}
 #endif
 
@@ -6000,19 +6001,19 @@ sinsp_analyzer::emit_container(const string &container_id,
 	m_infrastructure_state->get_orch_labels(uid, container->mutable_orchestrators_fallback_labels());
 #endif
 
-	for(vector<sinsp_container_info::container_port_mapping>::const_iterator it_ports = it->second->m_port_mappings.begin();
-		it_ports != it->second->m_port_mappings.end(); ++it_ports)
+	for(vector<sinsp_container_info::container_port_mapping>::const_iterator it_ports = container_info->m_port_mappings.begin();
+		it_ports != container_info->m_port_mappings.end(); ++it_ports)
 	{
 		draiosproto::container_port_mapping* mapping = container->add_port_mappings();
 
 		mapping->set_host_ip(it_ports->m_host_ip);
 		mapping->set_host_port(it_ports->m_host_port);
-		mapping->set_container_ip(it->second->m_container_ip);
+		mapping->set_container_ip(container_info->m_container_ip);
 		mapping->set_container_port(it_ports->m_container_port);
 	}
 
-	for(map<string, string>::const_iterator it_labels = it->second->m_labels.begin();
-		it_labels != it->second->m_labels.end(); ++it_labels)
+	for(map<string, string>::const_iterator it_labels = container_info->m_labels.begin();
+		it_labels != container_info->m_labels.end(); ++it_labels)
 	{
 		std::string filter;
 		const string &label_key = it_labels->first;
@@ -6031,7 +6032,7 @@ sinsp_analyzer::emit_container(const string &container_id,
 		{
 			g_logger.format(sinsp_logger::SEV_DEBUG, "%s: Skipped label '%s' of "
 							"container %s[%s]: longer than max configured, %u > %u",
-							__func__, label_key.c_str(), it->second->m_name.c_str(),
+							__func__, label_key.c_str(), container_info->m_name.c_str(),
 							container_id.c_str(), label_val.length(),
 							m_containers_labels_max_len);
 			continue;
@@ -6112,7 +6113,7 @@ sinsp_analyzer::emit_container(const string &container_id,
 	container->mutable_resource_counters()->set_proc_start_count(it_analyzer->second.m_metrics.get_process_start_count());
 #endif
 
-	const auto cpu_shares = it->second->m_cpu_shares;
+	const auto cpu_shares = container_info->m_cpu_shares;
 	if(cpu_shares > 0)
 	{
 		const double cpu_shares_usage_pct = it_analyzer->second.m_metrics.m_cpuload/m_inspector->m_num_cpus*total_cpu_shares/cpu_shares;
@@ -6121,22 +6122,22 @@ sinsp_analyzer::emit_container(const string &container_id,
 		container->mutable_resource_counters()->set_cpu_shares_usage_pct(cpu_shares_usage_pct*100); // * 100 because we convert double to .2 fixed decimal
 	}
 
-	if(it->second->m_cpu_quota > 0 && it->second->m_cpu_period > 0)
+	if(container_info->m_cpu_quota > 0 && container_info->m_cpu_period > 0)
 	{
-		const double cpu_quota_used_pct = it_analyzer->second.m_metrics.m_cpuload*it->second->m_cpu_period/it->second->m_cpu_quota;
+		const double cpu_quota_used_pct = it_analyzer->second.m_metrics.m_cpuload*container_info->m_cpu_period/container_info->m_cpu_quota;
 		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_quota=%ld cpu_period=%ld used_pct=%.2f", container_id.c_str(), it->second.m_cpu_quota, it->second.m_cpu_period, cpu_quota_used_pct);
 		container->mutable_resource_counters()->set_cpu_quota_used_pct(cpu_quota_used_pct*100);
 	}
 
-	if(it->second->m_memory_limit > 0)
+	if(container_info->m_memory_limit > 0)
 	{
-		container->mutable_resource_counters()->set_memory_limit_kb(it->second->m_memory_limit/1024);
-		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s memory=%u/%u", container_id.c_str(), res_memory_kb, it->second->m_memory_limit/1024);
+		container->mutable_resource_counters()->set_memory_limit_kb(container_info->m_memory_limit/1024);
+		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s memory=%u/%u", container_id.c_str(), res_memory_kb, container_info->m_memory_limit/1024);
 	}
 
-	if(it->second->m_swap_limit > 0)
+	if(container_info->m_swap_limit > 0)
 	{
-		container->mutable_resource_counters()->set_swap_limit_kb(it->second->m_swap_limit/1024);
+		container->mutable_resource_counters()->set_swap_limit_kb(container_info->m_swap_limit/1024);
 	}
 
 	auto tcounters = container->mutable_tcounters();
@@ -6202,12 +6203,12 @@ sinsp_analyzer::emit_container(const string &container_id,
 	}
 #endif // CYGWING_AGENT
 
-	*statsd_limit = m_statsd_emitter->emit(it->second->m_id,
-	                                       it->second->m_name,
+	*statsd_limit = m_statsd_emitter->emit(container_info->m_id,
+	                                       container_info->m_name,
 	                                       container,
 	                                       *statsd_limit);
 
-	auto fs_list = m_mounted_fs_map.find(it->second->m_id);
+	auto fs_list = m_mounted_fs_map.find(container_info->m_id);
 	if(fs_list != m_mounted_fs_map.end())
 	{
 		for(const auto& fs : fs_list->second)
