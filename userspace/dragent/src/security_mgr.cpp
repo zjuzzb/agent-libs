@@ -28,13 +28,14 @@ namespace security_config = libsanalyzer::security_config;
 // - Add unit tests
 // - Make sure all objects will gracefully fail if init() is not called
 
-security_mgr::security_mgr(const string& install_root)
+security_mgr::security_mgr(const string& install_root,
+			   security_result_handler& result_handler)
 	: m_k8s_audit_server_started(false),
 	  m_k8s_audit_server_loaded(false),
 	  m_k8s_audit_server_load_in_progress(false),
 	  m_initialized(false),
 	  m_inspector(NULL),
-	  m_sinsp_handler(NULL),
+	  m_result_handler(result_handler),
 	  m_analyzer(NULL),
 	  m_capture_job_handler(NULL),
 	  m_configuration(NULL),
@@ -61,7 +62,6 @@ security_mgr::~security_mgr()
 }
 
 void security_mgr::init(sinsp *inspector,
-			sinsp_data_handler *sinsp_handler,
 			sinsp_analyzer *analyzer,
 			capture_job_handler *capture_job_handler,
 			dragent_configuration *configuration,
@@ -69,7 +69,6 @@ void security_mgr::init(sinsp *inspector,
 
 {
 	m_inspector = inspector;
-	m_sinsp_handler = sinsp_handler;
 	m_analyzer = analyzer;
 	m_capture_job_handler = capture_job_handler;
 	m_configuration = configuration;
@@ -1320,7 +1319,7 @@ void security_mgr::report_events_now(uint64_t ts_ns, draiosproto::policy_events 
 
 	events.set_machine_id(m_configuration->machine_id());
 	events.set_customer_id(m_configuration->m_customer_id);
-	m_sinsp_handler->security_mgr_policy_events_ready(ts_ns, &events);
+	m_result_handler.security_mgr_policy_events_ready(ts_ns, &events);
 }
 
 void security_mgr::report_throttled_events(uint64_t ts_ns)
@@ -1343,7 +1342,7 @@ void security_mgr::report_throttled_events(uint64_t ts_ns)
 			total_throttled_count += it.second;
 		}
 
-		m_sinsp_handler->security_mgr_throttled_events_ready(ts_ns, &tevents, total_throttled_count);
+		m_result_handler.security_mgr_throttled_events_ready(ts_ns, &tevents, total_throttled_count);
 	}
 
 	// Also remove any token buckets that haven't been seen in

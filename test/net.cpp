@@ -976,34 +976,9 @@ TEST_F(sys_call_test, net_connection_table_limit)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
 }
 
-class analyzer_callback: public analyzer_callback_interface
-{
-	void sinsp_analyzer_data_ready(uint64_t ts_ns,
-				       uint64_t nevts,
-				       uint64_t num_drop_events,
-				       draiosproto::metrics* metrics,
-				       uint32_t sampling_ratio,
-				       double analyzer_cpu_pct,
-				       double flush_cpu_pct,
-				       uint64_t analyzer_flush_duration_ns,
-				       uint64_t num_suppressed_threads)
-	{
-		printf("ciao\n");
-	}
-
-	void audit_tap_data_ready(uint64_t ns, const tap::AuditLog* audit_log)
-	{
-	}
-
-	void subsampling_disabled()
-	{
-	}
-};
-
 TEST_F(sys_call_test, DISABLED_net_connection_aggregation)
 {
 	int nconns = 0;
-	analyzer_callback ac;
 
 	//
 	// FILTER
@@ -1079,7 +1054,7 @@ return;
 	sinsp_configuration configuration;
 	configuration.set_analyzer_sample_len_ns(3 * ONE_SECOND_IN_NS);
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration, &ac);});
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
 }
 
 TEST(sinsp_protostate, test_zero)

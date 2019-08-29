@@ -5,12 +5,12 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
-#include "analyzer_callback_interface.h"
 #include "protobuf_metric_serializer.h"
 #include "analyzer_utils.h"
 #include "capture_stats_source.h"
 #include "internal_metrics.h"
 #include "scoped_temp_directory.h"
+#include "uncompressed_sample_handler.h"
 
 #include <chrono>
 #include <memory>
@@ -117,10 +117,10 @@ const uint64_t precanned_capture_stats_source::DEFAULT_SUPPRESSED = 6;
 const uint64_t precanned_capture_stats_source::DEFAULT_TIDS_SUPPRESSED = 2;
 
 /**
- * A dummy realization of the analyzer_callback_interface that saves the
- * values passed to sinsp_analyzer_data_ready.
+ * A dummy realization of the uncompressed_sample_handler that saves the
+ * values passed to handle_uncompressed_sample.
  */
-class dummy_analyzer_callback : public analyzer_callback_interface
+class dummy_sample_handler : public uncompressed_sample_handler
 {
 public:
 	/** The unset sentinel value for values of type uint64_t. */
@@ -138,8 +138,7 @@ public:
 	/**
 	 * Initialize this dummy handler to all unset sentinel values.
 	 */
-	dummy_analyzer_callback(const uint32_t sleep_time = 0):
-		analyzer_callback_interface(),
+	dummy_sample_handler(const uint32_t sleep_time = 0):
 		m_ts_ns(UNSET_UINT64),
 		m_nevts(UNSET_UINT64),
 		m_num_drop_events(UNSET_UINT64),
@@ -154,18 +153,18 @@ public:
 	{ }
 
 	/**
-	 * Concrete realization of the sinsp_analyzer_data_ready() API.
+	 * Concrete realization of the handle_uncompressed_sample() API.
 	 * Saves all parameters to locals.
 	 */
-	void sinsp_analyzer_data_ready(const uint64_t ts_ns,
-	                               const uint64_t nevts,
-	                               const uint64_t num_drop_events,
-	                               draiosproto::metrics* const metrics,
-	                               const uint32_t sampling_ratio,
-	                               const double analyzer_cpu_pct,
-	                               const double flush_cpu_cpt,
-	                               const uint64_t analyzer_flush_duration_ns,
-	                               const uint64_t num_suppressed_threads) override
+	void handle_uncompressed_sample(const uint64_t ts_ns,
+					const uint64_t nevts,
+					const uint64_t num_drop_events,
+					draiosproto::metrics* const metrics,
+					const uint32_t sampling_ratio,
+					const double analyzer_cpu_pct,
+					const double flush_cpu_cpt,
+					const uint64_t analyzer_flush_duration_ns,
+					const uint64_t num_suppressed_threads) override
 	{
 		m_ts_ns = ts_ns;
 		m_nevts = nevts;
@@ -184,13 +183,10 @@ public:
 		++m_call_count;
 	}
 
-	/**
-	 * Concrete realization of the audit_tap_data_ready() API.  Currently
-	 * does nothing.
-	 */
-	void audit_tap_data_ready(const uint64_t ts_ns,
-	                          const tap::AuditLog* const audit_log) override
-	{ }
+	uint64_t get_last_loop_ns() const
+	{
+		return 0;
+	}
 
 	uint64_t m_ts_ns;
 	uint64_t m_nevts;
@@ -207,10 +203,10 @@ public:
 
 
 
-const uint64_t dummy_analyzer_callback::UNSET_UINT64 = std::numeric_limits<uint64_t>::max();
-const uint32_t dummy_analyzer_callback::UNSET_UINT32 = std::numeric_limits<uint32_t>::max();
-const double dummy_analyzer_callback::UNSET_DOUBLE = std::numeric_limits<double>::max();
-draiosproto::metrics* const dummy_analyzer_callback::UNSET_METRICS = nullptr;
+const uint64_t dummy_sample_handler::UNSET_UINT64 = std::numeric_limits<uint64_t>::max();
+const uint32_t dummy_sample_handler::UNSET_UINT32 = std::numeric_limits<uint32_t>::max();
+const double dummy_sample_handler::UNSET_DOUBLE = std::numeric_limits<double>::max();
+draiosproto::metrics* const dummy_sample_handler::UNSET_METRICS = nullptr;
 
 } // end namespace
 
@@ -222,11 +218,13 @@ TEST(protobuf_metric_serializer_test, initial_state)
 {
 	precanned_capture_stats_source stats_source;
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	dummy_sample_handler dsh;
 
 	std::unique_ptr<protobuf_metric_serializer> s(
 			new protobuf_metric_serializer(&stats_source,
 			                               int_metrics,
-			                               ""));
+			                               "",
+						       dsh));
 
 	ASSERT_EQ(0, s->get_prev_sample_evtnum());
 	ASSERT_EQ(0, s->get_prev_sample_time());
@@ -242,7 +240,7 @@ TEST(protobuf_metric_serializer_test, serialize)
 	test_helpers::scoped_temp_directory temp_dir;
 	precanned_capture_stats_source stats_source;
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	dummy_analyzer_callback analyzer_callback;
+	dummy_sample_handler analyzer_callback;
 
 	const uint64_t TIMESTAMP = static_cast<uint64_t>(0x0000000000654321);
 	const uint32_t SAMPLING_RATIO = 1;
@@ -259,9 +257,9 @@ TEST(protobuf_metric_serializer_test, serialize)
 	std::unique_ptr<protobuf_metric_serializer> s(
 			new protobuf_metric_serializer(&stats_source,
 			                               int_metrics,
-			                               ""));
+			                               "",
+						       analyzer_callback));
 
-	s->set_sample_callback(&analyzer_callback);
 	s->serialize(make_unique<metric_serializer::data>(
 				precanned_capture_stats_source::DEFAULT_EVTS,
 				TIMESTAMP,
@@ -309,7 +307,7 @@ TEST(protobuf_metric_serializer_test, serialize)
 	// The serializer should have recorded that the metrics were sent
 	ASSERT_EQ(true, metrics_sent);
 
-	// The serializer should have invoked the sinsp_analyzer_data_ready
+	// The serializer should have invoked the handle_uncompressed_sample
 	// callback
 	ASSERT_EQ(TIMESTAMP, analyzer_callback.m_ts_ns);
 	ASSERT_EQ(precanned_capture_stats_source::DEFAULT_EVTS,
@@ -370,7 +368,7 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	precanned_capture_stats_source stats_source;
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 	const uint32_t sleep_time_ms = 3;
-	dummy_analyzer_callback analyzer_callback(sleep_time_ms);
+	dummy_sample_handler analyzer_callback(sleep_time_ms);
 
 	const uint64_t TIMESTAMP = static_cast<uint64_t>(0x0000000000654321);
 	const uint32_t SAMPLING_RATIO = 1;
@@ -390,9 +388,9 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	std::unique_ptr<protobuf_metric_serializer> s(
 			new protobuf_metric_serializer(&stats_source,
 			                               int_metrics,
-			                               ""));
+			                               "",
+						       analyzer_callback));
 
-	s->set_sample_callback(&analyzer_callback);
 	s->serialize(make_unique<metric_serializer::data>(
 				precanned_capture_stats_source::DEFAULT_EVTS,
 				TIMESTAMP,

@@ -24,7 +24,7 @@
 #include "capture_job_handler.h"
 #include "configuration.h"
 #include "analyzer.h"
-#include "sinsp_data_handler.h"
+#include "security_result_handler.h"
 #include "security_policy.h"
 #include "security_rule.h"
 #include "security_action.h"
@@ -35,11 +35,11 @@
 class SINSP_PUBLIC security_mgr
 {
 public:
-	security_mgr(const std::string& install_root);
+	security_mgr(const std::string& install_root,
+		     security_result_handler& result_handler);
 	virtual ~security_mgr();
 
 	void init(sinsp *inspector,
-		  sinsp_data_handler *sinsp_handler,
 		  sinsp_analyzer *analyzer,
 		  capture_job_handler *capture_job_handler,
 		  dragent_configuration *configuration,
@@ -366,7 +366,7 @@ private:
 
 	bool m_initialized;
 	sinsp* m_inspector;
-	sinsp_data_handler *m_sinsp_handler;
+	security_result_handler& m_result_handler;
 	sinsp_analyzer *m_analyzer;
 	capture_job_handler *m_capture_job_handler;
 	dragent_configuration *m_configuration;

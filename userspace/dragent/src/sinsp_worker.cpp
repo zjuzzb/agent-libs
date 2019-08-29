@@ -13,6 +13,7 @@
 #include <grpc/grpc.h>
 #include <grpc/support/log.h>
 #include <Poco/DateTimeFormatter.h>
+#include "protocol_handler.h"
 
 using namespace std;
 namespace security_config = libsanalyzer::security_config;
@@ -30,13 +31,13 @@ const string sinsp_worker::m_name = "sinsp_worker";
 
 sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 			   const internal_metrics::sptr_t& im,
-			   protocol_queue* queue,
+			   protocol_handler& handler,
 			   atomic<bool> *enable_autodrop,
 			   capture_job_handler *capture_job_handler):
 	m_job_requests_interval(1000000000),
 	m_initialized(false),
 	m_configuration(configuration),
-	m_queue(queue),
+	m_protocol_handler(handler),
 	m_enable_autodrop(enable_autodrop),
 	m_autodrop_currently_enabled(true),
 	m_analyzer(NULL),
@@ -45,7 +46,6 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_compliance_mgr(NULL),
 #endif
 	m_capture_job_handler(capture_job_handler),
-	m_sinsp_handler(configuration, queue),
 	m_dump_job_requests(10),
 	m_last_loop_ns(0),
 	m_statsd_capture_localhost(false),
@@ -87,7 +87,9 @@ void sinsp_worker::init()
 	m_inspector = sinsp_factory::build();
 	m_analyzer = new sinsp_analyzer(m_inspector.get(),
 					m_configuration->c_root_dir.get(),
-					m_internal_metrics);
+					m_internal_metrics,
+					m_protocol_handler,
+					m_protocol_handler);
 
 	m_analyzer->set_procfs_scan_thread(m_configuration->m_procfs_scan_thread);
 	m_analyzer->get_configuration()->set_procfs_scan_delay_ms(m_configuration->m_procfs_scan_delay_ms);
@@ -113,7 +115,8 @@ void sinsp_worker::init()
 
 	if(m_configuration->java_present() && m_configuration->m_sdjagent_enabled)
 	{
-		m_analyzer->enable_jmx(m_configuration->m_print_protobuf, m_configuration->m_jmx_sampling);
+		m_analyzer->enable_jmx(protocol_handler::c_print_protobuf.get(),
+				       m_configuration->m_jmx_sampling);
 	}
 
 	if(m_statsite_pipes)
@@ -143,10 +146,6 @@ void sinsp_worker::init()
 	m_inspector->m_max_n_proc_lookups = m_configuration->m_max_n_proc_lookups;
 	m_inspector->m_max_n_proc_socket_lookups = m_configuration->m_max_n_proc_socket_lookups;
 
-	//
-	// Attach our transmit callback to the analyzer
-	//
-	m_analyzer->set_sample_callback(&m_sinsp_handler);
 
 	//
 	// Plug the sinsp logger into our one
@@ -380,9 +379,9 @@ void sinsp_worker::init()
 			LOGGED_THROW(sinsp_exception, "Security capabilities depend on cointerface, but cointerface is disabled.");
 		}
 
-		m_security_mgr = new security_mgr(m_configuration->c_root_dir.get());
+		m_security_mgr = new security_mgr(m_configuration->c_root_dir.get(),
+						  m_protocol_handler);
 		m_security_mgr->init(m_inspector.get(),
-				     &m_sinsp_handler,
 				     m_analyzer,
 				     m_capture_job_handler,
 				     m_configuration,
@@ -425,9 +424,8 @@ void sinsp_worker::init()
 	if(m_configuration->m_cointerface_enabled)
 	{
 		std::string run_dir = m_configuration->c_root_dir.get() + "/run";
-		m_compliance_mgr = new compliance_mgr(run_dir);
-		m_compliance_mgr->init(&m_sinsp_handler,
-				       m_analyzer,
+		m_compliance_mgr = new compliance_mgr(run_dir, m_protocol_handler);
+		m_compliance_mgr->init(m_analyzer,
 				       m_configuration);
 
 		if(security_config::get_default_compliance_schedule() != "")

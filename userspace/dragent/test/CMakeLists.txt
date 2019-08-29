@@ -43,6 +43,7 @@ add_executable(unit-test-dragent
 	dragent_user_event_callback.ut.cpp
 	faultlist_rest_request_handler.ut.cpp
 	fault_rest_request_handler.ut.cpp
+	protocol_handler.ut.cpp
 	file_rest_registry.ut.cpp
 	file_rest_request_handler.ut.cpp
 	metrics_rest_request_handler.ut.cpp

@@ -18,7 +18,8 @@ namespace libsanalyzer
 metric_serializer* metric_serializer_factory::build(
 		capture_stats_source* const stats_source,
 		const internal_metrics::sptr_t& internal_metrics,
-		const std::string& root_dir)
+		const std::string& root_dir,
+		uncompressed_sample_handler& sample_handler)
 {
 	ASSERT(internal_metrics);
 
@@ -29,7 +30,8 @@ metric_serializer* metric_serializer_factory::build(
 	//       realization of this interface.
 	return new protobuf_metric_serializer(stats_source,
 	                                      internal_metrics,
-	                                      root_dir);
+	                                      root_dir,
+					      sample_handler);
 
 }
 

@@ -20,6 +20,8 @@
 #include <unistd.h>
 #endif
 
+#include "uncompressed_sample_handler.h"
+#include "audit_tap_handler.h"
 using namespace std;
 
 static inline string clone_flags_to_str(uint32_t flags);
@@ -62,71 +64,10 @@ public:
 	uint64_t m_time;
 };
 
-//
-// Metrics 
-//
-/*
-uint32_t compress_metrics(draios::metrics* metrics, char* buffer)
-{
-	ArrayOutputStream* array_output = new ArrayOutputStream(buffer, metrics->ByteSize());
-//   	GzipOutputStream* gzip_output = new GzipOutputStream(array_output);
-   	
-   	metrics->SerializeToZeroCopyStream(array_output);
-   	
-   	uint32_t compressed_size = (uint32_t)array_output->ByteCount();
-   	
-   	cout << "compressed_size = " << compressed_size << endl;
-
-//   	delete gzip_output;
-   	delete array_output;
-
-   	return compressed_size;
+namespace {
+uncompressed_sample_handler_dummy g_sample_handler;
+audit_tap_handler_dummy g_audit_handler;
 }
-
-void export_draios_metrics(int fd, draios::metrics* metrics)
-{
-	char* buffer = new char[metrics->ByteSize()];
-	uint32_t compressed_size = compress_metrics(metrics, buffer); 
-	uint32_t nbo_size = htonl(compressed_size);
-	write(fd, &nbo_size, sizeof(nbo_size));
-	write(fd, buffer, compressed_size);
-	delete buffer;
-}
-*/
-
-class sample_collector: public analyzer_callback_interface
-{
-public:
-	void sinsp_analyzer_data_ready(uint64_t ts_ns,
-				       uint64_t nevts,
-				       uint64_t num_drop_events,
-				       draiosproto::metrics* metrics,
-				       uint32_t sampling_ratio,
-				       double analyzer_cpu_pct,
-				       double flush_cpu_pct,
-				       uint64_t analyzer_flush_duration_ns,
-				       uint64_t num_suppressed_threads)
-	{
-//		int a = 0;
-		//sinsp_sample_header* hdr = (sinsp_sample_header*)buffer;
-		//uint32_t size = hdr->m_sample_len;
-		//uint32_t* pbuflen = &hdr->m_sample_len;
-		//*pbuflen = htonl(*pbuflen);
-		//int a = 0;
-	}
-
-	void audit_tap_data_ready(uint64_t ns, const tap::AuditLog* audit_log)
-	{
-	}
-
-	void subsampling_disabled()
-	{
-		printf("subsampling disabled\n");
-	}
-};
-
-sample_collector g_sample_collector;
-
 
 //
 // Event processing loop
@@ -494,7 +435,11 @@ int main(int argc, char **argv)
 	{
 		g_inspector = new sinsp();
 		internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-		sinsp_analyzer* analyzer = new sinsp_analyzer(g_inspector, "/opt/draios", int_metrics);
+		sinsp_analyzer* analyzer = new sinsp_analyzer(g_inspector,
+							      "/opt/draios",
+							      int_metrics,
+							      g_sample_handler,
+							      g_audit_handler);
 		g_inspector->m_analyzer = analyzer;
 
 		//
@@ -683,8 +628,6 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 #endif // _WIN32
-
-		analyzer->set_sample_callback(&g_sample_collector);
 
 		//
 		// Launch the inspeciotn

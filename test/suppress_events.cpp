@@ -153,9 +153,18 @@ static void test_helper_quotactl(test_helper_args &hargs)
 	// we see the procexit for the spawned process.
 	sinsp_configuration configuration;
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration,
-						    NULL, 0, 0, 0,
-						    SCAP_MODE_LIVE, before_open, before_close, should_continue, 1000);});
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test,
+						    callback,
+						    filter,
+						    configuration,
+						    0,
+						    0,
+						    0,
+						    SCAP_MODE_LIVE,
+						    before_open,
+						    before_close,
+						    should_continue,
+						    1000);});
 	delete test_helper_stdin;
 }
 

@@ -12,17 +12,17 @@
 
 #include <draios.pb.h>
 
-#include "sinsp_data_handler.h"
 #include "configuration.h"
+#include "security_result_handler.h"
 
 class SINSP_PUBLIC compliance_mgr
 {
 public:
-	compliance_mgr(const std::string& run_root);
+	compliance_mgr(const std::string& run_root,
+		       security_result_handler& result_handler);
 	virtual ~compliance_mgr();
 
-	void init(sinsp_data_handler *sinsp_handler,
-		  sinsp_analyzer *analyzer,
+	void init(sinsp_analyzer *analyzer,
 		  dragent_configuration *configuration,
 		  bool save_errors=false);
 
@@ -59,7 +59,7 @@ private:
 
 	std::unique_ptr<run_on_interval> m_check_periodic_tasks_interval;
 	bool m_initialized;
-	sinsp_data_handler *m_sinsp_handler;
+	security_result_handler& m_result_handler;
 	sinsp_analyzer *m_analyzer;
 	dragent_configuration *m_configuration;
 	bool m_save_errors;

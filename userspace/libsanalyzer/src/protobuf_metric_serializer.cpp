@@ -7,7 +7,6 @@
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
 #include "protobuf_metric_serializer.h"
-#include "analyzer_callback_interface.h"
 #include "config.h"
 #include "metric_store.h"
 #include "tracer_emitter.h"
@@ -65,8 +64,9 @@ namespace libsanalyzer
 protobuf_metric_serializer::protobuf_metric_serializer(
 		capture_stats_source* const stats_source,
 		const internal_metrics::sptr_t& internal_metrics,
-		const std::string& root_dir) :
-	metric_serializer(internal_metrics, root_dir),
+		const std::string& root_dir,
+		uncompressed_sample_handler& sample_handler) :
+	metric_serializer(internal_metrics, root_dir, sample_handler),
 	m_data(),
 	m_data_mutex(),
 	m_data_available_condition(),
@@ -105,6 +105,9 @@ protobuf_metric_serializer::~protobuf_metric_serializer()
 
 	// Wait for it to actually die
 	m_thread.join();
+
+	// we effectively own this, so clear it on destruction
+	metric_store::store(nullptr);
 }
 
 void protobuf_metric_serializer::serialization_thread()
@@ -181,10 +184,7 @@ void protobuf_metric_serializer::do_serialization()
 	num_drop_events = st.n_drops - m_prev_sample_num_drop_events;
 	m_prev_sample_num_drop_events = st.n_drops;
 
-	if(get_sample_callback() != nullptr)
-	{
-		invoke_callback(st, nevts, num_drop_events);
-	}
+	invoke_callback(st, nevts, num_drop_events);
 
 	if(get_emit_metrics_to_file())
 	{
@@ -298,15 +298,15 @@ void protobuf_metric_serializer::invoke_callback(const scap_stats& st,
 
 	metric_store::store(m_data->m_metrics);
 	m_data->m_metrics_sent.exchange(true);
-	get_sample_callback()->sinsp_analyzer_data_ready(m_data->m_ts,
-							 nevts,
-							 num_drop_events,
-							 m_data->m_metrics.get(),
-							 m_data->m_sampling_ratio,
-							 m_data->m_my_cpuload,
-							 m_data->m_prev_flush_cpu_pct,
-							 m_data->m_prev_flushes_duration_ns,
-							 st.n_tids_suppressed);
+	m_uncompressed_sample_handler.handle_uncompressed_sample(m_data->m_ts,
+								 nevts,
+								 num_drop_events,
+								 m_data->m_metrics.get(),
+								 m_data->m_sampling_ratio,
+								 m_data->m_my_cpuload,
+								 m_data->m_prev_flush_cpu_pct,
+								 m_data->m_prev_flushes_duration_ns,
+								 st.n_tids_suppressed);
 }
 
 void protobuf_metric_serializer::emit_metrics_to_file()

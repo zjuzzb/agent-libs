@@ -46,12 +46,13 @@ metric_serializer::data::data(const uint64_t evt_num,
 { }
 
 metric_serializer::metric_serializer(const internal_metrics::sptr_t& internal_metrics,
-                                     const std::string& root_dir):
-	m_mutex(),
-	m_sample_callback(nullptr),
+                                     const std::string& root_dir,
+				     uncompressed_sample_handler& sample_handler):
+	m_metrics_dir_mutex(),
 	m_root_dir(root_dir),
 	m_metrics_dir(""),
-	m_internal_metrics(internal_metrics)
+	m_internal_metrics(internal_metrics),
+	m_uncompressed_sample_handler(sample_handler)
 { 
 	if (!c_metrics_dir.get().empty())
 	{
@@ -63,7 +64,7 @@ metric_serializer::metric_serializer(const internal_metrics::sptr_t& internal_me
 
 bool metric_serializer::get_emit_metrics_to_file() const
 {
-	std::unique_lock<std::mutex> lock(m_mutex);
+	std::unique_lock<std::mutex> lock(m_metrics_dir_mutex);
 
 	return !m_metrics_dir.empty();
 }
@@ -71,7 +72,7 @@ bool metric_serializer::get_emit_metrics_to_file() const
 void metric_serializer::set_metrics_directory(const std::string& dir)
 {
 	// needs to be locked so user doesn't get bogus dir before we've "sanitized" it
-	std::unique_lock<std::mutex> lock(m_mutex);
+	std::unique_lock<std::mutex> lock(m_metrics_dir_mutex);
 
 	m_metrics_dir = dir;
 
@@ -94,23 +95,9 @@ void metric_serializer::set_metrics_directory(const std::string& dir)
 
 std::string metric_serializer::get_metrics_directory() const
 {
-	std::unique_lock<std::mutex> lock(m_mutex);
+	std::unique_lock<std::mutex> lock(m_metrics_dir_mutex);
 
 	return m_metrics_dir;
-}
-
-void metric_serializer::set_sample_callback(analyzer_callback_interface* const cb)
-{
-	std::unique_lock<std::mutex> lock(m_mutex);
-
-	m_sample_callback = cb;
-}
-
-analyzer_callback_interface* metric_serializer::get_sample_callback() const
-{
-	std::unique_lock<std::mutex> lock(m_mutex);
-
-	return m_sample_callback;
 }
 
 } // end namespace libsanalyzer

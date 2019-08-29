@@ -6,11 +6,20 @@
 
 #define ONE_SECOND_MS 1000
 
+namespace {
+uncompressed_sample_handler_dummy g_sample_handler;
+audit_tap_handler_dummy g_audit_handler;
+}
+
 void event_capture::capture()
 {
 	m_inspector = new sinsp();
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	m_analyzer = new sinsp_analyzer(m_inspector, "/opt/draios", int_metrics);
+	m_analyzer = new sinsp_analyzer(m_inspector,
+					"/opt/draios",
+					int_metrics,
+					g_sample_handler,
+					g_audit_handler);
 	m_inspector->m_analyzer = m_analyzer;
 
 	m_analyzer->set_configuration(m_configuration);
@@ -32,11 +41,6 @@ void event_capture::capture()
 	}
 
 	m_inspector->set_get_procs_cpu_from_driver(true);
-
-	if(m_analyzer_callback != NULL)
-	{
-		m_analyzer->set_sample_callback(m_analyzer_callback);
-	}
 
 	m_param.m_inspector = m_inspector;
 

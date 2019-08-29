@@ -230,7 +230,6 @@ dragent_configuration::dragent_configuration()
 	m_transmitbuffer_size = 0;
 	m_ssl_enabled = false;
 	m_ssl_verify_certificate = true;
-	m_compression_enabled = false;
 	m_emit_full_connections = false;
 	m_min_file_priority = (Message::Priority) -1;
 	m_min_console_priority = (Message::Priority) -1;
@@ -251,7 +250,6 @@ dragent_configuration::dragent_configuration()
 	m_tracepoint_hits_threshold = 0;
 	m_cpu_usage_max_sr_threshold = 0.0;
 	m_autoupdate_enabled = true;
-	m_print_protobuf = false;
 	m_json_parse_errors_logfile = "";
 	m_json_parse_errors_events_rate = 0.00333; // One event per 5 minutes
 	m_json_parse_errors_events_max_burst = 10;
@@ -675,7 +673,6 @@ void dragent_configuration::init()
 		m_ssl_ca_cert_paths.insert(m_ssl_ca_cert_paths.begin(), std::move(ssl_ca_cert_dir));
 	}
 
-	m_compression_enabled = m_config->get_scalar<bool>("compression", "enabled", true);
 	m_emit_full_connections = m_config->get_scalar<bool>("emitfullconnections_enabled", false);
 	m_dump_dir = m_config->get_scalar<string>("dumpdir", "/tmp/");
 	m_subsampling_ratio = m_config->get_scalar<decltype(m_subsampling_ratio)>("subsampling", "ratio", 1);
@@ -715,7 +712,6 @@ void dragent_configuration::init()
 	m_host_hidden = m_config->get_scalar<bool>("ui", "is_hidden", false);
 	m_hidden_processes = m_config->get_scalar<string>("ui", "hidden_processes", "");
 	m_autoupdate_enabled = m_config->get_scalar<bool>("autoupdate_enabled", true);
-	m_print_protobuf = m_config->get_scalar<bool>("protobuf_print", false);
 	m_json_parse_errors_logfile = m_config->get_scalar<string>("json_parse_errors_logfile", "");
 	m_json_parse_errors_events_rate = m_config->get_scalar<double>("json_parse_errors", "events_rate", 0.00333);
 	m_json_parse_errors_events_max_burst = m_config->get_scalar<uint32_t>("json_parse_errors", "events_max_burst", 10);
@@ -1139,7 +1135,6 @@ void dragent_configuration::init()
 
 	m_audit_tap_enabled = m_config->get_scalar<bool>("audit_tap", "enabled", false);
 	m_audit_tap_emit_local_connections = m_config->get_scalar<bool>("audit_tap", "emit_local_connections", false);
-	m_audit_tap_debug_only = m_config->get_scalar<bool>("audit_tap", "debug_only", true);
 
 	m_top_files_per_prog = m_config->get_scalar<int>("top_files", "per_program", 0);
 	m_top_files_per_container = m_config->get_scalar<int>("top_files", "per_container", 0);
@@ -1192,7 +1187,6 @@ void dragent_configuration::print_configuration() const
 		}
 		LOG_INFO(ca_cert_paths);
 	}
-	LOG_INFO("compression.enabled: " + bool_as_text(m_compression_enabled));
 	LOG_INFO("emitfullconnections.enabled: " + bool_as_text(m_emit_full_connections));
 	LOG_INFO("dumpdir: " + m_dump_dir);
 	LOG_INFO("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
@@ -1228,7 +1222,6 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("ui.is_hidden: " + bool_as_text(m_host_hidden));
 	LOG_INFO("ui.hidden_processes: " + m_hidden_processes);
 	LOG_INFO("autoupdate_enabled: " + bool_as_text(m_autoupdate_enabled));
-	LOG_INFO("protobuf_print: " + bool_as_text(m_print_protobuf));
 	if(m_json_parse_errors_logfile != "")
 	{
 		LOG_INFO("Will log json parse errors to; " + m_json_parse_errors_logfile);
@@ -1551,7 +1544,6 @@ void dragent_configuration::print_configuration() const
 
 	if (m_audit_tap_enabled)
 	{
-		LOG_INFO("Audit tap enabled%s.", m_audit_tap_debug_only ? " (debug only)" : "");
 		LOG_INFO("Auditing local connections: " + bool_as_text(m_audit_tap_emit_local_connections));
 	}
 

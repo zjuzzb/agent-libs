@@ -145,6 +145,7 @@ private:
 	std::unique_ptr<pipe_manager> m_promex_pipes;
 
 	internal_metrics::sptr_t m_internal_metrics;
+	protocol_handler m_protocol_handler;
 	sinsp_worker m_sinsp_worker;
 	capture_job_handler m_capture_job_handler;
 	connection_manager m_connection_manager;

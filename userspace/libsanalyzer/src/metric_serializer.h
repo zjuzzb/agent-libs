@@ -13,10 +13,11 @@
 #include <memory>
 #include <mutex>
 #include "type_config.h"
+#include "uncompressed_sample_handler.h"
 
 namespace draiosproto { class metrics; }
 
-class analyzer_callback_interface;
+class test_helper;
 
 namespace libsanalyzer
 {
@@ -68,9 +69,13 @@ public:
 	 *
 	 * @param[in] internal_metrics The internal metrics to serialize.
 	 * @param[in] root_dir    The root dir base of the application
+	 * @param[in] sample_handler the object implementing the function
+	 *            "handle_uncompressed_sample" to be invoked when sample processing
+	 *            is completed
 	 */
 	metric_serializer(const internal_metrics::sptr_t& internal_metrics,
-			  const std::string& root_dir);
+			  const std::string& root_dir,
+			  uncompressed_sample_handler& sample_handler);
 
 	virtual ~metric_serializer() = default;
 
@@ -87,16 +92,6 @@ public:
 	 * Wait for any potentially async serialization operations to complete.
 	 */
 	virtual void drain() const = 0;
-
-	/**
-	 * Update the sample callback handler to th given cb.
-	 *
-	 * @param[in] cb The new callback handler.
-	 */
-	void set_sample_callback(analyzer_callback_interface* cb);
-
-	/** Returns a pointer to the current sample callback. */
-	analyzer_callback_interface* get_sample_callback() const;
 
 	/**
 	 * Returns true if this metric_serializer is configured to emit
@@ -120,17 +115,18 @@ public:
 	void set_metrics_directory(const std::string&);
 
 private:
-	mutable std::mutex m_mutex;
-	analyzer_callback_interface* m_sample_callback;
+	mutable std::mutex m_metrics_dir_mutex;
 	std::string m_root_dir;
 	std::string m_metrics_dir;
 
 protected:
 	internal_metrics::sptr_t m_internal_metrics;
+	uncompressed_sample_handler& m_uncompressed_sample_handler;
 
 public: // configs
 	static type_config<std::string> c_metrics_dir;
 
+	friend class ::test_helper;
 };
 
 } // end namespace libsanalyzer

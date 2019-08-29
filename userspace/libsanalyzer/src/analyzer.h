@@ -35,12 +35,13 @@
 #include "k8s_user_event_message_handler.h"
 #include "procfs_scanner.h"
 #include "analyzer_file_stat.h"
-#include "analyzer_callback_interface.h"
 #include "analyzer_emitter.h"
 #include "jmx_emitter.h"
 #include "app_check_emitter.h"
 #include "environment_emitter.h"
 #include "process_emitter.h"
+#include "uncompressed_sample_handler.h"
+#include "audit_tap_handler.h"
 #include "statsd_emitter.h"
 
 namespace libsanalyzer
@@ -244,10 +245,10 @@ public:
 	// (it needs root_dir properly set to locate the cointerface server socket)
 	sinsp_analyzer(sinsp* inspector,
 		       std::string root_dir,
-		       const internal_metrics::sptr_t& internal_metrics);
+		       const internal_metrics::sptr_t& internal_metrics,
+		       uncompressed_sample_handler& sample_handler,
+		       audit_tap_handler& tap_handler);
 	~sinsp_analyzer();
-
-	void set_sample_callback(analyzer_callback_interface* cb);
 
 	//
 	// Called by the engine after opening the event source and before
@@ -1059,11 +1060,6 @@ VISIBILITY_PRIVATE
 	std::string m_root_dir;
 
 	//
-	// The callback we invoke when a sample is ready
-	//
-	analyzer_callback_interface* m_sample_callback;
-
-	//
 	// State required for CPU load calculation
 	//
 	sinsp_procfs_parser* m_procfs_parser;
@@ -1355,6 +1351,8 @@ VISIBILITY_PRIVATE
 
 	std::unique_ptr<libsanalyzer::metric_serializer> m_serializer;
 	bool m_async_serialize_enabled;
+
+	audit_tap_handler& m_audit_tap_handler;
 
 	process_manager m_process_manager;
 

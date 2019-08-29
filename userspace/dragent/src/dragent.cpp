@@ -197,7 +197,8 @@ dragent_app::dragent_app():
 	m_queue(MAX_SAMPLE_STORE_SIZE),
 	m_enable_autodrop(true),
 	m_internal_metrics(std::make_shared<internal_metrics>()),
-	m_sinsp_worker(&m_configuration, m_internal_metrics, &m_queue, &m_enable_autodrop, &m_capture_job_handler),
+	m_protocol_handler(m_queue),
+	m_sinsp_worker(&m_configuration, m_internal_metrics, m_protocol_handler, &m_enable_autodrop, &m_capture_job_handler),
 	m_capture_job_handler(&m_configuration, &m_queue, &m_enable_autodrop),
 	m_connection_manager(&m_configuration,
 	                     &m_queue,
@@ -223,7 +224,7 @@ dragent_app::dragent_app():
 				     { draiosproto::message_type::BASELINES,
 				       std::make_shared<security_baselines_message_handler>(m_sinsp_worker) },
 	                     }),
-	m_log_reporter(&m_queue, &m_configuration),
+	m_log_reporter(m_protocol_handler, &m_configuration),
 	m_subprocesses_logger(&m_configuration, &m_log_reporter),
 	m_last_dump_s(0)
 {
@@ -1066,9 +1067,9 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		}
 	}
 
-	if(m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns() != 0)
+	if(m_protocol_handler.get_last_loop_ns() != 0)
 	{
-		int64_t diff_ns = sinsp_utils::get_current_time_ns() - m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns();
+		int64_t diff_ns = sinsp_utils::get_current_time_ns() - m_protocol_handler.get_last_loop_ns();
 
 		if(diff_ns < 0)
 		{
@@ -1300,7 +1301,7 @@ void dragent_app::log_watchdog_report() const
 
 	const uint64_t now_ns = sinsp_utils::get_current_time_ns();
 	const int64_t sinsp_worker_diff_ns = now_ns - m_sinsp_worker.get_last_loop_ns();
-	const int64_t data_handler_diff_ns = now_ns - m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns();
+	const int64_t data_handler_diff_ns = now_ns - m_protocol_handler.get_last_loop_ns();
 
 	LOG_INFO("sinsp_worker last activity in  %" PRId64" ms ago", sinsp_worker_diff_ns/1000000);
 	LOG_INFO("data_handler last activity in  %" PRId64" ms ago", data_handler_diff_ns/1000000);

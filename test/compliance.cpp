@@ -16,6 +16,7 @@
 #include <sinsp.h>
 #include <configuration.h>
 #include <protocol.h>
+#include <protocol_handler.h>
 #include <compliance_mgr.h>
 
 using namespace std;
@@ -166,13 +167,13 @@ protected:
 		m_configuration.init(NULL, false);
 		dragent_configuration::m_terminate = false;
 
-		m_data_handler = new sinsp_data_handler(&m_configuration, m_queue);
+		m_data_handler = new protocol_handler(*m_queue);
 
-		m_compliance_mgr = new compliance_mgr(cointerface_root);
+		m_compliance_mgr = new compliance_mgr(cointerface_root, *m_data_handler);
 
 		// These tests don't check scope of compliance tasks so analyzer is set to NULL
 		bool save_errors = true;
-		m_compliance_mgr->init(m_data_handler, NULL, &m_configuration, save_errors);
+		m_compliance_mgr->init(NULL, &m_configuration, save_errors);
 
 		// Also create a server listening on the statsd port
 		if ((m_statsd_sock = socket(PF_INET, SOCK_DGRAM, 0)) < 0)
@@ -459,7 +460,7 @@ protected:
 	}
 
 	protocol_queue *m_queue;
-	sinsp_data_handler *m_data_handler;
+	protocol_handler* m_data_handler;
 	compliance_mgr *m_compliance_mgr;
 	dragent_configuration m_configuration;
 	shared_ptr<Pipe> m_colog;

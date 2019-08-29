@@ -14,13 +14,13 @@
 #include "security_host_metadata_receiver.h"
 #include "security_policy_loader.h"
 #include "security_policy_v2_loader.h"
-#include "sinsp_data_handler.h"
 #include "subprocesses_logger.h"
 #include "internal_metrics.h"
 
 #include "capture_job_handler.h"
 #include "security_mgr.h"
 #include "compliance_mgr.h"
+#include "protocol_handler.h"
 
 class captureinfo
 {
@@ -47,9 +47,9 @@ class sinsp_worker : public Poco::Runnable,
 public:
 	sinsp_worker(dragent_configuration* configuration,
 		     const internal_metrics::sptr_t& im,
-		     protocol_queue* queue,
+		     protocol_handler& handler,
 		     std::atomic<bool> *enable_autodrop,
-		     capture_job_handler *handler);
+		     capture_job_handler *capture_job_handler);
 	~sinsp_worker();
 
 	void run() override;
@@ -81,11 +81,6 @@ public:
 	const sinsp* get_inspector() const
 	{
 		return m_inspector.get();
-	}
-
-	const sinsp_data_handler* get_sinsp_data_handler() const
-	{
-		return &m_sinsp_handler;
 	}
 
 	void set_statsite_pipes(std::shared_ptr<pipe_manager> pipes)
@@ -149,7 +144,7 @@ private:
 
 	bool m_initialized;
 	dragent_configuration *m_configuration;
-	protocol_queue* m_queue;
+	protocol_handler& m_protocol_handler;
 	std::atomic<bool> *m_enable_autodrop;
 	bool m_autodrop_currently_enabled;
 	sinsp::ptr m_inspector;
@@ -159,7 +154,6 @@ private:
 	compliance_mgr *m_compliance_mgr;
 #endif
 	capture_job_handler *m_capture_job_handler;
-	sinsp_data_handler m_sinsp_handler;
 	blocking_queue<std::shared_ptr<capture_job_handler::dump_job_request>> m_dump_job_requests;
 	std::atomic<uint64_t> m_last_loop_ns;
 	std::atomic<pthread_t> m_pthread_id;

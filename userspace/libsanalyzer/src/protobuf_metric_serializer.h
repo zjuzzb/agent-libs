@@ -38,7 +38,8 @@ public:
 	 */
 	protobuf_metric_serializer(capture_stats_source* stats_source,
 	                           const internal_metrics::sptr_t& internal_metrics,
-				   const std::string& root_dir);
+				   const std::string& root_dir,
+				   uncompressed_sample_handler& sample_handler);
 
 	~protobuf_metric_serializer() override;
 

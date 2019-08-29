@@ -58,6 +58,9 @@ public:
 // contains the inspector loop, security_mgr, and a sinsp_data_handler
 // to accept policy events.
 namespace {
+uncompressed_sample_handler_dummy g_sample_handler;
+audit_tap_handler_dummy g_audit_handler;
+
 class test_sinsp_worker : public Runnable
 {
 public:
@@ -197,9 +200,16 @@ std::ostream &operator<<(std::ostream &os, const map<string, string> &map)
 
 class security_policies_test : public testing::Test
 {
+	// With the 10k packet size and our relatively slow
+	// reading of responses, we need a bigger than normal
+	// queue length.
+	const uint32_t DEFAULT_QUEUE_LEN = 1000;
 public:
 	/* path to the cointerface unix socket domain */
-	security_policies_test() : m_mgr("./resources")
+	security_policies_test() : 
+		m_queue(DEFAULT_QUEUE_LEN),
+		m_data_handler(m_queue),
+		m_mgr("./resources", m_data_handler)
 	{
 	}
 
@@ -213,11 +223,6 @@ protected:
 
 	void SetUpTest(bool delayed_reports=false)
 	{
-		// With the 10k packet size and our relatively slow
-		// reading of responses, we need a bigger than normal
-		// queue length.
-		m_queue = new protocol_queue(1000);
-
 		// dragent_configuration::init() takes an app, but I
 		// don't see it used anywhere.
 		m_configuration.init(NULL, false);
@@ -258,7 +263,11 @@ protected:
 
 		m_inspector = new sinsp();
 		m_internal_metrics = make_shared<internal_metrics>();
-		m_analyzer = new sinsp_analyzer(m_inspector, "/opt/draios", m_internal_metrics);
+		m_analyzer = new sinsp_analyzer(m_inspector,
+						"/opt/draios",
+						m_internal_metrics,
+						g_sample_handler,
+						g_audit_handler);
 		m_inspector->m_analyzer = m_analyzer;
 		m_analyzer->get_configuration()->set_machine_id(m_configuration.machine_id());
 		m_analyzer->set_containers_labels_max_len(m_configuration.m_containers_labels_max_len);
@@ -269,10 +278,8 @@ protected:
 
 		m_inspector->open("");
 
-		m_data_handler = new sinsp_data_handler(&m_configuration, m_queue);
-
 		// Note that capture job handler is NULL. So no actions that perform captures.
-		m_mgr.init(m_inspector, m_data_handler, m_analyzer, NULL, &m_configuration, m_internal_metrics);
+		m_mgr.init(m_inspector, m_analyzer, NULL, &m_configuration, m_internal_metrics);
 		std::string policies_file = (m_load_v1_policies
 				? security_config::get_policies_file()
 				: security_config::get_policies_v2_file());
@@ -334,8 +341,6 @@ protected:
 		ThreadPool::defaultPool().joinAll();
 		ThreadPool::defaultPool().stopAll();
 
-		delete m_queue;
-		delete m_data_handler;
 		delete m_sinsp_worker;
 		delete m_inspector;
 		delete m_analyzer;
@@ -531,7 +536,7 @@ public:
 
 		msg = NULL;
 
-		if (!m_queue->get(&item, delay_ms))
+		if (!m_queue.get(&item, delay_ms))
 		{
 			return;
 		}
@@ -624,12 +629,12 @@ protected:
 		check_expected_internal_metrics(metrics);
 	}
 
+	protocol_queue m_queue;
 	bool m_load_v1_policies = true;
-	protocol_queue *m_queue;
 	sinsp *m_inspector;
 	sinsp_analyzer *m_analyzer;
 	internal_metrics::sptr_t m_internal_metrics;
-	sinsp_data_handler *m_data_handler;
+	protocol_handler m_data_handler;
 	security_mgr m_mgr;
 	test_sinsp_worker *m_sinsp_worker;
 	dragent_configuration m_configuration;

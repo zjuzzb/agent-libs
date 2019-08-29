@@ -59,8 +59,8 @@ void dragent_error_handler::exception()
 	dragent_configuration::m_terminate = true;
 }
 
-log_reporter::log_reporter(protocol_queue * queue, dragent_configuration * configuration):
-		m_queue(queue),
+log_reporter::log_reporter(log_report_handler& handler, dragent_configuration * configuration):
+		m_report_handler(handler),
 		m_configuration(configuration)
 {
 }
@@ -120,21 +120,5 @@ void log_reporter::send_report(uint64_t ts_ns)
 	report.set_machine_id(m_configuration->machine_id());
 	report.set_log(buf.begin(), buf.size());
 
-	std::shared_ptr<protocol_queue_item> report_serialized = dragent_protocol::message_to_buffer(
-		ts_ns,
-		draiosproto::message_type::DIRTY_SHUTDOWN_REPORT,
-		report,
-		m_configuration->m_compression_enabled);
-
-	if(!report_serialized)
-	{
-		g_log->error("NULL converting message to buffer");
-		return;
-	}
-
-	if(!m_queue->put(report_serialized, protocol_queue::BQ_PRIORITY_LOW))
-	{
-		g_log->information("Queue full");
-		return;
-	}
+	m_report_handler.handle_log_report(ts_ns, report);
 }

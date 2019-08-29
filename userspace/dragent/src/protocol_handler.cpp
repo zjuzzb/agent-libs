@@ -1,6 +1,6 @@
 #include <memory>
 
-#include "sinsp_data_handler.h"
+#include "protocol_handler.h"
 #include "configuration.h"
 #include "utils.h"
 #include "common_logger.h"
@@ -10,31 +10,46 @@
 
 COMMON_LOGGER();
 
-sinsp_data_handler::sinsp_data_handler(const dragent_configuration* configuration,
-				       protocol_queue* queue) :
-	m_configuration(configuration),
-	m_queue(queue),
-	m_last_loop_ns(0)
+type_config<bool> protocol_handler::c_print_protobuf(
+	false,
+	"set to true to print the protobuf with each flush",
+	"protobuf_print");
+
+type_config<bool> protocol_handler::c_compression_enabled(
+	true,
+	"set to true to compress protobufs sent to the collector",
+	"compression",
+	"enabled");
+
+type_config<bool> protocol_handler::c_audit_tap_debug_only(
+	true,
+	"set to true to only log audit tap, but not emit",
+	"audit_tap",
+	"debug_only");
+
+protocol_handler::protocol_handler(protocol_queue& queue) :
+	m_last_loop_ns(0),
+	m_queue(queue)
 {
 }
 
-sinsp_data_handler::~sinsp_data_handler()
+protocol_handler::~protocol_handler()
 {
 }
 
-void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns,
-						   uint64_t nevts,
-						   uint64_t num_drop_events,
-						   draiosproto::metrics* metrics,
-						   uint32_t sampling_ratio,
-						   double analyzer_cpu_pct,
-						   double flush_cpu_pct,
-						   uint64_t analyzer_flush_duration_ns,
-						   uint64_t num_suppressed_threads)
+void protocol_handler::handle_uncompressed_sample(uint64_t ts_ns,
+						  uint64_t nevts,
+						  uint64_t num_drop_events,
+						  draiosproto::metrics* metrics,
+						  uint32_t sampling_ratio,
+						  double analyzer_cpu_pct,
+						  double flush_cpu_pct,
+						  uint64_t analyzer_flush_duration_ns,
+						  uint64_t num_suppressed_threads)
 {
 	m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
-	if(m_configuration->m_print_protobuf)
+	if(c_print_protobuf.get())
 	{
 		LOG_INFO(metrics->DebugString());
 	}
@@ -43,7 +58,7 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns,
 		ts_ns,
 		draiosproto::message_type::METRICS,
 		*metrics,
-		m_configuration->m_compression_enabled);
+		c_compression_enabled.get());
 
 	if(!buffer)
 	{
@@ -62,15 +77,20 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns,
  		+ ", st=" + NumberFormatter::format(num_suppressed_threads)
  		+ ", fl=" + NumberFormatter::format(analyzer_flush_duration_ns / 1000000));
 
-	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
+	if(!m_queue.put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
 		LOG_INFO("Queue full, discarding sample");
 	}
 }
 
-void sinsp_data_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draiosproto::policy_events *events)
+uint64_t protocol_handler::get_last_loop_ns() const
 {
-	if(m_configuration->m_print_protobuf)
+	return m_last_loop_ns;
+}
+
+void protocol_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draiosproto::policy_events *events)
+{
+	if(c_print_protobuf.get())
 	{
 		LOG_INFO(std::string("Security Events:") + events->DebugString());
 	}
@@ -79,7 +99,7 @@ void sinsp_data_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draios
 		ts_ns,
 		draiosproto::message_type::POLICY_EVENTS,
 		*events,
-		m_configuration->m_compression_enabled);
+		c_compression_enabled.get());
 
 	if(!buffer)
 	{
@@ -90,17 +110,17 @@ void sinsp_data_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draios
 	LOG_INFO("sec_evts len=" + NumberFormatter::format(buffer->buffer.size())
 			   + ", ne=" + NumberFormatter::format(events->events_size()));
 
-	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
+	if(!m_queue.put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
 		LOG_INFO("Queue full, discarding sample");
 	}
 }
 
-void sinsp_data_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
+void protocol_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
 							     draiosproto::throttled_policy_events *tevents,
 							     uint32_t total_throttled_count)
 {
-	if(m_configuration->m_print_protobuf)
+	if(c_print_protobuf.get())
 	{
 		LOG_INFO(std::string("Throttled Security Events:") + tevents->DebugString());
 	}
@@ -109,7 +129,7 @@ void sinsp_data_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
 		ts_ns,
 		draiosproto::message_type::THROTTLED_POLICY_EVENTS,
 		*tevents,
-		m_configuration->m_compression_enabled);
+		c_compression_enabled.get());
 
 	if(!buffer)
 	{
@@ -121,15 +141,15 @@ void sinsp_data_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
 			   + ", nte=" + NumberFormatter::format(tevents->events_size())
 			   + ", tcount=" + NumberFormatter::format(total_throttled_count));
 
-	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_LOW))
+	if(!m_queue.put(buffer, protocol_queue::BQ_PRIORITY_LOW))
 	{
 		LOG_INFO("Queue full, discarding sample");
 	}
 }
 
-void sinsp_data_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const draiosproto::comp_results *results)
+void protocol_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const draiosproto::comp_results *results)
 {
-	if(m_configuration->m_print_protobuf)
+	if(c_print_protobuf.get())
 	{
 		LOG_INFO(std::string("Compliance Results:") + results->DebugString());
 	}
@@ -138,7 +158,7 @@ void sinsp_data_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const d
 		ts_ns,
 		draiosproto::message_type::COMP_RESULTS,
 		*results,
-		m_configuration->m_compression_enabled);
+		c_compression_enabled.get());
 
 	if(!buffer)
 	{
@@ -149,15 +169,15 @@ void sinsp_data_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const d
 	LOG_INFO("sec_comp_results len=" + NumberFormatter::format(buffer->buffer.size())
 			   + ", ne=" + NumberFormatter::format(results->results_size()));
 
-	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_LOW))
+	if(!m_queue.put(buffer, protocol_queue::BQ_PRIORITY_LOW))
 	{
 		LOG_INFO("Queue full, discarding sample");
 	}
 }
 
-void sinsp_data_handler::audit_tap_data_ready(uint64_t ts_ns, const tap::AuditLog *audit_log)
+void protocol_handler::audit_tap_data_ready(uint64_t ts_ns, const tap::AuditLog *audit_log)
 {
-	if(m_configuration->m_print_protobuf || m_configuration->m_audit_tap_debug_only)
+	if(c_print_protobuf.get() || c_audit_tap_debug_only.get())
 	{
 		LOG_INFO(std::string("Audit tap data:") + audit_log->DebugString());
 	}
@@ -181,13 +201,35 @@ void sinsp_data_handler::audit_tap_data_ready(uint64_t ts_ns, const tap::AuditLo
 			   + ", e=" + NumberFormatter::format(audit_log->environmentvariables().size())
 			   );
 
-	if(m_configuration->m_audit_tap_debug_only)
+	if(c_audit_tap_debug_only.get())
 	{
 		return;
 	}
 
-	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
+	if(!m_queue.put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
 		LOG_INFO("Queue full, discarding sample");
+	}
+}
+
+void protocol_handler::handle_log_report(uint64_t ts_ns,
+					 const draiosproto::dirty_shutdown_report& report)
+{
+	std::shared_ptr<protocol_queue_item> report_serialized = dragent_protocol::message_to_buffer(
+		ts_ns,
+		draiosproto::message_type::DIRTY_SHUTDOWN_REPORT,
+		report,
+		c_compression_enabled.get());
+
+	if(!report_serialized)
+	{
+		g_log->error("NULL converting message to buffer");
+		return;
+	}
+
+	if(!m_queue.put(report_serialized, protocol_queue::BQ_PRIORITY_LOW))
+	{
+		g_log->information("Queue full");
+		return;
 	}
 }

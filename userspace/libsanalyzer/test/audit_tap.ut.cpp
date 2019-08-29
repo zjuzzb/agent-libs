@@ -12,6 +12,8 @@
 using namespace test_helpers;
 
 namespace {
+uncompressed_sample_handler_dummy g_sample_handler;
+audit_tap_handler_dummy g_audit_handler;
 
 env_hash_config *default_hash_config()
 {
@@ -30,10 +32,6 @@ env_hash_config *default_hash_config()
 }
 
 const std::string MACHINE_ID_FOR_TEST = "deadbeef";
-
-}
-
-namespace {
 
 void add_connection(sinsp &inspector,
 		    audit_tap &tap,
@@ -101,7 +99,12 @@ TEST(audit_tap_test, basic)
 	// Also audit_tap uses tinfo->m_ainfo which is collected by the
 	// analyzer_thread.
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(), "/" /*root dir*/, int_metrics);
+	
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_sample_handler,
+				g_audit_handler);
 	// For this test, we don't use the audit_tap in the analyzer, but if
 	// we don't enable it the the ipv4_connection_manager won't record the
 	// correct data.
@@ -175,7 +178,11 @@ TEST(audit_tap_test, max_command_arg_configured)
 									       \
 	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);                 \
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();\
-	sinsp_analyzer analyzer(inspector.get(), "/" /*root dir*/, int_metrics);\
+	sinsp_analyzer analyzer(inspector.get(),                               \
+				"/" /*root dir*/,			       \
+				int_metrics,                                   \
+				g_sample_handler,                              \
+				g_audit_handler);                              \
 	analyzer.enable_audit_tap(true /*emit local connections*/);            \
 	inspector->m_analyzer = &analyzer;                                     \
 									       \

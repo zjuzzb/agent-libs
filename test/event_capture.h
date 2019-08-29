@@ -64,18 +64,34 @@ public:
 			event_filter_t filter, before_open_t before_open)
 	{
 		sinsp_configuration configuration;
-		run(run_function, captured_event_callback, filter, configuration,
-			NULL, 0, 0, 0, SCAP_MODE_LIVE, before_open);
+		run(run_function,
+		    captured_event_callback,
+		    filter,
+		    configuration,
+		    0,
+		    0,
+		    0,
+		    SCAP_MODE_LIVE,
+		    before_open);
 	}
 
 	static void run(run_callback_t run_function,
 	                captured_event_callback_t captured_event_callback,
-	                event_filter_t filter, before_open_t before_open,
-	                before_close_t before_close)
+	                event_filter_t filter,
+			before_open_t before_open,
+			before_close_t before_close)
 	{
 		sinsp_configuration configuration;
-		run(run_function, captured_event_callback, filter, configuration,
-			NULL, 0, 0, 0, SCAP_MODE_LIVE, before_open, before_close);
+		run(run_function,
+		    captured_event_callback,
+		    filter,
+		    configuration,
+		    0,
+		    0,
+		    0,
+		    SCAP_MODE_LIVE,
+		    before_open,
+		    before_close);
 	}
 
 	static void run(run_callback_t run_function,
@@ -98,7 +114,7 @@ public:
 	}
 
 	static void run_nodriver(run_callback_t run_function,
-					captured_event_callback_t captured_event_callback)
+				 captured_event_callback_t captured_event_callback)
 	{
 		event_filter_t no_filter = [](sinsp_evt *)
 		{
@@ -106,7 +122,14 @@ public:
 		};
 
 		sinsp_configuration configuration;
-		run(run_function, captured_event_callback, no_filter, configuration, NULL, 0, 0, 0, SCAP_MODE_NODRIVER);
+		run(run_function,
+		    captured_event_callback,
+		    no_filter,
+		    configuration,
+		    0,
+		    0,
+		    0,
+		    SCAP_MODE_NODRIVER);
 	}
 
 	static void run(
@@ -114,7 +137,6 @@ public:
 		captured_event_callback_t captured_event_callback,
 		event_filter_t filter,
 		const sinsp_configuration& configuration,
-		analyzer_callback_interface* analyzer_callback = NULL,
 		uint32_t max_thread_table_size = 0,
 		uint64_t thread_timeout_ns = 0,
 		uint64_t inactive_thread_scan_time_ns = 0,
@@ -132,7 +154,6 @@ public:
 		capturing.m_capture_continue = capture_continue;
 		capturing.m_filter = filter;
 		capturing.m_configuration = configuration;
-		capturing.m_analyzer_callback = analyzer_callback;
 		capturing.m_max_thread_table_size = max_thread_table_size;
 		capturing.m_thread_timeout_ns = thread_timeout_ns;
 		capturing.m_inactive_thread_scan_time_ns = inactive_thread_scan_time_ns;
@@ -233,7 +254,6 @@ private:
 	callback_param m_param;
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;
-	analyzer_callback_interface* m_analyzer_callback;
 	scap_mode_t m_mode;
 	uint64_t m_max_timeouts;
 };

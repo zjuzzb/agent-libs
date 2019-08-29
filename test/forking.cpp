@@ -303,7 +303,6 @@ TEST_F(sys_call_test, forking_process_expired)
 		callback,
 		filter,
 		configuration,
-		NULL,
 		0,
 		5 * ONE_SECOND_IN_NS,	// thread timeout
 		ONE_SECOND_IN_NS);});	// thread table scan time

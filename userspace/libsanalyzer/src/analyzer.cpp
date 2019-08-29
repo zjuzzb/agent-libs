@@ -41,7 +41,6 @@ using namespace google::protobuf::io;
 #include "parsers.h"
 #include "analyzer_int.h"
 #include "analyzer.h"
-#include "analyzer_callback_interface.h"
 #include "metric_serializer.h"
 #include "metric_serializer_factory.h"
 #include "connectinfo.h"
@@ -120,7 +119,9 @@ void init_host_level_percentiles(T &metrics, const std::set<double> &pctls)
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 			       std::string root_dir,
-			       const internal_metrics::sptr_t& internal_metrics):
+			       const internal_metrics::sptr_t& internal_metrics,
+			       uncompressed_sample_handler& sample_handler,
+			       audit_tap_handler& tap_handler):
 	m_configuration(new sinsp_configuration()),
 	m_inspector(inspector),
 #ifndef CYGWING_AGENT
@@ -135,8 +136,10 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_serializer(metric_serializer_factory::build(
 				m_inspector,
 				internal_metrics,
-				root_dir)),
-	m_async_serialize_enabled(true)
+				root_dir,
+				sample_handler)),
+	m_async_serialize_enabled(true),
+	m_audit_tap_handler(tap_handler)
 {
 	ASSERT(m_internal_metrics);
 	m_initialized = false;
@@ -153,7 +156,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_flush_log_time_restart = 0;
 
 	m_metrics = new draiosproto::metrics;
-	m_sample_callback = NULL;
 	m_prev_sample_evtnum = 0;
 	m_client_tr_time_by_servers = 0;
 
@@ -561,14 +563,6 @@ void sinsp_analyzer::init_k8s_user_event_handler()
 	glogf("initializing k8s event message handler");
 	m_k8s_user_event_handler->set_machine_id(m_configuration->get_machine_id());
 	m_k8s_user_event_handler->set_user_event_queue(m_user_event_queue);
-}
-
-void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
-{
-	ASSERT(cb != NULL);
-	ASSERT(m_sample_callback == NULL);
-	m_sample_callback = cb;
-	m_serializer->set_sample_callback(cb);
 }
 
 void sinsp_analyzer::add_chisel_dirs()
@@ -4539,7 +4533,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 		auto tap_events = m_tap->get_events();
 		if (tap_events)
 		{
-			m_sample_callback->audit_tap_data_ready(ts, tap_events);
+			m_audit_tap_handler.audit_tap_data_ready(ts, tap_events);
 		}
 		m_tap->clear();
 	}

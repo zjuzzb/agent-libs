@@ -57,10 +57,10 @@ list(APPEND targetfiles
 	security_mgr.cpp
 	security_orchestrator_events_message_handler.cpp
 	security_policy.cpp
+	protocol_handler.cpp
 	security_policies_message_handler.cpp
 	security_policies_v2_message_handler.cpp
 	security_rule.cpp
-	sinsp_data_handler.cpp
 	sinsp_factory.cpp
 	sinsp_worker.cpp
 	subprocesses_logger.cpp

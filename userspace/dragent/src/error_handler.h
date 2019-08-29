@@ -3,6 +3,7 @@
 #include "main.h"
 #include "configuration.h"
 #include "protocol.h"
+#include "log_report_handler.h"
 
 class dragent_error_handler : public Poco::ErrorHandler
 {
@@ -19,9 +20,9 @@ public:
 class log_reporter
 {
 public:
-	log_reporter(protocol_queue*, dragent_configuration*);
+	log_reporter(log_report_handler& handler, dragent_configuration*);
 	void send_report(uint64_t ts_ns);
 private:
-	protocol_queue* m_queue;
+	log_report_handler& m_report_handler;
 	dragent_configuration* m_configuration;
 };

@@ -4,6 +4,7 @@
 #include "sinsp_worker.h"
 #include "sinsp_mock.h"
 #include "watchdog_runnable_pool.h"
+#include "protocol_handler.h"
 
 using namespace dragent;
 using namespace test_helpers;
@@ -16,7 +17,8 @@ namespace {
  */
 void run_sinsp_worker(const sinsp::ptr& inspector,
 		      dragent_configuration& config,
-		      protocol_queue& queue)
+		      protocol_queue& queue,
+		      protocol_handler& handler)
 {
 	sinsp_factory::inject(inspector);
 
@@ -25,7 +27,7 @@ void run_sinsp_worker(const sinsp::ptr& inspector,
 	std::atomic<bool> enable_autodrop;
 
 	capture_job_handler job_handler(&config, &queue, &enable_autodrop);
-	sinsp_worker worker(&config, im, &queue, &enable_autodrop, &job_handler);
+	sinsp_worker worker(&config, im, handler, &enable_autodrop, &job_handler);
 	worker.run();
 }
 
@@ -33,11 +35,13 @@ void run_sinsp_worker(const sinsp::ptr& inspector,
  * Run the sinsp worker thread with the given inspector. This
  * will load a config with defaults
  */
-void run_sinsp_worker(const sinsp::ptr &inspector, protocol_queue& queue)
+void run_sinsp_worker(const sinsp::ptr &inspector,
+		      protocol_queue& queue,
+		      protocol_handler& handler)
 {
 	dragent_configuration config;
 	config.init();
-	run_sinsp_worker(inspector, config, queue);
+	run_sinsp_worker(inspector, config, queue, handler);
 }
 
 }
@@ -54,7 +58,8 @@ TEST(sinsp_worker_test, DISABLED_end_to_end_basic)
 
 	// Run the sinsp_worker
 	protocol_queue queue(MAX_SAMPLE_STORE_SIZE);
-	run_sinsp_worker(inspector, queue);
+	protocol_handler handler(queue);
+	run_sinsp_worker(inspector, queue, handler);
 
 	// Inspect the protocol queue
 	ASSERT_EQ(1, queue.size());
@@ -72,20 +77,21 @@ TEST(sinsp_worker_test, DISABLED_end_to_end_basic)
 
 }
 
-
 TEST(sinsp_worker_test, is_stall_fatal_in_capture_mode)
 {
 	dragent_configuration config;
 	config.m_input_filename = "capture_file.scap";
-	sinsp_worker worker(&config, nullptr, nullptr, nullptr,  nullptr);
+	protocol_queue queue(MAX_SAMPLE_STORE_SIZE);
+	protocol_handler handler(queue);
+	sinsp_worker worker(&config, nullptr, handler, nullptr,  nullptr);
 	ASSERT_FALSE(worker.is_stall_fatal());
 }
 
 TEST(sinsp_worker_test, is_stall_fatal_in_driver_mode)
 {
 	dragent_configuration config;
-	sinsp_worker worker(&config, nullptr, nullptr, nullptr,  nullptr);
+	protocol_queue queue(MAX_SAMPLE_STORE_SIZE);
+	protocol_handler handler(queue);
+	sinsp_worker worker(&config, nullptr, handler, nullptr,  nullptr);
 	ASSERT_TRUE(worker.is_stall_fatal());
 }
-
-

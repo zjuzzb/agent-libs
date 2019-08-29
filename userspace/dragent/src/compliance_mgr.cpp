@@ -10,13 +10,14 @@
 using namespace std;
 namespace security_config = libsanalyzer::security_config;
 
-compliance_mgr::compliance_mgr(const string &run_root)
+compliance_mgr::compliance_mgr(const string &run_root,
+			       security_result_handler& result_handler)
 	: m_num_grpc_errs(0),
 	  m_send_compliance_results(false),
 	  m_send_compliance_events(false),
 	  m_should_refresh_compliance_tasks(false),
 	  m_initialized(false),
-	  m_sinsp_handler(NULL),
+	  m_result_handler(result_handler),
 	  m_analyzer(NULL),
 	  m_cointerface_sock_path("unix:" + run_root + "/cointerface.sock")
 {
@@ -27,12 +28,10 @@ compliance_mgr::~compliance_mgr()
 	stop_compliance_tasks();
 }
 
-void compliance_mgr::init(sinsp_data_handler *sinsp_handler,
-			  sinsp_analyzer *analyzer,
+void compliance_mgr::init(sinsp_analyzer *analyzer,
 			  dragent_configuration *configuration,
 			  bool save_errors)
 {
-	m_sinsp_handler = sinsp_handler;
 	m_analyzer = analyzer;
 	m_configuration = configuration;
 	m_save_errors = save_errors;
@@ -363,7 +362,7 @@ void compliance_mgr::check_pending_task_results()
 		{
 			if(cevent.results().results_size() > 0)
 			{
-				m_sinsp_handler->security_mgr_comp_results_ready(cevent.results().results(0).timestamp_ns(),
+				m_result_handler.security_mgr_comp_results_ready(cevent.results().results(0).timestamp_ns(),
 										 &(cevent.results()));
 			}
 		}
