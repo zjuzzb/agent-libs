@@ -609,6 +609,7 @@ void infrastructure_state::reset()
 	m_k8s_cached_cluster_id.clear();
 	m_k8s_node.clear();
 	m_k8s_node_uid.clear();
+	m_k8s_node_actual = false;
 	m_registered_scopes.clear();
 	m_rate_metric_state.clear();
 
