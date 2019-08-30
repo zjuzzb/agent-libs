@@ -54,14 +54,13 @@ public:
 	}
 
 	static void
-	add_inspector_container(sinsp& inspector, const std::string& container_id)
+	add_inspector_container(sinsp& inspector, const sinsp_container_info& container)
 	{
-		auto container = std::make_shared<sinsp_container_info>();
-		container->m_id = container_id;
-		inspector.m_container_manager.m_containers[container_id] = container;
+		inspector.m_container_manager.m_containers[container.m_id] =
+			std::make_shared<sinsp_container_info>(container);
 	}
 
-	static std::unordered_map<std::string, std::shared_ptr<sinsp_container_info>>&
+	static std::unordered_map<std::string, std::shared_ptr<const sinsp_container_info>>&
 	get_inspector_containers(sinsp& inspector)
 	{
 		return inspector.m_container_manager.m_containers;
@@ -104,8 +103,9 @@ public:
 		// stuff stuff in the right container maps for the analyzer and
 		// inspector
 		test_helper::get_analyzer_containers(analyzer)[m_name];
-		test_helper::add_inspector_container(inspector, m_name);
-		test_helper::get_inspector_containers(inspector)[m_name]->m_id = m_name;
+		sinsp_container_info container;
+		container.m_id = m_name;
+		test_helper::add_inspector_container(inspector, container);
 	}
 
 	std::string m_name;
@@ -192,19 +192,32 @@ TEST(analyzer_test, coalesce_containers_test)
 	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name].m_metrics.m_fd_count = 8;
 
 	// cpu_shares
-	test_helper::get_inspector_containers(inspector)[emitted_container.m_name]->m_cpu_shares = 5;
-	test_helper::get_inspector_containers(inspector)[unemitted_container_1.m_name]->m_cpu_shares = 10;
-	test_helper::get_inspector_containers(inspector)[unemitted_container_2.m_name]->m_cpu_shares = 9;
-
 	// memory_limit_kb
-	test_helper::get_inspector_containers(inspector)[emitted_container.m_name]->m_memory_limit = 5 * 1024;
-	test_helper::get_inspector_containers(inspector)[unemitted_container_1.m_name]->m_memory_limit = 11 * 1024;
-	test_helper::get_inspector_containers(inspector)[unemitted_container_2.m_name]->m_memory_limit = 10 * 1024;
-
 	// swap_limit_kb
-	test_helper::get_inspector_containers(inspector)[emitted_container.m_name]->m_swap_limit = 5 * 1024;
-	test_helper::get_inspector_containers(inspector)[unemitted_container_1.m_name]->m_swap_limit = 12 * 1024;
-	test_helper::get_inspector_containers(inspector)[unemitted_container_2.m_name]->m_swap_limit = 11 * 1024;
+	{
+		sinsp_container_info container;
+		container.m_id = emitted_container.m_name;
+		container.m_cpu_shares = 5;
+		container.m_memory_limit = 5 * 1024;
+		container.m_swap_limit = 5 * 1024;
+		test_helper::add_inspector_container(inspector, container);
+	}
+	{
+		sinsp_container_info container;
+		container.m_id = unemitted_container_1.m_name;
+		container.m_cpu_shares = 10;
+		container.m_memory_limit = 11 * 1024;
+		container.m_swap_limit = 12 * 1024;
+		test_helper::add_inspector_container(inspector, container);
+	}
+	{
+		sinsp_container_info container;
+		container.m_id = unemitted_container_2.m_name;
+		container.m_cpu_shares = 9;
+		container.m_memory_limit = 10 * 1024;
+		container.m_swap_limit = 11 * 1024;
+		test_helper::add_inspector_container(inspector, container);
+	}
 
 	// count_processes
 	test_helper::set_proc_count(analyzer, emitted_container.m_name, 5);

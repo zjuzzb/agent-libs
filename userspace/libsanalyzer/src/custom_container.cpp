@@ -260,9 +260,9 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 
 	tinfo->m_container_id = container_info.m_id;
 	auto num_containers = manager->get_containers()->size();
-	auto container = manager->get_container(container_info.m_id);
+	auto existing_container = manager->get_container(container_info.m_id);
 
-	if (!container && num_containers >= m_max)
+	if (!existing_container && num_containers >= m_max)
 	{
 		if (!m_limit_logged)
 		{
@@ -273,61 +273,61 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	}
 	m_limit_logged = false;
 
-	if (container != nullptr) {
-		if (container->m_metadata_deadline < sinsp_utils::get_current_time_ns()) {
+	if (existing_container != nullptr) {
+		if (existing_container->m_metadata_deadline < sinsp_utils::get_current_time_ns()) {
 			return true;
 		}
+		container_info = *existing_container;
 	} else {
 		container_info.m_metadata_deadline = sinsp_utils::get_current_time_ns() + (10 * ONE_SECOND_IN_NS);
-		container = make_shared<sinsp_container_info>(container_info);
 		new_container = true;
 	}
 
 	if (m_name_pattern.empty())
 	{
-		container->m_name = container->m_id;
+		container_info.m_name = container_info.m_id;
 	}
-	else if (container->m_name.empty())
+	else if (container_info.m_name.empty())
 	{
 		try {
-			m_name_pattern.render(container->m_name, render_ctx, env);
-			if (container->m_name.empty())
+			m_name_pattern.render(container_info.m_name, render_ctx, env);
+			if (container_info.m_name.empty())
 			{
 				metadata_complete = false;
 			} else {
-				clean_label(container->m_name);
+				clean_label(container_info.m_name);
 			}
 		} catch (const Poco::RuntimeException& e) {
 			g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container name due to error in configuration: %s", e.message().c_str());
 			m_name_pattern = custom_container::subst_template();
-			container->m_name = container->m_id;
+			container_info.m_name = container_info.m_id;
 		}
 	}
 
-	if (container->m_image.empty()) {
+	if (container_info.m_image.empty()) {
 		try {
-			m_image_pattern.render(container->m_image, render_ctx, env);
-			if (container->m_image.empty())
+			m_image_pattern.render(container_info.m_image, render_ctx, env);
+			if (container_info.m_image.empty())
 			{
 				if (m_incremental_metadata)
 				{
 					metadata_complete = false;
 				}
 			} else {
-				clean_label(container->m_image);
+				clean_label(container_info.m_image);
 			}
 		} catch (const Poco::RuntimeException &e) {
 			g_logger.format(sinsp_logger::SEV_WARNING,
 							"Disabling custom container image due to error in configuration: %s", e.message().c_str());
 			m_image_pattern = custom_container::subst_template();
-			container->m_image = "";
+			container_info.m_image = "";
 		}
 	}
 
 	auto it = m_label_patterns.begin();
 	while (it != m_label_patterns.end())
 	{
-		if (container->m_labels.find(it->first) == container->m_labels.end())
+		if (container_info.m_labels.find(it->first) == container_info.m_labels.end())
 		{
 			try {
 				string s;
@@ -339,7 +339,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 					}
 				} else {
 					clean_label(s);
-					container->m_labels.emplace(it->first, move(s));
+					container_info.m_labels.emplace(it->first, move(s));
 				}
 			} catch (const Poco::RuntimeException& e) {
 				g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container label %s due to error in configuration: %s", it->first.c_str(), e.message().c_str());
@@ -353,25 +353,31 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 
 	if (m_config_test)
 	{
-		m_dump[container->m_id]["name"] = container->m_name;
-		if (!container->m_image.empty())
+		m_dump[container_info.m_id]["name"] = container_info.m_name;
+		if (!container_info.m_image.empty())
 		{
-			m_dump[container->m_id]["image"] = container->m_image;
+			m_dump[container_info.m_id]["image"] = container_info.m_image;
 		}
-		if (!container->m_labels.empty())
+		if (!container_info.m_labels.empty())
 		{
-			m_dump[container->m_id]["labels"] = container->m_labels;
+			m_dump[container_info.m_id]["labels"] = container_info.m_labels;
 		}
 	}
 
 	if (metadata_complete)
 	{
-		container->m_metadata_deadline = 0;
+		container_info.m_metadata_deadline = 0;
 	}
 	if (new_container)
 	{
+		auto container = make_shared<sinsp_container_info>(container_info);
 		manager->add_container(container, tinfo);
 		manager->notify_new_container(*container.get());
+	}
+	else // if(updated_container)
+	{
+		auto container = make_shared<sinsp_container_info>(container_info);
+		manager->replace_container(container);
 	}
 	return true;
 }
