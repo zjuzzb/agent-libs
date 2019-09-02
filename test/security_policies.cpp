@@ -721,6 +721,22 @@ protected:
 		}
 
 		SetUpTest();
+
+		int ret = -1;
+
+		for (int i = 0; ret != 0 && i < 20; i++)
+		{
+			ret = system("curl -I localhost:7765/k8s_audit > /dev/null 2>&1");
+			if (ret != 0)
+			{
+				Thread::sleep(500);
+			}
+		}
+
+		if (ret != 0)
+		{
+			FAIL() << "localhost:7765/k8s_audit is not responding after 10 seconds";
+		}
 	}
 
 	virtual void TearDown()
