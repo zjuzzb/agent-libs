@@ -4,6 +4,12 @@ INSTALL_DIR=$1
 
 if [ -n "$INSTALL_DIR" ]
 then
+	if [ ! -d "/opt/draios" ]
+	then
+		echo "Directory /opt/draios DOES NOT exist. Creating it."
+		mkdir -p /opt/draios
+	fi
+	
 	SETUP_CMD="mount --bind $INSTALL_DIR /opt/draios"
 else
 	SETUP_CMD="true"
