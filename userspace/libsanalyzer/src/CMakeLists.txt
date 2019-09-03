@@ -110,6 +110,7 @@ set(SANALYZER_SOURCES
 	analyzer_utils.cpp
 	audit_tap.cpp
 	baseliner.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cgroup_limits.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel_api.cpp
 	cm_quantile.c
