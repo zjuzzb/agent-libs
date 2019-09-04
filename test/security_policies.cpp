@@ -333,6 +333,8 @@ protected:
 		mkdir("/tmp/one/two/three", 0777);
 		mkdir("/tmp/two", 0777);
 		mkdir("/tmp/two/three", 0777);
+		createFile("/tmp/second");
+		createFile("/tmp/third");
 	}
 
 	virtual void SetUp()
@@ -373,20 +375,29 @@ protected:
 		rmdir("/tmp/one");
 		rmdir("/tmp/two/three");
 		rmdir("/tmp/two");
+		remove("/tmp/second");
+		remove("/tmp/third");
 	}
 
 public:
 	struct expected_policy_event
 	{
+		typedef enum {
+			HOST_OR_CONTAINER = 0,
+			CONTAINER_ONLY,
+			HOST_ONLY
+		} event_scope_t;
+
 		expected_policy_event(uint64_t p,
 				      draiosproto::policy_type ot,
 				      map<string,string> ofk)
 			: policy_id(p),
 			  output_type(ot),
 			  output_fields(ofk),
-			  baseline_id("")
-		{
-		}
+			  baseline_id(""),
+			  event_scope(HOST_OR_CONTAINER)
+			{
+			}
 		expected_policy_event(uint64_t p,
 				      draiosproto::policy_type ot,
 				      map<string,string> ofk,
@@ -394,13 +405,38 @@ public:
 			: policy_id(p),
 			  output_type(ot),
 			  output_fields(ofk),
-			  baseline_id(b_id)
-		{
-		}
+			  baseline_id(b_id),
+			  event_scope(HOST_OR_CONTAINER)
+			{
+			}
+		expected_policy_event(uint64_t p,
+				      draiosproto::policy_type ot,
+				      map<string,string> ofk,
+				      event_scope_t scope)
+			: policy_id(p),
+			  output_type(ot),
+			  output_fields(ofk),
+			  baseline_id(""),
+			  event_scope(scope)
+			{
+			}
+		expected_policy_event(uint64_t p,
+				      draiosproto::policy_type ot,
+				      map<string,string> ofk,
+				      string b_id,
+				      event_scope_t scope)
+			: policy_id(p),
+			  output_type(ot),
+			  output_fields(ofk),
+			  baseline_id(b_id),
+			  event_scope(scope)
+			{
+			}
 		uint64_t policy_id;
 		draiosproto::policy_type output_type;
 		map<string,string> output_fields;
 		string baseline_id;
+		event_scope_t event_scope;
 	};
 
 	void check_policy_events(std::vector<expected_policy_event> &expected)
@@ -436,6 +472,21 @@ public:
 				bool matched_any = false;
 				for(uint32_t i=0; i<expected.size(); i++)
 				{
+					// The scope of the event must match
+					if(expected[i].event_scope == expected_policy_event::CONTAINER_ONLY &&
+					   (!evt.has_container_id() || evt.container_id() == ""))
+					{
+						FAIL() << "Policy event occurred not in container but expected scope was only containers: "
+						       << evt.DebugString();
+					}
+
+					if(expected[i].event_scope == expected_policy_event::HOST_ONLY &&
+					   (evt.has_container_id() && evt.container_id() != ""))
+					{
+						FAIL() << "Policy event occurred in container but expected scope was only hosts: "
+						       << evt.DebugString();
+					}
+
 					if(evt.policy_id() == expected[i].policy_id &&
 					   details.output_type() == expected[i].output_type &&
 					   check_output_fields(evt_output_fields, expected[i].output_fields))
@@ -1369,6 +1420,64 @@ TEST_F(security_policies_v2_test, container_match_multi_policies_one_rule)
 
 	check_expected_internal_metrics(metrics);
 };
+
+TEST_F(security_policies_v2_test, container_only_scope)
+{
+	if(!dutils_check_docker())
+	{
+		return;
+	}
+
+	// Only the activity in the container should result in policy
+	// events. The command line differentiates between the
+	// container and host activity.
+	int fd = open("/tmp/second", O_RDWR);
+	close(fd);
+
+	dutils_kill_container("sec_ut");
+
+	ASSERT_EQ(system("docker run -d --rm --name sec_ut busybox:latest sh -c 'while true; do echo '' > /tmp/second; sleep 1; done' > /dev/null 2>&1"), 0);
+
+	sleep(5);
+
+	dutils_kill_container("sec_ut");
+
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{33,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/second"},
+									{"evt.type", "open"}},
+		  expected_policy_event::CONTAINER_ONLY}};
+
+	check_policy_events(expected);
+}
+
+TEST_F(security_policies_v2_test, host_only_scope)
+{
+	if(!dutils_check_docker())
+	{
+		return;
+	}
+
+	// Only the activity in the container should result in policy
+	// events. The command line differentiates between the
+	// container and host activity.
+	int fd = open("/tmp/third", O_RDWR);
+	close(fd);
+
+	dutils_kill_container("sec_ut");
+
+	ASSERT_EQ(system("docker run -d --rm --name sec_ut busybox:latest sh -c 'while true; do echo '' > /tmp/third; sleep 1; done' > /dev/null 2>&1"), 0);
+
+	sleep(5);
+
+	dutils_kill_container("sec_ut");
+
+	std::vector<security_policies_test::expected_policy_event> expected =
+		{{34,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/third"},
+								 {"evt.type", "open"}},
+		  expected_policy_event::HOST_ONLY}};
+
+	check_policy_events(expected);
+}
 
 static void process_only(security_policies_test *ptest, bool v1_metrics)
 {

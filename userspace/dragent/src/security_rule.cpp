@@ -61,7 +61,18 @@ bool security_policy_v2::match_scope(std::string container_id, sinsp_analyzer *a
 	// continue to checking with infra state but use an empty set
 	// of predicates.  If the container id is not empty, return
 	// false.
-	bool host_only_scope = false;
+	//
+	// Similarly, the way to express "run only on containers" is
+	// 'container.id != ""'. If the only scope predicate is
+	// 'container.id != "", do the same check of the container id
+	// and then continue to checking with infra_state with an
+	// empty set of predicates.
+	//
+	// Checking with an empty set of predicates is currently an
+	// immediate true return, but it's probably better to keep as
+	// much scope checking as possible in the infrastructure state
+	// code.
+	bool use_empty_preds = false;
 
 	if(scope_predicates().size() == 1)
 	{
@@ -72,8 +83,20 @@ bool security_policy_v2::match_scope(std::string container_id, sinsp_analyzer *a
 		    pred.values().size() == 1 &&
 		    pred.values()[0] == "")
 		{
-			host_only_scope = true;
+			use_empty_preds = true;
 			if(container_id != "")
+			{
+				return false;
+			}
+		}
+
+		if (pred.key() == "container.id" &&
+		    pred.op() == draiosproto::NOT_EQ &&
+		    pred.values().size() == 1 &&
+		    pred.values()[0] == "")
+		{
+			use_empty_preds = true;
+			if(container_id == "")
 			{
 				return false;
 			}
@@ -81,7 +104,7 @@ bool security_policy_v2::match_scope(std::string container_id, sinsp_analyzer *a
 	}
 
 	return scope_predicates().empty() ||
-		analyzer->infra_state()->match_scope(uid, (host_only_scope ? empty_preds : scope_predicates()));
+		analyzer->infra_state()->match_scope(uid, (use_empty_preds ? empty_preds : scope_predicates()));
 }
 
 security_rule_library::rule::rule(const std::string &name, draiosproto::policy_type rule_type)

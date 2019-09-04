@@ -304,5 +304,35 @@
 	     "matchItems": true
 	 }
      }
+    },
+    {"id": 1021,
+     "name": "match /tmp/second",
+     "origin": "secure UI",
+     "versionId": "0.1.1",
+     "filename": "fastengine_rules.yaml",
+     "tags": [],
+     "description": "",
+     "details": {
+	 "ruleType": "FILESYSTEM",
+	 "readWritePaths": {
+	     "items": ["/tmp/second"],
+	     "matchItems": true
+	 }
+     }
+    },
+    {"id": 1022,
+     "name": "match /tmp/third",
+     "origin": "secure UI",
+     "versionId": "0.1.1",
+     "filename": "fastengine_rules.yaml",
+     "tags": [],
+     "description": "",
+     "details": {
+	 "ruleType": "FILESYSTEM",
+	 "readWritePaths": {
+	     "items": ["/tmp/third"],
+	     "matchItems": true
+	 }
+     }
     }
 ]

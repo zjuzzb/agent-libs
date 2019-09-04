@@ -257,6 +257,28 @@ policy_list {
   rule_names: "match busybox:some-tag"
   enabled: 1
 }
+policy_list {
+  id: 33
+  name: "Testing container-only policy scopes"
+  rule_names: "match /tmp/second"
+  enabled: 1
+  scope_predicates {
+    key: "container.id"
+    values: ""
+    op: NOT_EQ
+  }
+}
+policy_list {
+  id: 34
+  name: "Testing host-only policy scopes"
+  rule_names: "match /tmp/third"
+  enabled: 1
+  scope_predicates {
+    key: "container.id"
+    values: ""
+    op: EQ
+  }
+}
 falco_group {
   default_files {
     tag: "0.1.1test"
