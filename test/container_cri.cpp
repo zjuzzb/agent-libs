@@ -24,6 +24,7 @@ protected:
 		float docker_delay,
 		const std::function<void(const callback_param& param, std::atomic<bool>& done)>& callback,
 		const std::function<void(const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done)>& new_cb,
+		bool async,
 		bool want_events=true);
 };
 
@@ -209,6 +210,7 @@ void container_cri::fake_cri_test_timing(
 	float docker_delay,
 	const std::function<void(const callback_param& param, std::atomic<bool>& done)>& callback,
 	const std::function<void(const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done)>& new_cb,
+	bool async,
 	bool want_events)
 {
 	std::atomic<bool> done_events(!want_events);
@@ -244,6 +246,7 @@ void container_cri::fake_cri_test_timing(
 		inspector->set_docker_socket_path(fake_docker_socket);
 		inspector->set_cri_socket_path(fake_cri_socket);
 		inspector->set_cri_extra_queries(false);
+		inspector->set_cri_async(async);
 		inspector->set_log_callback(common_logger::sinsp_logger_callback);
 		inspector->m_container_manager.subscribe_on_new_container(
 			[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo) {
@@ -348,7 +351,8 @@ TEST_F(container_cri, fake_cri_then_docker) {
 		expect_cri_container,
 		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
 			expect_callbacks(exp_callbacks, container, done);
-		});
+		},
+		true);
 
 	ASSERT_TRUE(exp_callbacks.empty());
 }
@@ -366,7 +370,8 @@ TEST_F(container_cri, fake_docker_then_cri) {
 		expect_docker_container,
 		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
 			expect_callbacks(exp_callbacks, container, done);
-		});
+		},
+		true);
 
 	ASSERT_TRUE(exp_callbacks.empty());
 }
@@ -385,7 +390,8 @@ TEST_F(container_cri, fake_cri_fail_then_docker) {
 		expect_docker_container,
 		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
 			expect_callbacks(exp_callbacks, container, done);
-		});
+		},
+		true);
 
 	ASSERT_TRUE(exp_callbacks.empty());
 }
@@ -403,7 +409,8 @@ TEST_F(container_cri, fake_docker_then_cri_fail) {
 		expect_docker_container,
 		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
 			expect_callbacks(exp_callbacks, container, done);
-		});
+		},
+		true);
 
 	ASSERT_TRUE(exp_callbacks.empty());
 }
@@ -421,7 +428,8 @@ TEST_F(container_cri, fake_cri_then_docker_fail) {
 		expect_cri_container,
 		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
 			expect_callbacks(exp_callbacks, container, done);
-		});
+		},
+		true);
 
 	ASSERT_TRUE(exp_callbacks.empty());
 }
@@ -440,7 +448,8 @@ TEST_F(container_cri, fake_docker_fail_then_cri) {
 		expect_cri_container,
 		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
 			expect_callbacks(exp_callbacks, container, done);
-		});
+		},
+		true);
 
 	ASSERT_TRUE(exp_callbacks.empty());
 }
@@ -460,6 +469,7 @@ TEST_F(container_cri, fake_cri_fail_then_docker_fail) {
 		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
 			expect_callbacks(exp_callbacks, container, done);
 		},
+		true,
 		false);
 
 	ASSERT_TRUE(exp_callbacks.empty());
@@ -480,6 +490,165 @@ TEST_F(container_cri, fake_docker_fail_then_cri_fail) {
 		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
 			expect_callbacks(exp_callbacks, container, done);
 		},
+		true,
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_cri_then_docker_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_CONTAINERD, sinsp_container_lookup_state::SUCCESSFUL},
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--nodelay",
+		"containerd",
+		0.5,
+		expect_cri_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_docker_then_cri_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_DOCKER, sinsp_container_lookup_state::SUCCESSFUL},
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--slow",
+		"containerd",
+		0.0,
+		expect_docker_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_cri_fail_then_docker_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_CONTAINERD, sinsp_container_lookup_state::FAILED},
+		{CT_DOCKER, sinsp_container_lookup_state::SUCCESSFUL},
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--veryslow",
+		"containerd",
+		2.0,
+		expect_docker_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_docker_then_cri_fail_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_DOCKER, sinsp_container_lookup_state::SUCCESSFUL},
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--veryslow",
+		"containerd",
+		0.0,
+		expect_docker_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_cri_then_docker_fail_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_CONTAINERD, sinsp_container_lookup_state::SUCCESSFUL},
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--nodelay",
+		"containerd",
+		-0.5,
+		expect_cri_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_docker_fail_then_cri_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_DOCKER, sinsp_container_lookup_state::FAILED},
+		{CT_CONTAINERD, sinsp_container_lookup_state::SUCCESSFUL},
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--slow",
+		"containerd",
+		-0.1,
+		expect_cri_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_cri_fail_then_docker_fail_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_CONTAINERD, sinsp_container_lookup_state::FAILED},
+		{CT_DOCKER, sinsp_container_lookup_state::FAILED}
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--veryslow",
+		"containerd",
+		-2.0,
+		expect_no_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		false,
+		false);
+
+	ASSERT_TRUE(exp_callbacks.empty());
+}
+
+TEST_F(container_cri, fake_docker_fail_then_cri_fail_sync) {
+	std::vector<callback_params> exp_callbacks = {
+		{CT_DOCKER, sinsp_container_lookup_state::FAILED},
+		{CT_CONTAINERD, sinsp_container_lookup_state::FAILED}
+	};
+
+	fake_cri_test_timing(
+		"resources/fake_cri_agent",
+		"--veryslow",
+		"containerd",
+		-0.1,
+		expect_no_container,
+		[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo, std::atomic<bool>& done) {
+			expect_callbacks(exp_callbacks, container, done);
+		},
+		false,
 		false);
 
 	ASSERT_TRUE(exp_callbacks.empty());
