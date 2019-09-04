@@ -16,6 +16,29 @@ using namespace std;
 using nlohmann::json;
 namespace security_config = libsanalyzer::security_config;
 
+type_config<bool> security_mgr::c_event_labels_enabled(
+        true,
+        "Policy Events Labels enabled",
+        "event_labels", "enabled");
+
+type_config<int> security_mgr::c_event_labels_max_agent_tags(
+		30,
+		"Event Labels - Max agent tags to be considered",
+		"event_labels", "max_agent_tags"
+		);
+
+type_config<std::vector<std::string>> security_mgr::c_event_labels_include(
+		{},
+		"Event Labels included",
+		"event_labels", "include"
+		);
+
+type_config<std::vector<std::string>> security_mgr::c_event_labels_exclude(
+		{},
+		"Event Labels excluded",
+		"event_labels", "exclude"
+);
+
 // XXX/mstemm TODO
 // - Is there a good way to immediately check the status of a sysdig capture that I can put in the action result?
 // - The currently event handling doesn't actually work with on
@@ -51,6 +74,7 @@ security_mgr::security_mgr(const string& install_root,
 	scope_info sinfo;
 	security_policies_group dummy(sinfo, m_inspector, m_configuration);
 	dummy.init_metrics(m_security_evt_metrics);
+	configure_event_labels_set();
 }
 
 security_mgr::~security_mgr()
@@ -862,9 +886,11 @@ void security_mgr::process_event_v1(gen_event *evt)
 
 					draiosproto::policy_event *event = create_policy_event(evt->get_ts(),
 											       container_id,
+											       tinfo,
 											       match->policy()->id(),
 											       match->take_detail(),
-											       policy_version);
+											       policy_version,
+											       evt->get_source());
 
 					// Not throttled--perform the actions associated
 					// with the policy. The actions will add their action
@@ -940,9 +966,11 @@ void security_mgr::process_event_v2(gen_event *evt)
 
 				draiosproto::policy_event *event = create_policy_event(evt->get_ts(),
 										       container_id,
+										       tinfo,
 										       result.m_policy->id(),
 										       result.m_detail,
-										       policy_version);
+										       policy_version,
+										       evt->get_source());
 
 				// Not throttled--perform the actions associated
 				// with the policy. The actions will add their action
@@ -1226,9 +1254,11 @@ void security_mgr::add_policy_event_metrics(const security_rules::match_result &
 
 draiosproto::policy_event * security_mgr::create_policy_event(int64_t ts_ns,
 							      std::string &container_id,
+							      sinsp_threadinfo *tinfo,
 							      uint64_t policy_id,
 							      draiosproto::event_detail *details,
-							      uint64_t policy_version)
+							      uint64_t policy_version,
+							      uint16_t event_source)
 {
 	draiosproto::policy_event *event = new draiosproto::policy_event();
 
@@ -1256,14 +1286,22 @@ draiosproto::policy_event * security_mgr::create_policy_event(int64_t ts_ns,
 	{
 		event->set_sinsp_events_dropped(analyzer()->recent_sinsp_events_dropped());
 	}
+
+	if (c_event_labels_enabled.get() && event_source != ESRC_K8S_AUDIT)
+	{
+		set_event_labels(container_id, tinfo, event);
+	}
+
 	return event;
 }
 
 draiosproto::policy_event * security_mgr::create_policy_event(int64_t ts_ns,
 							      std::string &container_id,
+							      sinsp_threadinfo *tinfo,
 							      uint64_t policy_id,
 							      draiosproto::event_detail &details,
-							      uint64_t policy_version)
+							      uint64_t policy_version,
+							      uint16_t event_source)
 {
 	draiosproto::policy_event *event = new draiosproto::policy_event();
 
@@ -1292,7 +1330,91 @@ draiosproto::policy_event * security_mgr::create_policy_event(int64_t ts_ns,
 	{
 		event->set_sinsp_events_dropped(analyzer()->recent_sinsp_events_dropped());
 	}
+
+	if (c_event_labels_enabled.get() && event_source != ESRC_K8S_AUDIT)
+	{
+		set_event_labels(container_id, tinfo, event);
+	}
+
 	return event;
+}
+
+void security_mgr::set_event_labels(std::string &container_id,
+									sinsp_threadinfo *tinfo,
+									draiosproto::policy_event *event)
+{
+	// Process Name
+	if (m_event_labels.find("process.name") != m_event_labels.end())
+	{
+		if (tinfo != nullptr && tinfo->m_tid > 0)
+		{
+			std::string cmdline;
+			sinsp_threadinfo::populate_cmdline(cmdline, tinfo);
+			if (!cmdline.empty()) {
+				(*event->mutable_event_labels())["process.name"] = std::move(cmdline);
+			}
+		}
+	}
+
+	// Host Name
+	if (m_event_labels.find("host.hostName") != m_event_labels.end())
+	{
+		string host_name = sinsp_gethostname();
+		if (!host_name.empty()) {
+			(*event->mutable_event_labels())["host.hostName"] = std::move(host_name);
+		}
+	}
+
+	// Agent Tags
+	if (m_event_labels.find("agent.tag") != m_event_labels.end()) {
+		std::vector<std::string> tags = sinsp_split(m_configuration->m_host_tags, ',');
+
+		std::string tag_prefix = "agent.tag.";
+
+		int count_tags = 0;
+		for (auto &pair : tags) {
+			if (count_tags >= c_event_labels_max_agent_tags.get())
+			{
+				break;
+			}
+
+			std::vector<std::string> parts = sinsp_split(pair, ':');
+
+			if (parts.size() == 2) {
+				// Do not include hardcoded "sysdig_secure.enabled" tag
+				if (parts[0] != "sysdig_secure.enabled") {
+					(*event->mutable_event_labels())[tag_prefix + parts[0]] = parts[1];
+					count_tags++;
+				}
+			}
+		}
+	}
+
+	// Infrastructure Lookup for Kubernetes Labels
+	infrastructure_state::uid_t uid;
+	uid = std::make_pair("container", container_id);
+
+	std::unordered_map<std::string, std::string>event_labels;
+	m_analyzer->infra_state()->find_tag_list(uid, m_event_labels, event_labels);
+
+	for (auto& it: event_labels)
+	{
+		(*event->mutable_event_labels())[it.first] = std::move(it.second);
+	}
+
+	// Kubernetes Cluster Name
+	if (m_event_labels.find("kubernetes.cluster.name") != m_event_labels.end())
+	{
+		// kubernetes.cluster.name should be pushed only if the event is related to k8s
+		// Use Pod Name label to check it
+		if (event_labels.find("kubernetes.pod.name") != event_labels.end())
+		{
+			if (!m_configuration->m_k8s_cluster_name.empty())
+			{
+				(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_analyzer->infra_state()->get_k8s_cluster_name();
+			}
+		}
+	}
 }
 
 void security_mgr::report_events(uint64_t ts_ns)
@@ -1615,6 +1737,18 @@ void security_mgr::stop_k8s_audit_tasks()
 	}
 
         g_log->error("Did not receive response to K8s Audit Stop() call within 10 seconds");
+}
+
+// Given two vectors of strings 'include' and 'exclude'
+// if a key is present in both include and exclude ignore it
+// otherwise create a set of 'include' strings
+void security_mgr::configure_event_labels_set(){
+	for (const auto& s : c_event_labels_include.get()){
+		m_event_labels.insert(s);
+	}
+	for (const auto& s : c_event_labels_exclude.get()){
+		m_event_labels.erase(s);
+	}
 }
 
 #endif // CYGWING_AGENT
