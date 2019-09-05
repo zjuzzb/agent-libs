@@ -1220,7 +1220,6 @@ event_labels:
     - kubernetes.deployment.name
     - kubernetes.pod.name
     - kubernetes.node.name
-  exclude:
 
 # configuration files to monitor for updates
 monitor_files:
