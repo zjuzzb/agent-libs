@@ -90,6 +90,7 @@ class Prometheus(AgentCheck):
                             logging.warn('prometheus ingest_raw: capping tags %s found %d max_tags %d' % (sname, len(rawtags), max_tags))
                             rawtags = rawtags[:max_tags]
 
+                        # No check here for NaN values, as we do allow them for raw prometheus metrics.
                         self.prometheus_raw(family.type, sname, value, rawtags)
                         num += 1
                         if max_metrics and self.__check_metric_limits(max_metrics, num, pid, query_url):

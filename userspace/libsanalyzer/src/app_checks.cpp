@@ -571,12 +571,15 @@ app_metric::app_metric(const Json::Value &obj):
 			m_type = iter->second.first;
 
 			if (m_type == type_t::PROMETHEUS_RAW) {
+				// obj[2] is either "NaN" or a double
 				m_prometheus_type = iter->second.second;
-			}
+				if (obj[2].isString() && !strcmp("NaN", obj[2].asCString())) {
+					m_value = nan("");
+				} else {
+					m_value = obj[2].asDouble();
+				}
 
-			if (m_type != type_t::BUCKETS) {
-				m_value = obj[2].asDouble();
-			} else {
+			} else if (m_type == type_t::BUCKETS) {
 				// obj[2] is a map of <label, count>
 				const auto &buckets(obj[2]);
 				const auto labels = buckets.getMemberNames();
@@ -599,7 +602,12 @@ app_metric::app_metric(const Json::Value &obj):
 						          ex.what());
 					}
 				}
+
+			} else {
+				// obj[2] is just a double
+				m_value = obj[2].asDouble();
 			}
+
 		} else {
 			g_logger.format(sinsp_logger::SEV_ERROR, "[app_check] unknown metric type: %s",
 			                type.c_str());

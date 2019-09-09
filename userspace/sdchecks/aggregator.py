@@ -1,5 +1,6 @@
 # stdlib
 import logging
+import math
 from time import time
 
 # project
@@ -113,29 +114,40 @@ class Buckets(Gauge):
         super(Buckets, self).__init__(formatter, name, tags, hostname, device_name, extra_config)
         self.metric_type = MetricTypes.BUCKETS
 
+def promraw_nan_wrap(formatter):
+    """ A wrapper around a metric formatter that ensures NaN values are sent as a string, since NaN's are not valid numeric values in JSON."""
+
+    def promraw_formatter(metric, value, timestamp, tags, hostname=None, device_name=None,
+                                   metric_type=None, interval=None):
+        safevalue = value
+        if math.isnan(value):
+            safevalue = "NaN"
+        return formatter(metric, safevalue, timestamp, tags, hostname, device_name, metric_type, interval)
+    return promraw_formatter
+
 class PrometheusRawCounter(Gauge):
     def __init__(self, formatter, name, tags, hostname, device_name, extra_config=None):
-        super(PrometheusRawCounter, self).__init__(formatter, name, tags, hostname, device_name, extra_config)
+        super(PrometheusRawCounter, self).__init__(promraw_nan_wrap(formatter), name, tags, hostname, device_name, extra_config)
         self.metric_type = MetricTypes.PROMETHEUS_RAW_COUNTER
 
 class PrometheusRawGauge(Gauge):
     def __init__(self, formatter, name, tags, hostname, device_name, extra_config=None):
-        super(PrometheusRawGauge, self).__init__(formatter, name, tags, hostname, device_name, extra_config)
+        super(PrometheusRawGauge, self).__init__(promraw_nan_wrap(formatter), name, tags, hostname, device_name, extra_config)
         self.metric_type = MetricTypes.PROMETHEUS_RAW_GAUGE
 
 class PrometheusRawHistogram(Gauge):
     def __init__(self, formatter, name, tags, hostname, device_name, extra_config=None):
-        super(PrometheusRawHistogram, self).__init__(formatter, name, tags, hostname, device_name, extra_config)
+        super(PrometheusRawHistogram, self).__init__(promraw_nan_wrap(formatter), name, tags, hostname, device_name, extra_config)
         self.metric_type = MetricTypes.PROMETHEUS_RAW_HISTOGRAM
 
 class PrometheusRawSummary(Gauge):
     def __init__(self, formatter, name, tags, hostname, device_name, extra_config=None):
-        super(PrometheusRawSummary, self).__init__(formatter, name, tags, hostname, device_name, extra_config)
+        super(PrometheusRawSummary, self).__init__(promraw_nan_wrap(formatter), name, tags, hostname, device_name, extra_config)
         self.metric_type = MetricTypes.PROMETHEUS_RAW_SUMMARY
 
 class PrometheusRawUnknown(Gauge):
     def __init__(self, formatter, name, tags, hostname, device_name, extra_config=None):
-        super(PrometheusRawUnknown, self).__init__(formatter, name, tags, hostname, device_name, extra_config)
+        super(PrometheusRawUnknown, self).__init__(promraw_nan_wrap(formatter), name, tags, hostname, device_name, extra_config)
         self.metric_type = MetricTypes.PROMETHEUS_RAW_UNKNOWN
 
 class Count(Metric):
