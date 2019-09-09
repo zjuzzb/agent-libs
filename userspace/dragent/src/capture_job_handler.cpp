@@ -387,8 +387,7 @@ void capture_job::process_event(sinsp_evt *ev)
 		return;
 	}
 
-	if(m_duration_ns &&
-	   ev->get_ts() - m_start_ns > m_duration_ns)
+	if(ev->get_ts() - m_start_ns > m_duration_ns)
 	{
 		stop();
 		return;

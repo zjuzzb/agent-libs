@@ -446,7 +446,7 @@ protected:
         //  - wait for a keep-alive message for the dump we started
         //  - open a different file with a known filename for reading
         //  - wait for the dump to complete
-	void perform_single_dump(bool dump_before, bool filter_events)
+	void perform_single_dump(bool dump_before, bool dump_after, bool filter_events)
 	{
 		open_test_file("before");
 
@@ -454,7 +454,7 @@ protected:
 		ASSERT_NO_FATAL_FAILURE({
 				send_dump_request("single",
 						  (dump_before ? 1000 : 0),
-						  3000,
+						  dump_after ? 3000 : 0,
 						  filter_events,
 						  false,
 						  true);
@@ -647,24 +647,37 @@ TEST_F(memdump_test, standard_dump)
 	// we get frequent dump_response messages.
 	m_capture_job_handler->set_dump_chunk_size(10240);
 
-	ASSERT_NO_FATAL_FAILURE(perform_single_dump(false, true));
+	ASSERT_NO_FATAL_FAILURE(perform_single_dump(false /*before*/, true /*after*/, true /*filter*/));
 
 	// At this point, /tmp/agent-dump-events.scap should exist and
 	// contain an open event for the after file, but not the before file.
 	ASSERT_NO_FATAL_FAILURE(read_trace("single", set<string>{string("after")}));
 }
 
-TEST_F(memdump_test, back_in_time_dump)
+TEST_F(memdump_test, before_and_after_dump)
 {
 	// Set the dump chunk size to something very small so
 	// we get frequent dump_response messages.
 	m_capture_job_handler->set_dump_chunk_size(10240);
 
-	ASSERT_NO_FATAL_FAILURE(perform_single_dump(true, true));
+	ASSERT_NO_FATAL_FAILURE(perform_single_dump(true /*before*/, true /*after*/, true /*filter*/));
 
 	// At this point, /tmp/agent-dump-events.scap should exist and
 	// contain an open event for both the before and after files
 	ASSERT_NO_FATAL_FAILURE(read_trace("single",set<string>{string("before"), string("after")}));
+}
+
+TEST_F(memdump_test, back_in_time_dump_only)
+{
+	// Set the dump chunk size to something very small so
+	// we get frequent dump_response messages.
+	m_capture_job_handler->set_dump_chunk_size(10240);
+
+	ASSERT_NO_FATAL_FAILURE(perform_single_dump(true /*before*/, false /*after*/, true /*filter*/));
+
+	// At this point, /tmp/agent-dump-events.scap should exist and
+	// contain an open event for both the before and after files
+	ASSERT_NO_FATAL_FAILURE(read_trace("single", set<string>{ string("before") }));
 }
 
 TEST_F(memdump_test, overlapping_dumps)
@@ -693,7 +706,7 @@ TEST_F(memdump_test, max_outstanding_dumps)
 
 TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
 {
-	ASSERT_NO_FATAL_FAILURE(perform_single_dump(true, false));
+	ASSERT_NO_FATAL_FAILURE(perform_single_dump(true /*before*/, true /*after*/, false /*filter*/));
 
 	std::unique_ptr<sinsp> inspector = make_unique<sinsp>();
 	string filter = "proc.name=tests";
@@ -771,7 +784,7 @@ TEST_F(memdump_test, delayed_capture_start)
 	std::shared_ptr<protocol_queue_item> buf;
 	ASSERT_EQ(m_queue->get(&buf, 1000), false);
 
-	ASSERT_NO_FATAL_FAILURE(perform_single_dump(false, true));
+	ASSERT_NO_FATAL_FAILURE(perform_single_dump(false /*before*/, true /*after*/, true /*filter*/));
 
 	// Tell the capture to start sending
 	send_dump_start("delayed");
@@ -807,7 +820,7 @@ TEST_F(memdump_max_one_capture_test, stop_delayed_capture)
 
 	// Start another capture. This would only work if sending the
 	// stop above actually cleans up the capture.
-	ASSERT_NO_FATAL_FAILURE(perform_single_dump(false, true));
+	ASSERT_NO_FATAL_FAILURE(perform_single_dump(false /*before*/, true /*after*/, true /*filter*/));
 
 	// At this point, /tmp/agent-dump-events.scap should exist and
 	// contain an open event for the after file, but not the before file.
