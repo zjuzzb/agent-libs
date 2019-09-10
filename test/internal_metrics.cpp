@@ -215,6 +215,11 @@ const char* logstr()
 	"  name: \"dragent.analyzer.mesos.detected\"\n"
 	"  type: STATSD_GAUGE\n"
 	"  value: 0\n"
+	"}\n"
+ 	"statsd_metrics {\n"
+	"  name: \"dragent.analyzer.baseliner_enabled\"\n"
+	"  type: STATSD_GAUGE\n"
+	"  value: 0\n"
 	"}\n";
 }
 
@@ -310,6 +315,11 @@ const char* allstr()
 	"  name: \"dragent.analyzer.n_preemptions\"\n"
 	"  type: STATSD_GAUGE\n"
 	"  value: 996\n"
+	"}\n"
+	"statsd_metrics {\n"
+	"  name: \"dragent.analyzer.baseliner_enabled\"\n"
+	"  type: STATSD_GAUGE\n"
+	"  value: 0\n"
 	"}\n"
 	"statsd_metrics {\n"
 	"  name: \"dragent.subproc.agent.cpu.pct100\"\n"
