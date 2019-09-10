@@ -191,6 +191,8 @@ bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info)
 
 		write_metric(statsd_info, "dragent.analyzer.n_command_lines", draiosproto::STATSD_GAUGE, m_analyzer.n_command_lines);
 
+		write_metric(statsd_info, "dragent.analyzer.baseliner_enabled", draiosproto::STATSD_GAUGE, m_analyzer.baseliner_enabled ? 1 : 0);
+
 		send_command_categories(statsd_info);
 
 		// subprocesses
