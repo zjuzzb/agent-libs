@@ -222,7 +222,7 @@ public:
 	inline run_on_interval(uint64_t interval);
 
 	template<typename Callable>
-	inline void run(const Callable& c, uint64_t now = sinsp_utils::get_current_time_ns());
+	inline void run(const Callable& c, uint64_t now);
 	uint64_t interval() const { return m_interval; }
 	void interval(uint64_t i) { m_interval = i; }
 private:

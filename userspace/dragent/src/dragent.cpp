@@ -1150,7 +1150,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			};
 
 			m_coclient->ping(time(NULL), callback);
-		});
+		}, sinsp_utils::get_current_time_ns());
 
 		// Try to read any responses
 		m_coclient->process_queue();

@@ -54,10 +54,10 @@ void compliance_mgr::process_event(sinsp_evt *evt)
 
 	uint64_t ts_ns = evt->get_ts();
 
-	m_check_periodic_tasks_interval->run([this, ts_ns]()
+	m_check_periodic_tasks_interval->run([this]()
         {
 		check_tasks();
-	});
+	}, ts_ns);
 
 }
 

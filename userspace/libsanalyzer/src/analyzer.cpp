@@ -3253,7 +3253,7 @@ vector<long> sinsp_analyzer::get_n_tracepoint_diff()
 				g_logger.format(sinsp_logger::SEV_ERROR,
 						"Event count query failed: %s",
 						e.what());
-			});
+			}, sinsp_utils::get_current_time_ns());
 	}
 	catch(...)
 	{
@@ -3262,7 +3262,7 @@ vector<long> sinsp_analyzer::get_n_tracepoint_diff()
 			{
 				g_logger.log("Event count query failed with an unknown error",
 					     sinsp_logger::SEV_ERROR);
-			});
+			}, sinsp_utils::get_current_time_ns());
 	}
 
 	if(n_evts_by_cpu.empty())
@@ -3845,7 +3845,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 							}
 						};
 						m_coclient.get_swarm_state(callback);
-					});
+					}, sinsp_utils::get_current_time_ns() );
 					// Read available responses
 					m_coclient.process_queue();
 					ss_trc.stop();
@@ -5517,7 +5517,7 @@ bool sinsp_analyzer::check_k8s_delegation()
 						     " by config override",
 						     sinsp_logger::SEV_INFO);
 					return enabled;
-				});
+				}, sinsp_utils::get_current_time_ns());
 		}
 	}
 	return false;
