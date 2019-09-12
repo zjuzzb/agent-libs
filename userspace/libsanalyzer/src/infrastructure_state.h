@@ -180,6 +180,8 @@ private:
 			    scope_predicates &preds,
 			    std::unordered_set<uid_t> &visited_groups);
 
+	void update_parent_child_links(const uid_t& uid);
+
 	void handle_event(const draiosproto::congroup_update_event *evt, bool overwrite = false);
 	
 	void refresh_hosts_metadata();
@@ -210,6 +212,7 @@ private:
 
 	std::map<uid_t, std::unique_ptr<draiosproto::container_group>> m_state;
 	std::unordered_map<uid_t, std::vector<uid_t>> m_orphans;
+	std::unordered_map<uid_t, std::unordered_set<uid_t>> m_parents;
 
 	struct reg_scope_t {
 		bool m_host_scope;

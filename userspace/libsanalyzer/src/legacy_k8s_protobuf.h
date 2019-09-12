@@ -3,12 +3,15 @@
 #include <functional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <logger.h>
+#include "analyzer_utils.h"
 #include "draios.pb.h"
 
 namespace legacy_k8s
 {
-void fill_common(const draiosproto::container_group *congroup, draiosproto::k8s_common *common, const std::string& tag_prefix);
+using uid_set_t = std::unordered_set<std::pair<std::string, std::string>>;
+void fill_common(const uid_set_t& parents, const draiosproto::container_group *congroup, draiosproto::k8s_common *common, const std::string& tag_prefix);
 void set_namespace(draiosproto::k8s_common *common, const std::unordered_map<std::string, std::string>& ns_names);
 
 template<class Protobuf>
@@ -22,9 +25,9 @@ public:
 };
 
 template<class Protobuf>
-void export_k8s_object(const draiosproto::container_group* src, Protobuf* obj)
+void export_k8s_object(const uid_set_t& parents, const draiosproto::container_group* src, Protobuf* obj)
 {
-	fill_common(src, obj->mutable_common(), K8sResource<Protobuf>::tag_prefix);
+	fill_common(parents, src, obj->mutable_common(), K8sResource<Protobuf>::tag_prefix);
 
 	for(const auto& metric : src->metrics())
 	{

@@ -966,6 +966,52 @@ bool infrastructure_state::has_link(const google::protobuf::RepeatedPtrField<dra
 	return false;
 }
 
+// We're adding two things to m_parents[current_object]:
+// - the parent we're looking at
+// - its m_parents
+// We're recursing parent->child in here, so m_parents contains all the parents
+// recursively to the top of the hierarchy. For example, say we have a deployment owned by a namespace:
+//
+// m_parents[deployment].clear()
+// m_parents[deployment] += namespace
+// m_parents[deployment] += m_parents[namespace] (i.e. empty)
+// recurse to children of the deployment (i.e. a replicaset)
+// m_parents[replicaset].clear()
+// m_parents[replicaset] += deployment
+// m_parents[replicaset] += m_parents[deployment] (i.e. namespace)
+// recurse to children of the replicaset (i.e. a bunch of pods) and for each pod:
+// m_parents[pod].clear()
+// m_parents[pod] += replicaset
+// m_parents[pod] += m_parents[replicaset] (i.e. deployment + namespace)
+//
+// so in the end:
+// m_parents[namespace] = {}
+// m_parents[deployment] = {namespace}
+// m_parents[replicaset] = {namespace, deployment}
+// m_parents[pod] = {namespace, deployment, replicaset}
+void infrastructure_state::update_parent_child_links(const uid_t& uid)
+{
+	const auto congroup_iter = m_state.find(uid);
+	if(congroup_iter == m_state.end())
+	{
+		return;
+	}
+
+	auto& parents = m_parents[uid];
+	parents.clear();
+	const auto& congroup = congroup_iter->second;
+	for(const auto& parent : congroup->parents())
+	{
+		auto pos = parents.emplace(parent.kind(), parent.id());
+		parents.insert(m_parents[*pos.first].begin(), m_parents[*pos.first].end());
+	}
+
+	for(const auto& child: congroup->children())
+	{
+		update_parent_child_links(std::make_pair(child.kind(), child.id()));
+	}
+}
+
 void infrastructure_state::connect(infrastructure_state::uid_t& key)
 {
 	//
@@ -1027,6 +1073,8 @@ void infrastructure_state::connect(infrastructure_state::uid_t& key)
 		}
 		m_orphans.erase(key);
 	}
+
+	update_parent_child_links(key);
 }
 
 void infrastructure_state::remove(infrastructure_state::uid_t& key, bool update)
@@ -1719,12 +1767,13 @@ void infrastructure_state::emit(const draiosproto::container_group* cg, draiospr
 		return;
 	}
 
+	auto key = std::make_pair(cg->uid().kind(), cg->uid().id());
 	const std::string& kind = cg->uid().kind();
 
 	if(kind == "k8s_job")
 	{
 		auto job = state->add_jobs();
-		legacy_k8s::export_k8s_object(cg, job);
+		legacy_k8s::export_k8s_object(m_parents[key], cg, job);
 	}
 	else if(kind == "k8s_cronjob")
 	{
@@ -1733,15 +1782,15 @@ void infrastructure_state::emit(const draiosproto::container_group* cg, draiospr
 	}
 	else if(kind == "k8s_daemonset")
 	{
-		legacy_k8s::export_k8s_object(cg, state->add_daemonsets());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_daemonsets());
 	}
 	else if(kind == "k8s_deployment")
 	{
-		legacy_k8s::export_k8s_object(cg, state->add_deployments());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_deployments());
 	}
 	else if(kind == "k8s_hpa")
 	{
-		legacy_k8s::export_k8s_object(cg, state->add_hpas());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_hpas());
 	}
 	else if(kind == "k8s_ingress")
 	{
@@ -1751,26 +1800,26 @@ void infrastructure_state::emit(const draiosproto::container_group* cg, draiospr
 	else if(kind == "k8s_namespace")
 	{
 		auto ns = state->add_namespaces();
-		legacy_k8s::fill_common(cg, ns->mutable_common(), "kubernetes.namespace.");
+		legacy_k8s::fill_common(m_parents[key], cg, ns->mutable_common(), "kubernetes.namespace.");
 	}
 	else if(kind == "k8s_node")
 	{
 		auto node = state->add_nodes();
-		legacy_k8s::export_k8s_object(cg, node);
+		legacy_k8s::export_k8s_object(m_parents[key], cg, node);
 		node->mutable_host_ips()->CopyFrom(cg->ip_addresses());
 	}
 	else if(kind == "k8s_persistentvolumeclaim")
 	{
-		legacy_k8s::export_k8s_object(cg, state->add_persistentvolumeclaims());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_persistentvolumeclaims());
 	}
 	else if(kind == "k8s_persistentvolume")
 	{
-		legacy_k8s::export_k8s_object(cg, state->add_persistentvolumes());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_persistentvolumes());
 	}
 	else if(kind == "k8s_pod")
 	{
 		auto pod = state->add_pods();
-		legacy_k8s::export_k8s_object(cg, pod);
+		legacy_k8s::export_k8s_object(m_parents[key], cg, pod);
 		for(const auto& parent : cg->parents())
 		{
 			if(parent.kind() == "k8s_node")
@@ -1802,20 +1851,20 @@ void infrastructure_state::emit(const draiosproto::container_group* cg, draiospr
 	}
 	else if(kind == "k8s_replicaset")
 	{
-		legacy_k8s::export_k8s_object(cg, state->add_replica_sets());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_replica_sets());
 	}
 	else if(kind == "k8s_replicationcontroller")
 	{
-		legacy_k8s::export_k8s_object(cg, state->add_controllers());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_controllers());
 	}
 	else if(kind == "k8s_resourcequota")
 	{
-		legacy_k8s::export_k8s_object(cg, state->add_resourcequotas());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_resourcequotas());
 	}
 	else if(kind == "k8s_service")
 	{
 		auto service = state->add_services();
-		legacy_k8s::fill_common(cg, service->mutable_common(), "kubernetes.service.");
+		legacy_k8s::fill_common(m_parents[key], cg, service->mutable_common(), "kubernetes.service.");
 
 		for(const auto& cg_port : cg->ports())
 		{
@@ -1836,7 +1885,7 @@ void infrastructure_state::emit(const draiosproto::container_group* cg, draiospr
 	}
 	else if(kind == "k8s_statefulset")
 	{
-		legacy_k8s::export_k8s_object(cg, state->add_statefulsets());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_statefulsets());
 	}
 	else
 	{

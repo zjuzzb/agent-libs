@@ -8,7 +8,7 @@ using namespace std;
 
 namespace legacy_k8s
 {
-void fill_common(const container_group *congroup, k8s_common *common, const string& tag_prefix)
+void fill_common(const uid_set_t& parents, const container_group *congroup, k8s_common *common, const string& tag_prefix)
 {
 	const string& kind = congroup->uid().kind();
 	const string& id = congroup->uid().id();
@@ -48,18 +48,17 @@ void fill_common(const container_group *congroup, k8s_common *common, const stri
 		common->set_namespace_(common->name());
 	}
 
-	for(const auto& parent : congroup->parents())
+	for(const auto& parent : parents)
 	{
-		const auto& parent_kind = parent.kind();
-		if(parent_kind == "k8s_namespace")
+		if(parent.first == "k8s_namespace")
 		{
-			common->set_namespace_(parent.id());
+			common->set_namespace_(parent.second);
 		}
 		else
 		{
 			auto pair = common->add_labels();
 			pair->set_key("k8s.sysdig.com/child-of");
-			pair->set_value(parent.kind() + "-" + parent.id());
+			pair->set_value(parent.first + "-" + parent.second);
 		}
 	}
 
