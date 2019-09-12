@@ -81,7 +81,12 @@ class Prometheus(AgentCheck):
                 for sample in family.samples:
                     if max_metrics and self.__check_metric_limits(max_metrics, num, pid, query_url):
                         break
-                    (sname, stags, value) = sample
+                    # getting name, tags, value this way to be compatible with old prometheus_client
+                    (sname, stags, value) = sample[0:3]
+
+                    if sname is None or value is None:
+                        logging.debug('prometheus: parse missed name or value: %s' % (repr(sample)))
+                        continue
 
                     if ingest_raw:
                         rawtags = ['{}:{}'.format(k,v) for k,v in stags.iteritems()]
