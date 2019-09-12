@@ -162,7 +162,10 @@ double sinsp_procfs_parser::get_global_cpu_jiffies(uint64_t* stolen) const
 		return -1;
 	}
 	fclose(f);
-	if(stolen) { *stolen = steal; }
+	if(stolen)
+	{
+		*stolen = steal;
+	}
 	return user + nice + system + idle + iowait + irq + softirq + steal;
 }
 #endif // CYGWING_AGENT
@@ -359,7 +362,8 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat *proc_stat, char *li
 			uint64_t diff = cpu_diff(cpu_num, m_cpu_labels[i], current[i], m_old_cpu[i][cpu_num]);
 			delta[i] = diff;
 			delta[CPU_TOTAL] += diff;
-			if (i <= CPU_WORK_MAX) {
+			if (i <= CPU_WORK_MAX)
+			{
 				delta[CPU_WORK] += diff;
 			}
 		}
@@ -389,7 +393,7 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat *proc_stat, char *li
 			static ratelimit r;
 			r.run([&] {
 				g_logger.format(sinsp_logger::SEV_WARNING,
-								"Total CPU time below 80%%, assigning the missing %d ticks to steal", 100 - delta[CPU_TOTAL]);
+				                "Total CPU time for host below 80%%, assigning the missing %d ticks to steal", 100 - delta[CPU_TOTAL]);
 			});
 			delta[CPU_STEAL] += 100 - delta[CPU_TOTAL];
 			delta[CPU_TOTAL] = 100;
@@ -956,8 +960,8 @@ double sinsp_procfs_parser::read_cgroup_used_cpu(const string &container_cpuacct
 
 double sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
                                         const string &container_cpuacct_cgroup,
-					string& last_cpuacct_cgroup,
-					int64_t *last_cpu_time)
+                                        string& last_cpuacct_cgroup,
+                                        int64_t *last_cpu_time)
 {
 	// Using scap_get_host_root() is not necessary here because
 	// m_cpuacct_cgroup_dir is taken from /etc/mtab
@@ -974,11 +978,28 @@ double sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
 
 	char fp_line[128] = { 0 };
 	uint64_t delta_jiffies = m_global_jiffies.delta_total();
-	if (delta_jiffies > 110)
+	if (delta_jiffies > (110 * m_ncpus))
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "%s: cpuacct scan %" PRId64 " ticks apart",
 				cpuacct_filename, delta_jiffies);
 	}
+
+	// For some reason, sometimes more CPU share has been stolen than gets reported
+	// by /proc/stat. Heuristically, if it's < 80 per CPU then we assume this is the
+	// case and fix it up. This mirrors the code in sinsp_procfs_parser::get_cpus_load.
+	if(delta_jiffies < (80 * m_ncpus))
+	{
+		static ratelimit r;
+		int normalized_cpu_ticks = 100 * m_ncpus;
+		r.run([&] {
+			g_logger.format(sinsp_logger::SEV_WARNING,
+			                "Total CPU time for container below 80%% per CPU, normalizing by %d ticks",
+			                normalized_cpu_ticks - delta_jiffies);
+		});
+		delta_jiffies = normalized_cpu_ticks;
+	}
+
+
 	if(fgets(fp_line, sizeof(fp_line), fp) != NULL) {
 		int64_t stat_val = -1;
 		if (sscanf(fp_line, "%" PRId64, &stat_val) != 1) {

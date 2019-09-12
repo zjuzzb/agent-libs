@@ -72,6 +72,7 @@ public:
 		return m_global_jiffies.total();
 	}
 
+	// Read the global system summary from /proc/stat for all CPUs
 	double get_global_cpu_jiffies(uint64_t* stolen = nullptr) const;
 #endif
 
