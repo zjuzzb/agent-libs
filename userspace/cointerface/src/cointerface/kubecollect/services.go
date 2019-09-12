@@ -98,7 +98,7 @@ func newServiceCongroup(service coService, setLinks bool) (*draiosproto.Containe
 		addServicePorts(&ret.Ports, service)
 		AddNSParents(&ret.Parents, service.GetNamespace())
 		AddIngressParents(&ret.Parents, service)
-		AddStatefulSetParentsFromService(&ret.Parents, service)
+		AddStatefulSetChildrenFromService(&ret.Children, service)
 		// ref: https://kubernetes.io/docs/concepts/services-networking/service/#services-without-selectors
 		selector, ok := svcSelectorCache.Get(service)
 		if ok {
@@ -169,10 +169,6 @@ func AddServiceParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 }
 
 func AddServiceChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	AddServiceChildrenFromServiceName(children, namespaceName, "")
-}
-
-func AddServiceChildrenFromServiceName(children *[]*draiosproto.CongroupUid, namespaceName string, serviceName string) {
 	if !resourceReady("services") {
 		return
 	}
@@ -183,8 +179,25 @@ func AddServiceChildrenFromServiceName(children *[]*draiosproto.CongroupUid, nam
 			continue
 		}
 
-		if "" == serviceName || service.GetName() == serviceName {
-			*children = append(*children, &draiosproto.CongroupUid{
+		*children = append(*children, &draiosproto.CongroupUid{
+			Kind:proto.String("k8s_service"),
+			Id:proto.String(string(service.GetUID()))})
+	}
+}
+
+func AddServiceParentsFromServiceName(parents *[]*draiosproto.CongroupUid, namespaceName string, serviceName string) {
+	if !resourceReady("services") {
+		return
+	}
+
+	for _, obj := range serviceInf.GetStore().List() {
+		service := obj.(*v1.Service)
+		if service.GetNamespace() != namespaceName {
+			continue
+		}
+
+		if service.GetName() == serviceName {
+			*parents = append(*parents, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_service"),
 				Id:proto.String(string(service.GetUID()))})
 		}

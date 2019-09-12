@@ -35,7 +35,7 @@ func newStatefulSetCongroup(statefulSet *v1beta1.StatefulSet) (*draiosproto.Cont
 	addStatefulSetMetrics(&ret.Metrics, statefulSet)
 	AddNSParents(&ret.Parents, statefulSet.GetNamespace())
 	AddPodChildrenFromOwnerRef(&ret.Children, statefulSet.ObjectMeta)
-	AddServiceChildrenFromServiceName(&ret.Children, statefulSet.GetNamespace(), statefulSet.Spec.ServiceName)
+	AddServiceParentsFromServiceName(&ret.Parents, statefulSet.GetNamespace(), statefulSet.Spec.ServiceName)
 
 	return ret
 }
@@ -66,7 +66,7 @@ func AddStatefulSetParentsFromPod(parents *[]*draiosproto.CongroupUid, pod *v1.P
 	}
 }
 
-func AddStatefulSetParentsFromService(parents *[]*draiosproto.CongroupUid, service coService) {
+func AddStatefulSetChildrenFromService(children *[]*draiosproto.CongroupUid, service coService) {
 	if !resourceReady("statefulsets") {
 		return
 	}
@@ -74,7 +74,7 @@ func AddStatefulSetParentsFromService(parents *[]*draiosproto.CongroupUid, servi
 	for _, obj := range statefulSetInf.GetStore().List() {
 		statefulSet := obj.(*v1beta1.StatefulSet)
 		if service.GetNamespace() == statefulSet.GetNamespace() && service.GetName() == statefulSet.Spec.ServiceName {
-			*parents = append(*parents, &draiosproto.CongroupUid{
+			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_statefulset"),
 				Id:proto.String(string(statefulSet.GetUID()))})
 		}
