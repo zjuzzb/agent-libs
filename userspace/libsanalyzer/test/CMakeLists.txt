@@ -22,6 +22,8 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include)
+
 
 add_definitions( -DHAS_ANALYZER )
 
@@ -59,6 +61,7 @@ list(APPEND libsanalyzer_uts
 	statsite_config.ut.cpp
 	statsite_proxy.ut.cpp
 	statsite_statsd_emitter.ut.cpp
+	draios_proto.ut.cpp
 )
 
 # We test both the libanalyzer itself and its test helpers in this library

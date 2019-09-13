@@ -897,6 +897,14 @@ VISIBILITY_PRIVATE
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
+	template<typename T>
+	void emit_connection(T& conn,
+			     draiosproto::connection_state& conn_state,
+			     std::pair<const _process_tuple, sinsp_connection>& acit);
+	template<typename T>
+	void emit_full_connection(T& conn,
+				  draiosproto::connection_state& conn_state,
+				  std::pair<const _ipv4tuple, sinsp_connection>& cit);
 	std::string detect_local_server(const std::string& protocol, uint32_t port, server_check_func_t check_func);
 	void log_timed_error(time_t& last_attempt, const std::string& err);
 #ifndef CYGWING_AGENT

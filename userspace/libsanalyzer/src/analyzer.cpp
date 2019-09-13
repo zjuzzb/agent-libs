@@ -3114,38 +3114,76 @@ void sinsp_analyzer::emit_aggregated_connections()
 		// Add the connection to the protobuf
 		//
 		auto conn_state = pb_connection_state(acit.second.m_analysis_flags);
-		draiosproto::ipv4_connection* conn;
 		if(conn_state == draiosproto::CONN_SUCCESS)
 		{
-			conn = m_metrics->add_ipv4_connections();
+			auto conn = m_metrics->add_ipv4_connections();
+			emit_connection<decltype(conn)>(conn,
+							conn_state,
+							acit);
+
 		}
 		else
 		{
-			conn = m_metrics->add_ipv4_incomplete_connections();
+			auto conn = m_metrics->add_ipv4_incomplete_connections();
+			emit_connection<decltype(conn)>(conn,
+							conn_state,
+							acit);
 		}
 
-		conn->set_state(conn_state);
-		conn->set_error_code(pb_error_code(acit.second.m_error_code));
-		draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
-
-		tuple->set_sip(htonl(acit.first.m_fields.m_sip));
-		tuple->set_dip(htonl(acit.first.m_fields.m_dip));
-		tuple->set_sport(acit.first.m_fields.m_sport);
-		tuple->set_dport(acit.first.m_fields.m_dport);
-		tuple->set_l4proto(acit.first.m_fields.m_l4proto);
-
-		conn->set_spid(acit.first.m_fields.m_spid);
-		conn->set_dpid(acit.first.m_fields.m_dpid);
-
-		acit.second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
-		acit.second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
-			conn->mutable_counters()->mutable_max_transaction_counters(),
-			m_sampling_ratio);
-		//
-		// The timestamp field is used to count the number of sub-connections
-		//
-		conn->mutable_counters()->set_n_aggregated_connections((uint32_t)acit.second.m_timestamp);
 	}
+}
+
+template<typename T>
+void sinsp_analyzer::emit_connection(T& conn,
+				     draiosproto::connection_state& conn_state,
+				     std::pair<const _process_tuple, sinsp_connection>& acit)
+{
+	conn->set_state(conn_state);
+	conn->set_error_code(pb_error_code(acit.second.m_error_code));
+	draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
+
+	tuple->set_sip(htonl(acit.first.m_fields.m_sip));
+	tuple->set_dip(htonl(acit.first.m_fields.m_dip));
+	tuple->set_sport(acit.first.m_fields.m_sport);
+	tuple->set_dport(acit.first.m_fields.m_dport);
+	tuple->set_l4proto(acit.first.m_fields.m_l4proto);
+
+	conn->set_spid(acit.first.m_fields.m_spid);
+	conn->set_dpid(acit.first.m_fields.m_dpid);
+
+	acit.second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
+	acit.second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
+						      conn->mutable_counters()->mutable_max_transaction_counters(),
+						      m_sampling_ratio);
+
+	//
+	// The timestamp field is used to count the number of sub-connections
+	//
+	conn->mutable_counters()->set_n_aggregated_connections((uint32_t)acit.second.m_timestamp);
+}
+
+template<typename T>
+void sinsp_analyzer::emit_full_connection(T& conn,
+					  draiosproto::connection_state& conn_state,
+					  std::pair<const _ipv4tuple, sinsp_connection>& cit)
+{
+	conn->set_state(conn_state);
+	conn->set_error_code(pb_error_code(cit.second.m_error_code));
+	draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
+
+	tuple->set_sip(htonl(cit.first.m_fields.m_sip));
+	tuple->set_dip(htonl(cit.first.m_fields.m_dip));
+	tuple->set_sport(cit.first.m_fields.m_sport);
+	tuple->set_dport(cit.first.m_fields.m_dport);
+	tuple->set_l4proto(cit.first.m_fields.m_l4proto);
+
+	conn->set_spid(cit.second.m_spid);
+	conn->set_dpid(cit.second.m_dpid);
+
+	cit.second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
+	cit.second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
+						      conn->mutable_counters()->mutable_max_transaction_counters(),
+						      m_sampling_ratio);
 }
 
 void sinsp_analyzer::emit_full_connections()
@@ -3161,32 +3199,20 @@ void sinsp_analyzer::emit_full_connections()
 		if(cit->second.is_active() || m_simpledriver_enabled)
 		{
 			auto conn_state = pb_connection_state(cit->second.m_analysis_flags);
-			draiosproto::ipv4_connection* conn;
 			if(conn_state == draiosproto::CONN_SUCCESS)
 			{
-				conn = m_metrics->add_ipv4_connections();
+				auto conn = m_metrics->add_ipv4_connections();
+				emit_full_connection<decltype(conn)>(conn,
+								     conn_state,
+								     *cit);
 			}
 			else
 			{
-				conn = m_metrics->add_ipv4_incomplete_connections();
+				auto conn = m_metrics->add_ipv4_incomplete_connections();
+				emit_full_connection<decltype(conn)>(conn,
+								     conn_state,
+								     *cit);
 			}
-			conn->set_state(conn_state);
-			conn->set_error_code(pb_error_code(cit->second.m_error_code));
-			draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
-
-			tuple->set_sip(htonl(cit->first.m_fields.m_sip));
-			tuple->set_dip(htonl(cit->first.m_fields.m_dip));
-			tuple->set_sport(cit->first.m_fields.m_sport);
-			tuple->set_dport(cit->first.m_fields.m_dport);
-			tuple->set_l4proto(cit->first.m_fields.m_l4proto);
-
-			conn->set_spid(cit->second.m_spid);
-			conn->set_dpid(cit->second.m_dpid);
-
-			cit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
-			cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
-				conn->mutable_counters()->mutable_max_transaction_counters(),
-				m_sampling_ratio);
 		}
 
 		//

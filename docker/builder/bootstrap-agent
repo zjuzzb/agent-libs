@@ -184,7 +184,7 @@ if [ "$GIT_VER" != "$GOGO_PROTOBUF_VER" ]; then
 	go clean -i $GOGO_PROTOBUF_PATH
 	git checkout master
 	go get -u -d $GOGO_PROTOBUF_PATH
-	git checkout tags/$GOGO_PROTOBUF_VER
+	git checkout -f tags/$GOGO_PROTOBUF_VER
 fi
 if [ ! -f "$GOGO_PROTOBUF_BIN" ]; then
 	go install $GOGO_PROTOBUF_PATH

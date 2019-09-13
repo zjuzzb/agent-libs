@@ -24,11 +24,15 @@ RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devto
         automake \
         libtool \
         valgrind \
+	centos-release-scl \
         lcov && \
     yum -y install \
+        python27 \
         glibc-devel.i686 \
         devtoolset-2-libstdc++-devel.i686 \
         devtoolset-2-elfutils-libelf-devel && \
+    scl enable python27 "yum install -y python-pip" && \
+    scl enable python27 "pip install protobuf" && \
     yum clean all
 RUN curl -o docker.tgz https://get.docker.com/builds/Linux/x86_64/docker-1.11.0.tgz && \
     tar xfz docker.tgz docker/docker && \
