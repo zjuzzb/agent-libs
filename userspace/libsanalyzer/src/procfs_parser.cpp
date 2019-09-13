@@ -31,12 +31,15 @@
 #include <sstream>
 #include <fstream>
 #include <memory>
+#include "common_logger.h"
 
 using namespace std;
 using Poco::StringTokenizer;
 
 namespace
 {
+COMMON_LOGGER();
+
 /**
  * Read in an entire file as a string.
  *
@@ -46,21 +49,20 @@ namespace
  * @param filename  The file to read.
  *
  * @return The contents of the file as a string.
+ *          In case of errors, returns the error message as a string
+ *          instead of the contents, further cementing the debug-only use case
  */
-std::unique_ptr<std::string> slurp_file(const std::string& filename)
+std::string slurp_file(const std::string& filename)
 {
 	std::ifstream infile(filename);
 	if(!infile)
 	{
-		return nullptr;
+		std::string errmsg = "Failed to read " + filename + ": " + strerror(errno);
+		return errmsg;
 	}
-	std::unique_ptr<std::string> out;
-
 	std::stringstream sstream;
 	sstream << infile.rdbuf();
-	*out = sstream.str();
-
-	return out;
+	return sstream.str();
 }
 }
 
@@ -929,7 +931,7 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(const string &contain
                         "%" PRId64 ", %" PRId64 ", %" PRId64 " from file %s", __func__,
                         stat_val_cache, stat_val_rss, stat_val_inactive_file,
                         mem_stat_filename);
-        g_logger.format(sinsp_logger::SEV_DEBUG, "memory.stat contents:\n%s\n", ::slurp_file(mem_stat_filename)->c_str());
+        LOG_DEBUG("memory.stat contents:\n%s\n", ::slurp_file(mem_stat_filename).c_str());
         return -1;
     }
 
