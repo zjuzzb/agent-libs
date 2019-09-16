@@ -639,6 +639,8 @@ process:
 	sinsp_container_info container;
 	container.m_name = "my_container_name";
 	container.m_id = "my_container_id";
+	container.m_type = CT_DOCKER;
+	container.m_lookup_state = sinsp_container_lookup_state::SUCCESSFUL;
 	progtable_by_container[container.m_id].emplace_back(&matching_container_process);
 	auto container_ptr = std::make_shared<sinsp_container_info>(container);
 	emitter.m_inspector.m_container_manager.add_container(container_ptr, &matching_container_process);
@@ -683,6 +685,8 @@ TEST(process_emitter_test, container_procs)
 	sinsp_container_info container;
 	container.m_name = "my_container_name";
 	container.m_id = "my_container_id";
+	container.m_type = CT_DOCKER;
+	container.m_lookup_state = sinsp_container_lookup_state::SUCCESSFUL;
 	analyzer_emitter::progtable_by_container_t progtable_by_container;
 	progtable_by_container[container.m_id].emplace_back(&matching_container_process);
 	auto container_ptr = std::make_shared<sinsp_container_info>(container);
