@@ -107,8 +107,6 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_base.h
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/draios_proto_extension.py
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggr_pbs
-     DESTINATION ${CMAKE_INSTALL_PREFIX}/test)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios_aggregated.proto_builder.cpp
 	                  ${CMAKE_CURRENT_BINARY_DIR}/draios_aggregated.proto_builder.h
 			  ${CMAKE_CURRENT_BINARY_DIR}/draios_aggregated.proto.h

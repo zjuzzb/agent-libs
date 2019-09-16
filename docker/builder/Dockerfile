@@ -1,7 +1,5 @@
 FROM centos:6
 
-ARG max_parallelism=1
-
 # copied from builder script
 RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devtools-2/devtools-2.repo && \
     rpm -i http://mirror.pnl.gov/epel/6/i386/epel-release-6-8.noarch.rpm && \
@@ -52,7 +50,7 @@ RUN mkdir -p /code/oss-falco/userspace/engine/lua
 ADD https://raw.githubusercontent.com/draios/oss-falco/dev/scripts/build-lpeg.sh /code/oss-falco/scripts/build-lpeg.sh
 RUN chmod +x /code/oss-falco/scripts/build-lpeg.sh
 
-RUN cd /code/agent && ONLY_DEPS=true MAKE_JOBS=${max_parallelism} scl enable devtoolset-2 "./bootstrap-agent" && rm -fr dependencies/*.tar* dependencies/*.zip ./bootstrap-agent && ln -s docker/builder/bootstrap-agent
+RUN cd /code/agent && ONLY_DEPS=true scl enable devtoolset-2 ./bootstrap-agent && rm -fr dependencies/*.tar* dependencies/*.zip ./bootstrap-agent && ln -s docker/builder/bootstrap-agent
 ADD docker-builder-entrypoint.sh /
 VOLUME [ "/code/agent/build", "/code/sysdig/build", "/out", "/root/.cache" ]
 ENTRYPOINT [ "/docker-builder-entrypoint.sh" ]

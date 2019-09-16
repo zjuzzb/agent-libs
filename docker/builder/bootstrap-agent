@@ -11,12 +11,6 @@ else
   SCRIPT=$(readlink -f $0)
 fi
 
-if [ -z $MAKE_JOBS ]; then
-    MAKE_JOBS=1
-fi
-
-echo "Building with parallelism $MAKE_JOBS"
-
 # this script is called in two different contexts:
 # - during the agent-builder image build it's copied
 #   directly to /code/agent/build
@@ -68,7 +62,7 @@ if [ ! -d "$ZLIB_DIR" ]; then
 	tar -xzf zlib-$ZLIB_VER.tar.gz
 	cd $ZLIB_DIR
 	./configure
-	make -j $MAKE_JOBS
+	make
 fi
 
 JQ_DIR=$DEPENDENCIES/jq-1.5
@@ -80,7 +74,7 @@ if [ ! -d "$JQ_DIR" ]; then
 	cd $JQ_DIR
 	patch < ../jq-1.5-fix-tokenadd.patch
 	./configure --disable-maintainer-mode --enable-all-static --disable-dependency-tracking
-	make LDFLAGS=-all-static -j $MAKE_JOBS
+	make LDFLAGS=-all-static
 fi
 
 if [ $OS != "Windows_NT" ]; then
@@ -90,7 +84,7 @@ if [ $OS != "Windows_NT" ]; then
 		wget $DEPENDENCIES_URL/tbb-2018_U5.tar.gz
 		tar -xzf tbb-2018_U5.tar.gz
 		cd $TBB_DIR
-		make tbb_build_dir=${TBB_DIR}/build tbb_build_prefix=lib extra_inc=big_iron.inc -j $MAKE_JOBS
+		make tbb_build_dir=${TBB_DIR}/build tbb_build_prefix=lib extra_inc=big_iron.inc
 	fi
 fi
 
@@ -125,8 +119,8 @@ if [ ! -d "$DPKG_DIR" ]; then
 	git checkout tags/$DPKG_VER
 	autoreconf -f -i
 	./configure
-	make -j $MAKE_JOBS
-	make -j $MAKE_JOBS install
+	make
+	make install
 fi
 fi
 
@@ -148,7 +142,7 @@ if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	else
 		CPPFLAGS=-I$ZLIB_DIR LDFLAGS="-L$ZLIB_DIR -L/cygdrive/c/cygwin64/bin -L/bin" ./configure --with-zlib --prefix=$PROTOBUF_V3_DIR/target
 	fi
-	make -j $MAKE_JOBS install
+	make install
 fi
 
 if [ $OS != "Windows_NT" ]; then
@@ -218,7 +212,7 @@ if [ ! -d "$CARES_DIR" ]; then
 	tar -xzf c-ares-$CARES_VER.$CARES_EXT
 	cd $CARES_DIR
 	./configure --prefix=$CARES_DIR/target
-	make -j $MAKE_JOBS install
+	make install
 	cd ..
 fi
 
@@ -242,7 +236,7 @@ if [ $OS != "Windows_NT" ]; then
 		cd $GRPC_DIR
 		wget $DEPENDENCIES_URL/grpc-1.1.4-Makefile.patch
 		patch < grpc-1.1.4-Makefile.patch
-		HAS_SYSTEM_ZLIB=false LDFLAGS=-static PATH=$PROTOBUF_V3_DIR/target/bin:$PATH PKG_CONFIG_PATH=$OPENSSL_DIR:$PROTOBUF_V3_DIR:$CARES_DIR make -j $MAKE_JOBS grpc_cpp_plugin static_cxx static_c
+		HAS_SYSTEM_ZLIB=false LDFLAGS=-static PATH=$PROTOBUF_V3_DIR/target/bin:$PATH PKG_CONFIG_PATH=$OPENSSL_DIR:$PROTOBUF_V3_DIR:$CARES_DIR make grpc_cpp_plugin static_cxx static_c
 	fi
 fi
 
@@ -266,7 +260,7 @@ if [ ! -d "$POCO_DIR" ]; then
 		sed 's/SYSFLAGS.*=.*-D_XOPEN_SOURCE.*/SYSFLAGS = -D_GNU_SOURCE/' ./build/config/CYGWIN.orig > ./build/config/CYGWIN
 	fi
 	./configure --prefix=./target --static --no-samples --no-tests --omit=Data,Data/MySQL,Data/ODBC,Data/SQLite,Zip,MongoDB,PageCompiler,PageCompiler/File2Page,Redis --include-path=$OPENSSL_DIR/target/include --cflags="-DPOCO_UTIL_NO_XMLCONFIGURATION -DPOCO_UTIL_NO_JSONCONFIGURATION"
-	make -j $MAKE_JOBS install
+	make install
 	cd ..
 fi
 
@@ -298,7 +292,7 @@ if [ $OS != "Windows_NT" ]; then
 		tar -xzf cmake-3.3.2.tar.gz
 		cd $CMAKE_DIR
 		./bootstrap
-		make -j $MAKE_JOBS
+		make
 	fi
 
 	if [ ! -d "$DEPENDENCIES/benchmark" ]; then
@@ -312,7 +306,7 @@ if [ $OS != "Windows_NT" ]; then
 		mkdir build
 		cd build
 		$CMAKE_DIR/bin/cmake -DBENCHMARK_ENABLE_GTEST_TESTS=OFF -DCMAKE_BUILD_TYPE=Release ..
-		make -j $MAKE_JOBS
+		make
 	fi
 fi
 
@@ -323,7 +317,7 @@ if [ ! -d "$LUAJIT_DIR" ]; then
 	wget https://www.lua.org/ftp/lua-5.1.5.tar.gz
 	tar -xzf lua-5.1.5.tar.gz
 	cd $LUAJIT_DIR
-	make -j $MAKE_JOBS linux
+	make linux
 fi
 else
 if [ $OS != "Windows_NT" ]; then
@@ -339,9 +333,9 @@ if [ ! -d "$LUAJIT_DIR" ]; then
 	tar -xzf $LUAJIT_NAME.tar.gz
 	cd $LUAJIT_DIR
 	if [ $OS != "Windows_NT" ]; then
-		make -j $MAKE_JOBS
+		make
 	else
-		make -j $MAKE_JOBS BUILDMODE=static
+		make BUILDMODE=static
 	fi
 fi
 fi
@@ -389,7 +383,7 @@ if [ ! -d "$CURL_DIR" ]; then
 		--without-libidn      \
 		--without-nghttp2     \
 		--enable-ares=$CARES_DIR/target
-	make -j $MAKE_JOBS
+	make
 fi
 
 B64_NAME=libb64-1.2
@@ -400,7 +394,7 @@ if [ ! -d "$B64_DIR" ]; then
 	wget $DEPENDENCIES_URL/$B64_NAME.$B64_EXT
 	unzip $B64_NAME.$B64_EXT
 	cd $B64_DIR
-	make -j $MAKE_JOBS
+	make
 fi
 
 # On s390x we'll rely on Suse's jdk 1.7.0 for now
@@ -448,7 +442,7 @@ if [ ! -d "$YAMLCPP_DIR" ]; then
 	else
 		BOOST_ROOT=$BOOST_DIR /usr/bin/cmake -G"Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$YAMLCPP_DIR/target -DYAML_CPP_BUILD_CONTRIB=OFF ..
 	fi
-	make -j $MAKE_JOBS install
+	make install
 fi
 
 SCONS_DIR=$DEPENDENCIES/scons-2.3.4
@@ -469,8 +463,8 @@ if [ $OS != "Windows_NT" ]; then
 		cd $PYTHON_DIR
 		echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist
 		./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON_DIR/target --with-ensurepip=install --enable-unicode=ucs4
-		make -j $MAKE_JOBS
-		make -j $MAKE_JOBS install
+		make
+		make install
 	fi
 
 	PYTHON26_VER=2.6.9
@@ -483,8 +477,8 @@ if [ $OS != "Windows_NT" ]; then
 		cd $PYTHON26_DIR
 		echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist
 		./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON26_DIR/target --enable-unicode=ucs4
-		make -j $MAKE_JOBS
-		make -j $MAKE_JOBS install
+		make
+		make install
 		wget $DEPENDENCIES_URL/get-pip.py
 		echo "setuptools==36.8.0" > pip-reqs.txt
 		echo "wheel==0.29.0" >> pip-reqs.txt
@@ -510,10 +504,10 @@ if [ $OS != "Windows_NT" ]; then
 		tar xfj postgresql-9.4.15.tar.bz2
 		cd $POSTGRES_DIR
 		./configure --prefix=$POSTGRES_DIR/target --without-readline --without-zlib
-		make -j $MAKE_JOBS
-		make -j $MAX_PARALLIEISM -C src/bin install
-		make -j $MAKE_JOBS -C src/include install
-		make -j $MAKE_JOBS -C src/interfaces install
+		make
+		make -C src/bin install
+		make -C src/include install
+		make -C src/interfaces install
 	fi
 
 	GPERFTOOLS_DIR=$DEPENDENCIES/gperftools-2.5
@@ -523,8 +517,8 @@ if [ $OS != "Windows_NT" ]; then
 		tar xfz gperftools-2.5.tar.gz
 		cd $GPERFTOOLS_DIR
 		./configure --prefix=${GPERFTOOLS_DIR}/target --enable-emergency-malloc --disable-libunwind
-		make -j $MAKE_JOBS
-		make -j $MAKE_JOBS install
+		make
+		make install
 	fi
 fi
 
@@ -545,8 +539,8 @@ if [ ! -d "${LIBYAML_DIR}" ]; then
 	tar -xzf libyaml-0.1.7.tar.gz
 	cd $LIBYAML_DIR
 	./bootstrap && ./configure --prefix=$LIBYAML_DIR/target
-	make -j $MAKE_JOBS
-	make -j $MAKE_JOBS install
+	make
+	make install
 fi
 
 LYAML_DIR=$DEPENDENCIES/lyaml-release-v6.0
@@ -560,8 +554,8 @@ if [ ! -d "${LYAML_DIR}" ]; then
 		CONFLUA="${CONFLUA}jit"
 	fi
 	LD_LIBRARY_PATH="${LIBYAML_DIR}/target/lib" ./configure --prefix=$LYAML_DIR/target --enable-static LIBS=-L${LIBYAML_DIR}/target/lib CFLAGS=-I${LIBYAML_DIR}/target/include CPPFLAGS=-I${LIBYAML_DIR}/target/include LUA_INCLUDE=-I${LUAJIT_DIR}/src LUA=${CONFLUA}
-	make -j $MAKE_JOBS
-	make -j $MAKE_JOBS install
+	make
+	make install
 	sh -c "cp -R ${LYAML_DIR}/lib/* ${ROOT_SOURCEDIR}/oss-falco/userspace/engine/lua"
 fi
 
