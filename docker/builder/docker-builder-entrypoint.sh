@@ -2,7 +2,7 @@
 set -exo pipefail
 
 if [[ -z $MAKE_JOBS ]]; then
-  MAKE_JOBS=1
+  export MAKE_JOBS=1
 fi
 export BUILD_DRIVER=OFF
 
