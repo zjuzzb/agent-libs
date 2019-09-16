@@ -23,6 +23,11 @@ type_config<bool> c_cri_async(
 	"Get CRI metadata asynchronously",
 	"cri", "async");
 
+type_config<uint64_t> c_cri_delay_ms(
+	500,
+	"Delay before async CRI lookup",
+	"cri", "delay_ms");
+
 type_config<int64_t> c_cri_timeout_ms(
 	1000,
 	"Maximum time to wait for CRI runtime response",
