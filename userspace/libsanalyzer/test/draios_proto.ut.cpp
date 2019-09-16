@@ -3492,14 +3492,34 @@ class IgnoreMovedReporter : public google::protobuf::util::MessageDifferencer::S
 {
 public:
         IgnoreMovedReporter(google::protobuf::io::ZeroCopyOutputStream * output) :
-                google::protobuf::util::MessageDifferencer::StreamReporter(output) {};
+	    google::protobuf::util::MessageDifferencer::StreamReporter(output) {};
         IgnoreMovedReporter(google::protobuf::io::Printer * printer) :
                 google::protobuf::util::MessageDifferencer::StreamReporter(printer) {};
         virtual ~IgnoreMovedReporter() {};
-        virtual void ReportMoved(const google::protobuf::Message & message1, const google::protobuf::Message & message2,
+        virtual void ReportMoved(const google::protobuf::Message & message1,
+				 const google::protobuf::Message & message2,
                                  const std::vector< google::protobuf::util::MessageDifferencer::SpecificField >& field_path) {};
-        virtual void ReportIgnored(const google::protobuf::Message & message1, const google::protobuf::Message & message2,
+        virtual void ReportIgnored(const google::protobuf::Message & message1,
+				   const google::protobuf::Message & message2,
                                    const std::vector< google::protobuf::util::MessageDifferencer::SpecificField> & field_path) {};
+        virtual void ReportAdded(const google::protobuf::Message & message1,
+				 const google::protobuf::Message & message2,
+                                 const std::vector< google::protobuf::util::MessageDifferencer::SpecificField >& field_path)
+	{
+	    // certain repeated fields have limits for objects, and as such, prune their
+	    // lists to fit that limit. We have no pretense of emitting the exact same
+	    // ones as the backend. So for this test, we emit all programs, and then
+	    // simply ignore the extra ones. Some other test validates that we can
+	    // adhere to a limit when we need to.
+	    if (field_path.back().field->name() == "programs")
+	    {
+		return;
+	    }
+
+	    google::protobuf::util::MessageDifferencer::StreamReporter::ReportAdded(message1,
+										    message2,
+										    field_path);
+	}
 };
 
 
@@ -3525,7 +3545,76 @@ public:
 #define SUB(field) \
 	message_type()->FindFieldByName(field)
 
-TEST(aggregator_extra, DISABLED_validate)
+void ignore_raw_counter_time(google::protobuf::util::MessageDifferencer& md,
+		         const google::protobuf::FieldDescriptor* field)
+{
+    md.IgnoreField(field->SUB("time_ns"));
+    md.IgnoreField(field->SUB("count"));
+}
+
+void ignore_raw_counter_time_bytes(google::protobuf::util::MessageDifferencer& md,
+			       const google::protobuf::FieldDescriptor* field)
+{
+    md.IgnoreField(field->SUB("time_ns_in"));
+    md.IgnoreField(field->SUB("time_ns_out"));
+    md.IgnoreField(field->SUB("time_ns_other"));
+    md.IgnoreField(field->SUB("count_in"));
+    md.IgnoreField(field->SUB("count_out"));
+    md.IgnoreField(field->SUB("count_other"));
+    md.IgnoreField(field->SUB("bytes_in"));
+    md.IgnoreField(field->SUB("bytes_out"));
+    md.IgnoreField(field->SUB("bytes_other"));
+}
+
+void ignore_raw_time_categories(google::protobuf::util::MessageDifferencer& md,
+				const google::protobuf::FieldDescriptor* field)
+{
+    ignore_raw_counter_time(md, field->SUB("other"));
+    ignore_raw_counter_time_bytes(md, field->SUB("io_file"));
+    ignore_raw_counter_time_bytes(md, field->SUB("io_net"));
+    ignore_raw_counter_time(md, field->SUB("processing"));
+}
+
+void ignore_raw_counter_time_bidirectional(google::protobuf::util::MessageDifferencer& md,
+					   const google::protobuf::FieldDescriptor* field)
+{
+    md.IgnoreField(field->SUB("count_in"));
+    md.IgnoreField(field->SUB("count_out"));
+    md.IgnoreField(field->SUB("time_ns_in"));
+    md.IgnoreField(field->SUB("time_ns_out"));
+}
+
+void ignore_raw_counter_syscall_errors(google::protobuf::util::MessageDifferencer& md,
+				       const google::protobuf::FieldDescriptor* field)
+{
+    md.IgnoreField(field->SUB("count"));
+}
+
+void ignore_raw_mounted_fs(google::protobuf::util::MessageDifferencer& md,
+			   const google::protobuf::FieldDescriptor* field)
+{
+    md.IgnoreField(field->SUB("size_bytes"));
+    md.IgnoreField(field->SUB("used_bytes"));
+    md.IgnoreField(field->SUB("available_bytes"));
+}
+
+// the collector reports 0 for the raw value of aggregated metrics. We don't explicitly
+// set it, as it is ignored by the backend. This function sets the differ to
+// ignore all those fields
+void ignore_raw_fields(google::protobuf::util::MessageDifferencer& md,
+		       draiosprotoagg::metrics& message)
+{
+    md.IgnoreField(message.TOP("hostinfo")->SUB("physical_memory_size_bytes"));
+    ignore_raw_time_categories(md, message.TOP("hostinfo")->SUB("tcounters"));
+    ignore_raw_counter_syscall_errors(md, message.TOP("hostinfo")->SUB("syscall_errors"));
+    ignore_raw_counter_time_bidirectional(md, message.TOP("hostinfo")->SUB("max_transaction_counters"));
+
+    ignore_raw_mounted_fs(md, message.TOP("containers")->SUB("mounts"));
+}
+
+void validate_protobuf(std::string& diff,
+		       std::string name,
+		       bool should_ignore_raw_fields)
 {
 	// first generate the aggregated protobuf
 	message_aggregator_builder_impl builder;
@@ -3533,10 +3622,10 @@ TEST(aggregator_extra, DISABLED_validate)
 	draiosprotoagg::metrics test;
 	std::ostringstream filename;
 
-	for (uint32_t i = 1; i <= 10; i++)
+	for (uint32_t i = 0; i < 10; i++)
 	{
 		std::ostringstream filename;
-		filename << "goldman_" << i << ".dam";
+		filename << "aggr_pbs/" << name << "/raw/input_" << i << ".dam";
 		std::ifstream input_file;
 		input_file.open(filename.str().c_str(), std::ifstream::in | std::ifstream::binary);
 		ASSERT_TRUE(input_file);
@@ -3551,10 +3640,11 @@ TEST(aggregator_extra, DISABLED_validate)
 	}
 
 	// now parse the backend protobuf
-	std::string backend_filename = "aggregated.dam";
+	std::ostringstream backend_filename;
+	backend_filename << "aggr_pbs/" << name << "/aggregated.dam";
 	draiosprotoagg::metrics backend;
 	std::ifstream backend_stream;
-	backend_stream.open(backend_filename.c_str(), std::ifstream::in | std::ifstream::binary);
+	backend_stream.open(backend_filename.str().c_str(), std::ifstream::in | std::ifstream::binary);
 	ASSERT_TRUE(backend_stream);
 	backend_stream.seekg(2);
 	ASSERT_TRUE(backend.ParseFromIstream(&backend_stream));
@@ -3590,7 +3680,12 @@ TEST(aggregator_extra, DISABLED_validate)
 					           backend.TOP("programs")->SUB("procinfo")->SUB("details")},
 					          {backend.TOP("programs")->SUB("environment_hash")}});
 
-	std::string diff;
+	// ignore non-aggregated values
+	if (should_ignore_raw_fields)
+	{
+	    ignore_raw_fields(md, backend);
+	}
+
         // reporter needs to fall out of scope to flush
         {
                 google::protobuf::io::StringOutputStream output_stream(&diff);
@@ -3601,6 +3696,109 @@ TEST(aggregator_extra, DISABLED_validate)
         }
 
 	std::cerr << diff;
+}
+
+TEST(validate_aggregator, DISABLED_50_k8s)
+{
+    std::string diff;
+    validate_protobuf(diff, "50-k8s-3600", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_5_k8s)
+{
+    std::string diff;
+    validate_protobuf(diff, "5-k8s", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_admin)
+{
+    std::string diff;
+    validate_protobuf(diff, "admin_8968", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_compliance)
+{
+    std::string diff;
+    validate_protobuf(diff, "compliance-k8s", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_custom_container)
+{
+    std::string diff;
+    validate_protobuf(diff, "custom-containers", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_custom_metric)
+{
+    std::string diff;
+    validate_protobuf(diff, "custom-metric-issue", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_goldman)
+{
+    std::string diff;
+    validate_protobuf(diff, "goldman", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_host)
+{
+    std::string diff;
+    validate_protobuf(diff, "host-60", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_istio)
+{
+    std::string diff;
+    validate_protobuf(diff, "istio", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_openshift)
+{
+    std::string diff;
+    validate_protobuf(diff, "k8s-openshift-original", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_load)
+{
+    std::string diff;
+    validate_protobuf(diff, "load", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_mesos)
+{
+    std::string diff;
+    validate_protobuf(diff, "mesos", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_openshift_100)
+{
+    std::string diff;
+    validate_protobuf(diff, "openshift-100-node-cluser", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_openshift_big_k8s)
+{
+    std::string diff;
+    validate_protobuf(diff, "openshift-50-node-cluster-with-lots-of-k8s-objects", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_prometheus)
+{
+    std::string diff;
+    validate_protobuf(diff, "prometheus", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_random)
+{
+    std::string diff;
+    validate_protobuf(diff, "random", true);
+    EXPECT_EQ(diff.size(), 0);
+}
+TEST(validate_aggregator, DISABLED_swarm)
+{
+    std::string diff;
+    validate_protobuf(diff, "swarm", true);
+    EXPECT_EQ(diff.size(), 0);
 }
 
 void generate_counter_time_bytes(draiosprotoagg::counter_time_bytes* input)
