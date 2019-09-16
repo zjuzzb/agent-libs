@@ -247,6 +247,7 @@ void container_cri::fake_cri_test_timing(
 		inspector->set_cri_socket_path(fake_cri_socket);
 		inspector->set_cri_extra_queries(false);
 		inspector->set_cri_async(async);
+		inspector->set_cri_delay(0);
 		inspector->set_log_callback(common_logger::sinsp_logger_callback);
 		inspector->m_container_manager.subscribe_on_new_container(
 			[&](const sinsp_container_info& container, sinsp_threadinfo* tinfo) {
