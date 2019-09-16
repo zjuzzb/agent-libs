@@ -468,6 +468,7 @@ void sinsp_worker::init()
 	m_inspector->set_cri_socket_path(c_cri_socket_path->get());
 	m_inspector->set_cri_timeout(c_cri_timeout_ms.get());
 	m_inspector->set_cri_extra_queries(c_cri_extra_queries.get());
+	m_inspector->set_cri_async(c_cri_async.get());
 
 	if(c_cri_socket_path->get().empty())
 	{

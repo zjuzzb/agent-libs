@@ -18,13 +18,18 @@ bool is_socket(const std::string &path)
 }
 
 
+type_config<bool> c_cri_async(
+	true,
+	"Get CRI metadata asynchronously",
+	"cri", "async");
+
 type_config<int64_t> c_cri_timeout_ms(
 	1000,
 	"Maximum time to wait for CRI runtime response",
 	"cri", "timeout_ms");
 
 type_config<bool> c_cri_extra_queries(
-	false,
+	true,
 	"Enable additional CRI queries for extra metadata",
 	"cri", "extra_queries");
 
