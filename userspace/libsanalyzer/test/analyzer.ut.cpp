@@ -257,7 +257,7 @@ TEST(analyzer_test, coalesce_containers_test)
 	EXPECT_EQ(27, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().count_processes());
 	EXPECT_EQ(29, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().proc_start_count());
 	EXPECT_EQ(31, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().threads_count());
-	EXPECT_EQ(33, test_helper::get_metrics(analyzer)->unreported_counters().syscall_count());
+	EXPECT_EQ(33, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().syscall_count());
 
 	// check that we added the names
 	EXPECT_EQ(2, test_helper::get_metrics(analyzer)->unreported_counters().names().size());

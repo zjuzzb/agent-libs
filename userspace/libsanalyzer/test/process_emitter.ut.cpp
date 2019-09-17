@@ -905,7 +905,7 @@ TEST(process_emitter_test, syscall_count)
 	EXPECT_NE(emitted_processes.find(&thread_1), emitted_processes.end());
 
 	// check that we got syscall count
-	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().syscall_count(),
+	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().resource_counters().syscall_count(),
 		  7);
 
 	// we can't easily check that host/container metrics emit correctly as those aren't

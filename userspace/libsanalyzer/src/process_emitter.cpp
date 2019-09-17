@@ -593,7 +593,7 @@ void process_emitter::emit_process(sinsp_threadinfo& tinfo,
 		proc->set_count_processes(procinfo.m_proc_count);
 	}
 
-	proc->set_syscall_count(tot.m_count);
+	proc->mutable_resource_counters()->set_syscall_count(tot.m_count);
 }
 
 // static

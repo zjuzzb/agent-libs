@@ -4108,7 +4108,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 				}
 			}
 
-			m_metrics->mutable_hostinfo()->set_syscall_count(m_host_metrics.m_syscall_count.total_calls());
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_syscall_count(m_host_metrics.m_syscall_count.total_calls());
 
 #ifndef CYGWING_AGENT
 			//
@@ -6285,7 +6285,7 @@ sinsp_analyzer::emit_container(const string &container_id,
 
 	sinsp_counter_time totals;
 	it_analyzer->second.m_metrics.m_metrics.get_total(&totals);
-	container->set_syscall_count(totals.m_count);
+	container->mutable_resource_counters()->set_syscall_count(totals.m_count);
 
 	it_analyzer->second.clear();
 }
@@ -6382,7 +6382,7 @@ void sinsp_analyzer::coalesce_unemitted_stats(const vector<std::string>& emitted
 
 		sinsp_counter_time totals;
 		analyzer_container_data.m_metrics.m_metrics.get_total(&totals);
-		container_buffer->set_syscall_count(container_buffer->syscall_count() + totals.m_count);
+		container_buffer->mutable_resource_counters()->set_syscall_count(container_buffer->resource_counters().syscall_count() + totals.m_count);
 
 		container_buffer->add_names(container_name);
 
