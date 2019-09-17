@@ -323,7 +323,13 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 		metrics = append(metrics, fmt.Sprintf("%v.tests_warn:%d|g", metrics_prefix, res_section.WarnCount))
 		metrics = append(metrics, fmt.Sprintf("%v.tests_fail:%d|g", metrics_prefix, res_section.FailCount))
 		metrics = append(metrics, fmt.Sprintf("%v.tests_total:%d|g", metrics_prefix, res_section.TestsRun))
-		metrics = append(metrics, fmt.Sprintf("%v.pass_pct:%f|g", metrics_prefix, (100.0*float64(res_section.PassCount)) / float64(res_section.TestsRun)))
+		if res_section.TestsRun == 0 {
+			metrics = append(metrics, fmt.Sprintf("%v.pass_pct:0|g", metrics_prefix))
+		} else {
+			metrics = append(metrics, fmt.Sprintf("%v.pass_pct:%f|g",
+			                                      metrics_prefix,
+			                                      (100.0 * float64(res_section.PassCount)) / float64(res_section.TestsRun)))
+		}
 	}
 
 	ofbytes, err := json.Marshal(result); if err != nil {
@@ -356,7 +362,12 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 	metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.tests_warn:%d|g", result.WarnCount))
 	metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.tests_fail:%d|g", result.FailCount))
 	metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.tests_total:%d|g", result.TestsRun))
-	metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.pass_pct:%f|g", (100.0*float64(result.PassCount)) / float64(result.TestsRun)))
+	if result.TestsRun == 0 {
+		metrics = append(metrics, "compliance.docker-bench.pass_pct:0|g")
+	} else {
+		metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.pass_pct:%f|g", 
+		                                      (100.0 * float64(result.PassCount)) / float64(result.TestsRun)))
+	}
 
 	for _, metric := range metrics {
 		log.Debugf("Sending docker-bench metric: %v", metric)
