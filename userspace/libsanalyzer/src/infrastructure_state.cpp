@@ -603,18 +603,32 @@ void infrastructure_state::reset()
 {
 	glogf(sinsp_logger::SEV_DEBUG, "infra_state (%x): reset()", this);
 
-	m_policy_cache.clear();
-	m_orphans.clear();
-	m_state.clear();
-	m_k8s_cached_cluster_id.clear();
-	m_k8s_node.clear();
-	m_k8s_node_uid.clear();
-	m_k8s_node_actual = false;
-	m_registered_scopes.clear();
-	m_rate_metric_state.clear();
+	std::unique_lock<std::mutex> scoped_lock(m_host_events_queue_mutex, std::try_to_lock);
 
-	if (m_k8s_subscribed) {
-		connect_to_k8s();
+	if(scoped_lock.owns_lock())
+	{
+		glogf(sinsp_logger::SEV_DEBUG, "infra_state: Hosts metadata available and lock aquired. Start reset operation.");
+
+		m_policy_cache.clear();
+		m_orphans.clear();
+		m_state.clear();
+		m_k8s_cached_cluster_id.clear();
+		m_k8s_node.clear();
+		m_k8s_node_uid.clear();
+		m_k8s_node_actual = false;
+		m_registered_scopes.clear();
+		m_rate_metric_state.clear();
+
+		if (m_k8s_subscribed) {
+			connect_to_k8s();
+		}
+
+		m_host_events_queue_mutex.unlock();
+		glogf(sinsp_logger::SEV_DEBUG, "infra_state: Reset of hosts metadata completed and lock unlocked.");
+	}
+	else
+	{
+		glogf(sinsp_logger::SEV_ERROR, "infra_state: Could not acquire lock, skipping reset");
 	}
 }
 
