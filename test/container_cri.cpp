@@ -455,7 +455,7 @@ TEST_F(container_cri, fake_docker_fail_then_cri) {
 	ASSERT_TRUE(exp_callbacks.empty());
 }
 
-TEST_F(container_cri, fake_cri_fail_then_docker_fail) {
+TEST_F(container_cri, DISABLED_fake_cri_fail_then_docker_fail) {
 	std::vector<callback_params> exp_callbacks = {
 		{CT_CONTAINERD, sinsp_container_lookup_state::FAILED},
 		{CT_DOCKER, sinsp_container_lookup_state::FAILED}
