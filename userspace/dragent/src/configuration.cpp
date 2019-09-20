@@ -1407,6 +1407,7 @@ void dragent_configuration::print_configuration() const
 		LOG_INFO("Will not ignore any events by type");
 	}
 
+	LOG_INFO("K8s events channel: %s", m_go_k8s_user_events ? "Go" : "legacy");
 	if(m_k8s_event_filter)
 	{
 		LOG_INFO("K8s events filter:" + m_k8s_event_filter->to_string());
