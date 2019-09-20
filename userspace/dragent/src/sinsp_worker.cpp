@@ -236,11 +236,6 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_go_k8s_debug_events(m_configuration->m_min_event_priority == -1);
 	m_analyzer->get_configuration()->set_add_event_scopes(m_configuration->m_add_event_scopes);
 
-	// configure CPU tracing
-	m_analyzer->get_configuration()->set_dragent_cpu_profile_enabled(m_configuration->m_dragent_cpu_profile_enabled);
-	m_analyzer->get_configuration()->set_dragent_profile_time_seconds(m_configuration->m_dragent_profile_time_seconds);
-	m_analyzer->get_configuration()->set_dragent_total_profiles(m_configuration->m_dragent_total_profiles);
-
 	m_analyzer->get_configuration()->set_statsite_check_format(m_configuration->m_statsite_check_format);
 	m_analyzer->get_configuration()->set_log_dir(m_configuration->m_log_dir);
 

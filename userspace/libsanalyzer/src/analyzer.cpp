@@ -97,6 +97,7 @@ using namespace google::protobuf::io;
 #include "statsite_config.h"
 #include "statsd_emitter_factory.h"
 #include "null_statsd_emitter.h"
+#include "type_config.h"
 
 #include <gperftools/profiler.h>
 
@@ -114,6 +115,10 @@ void init_host_level_percentiles(T &metrics, const std::set<double> &pctls)
 	metrics.set_percentiles(pctls);
 	metrics.set_serialize_pctl_data(true);
 }
+
+type_config<bool> c_dragent_cpu_profile(false, "Create dragent cpu profiles and save to the log directory", "dragent_cpu_profile_enabled");
+type_config<int32_t> c_dragent_cpu_profile_seconds(120, "The number of seconds to collect data for a single cpu profile", "dragent_profile_time_seconds");
+type_config<int32_t> c_dragent_cpu_profile_total_profiles(30, "The total number of cpu profiles to collect before overwriting old profiles", "dragent_total_profiles");
 
 } // end namespace
 
@@ -241,7 +246,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 
 sinsp_analyzer::~sinsp_analyzer()
 {
-	if(m_configuration->get_dragent_cpu_profile_enabled())
+	if(c_dragent_cpu_profile.get())
 	{
 		utils::profiler::stop();
 	}
@@ -3708,7 +3713,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 		return;
 	}
 
-	if (m_configuration->get_dragent_cpu_profile_enabled())
+	if(c_dragent_cpu_profile.get())
 	{
 		if (!m_trace_started)
 		{
@@ -3717,11 +3722,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			utils::profiler::start(filename);
 			m_last_profile_flush_ns = flush_start_ns;
 		}
-		if ((flush_start_ns - m_last_profile_flush_ns) / 1000000000 > m_configuration->get_dragent_profile_time_seconds())
+		if ((flush_start_ns - m_last_profile_flush_ns) / 1000000000 > c_dragent_cpu_profile_seconds.get())
 		{
 			utils::profiler::stop();
 			m_trace_count++;
-			m_trace_count %= m_configuration->get_dragent_total_profiles();
+			m_trace_count %= c_dragent_cpu_profile_total_profiles.get();
 			std::string filename = m_configuration->get_log_dir() + "/drcpu.prof." + to_string(m_trace_count);
 			utils::profiler::start(filename.c_str());
 			m_last_profile_flush_ns = flush_start_ns;

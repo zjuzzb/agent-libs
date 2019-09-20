@@ -182,13 +182,6 @@ public:
 	void set_add_event_scopes(bool);
 	bool get_add_event_scopes() const;
 
-	void set_dragent_cpu_profile_enabled(bool enabled);
-	void set_dragent_profile_time_seconds(uint32_t seconds);
-	void set_dragent_total_profiles(uint32_t count);
-	bool get_dragent_cpu_profile_enabled() const;
-	uint32_t get_dragent_profile_time_seconds() const;
-	uint32_t get_dragent_total_profiles() const;
-
 	bool get_statsite_check_format() const;
 	void set_statsite_check_format(bool enabled);
 
@@ -279,10 +272,6 @@ private:
 	bool m_add_event_scopes = false;
 
 	std::string m_log_dir;
-
-	bool m_dragent_cpu_profile_enabled;
-	uint32_t m_dragent_profile_time_seconds;
-	uint32_t m_dragent_total_profiles;
 
 	bool m_statsite_check_format;
 

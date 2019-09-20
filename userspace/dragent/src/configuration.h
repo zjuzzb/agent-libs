@@ -382,9 +382,6 @@ public:
 	bool m_go_k8s_user_events = false;
 	bool m_add_event_scopes = false;	// Add scopes to events from infra-state
 
-	bool m_dragent_cpu_profile_enabled;
-	int32_t m_dragent_profile_time_seconds;
-	int32_t m_dragent_total_profiles;
  	bool m_cointerface_cpu_profile_enabled;
 	int32_t m_cointerface_events_per_profile;
 	int32_t m_cointerface_total_profiles;

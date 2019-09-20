@@ -25,7 +25,6 @@ sinsp_configuration::sinsp_configuration():
 	m_drop_lower_threshold = DROP_LOWER_THRESHOLD;
 	m_drop_threshold_consecutive_seconds = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
 	m_host_hidden = false;
-	m_dragent_cpu_profile_enabled = false;
 	m_protocols_truncation_size = 512;
 	m_mounts_limit_size = 15u;
 #ifndef CYGWING_AGENT
@@ -795,36 +794,6 @@ void sinsp_configuration::set_add_event_scopes(bool enabled)
 bool sinsp_configuration::get_add_event_scopes() const
 {
 	return m_add_event_scopes;
-}
-
-void sinsp_configuration::set_dragent_cpu_profile_enabled(bool enabled)
-{
-	m_dragent_cpu_profile_enabled = enabled;
-}
-
-void sinsp_configuration::set_dragent_profile_time_seconds(uint32_t seconds)
-{
-	m_dragent_profile_time_seconds = seconds;
-}
-
-void sinsp_configuration::set_dragent_total_profiles(uint32_t count)
-{
-	m_dragent_total_profiles = count;
-}
-
-bool sinsp_configuration::get_dragent_cpu_profile_enabled() const
-{
-	return m_dragent_cpu_profile_enabled;
-}
-
-uint32_t sinsp_configuration::get_dragent_profile_time_seconds() const
-{
-	return m_dragent_profile_time_seconds;
-}
-
-uint32_t sinsp_configuration::get_dragent_total_profiles() const
-{
-	return m_dragent_total_profiles;
 }
 
 void sinsp_configuration::set_statsite_check_format(bool enabled)

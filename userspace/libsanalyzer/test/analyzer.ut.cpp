@@ -6,6 +6,7 @@
 #include "container_analyzer.h"
 #include "connectinfo.h"
 #include <scoped_config.h>
+#include <scoped_sinsp_logger_capture.h>
 
 using namespace test_helpers;
 
@@ -264,4 +265,29 @@ TEST(analyzer_test, coalesce_containers_test)
 
 	// check that we cleared the containers
 	EXPECT_EQ(test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_connection_queue_usage_pct, 0);
+}
+
+TEST(analyzer_test, print_profiling_error)
+{
+	scoped_config<bool> config("dragent_cpu_profile_enabled", true);
+	scoped_sinsp_logger_capture capture;
+
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock());
+	inspector->build_event().count(10).commit();
+
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/",
+				int_metrics,
+				g_sample_handler,
+				g_audit_handler);
+
+	// Run the analyzer to induce calling flush
+	run_sinsp_with_analyzer(*inspector, analyzer);
+
+	ASSERT_TRUE(capture.find("Profiling is not supported in this build variant."));
+
+	// For legacy reasons, the inspector must be deleted before the
+	// analyzer.
+	inspector.reset();
 }

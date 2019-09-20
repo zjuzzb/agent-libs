@@ -3,6 +3,7 @@
 #ifndef SYSDIG_TEST
 #include <gperftools/profiler.h>
 #endif
+#include "logger.h"
 
 /**
  * Helper namespace to control the profiler. This mostly exists
@@ -19,6 +20,8 @@ void start(const std::string &filename)
 {
 #ifndef SYSDIG_TEST
 	ProfilerStart(filename.c_str());
+#else
+	SINSP_ERROR("Profiling is not supported in this build variant.");
 #endif
 }
 
