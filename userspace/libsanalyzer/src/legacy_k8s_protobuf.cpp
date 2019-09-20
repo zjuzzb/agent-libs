@@ -56,17 +56,10 @@ void fill_common(const uid_set_t& parents, const container_group *congroup, k8s_
 		}
 		else
 		{
-			auto pair = common->add_labels();
-			pair->set_key("k8s.sysdig.com/child-of-" + parent.first);
+			auto pair = common->add_parents();
+			pair->set_key(parent.first);
 			pair->set_value(parent.second);
 		}
-	}
-
-	if(kind != "k8s_namespace" && kind != "k8s_node" && kind != "k8s_pod")
-	{
-		auto pair = common->add_selectors();
-		pair->set_key("k8s.sysdig.com/child-of-" + kind);
-		pair->set_value(id);
 	}
 }
 

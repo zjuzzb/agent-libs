@@ -1291,6 +1291,7 @@ message k8s_common {
     optional string namespace = 3;
     repeated k8s_pair labels = 4;
     repeated k8s_pair selectors = 5;
+    repeated k8s_pair parents = 6;
 }
 
 message k8s_namespace {
