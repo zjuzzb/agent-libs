@@ -10,6 +10,7 @@ add_library(userspace-shared STATIC
 	common_logger.cpp
 	fault_handler.cpp
 	fault_handler_registry.cpp
+	thread_utils.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
 )
 

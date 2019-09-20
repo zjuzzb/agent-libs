@@ -6,6 +6,7 @@
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
 #include "common_logger.h"
+#include "thread_utils.h"
 #include <Poco/Logger.h>
 #include <Poco/Path.h>
 
@@ -36,6 +37,8 @@ common_logger::common_logger(Poco::Logger* const file_log,
 void common_logger::log(const std::string& str, const Poco::Message::Priority sev)
 {
 	Poco::Message m("common_logger", str, sev);
+
+	m.setTid(thread_utils::get_tid());
 
 	m_file_log->log(m);
 
