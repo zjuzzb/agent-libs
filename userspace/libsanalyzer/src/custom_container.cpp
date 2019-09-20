@@ -2,12 +2,14 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "common_logger.h"
+#include "cgroup_limits.h"
 
 #include <Poco/Exception.h>
 
 #include <sys/utsname.h>
 
 using namespace std;
+using namespace libsinsp::cgroup_limits;
 
 void custom_container::subst_token::render(std::string& out, const render_context& ctx, const std::vector<std::string>& env) const
 {
@@ -368,6 +370,27 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	{
 		container_info.m_metadata_deadline = 0;
 	}
+
+	if(query_os_for_missing_info)
+	{
+		auto cpu_cgroup = tinfo->get_cgroup("cpu");
+		auto mem_cgroup = tinfo->get_cgroup("memory");
+		cgroup_limits_key key(container_info.m_id, cpu_cgroup, mem_cgroup);
+		cgroup_limits_value resource_limits;
+		get_cgroup_resource_limits(key, resource_limits, false);
+		container_info.m_cpu_shares = resource_limits.m_cpu_shares;
+		container_info.m_cpu_quota = resource_limits.m_cpu_quota;
+		container_info.m_memory_limit = resource_limits.m_memory_limit;
+
+		if(m_config_test)
+		{
+			m_dump[container_info.m_id]["resources"]["cpu_shares"] = resource_limits.m_cpu_shares;
+			m_dump[container_info.m_id]["resources"]["cpu_quota"] = resource_limits.m_cpu_quota;
+			m_dump[container_info.m_id]["resources"]["cpu_quota_period"] = resource_limits.m_cpu_period;
+			m_dump[container_info.m_id]["resources"]["memory_limit"] = resource_limits.m_memory_limit;
+		}
+	}
+
 	if (new_container)
 	{
 		auto container = make_shared<sinsp_container_info>(container_info);
@@ -404,6 +427,7 @@ void custom_container::resolver::dump_container_table()
 		if (it.second["image"]) out << YAML::Key << "image" << YAML::Value << it.second["image"];
 		if (it.second["labels"]) out << YAML::Key << "labels" << YAML::Value << it.second["labels"];
 		if (it.second["processes"]) out << YAML::Key << "processes" << YAML::Value << it.second["processes"];
+		if (it.second["resources"]) out << YAML::Key << "resources" << YAML::Value << it.second["resources"];
 
 		out << YAML::EndMap;
 	}
