@@ -371,7 +371,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 		container_info.m_metadata_deadline = 0;
 	}
 
-	if(query_os_for_missing_info)
+	if(new_container && query_os_for_missing_info)
 	{
 		auto cpu_cgroup = tinfo->get_cgroup("cpu");
 		auto mem_cgroup = tinfo->get_cgroup("memory");
