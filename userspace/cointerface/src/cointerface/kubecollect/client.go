@@ -23,6 +23,7 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeclient "k8s.io/client-go/kubernetes"
+	discovery "k8s.io/client-go/discovery"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	"cointerface/draiosproto"
@@ -149,8 +150,12 @@ func in_array(s string, arr []string) bool {
 	return false
 }
 
-func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string) ([]string) {
+func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string, checkIncludeOptional ...bool) ([]string) {
 
+	checkInclude := true // True by default
+	if len(checkIncludeOptional) > 0 {
+		checkInclude = checkIncludeOptional[0]
+	}
 	// Return a vector of all resourceType names
 	var resourceTypes []string
 	resourceMap := make(map[string]bool)
@@ -173,15 +178,18 @@ func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 			// Exclude services, rqs, hpas, pvs and pvcs unless explicitly requested
 			// We'll probably want to change this
 			// Note that PVCs may depend on PVs
-			if (resource.Name == "services" ||
-				resource.Name == "resourcequotas" ||
-				resource.Name == "horizontalpodautoscalers" ||
-				resource.Name == "persistentvolumes" ||
-				resource.Name == "persistentvolumeclaims") &&
-				!in_array(resource.Name, includeTypes) {
+			// Do this check only for checkInclude
+			if checkInclude {
+				if (resource.Name == "services" ||
+					resource.Name == "resourcequotas" ||
+					resource.Name == "horizontalpodautoscalers" ||
+					resource.Name == "persistentvolumes" ||
+					resource.Name == "persistentvolumeclaims") &&
+					!in_array(resource.Name, includeTypes) {
 
-				log.Debugf("K8s: Exclude resourcetype %s", resource.Name)
-				continue
+					log.Debugf("K8s: Exclude resourcetype %s", resource.Name)
+					continue
+				}
 			}
 
 			if(!resourceMap[resource.Name]) {
@@ -201,6 +209,31 @@ func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 	}
 
 	return resourceTypes
+}
+
+func getServerDiscoveryResources(dI discovery.DiscoveryInterface) ([]*v1meta.APIResourceList , error) {
+	resources, err := dI.ServerResources()
+
+	if err != nil {
+		// First print the error that occured during resources discovery
+		log.Infof("K8s server returned [ %s ] during resources discovery", err)
+
+		// Next, we decide to continue or not, based on 2 things:
+		// 1.) Did we find some resources in our discovery?
+		// 2.) Was this error of kind "ErrGroupDiscoveryFailed"
+		if len(resources) == 0 || !(discovery.IsGroupDiscoveryFailedError(err)) {
+			// No resources were discovered.
+			// OR -- We did find resources , but the error is not of type "ErrGroupDiscoveryFailed"
+			// We should exit. Ideally this should never be hit (According to current impl of ServerResources). See:
+			// https://github.com/kubernetes/client-go/blob/67a413f31aeaaff8cd9352ad060c1e57232157c8/discovery/discovery_client.go#L281
+			return nil, err
+		}
+		// In other cases, continue
+		// Display a list of resources discovered. Use the getResourceTypes method for this
+		// For the purpose of logging include all discovered types
+		log.Infof("Continuing k8s set up with the resources that were discovered: %v", getResourceTypes(resources, nil, false))
+	}
+	return resources, nil
 }
 
 // Generic function used to drain any receive chan( <-chan)
@@ -281,10 +314,11 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	}
 	log.Infof("Communication with server successful: %v", srvVersion)
 
-	resources, err := kubeClient.Discovery().ServerResources()
+	// Get the resources discovered thru the discovery service.
+	resources, err := getServerDiscoveryResources(kubeClient.Discovery())
 	if err != nil {
+		log.Errorf("K8s resource discovery returned an error: %s", err)
 		InformerChannelInUse = false
-		log.Errorf("K8s server returned error: %s", err)
 		return nil, nil, err
 	}
 

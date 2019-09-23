@@ -223,6 +223,24 @@ func TestResourceTypeIncludes(t *testing.T) {
 	checkExtraResourceTypesHelper(t, resourceswithextras, "resourcequotas", true)
 }
 
+func TestResourceTypeIncludesWithBoolFalse(t *testing.T) {
+	// Create resourcelists and ensure services, hpas and resourcequotas exist
+	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(rand.Intn(10)) }
+	resourceList[0].APIResources = append(resourceList[0].APIResources,
+		v1meta.APIResource{ Name: "services", },
+		v1meta.APIResource{ Name: "horizontalpodautoscalers", },
+		v1meta.APIResource{ Name: "resourcequotas", } )
+
+	// If we pass the bool value as false for "checkIncludeOptional" parameter;
+	// then we should see the extras included ; even with include list empty
+	resourceswithoutextras := getResourceTypes(resourceList, nil, false)
+
+	// All the extra resources should show up; even though includeStrings is nil
+	checkExtraResourceTypesHelper(t, resourceswithoutextras, "services", true)
+	checkExtraResourceTypesHelper(t, resourceswithoutextras, "horizontalpodautoscalers", true)
+	checkExtraResourceTypesHelper(t, resourceswithoutextras, "resourcequotas", true)
+}
+
 // Helper method that sets up the chan and context for
 // many of the Test methods below.
 func setupChanTestInfra() (
