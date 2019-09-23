@@ -220,18 +220,31 @@ BREAK_LOOP:
 		LOG_DEBUG("Ret vector size is: %u", metric_count);
 		STATSD_LOG("Ret vector size is: %u", metric_count);
 
-		if(m_metric.timestamp() > 0)
+		if(m_metric.timestamp() > 0 &&
+		   (s_statsd_log_enabled ||
+		   (g_log && g_log->is_enabled(Poco::Message::Priority::PRIO_DEBUG))))
 		{
-			LOG_DEBUG("m_metric timestamp is: %lu, vector timestamp: %lu",
+			uint64_t map_timestamp = 0;
+
+			const auto& itr = ret.begin();
+			if(itr != ret.end())
+			{
+				const auto& metric_vect = std::get<0>(itr->second);
+
+				if(!metric_vect.empty())
+				{
+					map_timestamp = metric_vect[0].timestamp();
+				}
+			}
+
+			LOG_DEBUG("m_metric name: %s, m_metric timestamp is: %lu, vector timestamp: %lu",
+			          m_metric.name().c_str(),
 			          m_metric.timestamp(),
-			          ret.size() > 0 ? std::get<0>(ret.at("")).at(0).timestamp() : 0);
-			LOG_DEBUG("m_metric name is: %s",
-			          m_metric.name().c_str());
-			STATSD_LOG("m_metric timestamp is: %lu, vector timestamp: %lu",
-			          m_metric.timestamp(),
-			          ret.size() > 0 ? std::get<0>(ret.at("")).at(0).timestamp() : 0);
-			STATSD_LOG("m_metric name is: %s",
-			          m_metric.name().c_str());
+			          map_timestamp);
+			STATSD_LOG("m_metric name: %s, m_metric timestamp is: %lu, vector timestamp: %lu",
+			           m_metric.name().c_str(),
+			           m_metric.timestamp(),
+			           map_timestamp);
 		}
 	}
 	else

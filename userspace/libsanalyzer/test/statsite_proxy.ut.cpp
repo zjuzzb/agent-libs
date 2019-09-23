@@ -52,6 +52,10 @@ counts.totam.sunt.consequatur.numquam.aperiam2|85.000000|1432288305)EOF";
 		"LLLLLLLLLOOOOOOOOOOOOOOOOOOOOOOOONNNNNNNNNNNNNNNNNNNNGGGGGGGGG"
 		"GGGG|85.000000|1432288305";
 
+	const std::string STATSITE_OUTPUT_DIFFERENT_TIMESTAMPS = 
+R"EOF(counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam5|86.000000|1432288305
+counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam8|86.000000|1432288306)EOF";
+
 /**
  * Send the given stats to statsite_proxy and let it validate it for
  * correctness.  If it's valid, statsite_proxy will write it to the appropriate
@@ -469,4 +473,25 @@ TEST(statsite_proxy_test, read_metrics_filter_questionmark)
 	EXPECT_EQ(2U, ret.size());
 	EXPECT_EQ(2U, std::get<0>(ret.at("")).size());
 	EXPECT_EQ(2U, std::get<0>(ret.at("3ce9120d8307")).size());
+}
+
+/**
+ * Ensure that if read_metrics() gets two metrics with different timestamps,
+ * that it returns only the first metric.
+ */
+TEST(statsite_proxy_test, read_metrics_timestamps_differ)
+{
+	scoped_fmemopen output_file(STATSITE_OUTPUT_DIFFERENT_TIMESTAMPS.size(),
+	                            "r",
+	                            STATSITE_OUTPUT_DIFFERENT_TIMESTAMPS);
+	scoped_fmemopen input_file(2, "w");
+
+	const bool check_format = false;
+	statsite_proxy proxy(std::make_pair(input_file.get_file(),
+	                                    output_file.get_file()),
+	                     check_format);
+
+	auto ret = proxy.read_metrics();
+	EXPECT_EQ(1U, ret.size());
+	EXPECT_EQ(1U, std::get<0>(ret.at("3ce9120d8307")).size());
 }
