@@ -117,7 +117,7 @@ class YamlConfig:
 
     def get_single(self, key, subkey=None, subsubkey=None, default_value=None):
         for root in self._roots:
-            if not root.has_key(key): 
+            if not root.has_key(key):
                 continue
 
             value = root[key]
@@ -128,7 +128,7 @@ class YamlConfig:
                 continue
 
             subvalue = value[subkey]
-            if subsubkey is None: 
+            if subsubkey is None:
                 return subvalue
 
             if not subvalue.has_key(subsubkey):
@@ -237,7 +237,7 @@ class AppCheckInstance:
         "port": lambda p: p["ports"][0],
         "port.high": lambda p: p["ports"][-1],
     }
-    def __init__(self, check, proc_data, install_prefix):
+    def __init__(self, check, proc_data, config):
         self.name = check["name"]
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
@@ -245,14 +245,35 @@ class AppCheckInstance:
         self.interval = timedelta(seconds=check.get("interval", 1))
         self.proc_data = proc_data
         self.retry = _is_affirmative(check.get("retry", True))
-        self.install_prefix = install_prefix
+        self.install_prefix = config.install_prefix
+        self.log_limit_flag = True
+        self.app_started_time = datetime.now()
+        self.log_exception_time = datetime.now()
+        return_dict = config.check_conf_by_name(self.name)
+        return_dict = return_dict if return_dict else config._yaml_config.get_single('prometheus')
+
+        if not return_dict:
+            raise AppCheckException("dragent yaml file doesn't have configurations for %s or prometheus",
+                                    self.name)
+
+        timeout = return_dict.get('timeout', 1)
+
+        if timeout == -1:
+            default_log_exception_interval = 1
+            self.blacklist_app_timeout = timeout
+        else:
+            default_log_exception_interval = 5
+            self.blacklist_app_timeout = timedelta(seconds=timeout)
+
+        log_exception_interval = return_dict.get('log_exception_interval', default_log_exception_interval)
+        self.log_exception_relog_timeout = timedelta(minutes=log_exception_interval)
 
         try:
             check_module = check["check_module"]
         except KeyError:
             check_module = self.name
         self.AGENT_CONFIG["histogram_percentiles"] = GLOBAL_PERCENTILES
-        self.AGENT_CONFIG["install_prefix"] = install_prefix
+        self.AGENT_CONFIG["install_prefix"] = self.install_prefix
         self.check_instance = get_check_class(check_module, self.install_prefix)(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
 
         if self.CONTAINER_SUPPORT:
@@ -396,7 +417,7 @@ class AppCheckInstance:
 
 class Config:
     def __init__(self, install_prefix):
-	self.install_prefix = install_prefix
+        self.install_prefix = install_prefix
         etcdir = install_prefix + "/etc"
         self._yaml_config = YamlConfig([os.path.join(etcdir, "dragent.yaml"),
                                         os.path.join(etcdir, "kubernetes/config/dragent.yaml"),
@@ -583,7 +604,6 @@ def prepare_prom_checks(promchecks):
 
 class Application:
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
-    APP_CHECK_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=30)
     def __init__(self, install_prefix):
         self.config = Config(install_prefix)
         logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s', level=self.config.log_level())
@@ -597,9 +617,15 @@ class Application:
         self.last_heartbeat = datetime(2010, 1, 1, 0, 0, 0);
         self.heartbeat_min = timedelta(0);
         self.python_version = platform.python_version()
+        self.last_blacklisted_pidnames_log = datetime.now()
+        self.blacklisted_pidnames_log_interval = timedelta(minutes=self.config._yaml_config.get_single("exclude_log_interval", default_value=5))
+        self.blacklisted_pidnames_log_time = datetime.now() + timedelta(seconds=15)
+        self.blacklisted_pidnames_log_flag = True
 
         self.inqueue = None
         self.outqueue = None
+        timeout_value = self.config._yaml_config.get_single("exclude_flush_interval", default_value=30)
+        self.blacklisted_pidnames_flush_interval = timedelta(minutes=timeout_value)
 
         if self.config.ignore_ssl_warnings():
             requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -705,11 +731,12 @@ class Application:
                 return False, 0
 
             try:
-                check_instance = AppCheckInstance(check, conf, self.config.install_prefix)
+                check_instance = AppCheckInstance(check, conf, self.config)
             except AppCheckException as ex:
                 if log_errors:
                     logging.error("Exception on creating check %s: %s", check["name"], ex)
-                self.blacklisted_pidnames.add(pidname)
+                if self.config.check_conf_by_name(check["name"]).get("timeout", 1) != -1:
+                    self.blacklisted_pidnames.add(pidname)
                 return False, 0
             self.known_instances[pidname] = check_instance
 
@@ -725,12 +752,27 @@ class Application:
         # print "check", check_instance.name, "pid", check_instance.pid, "metrics", metrics, "exceptions", type(ex), ":", ex
         nm = len(metrics) if metrics else 0
         trc2.stop(args={"metrics": nm, "exception": "yes" if ex else "no"})
+        current_time = datetime.now()
+        if current_time > self.blacklisted_pidnames_log_time and self.blacklisted_pidnames_log_flag:
+            logging.info("Blacklisted pids, names and retry values : %s",
+                         list(self.blacklisted_pidnames))
+            self.blacklisted_pidnames_log_flag = False
 
         if ex and pidname not in self.blacklisted_pidnames:
-            if log_errors:
+            if log_errors and check_instance.log_limit_flag:
                 logging.error("Exception on running check %s: %s", check_instance.name, ex)
-            self.blacklisted_pidnames.add(pidname)
-
+            elif check_instance.log_limit_flag or \
+                    current_time - check_instance.log_exception_time > check_instance.log_exception_relog_timeout:
+                logging.info("Exception on running check %s: %s", check_instance.name, ex)
+                check_instance.log_exception_time = datetime.now()
+            check_instance.log_limit_flag = False
+            if check_instance.blacklist_app_timeout != -1 and (
+                    current_time - check_instance.app_started_time > check_instance.blacklist_app_timeout):
+                self.blacklisted_pidnames.add(pidname)
+        elif current_time - check_instance.log_exception_time > check_instance.log_exception_relog_timeout:
+            if ex:
+                logging.info("Exception on running check %s: %s", check_instance.name, ex)
+            check_instance.log_exception_time = datetime.now()
         expiration_ts = datetime.now() + check_instance.interval
         response_body.append({"pid": pidname[0],
                               "display_name": check_instance.name,
@@ -767,7 +809,7 @@ class Application:
         for p in processes:
             numchecks += 1
             check = p["check"]
-            pidname = (p["pid"],check["name"])
+            pidname = (p["pid"],check["name"], check.get("retry", True))
             ran, nm = self.run_check(appcheck_resp, pidname, check, p, trc)
             if ran:
                 numrun += 1
@@ -798,9 +840,17 @@ class Application:
             if now - self.last_known_instances_cleanup > self.KNOWN_INSTANCES_CLEANUP_TIMEOUT:
                 self.clean_known_instances()
                 self.last_known_instances_cleanup = datetime.now()
-            if now - self.last_blacklisted_pidnames_cleanup > self.APP_CHECK_EXCEPTION_RETRY_TIMEOUT:
+            if now - self.last_blacklisted_pidnames_cleanup > self.blacklisted_pidnames_flush_interval:
                 self.blacklisted_pidnames.clear()
                 self.last_blacklisted_pidnames_cleanup = datetime.now()
+                for _, v in self.known_instances.items():
+                    v.log_limit_flag = True
+                self.blacklisted_pidnames_log_flag = True
+                self.blacklisted_pidnames_log_time = datetime.now() + timedelta(seconds=15)
+            if now - self.last_blacklisted_pidnames_log > self.blacklisted_pidnames_log_interval:
+                logging.info("Blacklisted pids, names and retry values : %s",
+                             list(self.blacklisted_pidnames))
+                self.last_blacklisted_pidnames_log = datetime.now()
 
             # Always send heartbeat
             self.heartbeat(pid, True)
@@ -840,7 +890,7 @@ class Application:
                     sys.exit(1)
                 else:
                     print("Using check conf: %s" % repr(check_conf))
-                check_instance = AppCheckInstance(check_conf, proc_data, self.config.install_prefix)
+                check_instance = AppCheckInstance(check_conf, proc_data, self.config)
                 metrics, service_checks, ex = check_instance.run()
                 print "Conf: %s" % repr(check_instance.instance_conf)
                 print "Metrics: %s" % repr(metrics)
