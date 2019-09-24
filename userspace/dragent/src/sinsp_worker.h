@@ -128,7 +128,7 @@ public:
 	                    std::string &errstr) override;
 
 private:
-	void init();
+	void init(sinsp::ptr& inspector, sinsp_analyzer* analyzer);
 	void do_grpc_tracing();
 	void process_job_requests(bool should_dump);
 	void check_autodrop(uint64_t ts_ns);

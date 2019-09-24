@@ -232,7 +232,7 @@ private:
 	std::string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(std::string& url, const std::string & new_url);
 	void set_mesos_state_original_uri(const std::string & uri);
-	friend class sinsp_worker;
+	friend class dragent_app;
 
 	uint64_t m_connection_pruning_interval_ns;
 	uint64_t m_connection_timeout_ns;

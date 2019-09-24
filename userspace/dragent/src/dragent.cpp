@@ -53,6 +53,8 @@
 #include <sys/utsname.h>
 #include <procfs_parser.h>
 #include <sys/resource.h>
+#include "sinsp_factory.h"
+#include "configuration_manager.h"
 
 using namespace std;
 using namespace dragent;
@@ -819,15 +821,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 #endif // _WIN32
 }
 
-int dragent_app::sdagent_main()
+void dragent_app::setup_coredumps()
 {
-	Poco::ErrorHandler::set(&m_error_handler);
-
-	initialize_logging();
-
-	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-	LOG_INFO("Agent starting (version " + string(AGENT_VERSION) + ")");
-
 #ifndef _WIN32
 	struct rlimit core_limits = {};
 	if(m_configuration.m_enable_coredump)
@@ -850,7 +845,13 @@ int dragent_app::sdagent_main()
 		LOG_DEBUG("Successfully set coredump limits");
 	}
 #endif // _WIN32
+}
 
+//
+// Get basic info about the system and log it
+//
+void dragent_app::log_sysinfo()
+{
 	struct sysinfo info;
 	auto error = sysinfo(&info);
 	if(error == 0)
@@ -870,6 +871,24 @@ int dragent_app::sdagent_main()
 	{
 		g_log->warning("Cannot get kernel version");
 	}
+}
+
+int dragent_app::sdagent_main()
+{
+	Poco::ErrorHandler::set(&m_error_handler);
+
+	initialize_logging();
+
+	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
+	LOG_INFO("Agent starting (version " + string(AGENT_VERSION) + ")");
+
+	setup_coredumps();
+
+	log_sysinfo();
+
+	//
+	// Load the configuration
+	//
 	m_configuration.refresh_machine_id();
 	m_configuration.refresh_aws_metadata();
 	m_configuration.print_configuration();
@@ -881,11 +900,18 @@ int dragent_app::sdagent_main()
 		return Application::EXIT_OK;
 	}
 
+	//
+	// Set up bidirectional communication with statsite
+	//
 	if(m_statsite_pipes)
 	{
 		LOG_DEBUG("statsite pipes size in=" + NumberFormatter::format(m_statsite_pipes->inpipe_size()) + " out=" + NumberFormatter::format(m_statsite_pipes->outpipe_size()));
 		m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
 	}
+
+	//
+	// Gather identifying information about this agent instance
+	//
 	if(m_configuration.m_customer_id.empty())
 	{
 		LOG_ERROR("customerid not specified");
@@ -898,6 +924,9 @@ int dragent_app::sdagent_main()
 		return Application::EXIT_SOFTWARE;
 	}
 
+	//
+	// Set up the memory watchdog
+	//
 	if(m_configuration.m_watchdog_enabled)
 	{
 		check_for_clean_shutdown();
@@ -924,36 +953,73 @@ int dragent_app::sdagent_main()
 
 	ExitCode exit_code;
 
+	//
+	// Start monitored threads
+	//
 	if (!m_configuration.m_config_test)
 	{
 		m_pool.start(m_subprocesses_logger, m_configuration.m_watchdog_subprocesses_logger_timeout_s);
 		m_pool.start(m_connection_manager, m_configuration.m_watchdog_connection_manager_timeout_s);
 	}
-	try {
-		m_sinsp_worker.init();
+
+	////////////////
+	// Here is where the top-level objects are created. These are the objects
+	// that interact with the sysdig component and deliver flush data to the
+	// connection_manager for delivery to the backend.
+	////////////////
+
+	sinsp::ptr inspector = nullptr;
+	sinsp_analyzer* analyzer = nullptr;
+	try
+	{
+		// Must create inspector, then create analyzer, then setup inspector
+		inspector = sinsp_factory::build();
+		LOG_INFO("Created Sysdig inspector");
+		analyzer = build_analyzer(inspector);
+		LOG_INFO("Created analyzer");
+		inspector->m_analyzer = analyzer;
+		init_inspector(inspector);
+		LOG_INFO("Configured inspector");
+		// There's an interesting dependency graph situation here. The
+		// sinsp_worker is a member variable of the dragent_app class, and as
+		// such gets created and initialized in the constructor. However, the
+		// inspector and analyzer are created and initialized here, with much
+		// pageantry. The init function exists to fully initialize the worker
+		// after the creation of the other objects.
+		m_sinsp_worker.init(inspector, analyzer);
 	}
 	catch (const sinsp_exception &e)
 	{
-		LOG_ERROR(string("Failed to init sinsp_worker. Exception message: ") + string(e.what()));
+		LOG_ERROR("Failed to setup internal components. Exception message: %s", e.what());
 		dragent_configuration::m_terminate = true;
 		dragent_error_handler::m_exception = true;
 	}
 
-	memdump_logger::register_callback(
-			std::make_shared<dragent_memdump_logger>(&m_capture_job_handler));
-
 	if(!dragent_configuration::m_terminate)
 	{
+		memdump_logger::register_callback(
+		        std::make_shared<dragent_memdump_logger>(&m_capture_job_handler));
+
+		//
+		// Start the sinsp worker thread
+		//
 		m_capture_job_handler.init(m_sinsp_worker.get_inspector());
 		m_pool.start(m_capture_job_handler, watchdog_runnable::NO_TIMEOUT);
 		// sinsp_worker has not been changed to a watchdog_runnable
 		ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
+
+		enable_rest_server(m_configuration);
 	}
 
 	uint64_t uptime_s = 0;
 
-	enable_rest_server(m_configuration);
-
+	///////////////////////////////
+	// Main exec loop
+	// This is where the dragent thread sits while the other threads do the
+	// actual work involved in making the agent work. It sits here checking
+	// the watch dog and monitoring config files until someone decides it's
+	// time to terminate.
+	//////////////////////////////
 	while(!dragent_configuration::m_terminate)
 	{
 		if(m_configuration.m_watchdog_enabled)
@@ -981,6 +1047,9 @@ int dragent_app::sdagent_main()
 		++uptime_s;
 	}
 
+	//
+	// Begin cleanup
+	//
 	disable_rest_server();
 
 #ifndef CYGWING_AGENT
@@ -991,6 +1060,9 @@ int dragent_app::sdagent_main()
 	}
 #endif
 
+	//
+	// Check for errorful exit and set exit code appropriately
+	//
 	if(dragent_error_handler::m_exception)
 	{
 		LOG_ERROR("Application::EXIT_SOFTWARE");
@@ -1007,6 +1079,9 @@ int dragent_app::sdagent_main()
 		exit_code = Application::EXIT_OK;
 	}
 
+	//
+	// Shut. Down. Everything.
+	//
 	dragent_configuration::m_terminate = true;
 	// This will stop everything in the default pool
 	m_pool.stop_all();
@@ -1019,6 +1094,305 @@ int dragent_app::sdagent_main()
 	LOG_INFO("Terminating");
 	memdump_logger::register_callback(nullptr);
 	return exit_code;
+}
+
+void dragent_app::init_inspector(sinsp::ptr inspector)
+{
+	inspector->set_debug_mode(true);
+	inspector->set_internal_events_mode(true);
+	inspector->set_hostname_and_port_resolution_mode(false);
+	inspector->set_large_envs(m_configuration.m_large_envs);
+
+	if(m_configuration.m_max_thread_table_size > 0)
+	{
+		g_log->information("Overriding sinsp thread table size to " + to_string(m_configuration.m_max_thread_table_size));
+		inspector->set_max_thread_table_size(m_configuration.m_max_thread_table_size);
+	}
+
+	inspector->m_max_n_proc_lookups = m_configuration.m_max_n_proc_lookups;
+	inspector->m_max_n_proc_socket_lookups = m_configuration.m_max_n_proc_socket_lookups;
+
+
+	//
+	// Plug the sinsp logger into our one
+	//
+	inspector->set_log_callback(common_logger::sinsp_logger_callback);
+	g_logger.disable_timestamps();
+	if(m_configuration.m_min_console_priority > m_configuration.m_min_file_priority)
+	{
+		inspector->set_min_log_severity(static_cast<sinsp_logger::severity>(m_configuration.m_min_console_priority));
+	}
+	else
+	{
+		inspector->set_min_log_severity(static_cast<sinsp_logger::severity>(m_configuration.m_min_file_priority));
+	}
+}
+
+sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector)
+{
+	sinsp_analyzer* analyzer = new sinsp_analyzer(inspector.get(),
+	                                              m_configuration.c_root_dir.get(),
+	                                              m_internal_metrics,
+	                                              m_protocol_handler,
+	                                              m_protocol_handler);
+	sinsp_configuration* sconfig = analyzer->get_configuration();
+
+	analyzer->set_procfs_scan_thread(m_configuration.m_procfs_scan_thread);
+	sconfig->set_procfs_scan_delay_ms(m_configuration.m_procfs_scan_delay_ms);
+	sconfig->set_procfs_scan_interval_ms(m_configuration.m_procfs_scan_interval_ms);
+	sconfig->set_procfs_scan_mem_interval_ms(m_configuration.m_procfs_scan_mem_interval_ms);
+
+	// custom metrics filters (!!!do not move - needed by jmx, statsd and appchecks, so it must be
+	// set before checks are created!!!)
+	sconfig->set_metrics_filter(m_configuration.m_metrics_filter);
+	sconfig->set_labels_filter(m_configuration.m_labels_filter);
+	sconfig->set_excess_labels_log(m_configuration.m_excess_labels_log);
+	sconfig->set_labels_cache(m_configuration.m_labels_cache);
+	sconfig->set_k8s_filter(m_configuration.m_k8s_filter);
+	sconfig->set_excess_k8s_log(m_configuration.m_excess_k8s_log);
+	sconfig->set_k8s_cache(m_configuration.m_k8s_cache_size);
+	sconfig->set_mounts_filter(m_configuration.m_mounts_filter);
+	sconfig->set_mounts_limit_size(m_configuration.m_mounts_limit_size);
+	sconfig->set_excess_metrics_log(m_configuration.m_excess_metric_log);
+	sconfig->set_metrics_cache(m_configuration.m_metrics_cache);
+#ifndef CYGWING_AGENT
+	analyzer->init_k8s_limits();
+#endif
+
+	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled)
+	{
+		analyzer->enable_jmx(protocol_handler::c_print_protobuf.get(),
+		               m_configuration.m_jmx_sampling);
+	}
+
+	if(m_statsite_pipes)
+	{
+		const bool enable_statsite_forwarder =
+		    configuration_manager::instance().get_config<bool>(
+		            "statsd.use_forwarder")->get() ||
+		    (m_configuration.m_mode == dragent_mode_t::NODRIVER);
+
+		analyzer->set_statsd_iofds(m_statsite_pipes->get_io_fds(),
+		                             enable_statsite_forwarder);
+	}
+
+	//
+	// The machine id is the MAC address of the first physical adapter
+	//
+	sconfig->set_machine_id(m_configuration.machine_id());
+
+	sconfig->set_customer_id(m_configuration.m_customer_id);
+
+	//
+	// kubernetes
+	//
+#ifndef CYGWING_AGENT
+
+	sconfig->set_k8s_delegated_nodes(m_configuration.m_k8s_delegated_nodes);
+
+	if(m_configuration.m_k8s_extensions.size())
+	{
+		sconfig->set_k8s_extensions(m_configuration.m_k8s_extensions);
+	}
+	if(m_configuration.m_use_new_k8s)
+	{
+		analyzer->set_use_new_k8s(m_configuration.m_use_new_k8s);
+		analyzer->set_k8s_local_update_frequency(m_configuration.m_k8s_local_update_frequency);
+		analyzer->set_k8s_cluster_update_frequency(m_configuration.m_k8s_cluster_update_frequency);
+	}
+	sconfig->set_k8s_cluster_name(m_configuration.m_k8s_cluster_name);
+
+	//
+	// mesos
+	//
+	sconfig->set_mesos_credentials(m_configuration.m_mesos_credentials);
+	if(!m_configuration.m_mesos_state_uri.empty())
+	{
+		sconfig->set_mesos_state_uri(m_configuration.m_mesos_state_uri);
+		sconfig->set_mesos_state_original_uri(m_configuration.m_mesos_state_uri);
+	}
+	sconfig->set_mesos_autodetect_enabled(m_configuration.m_mesos_autodetect);
+	sconfig->set_mesos_follow_leader(m_configuration.m_mesos_follow_leader);
+	sconfig->set_mesos_timeout_ms(m_configuration.m_mesos_timeout_ms);
+
+	// marathon
+	sconfig->set_marathon_credentials(m_configuration.m_marathon_credentials);
+	if(!m_configuration.m_marathon_uris.empty())
+	{
+		sconfig->set_marathon_uris(m_configuration.m_marathon_uris);
+	}
+	sconfig->set_marathon_follow_leader(m_configuration.m_marathon_follow_leader);
+	sconfig->set_dcos_enterprise_credentials(m_configuration.m_dcos_enterprise_credentials);
+
+	if(m_configuration.m_marathon_skip_labels.size())
+	{
+		sconfig->set_marathon_skip_labels(m_configuration.m_marathon_skip_labels);
+	}
+#endif // CYGWING_AGENT
+
+	// curl
+	sconfig->set_curl_debug(m_configuration.m_curl_debug);
+
+	// user-configured events
+	sconfig->set_k8s_event_filter(m_configuration.m_k8s_event_filter);
+	sconfig->set_docker_event_filter(m_configuration.m_docker_event_filter);
+	sconfig->set_containerd_event_filter(m_configuration.m_containerd_event_filter);
+
+	// percentiles
+	sconfig->set_percentiles(m_configuration.m_percentiles,
+	        m_configuration.m_group_pctl_conf);
+	analyzer->set_percentiles();
+
+	sconfig->set_container_filter(m_configuration.m_container_filter);
+	sconfig->set_smart_container_reporting(m_configuration.m_smart_container_reporting);
+
+	sconfig->set_go_k8s_user_events(m_configuration.m_go_k8s_user_events);
+	sconfig->set_go_k8s_debug_events(m_configuration.m_min_event_priority == -1);
+	sconfig->set_add_event_scopes(m_configuration.m_add_event_scopes);
+
+	sconfig->set_statsite_check_format(m_configuration.m_statsite_check_format);
+	sconfig->set_log_dir(m_configuration.m_log_dir);
+
+	//
+	// Configure connection aggregation
+	//
+	sconfig->set_aggregate_connections_in_proto(!m_configuration.m_emit_full_connections);
+
+	if(m_configuration.m_drop_upper_threshold != 0)
+	{
+		g_log->information("Drop upper threshold=" + NumberFormatter::format(m_configuration.m_drop_upper_threshold));
+		sconfig->set_drop_upper_threshold(m_configuration.m_drop_upper_threshold);
+	}
+
+	if(m_configuration.m_drop_lower_threshold != 0)
+	{
+		g_log->information("Drop lower threshold=" + NumberFormatter::format(m_configuration.m_drop_lower_threshold));
+		sconfig->set_drop_lower_threshold(m_configuration.m_drop_lower_threshold);
+	}
+
+	if(m_configuration.m_tracepoint_hits_threshold > 0)
+	{
+		sconfig->set_tracepoint_hits_threshold(m_configuration.m_tracepoint_hits_threshold, m_configuration.m_tracepoint_hits_ntimes);
+	}
+
+	if(m_configuration.m_cpu_usage_max_sr_threshold > 0)
+	{
+		sconfig->set_cpu_max_sr_threshold(m_configuration.m_cpu_usage_max_sr_threshold, m_configuration.m_cpu_usage_max_sr_ntimes);
+	}
+
+	if(m_configuration.m_host_custom_name != "")
+	{
+		g_log->information("Setting custom name=" + m_configuration.m_host_custom_name);
+		sconfig->set_host_custom_name(m_configuration.m_host_custom_name);
+	}
+
+	if(m_configuration.m_host_tags != "")
+	{
+		g_log->information("Setting tags=" + m_configuration.m_host_tags);
+		sconfig->set_host_tags(m_configuration.m_host_tags);
+	}
+
+	if(m_configuration.m_host_custom_map != "")
+	{
+		g_log->information("Setting custom map=" + m_configuration.m_host_custom_map);
+		sconfig->set_host_custom_map(m_configuration.m_host_custom_map);
+	}
+
+	if(m_configuration.m_hidden_processes != "")
+	{
+		g_log->information("Setting hidden processes=" + m_configuration.m_hidden_processes);
+		sconfig->set_hidden_processes(m_configuration.m_hidden_processes);
+	}
+
+	if(m_configuration.m_host_hidden)
+	{
+		g_log->information("Setting host hidden");
+		sconfig->set_host_hidden(m_configuration.m_host_hidden);
+	}
+
+	if(m_configuration.m_autodrop_enabled)
+	{
+		g_log->information("Setting autodrop");
+		sconfig->set_autodrop_enabled(true);
+	}
+
+	if(m_configuration.m_falco_baselining_enabled)
+	{
+		g_log->information("Setting falco baselining");
+		sconfig->set_falco_baselining_enabled(
+		    m_configuration.m_falco_baselining_enabled);
+	}
+
+	if(m_configuration.m_command_lines_capture_enabled)
+	{
+		g_log->information("Setting command lines capture");
+		sconfig->set_command_lines_capture_enabled(
+		    m_configuration.m_command_lines_capture_enabled);
+		sconfig->set_command_lines_capture_mode(
+		    m_configuration.m_command_lines_capture_mode);
+		sconfig->set_command_lines_include_container_healthchecks(
+		    m_configuration.m_command_lines_include_container_healthchecks);
+		sconfig->set_command_lines_valid_ancestors(
+		    m_configuration.m_command_lines_valid_ancestors);
+	}
+
+	if(m_configuration.m_capture_dragent_events)
+	{
+		g_log->information("Setting capture dragent events");
+		sconfig->set_capture_dragent_events(
+		    m_configuration.m_capture_dragent_events);
+	}
+
+	sconfig->set_version(AGENT_VERSION);
+	sconfig->set_instance_id(m_configuration.m_aws_metadata.m_instance_id);
+	sconfig->set_known_ports(m_configuration.m_known_server_ports);
+	sconfig->set_blacklisted_ports(m_configuration.m_blacklisted_ports);
+	sconfig->set_app_checks_always_send(m_configuration.m_app_checks_always_send);
+	sconfig->set_protocols_truncation_size(m_configuration.m_protocols_truncation_size);
+	analyzer->set_fs_usage_from_external_proc(m_configuration.m_system_supports_containers);
+
+	sconfig->set_cointerface_enabled(m_configuration.m_cointerface_enabled);
+	sconfig->set_swarm_enabled(m_configuration.m_swarm_enabled);
+	sconfig->set_security_baseline_report_interval_ns(m_configuration.m_security_baseline_report_interval_ns);
+
+#ifndef CYGWING_AGENT
+	analyzer->set_prometheus_conf(m_configuration.m_prom_conf);
+	if (m_configuration.m_config_test)
+	{
+		m_configuration.m_custom_container.set_config_test(true);
+	}
+	analyzer->set_custom_container_conf(move(m_configuration.m_custom_container));
+#endif
+
+	sconfig->set_procfs_scan_procs(m_configuration.m_procfs_scan_procs, m_configuration.m_procfs_scan_interval);
+
+	//
+	// Load the chisels
+	//
+	for(auto chinfo : m_configuration.m_chisel_details)
+	{
+		g_log->information("Loading chisel " + chinfo.m_name);
+		analyzer->add_chisel(&chinfo);
+	}
+
+	analyzer->initialize_chisels();
+
+
+	analyzer->set_track_environment(m_configuration.m_track_environment);
+	analyzer->set_envs_per_flush(m_configuration.m_envs_per_flush);
+	analyzer->set_max_env_size(m_configuration.m_max_env_size);
+	analyzer->set_env_blacklist(std::move(m_configuration.m_env_blacklist));
+	analyzer->set_env_hash_ttl(m_configuration.m_env_hash_ttl);
+	analyzer->set_env_emit(m_configuration.m_env_metrics, m_configuration.m_env_audit_tap);
+
+	if(m_configuration.m_audit_tap_enabled)
+	{
+		analyzer->enable_audit_tap(m_configuration.m_audit_tap_emit_local_connections);
+	}
+
+	analyzer->set_remotefs_enabled(m_configuration.m_remotefs_enabled);
+
+	return analyzer;
 }
 
 bool dragent_app::timeout_expired(int64_t last_activity_age_ns, uint64_t timeout_s, const char* label, const char* tail)

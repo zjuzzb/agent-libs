@@ -120,6 +120,10 @@ private:
 	void update_subprocesses();
 	void update_subprocesses_priority();
 	void monitor_files(uint64_t uptime_s);
+	void init_inspector(sinsp::ptr inspector);
+	sinsp_analyzer* build_analyzer(sinsp::ptr inspector);
+	void setup_coredumps();
+	void log_sysinfo();
 
 	bool m_help_requested;
 	bool m_version_requested;

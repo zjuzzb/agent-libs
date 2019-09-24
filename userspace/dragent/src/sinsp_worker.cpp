@@ -76,7 +76,7 @@ sinsp_worker::~sinsp_worker()
 #endif
 }
 
-void sinsp_worker::init()
+void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 {
 	if(m_initialized)
 	{
@@ -85,287 +85,12 @@ void sinsp_worker::init()
 
 	m_initialized = true;
 
-	m_inspector = sinsp_factory::build();
-	m_analyzer = new sinsp_analyzer(m_inspector.get(),
-					m_configuration->c_root_dir.get(),
-					m_internal_metrics,
-					m_protocol_handler,
-					m_protocol_handler);
-
-	m_analyzer->set_procfs_scan_thread(m_configuration->m_procfs_scan_thread);
-	m_analyzer->get_configuration()->set_procfs_scan_delay_ms(m_configuration->m_procfs_scan_delay_ms);
-	m_analyzer->get_configuration()->set_procfs_scan_interval_ms(m_configuration->m_procfs_scan_interval_ms);
-	m_analyzer->get_configuration()->set_procfs_scan_mem_interval_ms(m_configuration->m_procfs_scan_mem_interval_ms);
-
-	// custom metrics filters (!!!do not move - needed by jmx, statsd and appchecks, so it must be
-	// set before checks are created!!!)
-	m_analyzer->get_configuration()->set_metrics_filter(m_configuration->m_metrics_filter);
-	m_analyzer->get_configuration()->set_labels_filter(m_configuration->m_labels_filter);
-	m_analyzer->get_configuration()->set_excess_labels_log(m_configuration->m_excess_labels_log);
-	m_analyzer->get_configuration()->set_labels_cache(m_configuration->m_labels_cache);
-	m_analyzer->get_configuration()->set_k8s_filter(m_configuration->m_k8s_filter);
-	m_analyzer->get_configuration()->set_excess_k8s_log(m_configuration->m_excess_k8s_log);
-	m_analyzer->get_configuration()->set_k8s_cache(m_configuration->m_k8s_cache_size);
-	m_analyzer->get_configuration()->set_mounts_filter(m_configuration->m_mounts_filter);
-	m_analyzer->get_configuration()->set_mounts_limit_size(m_configuration->m_mounts_limit_size);
-	m_analyzer->get_configuration()->set_excess_metrics_log(m_configuration->m_excess_metric_log);
-	m_analyzer->get_configuration()->set_metrics_cache(m_configuration->m_metrics_cache);
-#ifndef CYGWING_AGENT
-	m_analyzer->init_k8s_limits();
-#endif
-
-	if(m_configuration->java_present() && m_configuration->m_sdjagent_enabled)
-	{
-		m_analyzer->enable_jmx(protocol_handler::c_print_protobuf.get(),
-				       m_configuration->m_jmx_sampling);
-	}
-
-	if(m_statsite_pipes)
-	{
-		const bool enable_statsite_forwarder =
-			configuration_manager::instance().get_config<bool>(
-					"statsd.use_forwarder")->get() ||
-			(m_configuration->m_mode == dragent_mode_t::NODRIVER);
-
-		m_analyzer->set_statsd_iofds(m_statsite_pipes->get_io_fds(),
-		                             enable_statsite_forwarder);
-	}
-
-	m_inspector->m_analyzer = m_analyzer;
-
-	m_inspector->set_debug_mode(true);
-	m_inspector->set_internal_events_mode(true);
-	m_inspector->set_hostname_and_port_resolution_mode(false);
-	m_inspector->set_large_envs(m_configuration->m_large_envs);
-
-	if(m_configuration->m_max_thread_table_size > 0)
-	{
-		g_log->information("Overriding sinsp thread table size to " + to_string(m_configuration->m_max_thread_table_size));
-		m_inspector->set_max_thread_table_size(m_configuration->m_max_thread_table_size);
-	}
-
-	m_inspector->m_max_n_proc_lookups = m_configuration->m_max_n_proc_lookups;
-	m_inspector->m_max_n_proc_socket_lookups = m_configuration->m_max_n_proc_socket_lookups;
-
-
-	//
-	// Plug the sinsp logger into our one
-	//
-	m_inspector->set_log_callback(common_logger::sinsp_logger_callback);
-	g_logger.disable_timestamps();
-	if(m_configuration->m_min_console_priority > m_configuration->m_min_file_priority)
-	{
-		m_inspector->set_min_log_severity(static_cast<sinsp_logger::severity>(m_configuration->m_min_console_priority));
-	}
-	else
-	{
-		m_inspector->set_min_log_severity(static_cast<sinsp_logger::severity>(m_configuration->m_min_file_priority));
-	}
-
-	//
-	// The machine id is the MAC address of the first physical adapter
-	//
-	m_analyzer->get_configuration()->set_machine_id(m_configuration->machine_id());
-
-	m_analyzer->get_configuration()->set_customer_id(m_configuration->m_customer_id);
-
-	//
-	// kubernetes
-	//
-#ifndef CYGWING_AGENT
-
-	m_analyzer->get_configuration()->set_k8s_delegated_nodes(m_configuration->m_k8s_delegated_nodes);
-
-	if(m_configuration->m_k8s_extensions.size())
-	{
-		m_analyzer->get_configuration()->set_k8s_extensions(m_configuration->m_k8s_extensions);
-	}
-	if(m_configuration->m_use_new_k8s)
-	{
-		m_analyzer->set_use_new_k8s(m_configuration->m_use_new_k8s);
-		m_analyzer->set_k8s_local_update_frequency(m_configuration->m_k8s_local_update_frequency);
-		m_analyzer->set_k8s_cluster_update_frequency(m_configuration->m_k8s_cluster_update_frequency);
-	}
-	m_analyzer->get_configuration()->set_k8s_cluster_name(m_configuration->m_k8s_cluster_name);
-
-	//
-	// mesos
-	//
-	m_analyzer->get_configuration()->set_mesos_credentials(m_configuration->m_mesos_credentials);
-	if(!m_configuration->m_mesos_state_uri.empty())
-	{
-		m_analyzer->get_configuration()->set_mesos_state_uri(m_configuration->m_mesos_state_uri);
-		m_analyzer->get_configuration()->set_mesos_state_original_uri(m_configuration->m_mesos_state_uri);
-	}
-	m_analyzer->get_configuration()->set_mesos_autodetect_enabled(m_configuration->m_mesos_autodetect);
-	m_analyzer->get_configuration()->set_mesos_follow_leader(m_configuration->m_mesos_follow_leader);
-	m_analyzer->get_configuration()->set_mesos_timeout_ms(m_configuration->m_mesos_timeout_ms);
-
-	// marathon
-	m_analyzer->get_configuration()->set_marathon_credentials(m_configuration->m_marathon_credentials);
-	if(!m_configuration->m_marathon_uris.empty())
-	{
-		m_analyzer->get_configuration()->set_marathon_uris(m_configuration->m_marathon_uris);
-	}
-	m_analyzer->get_configuration()->set_marathon_follow_leader(m_configuration->m_marathon_follow_leader);
-	m_analyzer->get_configuration()->set_dcos_enterprise_credentials(m_configuration->m_dcos_enterprise_credentials);
-
-	if(m_configuration->m_marathon_skip_labels.size())
-	{
-		m_analyzer->get_configuration()->set_marathon_skip_labels(m_configuration->m_marathon_skip_labels);
-	}
-#endif // CYGWING_AGENT
-
-	// curl
-	m_analyzer->get_configuration()->set_curl_debug(m_configuration->m_curl_debug);
-
-	// user-configured events
-	m_analyzer->get_configuration()->set_k8s_event_filter(m_configuration->m_k8s_event_filter);
-	m_analyzer->get_configuration()->set_docker_event_filter(m_configuration->m_docker_event_filter);
-	m_analyzer->get_configuration()->set_containerd_event_filter(m_configuration->m_containerd_event_filter);
-
-	// percentiles
-	m_analyzer->get_configuration()->set_percentiles(m_configuration->m_percentiles,
-			m_configuration->m_group_pctl_conf);
-	m_analyzer->set_percentiles();
-
-	m_analyzer->get_configuration()->set_container_filter(m_configuration->m_container_filter);
-	m_analyzer->get_configuration()->set_smart_container_reporting(m_configuration->m_smart_container_reporting);
-
-	m_analyzer->get_configuration()->set_go_k8s_user_events(m_configuration->m_go_k8s_user_events);
-	m_analyzer->get_configuration()->set_go_k8s_debug_events(m_configuration->m_min_event_priority == -1);
-	m_analyzer->get_configuration()->set_add_event_scopes(m_configuration->m_add_event_scopes);
-
-	m_analyzer->get_configuration()->set_statsite_check_format(m_configuration->m_statsite_check_format);
-	m_analyzer->get_configuration()->set_log_dir(m_configuration->m_log_dir);
-
-	//
-	// Configure connection aggregation
-	//
-	m_analyzer->get_configuration()->set_aggregate_connections_in_proto(!m_configuration->m_emit_full_connections);
-
-	if(m_configuration->m_drop_upper_threshold != 0)
-	{
-		g_log->information("Drop upper threshold=" + NumberFormatter::format(m_configuration->m_drop_upper_threshold));
-		m_analyzer->get_configuration()->set_drop_upper_threshold(m_configuration->m_drop_upper_threshold);
-	}
-
-	if(m_configuration->m_drop_lower_threshold != 0)
-	{
-		g_log->information("Drop lower threshold=" + NumberFormatter::format(m_configuration->m_drop_lower_threshold));
-		m_analyzer->get_configuration()->set_drop_lower_threshold(m_configuration->m_drop_lower_threshold);
-	}
-
-	if(m_configuration->m_tracepoint_hits_threshold > 0)
-	{
-		m_analyzer->get_configuration()->set_tracepoint_hits_threshold(m_configuration->m_tracepoint_hits_threshold, m_configuration->m_tracepoint_hits_ntimes);
-	}
-
-	if(m_configuration->m_cpu_usage_max_sr_threshold > 0)
-	{
-		m_analyzer->get_configuration()->set_cpu_max_sr_threshold(m_configuration->m_cpu_usage_max_sr_threshold, m_configuration->m_cpu_usage_max_sr_ntimes);
-	}
-
-	if(m_configuration->m_host_custom_name != "")
-	{
-		g_log->information("Setting custom name=" + m_configuration->m_host_custom_name);
-		m_analyzer->get_configuration()->set_host_custom_name(m_configuration->m_host_custom_name);
-	}
-
-	if(m_configuration->m_host_tags != "")
-	{
-		g_log->information("Setting tags=" + m_configuration->m_host_tags);
-		m_analyzer->get_configuration()->set_host_tags(m_configuration->m_host_tags);
-	}
-
-	if(m_configuration->m_host_custom_map != "")
-	{
-		g_log->information("Setting custom map=" + m_configuration->m_host_custom_map);
-		m_analyzer->get_configuration()->set_host_custom_map(m_configuration->m_host_custom_map);
-	}
-
-	if(m_configuration->m_hidden_processes != "")
-	{
-		g_log->information("Setting hidden processes=" + m_configuration->m_hidden_processes);
-		m_analyzer->get_configuration()->set_hidden_processes(m_configuration->m_hidden_processes);
-	}
-
-	if(m_configuration->m_host_hidden)
-	{
-		g_log->information("Setting host hidden");
-		m_analyzer->get_configuration()->set_host_hidden(m_configuration->m_host_hidden);
-	}
-
-	m_autodrop_currently_enabled = m_configuration->m_autodrop_enabled;
-
-	if(m_configuration->m_autodrop_enabled)
-	{
-		g_log->information("Setting autodrop");
-		m_analyzer->get_configuration()->set_autodrop_enabled(true);
-	}
-
-	if(m_configuration->m_falco_baselining_enabled)
-	{
-		g_log->information("Setting falco baselining");
-		m_analyzer->get_configuration()->set_falco_baselining_enabled(
-			m_configuration->m_falco_baselining_enabled);
-	}
-
-	if(m_configuration->m_command_lines_capture_enabled)
-	{
-		g_log->information("Setting command lines capture");
-		m_analyzer->get_configuration()->set_command_lines_capture_enabled(
-			m_configuration->m_command_lines_capture_enabled);
-		m_analyzer->get_configuration()->set_command_lines_capture_mode(
-			m_configuration->m_command_lines_capture_mode);
-		m_analyzer->get_configuration()->set_command_lines_include_container_healthchecks(
-			m_configuration->m_command_lines_include_container_healthchecks);
-		m_analyzer->get_configuration()->set_command_lines_valid_ancestors(
-			m_configuration->m_command_lines_valid_ancestors);
-	}
-
-	if(m_configuration->m_capture_dragent_events)
-	{
-		g_log->information("Setting capture dragent events");
-		m_analyzer->get_configuration()->set_capture_dragent_events(
-			m_configuration->m_capture_dragent_events);
-	}
-
-	m_analyzer->get_configuration()->set_version(AGENT_VERSION);
-	m_analyzer->get_configuration()->set_instance_id(m_configuration->m_aws_metadata.m_instance_id);
-	m_analyzer->get_configuration()->set_known_ports(m_configuration->m_known_server_ports);
-	m_analyzer->get_configuration()->set_blacklisted_ports(m_configuration->m_blacklisted_ports);
-	m_analyzer->get_configuration()->set_app_checks_always_send(m_configuration->m_app_checks_always_send);
-	m_analyzer->get_configuration()->set_protocols_truncation_size(m_configuration->m_protocols_truncation_size);
-	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);
-
-	m_analyzer->get_configuration()->set_cointerface_enabled(m_configuration->m_cointerface_enabled);
-	m_analyzer->get_configuration()->set_swarm_enabled(m_configuration->m_swarm_enabled);
-	m_analyzer->get_configuration()->set_security_baseline_report_interval_ns(m_configuration->m_security_baseline_report_interval_ns);
+	m_inspector = inspector;
+	m_analyzer = analyzer;
 
 	stress_tool_matcher::set_comm_list(m_configuration->m_stress_tools);
 
-#ifndef CYGWING_AGENT
-	m_analyzer->set_prometheus_conf(m_configuration->m_prom_conf);
-	if (m_configuration->m_config_test)
-	{
-		m_configuration->m_custom_container.set_config_test(true);
-	}
-	m_analyzer->set_custom_container_conf(move(m_configuration->m_custom_container));
-#endif
-
-	m_analyzer->get_configuration()->set_procfs_scan_procs(m_configuration->m_procfs_scan_procs, m_configuration->m_procfs_scan_interval);
-
-	//
-	// Load the chisels
-	//
-	for(auto chinfo : m_configuration->m_chisel_details)
-	{
-		g_log->information("Loading chisel " + chinfo.m_name);
-		m_analyzer->add_chisel(&chinfo);
-	}
-
-	m_analyzer->initialize_chisels();
+	m_autodrop_currently_enabled = m_configuration->m_autodrop_enabled;
 
 #ifndef CYGWING_AGENT
 	if(security_config::is_enabled())
@@ -451,7 +176,6 @@ void sinsp_worker::init()
 		}
 	}
 
-
 #endif // CYGWING_AGENT
 
 	for(const auto &comm : m_configuration->m_suppressed_comms)
@@ -475,19 +199,6 @@ void sinsp_worker::init()
 		LOG_INFO("CRI support enabled, socket: %s", c_cri_socket_path->get().c_str());
 	}
 
-	m_analyzer->set_track_environment(m_configuration->m_track_environment);
-	m_analyzer->set_envs_per_flush(m_configuration->m_envs_per_flush);
-	m_analyzer->set_max_env_size(m_configuration->m_max_env_size);
-	m_analyzer->set_env_blacklist(std::move(m_configuration->m_env_blacklist));
-	m_analyzer->set_env_hash_ttl(m_configuration->m_env_hash_ttl);
-	m_analyzer->set_env_emit(m_configuration->m_env_metrics, m_configuration->m_env_audit_tap);
-
-	if(m_configuration->m_audit_tap_enabled)
-	{
-		m_analyzer->enable_audit_tap(m_configuration->m_audit_tap_emit_local_connections);
-	}
-
-	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 	//
 	// Start the capture with sinsp
 	//
@@ -656,7 +367,10 @@ void sinsp_worker::run()
 
 	g_log->information("sinsp_worker: Starting");
 
-	init();
+	if(!m_initialized)
+	{
+		throw sinsp_exception("Starting uninitialized worker");
+	}
 
 	if (m_configuration->m_config_test)
 	{
