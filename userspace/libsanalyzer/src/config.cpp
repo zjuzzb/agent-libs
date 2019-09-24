@@ -146,7 +146,7 @@ void sinsp_configuration::set_autodrop_enabled(bool enabled)
 	}
 	else
 	{
-		m_autodrop_enabled = false;	
+		m_autodrop_enabled = false;
 	}
 }
 
@@ -158,6 +158,36 @@ bool sinsp_configuration::get_falco_baselining_enabled() const
 void sinsp_configuration::set_falco_baselining_enabled(bool enabled)
 {
 	m_falco_baselining_enabled = enabled;
+}
+
+uint64_t sinsp_configuration::get_falco_baselining_report_interval_ns() const
+{
+	return m_falco_baselining_report_interval_ns;
+}
+
+void sinsp_configuration::set_falco_baselining_report_interval_ns(uint64_t report_interval)
+{
+	m_falco_baselining_report_interval_ns = report_interval;
+}
+
+uint64_t sinsp_configuration::get_falco_baselining_autodisable_interval_ns() const
+{
+	return m_falco_baselining_autodisable_interval_ns;
+}
+
+void sinsp_configuration::set_falco_baselining_autodisable_interval_ns(uint64_t autodisable_interval)
+{
+	m_falco_baselining_autodisable_interval_ns = autodisable_interval;
+}
+
+uint64_t sinsp_configuration::get_falco_baselining_max_drops_full_buffer() const
+{
+	return m_falco_baselining_max_drops_full_buffer;
+}
+
+void sinsp_configuration::set_falco_baselining_max_drops_full_buffer(uint64_t autodisable_interval)
+{
+	m_falco_baselining_max_drops_full_buffer = autodisable_interval;
 }
 
 bool sinsp_configuration::get_command_lines_capture_enabled() const
@@ -854,16 +884,6 @@ bool sinsp_configuration::get_swarm_enabled() const
 void sinsp_configuration::set_swarm_enabled(bool val)
 {
 	m_swarm_enabled = val;
-}
-
-uint64_t sinsp_configuration::get_security_baseline_report_interval_ns() const
-{
-	return m_security_baseline_report_interval_ns;
-}
-
-void sinsp_configuration::set_security_baseline_report_interval_ns(uint64_t report_interval)
-{
-	m_security_baseline_report_interval_ns = report_interval;
 }
 
 const pair<long, unsigned>& sinsp_configuration::get_tracepoint_hits_threshold() const
