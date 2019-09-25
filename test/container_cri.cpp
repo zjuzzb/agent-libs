@@ -230,7 +230,7 @@ void container_cri::fake_cri_test_timing(
 	{
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
-		while((!done_events || !done_callbacks) && time(NULL) < start_time + 5)
+		while((!done_events || !done_callbacks) && time(NULL) < start_time + 10)
 		{
 			usleep(100000);
 		}
@@ -455,7 +455,7 @@ TEST_F(container_cri, fake_docker_fail_then_cri) {
 	ASSERT_TRUE(exp_callbacks.empty());
 }
 
-TEST_F(container_cri, DISABLED_fake_cri_fail_then_docker_fail) {
+TEST_F(container_cri, fake_cri_fail_then_docker_fail) {
 	std::vector<callback_params> exp_callbacks = {
 		{CT_CONTAINERD, sinsp_container_lookup_state::FAILED},
 		{CT_DOCKER, sinsp_container_lookup_state::FAILED}
