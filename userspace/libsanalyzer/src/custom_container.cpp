@@ -375,12 +375,14 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	{
 		auto cpu_cgroup = tinfo->get_cgroup("cpu");
 		auto mem_cgroup = tinfo->get_cgroup("memory");
-		cgroup_limits_key key(container_info.m_id, cpu_cgroup, mem_cgroup);
+		auto cpuset_cgroup = tinfo->get_cgroup("cpuset");
+		cgroup_limits_key key(container_info.m_id, cpu_cgroup, mem_cgroup, cpuset_cgroup);
 		cgroup_limits_value resource_limits;
 		get_cgroup_resource_limits(key, resource_limits, false);
 		container_info.m_cpu_shares = resource_limits.m_cpu_shares;
 		container_info.m_cpu_quota = resource_limits.m_cpu_quota;
 		container_info.m_memory_limit = resource_limits.m_memory_limit;
+		container_info.m_cpuset_cpu_count = resource_limits.m_cpuset_cpu_count;
 
 		if(m_config_test)
 		{
@@ -388,6 +390,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 			m_dump[container_info.m_id]["resources"]["cpu_quota"] = resource_limits.m_cpu_quota;
 			m_dump[container_info.m_id]["resources"]["cpu_quota_period"] = resource_limits.m_cpu_period;
 			m_dump[container_info.m_id]["resources"]["memory_limit"] = resource_limits.m_memory_limit;
+			m_dump[container_info.m_id]["resources"]["cpuset_cpus"] = resource_limits.m_cpuset_cpu_count;
 		}
 	}
 
