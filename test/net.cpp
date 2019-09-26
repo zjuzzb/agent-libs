@@ -62,6 +62,7 @@
 #include <array>
 #include <thread>
 #include <memory>
+#include "configuration_manager.h"
 
 using namespace std;
 
@@ -971,7 +972,7 @@ TEST_F(sys_call_test, net_connection_table_limit)
 	//
 	// Set a very low connection table size
 	//
-	configuration.set_max_connection_table_size(3);
+	(const_cast<type_config<uint32_t>*> (configuration_manager::instance().get_config<uint32_t>("connection.max_count")))->set(3);
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
 }
