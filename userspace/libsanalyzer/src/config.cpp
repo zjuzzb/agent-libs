@@ -11,10 +11,13 @@ sinsp_configuration::sinsp_configuration():
 	m_procfs_scan_interval_ms(0),
 	m_procfs_scan_mem_interval_ms(0)
 {
+	set_connection_timeout_in_sec(DEFAULT_CONNECTION_TIMEOUT_SEC);
+	m_connection_pruning_interval_ns = 30 * ONE_SECOND_IN_NS;
 	m_machine_id = "<NA>";
 	m_customer_id = "<NA>";
 	m_analyzer_sample_len_ns = ANALYZER_DEFAULT_SAMPLE_LENGTH_NS;
 	m_analyzer_original_sample_len_ns = ANALYZER_DEFAULT_SAMPLE_LENGTH_NS;
+	m_max_connection_table_size = MAX_CONNECTION_TABLE_SIZE;
 	m_max_connections_in_proto = DEFAULT_MAX_CONNECTIONS_IN_PROTO;
 	m_aggregate_connections_in_proto = AGGREGATE_CONNECTIONS_IN_PROTO;
 	m_autodrop_enabled = AUTODROP_ENABLED;
@@ -38,6 +41,31 @@ sinsp_configuration::sinsp_configuration():
 	m_detect_stress_tools = false;
 	m_cointerface_enabled = true;
 	m_swarm_enabled = true;
+}
+
+uint64_t sinsp_configuration::get_connection_timeout_ns() const
+{
+	return m_connection_timeout_ns;
+}
+
+uint64_t sinsp_configuration::get_connection_timeout_sec() const
+{
+	return m_connection_timeout_ns / ONE_SECOND_IN_NS;
+}
+
+void sinsp_configuration::set_connection_timeout_in_sec(uint64_t timeout_sec)
+{
+	m_connection_timeout_ns = timeout_sec * ONE_SECOND_IN_NS;
+}
+
+uint64_t sinsp_configuration::get_connection_pruning_interval_ns() const
+{
+	return m_connection_pruning_interval_ns;
+}
+
+void sinsp_configuration::set_connection_pruning_interval_ns(uint64_t interval_ns)
+{
+	m_connection_pruning_interval_ns = interval_ns;
 }
 
 const string& sinsp_configuration::get_machine_id() const
@@ -73,6 +101,16 @@ uint64_t sinsp_configuration::get_analyzer_original_sample_len_ns() const
 void sinsp_configuration::set_analyzer_sample_len_ns(uint64_t analyzer_sample_length_ns)
 {
 	m_analyzer_sample_len_ns = analyzer_sample_length_ns;
+}
+
+uint32_t sinsp_configuration::get_max_connection_table_size() const
+{
+	return m_max_connection_table_size;
+}
+
+void sinsp_configuration::set_max_connection_table_size(uint32_t max_connection_table_size)
+{
+	m_max_connection_table_size = max_connection_table_size;
 }
 
 uint32_t sinsp_configuration::get_max_connections_in_proto() const

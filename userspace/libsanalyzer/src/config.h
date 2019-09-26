@@ -41,6 +41,11 @@ public:
 	// need to copy this in the future, the default might be sufficient.
 	sinsp_configuration(const sinsp_configuration& configuration) = delete;
 
+	uint64_t get_connection_timeout_ns() const;
+	uint64_t get_connection_timeout_sec() const;
+	void set_connection_timeout_in_sec(uint64_t timeout_sec);
+	uint64_t get_connection_pruning_interval_ns() const;
+	void set_connection_pruning_interval_ns(uint64_t interval_ns);
 	const std::string& get_machine_id() const;
 	void set_machine_id(std::string machine_id);
 	const std::string& get_customer_id() const;
@@ -48,6 +53,8 @@ public:
 	uint64_t get_analyzer_sample_len_ns() const;
 	uint64_t get_analyzer_original_sample_len_ns() const;
 	void set_analyzer_sample_len_ns(uint64_t analyzer_sample_length_ns);
+	uint32_t get_max_connection_table_size() const;
+	void set_max_connection_table_size(uint32_t max_connection_table_size);
 	uint32_t get_max_connections_in_proto() const;
 	void set_max_connections_in_proto(uint32_t max_connections_in_proto);
 	bool get_aggregate_connections_in_proto() const;
@@ -233,10 +240,13 @@ private:
 	void set_mesos_state_original_uri(const std::string & uri);
 	friend class dragent_app;
 
+	uint64_t m_connection_pruning_interval_ns;
+	uint64_t m_connection_timeout_ns;
 	std::string m_machine_id;
 	std::string m_customer_id;
 	uint64_t m_analyzer_sample_len_ns;
 	uint64_t m_analyzer_original_sample_len_ns;
+	uint32_t m_max_connection_table_size;
 	uint32_t m_max_connections_in_proto;
 	bool m_aggregate_connections_in_proto;
 	bool m_autodrop_enabled;

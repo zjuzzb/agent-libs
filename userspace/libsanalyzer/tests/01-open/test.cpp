@@ -22,8 +22,6 @@
 
 #include "uncompressed_sample_handler.h"
 #include "audit_tap_handler.h"
-#include "configuration_manager.h"
-
 using namespace std;
 
 static inline string clone_flags_to_str(uint32_t flags);
@@ -474,7 +472,7 @@ int main(int argc, char **argv)
 				drop_ratio = atoi(optarg);
 				break;
 			case 'e':
-				(const_cast<type_config<uint64_t>*> (configuration_manager::instance().get_config<uint64_t>("connection.timeout_ns")))->set(atoi(optarg));
+				analyzer->get_configuration()->set_connection_timeout_in_sec(atoi(optarg));
 				break;
 			case 'j':
 				emitjson = true;
