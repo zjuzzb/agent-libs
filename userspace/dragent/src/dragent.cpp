@@ -1321,6 +1321,10 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector)
 		g_log->information("Setting falco baselining");
 		sconfig->set_falco_baselining_enabled(
 		    m_configuration.m_falco_baselining_enabled);
+		sconfig->set_falco_baselining_report_interval_ns(
+		    m_configuration.m_falco_baselining_report_interval_ns);
+		sconfig->set_falco_baselining_autodisable_interval_ns(
+		    m_configuration.m_falco_baselining_autodisable_interval_ns);
 	}
 
 	if(m_configuration.m_command_lines_capture_enabled)
