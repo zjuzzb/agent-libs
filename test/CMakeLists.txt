@@ -94,6 +94,7 @@ add_executable(tests
 	user_event.cpp
 	yaml_configuration.cpp
 	sysdig/userspace/async/async_key_value_source.ut.cpp
+	sysdig/userspace/libsinsp/cgroup_list_counter.ut.cpp
 	sysdig/userspace/libsinsp/logger.ut.cpp
 	sysdig/userspace/libsinsp/user_event_logger.ut.cpp
 )

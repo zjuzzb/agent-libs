@@ -261,7 +261,11 @@ message resource_categories {
     optional uint32 stolen_capacity_score = 6; // the percentage of request capacity that is not available because of CPU steal. 0 means there was no CPU steal during the sample. 100 means that all the capacity was stolen and the machine essentially couldn't run.
     optional uint32 connection_queue_usage_pct = 2; // if this process or host is serving connections, the occupation of the connection queue FOR THE WORST THREAD IN THIS PROCESS OR HOST (0=empty, 100=full)
     optional uint32 fd_usage_pct = 3; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS OR HOST. 0 means no FD in use, 100 means FD limit reached.
-    optional uint32 cpu_pct = 4; // CPU load of a process (including all the childs). Not present for the host.
+    // CPU load of a process (including all the children).
+    // This is returned in ten-thousandths of a core. For example, a process
+    // or container that was taking 1.2 cores would return a value of 12000.
+    // Not present for the host.
+    optional uint32 cpu_pct = 4;
     optional uint32 resident_memory_usage_kb = 5; // resident non-swapped memory (as kb).
     reserved 7 to 12;
     optional uint32 virtual_memory_usage_kb = 13; // total virtual memory (as kb). Not present for the host and container.
@@ -272,7 +276,11 @@ message resource_categories {
     optional uint32 fd_count = 21; // Total number of FDs
     reserved 22 to 23;
     optional uint32 cpu_shares = 24;
-    optional uint32 cpu_shares_usage_pct = 25; // CPU % of a container in terms of the limit assigned to it
+    // CPU % of a container in terms of the cpu shares limit assigned to it.
+    // This is returned in hundreths of a percent; a value of 340 would
+    // represent 3.4%.
+    // Container only
+    optional uint32 cpu_shares_usage_pct = 25;
     optional uint32 memory_limit_kb = 26; // Max Resident memory allowed for a container
     optional uint32 swap_limit_kb = 27; // Max swap memory allowed for a container
     optional uint32 cpu_quota_used_pct = 28;
@@ -290,7 +298,23 @@ message resource_categories {
     optional uint64 prometheus_sent = 40;
     optional uint64 prometheus_total = 41;
     optional uint64 syscall_count = 42; // total number of syscalls
-    reserved 124 to 141;
+    // The value of CFS quota limits (quota/period), in whole CPUs.
+    // This is returned in hundredths of a percent of a core which is consistent
+    // with similar metrics. For example, 2 cores would return 20000.
+    // Container only.
+    optional uint32 cpu_cores_quota_limit = 43;
+    // CPU % of a container as a proportion of the number of cpus in the cpuset
+    // to which the container is assigned. So if a container was taking 10% on a
+    // 4-core machine, it would be taking 20% of a 2-core cpuset.
+    // Container only.
+    optional uint32 cpu_cpuset_usage_pct = 44;
+    // The number of cores in the cpuset to which the container is assigned.
+    // This is returned in hundredths of a percent of a core which is consistent
+    // with similar metrics. For example, a cpuset with 2 cores would return 20000.
+    // Container only.
+    optional uint32 cpu_cores_cpuset_limit = 45;
+
+    reserved 124 to 145;
 }
 
 message connection_categories {

@@ -6147,8 +6147,10 @@ sinsp_analyzer::emit_container(const string &container_id,
 		container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
 		container->mutable_resource_counters()->set_fd_usage_pct(it_analyzer->second.m_metrics.m_fd_usage_pct);
 	}
+#endif
 
-	uint32_t res_cpu_pct = it_analyzer->second.m_metrics.m_cpuload * 100;
+	double container_cpu_pct = it_analyzer->second.m_metrics.m_cpuload;
+#ifndef CYGWING_AGENT
 	auto cpuacct_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
 									[](const pair<string, string>& cgroup)
 									{
@@ -6166,33 +6168,63 @@ sinsp_analyzer::emit_container(const string &container_id,
 			if(cgroup_cpuacct > 0)
 			{
 				// g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpuacct_pct=%.2f, cpu_pct=%.2f", container_id.c_str(), cgroup_cpuacct * 100, it_analyzer->second.m_metrics.m_cpuload * 100);
-				res_cpu_pct = cgroup_cpuacct * 100;
+				container_cpu_pct = cgroup_cpuacct;
 			}
 		}
 	}
-	container->mutable_resource_counters()->set_cpu_pct(res_cpu_pct);
-#else // CYGWING_AGENT
-	container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
 #endif // CYGWING_AGENT
+	container->mutable_resource_counters()->set_cpu_pct(container_cpu_pct * 100);
+
 	container->mutable_resource_counters()->set_count_processes(it_analyzer->second.m_metrics.get_process_count());
 #ifndef CYGWING_AGENT
 	container->mutable_resource_counters()->set_proc_start_count(it_analyzer->second.m_metrics.get_process_start_count());
 #endif
 
-	const auto cpu_shares = container_info->m_cpu_shares;
-	if(cpu_shares > 0)
+	if(container_info->m_cpu_shares > 0)
 	{
-		const double cpu_shares_usage_pct = it_analyzer->second.m_metrics.m_cpuload/m_inspector->m_num_cpus*total_cpu_shares/cpu_shares;
-		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_shares=%u used_pct=%.2f", container_id.c_str(), cpu_shares, cpu_shares_usage_pct);
-		container->mutable_resource_counters()->set_cpu_shares(cpu_shares);
+		container->mutable_resource_counters()->set_cpu_shares(container_info->m_cpu_shares);
+
+		const double share_ratio = static_cast<double>(container_info->m_cpu_shares) /
+			static_cast<double>(total_cpu_shares);
+		const double cpu_pct_host = container_cpu_pct / m_inspector->m_num_cpus;
+
+		// Say we are using 20% of the host and the cpu_shares allow
+		// us up to 50% of the host. Then our usage is .2/.5 = .4
+		const double cpu_shares_usage_pct = cpu_pct_host / share_ratio;
+
+		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_shares=%u used_pct=%.2f", container_id.c_str(), container_info->m_cpu_shares, cpu_shares_usage_pct);
 		container->mutable_resource_counters()->set_cpu_shares_usage_pct(cpu_shares_usage_pct*100); // * 100 because we convert double to .2 fixed decimal
 	}
 
 	if(container_info->m_cpu_quota > 0 && container_info->m_cpu_period > 0)
 	{
-		const double cpu_quota_used_pct = it_analyzer->second.m_metrics.m_cpuload*container_info->m_cpu_period/container_info->m_cpu_quota;
-		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_quota=%ld cpu_period=%ld used_pct=%.2f", container_id.c_str(), it->second.m_cpu_quota, it->second.m_cpu_period, cpu_quota_used_pct);
+		// These two numbers directly determine how many cores can be used.
+		// X/X would be one core; 3X/X would be 3 cores, X/2X would be
+		// half a core.
+		const double quota_cores = static_cast<double>(container_info->m_cpu_quota) /
+			static_cast<double>(container_info->m_cpu_period);
+
+		// Quota limit is returned in hundredths of a percent. This is so
+		// that the value returned is consistent with cpu_pct.
+		const int quota_limit_multiplier = 100 * 100;
+		container->mutable_resource_counters()->set_cpu_cores_quota_limit(quota_cores * quota_limit_multiplier);
+
+
+		const double cpu_quota_used_pct = container_cpu_pct / quota_cores;
+		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_quota=%ld cpu_period=%ld used_pct=%.2f", container_id.c_str(), container_info->m_cpu_quota, container_info->m_cpu_period, cpu_quota_used_pct);
 		container->mutable_resource_counters()->set_cpu_quota_used_pct(cpu_quota_used_pct*100);
+	}
+
+	if(container_info->m_cpuset_cpu_count > 0)
+	{
+		// Cpuset limit is returned in hundreths of a percent. This is
+		// so that the value returned is consistent with cpu_pct.
+		const int cpuset_limit_multiplier = 100 * 100;
+		container->mutable_resource_counters()->set_cpu_cores_cpuset_limit(container_info->m_cpuset_cpu_count * cpuset_limit_multiplier);
+		// container_cpu_pct is already pct * num_cpus, so just divide by
+		// cpuset cpus to get the value that we want between 1 and 100
+		const double cpuset_used_pct = container_cpu_pct  / static_cast<double>(container_info->m_cpuset_cpu_count);
+		container->mutable_resource_counters()->set_cpu_cpuset_usage_pct(cpuset_used_pct * 100);
 	}
 
 	if(container_info->m_memory_limit > 0)
