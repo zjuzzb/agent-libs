@@ -53,7 +53,7 @@ private:
 		int value = 0;
 		while(value < LOOPS)
 		{
-			(void) s_queue.get(&value, 1000 /*ms*/);
+			(void) s_queue.get(&value, 2000 /*ms*/);
 
 			test_incrementing(value);
 		}

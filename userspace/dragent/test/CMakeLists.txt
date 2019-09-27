@@ -81,11 +81,22 @@ if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)
 		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-dragent dragent.lcov
 	)
 else()
-	# Since dragentl includes tcmalloc, helgrind doesn't play well with it.
-	# So we just run valgrind.
 	add_custom_target(run-unit-test-dragent
 		DEPENDS unit-test-dragent
+		COMMAND unit-test-dragent
+	)
+endif()
+
+
+if(CMAKE_BUILD_TYPE STREQUAL "DebugInternal")
+	# We should add helgrind to this
+	add_custom_target(valgrind-unit-test-dragent
+		DEPENDS unit-test-dragent
 		COMMAND valgrind --error-exitcode=1 --track-origins=yes --gen-suppressions=all ./unit-test-dragent
+	)
+else()
+	add_custom_target(valgrind-unit-test-dragent
+		COMMAND echo "Error: Valgrind not supported in this build variant. Use the debug-internal build instead." && false
 	)
 endif()
 

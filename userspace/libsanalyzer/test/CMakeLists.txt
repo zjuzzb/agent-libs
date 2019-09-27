@@ -96,22 +96,26 @@ if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)
 		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-libsanalyzer libsanalyzer.lcov
 	)
 else()
-	# Valgrind's thread analyzer, helgrind, doesn't work well with the release
-	# version of the unit test binary -- the backtraces that we want to suppress
-	# don't match reality in the code.  Rather than add suppressions for these
-	# unexpected backtraces, we'll run helgrind only for debug builds.
-	if(CMAKE_BUILD_TYPE STREQUAL "DebugInternal")
-		add_custom_target(run-unit-test-libsanalyzer
-			DEPENDS unit-test-libsanalyzer
-			COMMAND valgrind --error-exitcode=1 --suppressions=./valgrind.suppressions --track-origins=yes --gen-suppressions=all  ./unit-test-libsanalyzer
-			COMMAND valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind --soname-synonyms=somalloc=tcmalloc ./unit-test-libsanalyzer
-		)
-	else()
-		add_custom_target(run-unit-test-libsanalyzer
-			DEPENDS unit-test-libsanalyzer
-			COMMAND valgrind --error-exitcode=1 --suppressions=./valgrind.suppressions --track-origins=yes --gen-suppressions=all ./unit-test-libsanalyzer
-		)
-	endif()
+	add_custom_target(run-unit-test-libsanalyzer
+		DEPENDS unit-test-libsanalyzer
+		COMMAND unit-test-libsanalyzer
+	)
+endif()
+
+# Valgrind's thread analyzer, helgrind, doesn't work well with the release
+# version of the unit test binary -- the backtraces that we want to suppress
+# don't match reality in the code.  Rather than add suppressions for these
+# unexpected backtraces, we'll run helgrind only for debug builds.
+if(CMAKE_BUILD_TYPE STREQUAL "DebugInternal")
+	add_custom_target(valgrind-unit-test-libsanalyzer
+		DEPENDS unit-test-libsanalyzer
+		COMMAND valgrind --error-exitcode=1 --suppressions=./valgrind.suppressions --track-origins=yes --gen-suppressions=all  ./unit-test-libsanalyzer
+		COMMAND valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind --soname-synonyms=somalloc=tcmalloc ./unit-test-libsanalyzer
+	)
+else()
+	add_custom_target(valgrind-unit-test-libsanalyzer
+		COMMAND echo "Error: Valgrind not supported in this build variant. Use the debug-internal build instead." && false
+	)
 endif()
 
 install(TARGETS unit-test-libsanalyzer

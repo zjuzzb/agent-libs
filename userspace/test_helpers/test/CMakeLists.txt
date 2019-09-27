@@ -66,22 +66,23 @@ if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)
 		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-testhelpers testhelpers.lcov
 	)
 else()
-	# Valgrind's thread analyzer, helgrind, doesn't work well with the release
-	# version of the unit test binary -- the backtraces that we want to suppress
-	# don't match reality in the code.  Rather than add suppressions for these
-	# unexpected backtraces, we'll run helgrind only for debug builds.
-	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-		add_custom_target(run-unit-test-testhelpers
-			DEPENDS unit-test-testhelpers
-			COMMAND valgrind --error-exitcode=1 --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-testhelpers
-			COMMAND valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind --soname-synonyms=somalloc=tcmalloc ./unit-test-testhelpers
-		)
-	else()
-		add_custom_target(run-unit-test-testhelpers
-			DEPENDS unit-test-testhelpers
-			COMMAND valgrind --error-exitcode=1 --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-testhelpers
-		)
-	endif()
+	add_custom_target(run-unit-test-testhelpers
+		DEPENDS unit-test-testhelpers
+		COMMAND unit-test-testhelpers
+	)
+endif()
+
+
+if(CMAKE_BUILD_TYPE STREQUAL "DebugInternal")
+	add_custom_target(valgrind-unit-test-testhelpers
+		DEPENDS unit-test-testhelpers
+		COMMAND valgrind --error-exitcode=1 --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-testhelpers
+		COMMAND valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind --soname-synonyms=somalloc=tcmalloc ./unit-test-testhelpers
+	)
+else()
+	add_custom_target(valgrind-unit-test-testhelpers
+		COMMAND echo "Error: Valgrind not supported in this build variant. Use the debug-internal build instead." && false
+	)
 endif()
 
 install(TARGETS unit-test-testhelpers

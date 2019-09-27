@@ -20,6 +20,14 @@ add_custom_target(run-unit-tests
 	COMMAND $(MAKE) run-unit-test-userspace-shared
 )
 
+add_custom_target(valgrind-unit-tests
+	COMMAND $(MAKE) valgrind-unit-test-testhelpers
+	COMMAND $(MAKE) valgrind-unit-test-dragent
+	COMMAND $(MAKE) valgrind-unit-test-libsanalyzer
+	COMMAND $(MAKE) valgrind-unit-test-librest
+	COMMAND $(MAKE) valgrind-unit-test-userspace-shared
+)
+
 if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)
 	add_custom_target(clean-code-coverage
 		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage clean

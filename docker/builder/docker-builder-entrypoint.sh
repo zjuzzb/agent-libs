@@ -195,7 +195,7 @@ build_target()
 build_presubmit()
 {
 	# Use the debug-internal build because it has the toughest valgrind
-	(bootstrap_agent "debug-internal" && make -j${MAKE_JOBS} all run-unit-tests) || \
+	(bootstrap_agent "debug-internal" && make -j${MAKE_JOBS} all valgrind-unit-tests) || \
 		(echo "Building presubmit failed" && false)
 }
 readonly -f build_presubmit
