@@ -161,6 +161,19 @@ void sinsp_connection_aggregator::filter_and_emit(const std::unordered_map<uint1
 	}
 }
 
+// this is really "owned" by the sinsp_connection manager, but because it's a template,
+// static fields become messy. SO we'll put them here.
+class SINSP_PUBLIC sinsp_connection_manager_configuration
+{
+private: // configs
+    static type_config<uint32_t> c_max_connection_table_size;
+    static type_config<uint64_t> c_connection_timeout_ns;
+    static type_config<uint64_t>::ptr c_connection_pruning_interval_ns;
+
+    template<typename Tkey, typename THash, typename TCompare>
+    friend class sinsp_connection_manager;
+};
+
 template<class TKey,class THash,class TCompare>
 class SINSP_PUBLIC sinsp_connection_manager
 {
@@ -187,11 +200,6 @@ public:
 	void clear()
 	{
 		m_connections.clear();
-	}
-
-	const sinsp_configuration* get_configuration()
-	{
-		return m_inspector->m_analyzer->m_configuration;
 	}
 
 	uint32_t get_n_drops()
@@ -221,7 +229,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	//
 	// First of all, make sure there's space for this connection in the table
 	//
-	if(m_connections.size() >= m_inspector->m_analyzer->m_configuration->get_max_connection_table_size())
+	if(m_connections.size() >= sinsp_connection_manager_configuration::c_max_connection_table_size.get())
 	{
 		m_n_drops++;
 		return NULL;
@@ -419,17 +427,15 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_expired_connections(u
 
 	uint64_t deltats = current_ts - m_last_connection_removal_ts;
 	
-	if(deltats <= get_configuration()->get_connection_pruning_interval_ns())
+	if(deltats <= sinsp_connection_manager_configuration::c_connection_pruning_interval_ns->get())
 	{
 		return;
 	}
 
-	uint64_t connection_timeout_ns = get_configuration()->get_connection_timeout_ns();
-
 	typename std::unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit = m_connections.begin();
 	while(cit != m_connections.end())
 	{
-		if(current_ts - cit->second.m_timestamp > connection_timeout_ns)
+		if(current_ts - cit->second.m_timestamp > sinsp_connection_manager_configuration::c_connection_timeout_ns.get())
 		{
 			cit = m_connections.erase(cit);
 		}

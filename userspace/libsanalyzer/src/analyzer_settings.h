@@ -22,19 +22,7 @@
 // This imposes a limit to the number of bytes that can be sent out by
 // the agent.
 //
-#define MIN_SERIALIZATION_BUF_SIZE_BYTES 128
 #define MAX_SERIALIZATION_BUF_SIZE_BYTES 32000000
-
-//
-// The time after which a connection is considered stale and is removed from
-// the connection table.
-//
-#define DEFAULT_CONNECTION_TIMEOUT_SEC 90
-
-//
-// Max size that the connection table can reach
-//
-#define MAX_CONNECTION_TABLE_SIZE 65536
 
 //
 // Max number of connections that can go in a sample that is sent to the backend.
@@ -71,7 +59,6 @@
 //
 // Process health score calculation constants
 //
-#define MAX_HEALTH_CONCURRENCY 16
 #define CONCURRENCY_OBSERVATION_INTERVAL_NS 1000000
 
 //
@@ -127,11 +114,6 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 #define TOP_URLS_IN_SAMPLE 15
 
 //
-// Max number of URLS that are reported on a per process and per machine basis
-//
-#define TOP_STATUS_CODES_IN_SAMPLE 10
-
-//
 // The maximum duration of a socket server-side read after which we
 // assume the transaction is not client server
 //
@@ -173,12 +155,6 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 // reaching this limit, the falco baseliner is disabled.
 //
 #define DEFAULT_FALCO_BASELINING_MAX_DROPS_FULL_BUFFER 64
-
-//
-// Max number of program names stored in the falco baseliner internal
-// table. Currently not in use.
-//
-#define FALCOBL_MAX_PROG_TABLE_SIZE 2000
 
 //
 // FD class customized with the storage we need
@@ -225,8 +201,6 @@ static const uint64_t MESOS_STATE_REFRESH_INTERVAL_S = 10;
 static const long N_TRACEPOINT_HITS_THRESHOLD = 2000000;
 static const double CPU_MAX_SR_THRESHOLD = 20.0;
 static const unsigned SWITCHER_NSECONDS = 5;
-
-#define ENV_HASH_TTL ((86400ULL * ONE_SECOND_IN_NS) - ANALYZER_DEFAULT_SAMPLE_LENGTH_NS)
 
 static const size_t EVENT_QUEUE_LIMIT = 100;
 #define K8S_EVENTS_POLL_INTERVAL_NS (ONE_SECOND_IN_NS / 500)
