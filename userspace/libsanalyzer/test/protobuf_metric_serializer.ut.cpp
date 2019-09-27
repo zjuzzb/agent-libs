@@ -94,7 +94,7 @@ public:
 	 *
 	 * @param[out] stats The captured stats.
 	 */
-	void get_capture_stats(scap_stats* const stats) override
+	void get_capture_stats(scap_stats* const stats) const override
 	{
 		memcpy(stats, &m_stats, sizeof(m_stats));
 	}

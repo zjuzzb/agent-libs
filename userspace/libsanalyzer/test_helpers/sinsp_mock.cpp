@@ -127,7 +127,7 @@ int32_t sinsp_mock::next(sinsp_evt **evt) /*override*/
 }
 
 
-void sinsp_mock::get_capture_stats(scap_stats *stats) /*override*/
+void sinsp_mock::get_capture_stats(scap_stats *stats) const /*override*/
 {
 	*stats = m_scap_stats;
 }

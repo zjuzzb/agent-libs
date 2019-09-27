@@ -57,7 +57,7 @@ private:
 	scap_stats m_scap_stats;
 
 	// implement sinsp
-	void get_capture_stats(scap_stats *stats) override;
+	void get_capture_stats(scap_stats *stats) const override;
 	int /*SCAP_X*/ dynamic_snaplen(bool value) override { return SCAP_SUCCESS; }
 
 	using thread_info_ptr = std::unique_ptr<const sinsp_threadinfo>;
