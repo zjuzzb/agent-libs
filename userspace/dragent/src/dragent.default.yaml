@@ -595,6 +595,13 @@ prometheus:
         container.label.io.prometheus.scrape: "false"
     - include:
         kubernetes.pod.annotation.prometheus.io/scrape: true
+        kubernetes.pod.annotation.prometheus.io/scheme: "https"
+        conf:
+            use_https: true
+            path: "{kubernetes.pod.annotation.prometheus.io/path}"
+            port: "{kubernetes.pod.annotation.prometheus.io/port}"
+    - include:
+        kubernetes.pod.annotation.prometheus.io/scrape: true
         conf:
             path: "{kubernetes.pod.annotation.prometheus.io/path}"
             port: "{kubernetes.pod.annotation.prometheus.io/port}"
