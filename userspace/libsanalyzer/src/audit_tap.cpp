@@ -1,12 +1,19 @@
-
 #include "audit_tap.h"
-#include <sinsp_int.h>
 #include "analyzer.h"
 #include "analyzer_thread.h"
+#include "common_logger.h"
 #include "connectinfo.h"
-#include <tap.pb.h>
+#include "sinsp_int.h"
+#include "tap.pb.h"
+#include "type_config.h"
+#include <fstream>
+#include <sstream>
+#include <google/protobuf/util/json_util.h>
+#include <Poco/File.h>
 
 namespace {
+
+COMMON_LOGGER();
 
 type_config<unsigned int>::ptr c_max_argument_length =
    type_config_builder<unsigned int>(100 /*default*/,
@@ -17,19 +24,86 @@ type_config<unsigned int>::ptr c_max_argument_length =
 	.max(64 * 1024)
 	.get();
 
+
+type_config<std::string>::ptr c_protobuf_dir =
+	type_config_builder<std::string>(
+		"",
+		"Full path of the directory into which the agent will write JSON "
+		"representations of each audit tap protobufs",
+		"audit_tap",
+		"metricsfile")
+	.hidden()
+	.post_init([](type_config<std::string>& config)
+		{
+			// Create the directory if it doesn't exist
+			if(config.get() != "")
+			{
+				Poco::File dir(config.get());
+				dir.createDirectories();
+			}
+		})
+	.get();
+
+type_config<uint64_t> c_audit_internal_s(
+		60,
+		"The time interval, in seconds, on which the agent sends network audit information",
+		"audit_tap",
+		"network_audit_interval_s");
+
+
+void write_to_file(const tap::AuditLog& tap)
+{
+	if(c_protobuf_dir->get().empty())
+	{
+		return;
+	}
+
+	std::stringstream out;
+
+	out << "tap_" << tap.timestamp() << ".json";
+
+	const std::string filename = out.str();
+	std::ofstream out_file(c_protobuf_dir->get() + "/" + filename);
+
+	if(!out_file)
+	{
+		LOG_INFO("Unable to create protobuf file: %s",
+		         (c_protobuf_dir->get() + "/" + filename).c_str());
+		return;
+	}
+
+	std::string json_string;
+
+	::google::protobuf::util::MessageToJsonString(tap, &json_string);
+
+	out_file << json_string;
+
+	const std::string symbolic_link = c_protobuf_dir->get() +
+	                                  "/tap_latest.json";
+	unlink(symbolic_link.c_str());
+	symlink(filename.c_str(), symbolic_link.c_str());
 }
 
-
-tap::ConnectionStatus conn_status(uint8_t flags, int errorcode)
+tap::ConnectionStatus conn_status(const uint8_t flags, const int errorcode)
 {
-	switch(flags & ~sinsp_connection::AF_REUSED) {
-		case sinsp_connection::AF_PENDING: return tap::ConnectionStatus::PENDING;
-		case sinsp_connection::AF_CLOSED: return tap::ConnectionStatus::CLOSED;
-		default: return errorcode == 0 ?
-			tap::ConnectionStatus::ESTABLISHED:
-			tap::ConnectionStatus::FAILED;
+	if(flags & sinsp_connection::AF_PENDING)
+	{
+		return tap::ConnectionStatus::PENDING;
+	}
+	else if(flags & sinsp_connection::AF_CLOSED)
+	{
+		return tap::ConnectionStatus::CLOSED;
+	}
+	else
+	{
+		return errorcode == 0 ? tap::ConnectionStatus::ESTABLISHED
+		                      : tap::ConnectionStatus::FAILED;
 	}
 }
+
+} // end namespace
+
+
 
 audit_tap::audit_tap(env_hash_config *config, const std::string &machine_id, bool emit_local_connections) :
 	m_machine_id(machine_id),
@@ -37,7 +111,8 @@ audit_tap::audit_tap(env_hash_config *config, const std::string &machine_id, boo
 	m_emit_local_connections(emit_local_connections),
 	m_event_batch(new tap::AuditLog),
 	m_config(config),
-	m_num_envs_sent(0)
+	m_num_envs_sent(0),
+	m_last_run_audit_ns(0)
 {
 	clear();
 }
@@ -57,36 +132,56 @@ void audit_tap::on_exit(uint64_t pid)
 	}
 }
 
+bool audit_tap::should_emit_network_audit()
+{
+	const auto now = sinsp_utils::get_current_time_ns();
+
+	if((now - m_last_run_audit_ns) <= (c_audit_internal_s.get() * ONE_SECOND_IN_NS))
+	{
+		return false;
+	}
+
+	m_last_run_audit_ns = now;
+	return true;
+}
+
 void audit_tap::emit_connections(sinsp_ipv4_connection_manager* conn_manager, userdb* userdb)
 {
+	const bool emit_audit = should_emit_network_audit();
+
 	for(auto& it : conn_manager->m_connections)
 	{
+		const ipv4tuple& iptuple = it.first;
+		sinsp_connection& connection = it.second;
+
 		if (
-			it.first.m_fields.m_sip == 0 &&
-			it.first.m_fields.m_sport == 0 &&
-			it.first.m_fields.m_dip == 0 &&
-			it.first.m_fields.m_dport == 0)
+			iptuple.m_fields.m_sip == 0 &&
+			iptuple.m_fields.m_sport == 0 &&
+			iptuple.m_fields.m_dip == 0 &&
+			iptuple.m_fields.m_dport == 0)
 		{
 			continue;
 		}
 
-		if (!m_emit_local_connections && it.second.m_spid != 0 && it.second.m_dpid != 0)
+		if (!m_emit_local_connections && connection.m_spid != 0 && connection.m_dpid != 0)
 		{
 			continue;
 		}
 
-		auto history = it.second.get_state_history();
+		auto history = connection.get_state_history();
 		bool have_connections = false;
+
 		for(const auto& transition : history)
 		{
 			auto pb_conn = m_event_batch->add_connectionevents();
-			pb_conn->set_clientipv4(htonl(it.first.m_fields.m_sip));
-			pb_conn->set_clientport(it.first.m_fields.m_sport);
-			pb_conn->set_clientpid(it.second.m_spid);
 
-			pb_conn->set_serveripv4(htonl(it.first.m_fields.m_dip));
-			pb_conn->set_serverport(it.first.m_fields.m_dport);
-			pb_conn->set_serverpid(it.second.m_dpid);
+			pb_conn->set_clientipv4(htonl(iptuple.m_fields.m_sip));
+			pb_conn->set_clientport(iptuple.m_fields.m_sport);
+			pb_conn->set_clientpid(connection.m_spid);
+
+			pb_conn->set_serveripv4(htonl(iptuple.m_fields.m_dip));
+			pb_conn->set_serverport(iptuple.m_fields.m_dport);
+			pb_conn->set_serverpid(connection.m_dpid);
 
 			pb_conn->set_status(conn_status(transition.state, transition.error_code));
 			pb_conn->set_errorcode(transition.error_code);
@@ -97,10 +192,66 @@ void audit_tap::emit_connections(sinsp_ipv4_connection_manager* conn_manager, us
 
 		if(have_connections)
 		{
-			emit_process(it.second.m_sproc.get(), userdb);
-			emit_process(it.second.m_dproc.get(), userdb);
+			emit_process(connection.m_sproc.get(), userdb);
+			emit_process(connection.m_dproc.get(), userdb);
+		}
+
+		if(emit_audit)
+		{
+			emit_network_audit(m_event_batch->mutable_connectionaudit(),
+			                   iptuple,
+			                   connection);
 		}
 	}
+}
+
+void audit_tap::emit_network_audit(tap::ConnectionAudit* const conn_audit,
+                                   const ipv4tuple& iptuple,
+                                   const sinsp_connection& connection)
+{
+	if(conn_audit == nullptr)
+	{
+		LOG_ERROR("Failed to allocate tap::ConnectionAudit");
+		return;
+	}
+
+	conn_audit->set_connectioncounttotal(conn_audit->connectioncounttotal() + 1);
+
+	auto conn = conn_audit->add_connections();
+
+	conn->set_clientipv4(htonl(iptuple.m_fields.m_sip));
+	conn->set_clientport(iptuple.m_fields.m_sport);
+	conn->set_clientpid(connection.m_spid);
+
+	conn->set_serveripv4(htonl(iptuple.m_fields.m_dip));
+	conn->set_serverport(iptuple.m_fields.m_dport);
+	conn->set_serverpid(connection.m_dpid);
+
+	conn->set_errorcount(connection.m_metrics.get_error_count());
+
+	const sinsp_counter_bytes* counters = nullptr;
+	if(connection.is_server_only())
+	{
+		counters = &connection.m_metrics.m_server;
+		conn_audit->set_connectioncountin(conn_audit->connectioncountin() + 1);
+	}
+	else
+	{
+		counters = &connection.m_metrics.m_client;
+		conn_audit->set_connectioncountout(conn_audit->connectioncountout() + 1);
+	}
+
+	auto requestCounts = conn->mutable_requestcounts();
+
+	requestCounts->set_in(counters->m_count_in);
+	requestCounts->set_out(counters->m_count_out);
+	requestCounts->set_total(counters->m_count_in + counters->m_count_out);
+
+	auto byteCounts = conn->mutable_bytecounts();
+
+	byteCounts->set_in(counters->m_bytes_in);
+	byteCounts->set_out(counters->m_bytes_out);
+	byteCounts->set_total(counters->m_bytes_in + counters->m_bytes_out);
 }
 
 void audit_tap::emit_pending_envs(sinsp* inspector)
@@ -283,7 +434,11 @@ const tap::AuditLog* audit_tap::get_events()
 		g_logger.format(sinsp_logger::SEV_DEBUG, "No audit tap messages generated");
 		return nullptr;
 	}
+
 	m_event_batch->set_timestamp(sinsp_utils::get_current_time_ns() / 1000000);
+
+	write_to_file(*m_event_batch);
+
 	return m_event_batch;
 }
 

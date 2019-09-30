@@ -1,16 +1,18 @@
 #pragma once
 
+#include "env_hash.h"
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 
-#include "env_hash.h"
-
 namespace tap {
 class AuditLog;
+class ConnectionAudit;
 class NewProcess;
 }
 
+union _ipv4tuple;
+class sinsp_connection;
 class sinsp_ipv4_connection_manager;
 class sinsp_threadinfo;
 class sinsp;
@@ -64,6 +66,11 @@ public:
 private:
 	void emit_process(sinsp_threadinfo *tinfo, userdb *userdb);
 	bool emit_environment(tap::NewProcess *proc, sinsp_threadinfo *tinfo);
+	bool should_emit_network_audit();
+
+	void emit_network_audit(tap::ConnectionAudit* conn_audit,
+                                const _ipv4tuple& iptuple,
+                                const sinsp_connection& connection);
 
 	std::string m_machine_id;
 	std::string m_hostname;
@@ -75,4 +82,5 @@ private:
 	std::unordered_map<env_hash, uint64_t> m_sent_envs;
 	env_hash_config* m_config;
 	int m_num_envs_sent;
+	uint64_t m_last_run_audit_ns;
 };

@@ -1137,10 +1137,15 @@ const sinsp_counter_time_bidirectional* sinsp_transaction_counters::get_max_coun
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_connection_counters implementation
 ///////////////////////////////////////////////////////////////////////////////
+sinsp_connection_counters::sinsp_connection_counters():
+	m_error_count(0)
+{ }
+
 void sinsp_connection_counters::clear()
 {
 	m_server.clear();
 	m_client.clear();
+	m_error_count = 0;
 }
 
 void sinsp_connection_counters::to_protobuf(draiosproto::connection_categories* protobuf_msg, uint32_t sampling_ratio) const
@@ -1153,6 +1158,7 @@ void sinsp_connection_counters::add(sinsp_connection_counters* other)
 {
 	m_server.add(&other->m_server);
 	m_client.add(&other->m_client);
+	m_error_count += other->m_error_count;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

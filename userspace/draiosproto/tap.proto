@@ -5,6 +5,18 @@ option optimize_for = SPEED;
 option java_package = "com.sysdig.audit.common.protobuf";
 option java_outer_classname = "ProcessAuditProtobuf";
 
+message InOut32Counter {
+    uint32 total = 1;
+    uint32 in = 2;
+    uint32 out = 3;
+}
+
+message InOut64Counter {
+    uint64 total = 1;
+    uint64 in = 2;
+    uint64 out = 3;
+}
+
 message AuditLog {
     string hostName = 1;
     string hostMac = 2;
@@ -13,6 +25,7 @@ message AuditLog {
     repeated ProcessExit processExitEvents = 5;
     repeated Connection connectionEvents = 6;
     repeated EnvironmentVariables environmentVariables = 7;
+    ConnectionAudit connectionAudit = 8;
 }
 
 message NewProcess {
@@ -55,9 +68,19 @@ message Connection {
     ConnectionStatus status = 7;
     uint32 errorCode = 8;
     uint64 timestamp = 9;
+    InOut32Counter requestCounts = 10;
+    InOut64Counter byteCounts = 11;
+    uint32 errorCount = 12;
 }
 
 message EnvironmentVariables {
     bytes hash = 1;
     repeated string variables = 2; // list of "NAME=value" strings
+}
+
+message ConnectionAudit {
+    uint32 connectionCountTotal = 1;
+    uint32 connectionCountIn = 2;
+    uint32 connectionCountOut = 3;
+    repeated Connection connections = 4;
 }

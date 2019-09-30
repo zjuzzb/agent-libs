@@ -271,12 +271,20 @@ public:
 class sinsp_connection_counters
 {
 public:
+	sinsp_connection_counters();
+
 	sinsp_counter_bytes m_server;
 	sinsp_counter_bytes m_client;
 
 	void clear();
 	void to_protobuf(draiosproto::connection_categories* protobuf_msg, uint32_t sampling_ratio) const;
 	void add(sinsp_connection_counters* other);
+
+	uint32_t get_error_count() const { return m_error_count; }
+	void increment_error_count() { ++m_error_count; }
+
+private:
+	uint32_t m_error_count;
 };
 
 //
@@ -322,54 +330,32 @@ class sinsp_error_counters
 {
 public:
 //	std::unordered_map<int32_t, sinsp_counter_cnt> m_table;
-	uint32_t m_count; // Syscall errors count
-    uint32_t m_count_file;	// Number of file errors
-    uint32_t m_count_file_open;	// Number of file open errors
-    uint32_t m_count_net;	// Number of network errors
+	uint32_t m_count;           // Syscall errors count
+	uint32_t m_count_file;      // Number of file errors
+	uint32_t m_count_file_open; // Number of file open errors
+	uint32_t m_count_net;       // Number of network errors
 
 	void clear();
-	inline void add(sinsp_evt* evt)
+
+	inline void add(const sinsp_evt* const evt)
 	{
 		m_count++;
 
-		sinsp_fdinfo_t* fdinfo = evt->get_fd_info();
-
-		if(fdinfo != NULL)
+		if(evt->is_file_open_error())
 		{
-			scap_fd_type fdtype = fdinfo->m_type;
-
-			if(fdtype == SCAP_FD_FILE || fdtype == SCAP_FD_FILE_V2)
-			{
-				m_count_file++;
-			}
-			else if(fdtype == SCAP_FD_IPV4_SOCK || fdtype == SCAP_FD_IPV6_SOCK)
-			{
-				m_count_net++;
-			}
+			m_count_file_open++;
+			m_count_file++;
 		}
-		else
+		else if(evt->is_file_error())
 		{
-			uint16_t etype = evt->get_type();
-
-			if(etype == PPME_SYSCALL_OPEN_X ||
-				etype == PPME_SYSCALL_CREAT_X ||
-				etype == PPME_SYSCALL_OPENAT_X ||
-				etype == PPME_SYSCALL_OPENAT_2_X)
-			{
-				m_count_file_open++;
-				m_count_file++;
-			}
-			else if(etype == PPME_SOCKET_ACCEPT_X ||
-				etype == PPME_SOCKET_ACCEPT4_X ||
-				etype == PPME_SOCKET_ACCEPT_5_X ||
-				etype == PPME_SOCKET_ACCEPT4_5_X ||
-				etype == PPME_SOCKET_CONNECT_X ||
-				etype == PPME_SOCKET_BIND_X)
-			{
-				m_count_net++;
-			}
+			m_count_file++;
+		}
+		else if(evt->is_network_error())
+		{
+			m_count_net++;
 		}
 	}
+
 	void add(sinsp_error_counters* other);
 	void to_protobuf(draiosproto::counter_syscall_errors* protobuf_msg, uint32_t sampling_ratio) const;
 	void coalesce_protobuf(draiosproto::counter_syscall_errors* protobuf_msg, 

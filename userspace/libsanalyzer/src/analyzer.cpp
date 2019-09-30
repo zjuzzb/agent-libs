@@ -4956,25 +4956,35 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, analyzer_emitter::flush_flags
 		do_inc_counter);
 
 	//
-	// if this is an error syscall, add the error to the process and host table
+	// If this is an error syscall, add the error to the host, process, and
+	// container (if applicable).
 	//
-	if(evt->m_errorcode != 0)
+	if(evt->is_syscall_error())
 	{
-		if((evt->m_errorcode != SE_EINPROGRESS) &&
-			(evt->m_errorcode != SE_EAGAIN) &&
-			(evt->m_errorcode != SE_ETIMEDOUT))
+		// If m_fdinfo is nullptr, then there is no connection object
+		// on which to increment network error counters.
+		if(evt->m_fdinfo && evt->is_network_error())
 		{
-			m_host_metrics.m_syscall_errors.add(evt);
+			sinsp_connection* const conn =
+				get_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
+				               evt->get_ts());
 
-			ASSERT(evt->m_tinfo);
-			ASSERT(evt->m_tinfo->m_ainfo);
-
-			evt->m_tinfo->m_ainfo->m_syscall_errors.add(evt);
-
-			if(!evt->m_tinfo->m_container_id.empty())
+			if(conn != nullptr)
 			{
-				m_containers[evt->m_tinfo->m_container_id].m_metrics.m_syscall_errors.add(evt);
+				conn->m_metrics.increment_error_count();
 			}
+		}
+
+		m_host_metrics.m_syscall_errors.add(evt);
+
+		ASSERT(evt->m_tinfo);
+		ASSERT(evt->m_tinfo->m_ainfo);
+
+		evt->m_tinfo->m_ainfo->m_syscall_errors.add(evt);
+
+		if(!evt->m_tinfo->m_container_id.empty())
+		{
+			m_containers[evt->m_tinfo->m_container_id].m_metrics.m_syscall_errors.add(evt);
 		}
 	}
 }
