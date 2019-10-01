@@ -721,7 +721,7 @@ class Application:
 
         except KeyError:
             if pidname in self.blacklisted_pidnames:
-                logging.debug("Process with pid=%d,name=%s is blacklisted", pidname[0], pidname[1])
+                logging.debug("Process with pid=%d,name=%s is excluded", pidname[0], pidname[1])
                 return False, 0
             logging.debug("Requested check %s", repr(check))
 
@@ -754,7 +754,7 @@ class Application:
         trc2.stop(args={"metrics": nm, "exception": "yes" if ex else "no"})
         current_time = datetime.now()
         if current_time > self.blacklisted_pidnames_log_time and self.blacklisted_pidnames_log_flag:
-            logging.info("Blacklisted pids, names and retry values : %s",
+            logging.info("Excluded pids, names and retry values : %s",
                          list(self.blacklisted_pidnames))
             self.blacklisted_pidnames_log_flag = False
 
@@ -848,7 +848,7 @@ class Application:
                 self.blacklisted_pidnames_log_flag = True
                 self.blacklisted_pidnames_log_time = datetime.now() + timedelta(seconds=15)
             if now - self.last_blacklisted_pidnames_log > self.blacklisted_pidnames_log_interval:
-                logging.info("Blacklisted pids, names and retry values : %s",
+                logging.info("Excluded pids, names and retry values : %s",
                              list(self.blacklisted_pidnames))
                 self.last_blacklisted_pidnames_log = datetime.now()
 
