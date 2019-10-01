@@ -150,6 +150,7 @@ class RabbitMQ(AgentCheck):
                                  "%s_start_time" % QUEUE_TYPE: time.time(),
                                  "%s_start_time" % NODE_TYPE: time.time()}
         self.req_session = requests.Session()
+        self.node_name = None
 
     def _get_config(self, instance):
         # make sure 'rabbitmq_api_url' is present and get parameters
@@ -271,6 +272,20 @@ class RabbitMQ(AgentCheck):
         except ValueError as e:
             raise RabbitMQException('Cannot parse JSON response from API url: {} {}'.format(url, str(e)))
 
+    def _get_current_node(self, base_url, auth, ssl_verify, instance_proxy):
+        if not self.node_name:
+            resp_data = self._get_data(urlparse.urljoin(base_url, "overview"), auth=auth,
+                                       ssl_verify=ssl_verify, proxies=instance_proxy)
+            if "node" in resp_data:
+                self.node_name = resp_data.get("node")
+
+    def _filter_by_current_node(self, data):
+        data_lines = []
+        for item in data:
+            if 'node' in item and self.node_name in item['node']:
+                data_lines.append(item)
+        return data_lines
+
     def _filter_list(self, data, explicit_filters, regex_filters, object_type, tag_families):
         if explicit_filters or regex_filters:
             matching_lines = []
@@ -373,6 +388,12 @@ class RabbitMQ(AgentCheck):
         if len(explicit_filters) > max_detailed:
             raise Exception(
                 "The maximum number of %s you can specify is %d." % (object_type, max_detailed))
+
+        # For cluster environment, Filter data by current node, if filter_by_node flag is set to true.
+        if instance.get("filter_by_node") and object_type == QUEUE_TYPE:
+            self._get_current_node(base_url, auth, ssl_verify, instance_proxy)
+            if self.node_name:
+                data = self._filter_by_current_node(data)
 
         # a list of queues/nodes is specified. We process only those
         data = self._filter_list(data, explicit_filters, regex_filters, object_type, instance.get("tag_families", False))
