@@ -11,7 +11,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/api/extensions/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/api/core/v1"
 )
@@ -22,7 +22,7 @@ var rsSelectorCache *selectorCache
 var filterEmptyRs bool
 
 type coReplicaSet struct {
-	*v1beta1.ReplicaSet
+	*appsv1.ReplicaSet
 }
 
 func (rs coReplicaSet) Selector() labels.Selector {
@@ -147,7 +147,7 @@ func AddReplicaSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 
 	podLabels := labels.Set(pod.GetLabels())
 	for _, obj := range replicaSetInf.GetStore().List() {
-		rs := coReplicaSet{obj.(*v1beta1.ReplicaSet)}
+		rs := coReplicaSet{obj.(*appsv1.ReplicaSet)}
 		if pod.GetNamespace() != rs.GetNamespace() {
 			continue
 		}
@@ -168,7 +168,7 @@ func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, selector labels
 	}
 
 	for _, obj := range replicaSetInf.GetStore().List() {
-		replicaSet := obj.(*v1beta1.ReplicaSet)
+		replicaSet := obj.(*appsv1.ReplicaSet)
 		if replicaSet.GetNamespace() != ns {
 			continue
 		}
@@ -187,7 +187,7 @@ func AddReplicaSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, na
 	}
 
 	for _, obj := range replicaSetInf.GetStore().List() {
-		replicaSet := obj.(*v1beta1.ReplicaSet)
+		replicaSet := obj.(*appsv1.ReplicaSet)
 		if replicaSet.GetNamespace() == namespaceName {
 			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_replicaset"),
@@ -202,7 +202,7 @@ func AddReplicaSetChildrenByName(children *[]*draiosproto.CongroupUid, namespace
 	}
 
 	for _, obj := range replicaSetInf.GetStore().List() {
-		rs := obj.(*v1beta1.ReplicaSet)
+		rs := obj.(*appsv1.ReplicaSet)
 		if (rs.GetNamespace() == namespace) &&
 			(rs.GetName() == name) {
 			*children = append(*children, &draiosproto.CongroupUid{
@@ -215,9 +215,9 @@ func AddReplicaSetChildrenByName(children *[]*draiosproto.CongroupUid, namespace
 func startReplicaSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty bool) {
 	rsSelectorCache = newSelectorCache()
 	filterEmptyRs = filterEmpty
-	client := kubeClient.ExtensionsV1beta1().RESTClient()
+	client := kubeClient.AppsV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicaSets", v1meta.NamespaceAll, fields.Everything())
-	replicaSetInf = cache.NewSharedInformer(lw, &v1beta1.ReplicaSet{}, RsyncInterval)
+	replicaSetInf = cache.NewSharedInformer(lw, &appsv1.ReplicaSet{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -235,7 +235,7 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			AddFunc: func(obj interface{}) {
 				eventReceived("replicasets")
 
-				rs := coReplicaSet{obj.(*v1beta1.ReplicaSet)}
+				rs := coReplicaSet{obj.(*appsv1.ReplicaSet)}
 				if rs.Filtered() {
 					return
 				}
@@ -246,8 +246,8 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				addEvent("ReplicaSet", EVENT_UPDATE)
-				oldRS := coReplicaSet{oldObj.(*v1beta1.ReplicaSet)}
-				newRS := coReplicaSet{newObj.(*v1beta1.ReplicaSet)}
+				oldRS := coReplicaSet{oldObj.(*appsv1.ReplicaSet)}
+				newRS := coReplicaSet{newObj.(*appsv1.ReplicaSet)}
 				if oldRS.GetResourceVersion() == newRS.GetResourceVersion() {
 					return
 				}
@@ -288,11 +288,11 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			DeleteFunc: func(obj interface{}) {
 				rs := coReplicaSet{nil}
 				switch obj.(type) {
-				case *v1beta1.ReplicaSet:
-					rs = coReplicaSet{obj.(*v1beta1.ReplicaSet)}
+				case *appsv1.ReplicaSet:
+					rs = coReplicaSet{obj.(*appsv1.ReplicaSet)}
 				case cache.DeletedFinalStateUnknown:
 					d := obj.(cache.DeletedFinalStateUnknown)
-					o, ok := (d.Obj).(*v1beta1.ReplicaSet)
+					o, ok := (d.Obj).(*appsv1.ReplicaSet)
 					if ok {
 						rs = coReplicaSet{o}
 					} else {

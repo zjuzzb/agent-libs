@@ -4,7 +4,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"testing"
 
-	"k8s.io/api/extensions/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientgoInformersLib "k8s.io/client-go/informers"
 )
@@ -64,7 +64,7 @@ func replicaset_fixture() {
 // Creates two replicaset objects that are DeepEqual
 func createReplicaSetCopies() (coReplicaSet, coReplicaSet) {
 	var numReplicas int32 = 5
-	rs := &v1beta1.ReplicaSet{
+	rs := &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "oldReplicaSet",
 			Labels: map[string]string{
@@ -78,10 +78,10 @@ func createReplicaSetCopies() (coReplicaSet, coReplicaSet) {
 				"annotation_key2":"annotation_val2",
 			},
 		},
-		Spec: v1beta1.ReplicaSetSpec{
+		Spec: appsv1.ReplicaSetSpec{
 			Replicas: &numReplicas,
 		},
-		Status: v1beta1.ReplicaSetStatus{
+		Status: appsv1.ReplicaSetStatus{
 			Replicas: numReplicas,
 			FullyLabeledReplicas: numReplicas,
 			ReadyReplicas: numReplicas,

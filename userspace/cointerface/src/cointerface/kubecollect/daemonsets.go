@@ -11,7 +11,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/api/core/v1"	
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/api/extensions/v1beta1"	
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -21,7 +21,7 @@ var daemonSetInf cache.SharedInformer
 var dsSelectorCache *selectorCache
 
 type coDaemonSet struct {
-	*v1beta1.DaemonSet
+	*appsv1.DaemonSet
 }
 
 func (ds coDaemonSet) Selector() labels.Selector {
@@ -119,7 +119,7 @@ func AddDaemonSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 
 	podLabels := labels.Set(pod.GetLabels())
 	for _, obj := range daemonSetInf.GetStore().List() {
-		daemonSet := coDaemonSet{obj.(*v1beta1.DaemonSet)}
+		daemonSet := coDaemonSet{obj.(*appsv1.DaemonSet)}
 		if pod.GetNamespace() != daemonSet.GetNamespace() {
 			continue
 		}
@@ -140,7 +140,7 @@ func AddDaemonSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, nam
 	}
 
 	for _, obj := range daemonSetInf.GetStore().List() {
-		daemonSet := obj.(*v1beta1.DaemonSet)
+		daemonSet := obj.(*appsv1.DaemonSet)
 		if daemonSet.GetNamespace() == namespaceName {
 			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_daemonset"),
@@ -151,9 +151,9 @@ func AddDaemonSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, nam
 
 func startDaemonSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	dsSelectorCache = newSelectorCache()
-	client := kubeClient.ExtensionsV1beta1().RESTClient()
+	client := kubeClient.AppsV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "DaemonSets", v1meta.NamespaceAll, fields.Everything())
-	daemonSetInf = cache.NewSharedInformer(lw, &v1beta1.DaemonSet{}, RsyncInterval)
+	daemonSetInf = cache.NewSharedInformer(lw, &appsv1.DaemonSet{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -170,15 +170,15 @@ func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				eventReceived("daemonsets")
-				//log.Debugf("AddFunc dumping DaemonSet: %v", obj.(*v1beta1.DaemonSet))
-				evtc <- daemonSetEvent(coDaemonSet{obj.(*v1beta1.DaemonSet)},
+				//log.Debugf("AddFunc dumping DaemonSet: %v", obj.(*appsv1.DaemonSet))
+				evtc <- daemonSetEvent(coDaemonSet{obj.(*appsv1.DaemonSet)},
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
 				addEvent("DaemonSet", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				addEvent("DaemonSet", EVENT_UPDATE)
-				oldDS := coDaemonSet{oldObj.(*v1beta1.DaemonSet)}
-				newDS := coDaemonSet{newObj.(*v1beta1.DaemonSet)}
+				oldDS := coDaemonSet{oldObj.(*appsv1.DaemonSet)}
+				newDS := coDaemonSet{newObj.(*appsv1.DaemonSet)}
 				if oldDS.GetResourceVersion() == newDS.GetResourceVersion() {
 					return
 				}
@@ -196,11 +196,11 @@ func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			DeleteFunc: func(obj interface{}) {
 				ds := coDaemonSet{nil}
 				switch obj.(type) {
-				case *v1beta1.DaemonSet:
-					ds = coDaemonSet{obj.(*v1beta1.DaemonSet)}
+				case *appsv1.DaemonSet:
+					ds = coDaemonSet{obj.(*appsv1.DaemonSet)}
 				case cache.DeletedFinalStateUnknown:
 					d := obj.(cache.DeletedFinalStateUnknown)
-					o, ok := (d.Obj).(*v1beta1.DaemonSet)
+					o, ok := (d.Obj).(*appsv1.DaemonSet)
 					if ok {
 						ds = coDaemonSet{o}
 					} else {

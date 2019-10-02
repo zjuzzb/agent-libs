@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"k8s.io/api/extensions/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -59,7 +59,7 @@ func TestMain (m *testing.M) {
 // Creates two deployment objects that are DeepEqual
 func createDeploymentCopies() (coDeployment, coDeployment) {
 	var numReplicas int32 = 5
-	deploy := &v1beta1.Deployment{
+	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			UID: types.UID("MaramaoPercheSeiMorto"),
 			Name: "oldDeployment",
@@ -74,11 +74,11 @@ func createDeploymentCopies() (coDeployment, coDeployment) {
 				"annotation_key2":"annotation_val2",
 			},
 		},
-		Spec: v1beta1.DeploymentSpec{
+		Spec: appsv1.DeploymentSpec{
 			Replicas: &numReplicas,
 			Paused: true,
 		},
-		Status: v1beta1.DeploymentStatus{
+		Status: appsv1.DeploymentStatus{
 			Replicas: numReplicas,
 			AvailableReplicas: numReplicas,
 			UnavailableReplicas: numReplicas,
@@ -169,7 +169,7 @@ func TestAddDeploymentParents(t *testing.T) {
 	AddDeploymentParents(&parents, replicaset)
 
 	// Check that the rs parent id is the deployment uid
-	if len(parents) != 1 || (*parents[0].Id != string(deploymentInf.GetStore().List()[0].(*v1beta1.Deployment).UID)) {
+	if len(parents) != 1 || (*parents[0].Id != string(deploymentInf.GetStore().List()[0].(*appsv1.Deployment).UID)) {
 		t.Fail()
 	}
 
@@ -177,7 +177,7 @@ func TestAddDeploymentParents(t *testing.T) {
 	replicaset.OwnerReferences = nil
 	parents = []*draiosproto.CongroupUid{}
 
-	deployment := deploymentInf.GetStore().List()[0].(*v1beta1.Deployment)
+	deployment := deploymentInf.GetStore().List()[0].(*appsv1.Deployment)
 
 	// Add selector specs
 	deployment.Spec.Selector = &metav1.LabelSelector{
@@ -191,7 +191,7 @@ func TestAddDeploymentParents(t *testing.T) {
 
 	AddDeploymentParents(&parents, replicaset)
 
-	if len(parents) != 1 || (*parents[0].Id != string(deploymentInf.GetStore().List()[0].(*v1beta1.Deployment).UID)) {
+	if len(parents) != 1 || (*parents[0].Id != string(deploymentInf.GetStore().List()[0].(*appsv1.Deployment).UID)) {
 		t.Fail()
 	}
 }

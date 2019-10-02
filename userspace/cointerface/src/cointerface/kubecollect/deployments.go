@@ -12,7 +12,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/api/extensions/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -21,7 +21,7 @@ var deploymentInf cache.SharedInformer
 var deploySelectorCache *selectorCache
 
 type coDeployment struct {
-	*v1beta1.Deployment
+	*appsv1.Deployment
 }
 
 func (deploy coDeployment) Selector() labels.Selector {
@@ -142,7 +142,7 @@ func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, rs coReplicaSet) 
 		// did not find an owner reference. Use usual selector, label mechanism
 		rsLabels := labels.Set(rs.GetLabels())
 		for _, obj := range deploymentInf.GetStore().List() {
-			deploy := coDeployment{obj.(*v1beta1.Deployment)}
+			deploy := coDeployment{obj.(*appsv1.Deployment)}
 			if rs.GetNamespace() != deploy.GetNamespace() {
 				continue
 			}
@@ -169,7 +169,7 @@ func AddDeploymentChildrenFromNamespace(children *[]*draiosproto.CongroupUid, na
 	}
 
 	for _, obj := range deploymentInf.GetStore().List() {
-		deployment := obj.(*v1beta1.Deployment)
+		deployment := obj.(*appsv1.Deployment)
 		if deployment.GetNamespace() == namespaceName {
 			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_deployment"),
@@ -184,7 +184,7 @@ func AddDeploymentChildrenByName(children *[]*draiosproto.CongroupUid, namespace
 	}
 
 	for _, obj := range deploymentInf.GetStore().List() {
-		deployment := obj.(*v1beta1.Deployment)
+		deployment := obj.(*appsv1.Deployment)
 		if (deployment.GetNamespace() == namespace) &&
 			(deployment.GetName() == name) {
 			*children = append(*children, &draiosproto.CongroupUid{
@@ -196,9 +196,9 @@ func AddDeploymentChildrenByName(children *[]*draiosproto.CongroupUid, namespace
 
 func startDeploymentsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	deploySelectorCache = newSelectorCache()
-	client := kubeClient.ExtensionsV1beta1().RESTClient()
+	client := kubeClient.AppsV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "Deployments", v1meta.NamespaceAll, fields.Everything())
-	deploymentInf = cache.NewSharedInformer(lw, &v1beta1.Deployment{}, RsyncInterval)
+	deploymentInf = cache.NewSharedInformer(lw, &appsv1.Deployment{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -215,14 +215,14 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				eventReceived("deployments")
-				evtc <- deploymentEvent(coDeployment{obj.(*v1beta1.Deployment)},
+				evtc <- deploymentEvent(coDeployment{obj.(*appsv1.Deployment)},
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
 				addEvent("Deployment", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				addEvent("Deployment", EVENT_UPDATE)
-				oldDeployment := coDeployment{oldObj.(*v1beta1.Deployment)}
-				newDeployment := coDeployment{newObj.(*v1beta1.Deployment)}
+				oldDeployment := coDeployment{oldObj.(*appsv1.Deployment)}
+				newDeployment := coDeployment{newObj.(*appsv1.Deployment)}
 				if oldDeployment.GetResourceVersion() == newDeployment.GetResourceVersion() {
 					return
 				}
@@ -240,11 +240,11 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			DeleteFunc: func(obj interface{}) {
 				oldDeployment := coDeployment{nil}
 				switch obj.(type) {
-				case *v1beta1.Deployment:
-					oldDeployment = coDeployment{obj.(*v1beta1.Deployment)}
+				case *appsv1.Deployment:
+					oldDeployment = coDeployment{obj.(*appsv1.Deployment)}
 				case cache.DeletedFinalStateUnknown:
 					d := obj.(cache.DeletedFinalStateUnknown)
-					o, ok := (d.Obj).(*v1beta1.Deployment)
+					o, ok := (d.Obj).(*appsv1.Deployment)
 					if ok {
 						oldDeployment = coDeployment{o}
 					} else {

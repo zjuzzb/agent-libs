@@ -10,20 +10,20 @@ import (
 	"k8s.io/client-go/tools/cache"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/api/apps/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 )
 
 var statefulSetInf cache.SharedInformer
 
-func statefulSetEvent(ss *v1beta1.StatefulSet, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
+func statefulSetEvent(ss *appsv1.StatefulSet, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
 		Object: newStatefulSetCongroup(ss),
 	}
 }
 
-func newStatefulSetCongroup(statefulSet *v1beta1.StatefulSet) (*draiosproto.ContainerGroup) {
+func newStatefulSetCongroup(statefulSet *appsv1.StatefulSet) (*draiosproto.ContainerGroup) {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_statefulset"),
@@ -40,7 +40,7 @@ func newStatefulSetCongroup(statefulSet *v1beta1.StatefulSet) (*draiosproto.Cont
 	return ret
 }
 
-func addStatefulSetMetrics(metrics *[]*draiosproto.AppMetric, statefulSet *v1beta1.StatefulSet) {
+func addStatefulSetMetrics(metrics *[]*draiosproto.AppMetric, statefulSet *appsv1.StatefulSet) {
 	prefix := "kubernetes.statefulset."
 	AppendMetricPtrInt32(metrics, prefix+"replicas", statefulSet.Spec.Replicas)
 	AppendMetricInt32(metrics, prefix+"status.replicas", statefulSet.Status.Replicas)
@@ -55,7 +55,7 @@ func AddStatefulSetParentsFromPod(parents *[]*draiosproto.CongroupUid, pod *v1.P
 	}
 
 	for _, obj := range statefulSetInf.GetStore().List() {
-		statefulSet := obj.(*v1beta1.StatefulSet)
+		statefulSet := obj.(*appsv1.StatefulSet)
 		for _, owner := range pod.GetOwnerReferences() {
 			if owner.UID == statefulSet.GetUID() {
 				*parents = append(*parents, &draiosproto.CongroupUid{
@@ -72,7 +72,7 @@ func AddStatefulSetChildrenFromService(children *[]*draiosproto.CongroupUid, ser
 	}
 
 	for _, obj := range statefulSetInf.GetStore().List() {
-		statefulSet := obj.(*v1beta1.StatefulSet)
+		statefulSet := obj.(*appsv1.StatefulSet)
 		if service.GetNamespace() == statefulSet.GetNamespace() && service.GetName() == statefulSet.Spec.ServiceName {
 			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_statefulset"),
@@ -87,7 +87,7 @@ func AddStatefulSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, n
 	}
 
 	for _, obj := range statefulSetInf.GetStore().List() {
-		statefulSet := obj.(*v1beta1.StatefulSet)
+		statefulSet := obj.(*appsv1.StatefulSet)
 		if statefulSet.GetNamespace() == namespaceName {
 			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_statefulset"),
@@ -97,9 +97,9 @@ func AddStatefulSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, n
 }
 
 func startStatefulSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
-	client := kubeClient.AppsV1beta1().RESTClient()
+	client := kubeClient.AppsV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "StatefulSets", v1meta.NamespaceAll, fields.Everything())
-	statefulSetInf = cache.NewSharedInformer(lw, &v1beta1.StatefulSet{}, RsyncInterval)
+	statefulSetInf = cache.NewSharedInformer(lw, &appsv1.StatefulSet{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -116,14 +116,14 @@ func watchStatefulSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				eventReceived("statefulsets")
-				//log.Debugf("AddFunc dumping StatefulSet: %v", obj.(*v1beta1.StatefulSet))
-				evtc <- statefulSetEvent(obj.(*v1beta1.StatefulSet),
+				//log.Debugf("AddFunc dumping StatefulSet: %v", obj.(*appsv1.StatefulSet))
+				evtc <- statefulSetEvent(obj.(*appsv1.StatefulSet),
 					draiosproto.CongroupEventType_ADDED.Enum())
 				addEvent("StatefulSet", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				oldStatefulSet := oldObj.(*v1beta1.StatefulSet)
-				newStatefulSet := newObj.(*v1beta1.StatefulSet)
+				oldStatefulSet := oldObj.(*appsv1.StatefulSet)
+				newStatefulSet := newObj.(*appsv1.StatefulSet)
 				if oldStatefulSet.GetResourceVersion() != newStatefulSet.GetResourceVersion() {
 					//log.Debugf("UpdateFunc dumping StatefulSet oldStatefulSet %v", oldStatefulSet)
 					//log.Debugf("UpdateFunc dumping StatefulSet newStatefulSet %v", newStatefulSet)
@@ -134,13 +134,13 @@ func watchStatefulSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				addEvent("StatefulSet", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
-				oldSet := (*v1beta1.StatefulSet)(nil)
+				oldSet := (*appsv1.StatefulSet)(nil)
 				switch obj.(type) {
-				case *v1beta1.StatefulSet:
-					oldSet = obj.(*v1beta1.StatefulSet)
+				case *appsv1.StatefulSet:
+					oldSet = obj.(*appsv1.StatefulSet)
 				case cache.DeletedFinalStateUnknown:
 					d := obj.(cache.DeletedFinalStateUnknown)
-					o, ok := (d.Obj).(*v1beta1.StatefulSet)
+					o, ok := (d.Obj).(*appsv1.StatefulSet)
 					if ok {
 						oldSet = o
 					} else {
