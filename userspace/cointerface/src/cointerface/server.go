@@ -15,7 +15,7 @@ import (
 	"cointerface/compliance"
 	"cointerface/k8s_audit"
 	"cointerface/kubecollect"
-	"cointerface/sdc_internal"
+	"github.com/draios/protorepo/sdc_internal"
 
 	log "github.com/cihub/seelog"
 	"github.com/docker/docker/client"

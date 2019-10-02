@@ -3,14 +3,16 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"cointerface/draiosproto"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/gogo/protobuf/proto"
 	"io"
 	"os"
+
+	"github.com/draios/protorepo/draiosproto"
+
+	"github.com/gogo/protobuf/proto"
 )
 
 func usage() {

@@ -2,8 +2,8 @@ package compliance
 
 import (
 	"bytes"
-	"cointerface/sdc_internal"
-	"cointerface/draiosproto"
+	"github.com/draios/protorepo/sdc_internal"
+	"github.com/draios/protorepo/draiosproto"
 	"encoding/json"
 	"fmt"
 	"golang.org/x/net/context"

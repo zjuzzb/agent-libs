@@ -13,7 +13,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
 
-	"cointerface/sdc_internal"
+	"github.com/draios/protorepo/sdc_internal"
 )
 
 func newUserEvent(event *v1.Event) (sdc_internal.K8SUserEvent) {

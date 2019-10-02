@@ -2,8 +2,8 @@ package compliance
 
 import (
 	"bytes"
-	"cointerface/draiosproto"
-	"cointerface/sdc_internal"
+	"github.com/draios/protorepo/draiosproto"
+	"github.com/draios/protorepo/sdc_internal"
 	"encoding/json"
 	"fmt"
 	"github.com/gogo/protobuf/proto"

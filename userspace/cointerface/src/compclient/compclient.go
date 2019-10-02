@@ -1,19 +1,21 @@
 package main
 
 import (
-	"compclient/draiosproto"
-	"compclient/sdc_internal"
 	"flag"
 	"fmt"
-	log "github.com/cihub/seelog"
-	"github.com/gogo/protobuf/proto"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"io"
 	"net"
 	"os"
 	"time"
-	"install_prefix"
+
+	"github.com/draios/protorepo/draiosproto"
+	"github.com/draios/install_prefix"
+	"github.com/draios/protorepo/sdc_internal"
+
+	log "github.com/cihub/seelog"
+	"github.com/gogo/protobuf/proto"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 func usage() {

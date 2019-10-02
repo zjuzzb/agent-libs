@@ -4,20 +4,19 @@ import (
 	"flag"
 	"log"
 	"net"
-
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+
+	"github.com/draios/heartbeat"
+	"github.com/draios/install_prefix"
+	pb "github.com/draios/protorepo/promex_pb"
+	"promex/server"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"net/http"
-
-	pb "promex/promex_pb"
-	"promex/server"
-	"strings"
-	"install_prefix"
-	"heartbeat"
 )
 
 func main() {

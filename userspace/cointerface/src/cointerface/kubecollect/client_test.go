@@ -9,8 +9,8 @@ import (
 	
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	
-	"cointerface/draiosproto"
-	"cointerface/sdc_internal"
+	"github.com/draios/protorepo/draiosproto"
+	"github.com/draios/protorepo/sdc_internal"
 	
 	"github.com/gogo/protobuf/proto"	
 )

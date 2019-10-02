@@ -1,7 +1,7 @@
 package kubecollect
 
 import (
-	"cointerface/draiosproto"
+	"github.com/draios/protorepo/draiosproto"
 	"encoding/json"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

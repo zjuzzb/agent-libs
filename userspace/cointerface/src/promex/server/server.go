@@ -5,8 +5,8 @@ import (
 	"log"
 
 	"golang.org/x/net/context"
-	"promex/draiosproto"
-	pb "promex/promex_pb"
+	"github.com/draios/protorepo/draiosproto"
+	pb "github.com/draios/protorepo/promex_pb"
 	"strconv"
 	"sync"
 	"os"

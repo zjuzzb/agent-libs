@@ -1,7 +1,7 @@
 package k8s_audit
 
 import (
-	"cointerface/sdc_internal"
+	"github.com/draios/protorepo/sdc_internal"
 	"crypto/tls"
 	"encoding/json"
 	"github.com/gogo/protobuf/proto"

@@ -10,7 +10,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	kubeclient "k8s.io/client-go/kubernetes"
 
-	"cointerface/draiosproto"
+	"github.com/draios/protorepo/draiosproto"
 
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"

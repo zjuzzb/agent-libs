@@ -1,145 +1,126 @@
-set(BASE_GOPATH "${DRAIOS_DEPENDENCIES_DIR}/go")
-set(GOPATH "${BASE_GOPATH}:${CMAKE_CURRENT_SOURCE_DIR}")
 set(PROTOC_DIR "${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target")
+set(GOPATH "${DRAIOS_DEPENDENCIES_DIR}/go")
+# We should set GOPROXY=https://proxy.golang.org here but that breaks the
+# docker/docker replace directive. Add it back later after upgrading docker.
+set(GOENV scl enable rh-git29 -- env GOPATH=${GOPATH} GO111MODULE=on)
+set(GOGENENV ${GOENV} PATH="${GOPATH}/bin:${PROTOC_DIR}/bin:$ENV{PATH}" LD_LIBRARY_PATH="${PROTOC_DIR}/lib:$ENV{LD_LIBRARY_PATH}")
 
-# Create golang package directories for the generated go files
-set(COINTERFACE_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface")
-set(DECODEPROTO_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/decode_proto")
-set(COMPCLIENT_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/compclient")
-set(PROMEX_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/promex")
-# Generated dirs must be excluded from rsync in docker-builder-entrypoint.sh
-file(MAKE_DIRECTORY ${COINTERFACE_OUT_DIR}/draiosproto)
-file(MAKE_DIRECTORY ${COINTERFACE_OUT_DIR}/sdc_internal)
-file(MAKE_DIRECTORY ${DECODEPROTO_OUT_DIR}/draiosproto)
-file(MAKE_DIRECTORY ${DECODEPROTO_OUT_DIR}/sdc_internal)
-file(MAKE_DIRECTORY ${COMPCLIENT_OUT_DIR}/draiosproto)
-file(MAKE_DIRECTORY ${COMPCLIENT_OUT_DIR}/sdc_internal)
-file(MAKE_DIRECTORY ${PROMEX_OUT_DIR}/draiosproto)
-file(MAKE_DIRECTORY ${PROMEX_OUT_DIR}/promex_pb)
+function(GoBuild target)
+add_custom_target(${target} ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${target})
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${target}
+        COMMAND ${GOENV} go mod download
+        COMMAND ${GOENV} GOPROXY=off go build -mod=readonly -o ${CMAKE_CURRENT_BINARY_DIR}/${target}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/go.mod
+		${ARGN}
+	)
+endfunction()
 
-add_custom_target(generate_cointerface_proto ALL
-  DEPENDS ${COINTERFACE_OUT_DIR}/draiosproto/draios.pb.go
-          ${COINTERFACE_OUT_DIR}/sdc_internal/sdc_internal.pb.go)
-add_custom_command(OUTPUT ${COINTERFACE_OUT_DIR}/draiosproto/draios.pb.go
-                          ${COINTERFACE_OUT_DIR}/sdc_internal/sdc_internal.pb.go
-  COMMAND GOPATH=${GOPATH} PATH="${BASE_GOPATH}/bin:${PROTOC_DIR}/bin:$ENV{PATH}" LD_LIBRARY_PATH="${PROTOC_DIR}/lib:$ENV{LD_LIBRARY_PATH}" PROTO_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto" PROTO_OUT_DIR="${COINTERFACE_OUT_DIR}" go generate cointerface
-        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/sdc_internal.proto
-	        ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/generate.go
+function(GoGenerate target pbgofile)
+add_custom_target(generate_${target} ALL
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/${pbgofile})
+add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/${pbgofile}
+  COMMAND ${GOGENENV} PROTO_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto" go generate ${target}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/generate.go
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/go.mod
+                ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
+                ${ARGN}
+		)
+endfunction()
+
+GoGenerate(draiosproto draios.pb.go
 		)
 
-add_custom_target(generate_decode_proto_proto ALL
-  DEPENDS ${DECODEPROTO_OUT_DIR}/draiosproto/draios.pb.go
-          ${DECODEPROTO_OUT_DIR}/sdc_internal/sdc_internal.pb.go)
-add_custom_command(OUTPUT ${DECODEPROTO_OUT_DIR}/draiosproto/draios.pb.go
-                          ${DECODEPROTO_OUT_DIR}/sdc_internal/sdc_internal.pb.go
-  COMMAND GOPATH=${GOPATH} PATH="${BASE_GOPATH}/bin:${PROTOC_DIR}/bin:$ENV{PATH}" LD_LIBRARY_PATH="${PROTOC_DIR}/lib:$ENV{LD_LIBRARY_PATH}" PROTO_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto" PROTO_OUT_DIR="${DECODEPROTO_OUT_DIR}" go generate decode_proto
-        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/sdc_internal.proto
-	        ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
-		${CMAKE_CURRENT_SOURCE_DIR}/src/decode_proto/generate.go
+GoGenerate(sdc_internal sdc_internal.pb.go
+                ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/sdc_internal.proto
 		)
 
-add_custom_target(generate_compclient_proto ALL
-  DEPENDS ${COMPCLIENT_OUT_DIR}/draiosproto/draios.pb.go
-          ${COMPCLIENT_OUT_DIR}/sdc_internal/sdc_internal.pb.go)
-add_custom_command(OUTPUT ${COMPCLIENT_OUT_DIR}/draiosproto/draios.pb.go
-                          ${COMPCLIENT_OUT_DIR}/sdc_internal/sdc_internal.pb.go
-			  COMMAND GOPATH=${GOPATH} PATH="${BASE_GOPATH}/bin:${PROTOC_DIR}/bin:$ENV{PATH}" LD_LIBRARY_PATH="${PROTOC_DIR}/lib:$ENV{LD_LIBRARY_PATH}" PROTO_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto" PROTO_OUT_DIR="${COMPCLIENT_OUT_DIR}" go generate compclient
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/sdc_internal.proto
-	        ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
-		${CMAKE_CURRENT_SOURCE_DIR}/src/compclient/generate.go
+GoGenerate(promex_pb promex.pb.go
+                ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/promex.proto
 		)
 
-add_custom_target(generate_promex_proto ALL
-  DEPENDS ${PROMEX_OUT_DIR}/draiosproto/draios.pb.go
-          ${PROMEX_OUT_DIR}/promex_pb/promex.pb.go)
-add_custom_command(OUTPUT ${PROMEX_OUT_DIR}/draiosproto/draios.pb.go
-                          ${PROMEX_OUT_DIR}/promex_pb/promex.pb.go
-			  COMMAND GOPATH=${GOPATH} PATH="${BASE_GOPATH}/bin:${PROTOC_DIR}/bin:$ENV{PATH}" LD_LIBRARY_PATH="${PROTOC_DIR}/lib:$ENV{LD_LIBRARY_PATH}" PROTO_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto" PROTO_OUT_DIR="${PROMEX_OUT_DIR}" go generate promex
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/promex.proto
-	        ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
-		${CMAKE_CURRENT_SOURCE_DIR}/src/promex/generate.go
-		)
-
-add_custom_target(cointerface ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
-#        COMMAND env GOPATH=${CMAKE_CURRENT_SOURCE_DIR} go fmt cointerface
-        COMMAND env GOPATH=${GOPATH} go build -o "${CMAKE_CURRENT_BINARY_DIR}/cointerface" cointerface
-        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-	DEPENDS generate_cointerface_proto
+GoBuild(cointerface
+	        # Depend on both the target and its output file
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
+                generate_draiosproto
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdc_internal/sdc_internal.pb.go
+	        generate_sdc_internal
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/cointerface.go
-                ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/server.go
-                ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/profile/profile.go
-                ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/swarm.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/docker_bench_scraper.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/kube_bench_scraper.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/test_module_scraper.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/module_mgr.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/module.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/module_mgr.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/test_module_scraper.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/k8s_audit/module.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/client.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/cronjobs.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/daemonsets.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/deployments.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/pods.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/events.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/horizontalpodautoscalers.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/ingress.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/jobs.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/namespaces.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/nodes.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/persistentvolumeclaims.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/persistentvolumes.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/pods.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/replicasets.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/replicationcontrollers.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/resourcequotas.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/statefulsets.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/selector_cache.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/services.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/jobs.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/events.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/cronjobs.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/ingress.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/horizontalpodautoscalers.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/test_helpers/assert.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/persistentvolumes.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/persistentvolumeclaims.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/persistentvolumeclaim_test.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/persistentvolume_test.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/statefulsets.go
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/profile/profile.go
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/server.go
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/swarm.go
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/install_prefix/install_prefix.go
 		)
 
 add_custom_target(cointerface_test ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface_test_success.txt)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface_test_success.txt
-        COMMAND env GOPATH=${GOPATH} go test cointerface/...
+        COMMAND ${GOENV} GOPROXY=off go test -mod=readonly ./...
         COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/cointerface_test_success.txt
-        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-	DEPENDS cointerface
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface
+		cointerface
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/client_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/deployments_test.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/pods_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/nodes_test.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/persistentvolumeclaim_test.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/persistentvolume_test.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/pods_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/replicasets_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/resourcequotas_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/selector_cache_test.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/test_helpers/assert.go
 		)
 
-add_custom_target(compclient ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compclient)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/compclient
-        COMMAND env GOPATH=${GOPATH} go build -o "${CMAKE_CURRENT_BINARY_DIR}/compclient" compclient
-        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-	DEPENDS generate_compclient_proto
+GoBuild(compclient
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
+                generate_draiosproto
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdc_internal/sdc_internal.pb.go
+	        generate_sdc_internal
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/compclient/compclient.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/install_prefix/install_prefix.go
 	)
 
-add_custom_target(decode_proto ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/decode_proto)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/decode_proto
-#        COMMAND env GOPATH=${CMAKE_CURRENT_SOURCE_DIR} go fmt decode_proto
-        COMMAND env GOPATH=${GOPATH} go build -o "${CMAKE_CURRENT_BINARY_DIR}/decode_proto" decode_proto
-        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-	DEPENDS generate_cointerface_proto
+GoBuild(decode_proto
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
+                generate_draiosproto
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdc_internal/sdc_internal.pb.go
+	        generate_sdc_internal
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/decode_proto/decode_proto.go
     )
 
-add_custom_target(promex ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/promex)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/promex
-        COMMAND env GOPATH=${GOPATH} go build -o "${CMAKE_CURRENT_BINARY_DIR}/promex" promex
-        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-	DEPENDS generate_promex_proto
+GoBuild(promex
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
+                generate_draiosproto
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/promex_pb/promex.pb.go
+	        generate_promex_pb
+		${CMAKE_CURRENT_SOURCE_DIR}/src/heartbeat/heartbeat.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/install_prefix/install_prefix.go
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/promex/promex.go
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/promex/server/server.go
     )

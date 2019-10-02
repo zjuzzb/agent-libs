@@ -1,8 +1,8 @@
 package compliance
 
 import (
-	"cointerface/draiosproto"
-	"cointerface/sdc_internal"
+	"github.com/draios/protorepo/draiosproto"
+	"github.com/draios/protorepo/sdc_internal"
 	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"

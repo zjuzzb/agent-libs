@@ -26,9 +26,9 @@ import (
 	discovery "k8s.io/client-go/discovery"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	"cointerface/draiosproto"
+	"github.com/draios/protorepo/draiosproto"
 	"cointerface/profile"
-	"cointerface/sdc_internal"
+	"github.com/draios/protorepo/sdc_internal"
 
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"

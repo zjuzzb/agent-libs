@@ -3,7 +3,7 @@ package kubecollect
 import (
 	"reflect"
 	"testing"
-	. "test_helpers"
+	. "github.com/draios/test_helpers"
 
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"

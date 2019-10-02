@@ -1,8 +1,8 @@
 package main
 
 import (
-	"cointerface/draiosproto"
-	"cointerface/sdc_internal"
+	"github.com/draios/protorepo/draiosproto"
+	"github.com/draios/protorepo/sdc_internal"
 	"context"
 	"errors"
 	"fmt"
