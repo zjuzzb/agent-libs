@@ -167,33 +167,11 @@ if [ ! -d "$GOPATH" ]; then
 	mkdir $GOPATH
 fi
 
-GOGO_PROTOBUF_URL=https://github.com/gogo/protobuf
 GOGO_PROTOBUF_VER=v1.2.0
 GOGO_PROTOBUF_PATH=github.com/gogo/protobuf/protoc-gen-gofast
-GOGO_PROTOBUF_WIN_CLONE_PATH=dependencies/go/src/github.com/gogo/protobuf
-GOGO_PROTOBUF_DIR=$GOPATH/src/$GOGO_PROTOBUF_PATH
 GOGO_PROTOBUF_BIN=$GOPATH/bin/protoc-gen-gofast
-if [ ! -d "$GOGO_PROTOBUF_DIR" ]; then
-	# download but don't install yet
-	if [ $OS != "Windows_NT" ]; then
-		go get -u -d $GOGO_PROTOBUF_PATH
-	else
-		cd $DEPENDENCIES/..
-		git clone $GOGO_PROTOBUF_URL $GOGO_PROTOBUF_WIN_CLONE_PATH
-	fi
-fi
-cd $GOGO_PROTOBUF_DIR
-# There's no easy way to go get a specific version or install from a
-# vendored dep, so this hack makes sure we install the correct version
-GIT_VER=$(git describe --tags)
-if [ "$GIT_VER" != "$GOGO_PROTOBUF_VER" ]; then
-	go clean -i $GOGO_PROTOBUF_PATH
-	git checkout master
-	go get -u -d $GOGO_PROTOBUF_PATH
-	git checkout -f tags/$GOGO_PROTOBUF_VER
-fi
 if [ ! -f "$GOGO_PROTOBUF_BIN" ]; then
-	go install $GOGO_PROTOBUF_PATH
+	scl enable rh-git29 -- env GOPATH=${GOPATH} GO111MODULE=on go get ${GOGO_PROTOBUF_PATH}@${GOGO_PROTOBUF_VER}
 fi
 
 OPENSSL_VER=1.0.2n
