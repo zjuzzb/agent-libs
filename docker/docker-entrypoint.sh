@@ -122,6 +122,7 @@ fi
 mount_cgroup_subsys memory
 mount_cgroup_subsys cpu
 mount_cgroup_subsys cpuacct
+mount_cgroup_subsys cpuset
 
 if [ $# -eq 0 ]; then
     if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
