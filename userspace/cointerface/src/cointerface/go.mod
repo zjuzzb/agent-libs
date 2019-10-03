@@ -5,15 +5,14 @@ go 1.12
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Microsoft/go-winio v0.4.11 // indirect
-	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/cihub/seelog v0.0.0-20151216151435-d2c6e5aa9fbf
 	github.com/docker/distribution v2.7.1+incompatible // indirect
-	github.com/docker/docker v1.13.1
+	github.com/docker/docker v1.14.0-0.20190319215453-e7b5f7dbe98c
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
-	github.com/draios/protorepo/draiosproto v0.0.0-00010101000000-000000000000
 	github.com/draios/install_prefix v0.0.0-00010101000000-000000000000
+	github.com/draios/protorepo/draiosproto v0.0.0-00010101000000-000000000000
 	github.com/draios/protorepo/sdc_internal v0.0.0-00010101000000-000000000000
 	github.com/draios/test_helpers v0.0.0
 	github.com/evanphx/json-patch v4.2.0+incompatible // indirect
@@ -30,6 +29,7 @@ require (
 	github.com/imdario/mergo v0.3.6 // indirect
 	github.com/json-iterator/go v1.1.5 // indirect
 	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
+	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
@@ -55,7 +55,7 @@ require (
 	sigs.k8s.io/yaml v1.1.0 // indirect
 )
 
-replace github.com/docker/docker => github.com/docker/engine v0.0.0-20181201162500-a79fabbfe841
+replace github.com/docker/docker v1.14.0-0.20190319215453-e7b5f7dbe98c => github.com/docker/docker v0.7.3-0.20190319215453-e7b5f7dbe98c
 
 replace github.com/draios/install_prefix => ../install_prefix
 
