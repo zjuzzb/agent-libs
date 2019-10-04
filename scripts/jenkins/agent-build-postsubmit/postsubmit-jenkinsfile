@@ -35,10 +35,4 @@ pipeline {
 			}
 		}
 	}
-	post {
-		always {
-			sh('./agent/scripts/jenkins/agent-build-postsubmit/cleanup')
-			cleanWs()
-		}
-	}
 }
