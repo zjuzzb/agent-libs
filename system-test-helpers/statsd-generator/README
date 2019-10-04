@@ -11,6 +11,4 @@ To run the container, call
 
 > docker run -d statsd-generator
 
-In your logs you should see something like...
 
-"Added 5 statsd metrics for container=compassionate_tereshkova"
