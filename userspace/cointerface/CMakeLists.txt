@@ -16,6 +16,22 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${target}
 	)
 endfunction()
 
+# draiosproto can't be part of the GoGenerate auto-generated code because it
+# has two outputs, rather than just the one.
+add_custom_target(generate_draiosproto ALL
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/common.pb.go)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
+		   OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/common.pb.go
+  COMMAND ${GOGENENV} PROTO_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto" go generate draiosproto
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/generate.go
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/go.mod
+                ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
+                ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/common.proto
+                ${ARGN}
+		)
+
 function(GoGenerate target pbgofile)
 add_custom_target(generate_${target} ALL
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/${pbgofile})
@@ -29,9 +45,6 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/${pbgofile}
                 ${ARGN}
 		)
 endfunction()
-
-GoGenerate(draiosproto draios.pb.go
-		)
 
 GoGenerate(sdc_internal sdc_internal.pb.go
                 ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/sdc_internal.proto

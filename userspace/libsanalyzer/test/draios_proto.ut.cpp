@@ -10,13 +10,22 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include "aggregator_overrides.h"
 
+class test_helper
+{
+public:
+    static std::map<uint32_t, size_t> get_pid_map(metrics_message_aggregator_impl& in)
+    {
+	return in.pid_map;
+    }
+};
+
 // Test that the two default aggregations work properly. That way
 // we don't have to test it for every message it comes up in, just that the fields are
 // linked properly
 TEST(aggregator, default_aggregation)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -39,7 +48,7 @@ TEST(aggregator, default_aggregation)
 TEST(aggregator, default_list_aggregation)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -81,7 +90,7 @@ TEST(aggregator, default_list_aggregation)
 TEST(aggregator, metrics)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -295,10 +304,187 @@ TEST(aggregator, metrics)
 	EXPECT_EQ(output.top_devices()[2].name(), "2");
 }
 
+// check that our string hash function for the pid_map actually produces the correct
+// hash. hard-coded hash values come from java 8
+TEST(aggregator, java_string_hash)
+{
+    EXPECT_EQ(metrics_message_aggregator_impl::java_string_hash(""), 0);
+    EXPECT_EQ(metrics_message_aggregator_impl::java_string_hash("a"), 97);
+    EXPECT_EQ(metrics_message_aggregator_impl::java_string_hash("aa"), 3104);
+    EXPECT_EQ(metrics_message_aggregator_impl::java_string_hash("aaa"), 96321);
+    EXPECT_EQ(metrics_message_aggregator_impl::java_string_hash("d309j"), 93919442);
+    EXPECT_EQ(metrics_message_aggregator_impl::java_string_hash("2fadsf;k2j4;kjfdsc89snn32s08j"), -1827656038);
+    EXPECT_EQ(metrics_message_aggregator_impl::java_string_hash("aa", 1), 97);
+    EXPECT_EQ(metrics_message_aggregator_impl::java_string_hash("2fadsf;k2j4;kjfdsc89snn32s08j", 2), 1652);
+}
+
+// check that our list hash function for the pid_map actually produces the correct
+// hash. hard-coded hash values come from java 8 ArrayList<String>
+TEST(aggregator, java_list_hash)
+{
+    // we're just going to use process_details.args as a proxy to get the right type here
+    draiosproto::process_details pd;
+    EXPECT_EQ(metrics_message_aggregator_impl::java_list_hash(pd.args()), 1);
+    pd.add_args("");
+    EXPECT_EQ(metrics_message_aggregator_impl::java_list_hash(pd.args()), 31);
+    pd.add_args("");
+    EXPECT_EQ(metrics_message_aggregator_impl::java_list_hash(pd.args()), 961);
+    pd.add_args("");
+    EXPECT_EQ(metrics_message_aggregator_impl::java_list_hash(pd.args()), 29791);
+    pd.clear_args();
+    pd.add_args("a");
+    EXPECT_EQ(metrics_message_aggregator_impl::java_list_hash(pd.args()), 128);
+    pd.clear_args();
+    pd.add_args("aa");
+    EXPECT_EQ(metrics_message_aggregator_impl::java_list_hash(pd.args()), 3135);
+    pd.add_args("");
+    EXPECT_EQ(metrics_message_aggregator_impl::java_list_hash(pd.args()), 97185);
+    pd.clear_args();
+    pd.add_args("asd;oifj34jf");
+    pd.add_args("asodijf");
+    pd.add_args("a20uiojfewa");
+    pd.add_args("20ofadsjfo;kj");
+    EXPECT_EQ(metrics_message_aggregator_impl::java_list_hash(pd.args()), -1373968058);
+}
+
+// Check that our program hash matches the backend produced values. Hard coded values
+// obtained by creating protobuf representation of the specified program, and then running
+// it through the backend aggregator and observing the value
+TEST(aggregator, program_hasher)
+{
+    draiosproto::program comm_only;
+    comm_only.mutable_procinfo()->mutable_details()->set_comm("sfdjkl");
+    comm_only.mutable_procinfo()->mutable_details()->set_exe("");
+    EXPECT_EQ(metrics_message_aggregator_impl::program_java_hasher(comm_only), 1);
+
+    draiosproto::program exe_only;
+    exe_only.mutable_procinfo()->mutable_details()->set_comm("");
+    exe_only.mutable_procinfo()->mutable_details()->set_exe("3fuj84");
+    EXPECT_EQ(metrics_message_aggregator_impl::program_java_hasher(exe_only), 1049486109);
+
+    draiosproto::program arg_only;
+    arg_only.mutable_procinfo()->mutable_details()->set_comm("");
+    arg_only.mutable_procinfo()->mutable_details()->set_exe("");
+    arg_only.mutable_procinfo()->mutable_details()->add_args("9034fj8iu");
+    EXPECT_EQ(metrics_message_aggregator_impl::program_java_hasher(arg_only), 1709005703);
+
+    draiosproto::program two_args;
+    two_args.mutable_procinfo()->mutable_details()->set_comm("");
+    two_args.mutable_procinfo()->mutable_details()->set_exe("");
+    two_args.mutable_procinfo()->mutable_details()->add_args("wafuj8");
+    two_args.mutable_procinfo()->mutable_details()->add_args("afjiods");
+    EXPECT_EQ(metrics_message_aggregator_impl::program_java_hasher(two_args), 28420948);
+
+    draiosproto::program modified_exe;
+    modified_exe.mutable_procinfo()->mutable_details()->set_comm("");
+    modified_exe.mutable_procinfo()->mutable_details()->set_exe("3fu: j84");
+    EXPECT_EQ(metrics_message_aggregator_impl::program_java_hasher(modified_exe), 1620991);
+
+    draiosproto::program container_only;
+    container_only.mutable_procinfo()->mutable_details()->set_comm("");
+    container_only.mutable_procinfo()->mutable_details()->set_exe("");
+    container_only.mutable_procinfo()->mutable_details()->set_container_id("a;sdjklf");
+    EXPECT_EQ(metrics_message_aggregator_impl::program_java_hasher(container_only), 1464988871);
+
+    draiosproto::program env_only;
+    env_only.mutable_procinfo()->mutable_details()->set_comm("");
+    env_only.mutable_procinfo()->mutable_details()->set_exe("");
+    env_only.set_environment_hash("asd;lkjf");
+    EXPECT_EQ(metrics_message_aggregator_impl::program_java_hasher(env_only), 18446744072867896965U);
+
+    draiosproto::program everything;
+    everything.mutable_procinfo()->mutable_details()->set_comm("comm");
+    everything.mutable_procinfo()->mutable_details()->set_exe("exe");
+    everything.set_environment_hash("environment_hash");
+    everything.mutable_procinfo()->mutable_details()->set_container_id("container_id");
+    everything.mutable_procinfo()->mutable_details()->add_args("arg1");
+    everything.mutable_procinfo()->mutable_details()->add_args("arg2");
+    everything.mutable_procinfo()->mutable_details()->add_args("arg1");
+    EXPECT_EQ(metrics_message_aggregator_impl::program_java_hasher(everything), 1400060730);
+
+
+    draiosproto::program real_life;
+    real_life.mutable_procinfo()->mutable_details()->set_comm("python");
+    real_life.mutable_procinfo()->mutable_details()->set_exe("/sw/external/python27-2.7.1/bin/python");
+    real_life.mutable_procinfo()->mutable_details()->add_args("/sw/ficc/plex-0.129/pylib/ficc/plex//server.py");
+    real_life.mutable_procinfo()->mutable_details()->add_args("LT_TKO_SWAP_FARM");
+    real_life.mutable_procinfo()->mutable_details()->add_args("--uid");
+    real_life.mutable_procinfo()->mutable_details()->add_args("PLPJT9SU9J224DAMS27JWBDGR8G3A");
+    real_life.mutable_procinfo()->mutable_details()->set_container_id("49647f2c_9805_4444_bc44_ce4a87c4175e");
+    real_life.add_pids(27329);
+    real_life.add_uids(21001);
+
+    EXPECT_EQ(metrics_message_aggregator_impl::program_java_hasher(real_life), 18446744072762939685U);
+}
+
+// ensure that upon aggregating programs, pids are properly inserted into the pid map
+TEST(aggregator, pid_map_population)
+{
+	message_aggregator_builder_impl builder;
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+
+	draiosproto::metrics input;
+	draiosproto::metrics output;
+
+	auto in = input.add_programs();
+
+	in->mutable_procinfo()->mutable_details()->set_exe("asdlkfj");
+	in->add_pids(1);
+	in->add_pids(2);
+
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(test_helper::get_pid_map(reinterpret_cast<metrics_message_aggregator_impl&>(aggregator))[1], metrics_message_aggregator_impl::program_java_hasher(*in));
+	EXPECT_EQ(test_helper::get_pid_map(reinterpret_cast<metrics_message_aggregator_impl&>(aggregator))[2], metrics_message_aggregator_impl::program_java_hasher(*in));
+
+	in->add_pids(3);
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(test_helper::get_pid_map(reinterpret_cast<metrics_message_aggregator_impl&>(aggregator))[1], metrics_message_aggregator_impl::program_java_hasher(*in));
+	EXPECT_EQ(test_helper::get_pid_map(reinterpret_cast<metrics_message_aggregator_impl&>(aggregator))[2], metrics_message_aggregator_impl::program_java_hasher(*in));
+	EXPECT_EQ(test_helper::get_pid_map(reinterpret_cast<metrics_message_aggregator_impl&>(aggregator))[3], metrics_message_aggregator_impl::program_java_hasher(*in));
+
+	aggregator.reset();
+	EXPECT_EQ(test_helper::get_pid_map(reinterpret_cast<metrics_message_aggregator_impl&>(aggregator)).size(), 0);
+}
+
+// ensure that upon aggregating programs and connections, pids are properly substituted
+// for the pid-invariant identifier
+TEST(aggregator, pid_substitution)
+{
+    message_aggregator_builder_impl builder;
+    agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+
+    draiosproto::metrics input;
+    draiosproto::metrics output;
+
+    auto in = input.add_programs();
+    in->mutable_procinfo()->mutable_details()->set_exe("asdlkfj");
+    in->add_pids(1);
+    in->add_pids(2);
+
+    in = input.add_programs();
+    in->mutable_procinfo()->mutable_details()->set_exe("u890s");
+    in->add_pids(3);
+
+    input.add_ipv4_connections()->set_spid(1);
+    (*input.mutable_ipv4_connections())[0].set_dpid(2);
+    input.add_ipv4_incomplete_connections_v2()->set_spid(3);
+    (*input.mutable_ipv4_incomplete_connections_v2())[0].set_dpid(4);
+    aggregator.aggregate(input, output);
+
+    EXPECT_EQ(output.programs()[0].pids()[0],
+	      metrics_message_aggregator_impl::program_java_hasher(input.programs()[0]));
+    EXPECT_EQ(output.programs()[1].pids()[0],
+	      metrics_message_aggregator_impl::program_java_hasher(input.programs()[1]));
+    EXPECT_EQ(output.ipv4_connections()[0].spid(), output.programs()[0].pids()[0]);
+    EXPECT_EQ(output.ipv4_connections()[0].dpid(), output.programs()[0].pids()[0]);
+    EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].spid(), output.programs()[1].pids()[0]);
+    EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].dpid(), 4);
+}
+
 TEST(aggregator, host)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -406,7 +592,7 @@ TEST(aggregator, host)
 TEST(aggregator, time_categories)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -429,7 +615,7 @@ TEST(aggregator, time_categories)
 TEST(aggregator, counter_time)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -506,7 +692,7 @@ TEST(aggregator, counter_time)
 TEST(aggregator, counter_percentile)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -563,7 +749,7 @@ TEST(aggregator, counter_percentile_data)
 TEST(aggregator, counter_time_bytes)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -668,7 +854,7 @@ TEST(aggregator, counter_time_bytes)
 TEST(aggregator, counter_time_bidirectional)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -749,7 +935,7 @@ TEST(aggregator, counter_time_bidirectional)
 TEST(aggregator, resource_categories)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -899,7 +1085,7 @@ TEST(aggregator, resource_categories)
 TEST(aggregator, counter_syscall_errors)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -953,7 +1139,7 @@ TEST(aggregator, transaction_breakdown_categories)
 	// only contains non-repeated sub-message types. so only need to test that it
 	// gets called appropriately
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -971,7 +1157,7 @@ TEST(aggregator, transaction_breakdown_categories)
 TEST(aggregator, network_by_port)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1003,7 +1189,7 @@ TEST(aggregator, network_by_port)
 TEST(aggregator, connection_categories)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1030,7 +1216,7 @@ TEST(aggregator, connection_categories)
 TEST(aggregator, counter_bytes)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1067,7 +1253,7 @@ TEST(aggregator, counter_bytes)
 TEST(aggregator, ipv4_connection)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1108,7 +1294,7 @@ TEST(aggregator, ipv4_connection)
 TEST(aggregator, ipv4tuple)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1158,7 +1344,7 @@ TEST(aggregator, ipv4tuple)
 TEST(aggregator, ipv4_incomplete_connection)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1197,7 +1383,7 @@ TEST(aggregator, ipv4_incomplete_connection)
 TEST(aggregator, ipv4_network_interface)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1239,7 +1425,7 @@ TEST(aggregator, ipv4_network_interface)
 TEST(aggregator, program)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1256,9 +1442,8 @@ TEST(aggregator, program)
 
 	aggregator.aggregate(input, output);
 
-	EXPECT_EQ(output.programs()[0].pids().size(), 2);
-	EXPECT_EQ(output.programs()[0].pids()[0], 1);
-	EXPECT_EQ(output.programs()[0].pids()[1], 2);
+	EXPECT_EQ(output.programs()[0].pids().size(), 1);
+	EXPECT_EQ(output.programs()[0].pids()[0], metrics_message_aggregator_impl::program_java_hasher(input.programs()[0]));
 	EXPECT_EQ(output.programs()[0].uids().size(), 2);
 	EXPECT_EQ(output.programs()[0].uids()[0], 3);
 	EXPECT_EQ(output.programs()[0].uids()[1], 4);
@@ -1267,15 +1452,10 @@ TEST(aggregator, program)
 	EXPECT_EQ(output.programs()[0].program_reporting_group_id()[0], 6);
 	EXPECT_EQ(output.programs()[0].program_reporting_group_id()[1], 7);
 
-	(*in->mutable_pids())[1] = 3;
 	(*in->mutable_uids())[1] = 5;
 	(*in->mutable_program_reporting_group_id())[1] = 8;
 
 	aggregator.aggregate(input, output);
-	EXPECT_EQ(output.programs()[0].pids().size(), 3);
-	EXPECT_EQ(output.programs()[0].pids()[0], 1);
-	EXPECT_EQ(output.programs()[0].pids()[1], 2);
-	EXPECT_EQ(output.programs()[0].pids()[2], 3);
 	EXPECT_EQ(output.programs()[0].uids().size(), 3);
 	EXPECT_EQ(output.programs()[0].uids()[0], 3);
 	EXPECT_EQ(output.programs()[0].uids()[1], 4);
@@ -1307,7 +1487,7 @@ TEST(aggregator, program)
 TEST(aggregator, process)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1391,7 +1571,7 @@ TEST(aggregator, process)
 TEST(aggregator, process_details)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1461,7 +1641,7 @@ TEST(aggregator, proto_info)
 	// only contains non-repeated sub-message types. so only need to test that it
 	// gets called appropriately
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1481,7 +1661,7 @@ TEST(aggregator, proto_info)
 TEST(aggregator, http_info)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1535,9 +1715,6 @@ TEST(aggregator, http_info)
 
 TEST(aggregator, url_details)
 {	
-	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
-
 	draiosproto::metrics input;
 	draiosproto::metrics output;
 
@@ -1559,7 +1736,7 @@ TEST(aggregator, url_details)
 TEST(aggregator, counter_proto_entry)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1637,7 +1814,7 @@ TEST(aggregator, counter_proto_entry)
 TEST(aggregator, status_code_details)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1674,7 +1851,7 @@ TEST(aggregator, status_code_details)
 TEST(aggregator, sql_info)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1750,12 +1927,6 @@ TEST(aggregator, sql_info)
 
 TEST(aggregator, sql_entry_details)
 {	
-	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
-
-	draiosproto::metrics input;
-	draiosproto::metrics output;
-
 	// sql_entry_details is only used in sql_info, which tests both appearances of this
 	// struct, so there isn't more work to do other than verifying the primary key
 	draiosproto::sql_entry_details lhs;
@@ -1773,12 +1944,6 @@ TEST(aggregator, sql_entry_details)
 
 TEST(aggregator, sql_query_type_details)
 {
-	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
-
-	draiosproto::metrics input;
-	draiosproto::metrics output;
-
 	// sql_query_type_details is only used in sql_info, which tests both appearances of
 	// this struct, so there isn't more work to do other than verifying the primary key
 	draiosproto::sql_query_type_details lhs;
@@ -1797,7 +1962,7 @@ TEST(aggregator, sql_query_type_details)
 TEST(aggregator, mongodb_info)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1851,12 +2016,6 @@ TEST(aggregator, mongodb_info)
 
 TEST(aggregator, mongodb_op_type_details)
 {
-	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
-
-	draiosproto::metrics input;
-	draiosproto::metrics output;
-
 	// mongodb_op_type_details is only used in sql_info, which tests both appearances of
 	// this struct, so there isn't more work to do other than verifying the primary key
 	draiosproto::mongodb_op_type_details lhs;
@@ -1874,12 +2033,6 @@ TEST(aggregator, mongodb_op_type_details)
 
 TEST(aggregator, mongodb_collection_details)
 {	
-	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
-
-	draiosproto::metrics input;
-	draiosproto::metrics output;
-
 	// mongdob_collection_details is only used in sql_info, which tests both appearances of this
 	// struct, so there isn't more work to do other than verifying the primary key
 	draiosproto::mongodb_collection_details lhs;
@@ -1898,7 +2051,7 @@ TEST(aggregator, mongodb_collection_details)
 TEST(aggregator, java_info)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1924,7 +2077,7 @@ TEST(aggregator, java_info)
 TEST(aggregator, jmx_bean)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1965,7 +2118,7 @@ TEST(aggregator, jmx_bean)
 TEST(aggregator, jmx_attribute)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2025,7 +2178,7 @@ TEST(aggregator, jmx_attribute)
 TEST(aggregator, statsd_tag)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2057,7 +2210,7 @@ TEST(aggregator, statsd_tag)
 TEST(aggregator, statsd_info)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2076,7 +2229,7 @@ TEST(aggregator, statsd_info)
 TEST(aggregator, statsd_metric)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2171,7 +2324,7 @@ TEST(aggregator, statsd_metric)
 TEST(aggregator, app_info)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2211,7 +2364,7 @@ TEST(aggregator, app_info)
 TEST(aggregator, app_metric)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2266,7 +2419,7 @@ TEST(aggregator, app_metric)
 TEST(aggregator, app_tag)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2300,7 +2453,7 @@ TEST(aggregator, app_metric_bucket)
 TEST(aggregator, app_check)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2344,7 +2497,7 @@ TEST(aggregator, app_check)
 TEST(aggregator, file_stat)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2394,7 +2547,7 @@ TEST(aggregator, file_stat)
 TEST(aggregator, mounted_fs)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2457,7 +2610,7 @@ TEST(aggregator, mounted_fs)
 TEST(aggregator, container)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2644,7 +2797,7 @@ TEST(aggregator, command_details)
 TEST(aggregator, mesos_state)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2692,7 +2845,7 @@ TEST(aggregator, mesos_state)
 TEST(aggregator, mesos_framework)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2731,7 +2884,7 @@ TEST(aggregator, mesos_framework)
 TEST(aggregator, mesos_common)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2791,7 +2944,7 @@ TEST(aggregator, mesos_pair)
 TEST(aggregator, mesos_task)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2820,7 +2973,7 @@ TEST(aggregator, mesos_task)
 TEST(aggregator, marathon_group)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2872,7 +3025,7 @@ TEST(aggregator, marathon_group)
 TEST(aggregator, marathon_app)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2928,7 +3081,7 @@ TEST(aggregator, mesos_slave)
 TEST(aggregator, agent_event)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3037,7 +3190,7 @@ TEST(aggregator, falco_container)
 TEST(aggregator, swarm_state)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3090,7 +3243,7 @@ TEST(aggregator, swarm_state)
 TEST(aggregator, swarm_service)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3156,7 +3309,7 @@ TEST(aggregator, swarm_service)
 TEST(aggregator, swarm_common)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3221,7 +3374,7 @@ TEST(aggregator, swarm_port)
 TEST(aggregator, swarm_node)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3265,7 +3418,7 @@ TEST(aggregator, swarm_node)
 TEST(aggregator, swarm_task)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3305,7 +3458,7 @@ TEST(aggregator, swarm_task)
 TEST(aggregator, swarm_manager)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3323,7 +3476,7 @@ TEST(aggregator, swarm_manager)
 TEST(aggregator, id_map)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3354,7 +3507,7 @@ TEST(aggregator, id_map)
 TEST(aggregator, environment)
 {	
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3388,7 +3541,7 @@ TEST(aggregator, environment)
 TEST(aggregator, unreported_stats)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3421,7 +3574,7 @@ TEST(aggregator_extra, DISABLED_memory_perf)
 	HeapProfilerStart("small_heap_trace");
 	ASSERT_TRUE(IsHeapProfilerRunning());
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator* aggregator = new metrics_message_aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>* aggregator = &builder.build_metrics();
 	draiosproto::metrics* output = new draiosproto::metrics();
 	HeapProfilerDump("fooo");
 	for (uint32_t i = 1; i <= 10; i++)
@@ -3449,7 +3602,7 @@ TEST(aggregator_extra, DISABLED_cpu_perf)
 {
 	ProfilerStart("cpu_trace");
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator* aggregator = new metrics_message_aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>* aggregator = &builder.build_metrics();
 	draiosproto::metrics* output = new draiosproto::metrics();
 	for (uint32_t j = 0; j < 10; j++)
 	for (uint32_t i = 1; i <= 10; i++)
@@ -3476,14 +3629,15 @@ TEST(aggregator_extra, DISABLED_cpu_perf)
 TEST(aggregator_extra, DISABLED_aggregate)
 {
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator* aggregator = new metrics_message_aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>* aggregator = &builder.build_metrics();
 	draiosproto::metrics* output = new draiosproto::metrics();
 	std::ostringstream filename;
 
 	for (uint32_t i = 0; i <= 9; i++)
 	{
 		std::ostringstream filename;
-		filename << "random_" << i << ".dam";
+		filename << "aggr_pbs/" << "goldman" << "/raw/input_" << i << ".dam";
+
 		std::ifstream input_file;
 		input_file.open(filename.str().c_str(), std::ifstream::in | std::ifstream::binary);
 		ASSERT_TRUE(input_file);
@@ -3499,6 +3653,23 @@ TEST(aggregator_extra, DISABLED_aggregate)
 	}
 
 	std::cerr << output->DebugString();
+}
+
+TEST(aggregator_extra, DISABLED_dump)
+{
+    std::ostringstream filename;
+    filename << "programs_aggr.dam";
+
+    std::ifstream input_file;
+    input_file.open(filename.str().c_str(), std::ifstream::in | std::ifstream::binary);
+    ASSERT_TRUE(input_file);
+    input_file.seekg(2);
+
+    draiosproto::metrics* input = new draiosproto::metrics();
+    bool success = input->ParseFromIstream(&input_file);
+    ASSERT_TRUE(success);
+    std::cerr << input->DebugString();
+    delete input;
 }
 
 // A subclass of StreamReporter that suppresses ReportMoved and
@@ -3634,7 +3805,7 @@ void validate_protobuf(std::string& diff,
 {
 	// first generate the aggregated protobuf
 	message_aggregator_builder_impl builder;
-	metrics_message_aggregator aggregator(builder);
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
 	draiosproto::metrics test;
 	std::ostringstream filename;
 
@@ -4260,6 +4431,7 @@ void generate_swarm_common(draiosproto::swarm_common* input)
 		(*input->mutable_labels())[i].set_value(std::to_string(rand() % 2));
 	}
 }
+
 TEST(aggregator_extra, DISABLED_generate)
 {
     for (int loop_count = 0; loop_count < 10; loop_count++)
@@ -4981,4 +5153,67 @@ TEST(aggregator_extra, DISABLED_generate)
 	ASSERT_TRUE(success);
 	output_file.close();
     }
+}
+
+TEST(aggregator_extra, DISABLED_generate_programs)
+{
+    draiosproto::metrics input;
+    input.set_machine_id("asdlkfj");
+    input.set_customer_id("20udasfi");
+    input.set_timestamp_ns((uint64_t)1000000000);
+
+    input.add_programs();
+    (*input.mutable_programs())[0].mutable_procinfo()->mutable_details()->set_comm("");
+    (*input.mutable_programs())[0].mutable_procinfo()->mutable_details()->set_exe("");
+
+
+    input.add_programs()->mutable_procinfo()->mutable_details()->set_comm("sfdjkl");
+    (*input.mutable_programs())[1].mutable_procinfo()->mutable_details()->set_exe("");
+
+    input.add_programs()->mutable_procinfo()->mutable_details()->set_exe("3fuj84");
+    (*input.mutable_programs())[2].mutable_procinfo()->mutable_details()->set_comm("");
+
+    input.add_programs()->mutable_procinfo()->mutable_details()->add_args("9034fj8iu");
+    (*input.mutable_programs())[3].mutable_procinfo()->mutable_details()->set_comm("");
+    (*input.mutable_programs())[3].mutable_procinfo()->mutable_details()->set_exe("");
+
+    input.add_programs();
+    (*input.mutable_programs())[4].mutable_procinfo()->mutable_details()->set_comm("");
+    (*input.mutable_programs())[4].mutable_procinfo()->mutable_details()->set_exe("");
+    (*input.mutable_programs())[4].mutable_procinfo()->mutable_details()->add_args("wafuj8");
+    (*input.mutable_programs())[4].mutable_procinfo()->mutable_details()->add_args("afjiods");
+
+    input.add_programs()->mutable_procinfo()->mutable_details()->set_exe("3fu: j84");
+    (*input.mutable_programs())[5].mutable_procinfo()->mutable_details()->set_comm("");
+
+    input.add_programs()->mutable_procinfo()->mutable_details()->set_container_id("a;sdjklf");
+    (*input.mutable_programs())[6].mutable_procinfo()->mutable_details()->set_comm("");
+    (*input.mutable_programs())[6].mutable_procinfo()->mutable_details()->set_exe("");
+
+    input.add_programs()->set_environment_hash("asd;lkjf");
+    (*input.mutable_programs())[7].mutable_procinfo()->mutable_details()->set_comm("");
+    (*input.mutable_programs())[7].mutable_procinfo()->mutable_details()->set_exe("");
+
+    input.add_programs();
+    (*input.mutable_programs())[8].mutable_procinfo()->mutable_details()->set_comm("comm");
+    (*input.mutable_programs())[8].mutable_procinfo()->mutable_details()->set_exe("exe");
+    (*input.mutable_programs())[8].mutable_procinfo()->mutable_details()->add_args("arg1");
+    (*input.mutable_programs())[8].mutable_procinfo()->mutable_details()->add_args("arg2");
+    (*input.mutable_programs())[8].mutable_procinfo()->mutable_details()->add_args("arg1");
+    (*input.mutable_programs())[8].mutable_procinfo()->mutable_details()->set_container_id("container_id");
+    (*input.mutable_programs())[8].set_environment_hash("environment_hash");
+
+    std::ostringstream filename;
+    filename << "programs.dam";
+    std::ofstream output_file;
+    output_file.open(filename.str().c_str(), std::ofstream::out | std::ofstream::binary);
+    ASSERT_TRUE(output_file);
+    char temp2 = 2;
+    char temp1 = 1;
+    output_file.write(&temp2, 1);
+    output_file.write(&temp1, 1);
+
+    bool success = input.SerializeToOstream(&output_file);
+    ASSERT_TRUE(success);
+    output_file.close();
 }
