@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
-#include "draios_aggregated.pb.h"
+#include "draios.pb.h"
+#include "common.pb.h"
 
 class message_aggregator_builder;
 

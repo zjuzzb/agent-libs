@@ -126,7 +126,7 @@ def get_adjusted_field_name(name):
 
 # field type has the package prepended. strip it to get the actual type
 def type_name(field):
-    return field.type_name[len(".draiosprotoagg."):]
+    return field.type_name[len(".draiosproto."):]
 
 # these should probably be an enum at some point. SMAGENT-1977
 def get_field_type(field, sub_aggregator_list):
@@ -138,7 +138,7 @@ def get_field_type(field, sub_aggregator_list):
 
     if field.type is FieldDescriptor.TYPE_MESSAGE:
         if field.label is FieldDescriptor.LABEL_REPEATED:
-            # this is a map. map types are .draiosprotoagg.<message_type>.<mangledfieldname>Entry
+            # this is a map. map types are .draiosproto.<message_type>.<mangledfieldname>Entry
             # we'll just check for the dot in the type_name
             if "." in type_name(field):
                 return 7 # map
@@ -153,7 +153,7 @@ def get_field_type(field, sub_aggregator_list):
 # generates a virtual function to aggregate a given field in a messagae
 def generate_field_aggregator_function(message_name, field, sub_aggregator_list):
     # write the function header
-    out = """    virtual void aggregate_%s(const draiosprotoagg::%s& input, draiosprotoagg::%s& output)
+    out = """    virtual void aggregate_%s(const draiosproto::%s& input, draiosproto::%s& output)
     {
 """ % (field.name, message_name, message_name)
 
@@ -204,17 +204,17 @@ def generate_field_aggregator_function(message_name, field, sub_aggregator_list)
             if (%s_map.find(&i) == %s_map.end())
             {
                 auto new_entry = output.add_%s();
-                agent_message_aggregator<draiosprotoagg::%s>* new_aggregator = &m_builder.build_%s();
+                agent_message_aggregator<draiosproto::%s>* new_aggregator = &m_builder.build_%s();
                 new_aggregator->aggregate(i, *new_entry);
                 %s_map.insert(
-                    std::make_pair<draiosprotoagg::%s*,
+                    std::make_pair<draiosproto::%s*,
                                    std::pair<uint32_t,
-                                             std::unique_ptr<agent_message_aggregator<draiosprotoagg::%s>>>>(
+                                             std::unique_ptr<agent_message_aggregator<draiosproto::%s>>>>(
                         std::move(new_entry),
                         std::make_pair<uint32_t,
-                                       std::unique_ptr<agent_message_aggregator<draiosprotoagg::%s>>>(
+                                       std::unique_ptr<agent_message_aggregator<draiosproto::%s>>>(
                             output.%s().size() - 1,
-                            std::unique_ptr<agent_message_aggregator<draiosprotoagg::%s>>(new_aggregator)
+                            std::unique_ptr<agent_message_aggregator<draiosproto::%s>>(new_aggregator)
                         )
                     )
                 );
@@ -266,7 +266,7 @@ def generate_field_aggregator_function(message_name, field, sub_aggregator_list)
 # their aggregation function
 def generate_message_aggregator_function(message, aggregator_targets, sub_aggregator_list):
     # function header
-    out = """    virtual void aggregate(const draiosprotoagg::%s& input, draiosprotoagg::%s& output)
+    out = """    virtual void aggregate(const draiosproto::%s& input, draiosproto::%s& output)
     {
 """ % (message.name, message.name)
 
@@ -354,7 +354,7 @@ def generate_field_aggregations(message, sub_aggregator_list, aggregator_targets
 
         # Single message just gets the aggregator for the field
         if get_field_type(field, sub_aggregator_list) is 3:
-            out += """    agent_message_aggregator<draiosprotoagg::%s>* m_%s_field_aggregator;
+            out += """    agent_message_aggregator<draiosproto::%s>* m_%s_field_aggregator;
 """ % (type_name(field), field.name)
 
         # Repeated non-message gets a set to know if entry exists
@@ -370,8 +370,8 @@ def generate_field_aggregations(message, sub_aggregator_list, aggregator_targets
 
         if get_field_type(field, sub_aggregator_list) is 5:
             # note: have to use unique ptr in cases where messages reference themselves
-            out += """    std::unordered_map<draiosprotoagg::%s*,
-                       std::pair<uint32_t, std::unique_ptr<agent_message_aggregator<draiosprotoagg::%s>>>,
+            out += """    std::unordered_map<draiosproto::%s*,
+                       std::pair<uint32_t, std::unique_ptr<agent_message_aggregator<draiosproto::%s>>>,
                        %shasher,
                        %scomparer> %s_map;
 """ % (type_name(field), type_name(field), function_namespace, function_namespace, field.name)
@@ -421,14 +421,14 @@ def generate_reset_function(message, aggregator_targets, sub_aggregator_list):
 # generates hasher and comparer functions so this class can be used as a key in a map/set
 def generate_key_functions(message, aggregator_targets, sub_aggregator_list):
     hasher = """    struct hasher {
-        size_t operator()(const draiosprotoagg::%s* input) const
+        size_t operator()(const draiosproto::%s* input) const
         {
             size_t hash = 0;
 
 """ % message.name
 
     comparer = """    struct comparer {
-        bool operator()(const draiosprotoagg::%s* lhs, const draiosprotoagg::%s* rhs) const
+        bool operator()(const draiosproto::%s* lhs, const draiosproto::%s* rhs) const
         {
             bool result = true;
 
@@ -507,7 +507,7 @@ def generate_class(message):
     sub_aggregator_list, aggregator_targets = generate_aggregator_list(message)
 
     # write the class header
-    out = """class %s_message_aggregator : public agent_message_aggregator<draiosprotoagg::%s>
+    out = """class %s_message_aggregator : public agent_message_aggregator<draiosproto::%s>
 {
 public:
 """ % (message.name, message.name)
@@ -561,11 +561,9 @@ def find_primary_keys(message):
 
 
 def generate_code(request, response):
-    for proto_file in request.proto_file:
-
-        builder_header = response.file.add()
-        builder_header.name = proto_file.name + '_builder.h'
-        builder_header.content = """#pragma once
+    builder_header = response.file.add()
+    builder_header.name = 'draios.proto_builder.h'
+    builder_header.content = """#pragma once
 
 // This file contains the API for building aggregators. If any of the virtual methods
 // of aggregators are overridden, this builder must be subclassed and the appropriate
@@ -579,9 +577,9 @@ class message_aggregator_builder
 public:
 """
 
-        aggregator_header = response.file.add()
-        aggregator_header.name = proto_file.name + '.h'
-        aggregator_header.content = """#pragma once
+    aggregator_header = response.file.add()
+    aggregator_header.name = 'draios.proto.h'
+    aggregator_header.content = """#pragma once
 
 // This file contains code for performing aggregations on the agent-emitted protobuf.
 // See draios-aggregator-plugin.py.
@@ -592,17 +590,18 @@ public:
 
 """ % builder_header.name
 
-        builder_source = response.file.add()
-        builder_source.name = proto_file.name + '_builder.cpp'
-        builder_source.content = """#include "%s"
+    builder_source = response.file.add()
+    builder_source.name = 'draios.proto_builder.cpp'
+    builder_source.content = """#include "%s"
 #include "%s"
 
 """ % (aggregator_header.name, builder_header.name)
 
-        # pass 1 of the protobuf: build a map allowing us to easily access fields
-        # and messages.
-        # index_dict[<message_name>][0] => the message object
-        # index_dict[<message_name>][<field_number>] => the field object
+    # pass 1 of the protobuf: build a map allowing us to easily access fields
+    # and messages.
+    # index_dict[<message_name>][0] => the message object
+    # index_dict[<message_name>][<field_number>] => the field object
+    for proto_file in request.proto_file:
         for message, package in traverse(proto_file):
             if isinstance(message, DescriptorProto):
                 # first step, generate entry in the index dict
@@ -611,15 +610,17 @@ public:
                 for field in message.field:
                     index_dict[message.name][field.number] = field
 
-        # pass 2 of the protobuf: identify the messages types which are repeated fields in
-        # other messages. This must be done recursively, and thus requires a second pass
+    # pass 2 of the protobuf: identify the messages types which are repeated fields in
+    # other messages. This must be done recursively, and thus requires a second pass
+    for proto_file in request.proto_file:
         for message, package in traverse(proto_file):
             if isinstance(message, DescriptorProto):
                 for field in message.field:
                     if get_field_type(field, {}) is 5:
                         find_primary_keys(index_dict[type_name(field)][0])
                         
-        # pass 3 of the protobuf: generate the actual code
+    # pass 3 of the protobuf: generate the actual code
+    for proto_file in request.proto_file:
         for message, package in traverse(proto_file):
             if isinstance(message, DescriptorProto):
                 # generate the class for this message
@@ -627,9 +628,9 @@ public:
 
                 # generate the builders for this field
                 if message.name not in skip:
-                    builder_header.content += """    virtual agent_message_aggregator<draiosprotoagg::%s>& build_%s() const;
+                    builder_header.content += """    virtual agent_message_aggregator<draiosproto::%s>& build_%s() const;
 """ % (message.name, message.name) 
-                    builder_source.content += """agent_message_aggregator<draiosprotoagg::%s>&
+                    builder_source.content += """agent_message_aggregator<draiosproto::%s>&
 message_aggregator_builder::build_%s() const
 {
     return *(new %s_message_aggregator(*this));

@@ -1,5 +1,5 @@
 #include <gtest.h>
-#include "draios_aggregated.proto.h"
+#include "draios.proto.h"
 #include "draios.pb.h"
 #include <iostream>
 #include <fstream>
@@ -18,8 +18,8 @@ TEST(aggregator, default_aggregation)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	input.set_sampling_ratio(4);
 	aggregator.aggregate(input, output);
@@ -41,8 +41,8 @@ TEST(aggregator, default_list_aggregation)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in_hostinfo = input.mutable_hostinfo();
 	auto out_hostinfo = output.mutable_hostinfo();
@@ -83,8 +83,8 @@ TEST(aggregator, metrics)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	input.set_timestamp_ns(1);
 	input.set_machine_id("2");
@@ -300,8 +300,8 @@ TEST(aggregator, host)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in_hostinfo = input.mutable_hostinfo();
 	auto out_hostinfo = output.mutable_hostinfo();
@@ -408,8 +408,8 @@ TEST(aggregator, time_categories)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	// no non-sub message fields, so just have to check that we
 	// aggregate properly in each location this message appears
@@ -431,8 +431,8 @@ TEST(aggregator, counter_time)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in_ct = input.mutable_hostinfo()->mutable_tcounters()->mutable_unknown();
 	auto out_ct = output.mutable_hostinfo()->mutable_tcounters()->mutable_unknown();
@@ -508,8 +508,8 @@ TEST(aggregator, counter_percentile)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in_cp = input.mutable_hostinfo()->mutable_tcounters()->mutable_unknown()->add_percentile();
 
@@ -541,8 +541,8 @@ TEST(aggregator, counter_percentile)
 	EXPECT_EQ(output.hostinfo().tcounters().unknown().percentile()[0].aggr_value().sum(), 101);
 
 	// check primary key
-	draiosprotoagg::counter_percentile lhs;
-	draiosprotoagg::counter_percentile rhs;
+	draiosproto::counter_percentile lhs;
+	draiosproto::counter_percentile rhs;
 
 	lhs.set_percentile(1);
 	rhs.set_percentile(2);
@@ -565,8 +565,8 @@ TEST(aggregator, counter_time_bytes)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in_cb = input.mutable_hostinfo()->mutable_external_io_net();
 	auto out_cb = output.mutable_hostinfo()->mutable_external_io_net();
@@ -670,8 +670,8 @@ TEST(aggregator, counter_time_bidirectional)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in_cb = input.mutable_hostinfo()->mutable_transaction_counters();
 	auto out_cb = output.mutable_hostinfo()->mutable_transaction_counters();
@@ -751,8 +751,8 @@ TEST(aggregator, resource_categories)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_hostinfo()->mutable_resource_counters();
 	auto out = output.mutable_hostinfo()->mutable_resource_counters();
@@ -784,6 +784,10 @@ TEST(aggregator, resource_categories)
 	in->set_threads_count(25);
 	in->set_prometheus_sent(26);
 	in->set_prometheus_total(27);
+	in->set_syscall_count(28);
+	in->set_cpu_cores_quota_limit(29);
+	in->set_cpu_cpuset_usage_pct(30);
+	in->set_cpu_cores_cpuset_limit(31);
 
 	// other locations of resource_categories
 	input.add_programs()->mutable_procinfo()->mutable_resource_counters()->set_capacity_score(28);
@@ -818,6 +822,10 @@ TEST(aggregator, resource_categories)
 	EXPECT_EQ(out->aggr_threads_count().sum(), 25);
 	EXPECT_EQ(out->aggr_prometheus_sent().sum(), 26);
 	EXPECT_EQ(out->aggr_prometheus_total().sum(), 27);
+	EXPECT_EQ(out->aggr_syscall_count().sum(), 28);
+	EXPECT_EQ(out->aggr_cpu_cores_quota_limit().sum(), 29);
+	EXPECT_EQ(out->aggr_cpu_cpuset_usage_pct().sum(), 30);
+	EXPECT_EQ(out->aggr_cpu_cores_cpuset_limit().sum(), 31);
 	EXPECT_EQ(output.programs()[0].procinfo().resource_counters().aggr_capacity_score().sum(), 28);
 	EXPECT_EQ(output.containers()[0].resource_counters().aggr_capacity_score().sum(), 29);
 	EXPECT_EQ(output.unreported_counters().resource_counters().aggr_capacity_score().sum(), 30);
@@ -849,6 +857,10 @@ TEST(aggregator, resource_categories)
 	in->set_threads_count(100);
 	in->set_prometheus_sent(100);
 	in->set_prometheus_total(100);
+	in->set_syscall_count(100);
+	in->set_cpu_cores_quota_limit(100);
+	in->set_cpu_cpuset_usage_pct(100);
+	in->set_cpu_cores_cpuset_limit(100);
 
 	aggregator.aggregate(input, output);
 	EXPECT_EQ(out->aggr_capacity_score().sum(), 101);
@@ -878,6 +890,10 @@ TEST(aggregator, resource_categories)
 	EXPECT_EQ(out->aggr_threads_count().sum(), 125);
 	EXPECT_EQ(out->aggr_prometheus_sent().sum(), 126);
 	EXPECT_EQ(out->aggr_prometheus_total().sum(), 127);
+	EXPECT_EQ(out->aggr_syscall_count().sum(), 128);
+	EXPECT_EQ(out->aggr_cpu_cores_quota_limit().sum(), 129);
+	EXPECT_EQ(out->aggr_cpu_cpuset_usage_pct().sum(), 130);
+	EXPECT_EQ(out->aggr_cpu_cores_cpuset_limit().sum(), 131);
 }
 
 TEST(aggregator, counter_syscall_errors)
@@ -885,8 +901,8 @@ TEST(aggregator, counter_syscall_errors)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_hostinfo()->mutable_syscall_errors();
 	auto out = output.mutable_hostinfo()->mutable_syscall_errors();
@@ -939,8 +955,8 @@ TEST(aggregator, transaction_breakdown_categories)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	input.mutable_hostinfo()->mutable_reqcounters()->mutable_other()->set_count(1);
 	input.add_containers()->mutable_reqcounters()->mutable_other()->set_count(2);
@@ -957,8 +973,8 @@ TEST(aggregator, network_by_port)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	// all the places that include counter_percentile
 	input.mutable_hostinfo()->add_network_by_serverports()->set_port(1);
@@ -970,8 +986,8 @@ TEST(aggregator, network_by_port)
 	EXPECT_EQ(output.containers()[0].network_by_serverports()[0].port(), 2);
 
 	// check primary key
-	draiosprotoagg::network_by_port lhs;
-	draiosprotoagg::network_by_port rhs;
+	draiosproto::network_by_port lhs;
+	draiosproto::network_by_port rhs;
 
 	lhs.set_port(1);
 	rhs.set_port(2);
@@ -989,8 +1005,8 @@ TEST(aggregator, connection_categories)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_hostinfo()->add_network_by_serverports()->mutable_counters();
 
@@ -1016,8 +1032,8 @@ TEST(aggregator, counter_bytes)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_hostinfo()->add_network_by_serverports()->mutable_counters()->mutable_server();
 
@@ -1053,8 +1069,8 @@ TEST(aggregator, ipv4_connection)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.add_ipv4_connections();
 	
@@ -1067,8 +1083,8 @@ TEST(aggregator, ipv4_connection)
 	EXPECT_EQ(output.ipv4_connections()[0].dpid(), 2);
 
 	// check primary key
-	draiosprotoagg::ipv4_connection lhs;
-	draiosprotoagg::ipv4_connection rhs;
+	draiosproto::ipv4_connection lhs;
+	draiosproto::ipv4_connection rhs;
 
 	rhs.set_spid(1);
 	EXPECT_FALSE(ipv4_connection_message_aggregator::comparer()(&lhs, &rhs));
@@ -1082,8 +1098,8 @@ TEST(aggregator, ipv4_connection)
 
 
 	rhs.mutable_counters()->set_n_aggregated_connections(2);
-	rhs.set_state((draiosprotoagg::connection_state)1);
-	rhs.set_error_code((draiosprotoagg::error_code)1);
+	rhs.set_state((draiosproto::connection_state)1);
+	rhs.set_error_code((draiosproto::error_code)1);
 	EXPECT_TRUE(ipv4_connection_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(ipv4_connection_message_aggregator::hasher()(&lhs),
 		  ipv4_connection_message_aggregator::hasher()(&rhs));
@@ -1094,8 +1110,8 @@ TEST(aggregator, ipv4tuple)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.add_ipv4_connections()->mutable_tuple();
 	
@@ -1114,8 +1130,8 @@ TEST(aggregator, ipv4tuple)
 	EXPECT_EQ(output.ipv4_connections()[0].tuple().l4proto(), 5);
 
 	// check primary key
-	draiosprotoagg::ipv4tuple lhs;
-	draiosprotoagg::ipv4tuple rhs;
+	draiosproto::ipv4tuple lhs;
+	draiosproto::ipv4tuple rhs;
 
 	rhs.set_sip(1);
 	EXPECT_FALSE(ipv4tuple_message_aggregator::comparer()(&lhs, &rhs));
@@ -1144,8 +1160,8 @@ TEST(aggregator, ipv4_incomplete_connection)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.add_ipv4_incomplete_connections();
 	
@@ -1158,8 +1174,8 @@ TEST(aggregator, ipv4_incomplete_connection)
 	EXPECT_EQ(output.ipv4_incomplete_connections()[0].dpid(), 2);
 
 	// check primary key
-	draiosprotoagg::ipv4_incomplete_connection lhs;
-	draiosprotoagg::ipv4_incomplete_connection rhs;
+	draiosproto::ipv4_incomplete_connection lhs;
+	draiosproto::ipv4_incomplete_connection rhs;
 
 	rhs.set_spid(1);
 	EXPECT_FALSE(ipv4_incomplete_connection_message_aggregator::comparer()(&lhs, &rhs));
@@ -1170,8 +1186,8 @@ TEST(aggregator, ipv4_incomplete_connection)
 
 
 	rhs.mutable_counters()->set_n_aggregated_connections(2);
-	rhs.set_state((draiosprotoagg::connection_state)1);
-	rhs.set_error_code((draiosprotoagg::error_code)1);
+	rhs.set_state((draiosproto::connection_state)1);
+	rhs.set_error_code((draiosproto::error_code)1);
 	rhs.set_dpid(1);
 	EXPECT_TRUE(ipv4_incomplete_connection_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(ipv4_incomplete_connection_message_aggregator::hasher()(&lhs),
@@ -1183,8 +1199,8 @@ TEST(aggregator, ipv4_network_interface)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.add_ipv4_network_interfaces();
 	
@@ -1201,8 +1217,8 @@ TEST(aggregator, ipv4_network_interface)
 	EXPECT_EQ(output.ipv4_network_interfaces()[0].bcast(), 4);
 
 	// check primary key
-	draiosprotoagg::ipv4_network_interface lhs;
-	draiosprotoagg::ipv4_network_interface rhs;
+	draiosproto::ipv4_network_interface lhs;
+	draiosproto::ipv4_network_interface rhs;
 
 	rhs.set_addr(1);
 	EXPECT_FALSE(ipv4_network_interface_message_aggregator::comparer()(&lhs, &rhs));
@@ -1225,8 +1241,8 @@ TEST(aggregator, program)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.add_programs();
 
@@ -1270,8 +1286,8 @@ TEST(aggregator, program)
 	EXPECT_EQ(output.programs()[0].program_reporting_group_id()[2], 8);
 
 	// check primary key
-	draiosprotoagg::program lhs;
-	draiosprotoagg::program rhs;
+	draiosproto::program lhs;
+	draiosproto::program rhs;
 
 	rhs.set_environment_hash("1");
 	EXPECT_FALSE(program_message_aggregator::comparer()(&lhs, &rhs));
@@ -1293,8 +1309,8 @@ TEST(aggregator, process)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.add_programs()->mutable_procinfo();
 
@@ -1353,8 +1369,8 @@ TEST(aggregator, process)
 	EXPECT_EQ(output.programs()[0].procinfo().top_devices()[2].name(), "2");
 
 	// check primary key
-	draiosprotoagg::process lhs;
-	draiosprotoagg::process rhs;
+	draiosproto::process lhs;
+	draiosproto::process rhs;
 
 	rhs.mutable_details()->set_comm("1");
 	EXPECT_FALSE(process_message_aggregator::comparer()(&lhs, &rhs));
@@ -1377,8 +1393,8 @@ TEST(aggregator, process_details)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.add_programs()->mutable_procinfo()->mutable_details();
 
@@ -1404,8 +1420,8 @@ TEST(aggregator, process_details)
 	EXPECT_EQ(output.programs()[1].procinfo().details().container_id(), "");
 
 	// check primary key
-	draiosprotoagg::process_details lhs;
-	draiosprotoagg::process_details rhs;
+	draiosproto::process_details lhs;
+	draiosproto::process_details rhs;
 
 	rhs.set_comm("1");
 	EXPECT_FALSE(process_details_message_aggregator::comparer()(&lhs, &rhs));
@@ -1447,8 +1463,8 @@ TEST(aggregator, proto_info)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	input.add_programs()->mutable_procinfo()->mutable_protos()->mutable_java()->set_process_name("1");
 	input.add_containers()->mutable_protos()->mutable_java()->set_process_name("2");
@@ -1467,8 +1483,8 @@ TEST(aggregator, http_info)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	input.mutable_protos()->mutable_http()->add_server_urls()->set_url("1");
 	input.mutable_protos()->mutable_http()->add_server_urls()->set_url("2");
@@ -1522,13 +1538,13 @@ TEST(aggregator, url_details)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	// url_details is only used in http_info, which tests both appearances of this
 	// struct, so there isn't more work to do other than verifying the primary key
-	draiosprotoagg::url_details lhs;
-	draiosprotoagg::url_details rhs;
+	draiosproto::url_details lhs;
+	draiosproto::url_details rhs;
 
 	rhs.set_url("1");
 	EXPECT_FALSE(url_details_message_aggregator::comparer()(&lhs, &rhs));
@@ -1545,8 +1561,8 @@ TEST(aggregator, counter_proto_entry)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_protos()->mutable_http()->add_server_urls()->mutable_counters();
 
@@ -1623,8 +1639,8 @@ TEST(aggregator, status_code_details)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_protos()->mutable_http()->add_client_status_codes();
 
@@ -1642,8 +1658,8 @@ TEST(aggregator, status_code_details)
 	EXPECT_EQ(output.protos().http().client_status_codes()[0].aggr_ncalls().sum(), 102);
 
 	// primary key
-	draiosprotoagg::status_code_details lhs;
-	draiosprotoagg::status_code_details rhs;
+	draiosproto::status_code_details lhs;
+	draiosproto::status_code_details rhs;
 
 	rhs.set_status_code(1);
 	EXPECT_FALSE(status_code_details_message_aggregator::comparer()(&lhs, &rhs));
@@ -1660,17 +1676,17 @@ TEST(aggregator, sql_info)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	input.mutable_protos()->mutable_mysql()->add_server_queries()->set_name("1");
 	input.mutable_protos()->mutable_mysql()->add_server_queries()->set_name("2");
 	input.mutable_protos()->mutable_mysql()->add_client_queries()->set_name("3");
 	input.mutable_protos()->mutable_mysql()->add_client_queries()->set_name("4");
-	input.mutable_protos()->mutable_mysql()->add_server_query_types()->set_type((draiosprotoagg::sql_statement_type)5);
-	input.mutable_protos()->mutable_mysql()->add_server_query_types()->set_type((draiosprotoagg::sql_statement_type)6);
-	input.mutable_protos()->mutable_mysql()->add_client_query_types()->set_type((draiosprotoagg::sql_statement_type)7);
-	input.mutable_protos()->mutable_mysql()->add_client_query_types()->set_type((draiosprotoagg::sql_statement_type)8);
+	input.mutable_protos()->mutable_mysql()->add_server_query_types()->set_type((draiosproto::sql_statement_type)5);
+	input.mutable_protos()->mutable_mysql()->add_server_query_types()->set_type((draiosproto::sql_statement_type)6);
+	input.mutable_protos()->mutable_mysql()->add_client_query_types()->set_type((draiosproto::sql_statement_type)7);
+	input.mutable_protos()->mutable_mysql()->add_client_query_types()->set_type((draiosproto::sql_statement_type)8);
 	input.mutable_protos()->mutable_mysql()->add_server_tables()->set_name("9");
 	input.mutable_protos()->mutable_mysql()->add_server_tables()->set_name("10");
 	input.mutable_protos()->mutable_mysql()->add_client_tables()->set_name("11");
@@ -1700,8 +1716,8 @@ TEST(aggregator, sql_info)
 
 	(*input.mutable_protos()->mutable_mysql()->mutable_server_queries())[1].set_name("14");
 	(*input.mutable_protos()->mutable_mysql()->mutable_client_queries())[1].set_name("15");
-	(*input.mutable_protos()->mutable_mysql()->mutable_server_query_types())[1].set_type((draiosprotoagg::sql_statement_type)7);
-	(*input.mutable_protos()->mutable_mysql()->mutable_client_query_types())[1].set_type((draiosprotoagg::sql_statement_type)9);
+	(*input.mutable_protos()->mutable_mysql()->mutable_server_query_types())[1].set_type((draiosproto::sql_statement_type)7);
+	(*input.mutable_protos()->mutable_mysql()->mutable_client_query_types())[1].set_type((draiosproto::sql_statement_type)9);
 	(*input.mutable_protos()->mutable_mysql()->mutable_server_tables())[1].set_name("18");
 	(*input.mutable_protos()->mutable_mysql()->mutable_client_tables())[1].set_name("19");
 
@@ -1737,13 +1753,13 @@ TEST(aggregator, sql_entry_details)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	// sql_entry_details is only used in sql_info, which tests both appearances of this
 	// struct, so there isn't more work to do other than verifying the primary key
-	draiosprotoagg::sql_entry_details lhs;
-	draiosprotoagg::sql_entry_details rhs;
+	draiosproto::sql_entry_details lhs;
+	draiosproto::sql_entry_details rhs;
 
 	rhs.set_name("1");
 	EXPECT_FALSE(sql_entry_details_message_aggregator::comparer()(&lhs, &rhs));
@@ -1760,17 +1776,17 @@ TEST(aggregator, sql_query_type_details)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	// sql_query_type_details is only used in sql_info, which tests both appearances of
 	// this struct, so there isn't more work to do other than verifying the primary key
-	draiosprotoagg::sql_query_type_details lhs;
-	draiosprotoagg::sql_query_type_details rhs;
+	draiosproto::sql_query_type_details lhs;
+	draiosproto::sql_query_type_details rhs;
 
-	rhs.set_type((draiosprotoagg::sql_statement_type)1);
+	rhs.set_type((draiosproto::sql_statement_type)1);
 	EXPECT_FALSE(sql_query_type_details_message_aggregator::comparer()(&lhs, &rhs));
-	rhs.set_type((draiosprotoagg::sql_statement_type)0);
+	rhs.set_type((draiosproto::sql_statement_type)0);
 
 	rhs.mutable_counters()->set_ncalls(1);
 	EXPECT_TRUE(sql_query_type_details_message_aggregator::comparer()(&lhs, &rhs));
@@ -1783,13 +1799,13 @@ TEST(aggregator, mongodb_info)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
-	input.mutable_protos()->mutable_mongodb()->add_servers_ops()->set_op((draiosprotoagg::mongodb_op_type)1);
-	input.mutable_protos()->mutable_mongodb()->add_servers_ops()->set_op((draiosprotoagg::mongodb_op_type)2);
-	input.mutable_protos()->mutable_mongodb()->add_client_ops()->set_op((draiosprotoagg::mongodb_op_type)3);
-	input.mutable_protos()->mutable_mongodb()->add_client_ops()->set_op((draiosprotoagg::mongodb_op_type)4);
+	input.mutable_protos()->mutable_mongodb()->add_servers_ops()->set_op((draiosproto::mongodb_op_type)1);
+	input.mutable_protos()->mutable_mongodb()->add_servers_ops()->set_op((draiosproto::mongodb_op_type)2);
+	input.mutable_protos()->mutable_mongodb()->add_client_ops()->set_op((draiosproto::mongodb_op_type)3);
+	input.mutable_protos()->mutable_mongodb()->add_client_ops()->set_op((draiosproto::mongodb_op_type)4);
 	input.mutable_protos()->mutable_mongodb()->add_server_collections()->set_name("5");
 	input.mutable_protos()->mutable_mongodb()->add_server_collections()->set_name("6");
 	input.mutable_protos()->mutable_mongodb()->add_client_collections()->set_name("7");
@@ -1809,8 +1825,8 @@ TEST(aggregator, mongodb_info)
 	EXPECT_EQ(output.protos().mongodb().client_collections()[0].name(), "7");
 	EXPECT_EQ(output.protos().mongodb().client_collections()[1].name(), "8");
 
-	(*input.mutable_protos()->mutable_mongodb()->mutable_servers_ops())[1].set_op((draiosprotoagg::mongodb_op_type)13);
-	(*input.mutable_protos()->mutable_mongodb()->mutable_client_ops())[1].set_op((draiosprotoagg::mongodb_op_type)14);
+	(*input.mutable_protos()->mutable_mongodb()->mutable_servers_ops())[1].set_op((draiosproto::mongodb_op_type)13);
+	(*input.mutable_protos()->mutable_mongodb()->mutable_client_ops())[1].set_op((draiosproto::mongodb_op_type)14);
 	(*input.mutable_protos()->mutable_mongodb()->mutable_server_collections())[1].set_name("16");
 	(*input.mutable_protos()->mutable_mongodb()->mutable_client_collections())[1].set_name("17");
 
@@ -1838,17 +1854,17 @@ TEST(aggregator, mongodb_op_type_details)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	// mongodb_op_type_details is only used in sql_info, which tests both appearances of
 	// this struct, so there isn't more work to do other than verifying the primary key
-	draiosprotoagg::mongodb_op_type_details lhs;
-	draiosprotoagg::mongodb_op_type_details rhs;
+	draiosproto::mongodb_op_type_details lhs;
+	draiosproto::mongodb_op_type_details rhs;
 
-	rhs.set_op((draiosprotoagg::mongodb_op_type)1);
+	rhs.set_op((draiosproto::mongodb_op_type)1);
 	EXPECT_FALSE(mongodb_op_type_details_message_aggregator::comparer()(&lhs, &rhs));
-	rhs.set_op((draiosprotoagg::mongodb_op_type)0);
+	rhs.set_op((draiosproto::mongodb_op_type)0);
 
 	rhs.mutable_counters()->set_ncalls(1);
 	EXPECT_TRUE(mongodb_op_type_details_message_aggregator::comparer()(&lhs, &rhs));
@@ -1861,13 +1877,13 @@ TEST(aggregator, mongodb_collection_details)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	// mongdob_collection_details is only used in sql_info, which tests both appearances of this
 	// struct, so there isn't more work to do other than verifying the primary key
-	draiosprotoagg::mongodb_collection_details lhs;
-	draiosprotoagg::mongodb_collection_details rhs;
+	draiosproto::mongodb_collection_details lhs;
+	draiosproto::mongodb_collection_details rhs;
 
 	rhs.set_name("1");
 	EXPECT_FALSE(mongodb_collection_details_message_aggregator::comparer()(&lhs, &rhs));
@@ -1884,8 +1900,8 @@ TEST(aggregator, java_info)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	input.mutable_protos()->mutable_java()->set_process_name("1");
 	input.mutable_protos()->mutable_java()->add_beans()->set_name("2");
@@ -1910,8 +1926,8 @@ TEST(aggregator, jmx_bean)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto bean = input.mutable_protos()->mutable_java()->add_beans();
 	bean->set_name("1");
@@ -1933,8 +1949,8 @@ TEST(aggregator, jmx_bean)
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[2].name(), "4");
 
 	// validate primary key
-	draiosprotoagg::jmx_bean lhs;
-	draiosprotoagg::jmx_bean rhs;
+	draiosproto::jmx_bean lhs;
+	draiosproto::jmx_bean rhs;
 
 	rhs.set_name("1");
 	EXPECT_FALSE(jmx_bean_message_aggregator::comparer()(&lhs, &rhs));
@@ -1951,8 +1967,8 @@ TEST(aggregator, jmx_attribute)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_protos()->mutable_java()->add_beans()->add_attributes();
 	in->set_name("1");
@@ -1960,9 +1976,9 @@ TEST(aggregator, jmx_attribute)
 	in->add_subattributes()->set_name("1");
 	in->add_subattributes()->set_name("2");
 	in->set_alias("3");
-	in->set_type((draiosprotoagg::jmx_metric_type)2);
-	in->set_unit((draiosprotoagg::unit)3);
-	in->set_scale((draiosprotoagg::scale)6);
+	in->set_type((draiosproto::jmx_metric_type)2);
+	in->set_unit((draiosproto::unit)3);
+	in->set_scale((draiosproto::scale)6);
 	// SMAGENT-1935
 
 	aggregator.aggregate(input, output);
@@ -1987,8 +2003,8 @@ TEST(aggregator, jmx_attribute)
 
 
 	// validate primary key
-	draiosprotoagg::jmx_attribute lhs;
-	draiosprotoagg::jmx_attribute rhs;
+	draiosproto::jmx_attribute lhs;
+	draiosproto::jmx_attribute rhs;
 
 	rhs.set_name("1");
 	EXPECT_FALSE(jmx_attribute_message_aggregator::comparer()(&lhs, &rhs));
@@ -1997,9 +2013,9 @@ TEST(aggregator, jmx_attribute)
 	rhs.set_value(1);
 	rhs.add_subattributes();
 	rhs.set_alias("1");
-	rhs.set_type((draiosprotoagg::jmx_metric_type)1);
-	rhs.set_unit((draiosprotoagg::unit)1);
-	rhs.set_scale((draiosprotoagg::scale)1);
+	rhs.set_type((draiosproto::jmx_metric_type)1);
+	rhs.set_unit((draiosproto::unit)1);
+	rhs.set_scale((draiosproto::scale)1);
 	rhs.add_segment_by();
 	EXPECT_TRUE(jmx_attribute_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(jmx_attribute_message_aggregator::hasher()(&lhs),
@@ -2011,8 +2027,8 @@ TEST(aggregator, statsd_tag)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_internal_metrics()->add_statsd_metrics()->add_tags();
 	in->set_key("1");
@@ -2023,8 +2039,8 @@ TEST(aggregator, statsd_tag)
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].tags()[0].value(), "2");
 
 	// validate primary key
-	draiosprotoagg::statsd_tag lhs;
-	draiosprotoagg::statsd_tag rhs;
+	draiosproto::statsd_tag lhs;
+	draiosproto::statsd_tag rhs;
 
 	rhs.set_key("1");
 	EXPECT_FALSE(statsd_tag_message_aggregator::comparer()(&lhs, &rhs));
@@ -2043,8 +2059,8 @@ TEST(aggregator, statsd_info)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	input.mutable_internal_metrics()->add_statsd_metrics()->set_name("1");
 	input.mutable_internal_metrics()->add_statsd_metrics()->set_name("2");
@@ -2062,14 +2078,14 @@ TEST(aggregator, statsd_metric)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_internal_metrics()->add_statsd_metrics();
 	in->set_name("1");
 	in->add_tags()->set_key("2");
 	in->add_tags()->set_key("3");
-	in->set_type((draiosprotoagg::statsd_metric_type)1);
+	in->set_type((draiosproto::statsd_metric_type)1);
 	in->set_value(4);
 	in->set_sum(5);
 	in->set_min(6);
@@ -2125,8 +2141,8 @@ TEST(aggregator, statsd_metric)
 
 
 	// validate primary key
-	draiosprotoagg::statsd_metric lhs;
-	draiosprotoagg::statsd_metric rhs;
+	draiosproto::statsd_metric lhs;
+	draiosproto::statsd_metric rhs;
 
 	rhs.set_name("1");
 	EXPECT_FALSE(statsd_metric_message_aggregator::comparer()(&lhs, &rhs));
@@ -2135,7 +2151,7 @@ TEST(aggregator, statsd_metric)
 	EXPECT_FALSE(statsd_metric_message_aggregator::comparer()(&lhs, &rhs));
 	lhs.add_tags()->set_key("1");
 
-	rhs.set_type((draiosprotoagg::statsd_metric_type)1);
+	rhs.set_type((draiosproto::statsd_metric_type)1);
 	rhs.set_value(4);
 	rhs.set_sum(5);
 	rhs.set_min(6);
@@ -2157,8 +2173,8 @@ TEST(aggregator, app_info)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_protos()->mutable_app();
 
@@ -2197,18 +2213,18 @@ TEST(aggregator, app_metric)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_protos()->mutable_app()->add_metrics();
 
 	in->set_name("1");
-	in->set_type((draiosprotoagg::app_metric_type)2);
+	in->set_type((draiosproto::app_metric_type)2);
 	in->set_value(3.5);
 	in->add_tags()->set_key("4");
 	in->add_tags()->set_key("5");
 	// SMAGENT-1949
-	in->set_prometheus_type((draiosprotoagg::prometheus_type)1);
+	in->set_prometheus_type((draiosproto::prometheus_type)1);
 
 	aggregator.aggregate(input, output);
 	EXPECT_EQ(output.protos().app().metrics()[0].name(), "1");
@@ -2228,8 +2244,8 @@ TEST(aggregator, app_metric)
 
 
 	// validate primary key
-	draiosprotoagg::app_metric lhs;
-	draiosprotoagg::app_metric rhs;
+	draiosproto::app_metric lhs;
+	draiosproto::app_metric rhs;
 
 	rhs.set_name("1");
 	EXPECT_FALSE(app_metric_message_aggregator::comparer()(&lhs, &rhs));
@@ -2238,9 +2254,9 @@ TEST(aggregator, app_metric)
 	EXPECT_FALSE(app_metric_message_aggregator::comparer()(&lhs, &rhs));
 	lhs.add_tags()->set_key("1");
 
-	rhs.set_type((draiosprotoagg::app_metric_type)1);
+	rhs.set_type((draiosproto::app_metric_type)1);
 	rhs.set_value(4);
-	rhs.set_prometheus_type((draiosprotoagg::prometheus_type)1);
+	rhs.set_prometheus_type((draiosproto::prometheus_type)1);
 
 	EXPECT_TRUE(app_metric_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(app_metric_message_aggregator::hasher()(&lhs),
@@ -2252,8 +2268,8 @@ TEST(aggregator, app_tag)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_protos()->mutable_app()->add_metrics()->add_tags();
 	in->set_key("1");
@@ -2263,8 +2279,8 @@ TEST(aggregator, app_tag)
 	EXPECT_EQ(output.protos().app().metrics()[0].tags()[0].value(), "2");
 
 	// validate primary key
-	draiosprotoagg::app_tag lhs;
-	draiosprotoagg::app_tag rhs;
+	draiosproto::app_tag lhs;
+	draiosproto::app_tag rhs;
 
 	rhs.set_key("1");
 	EXPECT_FALSE(app_tag_message_aggregator::comparer()(&lhs, &rhs));
@@ -2286,13 +2302,13 @@ TEST(aggregator, app_check)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_protos()->mutable_app()->add_checks();
 	
 	in->set_name("1");
-	in->set_value((draiosprotoagg::app_check_value)2);
+	in->set_value((draiosproto::app_check_value)2);
 	in->add_tags()->set_key("3");
 	in->add_tags()->set_key("4");
 	aggregator.aggregate(input, output);
@@ -2310,14 +2326,14 @@ TEST(aggregator, app_check)
 	EXPECT_EQ(output.protos().app().checks()[0].tags()[2].key(), "5");
 
 	// validate primary key
-	draiosprotoagg::app_check lhs;
-	draiosprotoagg::app_check rhs;
+	draiosproto::app_check lhs;
+	draiosproto::app_check rhs;
 
 	rhs.set_name("1");
 	EXPECT_FALSE(app_check_message_aggregator::comparer()(&lhs, &rhs));
 	rhs.set_name("");
 
-	rhs.set_value((draiosprotoagg::app_check_value)2);
+	rhs.set_value((draiosproto::app_check_value)2);
 	rhs.add_tags();
 	EXPECT_TRUE(app_check_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(app_check_message_aggregator::hasher()(&lhs),
@@ -2330,8 +2346,8 @@ TEST(aggregator, file_stat)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.add_top_files();
 	
@@ -2359,8 +2375,8 @@ TEST(aggregator, file_stat)
 	EXPECT_EQ(output.top_files()[0].aggr_errors().sum(), 105);
 
 	// validate primary key
-	draiosprotoagg::file_stat lhs;
-	draiosprotoagg::file_stat rhs;
+	draiosproto::file_stat lhs;
+	draiosproto::file_stat rhs;
 
 	rhs.set_name("1");
 	EXPECT_FALSE(file_stat_message_aggregator::comparer()(&lhs, &rhs));
@@ -2380,8 +2396,8 @@ TEST(aggregator, mounted_fs)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.add_mounts();
 	
@@ -2418,8 +2434,8 @@ TEST(aggregator, mounted_fs)
 	EXPECT_EQ(output.mounts()[0].aggr_used_inodes().sum(), 108);
 
 	// validate primary key
-	draiosprotoagg::mounted_fs lhs;
-	draiosprotoagg::mounted_fs rhs;
+	draiosproto::mounted_fs lhs;
+	draiosproto::mounted_fs rhs;
 
 	rhs.set_mount_dir("1");
 	EXPECT_FALSE(mounted_fs_message_aggregator::comparer()(&lhs, &rhs));
@@ -2443,13 +2459,13 @@ TEST(aggregator, container)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.add_containers();
 	
 	in->set_id("1");
-	in->set_type((draiosprotoagg::container_type)2);
+	in->set_type((draiosproto::container_type)2);
 	in->set_name("3");
 	in->set_image("4");
 	in->set_transaction_processing_delay(5);
@@ -2548,14 +2564,14 @@ TEST(aggregator, container)
 	EXPECT_EQ(output.containers()[0].top_devices()[2].name(), "1");
 
 	// validate primary key
-	draiosprotoagg::container lhs;
-	draiosprotoagg::container rhs;
+	draiosproto::container lhs;
+	draiosproto::container rhs;
 
 	rhs.set_id("1");
 	EXPECT_FALSE(container_message_aggregator::comparer()(&lhs, &rhs));
 	rhs.set_id("");
 
-	rhs.set_type((draiosprotoagg::container_type)2);
+	rhs.set_type((draiosproto::container_type)2);
 	rhs.set_name("3");
 	rhs.set_image("4");
 	rhs.set_transaction_processing_delay(5);
@@ -2580,8 +2596,8 @@ TEST(aggregator, container)
 TEST(aggregator, container_port_mapping)
 {	
 	// validate primary key
-	draiosprotoagg::container_port_mapping lhs;
-	draiosprotoagg::container_port_mapping rhs;
+	draiosproto::container_port_mapping lhs;
+	draiosproto::container_port_mapping rhs;
 
 	rhs.set_host_ip(1);
 	EXPECT_FALSE(container_port_mapping_message_aggregator::comparer()(&lhs, &rhs));
@@ -2605,8 +2621,8 @@ TEST(aggregator, container_port_mapping)
 TEST(aggregator, container_label)
 {
 	// validate primary key
-	draiosprotoagg::container_label lhs;
-	draiosprotoagg::container_label rhs;
+	draiosproto::container_label lhs;
+	draiosproto::container_label rhs;
 
 	rhs.set_key("1");
 	EXPECT_FALSE(container_label_message_aggregator::comparer()(&lhs, &rhs));
@@ -2630,8 +2646,8 @@ TEST(aggregator, mesos_state)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_mesos();
 
@@ -2678,8 +2694,8 @@ TEST(aggregator, mesos_framework)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_mesos()->add_frameworks();
 
@@ -2699,8 +2715,8 @@ TEST(aggregator, mesos_framework)
 	EXPECT_EQ(output.mesos().frameworks()[0].tasks()[2].common().uid(), "3");
 
 	// validate primary key
-	draiosprotoagg::mesos_framework lhs;
-	draiosprotoagg::mesos_framework rhs;
+	draiosproto::mesos_framework lhs;
+	draiosproto::mesos_framework rhs;
 
 	rhs.mutable_common()->set_uid("1");
 	EXPECT_FALSE(mesos_framework_message_aggregator::comparer()(&lhs, &rhs));
@@ -2717,8 +2733,8 @@ TEST(aggregator, mesos_common)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_mesos()->add_frameworks()->mutable_common();
 
@@ -2742,8 +2758,8 @@ TEST(aggregator, mesos_common)
 	EXPECT_EQ(output.mesos().frameworks()[0].common().labels()[2].key(), "5");
 
 	// validate primary key
-	draiosprotoagg::mesos_common lhs;
-	draiosprotoagg::mesos_common rhs;
+	draiosproto::mesos_common lhs;
+	draiosproto::mesos_common rhs;
 
 	rhs.set_uid("1");
 	EXPECT_FALSE(mesos_common_message_aggregator::comparer()(&lhs, &rhs));
@@ -2759,8 +2775,8 @@ TEST(aggregator, mesos_common)
 TEST(aggregator, mesos_pair)
 {
 	// validate primary key
-	draiosprotoagg::mesos_pair lhs;
-	draiosprotoagg::mesos_pair rhs;
+	draiosproto::mesos_pair lhs;
+	draiosproto::mesos_pair rhs;
 
 	rhs.set_key("1");
 	EXPECT_FALSE(mesos_pair_message_aggregator::comparer()(&lhs, &rhs));
@@ -2777,8 +2793,8 @@ TEST(aggregator, mesos_task)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_mesos()->add_frameworks()->add_tasks();
 
@@ -2788,8 +2804,8 @@ TEST(aggregator, mesos_task)
 	EXPECT_EQ(output.mesos().frameworks()[0].tasks()[0].slave_id(), "1");
 
 	// validate primary key
-	draiosprotoagg::mesos_task lhs;
-	draiosprotoagg::mesos_task rhs;
+	draiosproto::mesos_task lhs;
+	draiosproto::mesos_task rhs;
 
 	rhs.mutable_common()->set_uid("1");
 	EXPECT_FALSE(mesos_task_message_aggregator::comparer()(&lhs, &rhs));
@@ -2806,8 +2822,8 @@ TEST(aggregator, marathon_group)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_mesos()->add_groups();
 
@@ -2839,8 +2855,8 @@ TEST(aggregator, marathon_group)
 	EXPECT_EQ(output.mesos().groups()[0].groups()[2].id(), "7");
 
 	// validate primary key
-	draiosprotoagg::marathon_group lhs;
-	draiosprotoagg::marathon_group rhs;
+	draiosproto::marathon_group lhs;
+	draiosproto::marathon_group rhs;
 
 	rhs.set_id("1");
 	EXPECT_FALSE(marathon_group_message_aggregator::comparer()(&lhs, &rhs));
@@ -2858,8 +2874,8 @@ TEST(aggregator, marathon_app)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_mesos()->add_groups()->add_apps();
 
@@ -2881,8 +2897,8 @@ TEST(aggregator, marathon_app)
 	EXPECT_EQ(output.mesos().groups()[0].apps()[0].task_ids()[2], "4");
 
 	// validate primary key
-	draiosprotoagg::marathon_app lhs;
-	draiosprotoagg::marathon_app rhs;
+	draiosproto::marathon_app lhs;
+	draiosproto::marathon_app rhs;
 
 	rhs.set_id("1");
 	EXPECT_FALSE(marathon_app_message_aggregator::comparer()(&lhs, &rhs));
@@ -2897,8 +2913,8 @@ TEST(aggregator, marathon_app)
 TEST(aggregator, mesos_slave)
 {
 	// validate primary key
-	draiosprotoagg::mesos_slave lhs;
-	draiosprotoagg::mesos_slave rhs;
+	draiosproto::mesos_slave lhs;
+	draiosproto::mesos_slave rhs;
 
 	rhs.mutable_common()->set_uid("1");
 	EXPECT_FALSE(mesos_slave_message_aggregator::comparer()(&lhs, &rhs));
@@ -2914,8 +2930,8 @@ TEST(aggregator, agent_event)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.add_events();
 
@@ -2942,8 +2958,8 @@ TEST(aggregator, agent_event)
 	EXPECT_EQ(output.events().size(), 2); // creates a new event since tag doesn't match
 
 	// validate primary key
-	draiosprotoagg::agent_event lhs;
-	draiosprotoagg::agent_event rhs;
+	draiosproto::agent_event lhs;
+	draiosproto::agent_event rhs;
 
 	rhs.set_timestamp_sec(1);
 	EXPECT_FALSE(agent_event_message_aggregator::comparer()(&lhs, &rhs));
@@ -2973,8 +2989,8 @@ TEST(aggregator, agent_event)
 TEST(aggregator, key_value)
 {
 	// validate primary key
-	draiosprotoagg::key_value lhs;
-	draiosprotoagg::key_value rhs;
+	draiosproto::key_value lhs;
+	draiosproto::key_value rhs;
 
 	rhs.set_key("1");
 	EXPECT_FALSE(key_value_message_aggregator::comparer()(&lhs, &rhs));
@@ -3023,8 +3039,8 @@ TEST(aggregator, swarm_state)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_swarm();
 
@@ -3076,8 +3092,8 @@ TEST(aggregator, swarm_service)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_swarm()->add_services();
 
@@ -3086,7 +3102,7 @@ TEST(aggregator, swarm_service)
 	in->add_virtual_ips("3");
 	in->add_ports()->set_port(4);
 	in->add_ports()->set_port(5);
-	in->set_mode((draiosprotoagg::swarm_service_mode)1);
+	in->set_mode((draiosproto::swarm_service_mode)1);
 	in->set_spec_replicas(6);
 	in->set_tasks(7);
 
@@ -3120,8 +3136,8 @@ TEST(aggregator, swarm_service)
 	EXPECT_EQ(output.swarm().services()[0].aggr_tasks().sum(), 107);
 
 	// validate primary key
-	draiosprotoagg::swarm_service lhs;
-	draiosprotoagg::swarm_service rhs;
+	draiosproto::swarm_service lhs;
+	draiosproto::swarm_service rhs;
 
 	rhs.mutable_common()->set_id("1");
 	EXPECT_FALSE(swarm_service_message_aggregator::comparer()(&lhs, &rhs));
@@ -3129,7 +3145,7 @@ TEST(aggregator, swarm_service)
 
 	rhs.add_virtual_ips("2");
 	rhs.add_ports()->set_port(4);
-	rhs.set_mode((draiosprotoagg::swarm_service_mode)1);
+	rhs.set_mode((draiosproto::swarm_service_mode)1);
 	rhs.set_spec_replicas(6);
 	rhs.set_tasks(7);
 	EXPECT_TRUE(swarm_service_message_aggregator::comparer()(&lhs, &rhs));
@@ -3142,8 +3158,8 @@ TEST(aggregator, swarm_common)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_swarm()->add_services()->mutable_common();
 
@@ -3167,8 +3183,8 @@ TEST(aggregator, swarm_common)
 	EXPECT_EQ(output.swarm().services()[0].common().labels()[2].key(), "5");
 
 	// validate primary key
-	draiosprotoagg::swarm_common lhs;
-	draiosprotoagg::swarm_common rhs;
+	draiosproto::swarm_common lhs;
+	draiosproto::swarm_common rhs;
 
 	rhs.set_id("1");
 	EXPECT_FALSE(swarm_common_message_aggregator::comparer()(&lhs, &rhs));
@@ -3184,8 +3200,8 @@ TEST(aggregator, swarm_common)
 TEST(aggregator, swarm_port)
 {
 	// validate primary key
-	draiosprotoagg::swarm_port lhs;
-	draiosprotoagg::swarm_port rhs;
+	draiosproto::swarm_port lhs;
+	draiosproto::swarm_port rhs;
 
 	rhs.set_port(1);
 	EXPECT_FALSE(swarm_port_message_aggregator::comparer()(&lhs, &rhs));
@@ -3207,8 +3223,8 @@ TEST(aggregator, swarm_node)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_swarm()->add_nodes();
 
@@ -3228,8 +3244,8 @@ TEST(aggregator, swarm_node)
 	EXPECT_EQ(output.swarm().nodes()[0].state(), "6");
 
 	// validate primary key
-	draiosprotoagg::swarm_node lhs;
-	draiosprotoagg::swarm_node rhs;
+	draiosproto::swarm_node lhs;
+	draiosproto::swarm_node rhs;
 
 	rhs.mutable_common()->set_id("1");
 	EXPECT_FALSE(swarm_node_message_aggregator::comparer()(&lhs, &rhs));
@@ -3251,8 +3267,8 @@ TEST(aggregator, swarm_task)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_swarm()->add_tasks();
 
@@ -3270,8 +3286,8 @@ TEST(aggregator, swarm_task)
 	EXPECT_EQ(output.swarm().tasks()[0].state(), "5");
 
 	// validate primary key
-	draiosprotoagg::swarm_task lhs;
-	draiosprotoagg::swarm_task rhs;
+	draiosproto::swarm_task lhs;
+	draiosproto::swarm_task rhs;
 
 	rhs.mutable_common()->set_id("1");
 	EXPECT_FALSE(swarm_task_message_aggregator::comparer()(&lhs, &rhs));
@@ -3291,8 +3307,8 @@ TEST(aggregator, swarm_manager)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_swarm()->add_nodes()->mutable_manager();
 
@@ -3309,8 +3325,8 @@ TEST(aggregator, id_map)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.add_userdb();
 
@@ -3322,8 +3338,8 @@ TEST(aggregator, id_map)
 	EXPECT_EQ(output.userdb()[0].name(), "2");
 
 	// validate primary key
-	draiosprotoagg::id_map lhs;
-	draiosprotoagg::id_map rhs;
+	draiosproto::id_map lhs;
+	draiosproto::id_map rhs;
 
 	rhs.set_id(1);
 	EXPECT_FALSE(id_map_message_aggregator::comparer()(&lhs, &rhs));
@@ -3340,8 +3356,8 @@ TEST(aggregator, environment)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.add_environments();
 
@@ -3356,8 +3372,8 @@ TEST(aggregator, environment)
 	EXPECT_EQ(output.environments()[0].variables()[1], "3");
 
 	// validate primary key
-	draiosprotoagg::environment lhs;
-	draiosprotoagg::environment rhs;
+	draiosproto::environment lhs;
+	draiosproto::environment rhs;
 
 	rhs.set_hash("1");
 	EXPECT_FALSE(environment_message_aggregator::comparer()(&lhs, &rhs));
@@ -3374,8 +3390,8 @@ TEST(aggregator, unreported_stats)
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
 
-	draiosprotoagg::metrics input;
-	draiosprotoagg::metrics output;
+	draiosproto::metrics input;
+	draiosproto::metrics output;
 
 	auto in = input.mutable_unreported_counters();
 
@@ -3406,7 +3422,7 @@ TEST(aggregator_extra, DISABLED_memory_perf)
 	ASSERT_TRUE(IsHeapProfilerRunning());
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator* aggregator = new metrics_message_aggregator(builder);
-	draiosprotoagg::metrics* output = new draiosprotoagg::metrics();
+	draiosproto::metrics* output = new draiosproto::metrics();
 	HeapProfilerDump("fooo");
 	for (uint32_t i = 1; i <= 10; i++)
 	{
@@ -3417,7 +3433,7 @@ TEST(aggregator_extra, DISABLED_memory_perf)
 		ASSERT_TRUE(input_file);
 		input_file.seekg(2);
 
-		draiosprotoagg::metrics* input = new draiosprotoagg::metrics();
+		draiosproto::metrics* input = new draiosproto::metrics();
 		bool success = input->ParseFromIstream(&input_file);
 		ASSERT_TRUE(success);
 		input_file.close();
@@ -3434,7 +3450,7 @@ TEST(aggregator_extra, DISABLED_cpu_perf)
 	ProfilerStart("cpu_trace");
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator* aggregator = new metrics_message_aggregator(builder);
-	draiosprotoagg::metrics* output = new draiosprotoagg::metrics();
+	draiosproto::metrics* output = new draiosproto::metrics();
 	for (uint32_t j = 0; j < 10; j++)
 	for (uint32_t i = 1; i <= 10; i++)
 	{
@@ -3445,7 +3461,7 @@ TEST(aggregator_extra, DISABLED_cpu_perf)
 		ASSERT_TRUE(input_file);
 		input_file.seekg(2);
 
-		draiosprotoagg::metrics* input = new draiosprotoagg::metrics();
+		draiosproto::metrics* input = new draiosproto::metrics();
 		bool success = input->ParseFromIstream(&input_file);
 		ASSERT_TRUE(success);
 		input_file.close();
@@ -3461,7 +3477,7 @@ TEST(aggregator_extra, DISABLED_aggregate)
 {
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator* aggregator = new metrics_message_aggregator(builder);
-	draiosprotoagg::metrics* output = new draiosprotoagg::metrics();
+	draiosproto::metrics* output = new draiosproto::metrics();
 	std::ostringstream filename;
 
 	for (uint32_t i = 0; i <= 9; i++)
@@ -3473,7 +3489,7 @@ TEST(aggregator_extra, DISABLED_aggregate)
 		ASSERT_TRUE(input_file);
 		input_file.seekg(2);
 
-		draiosprotoagg::metrics* input = new draiosprotoagg::metrics();
+		draiosproto::metrics* input = new draiosproto::metrics();
 		bool success = input->ParseFromIstream(&input_file);
 		ASSERT_TRUE(success);
 		input_file.close();
@@ -3602,7 +3618,7 @@ void ignore_raw_mounted_fs(google::protobuf::util::MessageDifferencer& md,
 // set it, as it is ignored by the backend. This function sets the differ to
 // ignore all those fields
 void ignore_raw_fields(google::protobuf::util::MessageDifferencer& md,
-		       draiosprotoagg::metrics& message)
+		       draiosproto::metrics& message)
 {
     md.IgnoreField(message.TOP("hostinfo")->SUB("physical_memory_size_bytes"));
     ignore_raw_time_categories(md, message.TOP("hostinfo")->SUB("tcounters"));
@@ -3619,7 +3635,7 @@ void validate_protobuf(std::string& diff,
 	// first generate the aggregated protobuf
 	message_aggregator_builder_impl builder;
 	metrics_message_aggregator aggregator(builder);
-	draiosprotoagg::metrics test;
+	draiosproto::metrics test;
 	std::ostringstream filename;
 
 	for (uint32_t i = 0; i < 10; i++)
@@ -3631,7 +3647,7 @@ void validate_protobuf(std::string& diff,
 		ASSERT_TRUE(input_file);
 		input_file.seekg(2);
 
-		draiosprotoagg::metrics input;
+		draiosproto::metrics input;
 		bool success = input.ParseFromIstream(&input_file);
 		ASSERT_TRUE(success);
 		input_file.close();
@@ -3642,7 +3658,7 @@ void validate_protobuf(std::string& diff,
 	// now parse the backend protobuf
 	std::ostringstream backend_filename;
 	backend_filename << "aggr_pbs/" << name << "/aggregated.dam";
-	draiosprotoagg::metrics backend;
+	draiosproto::metrics backend;
 	std::ifstream backend_stream;
 	backend_stream.open(backend_filename.str().c_str(), std::ifstream::in | std::ifstream::binary);
 	ASSERT_TRUE(backend_stream);
@@ -3801,7 +3817,7 @@ TEST(validate_aggregator, DISABLED_swarm)
     EXPECT_EQ(diff.size(), 0);
 }
 
-void generate_counter_time_bytes(draiosprotoagg::counter_time_bytes* input)
+void generate_counter_time_bytes(draiosproto::counter_time_bytes* input)
 {
     input->set_time_ns_in(rand() % 100);
     input->set_time_ns_out(rand() % 100);
@@ -3817,7 +3833,7 @@ void generate_counter_time_bytes(draiosprotoagg::counter_time_bytes* input)
     input->set_time_percentage_other(rand() % 100);
 }
 
-void generate_time_categories(draiosprotoagg::time_categories* input)
+void generate_time_categories(draiosproto::time_categories* input)
 {
     input->mutable_unknown()->set_count(rand() % 100);
     input->mutable_unknown()->set_time_ns(rand() % 100);
@@ -3866,7 +3882,7 @@ void generate_time_categories(draiosprotoagg::time_categories* input)
     generate_counter_time_bytes(input->mutable_io_other());
 }
 
-void generate_counter_time_bidirectional(draiosprotoagg::counter_time_bidirectional* input)
+void generate_counter_time_bidirectional(draiosproto::counter_time_bidirectional* input)
 {
     input->set_count_in(rand() % 100);
     input->set_count_out(rand() % 100);
@@ -3874,7 +3890,7 @@ void generate_counter_time_bidirectional(draiosprotoagg::counter_time_bidirectio
     input->set_time_ns_out(rand() % 100);
 }
 
-void generate_resource_categories(draiosprotoagg::resource_categories* input)
+void generate_resource_categories(draiosproto::resource_categories* input)
 {
     input->set_capacity_score(rand() % 100);
     input->set_stolen_capacity_score(rand() % 100);
@@ -3907,7 +3923,7 @@ void generate_resource_categories(draiosprotoagg::resource_categories* input)
     input->set_prometheus_total(rand() % 100);
 }
 
-void generate_counter_syscall_errors(draiosprotoagg::counter_syscall_errors* input)
+void generate_counter_syscall_errors(draiosproto::counter_syscall_errors* input)
 {
     input->set_count(rand() % 100);
     input->add_top_error_codes(rand() % 100);
@@ -3917,7 +3933,7 @@ void generate_counter_syscall_errors(draiosprotoagg::counter_syscall_errors* inp
     input->set_count_net(rand() % 100);
 }
 
-void generate_transaction_breakdown_categories(draiosprotoagg::transaction_breakdown_categories* input)
+void generate_transaction_breakdown_categories(draiosproto::transaction_breakdown_categories* input)
 {
     input->mutable_other()->set_count(rand() % 100);
     input->mutable_other()->set_time_ns(rand() % 100);
@@ -3929,7 +3945,7 @@ void generate_transaction_breakdown_categories(draiosprotoagg::transaction_break
     input->mutable_processing()->set_time_percentage(rand() % 100);
 }
 
-void generate_connection_categories(draiosprotoagg::connection_categories* input)
+void generate_connection_categories(draiosproto::connection_categories* input)
 {
     input->mutable_server()->set_count_in(rand() % 100);
     input->mutable_server()->set_count_out(rand() % 100);
@@ -3944,7 +3960,7 @@ void generate_connection_categories(draiosprotoagg::connection_categories* input
     input->mutable_client()->set_bytes_out(rand() % 100);
 }
 
-void generate_counter_proto_entry(draiosprotoagg::counter_proto_entry* input)
+void generate_counter_proto_entry(draiosproto::counter_proto_entry* input)
 {
     input->set_ncalls(rand() % 100);
     input->set_time_tot(rand() % 100);
@@ -3954,7 +3970,7 @@ void generate_counter_proto_entry(draiosprotoagg::counter_proto_entry* input)
     input->set_nerrors(rand() % 100);
 }
 
-void generate_proto_info(draiosprotoagg::proto_info* input)
+void generate_proto_info(draiosproto::proto_info* input)
 {
     for (uint32_t i = 0; i < 15; i++)
     {
@@ -3998,13 +4014,13 @@ void generate_proto_info(draiosprotoagg::proto_info* input)
     for (uint32_t i = 0; i < 15; i++)
     {
 	input->mutable_mysql()->add_server_query_types();
-	(*input->mutable_mysql()->mutable_server_query_types())[i].set_type((draiosprotoagg::sql_statement_type)(rand() % 10));
+	(*input->mutable_mysql()->mutable_server_query_types())[i].set_type((draiosproto::sql_statement_type)(rand() % 10));
 	generate_counter_proto_entry((*input->mutable_mysql()->mutable_server_query_types())[i].mutable_counters());
     }
     for (uint32_t i = 0; i < 15; i++)
     {
 	input->mutable_mysql()->add_client_query_types();
-	(*input->mutable_mysql()->mutable_client_query_types())[i].set_type((draiosprotoagg::sql_statement_type)(rand() % 10));
+	(*input->mutable_mysql()->mutable_client_query_types())[i].set_type((draiosproto::sql_statement_type)(rand() % 10));
 	generate_counter_proto_entry((*input->mutable_mysql()->mutable_client_query_types())[i].mutable_counters());
     }
     for (uint32_t i = 0; i < 15; i++)
@@ -4037,13 +4053,13 @@ void generate_proto_info(draiosprotoagg::proto_info* input)
     for (uint32_t i = 0; i < 15; i++)
     {
 	input->mutable_postgres()->add_server_query_types();
-	(*input->mutable_postgres()->mutable_server_query_types())[i].set_type((draiosprotoagg::sql_statement_type)(rand() % 10));
+	(*input->mutable_postgres()->mutable_server_query_types())[i].set_type((draiosproto::sql_statement_type)(rand() % 10));
 	generate_counter_proto_entry((*input->mutable_postgres()->mutable_server_query_types())[i].mutable_counters());
     }
     for (uint32_t i = 0; i < 15; i++)
     {
 	input->mutable_postgres()->add_client_query_types();
-	(*input->mutable_postgres()->mutable_client_query_types())[i].set_type((draiosprotoagg::sql_statement_type)(rand() % 10));
+	(*input->mutable_postgres()->mutable_client_query_types())[i].set_type((draiosproto::sql_statement_type)(rand() % 10));
 	generate_counter_proto_entry((*input->mutable_postgres()->mutable_client_query_types())[i].mutable_counters());
     }
     for (uint32_t i = 0; i < 15; i++)
@@ -4064,13 +4080,13 @@ void generate_proto_info(draiosprotoagg::proto_info* input)
     for (uint32_t i = 0; i < 15; i++)
     {
 	input->mutable_mongodb()->add_servers_ops();
-	(*input->mutable_mongodb()->mutable_servers_ops())[i].set_op((draiosprotoagg::mongodb_op_type)(rand() % 10));
+	(*input->mutable_mongodb()->mutable_servers_ops())[i].set_op((draiosproto::mongodb_op_type)(rand() % 10));
 	generate_counter_proto_entry((*input->mutable_mongodb()->mutable_servers_ops())[i].mutable_counters());
     }
     for (uint32_t i = 0; i < 15; i++)
     {
 	input->mutable_mongodb()->add_client_ops();
-	(*input->mutable_mongodb()->mutable_client_ops())[i].set_op((draiosprotoagg::mongodb_op_type)(rand() % 10));
+	(*input->mutable_mongodb()->mutable_client_ops())[i].set_op((draiosproto::mongodb_op_type)(rand() % 10));
 	generate_counter_proto_entry((*input->mutable_mongodb()->mutable_client_ops())[i].mutable_counters());
     }
     for (uint32_t i = 0; i < 15; i++)
@@ -4105,9 +4121,9 @@ void generate_proto_info(draiosprotoagg::proto_info* input)
 		(*(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].mutable_subattributes())[k].set_value(rand() % 100);
 	    }
 	    (*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_alias(std::to_string(rand() % 2));
-	    (*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_type((draiosprotoagg::jmx_metric_type)(rand() % 2));
-	    (*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_unit((draiosprotoagg::unit)(rand() % 4));
-	    (*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_scale((draiosprotoagg::scale)(rand() % 10));
+	    (*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_type((draiosproto::jmx_metric_type)(rand() % 2));
+	    (*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_unit((draiosproto::unit)(rand() % 4));
+	    (*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_scale((draiosproto::scale)(rand() % 10));
 	    for (uint32_t k = 0; k < 5; k++)
 	    {
 		(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].add_segment_by();
@@ -4125,7 +4141,7 @@ void generate_proto_info(draiosprotoagg::proto_info* input)
 	(*(*input->mutable_statsd()->mutable_statsd_metrics())[i].mutable_tags())[0].set_key(std::to_string(rand() % 2));
 	(*input->mutable_statsd()->mutable_statsd_metrics())[i].add_tags()->set_key(std::to_string(rand() % 2));
 	(*(*input->mutable_statsd()->mutable_statsd_metrics())[i].mutable_tags())[1].set_key(std::to_string(rand() % 2));
-	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_type((draiosprotoagg::statsd_metric_type)(rand()%4));
+	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_type((draiosproto::statsd_metric_type)(rand()%4));
 	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_value(rand() % 2);
 	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_sum(rand() % 2);
 	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_min(rand() % 2);
@@ -4141,7 +4157,7 @@ void generate_proto_info(draiosprotoagg::proto_info* input)
     {
 	input->mutable_app()->add_metrics();
 	(*input->mutable_app()->mutable_metrics())[i].set_name(std::to_string(rand() % 2));
-	(*input->mutable_app()->mutable_metrics())[i].set_type((draiosprotoagg::app_metric_type)(rand() % 2));
+	(*input->mutable_app()->mutable_metrics())[i].set_type((draiosproto::app_metric_type)(rand() % 2));
 	(*input->mutable_app()->mutable_metrics())[i].set_value(rand() % 100);
 	for (uint32_t j = 0; j < 10; j++)
 	{
@@ -4155,13 +4171,13 @@ void generate_proto_info(draiosprotoagg::proto_info* input)
 	    (*(*input->mutable_app()->mutable_metrics())[i].mutable_buckets())[j].set_label(std::to_string(rand() % 2));
 	    (*(*input->mutable_app()->mutable_metrics())[i].mutable_buckets())[j].set_count(rand() % 100);
 	}
-	(*input->mutable_app()->mutable_metrics())[i].set_prometheus_type((draiosprotoagg::prometheus_type)(rand() % 2));
+	(*input->mutable_app()->mutable_metrics())[i].set_prometheus_type((draiosproto::prometheus_type)(rand() % 2));
     }
     for (uint32_t i = 0; i < 50; i++)
     {
 	input->mutable_app()->add_checks();
 	(*input->mutable_app()->mutable_checks())[i].set_name(std::to_string(rand() % 2));
-	(*input->mutable_app()->mutable_checks())[i].set_value((draiosprotoagg::app_check_value)(rand() % 2));
+	(*input->mutable_app()->mutable_checks())[i].set_value((draiosproto::app_check_value)(rand() % 2));
 	for( uint32_t j = 0; j < 10; j++)
 	{
 	    (*input->mutable_app()->mutable_checks())[i].add_tags();
@@ -4175,7 +4191,7 @@ void generate_proto_info(draiosprotoagg::proto_info* input)
     {
 	input->mutable_prometheus()->add_metrics();
 	(*input->mutable_prometheus()->mutable_metrics())[i].set_name(std::to_string(rand() % 2));
-	(*input->mutable_prometheus()->mutable_metrics())[i].set_type((draiosprotoagg::app_metric_type)(rand() % 2));
+	(*input->mutable_prometheus()->mutable_metrics())[i].set_type((draiosproto::app_metric_type)(rand() % 2));
 	(*input->mutable_prometheus()->mutable_metrics())[i].set_value(rand() % 100);
 	for (uint32_t j = 0; j < 10; j++)
 	{
@@ -4189,13 +4205,13 @@ void generate_proto_info(draiosprotoagg::proto_info* input)
 	    (*(*input->mutable_prometheus()->mutable_metrics())[i].mutable_buckets())[j].set_label(std::to_string(rand() % 2));
 	    (*(*input->mutable_prometheus()->mutable_metrics())[i].mutable_buckets())[j].set_count(rand() % 100);
 	}
-	(*input->mutable_prometheus()->mutable_metrics())[i].set_prometheus_type((draiosprotoagg::prometheus_type)(rand() % 2));
+	(*input->mutable_prometheus()->mutable_metrics())[i].set_prometheus_type((draiosproto::prometheus_type)(rand() % 2));
     }
     for (uint32_t i = 0; i < 50; i++)
     {
 	input->mutable_prometheus()->add_checks();
 	(*input->mutable_prometheus()->mutable_checks())[i].set_name(std::to_string(rand() % 2));
-	(*input->mutable_prometheus()->mutable_checks())[i].set_value((draiosprotoagg::app_check_value)(rand() % 2));
+	(*input->mutable_prometheus()->mutable_checks())[i].set_value((draiosproto::app_check_value)(rand() % 2));
 	for( uint32_t j = 0; j < 10; j++)
 	{
 	    (*input->mutable_prometheus()->mutable_checks())[i].add_tags();
@@ -4206,7 +4222,7 @@ void generate_proto_info(draiosprotoagg::proto_info* input)
 
 }
 
-void generate_marathon_group(draiosprotoagg::marathon_group* input)
+void generate_marathon_group(draiosproto::marathon_group* input)
 {
     input->set_id(std::to_string(rand() % 3));
     for (int i = 0; i < 4; i++)
@@ -4224,7 +4240,7 @@ void generate_marathon_group(draiosprotoagg::marathon_group* input)
     }
 }
 
-void generate_mesos_common(draiosprotoagg::mesos_common* input)
+void generate_mesos_common(draiosproto::mesos_common* input)
 {
 	input->set_uid(std::to_string(rand() % 2));
 	input->set_name(std::to_string(rand() % 2));
@@ -4234,7 +4250,7 @@ void generate_mesos_common(draiosprotoagg::mesos_common* input)
 		(*input->mutable_labels())[i].set_value(std::to_string(rand() % 2));
 	}
 }
-void generate_swarm_common(draiosprotoagg::swarm_common* input)
+void generate_swarm_common(draiosproto::swarm_common* input)
 {
 	input->set_id(std::to_string(rand() % 2));
 	input->set_name(std::to_string(rand() % 2));
@@ -4248,7 +4264,7 @@ TEST(aggregator_extra, DISABLED_generate)
 {
     for (int loop_count = 0; loop_count < 10; loop_count++)
     {
-	draiosprotoagg::metrics input;
+	draiosproto::metrics input;
 	input.set_machine_id("asdlkfj");
 	input.set_customer_id("20udasfi");
 	input.set_timestamp_ns((uint64_t)1000000000 * loop_count);
@@ -4309,8 +4325,8 @@ TEST(aggregator_extra, DISABLED_generate)
 	(*input.mutable_ipv4_connections())[0].set_spid(984);
 	(*input.mutable_ipv4_connections())[0].set_dpid(884);
 	generate_connection_categories((*input.mutable_ipv4_connections())[0].mutable_counters());
-	(*input.mutable_ipv4_connections())[0].set_state((draiosprotoagg::connection_state)(rand() % 3));
-	(*input.mutable_ipv4_connections())[0].set_error_code((draiosprotoagg::error_code)(rand() % 100));
+	(*input.mutable_ipv4_connections())[0].set_state((draiosproto::connection_state)(rand() % 3));
+	(*input.mutable_ipv4_connections())[0].set_error_code((draiosproto::error_code)(rand() % 100));
 
 	for (int i = 1; i < 130; i++) // guaranteed to get some repeats
 	{
@@ -4322,8 +4338,8 @@ TEST(aggregator_extra, DISABLED_generate)
 	    (*input.mutable_ipv4_connections())[i].set_spid(rand() % 2);
 	    (*input.mutable_ipv4_connections())[i].set_dpid(rand() % 2);
 	    generate_connection_categories((*input.mutable_ipv4_connections())[i].mutable_counters());
-	    (*input.mutable_ipv4_connections())[i].set_state((draiosprotoagg::connection_state)(rand() % 3));
-	    (*input.mutable_ipv4_connections())[i].set_error_code((draiosprotoagg::error_code)(rand() % 100));
+	    (*input.mutable_ipv4_connections())[i].set_state((draiosproto::connection_state)(rand() % 3));
+	    (*input.mutable_ipv4_connections())[i].set_error_code((draiosproto::error_code)(rand() % 100));
 	}
 
 	// generate some interfaces
@@ -4496,7 +4512,7 @@ TEST(aggregator_extra, DISABLED_generate)
 
 	// generate some containers
 	input.add_containers()->set_id("0sadfoi2");
-	(*input.mutable_containers())[0].set_type((draiosprotoagg::container_type)3);
+	(*input.mutable_containers())[0].set_type((draiosproto::container_type)3);
 	(*input.mutable_containers())[0].set_name("089uasdf");
 	(*input.mutable_containers())[0].set_image("209f");
 	generate_time_categories((*input.mutable_containers())[0].mutable_tcounters());
@@ -4560,7 +4576,7 @@ TEST(aggregator_extra, DISABLED_generate)
 	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_login_shell_id(rand() % 2);
 	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_login_shell_distance(rand() % 2);
 	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_tty(rand() % 2);
-	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_category((draiosprotoagg::command_category)(rand() % 2));
+	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_category((draiosproto::command_category)(rand() % 2));
 	}
 	for (int i = 0; i < 5; i ++)
 	{
@@ -4603,7 +4619,7 @@ TEST(aggregator_extra, DISABLED_generate)
 	for (int j = 1; j < 10; j++)
 	{
 	    input.add_containers()->set_id(std::to_string(rand() % 5));
-	    (*input.mutable_containers())[j].set_type((draiosprotoagg::container_type)3);
+	    (*input.mutable_containers())[j].set_type((draiosproto::container_type)3);
 	    (*input.mutable_containers())[j].set_name("089uasdf");
 	    (*input.mutable_containers())[j].set_image("209f");
 	    generate_time_categories((*input.mutable_containers())[j].mutable_tcounters());
@@ -4667,7 +4683,7 @@ TEST(aggregator_extra, DISABLED_generate)
 		(*(*input.mutable_containers())[j].mutable_commands())[i].set_login_shell_id(rand() % 2);
 		(*(*input.mutable_containers())[j].mutable_commands())[i].set_login_shell_distance(rand() % 2);
 		(*(*input.mutable_containers())[j].mutable_commands())[i].set_tty(rand() % 2);
-		(*(*input.mutable_containers())[j].mutable_commands())[i].set_category((draiosprotoagg::command_category)(rand() % 2));
+		(*(*input.mutable_containers())[j].mutable_commands())[i].set_category((draiosproto::command_category)(rand() % 2));
 	    }
 	    for (int i = 0; i < 5; i ++)
 	    {
@@ -4804,7 +4820,7 @@ TEST(aggregator_extra, DISABLED_generate)
 	    (*input.mutable_commands())[i].set_login_shell_id(rand() % 2);
 	    (*input.mutable_commands())[i].set_login_shell_distance(rand() % 2);
 	    (*input.mutable_commands())[i].set_tty(rand() % 2);
-	    (*input.mutable_commands())[i].set_category((draiosprotoagg::command_category)(rand() % 2));
+	    (*input.mutable_commands())[i].set_category((draiosproto::command_category)(rand() % 2));
 	}
 
 	// generate some swarm
@@ -4821,7 +4837,7 @@ TEST(aggregator_extra, DISABLED_generate)
 		(*(*input.mutable_swarm()->mutable_services())[i].mutable_ports())[j].set_published_port(rand() % 2);
 		(*(*input.mutable_swarm()->mutable_services())[i].mutable_ports())[j].set_protocol(std::to_string(rand() % 2));
 	    }
-	    (*input.mutable_swarm()->mutable_services())[i].set_mode((draiosprotoagg::swarm_service_mode)(rand() % 2));
+	    (*input.mutable_swarm()->mutable_services())[i].set_mode((draiosproto::swarm_service_mode)(rand() % 2));
 	    (*input.mutable_swarm()->mutable_services())[i].set_spec_replicas(rand() % 2);
 	    (*input.mutable_swarm()->mutable_services())[i].set_tasks(rand() % 2);
 
@@ -4865,7 +4881,7 @@ TEST(aggregator_extra, DISABLED_generate)
 	    (*(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].mutable_tags())[0].set_key(std::to_string(rand() % 2));
 	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].add_tags()->set_key(std::to_string(rand() % 2));
 	    (*(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].mutable_tags())[1].set_key(std::to_string(rand() % 2));
-	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_type((draiosprotoagg::statsd_metric_type)(rand()%4));
+	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_type((draiosproto::statsd_metric_type)(rand()%4));
 	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_value(rand() % 2);
 	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_sum(rand() % 2);
 	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_min(rand() % 2);
@@ -4885,8 +4901,8 @@ TEST(aggregator_extra, DISABLED_generate)
 	(*input.mutable_ipv4_incomplete_connections())[0].set_spid(984);
 	(*input.mutable_ipv4_incomplete_connections())[0].set_dpid(884);
 	generate_connection_categories((*input.mutable_ipv4_incomplete_connections())[0].mutable_counters());
-	(*input.mutable_ipv4_incomplete_connections())[0].set_state((draiosprotoagg::connection_state)(rand() % 3));
-	(*input.mutable_ipv4_incomplete_connections())[0].set_error_code((draiosprotoagg::error_code)(rand() % 100));
+	(*input.mutable_ipv4_incomplete_connections())[0].set_state((draiosproto::connection_state)(rand() % 3));
+	(*input.mutable_ipv4_incomplete_connections())[0].set_error_code((draiosproto::error_code)(rand() % 100));
 
 	for (int i = 1; i < 130; i++) // guaranteed to get some repeats
 	{
@@ -4898,8 +4914,8 @@ TEST(aggregator_extra, DISABLED_generate)
 	    (*input.mutable_ipv4_incomplete_connections())[i].set_spid(rand() % 2);
 	    (*input.mutable_ipv4_incomplete_connections())[i].set_dpid(rand() % 2);
 	    generate_connection_categories((*input.mutable_ipv4_incomplete_connections())[i].mutable_counters());
-	    (*input.mutable_ipv4_incomplete_connections())[i].set_state((draiosprotoagg::connection_state)(rand() % 3));
-	    (*input.mutable_ipv4_incomplete_connections())[i].set_error_code((draiosprotoagg::error_code)(rand() % 100));
+	    (*input.mutable_ipv4_incomplete_connections())[i].set_state((draiosproto::connection_state)(rand() % 3));
+	    (*input.mutable_ipv4_incomplete_connections())[i].set_error_code((draiosproto::error_code)(rand() % 100));
 	}
 
 	// generate some users

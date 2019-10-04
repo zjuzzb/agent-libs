@@ -25,6 +25,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/${pbgofile}
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/generate.go
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/go.mod
                 ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
+                ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/common.proto
                 ${ARGN}
 		)
 endfunction()
@@ -43,6 +44,7 @@ GoGenerate(promex_pb promex.pb.go
 GoBuild(cointerface
 	        # Depend on both the target and its output file
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/common.pb.go
                 generate_draiosproto
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdc_internal/sdc_internal.pb.go
 	        generate_sdc_internal
@@ -99,6 +101,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface_test_success.t
 
 GoBuild(compclient
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/common.pb.go
                 generate_draiosproto
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdc_internal/sdc_internal.pb.go
 	        generate_sdc_internal
@@ -108,6 +111,7 @@ GoBuild(compclient
 
 GoBuild(decode_proto
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/common.pb.go
                 generate_draiosproto
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdc_internal/sdc_internal.pb.go
 	        generate_sdc_internal
@@ -116,6 +120,7 @@ GoBuild(decode_proto
 
 GoBuild(promex
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/common.pb.go
                 generate_draiosproto
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/promex_pb/promex.pb.go
 	        generate_promex_pb

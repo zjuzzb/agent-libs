@@ -1,6 +1,6 @@
 #pragma once
 
-#include "draios_aggregated.proto.h"
+#include "draios.proto.h"
 
 // in order to override any of the generated function,
 // 1) create the impl class that derives from the generated aggregator
@@ -17,17 +17,17 @@ public:
 
 private:
 	// args need to be treated like a list, not a set, so needs special handling
-	virtual void aggregate_args(const draiosprotoagg::process_details& input,
-				    draiosprotoagg::process_details& output);
+	virtual void aggregate_args(const draiosproto::process_details& input,
+				    draiosproto::process_details& output);
 
 	// backend always sets container id, even if not set in input, so we do, too
-	virtual void aggregate_container_id(const draiosprotoagg::process_details& input,
-					    draiosprotoagg::process_details& output);
+	virtual void aggregate_container_id(const draiosproto::process_details& input,
+					    draiosproto::process_details& output);
 };
 
 // for any message type which we've overridden, we have to override it's builder
 // function as well
 class message_aggregator_builder_impl : public message_aggregator_builder
 {
-	virtual agent_message_aggregator<draiosprotoagg::process_details>& build_process_details() const;
+	virtual agent_message_aggregator<draiosproto::process_details>& build_process_details() const;
 };

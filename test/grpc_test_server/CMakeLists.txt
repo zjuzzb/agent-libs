@@ -14,13 +14,20 @@ add_custom_command(OUTPUT
         ${CMAKE_CURRENT_BINARY_DIR}/draios.grpc.pb.h
         ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.h
+        ${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
+        ${CMAKE_CURRENT_BINARY_DIR}/common.pb.h
+        ${CMAKE_CURRENT_BINARY_DIR}/common.grpc.pb.cc
+        ${CMAKE_CURRENT_BINARY_DIR}/common.grpc.pb.h
         COMMENT "Generate sdc_internal grpc code"
         DEPENDS ${PROJECT_SOURCE_DIR}/userspace/draiosproto/sdc_internal.proto
         DEPENDS ${PROJECT_SOURCE_DIR}/userspace/draiosproto/draios.proto
+        DEPENDS ${PROJECT_SOURCE_DIR}/userspace/draiosproto/common.proto
         COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/userspace/draiosproto --cpp_out=. ${PROJECT_SOURCE_DIR}/userspace/draiosproto/sdc_internal.proto
         COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/userspace/draiosproto --cpp_out=. ${PROJECT_SOURCE_DIR}/userspace/draiosproto/draios.proto
+        COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/userspace/draiosproto --cpp_out=. ${PROJECT_SOURCE_DIR}/userspace/draiosproto/common.proto
         COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/userspace/draiosproto --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin ${PROJECT_SOURCE_DIR}/userspace/draiosproto/sdc_internal.proto
         COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/userspace/draiosproto --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin ${PROJECT_SOURCE_DIR}/userspace/draiosproto/draios.proto
+        COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/userspace/draiosproto --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin ${PROJECT_SOURCE_DIR}/userspace/draiosproto/common.proto
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_executable(grpc_test_server
@@ -29,6 +36,8 @@ add_executable(grpc_test_server
         ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/draios.grpc.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
+        ${CMAKE_CURRENT_BINARY_DIR}/common.grpc.pb.cc
+        ${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
         )
 
 target_link_libraries(grpc_test_server

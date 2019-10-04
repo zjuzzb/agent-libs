@@ -4,8 +4,8 @@
 // a set. It is also a primary key. So in this case, the first time we call
 // into it, copy the list. Then don't do anything further times, as the lists
 // would have to be equal anyway (because it's a primary key)
-void process_details_message_aggregator_impl::aggregate_args(const draiosprotoagg::process_details& input,
-							     draiosprotoagg::process_details& output)
+void process_details_message_aggregator_impl::aggregate_args(const draiosproto::process_details& input,
+							     draiosproto::process_details& output)
 {
 	if (output.args().size() == 0)
 	{
@@ -16,8 +16,8 @@ void process_details_message_aggregator_impl::aggregate_args(const draiosprotoag
 	}
 }
 
-void process_details_message_aggregator_impl::aggregate_container_id(const draiosprotoagg::process_details& input,
-								     draiosprotoagg::process_details& output)
+void process_details_message_aggregator_impl::aggregate_container_id(const draiosproto::process_details& input,
+								     draiosproto::process_details& output)
 {
 	if (!output.has_container_id())
 	{
@@ -27,7 +27,7 @@ void process_details_message_aggregator_impl::aggregate_container_id(const draio
 	process_details_message_aggregator::aggregate_container_id(input, output);
 }
 
-agent_message_aggregator<draiosprotoagg::process_details>&
+agent_message_aggregator<draiosproto::process_details>&
 message_aggregator_builder_impl::build_process_details() const
 {
 	return *(new process_details_message_aggregator_impl(*this));
