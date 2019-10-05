@@ -51,7 +51,7 @@ type_config<bool> c_use_host_statsd(
  */
 void set_port_to_zero_if_using_host_statsd(type_config<uint16_t>& config)
 {
-	if(c_use_host_statsd.get())
+	if(c_use_host_statsd.get_value())
 	{
 		config.set(0);
 	}
@@ -64,7 +64,7 @@ type_config<uint16_t>::ptr c_udp_port = type_config_builder<uint16_t>(
 		"statsd",
 		"udp_port")
 	.post_init(set_port_to_zero_if_using_host_statsd)
-        .get();
+        .build();
 
 type_config<uint16_t>::ptr c_tcp_port = type_config_builder<uint16_t>(
 		libsanalyzer::statsite_config::DEFAULT_STATSD_PORT,
@@ -72,7 +72,7 @@ type_config<uint16_t>::ptr c_tcp_port = type_config_builder<uint16_t>(
 		"statsd",
 		"tcp_port")
 	.post_init(set_port_to_zero_if_using_host_statsd)
-        .get();
+        .build();
 
 type_config<std::string> c_ip_address(
 		libsanalyzer::statsite_config::DEFAULT_IP_ADDRESS,
@@ -99,39 +99,39 @@ void statsite_config::set_enabled(const bool enabled)
 
 bool statsite_config::is_enabled()
 {
-	return c_enabled.get();
+	return c_enabled.get_value();
 }
 
 uint16_t statsite_config::get_flush_interval()
 {
-	return c_flush_interval.get();
+	return c_flush_interval.get_value();
 }
 
 uint16_t statsite_config::get_tcp_port()
 {
-	return c_tcp_port->get();
+	return c_tcp_port->get_value();
 }
 
 uint16_t statsite_config::get_udp_port()
 {
-	return c_udp_port->get();
+	return c_udp_port->get_value();
 }
 
 std::string statsite_config::get_ip_address()
 {
-	return c_ip_address.get();
+	return c_ip_address.get_value();
 }
 
 bool statsite_config::use_host_statsd()
 {
-	return c_use_host_statsd.get();
+	return c_use_host_statsd.get_value();
 }
 
 void statsite_config::write_statsite_configuration(std::ostream& ini,
                                                    const std::string& loglevel,
                                                    const std::set<double>& percentiles)
 {
-	if(!c_enabled.get())
+	if(!c_enabled.get_value())
 	{
 		return;
 	}
@@ -158,17 +158,17 @@ void statsite_config::write_statsite_configuration(std::ostream& ini,
 		: "INFO";
 	const int parse_stdin = 1;
 
-	ini << "#"                                           << std::endl;
+	ini << "#"                                                 << std::endl;
 	ini << "# WARNING: File generated automatically, do not edit. ";
-	ini << "Please use \"dragent.yaml\" instead"         << std::endl;
-	ini << "#"                                           << std::endl;
-	ini << "[statsite]"                                  << std::endl;
-	ini << "bind_address = "   << c_ip_address.get()     << std::endl;
-	ini << "port = "           << c_tcp_port->get()      << std::endl;
-	ini << "udp_port = "       << c_udp_port->get()      << std::endl;
-	ini << "log_level = "      << statsite_loglevel      << std::endl;
-	ini << "flush_interval = " << c_flush_interval.get() << std::endl;
-	ini << "parse_stdin = "    << parse_stdin            << std::endl;
+	ini << "Please use \"dragent.yaml\" instead"               << std::endl;
+	ini << "#"                                                 << std::endl;
+	ini << "[statsite]"                                        << std::endl;
+	ini << "bind_address = "   << c_ip_address.get_value()     << std::endl;
+	ini << "port = "           << c_tcp_port->get_value()      << std::endl;
+	ini << "udp_port = "       << c_udp_port->get_value()      << std::endl;
+	ini << "log_level = "      << statsite_loglevel            << std::endl;
+	ini << "flush_interval = " << c_flush_interval.get_value() << std::endl;
+	ini << "parse_stdin = "    << parse_stdin                  << std::endl;
 
 	auto i = percentiles.begin();
 	if(i != percentiles.end())
@@ -188,7 +188,7 @@ void statsite_config::write_statsite_configuration(const std::string& filename,
                                                    const std::string& loglevel,
                                                    const std::set<double>& percentiles)
 {
-	if(!c_enabled.get())
+	if(!c_enabled.get_value())
 	{
 		return;
 	}

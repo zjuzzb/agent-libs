@@ -12,17 +12,17 @@ namespace
 
 bool is_enabled()
 {
-	return configuration_manager::instance().get_config<bool>("flexible_metric_limits.enabled")->get();
+	return configuration_manager::instance().get_config<bool>("flexible_metric_limits.enabled")->get_value();
 }
 
 bool is_fill_headroom()
 {
-	return configuration_manager::instance().get_config<bool>("flexible_metric_limits.fill_headroom")->get();
+	return configuration_manager::instance().get_config<bool>("flexible_metric_limits.fill_headroom")->get_value();
 }
 
 int get_limit()
 {
-	return configuration_manager::instance().get_config<int>("metric_forwarding_limit")->get();
+	return configuration_manager::instance().get_config<int>("metric_forwarding_limit")->get_value();
 }
 
 }
@@ -33,10 +33,10 @@ TEST(metric_forwarding_configuration_test, defaults)
 
 	ASSERT_TRUE(is_enabled());
 	ASSERT_EQ(10000, get_limit());
-	ASSERT_EQ(3000, metric_forwarding_configuration::c_prometheus_max->get());
-	ASSERT_EQ(500, metric_forwarding_configuration::c_jmx_max->get());
-	ASSERT_EQ(100, metric_forwarding_configuration::c_statsd_max->get());
-	ASSERT_EQ(500, metric_forwarding_configuration::c_app_checks_max->get());
+	ASSERT_EQ(3000, metric_forwarding_configuration::c_prometheus_max->get_value());
+	ASSERT_EQ(500, metric_forwarding_configuration::c_jmx_max->get_value());
+	ASSERT_EQ(100, metric_forwarding_configuration::c_statsd_max->get_value());
+	ASSERT_EQ(500, metric_forwarding_configuration::c_app_checks_max->get_value());
 }
 
 TEST(metric_forwarding_configuration_test, override_under_default_max_fill_headroom)
@@ -59,10 +59,10 @@ app_checks_limit: 103
 	ASSERT_TRUE(is_enabled());
 	ASSERT_TRUE(is_fill_headroom());
 	ASSERT_EQ(10000, get_limit());
-	ASSERT_EQ(2463, metric_forwarding_configuration::c_prometheus_max->get() );
-	ASSERT_EQ(2487, metric_forwarding_configuration::c_jmx_max->get());
-	ASSERT_EQ(2512, metric_forwarding_configuration::c_statsd_max->get());
-	ASSERT_EQ(2536, metric_forwarding_configuration::c_app_checks_max->get());
+	ASSERT_EQ(2463, metric_forwarding_configuration::c_prometheus_max->get_value() );
+	ASSERT_EQ(2487, metric_forwarding_configuration::c_jmx_max->get_value());
+	ASSERT_EQ(2512, metric_forwarding_configuration::c_statsd_max->get_value());
+	ASSERT_EQ(2536, metric_forwarding_configuration::c_app_checks_max->get_value());
 }
 
 TEST(metric_forwarding_configuration_test, override_under_default_max_dont_fill_headroom)
@@ -86,10 +86,10 @@ app_checks_limit: 103
 	ASSERT_TRUE(is_enabled());
 	ASSERT_FALSE(is_fill_headroom());
 	ASSERT_EQ(10000, get_limit());
-	ASSERT_EQ(100, metric_forwarding_configuration::c_prometheus_max->get());
-	ASSERT_EQ(101, metric_forwarding_configuration::c_jmx_max->get());
-	ASSERT_EQ(102, metric_forwarding_configuration::c_statsd_max->get());
-	ASSERT_EQ(103, metric_forwarding_configuration::c_app_checks_max->get());
+	ASSERT_EQ(100, metric_forwarding_configuration::c_prometheus_max->get_value());
+	ASSERT_EQ(101, metric_forwarding_configuration::c_jmx_max->get_value());
+	ASSERT_EQ(102, metric_forwarding_configuration::c_statsd_max->get_value());
+	ASSERT_EQ(103, metric_forwarding_configuration::c_app_checks_max->get_value());
 }
 
 TEST(metric_forwarding_configuration_test, override_over_default_max)
@@ -112,10 +112,10 @@ app_checks_limit: 2500
 	ASSERT_TRUE(config.loaded());
 	ASSERT_TRUE(is_enabled());
 	ASSERT_EQ(10000, get_limit());
-	ASSERT_EQ(0, metric_forwarding_configuration::c_prometheus_max->get() );
-	ASSERT_EQ(2272, metric_forwarding_configuration::c_jmx_max->get());
-	ASSERT_EQ(5454, metric_forwarding_configuration::c_statsd_max->get());
-	ASSERT_EQ(2272, metric_forwarding_configuration::c_app_checks_max->get());
+	ASSERT_EQ(0, metric_forwarding_configuration::c_prometheus_max->get_value() );
+	ASSERT_EQ(2272, metric_forwarding_configuration::c_jmx_max->get_value());
+	ASSERT_EQ(5454, metric_forwarding_configuration::c_statsd_max->get_value());
+	ASSERT_EQ(2272, metric_forwarding_configuration::c_app_checks_max->get_value());
 }
 
 TEST(metric_forwarding_configuration_test, sum_hard_limit)
@@ -148,10 +148,10 @@ app_checks_limit: 2500
 	ASSERT_TRUE(config.loaded());
 	ASSERT_TRUE(is_enabled());
 	ASSERT_EQ(9000, get_limit());
-	ASSERT_EQ(0, metric_forwarding_configuration::c_prometheus_max->get() );
-	ASSERT_EQ(2500, metric_forwarding_configuration::c_jmx_max->get());
-	ASSERT_EQ(4000, metric_forwarding_configuration::c_statsd_max->get());
-	ASSERT_EQ(2500, metric_forwarding_configuration::c_app_checks_max->get());
+	ASSERT_EQ(0, metric_forwarding_configuration::c_prometheus_max->get_value() );
+	ASSERT_EQ(2500, metric_forwarding_configuration::c_jmx_max->get_value());
+	ASSERT_EQ(4000, metric_forwarding_configuration::c_statsd_max->get_value());
+	ASSERT_EQ(2500, metric_forwarding_configuration::c_app_checks_max->get_value());
 }
 
 TEST(metric_forwarding_configuration_test, hidden_configs)
@@ -184,19 +184,19 @@ app_checks_limit: 4000
 	ASSERT_TRUE(config.loaded());
 	ASSERT_TRUE(is_enabled());
 	ASSERT_EQ(0, get_limit());
-	ASSERT_EQ(0, metric_forwarding_configuration::c_prometheus_max->get());
-	ASSERT_EQ(0, metric_forwarding_configuration::c_jmx_max->get());
-	ASSERT_EQ(0, metric_forwarding_configuration::c_statsd_max->get());
-	ASSERT_EQ(0, metric_forwarding_configuration::c_app_checks_max->get());
+	ASSERT_EQ(0, metric_forwarding_configuration::c_prometheus_max->get_value());
+	ASSERT_EQ(0, metric_forwarding_configuration::c_jmx_max->get_value());
+	ASSERT_EQ(0, metric_forwarding_configuration::c_statsd_max->get_value());
+	ASSERT_EQ(0, metric_forwarding_configuration::c_app_checks_max->get_value());
 }
 
 TEST(metric_forwarding_configuration_test, feature_off_defaults)
 {
 	ASSERT_FALSE(is_enabled());
-	ASSERT_EQ(3000, metric_forwarding_configuration::c_prometheus_max->get());
-	ASSERT_EQ(500, metric_forwarding_configuration::c_jmx_max->get());
-	ASSERT_EQ(100, metric_forwarding_configuration::c_statsd_max->get());
-	ASSERT_EQ(500, metric_forwarding_configuration::c_app_checks_max->get());
+	ASSERT_EQ(3000, metric_forwarding_configuration::c_prometheus_max->get_value());
+	ASSERT_EQ(500, metric_forwarding_configuration::c_jmx_max->get_value());
+	ASSERT_EQ(100, metric_forwarding_configuration::c_statsd_max->get_value());
+	ASSERT_EQ(500, metric_forwarding_configuration::c_app_checks_max->get_value());
 }
 
 TEST(metric_forwarding_configuration_test, feature_off_configured)
@@ -213,10 +213,10 @@ app_checks_limit: 503
 
 	ASSERT_TRUE(config.loaded());
 	ASSERT_FALSE(is_enabled());
-	ASSERT_EQ(500, metric_forwarding_configuration::c_prometheus_max->get());
-	ASSERT_EQ(501, metric_forwarding_configuration::c_jmx_max->get());
-	ASSERT_EQ(502, metric_forwarding_configuration::c_statsd_max->get());
-	ASSERT_EQ(503, metric_forwarding_configuration::c_app_checks_max->get());
+	ASSERT_EQ(500, metric_forwarding_configuration::c_prometheus_max->get_value());
+	ASSERT_EQ(501, metric_forwarding_configuration::c_jmx_max->get_value());
+	ASSERT_EQ(502, metric_forwarding_configuration::c_statsd_max->get_value());
+	ASSERT_EQ(503, metric_forwarding_configuration::c_app_checks_max->get_value());
 }
 
 TEST(metric_forwarding_configuration_test, feature_off_hard_limit)
@@ -238,10 +238,10 @@ app_checks_limit: 4000
 
 	ASSERT_TRUE(config.loaded());
 	ASSERT_FALSE(is_enabled());
-	ASSERT_EQ(3000, metric_forwarding_configuration::c_prometheus_max->get() );
-	ASSERT_EQ(3000, metric_forwarding_configuration::c_jmx_max->get());
-	ASSERT_EQ(3000, metric_forwarding_configuration::c_statsd_max->get());
-	ASSERT_EQ(3000, metric_forwarding_configuration::c_app_checks_max->get());
+	ASSERT_EQ(3000, metric_forwarding_configuration::c_prometheus_max->get_value() );
+	ASSERT_EQ(3000, metric_forwarding_configuration::c_jmx_max->get_value());
+	ASSERT_EQ(3000, metric_forwarding_configuration::c_statsd_max->get_value());
+	ASSERT_EQ(3000, metric_forwarding_configuration::c_app_checks_max->get_value());
 }
 
 TEST(metric_forwarding_configuration_test, print_values)

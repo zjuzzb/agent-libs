@@ -41,9 +41,9 @@ type_config<bool>::ptr c_statsd_log_enabled =
 	type_config_builder<bool>(false,
 	                          "Enhanced statsd logging enabled",
 	                          "debug_statsd_logging")
-	.post_init([](type_config<bool>& c) { s_statsd_log_enabled = c.get(); })
+	.post_init([](type_config<bool>& c) { s_statsd_log_enabled = c.get_value(); })
 	.hidden()
-	.get();
+	.build();
 
 } // end namespace
 

@@ -77,7 +77,7 @@ public:
 		}
 
 		return (m_server == nullptr) &&
-		       (time_since_creation >= c_statsd_start_delay_sec.get());
+		       (time_since_creation >= c_statsd_start_delay_sec.get_value());
 	}
 
 	/**

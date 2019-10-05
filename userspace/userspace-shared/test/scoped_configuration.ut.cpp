@@ -13,11 +13,11 @@ TEST(scoped_configuration_test, basic)
 	type_config<int> config4(4, "description", "key3", "subkey1", "subsubkey1");
 	type_config<int> config5(5, "description", "key4");
 
-	ASSERT_EQ(1, config1.get());
-	ASSERT_EQ(2, config2.get());
-	ASSERT_EQ(3, config3.get());
-	ASSERT_EQ(4, config4.get());
-	ASSERT_EQ(5, config5.get());
+	ASSERT_EQ(1, config1.get_value());
+	ASSERT_EQ(2, config2.get_value());
+	ASSERT_EQ(3, config3.get_value());
+	ASSERT_EQ(4, config4.get_value());
+	ASSERT_EQ(5, config5.get_value());
 
 	{	scoped_configuration config(R"(
 key1:
@@ -28,18 +28,18 @@ key3:
   subkey1:
     subsubkey1: 104)");
 
-		ASSERT_EQ(101, config1.get());
-		ASSERT_EQ(102, config2.get());
-		ASSERT_EQ(103, config3.get());
-		ASSERT_EQ(104, config4.get());
-		ASSERT_EQ(5, config5.get());
+		ASSERT_EQ(101, config1.get_value());
+		ASSERT_EQ(102, config2.get_value());
+		ASSERT_EQ(103, config3.get_value());
+		ASSERT_EQ(104, config4.get_value());
+		ASSERT_EQ(5, config5.get_value());
 	}
 
-	ASSERT_EQ(1, config1.get());
-	ASSERT_EQ(2, config2.get());
-	ASSERT_EQ(3, config3.get());
-	ASSERT_EQ(4, config4.get());
-	ASSERT_EQ(5, config5.get());
+	ASSERT_EQ(1, config1.get_value());
+	ASSERT_EQ(2, config2.get_value());
+	ASSERT_EQ(3, config3.get_value());
+	ASSERT_EQ(4, config4.get_value());
+	ASSERT_EQ(5, config5.get_value());
 }
 
 TEST(scoped_configuration_test, default_constructor)
@@ -50,8 +50,8 @@ TEST(scoped_configuration_test, default_constructor)
 		scoped_configuration config;
 
 		config1.set(42);
-		ASSERT_EQ(42, config1.get());
+		ASSERT_EQ(42, config1.get_value());
 	}
 
-	ASSERT_EQ(1, config1.get());
+	ASSERT_EQ(1, config1.get_value());
 }

@@ -20,8 +20,7 @@ COMMON_LOGGER();
 type_config<bool> c_sdagent_compression_enabled(
 		false,
 		"sdagent sends compressed metrics",
-		"app_checks_compress_data"
-		);
+		"app_checks_compress_data");
 
 }
 
@@ -329,7 +328,7 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 	std::string msg;
 	try
 	{
-		if(c_sdagent_compression_enabled.get())
+		if(c_sdagent_compression_enabled.get_value())
 		{
 			// read the header
 			uLongf uncompressed_size = 0;

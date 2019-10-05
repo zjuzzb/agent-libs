@@ -246,7 +246,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 
 sinsp_analyzer::~sinsp_analyzer()
 {
-	if(c_dragent_cpu_profile.get())
+	if(c_dragent_cpu_profile.get_value())
 	{
 		utils::profiler::stop();
 	}
@@ -548,7 +548,7 @@ void sinsp_analyzer::on_capture_start()
 			{
 				init_k8s_user_event_handler();
 
-				m_k8s_user_event_handler->subscribe(infrastructure_state::c_k8s_timeout_s.get(),
+				m_k8s_user_event_handler->subscribe(infrastructure_state::c_k8s_timeout_s.get_value(),
 								    m_configuration->get_k8s_event_filter());
 				glogf("k8s event message handler is now subscribed to the k8s APi server");
 			}
@@ -1327,10 +1327,10 @@ void sinsp_analyzer::init_k8s_ssl(const uri& url)
 	{
 		const std::string& cert      = m_infrastructure_state->get_k8s_ssl_certificate();
 		const std::string& key       = m_infrastructure_state->get_k8s_ssl_key();
-		const std::string& key_pwd   = infrastructure_state::c_k8s_ssl_key_password->get();
+		const std::string& key_pwd   = infrastructure_state::c_k8s_ssl_key_password->get_value();
 		const std::string& ca_cert   = m_infrastructure_state->get_k8s_ca_certificate();
-		bool verify_cert             = infrastructure_state::c_k8s_ssl_verify_certificate.get();
-		const std::string& cert_type = infrastructure_state::c_k8s_ssl_certificate_type.get();
+		bool verify_cert             = infrastructure_state::c_k8s_ssl_verify_certificate.get_value();
+		const std::string& cert_type = infrastructure_state::c_k8s_ssl_certificate_type.get_value();
 		m_k8s_ssl = std::make_shared<sinsp_ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type);
 	}
 	const std::string& bt_auth_token = m_infrastructure_state->get_k8s_bt_auth_token();
@@ -1662,7 +1662,7 @@ void sinsp_analyzer::emit_processes_deprecated(std::set<uint64_t>& all_uids,
 				}
 			}
 			// Add all processes with appcheck metrics
-			if(process_manager::c_always_send_app_checks.get())
+			if(process_manager::c_always_send_app_checks.get_value())
 			{
 				for(auto prog: progtable)
 				{
@@ -2522,10 +2522,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	std::set<uint64_t> all_uids;
 	jmx_emitter jmx_emitter_instance(m_jmx_metrics,
 					 m_jmx_sampling,
-					 metric_forwarding_configuration::c_jmx_max->get(),
+					 metric_forwarding_configuration::c_jmx_max->get_value(),
 					 m_jmx_metrics_by_containers);
 	app_check_emitter app_check_emitter_instance(m_app_metrics,
-						     metric_forwarding_configuration::c_app_checks_max->get(),
+						     metric_forwarding_configuration::c_app_checks_max->get_value(),
 						     m_prom_conf,
 						     m_app_checks_by_containers,
 						     m_prometheus_by_containers,
@@ -2552,7 +2552,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						 environment_emitter_instance,
 						 jmx_emitter_instance,
 						 app_check_emitter_instance);
-	if (process_manager::c_process_flush_filter_enabled.get())
+	if (process_manager::c_process_flush_filter_enabled.get_value())
 	{
 		std::set<sinsp_threadinfo*> emitted_processes;
 		process_emitter_instance.emit_processes(flushflags,
@@ -3713,7 +3713,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 		return;
 	}
 
-	if(c_dragent_cpu_profile.get())
+	if(c_dragent_cpu_profile.get_value())
 	{
 		if (!m_trace_started)
 		{
@@ -3722,11 +3722,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			utils::profiler::start(filename);
 			m_last_profile_flush_ns = flush_start_ns;
 		}
-		if ((flush_start_ns - m_last_profile_flush_ns) / 1000000000 > c_dragent_cpu_profile_seconds.get())
+		if ((flush_start_ns - m_last_profile_flush_ns) / 1000000000 > c_dragent_cpu_profile_seconds.get_value())
 		{
 			utils::profiler::stop();
 			m_trace_count++;
-			m_trace_count %= c_dragent_cpu_profile_total_profiles.get();
+			m_trace_count %= c_dragent_cpu_profile_total_profiles.get_value();
 			std::string filename = m_configuration->get_log_dir() + "/drcpu.prof." + to_string(m_trace_count);
 			utils::profiler::start(filename.c_str());
 			m_last_profile_flush_ns = flush_start_ns;
@@ -4139,7 +4139,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			    !m_k8s_user_event_handler) {
 
 				init_k8s_user_event_handler();
-				m_k8s_user_event_handler->subscribe(infrastructure_state::c_k8s_timeout_s.get(),
+				m_k8s_user_event_handler->subscribe(infrastructure_state::c_k8s_timeout_s.get_value(),
 								    m_configuration->get_k8s_event_filter());
 				glogf("k8s event message handler is now subscribed to the k8s APi server");
 			}

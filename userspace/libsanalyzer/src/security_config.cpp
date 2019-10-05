@@ -24,7 +24,7 @@ type_config<bool>::mutable_ptr c_enabled =
 		"security",
 		"enabled")
 	.hidden()
-	.get_mutable();
+	.build_mutable();
 
 type_config<std::string>::mutable_ptr c_policies_file =
 	type_config_builder<std::string>(
@@ -33,7 +33,7 @@ type_config<std::string>::mutable_ptr c_policies_file =
 		"security",
 		"policies_file")
 	.hidden()
-	.get_mutable();
+	.build_mutable();
 
 type_config<std::string>::mutable_ptr c_policies_v2_file =
 	type_config_builder<std::string>(
@@ -42,7 +42,7 @@ type_config<std::string>::mutable_ptr c_policies_v2_file =
 		"security",
 		"policies_v2_file")
 	.hidden()
-	.get_mutable();
+	.build_mutable();
 
 type_config<std::string>::mutable_ptr c_baselines_file =
 	type_config_builder<std::string>(
@@ -51,7 +51,7 @@ type_config<std::string>::mutable_ptr c_baselines_file =
 		"security",
 		"baselines_file")
 	.hidden()
-	.get_mutable();
+	.build_mutable();
 
 type_config<uint64_t>::mutable_ptr c_report_interval_ns =
 	type_config_builder<uint64_t>(
@@ -60,7 +60,7 @@ type_config<uint64_t>::mutable_ptr c_report_interval_ns =
 		"security",
 		"report_interval")
 	.hidden()
-	.get_mutable();
+	.build_mutable();
 
 type_config<uint64_t>::mutable_ptr c_throttled_report_interval_ns =
 	type_config_builder<uint64_t>(
@@ -69,7 +69,7 @@ type_config<uint64_t>::mutable_ptr c_throttled_report_interval_ns =
 		"security",
 		"throttled_report_interval")
 	.hidden()
-	.get_mutable();
+	.build_mutable();
 
 type_config<uint64_t>::ptr c_actions_poll_interval_ns =
 	type_config_builder<uint64_t>(
@@ -78,7 +78,7 @@ type_config<uint64_t>::ptr c_actions_poll_interval_ns =
 		"security",
 		"actions_poll_interval_ns")
 	.hidden()
-	.get();
+	.build();
 
 type_config<double>::ptr c_policy_events_rate =
 	type_config_builder<double>(
@@ -87,7 +87,7 @@ type_config<double>::ptr c_policy_events_rate =
 		"security",
 		"policy_events_rate")
 	.hidden()
-	.get();
+	.build();
 
 type_config<uint64_t>::ptr c_policy_events_max_burst =
 	type_config_builder<uint64_t>(
@@ -96,7 +96,7 @@ type_config<uint64_t>::ptr c_policy_events_max_burst =
 		"security",
 		"policy_events_max_burst")
 	.hidden()
-	.get();
+	.build();
 
 type_config<bool>::ptr c_send_monitor_events =
 	type_config_builder<bool>(
@@ -105,7 +105,7 @@ type_config<bool>::ptr c_send_monitor_events =
 		"security",
 		"send_monitor_events")
 	.hidden()
-	.get();
+	.build();
 
 type_config<std::string>::ptr c_default_compliance_schedule =
 	type_config_builder<std::string>(
@@ -114,7 +114,7 @@ type_config<std::string>::ptr c_default_compliance_schedule =
 		"security",
 		"default_compliance_schedule")
 	.hidden()
-	.get();
+	.build();
 
 type_config<bool>::ptr c_send_compliance_events =
 	type_config_builder<bool>(
@@ -123,7 +123,7 @@ type_config<bool>::ptr c_send_compliance_events =
 		"security",
 		"send_compliance_events")
 	.hidden()
-	.get();
+	.build();
 
 type_config<bool>::ptr c_send_compliance_results =
 	type_config_builder<bool>(
@@ -132,7 +132,7 @@ type_config<bool>::ptr c_send_compliance_results =
 		"security",
 		"send_compliance_results")
 	.hidden()
-	.get();
+	.build();
 
 type_config<bool>::ptr c_include_desc_in_compliance_results =
 	type_config_builder<bool>(
@@ -141,7 +141,7 @@ type_config<bool>::ptr c_include_desc_in_compliance_results =
 		"security",
 		"include_desc_compliance_results")
 	.hidden()
-	.get();
+	.build();
 
 type_config<uint64_t>::ptr c_compliance_refresh_interval =
 	type_config_builder<uint64_t>(
@@ -150,7 +150,7 @@ type_config<uint64_t>::ptr c_compliance_refresh_interval =
 		"security",
 		"compliance_refresh_interval")
 	.hidden()
-	.get();
+	.build();
 
 type_config<std::string>::ptr c_compliance_kube_bench_variant =
 	type_config_builder<std::string>(
@@ -159,7 +159,7 @@ type_config<std::string>::ptr c_compliance_kube_bench_variant =
 		"security",
 		"compliance_kube_bench_variant")
 	.hidden()
-	.get();
+	.build();
 
 type_config<bool>::ptr c_compliance_send_failed_results =
 	type_config_builder<bool>(
@@ -168,7 +168,7 @@ type_config<bool>::ptr c_compliance_send_failed_results =
 		"security",
 		"compliance_send_failed_results")
 	.hidden()
-	.get();
+	.build();
 
 type_config<bool>::ptr c_compliance_save_temp_files =
 	type_config_builder<bool>(
@@ -177,7 +177,7 @@ type_config<bool>::ptr c_compliance_save_temp_files =
 		"security",
 		"compliance_save_temp_files")
 	.hidden()
-	.get();
+	.build();
 
 type_config<bool>::ptr c_k8s_audit_server_enabled =
 	type_config_builder<bool>(
@@ -186,7 +186,7 @@ type_config<bool>::ptr c_k8s_audit_server_enabled =
 		"security",
 		"k8s_audit_server_enabled")
 	.hidden()
-	.get();
+	.build();
 
 type_config<uint64_t>::ptr c_k8s_audit_server_refresh_interval =
 	type_config_builder<uint64_t>(
@@ -195,7 +195,7 @@ type_config<uint64_t>::ptr c_k8s_audit_server_refresh_interval =
 		"security",
 		"k8s_audit_server_refresh_interval")
 	.hidden()
-	.get();
+	.build();
 
 type_config<std::string>::ptr c_k8s_audit_server_url =
 	type_config_builder<std::string>(
@@ -204,7 +204,7 @@ type_config<std::string>::ptr c_k8s_audit_server_url =
 		"security",
 		"k8s_audit_server_url")
 	.hidden()
-	.get();
+	.build();
 
 type_config<uint16_t>::ptr c_k8s_audit_server_port =
 	type_config_builder<uint16_t>(
@@ -213,7 +213,7 @@ type_config<uint16_t>::ptr c_k8s_audit_server_port =
 		"security",
 		"k8s_audit_server_port")
 	.hidden()
-	.get();
+	.build();
 
 type_config<bool>::ptr c_k8s_audit_server_tls_enabled =
 	type_config_builder<bool>(
@@ -222,7 +222,7 @@ type_config<bool>::ptr c_k8s_audit_server_tls_enabled =
 		"security",
 		"k8s_audit_server_tls_enabled")
 	.hidden()
-	.get();
+	.build();
 
 type_config<std::string>::ptr c_k8s_audit_server_x509_cert_file =
 	type_config_builder<std::string>(
@@ -231,7 +231,7 @@ type_config<std::string>::ptr c_k8s_audit_server_x509_cert_file =
 		"security",
 		"k8s_audit_server_x509_cert_file")
 	.hidden()
-	.get();
+	.build();
 
 type_config<std::string>::ptr c_k8s_audit_server_x509_key_file =
 	type_config_builder<std::string>(
@@ -240,7 +240,7 @@ type_config<std::string>::ptr c_k8s_audit_server_x509_key_file =
 		"security",
 		"k8s_audit_server_x509_key_file")
 	.hidden()
-	.get();
+	.build();
 
 } // end namespace
 
@@ -249,7 +249,7 @@ namespace libsanalyzer
 
 bool security_config::is_enabled()
 {
-	return c_enabled->get();
+	return c_enabled->get_value();
 }
 
 void security_config::set_enabled(const bool enabled)
@@ -259,7 +259,7 @@ void security_config::set_enabled(const bool enabled)
 
 std::string security_config::get_policies_file()
 {
-	return c_policies_file->get();
+	return c_policies_file->get_value();
 }
 
 void security_config::set_policies_file(const std::string& filename)
@@ -269,7 +269,7 @@ void security_config::set_policies_file(const std::string& filename)
 
 std::string security_config::get_policies_v2_file()
 {
-	return c_policies_v2_file->get();
+	return c_policies_v2_file->get_value();
 }
 
 void security_config::set_policies_v2_file(const std::string& filename)
@@ -279,7 +279,7 @@ void security_config::set_policies_v2_file(const std::string& filename)
 
 std::string security_config::get_baselines_file()
 {
-	return c_baselines_file->get();
+	return c_baselines_file->get_value();
 }
 
 void security_config::set_baselines_file(const std::string& filename)
@@ -289,7 +289,7 @@ void security_config::set_baselines_file(const std::string& filename)
 
 uint64_t security_config::get_report_interval_ns()
 {
-	return c_report_interval_ns->get();
+	return c_report_interval_ns->get_value();
 }
 
 void security_config::set_report_interval_ns(const uint64_t interval)
@@ -299,7 +299,7 @@ void security_config::set_report_interval_ns(const uint64_t interval)
 
 uint64_t security_config::get_throttled_report_interval_ns()
 {
-	return c_throttled_report_interval_ns->get();
+	return c_throttled_report_interval_ns->get_value();
 }
 
 void security_config::set_throttled_report_interval_ns(const uint64_t interval)
@@ -309,159 +309,159 @@ void security_config::set_throttled_report_interval_ns(const uint64_t interval)
 
 uint64_t security_config::get_actions_poll_interval_ns()
 {
-	return c_actions_poll_interval_ns->get();
+	return c_actions_poll_interval_ns->get_value();
 }
 
 double security_config::get_policy_events_rate()
 {
-	return c_policy_events_rate->get();
+	return c_policy_events_rate->get_value();
 }
 
 uint64_t security_config::get_policy_events_max_burst()
 {
-	return c_policy_events_max_burst->get();
+	return c_policy_events_max_burst->get_value();
 }
 
 bool security_config::get_send_monitor_events()
 {
-	return c_send_monitor_events->get();
+	return c_send_monitor_events->get_value();
 }
 
 std::string security_config::get_default_compliance_schedule()
 {
-	return c_default_compliance_schedule->get();
+	return c_default_compliance_schedule->get_value();
 }
 
 bool security_config::get_send_compliance_events()
 {
-	return c_send_compliance_events->get();
+	return c_send_compliance_events->get_value();
 }
 
 bool security_config::get_send_compliance_results()
 {
-	return c_send_compliance_results->get();
+	return c_send_compliance_results->get_value();
 }
 
 bool security_config::get_include_desc_in_compliance_results()
 {
-	return c_include_desc_in_compliance_results->get();
+	return c_include_desc_in_compliance_results->get_value();
 }
 
 uint64_t security_config::get_compliance_refresh_interval()
 {
-	return c_compliance_refresh_interval->get();
+	return c_compliance_refresh_interval->get_value();
 }
 
 std::string security_config::get_compliance_kube_bench_variant()
 {
-	return c_compliance_kube_bench_variant->get();
+	return c_compliance_kube_bench_variant->get_value();
 }
 
 bool security_config::get_compliance_send_failed_results()
 {
-	return c_compliance_send_failed_results->get();
+	return c_compliance_send_failed_results->get_value();
 }
 
 bool security_config::get_compliance_save_temp_files()
 {
-	return c_compliance_save_temp_files->get();
+	return c_compliance_save_temp_files->get_value();
 }
 
 bool security_config::get_k8s_audit_server_enabled()
 {
-	return c_k8s_audit_server_enabled->get();
+	return c_k8s_audit_server_enabled->get_value();
 }
 
 uint64_t security_config::get_k8s_audit_server_refresh_interval()
 {
-	return c_k8s_audit_server_refresh_interval->get();
+	return c_k8s_audit_server_refresh_interval->get_value();
 }
 
 std::string security_config::get_k8s_audit_server_url()
 {
-	return c_k8s_audit_server_url->get();
+	return c_k8s_audit_server_url->get_value();
 }
 
 uint16_t security_config::get_k8s_audit_server_port()
 {
-	return c_k8s_audit_server_port->get();
+	return c_k8s_audit_server_port->get_value();
 }
 
 bool security_config::get_k8s_audit_server_tls_enabled()
 {
-	return c_k8s_audit_server_tls_enabled->get();
+	return c_k8s_audit_server_tls_enabled->get_value();
 }
 
 std::string security_config::get_k8s_audit_server_x509_cert_file()
 {
-	return c_k8s_audit_server_x509_cert_file->get();
+	return c_k8s_audit_server_x509_cert_file->get_value();
 }
 
 std::string security_config::get_k8s_audit_server_x509_key_file()
 {
-	return c_k8s_audit_server_x509_key_file->get();
+	return c_k8s_audit_server_x509_key_file->get_value();
 }
 
 void security_config::generate_status_log()
 {
-	if(c_default_compliance_schedule->get() != "")
+	if(c_default_compliance_schedule->get_value() != "")
 	{
 		LOG_INFO("When not otherwise specified, will run compliance "
 		         "tasks with schedule: " +
-		         c_default_compliance_schedule->get());
+		         c_default_compliance_schedule->get_value());
 	}
 
-	if(c_enabled->get())
+	if(c_enabled->get_value())
 	{
 		LOG_INFO("Security Features: Enabled");
 
-		if(c_policies_v2_file->get() != "")
+		if(c_policies_v2_file->get_value() != "")
 		{
-			LOG_INFO("Using security policies v2 file: " + c_policies_v2_file->get());
+			LOG_INFO("Using security policies v2 file: " + c_policies_v2_file->get_value());
 		}
-		else if(c_policies_file->get() != "")
+		else if(c_policies_file->get_value() != "")
 		{
-			LOG_INFO("Using security policies file: " + c_policies_file->get());
-		}
-
-		if(c_baselines_file->get() != "")
-		{
-			LOG_INFO("Using security baselines file: " + c_baselines_file->get());
+			LOG_INFO("Using security policies file: " + c_policies_file->get_value());
 		}
 
-		LOG_INFO("Security Report Interval (ms)" + NumberFormatter::format(c_report_interval_ns->get() / 1000000));
-		LOG_INFO("Security Throttled Report Interval (ms)" + NumberFormatter::format(c_throttled_report_interval_ns->get() / 1000000));
-		LOG_INFO("Security Actions Poll Interval (ms)" + NumberFormatter::format(c_actions_poll_interval_ns->get() / 1000000));
+		if(c_baselines_file->get_value() != "")
+		{
+			LOG_INFO("Using security baselines file: " + c_baselines_file->get_value());
+		}
 
-		LOG_INFO("Policy events rate: " + NumberFormatter::format(c_policy_events_rate->get()));
-		LOG_INFO("Policy events max burst: " + NumberFormatter::format(c_policy_events_max_burst->get()));
-		LOG_INFO(std::string("Will ") + (c_send_monitor_events->get() ? "" : "not ") + "send sysdig monitor events when policies trigger");
+		LOG_INFO("Security Report Interval (ms)" + NumberFormatter::format(c_report_interval_ns->get_value() / 1000000));
+		LOG_INFO("Security Throttled Report Interval (ms)" + NumberFormatter::format(c_throttled_report_interval_ns->get_value() / 1000000));
+		LOG_INFO("Security Actions Poll Interval (ms)" + NumberFormatter::format(c_actions_poll_interval_ns->get_value() / 1000000));
 
-		LOG_INFO(std::string("Will ") + (c_send_compliance_events->get() ? "" : "not ") + "send compliance events");
-		LOG_INFO(std::string("Will ") + (c_send_compliance_results->get() ? "" : "not ") + "send compliance results");
+		LOG_INFO("Policy events rate: " + NumberFormatter::format(c_policy_events_rate->get_value()));
+		LOG_INFO("Policy events max burst: " + NumberFormatter::format(c_policy_events_max_burst->get_value()));
+		LOG_INFO(std::string("Will ") + (c_send_monitor_events->get_value() ? "" : "not ") + "send sysdig monitor events when policies trigger");
+
+		LOG_INFO(std::string("Will ") + (c_send_compliance_events->get_value() ? "" : "not ") + "send compliance events");
+		LOG_INFO(std::string("Will ") + (c_send_compliance_results->get_value() ? "" : "not ") + "send compliance results");
 		LOG_INFO(std::string("Will check for new compliance tasks to run every ") +
-				   NumberFormatter::format(c_compliance_refresh_interval->get() / 1000000000) + " seconds");
+				   NumberFormatter::format(c_compliance_refresh_interval->get_value() / 1000000000) + " seconds");
 
 		LOG_INFO(std::string("Increased statsd metric limit by 100 for compliance tasks"));
 
-		if(c_compliance_kube_bench_variant->get() != "")
+		if(c_compliance_kube_bench_variant->get_value() != "")
 		{
-			LOG_INFO(std::string("Will force kube-bench compliance check to run " + c_compliance_kube_bench_variant->get() + " variant"));
+			LOG_INFO(std::string("Will force kube-bench compliance check to run " + c_compliance_kube_bench_variant->get_value() + " variant"));
 		}
 
-		LOG_INFO(std::string("Will ") + (c_compliance_save_temp_files->get() ? "" : "not ") + "keep temporary files for compliance tasks on disk");
+		LOG_INFO(std::string("Will ") + (c_compliance_save_temp_files->get_value() ? "" : "not ") + "keep temporary files for compliance tasks on disk");
 
 
-		if(c_k8s_audit_server_enabled->get())
+		if(c_k8s_audit_server_enabled->get_value())
 		{
 			LOG_INFO(std::string("K8s Audit Server configured"));
-			LOG_INFO(std::string("K8s Audit Server tls enabled:  ") + std::to_string(c_k8s_audit_server_tls_enabled->get()));
-			LOG_INFO(std::string("K8s Audit Server URL:  ") + c_k8s_audit_server_url->get());
-			LOG_INFO(std::string("K8s Audit Server port: ") + std::to_string(c_k8s_audit_server_port->get()));
-			if(c_k8s_audit_server_tls_enabled->get())
+			LOG_INFO(std::string("K8s Audit Server tls enabled:  ") + std::to_string(c_k8s_audit_server_tls_enabled->get_value()));
+			LOG_INFO(std::string("K8s Audit Server URL:  ") + c_k8s_audit_server_url->get_value());
+			LOG_INFO(std::string("K8s Audit Server port: ") + std::to_string(c_k8s_audit_server_port->get_value()));
+			if(c_k8s_audit_server_tls_enabled->get_value())
 			{
-				LOG_INFO(std::string("K8s Audit Server X509 crt file: ") + c_k8s_audit_server_x509_cert_file->get());
-				LOG_INFO(std::string("K8s Audit Server X509 key file: ") + c_k8s_audit_server_x509_key_file->get());
+				LOG_INFO(std::string("K8s Audit Server X509 crt file: ") + c_k8s_audit_server_x509_cert_file->get_value());
+				LOG_INFO(std::string("K8s Audit Server X509 key file: ") + c_k8s_audit_server_x509_key_file->get_value());
 			}
 		}
 	}

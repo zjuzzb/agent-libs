@@ -50,7 +50,7 @@ TEST(metric_serializer_test, initial_state)
 	ASSERT_EQ(&g_sample_handler, &test_helper::get_sample_handler(*s));
 
 	// non-null metrics dir implies emit to file
-	ASSERT_EQ(metric_serializer::c_metrics_dir.get() != "", s->get_emit_metrics_to_file());
+	ASSERT_EQ(metric_serializer::c_metrics_dir.get_value() != "", s->get_emit_metrics_to_file());
 }
 
 

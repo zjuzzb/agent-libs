@@ -5,21 +5,25 @@
 #include "connectinfo.h"
 
 type_config<uint32_t> sinsp_connection_manager_configuration::c_max_connection_table_size(
-    65536,
-    "sets the maximum number of IPv4 connections we track",
-    "connection",
-    "max_count");
+		65536,
+		"sets the maximum number of IPv4 connections we track",
+		"connection",
+		"max_count");
+
 type_config<uint64_t> sinsp_connection_manager_configuration::c_connection_timeout_ns(
-    90 * ONE_SECOND_IN_NS,
-    "Time after which a connection is considered stale",
-    "connection",
-    "timeout_ns");
+		90 * ONE_SECOND_IN_NS,
+		"Time after which a connection is considered stale",
+		"connection",
+		"timeout_ns");
+
 type_config<uint64_t>::ptr sinsp_connection_manager_configuration::c_connection_pruning_interval_ns = 
-    type_config_builder<uint64_t>(30 * ONE_SECOND_IN_NS,
-				  "The interval between removing stale connections"
-				  "connection",
-				  "pruning_interval_ns")
-				  .hidden().get();
+type_config_builder<uint64_t>(
+		30 * ONE_SECOND_IN_NS,
+		"The interval between removing stale connections"
+		"connection",
+		"pruning_interval_ns")
+		.hidden()
+		.build();
 
 sinsp_connection::sinsp_connection()
 {

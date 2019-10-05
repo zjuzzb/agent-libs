@@ -685,7 +685,7 @@ void sinsp_analyzer_fd_listener::handle_statsd_write(sinsp_evt* const evt,
 	{
 		const static bool use_forwarder =
 			configuration_manager::instance().get_config<bool>(
-					"statsd.use_forwarder")->get();
+					"statsd.use_forwarder")->get_value();
 
 		auto tinfo = evt->get_thread_info(false);
 		const std::string container_id = (tinfo != nullptr)

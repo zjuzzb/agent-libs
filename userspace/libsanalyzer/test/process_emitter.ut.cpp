@@ -518,7 +518,8 @@ process:
 	yaml_configuration config_yaml(proc_only_filter);
 	emitter.m_process_manager.c_process_filter.init(config_yaml);
 	ASSERT_EQ(0, config_yaml.errors().size());
-	test_helper::set_proc_filter_rules(emitter.m_process_manager, emitter.m_process_manager.c_process_filter.get());
+	test_helper::set_proc_filter_rules(emitter.m_process_manager,
+	                                   emitter.m_process_manager.c_process_filter.get_value());
 
 
 	// create a process with low stats that matches the filter, then one with higher
@@ -578,7 +579,8 @@ process:
 	yaml_configuration config_yaml(proc_only_filter);
 	emitter.m_process_manager.c_process_filter.init(config_yaml);
 	ASSERT_EQ(0, config_yaml.errors().size());
-	test_helper::set_proc_filter_rules(emitter.m_process_manager, emitter.m_process_manager.c_process_filter.get());
+	test_helper::set_proc_filter_rules(emitter.m_process_manager,
+	                                   emitter.m_process_manager.c_process_filter.get_value());
 
 
 	// create a process with low stats that matches the filter, then one with higher
@@ -630,7 +632,8 @@ process:
 	yaml_configuration config_yaml_2(proc_container_filter);
 	emitter.m_process_manager.c_process_filter.init(config_yaml_2);
 	ASSERT_EQ(0, config_yaml_2.errors().size());
-	test_helper::set_proc_filter_rules(emitter.m_process_manager, emitter.m_process_manager.c_process_filter.get());
+	test_helper::set_proc_filter_rules(emitter.m_process_manager,
+	                                   emitter.m_process_manager.c_process_filter.get_value());
 
 	progtable.clear();
 	fake_thread matching_container_process;
@@ -832,7 +835,8 @@ process:
 	yaml_configuration config_yaml(proc_only_filter);
 	emitter.m_process_manager.c_process_filter.init(config_yaml);
 	ASSERT_EQ(0, config_yaml.errors().size());
-	test_helper::set_proc_filter_rules(emitter.m_process_manager, emitter.m_process_manager.c_process_filter.get());
+	test_helper::set_proc_filter_rules(emitter.m_process_manager,
+	                                   emitter.m_process_manager.c_process_filter.get_value());
 
 	fake_thread matched_process;
 	matched_process.m_ainfo->m_cpuload = 1;

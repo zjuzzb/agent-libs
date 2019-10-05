@@ -170,7 +170,7 @@ TEST_F(type_config_test, bool_get_default_true)
 
 	type_config<bool> some_config(default_value, DEFAULT_DESCRIPTION, key);
 
-	ASSERT_EQ(default_value, some_config.get());
+	ASSERT_EQ(default_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, bool_get_default_false)
@@ -180,7 +180,7 @@ TEST_F(type_config_test, bool_get_default_false)
 
 	type_config<bool> some_config(default_value, DEFAULT_DESCRIPTION, key);
 
-	ASSERT_EQ(default_value, some_config.get());
+	ASSERT_EQ(default_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, get_const_default)
@@ -189,7 +189,7 @@ TEST_F(type_config_test, get_const_default)
 
 	const type_config<bool> some_config(DEFAULT_BOOL, DEFAULT_DESCRIPTION, key);
 
-	ASSERT_EQ(DEFAULT_BOOL, some_config.get());
+	ASSERT_EQ(DEFAULT_BOOL, some_config.get_value());
 }
 
 TEST_F(type_config_test, true_config_not_in_yaml_unmodified)
@@ -204,7 +204,7 @@ TEST_F(type_config_test, true_config_not_in_yaml_unmodified)
 
 	some_config.init(config_yaml);
 
-	ASSERT_EQ(default_value, some_config.get());
+	ASSERT_EQ(default_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, false_config_not_in_yaml_unmodified)
@@ -219,7 +219,7 @@ TEST_F(type_config_test, false_config_not_in_yaml_unmodified)
 
 	some_config.init(config_yaml);
 
-	ASSERT_EQ(default_value, some_config.get());
+	ASSERT_EQ(default_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, config_in_yaml_updated_true)
@@ -235,7 +235,7 @@ TEST_F(type_config_test, config_in_yaml_updated_true)
 
 	some_config.init(config_yaml);
 
-	ASSERT_EQ(expected_value, some_config.get());
+	ASSERT_EQ(expected_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, config_in_yaml_updated_false)
@@ -251,7 +251,7 @@ TEST_F(type_config_test, config_in_yaml_updated_false)
 
 	some_config.init(config_yaml);
 
-	ASSERT_EQ(expected_value, some_config.get());
+	ASSERT_EQ(expected_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, config_with_subkey_in_yaml_updated_true)
@@ -271,7 +271,7 @@ TEST_F(type_config_test, config_with_subkey_in_yaml_updated_true)
 
 	some_config.init(config_yaml);
 
-	ASSERT_EQ(expected_value, some_config.get());
+	ASSERT_EQ(expected_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, config_with_subkey_in_yaml_updated_false)
@@ -291,7 +291,7 @@ TEST_F(type_config_test, config_with_subkey_in_yaml_updated_false)
 
 	some_config.init(config_yaml);
 
-	ASSERT_EQ(expected_value, some_config.get());
+	ASSERT_EQ(expected_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, config_with_subsubkey_in_yaml_updated_false)
@@ -313,7 +313,7 @@ TEST_F(type_config_test, config_with_subsubkey_in_yaml_updated_false)
 
 	some_config.init(config_yaml);
 
-	ASSERT_EQ(expected_value, some_config.get());
+	ASSERT_EQ(expected_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, config_with_subsubkey_in_yaml_updated_true)
@@ -335,7 +335,7 @@ TEST_F(type_config_test, config_with_subsubkey_in_yaml_updated_true)
 
 	some_config.init(config_yaml);
 
-	ASSERT_EQ(expected_value, some_config.get());
+	ASSERT_EQ(expected_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, config_string)
@@ -353,7 +353,7 @@ TEST_F(type_config_test, config_string)
 
 	some_config.init(config_yaml);
 
-	ASSERT_EQ(expected_value, some_config.get());
+	ASSERT_EQ(expected_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, config_vector_uint16)
@@ -371,7 +371,7 @@ TEST_F(type_config_test, config_vector_uint16)
 
 	some_config.init(config_yaml);
 
-	ASSERT_EQ(expected_value, some_config.get());
+	ASSERT_EQ(expected_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, alternate_key_single_yaml)
@@ -391,7 +391,7 @@ TEST_F(type_config_test, alternate_key_single_yaml)
 
 	some_config.init(config_yaml);
 
-	ASSERT_EQ(expected_value, some_config.get());
+	ASSERT_EQ(expected_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, alternate_subkey_single_yaml)
@@ -413,7 +413,7 @@ TEST_F(type_config_test, alternate_subkey_single_yaml)
 
 	some_config.init(config_yaml);
 
-	ASSERT_EQ(expected_value, some_config.get());
+	ASSERT_EQ(expected_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, alternate_subsubkey_single_yaml)
@@ -434,7 +434,7 @@ TEST_F(type_config_test, alternate_subsubkey_single_yaml)
 
 	some_config.init(config_yaml);
 
-	ASSERT_EQ(expected_value, some_config.get());
+	ASSERT_EQ(expected_value, some_config.get_value());
 }
 
 TEST_F(type_config_test, key_takes_priority_in_shallower_yaml)
@@ -472,7 +472,7 @@ primary_key1: 99
 
 	some_config.init(config_yaml);
 
-	ASSERT_EQ(expected_value, some_config.get());
+	ASSERT_EQ(expected_value, some_config.get_value());
 }
 
 #define MULTI_YAML_TEST_EXPECT_22                                            \
@@ -487,7 +487,7 @@ yaml_configuration config_yaml({ primary_config.get_filename(),                \
 ASSERT_TRUE(config_yaml.errors() .empty());                                    \
                                                                                \
 some_config.init(config_yaml);                                                 \
-ASSERT_EQ(22, some_config.get() )
+ASSERT_EQ(22, some_config.get_value() )
 
 TEST_F(type_config_test, multiple_yaml_1)
 {
@@ -658,7 +658,7 @@ TEST_F(type_config_test, builder_defaults)
 
 	type_config<int>::mutable_ptr some_config =
 	   type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
-	   .get_mutable();
+	   .build_mutable();
 
 	yaml_configuration config_yaml({get_conf_file()});
 	ASSERT_EQ(0, config_yaml.errors().size());
@@ -666,7 +666,7 @@ TEST_F(type_config_test, builder_defaults)
 	some_config->init(config_yaml);
 	some_config->post_init();
 
-	ASSERT_EQ(INT_12345_VALUE, some_config->get());
+	ASSERT_EQ(INT_12345_VALUE, some_config->get_value());
 	ASSERT_EQ(INT_12345_VALUE, some_config->configured());
 	ASSERT_FALSE(some_config->hidden());
 }
@@ -679,7 +679,7 @@ TEST_F(type_config_test, builder_hidden)
 	type_config<int>::ptr some_config =
 	   type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
 		.hidden()
-		.get();
+		.build();
 
 	ASSERT_TRUE(some_config->hidden());
 }
@@ -693,14 +693,14 @@ TEST_F(type_config_test, builder_min_over)
 	type_config<int>::mutable_ptr some_config =
 	   type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
 		.min(MIN)
-		.get_mutable();
+		.build_mutable();
 
 	yaml_configuration config_yaml({get_conf_file()});
 	ASSERT_EQ(0, config_yaml.errors().size());
 	some_config->init(config_yaml);
 	some_config->post_init();
 
-	ASSERT_EQ(MIN, some_config->get());
+	ASSERT_EQ(MIN, some_config->get_value());
 	ASSERT_EQ(MIN, some_config->configured());
 }
 
@@ -713,14 +713,14 @@ TEST_F(type_config_test, builder_min_under)
 	type_config<int>::mutable_ptr some_config =
 	   type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
 		.min(MIN)
-		.get_mutable();
+		.build_mutable();
 
 	yaml_configuration config_yaml({get_conf_file()});
 	ASSERT_EQ(0, config_yaml.errors().size());
 	some_config->init(config_yaml);
 	some_config->post_init();
 
-	ASSERT_EQ(INT_12345_VALUE, some_config->get());
+	ASSERT_EQ(INT_12345_VALUE, some_config->get_value());
 	ASSERT_EQ(INT_12345_VALUE, some_config->configured());
 }
 
@@ -733,14 +733,14 @@ TEST_F(type_config_test, builder_max_under)
 	type_config<int>::mutable_ptr some_config =
 	   type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
 		.max(MAX)
-		.get_mutable();
+		.build_mutable();
 
 	yaml_configuration config_yaml({get_conf_file()});
 	ASSERT_EQ(0, config_yaml.errors().size());
 	some_config->init(config_yaml);
 	some_config->post_init();
 
-	ASSERT_EQ(MAX, some_config->get());
+	ASSERT_EQ(MAX, some_config->get_value());
 	ASSERT_EQ(MAX, some_config->configured());
 }
 
@@ -753,14 +753,14 @@ TEST_F(type_config_test, builder_max_over)
 	type_config<int>::mutable_ptr some_config =
 	   type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
 		.max(MAX)
-		.get_mutable();
+		.build_mutable();
 
 	yaml_configuration config_yaml({get_conf_file()});
 	ASSERT_EQ(0, config_yaml.errors().size());
 	some_config->init(config_yaml);
 	some_config->post_init();
 
-	ASSERT_EQ(INT_12345_VALUE, some_config->get());
+	ASSERT_EQ(INT_12345_VALUE, some_config->get_value());
 	ASSERT_EQ(INT_12345_VALUE, some_config->configured());
 }
 
@@ -772,7 +772,7 @@ TEST_F(type_config_test, mutable_only_in_internal_build)
 	type_config<int>::mutable_ptr some_config =
 	    type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
 		.mutable_only_in_internal_build()
-		.get_mutable();
+		.build_mutable();
 
 	yaml_configuration config_yaml({ get_conf_file() });
 	ASSERT_EQ(0, config_yaml.errors().size());
@@ -781,7 +781,7 @@ TEST_F(type_config_test, mutable_only_in_internal_build)
 
 	// Since this ut is part of an internal build, we can only check that
 	// the value was written.
-	ASSERT_EQ(INT_12345_VALUE, some_config->get());
+	ASSERT_EQ(INT_12345_VALUE, some_config->get_value());
 }
 
 TEST_F(type_config_test, builder_post_init)
@@ -794,16 +794,16 @@ TEST_F(type_config_test, builder_post_init)
 	   type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
 		.post_init([](type_config<int>& config)
 		{
-			config.get() = FORCED;
+			config.get_value() = FORCED;
 		})
-		.get_mutable();
+		.build_mutable();
 
 	yaml_configuration config_yaml({get_conf_file()});
 	ASSERT_EQ(0, config_yaml.errors().size());
 	some_config->init(config_yaml);
 	some_config->post_init();
 
-	ASSERT_EQ(FORCED, some_config->get());
+	ASSERT_EQ(FORCED, some_config->get_value());
 	ASSERT_EQ(INT_12345_VALUE, some_config->configured());
 }
 
@@ -836,7 +836,7 @@ TEST_F(type_config_test, string_to_value_int_valid)
 	type_config<int> c(42, "some description", "some_test_key");
 	
 	ASSERT_TRUE(c.string_to_value("17"));
-	ASSERT_EQ(17, c.get());
+	ASSERT_EQ(17, c.get_value());
 }
 
 /**
@@ -848,7 +848,7 @@ TEST_F(type_config_test, string_to_value_int_invalid)
 	type_config<int> c(42, "some description", "some_test_key");
 	
 	ASSERT_FALSE(c.string_to_value("true"));
-	ASSERT_EQ(42, c.get());
+	ASSERT_EQ(42, c.get_value());
 }
 
 /**
@@ -859,7 +859,7 @@ TEST_F(type_config_test, string_to_value_string)
 	type_config<std::string> c("original value", "some description", "some_test_key");
 	
 	ASSERT_TRUE(c.string_to_value("new value"));
-	ASSERT_EQ("new value", c.get());
+	ASSERT_EQ("new value", c.get_value());
 }
 
 /**
@@ -871,7 +871,7 @@ TEST_F(type_config_test, string_to_value_bool_valid)
 	type_config<bool> c(true, "some description", "some_test_key");
 	
 	ASSERT_TRUE(c.string_to_value("false"));
-	ASSERT_FALSE(c.get());
+	ASSERT_FALSE(c.get_value());
 }
 
 /**
@@ -883,7 +883,7 @@ TEST_F(type_config_test, string_to_value_bool_valid_mixed_case)
 	type_config<bool> c(true, "some description", "some_test_key");
 	
 	ASSERT_TRUE(c.string_to_value("fAlSe"));
-	ASSERT_FALSE(c.get());
+	ASSERT_FALSE(c.get_value());
 }
 
 /**
@@ -895,7 +895,7 @@ TEST_F(type_config_test, string_to_value_bool_invalid)
 	type_config<bool> c(true, "some description", "some_test_key");
 	
 	ASSERT_FALSE(c.string_to_value("0"));
-	ASSERT_TRUE(c.get());
+	ASSERT_TRUE(c.get_value());
 }
 
 /**
@@ -907,7 +907,7 @@ TEST_F(type_config_test, string_to_value_vector_invalid)
 	type_config<std::vector<int>> c({1, 2, 3}, "some description", "some_test_key");
 	
 	ASSERT_FALSE(c.string_to_value("[4, 5, 6]"));
-	ASSERT_EQ((std::vector<int>{1, 2, 3}), c.get());
+	ASSERT_EQ((std::vector<int>{1, 2, 3}), c.get_value());
 }
 
 /**
@@ -957,7 +957,7 @@ TEST_F(type_config_test, from_json_valid_json_value_correct_type_int)
 	type_config<int> c(1, "some description", "some_test_key");
 
 	ASSERT_NO_THROW(c.from_json(R"EOF({ "value": "27" })EOF"));
-	ASSERT_EQ(27, c.get());
+	ASSERT_EQ(27, c.get_value());
 }
 
 /**
@@ -970,7 +970,7 @@ TEST_F(type_config_test, from_json_valid_json_value_correct_type_bool)
 	type_config<bool> c(true, "some description", "some_test_key");
 
 	ASSERT_NO_THROW(c.from_json(R"EOF({ "value": "false" })EOF"));
-	ASSERT_FALSE(c.get());
+	ASSERT_FALSE(c.get_value());
 }
 
 /**
@@ -983,6 +983,6 @@ TEST_F(type_config_test, from_json_valid_json_value_correct_type_string)
 	type_config<std::string> c("start value", "some description", "some_test_key");
 
 	ASSERT_NO_THROW(c.from_json(R"EOF({ "value": "new value" })EOF"));
-	ASSERT_EQ("new value", c.get());
+	ASSERT_EQ("new value", c.get_value());
 }
 

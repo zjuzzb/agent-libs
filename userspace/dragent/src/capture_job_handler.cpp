@@ -1025,7 +1025,7 @@ shared_ptr<protocol_queue_item> capture_job_handler::dump_response_to_queue_item
 		response,
 		// this is a bit ugly. Ultimately this should be part of the protocol
 		// handler, but moving that functionality is a bear
-		configuration_manager::instance().get_config<bool>("compression.enabled")->get(),
+		configuration_manager::instance().get_config<bool>("compression.enabled")->get_value(),
 		m_configuration->m_sysdig_capture_compression_level);
 }
 

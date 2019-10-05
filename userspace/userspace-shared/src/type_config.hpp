@@ -103,13 +103,13 @@ void type_config<data_type>::init(const yaml_configuration& raw_config)
 }
 
 template<typename data_type>
-const data_type& type_config<data_type>::get() const
+const data_type& type_config<data_type>::get_value() const
 {
 	return m_data;
 }
 
 template<typename data_type>
-data_type& type_config<data_type>::get()
+data_type& type_config<data_type>::get_value()
 {
 	return m_data;
 }
@@ -135,7 +135,7 @@ std::string type_config<data_type>::value_to_string() const
 template<typename data_type>
 bool type_config<data_type>::string_to_value(const std::string& value)
 {
-	return get_value(value, m_data);
+	return configuration_unit::get_value(value, m_data);
 }
 
 template<typename data_type>

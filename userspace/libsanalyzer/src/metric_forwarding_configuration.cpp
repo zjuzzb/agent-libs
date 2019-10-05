@@ -22,7 +22,7 @@ type_config<bool>::ptr c_enabled =
 			     "enabled")
 	.hidden()
 	.mutable_only_in_internal_build()
-	.get();
+	.build();
 
 type_config<int>::ptr c_metric_forwarding_sum =
    type_config_builder<int>(10000 /*default*/,
@@ -32,7 +32,7 @@ type_config<int>::ptr c_metric_forwarding_sum =
 	.min(0)
 	.max(10000)
 	.hidden()
-	.get();
+	.build();
 
 type_config<bool>::ptr c_fill_metric_headroom =
    type_config_builder<bool>(true /*default*/,
@@ -42,7 +42,7 @@ type_config<bool>::ptr c_fill_metric_headroom =
 			     "flexible_metric_limits",
 			     "fill_headroom")
 	.hidden()
-	.get();
+	.build();
 
 int configured_limit_sum()
 {
@@ -62,7 +62,7 @@ int configured_limit_sum()
  */
 float metric_divisor()
 {
-	if(0 == c_metric_forwarding_sum->get())
+	if(0 == c_metric_forwarding_sum->get_value())
 	{
 		return 0;
 	}
@@ -71,7 +71,7 @@ float metric_divisor()
 	float divisor = static_cast<float>(configured_limit_sum()) /
 			static_cast<float>(c_metric_forwarding_sum->configured());
 
-	if((!c_fill_metric_headroom->get()) && divisor < 1.0)
+	if((!c_fill_metric_headroom->get_value()) && divisor < 1.0)
 	{
 		return 1.0;
 	}
@@ -81,7 +81,7 @@ float metric_divisor()
 
 void adjust_limit(int& limit, const int legacy_hard_limit)
 {
-	if(!c_enabled->get())
+	if(!c_enabled->get_value())
 	{
 		limit =  limit < legacy_hard_limit ?
 		   limit : legacy_hard_limit;
@@ -112,9 +112,9 @@ type_config<int>::ptr c_prometheus_max =
 	.max(10000)
 	.post_init([](type_config<int>& config)
 	{
-		adjust_limit(config.get(), LEGACY_PROM_METRICS_HARD_LIMIT);
+		adjust_limit(config.get_value(), LEGACY_PROM_METRICS_HARD_LIMIT);
 	})
-	.get();
+	.build();
 
 type_config<int>::ptr c_statsd_max =
    type_config_builder<int>(100 /*default*/,
@@ -125,9 +125,9 @@ type_config<int>::ptr c_statsd_max =
 	.max(10000)
 	.post_init([](type_config<int>& config)
 	{
-		adjust_limit(config.get(), LEGACY_STATSD_METRIC_HARD_LIMIT);
+		adjust_limit(config.get_value(), LEGACY_STATSD_METRIC_HARD_LIMIT);
 	})
-	.get();
+	.build();
 
 type_config<int>::ptr c_jmx_max =
    type_config_builder<int>(500 /*default*/,
@@ -138,9 +138,9 @@ type_config<int>::ptr c_jmx_max =
 	.max(5000)
 	.post_init([](type_config<int>& config)
 	{
-		adjust_limit(config.get(), LEGACY_JMX_METRICS_HARD_LIMIT);
+		adjust_limit(config.get_value(), LEGACY_JMX_METRICS_HARD_LIMIT);
 	})
-	.get();
+	.build();
 
 type_config<int>::ptr c_app_checks_max =
    type_config_builder<int>(500 /*default*/,
@@ -150,22 +150,22 @@ type_config<int>::ptr c_app_checks_max =
 	.max(5000)
 	.post_init([](type_config<int>& config)
 	{
-		adjust_limit(config.get(), LEGACY_APP_METRICS_HARD_LIMIT);
+		adjust_limit(config.get_value(), LEGACY_APP_METRICS_HARD_LIMIT);
 	})
-	.get();
+	.build();
 
 
 void print()
 {
-	if(!c_enabled->get())
+	if(!c_enabled->get_value())
 	{
 		return;
 	}
 
-	if (c_prometheus_max->get() != c_prometheus_max->configured() ||
-	    c_statsd_max->get() != c_statsd_max->configured() ||
-	    c_app_checks_max->get() != c_app_checks_max->configured() ||
-	    c_jmx_max->get() != c_jmx_max->configured())
+	if (c_prometheus_max->get_value() != c_prometheus_max->configured() ||
+	    c_statsd_max->get_value() != c_statsd_max->configured() ||
+	    c_app_checks_max->get_value() != c_app_checks_max->configured() ||
+	    c_jmx_max->get_value() != c_jmx_max->configured())
 	{
 		SINSP_WARNING("%s:%d: Limits have been adjusted.\n"
 			      "Your total allowed metric limit is %d per agent sample for this node, but it is currently configured to %d. The limits have been adjusted as follows:\n"
@@ -174,11 +174,11 @@ void print()
 			      "AppChecks (%s): %d -> %d\n"
 			      "JMX (%s): %d -> %d",
 			      Poco::Path(__FILE__).getBaseName().c_str(), __LINE__,
-			      c_metric_forwarding_sum->get(), configured_limit_sum(),
-			      c_prometheus_max->get_key_string().c_str(), c_prometheus_max->configured(), c_prometheus_max->get(),
-			      c_statsd_max->get_key_string().c_str(), c_statsd_max->configured(), c_statsd_max->get(),
-			      c_app_checks_max->get_key_string().c_str(), c_app_checks_max->configured(), c_app_checks_max->get(),
-			      c_jmx_max->get_key_string().c_str(), c_jmx_max->configured(), c_jmx_max->get());
+			      c_metric_forwarding_sum->get_value(), configured_limit_sum(),
+			      c_prometheus_max->get_key_string().c_str(), c_prometheus_max->configured(), c_prometheus_max->get_value(),
+			      c_statsd_max->get_key_string().c_str(), c_statsd_max->configured(), c_statsd_max->get_value(),
+			      c_app_checks_max->get_key_string().c_str(), c_app_checks_max->configured(), c_app_checks_max->get_value(),
+			      c_jmx_max->get_key_string().c_str(), c_jmx_max->configured(), c_jmx_max->get_value());
 	}
 	else
 	{
@@ -190,11 +190,11 @@ void print()
 			   "AppChecks (%s): %d\n"
 			   "JMX (%s): %d",
 			   Poco::Path(__FILE__).getBaseName().c_str(), __LINE__,
-			   c_metric_forwarding_sum->get(),
-			   c_prometheus_max->get_key_string().c_str(), c_prometheus_max->get(),
-			   c_statsd_max->get_key_string().c_str(), c_statsd_max->get(),
-			   c_app_checks_max->get_key_string().c_str(), c_app_checks_max->get(),
-			   c_jmx_max->get_key_string().c_str(), c_jmx_max->get());
+			   c_metric_forwarding_sum->get_value(),
+			   c_prometheus_max->get_key_string().c_str(), c_prometheus_max->get_value(),
+			   c_statsd_max->get_key_string().c_str(), c_statsd_max->get_value(),
+			   c_app_checks_max->get_key_string().c_str(), c_app_checks_max->get_value(),
+			   c_jmx_max->get_key_string().c_str(), c_jmx_max->get_value());
 	}
 
 }

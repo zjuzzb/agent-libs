@@ -186,7 +186,7 @@ void object_filter_config_data::init(const yaml_configuration& raw_config)
         }
 }
 
-const std::vector<object_filter_config::filter_rule>& object_filter_config_data::get() const
+const std::vector<object_filter_config::filter_rule>& object_filter_config_data::get_value() const
 {
 	return m_data;
 }

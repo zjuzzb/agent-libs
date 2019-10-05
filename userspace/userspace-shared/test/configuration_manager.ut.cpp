@@ -142,8 +142,8 @@ TEST_F(configuration_manager_test, init_config)
 
 	configuration_manager::instance().init_config(config_yaml);
 
-	ASSERT_EQ(expected_c1, c1.get());
-	ASSERT_EQ(expected_c2, c2.get());
+	ASSERT_EQ(expected_c1, c1.get_value());
+	ASSERT_EQ(expected_c2, c2.get_value());
 }
 
 /**
@@ -160,12 +160,12 @@ TEST_F(configuration_manager_test, init_config_post_init)
 	type_config<bool> c1(default_c1, "description", "key1");
 	c1.post_init([](type_config<bool>& config)
 		{
-			config.get() = !config.get();
+			config.get_value() = !config.get_value();
 		});
 	type_config<uint16_t> c2(default_c2, "description", "key2");
 	c2.post_init([](type_config<uint16_t>& config)
 		{
-			config.get() = config.get() + 1;
+			config.get_value() = config.get_value() + 1;
 		});
 
 	yaml_configuration config_yaml({ get_conf_file() });
@@ -175,9 +175,9 @@ TEST_F(configuration_manager_test, init_config_post_init)
 
 	// This is inverted
 	ASSERT_EQ(configured_c1,  c1.configured());
-	ASSERT_EQ(!c1.get(), c1.configured());
+	ASSERT_EQ(!c1.get_value(), c1.configured());
 	// This is +1
-	ASSERT_EQ(c2.configured() + 1, c2.get());
+	ASSERT_EQ(c2.configured() + 1, c2.get_value());
 	ASSERT_EQ(configured_c2, c2.configured());
 }
 

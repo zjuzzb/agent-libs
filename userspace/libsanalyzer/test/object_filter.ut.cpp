@@ -691,36 +691,36 @@ TEST(object_filter_test, init_from_config)
 	my_data.init(config_yaml);
 
 	// validate rules created correctly
-	EXPECT_EQ(my_data.get().size(), 2);
-	EXPECT_EQ(my_data.get()[0].m_cond.size(), 2);
-	EXPECT_EQ(my_data.get()[0].m_include, false);
+	EXPECT_EQ(my_data.get_value().size(), 2);
+	EXPECT_EQ(my_data.get_value()[0].m_cond.size(), 2);
+	EXPECT_EQ(my_data.get_value()[0].m_include, false);
 
 	// this ordering is non-deterministic. We just care we get both conditions in
 	// some order, so have to check both.
-	if (my_data.get()[0].m_cond[0].m_param_type == object_filter_config::filter_condition::param_type::container_name)
+	if (my_data.get_value()[0].m_cond[0].m_param_type == object_filter_config::filter_condition::param_type::container_name)
 	{
-		EXPECT_EQ(my_data.get()[0].m_cond[0].m_pattern, "my_container_name");
-		EXPECT_EQ(my_data.get()[0].m_cond[1].m_param_type, object_filter_config::filter_condition::param_type::container_image);
-		EXPECT_EQ(my_data.get()[0].m_cond[1].m_pattern, "my_container_image");
+		EXPECT_EQ(my_data.get_value()[0].m_cond[0].m_pattern, "my_container_name");
+		EXPECT_EQ(my_data.get_value()[0].m_cond[1].m_param_type, object_filter_config::filter_condition::param_type::container_image);
+		EXPECT_EQ(my_data.get_value()[0].m_cond[1].m_pattern, "my_container_image");
 	}
-	else if (my_data.get()[0].m_cond[0].m_param_type == object_filter_config::filter_condition::param_type::container_image)
+	else if (my_data.get_value()[0].m_cond[0].m_param_type == object_filter_config::filter_condition::param_type::container_image)
 	{
-		EXPECT_EQ(my_data.get()[0].m_cond[1].m_pattern, "my_container_name");
-		EXPECT_EQ(my_data.get()[0].m_cond[1].m_param_type, object_filter_config::filter_condition::param_type::container_name);
-		EXPECT_EQ(my_data.get()[0].m_cond[0].m_pattern, "my_container_image");
+		EXPECT_EQ(my_data.get_value()[0].m_cond[1].m_pattern, "my_container_name");
+		EXPECT_EQ(my_data.get_value()[0].m_cond[1].m_param_type, object_filter_config::filter_condition::param_type::container_name);
+		EXPECT_EQ(my_data.get_value()[0].m_cond[0].m_pattern, "my_container_image");
 	}
 	else
 	{
 		EXPECT_EQ(true, false);
 	}
 
-	EXPECT_EQ(my_data.get()[1].m_cond.size(), 1);
-	EXPECT_EQ(my_data.get()[1].m_cond[0].m_param_type, object_filter_config::filter_condition::param_type::all);
-	EXPECT_EQ(my_data.get()[1].m_include, true);
+	EXPECT_EQ(my_data.get_value()[1].m_cond.size(), 1);
+	EXPECT_EQ(my_data.get_value()[1].m_cond[0].m_param_type, object_filter_config::filter_condition::param_type::all);
+	EXPECT_EQ(my_data.get_value()[1].m_include, true);
 
 	// validate we can make a filter and it works
 	object_filter my_filter("my filter");
-	my_filter.set_rules(my_data.get());
+	my_filter.set_rules(my_data.get_value());
 
 	sinsp_container_info container;
 	container.m_name = "my_container_name";

@@ -550,13 +550,13 @@ void dragent_configuration::init()
 	// init the configurations
 	configuration_manager::instance().init_config(*m_config);
 
-	m_log_dir = Path(c_root_dir.get()).append(m_config->get_scalar<string>("log", "location", "logs")).toString();
+	m_log_dir = Path(c_root_dir.get_value()).append(m_config->get_scalar<string>("log", "location", "logs")).toString();
 
 	m_log_rotate = m_config->get_scalar("log", "rotate", 10);
 
 	m_max_log_size = m_config->get_scalar("log", "max_size", 10);
 
-	ifstream kubernetes_access_key(c_root_dir.get() + "/etc/kubernetes/secrets/access-key");
+	ifstream kubernetes_access_key(c_root_dir.get_value() + "/etc/kubernetes/secrets/access-key");
 	if(kubernetes_access_key.good())
 	{
 		kubernetes_access_key >> m_customer_id;
@@ -662,7 +662,7 @@ void dragent_configuration::init()
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
 	m_ssl_enabled = m_config->get_scalar<bool>("ssl", true);
 	m_ssl_verify_certificate = m_config->get_scalar<bool>("ssl_verify_certificate", true);
-	m_ssl_ca_certificate = Path(c_root_dir.get()).append(m_config->get_scalar<string>("ca_certificate", "root.cert")).toString();
+	m_ssl_ca_certificate = Path(c_root_dir.get_value()).append(m_config->get_scalar<string>("ca_certificate", "root.cert")).toString();
 
 	m_ssl_ca_cert_paths = m_config->get_first_deep_sequence<vector<string>>("ca_cert_paths");
 	std::string ssl_ca_cert_dir = m_config->get_scalar<string>("ca_cert_dir", "");
@@ -1063,7 +1063,7 @@ void dragent_configuration::init()
 	{
 		if (file.find('/') != 0)
 		{
-			file = c_root_dir.get() + '/' + file;
+			file = c_root_dir.get_value() + '/' + file;
 		}
 		m_monitor_files.insert(file);
 	}
@@ -1144,7 +1144,7 @@ void dragent_configuration::print_configuration() const
 {
 	LOG_INFO("Distribution: " + get_distribution());
 	LOG_INFO("machine id: " + m_machine_id_prefix + m_machine_id);
-	LOG_INFO("rootdir: " + c_root_dir.get());
+	LOG_INFO("rootdir: " + c_root_dir.get_value());
 	LOG_INFO("conffile: " + m_conf_file);
 	LOG_INFO("log.location: " + m_log_dir);
 	LOG_INFO("customerid: " + m_customer_id);
@@ -1724,7 +1724,7 @@ void dragent_configuration::write_statsite_configuration()
 	}
 
 	const std::string statsite_ini = (m_agent_installed)
-	                                 ? c_root_dir.get() + "/etc/statsite.ini"
+	                                 ? c_root_dir.get_value() + "/etc/statsite.ini"
 	                                 : "statsite.ini";
 	const std::string loglevel =
 		m_config->get_scalar<std::string>("log",

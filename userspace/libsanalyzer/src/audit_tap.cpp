@@ -22,7 +22,7 @@ type_config<unsigned int>::ptr c_max_argument_length =
 				     "max_command_arg_length")
 	.min(10)
 	.max(64 * 1024)
-	.get();
+	.build();
 
 
 type_config<std::string>::ptr c_protobuf_dir =
@@ -36,13 +36,13 @@ type_config<std::string>::ptr c_protobuf_dir =
 	.post_init([](type_config<std::string>& config)
 		{
 			// Create the directory if it doesn't exist
-			if(config.get() != "")
+			if(config.get_value() != "")
 			{
-				Poco::File dir(config.get());
+				Poco::File dir(config.get_value());
 				dir.createDirectories();
 			}
 		})
-	.get();
+	.build();
 
 type_config<uint64_t> c_audit_internal_s(
 		60,
@@ -53,7 +53,7 @@ type_config<uint64_t> c_audit_internal_s(
 
 void write_to_file(const tap::AuditLog& tap)
 {
-	if(c_protobuf_dir->get().empty())
+	if(c_protobuf_dir->get_value().empty())
 	{
 		return;
 	}
@@ -63,12 +63,12 @@ void write_to_file(const tap::AuditLog& tap)
 	out << "tap_" << tap.timestamp() << ".json";
 
 	const std::string filename = out.str();
-	std::ofstream out_file(c_protobuf_dir->get() + "/" + filename);
+	std::ofstream out_file(c_protobuf_dir->get_value() + "/" + filename);
 
 	if(!out_file)
 	{
 		LOG_INFO("Unable to create protobuf file: %s",
-		         (c_protobuf_dir->get() + "/" + filename).c_str());
+		         (c_protobuf_dir->get_value() + "/" + filename).c_str());
 		return;
 	}
 
@@ -78,7 +78,7 @@ void write_to_file(const tap::AuditLog& tap)
 
 	out_file << json_string;
 
-	const std::string symbolic_link = c_protobuf_dir->get() +
+	const std::string symbolic_link = c_protobuf_dir->get_value() +
 	                                  "/tap_latest.json";
 	unlink(symbolic_link.c_str());
 	symlink(filename.c_str(), symbolic_link.c_str());
@@ -136,7 +136,7 @@ bool audit_tap::should_emit_network_audit()
 {
 	const auto now = sinsp_utils::get_current_time_ns();
 
-	if((now - m_last_run_audit_ns) <= (c_audit_internal_s.get() * ONE_SECOND_IN_NS))
+	if((now - m_last_run_audit_ns) <= (c_audit_internal_s.get_value() * ONE_SECOND_IN_NS))
 	{
 		return false;
 	}
@@ -453,5 +453,5 @@ void audit_tap::clear()
 // static
 unsigned int audit_tap::max_command_argument_length()
 {
-	return c_max_argument_length->get();
+	return c_max_argument_length->get_value();
 }

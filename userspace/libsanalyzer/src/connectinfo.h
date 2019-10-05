@@ -229,7 +229,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	//
 	// First of all, make sure there's space for this connection in the table
 	//
-	if(m_connections.size() >= sinsp_connection_manager_configuration::c_max_connection_table_size.get())
+	if(m_connections.size() >= sinsp_connection_manager_configuration::c_max_connection_table_size.get_value())
 	{
 		m_n_drops++;
 		return NULL;
@@ -427,7 +427,7 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_expired_connections(u
 
 	uint64_t deltats = current_ts - m_last_connection_removal_ts;
 	
-	if(deltats <= sinsp_connection_manager_configuration::c_connection_pruning_interval_ns->get())
+	if(deltats <= sinsp_connection_manager_configuration::c_connection_pruning_interval_ns->get_value())
 	{
 		return;
 	}
@@ -435,7 +435,7 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_expired_connections(u
 	typename std::unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit = m_connections.begin();
 	while(cit != m_connections.end())
 	{
-		if(current_ts - cit->second.m_timestamp > sinsp_connection_manager_configuration::c_connection_timeout_ns.get())
+		if(current_ts - cit->second.m_timestamp > sinsp_connection_manager_configuration::c_connection_timeout_ns.get_value())
 		{
 			cit = m_connections.erase(cit);
 		}

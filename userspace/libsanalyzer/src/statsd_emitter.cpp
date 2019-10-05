@@ -16,7 +16,7 @@ const unsigned statsd_emitter::MAX_SECURITY_METRICS = 100;
 
 unsigned statsd_emitter::get_limit()
 {
-	unsigned limit = metric_forwarding_configuration::c_statsd_max->get();
+	unsigned limit = metric_forwarding_configuration::c_statsd_max->get_value();
 
 	if(security_config::is_enabled())
 	{

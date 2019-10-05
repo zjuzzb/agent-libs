@@ -172,7 +172,7 @@ public: // other stuff
          *
          * @return the value of this config
          */
-        const std::vector<object_filter_config::filter_rule>& get() const;
+        const std::vector<object_filter_config::filter_rule>& get_value() const;
 
 private:
 	std::vector<object_filter_config::filter_rule> m_data;

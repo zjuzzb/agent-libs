@@ -18,14 +18,14 @@ class scoped_config
 public:
         scoped_config(const std::string& key, const config_type& value):
                 m_key(key),
-                m_old(configuration_manager::instance().get_config<config_type>(key)->get())
+                m_old(configuration_manager::instance().get_config<config_type>(key)->get_value())
         {
-                configuration_manager::instance().get_mutable_config<config_type>(key)->get() = value;
+                configuration_manager::instance().get_mutable_config<config_type>(key)->get_value() = value;
         }
 
         ~scoped_config()
         {
-		configuration_manager::instance().get_mutable_config<config_type>(m_key)->get() = m_old;
+		configuration_manager::instance().get_mutable_config<config_type>(m_key)->get_value() = m_old;
         }
 
 private:

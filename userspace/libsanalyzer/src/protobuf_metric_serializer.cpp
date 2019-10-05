@@ -224,7 +224,7 @@ void protobuf_metric_serializer::do_serialization()
 				m_data->m_sampling_ratio,
 				st.n_tids_suppressed);
 
-		if(s_emit_protobuf_json.get())
+		if(s_emit_protobuf_json.get_value())
 		{
 			emit_metrics_to_json_file();
 		}

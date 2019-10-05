@@ -36,12 +36,12 @@ class yaml_configuration;
  *
  * type_config<uint64_t>::ptr  my_config_variable_name =
  *      type_config_builder<int>(some_default_value, "key_name_in_yaml")
- *          .min(10).max(50).get();
+ *          .min(10).max(50).build();
  *
  * The data is automatically populated from the yaml, and can then be freely
  * used:
  *
- * my_config_variable_name.get()
+ * my_config_variable_name.get_value()
  *
  * If you have a not-yet-supported type, you'll most likely get a compile error
  * saying it can't find "get_value_string<your_type>". If your type is a scalar,
@@ -371,7 +371,7 @@ public: // stuff for configuration_unit
 	 *
 	 * @return the value of this config
 	 */
-	const data_type& get() const;
+	const data_type& get_value() const;
 
 	/**
          * Returns a non-const reference to the current value of this
@@ -379,7 +379,7 @@ public: // stuff for configuration_unit
          *
          * @return the value of this config
          */
-        data_type& get();
+        data_type& get_value();
 
 public: // other stuff
 	/**
@@ -429,7 +429,7 @@ public: // other stuff
 	 * usage:
 	 * .post_init([](type_config<int>& config)
 	 * {
-	 *	config.get() = c_other_config.configured() == 0 ? 0 : config.get();
+	 *	config.get_value() = c_other_config.configured() == 0 ? 0 : config.get_value();
 	 * });
 	 */
 	using post_init_delegate = std::function<void(type_config<data_type> &)>;
@@ -538,7 +538,7 @@ public:
 	/**
 	 * Return the generated instance
 	 */
-	typename type_config<data_type>::ptr get()
+	typename type_config<data_type>::ptr build()
 	{
 		return m_type_config;
 	}
@@ -548,7 +548,7 @@ public:
 	 * these configs are meant to only be changed during static
 	 * init, make sure you know what you are doing if you use this.
 	 */
-	typename type_config<data_type>::mutable_ptr get_mutable()
+	typename type_config<data_type>::mutable_ptr build_mutable()
 	{
 		return m_type_config;
 	}

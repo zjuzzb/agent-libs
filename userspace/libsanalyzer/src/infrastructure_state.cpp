@@ -93,7 +93,8 @@ type_config<std::string>::ptr infrastructure_state::c_k8s_ssl_key_password =
 	type_config_builder<std::string>("",
 					 "K8S SSL key password",
 					 "k8s_ssl_key_password")
-					 .hidden().get();
+					 .hidden()
+					 .build();
 type_config<std::string> infrastructure_state::c_k8s_ssl_certificate_type(
 	"PEM",
 	"K8S certificate type",
@@ -114,7 +115,7 @@ type_config<uint32_t>::ptr infrastructure_state::c_k8s_max_rnd_conn_delay =
 		"k8s_max_rnd_conn_delay")
 	.min(0)
 	.max(900)
-	.get();
+	.build();
 
 std::string infrastructure_state::normalize_path(const std::string& path) const
 {
@@ -155,7 +156,7 @@ void infrastructure_state::configure_k8s_environment()
 						      k8s_bearer_token_file_name.c_str());
                                         }
                                 }
-                                if(c_k8s_ssl_verify_certificate.get() && m_k8s_ca_certificate.empty())
+                                if(c_k8s_ssl_verify_certificate.get_value() && m_k8s_ca_certificate.empty())
                                 {
                                         if(Poco::File(k8s_ca_crt).exists())
                                         {
@@ -290,19 +291,19 @@ infrastructure_state::infrastructure_state(sinsp* inspector,
 	, m_k8s_coclient(rootdir)
 	, m_k8s_subscribed(force_k8s_subscribed)
 	, m_k8s_connected(false)
-	, m_k8s_refresh_interval(c_k8s_refresh_interval.get())
+	, m_k8s_refresh_interval(c_k8s_refresh_interval.get_value())
 	, m_k8s_connect_interval(DEFAULT_CONNECT_INTERVAL)
 	, m_k8s_prev_connect_state(-1)
 	, m_k8s_node_actual(false)
 	, m_root_dir(rootdir)
-	, m_k8s_url(c_k8s_url.get())
-	, m_k8s_bt_auth_token(normalize_path(c_k8s_bt_auth_token.get()))
-	, m_k8s_ca_certificate(normalize_path(c_k8s_ca_certificate.get()))
-	, m_k8s_ssl_certificate(normalize_path(c_k8s_ssl_certificate.get()))
-	, m_k8s_ssl_key(normalize_path(c_k8s_ssl_key.get()))
+	, m_k8s_url(c_k8s_url.get_value())
+	, m_k8s_bt_auth_token(normalize_path(c_k8s_bt_auth_token.get_value()))
+	, m_k8s_ca_certificate(normalize_path(c_k8s_ca_certificate.get_value()))
+	, m_k8s_ssl_certificate(normalize_path(c_k8s_ssl_certificate.get_value()))
+	, m_k8s_ssl_key(normalize_path(c_k8s_ssl_key.get_value()))
 	, m_k8s_cluster_name(std::string())
 {
-	if (c_k8s_autodetect.get())
+	if (c_k8s_autodetect.get_value())
 	{
 		configure_k8s_environment();
 	}
@@ -411,8 +412,8 @@ void infrastructure_state::subscribe_to_k8s()
 	glogf(sinsp_logger::SEV_INFO,
 	      "infra_state: Subscribe to k8s orchestrator events, api server: %s, reconnect interval: %d sec",
 	      m_k8s_url.c_str(),
-	      c_k8s_timeout_s.get());
-	m_k8s_connect_interval.interval(c_k8s_timeout_s.get() * ONE_SECOND_IN_NS);
+	      c_k8s_timeout_s.get_value());
+	m_k8s_connect_interval.interval(c_k8s_timeout_s.get_value() * ONE_SECOND_IN_NS);
 
 	connect_to_k8s();
 }
@@ -437,16 +438,16 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			cmd.set_ca_cert(m_k8s_ca_certificate);
 			cmd.set_client_cert(m_k8s_ssl_certificate);
 			cmd.set_client_key(m_k8s_ssl_key);
-			cmd.set_queue_len(c_orchestrator_queue_len.get());
-			cmd.set_startup_gc(c_orchestrator_gc.get());
-			cmd.set_startup_inf_wait_time_s(c_orchestrator_informer_wait_time_s.get());
-			cmd.set_startup_tick_interval_ms(c_orchestrator_tick_interval_ms.get());
-			cmd.set_startup_low_ticks_needed(c_orchestrator_low_ticks_needed.get());
-			cmd.set_startup_low_evt_threshold(c_orchestrator_low_event_threshold.get());
-			cmd.set_filter_empty(c_orchestrator_filter_empty.get());
-			cmd.set_batch_msgs_queue_len(c_orchestrator_batch_messages_queue_length.get());
-			cmd.set_batch_msgs_tick_interval_ms(c_orchestrator_batch_messages_tick_interval_ms.get());
-			cmd.set_ssl_verify_certificate(c_k8s_ssl_verify_certificate.get());
+			cmd.set_queue_len(c_orchestrator_queue_len.get_value());
+			cmd.set_startup_gc(c_orchestrator_gc.get_value());
+			cmd.set_startup_inf_wait_time_s(c_orchestrator_informer_wait_time_s.get_value());
+			cmd.set_startup_tick_interval_ms(c_orchestrator_tick_interval_ms.get_value());
+			cmd.set_startup_low_ticks_needed(c_orchestrator_low_ticks_needed.get_value());
+			cmd.set_startup_low_evt_threshold(c_orchestrator_low_event_threshold.get_value());
+			cmd.set_filter_empty(c_orchestrator_filter_empty.get_value());
+			cmd.set_batch_msgs_queue_len(c_orchestrator_batch_messages_queue_length.get_value());
+			cmd.set_batch_msgs_tick_interval_ms(c_orchestrator_batch_messages_tick_interval_ms.get_value());
+			cmd.set_ssl_verify_certificate(c_k8s_ssl_verify_certificate.get_value());
 			cmd.set_auth_token(m_k8s_bt_auth_token);
 			for (const auto &annot : m_annotation_filter)
 			{
@@ -455,12 +456,12 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 
 			// Convert these to new config
 			cmd.set_collect_events(m_inspector->m_analyzer->m_configuration->get_go_k8s_user_events());
-			cmd.set_user_event_queue_len(c_orchestrator_queue_len.get());
+			cmd.set_user_event_queue_len(c_orchestrator_queue_len.get_value());
 			cmd.set_collect_debug_events(m_inspector->m_analyzer->m_configuration->get_go_k8s_debug_events());
 
-			*cmd.mutable_include_types() = {c_k8s_include_types.get().begin(), c_k8s_include_types.get().end()};
-			cmd.set_event_counts_log_time(c_k8s_event_counts_log_time.get());
-			cmd.set_max_rnd_conn_delay(c_k8s_max_rnd_conn_delay->get());
+			*cmd.mutable_include_types() = {c_k8s_include_types.get_value().begin(), c_k8s_include_types.get_value().end()};
+			cmd.set_event_counts_log_time(c_k8s_event_counts_log_time.get_value());
+			cmd.set_max_rnd_conn_delay(c_k8s_max_rnd_conn_delay->get_value());
 
 			m_k8s_subscribed = true;
 			m_k8s_connected = true;

@@ -92,7 +92,7 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 			while(dyn_buffer[dyn_buffer.size() - 2] != '\0' && dyn_buffer[dyn_buffer.size() - 2] != '\n')
 			{
 				// if we've exceeded our configured buffer size, log it
-				if(dyn_buffer.size() >= config_buffer_warning_length.get())
+				if(dyn_buffer.size() >= config_buffer_warning_length.get_value())
 				{
 					LOG_ERROR("Trace longer than warning size: %s",
 					          &dyn_buffer[0]);

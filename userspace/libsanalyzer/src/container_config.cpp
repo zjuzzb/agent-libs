@@ -48,7 +48,7 @@ type_config<std::string>::ptr c_cri_socket_path = type_config_builder<std::strin
 	"Path to the CRI socket",
 	"cri", "socket_path")
 	.post_init([](type_config<std::string>& config) {
-		if(config.get().empty())
+		if(config.get_value().empty())
 		{
 			// if the path is not set, look for a socket in the well-known list
 			for(const auto& path : c_cri_known_socket_paths.configured())
@@ -60,10 +60,10 @@ type_config<std::string>::ptr c_cri_socket_path = type_config_builder<std::strin
 				}
 			}
 		}
-		else if(!is_socket(config.get()))
+		else if(!is_socket(config.get_value()))
 		{
 			// we have an explicit path set and it's not a socket
 			// disable CRI support, without checking the well-known paths
 			config.set("");
 		}
-	}).get();
+	}).build();

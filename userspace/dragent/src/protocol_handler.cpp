@@ -50,7 +50,7 @@ void protocol_handler::handle_uncompressed_sample(uint64_t ts_ns,
 	ASSERT(metrics);
 	m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
-	if(c_print_protobuf.get())
+	if(c_print_protobuf.get_value())
 	{
 		LOG_INFO(metrics->DebugString());
 	}
@@ -59,7 +59,7 @@ void protocol_handler::handle_uncompressed_sample(uint64_t ts_ns,
 		ts_ns,
 		draiosproto::message_type::METRICS,
 		*metrics,
-		c_compression_enabled.get());
+		c_compression_enabled.get_value());
 
 	if(!buffer)
 	{
@@ -91,7 +91,7 @@ uint64_t protocol_handler::get_last_loop_ns() const
 
 void protocol_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draiosproto::policy_events *events)
 {
-	if(c_print_protobuf.get())
+	if(c_print_protobuf.get_value())
 	{
 		LOG_INFO(std::string("Security Events:") + events->DebugString());
 	}
@@ -100,7 +100,7 @@ void protocol_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draiospr
 		ts_ns,
 		draiosproto::message_type::POLICY_EVENTS,
 		*events,
-		c_compression_enabled.get());
+		c_compression_enabled.get_value());
 
 	if(!buffer)
 	{
@@ -121,7 +121,7 @@ void protocol_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
 							     draiosproto::throttled_policy_events *tevents,
 							     uint32_t total_throttled_count)
 {
-	if(c_print_protobuf.get())
+	if(c_print_protobuf.get_value())
 	{
 		LOG_INFO(std::string("Throttled Security Events:") + tevents->DebugString());
 	}
@@ -130,7 +130,7 @@ void protocol_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
 		ts_ns,
 		draiosproto::message_type::THROTTLED_POLICY_EVENTS,
 		*tevents,
-		c_compression_enabled.get());
+		c_compression_enabled.get_value());
 
 	if(!buffer)
 	{
@@ -150,7 +150,7 @@ void protocol_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
 
 void protocol_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const draiosproto::comp_results *results)
 {
-	if(c_print_protobuf.get())
+	if(c_print_protobuf.get_value())
 	{
 		LOG_INFO(std::string("Compliance Results:") + results->DebugString());
 	}
@@ -159,7 +159,7 @@ void protocol_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const dra
 		ts_ns,
 		draiosproto::message_type::COMP_RESULTS,
 		*results,
-		c_compression_enabled.get());
+		c_compression_enabled.get_value());
 
 	if(!buffer)
 	{
@@ -178,7 +178,7 @@ void protocol_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const dra
 
 void protocol_handler::audit_tap_data_ready(uint64_t ts_ns, const tap::AuditLog *audit_log)
 {
-	if(c_print_protobuf.get() || c_audit_tap_debug_only.get())
+	if(c_print_protobuf.get_value() || c_audit_tap_debug_only.get_value())
 	{
 		LOG_INFO(std::string("Audit tap data:") + audit_log->DebugString());
 	}
@@ -202,7 +202,7 @@ void protocol_handler::audit_tap_data_ready(uint64_t ts_ns, const tap::AuditLog 
 			   + ", e=" + NumberFormatter::format(audit_log->environmentvariables().size())
 			   );
 
-	if(c_audit_tap_debug_only.get())
+	if(c_audit_tap_debug_only.get_value())
 	{
 		return;
 	}
@@ -220,7 +220,7 @@ void protocol_handler::handle_log_report(uint64_t ts_ns,
 		ts_ns,
 		draiosproto::message_type::DIRTY_SHUTDOWN_REPORT,
 		report,
-		c_compression_enabled.get());
+		c_compression_enabled.get_value());
 
 	if(!report_serialized)
 	{

@@ -71,20 +71,19 @@ type_config<bool> c_use_statsite_forwarder(
 		"statsd",
 		"use_forwarder");
 
-
 type_config<bool> c_sdagent_app_checks_python_26_supported(
-                false,
-                "sdagent check the python 2.6 support",
-                "app_checks_python_26_supported"
-                );
+		false,
+		"sdagent check the python 2.6 support",
+		"app_checks_python_26_supported");
 
 type_config<bool>::ptr c_rest_feature_flag =
-    type_config_builder<bool>(false /*default*/,
-			      "Feature flag to turn on the REST server.",
-			      "feature_flag_rest_server")
+	type_config_builder<bool>(
+			false /*default*/,
+			"Feature flag to turn on the REST server.",
+			"feature_flag_rest_server")
 	.hidden()
 	.mutable_only_in_internal_build()
-	.get();
+	.build();
 
 type_config<uint16_t>::ptr c_rest_port = type_config_builder<uint16_t>(
 		24482, 
@@ -92,7 +91,7 @@ type_config<uint16_t>::ptr c_rest_port = type_config_builder<uint16_t>(
 		"rest_server",
 		"tcp_port")
 	.hidden() // Hidden until feature is released
-	.get();
+	.build();
 
 string compute_sha1_digest(SHA1Engine &engine, const string &path)
 {
@@ -138,7 +137,7 @@ std::unique_ptr<librest::rest_server> s_rest_server;
  */
 void enable_rest_server(dragent_configuration& configuration)
 {
-	if(!c_rest_feature_flag->get())
+	if(!c_rest_feature_flag->get_value())
 	{
 		return;
 	}
@@ -167,7 +166,7 @@ void enable_rest_server(dragent_configuration& configuration)
 			std::make_shared<config_data_message_handler>(configuration));
 
 	s_rest_server = make_unique<librest::rest_server>(factory,
-	                                                  c_rest_port->get());
+	                                                  c_rest_port->get_value());
 	s_rest_server->start();
 }
 
@@ -527,14 +526,14 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	process_helpers::subprocess_cpu_cgroup default_cpu_cgroup(
 		"/default",
-		c_default_cpu_shares.get(),
-		c_default_cpu_quota.get());
+		c_default_cpu_shares.get_value(),
+		c_default_cpu_quota.get_value());
 	default_cpu_cgroup.create();
 
 	process_helpers::subprocess_cpu_cgroup cointerface_cpu_cgroup(
 		"/cointerface",
-		c_cointerface_cpu_shares.get(),
-		c_cointerface_cpu_quota.get());
+		c_cointerface_cpu_shares.get_value(),
+		c_cointerface_cpu_quota.get_value());
 	cointerface_cpu_cgroup.create();
 
 	// Add our main process
@@ -599,17 +598,18 @@ int dragent_app::main(const std::vector<std::string>& args)
 				args[j++] = opt.c_str();
 			}
 
-			const string java_library_path = string("-Djava.library.path=") + m_configuration.c_root_dir.get() + "/lib";
+			const string java_library_path = string("-Djava.library.path=") +
+			                                 m_configuration.c_root_dir.get_value() + "/lib";
 			args[j++] = java_library_path.c_str();
 			args[j++] = "-Dsun.rmi.transport.connectionTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-Dsun.rmi.transport.tcp.handshakeTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-Dsun.rmi.transport.tcp.responseTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-Dsun.rmi.transport.tcp.readTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-jar";
-			File sdjagent_jar(m_configuration.c_root_dir.get() + "/share/sdjagent.jar");
+			File sdjagent_jar(m_configuration.c_root_dir.get_value() + "/share/sdjagent.jar");
 
 			std::string jar_file = sdjagent_jar.exists() ?
-				(m_configuration.c_root_dir.get() + "/share/sdjagent.jar") :
+				(m_configuration.c_root_dir.get_value() + "/share/sdjagent.jar") :
 				"../sdjagent/java/sdjagent-1.0-jar-with-dependencies.jar";
 
 			args[j++] = jar_file.c_str();
@@ -650,8 +650,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 			this->m_statsite_pipes->attach_child_stdio();
 			if(this->m_configuration.m_agent_installed)
 			{
-				execl((m_configuration.c_root_dir.get() + "/bin/statsite").c_str(), "statsite", "-f",
-					(m_configuration.c_root_dir.get() + "/etc/statsite.ini").c_str(), (char*)NULL);
+				execl((m_configuration.c_root_dir.get_value() + "/bin/statsite").c_str(), "statsite", "-f",
+					(m_configuration.c_root_dir.get_value() + "/etc/statsite.ini").c_str(), (char*)NULL);
 			}
 			else
 			{
@@ -661,7 +661,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			return (EXIT_FAILURE);
 		});
 
-		if(c_use_statsite_forwarder.get() ||
+		if(c_use_statsite_forwarder.get_value() ||
 		   (m_configuration.m_mode == dragent_mode_t::NODRIVER))
 		{
 			m_statsite_forwarder_pipe = make_unique<errpipe_manager>();
@@ -688,7 +688,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		auto state = &m_subprocesses_state["sdchecks"];
 		state->set_name("sdchecks");
 		m_subprocesses_logger.add_logfd(m_sdchecks_pipes->get_file(), sdchecks_parser(), state);
-		if(!c_sdagent_app_checks_python_26_supported.get() &&
+		if(!c_sdagent_app_checks_python_26_supported.get_value() &&
 		    m_configuration.check_python_version26())
 		{
 		    // LOG_ERROR can't be used this early in startup and that's why cerr is being used.
@@ -703,9 +703,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 				default_cpu_cgroup.enter();
 				this->m_sdchecks_pipes->attach_child();
 
-				setenv("LD_LIBRARY_PATH", (m_configuration.c_root_dir.get() + "/lib").c_str(), 1);
+				setenv("LD_LIBRARY_PATH", (m_configuration.c_root_dir.get_value() + "/lib").c_str(), 1);
 				const char *python = this->m_configuration.m_python_binary.c_str();
-				execl(python, python, (m_configuration.c_root_dir.get() + "/bin/sdchecks").c_str(), "run", NULL);
+				execl(python, python, (m_configuration.c_root_dir.get_value() + "/bin/sdchecks").c_str(), "run", NULL);
 
 				return (EXIT_FAILURE);
 			});
@@ -755,14 +755,14 @@ int dragent_app::main(const std::vector<std::string>& args)
 			if(m_configuration.m_cointerface_cpu_profile_enabled)
 			{
 				string logfile = m_configuration.m_log_dir + "/cpu.prof";
-				execl((m_configuration.c_root_dir.get() + "/bin/cointerface").c_str(), "cointerface",
+				execl((m_configuration.c_root_dir.get_value() + "/bin/cointerface").c_str(), "cointerface",
 				      "-cpuprofile", logfile.c_str(),
 				      "-eventspertrace", to_string(m_configuration.m_cointerface_events_per_profile).c_str(),
 				      "-keeptraces", to_string(m_configuration.m_cointerface_total_profiles).c_str(),
 				      "-memprofile", m_configuration.m_cointerface_mem_profile_enabled ? "true" : "false",
 				      (char *) NULL);
 			} else {
-				execl((m_configuration.c_root_dir.get() + "/bin/cointerface").c_str(), "cointerface", (char *) NULL);
+				execl((m_configuration.c_root_dir.get_value() + "/bin/cointerface").c_str(), "cointerface", (char *) NULL);
 			}
 
 			return (EXIT_FAILURE);
@@ -781,7 +781,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			default_cpu_cgroup.enter();
 			m_promex_pipes->attach_child_stdio();
 
-			execl((m_configuration.c_root_dir.get() + "/bin/promex").c_str(), "promex",
+			execl((m_configuration.c_root_dir.get_value() + "/bin/promex").c_str(), "promex",
 			      "-prom-addr", m_configuration.m_promex_url.c_str(),
 			      "-container-labels", m_configuration.m_promex_container_labels.c_str(),
 			      (char *) NULL);
@@ -809,8 +809,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 				}
 
 				coclient::cleanup();
-				default_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get());
-				cointerface_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get());
+				default_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get_value());
+				cointerface_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get_value());
 #endif
 			});
 
@@ -1131,7 +1131,7 @@ void dragent_app::init_inspector(sinsp::ptr inspector)
 sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector)
 {
 	sinsp_analyzer* analyzer = new sinsp_analyzer(inspector.get(),
-	                                              m_configuration.c_root_dir.get(),
+	                                              m_configuration.c_root_dir.get_value(),
 	                                              m_internal_metrics,
 	                                              m_protocol_handler,
 	                                              m_protocol_handler);
@@ -1161,7 +1161,7 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector)
 
 	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled)
 	{
-		analyzer->enable_jmx(protocol_handler::c_print_protobuf.get(),
+		analyzer->enable_jmx(protocol_handler::c_print_protobuf.get_value(),
 		               m_configuration.m_jmx_sampling);
 	}
 
@@ -1169,7 +1169,7 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector)
 	{
 		const bool enable_statsite_forwarder =
 		    configuration_manager::instance().get_config<bool>(
-		            "statsd.use_forwarder")->get() ||
+		            "statsd.use_forwarder")->get_value() ||
 		    (m_configuration.m_mode == dragent_mode_t::NODRIVER);
 
 		analyzer->set_statsd_iofds(m_statsite_pipes->get_io_fds(),
@@ -1524,7 +1524,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 	{
 		if(!m_coclient) {
 			// Actually allocate the coclient object
-			m_coclient = make_unique<coclient>(m_configuration.c_root_dir.get());
+			m_coclient = make_unique<coclient>(m_configuration.c_root_dir.get_value());
 		}
 
 		// Ping every 5 seconds. If it's ever more than

@@ -19,12 +19,14 @@
 using namespace std;
 namespace security_config = libsanalyzer::security_config;
 
-type_config<uint16_t> config_increased_snaplen_port_range_start(0,
-						   "Starting port in the range of ports to enable a larger snaplen on",
-						   "increased_snaplen_port_range_start");
-type_config<uint16_t> config_increased_snaplen_port_range_end(0,
-						   "Ending port in the range of ports to enable a larger snaplen on",
-						   "increased_snaplen_port_range_end");
+type_config<uint16_t> config_increased_snaplen_port_range_start(
+		0,
+		"Starting port in the range of ports to enable a larger snaplen on",
+		"increased_snaplen_port_range_start");
+type_config<uint16_t> config_increased_snaplen_port_range_end(
+		0,
+		"Ending port in the range of ports to enable a larger snaplen on",
+		"increased_snaplen_port_range_end");
 
 COMMON_LOGGER();
 
@@ -100,7 +102,7 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 			LOGGED_THROW(sinsp_exception, "Security capabilities depend on cointerface, but cointerface is disabled.");
 		}
 
-		m_security_mgr = new security_mgr(m_configuration->c_root_dir.get(),
+		m_security_mgr = new security_mgr(m_configuration->c_root_dir.get_value(),
 						  m_protocol_handler);
 		m_security_mgr->init(m_inspector.get(),
 				     m_analyzer,
@@ -144,7 +146,7 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 
 	if(m_configuration->m_cointerface_enabled)
 	{
-		std::string run_dir = m_configuration->c_root_dir.get() + "/run";
+		std::string run_dir = m_configuration->c_root_dir.get_value() + "/run";
 		m_compliance_mgr = new compliance_mgr(run_dir, m_protocol_handler);
 		m_compliance_mgr->init(m_analyzer,
 				       m_configuration);
@@ -184,19 +186,19 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 	}
 
 	m_inspector->set_query_docker_image_info(m_configuration->m_query_docker_image_info);
-	m_inspector->set_cri_socket_path(c_cri_socket_path->get());
-	m_inspector->set_cri_timeout(c_cri_timeout_ms.get());
-	m_inspector->set_cri_extra_queries(c_cri_extra_queries.get());
-	m_inspector->set_cri_async(c_cri_async.get());
-	m_inspector->set_cri_delay(c_cri_delay_ms.get());
+	m_inspector->set_cri_socket_path(c_cri_socket_path->get_value());
+	m_inspector->set_cri_timeout(c_cri_timeout_ms.get_value());
+	m_inspector->set_cri_extra_queries(c_cri_extra_queries.get_value());
+	m_inspector->set_cri_async(c_cri_async.get_value());
+	m_inspector->set_cri_delay(c_cri_delay_ms.get_value());
 
-	if(c_cri_socket_path->get().empty())
+	if(c_cri_socket_path->get_value().empty())
 	{
 		LOG_INFO("CRI support disabled.");
 	}
 	else
 	{
-		LOG_INFO("CRI support enabled, socket: %s", c_cri_socket_path->get().c_str());
+		LOG_INFO("CRI support enabled, socket: %s", c_cri_socket_path->get_value().c_str());
 	}
 
 	//
@@ -233,8 +235,8 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 			m_inspector->set_snaplen(m_configuration->m_snaplen);
 		}
 
-		uint16_t range_start = config_increased_snaplen_port_range_start.get();
-		uint16_t range_end = config_increased_snaplen_port_range_end.get();
+		uint16_t range_start = config_increased_snaplen_port_range_start.get_value();
+		uint16_t range_end = config_increased_snaplen_port_range_end.get_value();
 
 		if(range_start > 0 && range_end > 0)
 		{

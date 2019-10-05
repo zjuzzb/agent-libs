@@ -57,9 +57,9 @@ metric_serializer::metric_serializer(const internal_metrics::sptr_t& internal_me
 	m_internal_metrics(internal_metrics),
 	m_uncompressed_sample_handler(sample_handler)
 { 
-	if (!c_metrics_dir.get().empty())
+	if (!c_metrics_dir.get_value().empty())
 	{
-		std::string dir = Poco::Path(m_root_dir).append(c_metrics_dir.get()).toString();
+		std::string dir = Poco::Path(m_root_dir).append(c_metrics_dir.get_value()).toString();
 
 		set_metrics_directory(dir);
 	}

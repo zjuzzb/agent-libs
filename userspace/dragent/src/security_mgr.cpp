@@ -117,7 +117,7 @@ void security_mgr::init(sinsp *inspector,
 	// Only check the above every second
 	m_check_periodic_tasks_interval = make_unique<run_on_interval>(1000000000);
 
-	m_coclient = make_shared<coclient>(configuration->c_root_dir.get());
+	m_coclient = make_shared<coclient>(configuration->c_root_dir.get_value());
 
 	m_actions.init(this, m_coclient);
 
@@ -351,7 +351,7 @@ bool security_mgr::load_v1(const draiosproto::policies &policies, const draiospr
 		}
 	}
 
-	m_falco_engine = make_shared<falco_engine>(true, m_configuration->c_root_dir.get() + "/share/lua/");
+	m_falco_engine = make_shared<falco_engine>(true, m_configuration->c_root_dir.get_value() + "/share/lua/");
 	m_falco_engine->set_inspector(m_inspector);
 	m_falco_engine->set_sampling_multiplier(m_configuration->m_falco_engine_sampling_multiplier);
 
@@ -512,7 +512,7 @@ bool security_mgr::load_v2(const draiosproto::policies_v2 &policies_v2, std::str
 
 	m_fastengine_rules_library->reset();
 
-	m_falco_engine = make_shared<falco_engine>(true, m_configuration->c_root_dir.get() + "/share/lua/");
+	m_falco_engine = make_shared<falco_engine>(true, m_configuration->c_root_dir.get_value() + "/share/lua/");
 	m_falco_engine->set_inspector(m_inspector);
 	m_falco_engine->set_sampling_multiplier(m_configuration->m_falco_engine_sampling_multiplier);
 
@@ -1287,7 +1287,7 @@ draiosproto::policy_event * security_mgr::create_policy_event(int64_t ts_ns,
 		event->set_sinsp_events_dropped(analyzer()->recent_sinsp_events_dropped());
 	}
 
-	if (c_event_labels_enabled.get() && event_source != ESRC_K8S_AUDIT)
+	if (c_event_labels_enabled.get_value() && event_source != ESRC_K8S_AUDIT)
 	{
 		set_event_labels(container_id, tinfo, event);
 	}
@@ -1331,7 +1331,7 @@ draiosproto::policy_event * security_mgr::create_policy_event(int64_t ts_ns,
 		event->set_sinsp_events_dropped(analyzer()->recent_sinsp_events_dropped());
 	}
 
-	if (c_event_labels_enabled.get() && event_source != ESRC_K8S_AUDIT)
+	if (c_event_labels_enabled.get_value() && event_source != ESRC_K8S_AUDIT)
 	{
 		set_event_labels(container_id, tinfo, event);
 	}
@@ -1373,7 +1373,7 @@ void security_mgr::set_event_labels(std::string &container_id,
 
 		int count_tags = 0;
 		for (auto &pair : tags) {
-			if (count_tags >= c_event_labels_max_agent_tags.get())
+			if (count_tags >= c_event_labels_max_agent_tags.get_value())
 			{
 				break;
 			}
@@ -1743,10 +1743,10 @@ void security_mgr::stop_k8s_audit_tasks()
 // if a key is present in both include and exclude ignore it
 // otherwise create a set of 'include' strings
 void security_mgr::configure_event_labels_set(){
-	for (const auto& s : c_event_labels_include.get()){
+	for (const auto& s : c_event_labels_include.get_value()){
 		m_event_labels.insert(s);
 	}
-	for (const auto& s : c_event_labels_exclude.get()){
+	for (const auto& s : c_event_labels_exclude.get_value()){
 		m_event_labels.erase(s);
 	}
 }

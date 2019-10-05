@@ -8,14 +8,14 @@ TEST(scoped_config_test, key)
 	const std::string key = "key1";
 	type_config<int> some_config(10, "description", key);
 
-	ASSERT_EQ(10, some_config.get());
+	ASSERT_EQ(10, some_config.get_value());
 
 	{
 		scoped_config<int> config(key, 99);
-		ASSERT_EQ(99, some_config.get());
+		ASSERT_EQ(99, some_config.get_value());
 	}
 
-	ASSERT_EQ(10, some_config.get());
+	ASSERT_EQ(10, some_config.get_value());
 }
 
 TEST(scoped_config_test, subkey)
@@ -26,14 +26,14 @@ TEST(scoped_config_test, subkey)
 
 	type_config<int> some_config(10, "description", key, subkey);
 
-	ASSERT_EQ(10, some_config.get());
+	ASSERT_EQ(10, some_config.get_value());
 
 	{
 		scoped_config<int> config(the_key, 99);
-		ASSERT_EQ(99, some_config.get());
+		ASSERT_EQ(99, some_config.get_value());
 	}
 
-	ASSERT_EQ(10, some_config.get());
+	ASSERT_EQ(10, some_config.get_value());
 }
 
 TEST(scoped_config_test, subsubkey)
@@ -45,12 +45,12 @@ TEST(scoped_config_test, subsubkey)
 
 	type_config<int> some_config(10, "description", key, subkey, subsubkey);
 
-	ASSERT_EQ(10, some_config.get());
+	ASSERT_EQ(10, some_config.get_value());
 
 	{
 		scoped_config<int> config(the_key, 99);
-		ASSERT_EQ(99, some_config.get());
+		ASSERT_EQ(99, some_config.get_value());
 	}
 
-	ASSERT_EQ(10, some_config.get());
+	ASSERT_EQ(10, some_config.get_value());
 }

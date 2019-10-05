@@ -5,13 +5,14 @@
 namespace {
 
 type_config<unsigned int>::ptr c_max_argument_length =
-   type_config_builder<unsigned int>(100 /*default*/,
-				     "The maximum length to send for arguments to the command line",
-				     "process_emitter",
-				     "max_command_arg_length")
+	type_config_builder<unsigned int>(
+			100 /*default*/,
+			"The maximum length to send for arguments to the command line",
+			"process_emitter",
+			"max_command_arg_length")
 	.min(10)
 	.max(64 * 1024)
-	.get();
+	.build();
 
 }
 
@@ -273,7 +274,7 @@ void process_emitter::emit_processes(analyzer_emitter::flush_flags flushflags,
 		filter_top_programs(progtable.begin(),
 				    progtable.end(),
 				    false, //!cs_only
-				    process_manager::c_top_processes_per_host.get(),
+				    process_manager::c_top_processes_per_host.get_value(),
 				    blacklist_processes,
 				    processes_to_emit);
 
@@ -281,7 +282,7 @@ void process_emitter::emit_processes(analyzer_emitter::flush_flags flushflags,
 		filter_top_programs(progtable.begin(),
 				    progtable.end(),
 				    true, //cs_only
-				    process_manager::c_top_processes_per_host.get(),
+				    process_manager::c_top_processes_per_host.get_value(),
 				    blacklist_processes,
 				    processes_to_emit);
 	}
@@ -289,7 +290,7 @@ void process_emitter::emit_processes(analyzer_emitter::flush_flags flushflags,
 	// Next: grab the whitelisted processes. If you whitelist too many processes, too bad for you.
 	for(const auto it : high_priority_processes)
 	{
-		if(processes_to_emit.size() >= process_manager::c_process_limit.get())
+		if(processes_to_emit.size() >= process_manager::c_process_limit.get_value())
 		{
 			break;
 		}
@@ -303,7 +304,7 @@ void process_emitter::emit_processes(analyzer_emitter::flush_flags flushflags,
 		// Add at least one process per emitted_container
 		for(const auto& container_id : emitted_containers)
 		{
-			if(processes_to_emit.size() >= process_manager::c_process_limit.get())
+			if(processes_to_emit.size() >= process_manager::c_process_limit.get_value())
 			{
 				break;
 			}
@@ -315,7 +316,7 @@ void process_emitter::emit_processes(analyzer_emitter::flush_flags flushflags,
 				filter_top_programs(progs.begin(),
 						    progs.end(),
 						    false, //!cs_only
-						    process_manager::c_top_processes_per_container.get(),
+						    process_manager::c_top_processes_per_container.get_value(),
 						    blacklist_processes,
 						    processes_to_emit);
 			}
@@ -323,13 +324,13 @@ void process_emitter::emit_processes(analyzer_emitter::flush_flags flushflags,
 	}
 
 	// Last: fill up the list with processes from the host
-	if(!m_inspector.is_capture() && processes_to_emit.size() < process_manager::c_process_limit.get())
+	if(!m_inspector.is_capture() && processes_to_emit.size() < process_manager::c_process_limit.get_value())
 	{
 		// Filter top active programs
 		filter_top_programs(progtable.begin(),
 				    progtable.end(),
 				    false, //!cs_only
-				    (process_manager::c_process_limit.get() - processes_to_emit.size()) / 8,
+				    (process_manager::c_process_limit.get_value() - processes_to_emit.size()) / 8,
 				    blacklist_processes,
 				    processes_to_emit);
 
@@ -337,7 +338,7 @@ void process_emitter::emit_processes(analyzer_emitter::flush_flags flushflags,
 		filter_top_programs(progtable.begin(),
 				    progtable.end(),
 				    true, //cs_only
-				    (process_manager::c_process_limit.get() - processes_to_emit.size()) / 8,
+				    (process_manager::c_process_limit.get_value() - processes_to_emit.size()) / 8,
 				    blacklist_processes,
 				    processes_to_emit);
 	}
@@ -599,5 +600,5 @@ void process_emitter::emit_process(sinsp_threadinfo& tinfo,
 // static
 unsigned int process_emitter::max_command_argument_length()
 {
-	return c_max_argument_length->get();
+	return c_max_argument_length->get_value();
 }

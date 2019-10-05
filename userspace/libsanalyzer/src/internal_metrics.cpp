@@ -139,7 +139,7 @@ void internal_metrics::emit(draiosproto::statsd_info* statsd_info,
         set_fl(flush_duration_ns / 1000000);
 
         bool sent;
-        if(c_extra_internal_metrics.get())
+        if(c_extra_internal_metrics.get_value())
         {
                 sent = send_all(statsd_info);
         }

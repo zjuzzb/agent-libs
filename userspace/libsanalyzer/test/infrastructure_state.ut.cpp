@@ -77,26 +77,26 @@ k8s_event_counts_log_time: 162
 	ASSERT_EQ(0, config_yaml.errors().size());
 
 	configuration_manager::instance().init_config(config_yaml);
-	EXPECT_EQ(infrastructure_state::c_orchestrator_queue_len.get(), 146);
-	EXPECT_EQ(infrastructure_state::c_orchestrator_gc.get(), 147);
-	EXPECT_EQ(infrastructure_state::c_orchestrator_informer_wait_time_s.get(), 148);
-	EXPECT_EQ(infrastructure_state::c_orchestrator_tick_interval_ms.get(), 149);
-	EXPECT_EQ(infrastructure_state::c_orchestrator_low_ticks_needed.get(), 150);
-	EXPECT_EQ(infrastructure_state::c_orchestrator_low_event_threshold.get(), 151);
-	EXPECT_EQ(infrastructure_state::c_orchestrator_filter_empty.get(), false);
-	EXPECT_EQ(infrastructure_state::c_orchestrator_batch_messages_queue_length.get(), 152);
-	EXPECT_EQ(infrastructure_state::c_orchestrator_batch_messages_tick_interval_ms.get(), 153);
-	EXPECT_EQ(test_helper::get_url_config().get(), "154");
-	EXPECT_EQ(infrastructure_state::c_k8s_ssl_certificate_type.get(), "155");
-	EXPECT_EQ(test_helper::get_ssl_cert().get(), "156");
-	EXPECT_EQ(test_helper::get_key().get(), "157");
-	EXPECT_EQ(infrastructure_state::c_k8s_ssl_key_password->get(), "158");
-	EXPECT_EQ(test_helper::get_ca_cert().get(), "159");
-	EXPECT_EQ(infrastructure_state::c_k8s_ssl_verify_certificate.get(), true);
-	EXPECT_EQ(infrastructure_state::c_k8s_timeout_s.get(), 160);
-	EXPECT_EQ(test_helper::get_bt_auth_token().get(), "161");
-	EXPECT_EQ(infrastructure_state::c_k8s_include_types.get().size(), 2);
-	EXPECT_EQ(infrastructure_state::c_k8s_event_counts_log_time.get(), 162);
+	EXPECT_EQ(infrastructure_state::c_orchestrator_queue_len.get_value(), 146);
+	EXPECT_EQ(infrastructure_state::c_orchestrator_gc.get_value(), 147);
+	EXPECT_EQ(infrastructure_state::c_orchestrator_informer_wait_time_s.get_value(), 148);
+	EXPECT_EQ(infrastructure_state::c_orchestrator_tick_interval_ms.get_value(), 149);
+	EXPECT_EQ(infrastructure_state::c_orchestrator_low_ticks_needed.get_value(), 150);
+	EXPECT_EQ(infrastructure_state::c_orchestrator_low_event_threshold.get_value(), 151);
+	EXPECT_EQ(infrastructure_state::c_orchestrator_filter_empty.get_value(), false);
+	EXPECT_EQ(infrastructure_state::c_orchestrator_batch_messages_queue_length.get_value(), 152);
+	EXPECT_EQ(infrastructure_state::c_orchestrator_batch_messages_tick_interval_ms.get_value(), 153);
+	EXPECT_EQ(test_helper::get_url_config().get_value(), "154");
+	EXPECT_EQ(infrastructure_state::c_k8s_ssl_certificate_type.get_value(), "155");
+	EXPECT_EQ(test_helper::get_ssl_cert().get_value(), "156");
+	EXPECT_EQ(test_helper::get_key().get_value(), "157");
+	EXPECT_EQ(infrastructure_state::c_k8s_ssl_key_password->get_value(), "158");
+	EXPECT_EQ(test_helper::get_ca_cert().get_value(), "159");
+	EXPECT_EQ(infrastructure_state::c_k8s_ssl_verify_certificate.get_value(), true);
+	EXPECT_EQ(infrastructure_state::c_k8s_timeout_s.get_value(), 160);
+	EXPECT_EQ(test_helper::get_bt_auth_token().get_value(), "161");
+	EXPECT_EQ(infrastructure_state::c_k8s_include_types.get_value().size(), 2);
+	EXPECT_EQ(infrastructure_state::c_k8s_event_counts_log_time.get_value(), 162);
 }
 
 // infrastructure state does a ton of post processing on configs generating

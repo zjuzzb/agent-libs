@@ -17,7 +17,7 @@ audit_tap:
 	protocol_handler::c_compression_enabled.init(config_yaml);
 	protocol_handler::c_audit_tap_debug_only.init(config_yaml);
 
-	ASSERT_EQ(protocol_handler::c_print_protobuf.get(), true);
-	ASSERT_EQ(protocol_handler::c_compression_enabled.get(), false);
-	ASSERT_EQ(protocol_handler::c_audit_tap_debug_only.get(), false);
+	ASSERT_EQ(protocol_handler::c_print_protobuf.get_value(), true);
+	ASSERT_EQ(protocol_handler::c_compression_enabled.get_value(), false);
+	ASSERT_EQ(protocol_handler::c_audit_tap_debug_only.get_value(), false);
 }

@@ -72,7 +72,7 @@ public:
 	 * Returns the the maximum number of prometheus metrics to
 	 * forward.
 	 */
-	unsigned max_metrics() const { return static_cast<unsigned>(metric_forwarding_configuration::c_prometheus_max->get()); }
+	unsigned max_metrics() const { return static_cast<unsigned>(metric_forwarding_configuration::c_prometheus_max->get_value()); }
 
 	int max_metrics_per_proc() const { return m_max_metrics_per_proc; }
 	void set_max_metrics_per_proc(int val) { m_max_metrics_per_proc = val; }
