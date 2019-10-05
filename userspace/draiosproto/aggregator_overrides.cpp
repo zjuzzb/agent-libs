@@ -183,6 +183,60 @@ void metrics_message_aggregator_impl::aggregate(const draiosproto::metrics& inpu
     metrics_message_aggregator::aggregate(input, output);
 }
 
+void counter_percentile_data_message_aggregator_impl::aggregate(const draiosproto::counter_percentile_data& input,
+								draiosproto::counter_percentile_data& output)
+{
+    // add the input data to the digest
+    uint32_t len = input.num_samples();
+    uint32_t scale = input.scale();
+    if (len > 0)
+    {
+	double previous_value = input.means()[0];
+	double first_value = previous_value / scale;
+	m_digest->add(first_value, input.weights()[0]);
+	for (uint32_t i = 1; i < len; ++i)
+	{
+	    previous_value = previous_value + input.means()[i];
+	    double i_value = previous_value / scale;
+	    m_digest->add(i_value, input.weights()[i]);
+	}
+    }
+
+    m_digest->compress();
+
+    // dump the data from the digest to the output
+    output.Clear();
+    const uint32_t digest_scale = 1000; // must match what happens in BE and elsewhere in the kernel
+    output.set_scale(digest_scale);
+    auto& centroids = m_digest->processed();
+    output.set_num_samples(centroids.size());
+    int64_t previous_mean = 0;
+    for (auto& centroid : centroids)
+    {
+	double mean = centroid.mean();
+	int64_t scaled_mean = ((int64_t)mean) * digest_scale;
+	if (output.means().size() == 0)
+	{
+	    output.add_means(scaled_mean);
+	} else {
+	    output.add_means(scaled_mean - previous_mean);
+	}
+	output.add_weights(centroid.weight());
+
+	previous_mean = scaled_mean;
+    }
+
+    output.set_min((int64_t) (m_digest->min() * digest_scale));
+    output.set_max((int64_t) (m_digest->max() * digest_scale));
+}
+
+void counter_percentile_data_message_aggregator_impl::reset()
+{
+    m_digest = std::unique_ptr<tdigest::TDigest>(new tdigest::TDigest(200, // compression
+								      400, // buffer size
+								      5 * 400)); // seems to be what the java impl does
+}
+
 agent_message_aggregator<draiosproto::process_details>&
 message_aggregator_builder_impl::build_process_details() const
 {
@@ -195,3 +249,8 @@ message_aggregator_builder_impl::build_metrics() const
         return *(new metrics_message_aggregator_impl(*this));
 }
 
+agent_message_aggregator<draiosproto::counter_percentile_data>&
+message_aggregator_builder_impl::build_counter_percentile_data() const
+{
+        return *(new counter_percentile_data_message_aggregator_impl(*this));
+}

@@ -3703,9 +3703,29 @@ public:
 		return;
 	    }
 
+	    // can't guarantee exact equality of CPD due to its approximation nature
+	    if (field_path.back().field->containing_type()->name() == "counter_percentile_data")
+	    {
+		return;
+	    }
+
 	    google::protobuf::util::MessageDifferencer::StreamReporter::ReportAdded(message1,
 										    message2,
 										    field_path);
+	}
+        virtual void ReportModified(const google::protobuf::Message & message1,
+				    const google::protobuf::Message & message2,
+				    const std::vector< google::protobuf::util::MessageDifferencer::SpecificField >& field_path)
+	{
+	    // can't guarantee exact equality of CPD due to its approximation nature
+	    if (field_path.back().field->containing_type()->name() == "counter_percentile_data")
+	    {
+		return;
+	    }
+
+	    google::protobuf::util::MessageDifferencer::StreamReporter::ReportModified(message1,
+										       message2,
+										       field_path);
 	}
 };
 
@@ -3799,6 +3819,38 @@ void ignore_raw_fields(google::protobuf::util::MessageDifferencer& md,
     ignore_raw_mounted_fs(md, message.TOP("containers")->SUB("mounts"));
 }
 
+void map_percentile(google::protobuf::util::MessageDifferencer& md,
+		    const google::protobuf::FieldDescriptor* field)
+{
+    md.TreatAsMap(field,
+		  field->SUB("percentile"));
+}   
+
+void map_time_categories(google::protobuf::util::MessageDifferencer& md,
+			 const google::protobuf::FieldDescriptor* field)
+{
+    map_percentile(md, field->SUB("unknown")->SUB("percentile"));
+    map_percentile(md, field->SUB("other")->SUB("percentile"));
+    map_percentile(md, field->SUB("file")->SUB("percentile"));
+    map_percentile(md, field->SUB("net")->SUB("percentile"));
+    map_percentile(md, field->SUB("ipc")->SUB("percentile"));
+    map_percentile(md, field->SUB("memory")->SUB("percentile"));
+    map_percentile(md, field->SUB("process")->SUB("percentile"));
+    map_percentile(md, field->SUB("sleep")->SUB("percentile"));
+    map_percentile(md, field->SUB("system")->SUB("percentile"));
+    map_percentile(md, field->SUB("signal")->SUB("percentile"));
+    map_percentile(md, field->SUB("user")->SUB("percentile"));
+    map_percentile(md, field->SUB("time")->SUB("percentile"));
+    map_percentile(md, field->SUB("io_file")->SUB("percentile_in"));
+    map_percentile(md, field->SUB("io_file")->SUB("percentile_out"));
+    map_percentile(md, field->SUB("io_net")->SUB("percentile_in"));
+    map_percentile(md, field->SUB("io_net")->SUB("percentile_out"));
+    map_percentile(md, field->SUB("io_other")->SUB("percentile_in"));
+    map_percentile(md, field->SUB("io_other")->SUB("percentile_out"));
+    map_percentile(md, field->SUB("wait")->SUB("percentile"));
+    map_percentile(md, field->SUB("processing")->SUB("percentile"));
+}
+
 void validate_protobuf(std::string& diff,
 		       std::string name,
 		       bool should_ignore_raw_fields)
@@ -3867,6 +3919,7 @@ void validate_protobuf(std::string& diff,
 					           backend.TOP("programs")->SUB("procinfo")->SUB("details")},
 					          {backend.TOP("programs")->SUB("environment_hash")}});
 
+        map_time_categories(md, backend.TOP("hostinfo")->SUB("tcounters"));
 	// ignore non-aggregated values
 	if (should_ignore_raw_fields)
 	{

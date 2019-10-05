@@ -1,5 +1,6 @@
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libsanalyzer/src) # for tdigest
 
 if(NOT CYGWIN)
 	add_library(draiosproto STATIC

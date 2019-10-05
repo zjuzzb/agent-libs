@@ -1,6 +1,7 @@
 #pragma once
 
 #include "draios.proto.h"
+#include "tdigest/tdigest.h"
 
 // in order to override any of the generated function,
 // 1) create the impl class that derives from the generated aggregator
@@ -108,6 +109,28 @@ private:
     friend class test_helper;
 };
 
+class counter_percentile_data_message_aggregator_impl : public counter_percentile_data_message_aggregator
+{
+public:
+	counter_percentile_data_message_aggregator_impl(const message_aggregator_builder& builder)
+		: counter_percentile_data_message_aggregator(builder)
+	{
+	    // this ensures that some of the custom member vars are set up correctly
+	    reset();
+	}
+
+private:
+	// counter_percentile_data is effectively an opaque serialization of
+	// a tdigest object, so we have to use tdigest to do the aggregation
+	// instead of aggregating fields individually
+	std::unique_ptr<tdigest::TDigest> m_digest;
+	virtual void aggregate(const draiosproto::counter_percentile_data& input,
+			       draiosproto::counter_percentile_data& output);
+
+	// need to reset the tdigest
+	virtual void reset();
+};
+
 // for any message type which we've overridden, we have to override it's builder
 // function as well
 class message_aggregator_builder_impl : public message_aggregator_builder
@@ -115,4 +138,5 @@ class message_aggregator_builder_impl : public message_aggregator_builder
 public:
 	virtual agent_message_aggregator<draiosproto::process_details>& build_process_details() const;
 	virtual agent_message_aggregator<draiosproto::metrics>& build_metrics() const;
+	virtual agent_message_aggregator<draiosproto::counter_percentile_data>& build_counter_percentile_data() const;
 };
