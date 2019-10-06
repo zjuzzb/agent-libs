@@ -1,8 +1,22 @@
 
+def getAgentCommitSha() {
+  dir('agent') {
+    sh "git rev-parse HEAD > current-commit"
+    return readFile("current-commit").trim()
+  }
+}
+
 void setBuildStatus(String context, String message, String state) {
+
+  // There are issues with the GitHubCommitStatusSetter where it gets
+  // confused when multiple repos are checked out. To get around this,
+  // we explicitly grab the commit sha for the agent repo.
+  commitSha = getAgentCommitSha()
+
   step([
       $class: "GitHubCommitStatusSetter",
       reposSource: [$class: "ManuallyEnteredRepositorySource", url: "https://github.com/draios/agent"],
+      commitShaSource: [$class: "ManuallyEnteredShaSource", sha: commitSha],
       contextSource: [$class: "ManuallyEnteredCommitContextSource", context: context],
       errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
       statusResultSource: [ $class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
