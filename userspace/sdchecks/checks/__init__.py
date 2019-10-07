@@ -58,6 +58,13 @@ class CheckException(Exception):
     pass
 
 
+class ConfigurationError(Exception):
+    """
+    The configuration file is invalid
+    """
+    
+    pass
+
 class Infinity(CheckException):
     pass
 

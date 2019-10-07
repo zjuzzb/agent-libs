@@ -51,7 +51,7 @@ DONT_SEND_LOG_REPORT = 19
 SIGHUP_HANDLER_EXIT_CODE = DONT_SEND_LOG_REPORT
 
 BLACKLISTED_APP_CHECKS_FOR_PYTHON_2_6 = ('consul', 'couchdb', 'elasticsearch', 'haproxy', 'kafka', 'pgbouncer',
-                                         'rabbitmq')
+                                         'rabbitmq', 'postgres')
 UNSUPPORTED_PYTHON_VERSIONS_LIST = ['2.6']
 
 try:

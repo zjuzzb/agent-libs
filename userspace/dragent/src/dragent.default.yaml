@@ -802,7 +802,7 @@ app_checks:
       comm: postgres
       port: 5432
     conf:
-      unix_sock: "/var/run/postgresql/.s.PGSQL.{port}"
+      unix_sock: "/var/run/postgresql"
       username: postgres
   - name: postfix
     interval: 15
