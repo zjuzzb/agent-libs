@@ -761,16 +761,15 @@ class Application:
         if ex and pidname not in self.blacklisted_pidnames:
             if log_errors and check_instance.log_limit_flag:
                 logging.error("Exception on running check %s: %s", check_instance.name, ex)
-            elif check_instance.log_limit_flag or \
-                    current_time - check_instance.log_exception_time > check_instance.log_exception_relog_timeout:
+                check_instance.log_limit_flag = False
+            elif log_errors and current_time - check_instance.log_exception_time > check_instance.log_exception_relog_timeout:
                 logging.info("Exception on running check %s: %s", check_instance.name, ex)
                 check_instance.log_exception_time = datetime.now()
-            check_instance.log_limit_flag = False
             if check_instance.blacklist_app_timeout != -1 and (
                     current_time - check_instance.app_started_time > check_instance.blacklist_app_timeout):
                 self.blacklisted_pidnames.add(pidname)
         elif current_time - check_instance.log_exception_time > check_instance.log_exception_relog_timeout:
-            if ex:
+            if log_errors and ex:
                 logging.info("Exception on running check %s: %s", check_instance.name, ex)
             check_instance.log_exception_time = datetime.now()
         expiration_ts = datetime.now() + check_instance.interval
