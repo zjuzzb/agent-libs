@@ -16,10 +16,11 @@ namespace {
 COMMON_LOGGER();
 
 type_config<unsigned int>::ptr c_max_argument_length =
-   type_config_builder<unsigned int>(100 /*default*/,
-				     "The maximum length to send for arguments to the command line",
-				     "audit_tap",
-				     "max_command_arg_length")
+	type_config_builder<unsigned int>(
+			100 /*default*/,
+			"The maximum length to send for arguments to the command line",
+			"audit_tap",
+			"max_command_arg_length")
 	.min(10)
 	.max(64 * 1024)
 	.build();
@@ -44,11 +45,16 @@ type_config<std::string>::ptr c_protobuf_dir =
 		})
 	.build();
 
-type_config<uint64_t> c_audit_internal_s(
+type_config<uint64_t>::ptr c_audit_internal_s =
+	type_config_builder<uint64_t>(
 		60,
 		"The time interval, in seconds, on which the agent sends network audit information",
 		"audit_tap",
-		"network_audit_interval_s");
+		"network_audit_interval_s")
+
+	.hidden()
+	.min(60)
+	.build();
 
 
 void write_to_file(const tap::AuditLog& tap)
@@ -136,7 +142,7 @@ bool audit_tap::should_emit_network_audit()
 {
 	const auto now = sinsp_utils::get_current_time_ns();
 
-	if((now - m_last_run_audit_ns) <= (c_audit_internal_s.get_value() * ONE_SECOND_IN_NS))
+	if((now - m_last_run_audit_ns) <= (c_audit_internal_s->get_value() * ONE_SECOND_IN_NS))
 	{
 		return false;
 	}
