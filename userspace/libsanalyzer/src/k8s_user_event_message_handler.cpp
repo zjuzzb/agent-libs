@@ -4,8 +4,9 @@
 #include "user_event_logger.h"
 
 k8s_user_event_message_handler::k8s_user_event_message_handler(uint64_t refresh_interval,
-	std::string install_prefix, infrastructure_state *infra_state)
+	std::string install_prefix, std::function<bool()> is_deleg, infrastructure_state *infra_state)
 	: m_coclient(std::move(install_prefix)),
+	  m_is_delegated(is_deleg),
 	  m_subscribed(false),
 	  m_connected(false),
 	  m_event_limit_exceeded(false),
@@ -14,6 +15,12 @@ k8s_user_event_message_handler::k8s_user_event_message_handler(uint64_t refresh_
 	  m_infra_state(infra_state)
 {
 	m_callback = [this] (bool successful, google::protobuf::Message *response_msg) {
+
+		if (m_is_delegated && !m_is_delegated()) {
+			glogf(sinsp_logger::SEV_DEBUG,
+				"k8s_user_event: not delegated, skip event");
+			return;
+		}
 
 		if(successful) {
 			sdc_internal::k8s_user_event *evt = (sdc_internal::k8s_user_event *)response_msg;
@@ -331,5 +338,28 @@ void k8s_user_event_message_handler::refresh(uint64_t ts)
 	} else if (m_subscribed) {
 		connect(ts);
 	}
+}
+
+void k8s_user_event_message_handler::send_k8s_option(std::string key, std::string value)
+{
+	coclient::response_cb_t callback = [this] (bool successful, google::protobuf::Message *response_msg) {
+		if(successful) {
+			sdc_internal::k8s_option_result *res = (sdc_internal::k8s_option_result *)response_msg;
+			glogf(sinsp_logger::SEV_DEBUG, "k8s_user_event: Got option result message, success: %s, message: %s", res->successful() ? "true":"false", res->has_errstr() ? res->errstr().c_str() : "");
+		} else {
+			glogf(sinsp_logger::SEV_WARNING, "k8s_user_event: Error setting k8s option");
+		}
+	};
+	m_coclient.set_k8s_option(key, value, callback);
+}
+
+void k8s_user_event_message_handler::start_event_stream()
+{
+	send_k8s_option("events", "start");
+}
+
+void k8s_user_event_message_handler::stop_event_stream()
+{
+	send_k8s_option("events", "stop");
 }
 #endif

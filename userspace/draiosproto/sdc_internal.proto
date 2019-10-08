@@ -48,6 +48,8 @@ enum cointerface_message_type {
     ORCHESTRATOR_EVENTS_STREAM_RESULT = 8;
     ORCHESTRATOR_EVENT_MESSAGE_STREAM_COMMAND = 9;
     ORCHESTRATOR_EVENT_MESSAGE_STREAM_RESULT = 10;
+    SET_K8S_OPTION_COMMAND = 11;
+    SET_K8S_OPTION_RESULT = 12;
 }
 
 enum docker_cmd_type {
@@ -145,12 +147,23 @@ message k8s_user_event {
     optional string type = 8;
 }
 
+message k8s_option_command {
+    required string key = 1;
+    required string value = 2;
+}
+
+message k8s_option_result {
+    required bool successful = 1;
+    optional string errstr = 2;
+}
+
 service CoInterface {
     rpc PerformDockerCommand(docker_command) returns (docker_command_result) {}
     rpc PerformPing(ping) returns (pong) {}
     rpc PerformSwarmState(swarm_state_command) returns (swarm_state_result) {}
     rpc PerformOrchestratorEventMessageStream(orchestrator_attach_user_events_stream_command) returns (stream k8s_user_event) {}
     rpc PerformOrchestratorEventsStream(orchestrator_events_stream_command) returns (stream array_congroup_update_event) {}
+    rpc PerformSetK8sOption(k8s_option_command) returns (k8s_option_result) {}
 }
 
 message comp_module_status {

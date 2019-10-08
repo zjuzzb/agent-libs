@@ -911,6 +911,7 @@ VISIBILITY_PRIVATE
 	typedef sinsp_configuration::k8s_ext_list_t k8s_ext_list_t;
 	typedef sinsp_configuration::k8s_ext_list_ptr_t k8s_ext_list_ptr_t;
 	bool check_k8s_delegation();
+	bool check_k8s_delegation_impl();
 	k8s_ext_list_ptr_t k8s_discover_ext(const std::string& addr);
 	void init_k8s_ssl(const uri& url);
 	k8s* get_k8s(const uri& k8s_api, const std::string& msg);
@@ -1245,6 +1246,8 @@ VISIBILITY_PRIVATE
 
 	int m_detect_retry_seconds = 60; // TODO move to config?
 	std::unique_ptr<new_k8s_delegator> m_new_k8s_delegator;
+
+	bool m_is_k8s_delegated = false;
 #endif // CYGWING_AGENT
 
 	std::vector<std::string> m_container_patterns;
@@ -1350,6 +1353,7 @@ VISIBILITY_PRIVATE
 	 * class that manages the k8s event listener
 	 */
 	k8s_user_event_message_handler* m_k8s_user_event_handler = nullptr;
+	bool m_get_events = false;
 
 	friend class test_helper;
 

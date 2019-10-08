@@ -32,7 +32,7 @@ public:
 	 *                        a passthru at this level
 	 */
 	k8s_user_event_message_handler(uint64_t refresh_interval,
-		std::string install_prefix, infrastructure_state *infra_state);
+		std::string install_prefix, std::function<bool()>, infrastructure_state *infra_state);
 	~k8s_user_event_message_handler();
 
 	/**
@@ -77,7 +77,11 @@ public:
 		return m_user_event_queue->count();
 	}
 
+	void start_event_stream();
+	void stop_event_stream();
+
 private:
+	void send_k8s_option(std::string key, std::string value);
 	void handle_event(sdc_internal::k8s_user_event *evt, infrastructure_state *);
 	void connect(uint64_t ts = sinsp_utils::get_current_time_ns());
 	void reset_connection();
@@ -89,6 +93,7 @@ private:
 	std::string m_machine_id;
 	coclient m_coclient;
 	coclient::response_cb_t m_callback;
+	std::function<bool()> m_is_delegated;
 
 	bool m_subscribed;   // True if we're supposed to connect to k8s
 	bool m_connected;    // True if we have an active RPC connection

@@ -59,6 +59,7 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 		sdc_internal::swarm_state_command *sscmd;
 		sdc_internal::orchestrator_events_stream_command *orchestrator_events_stream_command;
 		sdc_internal::orchestrator_attach_user_events_stream_command *orchestrator_attach_user_events_stream_command;
+		sdc_internal::k8s_option_command *option_command;
 
 	case sdc_internal::PING:
 		// Start the rpc call and have the pong reader read the response when
@@ -114,6 +115,13 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 
 		call->response_msg = make_unique<sdc_internal::k8s_user_event>();
 
+		break;
+	case sdc_internal::SET_K8S_OPTION_COMMAND:
+		option_command = static_cast<sdc_internal::k8s_option_command *>(request_msg);
+		call->k8s_option_result_reader = m_stub->AsyncPerformSetK8sOption(&call->ctx, *option_command, &m_cq);
+
+		call->response_msg = make_unique<sdc_internal::k8s_option_result>();
+		call->k8s_option_result_reader->Finish(static_cast<sdc_internal::k8s_option_result *>(call->response_msg.get()), &call->status, (void*)call);
 		break;
 
 	default:
@@ -296,5 +304,13 @@ void coclient::get_orchestrator_event_messages(sdc_internal::orchestrator_attach
 					       response_cb_t response_cb)
 {
 	prepare(&cmd, sdc_internal::ORCHESTRATOR_EVENT_MESSAGE_STREAM_COMMAND, response_cb);
+}
+
+void coclient::set_k8s_option(std::string key, std::string value, response_cb_t response_cb)
+{
+	sdc_internal::k8s_option_command cmd;
+	cmd.set_key(key);
+	cmd.set_value(value);
+	prepare(&cmd, sdc_internal::SET_K8S_OPTION_COMMAND, response_cb);
 }
 #endif // CYGWING_AGENT

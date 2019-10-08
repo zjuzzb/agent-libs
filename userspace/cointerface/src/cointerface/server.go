@@ -349,6 +349,34 @@ func (c *coInterfaceServer) PerformOrchestratorEventMessageStream(cmd *sdc_inter
 	return nil
 }
 
+func (c *coInterfaceServer) PerformSetK8SOption(ctx context.Context, cmd *sdc_internal.K8SOptionCommand) (*sdc_internal.K8SOptionResult, error) {
+	var success bool = true
+	var errstr string
+
+	log.Debugf("[PerformSetK8sOption] received option: %s: %s", cmd.GetKey(), cmd.GetValue())
+	if (cmd.GetKey() == "events") {
+		if (cmd.GetValue() == "start") {
+			log.Infof("[PerformSetK8sOption] starting event export")
+			kubecollect.SetEventExport(true)
+		} else if (cmd.GetValue() == "stop") {
+			log.Infof("[PerformSetK8sOption] stopping event export")
+			kubecollect.SetEventExport(false)
+		} else {
+			errstr = "Unknown value " + cmd.GetValue() + " for key " + cmd.GetKey()
+			success = false
+		}
+	} else {
+		errstr = "Unknown key " + cmd.GetKey()
+		success = false
+	}
+
+	res := &sdc_internal.K8SOptionResult{
+		Successful: proto.Bool(success),
+		Errstr: proto.String(errstr),
+	}
+	return res, nil
+}
+
 // The GC helpers only support PerformOrchestratorEventsStream currently
 // Using them with another RPC could lead to races in changing/restoring
 func setGC(newGC int) int {

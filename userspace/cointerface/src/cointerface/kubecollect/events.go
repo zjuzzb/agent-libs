@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -15,6 +16,21 @@ import (
 
 	"github.com/draios/protorepo/sdc_internal"
 )
+
+// Atomic doesn't have booleans, we'll use an int32 instead
+var eventExportEnabled int32 = 0
+
+func SetEventExport(enable bool) {
+	i := int32(0)
+	if (enable) {
+		i = 1
+	}
+	atomic.StoreInt32(&eventExportEnabled, i)
+}
+
+func isEventExportEnabled() (bool) {
+	return atomic.LoadInt32(&eventExportEnabled) != 0
+}
 
 func newUserEvent(event *v1.Event) (sdc_internal.K8SUserEvent) {
 	log.Debugf("newUserEvent()")
@@ -87,20 +103,32 @@ func startUserEventsSInformer(ctx context.Context,
 func watchUserEvents(userEventChannel chan<- sdc_internal.K8SUserEvent) cache.SharedInformer {
 	log.Debugf("In WatchEvents()")
 
+	// Only delegated agents should be sending k8s events to the collector
+	// XXX: Currently cointerface will always start an informer and this watcher
+	// for events. Dragent will send commands to start or stop sending events
+	// when it has figured out that its delegation status has changed.
+	// Ideally we should not have the informer and this watcher running needlessly.
+
 	eventInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				log.Debugf("Event: Event add: %+v", obj)
-				userEventChannel <- newUserEvent(obj.(*v1.Event))
+				if (isEventExportEnabled()) {
+					log.Debugf("Event: Event add: %+v", obj)
+					userEventChannel <- newUserEvent(obj.(*v1.Event))
+				} else {
+					log.Debugf("Event: Skip add event export");
+				}
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				log.Debugf("Event: Event update: old: %+v, new: %+v", oldObj, newObj)
-				oldEvent := oldObj.(*v1.Event)
-				newEvent := newObj.(*v1.Event)
-				if oldEvent.GetResourceVersion() != newEvent.GetResourceVersion() {
-					log.Debugf("UpdateFunc dumping Event oldEvent %v", oldEvent)
-					log.Debugf("UpdateFunc dumping Event newEvent %v", newEvent)
-					userEventChannel <- newUserEvent(newEvent)
+				if (isEventExportEnabled()) {
+					log.Debugf("Event: Event update: old: %+v, new: %+v", oldObj, newObj)
+					oldEvent := oldObj.(*v1.Event)
+					newEvent := newObj.(*v1.Event)
+					if oldEvent.GetResourceVersion() != newEvent.GetResourceVersion() {
+						userEventChannel <- newUserEvent(newEvent)
+					}
+				} else {
+					log.Debugf("Event: Skip update event export");
 				}
 			},
 			DeleteFunc: func(obj interface{}) {

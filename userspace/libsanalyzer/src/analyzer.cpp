@@ -560,9 +560,12 @@ void sinsp_analyzer::on_capture_start()
 
 void sinsp_analyzer::init_k8s_user_event_handler()
 {
+	std::function<bool()> is_delegated = [this] () -> bool {
+		return m_is_k8s_delegated;
+	};
 	if (!m_k8s_user_event_handler) {
 		m_k8s_user_event_handler = new k8s_user_event_message_handler(K8S_EVENTS_POLL_INTERVAL_NS,
-			m_root_dir, m_configuration->get_add_event_scopes() ? infra_state() : nullptr);
+			m_root_dir, is_delegated, m_configuration->get_add_event_scopes() ? infra_state() : nullptr);
 	}
 
 	glogf("initializing k8s event message handler");
@@ -4146,6 +4149,21 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 
 			if(m_k8s_user_event_handler)
 			{
+				if (m_get_events != m_is_k8s_delegated)
+				{
+					// Only delegated agents should be sending K8s events.
+					// If the delegation status changes tell cointerface to
+					// start or stop sending events.
+					m_get_events = m_is_k8s_delegated;
+					if (m_get_events) {
+						glogf("k8s_user_event: tell cointerface to start sending events");
+						m_k8s_user_event_handler->start_event_stream();
+					} else {
+						glogf("k8s_user_event: tell cointerface to stop sending events");
+						m_k8s_user_event_handler->stop_event_stream();
+					}
+				}
+
 				m_k8s_user_event_handler->refresh(sinsp_utils::get_current_time_ns());
 			}
 
@@ -5458,6 +5476,12 @@ void sinsp_analyzer::log_timed_error(time_t& last_attempt, const std::string& er
 }
 
 bool sinsp_analyzer::check_k8s_delegation()
+{
+	m_is_k8s_delegated = check_k8s_delegation_impl();
+	return m_is_k8s_delegated;
+}
+
+bool sinsp_analyzer::check_k8s_delegation_impl()
 {
 	const std::string& k8s_uri = m_infrastructure_state->get_k8s_url();
 	int delegated_nodes = m_configuration->get_k8s_delegated_nodes();
