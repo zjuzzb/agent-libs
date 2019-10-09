@@ -145,7 +145,9 @@ public:
 		watchdog_state *m_state;
 	};
 
-	subprocesses_logger(dragent_configuration* configuration, log_reporter* reporter);
+	subprocesses_logger(dragent_configuration* configuration,
+	                    log_reporter* reporter,
+	                    protocol_queue& queue);
 
 	// `parser` is an rvalue reference because we expect a lambda
 	// or a custom object created on the fly
@@ -158,5 +160,6 @@ private:
 	dragent_configuration *m_configuration;
 	log_reporter* m_log_reporter;
 	std::map<FILE *, log_state> m_error_fds;
+	protocol_queue& m_queue;
 };
 

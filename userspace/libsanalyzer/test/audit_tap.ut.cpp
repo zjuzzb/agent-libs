@@ -29,8 +29,8 @@ const uint32_t DEFAULT_COUNT_OUT = 182;
 const uint32_t DEFAULT_COUNT_TOTAL = DEFAULT_COUNT_IN + DEFAULT_COUNT_OUT;
 const uint32_t DEFAULT_ERROR_COUNT = 2;
 
-uncompressed_sample_handler_dummy g_sample_handler;
 audit_tap_handler_dummy g_audit_handler;
+sinsp_analyzer::flush_queue g_queue(1000);
 
 /**
  * For legacy reasons, the inspector must be deleted before the analyzer.
@@ -166,10 +166,10 @@ void arg_length_test(const int limit)
 	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_sample_handler,
-				g_audit_handler);
+	                        "/" /*root dir*/,
+	                        int_metrics,
+	                        g_audit_handler,
+	                        &g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
 	analyzer.enable_audit_tap(true /*emit local connections*/);
@@ -218,10 +218,10 @@ TEST(audit_tap_test, basic)
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 
 	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_sample_handler,
-				g_audit_handler);
+	                        "/" /*root dir*/,
+	                        int_metrics,
+	                        g_audit_handler,
+	                        &g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
 	// For this test, we don't use the audit_tap in the analyzer, but if
@@ -327,10 +327,10 @@ TEST(audit_tap_test, connection_audit_one_client_connection)
 	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 	sinsp_analyzer analyzer(inspector.get(),
-				root_dir,
-				int_metrics,
-				g_sample_handler,
-				g_audit_handler);
+	                        root_dir,
+	                        int_metrics,
+	                        g_audit_handler,
+	                        &g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
 	analyzer.enable_audit_tap(emit_local_connections);
@@ -401,10 +401,10 @@ TEST(audit_tap_test, connection_audit_one_server_connection)
 	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 	sinsp_analyzer analyzer(inspector.get(),
-				root_dir,
-				int_metrics,
-				g_sample_handler,
-				g_audit_handler);
+	                        root_dir,
+	                        int_metrics,
+	                        g_audit_handler,
+	                        &g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
 	analyzer.enable_audit_tap(emit_local_connections);

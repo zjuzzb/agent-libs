@@ -2,6 +2,7 @@
 #include "common_logger.h"
 #include "utils.h"
 #include "dragent.h"
+#include "protocol.h"
 
 using namespace std;
 
@@ -361,10 +362,11 @@ void sinsp_encoded_parser::operator()(const string& s)
 
 const unsigned subprocesses_logger::READ_BUFFER_SIZE = 4096;
 
-subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, log_reporter* reporter) :
+subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, log_reporter* reporter, protocol_queue& queue) :
 		dragent::watchdog_runnable("subprocesses_logger"),
 		m_configuration(configuration),
-		m_log_reporter(reporter)
+        m_log_reporter(reporter),
+        m_queue(queue)
 {
 }
 
@@ -457,7 +459,7 @@ void subprocesses_logger::do_run()
 		}
 		if(dragent_configuration::m_send_log_report)
 		{
-			m_log_reporter->send_report(sinsp_utils::get_current_time_ns());
+			m_log_reporter->send_report(m_queue, sinsp_utils::get_current_time_ns());
 			dragent_configuration::m_send_log_report = false;
 		}
 	}

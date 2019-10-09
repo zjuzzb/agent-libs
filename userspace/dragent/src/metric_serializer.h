@@ -8,18 +8,21 @@
  */
 #pragma once
 
-#include "internal_metrics.h"
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include "blocking_queue.h"
+#include "protocol.h"
 #include "type_config.h"
 #include "uncompressed_sample_handler.h"
+#include "analyzer_flush_message.h"
+#include "dragent_message_queues.h"
 
 namespace draiosproto { class metrics; }
 
 class test_helper;
 
-namespace libsanalyzer
+namespace dragent
 {
 
 /**
@@ -33,67 +36,39 @@ public:
 	 * was not triggered by an event.
 	 */
 	const static uint64_t NO_EVENT_NUMBER;
-
-	/**
-	 * Enable clients of the serialize() API to pass in data in the form
-	 * in which we'll store it.  Client code should not use this class
-	 * outside of calls to serialize().
-	 */
-	class data
-	{
-	public:
-		data(uint64_t evt_num,
-		     uint64_t ts,
-		     uint32_t sampling_ratio,
-		     double prev_flush_cpu_pct,
-		     uint64_t prev_flushes_duration_ns,
-		     std::atomic<bool>& metrics_sent,
-		     double my_cpuload,
-		     int64_t n_proc_lookups,
-		     int64_t n_main_thread_lookups,
-		     const draiosproto::metrics& metrics);
-
-		const uint64_t m_evt_num;
-		const uint64_t m_ts;
-		const uint32_t m_sampling_ratio;
-		const double m_prev_flush_cpu_pct;
-		const uint64_t m_prev_flushes_duration_ns;
-		std::atomic<bool>& m_metrics_sent;
-		const double m_my_cpuload;
-		const int64_t m_n_proc_lookups;
-		const int64_t m_n_main_thread_lookups;
-		std::shared_ptr<draiosproto::metrics> m_metrics;
-	};
-
+	typedef flush_data data;
 
 	/**
 	 * Initialize this metric_serializer.
 	 *
-	 * @param[in] internal_metrics The internal metrics to serialize.
-	 * @param[in] root_dir    The root dir base of the application
-	 * @param[in] sample_handler the object implementing the function
-	 *            "handle_uncompressed_sample" to be invoked when sample processing
-	 *            is completed
+	 * @param[in] root_dir         The root dir base of the application
+	 * @param[in] sample_handler   The object which performs the serialization
+	 * @param[in] input_queue      The queue on which flush data are received
+	 * @param[in] output_queue     The queue to which serialized data are written
 	 */
-	metric_serializer(const internal_metrics::sptr_t& internal_metrics,
-			  const std::string& root_dir,
-			  uncompressed_sample_handler& sample_handler);
+	metric_serializer(const std::string& root_dir,
+	                  uncompressed_sample_handler& sample_handler,
+	                  flush_queue* input_queue,
+	                  protocol_queue* output_queue);
 
 	virtual ~metric_serializer() = default;
 
 	/**
-	 * Start the serialization process for the given data.  This process
-	 * may be performed asynchronously, client code must handle async
-	 * updates to anything passed by reference to data's constructor.
+	 * Enqueue the data item onto the serialization queue.
 	 *
 	 * @param[in] data The data to serialize.
 	 */
-	virtual void serialize(std::unique_ptr<data>&& data) = 0;
+	virtual void serialize(data&& data) = 0;
 
 	/**
 	 * Wait for any potentially async serialization operations to complete.
 	 */
 	virtual void drain() const = 0;
+
+	/**
+	 * Shut down the serializer
+	 */
+	virtual void stop() = 0;
 
 	/**
 	 * Returns true if this metric_serializer is configured to emit
@@ -122,8 +97,9 @@ private:
 	std::string m_metrics_dir;
 
 protected:
-	internal_metrics::sptr_t m_internal_metrics;
 	uncompressed_sample_handler& m_uncompressed_sample_handler;
+	flush_queue* m_input_queue;
+	protocol_queue* m_output_queue;
 
 public: // configs
 	static type_config<std::string> c_metrics_dir;
@@ -131,4 +107,4 @@ public: // configs
 	friend class ::test_helper;
 };
 
-} // end namespace libsanalyzer
+} // end namespace dragent

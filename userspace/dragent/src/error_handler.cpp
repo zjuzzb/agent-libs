@@ -65,7 +65,7 @@ log_reporter::log_reporter(log_report_handler& handler, dragent_configuration * 
 {
 }
 
-void log_reporter::send_report(uint64_t ts_ns)
+void log_reporter::send_report(protocol_queue& transmit_queue, uint64_t ts_ns)
 {
 	Path p;
 	p.parseDirectory(m_configuration->m_log_dir);
@@ -120,5 +120,12 @@ void log_reporter::send_report(uint64_t ts_ns)
 	report.set_machine_id(m_configuration->machine_id());
 	report.set_log(buf.begin(), buf.size());
 
-	m_report_handler.handle_log_report(ts_ns, report);
+	std::shared_ptr<serialized_buffer> serialized_report;
+	serialized_report = m_report_handler.handle_log_report(ts_ns, report);
+
+	if(!transmit_queue.put(serialized_report, protocol_queue::BQ_PRIORITY_LOW))
+	{
+		g_log->information("Could not log shutdown report: queue full.");
+		return;
+	}
 }

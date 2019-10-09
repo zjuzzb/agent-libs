@@ -13,6 +13,13 @@
 #include "common_assert.h"
 #include "blocking_queue.h"
 
+struct serialized_buffer
+{
+	std::string buffer;
+	uint64_t ts_ns;
+	uint8_t message_type;
+};
+
 #if defined _MSC_VER
 #pragma pack(push)
 #pragma pack(1)
@@ -27,15 +34,6 @@ struct dragent_protocol_header
 };
 #pragma pack(pop)
 
-struct protocol_queue_item
-{
-	std::string buffer;
-	uint64_t ts_ns;
-	uint8_t message_type;
-};
-
-typedef blocking_queue<std::shared_ptr<protocol_queue_item>> protocol_queue;
-
 namespace dragent_protocol
 {
 	class protocol_error : public std::runtime_error
@@ -48,7 +46,7 @@ namespace dragent_protocol
 
 	const uint8_t PROTOCOL_VERSION_NUMBER = 4;
 
-	std::shared_ptr<protocol_queue_item> message_to_buffer(
+	std::shared_ptr<serialized_buffer> message_to_buffer(
 			uint64_t ts_ns,
 			uint8_t message_type,
 			const google::protobuf::MessageLite& message,
@@ -81,10 +79,10 @@ void dragent_protocol::buffer_to_protobuf(const uint8_t* const buf,
 }
 
 template<class T>
-void parse_protocol_queue_item(const protocol_queue_item& item, T* message)
+void parse_protocol_queue_item(const serialized_buffer& item, T* message)
 {
 	const uint8_t* const buf = reinterpret_cast<const uint8_t *>(item.buffer.c_str()) +
-		sizeof(dragent_protocol_header);
+	    sizeof(dragent_protocol_header);
 	size_t size = item.buffer.size() - sizeof(dragent_protocol_header);
 	dragent_protocol::buffer_to_protobuf(buf, size, message);
 }

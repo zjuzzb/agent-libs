@@ -63,7 +63,7 @@ TEST(sinsp_worker_test, DISABLED_end_to_end_basic)
 
 	// Inspect the protocol queue
 	ASSERT_EQ(1, queue.size());
-	std::shared_ptr<protocol_queue_item> item;
+	std::shared_ptr<serialized_buffer> item;
 	queue.get(&item, 300 /*timeout_ms*/);
 	ASSERT_EQ(draiosproto::message_type::METRICS, item->message_type);
 

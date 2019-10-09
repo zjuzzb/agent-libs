@@ -8,6 +8,7 @@
 #include "capture_job_handler.h"
 #include "sinsp_worker.h"
 #include "configuration_manager.h"
+#include "dragent_message_queues.h"
 
 using namespace std;
 
@@ -90,7 +91,7 @@ private:
 	uint64_t m_last_chunk_offset;
 	uint64_t m_last_chunk_idx;
 	string m_last_chunk;
-	std::shared_ptr<protocol_queue_item> m_last_dump_queue_item;
+	std::shared_ptr<serialized_buffer> m_last_dump_queue_item;
 
 	// Prevents stop() and process_event() from being called
 	// simultaneously from different threads.
@@ -1017,7 +1018,7 @@ void capture_job_handler::prepare_response(const string& token, draiosproto::dum
 	response->set_token(token);
 }
 
-shared_ptr<protocol_queue_item> capture_job_handler::dump_response_to_queue_item(const draiosproto::dump_response& response)
+shared_ptr<serialized_buffer> capture_job_handler::dump_response_to_queue_item(const draiosproto::dump_response& response)
 {
 	return dragent_protocol::message_to_buffer(
 		sinsp_utils::get_current_time_ns(),
@@ -1029,7 +1030,7 @@ shared_ptr<protocol_queue_item> capture_job_handler::dump_response_to_queue_item
 		m_configuration->m_sysdig_capture_compression_level);
 }
 
-bool capture_job_handler::queue_item(std::shared_ptr<protocol_queue_item> &item, protocol_queue::item_priority priority)
+bool capture_job_handler::queue_item(std::shared_ptr<serialized_buffer> &item, protocol_queue::item_priority priority)
 {
 	if(!item)
 	{
@@ -1048,7 +1049,7 @@ bool capture_job_handler::queue_item(std::shared_ptr<protocol_queue_item> &item,
 
 bool capture_job_handler::queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority)
 {
-	std::shared_ptr<protocol_queue_item> item = dump_response_to_queue_item(response);
+	std::shared_ptr<serialized_buffer> item = dump_response_to_queue_item(response);
 
 	return queue_item(item, priority);
 }

@@ -507,7 +507,7 @@ void connection_manager::do_run()
 		THROW_DRAGENT_WR_FATAL_ERROR("initialization failed");
 	}
 
-	std::shared_ptr<protocol_queue_item> item;
+	std::shared_ptr<serialized_buffer> item;
 
 	while(heartbeat())
 	{
@@ -581,7 +581,7 @@ void connection_manager::do_run()
 	} // End while (heartbeat)
 }
 
-bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_queue_item> &item)
+bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<serialized_buffer> &item)
 {
 	// Sometimes now can be less than ts_ns. The timestamp in
 	// metrics messages is rounded up to the following metrics
@@ -838,8 +838,8 @@ bool connection_manager::receive_message()
 			{
 				itr->second->handle_message(
 						type,
-						m_buffer.begin() + sizeof(dragent_protocol_header),
-						header->len - sizeof(dragent_protocol_header));
+				        m_buffer.begin() + sizeof(dragent_protocol_header),
+				        header->len - sizeof(dragent_protocol_header));
 			}
 			else
 			{

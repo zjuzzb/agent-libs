@@ -55,6 +55,8 @@
 #include <sys/resource.h>
 #include "sinsp_factory.h"
 #include "configuration_manager.h"
+#include "metric_serializer.h"
+#include "protobuf_metric_serializer.h"
 
 using namespace std;
 using namespace dragent;
@@ -92,6 +94,11 @@ type_config<uint16_t>::ptr c_rest_port = type_config_builder<uint16_t>(
 		"tcp_port")
 	.hidden() // Hidden until feature is released
 	.build();
+
+type_config<uint64_t> c_serializer_timeout_s(
+        10,
+        "Watchdog timeout for the serializer thread",
+        "serializer_timeout");
 
 string compute_sha1_digest(SHA1Engine &engine, const string &path)
 {
@@ -195,14 +202,15 @@ dragent_app::dragent_app():
 #ifndef CYGWING_AGENT
 	m_unshare_ipcns(true),
 #endif
-	m_queue(MAX_SAMPLE_STORE_SIZE),
+    m_flush_queue(MAX_SAMPLE_STORE_SIZE),
+    m_transmit_queue(MAX_SAMPLE_STORE_SIZE),
 	m_enable_autodrop(true),
 	m_internal_metrics(std::make_shared<internal_metrics>()),
-	m_protocol_handler(m_queue),
+    m_protocol_handler(m_transmit_queue),
 	m_sinsp_worker(&m_configuration, m_internal_metrics, m_protocol_handler, &m_enable_autodrop, &m_capture_job_handler),
-	m_capture_job_handler(&m_configuration, &m_queue, &m_enable_autodrop),
+    m_capture_job_handler(&m_configuration, &m_transmit_queue, &m_enable_autodrop),
 	m_connection_manager(&m_configuration,
-	                     &m_queue,
+                         &m_transmit_queue,
 	                     {
 	                             { draiosproto::message_type::DUMP_REQUEST_START,
 				       std::make_shared<dump_request_start_message_handler>(m_sinsp_worker) },
@@ -226,7 +234,7 @@ dragent_app::dragent_app():
 				       std::make_shared<security_baselines_message_handler>(m_sinsp_worker) },
 	                     }),
 	m_log_reporter(m_protocol_handler, &m_configuration),
-	m_subprocesses_logger(&m_configuration, &m_log_reporter),
+    m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),
 	m_last_dump_s(0)
 {
 }
@@ -970,12 +978,13 @@ int dragent_app::sdagent_main()
 
 	sinsp::ptr inspector = nullptr;
 	sinsp_analyzer* analyzer = nullptr;
+	metric_serializer* serializer = nullptr;
 	try
 	{
 		// Must create inspector, then create analyzer, then setup inspector
 		inspector = sinsp_factory::build();
 		LOG_INFO("Created Sysdig inspector");
-		analyzer = build_analyzer(inspector);
+		analyzer = build_analyzer(inspector, m_flush_queue);
 		LOG_INFO("Created analyzer");
 		inspector->m_analyzer = analyzer;
 		init_inspector(inspector);
@@ -987,6 +996,13 @@ int dragent_app::sdagent_main()
 		// pageantry. The init function exists to fully initialize the worker
 		// after the creation of the other objects.
 		m_sinsp_worker.init(inspector, analyzer);
+		auto s = new protobuf_metric_serializer(inspector,
+		                                        m_configuration.c_root_dir.get_value(),
+		                                        m_protocol_handler,
+		                                        &m_flush_queue,
+		                                        &m_transmit_queue);
+		serializer = s;
+		m_pool.start(*s, c_serializer_timeout_s.get_value());
 	}
 	catch (const sinsp_exception &e)
 	{
@@ -1085,6 +1101,7 @@ int dragent_app::sdagent_main()
 	dragent_configuration::m_terminate = true;
 	// This will stop everything in the default pool
 	m_pool.stop_all();
+	serializer->stop();
 
 	if(m_configuration.m_watchdog_enabled)
 	{
@@ -1128,13 +1145,14 @@ void dragent_app::init_inspector(sinsp::ptr inspector)
 	}
 }
 
-sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector)
+sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector,
+                                            flush_queue& flush_queue)
 {
 	sinsp_analyzer* analyzer = new sinsp_analyzer(inspector.get(),
 	                                              m_configuration.c_root_dir.get_value(),
 	                                              m_internal_metrics,
 	                                              m_protocol_handler,
-	                                              m_protocol_handler);
+	                                              &flush_queue);
 	sinsp_configuration* sconfig = analyzer->get_configuration();
 
 	analyzer->set_procfs_scan_thread(m_configuration.m_procfs_scan_thread);
@@ -1818,7 +1836,7 @@ void dragent_app::check_for_clean_shutdown()
 	File f(p);
 	if(f.exists())
 	{
-		m_log_reporter.send_report(sinsp_utils::get_current_time_ns());
+		m_log_reporter.send_report(m_transmit_queue, sinsp_utils::get_current_time_ns());
 	}
 	else
 	{

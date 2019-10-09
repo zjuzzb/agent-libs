@@ -10,6 +10,8 @@
 #include <analyzer.h>
 #include <gtest.h>
 #include <inttypes.h>
+#include "protocol.h"
+#include "dragent_message_queues.h"
 
 class callback_param
 {
@@ -180,7 +182,10 @@ public:
 	}
 
 private:
-	event_capture() : m_stopped(false), m_start_failed(false)
+	event_capture() : m_stopped(false),
+	                  m_start_failed(false),
+	                  m_flush_queue(1000),
+	                  m_transmit_queue(1000)
 	{
 	}
 
@@ -256,6 +261,8 @@ private:
 	sinsp_analyzer* m_analyzer;
 	scap_mode_t m_mode;
 	uint64_t m_max_timeouts;
+	sinsp_analyzer::flush_queue m_flush_queue;
+	protocol_queue m_transmit_queue;
 };
 
 

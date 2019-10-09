@@ -8,17 +8,20 @@
 #include "protobuf_metric_serializer.h"
 #include "analyzer_utils.h"
 #include "capture_stats_source.h"
-#include "internal_metrics.h"
 #include "scoped_temp_directory.h"
 #include "uncompressed_sample_handler.h"
 #include "scoped_config.h"
+#include "analyzer_flush_message.h"
+#include "dragent_message_queues.h"
+#include "configuration.h"
 
 #include <chrono>
 #include <memory>
+#include <thread>
 #include <gtest.h>
 
-using libsanalyzer::metric_serializer;
-using libsanalyzer::protobuf_metric_serializer;
+using dragent::metric_serializer;
+using dragent::protobuf_metric_serializer;
 
 namespace
 {
@@ -141,14 +144,7 @@ public:
 	 */
 	dummy_sample_handler(const uint32_t sleep_time = 0):
 		m_ts_ns(UNSET_UINT64),
-		m_nevts(UNSET_UINT64),
-		m_num_drop_events(UNSET_UINT64),
 		m_metrics(UNSET_METRICS),
-		m_sampling_ratio(UNSET_UINT32),
-		m_analyzer_cpu_pct(UNSET_DOUBLE),
-		m_flush_cpu_cpt(UNSET_DOUBLE),
-		m_analyzer_flush_duration_ns(UNSET_UINT64),
-		m_num_suppressed_threads(UNSET_UINT64),
 		m_sleep_time(sleep_time),
 		m_call_count(0)
 	{ }
@@ -157,31 +153,22 @@ public:
 	 * Concrete realization of the handle_uncompressed_sample() API.
 	 * Saves all parameters to locals.
 	 */
-	void handle_uncompressed_sample(const uint64_t ts_ns,
-					const uint64_t nevts,
-					const uint64_t num_drop_events,
-					std::shared_ptr<draiosproto::metrics>& metrics,
-					const uint32_t sampling_ratio,
-					const double analyzer_cpu_pct,
-					const double flush_cpu_cpt,
-					const uint64_t analyzer_flush_duration_ns,
-					const uint64_t num_suppressed_threads) override
+	std::shared_ptr<serialized_buffer>
+	handle_uncompressed_sample(const uint64_t ts_ns,
+	                std::shared_ptr<draiosproto::metrics>& metrics) override
 	{
 		m_ts_ns = ts_ns;
-		m_nevts = nevts;
-		m_num_drop_events = num_drop_events;
 		m_metrics = metrics;
-		m_sampling_ratio = sampling_ratio;
-		m_analyzer_cpu_pct = analyzer_cpu_pct;
-		m_flush_cpu_cpt = flush_cpu_cpt;
-		m_analyzer_flush_duration_ns = analyzer_flush_duration_ns;
-		m_num_suppressed_threads = num_suppressed_threads;
 
 		if(m_sleep_time != 0)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(m_sleep_time));
 		}
 		++m_call_count;
+		auto ret = std::make_shared<serialized_buffer>();
+		ret->ts_ns = ts_ns;
+		ret->message_type = 255;
+		return ret;
 	}
 
 	uint64_t get_last_loop_ns() const
@@ -190,14 +177,7 @@ public:
 	}
 
 	uint64_t m_ts_ns;
-	uint64_t m_nevts;
-	uint64_t m_num_drop_events;
 	std::shared_ptr<draiosproto::metrics> m_metrics;
-	uint32_t m_sampling_ratio;
-	double m_analyzer_cpu_pct;
-	double m_flush_cpu_cpt;
-	uint64_t m_analyzer_flush_duration_ns;
-	uint64_t m_num_suppressed_threads;
 	uint32_t m_sleep_time;
 	std::atomic<uint8_t> m_call_count;
 };
@@ -208,7 +188,9 @@ const uint64_t dummy_sample_handler::UNSET_UINT64 = std::numeric_limits<uint64_t
 const uint32_t dummy_sample_handler::UNSET_UINT32 = std::numeric_limits<uint32_t>::max();
 const double dummy_sample_handler::UNSET_DOUBLE = std::numeric_limits<double>::max();
 draiosproto::metrics* const dummy_sample_handler::UNSET_METRICS = nullptr;
-
+const uint32_t max_queue_size = 32;
+flush_queue g_fqueue(max_queue_size);
+protocol_queue g_pqueue(max_queue_size);
 } // end namespace
 
 /**
@@ -217,20 +199,21 @@ draiosproto::metrics* const dummy_sample_handler::UNSET_METRICS = nullptr;
  */
 TEST(protobuf_metric_serializer_test, initial_state)
 {
-	precanned_capture_stats_source stats_source;
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	std::shared_ptr<const capture_stats_source> stats_source =
+	        std::make_shared<precanned_capture_stats_source>();
 	dummy_sample_handler dsh;
 
 	std::unique_ptr<protobuf_metric_serializer> s(
-			new protobuf_metric_serializer(&stats_source,
-			                               int_metrics,
-			                               "",
-						       dsh));
+	        new protobuf_metric_serializer(stats_source,
+	                                       "",
+	                                       dsh,
+	                                       &g_fqueue,
+	                                       &g_pqueue));
 
 	ASSERT_EQ(0, s->get_prev_sample_evtnum());
 	ASSERT_EQ(0, s->get_prev_sample_time());
 	ASSERT_EQ(0, s->get_prev_sample_num_drop_events());
-	ASSERT_TRUE(s->serialization_complete());
+	ASSERT_EQ(0, s->get_num_serialized_events());
 }
 
 /**
@@ -239,9 +222,11 @@ TEST(protobuf_metric_serializer_test, initial_state)
 TEST(protobuf_metric_serializer_test, serialize)
 {
 	test_helpers::scoped_temp_directory temp_dir;
-	precanned_capture_stats_source stats_source;
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	std::shared_ptr<const capture_stats_source> stats_source =
+	        std::make_shared<precanned_capture_stats_source>();
 	dummy_sample_handler analyzer_callback;
+
+	dragent_configuration::m_terminate = false;
 
 	const uint64_t TIMESTAMP = static_cast<uint64_t>(0x0000000000654321);
 	const uint32_t SAMPLING_RATIO = 1;
@@ -252,38 +237,42 @@ TEST(protobuf_metric_serializer_test, serialize)
 	const double CPU_LOAD = 0.12;
 	const int64_t N_PROC_LOOKUPS = 5;
 	const int64_t N_MAIN_THREAD_LOOKUPS = 2;
-	test_helpers::scoped_config<bool> extra_internal_metrics("extra_internal_metrics", true);
 	draiosproto::metrics metrics;
 
 	metric_serializer::c_metrics_dir.set(temp_dir.get_directory());
 
 	std::unique_ptr<protobuf_metric_serializer> s(
-			new protobuf_metric_serializer(&stats_source,
-			                               int_metrics,
-			                               "",
-						       analyzer_callback));
+	        new protobuf_metric_serializer(stats_source,
+	                                       "",
+	                                       analyzer_callback,
+	                                       &g_fqueue,
+	                                       &g_pqueue));
+	std::thread t([&s]()
+	{
+		s->test_run();
+	});
 
-	s->serialize(make_unique<metric_serializer::data>(
-				precanned_capture_stats_source::DEFAULT_EVTS,
-				TIMESTAMP,
-				SAMPLING_RATIO,
-				PREV_FLUSH_CPU_PCT,
-				prev_flushes_duration_ns,
-				metrics_sent,
-				CPU_LOAD,
-				N_PROC_LOOKUPS,
-				N_MAIN_THREAD_LOOKUPS,
-				metrics));
+	ASSERT_EQ(0, s->get_num_serialized_events());
 
+	s->serialize(std::make_shared<flush_data_message>(
+	                 precanned_capture_stats_source::DEFAULT_EVTS,
+	                 TIMESTAMP,
+	                 SAMPLING_RATIO,
+	                 PREV_FLUSH_CPU_PCT,
+	                 prev_flushes_duration_ns,
+	                 metrics_sent,
+	                 CPU_LOAD,
+	                 N_PROC_LOOKUPS,
+	                 N_MAIN_THREAD_LOOKUPS,
+	                 metrics));
 
 	// Wait for the async thread to complete the work.  If we have to wait
 	// more that 5 seconds, something has gone badly wrong.
 	const int FIVE_SECOND_IN_MS = 5 * 1000;
-	for(int i = 0; !s->serialization_complete() && i < FIVE_SECOND_IN_MS; ++i)
+	for(int i = 0; s->get_num_serialized_events() == 0 && i < FIVE_SECOND_IN_MS; ++i)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
-	ASSERT_TRUE(s->serialization_complete());
 
 	// The serializer should have updated its internal state
 	ASSERT_EQ(precanned_capture_stats_source::DEFAULT_EVTS,
@@ -293,39 +282,13 @@ TEST(protobuf_metric_serializer_test, serialize)
 	ASSERT_EQ(TIMESTAMP,
 	          s->get_prev_sample_time());
 
-	// The serializer should have updated the internal metrics with the
-	// values fetched from the status source.
-	ASSERT_EQ(precanned_capture_stats_source::DEFAULT_EVTS,
-	          int_metrics->get_n_evts());
-	ASSERT_EQ(precanned_capture_stats_source::DEFAULT_DROPS,
-	          int_metrics->get_n_drops());
-	ASSERT_EQ(precanned_capture_stats_source::DEFAULT_DROPS_BUFFER,
-	          int_metrics->get_n_drops_buffer());
-	ASSERT_EQ(precanned_capture_stats_source::DEFAULT_PREEMPTIONS,
-	          int_metrics->get_n_preemptions());
-	ASSERT_EQ(static_cast<int>(PREV_FLUSH_CPU_PCT * 100),
-	          int_metrics->get_fp());
-	ASSERT_EQ(SAMPLING_RATIO, int_metrics->get_sr());
-	ASSERT_EQ(0, int_metrics->get_fl());
-
 	// The serializer should have recorded that the metrics were sent
 	ASSERT_EQ(true, metrics_sent);
 
 	// The serializer should have invoked the handle_uncompressed_sample
 	// callback
 	ASSERT_EQ(TIMESTAMP, analyzer_callback.m_ts_ns);
-	ASSERT_EQ(precanned_capture_stats_source::DEFAULT_EVTS,
-	          analyzer_callback.m_nevts);
-	ASSERT_EQ(precanned_capture_stats_source::DEFAULT_DROPS,
-	          analyzer_callback.m_num_drop_events);
 	ASSERT_NE(nullptr, analyzer_callback.m_metrics);
-	ASSERT_EQ(SAMPLING_RATIO, analyzer_callback.m_sampling_ratio);
-	ASSERT_DOUBLE_EQ(CPU_LOAD, analyzer_callback.m_analyzer_cpu_pct);
-	ASSERT_DOUBLE_EQ(PREV_FLUSH_CPU_PCT, analyzer_callback.m_flush_cpu_cpt);
-	ASSERT_EQ(INITIAL_PREV_FLUSH_DURATION_NS,
-	          analyzer_callback.m_analyzer_flush_duration_ns);
-	ASSERT_EQ(precanned_capture_stats_source::DEFAULT_TIDS_SUPPRESSED,
-	          analyzer_callback.m_num_suppressed_threads);
 
 	//
 	// Since we enabled the config for logging, we can check to make sure
@@ -356,7 +319,10 @@ TEST(protobuf_metric_serializer_test, serialize)
 	ASSERT_EQ(0, err);
 
 	ASSERT_TRUE(S_ISREG(statbuf.st_mode));
-	ASSERT_TRUE(statbuf.st_size > 0);
+	ASSERT_GT(statbuf.st_size, 0);
+
+	s->stop();
+	t.join();
 }
 
 /**
@@ -369,10 +335,12 @@ TEST(protobuf_metric_serializer_test, serialize)
 TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 {
 	test_helpers::scoped_temp_directory temp_dir;
-	precanned_capture_stats_source stats_source;
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	std::shared_ptr<const capture_stats_source> stats_source =
+	        std::make_shared<precanned_capture_stats_source>();
 	const uint32_t sleep_time_ms = 3;
 	dummy_sample_handler analyzer_callback(sleep_time_ms);
+
+	dragent_configuration::m_terminate = false;
 
 	const uint64_t TIMESTAMP = static_cast<uint64_t>(0x0000000000654321);
 	const uint32_t SAMPLING_RATIO = 1;
@@ -383,7 +351,6 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	const double CPU_LOAD = 0.12;
 	const int64_t N_PROC_LOOKUPS = 5;
 	const int64_t N_MAIN_THREAD_LOOKUPS = 2;
-	test_helpers::scoped_config<bool> extra_internal_metrics("extra_internal_metrics", true);
 	draiosproto::metrics metrics;
 
 	// Update the configuration so that the serializer will emit the
@@ -392,12 +359,17 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	metric_serializer::c_metrics_dir.set(temp_dir.get_directory());
 
 	std::unique_ptr<protobuf_metric_serializer> s(
-			new protobuf_metric_serializer(&stats_source,
-			                               int_metrics,
-			                               "",
-						       analyzer_callback));
+	        new protobuf_metric_serializer(stats_source,
+	                                       "",
+	                                       analyzer_callback,
+	                                       &g_fqueue,
+	                                       &g_pqueue));
+	std::thread t([&]()
+	{
+		ASSERT_NO_THROW(s->test_run());
+	});
 
-	s->serialize(make_unique<metric_serializer::data>(
+	s->serialize(std::make_shared<flush_data_message>(
 				precanned_capture_stats_source::DEFAULT_EVTS,
 				TIMESTAMP,
 				SAMPLING_RATIO,
@@ -409,7 +381,7 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 				N_MAIN_THREAD_LOOKUPS,
 				metrics));
 
-	s->serialize(make_unique<metric_serializer::data>(
+	s->serialize(std::make_shared<flush_data_message>(
 				precanned_capture_stats_source::DEFAULT_EVTS,
 				TIMESTAMP * 2, // make timestamp bigger
 				SAMPLING_RATIO,
@@ -426,12 +398,15 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	// more that 5 seconds, something has gone badly wrong.
 	const int FIVE_SECOND_IN_MS = 5 * 1000;
 	for(int i = 0;
-	    !s->serialization_complete() &&
-	    (analyzer_callback.m_call_count != 2) &&
-	    (i < FIVE_SECOND_IN_MS);
+	    s->get_num_serialized_events() < 2 &&
+	    i < FIVE_SECOND_IN_MS;
 	    ++i)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
-	ASSERT_TRUE(analyzer_callback.m_call_count == 2);
+	ASSERT_EQ(2, analyzer_callback.m_call_count);
+	ASSERT_EQ(2, s->get_num_serialized_events());
+
+	s->stop();
+	t.join();
 }

@@ -217,9 +217,10 @@ class security_policies_test : public testing::Test
 public:
 	/* path to the cointerface unix socket domain */
 	security_policies_test() : 
-		m_queue(DEFAULT_QUEUE_LEN),
-		m_data_handler(m_queue),
-		m_mgr("./resources", m_data_handler)
+	    m_flush_queue(DEFAULT_QUEUE_LEN),
+	    m_transmit_queue(DEFAULT_QUEUE_LEN),
+	    m_data_handler(m_transmit_queue),
+	    m_mgr("./resources", m_data_handler)
 	{
 	}
 
@@ -272,12 +273,13 @@ protected:
 		}
 
 		m_inspector = new sinsp();
-		m_internal_metrics = make_shared<internal_metrics>();
+		m_internal_metrics = std::make_shared<internal_metrics>();
 		m_analyzer = new sinsp_analyzer(m_inspector,
-						"/opt/draios",
-						m_internal_metrics,
-						g_sample_handler,
-						g_audit_handler);
+		                                "/opt/draios",
+		                                m_internal_metrics,
+		                                g_audit_handler,
+		                                &m_flush_queue);
+
 		m_inspector->m_analyzer = m_analyzer;
 		m_analyzer->get_configuration()->set_machine_id(m_configuration.machine_id());
 		m_analyzer->set_containers_labels_max_len(m_configuration.m_containers_labels_max_len);
@@ -587,20 +589,23 @@ public:
 	}
 
 	void get_next_msg(uint64_t delay_ms,
-			  draiosproto::message_type &mtype,
-			  unique_ptr<::google::protobuf::Message> &msg)
+	                  draiosproto::message_type &mtype,
+	                  unique_ptr<::google::protobuf::Message> &msg)
 	{
-		shared_ptr<protocol_queue_item> item;
+		shared_ptr<serialized_buffer> item = nullptr;
 		dragent_protocol_header *hdr;
 		const uint8_t *buf;
 		uint32_t size;
 
 		msg = NULL;
 
-		if (!m_queue.get(&item, delay_ms))
+		do
 		{
-			return;
-		}
+			if (!m_transmit_queue.get(&item, delay_ms))
+			{
+				return;
+			}
+		} while (item == nullptr);
 
 		hdr = (dragent_protocol_header*) item->buffer.data();
 		buf = (const uint8_t *) (item->buffer.data() + sizeof(dragent_protocol_header));
@@ -626,7 +631,7 @@ public:
 			break;
 
 		default:
-			FAIL() << "Received unknown message " << hdr->messagetype;
+			FAIL() << "Received unknown message " << to_string(hdr->messagetype);
 		}
 	}
 
@@ -690,7 +695,9 @@ protected:
 		check_expected_internal_metrics(metrics);
 	}
 
-	protocol_queue m_queue;
+
+	sinsp_analyzer::flush_queue m_flush_queue;
+	protocol_queue m_transmit_queue;
 	bool m_load_v1_policies = true;
 	sinsp *m_inspector;
 	sinsp_analyzer *m_analyzer;
@@ -1525,6 +1532,7 @@ static void falco_only(security_policies_test *ptest, bool v1_metrics)
 	// Not using check_policy_events for this, as it is checking keys only
 	unique_ptr<draiosproto::policy_events> pe;
 	ptest->get_policy_evts_msg(pe);
+	ASSERT_NE(pe, nullptr);
 	ASSERT_EQ(pe->events_size(), 1);
 	ASSERT_EQ(pe->events(0).policy_id(), 1u);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
@@ -2262,7 +2270,7 @@ TEST_F(security_policies_v2_test, nofd_operations)
 
 static void events_flood(security_policies_test *ptest, bool v1_metrics)
 {
-	shared_ptr<protocol_queue_item> item;
+	shared_ptr<serialized_buffer> item;
 
 	// Repeatedly try to read /tmp/sample-sensitive-file-1.txt. This will result in a flood of policy events.
 

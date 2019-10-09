@@ -23,6 +23,8 @@
 #include "internal_metrics.h"
 #include <atomic>
 #include <memory>
+#include "metric_serializer.h"
+#include "dragent_message_queues.h"
 
 #ifndef CYGWING_AGENT
 #include "sdc_internal.pb.h"
@@ -121,7 +123,7 @@ private:
 	void update_subprocesses_priority();
 	void monitor_files(uint64_t uptime_s);
 	void init_inspector(sinsp::ptr inspector);
-	sinsp_analyzer* build_analyzer(sinsp::ptr inspector);
+	sinsp_analyzer* build_analyzer(sinsp::ptr inspector, flush_queue& flush_queue);
 	void setup_coredumps();
 	void log_sysinfo();
 
@@ -137,7 +139,10 @@ private:
 #endif
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
-	protocol_queue m_queue;
+	/// Queue for the analyzer to push the results of a flush
+	flush_queue m_flush_queue;
+	/// Queue consumed by connection_manager for transmission to backend
+	protocol_queue m_transmit_queue;
 	std::atomic<bool> m_enable_autodrop;
 
 	std::unique_ptr<errpipe_manager> m_jmx_pipes;

@@ -47,6 +47,7 @@ list(APPEND targetfiles
 	fault_rest_request_handler.cpp
 	file_rest_registry.cpp
 	file_rest_request_handler.cpp
+	metric_serializer.cpp
 	metrics_rest_request_handler.cpp
 	monitor.cpp
 	protocol.cpp
@@ -57,6 +58,7 @@ list(APPEND targetfiles
 	security_mgr.cpp
 	security_orchestrator_events_message_handler.cpp
 	security_policy.cpp
+	protobuf_metric_serializer.cpp
 	protocol_handler.cpp
 	security_policies_message_handler.cpp
 	security_policies_v2_message_handler.cpp

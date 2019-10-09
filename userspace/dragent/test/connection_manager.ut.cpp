@@ -95,7 +95,7 @@ TEST(connection_manager_test, failure_to_connect)
 	// Push to the queue
 	for(auto msg: test_data)
 	{
-		auto it = std::make_shared<protocol_queue_item>();
+		auto it = std::make_shared<serialized_buffer>();
 		it->ts_ns = sinsp_utils::get_current_time_ns();
 		it->message_type = draiosproto::message_type::METRICS;
 		it->buffer = msg;
@@ -194,7 +194,7 @@ TEST(connection_manager_test, connect_transmit)
 	// Push to the queue
 	for(auto msg: test_data)
 	{
-		auto it = std::make_shared<protocol_queue_item>();
+		auto it = std::make_shared<serialized_buffer>();
 		it->ts_ns = sinsp_utils::get_current_time_ns();
 		it->message_type = draiosproto::message_type::METRICS;
 		it->buffer = msg;

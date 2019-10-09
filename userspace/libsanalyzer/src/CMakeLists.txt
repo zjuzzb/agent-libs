@@ -108,19 +108,77 @@ set(SANALYZER_SOURCES
 	analyzer_parsers.cpp
 	analyzer_thread.cpp
 	analyzer_utils.cpp
+	app_checks.cpp
+	app_check_emitter.cpp
 	audit_tap.cpp
 	baseliner.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cgroup_limits.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel_api.cpp
+	blake2/blake2b.c
+	coclient.cpp
 	cm_quantile.c
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cyclewriter.cpp
 	connectinfo.cpp 
 	config.cpp
 	container_config.cpp
 	container_events/docker.cpp
 	custom_container.cpp
 	delays.cpp
+	environment_emitter.cpp
+	env_hash.cpp
+	filter_limits.cpp
+	heap.c
+	infrastructure_state.cpp
+	internal_metrics.cpp
+	jmx_emitter.cpp
+	jmx_proxy.cpp
+	k8s_user_event_message_handler.cpp
+	k8s_proto.cpp
+	k8s_delegator.cpp
+	k8s_limits.cpp
+	label_limits.cpp
+	memdumper.cpp
+	memdump_logger.cpp
+	mesos_proto.cpp
+	metric_forwarding_configuration.cpp
+	metric_limits.cpp
+	metric_store.cpp
+	metrics.cpp
+	mount_points_limits.cpp
+	mounted_fs.cpp
+	null_statsd_emitter.cpp
+	object_filter.cpp
+	object_filter_config.cpp
+	parser_http.cpp
+	parser_mysql.cpp
+	parser_postgres.cpp
+	parser_mongodb.cpp
+	parser_tls.cpp
+	percentile.cpp
+	proc_filter.cpp
+	process_emitter.cpp
+	posix_queue.cpp
+	proc_config.h
+	process_manager.cpp
+	procfs_parser.cpp
+	procfs_scanner.cpp
+	prometheus.cpp
+	protostate.cpp
+	security_config.cpp
+	sched_analyzer.cpp
+	scores.cpp
+	sqlparser.cpp
+	statsd_emitter.cpp
+	statsd_emitter_factory.cpp
+	statsd_metric.cpp
+	statsd_server.cpp
+	statsite_config.cpp
+	statsite_proxy.cpp
+	statsite_statsd_emitter.cpp
+	statsite_forwarder.cpp
+	transactinfo.cpp
+	userdb.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cgroup_limits.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel_api.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cyclewriter.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/container_engine.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/docker_common.cpp
@@ -134,24 +192,16 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filterchecks.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/gen_filter.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/grpc_channel_registry.cpp
-	heap.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_parser.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_reason.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/ifinfo.cpp
-	infrastructure_state.cpp
-	internal_metrics.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/internal_metrics.cpp
 	#${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/logger.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/lua_parser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/lua_parser_api.cpp
-	metric_serializer.cpp
-	metric_serializer_factory.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/prefix_search.cpp
-	protobuf_metric_serializer.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tracers.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri_parser.c
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp_auth.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp_curl.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s.cpp
@@ -174,9 +224,6 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_state.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/json_query.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/json_error_log.cpp
-	k8s_user_event_message_handler.cpp
-	k8s_proto.cpp
-	k8s_delegator.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_component.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_http.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_auth.cpp
@@ -184,74 +231,24 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_collector.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_component.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_http.cpp
-	memdumper.cpp
-	memdump_logger.cpp
-	mesos_proto.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_state.cpp
-	metric_forwarding_configuration.cpp
-	metric_limits.cpp
-	metric_store.cpp
-	metrics.cpp
-	mounted_fs.cpp
-	parser_http.cpp
-	parser_mysql.cpp
-	parser_postgres.cpp
-	parser_mongodb.cpp
-	parser_tls.cpp
-	process_manager.cpp
-	sqlparser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/parsers.cpp
-	percentile.cpp
-	procfs_parser.cpp
-	procfs_scanner.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/protodecoder.cpp
-	protostate.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/threadinfo.cpp
-	security_config.cpp
-	sched_analyzer.cpp
-	scores.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stats.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stopwatch.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/token_bucket.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tracer_emitter.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tuples.cpp
-	transactinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tuples.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri_parser.c
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/user_event.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/user_event_logger.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/value_parser.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/viewinfo.cpp
-	jmx_proxy.cpp
-	jmx_emitter.cpp
-	statsite_config.cpp
-	statsite_proxy.cpp
-	statsite_statsd_emitter.cpp
-	statsd_metric.cpp
-	statsd_server.cpp
-	statsite_forwarder.cpp
-	null_statsd_emitter.cpp
-	statsd_emitter_factory.cpp
-	statsd_emitter.cpp
-	app_checks.cpp
-	app_check_emitter.cpp
-	environment_emitter.cpp
-	object_filter.cpp
-	object_filter_config.cpp
-	proc_filter.cpp
-	prometheus.cpp
-	process_emitter.cpp
-	posix_queue.cpp
-	coclient.cpp
-	proc_config.h
-	filter_limits.cpp
-	mount_points_limits.cpp
-	label_limits.cpp
-	k8s_limits.cpp
-	userdb.cpp
-	blake2/blake2b.c
-	env_hash.cpp)
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/viewinfo.cpp)
 
 if(NOT CYGWIN)
 list(APPEND SANALYZER_SOURCES

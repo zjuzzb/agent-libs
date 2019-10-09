@@ -20,7 +20,6 @@
 #include <unistd.h>
 #endif
 
-#include "uncompressed_sample_handler.h"
 #include "audit_tap_handler.h"
 #include "configuration_manager.h"
 
@@ -67,8 +66,8 @@ public:
 };
 
 namespace {
-uncompressed_sample_handler_dummy g_sample_handler;
 audit_tap_handler_dummy g_audit_handler;
+sinsp_analyzer::flush_queue g_queue(1000);
 }
 
 //
@@ -438,10 +437,10 @@ int main(int argc, char **argv)
 		g_inspector = new sinsp();
 		internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 		sinsp_analyzer* analyzer = new sinsp_analyzer(g_inspector,
-							      "/opt/draios",
-							      int_metrics,
-							      g_sample_handler,
-							      g_audit_handler);
+		                                              "/opt/draios",
+		                                              int_metrics,
+		                                              g_audit_handler,
+		                                              &g_queue);
 		g_inspector->m_analyzer = analyzer;
 
 		//

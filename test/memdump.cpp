@@ -280,7 +280,7 @@ protected:
 	}
 
 	// Parse a generic queue item into a dump response object.
-	void parse_dump_response(std::shared_ptr<protocol_queue_item> item, draiosproto::dump_response &response)
+	void parse_dump_response(std::shared_ptr<serialized_buffer> item, draiosproto::dump_response &response)
 	{
 		dragent_protocol::buffer_to_protobuf(
 				(uint8_t *) item->buffer.data() + sizeof(dragent_protocol_header),
@@ -306,7 +306,7 @@ protected:
 		// We'll attempt to read capture contents for up to 60 seconds.
 		for(time_t now = time(NULL); time(NULL) < now + 60;)
 		{
-			std::shared_ptr<protocol_queue_item> buf;
+			std::shared_ptr<serialized_buffer> buf;
 			draiosproto::dump_response response;
 			if(!m_queue->get(&buf, 100))
 			{
@@ -364,7 +364,7 @@ protected:
 			       bool defer_send,
 			       bool wait_for_start)
 	{
-		std::shared_ptr<protocol_queue_item> buf;
+		std::shared_ptr<serialized_buffer> buf;
 		string errstr;
 		draiosproto::dump_response response;
 
@@ -471,7 +471,7 @@ protected:
 	// open.
 	void perform_overlapping_dumps(uint32_t total)
 	{
-		std::shared_ptr<protocol_queue_item> buf;
+		std::shared_ptr<serialized_buffer> buf;
 		set<string> active_dumps;
 
 		for(uint32_t i=0; i < total; i++)
@@ -503,7 +503,7 @@ protected:
 	void perform_too_many_dumps(bool back_in_time)
 	{
 		string errstr;
-		std::shared_ptr<protocol_queue_item> buf;
+		std::shared_ptr<serialized_buffer> buf;
 
 		for(uint32_t i=0; i < 10; i++)
 		{
@@ -781,7 +781,7 @@ TEST_F(memdump_test, delayed_capture_start)
 
 	// Verify that the connection manager has not received any
 	// capture chunks.
-	std::shared_ptr<protocol_queue_item> buf;
+	std::shared_ptr<serialized_buffer> buf;
 	ASSERT_EQ(m_queue->get(&buf, 1000), false);
 
 	ASSERT_NO_FATAL_FAILURE(perform_single_dump(false /*before*/, true /*after*/, true /*filter*/));
@@ -815,7 +815,7 @@ TEST_F(memdump_max_one_capture_test, stop_delayed_capture)
 
 	// Verify that the connection manager has not received any
 	// capture chunks.
-	std::shared_ptr<protocol_queue_item> buf;
+	std::shared_ptr<serialized_buffer> buf;
 	ASSERT_EQ(m_queue->get(&buf, 1000), false);
 
 	// Start another capture. This would only work if sending the

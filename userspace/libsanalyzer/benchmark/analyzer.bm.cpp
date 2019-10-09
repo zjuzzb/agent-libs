@@ -7,7 +7,7 @@ using namespace test_helpers;
 
 namespace
 {
-uncompressed_sample_handler_dummy g_sample_handler;
+sinsp_analyzer::flush_queue g_queue(2000);
 audit_tap_handler_dummy g_audit_handler;
 }
 
@@ -21,10 +21,10 @@ void one_hundred_thousand_reads(benchmark::State& state)
 		internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 
 		sinsp_analyzer analyzer(inspector.get(),
-					"/" /*root dir*/,
-					int_metrics,
-					g_sample_handler,
-					g_audit_handler);
+		                        "/" /*root dir*/,
+		                        int_metrics,
+		                        g_audit_handler,
+		                        &g_queue);
 
 		run_sinsp_with_analyzer(*inspector, analyzer);
 

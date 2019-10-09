@@ -40,11 +40,12 @@
 #include "app_check_emitter.h"
 #include "environment_emitter.h"
 #include "process_emitter.h"
-#include "uncompressed_sample_handler.h"
 #include "audit_tap_handler.h"
 #include "statsd_emitter.h"
+#include "analyzer_flush_message.h"
+#include "blocking_queue.h"
 
-namespace libsanalyzer
+namespace dragent
 {
 class metric_serializer;
 }
@@ -101,7 +102,7 @@ typedef union _process_tuple
 		uint8_t m_state;
 	}m_fields;
 	uint8_t m_all[30];
-}process_tuple;
+} process_tuple;
 
 struct process_tuple_hash
 {
@@ -233,6 +234,7 @@ private:
 class SINSP_PUBLIC sinsp_analyzer
 {
 public:
+	typedef blocking_queue<std::shared_ptr<flush_data_message>> flush_queue;
 	enum mode_switch_state
 	{
 		MSR_NONE = 0,
@@ -244,10 +246,10 @@ public:
 	// only use default root_dir if you don't need coclient
 	// (it needs root_dir properly set to locate the cointerface server socket)
 	sinsp_analyzer(sinsp* inspector,
-		       std::string root_dir,
-		       const internal_metrics::sptr_t& internal_metrics,
-		       uncompressed_sample_handler& sample_handler,
-		       audit_tap_handler& tap_handler);
+	               std::string root_dir,
+	               const internal_metrics::sptr_t& internal_metrics,
+	               audit_tap_handler& tap_handler,
+	               flush_queue* flush_queue);
 	~sinsp_analyzer();
 
 	//
@@ -626,17 +628,6 @@ public:
 	void incr_command_lines_category(draiosproto::command_category cat, uint64_t delta=1);
 
 	/**
-	 * Ensure that any async processing associated with flush() is complete
-	 * before returning.
-	 */
-	void flush_drain() const;
-
-	/**
-	 * Enable or disable async protobuf serialization.
-	 */
-	void set_async_protobuf_serialize_enabled(bool enabled);
-
-	/**
 	 * Return true if the agent should terminate because something has
 	 * gone wrong in the analyzer, false otherwise.
 	 */
@@ -842,6 +833,11 @@ public:
 	 */
 	void set_metrics_dir(const std::string& metrics_dir);
 
+	/**
+	 * Gets the metrics dir for serializing to a file
+	 */
+	std::string get_metrics_dir();
+
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(std::string&);
 
@@ -1002,6 +998,12 @@ VISIBILITY_PRIVATE
 		}
 	}
 
+	/**
+	 * Handle tasks to be done at the end of flush (most notably sending the
+	 * metrics to the serializer).
+	 */
+	void flush_done_handler(const sinsp_evt* evt);
+
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
 	double m_prev_flush_cpu_pct;
@@ -1016,6 +1018,7 @@ VISIBILITY_PRIVATE
 	uint64_t m_flush_log_time_restart;
 
 	uint64_t m_prev_sample_evtnum;
+	uint64_t m_prev_sample_num_drop_events;
 
 	/**
 	 * Have metrics ever been sent?  This is atomic because it can
@@ -1357,12 +1360,17 @@ VISIBILITY_PRIVATE
 
 	friend class test_helper;
 
-	std::unique_ptr<libsanalyzer::metric_serializer> m_serializer;
-	bool m_async_serialize_enabled;
-
 	audit_tap_handler& m_audit_tap_handler;
 
 	process_manager m_process_manager;
+
+	std::mutex m_metrics_dir_mutex;
+	std::string m_metrics_dir;
+
+	/**
+	 * Message queue to send flush data down the pipeline.
+	 */
+	flush_queue* m_flush_queue;
 
 	//
 	// Please do not add any friends.

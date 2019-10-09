@@ -3,6 +3,8 @@
 #include "event_capture.h"
 #include <sinsp.h>
 #include <gtest.h>
+#include <unistd.h>
+#include "uncompressed_sample_handler.h"
 
 #define ONE_SECOND_MS 1000
 
@@ -16,14 +18,13 @@ void event_capture::capture()
 	m_inspector = new sinsp();
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 	m_analyzer = new sinsp_analyzer(m_inspector,
-					"/opt/draios",
-					int_metrics,
-					g_sample_handler,
-					g_audit_handler);
+	                                "/opt/draios",
+	                                int_metrics,
+	                                g_audit_handler,
+	                                &m_flush_queue);
 	m_inspector->m_analyzer = m_analyzer;
 
 	m_analyzer->set_configuration(m_configuration);
-	m_analyzer->set_async_protobuf_serialize_enabled(false);
 
 	if(m_max_thread_table_size != 0)
 	{
@@ -172,7 +173,7 @@ void event_capture::capture()
 			}
 			struct timespec ts = {
 				.tv_sec = 0,
-				.tv_nsec = 100000000
+				.tv_nsec = 100000000,
 			};
 			nanosleep(&ts, NULL);
 		}

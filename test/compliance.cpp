@@ -233,7 +233,7 @@ protected:
 		{
 			while(!m_done)
 			{
-				shared_ptr<protocol_queue_item> item;
+				shared_ptr<serialized_buffer> item;
 				dragent_protocol_header *hdr;
 				const uint8_t *buf;
 				uint32_t size;

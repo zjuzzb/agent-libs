@@ -41,8 +41,6 @@ using namespace google::protobuf::io;
 #include "parsers.h"
 #include "analyzer_int.h"
 #include "analyzer.h"
-#include "metric_serializer.h"
-#include "metric_serializer_factory.h"
 #include "connectinfo.h"
 #include "metrics.h"
 #include "draios.pb.h"
@@ -98,6 +96,7 @@ using namespace google::protobuf::io;
 #include "statsd_emitter_factory.h"
 #include "null_statsd_emitter.h"
 #include "type_config.h"
+#include "analyzer_flush_message.h"
 
 #include <gperftools/profiler.h>
 
@@ -123,10 +122,10 @@ type_config<int32_t> c_dragent_cpu_profile_total_profiles(30, "The total number 
 } // end namespace
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
-			       std::string root_dir,
-			       const internal_metrics::sptr_t& internal_metrics,
-			       uncompressed_sample_handler& sample_handler,
-			       audit_tap_handler& tap_handler):
+                               std::string root_dir,
+                               const internal_metrics::sptr_t& internal_metrics,
+                               audit_tap_handler& tap_handler,
+                               sinsp_analyzer::flush_queue* flush_queue):
 	m_configuration(new sinsp_configuration()),
 	m_inspector(inspector),
 #ifndef CYGWING_AGENT
@@ -138,13 +137,10 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_very_high_cpu_switcher("agent cpu usage with sr=128"),
 	m_internal_metrics(internal_metrics),
 	m_statsd_emitter(new null_statsd_emitter()),
-	m_serializer(metric_serializer_factory::build(
-				m_inspector,
-				internal_metrics,
-				root_dir,
-				sample_handler)),
-	m_async_serialize_enabled(true),
-	m_audit_tap_handler(tap_handler)
+    m_audit_tap_handler(tap_handler),
+    m_metrics_dir_mutex(),
+    m_metrics_dir(""),
+    m_flush_queue(flush_queue)
 {
 	ASSERT(m_internal_metrics);
 	m_initialized = false;
@@ -153,6 +149,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_prev_flush_cpu_pct = 0.0;
 	m_next_flush_time_ns = 0;
 	m_prev_flush_time_ns = 0;
+	m_prev_sample_num_drop_events = 0;
 
 	m_flush_log_time = tracer_emitter::no_timeout;
 	m_flush_log_time_duration = 0;
@@ -4388,41 +4385,32 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 
 			emit_baseline(evt, is_eof, f_trc);
 
+			//
+			// Internal metrics
+			// Should go after all the other emitters are done
+			//
+			if (m_internal_metrics)
+			{
+				scap_stats st = {};
+				m_inspector->get_capture_stats(&st);
+
+				m_internal_metrics->emit(m_metrics->mutable_protos()->mutable_statsd(),
+				             st,
+				             m_prev_flush_cpu_pct,
+				             m_sampling_ratio,
+				             m_prev_flushes_duration_ns,
+				             m_inspector->m_n_proc_lookups,
+				             m_inspector->m_n_main_thread_lookups);
+			}
+
 			////////////////////////////////////////////////////////
 			// Serialize everything
 			////////////////////////////////////////////////////////
 			if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
-				const uint64_t evt_num =
-					(evt ? evt->get_num()
-					     : metric_serializer::NO_EVENT_NUMBER);
-				const uint64_t serialize_sample_time =
-					m_prev_flush_time_ns -
-                                        (m_prev_flush_time_ns %
-                                        m_configuration->get_analyzer_original_sample_len_ns());
 
-				// Note that this passes a *copy* of m_metrics
-				// to the serializer.
-				m_serializer->serialize(
-						make_unique<metric_serializer::data>(
-								evt_num,
-								serialize_sample_time,
-								m_sampling_ratio,
-								m_prev_flush_cpu_pct,
-								m_prev_flushes_duration_ns,
-								m_sent_metrics,
-								m_my_cpuload,
-								m_inspector->m_n_proc_lookups,
-								m_inspector->m_n_main_thread_lookups,
-								*m_metrics));
-
-				// If the client doesn't want async protobuf
-				// serialization, block waiting for it to
-				// complete.
-				if(!m_async_serialize_enabled)
-				{
-					m_serializer->drain();
-				}
+				// Complete the flush
+				flush_done_handler(evt);
 			}
 
 			//
@@ -4608,6 +4596,80 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 	{
 		rearm_tracer_logging();
 	}
+}
+
+void sinsp_analyzer::flush_done_handler(const sinsp_evt* evt)
+{
+	static uint64_t prev_sample_time = 0;
+
+	// Calculate some internal timestamps and stats
+	const uint64_t evt_num = evt ? evt->get_num() : 0;
+	const uint64_t original_sample_len = m_configuration->get_analyzer_original_sample_len_ns();
+	const uint64_t ts = m_prev_flush_time_ns - (m_prev_flush_time_ns % original_sample_len);
+	uint64_t nevts = 0;
+	uint64_t num_drop_events = 0;
+
+	if(evt_num != 0)
+	{
+		nevts = evt_num - m_prev_sample_evtnum;
+		m_prev_sample_evtnum = evt_num;
+	}
+
+	// Get the number of dropped events and include that in the log message
+	scap_stats st = {};
+	m_inspector->get_capture_stats(&st);
+
+	num_drop_events = st.n_drops - m_prev_sample_num_drop_events;
+	m_prev_sample_num_drop_events = st.n_drops;
+	// Handle bookkeeping
+	if(evt_num != 0)
+	{
+		m_prev_sample_evtnum = evt_num;
+
+		// Subsampling can cause repeated samples, which we skip here
+		if(prev_sample_time != 0)
+		{
+			if(ts == prev_sample_time)
+			{
+				return;
+			}
+		}
+
+		prev_sample_time = ts;
+	}
+
+	// The following message is used in some test automation. Change with caution.
+	g_logger.format(sinsp_logger::SEV_INFO,
+	                "ts=%" PRIu64
+	                ", ne=%" PRIu64
+	                ", de=%" PRIu64
+	                ", c=%.2lf"
+	                ", fp=%.2lf"
+	                ", sr=%" PRIu32
+	                ", st=%" PRIu64
+	                ", fl=%" PRIu64,
+	                ts / 1000000000,
+	                nevts,
+	                num_drop_events,
+	                m_my_cpuload,
+	                m_prev_flush_cpu_pct,
+	                m_sampling_ratio,
+	                st.n_tids_suppressed,
+	                m_prev_flushes_duration_ns / 1000000);
+
+
+	// Send the metrics to the serializer
+	m_flush_queue->put(std::make_shared<flush_data_message>(
+	                        evt_num,
+	                        ts,
+	                        m_sampling_ratio,
+	                        m_prev_flush_cpu_pct,
+	                        m_prev_flushes_duration_ns,
+	                        m_sent_metrics,
+	                        m_my_cpuload,
+	                        m_inspector->m_n_proc_lookups,
+	                        m_inspector->m_n_main_thread_lookups,
+	                        *m_metrics));
 }
 
 //
@@ -7022,16 +7084,6 @@ void sinsp_analyzer::incr_command_lines_category(draiosproto::command_category c
 	}
 }
 
-void sinsp_analyzer::flush_drain() const
-{
-	m_serializer->drain();
-}
-
-void sinsp_analyzer::set_async_protobuf_serialize_enabled(const bool enabled)
-{
-         m_async_serialize_enabled = enabled;
-}
-
 bool sinsp_analyzer::should_terminate() const
 {
 	return m_die;
@@ -7224,7 +7276,14 @@ bool sinsp_analyzer::has_statsite_proxy() const
 
 void sinsp_analyzer::set_metrics_dir(const std::string& metrics_dir)
 {
-	m_serializer->set_metrics_directory(metrics_dir);
+	std::unique_lock<std::mutex> lock(m_metrics_dir_mutex);
+	m_metrics_dir = metrics_dir;
+}
+
+std::string sinsp_analyzer::get_metrics_dir()
+{
+	std::unique_lock<std::mutex> lock(m_metrics_dir_mutex);
+	return m_metrics_dir;
 }
 
 uint64_t self_cputime_analyzer::read_cputime()

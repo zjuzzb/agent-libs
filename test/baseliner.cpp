@@ -110,7 +110,7 @@ private:
 }
 
 namespace {
-uncompressed_sample_handler_dummy g_sample_handler;
+sinsp_analyzer::flush_queue g_queue(1000);
 audit_tap_handler_dummy g_audit_handler;
 }
 
@@ -144,10 +144,10 @@ protected:
 		m_inspector = new sinsp();
 		internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 		m_analyzer = new sinsp_analyzer(m_inspector,
-						"/opt/draios",
-						int_metrics,
-						g_sample_handler,
-						g_audit_handler);
+		                                "/opt/draios",
+		                                int_metrics,
+		                                g_audit_handler,
+		                                &g_queue);
 		m_inspector->m_analyzer = m_analyzer;
 
 		m_analyzer->get_configuration()->set_falco_baselining_enabled(m_configuration.m_falco_baselining_enabled);

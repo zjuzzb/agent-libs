@@ -4,7 +4,7 @@
 
 #include <arpa/inet.h> // htonl
 
-std::shared_ptr<protocol_queue_item> dragent_protocol::message_to_buffer(uint64_t ts_ns, uint8_t message_type,
+std::shared_ptr<serialized_buffer> dragent_protocol::message_to_buffer(uint64_t ts_ns, uint8_t message_type,
 									 const google::protobuf::MessageLite& message, bool compressed,
 									 int compression_level)
 {
@@ -27,7 +27,7 @@ std::shared_ptr<protocol_queue_item> dragent_protocol::message_to_buffer(uint64_
         return NULL;
     }
 
-    std::shared_ptr<protocol_queue_item> ptr = std::make_shared<protocol_queue_item>();
+    std::shared_ptr<serialized_buffer> ptr = std::make_shared<serialized_buffer>();
     ptr->ts_ns = ts_ns;
     ptr->message_type = message_type;
     ptr->buffer.resize(sizeof(dragent_protocol_header));

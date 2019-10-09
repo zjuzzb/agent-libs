@@ -43,11 +43,13 @@ add_executable(unit-test-dragent
 	dragent_user_event_callback.ut.cpp
 	faultlist_rest_request_handler.ut.cpp
 	fault_rest_request_handler.ut.cpp
-	protocol_handler.ut.cpp
 	file_rest_registry.ut.cpp
 	file_rest_request_handler.ut.cpp
+	metric_serializer.ut.cpp
 	metrics_rest_request_handler.ut.cpp
 	process_helpers.ut.cpp
+	protobuf_metric_serializer.ut.cpp
+	protocol_handler.ut.cpp
 	sinsp_worker.ut.cpp
 	spinlock.ut.cpp
 	watchdog_runnable.ut.cpp

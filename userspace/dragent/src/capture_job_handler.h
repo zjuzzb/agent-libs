@@ -25,6 +25,7 @@
 #include "infra_event_sink.h"
 #include "protocol.h"
 #include "watchdog_runnable.h"
+#include "dragent_message_queues.h"
 
 class capture_job;
 class capture_job_handler : public dragent::watchdog_runnable,
@@ -210,8 +211,8 @@ private:
 	bool can_send(uint32_t buffer_size, uint64_t ts_ns);
 
 	void prepare_response(const std::string& token, draiosproto::dump_response* response);
-	std::shared_ptr<protocol_queue_item> dump_response_to_queue_item(const draiosproto::dump_response& response);
-	bool queue_item(std::shared_ptr<protocol_queue_item> &item, protocol_queue::item_priority priority);
+	std::shared_ptr<serialized_buffer> dump_response_to_queue_item(const draiosproto::dump_response& response);
+	bool queue_item(std::shared_ptr<serialized_buffer> &item, protocol_queue::item_priority priority);
 	bool queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority);
 
 	static const uint64_t default_max_chunk_size;

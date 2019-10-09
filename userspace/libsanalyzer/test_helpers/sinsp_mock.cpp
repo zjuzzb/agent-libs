@@ -2,6 +2,20 @@
 #include "event_builder.h"
 #include "sinsp_evt_wrapper.h"
 #include <analyzer.h>
+#include <unistd.h>
+
+namespace
+{
+void msleep(uint32_t milliseconds)
+{
+	struct timespec ts =
+	{
+		.tv_sec = milliseconds / 1000,
+		.tv_nsec = (milliseconds % 1000) * 1000000,
+	};
+	nanosleep(&ts, NULL);
+}
+}
 
 namespace test_helpers
 {
@@ -118,9 +132,6 @@ int32_t sinsp_mock::next(sinsp_evt **evt) /*override*/
 	if(m_analyzer)
 	{
 		m_analyzer->process_event(*evt, analyzer_emitter::DF_NONE);
-
-		// Wait for async processing to complete
-		m_analyzer->flush_drain();
 	}
 
 	return SCAP_SUCCESS;

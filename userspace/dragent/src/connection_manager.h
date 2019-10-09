@@ -2,6 +2,7 @@
 
 #include "protocol.h"
 #include "watchdog_runnable.h"
+#include "dragent_message_queues.h"
 
 #ifndef CYGWING_AGENT
 #include "promex.pb.h"
@@ -71,7 +72,7 @@ private:
 	bool connect();
 	void disconnect();
 	void disconnect(socket_ptr& ssp);
-	bool transmit_buffer(uint64_t now, std::shared_ptr<protocol_queue_item> &item);
+	bool transmit_buffer(uint64_t now, std::shared_ptr<serialized_buffer> &item);
 	bool receive_message();
 
 	static const std::string& get_openssldir();

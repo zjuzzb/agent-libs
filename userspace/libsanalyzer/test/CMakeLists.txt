@@ -41,7 +41,6 @@ list(APPEND libsanalyzer_uts
 	audit_tap.ut.cpp
 	infrastructure_state.ut.cpp
 	main.cpp
-	metric_serializer.ut.cpp
 	metric_store.ut.cpp
 	metric_forwarding_configuration.ut.cpp
 	mounted_fs.ut.cpp
@@ -51,7 +50,6 @@ list(APPEND libsanalyzer_uts
 	process_emitter.ut.cpp
 	process_manager.ut.cpp
 	prometheus.ut.cpp
-	protobuf_metric_serializer.ut.cpp
 	security_config.ut.cpp
 	scoped_sinsp_logger_capture.ut.cpp
 	statsd_emitter.ut.cpp
