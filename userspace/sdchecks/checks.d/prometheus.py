@@ -31,8 +31,14 @@ class Prometheus(AgentCheck):
         logging.info('======== %s ========' % (desc))
 
     def __check_metric_limits(self, max_metrics, num_metrics, pid, url):
-        if num_metrics >= max_metrics:
+        if max_metrics and num_metrics >= max_metrics:
             logging.info('Prometheus "max_metrics_per_process" limit(%d) exceeded for process:%d with url:%s ' % (max_metrics, pid, url))
+            return True
+        return False
+
+    def __check_tag_limits(self, max_tags, num_tags, pid, url, mname):
+        if max_tags and num_tags >= max_tags:
+            logging.warning('Prometheus max_tags limit exceeded process:%d url:%s metric:%s max_tags:%d num_tags:%d' % (pid, url, mname, max_tags, num_tags))
             return True
         return False
 
@@ -79,7 +85,7 @@ class Prometheus(AgentCheck):
                 hists = dict()
 
                 for sample in family.samples:
-                    if max_metrics and self.__check_metric_limits(max_metrics, num, pid, query_url):
+                    if self.__check_metric_limits(max_metrics, num, pid, query_url):
                         break
                     # getting name, tags, value this way to be compatible with old prometheus_client
                     (sname, stags, value) = sample[0:3]
@@ -91,14 +97,13 @@ class Prometheus(AgentCheck):
                     if ingest_raw:
                         rawtags = ['{}:{}'.format(k,v) for k,v in stags.iteritems()]
 
-                        if max_tags != None and len(rawtags) > max_tags:
-                            logging.warn('prometheus ingest_raw: capping tags %s found %d max_tags %d' % (sname, len(rawtags), max_tags))
-                            rawtags = rawtags[:max_tags]
+                        if self.__check_tag_limits(max_tags, len(rawtags), pid, query_url, sname):
+                            break
 
                         # No check here for NaN values, as we do allow them for raw prometheus metrics.
                         self.prometheus_raw(family.type, sname, value, rawtags)
                         num += 1
-                        if max_metrics and self.__check_metric_limits(max_metrics, num, pid, query_url):
+                        if self.__check_metric_limits(max_metrics, num, pid, query_url):
                             break
 
                     if not ingest_calculated:
@@ -113,9 +118,8 @@ class Prometheus(AgentCheck):
                         reserved_tags.append('le')
                     tags = ['{}:{}'.format(k,v) for k,v in stags.iteritems() if k not in reserved_tags]
 
-                    # trim the number of tags to 'max_tags'
-                    n_tags = max_tags if max_tags != None else len(tags)
-                    tags = tags[:n_tags]
+                    if self.__check_tag_limits(max_tags, len(tags), pid, query_url, sname):
+                        break
 
                     hist_entry = None
                     if (family.type == 'histogram') and (ret_histograms != False):
