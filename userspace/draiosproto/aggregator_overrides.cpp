@@ -185,6 +185,25 @@ void metrics_message_aggregator_impl::aggregate_config_percentiles(const draiosp
 	}
 }
 
+void metrics_message_aggregator_impl::aggregate_falcobl(const draiosproto::metrics& input,
+							draiosproto::metrics& output)
+{
+    if (input.has_falcobl())
+    {
+	*output.mutable_falcobl() = input.falcobl();
+    }
+}
+
+void metrics_message_aggregator_impl::aggregate_commands(const draiosproto::metrics& input,
+							draiosproto::metrics& output)
+{
+    for (auto i : input.commands())
+    {
+	auto command = output.add_commands();
+	*command = i;
+    }
+}
+
 void metrics_message_aggregator_impl::aggregate(const draiosproto::metrics& input,
 						draiosproto::metrics& output)
 {
@@ -244,6 +263,16 @@ void counter_percentile_data_message_aggregator_impl::reset()
     m_digest = std::unique_ptr<tdigest::TDigest>(new tdigest::TDigest(200, // compression
 								      400, // buffer size
 								      5 * 400)); // seems to be what the java impl does
+}
+
+void container_message_aggregator_impl::aggregate_commands(const draiosproto::container& input,
+							   draiosproto::container& output)
+{
+	for (auto i : input.commands())
+	{
+		auto command = output.add_commands();
+		*command = i;
+	}
 }
 
 void agent_event_message_aggregator_impl::aggregate_tags(const draiosproto::agent_event& input,
@@ -308,4 +337,10 @@ agent_message_aggregator<draiosproto::resource_categories>&
 message_aggregator_builder_impl::build_resource_categories() const
 {
 	return *(new resource_categories_message_aggregator_impl(*this));
+}
+
+agent_message_aggregator<draiosproto::container>&
+message_aggregator_builder_impl::build_container() const
+{
+        return *(new container_message_aggregator_impl(*this));
 }

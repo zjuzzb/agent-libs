@@ -97,9 +97,18 @@ private:
     virtual void aggregate_ipv4_incomplete_connections_v2(const draiosproto::metrics& input,
 							  draiosproto::metrics& output);
 
+    // we just copy the last seen value in
+    virtual void aggregate_falcobl(const draiosproto::metrics& input,
+				   draiosproto::metrics& output);
+
+    // just concatenate command details
+    virtual void aggregate_commands(const draiosproto::metrics& input,
+				    draiosproto::metrics& output);
+
     // just store whatever the most recent list was. don't combine
     virtual void aggregate_config_percentiles(const draiosproto::metrics& input,
 					      draiosproto::metrics& output);
+
     // need to reset the pid_map field
     virtual void reset()
     {
@@ -132,6 +141,18 @@ private:
 
 	// need to reset the tdigest
 	virtual void reset();
+};
+
+class container_message_aggregator_impl : public container_message_aggregator
+{
+public:
+	container_message_aggregator_impl(const message_aggregator_builder& builder)
+		: container_message_aggregator(builder)
+	{}
+
+private:
+    virtual void aggregate_commands(const draiosproto::container& input,
+				    draiosproto::container& output);
 };
 
 class agent_event_message_aggregator_impl : public agent_event_message_aggregator
@@ -171,6 +192,7 @@ public:
 	virtual agent_message_aggregator<draiosproto::process_details>& build_process_details() const;
 	virtual agent_message_aggregator<draiosproto::metrics>& build_metrics() const;
 	virtual agent_message_aggregator<draiosproto::counter_percentile_data>& build_counter_percentile_data() const;
+	virtual agent_message_aggregator<draiosproto::container>& build_container() const;
 	virtual agent_message_aggregator<draiosproto::agent_event>& build_agent_event() const;
 	virtual agent_message_aggregator<draiosproto::resource_categories>& build_resource_categories() const;
 };

@@ -188,7 +188,7 @@ field_extension = {
     "swarm_task" : {1: PRIMARY_KEY},
     "swarm_node" : {1: PRIMARY_KEY},
     "swarm_state" : {5:6},
-    "key_value" : {1: PRIMARY_KEY, #SMAGENT-1935
+    "key_value" : {1: PRIMARY_KEY,
                    2: PRIMARY_KEY},
     "agent_event" : {1: PRIMARY_KEY,
                      2: PRIMARY_KEY,

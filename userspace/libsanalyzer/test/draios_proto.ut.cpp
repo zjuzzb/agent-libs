@@ -144,8 +144,6 @@ TEST(aggregator, metrics)
 	event = input.add_events();
 	event->set_scope("1");
 
-	// SMAGENT-1948
-
 	input.add_config_percentiles(10);
 	input.add_config_percentiles(11);
 
@@ -2641,7 +2639,6 @@ TEST(aggregator, container)
 	in->add_network_by_serverports()->set_port(11);
 	in->set_mesos_task_id("11");
 	in->set_image_id("12");
-	// SMAGENT-1948
 	in->add_orchestrators_fallback_labels()->set_key("22");
 	in->add_orchestrators_fallback_labels()->set_key("23");
 	in->set_image_repo("14");
@@ -2809,7 +2806,24 @@ TEST(aggregator, container_label)
 
 TEST(aggregator, command_details)
 {
-	// SMAGENT-1948
+    	message_aggregator_builder_impl builder;
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+
+	draiosproto::metrics input;
+	draiosproto::metrics output;
+
+	input.add_commands()->set_timestamp(1);
+	input.add_containers()->add_commands()->set_timestamp(2);
+
+	aggregator.aggregate(input,output);
+	EXPECT_EQ(output.commands().size(), 1);
+	EXPECT_EQ(output.commands()[0].timestamp(), 1);
+	EXPECT_EQ(output.containers()[0].commands().size(), 1);
+	EXPECT_EQ(output.containers()[0].commands()[0].timestamp(), 2);
+
+	aggregator.aggregate(output,output);
+	EXPECT_EQ(output.commands().size(), 2);
+	EXPECT_EQ(output.containers()[0].commands().size(), 2);
 }
 
 TEST(aggregator, mesos_state)
@@ -3177,35 +3191,107 @@ TEST(aggregator, key_value)
 		  key_value_message_aggregator::hasher()(&rhs));
 }
 
+// this is just a deep-copy each time we have data...so check that it works
 TEST(aggregator, falco_baseline)
 {
-	// SMAGENT-1948
+    message_aggregator_builder_impl builder;
+    agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+
+    draiosproto::metrics input;
+    draiosproto::metrics output;
+
+    auto in = input.mutable_falcobl();
+
+    // check that containers group correctly
+    in->add_containers();
+    in->add_containers();
+
+    (*in->mutable_containers())[0].set_id("0");
+    (*in->mutable_containers())[1].set_id("1");
+    in->add_progs();
+    in->add_progs();
+    (*in->mutable_progs())[0].set_comm("0");
+    (*in->mutable_progs())[1].set_comm("1");
+    (*in->mutable_progs())[0].add_cats();
+    (*in->mutable_progs())[0].add_cats();
+
+    (*(*in->mutable_progs())[0].mutable_cats())[0].set_name("0");
+    (*(*in->mutable_progs())[0].mutable_cats())[1].set_name("1");
+    (*(*in->mutable_progs())[0].mutable_cats())[0].add_startup_subcats()->add_subcats();
+    (*(*(*in->mutable_progs())[0].mutable_cats())[0].mutable_startup_subcats())[0].add_subcats();
+    (*(*(*(*in->mutable_progs())[0].mutable_cats())[0].mutable_startup_subcats())[0].mutable_subcats())[0].set_name("0");
+    (*(*(*(*in->mutable_progs())[0].mutable_cats())[0].mutable_startup_subcats())[0].mutable_subcats())[0].add_d("1");
+    (*(*(*(*in->mutable_progs())[0].mutable_cats())[0].mutable_startup_subcats())[0].mutable_subcats())[0].add_d("2");
+    (*(*(*(*in->mutable_progs())[0].mutable_cats())[0].mutable_startup_subcats())[0].mutable_subcats())[1].set_name("1");
+
+    aggregator.aggregate(input, output);
+    EXPECT_EQ(output.falcobl().containers().size(), 2);
+    EXPECT_EQ(output.falcobl().containers()[0].id(), "0");
+    EXPECT_EQ(output.falcobl().containers()[1].id(), "1");
+    EXPECT_EQ(output.falcobl().progs().size(), 2);
+    EXPECT_EQ(output.falcobl().progs()[0].comm(), "0");
+    EXPECT_EQ(output.falcobl().progs()[1].comm(), "1");
+    EXPECT_EQ(output.falcobl().progs()[0].cats().size(), 2);
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].name(), "0");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[1].name(), "1");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats().size(), 2);
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[0].name(), "0");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[1].name(), "1");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[0].d().size(), 2);
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[0].d()[0], "1");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[0].d()[1], "2");
+  
+    // aggregate again just to make sure nothing changes
+    aggregator.aggregate(input, output);
+    EXPECT_EQ(output.falcobl().containers().size(), 2);
+    EXPECT_EQ(output.falcobl().containers()[0].id(), "0");
+    EXPECT_EQ(output.falcobl().containers()[1].id(), "1");
+    EXPECT_EQ(output.falcobl().progs().size(), 2);
+    EXPECT_EQ(output.falcobl().progs()[0].comm(), "0");
+    EXPECT_EQ(output.falcobl().progs()[1].comm(), "1");
+    EXPECT_EQ(output.falcobl().progs()[0].cats().size(), 2);
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].name(), "0");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[1].name(), "1");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats().size(), 2);
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[0].name(), "0");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[1].name(), "1");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[0].d().size(), 2);
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[0].d()[0], "1");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[0].d()[1], "2");
+
+    // aggregate an empty one to make sure it doesn't change
+    draiosproto::metrics empty;
+    aggregator.aggregate(empty, output);
+    EXPECT_EQ(output.falcobl().containers().size(), 2);
+    EXPECT_EQ(output.falcobl().containers()[0].id(), "0");
+    EXPECT_EQ(output.falcobl().containers()[1].id(), "1");
+    EXPECT_EQ(output.falcobl().progs().size(), 2);
+    EXPECT_EQ(output.falcobl().progs()[0].comm(), "0");
+    EXPECT_EQ(output.falcobl().progs()[1].comm(), "1");
+    EXPECT_EQ(output.falcobl().progs()[0].cats().size(), 2);
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].name(), "0");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[1].name(), "1");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats().size(), 2);
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[0].name(), "0");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[1].name(), "1");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[0].d().size(), 2);
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[0].d()[0], "1");
+    EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[0].d()[1], "2");
+
+    // aggregate a different PB to make sure it gets overwritten
+    draiosproto::metrics replacement;
+
+    in = replacement.mutable_falcobl();
+
+    // check that containers group correctly
+    in->add_containers();
+    (*in->mutable_containers())[0].set_id("NEW");
+    aggregator.aggregate(replacement, output);
+    EXPECT_EQ(output.falcobl().containers().size(), 1);
+    EXPECT_EQ(output.falcobl().containers()[0].id(), "NEW");
+    EXPECT_EQ(output.falcobl().progs().size(), 0);
 }
 
-TEST(aggregator, falco_prog)
-{
-	// SMAGENT-1948
-}
-
-TEST(aggregator, falco_category)
-{
-	// SMAGENT-1948
-}
-
-TEST(aggregator, falco_subcategory_container)
-{
-	// SMAGENT-1948
-}
-
-TEST(aggregator, falco_subcategory)
-{
-	// SMAGENT-1948
-}
-
-TEST(aggregator, falco_container)
-{
-	// SMAGENT-1948
-}
 
 TEST(aggregator, swarm_state)
 {
