@@ -237,6 +237,7 @@ TEST(aggregator, metrics)
 	input.set_instance_id("100");
 	(*input.mutable_containers())[1].set_id("2");
 	(*input.mutable_events())[1].set_scope("2");
+	input.clear_config_percentiles();
 	input.add_config_percentiles(100);
 	(*input.mutable_ipv4_incomplete_connections())[1].set_spid(2);
 	(*input.mutable_userdb())[1].set_id(2);
@@ -283,9 +284,8 @@ TEST(aggregator, metrics)
 	EXPECT_EQ(output.events()[0].scope(), "0");
 	EXPECT_EQ(output.events()[1].scope(), "1");
 	EXPECT_EQ(output.events()[2].scope(), "2");
-	EXPECT_EQ(output.config_percentiles()[0], 10);
-	EXPECT_EQ(output.config_percentiles()[1], 11);
-	EXPECT_EQ(output.config_percentiles()[2], 100);
+	EXPECT_EQ(output.config_percentiles().size(), 1);
+	EXPECT_EQ(output.config_percentiles()[0], 100);
 	EXPECT_EQ(output.ipv4_incomplete_connections().size(), 3);
 	EXPECT_EQ(output.ipv4_incomplete_connections()[0].spid(), 0);
 	EXPECT_EQ(output.ipv4_incomplete_connections()[1].spid(), 1);
@@ -1080,6 +1080,16 @@ TEST(aggregator, resource_categories)
 	EXPECT_EQ(out->aggr_cpu_cores_quota_limit().sum(), 129);
 	EXPECT_EQ(out->aggr_cpu_cpuset_usage_pct().sum(), 130);
 	EXPECT_EQ(out->aggr_cpu_cores_cpuset_limit().sum(), 131);
+
+	// we have to ignore "invalid" capacity scores
+	// We use this number rather than the computation to
+	// be absolutly sure it produces the same number as the BE.
+	uint32_t invalid_capacity_score = 4294967196;
+	in->set_capacity_score(invalid_capacity_score);
+	in->set_stolen_capacity_score(invalid_capacity_score);
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(out->aggr_capacity_score().sum(), 101);
+	EXPECT_EQ(out->aggr_stolen_capacity_score().sum(), 102);
 }
 
 TEST(aggregator, counter_syscall_errors)
@@ -2198,10 +2208,8 @@ TEST(aggregator, statsd_tag)
 	rhs.set_key("1");
 	EXPECT_FALSE(statsd_tag_message_aggregator::comparer()(&lhs, &rhs));
 	rhs.set_key("");
-	rhs.set_value("1");
-	EXPECT_FALSE(statsd_tag_message_aggregator::comparer()(&lhs, &rhs));
-	rhs.set_value("");
 
+	rhs.set_value("1");
 	EXPECT_TRUE(statsd_tag_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(statsd_tag_message_aggregator::hasher()(&lhs),
 		  statsd_tag_message_aggregator::hasher()(&rhs));
@@ -2634,7 +2642,8 @@ TEST(aggregator, container)
 	in->set_mesos_task_id("11");
 	in->set_image_id("12");
 	// SMAGENT-1948
-	// SMAGENT-1935
+	in->add_orchestrators_fallback_labels()->set_key("22");
+	in->add_orchestrators_fallback_labels()->set_key("23");
 	in->set_image_repo("14");
 	in->set_image_tag("15");
 	in->set_image_digest("16");
@@ -2666,6 +2675,9 @@ TEST(aggregator, container)
 	EXPECT_EQ(output.containers()[0].network_by_serverports()[1].port(), 11);
 	EXPECT_EQ(output.containers()[0].mesos_task_id(), "11");
 	EXPECT_EQ(output.containers()[0].image_id(), "12");
+	EXPECT_EQ(output.containers()[0].orchestrators_fallback_labels().size(), 2);
+	EXPECT_EQ(output.containers()[0].orchestrators_fallback_labels()[0].key(), "22");
+	EXPECT_EQ(output.containers()[0].orchestrators_fallback_labels()[1].key(), "23");
 	EXPECT_EQ(output.containers()[0].image_repo(), "14");
 	EXPECT_EQ(output.containers()[0].image_tag(), "15");
 	EXPECT_EQ(output.containers()[0].image_digest(), "16");
@@ -2683,6 +2695,7 @@ TEST(aggregator, container)
 	in->set_next_tiers_delay(100);
 	(*in->mutable_port_mappings())[1].set_host_ip(1);
 	(*in->mutable_labels())[1].set_key("1");
+	(*in->mutable_orchestrators_fallback_labels())[1].set_key("1");
 	(*in->mutable_mounts())[1].set_mount_dir("1");
 	(*in->mutable_network_by_serverports())[1].set_port(1);
 	(*in->mutable_top_files())[1].set_name("1");
@@ -2699,6 +2712,10 @@ TEST(aggregator, container)
 	EXPECT_EQ(output.containers()[0].labels()[0].key(), "9");
 	EXPECT_EQ(output.containers()[0].labels()[1].key(), "10");
 	EXPECT_EQ(output.containers()[0].labels()[2].key(), "1");
+	EXPECT_EQ(output.containers()[0].orchestrators_fallback_labels().size(), 3);
+	EXPECT_EQ(output.containers()[0].orchestrators_fallback_labels()[0].key(), "22");
+	EXPECT_EQ(output.containers()[0].orchestrators_fallback_labels()[1].key(), "23");
+	EXPECT_EQ(output.containers()[0].orchestrators_fallback_labels()[2].key(), "1");
 	EXPECT_EQ(output.containers()[0].mounts().size(), 3);
 	EXPECT_EQ(output.containers()[0].mounts()[0].mount_dir(), "9");
 	EXPECT_EQ(output.containers()[0].mounts()[1].mount_dir(), "10");
@@ -2731,6 +2748,7 @@ TEST(aggregator, container)
 	rhs.set_next_tiers_delay(6);
 	rhs.add_port_mappings()->set_host_ip(7);
 	rhs.add_labels()->set_key("9");
+	rhs.add_orchestrators_fallback_labels()->set_key("21");
 	rhs.add_mounts()->set_mount_dir("9");
 	rhs.add_network_by_serverports()->set_port(10);
 	rhs.set_mesos_task_id("11");
@@ -3108,7 +3126,11 @@ TEST(aggregator, agent_event)
 
 	(*in->mutable_tags())[1].set_key("3");
 	aggregator.aggregate(input, output);
-	EXPECT_EQ(output.events().size(), 2); // creates a new event since tag doesn't match
+	EXPECT_EQ(output.events().size(), 1);
+	// tags should have gotten replaced
+	EXPECT_EQ(output.events()[0].tags().size(), 2);
+	EXPECT_EQ(output.events()[0].tags()[0].key(), "1");
+	EXPECT_EQ(output.events()[0].tags()[1].key(), "3");
 
 	// validate primary key
 	draiosproto::agent_event lhs;
@@ -3129,10 +3151,8 @@ TEST(aggregator, agent_event)
 	rhs.set_severity(1);
 	EXPECT_FALSE(agent_event_message_aggregator::comparer()(&lhs, &rhs));
 	rhs.set_severity(0);
-	rhs.add_tags();
-	EXPECT_FALSE(agent_event_message_aggregator::comparer()(&lhs, &rhs));
-	lhs.add_tags();
 
+	rhs.add_tags();
 	EXPECT_TRUE(agent_event_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(agent_event_message_aggregator::hasher()(&lhs),
 		  agent_event_message_aggregator::hasher()(&rhs));

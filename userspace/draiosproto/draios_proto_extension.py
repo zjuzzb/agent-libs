@@ -85,10 +85,9 @@ field_extension = {
     "sql_query_type_details" : {1: PRIMARY_KEY},
     "mongodb_collection_details" : {1: PRIMARY_KEY},
     "mongodb_op_type_details" : {1: PRIMARY_KEY},
-    "statsd_tag" : {1: PRIMARY_KEY,
-                    2: PRIMARY_KEY},
+    "statsd_tag" : {1: PRIMARY_KEY},
     "jmx_attribute" : {1: PRIMARY_KEY,
-                       2:6}, #SMAGENT-1935
+                       2:6}, # note there are two aggregations, but only one is used
     "jmx_bean" : {1: PRIMARY_KEY},
     "statsd_metric" : {1: PRIMARY_KEY,
                        2: PRIMARY_KEY,
@@ -195,8 +194,7 @@ field_extension = {
                      2: PRIMARY_KEY,
                      3: PRIMARY_KEY,
                      4: PRIMARY_KEY,
-                     5: PRIMARY_KEY,
-                     6: PRIMARY_KEY}, #SMAGENT-1935
+                     5: PRIMARY_KEY},
     "metrics" : {10:17},
 }
 

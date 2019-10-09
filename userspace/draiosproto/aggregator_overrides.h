@@ -97,6 +97,9 @@ private:
     virtual void aggregate_ipv4_incomplete_connections_v2(const draiosproto::metrics& input,
 							  draiosproto::metrics& output);
 
+    // just store whatever the most recent list was. don't combine
+    virtual void aggregate_config_percentiles(const draiosproto::metrics& input,
+					      draiosproto::metrics& output);
     // need to reset the pid_map field
     virtual void reset()
     {
@@ -131,6 +134,35 @@ private:
 	virtual void reset();
 };
 
+class agent_event_message_aggregator_impl : public agent_event_message_aggregator
+{
+public:
+	agent_event_message_aggregator_impl(const message_aggregator_builder& builder)
+		: agent_event_message_aggregator(builder)
+	{}
+
+private:
+	// don't mix tags if we end up aggregating event. just take last set
+	virtual void aggregate_tags(const draiosproto::agent_event& input,
+				    draiosproto::agent_event& output);
+};
+
+class resource_categories_message_aggregator_impl : public resource_categories_message_aggregator
+{
+public:
+	resource_categories_message_aggregator_impl(const message_aggregator_builder& builder)
+		: resource_categories_message_aggregator(builder)
+	{}
+
+private:
+	// capacity scores need to ignore "invalid capacity" This number is well known.
+	const uint32_t invalid_capacity = UINT32_MAX - 100 + 1;
+	virtual void aggregate_capacity_score(const draiosproto::resource_categories& input,
+					      draiosproto::resource_categories& output);
+	virtual void aggregate_stolen_capacity_score(const draiosproto::resource_categories& input,
+						     draiosproto::resource_categories& output);
+};
+
 // for any message type which we've overridden, we have to override it's builder
 // function as well
 class message_aggregator_builder_impl : public message_aggregator_builder
@@ -139,4 +171,6 @@ public:
 	virtual agent_message_aggregator<draiosproto::process_details>& build_process_details() const;
 	virtual agent_message_aggregator<draiosproto::metrics>& build_metrics() const;
 	virtual agent_message_aggregator<draiosproto::counter_percentile_data>& build_counter_percentile_data() const;
+	virtual agent_message_aggregator<draiosproto::agent_event>& build_agent_event() const;
+	virtual agent_message_aggregator<draiosproto::resource_categories>& build_resource_categories() const;
 };
