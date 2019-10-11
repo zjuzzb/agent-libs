@@ -50,8 +50,8 @@ GLOBAL_PERCENTILES = []
 DONT_SEND_LOG_REPORT = 19
 SIGHUP_HANDLER_EXIT_CODE = DONT_SEND_LOG_REPORT
 
-BLACKLISTED_APP_CHECKS_FOR_PYTHON_2_6 = ('consul', 'couchdb', 'elasticsearch', 'haproxy', 'kafka', 'pgbouncer',
-                                         'rabbitmq', 'postgres')
+EXCLUDED_APP_CHECKS_FOR_PYTHON_2_6 = ('consul', 'couchdb', 'elasticsearch', 'haproxy', 'kafka', 'pgbouncer',
+                                         'rabbitmq')
 UNSUPPORTED_PYTHON_VERSIONS_LIST = ['2.6']
 
 try:
@@ -259,14 +259,14 @@ class AppCheckInstance:
         timeout = return_dict.get('timeout', 1)
 
         if timeout == -1:
-            default_log_exception_interval = 1
-            self.blacklist_app_timeout = timeout
+            default_log_exception_interval = 60
+            self.exclude_app_timeout = timeout
         else:
-            default_log_exception_interval = 5
-            self.blacklist_app_timeout = timedelta(seconds=timeout)
+            default_log_exception_interval = 300
+            self.exclude_app_timeout = timedelta(seconds=timeout)
 
-        log_exception_interval = return_dict.get('log_exception_interval', default_log_exception_interval)
-        self.log_exception_relog_timeout = timedelta(minutes=log_exception_interval)
+        log_exception_interval = return_dict.get('log_exception_interval_sec', default_log_exception_interval)
+        self.log_exception_relog_timeout = timedelta(seconds=log_exception_interval)
 
         try:
             check_module = check["check_module"]
@@ -617,27 +617,30 @@ class Application:
         self.last_heartbeat = datetime(2010, 1, 1, 0, 0, 0);
         self.heartbeat_min = timedelta(0);
         self.python_version = platform.python_version()
-        self.last_blacklisted_pidnames_log = datetime.now()
-        self.blacklisted_pidnames_log_interval = timedelta(minutes=self.config._yaml_config.get_single("exclude_log_interval", default_value=5))
-        self.blacklisted_pidnames_log_time = datetime.now() + timedelta(seconds=15)
-        self.blacklisted_pidnames_log_flag = True
+        self.last_excluded_pidnames_log = datetime.now()
+        exclude_log_interval = self.config._yaml_config.get_single(
+            "app_checks_exclude_log_interval_sec", default_value=300)
+        self.excluded_pidnames_log_interval = timedelta(seconds=exclude_log_interval)
+        self.excluded_pidnames_log_time = datetime.now() + timedelta(seconds=15)
+        self.excluded_pidnames_log_flag = True
 
         self.inqueue = None
         self.outqueue = None
-        timeout_value = self.config._yaml_config.get_single("exclude_flush_interval", default_value=30)
-        self.blacklisted_pidnames_flush_interval = timedelta(minutes=timeout_value)
+        exclude_flush_interval = self.config._yaml_config.get_single(
+            "app_checks_exclude_flush_interval_sec", default_value=1800)
+        self.excluded_pidnames_flush_interval = timedelta(seconds=exclude_flush_interval)
 
         if self.config.ignore_ssl_warnings():
             requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
             requests.packages.urllib3.disable_warnings(SecurityWarning)
 
-        # Blacklist works in two ways
+        # exclude works in two ways
         # 1. for pid+name where we cannot create an AppCheckInstance, skip them
         # 2. for pid+name when AppCheckInstance.run raises exception, run them but don't print errors
         # We need the latter because a check can create checks or metrics even if it raises
         # exceptions
-        self.blacklisted_pidnames = set()
-        self.last_blacklisted_pidnames_cleanup = datetime.now()
+        self.excluded_pidnames = set()
+        self.last_excluded_pidnames_cleanup = datetime.now()
 
         self.last_request_pidnames = set()
         self.exclude_localhost_from_proxy()
@@ -696,7 +699,7 @@ class Application:
     def is_app_check_supported(self, app_check_name):
         status = True
         if self.python_version[:3] == '2.6' and any(
-                app_check for app_check in BLACKLISTED_APP_CHECKS_FOR_PYTHON_2_6 if app_check == app_check_name):
+                app_check for app_check in EXCLUDED_APP_CHECKS_FOR_PYTHON_2_6 if app_check == app_check_name):
             status = False
             logging.warning("AppCheck %s is not supported with Python version %s, "
                             "please upgrade to 2.7.x and restart the agent.",
@@ -720,14 +723,14 @@ class Application:
                 check_instance = self.known_instances[pidname]
 
         except KeyError:
-            if pidname in self.blacklisted_pidnames:
+            if pidname in self.excluded_pidnames:
                 logging.debug("Process with pid=%d,name=%s is excluded", pidname[0], pidname[1])
                 return False, 0
             logging.debug("Requested check %s", repr(check))
 
             is_supported = self.is_app_check_supported(pidname[1])
             if not is_supported:
-                self.blacklisted_pidnames.add(pidname)
+                self.excluded_pidnames.add(pidname)
                 return False, 0
 
             try:
@@ -736,11 +739,11 @@ class Application:
                 if log_errors:
                     logging.error("Exception on creating check %s: %s", check["name"], ex)
                 if self.config.check_conf_by_name(check["name"]).get("timeout", 1) != -1:
-                    self.blacklisted_pidnames.add(pidname)
+                    self.excluded_pidnames.add(pidname)
                 return False, 0
             self.known_instances[pidname] = check_instance
 
-        if pidname in self.blacklisted_pidnames and not check_instance.retry:
+        if pidname in self.excluded_pidnames and not check_instance.retry:
             logging.debug("Not retrying appcheck " + check_instance.name)
             return False, 0
 
@@ -753,21 +756,21 @@ class Application:
         nm = len(metrics) if metrics else 0
         trc2.stop(args={"metrics": nm, "exception": "yes" if ex else "no"})
         current_time = datetime.now()
-        if current_time > self.blacklisted_pidnames_log_time and self.blacklisted_pidnames_log_flag:
+        if current_time > self.excluded_pidnames_log_time and self.excluded_pidnames_log_flag:
             logging.info("Excluded pids, names and retry values : %s",
-                         list(self.blacklisted_pidnames))
-            self.blacklisted_pidnames_log_flag = False
+                         list(self.excluded_pidnames))
+            self.excluded_pidnames_log_flag = False
 
-        if ex and pidname not in self.blacklisted_pidnames:
+        if ex and pidname not in self.excluded_pidnames:
             if log_errors and check_instance.log_limit_flag:
                 logging.error("Exception on running check %s: %s", check_instance.name, ex)
                 check_instance.log_limit_flag = False
             elif log_errors and current_time - check_instance.log_exception_time > check_instance.log_exception_relog_timeout:
                 logging.info("Exception on running check %s: %s", check_instance.name, ex)
                 check_instance.log_exception_time = datetime.now()
-            if check_instance.blacklist_app_timeout != -1 and (
-                    current_time - check_instance.app_started_time > check_instance.blacklist_app_timeout):
-                self.blacklisted_pidnames.add(pidname)
+            if check_instance.exclude_app_timeout != -1 and (
+                    current_time - check_instance.app_started_time > check_instance.exclude_app_timeout):
+                self.excluded_pidnames.add(pidname)
         elif current_time - check_instance.log_exception_time > check_instance.log_exception_relog_timeout:
             if log_errors and ex:
                 logging.info("Exception on running check %s: %s", check_instance.name, ex)
@@ -839,17 +842,17 @@ class Application:
             if now - self.last_known_instances_cleanup > self.KNOWN_INSTANCES_CLEANUP_TIMEOUT:
                 self.clean_known_instances()
                 self.last_known_instances_cleanup = datetime.now()
-            if now - self.last_blacklisted_pidnames_cleanup > self.blacklisted_pidnames_flush_interval:
-                self.blacklisted_pidnames.clear()
-                self.last_blacklisted_pidnames_cleanup = datetime.now()
+            if now - self.last_excluded_pidnames_cleanup > self.excluded_pidnames_flush_interval:
+                self.excluded_pidnames.clear()
+                self.last_excluded_pidnames_cleanup = datetime.now()
                 for _, v in self.known_instances.items():
                     v.log_limit_flag = True
-                self.blacklisted_pidnames_log_flag = True
-                self.blacklisted_pidnames_log_time = datetime.now() + timedelta(seconds=15)
-            if now - self.last_blacklisted_pidnames_log > self.blacklisted_pidnames_log_interval:
+                self.excluded_pidnames_log_flag = True
+                self.excluded_pidnames_log_time = datetime.now() + timedelta(seconds=15)
+            if now - self.last_excluded_pidnames_log > self.excluded_pidnames_log_interval:
                 logging.info("Excluded pids, names and retry values : %s",
-                             list(self.blacklisted_pidnames))
-                self.last_blacklisted_pidnames_log = datetime.now()
+                             list(self.excluded_pidnames))
+                self.last_excluded_pidnames_log = datetime.now()
 
             # Always send heartbeat
             self.heartbeat(pid, True)
