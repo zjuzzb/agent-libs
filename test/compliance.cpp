@@ -18,6 +18,8 @@
 #include <protocol.h>
 #include <protocol_handler.h>
 #include <compliance_mgr.h>
+#include <statsite_config.h>
+#include <configuration_manager.h>
 
 using namespace std;
 using namespace Poco;
@@ -99,6 +101,12 @@ struct task_defs_t {
 
 class compliance_test : public testing::Test
 {
+public:
+	compliance_test(const uint16_t statsd_port = 8125)
+		: m_statsd_port(statsd_port)
+	{
+	}
+
 protected:
 	virtual void SetUp()
 	{
@@ -167,6 +175,10 @@ protected:
 		m_configuration.init(NULL, false);
 		dragent_configuration::m_terminate = false;
 
+		m_old_config = configuration_manager::instance().to_yaml();
+		const std::string config = "statsd: {udp_port: " + std::to_string(m_statsd_port) + "}";
+		configuration_manager::instance().init_config(config);
+
 		m_data_handler = new protocol_handler(*m_queue);
 
 		m_compliance_mgr = new compliance_mgr(cointerface_root, *m_data_handler);
@@ -185,7 +197,7 @@ protected:
 		memset(&saddr, 0, sizeof(saddr));
 		saddr.sin_family = AF_INET;
 		saddr.sin_addr.s_addr = htonl(INADDR_ANY);
-		saddr.sin_port = htons(8125);
+		saddr.sin_port = htons(libsanalyzer::statsite_config::get_udp_port());
 
 		if(bind(m_statsd_sock, (struct sockaddr *) &saddr, sizeof(saddr)) < 0)
 		{
@@ -287,6 +299,8 @@ protected:
 		delete m_compliance_mgr;
 		delete m_data_handler;
 		delete m_queue;
+
+		configuration_manager::instance().init_config(m_old_config);
 		g_log->information("TearDown() complete");
 	}
 
@@ -459,6 +473,7 @@ protected:
 		FAIL() << "After 10 seconds, did not see expected error \"" << expected << "\" for task name " << task_name;
 	}
 
+	std::string m_old_config;
 	protocol_queue *m_queue;
 	protocol_handler* m_data_handler;
 	compliance_mgr *m_compliance_mgr;
@@ -476,6 +491,18 @@ protected:
 	std::thread m_statsd_server, m_result_reader;
 	int m_statsd_sock;
 	atomic<bool> m_done;
+
+private:
+	uint16_t m_statsd_port;
+};
+
+class compliance_test_alternate_statsd_port : public compliance_test
+{
+protected:
+	compliance_test_alternate_statsd_port()
+		: compliance_test(8188)
+	{
+	}
 };
 
 static std::vector<task_defs_t> no_tasks;
@@ -527,6 +554,15 @@ static std::vector<task_defs_t> future_runs_once_monthly_14th_6pm = {{"2018-11-1
 //   - Add some endpoint/method that returns a list of the next 10 or so times each task will run, and use that in tests.
 
 TEST_F(compliance_test, start)
+{
+	start_tasks(one_task);
+	verify_task_result(one_task[0]);
+	verify_metric(one_task[0]);
+
+	stop_tasks();
+}
+
+TEST_F(compliance_test_alternate_statsd_port, start)
 {
 	start_tasks(one_task);
 	verify_task_result(one_task[0]);

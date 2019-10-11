@@ -22,6 +22,7 @@ type ModuleMgr struct {
 	initialized bool
 	customerId string
 	machineId string
+	metricsStatsdPort uint32
 	Calendar *draiosproto.CompCalendar
 	Tasks map[uint64]*draiosproto.CompTask
 	IncludeDesc bool
@@ -44,9 +45,10 @@ type ModuleMgr struct {
 
 func emitStatsdForever(mgr *ModuleMgr) {
 
-	conn, err := net.Dial("udp", "127.0.0.1:8125")
+	statsdEndpoint := fmt.Sprintf("127.0.0.1:%d", mgr.metricsStatsdPort)
+	conn, err := net.Dial("udp", statsdEndpoint)
 	if err != nil {
-		log.Errorf("Could not connect to 127.0.0.1:8125 (%v)", err.Error());
+		log.Errorf("Could not connect to %s (%v)", statsdEndpoint, err.Error());
 	}
 
 	// Maps from metric name to complete statsd line
@@ -121,7 +123,7 @@ func (mgr *ModuleMgr) FailResult(stask *ScheduledTask, err error) {
 	mgr.evtsChannel <- evt
 }
 
-func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
+func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPort uint32) error {
 	mgr.Tasks = make(map[uint64]*draiosproto.CompTask)
 	mgr.availModules = make(map[string]*Module)
 	mgr.evtsChannel = make(chan *sdc_internal.CompTaskEvent, 1000)
@@ -129,6 +131,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
 	mgr.metricsResetChannel = make(chan bool)
 	mgr.machineId = machineId
 	mgr.customerId = customerId
+	mgr.metricsStatsdPort = metricsStatsdPort
 
 	mgr.availModules["docker-bench-security"] = &Module{
 		Name: "docker-bench-security",
@@ -183,8 +186,14 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
 func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.ComplianceModuleMgr_StartServer) error {
 	log.Debugf("Received Start message: %s", start.String())
 
+	var port uint32 = 8125
+
+	if start.MetricsStatsdPort != nil && *start.MetricsStatsdPort != 0 {
+		port = *start.MetricsStatsdPort
+	}
+
 	if ! mgr.initialized {
-		if err := mgr.Init(*start.CustomerId, *start.MachineId); err != nil {
+		if err := mgr.Init(*start.CustomerId, *start.MachineId, port); err != nil {
 			return err
 		}
 	}

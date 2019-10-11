@@ -6,6 +6,7 @@
 #include "compliance_mgr.h"
 #include "infrastructure_state.h"
 #include "security_config.h"
+#include "statsite_config.h"
 
 using namespace std;
 namespace security_config = libsanalyzer::security_config;
@@ -111,6 +112,7 @@ void compliance_mgr::refresh_compliance_tasks()
 	start.set_include_desc(security_config::get_include_desc_in_compliance_results());
 	start.set_send_failed_results(security_config::get_compliance_send_failed_results());
 	start.set_save_temp_files(security_config::get_compliance_save_temp_files());
+	start.set_metrics_statsd_port(libsanalyzer::statsite_config::get_udp_port());
 
 	for(auto &task : m_compliance_calendar.tasks())
 	{
