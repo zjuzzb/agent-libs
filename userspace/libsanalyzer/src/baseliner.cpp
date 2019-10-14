@@ -585,7 +585,7 @@ void sinsp_baseliner::serialize_json(std::string filename)
 	{
 		Json::Value cinfo;
 		cinfo["name"] = it.second->m_name;
-		cinfo["image_name"] = it.second->m_image;
+		cinfo["image_name"] = it.second->m_imagerepo + ":" + it.second->m_imagetag;
 		cinfo["image_id"] = it.second->m_imageid;
 
 		ctable[it.first] = cinfo;
@@ -710,7 +710,7 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 
 		if (!it.second->m_image.empty())
 		{
-			cont->set_image_name(it.second->m_image);
+			cont->set_image_name(it.second->m_imagerepo + ":" + it.second->m_imagetag);
 		}
 
 		if (!it.second->m_imageid.empty())
