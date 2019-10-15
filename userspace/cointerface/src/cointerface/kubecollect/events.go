@@ -4,10 +4,11 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/api/core/v1"
 
@@ -34,6 +35,28 @@ func isEventExportEnabled() (bool) {
 
 func newUserEvent(event *v1.Event) (sdc_internal.K8SUserEvent) {
 	log.Debugf("newUserEvent()")
+
+	// For timestamp, first check EventTime. If it is -ve choose `lastTimestamp`.
+	// Checking validity of a times is as simple as making sure the value
+	// is positive to rule out bogus values (typically if the field is
+	// null, that means it is populated with a time of 0001-01-01 00:00:00 +0000 UTC).
+	// During unix conversion , it becomes a negative value. So checking for +ve
+	// is sufficient. We could simply add "EventTime" as a field to this
+	// but that would require changes to the protobuf and also in
+	// "k8s_user_event_message_handler.cpp" . This change minimizes that by simply
+	// populating lastTimestamp with a valid timestamp.
+	ts := int64(event.EventTime.Time.UTC().Unix())
+	if ts < int64(0) {
+		// eventTime is -ve ; use lastTimestamp
+		ts = int64(event.LastTimestamp.Time.UTC().Unix())
+		if ts < int64(0) {
+			// lastTimestamp is also -ve; use current time.
+			t := metav1.Time{Time: time.Now()}
+			ts = int64(t.Time.UTC().Unix())
+			log.Infof("K8s User Event: Both eventTime and lastTimestamp are null. Event is : %v", event)
+		}
+	}
+
 	evt := sdc_internal.K8SUserEvent {
 		Obj: newK8SObject(event),
 		Source: &sdc_internal.K8SSource{
@@ -43,7 +66,7 @@ func newUserEvent(event *v1.Event) (sdc_internal.K8SUserEvent) {
 		Reason: proto.String(event.Reason),
 		Message: proto.String(event.Message),
 		FirstTimestamp: proto.Int64(event.FirstTimestamp.Time.UTC().Unix()),
-		LastTimestamp: proto.Int64(event.LastTimestamp.Time.UTC().Unix()),
+		LastTimestamp: proto.Int64(ts),
 		Count: proto.Int32(event.Count),
 		Type: proto.String(event.Type),
 	}
@@ -88,7 +111,7 @@ func startUserEventsSInformer(ctx context.Context,
 			fSelector = fields.Everything()
 		}
 	}
-	lw := cache.NewListWatchFromClient(client, "events", v1meta.NamespaceAll, fSelector)
+	lw := cache.NewListWatchFromClient(client, "events", metav1.NamespaceAll, fSelector)
 	eventInf = cache.NewSharedInformer(lw, &v1.Event{}, RsyncInterval)
 
 	wg.Add(1)

@@ -102,6 +102,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface_test_success.t
 		cointerface
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/client_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/deployments_test.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/events_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/nodes_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/persistentvolumeclaim_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/persistentvolume_test.go
