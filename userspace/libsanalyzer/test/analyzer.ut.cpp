@@ -57,14 +57,19 @@ public:
 	static void
 	add_inspector_container(sinsp& inspector, const sinsp_container_info& container)
 	{
-		inspector.m_container_manager.m_containers[container.m_id] =
+		(*inspector.m_container_manager.m_containers.lock())[container.m_id] =
 			std::make_shared<sinsp_container_info>(container);
 	}
 
-	static std::unordered_map<std::string, std::shared_ptr<const sinsp_container_info>>&
+	static sinsp_container_manager::map_ptr_t
 	get_inspector_containers(sinsp& inspector)
 	{
-		return inspector.m_container_manager.m_containers;
+		return inspector.m_container_manager.m_containers.lock();
+	}
+
+	static void erase_inspector_container(sinsp& inspector, const std::string& name)
+	{
+		inspector.m_container_manager.m_containers.lock()->erase(name);
 	}
 
 	static void coalesce(sinsp_analyzer& analyzer, std::vector<std::string>& emitted)
@@ -127,7 +132,7 @@ TEST(analyzer_test, coalesce_containers_null)
 	container_stuff unemitted_container_2(inspector, analyzer, "unemitted_container_2");
 
 	// remove container from container manager to simulate it getting deleted
-	test_helper::get_inspector_containers(inspector).erase(unemitted_container_2.m_name);
+	test_helper::erase_inspector_container(inspector, unemitted_container_2.m_name);
 
 	// coalesce. should crash if broken
 	test_helper::coalesce(analyzer, emitted_containers);
