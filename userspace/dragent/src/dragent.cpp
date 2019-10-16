@@ -1128,7 +1128,10 @@ int dragent_app::sdagent_main()
 	// This will stop everything in the default pool
 	m_pool.stop_all();
 	serializer->stop();
-	aggregator->stop();
+	if (aggregator)
+	{
+		aggregator->stop();
+	}
 
 	if(m_configuration.m_watchdog_enabled)
 	{
