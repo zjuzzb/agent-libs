@@ -5273,11 +5273,11 @@ void sinsp_analyzer::collect_k8s(const std::string& k8s_api)
 
 			if(m_k8s)
 			{
-				get_k8s_data();
 				if(m_k8s->get_machine_id().empty() && !m_configuration->get_machine_id().empty())
 				{
 					m_k8s->set_machine_id(m_configuration->get_machine_id());
 				}
+				get_k8s_data();
 			}
 		}
 		catch(std::exception& ex)
