@@ -6,7 +6,6 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
-#define __STDC_FORMAT_MACROS
 #include "protobuf_metric_serializer.h"
 #include "analyzer_flush_message.h"
 #include "dragent_message_queues.h"
@@ -15,9 +14,6 @@
 #include "tracer_emitter.h"
 #include "type_config.h"
 #include <chrono>
-#include <google/protobuf/util/json_util.h>
-#include <sstream>
-#include <inttypes.h>
 
 namespace
 {
@@ -75,14 +71,9 @@ protobuf_metric_serializer::protobuf_metric_serializer(
     dragent::watchdog_runnable("serializer"),
 	m_stop_thread(false),
 	m_capture_stats_source(stats_source),
-	m_protobuf_file(),
-	m_prev_sample_evtnum(0),
-	m_prev_sample_time(0),
-    m_prev_sample_num_drop_events(0),
-    m_serialized_events(0)
-{
-	m_protobuf_file.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-}
+	m_serializations_completed(0),
+	m_file_emitter()
+{}
 
 protobuf_metric_serializer::~protobuf_metric_serializer()
 {
@@ -133,25 +124,9 @@ void protobuf_metric_serializer::do_serialization(data& data)
 
 	scoped_duration_logger scoped_log("protobuf serialization",
 	                                  sinsp_logger::SEV_DEBUG);
-	uint64_t nevts = 0;
-	uint64_t num_drop_events = 0;
-
-	if(data->m_evt_num != metric_serializer::NO_EVENT_NUMBER)
-	{
-		nevts = data->m_evt_num - m_prev_sample_evtnum;
-		m_prev_sample_evtnum = data->m_evt_num;
-		m_prev_sample_time = data->m_ts;
-	}
-
-	// Get the number of dropped events and include that in the log message
-	scap_stats st = {};
-	m_capture_stats_source->get_capture_stats(&st);
-
-	num_drop_events = st.n_drops - m_prev_sample_num_drop_events;
-	m_prev_sample_num_drop_events = st.n_drops;
 
 	libsanalyzer::metric_store::store(data->m_metrics);
-	data->m_metrics_sent.exchange(true);
+	data->m_metrics_sent->exchange(true);
 	std::shared_ptr<serialized_buffer> q_item =
 	    m_uncompressed_sample_handler.handle_uncompressed_sample(data->m_ts,
 	                                                             data->m_metrics);
@@ -163,31 +138,17 @@ void protobuf_metric_serializer::do_serialization(data& data)
 
 	if(get_emit_metrics_to_file())
 	{
-		g_logger.format(sinsp_logger::SEV_INFO,
-		                "to_file ts=%" PRIu64
-		                ", ne=%" PRIu64
-		                ", de=%" PRIu64
-		                ", c=%.2lf"
-		                ", sr=%" PRIu32
-		                ", st=%" PRIu64,
-		                data->m_ts / 100000000,
-		                nevts,
-		                num_drop_events,
-		                data->m_my_cpuload,
-		                data->m_sampling_ratio,
-		                st.n_tids_suppressed);
-
 		if(s_emit_protobuf_json.get_value())
 		{
-			emit_metrics_to_json_file(data);
+			m_file_emitter.emit_metrics_to_json_file(data, get_metrics_directory());
 		}
 		else
 		{
-			emit_metrics_to_file(data);
+			m_file_emitter.emit_metrics_to_file(data, get_metrics_directory());
 		}
 	}
 
-	++m_serialized_events;
+	++m_serializations_completed;
 }
 
 // This function is pretty vestigial
@@ -210,90 +171,9 @@ void protobuf_metric_serializer::stop()
 	m_input_queue->clear();
 }
 
-void protobuf_metric_serializer::emit_metrics_to_file(const data& data)
+uint64_t protobuf_metric_serializer::get_num_serializations_completed() const
 {
-	if(!m_protobuf_file.is_open())
-	{
-		const std::string dam_file = generate_dam_filename(
-				get_metrics_directory(),
-		        data->m_ts);
-
-		m_protobuf_file.open(dam_file);
-	}
-
-	//
-	// The agent is writing individual metrics protobufs, but we want the
-	// contents of the file to be readable as a metrics_list protobuf. So
-	// add a "metrics {" header and "}" trailer to each protobuf so it
-	// appears to be a metrics_list item (i.e., message).
-	//
-	const std::string header = "metrics {\n";
-	const std::string pbstr = data->m_metrics->DebugString();
-	const std::string footer = "}\n";
-
-	m_protobuf_file << header << pbstr << footer << std::flush;
-	m_protobuf_file.flush();
-}
-
-void protobuf_metric_serializer::emit_metrics_to_json_file(const data& data) const
-{
-	//
-	// Don't generate a zero-named file
-	if(data->m_evt_num == metric_serializer::NO_EVENT_NUMBER)
-	{
-		return;
-	}
-
-	const std::string dam_file = generate_dam_filename(
-			get_metrics_directory(),
-	        data->m_ts) + ".json";
-
-	std::ofstream out(dam_file.c_str());
-
-	if(out)
-	{
-		std::string json_string;
-
-		google::protobuf::util::MessageToJsonString(*data->m_metrics,
-		                                            &json_string);
-		out << json_string;
-
-		const std::string symbolic_link = get_metrics_directory() +
-		                                  "latest.dams.json";
-		unlink(symbolic_link.c_str());
-		symlink(dam_file.c_str(), symbolic_link.c_str());
-	}
-}
-
-uint64_t protobuf_metric_serializer::get_prev_sample_evtnum() const
-{
-	return m_prev_sample_evtnum;
-}
-
-uint64_t protobuf_metric_serializer::get_prev_sample_time() const
-{
-	return m_prev_sample_time;
-}
-
-uint64_t protobuf_metric_serializer::get_prev_sample_num_drop_events() const
-{
-	return m_prev_sample_num_drop_events;
-}
-
-uint64_t protobuf_metric_serializer::get_num_serialized_events() const
-{
-	return m_serialized_events;
-}
-
-std::string protobuf_metric_serializer::generate_dam_filename(
-		const std::string& directory,
-		const uint64_t timestamp)
-{
-	std::stringstream out;
-
-	out << directory << (timestamp / 1000000000) << ".dams";
-
-	return out.str();
+	return m_serializations_completed;
 }
 
 } // end namespace dragent

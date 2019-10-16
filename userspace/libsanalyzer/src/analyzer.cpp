@@ -115,11 +115,25 @@ void init_host_level_percentiles(T &metrics, const std::set<double> &pctls)
 	metrics.set_serialize_pctl_data(true);
 }
 
-type_config<bool> c_dragent_cpu_profile(false, "Create dragent cpu profiles and save to the log directory", "dragent_cpu_profile_enabled");
-type_config<int32_t> c_dragent_cpu_profile_seconds(120, "The number of seconds to collect data for a single cpu profile", "dragent_profile_time_seconds");
-type_config<int32_t> c_dragent_cpu_profile_total_profiles(30, "The total number of cpu profiles to collect before overwriting old profiles", "dragent_total_profiles");
+type_config<bool> c_dragent_cpu_profile(
+	false,
+	"Create dragent cpu profiles and save to the log directory",
+	"dragent_cpu_profile_enabled");
+
+type_config<int32_t> c_dragent_cpu_profile_seconds(
+	120,
+	"The number of seconds to collect data for a single cpu profile",
+	"dragent_profile_time_seconds");
+
+type_config<int32_t> c_dragent_cpu_profile_total_profiles(
+	30,
+	"The total number of cpu profiles to collect before overwriting old profiles",
+	"dragent_total_profiles");
 
 } // end namespace
+
+const uint64_t flush_data_message::NO_EVENT_NUMBER =
+        std::numeric_limits<uint64_t>::max();
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
                                std::string root_dir,
@@ -4609,7 +4623,7 @@ void sinsp_analyzer::flush_done_handler(const sinsp_evt* evt)
 	uint64_t nevts = 0;
 	uint64_t num_drop_events = 0;
 
-	if(evt_num != 0)
+	if(evt_num != flush_data_message::NO_EVENT_NUMBER)
 	{
 		nevts = evt_num - m_prev_sample_evtnum;
 		m_prev_sample_evtnum = evt_num;
@@ -4622,7 +4636,7 @@ void sinsp_analyzer::flush_done_handler(const sinsp_evt* evt)
 	num_drop_events = st.n_drops - m_prev_sample_num_drop_events;
 	m_prev_sample_num_drop_events = st.n_drops;
 	// Handle bookkeeping
-	if(evt_num != 0)
+	if(evt_num != flush_data_message::NO_EVENT_NUMBER)
 	{
 		m_prev_sample_evtnum = evt_num;
 
@@ -4660,16 +4674,14 @@ void sinsp_analyzer::flush_done_handler(const sinsp_evt* evt)
 
 	// Send the metrics to the serializer
 	m_flush_queue->put(std::make_shared<flush_data_message>(
-	                        evt_num,
 	                        ts,
-	                        m_sampling_ratio,
-	                        m_prev_flush_cpu_pct,
-	                        m_prev_flushes_duration_ns,
-	                        m_sent_metrics,
-	                        m_my_cpuload,
-	                        m_inspector->m_n_proc_lookups,
-	                        m_inspector->m_n_main_thread_lookups,
-	                        *m_metrics));
+	                        &m_sent_metrics,
+	                        *m_metrics,
+							nevts,
+							num_drop_events,
+							m_my_cpuload,
+							m_sampling_ratio,
+							st.n_tids_suppressed));
 }
 
 //

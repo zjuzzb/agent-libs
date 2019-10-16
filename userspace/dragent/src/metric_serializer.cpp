@@ -11,6 +11,7 @@
 #include "sinsp.h"
 #include "Poco/File.h"
 #include "Poco/Path.h"
+#include "analyzer_flush_message.h"
 
 namespace dragent
 {
@@ -20,9 +21,6 @@ type_config<std::string> metric_serializer::c_metrics_dir(
 	"metricsfile.location. If unset, metrics won't be saved to disk.",
 	"metricsfile",
 	"location");
-
-const uint64_t metric_serializer::NO_EVENT_NUMBER =
-		std::numeric_limits<uint64_t>::max();
 
 metric_serializer::metric_serializer(const std::string& root_dir,
                                      uncompressed_sample_handler& sample_handler,

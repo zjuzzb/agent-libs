@@ -1,6 +1,7 @@
 #include <time.h>
 
 #include "avoid_block_channel.h"
+#include "async_aggregator.h"
 #include "main.h"
 #include "dragent.h"
 #include "crash_handler.h"
@@ -99,6 +100,13 @@ type_config<uint64_t> c_serializer_timeout_s(
         10,
         "Watchdog timeout for the serializer thread",
         "serializer_timeout");
+
+type_config<bool>::ptr c_10s_flush_enabled = type_config_builder<bool>(
+    false,
+    "Enable flag to force 10s flush behavior",
+    "10s_flush_enable")
+    .hidden()
+    .build();
 
 string compute_sha1_digest(SHA1Engine &engine, const string &path)
 {
@@ -202,8 +210,9 @@ dragent_app::dragent_app():
 #ifndef CYGWING_AGENT
 	m_unshare_ipcns(true),
 #endif
-    m_flush_queue(MAX_SAMPLE_STORE_SIZE),
-    m_transmit_queue(MAX_SAMPLE_STORE_SIZE),
+	m_aggregator_queue(MAX_SAMPLE_STORE_SIZE),
+	m_serializer_queue(MAX_SAMPLE_STORE_SIZE),
+	m_transmit_queue(MAX_SAMPLE_STORE_SIZE),
 	m_enable_autodrop(true),
 	m_internal_metrics(std::make_shared<internal_metrics>()),
     m_protocol_handler(m_transmit_queue),
@@ -979,16 +988,32 @@ int dragent_app::sdagent_main()
 	sinsp::ptr inspector = nullptr;
 	sinsp_analyzer* analyzer = nullptr;
 	metric_serializer* serializer = nullptr;
+	async_aggregator* aggregator = nullptr;
 	try
 	{
 		// Must create inspector, then create analyzer, then setup inspector
 		inspector = sinsp_factory::build();
 		LOG_INFO("Created Sysdig inspector");
-		analyzer = build_analyzer(inspector, m_flush_queue);
+
+		if (c_10s_flush_enabled->get_value())
+		{
+			analyzer = build_analyzer(inspector, m_aggregator_queue);
+		} else {
+			analyzer = build_analyzer(inspector, m_serializer_queue);
+		}
 		LOG_INFO("Created analyzer");
+
 		inspector->m_analyzer = analyzer;
 		init_inspector(inspector);
 		LOG_INFO("Configured inspector");
+
+		if (c_10s_flush_enabled->get_value())
+		{
+			aggregator = new async_aggregator(m_aggregator_queue,
+											  m_serializer_queue);
+			m_pool.start(*aggregator, c_serializer_timeout_s.get_value());
+		}
+
 		// There's an interesting dependency graph situation here. The
 		// sinsp_worker is a member variable of the dragent_app class, and as
 		// such gets created and initialized in the constructor. However, the
@@ -999,10 +1024,11 @@ int dragent_app::sdagent_main()
 		auto s = new protobuf_metric_serializer(inspector,
 		                                        m_configuration.c_root_dir.get_value(),
 		                                        m_protocol_handler,
-		                                        &m_flush_queue,
+		                                        &m_serializer_queue,
 		                                        &m_transmit_queue);
-		serializer = s;
 		m_pool.start(*s, c_serializer_timeout_s.get_value());
+
+		serializer = s;
 	}
 	catch (const sinsp_exception &e)
 	{
@@ -1102,6 +1128,7 @@ int dragent_app::sdagent_main()
 	// This will stop everything in the default pool
 	m_pool.stop_all();
 	serializer->stop();
+	aggregator->stop();
 
 	if(m_configuration.m_watchdog_enabled)
 	{

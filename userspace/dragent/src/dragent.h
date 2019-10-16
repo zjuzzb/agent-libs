@@ -139,8 +139,10 @@ private:
 #endif
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
-	/// Queue for the analyzer to push the results of a flush
-	flush_queue m_flush_queue;
+	/// Queue for input to the aggregator
+	flush_queue m_aggregator_queue;
+	/// Queue for input to the serializer
+	flush_queue m_serializer_queue;
 	/// Queue consumed by connection_manager for transmission to backend
 	protocol_queue m_transmit_queue;
 	std::atomic<bool> m_enable_autodrop;

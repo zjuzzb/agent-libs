@@ -14,6 +14,7 @@
 #include "analyzer_flush_message.h"
 #include "dragent_message_queues.h"
 #include "configuration.h"
+#include "metrics_file_emitter.h"
 
 #include <chrono>
 #include <memory>
@@ -210,10 +211,7 @@ TEST(protobuf_metric_serializer_test, initial_state)
 	                                       &g_fqueue,
 	                                       &g_pqueue));
 
-	ASSERT_EQ(0, s->get_prev_sample_evtnum());
-	ASSERT_EQ(0, s->get_prev_sample_time());
-	ASSERT_EQ(0, s->get_prev_sample_num_drop_events());
-	ASSERT_EQ(0, s->get_num_serialized_events());
+	ASSERT_EQ(0, s->get_num_serializations_completed());
 }
 
 /**
@@ -230,13 +228,10 @@ TEST(protobuf_metric_serializer_test, serialize)
 
 	const uint64_t TIMESTAMP = static_cast<uint64_t>(0x0000000000654321);
 	const uint32_t SAMPLING_RATIO = 1;
-	const double PREV_FLUSH_CPU_PCT = 0.01;
 	const uint64_t INITIAL_PREV_FLUSH_DURATION_NS = 13;
 	std::atomic<uint64_t> prev_flushes_duration_ns(INITIAL_PREV_FLUSH_DURATION_NS);
 	std::atomic<bool> metrics_sent(false);
 	const double CPU_LOAD = 0.12;
-	const int64_t N_PROC_LOOKUPS = 5;
-	const int64_t N_MAIN_THREAD_LOOKUPS = 2;
 	draiosproto::metrics metrics;
 
 	metric_serializer::c_metrics_dir.set(temp_dir.get_directory());
@@ -252,35 +247,25 @@ TEST(protobuf_metric_serializer_test, serialize)
 		s->test_run();
 	});
 
-	ASSERT_EQ(0, s->get_num_serialized_events());
+	ASSERT_EQ(0, s->get_num_serializations_completed());
 
 	s->serialize(std::make_shared<flush_data_message>(
-	                 precanned_capture_stats_source::DEFAULT_EVTS,
-	                 TIMESTAMP,
-	                 SAMPLING_RATIO,
-	                 PREV_FLUSH_CPU_PCT,
-	                 prev_flushes_duration_ns,
-	                 metrics_sent,
-	                 CPU_LOAD,
-	                 N_PROC_LOOKUPS,
-	                 N_MAIN_THREAD_LOOKUPS,
-	                 metrics));
+				TIMESTAMP,
+				&metrics_sent,
+				metrics,
+				precanned_capture_stats_source::DEFAULT_EVTS,
+				precanned_capture_stats_source::DEFAULT_DROPS,
+				CPU_LOAD,
+				SAMPLING_RATIO,
+				0));
 
 	// Wait for the async thread to complete the work.  If we have to wait
 	// more that 5 seconds, something has gone badly wrong.
 	const int FIVE_SECOND_IN_MS = 5 * 1000;
-	for(int i = 0; s->get_num_serialized_events() == 0 && i < FIVE_SECOND_IN_MS; ++i)
+	for(int i = 0; s->get_num_serializations_completed() == 0 && i < FIVE_SECOND_IN_MS; ++i)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
-
-	// The serializer should have updated its internal state
-	ASSERT_EQ(precanned_capture_stats_source::DEFAULT_EVTS,
-	          s->get_prev_sample_evtnum());
-	ASSERT_EQ(precanned_capture_stats_source::DEFAULT_DROPS,
-	          s->get_prev_sample_num_drop_events());
-	ASSERT_EQ(TIMESTAMP,
-	          s->get_prev_sample_time());
 
 	// The serializer should have recorded that the metrics were sent
 	ASSERT_EQ(true, metrics_sent);
@@ -300,7 +285,7 @@ TEST(protobuf_metric_serializer_test, serialize)
 	// there.
 	//
 	const std::string dam_file =
-		protobuf_metric_serializer::generate_dam_filename(
+		dragent::metrics_file_emitter::generate_dam_filename(
 				s->get_metrics_directory(),
 				TIMESTAMP);
 
@@ -344,13 +329,10 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 
 	const uint64_t TIMESTAMP = static_cast<uint64_t>(0x0000000000654321);
 	const uint32_t SAMPLING_RATIO = 1;
-	const double PREV_FLUSH_CPU_PCT = 0.01;
 	const uint64_t INITIAL_PREV_FLUSH_DURATION_NS = 13;
 	std::atomic<uint64_t> prev_flushes_duration_ns(INITIAL_PREV_FLUSH_DURATION_NS);
 	std::atomic<bool> metrics_sent(false);
 	const double CPU_LOAD = 0.12;
-	const int64_t N_PROC_LOOKUPS = 5;
-	const int64_t N_MAIN_THREAD_LOOKUPS = 2;
 	draiosproto::metrics metrics;
 
 	// Update the configuration so that the serializer will emit the
@@ -370,42 +352,38 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	});
 
 	s->serialize(std::make_shared<flush_data_message>(
-				precanned_capture_stats_source::DEFAULT_EVTS,
 				TIMESTAMP,
-				SAMPLING_RATIO,
-				PREV_FLUSH_CPU_PCT,
-				prev_flushes_duration_ns,
-				metrics_sent,
+				&metrics_sent,
+				metrics,
+				precanned_capture_stats_source::DEFAULT_EVTS,
+				precanned_capture_stats_source::DEFAULT_DROPS,
 				CPU_LOAD,
-				N_PROC_LOOKUPS,
-				N_MAIN_THREAD_LOOKUPS,
-				metrics));
+				SAMPLING_RATIO,
+				0));
 
 	s->serialize(std::make_shared<flush_data_message>(
-				precanned_capture_stats_source::DEFAULT_EVTS,
 				TIMESTAMP * 2, // make timestamp bigger
-				SAMPLING_RATIO,
-				PREV_FLUSH_CPU_PCT,
-				prev_flushes_duration_ns,
-				metrics_sent,
+				&metrics_sent,
+				metrics,
+				precanned_capture_stats_source::DEFAULT_EVTS,
+				precanned_capture_stats_source::DEFAULT_DROPS,
 				CPU_LOAD,
-				N_PROC_LOOKUPS,
-				N_MAIN_THREAD_LOOKUPS,
-				metrics));
+				SAMPLING_RATIO,
+				0));
 
 
 	// Wait for the async thread to complete the work.  If we have to wait
 	// more that 5 seconds, something has gone badly wrong.
 	const int FIVE_SECOND_IN_MS = 5 * 1000;
 	for(int i = 0;
-	    s->get_num_serialized_events() < 2 &&
+	    s->get_num_serializations_completed() < 2 &&
 	    i < FIVE_SECOND_IN_MS;
 	    ++i)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 	ASSERT_EQ(2, analyzer_callback.m_call_count);
-	ASSERT_EQ(2, s->get_num_serialized_events());
+	ASSERT_EQ(2, s->get_num_serializations_completed());
 
 	s->stop();
 	t.join();

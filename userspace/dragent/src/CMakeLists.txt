@@ -25,6 +25,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include
 add_definitions( -DHAS_ANALYZER )
 
 list(APPEND targetfiles
+	async_aggregator.cpp
 	avoid_block_channel.cpp
 	baseline_mgr.cpp
 	capture_job_handler.cpp
@@ -48,6 +49,7 @@ list(APPEND targetfiles
 	file_rest_registry.cpp
 	file_rest_request_handler.cpp
 	metric_serializer.cpp
+	metrics_file_emitter.cpp
 	metrics_rest_request_handler.cpp
 	monitor.cpp
 	protocol.cpp

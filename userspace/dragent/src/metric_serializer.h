@@ -31,11 +31,6 @@ namespace dragent
 class metric_serializer
 {
 public:
-	/**
-	 * Sentinel event number that indicates that a serialization operation
-	 * was not triggered by an event.
-	 */
-	const static uint64_t NO_EVENT_NUMBER;
 	typedef flush_data data;
 
 	/**

@@ -17,6 +17,7 @@
 #include <string>
 #include <thread>
 #include <memory>
+#include "metrics_file_emitter.h"
 
 class capture_stats_source;
 struct scap_stats;
@@ -68,17 +69,8 @@ public:
 	// protobuf_metric_serializer).
 	//
 
-	/** Returns the previous sample event number. */
-	uint64_t get_prev_sample_evtnum() const;
-
-	/** Returns the previous sample time. */
-	uint64_t get_prev_sample_time() const;
-
-	/** Returns the number of dropped events in the previous sample. */
-	uint64_t get_prev_sample_num_drop_events() const;
-
 	/** Returns the number of serializations this serializer has done */
-	uint64_t get_num_serialized_events() const;
+	uint64_t get_num_serializations_completed() const;
 
 	/**
 	 * Get the dam filename.
@@ -126,11 +118,9 @@ private:
 	std::atomic<bool> m_stop_thread;
 
 	std::shared_ptr<const capture_stats_source> m_capture_stats_source;
-	std::ofstream m_protobuf_file;
-	uint64_t m_prev_sample_evtnum;
-	uint64_t m_prev_sample_time;
-	uint64_t m_prev_sample_num_drop_events;
-	uint64_t m_serialized_events;
+	uint64_t m_serializations_completed;
+
+	metrics_file_emitter m_file_emitter;
 
 	std::thread m_thread; // Must be last
 };
