@@ -1,4 +1,5 @@
 # stdlib
+from socket import gethostname
 from collections import defaultdict, namedtuple
 import time
 import urlparse
@@ -20,6 +21,7 @@ class NodeNotFound(Exception):
 ESInstanceConfig = namedtuple(
     'ESInstanceConfig', [
         'pshard_stats',
+        'pshard_stats_master_node_only',
         'cluster_stats',
         'password',
         'service_check_tags',
@@ -350,6 +352,8 @@ class ESCheck(AgentCheck):
 
         pshard_stats = _is_affirmative(instance.get('pshard_stats', False))
 
+        pshard_stats_master_node_only = _is_affirmative(instance.get('pshard_stats_master_node_only', False))
+
         cluster_stats = _is_affirmative(instance.get('cluster_stats', False))
         if 'is_external' in instance:
             cluster_stats = _is_affirmative(instance.get('is_external', False))
@@ -379,6 +383,7 @@ class ESCheck(AgentCheck):
 
         config = ESInstanceConfig(
             pshard_stats=pshard_stats,
+            pshard_stats_master_node_only=pshard_stats_master_node_only,
             cluster_stats=cluster_stats,
             password=instance.get('password'),
             service_check_tags=service_check_tags,
@@ -401,11 +406,11 @@ class ESCheck(AgentCheck):
         version = self._get_es_version(config)
 
         health_url, stats_url, pshard_stats_url, pending_tasks_url, stats_metrics, \
-            pshard_stats_metrics = self._define_params(version, config.cluster_stats)
+            pshard_stats_metrics, master_node_url = self._define_params(version, config.cluster_stats)
 
         # Load stats data.
         # This must happen before other URL processing as the cluster name
-        # is retreived here, and added to the tag list.
+        # is retrieved here, and added to the tag list.
 
         stats_url = urlparse.urljoin(config.url, stats_url)
         stats_data = self._get_data(stats_url, config)
@@ -428,12 +433,20 @@ class ESCheck(AgentCheck):
             config.tags.append("cluster_name:{}".format(stats_data['cluster_name']))
         self._process_stats_data(stats_data, stats_metrics, config)
 
-        # Load clusterwise data
-        if config.pshard_stats:
+        # Load clusterwise data on master node only
+        if config.pshard_stats_master_node_only:
+            master_node_url = urlparse.urljoin(config.url, master_node_url)
+            master_node_hostname = self._get_data(master_node_url, config)[0].get('host')
+            # prevent all agents from checking this metric
+            if gethostname() == master_node_hostname:
+                pshard_stats_url = urlparse.urljoin(config.url, pshard_stats_url)
+                pshard_stats_data = self._get_data(pshard_stats_url, config)
+                self._process_pshard_stats_data(pshard_stats_data, config, pshard_stats_metrics)
+        # Load clusterwise data on all nodes
+        elif config.pshard_stats:
             pshard_stats_url = urlparse.urljoin(config.url, pshard_stats_url)
             pshard_stats_data = self._get_data(pshard_stats_url, config)
             self._process_pshard_stats_data(pshard_stats_data, config, pshard_stats_metrics)
-
 
         # Load the health data.
         health_url = urlparse.urljoin(config.url, health_url)
@@ -481,6 +494,8 @@ class ESCheck(AgentCheck):
         """
 
         pshard_stats_url = "/_stats"
+
+        master_node_url = "/_cat/master?format=JSON"
 
         if version >= [0, 90, 10]:
             # ES versions 0.90.10 and above
@@ -560,7 +575,7 @@ class ESCheck(AgentCheck):
         pshard_stats_metrics.update(additional_metrics)
 
         return health_url, stats_url, pshard_stats_url, pending_tasks_url, \
-            stats_metrics, pshard_stats_metrics
+            stats_metrics, pshard_stats_metrics, master_node_url
 
     def _get_data(self, url, config, send_sc=True):
         """ Hit a given URL and return the parsed json
