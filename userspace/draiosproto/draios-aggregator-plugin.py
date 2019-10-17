@@ -76,6 +76,10 @@ index_dict = {}
 # based on primary keys
 key_messages = set()
 
+# This set contains tuples of every (message, field) pair which is limited, and thus
+# for which the builder needs a construction parameter and accessor
+limited_messages = set()
+
 def traverse(proto_file):
 
     def _traverse(package, items):
@@ -112,10 +116,25 @@ def generate_aggregator_list(item):
             continue
         if value is OR:
             continue
+        if value is LIMITED:
+            continue
         out[index_dict[item.name][key].name] = index_dict[item.name][value].name;
         targets.add(index_dict[item.name][value].name)
 
     return out, targets
+
+# generates a map of the names of fields which require a limit to the value of that limit
+def generate_limit_list(item):
+    out = set()
+
+    if item.name not in field_extension:
+        return out
+
+    for key, value in field_extension[item.name].items():
+        if value is LIMITED:
+            out.add(index_dict[item.name][key].name)
+
+    return out
 
 # This is ugly. There are a few fields we have that are protoc reserved keywords. It gets
 # around this by adding a _. Use this function when accessing fields in the protobuf
@@ -278,6 +297,54 @@ def generate_message_aggregator_function(message, aggregator_targets, sub_aggreg
             continue
         out += """        aggregate_%s(input, output);
 """ % (field.name)
+
+    # close the function
+    out +="""    }
+"""
+
+    return out
+
+# generates a function which iterates over fields in a message and invokes
+# their limit functions. We also invoke any "dedicated" limit functions which must
+# exist based on the limit list
+def generate_limiters(message, limit_list, sub_aggregator_list):
+    out = "protected:\n"
+
+    # generate declarations for limiters to be implemented manually
+    for field in message.field:
+        if field.name in limit_list:
+            out += """    virtual void limit_%s(draiosproto::%s& ouput, uint32_t limit);
+""" % (field.name, message.name)
+            limited_messages.add((message.name, field.name));
+    
+    out += "public:\n"
+
+    # function header
+    out += """    virtual void limit(draiosproto::%s& output)
+    {
+""" % (message.name)
+
+    # loop through fields and invoke our internal limiter if necessary
+    for field in message.field:
+        if field.name in limit_list:
+            out += """        if (m_builder.get_%s_%s_limit() != UINT32_MAX) {
+            limit_%s(output, m_builder.get_%s_%s_limit());
+        }
+""" % (message.name, field.name, field.name, message.name, field.name)
+
+    # loop through fields, and invoke limiter on sub-messages
+    for field in message.field:
+        if type_name(field) not in skip:
+            if get_field_type(field, sub_aggregator_list) is 3:
+                out += """        if (m_%s_field_aggregator) {
+            m_%s_field_aggregator->limit(*output.mutable_%s());
+        }
+""" % (field.name, field.name, field.name)
+            if get_field_type(field, sub_aggregator_list) is 5:
+                out += """        for (auto& i : %s_map) {
+            i.second.second->limit((*output.mutable_%s())[i.second.first]);
+        }
+""" % (field.name, field.name)
 
     # close the function
     out +="""    }
@@ -505,6 +572,7 @@ def generate_class(message):
         return ""
 
     sub_aggregator_list, aggregator_targets = generate_aggregator_list(message)
+    limit_list = generate_limit_list(message)
 
     # write the class header
     out = """class %s_message_aggregator : public agent_message_aggregator<draiosproto::%s>
@@ -527,6 +595,7 @@ public:
 
     # now write the implementation of the aggregate function for the message
     out += generate_message_aggregator_function(message, aggregator_targets, sub_aggregator_list)
+    out += generate_limiters(message, limit_list, sub_aggregator_list)
 
     out += generate_constructor_function(message, aggregator_targets, sub_aggregator_list)
     out += generate_destructor_function(message, aggregator_targets, sub_aggregator_list)
@@ -644,6 +713,42 @@ message_aggregator_builder::build_%s() const
             else:
                 aggregator_header.content += "uhoh Unsupported message meta-type\n"
 
+    # write the stuff for the limiters
+    builder_header.content += """
+    
+private:
+"""
+    for limit in limited_messages:
+        builder_header.content += """    uint32_t m_%s_%s_limit;
+""" % (limit[0], limit[1])
+
+    builder_header.content += """
+public:
+"""
+    for limit in limited_messages:
+        builder_header.content += """    uint32_t get_%s_%s_limit() const {
+        return m_%s_%s_limit;
+    }
+""" % (limit[0], limit[1], limit[0], limit[1])
+        builder_header.content += """    void set_%s_%s_limit(uint32_t limit) {
+        m_%s_%s_limit = limit;
+    }
+""" % (limit[0], limit[1], limit[0], limit[1])
+
+
+    #generate a constructor which just sets everything to infinite limit
+    builder_header.content += """
+    message_aggregator_builder() :
+"""
+    
+    for i, limit in enumerate(limited_messages):
+        if i is  not 0:
+            builder_header.content += """,
+"""
+        builder_header.content += """        m_%s_%s_limit(UINT32_MAX)""" % (limit[0], limit[1])
+
+    builder_header.content += "\n    {}\n\n"
+   
     builder_header.content += """};"""
 
 

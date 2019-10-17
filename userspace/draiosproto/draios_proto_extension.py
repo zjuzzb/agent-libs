@@ -5,8 +5,10 @@
 #
 # It is expected that the type of the aggregated field num contains at least weight, max,
 # min, and sum.
-PRIMARY_KEY = 99999999 #These should probably be an enum. SMAGENT-1976
-OR =          99999998
+PRIMARY_KEY =  99999999 #These should probably be an enum. SMAGENT-1976
+OR =           99999998
+LIMITED = 99999997
+
 field_extension = {
     "counter_percentile" : {1: PRIMARY_KEY,
                             2:3},
@@ -81,10 +83,24 @@ field_extension = {
     "url_details" : {1: PRIMARY_KEY},
     "status_code_details" : {1: PRIMARY_KEY,
                              2:3},
+    "http_info" : {1: LIMITED,
+                   2: LIMITED,
+                   3: LIMITED,
+                   4: LIMITED},
     "sql_entry_details" : {1: PRIMARY_KEY},
     "sql_query_type_details" : {1: PRIMARY_KEY},
+    "sql_info" : {1: LIMITED,
+                  2: LIMITED,
+                  3: LIMITED,
+                  4: LIMITED,
+                  5: LIMITED,
+                  6: LIMITED},
     "mongodb_collection_details" : {1: PRIMARY_KEY},
     "mongodb_op_type_details" : {1: PRIMARY_KEY},
+    "mongodb_info" : {1: LIMITED,
+                      2: LIMITED,
+                      3: LIMITED,
+                      4: LIMITED},
     "statsd_tag" : {1: PRIMARY_KEY},
     "jmx_attribute" : {1: PRIMARY_KEY,
                        2:6}, # note there are two aggregations, but only one is used
@@ -99,11 +115,13 @@ field_extension = {
                        9:109,
                        10:110,
                        11:111},
+    "statsd_info" : {1: LIMITED},
     "app_tag" : {1: PRIMARY_KEY},
     "app_metric" : {1: PRIMARY_KEY,
                     3:103,
                     4: PRIMARY_KEY},
     "app_check" : {1: PRIMARY_KEY},
+    "app_info" : {2: LIMITED}, #SMAGENT-1949
     "network_by_port" : {1: PRIMARY_KEY},
     "host" : {2:21,
               3:15,
@@ -111,6 +129,7 @@ field_extension = {
               11:16,
               7:18,
               13:20,
+              24: LIMITED,
               36:136,
               32:132,
               33:133,
@@ -131,7 +150,9 @@ field_extension = {
                  12:17,
                  13: OR,
                  21:22,
-                 23:123},
+                 23:123,
+                 24: LIMITED,
+                 25: LIMITED},
     "program" : {1: PRIMARY_KEY,
                  4: PRIMARY_KEY},
     "id_map" : {1: PRIMARY_KEY},
@@ -168,7 +189,11 @@ field_extension = {
                          2: PRIMARY_KEY},
     "container" : {1: PRIMARY_KEY,
                    10:15,
-                   12:17},
+                   12:17,
+                   21: LIMITED,
+                   22: LIMITED,
+                   31: LIMITED,
+                   32: LIMITED},
     "mesos_pair" : {1: PRIMARY_KEY},
     "mesos_common" : {1: PRIMARY_KEY},
     "mesos_task" : {1: PRIMARY_KEY},
@@ -195,7 +220,15 @@ field_extension = {
                      3: PRIMARY_KEY,
                      4: PRIMARY_KEY,
                      5: PRIMARY_KEY},
-    "metrics" : {10:17},
+    "metrics" : {10:17,
+                 7: LIMITED,
+                 9: LIMITED,
+                 18: LIMITED,
+                 19: LIMITED,
+                 22: LIMITED,
+                 26: LIMITED,
+                 41: LIMITED,
+                 42: LIMITED},
 }
 
 # This set describes types which we will skip. We won't generate any aggregation

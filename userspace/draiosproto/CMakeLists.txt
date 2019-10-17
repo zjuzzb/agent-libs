@@ -5,6 +5,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libsanalyzer/src) # for tdige
 if(NOT CYGWIN)
 	add_library(draiosproto STATIC
 		${CMAKE_CURRENT_BINARY_DIR}/aggregator_overrides.cpp
+		${CMAKE_CURRENT_BINARY_DIR}/aggregator_limits.cpp
 		${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/tap.pb.cc
@@ -90,6 +91,8 @@ endif()
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.h
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.cpp
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.cpp
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_base.h
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
