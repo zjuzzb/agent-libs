@@ -217,6 +217,13 @@ public:
 	uint64_t m_last_connection_removal_ts;
 	uint32_t m_n_drops;
 	std::set<double> m_percentiles;
+
+	using on_new_tcp_connection_cb = std::function<void(const _ipv4tuple&, sinsp_connection&, sinsp_connection::state_transition)>;
+	std::list<on_new_tcp_connection_cb> m_on_new_tcp_connection_callbacks;
+	void subscribe_on_new_tcp_connection(on_new_tcp_connection_cb callback)
+	{
+		m_on_new_tcp_connection_callbacks.emplace_back(callback);
+	}
 };
 
 template<class TKey, class THash, class TCompare>
@@ -237,14 +244,29 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 
 	ASSERT((flags & ~(sinsp_connection::AF_PENDING | sinsp_connection::AF_FAILED)) == 0);
 
+	// Check if the tuple is already present into m_connections map
+	bool new_tuple = m_connections.find(key) == m_connections.end();
+
 	//
 	// Insert the new connection
 	//
 	sinsp_connection& conn = m_connections[key];
 
+	// Save refcount before updating it
+	uint8_t prev_refcount = conn.m_refcount;
+
+	// Get L4 proto from current key
+	uint8_t l4proto = 0;
+	if(std::is_same<TKey, _ipv4tuple>::value)
+	{
+		const _ipv4tuple& tuple = (const _ipv4tuple&)key;
+		l4proto = tuple.m_fields.m_l4proto;
+	}
+
 	conn.m_record_state_history = m_inspector->m_analyzer->audit_tap_enabled();
+
 	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	if(conn.m_record_state_history)
+	if(conn.m_record_state_history || m_inspector->m_analyzer->secure_audit_enabled())
 	{
 		proc = m_inspector->get_thread_ref(pid,
 						   false /*don't query the os if not found*/,
@@ -364,9 +386,28 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 		conn.m_analysis_flags |= flags;
 	}
 
-	if (!(conn.m_analysis_flags & sinsp_connection::AF_PENDING))
+	if(!(conn.m_analysis_flags & sinsp_connection::AF_PENDING))
 	{
 		conn.record_state_transition(timestamp);
+
+		// Only if it is TCP and not CLOSED or PENDING
+		// Discard multiple state transitions
+		// Consider only new_tuple inserted
+		// Or refcount increment (this means a new connection or a transition
+		// from client_only/server_only to client_and_server)
+		// Or REUSED connections
+		if(l4proto == SCAP_L4_TCP &&	// TCP
+		   !(conn.m_analysis_flags & sinsp_connection::AF_CLOSED) && // !CLOSED connection
+		   (new_tuple || // New tuple inserted into m_connections map
+		   (conn.m_refcount - prev_refcount == 1) || // 0->1 new connection; 1->2 client_only/server_only -> client_and_server
+		   (conn.m_analysis_flags & sinsp_connection::AF_REUSED) // REUSED connection
+		   ))
+		{
+			for(const auto &on_new_tcp_connection_cb : m_on_new_tcp_connection_callbacks)
+			{
+				on_new_tcp_connection_cb(key, conn, std::move(sinsp_connection::state_transition(timestamp, conn.m_analysis_flags, conn.m_error_code)));
+			}
+		}
 	}
 	return &conn;
 };

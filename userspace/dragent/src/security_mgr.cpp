@@ -1677,6 +1677,10 @@ void security_mgr::start_k8s_audit_server_tasks()
 					}
 					for(auto jev : jevts)
 					{
+						m_analyzer->secure_audit_filter_and_append_k8s_audit(jev.jevt(),
+								m_configuration->m_secure_audit_k8s_active_filters,
+								m_configuration->m_secure_audit_k8s_filters);
+
 						// instead of calling directly process_event, it might be worth enqueue into a list and have a worker thread processing the list
 						process_event(&jev);
 					}

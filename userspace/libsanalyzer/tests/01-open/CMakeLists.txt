@@ -16,6 +16,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSIO
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../../draiosproto)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/json-3.3.0/single_include)
 add_definitions( -DHAS_ANALYZER )
 
 add_executable(sinsp-open 

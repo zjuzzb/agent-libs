@@ -139,6 +139,8 @@ public:
 	Message::Priority m_min_event_priority;
 	bool m_curl_debug;
 
+	bool m_secure_audit_enabled;
+
 	// the operation of the root dir is a bit hokey.
 	// we have a "default" root dir that is the effectively the install dir. we use that
 	// to find a few things, like the yaml files. afterwards, we generate the configured
@@ -305,7 +307,7 @@ public:
 	uint64_t m_falco_baselining_autodisable_interval_ns;
 	uint32_t m_falco_baselining_max_drops_full_buffer;
 
-	bool m_command_lines_capture_enabled;
+	bool m_commandlines_capture_enabled;
 	sinsp_configuration::command_capture_mode_t m_command_lines_capture_mode;
 	std::set<std::string> m_command_lines_valid_ancestors;
 	bool m_command_lines_include_container_healthchecks;
@@ -450,6 +452,9 @@ public:
 
 	bool m_audit_tap_enabled = false;
 	bool m_audit_tap_emit_local_connections = false;
+
+	std::unordered_map<std::string, std::unordered_map<std::string, std::string>>m_secure_audit_k8s_filters;
+	std::vector<std::string>m_secure_audit_k8s_active_filters;
 
 	int m_top_files_per_prog = 0;
 	int m_top_files_per_container = 0;

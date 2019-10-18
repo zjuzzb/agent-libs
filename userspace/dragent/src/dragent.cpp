@@ -1182,6 +1182,7 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector,
 	                                              m_configuration.c_root_dir.get_value(),
 	                                              m_internal_metrics,
 	                                              m_protocol_handler,
+	                                              m_protocol_handler,
 	                                              &flush_queue);
 	sinsp_configuration* sconfig = analyzer->get_configuration();
 
@@ -1375,11 +1376,10 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector,
 		    m_configuration.m_falco_baselining_autodisable_interval_ns);
 	}
 
-	if(m_configuration.m_command_lines_capture_enabled)
+	if(m_configuration.m_commandlines_capture_enabled || m_configuration.m_secure_audit_enabled)
 	{
 		g_log->information("Setting command lines capture");
-		sconfig->set_command_lines_capture_enabled(
-		    m_configuration.m_command_lines_capture_enabled);
+		sconfig->set_executed_commands_capture_enabled(true);
 		sconfig->set_command_lines_capture_mode(
 		    m_configuration.m_command_lines_capture_mode);
 		sconfig->set_command_lines_include_container_healthchecks(
@@ -1387,6 +1387,8 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector,
 		sconfig->set_command_lines_valid_ancestors(
 		    m_configuration.m_command_lines_valid_ancestors);
 	}
+
+	sconfig->set_commandlines_capture_enabled(m_configuration.m_commandlines_capture_enabled);
 
 	if(m_configuration.m_capture_dragent_events)
 	{
@@ -1439,6 +1441,11 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector,
 	if(m_configuration.m_audit_tap_enabled)
 	{
 		analyzer->enable_audit_tap(m_configuration.m_audit_tap_emit_local_connections);
+	}
+
+	if(m_configuration.m_secure_audit_enabled)
+	{
+		analyzer->enable_secure_audit();
 	}
 
 	analyzer->set_remotefs_enabled(m_configuration.m_remotefs_enabled);

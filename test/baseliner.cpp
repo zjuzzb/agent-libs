@@ -112,6 +112,7 @@ private:
 namespace {
 sinsp_analyzer::flush_queue g_queue(1000);
 audit_tap_handler_dummy g_audit_handler;
+null_secure_audit_handler g_secure_handler;
 }
 
 class baseliner_test : public testing::Test
@@ -147,6 +148,7 @@ protected:
 		                                "/opt/draios",
 		                                int_metrics,
 		                                g_audit_handler,
+		                                g_secure_handler,
 		                                &g_queue);
 		m_inspector->m_analyzer = m_analyzer;
 

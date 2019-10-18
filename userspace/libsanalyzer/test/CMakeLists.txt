@@ -23,6 +23,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/incl
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/json-3.3.0/single_include)
 
 
 add_definitions( -DHAS_ANALYZER )
@@ -52,6 +53,7 @@ list(APPEND libsanalyzer_uts
 	prometheus.ut.cpp
 	security_config.ut.cpp
 	scoped_sinsp_logger_capture.ut.cpp
+	secure_audit.ut.cpp
 	statsd_emitter.ut.cpp
 	statsd_emitter_factory.ut.cpp
 	statsd_metric.ut.cpp

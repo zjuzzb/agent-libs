@@ -216,6 +216,14 @@ bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info)
 		write_metric(statsd_info, "dragent.subproc.statsite.forwarder.cpu.pct100", draiosproto::STATSD_GAUGE,  m_analyzer.statsite_forwarder_cpu);
 		write_metric(statsd_info, "dragent.subproc.statsite.forwarder.memory.kb", draiosproto::STATSD_GAUGE,  m_analyzer.statsite_forwarder_memory);
 
+		// secure_audit metrics
+		if(get_secure_audit_n_sent_protobufs() != -1)
+		{
+			write_metric(statsd_info, "dragent.secure_audit.n_sent_protobufs", draiosproto::STATSD_GAUGE, get_secure_audit_n_sent_protobufs());
+			write_metric(statsd_info, "dragent.secure_audit.fl.ms", draiosproto::STATSD_GAUGE, get_secure_audit_fl_ms());
+			write_metric(statsd_info, "dragent.secure_audit.emit.ms", draiosproto::STATSD_GAUGE, get_secure_audit_emit_ms());
+		}
+
 		// external sources
 		for(auto &src : m_ext_sources)
 		{
@@ -246,6 +254,14 @@ bool internal_metrics::send_some(draiosproto::statsd_info* statsd_info)
 		send_command_categories(statsd_info);
 
 		write_metric(statsd_info, "dragent.subproc.cointerface.memory.kb", draiosproto::STATSD_GAUGE,  m_analyzer.cointerface_memory);
+
+		// secure_audit metrics
+		if(get_secure_audit_n_sent_protobufs() != -1)
+		{
+			write_metric(statsd_info, "dragent.secure_audit.n_sent_protobufs", draiosproto::STATSD_GAUGE, get_secure_audit_n_sent_protobufs());
+			write_metric(statsd_info, "dragent.secure_audit.fl.ms", draiosproto::STATSD_GAUGE, get_secure_audit_fl_ms());
+			write_metric(statsd_info, "dragent.secure_audit.emit.ms", draiosproto::STATSD_GAUGE, get_secure_audit_emit_ms());
+		}
 
 		// external sources
 		for(auto &src : m_ext_sources)

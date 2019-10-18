@@ -31,7 +31,8 @@ sinsp_configuration::sinsp_configuration():
 	m_app_checks_always_send = false;
 	m_memdump_size = 0;
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
-	m_command_lines_capture_enabled = false;
+	m_executed_commands_capture_enabled = false;
+	m_commandlines_capture_enabled = false;
 	m_command_lines_capture_mode = command_capture_mode_t::CM_TTY;
 	m_command_lines_include_container_healthchecks = true;
 	m_capture_dragent_events = false;
@@ -152,14 +153,24 @@ void sinsp_configuration::set_falco_baselining_max_drops_full_buffer(uint64_t au
 	m_falco_baselining_max_drops_full_buffer = autodisable_interval;
 }
 
-bool sinsp_configuration::get_command_lines_capture_enabled() const
+bool sinsp_configuration::get_commandlines_capture_enabled() const
 {
-	return m_command_lines_capture_enabled;
+	return m_commandlines_capture_enabled;
 }
 
-void sinsp_configuration::set_command_lines_capture_enabled(bool enabled)
+void sinsp_configuration::set_commandlines_capture_enabled(bool enabled)
 {
-	m_command_lines_capture_enabled = enabled;
+	m_commandlines_capture_enabled = enabled;
+}
+
+bool sinsp_configuration::get_executed_commands_capture_enabled() const
+{
+	return m_executed_commands_capture_enabled;
+}
+
+void sinsp_configuration::set_executed_commands_capture_enabled(bool enabled)
+{
+	m_executed_commands_capture_enabled = enabled;
 }
 
 sinsp_configuration::command_capture_mode_t sinsp_configuration::get_command_lines_capture_mode() const

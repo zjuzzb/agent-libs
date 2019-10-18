@@ -41,9 +41,13 @@
 #include "environment_emitter.h"
 #include "process_emitter.h"
 #include "audit_tap_handler.h"
+#include "secure_audit_handler.h"
 #include "statsd_emitter.h"
 #include "analyzer_flush_message.h"
 #include "blocking_queue.h"
+#include "secure_audit_internal_metrics.h"
+#include "secure_audit_data_ready_handler.h"
+#include <nlohmann/json.hpp>
 
 namespace dragent
 {
@@ -51,6 +55,7 @@ class metric_serializer;
 }
 
 class audit_tap;
+class secure_audit;
 
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
@@ -231,7 +236,9 @@ private:
 //
 // The main analyzer class
 //
-class SINSP_PUBLIC sinsp_analyzer
+class SINSP_PUBLIC sinsp_analyzer :
+	public secure_audit_data_ready_handler,
+	public secure_audit_internal_metrics
 {
 public:
 	typedef blocking_queue<std::shared_ptr<flush_data_message>> flush_queue;
@@ -249,6 +256,7 @@ public:
 	               std::string root_dir,
 	               const internal_metrics::sptr_t& internal_metrics,
 	               audit_tap_handler& tap_handler,
+	               secure_audit_handler& secure_handler,
 	               flush_queue* flush_queue);
 	~sinsp_analyzer();
 
@@ -619,6 +627,20 @@ public:
 	bool audit_tap_enabled() const {
 		return m_tap != nullptr;
 	}
+
+	void enable_secure_audit();
+	bool secure_audit_enabled() const {
+		return m_secure_audit != nullptr;
+	}
+
+	void secure_audit_data_ready(uint64_t ts,
+				 const secure::Audit* secure_audits) override;
+	void set_secure_audit_internal_metrics(int n_sent_protobufs,
+					   uint64_t flush_time_ms) override;
+
+    	void secure_audit_filter_and_append_k8s_audit(const nlohmann::json& j,
+						   std::vector<std::string>& k8s_active_filters,
+						   std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters);
 
 	/**
 	 * Dump the infrastructure state to a file in the log directory.
@@ -1344,6 +1366,7 @@ VISIBILITY_PRIVATE
 	bool m_dump_global_infrastructure_state_on_next_flush = false;
 
 	std::shared_ptr<audit_tap> m_tap;
+	std::shared_ptr<secure_audit> m_secure_audit;
 
 	/**
 	 * Kill flag.  If this is set to true, the agent will restart.
@@ -1361,6 +1384,7 @@ VISIBILITY_PRIVATE
 	friend class test_helper;
 
 	audit_tap_handler& m_audit_tap_handler;
+	secure_audit_handler& m_secure_audit_handler;
 
 	process_manager m_process_manager;
 

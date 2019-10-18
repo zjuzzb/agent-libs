@@ -9,6 +9,7 @@
 #include <env_hash.h>
 #include <tap.pb.h>
 #include <arpa/inet.h>
+#include "unique_ptr_resetter.h"
 
 using namespace test_helpers;
 
@@ -30,43 +31,8 @@ const uint32_t DEFAULT_COUNT_TOTAL = DEFAULT_COUNT_IN + DEFAULT_COUNT_OUT;
 const uint32_t DEFAULT_ERROR_COUNT = 2;
 
 audit_tap_handler_dummy g_audit_handler;
+null_secure_audit_handler g_secure_handler;
 sinsp_analyzer::flush_queue g_queue(1000);
-
-/**
- * For legacy reasons, the inspector must be deleted before the analyzer.
- * One approach is to add a call to inspector.reset() at the end of the
- * enclosing scope.  That works as long as the flow of control hits that
- * statement.  If, however, there's an early return (e.g., when a test
- * fails), then the call to reset() is skipped and the test binary crashes.
- *
- * This class wraps the call to reset.  If you create an instance of this
- * after creating the analyzer, then it will get destroyed before the
- * analyzer --- no matter what flow triggers the destruction --- before the
- * analyzer gets destroyed.
- * 
- * <pre>
- * std::unique_ptr<sinsp_mock> inspector(...);
- * sinsp_analyzer analyzer(inspector.get(), ...);
- * unique_ptr_resetter<sinsp_mock> resetter(inspector);
- * ...
- * <pre>
- */
-template<typename T>
-class unique_ptr_resetter
-{
-public:
-	unique_ptr_resetter(std::unique_ptr<T>& ptr):
-		m_ptr(ptr)
-	{ }
-
-	~unique_ptr_resetter()
-	{
-		m_ptr.reset();
-	}
-
-private:
-	std::unique_ptr<T>& m_ptr;
-};
 
 env_hash_config *default_hash_config()
 {
@@ -169,6 +135,7 @@ void arg_length_test(const int limit)
 	                        "/" /*root dir*/,
 	                        int_metrics,
 	                        g_audit_handler,
+	                        g_secure_handler,
 	                        &g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
@@ -221,6 +188,7 @@ TEST(audit_tap_test, basic)
 	                        "/" /*root dir*/,
 	                        int_metrics,
 	                        g_audit_handler,
+	                        g_secure_handler,
 	                        &g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
@@ -330,6 +298,7 @@ TEST(audit_tap_test, connection_audit_one_client_connection)
 	                        root_dir,
 	                        int_metrics,
 	                        g_audit_handler,
+	                        g_secure_handler,
 	                        &g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
@@ -404,6 +373,7 @@ TEST(audit_tap_test, connection_audit_one_server_connection)
 	                        root_dir,
 	                        int_metrics,
 	                        g_audit_handler,
+	                        g_secure_handler,
 	                        &g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 

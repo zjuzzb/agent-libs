@@ -7,6 +7,7 @@
 
 #include "draios.pb.h"
 #include "tap.pb.h"
+#include "secure.pb.h"
 
 COMMON_LOGGER();
 
@@ -26,6 +27,12 @@ type_config<bool> protocol_handler::c_audit_tap_debug_only(
 	"set to true to only log audit tap, but not emit",
 	"audit_tap",
 	"debug_only");
+
+type_config<bool> protocol_handler::c_secure_audit_debug_enabled(
+	false,
+	"set to true to log secure audit protobufs",
+	"secure_audit",
+	"debug");
 
 protocol_handler::protocol_handler(protocol_queue& queue) :
     m_last_loop_ns(0),
@@ -207,4 +214,35 @@ std::shared_ptr<serialized_buffer> protocol_handler::handle_log_report(uint64_t 
 		return nullptr;
 	}
 	return report_serialized;
+}
+
+void protocol_handler::secure_audit_data_ready(uint64_t ts_ns, const secure::Audit *secure_audit)
+{
+	if(c_secure_audit_debug_enabled.get_value())
+	{
+		LOG_INFO(std::string("Secure Audit data:") + secure_audit->DebugString());
+	}
+
+	std::shared_ptr<serialized_buffer> buffer = dragent_protocol::message_to_buffer(
+		ts_ns,
+		draiosproto::message_type::SECURE_AUDIT,
+		*secure_audit,
+		true /* compression always enabled */);
+
+	if(!buffer)
+	{
+		LOG_ERROR("NULL converting secure_audit message to buffer");
+		return;
+	}
+
+	LOG_INFO("secure_audit len=" + NumberFormatter::format(buffer->buffer.size())
+			   + ", conn=" + NumberFormatter::format(secure_audit->connections().size())
+			   + ", cmd=" + NumberFormatter::format(secure_audit->executed_commands().size())
+			   + ", ke=" + NumberFormatter::format(secure_audit->k8s_audits().size())
+			   );
+
+	if(!m_queue.put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
+	{
+		LOG_INFO("Queue full, discarding sample");
+	}
 }

@@ -150,8 +150,10 @@ public:
 	uint64_t get_falco_baselining_max_drops_full_buffer() const;
 	void set_falco_baselining_max_drops_full_buffer(uint64_t report_interval);
 
-	bool get_command_lines_capture_enabled() const;
-	void set_command_lines_capture_enabled(bool enabled);
+	bool get_commandlines_capture_enabled() const;
+	void set_commandlines_capture_enabled(bool enabled);
+	bool get_executed_commands_capture_enabled() const;
+	void set_executed_commands_capture_enabled(bool enabled);
 	command_capture_mode_t get_command_lines_capture_mode() const;
 	void set_command_lines_capture_mode(command_capture_mode_t capture_mode);
 	void set_command_lines_include_container_healthchecks(bool enabled);
@@ -292,7 +294,8 @@ private:
 	bool m_curl_debug;
 
 	bool m_falco_baselining_enabled;
-	bool m_command_lines_capture_enabled;
+	bool m_executed_commands_capture_enabled;
+	bool m_commandlines_capture_enabled;
 	command_capture_mode_t m_command_lines_capture_mode;
 	bool m_command_lines_include_container_healthchecks;
 	std::set<std::string> m_command_lines_valid_ancestors;

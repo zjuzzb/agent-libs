@@ -22,6 +22,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../userspace-shared/src)
 include_directories(${PROJECT_BINARY_DIR}/driver/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/json-3.3.0/single_include)
 
 if(CYGWIN)
 include_directories("${WIN_HAL_INCLUDE}")
@@ -111,6 +112,7 @@ set(SANALYZER_SOURCES
 	app_checks.cpp
 	app_check_emitter.cpp
 	audit_tap.cpp
+	secure_audit.cpp
 	baseliner.cpp
 	blake2/blake2b.c
 	coclient.cpp

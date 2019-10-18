@@ -1113,6 +1113,7 @@ enum message_type {
     AUDIT_TAP = 20;
     COMP_RUN = 21;
     POLICIES_V2 = 22;
+    SECURE_AUDIT = 23;
 }
 
 //

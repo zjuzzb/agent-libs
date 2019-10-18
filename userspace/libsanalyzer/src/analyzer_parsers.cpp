@@ -245,9 +245,14 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	}
 
 	//
-	// If command line capture is disabled, we stop here
+	// If executed commands capture is disabled, we stop here
+	// and we don't record commands executed by the user
 	//
-	if(!sinsp_conf->get_command_lines_capture_enabled())
+	// executed commands capture can be enabled by
+	// - commandlines_capture/enabled - "old" way to send executed commands
+	// - secure_audit/executed_commands - "new" audit feature
+	//
+	if(!sinsp_conf->get_executed_commands_capture_enabled())
 	{
 		return true;
 	}

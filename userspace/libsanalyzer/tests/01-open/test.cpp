@@ -67,6 +67,7 @@ public:
 
 namespace {
 audit_tap_handler_dummy g_audit_handler;
+null_secure_audit_handler g_secure_handler;
 sinsp_analyzer::flush_queue g_queue(1000);
 }
 
@@ -440,6 +441,7 @@ int main(int argc, char **argv)
 		                                              "/opt/draios",
 		                                              int_metrics,
 		                                              g_audit_handler,
+		                                              g_secure_handler,
 		                                              &g_queue);
 		g_inspector->m_analyzer = analyzer;
 

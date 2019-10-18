@@ -2,6 +2,7 @@
 
 #include "uncompressed_sample_handler.h"
 #include "audit_tap_handler.h"
+#include "secure_audit_handler.h"
 #include "security_result_handler.h"
 #include "log_report_handler.h"
 #include "dragent_message_queues.h"
@@ -15,6 +16,7 @@
  */
 class protocol_handler : public uncompressed_sample_handler,
                          public audit_tap_handler,
+                         public secure_audit_handler,
                          public security_result_handler,
                          public log_report_handler
 {
@@ -48,6 +50,9 @@ public: // functions from security_result_handler
 public: // functions from audit_tap_handler
 	void audit_tap_data_ready(uint64_t ts_ns, const tap::AuditLog *audit_log) override;
 
+public: // functions from audit_tap_handler
+	void secure_audit_data_ready(uint64_t ts_ns, const secure::Audit *secure_audit) override;
+
 public: // functions from log_report_handler
 	std::shared_ptr<serialized_buffer> handle_log_report(uint64_t ts_ns,
 	               const draiosproto::dirty_shutdown_report& report) override;
@@ -55,6 +60,7 @@ public: // configs
 	static type_config<bool> c_print_protobuf;
 	static type_config<bool> c_compression_enabled;
 	static type_config<bool> c_audit_tap_debug_only;
+	static type_config<bool> c_secure_audit_debug_enabled;
 
 private:
 	protocol_queue& m_queue;

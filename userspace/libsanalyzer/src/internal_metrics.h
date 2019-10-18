@@ -110,6 +110,9 @@ public:
 	void set_statsite_forwarder_memory(int64_t val);
 	void set_cointerface_cpu(int64_t val);
 	void set_cointerface_memory(int64_t val);
+	void set_secure_audit_n_sent_protobufs(int64_t val);
+	void set_secure_audit_fl_ms(int64_t val);
+	void set_secure_audit_emit_ms(int64_t val);
 
 	// Set the process ids associated with the various
 	// subprocesses
@@ -130,6 +133,9 @@ public:
 	int64_t get_statsite_forwarder_memory() const;
 	int64_t get_cointerface_cpu() const;
 	int64_t get_cointerface_memory() const;
+	int64_t get_secure_audit_n_sent_protobufs() const;
+	int64_t get_secure_audit_fl_ms() const;
+	int64_t get_secure_audit_emit_ms() const;
 
 	// For other metrics sources e.g. security manager event
 	// counts, you can provide objects derived from this type and
@@ -274,6 +280,10 @@ private:
 		std::map<draiosproto::command_category,uint64_t> m_command_categories;
 
 		bool baseliner_enabled = false;
+
+		int64_t secure_audit_n_sent_protobufs = -1;
+		int64_t secure_audit_fl_ms = -1;
+		int64_t secure_audit_emit_ms = -1;
 
 		int64_t agent_cpu;
 		int64_t agent_memory;
@@ -605,4 +615,34 @@ inline int64_t internal_metrics::get_cointerface_cpu() const
 inline int64_t internal_metrics::get_cointerface_memory() const
 {
 	return m_analyzer.cointerface_memory;
+}
+
+inline int64_t internal_metrics::get_secure_audit_n_sent_protobufs() const
+{
+	return m_analyzer.secure_audit_n_sent_protobufs;
+}
+
+inline void internal_metrics::set_secure_audit_n_sent_protobufs(int64_t val)
+{
+	m_analyzer.secure_audit_n_sent_protobufs = val;
+}
+
+inline int64_t internal_metrics::get_secure_audit_fl_ms() const
+{
+	return m_analyzer.secure_audit_fl_ms;
+}
+
+inline void internal_metrics::set_secure_audit_fl_ms(int64_t val)
+{
+	m_analyzer.secure_audit_fl_ms = val;
+}
+
+inline int64_t internal_metrics::get_secure_audit_emit_ms() const
+{
+	return m_analyzer.secure_audit_emit_ms;
+}
+
+inline void internal_metrics::set_secure_audit_emit_ms(int64_t val)
+{
+	m_analyzer.secure_audit_emit_ms = val;
 }

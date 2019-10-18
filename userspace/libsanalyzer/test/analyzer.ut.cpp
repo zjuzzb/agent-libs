@@ -13,6 +13,7 @@ using namespace test_helpers;
 namespace {
 sinsp_analyzer::flush_queue g_queue(1000);
 audit_tap_handler_dummy g_audit_handler;
+null_secure_audit_handler g_secure_handler;
 }
 
 TEST(analyzer_test, end_to_end_basic)
@@ -30,6 +31,7 @@ TEST(analyzer_test, end_to_end_basic)
 	                        "/" /*root dir*/,
 	                        int_metrics,
 	                        g_audit_handler,
+	                        g_secure_handler,
 	                        &g_queue);
 	run_sinsp_with_analyzer(*inspector, analyzer);
 
@@ -126,6 +128,7 @@ TEST(analyzer_test, coalesce_containers_null)
 	                        "/",
 	                        int_metrics,
 	                        g_audit_handler,
+	                        g_secure_handler,
 	                        &g_queue);
 	std::vector<std::string> emitted_containers;
 	container_stuff unemitted_container_1(inspector, analyzer, "unemitted_container_1");
@@ -147,6 +150,7 @@ TEST(analyzer_test, coalesce_containers_test)
 	                        "/",
 	                        int_metrics,
 	                        g_audit_handler,
+	                        g_secure_handler,
 	                        &g_queue);
 
 	std::vector<std::string> emitted_containers;
@@ -285,6 +289,7 @@ TEST(analyzer_test, print_profiling_error)
 	                        "/",
 	                        int_metrics,
 	                        g_audit_handler,
+	                        g_secure_handler,
 	                        &g_queue);
 
 	// Run the analyzer to induce calling flush

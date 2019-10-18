@@ -1269,3 +1269,31 @@ ca_cert_paths:
   - /usr/lib/ssl/certs # Debian/Ubuntu
   - $OPENSSLDIR/certs/ca-bundle.crt # in case RHEL ever moves from /etc/pki/tls
   - $OPENSSLDIR/certs # others: try to autodetect from `openssl version -d`
+
+secure_audit:
+  enabled: false
+
+  #COMMANDS
+  executed_commands: true
+  executed_commands_per_container_limit: 30 #per-second limit
+
+  #CONNECTIONS
+  connections: true
+  connections_local: false
+  connections_cmdline: false
+  connections_cmdline_maxlen: 0
+
+  #K8S AUDIT EVENTS
+  k8s_audit: true
+  k8s_active_filters:
+    - exec
+
+  #K8S AUDIT FILTERS
+  k8s_filters:
+    exec:
+      /verb: "create"
+      /objectRef/resource: "pods"
+      /objectRef/subresource: "exec"
+
+  frequency: 10
+  debug: false

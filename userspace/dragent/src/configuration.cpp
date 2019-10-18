@@ -242,7 +242,8 @@ dragent_configuration::dragent_configuration()
 	m_falco_baselining_report_interval_ns = DEFAULT_FALCO_BASELINING_DUMP_DELTA_NS;
 	m_falco_baselining_autodisable_interval_ns = DEFAULT_FALCO_BASELINING_DISABLE_TIME_NS;
 	m_falco_baselining_max_drops_full_buffer = DEFAULT_FALCO_BASELINING_MAX_DROPS_FULL_BUFFER;
-	m_command_lines_capture_enabled = false;
+	m_secure_audit_enabled = false;
+	m_commandlines_capture_enabled = false;
 	m_command_lines_capture_mode = sinsp_configuration::CM_TTY;
 	m_command_lines_include_container_healthchecks = true;
 	m_memdump_enabled = false;
@@ -682,7 +683,18 @@ void dragent_configuration::init()
 	m_falco_baselining_autodisable_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "autodisable_interval", DEFAULT_FALCO_BASELINING_DISABLE_TIME_NS);
 	m_falco_baselining_max_drops_full_buffer = m_config->get_scalar<uint32_t>("falcobaseline", "max_drops_full_buffer", DEFAULT_FALCO_BASELINING_MAX_DROPS_FULL_BUFFER);
 
-	m_command_lines_capture_enabled =  m_config->get_scalar<bool>("commandlines_capture", "enabled", false);
+	m_secure_audit_enabled = m_config->get_scalar<bool>("secure_audit", "enabled", false);
+
+	if(m_secure_audit_enabled)
+	{
+		// If secure audit is enabled force old commands audit to disabled
+		m_commandlines_capture_enabled = false;
+	}
+	else
+	{
+		m_commandlines_capture_enabled =  m_config->get_scalar<bool>("commandlines_capture", "enabled", false);
+	}
+
 	string command_lines_capture_mode_s = m_config->get_scalar<string>("commandlines_capture", "capture_mode", "tty");
 	if(command_lines_capture_mode_s == "tty")
 	{
@@ -1138,6 +1150,12 @@ void dragent_configuration::init()
 	m_procfs_scan_interval = m_config->get_scalar<uint32_t>("procfs_scan_interval",
 		DEFAULT_PROCFS_SCAN_INTERVAL_SECS );
 
+	m_secure_audit_k8s_active_filters = m_config->get_first_deep_sequence<vector<string>>("secure_audit", "k8s_active_filters");
+
+	for(auto it: m_secure_audit_k8s_active_filters)
+	{
+		m_secure_audit_k8s_filters[it] = m_config->get_first_deep_map<string>("secure_audit", "k8s_filters", it);
+	}
 }
 
 void dragent_configuration::print_configuration() const
@@ -1167,6 +1185,22 @@ void dragent_configuration::print_configuration() const
 		}
 		LOG_INFO(ca_cert_paths);
 	}
+	LOG_INFO("secure_audit: ");
+	LOG_INFO("  enabled: " + bool_as_text(m_secure_audit_enabled));
+	LOG_INFO("secure_audit.k8s_active_filters:");
+	for(auto it : m_secure_audit_k8s_active_filters)
+	{
+		LOG_INFO("  - " + it);
+	}
+	LOG_INFO("secure_audit.k8s_filters:");
+	for(auto it : m_secure_audit_k8s_filters)
+	{
+		LOG_INFO("  " + it.first + ":");
+		for(auto it2 : it.second)
+		{
+			LOG_INFO("    " + it2.first + " : " + it2.second);
+		}
+	}
 	LOG_INFO("emitfullconnections.enabled: " + bool_as_text(m_emit_full_connections));
 	LOG_INFO("dumpdir: " + m_dump_dir);
 	LOG_INFO("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
@@ -1175,7 +1209,7 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("falcobaseline.report_interval: " + NumberFormatter::format(m_falco_baselining_report_interval_ns));
 	LOG_INFO("falcobaseline.autodisable_interval: " + NumberFormatter::format(m_falco_baselining_autodisable_interval_ns));
 	LOG_INFO("falcobaseline.max_drops_full_buffer: " + NumberFormatter::format(m_falco_baselining_max_drops_full_buffer));
-	LOG_INFO("commandlines_capture.enabled: " + bool_as_text(m_command_lines_capture_enabled));
+	LOG_INFO("commandlines_capture.enabled: " + bool_as_text(m_commandlines_capture_enabled));
 	LOG_INFO("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));
 	LOG_INFO("Will" + string((m_command_lines_include_container_healthchecks ? " " :" not")) + " include container health checks in collected commandlines");
 	string ancestors;

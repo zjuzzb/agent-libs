@@ -219,27 +219,30 @@ private:
 class run_on_interval
 {
 public:
-	inline run_on_interval(uint64_t interval);
+	inline run_on_interval(uint64_t interval, uint64_t threshold = 0);
 
 	template<typename Callable>
 	inline void run(const Callable& c, uint64_t now);
 	uint64_t interval() const { return m_interval; }
 	void interval(uint64_t i) { m_interval = i; }
+	void threshold(uint64_t t) { m_threshold = t; }
 private:
 	uint64_t m_last_run_ns;
 	uint64_t m_interval;
+	uint64_t m_threshold;
 };
 
-run_on_interval::run_on_interval(uint64_t interval):
+run_on_interval::run_on_interval(uint64_t interval, uint64_t threshold):
 		m_last_run_ns(0),
-		m_interval(interval)
+		m_interval(interval),
+		m_threshold(threshold)
 {
 }
 
 template<typename Callable>
 void run_on_interval::run(const Callable& c, uint64_t now)
 {
-	if(now - m_last_run_ns > m_interval)
+	if(now - m_last_run_ns + m_threshold > m_interval)
 	{
 		c();
 		m_last_run_ns = now;

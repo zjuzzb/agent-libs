@@ -70,6 +70,7 @@ public:
 namespace {
 uncompressed_sample_handler_dummy g_sample_handler;
 audit_tap_handler_dummy g_audit_handler;
+null_secure_audit_handler g_secure_handler;
 
 class test_sinsp_worker : public Runnable
 {
@@ -278,6 +279,7 @@ protected:
 		                                "/opt/draios",
 		                                m_internal_metrics,
 		                                g_audit_handler,
+		                                g_secure_handler,
 		                                &m_flush_queue);
 
 		m_inspector->m_analyzer = m_analyzer;

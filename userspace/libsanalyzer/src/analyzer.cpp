@@ -87,6 +87,7 @@ using namespace google::protobuf::io;
 #include "label_limits.h"
 #include "container_emitter.h"
 #include "audit_tap.h"
+#include "secure_audit.h"
 #include "jmx_emitter.h"
 #include "app_check_emitter.h"
 #include "environment_emitter.h"
@@ -139,6 +140,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
                                std::string root_dir,
                                const internal_metrics::sptr_t& internal_metrics,
                                audit_tap_handler& tap_handler,
+                               secure_audit_handler& secure_handler,
                                sinsp_analyzer::flush_queue* flush_queue):
 	m_configuration(new sinsp_configuration()),
 	m_inspector(inspector),
@@ -151,10 +153,11 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_very_high_cpu_switcher("agent cpu usage with sr=128"),
 	m_internal_metrics(internal_metrics),
 	m_statsd_emitter(new null_statsd_emitter()),
-    m_audit_tap_handler(tap_handler),
-    m_metrics_dir_mutex(),
-    m_metrics_dir(""),
-    m_flush_queue(flush_queue)
+	m_audit_tap_handler(tap_handler),
+	m_secure_audit_handler(secure_handler),
+	m_metrics_dir_mutex(),
+	m_metrics_dir(""),
+	m_flush_queue(flush_queue)
 {
 	ASSERT(m_internal_metrics);
 	m_initialized = false;
@@ -209,6 +212,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_falco_baseliner = new sinsp_baseliner();
 
 	m_tap = nullptr;
+	m_secure_audit = nullptr;
 #ifndef CYGWING_AGENT
 	m_infrastructure_state = new infrastructure_state(inspector, root_dir);
 #endif
@@ -494,6 +498,12 @@ void sinsp_analyzer::on_capture_start()
 	//
 	ASSERT(m_ipv4_connections == NULL);
 	m_ipv4_connections = new sinsp_ipv4_connection_manager(m_inspector);
+
+	if(m_secure_audit != nullptr)
+	{
+		m_secure_audit->init(m_ipv4_connections);
+	}
+
 	const std::set<double>& pctls = m_configuration->get_percentiles();
 	if(pctls.size())
 	{
@@ -851,6 +861,18 @@ sinsp_connection* sinsp_analyzer::get_connection(const ipv4tuple& tuple, uint64_
 	}
 
 	return connection;
+}
+
+void sinsp_analyzer::secure_audit_data_ready(const uint64_t ts, const secure::Audit* const secure_audits)
+{
+	m_secure_audit_handler.secure_audit_data_ready(ts, secure_audits);
+}
+
+void sinsp_analyzer::set_secure_audit_internal_metrics(const int n_sent_protobufs,
+						       const uint64_t flush_time_ms)
+{
+	m_internal_metrics->set_secure_audit_n_sent_protobufs(n_sent_protobufs);
+	m_internal_metrics->set_secure_audit_fl_ms(flush_time_ms);
 }
 
 template<class Iterator>
@@ -4133,7 +4155,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			//
 			// Executed commands
 			//
-			if(m_configuration->get_command_lines_capture_enabled())
+			if(m_configuration->get_commandlines_capture_enabled())
 			{
 				emit_executed_commands(m_metrics, NULL, &(m_executed_commands[""]));
 			}
@@ -4398,6 +4420,21 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			}
 
 			emit_baseline(evt, is_eof, f_trc);
+
+			// Secure Audit - Emit and Flush
+			if(m_secure_audit && m_sent_metrics &&
+			   flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			{
+				uint64_t start_emit_time = sinsp_utils::get_current_time_ns();
+
+				m_secure_audit->emit_commands_audit(&m_executed_commands);
+				m_secure_audit->emit_k8s_exec_audit();
+
+				uint64_t emit_time_ms = (sinsp_utils::get_current_time_ns() - start_emit_time) / 1000000;
+				m_internal_metrics->set_secure_audit_emit_ms(emit_time_ms);
+
+				m_secure_audit->flush(ts);
+			}
 
 			//
 			// Internal metrics
@@ -6431,11 +6468,14 @@ sinsp_analyzer::emit_container(const string &container_id,
 	//
 	// Emit the executed commands for this container
 	//
-	auto ecit = m_executed_commands.find(container_id);
-
-	if(ecit != m_executed_commands.end())
+	if(m_configuration->get_commandlines_capture_enabled())
 	{
-		emit_executed_commands(NULL, container, &(ecit->second));
+		auto ecit = m_executed_commands.find(container_id);
+
+		if(ecit != m_executed_commands.end())
+		{
+			emit_executed_commands(NULL, container, &(ecit->second));
+		}
 	}
 #endif
 
@@ -7077,6 +7117,13 @@ void sinsp_analyzer::enable_audit_tap(bool emit_local_connections)
 	m_threadtable_listener->set_audit_tap(m_tap);
 }
 
+void sinsp_analyzer::enable_secure_audit()
+{
+	m_secure_audit = std::make_shared<secure_audit>();
+	m_secure_audit->set_data_handler(this);
+	m_secure_audit->set_internal_metrics(this);
+}
+
 void sinsp_analyzer::dump_infrastructure_state_on_next_flush()
 {
 	g_logger.log("Will dump infrastructure state on next flush", sinsp_logger::SEV_INFO);
@@ -7153,6 +7200,16 @@ bool sinsp_analyzer::find_java_process_name(const int pid, std::string& name) co
 	}
 
 	return found;
+}
+
+void sinsp_analyzer::secure_audit_filter_and_append_k8s_audit(const nlohmann::json& j,
+							      std::vector<std::string>& k8s_active_filters,
+							      std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters)
+{
+	if(m_secure_audit != nullptr)
+	{
+		m_secure_audit->filter_and_append_k8s_audit(j, k8s_active_filters, k8s_filters);
+	}
 }
 
 uint32_t sinsp_analyzer::get_thread_memory_id() const
