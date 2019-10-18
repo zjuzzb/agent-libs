@@ -14,6 +14,9 @@
 #include <Poco/Net/InvalidCertificateHandler.h>
 #include <Poco/Net/SSLException.h>
 
+
+#include <grpc_channel_registry.h>
+
 using namespace std;
 namespace security_config = libsanalyzer::security_config;
 

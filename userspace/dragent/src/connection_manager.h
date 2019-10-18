@@ -14,7 +14,6 @@
 #include <map>
 
 #include <Poco/Buffer.h>
-#include <grpc_channel_registry.h>
 
 class dragent_configuration;
 
@@ -23,6 +22,10 @@ namespace Net {
 class StreamSocket;
 } // namespace Net
 } // namespace Poco
+
+namespace grpc {
+	class ChannelInterface;
+}
 
 class connection_manager : public dragent::watchdog_runnable
 {
@@ -105,6 +108,6 @@ private:
 #ifndef CYGWING_AGENT
 	// communication with Prometheus exporter
 	std::shared_ptr<promex_pb::PrometheusExporter::Stub> m_prom_conn;
-	std::shared_ptr<grpc::Channel> m_prom_channel;
+	std::shared_ptr<grpc::ChannelInterface> m_prom_channel;
 #endif
 };
