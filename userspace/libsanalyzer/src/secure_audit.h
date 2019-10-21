@@ -64,6 +64,9 @@ public:
 	static type_config<bool> c_secure_audit_connections_local;
 	static type_config<bool> c_secure_audit_connections_cmdline;
 	static type_config<int> c_secure_audit_connections_cmdline_maxlen;
+	static type_config<int> c_secure_audit_executed_commands_limit;
+	static type_config<int> c_secure_audit_connections_limit;
+	static type_config<int> c_secure_audit_k8s_limit;
 	static type_config<int>::mutable_ptr c_secure_audit_frequency;
 
 private:
@@ -73,6 +76,7 @@ private:
 			      std::vector<std::string>& k8s_active_filters,
 			      std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters);
 	void append_k8s_audit(const std::string& evt);
+	void reset_counters();
 
 	secure_audit_data_ready_handler* m_audit_data_handler;
 	secure_audit_internal_metrics* m_audit_internal_metrics;
@@ -82,4 +86,12 @@ private:
 	std::unique_ptr<run_on_interval> m_get_events_interval;
 	sinsp_analyzer* m_analyzer;
 	bool secure_audit_sent;
+
+	int m_executed_commands_count;
+	int m_connections_count;
+	int m_k8s_audit_count;
+
+	int m_executed_commands_dropped_count;
+	int m_connections_dropped_count;
+	int m_k8s_audit_dropped_count;
 };

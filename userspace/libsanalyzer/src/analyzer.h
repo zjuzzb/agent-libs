@@ -634,13 +634,20 @@ public:
 	}
 
 	void secure_audit_data_ready(uint64_t ts,
-				 const secure::Audit* secure_audits) override;
+				     const secure::Audit* secure_audits) override;
 	void set_secure_audit_internal_metrics(int n_sent_protobufs,
-					   uint64_t flush_time_ms) override;
+					       uint64_t flush_time_ms) override;
+
+	void set_secure_audit_sent_counters(int n_executed_commands,
+					    int n_connections,
+					    int n_k8s,
+					    int n_executed_commands_dropped,
+					    int n_connections_dropped,
+					    int n_k8s_dropped) override;
 
     	void secure_audit_filter_and_append_k8s_audit(const nlohmann::json& j,
-						   std::vector<std::string>& k8s_active_filters,
-						   std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters);
+						      std::vector<std::string>& k8s_active_filters,
+						      std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters);
 
 	/**
 	 * Dump the infrastructure state to a file in the log directory.

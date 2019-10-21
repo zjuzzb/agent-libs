@@ -113,6 +113,12 @@ public:
 	void set_secure_audit_n_sent_protobufs(int64_t val);
 	void set_secure_audit_fl_ms(int64_t val);
 	void set_secure_audit_emit_ms(int64_t val);
+	void set_secure_audit_executed_commands_count(int64_t val);
+	void set_secure_audit_connections_count(int64_t val);
+	void set_secure_audit_k8s_count(int64_t val);
+	void set_secure_audit_executed_commands_dropped_count(int64_t val);
+	void set_secure_audit_connections_dropped_count(int64_t val);
+	void set_secure_audit_k8s_dropped_count(int64_t val);
 
 	// Set the process ids associated with the various
 	// subprocesses
@@ -136,6 +142,12 @@ public:
 	int64_t get_secure_audit_n_sent_protobufs() const;
 	int64_t get_secure_audit_fl_ms() const;
 	int64_t get_secure_audit_emit_ms() const;
+	int64_t get_secure_audit_executed_commands_count() const;
+	int64_t get_secure_audit_connections_count() const;
+	int64_t get_secure_audit_k8s_count() const;
+	int64_t get_secure_audit_executed_commands_dropped_count() const;
+	int64_t get_secure_audit_connections_dropped_count() const;
+	int64_t get_secure_audit_k8s_dropped_count() const;
 
 	// For other metrics sources e.g. security manager event
 	// counts, you can provide objects derived from this type and
@@ -285,6 +297,13 @@ private:
 		int64_t secure_audit_fl_ms = -1;
 		int64_t secure_audit_emit_ms = -1;
 
+		int64_t secure_audit_executed_commands_count = -1;
+		int64_t secure_audit_connections_count = -1;
+		int64_t secure_audit_k8s_count = -1;
+		int64_t secure_audit_executed_commands_dropped_count = -1;
+		int64_t secure_audit_connections_dropped_count = -1;
+		int64_t secure_audit_k8s_dropped_count = -1;
+
 		int64_t agent_cpu;
 		int64_t agent_memory;
 		int64_t java_cpu;
@@ -306,6 +325,7 @@ private:
 	};
 
 	void send_command_categories(draiosproto::statsd_info* statsd_info);
+	void send_secure_audit_metrics(draiosproto::statsd_info* statsd_info);
 
 	analyzer m_analyzer;
 	std::list<ext_source *> m_ext_sources;
@@ -645,4 +665,64 @@ inline int64_t internal_metrics::get_secure_audit_emit_ms() const
 inline void internal_metrics::set_secure_audit_emit_ms(int64_t val)
 {
 	m_analyzer.secure_audit_emit_ms = val;
+}
+
+inline void internal_metrics::set_secure_audit_executed_commands_count(int64_t val)
+{
+	m_analyzer.secure_audit_executed_commands_count = val;
+}
+
+inline void internal_metrics::set_secure_audit_connections_count(int64_t val)
+{
+	m_analyzer.secure_audit_connections_count = val;
+}
+
+inline void internal_metrics::set_secure_audit_k8s_count(int64_t val)
+{
+	m_analyzer.secure_audit_k8s_count = val;
+}
+
+inline void internal_metrics::set_secure_audit_executed_commands_dropped_count(int64_t val)
+{
+	m_analyzer.secure_audit_executed_commands_dropped_count = val;
+}
+
+inline void internal_metrics::set_secure_audit_connections_dropped_count(int64_t val)
+{
+	m_analyzer.secure_audit_connections_dropped_count = val;
+}
+
+inline void internal_metrics::set_secure_audit_k8s_dropped_count(int64_t val)
+{
+	m_analyzer.secure_audit_k8s_dropped_count = val;
+}
+
+inline int64_t internal_metrics::get_secure_audit_executed_commands_count() const
+{
+	return m_analyzer.secure_audit_executed_commands_count;
+}
+
+inline int64_t internal_metrics::get_secure_audit_connections_count() const
+{
+	return m_analyzer.secure_audit_connections_count;
+}
+
+inline int64_t internal_metrics::get_secure_audit_k8s_count() const
+{
+	return m_analyzer.secure_audit_k8s_count;
+}
+
+inline int64_t internal_metrics::get_secure_audit_executed_commands_dropped_count() const
+{
+	return m_analyzer.secure_audit_executed_commands_dropped_count;
+}
+
+inline int64_t internal_metrics::get_secure_audit_connections_dropped_count() const
+{
+	return m_analyzer.secure_audit_connections_dropped_count;
+}
+
+inline int64_t internal_metrics::get_secure_audit_k8s_dropped_count() const
+{
+	return m_analyzer.secure_audit_k8s_dropped_count;
 }

@@ -71,9 +71,33 @@ type_config<int>::mutable_ptr secure_audit::c_secure_audit_frequency =
 		.max(30 * 60) // 30 min
 		.build_mutable();
 
+type_config<int> secure_audit::c_secure_audit_executed_commands_limit(
+	0,
+	"limit on numbers of executed commands in every message sent - 0 means no limit",
+	"secure_audit",
+	"executed_commands_limit");
+
+type_config<int> secure_audit::c_secure_audit_connections_limit(
+	0,
+	"limit on numbers of connections in every message sent - 0 means no limit",
+	"secure_audit",
+	"connections_limit");
+
+type_config<int> secure_audit::c_secure_audit_k8s_limit(
+	0,
+	"limit on numbers of k8s audit in every message sent - 0 means no limit"
+	"secure_audit",
+	"k8s_limit");
+
 secure_audit::secure_audit():
 	m_secure_audit_batch(new secure::Audit),
-	m_get_events_interval(make_unique<run_on_interval>(seconds_to_ns(DEFAULT_AUDIT_FREQUENCY_S), FREQUENCY_THRESHOLD_NS))
+	m_get_events_interval(make_unique<run_on_interval>(seconds_to_ns(DEFAULT_AUDIT_FREQUENCY_S), FREQUENCY_THRESHOLD_NS)),
+	m_executed_commands_count(0),
+	m_connections_count(0),
+	m_k8s_audit_count(0),
+	m_executed_commands_dropped_count(0),
+	m_connections_dropped_count(0),
+	m_k8s_audit_dropped_count(0)
 {
 	clear();
 }
@@ -162,6 +186,13 @@ void secure_audit::flush(uint64_t ts)
 		if(secure_audit_sent)
 		{
 			m_audit_internal_metrics->set_secure_audit_internal_metrics(1, flush_time_ms);
+			m_audit_internal_metrics->set_secure_audit_sent_counters(m_executed_commands_count,
+										 m_connections_count,
+										 m_k8s_audit_count,
+										 m_executed_commands_dropped_count,
+										 m_connections_dropped_count,
+										 m_connections_dropped_count);
+			reset_counters();
 			g_logger.format(sinsp_logger::SEV_INFO, "secure_audit: flushing fl.ms=%d ", flush_time_ms);
 		}
 	},
@@ -170,7 +201,18 @@ void secure_audit::flush(uint64_t ts)
 	if(!secure_audit_sent)
 	{
 		m_audit_internal_metrics->set_secure_audit_internal_metrics(0, 0);
+		m_audit_internal_metrics->set_secure_audit_sent_counters(0, 0, 0, 0, 0, 0);
 	}
+}
+
+void secure_audit::reset_counters()
+{
+	m_executed_commands_count = 0;
+	m_executed_commands_dropped_count = 0;
+	m_connections_count = 0;
+	m_connections_dropped_count = 0;
+	m_k8s_audit_count = 0;
+	m_k8s_audit_dropped_count = 0;
 }
 
 secure::CommandCategory command_category_to_secure_audit_enum(draiosproto::command_category& tcat)
@@ -238,6 +280,13 @@ void secure_audit::emit_commands_audit_item(vector<sinsp_executed_command>* comm
 {
 	if(commands->size() != 0)
 	{
+		if(c_secure_audit_executed_commands_limit.get_value() != 0 &&
+		   m_executed_commands_count > c_secure_audit_executed_commands_limit.get_value())
+		{
+			m_executed_commands_count += commands->size();
+			return;
+		}
+
 		sort(commands->begin(),
 		     commands->end(),
 		     executed_command_cmp_secure);
@@ -324,13 +373,24 @@ void secure_audit::emit_commands_audit_item(vector<sinsp_executed_command>* comm
 			{
 				cmdcnt++;
 
+				if(c_secure_audit_executed_commands_limit.get_value() != 0 &&
+				   (m_executed_commands_count > c_secure_audit_executed_commands_limit.get_value()))
+				{
+					m_executed_commands_dropped_count++;
+					break;
+				}
+
 				if(c_secure_audit_executed_commands_per_container_limit.get_value() != 0 &&
 				   cmdcnt > c_secure_audit_executed_commands_per_container_limit.get_value())
 				{
+					m_executed_commands_dropped_count++;
 					break;
 				}
 
 				auto pb_command_audit = m_secure_audit_batch->add_executed_commands();
+
+				m_executed_commands_count++;
+
 				pb_command_audit->set_timestamp(it->m_ts);
 				pb_command_audit->set_count(it->m_count);
 				pb_command_audit->set_login_shell_id(it->m_shell_id);
@@ -409,6 +469,8 @@ void secure_audit::append_connection(connection_type type,
 
 	auto pb_conn = m_secure_audit_batch->add_connections();
 
+	m_connections_count++;
+
 	pb_conn->set_client_ipv4(ntohl(tuple.m_fields.m_sip));
 	pb_conn->set_client_port(tuple.m_fields.m_sport);
 
@@ -466,6 +528,13 @@ void secure_audit::emit_connection_async(const _ipv4tuple& tuple, sinsp_connecti
 {
 	if(!(c_secure_audit_enabled.get_value() && c_secure_audit_connections_enabled.get_value()))
 	{
+		return;
+	}
+
+	if(c_secure_audit_connections_limit.get_value() != 0 &&
+	   (m_connections_count > c_secure_audit_connections_limit.get_value()))
+	{
+		m_connections_dropped_count++;
 		return;
 	}
 
@@ -527,7 +596,16 @@ void secure_audit::filter_and_append_k8s_audit(const nlohmann::json& j,
 
 	if(filter_k8s_audit(j, k8s_active_filters, k8s_filters))
 	{
+		if(c_secure_audit_k8s_limit.get_value() != 0 &&
+		   (m_k8s_audit_count > c_secure_audit_k8s_limit.get_value()))
+		{
+			m_k8s_audit_dropped_count++;
+			return;
+		}
+
 		append_k8s_audit(j.dump());
+
+		m_k8s_audit_count++;
 	}
 }
 

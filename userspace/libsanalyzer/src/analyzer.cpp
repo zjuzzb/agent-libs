@@ -875,6 +875,21 @@ void sinsp_analyzer::set_secure_audit_internal_metrics(const int n_sent_protobuf
 	m_internal_metrics->set_secure_audit_fl_ms(flush_time_ms);
 }
 
+void sinsp_analyzer::set_secure_audit_sent_counters(int n_executed_commands,
+						    int n_connections,
+						    int n_k8s,
+						    int n_executed_commands_dropped,
+						    int n_connections_dropped,
+						    int n_k8s_dropped)
+{
+	m_internal_metrics->set_secure_audit_executed_commands_count(n_executed_commands);
+	m_internal_metrics->set_secure_audit_connections_count(n_connections);
+	m_internal_metrics->set_secure_audit_k8s_count(n_k8s);
+	m_internal_metrics->set_secure_audit_executed_commands_dropped_count(n_executed_commands_dropped);
+	m_internal_metrics->set_secure_audit_connections_dropped_count(n_connections_dropped);
+	m_internal_metrics->set_secure_audit_k8s_dropped_count(n_k8s_dropped);
+}
+
 template<class Iterator>
 void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
 {
