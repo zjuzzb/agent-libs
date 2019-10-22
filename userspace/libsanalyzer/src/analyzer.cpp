@@ -880,7 +880,8 @@ void sinsp_analyzer::set_secure_audit_sent_counters(int n_executed_commands,
 						    int n_k8s,
 						    int n_executed_commands_dropped,
 						    int n_connections_dropped,
-						    int n_k8s_dropped)
+						    int n_k8s_dropped,
+						    int n_connections_not_interactive_dropped)
 {
 	m_internal_metrics->set_secure_audit_executed_commands_count(n_executed_commands);
 	m_internal_metrics->set_secure_audit_connections_count(n_connections);
@@ -888,6 +889,7 @@ void sinsp_analyzer::set_secure_audit_sent_counters(int n_executed_commands,
 	m_internal_metrics->set_secure_audit_executed_commands_dropped_count(n_executed_commands_dropped);
 	m_internal_metrics->set_secure_audit_connections_dropped_count(n_connections_dropped);
 	m_internal_metrics->set_secure_audit_k8s_dropped_count(n_k8s_dropped);
+	m_internal_metrics->set_secure_audit_connections_not_interactive_dropped(n_connections_not_interactive_dropped);
 }
 
 template<class Iterator>

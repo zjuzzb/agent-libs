@@ -415,6 +415,7 @@ TEST(secure_audit_test, connections_base_client)
 {
 	// Secure Audit
 	secure_audit audit;
+	audit.c_secure_audit_connections_only_interactive.set(false);
 	audit.c_secure_audit_enabled.set(true);
 	audit.c_secure_audit_connections_enabled.set(true);
 
@@ -545,6 +546,7 @@ TEST(secure_audit_test, connections_base_server)
 {
 	// Secure Audit
 	secure_audit audit;
+	audit.c_secure_audit_connections_only_interactive.set(false);
 	audit.c_secure_audit_enabled.set(true);
 	audit.c_secure_audit_connections_enabled.set(true);
 
@@ -675,6 +677,7 @@ TEST(secure_audit_test, connections_base_client_server)
 {
 	// Secure Audit
 	secure_audit audit;
+	audit.c_secure_audit_connections_only_interactive.set(false);
 	audit.c_secure_audit_enabled.set(true);
 	audit.c_secure_audit_connections_enabled.set(true);
 
@@ -805,6 +808,7 @@ TEST(secure_audit_test, connections_enabled_disabled)
 {
 	// Secure Audit
 	secure_audit audit;
+	audit.c_secure_audit_connections_only_interactive.set(false);
 	audit.c_secure_audit_enabled.set(false);
 	audit.c_secure_audit_connections_enabled.set(true);
 
@@ -920,6 +924,7 @@ TEST(secure_audit_test, connections_local)
 {
 	// Secure Audit
 	secure_audit audit;
+	audit.c_secure_audit_connections_only_interactive.set(false);
 	audit.c_secure_audit_enabled.set(true);
 	audit.c_secure_audit_connections_enabled.set(true);
 	audit.c_secure_audit_connections_local.set(true);
@@ -1063,6 +1068,7 @@ TEST(secure_audit_test, connections_cmdline)
 	// Secure Audit
 	secure_audit audit;
 	audit.c_secure_audit_enabled.set(true);
+	audit.c_secure_audit_connections_only_interactive.set(false);
 	audit.c_secure_audit_connections_enabled.set(true);
 	audit.c_secure_audit_connections_cmdline.set(true);
 	audit.c_secure_audit_connections_cmdline_maxlen.set(0);
@@ -1197,6 +1203,7 @@ TEST(secure_audit_test, connections_cmdline_maxlen)
 	// Secure Audit
 	secure_audit audit;
 	audit.c_secure_audit_enabled.set(true);
+	audit.c_secure_audit_connections_only_interactive.set(false);
 	audit.c_secure_audit_connections_enabled.set(true);
 	audit.c_secure_audit_connections_cmdline.set(true);
 	audit.c_secure_audit_connections_cmdline_maxlen.set(0);
@@ -1707,6 +1714,7 @@ TEST(secure_audit_test, audit_frequency_default)
 	// Secure Audit
 	secure_audit audit;
 	audit.c_secure_audit_enabled.set(true);
+	audit.c_secure_audit_connections_only_interactive.set(false);
 	// frequency set to 10 by default
 	//audit.c_secure_audit_frequency->set(10);
 
@@ -1826,6 +1834,7 @@ TEST(secure_audit_test, audit_frequency_5)
 	// Secure Audit
 	secure_audit audit;
 	audit.c_secure_audit_enabled.set(true);
+	audit.c_secure_audit_connections_only_interactive.set(false);
 	audit.c_secure_audit_frequency->set(5);
 
 	// Build Thread Info
@@ -1954,6 +1963,7 @@ TEST(secure_audit_test, audit_frequency_out_of_limits_lower)
 	// Secure Audit
 	secure_audit audit;
 	audit.c_secure_audit_enabled.set(true);
+	audit.c_secure_audit_connections_only_interactive.set(false);
 
 	std::string yaml_config_str = R"EOF(
 secure_audit:
@@ -2233,6 +2243,7 @@ TEST(secure_audit_test, audit_internal_metrics)
 	// Secure Audit
 	secure_audit audit;
 	audit.c_secure_audit_enabled.set(true);
+	audit.c_secure_audit_connections_only_interactive.set(false);
 	// frequency set to 10 by default
 	audit.c_secure_audit_frequency->set(10);
 
@@ -2352,4 +2363,154 @@ TEST(secure_audit_test, audit_internal_metrics)
 	audit.flush(ts + (uint64_t)11000000000 - (uint64_t)90000000); // ts + 10 s - 90ms
 	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 1);
 	ASSERT_NE(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_fl_ms(), -1);
+}
+
+TEST(secure_audit_test, connections_base_server_only_interactive)
+{
+	// Secure Audit
+	secure_audit audit;
+	audit.c_secure_audit_connections_only_interactive.set(true);
+	audit.c_secure_audit_enabled.set(true);
+	audit.c_secure_audit_connections_enabled.set(true);
+	audit.c_secure_audit_connections_cmdline.set(false);
+
+	// Build Thread Info
+	const int64_t expected_pid = 4;
+	const std::string expected_name = "/usr/bin/gcc";
+	const std::string expected_comm = "gcc";
+	const std::string expected_arg_1 = "-o";
+	const std::string expected_arg_2 = "a.out";
+	const std::string expected_arg_3 = "hello_world.cpp";
+
+	const std::string expected_sip = "192.168.1.1";
+	const std::string expected_dip = "192.168.1.2";
+	const uint16_t expected_sport = 80;
+	const uint16_t expected_dport = 90;
+	const uint8_t expected_l4proto = SCAP_L4_TCP;
+
+	const uint32_t expected_error_code = 0;
+	const std::string expected_container_id = "sysd1gcl0ud1";
+
+	const int expected_connections_size = 1;
+
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	(void)inspector->build_thread().commit();
+	inspector->build_thread()
+		.pid(expected_pid)
+		.comm("gcc")
+		.exe(expected_name)
+		.arg(expected_arg_1)
+		.arg(expected_arg_2)
+		.arg(expected_arg_3)
+		.commit();
+
+	inspector->open();
+
+	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
+	proc = inspector->get_thread_ref(expected_pid,
+					 false /*don't query the os if not found*/,
+					 true /*lookup only*/);
+
+	proc->m_container_id = expected_container_id;
+
+	// Set process as interactive
+	sinsp_threadinfo* main_thread = proc->get_main_thread();
+	ASSERT_NE(main_thread, nullptr);
+	ASSERT_NE(main_thread->m_ainfo, nullptr);
+	main_thread->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
+
+	// Sanity checks for Thread Info
+	ASSERT_EQ(expected_pid, proc->m_pid);
+	ASSERT_EQ(expected_pid, proc->m_tid);
+	ASSERT_EQ(expected_name, proc->m_exe);
+	ASSERT_EQ(expected_comm, proc->get_comm());
+	ASSERT_EQ(expected_container_id, proc->m_container_id);
+
+	_ipv4tuple tuple;
+	sinsp_connection conn;
+	uint64_t ts = sinsp_utils::get_current_time_ns();
+
+	// Build Tuple
+	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
+	tuple.m_fields.m_sport = expected_sport;
+	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
+	tuple.m_fields.m_dport = expected_dport;
+	tuple.m_fields.m_l4proto = expected_l4proto;
+
+	// Build Connection
+	conn.m_dpid = expected_pid;
+	conn.m_dtid = expected_pid;
+	conn.m_dfd = 1234;
+
+	conn.m_spid = 0;
+	conn.m_stid = 0;
+	conn.m_sfd = 0;
+
+	conn.m_timestamp = ts;
+	conn.m_refcount = 1;
+
+	conn.m_analysis_flags = sinsp_connection::AF_NONE;
+	conn.m_error_code = expected_error_code;
+
+	conn.m_dproc = proc;
+	conn.m_sproc = nullptr;
+
+	// Test empty protobuf
+	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	ASSERT_EQ(audit_pb, nullptr);
+
+	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
+
+	// Get pb
+	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+
+	ASSERT_NE(nullptr, audit_pb);
+
+	ASSERT_EQ(audit_pb->connections_size(), expected_connections_size);
+	const secure::Connection& c = audit_pb->connections(0);
+
+	// checking is_client_only connection
+	ASSERT_EQ(c.client_port(), expected_sport);
+	ASSERT_EQ(c.server_port(), expected_dport);
+	ASSERT_EQ(c.client_ipv4(), ip_string_to_le(expected_sip));
+	ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
+	ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
+
+	if(expected_error_code == 0)
+	{
+		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
+	}
+	else
+	{
+		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_FAILED);
+	}
+
+	ASSERT_EQ(c.error_code(), expected_error_code);
+	ASSERT_EQ(c.timestamp(), ts);
+	ASSERT_EQ(c.server_pid(), expected_pid);
+	ASSERT_EQ(c.comm(), expected_comm);
+	ASSERT_EQ(c.container_id(), expected_container_id);
+	ASSERT_EQ(c.cmdline(), "");
+
+	audit.clear();
+
+	// send a connection with no INTERACTIVE tinfo commands
+	main_thread->m_ainfo->m_th_analysis_flags &= ~thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
+
+	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
+
+	// Get pb
+	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+
+	ASSERT_EQ(nullptr, audit_pb);
 }

@@ -643,7 +643,8 @@ public:
 					    int n_k8s,
 					    int n_executed_commands_dropped,
 					    int n_connections_dropped,
-					    int n_k8s_dropped) override;
+					    int n_k8s_dropped,
+					    int n_connections_not_interactive_dropped) override;
 
     	void secure_audit_filter_and_append_k8s_audit(const nlohmann::json& j,
 						      std::vector<std::string>& k8s_active_filters,

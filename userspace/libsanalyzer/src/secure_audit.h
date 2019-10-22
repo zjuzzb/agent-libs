@@ -8,6 +8,7 @@
 #include "common_logger.h"
 #include "connectinfo.h"
 #include "type_config.h"
+#include "analyzer_thread.h"
 #include <secure.pb.h>
 
 #include <nlohmann/json.hpp>
@@ -64,6 +65,7 @@ public:
 	static type_config<bool> c_secure_audit_connections_local;
 	static type_config<bool> c_secure_audit_connections_cmdline;
 	static type_config<int> c_secure_audit_connections_cmdline_maxlen;
+	static type_config<bool> c_secure_audit_connections_only_interactive;
 	static type_config<int> c_secure_audit_executed_commands_limit;
 	static type_config<int> c_secure_audit_connections_limit;
 	static type_config<int> c_secure_audit_k8s_limit;
@@ -94,4 +96,6 @@ private:
 	int m_executed_commands_dropped_count;
 	int m_connections_dropped_count;
 	int m_k8s_audit_dropped_count;
+
+	int m_connections_not_interactive_dropped_count;
 };

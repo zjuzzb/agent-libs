@@ -28,5 +28,6 @@ public:
 						    int n_k8s,
 						    int n_executed_commands_dropped,
 						    int n_connections_dropped,
-						    int n_k8s_dropped) = 0;
+						    int n_k8s_dropped,
+						    int n_connections_not_interactive_dropped) = 0;
 };

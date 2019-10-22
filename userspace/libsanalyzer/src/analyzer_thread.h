@@ -126,7 +126,8 @@ public:
 		AF_IS_DESCENDENT_OF_SHELL = (1 << 10), // Set if there is a shell (bash, tcsh...) among the ancestors of this thread
 		AF_IS_NOT_DESCENDENT_OF_SHELL = (1 << 11), // Set if there is NOT a shell (bash, tcsh...) among the ancestors of this thread. This means that the ancestors have been navigated with negative result.
 
-		AF_IS_NET_CLIENT = (1 << 12) // Set if the thread called connect().
+		AF_IS_NET_CLIENT = (1 << 12), // Set if the thread called connect().
+		AF_IS_INTERACTIVE_COMMAND = (1 << 13)
 	};
 
 	thread_analyzer_info();

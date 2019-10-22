@@ -278,6 +278,8 @@ void internal_metrics::send_secure_audit_metrics(draiosproto::statsd_info* stats
 		write_metric(statsd_info, "dragent.secure_audit.executed_commands_drop", draiosproto::STATSD_GAUGE, get_secure_audit_executed_commands_dropped_count());
 		write_metric(statsd_info, "dragent.secure_audit.connections_drop", draiosproto::STATSD_GAUGE, get_secure_audit_connections_dropped_count());
 		write_metric(statsd_info, "dragent.secure_audit.k8s_drop", draiosproto::STATSD_GAUGE, get_secure_audit_k8s_dropped_count());
+
+		write_metric(statsd_info, "dragent.secure_audit.connections_no_interactive_drop", draiosproto::STATSD_GAUGE, get_secure_audit_connections_not_interactive_dropped());
 	}
 }
 

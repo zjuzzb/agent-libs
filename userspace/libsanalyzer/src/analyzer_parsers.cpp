@@ -355,6 +355,16 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		return true;
 	}
 
+	// store AF_IS_INTERACTIVE_COMMAND in thread_analyzer_info
+	if(!tinfo->is_health_probe())
+	{
+		sinsp_threadinfo* main_thread = tinfo->get_main_thread();
+		if(main_thread != nullptr && main_thread->m_ainfo != nullptr)
+		{
+			main_thread->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
+		}
+	}
+
 	//
 	// Allocated an executed command storage info and initialize it
 	//
