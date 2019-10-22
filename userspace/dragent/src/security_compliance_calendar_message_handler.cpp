@@ -50,7 +50,8 @@ bool security_compliance_calendar_message_handler::handle_message(
 				libsanalyzer::security_config::get_send_compliance_events(),
 				errstr))
 	{
-		LOG_ERROR("Could not set compliance calendar: " + errstr);
+		LOG_WARNING("Could not set compliance calendar: %s",
+		            errstr.c_str());
 		return false;
 	}
 #endif

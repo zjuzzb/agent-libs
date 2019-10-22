@@ -35,6 +35,7 @@ list(APPEND targetfiles
 	config_data_message_handler.cpp
 	config_data_rest_request_handler.cpp
 	config_rest_request_handler.cpp
+	config_update.cpp
 	connection_manager.cpp
 	crash_handler.cpp
 	dragent.cpp

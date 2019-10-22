@@ -1,25 +1,23 @@
 #pragma once
 
-#include <atomic>
-#include <memory>
-
-#include <token_bucket.h>
-
 #include "main.h"
-#include "dump_job_request_queue.h"
+#include "capture_job_handler.h"
+#include "compliance_mgr.h"
 #include "configuration.h"
+#include "dump_job_request_queue.h"
+#include "internal_metrics.h"
+#include "protocol_handler.h"
+#include "security_mgr.h"
 #include "security_compliance_calender_receiver.h"
 #include "security_compliance_task_runner.h"
 #include "security_host_metadata_receiver.h"
 #include "security_policy_loader.h"
 #include "security_policy_v2_loader.h"
 #include "subprocesses_logger.h"
-#include "internal_metrics.h"
-
-#include "capture_job_handler.h"
-#include "security_mgr.h"
-#include "compliance_mgr.h"
-#include "protocol_handler.h"
+#include "token_bucket.h"
+#include <atomic>
+#include <memory>
+#include <mutex>
 
 class captureinfo
 {
@@ -124,6 +122,16 @@ public:
 #endif
 
 private:
+	/**
+	 * Callers must hold m_security_mgr_creation_mutex.
+	 */
+	bool set_compliance_calendar_internal(
+			const draiosproto::comp_calendar& calendar,
+			bool send_results,
+			bool send_events,
+			std::string& errstr);
+
+	void init_security();
 	void init(sinsp::ptr& inspector, sinsp_analyzer* analyzer);
 	void do_grpc_tracing();
 	void process_job_requests(bool should_dump);
@@ -145,7 +153,9 @@ private:
 	bool m_autodrop_currently_enabled;
 	sinsp::ptr m_inspector;
 	sinsp_analyzer* m_analyzer;
+
 #ifndef CYGWING_AGENT
+	bool m_security_initialized;
 	security_mgr *m_security_mgr;
 	compliance_mgr *m_compliance_mgr;
 #endif
@@ -166,6 +176,13 @@ private:
 
 	user_event_queue::ptr_t m_user_event_queue;
 	internal_metrics::sptr_t m_internal_metrics;
+
+	class compliance_calendar_backup;
+
+	std::mutex m_security_mgr_creation_mutex;
+	std::unique_ptr<draiosproto::policies> m_security_policies_backup;
+	std::unique_ptr<draiosproto::policies_v2> m_security_policies_v2_backup;
+	std::unique_ptr<compliance_calendar_backup> m_security_compliance_calendar_backup;
 
 	friend class dragent_app;
 	friend class memdump_test;

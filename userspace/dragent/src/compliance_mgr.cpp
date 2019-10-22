@@ -11,6 +11,13 @@
 using namespace std;
 namespace security_config = libsanalyzer::security_config;
 
+namespace
+{
+
+COMMON_LOGGER();
+
+} // end namespace
+
 compliance_mgr::compliance_mgr(const string &run_root,
 			       security_result_handler& result_handler)
 	: m_num_grpc_errs(0),
@@ -79,6 +86,8 @@ void compliance_mgr::set_compliance_calendar(const draiosproto::comp_calendar &c
                                              const bool send_results,
                                              const bool send_events)
 {
+	LOG_DEBUG("New calendar: %s", calendar.DebugString().c_str());
+
 	m_compliance_calendar = calendar;
 	m_send_compliance_results = send_results;
 	m_send_compliance_events = send_events;
@@ -97,7 +106,8 @@ void compliance_mgr::set_compliance_run(const draiosproto::comp_run &run)
 
 void compliance_mgr::refresh_compliance_tasks()
 {
-	g_log->debug("Checking for new compliance tasks from calendar: " + m_compliance_calendar.DebugString());
+	LOG_DEBUG("Checking for new compliance tasks from calendar: %s",
+	          m_compliance_calendar.DebugString().c_str());
 
 	std::set<uint64_t> new_tasks;
 
@@ -140,7 +150,7 @@ void compliance_mgr::refresh_compliance_tasks()
 			// we'll want to periodically check and start/stop modules.
 			if(!m_analyzer->infra_state()->check_registered_scope(reg))
 			{
-				g_log->information("Not starting compliance task (scope doesn't match)");
+				LOG_INFO("Not starting compliance task (scope doesn't match)");
 				continue;
 			}
 		}
@@ -164,7 +174,7 @@ void compliance_mgr::refresh_compliance_tasks()
 
 	if(new_tasks == m_cur_compliance_tasks)
 	{
-		g_log->information("Compliance tasks unchanged, not doing anything");
+		LOG_INFO("Compliance tasks unchanged, not doing anything");
 		return;
 	}
 
@@ -173,7 +183,7 @@ void compliance_mgr::refresh_compliance_tasks()
 
 	m_cur_compliance_tasks = new_tasks;
 
-	g_log->debug("New compliance tasks size " + to_string(new_tasks.size()));
+	LOG_DEBUG("New compliance tasks size: %zu", new_tasks.size());
 
 	if(new_tasks.size() > 0)
 	{
@@ -183,7 +193,7 @@ void compliance_mgr::refresh_compliance_tasks()
 
 void compliance_mgr::start_compliance_tasks(sdc_internal::comp_start &start)
 {
-	g_log->debug("Starting compliance tasks: " + start.DebugString());
+	LOG_DEBUG("Starting compliance tasks: %s", start.DebugString().c_str());
 
 	// Start a thread that does the RPC and writes to the queue
 	auto work = [](std::shared_ptr<grpc::Channel> chan,
@@ -211,7 +221,7 @@ void compliance_mgr::start_compliance_tasks(sdc_internal::comp_start &start)
 
 void compliance_mgr::run_compliance_tasks(draiosproto::comp_run &run)
 {
-	g_log->debug("Running compliance tasks: " + run.DebugString());
+	LOG_DEBUG("Running compliance tasks: %s", run.DebugString().c_str());
 
 	auto work =
 		[](std::shared_ptr<grpc::Channel> chan,
@@ -267,7 +277,7 @@ void compliance_mgr::stop_compliance_tasks()
 	// Wait up to 10 seconds for the stop to complete.
 	if(stop_future.wait_for(std::chrono::seconds(10)) != std::future_status::ready)
 	{
-		g_log->error("Did not receive response to Compliance Stop() call within 10 seconds");
+		LOG_ERROR("Did not receive response to Compliance Stop() call within 10 seconds");
 		return;
 	}
 	else
@@ -275,7 +285,8 @@ void compliance_mgr::stop_compliance_tasks()
 		sdc_internal::comp_stop_result res = stop_future.get();
 		if(!res.successful())
 		{
-			g_log->debug("Compliance Stop() call returned error " + res.errstr());
+			LOG_DEBUG("Compliance Stop() call returned error %s",
+			          res.errstr().c_str());
 		}
 	}
 }
@@ -313,15 +324,14 @@ void compliance_mgr::check_pending_task_results()
 
 		if(!res.ok())
 		{
-			g_log->error("Could not start compliance tasks (" +
-				     res.error_message() +
-				     "), trying again in " +
-				     NumberFormatter::format(security_config::get_compliance_refresh_interval() / 1000000000) +
-				     " seconds");
+			LOG_ERROR("Could not start compliance tasks (%s),"
+			          " trying again in %" PRIu64 " seconds",
+			          res.error_message().c_str(),
+			          security_config::get_compliance_refresh_interval() / 1000000000);
 		}
 		else
 		{
-			g_log->debug("Compliance Start GRPC completed");
+			LOG_DEBUG("Compliance Start GRPC completed");
 		}
 	}
 
@@ -330,18 +340,15 @@ void compliance_mgr::check_pending_task_results()
 
 	while(m_comp_events_queue->try_pop(cevent))
 	{
-		g_log->debug("Response from compliance start: cevent=" +
-			     cevent.DebugString());
+		LOG_DEBUG("Response from compliance start: cevent=%s",
+		          cevent.DebugString().c_str());
 
 		if(!cevent.init_successful())
 		{
-			g_log->error("Could not initialize compliance task " +
-				     cevent.task_name() +
-				     " (" +
-				     cevent.errstr() +
-				     "), trying again in " +
-				     NumberFormatter::format(security_config::get_compliance_refresh_interval() / 1000000000) +
-				     " seconds");
+			LOG_ERROR("Could not initialize compliance task %s (%s), trying again in %" PRIu64 " seconds",
+			          cevent.task_name().c_str(),
+			          cevent.errstr().c_str(),
+			          security_config::get_compliance_refresh_interval() / 1000000000);
 
 			m_num_grpc_errs++;
 
@@ -380,7 +387,8 @@ void compliance_mgr::check_run_tasks_status()
 
 		if(!res.successful())
 		{
-			g_log->error(string("Could not run compliance tasks (") + res.errstr() + ")");
+			LOG_ERROR("Could not run compliance tasks (%s)",
+			          res.errstr().c_str());
 		}
 	}
 

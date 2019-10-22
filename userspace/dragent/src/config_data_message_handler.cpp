@@ -6,6 +6,7 @@
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
 #include "config_data_message_handler.h"
+#include "config_update.h"
 #include "common_logger.h"
 #include "configuration.h"
 #include "protocol.h"
@@ -34,6 +35,7 @@ bool config_data_message_handler::handle_message(const draiosproto::message_type
 	{
 		draiosproto::config_data request;
 		bool all_files_handled = true;
+		bool config_updated = false;
 
 		dragent_protocol::buffer_to_protobuf(buffer, buffer_size, &request);
 
@@ -41,20 +43,31 @@ bool config_data_message_handler::handle_message(const draiosproto::message_type
 		{
 			std::string errstr;
 
-			if(m_configuration.save_auto_config(config_file_proto.name(),
-							    config_file_proto.content(),
-							    errstr) < 0)
+			const int rc = m_configuration.save_auto_config(
+					config_file_proto.name(),
+					config_file_proto.content(),
+					errstr);
+
+			if(rc > 0)
 			{
-				LOG_ERROR(errstr);
+				config_updated = true;
+			}
+			else if(rc < 0)
+			{
+				LOG_ERROR("%s", errstr.c_str());
 				all_files_handled = false;
 			}
+
 		}
+
+		config_update::set_updated(config_updated);
 
 		return all_files_handled;
 	}
 	else
 	{
-		LOG_DEBUG("Auto config disabled, ignoring CONFIG_DATA message");
+		LOG_INFO("Auto config disabled, ignoring CONFIG_DATA message");
+		config_update::set_updated(false);
 		return false;
 	}
 }

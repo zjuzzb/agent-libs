@@ -54,7 +54,8 @@ bool security_policies_v2_message_handler::handle_message(
 
 	if (!m_policy_loader.load_policies_v2(policies_v2, errstr))
 	{
-		LOG_ERROR("Could not load policies_v2 message: " + errstr);
+		LOG_WARNING("Could not load policies_v2 message: %s",
+		            errstr.c_str());
 		return false;
 	}
 #endif
