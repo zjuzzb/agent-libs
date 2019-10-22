@@ -1165,7 +1165,6 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("rootdir: " + c_root_dir.get_value());
 	LOG_INFO("conffile: " + m_conf_file);
 	LOG_INFO("log.location: " + m_log_dir);
-	LOG_INFO("customerid: " + m_customer_id);
 	LOG_INFO("collector: " + m_server_addr);
 	LOG_INFO("collector_port: " + NumberFormatter::format(m_server_port));
 	LOG_INFO("log.file_priority: " + NumberFormatter::format(m_min_file_priority));
