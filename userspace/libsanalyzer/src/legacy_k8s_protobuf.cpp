@@ -73,6 +73,7 @@ void set_namespace(draiosproto::k8s_common *common, const std::unordered_map<std
 }
 
 #define SETTER(cls, method) [](cls* pb, double value) -> void { pb->method(value); }
+#define IGNORE(cls) [](cls* pb, double value) -> void { }
 
 template<> const string K8sResource<k8s_persistentvolume>::tag_prefix = "kubernetes.persistentvolume.";
 template<> const unordered_map<string, setter_t<k8s_persistentvolume>> K8sResource<k8s_persistentvolume>::metrics(
@@ -101,6 +102,11 @@ template<> const unordered_map<string, setter_t<k8s_replication_controller>> K8s
 	{
 		{"kubernetes.replicationController.spec.replicas", SETTER(k8s_replication_controller, set_replicas_desired)},
 		{"kubernetes.replicationController.status.replicas", SETTER(k8s_replication_controller, set_replicas_running)},
+		// metrics we don't have protobufs for
+		// drop them silently until we add the protobuf fields
+		{"kubernetes.replicationController.status.availableReplicas", IGNORE(k8s_replication_controller)},
+		{"kubernetes.replicationController.status.fullyLabeledReplicas", IGNORE(k8s_replication_controller)},
+		{"kubernetes.replicationController.status.readyReplicas", IGNORE(k8s_replication_controller)},
 	});
 
 template<> const string K8sResource<k8s_hpa>::tag_prefix = "kubernetes.hpa.";
@@ -192,7 +198,6 @@ template<> const unordered_map<string, setter_t<k8s_replica_set>> K8sResource<k8
 template<> const string K8sResource<k8s_resourcequota>::tag_prefix = "kubernetes.resourcequota.";
 template<> const unordered_map<string, setter_t<k8s_resourcequota>> K8sResource<k8s_resourcequota>::metrics(
 	{
-//#define SETTER(cls, method) [](cls* pb, double value) -> void { pb->method(value); }
 		// compute
 		{"kubernetes.resourcequota.limits.cpu.hard", [](k8s_resourcequota* pb, double value) -> void {
 			pb->set_limits_cpu_hard(value);
