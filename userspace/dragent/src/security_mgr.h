@@ -66,10 +66,6 @@ public:
 	// otherwise. Sets errstr when returning false.
 	bool reload_policies(std::string &errstr);
 
-	// Load the baselines and update the policies accordingly. Sets
-	// errstr when returning false.
-	bool load_baselines(const draiosproto::baselines &baselines, std::string &errstr);
-
 	// Attempt to match the event agains the set of policies. If
 	// the event matches one or more policies, will perform the
 	// necessary actions and send agent events.
@@ -335,6 +331,11 @@ private:
 	bool load_v1(const draiosproto::policies &policies, const draiosproto::baselines &baselines, std::string &errstr);
 
 	bool load_v2(const draiosproto::policies_v2 &policies_v2, std::string &errstr);
+
+	// Load the baselines and update the policies accordingly. Sets
+	// errstr when returning false.  Direct use of this API is legacy,
+	// see: https://sysdig.atlassian.net/wiki/spaces/security/pages/18743297/Baseline+workflow
+	bool load_baselines(const draiosproto::baselines &baselines, std::string &errstr);
 
 	void log_rules_group_info();
 

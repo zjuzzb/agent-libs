@@ -52,9 +52,9 @@ list(APPEND targetfiles
 	metrics_file_emitter.cpp
 	metrics_rest_request_handler.cpp
 	monitor.cpp
+	null_message_handler.cpp
 	protocol.cpp
 	security_action.cpp
-	security_baselines_message_handler.cpp
 	security_compliance_calendar_message_handler.cpp
 	security_compliance_run_message_handler.cpp
 	security_mgr.cpp

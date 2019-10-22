@@ -29,10 +29,10 @@
 #include "memdump_logger.h"
 #include "metrics_rest_request_handler.h"
 #include "monitor.h"
+#include "null_message_handler.h"
 #include "process_helpers.h"
 #include "rest_request_handler_factory.h"
 #include "rest_server.h"
-#include "security_baselines_message_handler.h"
 #include "security_compliance_calendar_message_handler.h"
 #include "security_compliance_run_message_handler.h"
 #include "security_orchestrator_events_message_handler.h"
@@ -239,8 +239,8 @@ dragent_app::dragent_app():
 				       std::make_shared<security_compliance_run_message_handler>(m_sinsp_worker) },
 				     { draiosproto::message_type::ORCHESTRATOR_EVENTS,
 				       std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker) },
-				     { draiosproto::message_type::BASELINES,
-				       std::make_shared<security_baselines_message_handler>(m_sinsp_worker) },
+				     { draiosproto::message_type::BASELINES, // Legacy -- no longer used
+				       std::make_shared<null_message_handler>() },
 	                     }),
 	m_log_reporter(m_protocol_handler, &m_configuration),
     m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),

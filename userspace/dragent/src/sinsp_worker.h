@@ -8,7 +8,6 @@
 #include "main.h"
 #include "dump_job_request_queue.h"
 #include "configuration.h"
-#include "security_baselines_loader.h"
 #include "security_compliance_calender_receiver.h"
 #include "security_compliance_task_runner.h"
 #include "security_host_metadata_receiver.h"
@@ -37,7 +36,6 @@ public:
 
 class sinsp_worker : public Poco::Runnable,
                      public dragent::dump_job_request_queue,
-                     public dragent::security_baselines_loader,
                      public dragent::security_compliance_calender_receiver,
                      public dragent::security_compliance_task_runner,
                      public dragent::security_host_metadata_receiver,
@@ -124,8 +122,6 @@ public:
 	                          std::string &errstr) override;
 	void receive_hosts_metadata(const draiosproto::orchestrator_events &evts) override;
 #endif
-	bool load_baselines(const draiosproto::baselines &baselines,
-	                    std::string &errstr) override;
 
 private:
 	void init(sinsp::ptr& inspector, sinsp_analyzer* analyzer);

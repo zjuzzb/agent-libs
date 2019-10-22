@@ -620,20 +620,6 @@ bool sinsp_worker::run_compliance_tasks(const draiosproto::comp_run &run,
 	}
 }
 
-bool sinsp_worker::load_baselines(const draiosproto::baselines &baselines,
-                                  std::string &errstr)
-{
-	if(m_security_mgr)
-	{
-		return m_security_mgr->load_baselines(baselines, errstr);
-	}
-	else
-	{
-		errstr = "No Security Manager object created";
-		return false;
-	}
-}
-
 void sinsp_worker::receive_hosts_metadata(const draiosproto::orchestrator_events &evts)
 {
 	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
