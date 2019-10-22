@@ -1,3 +1,4 @@
+#include <tuples.h>
 #include "secure_audit.h"
 
 namespace
@@ -500,6 +501,17 @@ void secure_audit::append_connection(connection_type type,
 	}
 
 	secure::ConnectionStatus conn_status = connection_status(transition.error_code);
+
+	// check if connection is not 0.0.0.0:0 -> 0.0.0.0:0
+	// this could be caused by agent in subsampling mode
+	// if so we simply discard this
+	if(tuple.m_fields.m_sip == 0 &&
+	   tuple.m_fields.m_dip == 0 &&
+	   tuple.m_fields.m_sport == 0 &&
+	   tuple.m_fields.m_dport == 0)
+	{
+		return;
+	}
 
 	auto pb_conn = m_secure_audit_batch->add_connections();
 
