@@ -102,11 +102,9 @@ template<> const unordered_map<string, setter_t<k8s_replication_controller>> K8s
 	{
 		{"kubernetes.replicationController.spec.replicas", SETTER(k8s_replication_controller, set_replicas_desired)},
 		{"kubernetes.replicationController.status.replicas", SETTER(k8s_replication_controller, set_replicas_running)},
-		// metrics we don't have protobufs for
-		// drop them silently until we add the protobuf fields
-		{"kubernetes.replicationController.status.availableReplicas", IGNORE(k8s_replication_controller)},
-		{"kubernetes.replicationController.status.fullyLabeledReplicas", IGNORE(k8s_replication_controller)},
-		{"kubernetes.replicationController.status.readyReplicas", IGNORE(k8s_replication_controller)},
+		{"kubernetes.replicationController.status.availableReplicas", SETTER(k8s_replication_controller, set_replicas_available)},
+		{"kubernetes.replicationController.status.fullyLabeledReplicas", SETTER(k8s_replication_controller, set_replicas_fully_labeled)},
+		{"kubernetes.replicationController.status.readyReplicas", SETTER(k8s_replication_controller, set_replicas_ready)},
 	});
 
 template<> const string K8sResource<k8s_hpa>::tag_prefix = "kubernetes.hpa.";
