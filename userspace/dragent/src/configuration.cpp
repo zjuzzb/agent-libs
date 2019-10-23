@@ -683,7 +683,10 @@ void dragent_configuration::init()
 	m_falco_baselining_autodisable_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "autodisable_interval", DEFAULT_FALCO_BASELINING_DISABLE_TIME_NS);
 	m_falco_baselining_max_drops_full_buffer = m_config->get_scalar<uint32_t>("falcobaseline", "max_drops_full_buffer", DEFAULT_FALCO_BASELINING_MAX_DROPS_FULL_BUFFER);
 
-	m_secure_audit_enabled = m_config->get_scalar<bool>("secure_audit", "enabled", false);
+	if(libsanalyzer::security_config::is_enabled())
+	{
+		m_secure_audit_enabled = m_config->get_scalar<bool>("secure_audit_streams", "enabled", false);
+	}
 
 	if(m_secure_audit_enabled)
 	{
@@ -1150,11 +1153,11 @@ void dragent_configuration::init()
 	m_procfs_scan_interval = m_config->get_scalar<uint32_t>("procfs_scan_interval",
 		DEFAULT_PROCFS_SCAN_INTERVAL_SECS );
 
-	m_secure_audit_k8s_active_filters = m_config->get_first_deep_sequence<vector<string>>("secure_audit", "k8s_active_filters");
+	m_secure_audit_k8s_active_filters = m_config->get_first_deep_sequence<vector<string>>("secure_audit_streams", "k8s_active_filters");
 
 	for(auto it: m_secure_audit_k8s_active_filters)
 	{
-		m_secure_audit_k8s_filters[it] = m_config->get_first_deep_map<string>("secure_audit", "k8s_filters", it);
+		m_secure_audit_k8s_filters[it] = m_config->get_first_deep_map<string>("secure_audit_streams", "k8s_filters", it);
 	}
 }
 
@@ -1184,14 +1187,14 @@ void dragent_configuration::print_configuration() const
 		}
 		LOG_INFO(ca_cert_paths);
 	}
-	LOG_INFO("secure_audit: ");
+	LOG_INFO("secure_audit_streams: ");
 	LOG_INFO("  enabled: " + bool_as_text(m_secure_audit_enabled));
-	LOG_INFO("secure_audit.k8s_active_filters:");
+	LOG_INFO("secure_audit_streams.k8s_active_filters:");
 	for(auto it : m_secure_audit_k8s_active_filters)
 	{
 		LOG_INFO("  - " + it);
 	}
-	LOG_INFO("secure_audit.k8s_filters:");
+	LOG_INFO("secure_audit_streams.k8s_filters:");
 	for(auto it : m_secure_audit_k8s_filters)
 	{
 		LOG_INFO("  " + it.first + ":");

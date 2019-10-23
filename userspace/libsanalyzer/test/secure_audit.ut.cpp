@@ -1966,7 +1966,7 @@ TEST(secure_audit_test, audit_frequency_out_of_limits_lower)
 	audit.c_secure_audit_connections_only_interactive.set(false);
 
 	std::string yaml_config_str = R"EOF(
-secure_audit:
+secure_audit_streams:
   frequency: -1
 )EOF";
 
@@ -2106,7 +2106,7 @@ TEST(secure_audit_test, audit_frequency_out_of_limits_upper)
 	// 90 * 60 = 5400
 	// 30 * 60 = 1800
 	std::string yaml_config_str = R"EOF(
-secure_audit:
+secure_audit_streams:
   frequency: 5400
 )EOF";
 
