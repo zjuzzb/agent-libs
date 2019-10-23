@@ -6,6 +6,11 @@ then
 	WORKSPACE=$SCRIPTS_DIR/../../../..
 fi
 
+cd $WORKSPACE/agent/system-test-helpers/jmx-generator/
+docker build -t jmx-generator:latest .
+docker tag jmx-generator:latest docker.internal.sysdig.com/agent-helpers/jmx-generator:latest
+docker push docker.internal.sysdig.com/agent-helpers/jmx-generator:latest
+
 cd $WORKSPACE/agent/system-test-helpers/prometheus-generator/
 docker build -t prometheus-generator:latest .
 docker tag prometheus-generator:latest docker.internal.sysdig.com/agent-helpers/prometheus-generator:latest

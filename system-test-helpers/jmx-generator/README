@@ -1,0 +1,14 @@
+This is pushed to docker.internal.sysdig.com/agent-helpers/jmx-generator:latest
+by the agent-build-postsubmit job.
+
+------
+
+To build the container yourself, cd into the jmx-generator directory and call
+
+> docker build -t jmx-generator:latest .
+
+To run the container, call
+
+> docker run -d jmx-generator
+
+
