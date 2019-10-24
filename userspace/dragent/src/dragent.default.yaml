@@ -1198,6 +1198,7 @@ container_labels_filter:
 
 k8s_labels_filter:
   - include: "kubernetes.node.label.kubernetes.io/hostname"
+  - include: "kubernetes.node.label.kubernetes.io/role"
   - exclude: "*.kubernetes.io/*"
   - exclude: "*.pod-template-hash"
   - exclude: "*.pod-template-generation"
