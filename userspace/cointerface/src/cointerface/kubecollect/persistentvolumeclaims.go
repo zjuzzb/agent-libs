@@ -77,8 +77,13 @@ func newPersistentVolumeClaimCongroup(pv *v1.PersistentVolumeClaim) (*draiosprot
 	return ret
 }
 
-func addPersistentVolumeClaimMetrics(metrics *[]*draiosproto.AppMetric, pv *v1.PersistentVolumeClaim) {
-	storage, _ := pv.Status.Capacity["storage"]
+func addPersistentVolumeClaimMetrics(metrics *[]*draiosproto.AppMetric, pvc *v1.PersistentVolumeClaim) {
+	storage, _ := pvc.Status.Capacity["storage"]
+
+	if requestStorage, ok := pvc.Spec.Resources.Requests[v1.ResourceStorage]; ok {
+		AppendMetricInt64(metrics, pvcMetricPrefix + "requests.storage", requestStorage.Value())
+	}
+
 	AppendMetricInt64(metrics, pvcMetricPrefix + "storage", storage.Value())
 }
 
