@@ -131,6 +131,14 @@ type_config<int32_t> c_dragent_cpu_profile_total_profiles(
 	"The total number of cpu profiles to collect before overwriting old profiles",
 	"dragent_total_profiles");
 
+type_config<bool>::ptr c_test_only_send_infra_state_containers = type_config_builder<bool>(
+	false,
+	"Send all containers from infrastructure_state as local to the current node",
+	"send_infra_state_containers")
+	.hidden()
+	.mutable_only_in_internal_build()
+	.build();
+
 } // end namespace
 
 const uint64_t flush_data_message::NO_EVENT_NUMBER =
@@ -6098,6 +6106,25 @@ sinsp_analyzer::emit_containers_deprecated(const analyzer_emitter::progtable_by_
 					 containers_cmp_deprecated<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
 	}
 	check_and_emit_containers(top_cpu_containers);
+
+	/*
+	 * Required for fake k8s API server, so that we report the fake containers
+	 * in local orchestrator state and they're visible in the UI
+	 *
+	 * Has absolutely no use in real world setups
+	 */
+	if(c_test_only_send_infra_state_containers->get_value())
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "Sending infra_state containers");
+		for(const auto& id: m_infrastructure_state->test_only_get_container_ids())
+		{
+			draiosproto::container* container = m_metrics->add_containers();
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Sending infra_state container %s", id.c_str());
+			container->set_id(id);
+			container->set_type(draiosproto::CUSTOM);
+			emitted_containers.emplace_back(id);
+		}
+	}
 
 	gather_k8s_infrastructure_state(flushflags,
 					emitted_containers);

@@ -2242,6 +2242,22 @@ const std::string& infrastructure_state::get_k8s_ssl_key()
 	return m_k8s_ssl_key;
 }
 
+std::unordered_set<std::string> infrastructure_state::test_only_get_container_ids() const
+{
+	std::unordered_set<std::string> container_ids;
+	for(const auto& obj : m_state)
+	{
+		auto uid = obj.first;
+		if(uid.first == "container")
+		{
+			container_ids.emplace(uid.second);
+		}
+	}
+
+	return container_ids;
+}
+
+
 // Look for sysdig agent by pod name, container name or image, or daemonset
 // name or label
 bool new_k8s_delegator::has_agent(infrastructure_state *state, const infrastructure_state::uid_t uid, std::unordered_set<infrastructure_state::uid_t> *visited)
