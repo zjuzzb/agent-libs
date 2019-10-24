@@ -9,7 +9,6 @@
 #include "async_aggregator.h"
 #include "analyzer_flush_message.h"
 #include "dragent_message_queues.h"
-#include "config.h" // needed for sinsp exception
 #include "type_config.h"
 
 
@@ -20,6 +19,14 @@ type_config<uint32_t>::ptr c_samples_between_flush = type_config_builder<uint32_
 	"Number of analyzer samples between each aggregated sample",
 	"aggregator",
 	"samples_between_flush")
+	.hidden()
+	.build();
+
+type_config<uint32_t>::ptr c_container_limit = type_config_builder<uint32_t>(
+	20,
+	"Number of analyzer samples between each aggregated sample",
+	"aggregator",
+	"container_limit")
 	.hidden()
 	.build();
 
@@ -34,6 +41,7 @@ async_aggregator::async_aggregator(flush_queue& input_queue,
 	m_builder(),
 	m_count_since_flush(0)
 {
+	m_builder.set_metrics_containers_limit(c_container_limit->get_value());
 	m_aggregator = &(m_builder.build_metrics());
 	m_aggregated_data = std::make_shared<flush_data_message>(
 		0,
@@ -78,6 +86,8 @@ void async_aggregator::do_run()
 		m_count_since_flush++;
 		if (m_count_since_flush == c_samples_between_flush->get_value())
 		{
+			m_aggregator->limit(*m_aggregated_data->m_metrics);
+
 			if (!m_output_queue.put(m_aggregated_data))
 			{
 				g_logger.format(sinsp_logger::SEV_WARNING, "Queue full, discarding sample");

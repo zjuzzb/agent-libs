@@ -324,15 +324,9 @@ def generate_limiters(message, limit_list, sub_aggregator_list):
     {
 """ % (message.name)
 
-    # loop through fields and invoke our internal limiter if necessary
-    for field in message.field:
-        if field.name in limit_list:
-            out += """        if (m_builder.get_%s_%s_limit() != UINT32_MAX) {
-            limit_%s(output, m_builder.get_%s_%s_limit());
-        }
-""" % (message.name, field.name, field.name, message.name, field.name)
-
     # loop through fields, and invoke limiter on sub-messages
+    # this MUST come before our internal limiters since this depends on the
+    # aggregator maps, which are invalidated by the internal limiting
     for field in message.field:
         if type_name(field) not in skip:
             if get_field_type(field, sub_aggregator_list) is 3:
@@ -345,6 +339,15 @@ def generate_limiters(message, limit_list, sub_aggregator_list):
             i.second.second->limit((*output.mutable_%s())[i.second.first]);
         }
 """ % (field.name, field.name)
+
+    # loop through fields and invoke our internal limiter if necessary
+    for field in message.field:
+        if field.name in limit_list:
+            out += """        if (m_builder.get_%s_%s_limit() < output.%s().size()) {
+            limit_%s(output, m_builder.get_%s_%s_limit());
+        }
+""" % (message.name, field.name, field.name, field.name, message.name, field.name)
+
 
     # close the function
     out +="""    }

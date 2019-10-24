@@ -1,6 +1,13 @@
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libsanalyzer/src) # for tdigest
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../userspace-shared/src) # for type_config
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include) # for poco for type_config
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include) # for yaml for type_config
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION}) # for boost for type_config
+
+
+
 
 if(NOT CYGWIN)
 	add_library(draiosproto STATIC
@@ -94,6 +101,8 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.h
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.cpp
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.cpp
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.h
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_base.h
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
