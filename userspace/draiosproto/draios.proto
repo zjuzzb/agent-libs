@@ -1663,6 +1663,9 @@ message k8s_persistentvolumeclaim {
 
     optional uint64 storage = 2;
     optional aggregations64 aggr_storage = 100;
+
+    optional uint64 requests_storage = 3;
+    optional aggregations64 aggr_requests_storage = 101;
 }
 
 message k8s_state {

@@ -86,6 +86,7 @@ template<> const string K8sResource<k8s_persistentvolumeclaim>::tag_prefix = "ku
 template<> const unordered_map<string, setter_t<k8s_persistentvolumeclaim>> K8sResource<k8s_persistentvolumeclaim>::metrics(
 	{
 		{"kubernetes.persistentvolumeclaim.storage", SETTER(k8s_persistentvolumeclaim, set_storage)},
+		{"kubernetes.persistentvolumeclaim.requests.storage", SETTER(k8s_persistentvolumeclaim, set_requests_storage)}
 	});
 
 template<> const string K8sResource<k8s_statefulset>::tag_prefix = "kubernetes.statefulset.";
