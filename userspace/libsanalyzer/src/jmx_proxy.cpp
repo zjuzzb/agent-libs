@@ -8,6 +8,8 @@
 #include "common_logger.h"
 #include "fcntl.h"
 
+COMMON_LOGGER();
+
 java_bean_attribute::java_bean_attribute(const Json::Value& json):
 	m_name(json["name"].asString()),
 	m_value(0),
@@ -226,8 +228,11 @@ unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned 
 			}
 			else if(metric_limits::log_enabled())
 			{
-				g_logger.format(sinsp_logger::SEV_INFO, "[jmx] metric over limit (%s, %u max): %s (%s)",
-						limit_type.c_str(), max_limit, it->name().c_str(), it->alias().c_str());
+				LOG_INFO("[jmx] metric over limit (%s, %u max): %s (%s)",
+					 limit_type.c_str(),
+					 max_limit,
+					 it->name().c_str(),
+					 it->alias().c_str());
 			}
 			else { break; }
 		}
@@ -327,9 +332,9 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	}
 	ret["args"] = args_json;
 
-	g_logger.format(sinsp_logger::SEV_DEBUG, "Adding process for JMX getMetrics command: "
-					"pid: %" PRIu64 " vpid: %" PRIu64 " root: %s args: %s", tinfo->m_pid,
-					tinfo->m_vpid, tinfo->m_root.c_str(), args.c_str());
+	LOG_DEBUG("Adding process for JMX getMetrics command: "
+		  "pid: %" PRIu64 " vpid: %" PRIu64 " root: %s args: %s", tinfo->m_pid,
+		  tinfo->m_vpid, tinfo->m_root.c_str(), args.c_str());
 	return ret;
 }
 
@@ -339,8 +344,8 @@ void jmx_proxy::send_get_metrics(const std::vector<sinsp_threadinfo*>& processes
 	command_obj["command"] = "getMetrics";
 	Json::Value body(Json::arrayValue);
 
-	g_logger.log("Generating JMX getMetrics command", sinsp_logger::SEV_DEBUG);
-	unsigned tinfo_count = 0;
+	LOG_DEBUG("Generating JMX getMetrics command");
+	unsigned long tinfo_count = 0;
 	for(auto tinfo : processes)
 	{
 		Json::Value tinfo_json = tinfo_to_json(tinfo);
@@ -349,8 +354,8 @@ void jmx_proxy::send_get_metrics(const std::vector<sinsp_threadinfo*>& processes
 	}
 	command_obj["body"] = body;
 	std::string command_data = m_json_writer.write(command_obj);
-	g_logger.format(sinsp_logger::SEV_DEBUG, "Sending JMX getMetrics command for %u "
-					"processes, command size %u bytes", tinfo_count, command_data.size());
+	LOG_DEBUG("Sending JMX getMetrics command for %lu "
+		  "processes, command size %zu bytes", tinfo_count, command_data.size());
 
 	m_outqueue.send(command_data);
 }
@@ -365,9 +370,9 @@ std::unordered_map<int, java_process> jmx_proxy::read_metrics(metric_limits::cre
 
 		if (json_data.size() > 0)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics json size is: %d", json_data.size());
+			LOG_DEBUG("JMX metrics json size is: %zu", json_data.size());
 			if(m_print_json) {
-				g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics json: %s", json_data.c_str());
+				LOG_DEBUG("JMX metrics json: %s", json_data.c_str());
 			}
 			Json::Value json_obj;
 
@@ -382,18 +387,18 @@ std::unordered_map<int, java_process> jmx_proxy::read_metrics(metric_limits::cre
 			}
 			else
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR, "Cannot deserialize JMX metrics");
-				g_logger.format(sinsp_logger::SEV_DEBUG, "%s", json_data.c_str());
+				LOG_ERROR("Cannot deserialize JMX metrics");
+				LOG_DEBUG("%s", json_data.c_str());
 			}
 		}
 		else
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics are not ready");
+			LOG_DEBUG("JMX metrics are not ready");
 		}
 	}
 	catch(std::exception& ex)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR, "jmx_proxy::read_metrics error: %s", ex.what());
+		LOG_ERROR("jmx_proxy::read_metrics error: %s", ex.what());
 	}
 	return processes;
 }
