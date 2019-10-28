@@ -506,6 +506,24 @@ void docker::handle_event(Json::Value&& root)
 			}
 		}
 
+		// Filtering for POD sandbox containers (k8s_POD*)
+		Json::Value no_value = Json::nullValue;
+		const Json::Value& actor = root["Actor"];
+		const Json::Value& attrib = actor.isNull() ? no_value : actor["Attributes"];
+		const Json::Value& docker_type = attrib.isNull() ? no_value : attrib["io.kubernetes.docker.type"];
+		if(!docker_type.isNull() && docker_type.isConvertibleTo(Json::stringValue))
+		{
+			std::string type_str = docker_type.asString();
+			if(type_str == "podsandbox")
+			{
+				if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
+				{
+					g_logger.log("Filtering Docker Event of podsandbox container: " + Json::FastWriter().write(root), sinsp_logger::SEV_TRACE);
+				}
+				is_allowed = false;
+			}
+		}
+
 		if(is_allowed)
 		{
 			emit_event(root, type, status, true);
