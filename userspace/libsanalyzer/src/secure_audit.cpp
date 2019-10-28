@@ -79,19 +79,19 @@ type_config<int>::mutable_ptr secure_audit::c_secure_audit_frequency =
 		.build_mutable();
 
 type_config<int> secure_audit::c_secure_audit_executed_commands_limit(
-	0,
+	1000,
 	"limit on numbers of executed commands in every message sent - 0 means no limit",
 	"secure_audit_streams",
 	"executed_commands_limit");
 
 type_config<int> secure_audit::c_secure_audit_connections_limit(
-	0,
+	1000,
 	"limit on numbers of connections in every message sent - 0 means no limit",
 	"secure_audit_streams",
 	"connections_limit");
 
 type_config<int> secure_audit::c_secure_audit_k8s_limit(
-	0,
+	200,
 	"limit on numbers of k8s audit in every message sent - 0 means no limit"
 	"secure_audit_streams",
 	"k8s_limit");

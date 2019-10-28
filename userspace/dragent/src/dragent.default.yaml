@@ -1277,7 +1277,7 @@ secure_audit_streams:
   #COMMANDS
   executed_commands: true # executed commands enabled
   executed_commands_per_container_limit: 30 # per-second per-container limit
-  executed_commands_limit: 0 # execited commands limit per protobuf (0: unlimited)
+  executed_commands_limit: 1000 # execited commands limit per protobuf (0: unlimited)
 
   #CONNECTIONS
   connections: true # connections enabled
@@ -1285,11 +1285,11 @@ secure_audit_streams:
   connections_local: false # send local connections (127.0.0.1)
   connections_cmdline: false # send entire commandline of the process generating the connection
   connections_cmdline_maxlen: 0 # commandline max len (0: unlimited)
-  connections_limit: 0 # connections limit per protobuf (0: unlimited)
+  connections_limit: 1000 # connections limit per protobuf (0: unlimited)
 
   #K8S AUDIT EVENTS
   k8s_audit: true # k8s audit enabled
-  k8s_limit: 0 # k8s audit limit per protobuf (0: unlimited)
+  k8s_limit: 200 # k8s audit limit per protobuf (0: unlimited)
   k8s_active_filters: # k8s audit active filters - refer to "k8s_filters" definition
     - exec
 
