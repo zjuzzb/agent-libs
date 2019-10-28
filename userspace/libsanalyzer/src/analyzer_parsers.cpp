@@ -21,6 +21,69 @@
 #include "sched_analyzer.h"
 #include "analyzer_thread.h"
 #include "analyzer_fd.h"
+#include "infrastructure_state.h"
+#include <Poco/Path.h>
+
+namespace
+{
+std::string get_command_basename(std::string command)
+{
+	// Trim trailing whitespace from command
+	command.erase(std::find_if(command.rbegin(),
+				   command.rend(),
+				   std::bind1st(std::not_equal_to<char>(), ' ')).base(),
+				   command.end());
+
+	if(command.find(" ") != std::string::npos)
+	{
+		std::stringstream sstream(command);
+		std::string first_token;
+		std::string rest;
+
+		if(std::getline(sstream, first_token, ' ') &&
+		   std::getline(sstream, rest))
+		{
+			Poco::Path cmd_path(first_token);
+
+			return cmd_path.getBaseName() + " " + rest;
+		}
+
+		// Really ought not get here, maybe ASSERT()?.
+		return command;
+	}
+
+	Poco::Path cmd_path(command);
+
+	return cmd_path.getBaseName();
+}
+
+/**
+ * strcmp_relative_path compares two commands, including parameters,
+ * that can be passed with different absolute paths
+ * e.g. (return true)
+ * std::string a = "/bin/bash ./ready.sh 1 2 3";
+ * std::string b = "/usr/bin/bash ./ready.sh 1 2 3";
+ *
+ * @param[in] a first command to compare
+ * @param[in] b second command to compare
+ */
+bool strcmp_relative_path(const std::string& a, const std::string& b)
+{
+	return get_command_basename(a) == get_command_basename(b);
+}
+
+void populate_cmdline_exe(std::string& cmdline_exe, sinsp_threadinfo* tinfo)
+{
+	cmdline_exe = tinfo->m_exe;
+
+	const std::size_t nargs = tinfo->m_args.size();
+
+	for(size_t j = 0; j < nargs; j++)
+	{
+		cmdline_exe += " " + tinfo->m_args[j];
+	}
+}
+} // namespace
 
 sinsp_analyzer_parsers::sinsp_analyzer_parsers(sinsp_analyzer* const analyzer):
 	m_analyzer(analyzer),
@@ -347,6 +410,8 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		return true;
 	}
 
+	lookup_k8s_probes(tinfo);
+
 	m_analyzer->incr_command_lines_category(convert_category(tinfo->m_category));
 
 	if(tinfo->is_health_probe() &&
@@ -476,3 +541,45 @@ draiosproto::command_category sinsp_analyzer_parsers::convert_category(sinsp_thr
 	return cat;
 }
 
+void sinsp_analyzer_parsers::lookup_k8s_probes(sinsp_threadinfo* tinfo)
+{
+	std::pair<std::string, std::string> entry = std::make_pair("container", tinfo->m_container_id);
+
+	std::string value_readiness;
+	std::string value_liveness;
+
+	bool found_liveness = m_analyzer->infra_state()->find_tag(entry, "kubernetes.pod.probe.liveness." + tinfo->m_container_id, value_liveness);
+	bool found_readiness = m_analyzer->infra_state()->find_tag(entry, "kubernetes.pod.probe.readiness." + tinfo->m_container_id, value_readiness);
+
+	if(!found_liveness && !found_readiness)
+	{
+		return;
+	}
+
+	// populate commandline using m_exe
+	// in case of long m_comm this avoids to cut the string at 30 chars
+	std::string cmdline_exe;
+	populate_cmdline_exe(cmdline_exe, tinfo);
+
+	// populate commandline using m_comm
+	std::string cmdline_comm;
+	sinsp_threadinfo::populate_cmdline(cmdline_comm, tinfo);
+
+	if(found_liveness)
+	{
+		if(strcmp_relative_path(cmdline_exe, value_liveness) ||
+		   strcmp_relative_path(cmdline_comm, value_liveness))
+		{
+			tinfo->m_category = sinsp_threadinfo::CAT_LIVENESS_PROBE;
+		}
+	}
+
+	if(found_readiness)
+	{
+		if(strcmp_relative_path(cmdline_exe, value_readiness) ||
+		   strcmp_relative_path(cmdline_comm, value_readiness))
+		{
+			tinfo->m_category = sinsp_threadinfo::CAT_READINESS_PROBE;
+		}
+	}
+}

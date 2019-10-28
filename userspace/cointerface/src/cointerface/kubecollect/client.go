@@ -835,6 +835,55 @@ func setAnnotFilt(annots []string) {
 	}
 }
 
+func GetProbes(pod *v1.Pod) map[string]string {
+	tags := make(map[string]string)
+
+	for _, container := range pod.Spec.Containers {
+		containerid := ""
+		if pod.Status.ContainerStatuses == nil {
+			break
+		}
+		for _, containerStatus := range pod.Status.ContainerStatuses {
+			if containerStatus.Name == container.Name {
+				containerid, _ = parseContainerID(containerStatus.ContainerID)
+				break
+			}
+		}
+
+		if container.LivenessProbe != nil {
+			k := "kubernetes.pod.probe.liveness." + containerid
+			v := ""
+			if container.LivenessProbe.Handler.Exec != nil {
+				for c, cmd := range container.LivenessProbe.Handler.Exec.Command {
+					if c != 0 {
+						v = v + " "
+					}
+					v = v + cmd
+				}
+				tags[k] = v
+			}
+		}
+
+		if container.ReadinessProbe != nil {
+			k := "kubernetes.pod.probe.readiness." + containerid
+			v := ""
+			if container.ReadinessProbe.Handler.Exec != nil {
+				for c, cmd := range container.ReadinessProbe.Handler.Exec.Command {
+					if c != 0 {
+						v = v + " "
+					}
+					v = v + cmd
+				}
+				tags[k] = v
+			}
+		}
+	}
+	if len(tags) == 0 {
+		return nil
+	}
+	return tags
+}
+
 func GetAnnotations(obj v1meta.ObjectMeta, prefix string) map[string]string {
 	if len(annotFilter) == 0 {
 		return nil
@@ -851,6 +900,22 @@ func GetAnnotations(obj v1meta.ObjectMeta, prefix string) map[string]string {
 		return nil
 	}
 	return tags
+}
+
+func MergeInternalTags(m1 map[string]string, m2 map[string]string) map[string]string {
+	if m1 == nil && m2 == nil {
+		return nil
+	}
+	if m1 == nil {
+		return m2
+	}
+	if m2 == nil {
+		return m1
+	}
+	for k, v := range m2 {
+		m1[k] = v
+	}
+	return m1
 }
 
 func EqualLabels(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
@@ -881,6 +946,23 @@ func EqualAnnotations(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
 			return false
 		}
 	}
+	return true
+}
+
+func EqualProbes(lhs *v1.Pod, rhs *v1.Pod) bool {
+	left := GetProbes(lhs)
+	right := GetProbes(rhs)
+
+	if len(left) != len(right) {
+		return false
+	}
+
+	for k, v := range left {
+		if right[k] != v {
+			return false
+		}
+	}
+
 	return true
 }
 

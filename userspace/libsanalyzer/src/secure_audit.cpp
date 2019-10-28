@@ -175,9 +175,11 @@ void secure_audit::clear()
 void secure_audit::flush(uint64_t ts)
 {
 	secure_audit_sent = false;
+	secure_audit_run = false;
 
 	m_get_events_interval->run([this, ts]() {
 		uint64_t flush_start_time = sinsp_utils::get_current_time_ns();
+		secure_audit_run = true;
 
 		auto secure_audits = get_events(ts);
 
@@ -194,22 +196,25 @@ void secure_audit::flush(uint64_t ts)
 		if(secure_audit_sent)
 		{
 			m_audit_internal_metrics->set_secure_audit_internal_metrics(1, flush_time_ms);
-			m_audit_internal_metrics->set_secure_audit_sent_counters(m_executed_commands_count,
-										 m_connections_count,
-										 m_k8s_audit_count,
-										 m_executed_commands_dropped_count,
-										 m_connections_dropped_count,
-										 m_connections_dropped_count,
-										 m_connections_not_interactive_dropped_count);
-			reset_counters();
 			g_logger.format(sinsp_logger::SEV_INFO, "secure_audit: flushing fl.ms=%d ", flush_time_ms);
 		}
+		m_audit_internal_metrics->set_secure_audit_sent_counters(m_executed_commands_count,
+									 m_connections_count,
+									 m_k8s_audit_count,
+									 m_executed_commands_dropped_count,
+									 m_connections_dropped_count,
+									 m_connections_dropped_count,
+									 m_connections_not_interactive_dropped_count);
+		reset_counters();
 	},
 				   ts);
 
 	if(!secure_audit_sent)
 	{
 		m_audit_internal_metrics->set_secure_audit_internal_metrics(0, 0);
+	}
+	if(!secure_audit_run)
+	{
 		m_audit_internal_metrics->set_secure_audit_sent_counters(0, 0, 0, 0, 0, 0, 0);
 	}
 }

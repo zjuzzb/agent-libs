@@ -88,6 +88,7 @@ private:
 	std::unique_ptr<run_on_interval> m_get_events_interval;
 	sinsp_analyzer* m_analyzer;
 	bool secure_audit_sent;
+	bool secure_audit_run;
 
 	int m_executed_commands_count;
 	int m_connections_count;

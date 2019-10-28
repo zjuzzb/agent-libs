@@ -203,6 +203,7 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 	}
 
 	in = in && EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
+	in = in && EqualProbes(lhs, rhs)
 
 	if in && lhs.Status.PodIP != rhs.Status.PodIP {
 		in = false
@@ -310,7 +311,9 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	// This gets specially added as a tag since we don't have a
 	// better way to report values that can be one of many strings
 	tags["kubernetes.pod.label.status.phase"] = string(pod.Status.Phase)
-	inttags := GetAnnotations(pod.ObjectMeta, "kubernetes.pod.")
+	annotations := GetAnnotations(pod.ObjectMeta, "kubernetes.pod.")
+	probes := GetProbes(pod)
+	inttags := MergeInternalTags(annotations, probes)
 
 	var ips []string
 	if pod.Status.PodIP != "" {

@@ -1382,8 +1382,14 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector,
 		sconfig->set_executed_commands_capture_enabled(true);
 		sconfig->set_command_lines_capture_mode(
 		    m_configuration.m_command_lines_capture_mode);
-		sconfig->set_command_lines_include_container_healthchecks(
-		    m_configuration.m_command_lines_include_container_healthchecks);
+		if(m_configuration.m_secure_audit_enabled) {
+			sconfig->set_command_lines_include_container_healthchecks(false);
+		}
+		else
+		{
+			sconfig->set_command_lines_include_container_healthchecks(
+				m_configuration.m_command_lines_include_container_healthchecks);
+		}
 		sconfig->set_command_lines_valid_ancestors(
 		    m_configuration.m_command_lines_valid_ancestors);
 	}

@@ -22,6 +22,7 @@ public:
 	void set_sched_analyzer2(sinsp_sched_analyzer2* sched_analyzer2);
 
 	static draiosproto::command_category convert_category(sinsp_threadinfo::command_category &tcat);
+	void lookup_k8s_probes(sinsp_threadinfo* tinfo);
 
 private:
 	sinsp_analyzer* m_analyzer;
