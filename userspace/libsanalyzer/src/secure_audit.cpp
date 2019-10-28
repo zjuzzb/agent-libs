@@ -105,7 +105,8 @@ secure_audit::secure_audit():
 	m_executed_commands_dropped_count(0),
 	m_connections_dropped_count(0),
 	m_k8s_audit_dropped_count(0),
-	m_connections_not_interactive_dropped_count(0)
+	m_connections_not_interactive_dropped_count(0),
+	m_k8s_audit_enrich_errors_count(0)
 {
 	clear();
 }
@@ -164,6 +165,7 @@ const secure::Audit* secure_audit::get_events(uint64_t timestamp)
 		return nullptr;
 	}
 	m_secure_audit_batch->set_timestamp(timestamp);
+	m_secure_audit_batch->set_hostname(sinsp_gethostname());
 	return m_secure_audit_batch;
 }
 
@@ -203,8 +205,9 @@ void secure_audit::flush(uint64_t ts)
 									 m_k8s_audit_count,
 									 m_executed_commands_dropped_count,
 									 m_connections_dropped_count,
-									 m_connections_dropped_count,
-									 m_connections_not_interactive_dropped_count);
+									 m_k8s_audit_dropped_count,
+									 m_connections_not_interactive_dropped_count,
+									 m_k8s_audit_enrich_errors_count);
 		reset_counters();
 	},
 				   ts);
@@ -215,7 +218,7 @@ void secure_audit::flush(uint64_t ts)
 	}
 	if(!secure_audit_run)
 	{
-		m_audit_internal_metrics->set_secure_audit_sent_counters(0, 0, 0, 0, 0, 0, 0);
+		m_audit_internal_metrics->set_secure_audit_sent_counters(0, 0, 0, 0, 0, 0, 0, 0);
 	}
 }
 
@@ -228,6 +231,7 @@ void secure_audit::reset_counters()
 	m_k8s_audit_count = 0;
 	m_k8s_audit_dropped_count = 0;
 	m_connections_not_interactive_dropped_count = 0;
+	m_k8s_audit_enrich_errors_count = 0;
 }
 
 secure::CommandCategory command_category_to_secure_audit_enum(draiosproto::command_category& tcat)
@@ -609,36 +613,10 @@ void secure_audit::emit_connection_async(const _ipv4tuple& tuple, sinsp_connecti
 	}
 }
 
-void secure_audit::emit_k8s_exec_audit()
-{
-	if(!(c_secure_audit_enabled.get_value() && c_secure_audit_k8s_audit_enabled.get_value()))
-	{
-		return;
-	}
-
-	int k8s_audit_initial = m_secure_audit_batch->k8s_audits_size();
-
-	if(m_k8s_exec_audits.size() != 0)
-	{
-		for(auto j : m_k8s_exec_audits)
-		{
-			auto pb_k8s_exec_audit = m_secure_audit_batch->add_k8s_audits();
-			pb_k8s_exec_audit->set_blob(j);
-		}
-	}
-
-	m_k8s_exec_audits.clear();
-
-	int k8s_audit_final = m_secure_audit_batch->k8s_audits_size();
-	g_logger.format(sinsp_logger::SEV_DEBUG, "secure_audit: emit k8s audit (%d) - batch size (%d -> %d)",
-			k8s_audit_final - k8s_audit_initial,
-			k8s_audit_initial,
-			k8s_audit_final);
-}
-
 void secure_audit::filter_and_append_k8s_audit(const nlohmann::json& j,
 					       std::vector<std::string>& k8s_active_filters,
-					       std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters)
+					       std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters,
+					       infrastructure_state *infra_state)
 {
 	if(!(c_secure_audit_enabled.get_value() && c_secure_audit_k8s_audit_enabled.get_value()))
 	{
@@ -654,7 +632,60 @@ void secure_audit::filter_and_append_k8s_audit(const nlohmann::json& j,
 			return;
 		}
 
-		append_k8s_audit(j.dump());
+		auto pb_k8s_audit = m_secure_audit_batch->add_k8s_audits();
+		pb_k8s_audit->set_blob(j.dump());
+
+		bool ok = infra_state != nullptr;
+		try
+		{
+			nlohmann::json::json_pointer r_jptr("/objectRef/resource");
+			if(ok && j.at(r_jptr) == "pods") {
+				// if the object of this audit event is a pod,
+				// get its container.id and host.hostName
+				// from infrastructure state
+				nlohmann::json::json_pointer ns_jptr("/objectRef/namespace"), n_jptr("/objectRef/name");
+				std::string pod_uid = infra_state->get_k8s_pod_uid(j.at(ns_jptr), j.at(n_jptr));
+				if ((ok = !pod_uid.empty()))
+				{
+					// hostname retrieval
+					std::string hostname;
+					infrastructure_state::uid_t uid = make_pair("k8s_pod", pod_uid);
+
+					ok &= infra_state->find_tag(uid, "host.hostName", hostname);
+
+					pb_k8s_audit->set_hostname(hostname);
+
+					// containerID retrieval from the pod container name
+
+					// sadly we have to parse the pod container name from the requestURI,
+					// there's no other way to retrieve it from the audit event
+					nlohmann::json::json_pointer req_jptr("/requestURI");
+					std::string requestURI = j.at(req_jptr);
+
+					std::size_t pos = requestURI.find("container=");
+					if (pos != std::string::npos) {
+						std::string pod_container_name = requestURI.substr(pos-1+sizeof("container="));
+						pos = pod_container_name.find("&");
+						if (pos != std::string::npos) {
+							pod_container_name.resize(pos);
+						}
+
+						std::string container_id = infra_state->get_container_id_from_k8s_pod_and_k8s_pod_name(uid, pod_container_name);
+						pb_k8s_audit->set_container_id(container_id);
+						ok &= !container_id.empty();
+					}
+				}
+			}
+		}
+		catch(nlohmann::json::out_of_range&)
+		{
+			// nothing we can do here, container ID and/or hostname will be empty
+			ok = false;
+		}
+
+		if (!ok) {
+			m_k8s_audit_enrich_errors_count++;
+		}
 
 		m_k8s_audit_count++;
 	}
@@ -703,9 +734,4 @@ bool secure_audit::filter_k8s_audit(const nlohmann::json& j,
 	}
 
 	return false;
-}
-
-void secure_audit::append_k8s_audit(const std::string& evt)
-{
-	m_k8s_exec_audits.push_back(evt);
 }

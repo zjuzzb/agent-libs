@@ -22,6 +22,8 @@ public:
 	 * @param[in] n_executed_command_dropped the number of execute commands dropped.
 	 * @param[in] n_connections_dropped The number of TCP connections dropped.
 	 * @param[in] n_k8s_dropped The number of kubernetes events dropped.
+	 * @param[in] n_connections_not_interactive_dropped The number of connections dropped because not created from interactive commands.
+	 * @param[in] n_k8s_enrich_errors The number of kubernetes events we weren't able to enrich.
 	 */
 	virtual void set_secure_audit_sent_counters(int n_executed_commands,
 						    int n_connections,
@@ -29,5 +31,6 @@ public:
 						    int n_executed_commands_dropped,
 						    int n_connections_dropped,
 						    int n_k8s_dropped,
-						    int n_connections_not_interactive_dropped) = 0;
+						    int n_connections_not_interactive_dropped,
+						    int n_k8s_enrich_errors) = 0;
 };

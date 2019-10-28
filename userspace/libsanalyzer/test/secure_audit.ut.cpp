@@ -1590,14 +1590,102 @@ TEST(secure_audit_test, k8s_audit_base)
 	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
 	ASSERT_EQ(audit_pb, nullptr);
 
+	// Fill fake infrastructure_state to test k8s enrichment too
+	test_helpers::sinsp_mock inspector;
+	infrastructure_state is(&inspector, "/foo/bar");
+
+	draiosproto::congroup_update_event evt;
+	draiosproto::congroup_uid *parent;
+	draiosproto::congroup_uid *child;
+
+	// hierarchy is HOST -> NODE -> NAMESPACE -> POD -> CONTAINERS
+	evt.set_type(draiosproto::ADDED);
+	evt.mutable_object()->mutable_uid()->set_kind("host");
+	evt.mutable_object()->mutable_uid()->set_id("hostID");
+
+	(*evt.mutable_object()->mutable_tags())["host.hostName"] = "hostHostName"; // we want this in the protobuf
+
+	is.load_single_event(evt);
+	evt.Clear();
+
+	evt.set_type(draiosproto::ADDED);
+	evt.mutable_object()->mutable_uid()->set_kind("k8s_node");
+	evt.mutable_object()->mutable_uid()->set_id("nodeUID");
+
+	parent = evt.mutable_object()->mutable_parents()->Add();
+	parent->set_kind("host");
+	parent->set_id("hostID");
+
+	is.load_single_event(evt);
+	evt.Clear();
+
+	evt.set_type(draiosproto::ADDED);
+	evt.mutable_object()->mutable_uid()->set_kind("k8s_namespace");
+	evt.mutable_object()->mutable_uid()->set_id("namespaceUID");
+
+	(*evt.mutable_object()->mutable_tags())["kubernetes.namespace.name"] = "sysdigcloud"; // as in json_exec_{1,2}
+
+	parent = evt.mutable_object()->mutable_parents()->Add();
+	parent->set_kind("k8s_node");
+	parent->set_id("nodeUID");
+
+	is.load_single_event(evt);
+	evt.Clear();
+
+	evt.set_type(draiosproto::ADDED);
+	evt.mutable_object()->mutable_uid()->set_kind("k8s_pod");
+	evt.mutable_object()->mutable_uid()->set_id("podUID");
+
+	(*evt.mutable_object()->mutable_tags())["kubernetes.pod.name"] = "sysdigcloud-elasticsearch-0"; // as in json_exec_{1,2}
+
+	parent = evt.mutable_object()->mutable_parents()->Add();
+	parent->set_kind("k8s_node");
+	parent->set_id("nodeUID");
+	parent = evt.mutable_object()->mutable_parents()->Add();
+	parent->set_kind("k8s_namespace");
+	parent->set_id("namespaceUID");
+	child = evt.mutable_object()->mutable_children()->Add();
+	child->set_kind("container");
+	child->set_id("containerID1");
+	child = evt.mutable_object()->mutable_children()->Add();
+	child->set_kind("container");
+	child->set_id("containerID2");
+
+	is.load_single_event(evt);
+	evt.Clear();
+
+	evt.set_type(draiosproto::ADDED);
+	evt.mutable_object()->mutable_uid()->set_kind("container");
+	evt.mutable_object()->mutable_uid()->set_id("containerID1"); // we want this in the protobuf
+
+	(*evt.mutable_object()->mutable_tags())["container.label.io.kubernetes.container.name"] = "elasticsearch"; // as in json_exec_{1,2}
+
+	parent = evt.mutable_object()->mutable_parents()->Add();
+	parent->set_kind("k8s_pod");
+	parent->set_id("podUID");
+
+	is.load_single_event(evt);
+	evt.Clear();
+
+	evt.set_type(draiosproto::ADDED);
+	evt.mutable_object()->mutable_uid()->set_kind("container");
+	evt.mutable_object()->mutable_uid()->set_id("containerID2");
+
+	(*evt.mutable_object()->mutable_tags())["container.label.io.kubernetes.container.name"] = "not-elasticsearch";
+
+	parent = evt.mutable_object()->mutable_parents()->Add();
+	parent->set_kind("k8s_pod");
+	parent->set_id("podUID");
+
+	is.load_single_event(evt);
+	evt.Clear();
+
 	// add add events
-	audit.filter_and_append_k8s_audit(json_audit_1, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters);
-	audit.filter_and_append_k8s_audit(json_audit_2, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters);
+	audit.filter_and_append_k8s_audit(json_audit_1, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters, &is);
+	audit.filter_and_append_k8s_audit(json_audit_2, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters, &is);
 
-	audit.filter_and_append_k8s_audit(json_exec_1, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters);
-	audit.filter_and_append_k8s_audit(json_exec_2, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters);
-
-	audit.emit_k8s_exec_audit();
+	audit.filter_and_append_k8s_audit(json_exec_1, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters, &is);
+	audit.filter_and_append_k8s_audit(json_exec_2, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters, &is);
 
 	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
 	ASSERT_NE(nullptr, audit_pb);
@@ -1609,6 +1697,12 @@ TEST(secure_audit_test, k8s_audit_base)
 
 	ASSERT_EQ(k1.blob(), json_exec_1.dump());
 	ASSERT_EQ(k2.blob(), json_exec_2.dump());
+
+	ASSERT_EQ(k1.hostname(), "hostHostName");
+	ASSERT_EQ(k2.hostname(), "hostHostName");
+
+	ASSERT_EQ(k1.container_id(), "containerID1");
+	ASSERT_EQ(k2.container_id(), "containerID1");
 
 	audit.clear();
 }
@@ -1681,7 +1775,6 @@ TEST(secure_audit_test, k8s_audit_disabled)
 	ASSERT_EQ(audit_pb, nullptr);
 
 	audit.filter_and_append_k8s_audit(json_exec_1, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters);
-	audit.emit_k8s_exec_audit();
 
 	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
 	ASSERT_EQ(nullptr, audit_pb);
@@ -1691,7 +1784,6 @@ TEST(secure_audit_test, k8s_audit_disabled)
 	audit.c_secure_audit_k8s_audit_enabled.set(false);
 
 	audit.filter_and_append_k8s_audit(json_exec_1, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters);
-	audit.emit_k8s_exec_audit();
 
 	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
 	ASSERT_EQ(nullptr, audit_pb);
@@ -1701,7 +1793,6 @@ TEST(secure_audit_test, k8s_audit_disabled)
 	audit.c_secure_audit_k8s_audit_enabled.set(false);
 
 	audit.filter_and_append_k8s_audit(json_exec_1, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters);
-	audit.emit_k8s_exec_audit();
 
 	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
 	ASSERT_EQ(nullptr, audit_pb);

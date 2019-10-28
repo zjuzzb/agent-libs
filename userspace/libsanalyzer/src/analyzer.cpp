@@ -881,7 +881,8 @@ void sinsp_analyzer::set_secure_audit_sent_counters(int n_executed_commands,
 						    int n_executed_commands_dropped,
 						    int n_connections_dropped,
 						    int n_k8s_dropped,
-						    int n_connections_not_interactive_dropped)
+						    int n_connections_not_interactive_dropped,
+						    int n_k8s_enrich_errors)
 {
 	m_internal_metrics->set_secure_audit_executed_commands_count(n_executed_commands);
 	m_internal_metrics->set_secure_audit_connections_count(n_connections);
@@ -890,6 +891,7 @@ void sinsp_analyzer::set_secure_audit_sent_counters(int n_executed_commands,
 	m_internal_metrics->set_secure_audit_connections_dropped_count(n_connections_dropped);
 	m_internal_metrics->set_secure_audit_k8s_dropped_count(n_k8s_dropped);
 	m_internal_metrics->set_secure_audit_connections_not_interactive_dropped(n_connections_not_interactive_dropped);
+	m_internal_metrics->set_secure_audit_k8s_enrich_errors(n_k8s_enrich_errors);
 }
 
 template<class Iterator>
@@ -4445,7 +4447,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 				uint64_t start_emit_time = sinsp_utils::get_current_time_ns();
 
 				m_secure_audit->emit_commands_audit(&m_executed_commands);
-				m_secure_audit->emit_k8s_exec_audit();
 
 				uint64_t emit_time_ms = (sinsp_utils::get_current_time_ns() - start_emit_time) / 1000000;
 				m_internal_metrics->set_secure_audit_emit_ms(emit_time_ms);
@@ -7225,7 +7226,7 @@ void sinsp_analyzer::secure_audit_filter_and_append_k8s_audit(const nlohmann::js
 {
 	if(m_secure_audit != nullptr)
 	{
-		m_secure_audit->filter_and_append_k8s_audit(j, k8s_active_filters, k8s_filters);
+		m_secure_audit->filter_and_append_k8s_audit(j, k8s_active_filters, k8s_filters, m_infrastructure_state);
 	}
 }
 

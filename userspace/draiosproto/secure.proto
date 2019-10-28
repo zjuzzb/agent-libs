@@ -5,9 +5,10 @@ option optimize_for = SPEED;
 
 message Audit {
     uint64 timestamp = 1;
-    repeated Connection connections = 2;
-    repeated ExecutedCommand executed_commands = 3;
-    repeated K8sAudit k8s_audits = 4;
+    string hostname = 2;
+    repeated Connection connections = 3;
+    repeated ExecutedCommand executed_commands = 4;
+    repeated K8sAudit k8s_audits = 5;
 }
 
 enum ConnectionStatus {
@@ -70,4 +71,6 @@ message ExecutedCommand {
 
 message K8sAudit {
     string blob = 1; // String representation of Json Audit event
+    string container_id = 2;
+    string hostname = 3;
 }

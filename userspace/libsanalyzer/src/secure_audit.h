@@ -9,6 +9,7 @@
 #include "connectinfo.h"
 #include "type_config.h"
 #include "analyzer_thread.h"
+#include "infrastructure_state.h"
 #include <secure.pb.h>
 
 #include <nlohmann/json.hpp>
@@ -55,7 +56,8 @@ public:
 	void emit_k8s_exec_audit();
 	void filter_and_append_k8s_audit(const nlohmann::json& j,
 					 std::vector<std::string>& k8s_active_filters,
-					 std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters);
+					 std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters,
+					 infrastructure_state *infra_state = nullptr);
 
 	void reset_counters();
 
@@ -79,15 +81,12 @@ private:
 	bool filter_k8s_audit(const nlohmann::json& j,
 			      std::vector<std::string>& k8s_active_filters,
 			      std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters);
-	void append_k8s_audit(const std::string& evt);
 
 	secure_audit_data_ready_handler* m_audit_data_handler;
 	secure_audit_internal_metrics* m_audit_internal_metrics;
-	std::list<std::string> m_k8s_exec_audits;
 	secure::Audit* m_secure_audit_batch;
 	sinsp_ipv4_connection_manager* m_connection_manager;
 	std::unique_ptr<run_on_interval> m_get_events_interval;
-	sinsp_analyzer* m_analyzer;
 	bool secure_audit_sent;
 	bool secure_audit_run;
 
@@ -100,4 +99,5 @@ private:
 	int m_k8s_audit_dropped_count;
 
 	int m_connections_not_interactive_dropped_count;
+	int m_k8s_audit_enrich_errors_count;
 };

@@ -120,6 +120,7 @@ public:
 	void set_secure_audit_connections_dropped_count(int64_t val);
 	void set_secure_audit_k8s_dropped_count(int64_t val);
 	void set_secure_audit_connections_not_interactive_dropped(int64_t val);
+	void set_secure_audit_k8s_enrich_errors(int64_t val);
 
 	// Set the process ids associated with the various
 	// subprocesses
@@ -150,6 +151,7 @@ public:
 	int64_t get_secure_audit_connections_dropped_count() const;
 	int64_t get_secure_audit_k8s_dropped_count() const;
 	int64_t get_secure_audit_connections_not_interactive_dropped() const;
+	int64_t get_secure_audit_k8s_enrich_errors() const;
 
 	// For other metrics sources e.g. security manager event
 	// counts, you can provide objects derived from this type and
@@ -306,6 +308,7 @@ private:
 		int64_t secure_audit_connections_dropped_count = -1;
 		int64_t secure_audit_k8s_dropped_count = -1;
 		int64_t secure_audit_connections_not_interactive_dropped = -1;
+		int64_t secure_audit_k8s_enrich_errors = -1;
 
 		int64_t agent_cpu;
 		int64_t agent_memory;
@@ -705,6 +708,11 @@ inline void internal_metrics::set_secure_audit_connections_not_interactive_dropp
 	m_analyzer.secure_audit_connections_not_interactive_dropped = val;
 }
 
+inline void internal_metrics::set_secure_audit_k8s_enrich_errors(int64_t val)
+{
+	m_analyzer.secure_audit_k8s_enrich_errors = val;
+}
+
 inline int64_t internal_metrics::get_secure_audit_executed_commands_count() const
 {
 	return m_analyzer.secure_audit_executed_commands_count;
@@ -738,4 +746,9 @@ inline int64_t internal_metrics::get_secure_audit_k8s_dropped_count() const
 inline int64_t internal_metrics::get_secure_audit_connections_not_interactive_dropped() const
 {
 	return m_analyzer.secure_audit_connections_not_interactive_dropped;
+}
+
+inline int64_t internal_metrics::get_secure_audit_k8s_enrich_errors() const
+{
+	return m_analyzer.secure_audit_k8s_enrich_errors;
 }

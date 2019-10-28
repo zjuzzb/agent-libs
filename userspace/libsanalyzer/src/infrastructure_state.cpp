@@ -2443,4 +2443,56 @@ bool new_k8s_delegator::is_delegated(infrastructure_state *state, int num_delega
 	}, now);
 	return m_cached_deleg;
 }
+
+std::string infrastructure_state::get_k8s_pod_uid(const std::string &namespace_name, const std::string &pod_name) const
+{
+	// Skip ahead to pods then walk them sequentially
+	uid_t lb_key("k8s_pod", "");
+	for (auto it = m_state.lower_bound(lb_key); it != m_state.end(); ++it) {
+		if (it->first.first != "k8s_pod") {
+			break;
+		}
+		auto con_tags = it->second->tags();
+		auto tag_iter = con_tags.find("kubernetes.pod.name");
+		if (tag_iter != con_tags.end() && tag_iter->second == pod_name) {
+			// check namespace name too, just in case there's collision
+			// on the pod name in the cluster (should happen very rarely though)
+			std::string ns_name;
+			if (find_tag(it->first, "kubernetes.namespace.name", ns_name) && ns_name == namespace_name) {
+				return it->first.second;
+			}
+		}
+	}
+
+	return "";
+}
+
+std::string infrastructure_state::get_container_id_from_k8s_pod_and_k8s_pod_name(const uid_t& p_uid, const std::string &pod_container_name) const
+{
+	if(!has(p_uid)) {
+		return "";
+	}
+
+	auto *p_cg = m_state.find(p_uid)->second.get();
+	for(const auto &c_uid : p_cg->children()) {
+		auto ckey = make_pair(c_uid.kind(), c_uid.id());
+
+		auto *c_cg = m_state.find(ckey)->second.get();
+		if (!c_cg) {
+			continue;
+		}
+
+		auto label = c_cg->tags().find("container.label.io.kubernetes.container.name");
+		if ((label != c_cg->tags().end()) && (label->second == pod_container_name)) {
+			return c_uid.id();
+		}
+		label = c_cg->tags().find("container.name");
+		if ((label != c_cg->tags().end()) && (label->second == pod_container_name)) {
+			return c_uid.id();
+		}
+	}
+
+	return "";
+}
+
 #endif // CYGWING_AGENT

@@ -134,6 +134,12 @@ public:
 	// or from IP address, in that order, if not found already
 	void find_our_k8s_node(const std::vector<std::string> *container_ids);
 
+	// Return the k8s pod UID from namespace and pod name
+	std::string get_k8s_pod_uid(const std::string &namespace_name, const std::string &pod_name) const;
+
+	// Return the container ID from the pod UID and the pod container name
+	std::string get_container_id_from_k8s_pod_and_k8s_pod_name(const uid_t& p_uid, const std::string &pod_container_name) const;
+
 	const std::string& get_k8s_url();
 	const std::string& get_k8s_ca_certificate();
 	const std::string& get_k8s_bt_auth_token();
