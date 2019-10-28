@@ -112,6 +112,11 @@ void check_executed_commands_helper(const secure::Audit* audit_pb,
 	else
 	{
 		ASSERT_NE(audit_pb, nullptr);
+		if((audit->c_secure_audit_executed_commands_limit.get_value() != 0) &&
+		   n_cmd_tot > audit->c_secure_audit_executed_commands_limit.get_value())
+		{
+			n_cmd_tot = audit->c_secure_audit_executed_commands_limit.get_value();
+		}
 		ASSERT_EQ(audit_pb->executed_commands_size(), n_cmd_tot);
 
 		for(int i = 0; i < audit_pb->executed_commands_size(); i++)
@@ -200,6 +205,7 @@ void executed_commands_build_and_test_generic(
 	// Basic tests on generated pb
 	check_executed_commands_helper(audit_pb, audit, n_commands_per_container, containers, commands);
 	audit->clear();
+	audit->reset_counters();
 }
 
 // Network byte order is defined to always be big-endian
@@ -257,6 +263,7 @@ TEST(secure_audit_test, executed_commands_per_container_limit_unlimited)
 	audit.c_secure_audit_executed_commands_enabled.set(true);
 
 	audit.c_secure_audit_executed_commands_per_container_limit.set(0);
+	audit.c_secure_audit_executed_commands_limit.set(0);
 
 	executed_commands_build_and_test_generic(&audit, 0, 0, 0);
 	executed_commands_build_and_test_generic(&audit, 1, 1, 1);

@@ -57,6 +57,8 @@ public:
 					 std::vector<std::string>& k8s_active_filters,
 					 std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters);
 
+	void reset_counters();
+
 	static type_config<bool> c_secure_audit_enabled;
 	static type_config<bool> c_secure_audit_executed_commands_enabled;
 	static type_config<int> c_secure_audit_executed_commands_per_container_limit;
@@ -78,7 +80,6 @@ private:
 			      std::vector<std::string>& k8s_active_filters,
 			      std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters);
 	void append_k8s_audit(const std::string& evt);
-	void reset_counters();
 
 	secure_audit_data_ready_handler* m_audit_data_handler;
 	secure_audit_internal_metrics* m_audit_internal_metrics;
