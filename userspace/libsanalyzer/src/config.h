@@ -147,8 +147,8 @@ public:
 	void set_falco_baselining_report_interval_ns(uint64_t report_interval);
 	uint64_t get_falco_baselining_autodisable_interval_ns() const;
 	void set_falco_baselining_autodisable_interval_ns(uint64_t report_interval);
-	uint64_t get_falco_baselining_max_drops_full_buffer() const;
-	void set_falco_baselining_max_drops_full_buffer(uint64_t report_interval);
+	float get_falco_baselining_max_drops_buffer_rate_percentage() const;
+	void set_falco_baselining_max_drops_buffer_rate_percentage(float max_drops_buffer_rate_percentage);
 
 	bool get_commandlines_capture_enabled() const;
 	void set_commandlines_capture_enabled(bool enabled);
@@ -331,7 +331,7 @@ private:
 
 	uint64_t m_falco_baselining_report_interval_ns;
 	uint64_t m_falco_baselining_autodisable_interval_ns;
-	uint64_t m_falco_baselining_max_drops_full_buffer;
+	float m_falco_baselining_max_drops_buffer_rate_percentage;
 
 	std::pair<long, unsigned> m_tracepoint_hits_threshold;
 	std::pair<double, unsigned> m_cpu_max_sr_threshold;

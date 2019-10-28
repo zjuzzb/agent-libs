@@ -770,8 +770,12 @@ void sinsp_baseliner::merge_proc_data()
 }
 #endif
 
-void sinsp_baseliner::emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry)
+void sinsp_baseliner::emit_as_protobuf(scap_stats *st, uint64_t time, draiosproto::falco_baseline* pbentry)
 {
+	// Update the stats
+	m_baseliner_stats.n_evts = st->n_evts;
+	m_baseliner_stats.n_drops_buffer = st->n_drops_buffer;
+
 #ifdef ASYNC_PROC_PARSING
 	merge_proc_data();
 #endif
@@ -1245,14 +1249,46 @@ sinsp* sinsp_baseliner::get_inspector()
 	return m_inspector;
 }
 
-void sinsp_baseliner::set_baseline_calculation_enabled(const bool enabled)
+void sinsp_baseliner::enable_baseline_calculation(scap_stats *st)
 {
-	m_do_baseline_calculation = enabled;
+	m_do_baseline_calculation = true;
+	m_baseliner_stats.n_evts = st->n_evts;
+	m_baseliner_stats.n_drops_buffer = st->n_drops_buffer;
+}
+
+void sinsp_baseliner::disable_baseline_calculation()
+{
+	m_do_baseline_calculation = false;
+	m_baseliner_stats.n_evts = 0;
+	m_baseliner_stats.n_drops_buffer = 0;
+
 }
 
 bool sinsp_baseliner::is_baseline_calculation_enabled() const
 {
 	return m_do_baseline_calculation;
+}
+
+bool sinsp_baseliner::is_drops_buffer_rate_critical(scap_stats *st, float max_drops_buffer_rate_percentage) const
+{
+	double drop_rate = 0;
+
+	if ((st->n_evts - m_baseliner_stats.n_evts <= 0) &&
+	    (st->n_drops_buffer - m_baseliner_stats.n_drops_buffer) >= 1) {
+		drop_rate = 1; // we dropped all the events! (drop rate percentage is 100%)
+	} else {
+		drop_rate = (float)(st->n_drops_buffer - m_baseliner_stats.n_drops_buffer) /
+			(float)(st->n_evts - m_baseliner_stats.n_evts);
+	}
+
+	if(drop_rate > max_drops_buffer_rate_percentage)
+	{
+		g_logger.format(sinsp_logger::SEV_ERROR,
+				"critical drop buffer rate %f (upper threshold %f)",
+				drop_rate, max_drops_buffer_rate_percentage);
+		return true;
+	}
+	return false;
 }
 
 inline void sinsp_baseliner::extract_from_event(sinsp_evt *evt)
