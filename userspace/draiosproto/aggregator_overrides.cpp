@@ -27,6 +27,45 @@ void process_details_message_aggregator_impl::aggregate_container_id(const draio
 	process_details_message_aggregator::aggregate_container_id(input, output);
 }
 
+void process_message_aggregator_impl::aggregate_netrole(const draiosproto::process& input,
+														draiosproto::process& output)
+{
+	m_netrole |= input.netrole();
+	output.set_netrole(m_netrole);
+	output.set_is_ipv4_transaction_client((m_netrole & draiosproto::networkrole::IS_REMOTE_IPV4_CLIENT) != 0);
+	output.set_is_ipv4_transaction_server((m_netrole & draiosproto::networkrole::IS_REMOTE_IPV4_SERVER) != 0);
+}
+
+void process_message_aggregator_impl::aggregate_is_ipv4_transaction_client(const draiosproto::process& input,
+																		   draiosproto::process& output)
+{
+	if (input.is_ipv4_transaction_client())
+	{
+		m_netrole |= draiosproto::networkrole::IS_REMOTE_IPV4_CLIENT;
+		aggregate_netrole(input, output);
+	}
+}
+
+void process_message_aggregator_impl::aggregate_is_ipv4_transaction_server(const draiosproto::process& input,
+																		   draiosproto::process& output)
+{
+	if (input.is_ipv4_transaction_server())
+	{
+		m_netrole |= draiosproto::networkrole::IS_REMOTE_IPV4_SERVER;
+		aggregate_netrole(input, output);
+	}
+}
+
+void metrics_message_aggregator_impl::aggregate_sampling_ratio(const draiosproto::metrics& input,
+														 draiosproto::metrics& output)
+{
+	if (output.sampling_ratio() == 0)
+	{
+		output.set_sampling_ratio(input.sampling_ratio());
+	}
+	metrics_message_aggregator::aggregate_sampling_ratio(input, output);
+}
+
 void metrics_message_aggregator_impl::aggregate_programs(const draiosproto::metrics& input,
 														 draiosproto::metrics& output)
 {
@@ -204,6 +243,15 @@ void metrics_message_aggregator_impl::aggregate_commands(const draiosproto::metr
     }
 }
 
+void metrics_message_aggregator_impl::aggregate_swarm(const draiosproto::metrics& input,
+													  draiosproto::metrics& output)
+{
+	if (input.has_swarm() && input.swarm().nodes().size() > 0)
+	{
+		metrics_message_aggregator::aggregate_swarm(input, output);
+	}
+}
+
 void metrics_message_aggregator_impl::aggregate(const draiosproto::metrics& input,
 						draiosproto::metrics& output)
 {
@@ -301,7 +349,7 @@ void resource_categories_message_aggregator_impl::aggregate_capacity_score(const
 void resource_categories_message_aggregator_impl::aggregate_stolen_capacity_score(const draiosproto::resource_categories& input,
 										  draiosproto::resource_categories& output)
 {
-	if (input.has_capacity_score() && input.capacity_score() != invalid_capacity)
+	if (input.has_stolen_capacity_score() && input.stolen_capacity_score() != invalid_capacity)
 	{
 		default_aggregate_value<decltype(input.stolen_capacity_score()),
 								decltype(*output.mutable_aggr_stolen_capacity_score())>(input.stolen_capacity_score(),
@@ -313,6 +361,12 @@ agent_message_aggregator<draiosproto::process_details>&
 message_aggregator_builder_impl::build_process_details() const
 {
 	return *(new process_details_message_aggregator_impl(*this));
+}
+
+agent_message_aggregator<draiosproto::process>&
+message_aggregator_builder_impl::build_process() const
+{
+	return *(new process_message_aggregator_impl(*this));
 }
 
 agent_message_aggregator<draiosproto::metrics>&

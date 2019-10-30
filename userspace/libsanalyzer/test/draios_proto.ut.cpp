@@ -184,6 +184,7 @@ TEST(aggregator, metrics)
 	EXPECT_EQ(output.programs()[0].environment_hash(), "0");
 	EXPECT_EQ(output.programs()[1].environment_hash(), "1");
 	EXPECT_EQ(output.aggr_sampling_ratio().sum(), 4);
+	EXPECT_EQ(output.sampling_ratio(), 4);
 	EXPECT_EQ(output.host_custom_name(), "5");
 	EXPECT_EQ(output.host_tags(), "6");
 	EXPECT_EQ(output.is_host_hidden(), false);
@@ -262,6 +263,7 @@ TEST(aggregator, metrics)
 	EXPECT_EQ(output.programs()[1].environment_hash(), "1");
 	EXPECT_EQ(output.programs()[2].environment_hash(), "2");
 	EXPECT_EQ(output.aggr_sampling_ratio().sum(), 104);
+	EXPECT_EQ(output.sampling_ratio(), 4);
 	EXPECT_EQ(output.host_custom_name(), "100");
 	EXPECT_EQ(output.host_tags(), "100");
 	EXPECT_EQ(output.is_host_hidden(), true);
@@ -1092,6 +1094,22 @@ TEST(aggregator, resource_categories)
 	EXPECT_EQ(out->aggr_stolen_capacity_score().sum(), 102);
 }
 
+TEST(aggregator, stolen_capacity_score)
+{
+	message_aggregator_builder_impl builder;
+	agent_message_aggregator<draiosproto::resource_categories>& aggregator = builder.build_resource_categories();
+
+	draiosproto::resource_categories input;
+	draiosproto::resource_categories output;
+
+	// this test because of a bug which was found where an unset capacity score
+	// caused stolen capacity score to not get aggregated
+	input.set_stolen_capacity_score(1);
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.aggr_stolen_capacity_score().sum(), 1);
+}
+
+
 TEST(aggregator, counter_syscall_errors)
 {	
 	message_aggregator_builder_impl builder;
@@ -1576,6 +1594,44 @@ TEST(aggregator, process)
 	EXPECT_TRUE(process_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(process_message_aggregator::hasher()(&lhs),
 		  process_message_aggregator::hasher()(&rhs));
+}
+
+TEST(aggregator, netrole)
+{
+	message_aggregator_builder_impl builder;
+	agent_message_aggregator<draiosproto::process>& aggregator = builder.build_process();
+
+	draiosproto::process input;
+	draiosproto::process output;
+
+	input.set_netrole(draiosproto::networkrole::IS_REMOTE_IPV4_CLIENT);
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.netrole(), draiosproto::networkrole::IS_REMOTE_IPV4_CLIENT);
+	EXPECT_EQ(output.is_ipv4_transaction_client(), true);
+	EXPECT_EQ(output.is_ipv4_transaction_server(), false);
+
+	input.set_netrole(draiosproto::networkrole::IS_REMOTE_IPV4_SERVER);
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.netrole(), draiosproto::networkrole::IS_REMOTE_IPV4_CLIENT |
+			  				    draiosproto::networkrole::IS_REMOTE_IPV4_SERVER);
+	EXPECT_EQ(output.is_ipv4_transaction_client(), true);
+	EXPECT_EQ(output.is_ipv4_transaction_server(), true);
+
+	aggregator.reset();
+
+	input.set_netrole(0);
+	input.set_is_ipv4_transaction_server(true);
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.netrole(), draiosproto::networkrole::IS_REMOTE_IPV4_SERVER);
+	EXPECT_EQ(output.is_ipv4_transaction_client(), false);
+	EXPECT_EQ(output.is_ipv4_transaction_server(), true);
+
+	input.set_is_ipv4_transaction_client(true);
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.netrole(), draiosproto::networkrole::IS_REMOTE_IPV4_CLIENT |
+			  				    draiosproto::networkrole::IS_REMOTE_IPV4_SERVER);
+	EXPECT_EQ(output.is_ipv4_transaction_client(), true);
+	EXPECT_EQ(output.is_ipv4_transaction_server(), true);
 }
 
 TEST(aggregator, process_details)
@@ -3357,6 +3413,7 @@ TEST(aggregator, swarm_service)
 	draiosproto::metrics output;
 
 	auto in = input.mutable_swarm()->add_services();
+	input.mutable_swarm()->add_nodes(); // swarm needs a node to deliver anything
 
 	in->mutable_common()->set_id("1");
 	in->add_virtual_ips("2");
@@ -3411,7 +3468,7 @@ TEST(aggregator, swarm_service)
 	rhs.set_tasks(7);
 	EXPECT_TRUE(swarm_service_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(swarm_service_message_aggregator::hasher()(&lhs),
-		  swarm_service_message_aggregator::hasher()(&rhs));
+			  swarm_service_message_aggregator::hasher()(&rhs));
 }
 
 TEST(aggregator, swarm_common)
@@ -3423,6 +3480,7 @@ TEST(aggregator, swarm_common)
 	draiosproto::metrics output;
 
 	auto in = input.mutable_swarm()->add_services()->mutable_common();
+	input.mutable_swarm()->add_nodes(); // swarm needs a node to deliver anything
 
 	in->set_id("1");
 	in->set_name("2");
@@ -3532,6 +3590,7 @@ TEST(aggregator, swarm_task)
 	draiosproto::metrics output;
 
 	auto in = input.mutable_swarm()->add_tasks();
+	input.mutable_swarm()->add_nodes(); // swarm needs a node to deliver anything
 
 	in->mutable_common()->set_id("1");
 	in->set_service_id("2");
@@ -5347,21 +5406,24 @@ void validate_protobuf(std::string& diff,
 					           backend.TOP("programs")->SUB("procinfo")->SUB("details")},
 					          {backend.TOP("programs")->SUB("environment_hash")}});
 
-        map_time_categories(md, backend.TOP("hostinfo")->SUB("tcounters"));
+	map_time_categories(md, backend.TOP("hostinfo")->SUB("tcounters"));
 	// ignore non-aggregated values
 	if (should_ignore_raw_fields)
 	{
 	    ignore_raw_fields(md, backend);
 	}
 
-        // reporter needs to fall out of scope to flush
-        {
-                google::protobuf::io::StringOutputStream output_stream(&diff);
-                IgnoreMovedReporter reporter(&output_stream);
-                md.ReportDifferencesTo(&reporter);
+	// BE doesn't handle proc start count
+	md.IgnoreField(backend.TOP("containers")->SUB("resource_counters")->SUB("aggr_proc_start_count"));
 
-                md.Compare(backend, test);
-        }
+	// reporter needs to fall out of scope to flush
+	{
+		google::protobuf::io::StringOutputStream output_stream(&diff);
+		IgnoreMovedReporter reporter(&output_stream);
+		md.ReportDifferencesTo(&reporter);
+
+		md.Compare(backend, test);
+	}
 
 	std::cerr << diff;
 }
@@ -5402,7 +5464,7 @@ TEST(validate_aggregator, DISABLED_custom_metric)
     validate_protobuf(diff, "custom-metric-issue", true);
     EXPECT_EQ(diff.size(), 0);
 }
-TEST(validate_aggregator, DISABLED_goldman)
+TEST(validate_aggregator, goldman)
 {
     std::string diff;
     validate_protobuf(diff, "goldman", true);
