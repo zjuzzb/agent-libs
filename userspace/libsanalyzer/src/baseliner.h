@@ -1327,18 +1327,6 @@ public:
 };
 
 //
-// Statistics about an in progress baseliner capture.
-//
-// This is a subset of scap_stats, containing only the relevant field
-// needed for the baseliner.
-//
-typedef struct baseliner_stats
-{
-	uint64_t n_evts; ///< Total number of events that were received by the driver.
-	uint64_t n_drops_buffer; ///< Number of dropped events caused by full buffer.
-}baseliner_stats;
-
-//
 // The baseliner class
 //
 class sinsp_baseliner
@@ -1378,6 +1366,15 @@ public:
 	bool is_drops_buffer_rate_critical(scap_stats *st, float max_drops_buffer_rate_percentage) const;
 
 private:
+	// Statistics about an in progress baseliner capture.  This is
+	// a subset of scap_stats, containing only the relevant field
+	// needed for the baseliner.
+	struct baseliner_stats
+	{
+		uint64_t n_evts; ///< Total number of events that were received by the driver.
+		uint64_t n_drops_buffer; ///< Number of dropped events caused by full buffer.
+	};
+
 	sinsp* m_inspector;
 	sinsp_analyzer& m_analyzer;
 	sinsp_network_interfaces* m_ifaddr_list;

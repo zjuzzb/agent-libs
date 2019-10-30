@@ -159,7 +159,7 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 // the total number of processed events. Upon reaching this limit, the
 // falco baseliner is disabled.
 //
-#define DEFAULT_FALCO_BASELINING_MAX_DROPS_BUFFER_RATE_PERCENTAGE 0.1f
+#define DEFAULT_FALCO_BASELINING_MAX_DROPS_BUFFER_RATE_PERCENTAGE 0.01f
 
 //
 // FD class customized with the storage we need
