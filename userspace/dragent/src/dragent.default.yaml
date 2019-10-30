@@ -1036,6 +1036,7 @@ events:
       - FailedCreate        # Pod Create Failed (warning)
       - SuccessfulDelete    # Pod Deleted       (information)
       - FailedDelete        # Pod Delete Failed (warning)
+      - RecreatingFailedPod # Recreate fail pod (warning)
   docker:
     container:
 #      - attach      # Container Attached      (information)
@@ -1201,6 +1202,8 @@ container_labels_filter:
   - exclude: "io.k8s.*"
   - include: "*"
 
+# List of labels applied to Kubernetes objects (nodes, pods, etc.) that the agent will read and store
+# The list is used top to bottom. The include/exclude rules you set in the custom YAML file are read first
 k8s_labels_filter:
   - include: "kubernetes.node.label.kubernetes.io/hostname"
   - include: "kubernetes.node.label.kubernetes.io/role"

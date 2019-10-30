@@ -141,12 +141,15 @@ k8s_user_event_message_handler::k8s_user_event_message_handler(uint64_t refresh_
 		{ "ScalingReplicaSet",                   "Scaling Replica Set"      },
 		{ "DeploymentRollbackRevisionNotFound",  "No revision to roll back" },
 		{ "DeploymentRollbackTemplateUnchanged", "Skipping Rollback"        },
-		{ "DeploymentRollback",                  "Rollback Done"            }
+		{ "DeploymentRollback",                  "Rollback Done"            },
 
 		//
 		// Daemon Set
 		//
 		// { "SelectingAll", "Selecting All Pods" } duplicate
+
+		// StatefulSet
+		{ "RecreatingFailedPod",  "Recreating Failed Pod" }
 	};
 }
 
