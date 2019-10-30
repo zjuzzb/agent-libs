@@ -1031,6 +1031,11 @@ events:
       - DeploymentRollback                  # Rollback Done            (information)
     daemonSet:
       - SelectingAll                        # Selecting All Pods       (warning)
+    statefulSet:
+      - SuccessfulCreate    # Pod Created       (information)
+      - FailedCreate        # Pod Create Failed (warning)
+      - SuccessfulDelete    # Pod Deleted       (information)
+      - FailedDelete        # Pod Delete Failed (warning)
   docker:
     container:
 #      - attach      # Container Attached      (information)

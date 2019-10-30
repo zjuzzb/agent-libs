@@ -619,6 +619,7 @@ void dragent_configuration::init()
 		add_event_filter(m_k8s_event_filter, "kubernetes", "replicaSet");
 		add_event_filter(m_k8s_event_filter, "kubernetes", "daemonSet");
 		add_event_filter(m_k8s_event_filter, "kubernetes", "deployment");
+		add_event_filter(m_k8s_event_filter, "kubernetes", "statefulSet");
 
 		// docker
 		add_event_filter(m_docker_event_filter, "docker", "container");

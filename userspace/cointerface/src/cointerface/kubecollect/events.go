@@ -105,7 +105,7 @@ func startUserEventsSInformer(ctx context.Context,
 		var err error
 		log.Debugf("UserEvents: watching filtered")
 		// k8s api doesn't do "or", so have to explicitly reject all the un-wanted kinds.
-		fSelector, err = fields.ParseSelector("involvedObject.kind!=Cronjob,involvedObject.kind!=HorizontalPodAutoscaler,involvedObject.kind!=Ingress,involvedObject.kind!=Job,involvedObject.kind!=Namespace,involvedObject.kind!=Service,involvedObject.kind!=Service,involvedObject.kind!=StatefulSet,involvedObject.kind!=ResourceQuota")
+		fSelector, err = fields.ParseSelector("involvedObject.kind!=Cronjob,involvedObject.kind!=HorizontalPodAutoscaler,involvedObject.kind!=Ingress,involvedObject.kind!=Job,involvedObject.kind!=Namespace,involvedObject.kind!=Service,involvedObject.kind!=ResourceQuota")
 		if err != nil {
 			log.Errorf("UserEvents: Failed to create field selector, falling back to watching all: %v", err)
 			fSelector = fields.Everything()
