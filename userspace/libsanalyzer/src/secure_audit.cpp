@@ -299,10 +299,12 @@ void secure_audit::emit_commands_audit_item(vector<sinsp_executed_command>* comm
 {
 	if(commands->size() != 0)
 	{
+		// when executed commands limit is reached, just discard the whole bucket of commands for this container
+		// avoid to go through sort(), increment dropped count with a rough estimation of commands count.
 		if(c_secure_audit_executed_commands_limit.get_value() != 0 &&
-		   m_executed_commands_count > c_secure_audit_executed_commands_limit.get_value())
+		   m_executed_commands_count >= c_secure_audit_executed_commands_limit.get_value())
 		{
-			m_executed_commands_count += commands->size();
+			m_executed_commands_dropped_count += commands->size();
 			return;
 		}
 
@@ -390,17 +392,15 @@ void secure_audit::emit_commands_audit_item(vector<sinsp_executed_command>* comm
 		{
 			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 			{
-				cmdcnt++;
-
 				if(c_secure_audit_executed_commands_limit.get_value() != 0 &&
-				   (m_executed_commands_count > c_secure_audit_executed_commands_limit.get_value()))
+				   (m_executed_commands_count >= c_secure_audit_executed_commands_limit.get_value()))
 				{
 					m_executed_commands_dropped_count++;
 					break;
 				}
 
 				if(c_secure_audit_executed_commands_per_container_limit.get_value() != 0 &&
-				   cmdcnt > c_secure_audit_executed_commands_per_container_limit.get_value())
+				   cmdcnt >= c_secure_audit_executed_commands_per_container_limit.get_value())
 				{
 					m_executed_commands_dropped_count++;
 					break;
@@ -409,6 +409,7 @@ void secure_audit::emit_commands_audit_item(vector<sinsp_executed_command>* comm
 				auto pb_command_audit = m_secure_audit_batch->add_executed_commands();
 
 				m_executed_commands_count++;
+				cmdcnt++;
 
 				pb_command_audit->set_timestamp(it->m_ts);
 				pb_command_audit->set_count(it->m_count);
