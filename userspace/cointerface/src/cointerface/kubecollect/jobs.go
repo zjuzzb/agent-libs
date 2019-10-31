@@ -12,7 +12,6 @@ import (
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	v1batch "k8s.io/api/batch/v1"
-	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -110,28 +109,6 @@ func addJobMetrics(metrics *[]*draiosproto.AppMetric, job coJob) {
 	AppendMetricInt32(metrics, prefix+"status.active", job.Status.Active)
 	AppendMetricInt32(metrics, prefix+"status.succeeded", job.Status.Succeeded)
 	AppendMetricInt32(metrics, prefix+"status.failed", job.Status.Failed)
-}
-
-func AddJobParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if !resourceReady("jobs") {
-		return
-	}
-
-	podLabels := labels.Set(pod.GetLabels())
-	for _, obj := range jobInf.GetStore().List() {
-		job := coJob{obj.(*v1batch.Job)}
-		if pod.GetNamespace() != job.GetNamespace() {
-			continue
-		}
-
-		selector, ok := jobSelectorCache.Get(job)
-		if ok && selector.Matches(podLabels) {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_job"),
-				Id:proto.String(string(job.GetUID()))})
-			break
-		}
-	}
 }
 
 func AddJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {

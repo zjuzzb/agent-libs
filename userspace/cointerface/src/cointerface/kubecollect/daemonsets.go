@@ -9,7 +9,6 @@ import (
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/api/core/v1"	
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -110,28 +109,6 @@ func addDaemonSetMetrics(metrics *[]*draiosproto.AppMetric, daemonSet coDaemonSe
 	AppendMetricInt32(metrics, prefix+"status.numberMisscheduled", daemonSet.Status.NumberMisscheduled)
 	AppendMetricInt32(metrics, prefix+"status.desiredNumberScheduled", daemonSet.Status.DesiredNumberScheduled)
 	AppendMetricInt32(metrics, prefix+"status.numberReady", daemonSet.Status.NumberReady)
-}
-
-func AddDaemonSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if !resourceReady("daemonsets") {
-		return
-	}
-
-	podLabels := labels.Set(pod.GetLabels())
-	for _, obj := range daemonSetInf.GetStore().List() {
-		daemonSet := coDaemonSet{obj.(*appsv1.DaemonSet)}
-		if pod.GetNamespace() != daemonSet.GetNamespace() {
-			continue
-		}
-
-		selector, ok := dsSelectorCache.Get(daemonSet)
-		if ok && selector.Matches(podLabels) {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_daemonset"),
-				Id:proto.String(string(daemonSet.GetUID()))})
-			break
-		}
-	}
 }
 
 func AddDaemonSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {

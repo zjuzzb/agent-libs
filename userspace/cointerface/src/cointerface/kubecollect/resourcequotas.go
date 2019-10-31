@@ -98,21 +98,6 @@ func AddResourceQuotaMetrics(metrics *[]*draiosproto.AppMetric, resourceQuota *v
 	}
 }
 
-func AddResourceQuotaParentsFromPod(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if !resourceReady("resourcequotas") {
-		return
-	}
-
-	for _, obj := range resourceQuotaInf.GetStore().List() {
-		resourcequota := obj.(*v1.ResourceQuota)
-		if(resourcequota.GetNamespace() == pod.GetNamespace()) {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_resourcequota"),
-				Id:proto.String(string(resourcequota.GetUID()))})
-		}
-	}
-}
-
 func AddResourceQuotaChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
 	if !resourceReady("resourcequotas") {
 		return

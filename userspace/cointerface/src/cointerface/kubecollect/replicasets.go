@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/api/core/v1"
 )
 
 // Globals are reset in startReplicaSetsSInformer
@@ -138,28 +137,6 @@ func addReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet coReplic
 	AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicaSet.Status.FullyLabeledReplicas)
 	AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicaSet.Status.ReadyReplicas)
 	AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicaSet.Spec.Replicas)
-}
-
-func AddReplicaSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if !resourceReady("replicasets") {
-		return
-	}
-
-	podLabels := labels.Set(pod.GetLabels())
-	for _, obj := range replicaSetInf.GetStore().List() {
-		rs := coReplicaSet{obj.(*appsv1.ReplicaSet)}
-		if pod.GetNamespace() != rs.GetNamespace() {
-			continue
-		}
-
-		selector, ok := rsSelectorCache.Get(rs)
-		if ok && selector.Matches(podLabels) {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_replicaset"),
-				Id:proto.String(string(rs.GetUID()))})
-			break
-		}
-	}
 }
 
 func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, ns string) {

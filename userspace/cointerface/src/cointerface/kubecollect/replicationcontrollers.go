@@ -133,27 +133,6 @@ func addReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicat
 	AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicationController.Spec.Replicas)
 }
 
-func AddReplicationControllerParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if !resourceReady("replicationcontrollers") {
-		return
-	}
-
-	podLabels := labels.Set(pod.GetLabels())
-	for _, obj := range replicationControllerInf.GetStore().List() {
-		rc := coReplicationController{obj.(*v1.ReplicationController)}
-		if pod.GetNamespace() != rc.GetNamespace() {
-			continue
-		}
-		selector, ok := rcSelectorCache.Get(rc)
-		if ok && selector.Matches(podLabels) {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_replicationcontroller"),
-				Id:proto.String(string(rc.GetUID()))})
-			break
-		}
-	}
-}
-
 func AddReplicationControllerChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
 	if !resourceReady("replicationcontrollers") {
 		return
