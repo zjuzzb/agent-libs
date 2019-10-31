@@ -104,8 +104,15 @@ TEST(aggregator, metrics)
 	// create two IP connections to make sure they both get added
 	auto ip = input.add_ipv4_connections();
 	ip->set_spid(0);
+	ip->set_state(draiosproto::connection_state::CONN_SUCCESS);
 	ip = input.add_ipv4_connections();
 	ip->set_spid(1);
+	ip->set_state(draiosproto::connection_state::CONN_SUCCESS);
+	// add one with failure status to make sure it doesn't get aggregated
+	ip = input.add_ipv4_connections();
+	ip->set_state(draiosproto::connection_state::CONN_FAILED);
+	ip = input.add_ipv4_connections();
+	ip->set_state(draiosproto::connection_state::CONN_PENDING);
 
 	auto interface = input.add_ipv4_network_interfaces();
 	interface->set_addr(0);
@@ -149,10 +156,14 @@ TEST(aggregator, metrics)
 	input.add_config_percentiles(10);
 	input.add_config_percentiles(11);
 
-	auto incomplete_interface = input.add_ipv4_incomplete_connections();
+	auto incomplete_interface = input.add_ipv4_incomplete_connections_v2();
 	incomplete_interface->set_spid(0);
-	incomplete_interface = input.add_ipv4_incomplete_connections();
+	incomplete_interface->set_state(draiosproto::connection_state::CONN_FAILED);
+	incomplete_interface = input.add_ipv4_incomplete_connections_v2();
 	incomplete_interface->set_spid(1);
+	incomplete_interface->set_state(draiosproto::connection_state::CONN_PENDING);
+	incomplete_interface = input.add_ipv4_incomplete_connections_v2();
+	incomplete_interface->set_state(draiosproto::connection_state::CONN_SUCCESS);
 
 	auto user = input.add_userdb();
 	user->set_id(0);
@@ -205,9 +216,9 @@ TEST(aggregator, metrics)
 	EXPECT_EQ(output.events()[1].scope(), "1");
 	EXPECT_EQ(output.config_percentiles()[0], 10);
 	EXPECT_EQ(output.config_percentiles()[1], 11);
-	EXPECT_EQ(output.ipv4_incomplete_connections().size(), 2);
-	EXPECT_EQ(output.ipv4_incomplete_connections()[0].spid(), 0);
-	EXPECT_EQ(output.ipv4_incomplete_connections()[1].spid(), 1);
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2().size(), 2);
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].spid(), 0);
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[1].spid(), 1);
 	EXPECT_EQ(output.userdb().size(), 2);
 	EXPECT_EQ(output.userdb()[0].id(), 0);
 	EXPECT_EQ(output.userdb()[1].id(), 1);
@@ -240,7 +251,7 @@ TEST(aggregator, metrics)
 	(*input.mutable_events())[1].set_scope("2");
 	input.clear_config_percentiles();
 	input.add_config_percentiles(100);
-	(*input.mutable_ipv4_incomplete_connections())[1].set_spid(2);
+	(*input.mutable_ipv4_incomplete_connections_v2())[1].set_spid(2);
 	(*input.mutable_userdb())[1].set_id(2);
 	(*input.mutable_environments())[1].set_hash("2");
 	(*input.mutable_top_devices())[1].set_name("2");
@@ -288,10 +299,10 @@ TEST(aggregator, metrics)
 	EXPECT_EQ(output.events()[2].scope(), "2");
 	EXPECT_EQ(output.config_percentiles().size(), 1);
 	EXPECT_EQ(output.config_percentiles()[0], 100);
-	EXPECT_EQ(output.ipv4_incomplete_connections().size(), 3);
-	EXPECT_EQ(output.ipv4_incomplete_connections()[0].spid(), 0);
-	EXPECT_EQ(output.ipv4_incomplete_connections()[1].spid(), 1);
-	EXPECT_EQ(output.ipv4_incomplete_connections()[2].spid(), 2);
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2().size(), 3);
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].spid(), 0);
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[1].spid(), 1);
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[2].spid(), 2);
 	EXPECT_EQ(output.userdb().size(), 3);
 	EXPECT_EQ(output.userdb()[0].id(), 0);
 	EXPECT_EQ(output.userdb()[1].id(), 1);
@@ -453,7 +464,7 @@ TEST(aggregator, pid_map_population)
 TEST(aggregator, pid_substitution)
 {
     message_aggregator_builder_impl builder;
-    agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	metrics_message_aggregator_impl aggregator(builder);
 
     draiosproto::metrics input;
     draiosproto::metrics output;
@@ -469,9 +480,12 @@ TEST(aggregator, pid_substitution)
 
     input.add_ipv4_connections()->set_spid(1);
     (*input.mutable_ipv4_connections())[0].set_dpid(2);
+    (*input.mutable_ipv4_connections())[0].set_state(draiosproto::connection_state::CONN_SUCCESS);
     input.add_ipv4_incomplete_connections_v2()->set_spid(3);
     (*input.mutable_ipv4_incomplete_connections_v2())[0].set_dpid(4);
+    (*input.mutable_ipv4_incomplete_connections_v2())[0].set_state(draiosproto::connection_state::CONN_PENDING);
     aggregator.aggregate(input, output);
+	aggregator.override_primary_keys(output);
 
     EXPECT_EQ(output.programs()[0].pids()[0],
 	      metrics_message_aggregator_impl::program_java_hasher(input.programs()[0]));
@@ -1228,12 +1242,14 @@ TEST(aggregator, connection_categories)
 
 	// other locations of connection_categories
 	input.add_ipv4_connections()->mutable_counters()->set_n_aggregated_connections(2);
-	input.add_ipv4_incomplete_connections()->mutable_counters()->set_n_aggregated_connections(3);
+	(*input.mutable_ipv4_connections())[0].set_state(draiosproto::connection_state::CONN_SUCCESS);
+	input.add_ipv4_incomplete_connections_v2()->mutable_counters()->set_n_aggregated_connections(3);
+	(*input.mutable_ipv4_incomplete_connections_v2())[0].set_state(draiosproto::connection_state::CONN_FAILED);
 
 	aggregator.aggregate(input, output);
 	EXPECT_EQ(output.hostinfo().network_by_serverports()[0].counters().aggr_n_aggregated_connections().sum(), 1);
 	EXPECT_EQ(output.ipv4_connections()[0].counters().aggr_n_aggregated_connections().sum(), 2);
-	EXPECT_EQ(output.ipv4_incomplete_connections()[0].counters().aggr_n_aggregated_connections().sum(), 3);
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].counters().aggr_n_aggregated_connections().sum(), 3);
 
 	in->set_n_aggregated_connections(100);
 
@@ -1290,6 +1306,7 @@ TEST(aggregator, ipv4_connection)
 	
 	in->set_spid(1);
 	in->set_dpid(2);
+	in->set_state(draiosproto::connection_state::CONN_SUCCESS);
 
 	aggregator.aggregate(input, output);
 
@@ -1334,6 +1351,7 @@ TEST(aggregator, ipv4tuple)
 	in->set_sport(3);
 	in->set_dport(4);
 	in->set_l4proto(5);
+	(*input.mutable_ipv4_connections())[0].set_state(draiosproto::connection_state::CONN_SUCCESS);
 
 	aggregator.aggregate(input, output);
 
@@ -1377,15 +1395,16 @@ TEST(aggregator, ipv4_incomplete_connection)
 	draiosproto::metrics input;
 	draiosproto::metrics output;
 
-	auto in = input.add_ipv4_incomplete_connections();
+	auto in = input.add_ipv4_incomplete_connections_v2();
 	
 	in->set_spid(1);
 	in->set_dpid(2);
+	in->set_state(draiosproto::connection_state::CONN_FAILED);
 
 	aggregator.aggregate(input, output);
 
-	EXPECT_EQ(output.ipv4_incomplete_connections()[0].spid(), 1);
-	EXPECT_EQ(output.ipv4_incomplete_connections()[0].dpid(), 2);
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].spid(), 1);
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].dpid(), 2);
 
 	// check primary key
 	draiosproto::ipv4_incomplete_connection lhs;
@@ -1500,9 +1519,15 @@ TEST(aggregator, program)
 	rhs.set_environment_hash("1");
 	EXPECT_FALSE(program_message_aggregator::comparer()(&lhs, &rhs));
 	rhs.set_environment_hash("");
-	rhs.mutable_procinfo()->mutable_details()->set_comm("1");
+	rhs.mutable_procinfo()->mutable_details()->set_exe("1");
 	EXPECT_FALSE(program_message_aggregator::comparer()(&lhs, &rhs));
-	rhs.mutable_procinfo()->mutable_details()->set_comm("");
+	rhs.mutable_procinfo()->mutable_details()->set_exe("");
+	rhs.mutable_procinfo()->mutable_details()->add_args("1");
+	EXPECT_FALSE(program_message_aggregator::comparer()(&lhs, &rhs));
+	rhs.mutable_procinfo()->mutable_details()->clear_args();
+	rhs.mutable_procinfo()->mutable_details()->set_container_id("1");
+	EXPECT_FALSE(program_message_aggregator::comparer()(&lhs, &rhs));
+	rhs.mutable_procinfo()->mutable_details()->set_container_id("");
 
 	rhs.add_pids(1);
 	rhs.add_uids(1);
@@ -1510,6 +1535,16 @@ TEST(aggregator, program)
 	EXPECT_TRUE(program_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(program_message_aggregator::hasher()(&lhs),
 		  program_message_aggregator::hasher()(&rhs));
+
+	// custom hash stuff, check that key isn't added multiple times
+	draiosproto::metrics input2;
+	draiosproto::metrics output2;
+	input2.add_programs();
+	input2.add_programs();
+	aggregator.reset();
+	aggregator.aggregate(input2, output2);
+	EXPECT_EQ(output.programs().size(), 1);
+	EXPECT_EQ(output.programs()[0].pids().size(), 1);
 }
 
 TEST(aggregator, process)
@@ -1581,9 +1616,6 @@ TEST(aggregator, process)
 	draiosproto::process rhs;
 
 	rhs.mutable_details()->set_comm("1");
-	EXPECT_FALSE(process_message_aggregator::comparer()(&lhs, &rhs));
-	rhs.mutable_details()->set_comm("");
-
 	rhs.set_transaction_processing_delay(1);
 	rhs.set_next_tiers_delay(2);
 	rhs.set_netrole(3);
@@ -1669,9 +1701,6 @@ TEST(aggregator, process_details)
 	draiosproto::process_details lhs;
 	draiosproto::process_details rhs;
 
-	rhs.set_comm("1");
-	EXPECT_FALSE(process_details_message_aggregator::comparer()(&lhs, &rhs));
-	rhs.set_comm("");
 	rhs.set_exe("1");
 	EXPECT_FALSE(process_details_message_aggregator::comparer()(&lhs, &rhs));
 	rhs.set_exe("");
@@ -1697,6 +1726,7 @@ TEST(aggregator, process_details)
 	EXPECT_FALSE(process_details_message_aggregator::comparer()(&lhs, &rhs));
 	rhs.set_container_id("");
 
+	rhs.set_comm("1");
 	EXPECT_TRUE(process_details_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(process_details_message_aggregator::hasher()(&lhs),
 		  process_details_message_aggregator::hasher()(&rhs));
@@ -2202,7 +2232,8 @@ TEST(aggregator, jmx_attribute)
 
 	aggregator.aggregate(input, output);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].name(), "1");
-	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].aggr_value_double().sum(), 2);
+	// subattribute tramples attribute value
+	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].aggr_value_double().sum(), 0);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].subattributes().size(), 2);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].subattributes()[0].name(), "1");
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].subattributes()[1].name(), "2");
@@ -2214,12 +2245,27 @@ TEST(aggregator, jmx_attribute)
 	(*in->mutable_subattributes())[1].set_name("3");
 	in->set_value(100);
 	aggregator.aggregate(input, output);
-	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].aggr_value_double().sum(), 102);
+	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].aggr_value_double().sum(), 0);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].subattributes().size(), 3);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].subattributes()[0].name(), "1");
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].subattributes()[1].name(), "2");
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].subattributes()[2].name(), "3");
 
+
+	// check that if we start with a value, then add a subattribute, it quashes the value
+	in = input.mutable_protos()->mutable_java()->add_beans()->add_attributes();
+	in->set_name("2");
+	in->set_value(2);
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.protos().java().beans()[0].attributes()[1].name(), "2");
+	EXPECT_EQ(output.protos().java().beans()[0].attributes()[1].aggr_value_double().sum(), 2);
+	in->set_value(3);
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.protos().java().beans()[0].attributes()[1].aggr_value_double().sum(), 5);
+	//now add a sub-attribute and watch value go bye-bye
+	in->add_subattributes()->set_name("1");
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.protos().java().beans()[0].attributes()[1].aggr_value_double().sum(), 0);
 
 	// validate primary key
 	draiosproto::jmx_attribute lhs;
@@ -2266,6 +2312,9 @@ TEST(aggregator, statsd_tag)
 	rhs.set_key("");
 
 	rhs.set_value("1");
+	EXPECT_FALSE(statsd_tag_message_aggregator::comparer()(&lhs, &rhs));
+	rhs.set_value("");
+
 	EXPECT_TRUE(statsd_tag_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(statsd_tag_message_aggregator::hasher()(&lhs),
 		  statsd_tag_message_aggregator::hasher()(&rhs));
@@ -2300,9 +2349,9 @@ TEST(aggregator, statsd_metric)
 
 	auto in = input.mutable_internal_metrics()->add_statsd_metrics();
 	in->set_name("1");
+	in->set_type(draiosproto::statsd_metric_type::STATSD_COUNT);
 	in->add_tags()->set_key("2");
 	in->add_tags()->set_key("3");
-	in->set_type((draiosproto::statsd_metric_type)1);
 	in->set_value(4);
 	in->set_sum(5);
 	in->set_min(6);
@@ -2321,16 +2370,40 @@ TEST(aggregator, statsd_metric)
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].tags()[1].key(), "3");
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].type(), 1);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_value().sum(), 4);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_sum().sum(), 5);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_min().sum(), 6);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_max().sum(), 7);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_count().sum(), 8);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_median().sum(), 9);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_percentile_95().sum(), 10);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_percentile_99().sum(), 11);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_sum().sum(), 0);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_min().sum(), 0);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_max().sum(), 0);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_count().sum(), 0);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_median().sum(), 0);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_percentile_95().sum(), 0);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_percentile_99().sum(), 0);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].percentile().size(), 2);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].percentile()[0].percentile(), 0);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].percentile()[1].percentile(), 1);
+	in->set_value(100);
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_value().sum(), 104);
+
+	// test a histogram type
+	in->set_name("2");
+	in->set_type(draiosproto::statsd_metric_type::STATSD_HISTOGRAM);
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].name(), "2");
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].tags().size(), 2);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].tags()[0].key(), "2");
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].tags()[1].key(), "3");
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].type(), 2);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_value().sum(), 0);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_sum().sum(), 5);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_min().sum(), 6);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_max().sum(), 7);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_count().sum(), 8);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_median().sum(), 9);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_percentile_95().sum(), 10);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_percentile_99().sum(), 11);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].percentile().size(), 2);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].percentile()[0].percentile(), 0);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].percentile()[1].percentile(), 1);
 
 	in->set_value(100);
 	in->set_sum(100);
@@ -2343,18 +2416,17 @@ TEST(aggregator, statsd_metric)
 	(*in->mutable_percentile())[0].set_percentile(2);
 
 	aggregator.aggregate(input, output);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_value().sum(), 104);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_sum().sum(), 105);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_min().sum(), 106);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_max().sum(), 107);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_count().sum(), 108);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_median().sum(), 109);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_percentile_95().sum(), 110);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_percentile_99().sum(), 111);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].percentile().size(), 3);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].percentile()[0].percentile(), 0);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].percentile()[1].percentile(), 1);
-	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].percentile()[2].percentile(), 2);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_sum().sum(), 105);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_min().sum(), 106);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_max().sum(), 107);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_count().sum(), 108);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_median().sum(), 109);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_percentile_95().sum(), 110);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_percentile_99().sum(), 111);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].percentile().size(), 3);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].percentile()[0].percentile(), 0);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].percentile()[1].percentile(), 1);
+	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].percentile()[2].percentile(), 2);
 
 
 	// validate primary key
@@ -3562,6 +3634,13 @@ TEST(aggregator, swarm_node)
 	EXPECT_EQ(output.swarm().nodes()[0].availability(), "5");
 	EXPECT_EQ(output.swarm().nodes()[0].state(), "6");
 
+	in->set_state("1");
+	in->set_version("1");
+	in->set_availability("1");
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.swarm().nodes()[0].state(), "1, 6");
+	EXPECT_EQ(output.swarm().nodes()[0].version(), "1, 4");
+	EXPECT_EQ(output.swarm().nodes()[0].availability(), "1, 5");
 	// validate primary key
 	draiosproto::swarm_node lhs;
 	draiosproto::swarm_node rhs;
@@ -3605,6 +3684,10 @@ TEST(aggregator, swarm_task)
 	EXPECT_EQ(output.swarm().tasks()[0].container_id(), "4");
 	EXPECT_EQ(output.swarm().tasks()[0].state(), "5");
 
+	in->set_state("6");
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.swarm().tasks()[0].state(), "5, 6");
+
 	// validate primary key
 	draiosproto::swarm_task lhs;
 	draiosproto::swarm_task rhs;
@@ -3638,6 +3721,10 @@ TEST(aggregator, swarm_manager)
 	aggregator.aggregate(input, output);
 	EXPECT_EQ(output.swarm().nodes()[0].manager().leader(), true);
 	EXPECT_EQ(output.swarm().nodes()[0].manager().reachability(), "1");
+
+	in->set_reachability("2");
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.swarm().nodes()[0].manager().reachability(), "1, 2");
 }
 
 TEST(aggregator, id_map)
@@ -3690,6 +3777,12 @@ TEST(aggregator, environment)
 	EXPECT_EQ(output.environments()[0].variables().size(), 2);
 	EXPECT_EQ(output.environments()[0].variables()[0], "2");
 	EXPECT_EQ(output.environments()[0].variables()[1], "3");
+	in->clear_variables();
+	in->add_variables("42");
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.environments()[0].hash(), "1");
+	EXPECT_EQ(output.environments()[0].variables().size(), 1);
+	EXPECT_EQ(output.environments()[0].variables()[0], "42");
 
 	// validate primary key
 	draiosproto::environment lhs;
@@ -3742,7 +3835,7 @@ TEST(aggregator_limit, statsd_metrics)
 	{
 		info.add_statsd_metrics()->mutable_aggr_sum()->set_sum(i);
 	}
-	aggr->limit(info);
+	statsd_info_message_aggregator::limit(builder, info);
 	EXPECT_EQ(info.statsd_metrics().size(), 5);
 	for (uint32_t i = 0; i < 5; i++)
 	{
@@ -3775,7 +3868,7 @@ TEST(aggregator_limit, container_top_devices)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::container input_copy = input;
-	aggr->limit(input_copy);
+	container_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.top_devices().size(), 4);
 	EXPECT_EQ(input_copy.top_devices()[0].aggr_time_ns().sum(), 3);
 	EXPECT_EQ(input_copy.top_devices()[1].aggr_open_count().sum(), 3);
@@ -3783,7 +3876,7 @@ TEST(aggregator_limit, container_top_devices)
 	EXPECT_EQ(input_copy.top_devices()[3].aggr_errors().sum(), 3);
 	input_copy = input;
 	builder.set_container_top_devices_limit(8);
-	aggr->limit(input_copy);
+	container_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.top_devices().size(), 8);
 	EXPECT_EQ(input_copy.top_devices()[0].aggr_time_ns().sum(), 3);
 	EXPECT_EQ(input_copy.top_devices()[1].aggr_time_ns().sum(), 2);
@@ -3820,7 +3913,7 @@ TEST(aggregator_limit, metrics_top_devices)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::metrics input_copy = input;
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.top_devices().size(), 4);
 	EXPECT_EQ(input_copy.top_devices()[0].aggr_time_ns().sum(), 3);
 	EXPECT_EQ(input_copy.top_devices()[1].aggr_open_count().sum(), 3);
@@ -3828,7 +3921,7 @@ TEST(aggregator_limit, metrics_top_devices)
 	EXPECT_EQ(input_copy.top_devices()[3].aggr_errors().sum(), 3);
 	input_copy = input;
 	builder.set_metrics_top_devices_limit(8);
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.top_devices().size(), 8);
 	EXPECT_EQ(input_copy.top_devices()[0].aggr_time_ns().sum(), 3);
 	EXPECT_EQ(input_copy.top_devices()[1].aggr_time_ns().sum(), 2);
@@ -3865,7 +3958,7 @@ TEST(aggregator_limit, process_top_devices)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::process input_copy = input;
-	aggr->limit(input_copy);
+	process_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.top_devices().size(), 4);
 	EXPECT_EQ(input_copy.top_devices()[0].aggr_time_ns().sum(), 3);
 	EXPECT_EQ(input_copy.top_devices()[1].aggr_open_count().sum(), 3);
@@ -3873,7 +3966,7 @@ TEST(aggregator_limit, process_top_devices)
 	EXPECT_EQ(input_copy.top_devices()[3].aggr_errors().sum(), 3);
 	input_copy = input;
 	builder.set_process_top_devices_limit(8);
-	aggr->limit(input_copy);
+	process_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.top_devices().size(), 8);
 	EXPECT_EQ(input_copy.top_devices()[0].aggr_time_ns().sum(), 3);
 	EXPECT_EQ(input_copy.top_devices()[1].aggr_time_ns().sum(), 2);
@@ -3910,7 +4003,7 @@ TEST(aggregator_limit, metrics_top_files)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::metrics input_copy = input;
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.top_files().size(), 4);
 	EXPECT_EQ(input_copy.top_files()[0].aggr_time_ns().sum(), 3);
 	EXPECT_EQ(input_copy.top_files()[1].aggr_open_count().sum(), 3);
@@ -3918,7 +4011,7 @@ TEST(aggregator_limit, metrics_top_files)
 	EXPECT_EQ(input_copy.top_files()[3].aggr_errors().sum(), 3);
 	input_copy = input;
 	builder.set_metrics_top_files_limit(8);
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.top_files().size(), 8);
 	EXPECT_EQ(input_copy.top_files()[0].aggr_time_ns().sum(), 3);
 	EXPECT_EQ(input_copy.top_files()[1].aggr_time_ns().sum(), 2);
@@ -3955,7 +4048,7 @@ TEST(aggregator_limit, container_top_files)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::container input_copy = input;
-	aggr->limit(input_copy);
+	container_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.top_files().size(), 4);
 	EXPECT_EQ(input_copy.top_files()[0].aggr_time_ns().sum(), 3);
 	EXPECT_EQ(input_copy.top_files()[1].aggr_open_count().sum(), 3);
@@ -3963,7 +4056,7 @@ TEST(aggregator_limit, container_top_files)
 	EXPECT_EQ(input_copy.top_files()[3].aggr_errors().sum(), 3);
 	input_copy = input;
 	builder.set_container_top_files_limit(8);
-	aggr->limit(input_copy);
+	container_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.top_files().size(), 8);
 	EXPECT_EQ(input_copy.top_files()[0].aggr_time_ns().sum(), 3);
 	EXPECT_EQ(input_copy.top_files()[1].aggr_time_ns().sum(), 2);
@@ -4000,7 +4093,7 @@ TEST(aggregator_limit, process_top_files)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::process input_copy = input;
-	aggr->limit(input_copy);
+	process_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.top_files().size(), 4);
 	EXPECT_EQ(input_copy.top_files()[0].aggr_time_ns().sum(), 3);
 	EXPECT_EQ(input_copy.top_files()[1].aggr_open_count().sum(), 3);
@@ -4008,7 +4101,7 @@ TEST(aggregator_limit, process_top_files)
 	EXPECT_EQ(input_copy.top_files()[3].aggr_errors().sum(), 3);
 	input_copy = input;
 	builder.set_process_top_files_limit(8);
-	aggr->limit(input_copy);
+	process_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.top_files().size(), 8);
 	EXPECT_EQ(input_copy.top_files()[0].aggr_time_ns().sum(), 3);
 	EXPECT_EQ(input_copy.top_files()[1].aggr_time_ns().sum(), 2);
@@ -4045,7 +4138,7 @@ TEST(aggregator_limit, client_queries)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::sql_info input_copy = input;
-	aggr->limit(input_copy);
+	sql_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.client_queries().size(), 4);
 	EXPECT_EQ(input_copy.client_queries()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.client_queries()[1].counters().aggr_time_max().sum(), 3);
@@ -4053,7 +4146,7 @@ TEST(aggregator_limit, client_queries)
 	EXPECT_EQ(input_copy.client_queries()[3].counters().aggr_bytes_in().sum(), 3);
 	input_copy = input;
 	builder.set_sql_info_client_queries_limit(8);
-	aggr->limit(input_copy);
+	sql_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.client_queries().size(), 8);
 	EXPECT_EQ(input_copy.client_queries()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.client_queries()[1].counters().aggr_time_tot().sum(), 2);
@@ -4090,7 +4183,7 @@ TEST(aggregator_limit, client_tables)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::sql_info input_copy = input;
-	aggr->limit(input_copy);
+	sql_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.client_tables().size(), 4);
 	EXPECT_EQ(input_copy.client_tables()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.client_tables()[1].counters().aggr_time_max().sum(), 3);
@@ -4098,7 +4191,7 @@ TEST(aggregator_limit, client_tables)
 	EXPECT_EQ(input_copy.client_tables()[3].counters().aggr_bytes_in().sum(), 3);
 	input_copy = input;
 	builder.set_sql_info_client_tables_limit(8);
-	aggr->limit(input_copy);
+	sql_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.client_tables().size(), 8);
 	EXPECT_EQ(input_copy.client_tables()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.client_tables()[1].counters().aggr_time_tot().sum(), 2);
@@ -4135,7 +4228,7 @@ TEST(aggregator_limit, server_queries)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::sql_info input_copy = input;
-	aggr->limit(input_copy);
+	sql_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.server_queries().size(), 4);
 	EXPECT_EQ(input_copy.server_queries()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.server_queries()[1].counters().aggr_time_max().sum(), 3);
@@ -4143,7 +4236,7 @@ TEST(aggregator_limit, server_queries)
 	EXPECT_EQ(input_copy.server_queries()[3].counters().aggr_bytes_in().sum(), 3);
 	input_copy = input;
 	builder.set_sql_info_server_queries_limit(8);
-	aggr->limit(input_copy);
+	sql_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.server_queries().size(), 8);
 	EXPECT_EQ(input_copy.server_queries()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.server_queries()[1].counters().aggr_time_tot().sum(), 2);
@@ -4180,7 +4273,7 @@ TEST(aggregator_limit, server_tables)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::sql_info input_copy = input;
-	aggr->limit(input_copy);
+	sql_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.server_tables().size(), 4);
 	EXPECT_EQ(input_copy.server_tables()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.server_tables()[1].counters().aggr_time_max().sum(), 3);
@@ -4188,7 +4281,7 @@ TEST(aggregator_limit, server_tables)
 	EXPECT_EQ(input_copy.server_tables()[3].counters().aggr_bytes_in().sum(), 3);
 	input_copy = input;
 	builder.set_sql_info_server_tables_limit(8);
-	aggr->limit(input_copy);
+	sql_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.server_tables().size(), 8);
 	EXPECT_EQ(input_copy.server_tables()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.server_tables()[1].counters().aggr_time_tot().sum(), 2);
@@ -4225,7 +4318,7 @@ TEST(aggregator_limit, server_query_types)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::sql_info input_copy = input;
-	aggr->limit(input_copy);
+	sql_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.server_query_types().size(), 4);
 	EXPECT_EQ(input_copy.server_query_types()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.server_query_types()[1].counters().aggr_time_max().sum(), 3);
@@ -4233,7 +4326,7 @@ TEST(aggregator_limit, server_query_types)
 	EXPECT_EQ(input_copy.server_query_types()[3].counters().aggr_bytes_in().sum(), 3);
 	input_copy = input;
 	builder.set_sql_info_server_query_types_limit(8);
-	aggr->limit(input_copy);
+	sql_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.server_query_types().size(), 8);
 	EXPECT_EQ(input_copy.server_query_types()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.server_query_types()[1].counters().aggr_time_tot().sum(), 2);
@@ -4270,7 +4363,7 @@ TEST(aggregator_limit, client_query_types)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::sql_info input_copy = input;
-	aggr->limit(input_copy);
+	sql_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.client_query_types().size(), 4);
 	EXPECT_EQ(input_copy.client_query_types()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.client_query_types()[1].counters().aggr_time_max().sum(), 3);
@@ -4278,7 +4371,7 @@ TEST(aggregator_limit, client_query_types)
 	EXPECT_EQ(input_copy.client_query_types()[3].counters().aggr_bytes_in().sum(), 3);
 	input_copy = input;
 	builder.set_sql_info_client_query_types_limit(8);
-	aggr->limit(input_copy);
+	sql_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.client_query_types().size(), 8);
 	EXPECT_EQ(input_copy.client_query_types()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.client_query_types()[1].counters().aggr_time_tot().sum(), 2);
@@ -4315,7 +4408,7 @@ TEST(aggregator_limit, client_ops)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::mongodb_info input_copy = input;
-	aggr->limit(input_copy);
+	mongodb_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.client_ops().size(), 4);
 	EXPECT_EQ(input_copy.client_ops()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.client_ops()[1].counters().aggr_time_max().sum(), 3);
@@ -4323,7 +4416,7 @@ TEST(aggregator_limit, client_ops)
 	EXPECT_EQ(input_copy.client_ops()[3].counters().aggr_bytes_in().sum(), 3);
 	input_copy = input;
 	builder.set_mongodb_info_client_ops_limit(8);
-	aggr->limit(input_copy);
+	mongodb_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.client_ops().size(), 8);
 	EXPECT_EQ(input_copy.client_ops()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.client_ops()[1].counters().aggr_time_tot().sum(), 2);
@@ -4360,7 +4453,7 @@ TEST(aggregator_limit, servers_ops)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::mongodb_info input_copy = input;
-	aggr->limit(input_copy);
+	mongodb_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.servers_ops().size(), 4);
 	EXPECT_EQ(input_copy.servers_ops()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.servers_ops()[1].counters().aggr_time_max().sum(), 3);
@@ -4368,7 +4461,7 @@ TEST(aggregator_limit, servers_ops)
 	EXPECT_EQ(input_copy.servers_ops()[3].counters().aggr_bytes_in().sum(), 3);
 	input_copy = input;
 	builder.set_mongodb_info_servers_ops_limit(8);
-	aggr->limit(input_copy);
+	mongodb_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.servers_ops().size(), 8);
 	EXPECT_EQ(input_copy.servers_ops()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.servers_ops()[1].counters().aggr_time_tot().sum(), 2);
@@ -4405,7 +4498,7 @@ TEST(aggregator_limit, client_collections)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::mongodb_info input_copy = input;
-	aggr->limit(input_copy);
+	mongodb_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.client_collections().size(), 4);
 	EXPECT_EQ(input_copy.client_collections()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.client_collections()[1].counters().aggr_time_max().sum(), 3);
@@ -4413,7 +4506,7 @@ TEST(aggregator_limit, client_collections)
 	EXPECT_EQ(input_copy.client_collections()[3].counters().aggr_bytes_in().sum(), 3);
 	input_copy = input;
 	builder.set_mongodb_info_client_collections_limit(8);
-	aggr->limit(input_copy);
+	mongodb_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.client_collections().size(), 8);
 	EXPECT_EQ(input_copy.client_collections()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.client_collections()[1].counters().aggr_time_tot().sum(), 2);
@@ -4450,7 +4543,7 @@ TEST(aggregator_limit, server_collections)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::mongodb_info input_copy = input;
-	aggr->limit(input_copy);
+	mongodb_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.server_collections().size(), 4);
 	EXPECT_EQ(input_copy.server_collections()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.server_collections()[1].counters().aggr_time_max().sum(), 3);
@@ -4458,7 +4551,7 @@ TEST(aggregator_limit, server_collections)
 	EXPECT_EQ(input_copy.server_collections()[3].counters().aggr_bytes_in().sum(), 3);
 	input_copy = input;
 	builder.set_mongodb_info_server_collections_limit(8);
-	aggr->limit(input_copy);
+	mongodb_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.server_collections().size(), 8);
 	EXPECT_EQ(input_copy.server_collections()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.server_collections()[1].counters().aggr_time_tot().sum(), 2);
@@ -4495,7 +4588,7 @@ TEST(aggregator_limit, client_urls)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::http_info input_copy = input;
-	aggr->limit(input_copy);
+	http_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.client_urls().size(), 4);
 	EXPECT_EQ(input_copy.client_urls()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.client_urls()[1].counters().aggr_time_max().sum(), 3);
@@ -4503,7 +4596,7 @@ TEST(aggregator_limit, client_urls)
 	EXPECT_EQ(input_copy.client_urls()[3].counters().aggr_bytes_in().sum(), 3);
 	input_copy = input;
 	builder.set_http_info_client_urls_limit(8);
-	aggr->limit(input_copy);
+	http_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.client_urls().size(), 8);
 	EXPECT_EQ(input_copy.client_urls()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.client_urls()[1].counters().aggr_time_tot().sum(), 2);
@@ -4540,7 +4633,7 @@ TEST(aggregator_limit, server_urls)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::http_info input_copy = input;
-	aggr->limit(input_copy);
+	http_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.server_urls().size(), 4);
 	EXPECT_EQ(input_copy.server_urls()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.server_urls()[1].counters().aggr_time_max().sum(), 3);
@@ -4548,7 +4641,7 @@ TEST(aggregator_limit, server_urls)
 	EXPECT_EQ(input_copy.server_urls()[3].counters().aggr_bytes_in().sum(), 3);
 	input_copy = input;
 	builder.set_http_info_server_urls_limit(8);
-	aggr->limit(input_copy);
+	http_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.server_urls().size(), 8);
 	EXPECT_EQ(input_copy.server_urls()[0].counters().aggr_time_tot().sum(), 3);
 	EXPECT_EQ(input_copy.server_urls()[1].counters().aggr_time_tot().sum(), 2);
@@ -4574,7 +4667,7 @@ TEST(aggregator_limit, client_status_codes)
 	}
 
 	draiosproto::http_info input_copy = input;
-	aggr->limit(input_copy);
+	http_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.client_status_codes().size(), 12);
 	for(int i = 0; i < 10; i++)
 	{ // biggest 10
@@ -4600,7 +4693,7 @@ TEST(aggregator_limit, server_status_codes)
 	}
 
 	draiosproto::http_info input_copy = input;
-	aggr->limit(input_copy);
+	http_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.server_status_codes().size(), 12);
 	for(int i = 0; i < 10; i++)
 	{ // biggest 10
@@ -4637,7 +4730,7 @@ TEST(aggregator_limit, metrics_mounts)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::metrics input_copy = input;
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.mounts().size(), 4);
 	EXPECT_EQ(input_copy.mounts()[0].aggr_size_bytes().sum(), 3);
 	EXPECT_EQ(input_copy.mounts()[1].aggr_available_bytes().sum(), 3);
@@ -4645,7 +4738,7 @@ TEST(aggregator_limit, metrics_mounts)
 	EXPECT_EQ(input_copy.mounts()[3].aggr_total_inodes().sum(), 3);
 	input_copy = input;
 	builder.set_metrics_mounts_limit(8);
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.mounts().size(), 8);
 	EXPECT_EQ(input_copy.mounts()[0].aggr_size_bytes().sum(), 3);
 	EXPECT_EQ(input_copy.mounts()[1].aggr_size_bytes().sum(), 2);
@@ -4682,7 +4775,7 @@ TEST(aggregator_limit, container_mounts)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::container input_copy = input;
-	aggr->limit(input_copy);
+	container_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.mounts().size(), 4);
 	EXPECT_EQ(input_copy.mounts()[0].aggr_size_bytes().sum(), 3);
 	EXPECT_EQ(input_copy.mounts()[1].aggr_available_bytes().sum(), 3);
@@ -4690,7 +4783,7 @@ TEST(aggregator_limit, container_mounts)
 	EXPECT_EQ(input_copy.mounts()[3].aggr_total_inodes().sum(), 3);
 	input_copy = input;
 	builder.set_container_mounts_limit(8);
-	aggr->limit(input_copy);
+	container_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.mounts().size(), 8);
 	EXPECT_EQ(input_copy.mounts()[0].aggr_size_bytes().sum(), 3);
 	EXPECT_EQ(input_copy.mounts()[1].aggr_size_bytes().sum(), 2);
@@ -4717,13 +4810,13 @@ TEST(aggregator_limit, container_nbs)
 	input.add_network_by_serverports()->mutable_counters()->mutable_server()->mutable_aggr_bytes_out()->set_sum(4);
 
 	draiosproto::container input_copy = input;
-	aggr->limit(input_copy);
+	container_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.network_by_serverports().size(), 2);
 	EXPECT_EQ(input_copy.network_by_serverports()[0].counters().server().aggr_bytes_out().sum(), 4);
 	EXPECT_EQ(input_copy.network_by_serverports()[1].counters().server().aggr_bytes_in().sum(), 3);
 	builder.set_container_network_by_serverports_limit(4);
 	input_copy = input;
-	aggr->limit(input_copy);
+	container_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.network_by_serverports().size(), 4);
 	EXPECT_EQ(input_copy.network_by_serverports()[0].counters().server().aggr_bytes_out().sum(), 4);
 	EXPECT_EQ(input_copy.network_by_serverports()[1].counters().server().aggr_bytes_in().sum(), 3);
@@ -4746,13 +4839,13 @@ TEST(aggregator_limit, host_nbs)
 	input.add_network_by_serverports()->mutable_counters()->mutable_server()->mutable_aggr_bytes_out()->set_sum(4);
 
 	draiosproto::host input_copy = input;
-	aggr->limit(input_copy);
+	host_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.network_by_serverports().size(), 2);
 	EXPECT_EQ(input_copy.network_by_serverports()[0].counters().server().aggr_bytes_out().sum(), 4);
 	EXPECT_EQ(input_copy.network_by_serverports()[1].counters().server().aggr_bytes_in().sum(), 3);
 	builder.set_host_network_by_serverports_limit(4);
 	input_copy = input;
-	aggr->limit(input_copy);
+	host_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.network_by_serverports().size(), 4);
 	EXPECT_EQ(input_copy.network_by_serverports()[0].counters().server().aggr_bytes_out().sum(), 4);
 	EXPECT_EQ(input_copy.network_by_serverports()[1].counters().server().aggr_bytes_in().sum(), 3);
@@ -4774,7 +4867,7 @@ TEST(aggregator_limit, app_metric)
 	}
 
 	draiosproto::app_info input_copy = input;
-	aggr->limit(input_copy);
+	app_info_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.metrics().size(), 5);
 	for(int i = 0; i < 5; i++)
 	{
@@ -4796,7 +4889,7 @@ TEST(aggregator_limit, events)
 	}
 
 	draiosproto::metrics input_copy = input;
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.events().size(), 5);
 	for(int i = 0; i < 5; i++)
 	{
@@ -4829,7 +4922,7 @@ TEST(aggregator_limit, incomplete_connections)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::metrics input_copy = input;
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2().size(), 4);
 	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2()[0].counters().client().aggr_bytes_out().sum(), 3);
 	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2()[1].counters().transaction_counters().aggr_count_in().sum(), 3);
@@ -4837,7 +4930,7 @@ TEST(aggregator_limit, incomplete_connections)
 	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2()[3].counters().max_transaction_counters().aggr_count_in().sum(), 3);
 	builder.set_metrics_ipv4_incomplete_connections_v2_limit(8);
 	input_copy = input;
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2().size(), 8);
 	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2()[0].counters().client().aggr_bytes_out().sum(), 3);
 	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2()[1].counters().server().aggr_bytes_out().sum(), 2);
@@ -4874,7 +4967,7 @@ TEST(aggregator_limit, connections)
 	// which is stricter than it needs to be, but it's a pain in the neck to do it that
 	// way
 	draiosproto::metrics input_copy = input;
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.ipv4_connections().size(), 4);
 	EXPECT_EQ(input_copy.ipv4_connections()[0].counters().client().aggr_bytes_out().sum(), 3);
 	EXPECT_EQ(input_copy.ipv4_connections()[1].counters().transaction_counters().aggr_count_in().sum(), 3);
@@ -4882,7 +4975,7 @@ TEST(aggregator_limit, connections)
 	EXPECT_EQ(input_copy.ipv4_connections()[3].counters().max_transaction_counters().aggr_count_in().sum(), 3);
 	builder.set_metrics_ipv4_connections_limit(8);
 	input_copy = input;
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.ipv4_connections().size(), 8);
 	EXPECT_EQ(input_copy.ipv4_connections()[0].counters().client().aggr_bytes_out().sum(), 3);
 	EXPECT_EQ(input_copy.ipv4_connections()[1].counters().server().aggr_bytes_out().sum(), 2);
@@ -4917,7 +5010,7 @@ TEST(aggregator_limit, containers)
 	input.add_containers()->mutable_tcounters()->mutable_io_net()->mutable_aggr_bytes_in()->set_sum(3);
 	
 	draiosproto::metrics input_copy = input;
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.containers().size(), 4);
 	EXPECT_EQ(input_copy.containers()[0].resource_counters().aggr_cpu_pct().sum(), 3);
 	EXPECT_EQ(input_copy.containers()[1].resource_counters().aggr_resident_memory_usage_kb().sum(), 3);
@@ -4925,7 +5018,7 @@ TEST(aggregator_limit, containers)
 	EXPECT_EQ(input_copy.containers()[3].tcounters().io_net().aggr_bytes_in().sum(), 3);
 	input_copy = input;
 	builder.set_metrics_containers_limit(8);
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.containers().size(), 8);
 	EXPECT_EQ(input_copy.containers()[0].resource_counters().aggr_cpu_pct().sum(), 3);
 	EXPECT_EQ(input_copy.containers()[1].resource_counters().aggr_cpu_pct().sum(), 2);
@@ -4947,7 +5040,7 @@ TEST(aggregator_limit, containers)
 	input.add_containers()->add_container_reporting_group_id(1);
 	input.add_containers()->add_container_reporting_group_id(1);
 	input_copy = input;
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.containers().size(), 6);
 	EXPECT_EQ(input_copy.containers()[0].container_reporting_group_id().size(), 1);
 	EXPECT_EQ(input_copy.containers()[1].container_reporting_group_id().size(), 1);
@@ -4959,7 +5052,7 @@ TEST(aggregator_limit, containers)
 	// limit below number of priority containers
 	builder.set_metrics_containers_limit(1);
 	input_copy = input;
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.containers().size(), 1);
 	EXPECT_EQ(input_copy.containers()[0].container_reporting_group_id().size(), 1);
 	
@@ -4993,7 +5086,7 @@ TEST(aggregator_limit, programs)
 	}
 	
 	draiosproto::metrics input_copy = input;
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.programs().size(), 5);
 	EXPECT_EQ(input_copy.programs()[0].procinfo().resource_counters().aggr_cpu_pct().sum(), 3);
 	EXPECT_EQ(input_copy.programs()[1].procinfo().resource_counters().aggr_resident_memory_usage_kb().sum(), 3);
@@ -5002,7 +5095,7 @@ TEST(aggregator_limit, programs)
 	EXPECT_EQ(input_copy.programs()[4].procinfo().protos().app().metrics().size(), 1);
 	input_copy = input;
 	builder.set_metrics_programs_limit(10);
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.programs().size(), 10);
 	EXPECT_EQ(input_copy.programs()[0].procinfo().resource_counters().aggr_cpu_pct().sum(), 3);
 	EXPECT_EQ(input_copy.programs()[1].procinfo().resource_counters().aggr_cpu_pct().sum(), 2);
@@ -5032,7 +5125,7 @@ TEST(aggregator_limit, programs)
 	}
 
 	input_copy = input;
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.programs().size(), 7);
 	EXPECT_EQ(input_copy.programs()[0].program_reporting_group_id().size(), 1);
 	EXPECT_EQ(input_copy.programs()[1].program_reporting_group_id().size(), 1);
@@ -5045,7 +5138,7 @@ TEST(aggregator_limit, programs)
 	// limit below number of priority programs
 	builder.set_metrics_programs_limit(1);
 	input_copy = input;
-	aggr->limit(input_copy);
+	metrics_message_aggregator::limit(builder, input_copy);
 	EXPECT_EQ(input_copy.programs().size(), 1);
 	EXPECT_EQ(input_copy.programs()[0].program_reporting_group_id().size(), 1);
 	
@@ -5185,15 +5278,16 @@ public:
 	    // ones as the backend. So for this test, we emit all programs, and then
 	    // simply ignore the extra ones. Some other test validates that we can
 	    // adhere to a limit when we need to.
-	    if (field_path.back().field->name() == "programs")
+	    if (field_path.back().field->name() == "programs" ||
+			field_path.back().field->name() == "ipv4_connections")
 	    {
-		return;
+			return;
 	    }
 
 	    // can't guarantee exact equality of CPD due to its approximation nature
 	    if (field_path.back().field->containing_type()->name() == "counter_percentile_data")
 	    {
-		return;
+			return;
 	    }
 
 	    google::protobuf::util::MessageDifferencer::StreamReporter::ReportAdded(message1,
@@ -5260,6 +5354,15 @@ void ignore_raw_counter_time_bytes(google::protobuf::util::MessageDifferencer& m
     md.IgnoreField(field->SUB("bytes_other"));
 }
 
+void ignore_raw_counter_bytes(google::protobuf::util::MessageDifferencer& md,
+							  const google::protobuf::FieldDescriptor* field)
+{
+    md.IgnoreField(field->SUB("count_in"));
+    md.IgnoreField(field->SUB("count_out"));
+    md.IgnoreField(field->SUB("bytes_in"));
+    md.IgnoreField(field->SUB("bytes_out"));
+}
+
 void ignore_raw_time_categories(google::protobuf::util::MessageDifferencer& md,
 				const google::protobuf::FieldDescriptor* field)
 {
@@ -5292,6 +5395,41 @@ void ignore_raw_mounted_fs(google::protobuf::util::MessageDifferencer& md,
     md.IgnoreField(field->SUB("available_bytes"));
 }
 
+void ignore_raw_connection_categories(google::protobuf::util::MessageDifferencer& md,
+									  const google::protobuf::FieldDescriptor* field)
+{
+	ignore_raw_counter_bytes(md, field->SUB("server"));
+	ignore_raw_counter_bytes(md, field->SUB("client"));
+}
+
+void ignore_raw_file_stat(google::protobuf::util::MessageDifferencer& md,
+						  const google::protobuf::FieldDescriptor* field)
+{
+	md.IgnoreField(field->SUB("bytes"));
+	md.IgnoreField(field->SUB("errors"));
+	md.IgnoreField(field->SUB("time_ns"));
+	md.IgnoreField(field->SUB("open_count"));
+}
+
+void ignore_raw_protos(google::protobuf::util::MessageDifferencer& md,
+					   const google::protobuf::FieldDescriptor* field)
+{
+	md.IgnoreField(field->SUB("mongodb")->SUB("server_totals")->SUB("ncalls"));
+	md.IgnoreField(field->SUB("mongodb")->SUB("server_totals")->SUB("time_tot"));
+	md.IgnoreField(field->SUB("mongodb")->SUB("server_totals")->SUB("time_max"));
+	md.IgnoreField(field->SUB("mongodb")->SUB("server_totals")->SUB("bytes_in"));
+	md.IgnoreField(field->SUB("mongodb")->SUB("server_totals")->SUB("bytes_out"));
+	md.IgnoreField(field->SUB("mongodb")->SUB("server_totals")->SUB("nerrors"));
+	md.IgnoreField(field->SUB("mongodb")->SUB("client_totals")->SUB("ncalls"));
+	md.IgnoreField(field->SUB("mongodb")->SUB("client_totals")->SUB("time_tot"));
+	md.IgnoreField(field->SUB("mongodb")->SUB("client_totals")->SUB("time_max"));
+	md.IgnoreField(field->SUB("mongodb")->SUB("client_totals")->SUB("bytes_in"));
+	md.IgnoreField(field->SUB("mongodb")->SUB("client_totals")->SUB("bytes_out"));
+	md.IgnoreField(field->SUB("mongodb")->SUB("client_totals")->SUB("nerrors"));
+	md.IgnoreField(field->SUB("http")->SUB("server_status_codes")->SUB("ncalls"));
+	md.IgnoreField(field->SUB("http")->SUB("client_status_codes")->SUB("ncalls"));
+}
+
 // the collector reports 0 for the raw value of aggregated metrics. We don't explicitly
 // set it, as it is ignored by the backend. This function sets the differ to
 // ignore all those fields
@@ -5304,6 +5442,9 @@ void ignore_raw_fields(google::protobuf::util::MessageDifferencer& md,
     ignore_raw_counter_time_bidirectional(md, message.TOP("hostinfo")->SUB("max_transaction_counters"));
 
     ignore_raw_mounted_fs(md, message.TOP("containers")->SUB("mounts"));
+	ignore_raw_connection_categories(md, message.TOP("hostinfo")->SUB("network_by_serverports")->SUB("counters"));
+	ignore_raw_file_stat(md, message.TOP("top_devices"));
+	ignore_raw_protos(md, message.TOP("unreported_counters")->SUB("protos"));
 }
 
 void map_percentile(google::protobuf::util::MessageDifferencer& md,
@@ -5338,13 +5479,143 @@ void map_time_categories(google::protobuf::util::MessageDifferencer& md,
     map_percentile(md, field->SUB("processing")->SUB("percentile"));
 }
 
+void map_protos(google::protobuf::util::MessageDifferencer& md,
+				const google::protobuf::FieldDescriptor* field)
+{
+	md.TreatAsMap(field->SUB("mongodb")->SUB("client_collections"),
+				  field->SUB("mongodb")->SUB("client_collections")->SUB("name"));
+	md.TreatAsMap(field->SUB("mongodb")->SUB("server_collections"),
+				  field->SUB("mongodb")->SUB("server_collections")->SUB("name"));
+	md.TreatAsMap(field->SUB("mongodb")->SUB("client_ops"),
+				  field->SUB("mongodb")->SUB("client_ops")->SUB("op"));
+	md.TreatAsMap(field->SUB("mongodb")->SUB("servers_ops"),
+				  field->SUB("mongodb")->SUB("servers_ops")->SUB("op"));
+	md.TreatAsMap(field->SUB("postgres")->SUB("client_query_types"),
+				  field->SUB("postgres")->SUB("client_query_types")->SUB("type"));
+	md.TreatAsMap(field->SUB("postgres")->SUB("server_query_types"),
+				  field->SUB("postgres")->SUB("server_query_types")->SUB("type"));
+	md.TreatAsMap(field->SUB("postgres")->SUB("client_tables"),
+				  field->SUB("postgres")->SUB("client_tables")->SUB("name"));
+	md.TreatAsMap(field->SUB("postgres")->SUB("server_tables"),
+				  field->SUB("postgres")->SUB("server_tables")->SUB("name"));
+	md.TreatAsMap(field->SUB("postgres")->SUB("server_queries"),
+				  field->SUB("postgres")->SUB("server_queries")->SUB("name"));
+	md.TreatAsMap(field->SUB("mysql")->SUB("client_query_types"),
+				  field->SUB("mysql")->SUB("client_query_types")->SUB("type"));
+	md.TreatAsMap(field->SUB("mysql")->SUB("server_query_types"),
+				  field->SUB("mysql")->SUB("server_query_types")->SUB("type"));
+	md.TreatAsMap(field->SUB("mysql")->SUB("client_queries"),
+				  field->SUB("mysql")->SUB("client_queries")->SUB("name"));
+	md.TreatAsMap(field->SUB("mysql")->SUB("client_tables"),
+				  field->SUB("mysql")->SUB("client_tables")->SUB("name"));
+	md.TreatAsMap(field->SUB("mysql")->SUB("server_tables"),
+				  field->SUB("mysql")->SUB("server_tables")->SUB("name"));
+	md.TreatAsMap(field->SUB("http")->SUB("client_urls"),
+				  field->SUB("http")->SUB("client_urls")->SUB("url"));
+	md.TreatAsMap(field->SUB("http")->SUB("server_urls"),
+				  field->SUB("http")->SUB("server_urls")->SUB("url"));
+	md.TreatAsMap(field->SUB("http")->SUB("server_status_codes"),
+				  field->SUB("http")->SUB("server_status_codes")->SUB("status_code"));
+	md.TreatAsMap(field->SUB("http")->SUB("client_status_codes"),
+				  field->SUB("http")->SUB("client_status_codes")->SUB("status_code"));
+	md.TreatAsMap(field->SUB("app")->SUB("checks"),
+				  field->SUB("app")->SUB("checks")->SUB("name"));
+	md.TreatAsMap(field->SUB("app")->SUB("checks")->SUB("tags"),
+	              field->SUB("app")->SUB("checks")->SUB("tags")->SUB("key"));
+
+	md.TreatAsMapWithMultipleFieldsAsKey(field->SUB("app")->SUB("metrics"),
+										 {field->SUB("app")->SUB("metrics")->SUB("name"),
+										  field->SUB("app")->SUB("metrics")->SUB("tags")});
+
+	md.TreatAsMap(field->SUB("java")->SUB("beans"),
+				  field->SUB("java")->SUB("beans")->SUB("name"));
+	md.TreatAsMap(field->SUB("java")->SUB("beans")->SUB("attributes"),
+				  field->SUB("java")->SUB("beans")->SUB("attributes")->SUB("name"));
+	md.TreatAsMap(field->SUB("java")->SUB("beans")->SUB("attributes")->SUB("subattributes"),
+				  field->SUB("java")->SUB("beans")->SUB("attributes")->SUB("subattributes")->SUB("name"));
+	md.TreatAsMapWithMultipleFieldsAsKey(field->SUB("statsd")->SUB("statsd_metrics"),
+					     {field->SUB("statsd")->SUB("statsd_metrics")->SUB("name"),
+					      field->SUB("statsd")->SUB("statsd_metrics")->SUB("tags")});
+	md.TreatAsSet(field->SUB("statsd")->SUB("statsd_metrics")->SUB("tags"));
+
+}
+
+void map_swarm(google::protobuf::util::MessageDifferencer& md,
+			   const google::protobuf::FieldDescriptor* field)
+{
+	md.TreatAsMapWithMultipleFieldPathsAsKey(field->SUB("tasks"),
+					         {{field->SUB("tasks")->SUB("common"),
+					           field->SUB("tasks")->SUB("common")->SUB("id")}});
+	md.TreatAsMapWithMultipleFieldPathsAsKey(field->SUB("nodes"),
+					         {{field->SUB("nodes")->SUB("common"),
+					           field->SUB("nodes")->SUB("common")->SUB("id")}});
+	md.TreatAsMapWithMultipleFieldPathsAsKey(field->SUB("services"),
+					         {{field->SUB("services")->SUB("common"),
+					           field->SUB("services")->SUB("common")->SUB("id")}});
+	md.TreatAsMap(field->SUB("tasks")->SUB("common")->SUB("labels"),
+				  field->SUB("tasks")->SUB("common")->SUB("labels")->SUB("key"));
+	md.TreatAsMap(field->SUB("nodes")->SUB("common")->SUB("labels"),
+				  field->SUB("nodes")->SUB("common")->SUB("labels")->SUB("key"));
+	md.TreatAsMap(field->SUB("services")->SUB("common")->SUB("labels"),
+				  field->SUB("services")->SUB("common")->SUB("labels")->SUB("key"));
+	md.TreatAsSet(field->SUB("services")->SUB("ports"));
+	md.TreatAsSet(field->SUB("services")->SUB("virtual_ips"));
+}
+
+void map_mesos(google::protobuf::util::MessageDifferencer& md,
+			   const google::protobuf::FieldDescriptor* field)
+{
+	md.TreatAsMapWithMultipleFieldPathsAsKey(field->SUB("frameworks"),
+					         {{field->SUB("frameworks")->SUB("common"),
+					           field->SUB("frameworks")->SUB("common")->SUB("uid")}});
+	md.TreatAsMapWithMultipleFieldPathsAsKey(field->SUB("frameworks")->SUB("tasks"),
+					         {{field->SUB("frameworks")->SUB("tasks")->SUB("common"),
+					           field->SUB("frameworks")->SUB("tasks")->SUB("common")->SUB("uid")}});
+	md.TreatAsMap(field->SUB("frameworks")->SUB("common")->SUB("labels"),
+	              field->SUB("frameworks")->SUB("common")->SUB("labels")->SUB("key"));
+	md.TreatAsMap(field->SUB("frameworks")->SUB("tasks")->SUB("common")->SUB("labels"),
+	              field->SUB("frameworks")->SUB("tasks")->SUB("common")->SUB("labels")->SUB("key"));
+	md.TreatAsMapWithMultipleFieldPathsAsKey(field->SUB("slaves"),
+					         {{field->SUB("slaves")->SUB("common"),
+					           field->SUB("slaves")->SUB("common")->SUB("uid")}});
+	md.TreatAsMap(field->SUB("groups"),
+				  field->SUB("groups")->SUB("id"));
+	md.TreatAsMap(field->SUB("groups")->SUB("apps"),
+				  field->SUB("groups")->SUB("apps")->SUB("id"));
+	md.TreatAsSet(field->SUB("groups")->SUB("apps")->SUB("task_ids"));
+	md.TreatAsMap(field->SUB("groups")->SUB("groups"),
+				  field->SUB("groups")->SUB("groups")->SUB("id"));
+}
+
+void map_containers(google::protobuf::util::MessageDifferencer& md,
+			   const google::protobuf::FieldDescriptor* field)
+{
+	md.TreatAsMap(field->SUB("top_devices"),
+				  field->SUB("top_devices")->SUB("name"));
+	md.TreatAsMap(field->SUB("top_files"),
+				  field->SUB("top_files")->SUB("name"));
+	md.TreatAsMap(field->SUB("mounts"),
+				  field->SUB("mounts")->SUB("mount_dir"));
+	md.TreatAsSet(field->SUB("container_reporting_group_id"));
+	md.TreatAsSet(field->SUB("orchestrators_fallback_labels"));
+	md.TreatAsMapWithMultipleFieldsAsKey(field->SUB("labels"),
+					     {field->SUB("labels")->SUB("key"),
+					      field->SUB("labels")->SUB("value")});
+	md.TreatAsMap(field->SUB("network_by_serverports"),
+				  field->SUB("network_by_serverports")->SUB("port"));
+	md.TreatAsMap(field->SUB("mounts"),
+				  field->SUB("mounts")->SUB("mount_dir"));
+	md.TreatAsSet(field->SUB("port_mappings"));
+	map_protos(md, field->SUB("protos"));
+}
+
 void validate_protobuf(std::string& diff,
 		       std::string name,
 		       bool should_ignore_raw_fields)
 {
 	// first generate the aggregated protobuf
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	metrics_message_aggregator_impl* aggregator = new metrics_message_aggregator_impl(builder);
 	draiosproto::metrics test;
 	std::ostringstream filename;
 
@@ -5362,8 +5633,11 @@ void validate_protobuf(std::string& diff,
 		ASSERT_TRUE(success);
 		input_file.close();
 
-		aggregator.aggregate(input, test);
+		aggregator->aggregate(input, test);
+
 	}
+	aggregator->override_primary_keys(test);
+	delete aggregator;
 
 	// now parse the backend protobuf
 	std::ostringstream backend_filename;
@@ -5379,32 +5653,51 @@ void validate_protobuf(std::string& diff,
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
 	google::protobuf::util::MessageDifferencer md;
 
-	md.TreatAsSet(backend.TOP("ipv4_connections"));
-	md.TreatAsSet(backend.TOP("ipv4_network_interfaces"));
+	md.TreatAsMapWithMultipleFieldsAsKey(backend.TOP("ipv4_connections"),
+										 {backend.TOP("ipv4_connections")->SUB("tuple"),
+										  backend.TOP("ipv4_connections")->SUB("spid"),
+										  backend.TOP("ipv4_connections")->SUB("dpid")});
 	md.TreatAsMap(backend.TOP("mounts"),
 		      backend.TOP("mounts")->SUB("mount_dir"));
 	md.TreatAsSet(backend.TOP("top_files"));
-	md.TreatAsMapWithMultipleFieldsAsKey(backend.TOP("protos")->SUB("statsd")->SUB("statsd_metrics"),
-					     {backend.TOP("protos")->SUB("statsd")->SUB("statsd_metrics")->SUB("name"),
-					      backend.TOP("protos")->SUB("statsd")->SUB("statsd_metrics")->SUB("tags")});
-	md.TreatAsMapWithMultipleFieldsAsKey(backend.TOP("protos")->SUB("statsd")->SUB("statsd_metrics")->SUB("tags"),
-					     {backend.TOP("protos")->SUB("statsd")->SUB("statsd_metrics")->SUB("tags")->SUB("key"),
-					      backend.TOP("protos")->SUB("statsd")->SUB("statsd_metrics")->SUB("tags")->SUB("value")});
 	md.TreatAsMap(backend.TOP("containers"),
 		      backend.TOP("containers")->SUB("id"));
-	md.TreatAsMap(backend.TOP("containers")->SUB("mounts"),
-		      backend.TOP("containers")->SUB("mounts")->SUB("mount_dir"));
-	md.TreatAsMapWithMultipleFieldsAsKey(backend.TOP("containers")->SUB("labels"),
-					     {backend.TOP("containers")->SUB("labels")->SUB("key"),
-					      backend.TOP("containers")->SUB("labels")->SUB("value")});
+	map_containers(md, backend.TOP("containers"));
 	md.TreatAsSet(backend.TOP("userdb"));
 
-	md.IgnoreField(backend.TOP("timestamp_ns"));
 
 	md.TreatAsMapWithMultipleFieldPathsAsKey(backend.TOP("programs"),
 					         {{backend.TOP("programs")->SUB("procinfo"),
 					           backend.TOP("programs")->SUB("procinfo")->SUB("details")},
 					          {backend.TOP("programs")->SUB("environment_hash")}});
+	md.TreatAsMap(backend.TOP("programs")->SUB("procinfo")->SUB("top_files"),
+				  backend.TOP("programs")->SUB("procinfo")->SUB("top_files")->SUB("name"));
+	md.TreatAsMap(backend.TOP("programs")->SUB("procinfo")->SUB("top_devices"),
+				  backend.TOP("programs")->SUB("procinfo")->SUB("top_devices")->SUB("name"));
+	md.TreatAsSet(backend.TOP("programs")->SUB("pids"));
+	md.TreatAsSet(backend.TOP("programs")->SUB("uids"));
+	map_protos(md, backend.TOP("programs")->SUB("procinfo")->SUB("protos"));
+	md.TreatAsSet(backend.TOP("hostinfo")->SUB("syscall_errors")->SUB("top_error_codes"));
+	md.TreatAsMap(backend.TOP("hostinfo")->SUB("network_by_serverports"),
+				  backend.TOP("hostinfo")->SUB("network_by_serverports")->SUB("port"));
+	md.TreatAsMap(backend.TOP("top_devices"),
+				  backend.TOP("top_devices")->SUB("name"));
+
+	map_time_categories(md, backend.TOP("hostinfo")->SUB("tcounters"));
+	map_protos(md, backend.TOP("unreported_counters")->SUB("protos"));
+	map_protos(md, backend.TOP("protos"));
+	map_swarm(md, backend.TOP("swarm"));
+	map_mesos(md, backend.TOP("mesos"));
+
+	md.TreatAsMap(backend.TOP("environments"),
+				  backend.TOP("environments")->SUB("hash"));
+	md.TreatAsSet(backend.TOP("environments")->SUB("variables"));
+	md.TreatAsMapWithMultipleFieldsAsKey(backend.TOP("ipv4_network_interfaces"),
+										 {backend.TOP("ipv4_network_interfaces")->SUB("addr"),
+										  backend.TOP("ipv4_network_interfaces")->SUB("netmask"),
+										  backend.TOP("ipv4_network_interfaces")->SUB("bcast")});
+
+
 
 	map_time_categories(md, backend.TOP("hostinfo")->SUB("tcounters"));
 	// ignore non-aggregated values
@@ -5413,8 +5706,63 @@ void validate_protobuf(std::string& diff,
 	    ignore_raw_fields(md, backend);
 	}
 
-	// BE doesn't handle proc start count
+	// no guarantee timestamp will match. this is ok.
+	md.IgnoreField(backend.TOP("timestamp_ns"));
+	md.IgnoreField(backend.TOP("events")); // timestamp is primary key, so can't compare since
+										   // BE overwrites it
+	// for these three, if the value changes, any value is fair game
+	md.IgnoreField(backend.TOP("unreported_counters")->SUB("protos")->SUB("java")->SUB("beans")->SUB("attributes")->SUB("scale")); 
+	md.IgnoreField(backend.TOP("unreported_counters")->SUB("protos")->SUB("java")->SUB("beans")->SUB("attributes")->SUB("unit"));
+	md.IgnoreField(backend.TOP("unreported_counters")->SUB("protos")->SUB("java")->SUB("beans")->SUB("attributes")->SUB("alias"));
+	md.IgnoreField(backend.TOP("swarm")->SUB("tasks")->SUB("common")->SUB("labels")->SUB("value"));
+	md.IgnoreField(backend.TOP("swarm")->SUB("nodes")->SUB("common")->SUB("labels")->SUB("value"));
+	md.IgnoreField(backend.TOP("swarm")->SUB("nodes")->SUB("common")->SUB("name"));
+	md.IgnoreField(backend.TOP("swarm")->SUB("tasks")->SUB("common")->SUB("name"));
+	md.IgnoreField(backend.TOP("swarm")->SUB("tasks")->SUB("service_id"));
+	md.IgnoreField(backend.TOP("swarm")->SUB("tasks")->SUB("container_id"));
+	md.IgnoreField(backend.TOP("swarm")->SUB("nodes")->SUB("ip_address"));
+	md.IgnoreField(backend.TOP("swarm")->SUB("nodes")->SUB("role"));
+	md.IgnoreField(backend.TOP("mesos")->SUB("slaves")->SUB("common")->SUB("labels")->SUB("value"));
+	md.IgnoreField(backend.TOP("mesos")->SUB("slaves")->SUB("common")->SUB("name"));
+	md.IgnoreField(backend.TOP("mesos")->SUB("frameworks")->SUB("tasks")->SUB("slave_id"));
+	md.IgnoreField(backend.TOP("containers")->SUB("mounts")->SUB("device"));
+	md.IgnoreField(backend.TOP("containers")->SUB("mounts")->SUB("type"));
+	md.IgnoreField(backend.TOP("ipv4_network_interfaces")->SUB("name"));
+	md.IgnoreField(backend.TOP("sampling_ratio"));
+	md.IgnoreField(backend.TOP("userdb")->SUB("name"));
+	md.IgnoreField(backend.TOP("machine_id"));
+	md.IgnoreField(backend.TOP("customer_id"));
+	md.IgnoreField(backend.TOP("swarm")->SUB("tasks")->SUB("node_id"));
+	md.IgnoreField(backend.TOP("swarm")->SUB("nodes")->SUB("manager")->SUB("leader"));
+	md.IgnoreField(backend.TOP("swarm")->SUB("services")->SUB("mode"));
+	md.IgnoreField(backend.TOP("environments")->SUB("variables"));
+	md.IgnoreField(backend.TOP("programs")->SUB("procinfo")->SUB("protos")->SUB("app")->SUB("checks")->SUB("tags")->SUB("value"));
+	md.IgnoreField(backend.TOP("unreported_counters")->SUB("protos")->SUB("app")->SUB("checks")->SUB("value"));
+	md.IgnoreField(backend.TOP("ipv4_connections")->SUB("error_code"));
+
+	// BE has a limit on attribute count limit which can cause the aggregated stat
+	// value to mismatch
+	md.IgnoreField(backend.TOP("containers")->SUB("protos")->SUB("java")->SUB("beans")->SUB("attributes")->SUB("subattributes")->SUB("aggr_value_double"));
+
+	// as of when the protobufs were created, backend didn't support these fields.
+	// If the protobufs are regenerated and BE has added support, this can be removed
 	md.IgnoreField(backend.TOP("containers")->SUB("resource_counters")->SUB("aggr_proc_start_count"));
+	md.IgnoreField(backend.TOP("hostinfo")->SUB("aggr_system_load"));
+	md.IgnoreField(backend.TOP("unreported_counters")->SUB("transaction_counters"));
+	md.IgnoreField(backend.TOP("unreported_counters")->SUB("protos")->SUB("java")->SUB("beans")->SUB("attributes")->SUB("segment_by"));
+	md.IgnoreField(backend.TOP("reporting_groups"));
+	md.IgnoreField(backend.TOP("unreported_counters")->SUB("names"));
+	md.IgnoreField(backend.TOP("internal_metrics"));
+	md.IgnoreField(backend.TOP("config_percentiles"));
+	md.IgnoreField(backend.TOP("commands"));
+	md.IgnoreField(backend.TOP("falcobl"));
+	md.IgnoreField(backend.TOP("containers")->SUB("commands"));
+	md.IgnoreField(backend.TOP("ipv4_incomplete_connections")); // we only use v2
+	md.IgnoreField(backend.TOP("programs")->SUB("program_reporting_group_id"));
+
+	// SMAGENT-1949
+	md.IgnoreField(backend.TOP("unreported_counters")->SUB("protos")->SUB("prometheus"));
+	md.IgnoreField(backend.TOP("programs")->SUB("procinfo")->SUB("protos")->SUB("app")->SUB("metrics"));
 
 	// reporter needs to fall out of scope to flush
 	{
@@ -5518,7 +5866,7 @@ TEST(validate_aggregator, DISABLED_prometheus)
     validate_protobuf(diff, "prometheus", true);
     EXPECT_EQ(diff.size(), 0);
 }
-TEST(validate_aggregator, DISABLED_random)
+TEST(validate_aggregator, random)
 {
     std::string diff;
     validate_protobuf(diff, "random", true);
@@ -5684,255 +6032,260 @@ void generate_counter_proto_entry(draiosproto::counter_proto_entry* input)
     input->set_nerrors(rand() % 100);
 }
 
-void generate_proto_info(draiosproto::proto_info* input)
+void generate_proto_info(draiosproto::proto_info* input,
+						 std::string in_name = "asdlkjf;aklj")
 {
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_http()->add_server_urls();
-	(*input->mutable_http()->mutable_server_urls())[i].set_url(std::to_string(rand() % 2));
-	generate_counter_proto_entry((*input->mutable_http()->mutable_server_urls())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_http()->add_client_urls();
-	(*input->mutable_http()->mutable_client_urls())[i].set_url(std::to_string(rand() % 2));
-	generate_counter_proto_entry((*input->mutable_http()->mutable_client_urls())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_http()->add_client_status_codes();
-	(*input->mutable_http()->mutable_client_status_codes())[i].set_status_code(rand() % 2);
-	(*input->mutable_http()->mutable_client_status_codes())[i].set_ncalls(rand() % 100);
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_http()->add_server_status_codes();
-	(*input->mutable_http()->mutable_server_status_codes())[i].set_status_code(rand() % 2);
-	(*input->mutable_http()->mutable_server_status_codes())[i].set_ncalls(rand() % 100);
-    }
-    generate_counter_proto_entry(input->mutable_http()->mutable_server_totals());
-    generate_counter_proto_entry(input->mutable_http()->mutable_client_totals());
-
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_mysql()->add_server_queries();
-	(*input->mutable_mysql()->mutable_server_queries())[i].set_name(std::to_string(rand() % 2));
-	generate_counter_proto_entry((*input->mutable_mysql()->mutable_server_queries())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_mysql()->add_client_queries();
-	(*input->mutable_mysql()->mutable_client_queries())[i].set_name(std::to_string(rand() % 2));
-	generate_counter_proto_entry((*input->mutable_mysql()->mutable_client_queries())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_mysql()->add_server_query_types();
-	(*input->mutable_mysql()->mutable_server_query_types())[i].set_type((draiosproto::sql_statement_type)(rand() % 10));
-	generate_counter_proto_entry((*input->mutable_mysql()->mutable_server_query_types())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_mysql()->add_client_query_types();
-	(*input->mutable_mysql()->mutable_client_query_types())[i].set_type((draiosproto::sql_statement_type)(rand() % 10));
-	generate_counter_proto_entry((*input->mutable_mysql()->mutable_client_query_types())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_mysql()->add_server_tables();
-	(*input->mutable_mysql()->mutable_server_tables())[i].set_name(std::to_string(rand() % 2));
-	generate_counter_proto_entry((*input->mutable_mysql()->mutable_server_tables())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_mysql()->add_client_tables();
-	(*input->mutable_mysql()->mutable_client_tables())[i].set_name(std::to_string(rand() % 2));
-	generate_counter_proto_entry((*input->mutable_mysql()->mutable_client_tables())[i].mutable_counters());
-    }
-    generate_counter_proto_entry(input->mutable_mysql()->mutable_server_totals());
-    generate_counter_proto_entry(input->mutable_mysql()->mutable_client_totals());
-
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_postgres()->add_server_queries();
-	(*input->mutable_postgres()->mutable_server_queries())[i].set_name(std::to_string(rand() % 2));
-	generate_counter_proto_entry((*input->mutable_postgres()->mutable_server_queries())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_postgres()->add_client_queries();
-	(*input->mutable_postgres()->mutable_client_queries())[i].set_name(std::to_string(rand() % 2));
-	generate_counter_proto_entry((*input->mutable_postgres()->mutable_client_queries())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_postgres()->add_server_query_types();
-	(*input->mutable_postgres()->mutable_server_query_types())[i].set_type((draiosproto::sql_statement_type)(rand() % 10));
-	generate_counter_proto_entry((*input->mutable_postgres()->mutable_server_query_types())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_postgres()->add_client_query_types();
-	(*input->mutable_postgres()->mutable_client_query_types())[i].set_type((draiosproto::sql_statement_type)(rand() % 10));
-	generate_counter_proto_entry((*input->mutable_postgres()->mutable_client_query_types())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_postgres()->add_server_tables();
-	(*input->mutable_postgres()->mutable_server_tables())[i].set_name(std::to_string(rand() % 2));
-	generate_counter_proto_entry((*input->mutable_postgres()->mutable_server_tables())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_postgres()->add_client_tables();
-	(*input->mutable_postgres()->mutable_client_tables())[i].set_name(std::to_string(rand() % 2));
-	generate_counter_proto_entry((*input->mutable_postgres()->mutable_client_tables())[i].mutable_counters());
-    }
-    generate_counter_proto_entry(input->mutable_postgres()->mutable_server_totals());
-    generate_counter_proto_entry(input->mutable_postgres()->mutable_client_totals());
-
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_mongodb()->add_servers_ops();
-	(*input->mutable_mongodb()->mutable_servers_ops())[i].set_op((draiosproto::mongodb_op_type)(rand() % 10));
-	generate_counter_proto_entry((*input->mutable_mongodb()->mutable_servers_ops())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_mongodb()->add_client_ops();
-	(*input->mutable_mongodb()->mutable_client_ops())[i].set_op((draiosproto::mongodb_op_type)(rand() % 10));
-	generate_counter_proto_entry((*input->mutable_mongodb()->mutable_client_ops())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_mongodb()->add_server_collections();
-	(*input->mutable_mongodb()->mutable_server_collections())[i].set_name(std::to_string(rand() % 2));
-	generate_counter_proto_entry((*input->mutable_mongodb()->mutable_server_collections())[i].mutable_counters());
-    }
-    for (uint32_t i = 0; i < 15; i++)
-    {
-	input->mutable_mongodb()->add_client_collections();
-	(*input->mutable_mongodb()->mutable_client_collections())[i].set_name(std::to_string(rand() % 2));
-	generate_counter_proto_entry((*input->mutable_mongodb()->mutable_client_collections())[i].mutable_counters());
-    }
-    generate_counter_proto_entry(input->mutable_mongodb()->mutable_server_totals());
-    generate_counter_proto_entry(input->mutable_mongodb()->mutable_client_totals());
-
-    input->mutable_java()->set_process_name("askldasdfioj,.");
-    for(uint32_t i = 0; i < 10; i++)
-    {
-	input->mutable_java()->add_beans();
-	(*input->mutable_java()->mutable_beans())[i].set_name(std::to_string(rand() % 2));
-	for (uint32_t j = 0; j < 10; j++)
+	for (uint32_t i = 0; i < 15; i++)
 	{
-	    (*input->mutable_java()->mutable_beans())[i].add_attributes();
-	    (*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_name(std::to_string(rand() % 2));
-	    (*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_value(rand() % 100);
-	    for (uint32_t k = 0; k < 10; k ++)
-	    {
-		(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].add_subattributes();
-		(*(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].mutable_subattributes())[k].set_name(std::to_string(rand() % 2));
-		(*(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].mutable_subattributes())[k].set_value(rand() % 100);
-	    }
-	    (*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_alias(std::to_string(rand() % 2));
-	    (*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_type((draiosproto::jmx_metric_type)(rand() % 2));
-	    (*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_unit((draiosproto::unit)(rand() % 4));
-	    (*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_scale((draiosproto::scale)(rand() % 10));
-	    for (uint32_t k = 0; k < 5; k++)
-	    {
-		(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].add_segment_by();
-		(*(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].mutable_segment_by())[k].set_key(std::to_string(rand() % 2));
-		(*(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].mutable_segment_by())[k].set_value(std::to_string(rand() % 2));
-	    }
+		input->mutable_http()->add_server_urls();
+		(*input->mutable_http()->mutable_server_urls())[i].set_url(std::to_string(rand() % 2));
+		generate_counter_proto_entry((*input->mutable_http()->mutable_server_urls())[i].mutable_counters());
 	}
-    }
+	for (uint32_t i = 0; i < 15; i++)
+	{
+		input->mutable_http()->add_client_urls();
+		(*input->mutable_http()->mutable_client_urls())[i].set_url(std::to_string(rand() % 2));
+		generate_counter_proto_entry((*input->mutable_http()->mutable_client_urls())[i].mutable_counters());
+	}
+	for (uint32_t i = 0; i < 15; i++)
+	{
+		input->mutable_http()->add_client_status_codes();
+		(*input->mutable_http()->mutable_client_status_codes())[i].set_status_code(rand() % 2);
+		(*input->mutable_http()->mutable_client_status_codes())[i].set_ncalls(rand() % 100);
+	}
+	for (uint32_t i = 0; i < 15; i++)
+	{
+		input->mutable_http()->add_server_status_codes();
+		(*input->mutable_http()->mutable_server_status_codes())[i].set_status_code(rand() % 2);
+		(*input->mutable_http()->mutable_server_status_codes())[i].set_ncalls(rand() % 100);
+	}
+	generate_counter_proto_entry(input->mutable_http()->mutable_server_totals());
+	generate_counter_proto_entry(input->mutable_http()->mutable_client_totals());
 
-    for (int i =0; i < 20; i++)
-    {
-	input->mutable_statsd()->add_statsd_metrics();
-	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_name(std::to_string(rand() % 2));
-	(*input->mutable_statsd()->mutable_statsd_metrics())[i].add_tags()->set_key(std::to_string(rand() % 2));
-	(*(*input->mutable_statsd()->mutable_statsd_metrics())[i].mutable_tags())[0].set_key(std::to_string(rand() % 2));
-	(*input->mutable_statsd()->mutable_statsd_metrics())[i].add_tags()->set_key(std::to_string(rand() % 2));
-	(*(*input->mutable_statsd()->mutable_statsd_metrics())[i].mutable_tags())[1].set_key(std::to_string(rand() % 2));
-	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_type((draiosproto::statsd_metric_type)(rand()%4));
-	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_value(rand() % 2);
-	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_sum(rand() % 2);
-	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_min(rand() % 2);
-	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_max(rand() % 2);
-	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_count(rand() % 2);
-	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_median(rand() % 2);
-	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_percentile_95(rand() % 2);
-	(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_percentile_99(rand() % 2);
-    }
+	for (uint32_t i = 0; i < 15; i++)
+	{
+		input->mutable_mysql()->add_server_queries();
+		(*input->mutable_mysql()->mutable_server_queries())[i].set_name(std::to_string(rand() % 2));
+		generate_counter_proto_entry((*input->mutable_mysql()->mutable_server_queries())[i].mutable_counters());
+	}
+	for (uint32_t i = 0; i < 15; i++)
+	{
+		input->mutable_mysql()->add_client_queries();
+		(*input->mutable_mysql()->mutable_client_queries())[i].set_name(std::to_string(rand() % 2));
+		generate_counter_proto_entry((*input->mutable_mysql()->mutable_client_queries())[i].mutable_counters());
+	}
+	for (uint32_t i = 0; i < 15; i++)
+	{
+		input->mutable_mysql()->add_server_query_types();
+		(*input->mutable_mysql()->mutable_server_query_types())[i].set_type((draiosproto::sql_statement_type)(1 + (rand() % 10)));
+		generate_counter_proto_entry((*input->mutable_mysql()->mutable_server_query_types())[i].mutable_counters());
+	}
+	for (uint32_t i = 0; i < 15; i++)
+	{
+		input->mutable_mysql()->add_client_query_types();
+		(*input->mutable_mysql()->mutable_client_query_types())[i].set_type((draiosproto::sql_statement_type)(1 + (rand() % 10)));
+		generate_counter_proto_entry((*input->mutable_mysql()->mutable_client_query_types())[i].mutable_counters());
+	}
+	for (uint32_t i = 0; i < 15; i++)
+	{
+		input->mutable_mysql()->add_server_tables();
+		(*input->mutable_mysql()->mutable_server_tables())[i].set_name(std::to_string(rand() % 2));
+		generate_counter_proto_entry((*input->mutable_mysql()->mutable_server_tables())[i].mutable_counters());
+	}
+	for (uint32_t i = 0; i < 15; i++)
+	{
+		input->mutable_mysql()->add_client_tables();
+		(*input->mutable_mysql()->mutable_client_tables())[i].set_name(std::to_string(rand() % 2));
+		generate_counter_proto_entry((*input->mutable_mysql()->mutable_client_tables())[i].mutable_counters());
+	}
+	generate_counter_proto_entry(input->mutable_mysql()->mutable_server_totals());
+	generate_counter_proto_entry(input->mutable_mysql()->mutable_client_totals());
 
-    input->mutable_app()->set_process_name("klnsdfvhjh");
-    for (uint32_t i = 0; i < 50; i++)
-    {
-	input->mutable_app()->add_metrics();
-	(*input->mutable_app()->mutable_metrics())[i].set_name(std::to_string(rand() % 2));
-	(*input->mutable_app()->mutable_metrics())[i].set_type((draiosproto::app_metric_type)(rand() % 2));
-	(*input->mutable_app()->mutable_metrics())[i].set_value(rand() % 100);
-	for (uint32_t j = 0; j < 10; j++)
+	for (uint32_t i = 0; i < 15; i++)
 	{
-	    (*input->mutable_app()->mutable_metrics())[i].add_tags();
-	    (*(*input->mutable_app()->mutable_metrics())[i].mutable_tags())[j].set_key(std::to_string(rand() % 2));
-	    (*(*input->mutable_app()->mutable_metrics())[i].mutable_tags())[j].set_value(std::to_string(rand() % 2));
+		input->mutable_postgres()->add_server_queries();
+		(*input->mutable_postgres()->mutable_server_queries())[i].set_name(std::to_string(rand() % 2));
+		generate_counter_proto_entry((*input->mutable_postgres()->mutable_server_queries())[i].mutable_counters());
 	}
-	for (uint32_t j = 0; j < 10; j++)
+	for (uint32_t i = 0; i < 15; i++)
 	{
-	    (*input->mutable_app()->mutable_metrics())[i].add_buckets();
-	    (*(*input->mutable_app()->mutable_metrics())[i].mutable_buckets())[j].set_label(std::to_string(rand() % 2));
-	    (*(*input->mutable_app()->mutable_metrics())[i].mutable_buckets())[j].set_count(rand() % 100);
+		input->mutable_postgres()->add_client_queries();
+		(*input->mutable_postgres()->mutable_client_queries())[i].set_name(std::to_string(rand() % 2));
+		generate_counter_proto_entry((*input->mutable_postgres()->mutable_client_queries())[i].mutable_counters());
 	}
-	(*input->mutable_app()->mutable_metrics())[i].set_prometheus_type((draiosproto::prometheus_type)(rand() % 2));
-    }
-    for (uint32_t i = 0; i < 50; i++)
-    {
-	input->mutable_app()->add_checks();
-	(*input->mutable_app()->mutable_checks())[i].set_name(std::to_string(rand() % 2));
-	(*input->mutable_app()->mutable_checks())[i].set_value((draiosproto::app_check_value)(rand() % 2));
-	for( uint32_t j = 0; j < 10; j++)
+	for (uint32_t i = 0; i < 15; i++)
 	{
-	    (*input->mutable_app()->mutable_checks())[i].add_tags();
-	    (*(*input->mutable_app()->mutable_checks())[i].mutable_tags())[j].set_key(std::to_string(rand() % 2));
-	    (*(*input->mutable_app()->mutable_checks())[i].mutable_tags())[j].set_value(std::to_string(rand() % 2));
+		input->mutable_postgres()->add_server_query_types();
+		(*input->mutable_postgres()->mutable_server_query_types())[i].set_type((draiosproto::sql_statement_type)(1 + (rand() % 10)));
+		generate_counter_proto_entry((*input->mutable_postgres()->mutable_server_query_types())[i].mutable_counters());
 	}
-    }
+	for (uint32_t i = 0; i < 15; i++)
+	{
+		input->mutable_postgres()->add_client_query_types();
+		(*input->mutable_postgres()->mutable_client_query_types())[i].set_type((draiosproto::sql_statement_type)(1 + (rand() % 10)));
+		generate_counter_proto_entry((*input->mutable_postgres()->mutable_client_query_types())[i].mutable_counters());
+	}
+	for (uint32_t i = 0; i < 15; i++)
+	{
+		input->mutable_postgres()->add_server_tables();
+		(*input->mutable_postgres()->mutable_server_tables())[i].set_name(std::to_string(rand() % 2));
+		generate_counter_proto_entry((*input->mutable_postgres()->mutable_server_tables())[i].mutable_counters());
+	}
+	for (uint32_t i = 0; i < 15; i++)
+	{
+		input->mutable_postgres()->add_client_tables();
+		(*input->mutable_postgres()->mutable_client_tables())[i].set_name(std::to_string(rand() % 2));
+		generate_counter_proto_entry((*input->mutable_postgres()->mutable_client_tables())[i].mutable_counters());
+	}
+	generate_counter_proto_entry(input->mutable_postgres()->mutable_server_totals());
+	generate_counter_proto_entry(input->mutable_postgres()->mutable_client_totals());
 
-    input->mutable_prometheus()->set_process_name("agsedrfijnou;hawerjkln;.hb");
-    for (uint32_t i = 0; i < 50; i++)
-    {
-	input->mutable_prometheus()->add_metrics();
-	(*input->mutable_prometheus()->mutable_metrics())[i].set_name(std::to_string(rand() % 2));
-	(*input->mutable_prometheus()->mutable_metrics())[i].set_type((draiosproto::app_metric_type)(rand() % 2));
-	(*input->mutable_prometheus()->mutable_metrics())[i].set_value(rand() % 100);
-	for (uint32_t j = 0; j < 10; j++)
+	for (uint32_t i = 0; i < 15; i++)
 	{
-	    (*input->mutable_prometheus()->mutable_metrics())[i].add_tags();
-	    (*(*input->mutable_prometheus()->mutable_metrics())[i].mutable_tags())[j].set_key(std::to_string(rand() % 2));
-	    (*(*input->mutable_prometheus()->mutable_metrics())[i].mutable_tags())[j].set_value(std::to_string(rand() % 2));
+		input->mutable_mongodb()->add_servers_ops();
+		(*input->mutable_mongodb()->mutable_servers_ops())[i].set_op((draiosproto::mongodb_op_type)(1 + (rand() % 10)));
+		generate_counter_proto_entry((*input->mutable_mongodb()->mutable_servers_ops())[i].mutable_counters());
 	}
-	for (uint32_t j = 0; j < 10; j++)
+	for (uint32_t i = 0; i < 15; i++)
 	{
-	    (*input->mutable_prometheus()->mutable_metrics())[i].add_buckets();
-	    (*(*input->mutable_prometheus()->mutable_metrics())[i].mutable_buckets())[j].set_label(std::to_string(rand() % 2));
-	    (*(*input->mutable_prometheus()->mutable_metrics())[i].mutable_buckets())[j].set_count(rand() % 100);
+		input->mutable_mongodb()->add_client_ops();
+		(*input->mutable_mongodb()->mutable_client_ops())[i].set_op((draiosproto::mongodb_op_type)(1 + (rand() % 10)));
+		generate_counter_proto_entry((*input->mutable_mongodb()->mutable_client_ops())[i].mutable_counters());
 	}
-	(*input->mutable_prometheus()->mutable_metrics())[i].set_prometheus_type((draiosproto::prometheus_type)(rand() % 2));
-    }
-    for (uint32_t i = 0; i < 50; i++)
-    {
-	input->mutable_prometheus()->add_checks();
-	(*input->mutable_prometheus()->mutable_checks())[i].set_name(std::to_string(rand() % 2));
-	(*input->mutable_prometheus()->mutable_checks())[i].set_value((draiosproto::app_check_value)(rand() % 2));
-	for( uint32_t j = 0; j < 10; j++)
+	for (uint32_t i = 0; i < 15; i++)
 	{
-	    (*input->mutable_prometheus()->mutable_checks())[i].add_tags();
-	    (*(*input->mutable_prometheus()->mutable_checks())[i].mutable_tags())[j].set_key(std::to_string(rand() % 2));
-	    (*(*input->mutable_prometheus()->mutable_checks())[i].mutable_tags())[j].set_value(std::to_string(rand() % 2));
+		input->mutable_mongodb()->add_server_collections();
+		(*input->mutable_mongodb()->mutable_server_collections())[i].set_name(std::to_string(rand() % 2));
+		generate_counter_proto_entry((*input->mutable_mongodb()->mutable_server_collections())[i].mutable_counters());
 	}
-    }
+	for (uint32_t i = 0; i < 15; i++)
+	{
+		input->mutable_mongodb()->add_client_collections();
+		(*input->mutable_mongodb()->mutable_client_collections())[i].set_name(std::to_string(rand() % 2));
+		generate_counter_proto_entry((*input->mutable_mongodb()->mutable_client_collections())[i].mutable_counters());
+	}
+	generate_counter_proto_entry(input->mutable_mongodb()->mutable_server_totals());
+	generate_counter_proto_entry(input->mutable_mongodb()->mutable_client_totals());
+
+	input->mutable_java()->set_process_name(in_name);
+	for(uint32_t i = 0; i < 10; i++)
+	{
+		input->mutable_java()->add_beans();
+		(*input->mutable_java()->mutable_beans())[i].set_name(std::to_string(rand() % 2));
+		for (uint32_t j = 0; j < 10; j++)
+		{
+			(*input->mutable_java()->mutable_beans())[i].add_attributes();
+			(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_name(std::to_string(j % 2));
+			(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_value(rand() % 100);
+			for (uint32_t k = 0; k < 10 && j != 0; k ++) // BE does different stuff depending on subattribute count
+			{
+				(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].add_subattributes();
+				(*(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].mutable_subattributes())[k].set_name(std::to_string(rand() % 2));
+				(*(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].mutable_subattributes())[k].set_value(rand() % 100);
+			}
+			(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_alias(std::to_string(j % 2));
+			(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_type((draiosproto::jmx_metric_type)(1 + (j % 2)));
+			(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_unit((draiosproto::unit)(j % 4));
+			(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].set_scale((draiosproto::scale)(j % 10));
+			for (uint32_t k = 0; k < 5; k++)
+			{
+				(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].add_segment_by();
+				(*(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].mutable_segment_by())[k].set_key(std::to_string(10 * k + (rand() % 2)));
+				(*(*(*input->mutable_java()->mutable_beans())[i].mutable_attributes())[j].mutable_segment_by())[k].set_value(std::to_string(rand() % 2));
+			}
+		}
+	}
+
+	for (int i = 0; i < 80; i++)
+	{
+		// we very carefully construct the statsd metrics so that if the metrics collide,
+		// they must have the same type. We do this by setting the type to i % 4, and setting
+		// the elements of the primary key to be a given range for that type.
+		input->mutable_statsd()->add_statsd_metrics();
+		(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_name(std::to_string(10 * (i % 4) + (rand() % 2)));
+		(*input->mutable_statsd()->mutable_statsd_metrics())[i].add_tags()->set_key(std::to_string(10 * (i % 4) + (rand() % 2)));
+		(*(*input->mutable_statsd()->mutable_statsd_metrics())[i].mutable_tags())[0].set_value(std::to_string(10 * (i % 4) + (rand() % 2)));
+		// have to add some since BE doesn't really deal with duplicate keys SMAGENT-2069
+		(*input->mutable_statsd()->mutable_statsd_metrics())[i].add_tags()->set_key(std::to_string(10 * (i % 4) + 2 + (rand() % 2)));
+		(*(*input->mutable_statsd()->mutable_statsd_metrics())[i].mutable_tags())[1].set_value(std::to_string(10 * (i % 4) + (rand() % 2)));
+		(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_type((draiosproto::statsd_metric_type)(1 + (i % 4)));
+		(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_value(rand() % 2);
+		(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_sum(rand() % 2);
+		(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_min(rand() % 2);
+		(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_max(rand() % 2);
+		(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_count(rand() % 2);
+		(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_median(rand() % 2);
+		(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_percentile_95(rand() % 2);
+		(*input->mutable_statsd()->mutable_statsd_metrics())[i].set_percentile_99(rand() % 2);
+	}
+
+	input->mutable_app()->set_process_name("klnsdfvhjh");
+	for (uint32_t i = 0; i < 50; i++)
+	{
+		input->mutable_app()->add_metrics();
+		(*input->mutable_app()->mutable_metrics())[i].set_name(std::to_string(10 * i));
+		(*input->mutable_app()->mutable_metrics())[i].set_type((draiosproto::app_metric_type)(1 + (i % 2)));
+		(*input->mutable_app()->mutable_metrics())[i].set_value(rand() % 100);
+		for (uint32_t j = 0; j < 10; j++)
+		{
+			(*input->mutable_app()->mutable_metrics())[i].add_tags();
+			(*(*input->mutable_app()->mutable_metrics())[i].mutable_tags())[j].set_key(std::to_string(100 * j + (rand() % 2)));
+			(*(*input->mutable_app()->mutable_metrics())[i].mutable_tags())[j].set_value(std::to_string(rand() % 2));
+		}
+		for (uint32_t j = 0; j < 10; j++)
+		{
+			(*input->mutable_app()->mutable_metrics())[i].add_buckets();
+			(*(*input->mutable_app()->mutable_metrics())[i].mutable_buckets())[j].set_label(std::to_string(rand() % 2));
+			(*(*input->mutable_app()->mutable_metrics())[i].mutable_buckets())[j].set_count(rand() % 100);
+		}
+		(*input->mutable_app()->mutable_metrics())[i].set_prometheus_type((draiosproto::prometheus_type)(rand() % 6));
+	}
+	for (uint32_t i = 0; i < 50; i++)
+	{
+		input->mutable_app()->add_checks();
+		(*input->mutable_app()->mutable_checks())[i].set_name(std::to_string(rand() % 2));
+		(*input->mutable_app()->mutable_checks())[i].set_value((draiosproto::app_check_value)(rand() % 2));
+		for( uint32_t j = 0; j < 10; j++)
+		{
+			(*input->mutable_app()->mutable_checks())[i].add_tags();
+			(*(*input->mutable_app()->mutable_checks())[i].mutable_tags())[j].set_key(std::to_string(10 * j + (rand() % 2)));
+			(*(*input->mutable_app()->mutable_checks())[i].mutable_tags())[j].set_value(std::to_string(rand() % 2));
+		}
+	}
+
+	input->mutable_prometheus()->set_process_name("agsedrfijnou;hawerjkln;.hb");
+	for (uint32_t i = 0; i < 50; i++)
+	{
+		input->mutable_prometheus()->add_metrics();
+		(*input->mutable_prometheus()->mutable_metrics())[i].set_name(std::to_string(rand() % 2));
+		(*input->mutable_prometheus()->mutable_metrics())[i].set_type((draiosproto::app_metric_type)(1 + (rand() % 2)));
+		(*input->mutable_prometheus()->mutable_metrics())[i].set_value(rand() % 100);
+		for (uint32_t j = 0; j < 10; j++)
+		{
+			(*input->mutable_prometheus()->mutable_metrics())[i].add_tags();
+			(*(*input->mutable_prometheus()->mutable_metrics())[i].mutable_tags())[j].set_key(std::to_string(10 * j + (rand() % 2)));
+			(*(*input->mutable_prometheus()->mutable_metrics())[i].mutable_tags())[j].set_value(std::to_string(rand() % 2));
+		}
+		for (uint32_t j = 0; j < 10; j++)
+		{
+			(*input->mutable_prometheus()->mutable_metrics())[i].add_buckets();
+			(*(*input->mutable_prometheus()->mutable_metrics())[i].mutable_buckets())[j].set_label(std::to_string(rand() % 2));
+			(*(*input->mutable_prometheus()->mutable_metrics())[i].mutable_buckets())[j].set_count(rand() % 100);
+		}
+		(*input->mutable_prometheus()->mutable_metrics())[i].set_prometheus_type((draiosproto::prometheus_type)(rand() % 6));
+	}
+	for (uint32_t i = 0; i < 50; i++)
+	{
+		input->mutable_prometheus()->add_checks();
+		(*input->mutable_prometheus()->mutable_checks())[i].set_name(std::to_string(rand() % 2));
+		(*input->mutable_prometheus()->mutable_checks())[i].set_value((draiosproto::app_check_value)(rand() % 2));
+		for( uint32_t j = 0; j < 10; j++)
+		{
+			(*input->mutable_prometheus()->mutable_checks())[i].add_tags();
+			(*(*input->mutable_prometheus()->mutable_checks())[i].mutable_tags())[j].set_key(std::to_string(10 * j + (rand() % 2)));
+			(*(*input->mutable_prometheus()->mutable_checks())[i].mutable_tags())[j].set_value(std::to_string(rand() % 2));
+		}
+	}
 
 }
 
@@ -5960,7 +6313,7 @@ void generate_mesos_common(draiosproto::mesos_common* input)
 	input->set_name(std::to_string(rand() % 2));
 	for (int i = 0; i <= rand() % 2; i++)
 	{
-		input->add_labels()->set_key(std::to_string(rand() % 2));
+		input->add_labels()->set_key(std::to_string(10 * i + (rand() % 2)));
 		(*input->mutable_labels())[i].set_value(std::to_string(rand() % 2));
 	}
 }
@@ -5970,7 +6323,7 @@ void generate_swarm_common(draiosproto::swarm_common* input)
 	input->set_name(std::to_string(rand() % 2));
 	for (int i = 0; i <= rand() % 2; i++)
 	{
-		input->add_labels()->set_key(std::to_string(rand() % 2));
+		input->add_labels()->set_key(std::to_string(10 * i + (rand() % 2)));
 		(*input->mutable_labels())[i].set_value(std::to_string(rand() % 2));
 	}
 }
@@ -5979,722 +6332,725 @@ TEST(aggregator_extra, DISABLED_generate)
 {
     for (int loop_count = 0; loop_count < 10; loop_count++)
     {
-	draiosproto::metrics input;
-	input.set_machine_id("asdlkfj");
-	input.set_customer_id("20udasfi");
-	input.set_timestamp_ns((uint64_t)1000000000 * loop_count);
+		draiosproto::metrics input;
+		input.set_machine_id("asdlkfj");
+		input.set_customer_id("20udasfi");
+		input.set_timestamp_ns((uint64_t)1000000000 * loop_count);
 
-	// generate some host stuff
-	input.mutable_hostinfo()->set_hostname("290sdiaf");
-	input.mutable_hostinfo()->set_num_cpus(rand() % 100);
-	input.mutable_hostinfo()->add_cpu_loads(rand() % 100);
-	input.mutable_hostinfo()->add_cpu_loads(rand() % 100);
-	input.mutable_hostinfo()->add_cpu_loads(rand() % 100);
-	input.mutable_hostinfo()->set_physical_memory_size_bytes(rand() % 100);
-	generate_time_categories(input.mutable_hostinfo()->mutable_tcounters());
-	generate_counter_time_bidirectional(input.mutable_hostinfo()->mutable_transaction_counters());
-	input.mutable_hostinfo()->set_transaction_processing_delay(rand() % 100);
-	generate_resource_categories(input.mutable_hostinfo()->mutable_resource_counters());
-	generate_counter_syscall_errors(input.mutable_hostinfo()->mutable_syscall_errors());
-	generate_counter_time_bytes(input.mutable_hostinfo()->mutable_external_io_net());
-	input.mutable_hostinfo()->add_cpu_steal(rand() % 100);
-	input.mutable_hostinfo()->add_cpu_steal(rand() % 100);
-	input.mutable_hostinfo()->add_cpu_steal(rand() % 100);
-	generate_transaction_breakdown_categories(input.mutable_hostinfo()->mutable_reqcounters());
-	input.mutable_hostinfo()->set_next_tiers_delay(rand() % 100);
-	generate_counter_time_bidirectional(input.mutable_hostinfo()->mutable_max_transaction_counters());
-	input.mutable_hostinfo()->add_network_by_serverports()->set_port(234);
-	generate_connection_categories((*input.mutable_hostinfo()->mutable_network_by_serverports())[0].mutable_counters());
-	for (int i = 1; i < 5; i++) { // get some repeats
-	    input.mutable_hostinfo()->add_network_by_serverports()->set_port(rand() % 2);
-	    generate_connection_categories((*input.mutable_hostinfo()->mutable_network_by_serverports())[i].mutable_counters());
-	}
-	input.mutable_hostinfo()->add_cpu_idle(rand() % 100);
-	input.mutable_hostinfo()->add_cpu_idle(rand() % 100);
-	input.mutable_hostinfo()->add_cpu_idle(rand() % 100);
-	input.mutable_hostinfo()->set_system_load(rand() % 100);
-	input.mutable_hostinfo()->set_uptime(rand() % 100);
-	input.mutable_hostinfo()->add_system_cpu(rand() % 100);
-	input.mutable_hostinfo()->add_system_cpu(rand() % 100);
-	input.mutable_hostinfo()->add_system_cpu(rand() % 100);
-	input.mutable_hostinfo()->add_user_cpu(rand() % 100);
-	input.mutable_hostinfo()->add_user_cpu(rand() % 100);
-	input.mutable_hostinfo()->add_user_cpu(rand() % 100);
-	input.mutable_hostinfo()->set_memory_bytes_available_kb(rand() % 100);
-	input.mutable_hostinfo()->add_iowait_cpu(rand() % 100);
-	input.mutable_hostinfo()->add_iowait_cpu(rand() % 100);
-	input.mutable_hostinfo()->add_iowait_cpu(rand() % 100);
-	input.mutable_hostinfo()->add_nice_cpu(rand() % 100);
-	input.mutable_hostinfo()->add_nice_cpu(rand() % 100);
-	input.mutable_hostinfo()->add_nice_cpu(rand() % 100);
-	input.mutable_hostinfo()->set_system_load_1(rand() % 100);
-	input.mutable_hostinfo()->set_system_load_5(rand() % 100);
-	input.mutable_hostinfo()->set_system_load_15(rand() % 100);
-
-	// generate some connections
-	input.add_ipv4_connections()->mutable_tuple()->set_sip(2340);
-	(*input.mutable_ipv4_connections())[0].mutable_tuple()->set_dip(487);
-	(*input.mutable_ipv4_connections())[0].mutable_tuple()->set_sport(3);
-	(*input.mutable_ipv4_connections())[0].mutable_tuple()->set_dport(94);
-	(*input.mutable_ipv4_connections())[0].mutable_tuple()->set_l4proto(2098);
-	(*input.mutable_ipv4_connections())[0].set_spid(984);
-	(*input.mutable_ipv4_connections())[0].set_dpid(884);
-	generate_connection_categories((*input.mutable_ipv4_connections())[0].mutable_counters());
-	(*input.mutable_ipv4_connections())[0].set_state((draiosproto::connection_state)(rand() % 3));
-	(*input.mutable_ipv4_connections())[0].set_error_code((draiosproto::error_code)(rand() % 100));
-
-	for (int i = 1; i < 130; i++) // guaranteed to get some repeats
-	{
-	    input.add_ipv4_connections()->mutable_tuple()->set_sip(rand() % 2);
-	    (*input.mutable_ipv4_connections())[i].mutable_tuple()->set_dip(rand() % 2);
-	    (*input.mutable_ipv4_connections())[i].mutable_tuple()->set_sport(rand() % 2);
-	    (*input.mutable_ipv4_connections())[i].mutable_tuple()->set_dport(rand() % 2);
-	    (*input.mutable_ipv4_connections())[i].mutable_tuple()->set_l4proto(rand() % 2);
-	    (*input.mutable_ipv4_connections())[i].set_spid(rand() % 2);
-	    (*input.mutable_ipv4_connections())[i].set_dpid(rand() % 2);
-	    generate_connection_categories((*input.mutable_ipv4_connections())[i].mutable_counters());
-	    (*input.mutable_ipv4_connections())[i].set_state((draiosproto::connection_state)(rand() % 3));
-	    (*input.mutable_ipv4_connections())[i].set_error_code((draiosproto::error_code)(rand() % 100));
-	}
-
-	// generate some interfaces
-	input.add_ipv4_network_interfaces()->set_name("asd2389");
-	(*input.mutable_ipv4_network_interfaces())[0].set_addr(9129);
-	(*input.mutable_ipv4_network_interfaces())[0].set_netmask(20);
-	(*input.mutable_ipv4_network_interfaces())[0].set_bcast(1308);
-
-	for (int i = 1; i < 10; i++)
-	{
-	    input.add_ipv4_network_interfaces()->set_name(std::to_string(rand() % 2));
-	    (*input.mutable_ipv4_network_interfaces())[i].set_addr(rand() % 2);
-	    (*input.mutable_ipv4_network_interfaces())[i].set_netmask(rand() % 2);
-	    (*input.mutable_ipv4_network_interfaces())[i].set_bcast(rand() % 2);
-	}
-
-	// generate some programs
-	input.add_programs()->mutable_procinfo()->mutable_details()->set_comm("23");
-	(*input.mutable_programs())[0].mutable_procinfo()->mutable_details()->set_exe("9o wser");
-	(*input.mutable_programs())[0].mutable_procinfo()->mutable_details()->set_container_id("2039u asdjf");
-	(*input.mutable_programs())[0].mutable_procinfo()->mutable_details()->add_args("jjff");
-	(*input.mutable_programs())[0].mutable_procinfo()->mutable_details()->add_args("jjff");
-	(*input.mutable_programs())[0].mutable_procinfo()->mutable_details()->add_args("jjfilskdjf");
-	generate_time_categories((*input.mutable_programs())[0].mutable_procinfo()->mutable_tcounters());
-	(*input.mutable_programs())[0].mutable_procinfo()->set_transaction_processing_delay(rand() % 100);
-	generate_resource_categories((*input.mutable_programs())[0].mutable_procinfo()->mutable_resource_counters());
-	generate_counter_syscall_errors((*input.mutable_programs())[0].mutable_procinfo()->mutable_syscall_errors());
-	(*input.mutable_programs())[0].mutable_procinfo()->set_next_tiers_delay(rand() % 100);
-	(*input.mutable_programs())[0].mutable_procinfo()->set_netrole(rand() % 100);
-	generate_counter_time_bidirectional((*input.mutable_programs())[0].mutable_procinfo()->mutable_max_transaction_counters());
-	generate_proto_info((*input.mutable_programs())[0].mutable_procinfo()->mutable_protos());
-	(*input.mutable_programs())[0].mutable_procinfo()->set_start_count(rand() % 100);
-	(*input.mutable_programs())[0].mutable_procinfo()->set_count_processes(rand() % 100);
-	(*input.mutable_programs())[0].mutable_procinfo()->add_top_files()->set_name("a8");
-	(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[0].set_bytes(rand() % 100);
-	(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[0].set_time_ns(rand() % 100);
-	(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[0].set_open_count(rand() % 100);
-	(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[0].set_errors(rand() % 100);
-	for (int i = 1; i < 5; i ++)
-	{
-	    (*input.mutable_programs())[0].mutable_procinfo()->add_top_files()->set_name(std::to_string(rand() % 2));
-	    (*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[i].set_bytes(rand() % 100);
-	    (*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[i].set_time_ns(rand() % 100);
-	    (*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[i].set_open_count(rand() % 100);
-	    (*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[i].set_errors(rand() % 100);
-	}
-	(*input.mutable_programs())[0].mutable_procinfo()->add_top_devices()->set_name("02w3894u");
-	(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[0].set_bytes(rand() % 100);
-	(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[0].set_time_ns(rand() % 100);
-	(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[0].set_open_count(rand() % 100);
-	(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[0].set_errors(rand() % 100);
-	for (int i = 1; i < 5; i ++)
-	{
-	    (*input.mutable_programs())[0].mutable_procinfo()->add_top_devices()->set_name(std::to_string(rand() % 2));
-	    (*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[i].set_bytes(rand() % 100);
-	    (*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[i].set_time_ns(rand() % 100);
-	    (*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[i].set_open_count(rand() % 100);
-	    (*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[i].set_errors(rand() % 100);
-	}
-	(*input.mutable_programs())[0].add_pids(23409);
-	(*input.mutable_programs())[0].add_pids(230948);
-	(*input.mutable_programs())[0].add_uids(209);
-	(*input.mutable_programs())[0].add_uids(1234);
-	(*input.mutable_programs())[0].set_environment_hash("209fjs");
-	(*input.mutable_programs())[0].add_program_reporting_group_id(59823);
-	(*input.mutable_programs())[0].add_program_reporting_group_id(90298);
-
-	for (int j = 1; j < 5; j++)
-	{
-	    input.add_programs()->mutable_procinfo()->mutable_details()->set_comm(std::to_string(rand() % 2));
-	    (*input.mutable_programs())[j].mutable_procinfo()->mutable_details()->set_exe(std::to_string(rand() % 2));
-	    (*input.mutable_programs())[j].mutable_procinfo()->mutable_details()->set_container_id(std::to_string(rand() % 2));
-	    (*input.mutable_programs())[j].mutable_procinfo()->mutable_details()->add_args(std::to_string(rand() % 2));
-	    generate_time_categories((*input.mutable_programs())[j].mutable_procinfo()->mutable_tcounters());
-	    (*input.mutable_programs())[j].mutable_procinfo()->set_transaction_processing_delay(rand() % 100);
-	    generate_resource_categories((*input.mutable_programs())[j].mutable_procinfo()->mutable_resource_counters());
-	    generate_counter_syscall_errors((*input.mutable_programs())[j].mutable_procinfo()->mutable_syscall_errors());
-	    (*input.mutable_programs())[j].mutable_procinfo()->set_next_tiers_delay(rand() % 100);
-	    (*input.mutable_programs())[j].mutable_procinfo()->set_netrole(rand() % 100);
-	    generate_counter_time_bidirectional((*input.mutable_programs())[j].mutable_procinfo()->mutable_max_transaction_counters());
-	    generate_proto_info((*input.mutable_programs())[j].mutable_procinfo()->mutable_protos());
-	    (*input.mutable_programs())[j].mutable_procinfo()->set_start_count(rand() % 100);
-	    (*input.mutable_programs())[j].mutable_procinfo()->set_count_processes(rand() % 100);
-	    (*input.mutable_programs())[j].mutable_procinfo()->add_top_files()->set_name("a8");
-	    (*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[0].set_bytes(rand() % 100);
-	    (*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[0].set_time_ns(rand() % 100);
-	    (*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[0].set_open_count(rand() % 100);
-	    (*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[0].set_errors(rand() % 100);
-	    for (int i = 1; i < 5; i ++)
-	    {
-		(*input.mutable_programs())[j].mutable_procinfo()->add_top_files()->set_name(std::to_string(rand() % 2));
-		(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[i].set_bytes(rand() % 100);
-		(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[i].set_time_ns(rand() % 100);
-		(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[i].set_open_count(rand() % 100);
-		(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[i].set_errors(rand() % 100);
-	    }
-	    (*input.mutable_programs())[j].mutable_procinfo()->add_top_devices()->set_name("02w3894u");
-	    (*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[0].set_bytes(rand() % 100);
-	    (*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[0].set_time_ns(rand() % 100);
-	    (*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[0].set_open_count(rand() % 100);
-	    (*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[0].set_errors(rand() % 100);
-	    for (int i = 1; i < 5; i ++)
-	    {
-		(*input.mutable_programs())[j].mutable_procinfo()->add_top_devices()->set_name(std::to_string(rand() % 2));
-		(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[i].set_bytes(rand() % 100);
-		(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[i].set_time_ns(rand() % 100);
-		(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[i].set_open_count(rand() % 100);
-		(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[i].set_errors(rand() % 100);
-	    }
-	    (*input.mutable_programs())[j].add_pids(rand() % 100);
-	    (*input.mutable_programs())[j].add_pids(rand() % 100);
-	    (*input.mutable_programs())[j].add_pids(rand() % 100);
-	    (*input.mutable_programs())[j].add_uids(rand() % 100);
-	    (*input.mutable_programs())[j].add_uids(rand() % 100);
-	    (*input.mutable_programs())[j].add_uids(rand() % 100);
-	    (*input.mutable_programs())[j].set_environment_hash(std::to_string(rand() % 2));
-	    (*input.mutable_programs())[j].add_program_reporting_group_id(rand() % 100);
-	    (*input.mutable_programs())[j].add_program_reporting_group_id(rand() % 100);
-	    (*input.mutable_programs())[j].add_program_reporting_group_id(rand() % 100);
-
-	}
-
-	input.set_sampling_ratio(rand() % 100);
-	input.set_host_custom_name("asd;df");
-	input.set_host_tags("wlkekjfkljsd");
-	input.set_version("woidej;sfd");
-
-	// generate some mounts
-	input.add_mounts()->set_device("123409f");
-	(*input.mutable_mounts())[0].set_mount_dir("einput.add_mounts");
-	(*input.mutable_mounts())[0].set_type("0uwsdoifj");
-	(*input.mutable_mounts())[0].set_size_bytes(rand() % 100);
-	(*input.mutable_mounts())[0].set_used_bytes(rand() % 100);
-	(*input.mutable_mounts())[0].set_available_bytes(rand() % 100);
-	(*input.mutable_mounts())[0].set_total_inodes(rand() % 100);
-	(*input.mutable_mounts())[0].set_used_inodes(rand() % 100);
-
-	for (int i = 1; i < 10; i++)
-	{
-	    input.add_mounts()->set_device(std::to_string(rand() % 2));
-	    (*input.mutable_mounts())[i].set_mount_dir(std::to_string(rand() % 2));
-	    (*input.mutable_mounts())[i].set_type(std::to_string(rand() % 2));
-	    (*input.mutable_mounts())[i].set_size_bytes(rand() % 100);
-	    (*input.mutable_mounts())[i].set_used_bytes(rand() % 100);
-	    (*input.mutable_mounts())[i].set_available_bytes(rand() % 100);
-	    (*input.mutable_mounts())[i].set_total_inodes(rand() % 100);
-	    (*input.mutable_mounts())[i].set_used_inodes(rand() % 100);
-
-	}
-
-	// generate some files
-	input.add_top_files()->set_name("w0asdiouf ");
-	(*input.mutable_top_files())[0].set_bytes(rand() % 100);
-	(*input.mutable_top_files())[0].set_time_ns(rand() % 100);
-	(*input.mutable_top_files())[0].set_open_count(rand() % 100);
-	(*input.mutable_top_files())[0].set_errors(rand() % 100);
-	for (int i = 1; i < 5; i ++)
-	{
-	    input.add_top_files()->set_name(std::to_string(rand() % 2));
-	    (*input.mutable_top_files())[i].set_bytes(rand() % 100);
-	    (*input.mutable_top_files())[i].set_time_ns(rand() % 100);
-	    (*input.mutable_top_files())[i].set_open_count(rand() % 100);
-	    (*input.mutable_top_files())[i].set_errors(rand() % 100);
-	}
-
-	// geenrate some protos
-	generate_proto_info(input.mutable_protos());
-
-	input.set_instance_id("qaweiour2");
-
-	// generate some containers
-	input.add_containers()->set_id("0sadfoi2");
-	(*input.mutable_containers())[0].set_type((draiosproto::container_type)3);
-	(*input.mutable_containers())[0].set_name("089uasdf");
-	(*input.mutable_containers())[0].set_image("209f");
-	generate_time_categories((*input.mutable_containers())[0].mutable_tcounters());
-	generate_transaction_breakdown_categories((*input.mutable_containers())[0].mutable_reqcounters());
-	generate_counter_time_bidirectional((*input.mutable_containers())[0].mutable_transaction_counters());
-	generate_counter_time_bidirectional((*input.mutable_containers())[0].mutable_max_transaction_counters());
-	(*input.mutable_containers())[0].set_transaction_processing_delay(rand() % 100);
-	(*input.mutable_containers())[0].set_next_tiers_delay(rand() % 100);
-	generate_resource_categories((*input.mutable_containers())[0].mutable_resource_counters());
-	generate_counter_syscall_errors((*input.mutable_containers())[0].mutable_syscall_errors());
-	for (int i = 0 ; i < 10; i ++)
-	{
-	    (*input.mutable_containers())[0].add_port_mappings()->set_host_ip(rand() % 2);
-	    (*(*input.mutable_containers())[0].mutable_port_mappings())[i].set_host_port(rand() % 2);
-	    (*(*input.mutable_containers())[0].mutable_port_mappings())[i].set_container_ip(rand() % 2);
-	    (*(*input.mutable_containers())[0].mutable_port_mappings())[i].set_container_port(rand() % 2);
-	}
-	generate_proto_info((*input.mutable_containers())[0].mutable_protos());
-	for (int i = 0; i < 5; i ++)
-	{
-	    (*input.mutable_containers())[0].add_labels()->set_key(std::to_string(rand() % 2));
-	    (*(*input.mutable_containers())[0].mutable_labels())[i].set_value(std::to_string(rand() % 2));
-	}
-	(*input.mutable_containers())[0].add_mounts()->set_device("asdf09u");
-	(*(*input.mutable_containers())[0].mutable_mounts())[0].set_mount_dir("e(*input.mutable_containers())[0].add_mounts");
-	(*(*input.mutable_containers())[0].mutable_mounts())[0].set_type("0uwsdoifj");
-	(*(*input.mutable_containers())[0].mutable_mounts())[0].set_size_bytes(rand() % 100);
-	(*(*input.mutable_containers())[0].mutable_mounts())[0].set_used_bytes(rand() % 100);
-	(*(*input.mutable_containers())[0].mutable_mounts())[0].set_available_bytes(rand() % 100);
-	(*(*input.mutable_containers())[0].mutable_mounts())[0].set_total_inodes(rand() % 100);
-	(*(*input.mutable_containers())[0].mutable_mounts())[0].set_used_inodes(rand() % 100);
-
-	for (int i = 1; i < 10; i++)
-	{
-	    (*input.mutable_containers())[0].add_mounts()->set_device(std::to_string(rand() % 2));
-	    (*(*input.mutable_containers())[0].mutable_mounts())[i].set_mount_dir(std::to_string(rand() % 2));
-	    (*(*input.mutable_containers())[0].mutable_mounts())[i].set_type(std::to_string(rand() % 2));
-	    (*(*input.mutable_containers())[0].mutable_mounts())[i].set_size_bytes(rand() % 100);
-	    (*(*input.mutable_containers())[0].mutable_mounts())[i].set_used_bytes(rand() % 100);
-	    (*(*input.mutable_containers())[0].mutable_mounts())[i].set_available_bytes(rand() % 100);
-	    (*(*input.mutable_containers())[0].mutable_mounts())[i].set_total_inodes(rand() % 100);
-	    (*(*input.mutable_containers())[0].mutable_mounts())[i].set_used_inodes(rand() % 100);
-
-	}
-	for (int i = 0; i < 5; i++) { // get some repeats
-	    (*input.mutable_containers())[0].add_network_by_serverports()->set_port(rand() % 2);
-	    generate_connection_categories((*(*input.mutable_containers())[0].mutable_network_by_serverports())[i].mutable_counters());
-	}
-	(*input.mutable_containers())[0].set_mesos_task_id("209fasd");
-	(*input.mutable_containers())[0].set_image_id("sedrfa");
-	for(int i = 0; i < 100; i ++)
-	{
-	    (*input.mutable_containers())[0].add_commands()->set_timestamp(rand() % 2);
-	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_count(rand() % 2);
-	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_cmdline(std::to_string(rand() % 2));
-	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_comm(std::to_string(rand() % 2));
-	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_pid(rand() % 2);
-	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_ppid(rand() % 2);
-	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_uid(rand() % 2);
-	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_cwd(std::to_string(rand() % 2));
-	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_login_shell_id(rand() % 2);
-	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_login_shell_distance(rand() % 2);
-	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_tty(rand() % 2);
-	    (*(*input.mutable_containers())[0].mutable_commands())[i].set_category((draiosproto::command_category)(rand() % 2));
-	}
-	for (int i = 0; i < 5; i ++)
-	{
-	    (*input.mutable_containers())[0].add_orchestrators_fallback_labels()->set_key(std::to_string(rand() % 2));
-	    (*(*input.mutable_containers())[0].mutable_orchestrators_fallback_labels())[i].set_value(std::to_string(rand() % 2));
-	}
-	(*input.mutable_containers())[0].set_image_repo(";ohji");
-	(*input.mutable_containers())[0].set_image_tag("89ujp7");
-	(*input.mutable_containers())[0].set_image_digest("kjnml;");
-	(*input.mutable_containers())[0].add_container_reporting_group_id(2309);
-	(*input.mutable_containers())[0].add_container_reporting_group_id(90);
-	(*input.mutable_containers())[0].add_container_reporting_group_id(342);
-	(*input.mutable_containers())[0].add_top_files()->set_name("w0asdiouf ");
-	(*(*input.mutable_containers())[0].mutable_top_files())[0].set_bytes(rand() % 100);
-	(*(*input.mutable_containers())[0].mutable_top_files())[0].set_time_ns(rand() % 100);
-	(*(*input.mutable_containers())[0].mutable_top_files())[0].set_open_count(rand() % 100);
-	(*(*input.mutable_containers())[0].mutable_top_files())[0].set_errors(rand() % 100);
-	for (int i = 1; i < 5; i ++)
-	{
-	    (*input.mutable_containers())[0].add_top_files()->set_name(std::to_string(rand() % 2));
-	    (*(*input.mutable_containers())[0].mutable_top_files())[i].set_bytes(rand() % 100);
-	    (*(*input.mutable_containers())[0].mutable_top_files())[i].set_time_ns(rand() % 100);
-	    (*(*input.mutable_containers())[0].mutable_top_files())[i].set_open_count(rand() % 100);
-	    (*(*input.mutable_containers())[0].mutable_top_files())[i].set_errors(rand() % 100);
-	}
-	(*input.mutable_containers())[0].add_top_devices()->set_name("asd98uwef ");
-	(*(*input.mutable_containers())[0].mutable_top_devices())[0].set_bytes(rand() % 100);
-	(*(*input.mutable_containers())[0].mutable_top_devices())[0].set_time_ns(rand() % 100);
-	(*(*input.mutable_containers())[0].mutable_top_devices())[0].set_open_count(rand() % 100);
-	(*(*input.mutable_containers())[0].mutable_top_devices())[0].set_errors(rand() % 100);
-	for (int i = 1; i < 5; i ++)
-	{
-	    (*input.mutable_containers())[0].add_top_devices()->set_name(std::to_string(rand() % 2));
-	    (*(*input.mutable_containers())[0].mutable_top_devices())[i].set_bytes(rand() % 100);
-	    (*(*input.mutable_containers())[0].mutable_top_devices())[i].set_time_ns(rand() % 100);
-	    (*(*input.mutable_containers())[0].mutable_top_devices())[i].set_open_count(rand() % 100);
-	    (*(*input.mutable_containers())[0].mutable_top_devices())[i].set_errors(rand() % 100);
-	}
-
-	for (int j = 1; j < 10; j++)
-	{
-	    input.add_containers()->set_id(std::to_string(rand() % 5));
-	    (*input.mutable_containers())[j].set_type((draiosproto::container_type)3);
-	    (*input.mutable_containers())[j].set_name("089uasdf");
-	    (*input.mutable_containers())[j].set_image("209f");
-	    generate_time_categories((*input.mutable_containers())[j].mutable_tcounters());
-	    generate_transaction_breakdown_categories((*input.mutable_containers())[j].mutable_reqcounters());
-	    generate_counter_time_bidirectional((*input.mutable_containers())[j].mutable_transaction_counters());
-	    generate_counter_time_bidirectional((*input.mutable_containers())[j].mutable_max_transaction_counters());
-	    (*input.mutable_containers())[j].set_transaction_processing_delay(rand() % 100);
-	    (*input.mutable_containers())[j].set_next_tiers_delay(rand() % 100);
-	    generate_resource_categories((*input.mutable_containers())[j].mutable_resource_counters());
-	    generate_counter_syscall_errors((*input.mutable_containers())[j].mutable_syscall_errors());
-	    for (int i = 0 ; i < 10; i ++)
-	    {
-		(*input.mutable_containers())[j].add_port_mappings()->set_host_ip(rand() % 2);
-		(*(*input.mutable_containers())[j].mutable_port_mappings())[i].set_host_port(rand() % 2);
-		(*(*input.mutable_containers())[j].mutable_port_mappings())[i].set_container_ip(rand() % 2);
-		(*(*input.mutable_containers())[j].mutable_port_mappings())[i].set_container_port(rand() % 2);
-	    }
-	    generate_proto_info((*input.mutable_containers())[j].mutable_protos());
-	    for (int i = 0; i < 5; i ++)
-	    {
-		(*input.mutable_containers())[j].add_labels()->set_key(std::to_string(rand() % 2));
-		(*(*input.mutable_containers())[j].mutable_labels())[i].set_value(std::to_string(rand() % 2));
-	    }
-	    (*input.mutable_containers())[j].add_mounts()->set_device("asdf09u");
-	    (*(*input.mutable_containers())[j].mutable_mounts())[0].set_mount_dir("e(*input.mutable_containers())[0].add_mounts");
-	    (*(*input.mutable_containers())[j].mutable_mounts())[0].set_type("0uwsdoifj");
-	    (*(*input.mutable_containers())[j].mutable_mounts())[0].set_size_bytes(rand() % 100);
-	    (*(*input.mutable_containers())[j].mutable_mounts())[0].set_used_bytes(rand() % 100);
-	    (*(*input.mutable_containers())[j].mutable_mounts())[0].set_available_bytes(rand() % 100);
-	    (*(*input.mutable_containers())[j].mutable_mounts())[0].set_total_inodes(rand() % 100);
-	    (*(*input.mutable_containers())[j].mutable_mounts())[0].set_used_inodes(rand() % 100);
-
-	    for (int i = 1; i < 10; i++)
-	    {
-		(*input.mutable_containers())[j].add_mounts()->set_device(std::to_string(rand() % 2));
-		(*(*input.mutable_containers())[j].mutable_mounts())[i].set_mount_dir(std::to_string(rand() % 2));
-		(*(*input.mutable_containers())[j].mutable_mounts())[i].set_type(std::to_string(rand() % 2));
-		(*(*input.mutable_containers())[j].mutable_mounts())[i].set_size_bytes(rand() % 100);
-		(*(*input.mutable_containers())[j].mutable_mounts())[i].set_used_bytes(rand() % 100);
-		(*(*input.mutable_containers())[j].mutable_mounts())[i].set_available_bytes(rand() % 100);
-		(*(*input.mutable_containers())[j].mutable_mounts())[i].set_total_inodes(rand() % 100);
-		(*(*input.mutable_containers())[j].mutable_mounts())[i].set_used_inodes(rand() % 100);
-
-	    }
-	    for (int i = 0; i < 5; i++) { // get some repeats
-		(*input.mutable_containers())[j].add_network_by_serverports()->set_port(rand() % 2);
-		generate_connection_categories((*(*input.mutable_containers())[j].mutable_network_by_serverports())[i].mutable_counters());
-	    }
-	    (*input.mutable_containers())[j].set_mesos_task_id("209fasd");
-	    (*input.mutable_containers())[j].set_image_id("sedrfa");
-	    for(int i = 0; i < 100; i ++)
-	    {
-		(*input.mutable_containers())[j].add_commands()->set_timestamp(rand() % 2);
-		(*(*input.mutable_containers())[j].mutable_commands())[i].set_count(rand() % 2);
-		(*(*input.mutable_containers())[j].mutable_commands())[i].set_cmdline(std::to_string(rand() % 2));
-		(*(*input.mutable_containers())[j].mutable_commands())[i].set_comm(std::to_string(rand() % 2));
-		(*(*input.mutable_containers())[j].mutable_commands())[i].set_pid(rand() % 2);
-		(*(*input.mutable_containers())[j].mutable_commands())[i].set_ppid(rand() % 2);
-		(*(*input.mutable_containers())[j].mutable_commands())[i].set_uid(rand() % 2);
-		(*(*input.mutable_containers())[j].mutable_commands())[i].set_cwd(std::to_string(rand() % 2));
-		(*(*input.mutable_containers())[j].mutable_commands())[i].set_login_shell_id(rand() % 2);
-		(*(*input.mutable_containers())[j].mutable_commands())[i].set_login_shell_distance(rand() % 2);
-		(*(*input.mutable_containers())[j].mutable_commands())[i].set_tty(rand() % 2);
-		(*(*input.mutable_containers())[j].mutable_commands())[i].set_category((draiosproto::command_category)(rand() % 2));
-	    }
-	    for (int i = 0; i < 5; i ++)
-	    {
-		(*input.mutable_containers())[j].add_orchestrators_fallback_labels()->set_key(std::to_string(rand() % 2));
-		(*(*input.mutable_containers())[j].mutable_orchestrators_fallback_labels())[i].set_value(std::to_string(rand() % 2));
-	    }
-	    (*input.mutable_containers())[j].set_image_repo(";ohji");
-	    (*input.mutable_containers())[j].set_image_tag("89ujp7");
-	    (*input.mutable_containers())[j].set_image_digest("kjnml;");
-	    (*input.mutable_containers())[j].add_container_reporting_group_id(2309);
-	    (*input.mutable_containers())[j].add_container_reporting_group_id(90);
-	    (*input.mutable_containers())[j].add_container_reporting_group_id(342);
-	    (*input.mutable_containers())[j].add_top_files()->set_name("w0asdiouf ");
-	    (*(*input.mutable_containers())[j].mutable_top_files())[0].set_bytes(rand() % 100);
-	    (*(*input.mutable_containers())[j].mutable_top_files())[0].set_time_ns(rand() % 100);
-	    (*(*input.mutable_containers())[j].mutable_top_files())[0].set_open_count(rand() % 100);
-	    (*(*input.mutable_containers())[j].mutable_top_files())[0].set_errors(rand() % 100);
-	    for (int i = 1; i < 5; i ++)
-	    {
-		(*input.mutable_containers())[j].add_top_files()->set_name(std::to_string(rand() % 2));
-		(*(*input.mutable_containers())[j].mutable_top_files())[i].set_bytes(rand() % 100);
-		(*(*input.mutable_containers())[j].mutable_top_files())[i].set_time_ns(rand() % 100);
-		(*(*input.mutable_containers())[j].mutable_top_files())[i].set_open_count(rand() % 100);
-		(*(*input.mutable_containers())[j].mutable_top_files())[i].set_errors(rand() % 100);
-	    }
-	    (*input.mutable_containers())[j].add_top_devices()->set_name("asd98uwef ");
-	    (*(*input.mutable_containers())[j].mutable_top_devices())[0].set_bytes(rand() % 100);
-	    (*(*input.mutable_containers())[j].mutable_top_devices())[0].set_time_ns(rand() % 100);
-	    (*(*input.mutable_containers())[j].mutable_top_devices())[0].set_open_count(rand() % 100);
-	    (*(*input.mutable_containers())[j].mutable_top_devices())[0].set_errors(rand() % 100);
-	    for (int i = 1; i < 5; i ++)
-	    {
-		(*input.mutable_containers())[j].add_top_devices()->set_name(std::to_string(rand() % 2));
-		(*(*input.mutable_containers())[j].mutable_top_devices())[i].set_bytes(rand() % 100);
-		(*(*input.mutable_containers())[j].mutable_top_devices())[i].set_time_ns(rand() % 100);
-		(*(*input.mutable_containers())[j].mutable_top_devices())[i].set_open_count(rand() % 100);
-		(*(*input.mutable_containers())[j].mutable_top_devices())[i].set_errors(rand() % 100);
-	    }
-	}
-
-	// generate some mesos
-	for (int i = 0; i < 50; i++)
-	{
-	    input.mutable_mesos()->add_frameworks();
-	    generate_mesos_common((*input.mutable_mesos()->mutable_frameworks())[i].mutable_common());
-	    for (int j = 0; j < 10; j++)
-	    {
-		(*input.mutable_mesos()->mutable_frameworks())[i].add_tasks();
-		generate_mesos_common((*(*input.mutable_mesos()->mutable_frameworks())[i].mutable_tasks())[j].mutable_common());
-		(*(*input.mutable_mesos()->mutable_frameworks())[i].mutable_tasks())[j].set_slave_id(std::to_string(rand() % 2));
-	    }
-	}
-	for (int i = 0; i < 50; i++)
-	{
-	    generate_marathon_group(input.mutable_mesos()->add_groups());
-	}
-	for (int i = 0; i < 50; i++)
-	{
-	    generate_mesos_common(input.mutable_mesos()->add_slaves()->mutable_common());
-	}
-
-	// generate some events
-	for (int i = 0; i < 100; i++)
-	{
-	    input.add_events();
-	    (*input.mutable_events())[i].set_timestamp_sec(rand() % 2);
-	    (*input.mutable_events())[i].set_scope(std::to_string(rand() % 2));
-	    (*input.mutable_events())[i].set_title(std::to_string(rand() % 2));
-	    (*input.mutable_events())[i].set_description(std::to_string(rand() % 2));
-	    (*input.mutable_events())[i].set_severity(rand() % 2);
-	    for (int j = 0; j <= rand() % 2; j++)
-	    {
-		(*input.mutable_events())[i].add_tags();
-		(*(*input.mutable_events())[i].mutable_tags())[j].set_key(std::to_string(rand() % 2));
-		(*(*input.mutable_events())[i].mutable_tags())[j].set_value(std::to_string(rand() % 2));
-	    }
-	}
-
-	// generate some falco baseline
-	for (int i = 0; i < 50; i++)
-	{
-	    input.mutable_falcobl()->add_progs();
-	    (*input.mutable_falcobl()->mutable_progs())[i].set_comm(std::to_string(rand() % 2));
-	    (*input.mutable_falcobl()->mutable_progs())[i].set_exe(std::to_string(rand() % 2));
-	    (*input.mutable_falcobl()->mutable_progs())[i].add_args("jjff");
-	    (*input.mutable_falcobl()->mutable_progs())[i].add_args("jjff");
-	    (*input.mutable_falcobl()->mutable_progs())[i].add_args("jjasdfjkl;ff");
-	    (*input.mutable_falcobl()->mutable_progs())[i].set_user_id(rand() % 2);
-	    (*input.mutable_falcobl()->mutable_progs())[i].set_container_id(std::to_string(rand() % 2));
-	    for (int j = 0; j < rand() % 3; j++) // j cats
-	    {
-		(*input.mutable_falcobl()->mutable_progs())[i].add_cats();
-		(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].set_name(std::to_string(rand() % 2));
-		for (int k = 0; k < rand() % 3; k++) // k subcat container
-		{
-		    (*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].add_startup_subcats();
-		    (*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].add_regular_subcats();
-		    for (int l = 0; l < rand() % 3; l++) // l subcats
-		    {
-			(*(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].mutable_startup_subcats())[k].add_subcats();
-			(*(*(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].mutable_startup_subcats())[k].mutable_subcats())[l].set_name(std::to_string(rand() % 2));
-			for (int m = 0; m < rand() % 3; m++) // m d's
-			{
-			    (*(*(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].mutable_startup_subcats())[k].mutable_subcats())[l].add_d(std::to_string(rand() % 2));
-			}
-			(*(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].mutable_regular_subcats())[k].add_subcats();
-			(*(*(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].mutable_regular_subcats())[k].mutable_subcats())[l].set_name(std::to_string(rand() % 2));
-			for (int m = 0; m < rand() % 3; m++) // m d's
-			{
-			    (*(*(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].mutable_regular_subcats())[k].mutable_subcats())[l].add_d(std::to_string(rand() % 2));
-			}
-		    }
+		// generate some host stuff
+		input.mutable_hostinfo()->set_hostname("290sdiaf");
+		input.mutable_hostinfo()->set_num_cpus(rand() % 100);
+		input.mutable_hostinfo()->add_cpu_loads(rand() % 100);
+		input.mutable_hostinfo()->add_cpu_loads(rand() % 100);
+		input.mutable_hostinfo()->add_cpu_loads(rand() % 100);
+		input.mutable_hostinfo()->set_physical_memory_size_bytes(rand() % 100);
+		generate_time_categories(input.mutable_hostinfo()->mutable_tcounters());
+		generate_counter_time_bidirectional(input.mutable_hostinfo()->mutable_transaction_counters());
+		input.mutable_hostinfo()->set_transaction_processing_delay(rand() % 100);
+		generate_resource_categories(input.mutable_hostinfo()->mutable_resource_counters());
+		generate_counter_syscall_errors(input.mutable_hostinfo()->mutable_syscall_errors());
+		generate_counter_time_bytes(input.mutable_hostinfo()->mutable_external_io_net());
+		input.mutable_hostinfo()->add_cpu_steal(rand() % 100);
+		input.mutable_hostinfo()->add_cpu_steal(rand() % 100);
+		input.mutable_hostinfo()->add_cpu_steal(rand() % 100);
+		generate_transaction_breakdown_categories(input.mutable_hostinfo()->mutable_reqcounters());
+		input.mutable_hostinfo()->set_next_tiers_delay(rand() % 100);
+		generate_counter_time_bidirectional(input.mutable_hostinfo()->mutable_max_transaction_counters());
+		input.mutable_hostinfo()->add_network_by_serverports()->set_port(234);
+		generate_connection_categories((*input.mutable_hostinfo()->mutable_network_by_serverports())[0].mutable_counters());
+		for (int i = 1; i < 5; i++) { // get some repeats
+			input.mutable_hostinfo()->add_network_by_serverports()->set_port(rand() % 2);
+			generate_connection_categories((*input.mutable_hostinfo()->mutable_network_by_serverports())[i].mutable_counters());
 		}
-	    }
+		input.mutable_hostinfo()->add_cpu_idle(rand() % 100);
+		input.mutable_hostinfo()->add_cpu_idle(rand() % 100);
+		input.mutable_hostinfo()->add_cpu_idle(rand() % 100);
+		input.mutable_hostinfo()->set_system_load(rand() % 100);
+		input.mutable_hostinfo()->set_uptime(rand() % 100);
+		input.mutable_hostinfo()->add_system_cpu(rand() % 100);
+		input.mutable_hostinfo()->add_system_cpu(rand() % 100);
+		input.mutable_hostinfo()->add_system_cpu(rand() % 100);
+		input.mutable_hostinfo()->add_user_cpu(rand() % 100);
+		input.mutable_hostinfo()->add_user_cpu(rand() % 100);
+		input.mutable_hostinfo()->add_user_cpu(rand() % 100);
+		input.mutable_hostinfo()->set_memory_bytes_available_kb(rand() % 100);
+		input.mutable_hostinfo()->add_iowait_cpu(rand() % 100);
+		input.mutable_hostinfo()->add_iowait_cpu(rand() % 100);
+		input.mutable_hostinfo()->add_iowait_cpu(rand() % 100);
+		input.mutable_hostinfo()->add_nice_cpu(rand() % 100);
+		input.mutable_hostinfo()->add_nice_cpu(rand() % 100);
+		input.mutable_hostinfo()->add_nice_cpu(rand() % 100);
+		input.mutable_hostinfo()->set_system_load_1(rand() % 100);
+		input.mutable_hostinfo()->set_system_load_5(rand() % 100);
+		input.mutable_hostinfo()->set_system_load_15(rand() % 100);
 
-	    input.mutable_falcobl()->add_containers();
-	    (*input.mutable_falcobl()->mutable_containers())[i].set_id(std::to_string(rand() % 2));
-	    (*input.mutable_falcobl()->mutable_containers())[i].set_name(std::to_string(rand() % 2));
-	    (*input.mutable_falcobl()->mutable_containers())[i].set_image_name(std::to_string(rand() % 2));
-	    (*input.mutable_falcobl()->mutable_containers())[i].set_image_id(std::to_string(rand() % 2));
-	}
+		// generate some connections
+		input.add_ipv4_connections()->mutable_tuple()->set_sip(2340);
+		(*input.mutable_ipv4_connections())[0].mutable_tuple()->set_dip(487);
+		(*input.mutable_ipv4_connections())[0].mutable_tuple()->set_sport(3);
+		(*input.mutable_ipv4_connections())[0].mutable_tuple()->set_dport(94);
+		(*input.mutable_ipv4_connections())[0].mutable_tuple()->set_l4proto(2098);
+		(*input.mutable_ipv4_connections())[0].set_spid(984);
+		(*input.mutable_ipv4_connections())[0].set_dpid(884);
+		generate_connection_categories((*input.mutable_ipv4_connections())[0].mutable_counters());
+		(*input.mutable_ipv4_connections())[0].set_state((draiosproto::connection_state)(rand() % 3));
+		(*input.mutable_ipv4_connections())[0].set_error_code((draiosproto::error_code)(1 + (rand() % 100)));
 
-	// generate some commands
-	for(int i = 0; i < 100; i ++)
-	{
-	    input.add_commands()->set_timestamp(rand() % 2);
-	    (*input.mutable_commands())[i].set_count(rand() % 2);
-	    (*input.mutable_commands())[i].set_cmdline(std::to_string(rand() % 2));
-	    (*input.mutable_commands())[i].set_comm(std::to_string(rand() % 2));
-	    (*input.mutable_commands())[i].set_pid(rand() % 2);
-	    (*input.mutable_commands())[i].set_ppid(rand() % 2);
-	    (*input.mutable_commands())[i].set_uid(rand() % 2);
-	    (*input.mutable_commands())[i].set_cwd(std::to_string(rand() % 2));
-	    (*input.mutable_commands())[i].set_login_shell_id(rand() % 2);
-	    (*input.mutable_commands())[i].set_login_shell_distance(rand() % 2);
-	    (*input.mutable_commands())[i].set_tty(rand() % 2);
-	    (*input.mutable_commands())[i].set_category((draiosproto::command_category)(rand() % 2));
-	}
+		for (int i = 1; i < 130; i++) // guaranteed to get some repeats
+		{
+			input.add_ipv4_connections()->mutable_tuple()->set_sip(rand() % 2);
+			(*input.mutable_ipv4_connections())[i].mutable_tuple()->set_dip(rand() % 2);
+			(*input.mutable_ipv4_connections())[i].mutable_tuple()->set_sport(rand() % 2);
+			(*input.mutable_ipv4_connections())[i].mutable_tuple()->set_dport(rand() % 2);
+			(*input.mutable_ipv4_connections())[i].mutable_tuple()->set_l4proto(rand() % 2);
+			(*input.mutable_ipv4_connections())[i].set_spid(rand() % 2);
+			(*input.mutable_ipv4_connections())[i].set_dpid(rand() % 2);
+			generate_connection_categories((*input.mutable_ipv4_connections())[i].mutable_counters());
+			(*input.mutable_ipv4_connections())[i].set_state((draiosproto::connection_state)(rand() % 3));
+			(*input.mutable_ipv4_connections())[i].set_error_code((draiosproto::error_code)(1 + (rand() % 100)));
+		}
 
-	// generate some swarm
-	for (int i = 0; i < 50; i++)
-	{
-	    input.mutable_swarm()->add_services();
-	    generate_swarm_common((*input.mutable_swarm()->mutable_services())[i].mutable_common());
-	    (*input.mutable_swarm()->mutable_services())[i].add_virtual_ips(std::to_string(rand() % 2));
-	    (*input.mutable_swarm()->mutable_services())[i].add_virtual_ips(std::to_string(rand() % 2));
-	    for (int j = 0; j < 10; j++)
-	    {
-		(*input.mutable_swarm()->mutable_services())[i].add_ports();
-		(*(*input.mutable_swarm()->mutable_services())[i].mutable_ports())[j].set_port(rand() % 2);
-		(*(*input.mutable_swarm()->mutable_services())[i].mutable_ports())[j].set_published_port(rand() % 2);
-		(*(*input.mutable_swarm()->mutable_services())[i].mutable_ports())[j].set_protocol(std::to_string(rand() % 2));
-	    }
-	    (*input.mutable_swarm()->mutable_services())[i].set_mode((draiosproto::swarm_service_mode)(rand() % 2));
-	    (*input.mutable_swarm()->mutable_services())[i].set_spec_replicas(rand() % 2);
-	    (*input.mutable_swarm()->mutable_services())[i].set_tasks(rand() % 2);
+		// generate some interfaces
+		input.add_ipv4_network_interfaces()->set_name("asd2389");
+		(*input.mutable_ipv4_network_interfaces())[0].set_addr(9129);
+		(*input.mutable_ipv4_network_interfaces())[0].set_netmask(20);
+		(*input.mutable_ipv4_network_interfaces())[0].set_bcast(1308);
 
-	}
+		for (int i = 1; i < 10; i++)
+		{
+			input.add_ipv4_network_interfaces()->set_name(std::to_string(rand() % 2));
+			(*input.mutable_ipv4_network_interfaces())[i].set_addr(rand() % 2);
+			(*input.mutable_ipv4_network_interfaces())[i].set_netmask(rand() % 2);
+			(*input.mutable_ipv4_network_interfaces())[i].set_bcast(rand() % 2);
+		}
 
-	for (int i = 0; i < 50; i++)
-	{
-	    input.mutable_swarm()->add_nodes();
-	    generate_swarm_common((*input.mutable_swarm()->mutable_nodes())[i].mutable_common());
-	    (*input.mutable_swarm()->mutable_nodes())[i].set_role(std::to_string(rand() % 2));
-	    (*input.mutable_swarm()->mutable_nodes())[i].set_ip_address(std::to_string(rand() % 2));
-	    (*input.mutable_swarm()->mutable_nodes())[i].set_version(std::to_string(rand() % 2));
-	    (*input.mutable_swarm()->mutable_nodes())[i].set_availability(std::to_string(rand() % 2));
-	    (*input.mutable_swarm()->mutable_nodes())[i].set_state(std::to_string(rand() % 2));
-	    (*input.mutable_swarm()->mutable_nodes())[i].mutable_manager()->set_leader(rand() % 2);
-	    (*input.mutable_swarm()->mutable_nodes())[i].mutable_manager()->set_reachability(std::to_string(rand() % 2));
-	}
-	for (int i = 0; i < 50; i++)
-	{
-	    input.mutable_swarm()->add_tasks();
-	    generate_swarm_common((*input.mutable_swarm()->mutable_tasks())[i].mutable_common());
-	    (*input.mutable_swarm()->mutable_tasks())[i].set_service_id(std::to_string(rand() % 2));
-	    (*input.mutable_swarm()->mutable_tasks())[i].set_node_id(std::to_string(rand() % 2));
-	    (*input.mutable_swarm()->mutable_tasks())[i].set_container_id(std::to_string(rand() % 2));
-	    (*input.mutable_swarm()->mutable_tasks())[i].set_state(std::to_string(rand() % 2));
-	}
-	input.mutable_swarm()->set_quorum(rand() % 2);
-	input.mutable_swarm()->set_node_id("wserftghiur");
+		// generate some programs
+		input.add_programs()->mutable_procinfo()->mutable_details()->set_comm("23");
+		(*input.mutable_programs())[0].mutable_procinfo()->mutable_details()->set_exe("9o wser");
+		(*input.mutable_programs())[0].mutable_procinfo()->mutable_details()->set_container_id("2039u asdjf");
+		(*input.mutable_programs())[0].mutable_procinfo()->mutable_details()->add_args("jjff");
+		(*input.mutable_programs())[0].mutable_procinfo()->mutable_details()->add_args("jjff");
+		(*input.mutable_programs())[0].mutable_procinfo()->mutable_details()->add_args("jjfilskdjf");
+		generate_time_categories((*input.mutable_programs())[0].mutable_procinfo()->mutable_tcounters());
+		(*input.mutable_programs())[0].mutable_procinfo()->set_transaction_processing_delay(rand() % 100);
+		generate_resource_categories((*input.mutable_programs())[0].mutable_procinfo()->mutable_resource_counters());
+		generate_counter_syscall_errors((*input.mutable_programs())[0].mutable_procinfo()->mutable_syscall_errors());
+		(*input.mutable_programs())[0].mutable_procinfo()->set_next_tiers_delay(rand() % 100);
+		(*input.mutable_programs())[0].mutable_procinfo()->set_netrole(rand() % 100);
+		generate_counter_time_bidirectional((*input.mutable_programs())[0].mutable_procinfo()->mutable_max_transaction_counters());
+		generate_proto_info((*input.mutable_programs())[0].mutable_procinfo()->mutable_protos(),
+							"j" + input.programs()[0].procinfo().details().comm());
+		(*input.mutable_programs())[0].mutable_procinfo()->set_start_count(rand() % 100);
+		(*input.mutable_programs())[0].mutable_procinfo()->set_count_processes(rand() % 100);
+		(*input.mutable_programs())[0].mutable_procinfo()->add_top_files()->set_name("a8");
+		(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[0].set_bytes(rand() % 100);
+		(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[0].set_time_ns(rand() % 100);
+		(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[0].set_open_count(rand() % 100);
+		(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[0].set_errors(rand() % 100);
+		for (int i = 1; i < 5; i ++)
+		{
+			(*input.mutable_programs())[0].mutable_procinfo()->add_top_files()->set_name(std::to_string(rand() % 2));
+			(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[i].set_bytes(rand() % 100);
+			(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[i].set_time_ns(rand() % 100);
+			(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[i].set_open_count(rand() % 100);
+			(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_files())[i].set_errors(rand() % 100);
+		}
+		(*input.mutable_programs())[0].mutable_procinfo()->add_top_devices()->set_name("02w3894u");
+		(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[0].set_bytes(rand() % 100);
+		(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[0].set_time_ns(rand() % 100);
+		(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[0].set_open_count(rand() % 100);
+		(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[0].set_errors(rand() % 100);
+		for (int i = 1; i < 5; i ++)
+		{
+			(*input.mutable_programs())[0].mutable_procinfo()->add_top_devices()->set_name(std::to_string(rand() % 2));
+			(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[i].set_bytes(rand() % 100);
+			(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[i].set_time_ns(rand() % 100);
+			(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[i].set_open_count(rand() % 100);
+			(*(*input.mutable_programs())[0].mutable_procinfo()->mutable_top_devices())[i].set_errors(rand() % 100);
+		}
+		(*input.mutable_programs())[0].add_pids(23409);
+		(*input.mutable_programs())[0].add_pids(230948);
+		(*input.mutable_programs())[0].add_uids(209);
+		(*input.mutable_programs())[0].add_uids(1234);
+		(*input.mutable_programs())[0].set_environment_hash("209fjs");
+		(*input.mutable_programs())[0].add_program_reporting_group_id(59823);
+		(*input.mutable_programs())[0].add_program_reporting_group_id(90298);
+
+		for (int j = 1; j < 5; j++)
+		{
+			// need to use big values for these things since BE has hash collissions
+			input.add_programs()->mutable_procinfo()->mutable_details()->set_comm(std::to_string(j));
+			(*input.mutable_programs())[j].mutable_procinfo()->mutable_details()->set_exe(std::to_string(10 * j));
+			(*input.mutable_programs())[j].mutable_procinfo()->mutable_details()->set_container_id(std::to_string(100 * j));
+			(*input.mutable_programs())[j].mutable_procinfo()->mutable_details()->add_args(std::to_string(1000 * j));
+			generate_time_categories((*input.mutable_programs())[j].mutable_procinfo()->mutable_tcounters());
+			(*input.mutable_programs())[j].mutable_procinfo()->set_transaction_processing_delay(rand() % 100);
+			generate_resource_categories((*input.mutable_programs())[j].mutable_procinfo()->mutable_resource_counters());
+			generate_counter_syscall_errors((*input.mutable_programs())[j].mutable_procinfo()->mutable_syscall_errors());
+			(*input.mutable_programs())[j].mutable_procinfo()->set_next_tiers_delay(rand() % 100);
+			(*input.mutable_programs())[j].mutable_procinfo()->set_netrole(rand() % 100);
+			generate_counter_time_bidirectional((*input.mutable_programs())[j].mutable_procinfo()->mutable_max_transaction_counters());
+			generate_proto_info((*input.mutable_programs())[j].mutable_procinfo()->mutable_protos(),
+								"j" + input.programs()[j].procinfo().details().comm());
+			(*input.mutable_programs())[j].mutable_procinfo()->set_start_count(rand() % 100);
+			(*input.mutable_programs())[j].mutable_procinfo()->set_count_processes(rand() % 100);
+			(*input.mutable_programs())[j].mutable_procinfo()->add_top_files()->set_name("a8");
+			(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[0].set_bytes(rand() % 100);
+			(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[0].set_time_ns(rand() % 100);
+			(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[0].set_open_count(rand() % 100);
+			(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[0].set_errors(rand() % 100);
+			for (int i = 1; i < 5; i ++)
+			{
+				(*input.mutable_programs())[j].mutable_procinfo()->add_top_files()->set_name(std::to_string(rand() % 2));
+				(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[i].set_bytes(rand() % 100);
+				(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[i].set_time_ns(rand() % 100);
+				(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[i].set_open_count(rand() % 100);
+				(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_files())[i].set_errors(rand() % 100);
+			}
+			(*input.mutable_programs())[j].mutable_procinfo()->add_top_devices()->set_name("02w3894u");
+			(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[0].set_bytes(rand() % 100);
+			(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[0].set_time_ns(rand() % 100);
+			(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[0].set_open_count(rand() % 100);
+			(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[0].set_errors(rand() % 100);
+			for (int i = 1; i < 5; i ++)
+			{
+				(*input.mutable_programs())[j].mutable_procinfo()->add_top_devices()->set_name(std::to_string(rand() % 2));
+				(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[i].set_bytes(rand() % 100);
+				(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[i].set_time_ns(rand() % 100);
+				(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[i].set_open_count(rand() % 100);
+				(*(*input.mutable_programs())[j].mutable_procinfo()->mutable_top_devices())[i].set_errors(rand() % 100);
+			}
+			(*input.mutable_programs())[j].add_pids(j); // don't want pid conflicts, or BE has 
+			// undefined behaviior
+			(*input.mutable_programs())[j].add_pids(100 * j);
+			(*input.mutable_programs())[j].add_pids(1000 * j);
+			(*input.mutable_programs())[j].add_uids(rand() % 100);
+			(*input.mutable_programs())[j].add_uids(rand() % 100);
+			(*input.mutable_programs())[j].add_uids(rand() % 100);
+			(*input.mutable_programs())[j].set_environment_hash(std::to_string(10000 * j));
+			(*input.mutable_programs())[j].add_program_reporting_group_id(rand() % 100);
+			(*input.mutable_programs())[j].add_program_reporting_group_id(rand() % 100);
+			(*input.mutable_programs())[j].add_program_reporting_group_id(rand() % 100);
+		}
+
+		input.set_sampling_ratio(rand() % 100);
+		input.set_host_custom_name("asd;df");
+		input.set_host_tags("wlkekjfkljsd");
+		input.set_version("woidej;sfd");
+
+		// generate some mounts
+		input.add_mounts()->set_device("123409f");
+		(*input.mutable_mounts())[0].set_mount_dir("einput.add_mounts");
+		(*input.mutable_mounts())[0].set_type("0uwsdoifj");
+		(*input.mutable_mounts())[0].set_size_bytes(rand() % 100);
+		(*input.mutable_mounts())[0].set_used_bytes(rand() % 100);
+		(*input.mutable_mounts())[0].set_available_bytes(rand() % 100);
+		(*input.mutable_mounts())[0].set_total_inodes(rand() % 100);
+		(*input.mutable_mounts())[0].set_used_inodes(rand() % 100);
+
+		for (int i = 1; i < 10; i++)
+		{
+			input.add_mounts()->set_device(std::to_string(rand() % 2));
+			(*input.mutable_mounts())[i].set_mount_dir(std::to_string(rand() % 2));
+			(*input.mutable_mounts())[i].set_type(std::to_string(rand() % 2));
+			(*input.mutable_mounts())[i].set_size_bytes(rand() % 100);
+			(*input.mutable_mounts())[i].set_used_bytes(rand() % 100);
+			(*input.mutable_mounts())[i].set_available_bytes(rand() % 100);
+			(*input.mutable_mounts())[i].set_total_inodes(rand() % 100);
+			(*input.mutable_mounts())[i].set_used_inodes(rand() % 100);
+
+		}
+
+		// generate some files
+		input.add_top_files()->set_name("w0asdiouf ");
+		(*input.mutable_top_files())[0].set_bytes(rand() % 100);
+		(*input.mutable_top_files())[0].set_time_ns(rand() % 100);
+		(*input.mutable_top_files())[0].set_open_count(rand() % 100);
+		(*input.mutable_top_files())[0].set_errors(rand() % 100);
+		for (int i = 1; i < 5; i ++)
+		{
+			input.add_top_files()->set_name(std::to_string(rand() % 2));
+			(*input.mutable_top_files())[i].set_bytes(rand() % 100);
+			(*input.mutable_top_files())[i].set_time_ns(rand() % 100);
+			(*input.mutable_top_files())[i].set_open_count(rand() % 100);
+			(*input.mutable_top_files())[i].set_errors(rand() % 100);
+		}
+
+		// geenrate some protos
+		generate_proto_info(input.mutable_protos());
+
+		input.set_instance_id("qaweiour2");
+
+		// generate some containers
+		input.add_containers()->set_id("0sadfoi2");
+		(*input.mutable_containers())[0].set_type((draiosproto::container_type)3);
+		(*input.mutable_containers())[0].set_name("089uasdf");
+		(*input.mutable_containers())[0].set_image("209f");
+		generate_time_categories((*input.mutable_containers())[0].mutable_tcounters());
+		generate_transaction_breakdown_categories((*input.mutable_containers())[0].mutable_reqcounters());
+		generate_counter_time_bidirectional((*input.mutable_containers())[0].mutable_transaction_counters());
+		generate_counter_time_bidirectional((*input.mutable_containers())[0].mutable_max_transaction_counters());
+		(*input.mutable_containers())[0].set_transaction_processing_delay(rand() % 100);
+		(*input.mutable_containers())[0].set_next_tiers_delay(rand() % 100);
+		generate_resource_categories((*input.mutable_containers())[0].mutable_resource_counters());
+		generate_counter_syscall_errors((*input.mutable_containers())[0].mutable_syscall_errors());
+		for (int i = 0 ; i < 10; i ++)
+		{
+			(*input.mutable_containers())[0].add_port_mappings()->set_host_ip(rand() % 2);
+			(*(*input.mutable_containers())[0].mutable_port_mappings())[i].set_host_port(rand() % 2);
+			(*(*input.mutable_containers())[0].mutable_port_mappings())[i].set_container_ip(rand() % 2);
+			(*(*input.mutable_containers())[0].mutable_port_mappings())[i].set_container_port(rand() % 2);
+		}
+		generate_proto_info((*input.mutable_containers())[0].mutable_protos());
+		for (int i = 0; i < 5; i ++)
+		{
+			(*input.mutable_containers())[0].add_labels()->set_key(std::to_string(10 * i + (rand() % 2)));
+			(*(*input.mutable_containers())[0].mutable_labels())[i].set_value(std::to_string(rand() % 2));
+		}
+		(*input.mutable_containers())[0].add_mounts()->set_device("asdf09u");
+		(*(*input.mutable_containers())[0].mutable_mounts())[0].set_mount_dir("e(*input.mutable_containers())[0].add_mounts");
+		(*(*input.mutable_containers())[0].mutable_mounts())[0].set_type("0uwsdoifj");
+		(*(*input.mutable_containers())[0].mutable_mounts())[0].set_size_bytes(rand() % 100);
+		(*(*input.mutable_containers())[0].mutable_mounts())[0].set_used_bytes(rand() % 100);
+		(*(*input.mutable_containers())[0].mutable_mounts())[0].set_available_bytes(rand() % 100);
+		(*(*input.mutable_containers())[0].mutable_mounts())[0].set_total_inodes(rand() % 100);
+		(*(*input.mutable_containers())[0].mutable_mounts())[0].set_used_inodes(rand() % 100);
+
+		for (int i = 1; i < 10; i++)
+		{
+			(*input.mutable_containers())[0].add_mounts()->set_device(std::to_string(rand() % 2));
+			(*(*input.mutable_containers())[0].mutable_mounts())[i].set_mount_dir(std::to_string(rand() % 2));
+			(*(*input.mutable_containers())[0].mutable_mounts())[i].set_type(std::to_string(rand() % 2));
+			(*(*input.mutable_containers())[0].mutable_mounts())[i].set_size_bytes(rand() % 100);
+			(*(*input.mutable_containers())[0].mutable_mounts())[i].set_used_bytes(rand() % 100);
+			(*(*input.mutable_containers())[0].mutable_mounts())[i].set_available_bytes(rand() % 100);
+			(*(*input.mutable_containers())[0].mutable_mounts())[i].set_total_inodes(rand() % 100);
+			(*(*input.mutable_containers())[0].mutable_mounts())[i].set_used_inodes(rand() % 100);
+
+		}
+		for (int i = 0; i < 5; i++) { // get some repeats
+			(*input.mutable_containers())[0].add_network_by_serverports()->set_port(rand() % 2);
+			generate_connection_categories((*(*input.mutable_containers())[0].mutable_network_by_serverports())[i].mutable_counters());
+		}
+		(*input.mutable_containers())[0].set_mesos_task_id("209fasd");
+		(*input.mutable_containers())[0].set_image_id("sedrfa");
+		for(int i = 0; i < 100; i ++)
+		{
+			(*input.mutable_containers())[0].add_commands()->set_timestamp(rand() % 2);
+			(*(*input.mutable_containers())[0].mutable_commands())[i].set_count(rand() % 2);
+			(*(*input.mutable_containers())[0].mutable_commands())[i].set_cmdline(std::to_string(rand() % 2));
+			(*(*input.mutable_containers())[0].mutable_commands())[i].set_comm(std::to_string(rand() % 2));
+			(*(*input.mutable_containers())[0].mutable_commands())[i].set_pid(rand() % 2);
+			(*(*input.mutable_containers())[0].mutable_commands())[i].set_ppid(rand() % 2);
+			(*(*input.mutable_containers())[0].mutable_commands())[i].set_uid(rand() % 2);
+			(*(*input.mutable_containers())[0].mutable_commands())[i].set_cwd(std::to_string(rand() % 2));
+			(*(*input.mutable_containers())[0].mutable_commands())[i].set_login_shell_id(rand() % 2);
+			(*(*input.mutable_containers())[0].mutable_commands())[i].set_login_shell_distance(rand() % 2);
+			(*(*input.mutable_containers())[0].mutable_commands())[i].set_tty(rand() % 2);
+			(*(*input.mutable_containers())[0].mutable_commands())[i].set_category((draiosproto::command_category)(rand() % 2));
+		}
+		for (int i = 0; i < 5; i ++)
+		{
+			(*input.mutable_containers())[0].add_orchestrators_fallback_labels()->set_key(std::to_string(10 * i + (rand() % 2)));
+			(*(*input.mutable_containers())[0].mutable_orchestrators_fallback_labels())[i].set_value(std::to_string(rand() % 2));
+		}
+		(*input.mutable_containers())[0].set_image_repo(";ohji");
+		(*input.mutable_containers())[0].set_image_tag("89ujp7");
+		(*input.mutable_containers())[0].set_image_digest("kjnml;");
+		(*input.mutable_containers())[0].add_container_reporting_group_id(2309);
+		(*input.mutable_containers())[0].add_container_reporting_group_id(90);
+		(*input.mutable_containers())[0].add_container_reporting_group_id(342);
+		(*input.mutable_containers())[0].add_top_files()->set_name("w0asdiouf ");
+		(*(*input.mutable_containers())[0].mutable_top_files())[0].set_bytes(rand() % 100);
+		(*(*input.mutable_containers())[0].mutable_top_files())[0].set_time_ns(rand() % 100);
+		(*(*input.mutable_containers())[0].mutable_top_files())[0].set_open_count(rand() % 100);
+		(*(*input.mutable_containers())[0].mutable_top_files())[0].set_errors(rand() % 100);
+		for (int i = 1; i < 5; i ++)
+		{
+			(*input.mutable_containers())[0].add_top_files()->set_name(std::to_string(rand() % 2));
+			(*(*input.mutable_containers())[0].mutable_top_files())[i].set_bytes(rand() % 100);
+			(*(*input.mutable_containers())[0].mutable_top_files())[i].set_time_ns(rand() % 100);
+			(*(*input.mutable_containers())[0].mutable_top_files())[i].set_open_count(rand() % 100);
+			(*(*input.mutable_containers())[0].mutable_top_files())[i].set_errors(rand() % 100);
+		}
+		(*input.mutable_containers())[0].add_top_devices()->set_name("asd98uwef ");
+		(*(*input.mutable_containers())[0].mutable_top_devices())[0].set_bytes(rand() % 100);
+		(*(*input.mutable_containers())[0].mutable_top_devices())[0].set_time_ns(rand() % 100);
+		(*(*input.mutable_containers())[0].mutable_top_devices())[0].set_open_count(rand() % 100);
+		(*(*input.mutable_containers())[0].mutable_top_devices())[0].set_errors(rand() % 100);
+		for (int i = 1; i < 5; i ++)
+		{
+			(*input.mutable_containers())[0].add_top_devices()->set_name(std::to_string(rand() % 2));
+			(*(*input.mutable_containers())[0].mutable_top_devices())[i].set_bytes(rand() % 100);
+			(*(*input.mutable_containers())[0].mutable_top_devices())[i].set_time_ns(rand() % 100);
+			(*(*input.mutable_containers())[0].mutable_top_devices())[i].set_open_count(rand() % 100);
+			(*(*input.mutable_containers())[0].mutable_top_devices())[i].set_errors(rand() % 100);
+		}
+
+		for (int j = 1; j < 10; j++)
+		{
+			input.add_containers()->set_id(std::to_string(rand() % 5));
+			(*input.mutable_containers())[j].set_type((draiosproto::container_type)3);
+			(*input.mutable_containers())[j].set_name("089uasdf");
+			(*input.mutable_containers())[j].set_image("209f");
+			generate_time_categories((*input.mutable_containers())[j].mutable_tcounters());
+			generate_transaction_breakdown_categories((*input.mutable_containers())[j].mutable_reqcounters());
+			generate_counter_time_bidirectional((*input.mutable_containers())[j].mutable_transaction_counters());
+			generate_counter_time_bidirectional((*input.mutable_containers())[j].mutable_max_transaction_counters());
+			(*input.mutable_containers())[j].set_transaction_processing_delay(rand() % 100);
+			(*input.mutable_containers())[j].set_next_tiers_delay(rand() % 100);
+			generate_resource_categories((*input.mutable_containers())[j].mutable_resource_counters());
+			generate_counter_syscall_errors((*input.mutable_containers())[j].mutable_syscall_errors());
+			for (int i = 0 ; i < 10; i ++)
+			{
+				(*input.mutable_containers())[j].add_port_mappings()->set_host_ip(rand() % 2);
+				(*(*input.mutable_containers())[j].mutable_port_mappings())[i].set_host_port(rand() % 2);
+				(*(*input.mutable_containers())[j].mutable_port_mappings())[i].set_container_ip(rand() % 2);
+				(*(*input.mutable_containers())[j].mutable_port_mappings())[i].set_container_port(rand() % 2);
+			}
+			generate_proto_info((*input.mutable_containers())[j].mutable_protos());
+			for (int i = 0; i < 5; i ++)
+			{
+				(*input.mutable_containers())[j].add_labels()->set_key(std::to_string(10 * j + (rand() % 2)));
+				(*(*input.mutable_containers())[j].mutable_labels())[i].set_value(std::to_string(rand() % 2));
+			}
+			(*input.mutable_containers())[j].add_mounts()->set_device("asdf09u");
+			(*(*input.mutable_containers())[j].mutable_mounts())[0].set_mount_dir("e(*input.mutable_containers())[0].add_mounts");
+			(*(*input.mutable_containers())[j].mutable_mounts())[0].set_type("0uwsdoifj");
+			(*(*input.mutable_containers())[j].mutable_mounts())[0].set_size_bytes(rand() % 100);
+			(*(*input.mutable_containers())[j].mutable_mounts())[0].set_used_bytes(rand() % 100);
+			(*(*input.mutable_containers())[j].mutable_mounts())[0].set_available_bytes(rand() % 100);
+			(*(*input.mutable_containers())[j].mutable_mounts())[0].set_total_inodes(rand() % 100);
+			(*(*input.mutable_containers())[j].mutable_mounts())[0].set_used_inodes(rand() % 100);
+
+			for (int i = 1; i < 10; i++)
+			{
+				(*input.mutable_containers())[j].add_mounts()->set_device(std::to_string(rand() % 2));
+				(*(*input.mutable_containers())[j].mutable_mounts())[i].set_mount_dir(std::to_string(rand() % 2));
+				(*(*input.mutable_containers())[j].mutable_mounts())[i].set_type(std::to_string(rand() % 2));
+				(*(*input.mutable_containers())[j].mutable_mounts())[i].set_size_bytes(rand() % 100);
+				(*(*input.mutable_containers())[j].mutable_mounts())[i].set_used_bytes(rand() % 100);
+				(*(*input.mutable_containers())[j].mutable_mounts())[i].set_available_bytes(rand() % 100);
+				(*(*input.mutable_containers())[j].mutable_mounts())[i].set_total_inodes(rand() % 100);
+				(*(*input.mutable_containers())[j].mutable_mounts())[i].set_used_inodes(rand() % 100);
+
+			}
+			for (int i = 0; i < 5; i++) { // get some repeats
+				(*input.mutable_containers())[j].add_network_by_serverports()->set_port(rand() % 2);
+				generate_connection_categories((*(*input.mutable_containers())[j].mutable_network_by_serverports())[i].mutable_counters());
+			}
+			(*input.mutable_containers())[j].set_mesos_task_id("209fasd");
+			(*input.mutable_containers())[j].set_image_id("sedrfa");
+			for(int i = 0; i < 100; i ++)
+			{
+				(*input.mutable_containers())[j].add_commands()->set_timestamp(rand() % 2);
+				(*(*input.mutable_containers())[j].mutable_commands())[i].set_count(rand() % 2);
+				(*(*input.mutable_containers())[j].mutable_commands())[i].set_cmdline(std::to_string(rand() % 2));
+				(*(*input.mutable_containers())[j].mutable_commands())[i].set_comm(std::to_string(rand() % 2));
+				(*(*input.mutable_containers())[j].mutable_commands())[i].set_pid(rand() % 2);
+				(*(*input.mutable_containers())[j].mutable_commands())[i].set_ppid(rand() % 2);
+				(*(*input.mutable_containers())[j].mutable_commands())[i].set_uid(rand() % 2);
+				(*(*input.mutable_containers())[j].mutable_commands())[i].set_cwd(std::to_string(rand() % 2));
+				(*(*input.mutable_containers())[j].mutable_commands())[i].set_login_shell_id(rand() % 2);
+				(*(*input.mutable_containers())[j].mutable_commands())[i].set_login_shell_distance(rand() % 2);
+				(*(*input.mutable_containers())[j].mutable_commands())[i].set_tty(rand() % 2);
+				(*(*input.mutable_containers())[j].mutable_commands())[i].set_category((draiosproto::command_category)(rand() % 2));
+			}
+			for (int i = 0; i < 5; i ++)
+			{
+				(*input.mutable_containers())[j].add_orchestrators_fallback_labels()->set_key(std::to_string(10 * i + (rand() % 2)));
+				(*(*input.mutable_containers())[j].mutable_orchestrators_fallback_labels())[i].set_value(std::to_string(rand() % 2));
+			}
+			(*input.mutable_containers())[j].set_image_repo(";ohji");
+			(*input.mutable_containers())[j].set_image_tag("89ujp7");
+			(*input.mutable_containers())[j].set_image_digest("kjnml;");
+			(*input.mutable_containers())[j].add_container_reporting_group_id(2309);
+			(*input.mutable_containers())[j].add_container_reporting_group_id(90);
+			(*input.mutable_containers())[j].add_container_reporting_group_id(342);
+			(*input.mutable_containers())[j].add_top_files()->set_name("w0asdiouf ");
+			(*(*input.mutable_containers())[j].mutable_top_files())[0].set_bytes(rand() % 100);
+			(*(*input.mutable_containers())[j].mutable_top_files())[0].set_time_ns(rand() % 100);
+			(*(*input.mutable_containers())[j].mutable_top_files())[0].set_open_count(rand() % 100);
+			(*(*input.mutable_containers())[j].mutable_top_files())[0].set_errors(rand() % 100);
+			for (int i = 1; i < 5; i ++)
+			{
+				(*input.mutable_containers())[j].add_top_files()->set_name(std::to_string(rand() % 2));
+				(*(*input.mutable_containers())[j].mutable_top_files())[i].set_bytes(rand() % 100);
+				(*(*input.mutable_containers())[j].mutable_top_files())[i].set_time_ns(rand() % 100);
+				(*(*input.mutable_containers())[j].mutable_top_files())[i].set_open_count(rand() % 100);
+				(*(*input.mutable_containers())[j].mutable_top_files())[i].set_errors(rand() % 100);
+			}
+			(*input.mutable_containers())[j].add_top_devices()->set_name("asd98uwef ");
+			(*(*input.mutable_containers())[j].mutable_top_devices())[0].set_bytes(rand() % 100);
+			(*(*input.mutable_containers())[j].mutable_top_devices())[0].set_time_ns(rand() % 100);
+			(*(*input.mutable_containers())[j].mutable_top_devices())[0].set_open_count(rand() % 100);
+			(*(*input.mutable_containers())[j].mutable_top_devices())[0].set_errors(rand() % 100);
+			for (int i = 1; i < 5; i ++)
+			{
+				(*input.mutable_containers())[j].add_top_devices()->set_name(std::to_string(rand() % 2));
+				(*(*input.mutable_containers())[j].mutable_top_devices())[i].set_bytes(rand() % 100);
+				(*(*input.mutable_containers())[j].mutable_top_devices())[i].set_time_ns(rand() % 100);
+				(*(*input.mutable_containers())[j].mutable_top_devices())[i].set_open_count(rand() % 100);
+				(*(*input.mutable_containers())[j].mutable_top_devices())[i].set_errors(rand() % 100);
+			}
+		}
+
+		// generate some mesos
+		for (int i = 0; i < 50; i++)
+		{
+			input.mutable_mesos()->add_frameworks();
+			generate_mesos_common((*input.mutable_mesos()->mutable_frameworks())[i].mutable_common());
+			for (int j = 0; j < 10; j++)
+			{
+				(*input.mutable_mesos()->mutable_frameworks())[i].add_tasks();
+				generate_mesos_common((*(*input.mutable_mesos()->mutable_frameworks())[i].mutable_tasks())[j].mutable_common());
+				(*(*input.mutable_mesos()->mutable_frameworks())[i].mutable_tasks())[j].set_slave_id(std::to_string(rand() % 2));
+			}
+		}
+		for (int i = 0; i < 50; i++)
+		{
+			generate_marathon_group(input.mutable_mesos()->add_groups());
+		}
+		for (int i = 0; i < 50; i++)
+		{
+			generate_mesos_common(input.mutable_mesos()->add_slaves()->mutable_common());
+		}
+
+		// generate some events
+		for (int i = 0; i < 100; i++)
+		{
+			input.add_events();
+			(*input.mutable_events())[i].set_timestamp_sec(rand() % 2);
+			(*input.mutable_events())[i].set_scope(std::to_string(rand() % 2));
+			(*input.mutable_events())[i].set_title(std::to_string(rand() % 2));
+			(*input.mutable_events())[i].set_description(std::to_string(rand() % 2));
+			(*input.mutable_events())[i].set_severity(rand() % 2);
+			for (int j = 0; j <= rand() % 2; j++)
+			{
+				(*input.mutable_events())[i].add_tags();
+				(*(*input.mutable_events())[i].mutable_tags())[j].set_key(std::to_string(10 * j + (rand() % 2)));
+				(*(*input.mutable_events())[i].mutable_tags())[j].set_value(std::to_string(rand() % 2));
+			}
+		}
+
+		// generate some falco baseline
+		for (int i = 0; i < 50; i++)
+		{
+			input.mutable_falcobl()->add_progs();
+			(*input.mutable_falcobl()->mutable_progs())[i].set_comm(std::to_string(rand() % 2));
+			(*input.mutable_falcobl()->mutable_progs())[i].set_exe(std::to_string(rand() % 2));
+			(*input.mutable_falcobl()->mutable_progs())[i].add_args("jjff");
+			(*input.mutable_falcobl()->mutable_progs())[i].add_args("jjff");
+			(*input.mutable_falcobl()->mutable_progs())[i].add_args("jjasdfjkl;ff");
+			(*input.mutable_falcobl()->mutable_progs())[i].set_user_id(rand() % 2);
+			(*input.mutable_falcobl()->mutable_progs())[i].set_container_id(std::to_string(rand() % 2));
+			for (int j = 0; j < rand() % 3; j++) // j cats
+			{
+				(*input.mutable_falcobl()->mutable_progs())[i].add_cats();
+				(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].set_name(std::to_string(rand() % 2));
+				for (int k = 0; k < rand() % 3; k++) // k subcat container
+				{
+					(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].add_startup_subcats();
+					(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].add_regular_subcats();
+					for (int l = 0; l < rand() % 3; l++) // l subcats
+					{
+						(*(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].mutable_startup_subcats())[k].add_subcats();
+						(*(*(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].mutable_startup_subcats())[k].mutable_subcats())[l].set_name(std::to_string(rand() % 2));
+						for (int m = 0; m < rand() % 3; m++) // m d's
+						{
+							(*(*(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].mutable_startup_subcats())[k].mutable_subcats())[l].add_d(std::to_string(rand() % 2));
+						}
+						(*(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].mutable_regular_subcats())[k].add_subcats();
+						(*(*(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].mutable_regular_subcats())[k].mutable_subcats())[l].set_name(std::to_string(rand() % 2));
+						for (int m = 0; m < rand() % 3; m++) // m d's
+						{
+							(*(*(*(*input.mutable_falcobl()->mutable_progs())[i].mutable_cats())[j].mutable_regular_subcats())[k].mutable_subcats())[l].add_d(std::to_string(rand() % 2));
+						}
+					}
+				}
+			}
+
+			input.mutable_falcobl()->add_containers();
+			(*input.mutable_falcobl()->mutable_containers())[i].set_id(std::to_string(rand() % 2));
+			(*input.mutable_falcobl()->mutable_containers())[i].set_name(std::to_string(rand() % 2));
+			(*input.mutable_falcobl()->mutable_containers())[i].set_image_name(std::to_string(rand() % 2));
+			(*input.mutable_falcobl()->mutable_containers())[i].set_image_id(std::to_string(rand() % 2));
+		}
+
+		// generate some commands
+		for(int i = 0; i < 100; i ++)
+		{
+			input.add_commands()->set_timestamp(rand() % 2);
+			(*input.mutable_commands())[i].set_count(rand() % 2);
+			(*input.mutable_commands())[i].set_cmdline(std::to_string(rand() % 2));
+			(*input.mutable_commands())[i].set_comm(std::to_string(rand() % 2));
+			(*input.mutable_commands())[i].set_pid(rand() % 2);
+			(*input.mutable_commands())[i].set_ppid(rand() % 2);
+			(*input.mutable_commands())[i].set_uid(rand() % 2);
+			(*input.mutable_commands())[i].set_cwd(std::to_string(rand() % 2));
+			(*input.mutable_commands())[i].set_login_shell_id(rand() % 2);
+			(*input.mutable_commands())[i].set_login_shell_distance(rand() % 2);
+			(*input.mutable_commands())[i].set_tty(rand() % 2);
+			(*input.mutable_commands())[i].set_category((draiosproto::command_category)(rand() % 2));
+		}
+
+		// generate some swarm
+		for (int i = 0; i < 50; i++)
+		{
+			input.mutable_swarm()->add_services();
+			generate_swarm_common((*input.mutable_swarm()->mutable_services())[i].mutable_common());
+			(*input.mutable_swarm()->mutable_services())[i].add_virtual_ips(std::to_string(rand() % 2));
+			(*input.mutable_swarm()->mutable_services())[i].add_virtual_ips(std::to_string(rand() % 2));
+			for (int j = 0; j < 10; j++)
+			{
+				(*input.mutable_swarm()->mutable_services())[i].add_ports();
+				(*(*input.mutable_swarm()->mutable_services())[i].mutable_ports())[j].set_port(rand() % 2);
+				(*(*input.mutable_swarm()->mutable_services())[i].mutable_ports())[j].set_published_port(rand() % 2);
+				(*(*input.mutable_swarm()->mutable_services())[i].mutable_ports())[j].set_protocol(std::to_string(rand() % 2));
+			}
+			(*input.mutable_swarm()->mutable_services())[i].set_mode((draiosproto::swarm_service_mode)(1 + (rand() % 2)));
+			(*input.mutable_swarm()->mutable_services())[i].set_spec_replicas(rand() % 2);
+			(*input.mutable_swarm()->mutable_services())[i].set_tasks(rand() % 2);
+
+		}
+
+		for (int i = 0; i < 50; i++)
+		{
+			input.mutable_swarm()->add_nodes();
+			generate_swarm_common((*input.mutable_swarm()->mutable_nodes())[i].mutable_common());
+			(*input.mutable_swarm()->mutable_nodes())[i].set_role(std::to_string(rand() % 2));
+			(*input.mutable_swarm()->mutable_nodes())[i].set_ip_address(std::to_string(rand() % 2));
+			(*input.mutable_swarm()->mutable_nodes())[i].set_version(std::to_string(rand() % 2));
+			(*input.mutable_swarm()->mutable_nodes())[i].set_availability(std::to_string(rand() % 2));
+			(*input.mutable_swarm()->mutable_nodes())[i].set_state(std::to_string(rand() % 2));
+			(*input.mutable_swarm()->mutable_nodes())[i].mutable_manager()->set_leader(rand() % 2);
+			(*input.mutable_swarm()->mutable_nodes())[i].mutable_manager()->set_reachability(std::to_string(rand() % 2));
+		}
+		for (int i = 0; i < 50; i++)
+		{
+			input.mutable_swarm()->add_tasks();
+			generate_swarm_common((*input.mutable_swarm()->mutable_tasks())[i].mutable_common());
+			(*input.mutable_swarm()->mutable_tasks())[i].set_service_id(std::to_string(rand() % 2));
+			(*input.mutable_swarm()->mutable_tasks())[i].set_node_id(std::to_string(rand() % 2));
+			(*input.mutable_swarm()->mutable_tasks())[i].set_container_id(std::to_string(rand() % 2));
+			(*input.mutable_swarm()->mutable_tasks())[i].set_state(std::to_string(rand() % 2));
+		}
+		input.mutable_swarm()->set_quorum(rand() % 2);
+		input.mutable_swarm()->set_node_id("wserftghiur");
 
 
-	input.add_config_percentiles(1);
-	input.add_config_percentiles(20);
-	input.add_config_percentiles(45);
-	input.add_config_percentiles(74);
-	// generate some internal metrics
-	for (int i =0; i < 20; i++)
-	{
-	    input.mutable_internal_metrics()->add_statsd_metrics();
-	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_name(std::to_string(rand() % 2));
-	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].add_tags()->set_key(std::to_string(rand() % 2));
-	    (*(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].mutable_tags())[0].set_key(std::to_string(rand() % 2));
-	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].add_tags()->set_key(std::to_string(rand() % 2));
-	    (*(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].mutable_tags())[1].set_key(std::to_string(rand() % 2));
-	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_type((draiosproto::statsd_metric_type)(rand()%4));
-	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_value(rand() % 2);
-	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_sum(rand() % 2);
-	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_min(rand() % 2);
-	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_max(rand() % 2);
-	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_count(rand() % 2);
-	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_median(rand() % 2);
-	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_percentile_95(rand() % 2);
-	    (*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_percentile_99(rand() % 2);
-	}
+		input.add_config_percentiles(1);
+		input.add_config_percentiles(20);
+		input.add_config_percentiles(45);
+		input.add_config_percentiles(74);
+		// generate some internal metrics
+		for (int i =0; i < 20; i++)
+		{
+			input.mutable_internal_metrics()->add_statsd_metrics();
+			(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_name(std::to_string(rand() % 2));
+			(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].add_tags()->set_key(std::to_string(rand() % 2));
+			(*(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].mutable_tags())[0].set_value(std::to_string(rand() % 2));
+			(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].add_tags()->set_key(std::to_string(10 + (rand() % 2)));
+			(*(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].mutable_tags())[1].set_value(std::to_string(rand() % 2));
+			(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_type((draiosproto::statsd_metric_type)(1 + (rand() % 4)));
+			(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_value(rand() % 2);
+			(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_sum(rand() % 2);
+			(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_min(rand() % 2);
+			(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_max(rand() % 2);
+			(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_count(rand() % 2);
+			(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_median(rand() % 2);
+			(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_percentile_95(rand() % 2);
+			(*input.mutable_internal_metrics()->mutable_statsd_metrics())[i].set_percentile_99(rand() % 2);
+		}
 
-	// generate some incomplete connections
-	input.add_ipv4_incomplete_connections()->mutable_tuple()->set_sip(2340);
-	(*input.mutable_ipv4_incomplete_connections())[0].mutable_tuple()->set_dip(487);
-	(*input.mutable_ipv4_incomplete_connections())[0].mutable_tuple()->set_sport(3);
-	(*input.mutable_ipv4_incomplete_connections())[0].mutable_tuple()->set_dport(94);
-	(*input.mutable_ipv4_incomplete_connections())[0].mutable_tuple()->set_l4proto(2098);
-	(*input.mutable_ipv4_incomplete_connections())[0].set_spid(984);
-	(*input.mutable_ipv4_incomplete_connections())[0].set_dpid(884);
-	generate_connection_categories((*input.mutable_ipv4_incomplete_connections())[0].mutable_counters());
-	(*input.mutable_ipv4_incomplete_connections())[0].set_state((draiosproto::connection_state)(rand() % 3));
-	(*input.mutable_ipv4_incomplete_connections())[0].set_error_code((draiosproto::error_code)(rand() % 100));
+		// generate some incomplete connections
+		input.add_ipv4_incomplete_connections_v2()->mutable_tuple()->set_sip(2340);
+		(*input.mutable_ipv4_incomplete_connections_v2())[0].mutable_tuple()->set_dip(487);
+		(*input.mutable_ipv4_incomplete_connections_v2())[0].mutable_tuple()->set_sport(3);
+		(*input.mutable_ipv4_incomplete_connections_v2())[0].mutable_tuple()->set_dport(94);
+		(*input.mutable_ipv4_incomplete_connections_v2())[0].mutable_tuple()->set_l4proto(2098);
+		(*input.mutable_ipv4_incomplete_connections_v2())[0].set_spid(984);
+		(*input.mutable_ipv4_incomplete_connections_v2())[0].set_dpid(884);
+		generate_connection_categories((*input.mutable_ipv4_incomplete_connections_v2())[0].mutable_counters());
+		(*input.mutable_ipv4_incomplete_connections_v2())[0].set_state((draiosproto::connection_state)(rand() % 3));
+		(*input.mutable_ipv4_incomplete_connections_v2())[0].set_error_code((draiosproto::error_code)(1 + (rand() % 100)));
 
-	for (int i = 1; i < 130; i++) // guaranteed to get some repeats
-	{
-	    input.add_ipv4_incomplete_connections()->mutable_tuple()->set_sip(rand() % 2);
-	    (*input.mutable_ipv4_incomplete_connections())[i].mutable_tuple()->set_dip(rand() % 2);
-	    (*input.mutable_ipv4_incomplete_connections())[i].mutable_tuple()->set_sport(rand() % 2);
-	    (*input.mutable_ipv4_incomplete_connections())[i].mutable_tuple()->set_dport(rand() % 2);
-	    (*input.mutable_ipv4_incomplete_connections())[i].mutable_tuple()->set_l4proto(rand() % 2);
-	    (*input.mutable_ipv4_incomplete_connections())[i].set_spid(rand() % 2);
-	    (*input.mutable_ipv4_incomplete_connections())[i].set_dpid(rand() % 2);
-	    generate_connection_categories((*input.mutable_ipv4_incomplete_connections())[i].mutable_counters());
-	    (*input.mutable_ipv4_incomplete_connections())[i].set_state((draiosproto::connection_state)(rand() % 3));
-	    (*input.mutable_ipv4_incomplete_connections())[i].set_error_code((draiosproto::error_code)(rand() % 100));
-	}
+		for (int i = 1; i < 130; i++) // guaranteed to get some repeats
+		{
+			input.add_ipv4_incomplete_connections_v2()->mutable_tuple()->set_sip(rand() % 2);
+			(*input.mutable_ipv4_incomplete_connections_v2())[i].mutable_tuple()->set_dip(rand() % 2);
+			(*input.mutable_ipv4_incomplete_connections_v2())[i].mutable_tuple()->set_sport(rand() % 2);
+			(*input.mutable_ipv4_incomplete_connections_v2())[i].mutable_tuple()->set_dport(rand() % 2);
+			(*input.mutable_ipv4_incomplete_connections_v2())[i].mutable_tuple()->set_l4proto(rand() % 2);
+			(*input.mutable_ipv4_incomplete_connections_v2())[i].set_spid(rand() % 2);
+			(*input.mutable_ipv4_incomplete_connections_v2())[i].set_dpid(rand() % 2);
+			generate_connection_categories((*input.mutable_ipv4_incomplete_connections_v2())[i].mutable_counters());
+			(*input.mutable_ipv4_incomplete_connections_v2())[i].set_state((draiosproto::connection_state)(rand() % 3));
+			(*input.mutable_ipv4_incomplete_connections_v2())[i].set_error_code((draiosproto::error_code)(1 + (rand() % 100)));
+		}
 
-	// generate some users
-	for (int i = 0; i < 10; i++)
-	{
-	    input.add_userdb();
-	    (*input.mutable_userdb())[i].set_id(rand() % 2);
-	    (*input.mutable_userdb())[i].set_name(std::to_string(rand() % 2));
-	}
-	// generate some environments
-	for (int i = 0; i < 10; i++)
-	{
-	    input.add_environments();
-	    (*input.mutable_environments())[i].set_hash(std::to_string(rand() % 2));
-	    (*input.mutable_environments())[i].add_variables(std::to_string(rand() % 2));
-	}
-	// generate some unreported counters
-	generate_time_categories(input.mutable_unreported_counters()->mutable_tcounters());
-	generate_transaction_breakdown_categories(input.mutable_unreported_counters()->mutable_reqcounters());
-	generate_counter_time_bidirectional(input.mutable_unreported_counters()->mutable_max_transaction_counters());
-	generate_resource_categories(input.mutable_unreported_counters()->mutable_resource_counters());
-	generate_counter_syscall_errors(input.mutable_unreported_counters()->mutable_syscall_errors());
-	generate_proto_info(input.mutable_unreported_counters()->mutable_protos());
-	for (int i =0; i < 5; i++)
-	{
-	    input.mutable_unreported_counters()->add_names(std::to_string(rand() % 2));
-	}
-	generate_counter_time_bidirectional(input.mutable_unreported_counters()->mutable_transaction_counters());
+		// generate some users
+		for (int i = 0; i < 10; i++)
+		{
+			input.add_userdb();
+			(*input.mutable_userdb())[i].set_id(rand() % 2);
+			(*input.mutable_userdb())[i].set_name(std::to_string(rand() % 2));
+		}
+		// generate some environments
+		for (int i = 0; i < 10; i++)
+		{
+			input.add_environments();
+			(*input.mutable_environments())[i].set_hash(std::to_string(rand() % 2));
+			(*input.mutable_environments())[i].add_variables(std::to_string(rand() % 2));
+		}
+		// generate some unreported counters
+		generate_time_categories(input.mutable_unreported_counters()->mutable_tcounters());
+		generate_transaction_breakdown_categories(input.mutable_unreported_counters()->mutable_reqcounters());
+		generate_counter_time_bidirectional(input.mutable_unreported_counters()->mutable_max_transaction_counters());
+		generate_resource_categories(input.mutable_unreported_counters()->mutable_resource_counters());
+		generate_counter_syscall_errors(input.mutable_unreported_counters()->mutable_syscall_errors());
+		generate_proto_info(input.mutable_unreported_counters()->mutable_protos());
+		for (int i =0; i < 5; i++)
+		{
+			input.mutable_unreported_counters()->add_names(std::to_string(rand() % 2));
+		}
+		generate_counter_time_bidirectional(input.mutable_unreported_counters()->mutable_transaction_counters());
 
-	// generate some reporting groups
-	// nobody does anything with this. so just create a couple
-	input.add_reporting_groups();
-	(*input.mutable_reporting_groups())[0].set_id(rand() % 2);
-	input.add_reporting_groups();
-	(*input.mutable_reporting_groups())[1].set_id(rand() % 2);
+		// generate some reporting groups
+		// nobody does anything with this. so just create a couple
+		input.add_reporting_groups();
+		(*input.mutable_reporting_groups())[0].set_id(rand() % 2);
+		input.add_reporting_groups();
+		(*input.mutable_reporting_groups())[1].set_id(rand() % 2);
 
-	// generate some devices
-	input.add_top_devices()->set_name("asd98uwef ");
-	(*input.mutable_top_devices())[0].set_bytes(rand() % 100);
-	(*input.mutable_top_devices())[0].set_time_ns(rand() % 100);
-	(*input.mutable_top_devices())[0].set_open_count(rand() % 100);
-	(*input.mutable_top_devices())[0].set_errors(rand() % 100);
-	for (int i = 1; i < 5; i ++)
-	{
-	    input.add_top_devices()->set_name(std::to_string(rand() % 2));
-	    (*input.mutable_top_devices())[i].set_bytes(rand() % 100);
-	    (*input.mutable_top_devices())[i].set_time_ns(rand() % 100);
-	    (*input.mutable_top_devices())[i].set_open_count(rand() % 100);
-	    (*input.mutable_top_devices())[i].set_errors(rand() % 100);
-	}
+		// generate some devices
+		input.add_top_devices()->set_name("asd98uwef ");
+		(*input.mutable_top_devices())[0].set_bytes(rand() % 100);
+		(*input.mutable_top_devices())[0].set_time_ns(rand() % 100);
+		(*input.mutable_top_devices())[0].set_open_count(rand() % 100);
+		(*input.mutable_top_devices())[0].set_errors(rand() % 100);
+		for (int i = 1; i < 5; i ++)
+		{
+			input.add_top_devices()->set_name(std::to_string(rand() % 2));
+			(*input.mutable_top_devices())[i].set_bytes(rand() % 100);
+			(*input.mutable_top_devices())[i].set_time_ns(rand() % 100);
+			(*input.mutable_top_devices())[i].set_open_count(rand() % 100);
+			(*input.mutable_top_devices())[i].set_errors(rand() % 100);
+		}
 
-	std::ostringstream filename;
-	filename << "random_" << loop_count << ".dam";
-	std::ofstream output_file;
-	output_file.open(filename.str().c_str(), std::ofstream::out | std::ofstream::binary);
-	ASSERT_TRUE(output_file);
-	char temp2 = 2;
-	char temp1 = 1;
-	output_file.write(&temp2, 1);
-	output_file.write(&temp1, 1);
+		std::ostringstream filename;
+		filename << "random_" << loop_count << ".dam";
+		std::ofstream output_file;
+		output_file.open(filename.str().c_str(), std::ofstream::out | std::ofstream::binary);
+		ASSERT_TRUE(output_file);
+		char temp2 = 2;
+		char temp1 = 1;
+		output_file.write(&temp2, 1);
+		output_file.write(&temp1, 1);
 
-	bool success = input.SerializeToOstream(&output_file);
-	ASSERT_TRUE(success);
-	output_file.close();
+		bool success = input.SerializeToOstream(&output_file);
+		ASSERT_TRUE(success);
+		output_file.close();
     }
 }
 

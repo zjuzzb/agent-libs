@@ -101,7 +101,8 @@ field_extension = {
                       2: LIMITED,
                       3: LIMITED,
                       4: LIMITED},
-    "statsd_tag" : {1: PRIMARY_KEY},
+    "statsd_tag" : {1: PRIMARY_KEY,
+                    2: PRIMARY_KEY},
     "jmx_attribute" : {1: PRIMARY_KEY,
                        2:6}, # note there are two aggregations, but only one is used
     "jmx_bean" : {1: PRIMARY_KEY},
@@ -141,8 +142,7 @@ field_extension = {
               41:141,
               42:142,
               43:143},
-    "process_details" : {1: PRIMARY_KEY,
-                         2: PRIMARY_KEY,
+    "process_details" : {2: PRIMARY_KEY,
                          3: PRIMARY_KEY,
                          4: PRIMARY_KEY},
     "process" : {2: PRIMARY_KEY,
@@ -236,6 +236,7 @@ field_extension = {
 skip = set([
     "aggregations64",
     "aggregations64_repeated",
-    "aggregations_double"
+    "aggregations_double",
+    "matchlist_detail"
 ])
 

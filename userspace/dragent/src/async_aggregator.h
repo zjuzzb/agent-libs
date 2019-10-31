@@ -47,7 +47,7 @@ private:
 	blocking_queue<std::shared_ptr<flush_data_message>>& m_input_queue;
 	blocking_queue<std::shared_ptr<flush_data_message>>& m_output_queue;
 	message_aggregator_builder_impl m_builder;
-	agent_message_aggregator<draiosproto::metrics>* m_aggregator;
+	metrics_message_aggregator_impl* m_aggregator;
 	std::shared_ptr<flush_data_message> m_aggregated_data;
 
 	uint32_t m_count_since_flush;

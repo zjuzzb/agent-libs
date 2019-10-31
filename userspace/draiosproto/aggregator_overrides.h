@@ -103,6 +103,16 @@ public:
 		return hash;
 	}
 
+	// Warning: hack here. The BE changes certain values which are also primary keys,
+	// so must we also. Therefore the only time we can reasonably
+	// change it is just before we emit. Since we don't have a framework for "things to do
+	// before emit", we're forced to invoke this function manually. Like limiting,
+	// aggregating after performing this operation results in undefined operation, and thus
+	// the only valid operation is to reset the aggregator.
+	//
+	// Ideally, this work should be the responsibility of the agent, not the aggregator.
+	void override_primary_keys(draiosproto::metrics& output);
+
 private:
 	// mapping from pid to hash. This is used to give us a PID agnostic ID of a process.
 	// We store the mapping here until reset
@@ -115,13 +125,6 @@ private:
 	// Overrides for program which ensures pid_map is populated
 	virtual void aggregate_programs(const draiosproto::metrics& input,
 	                                draiosproto::metrics& output);
-
-	// two fields that depend on the pid_map and must substitute pid for value
-	// stored in pid_map
-	virtual void aggregate_ipv4_connections(const draiosproto::metrics& input,
-	                                        draiosproto::metrics& output);
-	virtual void aggregate_ipv4_incomplete_connections_v2(const draiosproto::metrics& input,
-	                                                      draiosproto::metrics& output);
 
 	// we just copy the last seen value in
 	virtual void aggregate_falcobl(const draiosproto::metrics& input, draiosproto::metrics& output);
@@ -141,6 +144,13 @@ private:
 	// backend skips sending swarm if there are no nodes
 	virtual void aggregate_swarm(const draiosproto::metrics& input, draiosproto::metrics& output);
 
+	// skip connections that are not successful
+	virtual void aggregate_ipv4_connections(const draiosproto::metrics& input,
+											draiosproto::metrics& output);
+	// skip connections that are not incomplete
+	virtual void aggregate_ipv4_incomplete_connections_v2(const draiosproto::metrics& input,
+														 draiosproto::metrics& output);
+public:
 	// need to reset the pid_map field
 	virtual void reset()
 	{
@@ -203,6 +213,73 @@ private:
 	                            draiosproto::agent_event& output);
 };
 
+class swarm_task_message_aggregator_impl: public swarm_task_message_aggregator
+{
+public:
+	swarm_task_message_aggregator_impl(const message_aggregator_builder& builder)
+		: swarm_task_message_aggregator(builder)
+	{}
+
+private:
+	std::set<std::string> m_states;
+	virtual void aggregate_state(const draiosproto::swarm_task& input,
+								 draiosproto::swarm_task& output);
+
+public:
+	virtual void reset()
+	{
+		m_states.clear();
+		swarm_task_message_aggregator::reset();
+	}
+};
+
+class swarm_node_message_aggregator_impl: public swarm_node_message_aggregator
+{
+public:
+	swarm_node_message_aggregator_impl(const message_aggregator_builder& builder)
+		: swarm_node_message_aggregator(builder)
+	{}
+
+private:
+	std::set<std::string> m_states;
+	virtual void aggregate_state(const draiosproto::swarm_node& input,
+								 draiosproto::swarm_node& output);
+	std::set<std::string> m_availabilities;
+	virtual void aggregate_availability(const draiosproto::swarm_node& input,
+										draiosproto::swarm_node& output);
+	std::set<std::string> m_versions;
+	virtual void aggregate_version(const draiosproto::swarm_node& input,
+								   draiosproto::swarm_node& output);
+
+public:
+	virtual void reset()
+	{
+		m_states.clear();
+		m_availabilities.clear();
+		m_versions.clear();
+		swarm_node_message_aggregator::reset();
+	}
+};
+
+class swarm_manager_message_aggregator_impl: public swarm_manager_message_aggregator
+{
+public:
+	swarm_manager_message_aggregator_impl(const message_aggregator_builder& builder)
+		: swarm_manager_message_aggregator(builder)
+	{}
+
+private:
+	std::set<std::string> m_reachabilities;
+	virtual void aggregate_reachability(const draiosproto::swarm_manager& input,
+										draiosproto::swarm_manager& output);
+public:
+	virtual void reset()
+	{
+		m_reachabilities.clear();
+		swarm_manager_message_aggregator::reset();
+	}
+};
+
 class resource_categories_message_aggregator_impl : public resource_categories_message_aggregator
 {
 public:
@@ -220,6 +297,74 @@ private:
 	                                             draiosproto::resource_categories& output);
 };
 
+class statsd_metric_message_aggregator_impl : public statsd_metric_message_aggregator
+{
+public:
+	statsd_metric_message_aggregator_impl(const message_aggregator_builder& builder)
+		: statsd_metric_message_aggregator(builder)
+	{}
+
+private:
+	// we conditionally aggregate certain fields
+	virtual void aggregate_sum(const draiosproto::statsd_metric& input,
+							   draiosproto::statsd_metric& output);
+	virtual void aggregate_min(const draiosproto::statsd_metric& input,
+							   draiosproto::statsd_metric& output);
+	virtual void aggregate_max(const draiosproto::statsd_metric& input,
+							   draiosproto::statsd_metric& output);
+	virtual void aggregate_count(const draiosproto::statsd_metric& input,
+								 draiosproto::statsd_metric& output);
+	virtual void aggregate_median(const draiosproto::statsd_metric& input,
+								  draiosproto::statsd_metric& output);
+	virtual void aggregate_percentile_95(const draiosproto::statsd_metric& input,
+										 draiosproto::statsd_metric& output);
+	virtual void aggregate_percentile_99(const draiosproto::statsd_metric& input,
+										 draiosproto::statsd_metric& output);
+	virtual void aggregate_value(const draiosproto::statsd_metric& input,
+								 draiosproto::statsd_metric& output);
+};
+
+class program_message_aggregator_impl : public program_message_aggregator
+{
+public:
+	program_message_aggregator_impl(const message_aggregator_builder& builder)
+		: program_message_aggregator(builder)
+	{}
+
+private:
+	// do nothing. caller will set this appropriately
+	virtual void aggregate_pids(const draiosproto::program& input,
+								draiosproto::program& output) {}
+};
+
+class environment_message_aggregator_impl : public environment_message_aggregator
+{
+public:
+	environment_message_aggregator_impl(const message_aggregator_builder& builder)
+		: environment_message_aggregator(builder)
+	{}
+
+private:
+	virtual void aggregate(const draiosproto::environment& input,
+						   draiosproto::environment& output);
+};
+
+class jmx_attribute_message_aggregator_impl : public jmx_attribute_message_aggregator
+{
+public:
+	jmx_attribute_message_aggregator_impl(const message_aggregator_builder& builder)
+		: jmx_attribute_message_aggregator(builder)
+	{}
+
+private:
+	// somewhat strange interaction. If we have subattributes, we don't send
+	// aggr value.
+	virtual void aggregate_value(const draiosproto::jmx_attribute& input,
+								 draiosproto::jmx_attribute& output);
+	virtual void aggregate_subattributes(const draiosproto::jmx_attribute& input,
+										 draiosproto::jmx_attribute& output);
+};
+
 // for any message type which we've overridden, we have to override it's builder
 // function as well
 class message_aggregator_builder_impl : public message_aggregator_builder
@@ -232,6 +377,12 @@ public:
 	    build_counter_percentile_data() const;
 	virtual agent_message_aggregator<draiosproto::container>& build_container() const;
 	virtual agent_message_aggregator<draiosproto::agent_event>& build_agent_event() const;
-	virtual agent_message_aggregator<draiosproto::resource_categories>& build_resource_categories()
-	    const;
+	virtual agent_message_aggregator<draiosproto::resource_categories>& build_resource_categories() const;
+	virtual agent_message_aggregator<draiosproto::swarm_task>& build_swarm_task() const;
+	virtual agent_message_aggregator<draiosproto::swarm_manager>& build_swarm_manager() const;
+	virtual agent_message_aggregator<draiosproto::swarm_node>& build_swarm_node() const;
+	virtual agent_message_aggregator<draiosproto::statsd_metric>& build_statsd_metric() const;
+	virtual agent_message_aggregator<draiosproto::program>& build_program() const;
+	virtual agent_message_aggregator<draiosproto::environment>& build_environment() const;
+	virtual agent_message_aggregator<draiosproto::jmx_attribute>& build_jmx_attribute() const;
 };
