@@ -452,7 +452,7 @@ TEST_F(sinsp_logger_test, log_stderr_multithreaded)
 			for(size_t i = 0; i < NUM_LOGS; ++i)
 			{
 				const std::string new_str =
-					get_logger().format(sinsp_logger::SEV_FATAL,
+					get_logger().format_and_return(sinsp_logger::SEV_FATAL,
 							     "%s",
 							     message.c_str());
 
