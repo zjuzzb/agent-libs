@@ -1,6 +1,9 @@
 
 pipeline {
 	agent { label 'agent-docker-builder' }
+	options {
+	    timeout(time: 60, unit: 'MINUTES')
+	}
 	stages {
 		stage('Check out dependencies') {
 			steps {
