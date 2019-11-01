@@ -144,10 +144,11 @@ private:
 	// backend skips sending swarm if there are no nodes
 	virtual void aggregate_swarm(const draiosproto::metrics& input, draiosproto::metrics& output);
 
-	// skip connections that are not successful
+	// backend sends metadata for all connections, but only sends metrics for regular
+	// connections if they are in successful state, and incomplete connections if they
+	// are in a non-successful state. Why? dunno, but they do it, so we do, too.
 	virtual void aggregate_ipv4_connections(const draiosproto::metrics& input,
 											draiosproto::metrics& output);
-	// skip connections that are not incomplete
 	virtual void aggregate_ipv4_incomplete_connections_v2(const draiosproto::metrics& input,
 														 draiosproto::metrics& output);
 public:
@@ -184,6 +185,35 @@ private:
 
 	// need to reset the tdigest
 	virtual void reset();
+};
+
+class prometheus_info_message_aggregator_impl : public prometheus_info_message_aggregator
+{
+public:
+    prometheus_info_message_aggregator_impl(const message_aggregator_builder& builder)
+	: prometheus_info_message_aggregator(builder)
+    {}
+
+private:
+    // BE does some funky stuff with the name, like appending tags to ensure it is unique
+    // This functionality should probably push down to the prom engine at some point,
+    // but for now, we have to replicate the behavior. Since the key is a string instead
+    // of the message, we need a custom map as well.
+    std::unordered_map<std::string,
+		       std::pair<uint32_t,
+		                 std::unique_ptr<agent_message_aggregator<draiosproto::app_metric>>>> prom_metrics_map;
+
+    virtual void aggregate_metrics(const draiosproto::prometheus_info& input,
+				   draiosproto::prometheus_info& output);
+
+    // need to reset the custom map
+    virtual void reset()
+    {
+	prom_metrics_map.clear();
+	prometheus_info_message_aggregator::reset();
+    }
+
+    friend class test_helper;
 };
 
 class container_message_aggregator_impl : public container_message_aggregator
@@ -373,6 +403,7 @@ public:
 	virtual agent_message_aggregator<draiosproto::process_details>& build_process_details() const;
 	virtual agent_message_aggregator<draiosproto::process>& build_process() const;
 	virtual agent_message_aggregator<draiosproto::metrics>& build_metrics() const;
+	virtual agent_message_aggregator<draiosproto::prometheus_info>& build_prometheus_info() const;
 	virtual agent_message_aggregator<draiosproto::counter_percentile_data>&
 	    build_counter_percentile_data() const;
 	virtual agent_message_aggregator<draiosproto::container>& build_container() const;

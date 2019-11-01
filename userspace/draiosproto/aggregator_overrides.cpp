@@ -223,27 +223,32 @@ void metrics_message_aggregator_impl::aggregate_ipv4_connections(const draiospro
 {
 	for (auto i : input.ipv4_connections())
 	{
-		if (i.has_state() && i.state() == draiosproto::connection_state::CONN_SUCCESS)
+		if (ipv4_connections_map.find(&i) == ipv4_connections_map.end())
 		{
-			if (ipv4_connections_map.find(&i) == ipv4_connections_map.end())
+			auto new_entry = output.add_ipv4_connections();
+			agent_message_aggregator<draiosproto::ipv4_connection>* new_aggregator = &m_builder.build_ipv4_connection();
+			new_aggregator->aggregate(i, *new_entry);
+			if (i.has_state() && i.state() != draiosproto::connection_state::CONN_SUCCESS)
 			{
-				auto new_entry = output.add_ipv4_connections();
-				agent_message_aggregator<draiosproto::ipv4_connection>* new_aggregator = &m_builder.build_ipv4_connection();
-                new_aggregator->aggregate(i, *new_entry);
-                ipv4_connections_map.insert(
-                    std::make_pair<draiosproto::ipv4_connection*,
-                                   std::pair<uint32_t,
-                                             std::unique_ptr<agent_message_aggregator<draiosproto::ipv4_connection>>>>(
-                        std::move(new_entry),
-                        std::make_pair<uint32_t,
-                                       std::unique_ptr<agent_message_aggregator<draiosproto::ipv4_connection>>>(
-                            output.ipv4_connections().size() - 1,
-                            std::unique_ptr<agent_message_aggregator<draiosproto::ipv4_connection>>(new_aggregator)
-                        )
-                    )
-                );
+				new_entry->clear_counters();
+				new_entry->clear_state();
 			}
-			else
+			ipv4_connections_map.insert(
+				std::make_pair<draiosproto::ipv4_connection*,
+							   std::pair<uint32_t,
+										 std::unique_ptr<agent_message_aggregator<draiosproto::ipv4_connection>>>>(
+					std::move(new_entry),
+					std::make_pair<uint32_t,
+								   std::unique_ptr<agent_message_aggregator<draiosproto::ipv4_connection>>>(
+						output.ipv4_connections().size() - 1,
+						std::unique_ptr<agent_message_aggregator<draiosproto::ipv4_connection>>(new_aggregator)
+					)
+				)
+			);
+		}
+		else
+		{
+			if (!i.has_state() || i.state() == draiosproto::connection_state::CONN_SUCCESS)
 			{
 				ipv4_connections_map[&i].second->aggregate(i, (*output.mutable_ipv4_connections())[ipv4_connections_map[&i].first]);
 			}
@@ -256,27 +261,32 @@ void metrics_message_aggregator_impl::aggregate_ipv4_incomplete_connections_v2(c
 {
 	for (auto i : input.ipv4_incomplete_connections_v2())
 	{
-		if (i.has_state() && i.state() != draiosproto::connection_state::CONN_SUCCESS)
+		if (ipv4_incomplete_connections_v2_map.find(&i) == ipv4_incomplete_connections_v2_map.end())
 		{
-			if (ipv4_incomplete_connections_v2_map.find(&i) == ipv4_incomplete_connections_v2_map.end())
+			auto new_entry = output.add_ipv4_incomplete_connections_v2();
+			agent_message_aggregator<draiosproto::ipv4_incomplete_connection>* new_aggregator = &m_builder.build_ipv4_incomplete_connection();
+			new_aggregator->aggregate(i, *new_entry);
+			if (!i.has_state() || i.state() == draiosproto::connection_state::CONN_SUCCESS)
 			{
-				auto new_entry = output.add_ipv4_incomplete_connections_v2();
-				agent_message_aggregator<draiosproto::ipv4_incomplete_connection>* new_aggregator = &m_builder.build_ipv4_incomplete_connection();
-				new_aggregator->aggregate(i, *new_entry);
-                ipv4_incomplete_connections_v2_map.insert(
-                    std::make_pair<draiosproto::ipv4_incomplete_connection*,
-                                   std::pair<uint32_t,
-                                             std::unique_ptr<agent_message_aggregator<draiosproto::ipv4_incomplete_connection>>>>(
-                        std::move(new_entry),
-                        std::make_pair<uint32_t,
-                                       std::unique_ptr<agent_message_aggregator<draiosproto::ipv4_incomplete_connection>>>(
-                            output.ipv4_incomplete_connections_v2().size() - 1,
-                            std::unique_ptr<agent_message_aggregator<draiosproto::ipv4_incomplete_connection>>(new_aggregator)
-                        )
-                    )
-                );
+				new_entry->clear_counters();
+				new_entry->clear_state();
 			}
-			else
+			ipv4_incomplete_connections_v2_map.insert(
+				std::make_pair<draiosproto::ipv4_incomplete_connection*,
+							   std::pair<uint32_t,
+										 std::unique_ptr<agent_message_aggregator<draiosproto::ipv4_incomplete_connection>>>>(
+					std::move(new_entry),
+					std::make_pair<uint32_t,
+								   std::unique_ptr<agent_message_aggregator<draiosproto::ipv4_incomplete_connection>>>(
+						output.ipv4_incomplete_connections_v2().size() - 1,
+						std::unique_ptr<agent_message_aggregator<draiosproto::ipv4_incomplete_connection>>(new_aggregator)
+					)
+				)
+			);
+		}
+		else
+		{
+			if (i.has_state() && i.state() != draiosproto::connection_state::CONN_SUCCESS)
 			{
 				ipv4_incomplete_connections_v2_map[&i].second->aggregate(i, (*output.mutable_ipv4_incomplete_connections_v2())[ipv4_incomplete_connections_v2_map[&i].first]);
 			}
@@ -343,6 +353,45 @@ void counter_percentile_data_message_aggregator_impl::reset()
     m_digest = std::unique_ptr<tdigest::TDigest>(new tdigest::TDigest(200, // compression
 								      400, // buffer size
 								      5 * 400)); // seems to be what the java impl does
+}
+
+void prometheus_info_message_aggregator_impl::aggregate_metrics(const draiosproto::prometheus_info& input,
+								draiosproto::prometheus_info& output)
+{
+    for (auto i : input.metrics())
+    {
+	// first generate canonical name
+	std::string name = i.name();
+	for (auto kv : i.tags())
+	{
+	    name += kv.key();
+	    name += kv.value();
+	}
+	if (i.type() == draiosproto::app_metric_type::APP_METRIC_TYPE_PROMETHEUS_RAW)
+	{
+	    name = "raw:" + name;
+	}
+
+	if (prom_metrics_map.find(name) == prom_metrics_map.end())
+	{
+	    auto new_entry = output.add_metrics();
+	    agent_message_aggregator<draiosproto::app_metric>* new_aggregator = &m_builder.build_app_metric();
+	    new_aggregator->aggregate(i, *new_entry);
+	    prom_metrics_map.insert(
+		std::make_pair<std::string, std::pair<uint32_t, std::unique_ptr<agent_message_aggregator<draiosproto::app_metric>>>>(
+		    std::move(name),
+		    std::make_pair<uint32_t, std::unique_ptr<agent_message_aggregator<draiosproto::app_metric>>>(
+			output.metrics().size() - 1,
+			std::unique_ptr<agent_message_aggregator<draiosproto::app_metric>>(new_aggregator)
+		    )
+		)
+	    );
+	}
+	else
+	{
+	    prom_metrics_map[name].second->aggregate(i, (*output.mutable_metrics())[prom_metrics_map[name].first]);
+	}
+	}
 }
 
 void container_message_aggregator_impl::aggregate_commands(const draiosproto::container& input,
@@ -593,6 +642,11 @@ message_aggregator_builder_impl::build_container() const
         return *(new container_message_aggregator_impl(*this));
 }
 
+agent_message_aggregator<draiosproto::prometheus_info>&
+message_aggregator_builder_impl::build_prometheus_info() const
+{
+        return *(new prometheus_info_message_aggregator_impl(*this));
+}
 agent_message_aggregator<draiosproto::swarm_task>&
 message_aggregator_builder_impl::build_swarm_task() const
 {

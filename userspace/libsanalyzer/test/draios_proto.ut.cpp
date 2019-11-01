@@ -19,6 +19,11 @@ public:
 		return in.pid_map;
     }
 
+    static std::unordered_map<std::string, std::pair<uint32_t, std::unique_ptr<agent_message_aggregator<draiosproto::app_metric>>>>& get_prom_map(prometheus_info_message_aggregator_impl& in)
+    {
+	return in.prom_metrics_map;
+    }
+
 };
 
 // Test that the two default aggregations work properly. That way
@@ -1306,12 +1311,27 @@ TEST(aggregator, ipv4_connection)
 	
 	in->set_spid(1);
 	in->set_dpid(2);
+	in->mutable_counters()->set_n_aggregated_connections(1);
 	in->set_state(draiosproto::connection_state::CONN_SUCCESS);
 
 	aggregator.aggregate(input, output);
 
+	EXPECT_EQ(output.ipv4_connections().size(), 1);
+	EXPECT_EQ(output.ipv4_connections()[0].counters().aggr_n_aggregated_connections().sum(), 1);
 	EXPECT_EQ(output.ipv4_connections()[0].spid(), 1);
 	EXPECT_EQ(output.ipv4_connections()[0].dpid(), 2);
+
+	// we have special handling for non-successful connections
+	in->set_state(draiosproto::connection_state::CONN_FAILED);
+	in = input.add_ipv4_connections();
+	in->set_spid(2);
+	in->set_dpid(2);
+	in->mutable_counters()->set_n_aggregated_connections(1);
+	in->set_state(draiosproto::connection_state::CONN_FAILED);
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.ipv4_connections().size(), 2);
+	EXPECT_EQ(output.ipv4_connections()[0].counters().aggr_n_aggregated_connections().sum(), 1);
+	EXPECT_EQ(output.ipv4_connections()[1].counters().aggr_n_aggregated_connections().sum(), 0);
 
 	// check primary key
 	draiosproto::ipv4_connection lhs;
@@ -1399,12 +1419,27 @@ TEST(aggregator, ipv4_incomplete_connection)
 	
 	in->set_spid(1);
 	in->set_dpid(2);
+	in->mutable_counters()->set_n_aggregated_connections(1);
 	in->set_state(draiosproto::connection_state::CONN_FAILED);
 
 	aggregator.aggregate(input, output);
 
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2().size(), 1);
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].counters().aggr_n_aggregated_connections().sum(), 1);
 	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].spid(), 1);
 	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].dpid(), 2);
+
+	// we have special handling for non-successful connections
+	in->set_state(draiosproto::connection_state::CONN_SUCCESS);
+	in = input.add_ipv4_incomplete_connections_v2();
+	in->set_spid(2);
+	in->set_dpid(2);
+	in->mutable_counters()->set_n_aggregated_connections(1);
+	in->set_state(draiosproto::connection_state::CONN_SUCCESS);
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2().size(), 2);
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].counters().aggr_n_aggregated_connections().sum(), 1);
+	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[1].counters().aggr_n_aggregated_connections().sum(), 0);
 
 	// check primary key
 	draiosproto::ipv4_incomplete_connection lhs;
@@ -2512,7 +2547,6 @@ TEST(aggregator, app_metric)
 	in->set_value(3.5);
 	in->add_tags()->set_key("4");
 	in->add_tags()->set_key("5");
-	// SMAGENT-1949
 	in->set_prometheus_type((draiosproto::prometheus_type)1);
 
 	aggregator.aggregate(input, output);
@@ -2581,9 +2615,89 @@ TEST(aggregator, app_tag)
 		  app_tag_message_aggregator::hasher()(&rhs));
 }
 
+TEST(aggregator, prometheus_info)
+{	
+	message_aggregator_builder_impl builder;
+	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+
+	draiosproto::metrics input;
+	draiosproto::metrics output;
+
+	auto in = input.mutable_protos()->mutable_prom_info();
+
+	// first check if we do simple aggregations correctly
+	in->set_process_name("1");
+	in->add_metrics()->set_name("2");
+	in->add_metrics()->set_name("3");
+
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.protos().prom_info().process_name(), "1");
+	EXPECT_EQ(output.protos().prom_info().metrics().size(), 2);
+	EXPECT_EQ(output.protos().prom_info().metrics()[0].name(), "2");
+	EXPECT_EQ(output.protos().prom_info().metrics()[1].name(), "3");
+
+	(*in->mutable_metrics())[1].set_name("7");
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.protos().prom_info().metrics().size(), 3);
+	EXPECT_EQ(output.protos().prom_info().metrics()[0].name(), "2");
+	EXPECT_EQ(output.protos().prom_info().metrics()[1].name(), "3");
+	EXPECT_EQ(output.protos().prom_info().metrics()[2].name(), "7");
+
+	// now do some more powerful checks to ensure that the custom name mangling is
+	// appropriate.
+	prometheus_info_message_aggregator_impl pimai(builder);
+	draiosproto::prometheus_info prom_info;
+	draiosproto::prometheus_info prom_info_out;
+	auto& prom_map = test_helper::get_prom_map(pimai);
+
+	prom_info.add_metrics()->set_name("name1");
+	pimai.aggregate(prom_info, prom_info_out);
+	ASSERT_NE(prom_map.find("name1"), prom_map.end());
+	prom_map.clear();
+
+	(*prom_info.mutable_metrics())[0].add_tags()->set_key("somekey");
+	(*(*prom_info.mutable_metrics())[0].mutable_tags())[0].set_value("somevalue");
+	pimai.aggregate(prom_info, prom_info_out);
+	ASSERT_NE(prom_map.find("name1somekeysomevalue"), prom_map.end());
+	prom_map.clear();
+
+	(*prom_info.mutable_metrics())[0].set_type(draiosproto::app_metric_type::APP_METRIC_TYPE_PROMETHEUS_RAW);
+	pimai.aggregate(prom_info, prom_info_out);
+	ASSERT_NE(prom_map.find("raw:name1somekeysomevalue"), prom_map.end());
+	prom_map.clear();
+}
+
 TEST(aggregator, app_metric_bucket)
 {
-	// SMAGENT-1949
+	message_aggregator_builder_impl builder;
+	agent_message_aggregator<draiosproto::app_metric_bucket>& aggregator = builder.build_app_metric_bucket();
+
+	draiosproto::app_metric_bucket input;
+	draiosproto::app_metric_bucket output;
+
+	input.set_label("some label");
+	input.set_count(1);
+
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.label(), "some label");
+	EXPECT_EQ(output.aggr_count().sum(), 1);
+
+	input.set_count(100);
+	aggregator.aggregate(input, output);
+	EXPECT_EQ(output.aggr_count().sum(), 101);
+
+	// validate primary key
+	draiosproto::app_metric_bucket lhs;
+	draiosproto::app_metric_bucket rhs;
+
+	rhs.set_label("1");
+	EXPECT_FALSE(app_metric_bucket_message_aggregator::comparer()(&lhs, &rhs));
+	rhs.set_label("");
+
+	rhs.set_count(4);
+	EXPECT_TRUE(app_metric_bucket_message_aggregator::comparer()(&lhs, &rhs));
+	EXPECT_EQ(app_metric_bucket_message_aggregator::hasher()(&lhs),
+		  app_metric_bucket_message_aggregator::hasher()(&rhs));
 }
 
 TEST(aggregator, app_check)
@@ -5301,12 +5415,24 @@ public:
 	    // can't guarantee exact equality of CPD due to its approximation nature
 	    if (field_path.back().field->containing_type()->name() == "counter_percentile_data")
 	    {
-		return;
+			return;
 	    }
 
 	    google::protobuf::util::MessageDifferencer::StreamReporter::ReportModified(message1,
 										       message2,
 										       field_path);
+	}
+		virtual void ReportDeleted(const google::protobuf::Message & message1,
+				    const google::protobuf::Message & message2,
+				    const std::vector< google::protobuf::util::MessageDifferencer::SpecificField >& field_path)
+	{
+		// backend sends an empty field for counters that can't really be replicated
+		// in c++. The BE will get defaults, which is still correct.
+	    if (field_path.back().field->name() == "counters" &&
+			field_path.back().field->containing_type()->name() == "ipv4_connection")
+		{
+			return;
+		}
 	}
 };
 
@@ -5526,6 +5652,7 @@ void map_protos(google::protobuf::util::MessageDifferencer& md,
 	md.TreatAsMapWithMultipleFieldsAsKey(field->SUB("app")->SUB("metrics"),
 										 {field->SUB("app")->SUB("metrics")->SUB("name"),
 										  field->SUB("app")->SUB("metrics")->SUB("tags")});
+	md.TreatAsSet(field->SUB("app")->SUB("metrics")->SUB("tags"));
 
 	md.TreatAsMap(field->SUB("java")->SUB("beans"),
 				  field->SUB("java")->SUB("beans")->SUB("name"));
@@ -5634,7 +5761,6 @@ void validate_protobuf(std::string& diff,
 		input_file.close();
 
 		aggregator->aggregate(input, test);
-
 	}
 	aggregator->override_primary_keys(test);
 	delete aggregator;
@@ -5758,11 +5884,12 @@ void validate_protobuf(std::string& diff,
 	md.IgnoreField(backend.TOP("falcobl"));
 	md.IgnoreField(backend.TOP("containers")->SUB("commands"));
 	md.IgnoreField(backend.TOP("ipv4_incomplete_connections")); // we only use v2
+	md.IgnoreField(backend.TOP("ipv4_incomplete_connections_v2"));
 	md.IgnoreField(backend.TOP("programs")->SUB("program_reporting_group_id"));
-
-	// SMAGENT-1949
+	// Due to the change in fields, we cannot compare prometheus
 	md.IgnoreField(backend.TOP("unreported_counters")->SUB("protos")->SUB("prometheus"));
-	md.IgnoreField(backend.TOP("programs")->SUB("procinfo")->SUB("protos")->SUB("app")->SUB("metrics"));
+	md.IgnoreField(backend.TOP("programs")->SUB("procinfo")->SUB("protos")->SUB("app")->SUB("metrics")->SUB("prometheus_type"));
+	md.IgnoreField(backend.TOP("programs")->SUB("procinfo")->SUB("protos")->SUB("app")->SUB("metrics")->SUB("buckets"));
 
 	// reporter needs to fall out of scope to flush
 	{
@@ -6229,8 +6356,8 @@ void generate_proto_info(draiosproto::proto_info* input,
 		for (uint32_t j = 0; j < 10; j++)
 		{
 			(*input->mutable_app()->mutable_metrics())[i].add_tags();
-			(*(*input->mutable_app()->mutable_metrics())[i].mutable_tags())[j].set_key(std::to_string(100 * j + (rand() % 2)));
-			(*(*input->mutable_app()->mutable_metrics())[i].mutable_tags())[j].set_value(std::to_string(rand() % 2));
+			(*(*input->mutable_app()->mutable_metrics())[i].mutable_tags())[j].set_key(std::to_string(100 * j + (i % 2)));
+			(*(*input->mutable_app()->mutable_metrics())[i].mutable_tags())[j].set_value(std::to_string(i % 2));
 		}
 		for (uint32_t j = 0; j < 10; j++)
 		{
@@ -6243,13 +6370,13 @@ void generate_proto_info(draiosproto::proto_info* input,
 	for (uint32_t i = 0; i < 50; i++)
 	{
 		input->mutable_app()->add_checks();
-		(*input->mutable_app()->mutable_checks())[i].set_name(std::to_string(rand() % 2));
+		(*input->mutable_app()->mutable_checks())[i].set_name(std::to_string(10 * i));
 		(*input->mutable_app()->mutable_checks())[i].set_value((draiosproto::app_check_value)(rand() % 2));
 		for( uint32_t j = 0; j < 10; j++)
 		{
 			(*input->mutable_app()->mutable_checks())[i].add_tags();
-			(*(*input->mutable_app()->mutable_checks())[i].mutable_tags())[j].set_key(std::to_string(10 * j + (rand() % 2)));
-			(*(*input->mutable_app()->mutable_checks())[i].mutable_tags())[j].set_value(std::to_string(rand() % 2));
+			(*(*input->mutable_app()->mutable_checks())[i].mutable_tags())[j].set_key(std::to_string(10 * j + (i % 2)));
+			(*(*input->mutable_app()->mutable_checks())[i].mutable_tags())[j].set_value(std::to_string(i % 2));
 		}
 	}
 

@@ -505,7 +505,8 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 	}
 }
 
-unsigned app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const
+template<typename metric>
+unsigned app_check_data::to_protobuf(metric *proto, uint16_t& limit, uint16_t max_limit) const
 {
 	unsigned emitted_metrics = 0;
 
@@ -545,6 +546,9 @@ unsigned app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& lim
 
 	return emitted_metrics;
 }
+
+template unsigned app_check_data::to_protobuf<draiosproto::app_info>(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const;
+template unsigned app_check_data::to_protobuf<draiosproto::prometheus_info>(draiosproto::prometheus_info *proto, uint16_t& limit, uint16_t max_limit) const;
 
 const std::unordered_map<string, std::pair<app_metric::type_t, app_metric::prometheus_type_t>> app_metric::metric_type_mapping = {
 		{"gauge",   {app_metric::type_t::GAUGE,          app_metric::prometheus_type_t::INVALID}},

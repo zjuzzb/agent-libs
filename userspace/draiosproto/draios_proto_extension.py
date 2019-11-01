@@ -10,6 +10,8 @@ OR =           99999998
 LIMITED = 99999997
 
 field_extension = {
+    "app_metric_bucket" : {1: PRIMARY_KEY,
+                           2:3},
     "counter_percentile" : {1: PRIMARY_KEY,
                             2:3},
     "counter_time" : {1:4,

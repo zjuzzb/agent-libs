@@ -825,6 +825,11 @@ message app_info {
     repeated app_check checks = 3;
 }
 
+message prometheus_info {
+    optional string process_name = 1;
+    repeated app_metric metrics = 2;
+}
+
 //
 // General protocol information
 //
@@ -837,7 +842,12 @@ message proto_info {
     optional statsd_info statsd = 6;
     optional app_info app = 7;
     optional bool is_null = 8; //tells if this object is just a placeholder (used when splitting on cassandra)
+
+    // only used if 10s flush is disabled
     optional app_info prometheus = 9;
+
+    // only used if 10s flush is enabled
+    optional prometheus_info prom_info = 10;
 }
 
 /*
