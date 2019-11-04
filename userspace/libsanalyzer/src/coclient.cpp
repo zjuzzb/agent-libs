@@ -14,9 +14,18 @@ std::string coclient::default_domain_sock = string("/run/cointerface.sock"); // 
 uint32_t coclient::m_max_loop_evts = 100;
 
 coclient::coclient(const std::string& install_prefix):
-	m_domain_sock(install_prefix + default_domain_sock),
 	m_outstanding_swarm_state(false)
 {
+	// https://grpc.github.io/grpc/cpp/md_doc_naming.html
+	// If the install prefix is just "/", we create a domain sock
+	// for unix://run/cointerface.sock which gets interpreted as
+	// unix://[resolver_authority=run]/cointerface.sock by grpc
+	if (install_prefix != "/")
+	{
+		m_domain_sock += install_prefix;
+	}
+	m_domain_sock += default_domain_sock;
+
 	m_print.SetSingleLineMode(true);
 }
 

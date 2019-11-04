@@ -54,6 +54,17 @@ if [ $OS == "Windows_NT" ]; then
 	export LD_LIBRARY_PATH=/bin:/cygdrive/c/cygwin64/bin
 fi
 
+VALGRIND_DIR=$DEPENDENCIES/valgrind-3.15.0
+if [ ! -d "$VALGRIND_DIR" ]; then
+	cd $DEPENDENCIES
+	wget https://sourceware.org/pub/valgrind/valgrind-3.15.0.tar.bz2
+	tar -xjf valgrind-3.15.0.tar.bz2
+	cd $VALGRIND_DIR
+	./configure
+	make -j $MAKE_JOBS
+	make -j $MAKE_JOBS install
+fi
+
 if [ $OS != "Windows_NT" ]; then
 	ZLIB_VER=1.2.11
 else
@@ -201,13 +212,13 @@ if [ $OS != "Windows_NT" ]; then
 	# a "system" protobuf/openssl instead, using pkg-config. The Makefile
 	# does require one small change to properly set LDFLAGS to the
 	# protobuf lib path returned by pkg-config. Hence the patch.
-	GRPC_DIR=$DEPENDENCIES/grpc-1.23.1
+	GRPC_DIR=$DEPENDENCIES/grpc-1.24.3
 	if [ ! -d "$GRPC_DIR" ]; then
 		cd $DEPENDENCIES
-		wget https://github.com/grpc/grpc/archive/v1.23.1.tar.gz
-		tar -xzf v1.23.1.tar.gz
-		rm -rf grpc-1.23.1/third_party/zlib
-		ln -s $ZLIB_DIR grpc-1.23.1/third_party/zlib
+		wget https://github.com/grpc/grpc/archive/v1.24.3.tar.gz
+		tar -xzf v1.24.3.tar.gz
+		rm -rf grpc-1.24.3/third_party/zlib
+		ln -s $ZLIB_DIR grpc-1.24.3/third_party/zlib
 		if [[ "$ARCH" == "s390x" ]]; then
 			# Boringssl build fails on s390x, rely on openssl instead
 			rm -rf $GRPC_DIR/third_party/boringssl $GRPC_DIR/third_party/boringssl-with-bazel

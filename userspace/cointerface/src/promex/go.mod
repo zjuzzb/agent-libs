@@ -15,7 +15,7 @@ require (
 	github.com/prometheus/common v0.0.0-20180518154759-7600349dcfe1 // indirect
 	github.com/prometheus/procfs v0.0.0-20180705121852-ae68e2d4c00f // indirect
 	golang.org/x/net v0.0.0-20190311183353-d8887717615a
-	google.golang.org/grpc v1.23.1
+	google.golang.org/grpc v1.24.0
 )
 
 replace github.com/draios/protorepo/draiosproto => ../draiosproto

@@ -31,7 +31,7 @@ require (
 	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
 	github.com/sirupsen/logrus v1.4.2 // indirect
 	golang.org/x/net v0.0.0-20190812203447-cdfb69ac37fc
-	google.golang.org/grpc v1.23.1
+	google.golang.org/grpc v1.24.0
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 	k8s.io/api v0.0.0-20191003000013-35e20aa79eb8
