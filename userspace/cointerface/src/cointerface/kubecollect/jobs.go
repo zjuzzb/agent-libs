@@ -17,7 +17,6 @@ import (
 
 // Globals are reset in startJobsSInformer
 var jobInf cache.SharedInformer
-var jobSelectorCache *selectorCache
 
 type coJob struct {
 	*v1batch.Job
@@ -92,10 +91,7 @@ func newJobConGroup(job coJob, setLinks bool) (*draiosproto.ContainerGroup) {
 	addJobMetrics(&ret.Metrics, job)
 	if setLinks {
 		AddNSParents(&ret.Parents, job.GetNamespace())
-		selector, ok := jobSelectorCache.Get(job)
-		if ok {
-			AddPodChildren(&ret.Children, selector, job.GetNamespace())
-		}
+		AddPodChildrenFromOwnerRef(&ret.Children, job.ObjectMeta)
 		AddCronJobParent(&ret.Parents, job)
 	}
 	return ret
@@ -130,7 +126,6 @@ func startJobsSInformer(ctx context.Context,
 			kubeClient kubeclient.Interface,
 			wg *sync.WaitGroup,
 			evtc chan<- draiosproto.CongroupUpdateEvent) {
-	jobSelectorCache = newSelectorCache()
 	client := kubeClient.BatchV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "jobs", v1meta.NamespaceAll, fields.Everything())
 	jobInf = cache.NewSharedInformer(lw, &v1batch.Job{}, RsyncInterval)
@@ -163,12 +158,6 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				}
 
 				sameEntity, sameLinks := jobEquals(oldJob, newJob)
-				if !sameLinks ||
-					(!sameEntity &&
-					oldJob.Status.Active > 0 &&
-					newJob.Status.Active == 0) {
-					jobSelectorCache.Update(newJob)
-				}
 				if !sameEntity || !sameLinks {
 					evtc <- jobEvent(newJob,
 						draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
@@ -195,7 +184,6 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					return
 				}
 
-				jobSelectorCache.Remove(job)
 				evtc <- jobEvent(job,
 					draiosproto.CongroupEventType_REMOVED.Enum(), false)
 				addEvent("Job", EVENT_DELETE)

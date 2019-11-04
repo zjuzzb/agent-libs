@@ -8,7 +8,6 @@ import (
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"sync"
@@ -81,7 +80,7 @@ func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) (*draiosproto.Con
 
 	AddResourceQuotaMetrics(&ret.Metrics, resourceQuota)
 	AddNSParents(&ret.Parents, resourceQuota.GetNamespace())
-	AddPodChildren(&ret.Children, labels.NewSelector(),resourceQuota.GetNamespace())
+	AddPodChildrenFromOwnerRef(&ret.Children, resourceQuota.ObjectMeta)
 	return ret
 }
 

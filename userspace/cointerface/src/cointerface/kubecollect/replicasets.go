@@ -17,7 +17,6 @@ import (
 
 // Globals are reset in startReplicaSetsSInformer
 var replicaSetInf cache.SharedInformer
-var rsSelectorCache *selectorCache
 var filterEmptyRs bool
 
 type coReplicaSet struct {
@@ -116,16 +115,7 @@ func newReplicaSetCongroup(replicaSet coReplicaSet, setLinks bool) (*draiosproto
 	if setLinks {
 		AddNSParents(&ret.Parents, replicaSet.GetNamespace())
 		AddDeploymentParents(&ret.Parents, replicaSet)
-
 		AddPodChildrenFromOwnerRef(&ret.Children, replicaSet.ObjectMeta)
-
-		// For compatibility with old k8s versions
-		if len(ret.Children) == 0 {
-			selector, ok := rsSelectorCache.Get(replicaSet)
-			if ok {
-				AddPodChildren(&ret.Children, selector, replicaSet.GetNamespace())
-			}
-		}
 		AddHorizontalPodAutoscalerParents(&ret.Parents, replicaSet.GetNamespace(), replicaSet.APIVersion, replicaSet.Kind, replicaSet.GetName() )
 	}
 	return ret
@@ -190,7 +180,6 @@ func AddReplicaSetChildrenByName(children *[]*draiosproto.CongroupUid, namespace
 }
 
 func startReplicaSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty bool) {
-	rsSelectorCache = newSelectorCache()
 	filterEmptyRs = filterEmpty
 	client := kubeClient.AppsV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicaSets", v1meta.NamespaceAll, fields.Everything())
@@ -239,7 +228,6 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					addEvent("ReplicaSet", EVENT_UPDATE_AND_SEND)
 					return
 				} else if filterEmptyRs && oldReplicas > 0 && newReplicas == 0 {
-					rsSelectorCache.Remove(newRS)
 					evtc <- draiosproto.CongroupUpdateEvent {
 						Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 						Object: &draiosproto.ContainerGroup{
@@ -252,9 +240,6 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					return
 				} else {
 					sameEntity, sameLinks := replicaSetEquals(oldRS, newRS)
-					if !sameLinks {
-						rsSelectorCache.Update(newRS)
-					}
 					if !sameEntity || !sameLinks {
 						evtc <- replicaSetEvent(newRS,
 							draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
@@ -286,7 +271,6 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					return
 				}
 
-				rsSelectorCache.Remove(rs)
 				evtc <- draiosproto.CongroupUpdateEvent {
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{

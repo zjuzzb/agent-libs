@@ -514,7 +514,7 @@ func resolveTargetPort(name string, selector labels.Selector, namespace string) 
 	return 0
 }
 
-func AddPodChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
+func AddPodChildrenFromSelectors(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
 	if !resourceReady("pods") {
 		return
 	}

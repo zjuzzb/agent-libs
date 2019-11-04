@@ -17,7 +17,6 @@ import (
 
 // Globals are reset in startDaemonSetsSInformer
 var daemonSetInf cache.SharedInformer
-var dsSelectorCache *selectorCache
 
 type coDaemonSet struct {
 	*appsv1.DaemonSet
@@ -95,10 +94,7 @@ func newDaemonSetCongroup(daemonSet coDaemonSet, setLinks bool) (*draiosproto.Co
 	addDaemonSetMetrics(&ret.Metrics, daemonSet)
 	if setLinks {
 		AddNSParents(&ret.Parents, daemonSet.GetNamespace())
-		selector, ok := dsSelectorCache.Get(daemonSet)
-		if ok {
-			AddPodChildren(&ret.Children, selector, daemonSet.GetNamespace())
-		}
+		AddPodChildrenFromOwnerRef(&ret.Children, daemonSet.ObjectMeta)
 	}
 	return ret
 }
@@ -127,7 +123,6 @@ func AddDaemonSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, nam
 }
 
 func startDaemonSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
-	dsSelectorCache = newSelectorCache()
 	client := kubeClient.AppsV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "DaemonSets", v1meta.NamespaceAll, fields.Everything())
 	daemonSetInf = cache.NewSharedInformer(lw, &appsv1.DaemonSet{}, RsyncInterval)
@@ -161,9 +156,6 @@ func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				}
 
 				sameEntity, sameLinks := dsEquals(oldDS, newDS)
-				if !sameLinks {
-					dsSelectorCache.Update(newDS)
-				}
 				if !sameEntity || !sameLinks {
 					evtc <- daemonSetEvent(newDS,
 						draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
@@ -190,7 +182,6 @@ func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					return
 				}
 
-				dsSelectorCache.Remove(ds)
 				evtc <- daemonSetEvent(ds,
 					draiosproto.CongroupEventType_REMOVED.Enum(), false)
 				addEvent("DaemonSet", EVENT_DELETE)
