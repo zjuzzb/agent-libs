@@ -1037,6 +1037,15 @@ events:
       - SuccessfulDelete    # Pod Deleted       (information)
       - FailedDelete        # Pod Delete Failed (warning)
       - RecreatingFailedPod # Recreate fail pod (warning)
+    service:
+      - CreatingLoadBalancerFailed  # Load Balancer Create Failed    (warning)
+      - CleanupLoadBalancerFailed   # Load Balancer Cleanup Failed   (warning)
+#      - DeletingLoadBalancer        # Load Balancer Delete Start     (information)
+      - DeletingLoadBalancerFailed  # Load Balancer Delete Failed    (warning)
+#      - DeletedLoadBalancer         # Load Balancer Delete End       (information)
+      - UnAvailableLoadBalancer     # Unavailable Load Balancer      (warning)
+      - UpdatedLoadBalancer         # Updated Load Balancer          (information)
+      - LoadBalancerUpdateFailed    # Load Balancer Update Failed    (warning)
   docker:
     container:
 #      - attach      # Container Attached      (information)

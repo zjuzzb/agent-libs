@@ -149,7 +149,17 @@ k8s_user_event_message_handler::k8s_user_event_message_handler(uint64_t refresh_
 		// { "SelectingAll", "Selecting All Pods" } duplicate
 
 		// StatefulSet
-		{ "RecreatingFailedPod",  "Recreating Failed Pod" }
+		{ "RecreatingFailedPod",  "Recreating Failed Pod" },
+
+		// Service
+		{ "CreatingLoadBalancerFailed", "Error creating load balancer"                          },
+		{ "CleanupLoadBalancerFailed",  "Error cleaning up load balancer"                       },
+		{ "DeletingLoadBalancer",       "Deleting load balancer"                                },
+		{ "DeletingLoadBalancerFailed", "Error deleting load balancer"                          },
+		{ "DeletedLoadBalancer",        "Deleted load balancer"                                 },
+		{ "UnAvailableLoadBalancer",    "There are no available nodes for LoadBalancer service" },
+		{ "UpdatedLoadBalancer",        "Updated load balancer with new hosts"                  },
+		{ "LoadBalancerUpdateFailed",   "Error updating load balancer with new hosts"           }
 	};
 }
 
