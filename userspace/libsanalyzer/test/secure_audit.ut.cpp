@@ -7,6 +7,7 @@
 #include <connectinfo.h>
 #include "unique_ptr_resetter.h"
 #include "scoped_configuration.h"
+#include "secure_audit_data_ready_handler.h"
 
 using namespace test_helpers;
 
@@ -14,12 +15,56 @@ namespace
 {
 const int N_DIFFERENT_EXE = 5;
 const int N_DIFFERENT_CMDLINES = 50;
+const uint64_t DEFAULT_FREQUENCY = 10000000000; // 10s (ns)
 
 const std::vector<std::string> exe = {"cat", "ls", "ps", "df", "ll"};
 
 audit_tap_handler_dummy g_audit_handler;
 null_secure_audit_handler g_secure_handler;
 sinsp_analyzer::flush_queue g_queue(1000);
+
+// dummy implementation used for testing
+class secure_audit_data_ready_dummy : public secure_audit_data_ready_handler
+{
+public:
+	secure_audit_data_ready_dummy();
+	void secure_audit_data_ready(uint64_t ts, const secure::Audit* secure_audits) override;
+
+	const secure::Audit* get_secure_audits_once();
+	uint64_t get_ts_once();
+
+private:
+	const secure::Audit* m_secure_audits;
+	secure::Audit m_secure_audits_copy;
+	uint64_t m_ts;
+};
+
+secure_audit_data_ready_dummy::secure_audit_data_ready_dummy():
+	m_secure_audits(nullptr), m_ts(0)
+{
+}
+
+void secure_audit_data_ready_dummy::secure_audit_data_ready(uint64_t ts,
+							    const secure::Audit* secure_audits)
+{
+	m_ts = ts;
+	m_secure_audits_copy = *secure_audits;
+	m_secure_audits = &m_secure_audits_copy;
+}
+
+const secure::Audit* secure_audit_data_ready_dummy::get_secure_audits_once()
+{
+	const secure::Audit* ret = m_secure_audits;
+	m_secure_audits = nullptr;
+	return ret;
+}
+
+uint64_t secure_audit_data_ready_dummy::get_ts_once()
+{
+	uint64_t ret = m_ts;
+	m_ts = 0;
+	return ret;
+}
 
 void add_executed_commands_helper(std::unordered_map<std::string, std::vector<sinsp_executed_command>>& executed_commands,
 				  int n_cmd_per_container,
@@ -50,7 +95,7 @@ void add_executed_commands_helper(std::unordered_map<std::string, std::vector<si
 
 // Generic test for executed commands
 void check_executed_commands_helper(const secure::Audit* audit_pb,
-				    std::shared_ptr<secure_audit> audit,
+				    secure_audit* audit,
 				    int n_cmd_per_container,
 				    std::vector<std::string>& containers,
 				    std::vector<sinsp_executed_command>& commands)
@@ -58,7 +103,7 @@ void check_executed_commands_helper(const secure::Audit* audit_pb,
 	// Test number of executed commands
 	int n_cmd_tot = 0;
 
-	int executed_commands_per_container_limit = audit->c_secure_audit_executed_commands_per_container_limit.get_value();
+	int executed_commands_per_container_limit = secure_audit::c_secure_audit_executed_commands_per_container_limit.get_value();
 
 	// Secure audit - Executed commands
 	// Try to limit to N_DIFFERENT_CMDLINES
@@ -95,8 +140,8 @@ void check_executed_commands_helper(const secure::Audit* audit_pb,
 
 	n_cmd_tot = n_cmd_per_container * containers.size();
 
-	if(!audit->c_secure_audit_executed_commands_enabled.get_value() ||
-	   !audit->c_secure_audit_enabled.get_value())
+	if(!secure_audit::c_secure_audit_executed_commands_enabled.get_value() ||
+	   !secure_audit::c_secure_audit_enabled.get_value())
 	{
 		n_cmd_tot = 0;
 	}
@@ -113,10 +158,10 @@ void check_executed_commands_helper(const secure::Audit* audit_pb,
 	else
 	{
 		ASSERT_NE(audit_pb, nullptr);
-		if((audit->c_secure_audit_executed_commands_limit.get_value() != 0) &&
-		   n_cmd_tot > audit->c_secure_audit_executed_commands_limit.get_value())
+		if((secure_audit::c_secure_audit_executed_commands_limit.get_value() != 0) &&
+		   n_cmd_tot > secure_audit::c_secure_audit_executed_commands_limit.get_value())
 		{
-			n_cmd_tot = audit->c_secure_audit_executed_commands_limit.get_value();
+			n_cmd_tot = secure_audit::c_secure_audit_executed_commands_limit.get_value();
 		}
 		ASSERT_EQ(audit_pb->executed_commands_size(), n_cmd_tot);
 
@@ -138,7 +183,25 @@ void executed_commands_build_and_test_generic(
 	int n_containers,
 	int n_commands)
 {
-	std::shared_ptr<secure_audit> audit = std::make_shared<secure_audit>();
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Initialize needed stuff
 	std::unordered_map<std::string, std::vector<sinsp_executed_command>> m_executed_commands_local;
@@ -186,26 +249,29 @@ void executed_commands_build_and_test_generic(
 	}
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit->get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	// Build protobuf
 	add_executed_commands_helper(m_executed_commands_local, n_commands_per_container, containers, commands);
-	audit->emit_commands_audit(&m_executed_commands_local);
+	audit.emit_commands_audit(&m_executed_commands_local);
 	// Get pb
-	audit_pb = audit->get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
+
 	if(((n_commands_per_container * n_containers * n_commands) != 0) &&
-	   audit->c_secure_audit_executed_commands_enabled.get_value() &&
-	   audit->c_secure_audit_enabled.get_value())
+	   audit.c_secure_audit_executed_commands_enabled.get_value() &&
+	   audit.c_secure_audit_enabled.get_value())
 	{
 		ASSERT_NE(nullptr, audit_pb);
+		ASSERT_EQ((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY, data_ready_handler.get_ts_once());
 	}
 	else
 	{
 		ASSERT_EQ(nullptr, audit_pb);
 	}
 	// Basic tests on generated pb
-	check_executed_commands_helper(audit_pb, audit, n_commands_per_container, containers, commands);
+	check_executed_commands_helper(audit_pb, &audit, n_commands_per_container, containers, commands);
 }
 
 // Network byte order is defined to always be big-endian
@@ -511,11 +577,29 @@ TEST(secure_audit_test, executed_commands_limit_100_no_per_container_bound)
 TEST(secure_audit_test, connections_base_client)
 {
 	// Secure Audit
-	secure_audit audit;
-
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
 	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -536,18 +620,6 @@ TEST(secure_audit_test, connections_base_client)
 
 	const int expected_connections_size = 1;
 
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -575,7 +647,6 @@ TEST(secure_audit_test, connections_base_client)
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -603,13 +674,14 @@ TEST(secure_audit_test, connections_base_client)
 	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 
 	// Get pb
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 
 	ASSERT_NE(nullptr, audit_pb);
 
@@ -643,11 +715,29 @@ TEST(secure_audit_test, connections_base_client)
 TEST(secure_audit_test, connections_base_server)
 {
 	// Secure Audit
-	secure_audit audit;
-
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
 	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -668,18 +758,6 @@ TEST(secure_audit_test, connections_base_server)
 
 	const int expected_connections_size = 1;
 
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -707,7 +785,6 @@ TEST(secure_audit_test, connections_base_server)
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -735,13 +812,14 @@ TEST(secure_audit_test, connections_base_server)
 	conn.m_sproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 
 	// Get pb
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 
 	ASSERT_NE(nullptr, audit_pb);
 
@@ -775,11 +853,29 @@ TEST(secure_audit_test, connections_base_server)
 TEST(secure_audit_test, connections_base_client_server)
 {
 	// Secure Audit
-	secure_audit audit;
-
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
 	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -800,18 +896,6 @@ TEST(secure_audit_test, connections_base_client_server)
 
 	const int expected_connections_size = 1;
 
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -839,7 +923,6 @@ TEST(secure_audit_test, connections_base_client_server)
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -867,13 +950,14 @@ TEST(secure_audit_test, connections_base_client_server)
 	conn.m_sproc = proc;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 
 	// Get pb
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 
 	ASSERT_NE(nullptr, audit_pb);
 
@@ -907,10 +991,29 @@ TEST(secure_audit_test, connections_base_client_server)
 TEST(secure_audit_test, connections_enabled_disabled_01)
 {
 	// Secure Audit
-	secure_audit audit;
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", false);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
 	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -929,18 +1032,6 @@ TEST(secure_audit_test, connections_enabled_disabled_01)
 	const uint32_t expected_error_code = 0;
 	const std::string expected_container_id = "sysd1gcl0ud1";
 
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -968,7 +1059,6 @@ TEST(secure_audit_test, connections_enabled_disabled_01)
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -996,23 +1086,43 @@ TEST(secure_audit_test, connections_enabled_disabled_01)
 	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 
 	// Get pb
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 	ASSERT_EQ(nullptr, audit_pb);
 }
 
 TEST(secure_audit_test, connections_enabled_disabled_10)
 {
 	// Secure Audit
-	secure_audit audit;
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", false);
 	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -1031,18 +1141,6 @@ TEST(secure_audit_test, connections_enabled_disabled_10)
 	const uint32_t expected_error_code = 0;
 	const std::string expected_container_id = "sysd1gcl0ud1";
 
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -1070,7 +1168,6 @@ TEST(secure_audit_test, connections_enabled_disabled_10)
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -1098,25 +1195,44 @@ TEST(secure_audit_test, connections_enabled_disabled_10)
 	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 
 	// Get pb
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 	ASSERT_EQ(nullptr, audit_pb);
 }
 
 TEST(secure_audit_test, connections_local_enabled)
 {
 	// Secure Audit
-	secure_audit audit;
-
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
 	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
 	test_helpers::scoped_config<bool> enable_local_connections("secure_audit_streams.connections_local", true);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -1137,18 +1253,6 @@ TEST(secure_audit_test, connections_local_enabled)
 
 	const int expected_connections_size = 2;
 
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -1176,7 +1280,6 @@ TEST(secure_audit_test, connections_local_enabled)
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -1204,15 +1307,16 @@ TEST(secure_audit_test, connections_local_enabled)
 	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 	tuple.m_fields.m_dip = ip_string_to_be(expected_sip);
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 
 	// Get pb
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 
 	ASSERT_NE(nullptr, audit_pb);
 
@@ -1246,12 +1350,30 @@ TEST(secure_audit_test, connections_local_enabled)
 TEST(secure_audit_test, connections_local_disabled)
 {
 	// Secure Audit
-	secure_audit audit;
-
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
 	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
 	test_helpers::scoped_config<bool> enable_local_connections("secure_audit_streams.connections_local", false);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -1270,18 +1392,6 @@ TEST(secure_audit_test, connections_local_disabled)
 	const uint32_t expected_error_code = 0;
 	const std::string expected_container_id = "sysd1gcl0ud1";
 
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -1309,7 +1419,6 @@ TEST(secure_audit_test, connections_local_disabled)
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -1337,26 +1446,45 @@ TEST(secure_audit_test, connections_local_disabled)
 	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 	tuple.m_fields.m_dip = ip_string_to_be(expected_sip);
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 
 	// Get pb
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 	ASSERT_EQ(nullptr, audit_pb);
 }
 
 TEST(secure_audit_test, connections_base_server_only_interactive)
 {
 	// Secure Audit
-	secure_audit audit;
-
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
 	test_helpers::scoped_config<bool> only_interactive("secure_audit_streams.connections_only_interactive", true);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -1377,18 +1505,6 @@ TEST(secure_audit_test, connections_base_server_only_interactive)
 
 	const int expected_connections_size = 1;
 
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -1422,7 +1538,6 @@ TEST(secure_audit_test, connections_base_server_only_interactive)
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -1450,13 +1565,14 @@ TEST(secure_audit_test, connections_base_server_only_interactive)
 	conn.m_sproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 
 	// Get pb
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 
 	ASSERT_NE(nullptr, audit_pb);
 
@@ -1486,15 +1602,14 @@ TEST(secure_audit_test, connections_base_server_only_interactive)
 	ASSERT_EQ(c.container_id(), expected_container_id);
 	ASSERT_EQ(c.cmdline(), "");
 
-	audit.clear();
-
 	// send a connection with no INTERACTIVE tinfo commands
 	main_thread->m_ainfo->m_th_analysis_flags &= ~thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
 
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 
 	// Get pb
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + ((uint64_t)DEFAULT_FREQUENCY * 2));
+	audit_pb = data_ready_handler.get_secure_audits_once();
 
 	ASSERT_EQ(nullptr, audit_pb);
 }
@@ -1502,14 +1617,32 @@ TEST(secure_audit_test, connections_base_server_only_interactive)
 TEST(secure_audit_test, connections_cmdline)
 {
 	// Secure Audit
-	secure_audit audit;
-
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
 	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
 
 	test_helpers::scoped_config<bool> enable_connections_cmdline("secure_audit_streams.connections_cmdline", true);
 	test_helpers::scoped_config<int> enable_connections_cmdline_maxlen("secure_audit_streams.connections_cmdline_maxlen", 0);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -1532,18 +1665,6 @@ TEST(secure_audit_test, connections_cmdline)
 
 	const int expected_connections_size = 1;
 
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -1571,7 +1692,6 @@ TEST(secure_audit_test, connections_cmdline)
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -1599,13 +1719,14 @@ TEST(secure_audit_test, connections_cmdline)
 	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 
 	// Get pb
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 
 	ASSERT_NE(nullptr, audit_pb);
 
@@ -1639,14 +1760,32 @@ TEST(secure_audit_test, connections_cmdline)
 TEST(secure_audit_test, connections_cmdline_maxlen)
 {
 	// Secure Audit
-	secure_audit audit;
-
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
 	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
 
 	test_helpers::scoped_config<bool> enable_connections_cmdline("secure_audit_streams.connections_cmdline", true);
 	test_helpers::scoped_config<int> enable_connections_cmdline_maxlen("secure_audit_streams.connections_cmdline_maxlen", 0);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -1676,18 +1815,6 @@ TEST(secure_audit_test, connections_cmdline_maxlen)
 
 	const int expected_connections_size = 1;
 
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -1717,7 +1844,6 @@ TEST(secure_audit_test, connections_cmdline_maxlen)
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -1745,13 +1871,14 @@ TEST(secure_audit_test, connections_cmdline_maxlen)
 	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 
 	// Get pb
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 
 	ASSERT_NE(nullptr, audit_pb);
 
@@ -1785,14 +1912,32 @@ TEST(secure_audit_test, connections_cmdline_maxlen)
 TEST(secure_audit_test, connections_cmdline_maxlen_20)
 {
 	// Secure Audit
-	secure_audit audit;
-
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
 	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
 
 	test_helpers::scoped_config<bool> enable_connections_cmdline("secure_audit_streams.connections_cmdline", true);
 	test_helpers::scoped_config<int> enable_connections_cmdline_maxlen("secure_audit_streams.connections_cmdline_maxlen", 20);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -1822,18 +1967,6 @@ TEST(secure_audit_test, connections_cmdline_maxlen_20)
 
 	const int expected_connections_size = 1;
 
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -1863,7 +1996,6 @@ TEST(secure_audit_test, connections_cmdline_maxlen_20)
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -1891,13 +2023,14 @@ TEST(secure_audit_test, connections_cmdline_maxlen_20)
 	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 
 	// Get pb
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 
 	ASSERT_NE(nullptr, audit_pb);
 
@@ -1936,14 +2069,32 @@ TEST(secure_audit_test, connections_cmdline_maxlen_20)
 TEST(secure_audit_test, connections_cmdline_maxlen_150)
 {
 	// Secure Audit
-	secure_audit audit;
-
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
 	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
 
 	test_helpers::scoped_config<bool> enable_connections_cmdline("secure_audit_streams.connections_cmdline", true);
 	test_helpers::scoped_config<int> enable_connections_cmdline_maxlen("secure_audit_streams.connections_cmdline_maxlen", 150);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -1973,18 +2124,6 @@ TEST(secure_audit_test, connections_cmdline_maxlen_150)
 
 	const int expected_connections_size = 1;
 
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -2014,7 +2153,6 @@ TEST(secure_audit_test, connections_cmdline_maxlen_150)
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -2042,13 +2180,14 @@ TEST(secure_audit_test, connections_cmdline_maxlen_150)
 	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 
 	// Get pb
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 
 	ASSERT_NE(nullptr, audit_pb);
 
@@ -2087,13 +2226,31 @@ TEST(secure_audit_test, connections_cmdline_maxlen_150)
 TEST(secure_audit_test, connections_cmdline_maxlen_len_plus_50)
 {
 	// Secure Audit
-	secure_audit audit;
-
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
 	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
 
 	test_helpers::scoped_config<bool> enable_connections_cmdline("secure_audit_streams.connections_cmdline", true);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -2126,18 +2283,6 @@ TEST(secure_audit_test, connections_cmdline_maxlen_len_plus_50)
 
 	const int expected_connections_size = 1;
 
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -2167,7 +2312,6 @@ TEST(secure_audit_test, connections_cmdline_maxlen_len_plus_50)
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -2195,13 +2339,14 @@ TEST(secure_audit_test, connections_cmdline_maxlen_len_plus_50)
 	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 
 	// Get pb
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 
 	ASSERT_NE(nullptr, audit_pb);
 
@@ -2234,9 +2379,6 @@ TEST(secure_audit_test, connections_cmdline_maxlen_len_plus_50)
 
 TEST(secure_audit_test, k8s_audit_base)
 {
-	// Instantiate secure_audit
-	secure_audit audit;
-
 	// Dummy k8s audit events
 	std::string exec_1_str = R"EOF(
 {
@@ -2419,13 +2561,32 @@ TEST(secure_audit_test, k8s_audit_base)
 	ASSERT_EQ(m_secure_audit_k8s_filters.find("exec")->second["/objectRef/resource"], "pods");
 	ASSERT_EQ(m_secure_audit_k8s_filters.find("exec")->second["/objectRef/subresource"], "exec");
 
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
+
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	// Fill fake infrastructure_state to test k8s enrichment too
-	test_helpers::sinsp_mock inspector;
-	infrastructure_state is(&inspector, "/foo/bar");
+	infrastructure_state is(inspector.get(), "/foo/bar");
 
 	draiosproto::congroup_update_event evt;
 	draiosproto::congroup_uid* parent;
@@ -2513,6 +2674,10 @@ TEST(secure_audit_test, k8s_audit_base)
 	is.load_single_event(evt);
 	evt.Clear();
 
+	// Test empty protobuf
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
+
 	// add add events
 	audit.filter_and_append_k8s_audit(json_audit_1, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters, &is);
 	audit.filter_and_append_k8s_audit(json_audit_2, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters, &is);
@@ -2520,7 +2685,9 @@ TEST(secure_audit_test, k8s_audit_base)
 	audit.filter_and_append_k8s_audit(json_exec_1, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters, &is);
 	audit.filter_and_append_k8s_audit(json_exec_2, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters, &is);
 
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	// Get pb
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 	ASSERT_NE(nullptr, audit_pb);
 
 	ASSERT_EQ(audit_pb->k8s_audits_size(), 2);
@@ -2536,15 +2703,10 @@ TEST(secure_audit_test, k8s_audit_base)
 
 	ASSERT_EQ(k1.container_id(), "containerID1");
 	ASSERT_EQ(k2.container_id(), "containerID1");
-
-	audit.clear();
 }
 
 void k8s_audit_disabled(bool a, bool b)
 {
-	// Instantiate secure_audit
-	secure_audit audit;
-
 	// Dummy k8s audit events
 	std::string exec_1_str = R"EOF(
 {
@@ -2603,13 +2765,35 @@ void k8s_audit_disabled(bool a, bool b)
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", a);
 	test_helpers::scoped_config<bool> enable_k8s("secure_audit_streams.k8s_audit", b);
 
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
+
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	audit.filter_and_append_k8s_audit(json_exec_1, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters);
 
-	audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
+	// Get pb
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 	ASSERT_EQ(nullptr, audit_pb);
 }
 
@@ -2631,9 +2815,6 @@ public:
 
 TEST(secure_audit_test, audit_frequency_default)
 {
-	// Secure Audit
-	secure_audit audit;
-
 	const std::string config = R"EOF(
 secure_audit_streams:
   enabled: true
@@ -2648,6 +2829,26 @@ secure_audit_streams:
 	ASSERT_EQ(secure_audit::c_secure_audit_enabled.get_value(), true);
 	ASSERT_EQ(secure_audit::c_secure_audit_connections_enabled.get_value(), true);
 	ASSERT_EQ(secure_audit::c_secure_audit_connections_only_interactive.get_value(), false);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -2666,19 +2867,6 @@ secure_audit_streams:
 	const uint32_t expected_error_code = 0;
 	const std::string expected_container_id = "sysd1gcl0ud1";
 
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -2707,7 +2895,6 @@ secure_audit_streams:
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -2734,20 +2921,12 @@ secure_audit_streams:
 	conn.m_sproc = proc;
 	conn.m_dproc = nullptr;
 
-	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(ts);
-	ASSERT_EQ(audit_pb, nullptr);
-
-	// Set analyzer
-	audit.set_data_handler(&analyzer);
-	audit.set_internal_metrics(&analyzer);
-	// We don't need connection manager for this test
-	audit.init(nullptr);
-
 	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), -1);
 
-	// Flush with no data -> no protobuf emitted
+	// Test empty protobuf
 	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
+
 	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
 
 	// put a connection into secure audit buffer
@@ -2764,9 +2943,6 @@ secure_audit_streams:
 
 TEST(secure_audit_test, audit_frequency_5)
 {
-	// Secure Audit
-	secure_audit audit;
-
 	const std::string config = R"EOF(
 secure_audit_streams:
   enabled: true
@@ -2781,6 +2957,26 @@ secure_audit_streams:
 	ASSERT_EQ(secure_audit::c_secure_audit_enabled.get_value(), true);
 	ASSERT_EQ(secure_audit::c_secure_audit_connections_enabled.get_value(), true);
 	ASSERT_EQ(secure_audit::c_secure_audit_connections_only_interactive.get_value(), false);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -2799,19 +2995,6 @@ secure_audit_streams:
 	const uint32_t expected_error_code = 0;
 	const std::string expected_container_id = "sysd1gcl0ud1";
 
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -2840,7 +3023,6 @@ secure_audit_streams:
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -2868,13 +3050,9 @@ secure_audit_streams:
 	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	// Set analyzer
-	audit.set_data_handler(&analyzer);
-	audit.set_internal_metrics(&analyzer);
-	// We don't need connection manager for this test
 	audit.init(nullptr);
 
 	// Flush with no data -> no protobuf emitted
@@ -2905,9 +3083,6 @@ secure_audit_streams:
 
 TEST(secure_audit_test, audit_frequency_out_of_limits_lower)
 {
-	// Secure Audit
-	secure_audit audit;
-
 	const std::string config = R"EOF(
 secure_audit_streams:
   enabled: true
@@ -2922,6 +3097,26 @@ secure_audit_streams:
 	ASSERT_EQ(secure_audit::c_secure_audit_enabled.get_value(), true);
 	ASSERT_EQ(secure_audit::c_secure_audit_connections_enabled.get_value(), true);
 	ASSERT_EQ(secure_audit::c_secure_audit_connections_only_interactive.get_value(), false);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -2940,19 +3135,6 @@ secure_audit_streams:
 	const uint32_t expected_error_code = 0;
 	const std::string expected_container_id = "sysd1gcl0ud1";
 
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -2981,7 +3163,6 @@ secure_audit_streams:
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -3009,8 +3190,8 @@ secure_audit_streams:
 	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	// Set analyzer
 	audit.set_data_handler(&analyzer);
@@ -3046,9 +3227,6 @@ secure_audit_streams:
 
 TEST(secure_audit_test, audit_frequency_out_of_limits_upper)
 {
-	// Secure Audit
-	secure_audit audit;
-
 	// 90 * 60 = 5400
 	// 30 * 60 = 1800
 	const std::string config = R"EOF(
@@ -3065,6 +3243,26 @@ secure_audit_streams:
 	ASSERT_EQ(secure_audit::c_secure_audit_enabled.get_value(), true);
 	ASSERT_EQ(secure_audit::c_secure_audit_connections_enabled.get_value(), true);
 	ASSERT_EQ(secure_audit::c_secure_audit_connections_only_interactive.get_value(), false);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -3083,19 +3281,6 @@ secure_audit_streams:
 	const uint32_t expected_error_code = 0;
 	const std::string expected_container_id = "sysd1gcl0ud1";
 
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -3124,7 +3309,6 @@ secure_audit_streams:
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -3152,8 +3336,8 @@ secure_audit_streams:
 	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	// Set analyzer
 	audit.set_data_handler(&analyzer);
@@ -3190,9 +3374,6 @@ secure_audit_streams:
 
 TEST(secure_audit_test, audit_internal_metrics)
 {
-	// Secure Audit
-	secure_audit audit;
-
 	const std::string config = R"EOF(
 secure_audit_streams:
   enabled: true
@@ -3207,6 +3388,26 @@ secure_audit_streams:
 	ASSERT_EQ(secure_audit::c_secure_audit_enabled.get_value(), true);
 	ASSERT_EQ(secure_audit::c_secure_audit_connections_enabled.get_value(), true);
 	ASSERT_EQ(secure_audit::c_secure_audit_connections_only_interactive.get_value(), false);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+
+	// Building inspector and analyzer
+	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
+	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
+	sinsp_analyzer analyzer(inspector.get(),
+				"/" /*root dir*/,
+				int_metrics,
+				g_audit_handler,
+				g_secure_handler,
+				&g_queue);
+	unique_ptr_resetter<sinsp_mock> resetter(inspector);
+	inspector->m_analyzer = &analyzer;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&analyzer);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Thread Info
 	const int64_t expected_pid = 4;
@@ -3225,19 +3426,6 @@ secure_audit_streams:
 	const uint32_t expected_error_code = 0;
 	const std::string expected_container_id = "sysd1gcl0ud1";
 
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	(void)inspector->build_thread().commit();
 	inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
@@ -3266,7 +3454,6 @@ secure_audit_streams:
 
 	_ipv4tuple tuple;
 	sinsp_connection conn;
-	uint64_t ts = sinsp_utils::get_current_time_ns();
 
 	// Build Tuple
 	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
@@ -3293,22 +3480,17 @@ secure_audit_streams:
 	conn.m_sproc = proc;
 	conn.m_dproc = nullptr;
 
-	// Test empty protobuf
-	const secure::Audit* audit_pb = audit.get_events(sinsp_utils::get_current_time_ns());
-	ASSERT_EQ(audit_pb, nullptr);
-
-	// Set analyzer
-	audit.set_data_handler(&analyzer);
-	audit.set_internal_metrics(&analyzer);
-	// We don't need connection manager for this test
-	audit.init(nullptr);
+	//	// We don't need connection manager for this test
+	//	audit.init(nullptr);
 
 	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), -1);
 	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_fl_ms(), -1);
 	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_emit_ms(), -1);
 
-	// Flush with no data -> no protobuf emitted
+	// Test empty protobuf
 	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
+
 	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
 	ASSERT_NE(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_fl_ms(), -1);
 
