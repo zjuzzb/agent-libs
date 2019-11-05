@@ -63,6 +63,7 @@ public:
 	void set_fp(int64_t val);
 	void set_fl(int64_t val);
 	void set_sr(int64_t val);
+	void set_analyzer_cpu_percentage(int64_t val);
 
 	// These are all from the inspector's get_capture_stats()
 	void set_n_evts(int64_t val);
@@ -88,6 +89,7 @@ public:
 	int64_t get_fp() const;
 	int64_t get_fl() const;
 	int64_t get_sr() const;
+	int64_t get_analyzer_cpu_percentage() const;
 
 	int64_t get_n_evts() const;
 	int64_t get_n_drops() const;
@@ -182,7 +184,8 @@ public:
 		  uint32_t sampling_ratio,
 		  uint64_t flush_duration_ns,
 		  uint64_t n_proc_lookups,
-		  uint64_t n_main_thread_lookups);
+		  uint64_t n_main_thread_lookups,
+		  uint64_t analyzer_cpu_percentage);
 
 private: // helper methods used during emit
 	// adds statsd-emulated metrics directly to protobuf
@@ -284,6 +287,7 @@ private:
 		int64_t fp = -1;
 		int64_t fl = -1;
 		int64_t sr = -1;
+		double analyzer_cpu_percentage = -1;
 
 		int64_t n_evts = -1;
 		int64_t n_drops = -1;
@@ -458,6 +462,11 @@ inline void internal_metrics::set_sr(int64_t val)
 	m_analyzer.sr = val;
 }
 
+inline void internal_metrics::set_analyzer_cpu_percentage(int64_t val)
+{
+	m_analyzer.analyzer_cpu_percentage = val;
+}
+
 inline void internal_metrics::set_n_evts(int64_t val)
 {
 	m_analyzer.n_evts = val;
@@ -556,6 +565,11 @@ inline int64_t internal_metrics::get_fl() const
 inline int64_t internal_metrics::get_sr() const
 {
 	return m_analyzer.sr;
+}
+
+inline int64_t internal_metrics::get_analyzer_cpu_percentage() const
+{
+	return m_analyzer.analyzer_cpu_percentage;
 }
 
 inline int64_t internal_metrics::get_n_evts() const

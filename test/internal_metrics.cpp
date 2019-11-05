@@ -37,6 +37,7 @@ TEST(internal_metrics, metrics)
 	ASSERT_EQ(-1, im.get_fp());
 	ASSERT_EQ(-1, im.get_fl());
 	ASSERT_EQ(-1, im.get_sr());
+	ASSERT_EQ(-1, im.get_analyzer_cpu_percentage());
 
 	ASSERT_EQ(-1, im.get_n_evts());
 	ASSERT_EQ(-1, im.get_n_drops());
@@ -90,6 +91,7 @@ TEST(internal_metrics, metrics)
 	im.set_fp(999);
 	im.set_fl(999);
 	im.set_sr(999);
+	im.set_analyzer_cpu_percentage(999);
 
 	im.set_n_evts(999);
 	im.set_n_drops(998);
@@ -107,6 +109,7 @@ TEST(internal_metrics, metrics)
 	EXPECT_EQ(999, im.get_fp());
 	EXPECT_EQ(999, im.get_fl());
 	EXPECT_EQ(999, im.get_sr());
+	EXPECT_EQ(999, im.get_analyzer_cpu_percentage());
 
 	EXPECT_EQ(999, im.get_n_evts());
 	EXPECT_EQ(998, im.get_n_drops());
@@ -155,6 +158,7 @@ TEST(internal_metrics, metrics)
 	EXPECT_EQ(999, im.get_fp());
 	EXPECT_EQ(999, im.get_fl());
 	EXPECT_EQ(999, im.get_sr());
+	EXPECT_EQ(999, im.get_analyzer_cpu_percentage());
 
 	EXPECT_EQ(999, im.get_n_evts());
 	EXPECT_EQ(998, im.get_n_drops());
@@ -293,6 +297,11 @@ const char* allstr()
 	"}\n"
 	"statsd_metrics {\n"
 	"  name: \"dragent.analyzer.sr\"\n"
+	"  type: STATSD_GAUGE\n"
+	"  value: 999\n"
+	"}\n"
+	"statsd_metrics {\n"
+	"  name: \"dragent.analyzer.cpu_percentage\"\n"
 	"  type: STATSD_GAUGE\n"
 	"  value: 999\n"
 	"}\n"

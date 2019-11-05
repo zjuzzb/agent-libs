@@ -124,7 +124,8 @@ void internal_metrics::emit(draiosproto::statsd_info* statsd_info,
 			    uint32_t sampling_ratio,
 			    uint64_t flush_duration_ns,
 			    uint64_t n_proc_lookups,
-			    uint64_t n_main_thread_lookups)
+			    uint64_t n_main_thread_lookups,
+			    uint64_t analyzer_cpu_percentage)
 {
 
         set_n_evts(capture_stats.n_evts);
@@ -136,6 +137,7 @@ void internal_metrics::emit(draiosproto::statsd_info* statsd_info,
 
         set_fp(static_cast<int64_t>(round(flush_share * 100)));
         set_sr(sampling_ratio);
+        set_analyzer_cpu_percentage(analyzer_cpu_percentage);
         set_fl(flush_duration_ns / 1000000);
 
         bool sent;
@@ -187,6 +189,7 @@ bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info)
 		write_metric(statsd_info, "dragent.analyzer.fp.pct100", draiosproto::STATSD_GAUGE,  m_analyzer.fp);
 		write_metric(statsd_info, "dragent.analyzer.fl.ms", draiosproto::STATSD_GAUGE,  m_analyzer.fl);
 		write_metric(statsd_info, "dragent.analyzer.sr", draiosproto::STATSD_GAUGE,  m_analyzer.sr);
+		write_metric(statsd_info, "dragent.analyzer.cpu_percentage", draiosproto::STATSD_GAUGE, m_analyzer.analyzer_cpu_percentage);
 
 		write_metric(statsd_info, "dragent.analyzer.n_evts", draiosproto::STATSD_GAUGE,  m_analyzer.n_evts);
 		write_metric(statsd_info, "dragent.analyzer.n_drops", draiosproto::STATSD_GAUGE,  m_analyzer.n_drops);
