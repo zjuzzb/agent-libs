@@ -310,7 +310,6 @@ var ownerRefKindToCongroupKind = map[string]string {
 	"ReplicaSet": "k8s_replicaset",
 	"ReplicationController": "k8s_replicationcontroller",
 	"StatefulSet": "k8s_statefulset",
-	"ResourceQuota": "k8s_resourcequota",
 	"DaemonSet": "k8s_daemonset",
 	"Job": "k8s_job",
 }

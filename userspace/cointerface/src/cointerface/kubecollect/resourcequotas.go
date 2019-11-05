@@ -80,7 +80,6 @@ func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) (*draiosproto.Con
 
 	AddResourceQuotaMetrics(&ret.Metrics, resourceQuota)
 	AddNSParents(&ret.Parents, resourceQuota.GetNamespace())
-	AddPodChildrenFromOwnerRef(&ret.Children, resourceQuota.ObjectMeta)
 	return ret
 }
 
