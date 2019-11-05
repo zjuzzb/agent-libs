@@ -203,7 +203,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 		{
 			blprogram* np;
 
-			auto it = m_progtable.find(tinfo.m_program_hash_falco);
+			auto it = m_progtable.find(tinfo.m_program_hash_scripts);
 			if(it == m_progtable.end())
 			{
 				if(m_progtable.size() >= BL_MAX_PROG_TABLE_SIZE)
@@ -217,7 +217,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 				np->m_dirs.m_regular_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 				np->m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 
-				m_progtable[tinfo.m_program_hash_falco] = np;
+				m_progtable[tinfo.m_program_hash_scripts] = np;
 			}
 			else
 			{
@@ -430,7 +430,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 				return false;
 			}
 
-			auto itp = m_progtable.find(ptinfo->m_program_hash_falco);
+			auto itp = m_progtable.find(ptinfo->m_program_hash_scripts);
 
 			if(itp != m_progtable.end())
 			{
@@ -802,7 +802,7 @@ inline blprogram* sinsp_baseliner::get_program(sinsp_threadinfo* tinfo)
 		//
 		// Find the program entry
 		//
-		auto it = m_progtable.find(tinfo->m_program_hash_falco);
+		auto it = m_progtable.find(tinfo->m_program_hash_scripts);
 
 		if(it == m_progtable.end())
 		{
@@ -893,7 +893,7 @@ void sinsp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 	//
 	// Note: the hash is exe+container
 	//
-	size_t phash = tinfo->m_program_hash_falco;
+	size_t phash = tinfo->m_program_hash_scripts;
 
 	//
 	// Find the program entry
@@ -922,7 +922,7 @@ void sinsp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 
 		if(ptinfo != NULL)
 		{
-			auto itp = m_progtable.find(ptinfo->m_program_hash_falco);
+			auto itp = m_progtable.find(ptinfo->m_program_hash_scripts);
 
 			if(itp != m_progtable.end())
 			{
