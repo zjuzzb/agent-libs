@@ -741,7 +741,7 @@ bool falco_security_rules::check_conditions(sinsp_evt *evt)
 		return false;
 	}
 
-	if((evt->get_info_flags() & EF_DROP_SIMPLE_CONS) != 0)
+	if((evt->get_info_flags() & EF_DROP_FALCO) != 0)
 	{
 		m_metrics->incr(security_evt_metrics::EVM_MISS_EF_DROP_FALCO);
 		return false;
@@ -1408,7 +1408,7 @@ std::set<std::string> syscall_rules::default_output_fields_keys(sinsp_evt *evt)
 
 bool syscall_rules::event_qualifies(sinsp_evt *evt)
 {
-	return evt->simple_consumer_consider();
+	return evt->falco_consider();
 }
 
 bool syscall_rules::add_rule(policy_v2_sptr policy,
@@ -1433,7 +1433,7 @@ bool syscall_rules::add_rule(policy_v2_sptr policy,
 		{
 			for (auto evtnum : it->second)
 			{
-				if(!sinsp::simple_consumer_consider_evtnum(evtnum))
+				if(!sinsp::falco_consider_evtnum(evtnum))
 				{
 					continue;
 				}
@@ -1452,7 +1452,7 @@ bool syscall_rules::add_rule(policy_v2_sptr policy,
 
 		if(it2 != m_syscallnums.end())
 		{
-			if(sinsp::simple_consumer_consider_syscallid(it2->second))
+			if(sinsp::falco_consider_syscallid(it2->second))
 			{
 
 				added = true;
