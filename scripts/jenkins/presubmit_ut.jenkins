@@ -1,0 +1,38 @@
+pipeline {
+	agent { label 'agent-docker-builder' }
+	stages {
+		stage('Check out dependencies') {
+			steps {
+				dir('agent') {
+					checkout scm
+				}
+				dir('oss-falco') {
+					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
+					sh "git checkout ${params.FALCO_BRANCH}"
+				}
+				dir('sysdig') {
+					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/sysdig']]])
+					sh "git checkout ${params.SYSDIG_BRANCH}"
+				}
+			}
+		}
+		stage('Build and Unit Test') {
+			steps {
+				script{
+					withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+					sh label: '', script: '''
+						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
+						docker run -i --rm -e MAKE_JOBS=$(nproc) -v $PWD:/draios:ro quay.io/sysdig/agent-builder:$BUILDER_VERSION presubmit
+					'''
+					}
+				}
+			}
+		}
+	}
+	post {
+		always {
+			cleanWs deleteDirs: true, notFailBuild: true
+		}
+	}
+}
