@@ -283,8 +283,8 @@ protected:
 	void parse_dump_response(std::shared_ptr<serialized_buffer> item, draiosproto::dump_response &response)
 	{
 		dragent_protocol::buffer_to_protobuf(
-				(uint8_t *) item->buffer.data() + sizeof(dragent_protocol_header),
-				(uint32_t) item->buffer.size()-sizeof(dragent_protocol_header),
+				(uint8_t *) item->buffer.data() + sizeof(dragent_protocol_header_v4),
+				(uint32_t) item->buffer.size()-sizeof(dragent_protocol_header_v4),
 				&response);
 
 		g_log->debug("Dump response token=" + response.token()
