@@ -69,6 +69,7 @@ public class Application {
     private HashMap<Integer, MonitoredVM> vms;
     private Config config;
     private long lastVmsCleanup;
+    private long rxSuccessTime_ms;
 
     private Application() throws FileNotFoundException {
         LogManager.getLogManager().reset();
@@ -79,6 +80,7 @@ public class Application {
 
         vms = new HashMap<Integer, MonitoredVM>();
         lastVmsCleanup = 0;
+        rxSuccessTime_ms = 0;
         config = new Config();
 
         LOGGER.fine(String.format("Found custom beans for: %s", config.getProcesses().keySet().toString()));
@@ -157,7 +159,11 @@ public class Application {
             System.err.print(String.format("HB,%d,%d,%d\n", CLibrary.getPid(),
                                     runtime.totalMemory()/1024, System.currentTimeMillis()/1000));
             System.err.flush();
-            String cmd_data = inqueue.receive(1);
+
+            // Don't let the timeout match the sampling rate
+            int rxTimeout = config.getSamplingRateInSeconds() == 1 ? 2 : 1;
+
+            String cmd_data = inqueue.receive(rxTimeout);
             if(cmd_data != null) {
                 // LOGGER.fine(String.format("Received command: %s", cmd_data));
                 LOGGER.fine(String.format("Received command of size %d bytes", cmd_data.length()));
@@ -180,6 +186,14 @@ public class Application {
                 if(System.currentTimeMillis() - lastVmsCleanup > VMS_CLEANUP_INTERVAL) {
                     cleanup(requestedVMs);
                     lastVmsCleanup = System.currentTimeMillis();
+                }
+                rxSuccessTime_ms = System.currentTimeMillis();
+            } else if (rxSuccessTime_ms != 0) {
+                long timeSinceLastMessage_ms = rxSuccessTime_ms - System.currentTimeMillis();
+
+                if (timeSinceLastMessage_ms > (config.getSamplingRateInSeconds() * 1000 * 1.5)) {
+                    rxSuccessTime_ms = 0;
+                    LOGGER.warning(String.format("Stopped receiving commands. Last message was %f seconds ago.", timeSinceLastMessage_ms / 1000.0));
                 }
             }
         }
