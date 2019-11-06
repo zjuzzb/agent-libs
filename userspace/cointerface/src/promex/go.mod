@@ -4,9 +4,9 @@ go 1.12
 
 require (
 	github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 // indirect
-	github.com/draios/protorepo/draiosproto v0.0.0-00010101000000-000000000000
 	github.com/draios/heartbeat v0.0.0-00010101000000-000000000000
 	github.com/draios/install_prefix v0.0.0-00010101000000-000000000000
+	github.com/draios/protorepo/draiosproto v0.0.0-00010101000000-000000000000
 	github.com/draios/protorepo/promex_pb v0.0.0-00010101000000-000000000000
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/protobuf v1.1.0 // indirect
@@ -22,9 +22,10 @@ require (
 	google.golang.org/grpc v1.13.0
 )
 
-replace github.com/draios/protorepo/draiosproto => ../draiosproto
+// The generated-go path comes from GEN_GO_DIR in userspace/cointerface/CMakeLists.txt
+replace github.com/draios/protorepo/draiosproto => ../../../../build/generated-go/draiosproto
 
-replace github.com/draios/protorepo/promex_pb => ../promex_pb
+replace github.com/draios/protorepo/promex_pb => ../../../../build/generated-go/promex_pb
 
 replace github.com/draios/heartbeat => ../heartbeat
 
