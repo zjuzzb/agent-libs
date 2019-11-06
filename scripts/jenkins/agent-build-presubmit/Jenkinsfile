@@ -32,8 +32,9 @@ pipeline {
 		stage('Check out dependencies') {
 			steps {
 				// First set the statuses on github
-				setBuildStatus('Build and Unit Test', 'Building all targets and running unit tests', 'PENDING')
-				setBuildStatus('System Test', 'Waiting for build to finish', 'PENDING')
+				setBuildStatus('Unit Test', 'Waiting for resources', 'PENDING')
+				setBuildStatus('System Test', 'Waiting for resources', 'PENDING')
+				setBuildStatus('QA Test', 'Waiting for resources', 'PENDING')
 				dir('agent') {
 					checkout scm
 				}
@@ -43,26 +44,23 @@ pipeline {
 			parallel {
 				stage('Unit Test') {
 					steps {
-						script{
-							build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value: "${env.BRANCH_NAME}")] 
-						}
+						setBuildStatus('Unit Test', 'In Progress', 'PENDING')
+						build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value: "${env.BRANCH_NAME}")] 
 					}
 					post {
 						success {
-							setBuildStatus('Build and Unit Test', 'Zero problems found', 'SUCCESS')
+							setBuildStatus('Unit Test', 'Zero problems found', 'SUCCESS')
 						}
 						failure {
-							setBuildStatus('Build and Unit Test', 'FAILED! See Jenkins console output for more info.', 'FAILURE')
+							setBuildStatus('Unit Test', 'FAILED! See Jenkins console output for more info.', 'FAILURE')
 						}
 
 					}
 				}
 				stage('System Test') {
 					steps {
-						setBuildStatus('System Test', 'Installing probe and running system tests', 'PENDING')
-						script{
-							build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value: "${env.BRANCH_NAME}")] 
-						}
+						setBuildStatus('System Test', 'In Progress', 'PENDING')
+						build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value: "${env.BRANCH_NAME}")] 
 					}
 					post {
 						success {
@@ -70,6 +68,29 @@ pipeline {
 						}
 						failure {
 							setBuildStatus('System Test', 'FAILED! See Jenkins console output for more info.', 'FAILURE')
+						}
+					}
+				}
+				stage('Systemic Regression Test') {
+					stages {
+						stage('Build Container') {
+							steps {
+								setBuildStatus('QA Test', 'Building Container', 'PENDING')
+								build job:'agent-build-container',parameters:[string(name:'AGENT_BRANCH', value: "${env.BRANCH_NAME}")] 
+							}
+						}
+						stage('Run Test') {
+							steps {
+								echo "Running QA tests...maybe..."
+							}
+						}
+					}
+					post {
+						success {
+							setBuildStatus('QA Test', 'Zero problems found', 'SUCCESS')
+						}
+						failure {
+							setBuildStatus('QA Test', 'FAILED! See Jenkins console output for more info.', 'FAILURE')
 						}
 					}
 				}

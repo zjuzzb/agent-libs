@@ -18,36 +18,30 @@ pipeline {
 		}
 		stage('Build') {
 			steps {
-				script{
-					withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
 					sh label: '', script: '''
 						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
 						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
 						mkdir install || echo "installdir already exists"
 						docker run -i --rm -e MAKE_JOBS=$(nproc) -v $PWD/install:/opt/draios -v $PWD:/draios:ro quay.io/sysdig/agent-builder:$BUILDER_VERSION install-test
 					'''
-					}
 				}
 			}
 		}
 		stage('Insert Module') {
 			steps {
-				script{
-					sh label: '', script: '''
-						sudo rmmod sysdigcloud-probe || echo "not currently loaded"
-						docker pull sysdig/agent-kmodule:dev
-						docker run -i --privileged --rm --name sysdig-agent-kmodule -v /usr:/host/usr:ro -v /boot:/host/boot:ro -v /lib/modules:/host/lib/modules:ro sysdig/agent-kmodule:dev
-					'''
-				}
+				sh label: '', script: '''
+					sudo rmmod sysdigcloud-probe || echo "not currently loaded"
+					docker pull sysdig/agent-kmodule:dev
+					docker run -i --privileged --rm --name sysdig-agent-kmodule -v /usr:/host/usr:ro -v /boot:/host/boot:ro -v /lib/modules:/host/lib/modules:ro sysdig/agent-kmodule:dev
+				'''
 			}
 		}
 		stage('Run tests') {
 			steps {
-				script{
-					sh label: '', script: '''
-						sudo ./agent/scripts/jenkins/run-tests ./install
-					'''
-				}
+				sh label: '', script: '''
+					sudo ./agent/scripts/jenkins/run-tests ./install
+				'''
 			}
 		}
 	}
