@@ -142,6 +142,7 @@ public:
 	};
 	explicit app_metric(const Json::Value& obj);
 	void to_protobuf(draiosproto::app_metric* proto) const;
+
 	const std::string& name() const;
 private:
 	std::string m_name;
@@ -226,8 +227,10 @@ public:
 		return m_expiration_ts;
 	}
 
-	unsigned to_protobuf(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const;
-
+	// metric is either an draiosproto::app_metric or prometheus_metric
+	// since they largely support the same types, but are different classes
+	template<typename metric>
+	unsigned to_protobuf(metric *proto, uint16_t& limit, uint16_t max_limit) const;
 
 	const std::string& name() const
 	{

@@ -42,7 +42,7 @@ async_aggregator::async_aggregator(flush_queue& input_queue,
 	m_count_since_flush(0)
 {
 	m_builder.set_metrics_containers_limit(c_container_limit->get_value());
-	m_aggregator = &(m_builder.build_metrics());
+	m_aggregator = new metrics_message_aggregator_impl(m_builder);
 	m_aggregated_data = std::make_shared<flush_data_message>(
 		0,
 		nullptr,
@@ -86,13 +86,14 @@ void async_aggregator::do_run()
 		m_count_since_flush++;
 		if (m_count_since_flush == c_samples_between_flush->get_value())
 		{
-			m_aggregator->limit(*m_aggregated_data->m_metrics);
+			m_aggregator->override_primary_keys(*m_aggregated_data->m_metrics);
+			m_aggregator->reset();
+			metrics_message_aggregator::limit(m_builder, *m_aggregated_data->m_metrics);
 
 			if (!m_output_queue.put(m_aggregated_data))
 			{
 				g_logger.format(sinsp_logger::SEV_WARNING, "Queue full, discarding sample");
 			}
-			m_aggregator->reset();
 			m_aggregated_data = std::make_shared<flush_data_message>(
 				 0,
 				 nullptr,

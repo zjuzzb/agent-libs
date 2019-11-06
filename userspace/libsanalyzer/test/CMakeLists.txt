@@ -90,6 +90,9 @@ file(
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/../../draiosproto/aggr_pbs
+	 DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)
 	add_custom_target(run-unit-test-libsanalyzer
 		DEPENDS unit-test-libsanalyzer

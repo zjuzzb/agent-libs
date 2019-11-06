@@ -4,59 +4,63 @@
 
 namespace aggregator_limits_comparators
 {
-bool status_code_details_comparator(const draiosproto::status_code_details &lhs,
-                                    const draiosproto::status_code_details &rhs);
-bool status_code_details_reverse_comparator(const draiosproto::status_code_details &lhs,
-                                            const draiosproto::status_code_details &rhs);
+bool status_code_details_comparator(const draiosproto::status_code_details& lhs,
+                                    const draiosproto::status_code_details& rhs);
+bool status_code_details_reverse_comparator(const draiosproto::status_code_details& lhs,
+                                            const draiosproto::status_code_details& rhs);
 
-bool container_priority_comparator(const draiosproto::container &lhs,
-                                   const draiosproto::container &rhs);
-bool program_priority_comparator(const draiosproto::program &lhs, const draiosproto::program &rhs);
+bool container_priority_comparator(const draiosproto::container& lhs,
+                                   const draiosproto::container& rhs);
+bool program_priority_comparator(const draiosproto::program& lhs, const draiosproto::program& rhs);
 
 template <typename message>
-void file_stat_limiter(message &output,
+void file_stat_limiter(message& output,
                        uint32_t limit,
-                       std::function<google::protobuf::RepeatedPtrField<draiosproto::file_stat> *(message&)> field_extractor);
+                       std::function<google::protobuf::RepeatedPtrField<draiosproto::file_stat>*(
+                           message&)> field_extractor);
 
-template <typename proto, typename tiebreak = const std::string &>
+template <typename proto, typename tiebreak = const std::string&>
 class message_comparator
 {
    public:
-	message_comparator(std::function<uint64_t(const proto &)> value_extractor,
-	                   std::function<tiebreak(const proto &)> tiebreaker_extractor)
+	message_comparator(std::function<uint64_t(const proto&)> value_extractor,
+	                   std::function<tiebreak(const proto&)> tiebreaker_extractor)
 	    : m_value_extractor(value_extractor), m_tiebreaker_extractor(tiebreaker_extractor)
 	{
 	}
 
-	bool operator()(const proto &lhs, const proto &rhs)
+	bool operator()(const proto& lhs, const proto& rhs)
 	{
 		uint64_t lhs_value = m_value_extractor(lhs);
 		uint64_t rhs_value = m_value_extractor(rhs);
-		if (lhs_value != rhs_value) {
+		if (lhs_value != rhs_value)
+		{
 			return lhs_value > rhs_value;
 		}
 		return m_tiebreaker_extractor(rhs) > m_tiebreaker_extractor(lhs);
 	}
-	std::function<uint64_t(const proto &)> m_value_extractor;
-	std::function<tiebreak(const proto &)> m_tiebreaker_extractor;
+	std::function<uint64_t(const proto&)> m_value_extractor;
+	std::function<tiebreak(const proto&)> m_tiebreaker_extractor;
 };
 
-template <typename message, typename field, typename tiebreak = const std::string &>
+template <typename message, typename field, typename tiebreak = const std::string&>
 void multi_compare_limiter(
-    message &output,
+    message& output,
     uint32_t limit,
-    std::function<google::protobuf::RepeatedPtrField<field> *(message &)> field_extractor,
+    std::function<google::protobuf::RepeatedPtrField<field>*(message&)> field_extractor,
     std::list<message_comparator<field, tiebreak> > comparators,
     uint32_t start_index = 0)
 {
-	if (limit >= field_extractor(output)->size()) {
+	if (limit >= field_extractor(output)->size())
+	{
 		return;
 	}
 
 	uint32_t limit_each = limit / comparators.size();
 	uint32_t index = start_index;
 
-	for (auto i : comparators) {
+	for (auto i : comparators)
+	{
 		uint32_t start_offset = index * limit_each;
 		uint32_t end_offset = (index + 1) * limit_each;
 

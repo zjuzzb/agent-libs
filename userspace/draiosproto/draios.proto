@@ -825,6 +825,11 @@ message app_info {
     repeated app_check checks = 3;
 }
 
+message prometheus_info {
+    optional string process_name = 1;
+    repeated app_metric metrics = 2;
+}
+
 //
 // General protocol information
 //
@@ -837,7 +842,12 @@ message proto_info {
     optional statsd_info statsd = 6;
     optional app_info app = 7;
     optional bool is_null = 8; //tells if this object is just a placeholder (used when splitting on cassandra)
+
+    // only used if 10s flush is disabled
     optional app_info prometheus = 9;
+
+    // only used if 10s flush is enabled
+    optional prometheus_info prom_info = 10;
 }
 
 /*
@@ -1416,16 +1426,17 @@ message k8s_replica_set {
     optional aggregations64 aggr_replicas_ready = 105;
 }
 
+message k8s_service_net_port {
+	required uint32 port = 1;
+	required uint32 target_port = 2;
+	optional string protocol = 3;
+	optional uint32 node_port = 4;
+}
+
 message k8s_service {
-    message net_port {
-        required uint32 port = 1;
-        required uint32 target_port = 2;
-        optional string protocol = 3;
-        optional uint32 node_port = 4;
-    }
     required k8s_common common = 1;
     optional string cluster_ip = 2;
-    repeated net_port ports = 3;
+    repeated k8s_service_net_port ports = 3;
 }
 
 message k8s_deployment {
@@ -1820,6 +1831,47 @@ message agent_event {
     repeated key_value tags = 6;
 }
 
+//
+// FALCO BASELINE
+//
+message falco_subcategory {
+    required string name = 1;
+    repeated string d = 2;
+    optional bool full = 3;
+}
+
+message falco_subcategory_container {
+    repeated falco_subcategory subcats = 1;
+}
+
+message falco_category {
+    required string name = 1;
+    repeated falco_subcategory_container startup_subcats = 2;
+    repeated falco_subcategory_container regular_subcats = 3;
+}
+
+message falco_prog {
+    required string comm = 1;
+    required string exe = 2;
+    repeated string args = 3;
+    required uint64 user_id = 4;
+    optional string container_id = 5;
+    repeated falco_category cats = 6;
+}
+
+message falco_container {
+    required string id = 1;
+    required string name = 2;
+    optional string image_name = 3;
+    optional string image_id = 4;
+}
+
+message falco_baseline {
+    repeated falco_prog progs = 1;
+    repeated falco_container containers = 2;
+}
+
+//
 // ENTRY POINT MESSAGE
 //
 message metrics {
@@ -2422,46 +2474,6 @@ enum error_type {
 message error_message {
     optional error_type type = 1;
     optional string description = 2;
-}
-
-//
-// FALCO BASELINE
-//
-message falco_subcategory {
-    required string name = 1;
-    repeated string d = 2;
-    optional bool full = 3;
-}
-
-message falco_subcategory_container {
-    repeated falco_subcategory subcats = 1;
-}
-
-message falco_category {
-    required string name = 1;
-    repeated falco_subcategory_container startup_subcats = 2;
-    repeated falco_subcategory_container regular_subcats = 3;
-}
-
-message falco_prog {
-    required string comm = 1;
-    required string exe = 2;
-    repeated string args = 3;
-    required uint64 user_id = 4;
-    optional string container_id = 5;
-    repeated falco_category cats = 6;
-}
-
-message falco_container {
-    required string id = 1;
-    required string name = 2;
-    optional string image_name = 3;
-    optional string image_id = 4;
-}
-
-message falco_baseline {
-    repeated falco_prog progs = 1;
-    repeated falco_container containers = 2;
 }
 
 message secure_baseline_life_tracker {

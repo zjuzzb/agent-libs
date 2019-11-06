@@ -313,40 +313,38 @@ def generate_limiters(message, limit_list, sub_aggregator_list):
     # generate declarations for limiters to be implemented manually
     for field in message.field:
         if field.name in limit_list:
-            out += """    virtual void limit_%s(draiosproto::%s& ouput, uint32_t limit);
+            out += """    static void limit_%s(draiosproto::%s& output, uint32_t limit);
 """ % (field.name, message.name)
             limited_messages.add((message.name, field.name));
     
     out += "public:\n"
 
     # function header
-    out += """    virtual void limit(draiosproto::%s& output)
+    out += """    static void limit(const message_aggregator_builder& builder,
+                      draiosproto::%s& output)
     {
 """ % (message.name)
-
-    # loop through fields, and invoke limiter on sub-messages
-    # this MUST come before our internal limiters since this depends on the
-    # aggregator maps, which are invalidated by the internal limiting
-    for field in message.field:
-        if type_name(field) not in skip:
-            if get_field_type(field, sub_aggregator_list) is 3:
-                out += """        if (m_%s_field_aggregator) {
-            m_%s_field_aggregator->limit(*output.mutable_%s());
-        }
-""" % (field.name, field.name, field.name)
-            if get_field_type(field, sub_aggregator_list) is 5:
-                out += """        for (auto& i : %s_map) {
-            i.second.second->limit((*output.mutable_%s())[i.second.first]);
-        }
-""" % (field.name, field.name)
 
     # loop through fields and invoke our internal limiter if necessary
     for field in message.field:
         if field.name in limit_list:
-            out += """        if (m_builder.get_%s_%s_limit() < output.%s().size()) {
-            limit_%s(output, m_builder.get_%s_%s_limit());
+            out += """        if (builder.get_%s_%s_limit() < output.%s().size()) {
+            limit_%s(output, builder.get_%s_%s_limit());
         }
 """ % (message.name, field.name, field.name, field.name, message.name, field.name)
+
+    # loop through fields, and invoke limiter on sub-messages
+    for field in message.field:
+        if type_name(field) not in skip:
+            if get_field_type(field, sub_aggregator_list) is 3:
+                out += """        %s_message_aggregator::limit(builder, *output.mutable_%s());
+""" % (type_name(field), field.name)
+            if get_field_type(field, sub_aggregator_list) is 5:
+                out += """        for (auto i : *output.mutable_%s()) {
+            %s_message_aggregator::limit(builder, i);
+        }
+""" % (field.name, type_name(field))
+
 
 
     # close the function

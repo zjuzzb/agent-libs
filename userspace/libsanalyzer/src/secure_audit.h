@@ -42,8 +42,6 @@ public:
 	secure_audit();
 	~secure_audit();
 
-	const secure::Audit* get_events(uint64_t timestamp);
-	void clear();
 	void flush(uint64_t ts);
 
 	void set_data_handler(secure_audit_data_ready_handler* handler);
@@ -53,13 +51,10 @@ public:
 
 	void emit_commands_audit(std::unordered_map<std::string, std::vector<sinsp_executed_command>>* executed_commands);
 	void emit_connection_async(const _ipv4tuple& tuple, sinsp_connection& conn, sinsp_connection::state_transition transition);
-	void emit_k8s_exec_audit();
 	void filter_and_append_k8s_audit(const nlohmann::json& j,
 					 std::vector<std::string>& k8s_active_filters,
 					 std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters,
 					 infrastructure_state *infra_state = nullptr);
-
-	void reset_counters();
 
 	static type_config<bool> c_secure_audit_enabled;
 	static type_config<bool> c_secure_audit_executed_commands_enabled;
@@ -81,6 +76,10 @@ private:
 	bool filter_k8s_audit(const nlohmann::json& j,
 			      std::vector<std::string>& k8s_active_filters,
 			      std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters);
+
+	void reset_counters();
+	const secure::Audit* get_events(uint64_t timestamp);
+	void clear();
 
 	secure_audit_data_ready_handler* m_audit_data_handler;
 	secure_audit_internal_metrics* m_audit_internal_metrics;

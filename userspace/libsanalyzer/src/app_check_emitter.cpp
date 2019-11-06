@@ -1,5 +1,6 @@
 #include "app_check_emitter.h"
 #include "analyzer_thread.h"
+#include "configuration_manager.h"
 
 app_check_emitter::app_check_emitter(app_checks_proxy::metric_map_t& app_metrics,
 				     const uint16_t app_metrics_limit,
@@ -69,9 +70,15 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 			{
 				static bool logged_metric = false;
 				unsigned metric_count;
-				metric_count = app_data.second->to_protobuf(proc.mutable_protos()->mutable_prometheus(),
-									    m_prom_metrics_remaining,
-									    m_prom_conf.max_metrics());
+				if (configuration_manager::instance().get_config<bool>("10s_flush_enable")) {
+				    metric_count = app_data.second->to_protobuf(proc.mutable_protos()->mutable_prom_info(),
+										m_prom_metrics_remaining,
+										m_prom_conf.max_metrics());
+				} else {
+				    metric_count = app_data.second->to_protobuf(proc.mutable_protos()->mutable_prometheus(),
+										m_prom_metrics_remaining,
+										m_prom_conf.max_metrics());
+				}
 				sent_prometheus_metrics += metric_count;
 				if(!logged_metric && metric_count)
 				{

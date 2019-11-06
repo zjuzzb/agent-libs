@@ -22,8 +22,6 @@ public:
 	virtual void aggregate(const message_type& input,
 			       message_type& output) = 0;
 
-	virtual void limit(message_type& output) = 0;
-
 	virtual void reset() = 0;
 
 	// input type should be some numeric type
