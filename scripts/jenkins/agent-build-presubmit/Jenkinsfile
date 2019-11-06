@@ -25,74 +25,57 @@ void setBuildStatus(String context, String message, String state) {
 
 pipeline {
 	agent { label 'agent-docker-builder' }
-	options {
-	    timeout(time: 60, unit: 'MINUTES')
-	}
 	stages {
 		stage('Check out dependencies') {
 			steps {
 				// First set the statuses on github
-				setBuildStatus('Unit Test', 'Waiting for resources', 'PENDING')
-				setBuildStatus('System Test', 'Waiting for resources', 'PENDING')
-				setBuildStatus('QA Test', 'Waiting for resources', 'PENDING')
+				setBuildStatus('Build and Unit Test', 'Building all targets and running unit tests', 'PENDING')
+				setBuildStatus('System Test', 'Waiting for build to finish', 'PENDING')
+
 				dir('agent') {
 					checkout scm
 				}
+				dir('oss-falco') {
+					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
+				}
+				dir('sysdig') {
+					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/sysdig']]])
+				}
 			}
 		}
-		stage('Run Tests') {
-			parallel {
-				stage('Unit Test') {
-					steps {
-						setBuildStatus('Unit Test', 'In Progress', 'PENDING')
-						build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value: "${env.BRANCH_NAME}")] 
+		stage('Build and Unit Test') {
+			steps {
+				script{
+					docker.withRegistry("https://quay.io", 'QUAY') {
+						sh('./agent/scripts/jenkins/agent-build-presubmit/build-presubmit')
 					}
-					post {
-						success {
-							setBuildStatus('Unit Test', 'Zero problems found', 'SUCCESS')
-						}
-						failure {
-							setBuildStatus('Unit Test', 'FAILED! See Jenkins console output for more info.', 'FAILURE')
-						}
+				}
+			}
+			post {
+				success {
+					setBuildStatus('Build and Unit Test', 'Zero problems found', 'SUCCESS')
+				}
+				failure {
+					setBuildStatus('Build and Unit Test', 'FAILED! See Jenkins console output for more info.', 'FAILURE')
+				}
 
+			}
+		}
+		stage('System Test') {
+			steps {
+				setBuildStatus('System Test', 'Installing probe and running system tests', 'PENDING')
+				script{
+					docker.withRegistry("https://quay.io", 'QUAY') {
+						sh('./agent/scripts/jenkins/agent-build-presubmit/install-probe-and-run-system-test')
 					}
 				}
-				stage('System Test') {
-					steps {
-						setBuildStatus('System Test', 'In Progress', 'PENDING')
-						build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value: "${env.BRANCH_NAME}")] 
-					}
-					post {
-						success {
-							setBuildStatus('System Test', 'Zero problems found', 'SUCCESS')
-						}
-						failure {
-							setBuildStatus('System Test', 'FAILED! See Jenkins console output for more info.', 'FAILURE')
-						}
-					}
+			}
+			post {
+				success {
+					setBuildStatus('System Test', 'Zero problems found', 'SUCCESS')
 				}
-				stage('Systemic Regression Test') {
-					stages {
-						stage('Build Container') {
-							steps {
-								setBuildStatus('QA Test', 'Building Container', 'PENDING')
-								build job:'agent-build-container',parameters:[string(name:'AGENT_BRANCH', value: "${env.BRANCH_NAME}")] 
-							}
-						}
-						stage('Run Test') {
-							steps {
-								echo "Running QA tests...maybe..."
-							}
-						}
-					}
-					post {
-						success {
-							setBuildStatus('QA Test', 'Zero problems found', 'SUCCESS')
-						}
-						failure {
-							setBuildStatus('QA Test', 'FAILED! See Jenkins console output for more info.', 'FAILURE')
-						}
-					}
+				failure {
+					setBuildStatus('System Test', 'FAILED! See Jenkins console output for more info.', 'FAILURE')
 				}
 			}
 		}
