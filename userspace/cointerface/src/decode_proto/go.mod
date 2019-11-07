@@ -8,4 +8,5 @@ require (
 	github.com/golang/protobuf v1.2.0 // indirect
 )
 
-replace github.com/draios/protorepo/draiosproto => ../draiosproto
+// The generated-go path comes from GEN_GO_DIR in userspace/cointerface/CMakeLists.txt
+replace github.com/draios/protorepo/draiosproto => ../../../../build/generated-go/draiosproto

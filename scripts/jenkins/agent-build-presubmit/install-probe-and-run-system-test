@@ -1,0 +1,36 @@
+#!/bin/bash
+
+SCRIPTS_DIR=$(dirname $(readlink -f $0))
+if [ -z "$WORKSPACE" ]
+then
+	WORKSPACE=$SCRIPTS_DIR/../../../..
+fi
+
+SOURCE=$WORKSPACE
+INSTALL_DIR=$WORKSPACE/install
+OUT=$WORKSPACE/out
+BUILD=$WORKSPACE/build
+
+# Run "install-test" to copy the system tests (and everything else) to
+# the install directory
+docker run -i --rm -e MAKE_JOBS=$(nproc) -v $SOURCE:/draios:ro -v $INSTALL_DIR:/opt/draios -v $OUT:/out -v /var/run/docker.sock:/var/run/docker.sock -v $BUILD:/code/agent/build quay.io/sysdig/agent-builder install-test
+rc=$?; if [[ $rc != 0 ]]; then echo "FAILED! Install-test unsuccessful!";exit $rc; fi
+
+# Just in case... remove the probe
+sudo rmmod sysdigcloud-probe
+
+# Build and insmod the kernel module
+docker pull sysdig/agent-kmodule:dev
+docker run -i --privileged --rm --name sysdig-agent-kmodule -v /usr:/host/usr:ro -v /boot:/host/boot:ro -v /lib/modules:/host/lib/modules:ro sysdig/agent-kmodule:dev
+rc=$?; if [[ $rc != 0 ]]; then echo "FAILED! Build agent-kmodule unsuccessful!";exit $rc; fi
+
+# Run the tests
+sudo $SCRIPTS_DIR/../run-tests $INSTALL_DIR
+rc=$?;
+if [[ $rc != 0 ]]; then
+    echo "FAILED! System Tests unsuccessful!";
+    # don't exit
+fi
+
+sudo rmmod sysdigcloud-probe
+exit $rc;

@@ -43,6 +43,7 @@ public:
 
 	connection_manager(dragent_configuration* configuration,
 			   protocol_queue* queue,
+			   bool use_handshake,
 			   std::initializer_list<message_handler_map::value_type> message_handlers = {});
 	~connection_manager();
 
@@ -64,16 +65,27 @@ public:
 	volatile bool m_timed_out = false;
 #endif
 
+	uint64_t get_sequence()
+	{
+		return m_sequence;
+	}
+	uint64_t get_generation()
+	{
+		return m_generation;
+	}
+
+	void disconnect();
+
 private:
 	using socket_ptr = std::shared_ptr<Poco::Net::StreamSocket>;
 
 	bool init();
 	void do_run() override;
 	bool connect();
-	void disconnect();
 	void disconnect(socket_ptr& ssp);
 	bool transmit_buffer(uint64_t now, std::shared_ptr<serialized_buffer> &item);
 	bool receive_message();
+	void perform_handshake();
 
 	static const std::string& get_openssldir();
 	// Walk over the CA path search list and return the first one that exists
@@ -94,6 +106,9 @@ private:
 	message_handler_map m_handler_map;
 	socket_ptr m_socket;
 	bool m_connected;
+	bool m_use_handshake;
+	uint64_t m_generation;
+	uint64_t m_sequence;
 	Poco::Buffer<uint8_t> m_buffer;
 	uint32_t m_buffer_used;
 	dragent_configuration* m_configuration;
