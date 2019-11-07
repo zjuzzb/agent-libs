@@ -57,7 +57,7 @@ fi
 VALGRIND_DIR=$DEPENDENCIES/valgrind-3.15.0
 if [ ! -d "$VALGRIND_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://sourceware.org/pub/valgrind/valgrind-3.15.0.tar.bz2
+	wget $DEPENDENCIES_URL/valgrind-3.15.0.tar.bz2
 	tar -xjf valgrind-3.15.0.tar.bz2
 	cd $VALGRIND_DIR
 	./configure
@@ -144,7 +144,7 @@ fi
 PROTOBUF_V3_DIR=$DEPENDENCIES/protobuf-3.9.2
 if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://github.com/google/protobuf/releases/download/v3.9.2/protobuf-cpp-3.9.2.tar.gz
+	wget $DEPENDENCIES_URL/protobuf-cpp-3.9.2.tar.gz
 	tar -xzf protobuf-cpp-3.9.2.tar.gz
 	cd $PROTOBUF_V3_DIR
 	if [[ "$ARCH" == "s390x" ]]; then
@@ -215,8 +215,8 @@ if [ $OS != "Windows_NT" ]; then
 	GRPC_DIR=$DEPENDENCIES/grpc-1.24.3
 	if [ ! -d "$GRPC_DIR" ]; then
 		cd $DEPENDENCIES
-		wget https://github.com/grpc/grpc/archive/v1.24.3.tar.gz
-		tar -xzf v1.24.3.tar.gz
+		wget $DEPENDENCIES_URL/grpc-1.24.3.tar.gz
+		tar -xzf grpc-1.24.3.tar.gz
 		rm -rf grpc-1.24.3/third_party/zlib
 		ln -s $ZLIB_DIR grpc-1.24.3/third_party/zlib
 		if [[ "$ARCH" == "s390x" ]]; then
@@ -278,7 +278,7 @@ if [ $OS != "Windows_NT" ]; then
 	CMAKE_DIR=$DEPENDENCIES/cmake-3.5.2
 	if [ ! -d "$CMAKE_DIR" ]; then
 		cd $DEPENDENCIES
-		wget https://github.com/Kitware/CMake/releases/download/v3.5.2/cmake-3.5.2.tar.gz
+		wget $DEPENDENCIES_URL/cmake-3.5.2.tar.gz
 		tar -xzf cmake-3.5.2.tar.gz
 		cd $CMAKE_DIR
 		./bootstrap
@@ -288,8 +288,8 @@ if [ $OS != "Windows_NT" ]; then
 	BENCHMARK_DIR=$DEPENDENCIES/benchmark-1.5.0
 	if [ ! -d "$BENCHMARK_DIR" ]; then
 		cd $DEPENDENCIES
-		wget https://github.com/google/benchmark/archive/v1.5.0.zip
-		unzip v1.5.0.zip
+		wget $DEPENDENCIES_URL/benchmark-1.5.0.zip
+		unzip benchmark-1.5.0.zip
 		cd $BENCHMARK_DIR
 		mkdir build
 		cd build
