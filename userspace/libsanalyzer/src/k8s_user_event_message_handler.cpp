@@ -48,7 +48,10 @@ k8s_user_event_message_handler::k8s_user_event_message_handler(uint64_t refresh_
 		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/daemon/controller.go
 		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/deployment/deployment_controller.go
 		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/deployment/util/deployment_util.go
-		//
+		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/statefulset/stateful_pod_control.go
+		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/statefulset/stateful_set_control.go
+		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/service/controller.go
+		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/podautoscaler/horizontal.go
 
 		//
 		// Node
@@ -159,7 +162,17 @@ k8s_user_event_message_handler::k8s_user_event_message_handler(uint64_t refresh_
 		{ "DeletedLoadBalancer",        "Deleted load balancer"                                 },
 		{ "UnAvailableLoadBalancer",    "There are no available nodes for LoadBalancer service" },
 		{ "UpdatedLoadBalancer",        "Updated load balancer with new hosts"                  },
-		{ "LoadBalancerUpdateFailed",   "Error updating load balancer with new hosts"           }
+		{ "UpdateLoadBalancerFailed",   "Error updating load balancer with new hosts"           },
+		{ "SyncLoadBalancerFailed",     "Error syncing load balancer"                           },
+
+		// HPAs
+		{ "SelectorRequired" ,            "Selector is required"                         },
+		{ "InvalidSelector",              "Couldn't convert selector for HPA"            },
+		{ "FailedConvertHPA",             "Failed to convert HPA"                        },
+		{ "FailedGetScale",               "The HPA failed to get the current scale"      },
+		{ "FailedComputeMetricsReplicas", "Failed to compute desired number of replicas" },
+		{ "FailedRescale",                "Failed to rescale HPA"                        },
+		{ "FailedUpdateStatus",           "Failed to update status for HPA"              }
 	};
 }
 

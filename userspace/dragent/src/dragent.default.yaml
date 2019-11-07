@@ -1045,7 +1045,17 @@ events:
 #      - DeletedLoadBalancer         # Load Balancer Delete End       (information)
       - UnAvailableLoadBalancer     # Unavailable Load Balancer      (warning)
       - UpdatedLoadBalancer         # Updated Load Balancer          (information)
-      - LoadBalancerUpdateFailed    # Load Balancer Update Failed    (warning)
+      - UpdateLoadBalancerFailed    # Load Balancer Update Failed    (warning)
+      - SyncLoadBalancerFailed      # Load Balancer Sync Failed      (warning)
+    horizontalPodAutoscalar:
+      - SelectorRequired             # Selector Required          (warning)
+      - InvalidSelector              # Selector Not Valid         (warning)
+      - FailedConvertHPA             # Failed to Convert HPA      (warning)
+      - FailedGetScale               # Failed to get Scale        (warning)
+      - FailedComputeMetricsReplicas # Failed to Compute Replicas (warning)
+      - FailedRescale                # Failed to rescale          (warning)
+      - FailedUpdateStatus           # Failed to update status    (warning)
+
   docker:
     container:
 #      - attach      # Container Attached      (information)
