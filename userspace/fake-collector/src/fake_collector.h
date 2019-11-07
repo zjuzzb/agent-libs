@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <chrono>
 #include <unordered_map>
+#include "protocol.h"
 
 /**
  * Unit test mock which interfaces with the connection manager.
@@ -30,9 +31,9 @@ public:
 	struct buf
 	{
 		uint8_t* ptr;
-		uint32_t buf_len;
-		buf(uint8_t* _ptr, uint32_t _len):
-			ptr(_ptr), buf_len(_len) {}
+		dragent_protocol_header_v5 hdr;
+		buf(uint8_t* _ptr, dragent_protocol_header_v5 _hdr):
+			ptr(_ptr), hdr(_hdr) {}
 	};
 
 	fake_collector():
@@ -78,11 +79,11 @@ public:
 	/**
 	 * Returns whether the fake collector has received any data from the agent.
 	 *
-	 * @return  Is there data in the data list?
+	 * @return  Amount of data in the list
 	 */
-	bool has_data() const
+	uint32_t has_data() const
 	{
-		return !m_received_data.empty();
+		return m_received_data.size();
 	}
 
 	/**
@@ -138,10 +139,15 @@ private:
 	 * @param[in]  fd       The file descriptor to read from
 	 * @param[out] buffer   The buffer to read the data into
 	 * @param[in]  buf_len  The max length of the buffer
+	 * @param[out] hdr		The header data for this message. Values for fields not contained
+	 * 						in the received message are undefined.
 	 *
 	 * @return  The length of data read. Zero indicates a read failure.
 	 */
-	uint32_t read_one_message(int fd, char* buffer, uint32_t buf_len);
+	uint32_t read_one_message(int fd,
+							  char* buffer,
+							  uint32_t buf_len,
+							  dragent_protocol_header_v5* hdr);
 
 	/**
 	 * In the case of a connect delay, should the server accept a connection.
@@ -150,4 +156,6 @@ private:
 	 * @return  Whether the connection delay has passed
 	 */
 	bool should_connect(int fd);
+
+	static void thread_loop(int sock_fd, struct sockaddr_in* addr, fake_collector& fc);
 };

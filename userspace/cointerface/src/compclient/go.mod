@@ -13,8 +13,9 @@ require (
 	google.golang.org/grpc v1.24.0
 )
 
-replace github.com/draios/protorepo/draiosproto => ../draiosproto
+// The generated-go path comes from GEN_GO_DIR in userspace/cointerface/CMakeLists.txt
+replace github.com/draios/protorepo/draiosproto => ../../../../build/generated-go/draiosproto
 
-replace github.com/draios/protorepo/sdc_internal => ../sdc_internal
+replace github.com/draios/protorepo/sdc_internal => ../../../../build/generated-go/sdc_internal
 
 replace github.com/draios/install_prefix => ../install_prefix

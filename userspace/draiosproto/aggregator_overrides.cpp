@@ -438,6 +438,32 @@ void resource_categories_message_aggregator_impl::aggregate_stolen_capacity_scor
     }
 }
 
+void k8s_node_message_aggregator_impl::aggregate_host_ips(const draiosproto::k8s_node& input,
+														  draiosproto::k8s_node& output)
+{
+	if (input.host_ips().size() != 0)
+	{
+		output.clear_host_ips();
+		for (auto i : input.host_ips())
+		{
+			output.add_host_ips(i);
+		}
+	}
+}
+
+void k8s_service_message_aggregator_impl::aggregate_ports(const draiosproto::k8s_service& input,
+														  draiosproto::k8s_service& output)
+{
+	if (input.ports().size() != 0)
+	{
+		output.clear_ports();
+		for (auto i : input.ports())
+		{
+			output.add_ports()->CopyFrom(i);
+		}
+	}
+}
+
 void swarm_task_message_aggregator_impl::aggregate_state(const draiosproto::swarm_task& input,
 														 draiosproto::swarm_task& output)
 {
@@ -640,6 +666,18 @@ agent_message_aggregator<draiosproto::container>&
 message_aggregator_builder_impl::build_container() const
 {
         return *(new container_message_aggregator_impl(*this));
+}
+
+agent_message_aggregator<draiosproto::k8s_node>&
+message_aggregator_builder_impl::build_k8s_node() const
+{
+	return *(new k8s_node_message_aggregator_impl(*this));
+}
+
+agent_message_aggregator<draiosproto::k8s_service>&
+message_aggregator_builder_impl::build_k8s_service() const
+{
+	return *(new k8s_service_message_aggregator_impl(*this));
 }
 
 agent_message_aggregator<draiosproto::prometheus_info>&

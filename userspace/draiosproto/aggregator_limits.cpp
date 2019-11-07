@@ -757,6 +757,46 @@ void metrics_message_aggregator::limit_ipv4_connections(metrics& output, uint32_
 	);
 }
 
+void k8s_state_message_aggregator::limit_pods(draiosproto::k8s_state& output,
+											  uint32_t limit)
+{
+	auto tiebreaker_extractor = [](const k8s_pod& a)->const std::string&{return a.common().name();};
+
+	multi_compare_limiter<k8s_state, k8s_pod>(
+		output,
+		limit,
+		[](k8s_state& a)->RepeatedPtrField<k8s_pod>*{return a.mutable_pods();},
+		{
+			message_comparator<k8s_pod>(
+				[](const k8s_pod& a)->uint64_t{return a.aggr_requests_cpu_cores().sum();},
+				tiebreaker_extractor
+			),
+			message_comparator<k8s_pod>(
+				[](const k8s_pod& a)->uint64_t{return a.aggr_limits_cpu_cores().sum();},
+				tiebreaker_extractor
+			)
+		}
+	);
+}
+
+void k8s_state_message_aggregator::limit_jobs(draiosproto::k8s_state& output,
+											  uint32_t limit)
+{
+	auto tiebreaker_extractor = [](const k8s_job& a)->const std::string&{return a.common().name();};
+
+	multi_compare_limiter<k8s_state, k8s_job>(
+		output,
+		limit,
+		[](k8s_state& a)->RepeatedPtrField<k8s_job>*{return a.mutable_jobs();},
+		{
+			message_comparator<k8s_job>(
+				[](const k8s_job& a)->uint64_t{return a.aggr_completions().sum();},
+				tiebreaker_extractor
+			)
+		}
+	);
+}
+
 void metrics_message_aggregator::limit_containers(metrics& output, uint32_t limit)
 {	
 	// 2 step process. First grab all priority containers that fit,

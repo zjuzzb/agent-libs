@@ -74,7 +74,7 @@ BENCHMARK_REGISTER_F(ProtobufSerializationBM, ProtobufCompressedSerialize);
 BENCHMARK_DEFINE_F(ProtobufSerializationBM, DragentUncompressedSerialize)(benchmark::State& st) {
 	for(auto _ : st)
 	{
-		benchmark::DoNotOptimize(dragent_protocol::message_to_buffer(0, 1, msg, false));
+		benchmark::DoNotOptimize(dragent_protocol::message_to_buffer(0, 1, msg, false, false));
 	}
 	st.SetBytesProcessed(int64_t(st.iterations()) * dam_size);
 	st.counters.insert({{"dam_size", dam_size}});
@@ -84,7 +84,7 @@ BENCHMARK_REGISTER_F(ProtobufSerializationBM, DragentUncompressedSerialize);
 BENCHMARK_DEFINE_F(ProtobufSerializationBM, DragentCompressedSerialize)(benchmark::State& st) {
 	for(auto _ : st)
 	{
-		benchmark::DoNotOptimize(dragent_protocol::message_to_buffer(0, 1, msg, true));
+		benchmark::DoNotOptimize(dragent_protocol::message_to_buffer(0, 1, msg, false, true));
 	}
 	st.SetBytesProcessed(int64_t(st.iterations()) * dam_size);
 	st.counters.insert({{"dam_size", dam_size}});

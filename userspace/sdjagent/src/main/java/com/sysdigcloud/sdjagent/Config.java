@@ -57,6 +57,11 @@ public class Config {
         return Level.INFO;
     }
 
+    public int getSamplingRateInSeconds()
+    {
+        return yamlConfig.getSingle("jmx.sampling", 1);
+    }
+
     public List<BeanQuery> getDefaultBeanQueries() {
         return defaultBeanQueries;
     }

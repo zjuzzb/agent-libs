@@ -18,9 +18,10 @@ require (
 	google.golang.org/grpc v1.24.0
 )
 
-replace github.com/draios/protorepo/draiosproto => ../draiosproto
+// The generated-go path comes from GEN_GO_DIR in userspace/cointerface/CMakeLists.txt
+replace github.com/draios/protorepo/draiosproto => ../../../../build/generated-go/draiosproto
 
-replace github.com/draios/protorepo/promex_pb => ../promex_pb
+replace github.com/draios/protorepo/promex_pb => ../../../../build/generated-go/promex_pb
 
 replace github.com/draios/heartbeat => ../heartbeat
 

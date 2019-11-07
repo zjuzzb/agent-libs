@@ -246,7 +246,7 @@ protected:
 			while(!m_done)
 			{
 				shared_ptr<serialized_buffer> item;
-				dragent_protocol_header *hdr;
+				dragent_protocol_header_v4 *hdr;
 				const uint8_t *buf;
 				uint32_t size;
 
@@ -255,9 +255,9 @@ protected:
 					continue;
 				}
 
-				hdr = (dragent_protocol_header*) item->buffer.data();
-				buf = (const uint8_t *) (item->buffer.data() + sizeof(dragent_protocol_header));
-				size = ntohl(hdr->len) - sizeof(dragent_protocol_header);
+				hdr = (dragent_protocol_header_v4*) item->buffer.data();
+				buf = (const uint8_t *) (item->buffer.data() + sizeof(dragent_protocol_header_v4));
+				size = ntohl(hdr->len) - sizeof(dragent_protocol_header_v4);
 
 				g_log->debug("Got message type=" + to_string(hdr->messagetype));
 

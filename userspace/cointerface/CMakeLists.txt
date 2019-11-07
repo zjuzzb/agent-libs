@@ -1,5 +1,6 @@
 set(PROTOC_DIR "${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target")
 set(GOPATH "${DRAIOS_DEPENDENCIES_DIR}/go")
+set(GEN_GO_DIR "${CMAKE_SOURCE_DIR}/build/generated-go")
 # We should set GOPROXY=https://proxy.golang.org here but that breaks the
 # docker/docker replace directive. Add it back later after upgrading docker.
 set(GOENV scl enable rh-git29 -- env GOPATH=${GOPATH} GO111MODULE=on)
@@ -30,55 +31,45 @@ add_custom_command(OUTPUT ${GOGO_PROTOBUF_VER_FILE}
 	COMMAND ${CMAKE_COMMAND} -E touch ${GOGO_PROTOBUF_VER_FILE}
 	)
 
-# draiosproto can't be part of the GoGenerate auto-generated code because it
-# has two outputs, rather than just the one.
-add_custom_target(generate_draiosproto ALL
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/common.pb.go)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
-		   OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/common.pb.go
-  COMMAND ${GOGENENV} PROTO_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto" go generate draiosproto
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/generate.go
-                ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/go.mod
-                ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
-                ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/common.proto
-                ${GOGO_PROTOBUF_VER_FILE}
-                install_go_generate_deps
-                ${ARGN}
-		)
-
-function(GoGenerate target pbgofile)
+# This function generate pb.go files for proto files that depend on
+# draios.proto and common.proto. The generate_draiosproto target has
+# an extra output pb.go, and that's handled by an optional argument.
+# The ARGC/ARGV handling is hardcoded and will need fixing if the
+# function signature changes.
+function(GoGenerate target pbgofile protofile)
+set(PROTO_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto")
+set(GO_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/${target}")
+set(OUT_DIR "${GEN_GO_DIR}/${target}")
+set(GO_MOD_DST "${OUT_DIR}/go.mod")
+set(OUTFILES ${GO_MOD_DST} "${OUT_DIR}/${pbgofile}")
+if(${ARGC} EQUAL 4)
+	   list(APPEND OUTFILES "${OUT_DIR}/${ARGV3}")
+endif()
+file(MAKE_DIRECTORY ${OUT_DIR})
 add_custom_target(generate_${target} ALL
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/${pbgofile})
-add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/${pbgofile}
-  COMMAND ${GOGENENV} PROTO_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto" go generate ${target}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/generate.go
-                ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/go.mod
-                ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
-                ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/common.proto
-                ${GOGO_PROTOBUF_VER_FILE}
-                install_go_generate_deps
-                ${ARGN}
+        DEPENDS ${OUTFILES}
+	)
+add_custom_command(OUTPUT ${OUTFILES}
+        COMMAND ${GOGENENV} PROTO_SRC_DIR="${PROTO_SRC_DIR}" PROTO_OUT_DIR="${OUT_DIR}" go generate ${target}
+        COMMAND ${CMAKE_COMMAND} -E copy ${GO_SRC_DIR}/go.mod ${GO_MOD_DST}
+        WORKING_DIRECTORY ${GO_SRC_DIR}
+	DEPENDS ${GO_SRC_DIR}/generate.go
+                ${GO_SRC_DIR}/go.mod
+                ${PROTO_SRC_DIR}/draios.proto
+                ${PROTO_SRC_DIR}/common.proto
+                ${PROTO_SRC_DIR}/${protofile}
 		)
+set("${target}_deps" "generate_${target}" ${OUTFILES} PARENT_SCOPE)
 endfunction()
 
-GoGenerate(sdc_internal sdc_internal.pb.go
-                ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/sdc_internal.proto
-		)
-
-GoGenerate(promex_pb promex.pb.go
-                ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/promex.proto
-		)
+GoGenerate(sdc_internal sdc_internal.pb.go sdc_internal.proto)
+GoGenerate(promex_pb promex.pb.go promex.proto)
+#Passing draios.proto is redundant but makes the function impl easier
+GoGenerate(draiosproto draios.pb.go draios.proto common.pb.go)
 
 GoBuild(cointerface
-	        # Depend on both the target and its output file
-	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
-	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/common.pb.go
-                generate_draiosproto
-	        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdc_internal/sdc_internal.pb.go
-	        generate_sdc_internal
+                ${draiosproto_deps}
+	        ${sdc_internal_deps}
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/cointerface.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/docker_bench_scraper.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/kube_bench_scraper.go
@@ -132,30 +123,21 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface_test_success.t
 		)
 
 GoBuild(compclient
-	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
-	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/common.pb.go
-                generate_draiosproto
-	        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdc_internal/sdc_internal.pb.go
-	        generate_sdc_internal
+                ${draiosproto_deps}
+	        ${sdc_internal_deps}
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/compclient/compclient.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/install_prefix/install_prefix.go
 	)
 
 GoBuild(decode_proto
-	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
-	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/common.pb.go
-                generate_draiosproto
-	        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdc_internal/sdc_internal.pb.go
-	        generate_sdc_internal
+                ${draiosproto_deps}
+	        ${sdc_internal_deps}
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/decode_proto/decode_proto.go
     )
 
 GoBuild(promex
-	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go
-	        ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/common.pb.go
-                generate_draiosproto
-	        ${CMAKE_CURRENT_SOURCE_DIR}/src/promex_pb/promex.pb.go
-	        generate_promex_pb
+                ${draiosproto_deps}
+	        ${promex_pb_deps}
 		${CMAKE_CURRENT_SOURCE_DIR}/src/heartbeat/heartbeat.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/install_prefix/install_prefix.go
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/promex/promex.go

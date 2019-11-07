@@ -395,6 +395,30 @@ private:
 										 draiosproto::jmx_attribute& output);
 };
 
+class k8s_node_message_aggregator_impl : public k8s_node_message_aggregator
+{
+public:
+	k8s_node_message_aggregator_impl(const message_aggregator_builder& builder)
+		: k8s_node_message_aggregator(builder)
+	{}
+
+private:
+	virtual void aggregate_host_ips(const draiosproto::k8s_node& input,
+									draiosproto::k8s_node& output);
+};
+
+class k8s_service_message_aggregator_impl : public k8s_service_message_aggregator
+{
+public:
+	k8s_service_message_aggregator_impl(const message_aggregator_builder& builder)
+		: k8s_service_message_aggregator(builder)
+	{}
+
+private:
+	virtual void aggregate_ports(const draiosproto::k8s_service& input,
+								 draiosproto::k8s_service& output);
+};
+
 // for any message type which we've overridden, we have to override it's builder
 // function as well
 class message_aggregator_builder_impl : public message_aggregator_builder
@@ -409,6 +433,8 @@ public:
 	virtual agent_message_aggregator<draiosproto::container>& build_container() const;
 	virtual agent_message_aggregator<draiosproto::agent_event>& build_agent_event() const;
 	virtual agent_message_aggregator<draiosproto::resource_categories>& build_resource_categories() const;
+	virtual agent_message_aggregator<draiosproto::k8s_node>& build_k8s_node() const;
+	virtual agent_message_aggregator<draiosproto::k8s_service>& build_k8s_service() const;
 	virtual agent_message_aggregator<draiosproto::swarm_task>& build_swarm_task() const;
 	virtual agent_message_aggregator<draiosproto::swarm_manager>& build_swarm_manager() const;
 	virtual agent_message_aggregator<draiosproto::swarm_node>& build_swarm_node() const;
