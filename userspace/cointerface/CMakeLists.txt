@@ -58,6 +58,8 @@ add_custom_command(OUTPUT ${OUTFILES}
                 ${PROTO_SRC_DIR}/draios.proto
                 ${PROTO_SRC_DIR}/common.proto
                 ${PROTO_SRC_DIR}/${protofile}
+                ${GOGO_PROTOBUF_VER_FILE}
+                install_go_generate_deps
 		)
 set("${target}_deps" "generate_${target}" ${OUTFILES} PARENT_SCOPE)
 endfunction()
