@@ -17,7 +17,6 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${target}
 	)
 endfunction()
 
-# NOP
 # Keep this version in sync with the various go.mod files
 set(GOGO_PROTOBUF_VER "v1.3.1")
 set(GOGO_PROTOBUF_PATH "github.com/gogo/protobuf/protoc-gen-gofast")
