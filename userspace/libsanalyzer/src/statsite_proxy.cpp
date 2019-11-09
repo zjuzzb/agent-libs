@@ -10,7 +10,6 @@
 #include "sinsp_int.h"
 #include "analyzer_int.h"
 #include "statsite_proxy.h"
-#include "statsd_logger.h"
 #include "subprocess.h"
 #include "type_config.h"
 #include <algorithm>
@@ -131,7 +130,6 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 			char *buffer = &dyn_buffer[0];
 
 			LOG_TRACE("Received from statsite: %s", buffer);
-			STATSD_LOG("Received from statsite:\n%s", buffer);
 			try {
 				bool parsed = m_metric.parse_line(buffer);
 				if(!parsed)
@@ -218,11 +216,9 @@ BREAK_LOOP:
 		}
 
 		LOG_DEBUG("Ret vector size is: %u", metric_count);
-		STATSD_LOG("Ret vector size is: %u", metric_count);
 
 		if(m_metric.timestamp() > 0 &&
-		   (s_statsd_log_enabled ||
-		   (g_log && g_log->is_enabled(Poco::Message::Priority::PRIO_DEBUG))))
+		   (g_log && g_log->is_enabled(Poco::Message::Priority::PRIO_DEBUG)))
 		{
 			uint64_t map_timestamp = 0;
 
@@ -241,10 +237,6 @@ BREAK_LOOP:
 			          m_metric.name().c_str(),
 			          m_metric.timestamp(),
 			          map_timestamp);
-			STATSD_LOG("m_metric name: %s, m_metric timestamp is: %lu, vector timestamp: %lu",
-			           m_metric.name().c_str(),
-			           m_metric.timestamp(),
-			           map_timestamp);
 		}
 	}
 	else
@@ -273,8 +265,6 @@ void statsite_proxy::send_metric(const char* const buf, const uint64_t len)
 
 	if(buf && len && m_input_fd)
 	{
-		STATSD_LOG("Sending to statsite:\n%s", std::string(buf, len).c_str());
-
 		fwrite_unlocked(buf, sizeof(char), len, m_input_fd);
 
 		if(buf[len - 1] != '\n')
