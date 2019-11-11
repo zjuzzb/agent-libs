@@ -1,0 +1,45 @@
+syntax = "proto2";
+package draiosproto;
+import "aggregation_context.proto"
+
+option optimize_for = SPEED;
+option java_package = "com.draios.model.protobuf";
+option java_outer_classname = "Handshake";
+
+message protocol_init {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
+    required uint32 max_protocol_version = 4; // protocol version before using handshake is 1
+}
+
+message protocol_init_response {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
+    required uint32 protocol_version = 4; // protocol version before using handshake is 1
+}
+
+enum compression {
+    COMPRESSION_NONE = 1;
+    COMPRESSION_GZIP = 2;
+}
+
+message handshake_v1 {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
+    required uint32 generation_num = 4;
+    repeated compression supported_compressions = 5;
+    repeated uint32 supported_agg_intervals = 6 [packed = true];
+}
+
+message handshake_v1_response {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
+    required uint32 last_acked_seq_num = 4;
+    required compression compression = 5;
+    required uint32 agg_interval = 6;
+	optional aggregation_context aggr_context = 7;
+}
