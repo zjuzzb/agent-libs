@@ -1,0 +1,33 @@
+syntax = "proto2";
+package draiosproto;
+
+option optimize_for = SPEED;
+option java_package = "com.draios.model.protobuf";
+option java_outer_classname = "AggregationContext";
+
+message aggregation_context {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
+    optional bool enforce = 4;
+    optional limits limits = 5;
+}
+
+message limits {
+    optional uint32 jmx = 1;
+    optional uint32 statsd = 2;
+    optional uint32 app_check = 3;
+    optional uint32 prometheus = 4;
+    optional uint32 prometheus_per_process = 5;
+    optional uint32 connections = 6;
+    optional uint32 prog_aggregation_count = 7;
+    optional uint32 app_check_aggregation_count = 8;
+    optional double prom_metrics_weight = 9;
+    optional uint32 top_files_count = 10;
+    optional uint32 top_devices_count = 11;
+    optional uint32 host_server_ports = 12;
+    optional uint32 container_server_ports = 13;
+    optional bool limit_kubernetes_resources = 14;
+    optional uint32 kubernetes_pods = 15;
+    optional uint32 kubernetes_jobs = 16;
+}

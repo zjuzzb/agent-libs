@@ -10,7 +10,6 @@
 #include "common_logger.h"
 #include "posix_queue.h"
 #include "statsite_proxy.h"
-#include "statsd_logger.h"
 #include "statsd_server.h"
 #include "statsd_stats_destination.h"
 #include "subprocess.h"
@@ -69,13 +68,6 @@ public:
 	{
 		const uint64_t time_since_creation = get_monotonic_time_seconds() -
 		                                     m_creation_time_sec;
-
-		if(m_server == nullptr)
-		{
-			STATSD_LOG("time since creation: %lu",
-			           time_since_creation);
-		}
-
 		return (m_server == nullptr) &&
 		       (time_since_creation >= c_statsd_start_delay_sec.get_value());
 	}
@@ -111,9 +103,6 @@ public:
 			LOG_DEBUG("Starting statsd server on container=%s pid=%lu",
 				  containerid.c_str(),
 				  container_pid);
-			STATSD_LOG("Starting statsd server on container=%s pid=%lu",
-				  containerid.c_str(),
-				  container_pid);
 
 			m_server = make_unique<statsd_server>(containerid,
 			                                      proxy,
@@ -124,9 +113,6 @@ public:
 		{
 			m_server.reset();
 			LOG_WARNING("Cannot init statsd server on container=%s pid=%lu",
-				    containerid.c_str(),
-				    container_pid);
-			STATSD_LOG("Cannot init statsd server on container=%s pid=%lu",
 				    containerid.c_str(),
 				    container_pid);
 		}
@@ -192,14 +178,12 @@ int statsite_forwarder::run()
 		}
 
 		LOG_DEBUG("Received msg=%s", msg.c_str());
-		STATSD_LOG("Received msg=%s", msg.c_str());
 
 		Json::Reader json_reader;
 		Json::Value root;
 		if(!json_reader.parse(msg, root))
 		{
 			LOG_ERROR("Error parsing msg=%s", msg.c_str());
-			STATSD_LOG("Error parsing msg=%s", msg.c_str());
 			continue;
 		}
 
@@ -218,8 +202,6 @@ int statsite_forwarder::run()
 			{
 				// This is the first time we've seen this
 				// container, create the wrapper
-				STATSD_LOG("Creating wrapper for %s",
-				           containerid.c_str());
 				m_servers[containerid] = make_unique<statsd_server_wrapper>();
 				server_itr = m_servers.find(containerid);
 			}
@@ -247,8 +229,6 @@ int statsite_forwarder::run()
 				// turning off statsd server so we can release
 				// resources
 				LOG_DEBUG("Stopping statsd server on container=%s",
-				          it->first.c_str());
-				STATSD_LOG("Stopping statsd server on container=%s",
 				          it->first.c_str());
 				it = m_servers.erase(it);
 			}
