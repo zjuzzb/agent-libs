@@ -1345,7 +1345,7 @@ public:
 	void merge_proc_data();
 #endif
 	void serialize_protobuf(draiosproto::falco_baseline* pbentry);
-	void emit_as_protobuf(scap_stats *st, uint64_t time, draiosproto::falco_baseline* pbentry);
+	void emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry);
 
 	void on_file_open(sinsp_evt *evt, std::string& name, uint32_t openflags);
 	void on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo);
@@ -1360,10 +1360,10 @@ public:
 	inline void add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category category);
 
 	sinsp* get_inspector();
-	void enable_baseline_calculation(scap_stats *st);
+	void enable_baseline_calculation();
 	void disable_baseline_calculation();
 	bool is_baseline_calculation_enabled() const;
-	bool is_drops_buffer_rate_critical(scap_stats *st, float max_drops_buffer_rate_percentage) const;
+	bool is_drops_buffer_rate_critical(float max_drops_buffer_rate_percentage) const;
 
 private:
 	// Statistics about an in progress baseliner capture.  This is
@@ -1373,6 +1373,10 @@ private:
 	{
 		uint64_t n_evts; ///< Total number of events that were received by the driver.
 		uint64_t n_drops_buffer; ///< Number of dropped events caused by full buffer.
+		baseliner_stats () {
+			n_evts = 0;
+			n_drops_buffer = 0;
+		}
 	};
 
 	sinsp* m_inspector;
@@ -1394,5 +1398,4 @@ private:
 	// and at each emission with the progressive values coming
 	// from the relevant scap_stats counters.
 	baseliner_stats m_baseliner_stats;
-
 };

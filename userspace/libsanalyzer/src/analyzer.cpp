@@ -539,12 +539,9 @@ void sinsp_analyzer::on_capture_start()
 	const bool do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
 	if(do_baseline_calculation)
 	{
-		scap_stats st;
-		m_inspector->get_capture_stats(&st);
-
 		glogf("starting falco baselining");
-		m_falco_baseliner->init(m_inspector);
-		m_falco_baseliner->set_baseline_calculation_enabled(do_baseline_calculation);
+		m_falco_baseliner->init();
+		m_falco_baseliner->enable_baseline_calculation();
 	}
 
 #ifndef CYGWING_AGENT
@@ -3710,13 +3707,13 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 			//
 			// Make sure to push a baseline when reading from file and we reached EOF
 			//
-			m_falco_baseliner->emit_as_protobuf(&st, 0, m_metrics->mutable_falcobl());
+			m_falco_baseliner->emit_as_protobuf(0, m_metrics->mutable_falcobl());
 		}
 		else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > m_configuration->get_falco_baselining_report_interval_ns())
 		{
 			if(m_last_falco_dump_ts != 0)
 			{
-				m_falco_baseliner->emit_as_protobuf(&st, evt->get_ts(), m_metrics->mutable_falcobl());
+				m_falco_baseliner->emit_as_protobuf(evt->get_ts(), m_metrics->mutable_falcobl());
 			}
 
 			m_last_falco_dump_ts = evt->get_ts();
@@ -3741,7 +3738,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 					m_inspector->get_capture_stats(&st);
 
 					m_falco_baseliner->clear_tables();
-					m_falco_baseliner->enable_baseline_calculation(&st);
+					m_falco_baseliner->enable_baseline_calculation();
 					m_last_falco_dump_ts = evt->get_ts();
 					m_falco_baseliner->load_tables(evt->get_ts());
 					g_logger.format("enabling falco baselining creation after a %lus pause",
@@ -4655,7 +4652,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 		// disable the baseliner.
 		scap_stats st;
 		m_inspector->get_capture_stats(&st);
-		if(m_falco_baseliner->is_drops_buffer_rate_critical(&st, m_configuration->get_falco_baselining_max_drops_buffer_rate_percentage()))
+		if(m_falco_baseliner->is_drops_buffer_rate_critical(m_configuration->get_falco_baselining_max_drops_buffer_rate_percentage()))
 		{
 			g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining because of critical drops buffer rate.");
 			m_falco_baseliner->disable_baseline_calculation();

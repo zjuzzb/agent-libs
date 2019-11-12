@@ -121,7 +121,6 @@ protected:
 
 	virtual void SetUp()
 	{
-		scap_stats st;
 		m_configuration.init(NULL, false);
 		dragent_configuration::m_terminate = false;
 
@@ -164,7 +163,7 @@ protected:
 		m_baseliner = new sinsp_baseliner(*m_analyzer,
 						  m_inspector);
 		m_baseliner->init();
-		m_baseliner->set_baseline_calculation_enabled(true);
+		m_baseliner->enable_baseline_calculation();
 
 		m_sinsp_worker = new test_sinsp_worker(m_inspector, m_baseliner, getpid());
 		ThreadPool::defaultPool().start(*m_sinsp_worker, "test_sinsp_worker");
