@@ -145,6 +145,8 @@ public:
 	const std::string& get_k8s_bt_auth_token();
 	const std::string& get_k8s_ssl_certificate();
 	const std::string& get_k8s_ssl_key();
+	std::unordered_set<std::string> test_only_get_container_ids() const;
+
 private:
 
 	void configure_k8s_environment();

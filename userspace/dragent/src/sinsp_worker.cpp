@@ -1,6 +1,5 @@
 #include "sinsp_worker.h"
 #include "common_logger.h"
-#include "configuration_manager.h"
 #include "container_config.h"
 #include "config_update.h"
 #include "error_handler.h"
@@ -25,6 +24,8 @@ namespace security_config = libsanalyzer::security_config;
 namespace
 {
 
+COMMON_LOGGER();
+
 type_config<uint16_t> config_increased_snaplen_port_range_start(
 		0,
 		"Starting port in the range of ports to enable a larger snaplen on",
@@ -33,8 +34,6 @@ type_config<uint16_t> config_increased_snaplen_port_range_end(
 		0,
 		"Ending port in the range of ports to enable a larger snaplen on",
 		"increased_snaplen_port_range_end");
-
-COMMON_LOGGER();
 
 } // namespace
 
@@ -357,10 +356,12 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 	if(!m_configuration->m_input_filename.empty())
 	{
 		m_inspector->open(m_configuration->m_input_filename);
+		m_inspector->stop_capture();
 	}
 	else if(m_configuration->m_mode == dragent_mode_t::NODRIVER)
 	{
 		m_inspector->open_nodriver();
+		m_inspector->stop_capture();
 		// Change these values so the inactive thread pruning
 		// runs more often
 		m_inspector->m_thread_timeout_ns = 0;
@@ -370,6 +371,7 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 	{
 		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
 		m_inspector->open("");
+		m_inspector->stop_capture();
 		m_inspector->set_simpledriver_mode();
 		m_analyzer->set_simpledriver_mode();
 	}
@@ -378,6 +380,7 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
 
 		m_inspector->open("");
+		m_inspector->stop_capture();
 
 		if(m_configuration->m_snaplen != 0)
 		{
@@ -583,6 +586,7 @@ void sinsp_worker::run()
 				m_analyzer->set_sampling_ratio(1);
 
 				m_inspector->open_nodriver();
+				m_inspector->stop_capture();
 				// Change these values so the inactive thread pruning
 				// runs more often
 				m_inspector->m_thread_timeout_ns = 0;
