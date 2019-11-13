@@ -33,6 +33,8 @@ if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
     done
 fi
 
+KERNEL_ERR_MESSAGE="Have you tried to upgrade the Sysdig agent version ? If that also does not work, please contact support@sysdig.com with the output of uname -r"
+
 CONFIG_FILE=/opt/draios/etc/dragent.yaml
 if [ -e $CONFIG_FILE ]; then
 	PRECONFIGURED=1
@@ -126,7 +128,7 @@ mount_cgroup_subsys cpuset
 
 if [ $# -eq 0 ]; then
     if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
-	if [ -z "$RUN_MODE" ] && ! /opt/draios/bin/sysdigcloud-probe-loader $MAX_RMMOD_WAIT; then
+	if [ -z "$RUN_MODE" ] && ! /opt/draios/bin/sysdigcloud-probe-loader "$KERNEL_ERR_MESSAGE"; then
 		exit 1
 	fi
     fi
