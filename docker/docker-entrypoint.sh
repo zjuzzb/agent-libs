@@ -33,7 +33,7 @@ if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
     done
 fi
 
-KERNEL_ERR_MESSAGE="Have you tried to upgrade the Sysdig agent version ? If that also does not work, please contact support@sysdig.com with the output of uname -r"
+KERNEL_ERR_MESSAGE="Could not build the kernel probe or find one for download. Have you tried upgrading to the latest version of the Sysdig agent? For assistance with this issue please contact support@sysdig.com with the output of uname -r"
 
 CONFIG_FILE=/opt/draios/etc/dragent.yaml
 if [ -e $CONFIG_FILE ]; then
