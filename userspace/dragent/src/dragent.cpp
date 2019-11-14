@@ -1459,6 +1459,45 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector, flush_queue& f
 		    m_configuration.m_falco_baselining_report_interval_ns);
 		sconfig->set_falco_baselining_autodisable_interval_ns(
 		    m_configuration.m_falco_baselining_autodisable_interval_ns);
+
+		// The baseliner is automatically disabled when we
+		// start dropping events. In order to collect
+		// baseliner's fingerprints, we recommend to run with
+		// a higher upper threshold.  If we don't find any
+		// user configured value, then we set the
+		// drop_upper_threshold to the default value for
+		// baselining.  Otherwise, we just warn the user.
+		if(m_configuration.m_drop_upper_threshold == 0)
+		{
+			sconfig->set_drop_upper_threshold(DROP_UPPER_THRESHOLD_BASELINER_ENABLED);
+			g_log->information("Drop upper threshold=" + NumberFormatter::format(DROP_UPPER_THRESHOLD_BASELINER_ENABLED)
+					   + " (set for falco baselining)");
+		}
+		else
+		{
+			if(m_configuration.m_drop_upper_threshold < DROP_UPPER_THRESHOLD_BASELINER_ENABLED)
+			{
+				g_log->warning("Falco baselining configured with a low drop_upper_threshold "
+					       "(configured: " + NumberFormatter::format(m_configuration.m_drop_upper_threshold) + ", "
+					       "recommended: " + NumberFormatter::format(DROP_UPPER_THRESHOLD_BASELINER_ENABLED) + " ).");
+			}
+		}
+
+		if(m_configuration.m_drop_lower_threshold == 0)
+		{
+			sconfig->set_drop_lower_threshold(DROP_LOWER_THRESHOLD_BASELINER_ENABLED);
+			g_log->information("Drop lower threshold=" + NumberFormatter::format(DROP_LOWER_THRESHOLD_BASELINER_ENABLED)
+					   + " (set for falco baselining)");
+		}
+		else
+		{
+			if(m_configuration.m_drop_lower_threshold < DROP_LOWER_THRESHOLD_BASELINER_ENABLED)
+			{
+				g_log->warning("Falco baselining configured with a low drop_lower_threshold "
+					       "(configured: " + NumberFormatter::format(m_configuration.m_drop_lower_threshold) + ", "
+					       "recommended: " + NumberFormatter::format(DROP_LOWER_THRESHOLD_BASELINER_ENABLED) + " ).");
+			}
+		}
 	}
 
 	if (m_configuration.m_commandlines_capture_enabled || m_configuration.m_secure_audit_enabled)

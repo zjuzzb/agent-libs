@@ -62,7 +62,7 @@
 #define CONCURRENCY_OBSERVATION_INTERVAL_NS 1000000
 
 //
-// Maximum numeber of external TCP/UDP client endpoints that are reported independently.
+// Maximum number of external TCP/UDP client endpoints that are reported independently.
 // If the number goes beyond this threshold, the clients will be aggregated into a single
 // 0.0.0.0 endpoint.
 //
@@ -74,11 +74,15 @@
 #define AUTODROP_ENABLED false
 
 //
-// Maximum numeber of events per CPU that the analyzer sees before it starts putting
+// Maximum number of events per CPU that the analyzer sees before it starts putting
 // the driver in drop mode.
 //
 #define DROP_UPPER_THRESHOLD 5
 #define DROP_LOWER_THRESHOLD 3
+
+// When the baseliner is enabled, we require a higher upper threshold
+#define DROP_UPPER_THRESHOLD_BASELINER_ENABLED 30
+#define DROP_LOWER_THRESHOLD_BASELINER_ENABLED 27
 
 //
 // Number of consecutive seconds the number of events must be beyond DROP_THRESHOLD
