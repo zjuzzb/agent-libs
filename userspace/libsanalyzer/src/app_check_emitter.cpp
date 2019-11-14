@@ -70,7 +70,7 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 			{
 				static bool logged_metric = false;
 				unsigned metric_count;
-				if (configuration_manager::instance().get_config<bool>("10s_flush_enable")) {
+				if (configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value()) {
 				    metric_count = app_data.second->to_protobuf(proc.mutable_protos()->mutable_prom_info(),
 										m_prom_metrics_remaining,
 										m_prom_conf.max_metrics());
