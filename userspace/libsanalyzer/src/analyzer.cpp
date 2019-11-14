@@ -217,7 +217,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 
 	m_parser = new sinsp_analyzer_parsers(this);
 
-	m_falco_baseliner = new sinsp_baseliner();
+	m_falco_baseliner = new sinsp_baseliner(*this,
+											m_inspector);
 
 	m_tap = nullptr;
 	m_secure_audit = nullptr;
@@ -539,7 +540,7 @@ void sinsp_analyzer::on_capture_start()
 	if(do_baseline_calculation)
 	{
 		glogf("starting falco baselining");
-		m_falco_baseliner->init(m_inspector);
+		m_falco_baseliner->init();
 		m_falco_baseliner->set_baseline_calculation_enabled(do_baseline_calculation);
 	}
 

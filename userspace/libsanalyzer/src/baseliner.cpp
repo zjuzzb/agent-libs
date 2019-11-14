@@ -61,8 +61,10 @@ void proc_parser(proc_parser_state* state)
 // Baseliner
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_baseliner::sinsp_baseliner():
-	m_inspector(nullptr),
+sinsp_baseliner::sinsp_baseliner(sinsp_analyzer& analyzer,
+								 sinsp* inspector):
+	m_inspector(inspector),
+	m_analyzer(analyzer),
 	m_ifaddr_list(nullptr),
 	m_progtable(),
 #ifdef ASYNC_PROC_PARSING
@@ -73,12 +75,11 @@ sinsp_baseliner::sinsp_baseliner():
 	m_do_baseline_calculation(false)
 { }
 
-void sinsp_baseliner::init(sinsp* inspector)
+void sinsp_baseliner::init()
 {
 #ifdef ASYNC_PROC_PARSING
 	m_procparser_thread = NULL;
 #endif
-	m_inspector = inspector;
 	m_ifaddr_list = m_inspector->get_ifaddr_list();
 	load_tables(0);
 
@@ -620,7 +621,7 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 			{
 				std::string jname;
 
-				if(m_inspector->m_analyzer->find_java_process_name(
+				if(m_analyzer.find_java_process_name(
 							it.second->m_pids[0], jname))
 				{
 					prog->set_comm(jname);

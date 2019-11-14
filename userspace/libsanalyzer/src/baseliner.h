@@ -1332,10 +1332,11 @@ public:
 class sinsp_baseliner
 {
 public:
-	sinsp_baseliner();
+	sinsp_baseliner(sinsp_analyzer& m_analyzer,
+					sinsp* m_inspector);
 	~sinsp_baseliner();
 
-	void init(sinsp* inspector);
+	void init();
 	void load_tables(uint64_t time);
 	void clear_tables();
 	void register_callbacks(sinsp_fd_listener* listener);
@@ -1364,6 +1365,7 @@ public:
 
 private:
 	sinsp* m_inspector;
+	sinsp_analyzer& m_analyzer;
 	sinsp_network_interfaces* m_ifaddr_list;
 	std::unordered_map<size_t, blprogram*> m_progtable;
 #ifdef ASYNC_PROC_PARSING

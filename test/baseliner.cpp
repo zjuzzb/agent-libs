@@ -160,8 +160,9 @@ protected:
 
 		Poco::ErrorHandler::set(&m_error_handler);
 
-		m_baseliner = new sinsp_baseliner();
-		m_baseliner->init(m_inspector);
+		m_baseliner = new sinsp_baseliner(*m_analyzer,
+										  m_inspector);
+		m_baseliner->init();
 		m_baseliner->set_baseline_calculation_enabled(true);
 
 		m_sinsp_worker = new test_sinsp_worker(m_inspector, m_baseliner, getpid());
