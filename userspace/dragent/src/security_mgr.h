@@ -715,6 +715,9 @@ private:
 	std::unordered_map<std::string, std::set<std::shared_ptr<security_rules_group>>> m_scoped_security_rules;
 	std::list<std::shared_ptr<security_rules_group>> m_rules_groups;
 
+	// Maintained as a separate set as they don't honor scopes.
+	std::shared_ptr<security_rules_group> m_k8s_audit_security_rules;
+
 	std::shared_ptr<security_policies_group> get_policies_group_of(scope_info &sinfo);
 
 	std::shared_ptr<security_rules_group> get_rules_group_of(const scope_predicates &preds);

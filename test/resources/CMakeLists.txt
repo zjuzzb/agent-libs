@@ -44,6 +44,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/k8s_audit_events.txt
 	${CMAKE_CURRENT_BINARY_DIR}/k8s_audit_events.txt
 	COPYONLY)
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/k8s_audit_create_namespace.txt
+	${CMAKE_CURRENT_BINARY_DIR}/k8s_audit_create_namespace.txt
+	COPYONLY)
+
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ipv6_traces/single_ipv6_conn.scap
 	${CMAKE_CURRENT_BINARY_DIR}/ipv6_traces/single_ipv6_conn.scap
 	COPYONLY)
