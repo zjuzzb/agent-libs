@@ -34,7 +34,7 @@ sinsp_configuration::sinsp_configuration():
 	m_executed_commands_capture_enabled = false;
 	m_commandlines_capture_enabled = false;
 	m_command_lines_capture_mode = command_capture_mode_t::CM_TTY;
-	m_command_lines_include_container_healthchecks = true;
+	m_command_lines_include_container_healthchecks = false;
 	m_capture_dragent_events = false;
 	m_detect_stress_tools = false;
 	m_cointerface_enabled = true;

@@ -245,7 +245,7 @@ dragent_configuration::dragent_configuration()
 	m_secure_audit_enabled = false;
 	m_commandlines_capture_enabled = false;
 	m_command_lines_capture_mode = sinsp_configuration::CM_TTY;
-	m_command_lines_include_container_healthchecks = true;
+	m_command_lines_include_container_healthchecks = false;
 	m_memdump_enabled = false;
 	m_memdump_size = 0;
 	m_memdump_max_init_attempts = 10;
@@ -708,7 +708,7 @@ void dragent_configuration::init()
 	} else if(command_lines_capture_mode_s == "all") {
 		m_command_lines_capture_mode = sinsp_configuration::command_capture_mode_t::CM_ALL;
 	}
-	m_command_lines_include_container_healthchecks = m_config->get_scalar<bool>("commandlines_capture", "include_container_healthchecks", true);
+	m_command_lines_include_container_healthchecks = m_config->get_scalar<bool>("commandlines_capture", "include_container_healthchecks", false);
 	m_command_lines_valid_ancestors = m_config->get_deep_merged_sequence<set<string>>("commandlines_capture", "valid_ancestors");
 
 	m_memdump_enabled =  m_config->get_scalar<bool>("memdump", "enabled", false);
