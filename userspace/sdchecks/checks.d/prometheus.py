@@ -182,7 +182,10 @@ class Prometheus(AgentCheck):
                             num += 1
                     elif (family.type == 'counter') and (not math.isnan(value)):
                         # logging.debug('prom: adding counter with name %s' %(name))
-                        self.rate(name, value, tags + conf_tags)
+                        # Reporting sample name as metric name, which should be the same
+                        # for counter metrics, except that the current prometheus_client
+                        # strips _total from metric names
+                        self.rate(sname, value, tags + conf_tags)
                         num += 1
                     elif not math.isnan(value):
                         # Could be a gauge or untyped value, which we treat as a gauge for now
