@@ -1846,7 +1846,7 @@ static void falco_k8s_audit_multi_events(security_policies_test_cointerface *pte
 	}
 	else
 	{
-		metrics = {{"security.falco.match.match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+		metrics = {{"security.falco.match.match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_GE, 1}},
 			   {"security.falco.match.not_match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
 	}
 
