@@ -160,6 +160,8 @@ func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 	var resourceTypes []string
 	resourceMap := make(map[string]bool)
 
+	havePods := false
+
 	for _, resourceList := range resources {
 		for _, resource := range resourceList.APIResources {
 			verbStr := ""
@@ -201,11 +203,17 @@ func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 				// append the other resource types.
 				if(resource.Name == "nodes" || resource.Name == "namespaces") {
 					resourceTypes = append([]string{resource.Name}, resourceTypes...)
+				} else if(resource.Name == "pods") {
+					havePods = true
 				} else {
 					resourceTypes = append(resourceTypes, resource.Name)
 				}
 			}
 		}
+	}
+
+	if havePods {
+		resourceTypes = append(resourceTypes, "pods")
 	}
 
 	return resourceTypes
