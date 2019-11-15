@@ -155,10 +155,11 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 #define DEFAULT_FALCO_BASELINING_DISABLE_TIME_NS (60LL * 30LL * 1000000000)
 
 //
-// Max number of dropped events (because of full ring buffer). Upon
-// reaching this limit, the falco baseliner is disabled.
+// Max percentage of dropped events (because of full ring buffer) over
+// the total number of processed events. Upon reaching this limit, the
+// falco baseliner is disabled.
 //
-#define DEFAULT_FALCO_BASELINING_MAX_DROPS_FULL_BUFFER 64
+#define DEFAULT_FALCO_BASELINING_MAX_DROPS_BUFFER_RATE_PERCENTAGE 0.01f
 
 //
 // FD class customized with the storage we need

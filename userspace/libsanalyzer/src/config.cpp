@@ -143,14 +143,14 @@ void sinsp_configuration::set_falco_baselining_autodisable_interval_ns(uint64_t 
 	m_falco_baselining_autodisable_interval_ns = autodisable_interval;
 }
 
-uint64_t sinsp_configuration::get_falco_baselining_max_drops_full_buffer() const
+float sinsp_configuration::get_falco_baselining_max_drops_buffer_rate_percentage() const
 {
-	return m_falco_baselining_max_drops_full_buffer;
+	return m_falco_baselining_max_drops_buffer_rate_percentage;
 }
 
-void sinsp_configuration::set_falco_baselining_max_drops_full_buffer(uint64_t autodisable_interval)
+void sinsp_configuration::set_falco_baselining_max_drops_buffer_rate_percentage(float max_drops_buffer_rate_percentage)
 {
-	m_falco_baselining_max_drops_full_buffer = autodisable_interval;
+	m_falco_baselining_max_drops_buffer_rate_percentage = max_drops_buffer_rate_percentage;
 }
 
 bool sinsp_configuration::get_commandlines_capture_enabled() const

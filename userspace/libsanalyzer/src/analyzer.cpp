@@ -489,7 +489,7 @@ void sinsp_analyzer::on_capture_start()
 						  m_configuration->get_procfs_scan_interval_ms() / 1000,
 						  m_configuration->get_procfs_scan_mem_interval_ms() / 1000);
 #else
-	m_procfs_parser = new sinsp_procfs_parser(m_inspector, 
+	m_procfs_parser = new sinsp_procfs_parser(m_inspector,
 						  m_machine_info->num_cpus,
 						  m_machine_info->memory_size_bytes / 1024,
 						  !m_inspector->is_capture(),
@@ -541,7 +541,7 @@ void sinsp_analyzer::on_capture_start()
 	{
 		glogf("starting falco baselining");
 		m_falco_baseliner->init();
-		m_falco_baseliner->set_baseline_calculation_enabled(do_baseline_calculation);
+		m_falco_baseliner->enable_baseline_calculation();
 	}
 
 #ifndef CYGWING_AGENT
@@ -1780,7 +1780,7 @@ void sinsp_analyzer::emit_processes_deprecated(std::set<uint64_t>& all_uids,
 			draiosproto::program* prog = m_metrics->add_programs();
 
 			process_emitter_instance.emit_process(*tinfo,
-							      *prog, 
+							      *prog,
 							      progtable_by_container,
 							      *procinfo,
 							      tot,
@@ -3454,7 +3454,7 @@ void sinsp_analyzer::tune_drop_mode(analyzer_emitter::flush_flags flushflags, do
 			   m_falco_baseliner->is_baseline_calculation_enabled())
 			{
 				g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
-				m_falco_baseliner->set_baseline_calculation_enabled(false);
+				m_falco_baseliner->disable_baseline_calculation();
 				m_falco_baseliner->clear_tables();
 			}
 
@@ -3699,6 +3699,9 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 	tracer_emitter falco_trc("falco_baseline", f_trc);
 	if(m_falco_baseliner->is_baseline_calculation_enabled())
 	{
+		scap_stats st;
+		m_inspector->get_capture_stats(&st);
+
 		if(is_eof)
 		{
 			//
@@ -3731,11 +3734,14 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 					// It's safe to turn baselining on again.
 					// Reset the tables and restart the baseline time counter.
 					//
-					m_falco_baseliner->set_baseline_calculation_enabled(true);
+					scap_stats st;
+					m_inspector->get_capture_stats(&st);
+
 					m_falco_baseliner->clear_tables();
-					m_falco_baseliner->load_tables(evt->get_ts());
+					m_falco_baseliner->enable_baseline_calculation();
 					m_last_falco_dump_ts = evt->get_ts();
-					g_logger.format("enabling falco baselining creation after %lus pause",
+					m_falco_baseliner->load_tables(evt->get_ts());
+					g_logger.format("enabling falco baselining creation after a %lus pause",
 							m_configuration->get_falco_baselining_autodisable_interval_ns() / 1000000000);
 				}
 			}
@@ -4640,18 +4646,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 
 	if(m_falco_baseliner->is_baseline_calculation_enabled())
 	{
-		//
-		// Disable the baseline if the ring buffer is full
-		//
+		// If, between two emit interval, we notice a lot of
+		// dropped events due to the buffer being full with
+		// respect to the total number of events processed, we
+		// disable the baseliner.
 		scap_stats st;
 		m_inspector->get_capture_stats(&st);
-		if(st.n_drops_buffer > (m_last_buffer_drops + m_configuration->get_falco_baselining_max_drops_full_buffer()))
+		if(m_falco_baseliner->is_drops_buffer_rate_critical(m_configuration->get_falco_baselining_max_drops_buffer_rate_percentage()))
 		{
-			g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining because buffer is full");
-			m_falco_baseliner->set_baseline_calculation_enabled(false);
-
+			g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining because of critical drops buffer rate.");
+			m_falco_baseliner->disable_baseline_calculation();
 			m_falco_baseliner->clear_tables();
-			m_last_buffer_drops = st.n_drops_buffer;
 		}
 	}
 
@@ -5437,7 +5442,7 @@ std::string sinsp_analyzer::get_k8s_cluster_name()
 // then append that tag here - by default, the value
 // will be "default" unless:
 // 1.) User specifies a k8s_cluster_name
-// 2.) At some point in the future, we ping the GKE or 
+// 2.) At some point in the future, we ping the GKE or
 //     other kube cluster and ask forits name
 std::string sinsp_analyzer::get_host_tags_with_cluster()
 {
@@ -5446,7 +5451,7 @@ std::string sinsp_analyzer::get_host_tags_with_cluster()
  	{
  		return tags;
  	}
-	
+
  	const string tag_str("cluster:");
 
  	// No user-defined agent cluster tag so it's safe to append

@@ -1360,10 +1360,25 @@ public:
 	inline void add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category category);
 
 	sinsp* get_inspector();
-	void set_baseline_calculation_enabled(bool enabled = true);
+	void enable_baseline_calculation();
+	void disable_baseline_calculation();
 	bool is_baseline_calculation_enabled() const;
+	bool is_drops_buffer_rate_critical(float max_drops_buffer_rate_percentage) const;
 
 private:
+	// Statistics about an in progress baseliner capture.  This is
+	// a subset of scap_stats, containing only the relevant field
+	// needed for the baseliner.
+	struct baseliner_stats
+	{
+		uint64_t n_evts; ///< Total number of events that were received by the driver.
+		uint64_t n_drops_buffer; ///< Number of dropped events caused by full buffer.
+		baseliner_stats () {
+			n_evts = 0;
+			n_drops_buffer = 0;
+		}
+	};
+
 	sinsp* m_inspector;
 	sinsp_analyzer& m_analyzer;
 	sinsp_network_interfaces* m_ifaddr_list;
@@ -1374,4 +1389,13 @@ private:
 #endif
 	std::unordered_multimap<uint16_t, std::shared_ptr<sinsp_filter_check>> m_nofd_fs_extractors;
 	bool m_do_baseline_calculation;
+
+	// The baseliner stats stores counters in order to compute the
+	// buffer drop ratio, during a baseliner capture.  They
+	// contain meaningful data only if the baseliner is turned on
+	// (i.e. m_do_baseline_calculation set to true), and values
+	// are set 0 otherwise.  They are updated at baseliner start
+	// and at each emission with the progressive values coming
+	// from the relevant scap_stats counters.
+	baseliner_stats m_baseliner_stats;
 };

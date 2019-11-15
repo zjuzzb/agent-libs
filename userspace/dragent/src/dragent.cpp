@@ -1459,6 +1459,8 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector, flush_queue& f
 		    m_configuration.m_falco_baselining_report_interval_ns);
 		sconfig->set_falco_baselining_autodisable_interval_ns(
 		    m_configuration.m_falco_baselining_autodisable_interval_ns);
+		sconfig->set_falco_baselining_max_drops_buffer_rate_percentage(
+		    m_configuration.m_falco_baselining_max_drops_buffer_rate_percentage);
 
 		// The baseliner is automatically disabled when we
 		// start dropping events. In order to collect
