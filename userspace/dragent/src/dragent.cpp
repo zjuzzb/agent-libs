@@ -257,6 +257,8 @@ dragent_app::dragent_app():
 				 std::make_shared<security_compliance_run_message_handler>(m_sinsp_worker)},
 				{draiosproto::message_type::ORCHESTRATOR_EVENTS,
 				 std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker)},
+				{draiosproto::message_type::AGGREGATION_CONTEXT,
+					dragent::aggregator_limits::global_limits},
 				{draiosproto::message_type::BASELINES,  // Legacy -- no longer used
 				 std::make_shared<null_message_handler>()},
 			}),

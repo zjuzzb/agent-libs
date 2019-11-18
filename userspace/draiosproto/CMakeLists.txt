@@ -15,6 +15,7 @@ if(NOT CYGWIN)
 		${CMAKE_CURRENT_BINARY_DIR}/aggregator_limits.cpp
 		${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
+		${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/tap.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/secure.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
@@ -26,6 +27,7 @@ else()
 	add_library(draiosproto STATIC
 		${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
+		${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/draios.proto_builder.cpp)
@@ -54,6 +56,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
 	                  ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.h
 	COMMENT "Building sdc_internal cpp sources from .proto files"
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto ${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto ${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
 	COMMAND ${PROTOC_CMDLINE}
 	        --cpp_out=.
 		${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
@@ -68,8 +71,13 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
                           ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.h
                           ${CMAKE_CURRENT_BINARY_DIR}/common.pb.h
                           ${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
+                          ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.pb.h
+                          ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.pb.cc
 	COMMENT "Building draiosproto cpp sources from .proto files"
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/common.proto
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregation_context.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
 		${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
@@ -79,20 +87,30 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
 	COMMAND ${PROTOC_CMDLINE}
                 --cpp_out=.
 		${CMAKE_CURRENT_SOURCE_DIR}/common.proto
+	COMMAND ${PROTOC_CMDLINE}
+                --cpp_out=.
+		${CMAKE_CURRENT_SOURCE_DIR}/aggregation_context.proto
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 else()
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
                           ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.h
                           ${CMAKE_CURRENT_BINARY_DIR}/common.pb.h
                           ${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
+                          ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.pb.h
+                          ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.pb.cc
 	COMMENT "Building draiosproto cpp sources from .proto files"
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/common.proto
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregation_context.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --cpp_out=.
 		${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --cpp_out=.
 		${CMAKE_CURRENT_SOURCE_DIR}/common.proto
+	COMMAND ${PROTOC_CMDLINE}
+                --cpp_out=.
+		${CMAKE_CURRENT_SOURCE_DIR}/aggregation_context.proto
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
@@ -116,6 +134,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios.proto_builder.cpp
 	COMMENT "Building aggregator sources from .proto files"
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/common.proto
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregation_context.proto
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios-aggregator-plugin.py
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios_proto_extension.py
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/protoc_plugin.sh

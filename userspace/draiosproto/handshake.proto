@@ -41,5 +41,5 @@ message handshake_v1_response {
     required uint32 last_acked_seq_num = 4;
     required compression compression = 5;
     required uint32 agg_interval = 6;
-	optional aggregation_context aggr_context = 7;
+    optional aggregation_context agg_context = 7;
 }

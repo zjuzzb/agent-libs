@@ -308,7 +308,7 @@ def generate_message_aggregator_function(message, aggregator_targets, sub_aggreg
 # their limit functions. We also invoke any "dedicated" limit functions which must
 # exist based on the limit list
 def generate_limiters(message, limit_list, sub_aggregator_list):
-    out = "protected:\n"
+    out = "public:\n"
 
     # generate declarations for limiters to be implemented manually
     for field in message.field:
@@ -317,8 +317,6 @@ def generate_limiters(message, limit_list, sub_aggregator_list):
 """ % (field.name, message.name)
             limited_messages.add((message.name, field.name));
     
-    out += "public:\n"
-
     # function header
     out += """    static void limit(const message_aggregator_builder& builder,
                       draiosproto::%s& output)

@@ -34,6 +34,13 @@ public:
 
 		virtual ~message_handler() = default;
 
+		/**
+		 * @param type
+		 * @param buffer
+		 * @param buffer_size
+		 *
+		 * @return bool this value is ignored
+		 */
 		virtual bool handle_message(draiosproto::message_type type,
 		                            uint8_t* buffer,
 		                            size_t buffer_size) = 0;

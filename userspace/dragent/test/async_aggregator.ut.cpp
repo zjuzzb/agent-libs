@@ -1,6 +1,7 @@
 #include "async_aggregator.h"
 #include "scoped_config.h"
 #include "watchdog_runnable_pool.h"
+#include "draios.pb.h"
 #include <gtest.h>
 #include <iostream>
 
@@ -186,7 +187,6 @@ TEST(async_aggregator, followup_aggregation)
 TEST(async_aggregator, limiter)
 {
 	test_helpers::scoped_config<uint32_t> config("aggregator.samples_between_flush", 1);
-	test_helpers::scoped_config<uint32_t> config2("aggregator.container_limit", 5);
 
 	blocking_queue<std::shared_ptr<flush_data_message>> input_queue(10);
 	blocking_queue<std::shared_ptr<flush_data_message>> output_queue(10);
@@ -195,6 +195,20 @@ TEST(async_aggregator, limiter)
 																		  output_queue,
 																		  // stupid short timeout because aint nobody got time for waiting for cleanup!
 																		  1);
+
+	// check that we have default limit
+	EXPECT_EQ(dragent::aggregator_limits::global_limits->m_containers, UINT32_MAX);
+	EXPECT_EQ(dragent::aggregator_limits::global_limits->m_jmx, UINT32_MAX);
+	// try setting the limit via a message
+	draiosproto::aggregation_context ac;
+	ac.mutable_metr_limits()->set_jmx(1);
+	ac.mutable_metr_limits()->set_prom_metrics_weight(.1);
+	ac.mutable_metr_limits()->set_containers(5);
+	ac.set_enforce(true);
+	dragent::aggregator_limits::global_limits->cache_limits(ac);
+	EXPECT_EQ(dragent::aggregator_limits::global_limits->m_jmx, 1);
+	EXPECT_EQ(dragent::aggregator_limits::global_limits->m_containers, 5);
+
 	dragent::watchdog_runnable_pool pool;
 	pool.start(*aggregator, 10);
 	std::atomic<bool> sent_metrics(false);
@@ -226,13 +240,88 @@ TEST(async_aggregator, limiter)
 	ASSERT_TRUE(ret);
 	EXPECT_EQ(output->m_metrics->containers().size(), 5);
 
+	// double check the one-off config based limit twiddleable got set properly during
+	// limiting
+	EXPECT_EQ(configuration_manager::instance().get_config<double>("aggregator.prom_metrics_weight")->get_value(), .1);
 	
 	aggregator->stop();
 	pool.stop_all();
 	delete aggregator;
-	// input is deleted by the shared pointer that ends up wrapping it
+	// we twiddled the global limit state, so reset it
+	dragent::aggregator_limits::global_limits = std::make_shared<dragent::aggregator_limits>();
 }
 
+TEST(async_aggregator, count_jmx_attributes)
+{
+	draiosproto::jmx_attribute attr;
+	EXPECT_EQ(dragent::async_aggregator::count_attributes(attr), 1);
+	attr.add_subattributes();
+	attr.add_subattributes();
+	EXPECT_EQ(dragent::async_aggregator::count_attributes(attr), 3);
+	attr.add_subattributes()->add_subattributes();
+	EXPECT_EQ(dragent::async_aggregator::count_attributes(attr), 5);
+}
+
+TEST(async_aggregator, limit_jmx_attributes_helper)
+{
+	// first time, get limit so it falls exactly on a bean boundary
+	draiosproto::java_info ji;
+	ji.add_beans()->add_attributes();
+	ji.add_beans()->add_attributes()->add_subattributes();
+	ji.add_beans()->add_attributes()->add_subattributes()->add_subattributes();
+	int64_t remaining = 3;
+	dragent::async_aggregator::limit_jmx_attributes_helper(ji, remaining);
+	EXPECT_EQ(ji.beans().size(), 3);
+	EXPECT_EQ(remaining, 0);
+	EXPECT_EQ(ji.beans()[0].attributes().size(), 1);
+	EXPECT_EQ(ji.beans()[1].attributes()[0].subattributes().size(), 1);
+	EXPECT_EQ(ji.beans()[1].attributes()[0].subattributes()[0].subattributes().size(), 0);
+	EXPECT_EQ(ji.beans()[2].attributes().size(), 0);
+	ji.add_beans()->add_attributes()->add_subattributes()->add_subattributes();
+	ji.add_beans()->add_attributes()->add_subattributes()->add_subattributes();
+	remaining = 5;
+	dragent::async_aggregator::limit_jmx_attributes_helper(ji, remaining);
+	EXPECT_EQ(ji.beans().size(), 5);
+	EXPECT_EQ(remaining, -1);
+	EXPECT_EQ(ji.beans()[0].attributes().size(), 1);
+	EXPECT_EQ(ji.beans()[1].attributes()[0].subattributes().size(), 1);
+	EXPECT_EQ(ji.beans()[1].attributes()[0].subattributes()[0].subattributes().size(), 0);
+	EXPECT_EQ(ji.beans()[2].attributes().size(), 0);
+	EXPECT_EQ(ji.beans()[3].attributes()[0].subattributes().size(), 1);
+	EXPECT_EQ(ji.beans()[3].attributes()[0].subattributes()[0].subattributes().size(), 1);
+	EXPECT_EQ(ji.beans()[3].attributes()[0].subattributes()[0].subattributes()[0].subattributes().size(), 0);
+	EXPECT_EQ(ji.beans()[4].attributes().size(), 0);
+}
+
+TEST(async_aggregator, limit_jmx_attributes)
+{
+	draiosproto::metrics metrics;
+
+	// add some beans and stuff and make sure as we decrease the limit, they
+	// fall off appropriately
+	metrics.mutable_protos()->mutable_java()->add_beans()->add_attributes();
+	metrics.mutable_protos()->mutable_java()->add_beans()->add_attributes();
+	metrics.mutable_unreported_counters()->mutable_protos()->mutable_java()->add_beans()->add_attributes();
+	metrics.mutable_unreported_counters()->mutable_protos()->mutable_java()->add_beans()->add_attributes();
+	metrics.add_programs()->mutable_procinfo()->mutable_protos()->mutable_java()->add_beans()->add_attributes();
+	metrics.add_programs()->mutable_procinfo()->mutable_protos()->mutable_java()->add_beans()->add_attributes();
+	metrics.add_containers()->mutable_protos()->mutable_java()->add_beans()->add_attributes();
+	metrics.add_containers()->mutable_protos()->mutable_java()->add_beans()->add_attributes();
+
+	dragent::async_aggregator::limit_jmx_attributes(metrics, 7);
+	EXPECT_EQ(metrics.containers()[0].protos().java().beans()[0].attributes().size(), 1);
+	EXPECT_EQ(metrics.containers()[1].protos().java().beans()[0].attributes().size(), 0);
+	dragent::async_aggregator::limit_jmx_attributes(metrics, 5);
+	EXPECT_EQ(metrics.programs()[0].procinfo().protos().java().beans()[0].attributes().size(), 1);
+	EXPECT_EQ(metrics.programs()[1].procinfo().protos().java().beans()[0].attributes().size(), 0);
+	dragent::async_aggregator::limit_jmx_attributes(metrics, 3);
+	EXPECT_EQ(metrics.unreported_counters().protos().java().beans()[0].attributes().size(), 1);
+	EXPECT_EQ(metrics.unreported_counters().protos().java().beans()[1].attributes().size(), 0);
+	dragent::async_aggregator::limit_jmx_attributes(metrics, 1);
+	EXPECT_EQ(metrics.protos().java().beans()[0].attributes().size(), 1);
+	EXPECT_EQ(metrics.protos().java().beans()[1].attributes().size(), 0);
+}
+	
 // make sure the post-aggregate substitutions are happening
 TEST(async_aggregator, substitutions)
 {
