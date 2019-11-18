@@ -1646,6 +1646,7 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state *state)
 		ns.set_resourcequota_count(0);
 		ns.set_persistentvolumeclaim_count(0);
 		ns.set_hpa_count(0);
+		ns.set_pod_running_count(0);
 		namespaces[ns.common().uid()] = &ns;
 	}
 
@@ -1676,6 +1677,15 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state *state)
 		if(node_name != node_names.end())
 		{
 			pod.set_node_name(node_name->second);
+		}
+
+		if(pod.status_phase() == "Running")
+		{
+			auto ns = namespaces.find(pod.common().namespace_());
+			if(ns != namespaces.end())
+			{
+				ns->second->set_pod_running_count(ns->second->pod_running_count() + 1);
+			}
 		}
 
 		legacy_k8s::set_namespace(pod.mutable_common(), ns_names);
@@ -1855,8 +1865,18 @@ void infrastructure_state::emit(const draiosproto::container_group* cg, draiospr
 				pod->add_container_ids("internal://" + child.id());
 			}
 		}
+
+		// Set explicitly the status phase here because it is stored in a map.
+		// We than will spare to do a linear search later in resolve names
+		// where we would iterate over the labels
+		auto status_phase = cg->tags().find(infrastructure_state::POD_STATUS_PHASE_LABEL);
+		if(status_phase != std::end(cg->tags()))
+		{
+			pod->set_status_phase(status_phase->second);
+		}
+
 		// TODO I don't think cointerface exposes this
-//			optional string host_ip = 4;
+                // optional string host_ip = 4;
 
 		calculate_rate(m_pod_restart_rate[cg->uid().id()], pod->restart_rate(), ts);
 	}
@@ -2938,5 +2958,7 @@ std::string infrastructure_state::get_container_id_from_k8s_pod_and_k8s_pod_name
 
 	return "";
 }
+
+const string infrastructure_state::POD_STATUS_PHASE_LABEL = "kubernetes.pod.label.status.phase";
 
 #endif // CYGWING_AGENT

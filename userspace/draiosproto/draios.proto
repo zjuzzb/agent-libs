@@ -1357,6 +1357,9 @@ message k8s_namespace {
     optional aggregations64 aggr_pod_available_count = 112;
 
     repeated pod_status_count pod_status_count = 13;
+
+    optional uint64 pod_running_count = 14;
+    optional aggregations64 aggr_pod_running_count = 114;
 }
 
 message k8s_node {
@@ -1433,6 +1436,8 @@ message k8s_pod {
 
     optional uint32 restart_rate = 14;
     optional aggregations64 aggr_restart_rate = 113;
+
+    optional string status_phase = 15;
 }
 
 message k8s_replication_controller {
