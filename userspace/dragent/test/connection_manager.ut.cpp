@@ -418,11 +418,88 @@ TEST(connection_manager_test, v5_end_to_end)
 		                 &sent_data.data()[sizeof(dragent_protocol_header_v5)],
 		                 64 - sizeof(dragent_protocol_header_v5)),
 		          0);
-		EXPECT_EQ(b.hdr.hdr.len, 64);
-		EXPECT_EQ(b.hdr.hdr.version, dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH);
-		EXPECT_EQ(b.hdr.hdr.messagetype, draiosproto::message_type::METRICS);
-		EXPECT_EQ(b.hdr.generation, 1);
-		EXPECT_EQ(b.hdr.sequence, ++sequence);
+		EXPECT_EQ(b.hdr.v5.hdr.len, 64);
+		EXPECT_EQ(b.hdr.v5.hdr.version, dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH);
+		EXPECT_EQ(b.hdr.v5.hdr.messagetype, draiosproto::message_type::METRICS);
+		EXPECT_EQ(b.hdr.v5.generation, 1);
+		EXPECT_EQ(b.hdr.v5.sequence, ++sequence);
 		delete[] b.ptr;
 	}
+}
+
+class fake_error_message_handler : public connection_manager::message_handler
+{
+	uint32_t messages_received;
+public:
+	fake_error_message_handler() : messages_received(0) {}
+
+	bool handle_message(const draiosproto::message_type,
+	                    uint8_t* buffer,
+	                    size_t buffer_size) override
+	{
+		++messages_received;
+		return true;
+	}
+
+	uint32_t num_received() const { return messages_received; }
+};
+
+TEST(connection_manager_test, collector_sends_error)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration::m_terminate = false;
+	dragent_configuration config;
+	config.init();
+	auto mh = std::make_shared<fake_error_message_handler>();
+
+	// Create and spin up the fake collector (get an ephemeral port)
+	fake_collector fc;
+	fc.start(0);
+	ASSERT_GT(fc.get_port(), 0);
+
+	// Set the config for the CM
+	config.m_server_addr = "127.0.0.1";
+	config.m_server_port = fc.get_port();
+	config.m_ssl_enabled = false;
+	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
+	config.m_terminate = false;
+
+	// Create the shared blocking queue
+	protocol_queue queue(MAX_QUEUE_LEN);
+
+	// Create and spin up the connection manager
+	connection_manager cm(&config, &queue, true,
+	    {{draiosproto::message_type::ERROR_MESSAGE, mh}});
+
+	std::thread t([&cm]()
+	{
+		cm.test_run();
+	});
+
+	// Build a collector message
+	draiosproto::error_message err;
+	err.set_type(draiosproto::error_type::ERR_PROTO_MISMATCH);
+
+	// Send the message
+	bool ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
+	                                     false,
+	                                     err);
+
+	ASSERT_TRUE(ret);
+
+	uint32_t loops = 0;
+	while (mh->num_received() == 0 && loops < 10000)
+	{
+		usleep(1000);
+		++loops;
+	}
+
+	ASSERT_GT(mh->num_received(), 0);
+
+	// Shut down all the things
+	config.m_terminate = true;
+	fc.stop();
+
+	t.join();
 }
