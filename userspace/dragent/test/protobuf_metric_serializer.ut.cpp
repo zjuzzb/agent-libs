@@ -156,10 +156,12 @@ public:
 	 */
 	std::shared_ptr<serialized_buffer>
 	handle_uncompressed_sample(const uint64_t ts_ns,
-	                std::shared_ptr<draiosproto::metrics>& metrics) override
+	                std::shared_ptr<draiosproto::metrics>& metrics,
+					uint32_t flush_interval) override
 	{
 		m_ts_ns = ts_ns;
 		m_metrics = metrics;
+		m_flush_interval = flush_interval;
 
 		if(m_sleep_time != 0)
 		{
@@ -180,6 +182,7 @@ public:
 	uint64_t m_ts_ns;
 	std::shared_ptr<draiosproto::metrics> m_metrics;
 	uint32_t m_sleep_time;
+	uint32_t m_flush_interval;
 	std::atomic<uint8_t> m_call_count;
 };
 

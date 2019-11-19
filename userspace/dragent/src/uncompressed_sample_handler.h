@@ -26,7 +26,8 @@ public:
 	 * @return The processed protobuf
 	 */
 	virtual std::shared_ptr<serialized_buffer> handle_uncompressed_sample(uint64_t ts_ns,
-	                    std::shared_ptr<draiosproto::metrics>& metrics) = 0;
+	                    std::shared_ptr<draiosproto::metrics>& metrics,
+						uint32_t flush_interval) = 0;
 
 	/**
 	 * returns the timestamp of the last invokation of handle_uncompressed_sample
@@ -38,7 +39,8 @@ class uncompressed_sample_handler_dummy : public uncompressed_sample_handler
 {
 public:
 	virtual std::shared_ptr<serialized_buffer> handle_uncompressed_sample(uint64_t ts_ns,
-	                    std::shared_ptr<draiosproto::metrics>& metrics)
+	                    std::shared_ptr<draiosproto::metrics>& metrics,
+						uint32_t flush_interval)
 	{
 		return nullptr;
 	}

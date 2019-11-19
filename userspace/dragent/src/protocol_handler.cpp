@@ -45,7 +45,8 @@ protocol_handler::~protocol_handler()
 }
 
 std::shared_ptr<serialized_buffer> protocol_handler::handle_uncompressed_sample(uint64_t ts_ns,
-                          std::shared_ptr<draiosproto::metrics>& metrics)
+                          std::shared_ptr<draiosproto::metrics>& metrics,
+						  uint32_t flush_interval)
 {
 	ASSERT(metrics);
 	m_last_loop_ns = sinsp_utils::get_current_time_ns();
@@ -61,6 +62,8 @@ std::shared_ptr<serialized_buffer> protocol_handler::handle_uncompressed_sample(
 		*metrics,
 		false,
 		c_compression_enabled.get_value());
+
+	buffer->flush_interval = flush_interval;
 
 	if(!buffer)
 	{
