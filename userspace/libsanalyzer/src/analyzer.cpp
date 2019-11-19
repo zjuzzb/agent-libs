@@ -519,7 +519,7 @@ void sinsp_analyzer::on_capture_start()
 		m_ipv4_connections->m_percentiles = pctls;
 	}
 	m_fd_listener->set_ipv4_connection_manager(m_ipv4_connections);
-	m_trans_table = new sinsp_transaction_table(m_inspector);
+	m_trans_table = new sinsp_transaction_table(*this);
 
 	//
 	// Notify the scheduler analyzer
