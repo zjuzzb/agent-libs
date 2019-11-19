@@ -498,8 +498,8 @@ void sinsp_analyzer::on_capture_start()
 #endif
 	m_mounted_fs_reader.reset(new mounted_fs_reader(m_remotefs_enabled, m_configuration->get_mounts_filter(), m_configuration->get_mounts_limit_size()));
 
-	m_sched_analyzer2 = new sinsp_sched_analyzer2(m_inspector, m_machine_info->num_cpus);
-	m_score_calculator = new sinsp_scores(m_inspector, m_sched_analyzer2);
+	m_sched_analyzer2 = new sinsp_sched_analyzer2(*this, m_inspector, m_machine_info->num_cpus);
+	m_score_calculator = new sinsp_scores(*this, m_inspector, m_sched_analyzer2);
 	m_delay_calculator = new sinsp_delays(m_machine_info->num_cpus);
 
 	//
