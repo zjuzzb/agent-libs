@@ -109,15 +109,6 @@ type_config<bool>::ptr c_10s_flush_enabled =
 		.hidden()
 		.build();
 
-type_config<uint16_t>::ptr c_inspector_start_delay_s =
-		type_config_builder<uint16_t>(
-				1,
-				"Amount of time to wait before starting the"
-				" system call inspector",
-				"inspector_start_delay_s")
-		.min(1)
-		.build();
-
 string compute_sha1_digest(SHA1Engine& engine, const string& path)
 {
 	engine.reset();
@@ -264,8 +255,7 @@ dragent_app::dragent_app():
 			}),
 	m_log_reporter(m_protocol_handler, &m_configuration),
 	m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),
-	m_last_dump_s(0),
-	m_inspector_delayed_start_interval(0)
+	m_last_dump_s(0)
 { }
 
 dragent_app::~dragent_app()
@@ -1106,7 +1096,6 @@ int dragent_app::sdagent_main()
 	}
 
 	uint64_t uptime_s = 0;
-	bool capture_started = false;
 
 	///////////////////////////////
 	// Main exec loop
@@ -1117,11 +1106,6 @@ int dragent_app::sdagent_main()
 	//////////////////////////////
 	while (!dragent_configuration::m_terminate)
 	{
-		if (!capture_started)
-		{
-			start_inspector(inspector, capture_started);
-		}
-
 		if (m_configuration.m_watchdog_enabled)
 		{
 			watchdog_check(uptime_s);
@@ -1200,32 +1184,6 @@ int dragent_app::sdagent_main()
 	LOG_INFO("Terminating");
 	memdump_logger::register_callback(nullptr);
 	return exit_code;
-}
-
-void dragent_app::start_inspector(sinsp::ptr inspector, bool& capture_started)
-{
-	// Set the interval here instead of via the constructor
-	// to allow config initialization before trying to read
-	// the config value.
-	m_inspector_delayed_start_interval.interval(
-			c_inspector_start_delay_s->get_value() *
-			ONE_SECOND_IN_NS);
-
-	m_inspector_delayed_start_interval.run([&inspector, &capture_started]()
-	{
-		static bool run_once = false;
-
-		if (!run_once)
-		{
-			run_once = true;
-			return;
-		}
-
-		LOG_INFO("Starting inspector capture...");
-		inspector->start_capture();
-		capture_started = true;
-	},
-	sinsp_utils::get_current_time_ns());
 }
 
 void dragent_app::init_inspector(sinsp::ptr inspector)
