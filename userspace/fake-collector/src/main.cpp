@@ -4,7 +4,7 @@
 
 int main(int argc, char **argv)
 {
-	fake_collector fc;
+	fake_collector fc(true);
 
 	fc.start(0);
 
