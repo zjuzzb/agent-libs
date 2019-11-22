@@ -14,6 +14,8 @@
 #include "connection_manager.h"  // because aggregator_limits is a message_handler. should probably be broken down a bit.
 #include "aggregation_context.pb.h"
 
+class test_helper;
+
 namespace dragent
 {
 
@@ -92,6 +94,14 @@ public:
 
 	void stop();
 
+	/**
+	 * sets the number of input protobufs to aggregate before generating an output.
+	 * Setting to 0 disables aggregation altogether
+	 *
+	 * @param[in] interval count of input samples between outputs
+	 */
+	void set_aggregation_interval(uint32_t interval);
+
 private:
 	/**
 	 * This will block waiting for work, do that work, then block
@@ -120,6 +130,9 @@ public:
 	std::shared_ptr<flush_data_message> m_aggregated_data;
 
 	uint32_t m_count_since_flush;
+	uint32_t m_aggregation_interval;
+
+	friend class ::test_helper;
 };
 
 }  // end namespace dragent

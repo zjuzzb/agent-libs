@@ -588,7 +588,7 @@ void secure_audit::emit_connection_async(const _ipv4tuple& tuple, sinsp_connecti
 	}
 
 	if(c_secure_audit_connections_limit.get_value() != 0 &&
-	   (m_connections_count > c_secure_audit_connections_limit.get_value()))
+	   (m_connections_count >= c_secure_audit_connections_limit.get_value()))
 	{
 		m_connections_dropped_count++;
 		return;

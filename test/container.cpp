@@ -505,12 +505,12 @@ TEST_F(sys_call_test, container_docker_bad_socket)
 		}
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		inspector->set_docker_socket_path("/invalid/path");
 	};
 
-	before_close_t cleanup = [&](sinsp* inspector)
+	before_close_t cleanup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		inspector->set_docker_socket_path("/var/run/docker.sock");
 	};
@@ -563,7 +563,7 @@ TEST_F(sys_call_test, container_custom)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -573,7 +573,7 @@ TEST_F(sys_call_test, container_custom)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -624,7 +624,7 @@ TEST_F(sys_call_test, container_custom_env_match)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -637,7 +637,7 @@ TEST_F(sys_call_test, container_custom_env_match)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -688,7 +688,7 @@ TEST_F(sys_call_test, container_custom_env_match_last)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -701,7 +701,7 @@ TEST_F(sys_call_test, container_custom_env_match_last)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -752,7 +752,7 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -766,7 +766,7 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -817,7 +817,7 @@ TEST_F(sys_call_test, container_custom_env_match_flipped)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -831,7 +831,7 @@ TEST_F(sys_call_test, container_custom_env_match_flipped)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -883,7 +883,7 @@ TEST_F(sys_call_test, container_custom_halfnhalf)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -894,7 +894,7 @@ TEST_F(sys_call_test, container_custom_halfnhalf)
 		res.set_max_id_length(50);
 		res.set_incremental_metadata(true);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -952,7 +952,7 @@ TEST_F(sys_call_test, container_custom_huge_env)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -966,7 +966,7 @@ TEST_F(sys_call_test, container_custom_huge_env)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 
 		// enable reading environments from /proc
 		inspector->set_large_envs(true);
@@ -1022,7 +1022,7 @@ TEST_F(sys_call_test, container_custom_huge_env_echo)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -1036,7 +1036,7 @@ TEST_F(sys_call_test, container_custom_huge_env_echo)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -1090,7 +1090,7 @@ TEST_F(sys_call_test, container_custom_huge_env_echo_proc)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -1104,7 +1104,7 @@ TEST_F(sys_call_test, container_custom_huge_env_echo_proc)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 
 		// enable reading environments from /proc
 		inspector->set_large_envs(true);
@@ -1164,7 +1164,7 @@ TEST_F(sys_call_test, container_custom_huge_env_at_end)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -1178,7 +1178,7 @@ TEST_F(sys_call_test, container_custom_huge_env_at_end)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 
 		// enable reading environments from /proc
 		inspector->set_large_envs(true);
@@ -1749,7 +1749,7 @@ static void healthcheck_helper(const char *dockerfile,
 		}
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	};

@@ -46,8 +46,9 @@ void event_capture::capture()
 	m_inspector->set_get_procs_cpu_from_driver(true);
 
 	m_param.m_inspector = m_inspector;
+	m_param.m_analyzer = m_analyzer;
 
-	m_before_open(m_inspector);
+	m_before_open(m_inspector, m_analyzer);
 
 	ASSERT_FALSE(m_inspector->is_capture());
 	ASSERT_FALSE(m_inspector->is_live());
@@ -149,7 +150,7 @@ void event_capture::capture()
 		}
 	}
 
-	m_before_close(m_inspector);
+	m_before_close(m_inspector, m_analyzer);
 
 	delete m_inspector;
 	delete m_analyzer;

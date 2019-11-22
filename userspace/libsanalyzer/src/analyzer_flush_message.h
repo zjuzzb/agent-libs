@@ -52,4 +52,5 @@ struct flush_data_message
 	double m_my_cpuload;
 	uint32_t m_sampling_ratio;
 	uint64_t m_n_tids_suppressed;
+	uint32_t m_flush_interval = 0;
 };

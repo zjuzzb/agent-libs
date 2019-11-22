@@ -16,7 +16,7 @@ namespace dragent
 {
 type_config<uint32_t>::ptr c_samples_between_flush =
     type_config_builder<uint32_t>(10,
-                                  "Number of analyzer samples between each aggregated sample",
+                                  "Number of analyzer samples between outputs.",
                                   "aggregator",
                                   "samples_between_flush")
         .hidden()
@@ -31,7 +31,7 @@ type_config<uint32_t>::ptr c_container_limit =
         .build();
 
 std::shared_ptr<aggregator_limits> aggregator_limits::global_limits =
-    std::make_shared<aggregator_limits>();
+	std::make_shared<aggregator_limits>();
 
 async_aggregator::async_aggregator(flush_queue& input_queue,
                                    flush_queue& output_queue,
@@ -42,7 +42,8 @@ async_aggregator::async_aggregator(flush_queue& input_queue,
       m_input_queue(input_queue),
       m_output_queue(output_queue),
       m_builder(),
-      m_count_since_flush(0)
+      m_count_since_flush(0),
+      m_aggregation_interval(c_samples_between_flush->get_value())
 {
 	m_aggregator = new metrics_message_aggregator_impl(m_builder);
 	m_aggregated_data = std::make_shared<flush_data_message>(
@@ -227,30 +228,60 @@ void async_aggregator::do_run()
 
 		(void)heartbeat();
 
-		m_aggregated_data->m_ts = input_data->m_ts;
-		m_aggregated_data->m_metrics_sent = input_data->m_metrics_sent;
-		m_aggregator->aggregate(*input_data->m_metrics, *m_aggregated_data->m_metrics);
+		// we cache this value as it can change at any time, and we
+		// want a consistent number as we proceed through this logic.
+		// this avoids the need for a lock
+		uint32_t aggr_interval_cache = m_aggregation_interval;
 
-		m_count_since_flush++;
-		if (m_count_since_flush == c_samples_between_flush->get_value())
+		if (m_count_since_flush >= aggr_interval_cache && m_count_since_flush != 0)
 		{
-			m_aggregator->override_primary_keys(*m_aggregated_data->m_metrics);
+			g_logger.format(
+			    sinsp_logger::SEV_INFO,
+			    "Decreased aggregation interval. Discarding previously aggregated data.");
 			m_aggregator->reset();
-			if (aggregator_limits::global_limits->m_do_limiting)
-			{
-				aggregator_limits::global_limits->set_builder_limits(m_builder);
-				metrics_message_aggregator::limit(m_builder, *m_aggregated_data->m_metrics);
-				limit_jmx_attributes(*m_aggregated_data->m_metrics,
-				                     aggregator_limits::global_limits->m_jmx);
-			}
-
-			if (!m_output_queue.put(m_aggregated_data))
-			{
-				g_logger.format(sinsp_logger::SEV_WARNING, "Queue full, discarding sample");
-			}
 			m_aggregated_data = std::make_shared<flush_data_message>(
 			    0, nullptr, *(new draiosproto::metrics()), 0, 0, 0, 0, 0);
 			m_count_since_flush = 0;
+		}
+
+		if (aggr_interval_cache == 0)
+		{
+			// this should probably be set already, but just be sure
+			input_data->m_flush_interval = 0;
+			if (!m_output_queue.put(input_data))
+			{
+				g_logger.format(sinsp_logger::SEV_WARNING, "Queue full, discarding sample");
+			}
+		}
+		else
+		{
+			m_aggregated_data->m_ts = input_data->m_ts;
+			m_aggregated_data->m_metrics_sent = input_data->m_metrics_sent;
+			m_aggregator->aggregate(*input_data->m_metrics, *m_aggregated_data->m_metrics);
+
+			m_count_since_flush++;
+			if (m_count_since_flush == aggr_interval_cache)
+			{
+				m_aggregator->override_primary_keys(*m_aggregated_data->m_metrics);
+				m_aggregator->reset();
+				if (aggregator_limits::global_limits->m_do_limiting)
+				{
+					aggregator_limits::global_limits->set_builder_limits(m_builder);
+					metrics_message_aggregator::limit(m_builder, *m_aggregated_data->m_metrics);
+					limit_jmx_attributes(*m_aggregated_data->m_metrics,
+					                     aggregator_limits::global_limits->m_jmx);
+				}
+
+				m_aggregated_data->m_flush_interval = aggr_interval_cache;
+
+				if (!m_output_queue.put(m_aggregated_data))
+				{
+					g_logger.format(sinsp_logger::SEV_WARNING, "Queue full, discarding sample");
+				}
+				m_aggregated_data = std::make_shared<flush_data_message>(
+				    0, nullptr, *(new draiosproto::metrics()), 0, 0, 0, 0, 0);
+				m_count_since_flush = 0;
+			}
 		}
 	}
 }
@@ -259,6 +290,11 @@ void async_aggregator::stop()
 {
 	m_stop_thread = true;
 	m_input_queue.clear();
+}
+
+void async_aggregator::set_aggregation_interval(uint32_t interval)
+{
+	m_aggregation_interval = interval;
 }
 
 }  // end namespace dragent
