@@ -51,6 +51,7 @@ env_hash_config *default_hash_config()
 }
 
 void add_connection(sinsp& inspector,
+                    sinsp_analyzer& analyzer,
                     audit_tap& tap,
                     const sinsp_threadinfo* const thread1,
                     const int transition_count,
@@ -61,7 +62,7 @@ void add_connection(sinsp& inspector,
                     const uint32_t count_out = DEFAULT_COUNT_OUT,
                     const uint32_t error_count = DEFAULT_ERROR_COUNT)
 {
-	sinsp_ipv4_connection_manager mgr(&inspector);
+	sinsp_ipv4_connection_manager mgr(&inspector, analyzer);
 	_ipv4tuple ipv4;
 
 	memset(ipv4.m_all, 0, sizeof ipv4.m_all);
@@ -152,7 +153,7 @@ void arg_length_test(const int limit)
 		      MACHINE_ID_FOR_TEST,
 		      true /*emit local connections*/);
 
-	add_connection(*inspector, tap, thread1, 2);
+	add_connection(*inspector, analyzer, tap, thread1, 2);
 
 	const tap::AuditLog *log = tap.get_events();
 	int expected_length = std::min(static_cast<int>(arg_150.length()), limit);
@@ -224,7 +225,7 @@ TEST(audit_tap_test, basic)
 
 
 	const int TRANSITION_COUNT = 5;
-	add_connection(*inspector, tap, thread1, TRANSITION_COUNT);
+	add_connection(*inspector, analyzer, tap, thread1, TRANSITION_COUNT);
 
 	const tap::AuditLog *log = tap.get_events();
 
@@ -317,7 +318,7 @@ TEST(audit_tap_test, connection_audit_one_client_connection)
 	              MACHINE_ID_FOR_TEST,
 	              emit_local_connections);
 
-	add_connection(*inspector, tap, thread, 2);
+	add_connection(*inspector, analyzer, tap, thread, 2);
 
 	const tap::AuditLog* const log = tap.get_events();
 
@@ -393,7 +394,7 @@ TEST(audit_tap_test, connection_audit_one_server_connection)
 	              emit_local_connections);
 
 	const bool is_client = false;
-	add_connection(*inspector, tap, thread, 2, is_client);
+	add_connection(*inspector, analyzer, tap, thread, 2, is_client);
 
 	const tap::AuditLog* const log = tap.get_events();
 

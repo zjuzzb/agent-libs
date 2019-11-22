@@ -506,7 +506,7 @@ void sinsp_analyzer::on_capture_start()
 	// Allocations
 	//
 	ASSERT(m_ipv4_connections == NULL);
-	m_ipv4_connections = new sinsp_ipv4_connection_manager(m_inspector);
+	m_ipv4_connections = new sinsp_ipv4_connection_manager(m_inspector, *this);
 
 	if(m_secure_audit != nullptr)
 	{
