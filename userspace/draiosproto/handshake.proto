@@ -1,6 +1,6 @@
 syntax = "proto2";
 package draiosproto;
-import "aggregation_context.proto"
+import "aggregation_context.proto";
 
 option optimize_for = SPEED;
 option java_package = "com.draios.model.protobuf";
@@ -39,6 +39,7 @@ message handshake_v1_response {
     required string machine_id = 2; // The unique ID of the machine that is sending this data
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
     required uint32 last_acked_seq_num = 4;
+    required uint32 last_acked_gen_num = 8;
     required compression compression = 5;
     required uint32 agg_interval = 6;
     optional aggregation_context agg_context = 7;

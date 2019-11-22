@@ -39,6 +39,7 @@ public:
 			dragent_protocol_header_v4 v4;
 			dragent_protocol_header_v5 v5;
 		} hdr;
+		uint32_t payload_len;
 
 		buf(uint8_t* _ptr, dragent_protocol_header_v4 _hdr):
 		    ptr(_ptr)
@@ -55,14 +56,20 @@ public:
 		buf() {}
 	};
 
-	fake_collector():
+	/**
+	 * @param[in] auto_respond indicates whether the collector will automatically
+	 *            respond to handshake messages and ack. If false, client is
+	 *            responsible for responding to those messages as appropriate
+	 */
+	fake_collector(bool auto_respond):
 		m_received_data(),
 		m_status(server_status::NOT_STARTED),
 		m_error_code(0),
 		m_error_msg(""),
 		m_run_server(false),
 		m_port(0),
-		m_delayed_connection(0)
+		m_delayed_connection(0),
+		m_auto_respond(auto_respond)
 	{}
 
 	/**
@@ -155,6 +162,11 @@ public:
 	                            uint64_t generation = 0,
 	                            uint64_t sequence = 0);
 
+	void set_last_ack(uint64_t generation, uint64_t sequence)
+	{
+		m_last_gen_num = generation;
+		m_last_seq_num = sequence;
+	}
 private:
 	const uint32_t MAX_STORED_DATAGRAMS = 32;
 	std::queue<buf> m_received_data;
@@ -168,8 +180,12 @@ private:
 	uint16_t m_port;   // The port the server is listening on
 
 	std::chrono::milliseconds m_delayed_connection; // Length of time to delay the connection
+	bool m_auto_respond;
+	uint32_t m_protocol_version = 1;
 	std::unordered_map<int, std::chrono::system_clock::time_point> wait_list; // Internal tracking of connect delays
 	spinlock m_send_queue_lock;
+	uint64_t m_last_gen_num;
+	uint64_t m_last_seq_num;
 
 	/**
 	 * Reads one from the given file descriptor
@@ -188,6 +204,8 @@ private:
 	 * @return  Whether the connection delay has passed
 	 */
 	bool should_connect(int fd);
+
+	bool process_auto_response(buf& b);
 
 	static void thread_loop(int sock_fd, struct sockaddr_in addr, fake_collector& fc);
 };

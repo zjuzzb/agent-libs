@@ -6,6 +6,8 @@
  * Copyright (c) 2019 Sysdig, Inc. All rights reserved.
  */
 
+#include "handshake.pb.h"
+#include "draios.pb.h"
 #include "fake_collector.h"
 
 #include <thread>
@@ -45,6 +47,92 @@ bool fake_collector::should_connect(int fd)
 		return true;
 	}
 	return false;
+}
+
+bool fake_collector::process_auto_response(buf& b)
+{
+
+	if (b.hdr.v4.version == dragent_protocol::PROTOCOL_VERSION_NUMBER)
+	{
+		return true;
+	}
+
+	switch (b.hdr.v4.messagetype)
+	{
+	case draiosproto::message_type::METRICS:
+	{
+		// generation must never go down
+		// seqence can go down if generation increases
+		if (b.hdr.v5.generation < m_last_gen_num ||
+			(b.hdr.v5.generation == m_last_gen_num &&
+			 b.hdr.v5.sequence <= m_last_seq_num))
+		{
+			return false; // DOFL: drop on the floor...laughing
+		}
+		m_last_gen_num = b.hdr.v5.generation;
+		m_last_seq_num = b.hdr.v5.sequence;
+		send_collector_message(draiosproto::message_type::METRICS_ACK,
+							   true,
+							   nullptr,
+							   0,
+							   m_last_gen_num,
+							   m_last_seq_num);
+		return true;
+	}
+	case draiosproto::message_type::PROTOCOL_INIT:
+	{
+		draiosproto::protocol_init pi;
+		dragent_protocol::buffer_to_protobuf(b.ptr, b.payload_len, &pi);
+		draiosproto::protocol_init_response pir;
+		pir.set_timestamp_ns(pi.timestamp_ns());
+		pir.set_machine_id(pi.machine_id());
+		pir.set_customer_id(pi.customer_id());
+		pir.set_protocol_version(std::max(m_protocol_version, pi.max_protocol_version()));
+		send_collector_message(draiosproto::message_type::PROTOCOL_INIT_RESP,
+							   false,
+							   pir);
+
+		return false;
+	}
+	case draiosproto::message_type::PROTOCOL_HANDSHAKE_V1:
+	{
+		draiosproto::handshake_v1 h;
+		dragent_protocol::buffer_to_protobuf(b.ptr, b.payload_len, &h);
+		draiosproto::handshake_v1_response hr;
+		hr.set_timestamp_ns(h.timestamp_ns());
+		hr.set_machine_id(h.machine_id());
+		hr.set_customer_id(h.customer_id());
+		// if this is first connection from agent, reset everything
+		if (h.generation_num() == 1)
+		{
+			m_last_gen_num = 0;
+			m_last_seq_num = 0;
+		}
+		hr.set_last_acked_gen_num(m_last_gen_num);
+		hr.set_last_acked_seq_num(m_last_seq_num);
+		hr.set_compression(draiosproto::compression::COMPRESSION_NONE);
+		for (auto i : h.supported_compressions())
+		{
+			if (i == draiosproto::compression::COMPRESSION_GZIP)
+			{
+				hr.set_compression(draiosproto::compression::COMPRESSION_GZIP);
+			}
+		}
+		hr.set_agg_interval(1);
+		for (auto i : h.supported_agg_intervals())
+		{
+			hr.set_agg_interval(std::max(hr.agg_interval(), i));
+		}
+		hr.mutable_agg_context()->set_enforce(false);
+		send_collector_message(draiosproto::message_type::PROTOCOL_HANDSHAKE_V1_RESP,
+							   false,
+							   hr);
+
+		return false;
+	}
+	}
+
+	return true;
 }
 
 void fake_collector::thread_loop(int listen_sock_fd, sockaddr_in addr, fake_collector& fc)
@@ -163,7 +251,16 @@ void fake_collector::thread_loop(int listen_sock_fd, sockaddr_in addr, fake_coll
 					continue;
 				}
 
-				fc.m_received_data.push(b);
+				bool should_enqueue = true;
+				if (fc.m_auto_respond)
+				{
+					should_enqueue = fc.process_auto_response(b);
+				}
+
+				if (should_enqueue)
+				{
+					fc.m_received_data.push(b);
+				}
 			}
 		}
 	}
@@ -297,6 +394,7 @@ uint32_t fake_collector::read_one_message(int fd, buf* out_buf)
 		goto read_error;
 	}
 
+	out_buf->payload_len = read_ret;
 	return read_ret;
 
 read_error:

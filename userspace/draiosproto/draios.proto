@@ -1129,6 +1129,7 @@ enum message_type {
     PROTOCOL_HANDSHAKE_V1 = 26;
     PROTOCOL_HANDSHAKE_V1_RESP = 27;
     AGGREGATION_CONTEXT = 28;
+    METRICS_ACK = 29;
 }
 
 //
