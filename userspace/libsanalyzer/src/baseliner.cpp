@@ -1294,7 +1294,7 @@ bool sinsp_baseliner::is_drops_buffer_rate_critical(float max_drops_buffer_rate_
 
 	if(drop_rate > max_drops_buffer_rate_percentage)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR,
+		g_logger.format(sinsp_logger::SEV_WARNING,
 				"critical drop buffer rate %f (upper threshold %f)",
 				drop_rate, max_drops_buffer_rate_percentage);
 		return true;
