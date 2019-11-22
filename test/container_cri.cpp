@@ -65,7 +65,7 @@ TEST_F(container_cri, fake_cri_no_server) {
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		inspector->set_cri_socket_path(fake_cri_socket);
 		inspector->set_log_callback(common_logger::sinsp_logger_callback);
@@ -104,7 +104,7 @@ void container_cri::fake_cri_test(const std::string& pb_prefix, const std::strin
 		callback(param, done);
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		inspector->set_cri_socket_path(fake_cri_socket);
 		inspector->set_cri_extra_queries(extra_queries);
@@ -241,7 +241,7 @@ void container_cri::fake_cri_test_timing(
 		callback(param, done_events);
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		inspector->set_docker_socket_path(fake_docker_socket);
 		inspector->set_cri_socket_path(fake_cri_socket);
@@ -255,7 +255,7 @@ void container_cri::fake_cri_test_timing(
 		});
 	};
 
-	before_close_t cleanup = [&](sinsp* inspector)
+	before_close_t cleanup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		inspector->set_docker_socket_path(default_docker_socket);
 	};
