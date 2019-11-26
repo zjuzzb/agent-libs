@@ -11,7 +11,6 @@
 #include <common_logger.h>
 
 #include "common_assert.h"
-#include "blocking_queue.h"
 
 struct serialized_buffer
 {

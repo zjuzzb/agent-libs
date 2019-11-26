@@ -9,7 +9,7 @@
 
 #include "aggregator_overrides.h"
 #include "analyzer_flush_message.h"
-#include "blocking_queue.h"
+#include "thread_safe_container/blocking_queue.h"
 #include "watchdog_runnable.h"
 #include "connection_manager.h"  // because aggregator_limits is a message_handler. should probably be broken down a bit.
 #include "aggregation_context.pb.h"
@@ -83,12 +83,14 @@ public:
 class async_aggregator : public dragent::watchdog_runnable
 {
 public:
+	using queue_t = typename thread_safe_container::blocking_queue<std::shared_ptr<flush_data_message>>;
+
 	/**
 	 * Initialize this async_aggregator.
 	 */
-	async_aggregator(blocking_queue<std::shared_ptr<flush_data_message>>& input_queue,
-	                 blocking_queue<std::shared_ptr<flush_data_message>>& output_queue,
-	                 uint64_t queue_timeout_ms = 300);
+	async_aggregator(queue_t& input_queue,
+			 queue_t& output_queue,
+			 uint64_t timeout_ms = 300);
 
 	~async_aggregator();
 
@@ -123,8 +125,8 @@ public:
 	std::atomic<bool> m_stop_thread;
 	uint64_t m_queue_timeout_ms;
 
-	blocking_queue<std::shared_ptr<flush_data_message>>& m_input_queue;
-	blocking_queue<std::shared_ptr<flush_data_message>>& m_output_queue;
+	queue_t& m_input_queue;
+	queue_t& m_output_queue;
 	message_aggregator_builder_impl m_builder;
 	metrics_message_aggregator_impl* m_aggregator;
 	std::shared_ptr<flush_data_message> m_aggregated_data;

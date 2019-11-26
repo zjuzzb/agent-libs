@@ -44,7 +44,7 @@
 #include "secure_audit_handler.h"
 #include "statsd_emitter.h"
 #include "analyzer_flush_message.h"
-#include "blocking_queue.h"
+#include "thread_safe_container/blocking_queue.h"
 #include "secure_audit_internal_metrics.h"
 #include "secure_audit_data_ready_handler.h"
 #include <nlohmann/json.hpp>
@@ -241,7 +241,7 @@ class SINSP_PUBLIC sinsp_analyzer :
 	public secure_audit_internal_metrics
 {
 public:
-	typedef blocking_queue<std::shared_ptr<flush_data_message>> flush_queue;
+	typedef thread_safe_container::blocking_queue<std::shared_ptr<flush_data_message>> flush_queue;
 	enum mode_switch_state
 	{
 		MSR_NONE = 0,

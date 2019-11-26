@@ -26,7 +26,7 @@ TEST(protocol_handler_test, flush_interval)
 {
 	// we won't use this, but we need it since some of the other APIs still do it the
 	// "wrong" way so we need the queue
-	blocking_queue<std::shared_ptr<serialized_buffer>> input_queue(10);
+	protocol_queue input_queue(10);
 
 	protocol_handler ph(input_queue);
 

@@ -14,6 +14,8 @@ using std::queue;
 using Poco::Semaphore;
 using Poco::Mutex;
 
+namespace thread_safe_container
+{
 
 template<class T>
 class blocking_queue
@@ -133,3 +135,5 @@ void blocking_queue<T>::clear()
 {
 	while(get(NULL, 0));
 }
+
+} // namespace thread_safe_container

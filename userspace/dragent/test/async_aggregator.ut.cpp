@@ -24,8 +24,8 @@ TEST(async_aggregator, single)
 {
 	test_helpers::scoped_config<uint32_t> config("aggregator.samples_between_flush", 1);
 
-	blocking_queue<std::shared_ptr<flush_data_message>> input_queue(10);
-	blocking_queue<std::shared_ptr<flush_data_message>> output_queue(10);
+	dragent::async_aggregator::queue_t input_queue(10);
+	dragent::async_aggregator::queue_t output_queue(10);
 
 	dragent::async_aggregator aggregator(input_queue,
 										 output_queue,
@@ -75,8 +75,8 @@ TEST(async_aggregator, multiple)
 {
 	test_helpers::scoped_config<unsigned int> config("aggregator.samples_between_flush", 2);
 
-	blocking_queue<std::shared_ptr<flush_data_message>> input_queue(10);
-	blocking_queue<std::shared_ptr<flush_data_message>> output_queue(10);
+	dragent::async_aggregator::queue_t input_queue(10);
+	dragent::async_aggregator::queue_t output_queue(10);
 
 	dragent::async_aggregator aggregator(input_queue,
 										 output_queue,
@@ -136,8 +136,8 @@ TEST(async_aggregator, followup_aggregation)
 {
 	test_helpers::scoped_config<unsigned int> config("aggregator.samples_between_flush", 1);
 
-	blocking_queue<std::shared_ptr<flush_data_message>> input_queue(10);
-	blocking_queue<std::shared_ptr<flush_data_message>> output_queue(10);
+	dragent::async_aggregator::queue_t input_queue(10);
+	dragent::async_aggregator::queue_t output_queue(10);
 
 	dragent::async_aggregator aggregator(input_queue,
 										 output_queue,
@@ -195,8 +195,8 @@ TEST(async_aggregator, limiter)
 {
 	test_helpers::scoped_config<uint32_t> config("aggregator.samples_between_flush", 1);
 
-	blocking_queue<std::shared_ptr<flush_data_message>> input_queue(10);
-	blocking_queue<std::shared_ptr<flush_data_message>> output_queue(10);
+	dragent::async_aggregator::queue_t input_queue(10);
+	dragent::async_aggregator::queue_t output_queue(10);
 
 	dragent::async_aggregator aggregator(input_queue,
 										 output_queue,
@@ -333,8 +333,8 @@ TEST(async_aggregator, substitutions)
 {
 	test_helpers::scoped_config<uint32_t> config("aggregator.samples_between_flush", 1);
 
-	blocking_queue<std::shared_ptr<flush_data_message>> input_queue(10);
-	blocking_queue<std::shared_ptr<flush_data_message>> output_queue(10);
+	dragent::async_aggregator::queue_t input_queue(10);
+	dragent::async_aggregator::queue_t output_queue(10);
 
 	dragent::async_aggregator aggregator(input_queue,
 										 output_queue,
@@ -415,8 +415,8 @@ void wait_aggr(dragent::async_aggregator& aggr, uint32_t count)
 TEST(async_aggregator, flush_interval_zero)
 {
 	test_helpers::scoped_config<uint32_t> config("aggregator.samples_between_flush", 5);
-	blocking_queue<std::shared_ptr<flush_data_message>> input_queue(10);
-	blocking_queue<std::shared_ptr<flush_data_message>> output_queue(10);
+	dragent::async_aggregator::queue_t input_queue(10);
+	dragent::async_aggregator::queue_t output_queue(10);
 
 	dragent::async_aggregator aggregator(input_queue,
 										 output_queue,

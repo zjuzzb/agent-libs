@@ -1,7 +1,6 @@
 #include "dragent.h"
 #include "avoid_block_channel.h"
 #include "async_aggregator.h"
-#include "blocking_queue.h"
 #include "capture_job_handler.h"
 #include "common_logger.h"
 #include "configuration.h"

@@ -11,7 +11,6 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
-#include "blocking_queue.h"
 #include "protocol.h"
 #include "type_config.h"
 #include "uncompressed_sample_handler.h"
