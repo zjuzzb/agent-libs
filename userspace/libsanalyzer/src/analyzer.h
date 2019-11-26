@@ -854,9 +854,9 @@ public:
 	/**
 	 * Accessor for metrics
 	 */
-	const draiosproto::metrics* metrics()
+	const draiosproto::metrics* metrics() const
 	{
-		return m_metrics;
+		return m_metrics.get();
 	}
 
 	/**
@@ -1086,7 +1086,7 @@ VISIBILITY_PRIVATE
 	//
 	// This is the protobuf class that we use to pack things
 	//
-	draiosproto::metrics* m_metrics;
+	std::unique_ptr<draiosproto::metrics> m_metrics;
 
 	//
 	// Checking Docker swarm state every 10 seconds

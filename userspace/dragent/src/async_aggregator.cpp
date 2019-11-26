@@ -8,6 +8,7 @@
 #define __STDC_FORMAT_MACROS
 #include "async_aggregator.h"
 #include "analyzer_flush_message.h"
+#include "analyzer_utils.h" // make_unique
 #include "dragent_message_queues.h"
 #include "type_config.h"
 #include "configuration_manager.h"
@@ -47,7 +48,7 @@ async_aggregator::async_aggregator(flush_queue& input_queue,
 {
 	m_aggregator = new metrics_message_aggregator_impl(m_builder);
 	m_aggregated_data = std::make_shared<flush_data_message>(
-	    0, nullptr, *(new draiosproto::metrics()), 0, 0, 0, 0, 0);
+	    0, nullptr, make_unique<draiosproto::metrics>(), 0, 0, 0, 0, 0);
 }
 
 void aggregator_limits::cache_limits(const draiosproto::aggregation_context& context)
@@ -240,7 +241,7 @@ void async_aggregator::do_run()
 			    "Decreased aggregation interval. Discarding previously aggregated data.");
 			m_aggregator->reset();
 			m_aggregated_data = std::make_shared<flush_data_message>(
-			    0, nullptr, *(new draiosproto::metrics()), 0, 0, 0, 0, 0);
+			    0, nullptr, make_unique<draiosproto::metrics>(), 0, 0, 0, 0, 0);
 			m_count_since_flush = 0;
 		}
 
@@ -279,7 +280,7 @@ void async_aggregator::do_run()
 					g_logger.format(sinsp_logger::SEV_WARNING, "Queue full, discarding sample");
 				}
 				m_aggregated_data = std::make_shared<flush_data_message>(
-				    0, nullptr, *(new draiosproto::metrics()), 0, 0, 0, 0, 0);
+				    0, nullptr, make_unique<draiosproto::metrics>(), 0, 0, 0, 0, 0);
 				m_count_since_flush = 0;
 			}
 		}

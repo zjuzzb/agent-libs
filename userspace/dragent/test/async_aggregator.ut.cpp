@@ -1,4 +1,5 @@
 #include "async_aggregator.h"
+#include "analyzer_utils.h" // make_unique
 #include "scoped_config.h"
 #include "watchdog_runnable_pool.h"
 #include "draios.pb.h"
@@ -43,7 +44,7 @@ TEST(async_aggregator, single)
 	input_queue.put(std::make_shared<flush_data_message>(
 		timestamp,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5
 	)); // random numbers since we don't propagate those fields
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
@@ -93,7 +94,7 @@ TEST(async_aggregator, multiple)
 	input_queue.put(std::make_shared<flush_data_message>(
 		timestamp,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5
 	)); // random numbers since we don't propagate those fields
 
@@ -101,7 +102,7 @@ TEST(async_aggregator, multiple)
 	input_queue.put(std::make_shared<flush_data_message>(
 		timestamp + 1,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5
 	)); // random numbers since we don't propagate those fields
 
@@ -154,7 +155,7 @@ TEST(async_aggregator, followup_aggregation)
 	input_queue.put(std::make_shared<flush_data_message>(
 		timestamp,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5
 	)); // random numbers since we don't propagate those fields
 
@@ -162,7 +163,7 @@ TEST(async_aggregator, followup_aggregation)
 	input_queue.put(std::make_shared<flush_data_message>(
 		timestamp + 1,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5
 	)); // random numbers since we don't propagate those fields
 
@@ -233,7 +234,7 @@ TEST(async_aggregator, limiter)
 	input_queue.put(std::make_shared<flush_data_message>(
 		timestamp,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5
 	)); // random numbers since we don't propagate those fields
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
@@ -366,7 +367,7 @@ TEST(async_aggregator, substitutions)
 	input_queue.put(std::make_shared<flush_data_message>(
 		timestamp,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5
 	)); // random numbers since we don't propagate those fields
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
@@ -440,7 +441,7 @@ TEST(async_aggregator, flush_interval_zero)
 	input_queue.put(std::make_shared<flush_data_message>(
 		1,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
 	{
@@ -460,7 +461,7 @@ TEST(async_aggregator, flush_interval_zero)
 	input_queue.put(std::make_shared<flush_data_message>(
 		1,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	wait_aggr(aggregator, 1);
 	aggregator.set_aggregation_interval(0);
@@ -468,7 +469,7 @@ TEST(async_aggregator, flush_interval_zero)
 	input_queue.put(std::make_shared<flush_data_message>(
 		1,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
 	{
@@ -487,13 +488,13 @@ TEST(async_aggregator, flush_interval_zero)
 	input_queue.put(std::make_shared<flush_data_message>(
 		1,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	input.set_sampling_ratio(5);
 	input_queue.put(std::make_shared<flush_data_message>(
 		1,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
 	{
@@ -511,7 +512,7 @@ TEST(async_aggregator, flush_interval_zero)
 	input_queue.put(std::make_shared<flush_data_message>(
 		1,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	wait_aggr(aggregator, 1);
 	aggregator.set_aggregation_interval(3);
@@ -519,13 +520,13 @@ TEST(async_aggregator, flush_interval_zero)
 	input_queue.put(std::make_shared<flush_data_message>(
 		1,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	input.set_sampling_ratio(8);
 	input_queue.put(std::make_shared<flush_data_message>(
 		1,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
 	{
@@ -543,13 +544,13 @@ TEST(async_aggregator, flush_interval_zero)
 	input_queue.put(std::make_shared<flush_data_message>(
 		1,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	input.set_sampling_ratio(7);
 	input_queue.put(std::make_shared<flush_data_message>(
 		1,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	wait_aggr(aggregator, 2);
 	aggregator.set_aggregation_interval(2);
@@ -557,13 +558,13 @@ TEST(async_aggregator, flush_interval_zero)
 	input_queue.put(std::make_shared<flush_data_message>(
 		1,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	input.set_sampling_ratio(9);
 	input_queue.put(std::make_shared<flush_data_message>(
 		1,
 		&sent_metrics,
-		input,
+		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
 	{

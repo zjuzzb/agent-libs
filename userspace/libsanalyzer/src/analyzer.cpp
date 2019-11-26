@@ -154,6 +154,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
                                sinsp_analyzer::flush_queue* flush_queue):
 	m_configuration(new sinsp_configuration()),
 	m_inspector(inspector),
+	m_metrics(make_unique<draiosproto::metrics>()),
 #ifndef CYGWING_AGENT
 	m_coclient(root_dir),
 #endif
@@ -184,7 +185,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_flush_log_time_end = 0;
 	m_flush_log_time_restart = 0;
 
-	m_metrics = new draiosproto::metrics;
 	m_prev_sample_evtnum = 0;
 	m_client_tr_time_by_servers = 0;
 
@@ -277,7 +277,6 @@ sinsp_analyzer::~sinsp_analyzer()
 		utils::profiler::stop();
 	}
 
-	delete m_metrics;
 	delete m_score_calculator;
 	delete m_procfs_parser;
 	delete m_sched_analyzer2;
@@ -3946,7 +3945,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			//
 			// Reset the protobuffer
 			//
-			m_metrics->Clear();
+			m_metrics = make_unique<draiosproto::metrics>();
 
 			if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_capture())
 			{
@@ -4228,7 +4227,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			//
 			if(m_configuration->get_commandlines_capture_enabled())
 			{
-				emit_executed_commands(m_metrics, NULL, &(m_executed_commands[""]));
+				emit_executed_commands(m_metrics.get(), NULL, &(m_executed_commands[""]));
 			}
 
 			//
@@ -4310,8 +4309,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			}
 
 			tracer_emitter misc_trc("misc_emit", f_trc);
-			m_fd_listener->m_files_stat.emit(m_metrics, m_top_files_per_host);
-			m_fd_listener->m_devs_stat.emit(m_metrics, m_device_map, m_top_file_devices_per_host);
+			m_fd_listener->m_files_stat.emit(m_metrics.get(), m_top_files_per_host);
+			m_fd_listener->m_devs_stat.emit(m_metrics.get(), m_device_map, m_top_file_devices_per_host);
 
 			m_fd_listener->m_files_stat.clear();
 			m_fd_listener->m_devs_stat.clear();
@@ -4783,7 +4782,7 @@ void sinsp_analyzer::flush_done_handler(const sinsp_evt* evt)
 	m_flush_queue->put(std::make_shared<flush_data_message>(
 	                        ts,
 	                        &m_sent_metrics,
-	                        *m_metrics,
+	                        std::move(m_metrics),
 							nevts,
 							num_drop_events,
 							m_my_cpuload,

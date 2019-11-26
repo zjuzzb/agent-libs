@@ -35,12 +35,15 @@ TEST(analyzer_test, end_to_end_basic)
 	                        &g_queue);
 	run_sinsp_with_analyzer(*inspector, analyzer);
 
-	draiosproto::metrics metrics = *analyzer.metrics();
+	std::shared_ptr<flush_data_message> last_flush;
+	while (g_queue.get(&last_flush, 0));
 
- 	ASSERT_EQ(1, metrics.programs_size());
-	ASSERT_EQ(2, metrics.programs(0).pids_size());
-	ASSERT_EQ(55, metrics.programs(0).pids(0));
-	ASSERT_EQ(75, metrics.programs(0).pids(1));
+	std::shared_ptr<draiosproto::metrics> metrics = last_flush->m_metrics;
+
+	ASSERT_EQ(1, metrics->programs_size());
+	ASSERT_EQ(2, metrics->programs(0).pids_size());
+	ASSERT_EQ(55, metrics->programs(0).pids(0));
+	ASSERT_EQ(75, metrics->programs(0).pids(1));
 
 	// For legacy reasons, the inspector must be deleted before the
 	// analyzer.
@@ -77,11 +80,6 @@ public:
 	static void coalesce(sinsp_analyzer& analyzer, std::vector<std::string>& emitted)
 	{
 		analyzer.coalesce_unemitted_stats(emitted);
-	}
-
-	static draiosproto::metrics* get_metrics(sinsp_analyzer& analyzer)
-	{
-		return analyzer.m_metrics;
 	}
 
 	static void set_proc_count(sinsp_analyzer& analyzer,
@@ -139,7 +137,7 @@ TEST(analyzer_test, coalesce_containers_null)
 
 	// coalesce. should crash if broken
 	test_helper::coalesce(analyzer, emitted_containers);
-	EXPECT_EQ(1, test_helper::get_metrics(analyzer)->unreported_counters().names().size());
+	EXPECT_EQ(1, analyzer.metrics()->unreported_counters().names().size());
 }
 
 TEST(analyzer_test, coalesce_containers_test)
@@ -253,24 +251,24 @@ TEST(analyzer_test, coalesce_containers_test)
 	test_helper::coalesce(analyzer, emitted_containers);
 
 	// check that stats are correct in protobuf
-	EXPECT_EQ(2, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().connection_queue_usage_pct());
-	EXPECT_EQ(5, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().fd_usage_pct());
-	EXPECT_EQ(700, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().cpu_pct());
-	EXPECT_EQ(9, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().resident_memory_usage_kb());
-	EXPECT_EQ(11, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().swap_memory_usage_kb());
-	EXPECT_EQ(13, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().major_pagefaults());
-	EXPECT_EQ(15, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().minor_pagefaults());
-	EXPECT_EQ(17, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().fd_count());
-	EXPECT_EQ(19, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().cpu_shares());
-	EXPECT_EQ(21, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().memory_limit_kb());
-	EXPECT_EQ(23, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().swap_limit_kb());
-	EXPECT_EQ(27, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().count_processes());
-	EXPECT_EQ(29, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().proc_start_count());
-	EXPECT_EQ(31, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().threads_count());
-	EXPECT_EQ(33, test_helper::get_metrics(analyzer)->unreported_counters().resource_counters().syscall_count());
+	EXPECT_EQ(2, analyzer.metrics()->unreported_counters().resource_counters().connection_queue_usage_pct());
+	EXPECT_EQ(5, analyzer.metrics()->unreported_counters().resource_counters().fd_usage_pct());
+	EXPECT_EQ(700, analyzer.metrics()->unreported_counters().resource_counters().cpu_pct());
+	EXPECT_EQ(9, analyzer.metrics()->unreported_counters().resource_counters().resident_memory_usage_kb());
+	EXPECT_EQ(11, analyzer.metrics()->unreported_counters().resource_counters().swap_memory_usage_kb());
+	EXPECT_EQ(13, analyzer.metrics()->unreported_counters().resource_counters().major_pagefaults());
+	EXPECT_EQ(15, analyzer.metrics()->unreported_counters().resource_counters().minor_pagefaults());
+	EXPECT_EQ(17, analyzer.metrics()->unreported_counters().resource_counters().fd_count());
+	EXPECT_EQ(19, analyzer.metrics()->unreported_counters().resource_counters().cpu_shares());
+	EXPECT_EQ(21, analyzer.metrics()->unreported_counters().resource_counters().memory_limit_kb());
+	EXPECT_EQ(23, analyzer.metrics()->unreported_counters().resource_counters().swap_limit_kb());
+	EXPECT_EQ(27, analyzer.metrics()->unreported_counters().resource_counters().count_processes());
+	EXPECT_EQ(29, analyzer.metrics()->unreported_counters().resource_counters().proc_start_count());
+	EXPECT_EQ(31, analyzer.metrics()->unreported_counters().resource_counters().threads_count());
+	EXPECT_EQ(33, analyzer.metrics()->unreported_counters().resource_counters().syscall_count());
 
 	// check that we added the names
-	EXPECT_EQ(2, test_helper::get_metrics(analyzer)->unreported_counters().names().size());
+	EXPECT_EQ(2, analyzer.metrics()->unreported_counters().names().size());
 
 	// check that we cleared the containers
 	EXPECT_EQ(test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_connection_queue_usage_pct, 0);

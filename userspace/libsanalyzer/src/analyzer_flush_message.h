@@ -24,7 +24,7 @@ struct flush_data_message
 	                   std::atomic<bool>* metrics_sent, // this is only used to set
 					   									// to true the first time we send
 														// data.
-	                   const draiosproto::metrics& metrics,
+	                   std::unique_ptr<draiosproto::metrics> metrics,
 					   // following metrics only used by metrics_file_emitter
 					   // which probably shouldn't be in this path anyway
 					   uint64_t nevts,
@@ -34,7 +34,7 @@ struct flush_data_message
 					   uint64_t n_tids_suppressed) :
 	    m_ts(ts),
 	    m_metrics_sent(metrics_sent),
-	    m_metrics(std::make_shared<draiosproto::metrics>(metrics)),
+	    m_metrics(std::move(metrics)),
 		m_nevts(nevts),
 		m_num_drop_events(num_drop_events),
 		m_my_cpuload(my_cpuload),

@@ -235,7 +235,6 @@ TEST(protobuf_metric_serializer_test, serialize)
 	std::atomic<uint64_t> prev_flushes_duration_ns(INITIAL_PREV_FLUSH_DURATION_NS);
 	std::atomic<bool> metrics_sent(false);
 	const double CPU_LOAD = 0.12;
-	draiosproto::metrics metrics;
 
 	metric_serializer::c_metrics_dir.set(temp_dir.get_directory());
 
@@ -255,7 +254,7 @@ TEST(protobuf_metric_serializer_test, serialize)
 	s->serialize(std::make_shared<flush_data_message>(
 				TIMESTAMP,
 				&metrics_sent,
-				metrics,
+				make_unique<draiosproto::metrics>(),
 				precanned_capture_stats_source::DEFAULT_EVTS,
 				precanned_capture_stats_source::DEFAULT_DROPS,
 				CPU_LOAD,
@@ -336,7 +335,6 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	std::atomic<uint64_t> prev_flushes_duration_ns(INITIAL_PREV_FLUSH_DURATION_NS);
 	std::atomic<bool> metrics_sent(false);
 	const double CPU_LOAD = 0.12;
-	draiosproto::metrics metrics;
 
 	// Update the configuration so that the serializer will emit the
 	// metrics to file.  Use the configuration object mainly to get
@@ -357,7 +355,7 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	s->serialize(std::make_shared<flush_data_message>(
 				TIMESTAMP,
 				&metrics_sent,
-				metrics,
+				make_unique<draiosproto::metrics>(),
 				precanned_capture_stats_source::DEFAULT_EVTS,
 				precanned_capture_stats_source::DEFAULT_DROPS,
 				CPU_LOAD,
@@ -367,7 +365,7 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	s->serialize(std::make_shared<flush_data_message>(
 				TIMESTAMP * 2, // make timestamp bigger
 				&metrics_sent,
-				metrics,
+				make_unique<draiosproto::metrics>(),
 				precanned_capture_stats_source::DEFAULT_EVTS,
 				precanned_capture_stats_source::DEFAULT_DROPS,
 				CPU_LOAD,
