@@ -1895,6 +1895,7 @@ message falco_baseline {
 //
 message metrics {
     required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    optional uint64 index = 43;       // The message index; increases by 1 each message
 
     required string machine_id = 2; // The unique ID of the machine that is sending this data
     repeated string machine_ids = 23; //machine IDs aggregated for this group
