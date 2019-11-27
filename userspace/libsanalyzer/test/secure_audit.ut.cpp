@@ -20,7 +20,8 @@ const uint64_t DEFAULT_FREQUENCY = 10000000000; // 10s (ns)
 const std::vector<std::string> exe = {"cat", "ls", "ps", "df", "ll"};
 
 audit_tap_handler_dummy g_audit_handler;
-null_secure_audit_handler g_secure_handler;
+null_secure_audit_handler g_secure_audit_handler;
+null_secure_profiling_handler g_secure_profiling_handler;
 sinsp_analyzer::flush_queue g_queue(1000);
 
 // dummy implementation used for testing
@@ -1538,7 +1539,8 @@ TEST(secure_audit_test, k8s_audit_base)
 				"/" /*root dir*/,
 				int_metrics,
 				g_audit_handler,
-				g_secure_handler,
+				g_secure_audit_handler,
+				g_secure_profiling_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 	inspector->register_external_event_processor(analyzer);

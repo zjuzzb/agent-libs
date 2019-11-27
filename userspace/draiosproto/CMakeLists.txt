@@ -7,8 +7,6 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION}) # for boost for type_config
 
 
-
-
 if(NOT CYGWIN)
 	add_library(draiosproto STATIC
 		${CMAKE_CURRENT_BINARY_DIR}/aggregator_overrides.cpp
@@ -19,6 +17,7 @@ if(NOT CYGWIN)
 		${CMAKE_CURRENT_BINARY_DIR}/handshake.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/tap.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/secure.pb.cc
+		${CMAKE_CURRENT_BINARY_DIR}/profiling.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/promex.pb.cc
@@ -172,6 +171,14 @@ add_custom_command(
 		COMMENT "Building secure cpp sources from .proto files"
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/secure.proto
 		COMMAND ${PROTOC_CMDLINE} --cpp_out=. ${CMAKE_CURRENT_SOURCE_DIR}/secure.proto
+		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+add_custom_command(
+		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/profiling.pb.cc
+		${CMAKE_CURRENT_BINARY_DIR}/profiling.pb.h
+		COMMENT "Building profiling cpp sources from .proto files"
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/profiling.proto
+		COMMAND ${PROTOC_CMDLINE} --cpp_out=. ${CMAKE_CURRENT_SOURCE_DIR}/profiling.proto
 		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/promex.pb.cc

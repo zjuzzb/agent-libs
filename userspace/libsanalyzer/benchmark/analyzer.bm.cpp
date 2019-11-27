@@ -9,7 +9,8 @@ namespace
 {
 sinsp_analyzer::flush_queue g_queue(2000);
 audit_tap_handler_dummy g_audit_handler;
-null_secure_audit_handler g_secure_handler;
+null_secure_audit_handler g_secure_audit_handler;
+null_secure_profiling_handler g_secure_profiling_handler;
 }
 
 void one_hundred_thousand_reads(benchmark::State& state)
@@ -26,7 +27,8 @@ void one_hundred_thousand_reads(benchmark::State& state)
 		                        "/" /*root dir*/,
 		                        int_metrics,
 		                        g_audit_handler,
-		                        g_secure_handler,
+		                        g_secure_audit_handler,
+		                        g_secure_profiling_handler,
 		                        &g_queue);
 
 		run_sinsp_with_analyzer(*inspector, analyzer);

@@ -69,7 +69,8 @@ public:
 namespace
 {
 audit_tap_handler_dummy g_audit_handler;
-null_secure_audit_handler g_secure_handler;
+null_secure_audit_handler g_secure_audit_handler;
+null_secure_profiling_handler g_secure_profiling_handler;
 sinsp_analyzer::flush_queue g_queue(1000);
 }
 
@@ -443,8 +444,13 @@ int main(int argc, char** argv)
 	{
 		g_inspector = new sinsp();
 		internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-		g_analyzer = new sinsp_analyzer(
-		    g_inspector, "/opt/draios", int_metrics, g_audit_handler, g_secure_handler, &g_queue);
+		g_analyzer = new sinsp_analyzer(g_inspector,
+						"/opt/draios",
+						int_metrics,
+						g_audit_handler,
+						g_secure_audit_handler,
+						g_secure_profiling_handler,
+						&g_queue);
 
 		//
 		// Parse the args

@@ -1283,6 +1283,7 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	                                              m_internal_metrics,
 	                                              m_protocol_handler,
 	                                              m_protocol_handler,
+	                                              m_protocol_handler,
 	                                              &flush_queue,
 	                                              the_metric_limits,
 	                                              the_label_limits,
@@ -1465,6 +1466,8 @@ sinsp_analyzer* dragent_app::build_analyzer(
 		    m_configuration.m_falco_baselining_autodisable_interval_ns);
 		sconfig->set_falco_baselining_max_drops_buffer_rate_percentage(
 		    m_configuration.m_falco_baselining_max_drops_buffer_rate_percentage);
+
+		analyzer->enable_secure_profiling();
 
 		// The baseliner is automatically disabled when we
 		// start dropping events. In order to collect

@@ -47,6 +47,7 @@
 #include "thread_safe_container/blocking_queue.h"
 #include "secure_audit_internal_metrics.h"
 #include "secure_audit_data_ready_handler.h"
+#include "baseliner.h"
 #include <nlohmann/json.hpp>
 #include "include/sinsp_external_processor.h"
 
@@ -243,6 +244,7 @@ private:
 //
 class SINSP_PUBLIC sinsp_analyzer :
 	public secure_audit_data_ready_handler,
+	public secure_profiling_data_ready_handler,
 	public secure_audit_internal_metrics,
 	public libsinsp::event_processor
 {
@@ -262,7 +264,8 @@ public:
 	               std::string root_dir,
 	               const internal_metrics::sptr_t& internal_metrics,
 	               audit_tap_handler& tap_handler,
-	               secure_audit_handler& secure_handler,
+	               secure_audit_handler& secure_audit_handler,
+	               secure_profiling_handler& secure_profiling_handler,
 	               flush_queue* flush_queue,
 	               const metric_limits::sptr_t& the_metric_limits = nullptr,
 	               const label_limits::sptr_t& the_label_limits = nullptr,
@@ -638,6 +641,12 @@ public:
 						      std::vector<std::string>& k8s_active_filters,
 						      std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters);
 
+
+	void enable_secure_profiling();
+	bool secure_profiling_enabled() const {
+		return m_falco_baseliner != nullptr;
+	}
+
 	/**
 	 * Dump the infrastructure state to a file in the log directory.
 	 */
@@ -953,6 +962,9 @@ VISIBILITY_PRIVATE
 	void reset_mesos(const std::string& errmsg = "");
 	void emit_docker_events();
 	void emit_containerd_events();
+
+	void secure_profiling_data_ready(uint64_t ts,
+					 const secure::profiling::fingerprint* secure_profiling_fingerprints) override;
 	void emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter &f_trc);
 
 	// set m_my_cpuload to the main thread's cpu usage in percent (100 == one whole cpu)
@@ -1359,6 +1371,7 @@ VISIBILITY_PRIVATE
 
 	audit_tap_handler& m_audit_tap_handler;
 	secure_audit_handler& m_secure_audit_handler;
+	secure_profiling_handler& m_secure_profiling_handler;
 
 	process_manager m_process_manager;
 

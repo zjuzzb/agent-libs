@@ -112,7 +112,8 @@ private:
 namespace {
 sinsp_analyzer::flush_queue g_queue(1000);
 audit_tap_handler_dummy g_audit_handler;
-null_secure_audit_handler g_secure_handler;
+null_secure_audit_handler g_secure_audit_handler;
+null_secure_profiling_handler g_secure_profiling_handler;
 }
 
 class baseliner_test : public testing::Test
@@ -148,7 +149,8 @@ protected:
 		                                "/opt/draios",
 		                                int_metrics,
 		                                g_audit_handler,
-		                                g_secure_handler,
+		                                g_secure_audit_handler,
+		                                g_secure_profiling_handler,
 		                                &g_queue);
 		m_inspector->register_external_event_processor(*m_analyzer);
 
@@ -220,8 +222,8 @@ TEST_F(baseliner_test, nofd_ops)
 
 	sleep(1);
 	
-	draiosproto::falco_baseline result;
-	m_baseliner->serialize_protobuf(&result);
+	secure::profiling::fingerprint result;
+	m_baseliner->serialize_protobuf();
 
 	std::set<std::string> expected_files = {
 		"/tmp/test_baseliner_nofd_ops/file"

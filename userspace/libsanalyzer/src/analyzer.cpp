@@ -150,7 +150,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
                                std::string root_dir,
                                const internal_metrics::sptr_t& internal_metrics,
                                audit_tap_handler& tap_handler,
-                               secure_audit_handler& secure_handler,
+                               secure_audit_handler& secure_audit_handler,
+                               secure_profiling_handler& secure_profiling_handler,
                                sinsp_analyzer::flush_queue* flush_queue,
                                const metric_limits::sptr_t& the_metric_limits,
                                const label_limits::sptr_t& the_label_limits,
@@ -170,7 +171,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_metric_limits(the_metric_limits),
 	m_label_limits(the_label_limits),
 	m_audit_tap_handler(tap_handler),
-	m_secure_audit_handler(secure_handler),
+	m_secure_audit_handler(secure_audit_handler),
+	m_secure_profiling_handler(secure_profiling_handler),
 	m_metrics_dir_mutex(),
 	m_metrics_dir(""),
 	m_flush_queue(flush_queue)
@@ -3753,6 +3755,11 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 	}
 }
 
+void sinsp_analyzer::secure_profiling_data_ready(const uint64_t ts, const secure::profiling::fingerprint* const secure_profiling_fingerprint)
+{
+	m_secure_profiling_handler.secure_profiling_data_ready(ts, secure_profiling_fingerprint);
+}
+
 void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter &f_trc)
 {
 	//
@@ -3769,13 +3776,13 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 			//
 			// Make sure to push a baseline when reading from file and we reached EOF
 			//
-			m_falco_baseliner->emit_as_protobuf(0, m_metrics->mutable_falcobl());
+			m_falco_baseliner->emit_as_protobuf(0);
 		}
 		else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > m_configuration->get_falco_baselining_report_interval_ns())
 		{
 			if(m_last_falco_dump_ts != 0)
 			{
-				m_falco_baseliner->emit_as_protobuf(evt->get_ts(), m_metrics->mutable_falcobl());
+				m_falco_baseliner->emit_as_protobuf(evt->get_ts());
 			}
 
 			m_last_falco_dump_ts = evt->get_ts();
@@ -4515,8 +4522,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 				}
 			}
 
-			emit_baseline(evt, is_eof, f_trc);
-
 			// Secure Audit - Emit and Flush
 			if(m_secure_audit && m_sent_metrics &&
 			   flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -4529,6 +4534,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 				m_internal_metrics->set_secure_audit_emit_ms(emit_time_ms);
 
 				m_secure_audit->flush(ts);
+			}
+
+			// Secure Profiling - Emit and Flush
+			if(m_falco_baseliner->is_baseline_calculation_enabled())
+			{
+				emit_baseline(evt, is_eof, f_trc);
 			}
 
 			//
@@ -7242,6 +7253,11 @@ void sinsp_analyzer::enable_secure_audit()
 	m_secure_audit = std::make_shared<secure_audit>();
 	m_secure_audit->set_data_handler(this);
 	m_secure_audit->set_internal_metrics(this);
+}
+
+void sinsp_analyzer::enable_secure_profiling()
+{
+	m_falco_baseliner->set_data_handler(this);
 }
 
 void sinsp_analyzer::dump_infrastructure_state_on_next_flush()
