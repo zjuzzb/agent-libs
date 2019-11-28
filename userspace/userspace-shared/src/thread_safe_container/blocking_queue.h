@@ -89,7 +89,7 @@ bool blocking_queue<T>::get(T* item, uint64_t timeout_ms)
 				m_queues[j].pop();
 				if(item)
 				{
-					*item = p;
+					*item = std::move(p);
 				}
 				break;
 			}
