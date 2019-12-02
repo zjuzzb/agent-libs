@@ -84,7 +84,7 @@ public:
 
 	void load_single_event(const draiosproto::congroup_update_event &evt, bool overwrite = false);
 
-	bool find_tag(uid_t uid, std::string tag, std::string &value) const
+	bool find_tag(const uid_t& uid, const std::string& tag, std::string &value) const
 	{
 		std::unordered_set<uid_t> visited;
 		return find_tag(uid, tag, value, visited);
@@ -174,7 +174,7 @@ private:
 	bool find_parent_kind(const uid_t child_id, string kind, uid_t &found_id,
 		std::unordered_set<uid_t> &visited) const;
 
-	bool find_tag(uid_t uid, std::string tag, std::string &value, std::unordered_set<uid_t> &visited) const;
+	bool find_tag(const uid_t& uid, const std::string& tag, std::string &value, std::unordered_set<uid_t> &visited) const;
 	int find_tag_list(uid_t uid, std::unordered_set<string> &tags_set, std::unordered_map<string,string> &labels, std::unordered_set<uid_t> &visited) const;
 	bool walk_and_match(draiosproto::container_group *congroup,
 			    scope_predicates &preds,

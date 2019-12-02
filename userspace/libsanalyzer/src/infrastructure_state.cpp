@@ -680,7 +680,7 @@ bool infrastructure_state::add(uid_t key)
 	return true;
 }
 
-bool infrastructure_state::find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited) const
+bool infrastructure_state::find_tag(const uid_t& uid, const string& tag, string &value, std::unordered_set<uid_t> &visited) const
 {
 	if (!has(uid) || (visited.find(uid) != visited.end())) {
 		return false;
