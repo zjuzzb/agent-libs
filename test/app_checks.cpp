@@ -199,7 +199,7 @@ TEST_F(app_checks_proxy_f, limits)
 	auto app = proc->mutable_protos()->mutable_app();
 	auto app_checks_data = metrics[805].begin()->second;
 
-	uint16_t app_checks_limit = 0;
+	unsigned int app_checks_limit = 0;
 	ASSERT_EQ(31U, app_checks_data.metrics().size());
 	ASSERT_EQ(0, app->metrics().size());
 	do

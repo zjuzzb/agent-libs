@@ -230,7 +230,7 @@ public:
 	// metric is either an draiosproto::app_metric or prometheus_metric
 	// since they largely support the same types, but are different classes
 	template<typename metric>
-	unsigned to_protobuf(metric *proto, uint16_t& limit, uint16_t max_limit) const;
+	unsigned to_protobuf(metric *proto, unsigned int& limit, unsigned int max_limit) const;
 
 	const std::string& name() const
 	{
