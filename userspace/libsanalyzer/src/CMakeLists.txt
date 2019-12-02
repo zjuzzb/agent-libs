@@ -182,7 +182,7 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel_api.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cyclewriter.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/container_engine.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/container_engine_base.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/docker_common.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_info.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dns_manager.cpp
