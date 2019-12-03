@@ -34,16 +34,17 @@ protected:
 
 	void use_json(const char *json)
 	{
+		const std::string header{0x00, 0x00, 0x00, 0x00};
+		std::string jsondata;
 		std::string resource("resources/");
 		resource += json;
 		std::ifstream json_file(resource);
-		getline(json_file, m_jsondata);
-		m_inqueue->send(m_jsondata);
+		getline(json_file, jsondata);
+		m_inqueue->send(header + jsondata);
 	}
 
 	std::unique_ptr<posix_queue> m_inqueue;
 	std::unique_ptr<app_checks_proxy> app_checks;
-	std::string m_jsondata;
 };
 
 TEST_F(app_checks_proxy_f, read_ok)

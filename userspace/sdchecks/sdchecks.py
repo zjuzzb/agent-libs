@@ -13,6 +13,7 @@ import logging
 from datetime import datetime, timedelta
 import sys
 import signal
+import struct
 import ast
 import config
 import platform
@@ -500,17 +501,18 @@ class PosixQueue:
 
     def send(self, msg, compress_flag=False):
         try:
-            if compress_flag:
+            uncompressed_length = len(msg)
+            if uncompressed_length + 4 > self.MSGSIZE:
                 compressed_data = self.compress_msg(msg)
-                # Note: Support only 1 compressed segment today. If necessary, in the future, we can
-                # chop up extra large compressed data into multiple segments.
                 if len(compressed_data) > self.MSGSIZE:
                     logging.error("Compressed msg size %d > max msg size %d, cannot send", len(compressed_data), self.MSGSIZE)
                     return False
-                msg_dict = {"magic": "SDAGENT", "uncompressed_size": len(msg), "num_compressed_segments": 1}
-                msg_header = json.dumps(msg_dict)
-                self.queue.send(msg_header, timeout=0)
                 msg = compressed_data
+            else:
+                logging.debug("Message size %d < max msg size %d, sending without compression", uncompressed_length, self.MSGSIZE)
+                uncompressed_length = 0
+            msg = struct.pack('!i', uncompressed_length) + msg
+            logging.debug('Uncompressed length %d, actual length %d', uncompressed_length, len(msg))
             self.queue.send(msg, timeout=0)
             return True
         except posix_ipc.BusyError:

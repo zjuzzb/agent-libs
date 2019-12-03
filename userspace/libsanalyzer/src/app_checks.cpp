@@ -328,113 +328,75 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 	std::string msg;
 	try
 	{
-		if(c_sdagent_compression_enabled.get_value())
-		{
-			// read the header
-			uLongf uncompressed_size = 0;
-			uLongf num_compressed_segments = 0;
-			auto msg_header = m_inqueue.receive();
-			if(!msg_header.empty())
-			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks (compressed header): %lu bytes", msg_header.size());
-				// extract metadata from header
-				Json::Value msg_header_json;
-				if(m_json_reader.parse(msg_header, msg_header_json, false))
-				{
-					std::string magic;
-					if(msg_header_json.isMember("magic") &&
-						msg_header_json.isMember("uncompressed_size") &&
-						msg_header_json.isMember("num_compressed_segments"))
-					{
-						magic = msg_header_json["magic"].asString();
-						uncompressed_size = msg_header_json["uncompressed_size"].asUInt();
-						num_compressed_segments = msg_header_json["num_compressed_segments"].asUInt();
-						g_logger.format(sinsp_logger::SEV_DEBUG, "Header magic=%s, uncompressed_size=%lu, num_compressed_segments=%lu",
-								magic.c_str(), uncompressed_size, num_compressed_segments);
-					}
-					else
-					{
-						g_logger.format(sinsp_logger::SEV_ERROR, "Unable to parse json in header for compressed message");
-						return ret;
-					}
-					// validate metadata
-					if(magic != "SDAGENT")
-					{
-						g_logger.format(sinsp_logger::SEV_ERROR, "Invalid magic in header, expected SDAGENT, found %s", magic.c_str());
-						return ret;
-					}
-					if(num_compressed_segments != 1)
-					{
-						// We don't support more than 1 compressed segments
-						// Add support for multiple segments in the future, if required
-						g_logger.format(sinsp_logger::SEV_ERROR, "Invalid num_compressed_segments in header, expected 1, found %lu",
-								num_compressed_segments);
-						return ret;
-					}
+		uint32_t uncompressed_size = 0;
+		msg = m_inqueue.receive();
 
-				}
-			}
-			// process the compressed data segment(s)
-			// Note: Today, we support only 1 compressed segment
-			auto compressed_msg = m_inqueue.receive();
-			if(!compressed_msg.empty())
+		if(msg.empty())
+		{
+			return ret;
+		}
+
+		memcpy(&uncompressed_size, msg.c_str(), sizeof(uint32_t));
+		uncompressed_size = ntohl(uncompressed_size);
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Received %lu from sdchecks bytes, uncompressed length %u", msg.size(), uncompressed_size);
+
+		if (uncompressed_size > 0)
+		{
+			unsigned long u = uncompressed_size;
+			std::vector<Bytef> uncompressed_msg;
+			uncompressed_msg.reserve(u);
+			int res = uncompress(&(uncompressed_msg[0]), &u, (const Bytef*)(msg.c_str() + sizeof(uint32_t)), msg.size() - sizeof(uint32_t));
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Uncompressed to %lu bytes, res=%d", uncompressed_size, res);
+			if (res != Z_OK)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks (commpressed message): %lu bytes", compressed_msg.size());
-				// Allocate memory for the uncompressed data
-				// Note: reserve() throws std::length_error exception if storage allocation fails,
-				// which should be caught below
-				std::vector<Bytef> uncompressed_msg;
-				uncompressed_msg.reserve(uncompressed_size);
-				// Uncompress the message
-				int res = uncompress(&(uncompressed_msg[0]), &uncompressed_size, (const Bytef*)(compressed_msg.c_str()), compressed_msg.size());
-				if (res != Z_OK)
+				g_logger.format(sinsp_logger::SEV_ERROR, "uncompress error %d", res);
+				return ret;
+			}
+			msg = std::string(reinterpret_cast<char*>(&uncompressed_msg[0]), uncompressed_size);
+		}
+		else
+		{
+			msg = msg.substr(sizeof(uint32_t), std::string::npos);
+		}
+
+		if(msg.empty())
+		{
+			g_logger.format(sinsp_logger::SEV_WARNING, "Received an empty message from sdchecks", msg.size());
+			return ret;
+		}
+
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from sdchecks: %lu bytes", msg.size());
+		Json::Value response_obj;
+		if(m_json_reader.parse(msg, response_obj, false))
+		{
+			auto proc_metrics = [](Json::Value obj, app_check_data::check_type t, metric_limits::cref_sptr_t ml, metric_map_t &ret) {
+				for(const auto& process : obj)
 				{
-					g_logger.format(sinsp_logger::SEV_ERROR, "uncompress error %d", res);
-					return ret;
+					app_check_data data(process, ml);
+					// only add if there are metrics or services
+					if(data.metrics().size() || data.services().size() || data.total_metrics())
+					{
+						data.set_type(t);
+						ret[data.pid()][data.name()] = move(data);
+					}
 				}
-				msg = reinterpret_cast<char*>(&uncompressed_msg[0]);
-				msg.erase(uncompressed_size, std::string::npos);
+			};
+			if (response_obj.isMember("processes"))
+			{
+				auto resp_obj = response_obj["processes"];
+				proc_metrics(resp_obj, app_check_data::check_type::APPCHECK, ml, ret);
+			}
+			if (response_obj.isMember("prometheus"))
+			{
+				auto resp_obj = response_obj["prometheus"];
+				proc_metrics(resp_obj, app_check_data::check_type::PROMETHEUS, ml, ret);
 			}
 		}
 		else
 		{
-			msg = m_inqueue.receive();
-		}
-
-		if(!msg.empty())
-		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %lu bytes", msg.size());
-			Json::Value response_obj;
-			if(m_json_reader.parse(msg, response_obj, false))
-			{
-				auto proc_metrics = [](Json::Value obj, app_check_data::check_type t, metric_limits::cref_sptr_t ml, metric_map_t &ret) {
-					for(const auto& process : obj)
-					{
-						app_check_data data(process, ml);
-						// only add if there are metrics or services
-						if(data.metrics().size() || data.services().size() || data.total_metrics())
-						{
-							data.set_type(t);
-							ret[data.pid()][data.name()] = move(data);
-						}
-					}
-				};
-				if (response_obj.isMember("processes"))
-				{
-					auto resp_obj = response_obj["processes"];
-					proc_metrics(resp_obj, app_check_data::check_type::APPCHECK, ml, ret);
-				}
-				if (response_obj.isMember("prometheus"))
-				{
-					auto resp_obj = response_obj["prometheus"];
-					proc_metrics(resp_obj, app_check_data::check_type::PROMETHEUS, ml, ret);
-				}
-			}
-			else
-			{
-				g_logger.format(sinsp_logger::SEV_ERROR, "app_checks_proxy::read_metrics: JSON parsing error:");
-				g_logger.format(sinsp_logger::SEV_DEBUG, "%s", msg.c_str());
-			}
+			g_logger.format(sinsp_logger::SEV_ERROR, "app_checks_proxy::read_metrics: JSON parsing error:");
+			msg = std::string(start, len);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "%s", msg.c_str());
 		}
 	}
 	catch(std::exception& ex)
