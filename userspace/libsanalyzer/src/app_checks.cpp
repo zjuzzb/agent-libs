@@ -17,11 +17,6 @@ namespace
 
 COMMON_LOGGER();
 
-type_config<bool> c_sdagent_compression_enabled(
-		false,
-		"sdagent sends compressed metrics",
-		"app_checks_compress_data");
-
 }
 
 

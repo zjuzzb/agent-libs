@@ -499,7 +499,7 @@ class PosixQueue:
         self.queue.close()
         self.queue = None
 
-    def send(self, msg, compress_flag=False):
+    def send(self, msg):
         try:
             uncompressed_length = len(msg)
             if uncompressed_length + 4 > self.MSGSIZE:
@@ -646,8 +646,6 @@ class Application:
 
         self.last_request_pidnames = set()
         self.exclude_localhost_from_proxy()
-
-        self.compress_data_flag = self.config._yaml_config.get_single("app_checks_compress_data")
 
     @staticmethod
     def exclude_localhost_from_proxy():
@@ -826,7 +824,7 @@ class Application:
         response_s = json.dumps(response_body)
         logging.debug("Response size is %d", len(response_s))
         if self.outqueue:
-            self.outqueue.send(response_s, self.compress_data_flag)
+            self.outqueue.send(response_s)
 
     def main_loop(self):
         pid = os.getpid()
