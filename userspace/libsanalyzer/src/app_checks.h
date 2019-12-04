@@ -286,6 +286,9 @@ private:
 	posix_queue m_inqueue;
 	Json::Reader m_json_reader;
 	Json::FastWriter m_json_writer;
+
+	// the only one currently defined and the only one we support
+	static constexpr const uint8_t PROTOCOL_VERSION = 1;
 };
 
 #endif // _WIN32

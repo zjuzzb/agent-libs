@@ -34,7 +34,7 @@ protected:
 
 	void use_json(const char *json)
 	{
-		const std::string header{0x00, 0x00, 0x00, 0x00};
+		const std::string header{0x01, 0x00, 0x00, 0x00, 0x00};
 		std::string jsondata;
 		std::string resource("resources/");
 		resource += json;

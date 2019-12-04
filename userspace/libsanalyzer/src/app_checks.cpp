@@ -332,15 +332,22 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 			return ret;
 		}
 
-		// zero length might be a timeout, non-zero and < 4 is a bug
-		ASSERT(msg.size() >= sizeof(uint32_t));
+		uint8_t version = msg[0];
+		if(version != PROTOCOL_VERSION)
+		{
+			g_logger.format(sinsp_logger::SEV_ERROR, "Unsupported sdchecks response version %d", version);
+			return ret;
+		}
 
-		memcpy(&uncompressed_size, msg.c_str(), sizeof(uint32_t));
+		// zero length might be a timeout, non-zero and < 5 is a bug
+		ASSERT(msg.size() >= sizeof(uint32_t) + 1);
+
+		memcpy(&uncompressed_size, msg.c_str() + 1, sizeof(uint32_t));
 		uncompressed_size = ntohl(uncompressed_size);
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Received %lu from sdchecks bytes, uncompressed length %u", msg.size(), uncompressed_size);
 
-		const char* start = msg.c_str() + sizeof(uint32_t);
-		unsigned long len = msg.size() - sizeof(uint32_t);
+		const char* start = msg.c_str() + 1 + sizeof(uint32_t);
+		unsigned long len = msg.size() - 1 - sizeof(uint32_t);
 
 		if (uncompressed_size > 0)
 		{

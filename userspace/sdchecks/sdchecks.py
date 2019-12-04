@@ -480,6 +480,8 @@ class PosixQueue:
     MSGSIZE = 3 << 20
     MAXMSGS = 3
     MAXQUEUES = 10
+    PROTOCOL_VERSION = 1
+
     def __init__(self, name, direction, maxmsgs=MAXMSGS):
         self.direction = direction
         self.queue = posix_ipc.MessageQueue(name, os.O_CREAT, mode=0600,
@@ -502,7 +504,7 @@ class PosixQueue:
     def send(self, msg):
         try:
             uncompressed_length = len(msg)
-            if uncompressed_length + 4 > self.MSGSIZE:
+            if uncompressed_length + 5 > self.MSGSIZE:
                 compressed_data = self.compress_msg(msg)
                 if len(compressed_data) > self.MSGSIZE:
                     logging.error("Compressed msg size %d > max msg size %d, cannot send", len(compressed_data), self.MSGSIZE)
@@ -511,7 +513,7 @@ class PosixQueue:
             else:
                 logging.debug("Message size %d < max msg size %d, sending without compression", uncompressed_length, self.MSGSIZE)
                 uncompressed_length = 0
-            msg = struct.pack('!i', uncompressed_length) + msg
+            msg = struct.pack('!Bi', self.PROTOCOL_VERSION, uncompressed_length) + msg
             logging.debug('Uncompressed length %d, actual length %d', uncompressed_length, len(msg))
             self.queue.send(msg, timeout=0)
             return True
