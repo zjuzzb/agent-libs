@@ -346,6 +346,12 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 		uncompressed_size = ntohl(uncompressed_size);
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Received %lu from sdchecks bytes, uncompressed length %u", msg.size(), uncompressed_size);
 
+		if(msg.size() >= MAX_COMPRESSED_SIZE || uncompressed_size > MAX_UNCOMPRESSED_SIZE)
+		{
+			g_logger.format(sinsp_logger::SEV_ERROR, "sdchecks response too large (compressed %zu, uncompressed %u)", msg.size(), uncompressed_size);
+			return ret;
+		}
+
 		const char* start = msg.c_str() + 1 + sizeof(uint32_t);
 		unsigned long len = msg.size() - 1 - sizeof(uint32_t);
 

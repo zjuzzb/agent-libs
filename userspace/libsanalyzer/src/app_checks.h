@@ -289,6 +289,12 @@ private:
 
 	// the only one currently defined and the only one we support
 	static constexpr const uint8_t PROTOCOL_VERSION = 1;
+
+	// sanity checks, we could support up to 4 GB compressed/uncompressed
+	// size but that's rather excessive and probably indicates a bug
+	// MAXSIZE in sdchecks.py is 3 MB so in theory we never exceed this
+	static constexpr const size_t MAX_COMPRESSED_SIZE = 4UL << 20u;
+	static constexpr const size_t MAX_UNCOMPRESSED_SIZE = 100UL << 20u;
 };
 
 #endif // _WIN32
