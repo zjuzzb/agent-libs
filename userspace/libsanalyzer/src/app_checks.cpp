@@ -325,46 +325,49 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 	{
 		uint32_t uncompressed_size = 0;
 		msg = m_inqueue.receive();
+		std::vector<Bytef> uncompressed_msg;
 
 		if(msg.empty())
 		{
 			return ret;
 		}
 
+		// zero length might be a timeout, non-zero and < 4 is a bug
+		ASSERT(msg.size() >= sizeof(uint32_t));
+
 		memcpy(&uncompressed_size, msg.c_str(), sizeof(uint32_t));
 		uncompressed_size = ntohl(uncompressed_size);
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Received %lu from sdchecks bytes, uncompressed length %u", msg.size(), uncompressed_size);
 
+		const char* start = msg.c_str() + sizeof(uint32_t);
+		unsigned long len = msg.size() - sizeof(uint32_t);
+
 		if (uncompressed_size > 0)
 		{
 			unsigned long u = uncompressed_size;
-			std::vector<Bytef> uncompressed_msg;
 			uncompressed_msg.reserve(u);
-			int res = uncompress(&(uncompressed_msg[0]), &u, (const Bytef*)(msg.c_str() + sizeof(uint32_t)), msg.size() - sizeof(uint32_t));
+			int res = uncompress(&(uncompressed_msg[0]), &u, (const Bytef*)start, len);
 			g_logger.format(sinsp_logger::SEV_DEBUG, "Uncompressed to %lu bytes, res=%d", uncompressed_size, res);
 			if (res != Z_OK)
 			{
 				g_logger.format(sinsp_logger::SEV_ERROR, "uncompress error %d", res);
 				return ret;
 			}
-			msg = std::string(reinterpret_cast<char*>(&uncompressed_msg[0]), uncompressed_size);
-		}
-		else
-		{
-			msg = msg.substr(sizeof(uint32_t), std::string::npos);
+			start = reinterpret_cast<char*>(&uncompressed_msg[0]);
+			len = uncompressed_size;
 		}
 
-		if(msg.empty())
+		if(len == 0)
 		{
 			g_logger.format(sinsp_logger::SEV_WARNING, "Received an empty message from sdchecks", msg.size());
 			return ret;
 		}
 
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from sdchecks: %lu bytes", msg.size());
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from sdchecks: %lu bytes", len);
 		Json::Value response_obj;
-		if(m_json_reader.parse(msg, response_obj, false))
+		if(m_json_reader.parse(start, start+len, response_obj, false))
 		{
-			auto proc_metrics = [](Json::Value obj, app_check_data::check_type t, metric_limits::cref_sptr_t ml, metric_map_t &ret) {
+			auto proc_metrics = [](const Json::Value& obj, app_check_data::check_type t, metric_limits::cref_sptr_t ml, metric_map_t &ret) {
 				for(const auto& process : obj)
 				{
 					app_check_data data(process, ml);
@@ -378,12 +381,12 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 			};
 			if (response_obj.isMember("processes"))
 			{
-				auto resp_obj = response_obj["processes"];
+				const auto& resp_obj = response_obj["processes"];
 				proc_metrics(resp_obj, app_check_data::check_type::APPCHECK, ml, ret);
 			}
 			if (response_obj.isMember("prometheus"))
 			{
-				auto resp_obj = response_obj["prometheus"];
+				const auto& resp_obj = response_obj["prometheus"];
 				proc_metrics(resp_obj, app_check_data::check_type::PROMETHEUS, ml, ret);
 			}
 		}
