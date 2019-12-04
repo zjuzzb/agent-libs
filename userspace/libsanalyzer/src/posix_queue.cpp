@@ -75,41 +75,40 @@ bool posix_queue::send(const std::string &msg)
 
 std::string posix_queue::receive(uint64_t timeout_s)
 {
-	if(m_queue_d)
+	if(!m_queue_d)
 	{
-		struct timespec ts = {0};
-		uint64_t now = sinsp_utils::get_current_time_ns();
-		ts.tv_sec = now / ONE_SECOND_IN_NS + timeout_s;
-		unsigned int prio = 0;
-		auto res = mq_timedreceive(m_queue_d, m_readbuffer, MAX_MSGSIZE, &prio, &ts);
-		if(res >= 0)
-		{
-			return std::string(m_readbuffer, res);
-		} else if (errno == ETIMEDOUT || errno == EINTR) {
-			return "";
-		} else {
-			g_logger.format(sinsp_logger::SEV_ERROR, "Unexpected error on posix queue receive: %s", strerror(errno));
-			if(timeout_s > 0)
-			{
-				// At this point the application may go to infinite loop if it relies
-				// on the timeout provided, eg:
-				// while(true)
-				// {
-				//   auto msg = receive(1)
-				//   do stuff...
-				// }
-				// in this case is better to crash
-				// otherwise if timeout=0 like our dragent. let's keep it running
-				// as posix queue healthness is not vital
-				throw sinsp_exception("Unexpected error on posix queue receive");
-			}
-			return "";
-		}
+		g_logger.log("Error: posix_queue[" + m_name + "]: cannot receive (no queue)", sinsp_logger::SEV_ERROR);
+		return "";
 	}
 
-	g_logger.log("Error: posix_queue[" + m_name + "]: cannot receive (no queue)", sinsp_logger::SEV_ERROR);
-	return "";
-
+	struct timespec ts = {0};
+	uint64_t now = sinsp_utils::get_current_time_ns();
+	ts.tv_sec = now / ONE_SECOND_IN_NS + timeout_s;
+	unsigned int prio = 0;
+	auto res = mq_timedreceive(m_queue_d, m_readbuffer, MAX_MSGSIZE, &prio, &ts);
+	if(res >= 0)
+	{
+		return std::string(m_readbuffer, res);
+	} else if (errno == ETIMEDOUT || errno == EINTR) {
+		return "";
+	} else {
+		g_logger.format(sinsp_logger::SEV_ERROR, "Unexpected error on posix queue receive: %s", strerror(errno));
+		if(timeout_s > 0)
+		{
+			// At this point the application may go to infinite loop if it relies
+			// on the timeout provided, eg:
+			// while(true)
+			// {
+			//   auto msg = receive(1)
+			//   do stuff...
+			// }
+			// in this case is better to crash
+			// otherwise if timeout=0 like our dragent. let's keep it running
+			// as posix queue healthness is not vital
+			throw sinsp_exception("Unexpected error on posix queue receive");
+		}
+		return "";
+	}
 }
 
 bool posix_queue::remove(const std::string &name)
