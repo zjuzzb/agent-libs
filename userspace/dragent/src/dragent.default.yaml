@@ -559,7 +559,7 @@ prometheus:
   log_errors: true
   max_metrics: 1000
   max_metrics_per_process: 1000
-  max_tags_per_metric: 20
+  max_tags_per_metric: 40
   histograms: false
   timeout: 1
 
