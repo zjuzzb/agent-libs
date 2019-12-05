@@ -372,11 +372,11 @@ std::unordered_map<int, java_process> jmx_proxy::read_metrics(metric_limits::cre
 		{
 			LOG_DEBUG("JMX metrics json size is: %zu", json_data.size());
 			if(m_print_json) {
-				LOG_DEBUG("JMX metrics json: %s", json_data.c_str());
+				LOG_DEBUG("JMX metrics json: %s", &json_data[0]);
 			}
 			Json::Value json_obj;
 
-			bool parse_ok = m_json_reader.parse(json_data, json_obj, false);
+			bool parse_ok = m_json_reader.parse(&json_data[0], &json_data[json_data.size()], json_obj, false);
 			if(parse_ok && json_obj.isObject() && json_obj.isMember("body"))
 			{
 				for(const auto& process_data : json_obj["body"])
@@ -388,7 +388,7 @@ std::unordered_map<int, java_process> jmx_proxy::read_metrics(metric_limits::cre
 			else
 			{
 				LOG_ERROR("Cannot deserialize JMX metrics");
-				LOG_DEBUG("%s", json_data.c_str());
+				LOG_DEBUG("%s", &json_data[0]);
 			}
 		}
 		else

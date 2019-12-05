@@ -320,19 +320,18 @@ void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes
 app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cref_sptr_t ml)
 {
 	metric_map_t ret;
-	std::string msg;
 	try
 	{
 		uint32_t uncompressed_size = 0;
-		msg = m_inqueue.receive();
+		auto buf = m_inqueue.receive();
 		std::vector<Bytef> uncompressed_msg;
 
-		if(msg.empty())
+		if(buf.empty())
 		{
 			return ret;
 		}
 
-		uint8_t version = msg[0];
+		uint8_t version = buf[0];
 		if(version != PROTOCOL_VERSION)
 		{
 			g_logger.format(sinsp_logger::SEV_ERROR, "Unsupported sdchecks response version %d", version);
@@ -340,20 +339,20 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 		}
 
 		// zero length might be a timeout, non-zero and < 5 is a bug
-		ASSERT(msg.size() >= sizeof(uint32_t) + 1);
+		ASSERT(buf.size() >= sizeof(uint32_t) + 1);
 
-		memcpy(&uncompressed_size, msg.c_str() + 1, sizeof(uint32_t));
+		memcpy(&uncompressed_size, &buf[1], sizeof(uint32_t));
 		uncompressed_size = ntohl(uncompressed_size);
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Received %lu from sdchecks bytes, uncompressed length %u", msg.size(), uncompressed_size);
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Received %lu from sdchecks bytes, uncompressed length %u", buf.size(), uncompressed_size);
 
-		if(msg.size() >= MAX_COMPRESSED_SIZE || uncompressed_size > MAX_UNCOMPRESSED_SIZE)
+		if(buf.size() >= MAX_COMPRESSED_SIZE || uncompressed_size > MAX_UNCOMPRESSED_SIZE)
 		{
-			g_logger.format(sinsp_logger::SEV_ERROR, "sdchecks response too large (compressed %zu, uncompressed %u)", msg.size(), uncompressed_size);
+			g_logger.format(sinsp_logger::SEV_ERROR, "sdchecks response too large (compressed %zu, uncompressed %u)", buf.size(), uncompressed_size);
 			return ret;
 		}
 
-		const char* start = msg.c_str() + 1 + sizeof(uint32_t);
-		unsigned long len = msg.size() - 1 - sizeof(uint32_t);
+		const char* start = &buf[0] + 1 + sizeof(uint32_t);
+		unsigned long len = buf.size() - 1 - sizeof(uint32_t);
 
 		if (uncompressed_size > 0)
 		{
@@ -372,7 +371,7 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 
 		if(len == 0)
 		{
-			g_logger.format(sinsp_logger::SEV_WARNING, "Received an empty message from sdchecks", msg.size());
+			g_logger.format(sinsp_logger::SEV_WARNING, "Received an empty message from sdchecks", buf.size());
 			return ret;
 		}
 
@@ -406,7 +405,7 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 		else
 		{
 			g_logger.format(sinsp_logger::SEV_ERROR, "app_checks_proxy::read_metrics: JSON parsing error:");
-			msg = std::string(start, len);
+			std::string msg(start, len);
 			g_logger.format(sinsp_logger::SEV_DEBUG, "%s", msg.c_str());
 		}
 	}

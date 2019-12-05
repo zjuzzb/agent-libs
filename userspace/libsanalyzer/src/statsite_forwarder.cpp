@@ -177,13 +177,13 @@ int statsite_forwarder::run()
 			continue;
 		}
 
-		LOG_DEBUG("Received msg=%s", msg.c_str());
+		LOG_DEBUG("Received msg=%s", &msg[0]);
 
 		Json::Reader json_reader;
 		Json::Value root;
-		if(!json_reader.parse(msg, root))
+		if(!json_reader.parse(&msg[0], &msg[msg.size()], root))
 		{
-			LOG_ERROR("Error parsing msg=%s", msg.c_str());
+			LOG_ERROR("Error parsing msg=%s", &msg[0]);
 			continue;
 		}
 
