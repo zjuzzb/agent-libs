@@ -995,28 +995,6 @@ VISIBILITY_PRIVATE
 				const char *location);
 	std::vector<long> get_n_tracepoint_diff();
 
-	template<typename SMART_PTR_T, typename vect_t, typename... Args>
-	void check_limits(SMART_PTR_T&& ptr, const vect_t&& vec, bool log_enabled, Args&&... args)
-	{
-		using limits_sub_class_t = typename std::remove_reference<SMART_PTR_T>::type::element_type;
-		static bool checked = false;
-		if(!checked)
-		{
-			ASSERT(m_configuration);
-			ASSERT(!ptr);
-			if(!ptr && vec.size() && !metric_limits::first_includes_all(vec))
-			{
-				ptr.reset(new limits_sub_class_t(vec, std::forward<Args>(args)...));
-			}
-			if(log_enabled)
-			{
-				user_configured_limits::enable_logging<limits_sub_class_t>();
-			}
-			ASSERT(ptr || !vec.size() || limits_sub_class_t::first_includes_all(vec));
-			checked = true;
-		}
-	}
-
 	/**
 	 * Handle tasks to be done at the end of flush (most notably sending the
 	 * metrics to the serializer).
