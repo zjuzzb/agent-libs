@@ -128,7 +128,7 @@ mount_cgroup_subsys cpuset
 
 if [ $# -eq 0 ]; then
     if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
-	if [ -z "$RUN_MODE" ] && ! /opt/draios/bin/sysdigcloud-probe-loader "$KERNEL_ERR_MESSAGE"; then
+	if [ "${RUN_MODE}" != "nodriver" ] && ! /opt/draios/bin/sysdigcloud-probe-loader "$KERNEL_ERR_MESSAGE"; then
 		exit 1
 	fi
     fi
