@@ -1,26 +1,26 @@
 #include "filter_limits.h"
 
-user_configured_limits::user_configured_limits(const filter_vec_t& filters,
-					       const std::string& target_name,
+#include <utility>
+
+user_configured_limits::user_configured_limits(filter_vec_t filters,
+					       std::string target_name,
 					       bool& log_ref,
 					       bool& enable_log_ref,
 					       time_t& last_ref,
 					       time_t& running_ref,
 					       uint32_t max_entries,
 					       uint64_t expire_seconds)
-	: m_filters(filters),
+	: m_filters(std::move(filters)),
 	m_max_entries(max_entries),
 	m_purge_seconds(expire_seconds),
-	m_target_type_name(target_name),
+	m_target_type_name(std::move(target_name)),
 	m_log_flags_ref(log_ref, enable_log_ref, last_ref, running_ref)
 {
 	optimize_exclude_all(m_filters);
 	time(&m_last_purge);
 }
 
-user_configured_limits::~user_configured_limits()
-{
-}
+user_configured_limits::~user_configured_limits() = default;
 
 void user_configured_limits::insert(const std::string& target, const user_configured_filter& filter, bool value, int pos)
 {
@@ -58,7 +58,7 @@ void user_configured_limits::purge_cache()
 	}
 }
 
-user_configured_limits::entry::entry(bool allow, ::user_configured_filter f, int pos)
+user_configured_limits::entry::entry(bool allow, const ::user_configured_filter& f, int pos)
 	: m_allow(allow), m_filter(f), m_pos(pos)
 {
 	access();

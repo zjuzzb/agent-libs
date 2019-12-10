@@ -103,7 +103,7 @@ public:
 	{
 	public:
 		entry() = delete;
-		entry(bool allow, user_configured_filter f, int pos);
+		entry(bool allow, const user_configured_filter& f, int pos);
 		void set_allow(bool a = true);
 		bool get_allow();
 		std::string filter() const;
@@ -121,8 +121,8 @@ public:
 
 	using map_t = std::unordered_map<std::string, entry>;
 
-	user_configured_limits(const filter_vec_t& filters,
-			       const std::string& target_name,
+	user_configured_limits(filter_vec_t  filters,
+			       std::string  target_name,
 			       bool& log_ref,
 			       bool& enable_log_ref,
 			       time_t& last_ref,
