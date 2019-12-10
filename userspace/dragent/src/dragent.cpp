@@ -1254,16 +1254,14 @@ void dragent_app::init_inspector(sinsp::ptr inspector)
 	//
 	inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	g_logger.disable_timestamps();
-	if (m_configuration.m_min_console_priority > m_configuration.m_min_file_priority)
-	{
-		inspector->set_min_log_severity(
-		    static_cast<sinsp_logger::severity>(m_configuration.m_min_console_priority));
-	}
-	else
-	{
-		inspector->set_min_log_severity(
-		    static_cast<sinsp_logger::severity>(m_configuration.m_min_file_priority));
-	}
+
+	// our max priority is TRACE so we end up with confusing naming here
+	auto min_priority = std::max(
+		m_configuration.m_min_console_priority,
+		m_configuration.m_min_file_priority);
+
+	inspector->set_min_log_severity(
+	    static_cast<sinsp_logger::severity>(min_priority));
 }
 
 sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector, flush_queue& flush_queue)
