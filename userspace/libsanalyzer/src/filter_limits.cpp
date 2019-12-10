@@ -99,6 +99,11 @@ void user_configured_limits::check_log_required()
 
 bool user_configured_limits::allow(const std::string& target, std::string& filter, int* pos, const std::string& type)
 {
+	if(m_filters.empty())
+	{
+		return true;
+	}
+
 	filter.clear();
 	if(m_max_entries)
 	{

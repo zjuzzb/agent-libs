@@ -24,15 +24,6 @@ void k8s_limits::sanitize_filters()
 {
 }
 
-
-bool k8s_limits::allow(const std::string& target,
-			 std::string& filter,
-			 int* pos,
-			 const std::string& type)
-{
-	return get_filters().empty() ? true : user_configured_limits::allow(target, filter, pos, type);
-}
-
 void k8s_limits::init(const filter_vec_t& filters,
 		      uint32_t max_entries,
 		      uint64_t expire_seconds)

@@ -12,10 +12,6 @@ public:
 
 	virtual void sanitize_filters() override;
 
-	bool allow(const std::string& target,
-		   std::string& filter,
-		   int* pos = nullptr,
-		   const std::string& type = "");
 
 	DEFINE_LOG("Labels");
 	DEFINE_LOG_ENABLED(label_limits);

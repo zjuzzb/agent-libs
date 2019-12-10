@@ -19,10 +19,6 @@ public:
 
 	virtual void sanitize_filters() override;
 
-	bool allow(const std::string& target,
-		   std::string& filter,
-		   int* pos = nullptr,
-		   const std::string& type = "");
 
 	void purge_tags(draiosproto::container_group& congroup);
 

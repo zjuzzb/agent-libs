@@ -19,14 +19,6 @@ void label_limits::sanitize_filters()
 }
 
 
-bool label_limits::allow(const std::string& target,
-			 std::string& filter,
-			 int* pos,
-			 const std::string& type)
-{
-	return get_filters().empty() ? true : user_configured_limits::allow(target, filter, pos, type);
-}
-
 INITIALIZE_LOG(label_limits);
 
 
