@@ -18,6 +18,11 @@ public:
 
 	void sanitize_filters();
 
+	static sptr_t build(filter_vec_t filters,
+			   bool log_enabled,
+			   uint32_t max_entries = user_configured_limits::MAX_ENTRIES,
+			   uint64_t expire_seconds = user_configured_limits::EXPIRE_SECONDS);
+
 	DEFINE_LOG("Metrics");
 	DEFINE_LOG_ENABLED(metric_limits);
 };
