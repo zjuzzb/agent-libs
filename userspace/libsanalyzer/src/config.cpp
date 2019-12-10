@@ -779,16 +779,6 @@ bool sinsp_configuration::get_go_k8s_user_events() const
 	return m_go_k8s_user_events;
 }
 
-void sinsp_configuration::set_go_k8s_debug_events(bool enabled)
-{
-	m_go_k8s_debug_events = enabled;
-}
-
-bool sinsp_configuration::get_go_k8s_debug_events() const
-{
-	return m_go_k8s_debug_events;
-}
-
 void sinsp_configuration::set_add_event_scopes(bool enabled)
 {
 	m_add_event_scopes = enabled;

@@ -127,43 +127,6 @@ func (c *coInterfaceServer) PerformSwarmState(ctx context.Context, cmd *sdc_inte
 	return getSwarmState(ctx, cmd)
 }
 
-func checkAndStartDummyEventListener() {
-	// first check if we need to create dummy listener and do it if we need
-	// don't bother checking the mutex, since if we race and start both, this
-	// one will just tear itself down and we might dump one extra event. this
-	// is fine as starting the event stream isn't synchronous anyway
-	if (!kubecollect.UserEventChannelInUse && !kubecollect.DummyEventChannelActive) {
-		log.Infof("[PerformOrchestratorDummyEventsStream] Starting dummy event listener")
-		kubecollect.DummyEventChannelActive = true
-		go func() {
-			defer func() {
-				log.Infof("[PerformOrchestratorDummyEventsStream] Dummy event listener complete")
-				kubecollect.DummyEventChannelActive = false
-			}()
-			// loop until the user event channel closes or we find
-			// the user event channel has started up
-			for {
-				select {
-				// this channel may be closed by the time we get here.
-				// That's okay, it'll just return
-				case evt, ok := <-kubecollect.UserEventChannel:
-					if !ok {
-						return
-					} else {
-						log.Debugf("Draining event for {%v:%v}",
-						evt.Obj.GetKind(), evt.Obj.GetUid())
-					}
-				}
-
-				// if we found the event channel started up, bail
-				if (kubecollect.UserEventChannelInUse) {
-					return
-				}
-			}
-		}()
-	}
-}
-
 // function called when we want to start all informers. The messages returned to this
 // stream are only those of the "regular" informers. Messaqes for user events are
 // collected via a SEPARATE RPC call to attach to that channel. Because of this, some
@@ -247,10 +210,12 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		// up and clean up the channels when they're done
 		ctxCancel()
 
+		// Close kube client channel to make sure events stream shuts down as well
+		kubecollect.CloseKubeClient()
+
 		// drain all messages from every queue
 		// do event channel too, just in case 
 		kubecollect.DrainChan(evtArrayChan)
-		kubecollect.DrainChan(kubecollect.UserEventChannel)
 
 		// notify the GC function so it resets the GC back to normal
 		close(rpcDone)
@@ -259,10 +224,6 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	log.Infof("[PerformOrchestratorEventsStream] Entering select loop.")
 
 	for {
-		// We don't want to hang on to events indefinitely if nobody attaches to the events stream....so fire
-		// up a dummy to drain them until someone attaches to it
-		checkAndStartDummyEventListener()
-
 		select {
 		case evtArray, ok := <-evtArrayChan:
 			if !ok {
@@ -284,49 +245,53 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	return nil
 }
 
-// almost the same as PerformOrchestratorUserEventStream, but with a different type
+var userEventStreamActive bool = false
+
 func (c *coInterfaceServer) PerformOrchestratorEventMessageStream(cmd *sdc_internal.OrchestratorAttachUserEventsStreamCommand,
 								  stream sdc_internal.CoInterface_PerformOrchestratorEventMessageStreamServer) error {
-	log.Infof("[PerformOrchestratorEventMessageStream] Starting orchestrator events stream.")
+	log.Info("[PerformOrchestratorEventMessageStream] Starting orchestrator events stream.")
 	log.Debugf("[PerformOrchestratorEventMessageStream] using options: %v", cmd)
+
+	if userEventStreamActive {
+		log.Error("[PerformOrchestratorEventMessageStream] previous stream still active, exiting.")
+		return errors.New("Couldn't start user events watch")
+	}
+	userEventStreamActive = true
 
 	log.Debug("Calling debug.FreeOSMemory()")
 	debug.FreeOSMemory()
 
-	kubecollect.ChannelMutex.Lock()
-
-	// don't have to care whether informer has actually started....because if it
-	// hasn't, the channel will simply return immediately, and we'll return an error
-	if (kubecollect.UserEventChannelInUse) {
-		kubecollect.ChannelMutex.Unlock()
-		log.Errorf("[PerformOrchestratorEventMessageStream] Error: channel already in use")
-		return errors.New("user event channel in use")
+	qlen := cmd.GetUserEventQueueLen()
+	if qlen < 1 {
+		qlen = 1
 	}
+	userEventChannel := make(chan sdc_internal.K8SUserEvent, qlen)
+	ctx, ctxCancel := context.WithCancel(stream.Context())
+	var wg sync.WaitGroup
 
-	kubecollect.UserEventChannelInUse = true;
-
-	// this defer may race with informer stream shutdown, but don't care since both
-	// are setting it to false
 	defer func() {
-		log.Infof("[PerformOrchestratorEventMessageStream] Stream Exiting")
-		kubecollect.UserEventChannelInUse = false;
+		log.Info("[PerformOrchestratorEventMessageStream] Stream Exiting")
+		ctxCancel()
+		// Drain channel just in case the event sender is blocked
+		kubecollect.DrainChan(userEventChannel)
+		// Not keeping state in globals in the event code, so we might be able
+		// to get rid of the wg.Wait() to allow a new watch to start while the old
+		// one is cleaning up
+		wg.Wait()
+		userEventStreamActive = false
 	}()
 
-	// once we have flipped the flag and created the kill channel, we can safely release
-	// the lock, since the other stream will now poke the event channel listener,
-	// guaranteeing that we don't run forever
-
-	kubecollect.ChannelMutex.Unlock()
+	started := kubecollect.StartUserEventsStream(ctx, &wg, userEventChannel, cmd.GetCollectDebugEvents())
+	if !started {
+		return errors.New("Couldn't start user events watch")
+	}
 
 	log.Info("[PerformOrchestratorEventMessageStream] Entering select loop.")
 	for {
 		select {
-
-		// this may be closed by the time we get here....literally don't care.
-		// We'll simply get the stream close and call it a day
-		case evt, ok := <-kubecollect.UserEventChannel:
+		case evt, ok := <-userEventChannel:
 			if !ok {
-				log.Errorf("[PerformOrchestratorEventMessageStream] event stream finished")
+				log.Error("[PerformOrchestratorEventMessageStream] event stream finished")
 				return nil
 			} else {
 				// log.Debugf("[PerformOrchestratorEventMessageStream] sending event: %v", evt)
@@ -338,13 +303,16 @@ func (c *coInterfaceServer) PerformOrchestratorEventMessageStream(cmd *sdc_inter
 				}
 			}
 		case <-stream.Context().Done(): // stream closed by client
-			log.Debugf("[PerformOrchestratorEventMessageStream] context cancelled")
+			log.Debug("[PerformOrchestratorEventMessageStream] stream closed")
+			return nil
+		case <-ctx.Done(): // context cancelled
+			log.Debug("[PerformOrchestratorEventMessageStream] context cancelled")
 			return nil
 		case <-time.After(10 * time.Second):
 			log.Debug("[PerformOrchestratorEventMessageStream] no events for 10 seconds")
 		}
 	}
-	log.Infof("[PerformOrchestratorEventMessageStream] exiting select loop.")
+	log.Info("[PerformOrchestratorEventMessageStream] exiting select loop.")
 
 	return nil
 }
@@ -356,10 +324,10 @@ func (c *coInterfaceServer) PerformSetK8SOption(ctx context.Context, cmd *sdc_in
 	log.Debugf("[PerformSetK8sOption] received option: %s: %s", cmd.GetKey(), cmd.GetValue())
 	if (cmd.GetKey() == "events") {
 		if (cmd.GetValue() == "start") {
-			log.Infof("[PerformSetK8sOption] starting event export")
+			log.Info("[PerformSetK8sOption] starting event export")
 			kubecollect.SetEventExport(true)
 		} else if (cmd.GetValue() == "stop") {
-			log.Infof("[PerformSetK8sOption] stopping event export")
+			log.Info("[PerformSetK8sOption] stopping event export")
 			kubecollect.SetEventExport(false)
 		} else {
 			errstr = "Unknown value " + cmd.GetValue() + " for key " + cmd.GetKey()

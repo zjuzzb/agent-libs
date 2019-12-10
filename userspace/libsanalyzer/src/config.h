@@ -180,8 +180,6 @@ public:
 
 	void set_go_k8s_user_events(bool);
 	bool get_go_k8s_user_events() const;
-	void set_go_k8s_debug_events(bool);
-	bool get_go_k8s_debug_events() const;
 	void set_add_event_scopes(bool);
 	bool get_add_event_scopes() const;
 

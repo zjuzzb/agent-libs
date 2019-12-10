@@ -1337,7 +1337,6 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector, flush_queue& f
 	sconfig->set_smart_container_reporting(m_configuration.m_smart_container_reporting);
 
 	sconfig->set_go_k8s_user_events(m_configuration.m_go_k8s_user_events);
-	sconfig->set_go_k8s_debug_events(m_configuration.m_min_event_priority == -1);
 	sconfig->set_add_event_scopes(m_configuration.m_add_event_scopes);
 
 	sconfig->set_statsite_check_format(m_configuration.m_statsite_check_format);

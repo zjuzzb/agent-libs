@@ -68,9 +68,6 @@ sdc_internal::orchestrator_events_stream_command stream_request()
 	req.set_event_counts_log_time(0);
 	req.set_batch_msgs_queue_len(0);
 	req.set_batch_msgs_tick_interval_ms(0);
-	req.set_collect_events(false);
-	req.set_user_event_queue_len(0);
-	req.set_collect_debug_events(false);
 	req.set_max_rnd_conn_delay(0);
 
 	return req;

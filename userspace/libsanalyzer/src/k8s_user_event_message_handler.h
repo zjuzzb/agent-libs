@@ -7,6 +7,7 @@
 #include "user_event.h"
 #include "coclient.h"
 #include "analyzer_utils.h"
+#include "type_config.h"
 
 class infrastructure_state;
 
@@ -66,7 +67,7 @@ public:
 	}
 
 	/**
-	 * @brief gets teh current number of events which have been processed since the last queue reset
+	 * @brief gets the current number of events which have been processed since the last queue reset
 	 */
 	size_t get_user_event_count() const
 	{
@@ -80,13 +81,14 @@ public:
 	void start_event_stream();
 	void stop_event_stream();
 
+	static type_config<uint32_t> c_event_queue_len;
+	static type_config<bool> c_collect_debug_events;
 private:
 	void send_k8s_option(std::string key, std::string value);
 	void handle_event(sdc_internal::k8s_user_event *evt, infrastructure_state *);
 	void connect(uint64_t ts = sinsp_utils::get_current_time_ns());
 	void reset_connection();
 	std::string translate_name(const std::string &reason) const;
-
 
 	bool subscribed() const { return m_subscribed; }
 private:

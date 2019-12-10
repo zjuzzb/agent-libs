@@ -462,11 +462,6 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 				cmd.add_annotation_filter(annot);
 			}
 
-			// Convert these to new config
-			cmd.set_collect_events(m_inspector->m_analyzer->m_configuration->get_go_k8s_user_events());
-			cmd.set_user_event_queue_len(c_orchestrator_queue_len.get_value());
-			cmd.set_collect_debug_events(m_inspector->m_analyzer->m_configuration->get_go_k8s_debug_events());
-
 			*cmd.mutable_include_types() = {c_k8s_include_types.get_value().begin(), c_k8s_include_types.get_value().end()};
 			cmd.set_event_counts_log_time(c_k8s_event_counts_log_time.get_value());
 			cmd.set_max_rnd_conn_delay(c_k8s_max_rnd_conn_delay->get_value());
