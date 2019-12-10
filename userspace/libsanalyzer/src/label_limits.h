@@ -6,11 +6,11 @@
 class label_limits : public user_configured_limits
 {
 public:
-	label_limits(const filter_vec_t& filters,
+	explicit label_limits(const filter_vec_t& filters,
 		     uint32_t max_entries = user_configured_limits::MAX_ENTRIES,
 		     uint64_t expire_seconds = user_configured_limits::EXPIRE_SECONDS);
 
-	virtual void sanitize_filters() override;
+	void sanitize_filters() override;
 
 
 	DEFINE_LOG("Labels");
