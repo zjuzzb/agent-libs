@@ -1,5 +1,7 @@
 #include "k8s_limits.h"
 
+#include "draios.pb.h"
+
 k8s_limits::k8s_limits(const filter_vec_t& filters,
 			   uint32_t max_entries,
 			   uint64_t expire_seconds)
