@@ -622,16 +622,6 @@ void sinsp_configuration::set_containerd_event_filter(user_event_filter_t::ptr_t
 	m_containerd_event_filter = event_filter;
 }
 
-filter_vec_t sinsp_configuration::get_labels_filter() const
-{
-	return m_labels_filter;
-}
-
-void sinsp_configuration::set_labels_filter(const filter_vec_t& labels_filter)
-{
-	m_labels_filter = labels_filter;
-}
-
 filter_vec_t sinsp_configuration::get_mounts_filter() const
 {
 	return m_mounts_filter;
@@ -680,26 +670,6 @@ unsigned sinsp_configuration::get_mounts_limit_size() const
 void sinsp_configuration::set_mounts_limit_size(unsigned mounts_limit_size)
 {
 	m_mounts_limit_size = mounts_limit_size;
-}
-
-bool sinsp_configuration::get_excess_labels_log() const noexcept
-{
-	return m_excess_labels_log;
-}
-
-void sinsp_configuration::set_excess_labels_log(bool log) noexcept
-{
-	m_excess_labels_log = log;
-}
-
-void sinsp_configuration::set_labels_cache(uint16_t size) noexcept
-{
-	m_labels_cache = size;
-}
-
-uint16_t sinsp_configuration::get_labels_cache(void) const noexcept
-{
-	return  m_labels_cache;
 }
 
 const std::set<double>& sinsp_configuration::get_percentiles() const

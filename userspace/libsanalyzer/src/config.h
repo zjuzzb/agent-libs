@@ -118,18 +118,12 @@ public:
 	void set_docker_event_filter(user_event_filter_t::ptr_t event_filter);
 	user_event_filter_t::ptr_t get_containerd_event_filter() const;
 	void set_containerd_event_filter(user_event_filter_t::ptr_t event_filter);
-	filter_vec_t get_labels_filter() const;
 	void set_k8s_filter(const filter_vec_t& filter);
 	filter_vec_t get_k8s_filter(void) const;
 	filter_vec_t get_mounts_filter() const;
-	void set_labels_filter(const filter_vec_t& labels_filter);
 	void set_mounts_filter(const filter_vec_t& mount_filter);
 	unsigned get_mounts_limit_size() const;
 	void set_mounts_limit_size(unsigned mounts_limit_size);
-	void set_excess_labels_log(bool log) noexcept;
-	bool get_excess_labels_log() const noexcept;
-	void set_labels_cache(uint16_t size) noexcept;
-	uint16_t get_labels_cache(void) const noexcept;
 	void set_k8s_cache(uint16_t size) noexcept;
 	uint16_t get_k8s_cache() const noexcept;
 	void set_excess_k8s_log(bool) noexcept;
@@ -299,10 +293,6 @@ private:
 	std::shared_ptr<user_event_filter_t> m_k8s_event_filter;
 	std::shared_ptr<user_event_filter_t> m_docker_event_filter;
 	std::shared_ptr<user_event_filter_t> m_containerd_event_filter;
-
-	filter_vec_t m_labels_filter;
-	bool m_excess_labels_log = false;
-	uint16_t m_labels_cache = 0;
 
 	filter_vec_t m_k8s_filter;
 	bool m_excess_k8s_log = false;

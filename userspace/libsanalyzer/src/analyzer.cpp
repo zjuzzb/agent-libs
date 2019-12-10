@@ -152,7 +152,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
                                audit_tap_handler& tap_handler,
                                secure_audit_handler& secure_handler,
                                sinsp_analyzer::flush_queue* flush_queue,
-                               const metric_limits::sptr_t& the_metric_limits):
+                               const metric_limits::sptr_t& the_metric_limits,
+                               const label_limits::sptr_t& the_label_limits):
 	m_configuration(new sinsp_configuration()),
 	m_inspector(inspector),
 	m_metrics(make_unique<draiosproto::metrics>()),
@@ -166,6 +167,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_internal_metrics(internal_metrics),
 	m_statsd_emitter(new null_statsd_emitter()),
 	m_metric_limits(the_metric_limits),
+	m_label_limits(the_label_limits),
 	m_audit_tap_handler(tap_handler),
 	m_secure_audit_handler(secure_handler),
 	m_metrics_dir_mutex(),
@@ -6355,7 +6357,6 @@ sinsp_analyzer::emit_container(const string &container_id,
 		const string &label_val = it_labels->second;
 
 		// Filter labels forbidden by config file
-		check_label_limits();
 		if(m_label_limits && !m_label_limits->allow(label_key, filter))
 		{
 			continue;

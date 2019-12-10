@@ -1066,13 +1066,18 @@ int dragent_app::sdagent_main()
 			m_configuration.m_excess_metric_log,
 			m_configuration.m_metrics_cache);
 
+		label_limits::sptr_t the_label_limits = label_limits::build(
+			m_configuration.m_labels_filter,
+			m_configuration.m_excess_labels_log,
+			m_configuration.m_labels_cache);
+
 		if (c_10s_flush_enabled->get_value())
 		{
-			analyzer = build_analyzer(inspector, m_aggregator_queue, the_metric_limits);
+			analyzer = build_analyzer(inspector, m_aggregator_queue, the_metric_limits, the_label_limits);
 		}
 		else
 		{
-			analyzer = build_analyzer(inspector, m_serializer_queue, the_metric_limits);
+			analyzer = build_analyzer(inspector, m_serializer_queue, the_metric_limits, the_label_limits);
 		}
 		LOG_INFO("Created analyzer");
 
@@ -1272,7 +1277,8 @@ void dragent_app::init_inspector(sinsp::ptr inspector)
 sinsp_analyzer* dragent_app::build_analyzer(
 	const sinsp::ptr& inspector,
 	flush_queue& flush_queue,
-	const metric_limits::sptr_t& the_metric_limits)
+	const metric_limits::sptr_t& the_metric_limits,
+	const label_limits::sptr_t& the_label_limits)
 {
 	sinsp_analyzer* analyzer = new sinsp_analyzer(inspector.get(),
 	                                              m_configuration.c_root_dir.get_value(),
@@ -1280,7 +1286,8 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	                                              m_protocol_handler,
 	                                              m_protocol_handler,
 	                                              &flush_queue,
-	                                              the_metric_limits);
+	                                              the_metric_limits,
+	                                              the_label_limits);
 	sinsp_configuration* sconfig = analyzer->get_configuration();
 
 	analyzer->set_procfs_scan_thread(m_configuration.m_procfs_scan_thread);
@@ -1290,9 +1297,6 @@ sinsp_analyzer* dragent_app::build_analyzer(
 
 	// custom metrics filters (!!!do not move - needed by jmx, statsd and appchecks, so it must be
 	// set before checks are created!!!)
-	sconfig->set_labels_filter(m_configuration.m_labels_filter);
-	sconfig->set_excess_labels_log(m_configuration.m_excess_labels_log);
-	sconfig->set_labels_cache(m_configuration.m_labels_cache);
 	sconfig->set_k8s_filter(m_configuration.m_k8s_filter);
 	sconfig->set_excess_k8s_log(m_configuration.m_excess_k8s_log);
 	sconfig->set_k8s_cache(m_configuration.m_k8s_cache_size);

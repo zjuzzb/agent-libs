@@ -127,7 +127,8 @@ private:
 	sinsp_analyzer* build_analyzer(
 		const sinsp::ptr& inspector,
 		flush_queue& flush_queue,
-		const metric_limits::sptr_t& the_metric_limits);
+		const metric_limits::sptr_t& the_metric_limits,
+		const label_limits::sptr_t& the_label_limits);
 	void setup_coredumps();
 	void log_sysinfo();
 

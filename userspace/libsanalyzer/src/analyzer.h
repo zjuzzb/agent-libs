@@ -50,6 +50,7 @@
 #include <nlohmann/json.hpp>
 #include "include/sinsp_external_processor.h"
 
+#include "label_limits.h"
 #include "metric_limits.h"
 
 namespace dragent
@@ -262,7 +263,8 @@ public:
 	               audit_tap_handler& tap_handler,
 	               secure_audit_handler& secure_handler,
 	               flush_queue* flush_queue,
-	               const metric_limits::sptr_t& the_metric_limits = nullptr);
+	               const metric_limits::sptr_t& the_metric_limits = nullptr,
+	               const label_limits::sptr_t& the_label_limits = nullptr);
 	~sinsp_analyzer();
 
 	//
@@ -351,14 +353,6 @@ public:
 	}
 
 #ifndef _WIN32
-	inline void check_label_limits()
-	{
-		check_limits(m_label_limits,
-			     m_configuration->get_labels_filter(),
-			     m_configuration->get_excess_labels_log(),
-			     m_configuration->get_labels_cache());
-	}
-
 	inline void enable_jmx(bool print_json, unsigned sampling)
 	{
 		m_jmx_proxy = make_unique<jmx_proxy>();
@@ -1287,7 +1281,7 @@ VISIBILITY_PRIVATE
 #endif
 
 	const metric_limits::sptr_t m_metric_limits;
-	std::shared_ptr<label_limits> m_label_limits;
+	const label_limits::sptr_t m_label_limits;
 
 	// The user event queue is a glogger construct that we pass around, and once it is created, glogger
 	// will catch certain classes of messages and process them. This is not an efficient way to leak the abstraction,
