@@ -22,13 +22,21 @@ k8s_limits::k8s_limits()
 {
 }
 
-void k8s_limits::init(const filter_vec_t& filters,
-		      uint32_t max_entries,
-		      uint64_t expire_seconds)
+k8s_limits::sptr_t k8s_limits::build(
+	filter_vec_t filters,
+	bool log_enabled,
+	uint32_t max_entries,
+	uint64_t expire_seconds)
 {
-	user_configured_limits::set_filters(filters);
-	set_cache_max_entries(max_entries);
-	set_purge_seconds(expire_seconds);
+	if(log_enabled)
+	{
+		user_configured_limits::enable_logging<k8s_limits>();
+	}
+	if(!filters.empty() && !k8s_limits::first_includes_all(filters))
+	{
+		return std::make_shared<k8s_limits>(std::move(filters), max_entries, expire_seconds);
+	}
+	return nullptr;
 }
 
 void k8s_limits::purge_tags(draiosproto::container_group& congroup)

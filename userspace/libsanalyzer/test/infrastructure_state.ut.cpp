@@ -128,7 +128,7 @@ k8s_ssl_key: key_path
 							athd,
 							sahd,
 							nullptr);
-	infrastructure_state is(analyzer, &inspector, "/foo/bar");
+	infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
 	EXPECT_EQ("https://yaml_host:54321", is.get_k8s_url());
 	EXPECT_EQ(is.get_k8s_ca_certificate(), "/foo/bar/ca_path");
 	EXPECT_EQ(is.get_k8s_bt_auth_token(), "/foo/bar/at_path");

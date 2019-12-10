@@ -52,6 +52,7 @@
 
 #include "label_limits.h"
 #include "metric_limits.h"
+#include "k8s_limits.h"
 
 namespace dragent
 {
@@ -264,7 +265,8 @@ public:
 	               secure_audit_handler& secure_handler,
 	               flush_queue* flush_queue,
 	               const metric_limits::sptr_t& the_metric_limits = nullptr,
-	               const label_limits::sptr_t& the_label_limits = nullptr);
+	               const label_limits::sptr_t& the_label_limits = nullptr,
+	               const k8s_limits::sptr_t& the_k8s_limits = nullptr);
 	~sinsp_analyzer();
 
 	//
@@ -579,10 +581,6 @@ public:
 
 	void rearm_tracer_logging();
 	inline uint64_t flush_tracer_timeout();
-
-#ifndef CYGWING_AGENT
-	void init_k8s_limits();
-#endif
 
 	void set_max_n_external_clients(uint32_t val) { m_max_n_external_clients = val; }
 	void set_top_connections_in_sample(uint32_t val) { m_top_connections_in_sample = val; }

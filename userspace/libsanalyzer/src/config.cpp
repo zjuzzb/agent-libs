@@ -627,36 +627,6 @@ filter_vec_t sinsp_configuration::get_mounts_filter() const
 	return m_mounts_filter;
 }
 
-filter_vec_t sinsp_configuration::get_k8s_filter() const
-{
-	return m_k8s_filter;
-}
-
-void sinsp_configuration::set_k8s_filter(const filter_vec_t& k8s_filter)
-{
-	m_k8s_filter = k8s_filter;
-}
-
-bool sinsp_configuration::get_excess_k8s_log() const noexcept
-{
-	return m_excess_k8s_log;
-}
-
-void sinsp_configuration::set_excess_k8s_log(bool log) noexcept
-{
-	m_excess_k8s_log = log;
-}
-
-void sinsp_configuration::set_k8s_cache(uint16_t size) noexcept
-{
-	m_k8s_cache = size;
-}
-
-uint16_t sinsp_configuration::get_k8s_cache(void) const noexcept
-{
-	return  m_k8s_cache;
-}
-
 void sinsp_configuration::set_mounts_filter(const filter_vec_t& mounts_filter)
 {
 	m_mounts_filter = mounts_filter;

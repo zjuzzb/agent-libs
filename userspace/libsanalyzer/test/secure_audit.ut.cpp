@@ -1553,7 +1553,7 @@ TEST(secure_audit_test, k8s_audit_base)
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	// Fill fake infrastructure_state to test k8s enrichment too
-	infrastructure_state is(analyzer, inspector.get(), "/foo/bar");
+	infrastructure_state is(analyzer, inspector.get(), "/foo/bar", nullptr);
 
 	draiosproto::congroup_update_event evt;
 	draiosproto::congroup_uid* parent;

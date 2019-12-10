@@ -46,6 +46,7 @@ public:
 	infrastructure_state(sinsp_analyzer& analyzer,
 						 sinsp *inspector,
 						 const std::string& rootdir,
+						 const k8s_limits::sptr_t& the_k8s_limits,
 						 bool force_k8s_subscribed = false);
 	using reg_id_t = std::string;
 
@@ -137,7 +138,6 @@ public:
 	std::string get_cluster_name_from_agent_tags() const;
 	// The UID of the default namespace is used as the cluster id
 	std::string get_k8s_cluster_id() const;
-	void init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size);
 
 	void add_annotation_filter(const std::string &ann);
 	bool find_parent_kind(const uid_t uid, std::string kind, uid_t &found_id)
@@ -255,7 +255,7 @@ private:
 	coclient::response_cb_t m_k8s_callback;
 	bool m_k8s_subscribed;   // True if we're supposed to connect to k8s
 	bool m_k8s_connected;    // True if we have an active RPC connection
-	k8s_limits m_k8s_limits;
+	const k8s_limits::sptr_t m_k8s_limits;
 	mutable std::string m_k8s_cached_cluster_id;
 	run_on_interval m_k8s_refresh_interval;
 	run_on_interval m_k8s_connect_interval;

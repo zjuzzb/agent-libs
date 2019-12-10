@@ -153,7 +153,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
                                secure_audit_handler& secure_handler,
                                sinsp_analyzer::flush_queue* flush_queue,
                                const metric_limits::sptr_t& the_metric_limits,
-                               const label_limits::sptr_t& the_label_limits):
+                               const label_limits::sptr_t& the_label_limits,
+                               const k8s_limits::sptr_t& the_k8s_limits):
 	m_configuration(new sinsp_configuration()),
 	m_inspector(inspector),
 	m_metrics(make_unique<draiosproto::metrics>()),
@@ -229,7 +230,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_tap = nullptr;
 	m_secure_audit = nullptr;
 #ifndef CYGWING_AGENT
-	m_infrastructure_state = new infrastructure_state(*this, inspector, root_dir);
+	m_infrastructure_state = new infrastructure_state(*this, inspector, root_dir, the_k8s_limits);
 #endif
 
 	//
@@ -7205,15 +7206,6 @@ void sinsp_analyzer::set_emit_tracers(bool enabled)
 {
 	tracer_emitter::set_enabled(enabled);
 }
-
-#ifndef CYGWING_AGENT
-void sinsp_analyzer::init_k8s_limits()
-{
-	m_infrastructure_state->init_k8s_limits(m_configuration->get_k8s_filter(),
-						m_configuration->get_excess_k8s_log(),
-						m_configuration->get_k8s_cache());
-}
-#endif
 
 void sinsp_analyzer::rearm_tracer_logging()
 {

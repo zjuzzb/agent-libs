@@ -128,7 +128,8 @@ private:
 		const sinsp::ptr& inspector,
 		flush_queue& flush_queue,
 		const metric_limits::sptr_t& the_metric_limits,
-		const label_limits::sptr_t& the_label_limits);
+		const label_limits::sptr_t& the_label_limits,
+		const k8s_limits::sptr_t& the_k8s_limits);
 	void setup_coredumps();
 	void log_sysinfo();
 

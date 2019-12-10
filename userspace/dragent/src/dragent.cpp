@@ -1071,13 +1071,18 @@ int dragent_app::sdagent_main()
 			m_configuration.m_excess_labels_log,
 			m_configuration.m_labels_cache);
 
+		k8s_limits::sptr_t the_k8s_limits = k8s_limits::build(
+			m_configuration.m_k8s_filter,
+			m_configuration.m_excess_k8s_log,
+			m_configuration.m_k8s_cache_size);
+
 		if (c_10s_flush_enabled->get_value())
 		{
-			analyzer = build_analyzer(inspector, m_aggregator_queue, the_metric_limits, the_label_limits);
+			analyzer = build_analyzer(inspector, m_aggregator_queue, the_metric_limits, the_label_limits, the_k8s_limits);
 		}
 		else
 		{
-			analyzer = build_analyzer(inspector, m_serializer_queue, the_metric_limits, the_label_limits);
+			analyzer = build_analyzer(inspector, m_serializer_queue, the_metric_limits, the_label_limits, the_k8s_limits);
 		}
 		LOG_INFO("Created analyzer");
 
@@ -1278,7 +1283,8 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	const sinsp::ptr& inspector,
 	flush_queue& flush_queue,
 	const metric_limits::sptr_t& the_metric_limits,
-	const label_limits::sptr_t& the_label_limits)
+	const label_limits::sptr_t& the_label_limits,
+	const k8s_limits::sptr_t& the_k8s_limits)
 {
 	sinsp_analyzer* analyzer = new sinsp_analyzer(inspector.get(),
 	                                              m_configuration.c_root_dir.get_value(),
@@ -1287,7 +1293,8 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	                                              m_protocol_handler,
 	                                              &flush_queue,
 	                                              the_metric_limits,
-	                                              the_label_limits);
+	                                              the_label_limits,
+	                                              the_k8s_limits);
 	sinsp_configuration* sconfig = analyzer->get_configuration();
 
 	analyzer->set_procfs_scan_thread(m_configuration.m_procfs_scan_thread);
@@ -1295,16 +1302,8 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	sconfig->set_procfs_scan_interval_ms(m_configuration.m_procfs_scan_interval_ms);
 	sconfig->set_procfs_scan_mem_interval_ms(m_configuration.m_procfs_scan_mem_interval_ms);
 
-	// custom metrics filters (!!!do not move - needed by jmx, statsd and appchecks, so it must be
-	// set before checks are created!!!)
-	sconfig->set_k8s_filter(m_configuration.m_k8s_filter);
-	sconfig->set_excess_k8s_log(m_configuration.m_excess_k8s_log);
-	sconfig->set_k8s_cache(m_configuration.m_k8s_cache_size);
 	sconfig->set_mounts_filter(m_configuration.m_mounts_filter);
 	sconfig->set_mounts_limit_size(m_configuration.m_mounts_limit_size);
-#ifndef CYGWING_AGENT
-	analyzer->init_k8s_limits();
-#endif
 
 	if (m_configuration.java_present() && m_configuration.m_sdjagent_enabled)
 	{

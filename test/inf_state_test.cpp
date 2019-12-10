@@ -24,7 +24,7 @@ public:
 				athd,
 				sahd,
 				&flush_queue));
-		m_infra_state.reset(new infrastructure_state(*m_analyzer, m_sinsp.get(), "/opt/draios", true));
+		m_infra_state.reset(new infrastructure_state(*m_analyzer, m_sinsp.get(), "/opt/draios", nullptr, true));
 	}
        	
 protected:

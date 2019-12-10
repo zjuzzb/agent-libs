@@ -300,12 +300,14 @@ bool evaluate_on(draiosproto::container_group *congroup, scope_predicates &preds
 infrastructure_state::infrastructure_state(sinsp_analyzer& analyzer,
 										   sinsp* inspector,
 										   const std::string& rootdir,
+										   const k8s_limits::sptr_t& the_k8s_limits,
 										   bool force_k8s_subscribed)
 	: m_analyzer(analyzer)
 	, m_inspector(inspector)
 	, m_k8s_coclient(rootdir)
 	, m_k8s_subscribed(force_k8s_subscribed)
 	, m_k8s_connected(false)
+	, m_k8s_limits(the_k8s_limits)
 	, m_k8s_refresh_interval(c_k8s_refresh_interval.get_value())
 	, m_k8s_connect_interval(DEFAULT_CONNECT_INTERVAL)
 	, m_k8s_prev_connect_state(-1)
@@ -569,16 +571,6 @@ void infrastructure_state::k8s_generate_user_event(const bool success)
 
 	g_logger.log("Logging user event: " + evt.to_string(), sinsp_logger::SEV_DEBUG);
 	user_event_logger::log(evt, event_sev);
-}
-
-void infrastructure_state::init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size)
-{
-	m_k8s_limits.init(filters, cache_size);
-
-	if(log)
-	{
-		user_configured_limits::enable_logging<k8s_limits>();
-	}
 }
 
 bool infrastructure_state::subscribed()
@@ -944,7 +936,10 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			} else {
 				glogf(sinsp_logger::SEV_DEBUG, "infra_state: UPDATED event will not change relationships, just update the metadata");
 				*m_state[key]->mutable_tags() = evt->object().tags();
-				m_k8s_limits.purge_tags(*m_state[key].get());
+				if(m_k8s_limits)
+				{
+					m_k8s_limits->purge_tags(*m_state[key].get());
+				}
 				*m_state[key]->mutable_internal_tags() = evt->object().internal_tags();
 				m_state[key]->mutable_ip_addresses()->CopyFrom(evt->object().ip_addresses());
 				m_state[key]->mutable_metrics()->CopyFrom(evt->object().metrics());
@@ -2416,7 +2411,10 @@ void infrastructure_state::purge_tags_and_copy(uid_t key, const draiosproto::con
 	ASSERT(m_state.find(key) != std::end(m_state));
 	m_state[key]->CopyFrom(cg);
 
-	m_k8s_limits.purge_tags(*m_state[key].get());
+	if(m_k8s_limits)
+	{
+		m_k8s_limits->purge_tags(*m_state[key].get());
+	}
 }
 
 bool infrastructure_state::match_scope_all_containers(const scope_predicates &predicates)
