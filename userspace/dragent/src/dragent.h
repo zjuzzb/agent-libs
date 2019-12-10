@@ -124,7 +124,10 @@ private:
 	void update_subprocesses_priority();
 	void monitor_files(uint64_t uptime_s);
 	void init_inspector(sinsp::ptr inspector);
-	sinsp_analyzer* build_analyzer(const sinsp::ptr& inspector, flush_queue& flush_queue);
+	sinsp_analyzer* build_analyzer(
+		const sinsp::ptr& inspector,
+		flush_queue& flush_queue,
+		const metric_limits::sptr_t& the_metric_limits);
 	void setup_coredumps();
 	void log_sysinfo();
 

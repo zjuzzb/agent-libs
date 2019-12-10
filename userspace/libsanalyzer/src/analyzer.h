@@ -50,6 +50,8 @@
 #include <nlohmann/json.hpp>
 #include "include/sinsp_external_processor.h"
 
+#include "metric_limits.h"
+
 namespace dragent
 {
 class metric_serializer;
@@ -259,7 +261,8 @@ public:
 	               const internal_metrics::sptr_t& internal_metrics,
 	               audit_tap_handler& tap_handler,
 	               secure_audit_handler& secure_handler,
-	               flush_queue* flush_queue);
+	               flush_queue* flush_queue,
+	               const metric_limits::sptr_t& the_metric_limits = nullptr);
 	~sinsp_analyzer();
 
 	//
@@ -348,14 +351,6 @@ public:
 	}
 
 #ifndef _WIN32
-	inline void check_metric_limits()
-	{
-		check_limits(m_metric_limits,
-			     m_configuration->get_metrics_filter(),
-			     m_configuration->get_excess_metrics_log(),
-			     m_configuration->get_metrics_cache());
-	}
-
 	inline void check_label_limits()
 	{
 		check_limits(m_label_limits,
@@ -366,7 +361,6 @@ public:
 
 	inline void enable_jmx(bool print_json, unsigned sampling)
 	{
-		check_metric_limits();
 		m_jmx_proxy = make_unique<jmx_proxy>();
 		m_jmx_proxy->m_print_json = print_json;
 		m_jmx_sampling = sampling;
@@ -429,7 +423,6 @@ public:
 
 		if(!m_app_checks.empty())
 		{
-			check_metric_limits();
 			if (!m_app_proxy)
 			{
 				m_app_proxy = make_unique<app_checks_proxy>();
@@ -1293,7 +1286,7 @@ VISIBILITY_PRIVATE
 	self_cputime_analyzer m_cputime_analyzer;
 #endif
 
-	metric_limits::sptr_t m_metric_limits;
+	const metric_limits::sptr_t m_metric_limits;
 	std::shared_ptr<label_limits> m_label_limits;
 
 	// The user event queue is a glogger construct that we pass around, and once it is created, glogger

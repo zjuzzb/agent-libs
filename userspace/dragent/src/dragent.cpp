@@ -1061,13 +1061,18 @@ int dragent_app::sdagent_main()
 		inspector = sinsp_factory::build();
 		LOG_INFO("Created Sysdig inspector");
 
+		metric_limits::sptr_t the_metric_limits = metric_limits::build(
+			m_configuration.m_metrics_filter,
+			m_configuration.m_excess_metric_log,
+			m_configuration.m_metrics_cache);
+
 		if (c_10s_flush_enabled->get_value())
 		{
-			analyzer = build_analyzer(inspector, m_aggregator_queue);
+			analyzer = build_analyzer(inspector, m_aggregator_queue, the_metric_limits);
 		}
 		else
 		{
-			analyzer = build_analyzer(inspector, m_serializer_queue);
+			analyzer = build_analyzer(inspector, m_serializer_queue, the_metric_limits);
 		}
 		LOG_INFO("Created analyzer");
 
@@ -1264,14 +1269,18 @@ void dragent_app::init_inspector(sinsp::ptr inspector)
 	    static_cast<sinsp_logger::severity>(min_priority));
 }
 
-sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector, flush_queue& flush_queue)
+sinsp_analyzer* dragent_app::build_analyzer(
+	const sinsp::ptr& inspector,
+	flush_queue& flush_queue,
+	const metric_limits::sptr_t& the_metric_limits)
 {
 	sinsp_analyzer* analyzer = new sinsp_analyzer(inspector.get(),
 	                                              m_configuration.c_root_dir.get_value(),
 	                                              m_internal_metrics,
 	                                              m_protocol_handler,
 	                                              m_protocol_handler,
-	                                              &flush_queue);
+	                                              &flush_queue,
+	                                              the_metric_limits);
 	sinsp_configuration* sconfig = analyzer->get_configuration();
 
 	analyzer->set_procfs_scan_thread(m_configuration.m_procfs_scan_thread);
@@ -1281,7 +1290,6 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector, flush_q
 
 	// custom metrics filters (!!!do not move - needed by jmx, statsd and appchecks, so it must be
 	// set before checks are created!!!)
-	sconfig->set_metrics_filter(m_configuration.m_metrics_filter);
 	sconfig->set_labels_filter(m_configuration.m_labels_filter);
 	sconfig->set_excess_labels_log(m_configuration.m_excess_labels_log);
 	sconfig->set_labels_cache(m_configuration.m_labels_cache);
@@ -1290,8 +1298,6 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector, flush_q
 	sconfig->set_k8s_cache(m_configuration.m_k8s_cache_size);
 	sconfig->set_mounts_filter(m_configuration.m_mounts_filter);
 	sconfig->set_mounts_limit_size(m_configuration.m_mounts_limit_size);
-	sconfig->set_excess_metrics_log(m_configuration.m_excess_metric_log);
-	sconfig->set_metrics_cache(m_configuration.m_metrics_cache);
 #ifndef CYGWING_AGENT
 	analyzer->init_k8s_limits();
 #endif

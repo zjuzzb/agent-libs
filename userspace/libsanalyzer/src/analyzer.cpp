@@ -151,7 +151,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
                                const internal_metrics::sptr_t& internal_metrics,
                                audit_tap_handler& tap_handler,
                                secure_audit_handler& secure_handler,
-                               sinsp_analyzer::flush_queue* flush_queue):
+                               sinsp_analyzer::flush_queue* flush_queue,
+                               const metric_limits::sptr_t& the_metric_limits):
 	m_configuration(new sinsp_configuration()),
 	m_inspector(inspector),
 	m_metrics(make_unique<draiosproto::metrics>()),
@@ -164,6 +165,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_very_high_cpu_switcher("agent cpu usage with sr=128"),
 	m_internal_metrics(internal_metrics),
 	m_statsd_emitter(new null_statsd_emitter()),
+	m_metric_limits(the_metric_limits),
 	m_audit_tap_handler(tap_handler),
 	m_secure_audit_handler(secure_handler),
 	m_metrics_dir_mutex(),
@@ -7167,7 +7169,6 @@ void sinsp_analyzer::set_driver_stopped_dropping(const bool driver_stopped_dropp
 void sinsp_analyzer::set_statsd_iofds(const std::pair<FILE*, FILE*>& iofds,
                                       const bool forwarder)
 {
-	check_metric_limits();
 	m_statsite_proxy = std::make_shared<statsite_proxy>(
 			iofds,
 			m_configuration->get_statsite_check_format());
