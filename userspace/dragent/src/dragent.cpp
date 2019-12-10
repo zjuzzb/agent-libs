@@ -1264,7 +1264,7 @@ void dragent_app::init_inspector(sinsp::ptr inspector)
 	    static_cast<sinsp_logger::severity>(min_priority));
 }
 
-sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector, flush_queue& flush_queue)
+sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector, flush_queue& flush_queue)
 {
 	sinsp_analyzer* analyzer = new sinsp_analyzer(inspector.get(),
 	                                              m_configuration.c_root_dir.get_value(),
