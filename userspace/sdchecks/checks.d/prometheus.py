@@ -87,7 +87,8 @@ class Prometheus(AgentCheck):
                 for sample in family.samples:
                     if self.__check_metric_limits(max_metrics, num, pid, query_url):
                         break
-                    # getting name, tags, value this way to be compatible with old prometheus_client
+                    # getting name, tags, value from this slice to be compatible
+                    # with both old and newer versions of prometheus_client
                     (sname, stags, value) = sample[0:3]
 
                     if sname is None or value is None:
@@ -182,9 +183,13 @@ class Prometheus(AgentCheck):
                             num += 1
                     elif (family.type == 'counter') and (not math.isnan(value)):
                         # logging.debug('prom: adding counter with name %s' %(name))
-                        # Reporting sample name as metric name, which should be the same
-                        # for counter metrics, except that the current prometheus_client
-                        # strips _total from metric names
+                        # Reporting sample name as metric name as opposed to
+                        # the family name. They should be the same for counter
+                        # metrics. However, prometheus_client versions 0.4.0
+                        # and up strip the suffix "_total" from all family
+                        # names and append it to all sample names.
+                        # We can't upgrade prometheus_client unless we have
+                        # a reliable way to report the original metric name
                         self.rate(sname, value, tags + conf_tags)
                         num += 1
                     elif not math.isnan(value):

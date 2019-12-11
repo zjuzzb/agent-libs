@@ -55,7 +55,9 @@ pysnmp==4.4.6
 boto==2.36.0
 
 # checks.d/prometheus.py
-prometheus_client==0.7.1
+# DO NOT UPGRADE unless there's a way to reliably get the original
+# metric name for counter metrics. See SMAGENT-2122
+prometheus_client==0.3.1
 
 # checks.d/mongo.py
 pymongo==3.2
