@@ -47752,6 +47752,13 @@
               </VirtualDirectory>
             </VirtualDirectory>
           </VirtualDirectory>
+          <VirtualDirectory Name="deps3.7">
+            <VirtualDirectory Name="zope">
+              <VirtualDirectory Name="interface">
+                <File Name="../build/release/userspace/sdchecks/deps3.7/zope/interface/_zope_interface_coptimizations.c"/>
+              </VirtualDirectory>
+            </VirtualDirectory>
+          </VirtualDirectory>
           <VirtualDirectory Name="deps2.6">
             <VirtualDirectory Name="zope">
               <VirtualDirectory Name="interface">

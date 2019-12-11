@@ -1,5 +1,6 @@
 
 
+from builtins import object
 class MetricTypes(object):
 
     GAUGE = 'gauge'

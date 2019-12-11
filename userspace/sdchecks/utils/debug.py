@@ -1,3 +1,4 @@
+from __future__ import print_function
 # stdlib
 from functools import wraps
 from pprint import pprint
@@ -53,9 +54,9 @@ def run_check(name, path=None):
     for instance in instances:
         check.check(instance)
         if check.has_events():
-            print "Events:\n"
+            print("Events:\n")
             pprint(check.get_events(), indent=4)
-        print "Metrics:\n"
+        print("Metrics:\n")
         pprint(check.get_metrics(), indent=4)
 
 

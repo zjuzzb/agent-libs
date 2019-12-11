@@ -63,8 +63,8 @@ def find_cgroup(hierarchy, docker_root):
         Works with old style and new style mounts.
         """
         with open(os.path.join(docker_root, "/proc/mounts"), 'r') as fp:
-            mounts = map(lambda x: x.split(), fp.read().splitlines())
-        cgroup_mounts = filter(lambda x: x[2] == "cgroup", mounts)
+            mounts = [x.split() for x in fp.read().splitlines()]
+        cgroup_mounts = [x for x in mounts if x[2] == "cgroup"]
         if len(cgroup_mounts) == 0:
             raise Exception(
                 "Can't find mounted cgroups. If you run the Agent inside a container,"
@@ -86,7 +86,7 @@ def find_cgroup(hierarchy, docker_root):
 
 def find_cgroup_filename_pattern(mountpoints, container_id):
     # We try with different cgroups so that it works even if only one is properly working
-    for mountpoint in mountpoints.itervalues():
+    for mountpoint in mountpoints.values():
         stat_file_path_lxc = os.path.join(mountpoint, "lxc")
         stat_file_path_docker = os.path.join(mountpoint, "docker")
         stat_file_path_coreos = os.path.join(mountpoint, "system.slice")

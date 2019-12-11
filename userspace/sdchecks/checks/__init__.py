@@ -3,7 +3,16 @@
 If you are writing your own checks you should subclass the AgentCheck class.
 The Check class is being deprecated so don't write new checks with it.
 """
+from __future__ import division
+from __future__ import absolute_import
 # stdlib
+from future.utils import PY3
+if PY3:
+    from builtins import str
+else:
+    from past.builtins import str
+from builtins import object
+from past.utils import old_div
 from collections import defaultdict
 import copy
 import logging
@@ -14,7 +23,6 @@ import re
 import time
 import timeit
 import traceback
-from types import ListType, TupleType
 
 # 3p
 try:
@@ -24,7 +32,7 @@ except ImportError:
 import yaml
 
 # project
-import _internal_modules
+from . import _internal_modules
 from checks import check_status
 from util import get_hostname, get_next_id, LaconicFilter, yLoader
 from utils.platform import Platform
@@ -159,7 +167,7 @@ class Check(object):
 
     def get_metric_names(self):
         "Get all metric names"
-        return self._sample_store.keys()
+        return list(self._sample_store.keys())
 
     def save_gauge(self, metric, value, timestamp=None, tags=None, hostname=None, device_name=None):
         """ Save a gauge value. """
@@ -178,7 +186,7 @@ class Check(object):
             raise CheckException("Saving a sample for an undefined metric: %s" % metric)
         try:
             value = cast_metric_val(value)
-        except ValueError, ve:
+        except ValueError as ve:
             raise NaN(ve)
 
         # Sort and validate tags
@@ -218,19 +226,19 @@ class Check(object):
             if delta < 0:
                 raise UnknownValue()
 
-            return (sample2[0], delta / interval, sample2[2], sample2[3])
+            return (sample2[0], old_div(delta, interval), sample2[2], sample2[3])
         except Infinity:
             raise
         except UnknownValue:
             raise
-        except Exception, e:
+        except Exception as e:
             raise NaN(e)
 
     def get_sample_with_timestamp(self, metric, tags=None, device_name=None, expire=True):
         "Get (timestamp-epoch-style, value)"
 
         # Get the proper tags
-        if tags is not None and isinstance(tags, ListType):
+        if tags is not None and isinstance(tags, list):
             tags.sort()
             tags = tuple(tags)
         key = (tags, device_name)
@@ -258,7 +266,7 @@ class Check(object):
     def get_sample(self, metric, tags=None, device_name=None, expire=True):
         "Return the last value for that metric"
         x = self.get_sample_with_timestamp(metric, tags, device_name, expire)
-        assert isinstance(x, TupleType) and len(x) == 4, x
+        assert isinstance(x, tuple) and len(x) == 4, x
         return x[1]
 
     def get_samples_with_timestamps(self, expire=True):
@@ -374,7 +382,7 @@ class AgentCheck(object):
         self.svc_metadata = []
         self.historate_dict = {}
 
-    # Dummy stub, not supporting proxies yet 
+    # Dummy stub, not supporting proxies yet
     def get_instance_proxy(self, instance, uri):
         return None
 
@@ -809,7 +817,7 @@ class AgentCheck(object):
                         i, check_status.STATUS_OK,
                         instance_check_stats=instance_check_stats
                     )
-            except Exception, e:
+            except Exception as e:
                 self.log.exception("Check '%s' instance #%s failed" % (self.name, i))
                 instance_status = check_status.InstanceStatus(
                     i, check_status.STATUS_ERROR,
