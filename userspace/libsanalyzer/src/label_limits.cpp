@@ -1,9 +1,9 @@
 #include "label_limits.h"
 
-label_limits::label_limits(const filter_vec_t& filters,
+label_limits::label_limits(filter_vec_t filters,
 			   uint32_t max_entries,
 			   uint64_t expire_seconds)
-	: user_configured_limits(filters,
+	: user_configured_limits(std::move(filters),
 				 "Labels",
 				 log_flags<label_limits>::m_log,
 				 log_flags<label_limits>::m_enable_log,
