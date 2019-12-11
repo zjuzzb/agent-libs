@@ -1,5 +1,4 @@
 #include "connection_manager.h"
-#include "blocking_queue.h"
 #include "capture_job_handler.h"
 #include "common_logger.h"
 #include "draios.pb.h"

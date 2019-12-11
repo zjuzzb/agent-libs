@@ -1,36 +1,34 @@
-#include <time.h>
-
+#include "dragent.h"
 #include "avoid_block_channel.h"
 #include "async_aggregator.h"
-#include "main.h"
-#include "dragent.h"
-#include "crash_handler.h"
+#include "capture_job_handler.h"
+#include "common_logger.h"
 #include "configuration.h"
+#include "configuration_manager.h"
 #include "config_data_message_handler.h"
 #include "config_data_rest_request_handler.h"
 #include "config_rest_request_handler.h"
 #include "configlist_rest_request_handler.h"
 #include "connection_manager.h"
+#include "crash_handler.h"
 #include "dragent_memdump_logger.h"
 #include "dragent_user_event_callback.h"
 #include "dump_request_start_message_handler.h"
 #include "dump_request_stop_message_handler.h"
+#include "error_handler.h"
 #include "error_message_handler.h"
 #include "faultlist_rest_request_handler.h"
 #include "fault_rest_request_handler.h"
 #include "file_rest_request_handler.h"
-#include "webpage_rest_request_handler.h"
-#include "user_event_channel.h"
-#include "blocking_queue.h"
-#include "error_handler.h"
-#include "capture_job_handler.h"
-#include "sinsp_worker.h"
-#include "common_logger.h"
 #include "memdump_logger.h"
-#include "metrics_rest_request_handler.h"
+#include "metric_serializer.h"
+#include "post_aggregated_metrics_rest_request_handler.h"
+#include "pre_aggregated_metrics_rest_request_handler.h"
 #include "monitor.h"
 #include "null_message_handler.h"
 #include "process_helpers.h"
+#include "procfs_parser.h"
+#include "protobuf_metric_serializer.h"
 #include "rest_request_handler_factory.h"
 #include "rest_server.h"
 #include "security_compliance_calendar_message_handler.h"
@@ -38,11 +36,20 @@
 #include "security_orchestrator_events_message_handler.h"
 #include "security_policies_message_handler.h"
 #include "security_policies_v2_message_handler.h"
+#include "sinsp_factory.h"
+#include "sinsp_worker.h"
 #include "statsd_server.h"
 #include "statsite_config.h"
 #include "statsite_forwarder.h"
 #include "type_config.h"
+#include "user_event_channel.h"
 #include "utils.h"
+#include "webpage_rest_request_handler.h"
+#include <sys/sysinfo.h>
+#include <sys/utsname.h>
+#include <sys/resource.h>
+#include <time.h>
+
 #ifndef CYGWING_AGENT
 #include <gperftools/malloc_extension.h>
 #include <grpc/support/log.h>
@@ -50,14 +57,6 @@
 #else
 #include "windows_helpers.h"
 #endif
-#include <sys/sysinfo.h>
-#include <sys/utsname.h>
-#include <procfs_parser.h>
-#include <sys/resource.h>
-#include "sinsp_factory.h"
-#include "configuration_manager.h"
-#include "metric_serializer.h"
-#include "protobuf_metric_serializer.h"
 
 using namespace std;
 using namespace dragent;
@@ -79,7 +78,7 @@ type_config<bool> c_sdagent_app_checks_python_26_supported(false,
                                                            "app_checks_python_26_supported");
 
 type_config<bool>::ptr c_rest_feature_flag =
-    type_config_builder<bool>(false /*default*/,
+    type_config_builder<bool>(false,
                               "Feature flag to turn on the REST server.",
                               "feature_flag_rest_server")
         .hidden()
@@ -108,11 +107,13 @@ string compute_sha1_digest(SHA1Engine& engine, const string& path)
 	engine.reset();
 	ifstream fs(path);
 	char readbuf[4096];
+
 	while (fs.good())
 	{
 		fs.read(readbuf, sizeof(readbuf));
 		engine.update(readbuf, fs.gcount());
 	}
+
 	return DigestEngine::digestToHex(engine.digest());
 }
 
@@ -164,7 +165,8 @@ void enable_rest_server(dragent_configuration& configuration)
 	// Register path handlers with the factory...
 	factory->register_path_handler<configlist_rest_request_handler>();
 	factory->register_path_handler<config_rest_request_handler>();
-	factory->register_path_handler<metrics_rest_request_handler>();
+	factory->register_path_handler<post_aggregated_metrics_rest_request_handler>();
+	factory->register_path_handler<pre_aggregated_metrics_rest_request_handler>();
 	factory->register_path_handler<config_data_rest_request_handler>();
 	factory->register_path_handler<webpage_rest_request_handler>();
 	factory->register_path_handler<file_rest_request_handler>();
@@ -211,12 +213,12 @@ dragent_app::dragent_app()
       m_enable_autodrop(true),
       m_internal_metrics(std::make_shared<internal_metrics>()),
       m_protocol_handler(m_transmit_queue),
+      m_capture_job_handler(&m_configuration, &m_transmit_queue, &m_enable_autodrop),
       m_sinsp_worker(&m_configuration,
                      m_internal_metrics,
                      m_protocol_handler,
                      &m_enable_autodrop,
                      &m_capture_job_handler),
-      m_capture_job_handler(&m_configuration, &m_transmit_queue, &m_enable_autodrop),
       m_connection_manager(
           &m_configuration,
           &m_transmit_queue,
@@ -238,6 +240,8 @@ dragent_app::dragent_app()
             std::make_shared<security_compliance_run_message_handler>(m_sinsp_worker)},
            {draiosproto::message_type::ORCHESTRATOR_EVENTS,
             std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker)},
+           {draiosproto::message_type::AGGREGATION_CONTEXT,
+            dragent::aggregator_limits::global_limits},
            {draiosproto::message_type::BASELINES,  // Legacy -- no longer used
             std::make_shared<null_message_handler>()}, }),
       m_log_reporter(m_protocol_handler, &m_configuration),
@@ -1040,7 +1044,10 @@ int dragent_app::sdagent_main()
 
 		if (c_10s_flush_enabled->get_value())
 		{
-			aggregator = new async_aggregator(m_aggregator_queue, m_serializer_queue);
+			aggregator = new async_aggregator(m_aggregator_queue,
+			                                  m_serializer_queue,
+			                                  300,
+			                                  m_configuration.c_root_dir.get_value());
 			m_pool.start(*aggregator, c_serializer_timeout_s.get_value());
 		}
 
@@ -1326,7 +1333,6 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector, flush_queue& f
 	sconfig->set_smart_container_reporting(m_configuration.m_smart_container_reporting);
 
 	sconfig->set_go_k8s_user_events(m_configuration.m_go_k8s_user_events);
-	sconfig->set_go_k8s_debug_events(m_configuration.m_min_event_priority == -1);
 	sconfig->set_add_event_scopes(m_configuration.m_add_event_scopes);
 
 	sconfig->set_statsite_check_format(m_configuration.m_statsite_check_format);
@@ -1407,6 +1413,57 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector, flush_queue& f
 		    m_configuration.m_falco_baselining_report_interval_ns);
 		sconfig->set_falco_baselining_autodisable_interval_ns(
 		    m_configuration.m_falco_baselining_autodisable_interval_ns);
+		sconfig->set_falco_baselining_max_drops_buffer_rate_percentage(
+		    m_configuration.m_falco_baselining_max_drops_buffer_rate_percentage);
+
+		// The baseliner is automatically disabled when we
+		// start dropping events. In order to collect
+		// baseliner's fingerprints, we recommend to run with
+		// a higher upper threshold.  If we don't find any
+		// user configured value, then we set the
+		// drop_upper_threshold to the default value for
+		// baselining.  Otherwise, we just warn the user.
+		if (m_configuration.m_drop_upper_threshold == 0)
+		{
+			sconfig->set_drop_upper_threshold(DROP_UPPER_THRESHOLD_BASELINER_ENABLED);
+			g_log->information("Drop upper threshold=" +
+			                   NumberFormatter::format(DROP_UPPER_THRESHOLD_BASELINER_ENABLED) +
+			                   " (set for falco baselining)");
+		}
+		else
+		{
+			if (m_configuration.m_drop_upper_threshold < DROP_UPPER_THRESHOLD_BASELINER_ENABLED)
+			{
+				g_log->warning(
+				    "Falco baselining configured with a low drop_upper_threshold "
+				    "(configured: " +
+				    NumberFormatter::format(m_configuration.m_drop_upper_threshold) +
+				    ", "
+				    "recommended: " +
+				    NumberFormatter::format(DROP_UPPER_THRESHOLD_BASELINER_ENABLED) + " ).");
+			}
+		}
+
+		if (m_configuration.m_drop_lower_threshold == 0)
+		{
+			sconfig->set_drop_lower_threshold(DROP_LOWER_THRESHOLD_BASELINER_ENABLED);
+			g_log->information("Drop lower threshold=" +
+			                   NumberFormatter::format(DROP_LOWER_THRESHOLD_BASELINER_ENABLED) +
+			                   " (set for falco baselining)");
+		}
+		else
+		{
+			if (m_configuration.m_drop_lower_threshold < DROP_LOWER_THRESHOLD_BASELINER_ENABLED)
+			{
+				g_log->warning(
+				    "Falco baselining configured with a low drop_lower_threshold "
+				    "(configured: " +
+				    NumberFormatter::format(m_configuration.m_drop_lower_threshold) +
+				    ", "
+				    "recommended: " +
+				    NumberFormatter::format(DROP_LOWER_THRESHOLD_BASELINER_ENABLED) + " ).");
+			}
+		}
 	}
 
 	if (m_configuration.m_commandlines_capture_enabled || m_configuration.m_secure_audit_enabled)
@@ -1414,15 +1471,8 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector, flush_queue& f
 		g_log->information("Setting command lines capture");
 		sconfig->set_executed_commands_capture_enabled(true);
 		sconfig->set_command_lines_capture_mode(m_configuration.m_command_lines_capture_mode);
-		if (m_configuration.m_secure_audit_enabled)
-		{
-			sconfig->set_command_lines_include_container_healthchecks(false);
-		}
-		else
-		{
-			sconfig->set_command_lines_include_container_healthchecks(
-			    m_configuration.m_command_lines_include_container_healthchecks);
-		}
+		sconfig->set_command_lines_include_container_healthchecks(
+		    m_configuration.m_command_lines_include_container_healthchecks);
 		sconfig->set_command_lines_valid_ancestors(m_configuration.m_command_lines_valid_ancestors);
 	}
 

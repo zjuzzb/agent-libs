@@ -51,7 +51,9 @@ list(APPEND targetfiles
 	file_rest_request_handler.cpp
 	metric_serializer.cpp
 	metrics_file_emitter.cpp
-	metrics_rest_request_handler.cpp
+	pre_aggregated_metrics_rest_request_handler.cpp
+	post_aggregated_metrics_rest_request_handler.cpp
+	metrics_rest_request_helper.cpp
 	monitor.cpp
 	null_message_handler.cpp
 	protocol.cpp

@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * Unit tests for metrics_rest_request_handler.
+ * Unit tests for post_aggregated_metrics_rest_request_handler.
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
@@ -9,7 +9,7 @@
 #include "dummy_server_request.h"
 #include "dummy_server_response.h"
 #include "fault_handler.h"
-#include "metrics_rest_request_handler.h"
+#include "post_aggregated_metrics_rest_request_handler.h"
 #include "metric_store.h"
 #include "scoped_fault.h"
 #include "scoped_metric_store.h"
@@ -27,28 +27,28 @@ using namespace dragent;
 /**
  * Ensure that get_path() returns the expected path.
  */
-TEST(metrics_rest_request_handler_test, get_path)
+TEST(post_aggregated_metrics_rest_request_handler_test, get_path)
 {
 	ASSERT_EQ("/api/protobuf/metrics",
-	          metrics_rest_request_handler::get_path());
+	          post_aggregated_metrics_rest_request_handler::get_path());
 }
 
 /**
  * Ensure that get_versioned_path returns the expected path.
  */
-TEST(metrics_rest_request_handler_test, get_versioned_path)
+TEST(post_aggregated_metrics_rest_request_handler_test, get_versioned_path)
 {
 	ASSERT_EQ("/api/v0/protobuf/metrics",
-	          metrics_rest_request_handler::get_versioned_path());
+	          post_aggregated_metrics_rest_request_handler::get_versioned_path());
 }
 
 /**
  * Ensure that create() returns a non-null pointer.
  */
-TEST(metrics_rest_request_handler_test, create)
+TEST(post_aggregated_metrics_rest_request_handler_test, create)
 {
-	std::shared_ptr<metrics_rest_request_handler> handler(
-			metrics_rest_request_handler::create());
+	std::shared_ptr<post_aggregated_metrics_rest_request_handler> handler(
+			post_aggregated_metrics_rest_request_handler::create());
 	ASSERT_NE(nullptr, handler.get());
 }
 
@@ -56,10 +56,10 @@ TEST(metrics_rest_request_handler_test, create)
  * Ensure that when there are no metrics, the handler returns HTTP 404 and
  * a meaningful error message.
  */
-TEST(metrics_rest_request_handler_test, no_metrics_returns_404)
+TEST(post_aggregated_metrics_rest_request_handler_test, no_metrics_returns_404)
 {
 	scoped_metric_store scoped_store;
-	const std::string path = metrics_rest_request_handler::get_path();
+	const std::string path = post_aggregated_metrics_rest_request_handler::get_path();
 	const std::string& method = Poco::Net::HTTPRequest::HTTP_GET;
 	const Poco::Net::HTTPResponse::HTTPStatus expected_status =
 		Poco::Net::HTTPResponse::HTTPStatus::HTTP_NOT_FOUND;
@@ -72,7 +72,7 @@ TEST(metrics_rest_request_handler_test, no_metrics_returns_404)
 
 	dummy_server_request request(path);
 	dummy_server_response response;
-	metrics_rest_request_handler handler;
+	post_aggregated_metrics_rest_request_handler handler;
 
 	request.setMethod(method);
 
@@ -86,11 +86,11 @@ TEST(metrics_rest_request_handler_test, no_metrics_returns_404)
  * Make sure that a request for the metrics protobuf returns the expected
  * JSON document.
  */
-TEST(metrics_rest_request_handler_test, nonnull_metrics_returns_metrics)
+TEST(post_aggregated_metrics_rest_request_handler_test, nonnull_metrics_returns_metrics)
 {
 	scoped_metric_store scoped_store;
 
-	const std::string path = metrics_rest_request_handler::get_versioned_path();
+	const std::string path = post_aggregated_metrics_rest_request_handler::get_versioned_path();
 	const std::string& method = Poco::Net::HTTPRequest::HTTP_GET;
 	const Poco::Net::HTTPResponse::HTTPStatus expected_status =
 		Poco::Net::HTTPResponse::HTTPStatus::HTTP_OK;
@@ -104,7 +104,7 @@ TEST(metrics_rest_request_handler_test, nonnull_metrics_returns_metrics)
 
 	dummy_server_request request(path);
 	dummy_server_response response;
-	metrics_rest_request_handler handler;
+	post_aggregated_metrics_rest_request_handler handler;
 
 	request.setMethod(method);
 
@@ -117,17 +117,17 @@ TEST(metrics_rest_request_handler_test, nonnull_metrics_returns_metrics)
 
 /**
  * Ensure that if we fail to convert the metrics protobuf to JSON, the
- * metrics_rest_request_handler fails with an appropriate status and error
+ * post_aggregated_metrics_rest_request_handler fails with an appropriate status and error
  * message.
  */
-TEST(metrics_rest_request_handler_test, message_to_json_failure)
+TEST(post_aggregated_metrics_rest_request_handler_test, message_to_json_failure)
 {
 	scoped_fault fault("agent.userspace.dragent.metrics_rest_request_handler.message_to_json_error");
 
 	fault.handler()->set_fault_mode(fault_handler::fault_mode::ALWAYS);
 	fault.handler()->set_enabled(true);
 
-	const std::string path = metrics_rest_request_handler::get_versioned_path();
+	const std::string path = post_aggregated_metrics_rest_request_handler::get_versioned_path();
 	const std::string& method = Poco::Net::HTTPRequest::HTTP_GET;
 	const Poco::Net::HTTPResponse::HTTPStatus expected_status =
 		Poco::Net::HTTPResponse::HTTPStatus::HTTP_INTERNAL_SERVER_ERROR;
@@ -147,7 +147,7 @@ TEST(metrics_rest_request_handler_test, message_to_json_failure)
 
 	dummy_server_request request(path);
 	dummy_server_response response;
-	metrics_rest_request_handler handler;
+	post_aggregated_metrics_rest_request_handler handler;
 
 	request.setMethod(method);
 
@@ -156,3 +156,4 @@ TEST(metrics_rest_request_handler_test, message_to_json_failure)
 	ASSERT_EQ(expected_status, response.getStatus());
 	ASSERT_EQ(expected_response, response.m_stream.str());
 }
+

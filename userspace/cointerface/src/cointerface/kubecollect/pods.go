@@ -306,6 +306,27 @@ func statusCounts(containers []v1.ContainerStatus) (restarts, waiting int32) {
 	return
 }
 
+var ownerRefKindToCongroupKind = map[string]string {
+	"ReplicaSet": "k8s_replicaset",
+	"ReplicationController": "k8s_replicationcontroller",
+	"StatefulSet": "k8s_statefulset",
+	"DaemonSet": "k8s_daemonset",
+	"Job": "k8s_job",
+}
+
+func AddParentsToPodViaOwnerRef(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
+	for _, ref := range pod.GetOwnerReferences() {
+		congroupKind := ownerRefKindToCongroupKind[ref.Kind]
+		if congroupKind != "" {
+			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind: proto.String(congroupKind),
+				Id: proto.String(string(ref.UID))})
+		} else {
+			log.Debugf("Unexpected k8s kind %v", ref.Kind)
+		}
+	}
+}
+
 func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool) ([]*draiosproto.CongroupUpdateEvent) {
 	tags := GetTags(pod.ObjectMeta, "kubernetes.pod.")
 	// This gets specially added as a tag since we don't have a
@@ -326,14 +347,11 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	var parents []*draiosproto.CongroupUid
 	if setLinks {
 		AddNSParents(&parents, pod.GetNamespace())
-		AddReplicaSetParents(&parents, pod)
-		AddReplicationControllerParents(&parents, pod)
-		AddStatefulSetParentsFromPod(&parents, pod)
-		AddResourceQuotaParentsFromPod(&parents, pod)
-		AddServiceParents(&parents, pod)
-		AddDaemonSetParents(&parents, pod)
 		AddNodeParents(&parents, pod.Spec.NodeName)
-		AddJobParents(&parents, pod)
+
+		AddParentsToPodViaOwnerRef(&parents, pod);
+		// services don't have owner references and always use selectors
+		AddServiceParents(&parents, pod)
 	}
 
 	var children []*draiosproto.CongroupUid
@@ -495,7 +513,7 @@ func resolveTargetPort(name string, selector labels.Selector, namespace string) 
 	return 0
 }
 
-func AddPodChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
+func AddPodChildrenFromSelectors(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
 	if !resourceReady("pods") {
 		return
 	}

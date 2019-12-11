@@ -1,4 +1,5 @@
 # stdlib
+from builtins import object
 import sys
 
 # project
@@ -73,7 +74,7 @@ class Platform(object):
                 if '/ecs-agent' in co.get('Names', ''):
                     _is_ecs = True
                     return True
-        except Exception, e:
+        except Exception as e:
             pass
 
         _is_ecs = False

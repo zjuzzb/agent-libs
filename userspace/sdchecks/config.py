@@ -1,21 +1,19 @@
-import ConfigParser
-from cStringIO import StringIO
-import glob
-import imp
-import inspect
-import itertools
-import logging
-import logging.config
+from future import standard_library
+standard_library.install_aliases()
+from future.utils import PY3
+if PY3:
+    from builtins import str
+else:
+    from past.builtins import str
+from past.builtins import map
+from io import StringIO
 import logging.handlers
 from optparse import OptionParser, Values
 import os
 import platform
-import re
 from socket import gaierror, gethostbyname
 import string
 import sys
-import traceback
-from urlparse import urlparse
 
 # 3rd party
 import yaml
@@ -239,13 +237,13 @@ def get_confd_path(osname=None):
     if osname == 'windows':
         try:
             return _windows_confd_path()
-        except PathNotFound, e:
+        except PathNotFound as e:
             if len(e.args) > 0:
                 bad_path = e.args[0]
     else:
         try:
             return _unix_confd_path()
-        except PathNotFound, e:
+        except PathNotFound as e:
             if len(e.args) > 0:
                 bad_path = e.args[0]
 

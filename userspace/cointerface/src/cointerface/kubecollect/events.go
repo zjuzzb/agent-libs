@@ -6,11 +6,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
+	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
@@ -18,8 +16,12 @@ import (
 	"github.com/draios/protorepo/sdc_internal"
 )
 
+// Maximum event age in seconds, older events are discarded
+const maxEventAge = 10
+
 // Atomic doesn't have booleans, we'll use an int32 instead
 var eventExportEnabled int32 = 0
+var eventExportChannel chan int32 = make(chan int32, 1)
 
 func SetEventExport(enable bool) {
 	i := int32(0)
@@ -27,6 +29,7 @@ func SetEventExport(enable bool) {
 		i = 1
 	}
 	atomic.StoreInt32(&eventExportEnabled, i)
+	eventExportChannel <- i
 }
 
 func isEventExportEnabled() (bool) {
@@ -51,7 +54,7 @@ func newUserEvent(event *v1.Event) (sdc_internal.K8SUserEvent) {
 		ts = int64(event.LastTimestamp.Time.UTC().Unix())
 		if ts < int64(0) {
 			// lastTimestamp is also -ve; use current time.
-			t := metav1.Time{Time: time.Now()}
+			t := v1meta.Time{Time: time.Now()}
 			ts = int64(t.Time.UTC().Unix())
 			log.Infof("K8s User Event: Both eventTime and lastTimestamp are null. Event is : %v", event)
 		}
@@ -88,82 +91,152 @@ func newK8SObject(event *v1.Event) (*sdc_internal.K8SObject) {
 	return ret
 }
 
-var eventInf cache.SharedInformer
-
-func startUserEventsSInformer(ctx context.Context,
-			      kubeClient kubeclient.Interface,
-			      wg *sync.WaitGroup,
-			      userEventChannel chan<- sdc_internal.K8SUserEvent,
-			      debugEvents bool) {
-	var fSelector fields.Selector
-	client := kubeClient.CoreV1().RESTClient()
-
-	if debugEvents {
-		log.Debugf("UserEvents: watching all")
-		fSelector = fields.Everything()
-	} else {
-		var err error
-		log.Debugf("UserEvents: watching filtered")
-		// k8s api doesn't do "or", so have to explicitly reject all the un-wanted kinds.
-		fSelector, err = fields.ParseSelector("involvedObject.kind!=Cronjob,involvedObject.kind!=HorizontalPodAutoscaler,involvedObject.kind!=Ingress,involvedObject.kind!=Job,involvedObject.kind!=Namespace,involvedObject.kind!=Service,involvedObject.kind!=ResourceQuota")
-		if err != nil {
-			log.Errorf("UserEvents: Failed to create field selector, falling back to watching all: %v", err)
-			fSelector = fields.Everything()
-		}
-	}
-	lw := cache.NewListWatchFromClient(client, "events", metav1.NamespaceAll, fSelector)
-	eventInf = cache.NewSharedInformer(lw, &v1.Event{}, RsyncInterval)
+func StartUserEventsStream(userEventContext context.Context,
+	wg *sync.WaitGroup,
+	userEventChannel chan<- sdc_internal.K8SUserEvent,
+	debugEvents bool) bool {
 
 	wg.Add(1)
 	go func() {
-		watchUserEvents(userEventChannel)
-		eventInf.Run(ctx.Done())
+		tryUserEventsWatch(userEventContext, userEventChannel, debugEvents)
+		log.Debug("UserEvents: done watching. Closing channel");
+		close(userEventChannel)
 		wg.Done()
 	}()
+	return true
 }
 
-// func watchEvents(userEventChannel chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
-func watchUserEvents(userEventChannel chan<- sdc_internal.K8SUserEvent) cache.SharedInformer {
-	log.Debugf("In WatchEvents()")
+func tryUserEventsWatch(userEventContext context.Context,
+	userEventChannel chan<- sdc_internal.K8SUserEvent,
+	debugEvents bool) {
 
-	// Only delegated agents should be sending k8s events to the collector
-	// XXX: Currently cointerface will always start an informer and this watcher
-	// for events. Dragent will send commands to start or stop sending events
-	// when it has figured out that its delegation status has changed.
-	// Ideally we should not have the informer and this watcher running needlessly.
-
-	eventInf.AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				if (isEventExportEnabled()) {
-					log.Debugf("Event: Event add: %+v", obj)
-					userEventChannel <- newUserEvent(obj.(*v1.Event))
-				} else {
-					log.Debugf("Event: Skip add event export");
+	abort := false
+	for ; !abort; {
+		if (isEventExportEnabled()) {
+			abort = !StartUserEventsWatch(userEventContext, userEventChannel, debugEvents)
+			log.Debugf("UserEvents: StartUserEventsWatch done. abort=%v", abort);
+			continue
+		}
+		log.Debug("UserEvents: waiting for delegation");
+		// wait for delegation or cancellation
+		startwatch := false
+		for ; !abort && !startwatch; {
+			select {
+			case e, ok := <-eventExportChannel:
+				if !ok {
+					// Shouldn't happen
+					log.Error("UserEvents: event export channel died");
+					abort = true
 				}
-			},
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				if (isEventExportEnabled()) {
-					log.Debugf("Event: Event update: old: %+v, new: %+v", oldObj, newObj)
-					oldEvent := oldObj.(*v1.Event)
-					newEvent := newObj.(*v1.Event)
-					if oldEvent.GetResourceVersion() != newEvent.GetResourceVersion() {
-						userEventChannel <- newUserEvent(newEvent)
+				if e != 0 {
+					log.Debug("UserEvents: event export enabled, starting");
+					startwatch = true
+				}
+			case <-userEventContext.Done():
+				log.Debug("UserEvents: event context cancelled");
+				abort = true
+			}
+		}
+	}
+}
+
+func StartUserEventsWatch(userEventContext context.Context,
+	userEventChannel chan<- sdc_internal.K8SUserEvent,
+	debugEvents bool) bool {
+
+	log.Debug("UserEvents: In StartUserEventsWatch");
+	kubeClient, kubeClientChan := getKubeClient()
+	if kubeClient == nil {
+		log.Debugf("UserEvents: No kube client yet")
+		return false
+	}
+	client := kubeClient.CoreV1().Events(v1meta.NamespaceAll)
+	var fieldstr string
+
+	if debugEvents {
+		log.Debugf("UserEvents: watching all")
+		fieldstr = ""
+	} else {
+		log.Debugf("UserEvents: watching filtered")
+		// k8s api doesn't do "or", so have to explicitly reject all the un-wanted kinds.
+		
+		fieldstr = "involvedObject.kind!=Cronjob,involvedObject.kind!=Ingress,involvedObject.kind!=Job,involvedObject.kind!=Namespace,involvedObject.kind!=ResourceQuota,involvedObject.kind!=HorizontalPodAutoscaler,involvedObject.kind!=Service"
+	}
+
+	listOptions := v1meta.ListOptions{FieldSelector: fieldstr}
+	watcher, err := client.Watch(listOptions)
+	if err != nil {
+		log.Errorf("UserEvents: Failed to start watcher: %s", err)
+		return false
+	}
+
+	return watchUserEvents(watcher, kubeClientChan, userEventContext, userEventChannel)
+}
+
+func watchUserEvents(watcher watch.Interface,
+	kubeClientChan chan struct {},
+	userEventContext context.Context,
+	userEventChannel chan<- sdc_internal.K8SUserEvent) bool {
+
+	log.Debugf("In WatchUserEvents()")
+
+	ch := watcher.ResultChan()
+
+	for {
+		select {
+		case <-kubeClientChan:
+			log.Debug("UserEvents: kubeClient closed, stopping stream");
+			watcher.Stop()
+			return false
+		case e, ok := <-eventExportChannel:
+			if !ok {
+				// Shouldn't happen
+				log.Error("UserEvents: event export channel died");
+				watcher.Stop()
+				return false
+			}
+			if e == 0 {
+				log.Debug("UserEvents: event export disabled");
+				watcher.Stop()
+				return true
+			}
+		case <-userEventContext.Done():
+			log.Debug("UserEvents: event context cancelled (in watch)");
+			watcher.Stop()
+			return false
+		case event, ok := <-ch:
+			if !ok {
+				log.Error("UserEvents: watcher channel failed")
+				return false
+			}
+			switch event.Type {
+				case watch.Added:
+					evt, ok := event.Object.(*v1.Event)
+					if !ok {
+						log.Errorf("UserEvents: unexpected type: %v", event.Object);
 					}
-				} else {
-					log.Debugf("Event: Skip update event export");
-				}
-			},
-			DeleteFunc: func(obj interface{}) {
-				// What does it mean for an event to be deleted?
-				// The legacy code ignores event deletions, so we will do the same.
-				// If we some day decide to pass these events along make sure to
-				// handle the case where the obj is a cache.DeletedFinalStateUnknown
-				// instead of a v1.Event
-				log.Debugf("Event: Ignoring event deletion: %+v", obj)
-			},
-		},
-	)
-
-	return eventInf
+					// Filter out old events. There doesn't seem to be a way to
+					// filter by timestamp in the fieldselector
+					now := time.Now()
+					var evttime time.Time
+					if evt.EventTime.IsZero() {
+						evttime = evt.LastTimestamp.Time
+					} else {
+						evttime = evt.EventTime.Time
+					}
+					if now.Sub(evttime).Seconds() > maxEventAge {
+						log.Debugf("Event: discarding old event: %+v", evt)
+					} else {
+						log.Debugf("Event: Event add: %+v", evt)
+						userEventChannel <- newUserEvent(evt)
+					}
+				case watch.Modified:
+					log.Debugf("Event: Ignoring event update: %+v", event.Object)
+				case watch.Deleted:
+					log.Debugf("Event: Ignoring event deletion: %+v", event.Object)
+				case watch.Error:
+					log.Infof("Event: got watch error, object: %+v", event.Object)
+			}
+		}
+	}
 }

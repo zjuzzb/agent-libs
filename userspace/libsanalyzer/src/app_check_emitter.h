@@ -12,7 +12,7 @@
 class app_check_emitter {
 public:
 	app_check_emitter(app_checks_proxy::metric_map_t& app_metrics,
-		    const uint16_t app_metrics_limit,
+		    const unsigned int app_metrics_limit,
 		    const prometheus_conf& prom_conf,
 		    std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& app_checks_by_container,
 		    std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& prometheus_by_container,
@@ -33,10 +33,10 @@ public:
 
 private:
 	app_checks_proxy::metric_map_t& m_app_metrics;
-	const uint16_t m_app_metrics_limit;
-	uint16_t m_app_metrics_remaining;
+	const int m_app_metrics_limit;
+	unsigned int m_app_metrics_remaining;
 	const prometheus_conf& m_prom_conf;
-	uint16_t m_prom_metrics_remaining;
+	unsigned int m_prom_metrics_remaining;
 	std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& m_app_checks_by_container;
         std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& m_prometheus_by_container;
 	const uint64_t m_prev_flush_time_ns;

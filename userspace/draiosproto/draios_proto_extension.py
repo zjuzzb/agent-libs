@@ -124,7 +124,8 @@ field_extension = {
                     3:103,
                     4: PRIMARY_KEY},
     "app_check" : {1: PRIMARY_KEY},
-    "app_info" : {2: LIMITED}, #SMAGENT-1949
+    "app_info" : {2: LIMITED},
+    "prometheus_info" : {2: LIMITED},
     "network_by_port" : {1: PRIMARY_KEY},
     "host" : {2:21,
               3:15,

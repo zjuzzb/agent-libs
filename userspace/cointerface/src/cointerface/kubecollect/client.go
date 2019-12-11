@@ -19,7 +19,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-	
+
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -66,27 +66,11 @@ const (
 )
 
 // Given that we depend on global contexts, we need a hard guarantee that we won't have
-// two users trying to attach to channels at the same time. Further, we need to ensure
-// that we're not trying to attach to both channels at the same time (informer must happen
-// before user). These things enable that. Note the informer-before-user is implicit since
-// the user channel will return an error if you try to listen to it without having
-// created it yet.
+// two users trying to attach to channels at the same time.
 var ChannelMutex sync.Mutex
 
-// Represents both whether the informer is attached, and equivalently, whether the user
-// event channel exists
 var InformerChannelInUse = false
-
-// Represents whether the user event channel is attached
-var UserEventChannelInUse = false
-
-// Represents whether the dummy user event channel is in use
-// this must be separate from the above because of the multiple ways the dummy can exit...
-// graceful or not
-var DummyEventChannelActive = false
-
 var InformerChannel chan draiosproto.CongroupUpdateEvent
-var UserEventChannel chan sdc_internal.K8SUserEvent
 
 func addEvent(restype string, evtype int) {
 	profile.NewEvent()
@@ -160,6 +144,8 @@ func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 	var resourceTypes []string
 	resourceMap := make(map[string]bool)
 
+	havePods := false
+
 	for _, resourceList := range resources {
 		for _, resource := range resourceList.APIResources {
 			verbStr := ""
@@ -201,11 +187,17 @@ func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 				// append the other resource types.
 				if(resource.Name == "nodes" || resource.Name == "namespaces") {
 					resourceTypes = append([]string{resource.Name}, resourceTypes...)
+				} else if(resource.Name == "pods") {
+					havePods = true
 				} else {
 					resourceTypes = append(resourceTypes, resource.Name)
 				}
 			}
 		}
+	}
+
+	if havePods {
+		resourceTypes = append(resourceTypes, "pods")
 	}
 
 	return resourceTypes
@@ -242,7 +234,7 @@ func getServerDiscoveryResources(dI discovery.DiscoveryInterface) ([]*v1meta.API
 // on sending on these chans. This is called during cleanup
 func DrainChan(in interface{}) {
 	log.Debugf("[DrainChan]: Entering drain chan loop")
-	
+
 	cin := reflect.ValueOf(in)
 	if cin.Kind() != reflect.Chan {
 		log.Warnf("[DrainChan]: can't drain a : %v", cin.Kind())
@@ -261,6 +253,39 @@ func DrainChan(in interface{}) {
 		}
 		log.Debugf("[DrainChan]: draining : %v", x)
 	}
+}
+
+type gKubeClientStruct struct {
+	client kubeclient.Interface
+	mutex sync.Mutex
+	clientChan chan struct {}
+}
+
+var gKubeClient gKubeClientStruct
+
+func getKubeClient() (kubeclient.Interface, chan struct{}) {
+	gKubeClient.mutex.Lock()
+	kc := gKubeClient.client
+	kcc := gKubeClient.clientChan
+	gKubeClient.mutex.Unlock()
+	return kc, kcc
+}
+
+func setKubeClient(kc kubeclient.Interface, kcc chan struct{}) {
+	gKubeClient.mutex.Lock()
+	if (gKubeClient.clientChan != nil) {
+		log.Info("Closing k8s client channel")
+		// Close the existing client channel to notify readers
+		// Presuming GC will clean up the actual client when all refs are gone
+		close(gKubeClient.clientChan)
+	}
+	gKubeClient.client = kc
+	gKubeClient.clientChan = kcc
+	gKubeClient.mutex.Unlock()
+}
+
+func CloseKubeClient() {
+	setKubeClient(nil, nil)
 }
 
 // The input context is passed to all goroutines created by this function.
@@ -322,6 +347,9 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 		return nil, nil, err
 	}
 
+	// Set global kubeClient for use by events stream
+	setKubeClient(kubeClient, make(chan struct {}))
+
 	// These get reset when either events or listeners channel is reset
 	startedMap = make(map[string]bool)
 	receiveMap = make(map[string]bool)
@@ -338,11 +366,6 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	// Get a vector of all resource types
 	// from the resourceList in resources.
 	resourceTypes := getResourceTypes(resources, opts.IncludeTypes)
-
-	// if dragent asks for events, we spin up the channel here, and then they can attach to it later
-	if (opts.GetCollectEvents()) {
-		resourceTypes = append(resourceTypes, "events")
-	}
 
 	// Make a channel that takes in an Array of CongroupUpdateEvents
 	// Make it of capacity 1. At any given instance we should send
@@ -382,10 +405,6 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 
 	InformerChannel = make(chan draiosproto.CongroupUpdateEvent,
 			       opts.GetQueueLen())
-
-	// create even if we don't use it just to make tear-down logic easier
-        UserEventChannel = make(chan sdc_internal.K8SUserEvent, opts.GetUserEventQueueLen())
-
 
 	fetchDone := make(chan struct{})
 	var wg sync.WaitGroup
@@ -612,13 +631,6 @@ func startInformers(
 			startStatefulSetsSInformer(ctx, kubeClient, wg, InformerChannel)
 		case "resourcequotas":
 			startResourceQuotasSInformer(ctx, kubeClient, wg, InformerChannel)
-		case "events":
-			startUserEventsSInformer(ctx,
-						 kubeClient,
-						 wg,
-						 UserEventChannel,
-						 opts.GetCollectDebugEvents())
-			channelType = ChannelTypeUserEvent
 		case "persistentvolumes":
 			startPersistentVolumesInformer(ctx, kubeClient, wg, InformerChannel)
 		case "persistentvolumeclaims":
@@ -649,8 +661,6 @@ func startInformers(
 						// plus length of events in SdcEvtArray
 						lenQueue := int(atomic.LoadUint32(queueLength))
 						evtcLen = len(InformerChannel) + lenQueue
-					} else {
-						evtcLen = len(UserEventChannel)
 					}
 				}
 
@@ -699,7 +709,6 @@ func startInformers(
 
 		InformerChannelInUse = false
 		close(InformerChannel)
-		close(UserEventChannel)
 	}()
 }
 

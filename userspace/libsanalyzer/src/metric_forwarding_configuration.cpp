@@ -21,7 +21,6 @@ type_config<bool>::ptr c_enabled =
 			     "flexible_metric_limits",
 			     "enabled")
 	.hidden()
-	.mutable_only_in_internal_build()
 	.build();
 
 type_config<int>::ptr c_metric_forwarding_sum =
@@ -37,7 +36,7 @@ type_config<int>::ptr c_metric_forwarding_sum =
 type_config<bool>::ptr c_fill_metric_headroom =
    type_config_builder<bool>(true /*default*/,
 			     "Whether to automatically raise metric limits "
-			     "proportionally to send the maximum allowed number"
+			     "proportionally to send the maximum allowed number "
 			     "of metrics",
 			     "flexible_metric_limits",
 			     "fill_headroom")

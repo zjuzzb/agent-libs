@@ -14,6 +14,7 @@
 #include "security_policy_loader.h"
 #include "security_policy_v2_loader.h"
 #include "subprocesses_logger.h"
+#include "thread_safe_container/blocking_queue.h"
 #include "token_bucket.h"
 #include <atomic>
 #include <memory>
@@ -160,7 +161,7 @@ private:
 	compliance_mgr *m_compliance_mgr;
 #endif
 	capture_job_handler *m_capture_job_handler;
-	blocking_queue<std::shared_ptr<capture_job_handler::dump_job_request>> m_dump_job_requests;
+	thread_safe_container::blocking_queue<std::shared_ptr<capture_job_handler::dump_job_request>> m_dump_job_requests;
 	std::atomic<uint64_t> m_last_loop_ns;
 	std::atomic<pthread_t> m_pthread_id;
 	std::shared_ptr<pipe_manager> m_statsite_pipes;

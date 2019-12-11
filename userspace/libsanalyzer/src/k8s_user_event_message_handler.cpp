@@ -3,6 +3,15 @@
 #include "infrastructure_state.h"
 #include "user_event_logger.h"
 
+type_config<uint32_t> k8s_user_event_message_handler::c_event_queue_len(
+    100,
+    "set the user event queue length in cointerface",
+    "go_k8s_user_events_queue_len");
+type_config<bool> k8s_user_event_message_handler::c_collect_debug_events(
+    false,
+    "enable collection of all events through cointerface",
+    "go_k8s_user_events_debug");
+
 k8s_user_event_message_handler::k8s_user_event_message_handler(uint64_t refresh_interval,
 	std::string install_prefix, std::function<bool()> is_deleg, infrastructure_state *infra_state)
 	: m_coclient(std::move(install_prefix)),
@@ -342,9 +351,12 @@ void k8s_user_event_message_handler::connect(uint64_t ts)
 			glogf(sinsp_logger::SEV_INFO,
 				"k8s_user_event: Connect to k8s event messages");
 			sdc_internal::orchestrator_attach_user_events_stream_command cmd;
+			cmd.set_user_event_queue_len(c_event_queue_len.get_value());
+			cmd.set_collect_debug_events(c_collect_debug_events.get_value());
+			m_coclient.get_orchestrator_event_messages(cmd, m_callback);
+
 			m_subscribed = true;
 			m_connected = true;
-			m_coclient.get_orchestrator_event_messages(cmd, m_callback);
 		}, ts);
 }
 

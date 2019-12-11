@@ -31,7 +31,8 @@ public: // constructor/destructor
 
 public: // functions from uncompressed_sample_handler
 	std::shared_ptr<serialized_buffer> handle_uncompressed_sample(uint64_t ts_ns,
-	                std::shared_ptr<draiosproto::metrics>& metrics) override;
+	                std::shared_ptr<draiosproto::metrics>& metrics,
+					uint32_t flush_interval) override;
 
 	uint64_t get_last_loop_ns() const;
 

@@ -34,7 +34,7 @@ sinsp_configuration::sinsp_configuration():
 	m_executed_commands_capture_enabled = false;
 	m_commandlines_capture_enabled = false;
 	m_command_lines_capture_mode = command_capture_mode_t::CM_TTY;
-	m_command_lines_include_container_healthchecks = true;
+	m_command_lines_include_container_healthchecks = false;
 	m_capture_dragent_events = false;
 	m_detect_stress_tools = false;
 	m_cointerface_enabled = true;
@@ -143,14 +143,14 @@ void sinsp_configuration::set_falco_baselining_autodisable_interval_ns(uint64_t 
 	m_falco_baselining_autodisable_interval_ns = autodisable_interval;
 }
 
-uint64_t sinsp_configuration::get_falco_baselining_max_drops_full_buffer() const
+float sinsp_configuration::get_falco_baselining_max_drops_buffer_rate_percentage() const
 {
-	return m_falco_baselining_max_drops_full_buffer;
+	return m_falco_baselining_max_drops_buffer_rate_percentage;
 }
 
-void sinsp_configuration::set_falco_baselining_max_drops_full_buffer(uint64_t autodisable_interval)
+void sinsp_configuration::set_falco_baselining_max_drops_buffer_rate_percentage(float max_drops_buffer_rate_percentage)
 {
-	m_falco_baselining_max_drops_full_buffer = autodisable_interval;
+	m_falco_baselining_max_drops_buffer_rate_percentage = max_drops_buffer_rate_percentage;
 }
 
 bool sinsp_configuration::get_commandlines_capture_enabled() const
@@ -777,16 +777,6 @@ void sinsp_configuration::set_go_k8s_user_events(bool enabled)
 bool sinsp_configuration::get_go_k8s_user_events() const
 {
 	return m_go_k8s_user_events;
-}
-
-void sinsp_configuration::set_go_k8s_debug_events(bool enabled)
-{
-	m_go_k8s_debug_events = enabled;
-}
-
-bool sinsp_configuration::get_go_k8s_debug_events() const
-{
-	return m_go_k8s_debug_events;
 }
 
 void sinsp_configuration::set_add_event_scopes(bool enabled)

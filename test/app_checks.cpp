@@ -34,16 +34,17 @@ protected:
 
 	void use_json(const char *json)
 	{
+		const std::string header{0x01, 0x00, 0x00, 0x00, 0x00};
+		std::string jsondata;
 		std::string resource("resources/");
 		resource += json;
 		std::ifstream json_file(resource);
-		getline(json_file, m_jsondata);
-		m_inqueue->send(m_jsondata);
+		getline(json_file, jsondata);
+		m_inqueue->send(header + jsondata);
 	}
 
 	std::unique_ptr<posix_queue> m_inqueue;
 	std::unique_ptr<app_checks_proxy> app_checks;
-	std::string m_jsondata;
 };
 
 TEST_F(app_checks_proxy_f, read_ok)
@@ -199,7 +200,7 @@ TEST_F(app_checks_proxy_f, limits)
 	auto app = proc->mutable_protos()->mutable_app();
 	auto app_checks_data = metrics[805].begin()->second;
 
-	uint16_t app_checks_limit = 0;
+	unsigned int app_checks_limit = 0;
 	ASSERT_EQ(31U, app_checks_data.metrics().size());
 	ASSERT_EQ(0, app->metrics().size());
 	do

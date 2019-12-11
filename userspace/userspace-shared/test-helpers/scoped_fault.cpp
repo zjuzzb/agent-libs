@@ -24,7 +24,7 @@ scoped_fault::scoped_fault(const std::string& name):
 
 	if(f_handler == nullptr)
 	{
-		throw std::runtime_error("Cannot find handler with name " + name);
+		throw std::runtime_error("Cannot find fault inject handler with name " + name);
 	}
 
 	m_memento = f_handler->get_state();

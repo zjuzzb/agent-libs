@@ -1,7 +1,16 @@
+from future import standard_library
+standard_library.install_aliases()
+from future.utils import PY3
+if PY3:
+    from urllib.request import getproxies
+    from urllib.request import urlparse
+    from builtins import str
+else:
+    from urllib import getproxies
+    from urlparse import urlparse
+    from past.builtins import str
 import logging
 import os
-from urllib import getproxies
-from urlparse import urlparse
 
 log = logging.getLogger(__name__)
 
@@ -57,7 +66,7 @@ def get_proxy(agentConfig):
                 proxy_settings['host'], proxy_settings['port'])
             return proxy_settings
 
-    except Exception, e:
+    except Exception as e:
         log.debug("Error while trying to fetch proxy settings using urllib %s."
             "Proxy is probably not set", str(e))
 

@@ -1,4 +1,5 @@
 # stdlib
+from builtins import object
 import logging
 import os.path
 import tempfile

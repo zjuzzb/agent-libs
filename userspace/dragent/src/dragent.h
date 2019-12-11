@@ -13,7 +13,6 @@
 #include "configuration.h"
 #include "connection_manager.h"
 #include "watchdog_runnable_pool.h"
-#include "blocking_queue.h"
 #include "error_handler.h"
 #include "capture_job_handler.h"
 #include "sinsp_worker.h"
@@ -157,8 +156,8 @@ private:
 
 	internal_metrics::sptr_t m_internal_metrics;
 	protocol_handler m_protocol_handler;
-	sinsp_worker m_sinsp_worker;
 	capture_job_handler m_capture_job_handler;
+	sinsp_worker m_sinsp_worker;
 	connection_manager m_connection_manager;
 	log_reporter m_log_reporter;
 	subprocesses_logger m_subprocesses_logger;

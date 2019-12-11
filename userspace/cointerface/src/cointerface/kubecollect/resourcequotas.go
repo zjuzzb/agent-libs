@@ -8,7 +8,6 @@ import (
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"sync"
@@ -81,7 +80,6 @@ func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) (*draiosproto.Con
 
 	AddResourceQuotaMetrics(&ret.Metrics, resourceQuota)
 	AddNSParents(&ret.Parents, resourceQuota.GetNamespace())
-	AddPodChildren(&ret.Children, labels.NewSelector(),resourceQuota.GetNamespace())
 	return ret
 }
 
@@ -95,21 +93,6 @@ func AddResourceQuotaMetrics(metrics *[]*draiosproto.AppMetric, resourceQuota *v
 		// we could lose precision with Value()
 		AppendMetric(metrics, prefix+k.String()+".hard", float64(hard.MilliValue())/1000);
 		AppendMetric(metrics, prefix+k.String()+".used", float64(v.MilliValue())/1000);
-	}
-}
-
-func AddResourceQuotaParentsFromPod(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if !resourceReady("resourcequotas") {
-		return
-	}
-
-	for _, obj := range resourceQuotaInf.GetStore().List() {
-		resourcequota := obj.(*v1.ResourceQuota)
-		if(resourcequota.GetNamespace() == pod.GetNamespace()) {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_resourcequota"),
-				Id:proto.String(string(resourcequota.GetUID()))})
-		}
 	}
 }
 

@@ -57,7 +57,7 @@ mounted_fs_list mounted_fs_proxy::receive_mounted_fs_list()
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from mounted_fs_reader: %lu bytes", msg.size());
 		sdc_internal::mounted_fs_response response_proto;
-		if(response_proto.ParseFromString(msg))
+		if(response_proto.ParseFromArray(&msg[0], msg.size()))
 		{
 			fs_map.clear();
 			for(const auto& c : response_proto.containers())
@@ -367,7 +367,7 @@ int mounted_fs_reader::run()
 		}
 
 		sdc_internal::mounted_fs_request request_proto;
-		if(!request_proto.ParseFromString(request_s))
+		if(!request_proto.ParseFromArray(&request_s[0], request_s.size()))
 		{
 			continue;
 		}

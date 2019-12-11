@@ -92,6 +92,22 @@ void file_stat_limiter(message& output,
 	);
 }
 
+template <typename message>
+void app_metric_limiter(message& output, uint32_t limit)
+{
+	multi_compare_limiter<message, app_metric>(
+		output,
+		limit,
+		[](message& a)->google::protobuf::RepeatedPtrField<app_metric>*{return a.mutable_metrics();},
+		{
+			message_comparator<app_metric>(
+				[](const app_metric& a)->uint64_t{return a.aggr_value_double().sum();},
+				[](const app_metric& a)->const std::string&{return a.name();}
+			)
+		}
+	);
+}
+
 } // aggregator_limits_comparators
 
 // using using to make the code more readable. All the lambdas are ridiculous with fully
@@ -622,17 +638,12 @@ void host_message_aggregator::limit_network_by_serverports(host& output, uint32_
 
 void app_info_message_aggregator::limit_metrics(app_info& output, uint32_t limit)
 {
-	multi_compare_limiter<app_info, app_metric>(
-		output,
-		limit,
-		[](app_info& a)->RepeatedPtrField<app_metric>*{return a.mutable_metrics();},
-		{
-			message_comparator<app_metric>(
-				[](const app_metric& a)->uint64_t{return a.aggr_value_double().sum();},
-				[](const app_metric& a)->const std::string&{return a.name();}
-			)
-		}
-	);
+	app_metric_limiter<app_info>(output, limit);
+}
+
+void prometheus_info_message_aggregator::limit_metrics(prometheus_info& output, uint32_t limit)
+{
+	app_metric_limiter<prometheus_info>(output, limit);
 }
 
 void metrics_message_aggregator::limit_events(metrics& output, uint32_t limit)

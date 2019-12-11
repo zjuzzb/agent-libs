@@ -1124,11 +1124,12 @@ enum message_type {
     COMP_RUN = 21;
     POLICIES_V2 = 22;
     SECURE_AUDIT = 23;
-	PROTOCOL_INIT = 24;
+    PROTOCOL_INIT = 24;
     PROTOCOL_INIT_RESP = 25;
     PROTOCOL_HANDSHAKE_V1 = 26;
     PROTOCOL_HANDSHAKE_V1_RESP = 27;
-	AGGREGATION_CONTEXT = 28;
+    AGGREGATION_CONTEXT = 28;
+    METRICS_ACK = 29;
 }
 
 //
@@ -1290,6 +1291,7 @@ message k8s_common {
     optional string namespace = 3;
     repeated k8s_pair labels = 4;
     repeated k8s_pair selectors = 5;
+    repeated k8s_pair parents = 6;
 }
 
 message k8s_namespace {
@@ -1413,6 +1415,15 @@ message k8s_replication_controller {
 
     optional uint32 replicas_running = 3;
     optional aggregations64 aggr_replicas_running = 103;
+
+    optional uint32 replicas_fully_labeled = 4;
+    optional aggregations64 aggr_replicas_fully_labeled = 104;
+
+    optional uint32 replicas_ready = 5;
+    optional aggregations64 aggr_replicas_ready = 105;
+
+    optional uint32 replicas_available = 6;
+    optional aggregations64 aggr_replicas_available = 106;
 }
 
 message k8s_replica_set {
@@ -1652,6 +1663,9 @@ message k8s_persistentvolumeclaim {
 
     optional uint64 storage = 2;
     optional aggregations64 aggr_storage = 100;
+
+    optional uint64 requests_storage = 3;
+    optional aggregations64 aggr_requests_storage = 101;
 }
 
 message k8s_state {
@@ -1881,6 +1895,7 @@ message falco_baseline {
 //
 message metrics {
     required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    optional uint64 index = 43;       // The message index; increases by 1 each message
 
     required string machine_id = 2; // The unique ID of the machine that is sending this data
     repeated string machine_ids = 23; //machine IDs aggregated for this group
@@ -1917,7 +1932,7 @@ message metrics {
     optional orchestrator_state_t global_orchestrator_state = 32;
     optional k8s_state global_kubernetes = 33; // used for storing entire cluster metrics/metadata
     optional orchestrator_state_t orchestrator_state = 34;
-    // 35 is free to reuse
+    optional k8s_state local_kubernetes = 35;
     repeated ipv4_connection ipv4_incomplete_connections = 36; // The list of incomplete IPv4 connections. not used if 10s flush is enabled
     repeated id_map userdb = 37; // uid->username mapping
     repeated environment environments = 38; // map of hash -> list of vars

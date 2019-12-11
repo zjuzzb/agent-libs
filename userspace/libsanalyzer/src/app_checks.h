@@ -230,7 +230,7 @@ public:
 	// metric is either an draiosproto::app_metric or prometheus_metric
 	// since they largely support the same types, but are different classes
 	template<typename metric>
-	unsigned to_protobuf(metric *proto, uint16_t& limit, uint16_t max_limit) const;
+	unsigned to_protobuf(metric *proto, unsigned int& limit, unsigned int max_limit) const;
 
 	const std::string& name() const
 	{
@@ -286,6 +286,15 @@ private:
 	posix_queue m_inqueue;
 	Json::Reader m_json_reader;
 	Json::FastWriter m_json_writer;
+
+	// the only one currently defined and the only one we support
+	static constexpr const uint8_t PROTOCOL_VERSION = 1;
+
+	// sanity checks, we could support up to 4 GB compressed/uncompressed
+	// size but that's rather excessive and probably indicates a bug
+	// MAXSIZE in sdchecks.py is 3 MB so in theory we never exceed this
+	static constexpr const size_t MAX_COMPRESSED_SIZE = 4UL << 20u;
+	static constexpr const size_t MAX_UNCOMPRESSED_SIZE = 100UL << 20u;
 };
 
 #endif // _WIN32

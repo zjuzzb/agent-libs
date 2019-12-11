@@ -586,13 +586,9 @@ void process_emitter::emit_process(sinsp_threadinfo& tinfo,
 		// Error-related metrics
 		//
 		procinfo.m_syscall_errors.to_protobuf(proc->mutable_syscall_errors(), m_sampling_ratio);
-
-		//
-		// Protocol tables
-		//
-		proc->set_start_count(procinfo.m_start_count);
-		proc->set_count_processes(procinfo.m_proc_count);
 	}
+	proc->set_start_count(procinfo.m_start_count);
+	proc->set_count_processes(procinfo.m_proc_count);
 
 	proc->mutable_resource_counters()->set_syscall_count(tot.m_count);
 }

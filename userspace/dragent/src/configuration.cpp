@@ -241,11 +241,11 @@ dragent_configuration::dragent_configuration()
 	m_falco_baselining_enabled = false;
 	m_falco_baselining_report_interval_ns = DEFAULT_FALCO_BASELINING_DUMP_DELTA_NS;
 	m_falco_baselining_autodisable_interval_ns = DEFAULT_FALCO_BASELINING_DISABLE_TIME_NS;
-	m_falco_baselining_max_drops_full_buffer = DEFAULT_FALCO_BASELINING_MAX_DROPS_FULL_BUFFER;
+	m_falco_baselining_max_drops_buffer_rate_percentage = DEFAULT_FALCO_BASELINING_MAX_DROPS_BUFFER_RATE_PERCENTAGE;
 	m_secure_audit_enabled = false;
 	m_commandlines_capture_enabled = false;
 	m_command_lines_capture_mode = sinsp_configuration::CM_TTY;
-	m_command_lines_include_container_healthchecks = true;
+	m_command_lines_include_container_healthchecks = false;
 	m_memdump_enabled = false;
 	m_memdump_size = 0;
 	m_memdump_max_init_attempts = 10;
@@ -684,7 +684,7 @@ void dragent_configuration::init()
 	m_falco_baselining_enabled =  m_config->get_scalar<bool>("falcobaseline", "enabled", false);
 	m_falco_baselining_report_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "report_interval", DEFAULT_FALCO_BASELINING_DUMP_DELTA_NS);
 	m_falco_baselining_autodisable_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "autodisable_interval", DEFAULT_FALCO_BASELINING_DISABLE_TIME_NS);
-	m_falco_baselining_max_drops_full_buffer = m_config->get_scalar<uint32_t>("falcobaseline", "max_drops_full_buffer", DEFAULT_FALCO_BASELINING_MAX_DROPS_FULL_BUFFER);
+	m_falco_baselining_max_drops_buffer_rate_percentage = m_config->get_scalar<float>("falcobaseline", "max_drops_buffer_rate_percentage", DEFAULT_FALCO_BASELINING_MAX_DROPS_BUFFER_RATE_PERCENTAGE);
 
 	if(libsanalyzer::security_config::is_enabled())
 	{
@@ -711,7 +711,7 @@ void dragent_configuration::init()
 	} else if(command_lines_capture_mode_s == "all") {
 		m_command_lines_capture_mode = sinsp_configuration::command_capture_mode_t::CM_ALL;
 	}
-	m_command_lines_include_container_healthchecks = m_config->get_scalar<bool>("commandlines_capture", "include_container_healthchecks", true);
+	m_command_lines_include_container_healthchecks = m_config->get_scalar<bool>("commandlines_capture", "include_container_healthchecks", false);
 	m_command_lines_valid_ancestors = m_config->get_deep_merged_sequence<set<string>>("commandlines_capture", "valid_ancestors");
 
 	m_memdump_enabled =  m_config->get_scalar<bool>("memdump", "enabled", false);
@@ -1213,7 +1213,7 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("falcobaseline.enabled: " + bool_as_text(m_falco_baselining_enabled));
 	LOG_INFO("falcobaseline.report_interval: " + NumberFormatter::format(m_falco_baselining_report_interval_ns));
 	LOG_INFO("falcobaseline.autodisable_interval: " + NumberFormatter::format(m_falco_baselining_autodisable_interval_ns));
-	LOG_INFO("falcobaseline.max_drops_full_buffer: " + NumberFormatter::format(m_falco_baselining_max_drops_full_buffer));
+	LOG_INFO("falcobaseline.max_drops_buffer_rate_percentage: " + NumberFormatter::format(m_falco_baselining_max_drops_buffer_rate_percentage));
 	LOG_INFO("commandlines_capture.enabled: " + bool_as_text(m_commandlines_capture_enabled));
 	LOG_INFO("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));
 	LOG_INFO("Will" + string((m_command_lines_include_container_healthchecks ? " " :" not")) + " include container health checks in collected commandlines");

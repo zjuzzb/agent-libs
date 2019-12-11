@@ -44,7 +44,7 @@
 #include "secure_audit_handler.h"
 #include "statsd_emitter.h"
 #include "analyzer_flush_message.h"
-#include "blocking_queue.h"
+#include "thread_safe_container/blocking_queue.h"
 #include "secure_audit_internal_metrics.h"
 #include "secure_audit_data_ready_handler.h"
 #include <nlohmann/json.hpp>
@@ -241,7 +241,7 @@ class SINSP_PUBLIC sinsp_analyzer :
 	public secure_audit_internal_metrics
 {
 public:
-	typedef blocking_queue<std::shared_ptr<flush_data_message>> flush_queue;
+	typedef thread_safe_container::blocking_queue<std::shared_ptr<flush_data_message>> flush_queue;
 	enum mode_switch_state
 	{
 		MSR_NONE = 0,
@@ -854,9 +854,9 @@ public:
 	/**
 	 * Accessor for metrics
 	 */
-	const draiosproto::metrics* metrics()
+	const draiosproto::metrics* metrics() const
 	{
-		return m_metrics;
+		return m_metrics.get();
 	}
 
 	/**
@@ -977,7 +977,8 @@ VISIBILITY_PRIVATE
 					     const std::vector<std::string>& emitted_containers);
 	void clean_containers(const analyzer_emitter::progtable_by_container_t&);
 
-	void check_dump_infrastructure_state(const draiosproto::orchestrator_state_t& state,
+	template<class S>
+	void check_dump_infrastructure_state(const S& state,
 					     const std::string& descriptor,
 					     bool& should_dump);
 
@@ -1085,7 +1086,7 @@ VISIBILITY_PRIVATE
 	//
 	// This is the protobuf class that we use to pack things
 	//
-	draiosproto::metrics* m_metrics;
+	std::unique_ptr<draiosproto::metrics> m_metrics;
 
 	//
 	// Checking Docker swarm state every 10 seconds
@@ -1185,11 +1186,10 @@ VISIBILITY_PRIVATE
 	uint64_t m_prev_flush_wall_time;
 
 	//
-	// Falco stuff
+	// Baseliner
 	//
 	sinsp_baseliner* m_falco_baseliner = NULL;
 	uint64_t m_last_falco_dump_ts = 0;
-	uint64_t m_last_buffer_drops = 0;
 
 #ifndef CYGWING_AGENT
 	infrastructure_state* m_infrastructure_state = NULL;

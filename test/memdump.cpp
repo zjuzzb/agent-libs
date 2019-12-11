@@ -18,8 +18,11 @@
 #include <configuration.h>
 #include <protocol.h>
 #include "security_config.h"
+#include <thread_safe_container/blocking_queue.h>
 
 using namespace std;
+using namespace thread_safe_container;
+
 namespace security_config = libsanalyzer::security_config;
 
 class memdump_error_handler : public Poco::ErrorHandler

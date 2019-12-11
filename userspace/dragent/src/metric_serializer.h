@@ -11,14 +11,16 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
-#include "blocking_queue.h"
 #include "protocol.h"
 #include "type_config.h"
 #include "uncompressed_sample_handler.h"
 #include "analyzer_flush_message.h"
 #include "dragent_message_queues.h"
 
-namespace draiosproto { class metrics; }
+namespace draiosproto
+{
+class metrics;
+}
 
 class test_helper;
 
@@ -31,8 +33,6 @@ namespace dragent
 class metric_serializer
 {
 public:
-	typedef flush_data data;
-
 	/**
 	 * Initialize this metric_serializer.
 	 *
@@ -53,7 +53,7 @@ public:
 	 *
 	 * @param[in] data The data to serialize.
 	 */
-	virtual void serialize(data&& data) = 0;
+	virtual void serialize(flush_data&& data) = 0;
 
 	/**
 	 * Wait for any potentially async serialization operations to complete.
@@ -69,14 +69,14 @@ public:
 	 * Returns true if this metric_serializer is configured to emit
 	 * metrics to file, false otherwise.
 	 */
-	bool get_emit_metrics_to_file() const;
+	virtual bool get_emit_metrics_to_file() const = 0;
 
 	/**
 	 * Returns the path to the directory into which this metric_serializer
 	 * will write metrics to file.  This method's return value is
 	 * meaningful only when get_emit_metrics_to_file() returns true.
 	 */
-	std::string get_metrics_directory() const;
+	virtual std::string get_metrics_directory() const = 0;
 
 	/**
 	 * set the absolute path to the metrics directory.
@@ -84,22 +84,17 @@ public:
 	 * Setting this to "" terminates logging to file.
 	 * The directory will be created if it does not exist.
 	 */
-	void set_metrics_directory(const std::string&);
-
-private:
-	mutable std::mutex m_metrics_dir_mutex;
-	std::string m_root_dir;
-	std::string m_metrics_dir;
+	virtual void set_metrics_directory(const std::string&) = 0;
 
 protected:
 	uncompressed_sample_handler& m_uncompressed_sample_handler;
 	flush_queue* m_input_queue;
 	protocol_queue* m_output_queue;
 
-public: // configs
+public:  // configs
 	static type_config<std::string> c_metrics_dir;
 
 	friend class ::test_helper;
 };
 
-} // end namespace dragent
+}  // end namespace dragent

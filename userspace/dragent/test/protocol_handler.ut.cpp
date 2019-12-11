@@ -21,3 +21,16 @@ audit_tap:
 	ASSERT_EQ(protocol_handler::c_compression_enabled.get_value(), false);
 	ASSERT_EQ(protocol_handler::c_audit_tap_debug_only.get_value(), false);
 }
+
+TEST(protocol_handler_test, flush_interval)
+{
+	// we won't use this, but we need it since some of the other APIs still do it the
+	// "wrong" way so we need the queue
+	protocol_queue input_queue(10);
+
+	protocol_handler ph(input_queue);
+
+	auto metrics = std::make_shared<draiosproto::metrics>();
+	auto i = ph.handle_uncompressed_sample(1, metrics, 2);
+	EXPECT_EQ(i->flush_interval, 2);
+}

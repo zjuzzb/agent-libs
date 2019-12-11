@@ -102,7 +102,7 @@ func newServiceCongroup(service coService, setLinks bool) (*draiosproto.Containe
 		// ref: https://kubernetes.io/docs/concepts/services-networking/service/#services-without-selectors
 		selector, ok := svcSelectorCache.Get(service)
 		if ok {
-			AddPodChildren(&ret.Children, selector, service.GetNamespace())
+			AddPodChildrenFromSelectors(&ret.Children, selector, service.GetNamespace())
 		}
 	}
 	return ret

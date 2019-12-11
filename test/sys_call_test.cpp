@@ -2564,7 +2564,7 @@ TEST_F(sys_call_test, thread_lookup_live)
 			// Not testing scap_tinfo->ptid because it can change in between event and lookup
 		}
 	};
-	before_close_t before_close = [&](sinsp* inspector) {
+	before_close_t before_close = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		// close scap to maintain the num_consumers at exit == 0 assertion
 		scap_close(scap);
 	};

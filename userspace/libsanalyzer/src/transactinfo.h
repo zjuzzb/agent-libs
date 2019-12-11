@@ -337,7 +337,7 @@ struct sinsp_trlist_entry_comparer
 class SINSP_PUBLIC sinsp_transaction_table
 {
 public:
-	sinsp_transaction_table(sinsp* inspector);
+	sinsp_transaction_table(sinsp_analyzer& analyzer);
 	~sinsp_transaction_table();
 
 	void emit(sinsp_threadinfo* ptinfo, 
@@ -361,6 +361,6 @@ public:
 private:
 	bool is_transaction_server(sinsp_threadinfo *ptinfo);
 
-	sinsp* m_inspector;
+	sinsp_analyzer& m_analyzer;
 	friend class sinsp_partial_transaction;
 };

@@ -34,7 +34,6 @@ add_definitions( -DHAS_ANALYZER )
 add_executable(unit-test-dragent
 	main.cpp
 	async_aggregator.ut.cpp
-	blocking_queue.ut.cpp
 	configlist_rest_request_handler.ut.cpp
 	config_data_rest_request_handler.ut.cpp
 	config_rest_request_handler.ut.cpp
@@ -47,7 +46,8 @@ add_executable(unit-test-dragent
 	file_rest_registry.ut.cpp
 	file_rest_request_handler.ut.cpp
 	metric_serializer.ut.cpp
-	metrics_rest_request_handler.ut.cpp
+	pre_aggregated_metrics_rest_request_handler.ut.cpp
+	post_aggregated_metrics_rest_request_handler.ut.cpp
 	process_helpers.ut.cpp
 	protobuf_metric_serializer.ut.cpp
 	protocol_handler.ut.cpp

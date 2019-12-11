@@ -11,13 +11,13 @@
 #include <common_logger.h>
 
 #include "common_assert.h"
-#include "blocking_queue.h"
 
 struct serialized_buffer
 {
 	std::string buffer;
 	uint64_t ts_ns;
 	uint8_t message_type;
+	uint32_t flush_interval; // special value only used for metrics messages. ugly.
 };
 
 #define htonll(x) ((((uint64_t)htonl(x)) << 32) + htonl((x) >> 32))

@@ -13,10 +13,10 @@
 #include <memory>
 
 #include "protocol.h"
-#include "blocking_queue.h"
+#include "thread_safe_container/blocking_queue.h"
 #include "analyzer_flush_message.h"
 
 typedef std::shared_ptr<flush_data_message> flush_data;
 
-typedef blocking_queue<flush_data> flush_queue;
-typedef blocking_queue<std::shared_ptr<serialized_buffer>> protocol_queue;
+typedef thread_safe_container::blocking_queue<flush_data> flush_queue;
+typedef thread_safe_container::blocking_queue<std::shared_ptr<serialized_buffer>> protocol_queue;

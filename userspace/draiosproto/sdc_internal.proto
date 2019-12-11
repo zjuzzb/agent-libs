@@ -108,13 +108,12 @@ message orchestrator_events_stream_command {
     required uint32 event_counts_log_time = 17;
     required uint32 batch_msgs_queue_len = 18;
     required uint32 batch_msgs_tick_interval_ms = 19;
-    required bool collect_events = 20;
-    required uint32 user_event_queue_len = 21;
-    required bool collect_debug_events = 22; // by default, only collect a few events. If set, collect everything
     required uint32 max_rnd_conn_delay = 23;
 }
 
 message orchestrator_attach_user_events_stream_command {
+    optional uint32 user_event_queue_len = 1;
+    optional bool collect_debug_events = 2; // by default, only collect a few events. If set, collect everything
 }
 
 message array_congroup_update_event {

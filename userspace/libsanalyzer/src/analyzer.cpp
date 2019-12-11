@@ -60,6 +60,7 @@ using namespace google::protobuf::io;
 #include "cri.h"
 #include "infrastructure_state.h"
 #include "k8s.h"
+#include "k8s_config.h"
 #include "k8s_delegator.h"
 #include "k8s_state.h"
 #include "k8s_proto.h"
@@ -98,6 +99,7 @@ using namespace google::protobuf::io;
 #include "null_statsd_emitter.h"
 #include "type_config.h"
 #include "analyzer_flush_message.h"
+#include "configuration_manager.h"
 
 #include <gperftools/profiler.h>
 
@@ -131,6 +133,14 @@ type_config<int32_t> c_dragent_cpu_profile_total_profiles(
 	"The total number of cpu profiles to collect before overwriting old profiles",
 	"dragent_total_profiles");
 
+type_config<bool>::ptr c_test_only_send_infra_state_containers = type_config_builder<bool>(
+	false,
+	"Send all containers from infrastructure_state as local to the current node",
+	"send_infra_state_containers")
+	.hidden()
+	.mutable_only_in_internal_build()
+	.build();
+
 } // end namespace
 
 const uint64_t flush_data_message::NO_EVENT_NUMBER =
@@ -144,6 +154,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
                                sinsp_analyzer::flush_queue* flush_queue):
 	m_configuration(new sinsp_configuration()),
 	m_inspector(inspector),
+	m_metrics(make_unique<draiosproto::metrics>()),
 #ifndef CYGWING_AGENT
 	m_coclient(root_dir),
 #endif
@@ -174,7 +185,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_flush_log_time_end = 0;
 	m_flush_log_time_restart = 0;
 
-	m_metrics = new draiosproto::metrics;
 	m_prev_sample_evtnum = 0;
 	m_client_tr_time_by_servers = 0;
 
@@ -209,7 +219,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 
 	m_parser = new sinsp_analyzer_parsers(this);
 
-	m_falco_baseliner = new sinsp_baseliner();
+	m_falco_baseliner = new sinsp_baseliner(*this,
+											m_inspector);
 
 	m_tap = nullptr;
 	m_secure_audit = nullptr;
@@ -266,7 +277,6 @@ sinsp_analyzer::~sinsp_analyzer()
 		utils::profiler::stop();
 	}
 
-	delete m_metrics;
 	delete m_score_calculator;
 	delete m_procfs_parser;
 	delete m_sched_analyzer2;
@@ -480,7 +490,7 @@ void sinsp_analyzer::on_capture_start()
 						  m_configuration->get_procfs_scan_interval_ms() / 1000,
 						  m_configuration->get_procfs_scan_mem_interval_ms() / 1000);
 #else
-	m_procfs_parser = new sinsp_procfs_parser(m_inspector, 
+	m_procfs_parser = new sinsp_procfs_parser(m_inspector,
 						  m_machine_info->num_cpus,
 						  m_machine_info->memory_size_bytes / 1024,
 						  !m_inspector->is_capture(),
@@ -489,15 +499,15 @@ void sinsp_analyzer::on_capture_start()
 #endif
 	m_mounted_fs_reader.reset(new mounted_fs_reader(m_remotefs_enabled, m_configuration->get_mounts_filter(), m_configuration->get_mounts_limit_size()));
 
-	m_sched_analyzer2 = new sinsp_sched_analyzer2(m_inspector, m_machine_info->num_cpus);
-	m_score_calculator = new sinsp_scores(m_inspector, m_sched_analyzer2);
+	m_sched_analyzer2 = new sinsp_sched_analyzer2(*this, m_inspector, m_machine_info->num_cpus);
+	m_score_calculator = new sinsp_scores(*this, m_inspector, m_sched_analyzer2);
 	m_delay_calculator = new sinsp_delays(m_machine_info->num_cpus);
 
 	//
 	// Allocations
 	//
 	ASSERT(m_ipv4_connections == NULL);
-	m_ipv4_connections = new sinsp_ipv4_connection_manager(m_inspector);
+	m_ipv4_connections = new sinsp_ipv4_connection_manager(m_inspector, *this);
 
 	if(m_secure_audit != nullptr)
 	{
@@ -510,7 +520,7 @@ void sinsp_analyzer::on_capture_start()
 		m_ipv4_connections->m_percentiles = pctls;
 	}
 	m_fd_listener->set_ipv4_connection_manager(m_ipv4_connections);
-	m_trans_table = new sinsp_transaction_table(m_inspector);
+	m_trans_table = new sinsp_transaction_table(*this);
 
 	//
 	// Notify the scheduler analyzer
@@ -531,8 +541,8 @@ void sinsp_analyzer::on_capture_start()
 	if(do_baseline_calculation)
 	{
 		glogf("starting falco baselining");
-		m_falco_baseliner->init(m_inspector);
-		m_falco_baseliner->set_baseline_calculation_enabled(do_baseline_calculation);
+		m_falco_baseliner->init();
+		m_falco_baseliner->enable_baseline_calculation();
 	}
 
 #ifndef CYGWING_AGENT
@@ -1600,21 +1610,41 @@ sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 	if(m_flushes_since_k8_local_flush >= m_k8s_local_update_frequency)
 	{
 		m_flushes_since_k8_local_flush = 0;
-		g_logger.log("sinsp_analyzer:: Emitting k8s metadata for local node", sinsp_logger::SEV_DEBUG);
-
 		// Try to find out our k8s node id & name
 		m_infrastructure_state->find_our_k8s_node(&emitted_containers);
 
-		// Build the orchestrator state of the emitted containers (without metrics)
-		// This is the k8 data for the local node
-		m_metrics->mutable_orchestrator_state()->set_cluster_id(cluster_id);
-		m_metrics->mutable_orchestrator_state()->set_cluster_name(cluster_name);
-		m_infrastructure_state->state_of(emitted_containers,
-						 m_metrics->mutable_orchestrator_state()->mutable_groups(),
-						 m_prev_flush_time_ns);
-		check_dump_infrastructure_state(*m_metrics->mutable_orchestrator_state(),
-						"local",
-						m_dump_local_infrastructure_state_on_next_flush);
+		if(c_new_k8s_local_export_format.get_value() == k8s_export_format::DEDICATED)
+		{
+			g_logger.log("sinsp_analyzer:: Emitting k8s metadata for local node (local_kubernetes)", sinsp_logger::SEV_DEBUG);
+
+			auto k8s_state = m_metrics->mutable_local_kubernetes();
+			// Build the orchestrator state of the emitted containers (without metrics)
+			// This is the k8 data for the local node
+			k8s_state->set_cluster_id(cluster_id);
+			k8s_state->set_cluster_name(cluster_name);
+			m_infrastructure_state->state_of(emitted_containers,
+							 k8s_state,
+							 m_prev_flush_time_ns);
+			check_dump_infrastructure_state(*k8s_state,
+							"local",
+							m_dump_local_infrastructure_state_on_next_flush);
+		}
+		else
+		{
+			g_logger.log("sinsp_analyzer:: Emitting k8s metadata for local node (congroups)", sinsp_logger::SEV_DEBUG);
+
+			auto k8s_state = m_metrics->mutable_orchestrator_state();
+			// Build the orchestrator state of the emitted containers (without metrics)
+			// This is the k8 data for the local node
+			k8s_state->set_cluster_id(cluster_id);
+			k8s_state->set_cluster_name(cluster_name);
+			m_infrastructure_state->state_of(emitted_containers,
+							 k8s_state->mutable_groups(),
+							 m_prev_flush_time_ns);
+			check_dump_infrastructure_state(*k8s_state,
+							"local",
+							m_dump_local_infrastructure_state_on_next_flush);
+		}
 	}
 
 	// Check whether this node is a delegate node. If it is then it is
@@ -1627,18 +1657,33 @@ sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 	++m_flushes_since_k8_cluster_flush;
 	if(m_flushes_since_k8_cluster_flush >= m_k8s_cluster_update_frequency)
 	{
-		m_flushes_since_k8_cluster_flush = 0;
-		g_logger.log("sinsp_analyzer:: Emitting k8s metadata for cluster", sinsp_logger::SEV_DEBUG);
-
-
-		m_metrics->mutable_global_orchestrator_state()->set_cluster_id(cluster_id);
-		m_metrics->mutable_global_orchestrator_state()->set_cluster_name(cluster_name);
 		// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
-		m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups(),
-						  m_prev_flush_time_ns);
-		check_dump_infrastructure_state(*m_metrics->mutable_global_orchestrator_state(),
-						"global",
-						m_dump_global_infrastructure_state_on_next_flush);
+
+		m_flushes_since_k8_cluster_flush = 0;
+		if(c_new_k8s_global_export_format.get_value() == k8s_export_format::DEDICATED)
+		{
+			g_logger.log("sinsp_analyzer:: Emitting k8s metadata for cluster (global_kubernetes)", sinsp_logger::SEV_DEBUG);
+			auto k8s_state = m_metrics->mutable_global_kubernetes();
+
+			k8s_state->set_cluster_id(cluster_id);
+			k8s_state->set_cluster_name(cluster_name);
+			m_infrastructure_state->get_state(k8s_state, m_prev_flush_time_ns);
+			check_dump_infrastructure_state(*k8s_state,
+							"global",
+							m_dump_global_infrastructure_state_on_next_flush);
+		}
+		else
+		{
+			g_logger.log("sinsp_analyzer:: Emitting k8s metadata for cluster (congroups)", sinsp_logger::SEV_DEBUG);
+			auto k8s_state = m_metrics->mutable_global_orchestrator_state();
+
+			k8s_state->set_cluster_id(cluster_id);
+			k8s_state->set_cluster_name(cluster_name);
+			m_infrastructure_state->get_state(k8s_state->mutable_groups(), m_prev_flush_time_ns);
+			check_dump_infrastructure_state(*k8s_state,
+							"global",
+							m_dump_global_infrastructure_state_on_next_flush);
+		}
 	}
 #endif
 }
@@ -1771,7 +1816,7 @@ void sinsp_analyzer::emit_processes_deprecated(std::set<uint64_t>& all_uids,
 			draiosproto::program* prog = m_metrics->add_programs();
 
 			process_emitter_instance.emit_process(*tinfo,
-							      *prog, 
+							      *prog,
 							      progtable_by_container,
 							      *procinfo,
 							      tot,
@@ -3445,7 +3490,7 @@ void sinsp_analyzer::tune_drop_mode(analyzer_emitter::flush_flags flushflags, do
 			   m_falco_baseliner->is_baseline_calculation_enabled())
 			{
 				g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
-				m_falco_baseliner->set_baseline_calculation_enabled(false);
+				m_falco_baseliner->disable_baseline_calculation();
 				m_falco_baseliner->clear_tables();
 			}
 
@@ -3690,6 +3735,9 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 	tracer_emitter falco_trc("falco_baseline", f_trc);
 	if(m_falco_baseliner->is_baseline_calculation_enabled())
 	{
+		scap_stats st;
+		m_inspector->get_capture_stats(&st);
+
 		if(is_eof)
 		{
 			//
@@ -3722,11 +3770,14 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 					// It's safe to turn baselining on again.
 					// Reset the tables and restart the baseline time counter.
 					//
-					m_falco_baseliner->set_baseline_calculation_enabled(true);
+					scap_stats st;
+					m_inspector->get_capture_stats(&st);
+
 					m_falco_baseliner->clear_tables();
-					m_falco_baseliner->load_tables(evt->get_ts());
+					m_falco_baseliner->enable_baseline_calculation();
 					m_last_falco_dump_ts = evt->get_ts();
-					g_logger.format("enabling falco baselining creation after %lus pause",
+					m_falco_baseliner->load_tables(evt->get_ts());
+					g_logger.format("enabling falco baselining creation after a %lus pause",
 							m_configuration->get_falco_baselining_autodisable_interval_ns() / 1000000000);
 				}
 			}
@@ -3894,7 +3945,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			//
 			// Reset the protobuffer
 			//
-			m_metrics->Clear();
+			m_metrics = make_unique<draiosproto::metrics>();
 
 			if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_capture())
 			{
@@ -4176,7 +4227,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			//
 			if(m_configuration->get_commandlines_capture_enabled())
 			{
-				emit_executed_commands(m_metrics, NULL, &(m_executed_commands[""]));
+				emit_executed_commands(m_metrics.get(), NULL, &(m_executed_commands[""]));
 			}
 
 			//
@@ -4258,8 +4309,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			}
 
 			tracer_emitter misc_trc("misc_emit", f_trc);
-			m_fd_listener->m_files_stat.emit(m_metrics, m_top_files_per_host);
-			m_fd_listener->m_devs_stat.emit(m_metrics, m_device_map, m_top_file_devices_per_host);
+			m_fd_listener->m_files_stat.emit(m_metrics.get(), m_top_files_per_host);
+			m_fd_listener->m_devs_stat.emit(m_metrics.get(), m_device_map, m_top_file_devices_per_host);
 
 			m_fd_listener->m_files_stat.clear();
 			m_fd_listener->m_devs_stat.clear();
@@ -4631,18 +4682,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 
 	if(m_falco_baseliner->is_baseline_calculation_enabled())
 	{
-		//
-		// Disable the baseline if the ring buffer is full
-		//
+		// If, between two emit interval, we notice a lot of
+		// dropped events due to the buffer being full with
+		// respect to the total number of events processed, we
+		// disable the baseliner.
 		scap_stats st;
 		m_inspector->get_capture_stats(&st);
-		if(st.n_drops_buffer > (m_last_buffer_drops + m_configuration->get_falco_baselining_max_drops_full_buffer()))
+		if(m_falco_baseliner->is_drops_buffer_rate_critical(m_configuration->get_falco_baselining_max_drops_buffer_rate_percentage()))
 		{
-			g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining because buffer is full");
-			m_falco_baseliner->set_baseline_calculation_enabled(false);
-
+			g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining because of critical drops buffer rate.");
+			m_falco_baseliner->disable_baseline_calculation();
 			m_falco_baseliner->clear_tables();
-			m_last_buffer_drops = st.n_drops_buffer;
 		}
 	}
 
@@ -4732,7 +4782,7 @@ void sinsp_analyzer::flush_done_handler(const sinsp_evt* evt)
 	m_flush_queue->put(std::make_shared<flush_data_message>(
 	                        ts,
 	                        &m_sent_metrics,
-	                        *m_metrics,
+	                        std::move(m_metrics),
 							nevts,
 							num_drop_events,
 							m_my_cpuload,
@@ -5428,7 +5478,7 @@ std::string sinsp_analyzer::get_k8s_cluster_name()
 // then append that tag here - by default, the value
 // will be "default" unless:
 // 1.) User specifies a k8s_cluster_name
-// 2.) At some point in the future, we ping the GKE or 
+// 2.) At some point in the future, we ping the GKE or
 //     other kube cluster and ask forits name
 std::string sinsp_analyzer::get_host_tags_with_cluster()
 {
@@ -5437,7 +5487,7 @@ std::string sinsp_analyzer::get_host_tags_with_cluster()
  	{
  		return tags;
  	}
-	
+
  	const string tag_str("cluster:");
 
  	// No user-defined agent cluster tag so it's safe to append
@@ -5864,7 +5914,8 @@ private:
 	Extractor m_extractor;
 };
 
-void sinsp_analyzer::check_dump_infrastructure_state(const draiosproto::orchestrator_state_t& state,
+template<class S>
+void sinsp_analyzer::check_dump_infrastructure_state(const S& state,
 						     const std::string& descriptor,
 						     bool& should_dump)
 {
@@ -6098,6 +6149,25 @@ sinsp_analyzer::emit_containers_deprecated(const analyzer_emitter::progtable_by_
 					 containers_cmp_deprecated<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
 	}
 	check_and_emit_containers(top_cpu_containers);
+
+	/*
+	 * Required for fake k8s API server, so that we report the fake containers
+	 * in local orchestrator state and they're visible in the UI
+	 *
+	 * Has absolutely no use in real world setups
+	 */
+	if(c_test_only_send_infra_state_containers->get_value())
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "Sending infra_state containers");
+		for(const auto& id: m_infrastructure_state->test_only_get_container_ids())
+		{
+			draiosproto::container* container = m_metrics->add_containers();
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Sending infra_state container %s", id.c_str());
+			container->set_id(id);
+			container->set_type(draiosproto::CUSTOM);
+			emitted_containers.emplace_back(id);
+		}
+	}
 
 	gather_k8s_infrastructure_state(flushflags,
 					emitted_containers);

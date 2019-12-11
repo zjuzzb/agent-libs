@@ -217,7 +217,7 @@ class security_policies_test : public testing::Test
 	const uint32_t DEFAULT_QUEUE_LEN = 1000;
 public:
 	/* path to the cointerface unix socket domain */
-	security_policies_test() : 
+	security_policies_test() :
 	    m_flush_queue(DEFAULT_QUEUE_LEN),
 	    m_transmit_queue(DEFAULT_QUEUE_LEN),
 	    m_data_handler(m_transmit_queue),
@@ -1794,6 +1794,30 @@ TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit)
 	return falco_k8s_audit(this, v1_metrics);
 };
 
+TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_scope)
+{
+	// send a single event (the first line of the file)
+	ASSERT_EQ(system("timeout 2 curl -X POST localhost:7765/k8s_audit -d $(head -1 ./resources/k8s_audit_create_namespace.txt) > /dev/null 2>&1"), 0);
+
+	unique_ptr<draiosproto::policy_events> pe;
+	get_policy_evts_msg(pe);
+	ASSERT_TRUE(pe->events_size() == 1);
+	ASSERT_EQ(pe->events(0).policy_id(), 35u);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 5);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "k8s_namespace_created");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.auth.decision"), "allow");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.response.code"), "201");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.target.name"), "some-namespace");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.user.name"), "minikube-user");
+
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
+
+	metrics = {{"security.falco.match.match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+		   {"security.falco.match.not_match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+
+	check_expected_internal_metrics(metrics);
+};
+
 
 static void falco_k8s_audit_multi_events(security_policies_test_cointerface *ptest, bool v1_metrics)
 {
@@ -1822,7 +1846,7 @@ static void falco_k8s_audit_multi_events(security_policies_test_cointerface *pte
 	}
 	else
 	{
-		metrics = {{"security.falco.match.match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+		metrics = {{"security.falco.match.match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_GE, 1}},
 			   {"security.falco.match.not_match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
 	}
 

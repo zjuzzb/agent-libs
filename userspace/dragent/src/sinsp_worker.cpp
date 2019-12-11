@@ -1,6 +1,5 @@
 #include "sinsp_worker.h"
 #include "common_logger.h"
-#include "configuration_manager.h"
 #include "container_config.h"
 #include "config_update.h"
 #include "error_handler.h"
@@ -25,6 +24,8 @@ namespace security_config = libsanalyzer::security_config;
 namespace
 {
 
+COMMON_LOGGER();
+
 type_config<uint16_t> config_increased_snaplen_port_range_start(
 		0,
 		"Starting port in the range of ports to enable a larger snaplen on",
@@ -33,8 +34,6 @@ type_config<uint16_t> config_increased_snaplen_port_range_end(
 		0,
 		"Ending port in the range of ports to enable a larger snaplen on",
 		"increased_snaplen_port_range_end");
-
-COMMON_LOGGER();
 
 } // namespace
 

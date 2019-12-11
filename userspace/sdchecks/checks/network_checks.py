@@ -1,5 +1,6 @@
 # stdlib
 # project
+from builtins import object
 from checks import AgentCheck
 
 TIMEOUT = 180
@@ -8,18 +9,18 @@ MAX_LOOP_ITERATIONS = 1000
 FAILURE = "FAILURE"
 
 
-class Status:
+class Status(object):
     DOWN = "DOWN"
     WARNING = "WARNING"
     UP = "UP"
 
 
-class EventType:
+class EventType(object):
     DOWN = "servicecheck.state_change.down"
     UP = "servicecheck.state_change.up"
 
 
-class NetworkCheck:
+class NetworkCheck(object):
     SOURCE_TYPE_NAME = 'servicecheck'
     SERVICE_CHECK_PREFIX = 'network_check'
 

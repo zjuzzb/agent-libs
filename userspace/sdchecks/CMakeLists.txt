@@ -1,9 +1,11 @@
 set(PYTHON27 "Python-2.7.16")
 set(PYTHON26 "Python-2.6.9")
+set(PYTHON3 "Python-3.7.3")
 
 add_custom_target(sdchecks-deps ALL DEPENDS
 		${CMAKE_CURRENT_BINARY_DIR}/deps
 		${CMAKE_CURRENT_BINARY_DIR}/deps2.7
+		${CMAKE_CURRENT_BINARY_DIR}/deps3.7
 		${CMAKE_CURRENT_BINARY_DIR}/deps2.6)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/deps
 		COMMAND ${CMAKE_COMMAND} -E env PATH="${DRAIOS_DEPENDENCIES_DIR}/postgresql-9.4.15/target/bin:$ENV{PATH}" ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON27}/target/bin/python ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON27}/target/bin/pip install -I --target=${CMAKE_CURRENT_BINARY_DIR}/deps --upgrade -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt
@@ -11,6 +13,9 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/deps
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/deps2.7
 		COMMAND ${CMAKE_COMMAND} -E env PATH="${DRAIOS_DEPENDENCIES_DIR}/postgresql-9.4.15/target/bin:$ENV{PATH}" ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON27}/target/bin/python ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON27}/target/bin/pip install -I --target=${CMAKE_CURRENT_BINARY_DIR}/deps2.7 --upgrade -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-2.7.txt
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-2.7.txt)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/deps3.7
+		COMMAND ${CMAKE_COMMAND} -E env PATH="${DRAIOS_DEPENDENCIES_DIR}/postgresql-9.4.15/target/bin:$ENV{PATH}" ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON3}/target/bin/python3 ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON3}/target/bin/pip3 install -I --target=${CMAKE_CURRENT_BINARY_DIR}/deps3.7 --upgrade -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-3.txt
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-3.txt)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/deps2.6
 		COMMAND ${CMAKE_COMMAND} -E env PATH="${DRAIOS_DEPENDENCIES_DIR}/postgresql-9.4.15/target/bin:$ENV{PATH}" ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON26}/target/bin/python ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON26}/target/bin/pip install -I --target=${CMAKE_CURRENT_BINARY_DIR}/deps2.6 --upgrade -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-2.6.txt
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-2.6.txt)
@@ -31,9 +36,6 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps/
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps/
 		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps
 		COMPONENT agent-slim FILES_MATCHING PATTERN *.so)
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps/.libs_cffi_backend/
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps/.libs_cffi_backend/
-		COMPONENT agent-slim FILES_MATCHING PATTERN *.so*)
 
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps2.7/
 		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps2.7
@@ -50,6 +52,24 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps2.7/.libs_cffi_backend/
 		COMPONENT agent-slim FILES_MATCHING PATTERN *.so*)
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps2.7/psycopg2/
                DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps2.7/psycopg2/
+               COMPONENT agent-slim FILES_MATCHING PATTERN *.so*)
+
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.7/
+		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.7
+		COMPONENT agent-slim FILES_MATCHING PATTERN *.py)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.7/
+		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.7
+		COMPONENT agent-slim FILES_MATCHING PATTERN *.pth)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.7/
+		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.7
+		COMPONENT agent-slim FILES_MATCHING PATTERN *.so)
+
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.7/.libs_cffi_backend/
+		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.7/.libs_cffi_backend/
+		COMPONENT agent-slim FILES_MATCHING PATTERN *.so*)
+
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.7/psycopg2/
+               DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.7/psycopg2/
                COMPONENT agent-slim FILES_MATCHING PATTERN *.so*)
 
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps2.6/
@@ -72,3 +92,4 @@ install(FILES
 install(PROGRAMS sdchecks
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 	COMPONENT agent-slim)
+

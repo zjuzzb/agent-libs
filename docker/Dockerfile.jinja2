@@ -44,6 +44,8 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false \
 	bzip2 \
 	iproute2 \
 	procps \
+	python3-distutils \
+	python3-lib2to3 \
 {% if p.build_kernel_module %}
 	bc \
 	clang-7 \
