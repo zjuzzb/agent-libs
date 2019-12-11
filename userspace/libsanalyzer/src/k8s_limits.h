@@ -20,8 +20,6 @@ public:
 		  uint64_t expire_seconds = user_configured_limits::EXPIRE_SECONDS);
 
 
-	void sanitize_filters() override;
-
 	void purge_tags(draiosproto::container_group& congroup);
 
 	DEFINE_LOG("K8S");

@@ -22,10 +22,6 @@ k8s_limits::k8s_limits()
 {
 }
 
-void k8s_limits::sanitize_filters()
-{
-}
-
 void k8s_limits::init(const filter_vec_t& filters,
 		      uint32_t max_entries,
 		      uint64_t expire_seconds)

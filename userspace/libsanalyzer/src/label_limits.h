@@ -10,9 +10,6 @@ public:
 		     uint32_t max_entries = user_configured_limits::MAX_ENTRIES,
 		     uint64_t expire_seconds = user_configured_limits::EXPIRE_SECONDS);
 
-	void sanitize_filters() override;
-
-
 	DEFINE_LOG("Labels");
 	DEFINE_LOG_ENABLED(label_limits);
 private:

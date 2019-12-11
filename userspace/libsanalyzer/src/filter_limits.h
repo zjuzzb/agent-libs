@@ -133,8 +133,6 @@ public:
 
 	virtual ~user_configured_limits();
 
-	virtual void sanitize_filters() = 0;
-
 	bool allow(const std::string& target,
 		   std::string& filter,
 		   int* pos = nullptr,

@@ -14,11 +14,6 @@ label_limits::label_limits(filter_vec_t filters,
 {
 }
 
-void label_limits::sanitize_filters()
-{
-}
-
-
 INITIALIZE_LOG(label_limits);
 
 
