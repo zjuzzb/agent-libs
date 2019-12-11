@@ -4,10 +4,10 @@
 #include <algorithm>
 
 
-metric_limits::metric_limits(const filter_vec_t& filters,
+metric_limits::metric_limits(filter_vec_t filters,
 			     uint32_t max_entries,
 			     uint64_t expire_seconds)
-	: user_configured_limits(filters,
+	: user_configured_limits(std::move(filters),
 				 "Metrics",
 				 log_flags<metric_limits>::m_log,
 				 log_flags<metric_limits>::m_enable_log,
