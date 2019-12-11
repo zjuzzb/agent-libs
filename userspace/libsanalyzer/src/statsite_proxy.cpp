@@ -57,7 +57,7 @@ statsite_proxy::statsite_proxy(std::pair<FILE*, FILE*> const &fds,
 }
 
 statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
-		metric_limits::cref_sptr_t ml)
+		const metric_limits::sptr_t& ml)
 {
 	// Sample data from statsite
 	// counts.statsd.test.1|1.000000|1441746724

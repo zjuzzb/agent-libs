@@ -205,7 +205,7 @@ public:
 			m_total_metrics(0)
 	{};
 
-	explicit app_check_data(const Json::Value& obj, metric_limits::cref_sptr_t ml = nullptr);
+	explicit app_check_data(const Json::Value& obj, const metric_limits::sptr_t& ml = nullptr);
 
 	check_type type() const
 	{
@@ -279,7 +279,7 @@ public:
 	void send_get_metrics_cmd(const std::vector<app_process>& processes,
 		const std::vector<prom_process>& prom_procs, const prometheus_conf &conf);
 
-	metric_map_t read_metrics(metric_limits::cref_sptr_t ml = nullptr);
+	metric_map_t read_metrics(const metric_limits::sptr_t& ml = nullptr);
 
 private:
 	posix_queue m_outqueue;

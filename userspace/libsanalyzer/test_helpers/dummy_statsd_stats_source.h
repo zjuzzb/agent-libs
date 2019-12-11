@@ -31,7 +31,7 @@ public:
 	 * this object.
 	 */
 	statsd_stats_source::container_statsd_map read_metrics(
-			metric_limits::cref_sptr_t ml = nullptr) override;
+			const metric_limits::sptr_t& ml = nullptr) override;
 
 
 	/**

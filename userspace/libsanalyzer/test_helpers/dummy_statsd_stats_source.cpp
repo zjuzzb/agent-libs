@@ -11,7 +11,7 @@ namespace test_helpers
 {
 
 statsd_stats_source::container_statsd_map dummy_statsd_stats_source::read_metrics(
-		metric_limits::cref_sptr_t ml)
+		const metric_limits::sptr_t& ml)
 {
 	const statsd_stats_source::container_statsd_map ret = m_stats;
 

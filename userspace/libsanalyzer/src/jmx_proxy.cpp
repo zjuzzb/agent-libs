@@ -110,7 +110,7 @@ java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute, unsigned
 	}
 }
 
-java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
+java_bean::java_bean(const Json::Value& json, const metric_limits::sptr_t& ml):
 	m_name(json["name"].asString()), m_total_metrics(0)
 {
 	for(const auto& attribute : json["attributes"])
@@ -240,7 +240,7 @@ unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned 
 	return emitted_attributes;
 }
 
-java_process::java_process(const Json::Value& json, metric_limits::cref_sptr_t ml):
+java_process::java_process(const Json::Value& json, const metric_limits::sptr_t& ml):
 	m_pid(json["pid"].asInt()),
 	m_name(json["name"].asString()),
 	m_total_metrics(0)
@@ -361,7 +361,7 @@ void jmx_proxy::send_get_metrics(const std::vector<sinsp_threadinfo*>& processes
 }
 
 
-std::unordered_map<int, java_process> jmx_proxy::read_metrics(metric_limits::cref_sptr_t ml)
+std::unordered_map<int, java_process> jmx_proxy::read_metrics(const metric_limits::sptr_t& ml)
 {
 	process_map_t processes;
 	try

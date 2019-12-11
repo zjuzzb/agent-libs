@@ -317,7 +317,7 @@ void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes
 	m_outqueue.send(data);
 }
 
-app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cref_sptr_t ml)
+app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(const metric_limits::sptr_t& ml)
 {
 	metric_map_t ret;
 	try
@@ -379,7 +379,7 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 		Json::Value response_obj;
 		if(m_json_reader.parse(start, start+len, response_obj, false))
 		{
-			auto proc_metrics = [](const Json::Value& obj, app_check_data::check_type t, metric_limits::cref_sptr_t ml, metric_map_t &ret) {
+			auto proc_metrics = [](const Json::Value& obj, app_check_data::check_type t, const metric_limits::sptr_t& ml, metric_map_t &ret) {
 				for(const auto& process : obj)
 				{
 					app_check_data data(process, ml);
@@ -416,7 +416,7 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 	return ret;
 }
 
-app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_t ml):
+app_check_data::app_check_data(const Json::Value &obj, const metric_limits::sptr_t& ml):
 	m_pid(obj["pid"].asInt()),
 	m_expiration_ts(obj["expiration_ts"].asUInt64()),
 	m_total_metrics(0)
