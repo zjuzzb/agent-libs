@@ -7,7 +7,7 @@
 class metric_limits : public user_configured_limits
 {
 public:
-	typedef std::shared_ptr<metric_limits> sptr_t;
+	using sptr_t = std::shared_ptr<metric_limits>;
 
 	metric_limits() = delete;
 	explicit metric_limits(filter_vec_t filters,
