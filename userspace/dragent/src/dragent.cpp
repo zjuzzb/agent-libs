@@ -22,7 +22,8 @@
 #include "file_rest_request_handler.h"
 #include "memdump_logger.h"
 #include "metric_serializer.h"
-#include "metrics_rest_request_handler.h"
+#include "post_aggregated_metrics_rest_request_handler.h"
+#include "pre_aggregated_metrics_rest_request_handler.h"
 #include "monitor.h"
 #include "null_message_handler.h"
 #include "process_helpers.h"
@@ -67,46 +68,39 @@ namespace
 COMMON_LOGGER();
 
 type_config<bool> c_use_statsite_forwarder(
-		false,
-		"Use statsite_forwarder instead of system call trace for container statsd metrics",
-		"statsd",
-		"use_forwarder");
+    false,
+    "Use statsite_forwarder instead of system call trace for container statsd metrics",
+    "statsd",
+    "use_forwarder");
 
-type_config<bool> c_sdagent_app_checks_python_26_supported(
-		false,
-		"sdagent check the python 2.6 support",
-		"app_checks_python_26_supported");
+type_config<bool> c_sdagent_app_checks_python_26_supported(false,
+                                                           "sdagent check the python 2.6 support",
+                                                           "app_checks_python_26_supported");
 
 type_config<bool>::ptr c_rest_feature_flag =
-		type_config_builder<bool>(
-				false,
-				"Feature flag to turn on the REST server.",
-				"feature_flag_rest_server")
-		.hidden()
-		.mutable_only_in_internal_build()
-		.build();
+    type_config_builder<bool>(false,
+                              "Feature flag to turn on the REST server.",
+                              "feature_flag_rest_server")
+        .hidden()
+        .mutable_only_in_internal_build()
+        .build();
 
 type_config<uint16_t>::ptr c_rest_port =
-		type_config_builder<uint16_t>(
-				24482,
-				"TCP port on which the Agent REST server listens for connections",
-				"rest_server",
-				"tcp_port")
-		.hidden()  // Hidden until feature is released
-		.build();
+    type_config_builder<uint16_t>(24482,
+                                  "TCP port on which the Agent REST server listens for connections",
+                                  "rest_server",
+                                  "tcp_port")
+        .hidden()  // Hidden until feature is released
+        .build();
 
-type_config<uint64_t> c_serializer_timeout_s(
-		10,
-		"Watchdog timeout for the serializer thread",
-		"serializer_timeout");
+type_config<uint64_t> c_serializer_timeout_s(10,
+                                             "Watchdog timeout for the serializer thread",
+                                             "serializer_timeout");
 
 type_config<bool>::ptr c_10s_flush_enabled =
-		type_config_builder<bool>(
-				false,
-				"Enable flag to force 10s flush behavior",
-				"10s_flush_enable")
-		.hidden()
-		.build();
+    type_config_builder<bool>(false, "Enable flag to force 10s flush behavior", "10s_flush_enable")
+        .hidden()
+        .build();
 
 string compute_sha1_digest(SHA1Engine& engine, const string& path)
 {
@@ -171,7 +165,8 @@ void enable_rest_server(dragent_configuration& configuration)
 	// Register path handlers with the factory...
 	factory->register_path_handler<configlist_rest_request_handler>();
 	factory->register_path_handler<config_rest_request_handler>();
-	factory->register_path_handler<metrics_rest_request_handler>();
+	factory->register_path_handler<post_aggregated_metrics_rest_request_handler>();
+	factory->register_path_handler<pre_aggregated_metrics_rest_request_handler>();
 	factory->register_path_handler<config_data_rest_request_handler>();
 	factory->register_path_handler<webpage_rest_request_handler>();
 	factory->register_path_handler<file_rest_request_handler>();
@@ -203,59 +198,57 @@ void disable_rest_server()
 
 }  // end namespace
 
-dragent_app::dragent_app():
-	m_help_requested(false),
-	m_version_requested(false),
+dragent_app::dragent_app()
+    : m_help_requested(false),
+      m_version_requested(false),
 #ifdef CYGWING_AGENT
-	m_windows_service_parent(false),
+      m_windows_service_parent(false),
 #endif
 #ifndef CYGWING_AGENT
-	m_unshare_ipcns(true),
+      m_unshare_ipcns(true),
 #endif
-	m_aggregator_queue(MAX_SAMPLE_STORE_SIZE),
-	m_serializer_queue(MAX_SAMPLE_STORE_SIZE),
-	m_transmit_queue(MAX_SAMPLE_STORE_SIZE),
-	m_enable_autodrop(true),
-	m_internal_metrics(std::make_shared<internal_metrics>()),
-	m_protocol_handler(m_transmit_queue),
-	m_capture_job_handler(&m_configuration, &m_transmit_queue, &m_enable_autodrop),
-	m_sinsp_worker(&m_configuration,
-			m_internal_metrics,
-			m_protocol_handler,
-			&m_enable_autodrop,
-			&m_capture_job_handler),
-	m_connection_manager(
-			&m_configuration,
-			&m_transmit_queue,
-			c_10s_flush_enabled->get_value(),
-			{
-				{draiosproto::message_type::DUMP_REQUEST_START,
-				 std::make_shared<dump_request_start_message_handler>(m_sinsp_worker)},
-				{draiosproto::message_type::DUMP_REQUEST_STOP,
-				 std::make_shared<dump_request_stop_message_handler>(m_sinsp_worker)},
-				{draiosproto::message_type::CONFIG_DATA,
-				 std::make_shared<config_data_message_handler>(m_configuration)},
-				{draiosproto::message_type::ERROR_MESSAGE,
-				 std::make_shared<error_message_handler>()},
-				{draiosproto::message_type::POLICIES,
-				 std::make_shared<security_policies_message_handler>(m_sinsp_worker)},
-				{draiosproto::message_type::POLICIES_V2,
-				 std::make_shared<security_policies_v2_message_handler>(m_sinsp_worker)},
-				{draiosproto::message_type::COMP_CALENDAR,
-				 std::make_shared<security_compliance_calendar_message_handler>(m_sinsp_worker)},
-				{draiosproto::message_type::COMP_RUN,
-				 std::make_shared<security_compliance_run_message_handler>(m_sinsp_worker)},
-				{draiosproto::message_type::ORCHESTRATOR_EVENTS,
-				 std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker)},
-				{draiosproto::message_type::AGGREGATION_CONTEXT,
-					dragent::aggregator_limits::global_limits},
-				{draiosproto::message_type::BASELINES,  // Legacy -- no longer used
-				 std::make_shared<null_message_handler>()},
-			}),
-	m_log_reporter(m_protocol_handler, &m_configuration),
-	m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),
-	m_last_dump_s(0)
-{ }
+      m_aggregator_queue(MAX_SAMPLE_STORE_SIZE),
+      m_serializer_queue(MAX_SAMPLE_STORE_SIZE),
+      m_transmit_queue(MAX_SAMPLE_STORE_SIZE),
+      m_enable_autodrop(true),
+      m_internal_metrics(std::make_shared<internal_metrics>()),
+      m_protocol_handler(m_transmit_queue),
+      m_capture_job_handler(&m_configuration, &m_transmit_queue, &m_enable_autodrop),
+      m_sinsp_worker(&m_configuration,
+                     m_internal_metrics,
+                     m_protocol_handler,
+                     &m_enable_autodrop,
+                     &m_capture_job_handler),
+      m_connection_manager(
+          &m_configuration,
+          &m_transmit_queue,
+          c_10s_flush_enabled->get_value(),
+          {{draiosproto::message_type::DUMP_REQUEST_START,
+            std::make_shared<dump_request_start_message_handler>(m_sinsp_worker)},
+           {draiosproto::message_type::DUMP_REQUEST_STOP,
+            std::make_shared<dump_request_stop_message_handler>(m_sinsp_worker)},
+           {draiosproto::message_type::CONFIG_DATA,
+            std::make_shared<config_data_message_handler>(m_configuration)},
+           {draiosproto::message_type::ERROR_MESSAGE, std::make_shared<error_message_handler>()},
+           {draiosproto::message_type::POLICIES,
+            std::make_shared<security_policies_message_handler>(m_sinsp_worker)},
+           {draiosproto::message_type::POLICIES_V2,
+            std::make_shared<security_policies_v2_message_handler>(m_sinsp_worker)},
+           {draiosproto::message_type::COMP_CALENDAR,
+            std::make_shared<security_compliance_calendar_message_handler>(m_sinsp_worker)},
+           {draiosproto::message_type::COMP_RUN,
+            std::make_shared<security_compliance_run_message_handler>(m_sinsp_worker)},
+           {draiosproto::message_type::ORCHESTRATOR_EVENTS,
+            std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker)},
+           {draiosproto::message_type::AGGREGATION_CONTEXT,
+            dragent::aggregator_limits::global_limits},
+           {draiosproto::message_type::BASELINES,  // Legacy -- no longer used
+            std::make_shared<null_message_handler>()}, }),
+      m_log_reporter(m_protocol_handler, &m_configuration),
+      m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),
+      m_last_dump_s(0)
+{
+}
 
 dragent_app::~dragent_app()
 {
@@ -1051,7 +1044,10 @@ int dragent_app::sdagent_main()
 
 		if (c_10s_flush_enabled->get_value())
 		{
-			aggregator = new async_aggregator(m_aggregator_queue, m_serializer_queue);
+			aggregator = new async_aggregator(m_aggregator_queue,
+			                                  m_serializer_queue,
+			                                  300,
+			                                  m_configuration.c_root_dir.get_value());
 			m_pool.start(*aggregator, c_serializer_timeout_s.get_value());
 		}
 
@@ -1427,35 +1423,45 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector, flush_queue& f
 		// user configured value, then we set the
 		// drop_upper_threshold to the default value for
 		// baselining.  Otherwise, we just warn the user.
-		if(m_configuration.m_drop_upper_threshold == 0)
+		if (m_configuration.m_drop_upper_threshold == 0)
 		{
 			sconfig->set_drop_upper_threshold(DROP_UPPER_THRESHOLD_BASELINER_ENABLED);
-			g_log->information("Drop upper threshold=" + NumberFormatter::format(DROP_UPPER_THRESHOLD_BASELINER_ENABLED)
-					   + " (set for falco baselining)");
+			g_log->information("Drop upper threshold=" +
+			                   NumberFormatter::format(DROP_UPPER_THRESHOLD_BASELINER_ENABLED) +
+			                   " (set for falco baselining)");
 		}
 		else
 		{
-			if(m_configuration.m_drop_upper_threshold < DROP_UPPER_THRESHOLD_BASELINER_ENABLED)
+			if (m_configuration.m_drop_upper_threshold < DROP_UPPER_THRESHOLD_BASELINER_ENABLED)
 			{
-				g_log->warning("Falco baselining configured with a low drop_upper_threshold "
-					       "(configured: " + NumberFormatter::format(m_configuration.m_drop_upper_threshold) + ", "
-					       "recommended: " + NumberFormatter::format(DROP_UPPER_THRESHOLD_BASELINER_ENABLED) + " ).");
+				g_log->warning(
+				    "Falco baselining configured with a low drop_upper_threshold "
+				    "(configured: " +
+				    NumberFormatter::format(m_configuration.m_drop_upper_threshold) +
+				    ", "
+				    "recommended: " +
+				    NumberFormatter::format(DROP_UPPER_THRESHOLD_BASELINER_ENABLED) + " ).");
 			}
 		}
 
-		if(m_configuration.m_drop_lower_threshold == 0)
+		if (m_configuration.m_drop_lower_threshold == 0)
 		{
 			sconfig->set_drop_lower_threshold(DROP_LOWER_THRESHOLD_BASELINER_ENABLED);
-			g_log->information("Drop lower threshold=" + NumberFormatter::format(DROP_LOWER_THRESHOLD_BASELINER_ENABLED)
-					   + " (set for falco baselining)");
+			g_log->information("Drop lower threshold=" +
+			                   NumberFormatter::format(DROP_LOWER_THRESHOLD_BASELINER_ENABLED) +
+			                   " (set for falco baselining)");
 		}
 		else
 		{
-			if(m_configuration.m_drop_lower_threshold < DROP_LOWER_THRESHOLD_BASELINER_ENABLED)
+			if (m_configuration.m_drop_lower_threshold < DROP_LOWER_THRESHOLD_BASELINER_ENABLED)
 			{
-				g_log->warning("Falco baselining configured with a low drop_lower_threshold "
-					       "(configured: " + NumberFormatter::format(m_configuration.m_drop_lower_threshold) + ", "
-					       "recommended: " + NumberFormatter::format(DROP_LOWER_THRESHOLD_BASELINER_ENABLED) + " ).");
+				g_log->warning(
+				    "Falco baselining configured with a low drop_lower_threshold "
+				    "(configured: " +
+				    NumberFormatter::format(m_configuration.m_drop_lower_threshold) +
+				    ", "
+				    "recommended: " +
+				    NumberFormatter::format(DROP_LOWER_THRESHOLD_BASELINER_ENABLED) + " ).");
 			}
 		}
 	}
@@ -1466,7 +1472,7 @@ sinsp_analyzer* dragent_app::build_analyzer(sinsp::ptr inspector, flush_queue& f
 		sconfig->set_executed_commands_capture_enabled(true);
 		sconfig->set_command_lines_capture_mode(m_configuration.m_command_lines_capture_mode);
 		sconfig->set_command_lines_include_container_healthchecks(
-			m_configuration.m_command_lines_include_container_healthchecks);
+		    m_configuration.m_command_lines_include_container_healthchecks);
 		sconfig->set_command_lines_valid_ancestors(m_configuration.m_command_lines_valid_ancestors);
 	}
 

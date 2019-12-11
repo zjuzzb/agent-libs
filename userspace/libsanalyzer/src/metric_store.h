@@ -21,15 +21,17 @@ namespace libsanalyzer {
 namespace metric_store {
 
 /**
- * Saves a complete metrics protobuf.
+ * Saves a complete metrics protobuf in both pre and post aggregated flavors.
  */
 void store(const std::shared_ptr<const draiosproto::metrics>& metrics);
+void store_pre_aggregated(const std::shared_ptr<const draiosproto::metrics>& metrics);
 
 /**
  * Returns the last complete protobuf, or nullptr if there has never been
- * a complete protobuf.
+ * a complete protobuf, in both pre and post aggregated flavors
  */
 std::shared_ptr<const draiosproto::metrics> get();
+std::shared_ptr<const draiosproto::metrics> get_pre_aggregated();
 
 } // namespace metric_store
 } // namespace libsanalyzer

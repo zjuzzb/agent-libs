@@ -12,6 +12,8 @@ add_library(fake-collector-core STATIC
 	fake_collector.cpp
 )
 
+add_dependencies(fake-collector-core draiosproto)
+
 add_executable(fake-collector
 	main.cpp
 )

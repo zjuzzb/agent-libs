@@ -31,7 +31,8 @@ TEST(async_aggregator, single)
 	dragent::async_aggregator aggregator(input_queue,
 										 output_queue,
 										 // stupid short timeout because aint nobody got time for waiting for cleanup!
-										 1);
+										 1,
+										 "");
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);
 	std::atomic<bool> sent_metrics(false);
@@ -82,7 +83,8 @@ TEST(async_aggregator, multiple)
 	dragent::async_aggregator aggregator(input_queue,
 										 output_queue,
 										 // stupid short timeout because aint nobody got time for waiting for cleanup!
-										 1);
+										 1,
+										 "");
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 1);
 	std::atomic<bool> sent_metrics(false);
@@ -143,7 +145,8 @@ TEST(async_aggregator, followup_aggregation)
 	dragent::async_aggregator aggregator(input_queue,
 										 output_queue,
 										 // stupid short timeout because aint nobody got time for waiting for cleanup!
-										 1);
+										 1,
+										 "");
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 1);
 	std::atomic<bool> sent_metrics(false);
@@ -202,7 +205,8 @@ TEST(async_aggregator, limiter)
 	dragent::async_aggregator aggregator(input_queue,
 										 output_queue,
 										 // stupid short timeout because aint nobody got time for waiting for cleanup!
-										 1);
+										 1,
+										 "");
 
 	// check that we have default limit
 	EXPECT_EQ(dragent::aggregator_limits::global_limits->m_containers, UINT32_MAX);
@@ -340,7 +344,8 @@ TEST(async_aggregator, substitutions)
 	dragent::async_aggregator aggregator(input_queue,
 										 output_queue,
 										 // stupid short timeout because aint nobody got time for waiting for cleanup!
-										 1);
+										 1,
+										 "");
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);
 	std::atomic<bool> sent_metrics(false);
@@ -422,7 +427,8 @@ TEST(async_aggregator, flush_interval_zero)
 	dragent::async_aggregator aggregator(input_queue,
 										 output_queue,
 										 // stupid short timeout because aint nobody got time for waiting for cleanup!
-										 1);
+										 1,
+										 "");
 
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);

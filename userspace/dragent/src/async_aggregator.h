@@ -12,6 +12,7 @@
 #include "thread_safe_container/blocking_queue.h"
 #include "watchdog_runnable.h"
 #include "connection_manager.h"  // because aggregator_limits is a message_handler. should probably be broken down a bit.
+#include "metrics_file_emitter.h"
 #include "aggregation_context.pb.h"
 
 class test_helper;
@@ -90,7 +91,8 @@ public:
 	 */
 	async_aggregator(queue_t& input_queue,
 			 queue_t& output_queue,
-			 uint64_t timeout_ms = 300);
+			 uint64_t timeout_ms,
+			 const std::string& root_dir);
 
 	~async_aggregator();
 
@@ -133,6 +135,8 @@ public:
 
 	uint32_t m_count_since_flush;
 	uint32_t m_aggregation_interval;
+
+	metrics_file_emitter m_file_emitter;
 
 	friend class ::test_helper;
 };

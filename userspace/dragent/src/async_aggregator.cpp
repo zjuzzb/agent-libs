@@ -8,12 +8,15 @@
 #define __STDC_FORMAT_MACROS
 #include "async_aggregator.h"
 #include "analyzer_flush_message.h"
-#include "analyzer_utils.h" // make_unique
+#include "analyzer_utils.h"  // make_unique
 #include "dragent_message_queues.h"
 #include "type_config.h"
+#include "Poco/Path.h"
+#include "Poco/File.h"
+#include "metric_store.h"
 #include "configuration_manager.h"
 
-namespace dragent
+namespace
 {
 type_config<uint32_t>::ptr c_samples_between_flush =
     type_config_builder<uint32_t>(10,
@@ -31,12 +34,29 @@ type_config<uint32_t>::ptr c_container_limit =
         .hidden()
         .build();
 
+type_config<std::string>::ptr c_pre_agg_dump_dir =
+    type_config_builder<std::string>("",
+                                     "Dump directory for pre-aggregated protobuf metrics",
+                                     "metricsfile",
+                                     "preagg_location").build();
+
+type_config<bool> c_emit_protobuf_json(
+    false,
+    "If true, emit each pre-aggregated protobuf as a separate JSON file",
+    "metricsfile",
+    "preagg_json");
+}
+
+namespace dragent
+{
+
 std::shared_ptr<aggregator_limits> aggregator_limits::global_limits =
-	std::make_shared<aggregator_limits>();
+    std::make_shared<aggregator_limits>();
 
 async_aggregator::async_aggregator(flush_queue& input_queue,
                                    flush_queue& output_queue,
-                                   uint64_t queue_timeout_ms)
+                                   uint64_t queue_timeout_ms,
+                                   const std::string& root_dir)
     : dragent::watchdog_runnable("aggregator"),
       m_stop_thread(false),
       m_queue_timeout_ms(queue_timeout_ms),
@@ -44,11 +64,17 @@ async_aggregator::async_aggregator(flush_queue& input_queue,
       m_output_queue(output_queue),
       m_builder(),
       m_count_since_flush(0),
-      m_aggregation_interval(c_samples_between_flush->get_value())
+      m_aggregation_interval(c_samples_between_flush->get_value()),
+      m_file_emitter()
 {
 	m_aggregator = new metrics_message_aggregator_impl(m_builder);
 	m_aggregated_data = std::make_shared<flush_data_message>(
 	    0, nullptr, make_unique<draiosproto::metrics>(), 0, 0, 0, 0, 0);
+	if (!c_pre_agg_dump_dir->get_value().empty())
+	{
+		std::string dir = Poco::Path(root_dir).append(c_pre_agg_dump_dir->get_value()).toString();
+		m_file_emitter.set_metrics_directory(dir);
+	}
 }
 
 void aggregator_limits::cache_limits(const draiosproto::aggregation_context& context)
@@ -156,6 +182,7 @@ async_aggregator::~async_aggregator()
 	stop();
 	delete m_aggregator;
 	m_aggregated_data = nullptr;
+	libsanalyzer::metric_store::store_pre_aggregated(nullptr);
 }
 
 uint32_t async_aggregator::count_attributes(const draiosproto::jmx_attribute& attribute)
@@ -228,6 +255,16 @@ void async_aggregator::do_run()
 		}
 
 		(void)heartbeat();
+
+		libsanalyzer::metric_store::store_pre_aggregated(input_data->m_metrics);
+		if (c_emit_protobuf_json.get_value())
+		{
+			m_file_emitter.emit_metrics_to_json_file(input_data);
+		}
+		else
+		{
+			m_file_emitter.emit_metrics_to_file(input_data);
+		}
 
 		// we cache this value as it can change at any time, and we
 		// want a consistent number as we proceed through this logic.
