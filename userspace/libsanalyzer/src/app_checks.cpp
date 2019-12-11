@@ -429,9 +429,8 @@ app_check_data::app_check_data(const Json::Value &obj, const metric_limits::sptr
 	{
 		for(auto& m : obj["metrics"])
 		{
-			if(m.isArray() && m.size() && m[0].isConvertibleTo(Json::stringValue))
+			if(m.isArray() && !m.empty() && m[0].isConvertibleTo(Json::stringValue))
 			{
-				std::string filter;
 				if(ml)
 				{
 					std::string filter;
