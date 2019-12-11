@@ -9,7 +9,7 @@ class container_group;
 class k8s_limits : public user_configured_limits
 {
 public:
-	explicit k8s_limits(const filter_vec_t& filters,
+	explicit k8s_limits(filter_vec_t filters,
 		   uint32_t max_entries = user_configured_limits::MAX_ENTRIES,
 		   uint64_t expire_seconds = user_configured_limits::EXPIRE_SECONDS);
 
