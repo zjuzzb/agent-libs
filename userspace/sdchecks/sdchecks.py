@@ -503,8 +503,8 @@ class PosixQueue(object):
             compressed_data = zlib.compress(data)
             return compressed_data
         except Exception as err:
-            logging.error("Unable to compress the data : ", err)
-            return False
+            logging.error("Unable to compress the data : {}".format(err))
+            return None
 
     def close(self):
         self.queue.close()
@@ -512,10 +512,15 @@ class PosixQueue(object):
 
     def send(self, msg):
         try:
+            if PY3:
+                msg = msg.encode()
             uncompressed_length = len(msg)
             if uncompressed_length + 5 > self.MSGSIZE:
                 compressed_data = self.compress_msg(msg)
-                if len(compressed_data) > self.MSGSIZE:
+                if compressed_data is None:
+                    logging.error("Message size %d > max msg size %d, cannot send without compression", uncompressed_length, self.MSGSIZE)
+                    return False
+                elif len(compressed_data) > self.MSGSIZE:
                     logging.error("Compressed msg size %d > max msg size %d, cannot send", len(compressed_data), self.MSGSIZE)
                     return False
                 msg = compressed_data
