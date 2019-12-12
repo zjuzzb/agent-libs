@@ -281,7 +281,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventMessageStream(cmd *sdc_inter
 		userEventStreamActive = false
 	}()
 
-	started := kubecollect.StartUserEventsStream(ctx, &wg, userEventChannel, cmd.GetCollectDebugEvents())
+	started := kubecollect.StartUserEventsStream(ctx, &wg, userEventChannel, cmd.GetCollectDebugEvents(), cmd.GetIncludeTypes())
 	if !started {
 		return errors.New("Couldn't start user events watch")
 	}

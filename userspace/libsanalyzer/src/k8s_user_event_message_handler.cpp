@@ -353,6 +353,7 @@ void k8s_user_event_message_handler::connect(uint64_t ts)
 			sdc_internal::orchestrator_attach_user_events_stream_command cmd;
 			cmd.set_user_event_queue_len(c_event_queue_len.get_value());
 			cmd.set_collect_debug_events(c_collect_debug_events.get_value());
+			*cmd.mutable_include_types() = {infrastructure_state::c_k8s_include_types.get_value().begin(), infrastructure_state::c_k8s_include_types.get_value().end()};
 			m_coclient.get_orchestrator_event_messages(cmd, m_callback);
 
 			m_subscribed = true;
