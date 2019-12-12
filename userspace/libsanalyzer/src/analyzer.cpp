@@ -1838,6 +1838,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				    const tracer_emitter &f_trc)
 {
 	tracer_emitter proc_trc("emit_processes", f_trc);
+	tracer_emitter init_trc("init", proc_trc);
 	int64_t delta;
 	sinsp_evt::category* cat;
 	sinsp_evt::category tcat;
@@ -1853,6 +1854,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #ifndef CYGWING_AGENT
 	vector<prom_process> prom_procs;
 #endif
+	init_trc.stop();
 
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
@@ -1909,6 +1911,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	}
 #endif
 
+	tracer_emitter stats_trc("stats", proc_trc);
 	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG,
@@ -1927,18 +1930,21 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 		m_ipv4_connections->clear_n_drops();
 	}
+	stats_trc.stop();
 
 	//
 	// Snapshot global CPU state
 	// (used as the reference value to calculate process CPU usages in the threadtable loop)
 	//
 #ifndef CYGWING_AGENT
+	tracer_emitter jiffies_trc("jiffies", proc_trc, 1);
 	if(!m_inspector->is_capture() &&
 	  (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT) &&
 	  !m_skip_proc_parsing)
 	{
 		m_procfs_parser->set_global_cpu_jiffies();
 	}
+	jiffies_trc.stop();
 
 #endif
 
@@ -2307,6 +2313,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_REGULAR;
 	}
 
+	tracer_emitter internal_metrics_trc("internal_metrics", proc_trc);
 	if (m_internal_metrics)
 	{
 		// update internal metrics
@@ -2321,6 +2328,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #endif
 		m_internal_metrics->update_subprocess_metrics(m_procfs_parser);
 	}
+	internal_metrics_trc.stop();
 
 	tracer_emitter pt_trc("walk_progtable", proc_trc);
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
@@ -2520,10 +2528,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	pt_trc.stop();
 
 	// pass connections to kafka tap
+	tracer_emitter tap_trc("tap", proc_trc);
 	if(m_tap)
 	{
 		m_tap->emit_connections(m_ipv4_connections, m_username_lookups ? &m_userdb : nullptr);
 	}
+	tap_trc.stop();
 
 	////////////////////////////////////////////////////////////////////////////
 	// EMIT CONNECTIONS
@@ -2582,6 +2592,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	container_trc.stop();
 
 	// notify mounted_fs proxy of containers which have long-running procs
+	tracer_emitter mountedfs_trc("mountedfs", proc_trc);
 	if(!m_inspector->is_capture() && m_mounted_fs_proxy)
 	{
 		vector<sinsp_threadinfo*> containers_for_mounted_fs;
@@ -2618,7 +2629,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		}
 		m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
 	}
+	mountedfs_trc.stop();
 
+	tracer_emitter actually_emit_trc("actually_emit", proc_trc);
 	std::set<uint64_t> all_uids;
 	jmx_emitter jmx_emitter_instance(m_jmx_metrics,
 					 m_jmx_sampling,
@@ -2674,6 +2687,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					  environment_emitter_instance,
 					  process_emitter_instance);
 	}
+	actually_emit_trc.stop();
 
 	tracer_emitter user_trc("userdb_lookup", proc_trc);
 	for(const auto uid : all_uids) {
@@ -2684,6 +2698,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	}
 	user_trc.stop();
 
+	tracer_emitter app_check_stats_trc("app_check_stats", proc_trc);
 	// add jmx and app checks per container
 	for(int i = 0; i < m_metrics->containers_size(); i++)
 	{
@@ -2700,19 +2715,24 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	}
 
 	app_check_emitter_instance.log_result();
+	app_check_stats_trc.stop();
 
 #ifndef _WIN32
 	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
+		tracer_emitter send_jmx_trc("send_jmx", proc_trc);
 		if(m_jmx_proxy && is_jmx_flushtime() && !java_process_requests.empty())
 		{
 			m_jmx_proxy->send_get_metrics(java_process_requests);
 		}
+		send_jmx_trc.stop();
 #ifndef CYGWING_AGENT
 		if(m_app_proxy)
 		{
+			tracer_emitter app_check_trc("app_checks", proc_trc);
 			if(!prom_procs.empty())
 			{
+				tracer_emitter prom_filter_procs_trc("prom_filter_procs", app_check_trc);
 				// Filter out duplicate prometheus scans
 				prom_process::filter_procs(prom_procs,
 					m_inspector->m_thread_manager->m_threadtable, m_app_metrics, m_prev_flush_time_ns);
@@ -2725,6 +2745,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			}
 			else
 			{
+				tracer_emitter prom_filter_procs_trc("remote_prom_checks", app_check_trc);
 				// Check if we need to scrape remote prometheus endpoints.
 				// Enforce interval by looking to see if we have any non-expired
 				// prometheus metrics associated with our pid.
@@ -2756,6 +2777,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 			if(!app_checks_processes.empty() || !prom_procs.empty())
 			{
+				tracer_emitter prom_filter_procs_trc("send_get_metrics_cmd", app_check_trc);
 				m_app_proxy->send_get_metrics_cmd(app_checks_processes, prom_procs, m_prom_conf);
 			}
 		}
