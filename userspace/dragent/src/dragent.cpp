@@ -1165,7 +1165,10 @@ int dragent_app::sdagent_main()
 	dragent_configuration::m_terminate = true;
 	// This will stop everything in the default pool
 	m_pool.stop_all();
-	serializer->stop();
+	if (serializer)
+	{
+		serializer->stop();
+	}
 	if (aggregator)
 	{
 		aggregator->stop();
