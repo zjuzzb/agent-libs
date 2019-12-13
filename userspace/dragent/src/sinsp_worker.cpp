@@ -102,6 +102,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_security_initialized(false),
 	m_security_mgr(NULL),
 	m_compliance_mgr(NULL),
+	m_hosts_metadata_uptodate(true),
 #endif
 	m_capture_job_handler(capture_job_handler),
 	m_dump_job_requests(10),
@@ -650,14 +651,26 @@ void sinsp_worker::run()
 		}
 
 #ifndef CYGWING_AGENT
+		bool update_hosts_metadata = !m_hosts_metadata_uptodate.test_and_set();
+
 		// Possibly pass the event to the security manager
 		if(m_security_mgr)
 		{
+			std::string errstr;
+			if(update_hosts_metadata && !m_security_mgr->reload_policies(errstr))
+			{
+				LOG_ERROR("Could not reload policies after receiving "
+					  "new hosts metadata: %s", errstr.c_str());
+			}
 			m_security_mgr->process_event(ev);
 		}
 
 		if(m_compliance_mgr)
 		{
+			if(update_hosts_metadata)
+			{
+				m_compliance_mgr->request_refresh_compliance_tasks();
+			}
 			m_compliance_mgr->process_event(ev);
 		}
 #endif
@@ -826,22 +839,7 @@ bool sinsp_worker::run_compliance_tasks(const draiosproto::comp_run &run,
 void sinsp_worker::receive_hosts_metadata(const draiosproto::orchestrator_events &evts)
 {
 	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
-
-	if(m_compliance_mgr)
-	{
-		m_compliance_mgr->request_refresh_compliance_tasks();
-	}
-
-	if(m_security_mgr)
-	{
-		std::string errstr;
-
-		if (!m_security_mgr->reload_policies(errstr))
-		{
-			LOG_ERROR("Could not reload policies after receiving "
-			          "new hosts metadata: %s", errstr.c_str());
-		}
-	}
+	m_hosts_metadata_uptodate.clear();
 }
 #endif
 

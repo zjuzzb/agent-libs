@@ -159,6 +159,7 @@ private:
 	bool m_security_initialized;
 	security_mgr *m_security_mgr;
 	compliance_mgr *m_compliance_mgr;
+	std::atomic_flag m_hosts_metadata_uptodate;
 #endif
 	capture_job_handler *m_capture_job_handler;
 	thread_safe_container::blocking_queue<std::shared_ptr<capture_job_handler::dump_job_request>> m_dump_job_requests;
