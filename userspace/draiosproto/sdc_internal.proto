@@ -114,6 +114,7 @@ message orchestrator_events_stream_command {
 message orchestrator_attach_user_events_stream_command {
     optional uint32 user_event_queue_len = 1;
     optional bool collect_debug_events = 2; // by default, only collect a few events. If set, collect everything
+    repeated string include_types = 3;  // string vector containing k8s_extra_resources
 }
 
 message array_congroup_update_event {

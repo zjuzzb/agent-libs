@@ -1031,6 +1031,31 @@ events:
       - DeploymentRollback                  # Rollback Done            (information)
     daemonSet:
       - SelectingAll                        # Selecting All Pods       (warning)
+    statefulSet:
+      - SuccessfulCreate    # Pod Created       (information)
+      - FailedCreate        # Pod Create Failed (warning)
+      - SuccessfulDelete    # Pod Deleted       (information)
+      - FailedDelete        # Pod Delete Failed (warning)
+      - RecreatingFailedPod # Recreate fail pod (warning)
+    service:
+      - CreatingLoadBalancerFailed  # Load Balancer Create Failed    (warning)
+      - CleanupLoadBalancerFailed   # Load Balancer Cleanup Failed   (warning)
+#      - DeletingLoadBalancer        # Load Balancer Delete Start     (information)
+      - DeletingLoadBalancerFailed  # Load Balancer Delete Failed    (warning)
+#      - DeletedLoadBalancer         # Load Balancer Delete End       (information)
+      - UnAvailableLoadBalancer     # Unavailable Load Balancer      (warning)
+      - UpdatedLoadBalancer         # Updated Load Balancer          (information)
+      - UpdateLoadBalancerFailed    # Load Balancer Update Failed    (warning)
+      - SyncLoadBalancerFailed      # Load Balancer Sync Failed      (warning)
+    horizontalPodAutoscalar:
+      - SelectorRequired             # Selector Required          (warning)
+      - InvalidSelector              # Selector Not Valid         (warning)
+      - FailedConvertHPA             # Failed to Convert HPA      (warning)
+      - FailedGetScale               # Failed to get Scale        (warning)
+      - FailedComputeMetricsReplicas # Failed to Compute Replicas (warning)
+      - FailedRescale                # Failed to rescale          (warning)
+      - FailedUpdateStatus           # Failed to update status    (warning)
+
   docker:
     container:
 #      - attach      # Container Attached      (information)
@@ -1196,6 +1221,8 @@ container_labels_filter:
   - exclude: "io.k8s.*"
   - include: "*"
 
+# List of labels applied to Kubernetes objects (nodes, pods, etc.) that the agent will read and store
+# The list is used top to bottom. The include/exclude rules you set in the custom YAML file are read first
 k8s_labels_filter:
   - include: "kubernetes.node.label.kubernetes.io/hostname"
   - include: "kubernetes.node.label.kubernetes.io/role"

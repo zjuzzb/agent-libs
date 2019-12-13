@@ -94,11 +94,12 @@ func newK8SObject(event *v1.Event) (*sdc_internal.K8SObject) {
 func StartUserEventsStream(userEventContext context.Context,
 	wg *sync.WaitGroup,
 	userEventChannel chan<- sdc_internal.K8SUserEvent,
-	debugEvents bool) bool {
+	debugEvents bool,
+	includeTypes []string) bool {
 
 	wg.Add(1)
 	go func() {
-		tryUserEventsWatch(userEventContext, userEventChannel, debugEvents)
+		tryUserEventsWatch(userEventContext, userEventChannel, debugEvents, includeTypes)
 		log.Debug("UserEvents: done watching. Closing channel");
 		close(userEventChannel)
 		wg.Done()
@@ -108,12 +109,13 @@ func StartUserEventsStream(userEventContext context.Context,
 
 func tryUserEventsWatch(userEventContext context.Context,
 	userEventChannel chan<- sdc_internal.K8SUserEvent,
-	debugEvents bool) {
+	debugEvents bool,
+	includeTypes []string) {
 
 	abort := false
 	for ; !abort; {
 		if (isEventExportEnabled()) {
-			abort = !StartUserEventsWatch(userEventContext, userEventChannel, debugEvents)
+			abort = !StartUserEventsWatch(userEventContext, userEventChannel, debugEvents, includeTypes)
 			log.Debugf("UserEvents: StartUserEventsWatch done. abort=%v", abort);
 			continue
 		}
@@ -142,7 +144,8 @@ func tryUserEventsWatch(userEventContext context.Context,
 
 func StartUserEventsWatch(userEventContext context.Context,
 	userEventChannel chan<- sdc_internal.K8SUserEvent,
-	debugEvents bool) bool {
+	debugEvents bool,
+	includeTypes []string) bool {
 
 	log.Debug("UserEvents: In StartUserEventsWatch");
 	kubeClient, kubeClientChan := getKubeClient()
@@ -159,7 +162,15 @@ func StartUserEventsWatch(userEventContext context.Context,
 	} else {
 		log.Debugf("UserEvents: watching filtered")
 		// k8s api doesn't do "or", so have to explicitly reject all the un-wanted kinds.
-		fieldstr = "involvedObject.kind!=Cronjob,involvedObject.kind!=HorizontalPodAutoscaler,involvedObject.kind!=Ingress,involvedObject.kind!=Job,involvedObject.kind!=Namespace,involvedObject.kind!=Service,involvedObject.kind!=Service,involvedObject.kind!=StatefulSet,involvedObject.kind!=ResourceQuota"
+		fieldstr = "involvedObject.kind!=Cronjob,involvedObject.kind!=Ingress,involvedObject.kind!=Job,involvedObject.kind!=Namespace,involvedObject.kind!=ResourceQuota"
+
+		// Add services and hpas based on includeTypes
+		if !in_array("services" , includeTypes) {
+			fieldstr = fieldstr + ",involvedObject.kind!=Services"
+		}
+		if !in_array("horizontalpodautoscalars" , includeTypes) {
+			fieldstr = fieldstr + ",involvedObject.kind!=HorizontalPodAutoscaler"
+		}
 	}
 
 	listOptions := v1meta.ListOptions{FieldSelector: fieldstr}

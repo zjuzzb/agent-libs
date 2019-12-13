@@ -57,7 +57,10 @@ k8s_user_event_message_handler::k8s_user_event_message_handler(uint64_t refresh_
 		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/daemon/controller.go
 		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/deployment/deployment_controller.go
 		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/deployment/util/deployment_util.go
-		//
+		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/statefulset/stateful_pod_control.go
+		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/statefulset/stateful_set_control.go
+		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/service/controller.go
+		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/podautoscaler/horizontal.go
 
 		//
 		// Node
@@ -150,12 +153,35 @@ k8s_user_event_message_handler::k8s_user_event_message_handler(uint64_t refresh_
 		{ "ScalingReplicaSet",                   "Scaling Replica Set"      },
 		{ "DeploymentRollbackRevisionNotFound",  "No revision to roll back" },
 		{ "DeploymentRollbackTemplateUnchanged", "Skipping Rollback"        },
-		{ "DeploymentRollback",                  "Rollback Done"            }
+		{ "DeploymentRollback",                  "Rollback Done"            },
 
 		//
 		// Daemon Set
 		//
 		// { "SelectingAll", "Selecting All Pods" } duplicate
+
+		// StatefulSet
+		{ "RecreatingFailedPod",  "Recreating Failed Pod" },
+
+		// Service
+		{ "CreatingLoadBalancerFailed", "Error creating load balancer"                          },
+		{ "CleanupLoadBalancerFailed",  "Error cleaning up load balancer"                       },
+		{ "DeletingLoadBalancer",       "Deleting load balancer"                                },
+		{ "DeletingLoadBalancerFailed", "Error deleting load balancer"                          },
+		{ "DeletedLoadBalancer",        "Deleted load balancer"                                 },
+		{ "UnAvailableLoadBalancer",    "There are no available nodes for LoadBalancer service" },
+		{ "UpdatedLoadBalancer",        "Updated load balancer with new hosts"                  },
+		{ "UpdateLoadBalancerFailed",   "Error updating load balancer with new hosts"           },
+		{ "SyncLoadBalancerFailed",     "Error syncing load balancer"                           },
+
+		// HPAs
+		{ "SelectorRequired" ,            "Selector is required"                         },
+		{ "InvalidSelector",              "Couldn't convert selector for HPA"            },
+		{ "FailedConvertHPA",             "Failed to convert HPA"                        },
+		{ "FailedGetScale",               "The HPA failed to get the current scale"      },
+		{ "FailedComputeMetricsReplicas", "Failed to compute desired number of replicas" },
+		{ "FailedRescale",                "Failed to rescale HPA"                        },
+		{ "FailedUpdateStatus",           "Failed to update status for HPA"              }
 	};
 }
 
@@ -327,6 +353,7 @@ void k8s_user_event_message_handler::connect(uint64_t ts)
 			sdc_internal::orchestrator_attach_user_events_stream_command cmd;
 			cmd.set_user_event_queue_len(c_event_queue_len.get_value());
 			cmd.set_collect_debug_events(c_collect_debug_events.get_value());
+			*cmd.mutable_include_types() = {infrastructure_state::c_k8s_include_types.get_value().begin(), infrastructure_state::c_k8s_include_types.get_value().end()};
 			m_coclient.get_orchestrator_event_messages(cmd, m_callback);
 
 			m_subscribed = true;
