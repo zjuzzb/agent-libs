@@ -154,6 +154,9 @@ class AppCheckException(Exception):
 class AppCheckDontRetryException(AppCheckException):
     pass
 
+class CompressionError(Exception):
+    pass
+
 def _load_check_module(name, module_name, directory):
     try:
         return imp.load_source('checksd_%s' % name, os.path.join(directory, module_name + ".py"))
@@ -502,9 +505,8 @@ class PosixQueue(object):
         try:
             compressed_data = zlib.compress(data)
             return compressed_data
-        except Exception as err:
-            logging.error("Unable to compress the data : {}".format(err))
-            return None
+        except Exception as ex:
+            raise CompressionError(ex)
 
     def close(self):
         self.queue.close()
@@ -512,15 +514,11 @@ class PosixQueue(object):
 
     def send(self, msg):
         try:
-            if PY3:
-                msg = msg.encode()
+            msg = msg.encode()
             uncompressed_length = len(msg)
             if uncompressed_length + 5 > self.MSGSIZE:
                 compressed_data = self.compress_msg(msg)
-                if compressed_data is None:
-                    logging.error("Message size %d > max msg size %d, cannot send without compression", uncompressed_length, self.MSGSIZE)
-                    return False
-                elif len(compressed_data) > self.MSGSIZE:
+                if len(compressed_data) > self.MSGSIZE:
                     logging.error("Compressed msg size %d > max msg size %d, cannot send", len(compressed_data), self.MSGSIZE)
                     return False
                 msg = compressed_data
@@ -535,6 +533,10 @@ class PosixQueue(object):
             return False
         except ValueError as ex:
             logging.error("Cannot send: %s, size=%dB", ex, len(msg))
+            return False
+        except CompressionError as ex:
+            logging.error('Cannot send, Message size %d > max msg size %d, compression failed with exception: %s',
+                          uncompressed_length, self.MSGSIZE, ex)
             return False
 
     def receive(self, timeout=1):
