@@ -105,7 +105,6 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_dump_job_requests(10),
 	m_last_loop_ns(0),
 	m_statsd_capture_localhost(false),
-	m_app_checks_enabled(false),
 	m_grpc_trace_enabled(false),
 	m_last_mode_switch_time(0),
 	m_next_iflist_refresh_ns(0),
@@ -460,10 +459,6 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 
 	m_analyzer->set_protocols_enabled(m_configuration->m_protocols_enabled);
 	m_analyzer->set_statsd_capture_localhost(m_statsd_capture_localhost);
-	if(m_app_checks_enabled)
-	{
-		m_analyzer->set_app_checks(m_configuration->m_app_checks);
-	}
 
 	m_analyzer->set_containers_limit(m_configuration->m_containers_limit);
 	m_analyzer->set_container_patterns(m_configuration->m_container_patterns);

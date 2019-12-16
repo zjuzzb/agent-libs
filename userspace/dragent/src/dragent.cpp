@@ -694,6 +694,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			             "Please upgrade to Python 2.7. "
 			             "Contact Sysdig Support for additional help."
 			          << std::endl;
+			m_configuration.m_app_checks_enabled = false;
 		}
 		else
 		{
@@ -713,10 +714,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 				return (EXIT_FAILURE);
 			});
-			if (m_configuration.m_app_checks_enabled)
-			{
-				m_sinsp_worker.set_app_checks_enabled(true);
-			}
 		}
 	}
 	if (m_configuration.m_system_supports_containers)
@@ -1477,6 +1474,10 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
 	sconfig->set_swarm_enabled(m_configuration.m_swarm_enabled);
 
 #ifndef CYGWING_AGENT
+	if(m_configuration.m_app_checks_enabled)
+	{
+		analyzer->set_app_checks(m_configuration.m_app_checks);
+	}
 	analyzer->set_prometheus_conf(m_configuration.m_prom_conf);
 	if (m_configuration.m_config_test)
 	{

@@ -107,11 +107,6 @@ public:
 		}
 	}
 
-	void set_app_checks_enabled(bool value)
-	{
-		m_app_checks_enabled = value;
-	}
-
 	void set_user_event_queue(user_event_queue::ptr_t user_event_queue)
 	{
 		m_user_event_queue = user_event_queue;
@@ -173,7 +168,6 @@ private:
 	std::atomic<pthread_t> m_pthread_id;
 	std::shared_ptr<pipe_manager> m_statsite_pipes;
 	bool m_statsd_capture_localhost;
-	bool m_app_checks_enabled;
 	bool m_grpc_trace_enabled;
 	uint64_t m_last_mode_switch_time;
 
