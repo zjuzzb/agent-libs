@@ -35,14 +35,13 @@ process_emitter::process_emitter(const process_manager& the_process_manager,
 				 const bool track_environment,
 				 const uint32_t top_file_devices_per_prog,
 				 const jmx_proxy* jmx_proxy,
-				 const app_checks_proxy* app_proxy,
 				 const bool procfs_scan_thread,
 				 sinsp_procfs_parser& procfs_parser,
 				 const uint32_t sampling_ratio,
 				 const uint32_t num_cpus,
 				 environment_emitter& the_environment_emitter,
 				 jmx_emitter& the_jmx_emitter,
-				 app_check_emitter& the_app_check_emitter)
+				 app_check_emitter* the_app_check_emitter)
 	: m_process_manager(the_process_manager),
 	m_inspector(inspector),
 	m_simpledriver_enabled(simpledriver_enabled),
@@ -54,7 +53,6 @@ process_emitter::process_emitter(const process_manager& the_process_manager,
 	m_track_environment(track_environment),
 	m_top_file_devices_per_prog(top_file_devices_per_prog),
 	m_jmx_proxy(jmx_proxy),
-	m_app_proxy(app_proxy),
 	m_procfs_scan_thread(procfs_scan_thread),
 	m_procfs_parser(procfs_parser),
 	m_sampling_ratio(sampling_ratio),
@@ -515,9 +513,9 @@ void process_emitter::emit_process(sinsp_threadinfo& tinfo,
 	{
 		m_jmx_emitter.emit_jmx(procinfo, tinfo, *proc);
 	}
-	if(m_app_proxy)
+	if(m_app_check_emitter)
 	{
-		m_app_check_emitter.emit_apps(procinfo, tinfo, *proc);
+		m_app_check_emitter->emit_apps(procinfo, tinfo, *proc);
 	}
 #endif
 

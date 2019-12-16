@@ -227,7 +227,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
                                std::function<bool()> check_disable_dropping,
                                const metric_limits::sptr_t& the_metric_limits,
                                const label_limits::sptr_t& the_label_limits,
-                               const k8s_limits::sptr_t& the_k8s_limits)
+                               const k8s_limits::sptr_t& the_k8s_limits,
+                               std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy)
     : m_configuration(new sinsp_configuration()),
       m_inspector(inspector),
       m_metrics(make_unique<draiosproto::metrics>()),
@@ -242,6 +243,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
       m_very_high_cpu_switcher("agent cpu usage with sr=128"),
       m_internal_metrics(internal_metrics),
       m_statsd_emitter(new null_statsd_emitter()),
+	  m_app_checks_proxy(std::move(the_app_checks_proxy)),
       m_metric_limits(the_metric_limits),
       m_label_limits(the_label_limits),
       m_audit_tap_handler(tap_handler),
@@ -1916,7 +1918,6 @@ void sinsp_analyzer::emit_processes_deprecated(
     const std::vector<std::string>& emitted_containers,
     tracer_emitter& proc_trc,
     jmx_emitter& jmx_emitter_instance,
-    app_check_emitter& app_check_emitter_instance,
     environment_emitter& environment_emitter_instance,
     process_emitter& process_emitter_instance)
 {
@@ -1966,19 +1967,12 @@ void sinsp_analyzer::emit_processes_deprecated(
 			{
 				for (auto prog : progtable)
 				{
-					auto datamap_it = m_app_metrics.find(prog->m_pid);
-					if (datamap_it == m_app_metrics.end())
-						continue;
-					for (const auto& app_data : datamap_it->second)
+					if(
+						prog->m_ainfo->m_procinfo->m_exclude_from_sample &&
+						m_app_checks_proxy->have_metrics_for_pid(prog->m_pid))
 					{
-						if ((app_data.second.total_metrics() > 0) &&
-						    (prog->m_ainfo->m_procinfo->m_exclude_from_sample))
-						{
-							g_logger.format(sinsp_logger::SEV_DEBUG,
-							                "Added pid %d with appcheck metrics to top processes",
-							                prog->m_pid);
-							prog->m_ainfo->m_procinfo->m_exclude_from_sample = false;
-						}
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Added pid %d with appcheck metrics to top processes", prog->m_pid);
+						prog->m_ainfo->m_procinfo->m_exclude_from_sample = false;
 					}
 				}
 			}
@@ -2077,45 +2071,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				m_jmx_metrics = move(jmx_metrics);
 			}
 		}
-		if (m_app_proxy)
+		if(m_app_checks_proxy)
 		{
-			tracer_emitter app_trc("app_metrics", proc_trc);
-			for (auto it = m_app_metrics.begin(); it != m_app_metrics.end();)
-			{
-				for (auto it2 = it->second.begin(); it2 != it->second.end();)
-				{
-					auto flush_time_s = m_prev_flush_time_ns / ONE_SECOND_IN_NS;
-					if (flush_time_s >
-					    it2->second.expiration_ts() + APP_METRICS_EXPIRATION_TIMEOUT_S)
-					{
-						g_logger.format(sinsp_logger::SEV_DEBUG,
-						                "Wiping expired app metrics for pid %d,%s",
-						                it->first,
-						                it2->first.c_str());
-						it2 = it->second.erase(it2);
-					}
-					else
-					{
-						++it2;
-					}
-				}
-				if (it->second.size() < 1)
-				{
-					it = m_app_metrics.erase(it);
-				}
-				else
-				{
-					++it;
-				}
-			}
-			auto app_metrics = m_app_proxy->read_metrics(m_metric_limits);
-			for (auto& item : app_metrics)
-			{
-				for (auto& met : item.second)
-				{
-					m_app_metrics[item.first][move(met.first)] = move(met.second);
-				}
-			}
+			auto flush_time_s = m_prev_flush_time_ns/ONE_SECOND_IN_NS;
+			m_app_checks_proxy->refresh_metrics(flush_time_s, 0);
 		}
 	}
 #endif
@@ -2461,7 +2420,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			// aggregation may choose the young one. So now we are trying to match a check for every
 			// process in the program grouping and when we find a matching check, we mark it on the
 			// main_thread of the group as we don't need more checks instances for each process.
-			if (m_app_proxy)
+			if(m_app_checks_proxy)
 			{
 				const auto& custom_checks = mtinfo->m_ainfo->get_proc_config().app_checks();
 				vector<app_process> app_checks;
@@ -2472,27 +2431,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				{
 					match_checks_list(&tinfo, mtinfo, m_app_checks, app_checks, "global list");
 				}
-				auto app_metrics_pid = m_app_metrics.find(tinfo.m_pid);
+				auto flush_time = m_prev_flush_time_ns / ONE_SECOND_IN_NS;
 
 #ifndef CYGWING_AGENT
 				// Prometheus checks are done through the app proxy as well.
-				bool have_prometheus_metrics = false;
-				if (app_metrics_pid != m_app_metrics.end())
-				{
-					for (const auto& app_met : app_metrics_pid->second)
-					{
-						if ((app_met.second.type() == app_check_data::check_type::PROMETHEUS) &&
-						    (app_met.second.expiration_ts() >
-						     (m_prev_flush_time_ns / ONE_SECOND_IN_NS)))
-						{
-							have_prometheus_metrics = true;
-							break;
-						}
-					}
-				}
 				// Looking for prometheus matches after app_checks because
 				// a rule may be specified for finding an app_checks match
-				if (!have_prometheus_metrics)
+				if(!m_app_checks_proxy->have_prometheus_metrics_for_pid(tinfo.m_pid, flush_time))
 				{
 					match_prom_checks(&tinfo, mtinfo, prom_procs, false);
 				}
@@ -2500,12 +2445,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 
 				for (auto& appcheck : app_checks)
 				{
-					decltype(app_metrics_pid->second.end()) app_met_it;
-					if ((app_metrics_pid != m_app_metrics.end()) &&
-					    ((app_met_it = app_metrics_pid->second.find(appcheck.name())) !=
-					     app_metrics_pid->second.end()) &&
-					    (app_met_it->second.expiration_ts() >
-					     (m_prev_flush_time_ns / ONE_SECOND_IN_NS)))
+					if(m_app_checks_proxy->have_app_check_metrics_for_pid(tinfo.m_pid, flush_time, appcheck.name()))
 					{
 						// Found metrics for this pid and name that won't
 						// expire this cycle so we use them instead of
@@ -2889,13 +2829,18 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	                                 m_jmx_sampling,
 	                                 metric_forwarding_configuration::c_jmx_max->get_value(),
 	                                 m_jmx_metrics_by_containers);
-	app_check_emitter app_check_emitter_instance(
-	    m_app_metrics,
-	    metric_forwarding_configuration::c_app_checks_max->get_value(),
-	    m_prom_conf,
-	    m_app_checks_by_containers,
-	    m_prometheus_by_containers,
-	    m_prev_flush_time_ns);
+	std::unique_ptr<app_check_emitter> app_check_emitter_instance = nullptr;
+	if (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT && m_app_checks_proxy != nullptr)
+	{
+		app_check_emitter_instance = make_unique<app_check_emitter>(
+			m_app_checks_proxy->get_all_metrics(),
+			metric_forwarding_configuration::c_app_checks_max->get_value(),
+			m_prom_conf,
+			m_app_checks_by_containers,
+			m_prometheus_by_containers,
+			m_prev_flush_time_ns);
+	}
+
 	environment_emitter environment_emitter_instance(m_prev_flush_time_ns,
 	                                                 m_env_hash_config,
 	                                                 *m_metrics);
@@ -2910,14 +2855,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	                                         m_track_environment,
 	                                         m_top_file_devices_per_prog,
 	                                         m_jmx_proxy.get(),
-	                                         m_app_proxy.get(),
 	                                         m_procfs_scan_thread,
 	                                         *m_procfs_parser,
 	                                         m_acked_sampling_ratio,
 	                                         m_machine_info->num_cpus,
 	                                         environment_emitter_instance,
 	                                         jmx_emitter_instance,
-	                                         app_check_emitter_instance);
+	                                         app_check_emitter_instance.get());
 	if (process_manager::c_process_flush_filter_enabled.get_value())
 	{
 		std::set<sinsp_threadinfo*> emitted_processes;
@@ -2938,7 +2882,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		                          emitted_containers,
 		                          proc_trc,
 		                          jmx_emitter_instance,
-		                          app_check_emitter_instance,
 		                          environment_emitter_instance,
 		                          process_emitter_instance);
 	}
@@ -2976,7 +2919,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		    std::get<1>(m_prometheus_by_containers[container_id]));
 	}
 
-	app_check_emitter_instance.log_result();
+	if(app_check_emitter_instance)
+	{
+		app_check_emitter_instance->log_result();
+	}
 	app_check_stats_trc.stop();
 
 #ifndef _WIN32
@@ -2989,7 +2935,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		}
 		send_jmx_trc.stop();
 #ifndef CYGWING_AGENT
-		if (m_app_proxy)
+		if(m_app_checks_proxy)
 		{
 			tracer_emitter app_check_trc("app_checks", proc_trc);
 			if (!prom_procs.empty())
@@ -2998,7 +2944,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				// Filter out duplicate prometheus scans
 				prom_process::filter_procs(prom_procs,
 				                           m_inspector->m_thread_manager->m_threadtable,
-				                           m_app_metrics,
+				                           m_app_checks_proxy->get_all_metrics(),
 				                           m_prev_flush_time_ns);
 			}
 			// Get our own thread info to match for prometheus host_filter
@@ -3022,23 +2968,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				// XXX: This will have to be revisited if we're going to allow
 				// different intervals for different endpoints or if we want to start
 				// interleaving multiple endpoints.
-				bool have_prometheus_metrics = false;
-				auto app_metrics_pid = m_app_metrics.find(our_tinfo->m_pid);
-
-				if (app_metrics_pid != m_app_metrics.end())
-				{
-					for (const auto& app_met : app_metrics_pid->second)
-					{
-						if ((app_met.second.type() == app_check_data::check_type::PROMETHEUS) &&
-						    (app_met.second.expiration_ts() >
-						     (m_prev_flush_time_ns / ONE_SECOND_IN_NS)))
-						{
-							have_prometheus_metrics = true;
-							break;
-						}
-					}
-				}
-				if (!have_prometheus_metrics)
+				if(!m_app_checks_proxy->have_prometheus_metrics_for_pid(
+					our_tinfo->m_pid,
+					m_prev_flush_time_ns/ONE_SECOND_IN_NS))
 				{
 					match_prom_checks(our_tinfo, our_tinfo->get_main_thread(), prom_procs, true);
 				}
@@ -3047,7 +2979,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			if (!app_checks_processes.empty() || !prom_procs.empty())
 			{
 				tracer_emitter prom_filter_procs_trc("send_get_metrics_cmd", app_check_trc);
-				m_app_proxy->send_get_metrics_cmd(app_checks_processes, prom_procs, m_prom_conf);
+				m_app_checks_proxy->send_get_metrics_cmd(app_checks_processes, prom_procs, &m_prom_conf);
 			}
 		}
 #endif

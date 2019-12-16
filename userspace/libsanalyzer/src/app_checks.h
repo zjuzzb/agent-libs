@@ -12,7 +12,7 @@
 #include "posix_queue.h"
 #include "metric_limits.h"
 #include "draios.pb.h"
-// suppress depreacated warnings for auto_ptr in boost
+// suppress deprecated warnings for auto_ptr in boost
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <yaml-cpp/yaml.h>
@@ -267,36 +267,6 @@ private:
 	services_t m_service_checks;
 	uint64_t m_expiration_ts;
 	unsigned m_total_metrics;
-};
-
-class app_checks_proxy
-{
-public:
-	// hash table keyed by PID, containing maps keyed by app_check name
-	typedef std::unordered_map<int, std::map<std::string, app_check_data>> metric_map_t;
-
-	app_checks_proxy();
-
-	// void send_get_metrics_cmd(const std::vector<app_process>& processes);
-	void send_get_metrics_cmd(const std::vector<app_process>& processes,
-		const std::vector<prom_process>& prom_procs, const prometheus_conf &conf);
-
-	metric_map_t read_metrics(const metric_limits::sptr_t& ml = nullptr);
-
-private:
-	posix_queue m_outqueue;
-	posix_queue m_inqueue;
-	Json::Reader m_json_reader;
-	Json::FastWriter m_json_writer;
-
-	// the only one currently defined and the only one we support
-	static constexpr const uint8_t PROTOCOL_VERSION = 1;
-
-	// sanity checks, we could support up to 4 GB compressed/uncompressed
-	// size but that's rather excessive and probably indicates a bug
-	// MAXSIZE in sdchecks.py is 3 MB so in theory we never exceed this
-	static constexpr const size_t MAX_COMPRESSED_SIZE = 4UL << 20u;
-	static constexpr const size_t MAX_UNCOMPRESSED_SIZE = 100UL << 20u;
 };
 
 #endif // _WIN32

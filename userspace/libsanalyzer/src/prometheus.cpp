@@ -315,7 +315,7 @@ Json::Value prom_process::to_json(const prometheus_conf &conf) const
 // Make sure we only scan any port only once per container or on host
 // If multiple matching processes are listening to a port within the same
 // container, pick the oldest
-void prom_process::filter_procs(vector<prom_process> &procs, threadinfo_map_t &threadtable, const app_checks_proxy::metric_map_t &app_metrics, uint64_t now)
+void prom_process::filter_procs(vector<prom_process> &procs, threadinfo_map_t &threadtable, const app_checks_proxy_interface::raw_metric_map_t &app_metrics, uint64_t now)
 {
 	// Set of container_id and listening port for non-expired prometheus metrics
 	// to ensure we don't try scanning those ports again for a different pid.
@@ -326,8 +326,8 @@ void prom_process::filter_procs(vector<prom_process> &procs, threadinfo_map_t &t
 		bool have_mets = false;
 		for (const auto& app_met : app_met_pid.second)
 		{
-			if ((app_met.second.type() == app_check_data::check_type::PROMETHEUS) &&
-				(app_met.second.expiration_ts() > (now/ONE_SECOND_IN_NS)))
+			if ((app_met.second->type() == app_check_data::check_type::PROMETHEUS) &&
+				(app_met.second->expiration_ts() > (now/ONE_SECOND_IN_NS)))
 			{
 				have_mets = true;
 				break;

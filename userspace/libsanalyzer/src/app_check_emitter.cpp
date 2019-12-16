@@ -2,7 +2,7 @@
 #include "analyzer_thread.h"
 #include "configuration_manager.h"
 
-app_check_emitter::app_check_emitter(app_checks_proxy::metric_map_t& app_metrics,
+app_check_emitter::app_check_emitter(const app_checks_proxy_interface::metric_map_t& app_metrics,
 				     const unsigned int app_metrics_limit,
 				     const prometheus_conf& prom_conf,
 				     std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& app_checks_by_container,
@@ -33,24 +33,27 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 	// Map of app_check data by app-check name and how long the
 	// metrics have been expired to ensure we serve the most recent
 	// metrics available
-	std::map<std::string, std::map<int, const app_check_data *>> app_data_to_send;
-	for(auto pid: procinfo.m_program_pids)
+	std::map<std::string, std::map<int, std::shared_ptr<app_check_data>>> app_data_to_send;
 	{
-		auto datamap_it = m_app_metrics.find(pid);
-		if(datamap_it == m_app_metrics.end())
-			continue;
-		for(const auto& app_data : datamap_it->second)
+		const auto app_metrics = &m_app_metrics;
+		for(auto pid: procinfo.m_program_pids)
 		{
-			int age = (m_prev_flush_time_ns/ONE_SECOND_IN_NS) -
-				app_data.second.expiration_ts();
-			app_data_to_send[app_data.first][age] = &(app_data.second);
+			auto datamap_it = app_metrics->find(pid);
+			if(datamap_it == app_metrics->end())
+				continue;
+			for(const auto& app_data : datamap_it->second)
+			{
+				int age = (m_prev_flush_time_ns/ONE_SECOND_IN_NS) -
+					  app_data.second->expiration_ts();
+				app_data_to_send[app_data.first][age] = app_data.second;
+			}
 		}
 	}
 
-	for(auto app_age_map : app_data_to_send)
+	for(const auto& app_age_map : app_data_to_send)
 	{
 		bool sent = false;
-		for(auto app_data : app_age_map.second)
+		for(const auto& app_data : app_age_map.second)
 		{
 			if(sent)
 			{

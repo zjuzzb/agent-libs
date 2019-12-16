@@ -13,7 +13,7 @@
 #include "draios.pb.h"
 #include "analyzer_settings.h"
 #include "proc_filter.h"
-#include "app_checks.h"
+#include "app_checks_proxy_interface.h"
 #include "metric_forwarding_configuration.h"
 
 Json::Value yaml_to_json(const YAML::Node& node);
@@ -113,7 +113,7 @@ public:
 
 	Json::Value to_json(const prometheus_conf &conf) const;
 
-	static void filter_procs(std::vector<prom_process> &procs, threadinfo_map_t &threadtable, const app_checks_proxy::metric_map_t &app_metrics, uint64_t now);
+	static void filter_procs(std::vector<prom_process> &procs, threadinfo_map_t &threadtable, const app_checks_proxy_interface::raw_metric_map_t &app_metrics, uint64_t now);
 private:
 	std::string m_name;	// Just for debugging
 	int m_pid;

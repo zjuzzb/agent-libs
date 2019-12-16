@@ -1,17 +1,18 @@
 #pragma once
 #include <unordered_map>
+#include "app_checks_proxy_interface.h"
 #include "prometheus.h"
 
 /**
  * Does the work of emitting the app check metrics of processes during the scope of a SINGLE
  * flush.
  *
- * emit_apps must be invoked on each process which is inteded to have its app metrics
+ * emit_apps must be invoked on each process which is intended to have its app metrics
  * flushed.
  */
 class app_check_emitter {
 public:
-	app_check_emitter(app_checks_proxy::metric_map_t& app_metrics,
+	app_check_emitter(const app_checks_proxy_interface::metric_map_t& app_metrics,
 		    const unsigned int app_metrics_limit,
 		    const prometheus_conf& prom_conf,
 		    std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& app_checks_by_container,
@@ -32,7 +33,7 @@ public:
 	void log_result();
 
 private:
-	app_checks_proxy::metric_map_t& m_app_metrics;
+	const app_checks_proxy_interface::metric_map_t& m_app_metrics;
 	const int m_app_metrics_limit;
 	unsigned int m_app_metrics_remaining;
 	const prometheus_conf& m_prom_conf;

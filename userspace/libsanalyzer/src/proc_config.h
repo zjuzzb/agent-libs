@@ -5,7 +5,7 @@
 #pragma once
 
 #include "sinsp.h"
-#include "app_checks.h"
+#include "app_checks_proxy_interface.h"
 #include <yaml-cpp/yaml.h>
 
 class proc_config {

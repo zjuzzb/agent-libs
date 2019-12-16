@@ -27,14 +27,13 @@ public:
 			const bool track_environment,
 			const uint32_t top_file_devices_per_prog,
 			const jmx_proxy* jmx_proxy,
-			const app_checks_proxy* app_proxy,
 			const bool procfs_scan_thread,
 			sinsp_procfs_parser& procfs_parser,
 			const uint32_t sampling_ratio,
 			const uint32_t num_cpus,
 			environment_emitter& the_environment_emitter,
 			jmx_emitter& the_jmx_emitter,
-			app_check_emitter& the_app_check_emitter);
+			app_check_emitter* the_app_check_emitter);
 	
 	/**
 	 * emit data for all processes in the progtable, as defined by the logic of this
@@ -106,7 +105,6 @@ private:
 	const bool m_track_environment;
 	const uint32_t m_top_file_devices_per_prog;
 	const jmx_proxy* m_jmx_proxy;
-	const app_checks_proxy* m_app_proxy;
 	const bool m_procfs_scan_thread;
 	sinsp_procfs_parser& m_procfs_parser;
 	const uint32_t m_sampling_ratio;
@@ -114,7 +112,7 @@ private:
 
 	environment_emitter& m_environment_emitter;
 	jmx_emitter& m_jmx_emitter;
-	app_check_emitter& m_app_check_emitter;
+	app_check_emitter* m_app_check_emitter;
 
 	friend class test_helper;
 };

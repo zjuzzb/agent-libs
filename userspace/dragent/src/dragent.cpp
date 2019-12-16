@@ -1,3 +1,4 @@
+#include "app_checks_proxy.h"
 #include "async_aggregator.h"
 #include "avoid_block_channel.h"
 #include "capture_job_handler.h"
@@ -1067,11 +1068,20 @@ int dragent_app::sdagent_main()
 		                                                      m_configuration.m_excess_k8s_log,
 		                                                      m_configuration.m_k8s_cache_size);
 
+		std::shared_ptr<app_checks_proxy> the_app_checks_proxy = nullptr;
+		if(
+			(m_configuration.m_app_checks_enabled && !m_configuration.m_app_checks.empty()) ||
+			m_configuration.m_prom_conf.enabled())
+		{
+			the_app_checks_proxy = std::make_shared<app_checks_proxy>(the_metric_limits);
+		}
+
 		analyzer = build_analyzer(inspector,
 		                          m_aggregator_queue,
 		                          the_metric_limits,
 		                          the_label_limits,
-		                          the_k8s_limits);
+		                          the_k8s_limits,
+		                          the_app_checks_proxy);
 		LOG_INFO("Created analyzer");
 
 		inspector->register_external_event_processor(*analyzer);
@@ -1268,7 +1278,8 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
                                             flush_queue& flush_queue,
                                             const metric_limits::sptr_t& the_metric_limits,
                                             const label_limits::sptr_t& the_label_limits,
-                                            const k8s_limits::sptr_t& the_k8s_limits)
+                                            const k8s_limits::sptr_t& the_k8s_limits,
+                                            std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy)
 {
 	sinsp_analyzer* analyzer = new sinsp_analyzer(
 	    inspector.get(),
@@ -1281,7 +1292,8 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
 	    [this]() -> bool { return m_capture_job_handler.get_job_in_progress(); },
 	    the_metric_limits,
 	    the_label_limits,
-	    the_k8s_limits);
+	    the_k8s_limits,
+	    std::move(the_app_checks_proxy));
 	sinsp_configuration* sconfig = analyzer->get_configuration();
 
 	analyzer->set_procfs_scan_thread(m_configuration.m_procfs_scan_thread);

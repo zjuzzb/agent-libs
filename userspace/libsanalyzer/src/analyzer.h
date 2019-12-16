@@ -1,7 +1,7 @@
 #pragma once
 
 #include "analyzer_utils.h"
-#include "app_checks.h"
+#include "app_checks_proxy_interface.h"
 #include "jmx_proxy.h"
 #include "prometheus.h"
 #include "sinsp_curl.h"
@@ -267,7 +267,8 @@ public:
 	               std::function<bool()> check_disable_dropping,
 	               const metric_limits::sptr_t& the_metric_limits = nullptr,
 	               const label_limits::sptr_t& the_label_limits = nullptr,
-	               const k8s_limits::sptr_t& the_k8s_limits = nullptr);
+	               const k8s_limits::sptr_t& the_k8s_limits = nullptr,
+	               std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy = nullptr);
 	~sinsp_analyzer();
 
 	//
@@ -380,24 +381,12 @@ public:
 				m_app_checks.push_back(c);
 			}
 		}
-
-		if (!m_app_checks.empty())
-		{
-			if (!m_app_proxy)
-			{
-				m_app_proxy = make_unique<app_checks_proxy>();
-			}
-		}
 	}
 
 #ifndef CYGWING_AGENT
 	void set_prometheus_conf(const prometheus_conf& pconf)
 	{
 		m_prom_conf = pconf;
-		if (m_prom_conf.enabled() && !m_app_proxy)
-		{
-			m_app_proxy = make_unique<app_checks_proxy>();
-		}
 	}
 
 	void set_custom_container_conf(custom_container::resolver&& conf)
@@ -851,7 +840,6 @@ public:
 	    const std::vector<std::string>& emitted_containers,
 	    tracer_emitter& proc_trc,
 	    jmx_emitter& jmx_emitter_instance,
-	    app_check_emitter& app_check_emitter_instance,
 	    environment_emitter& environment_emitter_instance,
 	    process_emitter& process_emitter_instance);
 	void flush_processes();
@@ -1148,8 +1136,7 @@ public:
 	std::atomic<bool> m_statsd_capture_localhost;
 
 	std::vector<app_check> m_app_checks;
-	std::unique_ptr<app_checks_proxy> m_app_proxy;
-	decltype(m_app_proxy->read_metrics()) m_app_metrics;
+	std::shared_ptr<app_checks_proxy_interface> m_app_checks_proxy;
 
 	std::unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
 	std::unordered_map<std::string, std::vector<mounted_fs>> m_mounted_fs_map;

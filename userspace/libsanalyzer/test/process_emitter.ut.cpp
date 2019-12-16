@@ -120,16 +120,9 @@ public:
 		  m_jmx_metrics(),
 		  m_jmx_metrics_by_container(),
 		  m_jmx_emitter(m_jmx_metrics, 0, 0, m_jmx_metrics_by_container),
-		  m_app_metrics(),
 		  m_prom_conf(),
 		  m_app_checks_by_container(),
 		  m_prometheus_by_container(),
-		  m_app_check_emitter(m_app_metrics,
-				      0,
-				      m_prom_conf,
-				      m_app_checks_by_container,
-				      m_prometheus_by_container,
-				      0),
 		  m_process_emitter(m_process_manager,
 				    m_inspector,
 				    simpledriver,
@@ -141,14 +134,13 @@ public:
 				    false,
 				    0,
 				    nullptr,
-				    nullptr,
 				    false,
 				    m_procfs_parser,
 				    1,
 				    1,
 				    m_environment_emitter,
 				    m_jmx_emitter,
-				    m_app_check_emitter)
+				    nullptr)
 	{
 		test_helper::set_inspector_mode(m_inspector, SCAP_MODE_LIVE);
 	}
@@ -169,11 +161,9 @@ public:
 	std::unordered_map<int, java_process> m_jmx_metrics;
 	std::unordered_map<std::string, std::tuple<unsigned, unsigned>> m_jmx_metrics_by_container;
 	jmx_emitter m_jmx_emitter;
-	app_checks_proxy::metric_map_t m_app_metrics;
 	prometheus_conf m_prom_conf;
 	std::unordered_map<std::string, std::tuple<unsigned, unsigned>> m_app_checks_by_container;
 	std::unordered_map<std::string, std::tuple<unsigned, unsigned>> m_prometheus_by_container;
-	app_check_emitter m_app_check_emitter;
 	process_emitter m_process_emitter;
 };
 

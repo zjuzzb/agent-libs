@@ -5,7 +5,7 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
-#include "app_checks.h"
+#include "app_checks_proxy_interface.h"
 #include "draios.pb.h"
 #include <json/json.h>
 #include <gtest.h>

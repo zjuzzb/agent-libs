@@ -26,6 +26,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include
 add_definitions( -DHAS_ANALYZER )
 
 list(APPEND targetfiles
+	app_checks_proxy.cpp
 	async_aggregator.cpp
 	avoid_block_channel.cpp
 	baseline_mgr.cpp

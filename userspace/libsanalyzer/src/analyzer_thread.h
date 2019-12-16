@@ -8,7 +8,7 @@
 #include "protostate.h"
 #include "delays.h"
 #include "procfs_parser.h"
-#include "app_checks.h"
+#include "app_checks_proxy_interface.h"
 #include "env_hash.h"
 #include "analyzer_settings.h"
 #include "analyzer_file_stat.h"
