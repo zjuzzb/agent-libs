@@ -4,47 +4,61 @@
 #include <cstdlib> // for rand
 #include <functional>
 
+class sinsp;
+
 namespace test_helpers
 {
 
 /**
- * Easy way to create threadinfo in unit test. The constructor sets defaults
- * for all of the events values and this class has setters for the other
- * values.  Each setter returns *this so that the setters can be called in
- * sequence.
+ * Easy way to create sinsp_threadinfo in unit test. Setters are provided
+ * for many fields and the class (should) create defaults for any mandatory
+ * fields that the client does explicitly set. Each setter returns *this so
+ * that the setters can be called in sequence.
  *
- * Since the sysdig classes expect a raw pointer, this class returns a raw
- * pointer instead of a smart pointer and it is the responsibility of the
- * caller to manage the lifetime of the class.
+ * The built value can be used in two ways:
+ * 1. via the commit function to pass ownership to a separate class and
+ *    return a reference:
+ *    example: auto &tinfo = mock.build_thread().exe("sysdig").commit()
+ * 2. via the release function to pass ownership to the caller:
+ *    example: auto tinfo = thread_builder().pid(10).name("top").release()
  *
- * This is meant to be constructed by a test_helper that set the commit
- * delegate before passing the thread_builder back to the client.
- *
- * Usage: thread_builder().pid(10).name("top").commit()
+ * Usually with this pattern, the class would return a shared_ptr but this
+ * was designed to work with code that uses raw pointers.
  */
 class thread_builder
 {
 public:
 
-	/**
-	 * ctor without commit
-	 */
-//	thread_builder() :
-//	   m_threadinfo(new sinsp_threadinfo())
-//	{
-//		set_defaults();
-//	}
-
+	using mutable_threadinfo_ptr_t = std::shared_ptr<sinsp_threadinfo>;
 	using commit_delegate = std::function<void(sinsp_threadinfo *thread_info)>;
 	/**
 	 * ctor with a commit delegate where the generated events are
 	 * sent to a consumer.
 	 */
-	thread_builder(const commit_delegate& delegate) :
+	thread_builder(sinsp *inspector, const commit_delegate& delegate) :
 	   m_commit(delegate),
+	   m_threadinfo(new sinsp_threadinfo(inspector))
+	{
+		set_defaults();
+	}
+
+	/**
+	 * ctor without commit.
+	 */
+	thread_builder() :
 	   m_threadinfo(new sinsp_threadinfo())
 	{
 		set_defaults();
+	}
+
+	~thread_builder()
+	{
+		if(m_threadinfo)
+		{
+			assert(!"This shouldn't happen if you are using this "
+				"class correctly. Either call commit or release "
+				"before the builder is destroyed.");
+		}
 	}
 
 	/**
@@ -100,7 +114,6 @@ public:
 		return *this;
 	}
 
-
 	/**
 	 * Fill any empty fields with data
 	 */
@@ -108,24 +121,52 @@ public:
 	{
 		if (0 == m_threadinfo->m_pid)
 		{
+			// Because of how the mutators work, if the pid is
+			// empty then the tid is also empty. Set them both to
+			// a random value.
 			m_threadinfo->m_pid = m_threadinfo->m_tid = rand();
 		}
-		if (m_threadinfo->m_comm.empty())
+		if(m_threadinfo->m_comm.empty())
 		{
 			m_threadinfo->m_comm = "default_command";
 		}
 	}
 
 	/**
-	 * Complete the threadinfo and pass it to the consumer
+	 * Complete the threadinfo and pass ownership to the consumer. Pass a
+	 * non-owning reference back to the client.
 	 */
-	const sinsp_threadinfo* commit()
+	sinsp_threadinfo &commit()
 	{
 		fill_empty_fields();
 		m_commit(m_threadinfo);
-		return m_threadinfo;
+
+		// The commit function passed ownership to the consumer so here
+		// we release from this class and return a ref.
+		return *release_ptr();
 	}
+
+	/**
+	 * Pass ownership back to the caller.
+	 */
+	std::unique_ptr<sinsp_threadinfo> release()
+	{
+		return std::unique_ptr<sinsp_threadinfo>(release_ptr());
+	}
+
 private:
+
+	/**
+	 * This class stores a raw_ptr copy of the data. This function clears
+	 * ownership from this class (so that it won't be deleted) and returns the
+	 * raw pointer.
+	 */
+	sinsp_threadinfo *release_ptr()
+	{
+		sinsp_threadinfo *temp = m_threadinfo;
+		m_threadinfo = nullptr;
+		return temp;
+	}
 
 	void set_defaults()
 	{
@@ -134,6 +175,7 @@ private:
 		m_threadinfo->m_uid = 200;
 		m_threadinfo->m_container_id = 201;
 		m_threadinfo->m_clone_ts = sinsp_utils::get_current_time_ns() - 1000000;
+		m_threadinfo->m_uid = rand();
 	}
 
 	commit_delegate m_commit;

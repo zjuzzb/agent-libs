@@ -20,11 +20,14 @@ TEST(analyzer_test, end_to_end_basic)
 {
 	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock());
 
+	auto &thread55 = inspector->build_thread().tid(55).commit();
+	auto &thread75 = inspector->build_thread().tid(75).commit();
+
 	// Make some fake events
 	uint64_t ts = 1095379199000000000ULL;
-	inspector->build_event().tid(55).ts(ts).count(5).commit();
-	inspector->build_event().tid(55).ts(ts).count(1000).commit();
-	inspector->build_event().tid(75).count(1).commit();
+	inspector->build_event(thread55).ts(ts).count(5).commit();
+	inspector->build_event(thread55).ts(ts).count(1000).commit();
+	inspector->build_event(thread75).count(1).commit();
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 
 	sinsp_analyzer analyzer(inspector.get(),
@@ -280,7 +283,8 @@ TEST(analyzer_test, print_profiling_error)
 	scoped_sinsp_logger_capture capture;
 
 	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock());
-	inspector->build_event().count(10).commit();
+	auto &tinfo = inspector->build_thread().commit();
+	inspector->build_event(tinfo).count(10).commit();
 
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 	sinsp_analyzer analyzer(inspector.get(),

@@ -3,7 +3,8 @@
 namespace test_helpers
 {
 
-sinsp_evt_wrapper::sinsp_evt_wrapper() :
+sinsp_evt_wrapper::sinsp_evt_wrapper(sinsp_threadinfo& tinfo) :
+	m_sinsp_threadinfo(tinfo),
 	m_sinsp_event(new sinsp_evt()),
 	m_scap_event(new scap_evt()),
 	m_ppm_event_info(new ppm_event_info()),
@@ -12,7 +13,7 @@ sinsp_evt_wrapper::sinsp_evt_wrapper() :
 {
 	m_sinsp_event->init(m_scap_event.get(),
 			    m_ppm_event_info.get(),
-			    nullptr /*threadinfo*/,
+			    &m_sinsp_threadinfo,
 			    m_sinsp_fdinfo.get());
 }
 

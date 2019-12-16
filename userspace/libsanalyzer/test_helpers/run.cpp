@@ -8,10 +8,8 @@ namespace test_helpers
 
 void run_sinsp_with_analyzer(sinsp_mock& inspector, sinsp_analyzer& analyzer)
 {
-	inspector.open();
-
 	inspector.m_analyzer = &analyzer;
-	analyzer.on_capture_start();
+	inspector.open();
 
 	// Calling sinsp::next will pass the events to the analyzer. Run this
 	// until we are out of events.

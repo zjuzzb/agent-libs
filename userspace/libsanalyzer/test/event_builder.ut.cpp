@@ -1,11 +1,13 @@
 #include <gtest.h>
 #include "sinsp_mock.h"
+#include "thread_builder.h"
 
 using namespace test_helpers;
 
 TEST(event_builder_test, defaults)
 {
-	auto event_wrapper = event_builder().generate();
+	auto threadinfo = thread_builder().release();
+	auto event_wrapper = event_builder(*threadinfo).generate();
 	auto evt = event_wrapper->get();
 
 	// This is just a sanity check so give it an entire 10 seconds of wiggle room.
@@ -23,10 +25,12 @@ TEST(event_builder_test, fields)
 	const uint64_t TS = 0x1234432112344321;
 	const uint16_t CPUID = 0x4444;
 
-	auto event_wrapper = event_builder().type(PPME_SYSCALL_CHDIR_E)
-					    .ts(TS)
-					    .cpuid(CPUID)
-					    .generate();
+	auto threadinfo = thread_builder().release();
+	auto event_wrapper =
+	   event_builder(*threadinfo).type(PPME_SYSCALL_CHDIR_E)
+				     .ts(TS)
+				     .cpuid(CPUID)
+				     .generate();
 	auto evt = event_wrapper->get();
 
 	ASSERT_EQ(TYPE, evt->get_type());
@@ -40,7 +44,8 @@ public:
 	event_builder build_event()
 	{
 		// Create an event builder that will commit into this class
-		return event_builder(std::bind(&my_event_committer::commit_event,
+		return event_builder(mythread,
+				     std::bind(&my_event_committer::commit_event,
 					       this,
 					       std::placeholders::_1,
 					       std::placeholders::_2));
@@ -57,6 +62,8 @@ public:
 		m_last_event = event;
 		m_last_count = count;
 	}
+
+	sinsp_threadinfo mythread;
 };
 
 

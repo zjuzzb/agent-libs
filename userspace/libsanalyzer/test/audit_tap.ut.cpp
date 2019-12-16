@@ -143,17 +143,16 @@ void arg_length_test(const int limit)
 	analyzer.enable_audit_tap(true /*emit local connections*/);
 	inspector->m_analyzer = &analyzer;
 
-	const sinsp_threadinfo *thread1 = inspector->build_thread()
-					  .pid(DEFAULT_PID)
-					  .comm("dragent")
-					  .arg(arg_150).commit();
+	auto &thread1 = inspector->build_thread().pid(DEFAULT_PID)
+						 .comm("dragent")
+						 .arg(arg_150).commit();
 	inspector->open();
 
 	audit_tap tap(default_hash_config(),
 		      MACHINE_ID_FOR_TEST,
 		      true /*emit local connections*/);
 
-	add_connection(*inspector, analyzer, tap, thread1, 2);
+	add_connection(*inspector, analyzer, tap, &thread1, 2);
 
 	const tap::AuditLog *log = tap.get_events();
 	int expected_length = std::min(static_cast<int>(arg_150.length()), limit);
@@ -201,7 +200,7 @@ TEST(audit_tap_test, basic)
 
 	// Build some threads that we'll add connections to.
 	(void)inspector->build_thread().commit();
-	const sinsp_threadinfo *thread1 = inspector->build_thread()
+	auto &thread1 = inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
 		.exe(expected_name)
@@ -213,9 +212,9 @@ TEST(audit_tap_test, basic)
 	inspector->open();
 
 	// Sanity checks
-	ASSERT_EQ(expected_pid, thread1->m_pid);
-	ASSERT_EQ(expected_pid, thread1->m_tid);
-	ASSERT_EQ(expected_name, thread1->m_exe);
+	ASSERT_EQ(expected_pid, thread1.m_pid);
+	ASSERT_EQ(expected_pid, thread1.m_tid);
+	ASSERT_EQ(expected_name, thread1.m_exe);
 
 	// Even though the analyzer has it's own tap, let's make our own
 	// and it can pull data from sinsp and the analyzer thread.
@@ -225,7 +224,7 @@ TEST(audit_tap_test, basic)
 
 
 	const int TRANSITION_COUNT = 5;
-	add_connection(*inspector, analyzer, tap, thread1, TRANSITION_COUNT);
+	add_connection(*inspector, analyzer, tap, &thread1, TRANSITION_COUNT);
 
 	const tap::AuditLog *log = tap.get_events();
 
@@ -306,7 +305,7 @@ TEST(audit_tap_test, connection_audit_one_client_connection)
 	analyzer.enable_audit_tap(emit_local_connections);
 	inspector->m_analyzer = &analyzer;
 
-	const sinsp_threadinfo* const thread = inspector->build_thread()
+	auto &thread = inspector->build_thread()
 			.pid(DEFAULT_PID)
 			.comm("client_application")
 			.arg(arg)
@@ -318,7 +317,7 @@ TEST(audit_tap_test, connection_audit_one_client_connection)
 	              MACHINE_ID_FOR_TEST,
 	              emit_local_connections);
 
-	add_connection(*inspector, analyzer, tap, thread, 2);
+	add_connection(*inspector, analyzer, tap, &thread, 2);
 
 	const tap::AuditLog* const log = tap.get_events();
 
@@ -381,7 +380,7 @@ TEST(audit_tap_test, connection_audit_one_server_connection)
 	analyzer.enable_audit_tap(emit_local_connections);
 	inspector->m_analyzer = &analyzer;
 
-	const sinsp_threadinfo* const thread = inspector->build_thread()
+	auto &thread = inspector->build_thread()
 			.pid(DEFAULT_PID)
 			.comm("server_application")
 			.arg(arg)
@@ -394,7 +393,7 @@ TEST(audit_tap_test, connection_audit_one_server_connection)
 	              emit_local_connections);
 
 	const bool is_client = false;
-	add_connection(*inspector, analyzer, tap, thread, 2, is_client);
+	add_connection(*inspector, analyzer, tap, &thread, 2, is_client);
 
 	const tap::AuditLog* const log = tap.get_events();
 

@@ -40,9 +40,10 @@ sinsp_mock::~sinsp_mock()
 thread_builder sinsp_mock::build_thread()
 {
 	// Create a thread builder that will commit into this class
-	return thread_builder(std::bind(&sinsp_mock::commit_thread,
-				       this,
-				       std::placeholders::_1));
+	return thread_builder(this,
+			      std::bind(&sinsp_mock::commit_thread,
+					this,
+					std::placeholders::_1));
 }
 
 void sinsp_mock::commit_thread(sinsp_threadinfo *thread_info)
@@ -51,10 +52,27 @@ void sinsp_mock::commit_thread(sinsp_threadinfo *thread_info)
 	m_temporary_threadinfo_list.push_back(thread_info_ptr(thread_info));
 }
 
-event_builder sinsp_mock::build_event()
+container_builder sinsp_mock::build_container(sinsp_threadinfo& tinfo)
+{
+	// Create a container builder that will commit into this class
+	return container_builder(tinfo,
+				 std::bind(&sinsp_mock::commit_container,
+					   this,
+					   std::placeholders::_1,
+					   std::placeholders::_2));
+}
+
+void sinsp_mock::commit_container(sinsp_container_info::ptr_t container,
+				  sinsp_threadinfo& tinfo)
+{
+	m_container_manager.add_container(container, &tinfo);
+}
+
+event_builder sinsp_mock::build_event(sinsp_threadinfo& tinfo)
 {
 	// Create an event builder that will commit into this class
-	return event_builder(std::bind(&sinsp_mock::commit_event,
+	return event_builder(tinfo,
+			     std::bind(&sinsp_mock::commit_event,
 				       this,
 				       std::placeholders::_1,
 				       std::placeholders::_2));
@@ -106,20 +124,6 @@ int32_t sinsp_mock::next(sinsp_evt **evt) /*override*/
 	--element.count;
 	++m_scap_stats.n_evts;
 	(*evt)->m_evtnum = m_scap_stats.n_evts;
-
-	if(!get_thread(element.event->tid(), false /*do not query os*/, true /*lookup only*/))
-	{
-		// Thread doesn't exist. Add it.
-		// Note that we can't do this in commit_event because we have to
-		// wait until after the sinsp_threadtable_listener is initialized.
-		sinsp_threadinfo *tinfo = new sinsp_threadinfo(this);
-		tinfo->m_tid = element.event->tid();
-		// For our (current) purposes, the tid and the pid always match.
-		// This means that this is the main thread of a process.
-		tinfo->m_pid = tinfo->m_tid;
-		tinfo->m_uid = DEFAULT_UID;
-		add_thread(tinfo);
-	}
 
 	if(!element.count)
 	{

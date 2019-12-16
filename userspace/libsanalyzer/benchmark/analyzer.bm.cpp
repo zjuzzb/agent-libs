@@ -17,7 +17,8 @@ void one_hundred_thousand_reads(benchmark::State& state)
 	for (auto _ : state)
 	{
 		shared_ptr<sinsp_mock> inspector(new sinsp_mock());
-		inspector->build_event().count(100000).type(PPME_SYSCALL_READ_E).commit();
+		auto &tinfo = inspector->build_thread().commit();
+		inspector->build_event(tinfo).count(100000).type(PPME_SYSCALL_READ_E).commit();
 
 		internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 
