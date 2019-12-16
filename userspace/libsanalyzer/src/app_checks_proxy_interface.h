@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 
+#include <mutex.h>
 #include <app_checks.h>
 
 /**
@@ -19,8 +20,11 @@ public:
 
 	/**
 	 * @brief the type of the metrics we hand out to consumers of this interface
+	 *
+	 * Since we need thread safety (for concurrent read/write access across threads),
+	 * we wrap the map in a mutex
 	 */
-	using metric_map_t = raw_metric_map_t;
+	using metric_map_t = libsinsp::Mutex<raw_metric_map_t>;
 
 	/**
 	 * @brief Do we have any metrics for `pid` in the last sample?

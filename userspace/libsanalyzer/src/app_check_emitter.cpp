@@ -35,7 +35,7 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 	// metrics available
 	std::map<std::string, std::map<int, std::shared_ptr<app_check_data>>> app_data_to_send;
 	{
-		const auto app_metrics = &m_app_metrics;
+		const auto app_metrics = m_app_metrics.lock();
 		for(auto pid: procinfo.m_program_pids)
 		{
 			auto datamap_it = app_metrics->find(pid);

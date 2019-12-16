@@ -127,10 +127,10 @@ app_checks_proxy::raw_metric_map_t app_checks_proxy::read_metrics(const metric_l
 }
 
 
-void app_checks_proxy::refresh_metrics(uint64_t flush_time_sec, uint64_t timeout_sec)
+void app_checks_proxy::refresh_metrics_sync(uint64_t flush_time_sec, uint64_t timeout_sec)
 {
 	auto app_metrics = read_metrics(m_metric_limits, timeout_sec);
-	auto my_app_metrics = &m_app_metrics;
+	auto my_app_metrics = m_app_metrics.lock();
 	for(auto it = my_app_metrics->begin(); it != my_app_metrics->end();)
 	{
 		for(auto it2 = it->second.begin(); it2 != it->second.end();)
@@ -164,9 +164,18 @@ void app_checks_proxy::refresh_metrics(uint64_t flush_time_sec, uint64_t timeout
 
 }
 
+void app_checks_proxy::refresh_metrics(uint64_t flush_time_sec, uint64_t timeout_sec)
+{
+	if(!m_threaded)
+	{
+		refresh_metrics_sync(flush_time_sec, timeout_sec);
+	}
+}
+
+
 bool app_checks_proxy::have_metrics_for_pid(uint64_t pid) const
 {
-	auto my_app_metrics = &m_app_metrics;
+	auto my_app_metrics = m_app_metrics.lock();
 	auto datamap_it = my_app_metrics->find(pid);
 	if(datamap_it == my_app_metrics->end())
 	{
@@ -186,7 +195,7 @@ bool app_checks_proxy::have_metrics_for_pid(uint64_t pid) const
 
 bool app_checks_proxy::have_prometheus_metrics_for_pid(uint64_t pid, uint64_t flush_time_sec) const
 {
-	auto my_app_metrics = &m_app_metrics;
+	auto my_app_metrics = m_app_metrics.lock();
 	auto datamap_it = my_app_metrics->find(pid);
 	if(datamap_it == my_app_metrics->end())
 	{
@@ -207,7 +216,7 @@ bool app_checks_proxy::have_prometheus_metrics_for_pid(uint64_t pid, uint64_t fl
 
 bool app_checks_proxy::have_app_check_metrics_for_pid(uint64_t pid, uint64_t flush_time_sec, const std::string& name) const
 {
-	auto my_app_metrics = &m_app_metrics;
+	auto my_app_metrics = m_app_metrics.lock();
 	auto datamap_it = my_app_metrics->find(pid);
 	if(datamap_it == my_app_metrics->end())
 	{
@@ -226,5 +235,41 @@ bool app_checks_proxy::have_app_check_metrics_for_pid(uint64_t pid, uint64_t flu
 void app_checks_proxy::send_get_metrics_cmd(std::vector<app_process> processes,
 					    std::vector<prom_process> prom_procs, const prometheus_conf* conf)
 {
-	send_get_metrics_cmd_sync(processes, prom_procs, *conf);
+	if(m_threaded)
+	{
+		app_check_request req = {
+			std::move(processes),
+			std::move(prom_procs),
+			conf
+		};
+
+		g_logger.format(sinsp_logger::SEV_DEBUG, "[app_checks_proxy] putting request");
+		if(!m_request_queue.put(req))
+		{
+			g_logger.format(sinsp_logger::SEV_INFO, "[app_checks_proxy] queue full");
+		}
+	}
+	else
+	{
+		send_get_metrics_cmd_sync(processes, prom_procs, *conf);
+	}
+}
+
+void app_checks_proxy::do_run()
+{
+	ASSERT(m_threaded);
+	while(heartbeat())
+	{
+		app_check_request req;
+		g_logger.format(sinsp_logger::SEV_DEBUG, "[app_checks_proxy] getting request");
+		if(m_request_queue.get(&req, 1000))
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG, "[app_checks_proxy] got request, sending to sdchecks");
+			send_get_metrics_cmd_sync(req.processes, req.prom_procs, *req.conf);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "[app_checks_proxy] sent request, calling refresh_metrics");
+			refresh_metrics_sync(time(nullptr), 1);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "[app_checks_proxy] refresh_metrics done");
+		}
+		g_logger.format(sinsp_logger::SEV_DEBUG, "[app_checks_proxy] timeout, no request");
+	}
 }

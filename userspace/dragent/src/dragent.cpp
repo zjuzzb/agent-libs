@@ -99,6 +99,16 @@ type_config<uint64_t> c_serializer_timeout_s(10,
                                              "Watchdog timeout for the serializer thread",
                                              "serializer_timeout");
 
+type_config<bool> c_app_check_thread(
+	true,
+	"Run a dedicated thread for app_check processing",
+	"app_check_thread");
+
+type_config<uint64_t> c_app_check_timeout_s(
+	60,
+	"Watchdog timeout for the app_check thread",
+	"app_check_timeout");
+
 type_config<bool>::ptr c_10s_flush_enabled =
     type_config_builder<bool>(false, "Enable flag to force 10s flush behavior", "10s_flush_enable")
         .hidden()
@@ -1073,7 +1083,12 @@ int dragent_app::sdagent_main()
 			(m_configuration.m_app_checks_enabled && !m_configuration.m_app_checks.empty()) ||
 			m_configuration.m_prom_conf.enabled())
 		{
-			the_app_checks_proxy = std::make_shared<app_checks_proxy>(the_metric_limits);
+			bool app_check_thread = c_app_check_thread.get_value();
+			the_app_checks_proxy = std::make_shared<app_checks_proxy>(the_metric_limits, app_check_thread);
+			if(app_check_thread)
+			{
+				m_pool.start(*the_app_checks_proxy.get(), c_app_check_timeout_s.get_value());
+			}
 		}
 
 		analyzer = build_analyzer(inspector,

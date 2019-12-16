@@ -47,7 +47,7 @@ protected:
 		}
 
 		m_inqueue = make_unique<posix_queue>("/sdc_app_checks_out", posix_queue::SEND, 1);
-		app_checks = make_unique<app_checks_proxy>(nullptr);
+		app_checks = make_unique<app_checks_proxy>(nullptr, false);
 	}
 
 	virtual void TearDown() {

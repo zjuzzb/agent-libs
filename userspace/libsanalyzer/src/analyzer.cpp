@@ -2944,7 +2944,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				// Filter out duplicate prometheus scans
 				prom_process::filter_procs(prom_procs,
 				                           m_inspector->m_thread_manager->m_threadtable,
-				                           m_app_checks_proxy->get_all_metrics(),
+				                           *(m_app_checks_proxy->get_all_metrics().lock()),
 				                           m_prev_flush_time_ns);
 			}
 			// Get our own thread info to match for prometheus host_filter
