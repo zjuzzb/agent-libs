@@ -27,11 +27,11 @@ from time import sleep
 import ast
 import config
 import platform
+import glob
 
 # project
 from checks import AgentCheck
 from util import get_hostname
-from utils.subprocess_output import get_subprocess_output
 from config import _is_affirmative
 
 from sysdig_tracers import Tracer
@@ -337,37 +337,55 @@ class AppCheckInstance(object):
                 sys.exit(1)
         setns(self.MYUTS)
 
-    def extract_os_info(self, exec_cmd, output):
-        if "os-release" in exec_cmd:
-            output = [line for line in output.split('\n') if "NAME" in line or "VERSION" in line]
-            logging.info("Appcheck[%s][%s] OS info %s" % (self.name, self.pid, ", ".join(output)))
-        else:
-            if len(output.strip()) > 0:
-                logging.info("Appcheck[%s][%s] OS info %s" % (self.name, self.pid, output.strip().split('\n')[0]))
+    def log_os_release(self):
+        # called within the target container's mount namespace
+        os_info = []
+        for line in open('/etc/os-release'):
+            if 'NAME' in line or 'VERSION' in line:
+                os_info.append(line.strip())
+        logging.info("Appcheck[%s][%s] OS info %s" % (self.name, self.pid, ", ".join(os_info)))
+
+    def log_alt_os_release(self):
+        # called within the target container's mount namespace
+        for file in glob.glob('/etc/*-release'):
+            if not os.path.isfile(file):
+                # not a regular file (or a symlink to one), ignore it
+                continue
+            for line in open(file):
+                line = line.strip()
+                if line:
+                    logging.info("Appcheck[%s][%s] OS info %s" % (self.name, self.pid, line))
+                    return
 
     def get_os_info(self):
+        if not self.is_on_another_container:
+            return
+
         nsfd = None
         try:
-            if self.is_on_another_container:
-                nsfd = os.open(build_ns_path(self.pid, 'mnt'), os.O_RDONLY)
-                ret = setns(nsfd)
-                if ret != 0:
-                    raise OSError("Cannot setns to pid: %d" % self.pid)
-                if os.path.isfile('/etc/os-release'):
-                    exec_cmd = "cat /etc/os-release"
-                else:
-                    exec_cmd = "cat /etc/*-release"
-                output, err, code = get_subprocess_output([exec_cmd], logging, shell=True)
-                if isinstance(output, str) and code == 0:
-                    self.extract_os_info(exec_cmd, output)
+            # the only reason we even switch to the target's namespace
+            # instead of accessing /proc/<pid>/root/etc/*-release
+            # is that we want to resolve the potential symlinks
+            # using the proper root directory (otherwise we would
+            # potentially open files from our own container or the host)
+            #
+            # we might want to consider opening files with O_NOFOLLOW instead
+            nsfd = os.open(build_ns_path(self.pid, 'mnt'), os.O_RDONLY)
+            ret = setns(nsfd)
+            if ret != 0:
+                raise OSError("Cannot setns to pid: %d" % self.pid)
+            if os.path.isfile('/etc/os-release'):
+                self.log_os_release()
+            else:
+                self.log_alt_os_release()
         except Exception as ex:
             traceback_message = traceback.format_exc()
             ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
             logging.warning("Error while collecting system info: %s" % str(ex))
         finally:
-            if self.is_on_another_container:
+            if nsfd is not None:
                 os.close(nsfd)
-                self.switch_to_self_namespace()
+            self.switch_to_self_namespace()
 
     def run(self):
         saved_ex = None
