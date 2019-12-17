@@ -188,11 +188,6 @@ TEST(connection_manager_test, connect_transmit)
 		it->ts_ns = sinsp_utils::get_current_time_ns();
 		it->message_type = draiosproto::message_type::METRICS;
 		it->buffer = build_test_string(32);
-		dragent_protocol_header_v4* hdr = (dragent_protocol_header_v4*)it->buffer.data();
-		hdr->len = 32;
-		hdr->len = htonl(hdr->len);
-		hdr->version = dragent_protocol::PROTOCOL_VERSION_NUMBER;
-		hdr->messagetype = draiosproto::message_type::METRICS;
 		test_data.push_back(it->buffer);  // save for comparison
 		queue.put(it, protocol_queue::BQ_PRIORITY_HIGH);
 		msleep(100);  // sleep for some better interleavings. could probably make more directed with
@@ -224,51 +219,13 @@ TEST(connection_manager_test, connect_transmit)
 	{
 		ASSERT_TRUE(fc.has_data());
 		auto b = fc.pop_data();
-		EXPECT_EQ(memcmp(b.ptr,
-		                 &sent_data.data()[sizeof(dragent_protocol_header_v4)],
-		                 32 - sizeof(dragent_protocol_header_v4)),
-		          0);
+		EXPECT_EQ(memcmp(b.ptr, sent_data.data(), 32), 0);
 		delete[] b.ptr;
 	}
 }
 
-TEST(connection_manager_test, message_to_buf_v5)
-{
-	draiosproto::metrics protobuf;
-
-	// check that we can serialize v4 and v5
-	std::shared_ptr<serialized_buffer> v4_output = dragent_protocol::message_to_buffer(
-	    1, draiosproto::message_type::METRICS, protobuf, false, false);
-	EXPECT_EQ(v4_output->ts_ns, 1);
-	EXPECT_EQ(v4_output->message_type, draiosproto::message_type::METRICS);
-	std::shared_ptr<serialized_buffer> v5_output = dragent_protocol::message_to_buffer(
-	    1, draiosproto::message_type::METRICS, protobuf, true, false);
-	EXPECT_EQ(v5_output->ts_ns, 1);
-	EXPECT_EQ(v5_output->message_type, draiosproto::message_type::METRICS);
-	EXPECT_EQ(v5_output->buffer.size() - v4_output->buffer.size(),
-	          sizeof(dragent_protocol_header_v5) - sizeof(dragent_protocol_header_v4));
-
-	// check that the actual header data is right
-	auto v4_header = (dragent_protocol_header_v4*)v4_output->buffer.data();
-	auto v5_header = (dragent_protocol_header_v5*)v5_output->buffer.data();
-	EXPECT_NE(v4_header->len, 0);
-	EXPECT_EQ(v4_header->version, dragent_protocol::PROTOCOL_VERSION_NUMBER);
-	EXPECT_EQ(v4_header->messagetype, draiosproto::message_type::METRICS);
-	EXPECT_NE(v5_header->hdr.len, 0);
-	EXPECT_EQ(v5_header->hdr.version, dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH);
-	EXPECT_EQ(v5_header->hdr.messagetype, draiosproto::message_type::METRICS);
-
-	// check that the the v4 header is at the right spot in the v5 message
-	EXPECT_EQ((void*)&v5_header->hdr, (void*)v5_header);
-
-	// naive checks that the serialized data is right
-	uint64_t v4_len = htonl(v4_header->len);
-	uint64_t v5_len = htonl(v5_header->hdr.len);
-	EXPECT_EQ(v5_len - v4_len,
-	          sizeof(dragent_protocol_header_v5) - sizeof(dragent_protocol_header_v4));
-}
-
-TEST(connection_manager_test, generation)
+// XXX TODO Re-enable once v5 protocol is ready
+TEST(connection_manager_test, DISABLED_generation)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
@@ -303,11 +260,11 @@ TEST(connection_manager_test, generation)
 	}
 
 	ASSERT_TRUE(cm.is_connected());
-	for (uint32_t i = 0; cm.get_generation() == 0 && i < 5000; ++i)
+	for (uint32_t i = 0; cm.get_generation() == 1 && i < 5000; ++i)
 	{
 		usleep(1000);
 	}
-	ASSERT_EQ(cm.get_generation(), 1);
+	ASSERT_EQ(cm.get_generation(), 2);
 	ASSERT_EQ(cm.get_sequence(), 0);
 
 	auto it = std::make_shared<serialized_buffer>();
@@ -333,8 +290,8 @@ TEST(connection_manager_test, generation)
 	{
 		usleep(1000);
 	}
-	ASSERT_EQ(cm.get_generation(), 2);
-	ASSERT_EQ(cm.get_sequence(), 0);
+	ASSERT_EQ(cm.get_generation(), 3);
+	ASSERT_EQ(cm.get_sequence(), 1);
 
 	// Shut down all the things
 	config.m_terminate = true;
@@ -343,7 +300,7 @@ TEST(connection_manager_test, generation)
 	t.join();
 }
 
-TEST(connection_manager_test, v5_end_to_end)
+TEST(connection_manager_test, DISABLED_v5_end_to_end)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object

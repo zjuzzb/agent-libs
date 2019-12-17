@@ -12,6 +12,7 @@
 #include <Poco/File.h>
 #include <Poco/Net/InvalidCertificateHandler.h>
 #include <Poco/Net/SSLException.h>
+#include <functional>
 
 #include <grpc_channel_registry.h>
 
@@ -48,6 +49,121 @@ public:
 	}
 };
 
+
+cm_state_machine::state connect_received_in_init(connection_manager* cm)
+{
+	return cm_state_machine::state::CONNECTING;
+}
+
+cm_state_machine::state connect_received_in_retrying(connection_manager* cm)
+{
+	return cm_state_machine::state::CONNECTING;
+}
+
+cm_state_machine::state disconnected_received_in_connecting(connection_manager* cm)
+{
+	return cm_state_machine::state::RETRYING;
+}
+
+cm_state_machine::state v4_connected_received_in_connecting(connection_manager* cm)
+{
+	return cm_state_machine::state::STEADY_STATE;
+}
+
+cm_state_machine::state v5_connected_received_in_connecting(connection_manager* cm)
+{
+	return cm_state_machine::state::HANDSHAKE;
+}
+
+cm_state_machine::state v5_handshake_proto_resp_received_in_handshake(connection_manager* cm)
+{
+	return cm_state_machine::state::HANDSHAKE;
+}
+
+cm_state_machine::state v5_handshake_negotiation_resp_received_in_handshake(connection_manager* cm)
+{
+	return cm_state_machine::state::STEADY_STATE;
+}
+
+cm_state_machine::state v5_disconnected_received_in_handshake(connection_manager* cm)
+{
+	return cm_state_machine::state::RETRYING;
+}
+
+cm_state_machine::state shutdown_received_in_steady_state(connection_manager* cm)
+{
+	return cm_state_machine::state::TERMINATED;
+}
+
+cm_state_machine::state disconnected_received_in_steady_state(connection_manager* cm)
+{
+	return cm_state_machine::state::CONNECTING;
+}
+cm_state_machine::state shutdown_received_in_any_state(connection_manager* cm)
+{
+	return cm_state_machine::state::TERMINATED;
+}
+
+std::unique_ptr<cm_state_machine> build_fsm(connection_manager* cm, bool v5)
+{
+	auto ret = make_unique<cm_state_machine>(cm);
+
+	// Common functions
+	ret->register_event_callback(cm_state_machine::state::INIT,
+	                             cm_state_machine::event::CONNECT,
+	                             connect_received_in_init);
+	ret->register_event_callback(cm_state_machine::state::INIT,
+	                             cm_state_machine::event::SHUTDOWN,
+	                             shutdown_received_in_any_state);
+	ret->register_event_callback(cm_state_machine::state::RETRYING,
+	                             cm_state_machine::event::CONNECT,
+	                             connect_received_in_retrying);
+	ret->register_event_callback(cm_state_machine::state::RETRYING,
+	                             cm_state_machine::event::SHUTDOWN,
+	                             shutdown_received_in_any_state);
+	ret->register_event_callback(cm_state_machine::state::CONNECTING,
+	                             cm_state_machine::event::DISCONNECTED,
+	                             disconnected_received_in_connecting);
+	ret->register_event_callback(cm_state_machine::state::CONNECTING,
+	                             cm_state_machine::event::SHUTDOWN,
+	                             shutdown_received_in_any_state);
+	ret->register_event_callback(cm_state_machine::state::STEADY_STATE,
+	                             cm_state_machine::event::SHUTDOWN,
+	                             shutdown_received_in_steady_state);
+	ret->register_event_callback(cm_state_machine::state::STEADY_STATE,
+	                             cm_state_machine::event::DISCONNECTED,
+	                             disconnected_received_in_steady_state);
+	ret->register_event_callback(cm_state_machine::state::STEADY_STATE,
+	                             cm_state_machine::event::DISCONNECTED,
+	                             disconnected_received_in_steady_state);
+
+	if (!v5) // Functions specific to legacy protocol
+	{
+		ret->register_event_callback(cm_state_machine::state::CONNECTING,
+		                             cm_state_machine::event::CONNECTION_COMPLETE,
+		                             v4_connected_received_in_connecting);
+	}
+	else // Build FSM for protocol v5
+	{
+		ret->register_event_callback(cm_state_machine::state::CONNECTING,
+		                             cm_state_machine::event::CONNECTION_COMPLETE,
+		                             v5_connected_received_in_connecting);
+		ret->register_event_callback(cm_state_machine::state::HANDSHAKE,
+		                             cm_state_machine::event::HANDSHAKE_PROTO_RESP,
+		                             v5_handshake_proto_resp_received_in_handshake);
+		ret->register_event_callback(cm_state_machine::state::HANDSHAKE,
+		                             cm_state_machine::event::HANDSHAKE_NEGOTIATION_RESP,
+		                             v5_handshake_negotiation_resp_received_in_handshake);
+		ret->register_event_callback(cm_state_machine::state::HANDSHAKE,
+		                             cm_state_machine::event::DISCONNECTED,
+		                             v5_disconnected_received_in_handshake);
+		ret->register_event_callback(cm_state_machine::state::HANDSHAKE,
+		                             cm_state_machine::event::SHUTDOWN,
+		                             shutdown_received_in_any_state);
+	}
+	return ret;
+}
+
 /*
  * Connection manager workflow:
  * - constructor: Initialize SSL
@@ -71,17 +187,15 @@ connection_manager::connection_manager(
     : dragent::watchdog_runnable("connection_manager"),
       m_handler_map(message_handlers),
       m_socket(nullptr),
-      m_connected(false),
       m_use_handshake(use_handshake),
       m_generation(0),
       m_sequence(0),
-      m_buffer(RECEIVER_BUFSIZE),
-      m_buffer_used(0),
       m_configuration(configuration),
       m_queue(queue),
       m_reconnect_interval(0)
 {
 	Poco::Net::initializeSSL();
+	m_fsm = build_fsm(this, false);
 }
 
 connection_manager::~connection_manager()
@@ -254,6 +368,7 @@ bool connection_manager::connect()
 
 	LOG_INFO("Initiating connection to collector (trying for %u seconds)",
 	         US_TO_S(connect_timeout_us));
+	ASSERT(m_fsm->get_state() == cm_state_machine::state::CONNECTING);
 
 	std::promise<socket_ptr> sock_promise;
 	std::future<socket_ptr> future_sock = sock_promise.get_future();
@@ -441,8 +556,7 @@ bool connection_manager::connect()
 		disconnect();
 		return false;
 	}
-	m_connected = true;
-	return true;
+	return m_fsm->send_event(cm_state_machine::event::CONNECTION_COMPLETE);
 }
 
 void connection_manager::disconnect()
@@ -468,8 +582,11 @@ void connection_manager::disconnect(socket_ptr& ssp)
 		LOG_INFO("Disconnecting from collector");
 		ssp->close();
 		ssp.reset();
-		m_connected = false;
-		m_buffer_used = 0;
+		m_pending_message.reset();
+	}
+	if (m_fsm)
+	{
+		m_fsm->send_event(cm_state_machine::event::DISCONNECTED);
 	}
 
 #ifndef CYGWING_AGENT
@@ -501,10 +618,9 @@ bool connection_manager::prometheus_connected() const
 }
 #endif
 
-void connection_manager::perform_handshake()
+void connection_manager::fsm_reinit()
 {
-	m_generation++;
-	m_sequence = 0;
+	m_fsm = build_fsm(this, false);
 }
 
 void connection_manager::do_run()
@@ -513,6 +629,7 @@ void connection_manager::do_run()
 	{
 		THROW_DRAGENT_WR_FATAL_ERROR("initialization failed");
 	}
+	ASSERT(m_fsm->get_state() == cm_state_machine::state::INIT);
 
 	std::shared_ptr<serialized_buffer> item;
 
@@ -523,6 +640,13 @@ void connection_manager::do_run()
 		//
 		if (!is_connected())
 		{
+			if (!m_fsm->send_event(cm_state_machine::event::CONNECT))
+			{
+				LOG_WARNING("Attempting to connect in bogus state " +
+				             to_string((int)m_fsm->get_state()));
+				fsm_reinit();
+				continue;
+			}
 			if (!heartbeat())
 			{
 				break;
@@ -545,13 +669,7 @@ void connection_manager::do_run()
 			}
 		}
 
-		if (m_use_handshake)
-		{
-			LOG_INFO("Performing protocol handshake");
-
-			perform_handshake();
-		}
-
+		ASSERT(m_fsm->get_state() == cm_state_machine::state::STEADY_STATE);
 		LOG_INFO("Processing messages");
 
 		//
@@ -569,6 +687,13 @@ void connection_manager::do_run()
 			{
 				LOG_WARNING("Receive failed. Looping back to reconnect.");
 				break;
+			}
+
+			if (m_pending_message.is_complete())
+			{
+				// Now the message is complete. Process it and reset the buffer.
+				(void)handle_message();
+				m_pending_message.reset();
 			}
 
 			if (!item)
@@ -599,6 +724,7 @@ void connection_manager::do_run()
 			}
 		}  // End while (main loop)
 	}      // End while (heartbeat)
+	m_fsm->send_event(cm_state_machine::event::SHUTDOWN);
 }
 
 bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<serialized_buffer>& item)
@@ -613,6 +739,13 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<serialize
 		            ", now=" + to_string(now) + ", ts=" + to_string(item->ts_ns) + ", delay_ms=" +
 		            to_string((now - item->ts_ns) / 1000000.0));
 	}
+
+	// Build a header for the item
+	dragent_protocol_header_v4 header;
+
+	header.messagetype = item->message_type;
+	header.len = htonl(sizeof(header) + item->buffer.size());
+	header.version = dragent_protocol::PROTOCOL_VERSION_NUMBER;
 
 #ifndef CYGWING_AGENT
 	if (item->message_type == draiosproto::message_type::METRICS && prometheus_connected())
@@ -644,7 +777,24 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<serialize
 			return false;
 		}
 
-		int32_t res = m_socket->sendBytes(item->buffer.data(), item->buffer.size());
+		int32_t res = m_socket->sendBytes((uint8_t*)&header, sizeof(header));
+		if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ||
+		    res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
+		{
+			return false;
+		}
+		if (res != (int32_t)sizeof(header))
+		{
+			LOG_ERROR("sendBytes sent just " + NumberFormatter::format(res) + ", expected " +
+			          NumberFormatter::format(item->buffer.size()));
+
+			disconnect();
+
+			ASSERT(false);
+			return false;
+		}
+
+		res = m_socket->sendBytes(item->buffer.data(), item->buffer.size());
 		if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ||
 		    res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
 		{
@@ -664,7 +814,8 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<serialize
 
 		// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 		LOG_INFO("Sent msgtype=" + to_string((int)item->message_type) + " len=" +
-		         Poco::NumberFormatter::format(item->buffer.size()) + " to collector");
+		         Poco::NumberFormatter::format(sizeof(header) + item->buffer.size()) +
+		         " to collector");
 
 		return true;
 	}
@@ -706,6 +857,8 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<serialize
 
 bool connection_manager::receive_message()
 {
+	dragent_protocol_header_v4* v4_hdr = nullptr;
+
 	try
 	{
 		if (!m_socket)
@@ -722,15 +875,18 @@ bool connection_manager::receive_message()
 			return true;
 		}
 
-		if (m_buffer_used == 0)
+		if (!m_pending_message.m_pending)
 		{
+			ASSERT(m_pending_message.m_buffer_used == 0);
+
 			// We begin by reading and processing the protocol header
 			uint32_t bytes_read = 0;
-			while (bytes_read < sizeof(dragent_protocol_header_v4))
+			const uint32_t bytes_to_read = sizeof(dragent_protocol_header_v4);
+			while (bytes_read < bytes_to_read)
 			{
 				int32_t res =
-				    m_socket->receiveBytes(m_buffer.begin() + bytes_read,
-				                           sizeof(dragent_protocol_header_v4) - bytes_read,
+				    m_socket->receiveBytes(m_pending_message.m_buffer.begin() + bytes_read,
+				                           bytes_to_read - bytes_read,
 				                           MSG_WAITALL);
 				if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
 				{
@@ -765,34 +921,38 @@ bool connection_manager::receive_message()
 				}
 			}
 
-			ASSERT(bytes_read == sizeof(dragent_protocol_header_v4));
-			dragent_protocol_header_v4* header = (dragent_protocol_header_v4*)m_buffer.begin();
-			header->len = ntohl(header->len);
+			ASSERT(bytes_read == bytes_to_read);
+			m_pending_message.m_pending = true;
+			v4_hdr = (dragent_protocol_header_v4*)m_pending_message.m_buffer.begin();
+			v4_hdr->len = ntohl(v4_hdr->len);
 
-			if ((header->len < sizeof(dragent_protocol_header_v4)) ||
-			    (header->len > MAX_RECEIVER_BUFSIZE))
+			if ((v4_hdr->len < sizeof(dragent_protocol_header_v4)) ||
+			    (v4_hdr->len > MAX_RECEIVER_BUFSIZE))
 			{
 				LOG_ERROR("Protocol error: invalid header length " +
-				          NumberFormatter::format(header->len));
+				          NumberFormatter::format(v4_hdr->len));
 				ASSERT(false);
 				disconnect();
 				return false;
 			}
 
-			if (header->len > m_buffer.size())
+			if (v4_hdr->len > m_pending_message.m_buffer.size())
 			{
-				m_buffer.resize(header->len);
+				m_pending_message.m_buffer.resize(v4_hdr->len);
 			}
 
-			m_buffer_used = sizeof(dragent_protocol_header_v4);
+			m_pending_message.m_buffer_used = bytes_read;
 		}
 
 		// Then we read the actual message, it may arrive in
 		// several chunks, in this case the function will be called
 		// at the next loop cycle and will continue reading
-		auto header = (dragent_protocol_header_v4*)m_buffer.begin();
-		auto res = m_socket->receiveBytes(
-		    m_buffer.begin() + m_buffer_used, header->len - m_buffer_used, MSG_WAITALL);
+		v4_hdr = (dragent_protocol_header_v4*)m_pending_message.m_buffer.begin();
+		uint32_t used_buf = m_pending_message.m_buffer_used;
+
+		auto res = m_socket->receiveBytes(m_pending_message.m_buffer.begin() + used_buf,
+		                                  v4_hdr->len - used_buf,
+		                                  MSG_WAITALL);
 
 		if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
 		{
@@ -822,47 +982,13 @@ bool connection_manager::receive_message()
 			return false;
 		}
 
-		m_buffer_used += res;
-		LOG_DEBUG("Receiving message version=" + NumberFormatter::format(header->version) +
-		          " len=" + NumberFormatter::format(header->len) + " messagetype=" +
-		          NumberFormatter::format(header->messagetype) + " received=" +
-		          NumberFormatter::format(m_buffer_used));
+		m_pending_message.m_buffer_used += res;
+		LOG_DEBUG("Receiving message version=" + NumberFormatter::format(v4_hdr->version) +
+		          " len=" + NumberFormatter::format(v4_hdr->len) + " messagetype=" +
+		          NumberFormatter::format(v4_hdr->messagetype) + " received=" +
+		          NumberFormatter::format(m_pending_message.m_buffer_used));
 
-		if (m_buffer_used == header->len)
-		{
-			// Now the message is complete. Process it and reset the buffer.
-			m_buffer_used = 0;
-
-			if (header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
-			{
-				LOG_ERROR("Received command for incompatible version protocol " +
-				          NumberFormatter::format(header->version));
-				ASSERT(false);
-				return true;
-			}
-
-			LOG_INFO(
-			    "Received command " + NumberFormatter::format(header->messagetype) + " (" +
-			    draiosproto::message_type_Name((draiosproto::message_type)header->messagetype) +
-			    ")");
-
-			draiosproto::message_type type =
-			    static_cast<draiosproto::message_type>(header->messagetype);
-			message_handler_map::const_iterator itr = m_handler_map.find(type);
-
-			if (itr != m_handler_map.end())
-			{
-				itr->second->handle_message(type,
-				                            m_buffer.begin() + sizeof(dragent_protocol_header_v4),
-				                            header->len - sizeof(dragent_protocol_header_v4));
-			}
-			else
-			{
-				LOG_ERROR("Unknown message type: %d", header->messagetype);
-				ASSERT(false);
-			}
-		}
-		else if (m_buffer_used > header->len)
+		if (m_pending_message.m_buffer_used > v4_hdr->len)
 		{
 			LOG_ERROR("Protocol out of sync, disconnecting");
 			disconnect();
@@ -886,6 +1012,49 @@ bool connection_manager::receive_message()
 	{
 		LOG_DEBUG("receive:Timeout: " + e.displayText());
 		// Timeout currently returns true on purpose
+	}
+	return true;
+}
+
+bool connection_manager::handle_message()
+{
+	if (!m_pending_message.m_pending || !m_pending_message.v4_header())
+	{
+		return false;
+	}
+
+	if (m_pending_message.get_version() != dragent_protocol::PROTOCOL_VERSION_NUMBER)
+	{
+		LOG_ERROR("Received command for incompatible version protocol " +
+		          NumberFormatter::format(m_pending_message.get_version()));
+		return false;
+	}
+
+	draiosproto::message_type type =
+	    static_cast<draiosproto::message_type>(m_pending_message.get_type());
+
+	LOG_INFO("Received command " +
+	         NumberFormatter::format(m_pending_message.get_type()) +
+	         " (" + draiosproto::message_type_Name(type) + ")");
+
+	uint32_t header_len = dragent_protocol::header_len(*m_pending_message.v4_header());
+
+	message_handler_map::const_iterator itr = m_handler_map.find(type);
+	if (itr != m_handler_map.end())
+	{
+		uint32_t payload_len = m_pending_message.get_total_length() - header_len;
+		uint8_t* payload = m_pending_message.payload();
+
+		ASSERT(m_pending_message.m_buffer_used == header_len + payload_len);
+		if (payload_len > 0 && payload)
+		{
+			itr->second->handle_message(type, payload, payload_len);
+		}
+	}
+	else
+	{
+		LOG_ERROR("Unknown message type: %d", m_pending_message.get_type());
+		return false;
 	}
 	return true;
 }

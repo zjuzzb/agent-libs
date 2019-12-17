@@ -1024,7 +1024,6 @@ shared_ptr<serialized_buffer> capture_job_handler::dump_response_to_queue_item(c
 		sinsp_utils::get_current_time_ns(),
 		draiosproto::message_type::DUMP_RESPONSE,
 		response,
-		false,
 		// this is a bit ugly. Ultimately this should be part of the protocol
 		// handler, but moving that functionality is a bear
 		configuration_manager::instance().get_config<bool>("compression.enabled")->get_value(),

@@ -347,10 +347,11 @@ void fake_collector::stop()
 
 uint32_t fake_collector::read_one_message(int fd, buf* out_buf)
 {
-	uint8_t header_buf[sizeof(dragent_protocol_header_v5)];
 	uint32_t header_len = sizeof(dragent_protocol_header_v4);
-	dragent_protocol_header_v5* hdr = &out_buf->hdr.v5;
+	dragent_protocol_header_v4* hdr;
 	uint32_t payload_len = 0;
+	uint32_t payload_bytes_read = 0;
+	uint8_t header_buf[sizeof(dragent_protocol_header_v5)];
 
 	// Read the header
 	int read_ret = read(fd, header_buf, header_len);
@@ -359,15 +360,19 @@ uint32_t fake_collector::read_one_message(int fd, buf* out_buf)
 		goto read_error;
 	}
 
-	hdr->hdr = *(dragent_protocol_header_v4*)header_buf;
-	hdr->hdr.len = htonl(hdr->hdr.len);
-	if(htonl(hdr->hdr.len) <= 0)
+	hdr = (dragent_protocol_header_v4*)header_buf;
+	out_buf->hdr.v4.len = htonl(hdr->len);
+	out_buf->hdr.v4.messagetype = hdr->messagetype;
+	out_buf->hdr.v4.version = hdr->version;
+
+	if(htonl(hdr->len) <= 0)
 	{
 		return 0;
 	}
 
-	if (hdr->hdr.version == dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH)
+	if (hdr->version == dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH)
 	{
+		dragent_protocol_header_v5* v5_hdr;
 		// Read the additional fields for the new header
 		read_ret = read(fd,
 		                header_buf + header_len,
@@ -377,24 +382,29 @@ uint32_t fake_collector::read_one_message(int fd, buf* out_buf)
 		{
 			goto read_error;
 		}
-		*hdr = *(dragent_protocol_header_v5*)header_buf;
-		hdr->hdr.len = htonl(hdr->hdr.len);
-		hdr->sequence = htonll(hdr->sequence);
-		hdr->generation = htonll(hdr->generation);
+		v5_hdr = (dragent_protocol_header_v5*)header_buf;
+		out_buf->hdr.v5.sequence = htonll(v5_hdr->sequence);
+		out_buf->hdr.v5.generation = htonll(v5_hdr->generation);
 	}
-	payload_len = hdr->hdr.len - header_len;
+	payload_len = out_buf->hdr.v4.len - header_len;
 
 	// Allocate the buffer for the payload
 	out_buf->ptr = new uint8_t[payload_len];
 
 	// Now read the body
-	read_ret = read(fd, out_buf->ptr, payload_len);
-	if(read_ret <= 0)
+	while (payload_bytes_read < payload_len)
 	{
-		goto read_error;
+		read_ret = read(fd,
+		                &out_buf->ptr[payload_bytes_read],
+		                payload_len - payload_bytes_read);
+		if(read_ret <= 0)
+		{
+			goto read_error;
+		}
+		payload_bytes_read += read_ret;
 	}
 
-	out_buf->payload_len = read_ret;
+	out_buf->payload_len = payload_bytes_read;
 	return read_ret;
 
 read_error:

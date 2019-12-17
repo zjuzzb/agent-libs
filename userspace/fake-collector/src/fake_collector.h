@@ -220,7 +220,7 @@ bool fake_collector::send_collector_message(uint8_t message_type,
 {
 	// Serialize the message
 	std::shared_ptr<serialized_buffer> msg_buf;
-	msg_buf = dragent_protocol::message_to_buffer(0, message_type, msg, v5, true);
+	msg_buf = dragent_protocol::message_to_buffer(0, message_type, msg, true);
 	if (!msg_buf)
 	{
 		return false;

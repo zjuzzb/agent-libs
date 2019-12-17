@@ -60,7 +60,6 @@ std::shared_ptr<serialized_buffer> protocol_handler::handle_uncompressed_sample(
 		ts_ns,
 		draiosproto::message_type::METRICS,
 		*metrics,
-		false,
 		c_compression_enabled.get_value());
 
 	buffer->flush_interval = flush_interval;
@@ -90,7 +89,6 @@ void protocol_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draiospr
 		ts_ns,
 		draiosproto::message_type::POLICY_EVENTS,
 		*events,
-		false,
 		c_compression_enabled.get_value());
 
 	if(!buffer)
@@ -121,7 +119,6 @@ void protocol_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
 		ts_ns,
 		draiosproto::message_type::THROTTLED_POLICY_EVENTS,
 		*tevents,
-		false,
 		c_compression_enabled.get_value());
 
 	if(!buffer)
@@ -151,7 +148,6 @@ void protocol_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const dra
 		ts_ns,
 		draiosproto::message_type::COMP_RESULTS,
 		*results,
-		false,
 		c_compression_enabled.get_value());
 
 	if(!buffer)
@@ -180,7 +176,6 @@ void protocol_handler::audit_tap_data_ready(uint64_t ts_ns, const tap::AuditLog 
 		ts_ns,
 		draiosproto::message_type::AUDIT_TAP,
 		*audit_log,
-		false,
 		true /* compression always enabled */);
 
 	if(!buffer)
@@ -214,7 +209,6 @@ std::shared_ptr<serialized_buffer> protocol_handler::handle_log_report(uint64_t 
 		ts_ns,
 		draiosproto::message_type::DIRTY_SHUTDOWN_REPORT,
 		report,
-		false,
 		c_compression_enabled.get_value());
 
 	if(!report_serialized)
@@ -236,7 +230,6 @@ void protocol_handler::secure_audit_data_ready(uint64_t ts_ns, const secure::Aud
 		ts_ns,
 		draiosproto::message_type::SECURE_AUDIT,
 		*secure_audit,
-		false,
 		true /* compression always enabled */);
 
 	if(!buffer)

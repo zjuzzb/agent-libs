@@ -595,7 +595,6 @@ public:
 	                  unique_ptr<::google::protobuf::Message> &msg)
 	{
 		shared_ptr<serialized_buffer> item = nullptr;
-		dragent_protocol_header_v4 *hdr;
 		const uint8_t *buf;
 		uint32_t size;
 
@@ -609,16 +608,15 @@ public:
 			}
 		} while (item == nullptr);
 
-		hdr = (dragent_protocol_header_v4*) item->buffer.data();
-		buf = (const uint8_t *) (item->buffer.data() + sizeof(dragent_protocol_header_v4));
-		size = ntohl(hdr->len) - sizeof(dragent_protocol_header_v4);
+		buf = (const uint8_t *)item->buffer.data();
+		size = item->buffer.size();
 
-		g_log->debug("Got message type=" + to_string(hdr->messagetype));
-		mtype = (draiosproto::message_type) hdr->messagetype;
+		g_log->debug("Got message type=" + to_string(item->message_type));
+		mtype = (draiosproto::message_type) item->message_type;
 
 		draiosproto::throttled_policy_events *tpe;
 		draiosproto::policy_events *pe;
-		switch (hdr->messagetype)
+		switch (item->message_type)
 		{
 		case draiosproto::message_type::THROTTLED_POLICY_EVENTS:
 			tpe = new draiosproto::throttled_policy_events();
@@ -633,7 +631,7 @@ public:
 			break;
 
 		default:
-			FAIL() << "Received unknown message " << to_string(hdr->messagetype);
+			FAIL() << "Received unknown message " << to_string(item->message_type);
 		}
 	}
 
