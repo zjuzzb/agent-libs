@@ -23,8 +23,6 @@ public:
 // make sure pushing a single PB through the aggregator works
 TEST(async_aggregator, single)
 {
-	test_helpers::scoped_config<uint32_t> config("aggregator.samples_between_flush", 1);
-
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);
 
@@ -41,9 +39,8 @@ TEST(async_aggregator, single)
 	std::string machine_id = "zipperbox";
 	input.set_machine_id(machine_id);
 
-	uint32_t timestamp = 1;
 	input_queue.put(std::make_shared<flush_data_message>(
-		timestamp,
+		1,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5
@@ -57,7 +54,7 @@ TEST(async_aggregator, single)
 	std::shared_ptr<flush_data_message> output;
 	bool ret = output_queue.get(&output, 0);
 	ASSERT_TRUE(ret);
-	EXPECT_EQ(output->m_ts, timestamp);
+	EXPECT_EQ(output->m_ts, 1);
 	EXPECT_EQ(output->m_metrics_sent, &sent_metrics);
 	EXPECT_EQ(output->m_metrics->machine_id(), machine_id);
 
@@ -92,7 +89,7 @@ TEST(async_aggregator, multiple)
 	draiosproto::metrics input;
 	input.set_sampling_ratio(1);
 
-	uint32_t timestamp = 1;
+	uint32_t timestamp = 1 * NSECS_PER_SEC;
 	input_queue.put(std::make_shared<flush_data_message>(
 		timestamp,
 		&sent_metrics,
@@ -102,7 +99,7 @@ TEST(async_aggregator, multiple)
 
 	input.set_sampling_ratio(2);
 	input_queue.put(std::make_shared<flush_data_message>(
-		timestamp + 1,
+		timestamp + 1 * NSECS_PER_SEC,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5
@@ -118,7 +115,7 @@ TEST(async_aggregator, multiple)
 	std::shared_ptr<flush_data_message> output;
 	bool ret = output_queue.get(&output, 0);
 	ASSERT_TRUE(ret);
-	EXPECT_EQ(output->m_ts, timestamp + 1); // should get second timestamp
+	EXPECT_EQ(output->m_ts, timestamp + 1 * NSECS_PER_SEC); // should get second timestamp
 	EXPECT_EQ(output->m_metrics_sent, &sent_metrics);
 	EXPECT_EQ(output->m_metrics->aggr_sampling_ratio().sum(), 3);
 
@@ -137,8 +134,6 @@ TEST(async_aggregator, multiple)
 // the output PB gets cleared
 TEST(async_aggregator, followup_aggregation)
 {
-	test_helpers::scoped_config<unsigned int> config("aggregator.samples_between_flush", 1);
-
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);
 
@@ -154,9 +149,8 @@ TEST(async_aggregator, followup_aggregation)
 	draiosproto::metrics input;
 	input.set_sampling_ratio(1);
 
-	uint32_t timestamp = 1;
 	input_queue.put(std::make_shared<flush_data_message>(
-		timestamp,
+		0,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5
@@ -164,7 +158,7 @@ TEST(async_aggregator, followup_aggregation)
 
 	input.set_sampling_ratio(2);
 	input_queue.put(std::make_shared<flush_data_message>(
-		timestamp + 1,
+		1,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5
@@ -179,14 +173,14 @@ TEST(async_aggregator, followup_aggregation)
 	std::shared_ptr<flush_data_message> output;
 	bool ret = output_queue.get(&output, 0);
 	ASSERT_TRUE(ret);
-	EXPECT_EQ(output->m_ts, timestamp); // should get first timestamp
+	EXPECT_EQ(output->m_ts, 0);
 	EXPECT_EQ(output->m_metrics_sent, &sent_metrics);
 	EXPECT_EQ(output->m_metrics->aggr_sampling_ratio().sum(), 1);
 
 	ASSERT_EQ(output_queue.size(), 1);
 	ret = output_queue.get(&output, 0);
 	ASSERT_TRUE(ret);
-	EXPECT_EQ(output->m_ts, timestamp + 1); // should get second timestamp
+	EXPECT_EQ(output->m_ts, 1);
 	EXPECT_EQ(output->m_metrics_sent, &sent_metrics);
 	EXPECT_EQ(output->m_metrics->aggr_sampling_ratio().sum(), 2);
 
@@ -197,8 +191,6 @@ TEST(async_aggregator, followup_aggregation)
 // make sure the limiter works
 TEST(async_aggregator, limiter)
 {
-	test_helpers::scoped_config<uint32_t> config("aggregator.samples_between_flush", 1);
-
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);
 
@@ -234,9 +226,8 @@ TEST(async_aggregator, limiter)
 		container->set_id(std::to_string(i));
 	}
 
-	uint32_t timestamp = 1;
 	input_queue.put(std::make_shared<flush_data_message>(
-		timestamp,
+		0,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5
@@ -336,8 +327,6 @@ TEST(async_aggregator, limit_jmx_attributes)
 // make sure the post-aggregate substitutions are happening
 TEST(async_aggregator, substitutions)
 {
-	test_helpers::scoped_config<uint32_t> config("aggregator.samples_between_flush", 1);
-
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);
 
@@ -368,9 +357,8 @@ TEST(async_aggregator, substitutions)
 	iconn->set_dpid(dpid);
 	iconn->set_state(draiosproto::connection_state::CONN_FAILED);
 
-	uint32_t timestamp = 1;
 	input_queue.put(std::make_shared<flush_data_message>(
-		timestamp,
+		0,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5
@@ -511,7 +499,7 @@ TEST(async_aggregator, flush_interval_zero)
 	aggregator.set_aggregation_interval(2);
 	input.set_sampling_ratio(2);
 	input_queue.put(std::make_shared<flush_data_message>(
-		1,
+		1 * NSECS_PER_SEC,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
@@ -519,7 +507,7 @@ TEST(async_aggregator, flush_interval_zero)
 	aggregator.set_aggregation_interval(0);
 	input.set_sampling_ratio(3);
 	input_queue.put(std::make_shared<flush_data_message>(
-		1,
+		2 * NSECS_PER_SEC,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
@@ -538,13 +526,13 @@ TEST(async_aggregator, flush_interval_zero)
 	aggregator.set_aggregation_interval(2);
 	input.set_sampling_ratio(4);
 	input_queue.put(std::make_shared<flush_data_message>(
-		1,
+		1 * NSECS_PER_SEC,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	input.set_sampling_ratio(5);
 	input_queue.put(std::make_shared<flush_data_message>(
-		1,
+		2 * NSECS_PER_SEC,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
@@ -562,7 +550,7 @@ TEST(async_aggregator, flush_interval_zero)
 	// check that if we increase aggregation interval while aggregation in flight, it works
 	input.set_sampling_ratio(6);
 	input_queue.put(std::make_shared<flush_data_message>(
-		1,
+		1 * NSECS_PER_SEC,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
@@ -570,13 +558,13 @@ TEST(async_aggregator, flush_interval_zero)
 	aggregator.set_aggregation_interval(3);
 	input.set_sampling_ratio(7);
 	input_queue.put(std::make_shared<flush_data_message>(
-		1,
+		2 * NSECS_PER_SEC,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	input.set_sampling_ratio(8);
 	input_queue.put(std::make_shared<flush_data_message>(
-		1,
+		3 * NSECS_PER_SEC,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
@@ -594,13 +582,13 @@ TEST(async_aggregator, flush_interval_zero)
 	// check that if we DECREASE interval while in flight, it works
 	input.set_sampling_ratio(6);
 	input_queue.put(std::make_shared<flush_data_message>(
-		1,
+		1 * NSECS_PER_SEC,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	input.set_sampling_ratio(7);
 	input_queue.put(std::make_shared<flush_data_message>(
-		1,
+		2 * NSECS_PER_SEC,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
@@ -608,13 +596,13 @@ TEST(async_aggregator, flush_interval_zero)
 	aggregator.set_aggregation_interval(2);
 	input.set_sampling_ratio(8);
 	input_queue.put(std::make_shared<flush_data_message>(
-		1,
+		3 * NSECS_PER_SEC,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));
 	input.set_sampling_ratio(9);
 	input_queue.put(std::make_shared<flush_data_message>(
-		1,
+		4 * NSECS_PER_SEC,
 		&sent_metrics,
 		make_unique<draiosproto::metrics>(input),
 		1,2,3,4,5));

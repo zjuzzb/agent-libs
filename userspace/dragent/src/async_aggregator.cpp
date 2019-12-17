@@ -26,14 +26,6 @@ type_config<uint32_t>::ptr c_samples_between_flush =
         .hidden()
         .build();
 
-type_config<uint32_t>::ptr c_container_limit =
-    type_config_builder<uint32_t>(20,
-                                  "Number of analyzer samples between each aggregated sample",
-                                  "aggregator",
-                                  "container_limit")
-        .hidden()
-        .build();
-
 type_config<std::string>::ptr c_pre_agg_dump_dir =
     type_config_builder<std::string>("",
                                      "Dump directory for pre-aggregated protobuf metrics",
@@ -334,7 +326,9 @@ void async_aggregator::do_run()
 			m_aggregator->aggregate(*input_data->m_metrics, *m_aggregated_data->m_metrics);
 
 			m_count_since_flush++;
-			if (m_count_since_flush == aggr_interval_cache)
+
+			// timestamp is in NS, so convert to seconds and check if %n == 0
+			if ((input_data->m_ts / NSECS_PER_SEC) % aggr_interval_cache == 0)
 			{
 				m_aggregator->override_primary_keys(*m_aggregated_data->m_metrics);
 				m_aggregator->reset();
