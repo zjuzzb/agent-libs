@@ -112,6 +112,8 @@ void aggregator_limits::cache_limits(const draiosproto::aggregation_context& con
 	m_metrics_mounts = context.metr_limits().metrics_mounts();
 
 	m_do_limiting = context.enforce();
+
+	m_relocate_moved_fields = !context.understand_10s_flush_fields();
 }
 
 bool aggregator_limits::handle_message(const draiosproto::message_type type,
@@ -238,6 +240,40 @@ void async_aggregator::limit_jmx_attributes(draiosproto::metrics& metrics, uint3
 	}
 }
 
+void async_aggregator::relocate_prom_metrics(draiosproto::proto_info& proto_info)
+{
+	if (!proto_info.prom_info().has_process_name())
+	{
+		return;
+	}
+	proto_info.mutable_prometheus()->set_allocated_process_name(proto_info.mutable_prom_info()->release_process_name());
+	proto_info.mutable_prometheus()->mutable_metrics()->UnsafeArenaSwap(proto_info.mutable_prom_info()->mutable_metrics());
+}
+
+void async_aggregator::relocate_moved_fields(draiosproto::metrics& metrics)
+{
+	for (uint32_t i = 0; i < metrics.ipv4_incomplete_connections_v2().size(); i++)
+	{
+		auto new_conn = metrics.add_ipv4_incomplete_connections();
+		new_conn->set_allocated_tuple((*metrics.mutable_ipv4_incomplete_connections_v2())[i].release_tuple());
+		new_conn->set_spid(metrics.ipv4_incomplete_connections_v2()[i].spid());
+		new_conn->set_dpid(metrics.ipv4_incomplete_connections_v2()[i].dpid());
+		new_conn->set_allocated_counters((*metrics.mutable_ipv4_incomplete_connections_v2())[i].release_counters());
+		new_conn->set_state(metrics.ipv4_incomplete_connections_v2()[i].state());
+		new_conn->set_error_code(metrics.ipv4_incomplete_connections_v2()[i].error_code());
+	}
+
+	relocate_prom_metrics(*metrics.mutable_protos());
+	relocate_prom_metrics(*metrics.mutable_unreported_counters()->mutable_protos());
+	for (uint32_t i = 0 ; i < metrics.containers().size(); i++)
+	{
+		relocate_prom_metrics(*(*metrics.mutable_containers())[i].mutable_protos());
+	}
+	for (uint32_t i = 0 ; i < metrics.programs().size(); i++)
+	{
+		relocate_prom_metrics(*(*metrics.mutable_programs())[i].mutable_procinfo()->mutable_protos());
+	}
+}
 void async_aggregator::do_run()
 {
 	while (!m_stop_thread && heartbeat())
@@ -308,6 +344,11 @@ void async_aggregator::do_run()
 					metrics_message_aggregator::limit(m_builder, *m_aggregated_data->m_metrics);
 					limit_jmx_attributes(*m_aggregated_data->m_metrics,
 					                     aggregator_limits::global_limits->m_jmx);
+				}
+
+				if (aggregator_limits::global_limits->m_relocate_moved_fields)
+				{
+					relocate_moved_fields(*m_aggregated_data->m_metrics);
 				}
 
 				m_aggregated_data->m_flush_interval = aggr_interval_cache;

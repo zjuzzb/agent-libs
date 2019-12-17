@@ -406,6 +406,52 @@ TEST(async_aggregator, substitutions)
 	pool.stop_all();
 }
 
+TEST(async_aggregator, relocate_prom_metrics)
+{
+	draiosproto::proto_info pi;
+	pi.mutable_prom_info()->set_process_name("process");
+	auto i = pi.mutable_prom_info()->add_metrics();
+	i->set_name("metric 1");
+	i = pi.mutable_prom_info()->add_metrics();
+	i->set_name("metric 2");
+
+	dragent::async_aggregator::relocate_prom_metrics(pi);
+	EXPECT_EQ(pi.prometheus().process_name(), "process");
+	ASSERT_EQ(pi.prometheus().metrics().size(), 2);
+	EXPECT_EQ(pi.prometheus().metrics()[0].name(), "metric 1");
+	EXPECT_EQ(pi.prometheus().metrics()[1].name(), "metric 2");
+}
+
+TEST(async_aggregator, relocate_moved_fields)
+{
+	draiosproto::metrics m;
+	auto i = m.add_ipv4_incomplete_connections_v2();
+	i->mutable_tuple()->set_sip(1);
+	i->set_spid(2);
+	i->set_dpid(3);
+	i->mutable_counters()->set_n_aggregated_connections(4);
+	i->set_state(draiosproto::connection_state::CONN_FAILED);
+	i->set_error_code(draiosproto::error_code::ERR_ECHILD);
+
+	m.mutable_protos()->mutable_prom_info()->set_process_name("5");
+	m.mutable_unreported_counters()->mutable_protos()->mutable_prom_info()->set_process_name("6");
+	m.add_containers()->mutable_protos()->mutable_prom_info()->set_process_name("7");
+	m.add_programs()->mutable_procinfo()->mutable_protos()->mutable_prom_info()->set_process_name("8");
+
+	dragent::async_aggregator::relocate_moved_fields(m);
+	ASSERT_EQ(m.ipv4_incomplete_connections().size(), 1);
+	EXPECT_EQ(m.ipv4_incomplete_connections()[0].tuple().sip(), 1);
+	EXPECT_EQ(m.ipv4_incomplete_connections()[0].spid(), 2);
+	EXPECT_EQ(m.ipv4_incomplete_connections()[0].dpid(), 3);
+	EXPECT_EQ(m.ipv4_incomplete_connections()[0].counters().n_aggregated_connections(), 4);
+	EXPECT_EQ(m.ipv4_incomplete_connections()[0].state(), draiosproto::connection_state::CONN_FAILED);
+	EXPECT_EQ(m.ipv4_incomplete_connections()[0].error_code(), draiosproto::error_code::ERR_ECHILD);
+	EXPECT_EQ(m.protos().prometheus().process_name(), "5");
+	EXPECT_EQ(m.unreported_counters().protos().prometheus().process_name(), "6");
+	EXPECT_EQ(m.containers()[0].protos().prometheus().process_name(), "7");
+	EXPECT_EQ(m.programs()[0].procinfo().protos().prometheus().process_name(), "8");
+}
+
 // note: can't just wait for queue size here as possibility of race if
 // we pop from queue and then update aggregation_interval before it's read by the aggr
 // thread

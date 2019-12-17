@@ -38,6 +38,11 @@ public:
 
 	bool m_do_limiting = true;
 
+	// The backend does not understand some field locations that are natively
+	// produced by the agent, so until they do, we have to perform a translation
+	// for the backend. SMBACK-3978
+	bool m_relocate_moved_fields = true;
+
 	// we don't use the actual proto message here so that we can
 	// get atomic update of each individual value and not worry about
 	// synchronization across the connection manager and aggregator threads.
@@ -124,6 +129,14 @@ public:
 	                                        int64_t& attributes_remaining);
 	static void limit_jmx_attributes(draiosproto::metrics& metrics, uint32_t limit);
 
+	/**
+	 * some metrics locations were moved when agent aggregation was implemented. BE
+	 * doesn't know how to handle that yet.
+	 */
+	static void relocate_moved_fields(draiosproto::metrics& metrics);
+	static void relocate_prom_metrics(draiosproto::proto_info& proto_info);
+
+private:
 	std::atomic<bool> m_stop_thread;
 	uint64_t m_queue_timeout_ms;
 

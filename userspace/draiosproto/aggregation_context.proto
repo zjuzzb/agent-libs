@@ -11,6 +11,8 @@ message aggregation_context {
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
     optional bool enforce = 4;
     optional metrics_limits metr_limits = 5;
+    optional bool understand_10s_flush_fields = 6; // 10s flush moved some fields to new locations
+                                                   // BE may not understand these fields
 }
 
 message metrics_limits {
