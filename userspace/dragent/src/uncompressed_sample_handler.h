@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <memory>
 #include "protocol.h"
+#include "protobuf_compression.h"
 
 namespace draiosproto
 {
@@ -27,7 +28,8 @@ public:
 	 */
 	virtual std::shared_ptr<serialized_buffer> handle_uncompressed_sample(uint64_t ts_ns,
 	                    std::shared_ptr<draiosproto::metrics>& metrics,
-						uint32_t flush_interval) = 0;
+	                    uint32_t flush_interval,
+	                    std::shared_ptr<protobuf_compressor>& compressor) = 0;
 
 	/**
 	 * returns the timestamp of the last invokation of handle_uncompressed_sample
@@ -38,9 +40,11 @@ public:
 class uncompressed_sample_handler_dummy : public uncompressed_sample_handler
 {
 public:
-	virtual std::shared_ptr<serialized_buffer> handle_uncompressed_sample(uint64_t ts_ns,
+	virtual std::shared_ptr<serialized_buffer> handle_uncompressed_sample(
+	                    uint64_t ts_ns,
 	                    std::shared_ptr<draiosproto::metrics>& metrics,
-						uint32_t flush_interval)
+	                    uint32_t flush_interval,
+	                    std::shared_ptr<protobuf_compressor>& compressor)
 	{
 		return nullptr;
 	}

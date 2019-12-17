@@ -10,6 +10,7 @@
 #include "metric_serializer.h"
 #include "dragent_message_queues.h"
 #include "watchdog_runnable.h"
+#include "protobuf_compression.h"
 
 #include <condition_variable>
 #include <fstream>
@@ -41,13 +42,18 @@ public:
 	 * is active and ready to serialize upon construction.
 	 *
 	 * @param[in] stats_source     The source from which to fetch stats.
-	 * @param[in] root_dir The root dir base of the application
+	 * @param[in] root_dir         The root dir base of the application
+	 * @param[in] sample_handler   The serialization handler
+	 * @param[in] input_queue      The queue for incoming unserialized data
+	 * @param[in] output_queue     The queue for outgoing serialized data
+	 * @param[in] compressor       The compressor for the serialized protobufs
 	 */
 	protobuf_metric_serializer(std::shared_ptr<const capture_stats_source> stats_source,
 	                           const std::string& root_dir,
 	                           uncompressed_sample_handler& sample_handler,
 	                           flush_queue* input_queue,
-	                           protocol_queue* output_queue);
+	                           protocol_queue* output_queue,
+	                           std::shared_ptr<protobuf_compressor>& compressor);
 
 	~protobuf_metric_serializer() override;
 
@@ -85,6 +91,7 @@ public:
 	bool get_emit_metrics_to_file() const override;
 	std::string get_metrics_directory() const override;
 	void set_metrics_directory(const std::string&) override;
+	bool set_compression(std::shared_ptr<protobuf_compressor> compressor) override;
 
 #ifdef SYSDIG_TEST
 	void test_run()
@@ -127,6 +134,8 @@ private:
 	uint64_t m_serializations_completed;
 
 	metrics_file_emitter m_file_emitter;
+
+	std::shared_ptr<protobuf_compressor> m_compressor;
 
 	std::thread m_thread;  // Must be last
 };

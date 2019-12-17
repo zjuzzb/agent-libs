@@ -24,6 +24,11 @@
 using namespace std;
 using namespace Poco;
 
+type_config<bool> c_compression_enabled(true,
+                                        "set to true to compress protobufs sent to the collector",
+                                        "compression",
+                                        "enabled");
+
 struct task_defs_t {
 	std::string schedule;
 	uint64_t id;

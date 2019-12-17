@@ -154,11 +154,13 @@ public:
 	std::shared_ptr<serialized_buffer> handle_uncompressed_sample(
 	    const uint64_t ts_ns,
 	    std::shared_ptr<draiosproto::metrics>& metrics,
-	    uint32_t flush_interval) override
+	    uint32_t flush_interval,
+	    std::shared_ptr<protobuf_compressor>& compressor) override
 	{
 		m_ts_ns = ts_ns;
 		m_metrics = metrics;
 		m_flush_interval = flush_interval;
+		m_compressor = compressor;
 
 		if (m_sleep_time != 0)
 		{
@@ -180,6 +182,7 @@ public:
 	std::shared_ptr<draiosproto::metrics> m_metrics;
 	uint32_t m_sleep_time;
 	uint32_t m_flush_interval;
+	std::shared_ptr<protobuf_compressor> m_compressor;
 	std::atomic<uint8_t> m_call_count;
 };
 
@@ -202,8 +205,15 @@ TEST(protobuf_metric_serializer_test, initial_state)
 	    std::make_shared<precanned_capture_stats_source>();
 	dummy_sample_handler dsh;
 
+	auto compressor = null_protobuf_compressor::get();
+
 	std::unique_ptr<protobuf_metric_serializer> s(
-	    new protobuf_metric_serializer(stats_source, "", dsh, &g_fqueue, &g_pqueue));
+	    new protobuf_metric_serializer(stats_source,
+	                                   "",
+	                                   dsh,
+	                                   &g_fqueue,
+	                                   &g_pqueue,
+	                                   compressor));
 
 	ASSERT_EQ(0, s->get_num_serializations_completed());
 }
@@ -229,8 +239,15 @@ TEST(protobuf_metric_serializer_test, serialize)
 
 	metric_serializer::c_metrics_dir.set(temp_dir.get_directory());
 
+	auto compressor = null_protobuf_compressor::get();
+
 	std::unique_ptr<protobuf_metric_serializer> s(
-	    new protobuf_metric_serializer(stats_source, "", analyzer_callback, &g_fqueue, &g_pqueue));
+	    new protobuf_metric_serializer(stats_source,
+	                                   "",
+	                                   analyzer_callback,
+	                                   &g_fqueue,
+	                                   &g_pqueue,
+	                                   compressor));
 	std::thread t([&s]()
 	{ s->test_run(); });
 
@@ -323,8 +340,15 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	// the metrics directory with the required trailing path delimiter.
 	metric_serializer::c_metrics_dir.set(temp_dir.get_directory());
 
+	auto compressor = null_protobuf_compressor::get();
+
 	std::unique_ptr<protobuf_metric_serializer> s(
-	    new protobuf_metric_serializer(stats_source, "", analyzer_callback, &g_fqueue, &g_pqueue));
+	    new protobuf_metric_serializer(stats_source,
+	                                   "",
+	                                   analyzer_callback,
+	                                   &g_fqueue,
+	                                   &g_pqueue,
+	                                   compressor));
 	std::thread t([&]()
 	{ ASSERT_NO_THROW(s->test_run()); });
 
@@ -385,8 +409,15 @@ TEST(protobuf_metric_serializer_test, more_initial_state)
 	test_helpers::scoped_config<std::string> config("metricsfile.location", "");
 	std::shared_ptr<capture_stats_source> stats_source = nullptr;
 
+	auto compressor = null_protobuf_compressor::get();
+
 	std::unique_ptr<protobuf_metric_serializer> s(
-	    new protobuf_metric_serializer(stats_source, ".", g_sample_handler, &g_fqueue, &g_pqueue));
+	    new protobuf_metric_serializer(stats_source,
+	                                   ".",
+	                                   g_sample_handler,
+	                                   &g_fqueue,
+	                                   &g_pqueue,
+	                                   compressor));
 
 	ASSERT_NE(s.get(), nullptr);
 
@@ -405,8 +436,16 @@ TEST(protobuf_metric_serializer_test, configuration)
 
 	std::shared_ptr<capture_stats_source> stats_source = nullptr;
 
-	std::unique_ptr<protobuf_metric_serializer> s(new protobuf_metric_serializer(
-	    stats_source, root_dir, g_sample_handler, &g_fqueue, &g_pqueue));
+	auto compressor = null_protobuf_compressor::get();
+	auto new_compressor = gzip_protobuf_compressor::get(-1);
+
+	std::unique_ptr<protobuf_metric_serializer> s(
+	    new protobuf_metric_serializer(stats_source,
+	                                   root_dir,
+	                                   g_sample_handler,
+	                                   &g_fqueue,
+	                                   &g_pqueue,
+	                                   compressor));
 
 	// Make sure that update_configuration() updates the values
 	ASSERT_TRUE(s->get_emit_metrics_to_file());
@@ -421,4 +460,8 @@ TEST(protobuf_metric_serializer_test, configuration)
 	s->set_metrics_directory("");
 	ASSERT_FALSE(s->get_emit_metrics_to_file());
 	ASSERT_EQ("", s->get_metrics_directory());
+
+	// Check that we can change the compression
+	bool ret = s->set_compression(new_compressor);
+	ASSERT_TRUE(ret);
 }

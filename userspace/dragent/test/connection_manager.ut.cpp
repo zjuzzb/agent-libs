@@ -31,7 +31,7 @@ namespace
 void msleep(uint32_t milliseconds)
 {
 	struct timespec ts = {.tv_sec = milliseconds / 1000,
-	                      .tv_nsec = (milliseconds % 1000) * 1000000, };
+		                  .tv_nsec = (milliseconds % 1000) * 1000000, };
 	nanosleep(&ts, NULL);
 }
 
@@ -222,6 +222,43 @@ TEST(connection_manager_test, connect_transmit)
 		EXPECT_EQ(memcmp(b.ptr, sent_data.data(), 32), 0);
 		delete[] b.ptr;
 	}
+}
+
+TEST(connection_manager_test, DISABLED_message_to_buf_v5)
+{
+	draiosproto::metrics protobuf;
+	auto compressor = null_protobuf_compressor::get();
+
+	// check that we can serialize v4 and v5
+	std::shared_ptr<serialized_buffer> v4_output = dragent_protocol::message_to_buffer(
+	    1, draiosproto::message_type::METRICS, protobuf, false, compressor);
+	EXPECT_EQ(v4_output->ts_ns, 1);
+	EXPECT_EQ(v4_output->message_type, draiosproto::message_type::METRICS);
+	std::shared_ptr<serialized_buffer> v5_output = dragent_protocol::message_to_buffer(
+	    1, draiosproto::message_type::METRICS, protobuf, true, compressor);
+	EXPECT_EQ(v5_output->ts_ns, 1);
+	EXPECT_EQ(v5_output->message_type, draiosproto::message_type::METRICS);
+	EXPECT_EQ(v5_output->buffer.size() - v4_output->buffer.size(),
+	          sizeof(dragent_protocol_header_v5) - sizeof(dragent_protocol_header_v4));
+
+	// check that the actual header data is right
+	auto v4_header = (dragent_protocol_header_v4*)v4_output->buffer.data();
+	auto v5_header = (dragent_protocol_header_v5*)v5_output->buffer.data();
+	EXPECT_NE(v4_header->len, 0);
+	EXPECT_EQ(v4_header->version, dragent_protocol::PROTOCOL_VERSION_NUMBER);
+	EXPECT_EQ(v4_header->messagetype, draiosproto::message_type::METRICS);
+	EXPECT_NE(v5_header->hdr.len, 0);
+	EXPECT_EQ(v5_header->hdr.version, dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH);
+	EXPECT_EQ(v5_header->hdr.messagetype, draiosproto::message_type::METRICS);
+
+	// check that the the v4 header is at the right spot in the v5 message
+	EXPECT_EQ((void*)&v5_header->hdr, (void*)v5_header);
+
+	// naive checks that the serialized data is right
+	uint64_t v4_len = htonl(v4_header->len);
+	uint64_t v5_len = htonl(v5_header->hdr.len);
+	EXPECT_EQ(v5_len - v4_len,
+	          sizeof(dragent_protocol_header_v5) - sizeof(dragent_protocol_header_v4));
 }
 
 // XXX TODO Re-enable once v5 protocol is ready
@@ -469,8 +506,8 @@ class generic_handler : public connection_manager::message_handler
 public:
 	generic_handler() {}
 	bool handle_message(const draiosproto::message_type,
-						uint8_t* buffer,
-						size_t buffer_size) override
+	                    uint8_t* buffer,
+	                    size_t buffer_size) override
 	{
 		dragent_protocol::buffer_to_protobuf(buffer, buffer_size, &message);
 		message_received = true;
@@ -504,9 +541,9 @@ TEST(fake_collector_test, DISABLED_protocol_init_response)
 	auto pirh = std::make_shared<generic_handler<draiosproto::protocol_init_response>>();
 	protocol_queue queue(MAX_QUEUE_LEN);
 	connection_manager cm(&config,
-						  &queue,
-						  true,
-						  {{draiosproto::message_type::PROTOCOL_INIT_RESP, pirh}});
+	                      &queue,
+	                      true,
+	                      {{draiosproto::message_type::PROTOCOL_INIT_RESP, pirh}});
 	std::thread t([&cm]()
 	{
 		cm.test_run();
@@ -548,10 +585,10 @@ TEST(fake_collector_test, DISABLED_protocol_handshake_v1)
 	auto hrh = std::make_shared<generic_handler<draiosproto::handshake_v1_response>>();
 	protocol_queue queue(MAX_QUEUE_LEN);
 	connection_manager cm(&config,
-						  &queue,
-						  true,
-						  {{draiosproto::message_type::PROTOCOL_INIT_RESP, pirh},
-						   {draiosproto::message_type::PROTOCOL_HANDSHAKE_V1_RESP, hrh}});
+	                      &queue,
+	                      true,
+	                      {{draiosproto::message_type::PROTOCOL_INIT_RESP, pirh},
+	                       {draiosproto::message_type::PROTOCOL_HANDSHAKE_V1_RESP, hrh}});
 	std::thread t([&cm]()
 	{
 		cm.test_run();
@@ -618,11 +655,11 @@ TEST(fake_collector_test, DISABLED_ack)
 	auto ah = std::make_shared<counting_message_handler>();
 	protocol_queue queue(MAX_QUEUE_LEN);
 	connection_manager cm(&config,
-						  &queue,
-						  true,
-						  {{draiosproto::message_type::PROTOCOL_INIT_RESP, pirh},
-						   {draiosproto::message_type::PROTOCOL_HANDSHAKE_V1_RESP, hrh},
-						   {draiosproto::message_type::METRICS_ACK, ah}});
+	                      &queue,
+	                      true,
+	                      {{draiosproto::message_type::PROTOCOL_INIT_RESP, pirh},
+	                       {draiosproto::message_type::PROTOCOL_HANDSHAKE_V1_RESP, hrh},
+	                       {draiosproto::message_type::METRICS_ACK, ah}});
 	std::thread t([&cm]()
 	{
 		cm.test_run();

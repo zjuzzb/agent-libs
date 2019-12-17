@@ -10,6 +10,7 @@
 #include "spinlock.h"
 #include <unistd.h>
 #include <arpa/inet.h>
+#include "protobuf_compression.h"
 
 /**
  * Unit test mock which interfaces with the connection manager.
@@ -218,9 +219,14 @@ bool fake_collector::send_collector_message(uint8_t message_type,
                                             uint64_t generation,
                                             uint64_t sequence)
 {
+	auto compressor = gzip_protobuf_compressor::get(-1);
 	// Serialize the message
 	std::shared_ptr<serialized_buffer> msg_buf;
-	msg_buf = dragent_protocol::message_to_buffer(0, message_type, msg, true);
+	msg_buf = dragent_protocol::message_to_buffer(0,
+	                                              message_type,
+	                                              msg,
+	                                              v5,
+	                                              compressor);
 	if (!msg_buf)
 	{
 		return false;

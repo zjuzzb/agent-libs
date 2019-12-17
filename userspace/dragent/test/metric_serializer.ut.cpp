@@ -11,6 +11,7 @@
 #include "dragent_message_queues.h"
 #include "protobuf_metric_serializer.h"
 #include "scoped_config.h"
+#include "protobuf_compression.h"
 #include <memory>
 #include <gtest.h>
 #include <stdint.h>
@@ -42,13 +43,15 @@ protocol_queue g_pqueue(max_queue_size);
 TEST(metric_serializer_test, initial_state)
 {
 	std::shared_ptr<capture_stats_source> stats_source = nullptr;
+	auto compressor = null_protobuf_compressor::get();
 
 	std::unique_ptr<metric_serializer> s(
 	            new protobuf_metric_serializer(stats_source,
 	                                           ".",
 	                                           g_sample_handler,
 	                                           &g_fqueue,
-	                                           &g_pqueue));
+	                                           &g_pqueue,
+	                                           compressor));
 
 	ASSERT_NE(s.get(), nullptr);
 	ASSERT_EQ(&g_sample_handler, &test_helper::get_sample_handler(*s));
@@ -69,12 +72,16 @@ TEST(metric_serializer_test, configuration)
 
 	std::shared_ptr<capture_stats_source> stats_source = nullptr;
 
+	auto compressor = null_protobuf_compressor::get();
+	auto new_compressor = gzip_protobuf_compressor::get(-1);
+
 	std::unique_ptr<metric_serializer> s(
 	    new protobuf_metric_serializer(stats_source,
 	                                   root_dir,
 	                                   g_sample_handler,
 	                                   &g_fqueue,
-	                                   &g_pqueue));
+	                                   &g_pqueue,
+	                                   compressor));
 
 	// Make sure that update_configuration() updates the values
 	ASSERT_TRUE(s->get_emit_metrics_to_file());
@@ -89,4 +96,8 @@ TEST(metric_serializer_test, configuration)
 	s->set_metrics_directory("");
 	ASSERT_FALSE(s->get_emit_metrics_to_file());
 	ASSERT_EQ("", s->get_metrics_directory());
+
+	// Check that we can change compression
+	bool ret = s->set_compression(new_compressor);
+	ASSERT_TRUE(ret);
 }

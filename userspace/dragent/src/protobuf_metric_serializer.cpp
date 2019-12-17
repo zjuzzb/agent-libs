@@ -16,6 +16,7 @@
 #include "Poco/Path.h"
 #include "Poco/File.h"
 #include <chrono>
+#include "protocol.h"
 
 namespace
 {
@@ -58,18 +59,19 @@ private:
 namespace dragent
 {
 
-protobuf_metric_serializer::protobuf_metric_serializer(
-    std::shared_ptr<const capture_stats_source> stats_source,
+protobuf_metric_serializer::protobuf_metric_serializer(std::shared_ptr<const capture_stats_source> stats_source,
     const std::string& root_dir,
     uncompressed_sample_handler& sample_handler,
     flush_queue* input_queue,
-    protocol_queue* output_queue)
+    protocol_queue* output_queue,
+    std::shared_ptr<protobuf_compressor>& compressor)
     : metric_serializer(root_dir, sample_handler, input_queue, output_queue),
       dragent::watchdog_runnable("serializer"),
       m_stop_thread(false),
       m_capture_stats_source(stats_source),
       m_serializations_completed(0),
-      m_file_emitter()
+      m_file_emitter(),
+      m_compressor(compressor)
 {
 	if (!c_metrics_dir.get_value().empty())
 	{
@@ -129,7 +131,10 @@ void protobuf_metric_serializer::do_serialization(flush_data& data)
 	data->m_metrics_sent->exchange(true);
 	std::shared_ptr<serialized_buffer> q_item =
 	    m_uncompressed_sample_handler.handle_uncompressed_sample(
-	        data->m_ts, data->m_metrics, data->m_flush_interval);
+	        data->m_ts,
+	        data->m_metrics,
+	        data->m_flush_interval,
+	        m_compressor);
 
 	if (!m_output_queue->put(q_item, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
@@ -186,6 +191,16 @@ std::string protobuf_metric_serializer::get_metrics_directory() const
 void protobuf_metric_serializer::set_metrics_directory(const std::string& dir)
 {
 	m_file_emitter.set_metrics_directory(dir);
+}
+
+bool protobuf_metric_serializer::set_compression(std::shared_ptr<protobuf_compressor> compressor)
+{
+	if (!compressor)
+	{
+		return false;
+	}
+	m_compressor = compressor;
+	return true;
 }
 
 }  // end namespace dragent

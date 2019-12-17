@@ -1,16 +1,22 @@
 #include "protocol.h"
+#include "protobuf_compression.h"
 #include "common_logger.h"
 #include "analyzer_settings.h"
 
 #include <arpa/inet.h>  // htonl
 
-std::shared_ptr<serialized_buffer> dragent_protocol::message_to_buffer(
-    uint64_t ts_ns,
+std::shared_ptr<serialized_buffer> dragent_protocol::message_to_buffer(uint64_t ts_ns,
     uint8_t message_type,
     const google::protobuf::MessageLite& message,
-    bool compressed,
-    int compression_level)
+    bool v5,
+    std::shared_ptr<protobuf_compressor>& compressor)
 {
+	if (!compressor)
+	{
+		g_log->error("Cannot compress buffer due to null compressor");
+		return nullptr;
+	}
+
 	//
 	// If the buffer is not big enough, expand it
 	//
@@ -27,42 +33,9 @@ std::shared_ptr<serialized_buffer> dragent_protocol::message_to_buffer(
 	google::protobuf::io::StringOutputStream string_output(&(ptr->buffer));
 
 	//
-	// Do the serialization
+	// Do the serialization and compression
 	//
-	if (compressed)
-	{
-		google::protobuf::io::GzipOutputStream::Options opts;
-
-		opts.compression_level = compression_level;
-
-		google::protobuf::io::GzipOutputStream gzip_output(&string_output, opts);
-		bool res = message.SerializeToZeroCopyStream(&gzip_output);
-		if (!res)
-		{
-			ASSERT(false);
-			g_log->error("Error serializing buffer (1)");
-			return NULL;
-		}
-
-		res = gzip_output.Close();
-		if (!res)
-		{
-			ASSERT(false);
-			g_log->error("Error serializing buffer (2)");
-			return NULL;
-		}
-	}
-	else
-	{
-		google::protobuf::io::StringOutputStream string_output(&(ptr->buffer));
-		bool res = message.SerializeToZeroCopyStream(&string_output);
-		if (!res)
-		{
-			ASSERT(false);
-			g_log->error("Error serializing buffer (3)");
-			return NULL;
-		}
-	}
+	compressor->compress(message, string_output);
 
 	return ptr;
 }

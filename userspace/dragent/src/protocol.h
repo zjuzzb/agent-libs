@@ -12,6 +12,14 @@
 
 #include "common_assert.h"
 
+class protobuf_compressor;
+
+enum class protocol_compression_method
+{
+	NONE,
+	GZIP
+};
+
 struct serialized_buffer
 {
 	std::string buffer;
@@ -58,8 +66,8 @@ const uint8_t PROTOCOL_VERSION_NUMBER_10S_FLUSH = 5;
 std::shared_ptr<serialized_buffer> message_to_buffer(uint64_t ts_ns,
         uint8_t message_type,
         const google::protobuf::MessageLite& message,
-        bool compressed,
-        int compression_level = Z_DEFAULT_COMPRESSION);
+        bool v5,
+        std::shared_ptr<protobuf_compressor>& compressor);
 
 /**
  * @throws protocol_error if the given buffer cannot be converted into

@@ -24,6 +24,7 @@
 #include "metric_serializer.h"
 #include "post_aggregated_metrics_rest_request_handler.h"
 #include "pre_aggregated_metrics_rest_request_handler.h"
+#include "protobuf_compression.h"
 #include "monitor.h"
 #include "null_message_handler.h"
 #include "process_helpers.h"
@@ -101,6 +102,11 @@ type_config<bool>::ptr c_10s_flush_enabled =
     type_config_builder<bool>(false, "Enable flag to force 10s flush behavior", "10s_flush_enable")
         .hidden()
         .build();
+
+type_config<bool> c_compression_enabled(true,
+                                        "set to true to compress protobufs sent to the collector",
+                                        "compression",
+                                        "enabled");
 
 string compute_sha1_digest(SHA1Engine& engine, const string& path)
 {
@@ -1012,6 +1018,27 @@ int dragent_app::sdagent_main()
 		m_pool.start(m_connection_manager, m_configuration.m_watchdog_connection_manager_timeout_s);
 	}
 
+	//
+	// Get the default compression values
+	//
+	// In the 10s flush world, compression is negotiated between the agent and
+	// the collector. The configuration values determine 1. What values are
+	// supported in the negotiation and 2. What values are illegal.
+	//
+	// These default values are what the agent will use going forward in the
+	// legacy case and will be the basis of the negotiation in the protocol v5
+	// case.
+	//
+	std::shared_ptr<protobuf_compressor> compressor;
+	if (c_compression_enabled.get_value())
+	{
+		compressor = gzip_protobuf_compressor::get(-1);
+	}
+	else
+	{
+		compressor = null_protobuf_compressor::get();
+	}
+
 	////////////////
 	// Here is where the top-level objects are created. These are the objects
 	// that interact with the sysdig component and deliver flush data to the
@@ -1062,7 +1089,8 @@ int dragent_app::sdagent_main()
 		                                        m_configuration.c_root_dir.get_value(),
 		                                        m_protocol_handler,
 		                                        &m_serializer_queue,
-		                                        &m_transmit_queue);
+		                                        &m_transmit_queue,
+		                                        compressor);
 		m_pool.start(*s, c_serializer_timeout_s.get_value());
 
 		serializer = s;

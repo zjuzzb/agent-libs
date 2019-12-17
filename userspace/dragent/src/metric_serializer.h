@@ -12,6 +12,7 @@
 #include <memory>
 #include <mutex>
 #include "protocol.h"
+#include "protobuf_compression.h"
 #include "type_config.h"
 #include "uncompressed_sample_handler.h"
 #include "analyzer_flush_message.h"
@@ -79,12 +80,19 @@ public:
 	virtual std::string get_metrics_directory() const = 0;
 
 	/**
-	 * set the absolute path to the metrics directory.
+	 * Set the absolute path to the metrics directory.
 	 *
 	 * Setting this to "" terminates logging to file.
 	 * The directory will be created if it does not exist.
 	 */
 	virtual void set_metrics_directory(const std::string&) = 0;
+
+	/**
+	 * Sets the compressor for this serializer.
+	 *
+	 * Returns true if the compressor is valid, false otherwise.
+	 */
+	virtual bool set_compression(std::shared_ptr<protobuf_compressor> compressor) = 0;
 
 protected:
 	uncompressed_sample_handler& m_uncompressed_sample_handler;
