@@ -918,12 +918,12 @@ inline void sinsp_analyzer_fd_listener::flush_transaction(erase_fd_params* param
 	sinsp_connection *connection = nullptr;
 	if(params->m_fdinfo->m_usrstate->is_active() && params->m_fdinfo->is_ipv4_socket())
 	{
-		connection = params->m_inspector->m_analyzer->get_connection(params->m_fdinfo->m_sockinfo.m_ipv4info, params->m_ts);
+		connection = m_analyzer->get_connection(params->m_fdinfo->m_sockinfo.m_ipv4info, params->m_ts);
 	}
 
 	if(connection)
 	{
-		params->m_fdinfo->m_usrstate->update(params->m_inspector->m_analyzer,
+		params->m_fdinfo->m_usrstate->update(m_analyzer,
 			params->m_tinfo,
 			params->m_fdinfo,
 			connection,
@@ -975,7 +975,7 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 	//
 	if(params->m_fdinfo->is_ipv4_socket() && !params->m_fdinfo->has_no_role())
 	{
-		params->m_inspector->m_analyzer->remove_ipv4_connection(params->m_fdinfo->m_sockinfo.m_ipv4info);
+		m_analyzer->remove_ipv4_connection(params->m_fdinfo->m_sockinfo.m_ipv4info);
 	}
 }
 
@@ -993,7 +993,7 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 			connection = m_analyzer->get_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info, evt->get_ts());
 		}
 
-		evt->m_fdinfo->m_usrstate->update(m_inspector->m_analyzer,
+		evt->m_fdinfo->m_usrstate->update(m_analyzer,
 			evt->m_tinfo,
 			evt->m_fdinfo,
 			connection,
@@ -1076,7 +1076,6 @@ void sinsp_analyzer_fd_listener::on_error(sinsp_evt* evt)
 
 			params.m_fdinfo = evt->m_fdinfo;
 			params.m_tinfo = evt->m_tinfo;
-			params.m_inspector = m_inspector;
 			params.m_ts = evt->get_ts();
 			params.m_fd = 0;
 			enum ppm_event_category ecat = evt->m_info->category;
