@@ -4,11 +4,13 @@ template<typename filter_param>
 bool all_filter<filter_param>::matches(const filter_param& arg,
 				       bool& exclude,
 				       bool& high_priority,
-				       std::string& reason) const
+				       std::string* reason) const
 {
 	exclude = this->exclude_on_match();
 	high_priority = false;
-	reason = "all";
+	if (reason) {
+		*reason = "all";
+	}
 	return true;
 }
 
@@ -16,13 +18,15 @@ template<typename filter_param>
 bool equal_filter<filter_param>::matches(const filter_param& arg,
 					 bool& exclude,
 					 bool& high_priority,
-					 std::string& reason) const
+					 std::string* reason) const
 {
 	if (arg == m_arg)
 	{
 		exclude = this->exclude_on_match();
 		high_priority = true;
-		reason = "equality match";
+		if (reason) {
+			*reason = "equality match";
+		}
 		return true;
 	}
 
@@ -33,7 +37,7 @@ template<typename filter_param>
 bool regex_filter<filter_param>::matches(const filter_param& arg,
 					 bool& exclude,
 					 bool& high_priority,
-					 std::string& reason) const
+					 std::string* reason) const
 {
 	const std::string& str_arg = m_extractor(arg);
 
@@ -41,7 +45,9 @@ bool regex_filter<filter_param>::matches(const filter_param& arg,
 	{
 		exclude = this->exclude_on_match();
 		high_priority = true;
-		reason = str_arg + " matches regex " + m_pattern;
+		if (reason) {
+			*reason = str_arg + " matches regex " + m_pattern;
+		}
 		return true;
 	}
 
@@ -52,7 +58,7 @@ template<typename filter_param>
 bool wildcard_filter<filter_param>::matches(const filter_param& arg,
 					    bool& exclude,
 					    bool& high_priority,
-					    std::string& reason) const
+					    std::string* reason) const
 {
 	const std::string& str_arg = m_extractor(arg);
 
@@ -60,7 +66,9 @@ bool wildcard_filter<filter_param>::matches(const filter_param& arg,
 	{
 		exclude = this->exclude_on_match();
 		high_priority = true;
-		reason = str_arg + " matches wildcard " + m_pattern;
+		if (reason) {
+			*reason = str_arg + " matches wildcard " + m_pattern;
+		}
 		return true;
 	}
 
@@ -71,7 +79,7 @@ template<typename filter_param>
 bool priority_filter<filter_param>::matches(const filter_param& arg,
 					    bool& exclude,
 					    bool& high_priority,
-					    std::string& reason) const
+					    std::string* reason) const
 {
 	uint32_t rule_num;
 	return matches(arg, exclude, high_priority, reason, rule_num);
@@ -81,7 +89,7 @@ template<typename filter_param>
 bool priority_filter<filter_param>::matches(const filter_param& arg,
 					    bool& exclude,
 					    bool& high_priority,
-					    std::string& reason,
+					    std::string* reason,
 					    uint32_t& rule_number) const
 {
 	rule_number = 0;
@@ -89,13 +97,11 @@ bool priority_filter<filter_param>::matches(const filter_param& arg,
 	{
 		bool high_priority_temp;
 		bool exclude_temp;
-		std::string reason_temp;
 
-		if (i->matches(arg, exclude_temp, high_priority_temp, reason_temp))
+		if (i->matches(arg, exclude_temp, high_priority_temp, reason))
 		{
 			high_priority = high_priority_temp;
 			exclude = exclude_temp;
-			reason = reason_temp;
 			return true;
 		}
 		rule_number++;
@@ -108,10 +114,12 @@ template<typename filter_param>
 bool and_filter<filter_param>::matches(const filter_param& arg,
 				       bool& exclude,
 				       bool& high_priority,
-				       std::string& reason) const
+				       std::string* reason) const
 {
 	high_priority = true;
-	reason = "and filter matches:";
+	if (reason) {
+		*reason = "and filter matches:";
+	}
 
 	for (const auto& i : m_sub_filters)
 	{
@@ -120,13 +128,15 @@ bool and_filter<filter_param>::matches(const filter_param& arg,
 		std::string reason_temp;
 
 		// short circuit if we can
-		if (!i->matches(arg, exclude_temp, high_priority_temp, reason_temp))
+		if (!i->matches(arg, exclude_temp, high_priority_temp, reason ? &reason_temp : nullptr))
 		{
 			return false;
 		}
 
 		high_priority &= high_priority_temp;
-		reason += reason_temp + ";";
+		if (reason) {
+			*reason += reason_temp + ";";
+		}
 	}
 
 	exclude = this->exclude_on_match();

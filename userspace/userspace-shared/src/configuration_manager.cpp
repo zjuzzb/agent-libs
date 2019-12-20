@@ -128,7 +128,7 @@ std::string configuration_manager::to_yaml() const
 			}
 		}
 
-		yaml += " " + config.value_to_string();
+		yaml += " " + config.value_to_yaml();
 	}
 
 	yaml += "\n";

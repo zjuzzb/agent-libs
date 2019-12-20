@@ -32,12 +32,12 @@ app_checks_always_send: true
 	tinfo.m_ainfo = new thread_analyzer_info;
 	bool matches = false;
 	bool generic_match = false;
-	matches = my_manager.get_flush_filter().matches(NULL, &tinfo, NULL, NULL, &generic_match, NULL);
+	matches = my_manager.get_flush_filter().matches(NULL, &tinfo, NULL, NULL, &generic_match, NULL, NULL);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(generic_match, true);
 
 	test_helper::insert_app_check(tinfo.m_ainfo, "some app check");
-	matches = my_manager.get_flush_filter().matches(NULL, &tinfo, NULL, NULL, &generic_match, NULL);
+	matches = my_manager.get_flush_filter().matches(NULL, &tinfo, NULL, NULL, &generic_match, NULL, NULL);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(generic_match, false);
 

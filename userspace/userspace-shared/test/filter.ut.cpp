@@ -36,7 +36,7 @@ TEST(filter_test, all_filter)
 	bool exclude = true;
 	bool high_priority = true;
 	std::string reason;
-	bool matches = my_filter.matches(my_args, exclude, high_priority, reason);
+	bool matches = my_filter.matches(my_args, exclude, high_priority, &reason);
 
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(exclude, false);
@@ -45,7 +45,7 @@ TEST(filter_test, all_filter)
 
 	exclude = false;
 	high_priority = true;
-	matches = my_filter_exclude.matches(my_args, exclude, high_priority, reason);
+	matches = my_filter_exclude.matches(my_args, exclude, high_priority, nullptr);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(exclude, true);
 	EXPECT_EQ(high_priority, false);
@@ -66,17 +66,17 @@ TEST(filter_test, equal_filter)
 	bool exclude = true;
 	bool high_priority = false;
 	std::string reason;
-	bool matches = my_filter.matches(same_args, exclude, high_priority, reason);
+	bool matches = my_filter.matches(same_args, exclude, high_priority, &reason);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(exclude, false);
 	EXPECT_EQ(high_priority, true);
 	EXPECT_EQ(reason, "equality match");
-	matches = my_filter.matches(different_args, exclude, high_priority, reason);
+	matches = my_filter.matches(different_args, exclude, high_priority, nullptr);
 	EXPECT_EQ(matches, false);
 
 	exclude = false;
 	high_priority = false;
-	matches = my_filter_exclude.matches(same_args, exclude, high_priority, reason);
+	matches = my_filter_exclude.matches(same_args, exclude, high_priority, nullptr);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(exclude, true);
 	EXPECT_EQ(high_priority, true);
@@ -94,19 +94,19 @@ TEST(filter_test, regex_filter)
 	bool exclude = true;
 	bool high_priority = false;
 	std::string reason;
-	bool matches = my_filter.matches("hellothere", exclude, high_priority, reason);
+	bool matches = my_filter.matches("hellothere", exclude, high_priority, &reason);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(exclude, false);
 	EXPECT_EQ(high_priority, true);
 	EXPECT_EQ(reason, "hellothere matches regex ^hellothere?$");
-	matches = my_filter.matches("hellother", exclude, high_priority, reason);
+	matches = my_filter.matches("hellother", exclude, high_priority, nullptr);
 	EXPECT_EQ(matches, true);
-	matches = my_filter.matches("heallother", exclude, high_priority, reason);
+	matches = my_filter.matches("heallother", exclude, high_priority, nullptr);
 	EXPECT_EQ(matches, false);
 
 	exclude = false;
 	high_priority = false;
-	matches = my_filter_exclude.matches("hellother", exclude, high_priority, reason);
+	matches = my_filter_exclude.matches("hellother", exclude, high_priority, nullptr);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(exclude, true);
 	EXPECT_EQ(high_priority, true);
@@ -124,17 +124,17 @@ TEST(filter_test, wildcard_filter)
 	bool exclude = true;
 	bool high_priority = false;
 	std::string reason;
-	bool matches = my_filter.matches("hellothere1", exclude, high_priority, reason);
+	bool matches = my_filter.matches("hellothere1", exclude, high_priority, &reason);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(exclude, false);
 	EXPECT_EQ(high_priority, true);
 	EXPECT_EQ(reason, "hellothere1 matches wildcard hellothere?");
-	matches = my_filter.matches("heallother", exclude, high_priority, reason);
+	matches = my_filter.matches("heallother", exclude, high_priority, nullptr);
 	EXPECT_EQ(matches, false);
 
 	exclude = false;
 	high_priority = false;
-	matches = my_filter_exclude.matches("hellothere2", exclude, high_priority, reason);
+	matches = my_filter_exclude.matches("hellothere2", exclude, high_priority, nullptr);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(exclude, true);
 	EXPECT_EQ(high_priority, true);
@@ -155,36 +155,34 @@ TEST(filter_test, priority_filter)
 	bool exclude = true;
 	bool high_priority = false;
 	std::string reason;
-	bool matches = my_filter.matches(my_args_1, exclude, high_priority, reason);
+	bool matches = my_filter.matches(my_args_1, exclude, high_priority, &reason);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(exclude, false);
 	EXPECT_EQ(high_priority, true);
 	EXPECT_EQ(reason, "equality match");
 	
 	high_priority = false;
-	matches = my_filter.matches(my_args_2, exclude, high_priority, reason);
+	matches = my_filter.matches(my_args_2, exclude, high_priority, nullptr);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(exclude, true);
 	EXPECT_EQ(high_priority, true);
-	EXPECT_EQ(reason, "equality match");
 
 	high_priority = false;
-	matches = my_filter.matches(my_args_3, exclude, high_priority, reason);
+	matches = my_filter.matches(my_args_3, exclude, high_priority, nullptr);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(exclude, false);
 	EXPECT_EQ(high_priority, true);
-	EXPECT_EQ(reason, "equality match");
 
 	filter_args different_args("abc124", 133456);
-	matches = my_filter.matches(different_args, exclude, high_priority, reason);
+	matches = my_filter.matches(different_args, exclude, high_priority, nullptr);
 	EXPECT_EQ(matches, false);
 
 	// double check the rule num api
 	uint32_t rule_num;
-	matches = my_filter.matches(my_args_1, exclude, high_priority, reason, rule_num);
+	matches = my_filter.matches(my_args_1, exclude, high_priority, nullptr, rule_num);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(rule_num, 0);
-	matches = my_filter.matches(my_args_2, exclude, high_priority, reason, rule_num);
+	matches = my_filter.matches(my_args_2, exclude, high_priority, nullptr, rule_num);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(rule_num, 1);
 }
@@ -203,13 +201,13 @@ TEST(filter_test, and_filter)
 	bool exclude = true;
 	bool high_priority = true;
 	std::string reason;
-	bool matches = my_filter.matches(my_args_1, exclude, high_priority, reason);
+	bool matches = my_filter.matches(my_args_1, exclude, high_priority, &reason);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(exclude, false);
 	EXPECT_EQ(high_priority, false);
 	EXPECT_EQ(reason, "and filter matches:all;equality match;");
 	
-	matches = my_filter.matches(my_args_2, exclude, high_priority, reason);
+	matches = my_filter.matches(my_args_2, exclude, high_priority, nullptr);
 	EXPECT_EQ(matches, false);
 
 	and_filter<filter_args> my_filter_exclude(true,
@@ -220,7 +218,7 @@ TEST(filter_test, and_filter)
 
 	exclude = true;
 	high_priority = true;
-	matches = my_filter_exclude.matches(my_args_1, exclude, high_priority, reason);
+	matches = my_filter_exclude.matches(my_args_1, exclude, high_priority, nullptr);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(exclude, true);
 	EXPECT_EQ(high_priority, false);
@@ -233,7 +231,7 @@ TEST(filter_test, and_filter)
 
 	exclude = true;
 	high_priority = false;
-	matches = my_filter_high_priority.matches(my_args_1, exclude, high_priority, reason);
+	matches = my_filter_high_priority.matches(my_args_1, exclude, high_priority, nullptr);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(exclude, true);
 	EXPECT_EQ(high_priority, true);
@@ -261,7 +259,7 @@ TEST(filter_test, combo_test)
 	matches = my_filter.matches(filter_args("1", 1),
 				    exclude,
 				    high_priority,
-				    reason,
+				    &reason,
 				    rule_num);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(high_priority, true);
@@ -272,7 +270,7 @@ TEST(filter_test, combo_test)
 	matches = my_filter.matches(filter_args("ab", 1),
 				    exclude,
 				    high_priority,
-				    reason,
+				    &reason,
 				    rule_num);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(high_priority, true);
@@ -283,7 +281,7 @@ TEST(filter_test, combo_test)
 	matches = my_filter.matches(filter_args("qwe", 1),
 				    exclude,
 				    high_priority,
-				    reason,
+				    &reason,
 				    rule_num);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(high_priority, true);
@@ -294,7 +292,7 @@ TEST(filter_test, combo_test)
 	matches = my_filter.matches(filter_args("123", 1),
 				    exclude,
 				    high_priority,
-				    reason,
+				    &reason,
 				    rule_num);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(high_priority, false);
