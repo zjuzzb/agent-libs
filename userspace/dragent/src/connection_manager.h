@@ -1,8 +1,10 @@
 #pragma once
 
 #include "protocol.h"
+#include "spinlock.h"
 #include "watchdog_runnable.h"
 #include "dragent_message_queues.h"
+#include "dragent_settings_interface.h"
 
 #ifndef CYGWING_AGENT
 #include "promex.pb.h"
@@ -12,6 +14,8 @@
 #include <initializer_list>
 #include <memory>
 #include <map>
+#include <functional>
+#include <chrono>
 
 #include <Poco/Buffer.h>
 
@@ -120,7 +124,9 @@ private:
 };
 
 
-class connection_manager : public dragent::watchdog_runnable
+class connection_manager : public dragent::watchdog_runnable,
+                           public aggregation_interval_source,
+                           public compression_method_source
 {
 public:
 	class message_handler
@@ -261,9 +267,9 @@ public:
 	};
 
 	connection_manager(dragent_configuration* configuration,
-			   protocol_queue* queue,
-			   bool use_handshake,
-			   std::initializer_list<message_handler_map::value_type> message_handlers = {});
+	           protocol_queue* queue,
+	           bool use_handshake,
+	           std::initializer_list<message_handler_map::value_type> message_handlers = {});
 	~connection_manager();
 
 	bool is_connected() const
@@ -279,6 +285,10 @@ public:
 	void test_run() { do_run(); }
 
 	void set_connection_timeout(uint32_t timeout_us) { m_connect_timeout_us = timeout_us; }
+	void set_aggregation_interval(uint32_t interval)
+	{
+		m_negotiated_aggregation_interval = interval;
+	}
 
 	uint32_t m_connect_timeout_us = SOCKET_TIMEOUT_DURING_CONNECT_US;
 	volatile bool m_timed_out = false;
@@ -295,7 +305,33 @@ public:
 
 	void disconnect();
 
+	std::chrono::seconds get_negotiated_aggregation_interval() const
+	{
+		scoped_spinlock lock(m_parameter_update_lock);
+		if (m_negotiated_aggregation_interval == UINT32_MAX)
+		{
+			return std::chrono::seconds::max();
+		}
+		return std::chrono::seconds(m_negotiated_aggregation_interval);
+	}
+
+	std::shared_ptr<protobuf_compressor>& get_negotiated_compression_method()
+	{
+		scoped_spinlock lock(m_parameter_update_lock);
+		return m_negotiated_compression_method;
+	}
+
 private:
+	/**
+	 * A set of callbacks so the connection manager can notify the parent
+	 * class of configuration changes.
+	 */
+	struct dragent_callbacks
+	{
+		std::function<bool(std::shared_ptr<protobuf_compressor>&)> compression_method_changed;
+		std::function<bool(std::chrono::seconds)> aggregation_interval_changed;
+	};
+
 	using socket_ptr = std::shared_ptr<Poco::Net::StreamSocket>;
 
 	bool init();
@@ -332,6 +368,13 @@ private:
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
 	pending_message m_pending_message;
+	uint32_t m_negotiated_aggregation_interval;
+	std::shared_ptr<protobuf_compressor> m_negotiated_compression_method;
+	// Lock protecting updates to negotiated parameters
+	// The CM serves as the source of truth for handshake-negotiated fields,
+	// and this lock ensures that those fields are protected from reads while
+	// they're being updated concurrently.
+	mutable spinlock m_parameter_update_lock;
 
 	uint32_t m_reconnect_interval;
 	std::chrono::time_point<std::chrono::system_clock> m_last_connection_failure;

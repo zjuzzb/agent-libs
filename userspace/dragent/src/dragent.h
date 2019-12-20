@@ -23,7 +23,9 @@
 #include <atomic>
 #include <memory>
 #include "metric_serializer.h"
+#include "async_aggregator.h"
 #include "dragent_message_queues.h"
+#include "protobuf_compression.h"
 
 #ifndef CYGWING_AGENT
 #include "sdc_internal.pb.h"
@@ -159,6 +161,7 @@ private:
 	capture_job_handler m_capture_job_handler;
 	sinsp_worker m_sinsp_worker;
 	connection_manager m_connection_manager;
+
 	log_reporter m_log_reporter;
 	subprocesses_logger m_subprocesses_logger;
 	typedef std::unordered_map<std::string, watchdog_state> ProcessStateMap;

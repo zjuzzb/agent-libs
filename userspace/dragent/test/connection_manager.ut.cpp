@@ -15,6 +15,7 @@ using namespace std;
 #include "fake_collector.h"
 #include "handshake.pb.h"
 #include "draios.pb.h"
+#include "dragent_settings_interface.h"
 
 #include <Poco/Net/SSLManager.h>
 
@@ -696,4 +697,34 @@ TEST(fake_collector_test, DISABLED_ack)
 	config.m_terminate = true;
 	fc.stop();
 	t.join();
+}
+
+TEST(connection_manager_test, change_aggregation_interval)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration::m_terminate = false;
+	dragent_configuration config;
+	config.init();
+
+	// Set the config for the CM
+	config.m_server_addr = "127.0.0.1";
+	config.m_ssl_enabled = false;
+	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
+	config.m_terminate = false;
+
+	// Create the shared blocking queue
+	protocol_queue queue(MAX_QUEUE_LEN);
+
+	// Create a connection manager (don't need to start it for this test)
+	connection_manager cm(&config, &queue, false);
+	aggregation_interval_source* src = &cm;
+
+	ASSERT_EQ(chrono::seconds::max(), cm.get_negotiated_aggregation_interval());
+
+	uint32_t new_interval = 10;
+	cm.set_aggregation_interval(new_interval);
+
+	ASSERT_EQ(new_interval, src->get_negotiated_aggregation_interval().count());
+
 }

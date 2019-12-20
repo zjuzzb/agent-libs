@@ -18,11 +18,11 @@
 
 namespace
 {
-type_config<uint32_t>::ptr c_samples_between_flush =
+type_config<uint32_t>::ptr c_aggregation_interval =
     type_config_builder<uint32_t>(10,
-                                  "Number of analyzer samples between outputs.",
+                                  "Number of seconds of data to aggregate.",
                                   "aggregator",
-                                  "samples_between_flush")
+                                  "aggregation_interval")
         .hidden()
         .build();
 
@@ -55,8 +55,9 @@ async_aggregator::async_aggregator(flush_queue& input_queue,
       m_input_queue(input_queue),
       m_output_queue(output_queue),
       m_builder(),
+      m_aggregation_interval_source(nullptr),
       m_count_since_flush(0),
-      m_aggregation_interval(c_samples_between_flush->get_value()),
+      m_aggregation_interval(c_aggregation_interval->get_value()),
       m_file_emitter()
 {
 	m_aggregator = new metrics_message_aggregator_impl(m_builder);
@@ -297,7 +298,18 @@ void async_aggregator::do_run()
 		// we cache this value as it can change at any time, and we
 		// want a consistent number as we proceed through this logic.
 		// this avoids the need for a lock
-		uint32_t aggr_interval_cache = m_aggregation_interval;
+		uint32_t interval = m_aggregation_interval;
+		if (m_aggregation_interval_source)
+		{
+			// Read from source so long as we have a valid value
+			std::chrono::seconds s = m_aggregation_interval_source->
+			                         get_negotiated_aggregation_interval();
+			if (s != std::chrono::seconds::max())
+			{
+				interval = s.count();
+			}
+		}
+		uint32_t aggr_interval_cache = interval;
 
 		if (m_count_since_flush >= aggr_interval_cache && m_count_since_flush != 0)
 		{
@@ -365,9 +377,14 @@ void async_aggregator::stop()
 	m_input_queue.clear();
 }
 
-void async_aggregator::set_aggregation_interval(uint32_t interval)
+void async_aggregator::set_aggregation_interval(uint32_t interval_s)
 {
-	m_aggregation_interval = interval;
+	m_aggregation_interval = interval_s;
+}
+
+void async_aggregator::set_aggregation_interval_source(aggregation_interval_source* source)
+{
+	m_aggregation_interval_source = source;
 }
 
 }  // end namespace dragent

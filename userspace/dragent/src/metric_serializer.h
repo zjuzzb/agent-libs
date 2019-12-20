@@ -17,6 +17,7 @@
 #include "uncompressed_sample_handler.h"
 #include "analyzer_flush_message.h"
 #include "dragent_message_queues.h"
+#include "dragent_settings_interface.h"
 
 namespace draiosproto
 {
@@ -93,6 +94,14 @@ public:
 	 * Returns true if the compressor is valid, false otherwise.
 	 */
 	virtual bool set_compression(std::shared_ptr<protobuf_compressor> compressor) = 0;
+
+	/**
+	 * Sets the compressor source.
+	 *
+	 * The compressor source is an object which supports an interface to retrieve
+	 * the current compression method.
+	 */
+	virtual void set_compression_source(compression_method_source* source) = 0;
 
 protected:
 	uncompressed_sample_handler& m_uncompressed_sample_handler;

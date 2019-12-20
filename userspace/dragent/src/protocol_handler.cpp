@@ -89,15 +89,8 @@ void protocol_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draiospr
 	            get_config<bool>("compression.enabled")->get_value() ?
 	                protocol_compression_method::GZIP :
 	                protocol_compression_method::NONE;
-	std::shared_ptr<protobuf_compressor> compressor;
-	if (compression == protocol_compression_method::NONE)
-	{
-		compressor = null_protobuf_compressor::get();
-	}
-	else
-	{
-		compressor = gzip_protobuf_compressor::get(-1);
-	}
+	std::shared_ptr<protobuf_compressor> compressor =
+	        protobuf_compressor_factory::get(compression);
 
 	std::shared_ptr<serialized_buffer> buffer = dragent_protocol::message_to_buffer(
 		ts_ns,
@@ -135,15 +128,8 @@ void protocol_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
 	            get_config<bool>("compression.enabled")->get_value() ?
 	                protocol_compression_method::GZIP :
 	                protocol_compression_method::NONE;
-	std::shared_ptr<protobuf_compressor> compressor;
-	if (compression == protocol_compression_method::NONE)
-	{
-		compressor = null_protobuf_compressor::get();
-	}
-	else
-	{
-		compressor = gzip_protobuf_compressor::get(-1);
-	}
+	std::shared_ptr<protobuf_compressor> compressor =
+	        protobuf_compressor_factory::get(compression);
 
 	std::shared_ptr<serialized_buffer> buffer = dragent_protocol::message_to_buffer(
 		ts_ns,
@@ -180,15 +166,8 @@ void protocol_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const dra
 	            get_config<bool>("compression.enabled")->get_value() ?
 	                protocol_compression_method::GZIP :
 	                protocol_compression_method::NONE;
-	std::shared_ptr<protobuf_compressor> compressor;
-	if (compression == protocol_compression_method::NONE)
-	{
-		compressor = null_protobuf_compressor::get();
-	}
-	else
-	{
-		compressor = gzip_protobuf_compressor::get(-1);
-	}
+	std::shared_ptr<protobuf_compressor> compressor =
+	        protobuf_compressor_factory::get(compression);
 
 	std::shared_ptr<serialized_buffer> buffer = dragent_protocol::message_to_buffer(
 		ts_ns,
@@ -260,15 +239,8 @@ std::shared_ptr<serialized_buffer> protocol_handler::handle_log_report(uint64_t 
 	            get_config<bool>("compression.enabled")->get_value() ?
 	                protocol_compression_method::GZIP :
 	                protocol_compression_method::NONE;
-	std::shared_ptr<protobuf_compressor> compressor;
-	if (compression == protocol_compression_method::NONE)
-	{
-		compressor = null_protobuf_compressor::get();
-	}
-	else
-	{
-		compressor = gzip_protobuf_compressor::get(-1);
-	}
+	std::shared_ptr<protobuf_compressor> compressor =
+	        protobuf_compressor_factory::get(compression);
 
 	std::shared_ptr<serialized_buffer> report_serialized = dragent_protocol::message_to_buffer(
 		ts_ns,

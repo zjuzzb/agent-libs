@@ -4,6 +4,7 @@
 #include "draios.pb.h"
 #include "protocol.h"
 #include "security_config.h"
+#include "spinlock.h"
 #include "utils.h"
 #include "watchdog_runnable_fatal_error.h"
 #include <future>
@@ -192,6 +193,8 @@ connection_manager::connection_manager(
       m_sequence(0),
       m_configuration(configuration),
       m_queue(queue),
+      m_negotiated_aggregation_interval(UINT32_MAX),
+      m_negotiated_compression_method(nullptr),
       m_reconnect_interval(0)
 {
 	Poco::Net::initializeSSL();

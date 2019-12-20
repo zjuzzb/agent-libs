@@ -14,6 +14,7 @@
 #include "connection_manager.h"  // because aggregator_limits is a message_handler. should probably be broken down a bit.
 #include "metrics_file_emitter.h"
 #include "aggregation_context.pb.h"
+#include "dragent_settings_interface.h"
 
 class test_helper;
 
@@ -107,9 +108,20 @@ public:
 	 * sets the number of input protobufs to aggregate before generating an output.
 	 * Setting to 0 disables aggregation altogether
 	 *
+	 * Setting the aggregation_interval_source (below) will override any interval
+	 * set via this function.
+	 *
 	 * @param[in] interval count of input samples between outputs
 	 */
-	void set_aggregation_interval(uint32_t interval);
+	void set_aggregation_interval(uint32_t interval_s);
+
+	/**
+	 * Sets the aggregation interval source.
+	 *
+	 * The source is an object that knows the canonical negotiated aggregation
+	 * interval. Setting this function overrides any interval set above.
+	 */
+	void set_aggregation_interval_source(aggregation_interval_source* source);
 
 private:
 	/**
@@ -145,6 +157,7 @@ private:
 	message_aggregator_builder_impl m_builder;
 	metrics_message_aggregator_impl* m_aggregator;
 	std::shared_ptr<flush_data_message> m_aggregated_data;
+	aggregation_interval_source* m_aggregation_interval_source;
 
 	uint32_t m_count_since_flush;
 	uint32_t m_aggregation_interval;

@@ -98,3 +98,19 @@ public:
 private:
 	int m_compression_level;
 };
+
+/**
+ * Builds the correct protobuf compressor given the compression method.
+ */
+class protobuf_compressor_factory
+{
+public:
+	static std::shared_ptr<protobuf_compressor> get(protocol_compression_method compression)
+	{
+		if (compression == protocol_compression_method::NONE)
+		{
+			return null_protobuf_compressor::get();
+		}
+		return gzip_protobuf_compressor::get(-1);
+	}
+};

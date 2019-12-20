@@ -55,6 +55,13 @@ public:
 	                           protocol_queue* output_queue,
 	                           std::shared_ptr<protobuf_compressor>& compressor);
 
+	protobuf_metric_serializer(std::shared_ptr<const capture_stats_source> stats_source,
+	                           const std::string& root_dir,
+	                           uncompressed_sample_handler& sample_handler,
+	                           flush_queue* input_queue,
+	                           protocol_queue* output_queue,
+	                           compression_method_source* source);
+
 	~protobuf_metric_serializer() override;
 
 	/**
@@ -92,6 +99,7 @@ public:
 	std::string get_metrics_directory() const override;
 	void set_metrics_directory(const std::string&) override;
 	bool set_compression(std::shared_ptr<protobuf_compressor> compressor) override;
+	void set_compression_source(compression_method_source* source) override;
 
 #ifdef SYSDIG_TEST
 	void test_run()
@@ -136,6 +144,7 @@ private:
 	metrics_file_emitter m_file_emitter;
 
 	std::shared_ptr<protobuf_compressor> m_compressor;
+	compression_method_source* m_compression_source;
 
 	std::thread m_thread;  // Must be last
 };

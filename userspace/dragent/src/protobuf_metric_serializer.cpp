@@ -71,8 +71,36 @@ protobuf_metric_serializer::protobuf_metric_serializer(std::shared_ptr<const cap
       m_capture_stats_source(stats_source),
       m_serializations_completed(0),
       m_file_emitter(),
-      m_compressor(compressor)
+      m_compressor(compressor),
+      m_compression_source(nullptr)
 {
+	if (!c_metrics_dir.get_value().empty())
+	{
+		std::string dir = Poco::Path(root_dir).append(c_metrics_dir.get_value()).toString();
+		set_metrics_directory(dir);
+	}
+}
+
+protobuf_metric_serializer::protobuf_metric_serializer(std::shared_ptr<const capture_stats_source> stats_source,
+                           const std::string& root_dir,
+                           uncompressed_sample_handler& sample_handler,
+                           flush_queue* input_queue,
+                           protocol_queue* output_queue,
+                           compression_method_source* source)
+    : metric_serializer(root_dir, sample_handler, input_queue, output_queue),
+      dragent::watchdog_runnable("serializer"),
+      m_stop_thread(false),
+      m_capture_stats_source(stats_source),
+      m_serializations_completed(0),
+      m_file_emitter(),
+      m_compressor(nullptr),
+      m_compression_source(source)
+{
+	if (!source)
+	{
+		g_logger.format(sinsp_logger::SEV_WARNING,
+		                "Created a serializer with a null compression source");
+	}
 	if (!c_metrics_dir.get_value().empty())
 	{
 		std::string dir = Poco::Path(root_dir).append(c_metrics_dir.get_value()).toString();
@@ -127,6 +155,22 @@ void protobuf_metric_serializer::do_serialization(flush_data& data)
 
 	scoped_duration_logger scoped_log("protobuf serialization", sinsp_logger::SEV_DEBUG);
 
+	std::shared_ptr<protobuf_compressor> compressor = m_compressor;
+	if (m_compression_source)
+	{
+		// If we have a registered source of truth, it will override
+		// a stored compressor
+		compressor = m_compression_source->get_negotiated_compression_method();
+	}
+
+	if (!compressor)
+	{
+		// A null compressor. In order to avoid a situation where we can't
+		// serialize any protobufs at all, we will fall back to sending
+		// uncompressed data
+		compressor = null_protobuf_compressor::get();
+	}
+
 	libsanalyzer::metric_store::store(data->m_metrics);
 	data->m_metrics_sent->exchange(true);
 	std::shared_ptr<serialized_buffer> q_item =
@@ -134,7 +178,7 @@ void protobuf_metric_serializer::do_serialization(flush_data& data)
 	        data->m_ts,
 	        data->m_metrics,
 	        data->m_flush_interval,
-	        m_compressor);
+	        compressor);
 
 	if (!m_output_queue->put(q_item, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
@@ -201,6 +245,11 @@ bool protobuf_metric_serializer::set_compression(std::shared_ptr<protobuf_compre
 	}
 	m_compressor = compressor;
 	return true;
+}
+
+void protobuf_metric_serializer::set_compression_source(compression_method_source* source)
+{
+	m_compression_source = source;
 }
 
 }  // end namespace dragent

@@ -72,7 +72,7 @@ TEST(async_aggregator, single)
 // make sure pushing two PBs aggregates them correctly
 TEST(async_aggregator, multiple)
 {
-	test_helpers::scoped_config<unsigned int> config("aggregator.samples_between_flush", 2);
+	test_helpers::scoped_config<unsigned int> config("aggregator.aggregation_interval", 2);
 
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);
@@ -454,7 +454,7 @@ void wait_aggr(dragent::async_aggregator& aggr, uint32_t count)
 
 TEST(async_aggregator, flush_interval_zero)
 {
-	test_helpers::scoped_config<uint32_t> config("aggregator.samples_between_flush", 5);
+	test_helpers::scoped_config<uint32_t> config("aggregator.aggregation_interval", 5);
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);
 
