@@ -64,7 +64,8 @@ protobuf_metric_serializer::protobuf_metric_serializer(std::shared_ptr<const cap
     uncompressed_sample_handler& sample_handler,
     flush_queue* input_queue,
     protocol_queue* output_queue,
-    std::shared_ptr<protobuf_compressor>& compressor)
+    std::shared_ptr<protobuf_compressor>& compressor,
+    compression_method_source* source)
     : metric_serializer(root_dir, sample_handler, input_queue, output_queue),
       dragent::watchdog_runnable("serializer"),
       m_stop_thread(false),
@@ -72,34 +73,11 @@ protobuf_metric_serializer::protobuf_metric_serializer(std::shared_ptr<const cap
       m_serializations_completed(0),
       m_file_emitter(),
       m_compressor(compressor),
-      m_compression_source(nullptr)
-{
-	if (!c_metrics_dir.get_value().empty())
-	{
-		std::string dir = Poco::Path(root_dir).append(c_metrics_dir.get_value()).toString();
-		set_metrics_directory(dir);
-	}
-}
-
-protobuf_metric_serializer::protobuf_metric_serializer(std::shared_ptr<const capture_stats_source> stats_source,
-                           const std::string& root_dir,
-                           uncompressed_sample_handler& sample_handler,
-                           flush_queue* input_queue,
-                           protocol_queue* output_queue,
-                           compression_method_source* source)
-    : metric_serializer(root_dir, sample_handler, input_queue, output_queue),
-      dragent::watchdog_runnable("serializer"),
-      m_stop_thread(false),
-      m_capture_stats_source(stats_source),
-      m_serializations_completed(0),
-      m_file_emitter(),
-      m_compressor(nullptr),
       m_compression_source(source)
 {
-	if (!source)
+	if (!compressor && !source)
 	{
-		g_logger.format(sinsp_logger::SEV_WARNING,
-		                "Created a serializer with a null compression source");
+		g_logger.format(sinsp_logger::SEV_ERROR, "Created a serializer with no compressor");
 	}
 	if (!c_metrics_dir.get_value().empty())
 	{
@@ -161,14 +139,19 @@ void protobuf_metric_serializer::do_serialization(flush_data& data)
 		// If we have a registered source of truth, it will override
 		// a stored compressor
 		compressor = m_compression_source->get_negotiated_compression_method();
+		if (!compressor)
+		{
+			// The source returns a bogus compressor; fall back to the stored one
+			compressor = m_compressor;
+		}
 	}
 
 	if (!compressor)
 	{
-		// A null compressor. In order to avoid a situation where we can't
-		// serialize any protobufs at all, we will fall back to sending
-		// uncompressed data
-		compressor = null_protobuf_compressor::get();
+		// Everything else failed. In order to avoid a situation where we
+		// can't serialize any protobufs at all, we will fall back to sending
+		// compressed data, as this is the default of the legacy protocol
+		compressor = gzip_protobuf_compressor::get(-1);
 	}
 
 	libsanalyzer::metric_store::store(data->m_metrics);

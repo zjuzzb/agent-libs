@@ -1073,9 +1073,9 @@ int dragent_app::sdagent_main()
 		if (c_10s_flush_enabled->get_value())
 		{
 			aggregator = new async_aggregator(m_aggregator_queue,
-			                                    m_serializer_queue,
-			                                    300,
-			                                    m_configuration.c_root_dir.get_value());
+			                                  m_serializer_queue,
+			                                  300,
+			                                  m_configuration.c_root_dir.get_value());
 			aggregator->set_aggregation_interval_source(&m_connection_manager);
 
 			m_pool.start(*aggregator, c_serializer_timeout_s.get_value());
@@ -1095,8 +1095,8 @@ int dragent_app::sdagent_main()
 		                                        m_protocol_handler,
 		                                        &m_serializer_queue,
 		                                        &m_transmit_queue,
+		                                        compressor,
 		                                        &m_connection_manager);
-		s->set_compression_source(&m_connection_manager);
 		m_pool.start(*s, c_serializer_timeout_s.get_value());
 
 		serializer = s;

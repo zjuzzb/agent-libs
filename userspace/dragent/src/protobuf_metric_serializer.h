@@ -41,25 +41,20 @@ public:
 	 * NOTE: The constructor starts the serialization thread. The serializer
 	 * is active and ready to serialize upon construction.
 	 *
-	 * @param[in] stats_source     The source from which to fetch stats.
-	 * @param[in] root_dir         The root dir base of the application
-	 * @param[in] sample_handler   The serialization handler
-	 * @param[in] input_queue      The queue for incoming unserialized data
-	 * @param[in] output_queue     The queue for outgoing serialized data
-	 * @param[in] compressor       The compressor for the serialized protobufs
+	 * @param[in] stats_source    The source from which to fetch stats.
+	 * @param[in] root_dir        The root dir base of the application
+	 * @param[in] sample_handler  The serialization handler
+	 * @param[in] input_queue     The queue for incoming unserialized data
+	 * @param[in] output_queue    The queue for outgoing serialized data
+	 * @param[in] compressor      The compressor for the serialized protobufs
+	 * @param[in] source          Config source for the compression method
 	 */
 	protobuf_metric_serializer(std::shared_ptr<const capture_stats_source> stats_source,
 	                           const std::string& root_dir,
 	                           uncompressed_sample_handler& sample_handler,
 	                           flush_queue* input_queue,
 	                           protocol_queue* output_queue,
-	                           std::shared_ptr<protobuf_compressor>& compressor);
-
-	protobuf_metric_serializer(std::shared_ptr<const capture_stats_source> stats_source,
-	                           const std::string& root_dir,
-	                           uncompressed_sample_handler& sample_handler,
-	                           flush_queue* input_queue,
-	                           protocol_queue* output_queue,
+	                           std::shared_ptr<protobuf_compressor>& compressor,
 	                           compression_method_source* source);
 
 	~protobuf_metric_serializer() override;

@@ -213,7 +213,8 @@ TEST(protobuf_metric_serializer_test, initial_state)
 	                                   dsh,
 	                                   &g_fqueue,
 	                                   &g_pqueue,
-	                                   compressor));
+	                                   compressor,
+	                                   nullptr));
 
 	ASSERT_EQ(0, s->get_num_serializations_completed());
 }
@@ -247,7 +248,8 @@ TEST(protobuf_metric_serializer_test, serialize)
 	                                   analyzer_callback,
 	                                   &g_fqueue,
 	                                   &g_pqueue,
-	                                   compressor));
+	                                   compressor,
+	                                   nullptr));
 	std::thread t([&s]()
 	{ s->test_run(); });
 
@@ -348,7 +350,8 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	                                   analyzer_callback,
 	                                   &g_fqueue,
 	                                   &g_pqueue,
-	                                   compressor));
+	                                   compressor,
+	                                   nullptr));
 	std::thread t([&]()
 	{ ASSERT_NO_THROW(s->test_run()); });
 
@@ -417,7 +420,8 @@ TEST(protobuf_metric_serializer_test, more_initial_state)
 	                                   g_sample_handler,
 	                                   &g_fqueue,
 	                                   &g_pqueue,
-	                                   compressor));
+	                                   compressor,
+	                                   nullptr));
 
 	ASSERT_NE(s.get(), nullptr);
 
@@ -445,7 +449,8 @@ TEST(protobuf_metric_serializer_test, configuration)
 	                                   g_sample_handler,
 	                                   &g_fqueue,
 	                                   &g_pqueue,
-	                                   compressor));
+	                                   compressor,
+	                                   nullptr));
 
 	// Make sure that update_configuration() updates the values
 	ASSERT_TRUE(s->get_emit_metrics_to_file());

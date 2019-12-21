@@ -51,7 +51,8 @@ TEST(metric_serializer_test, initial_state)
 	                                           g_sample_handler,
 	                                           &g_fqueue,
 	                                           &g_pqueue,
-	                                           compressor));
+	                                           compressor,
+	                                           nullptr));
 
 	ASSERT_NE(s.get(), nullptr);
 	ASSERT_EQ(&g_sample_handler, &test_helper::get_sample_handler(*s));
@@ -81,7 +82,8 @@ TEST(metric_serializer_test, configuration)
 	                                   g_sample_handler,
 	                                   &g_fqueue,
 	                                   &g_pqueue,
-	                                   compressor));
+	                                   compressor,
+	                                   nullptr));
 
 	// Make sure that update_configuration() updates the values
 	ASSERT_TRUE(s->get_emit_metrics_to_file());
