@@ -119,10 +119,12 @@ thread_analyzer_info::~thread_analyzer_info()
 	m_listening_ports.reset();
 }
 
-void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
+void thread_analyzer_info::init(sinsp_analyzer* analyzer,
+								sinsp *inspector,
+								sinsp_threadinfo* tinfo)
 {
+	m_analyzer = analyzer;
 	m_inspector = inspector;
-	m_analyzer = inspector->m_analyzer;
 	m_tinfo = tinfo;
 	m_th_analysis_flags = AF_PARTIAL_METRIC;
 	clear_found_app_checks();
@@ -632,7 +634,7 @@ std::string thread_analyzer_info::ports_to_string(const std::set<uint16_t> &port
 ///////////////////////////////////////////////////////////////////////////////
 analyzer_threadtable_listener::analyzer_threadtable_listener(
 		sinsp* const inspector,
-		sinsp_analyzer* const analyzer):
+		sinsp_analyzer& analyzer):
 	m_inspector(inspector),
 	m_analyzer(analyzer),
 	m_tap(nullptr)
@@ -641,13 +643,13 @@ analyzer_threadtable_listener::analyzer_threadtable_listener(
 
 void analyzer_threadtable_listener::on_thread_created(sinsp_threadinfo* tinfo)
 {
-	void *buffer = tinfo->get_private_state(m_analyzer->get_thread_memory_id());
+	void *buffer = tinfo->get_private_state(m_analyzer.get_thread_memory_id());
 
 	std::memset(buffer, 0, sizeof(thread_analyzer_info));
 
 	tinfo->m_ainfo = new (buffer) thread_analyzer_info(); // placement new
-	tinfo->m_ainfo->m_percentiles = m_analyzer->get_configuration_read_only()->get_percentiles();
-	tinfo->m_ainfo->init(m_inspector, tinfo);
+	tinfo->m_ainfo->m_percentiles = m_analyzer.get_configuration_read_only()->get_percentiles();
+	tinfo->m_ainfo->init(&m_analyzer, m_inspector, tinfo);
 }
 
 void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* const tinfo)

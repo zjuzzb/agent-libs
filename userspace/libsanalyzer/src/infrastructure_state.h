@@ -30,9 +30,10 @@ public:
 	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<size_t, bool>>;
 
 	// Pass a 4th optional argument to turn on m_k8s_subscribed for unit tests. Need to refactor.
-	infrastructure_state(sinsp *inspector,
-			     const std::string& rootdir,
-			     bool force_k8s_subscribed = false);
+	infrastructure_state(sinsp_analyzer& analyzer,
+						 sinsp *inspector,
+						 const std::string& rootdir,
+						 bool force_k8s_subscribed = false);
 	using reg_id_t = std::string;
 
 	~infrastructure_state();
@@ -228,6 +229,7 @@ private:
 
 	policy_cache_t m_policy_cache;
 
+	sinsp_analyzer& m_analyzer;
 	sinsp *m_inspector;
 	std::string m_machine_id;
 

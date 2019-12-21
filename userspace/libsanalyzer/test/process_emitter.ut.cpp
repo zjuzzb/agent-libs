@@ -14,6 +14,7 @@
 #include <scoped_config.h>
 #include <stdint.h>
 #include "analyzer.h"
+#include "analyzer_thread.h"
 
 using namespace test_helpers;
 

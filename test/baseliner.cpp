@@ -150,7 +150,7 @@ protected:
 		                                g_audit_handler,
 		                                g_secure_handler,
 		                                &g_queue);
-		m_inspector->m_analyzer = m_analyzer;
+		m_inspector->register_external_event_processor(*m_analyzer);
 
 		m_analyzer->get_configuration()->set_falco_baselining_enabled(m_configuration.m_falco_baselining_enabled);
 		m_inspector->set_debug_mode(true);

@@ -80,6 +80,11 @@ public:
 		return m_inspector.get();
 	}
 
+	sinsp_analyzer* get_analyzer() const
+	{
+		return m_analyzer;
+	}
+
 	void set_statsite_pipes(std::shared_ptr<pipe_manager> pipes)
 	{
 		m_statsite_pipes = pipes;

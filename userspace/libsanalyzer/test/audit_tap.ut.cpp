@@ -141,7 +141,7 @@ void arg_length_test(const int limit)
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
 	analyzer.enable_audit_tap(true /*emit local connections*/);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	auto &thread1 = inspector->build_thread().pid(DEFAULT_PID)
 						 .comm("dragent")
@@ -196,7 +196,7 @@ TEST(audit_tap_test, basic)
 	// we don't enable it the the ipv4_connection_manager won't record the
 	// correct data.
 	analyzer.enable_audit_tap(true /*emit local connections*/);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	// Build some threads that we'll add connections to.
 	(void)inspector->build_thread().commit();
@@ -303,7 +303,7 @@ TEST(audit_tap_test, connection_audit_one_client_connection)
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
 	analyzer.enable_audit_tap(emit_local_connections);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	auto &thread = inspector->build_thread()
 			.pid(DEFAULT_PID)
@@ -378,7 +378,7 @@ TEST(audit_tap_test, connection_audit_one_server_connection)
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
 	analyzer.enable_audit_tap(emit_local_connections);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	auto &thread = inspector->build_thread()
 			.pid(DEFAULT_PID)

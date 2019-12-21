@@ -3,6 +3,7 @@
 #include <event.h>
 #include <cstdlib> // for rand
 #include <functional>
+#include <assert.h>
 
 class sinsp;
 

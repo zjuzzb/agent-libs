@@ -48,6 +48,7 @@
 #include "secure_audit_internal_metrics.h"
 #include "secure_audit_data_ready_handler.h"
 #include <nlohmann/json.hpp>
+#include "include/sinsp_external_processor.h"
 
 namespace dragent
 {
@@ -238,7 +239,8 @@ private:
 //
 class SINSP_PUBLIC sinsp_analyzer :
 	public secure_audit_data_ready_handler,
-	public secure_audit_internal_metrics
+	public secure_audit_internal_metrics,
+	public libsinsp::event_processor
 {
 public:
 	typedef thread_safe_container::blocking_queue<std::shared_ptr<flush_data_message>> flush_queue;
@@ -289,7 +291,8 @@ public:
 	//
 	// Processing entry point
 	//
-	void process_event(sinsp_evt* evt, analyzer_emitter::flush_flags flushflags);
+	void process_event(sinsp_evt* evt, libsinsp::event_return rc);
+	void process_event(sinsp_evt* evt, analyzer_emitter::flush_flags);
 
 	void add_syscall_time(sinsp_counters* metrics,
 		sinsp_evt::category* cat,

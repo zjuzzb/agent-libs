@@ -196,7 +196,7 @@ void executed_commands_build_and_test_generic(
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -594,7 +594,7 @@ TEST(secure_audit_test, connections_base_client)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -733,7 +733,7 @@ TEST(secure_audit_test, connections_limit)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -873,7 +873,7 @@ TEST(secure_audit_test, connections_base_server)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -1011,7 +1011,7 @@ TEST(secure_audit_test, connections_base_client_server)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -1149,7 +1149,7 @@ TEST(secure_audit_test, connections_enabled_disabled_01)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -1258,7 +1258,7 @@ TEST(secure_audit_test, connections_enabled_disabled_10)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -1368,7 +1368,7 @@ TEST(secure_audit_test, connections_local_enabled)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -1509,7 +1509,7 @@ TEST(secure_audit_test, connections_local_disabled)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -1620,7 +1620,7 @@ TEST(secure_audit_test, connections_base_server_only_interactive)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -1778,7 +1778,7 @@ TEST(secure_audit_test, connections_cmdline)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -1921,7 +1921,7 @@ TEST(secure_audit_test, connections_cmdline_maxlen)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -2073,7 +2073,7 @@ TEST(secure_audit_test, connections_cmdline_maxlen_20)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -2230,7 +2230,7 @@ TEST(secure_audit_test, connections_cmdline_maxlen_150)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -2386,7 +2386,7 @@ TEST(secure_audit_test, connections_cmdline_maxlen_len_plus_50)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -2715,7 +2715,7 @@ TEST(secure_audit_test, k8s_audit_base)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -2727,7 +2727,7 @@ TEST(secure_audit_test, k8s_audit_base)
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	// Fill fake infrastructure_state to test k8s enrichment too
-	infrastructure_state is(inspector.get(), "/foo/bar");
+	infrastructure_state is(analyzer, inspector.get(), "/foo/bar");
 
 	draiosproto::congroup_update_event evt;
 	draiosproto::congroup_uid* parent;
@@ -2919,7 +2919,7 @@ void k8s_audit_disabled(bool a, bool b)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -2984,7 +2984,7 @@ secure_audit_streams:
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -3112,7 +3112,7 @@ secure_audit_streams:
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -3252,7 +3252,7 @@ secure_audit_streams:
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -3398,7 +3398,7 @@ secure_audit_streams:
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -3543,7 +3543,7 @@ secure_audit_streams:
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -3670,7 +3670,7 @@ TEST(secure_audit_test, connections_limit_metrics)
 				g_secure_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);

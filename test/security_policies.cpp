@@ -281,8 +281,8 @@ protected:
 		                                g_audit_handler,
 		                                g_secure_handler,
 		                                &m_flush_queue);
+		m_inspector->register_external_event_processor(*m_analyzer);
 
-		m_inspector->m_analyzer = m_analyzer;
 		m_analyzer->get_configuration()->set_machine_id(m_configuration.machine_id());
 		m_analyzer->set_containers_labels_max_len(m_configuration.m_containers_labels_max_len);
 

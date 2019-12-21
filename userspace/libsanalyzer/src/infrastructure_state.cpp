@@ -292,10 +292,12 @@ bool evaluate_on(draiosproto::container_group *congroup, scope_predicates &preds
 	return true;
 }
 
-infrastructure_state::infrastructure_state(sinsp* inspector,
-					   const std::string& rootdir,
-					   bool force_k8s_subscribed)
-	: m_inspector(inspector)
+infrastructure_state::infrastructure_state(sinsp_analyzer& analyzer,
+										   sinsp* inspector,
+										   const std::string& rootdir,
+										   bool force_k8s_subscribed)
+	: m_analyzer(analyzer)
+	, m_inspector(inspector)
 	, m_k8s_coclient(rootdir)
 	, m_k8s_subscribed(force_k8s_subscribed)
 	, m_k8s_connected(false)
@@ -2275,7 +2277,7 @@ void infrastructure_state::print_obj(const uid_t &key) const
 std::string infrastructure_state::get_cluster_name_from_agent_tags() const
 {	
 	std::string cluster_tag("");
-	std::string tags = m_inspector->m_analyzer->m_configuration->get_host_tags();
+	std::string tags = m_analyzer.m_configuration->get_host_tags();
        
 	// Matches for pattern:
 	// cluster:$NAME    OR
@@ -2315,9 +2317,9 @@ std::string infrastructure_state::get_k8s_cluster_name()
 	}
 
 	// Priority 1 : get cluster name from k8s_cluster_name config
-	if(!m_inspector->m_analyzer->m_configuration->get_k8s_cluster_name().empty())
+	if(!m_analyzer.m_configuration->get_k8s_cluster_name().empty())
 	{
-		m_k8s_cluster_name = m_inspector->m_analyzer->m_configuration->get_k8s_cluster_name();
+		m_k8s_cluster_name = m_analyzer.m_configuration->get_k8s_cluster_name();
 	} // Priority 2: get it from agent tag "cluster:*" 
 	else if(!get_cluster_name_from_agent_tags().empty())
 	{

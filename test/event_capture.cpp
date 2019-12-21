@@ -24,7 +24,7 @@ void event_capture::capture()
 	                                g_audit_handler,
 	                                g_secure_handler,
 	                                &m_flush_queue);
-	m_inspector->m_analyzer = m_analyzer;
+	m_inspector->register_external_event_processor(*m_analyzer);
 
 	m_analyzer->set_configuration(m_configuration);
 

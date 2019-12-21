@@ -1,5 +1,12 @@
 #include <gtest.h>
 #include <infrastructure_state.h>
+#include <analyzer.h>
+
+namespace {
+	audit_tap_handler_dummy athd;
+	null_secure_audit_handler sahd;
+	sinsp_analyzer::flush_queue flush_queue(100);
+}
 
 class inf_state_test : public testing::Test
 {
@@ -10,7 +17,14 @@ public:
 	inf_state_test()
 	{
 		m_sinsp.reset(new sinsp());
-		m_infra_state.reset(new infrastructure_state(m_sinsp.get(), "/opt/draios", true));
+		m_analyzer.reset(new sinsp_analyzer(
+				&*m_sinsp,
+				"",
+				std::make_shared<internal_metrics>(),
+				athd,
+				sahd,
+				&flush_queue));
+		m_infra_state.reset(new infrastructure_state(*m_analyzer, m_sinsp.get(), "/opt/draios", true));
 	}
        	
 protected:
@@ -122,6 +136,7 @@ protected:
 
 	std::unique_ptr<infrastructure_state> m_infra_state;
 	std::unique_ptr<sinsp> m_sinsp;
+	std::unique_ptr<sinsp_analyzer> m_analyzer;
 	std::unordered_map<std::string, int> m_map_of_counts;
 	std::vector<std::string> m_containers;
 	static std::string s_container_stub;

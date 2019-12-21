@@ -3,7 +3,6 @@
 #include <memory>
 #include <event.h>
 #include <threadinfo.h>
-#include "analyzer_thread.h" /*thread_analyzer_info*/
 
 namespace test_helpers
 {
@@ -35,13 +34,11 @@ private:
 	using scap_evt_ptr = std::unique_ptr<scap_evt>;
 	using ppm_event_info_ptr = std::unique_ptr<ppm_event_info>;
 	using sinsp_fdinfo_t_ptr = std::unique_ptr<sinsp_fdinfo_t>;
-	using thread_analyzer_info_ptr = std::unique_ptr<thread_analyzer_info>;
 
 	sinsp_evt_ptr m_sinsp_event;
 	scap_evt_ptr m_scap_event;
 	ppm_event_info_ptr m_ppm_event_info;
 	sinsp_fdinfo_t_ptr m_sinsp_fdinfo;
-	thread_analyzer_info_ptr m_thread_analyzer_info;
 	int64_t m_tid;
 };
 

@@ -3,6 +3,7 @@
 #include <event.h>
 #include <functional>
 #include <threadinfo.h>
+#include <utils.h>
 
 namespace test_helpers
 {

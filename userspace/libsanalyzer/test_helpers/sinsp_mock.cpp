@@ -92,9 +92,10 @@ void sinsp_mock::open(uint32_t timeout_ms) /*override*/
 	*interfaces = m_network_interfaces;
 	inject_network_interfaces(interfaces);
 
-	if(m_analyzer) {
-		m_analyzer->on_capture_start();
+	if (m_external_event_processor) {
+		m_external_event_processor->on_capture_start();
 	}
+	
 
 	// Pass ownership of the threads to the thread_manager
 	while (!m_temporary_threadinfo_list.empty())
@@ -133,9 +134,8 @@ int32_t sinsp_mock::next(sinsp_evt **evt) /*override*/
 		m_events.pop_front();
 	}
 
-	if(m_analyzer)
-	{
-		m_analyzer->process_event(*evt, analyzer_emitter::DF_NONE);
+	if (m_external_event_processor) {
+		m_external_event_processor->process_event(*evt, libsinsp::EVENT_RETURN_NONE);
 	}
 
 	return SCAP_SUCCESS;

@@ -1065,7 +1065,7 @@ int dragent_app::sdagent_main()
 		}
 		LOG_INFO("Created analyzer");
 
-		inspector->m_analyzer = analyzer;
+		inspector->register_external_event_processor(*analyzer);
 		init_inspector(inspector);
 		LOG_INFO("Configured inspector");
 
@@ -1651,7 +1651,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			if (m_sinsp_worker.get_last_loop_ns())
 			{
 				char buf[1024];
-				m_sinsp_worker.get_inspector()->m_analyzer->generate_memory_report(buf,
+				m_sinsp_worker.get_analyzer()->generate_memory_report(buf,
 				                                                                   sizeof(buf));
 				crash_handler::log_crashdump_message(buf);
 			}
@@ -1799,7 +1799,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			if (m_sinsp_worker.get_last_loop_ns())
 			{
 				char buf[1024];
-				m_sinsp_worker.get_inspector()->m_analyzer->generate_memory_report(buf,
+				m_sinsp_worker.get_analyzer()->generate_memory_report(buf,
 				                                                                   sizeof(buf));
 				crash_handler::log_crashdump_message(buf);
 			}

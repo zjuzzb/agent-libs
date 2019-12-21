@@ -225,7 +225,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_tap = nullptr;
 	m_secure_audit = nullptr;
 #ifndef CYGWING_AGENT
-	m_infrastructure_state = new infrastructure_state(inspector, root_dir);
+	m_infrastructure_state = new infrastructure_state(*this, inspector, root_dir);
 #endif
 
 	//
@@ -233,7 +233,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	//
 	m_thread_memory_id = inspector->reserve_thread_memory(sizeof(thread_analyzer_info));
 
-	m_threadtable_listener = new analyzer_threadtable_listener(inspector, this);
+	m_threadtable_listener = new analyzer_threadtable_listener(inspector, *this);
 	inspector->m_thread_manager->set_listener((sinsp_threadtable_listener*)m_threadtable_listener);
 
 	m_fd_listener = new sinsp_analyzer_fd_listener(inspector, this, m_falco_baseliner);
@@ -4913,7 +4913,24 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 //
 // Analyzer event processing entry point
 //
-void sinsp_analyzer::process_event(sinsp_evt* evt, analyzer_emitter::flush_flags flushflags)
+void sinsp_analyzer::process_event(sinsp_evt* evt, analyzer_emitter::flush_flags flags)
+{
+	switch (flags)
+	{
+	case analyzer_emitter::DF_TIMEOUT:
+		process_event(evt, libsinsp::EVENT_RETURN_TIMEOUT);
+		return;
+	case analyzer_emitter::DF_EOF:
+		process_event(evt, libsinsp::EVENT_RETURN_EOF);
+		return;
+	case analyzer_emitter::DF_NONE:
+	default:
+		process_event(evt, libsinsp::EVENT_RETURN_NONE);
+		return;
+	}
+}
+
+void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 {
 	uint64_t ts;
 	uint64_t delta;
@@ -4921,6 +4938,22 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, analyzer_emitter::flush_flags
 	uint16_t etype;
 	thread_analyzer_info* tainfo;
 
+	analyzer_emitter::flush_flags flushflags = analyzer_emitter::DF_NONE;
+
+	switch (rc)
+	{
+	case libsinsp::EVENT_RETURN_TIMEOUT:
+		flushflags = analyzer_emitter::DF_TIMEOUT;
+		break;
+	case libsinsp::EVENT_RETURN_EOF:
+		flushflags = analyzer_emitter::DF_EOF;
+		break;
+	case libsinsp::EVENT_RETURN_NONE:
+#ifndef _DEBUG
+	default:
+#endif
+		flushflags = analyzer_emitter::DF_NONE;
+	}
 	//
 	// If there is no event, assume that this is an EOF and use the
 	// next sample event as target time
