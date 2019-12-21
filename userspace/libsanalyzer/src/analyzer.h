@@ -292,7 +292,6 @@ public:
 	// Processing entry point
 	//
 	void process_event(sinsp_evt* evt, libsinsp::event_return rc);
-	void process_event(sinsp_evt* evt, analyzer_emitter::flush_flags);
 
 	void add_syscall_time(sinsp_counters* metrics,
 		sinsp_evt::category* cat,

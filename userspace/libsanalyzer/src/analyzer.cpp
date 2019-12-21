@@ -4913,23 +4913,6 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 //
 // Analyzer event processing entry point
 //
-void sinsp_analyzer::process_event(sinsp_evt* evt, analyzer_emitter::flush_flags flags)
-{
-	switch (flags)
-	{
-	case analyzer_emitter::DF_TIMEOUT:
-		process_event(evt, libsinsp::EVENT_RETURN_TIMEOUT);
-		return;
-	case analyzer_emitter::DF_EOF:
-		process_event(evt, libsinsp::EVENT_RETURN_EOF);
-		return;
-	case analyzer_emitter::DF_NONE:
-	default:
-		process_event(evt, libsinsp::EVENT_RETURN_NONE);
-		return;
-	}
-}
-
 void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 {
 	uint64_t ts;
