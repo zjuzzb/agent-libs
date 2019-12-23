@@ -1037,6 +1037,8 @@ TEST(aggregator, resource_categories)
 	in->set_cpu_cores_quota_limit(29);
 	in->set_cpu_cpuset_usage_pct(30);
 	in->set_cpu_cores_cpuset_limit(31);
+	in->set_rw_bytes(32);
+	in->set_root_fs_bytes(33);
 
 	// other locations of resource_categories
 	input.add_programs()->mutable_procinfo()->mutable_resource_counters()->set_capacity_score(28);
@@ -1075,6 +1077,8 @@ TEST(aggregator, resource_categories)
 	EXPECT_EQ(out->aggr_cpu_cores_quota_limit().sum(), 29);
 	EXPECT_EQ(out->aggr_cpu_cpuset_usage_pct().sum(), 30);
 	EXPECT_EQ(out->aggr_cpu_cores_cpuset_limit().sum(), 31);
+	EXPECT_EQ(out->aggr_rw_bytes().sum(), 32);
+	EXPECT_EQ(out->aggr_root_fs_bytes().sum(), 33);
 	EXPECT_EQ(output.programs()[0].procinfo().resource_counters().aggr_capacity_score().sum(), 28);
 	EXPECT_EQ(output.containers()[0].resource_counters().aggr_capacity_score().sum(), 29);
 	EXPECT_EQ(output.unreported_counters().resource_counters().aggr_capacity_score().sum(), 30);
@@ -1110,6 +1114,8 @@ TEST(aggregator, resource_categories)
 	in->set_cpu_cores_quota_limit(100);
 	in->set_cpu_cpuset_usage_pct(100);
 	in->set_cpu_cores_cpuset_limit(100);
+	in->set_rw_bytes(100);
+	in->set_root_fs_bytes(100);
 
 	aggregator.aggregate(input, output);
 	EXPECT_EQ(out->aggr_capacity_score().sum(), 101);
@@ -1143,6 +1149,8 @@ TEST(aggregator, resource_categories)
 	EXPECT_EQ(out->aggr_cpu_cores_quota_limit().sum(), 129);
 	EXPECT_EQ(out->aggr_cpu_cpuset_usage_pct().sum(), 130);
 	EXPECT_EQ(out->aggr_cpu_cores_cpuset_limit().sum(), 131);
+	EXPECT_EQ(out->aggr_rw_bytes().sum(), 132);
+	EXPECT_EQ(out->aggr_root_fs_bytes().sum(), 133);
 
 	// we have to ignore "invalid" capacity scores
 	// We use this number rather than the computation to

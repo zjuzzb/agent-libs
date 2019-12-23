@@ -104,6 +104,15 @@ protected:
 	 */
 	bool heartbeat();
 
+	/**
+	 * Get the last heartbeat. This is provided for convenience to the
+	 * runnables so that they can measure the passing of time.
+	 */
+	uint64_t last_heartbeat_ms()
+	{
+		return m_last_heartbeat_ms;
+	}
+
 private:
 
 	void run() override;

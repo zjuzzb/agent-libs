@@ -85,6 +85,11 @@ public:
 		return m_analyzer;
 	}
 
+	sinsp_container_manager &get_container_manager()
+	{
+		return m_inspector->m_container_manager;
+ 	}
+
 	void set_statsite_pipes(std::shared_ptr<pipe_manager> pipes)
 	{
 		m_statsite_pipes = pipes;

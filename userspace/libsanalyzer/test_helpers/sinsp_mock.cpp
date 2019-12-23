@@ -62,7 +62,7 @@ container_builder sinsp_mock::build_container(sinsp_threadinfo& tinfo)
 					   std::placeholders::_2));
 }
 
-void sinsp_mock::commit_container(sinsp_container_info::ptr_t container,
+void sinsp_mock::commit_container(const sinsp_container_info::ptr_t &container,
 				  sinsp_threadinfo& tinfo)
 {
 	m_container_manager.add_container(container, &tinfo);

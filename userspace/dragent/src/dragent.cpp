@@ -10,6 +10,7 @@
 #include "config_rest_request_handler.h"
 #include "configlist_rest_request_handler.h"
 #include "connection_manager.h"
+#include "container_size_requestor.h"
 #include "crash_handler.h"
 #include "dragent_memdump_logger.h"
 #include "dragent_user_event_callback.h"
@@ -1120,6 +1121,14 @@ int dragent_app::sdagent_main()
 		m_pool.start(m_capture_job_handler, watchdog_runnable::NO_TIMEOUT);
 		// sinsp_worker has not been changed to a watchdog_runnable
 		ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
+
+		// Start the container_size_requestor
+		if(container_size_requestor_runnable::enabled())
+		{
+			sinsp_container_manager &mgr = m_sinsp_worker.get_container_manager();
+			auto size_requestor = std::make_shared<container_size_requestor_runnable>(mgr);
+			m_pool.start(size_requestor, 300 /*timeout*/);
+		}
 
 		enable_rest_server(m_configuration);
 	}

@@ -443,6 +443,12 @@ message resource_categories {
     // Container only.
     optional uint32 cpu_cores_cpuset_limit = 45;
     optional aggregations64 aggr_cpu_cores_cpuset_limit = 145;
+
+    optional uint64 rw_bytes = 46;
+    optional aggregations64 aggr_rw_bytes = 146;
+
+    optional uint64 root_fs_bytes = 47;
+    optional aggregations64 aggr_root_fs_bytes = 147;
 }
 
 message connection_categories {

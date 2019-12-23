@@ -43,7 +43,7 @@ void sinsp_logger_cb(std::string&& str,
 		break;
 	}
 
-	s_captured += str;
+	s_captured += str + "\n";
 }
 
 }

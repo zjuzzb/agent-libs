@@ -56,12 +56,14 @@ public:
 	}
 
 	/**
-	 * Complete the threadinfo and pass it to the consumer
+	 * Complete the container_info and pass a const version to both the consumer
+	 * and back to the client.
 	 */
-	void commit()
+	sinsp_container_info::ptr_t commit()
 	{
 		fill_empty_fields();
 		m_commit(m_container_info, m_tinfo);
+		return m_container_info;
 	}
 private:
 
@@ -72,18 +74,17 @@ private:
 
 	void fill_empty_fields()
 	{
-		if(m_container_info->m_id.empty())
-		{
-			static char letter = 'a';
-			std::string container_id = "container_id_" + letter++;
-			id(container_id);
-		}
-
 		if(m_container_info->m_name.empty())
 		{
 			static char letter = 'a';
-			std::string container_name = "container_" + letter++;
+			std::string container_name = std::string("container_") + (letter++);
 			name(container_name);
+
+		}
+		if(m_container_info->m_id.empty())
+		{
+			std::string container_id = m_container_info->m_name + "_id";
+			id(container_id);
 		}
 	}
 

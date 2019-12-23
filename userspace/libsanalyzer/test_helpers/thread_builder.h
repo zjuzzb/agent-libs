@@ -123,7 +123,7 @@ public:
 		if (0 == m_threadinfo->m_pid)
 		{
 			// Because of how the mutators work, if the pid is
-			// empty then the tid is also empty. Set them both to
+			// zero then the tid is also empty. Set them both to
 			// a random value.
 			m_threadinfo->m_pid = m_threadinfo->m_tid = rand();
 		}
@@ -173,10 +173,8 @@ private:
 	{
 		m_threadinfo->m_pid = 0;
 		m_threadinfo->m_tid = 0;
-		m_threadinfo->m_uid = 200;
-		m_threadinfo->m_container_id = 201;
-		m_threadinfo->m_clone_ts = sinsp_utils::get_current_time_ns() - 1000000;
 		m_threadinfo->m_uid = rand();
+		m_threadinfo->m_clone_ts = sinsp_utils::get_current_time_ns() - 1000000;
 	}
 
 	commit_delegate m_commit;

@@ -42,7 +42,7 @@ public:
 	int32_t next(OUT sinsp_evt **evt) override;
 private:
 	void commit_thread(sinsp_threadinfo *thread_info);
-	void commit_container(sinsp_container_info::ptr_t, sinsp_threadinfo& tinfo);
+	void commit_container(const sinsp_container_info::ptr_t&, sinsp_threadinfo& tinfo);
 	void commit_event(const sinsp_evt_wrapper::ptr& event, unsigned int count);
 
 	struct event_and_count
