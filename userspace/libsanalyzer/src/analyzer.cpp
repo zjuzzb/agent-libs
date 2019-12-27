@@ -6482,11 +6482,6 @@ sinsp_analyzer::emit_container(const string &container_id,
 		container->mutable_resource_counters()->set_rw_bytes(container_info->m_size_rw_bytes);
 	}
 
-	if(container_info->m_size_root_fs_bytes != -1)
-	{
-		container->mutable_resource_counters()->set_root_fs_bytes(container_info->m_size_root_fs_bytes);
-	}
-
 	if(container_info->m_memory_limit > 0)
 	{
 		container->mutable_resource_counters()->set_memory_limit_kb(container_info->m_memory_limit/1024);
