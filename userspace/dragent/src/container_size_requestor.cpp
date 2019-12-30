@@ -80,6 +80,11 @@ void container_size_requestor::load_container_subset_cache(const uint64_t uptime
 		auto containers = m_manager.get_containers();
 		for(auto it = containers->begin(); it != containers->end(); ++it)
 		{
+			if(it->second->is_pod_sandbox())
+			{
+				continue;
+			}
+
 			m_cache.push_back(container_info_subset(*it->second));
 		}
 	}
