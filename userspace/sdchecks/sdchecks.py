@@ -23,6 +23,7 @@ from datetime import datetime, timedelta
 import sys
 import signal
 import struct
+from time import sleep
 import ast
 import config
 import platform
@@ -89,6 +90,10 @@ def sighup_handler(signum, frame):
             logging.warning("File: \"%s\", line %d, in %s" %
                             (filename, linenumber, funcname))
     os._exit(SIGHUP_HANDLER_EXIT_CODE)
+
+def sigterm_handler(signum, frame):
+    logging.info('Received signal: {}, exiting sdchecks'.format(signum))
+    exit()
 
 def setns(fd):
     if hasattr(_LIBC, "setns"):
@@ -890,6 +895,7 @@ class Application(object):
         if len(sys.argv) > 1:
 
             if sys.argv[1] == "runCheck":
+                print("Python Version: %s" % self.python_version)
                 proc_data = {
                     "check": sys.argv[2],
                     "pid": int(sys.argv[3]),
@@ -913,6 +919,20 @@ class Application(object):
                 print("Metrics: %s" % repr(metrics))
                 print("Checks: %s" % repr(service_checks))
                 print("Exception: %s" % ex)
+
+                if proc_data["conf_vals"].get('rate', False):
+                    # When running sdchecks from ansible automation framework,
+                    # SIGTERM(15) can be used to exit gracefully
+                    signal.signal(signal.SIGTERM, sigterm_handler)
+                    iterations = int(proc_data["conf_vals"].get('iterations', 2))
+                    interval = int(proc_data["conf_vals"].get('interval', 1))
+                    for i in range(2, iterations+1):
+                        print('Running iteration: %d' % i)
+                        sleep(interval)
+                        metrics, service_checks, ex = check_instance.run()
+                        print("Metrics: %s" % repr(metrics))
+                        print("Checks: %s" % repr(service_checks))
+                        print("Exception: %s" % ex)
                 exit()
             elif sys.argv[1] == "run":
                 self.initialize_queues()
