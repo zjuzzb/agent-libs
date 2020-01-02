@@ -66,6 +66,11 @@ type_config<std::vector<std::string>> infrastructure_state::c_k8s_include_types(
 	"list of extra k8s types to resquest beyond the default",
 	"k8s_extra_resources",
 	"include");
+type_config<std::vector<std::string>> infrastructure_state::c_k8s_pod_status_wl(
+	{"Evicted", "DeadlineExceeded", "Error", "ContainerCreating", "CrashLoopBackOff", "Pending"},
+	"list of aggregate pod status that can be sent to BE",
+	"k8s_pod_status_reason_strings"
+	);
 type_config<uint32_t> infrastructure_state::c_k8s_event_counts_log_time(
 	0,
 	"",
@@ -467,6 +472,7 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			*cmd.mutable_include_types() = {c_k8s_include_types.get_value().begin(), c_k8s_include_types.get_value().end()};
 			cmd.set_event_counts_log_time(c_k8s_event_counts_log_time.get_value());
 			cmd.set_max_rnd_conn_delay(c_k8s_max_rnd_conn_delay->get_value());
+			*cmd.mutable_pod_status_allowlist() = {c_k8s_pod_status_wl.get_value().begin(), c_k8s_pod_status_wl.get_value().end()};
 
 			m_k8s_subscribed = true;
 			m_k8s_connected = true;
@@ -1755,6 +1761,19 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state *state)
 		}
 		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
 	}
+
+	for (auto& obj : m_pod_status)
+	{
+		auto ns = namespaces.find(obj.first);
+		if (ns != namespaces.end())
+		{
+			for(auto& pod_status : obj.second)
+			{
+				ns->second->add_pod_status_count()->CopyFrom(pod_status);
+			}
+		}
+	}
+
 }
 
 void infrastructure_state::emit(const draiosproto::container_group* cg, draiosproto::k8s_state *state, uint64_t ts)
@@ -1883,6 +1902,32 @@ void infrastructure_state::emit(const draiosproto::container_group* cg, draiospr
 	else if(kind == "k8s_statefulset")
 	{
 		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_statefulsets());
+	}
+	else if(kind == "podstatuscounter")
+	{
+		draiosproto::pod_status_count pod_status;
+
+		// look for the parent namespace
+		std::string ns;
+		for(auto& parent : cg->parents())
+		{
+			if(parent.kind() == "k8s_namespace")
+			{
+				ns = parent.id();
+				break;
+			}
+		}
+
+		if (!ns.empty())
+		{
+			legacy_k8s::export_k8s_object<draiosproto::pod_status_count>(m_parents[key], cg, &pod_status);
+			auto pos = m_pod_status[ns].find(pod_status);
+			if(pos != m_pod_status[ns].end())
+			{
+				m_pod_status[ns].erase(pos);
+			}
+			m_pod_status[ns].insert(std::move(pod_status));
+		}
 	}
 	else
 	{

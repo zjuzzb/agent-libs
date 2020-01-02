@@ -2,6 +2,7 @@ package kubecollect
 
 import (
 	"context"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -164,11 +165,12 @@ func StartUserEventsWatch(userEventContext context.Context,
 		// k8s api doesn't do "or", so have to explicitly reject all the un-wanted kinds.
 		fieldstr = "involvedObject.kind!=Cronjob,involvedObject.kind!=Ingress,involvedObject.kind!=Job,involvedObject.kind!=Namespace,involvedObject.kind!=ResourceQuota"
 
+		sort.Strings(includeTypes)
 		// Add services and hpas based on includeTypes
-		if !in_array("services" , includeTypes) {
+		if !in_sorted_array("services" , includeTypes) {
 			fieldstr = fieldstr + ",involvedObject.kind!=Services"
 		}
-		if !in_array("horizontalpodautoscalars" , includeTypes) {
+		if !in_sorted_array("horizontalpodautoscalars" , includeTypes) {
 			fieldstr = fieldstr + ",involvedObject.kind!=HorizontalPodAutoscaler"
 		}
 	}

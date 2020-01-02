@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime/debug"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -125,13 +126,37 @@ func logEvents() {
 
 const RsyncInterval = 10 * time.Minute
 
-func in_array(s string, arr []string) bool {
-	for _, a := range arr {
-		if s == a {
-			return true
-		}
+func in_sorted_array(s string, arr []string) bool {
+	index := sort.SearchStrings(arr, s)
+
+	if index < len(arr) && arr[index] == s {
+		return true
 	}
 	return false
+}
+
+func addCustomResources(resources []*v1meta.APIResourceList, customResources []string) ([]*v1meta.APIResourceList) {
+	if len(customResources) > 0 {
+
+		// Create a sysdig/v1alpha1 group version
+		sysdigResources := v1meta.APIResourceList{
+			TypeMeta: v1meta.TypeMeta{
+				Kind:       "",
+				APIVersion: "",
+			},
+			GroupVersion: "sysdig/v1alpha1",
+			APIResources: nil,
+		}
+
+		// Add custom resources to sysdig new group version
+		for _,customResource := range customResources {
+			sysdigResources.APIResources = append(sysdigResources.APIResources, v1meta.APIResource{Name: customResource})
+		}
+
+		// Add the new group version to the list of resources
+		resources = append(resources, &sysdigResources)
+	}
+	return resources
 }
 
 func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string, checkIncludeOptional ...bool) ([]string) {
@@ -145,6 +170,24 @@ func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 	resourceMap := make(map[string]bool)
 
 	havePods := false
+
+	customResources := []string {"podstatuscounter"}
+
+	resources = addCustomResources(resources, customResources)
+
+	defaultDisabledResources := []string {
+		"services",
+		"resourcequotas",
+		"horizontalpodautoscalers",
+		"persistentvolumes",
+		"persistentvolumeclaims",
+	}
+	for _, nsr := range customResources {
+		defaultDisabledResources = append(defaultDisabledResources, nsr)
+	}
+
+	sort.Strings(defaultDisabledResources)
+	sort.Strings(includeTypes)
 
 	for _, resourceList := range resources {
 		for _, resource := range resourceList.APIResources {
@@ -164,18 +207,9 @@ func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 			// Exclude services, rqs, hpas, pvs and pvcs unless explicitly requested
 			// We'll probably want to change this
 			// Note that PVCs may depend on PVs
-			// Do this check only for checkInclude
-			if checkInclude {
-				if (resource.Name == "services" ||
-					resource.Name == "resourcequotas" ||
-					resource.Name == "horizontalpodautoscalers" ||
-					resource.Name == "persistentvolumes" ||
-					resource.Name == "persistentvolumeclaims") &&
-					!in_array(resource.Name, includeTypes) {
-
-					log.Debugf("K8s: Exclude resourcetype %s", resource.Name)
-					continue
-				}
+			if checkInclude && in_sorted_array(resource.Name, defaultDisabledResources) && !in_sorted_array(resource.Name, includeTypes) {
+				log.Debugf("K8s: Exclude resourcetype %s", resource.Name)
+				continue
 			}
 
 			if(!resourceMap[resource.Name]) {
@@ -635,6 +669,8 @@ func startInformers(
 			startPersistentVolumesInformer(ctx, kubeClient, wg, InformerChannel)
 		case "persistentvolumeclaims":
 			startPersistentVolumeClaimsInformer(ctx, kubeClient, wg, InformerChannel)
+		case "podstatuscounter":
+			startPodStatusWatcher(ctx, opts, kubeClient, wg, InformerChannel)
 		default:
 			log.Debugf("No kubecollect support for %v", resource)
 			infStarted = false

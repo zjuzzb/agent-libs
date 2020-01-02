@@ -71,6 +71,7 @@ GoBuild(cointerface
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/horizontalpodautoscalers.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/ingress.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/jobs.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/pod_aggregate_status_counter.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/namespaces.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/nodes.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/persistentvolumeclaims.go
@@ -105,6 +106,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface_test_success.t
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/replicasets_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/resourcequotas_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/selector_cache_test.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/pod_aggregate_status_counter_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/test_helpers/assert.go
 		)
 

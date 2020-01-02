@@ -1297,6 +1297,12 @@ message k8s_common {
     repeated k8s_pair parents = 6;
 }
 
+message pod_status_count {
+    optional string status = 1;
+    optional uint64 count = 2;
+    optional aggregations64 aggr_count = 100;
+}
+
 message k8s_namespace {
     // 8:   deprecated persistentvolume_count
     // 108: deprecated aggr_persistentvolumeclaim_count
@@ -1332,6 +1338,8 @@ message k8s_namespace {
 
     optional uint64 pod_available_count = 12;
     optional aggregations64 aggr_pod_available_count = 112;
+
+    repeated pod_status_count pod_status_count = 13;
 }
 
 message k8s_node {
