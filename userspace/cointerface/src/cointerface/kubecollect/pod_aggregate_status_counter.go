@@ -236,14 +236,14 @@ func getStatusFromPod(pod *v1.Pod) string {
 					reason = fmt.Sprintf("Init:ErrorExit")
 				}
 			} else {
-				reason = "Init:" + container.State.Terminated.Reason
+				reason = "Init:Terminated"
 			}
 			initializing = true
 		case container.State.Waiting != nil && len(container.State.Waiting.Reason) > 0 && container.State.Waiting.Reason != "PodInitializing":
-			reason = "Init:" + container.State.Waiting.Reason
+			reason = "Init:Waiting"
 			initializing = true
 		default:
-			reason = fmt.Sprintf("Init:%d/%d", i, len(pod.Spec.InitContainers))
+			reason = fmt.Sprintf("Initializing")
 			initializing = true
 		}
 		break
