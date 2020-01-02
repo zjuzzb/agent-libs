@@ -110,17 +110,13 @@ container_size_request:
 
 	sinsp_mock inspector;
 
-	auto& tinfo1 = inspector.build_thread().commit();
-	auto container1 = inspector.build_container(tinfo1).commit();
+	auto container1 = inspector.build_container().commit();
 	counter.add(container1);
-	auto& tinfo2 = inspector.build_thread().commit();
-	auto container2 = inspector.build_container(tinfo2).commit();
+	auto container2 = inspector.build_container().commit();
 	counter.add(container2);
-	auto& tinfo3 = inspector.build_thread().commit();
-	auto container3 = inspector.build_container(tinfo3).id("not-alphabetical").commit();
+	auto container3 = inspector.build_container().id("not-alphabetical").commit();
 	counter.add(container3);
-	auto& tinfo4 = inspector.build_thread().commit();
-	auto container4 = inspector.build_container(tinfo4).commit();
+	auto container4 = inspector.build_container().commit();
 	counter.add(container4);
 
 	inspector.open();
@@ -164,8 +160,7 @@ container_size_request:
 	requestor.request((uptime++) * MS_PER_SEC);
 	ASSERT_EQ(2, counter.found());
 	// Add a container that won't get added to the queue until later
-	auto& tinfo5 = inspector.build_thread().commit();
-	auto container5 = inspector.build_container(tinfo5).commit();
+	auto container5 = inspector.build_container().commit();
 	counter.add(container5);
 	requestor.request((uptime++)* MS_PER_SEC);
 	ASSERT_EQ(2, counter.found());
@@ -249,14 +244,11 @@ container_size_request:
 
 	sinsp_mock inspector;
 
-	auto& tinfo1 = inspector.build_thread().commit();
-	auto container1 = inspector.build_container(tinfo1).commit();
+	auto container1 = inspector.build_container().commit();
 	counter.add(container1);
-	auto& tinfo2 = inspector.build_thread().commit();
-	auto container2 = inspector.build_container(tinfo2).commit();
+	auto container2 = inspector.build_container().commit();
 	counter.add(container2);
-	auto& tinfo3 = inspector.build_thread().commit();
-	auto container3 = inspector.build_container(tinfo3).commit();
+	auto container3 = inspector.build_container().commit();
 	counter.add(container3);
 
 	inspector.open();
@@ -342,10 +334,8 @@ container_size_request:
 
 	sinsp_mock inspector;
 
-	auto &tinfo1 = inspector.build_thread().commit();
-	auto container1 = inspector.build_container(tinfo1).commit();
-	auto& tinfo2 = inspector.build_thread().commit();
-	auto container2 = inspector.build_container(tinfo2).commit();
+	auto container1 = inspector.build_container().commit();
+	auto container2 = inspector.build_container().commit();
 
 	inspector.open();
 

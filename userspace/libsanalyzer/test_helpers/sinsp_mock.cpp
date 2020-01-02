@@ -52,6 +52,17 @@ void sinsp_mock::commit_thread(sinsp_threadinfo *thread_info)
 	m_temporary_threadinfo_list.push_back(thread_info_ptr(thread_info));
 }
 
+container_builder sinsp_mock::build_container()
+{
+	// Create a container builder that will commit into this class
+	auto& tinfo = build_thread().commit();
+	return container_builder(tinfo,
+				 std::bind(&sinsp_mock::commit_container,
+					   this,
+					   std::placeholders::_1,
+					   std::placeholders::_2));
+}
+
 container_builder sinsp_mock::build_container(sinsp_threadinfo& tinfo)
 {
 	// Create a container builder that will commit into this class
@@ -62,7 +73,7 @@ container_builder sinsp_mock::build_container(sinsp_threadinfo& tinfo)
 					   std::placeholders::_2));
 }
 
-void sinsp_mock::commit_container(const sinsp_container_info::ptr_t &container,
+void sinsp_mock::commit_container(const sinsp_container_info::ptr_t& container,
 				  sinsp_threadinfo& tinfo)
 {
 	m_container_manager.add_container(container, &tinfo);

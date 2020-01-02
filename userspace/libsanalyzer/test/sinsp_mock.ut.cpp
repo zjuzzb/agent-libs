@@ -6,8 +6,8 @@ using namespace test_helpers;
 // Ensure that the mock can be used to generate a thread
 TEST(sinsp_mock_test, build_thread)
 {
-	int64_t tid = 0x100;
-	std::string exe = "my_exe";
+	const int64_t tid = 0x100;
+	const std::string exe = "my_exe";
 
 	sinsp_mock mock;
 	(void)mock.build_thread().tid(tid).exe(exe).commit();
@@ -22,18 +22,39 @@ TEST(sinsp_mock_test, build_thread)
 // Ensure that the mock can be used to generate a container
 TEST(sinsp_mock_test, build_container)
 {
-	std::string container_id = "123456";
-	std::string container_name = "my_container";
+	const std::string container_id = "123456";
+	const std::string container_name = "my_container";
 
 	sinsp_mock mock;
-	auto &tinfo = mock.build_thread().commit();
-	(void)mock.build_container(tinfo).id(container_id).name(container_name).commit();
+	(void)mock.build_container().id(container_id).name(container_name).commit();
 
 	mock.open();
 
 	// Pull the container out of the container manager
 	auto cinfo = mock.m_container_manager.get_container(container_id);
 	ASSERT_EQ(container_name, cinfo->m_name);
+}
+
+// Ensure that the mock can be used to generate a container with a thread
+TEST(sinsp_mock_test, build_container_with_thread)
+{
+	const uint64_t thread_pid = 0x123456;
+	const std::string container_id = "123456";
+	const std::string container_name = "my_container";
+
+	sinsp_mock mock;
+	{
+		auto& tinfo = mock.build_thread().pid(thread_pid).commit();
+		(void)mock.build_container(tinfo).id(container_id).name(container_name).commit();
+	}
+
+	mock.open();
+
+	// Pull the container out of the container manager
+	auto cinfo = mock.m_container_manager.get_container(container_id);
+	ASSERT_EQ(container_name, cinfo->m_name);
+	sinsp_threadinfo* tinfo = mock.get_thread(thread_pid);
+	ASSERT_EQ(container_id, tinfo->m_container_id);
 }
 
 // Ensure that the mock can be used to generate an event

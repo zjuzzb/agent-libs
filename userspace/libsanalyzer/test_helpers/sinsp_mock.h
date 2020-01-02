@@ -15,6 +15,7 @@ namespace test_helpers {
  * Note that this was created years after sinsp was written and the
  * internals are bolted-on in places but effort should be made to keep the
  * sinsp_mock interface as simple as possible.
+ *
  */
 class sinsp_mock : public sinsp
 {
@@ -23,17 +24,51 @@ public:
 	~sinsp_mock() override;
 
 	/**
-	 * @return a thread_builder that commits into this class
+	 * Return a thread_builder that commits into sinsp's thread manager. If the
+	 * code-under-test calls sinsp.get_thread() then this thread will be
+	 * returned.
+	 *
+	 * Usage:
+	 * sinsp_mock mock;
+	 * auto& tinfo = mock.build_thread().pid(123).comm("abc").commit();
 	 */
 	thread_builder build_thread();
 
 	/**
-	 * @return a container_builder that commits into this class
+	 * Return a container_builder that commits into sinsp's container_manager
+	 * (and automatically builds the associated thread). If the code-under-test
+	 * calls container_manager::get_container() then this container will be
+	 * returned.
+	 *
+	 * Usage:
+	 * sinsp_mock mock;
+	 * auto cinfo = mock.build_container().name("my_container").commit();
+	 */
+	container_builder build_container();
+
+	/**
+	 * Return a container_builder which is associated with the given thread that
+	 * commits into sinsp's container_manager. If the code-under-test calls
+	 * container_manager::get_container() then this container will be returned.
+	 *
+	 * Usage:
+	 * sinsp_mock mock;
+	 * auto& tinfo = mock.build_thread().pid(123).commit();
+	 * auto cinfo = mock.build_container(tinfo).name("my_container").commit();
 	 */
 	container_builder build_container(sinsp_threadinfo& tinfo);
 
 	/**
-	 * @return an event_builder that commits into this class
+	 * Return an event_builder that commits into this class. When sinsp::next is
+	 * called, the event will be passed to the consumer.
+	 *
+	 * Usage:
+	 * sinsp_mock mock;
+	 * auto& tinfo = mock.build_thread().pid(123).commit();
+	 * auto cinfo = mock.build_event(tinfo).count(5).commit();
+	 *
+	 * mock.next();
+	 *
 	 */
 	event_builder build_event(sinsp_threadinfo& tinfo);
 
