@@ -4723,27 +4723,22 @@ void sinsp_analyzer::flush_done_handler(const sinsp_evt* evt)
 	static uint64_t prev_sample_time = 0;
 
 	// Calculate some internal timestamps and stats
-	const uint64_t evt_num = evt ? evt->get_num() : 0;
+	const uint64_t evt_num = evt ? evt->get_num() : flush_data_message::NO_EVENT_NUMBER;
 	const uint64_t original_sample_len = m_configuration->get_analyzer_original_sample_len_ns();
 	const uint64_t ts = m_prev_flush_time_ns - (m_prev_flush_time_ns % original_sample_len);
 	uint64_t nevts = 0;
 	uint64_t num_drop_events = 0;
 
-	if(evt_num != flush_data_message::NO_EVENT_NUMBER)
-	{
-		nevts = evt_num - m_prev_sample_evtnum;
-		m_prev_sample_evtnum = evt_num;
-	}
-
 	// Get the number of dropped events and include that in the log message
 	scap_stats st = {};
 	m_inspector->get_capture_stats(&st);
-
 	num_drop_events = st.n_drops - m_prev_sample_num_drop_events;
 	m_prev_sample_num_drop_events = st.n_drops;
+
 	// Handle bookkeeping
 	if(evt_num != flush_data_message::NO_EVENT_NUMBER)
 	{
+		nevts = evt_num - m_prev_sample_evtnum;
 		m_prev_sample_evtnum = evt_num;
 
 		// Subsampling can cause repeated samples, which we skip here
@@ -4783,11 +4778,11 @@ void sinsp_analyzer::flush_done_handler(const sinsp_evt* evt)
 	                        ts,
 	                        &m_sent_metrics,
 	                        std::move(m_metrics),
-							nevts,
-							num_drop_events,
-							m_my_cpuload,
-							m_sampling_ratio,
-							st.n_tids_suppressed));
+				nevts,
+				num_drop_events,
+				m_my_cpuload,
+				m_sampling_ratio,
+				st.n_tids_suppressed));
 }
 
 //
