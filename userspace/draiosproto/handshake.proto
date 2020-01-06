@@ -10,7 +10,7 @@ message protocol_init {
     required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
     required string machine_id = 2; // The unique ID of the machine that is sending this data
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
-    required uint32 max_protocol_version = 4; // protocol version before using handshake is 1
+    repeated uint32 supported_protocol_versions = 4; // protocol version before using handshake is 4
 }
 
 message protocol_init_response {
@@ -23,24 +23,27 @@ message protocol_init_response {
 enum compression {
     COMPRESSION_NONE = 1;
     COMPRESSION_GZIP = 2;
+    COMPRESSION_LZ4 = 3;
+}
+
+message ack_v1 {
 }
 
 message handshake_v1 {
     required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
     required string machine_id = 2; // The unique ID of the machine that is sending this data
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
-    required uint32 generation_num = 4;
-    repeated compression supported_compressions = 5;
-    repeated uint32 supported_agg_intervals = 6 [packed = true];
+    repeated compression supported_compressions = 4;
+    repeated uint32 supported_agg_intervals = 5 [packed = true];
 }
 
 message handshake_v1_response {
     required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
     required string machine_id = 2; // The unique ID of the machine that is sending this data
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
-    required uint32 last_acked_seq_num = 4;
-    required uint32 last_acked_gen_num = 8;
-    required compression compression = 5;
-    required uint32 agg_interval = 6;
-    optional aggregation_context agg_context = 7;
+    required uint64 last_acked_gen_num = 4;
+    required uint64 last_acked_seq_num = 5;
+    required compression compression = 6;
+    required uint32 agg_interval = 7;
+    optional aggregation_context agg_context = 8;
 }

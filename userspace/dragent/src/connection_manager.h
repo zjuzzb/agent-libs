@@ -11,11 +11,14 @@
 #include "promex.grpc.pb.h"
 #endif
 
+#include <arpa/inet.h>
 #include <initializer_list>
 #include <memory>
 #include <map>
 #include <functional>
 #include <chrono>
+#include <list>
+#include <functional>
 
 #include <Poco/Buffer.h>
 
@@ -61,8 +64,9 @@ public:
 
 	using callback = std::function<state(connection_manager*)>;
 
-	cm_state_machine(connection_manager* cm = nullptr) :
-	    m_state(state::INIT),
+	cm_state_machine(connection_manager* cm = nullptr,
+	                 state st = state::INIT) :
+	    m_state(st),
 	    m_cm(cm)
 	{}
 
@@ -122,7 +126,6 @@ private:
 	std::map<state, std::map<event, callback>> m_cb_table;
 	connection_manager* m_cm;
 };
-
 
 class connection_manager : public dragent::watchdog_runnable,
                            public aggregation_interval_source,
@@ -204,7 +207,7 @@ public:
 		 *
 		 * Returns 0 if no valid header.
 		 */
-		inline uint8_t get_version() const
+		inline dragent_protocol::protocol_version get_version() const
 		{
 			auto* header = v4_header();
 			if (header)
@@ -227,8 +230,7 @@ public:
 			auto* header = v4_header();
 			if (header)
 			{
-				// The length should already be ntohl'd when it was read off the wire
-				return header->len;
+				return ntohl(header->len);
 			}
 			return 0;
 		}
@@ -266,10 +268,12 @@ public:
 		}
 	};
 
+public:
+
 	connection_manager(dragent_configuration* configuration,
-	           protocol_queue* queue,
-	           bool use_handshake,
-	           std::initializer_list<message_handler_map::value_type> message_handlers = {});
+	       protocol_queue* queue,
+	       std::initializer_list<dragent_protocol::protocol_version> supported_protocol_versions,
+	       std::initializer_list<message_handler_map::value_type> message_handlers = {});
 	~connection_manager();
 
 	bool is_connected() const
@@ -288,6 +292,32 @@ public:
 	void set_aggregation_interval(uint32_t interval)
 	{
 		m_negotiated_aggregation_interval = interval;
+	}
+
+	cm_state_machine::state get_state() const
+	{
+		return m_fsm->get_state();
+	}
+
+	uint32_t num_unacked_messages()
+	{
+		return m_messages_awaiting_ack.size();
+	}
+
+	dragent_protocol_header_v5 first_unacked_header()
+	{
+		return m_messages_awaiting_ack.front().header;
+	}
+
+	dragent_protocol::protocol_version get_negotiated_protocol_version()
+	{
+		return get_current_protocol_version();
+	}
+
+	bool test_sequence_less_or_equal(dragent_protocol_header_v5* first,
+	                                 dragent_protocol_header_v5* second)
+	{
+		return sequence_less_or_equal(first, second);
 	}
 
 	uint32_t m_connect_timeout_us = SOCKET_TIMEOUT_DURING_CONNECT_US;
@@ -322,27 +352,138 @@ public:
 	}
 
 private:
-	/**
-	 * A set of callbacks so the connection manager can notify the parent
-	 * class of configuration changes.
-	 */
-	struct dragent_callbacks
-	{
-		std::function<bool(std::shared_ptr<protobuf_compressor>&)> compression_method_changed;
-		std::function<bool(std::chrono::seconds)> aggregation_interval_changed;
-	};
-
 	using socket_ptr = std::shared_ptr<Poco::Net::StreamSocket>;
 
+	struct unacked_message
+	{
+		dragent_protocol_header_v5 header;
+		std::shared_ptr<serialized_buffer> buffer;
+	};
+
 	bool init();
-	void fsm_reinit();
+	void fsm_reinit(dragent_protocol::protocol_version working_protocol_version,
+	                cm_state_machine::state state = cm_state_machine::state::INIT);
 	void do_run() override;
 	bool connect();
 	void disconnect(socket_ptr& ssp);
-	bool transmit_buffer(uint64_t now, std::shared_ptr<serialized_buffer> &item);
+	/**
+	 * Send a byte buffer out on the wire.
+	 */
+	bool transmit_buffer(uint64_t now,
+	                     dragent_protocol_header_v4* header,
+	                     std::shared_ptr<serialized_buffer> &item);
+	bool transmit_buffer(uint64_t now,
+	                     dragent_protocol_header_v5* header,
+	                     std::shared_ptr<serialized_buffer> &item);
+
+	/**
+	 * Receive a message from the collector.
+	 *
+	 * This function receives the message in chunks as they arrive on
+	 * the socket. The message is aggregated in m_pending_message and is only
+	 * complete when m_pending_message.is_complete() returns true.
+	 *
+	 * @retval  true   Socket operating normally
+	 * @retval  false  Connection has dropped
+	 */
 	bool receive_message();
+
+	/**
+	 * Handle a message received from the collector.
+	 *
+	 * Handles the message stored in m_pending_message.
+	 *
+	 * @retval  true   Message was valid and handled appropriately
+	 * @retval  false  Invalid message or not able to be handled
+	 */
 	bool handle_message();
-	void perform_handshake();
+
+	/**
+	 * Executes a protocol handshake.
+	 *
+	 * @retval  true   Handshake completed successfully
+	 * @retval  false  Handshake error
+	 */
+	bool perform_handshake();
+
+	/**
+	 * Sends the proto_init phase of the handshake (phase 1).
+	 *
+	 * @retval  true   Message sent successfully
+	 * @retval  false  Message send failed (socket error)
+	 */
+	bool send_proto_init();
+
+	/**
+	 * Builds a header for a protocol message.
+	 *
+	 * @param item         The message to build a header for.
+	 * @param version      The version number of the header to build.
+	 * @param header       [out] The header to fill in
+	 * @param generation   [optional]  The generation number for the header
+	 * @param sequence     [optional]  The sequence number for the header
+	 *
+	 * @retval  true   The header was built successfully
+	 * @retval  false  The header could not be build (invalid parameter)
+	 */
+	bool build_protocol_header(std::shared_ptr<serialized_buffer>& item,
+	                           dragent_protocol::protocol_version version,
+	                           dragent_protocol_header_v5& header,
+	                           uint64_t generation = 0,
+	                           uint64_t sequence = 0);
+
+	/**
+	 * Sends the handshake_v? phase of the handshake (phase 2)
+	 *
+	 * @retval  true   Message sent successfully
+	 * @retval  false  Message send failed (socket error)
+	 */
+	bool send_handshake_negotiation();
+
+	/**
+	 * Perform bookkeeping tasks related to sending a metrics message.
+	 */
+	void on_metrics_send(dragent_protocol_header_v5& header,
+	                     std::shared_ptr<serialized_buffer>& metrics);
+
+	/**
+	 * Process a received ACK message.
+	 *
+	 * @retval  true   The ACK was for a pending metrics message.
+	 * @retval  false  Could not find the associated metrics message.
+	 */
+	bool on_ack_received(const dragent_protocol_header_v5& header);
+	// Returns version, or 0 if unknown
+	dragent_protocol::protocol_version get_current_protocol_version();
+	dragent_protocol::protocol_version get_max_supported_protocol_version();
+
+	/**
+	 * Adjusts the ACK queue based on information received in handshake.
+	 *
+	 * The protocol handshake involves receiving the last acked <seq, gen> pair
+	 * from the collector. As this pair might not match the agent's view of
+	 * the system, this function will discard any messages waiting for ACKs
+	 * which will never come.
+	 */
+	void process_ack_queue_on_reconnect(uint64_t last_acked_gen,
+	                                    uint64_t last_acked_seq);
+
+	/**
+	 * Is the <gen, seq> pair in the first header less than or equal to the second?
+	 *
+	 * The headers are assumed to be in wire order.
+	 */
+	bool sequence_less_or_equal(const dragent_protocol_header_v5* first,
+	                            const dragent_protocol_header_v5* second) const
+	{
+		uint64_t generation = ntohll(second->generation);
+		uint64_t sequence = ntohll(second->sequence);
+		uint64_t comp_gen = ntohll(first->generation);
+		uint64_t comp_seq = ntohll(first->sequence);
+
+		return  comp_gen < generation ||
+		       (comp_gen == generation && comp_seq <= sequence);
+	}
 
 	static const std::string& get_openssldir();
 	// Walk over the CA path search list and return the first one that exists
@@ -361,8 +502,10 @@ private:
 	static const std::chrono::seconds WORKING_INTERVAL_S;
 
 	message_handler_map m_handler_map;
+	std::vector<dragent_protocol::protocol_version> m_supported_protocol_versions;
+	std::vector<protocol_compression_method> m_supported_compression_methods;
+	std::vector<uint32_t> m_supported_aggregation_intervals;
 	socket_ptr m_socket;
-	bool m_use_handshake;
 	uint64_t m_generation;
 	uint64_t m_sequence;
 	dragent_configuration* m_configuration;
@@ -375,10 +518,13 @@ private:
 	// and this lock ensures that those fields are protected from reads while
 	// they're being updated concurrently.
 	mutable spinlock m_parameter_update_lock;
+	dragent_protocol::protocol_version m_negotiated_protocol_version;
 
 	uint32_t m_reconnect_interval;
 	std::chrono::time_point<std::chrono::system_clock> m_last_connection_failure;
 	std::unique_ptr<cm_state_machine> m_fsm;
+
+	std::list<unacked_message> m_messages_awaiting_ack;
 
 #ifndef CYGWING_AGENT
 	// communication with Prometheus exporter

@@ -1,12 +1,15 @@
 #include "connection_manager.h"
 #include "capture_job_handler.h"
 #include "common_logger.h"
+#include "handshake.pb.h"
 #include "draios.pb.h"
 #include "protocol.h"
+#include "protobuf_compression.h"
 #include "security_config.h"
 #include "spinlock.h"
 #include "utils.h"
 #include "watchdog_runnable_fatal_error.h"
+#include "async_aggregator.h" // For aggregator limits
 #include <future>
 #include <errno.h>
 #include <memory>
@@ -16,6 +19,11 @@
 #include <functional>
 
 #include <grpc_channel_registry.h>
+
+type_config<uint32_t> c_unacked_message_slots(
+        3,
+        "Number of slots for metrics messages with pending acknowledgements",
+        "unacked_message_slots");
 
 using namespace std;
 namespace security_config = libsanalyzer::security_config;
@@ -98,16 +106,18 @@ cm_state_machine::state shutdown_received_in_steady_state(connection_manager* cm
 
 cm_state_machine::state disconnected_received_in_steady_state(connection_manager* cm)
 {
-	return cm_state_machine::state::CONNECTING;
+	return cm_state_machine::state::RETRYING;
 }
 cm_state_machine::state shutdown_received_in_any_state(connection_manager* cm)
 {
 	return cm_state_machine::state::TERMINATED;
 }
 
-std::unique_ptr<cm_state_machine> build_fsm(connection_manager* cm, bool v5)
+std::unique_ptr<cm_state_machine> build_fsm(connection_manager* cm,
+                                            bool v5,
+                                            cm_state_machine::state state = cm_state_machine::state::INIT)
 {
-	auto ret = make_unique<cm_state_machine>(cm);
+	auto ret = make_unique<cm_state_machine>(cm, state);
 
 	// Common functions
 	ret->register_event_callback(cm_state_machine::state::INIT,
@@ -173,32 +183,54 @@ std::unique_ptr<cm_state_machine> build_fsm(connection_manager* cm, bool v5)
  * -- connect(): start connect thread: Asynchronously attempt to connect to the backend
  * -- wait until connected
  * -- while connected:
- * --- Receive and dispatch one incoming message, if present
+ * --- Receive and (optionally) dispatch one incoming message, if present
  * --- Send one message from the outgoing queue
  *
  * If the connection is lost, do_run() will loop back to the top and try to
  * connect again, looping until the agent is terminated.
+ *
+ * NOTE: receive works in chunks. The received data are aggregated in the
+ *       m_pending_message structure until all data have been received. At
+ *       that point, the now-complete message is passed to handle_message to be
+ *       handled appropriately.
  */
 
-connection_manager::connection_manager(
-    dragent_configuration* configuration,
+connection_manager::connection_manager(dragent_configuration* configuration,
     protocol_queue* queue,
-    bool use_handshake,
+    std::initializer_list<dragent_protocol::protocol_version> supported_protocol_versions,
     std::initializer_list<message_handler_map::value_type> message_handlers)
     : dragent::watchdog_runnable("connection_manager"),
       m_handler_map(message_handlers),
+      m_supported_protocol_versions(supported_protocol_versions),
+      // Why isn't this configurable via the constructor?
+      // Because right now there's not really a good use case for it. I'm
+      // including the infrastructure here so that if there's a later need
+      // to plumb it through it will be easy than if it were a hard coded
+      // list in the protocol hander.
+      m_supported_compression_methods({protocol_compression_method::NONE,
+                                       protocol_compression_method::GZIP}),
+      m_supported_aggregation_intervals({10}),
       m_socket(nullptr),
-      m_use_handshake(use_handshake),
-      m_generation(0),
-      m_sequence(0),
+      m_generation(1),
+      m_sequence(1),
       m_configuration(configuration),
       m_queue(queue),
       m_negotiated_aggregation_interval(UINT32_MAX),
       m_negotiated_compression_method(nullptr),
+      m_negotiated_protocol_version(0),
       m_reconnect_interval(0)
 {
 	Poco::Net::initializeSSL();
-	m_fsm = build_fsm(this, false);
+
+	dragent_protocol::protocol_version ver = get_max_supported_protocol_version();
+
+	fsm_reinit(ver);
+
+	if (ver == dragent_protocol::PROTOCOL_VERSION_NUMBER)
+	{
+		// If forced into legacy mode, there is no negotiation.
+		m_negotiated_protocol_version = dragent_protocol::PROTOCOL_VERSION_NUMBER;
+	}
 }
 
 connection_manager::~connection_manager()
@@ -585,12 +617,13 @@ void connection_manager::disconnect(socket_ptr& ssp)
 		LOG_INFO("Disconnecting from collector");
 		ssp->close();
 		ssp.reset();
-		m_pending_message.reset();
 	}
 	if (m_fsm)
 	{
 		m_fsm->send_event(cm_state_machine::event::DISCONNECTED);
 	}
+
+	m_pending_message.reset();
 
 #ifndef CYGWING_AGENT
 	m_prom_channel = nullptr;
@@ -621,9 +654,16 @@ bool connection_manager::prometheus_connected() const
 }
 #endif
 
-void connection_manager::fsm_reinit()
+void connection_manager::fsm_reinit(dragent_protocol::protocol_version working_protocol_version,
+                                    cm_state_machine::state state)
 {
-	m_fsm = build_fsm(this, false);
+	bool v5 = true;
+	if (working_protocol_version == dragent_protocol::PROTOCOL_VERSION_NUMBER)
+	{
+		v5 = false;
+	}
+
+	m_fsm = build_fsm(this, v5, state);
 }
 
 void connection_manager::do_run()
@@ -647,7 +687,7 @@ void connection_manager::do_run()
 			{
 				LOG_WARNING("Attempting to connect in bogus state " +
 				             to_string((int)m_fsm->get_state()));
-				fsm_reinit();
+				fsm_reinit(get_max_supported_protocol_version());
 				continue;
 			}
 			if (!heartbeat())
@@ -672,6 +712,30 @@ void connection_manager::do_run()
 			}
 		}
 
+		//
+		// Send the handshake in the case of >= v5 protocol
+		//
+		if (m_fsm->get_state() == cm_state_machine::state::HANDSHAKE)
+		{
+			LOG_INFO("Performing protocol handshake");
+			// Handshake logic for handshake-enabled protocol
+			if (m_sequence > 1)
+			{
+				// Generation number is only increased if the agent has sent
+				// a single non-protocol message
+				m_generation++;
+			}
+			m_sequence = 1;
+
+			if (!perform_handshake())
+			{
+				// Handshake failed. Try again.
+				// NOTE: It's very possible that the connect() succeeds due to
+				//       elastic load balancers but then the handshake fails.
+				continue;
+			}
+		}
+
 		ASSERT(m_fsm->get_state() == cm_state_machine::state::STEADY_STATE);
 		LOG_INFO("Processing messages");
 
@@ -680,12 +744,7 @@ void connection_manager::do_run()
 		//
 		while (heartbeat() && is_connected())
 		{
-			//
-			// Check if we received a message. It is possible that the elastic load
-			// balancers could cause connect() to succeed but then cause a
-			// disconnect on first I/O, so we make sure to do a read before removing
-			// an item from the queue.
-			//
+			// Check if we received a message
 			if (!receive_message())
 			{
 				LOG_WARNING("Receive failed. Looping back to reconnect.");
@@ -709,16 +768,33 @@ void connection_manager::do_run()
 
 			if (item)
 			{
-				if (m_use_handshake && item->message_type == draiosproto::message_type::METRICS)
-				{
-					dragent_protocol::populate_ids(item, m_generation, ++m_sequence);
-				}
 
 				//
 				// Got a message, transmit it
 				//
-				if (transmit_buffer(sinsp_utils::get_current_time_ns(), item))
+
+				// First build the header
+				// Note that we use the v5 header here, but if the protocol
+				// version is v4 then we just use the legacy fields of the
+				// header.
+				dragent_protocol_header_v5 header;
+				if (!build_protocol_header(item,
+				                           get_current_protocol_version(),
+				                           header,
+				                           m_generation,
+				                           m_sequence))
 				{
+					disconnect();
+					continue;
+				}
+				if (transmit_buffer(sinsp_utils::get_current_time_ns(),
+				                    &header,
+				                    item))
+				{
+					if (item->message_type == draiosproto::message_type::METRICS)
+					{
+						on_metrics_send(header, item);
+					}
 					item = nullptr;
 				}
 				// If the transmit is unsuccessful, we fall out of the loop
@@ -730,8 +806,404 @@ void connection_manager::do_run()
 	m_fsm->send_event(cm_state_machine::event::SHUTDOWN);
 }
 
-bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<serialized_buffer>& item)
+/**
+ * Returns the protocol version the connection manager is currently running.
+ *
+ * Getting this number is a little bit more complicated than it may seem, and
+ * is subject to a couple of rules that may not be intuitive at first.
+ *
+ * - A connection must be established for there to be a current version. If a
+ *   connection has not been established or if the connection has dropped, the
+ *   current version is 0, denoting that the version is not known.
+ *
+ * - If a connection has been established and a handshake is being performed,
+ *   the current version is still 0 as the version has not been negotiated yet.
+ *   The exception to this rule is if the connection manager has been forced into
+ *   legacy mode via a configuration. In that case, after the connection has
+ *   been established the current version will immediately become the legacy
+ *   version (4).
+ *
+ * A return value of 0 denotes that there is no current protocol version (or,
+ * more specifically, that the current protocol version is unknown).
+ */
+dragent_protocol::protocol_version connection_manager::get_current_protocol_version()
 {
+	switch (m_fsm->get_state())
+	{
+	case cm_state_machine::state::STEADY_STATE:
+		// This case is easy. Just return the negotiated protocol version.
+		return m_negotiated_protocol_version;
+	case cm_state_machine::state::HANDSHAKE:
+		// We *might* have a protocol version in handshake, depending on
+		// what phase we're in. The handshake code will explicitly set
+		// the negotiated version to 0 to ensure we can always rely on
+		// this field
+		return m_negotiated_protocol_version;
+	case cm_state_machine::state::NONE:
+	case cm_state_machine::state::NUM_STATES:
+		// This shouldn't happen
+		ASSERT(m_fsm->get_state() != cm_state_machine::state::NONE);
+		ASSERT(m_fsm->get_state() < cm_state_machine::state::NUM_STATES);
+		// Fallthrough
+	case cm_state_machine::state::CONNECTING:
+	case cm_state_machine::state::RETRYING:
+	case cm_state_machine::state::TERMINATED:
+	case cm_state_machine::state::INIT:
+		return 0;
+	}
+
+	ASSERT("How did we get here?" == 0);
+	return 0;
+}
+
+/**
+ * Returns the highest protocol version this connection manager supports.
+ *
+ * In the bogus case when there are no supported protocol versions, returns 0.
+ */
+dragent_protocol::protocol_version connection_manager::get_max_supported_protocol_version()
+{
+	dragent_protocol::protocol_version max_ver = 0;
+
+	for(auto& v: m_supported_protocol_versions)
+	{
+		ASSERT(v == dragent_protocol::PROTOCOL_VERSION_NUMBER ||
+		       v == dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH);
+		if (v > max_ver)
+		{
+			max_ver = v;
+		}
+	}
+	return max_ver;
+}
+
+bool connection_manager::send_proto_init()
+{
+	uint64_t now = sinsp_utils::get_current_time_ns();
+	const string& customer_id = m_configuration->m_customer_id;
+	const string& machine_id = m_configuration->machine_id();
+
+	draiosproto::protocol_init msg_pi;
+
+	msg_pi.set_timestamp_ns(now);
+	msg_pi.set_machine_id(machine_id);
+	msg_pi.set_customer_id(customer_id);
+	ASSERT(m_supported_protocol_versions.size() > 0);
+	for (auto v: m_supported_protocol_versions)
+	{
+		msg_pi.add_supported_protocol_versions(v);
+	}
+
+	// Get the default compressor
+	auto compressor =
+	        protobuf_compressor_factory::get(protobuf_compressor_factory::get_default());
+
+	// Serialize the message
+	std::shared_ptr<serialized_buffer>
+	msg_buf = dragent_protocol::message_to_buffer(now,
+	                                              draiosproto::message_type::PROTOCOL_INIT,
+	                                              msg_pi,
+	                  /* Send uncompressed */     compressor);
+	if (!msg_buf)
+	{
+		LOG_ERROR("Fatal error serializing first handshake message");
+		return false;
+	}
+
+	dragent_protocol_header_v5 header;
+	bool ret = build_protocol_header(msg_buf,
+	                                 dragent_protocol::PROTOCOL_VERSION_NUMBER,
+	                                 header);
+
+	if (!ret)
+	{
+		LOG_ERROR("Fatal error building first handshake message header");
+		return false;
+	}
+
+	return transmit_buffer(now,
+	                       &header.hdr,
+	                       msg_buf);
+}
+
+bool connection_manager::send_handshake_negotiation()
+{
+	uint64_t now = sinsp_utils::get_current_time_ns();
+	const string& customer_id = m_configuration->m_customer_id;
+	const string& machine_id = m_configuration->machine_id();
+
+	draiosproto::handshake_v1 msg_hs;
+
+	msg_hs.set_timestamp_ns(now);
+	msg_hs.set_machine_id(machine_id);
+	msg_hs.set_customer_id(customer_id);
+
+	// Figure out what our supported compression methods are
+	for (auto c: m_supported_compression_methods)
+	{
+		switch (c)
+		{
+		case protocol_compression_method::NONE:
+			msg_hs.add_supported_compressions(draiosproto::compression::COMPRESSION_NONE);
+			break;
+		case protocol_compression_method::GZIP:
+			msg_hs.add_supported_compressions(draiosproto::compression::COMPRESSION_GZIP);
+			break;
+		}
+	}
+
+	// Add supported aggregation intervals
+	for (auto i: m_supported_aggregation_intervals)
+	{
+		msg_hs.add_supported_agg_intervals(i);
+	}
+
+	// Get the default compressor
+	auto compressor =
+	        protobuf_compressor_factory::get(protobuf_compressor_factory::get_default());
+
+	// Serialize the message
+	std::shared_ptr<serialized_buffer>
+	msg_buf = dragent_protocol::message_to_buffer(now,
+	                                              draiosproto::message_type::PROTOCOL_HANDSHAKE_V1,
+	                                              msg_hs,
+	                                              compressor);
+	if (!msg_buf)
+	{
+		LOG_ERROR("Fatal error serializing second handshake message");
+		return false;
+	}
+
+	ASSERT(m_sequence == 1);
+	ASSERT(get_current_protocol_version() ==
+	        dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH);
+	dragent_protocol_header_v5 header;
+	bool ret = build_protocol_header(msg_buf,
+	                                 get_current_protocol_version(),
+	                                 header,
+	                                 m_generation,
+	                                 m_sequence);
+
+	if (!ret)
+	{
+		LOG_ERROR("Fatal error building first handshake message header");
+		return false;
+	}
+	return transmit_buffer(sinsp_utils::get_current_time_ns(),
+	                       &header,
+	                       msg_buf);
+}
+
+bool connection_manager::perform_handshake()
+{
+	//
+	// Phase 1
+	//
+
+	// Set this to 0 since we don't have a version yet
+	m_negotiated_protocol_version = 0;
+
+	// Send the first handshake message
+	if (!send_proto_init())
+	{
+		LOG_ERROR("Could not send initial handshake message. Disconnecting");
+		return false;
+	}
+
+	// Receive and process response
+	do {
+		bool ret = receive_message();
+		if (!ret)
+		{
+			LOG_ERROR("Receive failed on handshake. Looping back to reconnect.");
+			return false;
+		}
+		if (!m_pending_message.is_complete())
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		}
+	} while (!m_pending_message.is_complete() && heartbeat());
+
+	if (!heartbeat())
+	{
+		return false;
+	}
+
+	const dragent_protocol_header_v4* header = m_pending_message.v4_header();
+
+	if (header->messagetype != draiosproto::message_type::PROTOCOL_INIT_RESP)
+	{
+		if (header->messagetype == draiosproto::message_type::ERROR_MESSAGE)
+		{
+			// Handle ERR_PROTO_MISMATCH (SMAGENT-1951)
+			LOG_ERROR("Currently unsupported");
+			disconnect();
+			return false;
+		}
+		else
+		{
+			LOG_ERROR("Protocol error: unexpected handshake response (" +
+			          Poco::NumberFormatter::format((int)header->messagetype) +
+			          ")");
+		}
+		disconnect();
+		return false;
+	}
+	if (!m_fsm->send_event(cm_state_machine::event::HANDSHAKE_PROTO_RESP) ||
+	    m_fsm->get_state() != cm_state_machine::state::HANDSHAKE)
+	{
+		LOG_ERROR("Protocol error: Handshake interrupted");
+		disconnect();
+		return false;
+	}
+
+	// Handle response
+	LOG_INFO("Received resp. ver: " + Poco::NumberFormatter::format((int)header->version)
+	          + " len: " + Poco::NumberFormatter::format(m_pending_message.m_buffer_used)
+	          + " message: " + Poco::NumberFormatter::format((int)m_pending_message.get_type()));
+	draiosproto::protocol_init_response resp;
+	uint32_t payload_len = m_pending_message.get_total_length() -
+	                       dragent_protocol::header_len(*header);
+	dragent_protocol::buffer_to_protobuf(m_pending_message.payload(),
+	                                     payload_len,
+	                                     &resp,
+	                                     protobuf_compressor_factory::get_default());
+	m_pending_message.reset();
+
+	dragent_protocol::protocol_version version = resp.protocol_version();
+	bool version_supported = false;
+	for (auto supported_version: m_supported_protocol_versions)
+	{
+		if (version == supported_version)
+		{
+			version_supported = true;
+			break;
+		}
+	}
+	if (!version_supported)
+	{
+		// Unsupported version
+		LOG_ERROR("Protocol error: Unsupported version number " +
+		          NumberFormatter::format(version));
+		disconnect();
+		return false;
+	}
+
+	// Set the protocol version
+	m_negotiated_protocol_version = version;
+
+	if (version <= dragent_protocol::PROTOCOL_VERSION_NUMBER)
+	{
+		// Not supposed to happen
+		LOG_ERROR("Protocol error: Version mismatch (legacy protocol selected)");
+		// We can treat this like the ERR_PROTO_MISMATCH case above (SMAGENT-1951)
+		return false;
+	}
+
+
+	//
+	// Phase 2
+	//
+
+	if (!send_handshake_negotiation())
+	{
+		return false;
+	}
+
+	// Receive response
+	do {
+		bool ret = receive_message();
+		if (!ret)
+		{
+			LOG_WARNING("Receive failed on handshake phase 2. Looping back to reconnect.");
+			return false;
+		}
+	} while (!m_pending_message.is_complete() && heartbeat());
+
+	if (!heartbeat())
+	{
+		return false;
+	}
+
+	header = m_pending_message.v4_header();
+	LOG_INFO("Received resp. ver: " + Poco::NumberFormatter::format((int)header->version)
+	          + " len: " + Poco::NumberFormatter::format(m_pending_message.m_buffer_used)
+	          + " message: " + Poco::NumberFormatter::format((int)m_pending_message.get_type()));
+	if (header->messagetype != draiosproto::message_type::PROTOCOL_HANDSHAKE_V1_RESP)
+	{
+		LOG_ERROR("Protocol error: unexpected handshake response");
+	}
+
+	if (!m_fsm->send_event(cm_state_machine::event::HANDSHAKE_NEGOTIATION_RESP))
+	{
+		LOG_ERROR("Protocol error: Handshake failed");
+		disconnect();
+		return false;
+	}
+
+	// Handle response
+	draiosproto::handshake_v1_response hs_resp;
+	payload_len = m_pending_message.get_total_length() -
+	                       dragent_protocol::header_len(*header);
+	dragent_protocol::buffer_to_protobuf(m_pending_message.payload(),
+	                                     payload_len,
+	                                     &hs_resp,
+	                                     protobuf_compressor_factory::get_default());
+	m_pending_message.reset();
+
+	// Update the negotiated parameters
+	{
+		protocol_compression_method method = protocol_compression_method::NONE;
+		switch(hs_resp.compression())
+		{
+		case draiosproto::compression::COMPRESSION_NONE:
+			method = protocol_compression_method::NONE;
+			break;
+
+		case draiosproto::compression::COMPRESSION_GZIP:
+			method = protocol_compression_method::GZIP;
+			break;
+
+		case draiosproto::compression::COMPRESSION_LZ4:
+			// Currently unsupported
+			LOG_ERROR("Backend specified unsupported compression method");
+			disconnect();
+			return false;
+		}
+
+		scoped_spinlock lock(m_parameter_update_lock);
+		m_negotiated_compression_method = protobuf_compressor_factory::get(method);
+		m_negotiated_aggregation_interval = hs_resp.agg_interval();
+	}
+
+	// Update the limits
+	dragent::aggregator_limits::global_limits->cache_limits(hs_resp.agg_context());
+
+	// Process unacked messages
+	process_ack_queue_on_reconnect(hs_resp.last_acked_gen_num(),
+	                               hs_resp.last_acked_seq_num());
+
+	return true;
+}
+
+bool connection_manager::transmit_buffer(uint64_t now,
+                                         dragent_protocol_header_v4* header,
+                                         std::shared_ptr<serialized_buffer>& item)
+{
+	ASSERT(header->version == dragent_protocol::PROTOCOL_VERSION_NUMBER);
+	// transmit_buffer uses the header's version field to know how much
+	// to transmit, so we can safely pass the v4 header as v5 and it won't
+	// read the last bytes at all
+	return transmit_buffer(now, (dragent_protocol_header_v5*)header, item);
+}
+
+bool connection_manager::transmit_buffer(uint64_t now,
+                                         dragent_protocol_header_v5* header,
+                                         std::shared_ptr<serialized_buffer> &item)
+{
+	ASSERT(header->hdr.version == dragent_protocol::PROTOCOL_VERSION_NUMBER ||
+	       header->hdr.version == dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH);
+
 	// Sometimes now can be less than ts_ns. The timestamp in
 	// metrics messages is rounded up to the following metrics
 	// interval.
@@ -743,12 +1215,6 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<serialize
 		            to_string((now - item->ts_ns) / 1000000.0));
 	}
 
-	// Build a header for the item
-	dragent_protocol_header_v4 header;
-
-	header.messagetype = item->message_type;
-	header.len = htonl(sizeof(header) + item->buffer.size());
-	header.version = dragent_protocol::PROTOCOL_VERSION_NUMBER;
 
 #ifndef CYGWING_AGENT
 	if (item->message_type == draiosproto::message_type::METRICS && prometheus_connected())
@@ -762,7 +1228,9 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<serialize
 
 		try
 		{
-			parse_protocol_queue_item(*item, &msg);
+			// Deserialize the just-serialized buffer
+			parse_protocol_queue_item(*item,
+			                          &msg);
 			// XXX: this is blocking
 			m_prom_conn->EmitMetrics(&context, msg, &response);
 		}
@@ -780,13 +1248,15 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<serialize
 			return false;
 		}
 
-		int32_t res = m_socket->sendBytes((uint8_t*)&header, sizeof(header));
+		// Only send the bits of the header that are appropriate for the header version
+		uint32_t send_len = dragent_protocol::header_len(header->hdr);
+		int32_t res = m_socket->sendBytes((uint8_t*)header, send_len);
 		if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ||
 		    res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
 		{
 			return false;
 		}
-		if (res != (int32_t)sizeof(header))
+		if (res != send_len)
 		{
 			LOG_ERROR("sendBytes sent just " + NumberFormatter::format(res) + ", expected " +
 			          NumberFormatter::format(item->buffer.size()));
@@ -804,6 +1274,7 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<serialize
 			return false;
 		}
 
+		ASSERT(item->buffer.size() <= INT32_MAX);
 		if (res != (int32_t)item->buffer.size())
 		{
 			LOG_ERROR("sendBytes sent just " + NumberFormatter::format(res) + ", expected " +
@@ -819,6 +1290,13 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<serialize
 		LOG_INFO("Sent msgtype=" + to_string((int)item->message_type) + " len=" +
 		         Poco::NumberFormatter::format(sizeof(header) + item->buffer.size()) +
 		         " to collector");
+		if (header->hdr.version == dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH)
+		{
+			uint64_t gen = ntohll(header->generation);
+			uint64_t seq = ntohll(header->sequence);
+			LOG_INFO("\tGeneration: " + Poco::NumberFormatter::format(gen) +
+			         "  Sequence: " + Poco::NumberFormatter::format(seq));
+		}
 
 		return true;
 	}
@@ -860,7 +1338,9 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<serialize
 
 bool connection_manager::receive_message()
 {
-	dragent_protocol_header_v4* v4_hdr = nullptr;
+	const dragent_protocol_header_v5* v5_hdr = nullptr;
+	const dragent_protocol_header_v4* v4_hdr = nullptr;
+	uint32_t msg_len = 0;
 
 	try
 	{
@@ -882,9 +1362,11 @@ bool connection_manager::receive_message()
 		{
 			ASSERT(m_pending_message.m_buffer_used == 0);
 
-			// We begin by reading and processing the protocol header
+			//
+			// Read the header
+			//
 			uint32_t bytes_read = 0;
-			const uint32_t bytes_to_read = sizeof(dragent_protocol_header_v4);
+			uint32_t bytes_to_read = sizeof(dragent_protocol_header_v4);
 			while (bytes_read < bytes_to_read)
 			{
 				int32_t res =
@@ -922,39 +1404,55 @@ bool connection_manager::receive_message()
 					ASSERT(false);
 					return false;
 				}
+
+				// Check the message version -- may have to read more header bytes
+				if (bytes_read >= offsetof(dragent_protocol_header_v4, version))
+				{
+					auto* v4_hdr = (dragent_protocol_header_v4*)m_pending_message.m_buffer.begin();
+					bytes_to_read = dragent_protocol::header_len(*v4_hdr);
+				}
 			}
 
 			ASSERT(bytes_read == bytes_to_read);
 			m_pending_message.m_pending = true;
-			v4_hdr = (dragent_protocol_header_v4*)m_pending_message.m_buffer.begin();
-			v4_hdr->len = ntohl(v4_hdr->len);
+			v5_hdr = (dragent_protocol_header_v5*)m_pending_message.m_buffer.begin();
+			v4_hdr = &v5_hdr->hdr;
+			msg_len = ntohl(v4_hdr->len);
 
-			if ((v4_hdr->len < sizeof(dragent_protocol_header_v4)) ||
-			    (v4_hdr->len > MAX_RECEIVER_BUFSIZE))
+			if ((msg_len < sizeof(dragent_protocol_header_v4)) ||
+			    (msg_len > MAX_RECEIVER_BUFSIZE))
 			{
 				LOG_ERROR("Protocol error: invalid header length " +
-				          NumberFormatter::format(v4_hdr->len));
+				          NumberFormatter::format(msg_len));
 				ASSERT(false);
 				disconnect();
 				return false;
 			}
 
-			if (v4_hdr->len > m_pending_message.m_buffer.size())
+			if (msg_len > m_pending_message.m_buffer.size())
 			{
-				m_pending_message.m_buffer.resize(v4_hdr->len);
+				m_pending_message.m_buffer.resize(msg_len);
 			}
 
 			m_pending_message.m_buffer_used = bytes_read;
+		}
+
+		if (msg_len == m_pending_message.m_buffer_used)
+		{
+			// Oh hey, we're done!
+			// This means the message was an ACK, which is just a header.
+			return true;
 		}
 
 		// Then we read the actual message, it may arrive in
 		// several chunks, in this case the function will be called
 		// at the next loop cycle and will continue reading
 		v4_hdr = (dragent_protocol_header_v4*)m_pending_message.m_buffer.begin();
+		msg_len = ntohl(v4_hdr->len);
 		uint32_t used_buf = m_pending_message.m_buffer_used;
 
 		auto res = m_socket->receiveBytes(m_pending_message.m_buffer.begin() + used_buf,
-		                                  v4_hdr->len - used_buf,
+		                                  msg_len - used_buf,
 		                                  MSG_WAITALL);
 
 		if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
@@ -987,11 +1485,11 @@ bool connection_manager::receive_message()
 
 		m_pending_message.m_buffer_used += res;
 		LOG_DEBUG("Receiving message version=" + NumberFormatter::format(v4_hdr->version) +
-		          " len=" + NumberFormatter::format(v4_hdr->len) + " messagetype=" +
+		          " len=" + NumberFormatter::format(msg_len) + " messagetype=" +
 		          NumberFormatter::format(v4_hdr->messagetype) + " received=" +
 		          NumberFormatter::format(m_pending_message.m_buffer_used));
 
-		if (m_pending_message.m_buffer_used > v4_hdr->len)
+		if (m_pending_message.m_buffer_used > msg_len)
 		{
 			LOG_ERROR("Protocol out of sync, disconnecting");
 			disconnect();
@@ -1026,9 +1524,10 @@ bool connection_manager::handle_message()
 		return false;
 	}
 
-	if (m_pending_message.get_version() != dragent_protocol::PROTOCOL_VERSION_NUMBER)
+	if (m_pending_message.get_version() != dragent_protocol::PROTOCOL_VERSION_NUMBER &&
+	    m_pending_message.get_version() != dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH)
 	{
-		LOG_ERROR("Received command for incompatible version protocol " +
+		LOG_ERROR("Protocol error: Received command for incompatible protocol version: " +
 		          NumberFormatter::format(m_pending_message.get_version()));
 		return false;
 	}
@@ -1036,11 +1535,41 @@ bool connection_manager::handle_message()
 	draiosproto::message_type type =
 	    static_cast<draiosproto::message_type>(m_pending_message.get_type());
 
+	// ACK messages are handled specially
+	if (type == draiosproto::message_type::PROTOCOL_ACK)
+	{
+		// Handle the ACK
+		auto* v5_hdr = (dragent_protocol_header_v5*)m_pending_message.m_buffer.begin();
+		bool ret = on_ack_received(*v5_hdr);
+		if (!ret)
+		{
+			// This can happen in some cases. Example: the connection drops and
+			// the agent begins buffering. On reconnect it sends all the buffered
+			// messages, then begins sending real-time messages. The un-ACKed
+			// messages fill the buffer, pushing the oldest ones out. The
+			// collector finally catches up and ACKs a message that was pushed
+			// out of the buffer, bringing us to this point.
+			// It's an unexpected enough condition that we should log it, but
+			// at this point cycling the connection will just make things worse.
+			LOG_WARNING("Protocol error: ACK received for unknown message. Continuing.");
+			return true;
+		}
+		return true;
+	}
+
 	LOG_INFO("Received command " +
 	         NumberFormatter::format(m_pending_message.get_type()) +
 	         " (" + draiosproto::message_type_Name(type) + ")");
 
 	uint32_t header_len = dragent_protocol::header_len(*m_pending_message.v4_header());
+
+	LOG_INFO("    header_len: " +
+	         NumberFormatter::format(header_len) +
+	         "    length field: " +
+	         NumberFormatter::format(m_pending_message.get_total_length()) +
+	         "    version field: " +
+	         NumberFormatter::format(m_pending_message.get_version())
+	         );
 
 	message_handler_map::const_iterator itr = m_handler_map.find(type);
 	if (itr != m_handler_map.end())
@@ -1059,5 +1588,113 @@ bool connection_manager::handle_message()
 		LOG_ERROR("Unknown message type: %d", m_pending_message.get_type());
 		return false;
 	}
+	return true;
+}
+
+void connection_manager::on_metrics_send(dragent_protocol_header_v5& header,
+                                         std::shared_ptr<serialized_buffer> &metrics)
+{
+	ASSERT(metrics->message_type == draiosproto::message_type::METRICS);
+
+	if (get_current_protocol_version() == dragent_protocol::PROTOCOL_VERSION_NUMBER)
+	{
+		return;
+	}
+
+	// Increment the sequence number
+	++m_sequence;
+
+	// Build the unacked message struct
+	unacked_message msg = {header, metrics};
+
+	while(m_messages_awaiting_ack.size() >= c_unacked_message_slots.get_value())
+	{
+		// The unacked list is full. Drop the oldest message from the list.
+		m_messages_awaiting_ack.pop_front();
+	}
+
+	// Store it
+	m_messages_awaiting_ack.push_back(msg);
+}
+
+bool connection_manager::on_ack_received(const dragent_protocol_header_v5& header)
+{
+	// Current protocol behavior is that an ACK will ACK the message it describes
+	// with <gen, seq>, but also implicitly ACKs all previous messages. In other
+	// words, if I'm holding on to <1, 5> and <1, 6> and I receive an ACK for
+	// <1, 6>, I should discard <1, 5>.
+	bool removed = false;
+	for(auto it = m_messages_awaiting_ack.begin(); it != m_messages_awaiting_ack.end();)
+	{
+		// Check if the header on the stored metrics is covered by the received ACK
+		if (sequence_less_or_equal(&it->header, &header))
+		{
+			removed = true;
+			m_messages_awaiting_ack.erase(it++);
+		}
+		else
+		{
+			it++;
+		}
+	}
+	return removed;
+}
+
+void connection_manager::process_ack_queue_on_reconnect(uint64_t last_acked_gen,
+                                                        uint64_t last_acked_seq)
+{
+	dragent_protocol_header_v5 tmp_header {
+		{},
+		last_acked_gen,
+		last_acked_seq
+	};
+	for(auto it = m_messages_awaiting_ack.begin(); it != m_messages_awaiting_ack.end();)
+	{
+		if(sequence_less_or_equal(&it->header, &tmp_header))
+		{
+			// Remove this message. The collector thinks it was acked.
+			m_messages_awaiting_ack.erase(it++);
+		}
+		else
+		{
+			// Need to retransmit
+			transmit_buffer(sinsp_utils::get_current_time_ns(),
+			                &it->header,
+			                it->buffer);
+			it++;
+		}
+	}
+}
+
+bool connection_manager::build_protocol_header(std::shared_ptr<serialized_buffer> &item,
+                                               dragent_protocol::protocol_version version,
+                                               dragent_protocol_header_v5 &header,
+                                               uint64_t generation,
+                                               uint64_t sequence)
+{
+	ASSERT(version == dragent_protocol::PROTOCOL_VERSION_NUMBER ||
+	            version == dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH);
+	ASSERT(item);
+	if (!item)
+	{
+		return false;
+	}
+
+	// First fill out the legacy fields
+	uint32_t header_len = dragent_protocol::header_len(version);
+
+	header.hdr.version = version;
+	header.hdr.messagetype = item->message_type;
+	header.hdr.len = htonl(header_len + item->buffer.size());
+
+	// Now the v5 fields
+	if (version > dragent_protocol::PROTOCOL_VERSION_NUMBER)
+	{
+		ASSERT(generation > 0);
+		ASSERT(sequence > 0);
+		header.generation = htonll(generation);
+		header.sequence = htonll(sequence);
+	}
+
 	return true;
 }

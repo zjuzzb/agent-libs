@@ -76,7 +76,7 @@ BENCHMARK_DEFINE_F(ProtobufSerializationBM, DragentUncompressedSerialize)(benchm
 	auto compressor = null_protobuf_compressor::get();
 	for(auto _ : st)
 	{
-		benchmark::DoNotOptimize(dragent_protocol::message_to_buffer(0, 1, msg, false, compressor));
+		benchmark::DoNotOptimize(dragent_protocol::message_to_buffer(0, 1, msg, compressor));
 	}
 	st.SetBytesProcessed(int64_t(st.iterations()) * dam_size);
 	st.counters.insert({{"dam_size", dam_size}});
@@ -87,7 +87,7 @@ BENCHMARK_DEFINE_F(ProtobufSerializationBM, DragentCompressedSerialize)(benchmar
 	auto compressor = gzip_protobuf_compressor::get(-1);
 	for(auto _ : st)
 	{
-		benchmark::DoNotOptimize(dragent_protocol::message_to_buffer(0, 1, msg, true, compressor));
+		benchmark::DoNotOptimize(dragent_protocol::message_to_buffer(0, 1, msg, compressor));
 	}
 	st.SetBytesProcessed(int64_t(st.iterations()) * dam_size);
 	st.counters.insert({{"dam_size", dam_size}});

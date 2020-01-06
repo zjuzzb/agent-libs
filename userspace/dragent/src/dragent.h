@@ -160,7 +160,6 @@ private:
 	protocol_handler m_protocol_handler;
 	capture_job_handler m_capture_job_handler;
 	sinsp_worker m_sinsp_worker;
-	connection_manager m_connection_manager;
 
 	log_reporter m_log_reporter;
 	subprocesses_logger m_subprocesses_logger;

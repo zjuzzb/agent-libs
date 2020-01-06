@@ -8,7 +8,6 @@
 std::shared_ptr<serialized_buffer> dragent_protocol::message_to_buffer(uint64_t ts_ns,
     uint8_t message_type,
     const google::protobuf::MessageLite& message,
-    bool v5,
     std::shared_ptr<protobuf_compressor>& compressor)
 {
 	if (!compressor)
@@ -54,9 +53,28 @@ void dragent_protocol::populate_ids(std::shared_ptr<serialized_buffer>& buf,
 	hdr->sequence = htonll(sequence);
 }
 
+bool dragent_protocol::get_ids(std::shared_ptr<serialized_buffer>& buf,
+                               uint64_t& generation,
+                               uint64_t& sequence)
+{
+	dragent_protocol_header_v5* hdr = (dragent_protocol_header_v5*)buf->buffer.data();
+	if (hdr->hdr.version < PROTOCOL_VERSION_NUMBER_10S_FLUSH)
+	{
+		return false;
+	}
+	generation = ntohll(generation);
+	sequence = ntohll(sequence);
+	return true;
+}
+
 uint32_t dragent_protocol::header_len(const dragent_protocol_header_v4 &hdr)
 {
-	switch (hdr.version)
+	return header_len(hdr.version);
+}
+
+uint32_t dragent_protocol::header_len(dragent_protocol::protocol_version version)
+{
+	switch (version)
 	{
 	case PROTOCOL_VERSION_NUMBER:
 		return sizeof(dragent_protocol_header_v4);
@@ -67,4 +85,37 @@ uint32_t dragent_protocol::header_len(const dragent_protocol_header_v4 &hdr)
 	}
 }
 
+bool dragent_protocol::parse_header(const uint8_t* buf,
+                                    uint32_t buf_len,
+                                    dragent_protocol_header_v4* hdr_out)
+{
+	if (buf_len < sizeof(*hdr_out))
+	{
+		return false;
+	}
 
+	memcpy(hdr_out, buf, sizeof(*hdr_out));
+	hdr_out->len = ntohl(hdr_out->len);
+
+	return true;
+}
+
+bool dragent_protocol::parse_header(const uint8_t* buf,
+                                    uint32_t buf_len,
+                                    dragent_protocol_header_v5* hdr_out)
+{
+	if (buf_len < sizeof(*hdr_out))
+	{
+		return false;
+	}
+
+	memcpy(hdr_out, buf, sizeof(*hdr_out));
+	hdr_out->hdr.len = ntohl(hdr_out->hdr.len);
+	hdr_out->generation = ntohll(hdr_out->generation);
+	hdr_out->sequence = ntohll(hdr_out->sequence);
+
+	return true;
+}
+
+protocol_compression_method protobuf_compressor_factory::s_default_compression =
+        protocol_compression_method::NONE;

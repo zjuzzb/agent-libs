@@ -17,6 +17,9 @@ using namespace std;
 #include "draios.pb.h"
 #include "dragent_settings_interface.h"
 
+#include "protobuf_metric_serializer.h"
+#include "protocol_handler.h"
+
 #include <Poco/Net/SSLManager.h>
 
 using namespace dragent;
@@ -54,6 +57,16 @@ std::string build_test_string(uint32_t len)
 	}
 	return ss.str();
 }
+
+draiosproto::metrics* build_test_metrics(uint64_t index)
+{
+	draiosproto::metrics* test_metrics = new draiosproto::metrics();
+	test_metrics->set_machine_id(build_test_string(32));
+	test_metrics->set_customer_id(build_test_string(64));
+	test_metrics->set_timestamp_ns(1000);
+	test_metrics->set_index(index);
+	return test_metrics;
+}
 }  // End namespace
 
 /**
@@ -81,7 +94,7 @@ TEST(connection_manager_test, failure_to_connect)
 	// Create and spin up the connection manager
 	thread t([&queue, &config]()
 	{
-		connection_manager cm(&config, &queue, false);
+		connection_manager cm(&config, &queue, {4});
 		ASSERT_NO_THROW(cm.test_run());
 	});
 
@@ -129,7 +142,7 @@ TEST(connection_manager_test, connection_timeout)
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
 
-	connection_manager cm(&config, &queue, false);
+	connection_manager cm(&config, &queue, {4});
 	cm.set_connection_timeout(4 * 1000 * 1000);
 
 	// Create and spin up the connection manager
@@ -174,10 +187,7 @@ TEST(connection_manager_test, connect_transmit)
 	// Create and spin up the connection manager
 	std::thread t([&queue, &config]()
 	{
-		// The sinsp_worker and c_j_h are only used when processing
-		// push messages from the backend. For the moment these can
-		// be null.
-		connection_manager cm(&config, &queue, false);
+		connection_manager cm(&config, &queue, {4});
 		cm.test_run();
 	});
 
@@ -191,7 +201,8 @@ TEST(connection_manager_test, connect_transmit)
 		it->buffer = build_test_string(32);
 		test_data.push_back(it->buffer);  // save for comparison
 		queue.put(it, protocol_queue::BQ_PRIORITY_HIGH);
-		msleep(100);  // sleep for some better interleavings. could probably make more directed with
+		msleep(100);  // sleep for some better interleavings. could
+		              // probably make more directed with
 		              // fault inject infra
 	}
 
@@ -208,6 +219,7 @@ TEST(connection_manager_test, connect_transmit)
 		usleep(1000);
 	}
 	ASSERT_EQ(fc.has_data(), MAX_QUEUE_LEN);
+	ASSERT_EQ(0, fc.get_num_disconnects());
 
 	// Shut down all the things
 	config.m_terminate = true;
@@ -225,45 +237,7 @@ TEST(connection_manager_test, connect_transmit)
 	}
 }
 
-TEST(connection_manager_test, DISABLED_message_to_buf_v5)
-{
-	draiosproto::metrics protobuf;
-	auto compressor = null_protobuf_compressor::get();
-
-	// check that we can serialize v4 and v5
-	std::shared_ptr<serialized_buffer> v4_output = dragent_protocol::message_to_buffer(
-	    1, draiosproto::message_type::METRICS, protobuf, false, compressor);
-	EXPECT_EQ(v4_output->ts_ns, 1);
-	EXPECT_EQ(v4_output->message_type, draiosproto::message_type::METRICS);
-	std::shared_ptr<serialized_buffer> v5_output = dragent_protocol::message_to_buffer(
-	    1, draiosproto::message_type::METRICS, protobuf, true, compressor);
-	EXPECT_EQ(v5_output->ts_ns, 1);
-	EXPECT_EQ(v5_output->message_type, draiosproto::message_type::METRICS);
-	EXPECT_EQ(v5_output->buffer.size() - v4_output->buffer.size(),
-	          sizeof(dragent_protocol_header_v5) - sizeof(dragent_protocol_header_v4));
-
-	// check that the actual header data is right
-	auto v4_header = (dragent_protocol_header_v4*)v4_output->buffer.data();
-	auto v5_header = (dragent_protocol_header_v5*)v5_output->buffer.data();
-	EXPECT_NE(v4_header->len, 0);
-	EXPECT_EQ(v4_header->version, dragent_protocol::PROTOCOL_VERSION_NUMBER);
-	EXPECT_EQ(v4_header->messagetype, draiosproto::message_type::METRICS);
-	EXPECT_NE(v5_header->hdr.len, 0);
-	EXPECT_EQ(v5_header->hdr.version, dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH);
-	EXPECT_EQ(v5_header->hdr.messagetype, draiosproto::message_type::METRICS);
-
-	// check that the the v4 header is at the right spot in the v5 message
-	EXPECT_EQ((void*)&v5_header->hdr, (void*)v5_header);
-
-	// naive checks that the serialized data is right
-	uint64_t v4_len = htonl(v4_header->len);
-	uint64_t v5_len = htonl(v5_header->hdr.len);
-	EXPECT_EQ(v5_len - v4_len,
-	          sizeof(dragent_protocol_header_v5) - sizeof(dragent_protocol_header_v4));
-}
-
-// XXX TODO Re-enable once v5 protocol is ready
-TEST(connection_manager_test, DISABLED_generation)
+TEST(connection_manager_test, generation)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
@@ -272,9 +246,8 @@ TEST(connection_manager_test, DISABLED_generation)
 	config.init();
 
 	// Create and spin up the fake collector (get an ephemeral port)
-	fake_collector fc(false);
+	fake_collector fc(true);
 	fc.start(0);
-
 	ASSERT_GT(fc.get_port(), 0);
 
 	// Set the config for the CM
@@ -288,9 +261,12 @@ TEST(connection_manager_test, DISABLED_generation)
 	protocol_queue queue(MAX_QUEUE_LEN);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &queue, true);
+	connection_manager cm(&config, &queue, {5});
+
 	std::thread t([&cm]()
-	{ cm.test_run(); });
+	{
+		cm.test_run();
+	});
 
 	for (uint32_t i = 0; !cm.is_connected() && i < 5000; ++i)
 	{
@@ -298,38 +274,46 @@ TEST(connection_manager_test, DISABLED_generation)
 	}
 
 	ASSERT_TRUE(cm.is_connected());
-	for (uint32_t i = 0; cm.get_generation() == 1 && i < 5000; ++i)
-	{
-		usleep(1000);
-	}
-	ASSERT_EQ(cm.get_generation(), 2);
-	ASSERT_EQ(cm.get_sequence(), 0);
+
+	ASSERT_EQ(cm.get_generation(), 1);
+	ASSERT_EQ(cm.get_sequence(), 1);
 
 	auto it = std::make_shared<serialized_buffer>();
 	it->ts_ns = sinsp_utils::get_current_time_ns();
 	it->message_type = draiosproto::message_type::METRICS;
 	it->buffer = build_test_string(64);
-	dragent_protocol_header_v5* hdr = (dragent_protocol_header_v5*)it->buffer.data();
-	hdr->hdr.len = 64;
-	hdr->hdr.len = htonl(hdr->hdr.len);
-	hdr->hdr.version = dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH;
-	hdr->hdr.messagetype = draiosproto::message_type::METRICS;
 	queue.put(it, protocol_queue::BQ_PRIORITY_HIGH);
 
-	for (uint32_t i = 0; !fc.has_data() && i < 5000; ++i)
+	for (uint32_t i = 0; cm.get_sequence() < 2 && i < 5000; ++i)
 	{
 		usleep(1000);
 	}
-	ASSERT_EQ(cm.get_sequence(), 1);
+	ASSERT_EQ(cm.get_sequence(), 2);
 
 	// force reconnect, check that generation increases
-	cm.disconnect();
-	for (uint32_t i = 0; cm.get_generation() != 2 && i < 5000; ++i)
+	fc.drop_connection();
+
+	// Need to send another metrics message so CM discovers the connection drop
+	it = std::make_shared<serialized_buffer>();
+	it->ts_ns = sinsp_utils::get_current_time_ns();
+	it->message_type = draiosproto::message_type::METRICS;
+	it->buffer = build_test_string(64);
+	queue.put(it, protocol_queue::BQ_PRIORITY_HIGH);
+
+	// Wait for CM to reconnect (this requires some fiddling)
+	for (uint32_t i = 0; cm.get_generation() < 2 && i < 10000; ++i)
 	{
 		usleep(1000);
 	}
-	ASSERT_EQ(cm.get_generation(), 3);
+	for (uint32_t i = 0; !cm.is_connected() && i < 10000; ++i)
+	{
+		usleep(1000);
+	}
+
+	ASSERT_TRUE(cm.is_connected());
+	ASSERT_EQ(cm.get_generation(), 2);
 	ASSERT_EQ(cm.get_sequence(), 1);
+	ASSERT_EQ(1, fc.get_num_disconnects());
 
 	// Shut down all the things
 	config.m_terminate = true;
@@ -338,16 +322,35 @@ TEST(connection_manager_test, DISABLED_generation)
 	t.join();
 }
 
-TEST(connection_manager_test, DISABLED_v5_end_to_end)
+class bogus_capture_stats_source : public capture_stats_source
+{
+	void get_capture_stats(scap_stats *stats) const override
+	{
+		memset(stats, 0, sizeof(*stats));
+	}
+};
+
+TEST(connection_manager_test, v5_end_to_end)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
 	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	config.init();
+	std::atomic<bool> metrics_sent(false);
+
+	// Create the shared blocking queues
+	flush_queue fqueue(MAX_QUEUE_LEN);
+	protocol_queue pqueue(MAX_QUEUE_LEN);
+
+	// All the stuff to build a serializer
+	std::shared_ptr<const capture_stats_source> stats_source =
+	    std::make_shared<bogus_capture_stats_source>();
+	protocol_handler ph(pqueue);
+	auto compressor = gzip_protobuf_compressor::get(-1);
 
 	// Create and spin up the fake collector (get an ephemeral port)
-	fake_collector fc(false);
+	fake_collector fc(true);
 	fc.start(0);
 
 	ASSERT_GT(fc.get_port(), 0);
@@ -359,68 +362,89 @@ TEST(connection_manager_test, DISABLED_v5_end_to_end)
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 	config.m_terminate = false;
 
-	// Create the shared blocking queue
-	protocol_queue queue(MAX_QUEUE_LEN);
-
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &queue, true);
-	std::thread t([&cm]()
-	{ cm.test_run(); });
+	connection_manager cm(&config, &pqueue, {5});
+	protobuf_metric_serializer serializer(stats_source,
+	                                      "",
+	                                      ph,
+	                                      &fqueue,
+	                                      &pqueue,
+	                                      compressor,
+	                                      &cm);
+
+	std::thread ct([&cm]()
+	{
+		cm.test_run();
+	});
+
+	std::thread st([&serializer]()
+	{
+		serializer.test_run();
+	});
 
 	// Build the test data
-	std::list<std::string> test_data;
+	std::list<draiosproto::metrics> test_data;
 	for (uint32_t i = 0; i < MAX_QUEUE_LEN; ++i)
 	{
-		auto it = std::make_shared<serialized_buffer>();
-		it->ts_ns = sinsp_utils::get_current_time_ns();
-		it->message_type = draiosproto::message_type::METRICS;
-		it->buffer = build_test_string(64);
-		dragent_protocol_header_v5* hdr = (dragent_protocol_header_v5*)it->buffer.data();
-		hdr->hdr.len = 64;
-		hdr->hdr.len = htonl(hdr->hdr.len);
-		hdr->hdr.version = dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH;
-		hdr->hdr.messagetype = draiosproto::message_type::METRICS;
-		EXPECT_EQ(it->buffer.size(), 64);
-		test_data.push_back(it->buffer);  // save for comparison
-		queue.put(it, protocol_queue::BQ_PRIORITY_HIGH);
+		draiosproto::metrics* m = build_test_metrics(i + 1);
+		serializer.serialize(std::make_shared<flush_data_message>(
+		                         1000 + i,
+		                         &metrics_sent,
+		                         std::unique_ptr<draiosproto::metrics>(m),
+		                         MAX_QUEUE_LEN,
+		                         0,
+		                         1.0,
+		                         1,
+		                         0));
+
+		test_data.push_back(*m);  // save for comparison
 	}
 
 	// wait for all the messages to be processed
-	for (uint32_t i = 0; cm.get_sequence() != MAX_QUEUE_LEN && i < 5000; ++i)
+	for (uint32_t i = 0; cm.get_sequence() <= MAX_QUEUE_LEN && i < 5000; ++i)
 	{
 		usleep(1000);
 	}
-	ASSERT_EQ(cm.get_sequence(), MAX_QUEUE_LEN);
+	ASSERT_EQ(cm.get_sequence(), MAX_QUEUE_LEN + 1);
+
+	// Pop the handshake messages off the data queue
+	ASSERT_GT(fc.has_data(), 2);
+	(void)fc.pop_data();
+	(void)fc.pop_data();
 
 	// wait for all the data to be received
-	for (uint32_t i = 0; fc.has_data() != MAX_QUEUE_LEN && i < 5000; ++i)
+	for (uint32_t i = 0; fc.has_data() < MAX_QUEUE_LEN && i < 5000; ++i)
 	{
 		usleep(1000);
 	}
+
 	ASSERT_EQ(fc.has_data(), MAX_QUEUE_LEN);
+	ASSERT_EQ(0, fc.get_num_disconnects());
 
 	// Shut down all the things
 	config.m_terminate = true;
 	fc.stop();
 
-	t.join();
+	ct.join();
+	serializer.stop();
+	st.join();
 
 	// Validate the messages received by the fake collector
-	int sequence = 0;
 	for (auto sent_data : test_data)
 	{
 		ASSERT_TRUE(fc.has_data());
 		fake_collector::buf b = fc.pop_data();
-		EXPECT_EQ(memcmp(b.ptr,
-		                 &sent_data.data()[sizeof(dragent_protocol_header_v5)],
-		                 64 - sizeof(dragent_protocol_header_v5)),
-		          0);
-		EXPECT_EQ(b.hdr.v5.hdr.len, 64);
-		EXPECT_EQ(b.hdr.v5.hdr.version, dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH);
-		EXPECT_EQ(b.hdr.v5.hdr.messagetype, draiosproto::message_type::METRICS);
-		EXPECT_EQ(b.hdr.v5.generation, 1);
-		EXPECT_EQ(b.hdr.v5.sequence, ++sequence);
-		delete[] b.ptr;
+
+		draiosproto::metrics received_metrics;
+		dragent_protocol::buffer_to_protobuf(b.ptr,
+		                                     b.payload_len,
+		                                     &received_metrics,
+		                                     protocol_compression_method::GZIP);
+
+		EXPECT_EQ(sent_data.timestamp_ns(), received_metrics.timestamp_ns());
+		EXPECT_EQ(sent_data.customer_id(), received_metrics.customer_id());
+		EXPECT_EQ(sent_data.machine_id(), received_metrics.machine_id());
+		EXPECT_EQ(sent_data.index(), received_metrics.index());
 	}
 }
 
@@ -441,7 +465,7 @@ public:
 	uint32_t num_received() const { return messages_received; }
 };
 
-TEST(connection_manager_test, collector_sends_error)
+bool test_collector_sends_error(dragent_protocol::protocol_version ver)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
@@ -451,9 +475,12 @@ TEST(connection_manager_test, collector_sends_error)
 	auto mh = std::make_shared<counting_message_handler>();
 
 	// Create and spin up the fake collector (get an ephemeral port)
-	fake_collector fc(false);
+	fake_collector fc(ver == dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH);
 	fc.start(0);
-	ASSERT_GT(fc.get_port(), 0);
+	if (fc.get_port() == 0)
+	{
+		return false;
+	}
 
 	// Set the config for the CM
 	config.m_server_addr = "127.0.0.1";
@@ -466,13 +493,25 @@ TEST(connection_manager_test, collector_sends_error)
 	protocol_queue queue(MAX_QUEUE_LEN);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &queue, true,
+	connection_manager cm(&config, &queue, {ver},
 	    {{draiosproto::message_type::ERROR_MESSAGE, mh}});
 
 	std::thread t([&cm]()
 	{
 		cm.test_run();
 	});
+
+	// If v5, we have to wait for the connection to be established
+	uint32_t loops = 0;
+	while(cm.get_state() != cm_state_machine::state::STEADY_STATE && loops < 10000)
+	{
+		usleep(1000);
+		++loops;
+	}
+	if (cm.get_state() != cm_state_machine::state::STEADY_STATE)
+	{
+		return false;
+	}
 
 	// Build a collector message
 	draiosproto::error_message err;
@@ -483,16 +522,155 @@ TEST(connection_manager_test, collector_sends_error)
 	                                     false,
 	                                     err);
 
-	ASSERT_TRUE(ret);
+	if (!ret)
+	{
+		return false;
+	}
 
-	uint32_t loops = 0;
+	loops = 0;
 	while (mh->num_received() == 0 && loops < 10000)
 	{
 		usleep(1000);
 		++loops;
 	}
 
-	ASSERT_GT(mh->num_received(), 0);
+	if (mh->num_received() == 0)
+	{
+		return false;
+	}
+
+	if (fc.get_num_disconnects() > 0)
+	{
+		return false;
+	}
+
+	// Shut down all the things
+	config.m_terminate = true;
+	fc.stop();
+
+	t.join();
+	return true;
+}
+
+TEST(connection_manager_test, collector_sends_error_v4)
+{
+	ASSERT_TRUE(test_collector_sends_error(4));
+}
+
+TEST(connection_manager_test, collector_sends_error_v5)
+{
+	ASSERT_TRUE(test_collector_sends_error(5));
+}
+
+TEST(connection_manager_test, basic_connect_with_handshake)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration::m_terminate = false;
+	dragent_configuration config;
+	config.init();
+
+	// Create and spin up the fake collector (get an ephemeral port)
+	fake_collector fc(true);
+	fc.start(0);
+	ASSERT_NE(0, fc.get_port());
+
+	// Set the config for the CM
+	config.m_server_addr = "127.0.0.1";
+	config.m_server_port = fc.get_port();
+	config.m_ssl_enabled = false;
+	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
+	config.m_terminate = false;
+
+	// Create the shared blocking queue
+	protocol_queue queue(MAX_QUEUE_LEN);
+
+	// Create and spin up the connection manager
+	connection_manager cm(&config, &queue, {5});
+
+	std::thread t([&cm]()
+	{
+		cm.test_run();
+	});
+
+	uint32_t loops = 0;
+	while(cm.get_state() != cm_state_machine::state::STEADY_STATE && loops < 10000)
+	{
+		usleep(1000);
+		++loops;
+	}
+	ASSERT_EQ(cm_state_machine::state::STEADY_STATE, cm.get_state());
+
+	ASSERT_EQ(fc.has_data(), 2);
+
+	// Check each of the received messages
+	fake_collector::buf b = fc.pop_data();
+	ASSERT_EQ(draiosproto::message_type::PROTOCOL_INIT, b.hdr.v4.messagetype);
+
+	// Validate the protocol_init message
+	draiosproto::protocol_init pi;
+	dragent_protocol::buffer_to_protobuf(b.ptr,
+	                                     b.payload_len,
+	                                     &pi,
+	                                     protocol_compression_method::NONE);
+
+	ASSERT_EQ(1, pi.supported_protocol_versions().size());
+	dragent_protocol::protocol_version version = pi.supported_protocol_versions()[0];
+	ASSERT_EQ(dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH, version);
+	ASSERT_EQ(dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH,
+	          cm.get_negotiated_protocol_version());
+
+	// Validate the handshake phase 2 message
+	b = fc.pop_data();
+	uint64_t hdr_gen = ntohll(b.hdr.v5.generation);
+	uint64_t hdr_seq = ntohll(b.hdr.v5.sequence);
+	ASSERT_EQ(draiosproto::message_type::PROTOCOL_HANDSHAKE_V1, b.hdr.v4.messagetype);
+	ASSERT_EQ(1, hdr_gen);
+	ASSERT_EQ(1, hdr_seq);
+
+	draiosproto::handshake_v1 h;
+	dragent_protocol::buffer_to_protobuf(b.ptr,
+	                                     b.payload_len,
+	                                     &h,
+	                                     protocol_compression_method::NONE);
+
+	bool gzip = false;
+	bool none = false;
+	for (auto i : h.supported_compressions())
+	{
+		if (i == draiosproto::compression::COMPRESSION_GZIP)
+		{
+			gzip = true;
+		}
+		else if (i == draiosproto::compression::COMPRESSION_NONE)
+		{
+			none = true;
+		}
+		else
+		{
+			// Agent doesn't currently support anything else
+			ASSERT_TRUE(i == draiosproto::compression::COMPRESSION_GZIP ||
+			            i == draiosproto::compression::COMPRESSION_NONE);
+		}
+	}
+	ASSERT_TRUE(gzip && none);
+
+	bool ai_10 = false;
+	for (auto i : h.supported_agg_intervals())
+	{
+		if (i == 10)
+		{
+			ai_10 = true;
+		}
+		else
+		{
+			// Currently only 10s is supported
+			ASSERT_EQ(10, i);
+		}
+	}
+
+	ASSERT_TRUE(ai_10);
+	ASSERT_EQ(0, fc.get_num_disconnects());
 
 	// Shut down all the things
 	config.m_terminate = true;
@@ -501,36 +679,21 @@ TEST(connection_manager_test, collector_sends_error)
 	t.join();
 }
 
-template<typename message_type>
-class generic_handler : public connection_manager::message_handler
-{
-public:
-	generic_handler() {}
-	bool handle_message(const draiosproto::message_type,
-	                    uint8_t* buffer,
-	                    size_t buffer_size) override
-	{
-		dragent_protocol::buffer_to_protobuf(buffer, buffer_size, &message);
-		message_received = true;
-		return false;
-	}
-
-	message_type message;
-	bool message_received = false;
-};
-
-TEST(fake_collector_test, DISABLED_protocol_init_response)
+TEST(connection_manager_test, metrics_ack)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
 	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
+	uint64_t index = 1;
 	config.init();
+	std::atomic<bool> metrics_sent(false);
 
 	// Create and spin up the fake collector (get an ephemeral port)
 	fake_collector fc(true);
+	fc.delay_acks(true);
 	fc.start(0);
-	ASSERT_GT(fc.get_port(), 0);
+	ASSERT_NE(0, fc.get_port());
 
 	// Set the config for the CM
 	config.m_server_addr = "127.0.0.1";
@@ -539,164 +702,108 @@ TEST(fake_collector_test, DISABLED_protocol_init_response)
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 	config.m_terminate = false;
 
-	auto pirh = std::make_shared<generic_handler<draiosproto::protocol_init_response>>();
-	protocol_queue queue(MAX_QUEUE_LEN);
-	connection_manager cm(&config,
-	                      &queue,
-	                      true,
-	                      {{draiosproto::message_type::PROTOCOL_INIT_RESP, pirh}});
+	// Create the shared blocking queues
+	flush_queue fqueue(MAX_QUEUE_LEN);
+	protocol_queue pqueue(MAX_QUEUE_LEN);
+
+	// All the stuff to build a serializer
+	std::shared_ptr<const capture_stats_source> stats_source =
+	    std::make_shared<bogus_capture_stats_source>();
+	protocol_handler ph(pqueue);
+	auto compressor = gzip_protobuf_compressor::get(-1);
+
+	// Create and spin up the connection manager
+	connection_manager cm(&config, &pqueue, {5});
+	protobuf_metric_serializer serializer(stats_source,
+	                                      "",
+	                                      ph,
+	                                      &fqueue,
+	                                      &pqueue,
+	                                      compressor,
+	                                      &cm);
+
 	std::thread t([&cm]()
 	{
 		cm.test_run();
 	});
 
-	for (uint32_t i = 0; i < 5000 && !pirh->message_received; i++)
+	std::thread st([&serializer]()
 	{
-		usleep(1000);
-	}
-	ASSERT_TRUE(pirh->message_received);
-	EXPECT_EQ(pirh->message.protocol_version(), 1);
-
-	config.m_terminate = true;
-	fc.stop();
-	t.join();
-}
-
-TEST(fake_collector_test, DISABLED_protocol_handshake_v1)
-{
-	const size_t MAX_QUEUE_LEN = 64;
-	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
-	dragent_configuration config;
-	config.init();
-
-	// Create and spin up the fake collector (get an ephemeral port)
-	fake_collector fc(true);
-	fc.start(0);
-	ASSERT_GT(fc.get_port(), 0);
-
-	// Set the config for the CM
-	config.m_server_addr = "127.0.0.1";
-	config.m_server_port = fc.get_port();
-	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
-
-	auto pirh = std::make_shared<generic_handler<draiosproto::protocol_init_response>>();
-	auto hrh = std::make_shared<generic_handler<draiosproto::handshake_v1_response>>();
-	protocol_queue queue(MAX_QUEUE_LEN);
-	connection_manager cm(&config,
-	                      &queue,
-	                      true,
-	                      {{draiosproto::message_type::PROTOCOL_INIT_RESP, pirh},
-	                       {draiosproto::message_type::PROTOCOL_HANDSHAKE_V1_RESP, hrh}});
-	std::thread t([&cm]()
-	{
-		cm.test_run();
+		serializer.test_run();
 	});
 
-	// test will go like this:
-	// wait for hand shake to complete, set the ack to something non-1's
-	// force a reconnect
-	// check that we get the right response
-	for (uint32_t i = 0; i < 5000 && !hrh->message_received; i++)
+	for(uint32_t loops = 0; !cm.is_connected() && loops < 10000; ++loops)
 	{
 		usleep(1000);
 	}
-	ASSERT_TRUE(hrh->message_received);
+	ASSERT_TRUE(cm.is_connected());
 
-	// reset the handshake response
-	hrh->message_received = false;
+	// Build and send a fake metrics message
+	auto metrics = build_test_metrics(index++);
+	serializer.serialize(std::make_shared<flush_data_message>(
+	                         sinsp_utils::get_current_time_ns(),
+	                         &metrics_sent,
+	                         std::unique_ptr<draiosproto::metrics>(metrics),
+	                         MAX_QUEUE_LEN,
+	                         0,
+	                         1.0,
+	                         1,
+	                         0));
 
-	// make the gen/seql in the fc bigger
-	fc.set_last_ack(5, 10);
-
-	// force reconnect
-	cm.disconnect();
-
-	// wait for header again
-	for (uint32_t i = 0; i < 5000 && !hrh->message_received; i++)
+	// wait for all the data to be received
+	const uint32_t total_messages = 3; // Two HS + 1 metrics
+	for (uint32_t i = 0; fc.has_data() < total_messages && i < 5000; ++i)
 	{
 		usleep(1000);
 	}
-	ASSERT_TRUE(hrh->message_received);
-	EXPECT_EQ(hrh->message.last_acked_gen_num(), 5);
-	EXPECT_EQ(hrh->message.last_acked_seq_num(), 10);
-	EXPECT_EQ(hrh->message.compression(), draiosproto::compression::COMPRESSION_GZIP);
-	EXPECT_EQ(hrh->message.agg_interval(), 10);
-	EXPECT_FALSE(hrh->message.agg_context().enforce());
+	ASSERT_EQ(0, pqueue.size());
+	ASSERT_EQ(fc.has_data(), total_messages);
 
+	// Check each of the received messages
+	fake_collector::buf b = fc.pop_data();
+	ASSERT_EQ(draiosproto::message_type::PROTOCOL_INIT, b.hdr.v4.messagetype);
+
+	b = fc.pop_data();
+	uint64_t hs_gen = ntohll(b.hdr.v5.generation);
+	uint64_t hs_seq = ntohll(b.hdr.v5.sequence);
+	ASSERT_EQ(draiosproto::message_type::PROTOCOL_HANDSHAKE_V1, b.hdr.v4.messagetype);
+	ASSERT_EQ(1, hs_gen);
+	ASSERT_EQ(1, hs_seq);
+
+	b = fc.pop_data();
+	ASSERT_EQ(draiosproto::message_type::METRICS, b.hdr.v4.messagetype);
+	ASSERT_EQ(dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH, b.hdr.v4.version);
+
+	// It's remotely possible that the CM hasn't updated unacked messages yet
+	for(uint32_t loops = 0; cm.num_unacked_messages() < 1 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(1, cm.num_unacked_messages());
+	dragent_protocol_header_v5 hdr = cm.first_unacked_header();
+	ASSERT_EQ(draiosproto::message_type::METRICS, hdr.hdr.messagetype);
+	uint64_t gen = ntohll(hdr.generation);
+	uint64_t seq = ntohll(hdr.sequence);
+	ASSERT_EQ(1, gen);
+	ASSERT_EQ(1, seq);
+	fc.delay_acks(false);
+
+	// Wait for ack to be processed
+	for (uint32_t i = 0; cm.num_unacked_messages() > 0 && i < 5000; ++i)
+	{
+		usleep(1000);
+	}
+
+	ASSERT_EQ(0, cm.num_unacked_messages());
+	ASSERT_EQ(0, fc.get_num_disconnects());
+
+	// Shut down all the things
 	config.m_terminate = true;
 	fc.stop();
+
 	t.join();
-}
-
-TEST(fake_collector_test, DISABLED_ack)
-{
-	const size_t MAX_QUEUE_LEN = 64;
-	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
-	dragent_configuration config;
-	config.init();
-
-	// Create and spin up the fake collector (get an ephemeral port)
-	fake_collector fc(true);
-	fc.start(0);
-	ASSERT_GT(fc.get_port(), 0);
-
-	// Set the config for the CM
-	config.m_server_addr = "127.0.0.1";
-	config.m_server_port = fc.get_port();
-	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
-
-	auto pirh = std::make_shared<generic_handler<draiosproto::protocol_init_response>>();
-	auto hrh = std::make_shared<generic_handler<draiosproto::handshake_v1_response>>();
-	auto ah = std::make_shared<counting_message_handler>();
-	protocol_queue queue(MAX_QUEUE_LEN);
-	connection_manager cm(&config,
-	                      &queue,
-	                      true,
-	                      {{draiosproto::message_type::PROTOCOL_INIT_RESP, pirh},
-	                       {draiosproto::message_type::PROTOCOL_HANDSHAKE_V1_RESP, hrh},
-	                       {draiosproto::message_type::METRICS_ACK, ah}});
-	std::thread t([&cm]()
-	{
-		cm.test_run();
-	});
-
-	// test will go like this:
-	// wait for hand shake to complete, set the ack to something non-1's
-	// force a reconnect
-	// check that we get the right response
-	for (uint32_t i = 0; i < 5000 && !hrh->message_received; i++)
-	{
-		usleep(1000);
-	}
-	ASSERT_TRUE(hrh->message_received);
-
-	auto it = std::make_shared<serialized_buffer>();
-	it->ts_ns = sinsp_utils::get_current_time_ns();
-	it->message_type = draiosproto::message_type::METRICS;
-	it->buffer = build_test_string(64);
-	dragent_protocol_header_v5* hdr = (dragent_protocol_header_v5*)it->buffer.data();
-	hdr->hdr.len = 64;
-	hdr->hdr.len = htonl(hdr->hdr.len);
-	hdr->hdr.version = dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH;
-	hdr->hdr.messagetype = draiosproto::message_type::METRICS;
-	queue.put(it, protocol_queue::BQ_PRIORITY_HIGH);
-
-	for (uint32_t i = 0; i < 5000 && ah->num_received() == 0; i++)
-	{
-		usleep(1000);
-	}
-	ASSERT_NE(ah->num_received(), 0);
-
-
-	config.m_terminate = true;
-	fc.stop();
-	t.join();
+	serializer.stop();
+	st.join();
 }
 
 TEST(connection_manager_test, change_aggregation_interval)
@@ -717,7 +824,7 @@ TEST(connection_manager_test, change_aggregation_interval)
 	protocol_queue queue(MAX_QUEUE_LEN);
 
 	// Create a connection manager (don't need to start it for this test)
-	connection_manager cm(&config, &queue, false);
+	connection_manager cm(&config, &queue, {5});
 	aggregation_interval_source* src = &cm;
 
 	ASSERT_EQ(chrono::seconds::max(), cm.get_negotiated_aggregation_interval());
@@ -727,4 +834,166 @@ TEST(connection_manager_test, change_aggregation_interval)
 
 	ASSERT_EQ(new_interval, src->get_negotiated_aggregation_interval().count());
 
+}
+
+TEST(connection_manager_test, handshake_version_negotiation_failure)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration::m_terminate = false;
+	dragent_configuration config;
+	config.init();
+
+	// Create and spin up the fake collector (get an ephemeral port)
+	fake_collector fc(false); // Don't auto respond
+	fc.start(0);
+	ASSERT_NE(0, fc.get_port());
+
+	// Set the config for the CM
+	config.m_server_addr = "127.0.0.1";
+	config.m_server_port = fc.get_port();
+	config.m_ssl_enabled = false;
+	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
+	config.m_terminate = false;
+
+	// Create the shared blocking queue
+	protocol_queue queue(MAX_QUEUE_LEN);
+
+	// Create and spin up the connection manager
+	connection_manager cm(&config, &queue, {5});
+
+	std::thread t([&cm]()
+	{
+		cm.test_run();
+	});
+
+	for(uint32_t loops = 0; fc.has_data() == 0 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+
+	ASSERT_EQ(fc.has_data(), 1);
+
+	// Should have gotten a PROTOCOL_INIT message
+	fake_collector::buf b = fc.pop_data();
+	ASSERT_EQ(draiosproto::message_type::PROTOCOL_INIT, b.hdr.v4.messagetype);
+
+	// Validate the protocol_init message
+	draiosproto::protocol_init pi;
+	dragent_protocol::buffer_to_protobuf(b.ptr,
+	                                     b.payload_len,
+	                                     &pi,
+	                                     protocol_compression_method::NONE);
+
+	ASSERT_EQ(1, pi.supported_protocol_versions().size());
+	dragent_protocol::protocol_version version = pi.supported_protocol_versions()[0];
+	ASSERT_EQ(dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH, version);
+
+	// Now send a response with a bogus version number
+	draiosproto::protocol_init_response pir;
+	pir.set_timestamp_ns(pi.timestamp_ns() + 1);
+	pir.set_machine_id(pi.machine_id());
+	pir.set_customer_id(pi.customer_id());
+	pir.set_protocol_version(3); // Unsupported version number
+	fc.send_collector_message(draiosproto::message_type::PROTOCOL_INIT_RESP,
+	                          false,
+	                          pir,
+	                          0,
+	                          0,
+	                          protobuf_compressor_factory::get_default());
+
+
+	for(uint32_t loops = 0; fc.get_num_disconnects() < 1 && loops < 5000 ; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(1, fc.get_num_disconnects());
+
+	// The CM should cycle the connection and retry the handshake
+	for(uint32_t loops = 0; fc.has_data() < 1 && loops < 5000 ; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(1, fc.get_num_disconnects());
+
+	// Shut down all the things (this will conveniently also test terminate
+	// in the middle of a handshake)
+	config.m_terminate = true;
+	fc.stop();
+
+	t.join();
+}
+
+TEST(connection_manager_test, gen_seq_ordering)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration::m_terminate = false;
+	dragent_configuration config;
+	config.init();
+	config.m_terminate = false;
+
+	// Create the shared blocking queue
+	protocol_queue queue(MAX_QUEUE_LEN);
+
+	// Create a connection manager (no need to start it up)
+	connection_manager cm(&config, &queue, {5});
+
+	dragent_protocol_header_v5 ack_header;
+	dragent_protocol_header_v5 metrics_header;
+
+	// TEST 1: both equal
+	ack_header.generation = metrics_header.generation = 1;
+	ack_header.sequence = metrics_header.sequence = 5;
+
+	ASSERT_EQ(metrics_header.generation, ack_header.generation);
+	ASSERT_EQ(metrics_header.sequence, ack_header.sequence);
+	ASSERT_TRUE(cm.test_sequence_less_or_equal(&metrics_header, &ack_header));
+
+	// TEST 2: seq less than ack
+	metrics_header.sequence = 4;
+	ASSERT_EQ(metrics_header.generation, ack_header.generation);
+	ASSERT_LT(metrics_header.sequence, ack_header.sequence);
+	ASSERT_TRUE(cm.test_sequence_less_or_equal(&metrics_header, &ack_header));
+
+	// TEST 3: seq greater than ack
+	metrics_header.sequence = 174;
+	ASSERT_EQ(metrics_header.generation, ack_header.generation);
+	ASSERT_GT(metrics_header.sequence, ack_header.sequence);
+	ASSERT_FALSE(cm.test_sequence_less_or_equal(&metrics_header, &ack_header));
+
+	// TEST 4: gen less than ack, seq equal
+	metrics_header.sequence = ack_header.sequence;
+	ack_header.generation = 2;
+	ASSERT_LT(metrics_header.generation, ack_header.generation);
+	ASSERT_EQ(metrics_header.sequence, ack_header.sequence);
+	ASSERT_TRUE(cm.test_sequence_less_or_equal(&metrics_header, &ack_header));
+
+	// TEST 5: gen greater than ack, seq equal
+	metrics_header.generation = 4;
+	ASSERT_GT(metrics_header.generation, ack_header.generation);
+	ASSERT_EQ(metrics_header.sequence, ack_header.sequence);
+	ASSERT_FALSE(cm.test_sequence_less_or_equal(&metrics_header, &ack_header));
+
+	// TEST 6: gen greater than ack, seq greater than ack
+	metrics_header.generation = 4;
+	metrics_header.sequence = 190;
+	ack_header.generation = 2;
+	ack_header.sequence = 118;
+	ASSERT_GT(metrics_header.generation, ack_header.generation);
+	ASSERT_GT(metrics_header.sequence, ack_header.sequence);
+	ASSERT_FALSE(cm.test_sequence_less_or_equal(&metrics_header, &ack_header));
+
+	// TEST 7: gen less than ack, seq less than ack
+	ack_header.generation = 1809;
+	ack_header.sequence = 28001;
+	ASSERT_LT(metrics_header.generation, ack_header.generation);
+	ASSERT_LT(metrics_header.sequence, ack_header.sequence);
+	ASSERT_TRUE(cm.test_sequence_less_or_equal(&metrics_header, &ack_header));
+
+	// TEST 8: gen less than ack, seq greater than ack
+	ack_header.sequence = 38;
+	ASSERT_LT(metrics_header.generation, ack_header.generation);
+	ASSERT_GT(metrics_header.sequence, ack_header.sequence);
+	ASSERT_TRUE(cm.test_sequence_less_or_equal(&metrics_header, &ack_header));
 }

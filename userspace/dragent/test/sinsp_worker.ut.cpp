@@ -5,6 +5,8 @@
 #include "sinsp_mock.h"
 #include "watchdog_runnable_pool.h"
 #include "protocol_handler.h"
+#include "protobuf_compression.h"
+#include "protocol.h"
 
 using namespace dragent;
 using namespace test_helpers;

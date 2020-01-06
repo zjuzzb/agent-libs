@@ -51,11 +51,14 @@ bool fake_collector::should_connect(int fd)
 
 bool fake_collector::process_auto_response(buf& b)
 {
-
-	if (b.hdr.v4.version == dragent_protocol::PROTOCOL_VERSION_NUMBER)
+	if (b.hdr.v4.version == dragent_protocol::PROTOCOL_VERSION_NUMBER &&
+	    b.hdr.v4.messagetype != draiosproto::message_type::PROTOCOL_INIT)
 	{
 		return true;
 	}
+
+	uint64_t generation = ntohll(b.hdr.v5.generation);
+	uint64_t sequence = ntohll(b.hdr.v5.sequence);
 
 	switch (b.hdr.v4.messagetype)
 	{
@@ -63,48 +66,116 @@ bool fake_collector::process_auto_response(buf& b)
 	{
 		// generation must never go down
 		// seqence can go down if generation increases
-		if (b.hdr.v5.generation < m_last_gen_num ||
-			(b.hdr.v5.generation == m_last_gen_num &&
-			 b.hdr.v5.sequence <= m_last_seq_num))
+		if (generation < m_last_gen_num ||
+		    (generation == m_last_gen_num && sequence <= m_last_seq_num))
 		{
-			return false; // DOFL: drop on the floor...laughing
+			std::cerr << "FC> Received metrics message with bogus gen, seq <"
+			          << generation << ", " << sequence << ">" << std::endl;
+			// Continue processing (this may be a delayed ACK or might be part of the test)
 		}
-		m_last_gen_num = b.hdr.v5.generation;
-		m_last_seq_num = b.hdr.v5.sequence;
-		send_collector_message(draiosproto::message_type::METRICS_ACK,
-							   true,
-							   nullptr,
-							   0,
-							   m_last_gen_num,
-							   m_last_seq_num);
+		else
+		{
+			m_last_gen_num = generation;
+			m_last_seq_num = sequence;
+		}
+
+		if (m_delay_acks)
+		{
+			// Keep for later
+			m_delayed_metrics.push(b);
+		}
+		else
+		{
+			send_collector_message(draiosproto::message_type::PROTOCOL_ACK,
+			                       true,
+			                       nullptr,
+			                       0,
+			                       m_last_gen_num,
+			                       m_last_seq_num);
+		}
+
+		// Parse the message to validate the index number
+		draiosproto::metrics msg;
+		uint32_t message_len = ntohl(b.hdr.v4.len);
+		uint32_t payload_len = message_len - dragent_protocol::header_len(b.hdr.v4);
+		// Parse the protobuf (this might fail if it's a bogus protobuf
+		// built by a unit test. That's OK).
+		if(!parse_protobuf(b.ptr, payload_len, msg))
+		{
+			return true;
+		}
+		ASSERT(msg.index() == m_last_index + 1 || msg.index() == 1);
+		std::cout << "FC> " << "Received metrics message with index "
+		          << msg.index() << std::endl;
+		if (msg.index() != m_last_index + 1)
+		{
+			std::cerr << "FC> Metrics index mismatch (" << (m_last_index + 1)
+			          << " expected but received " << msg.index() << ")" << std::endl;
+			return false;
+		}
+		m_last_index = msg.index();
 		return true;
 	}
 	case draiosproto::message_type::PROTOCOL_INIT:
 	{
 		draiosproto::protocol_init pi;
-		dragent_protocol::buffer_to_protobuf(b.ptr, b.payload_len, &pi);
+		dragent_protocol::buffer_to_protobuf(b.ptr,
+		                                     b.payload_len,
+		                                     &pi,
+		                                     protobuf_compressor_factory::get_default());
 		draiosproto::protocol_init_response pir;
-		pir.set_timestamp_ns(pi.timestamp_ns());
+
+		// Get the versions supported and choose the highest one we support
+		m_working_version = 0;
+		for(auto v: pi.supported_protocol_versions())
+		{
+			if (version_is_supported(v) && v > m_working_version)
+			{
+				m_working_version = v;
+			}
+		}
+
+		if (m_working_version == 0)
+		{
+			// We don't support any of the versions provided
+			ASSERT(m_working_version != 0);
+			return false;
+		}
+
+		pir.set_timestamp_ns(pi.timestamp_ns() + 1); // Fastest response in the West
 		pir.set_machine_id(pi.machine_id());
 		pir.set_customer_id(pi.customer_id());
-		pir.set_protocol_version(std::max(m_protocol_version, pi.max_protocol_version()));
+		pir.set_protocol_version(m_working_version);
 		send_collector_message(draiosproto::message_type::PROTOCOL_INIT_RESP,
 							   false,
-							   pir);
+		                       pir,
+		                       0,
+		                       0,
+		                       protobuf_compressor_factory::get_default());
 
-		return false;
+		return true;
 	}
 	case draiosproto::message_type::PROTOCOL_HANDSHAKE_V1:
 	{
+		ASSERT(b.hdr.v4.version == 5);
 		draiosproto::handshake_v1 h;
-		dragent_protocol::buffer_to_protobuf(b.ptr, b.payload_len, &h);
+		dragent_protocol::buffer_to_protobuf(b.ptr,
+		                                     b.payload_len,
+		                                     &h,
+		                                     protobuf_compressor_factory::get_default());
 		draiosproto::handshake_v1_response hr;
 		hr.set_timestamp_ns(h.timestamp_ns());
 		hr.set_machine_id(h.machine_id());
 		hr.set_customer_id(h.customer_id());
 		// if this is first connection from agent, reset everything
-		if (h.generation_num() == 1)
+		if (generation == 1)
 		{
+			ASSERT(sequence == 1);
+			if (sequence != 1)
+			{
+				std::cerr << "FC> Sequence number error: expected 1, got " << sequence << std::endl;
+				return false;
+			}
 			m_last_gen_num = 0;
 			m_last_seq_num = 0;
 		}
@@ -118,18 +189,26 @@ bool fake_collector::process_auto_response(buf& b)
 				hr.set_compression(draiosproto::compression::COMPRESSION_GZIP);
 			}
 		}
-		hr.set_agg_interval(1);
+		hr.set_agg_interval(0);
 		for (auto i : h.supported_agg_intervals())
 		{
 			hr.set_agg_interval(std::max(hr.agg_interval(), i));
 		}
 		hr.mutable_agg_context()->set_enforce(false);
+		hr.mutable_agg_context()->set_timestamp_ns(hr.timestamp_ns());
+		hr.mutable_agg_context()->set_machine_id(hr.machine_id());
 		send_collector_message(draiosproto::message_type::PROTOCOL_HANDSHAKE_V1_RESP,
 							   false,
-							   hr);
+		                       hr,
+		                       0,
+		                       0,
+		                       protobuf_compressor_factory::get_default());
 
-		return false;
+		return true;
 	}
+	default:
+		std::cerr << "FC> Unknown message type " << (int)b.hdr.v4.messagetype << std::endl;
+		return false;
 	}
 
 	return true;
@@ -139,7 +218,7 @@ void fake_collector::thread_loop(int listen_sock_fd, sockaddr_in addr, fake_coll
 {
 	const uint32_t MAX_SOCKETS = 2;
 	struct pollfd fds[MAX_SOCKETS] = {};
-	const int timeout = 1000;
+	const int timeout = 300;
 	nfds_t nfds = 1;
 	int agent_fd = -1;
 
@@ -163,11 +242,23 @@ void fake_collector::thread_loop(int listen_sock_fd, sockaddr_in addr, fake_coll
 			return;
 		}
 
+		// Check if we need to drop a connection
+		if (fc.m_drop_connection)
+		{
+			if (agent_fd != -1)
+			{
+				close(agent_fd);
+				agent_fd = -1;
+				fc.m_drop_connection = false;
+			}
+			continue;
+		}
+
 		// Check to see if we have data to send
 		buf b;
 		bool send = false;
 		fc.m_send_queue_lock.lock();
-		if (!fc.m_send_queue.empty() && agent_fd > 0)
+		if (!fc.m_send_queue.empty() && agent_fd > 0 && !fc.m_drop_connection)
 		{
 			send = true;
 			b = fc.m_send_queue.front();
@@ -176,7 +267,7 @@ void fake_collector::thread_loop(int listen_sock_fd, sockaddr_in addr, fake_coll
 		fc.m_send_queue_lock.unlock();
 
 		// Send one pending message if we have one
-		if (send)
+		if (send && agent_fd > 0)
 		{
 			uint32_t buf_len = ntohl(b.hdr.v4.len);
 			int write_ret = 0;
@@ -199,7 +290,7 @@ void fake_collector::thread_loop(int listen_sock_fd, sockaddr_in addr, fake_coll
 			write(agent_fd, b.ptr, buf_len);
 		}
 
-		if(ret == 0)
+		if(ret == 0 || fc.m_drop_connection) // ret should be the return from poll() above
 		{
 			continue;
 		}
@@ -241,25 +332,18 @@ void fake_collector::thread_loop(int listen_sock_fd, sockaddr_in addr, fake_coll
 			}
 			else // Descriptor is for a client connection that's become readable
 			{
-				buf b = {};
-				uint32_t read_ret = fc.read_one_message(fds[fd].fd, &b);
-				if(read_ret == 0)
+				if(!fc.handle_one_message(fds[fd].fd))
 				{
 					fds[fd].fd = -1;
 					// We'll need to compact the FD list if we start supporting multiple agent connections
 					--nfds;
+					++fc.m_num_disconnects;
+					// Dropped connection = start over, no pending messages
+					while(fc.m_send_queue.size() > 0)
+					{
+						fc.m_send_queue.pop();
+					}
 					continue;
-				}
-
-				bool should_enqueue = true;
-				if (fc.m_auto_respond)
-				{
-					should_enqueue = fc.process_auto_response(b);
-				}
-
-				if (should_enqueue)
-				{
-					fc.m_received_data.push(b);
 				}
 			}
 		}
@@ -345,13 +429,20 @@ void fake_collector::stop()
 	}
 }
 
-uint32_t fake_collector::read_one_message(int fd, buf* out_buf)
+bool fake_collector::version_is_supported(uint8_t ver)
+{
+	return ver == 4 || ver == 5;
+}
+
+bool fake_collector::handle_one_message(int fd)
 {
 	uint32_t header_len = sizeof(dragent_protocol_header_v4);
+	buf b;
 	dragent_protocol_header_v4* hdr;
 	uint32_t payload_len = 0;
 	uint32_t payload_bytes_read = 0;
 	uint8_t header_buf[sizeof(dragent_protocol_header_v5)];
+	uint32_t msg_len = 0;
 
 	// Read the header
 	int read_ret = read(fd, header_buf, header_len);
@@ -361,13 +452,15 @@ uint32_t fake_collector::read_one_message(int fd, buf* out_buf)
 	}
 
 	hdr = (dragent_protocol_header_v4*)header_buf;
-	out_buf->hdr.v4.len = htonl(hdr->len);
-	out_buf->hdr.v4.messagetype = hdr->messagetype;
-	out_buf->hdr.v4.version = hdr->version;
+	msg_len = ntohl(hdr->len);
+	b.hdr.v4.len = hdr->len;
+	b.hdr.v4.messagetype = hdr->messagetype;
+	b.hdr.v4.version = hdr->version;
 
-	if(htonl(hdr->len) <= 0)
+	if(msg_len <= 0)
 	{
-		return 0;
+		std::cerr << "FC> Invalid length in header " << msg_len << std::endl;
+		return false;
 	}
 
 	if (hdr->version == dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH)
@@ -383,19 +476,19 @@ uint32_t fake_collector::read_one_message(int fd, buf* out_buf)
 			goto read_error;
 		}
 		v5_hdr = (dragent_protocol_header_v5*)header_buf;
-		out_buf->hdr.v5.sequence = htonll(v5_hdr->sequence);
-		out_buf->hdr.v5.generation = htonll(v5_hdr->generation);
+		b.hdr.v5.sequence = v5_hdr->sequence;
+		b.hdr.v5.generation = v5_hdr->generation;
 	}
-	payload_len = out_buf->hdr.v4.len - header_len;
+	payload_len = msg_len - header_len;
 
 	// Allocate the buffer for the payload
-	out_buf->ptr = new uint8_t[payload_len];
+	b.ptr = new uint8_t[payload_len];
 
 	// Now read the body
 	while (payload_bytes_read < payload_len)
 	{
 		read_ret = read(fd,
-		                &out_buf->ptr[payload_bytes_read],
+		                &b.ptr[payload_bytes_read],
 		                payload_len - payload_bytes_read);
 		if(read_ret <= 0)
 		{
@@ -404,16 +497,31 @@ uint32_t fake_collector::read_one_message(int fd, buf* out_buf)
 		payload_bytes_read += read_ret;
 	}
 
-	out_buf->payload_len = payload_bytes_read;
-	return read_ret;
+	b.payload_len = payload_bytes_read;
+	m_received_data.push(b);
+
+	if (m_auto_respond)
+	{
+		// If it's a protobuf, handle it. If not, just store it in the queue
+		// of received data
+		(void)process_auto_response(b); // Handle errors?
+	}
+
+	return true;
 
 read_error:
+	if(read_ret == -1)
+	{
+		// Socket disconnected (this could be fine or could be very bad)
+		std::cout << "FC> agent socket closed" << std::endl;
+	}
 	if(read_ret < 0)
 	{
 		m_error_code = read_ret;
 		m_error_msg = strerror(read_ret);
+		std::cerr << "FC> Error " << read_ret << " on read: " << m_error_msg << std::endl;
 	}
-	return 0;
+	return false;
 }
 
 bool fake_collector::send_collector_message(uint8_t message_type,
@@ -435,8 +543,8 @@ bool fake_collector::send_collector_message(uint8_t message_type,
 	           : dragent_protocol::PROTOCOL_VERSION_NUMBER,
 	        message_type
 	    },
-	    generation,
-	    sequence,
+	    htonll(generation),
+	    htonll(sequence),
 	};
 
 	// Fire away

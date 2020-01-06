@@ -104,6 +104,7 @@ type_config<bool>::ptr c_10s_flush_enabled =
         .hidden()
         .build();
 
+
 type_config<bool> c_compression_enabled(true,
                                         "set to true to compress protobufs sent to the collector",
                                         "compression",
@@ -214,48 +215,22 @@ dragent_app::dragent_app()
 #ifndef CYGWING_AGENT
       m_unshare_ipcns(true),
 #endif
-      m_aggregator_queue(MAX_SAMPLE_STORE_SIZE),
-      m_serializer_queue(MAX_SAMPLE_STORE_SIZE),
-      m_transmit_queue(MAX_SAMPLE_STORE_SIZE),
-      m_enable_autodrop(true),
-      m_internal_metrics(std::make_shared<internal_metrics>()),
-      m_protocol_handler(m_transmit_queue),
-      m_capture_job_handler(&m_configuration, &m_transmit_queue, &m_enable_autodrop),
-      m_sinsp_worker(&m_configuration,
-                     m_internal_metrics,
-                     m_protocol_handler,
-                     &m_enable_autodrop,
-                     &m_capture_job_handler),
-      m_connection_manager(
-          &m_configuration,
-          &m_transmit_queue,
-          c_10s_flush_enabled->get_value(),
-          {{draiosproto::message_type::DUMP_REQUEST_START,
-            std::make_shared<dump_request_start_message_handler>(m_sinsp_worker)},
-           {draiosproto::message_type::DUMP_REQUEST_STOP,
-            std::make_shared<dump_request_stop_message_handler>(m_sinsp_worker)},
-           {draiosproto::message_type::CONFIG_DATA,
-            std::make_shared<config_data_message_handler>(m_configuration)},
-           {draiosproto::message_type::ERROR_MESSAGE, std::make_shared<error_message_handler>()},
-           {draiosproto::message_type::POLICIES,
-            std::make_shared<security_policies_message_handler>(m_sinsp_worker)},
-           {draiosproto::message_type::POLICIES_V2,
-            std::make_shared<security_policies_v2_message_handler>(m_sinsp_worker)},
-           {draiosproto::message_type::COMP_CALENDAR,
-            std::make_shared<security_compliance_calendar_message_handler>(m_sinsp_worker)},
-           {draiosproto::message_type::COMP_RUN,
-            std::make_shared<security_compliance_run_message_handler>(m_sinsp_worker)},
-           {draiosproto::message_type::ORCHESTRATOR_EVENTS,
-            std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker)},
-           {draiosproto::message_type::AGGREGATION_CONTEXT,
-            dragent::aggregator_limits::global_limits},
-           {draiosproto::message_type::BASELINES,  // Legacy -- no longer used
-            std::make_shared<null_message_handler>()}, }),
-      m_log_reporter(m_protocol_handler, &m_configuration),
-      m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),
-      m_last_dump_s(0)
-{
-}
+	m_aggregator_queue(MAX_SAMPLE_STORE_SIZE),
+	m_serializer_queue(MAX_SAMPLE_STORE_SIZE),
+	m_transmit_queue(MAX_SAMPLE_STORE_SIZE),
+	m_enable_autodrop(true),
+	m_internal_metrics(std::make_shared<internal_metrics>()),
+	m_protocol_handler(m_transmit_queue),
+	m_capture_job_handler(&m_configuration, &m_transmit_queue, &m_enable_autodrop),
+	m_sinsp_worker(&m_configuration,
+			m_internal_metrics,
+			m_protocol_handler,
+			&m_enable_autodrop,
+			&m_capture_job_handler),
+	m_log_reporter(m_protocol_handler, &m_configuration),
+	m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),
+	m_last_dump_s(0)
+{ }
 
 dragent_app::~dragent_app()
 {
@@ -952,6 +927,11 @@ int dragent_app::sdagent_main()
 		return Application::EXIT_OK;
 	}
 
+	// Set the configured default compression method
+	protobuf_compressor_factory::set_default(c_compression_enabled.get_value() ?
+	                                             protocol_compression_method::GZIP :
+	                                             protocol_compression_method::NONE);
+
 	//
 	// Set up bidirectional communication with statsite
 	//
@@ -1016,7 +996,6 @@ int dragent_app::sdagent_main()
 	{
 		m_pool.start(m_subprocesses_logger,
 		             m_configuration.m_watchdog_subprocesses_logger_timeout_s);
-		m_pool.start(m_connection_manager, m_configuration.m_watchdog_connection_manager_timeout_s);
 	}
 
 	//
@@ -1030,15 +1009,8 @@ int dragent_app::sdagent_main()
 	// legacy case and will be the basis of the negotiation in the protocol v5
 	// case.
 	//
-	std::shared_ptr<protobuf_compressor> compressor;
-	if (c_compression_enabled.get_value())
-	{
-		compressor = gzip_protobuf_compressor::get(-1);
-	}
-	else
-	{
-		compressor = null_protobuf_compressor::get();
-	}
+	std::shared_ptr<protobuf_compressor> compressor =
+	        protobuf_compressor_factory::get(protobuf_compressor_factory::get_default());
 
 	////////////////
 	// Here is where the top-level objects are created. These are the objects
@@ -1046,12 +1018,45 @@ int dragent_app::sdagent_main()
 	// connection_manager for delivery to the backend.
 	////////////////
 
+	connection_manager* cm = nullptr;
 	sinsp::ptr inspector = nullptr;
 	sinsp_analyzer* analyzer = nullptr;
 	metric_serializer* serializer = nullptr;
 	async_aggregator* aggregator = nullptr;
 	try
 	{
+		cm = new connection_manager(
+		        &m_configuration,
+		        &m_transmit_queue,
+		        c_10s_flush_enabled->get_value() ?
+		            std::initializer_list<dragent_protocol::protocol_version>{4, 5}:
+		            std::initializer_list<dragent_protocol::protocol_version>{4},
+		        {
+		            {draiosproto::message_type::DUMP_REQUEST_START,
+		             std::make_shared<dump_request_start_message_handler>(m_sinsp_worker)},
+		            {draiosproto::message_type::DUMP_REQUEST_STOP,
+		             std::make_shared<dump_request_stop_message_handler>(m_sinsp_worker)},
+		            {draiosproto::message_type::CONFIG_DATA,
+		             std::make_shared<config_data_message_handler>(m_configuration)},
+		            {draiosproto::message_type::ERROR_MESSAGE,
+		             std::make_shared<error_message_handler>()},
+		            {draiosproto::message_type::POLICIES,
+		             std::make_shared<security_policies_message_handler>(m_sinsp_worker)},
+		            {draiosproto::message_type::POLICIES_V2,
+		             std::make_shared<security_policies_v2_message_handler>(m_sinsp_worker)},
+		            {draiosproto::message_type::COMP_CALENDAR,
+		             std::make_shared<security_compliance_calendar_message_handler>(m_sinsp_worker)},
+		            {draiosproto::message_type::COMP_RUN,
+		             std::make_shared<security_compliance_run_message_handler>(m_sinsp_worker)},
+		            {draiosproto::message_type::ORCHESTRATOR_EVENTS,
+		             std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker)},
+		            {draiosproto::message_type::AGGREGATION_CONTEXT,
+		                dragent::aggregator_limits::global_limits},
+		            {draiosproto::message_type::BASELINES,  // Legacy -- no longer used
+		             std::make_shared<null_message_handler>()},
+		        });
+		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
+
 		// Must create inspector, then create analyzer, then setup inspector
 		inspector = sinsp_factory::build();
 		LOG_INFO("Created Sysdig inspector");
@@ -1077,7 +1082,7 @@ int dragent_app::sdagent_main()
 			                                  m_serializer_queue,
 			                                  300,
 			                                  m_configuration.c_root_dir.get_value());
-			aggregator->set_aggregation_interval_source(&m_connection_manager);
+			aggregator->set_aggregation_interval_source(cm);
 
 			m_pool.start(*aggregator, c_serializer_timeout_s.get_value());
 		}
@@ -1097,7 +1102,7 @@ int dragent_app::sdagent_main()
 		                                        &m_serializer_queue,
 		                                        &m_transmit_queue,
 		                                        compressor,
-		                                        &m_connection_manager);
+		                                        cm);
 		m_pool.start(*s, c_serializer_timeout_s.get_value());
 
 		serializer = s;
