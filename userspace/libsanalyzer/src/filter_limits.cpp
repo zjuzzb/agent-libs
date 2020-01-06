@@ -2,7 +2,7 @@
 
 #include <utility>
 
-user_configured_limits::user_configured_limits(filter_vec_t filters,
+user_configured_limits::user_configured_limits(filter_vec_t&& filters,
 					       std::string target_name,
 					       bool& log_ref,
 					       bool& enable_log_ref,
@@ -10,7 +10,7 @@ user_configured_limits::user_configured_limits(filter_vec_t filters,
 					       time_t& running_ref,
 					       uint32_t max_entries,
 					       uint64_t expire_seconds)
-	: m_filters(std::move(filters)),
+	: m_filters(std::forward<filter_vec_t>(filters)),
 	m_max_entries(max_entries),
 	m_purge_seconds(expire_seconds),
 	m_target_type_name(std::move(target_name)),

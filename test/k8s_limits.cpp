@@ -13,7 +13,7 @@ TEST(k8s_limits, purge_proto_structure)
 			{"*.pod-template-generation", false},
 			{"*", true}});
 
-	k8s_limits kl(filters);
+	k8s_limits kl(std::move(filters));
 
 	draiosproto::container_group cg;
 

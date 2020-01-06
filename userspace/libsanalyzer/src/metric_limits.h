@@ -10,7 +10,7 @@ public:
 	using sptr_t = std::shared_ptr<metric_limits>;
 
 	metric_limits() = delete;
-	explicit metric_limits(filter_vec_t filters,
+	explicit metric_limits(filter_vec_t&& filters,
 		      uint32_t max_entries = user_configured_limits::MAX_ENTRIES,
 		      uint64_t expire_seconds = user_configured_limits::EXPIRE_SECONDS);
 

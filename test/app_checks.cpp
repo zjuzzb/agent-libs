@@ -118,7 +118,7 @@ TEST_F(app_checks_proxy_f, filters)
 	EXPECT_TRUE(has(service_list, "redis.can_connect"));
 
 	filter_vec_t f({{"*", false}, {"*.can_connect", true}});
-	metric_limits::sptr_t ml(new metric_limits(f));
+	metric_limits::sptr_t ml(new metric_limits(std::move(f)));
 	use_json("app_checks_ok.json");
 	metrics = app_checks->read_metrics(ml);
 	ASSERT_EQ(2U, metrics.size()) << print(metrics);
@@ -130,7 +130,7 @@ TEST_F(app_checks_proxy_f, filters)
 	EXPECT_EQ(0U, service_list.size());
 
 	f = {{"redis.mem.*", true}, {"*.can_connect", true}, {"*", false}};
-	ml.reset(new metric_limits(f));
+	ml.reset(new metric_limits(std::move(f)));
 	use_json("app_checks_ok.json");
 	metrics = app_checks->read_metrics(ml);
 	ASSERT_EQ(2U, metrics.size()) << print(metrics);
@@ -164,7 +164,7 @@ TEST_F(app_checks_proxy_f, filters)
 	EXPECT_TRUE(has(service_list, "redis.can_connect"));
 
 	f = {{"*", false}, {"redis.mem.*", true}, {"*.can_connect", true}};
-	ml.reset(new metric_limits(f));
+	ml.reset(new metric_limits(std::move(f)));
 	use_json("app_checks_ok.json");
 	metrics = app_checks->read_metrics(ml);
 	ASSERT_EQ(2U, metrics.size()) << print(metrics);
@@ -176,7 +176,7 @@ TEST_F(app_checks_proxy_f, filters)
 	EXPECT_EQ(0U, service_list.size());
 
 	f = {{"*", false}};
-	ml.reset(new metric_limits(f));
+	ml.reset(new metric_limits(std::move(f)));
 	use_json("app_checks_ok.json");
 	metrics = app_checks->read_metrics(ml);
 	ASSERT_EQ(2U, metrics.size()) << print(metrics);

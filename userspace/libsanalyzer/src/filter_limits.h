@@ -121,7 +121,7 @@ public:
 
 	using map_t = std::unordered_map<std::string, entry>;
 
-	user_configured_limits(filter_vec_t  filters,
+	user_configured_limits(filter_vec_t&&  filters,
 			       std::string  target_name,
 			       bool& log_ref,
 			       bool& enable_log_ref,
