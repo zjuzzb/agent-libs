@@ -18,75 +18,7 @@ public:
 	{
 		return in.pid_map;
 	}
-
-	static std::unordered_map<
-	    std::string,
-	    std::pair<uint32_t, std::unique_ptr<agent_message_aggregator<draiosproto::app_metric>>>>&
-	    get_prom_map(prometheus_info_message_aggregator_impl& in)
-	{
-		return in.prom_metrics_map;
-	}
 };
-
-// Test that the two default aggregations work properly. That way
-// we don't have to test it for every message it comes up in, just that the fields are
-// linked properly
-TEST(aggregator, default_aggregation)
-{
-	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
-
-	draiosproto::metrics input;
-	draiosproto::metrics output;
-
-	input.set_sampling_ratio(4);
-	aggregator.aggregate(input, output);
-	EXPECT_EQ(output.aggr_sampling_ratio().max(), 4);
-	EXPECT_EQ(output.aggr_sampling_ratio().min(), 4);
-	EXPECT_EQ(output.aggr_sampling_ratio().sum(), 4);
-	EXPECT_EQ(output.aggr_sampling_ratio().weight(), 1);
-
-	input.set_sampling_ratio(100);
-	aggregator.aggregate(input, output);
-	EXPECT_EQ(output.aggr_sampling_ratio().max(), 100);
-	EXPECT_EQ(output.aggr_sampling_ratio().min(), 4);
-	EXPECT_EQ(output.aggr_sampling_ratio().sum(), 104);
-	EXPECT_EQ(output.aggr_sampling_ratio().weight(), 2);
-}
-
-TEST(aggregator, default_list_aggregation)
-{
-	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
-
-	draiosproto::metrics input;
-	draiosproto::metrics output;
-
-	auto in_hostinfo = input.mutable_hostinfo();
-	auto out_hostinfo = output.mutable_hostinfo();
-
-	in_hostinfo->add_cpu_loads(3);
-	in_hostinfo->add_cpu_loads(4);
-	aggregator.aggregate(input, output);
-	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().sum()[0], 3);
-	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().min()[0], 3);
-	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().max()[0], 3);
-	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().sum()[1], 4);
-	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().min()[1], 4);
-	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().max()[1], 4);
-	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().weight(), 1);
-
-	(*in_hostinfo->mutable_cpu_loads())[0] = 100;
-	(*in_hostinfo->mutable_cpu_loads())[1] = 200;
-	aggregator.aggregate(input, output);
-	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().sum()[0], 103);
-	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().min()[0], 3);
-	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().max()[0], 100);
-	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().sum()[1], 204);
-	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().min()[1], 4);
-	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().max()[1], 200);
-	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().weight(), 2);
-}
 
 // What gets tested in each test?
 //
@@ -99,7 +31,7 @@ TEST(aggregator, default_list_aggregation)
 TEST(aggregator, metrics)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -187,7 +119,8 @@ TEST(aggregator, metrics)
 	top_devices = input.add_top_devices();
 	top_devices->set_name("1");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 
 	EXPECT_EQ(output.timestamp_ns(), 1);
 	EXPECT_EQ(output.machine_id(), "2");
@@ -263,11 +196,11 @@ TEST(aggregator, metrics)
 	(*input.mutable_environments())[1].set_hash("2");
 	(*input.mutable_top_devices())[1].set_name("2");
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 
-	EXPECT_EQ(output.timestamp_ns(), 100);
-	EXPECT_EQ(output.machine_id(), "100");
-	EXPECT_EQ(output.customer_id(), "100");
+	EXPECT_EQ(output.timestamp_ns(), 1);
+	EXPECT_EQ(output.machine_id(), "2");
+	EXPECT_EQ(output.customer_id(), "3");
 	EXPECT_EQ(output.ipv4_connections().size(), 3);
 	EXPECT_EQ(output.ipv4_connections()[0].spid(), 0);
 	EXPECT_EQ(output.ipv4_connections()[1].spid(), 1);
@@ -282,11 +215,11 @@ TEST(aggregator, metrics)
 	EXPECT_EQ(output.programs()[2].environment_hash(), "2");
 	EXPECT_EQ(output.aggr_sampling_ratio().sum(), 104);
 	EXPECT_EQ(output.sampling_ratio(), 4);
-	EXPECT_EQ(output.host_custom_name(), "100");
-	EXPECT_EQ(output.host_tags(), "100");
-	EXPECT_EQ(output.is_host_hidden(), true);
-	EXPECT_EQ(output.hidden_processes(), "100");
-	EXPECT_EQ(output.version(), "100");
+	EXPECT_EQ(output.host_custom_name(), "5");
+	EXPECT_EQ(output.host_tags(), "6");
+	EXPECT_EQ(output.is_host_hidden(), false);
+	EXPECT_EQ(output.hidden_processes(), "7");
+	EXPECT_EQ(output.version(), "8");
 	EXPECT_EQ(output.mounts().size(), 3);
 	EXPECT_EQ(output.mounts()[0].mount_dir(), "0");
 	EXPECT_EQ(output.mounts()[1].mount_dir(), "1");
@@ -295,7 +228,7 @@ TEST(aggregator, metrics)
 	EXPECT_EQ(output.top_files()[0].name(), "0");
 	EXPECT_EQ(output.top_files()[1].name(), "1");
 	EXPECT_EQ(output.top_files()[2].name(), "2");
-	EXPECT_EQ(output.instance_id(), "100");
+	EXPECT_EQ(output.instance_id(), "9");
 	EXPECT_EQ(output.containers().size(), 3);
 	EXPECT_EQ(output.containers()[0].id(), "0");
 	EXPECT_EQ(output.containers()[1].id(), "1");
@@ -447,86 +380,46 @@ TEST(aggregator, program_hasher)
 TEST(aggregator, pid_map_population)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
-
-	draiosproto::metrics input;
-	draiosproto::metrics output;
-
-	auto in = input.add_programs();
-
-	in->mutable_procinfo()->mutable_details()->set_exe("asdlkfj");
-	in->add_pids(1);
-	in->add_pids(2);
-
-	aggregator.aggregate(input, output);
-	EXPECT_EQ(
-	    test_helper::get_pid_map(reinterpret_cast<metrics_message_aggregator_impl&>(aggregator))[1],
-	    metrics_message_aggregator_impl::program_java_hasher(*in));
-	EXPECT_EQ(
-	    test_helper::get_pid_map(reinterpret_cast<metrics_message_aggregator_impl&>(aggregator))[2],
-	    metrics_message_aggregator_impl::program_java_hasher(*in));
-
-	in->add_pids(3);
-	aggregator.aggregate(input, output);
-	EXPECT_EQ(
-	    test_helper::get_pid_map(reinterpret_cast<metrics_message_aggregator_impl&>(aggregator))[1],
-	    metrics_message_aggregator_impl::program_java_hasher(*in));
-	EXPECT_EQ(
-	    test_helper::get_pid_map(reinterpret_cast<metrics_message_aggregator_impl&>(aggregator))[2],
-	    metrics_message_aggregator_impl::program_java_hasher(*in));
-	EXPECT_EQ(
-	    test_helper::get_pid_map(reinterpret_cast<metrics_message_aggregator_impl&>(aggregator))[3],
-	    metrics_message_aggregator_impl::program_java_hasher(*in));
-
-	aggregator.reset();
-	EXPECT_EQ(test_helper::get_pid_map(
-	              reinterpret_cast<metrics_message_aggregator_impl&>(aggregator)).size(),
-	          0);
-}
-
-// ensure that upon aggregating programs and connections, pids are properly substituted
-// for the pid-invariant identifier
-TEST(aggregator, pid_substitution)
-{
-	message_aggregator_builder_impl builder;
 	metrics_message_aggregator_impl aggregator(builder);
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
 
 	auto in = input.add_programs();
+
 	in->mutable_procinfo()->mutable_details()->set_exe("asdlkfj");
 	in->add_pids(1);
 	in->add_pids(2);
 
-	in = input.add_programs();
-	in->mutable_procinfo()->mutable_details()->set_exe("u890s");
+	auto input2 = input;
+	aggregator.aggregate(input2, output, false);
+	EXPECT_EQ(
+	    test_helper::get_pid_map(aggregator)[1],
+	    metrics_message_aggregator_impl::program_java_hasher(*in));
+	EXPECT_EQ(
+	    test_helper::get_pid_map(aggregator)[2],
+	    metrics_message_aggregator_impl::program_java_hasher(*in));
+
 	in->add_pids(3);
+	aggregator.aggregate(input, output, false);
+	EXPECT_EQ(
+	    test_helper::get_pid_map(aggregator)[1],
+	    metrics_message_aggregator_impl::program_java_hasher(*in));
+	EXPECT_EQ(
+	    test_helper::get_pid_map(aggregator)[2],
+	    metrics_message_aggregator_impl::program_java_hasher(*in));
+	EXPECT_EQ(
+	    test_helper::get_pid_map(aggregator)[3],
+	    metrics_message_aggregator_impl::program_java_hasher(*in));
 
-	input.add_ipv4_connections()->set_spid(1);
-	(*input.mutable_ipv4_connections())[0].set_dpid(2);
-	(*input.mutable_ipv4_connections())[0].set_state(draiosproto::connection_state::CONN_SUCCESS);
-	input.add_ipv4_incomplete_connections_v2()->set_spid(3);
-	(*input.mutable_ipv4_incomplete_connections_v2())[0].set_dpid(4);
-	(*input.mutable_ipv4_incomplete_connections_v2())[0]
-	    .set_state(draiosproto::connection_state::CONN_PENDING);
-	aggregator.aggregate(input, output);
-	aggregator.override_primary_keys(output);
-
-	EXPECT_EQ(output.programs()[0].pids()[0],
-	          metrics_message_aggregator_impl::program_java_hasher(input.programs()[0]));
-	EXPECT_EQ(output.programs()[1].pids()[0],
-	          metrics_message_aggregator_impl::program_java_hasher(input.programs()[1]));
-	EXPECT_EQ(output.ipv4_connections()[0].spid(), output.programs()[0].pids()[0]);
-	EXPECT_EQ(output.ipv4_connections()[0].dpid(), output.programs()[0].pids()[0]);
-	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].spid(), output.programs()[1].pids()[0]);
-	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].dpid(), 4);
+	aggregator.reset();
+	EXPECT_EQ(test_helper::get_pid_map(aggregator).size(), 0);
 }
 
 TEST(aggregator, host)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -559,7 +452,8 @@ TEST(aggregator, host)
 	in_hostinfo->set_system_load_5(16);
 	in_hostinfo->set_system_load_15(17);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 
 	EXPECT_EQ(out_hostinfo->hostname(), "1");
 	EXPECT_EQ(out_hostinfo->aggr_num_cpus().sum(), 2);
@@ -603,9 +497,9 @@ TEST(aggregator, host)
 	in_hostinfo->set_system_load_5(100);
 	in_hostinfo->set_system_load_15(100);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 
-	EXPECT_EQ(out_hostinfo->hostname(), "100");
+	EXPECT_EQ(out_hostinfo->hostname(), "1");
 	EXPECT_EQ(out_hostinfo->aggr_num_cpus().sum(), 102);
 	EXPECT_EQ(out_hostinfo->aggr_cpu_loads().sum()[0], 103);
 	EXPECT_EQ(out_hostinfo->aggr_physical_memory_size_bytes().sum(), 104);
@@ -632,7 +526,7 @@ TEST(aggregator, host)
 TEST(aggregator, time_categories)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -644,7 +538,7 @@ TEST(aggregator, time_categories)
 	input.add_containers()->mutable_tcounters()->mutable_unknown()->set_count(3);
 	input.mutable_unreported_counters()->mutable_tcounters()->mutable_unknown()->set_count(4);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 
 	EXPECT_EQ(output.hostinfo().tcounters().unknown().aggr_count().sum(), 1);
 	EXPECT_EQ(output.programs()[0].procinfo().tcounters().unknown().aggr_count().sum(), 2);
@@ -655,7 +549,7 @@ TEST(aggregator, time_categories)
 TEST(aggregator, counter_time)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -689,7 +583,8 @@ TEST(aggregator, counter_time)
 	input.mutable_hostinfo()->mutable_reqcounters()->mutable_other()->set_count(17);
 	input.mutable_hostinfo()->mutable_reqcounters()->mutable_processing()->set_count(18);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 
 	EXPECT_EQ(out_ct->aggr_count().sum(), 1);
 	EXPECT_EQ(out_ct->aggr_time_ns().sum(), 2);
@@ -718,7 +613,7 @@ TEST(aggregator, counter_time)
 	in_ct->set_time_percentage(100);
 	(*in_ct->mutable_percentile())[1].set_percentile(100);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 
 	EXPECT_EQ(out_ct->aggr_count().sum(), 101);
 	EXPECT_EQ(out_ct->aggr_time_ns().sum(), 102);
@@ -732,7 +627,7 @@ TEST(aggregator, counter_time)
 TEST(aggregator, counter_percentile)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -750,7 +645,8 @@ TEST(aggregator, counter_percentile)
 	input.mutable_protos()->mutable_http()->mutable_server_totals()->add_percentile()->set_value(7);
 	input.mutable_internal_metrics()->add_statsd_metrics()->add_percentile()->set_value(8);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 
 	EXPECT_EQ(output.hostinfo().tcounters().unknown().percentile()[0].aggr_value().sum(), 1);
 	EXPECT_EQ(output.hostinfo().tcounters().other().percentile()[0].aggr_value().sum(), 2);
@@ -763,7 +659,7 @@ TEST(aggregator, counter_percentile)
 
 	in_cp->set_value(100);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.hostinfo().tcounters().unknown().percentile()[0].aggr_value().sum(), 101);
 
 	// check primary key
@@ -781,15 +677,10 @@ TEST(aggregator, counter_percentile)
 	          counter_percentile_message_aggregator::hasher()(&rhs));
 }
 
-TEST(aggregator, counter_percentile_data)
-{
-	// SMAGENT-1933
-}
-
 TEST(aggregator, counter_time_bytes)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -826,7 +717,8 @@ TEST(aggregator, counter_time_bytes)
 	input.mutable_hostinfo()->mutable_reqcounters()->mutable_io_file()->set_time_ns_in(16);
 	input.mutable_hostinfo()->mutable_reqcounters()->mutable_io_net()->set_time_ns_in(17);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 
 	EXPECT_EQ(out_cb->aggr_time_ns_in().sum(), 1);
 	EXPECT_EQ(out_cb->aggr_time_ns_out().sum(), 2);
@@ -867,7 +759,7 @@ TEST(aggregator, counter_time_bytes)
 	(*in_cb->mutable_percentile_in())[1].set_percentile(2);
 	(*in_cb->mutable_percentile_out())[1].set_percentile(2);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 
 	EXPECT_EQ(out_cb->aggr_time_ns_in().sum(), 101);
 	EXPECT_EQ(out_cb->aggr_time_ns_out().sum(), 102);
@@ -894,7 +786,7 @@ TEST(aggregator, counter_time_bytes)
 TEST(aggregator, counter_time_bidirectional)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -937,7 +829,8 @@ TEST(aggregator, counter_time_bidirectional)
 	input.mutable_unreported_counters()->mutable_transaction_counters()->set_time_ns_in(13);
 	input.mutable_unreported_counters()->mutable_max_transaction_counters()->set_time_ns_in(14);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 
 	EXPECT_EQ(out_cb->aggr_time_ns_in().sum(), 1);
 	EXPECT_EQ(out_cb->aggr_time_ns_out().sum(), 2);
@@ -979,7 +872,7 @@ TEST(aggregator, counter_time_bidirectional)
 	(*in_cb->mutable_percentile_in())[1].set_percentile(2);
 	(*in_cb->mutable_percentile_out())[1].set_percentile(2);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 
 	EXPECT_EQ(out_cb->aggr_time_ns_in().sum(), 101);
 	EXPECT_EQ(out_cb->aggr_time_ns_out().sum(), 102);
@@ -998,7 +891,7 @@ TEST(aggregator, counter_time_bidirectional)
 TEST(aggregator, resource_categories)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1044,7 +937,8 @@ TEST(aggregator, resource_categories)
 	input.add_containers()->mutable_resource_counters()->set_capacity_score(29);
 	input.mutable_unreported_counters()->mutable_resource_counters()->set_capacity_score(30);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(out->aggr_capacity_score().sum(), 1);
 	EXPECT_EQ(out->aggr_stolen_capacity_score().sum(), 2);
 	EXPECT_EQ(out->aggr_connection_queue_usage_pct().sum(), 3);
@@ -1114,7 +1008,8 @@ TEST(aggregator, resource_categories)
 	in->set_cpu_cores_cpuset_limit(100);
 	in->set_rw_bytes(100);
 
-	aggregator.aggregate(input, output);
+	input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(out->aggr_capacity_score().sum(), 101);
 	EXPECT_EQ(out->aggr_stolen_capacity_score().sum(), 102);
 	EXPECT_EQ(out->aggr_connection_queue_usage_pct().sum(), 103);
@@ -1154,7 +1049,7 @@ TEST(aggregator, resource_categories)
 	uint32_t invalid_capacity_score = 4294967196;
 	in->set_capacity_score(invalid_capacity_score);
 	in->set_stolen_capacity_score(invalid_capacity_score);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(out->aggr_capacity_score().sum(), 101);
 	EXPECT_EQ(out->aggr_stolen_capacity_score().sum(), 102);
 }
@@ -1162,8 +1057,7 @@ TEST(aggregator, resource_categories)
 TEST(aggregator, stolen_capacity_score)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::resource_categories>& aggregator =
-	    builder.build_resource_categories();
+	std::unique_ptr<agent_message_aggregator<draiosproto::resource_categories>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::resource_categories>>(&builder.build_resource_categories());
 
 	draiosproto::resource_categories input;
 	draiosproto::resource_categories output;
@@ -1171,14 +1065,14 @@ TEST(aggregator, stolen_capacity_score)
 	// this test because of a bug which was found where an unset capacity score
 	// caused stolen capacity score to not get aggregated
 	input.set_stolen_capacity_score(1);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.aggr_stolen_capacity_score().sum(), 1);
 }
 
 TEST(aggregator, counter_syscall_errors)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1198,7 +1092,8 @@ TEST(aggregator, counter_syscall_errors)
 	input.add_containers()->mutable_syscall_errors()->set_count(6);
 	input.mutable_unreported_counters()->mutable_syscall_errors()->set_count(7);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(out->aggr_count().sum(), 1);
 	EXPECT_EQ(out->top_error_codes().size(), 2);
 	EXPECT_EQ(out->top_error_codes()[0], 0);
@@ -1216,7 +1111,7 @@ TEST(aggregator, counter_syscall_errors)
 	in->set_count_net(100);
 	(*in->mutable_top_error_codes())[1] = 2;
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(out->aggr_count().sum(), 101);
 	EXPECT_EQ(out->top_error_codes().size(), 3);
 	EXPECT_EQ(out->top_error_codes()[0], 0);
@@ -1232,7 +1127,7 @@ TEST(aggregator, transaction_breakdown_categories)
 	// only contains non-repeated sub-message types. so only need to test that it
 	// gets called appropriately
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1241,7 +1136,7 @@ TEST(aggregator, transaction_breakdown_categories)
 	input.add_containers()->mutable_reqcounters()->mutable_other()->set_count(2);
 	input.mutable_unreported_counters()->mutable_reqcounters()->mutable_other()->set_count(3);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.hostinfo().reqcounters().other().aggr_count().sum(), 1);
 	EXPECT_EQ(output.containers()[0].reqcounters().other().aggr_count().sum(), 2);
 	EXPECT_EQ(output.unreported_counters().reqcounters().other().aggr_count().sum(), 3);
@@ -1250,7 +1145,7 @@ TEST(aggregator, transaction_breakdown_categories)
 TEST(aggregator, network_by_port)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1259,7 +1154,7 @@ TEST(aggregator, network_by_port)
 	input.mutable_hostinfo()->add_network_by_serverports()->set_port(1);
 	input.add_containers()->add_network_by_serverports()->set_port(2);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 
 	EXPECT_EQ(output.hostinfo().network_by_serverports()[0].port(), 1);
 	EXPECT_EQ(output.containers()[0].network_by_serverports()[0].port(), 2);
@@ -1282,7 +1177,7 @@ TEST(aggregator, network_by_port)
 TEST(aggregator, connection_categories)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1298,7 +1193,8 @@ TEST(aggregator, connection_categories)
 	(*input.mutable_ipv4_incomplete_connections_v2())[0]
 	    .set_state(draiosproto::connection_state::CONN_FAILED);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.hostinfo()
 	              .network_by_serverports()[0]
 	              .counters()
@@ -1312,7 +1208,7 @@ TEST(aggregator, connection_categories)
 
 	in->set_n_aggregated_connections(100);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.hostinfo()
 	              .network_by_serverports()[0]
 	              .counters()
@@ -1324,7 +1220,7 @@ TEST(aggregator, connection_categories)
 TEST(aggregator, counter_bytes)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1345,7 +1241,8 @@ TEST(aggregator, counter_bytes)
 	    ->mutable_client()
 	    ->set_count_in(5);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(
 	    output.hostinfo().network_by_serverports()[0].counters().server().aggr_count_in().sum(), 1);
 	EXPECT_EQ(
@@ -1364,7 +1261,7 @@ TEST(aggregator, counter_bytes)
 	in->set_bytes_in(100);
 	in->set_bytes_out(100);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(
 	    output.hostinfo().network_by_serverports()[0].counters().server().aggr_count_in().sum(),
 	    101);
@@ -1382,7 +1279,7 @@ TEST(aggregator, counter_bytes)
 TEST(aggregator, ipv4_connection)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1394,7 +1291,8 @@ TEST(aggregator, ipv4_connection)
 	in->mutable_counters()->set_n_aggregated_connections(1);
 	in->set_state(draiosproto::connection_state::CONN_SUCCESS);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 
 	EXPECT_EQ(output.ipv4_connections().size(), 1);
 	EXPECT_EQ(output.ipv4_connections()[0].counters().aggr_n_aggregated_connections().sum(), 1);
@@ -1408,7 +1306,7 @@ TEST(aggregator, ipv4_connection)
 	in->set_dpid(2);
 	in->mutable_counters()->set_n_aggregated_connections(1);
 	in->set_state(draiosproto::connection_state::CONN_FAILED);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.ipv4_connections().size(), 2);
 	EXPECT_EQ(output.ipv4_connections()[0].counters().aggr_n_aggregated_connections().sum(), 1);
 	EXPECT_EQ(output.ipv4_connections()[1].counters().aggr_n_aggregated_connections().sum(), 0);
@@ -1438,7 +1336,7 @@ TEST(aggregator, ipv4_connection)
 TEST(aggregator, ipv4tuple)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1452,7 +1350,7 @@ TEST(aggregator, ipv4tuple)
 	in->set_l4proto(5);
 	(*input.mutable_ipv4_connections())[0].set_state(draiosproto::connection_state::CONN_SUCCESS);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 
 	EXPECT_EQ(output.ipv4_connections()[0].tuple().sip(), 1);
 	EXPECT_EQ(output.ipv4_connections()[0].tuple().dip(), 2);
@@ -1488,7 +1386,7 @@ TEST(aggregator, ipv4tuple)
 TEST(aggregator, ipv4_incomplete_connection)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1500,7 +1398,8 @@ TEST(aggregator, ipv4_incomplete_connection)
 	in->mutable_counters()->set_n_aggregated_connections(1);
 	in->set_state(draiosproto::connection_state::CONN_FAILED);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 
 	EXPECT_EQ(output.ipv4_incomplete_connections_v2().size(), 1);
 	EXPECT_EQ(
@@ -1516,7 +1415,7 @@ TEST(aggregator, ipv4_incomplete_connection)
 	in->set_dpid(2);
 	in->mutable_counters()->set_n_aggregated_connections(1);
 	in->set_state(draiosproto::connection_state::CONN_SUCCESS);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.ipv4_incomplete_connections_v2().size(), 2);
 	EXPECT_EQ(
 	    output.ipv4_incomplete_connections_v2()[0].counters().aggr_n_aggregated_connections().sum(),
@@ -1548,7 +1447,7 @@ TEST(aggregator, ipv4_incomplete_connection)
 TEST(aggregator, ipv4_network_interface)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1560,7 +1459,7 @@ TEST(aggregator, ipv4_network_interface)
 	in->set_netmask(3);
 	in->set_bcast(4);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 
 	EXPECT_EQ(output.ipv4_network_interfaces()[0].name(), "1");
 	EXPECT_EQ(output.ipv4_network_interfaces()[0].addr(), 2);
@@ -1590,7 +1489,7 @@ TEST(aggregator, ipv4_network_interface)
 TEST(aggregator, program)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1605,7 +1504,8 @@ TEST(aggregator, program)
 	in->add_program_reporting_group_id(6);
 	in->add_program_reporting_group_id(7);
 
-	aggregator.aggregate(input, output);
+	auto input3 = input;
+	aggregator->aggregate(input3, output, false);
 
 	EXPECT_EQ(output.programs()[0].pids().size(), 1);
 	EXPECT_EQ(output.programs()[0].pids()[0],
@@ -1621,7 +1521,7 @@ TEST(aggregator, program)
 	(*in->mutable_uids())[1] = 5;
 	(*in->mutable_program_reporting_group_id())[1] = 8;
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.programs()[0].uids().size(), 3);
 	EXPECT_EQ(output.programs()[0].uids()[0], 3);
 	EXPECT_EQ(output.programs()[0].uids()[1], 4);
@@ -1660,8 +1560,8 @@ TEST(aggregator, program)
 	draiosproto::metrics output2;
 	input2.add_programs();
 	input2.add_programs();
-	aggregator.reset();
-	aggregator.aggregate(input2, output2);
+	aggregator->reset();
+	aggregator->aggregate(input2, output2, false);
 	EXPECT_EQ(output.programs().size(), 1);
 	EXPECT_EQ(output.programs()[0].pids().size(), 1);
 }
@@ -1669,7 +1569,7 @@ TEST(aggregator, program)
 TEST(aggregator, process)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1692,7 +1592,8 @@ TEST(aggregator, process)
 	top_devices = in->add_top_devices();
 	top_devices->set_name("1");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 
 	EXPECT_EQ(output.programs()[0].procinfo().aggr_transaction_processing_delay().sum(), 1);
 	EXPECT_EQ(output.programs()[0].procinfo().aggr_next_tiers_delay().sum(), 2);
@@ -1714,7 +1615,7 @@ TEST(aggregator, process)
 	(*in->mutable_top_files())[1].set_name("2");
 	(*in->mutable_top_devices())[1].set_name("2");
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.programs()[0].procinfo().aggr_transaction_processing_delay().sum(), 101);
 	EXPECT_EQ(output.programs()[0].procinfo().aggr_next_tiers_delay().sum(), 102);
 	EXPECT_EQ(output.programs()[0].procinfo().netrole(), 3 | 100);
@@ -1746,50 +1647,10 @@ TEST(aggregator, process)
 	          process_message_aggregator::hasher()(&rhs));
 }
 
-TEST(aggregator, netrole)
-{
-	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::process>& aggregator = builder.build_process();
-
-	draiosproto::process input;
-	draiosproto::process output;
-
-	input.set_netrole(draiosproto::networkrole::IS_REMOTE_IPV4_CLIENT);
-	aggregator.aggregate(input, output);
-	EXPECT_EQ(output.netrole(), draiosproto::networkrole::IS_REMOTE_IPV4_CLIENT);
-	EXPECT_EQ(output.is_ipv4_transaction_client(), true);
-	EXPECT_EQ(output.is_ipv4_transaction_server(), false);
-
-	input.set_netrole(draiosproto::networkrole::IS_REMOTE_IPV4_SERVER);
-	aggregator.aggregate(input, output);
-	EXPECT_EQ(output.netrole(),
-	          draiosproto::networkrole::IS_REMOTE_IPV4_CLIENT |
-	              draiosproto::networkrole::IS_REMOTE_IPV4_SERVER);
-	EXPECT_EQ(output.is_ipv4_transaction_client(), true);
-	EXPECT_EQ(output.is_ipv4_transaction_server(), true);
-
-	aggregator.reset();
-
-	input.set_netrole(0);
-	input.set_is_ipv4_transaction_server(true);
-	aggregator.aggregate(input, output);
-	EXPECT_EQ(output.netrole(), draiosproto::networkrole::IS_REMOTE_IPV4_SERVER);
-	EXPECT_EQ(output.is_ipv4_transaction_client(), false);
-	EXPECT_EQ(output.is_ipv4_transaction_server(), true);
-
-	input.set_is_ipv4_transaction_client(true);
-	aggregator.aggregate(input, output);
-	EXPECT_EQ(output.netrole(),
-	          draiosproto::networkrole::IS_REMOTE_IPV4_CLIENT |
-	              draiosproto::networkrole::IS_REMOTE_IPV4_SERVER);
-	EXPECT_EQ(output.is_ipv4_transaction_client(), true);
-	EXPECT_EQ(output.is_ipv4_transaction_server(), true);
-}
-
 TEST(aggregator, process_details)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1806,7 +1667,7 @@ TEST(aggregator, process_details)
 	// backend auto-populates the container_id...so we do too!
 	input.add_programs()->mutable_procinfo()->mutable_details();
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 
 	EXPECT_EQ(output.programs()[0].procinfo().details().comm(), "1");
 	EXPECT_EQ(output.programs()[0].procinfo().details().exe(), "2");
@@ -1857,7 +1718,7 @@ TEST(aggregator, proto_info)
 	// only contains non-repeated sub-message types. so only need to test that it
 	// gets called appropriately
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1868,7 +1729,7 @@ TEST(aggregator, proto_info)
 	input.mutable_unreported_counters()->mutable_protos()->mutable_java()->set_process_name("3");
 	input.mutable_protos()->mutable_java()->set_process_name("4");
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.programs()[0].procinfo().protos().java().process_name(), "1");
 	EXPECT_EQ(output.containers()[0].protos().java().process_name(), "2");
 	EXPECT_EQ(output.unreported_counters().protos().java().process_name(), "3");
@@ -1878,7 +1739,7 @@ TEST(aggregator, proto_info)
 TEST(aggregator, http_info)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1892,7 +1753,8 @@ TEST(aggregator, http_info)
 	input.mutable_protos()->mutable_http()->add_client_status_codes()->set_status_code(7);
 	input.mutable_protos()->mutable_http()->add_client_status_codes()->set_status_code(8);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.protos().http().server_urls().size(), 2);
 	EXPECT_EQ(output.protos().http().server_urls()[0].url(), "1");
 	EXPECT_EQ(output.protos().http().server_urls()[1].url(), "2");
@@ -1911,7 +1773,7 @@ TEST(aggregator, http_info)
 	(*input.mutable_protos()->mutable_http()->mutable_server_status_codes())[1].set_status_code(11);
 	(*input.mutable_protos()->mutable_http()->mutable_client_status_codes())[1].set_status_code(12);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.protos().http().server_urls().size(), 3);
 	EXPECT_EQ(output.protos().http().server_urls()[0].url(), "1");
 	EXPECT_EQ(output.protos().http().server_urls()[1].url(), "2");
@@ -1953,7 +1815,7 @@ TEST(aggregator, url_details)
 TEST(aggregator, counter_proto_entry)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -1994,7 +1856,8 @@ TEST(aggregator, counter_proto_entry)
 	input.mutable_protos()->mutable_mongodb()->mutable_server_totals()->set_ncalls(16);
 	input.mutable_protos()->mutable_mongodb()->mutable_client_totals()->set_ncalls(17);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 
 	EXPECT_EQ(output.protos().http().server_urls()[0].counters().aggr_ncalls().sum(), 1);
 	EXPECT_EQ(output.protos().http().server_urls()[0].counters().aggr_time_tot().sum(), 2);
@@ -2025,7 +1888,7 @@ TEST(aggregator, counter_proto_entry)
 	in->set_nerrors(100);
 	(*in->mutable_percentile())[1].set_percentile(2);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.protos().http().server_urls()[0].counters().aggr_ncalls().sum(), 101);
 	EXPECT_EQ(output.protos().http().server_urls()[0].counters().aggr_time_tot().sum(), 102);
 	EXPECT_EQ(output.protos().http().server_urls()[0].counters().aggr_time_max().sum(), 103);
@@ -2041,7 +1904,7 @@ TEST(aggregator, counter_proto_entry)
 TEST(aggregator, status_code_details)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2051,14 +1914,15 @@ TEST(aggregator, status_code_details)
 	in->set_status_code(1);
 	in->set_ncalls(2);
 	input.mutable_protos()->mutable_http()->add_server_status_codes()->set_status_code(3);
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 
 	EXPECT_EQ(output.protos().http().client_status_codes()[0].status_code(), 1);
 	EXPECT_EQ(output.protos().http().client_status_codes()[0].aggr_ncalls().sum(), 2);
 	EXPECT_EQ(output.protos().http().server_status_codes()[0].status_code(), 3);
 
 	in->set_ncalls(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.protos().http().client_status_codes()[0].aggr_ncalls().sum(), 102);
 
 	// primary key
@@ -2078,7 +1942,7 @@ TEST(aggregator, status_code_details)
 TEST(aggregator, sql_info)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2101,7 +1965,8 @@ TEST(aggregator, sql_info)
 	input.mutable_protos()->mutable_mysql()->add_client_tables()->set_name("12");
 	input.mutable_protos()->mutable_postgres()->add_server_queries()->set_name("13");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.protos().mysql().server_queries().size(), 2);
 	EXPECT_EQ(output.protos().mysql().server_queries()[0].name(), "1");
 	EXPECT_EQ(output.protos().mysql().server_queries()[1].name(), "2");
@@ -2131,7 +1996,7 @@ TEST(aggregator, sql_info)
 	(*input.mutable_protos()->mutable_mysql()->mutable_server_tables())[1].set_name("18");
 	(*input.mutable_protos()->mutable_mysql()->mutable_client_tables())[1].set_name("19");
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.protos().mysql().server_queries().size(), 3);
 	EXPECT_EQ(output.protos().mysql().server_queries()[0].name(), "1");
 	EXPECT_EQ(output.protos().mysql().server_queries()[1].name(), "2");
@@ -2195,7 +2060,7 @@ TEST(aggregator, sql_query_type_details)
 TEST(aggregator, mongodb_info)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2213,7 +2078,8 @@ TEST(aggregator, mongodb_info)
 	input.mutable_protos()->mutable_mongodb()->add_client_collections()->set_name("7");
 	input.mutable_protos()->mutable_mongodb()->add_client_collections()->set_name("8");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.protos().mongodb().servers_ops().size(), 2);
 	EXPECT_EQ(output.protos().mongodb().servers_ops()[0].op(), 1);
 	EXPECT_EQ(output.protos().mongodb().servers_ops()[1].op(), 2);
@@ -2234,7 +2100,7 @@ TEST(aggregator, mongodb_info)
 	(*input.mutable_protos()->mutable_mongodb()->mutable_server_collections())[1].set_name("16");
 	(*input.mutable_protos()->mutable_mongodb()->mutable_client_collections())[1].set_name("17");
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.protos().mongodb().servers_ops().size(), 3);
 	EXPECT_EQ(output.protos().mongodb().servers_ops()[0].op(), 1);
 	EXPECT_EQ(output.protos().mongodb().servers_ops()[1].op(), 2);
@@ -2290,7 +2156,7 @@ TEST(aggregator, mongodb_collection_details)
 TEST(aggregator, java_info)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2299,14 +2165,15 @@ TEST(aggregator, java_info)
 	input.mutable_protos()->mutable_java()->add_beans()->set_name("2");
 	input.mutable_protos()->mutable_java()->add_beans()->set_name("3");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.protos().java().process_name(), "1");
 	EXPECT_EQ(output.protos().java().beans().size(), 2);
 	EXPECT_EQ(output.protos().java().beans()[0].name(), "2");
 	EXPECT_EQ(output.protos().java().beans()[1].name(), "3");
 
 	(*input.mutable_protos()->mutable_java()->mutable_beans())[1].set_name("4");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.protos().java().beans().size(), 3);
 	EXPECT_EQ(output.protos().java().beans()[0].name(), "2");
 	EXPECT_EQ(output.protos().java().beans()[1].name(), "3");
@@ -2316,7 +2183,7 @@ TEST(aggregator, java_info)
 TEST(aggregator, jmx_bean)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2326,7 +2193,8 @@ TEST(aggregator, jmx_bean)
 	bean->add_attributes()->set_name("2");
 	bean->add_attributes()->set_name("3");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.protos().java().beans()[0].name(), "1");
 	EXPECT_EQ(output.protos().java().beans()[0].attributes().size(), 2);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].name(), "2");
@@ -2334,7 +2202,7 @@ TEST(aggregator, jmx_bean)
 
 	(*bean->mutable_attributes())[1].set_name("4");
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes().size(), 3);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].name(), "2");
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[1].name(), "3");
@@ -2357,7 +2225,7 @@ TEST(aggregator, jmx_bean)
 TEST(aggregator, jmx_attribute)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2373,7 +2241,8 @@ TEST(aggregator, jmx_attribute)
 	in->set_scale((draiosproto::scale)6);
 	// SMAGENT-1935
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].name(), "1");
 	// subattribute tramples attribute value
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].aggr_value_double().sum(), 0);
@@ -2387,7 +2256,8 @@ TEST(aggregator, jmx_attribute)
 
 	(*in->mutable_subattributes())[1].set_name("3");
 	in->set_value(100);
-	aggregator.aggregate(input, output);
+	input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].aggr_value_double().sum(), 0);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].subattributes().size(), 3);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[0].subattributes()[0].name(), "1");
@@ -2398,15 +2268,18 @@ TEST(aggregator, jmx_attribute)
 	in = input.mutable_protos()->mutable_java()->add_beans()->add_attributes();
 	in->set_name("2");
 	in->set_value(2);
-	aggregator.aggregate(input, output);
+	input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[1].name(), "2");
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[1].aggr_value_double().sum(), 2);
 	in->set_value(3);
-	aggregator.aggregate(input, output);
+	input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[1].aggr_value_double().sum(), 5);
 	// now add a sub-attribute and watch value go bye-bye
 	in->add_subattributes()->set_name("1");
-	aggregator.aggregate(input, output);
+	input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.protos().java().beans()[0].attributes()[1].aggr_value_double().sum(), 0);
 
 	// validate primary key
@@ -2432,7 +2305,7 @@ TEST(aggregator, jmx_attribute)
 TEST(aggregator, statsd_tag)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2441,7 +2314,7 @@ TEST(aggregator, statsd_tag)
 	in->set_key("1");
 	in->set_value("2");
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].tags()[0].key(), "1");
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].tags()[0].value(), "2");
 
@@ -2465,7 +2338,7 @@ TEST(aggregator, statsd_tag)
 TEST(aggregator, statsd_info)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2474,7 +2347,7 @@ TEST(aggregator, statsd_info)
 	input.mutable_internal_metrics()->add_statsd_metrics()->set_name("2");
 	input.mutable_protos()->mutable_statsd()->add_statsd_metrics()->set_name("3");
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics().size(), 2);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].name(), "1");
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].name(), "2");
@@ -2484,7 +2357,7 @@ TEST(aggregator, statsd_info)
 TEST(aggregator, statsd_metric)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2505,7 +2378,8 @@ TEST(aggregator, statsd_metric)
 	in->add_percentile()->set_percentile(0);
 	in->add_percentile()->set_percentile(1);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].name(), "1");
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].tags().size(), 2);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].tags()[0].key(), "2");
@@ -2523,13 +2397,15 @@ TEST(aggregator, statsd_metric)
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].percentile()[0].percentile(), 0);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].percentile()[1].percentile(), 1);
 	in->set_value(100);
-	aggregator.aggregate(input, output);
+	input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[0].aggr_value().sum(), 104);
 
 	// test a histogram type
 	in->set_name("2");
 	in->set_type(draiosproto::statsd_metric_type::STATSD_HISTOGRAM);
-	aggregator.aggregate(input, output);
+	input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].name(), "2");
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].tags().size(), 2);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].tags()[0].key(), "2");
@@ -2557,7 +2433,7 @@ TEST(aggregator, statsd_metric)
 	in->set_percentile_99(100);
 	(*in->mutable_percentile())[0].set_percentile(2);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_sum().sum(), 105);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_min().sum(), 106);
 	EXPECT_EQ(output.internal_metrics().statsd_metrics()[1].aggr_max().sum(), 107);
@@ -2601,7 +2477,7 @@ TEST(aggregator, statsd_metric)
 TEST(aggregator, app_info)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2615,7 +2491,8 @@ TEST(aggregator, app_info)
 	in->add_checks()->set_name("5");
 	input.mutable_protos()->mutable_prometheus()->set_process_name("6");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.protos().app().process_name(), "1");
 	EXPECT_EQ(output.protos().app().metrics().size(), 2);
 	EXPECT_EQ(output.protos().app().metrics()[0].name(), "2");
@@ -2627,7 +2504,7 @@ TEST(aggregator, app_info)
 
 	(*in->mutable_metrics())[1].set_name("7");
 	(*in->mutable_checks())[1].set_name("8");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.protos().app().metrics().size(), 3);
 	EXPECT_EQ(output.protos().app().metrics()[0].name(), "2");
 	EXPECT_EQ(output.protos().app().metrics()[1].name(), "3");
@@ -2641,7 +2518,7 @@ TEST(aggregator, app_info)
 TEST(aggregator, app_metric)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2655,7 +2532,8 @@ TEST(aggregator, app_metric)
 	in->add_tags()->set_key("5");
 	in->set_prometheus_type((draiosproto::prometheus_type)1);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.protos().app().metrics()[0].name(), "1");
 	EXPECT_EQ(output.protos().app().metrics()[0].type(), 2);
 	EXPECT_EQ(output.protos().app().metrics()[0].aggr_value_double().sum(), 3.5);
@@ -2668,7 +2546,7 @@ TEST(aggregator, app_metric)
 	// can't actaully check adding a tag with a new key, as that results in the metric
 	// aggregating to a new message (correctly)
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.protos().app().metrics()[0].aggr_value_double().sum(), 103.5);
 
 	// validate primary key
@@ -2694,7 +2572,7 @@ TEST(aggregator, app_metric)
 TEST(aggregator, app_tag)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2702,7 +2580,7 @@ TEST(aggregator, app_tag)
 	auto in = input.mutable_protos()->mutable_app()->add_metrics()->add_tags();
 	in->set_key("1");
 	in->set_value("2");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.protos().app().metrics()[0].tags()[0].key(), "1");
 	EXPECT_EQ(output.protos().app().metrics()[0].tags()[0].value(), "2");
 
@@ -2723,7 +2601,7 @@ TEST(aggregator, app_tag)
 TEST(aggregator, prometheus_info)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2735,49 +2613,25 @@ TEST(aggregator, prometheus_info)
 	in->add_metrics()->set_name("2");
 	in->add_metrics()->set_name("3");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.protos().prom_info().process_name(), "1");
 	EXPECT_EQ(output.protos().prom_info().metrics().size(), 2);
 	EXPECT_EQ(output.protos().prom_info().metrics()[0].name(), "2");
 	EXPECT_EQ(output.protos().prom_info().metrics()[1].name(), "3");
 
 	(*in->mutable_metrics())[1].set_name("7");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.protos().prom_info().metrics().size(), 3);
 	EXPECT_EQ(output.protos().prom_info().metrics()[0].name(), "2");
 	EXPECT_EQ(output.protos().prom_info().metrics()[1].name(), "3");
 	EXPECT_EQ(output.protos().prom_info().metrics()[2].name(), "7");
-
-	// now do some more powerful checks to ensure that the custom name mangling is
-	// appropriate.
-	prometheus_info_message_aggregator_impl pimai(builder);
-	draiosproto::prometheus_info prom_info;
-	draiosproto::prometheus_info prom_info_out;
-	auto& prom_map = test_helper::get_prom_map(pimai);
-
-	prom_info.add_metrics()->set_name("name1");
-	pimai.aggregate(prom_info, prom_info_out);
-	ASSERT_NE(prom_map.find("name1"), prom_map.end());
-	prom_map.clear();
-
-	(*prom_info.mutable_metrics())[0].add_tags()->set_key("somekey");
-	(*(*prom_info.mutable_metrics())[0].mutable_tags())[0].set_value("somevalue");
-	pimai.aggregate(prom_info, prom_info_out);
-	ASSERT_NE(prom_map.find("name1somekeysomevalue"), prom_map.end());
-	prom_map.clear();
-
-	(*prom_info.mutable_metrics())[0]
-	    .set_type(draiosproto::app_metric_type::APP_METRIC_TYPE_PROMETHEUS_RAW);
-	pimai.aggregate(prom_info, prom_info_out);
-	ASSERT_NE(prom_map.find("raw:name1somekeysomevalue"), prom_map.end());
-	prom_map.clear();
 }
 
 TEST(aggregator, app_metric_bucket)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::app_metric_bucket>& aggregator =
-	    builder.build_app_metric_bucket();
+	std::unique_ptr<agent_message_aggregator<draiosproto::app_metric_bucket>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::app_metric_bucket>>(&builder.build_app_metric_bucket());
 
 	draiosproto::app_metric_bucket input;
 	draiosproto::app_metric_bucket output;
@@ -2785,12 +2639,13 @@ TEST(aggregator, app_metric_bucket)
 	input.set_label("some label");
 	input.set_count(1);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.label(), "some label");
 	EXPECT_EQ(output.aggr_count().sum(), 1);
 
 	input.set_count(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.aggr_count().sum(), 101);
 
 	// validate primary key
@@ -2810,7 +2665,7 @@ TEST(aggregator, app_metric_bucket)
 TEST(aggregator, app_check)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2821,7 +2676,8 @@ TEST(aggregator, app_check)
 	in->set_value((draiosproto::app_check_value)2);
 	in->add_tags()->set_key("3");
 	in->add_tags()->set_key("4");
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.protos().app().checks()[0].name(), "1");
 	EXPECT_EQ(output.protos().app().checks()[0].value(), 2);
 	EXPECT_EQ(output.protos().app().checks()[0].tags().size(), 2);
@@ -2829,7 +2685,7 @@ TEST(aggregator, app_check)
 	EXPECT_EQ(output.protos().app().checks()[0].tags()[1].key(), "4");
 
 	(*in->mutable_tags())[0].set_key("5");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.protos().app().checks()[0].tags().size(), 3);
 	EXPECT_EQ(output.protos().app().checks()[0].tags()[0].key(), "3");
 	EXPECT_EQ(output.protos().app().checks()[0].tags()[1].key(), "4");
@@ -2853,7 +2709,7 @@ TEST(aggregator, app_check)
 TEST(aggregator, file_stat)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2866,7 +2722,8 @@ TEST(aggregator, file_stat)
 	in->set_open_count(4);
 	in->set_errors(5);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.top_files()[0].name(), "1");
 	EXPECT_EQ(output.top_files()[0].aggr_bytes().sum(), 2);
 	EXPECT_EQ(output.top_files()[0].aggr_time_ns().sum(), 3);
@@ -2877,7 +2734,7 @@ TEST(aggregator, file_stat)
 	in->set_time_ns(100);
 	in->set_open_count(100);
 	in->set_errors(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.top_files()[0].aggr_bytes().sum(), 102);
 	EXPECT_EQ(output.top_files()[0].aggr_time_ns().sum(), 103);
 	EXPECT_EQ(output.top_files()[0].aggr_open_count().sum(), 104);
@@ -2903,7 +2760,7 @@ TEST(aggregator, file_stat)
 TEST(aggregator, mounted_fs)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -2919,7 +2776,8 @@ TEST(aggregator, mounted_fs)
 	in->set_total_inodes(7);
 	in->set_used_inodes(8);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.mounts()[0].device(), "1");
 	EXPECT_EQ(output.mounts()[0].mount_dir(), "2");
 	EXPECT_EQ(output.mounts()[0].type(), "3");
@@ -2935,7 +2793,7 @@ TEST(aggregator, mounted_fs)
 	in->set_total_inodes(100);
 	in->set_used_inodes(100);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.mounts()[0].aggr_size_bytes().sum(), 104);
 	EXPECT_EQ(output.mounts()[0].aggr_used_bytes().sum(), 105);
 	EXPECT_EQ(output.mounts()[0].aggr_available_bytes().sum(), 106);
@@ -2966,7 +2824,7 @@ TEST(aggregator, mounted_fs)
 TEST(aggregator, container)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3001,7 +2859,8 @@ TEST(aggregator, container)
 	in->add_top_devices()->set_name("20");
 	in->add_top_devices()->set_name("21");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.containers()[0].id(), "1");
 	EXPECT_EQ(output.containers()[0].type(), 2);
 	EXPECT_EQ(output.containers()[0].name(), "3");
@@ -3048,7 +2907,7 @@ TEST(aggregator, container)
 	(*in->mutable_top_files())[1].set_name("1");
 	(*in->mutable_top_devices())[1].set_name("1");
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.containers()[0].aggr_transaction_processing_delay().sum(), 105);
 	EXPECT_EQ(output.containers()[0].aggr_next_tiers_delay().sum(), 106);
 	EXPECT_EQ(output.containers()[0].port_mappings().size(), 3);
@@ -3156,7 +3015,7 @@ TEST(aggregator, container_label)
 TEST(aggregator, command_details)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3164,13 +3023,14 @@ TEST(aggregator, command_details)
 	input.add_commands()->set_timestamp(1);
 	input.add_containers()->add_commands()->set_timestamp(2);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.commands().size(), 1);
 	EXPECT_EQ(output.commands()[0].timestamp(), 1);
 	EXPECT_EQ(output.containers()[0].commands().size(), 1);
 	EXPECT_EQ(output.containers()[0].commands()[0].timestamp(), 2);
 
-	aggregator.aggregate(output, output);
+	aggregator->aggregate(output, output, false);
 	EXPECT_EQ(output.commands().size(), 2);
 	EXPECT_EQ(output.containers()[0].commands().size(), 2);
 }
@@ -3194,7 +3054,7 @@ TEST(aggregator, k8s_pair)
 TEST(aggregator, k8s_common)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3208,7 +3068,8 @@ TEST(aggregator, k8s_common)
 	i->add_selectors()->set_key("5");
 	i->add_selectors()->set_key("6");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().pods()[0].common().name(), "1");
 	EXPECT_EQ(output.kubernetes().pods()[0].common().uid(), "2");
 	EXPECT_EQ(output.kubernetes().pods()[0].common().namespace_(), "3");
@@ -3221,7 +3082,7 @@ TEST(aggregator, k8s_common)
 
 	i->add_labels()->set_key("7");
 	i->add_selectors()->set_key("8");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().pods()[0].common().labels().size(), 3);
 	EXPECT_EQ(output.kubernetes().pods()[0].common().labels()[0].key(), "4");
 	EXPECT_EQ(output.kubernetes().pods()[0].common().labels()[1].key(), "5");
@@ -3251,7 +3112,7 @@ TEST(aggregator, k8s_common)
 TEST(aggregator, k8s_namespace)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3268,7 +3129,8 @@ TEST(aggregator, k8s_namespace)
 	i->set_pod_desired_count(14);
 	i->set_pod_available_count(15);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().namespaces()[0].aggr_deployment_count().sum(), 7);
 	EXPECT_EQ(output.kubernetes().namespaces()[0].aggr_service_count().sum(), 8);
 	EXPECT_EQ(output.kubernetes().namespaces()[0].aggr_replicaset_count().sum(), 8);
@@ -3290,7 +3152,7 @@ TEST(aggregator, k8s_namespace)
 	i->set_hpa_count(100);
 	i->set_pod_desired_count(100);
 	i->set_pod_available_count(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().namespaces()[0].aggr_deployment_count().sum(), 107);
 	EXPECT_EQ(output.kubernetes().namespaces()[0].aggr_service_count().sum(), 108);
 	EXPECT_EQ(output.kubernetes().namespaces()[0].aggr_service_count().sum(), 108);
@@ -3318,7 +3180,7 @@ TEST(aggregator, k8s_namespace)
 TEST(aggregator, k8s_node)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3339,7 +3201,8 @@ TEST(aggregator, k8s_node)
 	i->set_disk_pressure(17);
 	i->set_net_unavailable(18);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().nodes()[0].host_ips().size(), 2);
 	EXPECT_EQ(output.kubernetes().nodes()[0].host_ips()[0], "1");
 	EXPECT_EQ(output.kubernetes().nodes()[0].host_ips()[1], "2");
@@ -3370,7 +3233,7 @@ TEST(aggregator, k8s_node)
 	i->set_mem_pressure(100);
 	i->set_disk_pressure(100);
 	i->set_net_unavailable(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().nodes()[0].host_ips().size(), 1);
 	EXPECT_EQ(output.kubernetes().nodes()[0].host_ips()[0], "3");
 	EXPECT_EQ(output.kubernetes().nodes()[0].aggr_capacity_cpu_cores().sum(), 107);
@@ -3402,7 +3265,7 @@ TEST(aggregator, k8s_node)
 TEST(aggregator, k8s_pod)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3423,7 +3286,8 @@ TEST(aggregator, k8s_pod)
 	i->set_limits_mem_bytes(13);
 	i->set_restart_rate(14);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().pods()[0].node_name(), "1");
 	EXPECT_EQ(output.kubernetes().pods()[0].host_ip(), "2");
 	EXPECT_EQ(output.kubernetes().pods()[0].internal_ip(), "3");
@@ -3449,7 +3313,7 @@ TEST(aggregator, k8s_pod)
 	i->set_requests_mem_bytes(100);
 	i->set_limits_mem_bytes(100);
 	i->set_restart_rate(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().pods()[0].container_ids().size(), 3);
 	EXPECT_EQ(output.kubernetes().pods()[0].container_ids()[0], "4");
 	EXPECT_EQ(output.kubernetes().pods()[0].container_ids()[1], "5");
@@ -3484,7 +3348,7 @@ TEST(aggregator, k8s_pod)
 TEST(aggregator, k8s_replication_controller)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3493,13 +3357,14 @@ TEST(aggregator, k8s_replication_controller)
 	i->set_replicas_desired(7);
 	i->set_replicas_running(8);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_desired().sum(), 7);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_running().sum(), 8);
 
 	i->set_replicas_desired(100);
 	i->set_replicas_running(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_desired().sum(), 107);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_running().sum(), 108);
 
@@ -3518,7 +3383,7 @@ TEST(aggregator, k8s_replication_controller)
 TEST(aggregator, k8s_service)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3528,7 +3393,8 @@ TEST(aggregator, k8s_service)
 	i->add_ports()->set_port(1);
 	i->add_ports()->set_port(2);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().services()[0].cluster_ip(), "1");
 	EXPECT_EQ(output.kubernetes().services()[0].ports().size(), 2);
 	EXPECT_EQ(output.kubernetes().services()[0].ports()[0].port(), 1);
@@ -3537,8 +3403,8 @@ TEST(aggregator, k8s_service)
 	i->set_cluster_ip("2");
 	i->clear_ports();
 	i->add_ports()->set_port(3);
-	aggregator.aggregate(input, output);
-	EXPECT_EQ(output.kubernetes().services()[0].cluster_ip(), "2");
+	aggregator->aggregate(input, output, false);
+	EXPECT_EQ(output.kubernetes().services()[0].cluster_ip(), "1");
 	EXPECT_EQ(output.kubernetes().services()[0].ports().size(), 1);
 	EXPECT_EQ(output.kubernetes().services()[0].ports()[0].port(), 3);
 
@@ -3557,7 +3423,7 @@ TEST(aggregator, k8s_service)
 TEST(aggregator, k8s_replica_set)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3568,7 +3434,8 @@ TEST(aggregator, k8s_replica_set)
 	i->set_replicas_fully_labeled(9);
 	i->set_replicas_ready(10);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_desired().sum(), 7);
 	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_running().sum(), 8);
 	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_fully_labeled().sum(), 9);
@@ -3578,7 +3445,7 @@ TEST(aggregator, k8s_replica_set)
 	i->set_replicas_running(100);
 	i->set_replicas_fully_labeled(100);
 	i->set_replicas_ready(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_desired().sum(), 107);
 	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_running().sum(), 108);
 	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_fully_labeled().sum(), 109);
@@ -3599,7 +3466,7 @@ TEST(aggregator, k8s_replica_set)
 TEST(aggregator, k8s_deployment)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3612,7 +3479,8 @@ TEST(aggregator, k8s_deployment)
 	i->set_replicas_updated(11);
 	i->set_replicas_paused(12);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_desired().sum(), 7);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_running().sum(), 8);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_available().sum(), 9);
@@ -3626,7 +3494,7 @@ TEST(aggregator, k8s_deployment)
 	i->set_replicas_unavailable(100);
 	i->set_replicas_updated(100);
 	i->set_replicas_paused(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_desired().sum(), 107);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_running().sum(), 108);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_available().sum(), 109);
@@ -3649,7 +3517,7 @@ TEST(aggregator, k8s_deployment)
 TEST(aggregator, k8s_daemonset)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3660,7 +3528,8 @@ TEST(aggregator, k8s_daemonset)
 	i->set_pods_misscheduled(9);
 	i->set_pods_ready(10);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_scheduled().sum(), 7);
 	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_desired().sum(), 8);
 	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_misscheduled().sum(), 9);
@@ -3670,7 +3539,7 @@ TEST(aggregator, k8s_daemonset)
 	i->set_desired_scheduled(100);
 	i->set_pods_misscheduled(100);
 	i->set_pods_ready(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_scheduled().sum(), 107);
 	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_desired().sum(), 108);
 	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_misscheduled().sum(), 109);
@@ -3691,7 +3560,7 @@ TEST(aggregator, k8s_daemonset)
 TEST(aggregator, k8s_job)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3703,7 +3572,8 @@ TEST(aggregator, k8s_job)
 	i->set_num_succeeded(10);
 	i->set_num_failed(11);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().jobs()[0].aggr_parallelism().sum(), 7);
 	EXPECT_EQ(output.kubernetes().jobs()[0].aggr_completions().sum(), 8);
 	EXPECT_EQ(output.kubernetes().jobs()[0].aggr_status_active().sum(), 9);
@@ -3715,7 +3585,7 @@ TEST(aggregator, k8s_job)
 	i->set_status_active(100);
 	i->set_num_succeeded(100);
 	i->set_num_failed(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().jobs()[0].aggr_parallelism().sum(), 107);
 	EXPECT_EQ(output.kubernetes().jobs()[0].aggr_completions().sum(), 108);
 	EXPECT_EQ(output.kubernetes().jobs()[0].aggr_status_active().sum(), 109);
@@ -3737,7 +3607,7 @@ TEST(aggregator, k8s_job)
 TEST(aggregator, k8s_statefulset)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3749,7 +3619,8 @@ TEST(aggregator, k8s_statefulset)
 	i->set_status_replicas_ready(10);
 	i->set_status_replicas_updated(11);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().statefulsets()[0].aggr_replicas().sum(), 7);
 	EXPECT_EQ(output.kubernetes().statefulsets()[0].aggr_status_replicas().sum(), 8);
 	EXPECT_EQ(output.kubernetes().statefulsets()[0].aggr_status_replicas_current().sum(), 9);
@@ -3761,7 +3632,7 @@ TEST(aggregator, k8s_statefulset)
 	i->set_status_replicas_current(100);
 	i->set_status_replicas_ready(100);
 	i->set_status_replicas_updated(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().statefulsets()[0].aggr_replicas().sum(), 107);
 	EXPECT_EQ(output.kubernetes().statefulsets()[0].aggr_status_replicas().sum(), 108);
 	EXPECT_EQ(output.kubernetes().statefulsets()[0].aggr_status_replicas_current().sum(), 109);
@@ -3783,7 +3654,7 @@ TEST(aggregator, k8s_statefulset)
 TEST(aggregator, k8s_resourcequota)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3822,7 +3693,8 @@ TEST(aggregator, k8s_resourcequota)
 	i->set_services_nodeports_used(38);
 	i->set_secrets_used(39);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().resourcequotas()[0].aggr_limits_cpu_hard().sum(), 7);
 	EXPECT_EQ(output.kubernetes().resourcequotas()[0].aggr_limits_memory_hard().sum(), 8);
 	EXPECT_EQ(output.kubernetes().resourcequotas()[0].aggr_requests_cpu_hard().sum(), 9);
@@ -3888,7 +3760,7 @@ TEST(aggregator, k8s_resourcequota)
 	i->set_services_loadbalancers_used(100);
 	i->set_services_nodeports_used(100);
 	i->set_secrets_used(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().resourcequotas()[0].aggr_limits_cpu_hard().sum(), 107);
 	EXPECT_EQ(output.kubernetes().resourcequotas()[0].aggr_limits_memory_hard().sum(), 108);
 	EXPECT_EQ(output.kubernetes().resourcequotas()[0].aggr_requests_cpu_hard().sum(), 109);
@@ -3943,7 +3815,7 @@ TEST(aggregator, k8s_resourcequota)
 TEST(aggregator, k8s_persistentvolume)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3951,11 +3823,12 @@ TEST(aggregator, k8s_persistentvolume)
 	auto i = input.mutable_kubernetes()->add_persistentvolumes();
 	i->set_storage(7);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().persistentvolumes()[0].aggr_storage().sum(), 7);
 
 	i->set_storage(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().persistentvolumes()[0].aggr_storage().sum(), 107);
 
 	// validate primary key
@@ -3973,7 +3846,7 @@ TEST(aggregator, k8s_persistentvolume)
 TEST(aggregator, k8s_persistentvolumeclaim)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -3981,11 +3854,12 @@ TEST(aggregator, k8s_persistentvolumeclaim)
 	auto i = input.mutable_kubernetes()->add_persistentvolumeclaims();
 	i->set_storage(7);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().persistentvolumeclaims()[0].aggr_storage().sum(), 7);
 
 	i->set_storage(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().persistentvolumeclaims()[0].aggr_storage().sum(), 107);
 
 	// validate primary key
@@ -4003,7 +3877,7 @@ TEST(aggregator, k8s_persistentvolumeclaim)
 TEST(aggregator, k8s_hpa)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4014,7 +3888,8 @@ TEST(aggregator, k8s_hpa)
 	i->set_replicas_current(9);
 	i->set_replicas_desired(10);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().hpas()[0].aggr_replicas_min().sum(), 7);
 	EXPECT_EQ(output.kubernetes().hpas()[0].aggr_replicas_max().sum(), 8);
 	EXPECT_EQ(output.kubernetes().hpas()[0].aggr_replicas_current().sum(), 9);
@@ -4024,7 +3899,7 @@ TEST(aggregator, k8s_hpa)
 	i->set_replicas_max(100);
 	i->set_replicas_current(100);
 	i->set_replicas_desired(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().hpas()[0].aggr_replicas_min().sum(), 107);
 	EXPECT_EQ(output.kubernetes().hpas()[0].aggr_replicas_max().sum(), 108);
 	EXPECT_EQ(output.kubernetes().hpas()[0].aggr_replicas_current().sum(), 109);
@@ -4045,7 +3920,7 @@ TEST(aggregator, k8s_hpa)
 TEST(aggregator, k8s_state)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4058,7 +3933,8 @@ TEST(aggregator, k8s_state)
 	i->set_replicas_updated(11);
 	i->set_replicas_paused(12);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_desired().sum(), 7);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_running().sum(), 8);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_available().sum(), 9);
@@ -4072,7 +3948,7 @@ TEST(aggregator, k8s_state)
 	i->set_replicas_unavailable(100);
 	i->set_replicas_updated(100);
 	i->set_replicas_paused(100);
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_desired().sum(), 107);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_running().sum(), 108);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_available().sum(), 109);
@@ -4095,7 +3971,7 @@ TEST(aggregator, k8s_state)
 TEST(aggregator, mesos_state)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4109,7 +3985,8 @@ TEST(aggregator, mesos_state)
 	in->add_slaves()->mutable_common()->set_uid("4");
 	in->add_slaves()->mutable_common()->set_uid("5");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.mesos().frameworks().size(), 2);
 	EXPECT_EQ(output.mesos().frameworks()[0].common().uid(), "1");
 	EXPECT_EQ(output.mesos().frameworks()[1].common().uid(), "2");
@@ -4124,7 +4001,7 @@ TEST(aggregator, mesos_state)
 	(*in->mutable_groups())[1].set_id("7");
 	(*in->mutable_slaves())[1].mutable_common()->set_uid("8");
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.mesos().frameworks().size(), 3);
 	EXPECT_EQ(output.mesos().frameworks()[0].common().uid(), "1");
 	EXPECT_EQ(output.mesos().frameworks()[1].common().uid(), "2");
@@ -4142,7 +4019,7 @@ TEST(aggregator, mesos_state)
 TEST(aggregator, mesos_framework)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4152,13 +4029,14 @@ TEST(aggregator, mesos_framework)
 	in->add_tasks()->mutable_common()->set_uid("1");
 	in->add_tasks()->mutable_common()->set_uid("2");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.mesos().frameworks()[0].tasks().size(), 2);
 	EXPECT_EQ(output.mesos().frameworks()[0].tasks()[0].common().uid(), "1");
 	EXPECT_EQ(output.mesos().frameworks()[0].tasks()[1].common().uid(), "2");
 
 	(*in->mutable_tasks())[0].mutable_common()->set_uid("3");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.mesos().frameworks()[0].tasks().size(), 3);
 	EXPECT_EQ(output.mesos().frameworks()[0].tasks()[0].common().uid(), "1");
 	EXPECT_EQ(output.mesos().frameworks()[0].tasks()[1].common().uid(), "2");
@@ -4181,7 +4059,7 @@ TEST(aggregator, mesos_framework)
 TEST(aggregator, mesos_common)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4193,7 +4071,8 @@ TEST(aggregator, mesos_common)
 	in->add_labels()->set_key("3");
 	in->add_labels()->set_key("4");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.mesos().frameworks()[0].common().uid(), "1");
 	EXPECT_EQ(output.mesos().frameworks()[0].common().name(), "2");
 	EXPECT_EQ(output.mesos().frameworks()[0].common().labels().size(), 2);
@@ -4201,7 +4080,7 @@ TEST(aggregator, mesos_common)
 	EXPECT_EQ(output.mesos().frameworks()[0].common().labels()[1].key(), "4");
 
 	(*in->mutable_labels())[0].set_key("5");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.mesos().frameworks()[0].common().labels().size(), 3);
 	EXPECT_EQ(output.mesos().frameworks()[0].common().labels()[0].key(), "3");
 	EXPECT_EQ(output.mesos().frameworks()[0].common().labels()[1].key(), "4");
@@ -4241,7 +4120,7 @@ TEST(aggregator, mesos_pair)
 TEST(aggregator, mesos_task)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4250,7 +4129,7 @@ TEST(aggregator, mesos_task)
 
 	in->set_slave_id("1");
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.mesos().frameworks()[0].tasks()[0].slave_id(), "1");
 
 	// validate primary key
@@ -4270,7 +4149,7 @@ TEST(aggregator, mesos_task)
 TEST(aggregator, marathon_group)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4283,7 +4162,8 @@ TEST(aggregator, marathon_group)
 	in->add_groups()->set_id("4");
 	in->add_groups()->set_id("5");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.mesos().groups()[0].id(), "1");
 	EXPECT_EQ(output.mesos().groups()[0].apps().size(), 2);
 	EXPECT_EQ(output.mesos().groups()[0].apps()[0].id(), "2");
@@ -4294,7 +4174,7 @@ TEST(aggregator, marathon_group)
 
 	(*in->mutable_apps())[1].set_id("6");
 	(*in->mutable_groups())[1].set_id("7");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.mesos().groups()[0].apps().size(), 3);
 	EXPECT_EQ(output.mesos().groups()[0].apps()[0].id(), "2");
 	EXPECT_EQ(output.mesos().groups()[0].apps()[1].id(), "3");
@@ -4322,7 +4202,7 @@ TEST(aggregator, marathon_group)
 TEST(aggregator, marathon_app)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4333,14 +4213,15 @@ TEST(aggregator, marathon_app)
 	in->add_task_ids("2");
 	in->add_task_ids("3");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.mesos().groups()[0].apps()[0].id(), "1");
 	EXPECT_EQ(output.mesos().groups()[0].apps()[0].task_ids().size(), 2);
 	EXPECT_EQ(output.mesos().groups()[0].apps()[0].task_ids()[0], "2");
 	EXPECT_EQ(output.mesos().groups()[0].apps()[0].task_ids()[1], "3");
 
 	in->add_task_ids("4");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.mesos().groups()[0].apps()[0].task_ids().size(), 3);
 	EXPECT_EQ(output.mesos().groups()[0].apps()[0].task_ids()[0], "2");
 	EXPECT_EQ(output.mesos().groups()[0].apps()[0].task_ids()[1], "3");
@@ -4378,7 +4259,7 @@ TEST(aggregator, mesos_slave)
 TEST(aggregator, agent_event)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4393,7 +4274,8 @@ TEST(aggregator, agent_event)
 	in->add_tags()->set_key("1");
 	in->add_tags()->set_key("2");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.events()[0].timestamp_sec(), 1);
 	EXPECT_EQ(output.events()[0].scope(), "2");
 	EXPECT_EQ(output.events()[0].title(), "3");
@@ -4404,7 +4286,7 @@ TEST(aggregator, agent_event)
 	EXPECT_EQ(output.events()[0].tags()[1].key(), "2");
 
 	(*in->mutable_tags())[1].set_key("3");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.events().size(), 1);
 	// tags should have gotten replaced
 	EXPECT_EQ(output.events()[0].tags().size(), 2);
@@ -4460,7 +4342,7 @@ TEST(aggregator, key_value)
 TEST(aggregator, falco_baseline)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4493,7 +4375,8 @@ TEST(aggregator, falco_baseline)
 	(*(*(*(*in->mutable_progs())[0].mutable_cats())[0].mutable_startup_subcats())[0]
 	      .mutable_subcats())[1].set_name("1");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.falcobl().containers().size(), 2);
 	EXPECT_EQ(output.falcobl().containers()[0].id(), "0");
 	EXPECT_EQ(output.falcobl().containers()[1].id(), "1");
@@ -4512,7 +4395,7 @@ TEST(aggregator, falco_baseline)
 	EXPECT_EQ(output.falcobl().progs()[0].cats()[0].startup_subcats()[0].subcats()[0].d()[1], "2");
 
 	// aggregate again just to make sure nothing changes
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.falcobl().containers().size(), 2);
 	EXPECT_EQ(output.falcobl().containers()[0].id(), "0");
 	EXPECT_EQ(output.falcobl().containers()[1].id(), "1");
@@ -4532,7 +4415,7 @@ TEST(aggregator, falco_baseline)
 
 	// aggregate an empty one to make sure it doesn't change
 	draiosproto::metrics empty;
-	aggregator.aggregate(empty, output);
+	aggregator->aggregate(empty, output, false);
 	EXPECT_EQ(output.falcobl().containers().size(), 2);
 	EXPECT_EQ(output.falcobl().containers()[0].id(), "0");
 	EXPECT_EQ(output.falcobl().containers()[1].id(), "1");
@@ -4558,7 +4441,7 @@ TEST(aggregator, falco_baseline)
 	// check that containers group correctly
 	in->add_containers();
 	(*in->mutable_containers())[0].set_id("NEW");
-	aggregator.aggregate(replacement, output);
+	aggregator->aggregate(replacement, output, false);
 	EXPECT_EQ(output.falcobl().containers().size(), 1);
 	EXPECT_EQ(output.falcobl().containers()[0].id(), "NEW");
 	EXPECT_EQ(output.falcobl().progs().size(), 0);
@@ -4567,7 +4450,7 @@ TEST(aggregator, falco_baseline)
 TEST(aggregator, swarm_state)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4583,7 +4466,8 @@ TEST(aggregator, swarm_state)
 	in->set_quorum(false);
 	in->set_node_id("7");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.swarm().services().size(), 2);
 	EXPECT_EQ(output.swarm().services()[0].common().id(), "1");
 	EXPECT_EQ(output.swarm().services()[1].common().id(), "2");
@@ -4601,7 +4485,7 @@ TEST(aggregator, swarm_state)
 	(*in->mutable_tasks())[1].mutable_common()->set_id("8");
 	in->set_quorum(true);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.swarm().services().size(), 3);
 	EXPECT_EQ(output.swarm().services()[0].common().id(), "1");
 	EXPECT_EQ(output.swarm().services()[1].common().id(), "2");
@@ -4620,7 +4504,7 @@ TEST(aggregator, swarm_state)
 TEST(aggregator, swarm_service)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4637,7 +4521,8 @@ TEST(aggregator, swarm_service)
 	in->set_spec_replicas(6);
 	in->set_tasks(7);
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.swarm().services()[0].common().id(), "1");
 	EXPECT_EQ(output.swarm().services()[0].virtual_ips().size(), 2);
 	EXPECT_EQ(output.swarm().services()[0].virtual_ips()[0], "2");
@@ -4654,7 +4539,7 @@ TEST(aggregator, swarm_service)
 	in->set_spec_replicas(100);
 	in->set_tasks(100);
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.swarm().services()[0].virtual_ips().size(), 3);
 	EXPECT_EQ(output.swarm().services()[0].virtual_ips()[0], "2");
 	EXPECT_EQ(output.swarm().services()[0].virtual_ips()[1], "3");
@@ -4687,7 +4572,7 @@ TEST(aggregator, swarm_service)
 TEST(aggregator, swarm_common)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4700,7 +4585,8 @@ TEST(aggregator, swarm_common)
 	in->add_labels()->set_key("3");
 	in->add_labels()->set_key("4");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.swarm().services()[0].common().id(), "1");
 	EXPECT_EQ(output.swarm().services()[0].common().name(), "2");
 	EXPECT_EQ(output.swarm().services()[0].common().labels().size(), 2);
@@ -4708,7 +4594,7 @@ TEST(aggregator, swarm_common)
 	EXPECT_EQ(output.swarm().services()[0].common().labels()[1].key(), "4");
 
 	(*in->mutable_labels())[0].set_key("5");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.swarm().services()[0].common().labels().size(), 3);
 	EXPECT_EQ(output.swarm().services()[0].common().labels()[0].key(), "3");
 	EXPECT_EQ(output.swarm().services()[0].common().labels()[1].key(), "4");
@@ -4753,7 +4639,7 @@ TEST(aggregator, swarm_port)
 TEST(aggregator, swarm_node)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4767,7 +4653,8 @@ TEST(aggregator, swarm_node)
 	in->set_availability("5");
 	in->set_state("6");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.swarm().nodes()[0].common().id(), "1");
 	EXPECT_EQ(output.swarm().nodes()[0].role(), "2");
 	EXPECT_EQ(output.swarm().nodes()[0].ip_address(), "3");
@@ -4778,7 +4665,7 @@ TEST(aggregator, swarm_node)
 	in->set_state("1");
 	in->set_version("1");
 	in->set_availability("1");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.swarm().nodes()[0].state(), "1, 6");
 	EXPECT_EQ(output.swarm().nodes()[0].version(), "1, 4");
 	EXPECT_EQ(output.swarm().nodes()[0].availability(), "1, 5");
@@ -4804,7 +4691,7 @@ TEST(aggregator, swarm_node)
 TEST(aggregator, swarm_task)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4818,7 +4705,8 @@ TEST(aggregator, swarm_task)
 	in->set_container_id("4");
 	in->set_state("5");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.swarm().tasks()[0].common().id(), "1");
 	EXPECT_EQ(output.swarm().tasks()[0].service_id(), "2");
 	EXPECT_EQ(output.swarm().tasks()[0].node_id(), "3");
@@ -4826,7 +4714,7 @@ TEST(aggregator, swarm_task)
 	EXPECT_EQ(output.swarm().tasks()[0].state(), "5");
 
 	in->set_state("6");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.swarm().tasks()[0].state(), "5, 6");
 
 	// validate primary key
@@ -4849,7 +4737,7 @@ TEST(aggregator, swarm_task)
 TEST(aggregator, swarm_manager)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4859,19 +4747,20 @@ TEST(aggregator, swarm_manager)
 	in->set_leader(true);
 	in->set_reachability("1");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.swarm().nodes()[0].manager().leader(), true);
 	EXPECT_EQ(output.swarm().nodes()[0].manager().reachability(), "1");
 
 	in->set_reachability("2");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.swarm().nodes()[0].manager().reachability(), "1, 2");
 }
 
 TEST(aggregator, id_map)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4881,7 +4770,7 @@ TEST(aggregator, id_map)
 	in->set_id(1);
 	in->set_name("2");
 
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.userdb()[0].id(), 1);
 	EXPECT_EQ(output.userdb()[0].name(), "2");
 
@@ -4901,7 +4790,7 @@ TEST(aggregator, id_map)
 TEST(aggregator, environment)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4912,14 +4801,15 @@ TEST(aggregator, environment)
 	in->add_variables("2");
 	in->add_variables("3");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.environments()[0].hash(), "1");
 	EXPECT_EQ(output.environments()[0].variables().size(), 2);
 	EXPECT_EQ(output.environments()[0].variables()[0], "2");
 	EXPECT_EQ(output.environments()[0].variables()[1], "3");
 	in->clear_variables();
 	in->add_variables("42");
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.environments()[0].hash(), "1");
 	EXPECT_EQ(output.environments()[0].variables().size(), 1);
 	EXPECT_EQ(output.environments()[0].variables()[0], "42");
@@ -4941,7 +4831,7 @@ TEST(aggregator, environment)
 TEST(aggregator, unreported_stats)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>& aggregator = builder.build_metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
 	draiosproto::metrics input;
 	draiosproto::metrics output;
@@ -4952,1727 +4842,18 @@ TEST(aggregator, unreported_stats)
 	in->add_names("2");
 	in->add_names("3");
 
-	aggregator.aggregate(input, output);
+	auto input2 = input;
+	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.unreported_counters().names().size(), 2);
 	EXPECT_EQ(output.unreported_counters().names()[0], "2");
 	EXPECT_EQ(output.unreported_counters().names()[1], "3");
 
 	(*in->mutable_names())[1] = "4";
-	aggregator.aggregate(input, output);
+	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.unreported_counters().names().size(), 3);
 	EXPECT_EQ(output.unreported_counters().names()[0], "2");
 	EXPECT_EQ(output.unreported_counters().names()[1], "3");
 	EXPECT_EQ(output.unreported_counters().names()[2], "4");
-}
-
-TEST(aggregator_limit, statsd_metrics)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_statsd_info_statsd_metrics_limit(5);
-	statsd_info_message_aggregator* aggr = new statsd_info_message_aggregator(builder);
-	draiosproto::statsd_info info;
-	for (uint32_t i = 0; i < 10; i++)
-	{
-		info.add_statsd_metrics()->mutable_aggr_sum()->set_sum(i);
-	}
-	statsd_info_message_aggregator::limit(builder, info);
-	EXPECT_EQ(info.statsd_metrics().size(), 5);
-	for (uint32_t i = 0; i < 5; i++)
-	{
-		EXPECT_EQ(info.statsd_metrics()[i].aggr_sum().sum(), 9 - i);
-	}
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, container_top_devices)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_container_top_devices_limit(4);
-	container_message_aggregator* aggr = new container_message_aggregator(builder);
-	draiosproto::container input;
-	input.add_top_devices()->mutable_aggr_time_ns()->set_sum(1);
-	input.add_top_devices()->mutable_aggr_time_ns()->set_sum(2);
-	input.add_top_devices()->mutable_aggr_time_ns()->set_sum(3);
-	input.add_top_devices()->mutable_aggr_open_count()->set_sum(1);
-	input.add_top_devices()->mutable_aggr_open_count()->set_sum(2);
-	input.add_top_devices()->mutable_aggr_open_count()->set_sum(3);
-	input.add_top_devices()->mutable_aggr_bytes()->set_sum(1);
-	input.add_top_devices()->mutable_aggr_bytes()->set_sum(2);
-	input.add_top_devices()->mutable_aggr_bytes()->set_sum(3);
-	input.add_top_devices()->mutable_aggr_errors()->set_sum(1);
-	input.add_top_devices()->mutable_aggr_errors()->set_sum(2);
-	input.add_top_devices()->mutable_aggr_errors()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::container input_copy = input;
-	container_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.top_devices().size(), 4);
-	EXPECT_EQ(input_copy.top_devices()[0].aggr_time_ns().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[1].aggr_open_count().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[2].aggr_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[3].aggr_errors().sum(), 3);
-	input_copy = input;
-	builder.set_container_top_devices_limit(8);
-	container_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.top_devices().size(), 8);
-	EXPECT_EQ(input_copy.top_devices()[0].aggr_time_ns().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[1].aggr_time_ns().sum(), 2);
-	EXPECT_EQ(input_copy.top_devices()[2].aggr_open_count().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[3].aggr_open_count().sum(), 2);
-	EXPECT_EQ(input_copy.top_devices()[4].aggr_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[5].aggr_bytes().sum(), 2);
-	EXPECT_EQ(input_copy.top_devices()[6].aggr_errors().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[7].aggr_errors().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, metrics_top_devices)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_metrics_top_devices_limit(4);
-	metrics_message_aggregator* aggr = new metrics_message_aggregator(builder);
-	draiosproto::metrics input;
-	input.add_top_devices()->mutable_aggr_time_ns()->set_sum(1);
-	input.add_top_devices()->mutable_aggr_time_ns()->set_sum(2);
-	input.add_top_devices()->mutable_aggr_time_ns()->set_sum(3);
-	input.add_top_devices()->mutable_aggr_open_count()->set_sum(1);
-	input.add_top_devices()->mutable_aggr_open_count()->set_sum(2);
-	input.add_top_devices()->mutable_aggr_open_count()->set_sum(3);
-	input.add_top_devices()->mutable_aggr_bytes()->set_sum(1);
-	input.add_top_devices()->mutable_aggr_bytes()->set_sum(2);
-	input.add_top_devices()->mutable_aggr_bytes()->set_sum(3);
-	input.add_top_devices()->mutable_aggr_errors()->set_sum(1);
-	input.add_top_devices()->mutable_aggr_errors()->set_sum(2);
-	input.add_top_devices()->mutable_aggr_errors()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::metrics input_copy = input;
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.top_devices().size(), 4);
-	EXPECT_EQ(input_copy.top_devices()[0].aggr_time_ns().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[1].aggr_open_count().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[2].aggr_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[3].aggr_errors().sum(), 3);
-	input_copy = input;
-	builder.set_metrics_top_devices_limit(8);
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.top_devices().size(), 8);
-	EXPECT_EQ(input_copy.top_devices()[0].aggr_time_ns().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[1].aggr_time_ns().sum(), 2);
-	EXPECT_EQ(input_copy.top_devices()[2].aggr_open_count().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[3].aggr_open_count().sum(), 2);
-	EXPECT_EQ(input_copy.top_devices()[4].aggr_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[5].aggr_bytes().sum(), 2);
-	EXPECT_EQ(input_copy.top_devices()[6].aggr_errors().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[7].aggr_errors().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, process_top_devices)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_process_top_devices_limit(4);
-	process_message_aggregator* aggr = new process_message_aggregator(builder);
-	draiosproto::process input;
-	input.add_top_devices()->mutable_aggr_time_ns()->set_sum(1);
-	input.add_top_devices()->mutable_aggr_time_ns()->set_sum(2);
-	input.add_top_devices()->mutable_aggr_time_ns()->set_sum(3);
-	input.add_top_devices()->mutable_aggr_open_count()->set_sum(1);
-	input.add_top_devices()->mutable_aggr_open_count()->set_sum(2);
-	input.add_top_devices()->mutable_aggr_open_count()->set_sum(3);
-	input.add_top_devices()->mutable_aggr_bytes()->set_sum(1);
-	input.add_top_devices()->mutable_aggr_bytes()->set_sum(2);
-	input.add_top_devices()->mutable_aggr_bytes()->set_sum(3);
-	input.add_top_devices()->mutable_aggr_errors()->set_sum(1);
-	input.add_top_devices()->mutable_aggr_errors()->set_sum(2);
-	input.add_top_devices()->mutable_aggr_errors()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::process input_copy = input;
-	process_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.top_devices().size(), 4);
-	EXPECT_EQ(input_copy.top_devices()[0].aggr_time_ns().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[1].aggr_open_count().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[2].aggr_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[3].aggr_errors().sum(), 3);
-	input_copy = input;
-	builder.set_process_top_devices_limit(8);
-	process_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.top_devices().size(), 8);
-	EXPECT_EQ(input_copy.top_devices()[0].aggr_time_ns().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[1].aggr_time_ns().sum(), 2);
-	EXPECT_EQ(input_copy.top_devices()[2].aggr_open_count().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[3].aggr_open_count().sum(), 2);
-	EXPECT_EQ(input_copy.top_devices()[4].aggr_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[5].aggr_bytes().sum(), 2);
-	EXPECT_EQ(input_copy.top_devices()[6].aggr_errors().sum(), 3);
-	EXPECT_EQ(input_copy.top_devices()[7].aggr_errors().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, metrics_top_files)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_metrics_top_files_limit(4);
-	metrics_message_aggregator* aggr = new metrics_message_aggregator(builder);
-	draiosproto::metrics input;
-	input.add_top_files()->mutable_aggr_time_ns()->set_sum(1);
-	input.add_top_files()->mutable_aggr_time_ns()->set_sum(2);
-	input.add_top_files()->mutable_aggr_time_ns()->set_sum(3);
-	input.add_top_files()->mutable_aggr_open_count()->set_sum(1);
-	input.add_top_files()->mutable_aggr_open_count()->set_sum(2);
-	input.add_top_files()->mutable_aggr_open_count()->set_sum(3);
-	input.add_top_files()->mutable_aggr_bytes()->set_sum(1);
-	input.add_top_files()->mutable_aggr_bytes()->set_sum(2);
-	input.add_top_files()->mutable_aggr_bytes()->set_sum(3);
-	input.add_top_files()->mutable_aggr_errors()->set_sum(1);
-	input.add_top_files()->mutable_aggr_errors()->set_sum(2);
-	input.add_top_files()->mutable_aggr_errors()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::metrics input_copy = input;
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.top_files().size(), 4);
-	EXPECT_EQ(input_copy.top_files()[0].aggr_time_ns().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[1].aggr_open_count().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[2].aggr_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[3].aggr_errors().sum(), 3);
-	input_copy = input;
-	builder.set_metrics_top_files_limit(8);
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.top_files().size(), 8);
-	EXPECT_EQ(input_copy.top_files()[0].aggr_time_ns().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[1].aggr_time_ns().sum(), 2);
-	EXPECT_EQ(input_copy.top_files()[2].aggr_open_count().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[3].aggr_open_count().sum(), 2);
-	EXPECT_EQ(input_copy.top_files()[4].aggr_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[5].aggr_bytes().sum(), 2);
-	EXPECT_EQ(input_copy.top_files()[6].aggr_errors().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[7].aggr_errors().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, container_top_files)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_container_top_files_limit(4);
-	container_message_aggregator* aggr = new container_message_aggregator(builder);
-	draiosproto::container input;
-	input.add_top_files()->mutable_aggr_time_ns()->set_sum(1);
-	input.add_top_files()->mutable_aggr_time_ns()->set_sum(2);
-	input.add_top_files()->mutable_aggr_time_ns()->set_sum(3);
-	input.add_top_files()->mutable_aggr_open_count()->set_sum(1);
-	input.add_top_files()->mutable_aggr_open_count()->set_sum(2);
-	input.add_top_files()->mutable_aggr_open_count()->set_sum(3);
-	input.add_top_files()->mutable_aggr_bytes()->set_sum(1);
-	input.add_top_files()->mutable_aggr_bytes()->set_sum(2);
-	input.add_top_files()->mutable_aggr_bytes()->set_sum(3);
-	input.add_top_files()->mutable_aggr_errors()->set_sum(1);
-	input.add_top_files()->mutable_aggr_errors()->set_sum(2);
-	input.add_top_files()->mutable_aggr_errors()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::container input_copy = input;
-	container_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.top_files().size(), 4);
-	EXPECT_EQ(input_copy.top_files()[0].aggr_time_ns().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[1].aggr_open_count().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[2].aggr_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[3].aggr_errors().sum(), 3);
-	input_copy = input;
-	builder.set_container_top_files_limit(8);
-	container_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.top_files().size(), 8);
-	EXPECT_EQ(input_copy.top_files()[0].aggr_time_ns().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[1].aggr_time_ns().sum(), 2);
-	EXPECT_EQ(input_copy.top_files()[2].aggr_open_count().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[3].aggr_open_count().sum(), 2);
-	EXPECT_EQ(input_copy.top_files()[4].aggr_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[5].aggr_bytes().sum(), 2);
-	EXPECT_EQ(input_copy.top_files()[6].aggr_errors().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[7].aggr_errors().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, process_top_files)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_process_top_files_limit(4);
-	process_message_aggregator* aggr = new process_message_aggregator(builder);
-	draiosproto::process input;
-	input.add_top_files()->mutable_aggr_time_ns()->set_sum(1);
-	input.add_top_files()->mutable_aggr_time_ns()->set_sum(2);
-	input.add_top_files()->mutable_aggr_time_ns()->set_sum(3);
-	input.add_top_files()->mutable_aggr_open_count()->set_sum(1);
-	input.add_top_files()->mutable_aggr_open_count()->set_sum(2);
-	input.add_top_files()->mutable_aggr_open_count()->set_sum(3);
-	input.add_top_files()->mutable_aggr_bytes()->set_sum(1);
-	input.add_top_files()->mutable_aggr_bytes()->set_sum(2);
-	input.add_top_files()->mutable_aggr_bytes()->set_sum(3);
-	input.add_top_files()->mutable_aggr_errors()->set_sum(1);
-	input.add_top_files()->mutable_aggr_errors()->set_sum(2);
-	input.add_top_files()->mutable_aggr_errors()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::process input_copy = input;
-	process_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.top_files().size(), 4);
-	EXPECT_EQ(input_copy.top_files()[0].aggr_time_ns().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[1].aggr_open_count().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[2].aggr_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[3].aggr_errors().sum(), 3);
-	input_copy = input;
-	builder.set_process_top_files_limit(8);
-	process_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.top_files().size(), 8);
-	EXPECT_EQ(input_copy.top_files()[0].aggr_time_ns().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[1].aggr_time_ns().sum(), 2);
-	EXPECT_EQ(input_copy.top_files()[2].aggr_open_count().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[3].aggr_open_count().sum(), 2);
-	EXPECT_EQ(input_copy.top_files()[4].aggr_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[5].aggr_bytes().sum(), 2);
-	EXPECT_EQ(input_copy.top_files()[6].aggr_errors().sum(), 3);
-	EXPECT_EQ(input_copy.top_files()[7].aggr_errors().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, client_queries)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_sql_info_client_queries_limit(4);
-	sql_info_message_aggregator* aggr = new sql_info_message_aggregator(builder);
-	draiosproto::sql_info input;
-	input.add_client_queries()->mutable_counters()->mutable_aggr_time_tot()->set_sum(1);
-	input.add_client_queries()->mutable_counters()->mutable_aggr_time_tot()->set_sum(2);
-	input.add_client_queries()->mutable_counters()->mutable_aggr_time_tot()->set_sum(3);
-	input.add_client_queries()->mutable_counters()->mutable_aggr_time_max()->set_sum(1);
-	input.add_client_queries()->mutable_counters()->mutable_aggr_time_max()->set_sum(2);
-	input.add_client_queries()->mutable_counters()->mutable_aggr_time_max()->set_sum(3);
-	input.add_client_queries()->mutable_counters()->mutable_aggr_ncalls()->set_sum(1);
-	input.add_client_queries()->mutable_counters()->mutable_aggr_ncalls()->set_sum(2);
-	input.add_client_queries()->mutable_counters()->mutable_aggr_ncalls()->set_sum(3);
-	input.add_client_queries()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(1);
-	input.add_client_queries()->mutable_counters()->mutable_aggr_bytes_out()->set_sum(2);
-	input.add_client_queries()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::sql_info input_copy = input;
-	sql_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.client_queries().size(), 4);
-	EXPECT_EQ(input_copy.client_queries()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.client_queries()[1].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.client_queries()[2].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.client_queries()[3].counters().aggr_bytes_in().sum(), 3);
-	input_copy = input;
-	builder.set_sql_info_client_queries_limit(8);
-	sql_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.client_queries().size(), 8);
-	EXPECT_EQ(input_copy.client_queries()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.client_queries()[1].counters().aggr_time_tot().sum(), 2);
-	EXPECT_EQ(input_copy.client_queries()[2].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.client_queries()[3].counters().aggr_time_max().sum(), 2);
-	EXPECT_EQ(input_copy.client_queries()[4].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.client_queries()[5].counters().aggr_ncalls().sum(), 2);
-	EXPECT_EQ(input_copy.client_queries()[6].counters().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.client_queries()[7].counters().aggr_bytes_out().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, client_tables)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_sql_info_client_tables_limit(4);
-	sql_info_message_aggregator* aggr = new sql_info_message_aggregator(builder);
-	draiosproto::sql_info input;
-	input.add_client_tables()->mutable_counters()->mutable_aggr_time_tot()->set_sum(1);
-	input.add_client_tables()->mutable_counters()->mutable_aggr_time_tot()->set_sum(2);
-	input.add_client_tables()->mutable_counters()->mutable_aggr_time_tot()->set_sum(3);
-	input.add_client_tables()->mutable_counters()->mutable_aggr_time_max()->set_sum(1);
-	input.add_client_tables()->mutable_counters()->mutable_aggr_time_max()->set_sum(2);
-	input.add_client_tables()->mutable_counters()->mutable_aggr_time_max()->set_sum(3);
-	input.add_client_tables()->mutable_counters()->mutable_aggr_ncalls()->set_sum(1);
-	input.add_client_tables()->mutable_counters()->mutable_aggr_ncalls()->set_sum(2);
-	input.add_client_tables()->mutable_counters()->mutable_aggr_ncalls()->set_sum(3);
-	input.add_client_tables()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(1);
-	input.add_client_tables()->mutable_counters()->mutable_aggr_bytes_out()->set_sum(2);
-	input.add_client_tables()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::sql_info input_copy = input;
-	sql_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.client_tables().size(), 4);
-	EXPECT_EQ(input_copy.client_tables()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.client_tables()[1].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.client_tables()[2].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.client_tables()[3].counters().aggr_bytes_in().sum(), 3);
-	input_copy = input;
-	builder.set_sql_info_client_tables_limit(8);
-	sql_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.client_tables().size(), 8);
-	EXPECT_EQ(input_copy.client_tables()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.client_tables()[1].counters().aggr_time_tot().sum(), 2);
-	EXPECT_EQ(input_copy.client_tables()[2].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.client_tables()[3].counters().aggr_time_max().sum(), 2);
-	EXPECT_EQ(input_copy.client_tables()[4].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.client_tables()[5].counters().aggr_ncalls().sum(), 2);
-	EXPECT_EQ(input_copy.client_tables()[6].counters().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.client_tables()[7].counters().aggr_bytes_out().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, server_queries)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_sql_info_server_queries_limit(4);
-	sql_info_message_aggregator* aggr = new sql_info_message_aggregator(builder);
-	draiosproto::sql_info input;
-	input.add_server_queries()->mutable_counters()->mutable_aggr_time_tot()->set_sum(1);
-	input.add_server_queries()->mutable_counters()->mutable_aggr_time_tot()->set_sum(2);
-	input.add_server_queries()->mutable_counters()->mutable_aggr_time_tot()->set_sum(3);
-	input.add_server_queries()->mutable_counters()->mutable_aggr_time_max()->set_sum(1);
-	input.add_server_queries()->mutable_counters()->mutable_aggr_time_max()->set_sum(2);
-	input.add_server_queries()->mutable_counters()->mutable_aggr_time_max()->set_sum(3);
-	input.add_server_queries()->mutable_counters()->mutable_aggr_ncalls()->set_sum(1);
-	input.add_server_queries()->mutable_counters()->mutable_aggr_ncalls()->set_sum(2);
-	input.add_server_queries()->mutable_counters()->mutable_aggr_ncalls()->set_sum(3);
-	input.add_server_queries()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(1);
-	input.add_server_queries()->mutable_counters()->mutable_aggr_bytes_out()->set_sum(2);
-	input.add_server_queries()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::sql_info input_copy = input;
-	sql_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.server_queries().size(), 4);
-	EXPECT_EQ(input_copy.server_queries()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.server_queries()[1].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.server_queries()[2].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.server_queries()[3].counters().aggr_bytes_in().sum(), 3);
-	input_copy = input;
-	builder.set_sql_info_server_queries_limit(8);
-	sql_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.server_queries().size(), 8);
-	EXPECT_EQ(input_copy.server_queries()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.server_queries()[1].counters().aggr_time_tot().sum(), 2);
-	EXPECT_EQ(input_copy.server_queries()[2].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.server_queries()[3].counters().aggr_time_max().sum(), 2);
-	EXPECT_EQ(input_copy.server_queries()[4].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.server_queries()[5].counters().aggr_ncalls().sum(), 2);
-	EXPECT_EQ(input_copy.server_queries()[6].counters().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.server_queries()[7].counters().aggr_bytes_out().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, server_tables)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_sql_info_server_tables_limit(4);
-	sql_info_message_aggregator* aggr = new sql_info_message_aggregator(builder);
-	draiosproto::sql_info input;
-	input.add_server_tables()->mutable_counters()->mutable_aggr_time_tot()->set_sum(1);
-	input.add_server_tables()->mutable_counters()->mutable_aggr_time_tot()->set_sum(2);
-	input.add_server_tables()->mutable_counters()->mutable_aggr_time_tot()->set_sum(3);
-	input.add_server_tables()->mutable_counters()->mutable_aggr_time_max()->set_sum(1);
-	input.add_server_tables()->mutable_counters()->mutable_aggr_time_max()->set_sum(2);
-	input.add_server_tables()->mutable_counters()->mutable_aggr_time_max()->set_sum(3);
-	input.add_server_tables()->mutable_counters()->mutable_aggr_ncalls()->set_sum(1);
-	input.add_server_tables()->mutable_counters()->mutable_aggr_ncalls()->set_sum(2);
-	input.add_server_tables()->mutable_counters()->mutable_aggr_ncalls()->set_sum(3);
-	input.add_server_tables()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(1);
-	input.add_server_tables()->mutable_counters()->mutable_aggr_bytes_out()->set_sum(2);
-	input.add_server_tables()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::sql_info input_copy = input;
-	sql_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.server_tables().size(), 4);
-	EXPECT_EQ(input_copy.server_tables()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.server_tables()[1].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.server_tables()[2].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.server_tables()[3].counters().aggr_bytes_in().sum(), 3);
-	input_copy = input;
-	builder.set_sql_info_server_tables_limit(8);
-	sql_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.server_tables().size(), 8);
-	EXPECT_EQ(input_copy.server_tables()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.server_tables()[1].counters().aggr_time_tot().sum(), 2);
-	EXPECT_EQ(input_copy.server_tables()[2].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.server_tables()[3].counters().aggr_time_max().sum(), 2);
-	EXPECT_EQ(input_copy.server_tables()[4].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.server_tables()[5].counters().aggr_ncalls().sum(), 2);
-	EXPECT_EQ(input_copy.server_tables()[6].counters().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.server_tables()[7].counters().aggr_bytes_out().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, server_query_types)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_sql_info_server_query_types_limit(4);
-	sql_info_message_aggregator* aggr = new sql_info_message_aggregator(builder);
-	draiosproto::sql_info input;
-	input.add_server_query_types()->mutable_counters()->mutable_aggr_time_tot()->set_sum(1);
-	input.add_server_query_types()->mutable_counters()->mutable_aggr_time_tot()->set_sum(2);
-	input.add_server_query_types()->mutable_counters()->mutable_aggr_time_tot()->set_sum(3);
-	input.add_server_query_types()->mutable_counters()->mutable_aggr_time_max()->set_sum(1);
-	input.add_server_query_types()->mutable_counters()->mutable_aggr_time_max()->set_sum(2);
-	input.add_server_query_types()->mutable_counters()->mutable_aggr_time_max()->set_sum(3);
-	input.add_server_query_types()->mutable_counters()->mutable_aggr_ncalls()->set_sum(1);
-	input.add_server_query_types()->mutable_counters()->mutable_aggr_ncalls()->set_sum(2);
-	input.add_server_query_types()->mutable_counters()->mutable_aggr_ncalls()->set_sum(3);
-	input.add_server_query_types()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(1);
-	input.add_server_query_types()->mutable_counters()->mutable_aggr_bytes_out()->set_sum(2);
-	input.add_server_query_types()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::sql_info input_copy = input;
-	sql_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.server_query_types().size(), 4);
-	EXPECT_EQ(input_copy.server_query_types()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.server_query_types()[1].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.server_query_types()[2].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.server_query_types()[3].counters().aggr_bytes_in().sum(), 3);
-	input_copy = input;
-	builder.set_sql_info_server_query_types_limit(8);
-	sql_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.server_query_types().size(), 8);
-	EXPECT_EQ(input_copy.server_query_types()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.server_query_types()[1].counters().aggr_time_tot().sum(), 2);
-	EXPECT_EQ(input_copy.server_query_types()[2].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.server_query_types()[3].counters().aggr_time_max().sum(), 2);
-	EXPECT_EQ(input_copy.server_query_types()[4].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.server_query_types()[5].counters().aggr_ncalls().sum(), 2);
-	EXPECT_EQ(input_copy.server_query_types()[6].counters().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.server_query_types()[7].counters().aggr_bytes_out().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, client_query_types)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_sql_info_client_query_types_limit(4);
-	sql_info_message_aggregator* aggr = new sql_info_message_aggregator(builder);
-	draiosproto::sql_info input;
-	input.add_client_query_types()->mutable_counters()->mutable_aggr_time_tot()->set_sum(1);
-	input.add_client_query_types()->mutable_counters()->mutable_aggr_time_tot()->set_sum(2);
-	input.add_client_query_types()->mutable_counters()->mutable_aggr_time_tot()->set_sum(3);
-	input.add_client_query_types()->mutable_counters()->mutable_aggr_time_max()->set_sum(1);
-	input.add_client_query_types()->mutable_counters()->mutable_aggr_time_max()->set_sum(2);
-	input.add_client_query_types()->mutable_counters()->mutable_aggr_time_max()->set_sum(3);
-	input.add_client_query_types()->mutable_counters()->mutable_aggr_ncalls()->set_sum(1);
-	input.add_client_query_types()->mutable_counters()->mutable_aggr_ncalls()->set_sum(2);
-	input.add_client_query_types()->mutable_counters()->mutable_aggr_ncalls()->set_sum(3);
-	input.add_client_query_types()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(1);
-	input.add_client_query_types()->mutable_counters()->mutable_aggr_bytes_out()->set_sum(2);
-	input.add_client_query_types()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::sql_info input_copy = input;
-	sql_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.client_query_types().size(), 4);
-	EXPECT_EQ(input_copy.client_query_types()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.client_query_types()[1].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.client_query_types()[2].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.client_query_types()[3].counters().aggr_bytes_in().sum(), 3);
-	input_copy = input;
-	builder.set_sql_info_client_query_types_limit(8);
-	sql_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.client_query_types().size(), 8);
-	EXPECT_EQ(input_copy.client_query_types()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.client_query_types()[1].counters().aggr_time_tot().sum(), 2);
-	EXPECT_EQ(input_copy.client_query_types()[2].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.client_query_types()[3].counters().aggr_time_max().sum(), 2);
-	EXPECT_EQ(input_copy.client_query_types()[4].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.client_query_types()[5].counters().aggr_ncalls().sum(), 2);
-	EXPECT_EQ(input_copy.client_query_types()[6].counters().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.client_query_types()[7].counters().aggr_bytes_out().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, client_ops)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_mongodb_info_client_ops_limit(4);
-	mongodb_info_message_aggregator* aggr = new mongodb_info_message_aggregator(builder);
-	draiosproto::mongodb_info input;
-	input.add_client_ops()->mutable_counters()->mutable_aggr_time_tot()->set_sum(1);
-	input.add_client_ops()->mutable_counters()->mutable_aggr_time_tot()->set_sum(2);
-	input.add_client_ops()->mutable_counters()->mutable_aggr_time_tot()->set_sum(3);
-	input.add_client_ops()->mutable_counters()->mutable_aggr_time_max()->set_sum(1);
-	input.add_client_ops()->mutable_counters()->mutable_aggr_time_max()->set_sum(2);
-	input.add_client_ops()->mutable_counters()->mutable_aggr_time_max()->set_sum(3);
-	input.add_client_ops()->mutable_counters()->mutable_aggr_ncalls()->set_sum(1);
-	input.add_client_ops()->mutable_counters()->mutable_aggr_ncalls()->set_sum(2);
-	input.add_client_ops()->mutable_counters()->mutable_aggr_ncalls()->set_sum(3);
-	input.add_client_ops()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(1);
-	input.add_client_ops()->mutable_counters()->mutable_aggr_bytes_out()->set_sum(2);
-	input.add_client_ops()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::mongodb_info input_copy = input;
-	mongodb_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.client_ops().size(), 4);
-	EXPECT_EQ(input_copy.client_ops()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.client_ops()[1].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.client_ops()[2].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.client_ops()[3].counters().aggr_bytes_in().sum(), 3);
-	input_copy = input;
-	builder.set_mongodb_info_client_ops_limit(8);
-	mongodb_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.client_ops().size(), 8);
-	EXPECT_EQ(input_copy.client_ops()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.client_ops()[1].counters().aggr_time_tot().sum(), 2);
-	EXPECT_EQ(input_copy.client_ops()[2].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.client_ops()[3].counters().aggr_time_max().sum(), 2);
-	EXPECT_EQ(input_copy.client_ops()[4].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.client_ops()[5].counters().aggr_ncalls().sum(), 2);
-	EXPECT_EQ(input_copy.client_ops()[6].counters().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.client_ops()[7].counters().aggr_bytes_out().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, servers_ops)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_mongodb_info_servers_ops_limit(4);
-	mongodb_info_message_aggregator* aggr = new mongodb_info_message_aggregator(builder);
-	draiosproto::mongodb_info input;
-	input.add_servers_ops()->mutable_counters()->mutable_aggr_time_tot()->set_sum(1);
-	input.add_servers_ops()->mutable_counters()->mutable_aggr_time_tot()->set_sum(2);
-	input.add_servers_ops()->mutable_counters()->mutable_aggr_time_tot()->set_sum(3);
-	input.add_servers_ops()->mutable_counters()->mutable_aggr_time_max()->set_sum(1);
-	input.add_servers_ops()->mutable_counters()->mutable_aggr_time_max()->set_sum(2);
-	input.add_servers_ops()->mutable_counters()->mutable_aggr_time_max()->set_sum(3);
-	input.add_servers_ops()->mutable_counters()->mutable_aggr_ncalls()->set_sum(1);
-	input.add_servers_ops()->mutable_counters()->mutable_aggr_ncalls()->set_sum(2);
-	input.add_servers_ops()->mutable_counters()->mutable_aggr_ncalls()->set_sum(3);
-	input.add_servers_ops()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(1);
-	input.add_servers_ops()->mutable_counters()->mutable_aggr_bytes_out()->set_sum(2);
-	input.add_servers_ops()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::mongodb_info input_copy = input;
-	mongodb_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.servers_ops().size(), 4);
-	EXPECT_EQ(input_copy.servers_ops()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.servers_ops()[1].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.servers_ops()[2].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.servers_ops()[3].counters().aggr_bytes_in().sum(), 3);
-	input_copy = input;
-	builder.set_mongodb_info_servers_ops_limit(8);
-	mongodb_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.servers_ops().size(), 8);
-	EXPECT_EQ(input_copy.servers_ops()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.servers_ops()[1].counters().aggr_time_tot().sum(), 2);
-	EXPECT_EQ(input_copy.servers_ops()[2].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.servers_ops()[3].counters().aggr_time_max().sum(), 2);
-	EXPECT_EQ(input_copy.servers_ops()[4].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.servers_ops()[5].counters().aggr_ncalls().sum(), 2);
-	EXPECT_EQ(input_copy.servers_ops()[6].counters().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.servers_ops()[7].counters().aggr_bytes_out().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, client_collections)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_mongodb_info_client_collections_limit(4);
-	mongodb_info_message_aggregator* aggr = new mongodb_info_message_aggregator(builder);
-	draiosproto::mongodb_info input;
-	input.add_client_collections()->mutable_counters()->mutable_aggr_time_tot()->set_sum(1);
-	input.add_client_collections()->mutable_counters()->mutable_aggr_time_tot()->set_sum(2);
-	input.add_client_collections()->mutable_counters()->mutable_aggr_time_tot()->set_sum(3);
-	input.add_client_collections()->mutable_counters()->mutable_aggr_time_max()->set_sum(1);
-	input.add_client_collections()->mutable_counters()->mutable_aggr_time_max()->set_sum(2);
-	input.add_client_collections()->mutable_counters()->mutable_aggr_time_max()->set_sum(3);
-	input.add_client_collections()->mutable_counters()->mutable_aggr_ncalls()->set_sum(1);
-	input.add_client_collections()->mutable_counters()->mutable_aggr_ncalls()->set_sum(2);
-	input.add_client_collections()->mutable_counters()->mutable_aggr_ncalls()->set_sum(3);
-	input.add_client_collections()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(1);
-	input.add_client_collections()->mutable_counters()->mutable_aggr_bytes_out()->set_sum(2);
-	input.add_client_collections()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::mongodb_info input_copy = input;
-	mongodb_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.client_collections().size(), 4);
-	EXPECT_EQ(input_copy.client_collections()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.client_collections()[1].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.client_collections()[2].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.client_collections()[3].counters().aggr_bytes_in().sum(), 3);
-	input_copy = input;
-	builder.set_mongodb_info_client_collections_limit(8);
-	mongodb_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.client_collections().size(), 8);
-	EXPECT_EQ(input_copy.client_collections()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.client_collections()[1].counters().aggr_time_tot().sum(), 2);
-	EXPECT_EQ(input_copy.client_collections()[2].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.client_collections()[3].counters().aggr_time_max().sum(), 2);
-	EXPECT_EQ(input_copy.client_collections()[4].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.client_collections()[5].counters().aggr_ncalls().sum(), 2);
-	EXPECT_EQ(input_copy.client_collections()[6].counters().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.client_collections()[7].counters().aggr_bytes_out().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, server_collections)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_mongodb_info_server_collections_limit(4);
-	mongodb_info_message_aggregator* aggr = new mongodb_info_message_aggregator(builder);
-	draiosproto::mongodb_info input;
-	input.add_server_collections()->mutable_counters()->mutable_aggr_time_tot()->set_sum(1);
-	input.add_server_collections()->mutable_counters()->mutable_aggr_time_tot()->set_sum(2);
-	input.add_server_collections()->mutable_counters()->mutable_aggr_time_tot()->set_sum(3);
-	input.add_server_collections()->mutable_counters()->mutable_aggr_time_max()->set_sum(1);
-	input.add_server_collections()->mutable_counters()->mutable_aggr_time_max()->set_sum(2);
-	input.add_server_collections()->mutable_counters()->mutable_aggr_time_max()->set_sum(3);
-	input.add_server_collections()->mutable_counters()->mutable_aggr_ncalls()->set_sum(1);
-	input.add_server_collections()->mutable_counters()->mutable_aggr_ncalls()->set_sum(2);
-	input.add_server_collections()->mutable_counters()->mutable_aggr_ncalls()->set_sum(3);
-	input.add_server_collections()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(1);
-	input.add_server_collections()->mutable_counters()->mutable_aggr_bytes_out()->set_sum(2);
-	input.add_server_collections()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::mongodb_info input_copy = input;
-	mongodb_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.server_collections().size(), 4);
-	EXPECT_EQ(input_copy.server_collections()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.server_collections()[1].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.server_collections()[2].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.server_collections()[3].counters().aggr_bytes_in().sum(), 3);
-	input_copy = input;
-	builder.set_mongodb_info_server_collections_limit(8);
-	mongodb_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.server_collections().size(), 8);
-	EXPECT_EQ(input_copy.server_collections()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.server_collections()[1].counters().aggr_time_tot().sum(), 2);
-	EXPECT_EQ(input_copy.server_collections()[2].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.server_collections()[3].counters().aggr_time_max().sum(), 2);
-	EXPECT_EQ(input_copy.server_collections()[4].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.server_collections()[5].counters().aggr_ncalls().sum(), 2);
-	EXPECT_EQ(input_copy.server_collections()[6].counters().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.server_collections()[7].counters().aggr_bytes_out().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, client_urls)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_http_info_client_urls_limit(4);
-	http_info_message_aggregator* aggr = new http_info_message_aggregator(builder);
-	draiosproto::http_info input;
-	input.add_client_urls()->mutable_counters()->mutable_aggr_time_tot()->set_sum(1);
-	input.add_client_urls()->mutable_counters()->mutable_aggr_time_tot()->set_sum(2);
-	input.add_client_urls()->mutable_counters()->mutable_aggr_time_tot()->set_sum(3);
-	input.add_client_urls()->mutable_counters()->mutable_aggr_time_max()->set_sum(1);
-	input.add_client_urls()->mutable_counters()->mutable_aggr_time_max()->set_sum(2);
-	input.add_client_urls()->mutable_counters()->mutable_aggr_time_max()->set_sum(3);
-	input.add_client_urls()->mutable_counters()->mutable_aggr_ncalls()->set_sum(1);
-	input.add_client_urls()->mutable_counters()->mutable_aggr_ncalls()->set_sum(2);
-	input.add_client_urls()->mutable_counters()->mutable_aggr_ncalls()->set_sum(3);
-	input.add_client_urls()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(1);
-	input.add_client_urls()->mutable_counters()->mutable_aggr_bytes_out()->set_sum(2);
-	input.add_client_urls()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::http_info input_copy = input;
-	http_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.client_urls().size(), 4);
-	EXPECT_EQ(input_copy.client_urls()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.client_urls()[1].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.client_urls()[2].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.client_urls()[3].counters().aggr_bytes_in().sum(), 3);
-	input_copy = input;
-	builder.set_http_info_client_urls_limit(8);
-	http_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.client_urls().size(), 8);
-	EXPECT_EQ(input_copy.client_urls()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.client_urls()[1].counters().aggr_time_tot().sum(), 2);
-	EXPECT_EQ(input_copy.client_urls()[2].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.client_urls()[3].counters().aggr_time_max().sum(), 2);
-	EXPECT_EQ(input_copy.client_urls()[4].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.client_urls()[5].counters().aggr_ncalls().sum(), 2);
-	EXPECT_EQ(input_copy.client_urls()[6].counters().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.client_urls()[7].counters().aggr_bytes_out().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, server_urls)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_http_info_server_urls_limit(4);
-	http_info_message_aggregator* aggr = new http_info_message_aggregator(builder);
-	draiosproto::http_info input;
-	input.add_server_urls()->mutable_counters()->mutable_aggr_time_tot()->set_sum(1);
-	input.add_server_urls()->mutable_counters()->mutable_aggr_time_tot()->set_sum(2);
-	input.add_server_urls()->mutable_counters()->mutable_aggr_time_tot()->set_sum(3);
-	input.add_server_urls()->mutable_counters()->mutable_aggr_time_max()->set_sum(1);
-	input.add_server_urls()->mutable_counters()->mutable_aggr_time_max()->set_sum(2);
-	input.add_server_urls()->mutable_counters()->mutable_aggr_time_max()->set_sum(3);
-	input.add_server_urls()->mutable_counters()->mutable_aggr_ncalls()->set_sum(1);
-	input.add_server_urls()->mutable_counters()->mutable_aggr_ncalls()->set_sum(2);
-	input.add_server_urls()->mutable_counters()->mutable_aggr_ncalls()->set_sum(3);
-	input.add_server_urls()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(1);
-	input.add_server_urls()->mutable_counters()->mutable_aggr_bytes_out()->set_sum(2);
-	input.add_server_urls()->mutable_counters()->mutable_aggr_bytes_in()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::http_info input_copy = input;
-	http_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.server_urls().size(), 4);
-	EXPECT_EQ(input_copy.server_urls()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.server_urls()[1].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.server_urls()[2].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.server_urls()[3].counters().aggr_bytes_in().sum(), 3);
-	input_copy = input;
-	builder.set_http_info_server_urls_limit(8);
-	http_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.server_urls().size(), 8);
-	EXPECT_EQ(input_copy.server_urls()[0].counters().aggr_time_tot().sum(), 3);
-	EXPECT_EQ(input_copy.server_urls()[1].counters().aggr_time_tot().sum(), 2);
-	EXPECT_EQ(input_copy.server_urls()[2].counters().aggr_time_max().sum(), 3);
-	EXPECT_EQ(input_copy.server_urls()[3].counters().aggr_time_max().sum(), 2);
-	EXPECT_EQ(input_copy.server_urls()[4].counters().aggr_ncalls().sum(), 3);
-	EXPECT_EQ(input_copy.server_urls()[5].counters().aggr_ncalls().sum(), 2);
-	EXPECT_EQ(input_copy.server_urls()[6].counters().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.server_urls()[7].counters().aggr_bytes_out().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, client_status_codes)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_http_info_client_status_codes_limit(12);
-	http_info_message_aggregator* aggr = new http_info_message_aggregator(builder);
-	draiosproto::http_info input;
-	for (int i = 0; i < 15; i++)
-	{
-		input.add_client_status_codes()->mutable_aggr_ncalls()->set_sum(i);
-	}
-
-	draiosproto::http_info input_copy = input;
-	http_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.client_status_codes().size(), 12);
-	for (int i = 0; i < 10; i++)
-	{  // biggest 10
-		EXPECT_EQ(input_copy.client_status_codes()[i].aggr_ncalls().sum(), 14 - i);
-	}
-	for (int i = 10; i < 12; i++)
-	{  // smallest 2
-		EXPECT_EQ(input_copy.client_status_codes()[i].aggr_ncalls().sum(), i - 10);
-	}
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, server_status_codes)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_http_info_server_status_codes_limit(12);
-	http_info_message_aggregator* aggr = new http_info_message_aggregator(builder);
-	draiosproto::http_info input;
-	for (int i = 0; i < 15; i++)
-	{
-		input.add_server_status_codes()->mutable_aggr_ncalls()->set_sum(i);
-	}
-
-	draiosproto::http_info input_copy = input;
-	http_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.server_status_codes().size(), 12);
-	for (int i = 0; i < 10; i++)
-	{  // biggest 10
-		EXPECT_EQ(input_copy.server_status_codes()[i].aggr_ncalls().sum(), 14 - i);
-	}
-	for (int i = 10; i < 12; i++)
-	{  // smallest 2
-		EXPECT_EQ(input_copy.server_status_codes()[i].aggr_ncalls().sum(), i - 10);
-	}
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, metrics_mounts)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_metrics_mounts_limit(4);
-	metrics_message_aggregator* aggr = new metrics_message_aggregator(builder);
-	draiosproto::metrics input;
-	input.add_mounts()->mutable_aggr_size_bytes()->set_sum(1);
-	input.add_mounts()->mutable_aggr_size_bytes()->set_sum(2);
-	input.add_mounts()->mutable_aggr_size_bytes()->set_sum(3);
-	input.add_mounts()->mutable_aggr_available_bytes()->set_sum(1);
-	input.add_mounts()->mutable_aggr_available_bytes()->set_sum(2);
-	input.add_mounts()->mutable_aggr_available_bytes()->set_sum(3);
-	input.add_mounts()->mutable_aggr_used_bytes()->set_sum(1);
-	input.add_mounts()->mutable_aggr_used_bytes()->set_sum(2);
-	input.add_mounts()->mutable_aggr_used_bytes()->set_sum(3);
-	input.add_mounts()->mutable_aggr_total_inodes()->set_sum(1);
-	input.add_mounts()->mutable_aggr_total_inodes()->set_sum(2);
-	input.add_mounts()->mutable_aggr_total_inodes()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::metrics input_copy = input;
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.mounts().size(), 4);
-	EXPECT_EQ(input_copy.mounts()[0].aggr_size_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.mounts()[1].aggr_available_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.mounts()[2].aggr_used_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.mounts()[3].aggr_total_inodes().sum(), 3);
-	input_copy = input;
-	builder.set_metrics_mounts_limit(8);
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.mounts().size(), 8);
-	EXPECT_EQ(input_copy.mounts()[0].aggr_size_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.mounts()[1].aggr_size_bytes().sum(), 2);
-	EXPECT_EQ(input_copy.mounts()[2].aggr_available_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.mounts()[3].aggr_available_bytes().sum(), 2);
-	EXPECT_EQ(input_copy.mounts()[4].aggr_used_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.mounts()[5].aggr_used_bytes().sum(), 2);
-	EXPECT_EQ(input_copy.mounts()[6].aggr_total_inodes().sum(), 3);
-	EXPECT_EQ(input_copy.mounts()[7].aggr_total_inodes().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, container_mounts)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_container_mounts_limit(4);
-	container_message_aggregator* aggr = new container_message_aggregator(builder);
-	draiosproto::container input;
-	input.add_mounts()->mutable_aggr_size_bytes()->set_sum(1);
-	input.add_mounts()->mutable_aggr_size_bytes()->set_sum(2);
-	input.add_mounts()->mutable_aggr_size_bytes()->set_sum(3);
-	input.add_mounts()->mutable_aggr_available_bytes()->set_sum(1);
-	input.add_mounts()->mutable_aggr_available_bytes()->set_sum(2);
-	input.add_mounts()->mutable_aggr_available_bytes()->set_sum(3);
-	input.add_mounts()->mutable_aggr_used_bytes()->set_sum(1);
-	input.add_mounts()->mutable_aggr_used_bytes()->set_sum(2);
-	input.add_mounts()->mutable_aggr_used_bytes()->set_sum(3);
-	input.add_mounts()->mutable_aggr_total_inodes()->set_sum(1);
-	input.add_mounts()->mutable_aggr_total_inodes()->set_sum(2);
-	input.add_mounts()->mutable_aggr_total_inodes()->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::container input_copy = input;
-	container_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.mounts().size(), 4);
-	EXPECT_EQ(input_copy.mounts()[0].aggr_size_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.mounts()[1].aggr_available_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.mounts()[2].aggr_used_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.mounts()[3].aggr_total_inodes().sum(), 3);
-	input_copy = input;
-	builder.set_container_mounts_limit(8);
-	container_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.mounts().size(), 8);
-	EXPECT_EQ(input_copy.mounts()[0].aggr_size_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.mounts()[1].aggr_size_bytes().sum(), 2);
-	EXPECT_EQ(input_copy.mounts()[2].aggr_available_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.mounts()[3].aggr_available_bytes().sum(), 2);
-	EXPECT_EQ(input_copy.mounts()[4].aggr_used_bytes().sum(), 3);
-	EXPECT_EQ(input_copy.mounts()[5].aggr_used_bytes().sum(), 2);
-	EXPECT_EQ(input_copy.mounts()[6].aggr_total_inodes().sum(), 3);
-	EXPECT_EQ(input_copy.mounts()[7].aggr_total_inodes().sum(), 2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, container_nbs)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_container_network_by_serverports_limit(2);
-	container_message_aggregator* aggr = new container_message_aggregator(builder);
-	draiosproto::container input;
-	input.add_network_by_serverports();
-	input.add_network_by_serverports()
-	    ->mutable_counters()
-	    ->mutable_client()
-	    ->mutable_aggr_bytes_in()
-	    ->set_sum(1);
-	input.add_network_by_serverports()
-	    ->mutable_counters()
-	    ->mutable_client()
-	    ->mutable_aggr_bytes_out()
-	    ->set_sum(2);
-	input.add_network_by_serverports()
-	    ->mutable_counters()
-	    ->mutable_server()
-	    ->mutable_aggr_bytes_in()
-	    ->set_sum(3);
-	input.add_network_by_serverports()
-	    ->mutable_counters()
-	    ->mutable_server()
-	    ->mutable_aggr_bytes_out()
-	    ->set_sum(4);
-
-	draiosproto::container input_copy = input;
-	container_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.network_by_serverports().size(), 2);
-	EXPECT_EQ(input_copy.network_by_serverports()[0].counters().server().aggr_bytes_out().sum(), 4);
-	EXPECT_EQ(input_copy.network_by_serverports()[1].counters().server().aggr_bytes_in().sum(), 3);
-	builder.set_container_network_by_serverports_limit(4);
-	input_copy = input;
-	container_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.network_by_serverports().size(), 4);
-	EXPECT_EQ(input_copy.network_by_serverports()[0].counters().server().aggr_bytes_out().sum(), 4);
-	EXPECT_EQ(input_copy.network_by_serverports()[1].counters().server().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.network_by_serverports()[2].counters().client().aggr_bytes_out().sum(), 2);
-	EXPECT_EQ(input_copy.network_by_serverports()[3].counters().client().aggr_bytes_in().sum(), 1);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, host_nbs)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_host_network_by_serverports_limit(2);
-	host_message_aggregator* aggr = new host_message_aggregator(builder);
-	draiosproto::host input;
-	input.add_network_by_serverports();
-	input.add_network_by_serverports()
-	    ->mutable_counters()
-	    ->mutable_client()
-	    ->mutable_aggr_bytes_in()
-	    ->set_sum(1);
-	input.add_network_by_serverports()
-	    ->mutable_counters()
-	    ->mutable_client()
-	    ->mutable_aggr_bytes_out()
-	    ->set_sum(2);
-	input.add_network_by_serverports()
-	    ->mutable_counters()
-	    ->mutable_server()
-	    ->mutable_aggr_bytes_in()
-	    ->set_sum(3);
-	input.add_network_by_serverports()
-	    ->mutable_counters()
-	    ->mutable_server()
-	    ->mutable_aggr_bytes_out()
-	    ->set_sum(4);
-
-	draiosproto::host input_copy = input;
-	host_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.network_by_serverports().size(), 2);
-	EXPECT_EQ(input_copy.network_by_serverports()[0].counters().server().aggr_bytes_out().sum(), 4);
-	EXPECT_EQ(input_copy.network_by_serverports()[1].counters().server().aggr_bytes_in().sum(), 3);
-	builder.set_host_network_by_serverports_limit(4);
-	input_copy = input;
-	host_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.network_by_serverports().size(), 4);
-	EXPECT_EQ(input_copy.network_by_serverports()[0].counters().server().aggr_bytes_out().sum(), 4);
-	EXPECT_EQ(input_copy.network_by_serverports()[1].counters().server().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.network_by_serverports()[2].counters().client().aggr_bytes_out().sum(), 2);
-	EXPECT_EQ(input_copy.network_by_serverports()[3].counters().client().aggr_bytes_in().sum(), 1);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, pods)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_k8s_state_pods_limit(2);
-	k8s_state_message_aggregator* aggr = new k8s_state_message_aggregator(builder);
-	draiosproto::k8s_state input;
-	input.add_pods();
-	input.add_pods()->mutable_aggr_requests_cpu_cores()->set_sum(1);
-	input.add_pods()->mutable_aggr_requests_cpu_cores()->set_sum(2);
-	input.add_pods()->mutable_aggr_limits_cpu_cores()->set_sum(1);
-	input.add_pods()->mutable_aggr_limits_cpu_cores()->set_sum(2);
-	draiosproto::k8s_state input_copy = input;
-	k8s_state_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.pods().size(), 2);
-	EXPECT_EQ(input_copy.pods()[0].aggr_requests_cpu_cores().sum(), 2);
-	EXPECT_EQ(input_copy.pods()[1].aggr_limits_cpu_cores().sum(), 2);
-	delete aggr;
-}
-
-TEST(aggregator_limit, jobs)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_k8s_state_jobs_limit(1);
-	k8s_state_message_aggregator* aggr = new k8s_state_message_aggregator(builder);
-	draiosproto::k8s_state input;
-	input.add_jobs();
-	input.add_jobs()->mutable_aggr_completions()->set_sum(1);
-	input.add_jobs()->mutable_aggr_completions()->set_sum(2);
-	draiosproto::k8s_state input_copy = input;
-	k8s_state_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.jobs().size(), 1);
-	EXPECT_EQ(input_copy.jobs()[0].aggr_completions().sum(), 2);
-	delete aggr;
-}
-
-TEST(aggregator_limit, app_metric)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_app_info_metrics_limit(5);
-	app_info_message_aggregator* aggr = new app_info_message_aggregator(builder);
-	draiosproto::app_info input;
-	for (int i = 0; i < 15; i++)
-	{
-		input.add_metrics()->mutable_aggr_value_double()->set_sum(i);
-	}
-
-	draiosproto::app_info input_copy = input;
-	app_info_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.metrics().size(), 5);
-	for (int i = 0; i < 5; i++)
-	{
-		EXPECT_EQ(input_copy.metrics()[i].aggr_value_double().sum(), 14 - i);
-	}
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, events)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_metrics_events_limit(5);
-	metrics_message_aggregator* aggr = new metrics_message_aggregator(builder);
-	draiosproto::metrics input;
-	for (int i = 0; i < 15; i++)
-	{
-		input.add_events()->set_timestamp_sec(i);
-	}
-
-	draiosproto::metrics input_copy = input;
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.events().size(), 5);
-	for (int i = 0; i < 5; i++)
-	{
-		EXPECT_EQ(input_copy.events()[i].timestamp_sec(), i);
-	}
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, incomplete_connections)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_metrics_ipv4_incomplete_connections_v2_limit(4);
-	metrics_message_aggregator* aggr = new metrics_message_aggregator(builder);
-	draiosproto::metrics input;
-	input.add_ipv4_incomplete_connections_v2()
-	    ->mutable_counters()
-	    ->mutable_client()
-	    ->mutable_aggr_bytes_in()
-	    ->set_sum(1);
-	input.add_ipv4_incomplete_connections_v2()
-	    ->mutable_counters()
-	    ->mutable_server()
-	    ->mutable_aggr_bytes_out()
-	    ->set_sum(2);
-	input.add_ipv4_incomplete_connections_v2()
-	    ->mutable_counters()
-	    ->mutable_client()
-	    ->mutable_aggr_bytes_out()
-	    ->set_sum(3);
-	input.add_ipv4_incomplete_connections_v2()
-	    ->mutable_counters()
-	    ->mutable_transaction_counters()
-	    ->mutable_aggr_count_in()
-	    ->set_sum(1);
-	input.add_ipv4_incomplete_connections_v2()
-	    ->mutable_counters()
-	    ->mutable_transaction_counters()
-	    ->mutable_aggr_count_out()
-	    ->set_sum(2);
-	input.add_ipv4_incomplete_connections_v2()
-	    ->mutable_counters()
-	    ->mutable_transaction_counters()
-	    ->mutable_aggr_count_in()
-	    ->set_sum(3);
-	input.add_ipv4_incomplete_connections_v2()
-	    ->mutable_counters()
-	    ->mutable_min_transaction_counters()
-	    ->mutable_aggr_count_in()
-	    ->set_sum(1);
-	input.add_ipv4_incomplete_connections_v2()
-	    ->mutable_counters()
-	    ->mutable_min_transaction_counters()
-	    ->mutable_aggr_count_out()
-	    ->set_sum(2);
-	input.add_ipv4_incomplete_connections_v2()
-	    ->mutable_counters()
-	    ->mutable_min_transaction_counters()
-	    ->mutable_aggr_count_in()
-	    ->set_sum(3);
-	input.add_ipv4_incomplete_connections_v2()
-	    ->mutable_counters()
-	    ->mutable_max_transaction_counters()
-	    ->mutable_aggr_count_in()
-	    ->set_sum(1);
-	input.add_ipv4_incomplete_connections_v2()
-	    ->mutable_counters()
-	    ->mutable_max_transaction_counters()
-	    ->mutable_aggr_count_out()
-	    ->set_sum(2);
-	input.add_ipv4_incomplete_connections_v2()
-	    ->mutable_counters()
-	    ->mutable_max_transaction_counters()
-	    ->mutable_aggr_count_in()
-	    ->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::metrics input_copy = input;
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2().size(), 4);
-	EXPECT_EQ(
-	    input_copy.ipv4_incomplete_connections_v2()[0].counters().client().aggr_bytes_out().sum(),
-	    3);
-	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2()[1]
-	              .counters()
-	              .transaction_counters()
-	              .aggr_count_in()
-	              .sum(),
-	          3);
-	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2()[2]
-	              .counters()
-	              .min_transaction_counters()
-	              .aggr_count_in()
-	              .sum(),
-	          1);
-	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2()[3]
-	              .counters()
-	              .max_transaction_counters()
-	              .aggr_count_in()
-	              .sum(),
-	          3);
-	builder.set_metrics_ipv4_incomplete_connections_v2_limit(8);
-	input_copy = input;
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2().size(), 8);
-	EXPECT_EQ(
-	    input_copy.ipv4_incomplete_connections_v2()[0].counters().client().aggr_bytes_out().sum(),
-	    3);
-	EXPECT_EQ(
-	    input_copy.ipv4_incomplete_connections_v2()[1].counters().server().aggr_bytes_out().sum(),
-	    2);
-	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2()[2]
-	              .counters()
-	              .transaction_counters()
-	              .aggr_count_in()
-	              .sum(),
-	          3);
-	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2()[3]
-	              .counters()
-	              .transaction_counters()
-	              .aggr_count_out()
-	              .sum(),
-	          2);
-	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2()[4]
-	              .counters()
-	              .min_transaction_counters()
-	              .aggr_count_in()
-	              .sum(),
-	          1);
-	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2()[5]
-	              .counters()
-	              .min_transaction_counters()
-	              .aggr_count_out()
-	              .sum(),
-	          2);
-	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2()[6]
-	              .counters()
-	              .max_transaction_counters()
-	              .aggr_count_in()
-	              .sum(),
-	          3);
-	EXPECT_EQ(input_copy.ipv4_incomplete_connections_v2()[7]
-	              .counters()
-	              .max_transaction_counters()
-	              .aggr_count_out()
-	              .sum(),
-	          2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, connections)
-{
-	message_aggregator_builder_impl builder;
-	builder.set_metrics_ipv4_connections_limit(4);
-	metrics_message_aggregator* aggr = new metrics_message_aggregator(builder);
-	draiosproto::metrics input;
-	input.add_ipv4_connections()
-	    ->mutable_counters()
-	    ->mutable_client()
-	    ->mutable_aggr_bytes_in()
-	    ->set_sum(1);
-	input.add_ipv4_connections()
-	    ->mutable_counters()
-	    ->mutable_server()
-	    ->mutable_aggr_bytes_out()
-	    ->set_sum(2);
-	input.add_ipv4_connections()
-	    ->mutable_counters()
-	    ->mutable_client()
-	    ->mutable_aggr_bytes_out()
-	    ->set_sum(3);
-	input.add_ipv4_connections()
-	    ->mutable_counters()
-	    ->mutable_transaction_counters()
-	    ->mutable_aggr_count_in()
-	    ->set_sum(1);
-	input.add_ipv4_connections()
-	    ->mutable_counters()
-	    ->mutable_transaction_counters()
-	    ->mutable_aggr_count_out()
-	    ->set_sum(2);
-	input.add_ipv4_connections()
-	    ->mutable_counters()
-	    ->mutable_transaction_counters()
-	    ->mutable_aggr_count_in()
-	    ->set_sum(3);
-	input.add_ipv4_connections()
-	    ->mutable_counters()
-	    ->mutable_min_transaction_counters()
-	    ->mutable_aggr_count_in()
-	    ->set_sum(1);
-	input.add_ipv4_connections()
-	    ->mutable_counters()
-	    ->mutable_min_transaction_counters()
-	    ->mutable_aggr_count_out()
-	    ->set_sum(2);
-	input.add_ipv4_connections()
-	    ->mutable_counters()
-	    ->mutable_min_transaction_counters()
-	    ->mutable_aggr_count_in()
-	    ->set_sum(3);
-	input.add_ipv4_connections()
-	    ->mutable_counters()
-	    ->mutable_max_transaction_counters()
-	    ->mutable_aggr_count_in()
-	    ->set_sum(1);
-	input.add_ipv4_connections()
-	    ->mutable_counters()
-	    ->mutable_max_transaction_counters()
-	    ->mutable_aggr_count_out()
-	    ->set_sum(2);
-	input.add_ipv4_connections()
-	    ->mutable_counters()
-	    ->mutable_max_transaction_counters()
-	    ->mutable_aggr_count_in()
-	    ->set_sum(3);
-
-	// for better or worse, this will enforce the ordering instead of just the contents,
-	// which is stricter than it needs to be, but it's a pain in the neck to do it that
-	// way
-	draiosproto::metrics input_copy = input;
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.ipv4_connections().size(), 4);
-	EXPECT_EQ(input_copy.ipv4_connections()[0].counters().client().aggr_bytes_out().sum(), 3);
-	EXPECT_EQ(
-	    input_copy.ipv4_connections()[1].counters().transaction_counters().aggr_count_in().sum(),
-	    3);
-	EXPECT_EQ(input_copy.ipv4_connections()[2]
-	              .counters()
-	              .min_transaction_counters()
-	              .aggr_count_in()
-	              .sum(),
-	          1);
-	EXPECT_EQ(input_copy.ipv4_connections()[3]
-	              .counters()
-	              .max_transaction_counters()
-	              .aggr_count_in()
-	              .sum(),
-	          3);
-	builder.set_metrics_ipv4_connections_limit(8);
-	input_copy = input;
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.ipv4_connections().size(), 8);
-	EXPECT_EQ(input_copy.ipv4_connections()[0].counters().client().aggr_bytes_out().sum(), 3);
-	EXPECT_EQ(input_copy.ipv4_connections()[1].counters().server().aggr_bytes_out().sum(), 2);
-	EXPECT_EQ(
-	    input_copy.ipv4_connections()[2].counters().transaction_counters().aggr_count_in().sum(),
-	    3);
-	EXPECT_EQ(
-	    input_copy.ipv4_connections()[3].counters().transaction_counters().aggr_count_out().sum(),
-	    2);
-	EXPECT_EQ(input_copy.ipv4_connections()[4]
-	              .counters()
-	              .min_transaction_counters()
-	              .aggr_count_in()
-	              .sum(),
-	          1);
-	EXPECT_EQ(input_copy.ipv4_connections()[5]
-	              .counters()
-	              .min_transaction_counters()
-	              .aggr_count_out()
-	              .sum(),
-	          2);
-	EXPECT_EQ(input_copy.ipv4_connections()[6]
-	              .counters()
-	              .max_transaction_counters()
-	              .aggr_count_in()
-	              .sum(),
-	          3);
-	EXPECT_EQ(input_copy.ipv4_connections()[7]
-	              .counters()
-	              .max_transaction_counters()
-	              .aggr_count_out()
-	              .sum(),
-	          2);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, containers)
-{
-	// first stuff, we'll not worry about the priority containers
-	message_aggregator_builder_impl builder;
-	builder.set_metrics_containers_limit(4);
-	metrics_message_aggregator* aggr = new metrics_message_aggregator(builder);
-	draiosproto::metrics input;
-	input.add_containers()->mutable_resource_counters()->mutable_aggr_cpu_pct()->set_sum(1);
-	input.add_containers()->mutable_resource_counters()->mutable_aggr_cpu_pct()->set_sum(2);
-	input.add_containers()->mutable_resource_counters()->mutable_aggr_cpu_pct()->set_sum(3);
-	input.add_containers()
-	    ->mutable_resource_counters()
-	    ->mutable_aggr_resident_memory_usage_kb()
-	    ->set_sum(1);
-	input.add_containers()
-	    ->mutable_resource_counters()
-	    ->mutable_aggr_resident_memory_usage_kb()
-	    ->set_sum(2);
-	input.add_containers()
-	    ->mutable_resource_counters()
-	    ->mutable_aggr_resident_memory_usage_kb()
-	    ->set_sum(3);
-	input.add_containers()
-	    ->mutable_tcounters()
-	    ->mutable_io_file()
-	    ->mutable_aggr_bytes_in()
-	    ->set_sum(1);
-	input.add_containers()
-	    ->mutable_tcounters()
-	    ->mutable_io_file()
-	    ->mutable_aggr_bytes_out()
-	    ->set_sum(2);
-	input.add_containers()
-	    ->mutable_tcounters()
-	    ->mutable_io_file()
-	    ->mutable_aggr_bytes_other()
-	    ->set_sum(3);
-	input.add_containers()
-	    ->mutable_tcounters()
-	    ->mutable_io_net()
-	    ->mutable_aggr_bytes_other()
-	    ->set_sum(1);
-	input.add_containers()
-	    ->mutable_tcounters()
-	    ->mutable_io_net()
-	    ->mutable_aggr_bytes_out()
-	    ->set_sum(2);
-	input.add_containers()->mutable_tcounters()->mutable_io_net()->mutable_aggr_bytes_in()->set_sum(
-	    3);
-
-	draiosproto::metrics input_copy = input;
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.containers().size(), 4);
-	EXPECT_EQ(input_copy.containers()[0].resource_counters().aggr_cpu_pct().sum(), 3);
-	EXPECT_EQ(input_copy.containers()[1].resource_counters().aggr_resident_memory_usage_kb().sum(),
-	          3);
-	EXPECT_EQ(input_copy.containers()[2].tcounters().io_file().aggr_bytes_other().sum(), 3);
-	EXPECT_EQ(input_copy.containers()[3].tcounters().io_net().aggr_bytes_in().sum(), 3);
-	input_copy = input;
-	builder.set_metrics_containers_limit(8);
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.containers().size(), 8);
-	EXPECT_EQ(input_copy.containers()[0].resource_counters().aggr_cpu_pct().sum(), 3);
-	EXPECT_EQ(input_copy.containers()[1].resource_counters().aggr_cpu_pct().sum(), 2);
-	EXPECT_EQ(input_copy.containers()[2].resource_counters().aggr_resident_memory_usage_kb().sum(),
-	          3);
-	EXPECT_EQ(input_copy.containers()[3].resource_counters().aggr_resident_memory_usage_kb().sum(),
-	          2);
-	EXPECT_EQ(input_copy.containers()[4].tcounters().io_file().aggr_bytes_other().sum(), 3);
-	EXPECT_EQ(input_copy.containers()[5].tcounters().io_file().aggr_bytes_out().sum(), 2);
-	EXPECT_EQ(input_copy.containers()[6].tcounters().io_net().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.containers()[7].tcounters().io_net().aggr_bytes_out().sum(), 2);
-
-	// next stuff, ensure we get priority containers
-	input.clear_containers();
-	builder.set_metrics_containers_limit(6);
-	input.add_containers()->mutable_resource_counters()->mutable_aggr_cpu_pct()->set_sum(3);
-	input.add_containers()->mutable_resource_counters()->mutable_aggr_cpu_pct()->set_sum(1);
-	input.add_containers()
-	    ->mutable_resource_counters()
-	    ->mutable_aggr_resident_memory_usage_kb()
-	    ->set_sum(1);
-	input.add_containers()
-	    ->mutable_tcounters()
-	    ->mutable_io_file()
-	    ->mutable_aggr_bytes_in()
-	    ->set_sum(1);
-	input.add_containers()->mutable_tcounters()->mutable_io_net()->mutable_aggr_bytes_in()->set_sum(
-	    1);
-	input.add_containers()->add_container_reporting_group_id(1);
-	input.add_containers()->add_container_reporting_group_id(1);
-	input_copy = input;
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.containers().size(), 6);
-	EXPECT_EQ(input_copy.containers()[0].container_reporting_group_id().size(), 1);
-	EXPECT_EQ(input_copy.containers()[1].container_reporting_group_id().size(), 1);
-	EXPECT_EQ(input_copy.containers()[2].resource_counters().aggr_cpu_pct().sum(), 3);
-	EXPECT_EQ(input_copy.containers()[3].resource_counters().aggr_resident_memory_usage_kb().sum(),
-	          1);
-	EXPECT_EQ(input_copy.containers()[4].tcounters().io_file().aggr_bytes_in().sum(), 1);
-	EXPECT_EQ(input_copy.containers()[5].tcounters().io_net().aggr_bytes_in().sum(), 1);
-
-	// limit below number of priority containers
-	builder.set_metrics_containers_limit(1);
-	input_copy = input;
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.containers().size(), 1);
-	EXPECT_EQ(input_copy.containers()[0].container_reporting_group_id().size(), 1);
-
-	delete aggr;
-}
-
-TEST(aggregator_limit, programs)
-{
-	// first stuff, we'll not worry about the priority programs
-	message_aggregator_builder_impl builder;
-	builder.set_metrics_programs_limit(5);
-	metrics_message_aggregator* aggr = new metrics_message_aggregator(builder);
-	draiosproto::metrics input;
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_resource_counters()
-	    ->mutable_aggr_cpu_pct()
-	    ->set_sum(1);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_resource_counters()
-	    ->mutable_aggr_cpu_pct()
-	    ->set_sum(2);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_resource_counters()
-	    ->mutable_aggr_cpu_pct()
-	    ->set_sum(3);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_resource_counters()
-	    ->mutable_aggr_resident_memory_usage_kb()
-	    ->set_sum(1);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_resource_counters()
-	    ->mutable_aggr_resident_memory_usage_kb()
-	    ->set_sum(2);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_resource_counters()
-	    ->mutable_aggr_resident_memory_usage_kb()
-	    ->set_sum(3);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_tcounters()
-	    ->mutable_io_file()
-	    ->mutable_aggr_bytes_in()
-	    ->set_sum(1);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_tcounters()
-	    ->mutable_io_file()
-	    ->mutable_aggr_bytes_out()
-	    ->set_sum(2);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_tcounters()
-	    ->mutable_io_file()
-	    ->mutable_aggr_bytes_other()
-	    ->set_sum(3);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_tcounters()
-	    ->mutable_io_net()
-	    ->mutable_aggr_bytes_other()
-	    ->set_sum(1);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_tcounters()
-	    ->mutable_io_net()
-	    ->mutable_aggr_bytes_out()
-	    ->set_sum(2);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_tcounters()
-	    ->mutable_io_net()
-	    ->mutable_aggr_bytes_in()
-	    ->set_sum(3);
-	input.add_programs()->mutable_procinfo()->mutable_protos()->mutable_app()->add_metrics();
-	input.add_programs()->mutable_procinfo()->mutable_protos()->mutable_prometheus()->add_metrics();
-	for (int i = 0; i < input.programs().size(); i++)
-	{
-		(*input.mutable_programs())[i].add_pids(i);
-	}
-
-	draiosproto::metrics input_copy = input;
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.programs().size(), 5);
-	EXPECT_EQ(input_copy.programs()[0].procinfo().resource_counters().aggr_cpu_pct().sum(), 3);
-	EXPECT_EQ(input_copy.programs()[1]
-	              .procinfo()
-	              .resource_counters()
-	              .aggr_resident_memory_usage_kb()
-	              .sum(),
-	          3);
-	EXPECT_EQ(input_copy.programs()[2].procinfo().tcounters().io_file().aggr_bytes_other().sum(),
-	          3);
-	EXPECT_EQ(input_copy.programs()[3].procinfo().tcounters().io_net().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.programs()[4].procinfo().protos().app().metrics().size(), 1);
-	input_copy = input;
-	builder.set_metrics_programs_limit(10);
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.programs().size(), 10);
-	EXPECT_EQ(input_copy.programs()[0].procinfo().resource_counters().aggr_cpu_pct().sum(), 3);
-	EXPECT_EQ(input_copy.programs()[1].procinfo().resource_counters().aggr_cpu_pct().sum(), 2);
-	EXPECT_EQ(input_copy.programs()[2]
-	              .procinfo()
-	              .resource_counters()
-	              .aggr_resident_memory_usage_kb()
-	              .sum(),
-	          3);
-	EXPECT_EQ(input_copy.programs()[3]
-	              .procinfo()
-	              .resource_counters()
-	              .aggr_resident_memory_usage_kb()
-	              .sum(),
-	          2);
-	EXPECT_EQ(input_copy.programs()[4].procinfo().tcounters().io_file().aggr_bytes_other().sum(),
-	          3);
-	EXPECT_EQ(input_copy.programs()[5].procinfo().tcounters().io_file().aggr_bytes_out().sum(), 2);
-	EXPECT_EQ(input_copy.programs()[6].procinfo().tcounters().io_net().aggr_bytes_in().sum(), 3);
-	EXPECT_EQ(input_copy.programs()[7].procinfo().tcounters().io_net().aggr_bytes_out().sum(), 2);
-	EXPECT_EQ(input_copy.programs()[8].procinfo().protos().app().metrics().size(), 1);
-	EXPECT_EQ(input_copy.programs()[9].procinfo().protos().prometheus().metrics().size(), 1);
-
-	// next stuff, ensure we get priority programs
-	input.clear_programs();
-	builder.set_metrics_programs_limit(7);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_resource_counters()
-	    ->mutable_aggr_cpu_pct()
-	    ->set_sum(3);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_resource_counters()
-	    ->mutable_aggr_cpu_pct()
-	    ->set_sum(1);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_resource_counters()
-	    ->mutable_aggr_resident_memory_usage_kb()
-	    ->set_sum(1);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_tcounters()
-	    ->mutable_io_file()
-	    ->mutable_aggr_bytes_in()
-	    ->set_sum(1);
-	input.add_programs()
-	    ->mutable_procinfo()
-	    ->mutable_tcounters()
-	    ->mutable_io_net()
-	    ->mutable_aggr_bytes_in()
-	    ->set_sum(1);
-	input.add_programs()->mutable_procinfo()->mutable_protos()->mutable_prometheus()->add_metrics();
-	input.add_programs()->add_program_reporting_group_id(1);
-	input.add_programs()->add_program_reporting_group_id(1);
-	for (int i = 0; i < input.programs().size(); i++)
-	{
-		(*input.mutable_programs())[i].add_pids(i);
-	}
-
-	input_copy = input;
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.programs().size(), 7);
-	EXPECT_EQ(input_copy.programs()[0].program_reporting_group_id().size(), 1);
-	EXPECT_EQ(input_copy.programs()[1].program_reporting_group_id().size(), 1);
-	EXPECT_EQ(input_copy.programs()[2].procinfo().resource_counters().aggr_cpu_pct().sum(), 3);
-	EXPECT_EQ(input_copy.programs()[3]
-	              .procinfo()
-	              .resource_counters()
-	              .aggr_resident_memory_usage_kb()
-	              .sum(),
-	          1);
-	EXPECT_EQ(input_copy.programs()[4].procinfo().tcounters().io_file().aggr_bytes_in().sum(), 1);
-	EXPECT_EQ(input_copy.programs()[5].procinfo().tcounters().io_net().aggr_bytes_in().sum(), 1);
-	EXPECT_EQ(input_copy.programs()[6].procinfo().protos().prometheus().metrics().size(), 1);
-
-	// limit below number of priority programs
-	builder.set_metrics_programs_limit(1);
-	input_copy = input;
-	metrics_message_aggregator::limit(builder, input_copy);
-	EXPECT_EQ(input_copy.programs().size(), 1);
-	EXPECT_EQ(input_copy.programs()[0].program_reporting_group_id().size(), 1);
-
-	delete aggr;
 }
 
 // aggregator extra "tests" are really a utility. SMAGENT-1978
@@ -6684,8 +4865,8 @@ TEST(aggregator_extra, DISABLED_memory_perf)
 	HeapProfilerStart("small_heap_trace");
 	ASSERT_TRUE(IsHeapProfilerRunning());
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>* aggregator = &builder.build_metrics();
-	draiosproto::metrics* output = new draiosproto::metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
+
 	HeapProfilerDump("fooo");
 	for (uint32_t i = 1; i <= 10; i++)
 	{
@@ -6712,8 +4893,8 @@ TEST(aggregator_extra, DISABLED_cpu_perf)
 {
 	ProfilerStart("cpu_trace");
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>* aggregator = &builder.build_metrics();
-	draiosproto::metrics* output = new draiosproto::metrics();
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
+
 	for (uint32_t j = 0; j < 10; j++)
 	for (uint32_t i = 1; i <= 10; i++)
 	{
@@ -6739,10 +4920,10 @@ TEST(aggregator_extra, DISABLED_cpu_perf)
 TEST(aggregator_extra, DISABLED_aggregate)
 {
 	message_aggregator_builder_impl builder;
-	agent_message_aggregator<draiosproto::metrics>* aggregator = &builder.build_metrics();
-	draiosproto::metrics* output = new draiosproto::metrics();
-	std::ostringstream filename;
+	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
+	std::ostringstream filename;
+	draiosproto::metrics output;
 	for (uint32_t i = 0; i <= 9; i++)
 	{
 		std::ostringstream filename;
@@ -6760,11 +4941,11 @@ TEST(aggregator_extra, DISABLED_aggregate)
 		ASSERT_TRUE(success);
 		input_file.close();
 
-		aggregator->aggregate(*input, *output);
+		aggregator->aggregate(*input, output, false);
 		delete input;
 	}
 
-	std::cerr << output->DebugString();
+	std::cerr << output.DebugString();
 }
 
 TEST(aggregator_extra, DISABLED_dump)
@@ -7338,7 +5519,7 @@ void validate_protobuf(std::string& diff, std::string name, bool should_ignore_r
 		ASSERT_TRUE(success);
 		input_file.close();
 
-		aggregator->aggregate(input, test);
+		aggregator->aggregate(input, test, false);
 	}
 	aggregator->override_primary_keys(test);
 	delete aggregator;

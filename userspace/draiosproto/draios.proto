@@ -828,9 +828,25 @@ message app_info {
     repeated app_check checks = 3;
 }
 
+message prom_metric {
+    optional string name = 1;
+    optional app_metric_type type = 2;
+
+    // Valid for gauge, rate, and the prometheus raw types
+    optional double value = 3;
+    optional aggregations_double aggr_value_double = 103;
+
+    repeated app_tag tags = 4;
+
+    // Valid for BUCKETS
+    repeated app_metric_bucket buckets = 5;
+
+    // Valid when type is APP_METRIC_TYPE_PROMETHEUS_RAW
+    optional prometheus_type prometheus_type = 6;
+}
 message prometheus_info {
     optional string process_name = 1;
-    repeated app_metric metrics = 2;
+    repeated prom_metric metrics = 2;
 }
 
 //

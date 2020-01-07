@@ -101,40 +101,36 @@ def traverse(proto_file):
         _traverse(proto_file.package, proto_file.message_type),
     )
 
-# generates a map of the names of the fields which aggregate to other fields.
-# out = map<source_field_name, destination_field_name>
-# targets = set<detination_field_name>
-def generate_aggregator_list(item):
-    out = {}
-    targets = set()
+# generates a set of fields which adhere to certain properties.
+# this is helpful rather than directly looking up the entries in the field_extension map so
+# you don't have to worry about performing a null check every time
+# limited: set of repeated fields which can have their size limited
+# unique: set of repeated fields which the client guarantees will be unique within
+#         a given individual protobuf. does not apply across protobufs
+# aggregation_targets: set of fields which are targets for aggregations from other fields
+# aggregation_map: map from field name -> field name of fields which get aggregated
+def generate_tags_list(message):
+    limited = set()
+    unique = set()
+    aggregation_targets = set()
+    aggregation_map = {}
 
-    if item.name not in field_extension:
-        return out, targets
+    if message.name not in field_extension:
+        return limited, unique, aggregation_targets, aggregation_map
 
-    for key, value in field_extension[item.name].items():
-        if value is PRIMARY_KEY:
+    for key, value in field_extension[message.name].items():
+        if type(value) is set:
+            if LIMITED in value:
+                limited.add(index_dict[message.name][key].name)
+            if UNIQUE in value:
+                unique.add(index_dict[message.name][key].name)
+        elif value is OR:
             continue
-        if value is OR:
-            continue
-        if value is LIMITED:
-            continue
-        out[index_dict[item.name][key].name] = index_dict[item.name][value].name;
-        targets.add(index_dict[item.name][value].name)
+        else:
+            aggregation_map[index_dict[message.name][key].name] = index_dict[message.name][value].name
+            aggregation_targets.add(index_dict[message.name][value].name)
 
-    return out, targets
-
-# generates a map of the names of fields which require a limit to the value of that limit
-def generate_limit_list(item):
-    out = set()
-
-    if item.name not in field_extension:
-        return out
-
-    for key, value in field_extension[item.name].items():
-        if value is LIMITED:
-            out.add(index_dict[item.name][key].name)
-
-    return out
+    return limited, unique, aggregation_targets, aggregation_map
 
 # This is ugly. There are a few fields we have that are protoc reserved keywords. It gets
 # around this by adding a _. Use this function when accessing fields in the protobuf
@@ -147,132 +143,291 @@ def get_adjusted_field_name(name):
 def type_name(field):
     return field.type_name[len(".draiosproto."):]
 
-# these should probably be an enum at some point. SMAGENT-1977
+AGG_TYPE_SINGLE_NUMERIC_AGGREGATED = 1
+AGG_TYPE_REPEATED_NUMERIC_AGGREGATED = 2
+AGG_TYPE_SINGLE_MESSAGE = 3
+AGG_TYPE_REPEATED_NUMERIC = 4
+AGG_TYPE_REPEATED_MESSAGE = 5
+AGG_TYPE_SINGLE_NUMERIC = 6
+AGG_TYPE_MAP = 7
+AGG_TYPE_SINGLE_STRING = 8
+AGG_TYPE_REPEATED_STRING = 9
+
 def get_field_type(field, sub_aggregator_list):
     if field.name in sub_aggregator_list:
         if field.label is FieldDescriptor.LABEL_REPEATED:
-            return 2 # repeated numeric aggregation
+            return AGG_TYPE_REPEATED_NUMERIC_AGGREGATED
         else:
-           return 1 # single numeric aggregation
+           return AGG_TYPE_SINGLE_NUMERIC_AGGREGATED
 
     if field.type is FieldDescriptor.TYPE_MESSAGE:
         if field.label is FieldDescriptor.LABEL_REPEATED:
             # this is a map. map types are .draiosproto.<message_type>.<mangledfieldname>Entry
             # we'll just check for the dot in the type_name
             if "." in type_name(field):
-                return 7 # map
-            return 5 # repeated message
-        return 3 #single message
+                return AGG_TYPE_MAP
+            return AGG_TYPE_REPEATED_MESSAGE
+        return AGG_TYPE_SINGLE_MESSAGE
 
     if field.label is FieldDescriptor.LABEL_REPEATED:
-        return 4 # non-message repeated type
+        if field.type is FieldDescriptor.TYPE_STRING:
+            return AGG_TYPE_REPEATED_STRING
+        return AGG_TYPE_REPEATED_NUMERIC
 
-    return 6 # non-message single type
+    if field.type is FieldDescriptor.TYPE_STRING:
+        return AGG_TYPE_SINGLE_STRING
 
-# generates a virtual function to aggregate a given field in a messagae
-def generate_field_aggregator_function(message_name, field, sub_aggregator_list):
+    return AGG_TYPE_SINGLE_NUMERIC
+
+# generates a map from field name->type
+def generate_type_map(message, sub_aggregator_list):
+    field_map = {}
+    for field in message.field:
+        field_map[field.name] = get_field_type(field, sub_aggregator_list)
+
+    return field_map
+
+# generates a virtual function to aggregate a given field in a message
+def generate_field_aggregator_function(message_name, field, type_map, aggregation_map, unique):
+    # why two field names? PB will adjust field names if you happened to use a reserved
+    # keyword. we don't internally, so technically all PB apis should use the adjusted
+    # name, and all sysdig APIs should use the un-adjusted name.
+    string_map = {"field_name": field.name,
+                  "pb_field_name": get_adjusted_field_name(field.name),
+                  "field_type": type_name(field),
+                  "message_name": message_name}
+
+    if field.name in aggregation_map:
+        string_map["target_name"] = aggregation_map[field.name]
+
     # write the function header
-    out = """    virtual void aggregate_%s(const draiosproto::%s& input, draiosproto::%s& output)
+    out = """    virtual void aggregate_%(field_name)s(draiosproto::%(message_name)s& input,
+        draiosproto::%(message_name)s& output,
+        bool in_place)
     {
-""" % (field.name, message_name, message_name)
+""" % string_map
 
-    if get_field_type(field, sub_aggregator_list) is 1:
-        out += """        if (input.has_%s())
-     {
-         default_aggregate_value<decltype(input.%s()),
-                                 decltype(*output.mutable_%s())>(input.%s(), *output.mutable_%s());
-     }
-""" % (field.name, field.name, sub_aggregator_list[field.name], field.name, sub_aggregator_list[field.name])
-
-    if get_field_type(field, sub_aggregator_list) is 2:
-        out += """        default_aggregate_list<decltype(input.%s()),
-                               decltype(*output.mutable_%s())>(input.%s(), *output.mutable_%s());
-""" % (field.name, sub_aggregator_list[field.name], field.name, sub_aggregator_list[field.name])
-
-    if get_field_type(field, sub_aggregator_list) is 3:
-        out += """        if (input.has_%s())
+    if type_map[field.name] is AGG_TYPE_SINGLE_NUMERIC_AGGREGATED:
+        out += """        if (input.has_%(field_name)s())
         {
-            if (!m_%s_field_aggregator)
-            {
-                m_%s_field_aggregator = &m_builder.build_%s();
-            }
-
-            m_%s_field_aggregator->aggregate(input.%s(), *output.mutable_%s());
-        }
-""" % (field.name, field.name, field.name, type_name(field), field.name, field.name, field.name)
-
-    if get_field_type(field, sub_aggregator_list) is 4:
-        out += """        for (auto i : input.%s())
-        {
-            if (%s_cache.find(i) == %s_cache.end())
-            {
-                output.add_%s(i);
-                %s_cache.insert(i);
+            default_aggregate_value<decltype(input.%(field_name)s()),
+                                    decltype(*output.mutable_%(target_name)s())>(input.%(field_name)s(), *output.mutable_%(target_name)s());
+            if (in_place) {
+                input.clear_%(field_name)s();
             }
         }
-""" % (field.name, field.name, field.name, field.name, field.name)
+""" % string_map
+
+    if type_map[field.name] is AGG_TYPE_REPEATED_NUMERIC_AGGREGATED:
+        out += """        default_aggregate_list<decltype(input.%(field_name)s()),
+                                                 decltype(*output.mutable_%(target_name)s())>(input.%(field_name)s(), *output.mutable_%(target_name)s());
+        if (in_place) {
+            input.clear_%(field_name)s();
+        }
+""" % string_map
+
+    if type_map[field.name] is AGG_TYPE_SINGLE_MESSAGE:
+        out += """        if (input.has_%(field_name)s())
+        {
+            if (!m_%(field_name)s_field_aggregator)
+            {
+                m_%(field_name)s_field_aggregator = &m_builder.build_%(field_type)s();
+            }
+
+            if (in_place)
+            {
+                m_%(field_name)s_field_aggregator->aggregate(*output.mutable_%(field_name)s(), *output.mutable_%(field_name)s(), true);
+            } else {
+                if (!output.has_%(field_name)s()) {
+                    output.set_allocated_%(field_name)s(input.release_%(field_name)s());
+                    m_%(field_name)s_field_aggregator->aggregate(*output.mutable_%(field_name)s(), *output.mutable_%(field_name)s(), true);
+                } else {
+                    m_%(field_name)s_field_aggregator->aggregate(*input.mutable_%(field_name)s(), *output.mutable_%(field_name)s(), false);
+                }
+            }
+        }
+""" % string_map
+
+    if type_map[field.name] is AGG_TYPE_REPEATED_NUMERIC:
+        if field.name in unique:
+            # this is not implemented as there are no users, but the rough outline
+            # is if in place, nothing
+            # to do. otherwise build the cache from the existing output entry, then
+            # do the same as the non-unique case.
+            out += """ NOT IMPLEMENTED """
+        else: # not unique
+            # the general way the loop works is we have a pointer to the next element
+            # we want to "insert" (the leader) as well as the last element in the array
+            # that is unique. If the leader is a duplicate, we swap it with the trailer,
+            # insert it, and then find a new trailer. Must use signed-ints, as
+            # a corner case if all numbers are the same, trailer will end up at -1 after
+            # first pass.
+            out += """        if (in_place) {
+            int32_t leader = 0;
+            for (int32_t trailer = input.%(field_name)s().size() - 1; leader <= trailer; leader++) {
+                // thing is duplicate. swap it with trailer, which is guaranteed to not be
+                if (%(field_name)s_cache.find(input.%(field_name)s()[leader]) != %(field_name)s_cache.end()) {
+                    input.mutable_%(field_name)s()->SwapElements(leader, trailer);
+                }
+                // now thing is guaranteed to not be in cache, so add it
+                %(field_name)s_cache.insert(input.%(field_name)s()[leader]);
+                // move the trailer to point to a new valid input
+                while (trailer >= leader && %(field_name)s_cache.find(input.%(field_name)s()[trailer]) != %(field_name)s_cache.end()) {
+                    trailer--;
+                }
+            }
+            // delete the duplicate subrange
+            output.mutable_%(field_name)s()->Truncate(%(field_name)s_cache.size());
+        } else {
+            for (auto i : input.%(field_name)s())
+            {
+                if (%(field_name)s_cache.find(i) == %(field_name)s_cache.end())
+                {
+                    output.add_%(field_name)s(i);
+                    %(field_name)s_cache.insert(i);
+                }
+            }
+        }
+""" % string_map
 
     # note: the "new" case is a bit tricky. Since the key of the map is/depends on the
     # message in the output protobuf, we have to aggregate into that protobuf BEFORE
     # we add the key to the map, and values that compromise the primary key should
     # never be changed after the initial set, otherwise you'll end up with duplicate
     # entries (and effectively a corrupt hashmap)
-    if get_field_type(field, sub_aggregator_list) is 5:
-        out += """        for (auto i : input.%s())
-        {
-            if (%s_map.find(&i) == %s_map.end())
-            {
-                auto new_entry = output.add_%s();
-                agent_message_aggregator<draiosproto::%s>* new_aggregator = &m_builder.build_%s();
-                new_aggregator->aggregate(i, *new_entry);
-                %s_map.insert(
-                    std::make_pair<draiosproto::%s*,
-                                   std::pair<uint32_t,
-                                             std::unique_ptr<agent_message_aggregator<draiosproto::%s>>>>(
-                        std::move(new_entry),
-                        std::make_pair<uint32_t,
-                                       std::unique_ptr<agent_message_aggregator<draiosproto::%s>>>(
-                            output.%s().size() - 1,
-                            std::unique_ptr<agent_message_aggregator<draiosproto::%s>>(new_aggregator)
-                        )
-                    )
-                );
+    if type_map[field.name] is AGG_TYPE_REPEATED_MESSAGE:
+        if field.name in unique:
+            out += """        if (in_place) {
+            // create aggregators, recursively invoke
+            for (uint32_t i = 0; i < input.%(field_name)s().size(); i++) {
+                %(field_name)s_vector.push_back(std::unique_ptr<agent_message_aggregator<draiosproto::%(field_type)s>>(&m_builder.build_%(field_type)s()));
+                %(field_name)s_vector[i]->aggregate((*input.mutable_%(field_name)s())[i], (*output.mutable_%(field_name)s())[i], true);
             }
-            else
-            {
-                %s_map[&i].second->aggregate(i, (*output.mutable_%s())[%s_map[&i].first]);
+        } else {
+            // will need to build map on second time through
+            if (%(field_name)s_map.size() != output.%(field_name)s().size()) {
+                for (uint32_t i = 0; i < output.%(field_name)s().size(); i++) {
+                    %(field_name)s_map.insert(std::pair<const draiosproto::%(field_type)s*, uint32_t>(&output.%(field_name)s()[i], i));
+                }
+            }
+            for (uint32_t i = 0; i < input.%(field_name)s().size(); i++) {
+                auto entry = &(*input.mutable_%(field_name)s())[i];
+                if (%(field_name)s_map.find(entry) == %(field_name)s_map.end()) {
+                    %(field_name)s_vector.push_back(std::unique_ptr<agent_message_aggregator<draiosproto::%(field_type)s>>(&m_builder.build_%(field_type)s()));
+                    auto new_entry = new draiosproto::%(field_type)s(std::move(*entry));
+                    %(field_name)s_vector[%(field_name)s_vector.size() - 1]->aggregate(*new_entry, *new_entry, true);
+                    output.mutable_%(field_name)s()->UnsafeArenaAddAllocated(new_entry);
+                    %(field_name)s_map.insert(std::pair<const draiosproto::%(field_type)s*, uint32_t>(&output.%(field_name)s()[output.%(field_name)s().size() - 1], output.%(field_name)s().size() - 1));
+                } else {
+                    %(field_name)s_vector[%(field_name)s_map[entry]]->aggregate(*entry, (*output.mutable_%(field_name)s())[%(field_name)s_map[entry]], false);
+                }
             }
         }
-""" % (field.name, # for
-       field.name, field.name, # if 
-       field.name, # new_entry
-       type_name(field), type_name(field), # new_aggregator
-       field.name, # insert
-       type_name(field), # make pair
-       type_name(field), # unique ptr
-       type_name(field), # unique ptr
-       field.name, # output.size
-       type_name(field), # unique ptr
-       field.name, field.name, field.name) # else
+""" % string_map
+        else:
+            out += """        if (in_place) {
+            int32_t leader = 0;
+            for (int32_t trailer = input.%(field_name)s().size() - 1; leader <= trailer; leader++) {
+                // thing is duplicate. swap it with trailer, which is guaranteed to not be
+                auto entry = &(*input.mutable_%(field_name)s())[leader];
+                if (%(field_name)s_map.find(entry) != %(field_name)s_map.end()) {
+                    // We could in theory perform the duplicate aggregation while doing this (or the trailer decrement below)
+                    // but this code is difficult to reason about as is, so we'll just do them all in one pass at the end
+                    input.mutable_%(field_name)s()->SwapElements(leader, trailer);
+                    entry = &(*input.mutable_%(field_name)s())[leader];
+                }
+                // now thing is guaranteed to not be in cache, so add it
+                %(field_name)s_vector.push_back(std::unique_ptr<agent_message_aggregator<draiosproto::%(field_type)s>>(&m_builder.build_%(field_type)s()));
+                %(field_name)s_vector[%(field_name)s_vector.size() - 1]->aggregate(*entry, *entry, true);
+                %(field_name)s_map.insert(std::pair<const draiosproto::%(field_type)s*, uint32_t>(entry, leader));
+                // move the trailer to point to a new valid input
+                while (trailer >= leader && %(field_name)s_map.find(&input.%(field_name)s()[trailer]) != %(field_name)s_map.end()) {
+                    trailer--;
+                }
+            }
+            // aggregate the duplicates
+            for (uint32_t i = %(field_name)s_map.size(); i < output.%(field_name)s().size(); i++)
+            {
+                uint32_t target_index = %(field_name)s_map[&output.%(field_name)s()[i]];
+                %(field_name)s_vector[target_index]->aggregate((*output.mutable_%(field_name)s())[i], (*output.mutable_%(field_name)s())[target_index], false);
+            }
+            // delete the duplicate subrange
+            output.mutable_%(field_name)s()->DeleteSubrange(%(field_name)s_map.size(), output.%(field_name)s().size() - %(field_name)s_map.size());
+        } else {
+            for (uint32_t i = 0; i < input.%(field_name)s().size(); i++) {
+                auto entry = &(*input.mutable_%(field_name)s())[i];
+                if (%(field_name)s_map.find(entry) == %(field_name)s_map.end()) {
+                    %(field_name)s_vector.push_back(std::unique_ptr<agent_message_aggregator<draiosproto::%(field_type)s>>(&m_builder.build_%(field_type)s()));
+                    auto new_entry = new draiosproto::%(field_type)s(std::move(*entry));
+                    %(field_name)s_vector[%(field_name)s_vector.size() - 1]->aggregate(*new_entry, *new_entry, true);
+                    output.mutable_%(field_name)s()->UnsafeArenaAddAllocated(new_entry);
+                    %(field_name)s_map.insert(std::pair<const draiosproto::%(field_type)s*, uint32_t>(&output.%(field_name)s()[output.%(field_name)s().size() - 1], output.%(field_name)s().size() - 1));
+                } else {
+                    %(field_name)s_vector[%(field_name)s_map[entry]]->aggregate(*entry, (*output.mutable_%(field_name)s())[%(field_name)s_map[entry]], false);
+                }
+            }
+        }
+"""  % string_map
 
-    if get_field_type(field, sub_aggregator_list) is 6:
+    if type_map[field.name] is AGG_TYPE_SINGLE_NUMERIC:
         if message_name in field_extension and \
            field.number in field_extension[message_name] and \
            field_extension[message_name][field.number] is OR:
-            out+= """        if (input.has_%s())
+            out+= """        if (input.has_%(field_name)s())
         {
-            output.set_%s(output.%s() | input.%s());
+            output.set_%(field_name)s(output.%(field_name)s() | input.%(field_name)s());
         }
-""" % (get_adjusted_field_name(field.name), get_adjusted_field_name(field.name), get_adjusted_field_name(field.name), get_adjusted_field_name(field.name))
+""" % string_map
         else: 
-            out+= """        if (input.has_%s())
+            out+= """        if (!output.has_%(field_name)s() && input.has_%(field_name)s())
         {
-            output.set_%s(input.%s());
+            output.set_%(field_name)s(input.%(field_name)s());
         }
-""" % (get_adjusted_field_name(field.name), get_adjusted_field_name(field.name), get_adjusted_field_name(field.name))
+""" % string_map
 
-    if get_field_type(field, sub_aggregator_list) is 7:
+    if type_map[field.name] is AGG_TYPE_MAP:
         pass
+
+    if type_map[field.name] is AGG_TYPE_SINGLE_STRING:
+        out+= """        if (!output.has_%(pb_field_name)s() && input.has_%(pb_field_name)s())
+        {
+            output.set_allocated_%(pb_field_name)s(input.release_%(pb_field_name)s());
+        }
+""" % string_map
+
+    if type_map[field.name] is AGG_TYPE_REPEATED_STRING:
+        if field.name in unique:
+            # implementation would be similar to AGG_TYPE_REPEATED_NUMERIC
+            out += """ NOT IMPLEMENTED """
+        else: # not unique
+            # see AGG_TYPE_REPEATED_NUMERIC for description of algorithm
+            out += """        if (in_place) {
+            int32_t leader = 0;
+            for (int32_t trailer = input.%(field_name)s().size() - 1; leader <= trailer; leader++) {
+                // thing is duplicate. swap it with trailer, which is guaranteed to not be
+                if (%(field_name)s_cache.find(&input.%(field_name)s()[leader]) != %(field_name)s_cache.end()) {
+                    input.mutable_%(field_name)s()->SwapElements(leader, trailer);
+                }
+                // now thing is guaranteed to not be in cache, so add it
+                %(field_name)s_cache.insert(&input.%(field_name)s()[leader]);
+                // move the trailer to point to a new valid input
+                while (trailer >= leader && %(field_name)s_cache.find(&input.%(field_name)s()[trailer]) != %(field_name)s_cache.end()) {
+                    trailer--;
+                }
+            }
+            // delete the duplicate subrange
+            output.mutable_%(field_name)s()->DeleteSubrange(%(field_name)s_cache.size(), output.%(field_name)s().size() - %(field_name)s_cache.size());
+        } else {
+            for (auto& i : input.%(field_name)s())
+            {
+                if (%(field_name)s_cache.find(&i) == %(field_name)s_cache.end())
+                {
+                    output.add_%(field_name)s(std::move(i));
+                    %(field_name)s_cache.insert(&output.%(field_name)s()[output.%(field_name)s().size() - 1]);
+                }
+            }
+        }
+""" % string_map
 
     # close the function
     out +="""    }
@@ -283,19 +438,21 @@ def generate_field_aggregator_function(message_name, field, sub_aggregator_list)
 
 # generates a function which iterates over fields in a message and invokes
 # their aggregation function
-def generate_message_aggregator_function(message, aggregator_targets, sub_aggregator_list):
+def generate_message_aggregator_function(message, type_map, aggregation_targets):
     # function header
-    out = """    virtual void aggregate(const draiosproto::%s& input, draiosproto::%s& output)
+    out = """    virtual void aggregate(draiosproto::%s& input,
+                           draiosproto::%s& output,
+                           bool in_place)
     {
 """ % (message.name, message.name)
 
     # loop through fields and invoke aggregator
     for field in message.field:
-        if field.name in aggregator_targets or \
+        if field.name in aggregation_targets or \
            type_name(field) in skip or \
-           get_field_type(field, sub_aggregator_list) is 7:
+           type_map[field.name] is AGG_TYPE_MAP:
             continue
-        out += """        aggregate_%s(input, output);
+        out += """        aggregate_%s(input, output, in_place);
 """ % (field.name)
 
     # close the function
@@ -307,12 +464,12 @@ def generate_message_aggregator_function(message, aggregator_targets, sub_aggreg
 # generates a function which iterates over fields in a message and invokes
 # their limit functions. We also invoke any "dedicated" limit functions which must
 # exist based on the limit list
-def generate_limiters(message, limit_list, sub_aggregator_list):
+def generate_limiters(message, type_map, limited):
     out = "public:\n"
 
     # generate declarations for limiters to be implemented manually
     for field in message.field:
-        if field.name in limit_list:
+        if field.name in limited:
             out += """    static void limit_%s(draiosproto::%s& output, uint32_t limit);
 """ % (field.name, message.name)
             limited_messages.add((message.name, field.name));
@@ -325,7 +482,7 @@ def generate_limiters(message, limit_list, sub_aggregator_list):
 
     # loop through fields and invoke our internal limiter if necessary
     for field in message.field:
-        if field.name in limit_list:
+        if field.name in limited:
             out += """        if (builder.get_%s_%s_limit() < output.%s().size()) {
             limit_%s(output, builder.get_%s_%s_limit());
         }
@@ -334,11 +491,11 @@ def generate_limiters(message, limit_list, sub_aggregator_list):
     # loop through fields, and invoke limiter on sub-messages
     for field in message.field:
         if type_name(field) not in skip:
-            if get_field_type(field, sub_aggregator_list) is 3:
+            if type_map[field.name] is AGG_TYPE_SINGLE_MESSAGE:
                 out += """        %s_message_aggregator::limit(builder, *output.mutable_%s());
 """ % (type_name(field), field.name)
-            if get_field_type(field, sub_aggregator_list) is 5:
-                out += """        for (auto i : *output.mutable_%s()) {
+            if type_map[field.name] is AGG_TYPE_REPEATED_MESSAGE:
+                out += """        for (auto& i : *output.mutable_%s()) {
             %s_message_aggregator::limit(builder, i);
         }
 """ % (field.name, type_name(field))
@@ -353,7 +510,7 @@ def generate_limiters(message, limit_list, sub_aggregator_list):
 
 # generates a constructor function, which mainly has to construct all
 # the sub-aggregators used by this class
-def generate_constructor_function(message, aggregator_targets, sub_aggregator_list):
+def generate_constructor_function(message, type_map, aggregation_targets):
     out = ""
 
     # have to write the constructor, which will invoke the builder to allocate
@@ -363,11 +520,11 @@ def generate_constructor_function(message, aggregator_targets, sub_aggregator_li
         : agent_message_aggregator(builder)
 """ % message.name
     for field in message.field:
-        if field.name in aggregator_targets or \
+        if field.name in aggregation_targets or \
            type_name(field) in skip or \
-           get_field_type(field, sub_aggregator_list) is 7:
+           type_map[field.name] is AGG_TYPE_MAP:
             continue
-        if get_field_type(field, sub_aggregator_list) is 3:
+        if type_map[field.name] is AGG_TYPE_SINGLE_MESSAGE:
             out += """         ,m_%s_field_aggregator(nullptr)
 """ % (field.name)
 
@@ -376,7 +533,7 @@ def generate_constructor_function(message, aggregator_targets, sub_aggregator_li
 
     return out
 
-def generate_destructor_function(message, aggregator_targets, sub_aggregator_list):
+def generate_destructor_function(message):
     out = ""
 
     out += """
@@ -409,46 +566,48 @@ def get_cpp_type(field):
     return cpp_type
 
 # generates the code for each message field, including supporting fields and functions
-def generate_field_aggregations(message, sub_aggregator_list, aggregator_targets):
+def generate_field_aggregations(message, type_map, aggregation_map, aggregation_targets, unique):
     out = ""
 
     for field in message.field:
-        if field.name in aggregator_targets or \
+        if field.name in aggregation_targets or \
            type_name(field) in skip or \
-           get_field_type(field, sub_aggregator_list) is 7:
+           type_map[field.name] is AGG_TYPE_MAP:
             continue
 
         # Single message just gets the aggregator for the field
-        if get_field_type(field, sub_aggregator_list) is 3:
+        if type_map[field.name] is AGG_TYPE_SINGLE_MESSAGE:
             out += """    agent_message_aggregator<draiosproto::%s>* m_%s_field_aggregator;
 """ % (type_name(field), field.name)
 
         # Repeated non-message gets a set to know if entry exists
-        if get_field_type(field, sub_aggregator_list) is 4:
+        if type_map[field.name] is AGG_TYPE_REPEATED_NUMERIC:
             out += """    std::set<%s> %s_cache;
 """ % (get_cpp_type(field), field.name)
+        if type_map[field.name] is AGG_TYPE_REPEATED_STRING:
+            out += """    std::set<const std::string*, agent_message_aggregator::string_pointer_comparer> %s_cache;
+""" % field.name
+        if type_map[field.name] is AGG_TYPE_REPEATED_MESSAGE:
+            if type_name(field) == message.name:
+                function_namespace = ""
+            else:
+                function_namespace = "%s_message_aggregator::" % type_name(field)
 
-        # Repeated message types need a map to index in output and corresponding aggregator
-        if type_name(field) == message.name:
-            function_namespace = ""
-        else:
-            function_namespace = "%s_message_aggregator::" % type_name(field)
-
-        if get_field_type(field, sub_aggregator_list) is 5:
             # note: have to use unique ptr in cases where messages reference themselves
-            out += """    std::unordered_map<draiosproto::%s*,
-                       std::pair<uint32_t, std::unique_ptr<agent_message_aggregator<draiosproto::%s>>>,
+            out += """    std::unordered_map<const draiosproto::%s*,
+                       uint32_t,
                        %shasher,
                        %scomparer> %s_map;
-""" % (type_name(field), type_name(field), function_namespace, function_namespace, field.name)
+    std::vector<std::unique_ptr<agent_message_aggregator<draiosproto::%s>>> %s_vector;
+""" % (type_name(field), function_namespace, function_namespace, field.name, type_name(field), field.name)
 
         # generate aggregation function
-        out += generate_field_aggregator_function(message.name, field, sub_aggregator_list) 
+        out += generate_field_aggregator_function(message.name, field, type_map, aggregation_map, unique) 
 
     return out
 
 # generates the reset function, which clears any state and resets all sub-aggregators
-def generate_reset_function(message, aggregator_targets, sub_aggregator_list):
+def generate_reset_function(message, type_map, aggregation_targets):
     out = ""
 
     out += """
@@ -457,12 +616,12 @@ def generate_reset_function(message, aggregator_targets, sub_aggregator_list):
 """
     
     for field in message.field:
-        if field.name in aggregator_targets or \
+        if field.name in aggregation_targets or \
            type_name(field) in skip or \
-           get_field_type(field, sub_aggregator_list) is 7:
+           type_map[field.name] is AGG_TYPE_MAP:
             continue
 
-        if get_field_type(field, sub_aggregator_list) is 3:
+        if type_map[field.name] is AGG_TYPE_SINGLE_MESSAGE:
             out += """        if (m_%s_field_aggregator)
         {
             delete m_%s_field_aggregator;
@@ -470,13 +629,14 @@ def generate_reset_function(message, aggregator_targets, sub_aggregator_list):
         m_%s_field_aggregator = nullptr;
 """ % (field.name, field.name, field.name)
 
-        if get_field_type(field, sub_aggregator_list) is 4:
+        if type_map[field.name] in {AGG_TYPE_REPEATED_NUMERIC, AGG_TYPE_REPEATED_STRING}:
             out += """        %s_cache.clear();
 """ % field.name
 
-        if get_field_type(field, sub_aggregator_list) is 5:
-            out += """       %s_map.clear();
-""" % field.name
+        if type_map[field.name] is AGG_TYPE_REPEATED_MESSAGE:
+            out += """        %s_map.clear();
+        %s_vector.clear();
+""" % (field.name, field.name)
     
     out += """    }
 
@@ -485,7 +645,7 @@ def generate_reset_function(message, aggregator_targets, sub_aggregator_list):
     return out
 
 # generates hasher and comparer functions so this class can be used as a key in a map/set
-def generate_key_functions(message, aggregator_targets, sub_aggregator_list):
+def generate_key_functions(message, type_map):
     hasher = """    struct hasher {
         size_t operator()(const draiosproto::%s* input) const
         {
@@ -506,18 +666,21 @@ def generate_key_functions(message, aggregator_targets, sub_aggregator_list):
     for field in message.field:
         if message.name in field_extension and \
            field.number in field_extension[message.name] and \
-           field_extension[message.name][field.number] is PRIMARY_KEY:
-            if get_field_type(field, sub_aggregator_list) is 6:
+           type(field_extension[message.name][field.number]) is set and \
+           PRIMARY_KEY in field_extension[message.name][field.number]:
+            if type_map[field.name] in {AGG_TYPE_SINGLE_NUMERIC, AGG_TYPE_SINGLE_STRING}:
                 hasher += """            hash = (hash * 7) ^ std::hash<%s>()(input->%s());
 """ % (get_cpp_type(field), get_adjusted_field_name(field.name))
                 comparer += """            result &= lhs->%s() == rhs->%s();
 """ % (get_adjusted_field_name(field.name), get_adjusted_field_name(field.name))
-            elif get_field_type(field, sub_aggregator_list) is 3:
+
+            elif type_map[field.name] is AGG_TYPE_SINGLE_MESSAGE:
                 hasher += """            hash = (hash * 9) ^ %s_message_aggregator::hasher()(&input->%s());
 """ % (type_name(field), get_adjusted_field_name(field.name))
                 comparer += """            result &= %s_message_aggregator::comparer()(&lhs->%s(), &rhs->%s());
 """ % (type_name(field), get_adjusted_field_name(field.name), get_adjusted_field_name(field.name))
-            elif get_field_type(field, sub_aggregator_list) is 4:
+
+            elif type_map[field.name] in {AGG_TYPE_REPEATED_NUMERIC, AGG_TYPE_REPEATED_STRING}:
                 hasher += """            for (auto i : input->%s())
             {
                 hash = (hash * 7) ^ std::hash<%s>()(i);
@@ -533,7 +696,7 @@ def generate_key_functions(message, aggregator_targets, sub_aggregator_list):
             }
 """ % (field.name, field.name, field.name, field.name, field.name)
 
-            elif get_field_type(field, sub_aggregator_list) is 5:
+            elif type_map[field.name] is AGG_TYPE_REPEATED_MESSAGE:
                 hasher += """            for (auto i : input->%s())
             {
                 hash = (hash * 9) ^ %s_message_aggregator::hasher()(&i);
@@ -550,8 +713,9 @@ def generate_key_functions(message, aggregator_targets, sub_aggregator_list):
 """ % (field.name, field.name, field.name, type_name(field), field.name, field.name)
 
             else:
-                hasher += "uhoh! Unsupported primary key type."
-                comparer += "uhoh! Unsupported primary key type."
+                hasher += "uhoh! Unsupported primary key type %d." % type_map[field.name]
+                comparer += "uhoh! Unsupported primary key type %d." % type_map[field.name]
+
 
     comparer += """ 
             return result;
@@ -570,8 +734,8 @@ def generate_class(message):
     if message.name in skip:
         return ""
 
-    sub_aggregator_list, aggregator_targets = generate_aggregator_list(message)
-    limit_list = generate_limit_list(message)
+    limited, unique, aggregation_targets, aggregation_map = generate_tags_list(message)
+    type_map = generate_type_map(message, aggregation_map)
 
     # write the class header
     out = """class %s_message_aggregator : public agent_message_aggregator<draiosproto::%s>
@@ -581,25 +745,23 @@ public:
 
     # hash/compare functions must come first since aggregations might depend on them
     if message.name in key_messages:
-        out += generate_key_functions(message, aggregator_targets, sub_aggregator_list)
+        out += generate_key_functions(message, type_map)
 
     out += """
-protected: 
+protected:
 """
-    out += generate_field_aggregations(message, sub_aggregator_list, aggregator_targets)
+    out += generate_field_aggregations(message, type_map, aggregation_map, aggregation_targets, unique)
 
     out += """
 public:
 """
 
     # now write the implementation of the aggregate function for the message
-    out += generate_message_aggregator_function(message, aggregator_targets, sub_aggregator_list)
-    out += generate_limiters(message, limit_list, sub_aggregator_list)
-
-    out += generate_constructor_function(message, aggregator_targets, sub_aggregator_list)
-    out += generate_destructor_function(message, aggregator_targets, sub_aggregator_list)
-
-    out += generate_reset_function(message, aggregator_targets, sub_aggregator_list)
+    out += generate_message_aggregator_function(message, type_map, aggregation_targets)
+    out += generate_limiters(message, type_map, limited)
+    out += generate_constructor_function(message, type_map, aggregation_targets)
+    out += generate_destructor_function(message)
+    out += generate_reset_function(message, type_map, aggregation_targets)
 
 
     #close the class
@@ -622,10 +784,10 @@ def find_primary_keys(message):
     for field in message.field:
         if message.name in field_extension and \
            field.number in field_extension[message.name] and \
-           field_extension[message.name][field.number] is PRIMARY_KEY and \
-           get_field_type(field, {}) is 3:
-            find_primary_keys(index_dict[type_name(field)][0])
-            
+           type(field_extension[message.name][field.number]) is set and \
+           PRIMARY_KEY in field_extension[message.name][field.number] and \
+           get_field_type(field, {}) in {AGG_TYPE_SINGLE_MESSAGE, AGG_TYPE_REPEATED_MESSAGE}:
+               find_primary_keys(index_dict[type_name(field)][0])
 
 
 def generate_code(request, response):
@@ -684,9 +846,9 @@ public:
         for message, package in traverse(proto_file):
             if isinstance(message, DescriptorProto):
                 for field in message.field:
-                    if get_field_type(field, {}) is 5:
+                    if get_field_type(field, {}) is AGG_TYPE_REPEATED_MESSAGE:
                         find_primary_keys(index_dict[type_name(field)][0])
-                        
+
     # pass 3 of the protobuf: generate the actual code
     for proto_file in request.proto_file:
         for message, package in traverse(proto_file):

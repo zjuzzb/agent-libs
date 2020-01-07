@@ -607,7 +607,8 @@ app_metric::app_metric(const Json::Value &obj):
 	}
 }
 
-void app_metric::to_protobuf(draiosproto::app_metric *proto) const
+template<typename message>
+void app_metric::to_protobuf(message *proto) const
 {
 	proto->set_name(m_name);
 	proto->set_type(static_cast<draiosproto::app_metric_type>(m_type));
@@ -633,6 +634,9 @@ void app_metric::to_protobuf(draiosproto::app_metric *proto) const
 		}
 	}
 }
+
+template void app_metric::to_protobuf<draiosproto::app_metric>(draiosproto::app_metric *proto) const;
+template void app_metric::to_protobuf<draiosproto::prom_metric>(draiosproto::prom_metric *proto) const;
 
 /*
  * example:
@@ -681,7 +685,8 @@ void app_service_check::to_protobuf(draiosproto::app_check *proto) const
 	}
 }
 
-void app_service_check::to_protobuf_as_metric(draiosproto::app_metric *proto) const
+template <typename message>
+void app_service_check::to_protobuf_as_metric(message *proto) const
 {
 	proto->set_name(m_name);
 	if(m_status == status_t::OK)
@@ -703,3 +708,5 @@ void app_service_check::to_protobuf_as_metric(draiosproto::app_metric *proto) co
 	}
 }
 
+template void app_service_check::to_protobuf_as_metric<draiosproto::app_metric>(draiosproto::app_metric *proto) const ;
+template void app_service_check::to_protobuf_as_metric<draiosproto::prom_metric>(draiosproto::prom_metric *proto) const ;

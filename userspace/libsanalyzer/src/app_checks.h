@@ -141,7 +141,8 @@ public:
 		UNKNOWN         = 5
 	};
 	explicit app_metric(const Json::Value& obj);
-	void to_protobuf(draiosproto::app_metric* proto) const;
+	template<typename message>
+	void to_protobuf(message* proto) const;
 
 	const std::string& name() const;
 private:
@@ -172,7 +173,8 @@ public:
 	};
 	explicit app_service_check(const Json::Value& obj);
 	void to_protobuf(draiosproto::app_check* proto) const;
-	void to_protobuf_as_metric(draiosproto::app_metric* proto) const;
+	template<typename message>
+	void to_protobuf_as_metric(message* proto) const;
 	const std::string& name() const;
 private:
 	status_t m_status;

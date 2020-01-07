@@ -37,6 +37,13 @@ type_config<bool> c_emit_protobuf_json(
     "If true, emit each pre-aggregated protobuf as a separate JSON file",
     "metricsfile",
     "preagg_json");
+
+type_config<bool> c_pre_agg_rest(
+    false,
+    "If true, expose raw protobufs through rest",
+    "aggregator",
+    "preagg_rest");
+
 }
 
 namespace dragent
@@ -240,7 +247,18 @@ void async_aggregator::relocate_prom_metrics(draiosproto::proto_info& proto_info
 		return;
 	}
 	proto_info.mutable_prometheus()->set_allocated_process_name(proto_info.mutable_prom_info()->release_process_name());
-	proto_info.mutable_prometheus()->mutable_metrics()->UnsafeArenaSwap(proto_info.mutable_prom_info()->mutable_metrics());
+	for (uint32_t i = 0; i < proto_info.prom_info().metrics().size(); i++)
+	{
+		auto new_metric = proto_info.mutable_prometheus()->add_metrics();
+		auto old_metric = &(*proto_info.mutable_prom_info()->mutable_metrics())[i];
+		new_metric->set_allocated_name(old_metric->release_name());
+		new_metric->set_type(old_metric->type());
+		new_metric->set_value(old_metric->value());
+		new_metric->set_allocated_aggr_value_double(old_metric->release_aggr_value_double());
+		new_metric->mutable_tags()->UnsafeArenaSwap(old_metric->mutable_tags());
+		new_metric->mutable_buckets()->UnsafeArenaSwap(old_metric->mutable_buckets());
+		new_metric->set_prometheus_type(old_metric->prometheus_type());
+	}
 }
 
 void async_aggregator::relocate_moved_fields(draiosproto::metrics& metrics)
@@ -285,7 +303,12 @@ void async_aggregator::do_run()
 
 		(void)heartbeat();
 
-		libsanalyzer::metric_store::store_pre_aggregated(input_data->m_metrics);
+		// aggregation is destructive, so need to make a copy
+		if (c_pre_agg_rest.get_value())
+		{
+			libsanalyzer::metric_store::store_pre_aggregated(std::make_shared<draiosproto::metrics>(*input_data->m_metrics));
+		}
+
 		if (c_emit_protobuf_json.get_value())
 		{
 			m_file_emitter.emit_metrics_to_json_file(input_data);
@@ -335,12 +358,14 @@ void async_aggregator::do_run()
 		{
 			m_aggregated_data->m_ts = input_data->m_ts;
 			m_aggregated_data->m_metrics_sent = input_data->m_metrics_sent;
-			m_aggregator->aggregate(*input_data->m_metrics, *m_aggregated_data->m_metrics);
+			m_aggregator->aggregate(*input_data->m_metrics, *m_aggregated_data->m_metrics, false);
+			// blow this away, since it is invalidated by the aggregation
+			input_data = nullptr;
 
 			m_count_since_flush++;
 
 			// timestamp is in NS, so convert to seconds and check if %n == 0
-			if ((input_data->m_ts / NSECS_PER_SEC) % aggr_interval_cache == 0)
+			if ((m_aggregated_data->m_ts / NSECS_PER_SEC) % aggr_interval_cache == 0)
 			{
 				m_aggregator->override_primary_keys(*m_aggregated_data->m_metrics);
 				m_aggregator->reset();

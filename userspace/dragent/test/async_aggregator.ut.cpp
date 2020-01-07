@@ -402,12 +402,23 @@ TEST(async_aggregator, relocate_prom_metrics)
 	i->set_name("metric 1");
 	i = pi.mutable_prom_info()->add_metrics();
 	i->set_name("metric 2");
+	i->set_type(draiosproto::app_metric_type::APP_METRIC_TYPE_PROMETHEUS_RAW);
+	i->set_value(2);
+	i->mutable_aggr_value_double()->set_sum(3);
+	i->add_tags()->set_key("some key");
+	i->add_buckets()->set_count(4);
+	i->set_prometheus_type(draiosproto::prometheus_type::PROMETHEUS_TYPE_GAUGE);
 
 	dragent::async_aggregator::relocate_prom_metrics(pi);
 	EXPECT_EQ(pi.prometheus().process_name(), "process");
 	ASSERT_EQ(pi.prometheus().metrics().size(), 2);
 	EXPECT_EQ(pi.prometheus().metrics()[0].name(), "metric 1");
-	EXPECT_EQ(pi.prometheus().metrics()[1].name(), "metric 2");
+	EXPECT_EQ(pi.prometheus().metrics()[1].type(), draiosproto::app_metric_type::APP_METRIC_TYPE_PROMETHEUS_RAW);
+	EXPECT_EQ(pi.prometheus().metrics()[1].value(), 2);
+	EXPECT_EQ(pi.prometheus().metrics()[1].aggr_value_double().sum(), 3);
+	EXPECT_EQ(pi.prometheus().metrics()[1].tags()[0].key(), "some key");
+	EXPECT_EQ(pi.prometheus().metrics()[1].buckets()[0].count(), 4);
+	EXPECT_EQ(pi.prometheus().metrics()[1].prometheus_type(), draiosproto::prometheus_type::PROMETHEUS_TYPE_GAUGE);
 }
 
 TEST(async_aggregator, relocate_moved_fields)
