@@ -38,43 +38,36 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false \
  && apt-get install -y --no-install-recommends \
 # current bash-completion is a security hole
 # SMAGENT-1222
-#   bash-completion
-    curl \
-    bzip2 \
-    {% if p.IKS == None %}
-        ca-certificates \
-        iproute2 \
-        procps \
-        python3-distutils \
-        python3-lib2to3 \
-    {% endif %}
-    {% if p.build_kernel_module %}
-        {% if p.IKS == None %}
-            clang-7 \
-            dkms \
-            gcc-8 \
-            libelf-dev \
-            libelf1 \
-            llvm-7 \
-            xz-utils \
-        {% endif %}
-        bc \
-        gcc \
-        libc6-dev \
-        libmpx2 \
-    {% endif %}
-    {% if p.include_agent_package is defined %}
-        gnupg2 \
-        software-properties-common \
-        {% if p.IKS == None %}
-            python \
-            && apt-get install -y --no-install-recommends apt-transport-https \
-            && curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - \
-            && apt-add-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs | sed 's/^sid$/buster/') stable" \
-            && apt-get update \
-            && apt-get install --no-install-recommends docker-ce-cli \
-        {% endif %}
-    {% endif %}
+#        bash-completion
+	curl \
+	ca-certificates \
+	bzip2 \
+	iproute2 \
+	procps \
+	python3-distutils \
+	python3-lib2to3 \
+{% if p.build_kernel_module %}
+	bc \
+	clang-7 \
+	dkms \
+	gcc \
+	gcc-8 \
+	libc6-dev \
+	libelf-dev \
+	libelf1 \
+	llvm-7 \
+	xz-utils \
+	libmpx2 \
+{% endif %}
+{% if p.include_agent_package is defined %}
+	gnupg2 \
+	python \
+ && apt-get install -y --no-install-recommends apt-transport-https software-properties-common \
+ && curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - \
+ && apt-add-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs | sed 's/^sid$/buster/') stable" \
+ && apt-get update \
+ && apt-get install --no-install-recommends docker-ce-cli \
+{% endif %}
  && rm -rf /var/lib/apt/lists/*
 
 {% if p.build_kernel_module %}
@@ -112,7 +105,7 @@ RUN curl -o cpp-5_5.5.0-12_amd64.deb https://s3.amazonaws.com/download.draios.co
  && rm -f cpp-5_5.5.0-12_amd64.deb gcc-5-base_5.5.0-12_amd64.deb gcc-5_5.5.0-12_amd64.deb libasan2_5.5.0-12_amd64.deb libgcc-5-dev_5.5.0-12_amd64.deb libisl15_0.18-4_amd64.deb libmpx0_5.5.0-12_amd64.deb
 {% endif %}
 
-{% if p.include_agent_package is defined and p.IKS == None %}
+{% if p.include_agent_package is defined %}
 #
 # Download, verify, and install a AdoptOpenJDK's JRE
 #
@@ -144,12 +137,10 @@ RUN rm -rf /usr/bin/gcc && ln -s /usr/bin/gcc-5 /usr/bin/gcc \
  && ln -s /usr/bin/gcc /usr/bin/gcc-4.9 \
  && ln -s /usr/bin/gcc /usr/bin/gcc-4.8
 
-    {% if p.IKS == None %}
-        RUN rm -rf /usr/bin/clang \
-         && rm -rf /usr/bin/llc \
-         && ln -s /usr/bin/clang-7 /usr/bin/clang \
-         && ln -s /usr/bin/llc-7 /usr/bin/llc
-    {% endif %}
+RUN rm -rf /usr/bin/clang \
+ && rm -rf /usr/bin/llc \
+ && ln -s /usr/bin/clang-7 /usr/bin/clang \
+ && ln -s /usr/bin/llc-7 /usr/bin/llc
 
 {% endif %}
 {% if p.include_agent_package == "apt" %}
@@ -175,14 +166,12 @@ RUN rm -df /lib/modules \
 # debian:unstable head contains binutils 2.31, which generates
 # binaries that are incompatible with kernels < 4.16. So manually
 # forcibly install binutils 2.30-22 instead.
-    {% if p.IKS == None %}
-        RUN curl -s -o binutils_2.30-22_amd64.deb https://s3.amazonaws.com/download.draios.com/dependencies/binutils_2.30-22_amd64.deb \
-         && curl -s -o libbinutils_2.30-22_amd64.deb https://s3.amazonaws.com/download.draios.com/dependencies/libbinutils_2.30-22_amd64.deb \
-         && curl -s -o binutils-x86-64-linux-gnu_2.30-22_amd64.deb https://s3.amazonaws.com/download.draios.com/dependencies/binutils-x86-64-linux-gnu_2.30-22_amd64.deb \
-         && curl -s -o binutils-common_2.30-22_amd64.deb https://s3.amazonaws.com/download.draios.com/dependencies/binutils-common_2.30-22_amd64.deb \
-         && dpkg -i *binutils*.deb \
-         && rm -f *binutils*.deb
-    {% endif %}
+RUN curl -s -o binutils_2.30-22_amd64.deb https://s3.amazonaws.com/download.draios.com/dependencies/binutils_2.30-22_amd64.deb \
+ && curl -s -o libbinutils_2.30-22_amd64.deb https://s3.amazonaws.com/download.draios.com/dependencies/libbinutils_2.30-22_amd64.deb \
+ && curl -s -o binutils-x86-64-linux-gnu_2.30-22_amd64.deb https://s3.amazonaws.com/download.draios.com/dependencies/binutils-x86-64-linux-gnu_2.30-22_amd64.deb \
+ && curl -s -o binutils-common_2.30-22_amd64.deb https://s3.amazonaws.com/download.draios.com/dependencies/binutils-common_2.30-22_amd64.deb \
+ && dpkg -i *binutils*.deb \
+ && rm -f *binutils*.deb
 
 {% endif %}
 {% if p.include_agent_package == "local" %}
@@ -210,19 +199,6 @@ docker-cli \
 
 {% endif %}
 COPY ./docker-entrypoint.sh /
-
-# remove python binaries and java packages to prevent CVE/VULNs
-{% if p.IKS != None %}
-# remove python binaries/packages
-RUN dpkg -r --force-depends python python-minimal python2 python2.7 python2-minimal python3 python3.7 python3-minimal \
-linux-libc-dev python3.7-minimal libpython3.7-minimal libpython3.7-stdlib && \
-rm $(find / -name '*python*' -type f | grep bin/) && \
-rm -rf $(whereis python | sed -e 's/^python://') && \
-rm -rf $(whereis python2 | sed -e 's/^python2://') && \
-rm -rf $(whereis python3 | sed -e 's/^python3://') && \
-# remove jackson-databind
-rm /opt/draios/share/sdjagent.jar
-{% endif %}
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
