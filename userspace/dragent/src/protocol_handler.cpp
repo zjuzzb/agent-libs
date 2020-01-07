@@ -26,7 +26,7 @@ type_config<bool> protocol_handler::c_audit_tap_debug_only(
 type_config<bool> protocol_handler::c_secure_audit_debug_enabled(
 	false,
 	"set to true to log secure audit protobufs",
-	"secure_audit",
+	"secure_audit_streams",
 	"debug");
 
 protocol_handler::protocol_handler(protocol_queue& queue) :
