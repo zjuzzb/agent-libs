@@ -779,8 +779,11 @@ class Application(object):
             except AppCheckException as ex:
                 if log_errors:
                     logging.error("Exception on creating check %s: %s", check["name"], ex)
-                if self.config.check_conf_by_name(check["name"]).get("timeout", 1) != -1:
-                    self.excluded_pidnames.add(pidname)
+                try:
+                    if self.config.check_conf_by_name(check["name"]).get("timeout", 1) != -1:
+                        self.excluded_pidnames.add(pidname)
+                except AttributeError:
+                    pass
                 return False, 0
             self.known_instances[pidname] = check_instance
 
