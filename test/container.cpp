@@ -1698,6 +1698,7 @@ static void healthcheck_helper(const char *dockerfile,
 {
 	container_state cstate;
 	bool exited_early = false;
+	std::string capture_stats_str = "(Not Collected Yet)";
 
 	if(!dutils_check_docker())
 	{
@@ -1754,12 +1755,17 @@ static void healthcheck_helper(const char *dockerfile,
 		inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	before_close_t cleanup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
+	{
+		capture_stats_str = capture_stats(inspector);
+	};
 
-	ASSERT_TRUE(cstate.root_cmd_seen);
-	ASSERT_TRUE(cstate.second_cmd_seen);
-	ASSERT_EQ(cstate.container_w_health_probe, expect_healthcheck);
-	ASSERT_EQ(cstate.healthcheck_seen, expect_healthcheck);
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup, cleanup);});
+
+	ASSERT_TRUE(cstate.root_cmd_seen) << capture_stats_str;
+	ASSERT_TRUE(cstate.second_cmd_seen) << capture_stats_str;
+	ASSERT_EQ(cstate.container_w_health_probe, expect_healthcheck) << capture_stats_str;
+	ASSERT_EQ(cstate.healthcheck_seen, expect_healthcheck) << capture_stats_str;
 }
 
 static void healthcheck_tracefile_helper(const char *dockerfile,
@@ -1774,6 +1780,7 @@ static void healthcheck_tracefile_helper(const char *dockerfile,
         inspector.reset(NULL);
         inspector.reset(new sinsp());
 	inspector->set_hostname_and_port_resolution_mode(false);
+	inspector->set_log_callback(common_logger::sinsp_logger_callback);
 
 	ASSERT_GE(dumpfile_fd = mkstemp(dumpfile), 0);
 
@@ -1823,6 +1830,7 @@ static void healthcheck_tracefile_helper(const char *dockerfile,
         inspector.reset(NULL);
 	inspector.reset(new sinsp());
 	inspector->set_hostname_and_port_resolution_mode(false);
+	inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	inspector->set_filter("evt.type=execve and evt.dir=<");
 	inspector->open(dumpfile);
 
@@ -1844,12 +1852,14 @@ static void healthcheck_tracefile_helper(const char *dockerfile,
 		update_container_state(inspector.get(), ev, cstate, expected_cat);
 	}
 
+	std::string capture_stats_str = capture_stats(inspector.get());
+
 	inspector->close();
 
-	ASSERT_TRUE(cstate.root_cmd_seen);
-	ASSERT_TRUE(cstate.second_cmd_seen);
-	ASSERT_EQ(cstate.container_w_health_probe, expect_healthcheck);
-	ASSERT_EQ(cstate.healthcheck_seen, expect_healthcheck);
+	ASSERT_TRUE(cstate.root_cmd_seen) << capture_stats_str;
+	ASSERT_TRUE(cstate.second_cmd_seen) << capture_stats_str;
+	ASSERT_EQ(cstate.container_w_health_probe, expect_healthcheck) << capture_stats_str;
+	ASSERT_EQ(cstate.healthcheck_seen, expect_healthcheck) << capture_stats_str;
 
 	unlink(dumpfile);
 }
