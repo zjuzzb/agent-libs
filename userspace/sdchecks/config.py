@@ -127,6 +127,21 @@ def _unix_checksd_path():
     raise PathNotFound(checksd_path)
 
 
+def is_affirmative(value):
+    """
+    Attempt to convert different type of values to a meaningful boolean
+    """
+    # try string cast
+    if isinstance(value, str):
+        return value.lower() in {'yes', 'true', '1', 'y', 'on'}
+
+    # use object's implementation of `__bool__`, it's faster than cast.
+    # None -> False, 0 -> False, 1 -> True, etc.
+    return not not value
+
+
+# Old style type conversion for backward compatibility.
+# This will be replaced by def is_affirmative(value)
 def _is_affirmative(s):
     # int or real bool
     if isinstance(s, int):
