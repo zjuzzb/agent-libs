@@ -3,13 +3,11 @@
 import os
 import sys
 import getopt
-import datetime
-
 import jinja2
 
 def usage():
     print 'usage: %s [-i|--image <image>] [-r|--repo] [-a|--agent-version <version>]' % sys.argv[0]
-    print '     --image: Can be one of "agent", "kmodule", "agent-slim", or "local" (agent, but using local debian package) '
+    print '     --image: Can be one of "agent", "agent-kmodule", "agent-slim", "agent-kmodule-IKS", or "local" (agent, but using local debian package) '
     print '     --repo: Can be one of "dev", "stable", "rc" '
     print '     --agent-version: set the agent version directly in the image instead '
     print '                      of extracting from dragent binary'
@@ -45,28 +43,40 @@ if image == "agent":
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 1
     p['launch_dragent'] = 1
+    p['IKS'] = 0
 elif image == "local":
     p['base_docker_image'] = "debian:unstable"
     p['sysdig_repository'] = repo
     p['include_agent_package'] = "local"
     p['build_kernel_module'] = 1
     p['launch_dragent'] = 1
+    p['IKS'] = 0
 elif image == "agent-slim":
     p['base_docker_image'] = "bitnami/minideb:latest"
     p['sysdig_repository'] = repo
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 0
     p['launch_dragent'] = 1
+    p['IKS'] = 0
 elif image == "agent-kmodule":
     p['base_docker_image'] = "debian:unstable"
     p['sysdig_repository'] = repo
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 1
     p['launch_dragent'] = 0
+    p['IKS'] = 0
 elif image == "agent-slim-v2":
     p['base_docker_image'] = "adoptopenjdk/openjdk8:alpine-slim"
     p['build_kernel_module'] = 0
     p['launch_dragent'] = 1
+    p['IKS'] = 0
+elif image == "agent-kmodule-IKS":
+    p['base_docker_image'] = "debian:stable"
+    p['sysdig_repository'] = repo
+    p['include_agent_package'] = "apt"
+    p['build_kernel_module'] = 1
+    p['IKS'] = 1
+    p['launch_dragent'] = 0
 
 if agent_version != "":
     p['agent_version'] = agent_version
