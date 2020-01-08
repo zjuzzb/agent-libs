@@ -172,8 +172,6 @@ template<> const unordered_map<string, setter_t<k8s_node>> K8sResource<k8s_node>
 template<> const string K8sResource<k8s_pod>::tag_prefix = "kubernetes.pod.";
 template<> const unordered_map<string, setter_t<k8s_pod>> K8sResource<k8s_pod>::metrics(
 	{
-		{"kubernetes.pod.container.status.restarts", SETTER(k8s_pod, set_restart_count)},
-		{"kubernetes.pod.container.status.waiting", SETTER(k8s_pod, set_containers_waiting)},
 		{"kubernetes.pod.status.ready", SETTER(k8s_pod, set_status_ready)},
 
 		{"kubernetes.pod.resourceRequests.cpuCores", SETTER(k8s_pod, set_requests_cpu_cores)},
@@ -183,6 +181,7 @@ template<> const unordered_map<string, setter_t<k8s_pod>> K8sResource<k8s_pod>::
 
 		{"kubernetes.pod.container.status.restarts", SETTER(k8s_pod, set_restart_count)},
 		{"kubernetes.pod.container.status.restart_rate", SETTER(k8s_pod, set_restart_rate)},
+		{"kubernetes.pod.container.status.waiting", SETTER(k8s_pod, set_containers_waiting)},
 	});
 
 // yes, the capitalization is inconsistent
@@ -251,7 +250,7 @@ template<> const unordered_map<string, setter_t<k8s_resourcequota>> K8sResource<
 template<>
 void export_k8s_object<draiosproto::pod_status_count>(const uid_set_t& parents, const draiosproto::container_group* src, draiosproto::pod_status_count* obj)
 {
-	for(auto& tag : src->tags())
+	for(const auto& tag : src->tags())
 	{
 		if(tag.first == "kubernetes.podstatuscounter.label.status")
 		{
@@ -260,7 +259,7 @@ void export_k8s_object<draiosproto::pod_status_count>(const uid_set_t& parents, 
 		}
 	}
 
-	for(auto& metric : src->metrics())
+	for(const auto& metric : src->metrics())
 	{
 		if(metric.name() == "kubernetes.podstatuscounter.count")
 		{
