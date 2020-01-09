@@ -96,9 +96,10 @@ public:
 	 * Initialize this async_aggregator.
 	 */
 	async_aggregator(queue_t& input_queue,
-			 queue_t& output_queue,
-			 uint64_t timeout_ms,
-			 const std::string& root_dir);
+	                 queue_t& output_queue,
+	                 uint64_t timeout_ms,
+	                 uint32_t default_aggregation_interval,
+	                 const std::string& root_dir);
 
 	~async_aggregator();
 

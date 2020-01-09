@@ -1035,10 +1035,38 @@ bool connection_manager::perform_handshake()
 	{
 		if (header->messagetype == draiosproto::message_type::ERROR_MESSAGE)
 		{
-			// Handle ERR_PROTO_MISMATCH (SMAGENT-1951)
-			LOG_ERROR("Currently unsupported");
-			disconnect();
-			return false;
+			// Parse the error message to see what it is
+			draiosproto::error_message err_msg;
+			uint32_t payload_len = m_pending_message.get_total_length() -
+			                       dragent_protocol::header_len(*header);
+			dragent_protocol::buffer_to_protobuf(m_pending_message.payload(),
+			                                     payload_len,
+			                                     &err_msg);
+			m_pending_message.reset();
+
+			draiosproto::error_type err_type = err_msg.type();
+			if (err_type != draiosproto::error_type::ERR_PROTO_MISMATCH)
+			{
+				// This is a different error
+				std::string err_string = draiosproto::error_type_Name(err_type);
+				LOG_ERROR("Protocol error: received error message from collector: " +
+				          err_string + ": " + err_msg.description());
+				disconnect();
+				return false;
+			}
+
+			LOG_WARNING("Protocol mismatch: Received error attempting handshake. "
+			            "Falling back to legacy mode.");
+
+			// Change configs
+			set_legacy_mode();
+
+			// Reset the FSM
+			// Why reset the FSM rather than having this be a valid transition?
+			// Because the FSM needs to be reinitialized for the new protocol
+			// version.
+			fsm_reinit(m_negotiated_protocol_version, cm_state_machine::state::STEADY_STATE);
+			return true;
 		}
 		else
 		{
@@ -1096,8 +1124,9 @@ bool connection_manager::perform_handshake()
 	{
 		// Not supposed to happen
 		LOG_ERROR("Protocol error: Version mismatch (legacy protocol selected)");
-		// We can treat this like the ERR_PROTO_MISMATCH case above (SMAGENT-1951)
-		return false;
+		set_legacy_mode();
+		fsm_reinit(m_negotiated_protocol_version, cm_state_machine::state::STEADY_STATE);
+		return true;
 	}
 
 
@@ -1697,4 +1726,19 @@ bool connection_manager::build_protocol_header(std::shared_ptr<serialized_buffer
 	}
 
 	return true;
+}
+
+void connection_manager::set_legacy_mode()
+{
+	if (m_negotiated_aggregation_interval == 0 &&
+	    m_negotiated_protocol_version == dragent_protocol::PROTOCOL_VERSION_NUMBER)
+	{
+		// Nothing to do here
+		return;
+	}
+	m_negotiated_aggregation_interval = 0;
+	m_negotiated_protocol_version = dragent_protocol::PROTOCOL_VERSION_NUMBER;
+
+	// Clear the input queue
+	m_queue->clear();
 }

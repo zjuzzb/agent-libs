@@ -1,7 +1,7 @@
 #include "async_aggregator.h"
 #include "analyzer_utils.h" // make_unique
-#include "scoped_config.h"
 #include "watchdog_runnable_pool.h"
+#include "configuration_manager.h"
 #include "draios.pb.h"
 #include <gtest.h>
 #include <iostream>
@@ -27,10 +27,11 @@ TEST(async_aggregator, single)
 	dragent::async_aggregator::queue_t output_queue(10);
 
 	dragent::async_aggregator aggregator(input_queue,
-										 output_queue,
-										 // stupid short timeout because aint nobody got time for waiting for cleanup!
-										 1,
-										 "");
+	                                     output_queue,
+	                                     // stupid short timeout because aint nobody got time for waiting for cleanup!
+	                                     1,
+	                                     10,
+	                                     "");
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);
 	std::atomic<bool> sent_metrics(false);
@@ -72,16 +73,15 @@ TEST(async_aggregator, single)
 // make sure pushing two PBs aggregates them correctly
 TEST(async_aggregator, multiple)
 {
-	test_helpers::scoped_config<unsigned int> config("aggregator.aggregation_interval", 2);
-
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);
 
 	dragent::async_aggregator aggregator(input_queue,
-										 output_queue,
-										 // stupid short timeout because aint nobody got time for waiting for cleanup!
-										 1,
-										 "");
+	                                     output_queue,
+	                                     // stupid short timeout because aint nobody got time for waiting for cleanup!
+	                                     1,
+	                                     2,
+	                                     "");
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 1);
 	std::atomic<bool> sent_metrics(false);
@@ -138,10 +138,11 @@ TEST(async_aggregator, followup_aggregation)
 	dragent::async_aggregator::queue_t output_queue(10);
 
 	dragent::async_aggregator aggregator(input_queue,
-										 output_queue,
-										 // stupid short timeout because aint nobody got time for waiting for cleanup!
-										 1,
-										 "");
+	                                     output_queue,
+	                                     // stupid short timeout because aint nobody got time for waiting for cleanup!
+	                                     1,
+	                                     10,
+	                                     "");
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 1);
 	std::atomic<bool> sent_metrics(false);
@@ -195,10 +196,11 @@ TEST(async_aggregator, limiter)
 	dragent::async_aggregator::queue_t output_queue(10);
 
 	dragent::async_aggregator aggregator(input_queue,
-										 output_queue,
-										 // stupid short timeout because aint nobody got time for waiting for cleanup!
-										 1,
-										 "");
+	                                     output_queue,
+	                                     // stupid short timeout because aint nobody got time for waiting for cleanup!
+	                                     1,
+	                                     10,
+	                                     "");
 
 	// check that we have default limit
 	EXPECT_EQ(dragent::aggregator_limits::global_limits->m_containers, UINT32_MAX);
@@ -331,10 +333,11 @@ TEST(async_aggregator, substitutions)
 	dragent::async_aggregator::queue_t output_queue(10);
 
 	dragent::async_aggregator aggregator(input_queue,
-										 output_queue,
-										 // stupid short timeout because aint nobody got time for waiting for cleanup!
-										 1,
-										 "");
+	                                     output_queue,
+	                                     // stupid short timeout because aint nobody got time for waiting for cleanup!
+	                                     1,
+	                                     10,
+	                                     "");
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);
 	std::atomic<bool> sent_metrics(false);
@@ -465,15 +468,15 @@ void wait_aggr(dragent::async_aggregator& aggr, uint32_t count)
 
 TEST(async_aggregator, flush_interval_zero)
 {
-	test_helpers::scoped_config<uint32_t> config("aggregator.aggregation_interval", 5);
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);
 
 	dragent::async_aggregator aggregator(input_queue,
-										 output_queue,
-										 // stupid short timeout because aint nobody got time for waiting for cleanup!
-										 1,
-										 "");
+	                                     output_queue,
+	                                     // stupid short timeout because aint nobody got time for waiting for cleanup!
+	                                     1,
+	                                     5,
+	                                     "");
 
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);

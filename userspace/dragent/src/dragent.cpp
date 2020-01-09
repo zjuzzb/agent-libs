@@ -1076,31 +1076,12 @@ int dragent_app::sdagent_main()
 			m_configuration.m_excess_k8s_log,
 			m_configuration.m_k8s_cache_size);
 
-		if (c_10s_flush_enabled->get_value())
-		{
-			analyzer = build_analyzer(inspector, m_aggregator_queue, the_metric_limits, the_label_limits, the_k8s_limits);
-		}
-		else
-		{
-			analyzer = build_analyzer(inspector, m_serializer_queue, the_metric_limits, the_label_limits, the_k8s_limits);
-		}
+		analyzer = build_analyzer(inspector, m_aggregator_queue, the_metric_limits, the_label_limits, the_k8s_limits);
 		LOG_INFO("Created analyzer");
 
 		inspector->register_external_event_processor(*analyzer);
 		init_inspector(inspector);
 		LOG_INFO("Configured inspector");
-
-		// Create and set up the aggregator
-		if (c_10s_flush_enabled->get_value())
-		{
-			aggregator = new async_aggregator(m_aggregator_queue,
-			                                  m_serializer_queue,
-			                                  300,
-			                                  m_configuration.c_root_dir.get_value());
-			aggregator->set_aggregation_interval_source(cm);
-
-			m_pool.start(*aggregator, c_serializer_timeout_s.get_value());
-		}
 
 		// There's an interesting dependency graph situation here. The
 		// sinsp_worker is a member variable of the dragent_app class, and as
@@ -1109,6 +1090,17 @@ int dragent_app::sdagent_main()
 		// pageantry. The init function exists to fully initialize the worker
 		// after the creation of the other objects.
 		m_sinsp_worker.init(inspector, analyzer);
+
+		// Create and set up the aggregator
+		aggregator = new async_aggregator(m_aggregator_queue,
+		                                  m_serializer_queue,
+		                                  300,
+		                                  c_10s_flush_enabled->get_value() ? 10 : 0,
+		                                  m_configuration.c_root_dir.get_value());
+		aggregator->set_aggregation_interval_source(cm);
+
+		m_pool.start(*aggregator, c_serializer_timeout_s.get_value());
+		LOG_INFO("Created and started aggregator");
 
 		// Create and set up the serializer
 		auto s = new protobuf_metric_serializer(inspector,
@@ -1119,8 +1111,8 @@ int dragent_app::sdagent_main()
 		                                        compressor,
 		                                        cm);
 		m_pool.start(*s, c_serializer_timeout_s.get_value());
-
 		serializer = s;
+		LOG_INFO("Created and started serializer");
 	}
 	catch (const sinsp_exception& e)
 	{

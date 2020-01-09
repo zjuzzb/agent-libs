@@ -485,6 +485,19 @@ private:
 		       (comp_gen == generation && comp_seq <= sequence);
 	}
 
+	/**
+	 * Set the system into legacy mode.
+	 *
+	 * This will:
+	 * - Set the negotiated aggregation interval to 0
+	 * - Set the working version to 4
+	 * - Clear the input queue
+	 *
+	 * This function will only do the last step (clearing the input queue) if
+	 * the system wasn't already in legacy mode.
+	 */
+	void set_legacy_mode();
+
 	static const std::string& get_openssldir();
 	// Walk over the CA path search list and return the first one that exists
 	// Note: we have to return a new string by value as we potentially alter

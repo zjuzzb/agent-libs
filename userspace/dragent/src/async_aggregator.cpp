@@ -18,14 +18,6 @@
 
 namespace
 {
-type_config<uint32_t>::ptr c_aggregation_interval =
-    type_config_builder<uint32_t>(10,
-                                  "Number of seconds of data to aggregate.",
-                                  "aggregator",
-                                  "aggregation_interval")
-        .hidden()
-        .build();
-
 type_config<std::string>::ptr c_pre_agg_dump_dir =
     type_config_builder<std::string>("",
                                      "Dump directory for pre-aggregated protobuf metrics",
@@ -55,6 +47,7 @@ std::shared_ptr<aggregator_limits> aggregator_limits::global_limits =
 async_aggregator::async_aggregator(flush_queue& input_queue,
                                    flush_queue& output_queue,
                                    uint64_t queue_timeout_ms,
+                                   uint32_t default_aggregation_interval,
                                    const std::string& root_dir)
     : dragent::watchdog_runnable("aggregator"),
       m_stop_thread(false),
@@ -64,7 +57,7 @@ async_aggregator::async_aggregator(flush_queue& input_queue,
       m_builder(),
       m_aggregation_interval_source(nullptr),
       m_count_since_flush(0),
-      m_aggregation_interval(c_aggregation_interval->get_value()),
+      m_aggregation_interval(default_aggregation_interval),
       m_file_emitter()
 {
 	m_aggregator = new metrics_message_aggregator_impl(m_builder);
