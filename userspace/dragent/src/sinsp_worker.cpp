@@ -245,6 +245,13 @@ void sinsp_worker::init_security()
 			docker_task->set_enabled(true);
 			docker_task->set_schedule(security_config::get_default_compliance_schedule());
 
+			draiosproto::comp_task* const linux_task = cal.add_tasks();
+			linux_task->set_id(3);
+			linux_task->set_name("Check Linux Environment");
+			linux_task->set_mod_name("linux-bench");
+			linux_task->set_enabled(true);
+			linux_task->set_schedule(security_config::get_default_compliance_schedule());
+
 			// When using a default calendar, never send results or events
 			const bool send_results = false;
 			const bool send_events = false;
