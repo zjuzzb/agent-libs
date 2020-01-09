@@ -42,6 +42,7 @@ function configure_rpm_repo {
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent-kmodule-thin* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/rpm/$BASEARCH/*Unspecified* | xargs -d '\n' rm -f || true
@@ -87,6 +88,7 @@ function configure_debian_repo {
 	ls -1tdr stable-$DEB_BASEARCH/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr stable-$DEB_BASEARCH/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr stable-$DEB_BASEARCH/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*agent-kmodule-thin* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr stable-$DEB_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr stable-$DEB_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr stable-$DEB_BASEARCH/*Unspecified* | xargs -d '\n' rm -f || true
@@ -134,6 +136,7 @@ function configure_tgz_repo {
 		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
 		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
 		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent-kmodule-thin* | head -n -5 | xargs -d '\n' rm -f || true
 		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*Unspecified* | xargs -d '\n' rm -f || true
@@ -188,7 +191,7 @@ function trigger_docker_builds {
 	mkdir -p "${DOCKERFILES_ROOT_DIR}"
 	tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "${BINARIES_DIR}"/release/draios-*-dockerfiles.tar.gz
 
-	for IMAGE_NAME in agent-kmodule agent-slim agent agent-slim-v2; do
+	for IMAGE_NAME in agent-kmodule agent-kmodule-thin agent-slim agent agent-slim-v2; do
 
 		pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${IMAGE_NAME}/${REPOSITORY_BASENAME}"
 

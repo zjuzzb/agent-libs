@@ -5,7 +5,7 @@ add_custom_command(OUTPUT ${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.16/target/lib/py
 	COMMAND ${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.16/target/bin/pip install jinja2)
 
 add_subdirectory(agent-kmodule)
-add_subdirectory(agent-kmodule-IKS)
+add_subdirectory(agent-kmodule-thin)
 add_subdirectory(agent-slim)
 add_subdirectory(agent)
 add_subdirectory(local)

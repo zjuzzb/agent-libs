@@ -75,6 +75,7 @@ function configure_rpm_repo {
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule-thin* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*Unspecified* | xargs -d '\n' rm -f || true
@@ -121,6 +122,7 @@ function configure_debian_repo {
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule-thin* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*Unspecified* | xargs -d '\n' rm -f || true
@@ -167,6 +169,7 @@ function configure_tgz_repo {
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule-thin* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*Unspecified* | xargs -d '\n' rm -f || true
@@ -219,7 +222,7 @@ function push_docker_images {
 	mkdir -p "${DOCKERFILES_ROOT_DIR}"
 	tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "$REPO_DIR/$REPO_BASENAME/tgz/$BASEARCH/draios-${AGENT_VERSION}-${BASEARCH}-dockerfiles.tar.gz"
 
-	for IMAGE_NAME in agent-kmodule agent-slim agent agent-slim-v2; do
+	for IMAGE_NAME in agent-kmodule agent-kmodule-thin agent-slim agent agent-slim-v2; do
 
 		pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${IMAGE_NAME}/${REPO_BASENAME}"
 
