@@ -151,6 +151,15 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 		},
 	}
 
+	mgr.availModules["linux-bench"] = &Module{
+		Name: "linux-bench",
+		Prog: "MODULE_DIR/linux-bench",
+		Impl: &LinuxBenchImpl{
+			customerId: customerId,
+			machineId: machineId,
+		},
+	}
+
 	mgr.availModules["test-module"] = &Module{
 		Name: "test-module",
 		Prog: "MODULE_DIR/run.sh",
