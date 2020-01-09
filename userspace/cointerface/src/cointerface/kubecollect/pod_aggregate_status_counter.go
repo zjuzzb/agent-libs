@@ -9,8 +9,11 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/watch"
 	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	tw "k8s.io/client-go/tools/watch"
 	"sort"
 	"strings"
 	"sync"
@@ -103,55 +106,34 @@ func startPodStatusWatcher(ctx context.Context, opts *sdc_internal.OrchestratorE
 	// sort the array to do a binary search later
 	sort.Strings(podStatusAllowed)
 
-	api := kubeClient.CoreV1()
+	lw := cache.NewListWatchFromClient(kubeClient.CoreV1().RESTClient(), "Pods", v1meta.NamespaceAll, fields.Everything())
 
-	// initial list
-	listOptions := v1meta.ListOptions{LabelSelector: "", FieldSelector: ""}
 	wg.Add(1)
 
 	go func() {
-		// watch future changes to pods
-		watcher, err := api.Pods("").Watch(listOptions)
+
+		defer func() {
+			log.Debug("startPodStatusWatcher ended")
+			wg.Done()
+		}()
+
+		// ListWatchUntil is a wrapper around RetryWatcher
+		_, err := tw.ListWatchUntil(ctx, lw,
+			func(event watch.Event) (bool, error) {
+				if event.Type == watch.Error {
+					log.Debug("startPodStatusWatcher got event type Error")
+					// Keep on anyway
+				} else if handleEvent(event) {
+					sendPodStatusMap(evtc)
+				}
+				// Don't stop the watcher yet
+				return false, nil
+			})
+
 		if err != nil {
-			log.Error("startPodStatusWatcher Cannot open the watcher. Giving up")
-		} else {
-
-			defer func() {
-				watcher.Stop()
-			}()
-
-			for {
-				doExit := false
-				select {
-				case event, ok := <-watcher.ResultChan():
-					if !ok {
-						log.Error("startPodStatusWatcher got error while getting events")
-						// Re-open the watcher
-						reset()
-						initStructures()
-						watcher.Stop()
-						watcher, err = api.Pods("").Watch(listOptions)
-						if err != nil {
-							log.Error("startPodStatusWatcher Cannot open the watcher. Giving up")
-							doExit = true
-							break
-						}
-					} else if handleEvent(event) {
-						sendPodStatusMap(evtc)
-					}
-				case <-ctx.Done():
-					log.Debugf("startPodStatusWatcher select loop exit")
-					doExit = true
-					break
-				}
-				if doExit {
-					break
-				}
-			}
+			log.Debugf("startPodStatusWatcher Could not start a RetryWatcher: %s", err.Error())
 		}
-
-		wg.Done()
-	}()
+	} ()
 }
 
 func handleEvent(event watch.Event) bool {
