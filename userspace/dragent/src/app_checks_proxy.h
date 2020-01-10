@@ -17,7 +17,6 @@ struct app_check_request
 	const prometheus_conf* conf;
 };
 
-class test_helper;
 
 class app_checks_proxy : public dragent::watchdog_runnable, public app_checks_proxy_interface {
 public:
@@ -66,6 +65,4 @@ private:
 	// MAXSIZE in sdchecks.py is 3 MB so in theory we never exceed this
 	static constexpr const size_t MAX_COMPRESSED_SIZE = 4UL << 20u;
 	static constexpr const size_t MAX_UNCOMPRESSED_SIZE = 100UL << 20u;
-
-	friend class ::test_helper;
 };

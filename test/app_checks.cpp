@@ -11,29 +11,6 @@
 #include <fstream>
 #include "third-party/jsoncpp/json/json.h"
 
-class test_helper
-{
-public:
-	static void send_get_metrics_cmd(
-		app_checks_proxy& reader,
-		const std::vector<app_process>& processes,
-		const std::vector<prom_process>& prom_procs,
-		const prometheus_conf &conf)
-	{
-		reader.send_get_metrics_cmd_sync(processes, prom_procs, conf);
-	}
-	static app_checks_proxy::raw_metric_map_t read_metrics(
-		app_checks_proxy& reader,
-		const metric_limits::sptr_t& ml = nullptr,
-		uint64_t timeout_sec=0
-	)
-	{
-		return reader.read_metrics(ml, timeout_sec);
-	}
-};
-
-
-
 class app_checks_proxy_f : public ::testing::Test {
 protected:
 	virtual void SetUp() {
@@ -47,12 +24,10 @@ protected:
 		}
 
 		m_inqueue = make_unique<posix_queue>("/sdc_app_checks_out", posix_queue::SEND, 1);
-		app_checks = make_unique<app_checks_proxy>(nullptr, false);
 	}
 
 	virtual void TearDown() {
 		m_inqueue.reset();
-		app_checks.reset();
 	}
 
 	void use_json(const char *json)
@@ -67,14 +42,15 @@ protected:
 	}
 
 	std::unique_ptr<posix_queue> m_inqueue;
-	std::unique_ptr<app_checks_proxy> app_checks;
 };
 
 TEST_F(app_checks_proxy_f, read_ok)
 {
+	auto app_checks = make_unique<app_checks_proxy>(nullptr, false);
 	use_json("app_checks_ok.json");
-	auto metrics = test_helper::read_metrics(*app_checks);
-	EXPECT_EQ(2U, metrics.size());
+	app_checks->refresh_metrics(time(nullptr), 1);
+	const auto& metrics = app_checks->get_all_metrics().lock();
+	EXPECT_EQ(2U, metrics->size());
 }
 
 std::string print(const app_checks_proxy_interface::raw_metric_map_t& metrics)
@@ -121,56 +97,70 @@ bool has(const T& svcs, const std::string& name)
 	return false;
 }
 
-TEST_F(app_checks_proxy_f, filters)
+TEST_F(app_checks_proxy_f, no_filters)
 {
+	auto app_checks = make_unique<app_checks_proxy>(nullptr, false);
 	use_json("app_checks_ok.json");
-	auto metrics = test_helper::read_metrics(*app_checks, nullptr);
-	ASSERT_EQ(2U, metrics.size());
+	app_checks->refresh_metrics(time(nullptr), 1);
+	auto metrics(std::move(app_checks->get_all_metrics().lock()));
+	ASSERT_EQ(2U, metrics->size());
 	//print(metrics);
-	EXPECT_EQ(0u, metrics[2115].begin()->second->metrics().size());
-	EXPECT_EQ(1u, metrics[2115].begin()->second->services().size());
-	EXPECT_EQ(31u, metrics[805].begin()->second->metrics().size());
-	EXPECT_EQ(1u, metrics[805].begin()->second->services().size());
-	app_check_data::metrics_t metric_list = metrics[805].begin()->second->metrics();
+	EXPECT_EQ(0u, metrics->at(2115).begin()->second->metrics().size());
+	EXPECT_EQ(1u, metrics->at(2115).begin()->second->services().size());
+	EXPECT_EQ(31u, metrics->at(805).begin()->second->metrics().size());
+	EXPECT_EQ(1u, metrics->at(805).begin()->second->services().size());
+	app_check_data::metrics_t metric_list = metrics->at(805).begin()->second->metrics();
 	EXPECT_TRUE(has(metric_list, "redis.keys.evicted"));
 	EXPECT_TRUE(has(metric_list, "redis.net.slaves"));
 	EXPECT_TRUE(has(metric_list, "redis.cpu.sys"));
 	EXPECT_TRUE(has(metric_list, "redis.keys.expired"));
 	EXPECT_TRUE(has(metric_list, "redis.rdb.last_bgsave_time"));
-	app_check_data::services_t service_list = metrics[805].begin()->second->services();
+	app_check_data::services_t service_list = metrics->at(805).begin()->second->services();
 	EXPECT_TRUE(has(service_list, "redis.can_connect"));
+}
 
+TEST_F(app_checks_proxy_f, filters1)
+{
 	filter_vec_t f({{"*", false}, {"*.can_connect", true}});
 	metric_limits::sptr_t ml(new metric_limits(std::move(f)));
+	auto app_checks = make_unique<app_checks_proxy>(ml, false);
 	use_json("app_checks_ok.json");
-	metrics = test_helper::read_metrics(*app_checks, ml);
-	ASSERT_EQ(2U, metrics.size()) << print(metrics);
-	metric_list = metrics[805].begin()->second->metrics();
+	app_checks->refresh_metrics(time(nullptr), 1);
+	auto metrics(std::move(app_checks->get_all_metrics().lock()));
+
+	ASSERT_EQ(2U, metrics->size()) << print(*metrics);
+	app_check_data::metrics_t metric_list = metrics->at(805).begin()->second->metrics();
 	EXPECT_EQ(0U, metric_list.size());
-	service_list = metrics[805].begin()->second->services();
+	app_check_data::services_t service_list = metrics->at(805).begin()->second->services();
 	EXPECT_EQ(0U, service_list.size());
-	service_list = metrics[2115].begin()->second->services();
+	service_list = metrics->at(2115).begin()->second->services();
 	EXPECT_EQ(0U, service_list.size());
+}
 
-	f = {{"redis.mem.*", true}, {"*.can_connect", true}, {"*", false}};
-	ml.reset(new metric_limits(std::move(f)));
+TEST_F(app_checks_proxy_f, filters2)
+{
+	filter_vec_t f = {{"redis.mem.*", true}, {"*.can_connect", true}, {"*", false}};
+	metric_limits::sptr_t ml(new metric_limits(std::move(f)));
+	auto app_checks = make_unique<app_checks_proxy>(ml, false);
 	use_json("app_checks_ok.json");
-	metrics = test_helper::read_metrics(*app_checks, ml);
-	ASSERT_EQ(2U, metrics.size()) << print(metrics);
-	metric_list = metrics[805].begin()->second->metrics();
-	EXPECT_EQ(5U, metric_list.size()) << print(metrics);
-	service_list = metrics[805].begin()->second->services();
+	app_checks->refresh_metrics(time(nullptr), 1);
+	auto metrics(std::move(app_checks->get_all_metrics().lock()));
+
+	ASSERT_EQ(2U, metrics->size()) << print(*metrics);
+	app_check_data::metrics_t metric_list = metrics->at(805).begin()->second->metrics();
+	EXPECT_EQ(5U, metric_list.size()) << print(*metrics);
+	app_check_data::services_t service_list = metrics->at(805).begin()->second->services();
 	EXPECT_EQ(1U, service_list.size());
-	service_list = metrics[2115].begin()->second->services();
+	service_list = metrics->at(2115).begin()->second->services();
 	EXPECT_EQ(1U, service_list.size());
 
-	metric_list = metrics[2115].begin()->second->metrics();
+	metric_list = metrics->at(2115).begin()->second->metrics();
 	EXPECT_EQ(0u, metric_list.size());
-	service_list = metrics[2115].begin()->second->services();
+	service_list = metrics->at(2115).begin()->second->services();
 	EXPECT_EQ(1u, service_list.size());
 	EXPECT_TRUE(has(service_list, "nginx.can_connect"));
 
-	metric_list = metrics[805].begin()->second->metrics();
+	metric_list = metrics->at(805).begin()->second->metrics();
 	EXPECT_EQ(5u, metric_list.size());
 	EXPECT_TRUE(has(metric_list, "redis.mem.used"));
 	EXPECT_TRUE(has(metric_list, "redis.mem.fragmentation_ratio"));
@@ -182,85 +172,99 @@ TEST_F(app_checks_proxy_f, filters)
 	EXPECT_FALSE(has(metric_list, "redis.cpu.sys"));
 	EXPECT_FALSE(has(metric_list, "redis.keys.expired"));
 	EXPECT_FALSE(has(metric_list, "redis.rdb.last_bgsave_time"));
-	service_list = metrics[805].begin()->second->services();
+	service_list = metrics->at(805).begin()->second->services();
 	EXPECT_EQ(1u, service_list.size());
 	EXPECT_TRUE(has(service_list, "redis.can_connect"));
+}
 
-	f = {{"*", false}, {"redis.mem.*", true}, {"*.can_connect", true}};
-	ml.reset(new metric_limits(std::move(f)));
+TEST_F(app_checks_proxy_f, filters3)
+{
+	filter_vec_t f = {{"*", false}, {"redis.mem.*", true}, {"*.can_connect", true}};
+	metric_limits::sptr_t ml(new metric_limits(std::move(f)));
+	auto app_checks = make_unique<app_checks_proxy>(ml, false);
 	use_json("app_checks_ok.json");
-	metrics = test_helper::read_metrics(*app_checks, ml);
-	ASSERT_EQ(2U, metrics.size()) << print(metrics);
-	metric_list = metrics[805].begin()->second->metrics();
-	EXPECT_EQ(0U, metric_list.size());
-	service_list = metrics[805].begin()->second->services();
-	EXPECT_EQ(0U, service_list.size());
-	service_list = metrics[2115].begin()->second->services();
-	EXPECT_EQ(0U, service_list.size());
+	app_checks->refresh_metrics(time(nullptr), 1);
+	auto metrics(std::move(app_checks->get_all_metrics().lock()));
 
-	f = {{"*", false}};
-	ml.reset(new metric_limits(std::move(f)));
-	use_json("app_checks_ok.json");
-	metrics = test_helper::read_metrics(*app_checks, ml);
-	ASSERT_EQ(2U, metrics.size()) << print(metrics);
-	metric_list = metrics[805].begin()->second->metrics();
+	ASSERT_EQ(2U, metrics->size()) << print(*metrics);
+	app_check_data::metrics_t metric_list = metrics->at(805).begin()->second->metrics();
 	EXPECT_EQ(0U, metric_list.size());
-	service_list = metrics[805].begin()->second->services();
+	app_check_data::services_t service_list = metrics->at(805).begin()->second->services();
 	EXPECT_EQ(0U, service_list.size());
-	service_list = metrics[2115].begin()->second->services();
+	service_list = metrics->at(2115).begin()->second->services();
+	EXPECT_EQ(0U, service_list.size());
+}
+
+TEST_F(app_checks_proxy_f, filters4)
+{
+	filter_vec_t f = {{"*", false}};
+	metric_limits::sptr_t ml(new metric_limits(std::move(f)));
+	auto app_checks = make_unique<app_checks_proxy>(ml, false);
+	use_json("app_checks_ok.json");
+	app_checks->refresh_metrics(time(nullptr), 1);
+	auto metrics(std::move(app_checks->get_all_metrics().lock()));
+
+	ASSERT_EQ(2U, metrics->size()) << print(*metrics);
+	app_check_data::metrics_t metric_list = metrics->at(805).begin()->second->metrics();
+	EXPECT_EQ(0U, metric_list.size());
+	app_check_data::services_t service_list = metrics->at(805).begin()->second->services();
+	EXPECT_EQ(0U, service_list.size());
+	service_list = metrics->at(2115).begin()->second->services();
 	EXPECT_EQ(0U, service_list.size());
 }
 
 TEST_F(app_checks_proxy_f, limits)
 {
+	auto app_checks = make_unique<app_checks_proxy>(nullptr, false);
 	use_json("app_checks_ok.json");
-	auto metrics = test_helper::read_metrics(*app_checks, nullptr);
-	ASSERT_EQ(2U, metrics.size());
+	app_checks->refresh_metrics(time(nullptr), 1);
+	auto metrics(std::move(app_checks->get_all_metrics().lock()));
+	ASSERT_EQ(2U, metrics->size());
 
 	draiosproto::metrics proto;
 	draiosproto::program* prog = proto.add_programs();
 	draiosproto::process* proc = prog->mutable_procinfo();
 	auto app = proc->mutable_protos()->mutable_app();
-	auto app_checks_data = *(metrics[805].begin()->second);
+	auto app_checks_data = metrics->at(805).begin()->second;
 
 	unsigned int app_checks_limit = 0;
-	ASSERT_EQ(31U, app_checks_data.metrics().size());
+	ASSERT_EQ(31U, app_checks_data->metrics().size());
 	ASSERT_EQ(0, app->metrics().size());
 	do
 	{
-		app_checks_data.to_protobuf(app, app_checks_limit, 0);
+		app_checks_data->to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit);
 	ASSERT_EQ(0, app_checks_limit);
 	EXPECT_EQ(0, app->metrics().size());
 
 	app_checks_limit = 1;
-	ASSERT_EQ(31U, app_checks_data.metrics().size());
+	ASSERT_EQ(31U, app_checks_data->metrics().size());
 	ASSERT_EQ(0, app->metrics().size());
 	do
 	{
-		app_checks_data.to_protobuf(app, app_checks_limit, 0);
+		app_checks_data->to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit);
 	ASSERT_EQ(0, app_checks_limit);
 	EXPECT_EQ(1, app->metrics().size());
 
 	app->clear_metrics();
 	ASSERT_EQ(0, app->metrics().size());
-	ASSERT_EQ(31U, app_checks_data.metrics().size());
+	ASSERT_EQ(31U, app_checks_data->metrics().size());
 	app_checks_limit = 15;
 	do
 	{
-		app_checks_data.to_protobuf(app, app_checks_limit, 0);
+		app_checks_data->to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit);
 	ASSERT_EQ(0, app_checks_limit);
 	EXPECT_EQ(15, app->metrics().size());
 
 	app->clear_metrics();
 	ASSERT_EQ(0, app->metrics().size());
-	ASSERT_EQ(31U, app_checks_data.metrics().size());
+	ASSERT_EQ(31U, app_checks_data->metrics().size());
 	app_checks_limit = 30;
 	do
 	{
-		app_checks_data.to_protobuf(app, app_checks_limit, 0);
+		app_checks_data->to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit);
 	ASSERT_EQ(0, app_checks_limit);
 	EXPECT_EQ(30, app->metrics().size());
@@ -268,24 +272,24 @@ TEST_F(app_checks_proxy_f, limits)
 	// services are also populated into metrics
 	app->clear_metrics();
 	ASSERT_EQ(0, app->metrics().size());
-	ASSERT_EQ(31U, app_checks_data.metrics().size());
-	ASSERT_EQ(1U, app_checks_data.services().size());
+	ASSERT_EQ(31U, app_checks_data->metrics().size());
+	ASSERT_EQ(1U, app_checks_data->services().size());
 	app_checks_limit = 32;
 	do
 	{
-		app_checks_data.to_protobuf(app, app_checks_limit, 0);
+		app_checks_data->to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit);
 	ASSERT_EQ(0, app_checks_limit);
 	EXPECT_EQ(32, app->metrics().size());
 
 	app->clear_metrics();
 	ASSERT_EQ(0, app->metrics().size());
-	ASSERT_EQ(31U, app_checks_data.metrics().size());
-	ASSERT_EQ(1U, app_checks_data.services().size());
+	ASSERT_EQ(31U, app_checks_data->metrics().size());
+	ASSERT_EQ(1U, app_checks_data->services().size());
 	app_checks_limit = 33;
 	do
 	{
-		app_checks_data.to_protobuf(app, app_checks_limit, 0);
+		app_checks_data->to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit > 1);
 	ASSERT_EQ(1, app_checks_limit);
 	EXPECT_EQ(32, app->metrics().size());
