@@ -62,6 +62,7 @@ security_mgr::security_mgr(const string& install_root,
 	  m_analyzer(NULL),
 	  m_capture_job_handler(NULL),
 	  m_configuration(NULL),
+	  m_install_root(install_root),
 	  m_cointerface_sock_path("unix:" + install_root + "/run/cointerface.sock")
 {
 	m_security_evt_metrics = {make_shared<security_evt_metrics>(m_process_metrics), make_shared<security_evt_metrics>(m_container_metrics),
@@ -117,7 +118,7 @@ void security_mgr::init(sinsp *inspector,
 	// Only check the above every second
 	m_check_periodic_tasks_interval = make_unique<run_on_interval>(1000000000);
 
-	m_coclient = make_shared<coclient>(configuration->c_root_dir.get_value());
+	m_coclient = make_shared<coclient>(m_install_root);
 
 	m_actions.init(this, m_coclient);
 

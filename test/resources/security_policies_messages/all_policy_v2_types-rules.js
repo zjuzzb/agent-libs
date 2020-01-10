@@ -334,5 +334,20 @@
 	     "matchItems": true
 	 }
      }
+    },
+    {"id": 1023,
+    "name": "match process gzip",
+    "origin": "secure UI",
+    "versionId": "0.1.1",
+    "filename": "fastengine_rules.yaml",
+    "tags": [],
+    "description": "",
+    "details": {
+    "ruleType": "PROCESS",
+    "processes": {
+        "items": ["gzip"],
+        "matchItems": true
     }
+    }
+   }
 ]

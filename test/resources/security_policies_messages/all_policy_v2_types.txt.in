@@ -290,6 +290,21 @@ policy_list {
     op: EQ
   }
 }
+policy_list {
+  id: 36
+  name: "Stop on process gzip in container"
+  rule_names: "match process gzip"
+  actions {
+    type: ACTION_STOP
+    stop: {}
+  }
+  enabled: 1
+  scope_predicates {
+    key: "container.id"
+    values: ""
+    op: NOT_EQ
+  }
+}
 falco_group {
   default_files {
     tag: "0.1.1test"

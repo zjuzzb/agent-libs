@@ -50,9 +50,11 @@ enum cointerface_message_type {
     ORCHESTRATOR_EVENT_MESSAGE_STREAM_RESULT = 10;
     SET_K8S_OPTION_COMMAND = 11;
     SET_K8S_OPTION_RESULT = 12;
+    CRI_COMMAND = 13;
+    CRI_COMMAND_RESULT = 14;
 }
 
-enum docker_cmd_type {
+enum container_cmd_type {
     STOP = 1;
     PAUSE = 2;
     UNPAUSE = 3;
@@ -69,12 +71,24 @@ message pong {
 }
 
 message docker_command {
-    required docker_cmd_type cmd = 1;
+    required container_cmd_type cmd = 1;
     // Making optional in case other later commands want to work with images
     optional string container_id = 2;
 }
 
 message docker_command_result {
+    required bool successful = 1;
+    optional string errstr = 2;
+}
+
+message cri_command {
+    required string cri_socket_path = 1;
+    required container_cmd_type cmd = 2;
+    // Making optional in case other later commands want to work with images
+    optional string container_id = 3;
+}
+
+message cri_command_result {
     required bool successful = 1;
     optional string errstr = 2;
 }
@@ -160,6 +174,7 @@ message k8s_option_result {
 
 service CoInterface {
     rpc PerformDockerCommand(docker_command) returns (docker_command_result) {}
+    rpc PerformCriCommand(cri_command) returns (cri_command_result) {}
     rpc PerformPing(ping) returns (pong) {}
     rpc PerformSwarmState(swarm_state_command) returns (swarm_state_result) {}
     rpc PerformOrchestratorEventMessageStream(orchestrator_attach_user_events_stream_command) returns (stream k8s_user_event) {}

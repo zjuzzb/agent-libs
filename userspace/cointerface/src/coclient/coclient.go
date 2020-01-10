@@ -51,7 +51,7 @@ func unixDialer(addr string, timeout time.Duration) (net.Conn, error) {
 func performDockerCommand(client sdc_internal.CoInterfaceClient, dockerCommand string, container string) int {
 	cmd := &sdc_internal.DockerCommand{}
 
-	dcmd := sdc_internal.DockerCmdType(sdc_internal.DockerCmdType_value[dockerCommand])
+	dcmd := sdc_internal.ContainerCmdType(sdc_internal.ContainerCmdType_value[dockerCommand])
 	cmd.Cmd = &dcmd
 	cmd.ContainerId = proto.String(container)
 

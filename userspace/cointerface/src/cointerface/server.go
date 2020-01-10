@@ -30,18 +30,22 @@ import (
 var dockerClientMapMutex = &sync.Mutex{}
 var dockerClientMap = make(map[string]*client.Client)
 
+func getSysdigRoot() string {
+    sysdigRoot := os.Getenv("SYSDIG_HOST_ROOT")
+    if sysdigRoot != "" {
+        sysdigRoot = sysdigRoot + "/"
+    }
+    return sysdigRoot
+}
+
 func GetDockerClient(ver string) (*client.Client, error) {
 	dockerClientMapMutex.Lock()
 	if cli, exists := dockerClientMap[ver]; exists {
 		dockerClientMapMutex.Unlock()
 		return cli, nil
 	}
-	// If SYSDIG_HOST_ROOT is set, use that as a part of the socket path.
-	sysdigRoot := os.Getenv("SYSDIG_HOST_ROOT")
-	if sysdigRoot != "" {
-		sysdigRoot = sysdigRoot + "/"
-	}
-	dockerSock := fmt.Sprintf("unix:///%svar/run/docker.sock", sysdigRoot)
+
+	dockerSock := fmt.Sprintf("unix:///%svar/run/docker.sock", getSysdigRoot())
 
 	cli, err := client.NewClient(dockerSock, ver, nil, nil)
 	if err != nil {
@@ -57,6 +61,44 @@ func GetDockerClient(ver string) (*client.Client, error) {
 type coInterfaceServer struct {
 }
 
+func (c *coInterfaceServer) PerformCriCommand(ctx context.Context, cmd *sdc_internal.CriCommand) (*sdc_internal.CriCommandResult, error) {
+    log.Debugf("Received cri-o command message: %s", cmd.String())
+
+    cri, err := NewCriClient(fmt.Sprintf("unix:///%s%s", getSysdigRoot(), cmd.GetCriSocketPath()))
+    if err != nil {
+        log.Errorf("Could not connect to cri-o: %s\n", err)
+        return nil, err
+    }
+	defer cri.Close()
+
+    switch cmd.GetCmd() {
+    case sdc_internal.ContainerCmdType_STOP:
+        err = cri.StopContainer(cmd.GetContainerId(), 30)
+
+    case sdc_internal.ContainerCmdType_PAUSE:
+        err = cri.PauseContainer(cmd.GetContainerId())
+
+    case sdc_internal.ContainerCmdType_UNPAUSE:
+        err = cri.UnpauseContainer(cmd.GetContainerId())
+
+    default:
+        ferr := fmt.Errorf("Unknown cri-o command %d", int(cmd.GetCmd()))
+        log.Errorf(ferr.Error())
+        return nil, ferr
+    }
+
+    res := &sdc_internal.CriCommandResult{}
+	res.Successful = proto.Bool(err == nil)
+	if err != nil {
+	    log.Errorf("Error while handling cri-o command %d: %s", cmd.GetCmd(), err)
+		res.Errstr = proto.String(err.Error())
+	}
+
+	log.Debugf("Sending response: %s", res.String())
+
+    return res, nil
+}
+
 func (c *coInterfaceServer) PerformDockerCommand(ctx context.Context, cmd *sdc_internal.DockerCommand) (*sdc_internal.DockerCommandResult, error) {
 	log.Debugf("Received docker command message: %s", cmd.String())
 
@@ -67,13 +109,13 @@ func (c *coInterfaceServer) PerformDockerCommand(ctx context.Context, cmd *sdc_i
 
 	thirty_secs := time.Second * 30
 	switch cmd.GetCmd() {
-	case sdc_internal.DockerCmdType_STOP:
+	case sdc_internal.ContainerCmdType_STOP:
 		err = cli.ContainerStop(ctx, cmd.GetContainerId(), &thirty_secs)
 
-	case sdc_internal.DockerCmdType_PAUSE:
+	case sdc_internal.ContainerCmdType_PAUSE:
 		err = cli.ContainerPause(ctx, cmd.GetContainerId())
 
-	case sdc_internal.DockerCmdType_UNPAUSE:
+	case sdc_internal.ContainerCmdType_UNPAUSE:
 		err = cli.ContainerUnpause(ctx, cmd.GetContainerId())
 
 	default:

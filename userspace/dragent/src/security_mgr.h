@@ -397,6 +397,7 @@ private:
 	sinsp_analyzer *m_analyzer;
 	capture_job_handler *m_capture_job_handler;
 	dragent_configuration *m_configuration;
+	std::string m_install_root;
 	std::string m_cointerface_sock_path;
 
 	Poco::RWLock m_policies_lock;

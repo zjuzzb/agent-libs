@@ -96,7 +96,7 @@ protected:
 		}
 	}
 
-	void test_docker_cmd(sdc_internal::docker_cmd_type cmd)
+	void test_docker_cmd(sdc_internal::container_cmd_type cmd)
 	{
 		bool callback_performed = false;
 

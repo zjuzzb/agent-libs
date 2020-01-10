@@ -4,7 +4,7 @@
 #include "sys_call_test.h"
 #include <gtest.h>
 
-static const std::string cri_container_id = "575371e74864";
+static const std::string cri_container_id = "aec4c703604b";
 static const std::string fake_cri_socket = "/tmp/fake-cri.sock";
 static const std::string fake_docker_socket = "/tmp/fake-docker.sock";
 static const std::string default_docker_socket = "/var/run/docker.sock";
@@ -30,7 +30,7 @@ protected:
 
 TEST_F(container_cri, fake_cri_no_server) {
 	std::atomic<bool> done(false);
-	proc test_proc = proc("./test_helper", { "cri_container" });
+	proc test_proc = proc("./test_helper", { "cri_container_echo" });
 
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
@@ -79,7 +79,7 @@ TEST_F(container_cri, fake_cri_no_server) {
 void container_cri::fake_cri_test(const std::string& pb_prefix, const std::string& runtime, const std::function<void(const callback_param& param, std::atomic<bool>& done)>& callback, bool extra_queries)
 {
 	std::atomic<bool> done(false);
-	proc test_proc = proc("./test_helper", { "cri_container" });
+	proc test_proc = proc("./test_helper", { "cri_container_echo" });
 	unlink(fake_cri_socket.c_str());
 	auto fake_cri_handle = Poco::Process::launch("./resources/fake_cri", { "unix://" + fake_cri_socket, pb_prefix, runtime });
 	auto start_time = time(NULL);
@@ -215,7 +215,7 @@ void container_cri::fake_cri_test_timing(
 {
 	std::atomic<bool> done_events(!want_events);
 	std::atomic<bool> done_callbacks(false);
-	proc test_proc = proc("./test_helper", { "cri_container" });
+	proc test_proc = proc("./test_helper", { "cri_container_echo" });
 	unlink(fake_cri_socket.c_str());
 	auto fake_cri_handle = Poco::Process::launch("./resources/fake_cri", { delay_arg, "unix://" + fake_cri_socket, pb_prefix, runtime });
 	auto fake_docker_handle = Poco::Process::launch("/usr/bin/env", { "python", "./resources/fake_docker.py", to_string(docker_delay), fake_docker_socket });

@@ -28,7 +28,9 @@
 #include <thread>
 
 #include "docker_utils.h"
+#include "sys_call_test.h"
 #include "security_config.h"
+#include "container_config.h"
 
 using namespace std;
 namespace security_config = libsanalyzer::security_config;
@@ -115,7 +117,7 @@ public:
 			else if(res == SCAP_EOF)
 			{
 				break;
-			}
+			} 
 			else if(res != SCAP_SUCCESS)
 			{
 				cerr << "res = " << res << endl;
@@ -147,7 +149,7 @@ public:
 			if(!m_ready)
 			{
 				g_log->information("test_sinsp_worker: ready");
-				string filter = "(proc.name = tests or proc.aname = tests) or container.name in (sec_ut, fs-root-image, blacklisted_image, non_alpine, busybox_some_tag, baseline-test, denyme, inout_test, fs_usecase, mycurl, overlap_test, helloworld) or container.image = swarm_service_ut_image:latest";
+				string filter = "(proc.name = tests or proc.aname = tests) or container.id = aec4c703604b4504df03108eef12e8256870eca8aabcb251855a35bf4f0337f1 or container.name in (sec_ut, stop_me_docker_test, fs-root-image, blacklisted_image, non_alpine, busybox_some_tag, baseline-test, denyme, inout_test, fs_usecase, mycurl, overlap_test, helloworld) or container.image = swarm_service_ut_image:latest";
 				m_inspector->set_filter(filter.c_str());
 				m_ready = true;
 			}
@@ -233,11 +235,17 @@ protected:
 		return string("./resources/security_policies_messages/all_policy_v2_types.txt");
 	}
 
-	void SetUpTest(bool delayed_reports=false)
+	void SetUpTest(bool delayed_reports=false, const string &fake_cri_socket="")
 	{
 		// dragent_configuration::init() takes an app, but I
 		// don't see it used anywhere.
 		m_configuration.init(NULL, false);
+		if (!fake_cri_socket.empty()) {
+			// This simulates setting a custom CRI socket path into the dragent.yaml file
+			// It needs to be performed after the init call since the init resets all settings from the actual file on disk
+			const_cast<type_config<std::string>*>(c_cri_socket_path.get())->set(fake_cri_socket);
+		}
+
 		dragent_configuration::m_terminate = false;
 
 		m_configuration.m_capture_dragent_events  = true;
@@ -275,6 +283,11 @@ protected:
 
 		m_inspector = new sinsp();
 		m_internal_metrics = std::make_shared<internal_metrics>();
+
+		if (!fake_cri_socket.empty()) {
+			m_inspector->set_cri_socket_path(fake_cri_socket);
+		}
+
 		m_analyzer = new sinsp_analyzer(m_inspector,
 		                                "/opt/draios",
 		                                m_internal_metrics,
@@ -778,7 +791,12 @@ protected:
 			FAIL() << "cointerface process not running after 1 second";
 		}
 
-		SetUpTest();
+		const std::string fake_cri_socket = "/tmp/fake-cri.sock";
+
+		unlink(fake_cri_socket.c_str());
+		m_fake_cri = make_shared<ProcessHandle>(Poco::Process::launch("./resources/fake_cri", { "unix://" + fake_cri_socket, "resources/fake_cri_crio", "cri-o" }));
+
+		SetUpTest(false, fake_cri_socket);
 
 		int ret = -1;
 
@@ -803,12 +821,19 @@ protected:
 		{
 			Process::kill(*m_cointerface);
 		}
+
+		if(m_fake_cri)
+		{
+			Process::kill(*m_fake_cri);
+		}
+
 		TearDownTest();
 		g_log->information("TearDown() complete");
 	}
 private:
 	shared_ptr<Pipe> m_colog;
 	shared_ptr<ProcessHandle> m_cointerface;
+	shared_ptr<ProcessHandle> m_fake_cri;
 };
 
 class security_policies_v2_test_cointerface : public security_policies_test_cointerface
@@ -973,6 +998,65 @@ TEST_F(security_policies_test, readwrite_fs_only)
 {
 	bool v1_metrics = true;
 	return readwrite_fs_test(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test_cointerface, stop_action_docker_test)
+{
+	if(!dutils_check_docker())
+	{
+		return;
+	}
+
+	ASSERT_EQ(system("docker run --name stop_me_docker_test --rm busybox:latest sh -c 'sleep 2; gzip -V; sleep 1' > /dev/null 2>&1"), 0);
+
+	unique_ptr<draiosproto::policy_events> pe;
+	this->get_policy_evts_msg(pe);
+	ASSERT_NE(pe, nullptr);
+	bool stop_found = false;
+	for (int i = 0; i < pe->events_size(); i++) 
+	{
+		auto evt = pe->events(i);
+		for (int j = 0; j < evt.action_results_size(); j++)
+		{
+			auto result = evt.action_results(j);
+			if (result.type() == draiosproto::ACTION_STOP && result.successful() == true)
+			{
+				stop_found = true;
+			}
+		}
+	}
+
+	ASSERT_TRUE(stop_found);
+
+	// Perform cleanup in case the action failed
+	dutils_kill_container_if_exists("stop_me_docker_test");
+};
+
+TEST_F(security_policies_v2_test_cointerface, stop_action_cri_test)
+{
+	proc test_proc = proc("./test_helper", { "cri_container_sleep_gzip" });
+	auto handle = start_process(&test_proc);
+	std::get<0>(handle).wait();
+
+	unique_ptr<draiosproto::policy_events> pe;
+	this->get_policy_evts_msg(pe);
+	ASSERT_NE(pe, nullptr);
+	bool stop_found = false;
+	ASSERT_TRUE(pe->events_size() > 0);
+	for (int i = 0; i < pe->events_size(); i++) 
+	{
+		auto evt = pe->events(i);
+		for (int j = 0; j < evt.action_results_size(); j++)
+		{
+			auto result = evt.action_results(j);
+			if (result.type() == draiosproto::ACTION_STOP && result.successful() == true)
+			{
+				stop_found = true;
+			}
+		}
+	}
+
+	ASSERT_TRUE(stop_found);
 };
 
 TEST_F(security_policies_v2_test, readwrite_fs_only)
@@ -2438,3 +2522,4 @@ TEST_F(security_policies_v2_test, docker_swarm)
 	bool v1_metrics = false;
 	return docker_swarm(this, v1_metrics);
 };
+
