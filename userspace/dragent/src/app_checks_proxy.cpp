@@ -1,6 +1,9 @@
 #include "app_checks_proxy.h"
+#include "common_logger.h"
 
 #include <zlib.h>
+
+COMMON_LOGGER();
 
 void app_checks_proxy::send_get_metrics_cmd_sync(const vector<app_process> &processes, const vector<prom_process>& prom_procs, const prometheus_conf &prom_conf)
 {
@@ -21,7 +24,7 @@ void app_checks_proxy::send_get_metrics_cmd_sync(const vector<app_process> &proc
 	command["processes"] = procs;
 	command["prometheus"] = promps;
 	string data = m_json_writer.write(command);
-	g_logger.format(sinsp_logger::SEV_DEBUG, "Send to sdchecks: %s", data.c_str());
+	LOG_DEBUG("Send to sdchecks: %s", data.c_str());
 	m_outqueue.send(data);
 }
 
@@ -42,7 +45,7 @@ app_checks_proxy::raw_metric_map_t app_checks_proxy::read_metrics(const metric_l
 		uint8_t version = buf[0];
 		if(version != PROTOCOL_VERSION)
 		{
-			g_logger.format(sinsp_logger::SEV_ERROR, "Unsupported sdchecks response version %d", version);
+			LOG_ERROR("Unsupported sdchecks response version %d", version);
 			return ret;
 		}
 
@@ -51,11 +54,11 @@ app_checks_proxy::raw_metric_map_t app_checks_proxy::read_metrics(const metric_l
 
 		memcpy(&uncompressed_size, &buf[1], sizeof(uint32_t));
 		uncompressed_size = ntohl(uncompressed_size);
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Received %lu from sdchecks bytes, uncompressed length %u", buf.size(), uncompressed_size);
+		LOG_DEBUG("Received %lu from sdchecks bytes, uncompressed length %u", buf.size(), uncompressed_size);
 
 		if(buf.size() >= MAX_COMPRESSED_SIZE || uncompressed_size > MAX_UNCOMPRESSED_SIZE)
 		{
-			g_logger.format(sinsp_logger::SEV_ERROR, "sdchecks response too large (compressed %zu, uncompressed %u)", buf.size(), uncompressed_size);
+			LOG_ERROR("sdchecks response too large (compressed %zu, uncompressed %u)", buf.size(), uncompressed_size);
 			return ret;
 		}
 
@@ -67,10 +70,10 @@ app_checks_proxy::raw_metric_map_t app_checks_proxy::read_metrics(const metric_l
 			unsigned long u = uncompressed_size;
 			uncompressed_msg.reserve(u);
 			int res = uncompress(&(uncompressed_msg[0]), &u, (const Bytef*)start, len);
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Uncompressed to %lu bytes, res=%d", uncompressed_size, res);
+			LOG_DEBUG("Uncompressed to %u bytes, res=%d", uncompressed_size, res);
 			if (res != Z_OK)
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR, "uncompress error %d", res);
+				LOG_ERROR( "uncompress error %d", res);
 				return ret;
 			}
 			start = reinterpret_cast<char*>(&uncompressed_msg[0]);
@@ -79,11 +82,11 @@ app_checks_proxy::raw_metric_map_t app_checks_proxy::read_metrics(const metric_l
 
 		if(len == 0)
 		{
-			g_logger.format(sinsp_logger::SEV_WARNING, "Received an empty message from sdchecks", buf.size());
+			LOG_WARNING("Received an empty message from sdchecks (compressed size %ld)", buf.size());
 			return ret;
 		}
 
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from sdchecks: %lu bytes", len);
+		LOG_DEBUG("Received from sdchecks: %lu bytes", len);
 		Json::Value response_obj;
 		if(m_json_reader.parse(start, start+len, response_obj, false))
 		{
@@ -114,14 +117,14 @@ app_checks_proxy::raw_metric_map_t app_checks_proxy::read_metrics(const metric_l
 		}
 		else
 		{
-			g_logger.format(sinsp_logger::SEV_ERROR, "app_checks_proxy::read_metrics: JSON parsing error:");
+			LOG_ERROR("app_checks_proxy::read_metrics: JSON parsing error:");
 			std::string msg(start, len);
-			g_logger.format(sinsp_logger::SEV_DEBUG, "%s", msg.c_str());
+			LOG_DEBUG("%s", msg.c_str());
 		}
 	}
 	catch(std::exception& ex)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR, "app_checks_proxy::read_metrics error: %s", ex.what());
+		LOG_ERROR("app_checks_proxy::read_metrics error: %s", ex.what());
 	}
 	return ret;
 }
@@ -137,7 +140,7 @@ void app_checks_proxy::refresh_metrics_sync(uint64_t flush_time_sec, uint64_t ti
 		{
 			if(flush_time_sec > it2->second->expiration_ts() + APP_METRICS_EXPIRATION_TIMEOUT_S)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Wiping expired app metrics for pid %d,%s", it->first, it2->first.c_str());
+				LOG_DEBUG("Wiping expired app metrics for pid %d,%s", it->first, it2->first.c_str());
 				it2 = it->second.erase(it2);
 			}
 			else
@@ -243,10 +246,10 @@ void app_checks_proxy::send_get_metrics_cmd(std::vector<app_process> processes,
 			conf
 		};
 
-		g_logger.format(sinsp_logger::SEV_DEBUG, "[app_checks_proxy] putting request");
+		LOG_DEBUG("[app_checks_proxy] putting request");
 		if(!m_request_queue.put(req))
 		{
-			g_logger.format(sinsp_logger::SEV_INFO, "[app_checks_proxy] queue full");
+			LOG_INFO("[app_checks_proxy] queue full");
 		}
 	}
 	else
@@ -261,15 +264,15 @@ void app_checks_proxy::do_run()
 	while(heartbeat())
 	{
 		app_check_request req;
-		g_logger.format(sinsp_logger::SEV_DEBUG, "[app_checks_proxy] getting request");
+		LOG_DEBUG("[app_checks_proxy] getting request");
 		if(m_request_queue.get(&req, 1000))
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "[app_checks_proxy] got request, sending to sdchecks");
+			LOG_DEBUG("[app_checks_proxy] got request, sending to sdchecks");
 			send_get_metrics_cmd_sync(req.processes, req.prom_procs, *req.conf);
-			g_logger.format(sinsp_logger::SEV_DEBUG, "[app_checks_proxy] sent request, calling refresh_metrics");
+			LOG_DEBUG("[app_checks_proxy] sent request, calling refresh_metrics");
 			refresh_metrics_sync(time(nullptr), 1);
-			g_logger.format(sinsp_logger::SEV_DEBUG, "[app_checks_proxy] refresh_metrics done");
+			LOG_DEBUG("[app_checks_proxy] refresh_metrics done");
 		}
-		g_logger.format(sinsp_logger::SEV_DEBUG, "[app_checks_proxy] timeout, no request");
+		LOG_DEBUG("[app_checks_proxy] timeout, no request");
 	}
 }
