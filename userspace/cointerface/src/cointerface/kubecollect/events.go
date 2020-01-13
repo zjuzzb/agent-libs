@@ -218,7 +218,7 @@ func watchUserEvents(watcher watch.Interface,
 			return false
 		case event, ok := <-ch:
 			if !ok {
-				log.Error("UserEvents: watcher channel failed")
+				log.Warning("UserEvents: watcher channel failed. Shutting it down and retrying.")
 				return false
 			}
 			switch event.Type {
