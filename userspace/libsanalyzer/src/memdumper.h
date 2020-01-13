@@ -215,7 +215,7 @@ class sinsp_memory_dumper
 public:
 	sinsp_memory_dumper(sinsp* inspector);
 	~sinsp_memory_dumper();
-	void init(uint64_t bufsize, uint64_t max_disk_size, uint64_t max_init_attempts);
+	void init(uint64_t bufsize, uint64_t max_disk_size, uint64_t max_init_attempts, bool autodisable, uint64_t capture_headers_percentage_threshold, uint64_t time_between_switch_states_ms, uint64_t re_enable_interval_minutes);
 	void close();
 
 	// Write a file on disk that contains the result of applying
@@ -242,8 +242,22 @@ public:
 		//
 		if(m_disabled)
 		{
-			return;
+			// try to re-enable the memdumper every memdumper.autodisable.re_enable_interval_minutes
+			if(m_disabled_by_autodisable &&
+			   ((evt->get_ts() - m_last_autodisable_ns) > m_re_enable_interval_ns))
+			{
+				m_disabled = false;
+				m_disabled_by_autodisable = false;
+				glogf(sinsp_logger::SEV_INFO,
+				      "sinsp_memory_dumper: re-enable memdumper after autodisable occurred");
+			}
+			else
+			{
+				return;
+			}
 		}
+
+		m_processed_events_between_switch_states++;
 
 		// If a delayed state switch is needed, see if it is
 		// ready and if so switch states. Otherwise, skip the
@@ -272,9 +286,19 @@ public:
 		{
 			(*m_active_state)->dump(evt);
 
+			if(m_autodisable)
+			{
+				if(m_processed_events_between_switch_states == 1)
+				{
+					m_dump_buffer_headers_size = (*m_active_state)->m_dumper->next_write_position();
+				}
+			}
+
 			// If we've written at least m_bsize bytes to the active state, switch states.
 			if((*m_active_state)->m_dumper->next_write_position() >= (*m_active_state)->m_bufsize)
 			{
+				m_processed_events_between_switch_states = 0;
+
 				switch_states(evt->get_ts());
 
 				// If after switching, memdump is
@@ -310,6 +334,7 @@ public:
 	}
 
 private:
+	void check_autodisable(uint64_t evt_ts_ns, uint64_t sys_ts_ns);
 	void switch_states(uint64_t ts);
 	bool read_membuf_using_inspector(sinsp &inspector, const std::shared_ptr<sinsp_memory_dumper_state> &state, sinsp_memory_dumper_job* job);
 	void apply_job_filter(const std::shared_ptr<sinsp_memory_dumper_state> &state, sinsp_memory_dumper_job* job, Poco::Mutex *membuf_mtx);
@@ -327,14 +352,25 @@ private:
 	FILE* m_f;
 	FILE* m_cf;
 	bool m_disabled;
+	bool m_disabled_by_autodisable;
+	uint64_t m_last_autodisable_ns;
 	uint32_t m_switches_to_go;
 	uint32_t m_cur_dump_size;
 	uint32_t m_max_disk_size;
 	uint64_t m_bsize;
+	bool m_autodisable;
+	uint64_t m_capture_headers_percentage_threshold;
+	uint64_t m_min_time_between_switch_states_ns;
+	uint64_t m_re_enable_interval_ns;
 
 	std::atomic<bool> m_delayed_switch_states_needed;
 	std::atomic<bool> m_delayed_switch_states_ready;
 	uint64_t m_delayed_switch_states_missed_events;
+
+	uint64_t m_processed_events_between_switch_states;
+	uint64_t m_autodisable_threshold_reached_count;
+	uint64_t m_dump_buffer_headers_size;
+	uint64_t m_last_switch_state_ns;
 
 	// Mutex that protects access to the list of states
 	Poco::FastMutex m_state_mtx;

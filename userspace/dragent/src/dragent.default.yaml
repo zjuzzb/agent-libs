@@ -1329,3 +1329,10 @@ secure_audit_streams:
 
   frequency: 10 # frequency (in seconds) protobuf is sent
   debug: false # print protobuf sent
+
+memdump:
+  autodisable:
+    enabled: true
+    capture_headers_percentage_threshold: 60 # autodisable if size(headers) is more than 60% of size(buffer)
+    min_time_between_switch_states_ms: 150   # autodisable if switch states happens <150ms distance
+    re_enable_interval_minutes: 30           # autodisable re-enable memdump after 30 min

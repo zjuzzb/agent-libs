@@ -620,7 +620,11 @@ void capture_job_handler::init(const sinsp *inspector)
 		m_memdumper = make_unique<sinsp_memory_dumper>((sinsp *) inspector);
 		m_memdumper->init(m_configuration->m_memdump_size,
 				  m_configuration->m_memdump_size,
-				  m_configuration->m_memdump_max_init_attempts);
+				  m_configuration->m_memdump_max_init_attempts,
+				  m_configuration->m_memdump_autodisable,
+				  m_configuration->m_memdump_capture_headers_percentage_threshold,
+				  m_configuration->m_memdump_min_time_between_switch_states_ms,
+				  m_configuration->m_memdump_re_enable_interval_minutes);
 	}
 
 	//
