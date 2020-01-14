@@ -557,7 +557,8 @@ func batchEvents(
 	// Also close the evtArrayChan
 	defer func() {
 		// Drain the Informer channel fully
-		DrainChan(InformerChannel)
+		// Cast it to a receiver-only chan before sending to DrainChan
+		DrainChan((<-chan draiosproto.CongroupUpdateEvent)(InformerChannel))
 
 		// Close the evtArrayChan
 		close(evtArrayChan)
