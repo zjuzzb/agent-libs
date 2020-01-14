@@ -249,6 +249,10 @@ dragent_configuration::dragent_configuration()
 	m_memdump_enabled = false;
 	m_memdump_size = 0;
 	m_memdump_max_init_attempts = 10;
+	m_memdump_autodisable = true;
+	m_memdump_capture_headers_percentage_threshold = 60;
+	m_memdump_min_time_between_switch_states_ms = 150;
+	m_memdump_re_enable_interval_minutes = 30;
 	m_drop_upper_threshold = 0;
 	m_drop_lower_threshold = 0;
 	m_tracepoint_hits_threshold = 0;
@@ -718,6 +722,10 @@ void dragent_configuration::init()
 	m_memdump_enabled =  m_config->get_scalar<bool>("memdump", "enabled", false);
 	m_memdump_size = m_config->get_scalar<unsigned>("memdump", "size", 300 * 1024 * 1024);
 	m_memdump_max_init_attempts = m_config->get_scalar<unsigned>("memdump", "max_init_attempts", 10);
+	m_memdump_autodisable = m_config->get_scalar<bool>("memdump", "autodisable", "enabled", true);
+	m_memdump_capture_headers_percentage_threshold = m_config->get_scalar<unsigned>("memdump", "autodisable", "capture_headers_percentage_threshold", 60);
+	m_memdump_min_time_between_switch_states_ms = m_config->get_scalar<unsigned>("memdump", "autodisable", "min_time_between_switch_states_ms", 150);
+	m_memdump_re_enable_interval_minutes = m_config->get_scalar<unsigned>("memdump", "autodisable", "re_enable_interval_minutes", 30);
 
 	m_drop_upper_threshold = m_config->get_scalar<decltype(m_drop_upper_threshold)>("autodrop", "upper_threshold", 0);
 	m_drop_lower_threshold = m_config->get_scalar<decltype(m_drop_lower_threshold)>("autodrop", "lower_threshold", 0);
@@ -1228,6 +1236,10 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("memdump.enabled: " + bool_as_text(m_memdump_enabled));
 	LOG_INFO("memdump.size: " + NumberFormatter::format(m_memdump_size));
 	LOG_INFO("memdump.max_init_attempts: " + NumberFormatter::format(m_memdump_max_init_attempts));
+	LOG_INFO("memdump.autodisable.enabled: " + bool_as_text(m_memdump_autodisable));
+	LOG_INFO("memdump.autodisable.capture_headers_percentage_threshold: " + NumberFormatter::format(m_memdump_capture_headers_percentage_threshold));
+	LOG_INFO("memdump.autodisable.min_time_between_switch_states_ms: " + NumberFormatter::format(m_memdump_min_time_between_switch_states_ms));
+	LOG_INFO("memdump.autodisable.re_enable_interval_minutes: " + NumberFormatter::format(m_memdump_re_enable_interval_minutes));
 	LOG_INFO("autodrop.threshold.upper: " + NumberFormatter::format(m_drop_upper_threshold));
 	LOG_INFO("autodrop.threshold.lower: " + NumberFormatter::format(m_drop_lower_threshold));
 	if(m_tracepoint_hits_threshold > 0)

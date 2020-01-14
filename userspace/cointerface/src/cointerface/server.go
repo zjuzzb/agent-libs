@@ -315,7 +315,8 @@ func (c *coInterfaceServer) PerformOrchestratorEventMessageStream(cmd *sdc_inter
 		log.Info("[PerformOrchestratorEventMessageStream] Stream Exiting")
 		ctxCancel()
 		// Drain channel just in case the event sender is blocked
-		kubecollect.DrainChan(userEventChannel)
+		// Cast it to a receive-only channel before sending to DrainChan
+		kubecollect.DrainChan((<-chan sdc_internal.K8SUserEvent)(userEventChannel))
 		// Not keeping state in globals in the event code, so we might be able
 		// to get rid of the wg.Wait() to allow a new watch to start while the old
 		// one is cleaning up
@@ -333,7 +334,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventMessageStream(cmd *sdc_inter
 		select {
 		case evt, ok := <-userEventChannel:
 			if !ok {
-				log.Error("[PerformOrchestratorEventMessageStream] event stream finished")
+				log.Info("[PerformOrchestratorEventMessageStream] event stream finished")
 				return nil
 			} else {
 				// log.Debugf("[PerformOrchestratorEventMessageStream] sending event: %v", evt)

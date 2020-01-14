@@ -19,6 +19,7 @@ add_executable(unit-test-userspace-shared
 	fault_injection_macro_set.ut.cpp
 	fault_injection_macro_unset.ut.cpp
 	filter.ut.cpp
+	run_once_after.ut.cpp
 	scoped_config.ut.cpp
 	scoped_configuration.ut.cpp
 	scoped_fault.ut.cpp

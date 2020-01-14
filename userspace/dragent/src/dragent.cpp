@@ -104,11 +104,22 @@ type_config<bool>::ptr c_10s_flush_enabled =
         .hidden()
         .build();
 
-
 type_config<bool> c_compression_enabled(true,
                                         "set to true to compress protobufs sent to the collector",
                                         "compression",
                                         "enabled");
+
+type_config<uint16_t>::ptr c_inspector_start_delay_s =
+		type_config_builder<uint16_t>(
+				1,
+				"Amount of time to wait before starting the"
+				" system call inspector.  It can be useful to"
+				" delay the inspector if the agent terminates"
+				" soon after starting because it gets behind "
+				" in processing system calls",
+				"inspector_start_delay_s")
+		.min(1)
+		.build();
 
 string compute_sha1_digest(SHA1Engine& engine, const string& path)
 {
@@ -229,7 +240,8 @@ dragent_app::dragent_app()
 			&m_capture_job_handler),
 	m_log_reporter(m_protocol_handler, &m_configuration),
 	m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),
-	m_last_dump_s(0)
+	m_last_dump_s(0),
+	m_inspector_delayed_start(0, sinsp_utils::get_current_time_ns)
 { }
 
 dragent_app::~dragent_app()
@@ -1145,6 +1157,12 @@ int dragent_app::sdagent_main()
 		enable_rest_server(m_configuration);
 	}
 
+	// Set the timeout here instead of via the constructor to allow config
+	// initialization before trying to read the config value.
+	m_inspector_delayed_start.set_timeout(
+			c_inspector_start_delay_s->get_value() *
+			ONE_SECOND_IN_NS);
+
 	uint64_t uptime_s = 0;
 
 	///////////////////////////////
@@ -1156,6 +1174,13 @@ int dragent_app::sdagent_main()
 	//////////////////////////////
 	while (!dragent_configuration::m_terminate)
 	{
+		m_inspector_delayed_start.run(
+				[this]()
+				{
+					LOG_INFO("Resuming capture");
+					m_sinsp_worker.unpause_capture();
+				});
+
 		if (m_configuration.m_watchdog_enabled)
 		{
 			watchdog_check(uptime_s);
