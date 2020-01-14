@@ -1,6 +1,16 @@
 syntax = "proto3";
 package secure.profiling;
 
+// The fingerprint message is the main message for fingerprint
+// reporting, from agent to collector.
+message fingerprint {
+    uint64 timestamp_ns = 1;
+    string machine_id = 2;
+    string customer_id = 3;
+    repeated program_fingerprint progs = 4;
+    repeated container_fingerprint container = 5;
+}
+
 message sub_category {
     string name = 1;
     repeated string d = 2;
@@ -33,12 +43,3 @@ message container_fingerprint {
     string image_id = 4;
 }
 
-// The fingerprint message is the main message for fingerprint
-// reporting, from agent to collector.
-message fingerprint {
-    uint64 timestamp_ns = 1;
-    string machine_id = 2;
-    string customer_id = 3;
-    repeated program_fingerprint progs = 4;
-    repeated container_fingerprint container = 5;
-}

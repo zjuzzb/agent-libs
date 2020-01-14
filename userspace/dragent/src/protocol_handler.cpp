@@ -33,7 +33,7 @@ type_config<bool> protocol_handler::c_secure_audit_debug_enabled(
 type_config<bool> protocol_handler::c_secure_profiling_debug_enabled(
 	false,
 	"set to true to log secure profiling protobufs",
-	"secure_profiling",
+	"falcobaseline", // aka secure_profiling
 	"debug");
 
 protocol_handler::protocol_handler(protocol_queue& queue) :
