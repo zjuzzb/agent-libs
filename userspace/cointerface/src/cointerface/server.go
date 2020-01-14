@@ -334,7 +334,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventMessageStream(cmd *sdc_inter
 		select {
 		case evt, ok := <-userEventChannel:
 			if !ok {
-				log.Error("[PerformOrchestratorEventMessageStream] event stream finished")
+				log.Info("[PerformOrchestratorEventMessageStream] event stream finished")
 				return nil
 			} else {
 				// log.Debugf("[PerformOrchestratorEventMessageStream] sending event: %v", evt)
