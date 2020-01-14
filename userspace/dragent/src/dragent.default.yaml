@@ -1330,6 +1330,11 @@ secure_audit_streams:
   frequency: 10 # frequency (in seconds) protobuf is sent
   debug: false # print protobuf sent
 
+
+falcobaseline:
+  enabled: false
+  debug: false # print protobuf sent
+
 memdump:
   autodisable:
     enabled: true

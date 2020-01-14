@@ -122,11 +122,13 @@ k8s_ssl_key: key_path
 	test_helpers::sinsp_mock inspector;
 	audit_tap_handler_dummy athd;
 	null_secure_audit_handler sahd;
+	null_secure_profiling_handler sphd;
 	sinsp_analyzer analyzer(&inspector,
 							"",
 							std::make_shared<internal_metrics>(),
 							athd,
 							sahd,
+							sphd,
 							nullptr);
 	infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
 	EXPECT_EQ("https://yaml_host:54321", is.get_k8s_url());

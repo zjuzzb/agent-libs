@@ -5,6 +5,7 @@
 namespace {
 	audit_tap_handler_dummy athd;
 	null_secure_audit_handler sahd;
+	null_secure_profiling_handler sphd;
 	sinsp_analyzer::flush_queue flush_queue(100);
 }
 
@@ -23,6 +24,7 @@ public:
 				std::make_shared<internal_metrics>(),
 				athd,
 				sahd,
+				sphd,
 				&flush_queue));
 		m_infra_state.reset(new infrastructure_state(*m_analyzer, m_sinsp.get(), "/opt/draios", nullptr, true));
 	}
