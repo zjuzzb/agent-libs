@@ -268,6 +268,39 @@ public:
 		}
 	};
 
+private:
+	/**
+	 * Handles messages of type ERROR_MESSAGE that the connection_manager receives
+	 * from the backend.
+	 */
+	class error_message_handler : public connection_manager::message_handler
+	{
+	public:
+
+		error_message_handler(connection_manager* cm)
+		    : m_connection_manager(cm)
+		{
+		}
+
+		bool handle_message(const draiosproto::message_type,
+		                    uint8_t* buffer,
+		                    size_t buffer_size) override
+		{
+			draiosproto::error_message err_msg;
+			dragent_protocol::buffer_to_protobuf(buffer, buffer_size, &err_msg);
+
+			if (m_connection_manager)
+			{
+				m_connection_manager->handle_collector_error(err_msg);
+			}
+
+			return true;
+		}
+
+	private:
+		connection_manager* m_connection_manager;
+	};
+
 public:
 
 	connection_manager(dragent_configuration* configuration,
@@ -349,6 +382,11 @@ public:
 	{
 		scoped_spinlock lock(m_parameter_update_lock);
 		return m_negotiated_compression_method;
+	}
+
+	void set_message_handler(draiosproto::message_type type, message_handler::ptr handler)
+	{
+		m_handler_map[type] = handler;
 	}
 
 private:
@@ -498,6 +536,23 @@ private:
 	 */
 	void set_legacy_mode();
 
+	/**
+	 * The agent is successfully operating again. Reset reconnect backoff.
+	 */
+	void reset_backoff()
+	{
+		m_reconnect_interval = 0;
+	}
+
+	/**
+	 * Handles an error message from the collector.
+	 *
+	 * The error message is first given to the message handler, where it's
+	 * deserialized and then sent back into the CM via this function.
+	 */
+	void handle_collector_error(draiosproto::error_message& msg);
+
+
 	static const std::string& get_openssldir();
 	// Walk over the CA path search list and return the first one that exists
 	// Note: we have to return a new string by value as we potentially alter
@@ -510,7 +565,6 @@ private:
 	static const uint32_t MAX_RECEIVER_BUFSIZE = 1 * 1024 * 1024; // 1MiB
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
 	static const uint32_t RECONNECT_MIN_INTERVAL_S;
-	static const uint32_t RECONNECT_MAX_INTERVAL_S;
 	static const unsigned int SOCKET_TCP_TIMEOUT_MS = 60 * 1000;
 	static const std::chrono::seconds WORKING_INTERVAL_S;
 
@@ -534,7 +588,7 @@ private:
 	dragent_protocol::protocol_version m_negotiated_protocol_version;
 
 	uint32_t m_reconnect_interval;
-	std::chrono::time_point<std::chrono::system_clock> m_last_connection_failure;
+	std::chrono::time_point<std::chrono::system_clock> m_last_connect;
 	std::unique_ptr<cm_state_machine> m_fsm;
 
 	std::list<unacked_message> m_messages_awaiting_ack;

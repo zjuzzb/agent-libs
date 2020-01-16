@@ -45,7 +45,6 @@ list(APPEND targetfiles
 	dump_request_start_message_handler.cpp
 	dump_request_stop_message_handler.cpp
 	error_handler.cpp
-	error_message_handler.cpp
 	faultlist_rest_request_handler.cpp
 	fault_rest_request_handler.cpp
 	file_rest_registry.cpp

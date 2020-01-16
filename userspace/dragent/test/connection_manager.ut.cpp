@@ -451,35 +451,37 @@ TEST(connection_manager_test, v5_end_to_end)
 class counting_message_handler : public connection_manager::message_handler
 {
 	uint32_t messages_received;
-	bool error_mismatch;
-	uint32_t expected_error;
+	bool token_mismatch;
+	std::string dump_token;
 public:
 	counting_message_handler() :
 	    messages_received(0),
-	    error_mismatch(false),
-	    expected_error(0) {}
-	counting_message_handler(draiosproto::error_type err) :
+	    token_mismatch(false),
+	    dump_token("")
+	{}
+
+	counting_message_handler(std::string token) :
 	    messages_received(0),
-	    error_mismatch(false),
-	    expected_error(err)
+	    token_mismatch(false),
+	    dump_token(token)
 	{}
 
 	bool handle_message(const draiosproto::message_type type,
 	                    uint8_t* buffer,
 	                    size_t buffer_size) override
 	{
-		if (type == draiosproto::message_type::ERROR_MESSAGE)
+		if (type == draiosproto::message_type::DUMP_REQUEST_START)
 		{
 			// Extract the error
-			draiosproto::error_message msg;
+			draiosproto::dump_request_start msg;
 			dragent_protocol::buffer_to_protobuf(buffer,
 			                                     buffer_size,
 			                                     &msg,
 			                                     protocol_compression_method::GZIP);
 
-			if (expected_error > 0 && (uint32_t)msg.type() != expected_error)
+			if (!dump_token.empty() && msg.token() != dump_token)
 			{
-				error_mismatch = true;
+				token_mismatch = true;
 			}
 		}
 
@@ -488,17 +490,18 @@ public:
 	}
 
 	uint32_t num_received() const { return messages_received; }
-	bool has_error_mismatch() const { return error_mismatch; }
+	bool has_token_mismatch() const { return token_mismatch; }
 };
 
-bool test_collector_sends_error(dragent_protocol::protocol_version ver)
+bool test_collector_sends_message(dragent_protocol::protocol_version ver)
 {
 	const size_t MAX_QUEUE_LEN = 64;
+	const std::string token = "DEADBEEF";
 	// Build some boilerplate stuff that's needed to build a CM object
 	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	config.init();
-	auto mh = std::make_shared<counting_message_handler>(draiosproto::error_type::ERR_PROTO_MISMATCH);
+	auto mh = std::make_shared<counting_message_handler>(token);
 
 	// Create and spin up the fake collector (get an ephemeral port)
 	fake_collector fc(ver == dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH);
@@ -520,7 +523,7 @@ bool test_collector_sends_error(dragent_protocol::protocol_version ver)
 
 	// Create and spin up the connection manager
 	connection_manager cm(&config, &queue, {ver},
-	    {{draiosproto::message_type::ERROR_MESSAGE, mh}});
+	    {{draiosproto::message_type::DUMP_REQUEST_START, mh}});
 
 	std::thread t([&cm]()
 	{
@@ -540,13 +543,15 @@ bool test_collector_sends_error(dragent_protocol::protocol_version ver)
 	}
 
 	// Build a collector message
-	draiosproto::error_message err;
-	err.set_type(draiosproto::error_type::ERR_PROTO_MISMATCH);
+	draiosproto::dump_request_start dump_start;
+	dump_start.set_timestamp_ns(sinsp_utils::get_current_time_ns());
+	dump_start.set_machine_id("0");
+	dump_start.set_token(token);
 
 	// Send the message
-	bool ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
+	bool ret = fc.send_collector_message(draiosproto::message_type::DUMP_REQUEST_START,
 	                                     false,
-	                                     err);
+	                                     dump_start);
 
 	if (!ret)
 	{
@@ -565,7 +570,7 @@ bool test_collector_sends_error(dragent_protocol::protocol_version ver)
 		return false;
 	}
 
-	if (mh->has_error_mismatch())
+	if (mh->has_token_mismatch())
 	{
 		return false;
 	}
@@ -583,14 +588,14 @@ bool test_collector_sends_error(dragent_protocol::protocol_version ver)
 	return true;
 }
 
-TEST(connection_manager_test, collector_sends_error_v4)
+TEST(connection_manager_test, collector_sends_message_v4)
 {
-	ASSERT_TRUE(test_collector_sends_error(4));
+	ASSERT_TRUE(test_collector_sends_message(4));
 }
 
-TEST(connection_manager_test, collector_sends_error_v5)
+TEST(connection_manager_test, collector_sends_message_v5)
 {
-	ASSERT_TRUE(test_collector_sends_error(5));
+	ASSERT_TRUE(test_collector_sends_message(5));
 }
 
 TEST(connection_manager_test, basic_connect_with_handshake)
@@ -1176,4 +1181,72 @@ TEST(connection_manager_test, legacy_fallback)
 	t.join();
 	serializer.stop();
 	st.join();
+}
+
+TEST(connection_manager_test, test_error_message_handler)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration::m_terminate = false;
+	dragent_configuration config;
+	config.init();
+
+	// Create and spin up the fake collector (get an ephemeral port)
+	fake_collector fc(true);
+	fc.start(0);
+	ASSERT_NE(0, fc.get_port());
+
+	// Set the config for the CM
+	config.m_server_addr = "127.0.0.1";
+	config.m_server_port = fc.get_port();
+	config.m_ssl_enabled = false;
+	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
+	config.m_terminate = false;
+
+	// Create the shared blocking queue
+	protocol_queue queue(MAX_QUEUE_LEN);
+
+	// Create and spin up the connection manager
+	connection_manager cm(&config, &queue, {5});
+
+	std::thread t([&cm]()
+	{
+		cm.test_run();
+	});
+
+	// Wait for the connection to be established
+	uint32_t loops = 0;
+	while(cm.get_state() != cm_state_machine::state::STEADY_STATE && loops < 10000)
+	{
+		usleep(1000);
+		++loops;
+	}
+	ASSERT_EQ(cm_state_machine::state::STEADY_STATE, cm.get_state());
+
+	// Build a collector message
+	draiosproto::error_message err;
+	err.set_type(draiosproto::error_type::ERR_PROTO_MISMATCH);
+
+	// Send the message
+	bool ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
+	                                     false,
+	                                     err);
+
+	ASSERT_TRUE(ret);
+
+	loops = 0;
+	while (fc.get_num_disconnects() == 0 && loops < 10000)
+	{
+		usleep(1000);
+		++loops;
+	}
+
+	ASSERT_EQ(1, fc.get_num_disconnects());
+	ASSERT_FALSE(cm.is_connected());
+	ASSERT_TRUE(config.m_terminate);
+
+	// Shut down all the things
+	fc.stop();
+
+	t.join();
 }

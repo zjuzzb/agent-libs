@@ -17,7 +17,6 @@
 #include "dump_request_start_message_handler.h"
 #include "dump_request_stop_message_handler.h"
 #include "error_handler.h"
-#include "error_message_handler.h"
 #include "faultlist_rest_request_handler.h"
 #include "fault_rest_request_handler.h"
 #include "file_rest_request_handler.h"
@@ -1050,8 +1049,6 @@ int dragent_app::sdagent_main()
 		             std::make_shared<dump_request_stop_message_handler>(m_sinsp_worker)},
 		            {draiosproto::message_type::CONFIG_DATA,
 		             std::make_shared<config_data_message_handler>(m_configuration)},
-		            {draiosproto::message_type::ERROR_MESSAGE,
-		             std::make_shared<error_message_handler>()},
 		            {draiosproto::message_type::POLICIES,
 		             std::make_shared<security_policies_message_handler>(m_sinsp_worker)},
 		            {draiosproto::message_type::POLICIES_V2,
@@ -1063,7 +1060,7 @@ int dragent_app::sdagent_main()
 		            {draiosproto::message_type::ORCHESTRATOR_EVENTS,
 		             std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker)},
 		            {draiosproto::message_type::AGGREGATION_CONTEXT,
-		                dragent::aggregator_limits::global_limits},
+		             dragent::aggregator_limits::global_limits},
 		            {draiosproto::message_type::BASELINES,  // Legacy -- no longer used
 		             std::make_shared<null_message_handler>()},
 		        });

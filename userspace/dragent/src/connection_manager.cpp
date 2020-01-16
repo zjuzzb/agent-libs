@@ -25,6 +25,11 @@ type_config<uint32_t> c_unacked_message_slots(
         "Number of slots for metrics messages with pending acknowledgements",
         "unacked_message_slots");
 
+type_config<uint32_t> c_reconnect_max_backoff_s(
+        360,
+        "The ceiling for the exponential backoff on error, in seconds.",
+        "reconnect_max_backoff");
+
 using namespace std;
 namespace security_config = libsanalyzer::security_config;
 
@@ -39,7 +44,6 @@ COMMON_LOGGER();
 
 const chrono::seconds connection_manager::WORKING_INTERVAL_S(10);
 const uint32_t connection_manager::RECONNECT_MIN_INTERVAL_S = 1;
-const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S = 60;
 
 class LoggingCertificateHandler : public Poco::Net::InvalidCertificateHandler
 {
@@ -222,6 +226,9 @@ connection_manager::connection_manager(dragent_configuration* configuration,
 {
 	Poco::Net::initializeSSL();
 
+	set_message_handler(draiosproto::message_type::ERROR_MESSAGE,
+	                    std::make_shared<error_message_handler>(this));
+
 	dragent_protocol::protocol_version ver = get_max_supported_protocol_version();
 
 	fsm_reinit(ver);
@@ -395,7 +402,6 @@ std::string connection_manager::find_ca_cert_path(const std::vector<std::string>
 
 bool connection_manager::connect()
 {
-	m_last_connection_failure = chrono::system_clock::now();
 	uint32_t connect_timeout_us = connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US;
 #ifdef SYSDIG_TEST
 	connect_timeout_us = m_connect_timeout_us;
@@ -407,6 +413,7 @@ bool connection_manager::connect()
 
 	std::promise<socket_ptr> sock_promise;
 	std::future<socket_ptr> future_sock = sock_promise.get_future();
+	std::atomic<bool> terminate(false);
 
 	//
 	// Asynchronously connect to the collector
@@ -414,12 +421,12 @@ bool connection_manager::connect()
 	// Since sock_promise is captured by reference, need to ensure that it
 	// doesn't go out of scope until the thread ends.
 	//
-	std::thread connect_thread([&sock_promise](const string& hostname,
-	                                           const uint16_t port,
-	                                           bool ssl_enabled,
-	                                           const uint32_t transmit_buffer_size,
-	                                           const uint32_t reconnect_interval,
-	                                           const uint32_t connect_timeout_us)
+	std::thread connect_thread([&sock_promise, &terminate](const string& hostname,
+	                                                       const uint16_t port,
+	                                                       bool ssl_enabled,
+	                                                       const uint32_t transmit_buffer_size,
+	                                                       const uint32_t reconnect_interval,
+	                                                       const uint32_t connect_timeout_us)
 	{
 		StreamSocket* ssp = nullptr;
 
@@ -428,20 +435,30 @@ bool connection_manager::connect()
 			// Reconnect backoff
 			// How reconnect backoff works, briefly:
 			//  * The backoff starts at 0
-			//  * The first disconnect(), the backoff is set to RECONNECT_MIN_INTERVAL_S (currently
-			// 1 second)
+			//  * The first disconnect(), the backoff is set to RECONNECT_MIN_INTERVAL_S
+			//    (currently 1 second)
 			//  * Every subsequent disconnect, the backoff is doubled
-			//  * If the connection has been active for over WORKING_INTERVAL_S (currently 10
-			// seconds),
-			//    reset the backoff to RECONNECT_MIN_INTERVAL_S on the next disconnect()
-			//  * last_connection_failure is updated above in the call to connect()
+			//  * If the connection is determined to be working, reset to 0
+			//     * For protocol v4, working means connected for more than
+			//       WORKING_INTERVAL_S
+			//     * For protocol v5, working means successful handshake
 			std::chrono::seconds time_slept = std::chrono::seconds(0);
-			while (time_slept < std::chrono::seconds(reconnect_interval))
+			LOG_INFO("Connect backoff: waiting for " +
+			          std::to_string(reconnect_interval) + " seconds");
+			while (time_slept < std::chrono::seconds(reconnect_interval) && !terminate)
 			{
 				std::chrono::seconds time_to_sleep = std::chrono::seconds(1);
 				std::this_thread::sleep_for(time_to_sleep);
 				time_slept += time_to_sleep;
 			}
+
+			if (terminate)
+			{
+				LOG_INFO("Aborting connection attempt because agent is terminating.");
+				sock_promise.set_value(nullptr);
+				return;
+			}
+
 			SocketAddress sa(hostname, port);
 			// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 			LOG_INFO("Connecting to collector " + sa.toString());
@@ -542,7 +559,7 @@ bool connection_manager::connect()
 	//
 
 	uint32_t waited_time_s = 0;
-	const uint32_t wait_for_s = US_TO_S(connect_timeout_us);
+	const uint32_t wait_for_s = US_TO_S(connect_timeout_us) + m_reconnect_interval;
 
 	LOG_INFO("Waiting to connect %u s", wait_for_s);
 	for (waited_time_s = 0; waited_time_s <= wait_for_s; ++waited_time_s)
@@ -550,13 +567,15 @@ bool connection_manager::connect()
 		// SMAGENT-1449
 		// We can't break out of this loop even if the program is being terminated
 		// because the thread has captured some local variables. Come what may, we
-		// have to ride out this attempt to connect until the bitter end.
-		(void)heartbeat();
+		// have to ride out this attempt to connect until the std::future is set.
+		if (!heartbeat())
+		{
+			terminate = true;
+		}
 		if (future_sock.wait_for(std::chrono::seconds(1)) == std::future_status::ready)
 		{
 			break;
 		}
-		++waited_time_s;
 	}
 
 	// By calling thread.join(), we are opening up to the possibility that the join()
@@ -601,7 +620,8 @@ void connection_manager::disconnect()
 
 void connection_manager::disconnect(socket_ptr& ssp)
 {
-	if (chrono::system_clock::now() - m_last_connection_failure >= WORKING_INTERVAL_S)
+	// Update exponential backoff
+	if (m_reconnect_interval == 0)
 	{
 		m_reconnect_interval = RECONNECT_MIN_INTERVAL_S;
 	}
@@ -609,7 +629,7 @@ void connection_manager::disconnect(socket_ptr& ssp)
 	{
 		m_reconnect_interval = std::min(
 		    std::max(connection_manager::RECONNECT_MIN_INTERVAL_S, m_reconnect_interval * 2),
-		    RECONNECT_MAX_INTERVAL_S);
+		    c_reconnect_max_backoff_s.get_value());
 	}
 
 	if (ssp)
@@ -742,6 +762,7 @@ void connection_manager::do_run()
 		//
 		// The main loop while the connection is established
 		//
+		m_last_connect = std::chrono::system_clock::now();
 		while (heartbeat() && is_connected())
 		{
 			// Check if we received a message
@@ -803,6 +824,7 @@ void connection_manager::do_run()
 			}
 		}  // End while (main loop)
 	}      // End while (heartbeat)
+	disconnect();
 	m_fsm->send_event(cm_state_machine::event::SHUTDOWN);
 }
 
@@ -1045,8 +1067,35 @@ bool connection_manager::perform_handshake()
 			m_pending_message.reset();
 
 			draiosproto::error_type err_type = err_msg.type();
-			if (err_type != draiosproto::error_type::ERR_PROTO_MISMATCH)
+			switch (err_type)
 			{
+			// PROTO_MISMATCH is sent by the backend when it doesn't understand
+			// a message it's received. Seeing it here either means that the
+			// collector does not speak proto v5 or that the collector saw
+			// something in the proto_init that it didn't like and wants to
+			// fallback to legacy.
+			case draiosproto::error_type::ERR_PROTO_MISMATCH:
+				LOG_WARNING("Protocol mismatch: Received error attempting handshake. "
+				            "Falling back to legacy mode.");
+
+				// Change configs
+				set_legacy_mode();
+
+				// Reset the FSM
+				// Why reset the FSM rather than having this be a valid transition?
+				// Because the FSM needs to be reinitialized for the new protocol
+				// version.
+				fsm_reinit(m_negotiated_protocol_version,
+				           cm_state_machine::state::STEADY_STATE);
+				return true;
+
+			case draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY:
+				// Disconnect will trigger exponential backoff
+				LOG_ERROR("Received error message: INVALID_CUSTOMER_KEY");
+				disconnect();
+				return false;
+
+			default:
 				// This is a different error
 				std::string err_string = draiosproto::error_type_Name(err_type);
 				LOG_ERROR("Protocol error: received error message from collector: " +
@@ -1054,19 +1103,6 @@ bool connection_manager::perform_handshake()
 				disconnect();
 				return false;
 			}
-
-			LOG_WARNING("Protocol mismatch: Received error attempting handshake. "
-			            "Falling back to legacy mode.");
-
-			// Change configs
-			set_legacy_mode();
-
-			// Reset the FSM
-			// Why reset the FSM rather than having this be a valid transition?
-			// Because the FSM needs to be reinitialized for the new protocol
-			// version.
-			fsm_reinit(m_negotiated_protocol_version, cm_state_machine::state::STEADY_STATE);
-			return true;
 		}
 		else
 		{
@@ -1211,6 +1247,9 @@ bool connection_manager::perform_handshake()
 	// Process unacked messages
 	process_ack_queue_on_reconnect(hs_resp.last_acked_gen_num(),
 	                               hs_resp.last_acked_seq_num());
+
+	// Reset the exponential backoff
+	reset_backoff();
 
 	return true;
 }
@@ -1627,6 +1666,11 @@ void connection_manager::on_metrics_send(dragent_protocol_header_v5& header,
 
 	if (get_current_protocol_version() == dragent_protocol::PROTOCOL_VERSION_NUMBER)
 	{
+		// Check to see how long we've been functional
+		if (std::chrono::system_clock::now() - m_last_connect >= WORKING_INTERVAL_S)
+		{
+			reset_backoff();
+		}
 		return;
 	}
 
@@ -1741,4 +1785,56 @@ void connection_manager::set_legacy_mode()
 
 	// Clear the input queue
 	m_queue->clear();
+}
+
+void connection_manager::handle_collector_error(draiosproto::error_message& msg)
+{
+	bool term = false;
+
+	// Weed out bogus messages
+	if(!msg.has_type())
+	{
+		LOG_ERROR("Protocol error: Received error message with unset type.");
+		return;
+	}
+	const draiosproto::error_type err_type = msg.type();
+
+	if(!draiosproto::error_type_IsValid(err_type))
+	{
+		LOG_ERROR("Protocol error: received invalid error type: " +
+		          std::to_string(err_type));
+		return;
+	}
+
+	// Handle the error message
+	std::string err_str = draiosproto::error_type_Name(err_type);
+
+	if(msg.has_description() && !msg.description().empty())
+	{
+		err_str += " (" + msg.description() + ")";
+	}
+
+	LOG_ERROR("Received error message: " + err_str);
+
+	if(err_type == draiosproto::error_type::ERR_PROTO_MISMATCH)
+	{
+		term = true;
+	}
+
+	if(err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY)
+	{
+		// Exponential backoff on INVALID_CUSTOMER_KEY
+		// Sometimes customers will decide to no longer be customers
+		// but will leave an agent running for some reason. The agent
+		// will just pound away trying to connect to the collector.
+		// Make the agent backoff in this case (the agent will use
+		// the default backoff mechanism).
+		disconnect();
+	}
+
+	if(term)
+	{
+		LOG_ERROR("Terminating agent due to collector message.");
+		dragent_configuration::m_terminate = true;
+	}
 }
