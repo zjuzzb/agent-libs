@@ -10,7 +10,7 @@ namespace {
 COMMON_LOGGER();
 
 type_config<uint64_t> c_interval_s(
-   300 /*default*/,
+   0 /*default*/,
    "The number of seconds between each request for the size of a container's "
    "container-layer. This is not gathered every second because determining the "
    "size can be time consuming and cpu intensive. Set to 0 to disable.",
