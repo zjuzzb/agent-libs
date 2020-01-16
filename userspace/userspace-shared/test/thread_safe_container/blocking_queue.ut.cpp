@@ -5,17 +5,18 @@
 #include <Poco/Runnable.h>
 #include <Poco/ThreadPool.h>
 #include "Poco/Thread.h"
-#include "blocking_queue.h"
+#include "thread_safe_container/blocking_queue.h"
 
 #include <common_assert.h>
 
 using Poco::ThreadPool;
+using namespace thread_safe_container;
 
 namespace
 {
 
 const int LOOPS = 1000;
-blocking_queue<int> s_queue(LOOPS);
+thread_safe_container::blocking_queue<int> s_queue(LOOPS);
 std::atomic<bool> s_abort(false);
 
 

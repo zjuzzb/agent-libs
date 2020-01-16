@@ -65,6 +65,7 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 	switch(msg_type) {
 		sdc_internal::ping *ping;
 		sdc_internal::docker_command *docker_command;
+		sdc_internal::cri_command *cri_command;
 		sdc_internal::swarm_state_command *sscmd;
 		sdc_internal::orchestrator_events_stream_command *orchestrator_events_stream_command;
 		sdc_internal::orchestrator_attach_user_events_stream_command *orchestrator_attach_user_events_stream_command;
@@ -93,7 +94,7 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 		break;
 
 	case sdc_internal::DOCKER_COMMAND:
-                // Start the rpc call and have the docker_cmd_result reader read the response when
+                // Start the rpc call and have the container_cmd_result reader read the response when
                 // it's ready.
 		docker_command = static_cast<sdc_internal::docker_command *>(request_msg);
 		call->docker_cmd_result_reader = m_stub->AsyncPerformDockerCommand(&call->ctx, *docker_command, &m_cq);
@@ -107,6 +108,16 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 						       &call->status, (void*)call);
 
 		break;
+	case sdc_internal::CRI_COMMAND:
+		cri_command = static_cast<sdc_internal::cri_command *>(request_msg);
+		call->cri_cmd_result_reader = m_stub->AsyncPerformCriCommand(&call->ctx, *cri_command, &m_cq);
+
+		call->response_msg = make_unique<sdc_internal::cri_command_result>();
+		call->cri_cmd_result_reader->Finish(static_cast<sdc_internal::cri_command_result *>(call->response_msg.get()),
+				&call->status, (void*)call);
+
+		break;
+
 	case sdc_internal::ORCHESTRATOR_EVENTS_STREAM_COMMAND:
 		call->is_streaming = true;
 
@@ -142,7 +153,7 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 bool coclient::process_queue()
 {
 	int32_t total_evts = 0,	curr_count_evts = 0;
-	
+
 	while (total_evts < m_max_loop_evts)
 	{
 		curr_count_evts = next();
@@ -279,8 +290,8 @@ void coclient::ping(int64_t token, response_cb_t response_cb)
 	prepare(&ping, sdc_internal::PING, response_cb);
 }
 
-void coclient::perform_docker_cmd(sdc_internal::docker_cmd_type cmd,
-				  const string &container_id, response_cb_t response_cb)
+void coclient::perform_docker_cmd(sdc_internal::container_cmd_type cmd,
+				const string &container_id, response_cb_t response_cb)
 {
 	sdc_internal::docker_command docker_cmd;
 
@@ -289,6 +300,19 @@ void coclient::perform_docker_cmd(sdc_internal::docker_cmd_type cmd,
 
 	prepare(&docker_cmd, sdc_internal::DOCKER_COMMAND, response_cb);
 }
+
+void coclient::perform_cri_cmd(const string &cri_socket_path, sdc_internal::container_cmd_type cmd,
+				const string &container_id, response_cb_t response_cb)
+{
+	sdc_internal::cri_command cri_cmd;
+
+	cri_cmd.set_cmd(cmd);
+	cri_cmd.set_container_id(container_id);
+	cri_cmd.set_cri_socket_path(cri_socket_path);
+
+	prepare(&cri_cmd, sdc_internal::CRI_COMMAND, response_cb);
+}
+
 
 void coclient::get_swarm_state(response_cb_t response_cb)
 {

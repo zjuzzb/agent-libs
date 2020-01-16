@@ -15,7 +15,7 @@ from IPython import embed
 from google.protobuf.text_format import Merge as parse_text_protobuf
 from google.protobuf.pyext._message import RepeatedCompositeContainer, ScalarMapContainer
 from google.protobuf.descriptor import FieldDescriptor
-from protobuf_to_dict import protobuf_to_dict
+from protobuf_to_dict import protobuf_to_dict, dict_to_protobuf
 from hashlib import md5
 
 import draios_pb2
@@ -75,7 +75,7 @@ class MetricsFile(object):
         self._tail.kill()
 
 
-def walk_protos(args, path, filter_f, ext="dam"):
+def walk_protos(args, path, filter_f, ext=("dam", ".json")):
     for root, dirs, files in os.walk(path, topdown=False):
         if args.reorder:
             # dumb way to reorder timestamps, assuming the file format is
@@ -528,6 +528,10 @@ def analyze_proto(args, path, filter_f):
             f.seek(2)
             metrics = draios_pb2.metrics.FromString(f.read())
             process_metrics(metrics, filter_f, path)
+    elif path.endswith('json'):
+        json_metrics = json.load(open(path))
+        metrics = dict_to_protobuf(draios_pb2.metrics, json_metrics)
+        process_metrics(metrics, filter_f, path)
     else:
         if args.reorder:
             ml = [metrics for metrics in MetricsFile(path)]

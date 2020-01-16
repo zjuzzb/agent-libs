@@ -141,7 +141,8 @@ public:
 		UNKNOWN         = 5
 	};
 	explicit app_metric(const Json::Value& obj);
-	void to_protobuf(draiosproto::app_metric* proto) const;
+	template<typename message>
+	void to_protobuf(message* proto) const;
 
 	const std::string& name() const;
 private:
@@ -172,7 +173,8 @@ public:
 	};
 	explicit app_service_check(const Json::Value& obj);
 	void to_protobuf(draiosproto::app_check* proto) const;
-	void to_protobuf_as_metric(draiosproto::app_metric* proto) const;
+	template<typename message>
+	void to_protobuf_as_metric(message* proto) const;
 	const std::string& name() const;
 private:
 	status_t m_status;
@@ -205,7 +207,7 @@ public:
 			m_total_metrics(0)
 	{};
 
-	explicit app_check_data(const Json::Value& obj, metric_limits::cref_sptr_t ml = nullptr);
+	explicit app_check_data(const Json::Value& obj, const metric_limits::sptr_t& ml = nullptr);
 
 	check_type type() const
 	{
@@ -230,7 +232,7 @@ public:
 	// metric is either an draiosproto::app_metric or prometheus_metric
 	// since they largely support the same types, but are different classes
 	template<typename metric>
-	unsigned to_protobuf(metric *proto, uint16_t& limit, uint16_t max_limit) const;
+	unsigned to_protobuf(metric *proto, unsigned int& limit, unsigned int max_limit) const;
 
 	const std::string& name() const
 	{
@@ -279,13 +281,22 @@ public:
 	void send_get_metrics_cmd(const std::vector<app_process>& processes,
 		const std::vector<prom_process>& prom_procs, const prometheus_conf &conf);
 
-	metric_map_t read_metrics(metric_limits::cref_sptr_t ml = nullptr);
+	metric_map_t read_metrics(const metric_limits::sptr_t& ml = nullptr);
 
 private:
 	posix_queue m_outqueue;
 	posix_queue m_inqueue;
 	Json::Reader m_json_reader;
 	Json::FastWriter m_json_writer;
+
+	// the only one currently defined and the only one we support
+	static constexpr const uint8_t PROTOCOL_VERSION = 1;
+
+	// sanity checks, we could support up to 4 GB compressed/uncompressed
+	// size but that's rather excessive and probably indicates a bug
+	// MAXSIZE in sdchecks.py is 3 MB so in theory we never exceed this
+	static constexpr const size_t MAX_COMPRESSED_SIZE = 4UL << 20u;
+	static constexpr const size_t MAX_UNCOMPRESSED_SIZE = 100UL << 20u;
 };
 
 #endif // _WIN32

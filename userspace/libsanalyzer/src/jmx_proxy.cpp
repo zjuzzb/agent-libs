@@ -110,7 +110,7 @@ java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute, unsigned
 	}
 }
 
-java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
+java_bean::java_bean(const Json::Value& json, const metric_limits::sptr_t& ml):
 	m_name(json["name"].asString()), m_total_metrics(0)
 {
 	for(const auto& attribute : json["attributes"])
@@ -240,7 +240,7 @@ unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned 
 	return emitted_attributes;
 }
 
-java_process::java_process(const Json::Value& json, metric_limits::cref_sptr_t ml):
+java_process::java_process(const Json::Value& json, const metric_limits::sptr_t& ml):
 	m_pid(json["pid"].asInt()),
 	m_name(json["name"].asString()),
 	m_total_metrics(0)
@@ -361,7 +361,7 @@ void jmx_proxy::send_get_metrics(const std::vector<sinsp_threadinfo*>& processes
 }
 
 
-std::unordered_map<int, java_process> jmx_proxy::read_metrics(metric_limits::cref_sptr_t ml)
+std::unordered_map<int, java_process> jmx_proxy::read_metrics(const metric_limits::sptr_t& ml)
 {
 	process_map_t processes;
 	try
@@ -372,11 +372,11 @@ std::unordered_map<int, java_process> jmx_proxy::read_metrics(metric_limits::cre
 		{
 			LOG_DEBUG("JMX metrics json size is: %zu", json_data.size());
 			if(m_print_json) {
-				LOG_DEBUG("JMX metrics json: %s", json_data.c_str());
+				LOG_DEBUG("JMX metrics json: %s", &json_data[0]);
 			}
 			Json::Value json_obj;
 
-			bool parse_ok = m_json_reader.parse(json_data, json_obj, false);
+			bool parse_ok = m_json_reader.parse(&json_data[0], &json_data[json_data.size()], json_obj, false);
 			if(parse_ok && json_obj.isObject() && json_obj.isMember("body"))
 			{
 				for(const auto& process_data : json_obj["body"])
@@ -388,7 +388,7 @@ std::unordered_map<int, java_process> jmx_proxy::read_metrics(metric_limits::cre
 			else
 			{
 				LOG_ERROR("Cannot deserialize JMX metrics");
-				LOG_DEBUG("%s", json_data.c_str());
+				LOG_DEBUG("%s", &json_data[0]);
 			}
 		}
 		else

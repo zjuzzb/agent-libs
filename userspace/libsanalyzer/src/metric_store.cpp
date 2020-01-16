@@ -32,6 +32,7 @@ std::mutex& get_mutex()
 
 /** Pointer to the last complete protobuf. */
 std::shared_ptr<const draiosproto::metrics> s_metrics;
+std::shared_ptr<const draiosproto::metrics> s_metrics_pre_aggregated;
 
 } // end namespace
 
@@ -46,11 +47,25 @@ void metric_store::store(const std::shared_ptr<const draiosproto::metrics>& metr
 	s_metrics = metrics;
 }
 
+void metric_store::store_pre_aggregated(const std::shared_ptr<const draiosproto::metrics>& metrics)
+{
+	std::unique_lock<std::mutex> lock(get_mutex());
+
+	s_metrics_pre_aggregated = metrics;
+}
+
 std::shared_ptr<const draiosproto::metrics> metric_store::get()
 {
 	std::unique_lock<std::mutex> lock(get_mutex());
 
 	return s_metrics;
+}
+
+std::shared_ptr<const draiosproto::metrics> metric_store::get_pre_aggregated()
+{
+	std::unique_lock<std::mutex> lock(get_mutex());
+
+	return s_metrics_pre_aggregated;
 }
 
 } // namespace libsanalyzer

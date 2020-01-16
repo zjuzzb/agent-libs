@@ -1,0 +1,49 @@
+syntax = "proto2";
+package draiosproto;
+import "aggregation_context.proto";
+
+option optimize_for = SPEED;
+option java_package = "com.draios.model.protobuf";
+option java_outer_classname = "Handshake";
+
+message protocol_init {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
+    repeated uint32 supported_protocol_versions = 4; // protocol version before using handshake is 4
+}
+
+message protocol_init_response {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
+    required uint32 protocol_version = 4; // protocol version before using handshake is 1
+}
+
+enum compression {
+    COMPRESSION_NONE = 1;
+    COMPRESSION_GZIP = 2;
+    COMPRESSION_LZ4 = 3;
+}
+
+message ack_v1 {
+}
+
+message handshake_v1 {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
+    repeated compression supported_compressions = 4;
+    repeated uint32 supported_agg_intervals = 5 [packed = true];
+}
+
+message handshake_v1_response {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
+    required uint64 last_acked_gen_num = 4;
+    required uint64 last_acked_seq_num = 5;
+    required compression compression = 6;
+    required uint32 agg_interval = 7;
+    optional aggregation_context agg_context = 8;
+}

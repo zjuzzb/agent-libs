@@ -26,7 +26,7 @@ class null_statsd_stats_source : public statsd_stats_source
 public:
 	/** Does nothing.  Returns an empty map. */
 	statsd_stats_source::container_statsd_map read_metrics(
-			metric_limits::cref_sptr_t ml = nullptr) override
+			const metric_limits::sptr_t& ml = nullptr) override
 	{
 		return statsd_stats_source::container_statsd_map();
 	}

@@ -98,7 +98,7 @@ TEST_F(sys_call_test, analyzer_errors)
 		{
 			if(NumberParser::parse(e->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
-				sinsp_error_counters* ec = &param.m_inspector->m_analyzer->m_host_metrics.m_syscall_errors;
+				sinsp_error_counters* ec = &param.m_analyzer->m_host_metrics.m_syscall_errors;
 
 				EXPECT_LE((size_t)10, ec->m_count);
 				EXPECT_LE((size_t)5, ec->m_count_file);
@@ -256,7 +256,7 @@ TEST_F(sys_call_test, analyzer_fdstats)
 			{
 				found = true;
 
-				const auto& files_stat = param.m_inspector->m_analyzer->m_fd_listener->m_files_stat;
+				const auto& files_stat = param.m_analyzer->m_fd_listener->m_files_stat;
 
 				EXPECT_NE((uint64_t) 0, files_stat.size());
 

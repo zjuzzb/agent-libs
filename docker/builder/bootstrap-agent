@@ -441,6 +441,20 @@ if [ ! -d "${SCONS_DIR}" ]; then
 fi
 
 if [ $OS != "Windows_NT" ]; then
+	PYTHON37_VER=3.7.3
+	PYTHON37_EXT=tgz
+	PYTHON37_DIR=$DEPENDENCIES/Python-$PYTHON37_VER
+	if [ ! -d "${PYTHON37_DIR}" ]; then
+		cd $DEPENDENCIES
+		wget $DEPENDENCIES_URL/Python-$PYTHON37_VER.$PYTHON37_EXT
+		tar xfz Python-$PYTHON37_VER.$PYTHON37_EXT
+		cd $PYTHON37_DIR
+		echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist
+		./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON37_DIR/target --with-ensurepip=install --enable-unicode=ucs4
+		make -j $MAKE_JOBS
+		make -j $MAKE_JOBS install
+	fi
+
 	PYTHON_VER=2.7.16
 	PYTHON_EXT=tgz
 	PYTHON_DIR=$DEPENDENCIES/Python-$PYTHON_VER

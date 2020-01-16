@@ -127,7 +127,7 @@ TEST(jmx_bean, test_filter)
 		"}", jv, true)
 	);
 	filter_vec_t f = {{"NumberOfRelationship*", true}, {"NumberOfProperty*", false}};
-	metric_limits::sptr_t ml(new metric_limits(f, 4u));
+	metric_limits::sptr_t ml(new metric_limits(std::move(f), 4u));
 	java_bean jb(jv, ml);
 	ASSERT_EQ(3u, jb.attributes().size());
 	ASSERT_EQ(4u, ml->cached());
@@ -139,7 +139,8 @@ TEST(jmx_bean, test_filter)
 
 jmx_proxy::process_map_t run_filtering(std::unique_ptr<jmx_proxy>& jmx, const filter_vec_t& f)
 {
-	metric_limits::sptr_t ml(new metric_limits(f));
+	filter_vec_t filter(f);
+	metric_limits::sptr_t ml(new metric_limits(std::move(filter)));
 	jmx_proxy::process_map_t metrics = jmx->read_metrics(ml);
 	return metrics;
 }

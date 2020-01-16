@@ -60,6 +60,7 @@ using namespace google::protobuf::io;
 #include "cri.h"
 #include "infrastructure_state.h"
 #include "k8s.h"
+#include "k8s_config.h"
 #include "k8s_delegator.h"
 #include "k8s_state.h"
 #include "k8s_proto.h"
@@ -98,6 +99,7 @@ using namespace google::protobuf::io;
 #include "null_statsd_emitter.h"
 #include "type_config.h"
 #include "analyzer_flush_message.h"
+#include "configuration_manager.h"
 
 #include <gperftools/profiler.h>
 
@@ -131,6 +133,14 @@ type_config<int32_t> c_dragent_cpu_profile_total_profiles(
 	"The total number of cpu profiles to collect before overwriting old profiles",
 	"dragent_total_profiles");
 
+type_config<bool>::ptr c_test_only_send_infra_state_containers = type_config_builder<bool>(
+	false,
+	"Send all containers from infrastructure_state as local to the current node",
+	"send_infra_state_containers")
+	.hidden()
+	.mutable_only_in_internal_build()
+	.build();
+
 } // end namespace
 
 const uint64_t flush_data_message::NO_EVENT_NUMBER =
@@ -140,10 +150,15 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
                                std::string root_dir,
                                const internal_metrics::sptr_t& internal_metrics,
                                audit_tap_handler& tap_handler,
-                               secure_audit_handler& secure_handler,
-                               sinsp_analyzer::flush_queue* flush_queue):
+                               secure_audit_handler& secure_audit_handler,
+                               secure_profiling_handler& secure_profiling_handler,
+                               sinsp_analyzer::flush_queue* flush_queue,
+                               const metric_limits::sptr_t& the_metric_limits,
+                               const label_limits::sptr_t& the_label_limits,
+                               const k8s_limits::sptr_t& the_k8s_limits):
 	m_configuration(new sinsp_configuration()),
 	m_inspector(inspector),
+	m_metrics(make_unique<draiosproto::metrics>()),
 #ifndef CYGWING_AGENT
 	m_coclient(root_dir),
 #endif
@@ -153,8 +168,11 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_very_high_cpu_switcher("agent cpu usage with sr=128"),
 	m_internal_metrics(internal_metrics),
 	m_statsd_emitter(new null_statsd_emitter()),
+	m_metric_limits(the_metric_limits),
+	m_label_limits(the_label_limits),
 	m_audit_tap_handler(tap_handler),
-	m_secure_audit_handler(secure_handler),
+	m_secure_audit_handler(secure_audit_handler),
+	m_secure_profiling_handler(secure_profiling_handler),
 	m_metrics_dir_mutex(),
 	m_metrics_dir(""),
 	m_flush_queue(flush_queue)
@@ -174,7 +192,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_flush_log_time_end = 0;
 	m_flush_log_time_restart = 0;
 
-	m_metrics = new draiosproto::metrics;
 	m_prev_sample_evtnum = 0;
 	m_client_tr_time_by_servers = 0;
 
@@ -209,12 +226,12 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 
 	m_parser = new sinsp_analyzer_parsers(this);
 
-	m_falco_baseliner = new sinsp_baseliner();
+	m_falco_baseliner = new sinsp_baseliner(*this, m_inspector);
 
 	m_tap = nullptr;
 	m_secure_audit = nullptr;
 #ifndef CYGWING_AGENT
-	m_infrastructure_state = new infrastructure_state(inspector, root_dir);
+	m_infrastructure_state = new infrastructure_state(*this, inspector, root_dir, the_k8s_limits);
 #endif
 
 	//
@@ -222,7 +239,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	//
 	m_thread_memory_id = inspector->reserve_thread_memory(sizeof(thread_analyzer_info));
 
-	m_threadtable_listener = new analyzer_threadtable_listener(inspector, this);
+	m_threadtable_listener = new analyzer_threadtable_listener(inspector, *this);
 	inspector->m_thread_manager->set_listener((sinsp_threadtable_listener*)m_threadtable_listener);
 
 	m_fd_listener = new sinsp_analyzer_fd_listener(inspector, this, m_falco_baseliner);
@@ -266,7 +283,6 @@ sinsp_analyzer::~sinsp_analyzer()
 		utils::profiler::stop();
 	}
 
-	delete m_metrics;
 	delete m_score_calculator;
 	delete m_procfs_parser;
 	delete m_sched_analyzer2;
@@ -480,7 +496,7 @@ void sinsp_analyzer::on_capture_start()
 						  m_configuration->get_procfs_scan_interval_ms() / 1000,
 						  m_configuration->get_procfs_scan_mem_interval_ms() / 1000);
 #else
-	m_procfs_parser = new sinsp_procfs_parser(m_inspector, 
+	m_procfs_parser = new sinsp_procfs_parser(m_inspector,
 						  m_machine_info->num_cpus,
 						  m_machine_info->memory_size_bytes / 1024,
 						  !m_inspector->is_capture(),
@@ -489,15 +505,15 @@ void sinsp_analyzer::on_capture_start()
 #endif
 	m_mounted_fs_reader.reset(new mounted_fs_reader(m_remotefs_enabled, m_configuration->get_mounts_filter(), m_configuration->get_mounts_limit_size()));
 
-	m_sched_analyzer2 = new sinsp_sched_analyzer2(m_inspector, m_machine_info->num_cpus);
-	m_score_calculator = new sinsp_scores(m_inspector, m_sched_analyzer2);
+	m_sched_analyzer2 = new sinsp_sched_analyzer2(*this, m_inspector, m_machine_info->num_cpus);
+	m_score_calculator = new sinsp_scores(*this, m_inspector, m_sched_analyzer2);
 	m_delay_calculator = new sinsp_delays(m_machine_info->num_cpus);
 
 	//
 	// Allocations
 	//
 	ASSERT(m_ipv4_connections == NULL);
-	m_ipv4_connections = new sinsp_ipv4_connection_manager(m_inspector);
+	m_ipv4_connections = new sinsp_ipv4_connection_manager(m_inspector, *this);
 
 	if(m_secure_audit != nullptr)
 	{
@@ -510,7 +526,7 @@ void sinsp_analyzer::on_capture_start()
 		m_ipv4_connections->m_percentiles = pctls;
 	}
 	m_fd_listener->set_ipv4_connection_manager(m_ipv4_connections);
-	m_trans_table = new sinsp_transaction_table(m_inspector);
+	m_trans_table = new sinsp_transaction_table(*this);
 
 	//
 	// Notify the scheduler analyzer
@@ -531,8 +547,8 @@ void sinsp_analyzer::on_capture_start()
 	if(do_baseline_calculation)
 	{
 		glogf("starting falco baselining");
-		m_falco_baseliner->init(m_inspector);
-		m_falco_baseliner->set_baseline_calculation_enabled(do_baseline_calculation);
+		m_falco_baseliner->init();
+		m_falco_baseliner->enable_baseline_calculation();
 	}
 
 #ifndef CYGWING_AGENT
@@ -1600,21 +1616,41 @@ sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 	if(m_flushes_since_k8_local_flush >= m_k8s_local_update_frequency)
 	{
 		m_flushes_since_k8_local_flush = 0;
-		g_logger.log("sinsp_analyzer:: Emitting k8s metadata for local node", sinsp_logger::SEV_DEBUG);
-
 		// Try to find out our k8s node id & name
 		m_infrastructure_state->find_our_k8s_node(&emitted_containers);
 
-		// Build the orchestrator state of the emitted containers (without metrics)
-		// This is the k8 data for the local node
-		m_metrics->mutable_orchestrator_state()->set_cluster_id(cluster_id);
-		m_metrics->mutable_orchestrator_state()->set_cluster_name(cluster_name);
-		m_infrastructure_state->state_of(emitted_containers,
-						 m_metrics->mutable_orchestrator_state()->mutable_groups(),
-						 m_prev_flush_time_ns);
-		check_dump_infrastructure_state(*m_metrics->mutable_orchestrator_state(),
-						"local",
-						m_dump_local_infrastructure_state_on_next_flush);
+		if(c_new_k8s_local_export_format.get_value() == k8s_export_format::DEDICATED)
+		{
+			g_logger.log("sinsp_analyzer:: Emitting k8s metadata for local node (local_kubernetes)", sinsp_logger::SEV_DEBUG);
+
+			auto k8s_state = m_metrics->mutable_local_kubernetes();
+			// Build the orchestrator state of the emitted containers (without metrics)
+			// This is the k8 data for the local node
+			k8s_state->set_cluster_id(cluster_id);
+			k8s_state->set_cluster_name(cluster_name);
+			m_infrastructure_state->state_of(emitted_containers,
+							 k8s_state,
+							 m_prev_flush_time_ns);
+			check_dump_infrastructure_state(*k8s_state,
+							"local",
+							m_dump_local_infrastructure_state_on_next_flush);
+		}
+		else
+		{
+			g_logger.log("sinsp_analyzer:: Emitting k8s metadata for local node (congroups)", sinsp_logger::SEV_DEBUG);
+
+			auto k8s_state = m_metrics->mutable_orchestrator_state();
+			// Build the orchestrator state of the emitted containers (without metrics)
+			// This is the k8 data for the local node
+			k8s_state->set_cluster_id(cluster_id);
+			k8s_state->set_cluster_name(cluster_name);
+			m_infrastructure_state->state_of(emitted_containers,
+							 k8s_state->mutable_groups(),
+							 m_prev_flush_time_ns);
+			check_dump_infrastructure_state(*k8s_state,
+							"local",
+							m_dump_local_infrastructure_state_on_next_flush);
+		}
 	}
 
 	// Check whether this node is a delegate node. If it is then it is
@@ -1627,18 +1663,33 @@ sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 	++m_flushes_since_k8_cluster_flush;
 	if(m_flushes_since_k8_cluster_flush >= m_k8s_cluster_update_frequency)
 	{
-		m_flushes_since_k8_cluster_flush = 0;
-		g_logger.log("sinsp_analyzer:: Emitting k8s metadata for cluster", sinsp_logger::SEV_DEBUG);
-
-
-		m_metrics->mutable_global_orchestrator_state()->set_cluster_id(cluster_id);
-		m_metrics->mutable_global_orchestrator_state()->set_cluster_name(cluster_name);
 		// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
-		m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups(),
-						  m_prev_flush_time_ns);
-		check_dump_infrastructure_state(*m_metrics->mutable_global_orchestrator_state(),
-						"global",
-						m_dump_global_infrastructure_state_on_next_flush);
+
+		m_flushes_since_k8_cluster_flush = 0;
+		if(c_new_k8s_global_export_format.get_value() == k8s_export_format::DEDICATED)
+		{
+			g_logger.log("sinsp_analyzer:: Emitting k8s metadata for cluster (global_kubernetes)", sinsp_logger::SEV_DEBUG);
+			auto k8s_state = m_metrics->mutable_global_kubernetes();
+
+			k8s_state->set_cluster_id(cluster_id);
+			k8s_state->set_cluster_name(cluster_name);
+			m_infrastructure_state->get_state(k8s_state, m_prev_flush_time_ns);
+			check_dump_infrastructure_state(*k8s_state,
+							"global",
+							m_dump_global_infrastructure_state_on_next_flush);
+		}
+		else
+		{
+			g_logger.log("sinsp_analyzer:: Emitting k8s metadata for cluster (congroups)", sinsp_logger::SEV_DEBUG);
+			auto k8s_state = m_metrics->mutable_global_orchestrator_state();
+
+			k8s_state->set_cluster_id(cluster_id);
+			k8s_state->set_cluster_name(cluster_name);
+			m_infrastructure_state->get_state(k8s_state->mutable_groups(), m_prev_flush_time_ns);
+			check_dump_infrastructure_state(*k8s_state,
+							"global",
+							m_dump_global_infrastructure_state_on_next_flush);
+		}
 	}
 #endif
 }
@@ -1771,7 +1822,7 @@ void sinsp_analyzer::emit_processes_deprecated(std::set<uint64_t>& all_uids,
 			draiosproto::program* prog = m_metrics->add_programs();
 
 			process_emitter_instance.emit_process(*tinfo,
-							      *prog, 
+							      *prog,
 							      progtable_by_container,
 							      *procinfo,
 							      tot,
@@ -1793,6 +1844,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				    const tracer_emitter &f_trc)
 {
 	tracer_emitter proc_trc("emit_processes", f_trc);
+	tracer_emitter init_trc("init", proc_trc);
 	int64_t delta;
 	sinsp_evt::category* cat;
 	sinsp_evt::category tcat;
@@ -1808,6 +1860,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #ifndef CYGWING_AGENT
 	vector<prom_process> prom_procs;
 #endif
+	init_trc.stop();
 
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
@@ -1864,6 +1917,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	}
 #endif
 
+	tracer_emitter stats_trc("stats", proc_trc);
 	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG,
@@ -1882,18 +1936,21 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 		m_ipv4_connections->clear_n_drops();
 	}
+	stats_trc.stop();
 
 	//
 	// Snapshot global CPU state
 	// (used as the reference value to calculate process CPU usages in the threadtable loop)
 	//
 #ifndef CYGWING_AGENT
+	tracer_emitter jiffies_trc("jiffies", proc_trc, 1);
 	if(!m_inspector->is_capture() &&
 	  (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT) &&
 	  !m_skip_proc_parsing)
 	{
 		m_procfs_parser->set_global_cpu_jiffies();
 	}
+	jiffies_trc.stop();
 
 #endif
 
@@ -2262,6 +2319,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_REGULAR;
 	}
 
+	tracer_emitter internal_metrics_trc("internal_metrics", proc_trc);
 	if (m_internal_metrics)
 	{
 		// update internal metrics
@@ -2276,6 +2334,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #endif
 		m_internal_metrics->update_subprocess_metrics(m_procfs_parser);
 	}
+	internal_metrics_trc.stop();
 
 	tracer_emitter pt_trc("walk_progtable", proc_trc);
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
@@ -2475,10 +2534,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	pt_trc.stop();
 
 	// pass connections to kafka tap
+	tracer_emitter tap_trc("tap", proc_trc);
 	if(m_tap)
 	{
 		m_tap->emit_connections(m_ipv4_connections, m_username_lookups ? &m_userdb : nullptr);
 	}
+	tap_trc.stop();
 
 	////////////////////////////////////////////////////////////////////////////
 	// EMIT CONNECTIONS
@@ -2537,6 +2598,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	container_trc.stop();
 
 	// notify mounted_fs proxy of containers which have long-running procs
+	tracer_emitter mountedfs_trc("mountedfs", proc_trc);
 	if(!m_inspector->is_capture() && m_mounted_fs_proxy)
 	{
 		vector<sinsp_threadinfo*> containers_for_mounted_fs;
@@ -2573,7 +2635,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		}
 		m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
 	}
+	mountedfs_trc.stop();
 
+	tracer_emitter actually_emit_trc("actually_emit", proc_trc);
 	std::set<uint64_t> all_uids;
 	jmx_emitter jmx_emitter_instance(m_jmx_metrics,
 					 m_jmx_sampling,
@@ -2629,6 +2693,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					  environment_emitter_instance,
 					  process_emitter_instance);
 	}
+	actually_emit_trc.stop();
 
 	tracer_emitter user_trc("userdb_lookup", proc_trc);
 	for(const auto uid : all_uids) {
@@ -2639,6 +2704,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	}
 	user_trc.stop();
 
+	tracer_emitter app_check_stats_trc("app_check_stats", proc_trc);
 	// add jmx and app checks per container
 	for(int i = 0; i < m_metrics->containers_size(); i++)
 	{
@@ -2655,19 +2721,24 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	}
 
 	app_check_emitter_instance.log_result();
+	app_check_stats_trc.stop();
 
 #ifndef _WIN32
 	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
+		tracer_emitter send_jmx_trc("send_jmx", proc_trc);
 		if(m_jmx_proxy && is_jmx_flushtime() && !java_process_requests.empty())
 		{
 			m_jmx_proxy->send_get_metrics(java_process_requests);
 		}
+		send_jmx_trc.stop();
 #ifndef CYGWING_AGENT
 		if(m_app_proxy)
 		{
+			tracer_emitter app_check_trc("app_checks", proc_trc);
 			if(!prom_procs.empty())
 			{
+				tracer_emitter prom_filter_procs_trc("prom_filter_procs", app_check_trc);
 				// Filter out duplicate prometheus scans
 				prom_process::filter_procs(prom_procs,
 					m_inspector->m_thread_manager->m_threadtable, m_app_metrics, m_prev_flush_time_ns);
@@ -2680,6 +2751,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			}
 			else
 			{
+				tracer_emitter prom_filter_procs_trc("remote_prom_checks", app_check_trc);
 				// Check if we need to scrape remote prometheus endpoints.
 				// Enforce interval by looking to see if we have any non-expired
 				// prometheus metrics associated with our pid.
@@ -2711,6 +2783,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 			if(!app_checks_processes.empty() || !prom_procs.empty())
 			{
+				tracer_emitter prom_filter_procs_trc("send_get_metrics_cmd", app_check_trc);
 				m_app_proxy->send_get_metrics_cmd(app_checks_processes, prom_procs, m_prom_conf);
 			}
 		}
@@ -3445,7 +3518,7 @@ void sinsp_analyzer::tune_drop_mode(analyzer_emitter::flush_flags flushflags, do
 			   m_falco_baseliner->is_baseline_calculation_enabled())
 			{
 				g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
-				m_falco_baseliner->set_baseline_calculation_enabled(false);
+				m_falco_baseliner->disable_baseline_calculation();
 				m_falco_baseliner->clear_tables();
 			}
 
@@ -3682,6 +3755,11 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 	}
 }
 
+void sinsp_analyzer::secure_profiling_data_ready(const uint64_t ts, const secure::profiling::fingerprint* const secure_profiling_fingerprint)
+{
+	m_secure_profiling_handler.secure_profiling_data_ready(ts, secure_profiling_fingerprint);
+}
+
 void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter &f_trc)
 {
 	//
@@ -3690,18 +3768,21 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 	tracer_emitter falco_trc("falco_baseline", f_trc);
 	if(m_falco_baseliner->is_baseline_calculation_enabled())
 	{
+		scap_stats st;
+		m_inspector->get_capture_stats(&st);
+
 		if(is_eof)
 		{
 			//
 			// Make sure to push a baseline when reading from file and we reached EOF
 			//
-			m_falco_baseliner->emit_as_protobuf(0, m_metrics->mutable_falcobl());
+			m_falco_baseliner->emit_as_protobuf(0);
 		}
 		else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > m_configuration->get_falco_baselining_report_interval_ns())
 		{
 			if(m_last_falco_dump_ts != 0)
 			{
-				m_falco_baseliner->emit_as_protobuf(evt->get_ts(), m_metrics->mutable_falcobl());
+				m_falco_baseliner->emit_as_protobuf(evt->get_ts());
 			}
 
 			m_last_falco_dump_ts = evt->get_ts();
@@ -3722,11 +3803,14 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 					// It's safe to turn baselining on again.
 					// Reset the tables and restart the baseline time counter.
 					//
-					m_falco_baseliner->set_baseline_calculation_enabled(true);
+					scap_stats st;
+					m_inspector->get_capture_stats(&st);
+
 					m_falco_baseliner->clear_tables();
-					m_falco_baseliner->load_tables(evt->get_ts());
+					m_falco_baseliner->enable_baseline_calculation();
 					m_last_falco_dump_ts = evt->get_ts();
-					g_logger.format("enabling falco baselining creation after %lus pause",
+					m_falco_baseliner->load_tables(evt->get_ts());
+					g_logger.format("enabling falco baselining creation after a %lus pause",
 							m_configuration->get_falco_baselining_autodisable_interval_ns() / 1000000000);
 				}
 			}
@@ -3894,7 +3978,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			//
 			// Reset the protobuffer
 			//
-			m_metrics->Clear();
+			m_metrics = make_unique<draiosproto::metrics>();
 
 			if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_capture())
 			{
@@ -4176,7 +4260,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			//
 			if(m_configuration->get_commandlines_capture_enabled())
 			{
-				emit_executed_commands(m_metrics, NULL, &(m_executed_commands[""]));
+				emit_executed_commands(m_metrics.get(), NULL, &(m_executed_commands[""]));
 			}
 
 			//
@@ -4258,8 +4342,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			}
 
 			tracer_emitter misc_trc("misc_emit", f_trc);
-			m_fd_listener->m_files_stat.emit(m_metrics, m_top_files_per_host);
-			m_fd_listener->m_devs_stat.emit(m_metrics, m_device_map, m_top_file_devices_per_host);
+			m_fd_listener->m_files_stat.emit(m_metrics.get(), m_top_files_per_host);
+			m_fd_listener->m_devs_stat.emit(m_metrics.get(), m_device_map, m_top_file_devices_per_host);
 
 			m_fd_listener->m_files_stat.clear();
 			m_fd_listener->m_devs_stat.clear();
@@ -4438,8 +4522,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 				}
 			}
 
-			emit_baseline(evt, is_eof, f_trc);
-
 			// Secure Audit - Emit and Flush
 			if(m_secure_audit && m_sent_metrics &&
 			   flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -4452,6 +4534,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 				m_internal_metrics->set_secure_audit_emit_ms(emit_time_ms);
 
 				m_secure_audit->flush(ts);
+			}
+
+			// Secure Profiling - Emit and Flush
+			if(m_falco_baseliner->is_baseline_calculation_enabled())
+			{
+				emit_baseline(evt, is_eof, f_trc);
 			}
 
 			//
@@ -4631,18 +4719,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 
 	if(m_falco_baseliner->is_baseline_calculation_enabled())
 	{
-		//
-		// Disable the baseline if the ring buffer is full
-		//
+		// If, between two emit interval, we notice a lot of
+		// dropped events due to the buffer being full with
+		// respect to the total number of events processed, we
+		// disable the baseliner.
 		scap_stats st;
 		m_inspector->get_capture_stats(&st);
-		if(st.n_drops_buffer > (m_last_buffer_drops + m_configuration->get_falco_baselining_max_drops_full_buffer()))
+		if(m_falco_baseliner->is_drops_buffer_rate_critical(m_configuration->get_falco_baselining_max_drops_buffer_rate_percentage()))
 		{
-			g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining because buffer is full");
-			m_falco_baseliner->set_baseline_calculation_enabled(false);
-
+			g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining because of critical drops buffer rate.");
+			m_falco_baseliner->disable_baseline_calculation();
 			m_falco_baseliner->clear_tables();
-			m_last_buffer_drops = st.n_drops_buffer;
 		}
 	}
 
@@ -4673,27 +4760,22 @@ void sinsp_analyzer::flush_done_handler(const sinsp_evt* evt)
 	static uint64_t prev_sample_time = 0;
 
 	// Calculate some internal timestamps and stats
-	const uint64_t evt_num = evt ? evt->get_num() : 0;
+	const uint64_t evt_num = evt ? evt->get_num() : flush_data_message::NO_EVENT_NUMBER;
 	const uint64_t original_sample_len = m_configuration->get_analyzer_original_sample_len_ns();
 	const uint64_t ts = m_prev_flush_time_ns - (m_prev_flush_time_ns % original_sample_len);
 	uint64_t nevts = 0;
 	uint64_t num_drop_events = 0;
 
-	if(evt_num != flush_data_message::NO_EVENT_NUMBER)
-	{
-		nevts = evt_num - m_prev_sample_evtnum;
-		m_prev_sample_evtnum = evt_num;
-	}
-
 	// Get the number of dropped events and include that in the log message
 	scap_stats st = {};
 	m_inspector->get_capture_stats(&st);
-
 	num_drop_events = st.n_drops - m_prev_sample_num_drop_events;
 	m_prev_sample_num_drop_events = st.n_drops;
+
 	// Handle bookkeeping
 	if(evt_num != flush_data_message::NO_EVENT_NUMBER)
 	{
+		nevts = evt_num - m_prev_sample_evtnum;
 		m_prev_sample_evtnum = evt_num;
 
 		// Subsampling can cause repeated samples, which we skip here
@@ -4732,12 +4814,12 @@ void sinsp_analyzer::flush_done_handler(const sinsp_evt* evt)
 	m_flush_queue->put(std::make_shared<flush_data_message>(
 	                        ts,
 	                        &m_sent_metrics,
-	                        *m_metrics,
-							nevts,
-							num_drop_events,
-							m_my_cpuload,
-							m_sampling_ratio,
-							st.n_tids_suppressed));
+	                        std::move(m_metrics),
+				nevts,
+				num_drop_events,
+				m_my_cpuload,
+				m_sampling_ratio,
+				st.n_tids_suppressed));
 }
 
 //
@@ -4863,7 +4945,7 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 //
 // Analyzer event processing entry point
 //
-void sinsp_analyzer::process_event(sinsp_evt* evt, analyzer_emitter::flush_flags flushflags)
+void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 {
 	uint64_t ts;
 	uint64_t delta;
@@ -4871,6 +4953,22 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, analyzer_emitter::flush_flags
 	uint16_t etype;
 	thread_analyzer_info* tainfo;
 
+	analyzer_emitter::flush_flags flushflags = analyzer_emitter::DF_NONE;
+
+	switch (rc)
+	{
+	case libsinsp::EVENT_RETURN_TIMEOUT:
+		flushflags = analyzer_emitter::DF_TIMEOUT;
+		break;
+	case libsinsp::EVENT_RETURN_EOF:
+		flushflags = analyzer_emitter::DF_EOF;
+		break;
+	case libsinsp::EVENT_RETURN_NONE:
+#ifndef _DEBUG
+	default:
+#endif
+		flushflags = analyzer_emitter::DF_NONE;
+	}
 	//
 	// If there is no event, assume that this is an EOF and use the
 	// next sample event as target time
@@ -5428,7 +5526,7 @@ std::string sinsp_analyzer::get_k8s_cluster_name()
 // then append that tag here - by default, the value
 // will be "default" unless:
 // 1.) User specifies a k8s_cluster_name
-// 2.) At some point in the future, we ping the GKE or 
+// 2.) At some point in the future, we ping the GKE or
 //     other kube cluster and ask forits name
 std::string sinsp_analyzer::get_host_tags_with_cluster()
 {
@@ -5437,7 +5535,7 @@ std::string sinsp_analyzer::get_host_tags_with_cluster()
  	{
  		return tags;
  	}
-	
+
  	const string tag_str("cluster:");
 
  	// No user-defined agent cluster tag so it's safe to append
@@ -5864,7 +5962,8 @@ private:
 	Extractor m_extractor;
 };
 
-void sinsp_analyzer::check_dump_infrastructure_state(const draiosproto::orchestrator_state_t& state,
+template<class S>
+void sinsp_analyzer::check_dump_infrastructure_state(const S& state,
 						     const std::string& descriptor,
 						     bool& should_dump)
 {
@@ -6099,6 +6198,25 @@ sinsp_analyzer::emit_containers_deprecated(const analyzer_emitter::progtable_by_
 	}
 	check_and_emit_containers(top_cpu_containers);
 
+	/*
+	 * Required for fake k8s API server, so that we report the fake containers
+	 * in local orchestrator state and they're visible in the UI
+	 *
+	 * Has absolutely no use in real world setups
+	 */
+	if(c_test_only_send_infra_state_containers->get_value())
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "Sending infra_state containers");
+		for(const auto& id: m_infrastructure_state->test_only_get_container_ids())
+		{
+			draiosproto::container* container = m_metrics->add_containers();
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Sending infra_state container %s", id.c_str());
+			container->set_id(id);
+			container->set_type(draiosproto::CUSTOM);
+			emitted_containers.emplace_back(id);
+		}
+	}
+
 	gather_k8s_infrastructure_state(flushflags,
 					emitted_containers);
 
@@ -6250,7 +6368,6 @@ sinsp_analyzer::emit_container(const string &container_id,
 		const string &label_val = it_labels->second;
 
 		// Filter labels forbidden by config file
-		check_label_limits();
 		if(m_label_limits && !m_label_limits->allow(label_key, filter))
 		{
 			continue;
@@ -6389,6 +6506,11 @@ sinsp_analyzer::emit_container(const string &container_id,
 		// cpuset cpus to get the value that we want between 1 and 100
 		const double cpuset_used_pct = container_cpu_pct  / static_cast<double>(container_info->m_cpuset_cpu_count);
 		container->mutable_resource_counters()->set_cpu_cpuset_usage_pct(cpuset_used_pct * 100);
+	}
+
+	if(container_info->m_size_rw_bytes != -1)
+	{
+		container->mutable_resource_counters()->set_rw_bytes(container_info->m_size_rw_bytes);
 	}
 
 	if(container_info->m_memory_limit > 0)
@@ -7059,7 +7181,6 @@ void sinsp_analyzer::set_driver_stopped_dropping(const bool driver_stopped_dropp
 void sinsp_analyzer::set_statsd_iofds(const std::pair<FILE*, FILE*>& iofds,
                                       const bool forwarder)
 {
-	check_metric_limits();
 	m_statsite_proxy = std::make_shared<statsite_proxy>(
 			iofds,
 			m_configuration->get_statsite_check_format());
@@ -7095,15 +7216,6 @@ void sinsp_analyzer::set_emit_tracers(bool enabled)
 {
 	tracer_emitter::set_enabled(enabled);
 }
-
-#ifndef CYGWING_AGENT
-void sinsp_analyzer::init_k8s_limits()
-{
-	m_infrastructure_state->init_k8s_limits(m_configuration->get_k8s_filter(),
-						m_configuration->get_excess_k8s_log(),
-						m_configuration->get_k8s_cache());
-}
-#endif
 
 void sinsp_analyzer::rearm_tracer_logging()
 {
@@ -7141,6 +7253,11 @@ void sinsp_analyzer::enable_secure_audit()
 	m_secure_audit = std::make_shared<secure_audit>();
 	m_secure_audit->set_data_handler(this);
 	m_secure_audit->set_internal_metrics(this);
+}
+
+void sinsp_analyzer::enable_secure_profiling()
+{
+	m_falco_baseliner->set_data_handler(this);
 }
 
 void sinsp_analyzer::dump_infrastructure_state_on_next_flush()

@@ -153,7 +153,7 @@ void signal_handler(const int sig)
 
 				// XXX: It's not clear that generate_memory_report
 				//      is signal-safe
-				m_sinsp_worker->get_inspector()->m_analyzer->generate_memory_report(buf, sizeof(buf));
+				m_sinsp_worker->get_analyzer()->generate_memory_report(buf, sizeof(buf));
 				log_crashdump_message_internal(buf, strlen(buf), STDOUT_FILENO, fd);
 			}
 

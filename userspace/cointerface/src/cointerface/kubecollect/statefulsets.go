@@ -11,7 +11,6 @@ import (
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
 )
 
 var statefulSetInf cache.SharedInformer
@@ -47,23 +46,6 @@ func addStatefulSetMetrics(metrics *[]*draiosproto.AppMetric, statefulSet *appsv
 	AppendMetricInt32(metrics, prefix+"status.replicas.current", statefulSet.Status.CurrentReplicas)
 	AppendMetricInt32(metrics, prefix+"status.replicas.ready", statefulSet.Status.ReadyReplicas)
 	AppendMetricInt32(metrics, prefix+"status.replicas.updated", statefulSet.Status.UpdatedReplicas)
-}
-
-func AddStatefulSetParentsFromPod(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if !resourceReady("statefulsets") {
-		return
-	}
-
-	for _, obj := range statefulSetInf.GetStore().List() {
-		statefulSet := obj.(*appsv1.StatefulSet)
-		for _, owner := range pod.GetOwnerReferences() {
-			if owner.UID == statefulSet.GetUID() {
-				*parents = append(*parents, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_statefulset"),
-					Id:proto.String(string(statefulSet.GetUID()))})
-			}
-		}
-	}
 }
 
 func AddStatefulSetChildrenFromService(children *[]*draiosproto.CongroupUid, service coService) {

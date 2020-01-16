@@ -446,7 +446,7 @@ TEST(statsite_proxy_test, read_metrics_filter_wildcard)
 		{"totam.sunt.consequatur.numquam.aperiam5", true},
 		{"totam.*", false}
 	};
-	metric_limits::sptr_t ml(new metric_limits(f));
+	metric_limits::sptr_t ml(new metric_limits(std::move(f)));
 	auto ret = proxy.read_metrics(ml);
 	EXPECT_EQ(2U, ret.size());
 	EXPECT_EQ(1U, std::get<0>(ret.at("")).size());
@@ -468,7 +468,7 @@ TEST(statsite_proxy_test, read_metrics_filter_questionmark)
 		{"totam.sunt.consequatur.numquam.aperiam7", true},
 		{"*", false}
 	};
-	metric_limits::sptr_t ml(new metric_limits(f));
+	metric_limits::sptr_t ml(new metric_limits(std::move(f)));
 	auto ret = proxy.read_metrics(ml);
 	EXPECT_EQ(2U, ret.size());
 	EXPECT_EQ(2U, std::get<0>(ret.at("")).size());

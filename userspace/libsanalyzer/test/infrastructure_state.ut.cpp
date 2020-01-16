@@ -2,6 +2,9 @@
 #include "infrastructure_state.h"
 #include "configuration_manager.h"
 #include "sinsp_mock.h"
+#include "audit_tap_handler.h"
+#include "secure_audit_handler.h"
+#include "analyzer.h"
 
 class test_helper
 {
@@ -117,7 +120,17 @@ k8s_ssl_key: key_path
 
 	// check that we properly normalize path
 	test_helpers::sinsp_mock inspector;
-	infrastructure_state is(&inspector, "/foo/bar");
+	audit_tap_handler_dummy athd;
+	null_secure_audit_handler sahd;
+	null_secure_profiling_handler sphd;
+	sinsp_analyzer analyzer(&inspector,
+							"",
+							std::make_shared<internal_metrics>(),
+							athd,
+							sahd,
+							sphd,
+							nullptr);
+	infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
 	EXPECT_EQ("https://yaml_host:54321", is.get_k8s_url());
 	EXPECT_EQ(is.get_k8s_ca_certificate(), "/foo/bar/ca_path");
 	EXPECT_EQ(is.get_k8s_bt_auth_token(), "/foo/bar/at_path");

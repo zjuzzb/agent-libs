@@ -118,28 +118,10 @@ public:
 	void set_docker_event_filter(user_event_filter_t::ptr_t event_filter);
 	user_event_filter_t::ptr_t get_containerd_event_filter() const;
 	void set_containerd_event_filter(user_event_filter_t::ptr_t event_filter);
-	filter_vec_t get_metrics_filter() const;
-	filter_vec_t get_labels_filter() const;
-	void set_metrics_filter(const filter_vec_t& event_filter);
-	void set_k8s_filter(const filter_vec_t& filter);
-	filter_vec_t get_k8s_filter(void) const;
 	filter_vec_t get_mounts_filter() const;
-	void set_labels_filter(const filter_vec_t& labels_filter);
 	void set_mounts_filter(const filter_vec_t& mount_filter);
 	unsigned get_mounts_limit_size() const;
 	void set_mounts_limit_size(unsigned mounts_limit_size);
-	bool get_excess_metrics_log() const;
-	unsigned get_metrics_cache() const;
-	void set_excess_labels_log(bool log) noexcept;
-	bool get_excess_labels_log() const noexcept;
-	void set_labels_cache(uint16_t size) noexcept;
-	uint16_t get_labels_cache(void) const noexcept;
-	void set_excess_metrics_log(bool log);
-	void set_metrics_cache(unsigned sz);
-	void set_k8s_cache(uint16_t size) noexcept;
-	uint16_t get_k8s_cache() const noexcept;
-	void set_excess_k8s_log(bool) noexcept;
-	bool get_excess_k8s_log(void) const noexcept;
 
 	bool get_falco_baselining_enabled() const;
 	void set_falco_baselining_enabled(bool enabled);
@@ -147,8 +129,8 @@ public:
 	void set_falco_baselining_report_interval_ns(uint64_t report_interval);
 	uint64_t get_falco_baselining_autodisable_interval_ns() const;
 	void set_falco_baselining_autodisable_interval_ns(uint64_t report_interval);
-	uint64_t get_falco_baselining_max_drops_full_buffer() const;
-	void set_falco_baselining_max_drops_full_buffer(uint64_t report_interval);
+	float get_falco_baselining_max_drops_buffer_rate_percentage() const;
+	void set_falco_baselining_max_drops_buffer_rate_percentage(float max_drops_buffer_rate_percentage);
 
 	bool get_commandlines_capture_enabled() const;
 	void set_commandlines_capture_enabled(bool enabled);
@@ -180,8 +162,6 @@ public:
 
 	void set_go_k8s_user_events(bool);
 	bool get_go_k8s_user_events() const;
-	void set_go_k8s_debug_events(bool);
-	bool get_go_k8s_debug_events() const;
 	void set_add_event_scopes(bool);
 	bool get_add_event_scopes() const;
 
@@ -308,17 +288,6 @@ private:
 	std::shared_ptr<user_event_filter_t> m_docker_event_filter;
 	std::shared_ptr<user_event_filter_t> m_containerd_event_filter;
 
-	filter_vec_t m_metrics_filter;
-	filter_vec_t m_labels_filter;
-	bool m_excess_metrics_log = false;
-	unsigned m_metrics_cache = 0;
-	bool m_excess_labels_log = false;
-	uint16_t m_labels_cache = 0;
-
-	filter_vec_t m_k8s_filter;
-	bool m_excess_k8s_log = false;
-	uint16_t m_k8s_cache = 0;
-
 	filter_vec_t m_mounts_filter;
 	unsigned m_mounts_limit_size;
 
@@ -331,7 +300,7 @@ private:
 
 	uint64_t m_falco_baselining_report_interval_ns;
 	uint64_t m_falco_baselining_autodisable_interval_ns;
-	uint64_t m_falco_baselining_max_drops_full_buffer;
+	float m_falco_baselining_max_drops_buffer_rate_percentage;
 
 	std::pair<long, unsigned> m_tracepoint_hits_threshold;
 	std::pair<double, unsigned> m_cpu_max_sr_threshold;

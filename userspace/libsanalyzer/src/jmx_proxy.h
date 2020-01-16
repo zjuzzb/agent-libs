@@ -44,7 +44,7 @@ class java_bean {
 public:
 	typedef std::vector<java_bean_attribute> attribute_list_t;
 
-	java_bean(const Json::Value&, metric_limits::cref_sptr_t ml);
+	java_bean(const Json::Value&, const metric_limits::sptr_t& ml);
 
 	inline const std::string& name() const
 	{
@@ -99,7 +99,7 @@ public:
 	}
 
 private:
-	java_process(const Json::Value&, metric_limits::cref_sptr_t ml);
+	java_process(const Json::Value&, const metric_limits::sptr_t& ml);
 	int m_pid;
 	std::string m_name;
 	std::list<java_bean> m_beans;
@@ -116,7 +116,7 @@ public:
 
 	void send_get_metrics(const std::vector<sinsp_threadinfo*>& processes);
 
-	process_map_t read_metrics(metric_limits::cref_sptr_t ml = nullptr);
+	process_map_t read_metrics(const metric_limits::sptr_t& ml = nullptr);
 
 	// This attribute is public because is simply a switch to print
 	// JSON on stdout, does not change object behaviour

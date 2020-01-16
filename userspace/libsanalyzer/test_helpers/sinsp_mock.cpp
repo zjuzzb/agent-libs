@@ -40,9 +40,10 @@ sinsp_mock::~sinsp_mock()
 thread_builder sinsp_mock::build_thread()
 {
 	// Create a thread builder that will commit into this class
-	return thread_builder(std::bind(&sinsp_mock::commit_thread,
-				       this,
-				       std::placeholders::_1));
+	return thread_builder(this,
+			      std::bind(&sinsp_mock::commit_thread,
+					this,
+					std::placeholders::_1));
 }
 
 void sinsp_mock::commit_thread(sinsp_threadinfo *thread_info)
@@ -51,10 +52,38 @@ void sinsp_mock::commit_thread(sinsp_threadinfo *thread_info)
 	m_temporary_threadinfo_list.push_back(thread_info_ptr(thread_info));
 }
 
-event_builder sinsp_mock::build_event()
+container_builder sinsp_mock::build_container()
+{
+	// Create a container builder that will commit into this class
+	auto& tinfo = build_thread().commit();
+	return container_builder(tinfo,
+				 std::bind(&sinsp_mock::commit_container,
+					   this,
+					   std::placeholders::_1,
+					   std::placeholders::_2));
+}
+
+container_builder sinsp_mock::build_container(sinsp_threadinfo& tinfo)
+{
+	// Create a container builder that will commit into this class
+	return container_builder(tinfo,
+				 std::bind(&sinsp_mock::commit_container,
+					   this,
+					   std::placeholders::_1,
+					   std::placeholders::_2));
+}
+
+void sinsp_mock::commit_container(const sinsp_container_info::ptr_t& container,
+				  sinsp_threadinfo& tinfo)
+{
+	m_container_manager.add_container(container, &tinfo);
+}
+
+event_builder sinsp_mock::build_event(sinsp_threadinfo& tinfo)
 {
 	// Create an event builder that will commit into this class
-	return event_builder(std::bind(&sinsp_mock::commit_event,
+	return event_builder(tinfo,
+			     std::bind(&sinsp_mock::commit_event,
 				       this,
 				       std::placeholders::_1,
 				       std::placeholders::_2));
@@ -74,9 +103,10 @@ void sinsp_mock::open(uint32_t timeout_ms) /*override*/
 	*interfaces = m_network_interfaces;
 	inject_network_interfaces(interfaces);
 
-	if(m_analyzer) {
-		m_analyzer->on_capture_start();
+	if (m_external_event_processor) {
+		m_external_event_processor->on_capture_start();
 	}
+	
 
 	// Pass ownership of the threads to the thread_manager
 	while (!m_temporary_threadinfo_list.empty())
@@ -107,20 +137,6 @@ int32_t sinsp_mock::next(sinsp_evt **evt) /*override*/
 	++m_scap_stats.n_evts;
 	(*evt)->m_evtnum = m_scap_stats.n_evts;
 
-	if(!get_thread(element.event->tid(), false /*do not query os*/, true /*lookup only*/))
-	{
-		// Thread doesn't exist. Add it.
-		// Note that we can't do this in commit_event because we have to
-		// wait until after the sinsp_threadtable_listener is initialized.
-		sinsp_threadinfo *tinfo = new sinsp_threadinfo(this);
-		tinfo->m_tid = element.event->tid();
-		// For our (current) purposes, the tid and the pid always match.
-		// This means that this is the main thread of a process.
-		tinfo->m_pid = tinfo->m_tid;
-		tinfo->m_uid = DEFAULT_UID;
-		add_thread(tinfo);
-	}
-
 	if(!element.count)
 	{
 		// We pass the raw pointer of the event back to the client, so we can't
@@ -129,9 +145,8 @@ int32_t sinsp_mock::next(sinsp_evt **evt) /*override*/
 		m_events.pop_front();
 	}
 
-	if(m_analyzer)
-	{
-		m_analyzer->process_event(*evt, analyzer_emitter::DF_NONE);
+	if (m_external_event_processor) {
+		m_external_event_processor->process_event(*evt, libsinsp::EVENT_RETURN_NONE);
 	}
 
 	return SCAP_SUCCESS;

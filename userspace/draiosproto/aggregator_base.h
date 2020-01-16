@@ -6,29 +6,28 @@
 class message_aggregator_builder;
 
 template <typename message_type>
-class agent_message_aggregator {
+class agent_message_aggregator
+{
 protected:
 	const message_aggregator_builder& m_builder;
+
 public:
-	agent_message_aggregator(const message_aggregator_builder& builder)
-		: m_builder(builder)
+	agent_message_aggregator(const message_aggregator_builder& builder) : m_builder(builder)
 	{
 	}
-	
+
 	virtual ~agent_message_aggregator()
 	{
 	}
 
-	virtual void aggregate(const message_type& input,
-			       message_type& output) = 0;
+	virtual void aggregate(message_type& input, message_type& output, bool in_place) = 0;
 
 	virtual void reset() = 0;
 
 	// input type should be some numeric type
 	// output type should be one of the aggregations types
 	template <typename input_type, typename output_type>
-	static void default_aggregate_value(input_type input,
-					    output_type& output)
+	static void default_aggregate_value(input_type input, output_type& output)
 	{
 		if (input > output.max() || output.weight() == 0)
 		{
@@ -45,8 +44,7 @@ public:
 	// input should be indexable container of numeric types
 	// output should be indexable container of aggregation types
 	template <typename input_type, typename output_type>
-	static void default_aggregate_list(input_type input,
-					   output_type& output)
+	static void default_aggregate_list(input_type input, output_type& output)
 	{
 		while (output.max().size() < input.size())
 		{
@@ -69,4 +67,12 @@ public:
 		}
 		output.set_weight(output.weight() + 1);
 	}
+
+	struct string_pointer_comparer
+	{
+		bool operator()(const std::string* lhs, const std::string* rhs) const
+		{
+			return *lhs < *rhs;
+		}
+	};
 };

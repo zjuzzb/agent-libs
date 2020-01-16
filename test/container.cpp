@@ -505,12 +505,12 @@ TEST_F(sys_call_test, container_docker_bad_socket)
 		}
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		inspector->set_docker_socket_path("/invalid/path");
 	};
 
-	before_close_t cleanup = [&](sinsp* inspector)
+	before_close_t cleanup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		inspector->set_docker_socket_path("/var/run/docker.sock");
 	};
@@ -563,7 +563,7 @@ TEST_F(sys_call_test, container_custom)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -573,7 +573,7 @@ TEST_F(sys_call_test, container_custom)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -624,7 +624,7 @@ TEST_F(sys_call_test, container_custom_env_match)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -637,7 +637,7 @@ TEST_F(sys_call_test, container_custom_env_match)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -688,7 +688,7 @@ TEST_F(sys_call_test, container_custom_env_match_last)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -701,7 +701,7 @@ TEST_F(sys_call_test, container_custom_env_match_last)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -752,7 +752,7 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -766,7 +766,7 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -817,7 +817,7 @@ TEST_F(sys_call_test, container_custom_env_match_flipped)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -831,7 +831,7 @@ TEST_F(sys_call_test, container_custom_env_match_flipped)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -883,7 +883,7 @@ TEST_F(sys_call_test, container_custom_halfnhalf)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -894,7 +894,7 @@ TEST_F(sys_call_test, container_custom_halfnhalf)
 		res.set_max_id_length(50);
 		res.set_incremental_metadata(true);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -952,7 +952,7 @@ TEST_F(sys_call_test, container_custom_huge_env)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -966,7 +966,7 @@ TEST_F(sys_call_test, container_custom_huge_env)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 
 		// enable reading environments from /proc
 		inspector->set_large_envs(true);
@@ -1022,7 +1022,7 @@ TEST_F(sys_call_test, container_custom_huge_env_echo)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -1036,7 +1036,7 @@ TEST_F(sys_call_test, container_custom_huge_env_echo)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -1090,7 +1090,7 @@ TEST_F(sys_call_test, container_custom_huge_env_echo_proc)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -1104,7 +1104,7 @@ TEST_F(sys_call_test, container_custom_huge_env_echo_proc)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 
 		// enable reading environments from /proc
 		inspector->set_large_envs(true);
@@ -1164,7 +1164,7 @@ TEST_F(sys_call_test, container_custom_huge_env_at_end)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
@@ -1178,7 +1178,7 @@ TEST_F(sys_call_test, container_custom_huge_env_at_end)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
-		inspector->m_analyzer->set_custom_container_conf(move(res));
+		analyzer->set_custom_container_conf(move(res));
 
 		// enable reading environments from /proc
 		inspector->set_large_envs(true);
@@ -1698,6 +1698,7 @@ static void healthcheck_helper(const char *dockerfile,
 {
 	container_state cstate;
 	bool exited_early = false;
+	std::string capture_stats_str = "(Not Collected Yet)";
 
 	if(!dutils_check_docker())
 	{
@@ -1749,17 +1750,22 @@ static void healthcheck_helper(const char *dockerfile,
 		}
 	};
 
-	before_open_t setup = [&](sinsp* inspector)
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
 	{
 		inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	before_close_t cleanup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
+	{
+		capture_stats_str = capture_stats(inspector);
+	};
 
-	ASSERT_TRUE(cstate.root_cmd_seen);
-	ASSERT_TRUE(cstate.second_cmd_seen);
-	ASSERT_EQ(cstate.container_w_health_probe, expect_healthcheck);
-	ASSERT_EQ(cstate.healthcheck_seen, expect_healthcheck);
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup, cleanup);});
+
+	ASSERT_TRUE(cstate.root_cmd_seen) << capture_stats_str;
+	ASSERT_TRUE(cstate.second_cmd_seen) << capture_stats_str;
+	ASSERT_EQ(cstate.container_w_health_probe, expect_healthcheck) << capture_stats_str;
+	ASSERT_EQ(cstate.healthcheck_seen, expect_healthcheck) << capture_stats_str;
 }
 
 static void healthcheck_tracefile_helper(const char *dockerfile,
@@ -1774,6 +1780,7 @@ static void healthcheck_tracefile_helper(const char *dockerfile,
         inspector.reset(NULL);
         inspector.reset(new sinsp());
 	inspector->set_hostname_and_port_resolution_mode(false);
+	inspector->set_log_callback(common_logger::sinsp_logger_callback);
 
 	ASSERT_GE(dumpfile_fd = mkstemp(dumpfile), 0);
 
@@ -1823,6 +1830,7 @@ static void healthcheck_tracefile_helper(const char *dockerfile,
         inspector.reset(NULL);
 	inspector.reset(new sinsp());
 	inspector->set_hostname_and_port_resolution_mode(false);
+	inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	inspector->set_filter("evt.type=execve and evt.dir=<");
 	inspector->open(dumpfile);
 
@@ -1844,12 +1852,14 @@ static void healthcheck_tracefile_helper(const char *dockerfile,
 		update_container_state(inspector.get(), ev, cstate, expected_cat);
 	}
 
+	std::string capture_stats_str = capture_stats(inspector.get());
+
 	inspector->close();
 
-	ASSERT_TRUE(cstate.root_cmd_seen);
-	ASSERT_TRUE(cstate.second_cmd_seen);
-	ASSERT_EQ(cstate.container_w_health_probe, expect_healthcheck);
-	ASSERT_EQ(cstate.healthcheck_seen, expect_healthcheck);
+	ASSERT_TRUE(cstate.root_cmd_seen) << capture_stats_str;
+	ASSERT_TRUE(cstate.second_cmd_seen) << capture_stats_str;
+	ASSERT_EQ(cstate.container_w_health_probe, expect_healthcheck) << capture_stats_str;
+	ASSERT_EQ(cstate.healthcheck_seen, expect_healthcheck) << capture_stats_str;
 
 	unlink(dumpfile);
 }

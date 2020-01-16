@@ -17,7 +17,6 @@ import (
 
 // Globals are reset in startReplicationControllersSInformer
 var replicationControllerInf cache.SharedInformer
-var rcSelectorCache *selectorCache
 var filterEmptyRc bool
 
 type coReplicationController struct {
@@ -115,10 +114,7 @@ func newReplicationControllerCongroup(replicationController coReplicationControl
 	addReplicationControllerMetrics(&ret.Metrics, replicationController)
 	if setLinks {
 		AddNSParents(&ret.Parents, replicationController.GetNamespace())
-		selector, ok := rcSelectorCache.Get(replicationController)
-		if ok {
-			AddPodChildren(&ret.Children, selector, replicationController.GetNamespace())
-		}
+		AddPodChildrenFromOwnerRef(&ret.Children, replicationController.ObjectMeta)
 		AddHorizontalPodAutoscalerParents(&ret.Parents, replicationController.GetNamespace(), replicationController.APIVersion, replicationController.Kind, replicationController.GetName() )
 	}
 	return ret
@@ -131,27 +127,6 @@ func addReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicat
 	AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicationController.Status.ReadyReplicas)
 	AppendMetricInt32(metrics, prefix+"status.availableReplicas", replicationController.Status.AvailableReplicas)
 	AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicationController.Spec.Replicas)
-}
-
-func AddReplicationControllerParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if !resourceReady("replicationcontrollers") {
-		return
-	}
-
-	podLabels := labels.Set(pod.GetLabels())
-	for _, obj := range replicationControllerInf.GetStore().List() {
-		rc := coReplicationController{obj.(*v1.ReplicationController)}
-		if pod.GetNamespace() != rc.GetNamespace() {
-			continue
-		}
-		selector, ok := rcSelectorCache.Get(rc)
-		if ok && selector.Matches(podLabels) {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_replicationcontroller"),
-				Id:proto.String(string(rc.GetUID()))})
-			break
-		}
-	}
 }
 
 func AddReplicationControllerChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
@@ -186,7 +161,6 @@ func AddReplicationControllerChildrenByName(children *[]*draiosproto.CongroupUid
 }
 
 func startReplicationControllersSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty bool) {
-	rcSelectorCache = newSelectorCache()
 	filterEmptyRc = filterEmpty
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicationControllers", v1meta.NamespaceAll, fields.Everything())
@@ -235,7 +209,6 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					addEvent("ReplicationController", EVENT_UPDATE_AND_SEND)
 					return
 				} else if filterEmptyRc && oldReplicas > 0 && newReplicas == 0 {
-					rcSelectorCache.Remove(newRC)
 					evtc <- draiosproto.CongroupUpdateEvent {
 						Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 						Object: &draiosproto.ContainerGroup{
@@ -248,9 +221,6 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					return
 				} else {
 					sameEntity, sameLinks := rcEquals(oldRC, newRC)
-					if !sameLinks {
-						rcSelectorCache.Update(newRC)
-					}
 					if !sameEntity || !sameLinks {
 						evtc <- replicationControllerEvent(newRC,
 							draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
@@ -282,7 +252,6 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					return
 				}
 
-				rcSelectorCache.Remove(rc)
 				evtc <- draiosproto.CongroupUpdateEvent {
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{

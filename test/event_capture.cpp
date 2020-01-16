@@ -11,7 +11,8 @@
 namespace {
 uncompressed_sample_handler_dummy g_sample_handler;
 audit_tap_handler_dummy g_audit_handler;
-null_secure_audit_handler g_secure_handler;
+null_secure_audit_handler g_secure_audit_handler;
+null_secure_profiling_handler g_secure_profiling_handler;
 }
 
 void event_capture::capture()
@@ -22,9 +23,10 @@ void event_capture::capture()
 	                                "/opt/draios",
 	                                int_metrics,
 	                                g_audit_handler,
-	                                g_secure_handler,
+	                                g_secure_audit_handler,
+	                                g_secure_profiling_handler,
 	                                &m_flush_queue);
-	m_inspector->m_analyzer = m_analyzer;
+	m_inspector->register_external_event_processor(*m_analyzer);
 
 	m_analyzer->set_configuration(m_configuration);
 
@@ -46,8 +48,9 @@ void event_capture::capture()
 	m_inspector->set_get_procs_cpu_from_driver(true);
 
 	m_param.m_inspector = m_inspector;
+	m_param.m_analyzer = m_analyzer;
 
-	m_before_open(m_inspector);
+	m_before_open(m_inspector, m_analyzer);
 
 	ASSERT_FALSE(m_inspector->is_capture());
 	ASSERT_FALSE(m_inspector->is_live());
@@ -149,7 +152,7 @@ void event_capture::capture()
 		}
 	}
 
-	m_before_close(m_inspector);
+	m_before_close(m_inspector, m_analyzer);
 
 	delete m_inspector;
 	delete m_analyzer;

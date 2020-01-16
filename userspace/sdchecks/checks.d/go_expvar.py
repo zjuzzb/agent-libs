@@ -199,8 +199,17 @@ class GoExpvar(AgentCheck):
             for new_key, new_content in enumerate(object):
                 yield str(new_key), new_content
         elif isinstance(object, dict):
-            for new_key, new_content in object.iteritems():
+            # object.iteritems() was removed from python3 so we use items
+            object_items = None
+            # if we're on python3
+            try:
+                object_items = object.items()
+            # if we're on python2
+            except AttributeError:
+                object_items = object.iteritems()
+            for new_key, new_content in object_items:
                 yield str(new_key), new_content
-        else:
+
+    else:
             self.log.warning("Could not parse this object, check the json"
                              "served by the expvar")

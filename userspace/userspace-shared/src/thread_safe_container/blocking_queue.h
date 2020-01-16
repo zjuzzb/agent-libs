@@ -14,6 +14,8 @@ using std::queue;
 using Poco::Semaphore;
 using Poco::Mutex;
 
+namespace thread_safe_container
+{
 
 template<class T>
 class blocking_queue
@@ -87,7 +89,7 @@ bool blocking_queue<T>::get(T* item, uint64_t timeout_ms)
 				m_queues[j].pop();
 				if(item)
 				{
-					*item = p;
+					*item = std::move(p);
 				}
 				break;
 			}
@@ -133,3 +135,5 @@ void blocking_queue<T>::clear()
 {
 	while(get(NULL, 0));
 }
+
+} // namespace thread_safe_container

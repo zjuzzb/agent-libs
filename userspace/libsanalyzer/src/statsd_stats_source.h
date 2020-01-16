@@ -33,5 +33,5 @@ public:
 	/**
 	 * Returns all available statsd metrics.
 	 */
-	virtual container_statsd_map read_metrics(metric_limits::cref_sptr_t ml = nullptr) = 0;
+	virtual container_statsd_map read_metrics(const metric_limits::sptr_t& ml = nullptr) = 0;
 };

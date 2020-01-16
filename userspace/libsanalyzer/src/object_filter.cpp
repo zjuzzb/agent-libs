@@ -3,14 +3,18 @@
 #include "analyzer_thread.h"
 #include "infrastructure_state.h"
 
-std::string process_name_filter::no_data = "";
-std::string container_name_filter::no_data = "";
-std::string container_image_filter::no_data = "";
+template <typename filter_param>
+std::string process_name_filter<filter_param>::no_data = "";
+template <typename filter_param>
+std::string container_name_filter<filter_param>::no_data = "";
+template <typename filter_param>
+std::string container_image_filter<filter_param>::no_data = "";
 
-bool process_cmd_line_filter::matches(const object_filter_args& arg,
-				      bool& exclude,
-				      bool& high_priority,
-				      std::string& reason) const
+template <typename filter_param>
+bool process_cmd_line_filter<filter_param>::matches(const filter_param& arg,
+                                                    bool& exclude,
+                                                    bool& high_priority,
+                                                    std::string* reason) const
 {
 	if (!arg.m_tinfo)
 	{
@@ -20,27 +24,28 @@ bool process_cmd_line_filter::matches(const object_filter_args& arg,
 	// Should this match include exe and arguments?
 	if (arg.m_tinfo->m_exe.find(m_pattern) == std::string::npos &&
 	    find_if(arg.m_tinfo->m_args.begin(),
-		    arg.m_tinfo->m_args.end(),
-		    [this](const std::string& candidate) {
-			    return !fnmatch(m_pattern.c_str(),
-					    candidate.c_str(),
-					    FNM_EXTMATCH);
-		    }) == arg.m_tinfo->m_args.end())
+	            arg.m_tinfo->m_args.end(),
+	            [this](const std::string& candidate)
+	{ return !fnmatch(m_pattern.c_str(), candidate.c_str(), FNM_EXTMATCH); }) ==
+	        arg.m_tinfo->m_args.end())
 	{
 		return false;
 	}
 
-
 	exclude = this->exclude_on_match();
 	high_priority = true;
-	reason = "arg_found: " + m_pattern;
+	if (reason)
+	{
+		*reason = "arg_found: " + m_pattern;
+	}
 	return true;
 }
 
-bool port_filter::matches(const object_filter_args& arg,
-			  bool& exclude,
-			  bool& high_priority,
-			  std::string& reason) const
+template <typename filter_param>
+bool port_filter<filter_param>::matches(const filter_param& arg,
+                                        bool& exclude,
+                                        bool& high_priority,
+                                        std::string* reason) const
 {
 	if (!arg.m_tinfo || !arg.m_tinfo->m_ainfo)
 	{
@@ -52,7 +57,11 @@ bool port_filter::matches(const object_filter_args& arg,
 
 	if (!ports.empty())
 	{
-		reason = std::to_string(ports.size()) + " ports match: " + std::to_string(*(ports.begin()));
+		if (reason)
+		{
+			*reason =
+			    std::to_string(ports.size()) + " ports match: " + std::to_string(*(ports.begin()));
+		}
 		exclude = this->exclude_on_match();
 		high_priority = true;
 		return true;
@@ -61,13 +70,15 @@ bool port_filter::matches(const object_filter_args& arg,
 	return false;
 }
 
-std::set<uint16_t> port_filter::filter_ports(const std::set<uint16_t>& sports,
-					     const std::vector<object_filter_config::port_filter_rule>& rules)
+template <typename filter_param>
+std::set<uint16_t> port_filter<filter_param>::filter_ports(
+    const std::set<uint16_t>& sports,
+    const std::vector<object_filter_config::port_filter_rule>& rules)
 {
 	std::set<uint16_t> start_ports = sports;
 	std::set<uint16_t> filtered_ports;
 
-	for (const auto& portrule: rules)
+	for (const auto& portrule : rules)
 	{
 		if (start_ports.empty())
 		{
@@ -77,7 +88,8 @@ std::set<uint16_t> port_filter::filter_ports(const std::set<uint16_t>& sports,
 		std::set<uint16_t> matched_ports;
 		for (const auto& port : start_ports)
 		{
-			if (portrule.m_use_set) {
+			if (portrule.m_use_set)
+			{
 				if (portrule.m_port_set.find(port) != portrule.m_port_set.end())
 				{
 					matched_ports.insert(port);
@@ -85,8 +97,7 @@ std::set<uint16_t> port_filter::filter_ports(const std::set<uint16_t>& sports,
 			}
 			else
 			{
-				if ((port >= portrule.m_range_start) &&
-				    (port <= portrule.m_range_end))
+				if ((port >= portrule.m_range_start) && (port <= portrule.m_range_end))
 				{
 					matched_ports.insert(port);
 				}
@@ -100,7 +111,7 @@ std::set<uint16_t> port_filter::filter_ports(const std::set<uint16_t>& sports,
 			}
 			else
 			{
-				for (const auto &p : matched_ports)
+				for (const auto& p : matched_ports)
 				{
 					start_ports.erase(p);
 				}
@@ -111,40 +122,43 @@ std::set<uint16_t> port_filter::filter_ports(const std::set<uint16_t>& sports,
 	return filtered_ports;
 }
 
-bool container_label_filter::matches(const object_filter_args& arg,
-				     bool& exclude,
-				     bool& high_priority,
-				     std::string& reason) const
+template <typename filter_param>
+bool container_label_filter<filter_param>::matches(const filter_param& arg,
+                                                   bool& exclude,
+                                                   bool& high_priority,
+                                                   std::string* reason) const
 {
 	if (!arg.m_container)
 	{
 		return false;
 	}
 
-	const std::string *lbl = object_filter_config::get_cont_label(arg.m_container, m_label);
+	const std::string* lbl = object_filter_config::get_cont_label(arg.m_container, m_label);
 
 	if (!lbl)
 	{
 		return false;
 	}
 
-	if (fnmatch(m_pattern.c_str(),
-		    lbl->c_str(),
-		    FNM_EXTMATCH))
+	if (fnmatch(m_pattern.c_str(), lbl->c_str(), FNM_EXTMATCH))
 	{
 		return false;
 	}
 
 	exclude = this->exclude_on_match();
 	high_priority = true;
-	reason = m_label + " equals " + m_pattern;
+	if (reason)
+	{
+		*reason = m_label + " equals " + m_pattern;
+	}
 	return true;
 }
 
-bool tag_filter::matches(const object_filter_args& arg,
-			 bool& exclude,
-			 bool& high_priority,
-			 std::string& reason) const
+template <typename filter_param>
+bool tag_filter<filter_param>::matches(const filter_param& arg,
+                                       bool& exclude,
+                                       bool& high_priority,
+                                       std::string* reason) const
 {
 	if (!arg.m_container || !arg.m_is)
 	{
@@ -169,14 +183,18 @@ bool tag_filter::matches(const object_filter_args& arg,
 
 	exclude = this->exclude_on_match();
 	high_priority = true;
-	reason = m_label + " equals " + m_pattern;
+	if (reason)
+	{
+		*reason = m_label + " equals " + m_pattern;
+	}
 	return true;
 }
 
-bool app_check_filter::matches(const object_filter_args& arg,
-			       bool& exclude,
-			       bool& high_priority,
-			       std::string& reason) const
+template <typename filter_param>
+bool app_check_filter<filter_param>::matches(const filter_param& arg,
+                                             bool& exclude,
+                                             bool& high_priority,
+                                             std::string* reason) const
 {
 	if (!arg.m_mtinfo || !arg.m_mtinfo->m_ainfo)
 	{
@@ -190,39 +208,39 @@ bool app_check_filter::matches(const object_filter_args& arg,
 
 	exclude = this->exclude_on_match();
 	high_priority = true;
-	reason = "found app check: " + m_pattern; 
+	if (reason)
+	{
+		*reason = "found app check: " + m_pattern;
+	}
 	return true;
 }
 
 bool object_filter::matches(const sinsp_threadinfo* tinfo,
-			    const sinsp_threadinfo* mtinfo,
-			    const sinsp_container_info* container,
-			    const infrastructure_state* is,
-			    bool* generic_match,
-			    const object_filter_config::filter_rule** match_rule) const
+                            const sinsp_threadinfo* mtinfo,
+                            const sinsp_container_info* container,
+                            const infrastructure_state* is,
+                            bool* generic_match,
+                            const object_filter_config::filter_rule** match_rule,
+                            std::string* reason) const
 {
 	bool exclude = false;
 	bool high_priority = false;
-	std::string reason = "";
 	uint32_t rule_number;
-	bool match = m_filter->matches(object_filter_args(tinfo,
-							  mtinfo,
-							  container,
-							  is),
-				       exclude,
-				       high_priority,
-				       reason,
-				       rule_number);
+	bool match = m_filter->matches(process_filter_args(tinfo, mtinfo, container, is),
+	                               exclude,
+	                               high_priority,
+	                               reason,
+	                               rule_number);
 
 	if (match)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG,
-				"%s: Object with tpid %d, mtpid %d, container %s matches rule: %s",
-				m_name.c_str(),
-				tinfo ? (uint32_t)tinfo->m_pid : -1,
-				mtinfo ? (uint32_t)mtinfo->m_pid : -1,
-				container ? container->m_name.c_str() : "",
-				reason.c_str());
+		                "%s: Object with tpid %d, mtpid %d, container %s matches rule: %s",
+		                m_name.c_str(),
+		                tinfo ? (uint32_t)tinfo->m_pid : -1,
+		                mtinfo ? (uint32_t)mtinfo->m_pid : -1,
+		                container ? container->m_name.c_str() : "",
+		                reason ? reason->c_str() : "reason disabled");
 
 		if (match_rule)
 		{
@@ -244,76 +262,82 @@ void object_filter::set_rules(const std::vector<object_filter_config::filter_rul
 {
 	m_rules = rules;
 
-
-	std::list<std::shared_ptr<base_filter<object_filter_args>>> rule_list;
+	std::list<std::shared_ptr<base_filter<process_filter_args>>> rule_list;
 	if (m_rules.empty())
 	{
-		rule_list.push_back({std::make_shared<all_filter<object_filter_args>>(false)});
+		rule_list.push_back({std::make_shared<all_filter<process_filter_args>>(false)});
 	}
 	else
 	{
 		for (const auto& rule : m_rules)
 		{
-			std::list<std::shared_ptr<base_filter<object_filter_args>>> conditions;
+			std::list<std::shared_ptr<base_filter<process_filter_args>>> conditions;
 			for (const auto& condition : rule.m_cond)
 			{
-				std::shared_ptr<base_filter<object_filter_args>> filter;
+				std::shared_ptr<base_filter<process_filter_args>> filter;
 				switch (condition.m_param_type)
 				{
-				case object_filter_config::filter_condition::param_type::none:
-					g_logger.format(sinsp_logger::SEV_WARNING,
-							"Object filter rule is type none: param %s",
-							condition.m_param.c_str());
-					continue;
-				case object_filter_config::filter_condition::param_type::port:
-					filter = std::make_shared<port_filter>(condition.m_port_match);
-					break;
-				case object_filter_config::filter_condition::param_type::container_image:
-					filter = std::make_shared<container_image_filter>(condition.m_pattern);
-					break;
-				case object_filter_config::filter_condition::param_type::container_name:
-					filter = std::make_shared<container_name_filter>(condition.m_pattern);
-					break;
-				case object_filter_config::filter_condition::param_type::container_label:
-					filter = std::make_shared<container_label_filter>(condition.m_param,
-											  condition.m_pattern);
-					break;
-				case object_filter_config::filter_condition::param_type::process_name:
-					filter = std::make_shared<process_name_filter>(condition.m_pattern);
-					break;
-				case object_filter_config::filter_condition::param_type::process_cmdline:
-					filter = std::make_shared<process_cmd_line_filter>(condition.m_pattern);
-					break;
-				case object_filter_config::filter_condition::param_type::app_check_match:
-					filter = std::make_shared<app_check_filter>(condition.m_pattern);
-					break;
-				case object_filter_config::filter_condition::param_type::k8s_annotation:
-				case object_filter_config::filter_condition::param_type::tag:
-					filter = std::make_shared<tag_filter>(condition.m_param,
-									      condition.m_pattern);
-					break;
-				case object_filter_config::filter_condition::param_type::all:
-					filter = std::make_shared<all_filter<object_filter_args>>(false);
-					break;
+					case object_filter_config::filter_condition::param_type::none:
+						g_logger.format(sinsp_logger::SEV_WARNING,
+						                "Object filter rule is type none: param %s",
+						                condition.m_param.c_str());
+						continue;
+					case object_filter_config::filter_condition::param_type::port:
+						filter = std::make_shared<port_filter<process_filter_args>>(
+						    condition.m_port_match);
+						break;
+					case object_filter_config::filter_condition::param_type::container_image:
+						filter = std::make_shared<container_image_filter<process_filter_args>>(
+						    condition.m_pattern);
+						break;
+					case object_filter_config::filter_condition::param_type::container_name:
+						filter = std::make_shared<container_name_filter<process_filter_args>>(
+						    condition.m_pattern);
+						break;
+					case object_filter_config::filter_condition::param_type::container_label:
+						filter = std::make_shared<container_label_filter<process_filter_args>>(
+						    condition.m_param, condition.m_pattern);
+						break;
+					case object_filter_config::filter_condition::param_type::process_name:
+						filter = std::make_shared<process_name_filter<process_filter_args>>(
+						    condition.m_pattern);
+						break;
+					case object_filter_config::filter_condition::param_type::process_cmdline:
+						filter = std::make_shared<process_cmd_line_filter<process_filter_args>>(
+						    condition.m_pattern);
+						break;
+					case object_filter_config::filter_condition::param_type::app_check_match:
+						filter = std::make_shared<app_check_filter<process_filter_args>>(
+						    condition.m_pattern);
+						break;
+					case object_filter_config::filter_condition::param_type::k8s_annotation:
+					case object_filter_config::filter_condition::param_type::tag:
+						filter = std::make_shared<tag_filter<process_filter_args>>(
+						    condition.m_param, condition.m_pattern);
+						break;
+					case object_filter_config::filter_condition::param_type::all:
+						filter = std::make_shared<all_filter<process_filter_args>>(false);
+						break;
 				}
 
 				conditions.push_back(filter);
 			}
 
-			rule_list.push_back(std::make_shared<and_filter<object_filter_args>>(!rule.m_include,
-											     conditions));
+			rule_list.push_back(
+			    std::make_shared<and_filter<process_filter_args>>(!rule.m_include, conditions));
 		}
 	}
-	m_filter = std::make_shared<priority_filter<object_filter_args>>(rule_list);
+	m_filter = std::make_shared<priority_filter<process_filter_args>>(rule_list);
 }
 
 void object_filter::register_annotations(std::function<void(const std::string&)> reg) const
 {
-	for (const auto& rule: m_rules)
+	for (const auto& rule : m_rules)
 	{
-		for (const auto& cond: rule.m_cond)
+		for (const auto& cond : rule.m_cond)
 		{
-			if ((cond.m_param_type != object_filter_config::filter_condition::param_type::k8s_annotation) &&
+			if ((cond.m_param_type !=
+			     object_filter_config::filter_condition::param_type::k8s_annotation) &&
 			    (cond.m_param_type != object_filter_config::filter_condition::param_type::tag))
 			{
 				continue;
@@ -321,48 +345,48 @@ void object_filter::register_annotations(std::function<void(const std::string&)>
 
 			reg(cond.m_param);
 			g_logger.format(sinsp_logger::SEV_INFO,
-					"%s: registering annotation %s",
-					m_name.c_str(),
-					cond.m_param.c_str());
+			                "%s: registering annotation %s",
+			                m_name.c_str(),
+			                cond.m_param.c_str());
 		}
 		if (rule.m_config.m_port_subst)
 		{
 			auto tokens = object_filter_config::get_str_tokens(rule.m_config.m_port);
-			for (const auto &token : tokens)
+			for (const auto& token : tokens)
 			{
 				reg(token);
 				g_logger.format(sinsp_logger::SEV_INFO,
-						"%s: registering port annotation %s",
-						m_name.c_str(),
-						token.c_str());
+				                "%s: registering port annotation %s",
+				                m_name.c_str(),
+				                token.c_str());
 			}
 		}
 		if (rule.m_config.m_path_subst)
 		{
 			auto tokens = object_filter_config::get_str_tokens(rule.m_config.m_path);
-			for (const auto &token : tokens)
+			for (const auto& token : tokens)
 			{
 				reg(token);
 				g_logger.format(sinsp_logger::SEV_INFO,
-						"%s: registering path annotation %s",
-						m_name.c_str(),
-						token.c_str());
+				                "%s: registering path annotation %s",
+				                m_name.c_str(),
+				                token.c_str());
 			}
 		}
 		if (rule.m_config.m_options_subst)
 		{
-			for (const auto &option : rule.m_config.m_options)
+			for (const auto& option : rule.m_config.m_options)
 			{
 				auto tokens = object_filter_config::get_str_tokens(option.second);
-				for (const auto &token : tokens)
+				for (const auto& token : tokens)
 				{
 					reg(token);
 					g_logger.format(sinsp_logger::SEV_INFO,
-							"%s: registering option annotation %s", m_name.c_str(),
-							token.c_str());
+					                "%s: registering option annotation %s",
+					                m_name.c_str(),
+					                token.c_str());
 				}
 			}
 		}
 	}
 }
-

@@ -9,9 +9,9 @@ class mount_points_limits
 {
 public:
 
-	typedef std::shared_ptr<mount_points_limits> sptr_t;
+	using sptr_t = std::shared_ptr<mount_points_limits>;
 
-	mount_points_limits() = default;
+	mount_points_limits() = delete;
 	mount_points_limits(const mount_points_limits&) = delete;
 	mount_points_limits(const mount_points_filter_vec& filters, unsigned limit_size);
 	~mount_points_limits() = default;

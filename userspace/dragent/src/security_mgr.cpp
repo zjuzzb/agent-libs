@@ -62,6 +62,7 @@ security_mgr::security_mgr(const string& install_root,
 	  m_analyzer(NULL),
 	  m_capture_job_handler(NULL),
 	  m_configuration(NULL),
+	  m_install_root(install_root),
 	  m_cointerface_sock_path("unix:" + install_root + "/run/cointerface.sock")
 {
 	m_security_evt_metrics = {make_shared<security_evt_metrics>(m_process_metrics), make_shared<security_evt_metrics>(m_container_metrics),
@@ -117,7 +118,7 @@ void security_mgr::init(sinsp *inspector,
 	// Only check the above every second
 	m_check_periodic_tasks_interval = make_unique<run_on_interval>(1000000000);
 
-	m_coclient = make_shared<coclient>(configuration->c_root_dir.get_value());
+	m_coclient = make_shared<coclient>(m_install_root);
 
 	m_actions.init(this, m_coclient);
 
@@ -243,6 +244,12 @@ void security_mgr::load_policy_v2(std::shared_ptr<security_policy_v2> spolicy_v2
 			g_log->debug("Policy " + spolicy_v2->name() + " did not match scope for container " + id);
 		}
 	}
+
+	g_log->debug("Loading v2 policy " + spolicy_v2->DebugString() +
+		     ", adding to k8s rules group");
+
+	// Also, always add to the k8s rules group
+	m_k8s_audit_security_rules->add_policy(spolicy_v2);
 }
 
 bool security_mgr::load_falco_rules_files(const draiosproto::falco_rules_files &files, std::string &errstr)
@@ -559,6 +566,9 @@ bool security_mgr::load_v2(const draiosproto::policies_v2 &policies_v2, std::str
 
 	m_scoped_security_rules.clear();
 	m_rules_groups.clear();
+	::scope_predicates empty_preds;
+	m_k8s_audit_security_rules = make_shared<security_rules_group>(empty_preds, m_inspector, m_configuration);
+	m_k8s_audit_security_rules->init(m_falco_engine, m_fastengine_rules_library, m_security_evt_metrics);
 
 	std::list<std::string> ids{
 		"" // tinfo.m_container_id is empty for host events
@@ -933,24 +943,35 @@ void security_mgr::process_event_v2(gen_event *evt)
 	{
 		std::list<security_rules::match_result> results;
 
-		for (const auto &group : m_scoped_security_rules[container_id])
+		if(evt->get_source() == ESRC_SINSP)
 		{
-			// An event matches a policy upon three
-			// matching of three conditions:
-			// 1. event source overlap
-			// 2. event type overlap
-			// 3. at least one policy in the group match
-			//    the event and return a non-null match
-
-			if(group->m_evtsources[evt->get_source()] &&
-			   group->m_evttypes[evt->get_type()])
+			for (const auto &group : m_scoped_security_rules[container_id])
 			{
-				std::list<security_rules::match_result> gresults;
+				// An event matches a policy upon three
+				// matching of three conditions:
+				// 1. event source overlap
+				// 2. event type overlap
+				// 3. at least one policy in the group match
+				//    the event and return a non-null match
 
-				gresults = group->match_event(evt);
+				if(group->m_evtsources[evt->get_source()] &&
+				   group->m_evttypes[evt->get_type()])
+				{
+					std::list<security_rules::match_result> gresults;
 
-				results.splice(results.end(), gresults);
+					gresults = group->match_event(evt);
+
+					results.splice(results.end(), gresults);
+				}
 			}
+		}
+		else if (evt->get_source() == ESRC_K8S_AUDIT && m_k8s_audit_security_rules)
+		{
+			results = m_k8s_audit_security_rules->match_event(evt);
+		}
+		else
+		{
+			g_log->debug("Found unexpected event type " + to_string(evt->get_source()) + ", not matching against any security rules groups");
 		}
 
 		// Take all actions for all results

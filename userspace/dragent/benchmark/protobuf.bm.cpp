@@ -9,6 +9,7 @@
 
 #include "main.h"
 #include "protocol.h"
+#include "protobuf_compression.h"
 #include "draios.pb.h"
 
 class ProtobufSerializationBM : public ::benchmark::Fixture
@@ -72,9 +73,10 @@ BENCHMARK_DEFINE_F(ProtobufSerializationBM, ProtobufCompressedSerialize)(benchma
 BENCHMARK_REGISTER_F(ProtobufSerializationBM, ProtobufCompressedSerialize);
 
 BENCHMARK_DEFINE_F(ProtobufSerializationBM, DragentUncompressedSerialize)(benchmark::State& st) {
+	auto compressor = null_protobuf_compressor::get();
 	for(auto _ : st)
 	{
-		benchmark::DoNotOptimize(dragent_protocol::message_to_buffer(0, 1, msg, false, false));
+		benchmark::DoNotOptimize(dragent_protocol::message_to_buffer(0, 1, msg, compressor));
 	}
 	st.SetBytesProcessed(int64_t(st.iterations()) * dam_size);
 	st.counters.insert({{"dam_size", dam_size}});
@@ -82,9 +84,10 @@ BENCHMARK_DEFINE_F(ProtobufSerializationBM, DragentUncompressedSerialize)(benchm
 BENCHMARK_REGISTER_F(ProtobufSerializationBM, DragentUncompressedSerialize);
 
 BENCHMARK_DEFINE_F(ProtobufSerializationBM, DragentCompressedSerialize)(benchmark::State& st) {
+	auto compressor = gzip_protobuf_compressor::get(-1);
 	for(auto _ : st)
 	{
-		benchmark::DoNotOptimize(dragent_protocol::message_to_buffer(0, 1, msg, false, true));
+		benchmark::DoNotOptimize(dragent_protocol::message_to_buffer(0, 1, msg, compressor));
 	}
 	st.SetBytesProcessed(int64_t(st.iterations()) * dam_size);
 	st.counters.insert({{"dam_size", dam_size}});

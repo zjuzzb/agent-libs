@@ -1,5 +1,5 @@
 # stdlib
-from contextlib import nested
+from future.utils import bytes_to_native_str
 from functools import wraps
 import logging
 import subprocess
@@ -21,7 +21,7 @@ def get_subprocess_output(command, log, shell=False, stdin=None):
     # Use tempfile, allowing a larger amount of memory. The subprocess.Popen
     # docs warn that the data read is buffered in memory. They suggest not to
     # use subprocess.PIPE if the data size is large or unlimited.
-    with nested(tempfile.TemporaryFile(), tempfile.TemporaryFile()) as (stdout_f, stderr_f):
+    with tempfile.TemporaryFile() as stdout_f, tempfile.TemporaryFile() as stderr_f:
         proc = subprocess.Popen(command,
                                 shell=shell,
                                 stdin=stdin,
@@ -29,13 +29,13 @@ def get_subprocess_output(command, log, shell=False, stdin=None):
                                 stderr=stderr_f)
         proc.wait()
         stderr_f.seek(0)
-        err = stderr_f.read()
+        err = bytes_to_native_str(stderr_f.read())
         if err:
             log.debug("Error while running {0} : {1}".format(" ".join(command),
                                                              repr(err)))
 
         stdout_f.seek(0)
-        output = stdout_f.read()
+        output = bytes_to_native_str(stdout_f.read())
     return (output, err, proc.returncode)
 
 
@@ -47,7 +47,7 @@ def log_subprocess(func):
     def wrapper(*params, **kwargs):
         fc = "%s(%s)" % (func.__name__, ', '.join(
             [a.__repr__() for a in params] +
-            ["%s = %s" % (a, b) for a, b in kwargs.items()]
+            ["%s = %s" % (a, b) for a, b in list(kwargs.items())]
         ))
         log.debug("%s called" % fc)
         return func(*params, **kwargs)

@@ -34,7 +34,7 @@ sinsp_configuration::sinsp_configuration():
 	m_executed_commands_capture_enabled = false;
 	m_commandlines_capture_enabled = false;
 	m_command_lines_capture_mode = command_capture_mode_t::CM_TTY;
-	m_command_lines_include_container_healthchecks = true;
+	m_command_lines_include_container_healthchecks = false;
 	m_capture_dragent_events = false;
 	m_detect_stress_tools = false;
 	m_cointerface_enabled = true;
@@ -143,14 +143,14 @@ void sinsp_configuration::set_falco_baselining_autodisable_interval_ns(uint64_t 
 	m_falco_baselining_autodisable_interval_ns = autodisable_interval;
 }
 
-uint64_t sinsp_configuration::get_falco_baselining_max_drops_full_buffer() const
+float sinsp_configuration::get_falco_baselining_max_drops_buffer_rate_percentage() const
 {
-	return m_falco_baselining_max_drops_full_buffer;
+	return m_falco_baselining_max_drops_buffer_rate_percentage;
 }
 
-void sinsp_configuration::set_falco_baselining_max_drops_full_buffer(uint64_t autodisable_interval)
+void sinsp_configuration::set_falco_baselining_max_drops_buffer_rate_percentage(float max_drops_buffer_rate_percentage)
 {
-	m_falco_baselining_max_drops_full_buffer = autodisable_interval;
+	m_falco_baselining_max_drops_buffer_rate_percentage = max_drops_buffer_rate_percentage;
 }
 
 bool sinsp_configuration::get_commandlines_capture_enabled() const
@@ -622,59 +622,9 @@ void sinsp_configuration::set_containerd_event_filter(user_event_filter_t::ptr_t
 	m_containerd_event_filter = event_filter;
 }
 
-filter_vec_t sinsp_configuration::get_metrics_filter() const
-{
-	return m_metrics_filter;
-}
-
-filter_vec_t sinsp_configuration::get_labels_filter() const
-{
-	return m_labels_filter;
-}
-
-void sinsp_configuration::set_labels_filter(const filter_vec_t& labels_filter)
-{
-	m_labels_filter = labels_filter;
-}
-
-void sinsp_configuration::set_metrics_filter(const filter_vec_t& metrics_filter)
-{
-	m_metrics_filter = metrics_filter;
-}
-
 filter_vec_t sinsp_configuration::get_mounts_filter() const
 {
 	return m_mounts_filter;
-}
-
-filter_vec_t sinsp_configuration::get_k8s_filter() const
-{
-	return m_k8s_filter;
-}
-
-void sinsp_configuration::set_k8s_filter(const filter_vec_t& k8s_filter)
-{
-	m_k8s_filter = k8s_filter;
-}
-
-bool sinsp_configuration::get_excess_k8s_log() const noexcept
-{
-	return m_excess_k8s_log;
-}
-
-void sinsp_configuration::set_excess_k8s_log(bool log) noexcept
-{
-	m_excess_k8s_log = log;
-}
-
-void sinsp_configuration::set_k8s_cache(uint16_t size) noexcept
-{
-	m_k8s_cache = size;
-}
-
-uint16_t sinsp_configuration::get_k8s_cache(void) const noexcept
-{
-	return  m_k8s_cache;
 }
 
 void sinsp_configuration::set_mounts_filter(const filter_vec_t& mounts_filter)
@@ -690,46 +640,6 @@ unsigned sinsp_configuration::get_mounts_limit_size() const
 void sinsp_configuration::set_mounts_limit_size(unsigned mounts_limit_size)
 {
 	m_mounts_limit_size = mounts_limit_size;
-}
-
-bool sinsp_configuration::get_excess_metrics_log() const
-{
-	return m_excess_metrics_log;
-}
-
-bool sinsp_configuration::get_excess_labels_log() const noexcept
-{
-	return m_excess_labels_log;
-}
-
-void sinsp_configuration::set_excess_labels_log(bool log) noexcept
-{
-	m_excess_labels_log = log;
-}
-
-void sinsp_configuration::set_excess_metrics_log(bool log)
-{
-	m_excess_metrics_log = log;
-}
-
-void sinsp_configuration::set_labels_cache(uint16_t size) noexcept
-{
-	m_labels_cache = size;
-}
-
-uint16_t sinsp_configuration::get_labels_cache(void) const noexcept
-{
-	return  m_labels_cache;
-}
-
-unsigned sinsp_configuration::get_metrics_cache() const
-{
-	return m_metrics_cache;
-}
-
-void sinsp_configuration::set_metrics_cache(unsigned sz)
-{
-	m_metrics_cache = sz;
 }
 
 const std::set<double>& sinsp_configuration::get_percentiles() const
@@ -777,16 +687,6 @@ void sinsp_configuration::set_go_k8s_user_events(bool enabled)
 bool sinsp_configuration::get_go_k8s_user_events() const
 {
 	return m_go_k8s_user_events;
-}
-
-void sinsp_configuration::set_go_k8s_debug_events(bool enabled)
-{
-	m_go_k8s_debug_events = enabled;
-}
-
-bool sinsp_configuration::get_go_k8s_debug_events() const
-{
-	return m_go_k8s_debug_events;
 }
 
 void sinsp_configuration::set_add_event_scopes(bool enabled)

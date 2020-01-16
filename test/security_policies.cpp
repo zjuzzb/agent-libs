@@ -28,7 +28,9 @@
 #include <thread>
 
 #include "docker_utils.h"
+#include "sys_call_test.h"
 #include "security_config.h"
+#include "container_config.h"
 
 using namespace std;
 namespace security_config = libsanalyzer::security_config;
@@ -70,7 +72,8 @@ public:
 namespace {
 uncompressed_sample_handler_dummy g_sample_handler;
 audit_tap_handler_dummy g_audit_handler;
-null_secure_audit_handler g_secure_handler;
+null_secure_audit_handler g_secure_audit_handler;
+null_secure_profiling_handler g_secure_profiling_handler;
 
 class test_sinsp_worker : public Runnable
 {
@@ -115,7 +118,7 @@ public:
 			else if(res == SCAP_EOF)
 			{
 				break;
-			}
+			} 
 			else if(res != SCAP_SUCCESS)
 			{
 				cerr << "res = " << res << endl;
@@ -147,7 +150,7 @@ public:
 			if(!m_ready)
 			{
 				g_log->information("test_sinsp_worker: ready");
-				string filter = "(proc.name = tests or proc.aname = tests) or container.name in (sec_ut, fs-root-image, blacklisted_image, non_alpine, busybox_some_tag, baseline-test, denyme, inout_test, fs_usecase, mycurl, overlap_test, helloworld) or container.image = swarm_service_ut_image:latest";
+				string filter = "(proc.name = tests or proc.aname = tests) or container.id = aec4c703604b4504df03108eef12e8256870eca8aabcb251855a35bf4f0337f1 or container.name in (sec_ut, stop_me_docker_test, fs-root-image, blacklisted_image, non_alpine, busybox_some_tag, baseline-test, denyme, inout_test, fs_usecase, mycurl, overlap_test, helloworld) or container.image = swarm_service_ut_image:latest";
 				m_inspector->set_filter(filter.c_str());
 				m_ready = true;
 			}
@@ -217,7 +220,7 @@ class security_policies_test : public testing::Test
 	const uint32_t DEFAULT_QUEUE_LEN = 1000;
 public:
 	/* path to the cointerface unix socket domain */
-	security_policies_test() : 
+	security_policies_test() :
 	    m_flush_queue(DEFAULT_QUEUE_LEN),
 	    m_transmit_queue(DEFAULT_QUEUE_LEN),
 	    m_data_handler(m_transmit_queue),
@@ -233,11 +236,17 @@ protected:
 		return string("./resources/security_policies_messages/all_policy_v2_types.txt");
 	}
 
-	void SetUpTest(bool delayed_reports=false)
+	void SetUpTest(bool delayed_reports=false, const string &fake_cri_socket="")
 	{
 		// dragent_configuration::init() takes an app, but I
 		// don't see it used anywhere.
 		m_configuration.init(NULL, false);
+		if (!fake_cri_socket.empty()) {
+			// This simulates setting a custom CRI socket path into the dragent.yaml file
+			// It needs to be performed after the init call since the init resets all settings from the actual file on disk
+			const_cast<type_config<std::string>*>(c_cri_socket_path.get())->set(fake_cri_socket);
+		}
+
 		dragent_configuration::m_terminate = false;
 
 		m_configuration.m_capture_dragent_events  = true;
@@ -275,14 +284,20 @@ protected:
 
 		m_inspector = new sinsp();
 		m_internal_metrics = std::make_shared<internal_metrics>();
+
+		if (!fake_cri_socket.empty()) {
+			m_inspector->set_cri_socket_path(fake_cri_socket);
+		}
+
 		m_analyzer = new sinsp_analyzer(m_inspector,
 		                                "/opt/draios",
 		                                m_internal_metrics,
 		                                g_audit_handler,
-		                                g_secure_handler,
+		                                g_secure_audit_handler,
+		                                g_secure_profiling_handler,
 		                                &m_flush_queue);
+		m_inspector->register_external_event_processor(*m_analyzer);
 
-		m_inspector->m_analyzer = m_analyzer;
 		m_analyzer->get_configuration()->set_machine_id(m_configuration.machine_id());
 		m_analyzer->set_containers_labels_max_len(m_configuration.m_containers_labels_max_len);
 
@@ -595,7 +610,6 @@ public:
 	                  unique_ptr<::google::protobuf::Message> &msg)
 	{
 		shared_ptr<serialized_buffer> item = nullptr;
-		dragent_protocol_header_v4 *hdr;
 		const uint8_t *buf;
 		uint32_t size;
 
@@ -609,16 +623,15 @@ public:
 			}
 		} while (item == nullptr);
 
-		hdr = (dragent_protocol_header_v4*) item->buffer.data();
-		buf = (const uint8_t *) (item->buffer.data() + sizeof(dragent_protocol_header_v4));
-		size = ntohl(hdr->len) - sizeof(dragent_protocol_header_v4);
+		buf = (const uint8_t *)item->buffer.data();
+		size = item->buffer.size();
 
-		g_log->debug("Got message type=" + to_string(hdr->messagetype));
-		mtype = (draiosproto::message_type) hdr->messagetype;
+		g_log->debug("Got message type=" + to_string(item->message_type));
+		mtype = (draiosproto::message_type) item->message_type;
 
 		draiosproto::throttled_policy_events *tpe;
 		draiosproto::policy_events *pe;
-		switch (hdr->messagetype)
+		switch (item->message_type)
 		{
 		case draiosproto::message_type::THROTTLED_POLICY_EVENTS:
 			tpe = new draiosproto::throttled_policy_events();
@@ -633,7 +646,7 @@ public:
 			break;
 
 		default:
-			FAIL() << "Received unknown message " << to_string(hdr->messagetype);
+			FAIL() << "Received unknown message " << to_string(item->message_type);
 		}
 	}
 
@@ -780,7 +793,12 @@ protected:
 			FAIL() << "cointerface process not running after 1 second";
 		}
 
-		SetUpTest();
+		const std::string fake_cri_socket = "/tmp/fake-cri.sock";
+
+		unlink(fake_cri_socket.c_str());
+		m_fake_cri = make_shared<ProcessHandle>(Poco::Process::launch("./resources/fake_cri", { "unix://" + fake_cri_socket, "resources/fake_cri_crio", "cri-o" }));
+
+		SetUpTest(false, fake_cri_socket);
 
 		int ret = -1;
 
@@ -805,12 +823,19 @@ protected:
 		{
 			Process::kill(*m_cointerface);
 		}
+
+		if(m_fake_cri)
+		{
+			Process::kill(*m_fake_cri);
+		}
+
 		TearDownTest();
 		g_log->information("TearDown() complete");
 	}
 private:
 	shared_ptr<Pipe> m_colog;
 	shared_ptr<ProcessHandle> m_cointerface;
+	shared_ptr<ProcessHandle> m_fake_cri;
 };
 
 class security_policies_v2_test_cointerface : public security_policies_test_cointerface
@@ -975,6 +1000,65 @@ TEST_F(security_policies_test, readwrite_fs_only)
 {
 	bool v1_metrics = true;
 	return readwrite_fs_test(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test_cointerface, stop_action_docker_test)
+{
+	if(!dutils_check_docker())
+	{
+		return;
+	}
+
+	ASSERT_EQ(system("docker run --name stop_me_docker_test --rm busybox:latest sh -c 'sleep 2; gzip -V; sleep 1' > /dev/null 2>&1"), 0);
+
+	unique_ptr<draiosproto::policy_events> pe;
+	this->get_policy_evts_msg(pe);
+	ASSERT_NE(pe, nullptr);
+	bool stop_found = false;
+	for (int i = 0; i < pe->events_size(); i++) 
+	{
+		auto evt = pe->events(i);
+		for (int j = 0; j < evt.action_results_size(); j++)
+		{
+			auto result = evt.action_results(j);
+			if (result.type() == draiosproto::ACTION_STOP && result.successful() == true)
+			{
+				stop_found = true;
+			}
+		}
+	}
+
+	ASSERT_TRUE(stop_found);
+
+	// Perform cleanup in case the action failed
+	dutils_kill_container_if_exists("stop_me_docker_test");
+};
+
+TEST_F(security_policies_v2_test_cointerface, stop_action_cri_test)
+{
+	proc test_proc = proc("./test_helper", { "cri_container_sleep_gzip" });
+	auto handle = start_process(&test_proc);
+	std::get<0>(handle).wait();
+
+	unique_ptr<draiosproto::policy_events> pe;
+	this->get_policy_evts_msg(pe);
+	ASSERT_NE(pe, nullptr);
+	bool stop_found = false;
+	ASSERT_TRUE(pe->events_size() > 0);
+	for (int i = 0; i < pe->events_size(); i++) 
+	{
+		auto evt = pe->events(i);
+		for (int j = 0; j < evt.action_results_size(); j++)
+		{
+			auto result = evt.action_results(j);
+			if (result.type() == draiosproto::ACTION_STOP && result.successful() == true)
+			{
+				stop_found = true;
+			}
+		}
+	}
+
+	ASSERT_TRUE(stop_found);
 };
 
 TEST_F(security_policies_v2_test, readwrite_fs_only)
@@ -1794,6 +1878,30 @@ TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit)
 	return falco_k8s_audit(this, v1_metrics);
 };
 
+TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_scope)
+{
+	// send a single event (the first line of the file)
+	ASSERT_EQ(system("timeout 2 curl -X POST localhost:7765/k8s_audit -d $(head -1 ./resources/k8s_audit_create_namespace.txt) > /dev/null 2>&1"), 0);
+
+	unique_ptr<draiosproto::policy_events> pe;
+	get_policy_evts_msg(pe);
+	ASSERT_TRUE(pe->events_size() == 1);
+	ASSERT_EQ(pe->events(0).policy_id(), 35u);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 5);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "k8s_namespace_created");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.auth.decision"), "allow");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.response.code"), "201");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.target.name"), "some-namespace");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.user.name"), "minikube-user");
+
+	std::map<string,security_policies_test::expected_internal_metric> metrics;
+
+	metrics = {{"security.falco.match.match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+		   {"security.falco.match.not_match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+
+	check_expected_internal_metrics(metrics);
+};
+
 
 static void falco_k8s_audit_multi_events(security_policies_test_cointerface *ptest, bool v1_metrics)
 {
@@ -1822,7 +1930,7 @@ static void falco_k8s_audit_multi_events(security_policies_test_cointerface *pte
 	}
 	else
 	{
-		metrics = {{"security.falco.match.match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+		metrics = {{"security.falco.match.match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_GE, 1}},
 			   {"security.falco.match.not_match_items", {security_policies_test::security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
 	}
 
@@ -2416,3 +2524,4 @@ TEST_F(security_policies_v2_test, docker_swarm)
 	bool v1_metrics = false;
 	return docker_swarm(this, v1_metrics);
 };
+

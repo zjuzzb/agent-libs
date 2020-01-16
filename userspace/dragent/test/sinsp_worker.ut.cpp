@@ -5,6 +5,8 @@
 #include "sinsp_mock.h"
 #include "watchdog_runnable_pool.h"
 #include "protocol_handler.h"
+#include "protobuf_compression.h"
+#include "protocol.h"
 
 using namespace dragent;
 using namespace test_helpers;
@@ -52,9 +54,11 @@ TEST(sinsp_worker_test, DISABLED_end_to_end_basic)
 
 	// Make some fake events
 	uint64_t ts = 1095379199000000000ULL;
-	inspector->build_event().tid(55).ts(ts).count(5).commit();
-	inspector->build_event().tid(55).ts(ts).count(1000).commit();
-	inspector->build_event().tid(75).count(1).commit();
+	auto &tinfo55 = inspector->build_thread().tid(55).commit();
+	auto &tinfo75 = inspector->build_thread().tid(75).commit();
+	inspector->build_event(tinfo55).ts(ts).count(5).commit();
+	inspector->build_event(tinfo55).ts(ts).count(1000).commit();
+	inspector->build_event(tinfo75).count(1).commit();
 
 	// Run the sinsp_worker
 	protocol_queue queue(MAX_SAMPLE_STORE_SIZE);

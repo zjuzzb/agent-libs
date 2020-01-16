@@ -497,7 +497,7 @@ void custom_container(const vector<string>& args)
 
 bool cri_container_set_cgroup()
 {
-	string cpu_cgroup = "/sys/fs/cgroup/cpu/docker/575371e748648f5f3fa255091847b3449fa4bd62c597612a4b915afe0bd19ecd";
+	string cpu_cgroup = "/sys/fs/cgroup/cpu/docker/aec4c703604b4504df03108eef12e8256870eca8aabcb251855a35bf4f0337f1";
 	struct stat s;
 
 	if (stat(cpu_cgroup.c_str(), &s) < 0) {
@@ -527,15 +527,14 @@ bool cri_container_set_cgroup()
 	return true;
 }
 
-void cri_container_simple() {
+void cri_container_simple(char *const exargs[]) {
 	signal(SIGCHLD, SIG_IGN);
 	pid_t pid = fork();
 	switch(pid) {
 		case 0: // child
 		{
-			char *const exargs[] = {(char *) "/bin/echo", (char *) "-n", nullptr};
 			char *const exenv[] = {nullptr};
-			execve("/bin/echo", exargs, exenv);
+			execve(exargs[0], exargs, exenv);
 			exit(127);
 		}
 		case -1: // error
@@ -549,14 +548,26 @@ void cri_container_simple() {
 	}
 }
 
-void cri_container(const vector<string>& args)
+void cri_container_echo(const vector<string>& args)
 {
 	if (!cri_container_set_cgroup())
 	{
 		return;
 	}
 
-	return cri_container_simple();
+	char *const exargs[] = {(char *) "/bin/echo", (char *) "-n", nullptr};
+	return cri_container_simple(exargs);
+}
+
+void cri_container_sleep_gzip(const vector<string>& args)
+{
+	if (!cri_container_set_cgroup())
+	{
+		return;
+	}
+
+	char *const exargs[] = {(char *) "/bin/bash", (char *) "-c", (char *) "sleep 2; gzip -V; sleep 1", nullptr};
+	return cri_container_simple(exargs);
 }
 
 const unordered_map<string, function<void(const vector<string>&)>> func_map = {
@@ -592,7 +603,8 @@ const unordered_map<string, function<void(const vector<string>&)>> func_map = {
 			{ "ppoll_timeout", ppoll_timeout},
 			{ "pgid_test", pgid_test},
 			{ "custom_container", custom_container},
-			{ "cri_container", cri_container}
+			{ "cri_container_echo", cri_container_echo},
+			{ "cri_container_sleep_gzip", cri_container_sleep_gzip}
 	};
 
 // Helper to test ia32 emulation on 64bit

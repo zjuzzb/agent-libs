@@ -1,21 +1,19 @@
-import ConfigParser
-from cStringIO import StringIO
-import glob
-import imp
-import inspect
-import itertools
-import logging
-import logging.config
+from future import standard_library
+standard_library.install_aliases()
+from future.utils import PY3
+if PY3:
+    from builtins import str
+else:
+    from past.builtins import str
+from past.builtins import map
+from io import StringIO
 import logging.handlers
 from optparse import OptionParser, Values
 import os
 import platform
-import re
 from socket import gaierror, gethostbyname
 import string
 import sys
-import traceback
-from urlparse import urlparse
 
 # 3rd party
 import yaml
@@ -129,6 +127,21 @@ def _unix_checksd_path():
     raise PathNotFound(checksd_path)
 
 
+def is_affirmative(value):
+    """
+    Attempt to convert different type of values to a meaningful boolean
+    """
+    # try string cast
+    if isinstance(value, str):
+        return value.lower() in {'yes', 'true', '1', 'y', 'on'}
+
+    # use object's implementation of `__bool__`, it's faster than cast.
+    # None -> False, 0 -> False, 1 -> True, etc.
+    return not not value
+
+
+# Old style type conversion for backward compatibility.
+# This will be replaced by def is_affirmative(value)
 def _is_affirmative(s):
     # int or real bool
     if isinstance(s, int):
@@ -239,13 +252,13 @@ def get_confd_path(osname=None):
     if osname == 'windows':
         try:
             return _windows_confd_path()
-        except PathNotFound, e:
+        except PathNotFound as e:
             if len(e.args) > 0:
                 bad_path = e.args[0]
     else:
         try:
             return _unix_confd_path()
-        except PathNotFound, e:
+        except PathNotFound as e:
             if len(e.args) > 0:
                 bad_path = e.args[0]
 

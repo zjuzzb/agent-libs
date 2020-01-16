@@ -428,8 +428,11 @@ public:
 	void ping(int64_t token, response_cb_t response_cb);
 	void get_swarm_state(response_cb_t response_cb);
 
-	void perform_docker_cmd(sdc_internal::docker_cmd_type cmd,
-				const std::string &container_id, response_cb_t response_cb);
+	void perform_docker_cmd(sdc_internal::container_cmd_type cmd,
+							const std::string &container_id, response_cb_t response_cb);
+
+	void perform_cri_cmd(const std::string &cri_socket_path, sdc_internal::container_cmd_type cmd,
+						  const std::string &container_id, response_cb_t response_cb);
 
 	void get_orchestrator_events(sdc_internal::orchestrator_events_stream_command cmd, response_cb_t response_cb);
 	void get_orchestrator_event_messages(sdc_internal::orchestrator_attach_user_events_stream_command cmd, response_cb_t response_cb);
@@ -493,6 +496,7 @@ protected:
 		// Depending on msg_type, the context will use one of these readers
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::pong>> pong_reader;
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::docker_command_result>> docker_cmd_result_reader;
+		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::cri_command_result>> cri_cmd_result_reader;
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::swarm_state_result>> swarm_state_reader;
 		std::unique_ptr<grpc::ClientAsyncReader<sdc_internal::array_congroup_update_event>> orchestrator_events_reader;
 		std::unique_ptr<grpc::ClientAsyncReader<sdc_internal::k8s_user_event>> orchestrator_event_message_reader;

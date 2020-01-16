@@ -27,7 +27,10 @@ RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devto
         libtool \
         valgrind \
 	centos-release-scl \
-        lcov && \
+        lcov \
+        libffi-devel \
+        zlib-devel \
+        openssl-devel && \
     yum -y install \
         python27 \
         glibc-devel.i686 \

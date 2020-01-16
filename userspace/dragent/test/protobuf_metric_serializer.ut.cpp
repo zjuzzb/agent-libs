@@ -71,16 +71,15 @@ public:
 	 * @param[in] suppressed      The initial number of suppressed events
 	 * @param[in] tids_suppressed The initial number of suppressed tids
 	 */
-	precanned_capture_stats_source(
-			const uint64_t evts = DEFAULT_EVTS,
-			const uint64_t drops = DEFAULT_DROPS,
-			const uint64_t drops_buffer = DEFAULT_DROPS_BUFFER,
-			const uint64_t drops_pf = DEFAULT_DROPS_PF,
-			const uint64_t drops_bug = DEFAULT_DROPS_BUG,
-			const uint64_t preemptions = DEFAULT_PREEMPTIONS,
-			const uint64_t suppressed = DEFAULT_SUPPRESSED,
-			const uint64_t tids_suppressed = DEFAULT_TIDS_SUPPRESSED):
-		m_stats()
+	precanned_capture_stats_source(const uint64_t evts = DEFAULT_EVTS,
+	                               const uint64_t drops = DEFAULT_DROPS,
+	                               const uint64_t drops_buffer = DEFAULT_DROPS_BUFFER,
+	                               const uint64_t drops_pf = DEFAULT_DROPS_PF,
+	                               const uint64_t drops_bug = DEFAULT_DROPS_BUG,
+	                               const uint64_t preemptions = DEFAULT_PREEMPTIONS,
+	                               const uint64_t suppressed = DEFAULT_SUPPRESSED,
+	                               const uint64_t tids_suppressed = DEFAULT_TIDS_SUPPRESSED)
+	    : m_stats()
 	{
 		m_stats.n_evts = evts;
 		m_stats.n_drops = drops;
@@ -143,25 +142,27 @@ public:
 	/**
 	 * Initialize this dummy handler to all unset sentinel values.
 	 */
-	dummy_sample_handler(const uint32_t sleep_time = 0):
-		m_ts_ns(UNSET_UINT64),
-		m_metrics(UNSET_METRICS),
-		m_sleep_time(sleep_time),
-		m_call_count(0)
-	{ }
+	dummy_sample_handler(const uint32_t sleep_time = 0)
+	    : m_ts_ns(UNSET_UINT64), m_metrics(UNSET_METRICS), m_sleep_time(sleep_time), m_call_count(0)
+	{
+	}
 
 	/**
 	 * Concrete realization of the handle_uncompressed_sample() API.
 	 * Saves all parameters to locals.
 	 */
-	std::shared_ptr<serialized_buffer>
-	handle_uncompressed_sample(const uint64_t ts_ns,
-	                std::shared_ptr<draiosproto::metrics>& metrics) override
+	std::shared_ptr<serialized_buffer> handle_uncompressed_sample(
+	    const uint64_t ts_ns,
+	    std::shared_ptr<draiosproto::metrics>& metrics,
+	    uint32_t flush_interval,
+	    std::shared_ptr<protobuf_compressor>& compressor) override
 	{
 		m_ts_ns = ts_ns;
 		m_metrics = metrics;
+		m_flush_interval = flush_interval;
+		m_compressor = compressor;
 
-		if(m_sleep_time != 0)
+		if (m_sleep_time != 0)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(m_sleep_time));
 		}
@@ -180,10 +181,10 @@ public:
 	uint64_t m_ts_ns;
 	std::shared_ptr<draiosproto::metrics> m_metrics;
 	uint32_t m_sleep_time;
+	uint32_t m_flush_interval;
+	std::shared_ptr<protobuf_compressor> m_compressor;
 	std::atomic<uint8_t> m_call_count;
 };
-
-
 
 const uint64_t dummy_sample_handler::UNSET_UINT64 = std::numeric_limits<uint64_t>::max();
 const uint32_t dummy_sample_handler::UNSET_UINT32 = std::numeric_limits<uint32_t>::max();
@@ -192,7 +193,7 @@ draiosproto::metrics* const dummy_sample_handler::UNSET_METRICS = nullptr;
 const uint32_t max_queue_size = 32;
 flush_queue g_fqueue(max_queue_size);
 protocol_queue g_pqueue(max_queue_size);
-} // end namespace
+}  // end namespace
 
 /**
  * Ensure that a newly-constructed protobuf_metric_serializer is in the
@@ -201,15 +202,19 @@ protocol_queue g_pqueue(max_queue_size);
 TEST(protobuf_metric_serializer_test, initial_state)
 {
 	std::shared_ptr<const capture_stats_source> stats_source =
-	        std::make_shared<precanned_capture_stats_source>();
+	    std::make_shared<precanned_capture_stats_source>();
 	dummy_sample_handler dsh;
 
+	auto compressor = null_protobuf_compressor::get();
+
 	std::unique_ptr<protobuf_metric_serializer> s(
-	        new protobuf_metric_serializer(stats_source,
-	                                       "",
-	                                       dsh,
-	                                       &g_fqueue,
-	                                       &g_pqueue));
+	    new protobuf_metric_serializer(stats_source,
+	                                   "",
+	                                   dsh,
+	                                   &g_fqueue,
+	                                   &g_pqueue,
+	                                   compressor,
+	                                   nullptr));
 
 	ASSERT_EQ(0, s->get_num_serializations_completed());
 }
@@ -221,7 +226,7 @@ TEST(protobuf_metric_serializer_test, serialize)
 {
 	test_helpers::scoped_temp_directory temp_dir;
 	std::shared_ptr<const capture_stats_source> stats_source =
-	        std::make_shared<precanned_capture_stats_source>();
+	    std::make_shared<precanned_capture_stats_source>();
 	dummy_sample_handler analyzer_callback;
 
 	dragent_configuration::m_terminate = false;
@@ -232,37 +237,37 @@ TEST(protobuf_metric_serializer_test, serialize)
 	std::atomic<uint64_t> prev_flushes_duration_ns(INITIAL_PREV_FLUSH_DURATION_NS);
 	std::atomic<bool> metrics_sent(false);
 	const double CPU_LOAD = 0.12;
-	draiosproto::metrics metrics;
 
 	metric_serializer::c_metrics_dir.set(temp_dir.get_directory());
 
+	auto compressor = null_protobuf_compressor::get();
+
 	std::unique_ptr<protobuf_metric_serializer> s(
-	        new protobuf_metric_serializer(stats_source,
-	                                       "",
-	                                       analyzer_callback,
-	                                       &g_fqueue,
-	                                       &g_pqueue));
+	    new protobuf_metric_serializer(stats_source,
+	                                   "",
+	                                   analyzer_callback,
+	                                   &g_fqueue,
+	                                   &g_pqueue,
+	                                   compressor,
+	                                   nullptr));
 	std::thread t([&s]()
-	{
-		s->test_run();
-	});
+	{ s->test_run(); });
 
 	ASSERT_EQ(0, s->get_num_serializations_completed());
 
-	s->serialize(std::make_shared<flush_data_message>(
-				TIMESTAMP,
-				&metrics_sent,
-				metrics,
-				precanned_capture_stats_source::DEFAULT_EVTS,
-				precanned_capture_stats_source::DEFAULT_DROPS,
-				CPU_LOAD,
-				SAMPLING_RATIO,
-				0));
+	s->serialize(std::make_shared<flush_data_message>(TIMESTAMP,
+	                                                  &metrics_sent,
+	                                                  make_unique<draiosproto::metrics>(),
+	                                                  precanned_capture_stats_source::DEFAULT_EVTS,
+	                                                  precanned_capture_stats_source::DEFAULT_DROPS,
+	                                                  CPU_LOAD,
+	                                                  SAMPLING_RATIO,
+	                                                  0));
 
 	// Wait for the async thread to complete the work.  If we have to wait
 	// more that 5 seconds, something has gone badly wrong.
 	const int FIVE_SECOND_IN_MS = 5 * 1000;
-	for(int i = 0; s->get_num_serializations_completed() == 0 && i < FIVE_SECOND_IN_MS; ++i)
+	for (int i = 0; s->get_num_serializations_completed() == 0 && i < FIVE_SECOND_IN_MS; ++i)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
@@ -285,9 +290,7 @@ TEST(protobuf_metric_serializer_test, serialize)
 	// there.
 	//
 	const std::string dam_file =
-		dragent::metrics_file_emitter::generate_dam_filename(
-				s->get_metrics_directory(),
-				TIMESTAMP);
+	    dragent::metrics_file_emitter::generate_dam_filename(s->get_metrics_directory(), TIMESTAMP);
 
 	//
 	// We could parse this file, but I'm not sure what parser can consume
@@ -321,7 +324,7 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 {
 	test_helpers::scoped_temp_directory temp_dir;
 	std::shared_ptr<const capture_stats_source> stats_source =
-	        std::make_shared<precanned_capture_stats_source>();
+	    std::make_shared<precanned_capture_stats_source>();
 	const uint32_t sleep_time_ms = 3;
 	dummy_sample_handler analyzer_callback(sleep_time_ms);
 
@@ -333,52 +336,47 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	std::atomic<uint64_t> prev_flushes_duration_ns(INITIAL_PREV_FLUSH_DURATION_NS);
 	std::atomic<bool> metrics_sent(false);
 	const double CPU_LOAD = 0.12;
-	draiosproto::metrics metrics;
 
 	// Update the configuration so that the serializer will emit the
 	// metrics to file.  Use the configuration object mainly to get
 	// the metrics directory with the required trailing path delimiter.
 	metric_serializer::c_metrics_dir.set(temp_dir.get_directory());
 
+	auto compressor = null_protobuf_compressor::get();
+
 	std::unique_ptr<protobuf_metric_serializer> s(
-	        new protobuf_metric_serializer(stats_source,
-	                                       "",
-	                                       analyzer_callback,
-	                                       &g_fqueue,
-	                                       &g_pqueue));
+	    new protobuf_metric_serializer(stats_source,
+	                                   "",
+	                                   analyzer_callback,
+	                                   &g_fqueue,
+	                                   &g_pqueue,
+	                                   compressor,
+	                                   nullptr));
 	std::thread t([&]()
-	{
-		ASSERT_NO_THROW(s->test_run());
-	});
+	{ ASSERT_NO_THROW(s->test_run()); });
 
-	s->serialize(std::make_shared<flush_data_message>(
-				TIMESTAMP,
-				&metrics_sent,
-				metrics,
-				precanned_capture_stats_source::DEFAULT_EVTS,
-				precanned_capture_stats_source::DEFAULT_DROPS,
-				CPU_LOAD,
-				SAMPLING_RATIO,
-				0));
+	s->serialize(std::make_shared<flush_data_message>(TIMESTAMP,
+	                                                  &metrics_sent,
+	                                                  make_unique<draiosproto::metrics>(),
+	                                                  precanned_capture_stats_source::DEFAULT_EVTS,
+	                                                  precanned_capture_stats_source::DEFAULT_DROPS,
+	                                                  CPU_LOAD,
+	                                                  SAMPLING_RATIO,
+	                                                  0));
 
-	s->serialize(std::make_shared<flush_data_message>(
-				TIMESTAMP * 2, // make timestamp bigger
-				&metrics_sent,
-				metrics,
-				precanned_capture_stats_source::DEFAULT_EVTS,
-				precanned_capture_stats_source::DEFAULT_DROPS,
-				CPU_LOAD,
-				SAMPLING_RATIO,
-				0));
-
+	s->serialize(std::make_shared<flush_data_message>(TIMESTAMP * 2,  // make timestamp bigger
+	                                                  &metrics_sent,
+	                                                  make_unique<draiosproto::metrics>(),
+	                                                  precanned_capture_stats_source::DEFAULT_EVTS,
+	                                                  precanned_capture_stats_source::DEFAULT_DROPS,
+	                                                  CPU_LOAD,
+	                                                  SAMPLING_RATIO,
+	                                                  0));
 
 	// Wait for the async thread to complete the work.  If we have to wait
 	// more that 5 seconds, something has gone badly wrong.
 	const int FIVE_SECOND_IN_MS = 5 * 1000;
-	for(int i = 0;
-	    s->get_num_serializations_completed() < 2 &&
-	    i < FIVE_SECOND_IN_MS;
-	    ++i)
+	for (int i = 0; s->get_num_serializations_completed() < 2 && i < FIVE_SECOND_IN_MS; ++i)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
@@ -387,4 +385,88 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 
 	s->stop();
 	t.join();
+}
+
+// basic test to catch a bug found during development. if no dir set, don't flush
+TEST(protobuf_metric_serializer_test, no_flush_to_file)
+{
+	dragent::metrics_file_emitter mfe;
+	ASSERT_FALSE(mfe.emit_metrics_to_file(std::make_shared<flush_data_message>(
+	    0, nullptr, make_unique<draiosproto::metrics>(), 0, 0, 0, 0, 0)));
+	ASSERT_FALSE(mfe.emit_metrics_to_json_file(std::make_shared<flush_data_message>(
+	    0, nullptr, make_unique<draiosproto::metrics>(), 0, 0, 0, 0, 0)));
+}
+
+using namespace dragent;
+
+namespace
+{
+uncompressed_sample_handler_dummy g_sample_handler;
+}
+
+/**
+ * Ensure that the constructed object is in the expected initial state.
+ */
+TEST(protobuf_metric_serializer_test, more_initial_state)
+{
+	test_helpers::scoped_config<std::string> config("metricsfile.location", "");
+	std::shared_ptr<capture_stats_source> stats_source = nullptr;
+
+	auto compressor = null_protobuf_compressor::get();
+
+	std::unique_ptr<protobuf_metric_serializer> s(
+	    new protobuf_metric_serializer(stats_source,
+	                                   ".",
+	                                   g_sample_handler,
+	                                   &g_fqueue,
+	                                   &g_pqueue,
+	                                   compressor,
+	                                   nullptr));
+
+	ASSERT_NE(s.get(), nullptr);
+
+	// non-null metrics dir implies emit to file
+	ASSERT_FALSE(s->get_emit_metrics_to_file());
+}
+
+/**
+ * ensure we deal with configuring the metrics directory correctly
+ */
+TEST(protobuf_metric_serializer_test, configuration)
+{
+	const std::string root_dir = "/foo";
+	const std::string metrics_directory = "/tmp";
+	test_helpers::scoped_config<std::string> config("metricsfile.location", metrics_directory);
+
+	std::shared_ptr<capture_stats_source> stats_source = nullptr;
+
+	auto compressor = null_protobuf_compressor::get();
+	auto new_compressor = gzip_protobuf_compressor::get(-1);
+
+	std::unique_ptr<protobuf_metric_serializer> s(
+	    new protobuf_metric_serializer(stats_source,
+	                                   root_dir,
+	                                   g_sample_handler,
+	                                   &g_fqueue,
+	                                   &g_pqueue,
+	                                   compressor,
+	                                   nullptr));
+
+	// Make sure that update_configuration() updates the values
+	ASSERT_TRUE(s->get_emit_metrics_to_file());
+	ASSERT_EQ("/foo/tmp/", s->get_metrics_directory());
+
+	// Check that the set_metrics_directory API works
+	s->set_metrics_directory("/bar/");
+	ASSERT_TRUE(s->get_emit_metrics_to_file());
+	ASSERT_EQ("/bar/", s->get_metrics_directory());
+
+	// Check that we can disable it
+	s->set_metrics_directory("");
+	ASSERT_FALSE(s->get_emit_metrics_to_file());
+	ASSERT_EQ("", s->get_metrics_directory());
+
+	// Check that we can change the compression
+	bool ret = s->set_compression(new_compressor);
+	ASSERT_TRUE(ret);
 }

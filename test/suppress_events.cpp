@@ -51,7 +51,7 @@ static void test_helper_quotactl(test_helper_args &hargs)
 	// Access/modify inspector before opening
 	//
 
-	before_open_t before_open = [&](sinsp *inspector)
+	before_open_t before_open = [&](sinsp *inspector, sinsp_analyzer* analyzer)
 	{
 		if(hargs.suppress_before)
 		{
@@ -135,7 +135,7 @@ static void test_helper_quotactl(test_helper_args &hargs)
 		return (!test_helper_done);
 	};
 
-	before_close_t before_close = [](sinsp *inspector)
+	before_close_t before_close = [](sinsp *inspector, sinsp_analyzer* analyzer)
 	{
 		scap_stats st;
 

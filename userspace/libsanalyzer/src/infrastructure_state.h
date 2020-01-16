@@ -3,6 +3,7 @@
 #define INFRASTRUCTURE_STATE_H
 
 #include <map>
+#include <set>
 
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -14,6 +15,18 @@
 #include "k8s_limits.h"
 #include "sdc_internal.pb.h"
 #include "type_config.h"
+
+namespace std
+{
+	template<>
+	struct less<draiosproto::pod_status_count>
+	{
+		bool operator()(const draiosproto::pod_status_count &l, const draiosproto::pod_status_count &r) const
+		{
+			return l.status() < r.status();
+		}
+	};
+}
 
 typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
 typedef google::protobuf::RepeatedPtrField<draiosproto::container_group> container_groups;
@@ -30,9 +43,11 @@ public:
 	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<size_t, bool>>;
 
 	// Pass a 4th optional argument to turn on m_k8s_subscribed for unit tests. Need to refactor.
-	infrastructure_state(sinsp *inspector,
-			     const std::string& rootdir,
-			     bool force_k8s_subscribed = false);
+	infrastructure_state(sinsp_analyzer& analyzer,
+						 sinsp *inspector,
+						 const std::string& rootdir,
+						 const k8s_limits::sptr_t& the_k8s_limits,
+						 bool force_k8s_subscribed = false);
 	using reg_id_t = std::string;
 
 	~infrastructure_state();
@@ -70,8 +85,10 @@ public:
 	void delete_rate_metrics(const uid_t &key);
 
 	void state_of(const std::vector<std::string> &container_ids, container_groups* state, const uint64_t ts);
+	void state_of(const std::vector<std::string> &container_ids, draiosproto::k8s_state* state, const uint64_t ts);
 
 	void get_state(container_groups* state, const uint64_t ts);
+	void get_state(draiosproto::k8s_state* state, uint64_t ts);
 
 	void on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo);
 	void on_remove_container(const sinsp_container_info& container_info);
@@ -82,7 +99,7 @@ public:
 
 	void load_single_event(const draiosproto::congroup_update_event &evt, bool overwrite = false);
 
-	bool find_tag(uid_t uid, std::string tag, std::string &value) const
+	bool find_tag(const uid_t& uid, const std::string& tag, std::string &value) const
 	{
 		std::unordered_set<uid_t> visited;
 		return find_tag(uid, tag, value, visited);
@@ -121,7 +138,6 @@ public:
 	std::string get_cluster_name_from_agent_tags() const;
 	// The UID of the default namespace is used as the cluster id
 	std::string get_k8s_cluster_id() const;
-	void init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size);
 
 	void add_annotation_filter(const std::string &ann);
 	bool find_parent_kind(const uid_t uid, std::string kind, uid_t &found_id)
@@ -145,17 +161,18 @@ public:
 	const std::string& get_k8s_bt_auth_token();
 	const std::string& get_k8s_ssl_certificate();
 	const std::string& get_k8s_ssl_key();
+	std::unordered_set<std::string> test_only_get_container_ids() const;
+
 private:
 
 	void configure_k8s_environment();
 
-	std::unordered_map<std::string, std::string> host_children {
-		{"k8s_node", "kubernetes.node.name"}
-		// other orchestrators nodes
-	};
-
 	// These return true if the new entry has been added, false if it already existed
 	bool add(uid_t key);
+
+	void emit(const draiosproto::container_group *grp, draiosproto::k8s_state *state, uint64_t ts);
+
+	void resolve_names(draiosproto::k8s_state *state);
 
 	void state_of(const draiosproto::container_group *grp,
 		      container_groups* state,
@@ -163,17 +180,24 @@ private:
 
 	// Get object names from object and its parents and add them to scope
 	int get_scope_names(uid_t uid, event_scope *scope, std::unordered_set<uid_t> &visited) const;
-	bool find_parent_kind(const uid_t child_id, std::string kind, uid_t &found_id,
+
+	void state_of(const draiosproto::container_group *grp,
+		      draiosproto::k8s_state *state,
+		      std::unordered_set<uid_t>& visited, uint64_t ts);
+
+	bool find_parent_kind(const uid_t child_id, string kind, uid_t &found_id,
 		std::unordered_set<uid_t> &visited) const;
 
-	bool find_tag(uid_t uid, std::string tag, std::string &value, std::unordered_set<uid_t> &visited) const;
+	bool find_tag(const uid_t& uid, const std::string& tag, std::string &value, std::unordered_set<uid_t> &visited) const;
 	int find_tag_list(uid_t uid, std::unordered_set<string> &tags_set, std::unordered_map<string,string> &labels, std::unordered_set<uid_t> &visited) const;
 	bool walk_and_match(draiosproto::container_group *congroup,
 			    scope_predicates &preds,
 			    std::unordered_set<uid_t> &visited_groups);
 
+	void update_parent_child_links(const uid_t& uid);
+
 	void handle_event(const draiosproto::congroup_update_event *evt, bool overwrite = false);
-	
+
 	void refresh_hosts_metadata();
 
 	void connect(infrastructure_state::uid_t& key);
@@ -201,7 +225,11 @@ private:
 	bool match_scope_all_containers(const scope_predicates &predicates);
 
 	std::map<uid_t, std::unique_ptr<draiosproto::container_group>> m_state;
+
+	using pod_status_set_t = std::set<draiosproto::pod_status_count, std::less<draiosproto::pod_status_count>>;
+	std::map<std::string, pod_status_set_t> m_pod_status;
 	std::unordered_map<uid_t, std::vector<uid_t>> m_orphans;
+	std::unordered_map<uid_t, std::unordered_set<uid_t>> m_parents;
 
 	struct reg_scope_t {
 		bool m_host_scope;
@@ -217,6 +245,7 @@ private:
 
 	policy_cache_t m_policy_cache;
 
+	sinsp_analyzer& m_analyzer;
 	sinsp *m_inspector;
 	std::string m_machine_id;
 
@@ -226,7 +255,7 @@ private:
 	coclient::response_cb_t m_k8s_callback;
 	bool m_k8s_subscribed;   // True if we're supposed to connect to k8s
 	bool m_k8s_connected;    // True if we have an active RPC connection
-	k8s_limits m_k8s_limits;
+	const k8s_limits::sptr_t m_k8s_limits;
 	mutable std::string m_k8s_cached_cluster_id;
 	run_on_interval m_k8s_refresh_interval;
 	run_on_interval m_k8s_connect_interval;
@@ -235,13 +264,17 @@ private:
 	std::string m_k8s_node_uid;
 	bool m_k8s_node_actual;	// True if node found from following a running container
 
-	typedef struct {
+	struct rate_metric_state_t {
+		rate_metric_state_t() : val(0), ts(0), last_rate(0) {}
 		double val;
 		time_t ts;
 		double last_rate;
-	} rate_metric_state_t;
+	};
 
-	std::unordered_map<uid_t, std::map<std::string, rate_metric_state_t>> m_rate_metric_state;
+	std::unordered_map<uid_t, std::unordered_map<std::string, rate_metric_state_t>> m_rate_metric_state;
+	std::unordered_map<std::string, rate_metric_state_t> m_pod_restart_rate;
+	static double calculate_rate(rate_metric_state_t& prev, double value, uint64_t ts);
+
 	std::set<std::string> m_annotation_filter;
 
 	std::string m_root_dir;
@@ -275,6 +308,7 @@ public: // configs
 	static type_config<uint32_t> c_orchestrator_batch_messages_tick_interval_ms;
 	static type_config<bool> c_k8s_ssl_verify_certificate;
 	static type_config<std::vector<std::string>> c_k8s_include_types;
+	static type_config<std::vector<std::string>> c_k8s_pod_status_wl;
 	static type_config<uint32_t> c_k8s_event_counts_log_time;
 	static type_config<uint64_t> c_k8s_timeout_s;
 	static type_config<std::string>::ptr c_k8s_ssl_key_password;

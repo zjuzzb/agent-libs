@@ -24,6 +24,11 @@
 using namespace std;
 using namespace Poco;
 
+type_config<bool> c_compression_enabled(true,
+                                        "set to true to compress protobufs sent to the collector",
+                                        "compression",
+                                        "enabled");
+
 struct task_defs_t {
 	std::string schedule;
 	uint64_t id;
@@ -246,7 +251,6 @@ protected:
 			while(!m_done)
 			{
 				shared_ptr<serialized_buffer> item;
-				dragent_protocol_header_v4 *hdr;
 				const uint8_t *buf;
 				uint32_t size;
 
@@ -255,21 +259,20 @@ protected:
 					continue;
 				}
 
-				hdr = (dragent_protocol_header_v4*) item->buffer.data();
-				buf = (const uint8_t *) (item->buffer.data() + sizeof(dragent_protocol_header_v4));
-				size = ntohl(hdr->len) - sizeof(dragent_protocol_header_v4);
+				buf = (const uint8_t *)item->buffer.data();
+				size = item->buffer.size();
 
-				g_log->debug("Got message type=" + to_string(hdr->messagetype));
+				g_log->debug("Got message type=" + to_string(item->message_type));
 
 				draiosproto::comp_results res;
-				switch (hdr->messagetype)
+				switch (item->message_type)
 				{
 				case draiosproto::message_type::COMP_RESULTS:
 					dragent_protocol::buffer_to_protobuf(buf, size, &res);
 					break;
 
 				default:
-					FAIL() << "Received unknown message " << hdr->messagetype;
+					FAIL() << "Received unknown message " << item->message_type;
 				}
 
 				for(auto &result : res.results())

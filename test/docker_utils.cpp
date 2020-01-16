@@ -38,6 +38,15 @@ void dutils_create_tag(const char *tag, const char *image)
 	EXPECT_EQ(system(tag_cmd.c_str()), 0);
 }
 
+void dutils_kill_container_if_exists(const char *name)
+{
+	std::string kill_cmd = string("(docker kill ") + name + " || true) > /dev/null 2>&1";
+	std::string rm_cmd = string("(docker rm -fv ") + name + " || true) > /dev/null 2>&1";
+
+	system(kill_cmd.c_str());
+	system(rm_cmd.c_str());
+}
+
 void dutils_kill_container(const char *name)
 {
 	std::string kill_cmd = string("(docker kill ") + name + " || true) > /dev/null 2>&1";

@@ -13,7 +13,6 @@
 #include "configuration.h"
 #include "connection_manager.h"
 #include "watchdog_runnable_pool.h"
-#include "blocking_queue.h"
 #include "error_handler.h"
 #include "capture_job_handler.h"
 #include "sinsp_worker.h"
@@ -24,7 +23,9 @@
 #include <atomic>
 #include <memory>
 #include "metric_serializer.h"
+#include "async_aggregator.h"
 #include "dragent_message_queues.h"
+#include "protobuf_compression.h"
 
 #ifndef CYGWING_AGENT
 #include "sdc_internal.pb.h"
@@ -33,6 +34,7 @@
 #endif
 #include "draios.pb.h"
 #include "analyzer_utils.h"
+#include "run_once_after.h"
 
 class watchdog_state
 {
@@ -123,7 +125,12 @@ private:
 	void update_subprocesses_priority();
 	void monitor_files(uint64_t uptime_s);
 	void init_inspector(sinsp::ptr inspector);
-	sinsp_analyzer* build_analyzer(sinsp::ptr inspector, flush_queue& flush_queue);
+	sinsp_analyzer* build_analyzer(
+		const sinsp::ptr& inspector,
+		flush_queue& flush_queue,
+		const metric_limits::sptr_t& the_metric_limits,
+		const label_limits::sptr_t& the_label_limits,
+		const k8s_limits::sptr_t& the_k8s_limits);
 	void setup_coredumps();
 	void log_sysinfo();
 
@@ -157,9 +164,9 @@ private:
 
 	internal_metrics::sptr_t m_internal_metrics;
 	protocol_handler m_protocol_handler;
-	sinsp_worker m_sinsp_worker;
 	capture_job_handler m_capture_job_handler;
-	connection_manager m_connection_manager;
+	sinsp_worker m_sinsp_worker;
+
 	log_reporter m_log_reporter;
 	subprocesses_logger m_subprocesses_logger;
 	typedef std::unordered_map<std::string, watchdog_state> ProcessStateMap;
@@ -182,4 +189,5 @@ private:
 	};
 	std::vector<monitor_file_state> m_monitored_files;
 	dragent::watchdog_runnable_pool m_pool;
+	userspace_shared::run_once_after m_inspector_delayed_start;
 };

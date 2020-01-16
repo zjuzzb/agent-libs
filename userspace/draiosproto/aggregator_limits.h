@@ -19,6 +19,9 @@ void file_stat_limiter(message& output,
                        std::function<google::protobuf::RepeatedPtrField<draiosproto::file_stat>*(
                            message&)> field_extractor);
 
+template <typename message, typename field>
+void app_metric_limiter(message& output, uint32_t limit);
+
 template <typename proto, typename tiebreak = const std::string&>
 class message_comparator
 {

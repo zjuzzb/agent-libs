@@ -61,7 +61,10 @@ list(APPEND libsanalyzer_uts
 	statsite_config.ut.cpp
 	statsite_proxy.ut.cpp
 	statsite_statsd_emitter.ut.cpp
-	draios_proto.ut.cpp
+	aggregator.ut.cpp
+	aggregator_base.ut.cpp
+	aggregator_overrides.ut.cpp
+	aggregator_limits.ut.cpp
 )
 
 # We test both the libanalyzer itself and its test helpers in this library

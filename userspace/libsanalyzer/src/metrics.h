@@ -29,7 +29,7 @@ namespace draiosproto
 	class transaction_breakdown_categories;
 	class proto_info;
 	class url_details;
-};
+}
 
 //
 // A super-basic counter: just 32 bit count

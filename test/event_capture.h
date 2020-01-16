@@ -18,10 +18,11 @@ class callback_param
 public:
 	sinsp_evt *m_evt;
 	sinsp *m_inspector;
+	sinsp_analyzer* m_analyzer;
 };
 
-typedef std::function<void (sinsp *inspector)> before_open_t;
-typedef std::function<void (sinsp *inspector)> before_close_t;
+typedef std::function<void (sinsp *inspector, sinsp_analyzer* analyzer)> before_open_t;
+typedef std::function<void (sinsp *inspector, sinsp_analyzer* analyzer)> before_close_t;
 typedef std::function<bool (sinsp_evt *evt) > event_filter_t;
 typedef std::function<void (const callback_param &param) > captured_event_callback_t;
 
@@ -52,7 +53,7 @@ public:
 		m_capture_stopped.wait();
 	}
 
-	static void do_nothing(sinsp *inspector)
+	static void do_nothing(sinsp *inspector, sinsp_analyzer* analyzer)
 	{
 	}
 

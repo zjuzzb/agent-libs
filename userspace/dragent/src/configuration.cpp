@@ -241,14 +241,18 @@ dragent_configuration::dragent_configuration()
 	m_falco_baselining_enabled = false;
 	m_falco_baselining_report_interval_ns = DEFAULT_FALCO_BASELINING_DUMP_DELTA_NS;
 	m_falco_baselining_autodisable_interval_ns = DEFAULT_FALCO_BASELINING_DISABLE_TIME_NS;
-	m_falco_baselining_max_drops_full_buffer = DEFAULT_FALCO_BASELINING_MAX_DROPS_FULL_BUFFER;
+	m_falco_baselining_max_drops_buffer_rate_percentage = DEFAULT_FALCO_BASELINING_MAX_DROPS_BUFFER_RATE_PERCENTAGE;
 	m_secure_audit_enabled = false;
 	m_commandlines_capture_enabled = false;
 	m_command_lines_capture_mode = sinsp_configuration::CM_TTY;
-	m_command_lines_include_container_healthchecks = true;
+	m_command_lines_include_container_healthchecks = false;
 	m_memdump_enabled = false;
 	m_memdump_size = 0;
 	m_memdump_max_init_attempts = 10;
+	m_memdump_autodisable = true;
+	m_memdump_capture_headers_percentage_threshold = 60;
+	m_memdump_min_time_between_switch_states_ms = 150;
+	m_memdump_re_enable_interval_minutes = 30;
 	m_drop_upper_threshold = 0;
 	m_drop_lower_threshold = 0;
 	m_tracepoint_hits_threshold = 0;
@@ -619,6 +623,9 @@ void dragent_configuration::init()
 		add_event_filter(m_k8s_event_filter, "kubernetes", "replicaSet");
 		add_event_filter(m_k8s_event_filter, "kubernetes", "daemonSet");
 		add_event_filter(m_k8s_event_filter, "kubernetes", "deployment");
+		add_event_filter(m_k8s_event_filter, "kubernetes", "statefulSet");
+		add_event_filter(m_k8s_event_filter, "kubernetes", "service");
+		add_event_filter(m_k8s_event_filter, "kubernetes", "horizontalPodAutoscalar");
 
 		// docker
 		add_event_filter(m_docker_event_filter, "docker", "container");
@@ -648,7 +655,8 @@ void dragent_configuration::init()
 	m_container_filter->set_rules(m_config->get_first_deep_sequence<vector<object_filter_config::filter_rule>>("container_filter"));
 	m_smart_container_reporting = m_config->get_scalar<bool>("smart_container_reporting", false);
 
-	m_go_k8s_user_events = m_config->get_scalar<bool>("go_k8s_user_events", false);
+	// Go user events are turned ON by default
+	m_go_k8s_user_events = m_config->get_scalar<bool>("go_k8s_user_events", true);
 	m_add_event_scopes = m_config->get_scalar<bool>("add_event_scopes", false);
 
 	m_cointerface_cpu_profile_enabled = m_config->get_scalar<bool>("cointerface_cpu_profile_enabled", false);
@@ -681,7 +689,7 @@ void dragent_configuration::init()
 	m_falco_baselining_enabled =  m_config->get_scalar<bool>("falcobaseline", "enabled", false);
 	m_falco_baselining_report_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "report_interval", DEFAULT_FALCO_BASELINING_DUMP_DELTA_NS);
 	m_falco_baselining_autodisable_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "autodisable_interval", DEFAULT_FALCO_BASELINING_DISABLE_TIME_NS);
-	m_falco_baselining_max_drops_full_buffer = m_config->get_scalar<uint32_t>("falcobaseline", "max_drops_full_buffer", DEFAULT_FALCO_BASELINING_MAX_DROPS_FULL_BUFFER);
+	m_falco_baselining_max_drops_buffer_rate_percentage = m_config->get_scalar<float>("falcobaseline", "max_drops_buffer_rate_percentage", DEFAULT_FALCO_BASELINING_MAX_DROPS_BUFFER_RATE_PERCENTAGE);
 
 	if(libsanalyzer::security_config::is_enabled())
 	{
@@ -708,12 +716,16 @@ void dragent_configuration::init()
 	} else if(command_lines_capture_mode_s == "all") {
 		m_command_lines_capture_mode = sinsp_configuration::command_capture_mode_t::CM_ALL;
 	}
-	m_command_lines_include_container_healthchecks = m_config->get_scalar<bool>("commandlines_capture", "include_container_healthchecks", true);
+	m_command_lines_include_container_healthchecks = m_config->get_scalar<bool>("commandlines_capture", "include_container_healthchecks", false);
 	m_command_lines_valid_ancestors = m_config->get_deep_merged_sequence<set<string>>("commandlines_capture", "valid_ancestors");
 
 	m_memdump_enabled =  m_config->get_scalar<bool>("memdump", "enabled", false);
 	m_memdump_size = m_config->get_scalar<unsigned>("memdump", "size", 300 * 1024 * 1024);
 	m_memdump_max_init_attempts = m_config->get_scalar<unsigned>("memdump", "max_init_attempts", 10);
+	m_memdump_autodisable = m_config->get_scalar<bool>("memdump", "autodisable", "enabled", true);
+	m_memdump_capture_headers_percentage_threshold = m_config->get_scalar<unsigned>("memdump", "autodisable", "capture_headers_percentage_threshold", 60);
+	m_memdump_min_time_between_switch_states_ms = m_config->get_scalar<unsigned>("memdump", "autodisable", "min_time_between_switch_states_ms", 150);
+	m_memdump_re_enable_interval_minutes = m_config->get_scalar<unsigned>("memdump", "autodisable", "re_enable_interval_minutes", 30);
 
 	m_drop_upper_threshold = m_config->get_scalar<decltype(m_drop_upper_threshold)>("autodrop", "upper_threshold", 0);
 	m_drop_lower_threshold = m_config->get_scalar<decltype(m_drop_lower_threshold)>("autodrop", "lower_threshold", 0);
@@ -1210,7 +1222,7 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("falcobaseline.enabled: " + bool_as_text(m_falco_baselining_enabled));
 	LOG_INFO("falcobaseline.report_interval: " + NumberFormatter::format(m_falco_baselining_report_interval_ns));
 	LOG_INFO("falcobaseline.autodisable_interval: " + NumberFormatter::format(m_falco_baselining_autodisable_interval_ns));
-	LOG_INFO("falcobaseline.max_drops_full_buffer: " + NumberFormatter::format(m_falco_baselining_max_drops_full_buffer));
+	LOG_INFO("falcobaseline.max_drops_buffer_rate_percentage: " + NumberFormatter::format(m_falco_baselining_max_drops_buffer_rate_percentage));
 	LOG_INFO("commandlines_capture.enabled: " + bool_as_text(m_commandlines_capture_enabled));
 	LOG_INFO("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));
 	LOG_INFO("Will" + string((m_command_lines_include_container_healthchecks ? " " :" not")) + " include container health checks in collected commandlines");
@@ -1224,6 +1236,10 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("memdump.enabled: " + bool_as_text(m_memdump_enabled));
 	LOG_INFO("memdump.size: " + NumberFormatter::format(m_memdump_size));
 	LOG_INFO("memdump.max_init_attempts: " + NumberFormatter::format(m_memdump_max_init_attempts));
+	LOG_INFO("memdump.autodisable.enabled: " + bool_as_text(m_memdump_autodisable));
+	LOG_INFO("memdump.autodisable.capture_headers_percentage_threshold: " + NumberFormatter::format(m_memdump_capture_headers_percentage_threshold));
+	LOG_INFO("memdump.autodisable.min_time_between_switch_states_ms: " + NumberFormatter::format(m_memdump_min_time_between_switch_states_ms));
+	LOG_INFO("memdump.autodisable.re_enable_interval_minutes: " + NumberFormatter::format(m_memdump_re_enable_interval_minutes));
 	LOG_INFO("autodrop.threshold.upper: " + NumberFormatter::format(m_drop_upper_threshold));
 	LOG_INFO("autodrop.threshold.lower: " + NumberFormatter::format(m_drop_lower_threshold));
 	if(m_tracepoint_hits_threshold > 0)

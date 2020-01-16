@@ -3,6 +3,8 @@
 #include <unordered_set>
 #include <thread>
 #include <atomic>
+#include "profiling.pb.h"
+#include "secure_profiling_handler.h"
 
 extern sinsp_evttables g_infotables;
 
@@ -246,11 +248,11 @@ public:
 		}
 	}
 
-	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
+	void serialize_protobuf(secure::profiling::sub_category_container* cat)
 	{
 		if(m_r.size() != 0)
 		{
-			draiosproto::falco_subcategory* sr = cat->add_subcats();
+			secure::profiling::sub_category* sr = cat->add_subcats();
 			sr->set_name("r");
 			sr->set_full(m_is_r_full);
 
@@ -262,7 +264,7 @@ public:
 
 		if(m_rw.size() != 0)
 		{
-			draiosproto::falco_subcategory* srw = cat->add_subcats();
+			secure::profiling::sub_category* srw = cat->add_subcats();
 			srw->set_name("rw");
 			srw->set_full(m_is_r_full);
 
@@ -274,7 +276,7 @@ public:
 
 		if(m_other.size() != 0)
 		{
-			draiosproto::falco_subcategory* sother = cat->add_subcats();
+			secure::profiling::sub_category* sother = cat->add_subcats();
 			sother->set_name("other");
 			sother->set_full(m_is_other_full);
 
@@ -286,7 +288,7 @@ public:
 
 		if(m_uncategorized.size() != 0)
 		{
-			draiosproto::falco_subcategory* suncategorized = cat->add_subcats();
+			secure::profiling::sub_category* suncategorized = cat->add_subcats();
 			suncategorized->set_name("uncategorized");
 			suncategorized->set_full(m_is_uncategorized_full);
 
@@ -298,7 +300,7 @@ public:
 
 		if(m_failed.size() != 0)
 		{
-			draiosproto::falco_subcategory* sfailed = cat->add_subcats();
+			secure::profiling::sub_category* sfailed = cat->add_subcats();
 			sfailed->set_name("failed");
 			sfailed->set_full(m_is_failed_full);
 
@@ -419,17 +421,17 @@ public:
 		}
 	}
 
-	void serialize_protobuf(draiosproto::falco_category* cat)
+	void serialize_protobuf(secure::profiling::category* cat)
 	{
 		if(m_startup_table.has_data())
 		{
-			draiosproto::falco_subcategory_container* sc = cat->add_startup_subcats();
+			secure::profiling::sub_category_container* sc = cat->add_startup_subcats();
 			m_startup_table.serialize_protobuf(sc);
 		}
 
 		if(m_regular_table.has_data())
 		{
-			draiosproto::falco_subcategory_container* sc = cat->add_regular_subcats();
+			secure::profiling::sub_category_container* sc = cat->add_regular_subcats();
 			m_regular_table.serialize_protobuf(sc);
 		}
 	}
@@ -489,11 +491,11 @@ public:
 		}
 	}
 
-	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
+	void serialize_protobuf(secure::profiling::sub_category_container* cat)
 	{
 		if(m_p.size() != 0)
 		{
-			draiosproto::falco_subcategory* sp = cat->add_subcats();
+			secure::profiling::sub_category* sp = cat->add_subcats();
 			sp->set_name("p");
 			sp->set_full(m_is_p_full);
 
@@ -579,11 +581,11 @@ public:
 		}
 	}
 
-	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
+	void serialize_protobuf(secure::profiling::sub_category_container* cat)
 	{
 		if(m_p.size() != 0)
 		{
-			draiosproto::falco_subcategory* sp = cat->add_subcats();
+			secure::profiling::sub_category* sp = cat->add_subcats();
 			sp->set_name("p");
 			sp->set_full(m_is_p_full);
 
@@ -644,17 +646,17 @@ public:
 		}
 	}
 
-	void serialize_protobuf(draiosproto::falco_category* cat)
+	void serialize_protobuf(secure::profiling::category* cat)
 	{
 		if(m_startup_table.has_data())
 		{
-			draiosproto::falco_subcategory_container* sc = cat->add_startup_subcats();
+			secure::profiling::sub_category_container* sc = cat->add_startup_subcats();
 			m_startup_table.serialize_protobuf(sc);
 		}
 
 		if(m_regular_table.has_data())
 		{
-			draiosproto::falco_subcategory_container* sc = cat->add_regular_subcats();
+			secure::profiling::sub_category_container* sc = cat->add_regular_subcats();
 			m_regular_table.serialize_protobuf(sc);
 		}
 	}
@@ -794,11 +796,11 @@ public:
 		}
 	}
 
-	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
+	void serialize_protobuf(secure::profiling::sub_category_container* cat)
 	{
 		if(m_l_tcp.size() != 0)
 		{
-			draiosproto::falco_subcategory* sl_tcp = cat->add_subcats();
+			secure::profiling::sub_category* sl_tcp = cat->add_subcats();
 			sl_tcp->set_name("l_tcp");
 			sl_tcp->set_full(m_is_l_tcp_full);
 
@@ -810,7 +812,7 @@ public:
 
 		if(m_r_tcp.size() != 0)
 		{
-			draiosproto::falco_subcategory* sr_tcp = cat->add_subcats();
+			secure::profiling::sub_category* sr_tcp = cat->add_subcats();
 			sr_tcp->set_name("r_tcp");
 			sr_tcp->set_full(m_is_r_tcp_full);
 
@@ -822,7 +824,7 @@ public:
 
 		if(m_l_udp.size() != 0)
 		{
-			draiosproto::falco_subcategory* sl_udp = cat->add_subcats();
+			secure::profiling::sub_category* sl_udp = cat->add_subcats();
 			sl_udp->set_name("l_udp");
 			sl_udp->set_full(m_is_l_udp_full);
 
@@ -834,7 +836,7 @@ public:
 
 		if(m_r_udp.size() != 0)
 		{
-			draiosproto::falco_subcategory* sr_udp = cat->add_subcats();
+			secure::profiling::sub_category* sr_udp = cat->add_subcats();
 			sr_udp->set_name("r_udp");
 			sr_udp->set_full(m_is_r_udp_full);
 
@@ -973,17 +975,17 @@ public:
 		}
 	}
 
-	void serialize_protobuf(draiosproto::falco_category* cat)
+	void serialize_protobuf(secure::profiling::category* cat)
 	{
 		if(m_startup_table.has_data())
 		{
-			draiosproto::falco_subcategory_container* sc = cat->add_startup_subcats();
+			secure::profiling::sub_category_container* sc = cat->add_startup_subcats();
 			m_startup_table.serialize_protobuf(sc);
 		}
 
 		if(m_regular_table.has_data())
 		{
-			draiosproto::falco_subcategory_container* sc = cat->add_regular_subcats();
+			secure::profiling::sub_category_container* sc = cat->add_regular_subcats();
 			m_regular_table.serialize_protobuf(sc);
 		}
 	}
@@ -1105,13 +1107,13 @@ public:
 		return ip & 0x00FFFFFF;
 	}
 
-	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
+	void serialize_protobuf(secure::profiling::sub_category_container* cat)
 	{
 		char addrbuff[32];
 
 		if(m_c_tcp.size() != 0)
 		{
-			draiosproto::falco_subcategory* sc_tcp = cat->add_subcats();
+			secure::profiling::sub_category* sc_tcp = cat->add_subcats();
 			sc_tcp->set_name("c_tcp");
 			sc_tcp->set_full(m_is_c_tcp_full);
 
@@ -1123,7 +1125,7 @@ public:
 
 		if(m_s_tcp.size() != 0)
 		{
-			draiosproto::falco_subcategory* ss_tcp = cat->add_subcats();
+			secure::profiling::sub_category* ss_tcp = cat->add_subcats();
 			ss_tcp->set_name("s_tcp");
 			ss_tcp->set_full(m_is_s_tcp_full);
 
@@ -1135,7 +1137,7 @@ public:
 
 		if(m_udp.size() != 0)
 		{
-			draiosproto::falco_subcategory* sudp = cat->add_subcats();
+			secure::profiling::sub_category* sudp = cat->add_subcats();
 			sudp->set_name("udp");
 			sudp->set_full(m_is_udp_full);
 
@@ -1250,17 +1252,17 @@ public:
 		}
 	}
 
-	void serialize_protobuf(draiosproto::falco_category* cat)
+	void serialize_protobuf(secure::profiling::category* cat)
 	{
 		if(m_startup_table.has_data())
 		{
-			draiosproto::falco_subcategory_container* sc = cat->add_startup_subcats();
+			secure::profiling::sub_category_container* sc = cat->add_startup_subcats();
 			m_startup_table.serialize_protobuf(sc);
 		}
 
 		if(m_regular_table.has_data())
 		{
-			draiosproto::falco_subcategory_container* sc = cat->add_regular_subcats();
+			secure::profiling::sub_category_container* sc = cat->add_regular_subcats();
 			m_regular_table.serialize_protobuf(sc);
 		}
 	}
@@ -1326,16 +1328,30 @@ public:
 	simpletable_split<syscallstable, uint32_t> m_syscalls;
 };
 
+class secure_profiling_data_ready_handler
+{
+public:
+	virtual ~secure_profiling_data_ready_handler() = default;
+	/// secure_profiling_data_ready is an analyzer interface provided to secure_profiling
+	/// in order to call secure_profiling_handler
+	/// \param ts
+	/// \param secure_profilings
+	virtual void secure_profiling_data_ready(uint64_t ts,
+						 const secure::profiling::fingerprint* secure_profiling_fingerprint) = 0;
+};
+
 //
 // The baseliner class
 //
 class sinsp_baseliner
 {
 public:
-	sinsp_baseliner();
+	sinsp_baseliner(sinsp_analyzer& m_analyzer,
+					sinsp* m_inspector);
 	~sinsp_baseliner();
 
-	void init(sinsp* inspector);
+	void init();
+	void set_data_handler(secure_profiling_data_ready_handler* handler);
 	void load_tables(uint64_t time);
 	void clear_tables();
 	void register_callbacks(sinsp_fd_listener* listener);
@@ -1343,8 +1359,8 @@ public:
 #ifdef ASYNC_PROC_PARSING
 	void merge_proc_data();
 #endif
-	void serialize_protobuf(draiosproto::falco_baseline* pbentry);
-	void emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry);
+	void serialize_protobuf();
+	void emit_as_protobuf(uint64_t time);
 
 	void on_file_open(sinsp_evt *evt, std::string& name, uint32_t openflags);
 	void on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo);
@@ -1359,11 +1375,31 @@ public:
 	inline void add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category category);
 
 	sinsp* get_inspector();
-	void set_baseline_calculation_enabled(bool enabled = true);
+	void enable_baseline_calculation();
+	void disable_baseline_calculation();
 	bool is_baseline_calculation_enabled() const;
+	bool is_drops_buffer_rate_critical(float max_drops_buffer_rate_percentage) const;
 
 private:
+	// Protobuf containing fingerprints emitted to the collector
+	secure::profiling::fingerprint m_secure_profiling_fingerprint_batch;
+	secure_profiling_data_ready_handler* m_profiling_data_handler;
+
+	// Statistics about an in progress baseliner capture.  This is
+	// a subset of scap_stats, containing only the relevant field
+	// needed for the baseliner.
+	struct baseliner_stats
+	{
+		uint64_t n_evts; ///< Total number of events that were received by the driver.
+		uint64_t n_drops_buffer; ///< Number of dropped events caused by full buffer.
+		baseliner_stats () {
+			n_evts = 0;
+			n_drops_buffer = 0;
+		}
+	};
+
 	sinsp* m_inspector;
+	sinsp_analyzer& m_analyzer;
 	sinsp_network_interfaces* m_ifaddr_list;
 	std::unordered_map<size_t, blprogram*> m_progtable;
 #ifdef ASYNC_PROC_PARSING
@@ -1372,4 +1408,13 @@ private:
 #endif
 	std::unordered_multimap<uint16_t, std::shared_ptr<sinsp_filter_check>> m_nofd_fs_extractors;
 	bool m_do_baseline_calculation;
+
+	// The baseliner stats stores counters in order to compute the
+	// buffer drop ratio, during a baseliner capture.  They
+	// contain meaningful data only if the baseliner is turned on
+	// (i.e. m_do_baseline_calculation set to true), and values
+	// are set 0 otherwise.  They are updated at baseliner start
+	// and at each emission with the progressive values coming
+	// from the relevant scap_stats counters.
+	baseliner_stats m_baseliner_stats;
 };

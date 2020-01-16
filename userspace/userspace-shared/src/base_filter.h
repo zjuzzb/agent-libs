@@ -36,12 +36,13 @@ public:
 	 *             false
 	 *
 	 * @param[out] reason a string indicating the reason a match occurred. May not be
-	 *	       populated if a match did not occur
+	 *	       populated if a match did not occur. Set to NULL when not used to avoid
+	 *	       excess string creation.
 	 */
 	virtual bool matches(const filter_param& arg,
 			     bool& exclude,
 			     bool& high_prioriy,
-			     std::string& reason) const = 0;
+			     std::string* reason) const = 0;
 
 	/**
 	 * indicates whether this filter should set exclude to true in the case of
@@ -71,7 +72,7 @@ public:
 	bool matches(const filter_param& arg,
 		     bool& exclude,
 		     bool& high_prioriy,
-		     std::string& reason) const;
+		     std::string* reason) const;
 };
 
 /**
@@ -93,7 +94,7 @@ public:
 	bool matches(const filter_param& arg,
 		     bool& exclude,
 		     bool& high_priority,
-		     std::string& reason) const;
+		     std::string* reason) const;
 
 private:
 	filter_param m_arg;
@@ -122,7 +123,7 @@ public:
 		bool matches(const filter_param& arg,
 		     bool& exclude,
 		     bool& high_priority,
-		     std::string& reason) const;
+		     std::string* reason) const;
 
 private:
 	std::string m_pattern;
@@ -152,7 +153,7 @@ public:
 	bool matches(const filter_param& arg,
 		     bool& exclude,
 		     bool& high_priority,
-		     std::string& reason) const;
+		     std::string* reason) const;
 
 private:
 	std::string m_pattern;
@@ -177,7 +178,7 @@ public:
 	bool matches(const filter_param& arg,
 		     bool& exclude,
 		     bool& high_priority,
-		     std::string& reason) const;
+		     std::string* reason) const;
 
 	/**
 	 * courtesy function which returns the number of the rule which matches, as
@@ -189,7 +190,7 @@ public:
 	bool matches(const filter_param& arg,
 		     bool& exclude,
 		     bool& high_priority,
-		     std::string& reason,
+		     std::string* reason,
 		     uint32_t& rule_number) const;
 
 private:
@@ -220,7 +221,7 @@ public:
 	bool matches(const filter_param& arg,
 		     bool& exclude,
 		     bool& high_priority,
-		     std::string& reason) const;
+		     std::string* reason) const;
 private:
 	std::list<std::shared_ptr<base_filter<filter_param>>> m_sub_filters;
 };

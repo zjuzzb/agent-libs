@@ -1,6 +1,15 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-docstring, line-too-long
 # std
+from __future__ import division
+from __future__ import print_function
+from future.utils import PY3
+if PY3:
+    from builtins import str
+else:
+    from past.builtins import str
+from builtins import object
+from past.utils import old_div
 import os.path
 import traceback
 import inspect
@@ -13,14 +22,16 @@ import logging
 from datetime import datetime, timedelta
 import sys
 import signal
+import struct
+from time import sleep
 import ast
 import config
 import platform
+import glob
 
 # project
 from checks import AgentCheck
 from util import get_hostname
-from utils.subprocess_output import get_subprocess_output
 from config import _is_affirmative
 
 from sysdig_tracers import Tracer
@@ -80,6 +91,10 @@ def sighup_handler(signum, frame):
                             (filename, linenumber, funcname))
     os._exit(SIGHUP_HANDLER_EXIT_CODE)
 
+def sigterm_handler(signum, frame):
+    logging.info('Received signal: {}, exiting sdchecks'.format(signum))
+    exit()
+
 def setns(fd):
     if hasattr(_LIBC, "setns"):
         return _LIBC.setns(fd, 0)
@@ -90,7 +105,7 @@ def setns(fd):
 def build_ns_path(pid, ns):
     return "%s/proc/%d/ns/%s" % (SYSDIG_HOST_ROOT, pid, ns)
 
-class YamlConfig:
+class YamlConfig(object):
     def __init__(self, paths):
         self._roots = []
         for path in paths:
@@ -108,7 +123,7 @@ class YamlConfig:
         if ret is None:
             ret = []
         for root in self._roots:
-            if root.has_key(key):
+            if key in root:
                 try:
                     ret += root[key]
                 except TypeError as ex:
@@ -117,21 +132,21 @@ class YamlConfig:
 
     def get_single(self, key, subkey=None, subsubkey=None, default_value=None):
         for root in self._roots:
-            if not root.has_key(key):
+            if key not in root:
                 continue
 
             value = root[key]
             if subkey is None:
                 return value
 
-            if not value.has_key(subkey):
+            if subkey not in value:
                 continue
 
             subvalue = value[subkey]
             if subsubkey is None:
                 return subvalue
 
-            if not subvalue.has_key(subsubkey):
+            if subsubkey not in subvalue:
                 continue
 
             return subvalue[subsubkey]
@@ -142,6 +157,9 @@ class AppCheckException(Exception):
     pass
 
 class AppCheckDontRetryException(AppCheckException):
+    pass
+
+class CompressionError(Exception):
     pass
 
 def _load_check_module(name, module_name, directory):
@@ -214,7 +232,7 @@ def detect_root(mntns):
         logging.error("Error while setting root: %s" % str(ex))
         sys.exit(1)
 
-class AppCheckInstance:
+class AppCheckInstance(object):
     try:
         MYMNT = os.open("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT, os.O_RDONLY)
         MYROOT = detect_root(MYMNT)
@@ -292,14 +310,14 @@ class AppCheckInstance:
             "name": self.name,
             "ports": proc_data["ports"]
         }
-        if proc_data.has_key("solr_port"):
+        if "solr_port" in proc_data:
             self.instance_conf["solr_port"] = proc_data["solr_port"]
         else:
             if len(proc_data["ports"]) > 0:
                 self.instance_conf["port"] = proc_data["ports"][0]
 
-        for key, value in check.get("conf", {}).items():
-            if isinstance(value, (str, unicode)):
+        for key, value in list(check.get("conf", {}).items()):
+            if isinstance(value, str):
                 self.instance_conf[key] = self._expand_template(value, proc_data, self.conf_vals)
             else:
                 self.instance_conf[key] = value
@@ -319,37 +337,55 @@ class AppCheckInstance:
                 sys.exit(1)
         setns(self.MYUTS)
 
-    def extract_os_info(self, exec_cmd, output):
-        if "os-release" in exec_cmd:
-            output = [line for line in output.split('\n') if "NAME" in line or "VERSION" in line]
-            logging.info("Appcheck[%s][%s] OS info %s" % (self.name, self.pid, ", ".join(output)))
-        else:
-            if len(output.strip()) > 0:
-                logging.info("Appcheck[%s][%s] OS info %s" % (self.name, self.pid, output.strip().split('\n')[0]))
+    def log_os_release(self):
+        # called within the target container's mount namespace
+        os_info = []
+        for line in open('/etc/os-release'):
+            if 'NAME' in line or 'VERSION' in line:
+                os_info.append(line.strip())
+        logging.info("Appcheck[%s][%s] OS info %s" % (self.name, self.pid, ", ".join(os_info)))
+
+    def log_alt_os_release(self):
+        # called within the target container's mount namespace
+        for file in glob.glob('/etc/*-release'):
+            if not os.path.isfile(file):
+                # not a regular file (or a symlink to one), ignore it
+                continue
+            for line in open(file):
+                line = line.strip()
+                if line:
+                    logging.info("Appcheck[%s][%s] OS info %s" % (self.name, self.pid, line))
+                    return
 
     def get_os_info(self):
+        if not self.is_on_another_container:
+            return
+
         nsfd = None
         try:
-            if self.is_on_another_container:
-                nsfd = os.open(build_ns_path(self.pid, 'mnt'), os.O_RDONLY)
-                ret = setns(nsfd)
-                if ret != 0:
-                    raise OSError("Cannot setns to pid: %d" % self.pid)
-                if os.path.isfile('/etc/os-release'):
-                    exec_cmd = "cat /etc/os-release"
-                else:
-                    exec_cmd = "cat /etc/*-release"
-                output, err, code = get_subprocess_output([exec_cmd], logging, shell=True)
-                if isinstance(output, str) and code == 0:
-                    self.extract_os_info(exec_cmd, output)
+            # the only reason we even switch to the target's namespace
+            # instead of accessing /proc/<pid>/root/etc/*-release
+            # is that we want to resolve the potential symlinks
+            # using the proper root directory (otherwise we would
+            # potentially open files from our own container or the host)
+            #
+            # we might want to consider opening files with O_NOFOLLOW instead
+            nsfd = os.open(build_ns_path(self.pid, 'mnt'), os.O_RDONLY)
+            ret = setns(nsfd)
+            if ret != 0:
+                raise OSError("Cannot setns to pid: %d" % self.pid)
+            if os.path.isfile('/etc/os-release'):
+                self.log_os_release()
+            else:
+                self.log_alt_os_release()
         except Exception as ex:
             traceback_message = traceback.format_exc()
             ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
             logging.warning("Error while collecting system info: %s" % str(ex))
         finally:
-            if self.is_on_another_container:
+            if nsfd is not None:
                 os.close(nsfd)
-                self.switch_to_self_namespace()
+            self.switch_to_self_namespace()
 
     def run(self):
         saved_ex = None
@@ -415,7 +451,7 @@ class AppCheckInstance:
         except Exception as ex:
             raise AppCheckException("Cannot expand template for %s, proc_data %s, and conf_vals %s: %s" % (value, repr(proc_data), repr(conf_vals), ex))
 
-class Config:
+class Config(object):
     def __init__(self, install_prefix):
         self.install_prefix = install_prefix
         etcdir = install_prefix + "/etc"
@@ -471,17 +507,19 @@ class Config:
                                                      # in dragent/configuration.cpp
         return int(timeout)
 
-class PosixQueueType:
+class PosixQueueType(object):
     SEND = 0
     RECEIVE = 1
 
-class PosixQueue:
+class PosixQueue(object):
     MSGSIZE = 3 << 20
     MAXMSGS = 3
     MAXQUEUES = 10
+    PROTOCOL_VERSION = 1
+
     def __init__(self, name, direction, maxmsgs=MAXMSGS):
         self.direction = direction
-        self.queue = posix_ipc.MessageQueue(name, os.O_CREAT, mode=0600,
+        self.queue = posix_ipc.MessageQueue(name, os.O_CREAT, mode=0o600,
                                             max_messages=maxmsgs, max_message_size=self.MSGSIZE,
                                             read=(self.direction == PosixQueueType.RECEIVE),
                                             write=(self.direction == PosixQueueType.SEND))
@@ -490,33 +528,38 @@ class PosixQueue:
         try:
             compressed_data = zlib.compress(data)
             return compressed_data
-        except Exception as err:
-            logging.error("Unable to compress the data : ", err)
-            return False
+        except Exception as ex:
+            raise CompressionError(ex)
 
     def close(self):
         self.queue.close()
         self.queue = None
 
-    def send(self, msg, compress_flag=False):
+    def send(self, msg):
         try:
-            if compress_flag:
+            msg = msg.encode()
+            uncompressed_length = len(msg)
+            if uncompressed_length + 5 > self.MSGSIZE:
                 compressed_data = self.compress_msg(msg)
-                # Note: Support only 1 compressed segment today. If necessary, in the future, we can
-                # chop up extra large compressed data into multiple segments.
                 if len(compressed_data) > self.MSGSIZE:
                     logging.error("Compressed msg size %d > max msg size %d, cannot send", len(compressed_data), self.MSGSIZE)
                     return False
-                msg_dict = {"magic": "SDAGENT", "uncompressed_size": len(msg), "num_compressed_segments": 1}
-                msg_header = json.dumps(msg_dict)
-                self.queue.send(msg_header, timeout=0)
                 msg = compressed_data
+            else:
+                logging.debug("Message size %d < max msg size %d, sending without compression", uncompressed_length, self.MSGSIZE)
+                uncompressed_length = 0
+            msg = struct.pack('!Bi', self.PROTOCOL_VERSION, uncompressed_length) + msg
+            logging.debug('Uncompressed length %d, actual length %d', uncompressed_length, len(msg))
             self.queue.send(msg, timeout=0)
             return True
         except posix_ipc.BusyError:
             return False
         except ValueError as ex:
             logging.error("Cannot send: %s, size=%dB", ex, len(msg))
+            return False
+        except CompressionError as ex:
+            logging.error('Cannot send, Message size %d > max msg size %d, compression failed with exception: %s',
+                          uncompressed_length, self.MSGSIZE, ex)
             return False
 
     def receive(self, timeout=1):
@@ -602,7 +645,7 @@ def prepare_prom_checks(promchecks):
 
     return checks
 
-class Application:
+class Application(object):
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
     def __init__(self, install_prefix):
         self.config = Config(install_prefix)
@@ -645,8 +688,6 @@ class Application:
         self.last_request_pidnames = set()
         self.exclude_localhost_from_proxy()
 
-        self.compress_data_flag = self.config._yaml_config.get_single("app_checks_compress_data")
-
     @staticmethod
     def exclude_localhost_from_proxy():
         # Excluding localhost from proxy
@@ -656,7 +697,7 @@ class Application:
             no_pxy = list(set(("NO_PROXY", "no_proxy")).intersection(os_env))
             no_pxy = dict((pxy, os_env.get(pxy)) for pxy in no_pxy if os_env.get(pxy))
             if no_pxy:
-                for key, val in no_pxy.items():
+                for key, val in list(no_pxy.items()):
                     if "localhost" not in val:
                         os.environ[key] += ",localhost"
                         logging.warning("https/http proxy does not include localhost in {0},"
@@ -672,7 +713,7 @@ class Application:
             self.outqueue.close()
 
     def clean_known_instances(self):
-        for key in self.known_instances.keys():
+        for key in list(self.known_instances.keys()):
             if not key in self.last_request_pidnames:
                 del self.known_instances[key]
 
@@ -694,7 +735,7 @@ class Application:
         sys.stderr.flush()
 
         # Update the heartbeat_min to half of the watchdog from the config file
-        self.heartbeat_min = timedelta(seconds=(self.config.watchdog() / 2))
+        self.heartbeat_min = timedelta(seconds=(old_div(self.config.watchdog(), 2)))
 
     def is_app_check_supported(self, app_check_name):
         status = True
@@ -738,8 +779,11 @@ class Application:
             except AppCheckException as ex:
                 if log_errors:
                     logging.error("Exception on creating check %s: %s", check["name"], ex)
-                if self.config.check_conf_by_name(check["name"]).get("timeout", 1) != -1:
-                    self.excluded_pidnames.add(pidname)
+                try:
+                    if self.config.check_conf_by_name(check["name"]).get("timeout", 1) != -1:
+                        self.excluded_pidnames.add(pidname)
+                except AttributeError:
+                    pass
                 return False, 0
             self.known_instances[pidname] = check_instance
 
@@ -824,7 +868,7 @@ class Application:
         response_s = json.dumps(response_body)
         logging.debug("Response size is %d", len(response_s))
         if self.outqueue:
-            self.outqueue.send(response_s, self.compress_data_flag)
+            self.outqueue.send(response_s)
 
     def main_loop(self):
         pid = os.getpid()
@@ -842,7 +886,7 @@ class Application:
             if now - self.last_excluded_pidnames_cleanup > self.excluded_pidnames_flush_interval:
                 self.excluded_pidnames.clear()
                 self.last_excluded_pidnames_cleanup = datetime.now()
-                for _, v in self.known_instances.items():
+                for _, v in list(self.known_instances.items()):
                     v.log_limit_flag = True
                 self.excluded_pidnames_log_flag = True
                 self.excluded_pidnames_log_time = datetime.now() + timedelta(seconds=15)
@@ -872,6 +916,7 @@ class Application:
         if len(sys.argv) > 1:
 
             if sys.argv[1] == "runCheck":
+                print("Python Version: %s" % self.python_version)
                 proc_data = {
                     "check": sys.argv[2],
                     "pid": int(sys.argv[3]),
@@ -885,16 +930,30 @@ class Application:
                     check_conf = self.config.check_conf_by_name(proc_data["check"])
                 logging.info("Run AppCheck for %s", proc_data)
                 if check_conf is None:
-                    print "Check conf not found"
+                    print("Check conf not found")
                     sys.exit(1)
                 else:
                     print("Using check conf: %s" % repr(check_conf))
                 check_instance = AppCheckInstance(check_conf, proc_data, self.config)
                 metrics, service_checks, ex = check_instance.run()
-                print "Conf: %s" % repr(check_instance.instance_conf)
-                print "Metrics: %s" % repr(metrics)
-                print "Checks: %s" % repr(service_checks)
-                print "Exception: %s" % ex
+                print("Conf: %s" % repr(check_instance.instance_conf))
+                print("Metrics: %s" % repr(metrics))
+                print("Checks: %s" % repr(service_checks))
+                print("Exception: %s" % ex)
+
+                if proc_data["conf_vals"].get('rate', False):
+                    # When running sdchecks from ansible automation framework,
+                    # SIGTERM(15) can be used to exit gracefully
+                    signal.signal(signal.SIGTERM, sigterm_handler)
+                    iterations = int(proc_data["conf_vals"].get('iterations', 2))
+                    interval = int(proc_data["conf_vals"].get('interval', 1))
+                    for i in range(2, iterations+1):
+                        print('Running iteration: %d' % i)
+                        sleep(interval)
+                        metrics, service_checks, ex = check_instance.run()
+                        print("Metrics: %s" % repr(metrics))
+                        print("Checks: %s" % repr(service_checks))
+                        print("Exception: %s" % ex)
                 exit()
             elif sys.argv[1] == "run":
                 self.initialize_queues()
@@ -904,11 +963,11 @@ class Application:
                 self.main_loop()
                 exit()
 
-        print "Available commands:"
-        print "Run sdchecks as part of an application:"
-        print "sdchecks run"
-        print ""
-        print "Run a single check from a terminal:"
-        print "> ./sdchecks runCheck <checkname> <pid> <vpid> <port> <conf_vals>"
+        print("Available commands:")
+        print("Run sdchecks as part of an application:")
+        print("sdchecks run")
+        print("")
+        print("Run a single check from a terminal:")
+        print("> ./sdchecks runCheck <checkname> <pid> <vpid> <port> <conf_vals>")
         exit()
 

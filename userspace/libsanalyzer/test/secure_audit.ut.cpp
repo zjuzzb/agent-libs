@@ -20,8 +20,99 @@ const uint64_t DEFAULT_FREQUENCY = 10000000000; // 10s (ns)
 const std::vector<std::string> exe = {"cat", "ls", "ps", "df", "ll"};
 
 audit_tap_handler_dummy g_audit_handler;
-null_secure_audit_handler g_secure_handler;
+null_secure_audit_handler g_secure_audit_handler;
+null_secure_profiling_handler g_secure_profiling_handler;
 sinsp_analyzer::flush_queue g_queue(1000);
+
+// dummy implementation used for testing
+class secure_audit_internal_metrics_dummy : public secure_audit_internal_metrics
+{
+public:
+	secure_audit_internal_metrics_dummy();
+	void set_secure_audit_internal_metrics(int n_sent_protobufs, uint64_t flush_time_ms) override;
+	void set_secure_audit_sent_counters(int n_executed_commands,
+					    int n_connections,
+					    int n_k8s,
+					    int n_executed_commands_dropped,
+					    int n_connections_dropped,
+					    int n_k8s_dropped,
+					    int n_connections_not_interactive_dropped,
+					    int n_k8s_enrich_errors) override;
+
+	int get_secure_audit_n_sent_protobufs() const;
+	int get_secure_audit_fl_ms() const;
+	int get_secure_audit_connections_count() const;
+	int get_secure_audit_connections_dropped_count() const;
+
+private:
+	int m_sent_protobufs;
+	uint64_t m_flush_time_ms;
+	int m_executed_commands;
+	int m_connections;
+	int m_k8s;
+	int m_executed_commands_dropped;
+	int m_connections_dropped;
+	int m_k8s_dropped;
+	int m_connections_not_interactive_dropped;
+	int m_k8s_enrich_errors;
+};
+
+secure_audit_internal_metrics_dummy::secure_audit_internal_metrics_dummy():
+	m_sent_protobufs(-1),
+	m_flush_time_ms(-1),
+	m_executed_commands(-1),
+	m_connections(-1),
+	m_k8s(-1),
+	m_executed_commands_dropped(-1),
+	m_connections_dropped(-1),
+	m_k8s_dropped(-1),
+	m_connections_not_interactive_dropped(-1),
+	m_k8s_enrich_errors(-1)
+{
+}
+
+void secure_audit_internal_metrics_dummy::set_secure_audit_internal_metrics(int n_sent_protobufs,
+									    uint64_t flush_time_ms)
+{
+	m_sent_protobufs = n_sent_protobufs;
+	m_flush_time_ms = flush_time_ms;
+}
+
+void secure_audit_internal_metrics_dummy::set_secure_audit_sent_counters(int n_executed_commands, int n_connections,
+									 int n_k8s, int n_executed_commands_dropped,
+									 int n_connections_dropped, int n_k8s_dropped,
+									 int n_connections_not_interactive_dropped,
+									 int n_k8s_enrich_errors)
+{
+	m_executed_commands = n_executed_commands;
+	m_connections = n_connections;
+	m_k8s = n_k8s;
+	m_executed_commands_dropped = n_executed_commands_dropped;
+	m_connections_dropped = n_connections_dropped;
+	m_k8s_dropped = n_k8s_dropped;
+	m_connections_not_interactive_dropped = n_connections_not_interactive_dropped;
+	m_k8s_enrich_errors = n_k8s_enrich_errors;
+}
+
+int secure_audit_internal_metrics_dummy::get_secure_audit_n_sent_protobufs() const
+{
+	return m_sent_protobufs;
+}
+
+int secure_audit_internal_metrics_dummy::get_secure_audit_fl_ms() const
+{
+	return m_flush_time_ms;
+}
+
+int secure_audit_internal_metrics_dummy::get_secure_audit_connections_count() const
+{
+	return m_connections;
+}
+
+int secure_audit_internal_metrics_dummy::get_secure_audit_connections_dropped_count() const
+{
+	return m_connections_dropped;
+}
 
 // dummy implementation used for testing
 class secure_audit_data_ready_dummy : public secure_audit_data_ready_handler
@@ -185,21 +276,10 @@ void executed_commands_build_and_test_generic(
 {
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
 
@@ -574,6 +654,387 @@ TEST(secure_audit_test, executed_commands_limit_100_no_per_container_bound)
 	executed_commands_build_and_test_generic(500, 10, 5000);
 }
 
+const std::string expected_arg_5 =
+	"Lorem_ipsum_dolor_sit_amet,_consectetur_adipiscing_elit,_sed_do_eius"
+	"mod_tempor_incididunt_ut_labore_et_dolore_magna_aliqua._Pellentesque"
+	"_habitant_morbi_tristique_senectus._Egestas_maecenas_pharetra_conval"
+	"lis_posuere_morbi._Mi_tempus_imperdiet_nulla_malesuada_pellentesque_"
+	"elit_eget._Maecenas_accumsan_lacus_vel_facilisis_volutpat_est_velit_"
+	"egestas_dui._Sapien_faucibus_et_molestie_ac_feugiat_sed_lectus_vesti"
+	"bulum._Dis_parturient_montes_nascetur_ridiculus_mus_mauris_vitae._Pr"
+	"aesent_elementum_facilisis_leo_vel._Lorem_ipsum_dolor_sit_amet_conse"
+	"ctetur_adipiscing_elit_duis_tristique._Risus_nullam_eget_felis_eget_"
+	"nunc._Sollicitudin_nibh_sit_amet_commodo._Posuere_ac_ut_consequat_se"
+	"mper_viverra_nam_libero_justo._Tincidunt_arcu_non_sodales_neque._Gra"
+	"vida_dictum_fusce_ut_placerat._Eu_feugiat_pretium_nibh_ipsum_consequ"
+	"at_nisl_vel_pretium_lectus._Consectetur_purus_ut_faucibus_pulvinar_e"
+	"lementum._Dictumst_vestibulum_rhoncus_est_pellentesque_elit._Amet_fa"
+	"cilisis_magna_etiam_tempor._Cursus_sit_amet_dictum_sit_amet_justo.__"
+	"Nibh_praesent_tristique_magna_sit_amet_purus_gravida_quis._In_hendre"
+	"rit_gravida_rutrum_quisque_non_tellus_orci._Mauris_sit_amet_massa_vi"
+	"tae._Semper_viverra_nam_libero_justo_laoreet_sit_amet_cursus._Purus_"
+	"non_enim_praesent_elementum_facilisis_leo_vel_fringilla._Euismod_nis"
+	"i_porta_lorem_mollis._Commodo_nulla_facilisi_nullam_vehicula_ipsum_a"
+	"_arcu._In_vitae_turpis_massa_sed_elementum_tempus._Amet_tellus_cras_"
+	"adipiscing_enim_eu_turpis_egestas_pretium_aenean._Tortor_at_risus_vi"
+	"verra_adipiscing_at_in._Tempus_imperdiet_nulla_malesuada_pellentesqu"
+	"e_elit_eget._Amet_tellus_cras_adipiscing_enim_eu_turpis_egestas_pret"
+	"ium._Vulputate_eu_scelerisque_felis_imperdiet_proin_fermentum_leo._N"
+	"ulla_posuere_sollicitudin_aliquam_ultrices_sagittis_orci_a._Aliquet_"
+	"nec_ullamcorper_sit_amet_risus._Sed_risus_pretium_quam_vulputate_dig"
+	"nissim_suspendisse_in_est._Sit_amet_volutpat_consequat_mauris_nunc_c"
+	"ongue_nisi_vitae_suscipit._Dui_faucibus_in_ornare_quam_viverra_orci_"
+	"sagittis.__Eget_nullam_non_nisi_est_sit_amet_facilisis._Velit_euismo"
+	"d_in_pellentesque_massa._Diam_sit_amet_nisl_suscipit_adipiscing_bibe"
+	"ndum_est_ultricies._Dignissim_diam_quis_enim_lobortis_scelerisque_fe"
+	"rmentum_dui_faucibus_in._Magna_fermentum_iaculis_eu_non_diam._Sit_am"
+	"et_nisl_suscipit_adipiscing_bibendum_est_ultricies._Elementum_pulvin"
+	"ar_etiam_non_quam_lacus_suspendisse_faucibus_interdum._Interdum_veli"
+	"t_euismod_in_pellentesque_massa_placerat_duis_ultricies._Tellus_cras"
+	"_adipiscing_enim_eu._Pellentesque_habitant_morbi_tristique_senectus_"
+	"et_netus._Odio_ut_enim_blandit_volutpat_maecenas._Ut_lectus_arcu_bib"
+	"endum_at_varius_vel_pharetra_vel_turpis._Tempor_orci_eu_lobortis_ele"
+	"mentum_nibh_tellus._Orci_ac_auctor_augue_mauris._Vestibulum_lorem_se"
+	"d_risus_ultricies_tristique_nulla_aliquet_enim_tortor._Tristique_sen"
+	"ectus_et_netus_et_malesuada_fames_ac_turpis._Sapien_eget_mi_proin_se"
+	"d_libero_enim._Dolor_sit_amet_consectetur_adipiscing_elit_pellentesq"
+	"ue_habitant_morbi_tristique._Aliquam_sem_et_tortor_consequat_id_port"
+	"a.__Leo_urna_molestie_at_elementum._Semper_risus_in_hendrerit_gravid"
+	"a_rutrum_quisque_non._Facilisi_etiam_dignissim_diam_quis_enim._Et_ma"
+	"gnis_dis_parturient_montes_nascetur_ridiculus_mus_mauris._Placerat_i"
+	"n_egestas_erat_imperdiet_sed_euismod_nisi_porta_lorem._Integer_quis_"
+	"auctor_elit_sed_vulputate_mi_sit_amet._Sem_integer_vitae_justo_eget."
+	"_Eros_donec_ac_odio_tempor_orci_dapibus_ultrices_in._Massa_enim_nec_"
+	"dui_nunc_mattis_enim._Elit_pellentesque_habitant_morbi_tristique_sen"
+	"ectus_et_netus_et._Id_leo_in_vitae_turpis_massa_sed_elementum_tempus"
+	"_egestas._Hendrerit_dolor_magna_eget_est._Accumsan_in_nisl_nisi_scel"
+	"erisque_eu._Turpis_egestas_integer_eget_aliquet_nibh_praesent_tristi"
+	"que_magna_sit._Commodo_ullamcorper_a_lacus_vestibulum._Nascetur_ridi"
+	"culus_mus_mauris_vitae_ultricies_leo_integer._Consequat_semper_viver"
+	"ra_nam_libero.__Sem_et_tortor_consequat_id_porta_nibh_venenatis_cras"
+	"_sed._Ornare_lectus_sit_amet_est_placerat_in_egestas_erat._Ultrices_"
+	"neque_ornare_aenean_euismod_elementum_nisi_quis._Augue_lacus_viverra"
+	"_vitae_congue_eu_consequat_ac_felis._Erat_imperdiet_sed_euismod_nisi"
+	"_porta_lorem._Proin_fermentum_leo_vel_orci._Pellentesque_diam_volutp"
+	"at_commodo_sed_egestas_egestas_fringilla._Praesent_elementum_facilis"
+	"is_leo_vel_fringilla_est_ullamcorper_eget._Adipiscing_commodo_elit_a"
+	"t_imperdiet_dui._Adipiscing_elit_pellentesque_habitant_morbi_tristiq"
+	"ue_senectus_et_netus._Sit_amet_venenatis_urna_cursus_eget_nunc._Eges"
+	"tas_integer_eget_aliquet_nibh._Facilisis_magna_etiam_tempor_orci_eu_"
+	"lobortis_elementum_nibh_tellus.";
+
+void add_connections_helper(secure_audit* audit,
+			    uint64_t ts,
+			    int n_client,
+			    int n_server,
+			    bool local = false,
+			    bool interactive = false,
+			    bool cmdline = false,
+			    int cmdline_len = 0,
+			    bool client_and_server = false)
+{
+	if(n_client + n_server == 0)
+	{
+		return;
+	}
+
+	const int64_t expected_pid = 4;
+	const std::string expected_name = "/usr/bin/gcc";
+	const std::string expected_comm = "gcc";
+	const std::string expected_arg_1 = "-o";
+	const std::string expected_arg_2 = "a.out";
+	const std::string expected_arg_3 = "hello_world.cpp";
+	const std::string expected_arg_4 = "i_am_a_very_very_long_parameter";
+
+	const std::string expected_container_id = "sysd1gcl0ud1";
+
+	std::string expected_sip = "192.168.1.1";
+	const std::string expected_dip = "192.168.1.2";
+
+	if(local)
+	{
+		expected_sip = "127.0.0.1";
+	}
+
+	const uint16_t expected_sport = 80;
+	const uint16_t expected_dport = 90;
+	const uint8_t expected_l4proto = SCAP_L4_TCP;
+	const uint32_t expected_error_code = 0;
+
+	// Build Thread Info
+	sinsp_mock inspector;
+
+	if(cmdline)
+	{
+		inspector.build_thread()
+			.pid(expected_pid)
+			.comm("gcc")
+			.exe(expected_name)
+			.arg(expected_arg_1)
+			.arg(expected_arg_2)
+			.arg(expected_arg_3)
+			.arg(expected_arg_4)
+			.arg(expected_arg_5)
+			.commit();
+	}
+	else
+	{
+		inspector.build_thread()
+			.pid(expected_pid)
+			.comm("gcc")
+			.exe(expected_name)
+			.arg(expected_arg_1)
+			.arg(expected_arg_2)
+			.arg(expected_arg_3)
+			.commit();
+	}
+
+	inspector.open();
+
+	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
+	proc = inspector.get_thread_ref(expected_pid,
+					false /*don't query the os if not found*/,
+					true /*lookup only*/);
+
+	proc->m_container_id = expected_container_id;
+
+	sinsp_threadinfo* main_thread = proc->get_main_thread();
+	thread_analyzer_info* tainfo = new thread_analyzer_info();
+	main_thread->m_ainfo = tainfo;
+
+	ASSERT_NE(main_thread, nullptr);
+	ASSERT_NE(main_thread->m_ainfo, nullptr);
+
+	if(interactive)
+	{
+
+		// Set process as interactive
+		main_thread->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
+	}
+	else
+	{
+		// Set process as no INTERACTIVE
+		main_thread->m_ainfo->m_th_analysis_flags &= ~thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
+	}
+
+	// Sanity checks for Thread Info
+	ASSERT_EQ(expected_pid, proc->m_pid);
+	ASSERT_EQ(expected_pid, proc->m_tid);
+	ASSERT_EQ(expected_name, proc->m_exe);
+	ASSERT_EQ(expected_comm, proc->get_comm());
+	ASSERT_EQ(expected_container_id, proc->m_container_id);
+
+	for(int i = 0; i < n_client; i++)
+	{
+		_ipv4tuple tuple;
+		sinsp_connection conn;
+
+		// Build Tuple
+		tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
+		tuple.m_fields.m_sport = expected_sport;
+		tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
+		tuple.m_fields.m_dport = expected_dport;
+		tuple.m_fields.m_l4proto = expected_l4proto;
+
+		// Build Connection
+		conn.m_spid = expected_pid;
+		conn.m_stid = expected_pid;
+		conn.m_sfd = 1234;
+
+		if(client_and_server)
+		{
+			conn.m_dpid = expected_pid;
+			conn.m_dtid = expected_pid;
+			conn.m_dfd = 1234;
+		}
+		else
+		{
+			conn.m_dpid = 0;
+			conn.m_dtid = 0;
+			conn.m_dfd = 0;
+		}
+
+		conn.m_timestamp = ts;
+		conn.m_refcount = 1;
+
+		conn.m_analysis_flags = sinsp_connection::AF_NONE;
+		conn.m_error_code = expected_error_code;
+
+		conn.m_sproc = proc;
+		if(client_and_server)
+		{
+			conn.m_dproc = proc;
+		}
+		else
+		{
+			conn.m_dproc = nullptr;
+		}
+
+		audit->emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
+	}
+
+	for(int i = 0; i < n_server; i++)
+	{
+		_ipv4tuple tuple;
+		sinsp_connection conn;
+
+		// Build Tuple
+		tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
+		tuple.m_fields.m_sport = expected_sport;
+		tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
+		tuple.m_fields.m_dport = expected_dport;
+		tuple.m_fields.m_l4proto = expected_l4proto;
+
+		// Build Connection
+		conn.m_dpid = expected_pid;
+		conn.m_dtid = expected_pid;
+		conn.m_dfd = 1234;
+
+		conn.m_spid = 0;
+		conn.m_stid = 0;
+		conn.m_sfd = 0;
+
+		conn.m_timestamp = ts;
+		conn.m_refcount = 1;
+
+		conn.m_analysis_flags = sinsp_connection::AF_NONE;
+		conn.m_error_code = expected_error_code;
+
+		conn.m_dproc = proc;
+		conn.m_sproc = nullptr;
+
+		audit->emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
+	}
+}
+
+void check_connections_helper(secure_audit* audit,
+			      secure_audit_data_ready_dummy* data_ready,
+			      uint64_t ts,
+			      int n_client,
+			      int n_server,
+			      bool local = false,
+			      bool interactive = false,
+			      bool cmdline = false,
+			      int cmdline_len = 0,
+			      bool client_and_server = false)
+{
+	if(n_client + n_server == 0)
+	{
+		const secure::Audit* audit_pb = data_ready->get_secure_audits_once();
+		ASSERT_EQ(nullptr, audit_pb);
+		return;
+	}
+
+	const int64_t expected_pid = 4;
+	const std::string expected_name = "/usr/bin/gcc";
+	const std::string expected_comm = "gcc";
+	const std::string expected_arg_1 = "-o";
+	const std::string expected_arg_2 = "a.out";
+	const std::string expected_arg_3 = "hello_world.cpp";
+	const std::string expected_arg_4 = "i_am_a_very_very_long_parameter";
+
+	std::string expected_cmdline = expected_comm + " " +
+				       expected_arg_1 + " " +
+				       expected_arg_2 + " " +
+				       expected_arg_3 + " " +
+				       expected_arg_4 + " " +
+				       expected_arg_5;
+
+	const std::string expected_container_id = "sysd1gcl0ud1";
+
+	std::string expected_sip = "192.168.1.1";
+	const std::string expected_dip = "192.168.1.2";
+
+	if(local)
+	{
+		expected_sip = "127.0.0.1";
+	}
+
+	const uint16_t expected_sport = 80;
+	const uint16_t expected_dport = 90;
+	const uint32_t expected_error_code = 0;
+
+	const secure::Audit* audit_pb = data_ready->get_secure_audits_once();
+	ASSERT_NE(nullptr, audit_pb);
+
+	ASSERT_EQ(audit_pb->connections_size(), (n_client + n_server));
+
+	int i = 0;
+	for(int j = 0; j < n_client; j++, i++)
+	{
+		const secure::Connection& c = audit_pb->connections(i);
+
+		// checking is_client_only connection
+		ASSERT_EQ(c.client_port(), expected_sport);
+		ASSERT_EQ(c.server_port(), expected_dport);
+		ASSERT_EQ(c.client_ipv4(), ip_string_to_le(expected_sip));
+		ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
+		ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
+
+		if(expected_error_code == 0)
+		{
+			ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
+		}
+		else
+		{
+			ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_FAILED);
+		}
+
+		ASSERT_EQ(c.error_code(), expected_error_code);
+		ASSERT_EQ(c.timestamp(), ts);
+		ASSERT_EQ(c.client_pid(), expected_pid);
+		ASSERT_EQ(c.comm(), expected_comm);
+		ASSERT_EQ(c.container_id(), expected_container_id);
+
+		if(cmdline)
+		{
+			std::string expected_cmdline_substring = expected_cmdline.substr(0, cmdline_len);
+			ASSERT_EQ(c.cmdline(), expected_cmdline_substring);
+		}
+		else
+		{
+			ASSERT_EQ(c.cmdline(), "");
+		}
+	}
+
+	for(int k = 0; k < n_server; k++, i++)
+	{
+		const secure::Connection& c = audit_pb->connections(i);
+
+		ASSERT_EQ(c.client_port(), expected_sport);
+		ASSERT_EQ(c.server_port(), expected_dport);
+		ASSERT_EQ(c.client_ipv4(), ip_string_to_le(expected_sip));
+		ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
+		ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
+
+		if(expected_error_code == 0)
+		{
+			ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
+		}
+		else
+		{
+			ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_FAILED);
+		}
+
+		ASSERT_EQ(c.error_code(), expected_error_code);
+		ASSERT_EQ(c.timestamp(), ts);
+		ASSERT_EQ(c.server_pid(), expected_pid);
+		ASSERT_EQ(c.comm(), expected_comm);
+		ASSERT_EQ(c.container_id(), expected_container_id);
+		ASSERT_EQ(c.cmdline(), "");
+
+		if(cmdline)
+		{
+			std::string expected_cmdline_substring = expected_cmdline.substr(0, cmdline_len);
+			ASSERT_EQ(c.cmdline(), expected_cmdline_substring);
+		}
+		else
+		{
+			ASSERT_EQ(c.cmdline(), "");
+		}
+	}
+}
+
 TEST(secure_audit_test, connections_base_client)
 {
 	// Secure Audit
@@ -583,133 +1044,46 @@ TEST(secure_audit_test, connections_base_client)
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	const int expected_connections_size = 1;
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.commit();
-
-	inspector->open();
-
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Get pb
+	add_connections_helper(&audit, ts, 1, 0, false, false, false, 0, false);
 	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
-	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
+	check_connections_helper(&audit, &data_ready_handler, ts, 1, 0, false, false, false, 0, false);
+}
 
-	ASSERT_NE(nullptr, audit_pb);
+TEST(secure_audit_test, connections_limit)
+{
+	// Secure Audit
+	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
+	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
+	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+	test_helpers::scoped_config<int> max_connections("secure_audit_streams.connections_limit", 2);
 
-	ASSERT_EQ(audit_pb->connections_size(), expected_connections_size);
-	const secure::Connection& c = audit_pb->connections(0);
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
-	// checking is_client_only connection
-	ASSERT_EQ(c.client_port(), expected_sport);
-	ASSERT_EQ(c.server_port(), expected_dport);
-	ASSERT_EQ(c.client_ipv4(), ip_string_to_le(expected_sip));
-	ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
-	ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
-	if(expected_error_code == 0)
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
-	}
-	else
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_FAILED);
-	}
+	uint64_t ts = sinsp_utils::get_current_time_ns();
 
-	ASSERT_EQ(c.error_code(), expected_error_code);
-	ASSERT_EQ(c.timestamp(), ts);
-	ASSERT_EQ(c.client_pid(), expected_pid);
-	ASSERT_EQ(c.comm(), expected_comm);
-	ASSERT_EQ(c.container_id(), expected_container_id);
-	ASSERT_EQ(c.cmdline(), "");
+	// Test empty protobuf
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
+
+	add_connections_helper(&audit, ts, 3, 0, false, false, false, 0, false);
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	check_connections_helper(&audit, &data_ready_handler, ts, 2, 0, false, false, false, 0, false);
 }
 
 TEST(secure_audit_test, connections_base_server)
@@ -721,135 +1095,23 @@ TEST(secure_audit_test, connections_base_server)
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	const int expected_connections_size = 1;
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.commit();
-
-	inspector->open();
-
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_dpid = expected_pid;
-	conn.m_dtid = expected_pid;
-	conn.m_dfd = 1234;
-
-	conn.m_spid = 0;
-	conn.m_stid = 0;
-	conn.m_sfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_dproc = proc;
-	conn.m_sproc = nullptr;
 
 	// Test empty protobuf
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Get pb
+	add_connections_helper(&audit, ts, 0, 1, false, false, false, 0, false);
 	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
-	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
-
-	ASSERT_NE(nullptr, audit_pb);
-
-	ASSERT_EQ(audit_pb->connections_size(), expected_connections_size);
-	const secure::Connection& c = audit_pb->connections(0);
-
-	// checking is_client_only connection
-	ASSERT_EQ(c.client_port(), expected_sport);
-	ASSERT_EQ(c.server_port(), expected_dport);
-	ASSERT_EQ(c.client_ipv4(), ip_string_to_le(expected_sip));
-	ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
-	ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
-
-	if(expected_error_code == 0)
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
-	}
-	else
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_FAILED);
-	}
-
-	ASSERT_EQ(c.error_code(), expected_error_code);
-	ASSERT_EQ(c.timestamp(), ts);
-	ASSERT_EQ(c.server_pid(), expected_pid);
-	ASSERT_EQ(c.comm(), expected_comm);
-	ASSERT_EQ(c.container_id(), expected_container_id);
-	ASSERT_EQ(c.cmdline(), "");
+	check_connections_helper(&audit, &data_ready_handler, ts, 0, 1, false, false, false, 0, false);
 }
 
+// TODO(mb) left this as last test
 TEST(secure_audit_test, connections_base_client_server)
 {
 	// Secure Audit
@@ -859,133 +1121,20 @@ TEST(secure_audit_test, connections_base_client_server)
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	const int expected_connections_size = 1;
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.commit();
-
-	inspector->open();
-
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_dpid = expected_pid;
-	conn.m_dtid = expected_pid;
-	conn.m_dfd = 1234;
-
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_dproc = proc;
-	conn.m_sproc = proc;
 
 	// Test empty protobuf
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Get pb
+	add_connections_helper(&audit, ts, 1, 0, false, false, false, 0, true);
 	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
-	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
-
-	ASSERT_NE(nullptr, audit_pb);
-
-	ASSERT_EQ(audit_pb->connections_size(), expected_connections_size);
-	const secure::Connection& c = audit_pb->connections(0);
-
-	// checking is_client_only connection
-	ASSERT_EQ(c.client_port(), expected_sport);
-	ASSERT_EQ(c.server_port(), expected_dport);
-	ASSERT_EQ(c.client_ipv4(), ip_string_to_le(expected_sip));
-	ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
-	ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
-
-	if(expected_error_code == 0)
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
-	}
-	else
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_FAILED);
-	}
-
-	ASSERT_EQ(c.error_code(), expected_error_code);
-	ASSERT_EQ(c.timestamp(), ts);
-	ASSERT_EQ(c.server_pid(), expected_pid);
-	ASSERT_EQ(c.comm(), expected_comm);
-	ASSERT_EQ(c.container_id(), expected_container_id);
-	ASSERT_EQ(c.cmdline(), "");
+	add_connections_helper(&audit, ts, 1, 0, false, false, false, 0, true);
 }
 
 TEST(secure_audit_test, connections_enabled_disabled_01)
@@ -997,104 +1146,20 @@ TEST(secure_audit_test, connections_enabled_disabled_01)
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.commit();
-
-	inspector->open();
-
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Get pb
+	add_connections_helper(&audit, ts, 1, 0, false, false, false, 0, false);
 	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
-	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
-	ASSERT_EQ(nullptr, audit_pb);
+	check_connections_helper(&audit, &data_ready_handler, ts, 0, 0, false, false, false, 0, false);
 }
 
 TEST(secure_audit_test, connections_enabled_disabled_10)
@@ -1106,104 +1171,20 @@ TEST(secure_audit_test, connections_enabled_disabled_10)
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.commit();
-
-	inspector->open();
-
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Get pb
+	add_connections_helper(&audit, ts, 1, 0, false, false, false, 0, false);
 	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
-	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
-	ASSERT_EQ(nullptr, audit_pb);
+	check_connections_helper(&audit, &data_ready_handler, ts, 0, 0, false, false, false, 0, false);
 }
 
 TEST(secure_audit_test, connections_local_enabled)
@@ -1216,135 +1197,20 @@ TEST(secure_audit_test, connections_local_enabled)
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-
-	const std::string expected_sip = "127.0.0.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	const int expected_connections_size = 2;
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.commit();
-
-	inspector->open();
-
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-	tuple.m_fields.m_dip = ip_string_to_be(expected_sip);
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Get pb
+	add_connections_helper(&audit, ts, 2, 0, true, false, false, 0, false);
 	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
-	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
-
-	ASSERT_NE(nullptr, audit_pb);
-
-	ASSERT_EQ(audit_pb->connections_size(), expected_connections_size);
-	const secure::Connection& c = audit_pb->connections(0);
-
-	// checking is_client_only connection
-	ASSERT_EQ(c.client_port(), expected_sport);
-	ASSERT_EQ(c.server_port(), expected_dport);
-	ASSERT_EQ(c.client_ipv4(), ip_string_to_le(expected_sip));
-	ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
-	ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
-
-	if(expected_error_code == 0)
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
-	}
-	else
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_FAILED);
-	}
-
-	ASSERT_EQ(c.error_code(), expected_error_code);
-	ASSERT_EQ(c.timestamp(), ts);
-	ASSERT_EQ(c.client_pid(), expected_pid);
-	ASSERT_EQ(c.comm(), expected_comm);
-	ASSERT_EQ(c.container_id(), expected_container_id);
-	ASSERT_EQ(c.cmdline(), "");
+	check_connections_helper(&audit, &data_ready_handler, ts, 2, 0, true, false, false, 0, false);
 }
 
 TEST(secure_audit_test, connections_local_disabled)
@@ -1357,109 +1223,23 @@ TEST(secure_audit_test, connections_local_disabled)
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-
-	const std::string expected_sip = "127.0.0.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.commit();
-
-	inspector->open();
-
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-	tuple.m_fields.m_dip = ip_string_to_be(expected_sip);
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Get pb
+	add_connections_helper(&audit, ts, 2, 0, true, false, false, 0, false);
 	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
-	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
-	ASSERT_EQ(nullptr, audit_pb);
+	check_connections_helper(&audit, &data_ready_handler, ts, 0, 0, true, false, false, 0, false);
 }
 
-TEST(secure_audit_test, connections_base_server_only_interactive)
+TEST(secure_audit_test, connections_base_server_only_interactive_1)
 {
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
@@ -1468,445 +1248,45 @@ TEST(secure_audit_test, connections_base_server_only_interactive)
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	const int expected_connections_size = 1;
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.commit();
-
-	inspector->open();
-
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Set process as interactive
-	sinsp_threadinfo* main_thread = proc->get_main_thread();
-	ASSERT_NE(main_thread, nullptr);
-	ASSERT_NE(main_thread->m_ainfo, nullptr);
-	main_thread->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_dpid = expected_pid;
-	conn.m_dtid = expected_pid;
-	conn.m_dfd = 1234;
-
-	conn.m_spid = 0;
-	conn.m_stid = 0;
-	conn.m_sfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_dproc = proc;
-	conn.m_sproc = nullptr;
 
 	// Test empty protobuf
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Get pb
+	add_connections_helper(&audit, ts, 2, 0, false, true, false, 0, false);
 	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
-	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
-
-	ASSERT_NE(nullptr, audit_pb);
-
-	ASSERT_EQ(audit_pb->connections_size(), expected_connections_size);
-	const secure::Connection& c = audit_pb->connections(0);
-
-	// checking is_client_only connection
-	ASSERT_EQ(c.client_port(), expected_sport);
-	ASSERT_EQ(c.server_port(), expected_dport);
-	ASSERT_EQ(c.client_ipv4(), ip_string_to_le(expected_sip));
-	ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
-	ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
-
-	if(expected_error_code == 0)
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
-	}
-	else
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_FAILED);
-	}
-
-	ASSERT_EQ(c.error_code(), expected_error_code);
-	ASSERT_EQ(c.timestamp(), ts);
-	ASSERT_EQ(c.server_pid(), expected_pid);
-	ASSERT_EQ(c.comm(), expected_comm);
-	ASSERT_EQ(c.container_id(), expected_container_id);
-	ASSERT_EQ(c.cmdline(), "");
-
-	// send a connection with no INTERACTIVE tinfo commands
-	main_thread->m_ainfo->m_th_analysis_flags &= ~thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
-
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Get pb
-	audit.flush((uint64_t)ts + ((uint64_t)DEFAULT_FREQUENCY * 2));
-	audit_pb = data_ready_handler.get_secure_audits_once();
-
-	ASSERT_EQ(nullptr, audit_pb);
+	check_connections_helper(&audit, &data_ready_handler, ts, 2, 0, false, true, false, 0, false);
 }
 
-TEST(secure_audit_test, connections_cmdline)
+TEST(secure_audit_test, connections_base_server_only_interactive_2)
 {
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
-
-	test_helpers::scoped_config<bool> enable_connections_cmdline("secure_audit_streams.connections_cmdline", true);
-	test_helpers::scoped_config<int> enable_connections_cmdline_maxlen("secure_audit_streams.connections_cmdline_maxlen", 0);
+	test_helpers::scoped_config<bool> only_interactive("secure_audit_streams.connections_only_interactive", true);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-
-	const std::string expected_cmdline = "gcc -o a.out hello_world.cpp";
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	const int expected_connections_size = 1;
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.commit();
-
-	inspector->open();
-
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Get pb
+	add_connections_helper(&audit, ts, 2, 0, false, false, false, 0, false);
 	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
-	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
-
-	ASSERT_NE(nullptr, audit_pb);
-
-	ASSERT_EQ(audit_pb->connections_size(), expected_connections_size);
-	const secure::Connection& c = audit_pb->connections(0);
-
-	// checking is_client_only connection
-	ASSERT_EQ(c.client_port(), expected_sport);
-	ASSERT_EQ(c.server_port(), expected_dport);
-	ASSERT_EQ(c.client_ipv4(), ip_string_to_le(expected_sip));
-	ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
-	ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
-
-	if(expected_error_code == 0)
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
-	}
-	else
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_FAILED);
-	}
-
-	ASSERT_EQ(c.error_code(), expected_error_code);
-	ASSERT_EQ(c.timestamp(), ts);
-	ASSERT_EQ(c.client_pid(), expected_pid);
-	ASSERT_EQ(c.comm(), expected_comm);
-	ASSERT_EQ(c.container_id(), expected_container_id);
-	ASSERT_EQ(c.cmdline(), expected_cmdline);
-}
-
-TEST(secure_audit_test, connections_cmdline_maxlen)
-{
-	// Secure Audit
-	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
-
-	test_helpers::scoped_config<bool> enable_connections_cmdline("secure_audit_streams.connections_cmdline", true);
-	test_helpers::scoped_config<int> enable_connections_cmdline_maxlen("secure_audit_streams.connections_cmdline_maxlen", 0);
-
-	secure_audit audit;
-	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
-
-	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-	const std::string expected_arg_4 = "i_am_a_very_very_long_parameter";
-	const std::string expected_arg_5 = "Lorem_ipsum_dolor_sit_amet,_consectetur_adipiscing_elit,_sed_do_eiusmod_tempor_incididunt_ut_labore_et_dolore_magna_aliqua._Pellentesque_habitant_morbi_tristique_senectus._Egestas_maecenas_pharetra_convallis_posuere_morbi._Mi_tempus_imperdiet_nulla_malesuada_pellentesque_elit_eget._Maecenas_accumsan_lacus_vel_facilisis_volutpat_est_velit_egestas_dui._Sapien_faucibus_et_molestie_ac_feugiat_sed_lectus_vestibulum._Dis_parturient_montes_nascetur_ridiculus_mus_mauris_vitae._Praesent_elementum_facilisis_leo_vel._Lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit_duis_tristique._Risus_nullam_eget_felis_eget_nunc._Sollicitudin_nibh_sit_amet_commodo._Posuere_ac_ut_consequat_semper_viverra_nam_libero_justo._Tincidunt_arcu_non_sodales_neque._Gravida_dictum_fusce_ut_placerat._Eu_feugiat_pretium_nibh_ipsum_consequat_nisl_vel_pretium_lectus._Consectetur_purus_ut_faucibus_pulvinar_elementum._Dictumst_vestibulum_rhoncus_est_pellentesque_elit._Amet_facilisis_magna_etiam_tempor._Cursus_sit_amet_dictum_sit_amet_justo.__Nibh_praesent_tristique_magna_sit_amet_purus_gravida_quis._In_hendrerit_gravida_rutrum_quisque_non_tellus_orci._Mauris_sit_amet_massa_vitae._Semper_viverra_nam_libero_justo_laoreet_sit_amet_cursus._Purus_non_enim_praesent_elementum_facilisis_leo_vel_fringilla._Euismod_nisi_porta_lorem_mollis._Commodo_nulla_facilisi_nullam_vehicula_ipsum_a_arcu._In_vitae_turpis_massa_sed_elementum_tempus._Amet_tellus_cras_adipiscing_enim_eu_turpis_egestas_pretium_aenean._Tortor_at_risus_viverra_adipiscing_at_in._Tempus_imperdiet_nulla_malesuada_pellentesque_elit_eget._Amet_tellus_cras_adipiscing_enim_eu_turpis_egestas_pretium._Vulputate_eu_scelerisque_felis_imperdiet_proin_fermentum_leo._Nulla_posuere_sollicitudin_aliquam_ultrices_sagittis_orci_a._Aliquet_nec_ullamcorper_sit_amet_risus._Sed_risus_pretium_quam_vulputate_dignissim_suspendisse_in_est._Sit_amet_volutpat_consequat_mauris_nunc_congue_nisi_vitae_suscipit._Dui_faucibus_in_ornare_quam_viverra_orci_sagittis.__Eget_nullam_non_nisi_est_sit_amet_facilisis._Velit_euismod_in_pellentesque_massa._Diam_sit_amet_nisl_suscipit_adipiscing_bibendum_est_ultricies._Dignissim_diam_quis_enim_lobortis_scelerisque_fermentum_dui_faucibus_in._Magna_fermentum_iaculis_eu_non_diam._Sit_amet_nisl_suscipit_adipiscing_bibendum_est_ultricies._Elementum_pulvinar_etiam_non_quam_lacus_suspendisse_faucibus_interdum._Interdum_velit_euismod_in_pellentesque_massa_placerat_duis_ultricies._Tellus_cras_adipiscing_enim_eu._Pellentesque_habitant_morbi_tristique_senectus_et_netus._Odio_ut_enim_blandit_volutpat_maecenas._Ut_lectus_arcu_bibendum_at_varius_vel_pharetra_vel_turpis._Tempor_orci_eu_lobortis_elementum_nibh_tellus._Orci_ac_auctor_augue_mauris._Vestibulum_lorem_sed_risus_ultricies_tristique_nulla_aliquet_enim_tortor._Tristique_senectus_et_netus_et_malesuada_fames_ac_turpis._Sapien_eget_mi_proin_sed_libero_enim._Dolor_sit_amet_consectetur_adipiscing_elit_pellentesque_habitant_morbi_tristique._Aliquam_sem_et_tortor_consequat_id_porta.__Leo_urna_molestie_at_elementum._Semper_risus_in_hendrerit_gravida_rutrum_quisque_non._Facilisi_etiam_dignissim_diam_quis_enim._Et_magnis_dis_parturient_montes_nascetur_ridiculus_mus_mauris._Placerat_in_egestas_erat_imperdiet_sed_euismod_nisi_porta_lorem._Integer_quis_auctor_elit_sed_vulputate_mi_sit_amet._Sem_integer_vitae_justo_eget._Eros_donec_ac_odio_tempor_orci_dapibus_ultrices_in._Massa_enim_nec_dui_nunc_mattis_enim._Elit_pellentesque_habitant_morbi_tristique_senectus_et_netus_et._Id_leo_in_vitae_turpis_massa_sed_elementum_tempus_egestas._Hendrerit_dolor_magna_eget_est._Accumsan_in_nisl_nisi_scelerisque_eu._Turpis_egestas_integer_eget_aliquet_nibh_praesent_tristique_magna_sit._Commodo_ullamcorper_a_lacus_vestibulum._Nascetur_ridiculus_mus_mauris_vitae_ultricies_leo_integer._Consequat_semper_viverra_nam_libero.__Sem_et_tortor_consequat_id_porta_nibh_venenatis_cras_sed._Ornare_lectus_sit_amet_est_placerat_in_egestas_erat._Ultrices_neque_ornare_aenean_euismod_elementum_nisi_quis._Augue_lacus_viverra_vitae_congue_eu_consequat_ac_felis._Erat_imperdiet_sed_euismod_nisi_porta_lorem._Proin_fermentum_leo_vel_orci._Pellentesque_diam_volutpat_commodo_sed_egestas_egestas_fringilla._Praesent_elementum_facilisis_leo_vel_fringilla_est_ullamcorper_eget._Adipiscing_commodo_elit_at_imperdiet_dui._Adipiscing_elit_pellentesque_habitant_morbi_tristique_senectus_et_netus._Sit_amet_venenatis_urna_cursus_eget_nunc._Egestas_integer_eget_aliquet_nibh._Facilisis_magna_etiam_tempor_orci_eu_lobortis_elementum_nibh_tellus.";
-
-	std::string expected_cmdline = expected_comm + " " +
-				       expected_arg_1 + " " +
-				       expected_arg_2 + " " +
-				       expected_arg_3 + " " +
-				       expected_arg_4 + " " +
-				       expected_arg_5;
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	const int expected_connections_size = 1;
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.arg(expected_arg_4)
-		.arg(expected_arg_5)
-		.commit();
-
-	inspector->open();
-
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
-
-	// Test empty protobuf
-	audit.flush(ts);
-	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
-
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Get pb
-	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
-	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
-
-	ASSERT_NE(nullptr, audit_pb);
-
-	ASSERT_EQ(audit_pb->connections_size(), expected_connections_size);
-	const secure::Connection& c = audit_pb->connections(0);
-
-	// checking is_client_only connection
-	ASSERT_EQ(c.client_port(), expected_sport);
-	ASSERT_EQ(c.server_port(), expected_dport);
-	ASSERT_EQ(c.client_ipv4(), ip_string_to_le(expected_sip));
-	ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
-	ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
-
-	if(expected_error_code == 0)
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
-	}
-	else
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_FAILED);
-	}
-
-	ASSERT_EQ(c.error_code(), expected_error_code);
-	ASSERT_EQ(c.timestamp(), ts);
-	ASSERT_EQ(c.client_pid(), expected_pid);
-	ASSERT_EQ(c.comm(), expected_comm);
-	ASSERT_EQ(c.container_id(), expected_container_id);
-	ASSERT_EQ(c.cmdline(), expected_cmdline);
+	check_connections_helper(&audit, &data_ready_handler, ts, 0, 0, false, true, false, 0, false);
 }
 
 TEST(secure_audit_test, connections_cmdline_maxlen_20)
@@ -1921,149 +1301,20 @@ TEST(secure_audit_test, connections_cmdline_maxlen_20)
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-	const std::string expected_arg_4 = "i_am_a_very_very_long_parameter";
-	const std::string expected_arg_5 = "Lorem_ipsum_dolor_sit_amet,_consectetur_adipiscing_elit,_sed_do_eiusmod_tempor_incididunt_ut_labore_et_dolore_magna_aliqua._Pellentesque_habitant_morbi_tristique_senectus._Egestas_maecenas_pharetra_convallis_posuere_morbi._Mi_tempus_imperdiet_nulla_malesuada_pellentesque_elit_eget._Maecenas_accumsan_lacus_vel_facilisis_volutpat_est_velit_egestas_dui._Sapien_faucibus_et_molestie_ac_feugiat_sed_lectus_vestibulum._Dis_parturient_montes_nascetur_ridiculus_mus_mauris_vitae._Praesent_elementum_facilisis_leo_vel._Lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit_duis_tristique._Risus_nullam_eget_felis_eget_nunc._Sollicitudin_nibh_sit_amet_commodo._Posuere_ac_ut_consequat_semper_viverra_nam_libero_justo._Tincidunt_arcu_non_sodales_neque._Gravida_dictum_fusce_ut_placerat._Eu_feugiat_pretium_nibh_ipsum_consequat_nisl_vel_pretium_lectus._Consectetur_purus_ut_faucibus_pulvinar_elementum._Dictumst_vestibulum_rhoncus_est_pellentesque_elit._Amet_facilisis_magna_etiam_tempor._Cursus_sit_amet_dictum_sit_amet_justo.__Nibh_praesent_tristique_magna_sit_amet_purus_gravida_quis._In_hendrerit_gravida_rutrum_quisque_non_tellus_orci._Mauris_sit_amet_massa_vitae._Semper_viverra_nam_libero_justo_laoreet_sit_amet_cursus._Purus_non_enim_praesent_elementum_facilisis_leo_vel_fringilla._Euismod_nisi_porta_lorem_mollis._Commodo_nulla_facilisi_nullam_vehicula_ipsum_a_arcu._In_vitae_turpis_massa_sed_elementum_tempus._Amet_tellus_cras_adipiscing_enim_eu_turpis_egestas_pretium_aenean._Tortor_at_risus_viverra_adipiscing_at_in._Tempus_imperdiet_nulla_malesuada_pellentesque_elit_eget._Amet_tellus_cras_adipiscing_enim_eu_turpis_egestas_pretium._Vulputate_eu_scelerisque_felis_imperdiet_proin_fermentum_leo._Nulla_posuere_sollicitudin_aliquam_ultrices_sagittis_orci_a._Aliquet_nec_ullamcorper_sit_amet_risus._Sed_risus_pretium_quam_vulputate_dignissim_suspendisse_in_est._Sit_amet_volutpat_consequat_mauris_nunc_congue_nisi_vitae_suscipit._Dui_faucibus_in_ornare_quam_viverra_orci_sagittis.__Eget_nullam_non_nisi_est_sit_amet_facilisis._Velit_euismod_in_pellentesque_massa._Diam_sit_amet_nisl_suscipit_adipiscing_bibendum_est_ultricies._Dignissim_diam_quis_enim_lobortis_scelerisque_fermentum_dui_faucibus_in._Magna_fermentum_iaculis_eu_non_diam._Sit_amet_nisl_suscipit_adipiscing_bibendum_est_ultricies._Elementum_pulvinar_etiam_non_quam_lacus_suspendisse_faucibus_interdum._Interdum_velit_euismod_in_pellentesque_massa_placerat_duis_ultricies._Tellus_cras_adipiscing_enim_eu._Pellentesque_habitant_morbi_tristique_senectus_et_netus._Odio_ut_enim_blandit_volutpat_maecenas._Ut_lectus_arcu_bibendum_at_varius_vel_pharetra_vel_turpis._Tempor_orci_eu_lobortis_elementum_nibh_tellus._Orci_ac_auctor_augue_mauris._Vestibulum_lorem_sed_risus_ultricies_tristique_nulla_aliquet_enim_tortor._Tristique_senectus_et_netus_et_malesuada_fames_ac_turpis._Sapien_eget_mi_proin_sed_libero_enim._Dolor_sit_amet_consectetur_adipiscing_elit_pellentesque_habitant_morbi_tristique._Aliquam_sem_et_tortor_consequat_id_porta.__Leo_urna_molestie_at_elementum._Semper_risus_in_hendrerit_gravida_rutrum_quisque_non._Facilisi_etiam_dignissim_diam_quis_enim._Et_magnis_dis_parturient_montes_nascetur_ridiculus_mus_mauris._Placerat_in_egestas_erat_imperdiet_sed_euismod_nisi_porta_lorem._Integer_quis_auctor_elit_sed_vulputate_mi_sit_amet._Sem_integer_vitae_justo_eget._Eros_donec_ac_odio_tempor_orci_dapibus_ultrices_in._Massa_enim_nec_dui_nunc_mattis_enim._Elit_pellentesque_habitant_morbi_tristique_senectus_et_netus_et._Id_leo_in_vitae_turpis_massa_sed_elementum_tempus_egestas._Hendrerit_dolor_magna_eget_est._Accumsan_in_nisl_nisi_scelerisque_eu._Turpis_egestas_integer_eget_aliquet_nibh_praesent_tristique_magna_sit._Commodo_ullamcorper_a_lacus_vestibulum._Nascetur_ridiculus_mus_mauris_vitae_ultricies_leo_integer._Consequat_semper_viverra_nam_libero.__Sem_et_tortor_consequat_id_porta_nibh_venenatis_cras_sed._Ornare_lectus_sit_amet_est_placerat_in_egestas_erat._Ultrices_neque_ornare_aenean_euismod_elementum_nisi_quis._Augue_lacus_viverra_vitae_congue_eu_consequat_ac_felis._Erat_imperdiet_sed_euismod_nisi_porta_lorem._Proin_fermentum_leo_vel_orci._Pellentesque_diam_volutpat_commodo_sed_egestas_egestas_fringilla._Praesent_elementum_facilisis_leo_vel_fringilla_est_ullamcorper_eget._Adipiscing_commodo_elit_at_imperdiet_dui._Adipiscing_elit_pellentesque_habitant_morbi_tristique_senectus_et_netus._Sit_amet_venenatis_urna_cursus_eget_nunc._Egestas_integer_eget_aliquet_nibh._Facilisis_magna_etiam_tempor_orci_eu_lobortis_elementum_nibh_tellus.";
-
-	std::string expected_cmdline = expected_comm + " " +
-				       expected_arg_1 + " " +
-				       expected_arg_2 + " " +
-				       expected_arg_3 + " " +
-				       expected_arg_4 + " " +
-				       expected_arg_5;
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	const int expected_connections_size = 1;
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.arg(expected_arg_4)
-		.arg(expected_arg_5)
-		.commit();
-
-	inspector->open();
-
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Get pb
+	add_connections_helper(&audit, ts, 2, 0, false, false, true, 20, false);
 	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
-	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
-
-	ASSERT_NE(nullptr, audit_pb);
-
-	ASSERT_EQ(audit_pb->connections_size(), expected_connections_size);
-	const secure::Connection& c = audit_pb->connections(0);
-
-	// checking is_client_only connection
-	ASSERT_EQ(c.client_port(), expected_sport);
-	ASSERT_EQ(c.server_port(), expected_dport);
-	ASSERT_EQ(c.client_ipv4(), ip_string_to_le(expected_sip));
-	ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
-	ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
-
-	if(expected_error_code == 0)
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
-	}
-	else
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_FAILED);
-	}
-
-	ASSERT_EQ(c.error_code(), expected_error_code);
-	ASSERT_EQ(c.timestamp(), ts);
-	ASSERT_EQ(c.client_pid(), expected_pid);
-	ASSERT_EQ(c.comm(), expected_comm);
-	ASSERT_EQ(c.container_id(), expected_container_id);
-
-	// maxlen - 20
-	const secure::Connection& c20 = audit_pb->connections(0);
-
-	std::string expected_cmdline_substring = expected_cmdline.substr(0, 20);
-	ASSERT_EQ(c20.cmdline(), expected_cmdline_substring);
+	check_connections_helper(&audit, &data_ready_handler, ts, 2, 0, false, false, true, 20, false);
 }
 
 TEST(secure_audit_test, connections_cmdline_maxlen_150)
@@ -2078,303 +1329,20 @@ TEST(secure_audit_test, connections_cmdline_maxlen_150)
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-	const std::string expected_arg_4 = "i_am_a_very_very_long_parameter";
-	const std::string expected_arg_5 = "Lorem_ipsum_dolor_sit_amet,_consectetur_adipiscing_elit,_sed_do_eiusmod_tempor_incididunt_ut_labore_et_dolore_magna_aliqua._Pellentesque_habitant_morbi_tristique_senectus._Egestas_maecenas_pharetra_convallis_posuere_morbi._Mi_tempus_imperdiet_nulla_malesuada_pellentesque_elit_eget._Maecenas_accumsan_lacus_vel_facilisis_volutpat_est_velit_egestas_dui._Sapien_faucibus_et_molestie_ac_feugiat_sed_lectus_vestibulum._Dis_parturient_montes_nascetur_ridiculus_mus_mauris_vitae._Praesent_elementum_facilisis_leo_vel._Lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit_duis_tristique._Risus_nullam_eget_felis_eget_nunc._Sollicitudin_nibh_sit_amet_commodo._Posuere_ac_ut_consequat_semper_viverra_nam_libero_justo._Tincidunt_arcu_non_sodales_neque._Gravida_dictum_fusce_ut_placerat._Eu_feugiat_pretium_nibh_ipsum_consequat_nisl_vel_pretium_lectus._Consectetur_purus_ut_faucibus_pulvinar_elementum._Dictumst_vestibulum_rhoncus_est_pellentesque_elit._Amet_facilisis_magna_etiam_tempor._Cursus_sit_amet_dictum_sit_amet_justo.__Nibh_praesent_tristique_magna_sit_amet_purus_gravida_quis._In_hendrerit_gravida_rutrum_quisque_non_tellus_orci._Mauris_sit_amet_massa_vitae._Semper_viverra_nam_libero_justo_laoreet_sit_amet_cursus._Purus_non_enim_praesent_elementum_facilisis_leo_vel_fringilla._Euismod_nisi_porta_lorem_mollis._Commodo_nulla_facilisi_nullam_vehicula_ipsum_a_arcu._In_vitae_turpis_massa_sed_elementum_tempus._Amet_tellus_cras_adipiscing_enim_eu_turpis_egestas_pretium_aenean._Tortor_at_risus_viverra_adipiscing_at_in._Tempus_imperdiet_nulla_malesuada_pellentesque_elit_eget._Amet_tellus_cras_adipiscing_enim_eu_turpis_egestas_pretium._Vulputate_eu_scelerisque_felis_imperdiet_proin_fermentum_leo._Nulla_posuere_sollicitudin_aliquam_ultrices_sagittis_orci_a._Aliquet_nec_ullamcorper_sit_amet_risus._Sed_risus_pretium_quam_vulputate_dignissim_suspendisse_in_est._Sit_amet_volutpat_consequat_mauris_nunc_congue_nisi_vitae_suscipit._Dui_faucibus_in_ornare_quam_viverra_orci_sagittis.__Eget_nullam_non_nisi_est_sit_amet_facilisis._Velit_euismod_in_pellentesque_massa._Diam_sit_amet_nisl_suscipit_adipiscing_bibendum_est_ultricies._Dignissim_diam_quis_enim_lobortis_scelerisque_fermentum_dui_faucibus_in._Magna_fermentum_iaculis_eu_non_diam._Sit_amet_nisl_suscipit_adipiscing_bibendum_est_ultricies._Elementum_pulvinar_etiam_non_quam_lacus_suspendisse_faucibus_interdum._Interdum_velit_euismod_in_pellentesque_massa_placerat_duis_ultricies._Tellus_cras_adipiscing_enim_eu._Pellentesque_habitant_morbi_tristique_senectus_et_netus._Odio_ut_enim_blandit_volutpat_maecenas._Ut_lectus_arcu_bibendum_at_varius_vel_pharetra_vel_turpis._Tempor_orci_eu_lobortis_elementum_nibh_tellus._Orci_ac_auctor_augue_mauris._Vestibulum_lorem_sed_risus_ultricies_tristique_nulla_aliquet_enim_tortor._Tristique_senectus_et_netus_et_malesuada_fames_ac_turpis._Sapien_eget_mi_proin_sed_libero_enim._Dolor_sit_amet_consectetur_adipiscing_elit_pellentesque_habitant_morbi_tristique._Aliquam_sem_et_tortor_consequat_id_porta.__Leo_urna_molestie_at_elementum._Semper_risus_in_hendrerit_gravida_rutrum_quisque_non._Facilisi_etiam_dignissim_diam_quis_enim._Et_magnis_dis_parturient_montes_nascetur_ridiculus_mus_mauris._Placerat_in_egestas_erat_imperdiet_sed_euismod_nisi_porta_lorem._Integer_quis_auctor_elit_sed_vulputate_mi_sit_amet._Sem_integer_vitae_justo_eget._Eros_donec_ac_odio_tempor_orci_dapibus_ultrices_in._Massa_enim_nec_dui_nunc_mattis_enim._Elit_pellentesque_habitant_morbi_tristique_senectus_et_netus_et._Id_leo_in_vitae_turpis_massa_sed_elementum_tempus_egestas._Hendrerit_dolor_magna_eget_est._Accumsan_in_nisl_nisi_scelerisque_eu._Turpis_egestas_integer_eget_aliquet_nibh_praesent_tristique_magna_sit._Commodo_ullamcorper_a_lacus_vestibulum._Nascetur_ridiculus_mus_mauris_vitae_ultricies_leo_integer._Consequat_semper_viverra_nam_libero.__Sem_et_tortor_consequat_id_porta_nibh_venenatis_cras_sed._Ornare_lectus_sit_amet_est_placerat_in_egestas_erat._Ultrices_neque_ornare_aenean_euismod_elementum_nisi_quis._Augue_lacus_viverra_vitae_congue_eu_consequat_ac_felis._Erat_imperdiet_sed_euismod_nisi_porta_lorem._Proin_fermentum_leo_vel_orci._Pellentesque_diam_volutpat_commodo_sed_egestas_egestas_fringilla._Praesent_elementum_facilisis_leo_vel_fringilla_est_ullamcorper_eget._Adipiscing_commodo_elit_at_imperdiet_dui._Adipiscing_elit_pellentesque_habitant_morbi_tristique_senectus_et_netus._Sit_amet_venenatis_urna_cursus_eget_nunc._Egestas_integer_eget_aliquet_nibh._Facilisis_magna_etiam_tempor_orci_eu_lobortis_elementum_nibh_tellus.";
-
-	std::string expected_cmdline = expected_comm + " " +
-				       expected_arg_1 + " " +
-				       expected_arg_2 + " " +
-				       expected_arg_3 + " " +
-				       expected_arg_4 + " " +
-				       expected_arg_5;
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	const int expected_connections_size = 1;
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.arg(expected_arg_4)
-		.arg(expected_arg_5)
-		.commit();
-
-	inspector->open();
-
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Get pb
+	add_connections_helper(&audit, ts, 2, 0, false, false, true, 150, false);
 	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
-	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
-
-	ASSERT_NE(nullptr, audit_pb);
-
-	ASSERT_EQ(audit_pb->connections_size(), expected_connections_size);
-	const secure::Connection& c = audit_pb->connections(0);
-
-	// checking is_client_only connection
-	ASSERT_EQ(c.client_port(), expected_sport);
-	ASSERT_EQ(c.server_port(), expected_dport);
-	ASSERT_EQ(c.client_ipv4(), ip_string_to_le(expected_sip));
-	ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
-	ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
-
-	if(expected_error_code == 0)
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
-	}
-	else
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_FAILED);
-	}
-
-	ASSERT_EQ(c.error_code(), expected_error_code);
-	ASSERT_EQ(c.timestamp(), ts);
-	ASSERT_EQ(c.client_pid(), expected_pid);
-	ASSERT_EQ(c.comm(), expected_comm);
-	ASSERT_EQ(c.container_id(), expected_container_id);
-
-	// maxlen - 150
-	const secure::Connection& c150 = audit_pb->connections(0);
-
-	std::string expected_cmdline_substring = expected_cmdline.substr(0, 150);
-	ASSERT_EQ(c150.cmdline(), expected_cmdline_substring);
-}
-
-TEST(secure_audit_test, connections_cmdline_maxlen_len_plus_50)
-{
-	// Secure Audit
-	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
-
-	test_helpers::scoped_config<bool> enable_connections_cmdline("secure_audit_streams.connections_cmdline", true);
-
-	secure_audit audit;
-	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
-
-	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-	const std::string expected_arg_4 = "i_am_a_very_very_long_parameter";
-	const std::string expected_arg_5 = "Lorem_ipsum_dolor_sit_amet,_consectetur_adipiscing_elit,_sed_do_eiusmod_tempor_incididunt_ut_labore_et_dolore_magna_aliqua._Pellentesque_habitant_morbi_tristique_senectus._Egestas_maecenas_pharetra_convallis_posuere_morbi._Mi_tempus_imperdiet_nulla_malesuada_pellentesque_elit_eget._Maecenas_accumsan_lacus_vel_facilisis_volutpat_est_velit_egestas_dui._Sapien_faucibus_et_molestie_ac_feugiat_sed_lectus_vestibulum._Dis_parturient_montes_nascetur_ridiculus_mus_mauris_vitae._Praesent_elementum_facilisis_leo_vel._Lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit_duis_tristique._Risus_nullam_eget_felis_eget_nunc._Sollicitudin_nibh_sit_amet_commodo._Posuere_ac_ut_consequat_semper_viverra_nam_libero_justo._Tincidunt_arcu_non_sodales_neque._Gravida_dictum_fusce_ut_placerat._Eu_feugiat_pretium_nibh_ipsum_consequat_nisl_vel_pretium_lectus._Consectetur_purus_ut_faucibus_pulvinar_elementum._Dictumst_vestibulum_rhoncus_est_pellentesque_elit._Amet_facilisis_magna_etiam_tempor._Cursus_sit_amet_dictum_sit_amet_justo.__Nibh_praesent_tristique_magna_sit_amet_purus_gravida_quis._In_hendrerit_gravida_rutrum_quisque_non_tellus_orci._Mauris_sit_amet_massa_vitae._Semper_viverra_nam_libero_justo_laoreet_sit_amet_cursus._Purus_non_enim_praesent_elementum_facilisis_leo_vel_fringilla._Euismod_nisi_porta_lorem_mollis._Commodo_nulla_facilisi_nullam_vehicula_ipsum_a_arcu._In_vitae_turpis_massa_sed_elementum_tempus._Amet_tellus_cras_adipiscing_enim_eu_turpis_egestas_pretium_aenean._Tortor_at_risus_viverra_adipiscing_at_in._Tempus_imperdiet_nulla_malesuada_pellentesque_elit_eget._Amet_tellus_cras_adipiscing_enim_eu_turpis_egestas_pretium._Vulputate_eu_scelerisque_felis_imperdiet_proin_fermentum_leo._Nulla_posuere_sollicitudin_aliquam_ultrices_sagittis_orci_a._Aliquet_nec_ullamcorper_sit_amet_risus._Sed_risus_pretium_quam_vulputate_dignissim_suspendisse_in_est._Sit_amet_volutpat_consequat_mauris_nunc_congue_nisi_vitae_suscipit._Dui_faucibus_in_ornare_quam_viverra_orci_sagittis.__Eget_nullam_non_nisi_est_sit_amet_facilisis._Velit_euismod_in_pellentesque_massa._Diam_sit_amet_nisl_suscipit_adipiscing_bibendum_est_ultricies._Dignissim_diam_quis_enim_lobortis_scelerisque_fermentum_dui_faucibus_in._Magna_fermentum_iaculis_eu_non_diam._Sit_amet_nisl_suscipit_adipiscing_bibendum_est_ultricies._Elementum_pulvinar_etiam_non_quam_lacus_suspendisse_faucibus_interdum._Interdum_velit_euismod_in_pellentesque_massa_placerat_duis_ultricies._Tellus_cras_adipiscing_enim_eu._Pellentesque_habitant_morbi_tristique_senectus_et_netus._Odio_ut_enim_blandit_volutpat_maecenas._Ut_lectus_arcu_bibendum_at_varius_vel_pharetra_vel_turpis._Tempor_orci_eu_lobortis_elementum_nibh_tellus._Orci_ac_auctor_augue_mauris._Vestibulum_lorem_sed_risus_ultricies_tristique_nulla_aliquet_enim_tortor._Tristique_senectus_et_netus_et_malesuada_fames_ac_turpis._Sapien_eget_mi_proin_sed_libero_enim._Dolor_sit_amet_consectetur_adipiscing_elit_pellentesque_habitant_morbi_tristique._Aliquam_sem_et_tortor_consequat_id_porta.__Leo_urna_molestie_at_elementum._Semper_risus_in_hendrerit_gravida_rutrum_quisque_non._Facilisi_etiam_dignissim_diam_quis_enim._Et_magnis_dis_parturient_montes_nascetur_ridiculus_mus_mauris._Placerat_in_egestas_erat_imperdiet_sed_euismod_nisi_porta_lorem._Integer_quis_auctor_elit_sed_vulputate_mi_sit_amet._Sem_integer_vitae_justo_eget._Eros_donec_ac_odio_tempor_orci_dapibus_ultrices_in._Massa_enim_nec_dui_nunc_mattis_enim._Elit_pellentesque_habitant_morbi_tristique_senectus_et_netus_et._Id_leo_in_vitae_turpis_massa_sed_elementum_tempus_egestas._Hendrerit_dolor_magna_eget_est._Accumsan_in_nisl_nisi_scelerisque_eu._Turpis_egestas_integer_eget_aliquet_nibh_praesent_tristique_magna_sit._Commodo_ullamcorper_a_lacus_vestibulum._Nascetur_ridiculus_mus_mauris_vitae_ultricies_leo_integer._Consequat_semper_viverra_nam_libero.__Sem_et_tortor_consequat_id_porta_nibh_venenatis_cras_sed._Ornare_lectus_sit_amet_est_placerat_in_egestas_erat._Ultrices_neque_ornare_aenean_euismod_elementum_nisi_quis._Augue_lacus_viverra_vitae_congue_eu_consequat_ac_felis._Erat_imperdiet_sed_euismod_nisi_porta_lorem._Proin_fermentum_leo_vel_orci._Pellentesque_diam_volutpat_commodo_sed_egestas_egestas_fringilla._Praesent_elementum_facilisis_leo_vel_fringilla_est_ullamcorper_eget._Adipiscing_commodo_elit_at_imperdiet_dui._Adipiscing_elit_pellentesque_habitant_morbi_tristique_senectus_et_netus._Sit_amet_venenatis_urna_cursus_eget_nunc._Egestas_integer_eget_aliquet_nibh._Facilisis_magna_etiam_tempor_orci_eu_lobortis_elementum_nibh_tellus.";
-
-	std::string expected_cmdline = expected_comm + " " +
-				       expected_arg_1 + " " +
-				       expected_arg_2 + " " +
-				       expected_arg_3 + " " +
-				       expected_arg_4 + " " +
-				       expected_arg_5;
-
-	int cmdline_len = expected_cmdline.length();
-	test_helpers::scoped_config<int> enable_connections_cmdline_maxlen("secure_audit_streams.connections_cmdline_maxlen", cmdline_len + 50);
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	const int expected_connections_size = 1;
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.arg(expected_arg_4)
-		.arg(expected_arg_5)
-		.commit();
-
-	inspector->open();
-
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
-
-	// Test empty protobuf
-	audit.flush(ts);
-	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
-
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Get pb
-	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
-	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
-
-	ASSERT_NE(nullptr, audit_pb);
-
-	ASSERT_EQ(audit_pb->connections_size(), expected_connections_size);
-	const secure::Connection& c = audit_pb->connections(0);
-
-	// checking is_client_only connection
-	ASSERT_EQ(c.client_port(), expected_sport);
-	ASSERT_EQ(c.server_port(), expected_dport);
-	ASSERT_EQ(c.client_ipv4(), ip_string_to_le(expected_sip));
-	ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
-	ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
-
-	if(expected_error_code == 0)
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
-	}
-	else
-	{
-		ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_FAILED);
-	}
-
-	ASSERT_EQ(c.error_code(), expected_error_code);
-	ASSERT_EQ(c.timestamp(), ts);
-	ASSERT_EQ(c.client_pid(), expected_pid);
-	ASSERT_EQ(c.comm(), expected_comm);
-	ASSERT_EQ(c.container_id(), expected_container_id);
-	ASSERT_EQ(c.cmdline(), expected_cmdline);
+	check_connections_helper(&audit, &data_ready_handler, ts, 2, 0, false, false, true, 150, false);
 }
 
 TEST(secure_audit_test, k8s_audit_base)
@@ -2571,10 +1539,11 @@ TEST(secure_audit_test, k8s_audit_base)
 				"/" /*root dir*/,
 				int_metrics,
 				g_audit_handler,
-				g_secure_handler,
+				g_secure_audit_handler,
+				g_secure_profiling_handler,
 				&g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	audit.set_data_handler(&data_ready_handler);
 	audit.set_internal_metrics(&analyzer);
@@ -2586,7 +1555,7 @@ TEST(secure_audit_test, k8s_audit_base)
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	// Fill fake infrastructure_state to test k8s enrichment too
-	infrastructure_state is(inspector.get(), "/foo/bar");
+	infrastructure_state is(analyzer, inspector.get(), "/foo/bar", nullptr);
 
 	draiosproto::congroup_update_event evt;
 	draiosproto::congroup_uid* parent;
@@ -2767,21 +1736,10 @@ void k8s_audit_disabled(bool a, bool b)
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
 
@@ -2804,15 +1762,6 @@ TEST(secure_audit_test, k8s_audit_disabled)
 	k8s_audit_disabled(false, false);
 }
 
-class test_helper
-{
-public:
-	static internal_metrics::sptr_t get_internal_metrics(sinsp_analyzer* analyzer)
-	{
-		return analyzer->m_internal_metrics;
-	}
-};
-
 TEST(secure_audit_test, audit_frequency_default)
 {
 	const std::string config = R"EOF(
@@ -2825,120 +1774,33 @@ secure_audit_streams:
 
 	test_helpers::scoped_configuration deployed_config(config);
 
-	ASSERT_EQ(secure_audit::c_secure_audit_frequency->get_value(), 10);
-	ASSERT_EQ(secure_audit::c_secure_audit_enabled.get_value(), true);
-	ASSERT_EQ(secure_audit::c_secure_audit_connections_enabled.get_value(), true);
-	ASSERT_EQ(secure_audit::c_secure_audit_connections_only_interactive.get_value(), false);
-
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
 
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.commit();
-
-	inspector->open();
-
-	// Building threadinfo
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
-
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), -1);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), -1);
 
 	// Test empty protobuf
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 0);
 
 	// put a connection into secure audit buffer
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
+	add_connections_helper(&audit, ts, 1, 0, false, false, false, 0, false);
 
 	// Try to flush before frequency
 	audit.flush(ts + (uint64_t)5000000000); // ts + 5 s
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 0);
 
 	// Try to flush few ms before frequency -> test threshold of 100ms
 	audit.flush(ts + (uint64_t)10000000000 - (uint64_t)90000000); // ts + 10 s - 90ms
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 1);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 1);
 }
 
 TEST(secure_audit_test, audit_frequency_5)
@@ -2953,101 +1815,14 @@ secure_audit_streams:
 
 	test_helpers::scoped_configuration deployed_config(config);
 
-	ASSERT_EQ(secure_audit::c_secure_audit_frequency->get_value(), 5);
-	ASSERT_EQ(secure_audit::c_secure_audit_enabled.get_value(), true);
-	ASSERT_EQ(secure_audit::c_secure_audit_connections_enabled.get_value(), true);
-	ASSERT_EQ(secure_audit::c_secure_audit_connections_only_interactive.get_value(), false);
-
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.commit();
-
-	inspector->open();
-
-	// Building threadinfo
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
 
 	// Test empty protobuf
 	audit.flush(ts);
@@ -3057,319 +1832,28 @@ secure_audit_streams:
 
 	// Flush with no data -> no protobuf emitted
 	audit.flush(ts);
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 0);
 
 	// put a connection into secure audit buffer
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
+	add_connections_helper(&audit, ts, 1, 0, false, false, false, 0, false);
 
 	// Try to flush before frequency
 	audit.flush(ts + (uint64_t)4000000000); // ts + 4 s
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 0);
 
 	// Try to flush few ms before frequency -> test threshold of 100ms
 	audit.flush(ts + (uint64_t)5000000000 - (uint64_t)90000000); // ts + 5 s - 90ms
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 1);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 1);
 
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
+	add_connections_helper(&audit, ts, 1, 0, false, false, false, 0, false);
 
 	// Try to flush few seconds after frequency
 	audit.flush(ts + (uint64_t)6000000000); // ts + 6 s
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 0);
 
 	// Try to flush ~2 times freq
 	audit.flush(ts + (uint64_t)10000000000); // ts + 10 s
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 1);
-}
-
-TEST(secure_audit_test, audit_frequency_out_of_limits_lower)
-{
-	const std::string config = R"EOF(
-secure_audit_streams:
-  enabled: true
-  connections: true
-  connections_only_interactive: false
-  frequency: -1
-)EOF";
-
-	test_helpers::scoped_configuration deployed_config(config);
-
-	ASSERT_EQ(secure_audit::c_secure_audit_frequency->get_value(), 1);
-	ASSERT_EQ(secure_audit::c_secure_audit_enabled.get_value(), true);
-	ASSERT_EQ(secure_audit::c_secure_audit_connections_enabled.get_value(), true);
-	ASSERT_EQ(secure_audit::c_secure_audit_connections_only_interactive.get_value(), false);
-
-	secure_audit audit;
-	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
-
-	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.commit();
-
-	inspector->open();
-
-	// Building threadinfo
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
-
-	// Test empty protobuf
-	audit.flush(ts);
-	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
-
-	// Set analyzer
-	audit.set_data_handler(&analyzer);
-	audit.set_internal_metrics(&analyzer);
-	// We don't need connection manager for this test
-	audit.init(nullptr);
-
-	// Flush with no data -> no protobuf emitted
-	audit.flush(ts);
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
-
-	// put a connection into secure audit buffer
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Try to flush before frequency
-	audit.flush(ts + (uint64_t)500000000); // ts + 0.5 s
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
-
-	// Try to flush few ms before frequency -> test threshold of 100ms
-	audit.flush(ts + (uint64_t)1000000000 - (uint64_t)90000000); // ts + 1 s - 90ms
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 1);
-
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Try to flush few seconds after frequency
-	audit.flush(ts + (uint64_t)1500000000); // ts + 1.5 s
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
-
-	// Try to flush ~2 times freq
-	audit.flush(ts + (uint64_t)2000000000); // ts + 2 s
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 1);
-}
-
-TEST(secure_audit_test, audit_frequency_out_of_limits_upper)
-{
-	// 90 * 60 = 5400
-	// 30 * 60 = 1800
-	const std::string config = R"EOF(
-secure_audit_streams:
-  enabled: true
-  connections: true
-  connections_only_interactive: false
-  frequency: 5400
-)EOF";
-
-	test_helpers::scoped_configuration deployed_config(config);
-
-	ASSERT_EQ(secure_audit::c_secure_audit_frequency->get_value(), 1800);
-	ASSERT_EQ(secure_audit::c_secure_audit_enabled.get_value(), true);
-	ASSERT_EQ(secure_audit::c_secure_audit_connections_enabled.get_value(), true);
-	ASSERT_EQ(secure_audit::c_secure_audit_connections_only_interactive.get_value(), false);
-
-	secure_audit audit;
-	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
-
-	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
-
-	uint64_t ts = sinsp_utils::get_current_time_ns();
-
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.commit();
-
-	inspector->open();
-
-	// Building threadinfo
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
-
-	// Test empty protobuf
-	audit.flush(ts);
-	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
-
-	// Set analyzer
-	audit.set_data_handler(&analyzer);
-	audit.set_internal_metrics(&analyzer);
-	// We don't need connection manager for this test
-	audit.init(nullptr);
-
-	// Flush with no data -> no protobuf emitted
-	audit.flush(ts);
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
-
-	// put a connection into secure audit buffer
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Try to flush before frequency
-	audit.flush(ts + (uint64_t)20000000000); // ts + 20 s
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
-
-	// Try to flush few ms before frequency -> test threshold of 100ms
-	// Upperbound limit is 30 min -> 30 * 60
-	audit.flush(ts + (uint64_t)1000000000 * (uint64_t)(30 * 60) - (uint64_t)90000000); // ts + 30 min - 90ms
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 1);
-
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
-
-	// Try to flush few seconds after frequency
-	audit.flush(ts + (uint64_t)1000000000 * (uint64_t)(31 * 60)); // ts + 31 min
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
-
-	// Try to flush ~2 times freq
-	audit.flush(ts + (uint64_t)1000000000 * (uint64_t)(60 * 60)); // ts + 60 min
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 1);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 1);
 }
 
 TEST(secure_audit_test, audit_internal_metrics)
@@ -3384,126 +1868,65 @@ secure_audit_streams:
 
 	test_helpers::scoped_configuration deployed_config(config);
 
-	ASSERT_EQ(secure_audit::c_secure_audit_frequency->get_value(), 10);
-	ASSERT_EQ(secure_audit::c_secure_audit_enabled.get_value(), true);
-	ASSERT_EQ(secure_audit::c_secure_audit_connections_enabled.get_value(), true);
-	ASSERT_EQ(secure_audit::c_secure_audit_connections_only_interactive.get_value(), false);
-
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
-
-	// Building inspector and analyzer
-	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
-	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
-	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_handler,
-				&g_queue);
-	unique_ptr_resetter<sinsp_mock> resetter(inspector);
-	inspector->m_analyzer = &analyzer;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
 
 	audit.set_data_handler(&data_ready_handler);
-	audit.set_internal_metrics(&analyzer);
+	audit.set_internal_metrics(&internal_metrics_handler);
 
 	uint64_t ts = sinsp_utils::get_current_time_ns();
 
-	// Build Thread Info
-	const int64_t expected_pid = 4;
-	const std::string expected_name = "/usr/bin/gcc";
-	const std::string expected_comm = "gcc";
-	const std::string expected_arg_1 = "-o";
-	const std::string expected_arg_2 = "a.out";
-	const std::string expected_arg_3 = "hello_world.cpp";
-
-	const std::string expected_sip = "192.168.1.1";
-	const std::string expected_dip = "192.168.1.2";
-	const uint16_t expected_sport = 80;
-	const uint16_t expected_dport = 90;
-	const uint8_t expected_l4proto = SCAP_L4_TCP;
-
-	const uint32_t expected_error_code = 0;
-	const std::string expected_container_id = "sysd1gcl0ud1";
-
-	inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3)
-		.commit();
-
-	inspector->open();
-
-	// Building threadinfo
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	proc = inspector->get_thread_ref(expected_pid,
-					 false /*don't query the os if not found*/,
-					 true /*lookup only*/);
-
-	proc->m_container_id = expected_container_id;
-
-	// Sanity checks for Thread Info
-	ASSERT_EQ(expected_pid, proc->m_pid);
-	ASSERT_EQ(expected_pid, proc->m_tid);
-	ASSERT_EQ(expected_name, proc->m_exe);
-	ASSERT_EQ(expected_comm, proc->get_comm());
-	ASSERT_EQ(expected_container_id, proc->m_container_id);
-
-	_ipv4tuple tuple;
-	sinsp_connection conn;
-
-	// Build Tuple
-	tuple.m_fields.m_sip = ip_string_to_be(expected_sip);
-	tuple.m_fields.m_sport = expected_sport;
-	tuple.m_fields.m_dip = ip_string_to_be(expected_dip);
-	tuple.m_fields.m_dport = expected_dport;
-	tuple.m_fields.m_l4proto = expected_l4proto;
-
-	// Build Connection
-	conn.m_spid = expected_pid;
-	conn.m_stid = expected_pid;
-	conn.m_sfd = 1234;
-
-	conn.m_dpid = 0;
-	conn.m_dtid = 0;
-	conn.m_dfd = 0;
-
-	conn.m_timestamp = ts;
-	conn.m_refcount = 1;
-
-	conn.m_analysis_flags = sinsp_connection::AF_NONE;
-	conn.m_error_code = expected_error_code;
-
-	conn.m_sproc = proc;
-	conn.m_dproc = nullptr;
-
-	//	// We don't need connection manager for this test
-	//	audit.init(nullptr);
-
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), -1);
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_fl_ms(), -1);
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_emit_ms(), -1);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), -1);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_fl_ms(), -1);
 
 	// Test empty protobuf
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
-	ASSERT_NE(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_fl_ms(), -1);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 0);
+	ASSERT_NE(internal_metrics_handler.get_secure_audit_fl_ms(), -1);
 
 	// put a connection into secure audit buffer
-	audit.emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
+	add_connections_helper(&audit, ts, 1, 0, false, false, false, 0, false);
 
 	// Try to flush before frequency
 	audit.flush(ts + (uint64_t)5000000000); // ts + 5 s
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 0);
-	ASSERT_NE(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_fl_ms(), -1);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 0);
+	ASSERT_NE(internal_metrics_handler.get_secure_audit_fl_ms(), -1);
 
 	// Try to flush few ms before frequency -> test threshold of 100ms
 	audit.flush(ts + (uint64_t)11000000000 - (uint64_t)90000000); // ts + 10 s - 90ms
-	ASSERT_EQ(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_n_sent_protobufs(), 1);
-	ASSERT_NE(test_helper::get_internal_metrics(&analyzer)->get_secure_audit_fl_ms(), -1);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 1);
+	ASSERT_NE(internal_metrics_handler.get_secure_audit_fl_ms(), -1);
+}
+
+TEST(secure_audit_test, connections_limit_metrics)
+{
+	// Secure Audit
+	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
+	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
+	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+	test_helpers::scoped_config<int> max_connections("secure_audit_streams.connections_limit", 2);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&internal_metrics_handler);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
+
+	// Test empty protobuf
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
+
+	add_connections_helper(&audit, ts, 3, 0, false, false, false, 0, false);
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	check_connections_helper(&audit, &data_ready_handler, ts, 2, 0, false, false, false, 0, false);
+
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 1);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_connections_count(), 2);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_connections_dropped_count(), 1);
 }

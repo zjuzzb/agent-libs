@@ -75,6 +75,7 @@ function configure_rpm_repo {
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule-thin* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*Unspecified* | xargs -d '\n' rm -f || true
@@ -121,6 +122,7 @@ function configure_debian_repo {
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule-thin* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*Unspecified* | xargs -d '\n' rm -f || true
@@ -167,6 +169,7 @@ function configure_tgz_repo {
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule-thin* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*Unspecified* | xargs -d '\n' rm -f || true
@@ -219,15 +222,41 @@ function push_docker_images {
 	mkdir -p "${DOCKERFILES_ROOT_DIR}"
 	tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "$REPO_DIR/$REPO_BASENAME/tgz/$BASEARCH/draios-${AGENT_VERSION}-${BASEARCH}-dockerfiles.tar.gz"
 
-	for IMAGE_NAME in agent-kmodule agent-slim agent; do
+	for IMAGE_NAME in agent-kmodule agent-kmodule-thin agent-slim agent agent-slim-v2; do
 
 		pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${IMAGE_NAME}/${REPO_BASENAME}"
 
 		VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}"
 		LATEST_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:latest"
 
+		# We have some pre-work for agent-slim-v2
+		# 1. Copy the agent-slim.tar.gz that was generated to the local docker directory
+		# 2. Extract the tar ball and strip the agent binaries of debug symbols
+		# 3. Manipulate the image tags to read as "agent-slim" instead of agent-slim-v2
+		if [[ "${IMAGE_NAME}" == "agent-slim-v2" ]]; then
+			cp "$REPO_DIR/$REPO_BASENAME/tgz/$BASEARCH/draios-${AGENT_VERSION}-${BASEARCH}-agent-slim.tar.gz" .
+			tar -xzf *agent-slim.tar.gz
+			find ./opt/draios/bin -type f | xargs file | awk '/ELF/ { sub(/:$/, "", $1); print $1 }' | xargs strip -g
+			rm -rf ./opt/draios/lib/python-deps2.6/
+
+			VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/agent-slim:${AGENT_VERSION}"
+			LATEST_IMAGE="${DOCKER_HUB_ROOT}/agent-slim:latest"
+		fi
+
+		# For the legacy "agent-slim" image, we have to now label it v1.
+		# Manipulate the image tags to do just that.
+		if [[ "${IMAGE_NAME}" == "agent-slim" ]]; then
+			VERSIONED_IMAGE="${VERSIONED_IMAGE}-v1"
+		fi
+
 		docker build -t "${VERSIONED_IMAGE}" --pull .
 		docker push "${VERSIONED_IMAGE}"
+
+		# If the image is "agent-slim" we don't want it tagged for latest
+		# (agent-slim-v2 should be tagged as sysdig/agent-slim:latest)
+		if [[ "${IMAGE_NAME}" == "agent-slim" ]]; then
+			continue
+		fi
 
 		if [[ "${REPO_BASENAME}" == "stable" ]]; then
 			docker tag "${VERSIONED_IMAGE}" "${LATEST_IMAGE}"

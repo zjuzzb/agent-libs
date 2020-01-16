@@ -44,10 +44,16 @@
 #include "secure_audit_handler.h"
 #include "statsd_emitter.h"
 #include "analyzer_flush_message.h"
-#include "blocking_queue.h"
+#include "thread_safe_container/blocking_queue.h"
 #include "secure_audit_internal_metrics.h"
 #include "secure_audit_data_ready_handler.h"
+#include "baseliner.h"
 #include <nlohmann/json.hpp>
+#include "include/sinsp_external_processor.h"
+
+#include "label_limits.h"
+#include "metric_limits.h"
+#include "k8s_limits.h"
 
 namespace dragent
 {
@@ -238,10 +244,12 @@ private:
 //
 class SINSP_PUBLIC sinsp_analyzer :
 	public secure_audit_data_ready_handler,
-	public secure_audit_internal_metrics
+	public secure_profiling_data_ready_handler,
+	public secure_audit_internal_metrics,
+	public libsinsp::event_processor
 {
 public:
-	typedef blocking_queue<std::shared_ptr<flush_data_message>> flush_queue;
+	typedef thread_safe_container::blocking_queue<std::shared_ptr<flush_data_message>> flush_queue;
 	enum mode_switch_state
 	{
 		MSR_NONE = 0,
@@ -256,8 +264,12 @@ public:
 	               std::string root_dir,
 	               const internal_metrics::sptr_t& internal_metrics,
 	               audit_tap_handler& tap_handler,
-	               secure_audit_handler& secure_handler,
-	               flush_queue* flush_queue);
+	               secure_audit_handler& secure_audit_handler,
+	               secure_profiling_handler& secure_profiling_handler,
+	               flush_queue* flush_queue,
+	               const metric_limits::sptr_t& the_metric_limits = nullptr,
+	               const label_limits::sptr_t& the_label_limits = nullptr,
+	               const k8s_limits::sptr_t& the_k8s_limits = nullptr);
 	~sinsp_analyzer();
 
 	//
@@ -289,7 +301,7 @@ public:
 	//
 	// Processing entry point
 	//
-	void process_event(sinsp_evt* evt, analyzer_emitter::flush_flags flushflags);
+	void process_event(sinsp_evt* evt, libsinsp::event_return rc);
 
 	void add_syscall_time(sinsp_counters* metrics,
 		sinsp_evt::category* cat,
@@ -346,25 +358,8 @@ public:
 	}
 
 #ifndef _WIN32
-	inline void check_metric_limits()
-	{
-		check_limits(m_metric_limits,
-			     m_configuration->get_metrics_filter(),
-			     m_configuration->get_excess_metrics_log(),
-			     m_configuration->get_metrics_cache());
-	}
-
-	inline void check_label_limits()
-	{
-		check_limits(m_label_limits,
-			     m_configuration->get_labels_filter(),
-			     m_configuration->get_excess_labels_log(),
-			     m_configuration->get_labels_cache());
-	}
-
 	inline void enable_jmx(bool print_json, unsigned sampling)
 	{
-		check_metric_limits();
 		m_jmx_proxy = make_unique<jmx_proxy>();
 		m_jmx_proxy->m_print_json = print_json;
 		m_jmx_sampling = sampling;
@@ -427,7 +422,6 @@ public:
 
 		if(!m_app_checks.empty())
 		{
-			check_metric_limits();
 			if (!m_app_proxy)
 			{
 				m_app_proxy = make_unique<app_checks_proxy>();
@@ -591,10 +585,6 @@ public:
 	void rearm_tracer_logging();
 	inline uint64_t flush_tracer_timeout();
 
-#ifndef CYGWING_AGENT
-	void init_k8s_limits();
-#endif
-
 	void set_max_n_external_clients(uint32_t val) { m_max_n_external_clients = val; }
 	void set_top_connections_in_sample(uint32_t val) { m_top_connections_in_sample = val; }
 	void set_top_processes_in_sample(uint32_t val) { m_top_processes_in_sample = val; }
@@ -650,6 +640,12 @@ public:
     	void secure_audit_filter_and_append_k8s_audit(const nlohmann::json& j,
 						      std::vector<std::string>& k8s_active_filters,
 						      std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters);
+
+
+	void enable_secure_profiling();
+	bool secure_profiling_enabled() const {
+		return m_falco_baseliner != nullptr;
+	}
 
 	/**
 	 * Dump the infrastructure state to a file in the log directory.
@@ -854,9 +850,9 @@ public:
 	/**
 	 * Accessor for metrics
 	 */
-	const draiosproto::metrics* metrics()
+	const draiosproto::metrics* metrics() const
 	{
-		return m_metrics;
+		return m_metrics.get();
 	}
 
 	/**
@@ -966,6 +962,9 @@ VISIBILITY_PRIVATE
 	void reset_mesos(const std::string& errmsg = "");
 	void emit_docker_events();
 	void emit_containerd_events();
+
+	void secure_profiling_data_ready(uint64_t ts,
+					 const secure::profiling::fingerprint* secure_profiling_fingerprints) override;
 	void emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter &f_trc);
 
 	// set m_my_cpuload to the main thread's cpu usage in percent (100 == one whole cpu)
@@ -977,7 +976,8 @@ VISIBILITY_PRIVATE
 					     const std::vector<std::string>& emitted_containers);
 	void clean_containers(const analyzer_emitter::progtable_by_container_t&);
 
-	void check_dump_infrastructure_state(const draiosproto::orchestrator_state_t& state,
+	template<class S>
+	void check_dump_infrastructure_state(const S& state,
 					     const std::string& descriptor,
 					     bool& should_dump);
 
@@ -1006,28 +1006,6 @@ VISIBILITY_PRIVATE
 				std::vector<app_process> &app_checks_processes,
 				const char *location);
 	std::vector<long> get_n_tracepoint_diff();
-
-	template<typename SMART_PTR_T, typename vect_t, typename... Args>
-	void check_limits(SMART_PTR_T&& ptr, const vect_t&& vec, bool log_enabled, Args&&... args)
-	{
-		using limits_sub_class_t = typename std::remove_reference<SMART_PTR_T>::type::element_type;
-		static bool checked = false;
-		if(!checked)
-		{
-			ASSERT(m_configuration);
-			ASSERT(!ptr);
-			if(!ptr && vec.size() && !metric_limits::first_includes_all(vec))
-			{
-				ptr.reset(new limits_sub_class_t(vec, std::forward<Args>(args)...));
-			}
-			if(log_enabled)
-			{
-				user_configured_limits::enable_logging<limits_sub_class_t>();
-			}
-			ASSERT(ptr || !vec.size() || limits_sub_class_t::first_includes_all(vec));
-			checked = true;
-		}
-	}
 
 	/**
 	 * Handle tasks to be done at the end of flush (most notably sending the
@@ -1085,7 +1063,7 @@ VISIBILITY_PRIVATE
 	//
 	// This is the protobuf class that we use to pack things
 	//
-	draiosproto::metrics* m_metrics;
+	std::unique_ptr<draiosproto::metrics> m_metrics;
 
 	//
 	// Checking Docker swarm state every 10 seconds
@@ -1185,11 +1163,10 @@ VISIBILITY_PRIVATE
 	uint64_t m_prev_flush_wall_time;
 
 	//
-	// Falco stuff
+	// Baseliner
 	//
 	sinsp_baseliner* m_falco_baseliner = NULL;
 	uint64_t m_last_falco_dump_ts = 0;
-	uint64_t m_last_buffer_drops = 0;
 
 #ifndef CYGWING_AGENT
 	infrastructure_state* m_infrastructure_state = NULL;
@@ -1291,8 +1268,8 @@ VISIBILITY_PRIVATE
 	self_cputime_analyzer m_cputime_analyzer;
 #endif
 
-	metric_limits::sptr_t m_metric_limits;
-	std::shared_ptr<label_limits> m_label_limits;
+	const metric_limits::sptr_t m_metric_limits;
+	const label_limits::sptr_t m_label_limits;
 
 	// The user event queue is a glogger construct that we pass around, and once it is created, glogger
 	// will catch certain classes of messages and process them. This is not an efficient way to leak the abstraction,
@@ -1394,6 +1371,7 @@ VISIBILITY_PRIVATE
 
 	audit_tap_handler& m_audit_tap_handler;
 	secure_audit_handler& m_secure_audit_handler;
+	secure_profiling_handler& m_secure_profiling_handler;
 
 	process_manager m_process_manager;
 

@@ -1,6 +1,7 @@
+from builtins import object
 import netifaces
 
-class Network:
+class Network(object):
 
     def __init__(self):
         self.addresses = set()

@@ -183,9 +183,11 @@ public:
 #endif
 
 	// Returns the pointer to the new connection
-	sinsp_connection_manager()
+	sinsp_connection_manager(sinsp* inspector, sinsp_analyzer& analyzer)
+		: m_inspector(inspector),
+		  m_analyzer(analyzer),
+		  m_n_drops(0)
 	{
-		m_n_drops = 0;
 	}
 	sinsp_connection* add_connection(const TKey& key, std::string* comm, int64_t pid, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp, uint8_t flags, int32_t error_code);
 	sinsp_connection* remove_connection(const TKey &key);
@@ -213,7 +215,8 @@ public:
 	}
 
 	std::unordered_map<TKey, sinsp_connection, THash, TCompare> m_connections;
-	sinsp * m_inspector;
+	sinsp* m_inspector;
+	sinsp_analyzer& m_analyzer;
 	uint64_t m_last_connection_removal_ts;
 	uint32_t m_n_drops;
 	std::set<double> m_percentiles;
@@ -263,10 +266,10 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 		l4proto = tuple.m_fields.m_l4proto;
 	}
 
-	conn.m_record_state_history = m_inspector->m_analyzer->audit_tap_enabled();
+	conn.m_record_state_history = m_analyzer.audit_tap_enabled();
 
 	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	if(conn.m_record_state_history || m_inspector->m_analyzer->secure_audit_enabled())
+	if(conn.m_record_state_history || m_analyzer.secure_audit_enabled())
 	{
 		proc = m_inspector->get_thread_ref(pid,
 						   false /*don't query the os if not found*/,
@@ -493,9 +496,9 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_expired_connections(u
 class SINSP_PUBLIC sinsp_ipv4_connection_manager : public sinsp_connection_manager<ipv4tuple, ip4t_hash, ip4t_cmp>
 {
 public:
-	sinsp_ipv4_connection_manager(sinsp* inspector)
+	sinsp_ipv4_connection_manager(sinsp* inspector, sinsp_analyzer& analyzer)
+		: sinsp_connection_manager<ipv4tuple, ip4t_hash, ip4t_cmp>(inspector, analyzer)
 	{
-		m_inspector = inspector;
 		m_last_connection_removal_ts = 0;
 	}
 };
@@ -503,9 +506,9 @@ public:
 class SINSP_PUBLIC sinsp_unix_connection_manager : public sinsp_connection_manager<unix_tuple, unixt_hash, unixt_cmp>
 {
 public:
-	sinsp_unix_connection_manager(sinsp* inspector)
+	sinsp_unix_connection_manager(sinsp* inspector, sinsp_analyzer& analyzer)
+		: sinsp_connection_manager<unix_tuple, unixt_hash, unixt_cmp>(inspector, analyzer)
 	{
-		m_inspector = inspector;
 		m_last_connection_removal_ts = 0;
 	}
 };
@@ -513,9 +516,9 @@ public:
 class SINSP_PUBLIC sinsp_pipe_connection_manager : public sinsp_connection_manager<uint64_t, std::hash<uint64_t>, std::equal_to<uint64_t>>
 {
 public:
-	sinsp_pipe_connection_manager(sinsp* inspector)
+	sinsp_pipe_connection_manager(sinsp* inspector, sinsp_analyzer& analyzer)
+		: sinsp_connection_manager<uint64_t, std::hash<uint64_t>, std::equal_to<uint64_t>>(inspector, analyzer)
 	{
-		m_inspector = inspector;
 		m_last_connection_removal_ts = 0;
 	}
 }; 

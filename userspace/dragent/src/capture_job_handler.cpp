@@ -9,6 +9,7 @@
 #include "sinsp_worker.h"
 #include "configuration_manager.h"
 #include "dragent_message_queues.h"
+#include "protocol.h"
 
 using namespace std;
 
@@ -619,7 +620,11 @@ void capture_job_handler::init(const sinsp *inspector)
 		m_memdumper = make_unique<sinsp_memory_dumper>((sinsp *) inspector);
 		m_memdumper->init(m_configuration->m_memdump_size,
 				  m_configuration->m_memdump_size,
-				  m_configuration->m_memdump_max_init_attempts);
+				  m_configuration->m_memdump_max_init_attempts,
+				  m_configuration->m_memdump_autodisable,
+				  m_configuration->m_memdump_capture_headers_percentage_threshold,
+				  m_configuration->m_memdump_min_time_between_switch_states_ms,
+				  m_configuration->m_memdump_re_enable_interval_minutes);
 	}
 
 	//
@@ -1020,14 +1025,27 @@ void capture_job_handler::prepare_response(const string& token, draiosproto::dum
 
 shared_ptr<serialized_buffer> capture_job_handler::dump_response_to_queue_item(const draiosproto::dump_response& response)
 {
+	protocol_compression_method compression =
+	    configuration_manager::instance().get_config<bool>("compression.enabled")->get_value() ?
+	            protocol_compression_method::GZIP :
+	            protocol_compression_method::NONE;
+	std::shared_ptr<protobuf_compressor> compressor;
+	if (compression == protocol_compression_method::NONE)
+	{
+		compressor = null_protobuf_compressor::get();
+	}
+	else
+	{
+		compressor = gzip_protobuf_compressor::get(-1);
+	}
+
 	return dragent_protocol::message_to_buffer(
 		sinsp_utils::get_current_time_ns(),
 		draiosproto::message_type::DUMP_RESPONSE,
 		response,
 		// this is a bit ugly. Ultimately this should be part of the protocol
 		// handler, but moving that functionality is a bear
-		configuration_manager::instance().get_config<bool>("compression.enabled")->get_value(),
-		m_configuration->m_sysdig_capture_compression_level);
+	    compressor);
 }
 
 bool capture_job_handler::queue_item(std::shared_ptr<serialized_buffer> &item, protocol_queue::item_priority priority)

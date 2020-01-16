@@ -14,6 +14,7 @@
 #include "security_policy_loader.h"
 #include "security_policy_v2_loader.h"
 #include "subprocesses_logger.h"
+#include "thread_safe_container/blocking_queue.h"
 #include "token_bucket.h"
 #include <atomic>
 #include <memory>
@@ -79,6 +80,16 @@ public:
 		return m_inspector.get();
 	}
 
+	sinsp_analyzer* get_analyzer() const
+	{
+		return m_analyzer;
+	}
+
+	sinsp_container_manager &get_container_manager()
+	{
+		return m_inspector->m_container_manager;
+ 	}
+
 	void set_statsite_pipes(std::shared_ptr<pipe_manager> pipes)
 	{
 		m_statsite_pipes = pipes;
@@ -121,6 +132,19 @@ public:
 	void receive_hosts_metadata(const draiosproto::orchestrator_events &evts) override;
 #endif
 
+	/**
+	 * Pause capturing live system call events.  In this state the agent
+	 * has the inspector open, but is not interested in receiving events
+	 * from it.
+	 */
+	void pause_capture();
+
+	/**
+	 * Resume capturing live system call events.  Clients call this after
+	 * calling pause_capture() to resume event processing.
+	 */
+	void unpause_capture();
+
 private:
 	/**
 	 * Callers must hold m_security_mgr_creation_mutex.
@@ -158,9 +182,10 @@ private:
 	bool m_security_initialized;
 	security_mgr *m_security_mgr;
 	compliance_mgr *m_compliance_mgr;
+	std::atomic_flag m_hosts_metadata_uptodate;
 #endif
 	capture_job_handler *m_capture_job_handler;
-	blocking_queue<std::shared_ptr<capture_job_handler::dump_job_request>> m_dump_job_requests;
+	thread_safe_container::blocking_queue<std::shared_ptr<capture_job_handler::dump_job_request>> m_dump_job_requests;
 	std::atomic<uint64_t> m_last_loop_ns;
 	std::atomic<pthread_t> m_pthread_id;
 	std::shared_ptr<pipe_manager> m_statsite_pipes;
@@ -183,6 +208,8 @@ private:
 	std::unique_ptr<draiosproto::policies> m_security_policies_backup;
 	std::unique_ptr<draiosproto::policies_v2> m_security_policies_v2_backup;
 	std::unique_ptr<compliance_calendar_backup> m_security_compliance_calendar_backup;
+
+	std::atomic<bool> m_capture_paused;
 
 	friend class dragent_app;
 	friend class memdump_test;

@@ -28,6 +28,8 @@
 #
 # $Id$
 
+from past.builtins import chr
+from builtins import object
 __author__ = 'Allan Saddi <allan@saddi.com>'
 __version__ = '$Revision$'
 
@@ -144,13 +146,13 @@ def encode_pair(name, value):
     if nameLength < 128:
         s = chr(nameLength)
     else:
-        s = struct.pack('!L', nameLength | 0x80000000L)
+        s = struct.pack('!L', nameLength | 0x80000000)
 
     valueLength = len(value)
     if valueLength < 128:
         s += chr(valueLength)
     else:
-        s += struct.pack('!L', valueLength | 0x80000000L)
+        s += struct.pack('!L', valueLength | 0x80000000)
 
     return s + name + value
 
@@ -180,7 +182,7 @@ class Record(object):
         while length:
             try:
                 data = sock.recv(length)
-            except socket.error, e:
+            except socket.error as e:
                 if e[0] == errno.EAGAIN:
                     select.select([sock], [], [])
                     continue
@@ -238,7 +240,7 @@ class Record(object):
         while length:
             try:
                 sent = sock.send(data)
-            except socket.error, e:
+            except socket.error as e:
                 if e[0] == errno.EAGAIN:
                     select.select([], [sock], [])
                     continue
@@ -397,7 +399,7 @@ class FCGIApp(object):
         if self._connect is not None:
             # The simple case. Create a socket and connect to the
             # application.
-            if isinstance(self._connect, types.StringTypes):
+            if isinstance(self._connect, (str,)):
                 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 sock.connect(self._connect)
             elif hasattr(socket, 'create_connection'):
@@ -437,7 +439,7 @@ class FCGIApp(object):
         #print params
         rec = Record(FCGI_PARAMS, requestId)
         data = []
-        for name, value in params.items():
+        for name, value in list(params.items()):
             data.append(encode_pair(name, value))
         data = ''.join(data)
         rec.contentData = data
@@ -451,7 +453,7 @@ class FCGIApp(object):
 
     def _defaultFilterEnviron(self, environ):
         result = {}
-        for n in environ.keys():
+        for n in list(environ.keys()):
             for p in self._environPrefixes:
                 if n.startswith(p):
                     result[n] = environ[n]
@@ -464,7 +466,7 @@ class FCGIApp(object):
 
     def _lightFilterEnviron(self, environ):
         result = {}
-        for n in environ.keys():
+        for n in list(environ.keys()):
             if n.upper() == n:
                 result[n] = environ[n]
         return result

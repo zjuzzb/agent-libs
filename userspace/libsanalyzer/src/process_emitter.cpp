@@ -14,6 +14,14 @@ type_config<unsigned int>::ptr c_max_argument_length =
 	.max(64 * 1024)
 	.build();
 
+type_config<bool>::ptr c_filter_verbose =
+	type_config_builder<bool>(
+			false,
+			"Set to true to get detailed information about filter matches.",
+			"process_emitter",
+			"filter_verbose")
+	.build();
+
 }
 
 process_emitter::process_emitter(const process_manager& the_process_manager,
@@ -199,12 +207,15 @@ void process_emitter::filter_process(sinsp_threadinfo* tinfo,
 	}
 
 	bool generic_match;
+	std::string reason;
+
 	if (m_process_manager.get_flush_filter().matches(tinfo,
 							 tinfo,
 							 container_info,
-							 NULL,
+							 nullptr, //infra state
 							 &generic_match,
-							 NULL))
+							 nullptr, // match_rule
+							 c_filter_verbose->get_value() ? &reason : nullptr)) // reason
 	{
 		if (generic_match)
 		{
@@ -586,13 +597,9 @@ void process_emitter::emit_process(sinsp_threadinfo& tinfo,
 		// Error-related metrics
 		//
 		procinfo.m_syscall_errors.to_protobuf(proc->mutable_syscall_errors(), m_sampling_ratio);
-
-		//
-		// Protocol tables
-		//
-		proc->set_start_count(procinfo.m_start_count);
-		proc->set_count_processes(procinfo.m_proc_count);
 	}
+	proc->set_start_count(procinfo.m_start_count);
+	proc->set_count_processes(procinfo.m_proc_count);
 
 	proc->mutable_resource_counters()->set_syscall_count(tot.m_count);
 }

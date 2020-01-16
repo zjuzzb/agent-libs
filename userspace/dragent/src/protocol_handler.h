@@ -3,10 +3,10 @@
 #include "uncompressed_sample_handler.h"
 #include "audit_tap_handler.h"
 #include "secure_audit_handler.h"
+#include "secure_profiling_handler.h"
 #include "security_result_handler.h"
 #include "log_report_handler.h"
 #include "dragent_message_queues.h"
-
 #include "protocol.h"
 #include "type_config.h"
 
@@ -17,6 +17,7 @@
 class protocol_handler : public uncompressed_sample_handler,
                          public audit_tap_handler,
                          public secure_audit_handler,
+                         public secure_profiling_handler,
                          public security_result_handler,
                          public log_report_handler
 {
@@ -30,8 +31,11 @@ public: // constructor/destructor
 	virtual ~protocol_handler();
 
 public: // functions from uncompressed_sample_handler
-	std::shared_ptr<serialized_buffer> handle_uncompressed_sample(uint64_t ts_ns,
-	                std::shared_ptr<draiosproto::metrics>& metrics) override;
+	std::shared_ptr<serialized_buffer> handle_uncompressed_sample(
+	                uint64_t ts_ns,
+	                std::shared_ptr<draiosproto::metrics>& metrics,
+	                uint32_t flush_interval,
+	                std::shared_ptr<protobuf_compressor>& compressor) override;
 
 	uint64_t get_last_loop_ns() const;
 
@@ -56,11 +60,16 @@ public: // functions from audit_tap_handler
 public: // functions from log_report_handler
 	std::shared_ptr<serialized_buffer> handle_log_report(uint64_t ts_ns,
 	               const draiosproto::dirty_shutdown_report& report) override;
+
+public: // functions from profiling
+	void secure_profiling_data_ready(uint64_t ts_ns, const secure::profiling::fingerprint *fingerprint) override;
+
 public: // configs
 	static type_config<bool> c_print_protobuf;
 	static type_config<bool> c_compression_enabled;
 	static type_config<bool> c_audit_tap_debug_only;
 	static type_config<bool> c_secure_audit_debug_enabled;
+	static type_config<bool> c_secure_profiling_debug_enabled;
 
 private:
 	protocol_queue& m_queue;

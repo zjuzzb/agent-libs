@@ -36,8 +36,8 @@ namespace draiosproto
 class internal_metrics : public common_logger::log_observer
 {
 public:
-	typedef std::shared_ptr<internal_metrics> sptr_t;
-	typedef std::map<std::string,uint64_t> subprocs_t;
+	using sptr_t = std::shared_ptr<internal_metrics>;
+	using subprocs_t = std::map<std::string,uint64_t>;
 
 	internal_metrics();
 

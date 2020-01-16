@@ -10,6 +10,7 @@
 #include "metric_serializer.h"
 #include "dragent_message_queues.h"
 #include "watchdog_runnable.h"
+#include "protobuf_compression.h"
 
 #include <condition_variable>
 #include <fstream>
@@ -29,10 +30,10 @@ namespace dragent
  * A concrete metric_serializer for asynchronously writing metrics in
  * protobuf format to the back-end.
  */
-class protobuf_metric_serializer : public metric_serializer,
-                                   public dragent::watchdog_runnable
+class protobuf_metric_serializer : public metric_serializer, public dragent::watchdog_runnable
 {
 	const uint64_t DEFAULT_MQUEUE_READ_TIMEOUT_MS = 300;
+
 public:
 	/**
 	 * Initialize this protobuf_metric_serializer.
@@ -40,14 +41,21 @@ public:
 	 * NOTE: The constructor starts the serialization thread. The serializer
 	 * is active and ready to serialize upon construction.
 	 *
-	 * @param[in] stats_source     The source from which to fetch stats.
-	 * @param[in] root_dir The root dir base of the application 
+	 * @param[in] stats_source    The source from which to fetch stats.
+	 * @param[in] root_dir        The root dir base of the application
+	 * @param[in] sample_handler  The serialization handler
+	 * @param[in] input_queue     The queue for incoming unserialized data
+	 * @param[in] output_queue    The queue for outgoing serialized data
+	 * @param[in] compressor      The compressor for the serialized protobufs
+	 * @param[in] source          Config source for the compression method
 	 */
 	protobuf_metric_serializer(std::shared_ptr<const capture_stats_source> stats_source,
 	                           const std::string& root_dir,
 	                           uncompressed_sample_handler& sample_handler,
 	                           flush_queue* input_queue,
-	                           protocol_queue* output_queue);
+	                           protocol_queue* output_queue,
+	                           std::shared_ptr<protobuf_compressor>& compressor,
+	                           compression_method_source* source);
 
 	~protobuf_metric_serializer() override;
 
@@ -55,7 +63,7 @@ public:
 	 * Concrete realization of the serialize() API that perform an async,
 	 * protobuf-based serialization.
 	 */
-	void serialize(data&& data) override;
+	void serialize(flush_data&& data) override;
 
 	void drain() const override;
 
@@ -80,11 +88,19 @@ public:
 	 *                      delimiter.
 	 * @param[in] timestamp The timestamp base for the filename.
 	 */
-	static std::string generate_dam_filename(const std::string& directory,
-	                                         uint64_t timestamp);
+	static std::string generate_dam_filename(const std::string& directory, uint64_t timestamp);
+
+	bool get_emit_metrics_to_file() const override;
+	std::string get_metrics_directory() const override;
+	void set_metrics_directory(const std::string&) override;
+	bool set_compression(std::shared_ptr<protobuf_compressor> compressor) override;
+	void set_compression_source(compression_method_source* source) override;
 
 #ifdef SYSDIG_TEST
-	void test_run() { do_run(); }
+	void test_run()
+	{
+		do_run();
+	}
 #endif
 private:
 	/**
@@ -103,17 +119,17 @@ private:
 	/**
 	 * This is the meat of the serialization work.
 	 */
-	void do_serialization(data& data);
+	void do_serialization(flush_data& data);
 
 	/**
 	 * Writes the dam file during serialization.
 	 */
-	void emit_metrics_to_file(const data& data);
+	void emit_metrics_to_file(const flush_data& data);
 
 	/**
 	 * Writes the metrics to individual JSON files during serialization.
 	 */
-	void emit_metrics_to_json_file(const data& data) const;
+	void emit_metrics_to_json_file(const flush_data& data) const;
 
 	std::atomic<bool> m_stop_thread;
 
@@ -122,7 +138,10 @@ private:
 
 	metrics_file_emitter m_file_emitter;
 
-	std::thread m_thread; // Must be last
+	std::shared_ptr<protobuf_compressor> m_compressor;
+	compression_method_source* m_compression_source;
+
+	std::thread m_thread;  // Must be last
 };
 
-} // end namespace dragent
+}  // end namespace dragent

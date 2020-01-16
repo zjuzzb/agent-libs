@@ -3,7 +3,7 @@
 #include "configuration_manager.h"
 
 app_check_emitter::app_check_emitter(app_checks_proxy::metric_map_t& app_metrics,
-				     const uint16_t app_metrics_limit,
+				     const unsigned int app_metrics_limit,
 				     const prometheus_conf& prom_conf,
 				     std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& app_checks_by_container,
 				     std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& prometheus_by_container,
@@ -70,7 +70,7 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 			{
 				static bool logged_metric = false;
 				unsigned metric_count;
-				if (configuration_manager::instance().get_config<bool>("10s_flush_enable")) {
+				if (configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value()) {
 				    metric_count = app_data.second->to_protobuf(proc.mutable_protos()->mutable_prom_info(),
 										m_prom_metrics_remaining,
 										m_prom_conf.max_metrics());

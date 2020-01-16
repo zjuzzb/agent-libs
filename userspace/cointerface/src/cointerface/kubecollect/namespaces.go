@@ -71,16 +71,29 @@ func AddNSParents(parents *[]*draiosproto.CongroupUid, ns string) {
 		return
 	}
 
-	for _, obj := range namespaceInf.GetStore().List() {
-		nsObj := obj.(*v1.Namespace)
-		//log.Debugf("AddNSParents: %v", nsObj.GetName())
-		if ns == nsObj.GetName() {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_namespace"),
-				Id:proto.String(string(nsObj.GetUID()))})
-			return
+	nsUid := getNamespaceUid(ns);
+
+	if nsUid != "" {
+		*parents = append(*parents, &draiosproto.CongroupUid{
+			Kind:proto.String("k8s_namespace"),
+			Id:proto.String(string(nsUid))})
+	}
+}
+
+
+func getNamespaceUid(ns string) string {
+	ret := ""
+	if resourceReady("namespaces") {
+		for _, obj := range namespaceInf.GetStore().List() {
+			nsObj := obj.(*v1.Namespace)
+			if ns == nsObj.GetName() {
+				ret = string(nsObj.GetUID())
+				break
+			}
 		}
 	}
+
+	return ret
 }
 
 func startNamespacesSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {

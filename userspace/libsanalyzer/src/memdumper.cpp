@@ -26,18 +26,32 @@ sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector)
 	m_f = NULL;
 	m_cf = NULL;
 	m_disabled = false;
+	m_disabled_by_autodisable = false;
+	m_last_autodisable_ns = 0;
 	m_switches_to_go = 0;
 	m_delayed_switch_states_needed = false;
 	m_delayed_switch_states_ready = false;
+	m_processed_events_between_switch_states = 0;
+	m_autodisable_threshold_reached_count = 0;
 }
 
 void sinsp_memory_dumper::init(uint64_t bufsize,
 			       uint64_t max_disk_size,
-			       uint64_t max_init_attempts)
+			       uint64_t max_init_attempts,
+			       bool autodisable,
+			       uint64_t capture_headers_percentage_threshold,
+			       uint64_t time_between_switch_states_ms,
+			       uint64_t re_enable_interval_minutes)
 {
 	glogf(sinsp_logger::SEV_INFO, "memdumper: initializing memdumper, bufsize=%" PRIu64 ", max_disk_size=%" PRIu64,
 	      bufsize,
 	      max_disk_size);
+
+	m_autodisable = autodisable;
+	m_capture_headers_percentage_threshold = capture_headers_percentage_threshold;
+	m_min_time_between_switch_states_ns = (uint64_t)time_between_switch_states_ms * (uint64_t)1000000;
+	m_re_enable_interval_ns = re_enable_interval_minutes * 60 * 1000000000;
+	m_dump_buffer_headers_size = 0;
 
 	// Try to allocate a shared memory region of this size
 	// immediately. If we can't, log an error and disable
@@ -415,8 +429,49 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filena
 	return job;
 }
 
+void sinsp_memory_dumper::check_autodisable(uint64_t evt_ts_ns, uint64_t sys_ts_ns)
+{
+	if(m_autodisable)
+	{
+		if((sys_ts_ns - m_last_switch_state_ns) < (m_min_time_between_switch_states_ns))
+		{
+			glogf(sinsp_logger::SEV_WARNING,
+			      "sinsp_memory_dumper: min_time_between_switch_states_ms - current: %" PRIu64 " expected > %" PRIu64, (sys_ts_ns - m_last_switch_state_ns) / 1000000, m_min_time_between_switch_states_ns / 1000000);
+			m_autodisable_threshold_reached_count++;
+		}
+		else if((((m_dump_buffer_headers_size * 100) / (*m_active_state)->m_bufsize)) >
+			   m_capture_headers_percentage_threshold)
+		{
+			glogf(sinsp_logger::SEV_WARNING,
+			      "sinsp_memory_dumper: m_capture_headers_percentage_threshold - current: %" PRIu64 " expected < %" PRIu64, (((m_dump_buffer_headers_size * 100) / (*m_active_state)->m_bufsize)), m_capture_headers_percentage_threshold);
+			m_autodisable_threshold_reached_count++;
+		}
+		else
+		{
+			m_autodisable_threshold_reached_count = 0;
+		}
+
+		if(m_autodisable_threshold_reached_count >= 10)
+		{
+			m_disabled = true;
+			m_disabled_by_autodisable = true;
+			// since the 'process_event' uses event timestamp to re-enable the memdumper
+			// we want to avoid overflows due to evt_ts_ns < sys_ts_ns
+			m_last_autodisable_ns = evt_ts_ns;
+			m_autodisable_threshold_reached_count = 0;
+			glogf(sinsp_logger::SEV_ERROR,
+			      "sinsp_memory_dumper: disabling memdumper - too frequent switch_states detected");
+		}
+	}
+}
+
 void sinsp_memory_dumper::switch_states(uint64_t ts)
 {
+	uint64_t sys_ts_ns = sinsp_utils::get_current_time_ns();
+	check_autodisable(ts, sys_ts_ns);
+
+	m_last_switch_state_ns = sys_ts_ns;
+
 	Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
 
 	glogf(sinsp_logger::SEV_INFO, "memdumper: switching memory buffer states");

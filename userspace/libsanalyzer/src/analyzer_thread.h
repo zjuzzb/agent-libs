@@ -137,7 +137,7 @@ public:
 	thread_analyzer_info(thread_analyzer_info&&) = delete;
 	thread_analyzer_info& operator=(const thread_analyzer_info&) = delete;
 
-	void init(sinsp *inspector, sinsp_threadinfo* tinfo);
+	void init(sinsp_analyzer* analyzer, sinsp *inspector, sinsp_threadinfo* tinfo);
 	const sinsp_counters* get_metrics();
 	void allocate_procinfo_if_not_present();
 	void propagate_flag(flags flags, thread_analyzer_info* other);
@@ -304,7 +304,7 @@ class audit_tap;
 class analyzer_threadtable_listener : public sinsp_threadtable_listener
 {
 public:
-	analyzer_threadtable_listener(sinsp* inspector, sinsp_analyzer* analyzer);
+	analyzer_threadtable_listener(sinsp* inspector, sinsp_analyzer& analyzer);
 	void on_thread_created(sinsp_threadinfo* tinfo);
 	void on_thread_destroyed(sinsp_threadinfo* tinfo);
 
@@ -312,7 +312,7 @@ public:
 
 private:
 	sinsp* m_inspector;
-	sinsp_analyzer* m_analyzer;
+	sinsp_analyzer& m_analyzer;
 	std::shared_ptr<audit_tap> m_tap;
 };
 

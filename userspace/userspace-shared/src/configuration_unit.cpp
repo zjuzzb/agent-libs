@@ -76,7 +76,7 @@ std::string configuration_unit::to_json() const
 	Json::Value root;
 
 	root[m_keystring]["description"] = m_description;
-	root[m_keystring]["value"] = value_to_string();
+	root[m_keystring]["value"] = value_to_yaml();
 
 	return root.toStyledString();
 }

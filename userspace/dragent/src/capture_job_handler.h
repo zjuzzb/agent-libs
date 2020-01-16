@@ -26,6 +26,7 @@
 #include "protocol.h"
 #include "watchdog_runnable.h"
 #include "dragent_message_queues.h"
+#include "thread_safe_container/blocking_queue.h"
 
 class capture_job;
 class capture_job_handler : public dragent::watchdog_runnable,
@@ -227,7 +228,7 @@ private:
 	protocol_queue* m_queue;
 	std::atomic<bool> *m_enable_autodrop;
 	uint64_t m_max_chunk_size;
-	blocking_queue<std::shared_ptr<dump_job_request>> m_dump_job_requests;
+	thread_safe_container::blocking_queue<std::shared_ptr<dump_job_request>> m_dump_job_requests;
 
 	// Mutex that protects access to the list of jobs
 	Poco::RWLock m_jobs_lock;

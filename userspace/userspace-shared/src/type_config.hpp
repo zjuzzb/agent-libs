@@ -133,6 +133,12 @@ std::string type_config<data_type>::value_to_string() const
 }
 
 template<typename data_type>
+std::string type_config<data_type>::value_to_yaml() const
+{
+	return get_value_string(m_data);
+}
+
+template<typename data_type>
 bool type_config<data_type>::string_to_value(const std::string& value)
 {
 	return configuration_unit::get_value(value, m_data);

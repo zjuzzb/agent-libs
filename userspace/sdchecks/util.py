@@ -1,4 +1,16 @@
 # stdlib
+from __future__ import unicode_literals
+from future import standard_library
+standard_library.install_aliases()
+from future.utils import PY3
+if PY3:
+    from builtins import str
+    import urllib.request as urllibmod
+else:
+    from past.builtins import str
+    import urllib2 as urllibmod
+from past.builtins import range
+from builtins import object
 from hashlib import md5
 import logging
 import math
@@ -10,7 +22,6 @@ import socket
 import sys
 import time
 import types
-import urllib2
 import uuid
 
 # 3p
@@ -40,7 +51,7 @@ COLON_NON_WIN_PATH = re.compile(':(?!\\\\)')
 
 log = logging.getLogger(__name__)
 
-NumericTypes = (float, int, long)
+NumericTypes = (float, int, int)
 
 
 def plural(count):
@@ -202,7 +213,7 @@ def get_hostname(config=None):
     if hostname is None:
         try:
             socket_hostname = socket.gethostname()
-        except socket.error, e:
+        except socket.error as e:
             socket_hostname = None
         if socket_hostname:
             hostname = socket_hostname
@@ -239,7 +250,7 @@ class GCE(object):
             pass
 
         try:
-            opener = urllib2.build_opener()
+            opener = urllibmod.build_opener()
             opener.addheaders = [('X-Google-Metadata-Request','True')]
             GCE.metadata = json.loads(opener.open(GCE.URL).read().strip())
 
@@ -265,7 +276,7 @@ class GCE(object):
             host_metadata = GCE._get_metadata(agentConfig)
             tags = []
 
-            for key, value in host_metadata['instance'].get('attributes', {}).iteritems():
+            for key, value in host_metadata['instance'].get('attributes', {}).items():
                 if key in GCE.EXCLUDED_ATTRIBUTES:
                     continue
                 tags.append("%s:%s" % (key, value))
@@ -331,9 +342,9 @@ class EC2(object):
             pass
 
         try:
-            iam_role = urllib2.urlopen(EC2.METADATA_URL_BASE + "/iam/security-credentials/").read().strip()
-            iam_params = json.loads(urllib2.urlopen(EC2.METADATA_URL_BASE + "/iam/security-credentials/" + unicode(iam_role)).read().strip())
-            instance_identity = json.loads(urllib2.urlopen(EC2.INSTANCE_IDENTITY_URL).read().strip())
+            iam_role = urllibmod.urlopen(EC2.METADATA_URL_BASE + "/iam/security-credentials/").read().strip()
+            iam_params = json.loads(urllibmod.urlopen(EC2.METADATA_URL_BASE + "/iam/security-credentials/" + str(iam_role)).read().strip())
+            instance_identity = json.loads(urllibmod.urlopen(EC2.INSTANCE_IDENTITY_URL).read().strip())
             region = instance_identity['region']
 
             import boto.ec2
@@ -385,8 +396,8 @@ class EC2(object):
 
         for k in ('instance-id', 'hostname', 'local-hostname', 'public-hostname', 'ami-id', 'local-ipv4', 'public-keys/', 'public-ipv4', 'reservation-id', 'security-groups'):
             try:
-                v = urllib2.urlopen(EC2.METADATA_URL_BASE + "/" + unicode(k)).read().strip()
-                assert type(v) in (types.StringType, types.UnicodeType) and len(v) > 0, "%s is not a string" % v
+                v = urllibmod.urlopen(EC2.METADATA_URL_BASE + "/" + str(k)).read().strip()
+                assert type(v) in (bytes, str) and len(v) > 0, "%s is not a string" % v
                 EC2.metadata[k.rstrip('/')] = v
             except Exception:
                 pass
@@ -514,7 +525,7 @@ def chunks(iterable, chunk_size):
         count = 0
         try:
             for _ in range(chunk_size):
-                chunk[count] = iterable.next()
+                chunk[count] = next(iterable)
                 count += 1
             yield chunk[:count]
         except StopIteration:

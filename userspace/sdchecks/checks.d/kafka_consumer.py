@@ -8,10 +8,12 @@ import random
 from collections import defaultdict
 from time import time, sleep
 import operator
+import re
 
-from kafka import errors as kafka_errors
+from kafka import errors as kafka_errors, KafkaConsumer
 from kafka.client import KafkaClient
 from kafka.structs import TopicPartition
+from kafka.protocol.admin import ListGroupsRequest
 from kafka.protocol.commit import GroupCoordinatorRequest, OffsetFetchRequest
 from kafka.protocol.offset import OffsetRequest, OffsetResetStrategy
 from kazoo.client import KazooClient
@@ -101,11 +103,26 @@ class KafkaCheck(AgentCheck):
         cli = self._get_kafka_client(instance)
         cli._maybe_refresh_metadata()
 
+        consumer_groups_regex = instance.get('consumer_groups_regex')
+        if consumer_groups_regex:
+            all_consumer_groups = self._get_all_consumer_groups(cli, instance)
+            filtered_consumer_groups = self._filter_consumer_groups(all_consumer_groups, consumer_groups_regex)
+            if consumer_groups:
+                # if consumer-group is specified by param consumer_groups
+                # is also matched by regex, append topics to it
+                for consumer in filtered_consumer_groups.keys():
+                    if consumer_groups.get(consumer):
+                        consumer_groups[consumer].update(filtered_consumer_groups[consumer])
+                    else:
+                        consumer_groups[consumer] = filtered_consumer_groups[consumer]
+            else:
+                consumer_groups = filtered_consumer_groups
+
         if get_kafka_consumer_offsets:
             # For now, consumer groups are mandatory if not using ZK
-            if not zk_hosts_ports and not consumer_groups:
-                raise BadKafkaConsumerConfiguration('Invalid configuration - if you are not collecting '
-                                                    'offsets from ZK you _must_ specify consumer groups')
+            if not zk_hosts_ports and not consumer_groups and not consumer_groups_regex:
+                raise BadKafkaConsumerConfiguration('Invalid configuration - if you are not collecting offsets from ZK '
+                                                    'you _must_ specify consumer groups or consumer_groups_regex')
             # kafka-python automatically probes the cluster for broker version
             # and then stores it. Note that this returns the first version
             # found, so in a mixed-version cluster this will be a
@@ -113,7 +130,8 @@ class KafkaCheck(AgentCheck):
             #
             # Kafka 0.8.2 added support for storing consumer offsets in Kafka.
             if cli.config.get('api_version') >= (0, 8, 2):
-                kafka_consumer_offsets, topics = self._get_kafka_consumer_offsets(instance, consumer_groups)
+                kafka_consumer_offsets, topics = self._get_kafka_consumer_offsets(
+                    instance, consumer_groups, consumer_groups_regex)
 
         if not topics:
             # val = {'consumer_group': {'topic': [0, 1]}}
@@ -381,7 +399,7 @@ class KafkaCheck(AgentCheck):
                 self.gauge('kafka.consumer_offset', consumer_offset, tags=consumer_group_tags)
                 self.gauge('kafka.consumer_lag', consumer_lag, tags=consumer_group_tags)
             else:
-                if not isinstance(topics_data.get(topic, None), dict):
+                if not isinstance(topics_data.get((topic, consumer_group)), dict):
                     topics_data[(topic, consumer_group)] = dict()
                 topics_data[(topic, consumer_group)].update({partition: (consumer_offset, consumer_lag)})
 
@@ -473,7 +491,7 @@ class KafkaCheck(AgentCheck):
                 self.log.exception('Error cleaning up Zookeeper connection')
         return zk_consumer_offsets, consumer_groups
 
-    def _get_kafka_consumer_offsets(self, instance, consumer_groups):
+    def _get_kafka_consumer_offsets(self, instance, consumer_groups, consumer_groups_regex):
         """
         retrieve consumer offsets via the new consumer api. Offsets in this version are stored directly
         in kafka (__consumer_offsets topic) rather than in zookeeper
@@ -493,9 +511,10 @@ class KafkaCheck(AgentCheck):
                     self.log.info("unable to find group coordinator for %s", consumer_group)
 
                 for (topic, partition), offset in iteritems(offsets):
-                    topics[topic].update([partition])
-                    key = (consumer_group, topic, partition)
-                    consumer_offsets[key] = offset
+                    if not (consumer_groups_regex and offset == -1):
+                        topics[topic].update([partition])
+                        key = (consumer_group, topic, partition)
+                        consumer_offsets[key] = offset
             except Exception:
                 self.log.exception('Could not read consumer offsets from kafka.')
 
@@ -578,3 +597,54 @@ class KafkaCheck(AgentCheck):
             'aggregation_key': aggregation_key,
         }
         self.event(event_dict)
+
+    def _get_all_consumer_groups(self, cli, instance):
+        """
+        Retrieve all consumer groups and topics stored in kafka
+        :return: all_consumer_groups: {consumer_name: set(topics)}
+        """
+        all_consumer_groups = {}
+
+        request = ListGroupsRequest[0]()
+        response = self._make_blocking_req(cli, request, node_id=None)
+
+        for group in response.groups:
+            consumer = KafkaConsumer(group_id=group[0],
+                                     bootstrap_servers=instance.get('kafka_connect_str'),
+                                     client_id='dd-agent',
+                                     security_protocol=instance.get('security_protocol', 'PLAINTEXT'),
+                                     sasl_mechanism=instance.get('sasl_mechanism'),
+                                     sasl_plain_username=instance.get('sasl_plain_username'),
+                                     sasl_plain_password=instance.get('sasl_plain_password'),
+                                     ssl_cafile=instance.get('ssl_cafile'),
+                                     ssl_check_hostname=instance.get('ssl_check_hostname', True),
+                                     ssl_certfile=instance.get('ssl_certfile'),
+                                     ssl_keyfile=instance.get('ssl_keyfile'),
+                                     ssl_crlfile=instance.get('ssl_crlfile'),
+                                     ssl_password=instance.get('ssl_password')
+                                     )
+            all_consumer_groups[group[0]] = consumer.topics()
+        return all_consumer_groups
+
+    def _filter_consumer_groups(self, all_consumer_groups, consumer_groups_regex):
+        """
+        :param all_consumer_groups: {consumer_name: set(topics)}
+        :param consumer_groups_regex: {consumer_regex: ({topics_regex: None}|None)}
+        :return: filtered_consumer_groups: {consumer_name: {topic: []}}    # partitions are always empty
+        """
+        filtered_consumer_groups = {}
+
+        for consumer, topics in all_consumer_groups.items():
+            for consumer_regex, topics_regex in consumer_groups_regex.items():
+                if re.match(consumer_regex, consumer):
+                    if topics_regex:
+                        topics_regex = set(topics_regex)
+                        filtered_topics = {t: [] for t in topics for r in topics_regex if re.match(r, t)}
+                        if consumer in filtered_consumer_groups:
+                            filtered_consumer_groups[consumer].update(filtered_topics)
+                        else:
+                            filtered_consumer_groups[consumer] = filtered_topics
+                    else:
+                        filtered_consumer_groups[consumer] = {t: [] for t in topics}
+
+        return filtered_consumer_groups

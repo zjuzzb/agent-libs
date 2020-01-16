@@ -9,7 +9,8 @@ namespace
 {
 sinsp_analyzer::flush_queue g_queue(2000);
 audit_tap_handler_dummy g_audit_handler;
-null_secure_audit_handler g_secure_handler;
+null_secure_audit_handler g_secure_audit_handler;
+null_secure_profiling_handler g_secure_profiling_handler;
 }
 
 void one_hundred_thousand_reads(benchmark::State& state)
@@ -17,7 +18,8 @@ void one_hundred_thousand_reads(benchmark::State& state)
 	for (auto _ : state)
 	{
 		shared_ptr<sinsp_mock> inspector(new sinsp_mock());
-		inspector->build_event().count(100000).type(PPME_SYSCALL_READ_E).commit();
+		auto &tinfo = inspector->build_thread().commit();
+		inspector->build_event(tinfo).count(100000).type(PPME_SYSCALL_READ_E).commit();
 
 		internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 
@@ -25,7 +27,8 @@ void one_hundred_thousand_reads(benchmark::State& state)
 		                        "/" /*root dir*/,
 		                        int_metrics,
 		                        g_audit_handler,
-		                        g_secure_handler,
+		                        g_secure_audit_handler,
+		                        g_secure_profiling_handler,
 		                        &g_queue);
 
 		run_sinsp_with_analyzer(*inspector, analyzer);

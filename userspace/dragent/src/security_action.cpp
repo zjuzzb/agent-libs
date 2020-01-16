@@ -7,6 +7,7 @@
 #include "security_mgr.h"
 #ifndef CYGWING_AGENT
 #include "security_action.h"
+#include "container_config.h"
 
 using namespace std;
 
@@ -26,8 +27,8 @@ void security_actions::init(security_mgr *mgr,
 	m_coclient = coclient;
 }
 
-void security_actions::perform_docker_action(uint64_t ts_ns,
-					     sdc_internal::docker_cmd_type cmd,
+void security_actions::perform_container_action(uint64_t ts_ns,
+					     sdc_internal::container_cmd_type cmd,
 					     std::string &container_id,
 					     const draiosproto::action &action,
 					     draiosproto::action_result *result,
@@ -41,33 +42,15 @@ void security_actions::perform_docker_action(uint64_t ts_ns,
 	}
 	else
 	{
-		coclient::response_cb_t callback = [result, astate, this] (bool successful, google::protobuf::Message *response_msg)
-		{
-			google::protobuf::TextFormat::Printer print;
-
-			sdc_internal::docker_command_result *res = (sdc_internal::docker_command_result *) response_msg;
-			if(!successful)
-			{
-				result->set_successful(false);
-				result->set_errmsg("RPC Not successful");
-			}
-
-			if(!res->successful())
-			{
-				result->set_successful(false);
-				result->set_errmsg("Could not perform docker command: " + res->errstr());
-			}
-
+		auto container = m_mgr->analyzer()->get_container(container_id);
+		if (!container) {
+			result->set_successful(false);
+			result->set_errmsg("Container not found");
 			note_action_complete(astate);
-
-			string tmp;
-			print.PrintToString(*result, &tmp);
-			g_log->debug(string("Docker cmd action result: ") + tmp);
-		};
-
-		if(m_active_docker_actions.find(container_id) != m_active_docker_actions.end())
+		}
+		else if(m_active_container_actions.find(container_id) != m_active_container_actions.end())
 		{
-			std::string msg = "Skipping back-to-back docker action " +
+			std::string msg = "Skipping back-to-back container action " +
 				std::to_string(action.type()) +
 				" for container " + container_id;
 
@@ -80,8 +63,66 @@ void security_actions::perform_docker_action(uint64_t ts_ns,
 		}
 		else
 		{
-			m_active_docker_actions.insert(pair<string,uint64_t>(container_id, ts_ns));
-			m_coclient->perform_docker_cmd(cmd, container_id, callback);
+			switch (container->m_type)
+			{
+				case sinsp_container_type::CT_DOCKER:
+					m_active_container_actions.insert(pair<string, uint64_t>(container_id, ts_ns));
+					m_coclient->perform_docker_cmd(cmd, container_id, [result, astate, this] (bool successful, google::protobuf::Message *response_msg)
+					{
+						google::protobuf::TextFormat::Printer print;
+
+						sdc_internal::docker_command_result *res = (sdc_internal::docker_command_result *) response_msg;
+						if(!successful)
+						{
+							result->set_successful(false);
+							result->set_errmsg("RPC Not successful");
+						}
+
+						if(!res->successful())
+						{
+							result->set_successful(false);
+							result->set_errmsg("Could not perform docker command: " + res->errstr());
+						}
+
+						note_action_complete(astate);
+
+						string tmp;
+						print.PrintToString(*result, &tmp);
+						g_log->debug(string("Docker cmd action result: ") + tmp);
+					});
+					break;
+				case sinsp_container_type::CT_CRI:
+				case sinsp_container_type::CT_CRIO:
+					m_active_container_actions.insert(pair<string, uint64_t>(container_id, ts_ns));
+					m_coclient->perform_cri_cmd(c_cri_socket_path->get_value(), cmd, container_id,
+						[result, astate, this] (bool successful, google::protobuf::Message *response_msg)
+					{
+						google::protobuf::TextFormat::Printer print;
+
+						sdc_internal::cri_command_result *res = (sdc_internal::cri_command_result *) response_msg;
+						if(!successful)
+						{
+							result->set_successful(false);
+							result->set_errmsg("RPC Not successful");
+						}
+
+						if(!res->successful())
+						{
+							result->set_successful(false);
+							result->set_errmsg("Could not perform cri-o command: " + res->errstr());
+						}
+
+						note_action_complete(astate);
+
+						string tmp;
+						print.PrintToString(*result, &tmp);
+						g_log->debug(string("Cri-o cmd action result: ") + tmp);
+					});
+					break;
+				default:
+					result->set_successful(false);
+					result->set_errmsg(string("Unsupported container type ") + to_string(container->m_type));
+			}
 		}
 	}
 }
@@ -116,6 +157,7 @@ void security_actions::perform_actions(uint64_t ts_ns,
 		string tmp;
 		bool apply_scope = false;
 		string errstr;
+
 
 		switch(action.type())
 		{
@@ -156,10 +198,10 @@ void security_actions::perform_actions(uint64_t ts_ns,
 
 			break;
 		case draiosproto::ACTION_PAUSE:
-			perform_docker_action(ts_ns, sdc_internal::PAUSE, container_id, action, result, astate);
+			perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, action, result, astate);
 			break;
 		case draiosproto::ACTION_STOP:
-			perform_docker_action(ts_ns, sdc_internal::STOP, container_id, action, result, astate);
+			perform_container_action(ts_ns, sdc_internal::STOP, container_id, action, result, astate);
 			break;
 		default:
 			string errstr = string("Policy Action ") + std::to_string(action.type()) + string(" not implemented yet");
@@ -252,12 +294,12 @@ void security_actions::periodic_cleanup(uint64_t ts_ns)
 	// docker stop actions, but the real goal is to avoid a flood
 	// of docker operations for a single container, so they don't
 	// need to be exactly the same.
-	for (auto it = m_active_docker_actions.begin(); it != m_active_docker_actions.end(); )
+	for (auto it = m_active_container_actions.begin(); it != m_active_container_actions.end(); )
 	{
 		if(ts_ns > it->second && (ts_ns-it->second) > 30 * ONE_SECOND_IN_NS)
 		{
-			g_log->debug("Removing docker action for " + it->first);
-			m_active_docker_actions.erase(it++);
+			g_log->debug("Removing container action for " + it->first);
+			m_active_container_actions.erase(it++);
 		}
 		else
 		{

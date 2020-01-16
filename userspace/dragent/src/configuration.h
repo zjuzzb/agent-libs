@@ -305,7 +305,7 @@ public:
 	bool m_falco_baselining_enabled;
 	uint64_t m_falco_baselining_report_interval_ns;
 	uint64_t m_falco_baselining_autodisable_interval_ns;
-	uint32_t m_falco_baselining_max_drops_full_buffer;
+	float m_falco_baselining_max_drops_buffer_rate_percentage;
 
 	bool m_commandlines_capture_enabled;
 	sinsp_configuration::command_capture_mode_t m_command_lines_capture_mode;
@@ -314,6 +314,10 @@ public:
 	bool m_memdump_enabled;
 	uint64_t m_memdump_size;
 	uint64_t m_memdump_max_init_attempts;
+	bool m_memdump_autodisable;
+	uint64_t m_memdump_capture_headers_percentage_threshold;
+	uint64_t m_memdump_min_time_between_switch_states_ms;
+	uint64_t m_memdump_re_enable_interval_minutes;
 
 	user_event_filter_t::ptr_t m_k8s_event_filter;
 	user_event_filter_t::ptr_t m_docker_event_filter;

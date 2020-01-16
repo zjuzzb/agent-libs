@@ -95,6 +95,15 @@ public:
 	virtual std::string value_to_string() const = 0;
 
 	/**
+	 * Returns a string representation of the value of this config which is
+	 * also valid YAML. May or may not be the same as value_to_string.
+	 *
+	 * Not guaranteed to parse to the same value, and thus should not
+	 * be relied upon.
+	 */
+	virtual std::string value_to_yaml() const = 0;
+
+	/**
 	 * Updates this configuration_unit%'s value based on the content of
 	 * the given string.
 	 *
@@ -358,6 +367,7 @@ public:
 public: // stuff for configuration_unit
 
 	std::string value_to_string() const override;
+	std::string value_to_yaml() const override;
 	bool string_to_value(const std::string& value) override;
 	void init(const yaml_configuration& raw_config) override;
 

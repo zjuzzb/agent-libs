@@ -1,7 +1,6 @@
 package kubecollect
 
 import (
-	"os"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -48,13 +47,6 @@ func deployment_fixture() {
 	})
 
 	deploymentInf.GetStore().Add(deployment.Deployment)
-}
-
-func TestMain (m *testing.M) {
-	deployment_fixture()
-	replicaset_fixture()
-	code := m.Run()
-	os.Exit(code)
 }
 
 // Creates two deployment objects that are DeepEqual

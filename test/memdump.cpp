@@ -18,8 +18,11 @@
 #include <configuration.h>
 #include <protocol.h>
 #include "security_config.h"
+#include <thread_safe_container/blocking_queue.h>
 
 using namespace std;
+using namespace thread_safe_container;
+
 namespace security_config = libsanalyzer::security_config;
 
 class memdump_error_handler : public Poco::ErrorHandler
@@ -283,8 +286,8 @@ protected:
 	void parse_dump_response(std::shared_ptr<serialized_buffer> item, draiosproto::dump_response &response)
 	{
 		dragent_protocol::buffer_to_protobuf(
-				(uint8_t *) item->buffer.data() + sizeof(dragent_protocol_header_v4),
-				(uint32_t) item->buffer.size()-sizeof(dragent_protocol_header_v4),
+		        (uint8_t *)item->buffer.data(),
+		        (uint32_t)item->buffer.size(),
 				&response);
 
 		g_log->debug("Dump response token=" + response.token()

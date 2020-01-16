@@ -3,10 +3,9 @@
 #include <sinsp_int.h>
 #include <filterchecks.h>
 #include "utils.h"
-#include "draios.pb.h"
 #include "analyzer_int.h"
 #include "analyzer.h"
-#include <baseliner.h>
+#include "baseliner.h"
 
 #undef AVOID_FDS_FROM_THREAD_TABLE
 
@@ -61,8 +60,10 @@ void proc_parser(proc_parser_state* state)
 // Baseliner
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_baseliner::sinsp_baseliner():
-	m_inspector(nullptr),
+sinsp_baseliner::sinsp_baseliner(sinsp_analyzer& analyzer,
+				 sinsp* inspector):
+	m_inspector(inspector),
+	m_analyzer(analyzer),
 	m_ifaddr_list(nullptr),
 	m_progtable(),
 #ifdef ASYNC_PROC_PARSING
@@ -73,12 +74,11 @@ sinsp_baseliner::sinsp_baseliner():
 	m_do_baseline_calculation(false)
 { }
 
-void sinsp_baseliner::init(sinsp* inspector)
+void sinsp_baseliner::init()
 {
 #ifdef ASYNC_PROC_PARSING
 	m_procparser_thread = NULL;
 #endif
-	m_inspector = inspector;
 	m_ifaddr_list = m_inspector->get_ifaddr_list();
 	load_tables(0);
 
@@ -120,6 +120,11 @@ sinsp_baseliner::~sinsp_baseliner()
 		delete m_procparser_state;
 	}
 #endif
+}
+
+void sinsp_baseliner::set_data_handler(secure_profiling_data_ready_handler* handler)
+{
+	m_profiling_data_handler = handler;
 }
 
 void sinsp_baseliner::load_tables(uint64_t time)
@@ -165,6 +170,8 @@ void sinsp_baseliner::clear_tables()
 	// Clear the tables
 	//
 	m_progtable.clear();
+
+	m_secure_profiling_fingerprint_batch.Clear();
 }
 
 void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_fds)
@@ -203,7 +210,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 		{
 			blprogram* np;
 
-			auto it = m_progtable.find(tinfo.m_program_hash_falco);
+			auto it = m_progtable.find(tinfo.m_program_hash_scripts);
 			if(it == m_progtable.end())
 			{
 				if(m_progtable.size() >= BL_MAX_PROG_TABLE_SIZE)
@@ -217,7 +224,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 				np->m_dirs.m_regular_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 				np->m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 
-				m_progtable[tinfo.m_program_hash_falco] = np;
+				m_progtable[tinfo.m_program_hash_scripts] = np;
 			}
 			else
 			{
@@ -430,7 +437,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 				return false;
 			}
 
-			auto itp = m_progtable.find(ptinfo->m_program_hash_falco);
+			auto itp = m_progtable.find(ptinfo->m_program_hash_scripts);
 
 			if(itp != m_progtable.end())
 			{
@@ -596,14 +603,21 @@ void sinsp_baseliner::serialize_json(std::string filename)
 	ofs << root << std::endl;
 }
 
-void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
+void sinsp_baseliner::serialize_protobuf()
 {
+	////////////////////////////////////////////////////////////////////////////
+	// emit host stuff
+	////////////////////////////////////////////////////////////////////////////
+	m_secure_profiling_fingerprint_batch.set_machine_id(m_analyzer.m_configuration->get_machine_id());
+	m_secure_profiling_fingerprint_batch.set_customer_id(m_analyzer.m_configuration->get_customer_id());
+	m_secure_profiling_fingerprint_batch.set_timestamp_ns(sinsp_utils::get_current_time_ns());
+
 	//
 	// Serialize the programs
 	//
 	for(auto& it : m_progtable)
 	{
-		draiosproto::falco_prog* prog = pbentry->add_progs();
+		secure::profiling::program_fingerprint* prog = m_secure_profiling_fingerprint_batch.mutable_progs()->Add();
 
 		prog->set_comm(it.second->m_comm);
 		prog->set_exe(it.second->m_exe);
@@ -620,7 +634,7 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 			{
 				std::string jname;
 
-				if(m_inspector->m_analyzer->find_java_process_name(
+				if(m_analyzer.find_java_process_name(
 							it.second->m_pids[0], jname))
 				{
 					prog->set_comm(jname);
@@ -636,7 +650,7 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 		// Files
 		if(it.second->m_files.has_data())
 		{
-			draiosproto::falco_category* cfiles = prog->add_cats();
+			secure::profiling::category* cfiles = prog->add_cats();
 			cfiles->set_name("files");
 			it.second->m_files.serialize_protobuf(cfiles);
 		}
@@ -644,7 +658,7 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 		// Dirs
 		if(it.second->m_dirs.has_data())
 		{
-			draiosproto::falco_category* cdirs = prog->add_cats();
+			secure::profiling::category* cdirs = prog->add_cats();
 			cdirs->set_name("dirs");
 			it.second->m_dirs.serialize_protobuf(cdirs);
 		}
@@ -652,7 +666,7 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 		// Executed Programs
 		if(it.second->m_executed_programs.has_data())
 		{
-			draiosproto::falco_category* cexecuted_programs = prog->add_cats();
+			secure::profiling::category* cexecuted_programs = prog->add_cats();
 			cexecuted_programs->set_name("executed_programs");
 			it.second->m_executed_programs.serialize_protobuf(cexecuted_programs);
 		}
@@ -660,7 +674,7 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 		// Server ports
 		if(it.second->m_server_ports.has_data())
 		{
-			draiosproto::falco_category* cserver_ports = prog->add_cats();
+			secure::profiling::category* cserver_ports = prog->add_cats();
 			cserver_ports->set_name("server_ports");
 			it.second->m_server_ports.serialize_protobuf(cserver_ports);
 		}
@@ -668,7 +682,7 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 		// bound ports
 		if(it.second->m_bound_ports.has_data())
 		{
-			draiosproto::falco_category* cbound_ports = prog->add_cats();
+			secure::profiling::category* cbound_ports = prog->add_cats();
 			cbound_ports->set_name("bound_ports");
 			it.second->m_bound_ports.serialize_protobuf(cbound_ports);
 		}
@@ -676,7 +690,7 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 		// IP endpoints
 		if(it.second->m_ip_endpoints.has_data())
 		{
-			draiosproto::falco_category* cip_endpoints = prog->add_cats();
+			secure::profiling::category* cip_endpoints = prog->add_cats();
 			cip_endpoints->set_name("ip_endpoints");
 			it.second->m_ip_endpoints.serialize_protobuf(cip_endpoints);
 		}
@@ -684,7 +698,7 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 		// IP c subnets
 		if(it.second->m_c_subnet_endpoints.has_data())
 		{
-			draiosproto::falco_category* cc_subnet_endpoints = prog->add_cats();
+			secure::profiling::category* cc_subnet_endpoints = prog->add_cats();
 			cc_subnet_endpoints->set_name("c_subnet_endpoints");
 			it.second->m_c_subnet_endpoints.serialize_protobuf(cc_subnet_endpoints);
 		}
@@ -692,7 +706,7 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 		// syscalls
 		if(it.second->m_syscalls.has_data())
 		{
-			draiosproto::falco_category* csyscalls = prog->add_cats();
+			secure::profiling::category* csyscalls = prog->add_cats();
 			csyscalls->set_name("syscalls");
 			it.second->m_syscalls.serialize_protobuf(csyscalls);
 		}
@@ -703,19 +717,19 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 	//
 	for (const auto& it : *m_inspector->m_container_manager.get_containers())
 	{
-		draiosproto::falco_container* cont = pbentry->add_containers();
+		secure::profiling::container_fingerprint* container = m_secure_profiling_fingerprint_batch.mutable_container()->Add();
 
-		cont->set_id(it.first);
-		cont->set_name(it.second->m_name);
+		container->set_id(it.first);
+		container->set_name(it.second->m_name);
 
 		if (!it.second->m_image.empty())
 		{
-			cont->set_image_name(it.second->m_imagerepo + ":" + it.second->m_imagetag);
+			container->set_image_name(it.second->m_imagerepo + ":" + it.second->m_imagetag);
 		}
 
 		if (!it.second->m_imageid.empty())
 		{
-			cont->set_image_id(it.second->m_imageid);
+			container->set_image_id(it.second->m_imageid);
 		}
 	}
 }
@@ -769,19 +783,29 @@ void sinsp_baseliner::merge_proc_data()
 }
 #endif
 
-void sinsp_baseliner::emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry)
+void sinsp_baseliner::emit_as_protobuf(uint64_t ts)
 {
+	scap_stats st;
+
+        m_inspector->get_capture_stats(&st);
+
+	// Update the stats
+	m_baseliner_stats.n_evts = st.n_evts;
+	m_baseliner_stats.n_drops_buffer = st.n_drops_buffer;
+
 #ifdef ASYNC_PROC_PARSING
 	merge_proc_data();
 #endif
-	g_logger.format(sinsp_logger::SEV_INFO, "emitting falco baseline %" PRIu64, time);
+	g_logger.format(sinsp_logger::SEV_INFO, "emitting falco baseline %" PRIu64, ts);
 
-	serialize_protobuf(pbentry);
+	serialize_protobuf();
+
+	m_profiling_data_handler->secure_profiling_data_ready(ts, &m_secure_profiling_fingerprint_batch);
 
 	if(m_inspector->is_live())
 	{
 		clear_tables();
-		load_tables(time);
+		load_tables(ts);
 	}
 }
 
@@ -802,7 +826,7 @@ inline blprogram* sinsp_baseliner::get_program(sinsp_threadinfo* tinfo)
 		//
 		// Find the program entry
 		//
-		auto it = m_progtable.find(tinfo->m_program_hash_falco);
+		auto it = m_progtable.find(tinfo->m_program_hash_scripts);
 
 		if(it == m_progtable.end())
 		{
@@ -893,7 +917,7 @@ void sinsp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 	//
 	// Note: the hash is exe+container
 	//
-	size_t phash = tinfo->m_program_hash_falco;
+	size_t phash = tinfo->m_program_hash_scripts;
 
 	//
 	// Find the program entry
@@ -922,7 +946,7 @@ void sinsp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 
 		if(ptinfo != NULL)
 		{
-			auto itp = m_progtable.find(ptinfo->m_program_hash_falco);
+			auto itp = m_progtable.find(ptinfo->m_program_hash_scripts);
 
 			if(itp != m_progtable.end())
 			{
@@ -1244,14 +1268,53 @@ sinsp* sinsp_baseliner::get_inspector()
 	return m_inspector;
 }
 
-void sinsp_baseliner::set_baseline_calculation_enabled(const bool enabled)
+void sinsp_baseliner::enable_baseline_calculation()
 {
-	m_do_baseline_calculation = enabled;
+	scap_stats st;
+
+        m_inspector->get_capture_stats(&st);
+
+	m_do_baseline_calculation = true;
+	m_baseliner_stats.n_evts = st.n_evts;
+	m_baseliner_stats.n_drops_buffer = st.n_drops_buffer;
+}
+
+void sinsp_baseliner::disable_baseline_calculation()
+{
+	m_do_baseline_calculation = false;
+	m_baseliner_stats.n_evts = 0;
+	m_baseliner_stats.n_drops_buffer = 0;
+
 }
 
 bool sinsp_baseliner::is_baseline_calculation_enabled() const
 {
 	return m_do_baseline_calculation;
+}
+
+bool sinsp_baseliner::is_drops_buffer_rate_critical(float max_drops_buffer_rate_percentage) const
+{
+	scap_stats st;
+	double drop_rate = 0;
+
+        m_inspector->get_capture_stats(&st);
+
+	if ((st.n_evts - m_baseliner_stats.n_evts <= 0) &&
+	    (st.n_drops_buffer - m_baseliner_stats.n_drops_buffer) >= 1) {
+		drop_rate = 1; // we dropped all the events! (drop rate percentage is 100%)
+	} else {
+		drop_rate = (float)(st.n_drops_buffer - m_baseliner_stats.n_drops_buffer) /
+			(float)(st.n_evts - m_baseliner_stats.n_evts);
+	}
+
+	if(drop_rate > max_drops_buffer_rate_percentage)
+	{
+		g_logger.format(sinsp_logger::SEV_WARNING,
+				"critical drop buffer rate %f (upper threshold %f)",
+				drop_rate, max_drops_buffer_rate_percentage);
+		return true;
+	}
+	return false;
 }
 
 inline void sinsp_baseliner::extract_from_event(sinsp_evt *evt)

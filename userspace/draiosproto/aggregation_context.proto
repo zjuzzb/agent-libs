@@ -1,0 +1,50 @@
+syntax = "proto2";
+package draiosproto;
+
+option optimize_for = SPEED;
+option java_package = "com.draios.model.protobuf";
+option java_outer_classname = "AggregationContext";
+
+message aggregation_context {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+    required string machine_id = 2; // The unique ID of the machine that is sending this data
+    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to (can be NULL)
+    optional bool enforce = 4;
+    optional metrics_limits metr_limits = 5;
+    optional bool understand_10s_flush_fields = 6; // 10s flush moved some fields to new locations
+                                                   // BE may not understand these fields
+}
+
+message metrics_limits {
+    optional uint32 jmx = 1;
+    optional uint32 statsd = 2;
+    optional uint32 app_check = 3;
+    optional uint32 prometheus = 4;
+    optional uint32 connections = 5;
+    optional uint32 prog_aggregation_count = 6;
+    optional uint32 top_files_count = 7;
+    optional uint32 top_devices_count = 8;
+    optional uint32 host_server_ports = 9;
+    optional uint32 container_server_ports = 10;
+    optional uint32 kubernetes_pods = 11;
+    optional uint32 kubernetes_jobs = 12;
+    optional uint32 containers = 13;
+    optional uint32 event_count = 14;
+    optional uint32 client_queries = 15;
+    optional uint32 server_queries = 16;
+    optional uint32 client_query_types = 17;
+    optional uint32 server_query_types = 18;
+    optional uint32 client_tables = 19;
+    optional uint32 server_tables = 20;
+    optional uint32 client_status_codes = 21;
+    optional uint32 server_status_codes = 22;
+    optional uint32 client_urls = 23;
+    optional uint32 server_urls = 24;
+    optional uint32 client_ops = 25;
+    optional uint32 server_ops = 26;
+    optional uint32 client_collections = 27;
+    optional uint32 server_collections = 28;
+    optional uint32 container_mounts = 29;
+    optional uint32 metrics_mounts = 30;
+    optional double prom_metrics_weight = 31;
+}

@@ -6,6 +6,7 @@
 
 #ifndef _WIN32
 #include <string>
+#include <vector>
 #include <mqueue.h>
 #include <fcntl.h>
 
@@ -29,13 +30,12 @@ public:
 	~posix_queue();
 
 	bool send(const std::string& msg);
-	std::string receive(uint64_t timeout_s=0);
+	std::vector<char> receive(uint64_t timeout_s=0);
 	static bool remove(const std::string& name);
 private:
 	mqd_t m_queue_d;
 	direction_t m_direction;
 	std::string m_name;
-	char* m_readbuffer;
 	static const long MAX_MSGSIZE = 3 << 20; // 3 MiB
 	static const long MAX_QUEUES = 10;
 	static const long MAX_MSGS = 3;

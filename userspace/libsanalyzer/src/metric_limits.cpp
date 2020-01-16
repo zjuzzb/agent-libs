@@ -4,10 +4,10 @@
 #include <algorithm>
 
 
-metric_limits::metric_limits(const filter_vec_t& filters,
+metric_limits::metric_limits(filter_vec_t&& filters,
 			     uint32_t max_entries,
 			     uint64_t expire_seconds)
-	: user_configured_limits(filters,
+	: user_configured_limits(std::forward<filter_vec_t>(filters),
 				 "Metrics",
 				 log_flags<metric_limits>::m_log,
 				 log_flags<metric_limits>::m_enable_log,
@@ -49,6 +49,23 @@ void metric_limits::sanitize_filters()
 			<< ") exceeded, reduced to " << CUSTOM_METRICS_CACHE_HARD_LIMIT;
 		g_logger.log(os.str(), sinsp_logger::SEV_WARNING);
 	}
+}
+
+metric_limits::sptr_t metric_limits::build(
+	filter_vec_t filters,
+	bool log_enabled,
+	uint32_t max_entries,
+	uint64_t expire_seconds)
+{
+	if(log_enabled)
+	{
+		user_configured_limits::enable_logging<metric_limits>();
+	}
+	if(!filters.empty() && !metric_limits::first_includes_all(filters))
+	{
+		return std::make_shared<metric_limits>(std::move(filters), max_entries, expire_seconds);
+	}
+	return nullptr;
 }
 
 INITIALIZE_LOG(metric_limits);

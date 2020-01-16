@@ -36,6 +36,7 @@ list(APPEND targetfiles
 	config_data_rest_request_handler.cpp
 	config_rest_request_handler.cpp
 	config_update.cpp
+	container_size_requestor.cpp
 	connection_manager.cpp
 	crash_handler.cpp
 	dragent.cpp
@@ -44,14 +45,15 @@ list(APPEND targetfiles
 	dump_request_start_message_handler.cpp
 	dump_request_stop_message_handler.cpp
 	error_handler.cpp
-	error_message_handler.cpp
 	faultlist_rest_request_handler.cpp
 	fault_rest_request_handler.cpp
 	file_rest_registry.cpp
 	file_rest_request_handler.cpp
 	metric_serializer.cpp
 	metrics_file_emitter.cpp
-	metrics_rest_request_handler.cpp
+	pre_aggregated_metrics_rest_request_handler.cpp
+	post_aggregated_metrics_rest_request_handler.cpp
+	metrics_rest_request_helper.cpp
 	monitor.cpp
 	null_message_handler.cpp
 	protocol.cpp

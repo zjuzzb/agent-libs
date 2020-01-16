@@ -73,18 +73,18 @@ protected:
 	// Note that an action has completed.
 	void note_action_complete(const std::shared_ptr<actions_state> &astate);
 
-	void perform_docker_action(uint64_t ts_ns,
-				   sdc_internal::docker_cmd_type cmd,
-				   std::string &container_id,
-				   const draiosproto::action &action,
-				   draiosproto::action_result *result,
-				   std::shared_ptr<actions_state> astate);
+	void perform_container_action(uint64_t ts_ns,
+				      sdc_internal::container_cmd_type cmd,
+				      std::string &container_id,
+				      const draiosproto::action &action,
+				      draiosproto::action_result *result,
+				      std::shared_ptr<actions_state> astate);
 
 	std::vector<std::shared_ptr<actions_state>> m_outstanding_actions;
 
 	// Ensures that only a single docker action (of any type) can
 	// be performed on a container at once
-	std::map<std::string,uint64_t> m_active_docker_actions;
+	std::map<std::string,uint64_t> m_active_container_actions;
 
 	security_mgr *m_mgr;
 	bool m_has_outstanding_actions;

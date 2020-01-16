@@ -3,8 +3,12 @@ This module contains classes which are used to occasionally persist the status
 of checks.
 """
 # stdlib
+from future import standard_library
+standard_library.install_aliases()
+from past.builtins import basestring
+from builtins import object
 from collections import defaultdict
-import cPickle as pickle
+import pickle as pickle
 import datetime
 import logging
 import os

@@ -1,30 +1,25 @@
 #include "protocol.h"
+#include "protobuf_compression.h"
 #include "common_logger.h"
 #include "analyzer_settings.h"
 
 #include <arpa/inet.h>  // htonl
 
-std::shared_ptr<serialized_buffer> dragent_protocol::message_to_buffer(
-    uint64_t ts_ns,
+std::shared_ptr<serialized_buffer> dragent_protocol::message_to_buffer(uint64_t ts_ns,
     uint8_t message_type,
     const google::protobuf::MessageLite& message,
-    bool v5,
-    bool compressed,
-    int compression_level)
+    std::shared_ptr<protobuf_compressor>& compressor)
 {
-	//
-	// Find out how many bytes we need for the serialization
-	//
-	uint32_t tlen = message.ByteSize();
-
-	uint32_t header_size =
-	    v5 ? sizeof(dragent_protocol_header_v5) : sizeof(dragent_protocol_header_v4);
-	uint32_t full_len = tlen + header_size;
+	if (!compressor)
+	{
+		g_log->error("Cannot compress buffer due to null compressor");
+		return nullptr;
+	}
 
 	//
 	// If the buffer is not big enough, expand it
 	//
-	if (full_len >= MAX_SERIALIZATION_BUF_SIZE_BYTES)
+	if (message.ByteSize() >= MAX_SERIALIZATION_BUF_SIZE_BYTES)
 	{
 		g_log->error("Message too big. Dropping it.");
 		return NULL;
@@ -34,67 +29,12 @@ std::shared_ptr<serialized_buffer> dragent_protocol::message_to_buffer(
 	ptr->ts_ns = ts_ns;
 	ptr->message_type = message_type;
 
-	// the resize will create a string of the length of the header. then the output
-	// stream will be smart enough to start inserting after it
-	ptr->buffer.resize(header_size);
 	google::protobuf::io::StringOutputStream string_output(&(ptr->buffer));
 
 	//
-	// Do the serialization
+	// Do the serialization and compression
 	//
-	if (compressed)
-	{
-		google::protobuf::io::GzipOutputStream::Options opts;
-
-		opts.compression_level = compression_level;
-
-		google::protobuf::io::GzipOutputStream gzip_output(&string_output, opts);
-		bool res = message.SerializeToZeroCopyStream(&gzip_output);
-		if (!res)
-		{
-			ASSERT(false);
-			g_log->error("Error serializing buffer (1)");
-			return NULL;
-		}
-
-		res = gzip_output.Close();
-		if (!res)
-		{
-			ASSERT(false);
-			g_log->error("Error serializing buffer (2)");
-			return NULL;
-		}
-	}
-	else
-	{
-		google::protobuf::io::StringOutputStream string_output(&(ptr->buffer));
-		bool res = message.SerializeToZeroCopyStream(&string_output);
-		if (!res)
-		{
-			ASSERT(false);
-			g_log->error("Error serializing buffer (3)");
-			return NULL;
-		}
-	}
-
-	//
-	// Fill the protocol header part
-	//
-	dragent_protocol_header_v4* hdr;
-	if (!v5)
-	{
-		hdr = (dragent_protocol_header_v4*)ptr->buffer.data();
-		hdr->version = PROTOCOL_VERSION_NUMBER;
-	}
-	else
-	{
-		dragent_protocol_header_v5* ext_hdr = (dragent_protocol_header_v5*)ptr->buffer.data();
-		hdr = &ext_hdr->hdr;
-		hdr->version = PROTOCOL_VERSION_NUMBER_10S_FLUSH;
-	}
-
-	hdr->len = htonl(ptr->buffer.size());
-	hdr->messagetype = message_type;
+	compressor->compress(message, string_output);
 
 	return ptr;
 }
@@ -112,3 +52,70 @@ void dragent_protocol::populate_ids(std::shared_ptr<serialized_buffer>& buf,
 	hdr->generation = htonll(generation);
 	hdr->sequence = htonll(sequence);
 }
+
+bool dragent_protocol::get_ids(std::shared_ptr<serialized_buffer>& buf,
+                               uint64_t& generation,
+                               uint64_t& sequence)
+{
+	dragent_protocol_header_v5* hdr = (dragent_protocol_header_v5*)buf->buffer.data();
+	if (hdr->hdr.version < PROTOCOL_VERSION_NUMBER_10S_FLUSH)
+	{
+		return false;
+	}
+	generation = ntohll(generation);
+	sequence = ntohll(sequence);
+	return true;
+}
+
+uint32_t dragent_protocol::header_len(const dragent_protocol_header_v4 &hdr)
+{
+	return header_len(hdr.version);
+}
+
+uint32_t dragent_protocol::header_len(dragent_protocol::protocol_version version)
+{
+	switch (version)
+	{
+	case PROTOCOL_VERSION_NUMBER:
+		return sizeof(dragent_protocol_header_v4);
+	case PROTOCOL_VERSION_NUMBER_10S_FLUSH:
+		return sizeof(dragent_protocol_header_v5);
+	default:
+		return 0;
+	}
+}
+
+bool dragent_protocol::parse_header(const uint8_t* buf,
+                                    uint32_t buf_len,
+                                    dragent_protocol_header_v4* hdr_out)
+{
+	if (buf_len < sizeof(*hdr_out))
+	{
+		return false;
+	}
+
+	memcpy(hdr_out, buf, sizeof(*hdr_out));
+	hdr_out->len = ntohl(hdr_out->len);
+
+	return true;
+}
+
+bool dragent_protocol::parse_header(const uint8_t* buf,
+                                    uint32_t buf_len,
+                                    dragent_protocol_header_v5* hdr_out)
+{
+	if (buf_len < sizeof(*hdr_out))
+	{
+		return false;
+	}
+
+	memcpy(hdr_out, buf, sizeof(*hdr_out));
+	hdr_out->hdr.len = ntohl(hdr_out->hdr.len);
+	hdr_out->generation = ntohll(hdr_out->generation);
+	hdr_out->sequence = ntohll(hdr_out->sequence);
+
+	return true;
+}
+
+protocol_compression_method protobuf_compressor_factory::s_default_compression =
+        protocol_compression_method::NONE;

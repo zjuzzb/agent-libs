@@ -1,6 +1,5 @@
 #include "sinsp_worker.h"
 #include "common_logger.h"
-#include "configuration_manager.h"
 #include "container_config.h"
 #include "config_update.h"
 #include "error_handler.h"
@@ -25,6 +24,8 @@ namespace security_config = libsanalyzer::security_config;
 namespace
 {
 
+COMMON_LOGGER();
+
 type_config<uint16_t> config_increased_snaplen_port_range_start(
 		0,
 		"Starting port in the range of ports to enable a larger snaplen on",
@@ -33,8 +34,6 @@ type_config<uint16_t> config_increased_snaplen_port_range_end(
 		0,
 		"Ending port in the range of ports to enable a larger snaplen on",
 		"increased_snaplen_port_range_end");
-
-COMMON_LOGGER();
 
 } // namespace
 
@@ -103,6 +102,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_security_initialized(false),
 	m_security_mgr(NULL),
 	m_compliance_mgr(NULL),
+	m_hosts_metadata_uptodate(true),
 #endif
 	m_capture_job_handler(capture_job_handler),
 	m_dump_job_requests(10),
@@ -113,7 +113,8 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_last_mode_switch_time(0),
 	m_next_iflist_refresh_ns(0),
 	m_aws_metadata_refresher(*configuration),
-	m_internal_metrics(im)
+	m_internal_metrics(im),
+	m_capture_paused(false)
 { }
 
 sinsp_worker::~sinsp_worker()
@@ -370,6 +371,7 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 	{
 		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
 		m_inspector->open("");
+		pause_capture();
 		m_inspector->set_simpledriver_mode();
 		m_analyzer->set_simpledriver_mode();
 	}
@@ -378,6 +380,7 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
 
 		m_inspector->open("");
+		pause_capture();
 
 		if(m_configuration->m_snaplen != 0)
 		{
@@ -513,6 +516,7 @@ void sinsp_worker::run()
 	int32_t res;
 	sinsp_evt* ev;
 	uint64_t ts;
+	bool capture_was_paused = m_capture_paused;
 
 	m_pthread_id = pthread_self();
 
@@ -545,6 +549,15 @@ void sinsp_worker::run()
 			dragent_configuration::m_terminate = true;
 			break;
 		}
+
+		// Restart the capture if it was paused; refresh the proc list
+		// to pick up anything missed while paused
+		if(capture_was_paused && !m_capture_paused)
+		{
+			m_inspector->start_capture();
+			m_inspector->refresh_proc_list();
+		}
+		capture_was_paused = m_capture_paused;
 
 		res = m_inspector->next(&ev);
 
@@ -651,14 +664,26 @@ void sinsp_worker::run()
 		}
 
 #ifndef CYGWING_AGENT
+		bool update_hosts_metadata = !m_hosts_metadata_uptodate.test_and_set();
+
 		// Possibly pass the event to the security manager
 		if(m_security_mgr)
 		{
+			std::string errstr;
+			if(update_hosts_metadata && !m_security_mgr->reload_policies(errstr))
+			{
+				LOG_ERROR("Could not reload policies after receiving "
+					  "new hosts metadata: %s", errstr.c_str());
+			}
 			m_security_mgr->process_event(ev);
 		}
 
 		if(m_compliance_mgr)
 		{
+			if(update_hosts_metadata)
+			{
+				m_compliance_mgr->request_refresh_compliance_tasks();
+			}
 			m_compliance_mgr->process_event(ev);
 		}
 #endif
@@ -827,22 +852,7 @@ bool sinsp_worker::run_compliance_tasks(const draiosproto::comp_run &run,
 void sinsp_worker::receive_hosts_metadata(const draiosproto::orchestrator_events &evts)
 {
 	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
-
-	if(m_compliance_mgr)
-	{
-		m_compliance_mgr->request_refresh_compliance_tasks();
-	}
-
-	if(m_security_mgr)
-	{
-		std::string errstr;
-
-		if (!m_security_mgr->reload_policies(errstr))
-		{
-			LOG_ERROR("Could not reload policies after receiving "
-			          "new hosts metadata: %s", errstr.c_str());
-		}
-	}
+	m_hosts_metadata_uptodate.clear();
 }
 #endif
 
@@ -953,3 +963,15 @@ void sinsp_worker::check_autodrop(uint64_t ts_ns)
 		}
 	}
 }
+
+void sinsp_worker::pause_capture()
+{
+	m_inspector->stop_capture();
+	m_capture_paused = true;
+}
+
+void sinsp_worker::unpause_capture()
+{
+	m_capture_paused = false;
+}
+

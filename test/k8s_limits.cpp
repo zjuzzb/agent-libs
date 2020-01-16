@@ -1,6 +1,8 @@
 #include <gtest.h>
 #include "k8s_limits.h"
 
+#include "draios.pb.h"
+
 #define DEFAULT_CACHE_SIZE 10000
 
 TEST(k8s_limits, purge_proto_structure)
@@ -11,7 +13,7 @@ TEST(k8s_limits, purge_proto_structure)
 			{"*.pod-template-generation", false},
 			{"*", true}});
 
-	k8s_limits kl(filters);
+	k8s_limits kl(std::move(filters));
 
 	draiosproto::container_group cg;
 

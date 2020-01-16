@@ -22,7 +22,7 @@ public:
 	statsite_proxy(const std::pair<FILE*, FILE*>& pipes,
 		       bool check_format);
 	statsd_stats_source::container_statsd_map read_metrics(
-			metric_limits::cref_sptr_t ml = nullptr) override;
+			const metric_limits::sptr_t& ml = nullptr) override;
 	void send_metric(const char *buf, uint64_t len) override;
 	void send_container_metric(const std::string& container_id,
 	                           const char* data,

@@ -1,3 +1,8 @@
+pyopenssl==19.0.0
+
+# used by all sdchecks core files
+future==0.17.1
+
 # checks.d/postgres.py
 # checks.d/pgbouncer.py
 # Require libpq
@@ -17,3 +22,9 @@ pyyaml==5.1
 
 # used only by supervisord.py
 supervisor==4.0.3
+
+# used by sdchecks.py
+posix_ipc==1.0.0
+
+# solr/solr_5.py
+enum34==1.1.6

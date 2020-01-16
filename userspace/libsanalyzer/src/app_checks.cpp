@@ -17,11 +17,6 @@ namespace
 
 COMMON_LOGGER();
 
-type_config<bool> c_sdagent_compression_enabled(
-		false,
-		"sdagent sends compressed metrics",
-		"app_checks_compress_data");
-
 }
 
 
@@ -322,119 +317,96 @@ void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes
 	m_outqueue.send(data);
 }
 
-app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cref_sptr_t ml)
+app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(const metric_limits::sptr_t& ml)
 {
 	metric_map_t ret;
-	std::string msg;
 	try
 	{
-		if(c_sdagent_compression_enabled.get_value())
-		{
-			// read the header
-			uLongf uncompressed_size = 0;
-			uLongf num_compressed_segments = 0;
-			auto msg_header = m_inqueue.receive();
-			if(!msg_header.empty())
-			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks (compressed header): %lu bytes", msg_header.size());
-				// extract metadata from header
-				Json::Value msg_header_json;
-				if(m_json_reader.parse(msg_header, msg_header_json, false))
-				{
-					std::string magic;
-					if(msg_header_json.isMember("magic") &&
-						msg_header_json.isMember("uncompressed_size") &&
-						msg_header_json.isMember("num_compressed_segments"))
-					{
-						magic = msg_header_json["magic"].asString();
-						uncompressed_size = msg_header_json["uncompressed_size"].asUInt();
-						num_compressed_segments = msg_header_json["num_compressed_segments"].asUInt();
-						g_logger.format(sinsp_logger::SEV_DEBUG, "Header magic=%s, uncompressed_size=%lu, num_compressed_segments=%lu",
-								magic.c_str(), uncompressed_size, num_compressed_segments);
-					}
-					else
-					{
-						g_logger.format(sinsp_logger::SEV_ERROR, "Unable to parse json in header for compressed message");
-						return ret;
-					}
-					// validate metadata
-					if(magic != "SDAGENT")
-					{
-						g_logger.format(sinsp_logger::SEV_ERROR, "Invalid magic in header, expected SDAGENT, found %s", magic.c_str());
-						return ret;
-					}
-					if(num_compressed_segments != 1)
-					{
-						// We don't support more than 1 compressed segments
-						// Add support for multiple segments in the future, if required
-						g_logger.format(sinsp_logger::SEV_ERROR, "Invalid num_compressed_segments in header, expected 1, found %lu",
-								num_compressed_segments);
-						return ret;
-					}
+		uint32_t uncompressed_size = 0;
+		auto buf = m_inqueue.receive();
+		std::vector<Bytef> uncompressed_msg;
 
-				}
-			}
-			// process the compressed data segment(s)
-			// Note: Today, we support only 1 compressed segment
-			auto compressed_msg = m_inqueue.receive();
-			if(!compressed_msg.empty())
+		if(buf.empty())
+		{
+			return ret;
+		}
+
+		uint8_t version = buf[0];
+		if(version != PROTOCOL_VERSION)
+		{
+			g_logger.format(sinsp_logger::SEV_ERROR, "Unsupported sdchecks response version %d", version);
+			return ret;
+		}
+
+		// zero length might be a timeout, non-zero and < 5 is a bug
+		ASSERT(buf.size() >= sizeof(uint32_t) + 1);
+
+		memcpy(&uncompressed_size, &buf[1], sizeof(uint32_t));
+		uncompressed_size = ntohl(uncompressed_size);
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Received %lu from sdchecks bytes, uncompressed length %u", buf.size(), uncompressed_size);
+
+		if(buf.size() >= MAX_COMPRESSED_SIZE || uncompressed_size > MAX_UNCOMPRESSED_SIZE)
+		{
+			g_logger.format(sinsp_logger::SEV_ERROR, "sdchecks response too large (compressed %zu, uncompressed %u)", buf.size(), uncompressed_size);
+			return ret;
+		}
+
+		const char* start = &buf[0] + 1 + sizeof(uint32_t);
+		unsigned long len = buf.size() - 1 - sizeof(uint32_t);
+
+		if (uncompressed_size > 0)
+		{
+			unsigned long u = uncompressed_size;
+			uncompressed_msg.reserve(u);
+			int res = uncompress(&(uncompressed_msg[0]), &u, (const Bytef*)start, len);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Uncompressed to %lu bytes, res=%d", uncompressed_size, res);
+			if (res != Z_OK)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks (commpressed message): %lu bytes", compressed_msg.size());
-				// Allocate memory for the uncompressed data
-				// Note: reserve() throws std::length_error exception if storage allocation fails,
-				// which should be caught below
-				std::vector<Bytef> uncompressed_msg;
-				uncompressed_msg.reserve(uncompressed_size);
-				// Uncompress the message
-				int res = uncompress(&(uncompressed_msg[0]), &uncompressed_size, (const Bytef*)(compressed_msg.c_str()), compressed_msg.size());
-				if (res != Z_OK)
+				g_logger.format(sinsp_logger::SEV_ERROR, "uncompress error %d", res);
+				return ret;
+			}
+			start = reinterpret_cast<char*>(&uncompressed_msg[0]);
+			len = uncompressed_size;
+		}
+
+		if(len == 0)
+		{
+			g_logger.format(sinsp_logger::SEV_WARNING, "Received an empty message from sdchecks", buf.size());
+			return ret;
+		}
+
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from sdchecks: %lu bytes", len);
+		Json::Value response_obj;
+		if(m_json_reader.parse(start, start+len, response_obj, false))
+		{
+			auto proc_metrics = [](const Json::Value& obj, app_check_data::check_type t, const metric_limits::sptr_t& ml, metric_map_t &ret) {
+				for(const auto& process : obj)
 				{
-					g_logger.format(sinsp_logger::SEV_ERROR, "uncompress error %d", res);
-					return ret;
+					app_check_data data(process, ml);
+					// only add if there are metrics or services
+					if(data.metrics().size() || data.services().size() || data.total_metrics())
+					{
+						data.set_type(t);
+						ret[data.pid()][data.name()] = move(data);
+					}
 				}
-				msg = reinterpret_cast<char*>(&uncompressed_msg[0]);
-				msg.erase(uncompressed_size, std::string::npos);
+			};
+			if (response_obj.isMember("processes"))
+			{
+				const auto& resp_obj = response_obj["processes"];
+				proc_metrics(resp_obj, app_check_data::check_type::APPCHECK, ml, ret);
+			}
+			if (response_obj.isMember("prometheus"))
+			{
+				const auto& resp_obj = response_obj["prometheus"];
+				proc_metrics(resp_obj, app_check_data::check_type::PROMETHEUS, ml, ret);
 			}
 		}
 		else
 		{
-			msg = m_inqueue.receive();
-		}
-
-		if(!msg.empty())
-		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %lu bytes", msg.size());
-			Json::Value response_obj;
-			if(m_json_reader.parse(msg, response_obj, false))
-			{
-				auto proc_metrics = [](Json::Value obj, app_check_data::check_type t, metric_limits::cref_sptr_t ml, metric_map_t &ret) {
-					for(const auto& process : obj)
-					{
-						app_check_data data(process, ml);
-						// only add if there are metrics or services
-						if(data.metrics().size() || data.services().size() || data.total_metrics())
-						{
-							data.set_type(t);
-							ret[data.pid()][data.name()] = move(data);
-						}
-					}
-				};
-				if (response_obj.isMember("processes"))
-				{
-					auto resp_obj = response_obj["processes"];
-					proc_metrics(resp_obj, app_check_data::check_type::APPCHECK, ml, ret);
-				}
-				if (response_obj.isMember("prometheus"))
-				{
-					auto resp_obj = response_obj["prometheus"];
-					proc_metrics(resp_obj, app_check_data::check_type::PROMETHEUS, ml, ret);
-				}
-			}
-			else
-			{
-				g_logger.format(sinsp_logger::SEV_ERROR, "app_checks_proxy::read_metrics: JSON parsing error:");
-				g_logger.format(sinsp_logger::SEV_DEBUG, "%s", msg.c_str());
-			}
+			g_logger.format(sinsp_logger::SEV_ERROR, "app_checks_proxy::read_metrics: JSON parsing error:");
+			std::string msg(start, len);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "%s", msg.c_str());
 		}
 	}
 	catch(std::exception& ex)
@@ -444,7 +416,7 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 	return ret;
 }
 
-app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_t ml):
+app_check_data::app_check_data(const Json::Value &obj, const metric_limits::sptr_t& ml):
 	m_pid(obj["pid"].asInt()),
 	m_expiration_ts(obj["expiration_ts"].asUInt64()),
 	m_total_metrics(0)
@@ -457,9 +429,8 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 	{
 		for(auto& m : obj["metrics"])
 		{
-			if(m.isArray() && m.size() && m[0].isConvertibleTo(Json::stringValue))
+			if(m.isArray() && !m.empty() && m[0].isConvertibleTo(Json::stringValue))
 			{
-				std::string filter;
 				if(ml)
 				{
 					std::string filter;
@@ -506,7 +477,7 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 }
 
 template<typename metric>
-unsigned app_check_data::to_protobuf(metric *proto, uint16_t& limit, uint16_t max_limit) const
+unsigned app_check_data::to_protobuf(metric *proto, unsigned int& limit, unsigned int max_limit) const
 {
 	unsigned emitted_metrics = 0;
 
@@ -547,8 +518,8 @@ unsigned app_check_data::to_protobuf(metric *proto, uint16_t& limit, uint16_t ma
 	return emitted_metrics;
 }
 
-template unsigned app_check_data::to_protobuf<draiosproto::app_info>(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const;
-template unsigned app_check_data::to_protobuf<draiosproto::prometheus_info>(draiosproto::prometheus_info *proto, uint16_t& limit, uint16_t max_limit) const;
+template unsigned app_check_data::to_protobuf<draiosproto::app_info>(draiosproto::app_info *proto, unsigned int& limit, unsigned int max_limit) const;
+template unsigned app_check_data::to_protobuf<draiosproto::prometheus_info>(draiosproto::prometheus_info *proto, unsigned int& limit, unsigned int max_limit) const;
 
 const std::unordered_map<string, std::pair<app_metric::type_t, app_metric::prometheus_type_t>> app_metric::metric_type_mapping = {
 		{"gauge",   {app_metric::type_t::GAUGE,          app_metric::prometheus_type_t::INVALID}},
@@ -636,7 +607,8 @@ app_metric::app_metric(const Json::Value &obj):
 	}
 }
 
-void app_metric::to_protobuf(draiosproto::app_metric *proto) const
+template<typename message>
+void app_metric::to_protobuf(message *proto) const
 {
 	proto->set_name(m_name);
 	proto->set_type(static_cast<draiosproto::app_metric_type>(m_type));
@@ -662,6 +634,9 @@ void app_metric::to_protobuf(draiosproto::app_metric *proto) const
 		}
 	}
 }
+
+template void app_metric::to_protobuf<draiosproto::app_metric>(draiosproto::app_metric *proto) const;
+template void app_metric::to_protobuf<draiosproto::prom_metric>(draiosproto::prom_metric *proto) const;
 
 /*
  * example:
@@ -710,7 +685,8 @@ void app_service_check::to_protobuf(draiosproto::app_check *proto) const
 	}
 }
 
-void app_service_check::to_protobuf_as_metric(draiosproto::app_metric *proto) const
+template <typename message>
+void app_service_check::to_protobuf_as_metric(message *proto) const
 {
 	proto->set_name(m_name);
 	if(m_status == status_t::OK)
@@ -732,3 +708,5 @@ void app_service_check::to_protobuf_as_metric(draiosproto::app_metric *proto) co
 	}
 }
 
+template void app_service_check::to_protobuf_as_metric<draiosproto::app_metric>(draiosproto::app_metric *proto) const ;
+template void app_service_check::to_protobuf_as_metric<draiosproto::prom_metric>(draiosproto::prom_metric *proto) const ;

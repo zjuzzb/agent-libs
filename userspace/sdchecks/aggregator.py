@@ -1,4 +1,12 @@
+from __future__ import division
 # stdlib
+from future.utils import PY3
+if PY3:
+    from builtins import str
+else:
+    from past.builtins import str
+from builtins import object
+from past.utils import old_div
 import logging
 import math
 from time import time
@@ -243,12 +251,12 @@ class Counter(Metric):
         self.last_sample_time = None
 
     def sample(self, value, sample_rate, timestamp=None):
-        self.value += value * int(1 / sample_rate)
+        self.value += value * int(old_div(1, sample_rate))
         self.last_sample_time = time()
 
     def flush(self, timestamp, interval):
         try:
-            value = self.value / interval
+            value = old_div(self.value, interval)
             return [self.formatter(
                 metric=self.name,
                 value=value,
@@ -285,7 +293,7 @@ class Histogram(Metric):
         self.last_sample_time = None
 
     def sample(self, value, sample_rate, timestamp=None):
-        self.count += int(1 / sample_rate)
+        self.count += int(old_div(1, sample_rate))
         self.samples.append(value)
         self.last_sample_time = time()
 
@@ -298,7 +306,7 @@ class Histogram(Metric):
 
         min_ = self.samples[0]
         max_ = self.samples[-1]
-        med = self.samples[int(round(length/2 - 1))]
+        med = self.samples[int(round(old_div(length,2) - 1))]
         avg = sum(self.samples) / float(length)
 
         aggregators = [
@@ -306,7 +314,7 @@ class Histogram(Metric):
             ('max', max_, MetricTypes.GAUGE),
             ('median', med, MetricTypes.GAUGE),
             ('avg', avg, MetricTypes.GAUGE),
-            ('count', self.count/interval, MetricTypes.RATE),
+            ('count', old_div(self.count,interval), MetricTypes.RATE),
         ]
 
         metric_aggrs = [
@@ -609,7 +617,7 @@ class Aggregator(object):
             if not meta:
                 return service_check
 
-            meta = unicode(meta)
+            meta = str(meta)
             for m in meta.split('|'):
                 if m[0] == u'd':
                     service_check['timestamp'] = float(m[2:])
@@ -630,7 +638,7 @@ class Aggregator(object):
         # Keep a very conservative approach anyhow
         # Clients MUST always send UTF-8 encoded content
         if self.utf8_decoding:
-            packets = unicode(packets, 'utf-8', errors='replace')
+            packets = str(packets, 'utf-8', errors='replace')
 
         for packet in packets.splitlines():
             if not packet.strip():
@@ -832,7 +840,7 @@ class MetricsBucketAggregator(Aggregator):
     def create_empty_metrics(self, sample_time_by_context, expiry_timestamp, flush_timestamp, metrics):
         # Even if no data is submitted, Counters keep reporting "0" for expiry_seconds.  The other Metrics
         #  (Set, Gauge, Histogram) do not report if no data is submitted
-        for context, last_sample_time in sample_time_by_context.items():
+        for context, last_sample_time in list(sample_time_by_context.items()):
             if last_sample_time < expiry_timestamp:
                 log.debug("%s hasn't been submitted in %ss. Expiring." % (context, self.expiry_seconds))
                 self.last_sample_time_by_context.pop(context, None)
@@ -857,7 +865,7 @@ class MetricsBucketAggregator(Aggregator):
                 if bucket_start_timestamp < flush_cutoff_time:
                     not_sampled_in_this_bucket = self.last_sample_time_by_context.copy()
                     # We mutate this dictionary while iterating so don't use an iterator.
-                    for context, metric in metric_by_context.items():
+                    for context, metric in list(metric_by_context.items()):
                         if metric.last_sample_time < expiry_timestamp:
                             # This should never happen
                             log.warning("%s hasn't been submitted in %ss. Expiring." % (context, self.expiry_seconds))
@@ -999,7 +1007,7 @@ class MetricsAggregator(Aggregator):
         # Flush points and remove expired metrics. We mutate this dictionary
         # while iterating so don't use an iterator.
         metrics = []
-        for context, metric in self.metrics.items():
+        for context, metric in list(self.metrics.items()):
             if metric.last_sample_time < expiry_timestamp:
                 log.debug("%s hasn't been submitted in %ss. Expiring." % (context, self.expiry_seconds))
                 del self.metrics[context]

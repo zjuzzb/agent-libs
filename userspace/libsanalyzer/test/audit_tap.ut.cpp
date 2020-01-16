@@ -31,7 +31,8 @@ const uint32_t DEFAULT_COUNT_TOTAL = DEFAULT_COUNT_IN + DEFAULT_COUNT_OUT;
 const uint32_t DEFAULT_ERROR_COUNT = 2;
 
 audit_tap_handler_dummy g_audit_handler;
-null_secure_audit_handler g_secure_handler;
+null_secure_audit_handler g_secure_audit_handler;
+null_secure_profiling_handler g_secure_profiling_handler;
 sinsp_analyzer::flush_queue g_queue(1000);
 
 env_hash_config *default_hash_config()
@@ -51,6 +52,7 @@ env_hash_config *default_hash_config()
 }
 
 void add_connection(sinsp& inspector,
+                    sinsp_analyzer& analyzer,
                     audit_tap& tap,
                     const sinsp_threadinfo* const thread1,
                     const int transition_count,
@@ -61,7 +63,7 @@ void add_connection(sinsp& inspector,
                     const uint32_t count_out = DEFAULT_COUNT_OUT,
                     const uint32_t error_count = DEFAULT_ERROR_COUNT)
 {
-	sinsp_ipv4_connection_manager mgr(&inspector);
+	sinsp_ipv4_connection_manager mgr(&inspector, analyzer);
 	_ipv4tuple ipv4;
 
 	memset(ipv4.m_all, 0, sizeof ipv4.m_all);
@@ -135,24 +137,24 @@ void arg_length_test(const int limit)
 	                        "/" /*root dir*/,
 	                        int_metrics,
 	                        g_audit_handler,
-	                        g_secure_handler,
+	                        g_secure_audit_handler,
+				g_secure_profiling_handler,
 	                        &g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
 	analyzer.enable_audit_tap(true /*emit local connections*/);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
-	const sinsp_threadinfo *thread1 = inspector->build_thread()
-					  .pid(DEFAULT_PID)
-					  .comm("dragent")
-					  .arg(arg_150).commit();
+	auto &thread1 = inspector->build_thread().pid(DEFAULT_PID)
+						 .comm("dragent")
+						 .arg(arg_150).commit();
 	inspector->open();
 
 	audit_tap tap(default_hash_config(),
 		      MACHINE_ID_FOR_TEST,
 		      true /*emit local connections*/);
 
-	add_connection(*inspector, tap, thread1, 2);
+	add_connection(*inspector, analyzer, tap, &thread1, 2);
 
 	const tap::AuditLog *log = tap.get_events();
 	int expected_length = std::min(static_cast<int>(arg_150.length()), limit);
@@ -188,7 +190,8 @@ TEST(audit_tap_test, basic)
 	                        "/" /*root dir*/,
 	                        int_metrics,
 	                        g_audit_handler,
-	                        g_secure_handler,
+	                        g_secure_audit_handler,
+				g_secure_profiling_handler,
 	                        &g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
@@ -196,11 +199,11 @@ TEST(audit_tap_test, basic)
 	// we don't enable it the the ipv4_connection_manager won't record the
 	// correct data.
 	analyzer.enable_audit_tap(true /*emit local connections*/);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
 	// Build some threads that we'll add connections to.
 	(void)inspector->build_thread().commit();
-	const sinsp_threadinfo *thread1 = inspector->build_thread()
+	auto &thread1 = inspector->build_thread()
 		.pid(expected_pid)
 		.comm("gcc")
 		.exe(expected_name)
@@ -212,9 +215,9 @@ TEST(audit_tap_test, basic)
 	inspector->open();
 
 	// Sanity checks
-	ASSERT_EQ(expected_pid, thread1->m_pid);
-	ASSERT_EQ(expected_pid, thread1->m_tid);
-	ASSERT_EQ(expected_name, thread1->m_exe);
+	ASSERT_EQ(expected_pid, thread1.m_pid);
+	ASSERT_EQ(expected_pid, thread1.m_tid);
+	ASSERT_EQ(expected_name, thread1.m_exe);
 
 	// Even though the analyzer has it's own tap, let's make our own
 	// and it can pull data from sinsp and the analyzer thread.
@@ -224,7 +227,7 @@ TEST(audit_tap_test, basic)
 
 
 	const int TRANSITION_COUNT = 5;
-	add_connection(*inspector, tap, thread1, TRANSITION_COUNT);
+	add_connection(*inspector, analyzer, tap, &thread1, TRANSITION_COUNT);
 
 	const tap::AuditLog *log = tap.get_events();
 
@@ -298,14 +301,15 @@ TEST(audit_tap_test, connection_audit_one_client_connection)
 	                        root_dir,
 	                        int_metrics,
 	                        g_audit_handler,
-	                        g_secure_handler,
+	                        g_secure_audit_handler,
+				g_secure_profiling_handler,
 	                        &g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
 	analyzer.enable_audit_tap(emit_local_connections);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
-	const sinsp_threadinfo* const thread = inspector->build_thread()
+	auto &thread = inspector->build_thread()
 			.pid(DEFAULT_PID)
 			.comm("client_application")
 			.arg(arg)
@@ -317,7 +321,7 @@ TEST(audit_tap_test, connection_audit_one_client_connection)
 	              MACHINE_ID_FOR_TEST,
 	              emit_local_connections);
 
-	add_connection(*inspector, tap, thread, 2);
+	add_connection(*inspector, analyzer, tap, &thread, 2);
 
 	const tap::AuditLog* const log = tap.get_events();
 
@@ -373,14 +377,15 @@ TEST(audit_tap_test, connection_audit_one_server_connection)
 	                        root_dir,
 	                        int_metrics,
 	                        g_audit_handler,
-	                        g_secure_handler,
+	                        g_secure_audit_handler,
+				g_secure_profiling_handler,
 	                        &g_queue);
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
 	analyzer.enable_audit_tap(emit_local_connections);
-	inspector->m_analyzer = &analyzer;
+	inspector->register_external_event_processor(analyzer);
 
-	const sinsp_threadinfo* const thread = inspector->build_thread()
+	auto &thread = inspector->build_thread()
 			.pid(DEFAULT_PID)
 			.comm("server_application")
 			.arg(arg)
@@ -393,7 +398,7 @@ TEST(audit_tap_test, connection_audit_one_server_connection)
 	              emit_local_connections);
 
 	const bool is_client = false;
-	add_connection(*inspector, tap, thread, 2, is_client);
+	add_connection(*inspector, analyzer, tap, &thread, 2, is_client);
 
 	const tap::AuditLog* const log = tap.get_events();
 

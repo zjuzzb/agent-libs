@@ -2,6 +2,8 @@
 
 #include <event.h>
 #include <functional>
+#include <threadinfo.h>
+#include <utils.h>
 
 namespace test_helpers
 {
@@ -25,9 +27,10 @@ public:
 
 	/**
 	 * ctor without commit
+	 * This is expected to only be used for unit testing this class
 	 */
-	event_builder() :
-	   m_event(new sinsp_evt_wrapper())
+	event_builder(sinsp_threadinfo &tinfo) :
+	   m_event(new sinsp_evt_wrapper(tinfo))
 	{
 		set_defaults();
 	}
@@ -37,9 +40,10 @@ public:
 	 * ctor with a commit delegate where the generated events are
 	 * sent to a consumer.
 	 */
-	event_builder(const commit_delegate& delegate) :
+	event_builder(sinsp_threadinfo &tinfo,
+		      const commit_delegate& delegate) :
 	   m_commit(delegate),
-	   m_event(new sinsp_evt_wrapper())
+	   m_event(new sinsp_evt_wrapper(tinfo))
 	{
 		set_defaults();
 	}
@@ -103,23 +107,6 @@ public:
 	}
 
 	/**
-	 * Set the thread id (different from the pid)
-	 */
-	event_builder& tid(int64_t value)
-	{
-		m_event->tid(value);
-		return *this;
-	}
-
-	/**
-	 * @return the thread id
-	 */
-	int64_t tid()
-	{
-		return m_event->tid();
-	}
-
-	/**
 	 * Generate this event and pass it to the consumer along with
 	 * the count
 	 */
@@ -132,12 +119,13 @@ private:
 
 	void set_defaults()
 	{
-		m_event->tid(0x7777555577775555);
-
-		m_event->get()->m_cpuid = 0x2222;
+		// SINSP_ENV
+		sinsp_evt& sevt = *m_event->get();
+		sevt.m_cpuid = 0x2222;
+		sevt.m_errorcode = 0;
 
 		// SCAP_EVT
-		scap_evt& evt = *m_event->get()->m_pevt;
+		scap_evt& evt = *sevt.m_pevt;
 		// If ts isn't set by the client, then this will be set in generate
 		evt.ts = 0;
 		evt.len = 0;

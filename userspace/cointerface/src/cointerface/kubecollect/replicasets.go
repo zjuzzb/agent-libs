@@ -13,12 +13,10 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/api/core/v1"
 )
 
 // Globals are reset in startReplicaSetsSInformer
 var replicaSetInf cache.SharedInformer
-var rsSelectorCache *selectorCache
 var filterEmptyRs bool
 
 type coReplicaSet struct {
@@ -117,16 +115,7 @@ func newReplicaSetCongroup(replicaSet coReplicaSet, setLinks bool) (*draiosproto
 	if setLinks {
 		AddNSParents(&ret.Parents, replicaSet.GetNamespace())
 		AddDeploymentParents(&ret.Parents, replicaSet)
-
 		AddPodChildrenFromOwnerRef(&ret.Children, replicaSet.ObjectMeta)
-
-		// For compatibility with old k8s versions
-		if len(ret.Children) == 0 {
-			selector, ok := rsSelectorCache.Get(replicaSet)
-			if ok {
-				AddPodChildren(&ret.Children, selector, replicaSet.GetNamespace())
-			}
-		}
 		AddHorizontalPodAutoscalerParents(&ret.Parents, replicaSet.GetNamespace(), replicaSet.APIVersion, replicaSet.Kind, replicaSet.GetName() )
 	}
 	return ret
@@ -138,28 +127,6 @@ func addReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet coReplic
 	AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicaSet.Status.FullyLabeledReplicas)
 	AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicaSet.Status.ReadyReplicas)
 	AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicaSet.Spec.Replicas)
-}
-
-func AddReplicaSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if !resourceReady("replicasets") {
-		return
-	}
-
-	podLabels := labels.Set(pod.GetLabels())
-	for _, obj := range replicaSetInf.GetStore().List() {
-		rs := coReplicaSet{obj.(*appsv1.ReplicaSet)}
-		if pod.GetNamespace() != rs.GetNamespace() {
-			continue
-		}
-
-		selector, ok := rsSelectorCache.Get(rs)
-		if ok && selector.Matches(podLabels) {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_replicaset"),
-				Id:proto.String(string(rs.GetUID()))})
-			break
-		}
-	}
 }
 
 func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, ns string) {
@@ -213,7 +180,6 @@ func AddReplicaSetChildrenByName(children *[]*draiosproto.CongroupUid, namespace
 }
 
 func startReplicaSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty bool) {
-	rsSelectorCache = newSelectorCache()
 	filterEmptyRs = filterEmpty
 	client := kubeClient.AppsV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicaSets", v1meta.NamespaceAll, fields.Everything())
@@ -262,7 +228,6 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					addEvent("ReplicaSet", EVENT_UPDATE_AND_SEND)
 					return
 				} else if filterEmptyRs && oldReplicas > 0 && newReplicas == 0 {
-					rsSelectorCache.Remove(newRS)
 					evtc <- draiosproto.CongroupUpdateEvent {
 						Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 						Object: &draiosproto.ContainerGroup{
@@ -275,9 +240,6 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					return
 				} else {
 					sameEntity, sameLinks := replicaSetEquals(oldRS, newRS)
-					if !sameLinks {
-						rsSelectorCache.Update(newRS)
-					}
 					if !sameEntity || !sameLinks {
 						evtc <- replicaSetEvent(newRS,
 							draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
@@ -309,7 +271,6 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					return
 				}
 
-				rsSelectorCache.Remove(rs)
 				evtc <- draiosproto.CongroupUpdateEvent {
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{

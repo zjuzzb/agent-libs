@@ -18,9 +18,7 @@ sysdig-tracers==0.1.2
 # checks.d/network.py
 psutil==5.6.2
 
-pyopenssl==19.0.0
 netifaces==0.10.9
-posix_ipc==1.0.0
 
 ###########################################################
 # These modules are for checks. But they are
@@ -57,15 +55,12 @@ pysnmp==4.4.6
 boto==2.36.0
 
 # checks.d/prometheus.py
-prometheus_client==0.7.1
+# DO NOT UPGRADE unless there's a way to reliably get the original
+# metric name for counter metrics. See SMAGENT-2122
+prometheus_client==0.3.1
 
 # checks.d/mongo.py
 pymongo==3.2
 
 # checks.d/spark.py
 beautifulsoup4==4.5.1
-
-# solr/solr_5.py
-enum34==1.1.6
-
-
