@@ -25,14 +25,15 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
+	github.com/pkg/errors v0.8.1
 	github.com/shirou/gopsutil v2.18.12+incompatible
+	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
+	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
 	google.golang.org/grpc v1.24.0
-	golang.org/x/net v0.0.0-20190812203447-cdfb69ac37fc
+	gotest.tools v2.2.0+incompatible // indirect
 	k8s.io/api v0.0.0-20191003000013-35e20aa79eb8
 	k8s.io/apimachinery v0.0.0-20190913080033-27d36303b655
 	k8s.io/client-go v0.0.0-20191003000419-f68efa97b39e
-	github.com/pkg/errors v0.8.1
-	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
 	k8s.io/cri-api v0.0.0-20191107035106-03d130a7dc28
 )
 
