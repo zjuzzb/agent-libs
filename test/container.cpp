@@ -1644,9 +1644,9 @@ static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_s
 
 		// This is the container's initial command. In the test case
 		// where the health check is the same command, we will see this
-		// command twice--the first time it should not be identifieed as
+		// command twice--the first time it should not be identified as
 		// a health check, and the second time it should.
-		if(cmdline == "sh -c /bin/sleep 1")
+		if(cmdline == "sh -c /bin/sleep 10")
 		{
 			if(!cstate.root_cmd_seen)
 			{
@@ -1656,14 +1656,21 @@ static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_s
 			}
 			else
 			{
-				ASSERT_EQ(tinfo->m_category, expected_cat) << capture_stats(inspector);
-				cstate.healthcheck_seen = true;
+				// In some cases, it can take so long for the async fetch of container info to
+				// complete (1.5 seconds) that a healthcheck proc might be run before the container
+				// info has been updated. So only require the threadinfo category to match once
+				// the container info has a health probe.
+				if(cstate.container_w_health_probe)
+				{
+					cstate.healthcheck_seen = true;
+					ASSERT_EQ(tinfo->m_category, expected_cat) << capture_stats(inspector);
+				}
 			}
 		}
 
 		// Child process of the above sh command. Same handling as above,
 		// will see twice only when health check is same as root command.
-		if(cmdline == "sleep 1")
+		if(cmdline == "sleep 10")
 		{
 			if(!cstate.second_cmd_seen)
 			{
@@ -1672,8 +1679,12 @@ static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_s
 			}
 			else
 			{
-				// Should inherit container healthcheck property from parent.
-				ASSERT_EQ(tinfo->m_category, expected_cat) << capture_stats(inspector);
+				// See above caveat about slow container info fetches
+				if(cstate.container_w_health_probe)
+				{
+					// Should inherit container healthcheck property from parent.
+					ASSERT_EQ(tinfo->m_category, expected_cat) << capture_stats(inspector);
+				}
 			}
 		}
 
@@ -1729,7 +1740,7 @@ static void healthcheck_helper(const char *dockerfile,
 		inspector->start_dropping_mode(1);
 
 		// --network=none speeds up the container setup a bit.
-		int rc = system("docker run --rm --network=none --name cont_health_ut cont_health_ut_img /bin/sh -c '/bin/sleep 1' > /dev/null 2>&1");
+		int rc = system("docker run --rm --network=none --name cont_health_ut cont_health_ut_img /bin/sh -c '/bin/sleep 10' > /dev/null 2>&1");
 
 		ASSERT_TRUE(exited_early || (rc == 0));
 	};
@@ -1819,7 +1830,7 @@ static void healthcheck_tracefile_helper(const char *dockerfile,
 	ASSERT_TRUE(system(build_cmdline.c_str()) == 0);
 
 	// --network=none speeds up the container setup a bit.
-	ASSERT_TRUE((system("docker run --rm --network=none --name cont_health_ut cont_health_ut_img /bin/sh -c '/bin/sleep 1' > /dev/null 2>&1")) == 0);
+	ASSERT_TRUE((system("docker run --rm --network=none --name cont_health_ut cont_health_ut_img /bin/sh -c '/bin/sleep 10' > /dev/null 2>&1")) == 0);
 
 	done=true;
 	dump_thread.join();
