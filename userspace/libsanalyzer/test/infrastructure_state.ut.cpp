@@ -1,10 +1,11 @@
-#include <gtest.h>
-#include "infrastructure_state.h"
-#include "configuration_manager.h"
-#include "sinsp_mock.h"
-#include "audit_tap_handler.h"
-#include "secure_audit_handler.h"
 #include "analyzer.h"
+#include "audit_tap_handler.h"
+#include "configuration_manager.h"
+#include "infrastructure_state.h"
+#include "secure_audit_handler.h"
+#include "sinsp_mock.h"
+
+#include <gtest.h>
 
 class test_helper
 {
@@ -25,18 +26,12 @@ public:
 	{
 		return infrastructure_state::c_k8s_ssl_certificate;
 	}
-	static const type_config<std::string>& get_key()
-	{
-		return infrastructure_state::c_k8s_ssl_key;
-	}
+	static const type_config<std::string>& get_key() { return infrastructure_state::c_k8s_ssl_key; }
 	static std::string normalize_path(const infrastructure_state& is, const std::string& path)
 	{
 		return is.normalize_path(path);
 	}
-	static void set_url(infrastructure_state& is, const std::string& url)
-	{
-		is.m_k8s_url = url;
-	}
+	static void set_url(infrastructure_state& is, const std::string& url) { is.m_k8s_url = url; }
 	static void configure_k8s_environment(infrastructure_state& is)
 	{
 		is.configure_k8s_environment();
@@ -88,7 +83,8 @@ k8s_event_counts_log_time: 162
 	EXPECT_EQ(infrastructure_state::c_orchestrator_low_event_threshold.get_value(), 151);
 	EXPECT_EQ(infrastructure_state::c_orchestrator_filter_empty.get_value(), false);
 	EXPECT_EQ(infrastructure_state::c_orchestrator_batch_messages_queue_length.get_value(), 152);
-	EXPECT_EQ(infrastructure_state::c_orchestrator_batch_messages_tick_interval_ms.get_value(), 153);
+	EXPECT_EQ(infrastructure_state::c_orchestrator_batch_messages_tick_interval_ms.get_value(),
+	          153);
 	EXPECT_EQ(test_helper::get_url_config().get_value(), "154");
 	EXPECT_EQ(infrastructure_state::c_k8s_ssl_certificate_type.get_value(), "155");
 	EXPECT_EQ(test_helper::get_ssl_cert().get_value(), "156");
@@ -113,7 +109,7 @@ k8s_ca_certificate: ca_path
 k8s_ssl_cert: cert_path
 k8s_ssl_key: key_path
 )";
-	
+
 	yaml_configuration config_yaml(yaml_string);
 	ASSERT_EQ(0, config_yaml.errors().size());
 	configuration_manager::instance().init_config(config_yaml);
@@ -124,12 +120,13 @@ k8s_ssl_key: key_path
 	null_secure_audit_handler sahd;
 	null_secure_profiling_handler sphd;
 	sinsp_analyzer analyzer(&inspector,
-							"",
-							std::make_shared<internal_metrics>(),
-							athd,
-							sahd,
-							sphd,
-							nullptr);
+	                        "",
+	                        std::make_shared<internal_metrics>(),
+	                        athd,
+	                        sahd,
+	                        sphd,
+	                        nullptr,
+	                        []() -> bool { return true; });
 	infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
 	EXPECT_EQ("https://yaml_host:54321", is.get_k8s_url());
 	EXPECT_EQ(is.get_k8s_ca_certificate(), "/foo/bar/ca_path");
@@ -158,4 +155,3 @@ k8s_ssl_key: key_path
 	test_helper::configure_k8s_environment(is);
 	EXPECT_EQ(is.get_k8s_url(), "https://some_host:12346");
 }
-

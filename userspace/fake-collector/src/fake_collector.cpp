@@ -69,8 +69,10 @@ bool fake_collector::process_auto_response(buf& b)
 		if (generation < m_last_gen_num ||
 		    (generation == m_last_gen_num && sequence <= m_last_seq_num))
 		{
-			std::cerr << "FC> Received metrics message with bogus gen, seq <"
-			          << generation << ", " << sequence << ">" << std::endl;
+			if (!m_silent) {
+				std::cerr << "FC> Received metrics message with bogus gen, seq <"
+						  << generation << ", " << sequence << ">" << std::endl;
+			}
 			// Continue processing (this may be a delayed ACK or might be part of the test)
 		}
 		else
@@ -105,12 +107,16 @@ bool fake_collector::process_auto_response(buf& b)
 			return true;
 		}
 		ASSERT(msg.index() == m_last_index + 1 || msg.index() == 1);
-		std::cout << "FC> " << "Received metrics message with index "
-		          << msg.index() << std::endl;
+		if (!m_silent) {
+			std::cout << "FC> " << "Received metrics message with index "
+			          << msg.index() << std::endl;
+		}
 		if (msg.index() != m_last_index + 1)
 		{
-			std::cerr << "FC> Metrics index mismatch (" << (m_last_index + 1)
-			          << " expected but received " << msg.index() << ")" << std::endl;
+			if (!m_silent) {
+				std::cerr << "FC> Metrics index mismatch (" << (m_last_index + 1)
+						  << " expected but received " << msg.index() << ")" << std::endl;
+			}
 			return false;
 		}
 		m_last_index = msg.index();
@@ -173,7 +179,9 @@ bool fake_collector::process_auto_response(buf& b)
 			ASSERT(sequence == 1);
 			if (sequence != 1)
 			{
-				std::cerr << "FC> Sequence number error: expected 1, got " << sequence << std::endl;
+				if (!m_silent) {
+					std::cerr << "FC> Sequence number error: expected 1, got " << sequence << std::endl;
+				}
 				return false;
 			}
 			m_last_gen_num = 0;
@@ -207,7 +215,9 @@ bool fake_collector::process_auto_response(buf& b)
 		return true;
 	}
 	default:
-		std::cerr << "FC> Unknown message type " << (int)b.hdr.v4.messagetype << std::endl;
+		if (!m_silent) {
+			std::cerr << "FC> Unknown message type " << (int)b.hdr.v4.messagetype << std::endl;
+		}
 		return false;
 	}
 
@@ -459,7 +469,9 @@ bool fake_collector::handle_one_message(int fd)
 
 	if(msg_len <= 0)
 	{
-		std::cerr << "FC> Invalid length in header " << msg_len << std::endl;
+		if (!m_silent) {
+			std::cerr << "FC> Invalid length in header " << msg_len << std::endl;
+		}
 		return false;
 	}
 
@@ -513,13 +525,17 @@ read_error:
 	if(read_ret == -1)
 	{
 		// Socket disconnected (this could be fine or could be very bad)
-		std::cout << "FC> agent socket closed" << std::endl;
+		if (!m_silent) {
+			std::cout << "FC> agent socket closed" << std::endl;
+		}
 	}
 	if(read_ret < 0)
 	{
 		m_error_code = read_ret;
 		m_error_msg = strerror(read_ret);
-		std::cerr << "FC> Error " << read_ret << " on read: " << m_error_msg << std::endl;
+		if (!m_silent) {
+			std::cerr << "FC> Error " << read_ret << " on read: " << m_error_msg << std::endl;
+		}
 	}
 	return false;
 }

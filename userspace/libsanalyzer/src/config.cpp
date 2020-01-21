@@ -13,14 +13,8 @@ sinsp_configuration::sinsp_configuration():
 {
 	m_machine_id = "<NA>";
 	m_customer_id = "<NA>";
-	m_analyzer_sample_len_ns = ANALYZER_DEFAULT_SAMPLE_LENGTH_NS;
-	m_analyzer_original_sample_len_ns = ANALYZER_DEFAULT_SAMPLE_LENGTH_NS;
 	m_max_connections_in_proto = DEFAULT_MAX_CONNECTIONS_IN_PROTO;
 	m_aggregate_connections_in_proto = AGGREGATE_CONNECTIONS_IN_PROTO;
-	m_autodrop_enabled = AUTODROP_ENABLED;
-	m_drop_upper_threshold = DROP_UPPER_THRESHOLD;
-	m_drop_lower_threshold = DROP_LOWER_THRESHOLD;
-	m_drop_threshold_consecutive_seconds = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
 	m_host_hidden = false;
 	m_protocols_truncation_size = 512;
 	m_mounts_limit_size = 15u;
@@ -61,21 +55,6 @@ void sinsp_configuration::set_customer_id(string customer_id)
 	m_customer_id = customer_id;
 }
 
-uint64_t sinsp_configuration::get_analyzer_sample_len_ns() const
-{
-	return m_analyzer_sample_len_ns;
-}
-
-uint64_t sinsp_configuration::get_analyzer_original_sample_len_ns() const
-{
-	return m_analyzer_original_sample_len_ns;
-}
-
-void sinsp_configuration::set_analyzer_sample_len_ns(uint64_t analyzer_sample_length_ns)
-{
-	m_analyzer_sample_len_ns = analyzer_sample_length_ns;
-}
-
 uint32_t sinsp_configuration::get_max_connections_in_proto() const
 {
 	return m_max_connections_in_proto;
@@ -94,23 +73,6 @@ bool sinsp_configuration::get_aggregate_connections_in_proto() const
 void sinsp_configuration::set_aggregate_connections_in_proto(bool aggregate)
 {
 	m_aggregate_connections_in_proto = aggregate;
-}
-
-bool sinsp_configuration::get_autodrop_enabled() const
-{
-	return m_autodrop_enabled;
-}
-
-void sinsp_configuration::set_autodrop_enabled(bool enabled)
-{
-	if(enabled)
-	{
-		m_autodrop_enabled = true;
-	}
-	else
-	{
-		m_autodrop_enabled = false;
-	}
 }
 
 bool sinsp_configuration::get_falco_baselining_enabled() const
@@ -226,53 +188,6 @@ uint64_t sinsp_configuration::get_memdump_size() const
 void sinsp_configuration::set_memdump_size(uint64_t size)
 {
 	m_memdump_size = size;
-}
-
-uint32_t sinsp_configuration::get_drop_upper_threshold(uint32_t nprocs) const
-{
-	if(nprocs > 0)
-	{
-		return MIN(m_drop_upper_threshold + (nprocs - 1), 100);
-	}
-	else
-	{
-		return m_drop_upper_threshold;
-		ASSERT(false);
-	}
-}
-
-void sinsp_configuration::set_drop_upper_threshold(uint32_t drop_upper_threshold)
-{
-	m_drop_upper_threshold = drop_upper_threshold;
-}
-
-uint32_t sinsp_configuration::get_drop_lower_threshold(uint32_t nprocs) const
-{
-	//return 3;
-	if(nprocs > 0)
-	{
-		return MIN(m_drop_lower_threshold + (nprocs - 1) * 4 / 5, 90);
-	}
-	else
-	{
-		return m_drop_lower_threshold;
-		ASSERT(false);
-	}
-}
-
-void sinsp_configuration::set_drop_lower_threshold(uint32_t drop_lower_threshold)
-{
-	m_drop_lower_threshold = drop_lower_threshold;
-}
-
-uint32_t sinsp_configuration::get_drop_threshold_consecutive_seconds() const
-{
-	return m_drop_threshold_consecutive_seconds;
-}
-
-void sinsp_configuration::set_drop_threshold_consecutive_seconds(uint32_t drop_threshold_consecutive_seconds)
-{
-	m_drop_threshold_consecutive_seconds = drop_threshold_consecutive_seconds;
 }
 
 const string& sinsp_configuration::get_host_custom_name() const

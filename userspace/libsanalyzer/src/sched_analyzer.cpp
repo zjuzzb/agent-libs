@@ -49,7 +49,7 @@ sinsp_sched_analyzer2::sinsp_sched_analyzer2(sinsp_analyzer& analyzer,
 
 void sinsp_sched_analyzer2::on_capture_start()
 {
-	m_sample_length_ns = (size_t)m_analyzer.m_configuration->get_analyzer_sample_len_ns();
+	m_sample_length_ns = (size_t)m_analyzer.get_sample_duration();
 }
 
 void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t cpu, int64_t nexttid)
@@ -92,7 +92,7 @@ void sinsp_sched_analyzer2::update(sinsp_threadinfo* tinfo, uint64_t ts, int16_t
 		return;
 	}
 
-	ASSERT(delta < (int64_t)m_analyzer.m_configuration->get_analyzer_sample_len_ns());
+	ASSERT(delta < (int64_t)m_analyzer.get_sample_duration());
 
 	//
 	// Attribute the delta to the proper thread
@@ -162,7 +162,7 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_e
 {
 	uint32_t j;
 
-	m_sample_length_ns = (size_t)m_analyzer.m_configuration->get_analyzer_sample_len_ns();
+	m_sample_length_ns = (size_t)m_analyzer.get_sample_duration();
 
 	for(j = 0; j < m_ncpus; j++)
 	{

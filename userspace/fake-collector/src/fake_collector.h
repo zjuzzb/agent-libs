@@ -62,7 +62,7 @@ public:
 	 *            respond to handshake messages and ack. If false, client is
 	 *            responsible for responding to those messages as appropriate
 	 */
-	fake_collector(bool auto_respond):
+	fake_collector(bool auto_respond, bool silent=true):
 		m_received_data(),
 		m_status(server_status::NOT_STARTED),
 		m_error_code(0),
@@ -77,7 +77,8 @@ public:
 	    m_last_index(0),
 	    m_working_version(0),
 	    m_delay_acks(false),
-	    m_num_disconnects(0)
+	    m_num_disconnects(0),
+		m_silent(silent)
 	{}
 
 	/**
@@ -250,6 +251,7 @@ private:
 	bool m_delay_acks;
 	std::queue<buf> m_delayed_metrics;
 	uint32_t m_num_disconnects;
+	bool m_silent;
 
 	/**
 	 * Reads one from the given file descriptor and internally handles it

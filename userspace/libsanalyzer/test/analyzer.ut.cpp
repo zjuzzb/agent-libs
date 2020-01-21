@@ -1,28 +1,31 @@
 
-#include <analyzer.h>
-#include <run.h>
-#include <sinsp_mock.h>
-#include <gtest.h>
-#include "container_analyzer.h"
 #include "connectinfo.h"
+#include "container_analyzer.h"
+
+#include <analyzer.h>
+#include <gtest.h>
+#include <run.h>
 #include <scoped_config.h>
 #include <scoped_sinsp_logger_capture.h>
+#include <sinsp_mock.h>
 
 using namespace test_helpers;
 
-namespace {
+namespace
+{
 sinsp_analyzer::flush_queue g_queue(1000);
 audit_tap_handler_dummy g_audit_handler;
 null_secure_audit_handler g_secure_audit_handler;
 null_secure_profiling_handler g_secure_profiling_handler;
-}
+}  // namespace
 
 TEST(analyzer_test, end_to_end_basic)
 {
+	scoped_config<bool> config("autodrop.enabled", false);
 	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock());
 
-	auto &thread55 = inspector->build_thread().tid(55).commit();
-	auto &thread75 = inspector->build_thread().tid(75).commit();
+	auto& thread55 = inspector->build_thread().tid(55).commit();
+	auto& thread75 = inspector->build_thread().tid(75).commit();
 
 	// Make some fake events
 	uint64_t ts = 1095379199000000000ULL;
@@ -37,11 +40,13 @@ TEST(analyzer_test, end_to_end_basic)
 	                        g_audit_handler,
 	                        g_secure_audit_handler,
 	                        g_secure_profiling_handler,
-	                        &g_queue);
+	                        &g_queue,
+	                        []() -> bool { return true; });
 	run_sinsp_with_analyzer(*inspector, analyzer);
 
 	std::shared_ptr<flush_data_message> last_flush;
-	while (g_queue.get(&last_flush, 0));
+	while (g_queue.get(&last_flush, 0))
+		;
 
 	std::shared_ptr<draiosproto::metrics> metrics = last_flush->m_metrics;
 
@@ -58,21 +63,19 @@ TEST(analyzer_test, end_to_end_basic)
 class test_helper
 {
 public:
-	static std::unordered_map<std::string, analyzer_container_state>&
-	get_analyzer_containers(sinsp_analyzer& analyzer)
+	static std::unordered_map<std::string, analyzer_container_state>& get_analyzer_containers(
+	    sinsp_analyzer& analyzer)
 	{
 		return analyzer.m_containers;
 	}
 
-	static void
-	add_inspector_container(sinsp& inspector, const sinsp_container_info& container)
+	static void add_inspector_container(sinsp& inspector, const sinsp_container_info& container)
 	{
 		(*inspector.m_container_manager.m_containers.lock())[container.m_id] =
-			std::make_shared<sinsp_container_info>(container);
+		    std::make_shared<sinsp_container_info>(container);
 	}
 
-	static sinsp_container_manager::map_ptr_t
-	get_inspector_containers(sinsp& inspector)
+	static sinsp_container_manager::map_ptr_t get_inspector_containers(sinsp& inspector)
 	{
 		return inspector.m_container_manager.m_containers.lock();
 	}
@@ -87,29 +90,21 @@ public:
 		analyzer.coalesce_unemitted_stats(emitted);
 	}
 
-	static void set_proc_count(sinsp_analyzer& analyzer,
-				   std::string name,
-				   uint64_t count)
+	static void set_proc_count(sinsp_analyzer& analyzer, std::string name, uint64_t count)
 	{
 		analyzer.m_containers[name].m_metrics.m_proc_count = count;
 	}
 
-	static void set_proc_start_count(sinsp_analyzer& analyzer,
-				   std::string name,
-				   uint64_t count)
+	static void set_proc_start_count(sinsp_analyzer& analyzer, std::string name, uint64_t count)
 	{
 		analyzer.m_containers[name].m_metrics.m_proc_start_count = count;
 	}
-
 };
 
 class container_stuff
 {
 public:
-	container_stuff(sinsp& inspector,
-			sinsp_analyzer& analyzer,
-			std::string name)
-		: m_name(name)
+	container_stuff(sinsp& inspector, sinsp_analyzer& analyzer, std::string name) : m_name(name)
 	{
 		// stuff stuff in the right container maps for the analyzer and
 		// inspector
@@ -133,7 +128,8 @@ TEST(analyzer_test, coalesce_containers_null)
 	                        g_audit_handler,
 	                        g_secure_audit_handler,
 	                        g_secure_profiling_handler,
-	                        &g_queue);
+	                        &g_queue,
+	                        []() -> bool { return true; });
 	std::vector<std::string> emitted_containers;
 	container_stuff unemitted_container_1(inspector, analyzer, "unemitted_container_1");
 	container_stuff unemitted_container_2(inspector, analyzer, "unemitted_container_2");
@@ -156,7 +152,8 @@ TEST(analyzer_test, coalesce_containers_test)
 	                        g_audit_handler,
 	                        g_secure_audit_handler,
 	                        g_secure_profiling_handler,
-	                        &g_queue);
+	                        &g_queue,
+	                        []() -> bool { return true; });
 
 	std::vector<std::string> emitted_containers;
 
@@ -167,44 +164,68 @@ TEST(analyzer_test, coalesce_containers_test)
 	container_stuff unemitted_container_2(inspector, analyzer, "unemitted_container_2");
 
 	// connection_queue_usage_pct
-	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_connection_queue_usage_pct = 5;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_connection_queue_usage_pct = 2;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name].m_metrics.m_connection_queue_usage_pct = 1;
+	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name]
+	    .m_metrics.m_connection_queue_usage_pct = 5;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name]
+	    .m_metrics.m_connection_queue_usage_pct = 2;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name]
+	    .m_metrics.m_connection_queue_usage_pct = 1;
 
 	// fd_usage_pct
-	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_fd_usage_pct = 6;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_fd_usage_pct = 3;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name].m_metrics.m_fd_usage_pct = 2;
+	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name]
+	    .m_metrics.m_fd_usage_pct = 6;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name]
+	    .m_metrics.m_fd_usage_pct = 3;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name]
+	    .m_metrics.m_fd_usage_pct = 2;
 
 	// cpu_pct
-	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_cpuload = 7;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_cpuload = 4;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name].m_metrics.m_cpuload = 3;
+	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_cpuload =
+	    7;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name]
+	    .m_metrics.m_cpuload = 4;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name]
+	    .m_metrics.m_cpuload = 3;
 
 	// resident_memory_usage_kb
-	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_res_memory_used_kb = 8;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_res_memory_used_kb = 5;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name].m_metrics.m_res_memory_used_kb = 4;
+	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name]
+	    .m_metrics.m_res_memory_used_kb = 8;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name]
+	    .m_metrics.m_res_memory_used_kb = 5;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name]
+	    .m_metrics.m_res_memory_used_kb = 4;
 
 	// swap_memory_usage-kb
-	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_swap_memory_used_kb = 9;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_swap_memory_used_kb = 6;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name].m_metrics.m_swap_memory_used_kb = 5;
+	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name]
+	    .m_metrics.m_swap_memory_used_kb = 9;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name]
+	    .m_metrics.m_swap_memory_used_kb = 6;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name]
+	    .m_metrics.m_swap_memory_used_kb = 5;
 
 	// major_pagefaults
-	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_pfmajor = 5;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_pfmajor = 7;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name].m_metrics.m_pfmajor = 6;
+	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_pfmajor =
+	    5;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name]
+	    .m_metrics.m_pfmajor = 7;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name]
+	    .m_metrics.m_pfmajor = 6;
 
 	// minor_pagefaults
-	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_pfminor = 5;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_pfminor = 8;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name].m_metrics.m_pfminor = 7;
+	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_pfminor =
+	    5;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name]
+	    .m_metrics.m_pfminor = 8;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name]
+	    .m_metrics.m_pfminor = 7;
 
 	// fd_count
-	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_fd_count = 5;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_fd_count = 9;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name].m_metrics.m_fd_count = 8;
+	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_fd_count =
+	    5;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name]
+	    .m_metrics.m_fd_count = 9;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name]
+	    .m_metrics.m_fd_count = 8;
 
 	// cpu_shares
 	// memory_limit_kb
@@ -245,24 +266,35 @@ TEST(analyzer_test, coalesce_containers_test)
 	test_helper::set_proc_start_count(analyzer, unemitted_container_2.m_name, 14);
 
 	// threads_count
-	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_threads_count = 5;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_threads_count = 16;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name].m_metrics.m_threads_count = 15;
+	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name]
+	    .m_metrics.m_threads_count = 5;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name]
+	    .m_metrics.m_threads_count = 16;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name]
+	    .m_metrics.m_threads_count = 15;
 
 	// syscalls
-	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name].m_metrics.m_metrics.m_unknown.m_count = 5;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_metrics.m_unknown.m_count = 17;
-	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name].m_metrics.m_metrics.m_unknown.m_count = 16;
+	test_helper::get_analyzer_containers(analyzer)[emitted_container.m_name]
+	    .m_metrics.m_metrics.m_unknown.m_count = 5;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name]
+	    .m_metrics.m_metrics.m_unknown.m_count = 17;
+	test_helper::get_analyzer_containers(analyzer)[unemitted_container_2.m_name]
+	    .m_metrics.m_metrics.m_unknown.m_count = 16;
 
 	// coalesce
 	test_helper::coalesce(analyzer, emitted_containers);
 
 	// check that stats are correct in protobuf
-	EXPECT_EQ(2, analyzer.metrics()->unreported_counters().resource_counters().connection_queue_usage_pct());
+	EXPECT_EQ(
+	    2,
+	    analyzer.metrics()->unreported_counters().resource_counters().connection_queue_usage_pct());
 	EXPECT_EQ(5, analyzer.metrics()->unreported_counters().resource_counters().fd_usage_pct());
 	EXPECT_EQ(700, analyzer.metrics()->unreported_counters().resource_counters().cpu_pct());
-	EXPECT_EQ(9, analyzer.metrics()->unreported_counters().resource_counters().resident_memory_usage_kb());
-	EXPECT_EQ(11, analyzer.metrics()->unreported_counters().resource_counters().swap_memory_usage_kb());
+	EXPECT_EQ(
+	    9,
+	    analyzer.metrics()->unreported_counters().resource_counters().resident_memory_usage_kb());
+	EXPECT_EQ(11,
+	          analyzer.metrics()->unreported_counters().resource_counters().swap_memory_usage_kb());
 	EXPECT_EQ(13, analyzer.metrics()->unreported_counters().resource_counters().major_pagefaults());
 	EXPECT_EQ(15, analyzer.metrics()->unreported_counters().resource_counters().minor_pagefaults());
 	EXPECT_EQ(17, analyzer.metrics()->unreported_counters().resource_counters().fd_count());
@@ -278,16 +310,19 @@ TEST(analyzer_test, coalesce_containers_test)
 	EXPECT_EQ(2, analyzer.metrics()->unreported_counters().names().size());
 
 	// check that we cleared the containers
-	EXPECT_EQ(test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name].m_metrics.m_connection_queue_usage_pct, 0);
+	EXPECT_EQ(test_helper::get_analyzer_containers(analyzer)[unemitted_container_1.m_name]
+	              .m_metrics.m_connection_queue_usage_pct,
+	          0);
 }
 
 TEST(analyzer_test, print_profiling_error)
 {
 	scoped_config<bool> config("dragent_cpu_profile_enabled", true);
+	scoped_config<bool> config2("autodrop.enabled", false);
 	scoped_sinsp_logger_capture capture;
 
 	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock());
-	auto &tinfo = inspector->build_thread().commit();
+	auto& tinfo = inspector->build_thread().commit();
 	inspector->build_event(tinfo).count(10).commit();
 
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
@@ -297,7 +332,8 @@ TEST(analyzer_test, print_profiling_error)
 	                        g_audit_handler,
 	                        g_secure_audit_handler,
 	                        g_secure_profiling_handler,
-	                        &g_queue);
+	                        &g_queue,
+	                        []() -> bool { return true; });
 
 	// Run the analyzer to induce calling flush
 	run_sinsp_with_analyzer(*inspector, analyzer);

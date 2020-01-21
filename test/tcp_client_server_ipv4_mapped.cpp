@@ -711,7 +711,6 @@ void runtest_ipv4m(iotype iot,
 	// OUTPUT VALDATION
 	//
 	sinsp_configuration configuration;
-	configuration.set_analyzer_sample_len_ns(100 * ONE_SECOND_IN_NS);
 	ports_set known_ports;
 	known_ports.set(SERVER_PORT);
 	configuration.set_known_ports(known_ports);

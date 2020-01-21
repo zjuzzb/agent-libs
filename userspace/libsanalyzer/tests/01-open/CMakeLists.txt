@@ -1,4 +1,5 @@
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/common)
+include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/async)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)

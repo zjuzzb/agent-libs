@@ -1,13 +1,14 @@
-#include <gtest.h>
-#include <memory>
-#include <secure_audit.h>
-#include <analyzer.h>
-#include <sinsp_mock.h>
-#include <scoped_config.h>
-#include <connectinfo.h>
-#include "unique_ptr_resetter.h"
 #include "scoped_configuration.h"
 #include "secure_audit_data_ready_handler.h"
+#include "unique_ptr_resetter.h"
+
+#include <analyzer.h>
+#include <connectinfo.h>
+#include <gtest.h>
+#include <memory>
+#include <scoped_config.h>
+#include <secure_audit.h>
+#include <sinsp_mock.h>
 
 using namespace test_helpers;
 
@@ -15,7 +16,7 @@ namespace
 {
 const int N_DIFFERENT_EXE = 5;
 const int N_DIFFERENT_CMDLINES = 50;
-const uint64_t DEFAULT_FREQUENCY = 10000000000; // 10s (ns)
+const uint64_t DEFAULT_FREQUENCY = 10000000000;  // 10s (ns)
 
 const std::vector<std::string> exe = {"cat", "ls", "ps", "df", "ll"};
 
@@ -31,13 +32,13 @@ public:
 	secure_audit_internal_metrics_dummy();
 	void set_secure_audit_internal_metrics(int n_sent_protobufs, uint64_t flush_time_ms) override;
 	void set_secure_audit_sent_counters(int n_executed_commands,
-					    int n_connections,
-					    int n_k8s,
-					    int n_executed_commands_dropped,
-					    int n_connections_dropped,
-					    int n_k8s_dropped,
-					    int n_connections_not_interactive_dropped,
-					    int n_k8s_enrich_errors) override;
+	                                    int n_connections,
+	                                    int n_k8s,
+	                                    int n_executed_commands_dropped,
+	                                    int n_connections_dropped,
+	                                    int n_k8s_dropped,
+	                                    int n_connections_not_interactive_dropped,
+	                                    int n_k8s_enrich_errors) override;
 
 	int get_secure_audit_n_sent_protobufs() const;
 	int get_secure_audit_fl_ms() const;
@@ -57,32 +58,36 @@ private:
 	int m_k8s_enrich_errors;
 };
 
-secure_audit_internal_metrics_dummy::secure_audit_internal_metrics_dummy():
-	m_sent_protobufs(-1),
-	m_flush_time_ms(-1),
-	m_executed_commands(-1),
-	m_connections(-1),
-	m_k8s(-1),
-	m_executed_commands_dropped(-1),
-	m_connections_dropped(-1),
-	m_k8s_dropped(-1),
-	m_connections_not_interactive_dropped(-1),
-	m_k8s_enrich_errors(-1)
+secure_audit_internal_metrics_dummy::secure_audit_internal_metrics_dummy()
+    : m_sent_protobufs(-1),
+      m_flush_time_ms(-1),
+      m_executed_commands(-1),
+      m_connections(-1),
+      m_k8s(-1),
+      m_executed_commands_dropped(-1),
+      m_connections_dropped(-1),
+      m_k8s_dropped(-1),
+      m_connections_not_interactive_dropped(-1),
+      m_k8s_enrich_errors(-1)
 {
 }
 
 void secure_audit_internal_metrics_dummy::set_secure_audit_internal_metrics(int n_sent_protobufs,
-									    uint64_t flush_time_ms)
+                                                                            uint64_t flush_time_ms)
 {
 	m_sent_protobufs = n_sent_protobufs;
 	m_flush_time_ms = flush_time_ms;
 }
 
-void secure_audit_internal_metrics_dummy::set_secure_audit_sent_counters(int n_executed_commands, int n_connections,
-									 int n_k8s, int n_executed_commands_dropped,
-									 int n_connections_dropped, int n_k8s_dropped,
-									 int n_connections_not_interactive_dropped,
-									 int n_k8s_enrich_errors)
+void secure_audit_internal_metrics_dummy::set_secure_audit_sent_counters(
+    int n_executed_commands,
+    int n_connections,
+    int n_k8s,
+    int n_executed_commands_dropped,
+    int n_connections_dropped,
+    int n_k8s_dropped,
+    int n_connections_not_interactive_dropped,
+    int n_k8s_enrich_errors)
 {
 	m_executed_commands = n_executed_commands;
 	m_connections = n_connections;
@@ -130,13 +135,12 @@ private:
 	uint64_t m_ts;
 };
 
-secure_audit_data_ready_dummy::secure_audit_data_ready_dummy():
-	m_secure_audits(nullptr), m_ts(0)
+secure_audit_data_ready_dummy::secure_audit_data_ready_dummy() : m_secure_audits(nullptr), m_ts(0)
 {
 }
 
 void secure_audit_data_ready_dummy::secure_audit_data_ready(uint64_t ts,
-							    const secure::Audit* secure_audits)
+                                                            const secure::Audit* secure_audits)
 {
 	m_ts = ts;
 	m_secure_audits_copy = *secure_audits;
@@ -157,26 +161,27 @@ uint64_t secure_audit_data_ready_dummy::get_ts_once()
 	return ret;
 }
 
-void add_executed_commands_helper(std::unordered_map<std::string, std::vector<sinsp_executed_command>>& executed_commands,
-				  int n_cmd_per_container,
-				  std::vector<std::string>& containers,
-				  std::vector<sinsp_executed_command>& commands)
+void add_executed_commands_helper(
+    std::unordered_map<std::string, std::vector<sinsp_executed_command>>& executed_commands,
+    int n_cmd_per_container,
+    std::vector<std::string>& containers,
+    std::vector<sinsp_executed_command>& commands)
 {
 	int j = 0;
 	int jmax = commands.size();
 
-	if(jmax == 0)
+	if (jmax == 0)
 	{
 		return;
 	}
 
-	for(auto container : containers)
+	for (auto container : containers)
 	{
-		for(int i = 0; i < n_cmd_per_container; i++)
+		for (int i = 0; i < n_cmd_per_container; i++)
 		{
 			executed_commands[container].push_back(commands[j]);
 			j++;
-			if(j == jmax)
+			if (j == jmax)
 			{
 				j = 0;
 			}
@@ -186,33 +191,34 @@ void add_executed_commands_helper(std::unordered_map<std::string, std::vector<si
 
 // Generic test for executed commands
 void check_executed_commands_helper(const secure::Audit* audit_pb,
-				    secure_audit* audit,
-				    int n_cmd_per_container,
-				    std::vector<std::string>& containers,
-				    std::vector<sinsp_executed_command>& commands)
+                                    secure_audit* audit,
+                                    int n_cmd_per_container,
+                                    std::vector<std::string>& containers,
+                                    std::vector<sinsp_executed_command>& commands)
 {
 	// Test number of executed commands
 	int n_cmd_tot = 0;
 
-	int executed_commands_per_container_limit = secure_audit::c_secure_audit_executed_commands_per_container_limit.get_value();
+	int executed_commands_per_container_limit =
+	    secure_audit::c_secure_audit_executed_commands_per_container_limit.get_value();
 
 	// Secure audit - Executed commands
 	// Try to limit to N_DIFFERENT_CMDLINES
 	// Try to limit to N_DIFFERENT_EXE
 
 	// We have a limit on executed commands
-	if(executed_commands_per_container_limit != 0)
+	if (executed_commands_per_container_limit != 0)
 	{
 		// If we exeed the limit
-		if(n_cmd_per_container > executed_commands_per_container_limit)
+		if (n_cmd_per_container > executed_commands_per_container_limit)
 		{
 			// try to group by cmdline
-			if(executed_commands_per_container_limit < N_DIFFERENT_CMDLINES)
+			if (executed_commands_per_container_limit < N_DIFFERENT_CMDLINES)
 			{
 				// try to group by exe
-				if(executed_commands_per_container_limit < N_DIFFERENT_EXE)
+				if (executed_commands_per_container_limit < N_DIFFERENT_EXE)
 				{
-					if(executed_commands_per_container_limit < n_cmd_per_container)
+					if (executed_commands_per_container_limit < n_cmd_per_container)
 					{
 						n_cmd_per_container = executed_commands_per_container_limit;
 					}
@@ -231,36 +237,36 @@ void check_executed_commands_helper(const secure::Audit* audit_pb,
 
 	n_cmd_tot = n_cmd_per_container * containers.size();
 
-	if(!secure_audit::c_secure_audit_executed_commands_enabled.get_value() ||
-	   !secure_audit::c_secure_audit_enabled.get_value())
+	if (!secure_audit::c_secure_audit_executed_commands_enabled.get_value() ||
+	    !secure_audit::c_secure_audit_enabled.get_value())
 	{
 		n_cmd_tot = 0;
 	}
 
-	if(commands.size() == 0)
+	if (commands.size() == 0)
 	{
 		n_cmd_tot = 0;
 	}
 
-	if(n_cmd_tot == 0)
+	if (n_cmd_tot == 0)
 	{
 		ASSERT_EQ(audit_pb, nullptr);
 	}
 	else
 	{
 		ASSERT_NE(audit_pb, nullptr);
-		if((secure_audit::c_secure_audit_executed_commands_limit.get_value() != 0) &&
-		   n_cmd_tot > secure_audit::c_secure_audit_executed_commands_limit.get_value())
+		if ((secure_audit::c_secure_audit_executed_commands_limit.get_value() != 0) &&
+		    n_cmd_tot > secure_audit::c_secure_audit_executed_commands_limit.get_value())
 		{
 			n_cmd_tot = secure_audit::c_secure_audit_executed_commands_limit.get_value();
 		}
 		ASSERT_EQ(audit_pb->executed_commands_size(), n_cmd_tot);
 
-		for(int i = 0; i < audit_pb->executed_commands_size(); i++)
+		for (int i = 0; i < audit_pb->executed_commands_size(); i++)
 		{
 			// Check some fields to be correctly populated
 			const secure::ExecutedCommand& c = audit_pb->executed_commands(i);
-			uint64_t delta_seconds = 100000000000; // 100 s
+			uint64_t delta_seconds = 100000000000;  // 100 s
 			ASSERT_TRUE(c.timestamp() > (sinsp_utils::get_current_time_ns() - delta_seconds));
 			ASSERT_TRUE(c.timestamp() < (sinsp_utils::get_current_time_ns() + delta_seconds));
 
@@ -269,10 +275,9 @@ void check_executed_commands_helper(const secure::Audit* audit_pb,
 	}
 }
 
-void executed_commands_build_and_test_generic(
-	int n_commands_per_container,
-	int n_containers,
-	int n_commands)
+void executed_commands_build_and_test_generic(int n_commands_per_container,
+                                              int n_containers,
+                                              int n_commands)
 {
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -289,11 +294,11 @@ void executed_commands_build_and_test_generic(
 	std::vector<sinsp_executed_command> commands;
 
 	// Build containers
-	for(int i = 0; i < n_containers; i++)
+	for (int i = 0; i < n_containers; i++)
 	{
-		if(i == 0)
+		if (i == 0)
 		{
-			containers.push_back(""); // root namespace
+			containers.push_back("");  // root namespace
 		}
 		else
 		{
@@ -306,7 +311,7 @@ void executed_commands_build_and_test_generic(
 	// Build command(s)
 	sinsp_executed_command c;
 
-	for(int i = 0; i < n_commands; i++)
+	for (int i = 0; i < n_commands; i++)
 	{
 		c.m_ts = sinsp_utils::get_current_time_ns();
 		c.m_count = 1 + (i % 4);
@@ -333,15 +338,18 @@ void executed_commands_build_and_test_generic(
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	// Build protobuf
-	add_executed_commands_helper(m_executed_commands_local, n_commands_per_container, containers, commands);
+	add_executed_commands_helper(m_executed_commands_local,
+	                             n_commands_per_container,
+	                             containers,
+	                             commands);
 	audit.emit_commands_audit(&m_executed_commands_local);
 	// Get pb
 	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
 	const secure::Audit* audit_pb = data_ready_handler.get_secure_audits_once();
 
-	if(((n_commands_per_container * n_containers * n_commands) != 0) &&
-	   audit.c_secure_audit_executed_commands_enabled.get_value() &&
-	   audit.c_secure_audit_enabled.get_value())
+	if (((n_commands_per_container * n_containers * n_commands) != 0) &&
+	    audit.c_secure_audit_executed_commands_enabled.get_value() &&
+	    audit.c_secure_audit_enabled.get_value())
 	{
 		ASSERT_NE(nullptr, audit_pb);
 		ASSERT_EQ((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY, data_ready_handler.get_ts_once());
@@ -351,7 +359,11 @@ void executed_commands_build_and_test_generic(
 		ASSERT_EQ(nullptr, audit_pb);
 	}
 	// Basic tests on generated pb
-	check_executed_commands_helper(audit_pb, &audit, n_commands_per_container, containers, commands);
+	check_executed_commands_helper(audit_pb,
+	                               &audit,
+	                               n_commands_per_container,
+	                               containers,
+	                               commands);
 }
 
 // Network byte order is defined to always be big-endian
@@ -377,12 +389,14 @@ enum ip_proto_l4
 	IP_PROTO_TCP = 6,
 	IP_PROTO_UDP = 17
 };
-} // end namespace
+}  // end namespace
 
 TEST(secure_audit_test, executed_commands_per_container_limit_default)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", true);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    true);
 
 	// c_secure_audit_executed_commands_per_container_limit is 30 by default
 
@@ -400,10 +414,15 @@ TEST(secure_audit_test, executed_commands_per_container_limit_default)
 TEST(secure_audit_test, executed_commands_per_container_limit_unlimited)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", true);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    true);
 
-	test_helpers::scoped_config<int> commands_container_limit("secure_audit_streams.executed_commands_per_container_limit", 0);
-	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit", 0);
+	test_helpers::scoped_config<int> commands_container_limit(
+	    "secure_audit_streams.executed_commands_per_container_limit",
+	    0);
+	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
+	                                                0);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -417,10 +436,14 @@ TEST(secure_audit_test, executed_commands_per_container_limit_unlimited)
 TEST(secure_audit_test, executed_commands_per_container_limit_2)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", true);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    true);
 
 	// 2 < 5 (# different commands)
-	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_per_container_limit", 2);
+	test_helpers::scoped_config<int> commands_limit(
+	    "secure_audit_streams.executed_commands_per_container_limit",
+	    2);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -437,10 +460,14 @@ TEST(secure_audit_test, executed_commands_per_container_limit_2)
 TEST(secure_audit_test, executed_commands_per_container_limit_5)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", true);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    true);
 
 	// 5 == 5 (# of different commands)
-	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_per_container_limit", 5);
+	test_helpers::scoped_config<int> commands_limit(
+	    "secure_audit_streams.executed_commands_per_container_limit",
+	    5);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -456,10 +483,14 @@ TEST(secure_audit_test, executed_commands_per_container_limit_5)
 TEST(secure_audit_test, executed_commands_per_container_limit_7)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", true);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    true);
 
 	// 5 (# different commands) < 7 < 50 (# different cmdlines)
-	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_per_container_limit", 7);
+	test_helpers::scoped_config<int> commands_limit(
+	    "secure_audit_streams.executed_commands_per_container_limit",
+	    7);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -475,10 +506,14 @@ TEST(secure_audit_test, executed_commands_per_container_limit_7)
 TEST(secure_audit_test, executed_commands_per_container_limit_50)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", true);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    true);
 
 	// 50 == 50 (# different cmlines)
-	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_per_container_limit", 50);
+	test_helpers::scoped_config<int> commands_limit(
+	    "secure_audit_streams.executed_commands_per_container_limit",
+	    50);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -496,10 +531,14 @@ TEST(secure_audit_test, executed_commands_per_container_limit_50)
 TEST(secure_audit_test, executed_commands_per_container_limit_70)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", true);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    true);
 
 	// 70 > 50 (# different cmlines)
-	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_per_container_limit", 70);
+	test_helpers::scoped_config<int> commands_limit(
+	    "secure_audit_streams.executed_commands_per_container_limit",
+	    70);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -518,7 +557,9 @@ TEST(secure_audit_test, executed_commands_per_container_limit_70)
 TEST(secure_audit_test, executed_commands_disabled)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", false);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    false);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -529,7 +570,9 @@ TEST(secure_audit_test, executed_commands_disabled)
 TEST(secure_audit_test, audit_disabled)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", false);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", true);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    true);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -540,9 +583,12 @@ TEST(secure_audit_test, audit_disabled)
 TEST(secure_audit_test, executed_commands_limit_2)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", true);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    true);
 
-	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit", 2);
+	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
+	                                                2);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -559,9 +605,12 @@ TEST(secure_audit_test, executed_commands_limit_2)
 TEST(secure_audit_test, executed_commands_limit_20)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", true);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    true);
 
-	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit", 20);
+	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
+	                                                20);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -578,9 +627,12 @@ TEST(secure_audit_test, executed_commands_limit_20)
 TEST(secure_audit_test, executed_commands_limit_1000)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", true);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    true);
 
-	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit", 1000);
+	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
+	                                                1000);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -597,10 +649,15 @@ TEST(secure_audit_test, executed_commands_limit_1000)
 TEST(secure_audit_test, executed_commands_limit_2_no_per_container_bound)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", true);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    true);
 
-	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit", 2);
-	test_helpers::scoped_config<int> commands_per_container_limit("secure_audit_streams.executed_commands_per_container_limit", 0);
+	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
+	                                                2);
+	test_helpers::scoped_config<int> commands_per_container_limit(
+	    "secure_audit_streams.executed_commands_per_container_limit",
+	    0);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -617,10 +674,15 @@ TEST(secure_audit_test, executed_commands_limit_2_no_per_container_bound)
 TEST(secure_audit_test, executed_commands_limit_10_no_per_container_bound)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", true);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    true);
 
-	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit", 10);
-	test_helpers::scoped_config<int> commands_per_container_limit("secure_audit_streams.executed_commands_per_container_limit", 0);
+	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
+	                                                10);
+	test_helpers::scoped_config<int> commands_per_container_limit(
+	    "secure_audit_streams.executed_commands_per_container_limit",
+	    0);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -637,10 +699,15 @@ TEST(secure_audit_test, executed_commands_limit_10_no_per_container_bound)
 TEST(secure_audit_test, executed_commands_limit_100_no_per_container_bound)
 {
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
-	test_helpers::scoped_config<bool> enable_executed_commands("secure_audit_streams.executed_commands", true);
+	test_helpers::scoped_config<bool> enable_executed_commands(
+	    "secure_audit_streams.executed_commands",
+	    true);
 
-	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit", 100);
-	test_helpers::scoped_config<int> commands_per_container_limit("secure_audit_streams.executed_commands_per_container_limit", 0);
+	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
+	                                                100);
+	test_helpers::scoped_config<int> commands_per_container_limit(
+	    "secure_audit_streams.executed_commands_per_container_limit",
+	    0);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -655,85 +722,85 @@ TEST(secure_audit_test, executed_commands_limit_100_no_per_container_bound)
 }
 
 const std::string expected_arg_5 =
-	"Lorem_ipsum_dolor_sit_amet,_consectetur_adipiscing_elit,_sed_do_eius"
-	"mod_tempor_incididunt_ut_labore_et_dolore_magna_aliqua._Pellentesque"
-	"_habitant_morbi_tristique_senectus._Egestas_maecenas_pharetra_conval"
-	"lis_posuere_morbi._Mi_tempus_imperdiet_nulla_malesuada_pellentesque_"
-	"elit_eget._Maecenas_accumsan_lacus_vel_facilisis_volutpat_est_velit_"
-	"egestas_dui._Sapien_faucibus_et_molestie_ac_feugiat_sed_lectus_vesti"
-	"bulum._Dis_parturient_montes_nascetur_ridiculus_mus_mauris_vitae._Pr"
-	"aesent_elementum_facilisis_leo_vel._Lorem_ipsum_dolor_sit_amet_conse"
-	"ctetur_adipiscing_elit_duis_tristique._Risus_nullam_eget_felis_eget_"
-	"nunc._Sollicitudin_nibh_sit_amet_commodo._Posuere_ac_ut_consequat_se"
-	"mper_viverra_nam_libero_justo._Tincidunt_arcu_non_sodales_neque._Gra"
-	"vida_dictum_fusce_ut_placerat._Eu_feugiat_pretium_nibh_ipsum_consequ"
-	"at_nisl_vel_pretium_lectus._Consectetur_purus_ut_faucibus_pulvinar_e"
-	"lementum._Dictumst_vestibulum_rhoncus_est_pellentesque_elit._Amet_fa"
-	"cilisis_magna_etiam_tempor._Cursus_sit_amet_dictum_sit_amet_justo.__"
-	"Nibh_praesent_tristique_magna_sit_amet_purus_gravida_quis._In_hendre"
-	"rit_gravida_rutrum_quisque_non_tellus_orci._Mauris_sit_amet_massa_vi"
-	"tae._Semper_viverra_nam_libero_justo_laoreet_sit_amet_cursus._Purus_"
-	"non_enim_praesent_elementum_facilisis_leo_vel_fringilla._Euismod_nis"
-	"i_porta_lorem_mollis._Commodo_nulla_facilisi_nullam_vehicula_ipsum_a"
-	"_arcu._In_vitae_turpis_massa_sed_elementum_tempus._Amet_tellus_cras_"
-	"adipiscing_enim_eu_turpis_egestas_pretium_aenean._Tortor_at_risus_vi"
-	"verra_adipiscing_at_in._Tempus_imperdiet_nulla_malesuada_pellentesqu"
-	"e_elit_eget._Amet_tellus_cras_adipiscing_enim_eu_turpis_egestas_pret"
-	"ium._Vulputate_eu_scelerisque_felis_imperdiet_proin_fermentum_leo._N"
-	"ulla_posuere_sollicitudin_aliquam_ultrices_sagittis_orci_a._Aliquet_"
-	"nec_ullamcorper_sit_amet_risus._Sed_risus_pretium_quam_vulputate_dig"
-	"nissim_suspendisse_in_est._Sit_amet_volutpat_consequat_mauris_nunc_c"
-	"ongue_nisi_vitae_suscipit._Dui_faucibus_in_ornare_quam_viverra_orci_"
-	"sagittis.__Eget_nullam_non_nisi_est_sit_amet_facilisis._Velit_euismo"
-	"d_in_pellentesque_massa._Diam_sit_amet_nisl_suscipit_adipiscing_bibe"
-	"ndum_est_ultricies._Dignissim_diam_quis_enim_lobortis_scelerisque_fe"
-	"rmentum_dui_faucibus_in._Magna_fermentum_iaculis_eu_non_diam._Sit_am"
-	"et_nisl_suscipit_adipiscing_bibendum_est_ultricies._Elementum_pulvin"
-	"ar_etiam_non_quam_lacus_suspendisse_faucibus_interdum._Interdum_veli"
-	"t_euismod_in_pellentesque_massa_placerat_duis_ultricies._Tellus_cras"
-	"_adipiscing_enim_eu._Pellentesque_habitant_morbi_tristique_senectus_"
-	"et_netus._Odio_ut_enim_blandit_volutpat_maecenas._Ut_lectus_arcu_bib"
-	"endum_at_varius_vel_pharetra_vel_turpis._Tempor_orci_eu_lobortis_ele"
-	"mentum_nibh_tellus._Orci_ac_auctor_augue_mauris._Vestibulum_lorem_se"
-	"d_risus_ultricies_tristique_nulla_aliquet_enim_tortor._Tristique_sen"
-	"ectus_et_netus_et_malesuada_fames_ac_turpis._Sapien_eget_mi_proin_se"
-	"d_libero_enim._Dolor_sit_amet_consectetur_adipiscing_elit_pellentesq"
-	"ue_habitant_morbi_tristique._Aliquam_sem_et_tortor_consequat_id_port"
-	"a.__Leo_urna_molestie_at_elementum._Semper_risus_in_hendrerit_gravid"
-	"a_rutrum_quisque_non._Facilisi_etiam_dignissim_diam_quis_enim._Et_ma"
-	"gnis_dis_parturient_montes_nascetur_ridiculus_mus_mauris._Placerat_i"
-	"n_egestas_erat_imperdiet_sed_euismod_nisi_porta_lorem._Integer_quis_"
-	"auctor_elit_sed_vulputate_mi_sit_amet._Sem_integer_vitae_justo_eget."
-	"_Eros_donec_ac_odio_tempor_orci_dapibus_ultrices_in._Massa_enim_nec_"
-	"dui_nunc_mattis_enim._Elit_pellentesque_habitant_morbi_tristique_sen"
-	"ectus_et_netus_et._Id_leo_in_vitae_turpis_massa_sed_elementum_tempus"
-	"_egestas._Hendrerit_dolor_magna_eget_est._Accumsan_in_nisl_nisi_scel"
-	"erisque_eu._Turpis_egestas_integer_eget_aliquet_nibh_praesent_tristi"
-	"que_magna_sit._Commodo_ullamcorper_a_lacus_vestibulum._Nascetur_ridi"
-	"culus_mus_mauris_vitae_ultricies_leo_integer._Consequat_semper_viver"
-	"ra_nam_libero.__Sem_et_tortor_consequat_id_porta_nibh_venenatis_cras"
-	"_sed._Ornare_lectus_sit_amet_est_placerat_in_egestas_erat._Ultrices_"
-	"neque_ornare_aenean_euismod_elementum_nisi_quis._Augue_lacus_viverra"
-	"_vitae_congue_eu_consequat_ac_felis._Erat_imperdiet_sed_euismod_nisi"
-	"_porta_lorem._Proin_fermentum_leo_vel_orci._Pellentesque_diam_volutp"
-	"at_commodo_sed_egestas_egestas_fringilla._Praesent_elementum_facilis"
-	"is_leo_vel_fringilla_est_ullamcorper_eget._Adipiscing_commodo_elit_a"
-	"t_imperdiet_dui._Adipiscing_elit_pellentesque_habitant_morbi_tristiq"
-	"ue_senectus_et_netus._Sit_amet_venenatis_urna_cursus_eget_nunc._Eges"
-	"tas_integer_eget_aliquet_nibh._Facilisis_magna_etiam_tempor_orci_eu_"
-	"lobortis_elementum_nibh_tellus.";
+    "Lorem_ipsum_dolor_sit_amet,_consectetur_adipiscing_elit,_sed_do_eius"
+    "mod_tempor_incididunt_ut_labore_et_dolore_magna_aliqua._Pellentesque"
+    "_habitant_morbi_tristique_senectus._Egestas_maecenas_pharetra_conval"
+    "lis_posuere_morbi._Mi_tempus_imperdiet_nulla_malesuada_pellentesque_"
+    "elit_eget._Maecenas_accumsan_lacus_vel_facilisis_volutpat_est_velit_"
+    "egestas_dui._Sapien_faucibus_et_molestie_ac_feugiat_sed_lectus_vesti"
+    "bulum._Dis_parturient_montes_nascetur_ridiculus_mus_mauris_vitae._Pr"
+    "aesent_elementum_facilisis_leo_vel._Lorem_ipsum_dolor_sit_amet_conse"
+    "ctetur_adipiscing_elit_duis_tristique._Risus_nullam_eget_felis_eget_"
+    "nunc._Sollicitudin_nibh_sit_amet_commodo._Posuere_ac_ut_consequat_se"
+    "mper_viverra_nam_libero_justo._Tincidunt_arcu_non_sodales_neque._Gra"
+    "vida_dictum_fusce_ut_placerat._Eu_feugiat_pretium_nibh_ipsum_consequ"
+    "at_nisl_vel_pretium_lectus._Consectetur_purus_ut_faucibus_pulvinar_e"
+    "lementum._Dictumst_vestibulum_rhoncus_est_pellentesque_elit._Amet_fa"
+    "cilisis_magna_etiam_tempor._Cursus_sit_amet_dictum_sit_amet_justo.__"
+    "Nibh_praesent_tristique_magna_sit_amet_purus_gravida_quis._In_hendre"
+    "rit_gravida_rutrum_quisque_non_tellus_orci._Mauris_sit_amet_massa_vi"
+    "tae._Semper_viverra_nam_libero_justo_laoreet_sit_amet_cursus._Purus_"
+    "non_enim_praesent_elementum_facilisis_leo_vel_fringilla._Euismod_nis"
+    "i_porta_lorem_mollis._Commodo_nulla_facilisi_nullam_vehicula_ipsum_a"
+    "_arcu._In_vitae_turpis_massa_sed_elementum_tempus._Amet_tellus_cras_"
+    "adipiscing_enim_eu_turpis_egestas_pretium_aenean._Tortor_at_risus_vi"
+    "verra_adipiscing_at_in._Tempus_imperdiet_nulla_malesuada_pellentesqu"
+    "e_elit_eget._Amet_tellus_cras_adipiscing_enim_eu_turpis_egestas_pret"
+    "ium._Vulputate_eu_scelerisque_felis_imperdiet_proin_fermentum_leo._N"
+    "ulla_posuere_sollicitudin_aliquam_ultrices_sagittis_orci_a._Aliquet_"
+    "nec_ullamcorper_sit_amet_risus._Sed_risus_pretium_quam_vulputate_dig"
+    "nissim_suspendisse_in_est._Sit_amet_volutpat_consequat_mauris_nunc_c"
+    "ongue_nisi_vitae_suscipit._Dui_faucibus_in_ornare_quam_viverra_orci_"
+    "sagittis.__Eget_nullam_non_nisi_est_sit_amet_facilisis._Velit_euismo"
+    "d_in_pellentesque_massa._Diam_sit_amet_nisl_suscipit_adipiscing_bibe"
+    "ndum_est_ultricies._Dignissim_diam_quis_enim_lobortis_scelerisque_fe"
+    "rmentum_dui_faucibus_in._Magna_fermentum_iaculis_eu_non_diam._Sit_am"
+    "et_nisl_suscipit_adipiscing_bibendum_est_ultricies._Elementum_pulvin"
+    "ar_etiam_non_quam_lacus_suspendisse_faucibus_interdum._Interdum_veli"
+    "t_euismod_in_pellentesque_massa_placerat_duis_ultricies._Tellus_cras"
+    "_adipiscing_enim_eu._Pellentesque_habitant_morbi_tristique_senectus_"
+    "et_netus._Odio_ut_enim_blandit_volutpat_maecenas._Ut_lectus_arcu_bib"
+    "endum_at_varius_vel_pharetra_vel_turpis._Tempor_orci_eu_lobortis_ele"
+    "mentum_nibh_tellus._Orci_ac_auctor_augue_mauris._Vestibulum_lorem_se"
+    "d_risus_ultricies_tristique_nulla_aliquet_enim_tortor._Tristique_sen"
+    "ectus_et_netus_et_malesuada_fames_ac_turpis._Sapien_eget_mi_proin_se"
+    "d_libero_enim._Dolor_sit_amet_consectetur_adipiscing_elit_pellentesq"
+    "ue_habitant_morbi_tristique._Aliquam_sem_et_tortor_consequat_id_port"
+    "a.__Leo_urna_molestie_at_elementum._Semper_risus_in_hendrerit_gravid"
+    "a_rutrum_quisque_non._Facilisi_etiam_dignissim_diam_quis_enim._Et_ma"
+    "gnis_dis_parturient_montes_nascetur_ridiculus_mus_mauris._Placerat_i"
+    "n_egestas_erat_imperdiet_sed_euismod_nisi_porta_lorem._Integer_quis_"
+    "auctor_elit_sed_vulputate_mi_sit_amet._Sem_integer_vitae_justo_eget."
+    "_Eros_donec_ac_odio_tempor_orci_dapibus_ultrices_in._Massa_enim_nec_"
+    "dui_nunc_mattis_enim._Elit_pellentesque_habitant_morbi_tristique_sen"
+    "ectus_et_netus_et._Id_leo_in_vitae_turpis_massa_sed_elementum_tempus"
+    "_egestas._Hendrerit_dolor_magna_eget_est._Accumsan_in_nisl_nisi_scel"
+    "erisque_eu._Turpis_egestas_integer_eget_aliquet_nibh_praesent_tristi"
+    "que_magna_sit._Commodo_ullamcorper_a_lacus_vestibulum._Nascetur_ridi"
+    "culus_mus_mauris_vitae_ultricies_leo_integer._Consequat_semper_viver"
+    "ra_nam_libero.__Sem_et_tortor_consequat_id_porta_nibh_venenatis_cras"
+    "_sed._Ornare_lectus_sit_amet_est_placerat_in_egestas_erat._Ultrices_"
+    "neque_ornare_aenean_euismod_elementum_nisi_quis._Augue_lacus_viverra"
+    "_vitae_congue_eu_consequat_ac_felis._Erat_imperdiet_sed_euismod_nisi"
+    "_porta_lorem._Proin_fermentum_leo_vel_orci._Pellentesque_diam_volutp"
+    "at_commodo_sed_egestas_egestas_fringilla._Praesent_elementum_facilis"
+    "is_leo_vel_fringilla_est_ullamcorper_eget._Adipiscing_commodo_elit_a"
+    "t_imperdiet_dui._Adipiscing_elit_pellentesque_habitant_morbi_tristiq"
+    "ue_senectus_et_netus._Sit_amet_venenatis_urna_cursus_eget_nunc._Eges"
+    "tas_integer_eget_aliquet_nibh._Facilisis_magna_etiam_tempor_orci_eu_"
+    "lobortis_elementum_nibh_tellus.";
 
 void add_connections_helper(secure_audit* audit,
-			    uint64_t ts,
-			    int n_client,
-			    int n_server,
-			    bool local = false,
-			    bool interactive = false,
-			    bool cmdline = false,
-			    int cmdline_len = 0,
-			    bool client_and_server = false)
+                            uint64_t ts,
+                            int n_client,
+                            int n_server,
+                            bool local = false,
+                            bool interactive = false,
+                            bool cmdline = false,
+                            int cmdline_len = 0,
+                            bool client_and_server = false)
 {
-	if(n_client + n_server == 0)
+	if (n_client + n_server == 0)
 	{
 		return;
 	}
@@ -751,7 +818,7 @@ void add_connections_helper(secure_audit* audit,
 	std::string expected_sip = "192.168.1.1";
 	const std::string expected_dip = "192.168.1.2";
 
-	if(local)
+	if (local)
 	{
 		expected_sip = "127.0.0.1";
 	}
@@ -764,37 +831,37 @@ void add_connections_helper(secure_audit* audit,
 	// Build Thread Info
 	sinsp_mock inspector;
 
-	if(cmdline)
+	if (cmdline)
 	{
 		inspector.build_thread()
-			.pid(expected_pid)
-			.comm("gcc")
-			.exe(expected_name)
-			.arg(expected_arg_1)
-			.arg(expected_arg_2)
-			.arg(expected_arg_3)
-			.arg(expected_arg_4)
-			.arg(expected_arg_5)
-			.commit();
+		    .pid(expected_pid)
+		    .comm("gcc")
+		    .exe(expected_name)
+		    .arg(expected_arg_1)
+		    .arg(expected_arg_2)
+		    .arg(expected_arg_3)
+		    .arg(expected_arg_4)
+		    .arg(expected_arg_5)
+		    .commit();
 	}
 	else
 	{
 		inspector.build_thread()
-			.pid(expected_pid)
-			.comm("gcc")
-			.exe(expected_name)
-			.arg(expected_arg_1)
-			.arg(expected_arg_2)
-			.arg(expected_arg_3)
-			.commit();
+		    .pid(expected_pid)
+		    .comm("gcc")
+		    .exe(expected_name)
+		    .arg(expected_arg_1)
+		    .arg(expected_arg_2)
+		    .arg(expected_arg_3)
+		    .commit();
 	}
 
 	inspector.open();
 
 	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
 	proc = inspector.get_thread_ref(expected_pid,
-					false /*don't query the os if not found*/,
-					true /*lookup only*/);
+	                                false /*don't query the os if not found*/,
+	                                true /*lookup only*/);
 
 	proc->m_container_id = expected_container_id;
 
@@ -805,16 +872,17 @@ void add_connections_helper(secure_audit* audit,
 	ASSERT_NE(main_thread, nullptr);
 	ASSERT_NE(main_thread->m_ainfo, nullptr);
 
-	if(interactive)
+	if (interactive)
 	{
-
 		// Set process as interactive
-		main_thread->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
+		main_thread->m_ainfo->m_th_analysis_flags |=
+		    thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
 	}
 	else
 	{
 		// Set process as no INTERACTIVE
-		main_thread->m_ainfo->m_th_analysis_flags &= ~thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
+		main_thread->m_ainfo->m_th_analysis_flags &=
+		    ~thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
 	}
 
 	// Sanity checks for Thread Info
@@ -824,7 +892,7 @@ void add_connections_helper(secure_audit* audit,
 	ASSERT_EQ(expected_comm, proc->get_comm());
 	ASSERT_EQ(expected_container_id, proc->m_container_id);
 
-	for(int i = 0; i < n_client; i++)
+	for (int i = 0; i < n_client; i++)
 	{
 		_ipv4tuple tuple;
 		sinsp_connection conn;
@@ -841,7 +909,7 @@ void add_connections_helper(secure_audit* audit,
 		conn.m_stid = expected_pid;
 		conn.m_sfd = 1234;
 
-		if(client_and_server)
+		if (client_and_server)
 		{
 			conn.m_dpid = expected_pid;
 			conn.m_dtid = expected_pid;
@@ -861,7 +929,7 @@ void add_connections_helper(secure_audit* audit,
 		conn.m_error_code = expected_error_code;
 
 		conn.m_sproc = proc;
-		if(client_and_server)
+		if (client_and_server)
 		{
 			conn.m_dproc = proc;
 		}
@@ -870,10 +938,14 @@ void add_connections_helper(secure_audit* audit,
 			conn.m_dproc = nullptr;
 		}
 
-		audit->emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
+		audit->emit_connection_async(
+		    tuple,
+		    conn,
+		    std::move(
+		        sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 	}
 
-	for(int i = 0; i < n_server; i++)
+	for (int i = 0; i < n_server; i++)
 	{
 		_ipv4tuple tuple;
 		sinsp_connection conn;
@@ -903,22 +975,26 @@ void add_connections_helper(secure_audit* audit,
 		conn.m_dproc = proc;
 		conn.m_sproc = nullptr;
 
-		audit->emit_connection_async(tuple, conn, std::move(sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
+		audit->emit_connection_async(
+		    tuple,
+		    conn,
+		    std::move(
+		        sinsp_connection::state_transition(ts, conn.m_analysis_flags, conn.m_error_code)));
 	}
 }
 
 void check_connections_helper(secure_audit* audit,
-			      secure_audit_data_ready_dummy* data_ready,
-			      uint64_t ts,
-			      int n_client,
-			      int n_server,
-			      bool local = false,
-			      bool interactive = false,
-			      bool cmdline = false,
-			      int cmdline_len = 0,
-			      bool client_and_server = false)
+                              secure_audit_data_ready_dummy* data_ready,
+                              uint64_t ts,
+                              int n_client,
+                              int n_server,
+                              bool local = false,
+                              bool interactive = false,
+                              bool cmdline = false,
+                              int cmdline_len = 0,
+                              bool client_and_server = false)
 {
-	if(n_client + n_server == 0)
+	if (n_client + n_server == 0)
 	{
 		const secure::Audit* audit_pb = data_ready->get_secure_audits_once();
 		ASSERT_EQ(nullptr, audit_pb);
@@ -933,19 +1009,16 @@ void check_connections_helper(secure_audit* audit,
 	const std::string expected_arg_3 = "hello_world.cpp";
 	const std::string expected_arg_4 = "i_am_a_very_very_long_parameter";
 
-	std::string expected_cmdline = expected_comm + " " +
-				       expected_arg_1 + " " +
-				       expected_arg_2 + " " +
-				       expected_arg_3 + " " +
-				       expected_arg_4 + " " +
-				       expected_arg_5;
+	std::string expected_cmdline = expected_comm + " " + expected_arg_1 + " " + expected_arg_2 +
+	                               " " + expected_arg_3 + " " + expected_arg_4 + " " +
+	                               expected_arg_5;
 
 	const std::string expected_container_id = "sysd1gcl0ud1";
 
 	std::string expected_sip = "192.168.1.1";
 	const std::string expected_dip = "192.168.1.2";
 
-	if(local)
+	if (local)
 	{
 		expected_sip = "127.0.0.1";
 	}
@@ -960,7 +1033,7 @@ void check_connections_helper(secure_audit* audit,
 	ASSERT_EQ(audit_pb->connections_size(), (n_client + n_server));
 
 	int i = 0;
-	for(int j = 0; j < n_client; j++, i++)
+	for (int j = 0; j < n_client; j++, i++)
 	{
 		const secure::Connection& c = audit_pb->connections(i);
 
@@ -971,7 +1044,7 @@ void check_connections_helper(secure_audit* audit,
 		ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
 		ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
 
-		if(expected_error_code == 0)
+		if (expected_error_code == 0)
 		{
 			ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
 		}
@@ -986,7 +1059,7 @@ void check_connections_helper(secure_audit* audit,
 		ASSERT_EQ(c.comm(), expected_comm);
 		ASSERT_EQ(c.container_id(), expected_container_id);
 
-		if(cmdline)
+		if (cmdline)
 		{
 			std::string expected_cmdline_substring = expected_cmdline.substr(0, cmdline_len);
 			ASSERT_EQ(c.cmdline(), expected_cmdline_substring);
@@ -997,7 +1070,7 @@ void check_connections_helper(secure_audit* audit,
 		}
 	}
 
-	for(int k = 0; k < n_server; k++, i++)
+	for (int k = 0; k < n_server; k++, i++)
 	{
 		const secure::Connection& c = audit_pb->connections(i);
 
@@ -1007,7 +1080,7 @@ void check_connections_helper(secure_audit* audit,
 		ASSERT_EQ(c.server_ipv4(), ip_string_to_le(expected_dip));
 		ASSERT_EQ(c.l4_protocol(), IP_PROTO_TCP);
 
-		if(expected_error_code == 0)
+		if (expected_error_code == 0)
 		{
 			ASSERT_EQ(c.status(), secure::ConnectionStatus::CONNECTION_STATUS_ESTABLISHED);
 		}
@@ -1023,7 +1096,7 @@ void check_connections_helper(secure_audit* audit,
 		ASSERT_EQ(c.container_id(), expected_container_id);
 		ASSERT_EQ(c.cmdline(), "");
 
-		if(cmdline)
+		if (cmdline)
 		{
 			std::string expected_cmdline_substring = expected_cmdline.substr(0, cmdline_len);
 			ASSERT_EQ(c.cmdline(), expected_cmdline_substring);
@@ -1040,7 +1113,9 @@ TEST(secure_audit_test, connections_base_client)
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+	test_helpers::scoped_config<bool> enable_interactive_connections(
+	    "secure_audit_streams.connections_only_interactive",
+	    false);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1065,7 +1140,9 @@ TEST(secure_audit_test, connections_limit)
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+	test_helpers::scoped_config<bool> enable_interactive_connections(
+	    "secure_audit_streams.connections_only_interactive",
+	    false);
 	test_helpers::scoped_config<int> max_connections("secure_audit_streams.connections_limit", 2);
 
 	secure_audit audit;
@@ -1091,7 +1168,9 @@ TEST(secure_audit_test, connections_base_server)
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+	test_helpers::scoped_config<bool> enable_interactive_connections(
+	    "secure_audit_streams.connections_only_interactive",
+	    false);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1117,7 +1196,9 @@ TEST(secure_audit_test, connections_base_client_server)
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+	test_helpers::scoped_config<bool> enable_interactive_connections(
+	    "secure_audit_streams.connections_only_interactive",
+	    false);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1142,7 +1223,9 @@ TEST(secure_audit_test, connections_enabled_disabled_01)
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", false);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+	test_helpers::scoped_config<bool> enable_interactive_connections(
+	    "secure_audit_streams.connections_only_interactive",
+	    false);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1167,7 +1250,9 @@ TEST(secure_audit_test, connections_enabled_disabled_10)
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", false);
-	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+	test_helpers::scoped_config<bool> enable_interactive_connections(
+	    "secure_audit_streams.connections_only_interactive",
+	    false);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1192,8 +1277,12 @@ TEST(secure_audit_test, connections_local_enabled)
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
-	test_helpers::scoped_config<bool> enable_local_connections("secure_audit_streams.connections_local", true);
+	test_helpers::scoped_config<bool> enable_interactive_connections(
+	    "secure_audit_streams.connections_only_interactive",
+	    false);
+	test_helpers::scoped_config<bool> enable_local_connections(
+	    "secure_audit_streams.connections_local",
+	    true);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1218,8 +1307,12 @@ TEST(secure_audit_test, connections_local_disabled)
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
-	test_helpers::scoped_config<bool> enable_local_connections("secure_audit_streams.connections_local", false);
+	test_helpers::scoped_config<bool> enable_interactive_connections(
+	    "secure_audit_streams.connections_only_interactive",
+	    false);
+	test_helpers::scoped_config<bool> enable_local_connections(
+	    "secure_audit_streams.connections_local",
+	    false);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1244,7 +1337,9 @@ TEST(secure_audit_test, connections_base_server_only_interactive_1)
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> only_interactive("secure_audit_streams.connections_only_interactive", true);
+	test_helpers::scoped_config<bool> only_interactive(
+	    "secure_audit_streams.connections_only_interactive",
+	    true);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1269,7 +1364,9 @@ TEST(secure_audit_test, connections_base_server_only_interactive_2)
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> only_interactive("secure_audit_streams.connections_only_interactive", true);
+	test_helpers::scoped_config<bool> only_interactive(
+	    "secure_audit_streams.connections_only_interactive",
+	    true);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1294,10 +1391,16 @@ TEST(secure_audit_test, connections_cmdline_maxlen_20)
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+	test_helpers::scoped_config<bool> enable_interactive_connections(
+	    "secure_audit_streams.connections_only_interactive",
+	    false);
 
-	test_helpers::scoped_config<bool> enable_connections_cmdline("secure_audit_streams.connections_cmdline", true);
-	test_helpers::scoped_config<int> enable_connections_cmdline_maxlen("secure_audit_streams.connections_cmdline_maxlen", 20);
+	test_helpers::scoped_config<bool> enable_connections_cmdline(
+	    "secure_audit_streams.connections_cmdline",
+	    true);
+	test_helpers::scoped_config<int> enable_connections_cmdline_maxlen(
+	    "secure_audit_streams.connections_cmdline_maxlen",
+	    20);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1322,10 +1425,16 @@ TEST(secure_audit_test, connections_cmdline_maxlen_150)
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+	test_helpers::scoped_config<bool> enable_interactive_connections(
+	    "secure_audit_streams.connections_only_interactive",
+	    false);
 
-	test_helpers::scoped_config<bool> enable_connections_cmdline("secure_audit_streams.connections_cmdline", true);
-	test_helpers::scoped_config<int> enable_connections_cmdline_maxlen("secure_audit_streams.connections_cmdline_maxlen", 150);
+	test_helpers::scoped_config<bool> enable_connections_cmdline(
+	    "secure_audit_streams.connections_cmdline",
+	    true);
+	test_helpers::scoped_config<int> enable_connections_cmdline_maxlen(
+	    "secure_audit_streams.connections_cmdline_maxlen",
+	    150);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1514,13 +1623,13 @@ TEST(secure_audit_test, k8s_audit_base)
 
 	// Create configuration with exec filter
 	std::vector<std::string> m_secure_audit_k8s_active_filters;
-	std::unordered_map<std::string, std::unordered_map<std::string, std::string>> m_secure_audit_k8s_filters;
+	std::unordered_map<std::string, std::unordered_map<std::string, std::string>>
+	    m_secure_audit_k8s_filters;
 
 	m_secure_audit_k8s_active_filters.push_back("exec");
 
-	std::unordered_map<std::string, std::string> map_tmp({{"/verb", "create"},
-							      {"/objectRef/resource", "pods"},
-							      {"/objectRef/subresource", "exec"}});
+	std::unordered_map<std::string, std::string> map_tmp(
+	    {{"/verb", "create"}, {"/objectRef/resource", "pods"}, {"/objectRef/subresource", "exec"}});
 
 	m_secure_audit_k8s_filters["exec"] = map_tmp;
 
@@ -1536,12 +1645,13 @@ TEST(secure_audit_test, k8s_audit_base)
 	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock);
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 	sinsp_analyzer analyzer(inspector.get(),
-				"/" /*root dir*/,
-				int_metrics,
-				g_audit_handler,
-				g_secure_audit_handler,
-				g_secure_profiling_handler,
-				&g_queue);
+	                        "/" /*root dir*/,
+	                        int_metrics,
+	                        g_audit_handler,
+	                        g_secure_audit_handler,
+	                        g_secure_profiling_handler,
+	                        &g_queue,
+	                        []() -> bool { return true; });
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 	inspector->register_external_event_processor(analyzer);
 
@@ -1566,7 +1676,8 @@ TEST(secure_audit_test, k8s_audit_base)
 	evt.mutable_object()->mutable_uid()->set_kind("host");
 	evt.mutable_object()->mutable_uid()->set_id("hostID");
 
-	(*evt.mutable_object()->mutable_tags())["host.hostName"] = "hostHostName"; // we want this in the protobuf
+	(*evt.mutable_object()->mutable_tags())["host.hostName"] =
+	    "hostHostName";  // we want this in the protobuf
 
 	is.load_single_event(evt);
 	evt.Clear();
@@ -1586,7 +1697,8 @@ TEST(secure_audit_test, k8s_audit_base)
 	evt.mutable_object()->mutable_uid()->set_kind("k8s_namespace");
 	evt.mutable_object()->mutable_uid()->set_id("namespaceUID");
 
-	(*evt.mutable_object()->mutable_tags())["kubernetes.namespace.name"] = "sysdigcloud"; // as in json_exec_{1,2}
+	(*evt.mutable_object()->mutable_tags())["kubernetes.namespace.name"] =
+	    "sysdigcloud";  // as in json_exec_{1,2}
 
 	parent = evt.mutable_object()->mutable_parents()->Add();
 	parent->set_kind("k8s_node");
@@ -1599,7 +1711,8 @@ TEST(secure_audit_test, k8s_audit_base)
 	evt.mutable_object()->mutable_uid()->set_kind("k8s_pod");
 	evt.mutable_object()->mutable_uid()->set_id("podUID");
 
-	(*evt.mutable_object()->mutable_tags())["kubernetes.pod.name"] = "sysdigcloud-elasticsearch-0"; // as in json_exec_{1,2}
+	(*evt.mutable_object()->mutable_tags())["kubernetes.pod.name"] =
+	    "sysdigcloud-elasticsearch-0";  // as in json_exec_{1,2}
 
 	parent = evt.mutable_object()->mutable_parents()->Add();
 	parent->set_kind("k8s_node");
@@ -1619,9 +1732,10 @@ TEST(secure_audit_test, k8s_audit_base)
 
 	evt.set_type(draiosproto::ADDED);
 	evt.mutable_object()->mutable_uid()->set_kind("container");
-	evt.mutable_object()->mutable_uid()->set_id("containerID1"); // we want this in the protobuf
+	evt.mutable_object()->mutable_uid()->set_id("containerID1");  // we want this in the protobuf
 
-	(*evt.mutable_object()->mutable_tags())["container.label.io.kubernetes.container.name"] = "elasticsearch"; // as in json_exec_{1,2}
+	(*evt.mutable_object()->mutable_tags())["container.label.io.kubernetes.container.name"] =
+	    "elasticsearch";  // as in json_exec_{1,2}
 
 	parent = evt.mutable_object()->mutable_parents()->Add();
 	parent->set_kind("k8s_pod");
@@ -1634,7 +1748,8 @@ TEST(secure_audit_test, k8s_audit_base)
 	evt.mutable_object()->mutable_uid()->set_kind("container");
 	evt.mutable_object()->mutable_uid()->set_id("containerID2");
 
-	(*evt.mutable_object()->mutable_tags())["container.label.io.kubernetes.container.name"] = "not-elasticsearch";
+	(*evt.mutable_object()->mutable_tags())["container.label.io.kubernetes.container.name"] =
+	    "not-elasticsearch";
 
 	parent = evt.mutable_object()->mutable_parents()->Add();
 	parent->set_kind("k8s_pod");
@@ -1648,11 +1763,23 @@ TEST(secure_audit_test, k8s_audit_base)
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
 	// add add events
-	audit.filter_and_append_k8s_audit(json_audit_1, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters, &is);
-	audit.filter_and_append_k8s_audit(json_audit_2, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters, &is);
+	audit.filter_and_append_k8s_audit(json_audit_1,
+	                                  m_secure_audit_k8s_active_filters,
+	                                  m_secure_audit_k8s_filters,
+	                                  &is);
+	audit.filter_and_append_k8s_audit(json_audit_2,
+	                                  m_secure_audit_k8s_active_filters,
+	                                  m_secure_audit_k8s_filters,
+	                                  &is);
 
-	audit.filter_and_append_k8s_audit(json_exec_1, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters, &is);
-	audit.filter_and_append_k8s_audit(json_exec_2, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters, &is);
+	audit.filter_and_append_k8s_audit(json_exec_1,
+	                                  m_secure_audit_k8s_active_filters,
+	                                  m_secure_audit_k8s_filters,
+	                                  &is);
+	audit.filter_and_append_k8s_audit(json_exec_2,
+	                                  m_secure_audit_k8s_active_filters,
+	                                  m_secure_audit_k8s_filters,
+	                                  &is);
 
 	// Get pb
 	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
@@ -1720,13 +1847,13 @@ void k8s_audit_disabled(bool a, bool b)
 
 	// Create configuration with exec filter
 	std::vector<std::string> m_secure_audit_k8s_active_filters;
-	std::unordered_map<std::string, std::unordered_map<std::string, std::string>> m_secure_audit_k8s_filters;
+	std::unordered_map<std::string, std::unordered_map<std::string, std::string>>
+	    m_secure_audit_k8s_filters;
 
 	m_secure_audit_k8s_active_filters.push_back("exec");
 
-	std::unordered_map<std::string, std::string> map_tmp({{"/verb", "create"},
-							      {"/objectRef/resource", "pods"},
-							      {"/objectRef/subresource", "exec"}});
+	std::unordered_map<std::string, std::string> map_tmp(
+	    {{"/verb", "create"}, {"/objectRef/resource", "pods"}, {"/objectRef/subresource", "exec"}});
 
 	m_secure_audit_k8s_filters["exec"] = map_tmp;
 
@@ -1747,7 +1874,9 @@ void k8s_audit_disabled(bool a, bool b)
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.filter_and_append_k8s_audit(json_exec_1, m_secure_audit_k8s_active_filters, m_secure_audit_k8s_filters);
+	audit.filter_and_append_k8s_audit(json_exec_1,
+	                                  m_secure_audit_k8s_active_filters,
+	                                  m_secure_audit_k8s_filters);
 
 	// Get pb
 	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
@@ -1795,11 +1924,11 @@ secure_audit_streams:
 	add_connections_helper(&audit, ts, 1, 0, false, false, false, 0, false);
 
 	// Try to flush before frequency
-	audit.flush(ts + (uint64_t)5000000000); // ts + 5 s
+	audit.flush(ts + (uint64_t)5000000000);  // ts + 5 s
 	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 0);
 
 	// Try to flush few ms before frequency -> test threshold of 100ms
-	audit.flush(ts + (uint64_t)10000000000 - (uint64_t)90000000); // ts + 10 s - 90ms
+	audit.flush(ts + (uint64_t)10000000000 - (uint64_t)90000000);  // ts + 10 s - 90ms
 	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 1);
 }
 
@@ -1838,21 +1967,21 @@ secure_audit_streams:
 	add_connections_helper(&audit, ts, 1, 0, false, false, false, 0, false);
 
 	// Try to flush before frequency
-	audit.flush(ts + (uint64_t)4000000000); // ts + 4 s
+	audit.flush(ts + (uint64_t)4000000000);  // ts + 4 s
 	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 0);
 
 	// Try to flush few ms before frequency -> test threshold of 100ms
-	audit.flush(ts + (uint64_t)5000000000 - (uint64_t)90000000); // ts + 5 s - 90ms
+	audit.flush(ts + (uint64_t)5000000000 - (uint64_t)90000000);  // ts + 5 s - 90ms
 	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 1);
 
 	add_connections_helper(&audit, ts, 1, 0, false, false, false, 0, false);
 
 	// Try to flush few seconds after frequency
-	audit.flush(ts + (uint64_t)6000000000); // ts + 6 s
+	audit.flush(ts + (uint64_t)6000000000);  // ts + 6 s
 	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 0);
 
 	// Try to flush ~2 times freq
-	audit.flush(ts + (uint64_t)10000000000); // ts + 10 s
+	audit.flush(ts + (uint64_t)10000000000);  // ts + 10 s
 	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 1);
 }
 
@@ -1891,12 +2020,12 @@ secure_audit_streams:
 	add_connections_helper(&audit, ts, 1, 0, false, false, false, 0, false);
 
 	// Try to flush before frequency
-	audit.flush(ts + (uint64_t)5000000000); // ts + 5 s
+	audit.flush(ts + (uint64_t)5000000000);  // ts + 5 s
 	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 0);
 	ASSERT_NE(internal_metrics_handler.get_secure_audit_fl_ms(), -1);
 
 	// Try to flush few ms before frequency -> test threshold of 100ms
-	audit.flush(ts + (uint64_t)11000000000 - (uint64_t)90000000); // ts + 10 s - 90ms
+	audit.flush(ts + (uint64_t)11000000000 - (uint64_t)90000000);  // ts + 10 s - 90ms
 	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 1);
 	ASSERT_NE(internal_metrics_handler.get_secure_audit_fl_ms(), -1);
 }
@@ -1906,7 +2035,9 @@ TEST(secure_audit_test, connections_limit_metrics)
 	// Secure Audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_connections("secure_audit_streams.connections", true);
-	test_helpers::scoped_config<bool> enable_interactive_connections("secure_audit_streams.connections_only_interactive", false);
+	test_helpers::scoped_config<bool> enable_interactive_connections(
+	    "secure_audit_streams.connections_only_interactive",
+	    false);
 	test_helpers::scoped_config<int> max_connections("secure_audit_streams.connections_limit", 2);
 
 	secure_audit audit;

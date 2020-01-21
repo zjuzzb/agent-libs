@@ -12,11 +12,6 @@
 
 
 //
-// The analyzer emit interval
-//
-#define ANALYZER_DEFAULT_SAMPLE_LENGTH_NS 1000000000ULL
-
-//
 // The min and max size for the memory buffer used as a target for protobuf
 // serialization. Min is the starting value, while max is the growth limit.
 // This imposes a limit to the number of bytes that can be sent out by
@@ -67,28 +62,6 @@
 // 0.0.0.0 endpoint.
 //
 #define MAX_N_EXTERNAL_CLIENTS 30
-
-//
-// Set this to true to enable drop mode support
-//
-#define AUTODROP_ENABLED false
-
-//
-// Maximum number of events per CPU that the analyzer sees before it starts putting
-// the driver in drop mode.
-//
-#define DROP_UPPER_THRESHOLD 5
-#define DROP_LOWER_THRESHOLD 3
-
-// When the baseliner is enabled, we require a higher upper threshold
-#define DROP_UPPER_THRESHOLD_BASELINER_ENABLED 30
-#define DROP_LOWER_THRESHOLD_BASELINER_ENABLED 27
-
-//
-// Number of consecutive seconds the number of events must be beyond DROP_THRESHOLD
-// before dropping mode is activated.
-//
-#define DROP_THRESHOLD_CONSECUTIVE_SECONDS 5
 
 //
 //	Max number of processes that can go in a sample

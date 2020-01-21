@@ -1,10 +1,14 @@
 #pragma once
 
-#include <unordered_set>
-#include <thread>
-#include <atomic>
 #include "profiling.pb.h"
 #include "secure_profiling_handler.h"
+
+#include <analyzer_fd.h>
+#include <atomic>
+#include <draios.pb.h>
+#include <sinsp.h>
+#include <thread>
+#include <unordered_set>
 
 extern sinsp_evttables g_infotables;
 
@@ -39,7 +43,7 @@ public:
 
 	~proc_parser_state()
 	{
-		if(m_inspector != NULL)
+		if (m_inspector != NULL)
 		{
 			delete m_inspector;
 		}
@@ -85,18 +89,15 @@ public:
 		m_failed.clear();
 	}
 
-	inline void insert(std::set<std::string>* table, std::string* name)
-	{
-		table->insert(*name);
-	}
+	inline void insert(std::set<std::string>* table, std::string* name) { table->insert(*name); }
 
 	inline void erase_from_uncategorized(std::string* name)
 	{
-		if(m_uncategorized.size() != 0)
+		if (m_uncategorized.size() != 0)
 		{
 			auto it = m_uncategorized.find(*name);
 
-			if(it != m_uncategorized.end())
+			if (it != m_uncategorized.end())
 			{
 				m_uncategorized.erase(it);
 			}
@@ -105,11 +106,11 @@ public:
 
 	inline void erase_from_r(std::string* name)
 	{
-		if(m_r.size() != 0)
+		if (m_r.size() != 0)
 		{
 			auto it = m_r.find(*name);
 
-			if(it != m_r.end())
+			if (it != m_r.end())
 			{
 				m_r.erase(it);
 			}
@@ -118,23 +119,23 @@ public:
 
 	inline void add(std::string& name, file_category cat)
 	{
-		if(cat & FAILED_OPS)
+		if (cat & FAILED_OPS)
 		{
-			if(!m_is_failed_full)
+			if (!m_is_failed_full)
 			{
 				insert(&m_failed, &name);
-				if(m_failed.size() >= m_max_table_size)
+				if (m_failed.size() >= m_max_table_size)
 				{
 					m_is_failed_full = true;
 				}
 			}
 		}
-		else if(cat & READ_WRITE)
+		else if (cat & READ_WRITE)
 		{
-			if(!m_is_rw_full)
+			if (!m_is_rw_full)
 			{
 				insert(&m_rw, &name);
-				if(m_rw.size() >= m_max_table_size)
+				if (m_rw.size() >= m_max_table_size)
 				{
 					m_is_rw_full = true;
 				}
@@ -143,12 +144,12 @@ public:
 				erase_from_r(&name);
 			}
 		}
-		else if(cat & READ_ONLY)
+		else if (cat & READ_ONLY)
 		{
-			if(!m_is_r_full)
+			if (!m_is_r_full)
 			{
 				insert(&m_r, &name);
-				if(m_r.size() >= m_max_table_size)
+				if (m_r.size() >= m_max_table_size)
 				{
 					m_is_r_full = true;
 				}
@@ -156,12 +157,12 @@ public:
 				erase_from_uncategorized(&name);
 			}
 		}
-		else if(cat & UNCATEGORIZED)
+		else if (cat & UNCATEGORIZED)
 		{
-			if(!m_is_uncategorized_full)
+			if (!m_is_uncategorized_full)
 			{
 				insert(&m_uncategorized, &name);
-				if(m_uncategorized.size() >= m_max_table_size)
+				if (m_uncategorized.size() >= m_max_table_size)
 				{
 					m_is_uncategorized_full = true;
 				}
@@ -169,10 +170,10 @@ public:
 		}
 		else
 		{
-			if(!m_is_other_full)
+			if (!m_is_other_full)
 			{
 				insert(&m_other, &name);
-				if(m_other.size() >= m_max_table_size)
+				if (m_other.size() >= m_max_table_size)
 				{
 					m_is_other_full = true;
 				}
@@ -190,9 +191,9 @@ public:
 	{
 		size_t pos = filename.rfind('/');
 
-		if(pos != std::string::npos)
+		if (pos != std::string::npos)
 		{
-			if(pos < filename.size() - 1)
+			if (pos < filename.size() - 1)
 			{
 				std::string ts(filename, 0, pos + 1);
 				return ts;
@@ -215,9 +216,9 @@ public:
 	{
 		size_t pos = filename.rfind('/');
 
-		if(pos != std::string::npos)
+		if (pos != std::string::npos)
 		{
-			if(pos < filename.size() - 1)
+			if (pos < filename.size() - 1)
 			{
 				std::string ts(filename, 0, pos + 1);
 				return ts;
@@ -234,11 +235,11 @@ public:
 
 	inline static file_category flags2filecategory(file_category orig_category, uint32_t openflags)
 	{
-		if(openflags & PPM_O_WRONLY)
+		if (openflags & PPM_O_WRONLY)
 		{
 			return static_cast<file_category>(orig_category | file_category::READ_WRITE);
 		}
-		else if(openflags & PPM_O_RDONLY)
+		else if (openflags & PPM_O_RDONLY)
 		{
 			return static_cast<file_category>(orig_category | file_category::READ_ONLY);
 		}
@@ -250,61 +251,61 @@ public:
 
 	void serialize_protobuf(secure::profiling::sub_category_container* cat)
 	{
-		if(m_r.size() != 0)
+		if (m_r.size() != 0)
 		{
 			secure::profiling::sub_category* sr = cat->add_subcats();
 			sr->set_name("r");
 			sr->set_full(m_is_r_full);
 
-			for(auto it : m_r)
+			for (auto it : m_r)
 			{
 				sr->add_d(it);
 			}
 		}
 
-		if(m_rw.size() != 0)
+		if (m_rw.size() != 0)
 		{
 			secure::profiling::sub_category* srw = cat->add_subcats();
 			srw->set_name("rw");
 			srw->set_full(m_is_r_full);
 
-			for(auto it : m_rw)
+			for (auto it : m_rw)
 			{
 				srw->add_d(it);
 			}
 		}
 
-		if(m_other.size() != 0)
+		if (m_other.size() != 0)
 		{
 			secure::profiling::sub_category* sother = cat->add_subcats();
 			sother->set_name("other");
 			sother->set_full(m_is_other_full);
 
-			for(auto it : m_other)
+			for (auto it : m_other)
 			{
 				sother->add_d(it);
 			}
 		}
 
-		if(m_uncategorized.size() != 0)
+		if (m_uncategorized.size() != 0)
 		{
 			secure::profiling::sub_category* suncategorized = cat->add_subcats();
 			suncategorized->set_name("uncategorized");
 			suncategorized->set_full(m_is_uncategorized_full);
 
-			for(auto it : m_uncategorized)
+			for (auto it : m_uncategorized)
 			{
 				suncategorized->add_d(it);
 			}
 		}
 
-		if(m_failed.size() != 0)
+		if (m_failed.size() != 0)
 		{
 			secure::profiling::sub_category* sfailed = cat->add_subcats();
 			sfailed->set_name("failed");
 			sfailed->set_full(m_is_failed_full);
 
-			for(auto it : m_failed)
+			for (auto it : m_failed)
 			{
 				sfailed->add_d(it);
 			}
@@ -315,9 +316,9 @@ public:
 	{
 		Json::Value echild;
 
-		if(m_r.size() != 0)
+		if (m_r.size() != 0)
 		{
-			for(auto it : m_r)
+			for (auto it : m_r)
 			{
 				echild[it] = 1;
 			}
@@ -326,9 +327,9 @@ public:
 			echild.clear();
 		}
 
-		if(m_rw.size() != 0)
+		if (m_rw.size() != 0)
 		{
-			for(auto it : m_rw)
+			for (auto it : m_rw)
 			{
 				echild[it] = 1;
 			}
@@ -337,9 +338,9 @@ public:
 			echild.clear();
 		}
 
-		if(m_other.size() != 0)
+		if (m_other.size() != 0)
 		{
-			for(auto it : m_other)
+			for (auto it : m_other)
 			{
 				echild[it] = 1;
 			}
@@ -348,9 +349,9 @@ public:
 			echild.clear();
 		}
 
-		if(m_uncategorized.size() != 0)
+		if (m_uncategorized.size() != 0)
 		{
-			for(auto it : m_uncategorized)
+			for (auto it : m_uncategorized)
 			{
 				echild[it] = 1;
 			}
@@ -359,9 +360,9 @@ public:
 			echild.clear();
 		}
 
-		if(m_failed.size() != 0)
+		if (m_failed.size() != 0)
 		{
-			for(auto it : m_failed)
+			for (auto it : m_failed)
 			{
 				echild[it] = 1;
 			}
@@ -373,20 +374,18 @@ public:
 
 	bool has_data()
 	{
-		return (m_r.size() != 0) ||
-			(m_rw.size() != 0) ||
-			(m_c.size() != 0) ||
-			(m_other.size() != 0) ||
-			(m_uncategorized.size() != 0) ||
-			(m_failed.size() != 0);
+		return (m_r.size() != 0) || (m_rw.size() != 0) || (m_c.size() != 0) ||
+		       (m_other.size() != 0) || (m_uncategorized.size() != 0) || (m_failed.size() != 0);
 	}
 
-	std::set<std::string> m_r;	// entries opened for reading only
-	std::set<std::string> m_rw;	// entries opened for read and write
-	std::set<std::string> m_c;	// entries opened with the create flag
-	std::set<std::string> m_other; // entries that have only flags different from read or write
-	std::set<std::string> m_uncategorized; // entries not categorized yet, likely because they come from scanning proc, where we don't extract open flags yet
-	std::set<std::string> m_failed; // entries coming from failed operations
+	std::set<std::string> m_r;      // entries opened for reading only
+	std::set<std::string> m_rw;     // entries opened for read and write
+	std::set<std::string> m_c;      // entries opened with the create flag
+	std::set<std::string> m_other;  // entries that have only flags different from read or write
+	std::set<std::string>
+	    m_uncategorized;  // entries not categorized yet, likely because they come from scanning
+	                      // proc, where we don't extract open flags yet
+	std::set<std::string> m_failed;  // entries coming from failed operations
 	bool m_is_r_full;
 	bool m_is_rw_full;
 	bool m_is_c_full;
@@ -411,7 +410,7 @@ public:
 
 	inline void add(std::string& name, file_category cat, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_STARTUP_TIME_NS)
+		if (time_from_clone < BL_STARTUP_TIME_NS)
 		{
 			m_startup_table.add(name, cat);
 		}
@@ -423,13 +422,13 @@ public:
 
 	void serialize_protobuf(secure::profiling::category* cat)
 	{
-		if(m_startup_table.has_data())
+		if (m_startup_table.has_data())
 		{
 			secure::profiling::sub_category_container* sc = cat->add_startup_subcats();
 			m_startup_table.serialize_protobuf(sc);
 		}
 
-		if(m_regular_table.has_data())
+		if (m_regular_table.has_data())
 		{
 			secure::profiling::sub_category_container* sc = cat->add_regular_subcats();
 			m_regular_table.serialize_protobuf(sc);
@@ -440,23 +439,20 @@ public:
 	{
 		Json::Value vsi;
 		m_startup_table.serialize_json(vsi);
-		if(!vsi.empty())
+		if (!vsi.empty())
 		{
 			element["startup"] = vsi;
 		}
 
 		Json::Value vsl;
 		m_regular_table.serialize_json(vsl);
-		if(!vsl.empty())
+		if (!vsl.empty())
 		{
 			element["regular"] = vsl;
 		}
 	}
 
-	bool has_data()
-	{
-		return m_startup_table.has_data() || m_regular_table.has_data();
-	}
+	bool has_data() { return m_startup_table.has_data() || m_regular_table.has_data(); }
 
 	blfiletable m_startup_table;
 	blfiletable m_regular_table;
@@ -468,10 +464,7 @@ public:
 class blprogtable
 {
 public:
-	blprogtable()
-	{
-		m_is_p_full = false;
-	}
+	blprogtable() { m_is_p_full = false; }
 
 	void clear()
 	{
@@ -481,10 +474,10 @@ public:
 
 	inline void add(std::string& name)
 	{
-		if(!m_is_p_full)
+		if (!m_is_p_full)
 		{
 			m_p.insert(name);
-			if(m_p.size() >= BL_MAX_FILE_TABLE_SIZE)
+			if (m_p.size() >= BL_MAX_FILE_TABLE_SIZE)
 			{
 				m_is_p_full = true;
 			}
@@ -493,13 +486,13 @@ public:
 
 	void serialize_protobuf(secure::profiling::sub_category_container* cat)
 	{
-		if(m_p.size() != 0)
+		if (m_p.size() != 0)
 		{
 			secure::profiling::sub_category* sp = cat->add_subcats();
 			sp->set_name("p");
 			sp->set_full(m_is_p_full);
 
-			for(auto it : m_p)
+			for (auto it : m_p)
 			{
 				sp->add_d(it);
 			}
@@ -510,9 +503,9 @@ public:
 	{
 		Json::Value echild;
 
-		if(m_p.size() != 0)
+		if (m_p.size() != 0)
 		{
-			for(auto it : m_p)
+			for (auto it : m_p)
 			{
 				echild[it] = 1;
 			}
@@ -522,10 +515,7 @@ public:
 		}
 	}
 
-	bool has_data()
-	{
-		return (m_p.size() != 0);
-	}
+	bool has_data() { return (m_p.size() != 0); }
 
 	std::set<std::string> m_p;
 	bool m_is_p_full;
@@ -537,10 +527,7 @@ public:
 class syscallstable
 {
 public:
-	syscallstable()
-	{
-		m_is_p_full = false;
-	}
+	syscallstable() { m_is_p_full = false; }
 
 	void clear()
 	{
@@ -550,10 +537,10 @@ public:
 
 	inline void add(uint32_t val)
 	{
-		if(!m_is_p_full)
+		if (!m_is_p_full)
 		{
 			m_p.insert(val);
-			if(m_p.size() >= BL_MAX_FILE_TABLE_SIZE)
+			if (m_p.size() >= BL_MAX_FILE_TABLE_SIZE)
 			{
 				m_is_p_full = true;
 			}
@@ -562,14 +549,14 @@ public:
 
 	inline const char* id_to_str(uint32_t id)
 	{
-		if((id & 0xffff) != 0)
+		if ((id & 0xffff) != 0)
 		{
 			return sinsp_utils::event_name_by_id(id);
 		}
 		else
 		{
 			id = id >> 16;
-			if(id < PPM_SC_MAX)
+			if (id < PPM_SC_MAX)
 			{
 				return g_infotables.m_syscall_info_table[id].name;
 			}
@@ -583,13 +570,13 @@ public:
 
 	void serialize_protobuf(secure::profiling::sub_category_container* cat)
 	{
-		if(m_p.size() != 0)
+		if (m_p.size() != 0)
 		{
 			secure::profiling::sub_category* sp = cat->add_subcats();
 			sp->set_name("p");
 			sp->set_full(m_is_p_full);
 
-			for(auto it : m_p)
+			for (auto it : m_p)
 			{
 				sp->add_d(id_to_str(it));
 			}
@@ -600,9 +587,9 @@ public:
 	{
 		Json::Value echild;
 
-		if(m_p.size() != 0)
+		if (m_p.size() != 0)
 		{
-			for(auto it : m_p)
+			for (auto it : m_p)
 			{
 				echild[id_to_str(it)] = 1;
 			}
@@ -612,20 +599,18 @@ public:
 		}
 	}
 
-	bool has_data()
-	{
-		return (m_p.size() != 0);
-	}
+	bool has_data() { return (m_p.size() != 0); }
 
 	std::set<uint32_t> m_p;
 	bool m_is_p_full;
 };
 
 //
-// This class manages two tables that require a simple add, one for the process startup phase and one
-// for regular long term activity
+// This class manages two tables that require a simple add, one for the process startup phase and
+// one for regular long term activity
 //
-template <class A, typename B> class simpletable_split
+template<class A, typename B>
+class simpletable_split
 {
 public:
 	void clear()
@@ -636,7 +621,7 @@ public:
 
 	inline void add(B val, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_STARTUP_TIME_NS)
+		if (time_from_clone < BL_STARTUP_TIME_NS)
 		{
 			m_startup_table.add(val);
 		}
@@ -648,13 +633,13 @@ public:
 
 	void serialize_protobuf(secure::profiling::category* cat)
 	{
-		if(m_startup_table.has_data())
+		if (m_startup_table.has_data())
 		{
 			secure::profiling::sub_category_container* sc = cat->add_startup_subcats();
 			m_startup_table.serialize_protobuf(sc);
 		}
 
-		if(m_regular_table.has_data())
+		if (m_regular_table.has_data())
 		{
 			secure::profiling::sub_category_container* sc = cat->add_regular_subcats();
 			m_regular_table.serialize_protobuf(sc);
@@ -665,23 +650,20 @@ public:
 	{
 		Json::Value vsi;
 		m_startup_table.serialize_json(vsi);
-		if(!vsi.empty())
+		if (!vsi.empty())
 		{
 			element["startup"] = vsi;
 		}
 
 		Json::Value vsl;
 		m_regular_table.serialize_json(vsl);
-		if(!vsl.empty())
+		if (!vsl.empty())
 		{
 			element["regular"] = vsl;
 		}
 	}
 
-	bool has_data()
-	{
-		return m_startup_table.has_data() || m_regular_table.has_data();
-	}
+	bool has_data() { return m_startup_table.has_data() || m_regular_table.has_data(); }
 
 	A m_startup_table;
 	A m_regular_table;
@@ -715,10 +697,10 @@ public:
 
 	inline void add_l_tcp(uint16_t port)
 	{
-		if(!m_is_l_tcp_full)
+		if (!m_is_l_tcp_full)
 		{
 			m_l_tcp.insert(port);
-			if(m_l_tcp.size() >= BL_MAX_FILE_TABLE_SIZE)
+			if (m_l_tcp.size() >= BL_MAX_FILE_TABLE_SIZE)
 			{
 				m_is_l_tcp_full = true;
 			}
@@ -727,10 +709,10 @@ public:
 
 	inline void add_r_tcp(uint16_t port)
 	{
-		if(!m_is_r_tcp_full)
+		if (!m_is_r_tcp_full)
 		{
 			m_r_tcp.insert(port);
-			if(m_r_tcp.size() >= BL_MAX_FILE_TABLE_SIZE)
+			if (m_r_tcp.size() >= BL_MAX_FILE_TABLE_SIZE)
 			{
 				m_is_r_tcp_full = true;
 			}
@@ -739,10 +721,10 @@ public:
 
 	inline void add_l_udp(uint16_t port)
 	{
-		if(!m_is_l_udp_full)
+		if (!m_is_l_udp_full)
 		{
 			m_l_udp.insert(port);
-			if(m_l_udp.size() >= BL_MAX_FILE_TABLE_SIZE)
+			if (m_l_udp.size() >= BL_MAX_FILE_TABLE_SIZE)
 			{
 				m_is_l_udp_full = true;
 			}
@@ -751,10 +733,10 @@ public:
 
 	inline void add_r_udp(uint16_t port)
 	{
-		if(!m_is_r_udp_full)
+		if (!m_is_r_udp_full)
 		{
 			m_r_udp.insert(port);
-			if(m_r_udp.size() >= BL_MAX_FILE_TABLE_SIZE)
+			if (m_r_udp.size() >= BL_MAX_FILE_TABLE_SIZE)
 			{
 				m_is_r_udp_full = true;
 			}
@@ -763,33 +745,33 @@ public:
 
 	inline void add(blporttable& other)
 	{
-		if(!m_is_r_tcp_full)
+		if (!m_is_r_tcp_full)
 		{
-			for(auto it : other.m_r_tcp)
+			for (auto it : other.m_r_tcp)
 			{
 				add_r_tcp(it);
 			}
 		}
 
-		if(!m_is_l_tcp_full)
+		if (!m_is_l_tcp_full)
 		{
-			for(auto it : other.m_l_tcp)
+			for (auto it : other.m_l_tcp)
 			{
 				add_l_tcp(it);
 			}
 		}
 
-		if(!m_is_r_udp_full)
+		if (!m_is_r_udp_full)
 		{
-			for(auto it : other.m_r_udp)
+			for (auto it : other.m_r_udp)
 			{
 				add_r_udp(it);
 			}
 		}
 
-		if(!m_is_l_udp_full)
+		if (!m_is_l_udp_full)
 		{
-			for(auto it : other.m_l_udp)
+			for (auto it : other.m_l_udp)
 			{
 				add_l_udp(it);
 			}
@@ -798,49 +780,49 @@ public:
 
 	void serialize_protobuf(secure::profiling::sub_category_container* cat)
 	{
-		if(m_l_tcp.size() != 0)
+		if (m_l_tcp.size() != 0)
 		{
 			secure::profiling::sub_category* sl_tcp = cat->add_subcats();
 			sl_tcp->set_name("l_tcp");
 			sl_tcp->set_full(m_is_l_tcp_full);
 
-			for(auto it : m_l_tcp)
+			for (auto it : m_l_tcp)
 			{
 				sl_tcp->add_d(std::to_string(it));
 			}
 		}
 
-		if(m_r_tcp.size() != 0)
+		if (m_r_tcp.size() != 0)
 		{
 			secure::profiling::sub_category* sr_tcp = cat->add_subcats();
 			sr_tcp->set_name("r_tcp");
 			sr_tcp->set_full(m_is_r_tcp_full);
 
-			for(auto it : m_r_tcp)
+			for (auto it : m_r_tcp)
 			{
 				sr_tcp->add_d(std::to_string(it));
 			}
 		}
 
-		if(m_l_udp.size() != 0)
+		if (m_l_udp.size() != 0)
 		{
 			secure::profiling::sub_category* sl_udp = cat->add_subcats();
 			sl_udp->set_name("l_udp");
 			sl_udp->set_full(m_is_l_udp_full);
 
-			for(auto it : m_l_udp)
+			for (auto it : m_l_udp)
 			{
 				sl_udp->add_d(std::to_string(it));
 			}
 		}
 
-		if(m_r_udp.size() != 0)
+		if (m_r_udp.size() != 0)
 		{
 			secure::profiling::sub_category* sr_udp = cat->add_subcats();
 			sr_udp->set_name("r_udp");
 			sr_udp->set_full(m_is_r_udp_full);
 
-			for(auto it : m_r_udp)
+			for (auto it : m_r_udp)
 			{
 				sr_udp->add_d(std::to_string(it));
 			}
@@ -851,9 +833,9 @@ public:
 	{
 		Json::Value echild;
 
-		if(m_l_tcp.size() != 0)
+		if (m_l_tcp.size() != 0)
 		{
-			for(auto it : m_l_tcp)
+			for (auto it : m_l_tcp)
 			{
 				echild[std::to_string(it)] = 1;
 			}
@@ -862,9 +844,9 @@ public:
 			echild.clear();
 		}
 
-		if(m_r_tcp.size() != 0)
+		if (m_r_tcp.size() != 0)
 		{
-			for(auto it : m_r_tcp)
+			for (auto it : m_r_tcp)
 			{
 				echild[std::to_string(it)] = 1;
 			}
@@ -873,9 +855,9 @@ public:
 			echild.clear();
 		}
 
-		if(m_l_udp.size() != 0)
+		if (m_l_udp.size() != 0)
 		{
-			for(auto it : m_l_udp)
+			for (auto it : m_l_udp)
 			{
 				echild[std::to_string(it)] = 1;
 			}
@@ -884,9 +866,9 @@ public:
 			echild.clear();
 		}
 
-		if(m_r_udp.size() != 0)
+		if (m_r_udp.size() != 0)
 		{
-			for(auto it : m_r_udp)
+			for (auto it : m_r_udp)
 			{
 				echild[std::to_string(it)] = 1;
 			}
@@ -898,16 +880,14 @@ public:
 
 	bool has_data()
 	{
-		return (m_l_tcp.size() != 0) ||
-			(m_r_tcp.size() != 0) ||
-			(m_l_udp.size() != 0) ||
-			(m_r_udp.size() != 0);
+		return (m_l_tcp.size() != 0) || (m_r_tcp.size() != 0) || (m_l_udp.size() != 0) ||
+		       (m_r_udp.size() != 0);
 	}
 
-	std::set<uint16_t> m_l_tcp;	// local TCP server ports
-	std::set<uint16_t> m_r_tcp;	// remote TCP server ports
-	std::set<uint16_t> m_l_udp;	// local TCP server ports
-	std::set<uint16_t> m_r_udp;	// remote TCP server ports
+	std::set<uint16_t> m_l_tcp;  // local TCP server ports
+	std::set<uint16_t> m_r_tcp;  // remote TCP server ports
+	std::set<uint16_t> m_l_udp;  // local TCP server ports
+	std::set<uint16_t> m_r_udp;  // remote TCP server ports
 	bool m_is_l_tcp_full;
 	bool m_is_r_tcp_full;
 	bool m_is_l_udp_full;
@@ -929,7 +909,7 @@ public:
 
 	inline void add_l_tcp(uint16_t port, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_STARTUP_TIME_NS)
+		if (time_from_clone < BL_STARTUP_TIME_NS)
 		{
 			m_startup_table.add_l_tcp(port);
 		}
@@ -941,7 +921,7 @@ public:
 
 	inline void add_r_tcp(uint16_t port, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_STARTUP_TIME_NS)
+		if (time_from_clone < BL_STARTUP_TIME_NS)
 		{
 			m_startup_table.add_r_tcp(port);
 		}
@@ -953,7 +933,7 @@ public:
 
 	inline void add_l_udp(uint16_t port, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_STARTUP_TIME_NS)
+		if (time_from_clone < BL_STARTUP_TIME_NS)
 		{
 			m_startup_table.add_l_udp(port);
 		}
@@ -965,7 +945,7 @@ public:
 
 	inline void add_r_udp(uint16_t port, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_STARTUP_TIME_NS)
+		if (time_from_clone < BL_STARTUP_TIME_NS)
 		{
 			m_startup_table.add_r_udp(port);
 		}
@@ -977,13 +957,13 @@ public:
 
 	void serialize_protobuf(secure::profiling::category* cat)
 	{
-		if(m_startup_table.has_data())
+		if (m_startup_table.has_data())
 		{
 			secure::profiling::sub_category_container* sc = cat->add_startup_subcats();
 			m_startup_table.serialize_protobuf(sc);
 		}
 
-		if(m_regular_table.has_data())
+		if (m_regular_table.has_data())
 		{
 			secure::profiling::sub_category_container* sc = cat->add_regular_subcats();
 			m_regular_table.serialize_protobuf(sc);
@@ -994,23 +974,20 @@ public:
 	{
 		Json::Value vsi;
 		m_startup_table.serialize_json(vsi);
-		if(!vsi.empty())
+		if (!vsi.empty())
 		{
 			element["startup"] = vsi;
 		}
 
 		Json::Value vsl;
 		m_regular_table.serialize_json(vsl);
-		if(!vsl.empty())
+		if (!vsl.empty())
 		{
 			element["regular"] = vsl;
 		}
 	}
 
-	bool has_data()
-	{
-		return m_startup_table.has_data() || m_regular_table.has_data();
-	}
+	bool has_data() { return m_startup_table.has_data() || m_regular_table.has_data(); }
 
 	blporttable m_startup_table;
 	blporttable m_regular_table;
@@ -1041,10 +1018,10 @@ public:
 
 	inline void add_c_tcp(uint32_t ip)
 	{
-		if(!m_is_c_tcp_full)
+		if (!m_is_c_tcp_full)
 		{
 			m_c_tcp.insert(ip);
-			if(m_c_tcp.size() >= BL_MAX_FILE_TABLE_SIZE)
+			if (m_c_tcp.size() >= BL_MAX_FILE_TABLE_SIZE)
 			{
 				m_is_c_tcp_full = true;
 			}
@@ -1053,10 +1030,10 @@ public:
 
 	inline void add_s_tcp(uint32_t ip)
 	{
-		if(!m_is_s_tcp_full)
+		if (!m_is_s_tcp_full)
 		{
 			m_s_tcp.insert(ip);
-			if(m_s_tcp.size() >= BL_MAX_FILE_TABLE_SIZE)
+			if (m_s_tcp.size() >= BL_MAX_FILE_TABLE_SIZE)
 			{
 				m_is_s_tcp_full = true;
 			}
@@ -1065,10 +1042,10 @@ public:
 
 	inline void add_udp(uint32_t ip)
 	{
-		if(!m_is_udp_full)
+		if (!m_is_udp_full)
 		{
 			m_udp.insert(ip);
-			if(m_udp.size() >= BL_MAX_FILE_TABLE_SIZE)
+			if (m_udp.size() >= BL_MAX_FILE_TABLE_SIZE)
 			{
 				m_is_udp_full = true;
 			}
@@ -1077,76 +1054,72 @@ public:
 
 	inline void add(bl_ip_endpoint_table& other)
 	{
-		if(!m_is_c_tcp_full)
+		if (!m_is_c_tcp_full)
 		{
-			for(auto it : other.m_c_tcp)
+			for (auto it : other.m_c_tcp)
 			{
 				add_c_tcp(it);
 			}
 		}
 
-		if(!m_is_s_tcp_full)
+		if (!m_is_s_tcp_full)
 		{
-			for(auto it : other.m_s_tcp)
+			for (auto it : other.m_s_tcp)
 			{
 				add_s_tcp(it);
 			}
 		}
 
-		if(!m_is_udp_full)
+		if (!m_is_udp_full)
 		{
-			for(auto it : other.m_udp)
+			for (auto it : other.m_udp)
 			{
 				add_udp(it);
 			}
 		}
 	}
 
-	static uint32_t c_subnet(uint32_t ip)
-	{
-		return ip & 0x00FFFFFF;
-	}
+	static uint32_t c_subnet(uint32_t ip) { return ip & 0x00FFFFFF; }
 
 	void serialize_protobuf(secure::profiling::sub_category_container* cat)
 	{
 		char addrbuff[32];
 
-		if(m_c_tcp.size() != 0)
+		if (m_c_tcp.size() != 0)
 		{
 			secure::profiling::sub_category* sc_tcp = cat->add_subcats();
 			sc_tcp->set_name("c_tcp");
 			sc_tcp->set_full(m_is_c_tcp_full);
 
-			for(auto it : m_c_tcp)
+			for (auto it : m_c_tcp)
 			{
 				sc_tcp->add_d(inet_ntop(AF_INET, &it, addrbuff, sizeof(addrbuff)));
 			}
 		}
 
-		if(m_s_tcp.size() != 0)
+		if (m_s_tcp.size() != 0)
 		{
 			secure::profiling::sub_category* ss_tcp = cat->add_subcats();
 			ss_tcp->set_name("s_tcp");
 			ss_tcp->set_full(m_is_s_tcp_full);
 
-			for(auto it : m_s_tcp)
+			for (auto it : m_s_tcp)
 			{
 				ss_tcp->add_d(inet_ntop(AF_INET, &it, addrbuff, sizeof(addrbuff)));
 			}
 		}
 
-		if(m_udp.size() != 0)
+		if (m_udp.size() != 0)
 		{
 			secure::profiling::sub_category* sudp = cat->add_subcats();
 			sudp->set_name("udp");
 			sudp->set_full(m_is_udp_full);
 
-			for(auto it : m_udp)
+			for (auto it : m_udp)
 			{
 				sudp->add_d(inet_ntop(AF_INET, &it, addrbuff, sizeof(addrbuff)));
 			}
 		}
-
 	}
 
 	void serialize_json(Json::Value& element)
@@ -1154,9 +1127,9 @@ public:
 		Json::Value echild;
 		char addrbuff[32];
 
-		if(m_c_tcp.size() != 0)
+		if (m_c_tcp.size() != 0)
 		{
-			for(auto it : m_c_tcp)
+			for (auto it : m_c_tcp)
 			{
 				echild[inet_ntop(AF_INET, &it, addrbuff, sizeof(addrbuff))] = 1;
 			}
@@ -1165,9 +1138,9 @@ public:
 			echild.clear();
 		}
 
-		if(m_s_tcp.size() != 0)
+		if (m_s_tcp.size() != 0)
 		{
-			for(auto it : m_s_tcp)
+			for (auto it : m_s_tcp)
 			{
 				echild[inet_ntop(AF_INET, &it, addrbuff, sizeof(addrbuff))] = 1;
 			}
@@ -1176,9 +1149,9 @@ public:
 			echild.clear();
 		}
 
-		if(m_udp.size() != 0)
+		if (m_udp.size() != 0)
 		{
-			for(auto it : m_udp)
+			for (auto it : m_udp)
 			{
 				echild[inet_ntop(AF_INET, &it, addrbuff, sizeof(addrbuff))] = 1;
 			}
@@ -1190,14 +1163,12 @@ public:
 
 	bool has_data()
 	{
-		return (m_c_tcp.size() != 0) ||
-			(m_s_tcp.size() != 0) ||
-			(m_udp.size() != 0);
+		return (m_c_tcp.size() != 0) || (m_s_tcp.size() != 0) || (m_udp.size() != 0);
 	}
 
-	std::set<uint32_t> m_c_tcp;	// TCP client endpoints
-	std::set<uint32_t> m_s_tcp;	// TCP server endpoints
-	std::set<uint32_t> m_udp;	// UDP endpoints
+	std::set<uint32_t> m_c_tcp;  // TCP client endpoints
+	std::set<uint32_t> m_s_tcp;  // TCP server endpoints
+	std::set<uint32_t> m_udp;    // UDP endpoints
 	bool m_is_c_tcp_full;
 	bool m_is_s_tcp_full;
 	bool m_is_udp_full;
@@ -1218,7 +1189,7 @@ public:
 
 	inline void add_c_tcp(uint32_t ip, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_STARTUP_TIME_NS)
+		if (time_from_clone < BL_STARTUP_TIME_NS)
 		{
 			m_startup_table.add_c_tcp(ip);
 		}
@@ -1230,7 +1201,7 @@ public:
 
 	inline void add_s_tcp(uint32_t ip, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_STARTUP_TIME_NS)
+		if (time_from_clone < BL_STARTUP_TIME_NS)
 		{
 			m_startup_table.add_s_tcp(ip);
 		}
@@ -1242,7 +1213,7 @@ public:
 
 	inline void add_udp(uint32_t ip, uint64_t time_from_clone)
 	{
-		if(time_from_clone < BL_STARTUP_TIME_NS)
+		if (time_from_clone < BL_STARTUP_TIME_NS)
 		{
 			m_startup_table.add_udp(ip);
 		}
@@ -1254,13 +1225,13 @@ public:
 
 	void serialize_protobuf(secure::profiling::category* cat)
 	{
-		if(m_startup_table.has_data())
+		if (m_startup_table.has_data())
 		{
 			secure::profiling::sub_category_container* sc = cat->add_startup_subcats();
 			m_startup_table.serialize_protobuf(sc);
 		}
 
-		if(m_regular_table.has_data())
+		if (m_regular_table.has_data())
 		{
 			secure::profiling::sub_category_container* sc = cat->add_regular_subcats();
 			m_regular_table.serialize_protobuf(sc);
@@ -1271,23 +1242,20 @@ public:
 	{
 		Json::Value vsi;
 		m_startup_table.serialize_json(vsi);
-		if(!vsi.empty())
+		if (!vsi.empty())
 		{
 			element["startup"] = vsi;
 		}
 
 		Json::Value vsl;
 		m_regular_table.serialize_json(vsl);
-		if(!vsl.empty())
+		if (!vsl.empty())
 		{
 			element["regular"] = vsl;
 		}
 	}
 
-	bool has_data()
-	{
-		return m_startup_table.has_data() || m_regular_table.has_data();
-	}
+	bool has_data() { return m_startup_table.has_data() || m_regular_table.has_data(); }
 
 	bl_ip_endpoint_table m_startup_table;
 	bl_ip_endpoint_table m_regular_table;
@@ -1305,19 +1273,16 @@ public:
 		m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 	}
 
-	blprogram(std::string& comm)
-	{
-		m_comm = comm;
-	}
+	blprogram(std::string& comm) { m_comm = comm; }
 
-	std::string m_comm; // Command name (e.g. "top")
-	std::string m_exe; // argv[0] (e.g. "sshd: user@pts/4")
+	std::string m_comm;  // Command name (e.g. "top")
+	std::string m_exe;   // argv[0] (e.g. "sshd: user@pts/4")
 	std::vector<uint64_t> m_pids;
-	//std::string m_parent_comm; // Parent command name (e.g. "top")
-	//std::vector<std::string> m_args; // Command line arguments (e.g. "-d1")
-	//std::vector<std::string> m_env; // Environment variables
-	std::string m_container_id; // heuristic-based container id
-	uint32_t m_user_id; // user id
+	// std::string m_parent_comm; // Parent command name (e.g. "top")
+	// std::vector<std::string> m_args; // Command line arguments (e.g. "-d1")
+	// std::vector<std::string> m_env; // Environment variables
+	std::string m_container_id;  // heuristic-based container id
+	uint32_t m_user_id;          // user id
 	blfiletable_split m_files;
 	blfiletable_split m_dirs;
 	simpletable_split<blprogtable, std::string&> m_executed_programs;
@@ -1336,8 +1301,9 @@ public:
 	/// in order to call secure_profiling_handler
 	/// \param ts
 	/// \param secure_profilings
-	virtual void secure_profiling_data_ready(uint64_t ts,
-						 const secure::profiling::fingerprint* secure_profiling_fingerprint) = 0;
+	virtual void secure_profiling_data_ready(
+	    uint64_t ts,
+	    const secure::profiling::fingerprint* secure_profiling_fingerprint) = 0;
 };
 
 //
@@ -1346,8 +1312,7 @@ public:
 class sinsp_baseliner
 {
 public:
-	sinsp_baseliner(sinsp_analyzer& m_analyzer,
-					sinsp* m_inspector);
+	sinsp_baseliner(sinsp_analyzer& m_analyzer, sinsp* m_inspector);
 	~sinsp_baseliner();
 
 	void init();
@@ -1362,17 +1327,17 @@ public:
 	void serialize_protobuf();
 	void emit_as_protobuf(uint64_t time);
 
-	void on_file_open(sinsp_evt *evt, std::string& name, uint32_t openflags);
-	void on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo);
-	void on_connect(sinsp_evt *evt);
-	void on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo);
-	void on_bind(sinsp_evt *evt);
-	inline void extract_from_event(sinsp_evt *evt);
-	void process_event(sinsp_evt *evt);
+	void on_file_open(sinsp_evt* evt, std::string& name, uint32_t openflags);
+	void on_new_proc(sinsp_evt* evt, sinsp_threadinfo* tinfo);
+	void on_connect(sinsp_evt* evt);
+	void on_accept(sinsp_evt* evt, sinsp_fdinfo_t* fdinfo);
+	void on_bind(sinsp_evt* evt);
+	inline void extract_from_event(sinsp_evt* evt);
+	void process_event(sinsp_evt* evt);
 
 	void init_programs(sinsp* inspector, uint64_t time, bool skip_fds);
 	inline blprogram* get_program(sinsp_threadinfo* tinfo);
-	inline void add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category category);
+	inline void add_fd_from_io_evt(sinsp_evt* evt, enum ppm_event_category category);
 
 	sinsp* get_inspector();
 	void enable_baseline_calculation();
@@ -1390,9 +1355,10 @@ private:
 	// needed for the baseliner.
 	struct baseliner_stats
 	{
-		uint64_t n_evts; ///< Total number of events that were received by the driver.
-		uint64_t n_drops_buffer; ///< Number of dropped events caused by full buffer.
-		baseliner_stats () {
+		uint64_t n_evts;          ///< Total number of events that were received by the driver.
+		uint64_t n_drops_buffer;  ///< Number of dropped events caused by full buffer.
+		baseliner_stats()
+		{
 			n_evts = 0;
 			n_drops_buffer = 0;
 		}

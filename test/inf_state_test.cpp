@@ -25,7 +25,8 @@ public:
 				athd,
 				sahd,
 				sphd,
-				&flush_queue));
+				&flush_queue,
+				[]()->bool{return true;}));
 		m_infra_state.reset(new infrastructure_state(*m_analyzer, m_sinsp.get(), "/opt/draios", nullptr, true));
 	}
        	

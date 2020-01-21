@@ -45,7 +45,6 @@ public:
 	sinsp_worker(dragent_configuration* configuration,
 		     const internal_metrics::sptr_t& im,
 		     protocol_handler& handler,
-		     std::atomic<bool> *enable_autodrop,
 		     capture_job_handler *capture_job_handler);
 	~sinsp_worker();
 
@@ -159,7 +158,6 @@ private:
 	void init(sinsp::ptr& inspector, sinsp_analyzer* analyzer);
 	void do_grpc_tracing();
 	void process_job_requests(bool should_dump);
-	void check_autodrop(uint64_t ts_ns);
 	bool handle_signal_dump();
 
 	void get_internal_metrics();
@@ -173,8 +171,6 @@ private:
 	bool m_initialized;
 	dragent_configuration *m_configuration;
 	protocol_handler& m_protocol_handler;
-	std::atomic<bool> *m_enable_autodrop;
-	bool m_autodrop_currently_enabled;
 	sinsp::ptr m_inspector;
 	sinsp_analyzer* m_analyzer;
 

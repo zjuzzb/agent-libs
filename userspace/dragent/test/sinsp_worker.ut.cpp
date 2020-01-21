@@ -26,10 +26,9 @@ void run_sinsp_worker(const sinsp::ptr& inspector,
 
 	dragent_configuration::m_terminate = false;
 	internal_metrics::sptr_t im = std::make_shared<internal_metrics>();
-	std::atomic<bool> enable_autodrop;
 
-	capture_job_handler job_handler(&config, &queue, &enable_autodrop);
-	sinsp_worker worker(&config, im, handler, &enable_autodrop, &job_handler);
+	capture_job_handler job_handler(&config, &queue);
+	sinsp_worker worker(&config, im, handler, &job_handler);
 	worker.run();
 }
 
@@ -87,7 +86,7 @@ TEST(sinsp_worker_test, is_stall_fatal_in_capture_mode)
 	config.m_input_filename = "capture_file.scap";
 	protocol_queue queue(MAX_SAMPLE_STORE_SIZE);
 	protocol_handler handler(queue);
-	sinsp_worker worker(&config, nullptr, handler, nullptr,  nullptr);
+	sinsp_worker worker(&config, nullptr, handler,  nullptr);
 	ASSERT_FALSE(worker.is_stall_fatal());
 }
 
@@ -96,6 +95,6 @@ TEST(sinsp_worker_test, is_stall_fatal_in_driver_mode)
 	dragent_configuration config;
 	protocol_queue queue(MAX_SAMPLE_STORE_SIZE);
 	protocol_handler handler(queue);
-	sinsp_worker worker(&config, nullptr, handler, nullptr,  nullptr);
+	sinsp_worker worker(&config, nullptr, handler,  nullptr);
 	ASSERT_TRUE(worker.is_stall_fatal());
 }

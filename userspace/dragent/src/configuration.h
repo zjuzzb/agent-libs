@@ -172,10 +172,6 @@ public:
 	bool m_config_test;
 
 	// parameters used by cpu usage tuning
-	uint32_t m_subsampling_ratio;
-	bool m_autodrop_enabled;
-	uint32_t m_drop_upper_threshold;
-	uint32_t m_drop_lower_threshold;
 	long m_tracepoint_hits_threshold;
 	unsigned m_tracepoint_hits_ntimes;
 	double m_cpu_usage_max_sr_threshold;

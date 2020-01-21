@@ -1,59 +1,60 @@
 #pragma once
 
-#include <analyzer_int.h>
 #include "analyzer_utils.h"
-#include <delays.h>
+#include "app_checks.h"
+#include "jmx_proxy.h"
+#include "prometheus.h"
+#include "sinsp_curl.h"
+#include "statsite_proxy.h"
+#include "user_event.h"
+
+#include <analyzer_int.h>
+#include <atomic>
 #include <container_analyzer.h>
+#include <delays.h>
 #include <memory>
 #include <set>
 #include <string>
-#include <unordered_map>
-#include "jmx_proxy.h"
-#include "statsite_proxy.h"
-#include <atomic>
-#include <memory>
-#include "app_checks.h"
-#include "prometheus.h"
-#include <unordered_set>
 #include <tracer_emitter.h>
-#include "sinsp_curl.h"
-#include "user_event.h"
+#include <unordered_map>
+#include <unordered_set>
 #ifndef CYGWING_AGENT
 #include "k8s_api_handler.h"
 #endif
-#include "procfs_parser.h"
 #include "mounted_fs.h"
+#include "procfs_parser.h"
 #ifndef CYGWING_AGENT
 #include "coclient.h"
 #include "custom_container.h"
 #else
 #include "Poco/RegularExpression.h"
 #endif
-#include "internal_metrics.h"
-#include "userdb.h"
-#include "env_hash.h"
-#include "k8s_user_event_message_handler.h"
-#include "procfs_scanner.h"
-#include "analyzer_file_stat.h"
 #include "analyzer_emitter.h"
-#include "jmx_emitter.h"
-#include "app_check_emitter.h"
-#include "environment_emitter.h"
-#include "process_emitter.h"
-#include "audit_tap_handler.h"
-#include "secure_audit_handler.h"
-#include "statsd_emitter.h"
+#include "analyzer_file_stat.h"
 #include "analyzer_flush_message.h"
-#include "thread_safe_container/blocking_queue.h"
-#include "secure_audit_internal_metrics.h"
-#include "secure_audit_data_ready_handler.h"
+#include "app_check_emitter.h"
+#include "audit_tap_handler.h"
 #include "baseliner.h"
-#include <nlohmann/json.hpp>
-#include "include/sinsp_external_processor.h"
-
+#include "env_hash.h"
+#include "environment_emitter.h"
+#include "internal_metrics.h"
+#include "jmx_emitter.h"
+#include "k8s_limits.h"
+#include "k8s_user_event_message_handler.h"
 #include "label_limits.h"
 #include "metric_limits.h"
-#include "k8s_limits.h"
+#include "process_emitter.h"
+#include "procfs_scanner.h"
+#include "secure_audit_data_ready_handler.h"
+#include "secure_audit_handler.h"
+#include "secure_audit_internal_metrics.h"
+#include "statsd_emitter.h"
+#include "userdb.h"
+
+#include "include/sinsp_external_processor.h"
+#include "thread_safe_container/blocking_queue.h"
+
+#include <nlohmann/json.hpp>
 
 namespace dragent
 {
@@ -62,7 +63,6 @@ class metric_serializer;
 
 class audit_tap;
 class secure_audit;
-
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
 
@@ -99,8 +99,7 @@ class sinsp_container_manager;
 //
 // Aggregated connection table: entry and hashing infrastructure
 //
-typedef union _process_tuple
-{
+typedef union _process_tuple {
 	struct
 	{
 		uint64_t m_spid;
@@ -111,7 +110,7 @@ typedef union _process_tuple
 		uint16_t m_dport;
 		uint8_t m_l4proto;
 		uint8_t m_state;
-	}m_fields;
+	} m_fields;
 	uint8_t m_all[30];
 } process_tuple;
 
@@ -137,7 +136,7 @@ struct process_tuple_hash
 
 struct process_tuple_cmp
 {
-	bool operator () (process_tuple t1, process_tuple t2) const
+	bool operator()(process_tuple t1, process_tuple t2) const
 	{
 		return (memcmp(t1.m_all, t2.m_all, sizeof(t1.m_all)) == 0);
 	}
@@ -168,16 +167,16 @@ public:
 	uint32_t m_flags;
 	uint64_t m_ts;
 	std::string m_exe;
-	uint64_t m_shell_id; // this is equivalent to the shell ID in spy_users
-	uint32_t m_login_shell_distance; // This is equivalent to the indentation in spy_users
+	uint64_t m_shell_id;              // this is equivalent to the shell ID in spy_users
+	uint32_t m_login_shell_distance;  // This is equivalent to the indentation in spy_users
 	std::string m_cmdline;
-	uint32_t m_count; // how many times this command has been repeated
-	std::string m_comm; // program executable name
-	uint64_t m_pid; // process pid
-	uint64_t m_ppid; // parent process pid
-	uint64_t m_uid; // user ID
-	std::string m_cwd; // process' current working directory
-	uint32_t m_tty; // tty
+	uint32_t m_count;    // how many times this command has been repeated
+	std::string m_comm;  // program executable name
+	uint64_t m_pid;      // process pid
+	uint64_t m_ppid;     // parent process pid
+	uint64_t m_uid;      // user ID
+	std::string m_cwd;   // process' current working directory
+	uint32_t m_tty;      // tty
 	draiosproto::command_category m_category;
 };
 
@@ -185,10 +184,11 @@ public:
 class self_cputime_analyzer
 {
 public:
-	self_cputime_analyzer():
-		m_index(0),
-		m_previouscputime(0)
-	{}
+	self_cputime_analyzer() : m_index(0), m_previouscputime(0)
+	{
+		m_flushtime.fill(0);
+		m_othertime.fill(0);
+	}
 
 	void begin_flush();
 	void end_flush();
@@ -198,24 +198,21 @@ private:
 	static const auto LAST_SAMPLES = 10U;
 
 	uint64_t read_cputime();
-	void incr_index()
-	{
-		m_index = (m_index + 1) % LAST_SAMPLES;
-	}
+	void incr_index() { m_index = (m_index + 1) % LAST_SAMPLES; }
 
 	std::array<uint64_t, LAST_SAMPLES> m_flushtime;
 	std::array<uint64_t, LAST_SAMPLES> m_othertime;
 	unsigned m_index;
 	uint64_t m_previouscputime;
 };
-#endif // _WIN32
+#endif  // _WIN32
 
 class stress_tool_matcher
 {
 public:
 	stress_tool_matcher()
 	{
-		//m_comm_list.push_back("dd");
+		// m_comm_list.push_back("dd");
 		//
 		// XXX Populate this with the list of stress tools to match
 		//
@@ -223,9 +220,9 @@ public:
 
 	bool match(std::string comm)
 	{
-		for(auto it = m_comm_list.begin(); it != m_comm_list.end(); ++it)
+		for (auto it = m_comm_list.begin(); it != m_comm_list.end(); ++it)
 		{
-			if(*it == comm)
+			if (*it == comm)
 			{
 				return true;
 			}
@@ -235,6 +232,7 @@ public:
 	}
 
 	static void set_comm_list(const std::vector<std::string>& comms);
+
 private:
 	static std::vector<std::string> m_comm_list;
 };
@@ -242,11 +240,10 @@ private:
 //
 // The main analyzer class
 //
-class SINSP_PUBLIC sinsp_analyzer :
-	public secure_audit_data_ready_handler,
-	public secure_profiling_data_ready_handler,
-	public secure_audit_internal_metrics,
-	public libsinsp::event_processor
+class SINSP_PUBLIC sinsp_analyzer : public secure_audit_data_ready_handler,
+                                    public secure_profiling_data_ready_handler,
+                                    public secure_audit_internal_metrics,
+                                    public libsinsp::event_processor
 {
 public:
 	typedef thread_safe_container::blocking_queue<std::shared_ptr<flush_data_message>> flush_queue;
@@ -267,6 +264,7 @@ public:
 	               secure_audit_handler& secure_audit_handler,
 	               secure_profiling_handler& secure_profiling_handler,
 	               flush_queue* flush_queue,
+	               std::function<bool()> check_disable_dropping,
 	               const metric_limits::sptr_t& the_metric_limits = nullptr,
 	               const label_limits::sptr_t& the_label_limits = nullptr,
 	               const k8s_limits::sptr_t& the_k8s_limits = nullptr);
@@ -293,10 +291,7 @@ public:
 	void initialize_chisels();
 	void add_chisel(sinsp_chisel* ch);
 	void add_chisel(sinsp_chisel_details* cd);
-	inline void add_chisel_metric(statsd_metric* metric)
-	{
-		m_chisel_metrics.push_back(*metric);
-	}
+	inline void add_chisel_metric(statsd_metric* metric) { m_chisel_metrics.push_back(*metric); }
 
 	//
 	// Processing entry point
@@ -304,15 +299,12 @@ public:
 	void process_event(sinsp_evt* evt, libsinsp::event_return rc);
 
 	void add_syscall_time(sinsp_counters* metrics,
-		sinsp_evt::category* cat,
-		uint64_t delta,
-		uint32_t bytes,
-		bool inc_count);
+	                      sinsp_evt::category* cat,
+	                      uint64_t delta,
+	                      uint32_t bytes,
+	                      bool inc_count);
 
-	uint64_t get_last_sample_time_ns()
-	{
-		return m_next_flush_time_ns;
-	}
+	uint64_t get_last_sample_time_ns() { return m_next_flush_time_ns; }
 
 	//
 	// Connection lookup
@@ -325,7 +317,7 @@ public:
 	// Get processing stats
 	//
 	sinsp_stats get_stats();
-#endif // GATHER_INTERNAL_STATS
+#endif  // GATHER_INTERNAL_STATS
 
 	//
 	// The library configuration manager
@@ -336,26 +328,11 @@ public:
 	// Fills the given buffer with a string contaning the memory usage report.
 	// Returns the size of the string, or -1 if the given buffer is too small.
 	//
-	int32_t generate_memory_report(OUT char* reportbuf, uint32_t reportbuflen, bool do_complete_report = false);
+	int32_t generate_memory_report(OUT char* reportbuf,
+	                               uint32_t reportbuflen,
+	                               bool do_complete_report = false);
 
-	//
-	// Autodrop control
-	//
-	void set_autodrop_enabled(bool enabled);
-	void stop_dropping_mode();
-	void start_dropping_mode(uint32_t sampling_ratio);
-	bool driver_stopped_dropping();
-	void set_driver_stopped_dropping(bool driver_stopped_dropping);
-
-	void set_is_sampling(bool is_sampling)
-	{
-		m_is_sampling = is_sampling;
-	}
-
-	void set_capture_in_progress(bool in_progress)
-	{
-		m_capture_in_progress = in_progress;
-	}
+	void set_capture_in_progress(bool in_progress) { m_capture_in_progress = in_progress; }
 
 #ifndef _WIN32
 	inline void enable_jmx(bool print_json, unsigned sampling)
@@ -368,35 +345,19 @@ public:
 	void set_statsd_iofds(const std::pair<FILE*, FILE*>& iofds, bool forwarder);
 #endif
 
-	void set_protocols_enabled(bool value)
-	{
-		m_protocols_enabled = value;
-	}
+	void set_protocols_enabled(bool value) { m_protocols_enabled = value; }
 
-	void set_procfs_scan_thread(bool value)
-	{
-		m_procfs_scan_thread = value;
-	}
+	void set_procfs_scan_thread(bool value) { m_procfs_scan_thread = value; }
 
-	void set_remotefs_enabled(bool value)
-	{
-		m_remotefs_enabled = value;
-	}
+	void set_remotefs_enabled(bool value) { m_remotefs_enabled = value; }
 
-	void set_sampling_ratio(uint64_t value)
-	{
-		m_sampling_ratio = (uint32_t)value;
-		auto newsl = ANALYZER_DEFAULT_SAMPLE_LENGTH_NS / m_sampling_ratio;
-		if(newsl != m_configuration->get_analyzer_sample_len_ns())
-		{
-			m_configuration->set_analyzer_sample_len_ns(newsl);
-		}
-	}
+	uint64_t get_acked_sampling_ratio() const { return m_acked_sampling_ratio; }
 
-	/**
-	 * Returns the current sampling ratio.
-	 */
-	uint32_t get_sampling_ratio() const;
+	uint64_t get_sample_duration() const;
+
+	// the ack of the sampling ratio change happens via an event picked up
+	// by the analyzer parser, who sets this
+	void ack_sampling_ratio(uint64_t value) { m_acked_sampling_ratio = value; }
 
 	void set_statsd_capture_localhost(bool value)
 	{
@@ -410,17 +371,17 @@ public:
 	{
 		std::unordered_set<std::string> check_unique_names;
 		m_app_checks.clear();
-		for(const auto& c : checks)
+		for (const auto& c : checks)
 		{
 			auto res = check_unique_names.emplace(c.name());
-			if(res.second)
+			if (res.second)
 			{
 				// This means there wasn't already a check like this
 				m_app_checks.push_back(c);
 			}
 		}
 
-		if(!m_app_checks.empty())
+		if (!m_app_checks.empty())
 		{
 			if (!m_app_proxy)
 			{
@@ -444,7 +405,7 @@ public:
 		std::swap(m_custom_container, conf);
 	}
 #endif
-#endif // _WIN32
+#endif  // _WIN32
 
 	inline const sinsp_threadinfo* get_agent_thread()
 	{
@@ -466,10 +427,7 @@ public:
 		m_container_patterns = patterns;
 	}
 
-	void set_containers_labels_max_len(const uint32_t len)
-	{
-		m_containers_labels_max_len = len;
-	}
+	void set_containers_labels_max_len(const uint32_t len) { m_containers_labels_max_len = len; }
 
 	void set_fs_usage_from_external_proc(bool value);
 
@@ -485,10 +443,7 @@ public:
 
 	void init_k8s_user_event_handler();
 
-	void set_simpledriver_mode()
-	{
-		m_simpledriver_enabled = true;
-	}
+	void set_simpledriver_mode() { m_simpledriver_enabled = true; }
 
 	void set_track_connection_status(bool value)
 	{
@@ -501,17 +456,11 @@ public:
 	void emit_percentiles_config();
 
 #ifndef CYGWING_AGENT
-	infrastructure_state *infra_state();
+	infrastructure_state* infra_state();
 
-	void set_use_new_k8s(bool v)
-	{
-		m_use_new_k8s = v;
-	}
+	void set_use_new_k8s(bool v) { m_use_new_k8s = v; }
 
-	void set_k8s_local_update_frequency(uint16_t value)
-	{
-		m_k8s_local_update_frequency = value;
-	}
+	void set_k8s_local_update_frequency(uint16_t value) { m_k8s_local_update_frequency = value; }
 
 	void set_k8s_cluster_update_frequency(uint16_t value)
 	{
@@ -536,10 +485,7 @@ public:
 #endif
 	}
 
-	void set_flush_log_time(uint64_t flush_log_ns)
-	{
-		m_flush_log_time = flush_log_ns;
-	}
+	void set_flush_log_time(uint64_t flush_log_ns) { m_flush_log_time = flush_log_ns; }
 
 	void set_flush_log_time_duration(uint64_t flush_log_duration_ns)
 	{
@@ -551,10 +497,7 @@ public:
 		m_flush_log_time_cooldown = flush_log_cooldown_ns;
 	}
 
-	void set_username_lookups(bool enabled)
-	{
-		m_username_lookups = enabled;
-	}
+	void set_username_lookups(bool enabled) { m_username_lookups = enabled; }
 
 	void set_top_files(int per_prog, int per_container, int per_host)
 	{
@@ -570,15 +513,15 @@ public:
 		m_top_file_devices_per_host = per_host;
 	}
 
-	inline bool detailed_fileio_reporting() const {
+	inline bool detailed_fileio_reporting() const
+	{
 		return m_top_files_per_prog > 0 || m_top_files_per_container > 0;
 	}
 
-	inline bool fileio_device_reporting() const {
-		return m_top_file_devices_per_host > 0;
-	}
+	inline bool fileio_device_reporting() const { return m_top_file_devices_per_host > 0; }
 
-	inline bool detailed_fileio_device_reporting() const {
+	inline bool detailed_fileio_device_reporting() const
+	{
 		return m_top_file_devices_per_prog > 0 || m_top_file_devices_per_container > 0;
 	}
 
@@ -590,8 +533,14 @@ public:
 	void set_top_processes_in_sample(uint32_t val) { m_top_processes_in_sample = val; }
 	void set_top_processes_per_container(uint32_t val) { m_top_processes_per_container = val; }
 	void set_report_source_port(bool val) { m_report_source_port = val; }
-	void set_url_groups(const std::set<std::string>& groups) { sinsp_protostate::set_url_groups(groups); }
-	void set_connection_truncate_report_interval(int sec) { m_connection_truncate_report_interval = sec; }
+	void set_url_groups(const std::set<std::string>& groups)
+	{
+		sinsp_protostate::set_url_groups(groups);
+	}
+	void set_connection_truncate_report_interval(int sec)
+	{
+		m_connection_truncate_report_interval = sec;
+	}
 	void set_connection_truncate_log_interval(int sec) { m_connection_truncate_log_interval = sec; }
 
 	void set_track_environment(bool val) { m_track_environment = val; }
@@ -599,60 +548,49 @@ public:
 
 	void set_envs_per_flush(uint32_t val) { m_env_hash_config.m_envs_per_flush = val; }
 	void set_max_env_size(size_t val) { m_env_hash_config.m_max_env_size = val; }
-	void set_env_blacklist(std::unique_ptr<env_hash::regex_list_t>&& blacklist) { m_env_hash_config.m_env_blacklist = std::move(blacklist); }
-	void set_env_hash_ttl(uint64_t secs) {
-		uint64_t nsecs = secs * ONE_SECOND_IN_NS;
-		if (nsecs < ANALYZER_DEFAULT_SAMPLE_LENGTH_NS) {
-			m_env_hash_config.m_env_hash_ttl = 0;
-		} else {
-			m_env_hash_config.m_env_hash_ttl = nsecs - ANALYZER_DEFAULT_SAMPLE_LENGTH_NS;
-		}
+	void set_env_blacklist(std::unique_ptr<env_hash::regex_list_t>&& blacklist)
+	{
+		m_env_hash_config.m_env_blacklist = std::move(blacklist);
 	}
-	void set_env_emit(bool metrics, bool audit_tap) {
+	void set_env_hash_ttl(uint64_t secs);
+	void set_env_emit(bool metrics, bool audit_tap)
+	{
 		m_env_hash_config.m_send_metrics = metrics;
 		m_env_hash_config.m_send_audit_tap = audit_tap;
 	}
 
 	void enable_audit_tap(bool emit_local_connections);
-	bool audit_tap_enabled() const {
-		return m_tap != nullptr;
-	}
+	bool audit_tap_enabled() const { return m_tap != nullptr; }
 
 	void enable_secure_audit();
-	bool secure_audit_enabled() const {
-		return m_secure_audit != nullptr;
-	}
+	bool secure_audit_enabled() const { return m_secure_audit != nullptr; }
 
-	void secure_audit_data_ready(uint64_t ts,
-				     const secure::Audit* secure_audits) override;
-	void set_secure_audit_internal_metrics(int n_sent_protobufs,
-					       uint64_t flush_time_ms) override;
+	void secure_audit_data_ready(uint64_t ts, const secure::Audit* secure_audits) override;
+	void set_secure_audit_internal_metrics(int n_sent_protobufs, uint64_t flush_time_ms) override;
 
 	void set_secure_audit_sent_counters(int n_executed_commands,
-					    int n_connections,
-					    int n_k8s,
-					    int n_executed_commands_dropped,
-					    int n_connections_dropped,
-					    int n_k8s_dropped,
-					    int n_connections_not_interactive_dropped,
-					    int n_k8s_enrich_errors) override;
+	                                    int n_connections,
+	                                    int n_k8s,
+	                                    int n_executed_commands_dropped,
+	                                    int n_connections_dropped,
+	                                    int n_k8s_dropped,
+	                                    int n_connections_not_interactive_dropped,
+	                                    int n_k8s_enrich_errors) override;
 
-    	void secure_audit_filter_and_append_k8s_audit(const nlohmann::json& j,
-						      std::vector<std::string>& k8s_active_filters,
-						      std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters);
-
+	void secure_audit_filter_and_append_k8s_audit(
+	    const nlohmann::json& j,
+	    std::vector<std::string>& k8s_active_filters,
+	    std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters);
 
 	void enable_secure_profiling();
-	bool secure_profiling_enabled() const {
-		return m_falco_baseliner != nullptr;
-	}
+	bool secure_profiling_enabled() const { return m_falco_baseliner != nullptr; }
 
 	/**
 	 * Dump the infrastructure state to a file in the log directory.
 	 */
 	void dump_infrastructure_state_on_next_flush();
 
-	void incr_command_lines_category(draiosproto::command_category cat, uint64_t delta=1);
+	void incr_command_lines_category(draiosproto::command_category cat, uint64_t delta = 1);
 
 	/**
 	 * Return true if the agent should terminate because something has
@@ -782,7 +720,6 @@ public:
 	 */
 	bool detect_and_match_stress_tool(const std::string& command);
 
-
 	/**
 	 * Add the given command to the set of commands that have been
 	 * executed by the given container_id.
@@ -812,7 +749,6 @@ public:
 	 */
 	uint64_t get_prev_flush_time_ns() const;
 
-
 	/**
 	 * Returns true if the analyzer has a statsite proxy, false otherwise.
 	 */
@@ -823,9 +759,9 @@ public:
 	 * (if statsite_fowarder is enabled); otherwise does nothing.
 	 */
 	static void send_containers_to_statsite_fowarder(
-			sinsp_analyzer& m_analyzer,
-			const std::vector<std::string>& containers,
-			const analyzer_emitter::progtable_by_container_t& progtable_by_container);
+	    sinsp_analyzer& m_analyzer,
+	    const std::vector<std::string>& containers,
+	    const analyzer_emitter::progtable_by_container_t& progtable_by_container);
 
 	/**
 	 * The container_emitter class is responsible for sorting and deciding
@@ -834,12 +770,12 @@ public:
 	 *
 	 * emit_container is called when a container is to be emitted.
 	 */
-        void emit_container(const std::string& container_id,
+	void emit_container(const std::string& container_id,
 	                    unsigned* statsd_limit,
 	                    uint64_t total_cpu_shares,
 	                    sinsp_threadinfo* tinfo,
 	                    analyzer_emitter::flush_flags flushflags,
-			    const std::list<uint32_t>& groups);
+	                    const std::list<uint32_t>& groups);
 
 	/**
 	 * coalesce all stats from containers which weren't emitted into the proper
@@ -850,10 +786,7 @@ public:
 	/**
 	 * Accessor for metrics
 	 */
-	const draiosproto::metrics* metrics() const
-	{
-		return m_metrics.get();
-	}
+	const draiosproto::metrics* metrics() const { return m_metrics.get(); }
 
 	/**
 	 * Sets the metrics dir for serializing to a file
@@ -865,7 +798,7 @@ public:
 	 */
 	std::string get_metrics_dir();
 
-VISIBILITY_PRIVATE
+	VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(std::string&);
 
 	//
@@ -879,56 +812,59 @@ VISIBILITY_PRIVATE
 	void chisels_do_timeout(sinsp_evt* ev);
 	template<class Iterator>
 	void filter_top_programs_normaldriver_deprecated(Iterator progtable_begin,
-							 Iterator progtable_end,
-							 bool cs_only,
-							 uint32_t howmany);
+	                                                 Iterator progtable_end,
+	                                                 bool cs_only,
+	                                                 uint32_t howmany);
 	template<class Iterator>
 	void filter_top_programs_simpledriver_deprecated(Iterator progtable_begin,
-							 Iterator progtable_end,
-							 bool cs_only,
-							 uint32_t howmany);
+	                                                 Iterator progtable_end,
+	                                                 bool cs_only,
+	                                                 uint32_t howmany);
 	template<class Iterator>
 	inline void filter_top_programs_deprecated(Iterator progtable_begin,
-						   Iterator progtable_end,
-						   bool cs_only,
-						   uint32_t howmany);
+	                                           Iterator progtable_end,
+	                                           bool cs_only,
+	                                           uint32_t howmany);
 
 	/**
 	 * emit most things. This function is largely misnamed as it emits far more than
 	 * just processes
 	 */
 	void emit_processes(sinsp_evt* evt,
-			    uint64_t sample_duration,
-			    bool is_eof,
-			    analyzer_emitter::flush_flags flushflags,
-			    const tracer_emitter &f_trc);
+	                    uint64_t sample_duration,
+	                    bool is_eof,
+	                    analyzer_emitter::flush_flags flushflags,
+	                    const tracer_emitter& f_trc);
 
 	/**
 	 * emit process data. This function emits data scoped to processes. It is
 	 * deprecated as it is to be replaced by the process_emitter class
 	 */
-	void emit_processes_deprecated(std::set<uint64_t>& all_uids,
-				       analyzer_emitter::flush_flags flushflags,
-				       const analyzer_emitter::progtable_t& progtable,
-				       const analyzer_emitter::progtable_by_container_t& progtable_by_container,
-				       const std::vector<std::string>& emitted_containers,
-				       tracer_emitter& proc_trc,
-				       jmx_emitter& jmx_emitter_instance,
-				       app_check_emitter& app_check_emitter_instance,
-				       environment_emitter& environment_emitter_instance,
-				       process_emitter& process_emitter_instance);
+	void emit_processes_deprecated(
+	    std::set<uint64_t>& all_uids,
+	    analyzer_emitter::flush_flags flushflags,
+	    const analyzer_emitter::progtable_t& progtable,
+	    const analyzer_emitter::progtable_by_container_t& progtable_by_container,
+	    const std::vector<std::string>& emitted_containers,
+	    tracer_emitter& proc_trc,
+	    jmx_emitter& jmx_emitter_instance,
+	    app_check_emitter& app_check_emitter_instance,
+	    environment_emitter& environment_emitter_instance,
+	    process_emitter& process_emitter_instance);
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
 	template<typename T>
 	void emit_connection(T& conn,
-			     draiosproto::connection_state& conn_state,
-			     std::pair<const _process_tuple, sinsp_connection>& acit);
+	                     draiosproto::connection_state& conn_state,
+	                     std::pair<const _process_tuple, sinsp_connection>& acit);
 	template<typename T>
 	void emit_full_connection(T& conn,
-				  draiosproto::connection_state& conn_state,
-				  std::pair<const _ipv4tuple, sinsp_connection>& cit);
-	std::string detect_local_server(const std::string& protocol, uint32_t port, server_check_func_t check_func);
+	                          draiosproto::connection_state& conn_state,
+	                          std::pair<const _ipv4tuple, sinsp_connection>& cit);
+	std::string detect_local_server(const std::string& protocol,
+	                                uint32_t port,
+	                                server_check_func_t check_func);
 	void log_timed_error(time_t& last_attempt, const std::string& err);
 #ifndef CYGWING_AGENT
 	typedef sinsp_configuration::k8s_ext_list_t k8s_ext_list_t;
@@ -963,9 +899,10 @@ VISIBILITY_PRIVATE
 	void emit_docker_events();
 	void emit_containerd_events();
 
-	void secure_profiling_data_ready(uint64_t ts,
-					 const secure::profiling::fingerprint* secure_profiling_fingerprints) override;
-	void emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter &f_trc);
+	void secure_profiling_data_ready(
+	    uint64_t ts,
+	    const secure::profiling::fingerprint* secure_profiling_fingerprints) override;
+	void emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter& f_trc);
 
 	// set m_my_cpuload to the main thread's cpu usage in percent (100 == one whole cpu)
 	// calculated since the previous call to this method
@@ -973,38 +910,42 @@ VISIBILITY_PRIVATE
 
 	void update_percentile_data_serialization(const analyzer_emitter::progtable_by_container_t&);
 	void gather_k8s_infrastructure_state(uint32_t flushflags,
-					     const std::vector<std::string>& emitted_containers);
+	                                     const std::vector<std::string>& emitted_containers);
 	void clean_containers(const analyzer_emitter::progtable_by_container_t&);
 
 	template<class S>
 	void check_dump_infrastructure_state(const S& state,
-					     const std::string& descriptor,
-					     bool& should_dump);
+	                                     const std::string& descriptor,
+	                                     bool& should_dump);
 
 	// deprecated in favor of smart container filtering
-	std::vector<std::string> emit_containers_deprecated(const analyzer_emitter::progtable_by_container_t& active_containers,
-				       analyzer_emitter::flush_flags flushflags);
+	std::vector<std::string> emit_containers_deprecated(
+	    const analyzer_emitter::progtable_by_container_t& active_containers,
+	    analyzer_emitter::flush_flags flushflags);
 
-
-	void tune_drop_mode(analyzer_emitter::flush_flags flushflags, double threshold_metric);
+	void adjust_sampling_ratio();
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
-	void emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, std::vector<sinsp_executed_command>* commands);
+	void emit_executed_commands(draiosproto::metrics* host_dest,
+	                            draiosproto::container* container_dest,
+	                            std::vector<sinsp_executed_command>* commands);
 
 #ifndef _WIN32
-	bool is_jmx_flushtime() {
+	bool is_jmx_flushtime()
+	{
 		return (m_prev_flush_time_ns / ONE_SECOND_IN_NS) % m_jmx_sampling == 0;
 	}
 #endif
 	void emit_chisel_metrics();
 	void emit_user_events();
-	void match_prom_checks(sinsp_threadinfo *tinfo,
-				sinsp_threadinfo *mtinfo, std::vector<prom_process> &prom_procs,
-				bool use_host_filter);
-	void match_checks_list(sinsp_threadinfo *tinfo,
-				sinsp_threadinfo *mtinfo,
-				const std::vector<app_check> &checks,
-				std::vector<app_process> &app_checks_processes,
-				const char *location);
+	void match_prom_checks(sinsp_threadinfo* tinfo,
+	                       sinsp_threadinfo* mtinfo,
+	                       std::vector<prom_process>& prom_procs,
+	                       bool use_host_filter);
+	void match_checks_list(sinsp_threadinfo* tinfo,
+	                       sinsp_threadinfo* mtinfo,
+	                       const std::vector<app_check>& checks,
+	                       std::vector<app_process>& app_checks_processes,
+	                       const char* location);
 	std::vector<long> get_n_tracepoint_diff();
 
 	/**
@@ -1039,9 +980,9 @@ VISIBILITY_PRIVATE
 	uint32_t m_trace_count;
 
 	sinsp_analyzer_parsers* m_parser;
-	bool m_initialized; // In some cases (e.g. when parsing the containers list from a file) some events will go
-						// through the analyzer before on_capture_start is called. We use this flag to skip
-						// processing those events.
+	bool m_initialized;  // In some cases (e.g. when parsing the containers list from a file) some
+	                     // events will go through the analyzer before on_capture_start is called.
+	                     // We use this flag to skip processing those events.
 
 	//
 	// Tables
@@ -1133,25 +1074,28 @@ VISIBILITY_PRIVATE
 	//
 	// Command list
 	//
-	std::unordered_map<std::string, std::vector<sinsp_executed_command> > m_executed_commands;
+	std::unordered_map<std::string, std::vector<sinsp_executed_command>> m_executed_commands;
 
 	//
 	// Container metrics
 	//
 	std::unordered_map<std::string, analyzer_container_state> m_containers;
-	run_on_interval m_containers_cleaner_interval = {60*ONE_SECOND_IN_NS};
-	run_on_interval m_containers_check_interval = {60*ONE_SECOND_IN_NS};
+	run_on_interval m_containers_cleaner_interval = {60 * ONE_SECOND_IN_NS};
+	run_on_interval m_containers_check_interval = {60 * ONE_SECOND_IN_NS};
 
 	std::vector<sinsp_threadinfo*> m_threads_to_remove;
 
 	//
 	// Subsampling-related stuff
 	//
-	bool m_is_sampling;
+
+	// represents what the analyzer has last set the sampling ratio to
+	uint32_t m_requested_sampling_ratio;
+	// represents what we believe the current state of the driver is. has no affect
+	// on the computation of the sampling ratio, only used in some calculations
+	uint64_t m_acked_sampling_ratio;
+
 	bool m_capture_in_progress;
-	bool m_driver_stopped_dropping;
-	uint32_t m_sampling_ratio;
-	uint32_t m_new_sampling_ratio;
 	uint64_t m_last_dropmode_switch_time;
 	std::vector<long> m_last_total_evts_by_cpu;
 	threshold_filter<long> m_total_evts_switcher;
@@ -1220,16 +1164,16 @@ VISIBILITY_PRIVATE
 	bool m_use_new_k8s;
 	std::unique_ptr<k8s_delegator> m_k8s_delegator;
 #ifndef _WIN32
-	sinsp_ssl::ptr_t          m_k8s_ssl;
+	sinsp_ssl::ptr_t m_k8s_ssl;
 	sinsp_bearer_token::ptr_t m_k8s_bt;
 #endif
 	std::shared_ptr<k8s_handler::collector_t> m_k8s_collector;
-	std::unique_ptr<k8s_api_handler>          m_k8s_api_handler;
-	bool                                 m_k8s_api_detected = false;
-	std::unique_ptr<k8s_api_handler>          m_k8s_ext_handler;
-	k8s_ext_list_ptr_t                   m_ext_list_ptr;
-	bool                                 m_k8s_ext_detect_done = false;
-	int                                  m_k8s_retry_seconds = 60; // TODO move to config?
+	std::unique_ptr<k8s_api_handler> m_k8s_api_handler;
+	bool m_k8s_api_detected = false;
+	std::unique_ptr<k8s_api_handler> m_k8s_ext_handler;
+	k8s_ext_list_ptr_t m_ext_list_ptr;
+	bool m_k8s_ext_detect_done = false;
+	int m_k8s_retry_seconds = 60;  // TODO move to config?
 
 	std::unique_ptr<draiosproto::swarm_state> m_docker_swarm_state;
 	std::unique_ptr<mesos> m_mesos;
@@ -1255,11 +1199,11 @@ VISIBILITY_PRIVATE
 
 	std::unique_ptr<containerd_events> m_containerd_events;
 
-	int m_detect_retry_seconds = 60; // TODO move to config?
+	int m_detect_retry_seconds = 60;  // TODO move to config?
 	std::unique_ptr<new_k8s_delegator> m_new_k8s_delegator;
 
 	bool m_is_k8s_delegated = false;
-#endif // CYGWING_AGENT
+#endif  // CYGWING_AGENT
 
 	std::vector<std::string> m_container_patterns;
 	uint32_t m_containers_limit;
@@ -1271,14 +1215,15 @@ VISIBILITY_PRIVATE
 	const metric_limits::sptr_t m_metric_limits;
 	const label_limits::sptr_t m_label_limits;
 
-	// The user event queue is a glogger construct that we pass around, and once it is created, glogger
-	// will catch certain classes of messages and process them. This is not an efficient way to leak the abstraction,
-	// but it works?
+	// The user event queue is a glogger construct that we pass around, and once it is created,
+	// glogger will catch certain classes of messages and process them. This is not an efficient way
+	// to leak the abstraction, but it works?
 	//
-	// So the users of this only need to depend on it's existence, and until then, events will jst go to
-	// the regular log. When the analyzer is allocated, this is left unset. It is set by a call to
-	// set_user_event_queue, which happens in sinsp_worker initialization, where the sinsp_worker passes
-	// its queue on.  It's version of the queue is set by a call from dragent_app:make_event_channel.
+	// So the users of this only need to depend on it's existence, and until then, events will jst
+	// go to the regular log. When the analyzer is allocated, this is left unset. It is set by a
+	// call to set_user_event_queue, which happens in sinsp_worker initialization, where the
+	// sinsp_worker passes its queue on.  It's version of the queue is set by a call from
+	// dragent_app:make_event_channel.
 	//
 	// So this whole thing only works if the following is all true:
 	// 1) dragent initializes the sinsp_worker version before sinsp_init, which is the case
@@ -1287,7 +1232,7 @@ VISIBILITY_PRIVATE
 	// So in short, it's a pretty flaky chain of things that have to happen in order, but so it is.
 	user_event_queue::ptr_t m_user_event_queue;
 
-	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
+	run_on_interval m_proclist_refresher_interval = {NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
 
 	uint32_t m_max_n_external_clients = MAX_N_EXTERNAL_CLIENTS;
 	uint32_t m_top_connections_in_sample = TOP_CONNECTIONS_IN_SAMPLE;
@@ -1313,7 +1258,7 @@ VISIBILITY_PRIVATE
 	int m_top_file_devices_per_container = 0;
 	int m_top_file_devices_per_host = 0;
 
-	std::map<draiosproto::command_category,uint64_t> m_command_categories;
+	std::map<draiosproto::command_category, uint64_t> m_command_categories;
 
 	/**
 	 * Configurable number of flushes between each time that k8
@@ -1372,6 +1317,8 @@ VISIBILITY_PRIVATE
 	audit_tap_handler& m_audit_tap_handler;
 	secure_audit_handler& m_secure_audit_handler;
 	secure_profiling_handler& m_secure_profiling_handler;
+
+	std::function<bool()> m_check_disable_dropping;
 
 	process_manager m_process_manager;
 

@@ -236,8 +236,6 @@ dragent_configuration::dragent_configuration()
 	m_min_event_priority = (Message::Priority) -1;
 	m_evtcnt = 0;
 	m_config_test = false;
-	m_subsampling_ratio = 1;
-	m_autodrop_enabled = false;
 	m_falco_baselining_enabled = false;
 	m_falco_baselining_report_interval_ns = DEFAULT_FALCO_BASELINING_DUMP_DELTA_NS;
 	m_falco_baselining_autodisable_interval_ns = DEFAULT_FALCO_BASELINING_DISABLE_TIME_NS;
@@ -253,8 +251,6 @@ dragent_configuration::dragent_configuration()
 	m_memdump_capture_headers_percentage_threshold = 60;
 	m_memdump_min_time_between_switch_states_ms = 150;
 	m_memdump_re_enable_interval_minutes = 30;
-	m_drop_upper_threshold = 0;
-	m_drop_lower_threshold = 0;
 	m_tracepoint_hits_threshold = 0;
 	m_cpu_usage_max_sr_threshold = 0.0;
 	m_autoupdate_enabled = true;
@@ -682,9 +678,6 @@ void dragent_configuration::init()
 
 	m_emit_full_connections = m_config->get_scalar<bool>("emitfullconnections_enabled", false);
 	m_dump_dir = m_config->get_scalar<string>("dumpdir", "/tmp/");
-	m_subsampling_ratio = m_config->get_scalar<decltype(m_subsampling_ratio)>("subsampling", "ratio", 1);
-
-	m_autodrop_enabled = m_config->get_scalar<bool>("autodrop", "enabled", true);
 
 	m_falco_baselining_enabled =  m_config->get_scalar<bool>("falcobaseline", "enabled", false);
 	m_falco_baselining_report_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "report_interval", DEFAULT_FALCO_BASELINING_DUMP_DELTA_NS);
@@ -726,9 +719,6 @@ void dragent_configuration::init()
 	m_memdump_capture_headers_percentage_threshold = m_config->get_scalar<unsigned>("memdump", "autodisable", "capture_headers_percentage_threshold", 60);
 	m_memdump_min_time_between_switch_states_ms = m_config->get_scalar<unsigned>("memdump", "autodisable", "min_time_between_switch_states_ms", 150);
 	m_memdump_re_enable_interval_minutes = m_config->get_scalar<unsigned>("memdump", "autodisable", "re_enable_interval_minutes", 30);
-
-	m_drop_upper_threshold = m_config->get_scalar<decltype(m_drop_upper_threshold)>("autodrop", "upper_threshold", 0);
-	m_drop_lower_threshold = m_config->get_scalar<decltype(m_drop_lower_threshold)>("autodrop", "lower_threshold", 0);
 
 	m_tracepoint_hits_threshold = m_config->get_scalar<long>("tracepoint_hits_threshold", 0);
 	m_tracepoint_hits_ntimes = m_config->get_scalar<unsigned>("tracepoint_hits_seconds", 5);
@@ -1047,8 +1037,6 @@ void dragent_configuration::init()
 		m_enable_falco_engine = false;
 		m_falco_baselining_enabled = false;
 		m_sysdig_capture_enabled = false;
-		// our dropping mechanism can't help in this mode
-		m_autodrop_enabled = false;
 	}
 	else if(mode_s == "simpledriver")
 	{
@@ -1217,8 +1205,6 @@ void dragent_configuration::print_configuration() const
 	}
 	LOG_INFO("emitfullconnections.enabled: " + bool_as_text(m_emit_full_connections));
 	LOG_INFO("dumpdir: " + m_dump_dir);
-	LOG_INFO("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
-	LOG_INFO("autodrop.enabled: " + bool_as_text(m_autodrop_enabled));
 	LOG_INFO("falcobaseline.enabled: " + bool_as_text(m_falco_baselining_enabled));
 	LOG_INFO("falcobaseline.report_interval: " + NumberFormatter::format(m_falco_baselining_report_interval_ns));
 	LOG_INFO("falcobaseline.autodisable_interval: " + NumberFormatter::format(m_falco_baselining_autodisable_interval_ns));
@@ -1240,8 +1226,6 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("memdump.autodisable.capture_headers_percentage_threshold: " + NumberFormatter::format(m_memdump_capture_headers_percentage_threshold));
 	LOG_INFO("memdump.autodisable.min_time_between_switch_states_ms: " + NumberFormatter::format(m_memdump_min_time_between_switch_states_ms));
 	LOG_INFO("memdump.autodisable.re_enable_interval_minutes: " + NumberFormatter::format(m_memdump_re_enable_interval_minutes));
-	LOG_INFO("autodrop.threshold.upper: " + NumberFormatter::format(m_drop_upper_threshold));
-	LOG_INFO("autodrop.threshold.lower: " + NumberFormatter::format(m_drop_lower_threshold));
 	if(m_tracepoint_hits_threshold > 0)
 	{
 		LOG_INFO("tracepoint_hits_threshold: " + NumberFormatter::format(m_tracepoint_hits_threshold) + " seconds=" + NumberFormatter::format(m_tracepoint_hits_ntimes));

@@ -1,34 +1,34 @@
-#include "dragent.h"
-#include "avoid_block_channel.h"
 #include "async_aggregator.h"
+#include "avoid_block_channel.h"
 #include "capture_job_handler.h"
 #include "common_logger.h"
-#include "configuration.h"
-#include "configuration_manager.h"
 #include "config_data_message_handler.h"
 #include "config_data_rest_request_handler.h"
 #include "config_rest_request_handler.h"
 #include "configlist_rest_request_handler.h"
+#include "configuration.h"
+#include "configuration_manager.h"
 #include "connection_manager.h"
 #include "container_size_requestor.h"
 #include "crash_handler.h"
+#include "dragent.h"
 #include "dragent_memdump_logger.h"
 #include "dragent_user_event_callback.h"
 #include "dump_request_start_message_handler.h"
 #include "dump_request_stop_message_handler.h"
 #include "error_handler.h"
-#include "faultlist_rest_request_handler.h"
 #include "fault_rest_request_handler.h"
+#include "faultlist_rest_request_handler.h"
 #include "file_rest_request_handler.h"
 #include "memdump_logger.h"
 #include "metric_serializer.h"
-#include "post_aggregated_metrics_rest_request_handler.h"
-#include "pre_aggregated_metrics_rest_request_handler.h"
-#include "protobuf_compression.h"
 #include "monitor.h"
 #include "null_message_handler.h"
+#include "post_aggregated_metrics_rest_request_handler.h"
+#include "pre_aggregated_metrics_rest_request_handler.h"
 #include "process_helpers.h"
 #include "procfs_parser.h"
+#include "protobuf_compression.h"
 #include "protobuf_metric_serializer.h"
 #include "rest_request_handler_factory.h"
 #include "rest_server.h"
@@ -46,9 +46,10 @@
 #include "user_event_channel.h"
 #include "utils.h"
 #include "webpage_rest_request_handler.h"
+
+#include <sys/resource.h>
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
-#include <sys/resource.h>
 #include <time.h>
 
 #ifndef CYGWING_AGENT
@@ -65,7 +66,6 @@ using namespace dragent;
 // local helper functions
 namespace
 {
-
 COMMON_LOGGER();
 
 type_config<bool> c_use_statsite_forwarder(
@@ -109,16 +109,15 @@ type_config<bool> c_compression_enabled(true,
                                         "enabled");
 
 type_config<uint16_t>::ptr c_inspector_start_delay_s =
-		type_config_builder<uint16_t>(
-				1,
-				"Amount of time to wait before starting the"
-				" system call inspector.  It can be useful to"
-				" delay the inspector if the agent terminates"
-				" soon after starting because it gets behind "
-				" in processing system calls",
-				"inspector_start_delay_s")
-		.min(1)
-		.build();
+    type_config_builder<uint16_t>(1,
+                                  "Amount of time to wait before starting the"
+                                  " system call inspector.  It can be useful to"
+                                  " delay the inspector if the agent terminates"
+                                  " soon after starting because it gets behind "
+                                  " in processing system calls",
+                                  "inspector_start_delay_s")
+        .min(1)
+        .build();
 
 string compute_sha1_digest(SHA1Engine& engine, const string& path)
 {
@@ -225,23 +224,22 @@ dragent_app::dragent_app()
 #ifndef CYGWING_AGENT
       m_unshare_ipcns(true),
 #endif
-	m_aggregator_queue(MAX_SAMPLE_STORE_SIZE),
-	m_serializer_queue(MAX_SAMPLE_STORE_SIZE),
-	m_transmit_queue(MAX_SAMPLE_STORE_SIZE),
-	m_enable_autodrop(true),
-	m_internal_metrics(std::make_shared<internal_metrics>()),
-	m_protocol_handler(m_transmit_queue),
-	m_capture_job_handler(&m_configuration, &m_transmit_queue, &m_enable_autodrop),
-	m_sinsp_worker(&m_configuration,
-			m_internal_metrics,
-			m_protocol_handler,
-			&m_enable_autodrop,
-			&m_capture_job_handler),
-	m_log_reporter(m_protocol_handler, &m_configuration),
-	m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),
-	m_last_dump_s(0),
-	m_inspector_delayed_start(0, sinsp_utils::get_current_time_ns)
-{ }
+      m_aggregator_queue(MAX_SAMPLE_STORE_SIZE),
+      m_serializer_queue(MAX_SAMPLE_STORE_SIZE),
+      m_transmit_queue(MAX_SAMPLE_STORE_SIZE),
+      m_internal_metrics(std::make_shared<internal_metrics>()),
+      m_protocol_handler(m_transmit_queue),
+      m_capture_job_handler(&m_configuration, &m_transmit_queue),
+      m_sinsp_worker(&m_configuration,
+                     m_internal_metrics,
+                     m_protocol_handler,
+                     &m_capture_job_handler),
+      m_log_reporter(m_protocol_handler, &m_configuration),
+      m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),
+      m_last_dump_s(0),
+      m_inspector_delayed_start(0, sinsp_utils::get_current_time_ns)
+{
+}
 
 dragent_app::~dragent_app()
 {
@@ -288,9 +286,10 @@ void dragent_app::defineOptions(OptionSet& options)
 	                      .repeatable(false)
 	                      .argument("priority"));
 
-	options.addOption(
-	    Option("readfile", "r", "file to open.").required(false).repeatable(false).argument(
-	        "filename"));
+	options.addOption(Option("readfile", "r", "file to open.")
+	                      .required(false)
+	                      .repeatable(false)
+	                      .argument("filename"));
 
 	options.addOption(Option("evtcount", "c", "numer of events after which the capture stops.")
 	                      .required(false)
@@ -307,9 +306,10 @@ void dragent_app::defineOptions(OptionSet& options)
 	                      .repeatable(false)
 	                      .argument("address"));
 
-	options.addOption(
-	    Option("srvport", "", "the TCP port to use.").required(false).repeatable(false).argument(
-	        "port"));
+	options.addOption(Option("srvport", "", "the TCP port to use.")
+	                      .required(false)
+	                      .repeatable(false)
+	                      .argument("port"));
 
 #ifndef CYGWING_AGENT
 	options.addOption(Option("noipcns", "", "keep IPC namespace (for internal use)")
@@ -317,9 +317,10 @@ void dragent_app::defineOptions(OptionSet& options)
 	                      .repeatable(false));
 #endif
 
-	options.addOption(
-	    Option("dragentpid", "", "pid file.").required(false).repeatable(false).argument(
-	        "dragentpid"));
+	options.addOption(Option("dragentpid", "", "pid file.")
+	                      .required(false)
+	                      .repeatable(false)
+	                      .argument("dragentpid"));
 
 	options.addOption(Option("version", "v", "display version").required(false).repeatable(false));
 
@@ -524,52 +525,55 @@ int dragent_app::main(const std::vector<std::string>& args)
 		std::cerr << "Cannot set msgqueue limits: " << strerror(errno) << '\n';
 	}
 
-	process_helpers::subprocess_cpu_cgroup default_cpu_cgroup(
-	    "/default", c_default_cpu_shares.get_value(), c_default_cpu_quota.get_value());
+	process_helpers::subprocess_cpu_cgroup default_cpu_cgroup("/default",
+	                                                          c_default_cpu_shares.get_value(),
+	                                                          c_default_cpu_quota.get_value());
 	default_cpu_cgroup.create();
 
 	process_helpers::subprocess_cpu_cgroup cointerface_cpu_cgroup(
-	    "/cointerface", c_cointerface_cpu_shares.get_value(), c_cointerface_cpu_quota.get_value());
+	    "/cointerface",
+	    c_cointerface_cpu_shares.get_value(),
+	    c_cointerface_cpu_quota.get_value());
 	cointerface_cpu_cgroup.create();
 
 	// Add our main process
-	monitor_process.emplace_process("sdagent",
-	                                [=]()
-	{
-		default_cpu_cgroup.enter();
+	monitor_process.emplace_process(
+	    "sdagent",
+	    [=]() {
+		    default_cpu_cgroup.enter();
 
-		// only set to get agent show in the watchdog loop
-		m_subprocesses_state["sdagent"].set_name("sdagent");
+		    // only set to get agent show in the watchdog loop
+		    m_subprocesses_state["sdagent"].set_name("sdagent");
 
-		// Unlike the other processes, the agent itself
-		// doesn't get a pid from the log file. So set it
-		// here.
-		m_subprocesses_state["sdagent"].reset(getpid(), 0, 0);
+		    // Unlike the other processes, the agent itself
+		    // doesn't get a pid from the log file. So set it
+		    // here.
+		    m_subprocesses_state["sdagent"].reset(getpid(), 0, 0);
 
-		struct sigaction sa;
-		memset(&sa, 0, sizeof(sa));
-		sigemptyset(&sa.sa_mask);
-		sa.sa_handler = g_signal_callback;
+		    struct sigaction sa;
+		    memset(&sa, 0, sizeof(sa));
+		    sigemptyset(&sa.sa_mask);
+		    sa.sa_handler = g_signal_callback;
 
-		sigaction(SIGINT, &sa, NULL);
-		sigaction(SIGQUIT, &sa, NULL);
-		sigaction(SIGTERM, &sa, NULL);
+		    sigaction(SIGINT, &sa, NULL);
+		    sigaction(SIGQUIT, &sa, NULL);
+		    sigaction(SIGTERM, &sa, NULL);
 
-		sa.sa_handler = g_usr_signal_callback;
-		sigaction(SIGUSR1, &sa, NULL);
-		sa.sa_handler = g_usr2_signal_callback;
-		sigaction(SIGUSR2, &sa, NULL);
-		sa.sa_handler = g_trace_signal_callback;
-		sigaction(SIGSTKFLT, &sa, NULL);
+		    sa.sa_handler = g_usr_signal_callback;
+		    sigaction(SIGUSR1, &sa, NULL);
+		    sa.sa_handler = g_usr2_signal_callback;
+		    sigaction(SIGUSR2, &sa, NULL);
+		    sa.sa_handler = g_trace_signal_callback;
+		    sigaction(SIGSTKFLT, &sa, NULL);
 
-		if (crash_handler::initialize() == false)
-		{
-			ASSERT(false);
-		}
+		    if (crash_handler::initialize() == false)
+		    {
+			    ASSERT(false);
+		    }
 
-		return this->sdagent_main();
-	},
-	                                true);
+		    return this->sdagent_main();
+	    },
+	    true);
 	if (m_configuration.java_present() && m_configuration.m_sdjagent_enabled && getpid() != 1)
 	{
 		m_jmx_pipes = make_unique<errpipe_manager>();
@@ -577,9 +581,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		state->set_name("sdjagent");
 		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_file(), sdjagent_parser(), state);
 
-		monitor_process.emplace_process("sdjagent",
-		                                [=]()->int
-		{
+		monitor_process.emplace_process("sdjagent", [=]() -> int {
 			default_cpu_cgroup.enter();
 			static const auto MAX_SDJAGENT_ARGS = 50;
 			this->m_jmx_pipes->attach_child();
@@ -615,10 +617,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 			args[j++] = jar_file.c_str();
 			args[j++] = NULL;
 
-			execv(this->m_configuration.m_java_binary.c_str(), (char * const*)args);
+			execv(this->m_configuration.m_java_binary.c_str(), (char* const*)args);
 
 			std::cerr << "{ \"pid\": 0, \"level\": \"SEVERE\", \"message\": \"Cannot load "
-			             "sdjagent, errno: " << errno << "\" }" << std::endl;
+			             "sdjagent, errno: "
+			          << errno << "\" }" << std::endl;
 			return (EXIT_FAILURE);
 		});
 	}
@@ -627,9 +630,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	if (libsanalyzer::statsite_config::is_enabled())
 	{
 		m_statsite_pipes = make_shared<pipe_manager>();
-		m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(),
-		                                [this](const string& data)
-		{
+		m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [this](const string& data) {
 			if (data.find("Failed to bind") != string::npos)
 			{
 				this->m_sinsp_worker.set_statsd_capture_localhost(true);
@@ -647,9 +648,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 		});
 
-		monitor_process.emplace_process("statsite",
-		                                [=]()->int
-		{
+		monitor_process.emplace_process("statsite", [=]() -> int {
 			default_cpu_cgroup.enter();
 			this->m_statsite_pipes->attach_child_stdio();
 			if (this->m_configuration.m_agent_installed)
@@ -680,9 +679,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			m_subprocesses_logger.add_logfd(m_statsite_forwarder_pipe->get_file(),
 			                                sinsp_logger_parser("statsite_forwarder"),
 			                                state);
-			monitor_process.emplace_process("statsite_forwarder",
-			                                [this]()->int
-			{
+			monitor_process.emplace_process("statsite_forwarder", [this]() -> int {
 				m_statsite_forwarder_pipe->attach_child();
 				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(),
 				                       libsanalyzer::statsite_config::get_udp_port(),
@@ -706,13 +703,12 @@ int dragent_app::main(const std::vector<std::string>& args)
 			// LOG_ERROR can't be used this early in startup and that's why cerr is being used.
 			std::cerr << "Error : Python 2.6 is not a supported environment for App Checks. "
 			             "Please upgrade to Python 2.7. "
-			             "Contact Sysdig Support for additional help." << std::endl;
+			             "Contact Sysdig Support for additional help."
+			          << std::endl;
 		}
 		else
 		{
-			monitor_process.emplace_process("sdchecks",
-			                                [=]()
-			{
+			monitor_process.emplace_process("sdchecks", [=]() {
 				default_cpu_cgroup.enter();
 				this->m_sdchecks_pipes->attach_child();
 
@@ -739,11 +735,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_mounted_fs_reader_pipe = make_unique<errpipe_manager>();
 		auto* state = &m_subprocesses_state["mountedfs_reader"];
 		state->set_name("mountedfs_reader");
-		m_subprocesses_logger.add_logfd(
-		    m_mounted_fs_reader_pipe->get_file(), sinsp_encoded_parser("mountedfs_reader"), state);
-		monitor_process.emplace_process("mountedfs_reader",
-		                                [=]()
-		{
+		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(),
+		                                sinsp_encoded_parser("mountedfs_reader"),
+		                                state);
+		monitor_process.emplace_process("mountedfs_reader", [=]() {
 			default_cpu_cgroup.enter();
 			m_mounted_fs_reader_pipe->attach_child();
 			auto sev = static_cast<sinsp_logger::severity>(
@@ -766,13 +761,13 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_cointerface_pipes = make_unique<pipe_manager>();
 		auto* state = &m_subprocesses_state["cointerface"];
 		state->set_name("cointerface");
-		m_subprocesses_logger.add_logfd(
-		    m_cointerface_pipes->get_err_fd(), cointerface_parser(), state);
-		m_subprocesses_logger.add_logfd(
-		    m_cointerface_pipes->get_out_fd(), cointerface_parser(), state);
-		monitor_process.emplace_process("cointerface",
-		                                [=]()
-		{
+		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_err_fd(),
+		                                cointerface_parser(),
+		                                state);
+		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_out_fd(),
+		                                cointerface_parser(),
+		                                state);
+		monitor_process.emplace_process("cointerface", [=]() {
 			cointerface_cpu_cgroup.enter();
 			m_cointerface_pipes->attach_child_stdio();
 
@@ -807,13 +802,13 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_promex_pipes = make_unique<pipe_manager>();
 		auto* state = &m_subprocesses_state["promex"];
 		state->set_name("promex");
-		m_subprocesses_logger.add_logfd(
-		    m_promex_pipes->get_out_fd(), sinsp_logger_parser("promex", true), state);
-		m_subprocesses_logger.add_logfd(
-		    m_promex_pipes->get_err_fd(), sinsp_logger_parser("promex", true), state);
-		monitor_process.emplace_process("promex",
-		                                [=]()
-		{
+		m_subprocesses_logger.add_logfd(m_promex_pipes->get_out_fd(),
+		                                sinsp_logger_parser("promex", true),
+		                                state);
+		m_subprocesses_logger.add_logfd(m_promex_pipes->get_err_fd(),
+		                                sinsp_logger_parser("promex", true),
+		                                state);
+		monitor_process.emplace_process("promex", [=]() {
 			default_cpu_cgroup.enter();
 			m_promex_pipes->attach_child_stdio();
 
@@ -830,8 +825,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	}
 #endif
 
-	monitor_process.set_cleanup_function([=]()
-	{
+	monitor_process.set_cleanup_function([=]() {
 		this->m_sdchecks_pipes.reset();
 		this->m_jmx_pipes.reset();
 		this->m_mounted_fs_reader_pipe.reset();
@@ -839,10 +833,13 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_statsite_forwarder_pipe.reset();
 		this->m_cointerface_pipes.reset();
 #ifndef CYGWING_AGENT
-		for (const auto& queue :
-		     {"/sdc_app_checks_in",        "/sdc_app_checks_out", "/sdc_mounted_fs_reader_out",
-		      "/sdc_mounted_fs_reader_in", "/sdc_sdjagent_out",   "/sdc_sdjagent_in",
-		      "/sdc_statsite_forwarder_in"})
+		for (const auto& queue : {"/sdc_app_checks_in",
+		                          "/sdc_app_checks_out",
+		                          "/sdc_mounted_fs_reader_out",
+		                          "/sdc_mounted_fs_reader_in",
+		                          "/sdc_sdjagent_out",
+		                          "/sdc_sdjagent_in",
+		                          "/sdc_statsite_forwarder_in"})
 		{
 			posix_queue::remove(queue);
 		}
@@ -939,18 +936,18 @@ int dragent_app::sdagent_main()
 	}
 
 	// Set the configured default compression method
-	protobuf_compressor_factory::set_default(c_compression_enabled.get_value() ?
-	                                             protocol_compression_method::GZIP :
-	                                             protocol_compression_method::NONE);
+	protobuf_compressor_factory::set_default(c_compression_enabled.get_value()
+	                                             ? protocol_compression_method::GZIP
+	                                             : protocol_compression_method::NONE);
 
 	//
 	// Set up bidirectional communication with statsite
 	//
 	if (m_statsite_pipes)
 	{
-		LOG_DEBUG("statsite pipes size in=" +
-		          NumberFormatter::format(m_statsite_pipes->inpipe_size()) + " out=" +
-		          NumberFormatter::format(m_statsite_pipes->outpipe_size()));
+		LOG_DEBUG(
+		    "statsite pipes size in=" + NumberFormatter::format(m_statsite_pipes->inpipe_size()) +
+		    " out=" + NumberFormatter::format(m_statsite_pipes->outpipe_size()));
 		m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
 	}
 
@@ -1021,7 +1018,7 @@ int dragent_app::sdagent_main()
 	// case.
 	//
 	std::shared_ptr<protobuf_compressor> compressor =
-	        protobuf_compressor_factory::get(protobuf_compressor_factory::get_default());
+	    protobuf_compressor_factory::get(protobuf_compressor_factory::get_default());
 
 	////////////////
 	// Here is where the top-level objects are created. These are the objects
@@ -1037,55 +1034,58 @@ int dragent_app::sdagent_main()
 	try
 	{
 		cm = new connection_manager(
-		        &m_configuration,
-		        &m_transmit_queue,
-		        c_10s_flush_enabled->get_value() ?
-		            std::initializer_list<dragent_protocol::protocol_version>{4, 5}:
-		            std::initializer_list<dragent_protocol::protocol_version>{4},
-		        {
-		            {draiosproto::message_type::DUMP_REQUEST_START,
-		             std::make_shared<dump_request_start_message_handler>(m_sinsp_worker)},
-		            {draiosproto::message_type::DUMP_REQUEST_STOP,
-		             std::make_shared<dump_request_stop_message_handler>(m_sinsp_worker)},
-		            {draiosproto::message_type::CONFIG_DATA,
-		             std::make_shared<config_data_message_handler>(m_configuration)},
-		            {draiosproto::message_type::POLICIES,
-		             std::make_shared<security_policies_message_handler>(m_sinsp_worker)},
-		            {draiosproto::message_type::POLICIES_V2,
-		             std::make_shared<security_policies_v2_message_handler>(m_sinsp_worker)},
-		            {draiosproto::message_type::COMP_CALENDAR,
-		             std::make_shared<security_compliance_calendar_message_handler>(m_sinsp_worker)},
-		            {draiosproto::message_type::COMP_RUN,
-		             std::make_shared<security_compliance_run_message_handler>(m_sinsp_worker)},
-		            {draiosproto::message_type::ORCHESTRATOR_EVENTS,
-		             std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker)},
-		            {draiosproto::message_type::AGGREGATION_CONTEXT,
-		             dragent::aggregator_limits::global_limits},
-		            {draiosproto::message_type::BASELINES,  // Legacy -- no longer used
-		             std::make_shared<null_message_handler>()},
-		        });
+		    &m_configuration,
+		    &m_transmit_queue,
+		    c_10s_flush_enabled->get_value()
+		        ? std::initializer_list<dragent_protocol::protocol_version>{4, 5}
+		        : std::initializer_list<dragent_protocol::protocol_version>{4},
+		    {
+		        {draiosproto::message_type::DUMP_REQUEST_START,
+		         std::make_shared<dump_request_start_message_handler>(m_sinsp_worker)},
+		        {draiosproto::message_type::DUMP_REQUEST_STOP,
+		         std::make_shared<dump_request_stop_message_handler>(m_sinsp_worker)},
+		        {draiosproto::message_type::CONFIG_DATA,
+		         std::make_shared<config_data_message_handler>(m_configuration)},
+		        {draiosproto::message_type::POLICIES,
+		         std::make_shared<security_policies_message_handler>(m_sinsp_worker)},
+		        {draiosproto::message_type::POLICIES_V2,
+		         std::make_shared<security_policies_v2_message_handler>(m_sinsp_worker)},
+		        {draiosproto::message_type::COMP_CALENDAR,
+		         std::make_shared<security_compliance_calendar_message_handler>(m_sinsp_worker)},
+		        {draiosproto::message_type::COMP_RUN,
+		         std::make_shared<security_compliance_run_message_handler>(m_sinsp_worker)},
+		        {draiosproto::message_type::ORCHESTRATOR_EVENTS,
+		         std::make_shared<security_orchestrator_events_message_handler>(m_sinsp_worker)},
+		        {draiosproto::message_type::AGGREGATION_CONTEXT,
+		         dragent::aggregator_limits::global_limits},
+		        {draiosproto::message_type::BASELINES,  // Legacy -- no longer used
+		         std::make_shared<null_message_handler>()},
+		    });
 		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
 
 		// Must create inspector, then create analyzer, then setup inspector
 		inspector = sinsp_factory::build();
 		LOG_INFO("Created Sysdig inspector");
 
-		metric_limits::sptr_t the_metric_limits = metric_limits::build(
-			m_configuration.m_metrics_filter,
-			m_configuration.m_excess_metric_log,
-			m_configuration.m_metrics_cache);
+		metric_limits::sptr_t the_metric_limits =
+		    metric_limits::build(m_configuration.m_metrics_filter,
+		                         m_configuration.m_excess_metric_log,
+		                         m_configuration.m_metrics_cache);
 
-		label_limits::sptr_t the_label_limits = label_limits::build(
-			m_configuration.m_labels_filter,
-			m_configuration.m_excess_labels_log,
-			m_configuration.m_labels_cache);
+		label_limits::sptr_t the_label_limits =
+		    label_limits::build(m_configuration.m_labels_filter,
+		                        m_configuration.m_excess_labels_log,
+		                        m_configuration.m_labels_cache);
 
-		k8s_limits::sptr_t the_k8s_limits = k8s_limits::build(
-			m_configuration.m_k8s_filter,
-			m_configuration.m_excess_k8s_log,
-			m_configuration.m_k8s_cache_size);
+		k8s_limits::sptr_t the_k8s_limits = k8s_limits::build(m_configuration.m_k8s_filter,
+		                                                      m_configuration.m_excess_k8s_log,
+		                                                      m_configuration.m_k8s_cache_size);
 
-		analyzer = build_analyzer(inspector, m_aggregator_queue, the_metric_limits, the_label_limits, the_k8s_limits);
+		analyzer = build_analyzer(inspector,
+		                          m_aggregator_queue,
+		                          the_metric_limits,
+		                          the_label_limits,
+		                          the_k8s_limits);
 		LOG_INFO("Created analyzer");
 
 		inspector->register_external_event_processor(*analyzer);
@@ -1144,9 +1144,9 @@ int dragent_app::sdagent_main()
 		ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
 
 		// Start the container_size_requestor
-		if(container_size_requestor_runnable::enabled())
+		if (container_size_requestor_runnable::enabled())
 		{
-			sinsp_container_manager &mgr = m_sinsp_worker.get_container_manager();
+			sinsp_container_manager& mgr = m_sinsp_worker.get_container_manager();
 			auto size_requestor = std::make_shared<container_size_requestor_runnable>(mgr);
 			m_pool.start(size_requestor, 300 /*timeout*/);
 		}
@@ -1156,9 +1156,8 @@ int dragent_app::sdagent_main()
 
 	// Set the timeout here instead of via the constructor to allow config
 	// initialization before trying to read the config value.
-	m_inspector_delayed_start.set_timeout(
-			c_inspector_start_delay_s->get_value() *
-			ONE_SECOND_IN_NS);
+	m_inspector_delayed_start.set_timeout(c_inspector_start_delay_s->get_value() *
+	                                      ONE_SECOND_IN_NS);
 
 	uint64_t uptime_s = 0;
 
@@ -1171,12 +1170,10 @@ int dragent_app::sdagent_main()
 	//////////////////////////////
 	while (!dragent_configuration::m_terminate)
 	{
-		m_inspector_delayed_start.run(
-				[this]()
-				{
-					LOG_INFO("Resuming capture");
-					m_sinsp_worker.unpause_capture();
-				});
+		m_inspector_delayed_start.run([this]() {
+			LOG_INFO("Resuming capture");
+			m_sinsp_worker.unpause_capture();
+		});
 
 		if (m_configuration.m_watchdog_enabled)
 		{
@@ -1285,31 +1282,30 @@ void dragent_app::init_inspector(sinsp::ptr inspector)
 	g_logger.disable_timestamps();
 
 	// our max priority is TRACE so we end up with confusing naming here
-	auto min_priority = std::max(
-		m_configuration.m_min_console_priority,
-		m_configuration.m_min_file_priority);
+	auto min_priority =
+	    std::max(m_configuration.m_min_console_priority, m_configuration.m_min_file_priority);
 
-	inspector->set_min_log_severity(
-	    static_cast<sinsp_logger::severity>(min_priority));
+	inspector->set_min_log_severity(static_cast<sinsp_logger::severity>(min_priority));
 }
 
-sinsp_analyzer* dragent_app::build_analyzer(
-	const sinsp::ptr& inspector,
-	flush_queue& flush_queue,
-	const metric_limits::sptr_t& the_metric_limits,
-	const label_limits::sptr_t& the_label_limits,
-	const k8s_limits::sptr_t& the_k8s_limits)
+sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
+                                            flush_queue& flush_queue,
+                                            const metric_limits::sptr_t& the_metric_limits,
+                                            const label_limits::sptr_t& the_label_limits,
+                                            const k8s_limits::sptr_t& the_k8s_limits)
 {
-	sinsp_analyzer* analyzer = new sinsp_analyzer(inspector.get(),
-	                                              m_configuration.c_root_dir.get_value(),
-	                                              m_internal_metrics,
-	                                              m_protocol_handler,
-	                                              m_protocol_handler,
-	                                              m_protocol_handler,
-	                                              &flush_queue,
-	                                              the_metric_limits,
-	                                              the_label_limits,
-	                                              the_k8s_limits);
+	sinsp_analyzer* analyzer = new sinsp_analyzer(
+	    inspector.get(),
+	    m_configuration.c_root_dir.get_value(),
+	    m_internal_metrics,
+	    m_protocol_handler,
+	    m_protocol_handler,
+	    m_protocol_handler,
+	    &flush_queue,
+	    [this]() -> bool { return m_capture_job_handler.get_job_in_progress(); },
+	    the_metric_limits,
+	    the_label_limits,
+	    the_k8s_limits);
 	sinsp_configuration* sconfig = analyzer->get_configuration();
 
 	analyzer->set_procfs_scan_thread(m_configuration.m_procfs_scan_thread);
@@ -1416,20 +1412,6 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	//
 	sconfig->set_aggregate_connections_in_proto(!m_configuration.m_emit_full_connections);
 
-	if (m_configuration.m_drop_upper_threshold != 0)
-	{
-		g_log->information("Drop upper threshold=" +
-		                   NumberFormatter::format(m_configuration.m_drop_upper_threshold));
-		sconfig->set_drop_upper_threshold(m_configuration.m_drop_upper_threshold);
-	}
-
-	if (m_configuration.m_drop_lower_threshold != 0)
-	{
-		g_log->information("Drop lower threshold=" +
-		                   NumberFormatter::format(m_configuration.m_drop_lower_threshold));
-		sconfig->set_drop_lower_threshold(m_configuration.m_drop_lower_threshold);
-	}
-
 	if (m_configuration.m_tracepoint_hits_threshold > 0)
 	{
 		sconfig->set_tracepoint_hits_threshold(m_configuration.m_tracepoint_hits_threshold,
@@ -1472,12 +1454,6 @@ sinsp_analyzer* dragent_app::build_analyzer(
 		sconfig->set_host_hidden(m_configuration.m_host_hidden);
 	}
 
-	if (m_configuration.m_autodrop_enabled)
-	{
-		g_log->information("Setting autodrop");
-		sconfig->set_autodrop_enabled(true);
-	}
-
 	if (m_configuration.m_falco_baselining_enabled)
 	{
 		g_log->information("Setting falco baselining");
@@ -1490,55 +1466,6 @@ sinsp_analyzer* dragent_app::build_analyzer(
 		    m_configuration.m_falco_baselining_max_drops_buffer_rate_percentage);
 
 		analyzer->enable_secure_profiling();
-
-		// The baseliner is automatically disabled when we
-		// start dropping events. In order to collect
-		// baseliner's fingerprints, we recommend to run with
-		// a higher upper threshold.  If we don't find any
-		// user configured value, then we set the
-		// drop_upper_threshold to the default value for
-		// baselining.  Otherwise, we just warn the user.
-		if (m_configuration.m_drop_upper_threshold == 0)
-		{
-			sconfig->set_drop_upper_threshold(DROP_UPPER_THRESHOLD_BASELINER_ENABLED);
-			g_log->information("Drop upper threshold=" +
-			                   NumberFormatter::format(DROP_UPPER_THRESHOLD_BASELINER_ENABLED) +
-			                   " (set for falco baselining)");
-		}
-		else
-		{
-			if (m_configuration.m_drop_upper_threshold < DROP_UPPER_THRESHOLD_BASELINER_ENABLED)
-			{
-				g_log->warning(
-				    "Falco baselining configured with a low drop_upper_threshold "
-				    "(configured: " +
-				    NumberFormatter::format(m_configuration.m_drop_upper_threshold) +
-				    ", "
-				    "recommended: " +
-				    NumberFormatter::format(DROP_UPPER_THRESHOLD_BASELINER_ENABLED) + " ).");
-			}
-		}
-
-		if (m_configuration.m_drop_lower_threshold == 0)
-		{
-			sconfig->set_drop_lower_threshold(DROP_LOWER_THRESHOLD_BASELINER_ENABLED);
-			g_log->information("Drop lower threshold=" +
-			                   NumberFormatter::format(DROP_LOWER_THRESHOLD_BASELINER_ENABLED) +
-			                   " (set for falco baselining)");
-		}
-		else
-		{
-			if (m_configuration.m_drop_lower_threshold < DROP_LOWER_THRESHOLD_BASELINER_ENABLED)
-			{
-				g_log->warning(
-				    "Falco baselining configured with a low drop_lower_threshold "
-				    "(configured: " +
-				    NumberFormatter::format(m_configuration.m_drop_lower_threshold) +
-				    ", "
-				    "recommended: " +
-				    NumberFormatter::format(DROP_LOWER_THRESHOLD_BASELINER_ENABLED) + " ).");
-			}
-		}
 	}
 
 	if (m_configuration.m_commandlines_capture_enabled || m_configuration.m_secure_audit_enabled)
@@ -1648,8 +1575,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		if (diff_ns < 0)
 		{
 			static ratelimit r;
-			r.run([&]
-			{
+			r.run([&] {
 				LOG_WARNING("watchdog: sinsp_worker last activity " +
 				            NumberFormatter::format(-diff_ns) + " ns in the future");
 			});
@@ -1689,8 +1615,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			if (m_sinsp_worker.get_last_loop_ns())
 			{
 				char buf[1024];
-				m_sinsp_worker.get_analyzer()->generate_memory_report(buf,
-				                                                                   sizeof(buf));
+				m_sinsp_worker.get_analyzer()->generate_memory_report(buf, sizeof(buf));
 				crash_handler::log_crashdump_message(buf);
 			}
 
@@ -1706,8 +1631,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		if (diff_ns < 0)
 		{
 			static ratelimit r;
-			r.run([&]
-			{
+			r.run([&] {
 				LOG_WARNING("watchdog: sinsp_data_handler last activity " +
 				            NumberFormatter::format(-diff_ns) + " ns in the future");
 			});
@@ -1776,22 +1700,22 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		// behind by more than the timeout, it gets declared
 		// stuck.
 
-		m_cointerface_ping_interval.run([this]()
-		{
-			coclient::response_cb_t callback = [this](bool successful,
-			                                          google::protobuf::Message* response_msg)
-			{
-				if (successful)
-				{
-					sdc_internal::pong* pong = (sdc_internal::pong*)response_msg;
-					m_subprocesses_state["cointerface"]
-					    .reset(pong->pid(), pong->memory_used(), pong->token());
-				}
-			};
+		m_cointerface_ping_interval.run(
+		    [this]() {
+			    coclient::response_cb_t callback = [this](bool successful,
+			                                              google::protobuf::Message* response_msg) {
+				    if (successful)
+				    {
+					    sdc_internal::pong* pong = (sdc_internal::pong*)response_msg;
+					    m_subprocesses_state["cointerface"].reset(pong->pid(),
+					                                              pong->memory_used(),
+					                                              pong->token());
+				    }
+			    };
 
-			m_coclient->ping(time(NULL), callback);
-		},
-		                                sinsp_utils::get_current_time_ns());
+			    m_coclient->ping(time(NULL), callback);
+		    },
+		    sinsp_utils::get_current_time_ns());
 
 		// Try to read any responses
 		m_coclient->process_queue();
@@ -1837,8 +1761,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			if (m_sinsp_worker.get_last_loop_ns())
 			{
 				char buf[1024];
-				m_sinsp_worker.get_analyzer()->generate_memory_report(buf,
-				                                                                   sizeof(buf));
+				m_sinsp_worker.get_analyzer()->generate_memory_report(buf, sizeof(buf));
 				crash_handler::log_crashdump_message(buf);
 			}
 
@@ -2100,8 +2023,9 @@ Logger* dragent_app::make_console_channel(AutoPtr<Formatter> formatter)
 		AutoPtr<Channel> console_channel(new ConsoleChannel());
 		AutoPtr<Channel> formatting_channel_console(
 		    new FormattingChannel(formatter, console_channel));
-		Logger& loggerc = Logger::create(
-		    "DraiosLogC", formatting_channel_console, m_configuration.m_min_console_priority);
+		Logger& loggerc = Logger::create("DraiosLogC",
+		                                 formatting_channel_console,
+		                                 m_configuration.m_min_console_priority);
 		return &loggerc;
 	}
 	return NULL;

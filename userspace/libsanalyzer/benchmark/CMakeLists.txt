@@ -1,6 +1,7 @@
 
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/benchmark/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
+include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/async)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)

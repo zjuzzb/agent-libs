@@ -641,7 +641,7 @@ TEST_F(sys_call_test, net_web_requests)
 	// Set a very long sample time, so we're sure no connection is removed
 	//
 	sinsp_configuration configuration;
-	configuration.set_analyzer_sample_len_ns(100 * ONE_SECOND_IN_NS);
+
 
 	// Set DNS port, /etc/services is read only from dragent context
 	// port 80 is not needed, because it's http protocol and is autodiscovered
@@ -724,7 +724,6 @@ TEST_F(sys_call_test, net_ssl_requests)
 	// Set a very long sample time, so we're sure no connection is removed
 	//
 	sinsp_configuration configuration;
-	configuration.set_analyzer_sample_len_ns(100 * ONE_SECOND_IN_NS);
 	ports_set ports;
 	ports.set(443);
 	configuration.set_known_ports(ports);
@@ -869,7 +868,6 @@ TEST_F(sys_call_test, net_double_udp_connect)
 	// Set a very long sample time, so we're sure no connection is removed
 	//
 	sinsp_configuration configuration;
-	configuration.set_analyzer_sample_len_ns(100 * ONE_SECOND_IN_NS);
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
 
@@ -967,7 +965,6 @@ TEST_F(sys_call_test, net_connection_table_limit)
 	// Set a very long sample time, so we're sure no connection is removed
 	//
 	sinsp_configuration configuration;
-	configuration.set_analyzer_sample_len_ns(100 * ONE_SECOND_IN_NS);
 
 	//
 	// Set a very low connection table size
@@ -1053,7 +1050,6 @@ return;
 	// Set a very low connection table size
 	//
 	sinsp_configuration configuration;
-	configuration.set_analyzer_sample_len_ns(3 * ONE_SECOND_IN_NS);
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
 }

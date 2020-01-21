@@ -37,22 +37,6 @@ static void signal_callback(int signal)
 	ctrl_c_pressed = true;
 }
 
-static void sigusr1_callback(int signal)
-{
-	if (dropping_mode_enabled)
-	{
-		dropping_mode_enabled = false;
-		g_analyzer->set_autodrop_enabled(false);
-		g_analyzer->stop_dropping_mode();
-	}
-	else
-	{
-		dropping_mode_enabled = true;
-		g_analyzer->start_dropping_mode(1);
-		g_analyzer->set_autodrop_enabled(true);
-	}
-}
-
 class captureinfo
 {
 public:
@@ -189,50 +173,10 @@ captureinfo do_inspect(sinsp* inspector,
 //
 // Filter based on the event type
 //
-#if 0
-		uint32_t evtype = (uint32_t)ev->get_type();
-
-		if(evtype != PPME_DROP_E && evtype != PPME_DROP_X)
-		{
-			continue;
-		}
-
-		if(evtype < 2)
-		{
-			continue;
-		}
-#endif
-
 		//
 		// Output the line
 		//
 		sinsp_threadinfo* tinfo = ev->get_thread_info();
-		/*
-		        if(ev->get_direction() == SCAP_ED_IN)
-		        {
-		            continue;
-		        }
-		*/
-		/*
-		        if(string(tinfo->m_comm).find("test") == string::npos)
-		        {
-		            continue;
-		        }
-		*/
-		/*
-		        if(string(tinfo->m_args).find(".py") == string::npos)
-		        {
-		            continue;
-		        }
-		*/
-		/*
-		        if(string(tinfo->m_comm).find("cinnamon") != string::npos ||
-		            string(tinfo->m_comm).find("firefox") != string::npos ||
-		            string(tinfo->m_comm).find("Xorg") != string::npos)
-		        {
-		            continue;
-		        }
-		*/
 		n_printed_evts++;
 
 		if (emitjson)
@@ -437,7 +381,6 @@ int main(int argc, char** argv)
 	captureinfo cinfo;
 	uint64_t emit_stats_every_x_sec = 0;
 	string dumpfile;
-	uint32_t drop_ratio = 0;
 	uint64_t max_evts_in_file = 0;
 	int32_t n_filterargs = 0;
 
@@ -450,7 +393,8 @@ int main(int argc, char** argv)
 						g_audit_handler,
 						g_secure_audit_handler,
 						g_secure_profiling_handler,
-						&g_queue);
+						&g_queue,
+						[]()->bool{return true;});
 
 		//
 		// Parse the args
@@ -459,9 +403,6 @@ int main(int argc, char** argv)
 		{
 			switch (op)
 			{
-				case 'A':
-					g_analyzer->get_configuration()->set_autodrop_enabled(true);
-					break;
 				case 'a':
 					absolute_times = true;
 					break;
@@ -477,9 +418,6 @@ int main(int argc, char** argv)
 					break;
 				case 'C':
 					g_analyzer->get_configuration()->set_customer_id(optarg);
-					break;
-				case 'd':
-					drop_ratio = atoi(optarg);
 					break;
 				case 'e':
 					configuration_manager::instance()
@@ -633,16 +571,6 @@ int main(int argc, char** argv)
 //
 // Set the SIGUSR1 signal
 //
-#ifndef _WIN32
-		if (signal(SIGUSR1, sigusr1_callback) == SIG_ERR)
-		{
-			fprintf(stderr, "An error occurred while setting a signal handler.\n");
-			delete g_inspector;
-			delete g_analyzer;
-			return EXIT_FAILURE;
-		}
-#endif  // _WIN32
-
 		//
 		// Launch the inspeciotn
 		//
@@ -661,13 +589,6 @@ int main(int argc, char** argv)
 #else
 				g_inspector->open_nodriver();
 #endif
-			}
-
-			if (drop_ratio != 0)
-			{
-				g_inspector->start_dropping_mode(drop_ratio);
-				g_analyzer->set_is_sampling(true);
-				// g_inspector->stop_dropping_mode();
 			}
 
 			if (dumpfile != "")

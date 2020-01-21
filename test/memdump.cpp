@@ -204,7 +204,6 @@ protected:
 		m_configuration.m_memdump_enabled = true;
 		security_config::set_enabled(false);
 		m_configuration.m_max_sysdig_captures = max_captures;
-		m_configuration.m_autodrop_enabled = false;
 		m_configuration.m_memdump_max_init_attempts = 10;
 
 		// The (global) logger only needs to be set up once
@@ -224,7 +223,7 @@ protected:
 			g_log = std::unique_ptr<common_logger>(new common_logger(&nullc, &loggerc));
 		}
 
-		m_capture_job_handler = new capture_job_handler(&m_configuration, m_queue, &m_enable_autodrop);
+		m_capture_job_handler = new capture_job_handler(&m_configuration, m_queue);
 		m_dump_job_requests = make_shared<blocking_queue<shared_ptr<capture_job_handler::dump_job_request>>>(1);
 		m_dump_job_responses = make_shared<blocking_queue<test_sinsp_worker::dump_response_t>>(1);
 		m_sinsp_worker = new test_sinsp_worker(m_dump_job_requests, m_dump_job_responses, m_capture_job_handler);
@@ -618,7 +617,6 @@ protected:
 	protocol_queue *m_queue;
 	shared_ptr<blocking_queue<shared_ptr<capture_job_handler::dump_job_request>>> m_dump_job_requests;
 	shared_ptr<blocking_queue<test_sinsp_worker::dump_response_t>> m_dump_job_responses;
-	atomic<bool> m_enable_autodrop;
 	memdump_error_handler m_error_handler;
 
 	string test_filename_pat = "/tmp/memdump_agent_test";

@@ -1,6 +1,10 @@
 #pragma once
 
+#include  <sinsp_int.h>
+#include "protostate.h"
 #include "analyzer_file_stat.h"
+
+class sinsp_ipv4_connection_manager;
 
 ///////////////////////////////////////////////////////////////////////////////
 // This class listens on FD activity and performs advanced analysis

@@ -89,14 +89,11 @@ const string sinsp_worker::m_name = "sinsp_worker";
 sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 			   const internal_metrics::sptr_t& im,
 			   protocol_handler& handler,
-			   atomic<bool> *enable_autodrop,
 			   capture_job_handler *capture_job_handler):
 	m_job_requests_interval(1000000000),
 	m_initialized(false),
 	m_configuration(configuration),
 	m_protocol_handler(handler),
-	m_enable_autodrop(enable_autodrop),
-	m_autodrop_currently_enabled(true),
 	m_analyzer(NULL),
 #ifndef CYGWING_AGENT
 	m_security_initialized(false),
@@ -328,8 +325,6 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 
 	stress_tool_matcher::set_comm_list(m_configuration->m_stress_tools);
 
-	m_autodrop_currently_enabled = m_configuration->m_autodrop_enabled;
-
 	for(const auto &comm : m_configuration->m_suppressed_comms)
 	{
 		m_inspector->suppress_events_comm(comm);
@@ -444,12 +439,6 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 		g_log->information("Procfs scan thread enabled, ignoring switch events");
 		m_inspector->unset_eventmask(PPME_SCHEDSWITCH_1_E);
 		m_inspector->unset_eventmask(PPME_SCHEDSWITCH_6_E);
-	}
-
-	if(m_configuration->m_subsampling_ratio != 1)
-	{
-		g_log->information("Enabling dropping mode, ratio=" + NumberFormatter::format(m_configuration->m_subsampling_ratio));
-		m_analyzer->start_dropping_mode(m_configuration->m_subsampling_ratio);
 	}
 
 	if(m_configuration->m_aws_metadata.m_public_ipv4)
@@ -593,7 +582,7 @@ void sinsp_worker::run()
 
 				m_inspector->close();
 				m_analyzer->set_mode_switch_state(sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER);
-				m_analyzer->set_sampling_ratio(1);
+				m_analyzer->ack_sampling_ratio(1);
 
 				m_inspector->open_nodriver();
 				// Change these values so the inactive thread pruning
@@ -641,8 +630,6 @@ void sinsp_worker::run()
 		{
 			process_job_requests(should_dump);
 		}, ts);
-
-		check_autodrop(ts);
 
 		if(!m_inspector->is_capture() && (ts > m_next_iflist_refresh_ns) && !m_aws_metadata_refresher.is_running())
 		{
@@ -931,39 +918,6 @@ void sinsp_worker::process_job_requests(bool should_dump)
 	}
 }
 
-void sinsp_worker::check_autodrop(uint64_t ts_ns)
-{
-	if(!m_configuration->m_autodrop_enabled)
-	{
-		return;
-	}
-	if(*m_enable_autodrop)
-	{
-		if (!m_autodrop_currently_enabled)
-		{
-			g_log->information("Restoring dropping mode state");
-
-			if(m_configuration->m_autodrop_enabled)
-			{
-				m_analyzer->start_dropping_mode(1);
-				m_analyzer->set_capture_in_progress(false);
-			}
-
-			m_autodrop_currently_enabled = true;
-		}
-	}
-	else
-	{
-		if (m_autodrop_currently_enabled)
-		{
-			g_log->information("Disabling dropping mode by setting sampling ratio to 1");
-			m_analyzer->start_dropping_mode(1);
-			m_analyzer->set_capture_in_progress(true);
-			m_autodrop_currently_enabled = false;
-		}
-	}
-}
-
 void sinsp_worker::pause_capture()
 {
 	m_inspector->stop_capture();
@@ -974,4 +928,3 @@ void sinsp_worker::unpause_capture()
 {
 	m_capture_paused = false;
 }
-

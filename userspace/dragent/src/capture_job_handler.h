@@ -126,8 +126,7 @@ public:
 	};
 
 	capture_job_handler(dragent_configuration *configuration,
-			    protocol_queue *queue,
-			    std::atomic<bool> *enable_autodrop);
+			    protocol_queue *queue);
 
 	virtual ~capture_job_handler();
 
@@ -193,6 +192,12 @@ public:
 	// Only used in unit tests to force a faster shutdown.
 	bool m_force_cleanup = false;
 
+	// Returns whether a job is in progress or not
+	bool get_job_in_progress() const
+	{
+		return m_job_in_progress;
+	}
+
 private:
 	// Clean up all jobs
 	void cleanup();
@@ -226,7 +231,6 @@ private:
 	sinsp *m_inspector;
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
-	std::atomic<bool> *m_enable_autodrop;
 	uint64_t m_max_chunk_size;
 	thread_safe_container::blocking_queue<std::shared_ptr<dump_job_request>> m_dump_job_requests;
 
@@ -241,5 +245,7 @@ private:
 	sinsp_evt m_notification_evt;
 	uint8_t m_notification_scap_evt_storage[4096];
 	scap_evt* m_notification_scap_evt;
+
+	std::atomic<bool> m_job_in_progress;
 };
 

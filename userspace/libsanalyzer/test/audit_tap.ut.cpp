@@ -1,20 +1,22 @@
-#include <gtest.h>
-#include <memory>
+#include "unique_ptr_resetter.h"
+
 #include <Poco/RegularExpression.h>
-#include <audit_tap.h>
+
 #include <analyzer.h>
-#include <sinsp_mock.h>
-#include <scoped_config.h>
+#include <arpa/inet.h>
+#include <audit_tap.h>
 #include <connectinfo.h>
 #include <env_hash.h>
+#include <gtest.h>
+#include <memory>
+#include <scoped_config.h>
+#include <sinsp_mock.h>
 #include <tap.pb.h>
-#include <arpa/inet.h>
-#include "unique_ptr_resetter.h"
 
 using namespace test_helpers;
 
-namespace {
-
+namespace
+{
 const std::string MACHINE_ID_FOR_TEST = "deadbeef";
 
 const uint32_t DEFAULT_PID = 22;
@@ -35,7 +37,7 @@ null_secure_audit_handler g_secure_audit_handler;
 null_secure_profiling_handler g_secure_profiling_handler;
 sinsp_analyzer::flush_queue g_queue(1000);
 
-env_hash_config *default_hash_config()
+env_hash_config* default_hash_config()
 {
 	static std::unique_ptr<env_hash_config> config;
 
@@ -80,22 +82,22 @@ void add_connection(sinsp& inspector,
 	const int32_t error_code = 99;
 
 	sinsp_connection* const connection =
-		mgr.add_connection(ipv4,
-				   const_cast<std::string *>(&thread1->m_comm),
-				   thread1->m_pid,
-				   thread1->m_tid,
-				   fd,
-				   is_client,
-				   timestamp,
-				   flags,
-				   error_code);
+	    mgr.add_connection(ipv4,
+	                       const_cast<std::string*>(&thread1->m_comm),
+	                       thread1->m_pid,
+	                       thread1->m_tid,
+	                       fd,
+	                       is_client,
+	                       timestamp,
+	                       flags,
+	                       error_code);
 
 	ASSERT_NE(connection, nullptr);
 	// This is fundamental to audit_tap so make sure it is happening
 	ASSERT_TRUE(connection->m_record_state_history);
 
 	sinsp_counter_bytes* counters = nullptr;
-	if(is_client)
+	if (is_client)
 	{
 		counters = &connection->m_metrics.m_client;
 	}
@@ -109,14 +111,14 @@ void add_connection(sinsp& inspector,
 	counters->m_bytes_in = bytes_in;
 	counters->m_bytes_out = bytes_out;
 
-	for(int i = 0; i < error_count; ++i)
+	for (int i = 0; i < error_count; ++i)
 	{
 		connection->m_metrics.increment_error_count();
 	}
 
 	auto two_seconds_ago = sinsp_utils::get_current_time_ns() - 2000000000;
 
-	for(int i = 0; i < transition_count; ++i)
+	for (int i = 0; i < transition_count; ++i)
 	{
 		connection->record_state_transition(two_seconds_ago + i * 10000000);
 	}
@@ -128,6 +130,7 @@ void add_connection(sinsp& inspector,
 void arg_length_test(const int limit)
 {
 	scoped_config<unsigned int> config("audit_tap.max_command_arg_length", limit);
+	scoped_config<bool> config2("autodrop.enabled", false);
 
 	const std::string arg_150(150, 'x');
 
@@ -138,31 +141,29 @@ void arg_length_test(const int limit)
 	                        int_metrics,
 	                        g_audit_handler,
 	                        g_secure_audit_handler,
-				g_secure_profiling_handler,
-	                        &g_queue);
+	                        g_secure_profiling_handler,
+	                        &g_queue,
+	                        []() -> bool { return true; });
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
 	analyzer.enable_audit_tap(true /*emit local connections*/);
 	inspector->register_external_event_processor(analyzer);
 
-	auto &thread1 = inspector->build_thread().pid(DEFAULT_PID)
-						 .comm("dragent")
-						 .arg(arg_150).commit();
+	auto& thread1 =
+	    inspector->build_thread().pid(DEFAULT_PID).comm("dragent").arg(arg_150).commit();
 	inspector->open();
 
-	audit_tap tap(default_hash_config(),
-		      MACHINE_ID_FOR_TEST,
-		      true /*emit local connections*/);
+	audit_tap tap(default_hash_config(), MACHINE_ID_FOR_TEST, true /*emit local connections*/);
 
 	add_connection(*inspector, analyzer, tap, &thread1, 2);
 
-	const tap::AuditLog *log = tap.get_events();
+	const tap::AuditLog* log = tap.get_events();
 	int expected_length = std::min(static_cast<int>(arg_150.length()), limit);
 	std::string expected_arg(expected_length, 'x');
-	ASSERT_EQ(expected_arg, log->newprocessevents(0) .commandline(0));
+	ASSERT_EQ(expected_arg, log->newprocessevents(0).commandline(0));
 }
 
-} // end namespace
+}  // end namespace
 
 // Ensure basic functionality of audit tap. Note that this was written long
 // after audit_tap was created so it should not be considered exhaustive.
@@ -173,6 +174,8 @@ void arg_length_test(const int limit)
 // audit_tap.
 TEST(audit_tap_test, basic)
 {
+	scoped_config<bool> config2("autodrop.enabled", false);
+
 	const int64_t expected_pid = 4;
 	const std::string expected_name = "/usr/bin/gcc";
 	const std::string expected_arg_1 = "-o";
@@ -191,8 +194,9 @@ TEST(audit_tap_test, basic)
 	                        int_metrics,
 	                        g_audit_handler,
 	                        g_secure_audit_handler,
-				g_secure_profiling_handler,
-	                        &g_queue);
+	                        g_secure_profiling_handler,
+	                        &g_queue,
+	                        []() -> bool { return true; });
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
 	// For this test, we don't use the audit_tap in the analyzer, but if
@@ -203,13 +207,14 @@ TEST(audit_tap_test, basic)
 
 	// Build some threads that we'll add connections to.
 	(void)inspector->build_thread().commit();
-	auto &thread1 = inspector->build_thread()
-		.pid(expected_pid)
-		.comm("gcc")
-		.exe(expected_name)
-		.arg(expected_arg_1)
-		.arg(expected_arg_2)
-		.arg(expected_arg_3).commit();
+	auto& thread1 = inspector->build_thread()
+	                    .pid(expected_pid)
+	                    .comm("gcc")
+	                    .exe(expected_name)
+	                    .arg(expected_arg_1)
+	                    .arg(expected_arg_2)
+	                    .arg(expected_arg_3)
+	                    .commit();
 	(void)inspector->build_thread().pid(expected_pid).tid(1234).commit();
 	(void)inspector->build_thread().commit();
 	inspector->open();
@@ -221,19 +226,16 @@ TEST(audit_tap_test, basic)
 
 	// Even though the analyzer has it's own tap, let's make our own
 	// and it can pull data from sinsp and the analyzer thread.
-	audit_tap tap(default_hash_config(),
-		      MACHINE_ID_FOR_TEST,
-		      true /*emit local connections*/);
-
+	audit_tap tap(default_hash_config(), MACHINE_ID_FOR_TEST, true /*emit local connections*/);
 
 	const int TRANSITION_COUNT = 5;
 	add_connection(*inspector, analyzer, tap, &thread1, TRANSITION_COUNT);
 
-	const tap::AuditLog *log = tap.get_events();
+	const tap::AuditLog* log = tap.get_events();
 
 	// Validate newprocessevents
-	ASSERT_EQ(1, log->newprocessevents_size() );
-	ASSERT_EQ(expected_pid, log->newprocessevents(0) .pid());
+	ASSERT_EQ(1, log->newprocessevents_size());
+	ASSERT_EQ(expected_pid, log->newprocessevents(0).pid());
 	ASSERT_EQ(expected_name, log->newprocessevents(0).name());
 	ASSERT_EQ(3, log->newprocessevents(0).commandline_size());
 	ASSERT_EQ(expected_arg_1, log->newprocessevents(0).commandline(0));
@@ -291,6 +293,8 @@ TEST(audit_tap_test, configurable_command_length_200)
  */
 TEST(audit_tap_test, connection_audit_one_client_connection)
 {
+	scoped_config<bool> config2("autodrop.enabled", false);
+
 	const char* const root_dir = "/";
 	const bool emit_local_connections = false;
 	const std::string arg(5, 'x');
@@ -302,24 +306,20 @@ TEST(audit_tap_test, connection_audit_one_client_connection)
 	                        int_metrics,
 	                        g_audit_handler,
 	                        g_secure_audit_handler,
-				g_secure_profiling_handler,
-	                        &g_queue);
+	                        g_secure_profiling_handler,
+	                        &g_queue,
+	                        []() -> bool { return true; });
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
 	analyzer.enable_audit_tap(emit_local_connections);
 	inspector->register_external_event_processor(analyzer);
 
-	auto &thread = inspector->build_thread()
-			.pid(DEFAULT_PID)
-			.comm("client_application")
-			.arg(arg)
-			.commit();
+	auto& thread =
+	    inspector->build_thread().pid(DEFAULT_PID).comm("client_application").arg(arg).commit();
 
 	inspector->open();
 
-	audit_tap tap(default_hash_config(),
-	              MACHINE_ID_FOR_TEST,
-	              emit_local_connections);
+	audit_tap tap(default_hash_config(), MACHINE_ID_FOR_TEST, emit_local_connections);
 
 	add_connection(*inspector, analyzer, tap, &thread, 2);
 
@@ -367,6 +367,8 @@ TEST(audit_tap_test, connection_audit_one_client_connection)
  */
 TEST(audit_tap_test, connection_audit_one_server_connection)
 {
+	scoped_config<bool> config2("autodrop.enabled", false);
+
 	const char* const root_dir = "/";
 	const bool emit_local_connections = false;
 	const std::string arg(5, 'x');
@@ -378,24 +380,20 @@ TEST(audit_tap_test, connection_audit_one_server_connection)
 	                        int_metrics,
 	                        g_audit_handler,
 	                        g_secure_audit_handler,
-				g_secure_profiling_handler,
-	                        &g_queue);
+	                        g_secure_profiling_handler,
+	                        &g_queue,
+	                        []() -> bool { return true; });
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
 	analyzer.enable_audit_tap(emit_local_connections);
 	inspector->register_external_event_processor(analyzer);
 
-	auto &thread = inspector->build_thread()
-			.pid(DEFAULT_PID)
-			.comm("server_application")
-			.arg(arg)
-			.commit();
+	auto& thread =
+	    inspector->build_thread().pid(DEFAULT_PID).comm("server_application").arg(arg).commit();
 
 	inspector->open();
 
-	audit_tap tap(default_hash_config(),
-	              MACHINE_ID_FOR_TEST,
-	              emit_local_connections);
+	audit_tap tap(default_hash_config(), MACHINE_ID_FOR_TEST, emit_local_connections);
 
 	const bool is_client = false;
 	add_connection(*inspector, analyzer, tap, &thread, 2, is_client);

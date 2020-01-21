@@ -156,7 +156,6 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 		return false;
 
 	case PPME_SYSDIGEVENT_E:
-		m_analyzer->set_driver_stopped_dropping(true);
 		return false;
 	case PPME_CONTAINER_E:
 		return false;
@@ -254,7 +253,7 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 				// If this was a wait on multiple FDs, we encode the delta as a negative number so
 				// the next steps will know that it needs to be handled with more care.
 				//
-				uint64_t sample_duration = m_analyzer->get_configuration_read_only()->get_analyzer_sample_len_ns();
+				uint64_t sample_duration = m_analyzer->get_sample_duration();
 				uint64_t ts = evt->get_ts();
 
 				tinfo->m_ainfo->m_last_wait_end_time_ns = ts;
@@ -501,14 +500,15 @@ void sinsp_analyzer_parsers::parse_drop(sinsp_evt* evt)
 	parinfo = evt->get_param(0);
 	ASSERT(parinfo->m_len == sizeof(int32_t));
 
-	if(*(uint32_t*)parinfo->m_val != m_analyzer->get_sampling_ratio())
+	if(*(uint32_t*)parinfo->m_val != m_analyzer->get_acked_sampling_ratio())
 	{
 		g_logger.format(sinsp_logger::SEV_INFO, "sinsp Switching sampling ratio from % " PRIu32 " to %" PRIu32,
-			m_analyzer->get_sampling_ratio(),
+			m_analyzer->get_acked_sampling_ratio(),
 			*(uint32_t*)parinfo->m_val);
 
-		m_analyzer->set_sampling_ratio(*(int32_t*)parinfo->m_val);
 	}
+
+	m_analyzer->ack_sampling_ratio(*(uint32_t*)parinfo->m_val);
 }
 
 draiosproto::command_category sinsp_analyzer_parsers::convert_category(sinsp_threadinfo::command_category &tcat)

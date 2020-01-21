@@ -45,21 +45,10 @@ public:
 	void set_machine_id(std::string machine_id);
 	const std::string& get_customer_id() const;
 	void set_customer_id(std::string customer_id);
-	uint64_t get_analyzer_sample_len_ns() const;
-	uint64_t get_analyzer_original_sample_len_ns() const;
-	void set_analyzer_sample_len_ns(uint64_t analyzer_sample_length_ns);
 	uint32_t get_max_connections_in_proto() const;
 	void set_max_connections_in_proto(uint32_t max_connections_in_proto);
 	bool get_aggregate_connections_in_proto() const;
 	void set_aggregate_connections_in_proto(bool aggregate);
-	bool get_autodrop_enabled() const;
-	void set_autodrop_enabled(bool enabled);
-	uint32_t get_drop_upper_threshold(uint32_t nprocs) const;
-	void set_drop_upper_threshold(uint32_t drop_upper_threshold);
-	uint32_t get_drop_lower_threshold(uint32_t nprocs) const;
-	void set_drop_lower_threshold(uint32_t drop_lower_threshold);
-	uint32_t get_drop_threshold_consecutive_seconds() const;
-	void set_drop_threshold_consecutive_seconds(uint32_t drop_threshold_consecutive_seconds);
 	const std::string& get_host_custom_name() const;
 	void set_host_custom_name(std::string host_custom_name);
 	const std::string& get_host_tags() const;
@@ -217,14 +206,8 @@ private:
 
 	std::string m_machine_id;
 	std::string m_customer_id;
-	uint64_t m_analyzer_sample_len_ns;
-	uint64_t m_analyzer_original_sample_len_ns;
 	uint32_t m_max_connections_in_proto;
 	bool m_aggregate_connections_in_proto;
-	bool m_autodrop_enabled;
-	uint32_t m_drop_upper_threshold;
-	uint32_t m_drop_lower_threshold;
-	uint32_t m_drop_threshold_consecutive_seconds;
 	std::string m_host_custom_name;
 	std::string m_host_tags;
 	bool m_host_hidden;
