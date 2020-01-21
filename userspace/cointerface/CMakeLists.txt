@@ -17,6 +17,20 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${target}
 	)
 endfunction()
 
+# Keep this version in sync with the various go.mod files
+set(GOGO_PROTOBUF_VER "v1.3.1")
+set(GOGO_PROTOBUF_PATH "github.com/gogo/protobuf/protoc-gen-gofast")
+set(GOGO_PROTOBUF_DIR "${CMAKE_CURRENT_BINARY_DIR}/gogo_protobuf")
+set(GOGO_PROTOBUF_VER_FILE "${GOGO_PROTOBUF_DIR}/${GOGO_PROTOBUF_VER}.txt")
+add_custom_target(install_go_generate_deps ALL
+	DEPENDS ${GOGO_PROTOBUF_VER_FILE})
+add_custom_command(OUTPUT ${GOGO_PROTOBUF_VER_FILE}
+	COMMAND ${CMAKE_COMMAND} -E remove_directory ${GOGO_PROTOBUF_DIR}
+	COMMAND ${GOENV} go get ${GOGO_PROTOBUF_PATH}@${GOGO_PROTOBUF_VER}
+	COMMAND ${CMAKE_COMMAND} -E make_directory ${GOGO_PROTOBUF_DIR}
+	COMMAND ${CMAKE_COMMAND} -E touch ${GOGO_PROTOBUF_VER_FILE}
+	)
+
 # This function generate pb.go files for proto files that depend on
 # draios.proto and common.proto. The generate_draiosproto target has
 # an extra output pb.go, and that's handled by an optional argument.
@@ -44,6 +58,8 @@ add_custom_command(OUTPUT ${OUTFILES}
                 ${PROTO_SRC_DIR}/draios.proto
                 ${PROTO_SRC_DIR}/common.proto
                 ${PROTO_SRC_DIR}/${protofile}
+                ${GOGO_PROTOBUF_VER_FILE}
+                install_go_generate_deps
 		)
 set("${target}_deps" "generate_${target}" ${OUTFILES} PARENT_SCOPE)
 endfunction()

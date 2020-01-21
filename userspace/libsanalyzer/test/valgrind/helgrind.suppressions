@@ -53,3 +53,27 @@
    fun:_ZN4Poco3Net13SocketReactor3runEv
    ...
 }
+
+{
+   grpc_shutdown_race_might_be_https://github.com/grpc/grpc/issues/20538
+   Helgrind:Race
+   fun:vgPlain_amd64_linux_REDIR_FOR_vgetcpu
+   fun:sched_getcpu
+   fun:gpr_cpu_current_cpu
+   fun:ExecCtx
+   ...
+}
+
+{
+   grpc_shutdown_race_mutex
+   Helgrind:Race
+   fun:my_memcmp
+   fun:mutex_destroy_WRK
+   fun:pthread_mutex_destroy
+   fun:gpr_mu_destroy
+   fun:_ZN9grpc_core12_GLOBAL__N_120ThreadInternalsPosixD1Ev
+   fun:_ZZN9grpc_core12_GLOBAL__N_120ThreadInternalsPosixC1EPKcPFvPvES4_PbRKNS_6Thread7OptionsEENUlS4_E_4_FUNES4_
+   fun:mythread_wrapper
+   fun:start_thread
+   fun:clone
+}

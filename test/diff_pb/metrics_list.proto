@@ -1,5 +1,5 @@
 syntax = "proto2";
-import weak "draios.proto";
+import "draios.proto";
 
 package draiosproto_w_metrics_list;
 

@@ -4,7 +4,7 @@ add_executable(benchmark-dragent
 add_dependencies(benchmark-dragent dragentl draiosproto)
 add_definitions(-DHAS_ANALYZER)
 
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/benchmark/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/include)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/include)
@@ -34,8 +34,8 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include
 
 
 target_link_libraries(benchmark-dragent
-    ${DRAIOS_DEPENDENCIES_DIR}/benchmark/build/src/libbenchmark.a
-    ${DRAIOS_DEPENDENCIES_DIR}/benchmark/build/src/libbenchmark_main.a
+    ${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/build/src/libbenchmark.a
+    ${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/build/src/libbenchmark_main.a
     rt
     dragentl
     draiosproto
