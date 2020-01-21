@@ -4112,7 +4112,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 	// if it's time to emit the falco baseline, do the serialization and then restart it
 	//
 	tracer_emitter falco_trc("falco_baseline", f_trc);
-	if (m_falco_baseliner->is_baseline_calculation_enabled())
+	if (m_configuration->get_falco_baselining_enabled())
 	{
 		scap_stats st;
 		m_inspector->get_capture_stats(&st);
