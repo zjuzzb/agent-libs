@@ -8,6 +8,7 @@ import (
 	"github.com/draios/protorepo/sdc_internal"
 	"github.com/gogo/protobuf/proto"
 	"io/ioutil"
+	"sort"
 	"strings"
 	"time"
 )
@@ -65,8 +66,44 @@ type linuxBenchResults struct {
 	TotalWarn uint64             `json:"total_warn"`
 }
 
+// Given a test id, result, and current risk, assign a new risk based
+// on the result of the test.
+// The risk defaults to low and becomes medium/high if:
+// - medium: any test has a WARN result
+// - high: any of the following tests has a non-PASS result:
+//    - Anything in section 1.6 (Mandatory Access Control)
+//    - Anything in section 5 (Access, Authentication and Authorization)
+//    - 6.1.1-9 (Ensure critical file permissions are set)
+//    - Anything in section 6.2 (User and Group Settings)
 func (impl *LinuxBenchImpl) AssignRisk(id string, result string, curRisk ResultRisk) ResultRisk {
-	//TODO
+	newRisk := low
+
+	highTestIds := map[string]int {
+		"6.1.1": 1,
+		"6.1.2": 1,
+		"6.1.3": 1,
+		"6.1.4": 1,
+		"6.1.5": 1,
+		"6.1.6": 1,
+		"6.1.7": 1,
+		"6.1.8": 1,
+		"6.1.9": 1,
+	}
+
+	if (result != "PASS" && (highTestIds[id] == 1 ||
+		strings.HasPrefix(id, "1.6") ||
+		strings.HasPrefix(id, "5") ||
+		strings.HasPrefix(id, "6.2"))) {
+		newRisk = high
+	} else if (result != "PASS") {
+		newRisk = medium
+	}
+
+	if (newRisk == high || (newRisk == medium && curRisk == low)) {
+		return newRisk
+	}
+
+	return curRisk
 }
 
 func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
@@ -113,14 +150,38 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 		HostMac:      impl.machineId,
 		TaskName:     *task.Name,
 		ResultSchema: impl.variant,
-		TestsRun:     0,
-		PassCount:    0,
-		FailCount:    0,
-		WarnCount:    0,
+		TestsRun:     bres.TotalPass + bres.TotalFail + bres.TotalWarn,
+		PassCount:    bres.TotalPass,
+		FailCount:    bres.TotalFail,
+		WarnCount:    bres.TotalWarn,
 		Risk:         low,
 	}
 
+	// Normalize sections
+	sectionMap := make(map[string]linuxTestSection)
 	for _, section := range bres.Tests {
+		sectionParts := strings.Split(section.Section, ".")
+
+		// Ignore top level sections
+		if len(sectionParts) >= 2 {
+			sectionNumber := fmt.Sprintf("%s.%s", sectionParts[0], sectionParts[1])
+
+			normalizedSection, sectionExists := sectionMap[sectionNumber]
+
+			if sectionExists {
+				normalizedSection.Pass += section.Pass
+				normalizedSection.Warn += section.Warn
+				normalizedSection.Fail += section.Fail
+				normalizedSection.Results = append(normalizedSection.Results, section.Results...)
+			} else {
+				normalizedSection = section
+			}
+
+			sectionMap[sectionNumber] = normalizedSection
+		}
+	}
+
+	for _, section := range sectionMap {
 
 		resSection := &TaskResultSection{
 			SectionId: section.Section,
@@ -142,7 +203,11 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 		metrics = append(metrics, fmt.Sprintf("%v.tests_warn:%d|g", metricsPrefix, resSection.WarnCount))
 		metrics = append(metrics, fmt.Sprintf("%v.tests_pass:%d|g", metricsPrefix, resSection.PassCount))
 		metrics = append(metrics, fmt.Sprintf("%v.tests_total:%d|g", metricsPrefix, resSection.TestsRun))
-		metrics = append(metrics, fmt.Sprintf("%v.pass_pct:%f|g", metricsPrefix, (100.0*float64(resSection.PassCount))/float64(resSection.TestsRun)))
+		if resSection.TestsRun == 0 {
+			metrics = append(metrics, fmt.Sprintf("%v.pass_pct:0|g", metricsPrefix))
+		} else {
+			metrics = append(metrics, fmt.Sprintf("%v.pass_pct:%f|g", metricsPrefix, (100.0*float64(resSection.PassCount))/float64(resSection.TestsRun)))
+		}
 
 		for _, test := range section.Results {
 
@@ -170,6 +235,10 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 
 		result.Tests = append(result.Tests, *resSection)
 	}
+
+	sort.Slice(result.Tests, func(i, j int) bool {
+		return result.Tests[i].SectionId < result.Tests[j].SectionId
+	})
 
 	ofbytes, err := json.Marshal(result)
 	if err != nil {
@@ -199,7 +268,11 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 	metrics = append(metrics, fmt.Sprintf("%v.tests_fail:%d|g", metricsPrefix, result.FailCount))
 	metrics = append(metrics, fmt.Sprintf("%v.tests_warn:%d|g", metricsPrefix, result.WarnCount))
 	metrics = append(metrics, fmt.Sprintf("%v.tests_total:%d|g", metricsPrefix, result.TestsRun))
-	metrics = append(metrics, fmt.Sprintf("%v.pass_pct:%f|g", metricsPrefix, (100.0*float64(result.PassCount))/float64(result.TestsRun)))
+	if result.TestsRun == 0 {
+		metrics = append(metrics, fmt.Sprintf("%v.pass_pct:0|g", metricsPrefix))
+	} else {
+		metrics = append(metrics, fmt.Sprintf("%v.pass_pct:%f|g", metricsPrefix, (100.0*float64(result.PassCount))/float64(result.TestsRun)))
+	}
 
 	for _, metric := range metrics {
 		log.Debugf("Sending linux-bench metric: %v", metric)
