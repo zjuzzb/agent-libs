@@ -20,9 +20,17 @@ func (impl *LinuxBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
 
 	// If "benchmark" was provided as a param, add it as a benchmark argument.
 	for _, param := range stask.task.TaskParams {
+
 		if *param.Key == "benchmark" {
-			args = append(args, "--version", *param.Val)
-			impl.variant = *param.Val
+			switch *param.Val {
+			case "cis-1.1":
+				impl.variant = "1.1.0"
+			case "cis-2.0":
+				impl.variant = "2.0.0"
+			default:
+				impl.variant = "1.1.0"
+			}
+			args = append(args, "--version", impl.variant)
 		}
 	}
 
@@ -68,32 +76,10 @@ type linuxBenchResults struct {
 
 // Given a test id, result, and current risk, assign a new risk based
 // on the result of the test.
-// The risk defaults to low and becomes medium/high if:
-// - medium: any test has a WARN result
-// - high: any of the following tests has a non-PASS result:
-//    - Anything in section 1.6 (Mandatory Access Control)
-//    - Anything in section 5 (Access, Authentication and Authorization)
-//    - 6.1.1-9 (Ensure critical file permissions are set)
-//    - Anything in section 6.2 (User and Group Settings)
 func (impl *LinuxBenchImpl) AssignRisk(id string, result string, curRisk ResultRisk) ResultRisk {
 	newRisk := low
 
-	highTestIds := map[string]int {
-		"6.1.1": 1,
-		"6.1.2": 1,
-		"6.1.3": 1,
-		"6.1.4": 1,
-		"6.1.5": 1,
-		"6.1.6": 1,
-		"6.1.7": 1,
-		"6.1.8": 1,
-		"6.1.9": 1,
-	}
-
-	if (result != "PASS" && (highTestIds[id] == 1 ||
-		strings.HasPrefix(id, "1.6") ||
-		strings.HasPrefix(id, "5") ||
-		strings.HasPrefix(id, "6.2"))) {
+	if (result != "PASS" && impl.isHighRiskTest(id)) {
 		newRisk = high
 	} else if (result != "PASS") {
 		newRisk = medium
@@ -104,6 +90,62 @@ func (impl *LinuxBenchImpl) AssignRisk(id string, result string, curRisk ResultR
 	}
 
 	return curRisk
+}
+
+// The risk defaults to low and becomes medium/high if:
+// - medium: any test has a WARN result
+// - high: any of the following tests has a non-PASS result:
+//
+//    CIS Benchmark 1.1.0:
+//    - Anything in section 1.6 (Mandatory Access Control)
+//    - Anything in section 5 (Access, Authentication and Authorization)
+//    - 6.1.1-9 (Ensure critical file permissions are set)
+//    - Anything in section 6.2 (User and Group Settings)
+//
+//    CIS Benchmark 2.0.0:
+//    - Anything in section 1.6 (Mandatory Access Control)
+//    - Anything in section 5 (Access, Authentication and Authorization)
+//    - 6.1.1-9 (Ensure critical file permissions are set)
+//    - Anything in section 6.2 (User and Group Settings)
+func (impl *LinuxBenchImpl) isHighRiskTest(id string) bool {
+	switch impl.variant {
+	case "1.1.0":
+		highTestIds := map[string]int {
+			"6.1.1": 1,
+			"6.1.2": 1,
+			"6.1.3": 1,
+			"6.1.4": 1,
+			"6.1.5": 1,
+			"6.1.6": 1,
+			"6.1.7": 1,
+			"6.1.8": 1,
+			"6.1.9": 1,
+		}
+
+		return highTestIds[id] == 1 ||
+			strings.HasPrefix(id, "1.6") ||
+			strings.HasPrefix(id, "5") ||
+			strings.HasPrefix(id, "6.2")
+	case "2.0.0":
+		highTestIds := map[string]int {
+			"6.1.1": 1,
+			"6.1.2": 1,
+			"6.1.3": 1,
+			"6.1.4": 1,
+			"6.1.5": 1,
+			"6.1.6": 1,
+			"6.1.7": 1,
+			"6.1.8": 1,
+			"6.1.9": 1,
+		}
+
+		return highTestIds[id] == 1 ||
+			strings.HasPrefix(id, "1.6") ||
+			strings.HasPrefix(id, "5") ||
+			strings.HasPrefix(id, "6.2")
+	default:
+		return false
+	}
 }
 
 func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
