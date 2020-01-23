@@ -185,15 +185,16 @@ public:
 		  uint64_t flush_duration_ns,
 		  uint64_t n_proc_lookups,
 		  uint64_t n_main_thread_lookups,
+		  uint64_t max_sinsp_buf_used,
 		  uint64_t analyzer_cpu_percentage);
 
 private: // helper methods used during emit
 	// adds statsd-emulated metrics directly to protobuf
 	// returns false if statsd_info is null
-	bool send_all(draiosproto::statsd_info* statsd_info);
+	bool send_all(draiosproto::statsd_info* statsd_info, uint64_t max_sinsp_buf_used);
 
 	// Add a limited set of metrics to the provided protobuf.
-	bool send_some(draiosproto::statsd_info* statsd_info);
+	bool send_some(draiosproto::statsd_info* statsd_info, uint64_t max_sinsp_buf_used);
 
 public:
 	template<typename T>

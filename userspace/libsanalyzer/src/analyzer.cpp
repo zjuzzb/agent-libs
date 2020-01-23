@@ -5019,7 +5019,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 				                         m_prev_flushes_duration_ns,
 				                         m_inspector->m_n_proc_lookups,
 				                         m_inspector->m_n_main_thread_lookups,
-				                         static_cast<uint64_t>(m_my_cpuload + 0.5));
+										 m_inspector->max_buf_used(),
+				                         static_cast<uint64_t>(m_my_cpuload + 0.500001));
 			}
 
 			////////////////////////////////////////////////////////

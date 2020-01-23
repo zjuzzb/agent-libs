@@ -34,7 +34,7 @@ class test_helper
 public:
 	static bool send_all(internal_metrics& im, draiosproto::statsd_info* statsd_info)
 	{
-		return im.send_all(statsd_info);
+		return im.send_all(statsd_info, 0);
 	}
 };
 
