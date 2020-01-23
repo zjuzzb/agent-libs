@@ -63,6 +63,7 @@
 #include <thread>
 #include <memory>
 #include "configuration_manager.h"
+#include "test-helpers/scoped_config.h"
 
 using namespace std;
 
@@ -656,6 +657,7 @@ TEST_F(sys_call_test, net_web_requests)
 
 TEST_F(sys_call_test, net_ssl_requests)
 {
+	test_helpers::scoped_config<uint64_t> interval("flush_interval", 100 * ONE_SECOND_IN_NS);
 	//
 	// FILTER
 	//
@@ -720,9 +722,7 @@ TEST_F(sys_call_test, net_ssl_requests)
 		}
 	};
 
-	//
-	// Set a very long sample time, so we're sure no connection is removed
-	//
+
 	sinsp_configuration configuration;
 	ports_set ports;
 	ports.set(443);
