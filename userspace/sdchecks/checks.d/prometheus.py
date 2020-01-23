@@ -2,6 +2,11 @@
 # All rights reserved
 # Licensed under Simplified BSD License (see LICENSE)
 
+from __future__ import division
+from builtins import str
+from builtins import range
+from past.utils import old_div
+
 # stdlib
 import logging
 import math
@@ -96,7 +101,7 @@ class Prometheus(AgentCheck):
                         continue
 
                     if ingest_raw:
-                        rawtags = ['{}:{}'.format(k,v) for k,v in stags.iteritems()]
+                        rawtags = ['{}:{}'.format(k,v) for k,v in stags.items()]
 
                         if self.__check_tag_limits(max_tags, len(rawtags), pid, query_url, sname):
                             break
@@ -117,7 +122,7 @@ class Prometheus(AgentCheck):
                         reserved_tags.append('quantile')
                     elif family.type == 'histogram':
                         reserved_tags.append('le')
-                    tags = ['{}:{}'.format(k,v) for k,v in stags.iteritems() if k not in reserved_tags]
+                    tags = ['{}:{}'.format(k,v) for k,v in stags.items() if k not in reserved_tags]
 
                     if self.__check_tag_limits(max_tags, len(tags), pid, query_url, sname):
                         break
@@ -153,9 +158,9 @@ class Prometheus(AgentCheck):
                                 self.gauge(qname, value, tags + conf_tags)
                                 num += 1
                                 continue
-    
+
                         if parse_sum != None and parse_count != None:
-                            prev = self.metric_history.get(name+str(tags), None) 
+                            prev = self.metric_history.get(name+str(tags), None)
                             val = None
                             # The average value over our sample period is:
                             # val = (sum - prev_sum) / (count - prev_count)
@@ -166,7 +171,7 @@ class Prometheus(AgentCheck):
                             if prev and prev.get("sum") != None and prev.get("count") != None:
                                 dcnt = parse_count - prev.get("count")
                                 if dcnt > 0:
-                                    val = (parse_sum - prev.get("sum")) / dcnt
+                                    val = old_div((parse_sum - prev.get("sum")), dcnt)
                                 elif dcnt < 0:
                                     logging.info('prom: Descending count for %s%s' %(name, repr(tags)))
                             if val != None and not math.isnan(val):
@@ -199,15 +204,15 @@ class Prometheus(AgentCheck):
                         num += 1
 
                 # process the histograms and submit the buckets
-                for k,v in hists.iteritems():
+                for k,v in hists.items():
                     logging.debug('prom: processing histogram for %s%s' % (name, k))
-                    bkeys = sorted(v['buckets'].iterkeys())
+                    bkeys = sorted(v['buckets'].keys())
 
                     #self.__dump_histogram__(v['buckets'], bkeys, 'pre-processing')
 
                     # convert the histograms with cumulative counter to absolute counters
                     if len(v['buckets']) > 1:
-                        for i in xrange(len(bkeys)-1, 0, -1):
+                        for i in range(len(bkeys)-1, 0, -1):
                             v['buckets'][bkeys[i]] -= v['buckets'][bkeys[i-1]]
 
                     #self.__dump_histogram__(v['buckets'], bkeys, 'post-processing')
