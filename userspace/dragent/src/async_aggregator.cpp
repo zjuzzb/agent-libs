@@ -235,10 +235,6 @@ void async_aggregator::limit_jmx_attributes(draiosproto::metrics& metrics, uint3
 
 void async_aggregator::relocate_prom_metrics(draiosproto::proto_info& proto_info)
 {
-	if (!proto_info.prom_info().has_process_name())
-	{
-		return;
-	}
 	proto_info.mutable_prometheus()->set_allocated_process_name(proto_info.mutable_prom_info()->release_process_name());
 	for (uint32_t i = 0; i < proto_info.prom_info().metrics().size(); i++)
 	{
