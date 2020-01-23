@@ -574,7 +574,7 @@ void dragent_configuration::init()
 
 	if(m_server_port == 0)
 	{
-		m_server_port = m_config->get_scalar<uint16_t>("collector_port", 6666);
+		m_server_port = m_config->get_scalar<uint16_t>("collector_port", 6443);
 	}
 
 	m_machine_id_prefix = m_config->get_scalar<string>("machine_id_prefix", "");

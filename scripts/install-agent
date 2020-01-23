@@ -88,7 +88,7 @@ function help {
 	echo "        For example, \"role:webserver,location:europe\", \"role:webserver\""
 	echo "        and \"webserver\" are all valid alternatives."
 	echo "  collector: collector IP for Sysdig Monitor on-premises installation"
-	echo "  collector_port: collector port [default 6666]"
+	echo "  collector_port: collector port [default 6443]"
 	echo "  secure: use a secure SSL/TLS connection to send metrics to the collector"
 	echo "          accepted values: true or false [default true]"
 	echo "  check_certificate: disable strong SSL certificate check for Sysdig Monitor on-premises installation"

@@ -24,7 +24,7 @@ class INCOMING_VERBOSITY(Enum):
 
 # const globals
 HOST = 'localhost'
-PORT = 6666
+PORT = 6443
 DRAGENT_PROTOCOL_HEADER_SIZE = 6
 
 # Run a simple socket listener on a seperate thread

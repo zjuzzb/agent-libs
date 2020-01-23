@@ -34,7 +34,7 @@ public class YamlConfigTest {
     @Test
     public void getSingle() {
         assertEquals("mystring", yamlConfig.getSingle("mykey", ""));
-        assertEquals(Integer.valueOf(6666), yamlConfig.getSingle("server.port", 7890));
+        assertEquals(Integer.valueOf(6443), yamlConfig.getSingle("server.port", 7890));
         assertEquals("collector-staging.sysdigcloud.com", yamlConfig.getSingle("server.address", ""));
         assertEquals(true, yamlConfig.getSingle("mybool", false));
     }

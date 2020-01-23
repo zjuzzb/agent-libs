@@ -35,7 +35,7 @@ TEST(yaml_conf, get_scalar)
 	EXPECT_EQ("value", conf.get_scalar<string>("mykeydefault", ""));
 	EXPECT_EQ("value", conf.get_scalar<string>("mykeynotpresent", "value"));
 	EXPECT_EQ(true, conf.get_scalar<bool>("mybool", false));
-	EXPECT_EQ(6666, conf.get_scalar<int>("server", "port", 0));
+	EXPECT_EQ(6443, conf.get_scalar<int>("server", "port", 0));
 	EXPECT_EQ("collector-staging.sysdigcloud.com", conf.get_scalar<string>("server", "address", ""));
 	EXPECT_EQ(40, conf.get_scalar<int>("mynested", "secondkey", "subkey", -1));
 

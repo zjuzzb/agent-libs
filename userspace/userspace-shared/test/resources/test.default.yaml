@@ -11,7 +11,7 @@ myarray:
 mybool: true
 server:
   address: "collector.sysdigcloud.com"
-  port: 6666
+  port: 6443
 events:
   docker:
     container: [all]
