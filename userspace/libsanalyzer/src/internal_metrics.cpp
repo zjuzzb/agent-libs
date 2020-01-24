@@ -435,6 +435,10 @@ void internal_metrics::send_secure_audit_metrics(draiosproto::statsd_info* stats
 		             "dragent.secure_audit.k8s",
 		             draiosproto::STATSD_GAUGE,
 		             get_secure_audit_k8s_count());
+		write_metric(statsd_info, 
+			     "dragent.secure_audit.file_accesses",
+			     draiosproto::STATSD_GAUGE,
+			     get_secure_audit_file_accesses_count());
 		write_metric(statsd_info,
 		             "dragent.secure_audit.executed_commands_drop",
 		             draiosproto::STATSD_GAUGE,
@@ -444,6 +448,10 @@ void internal_metrics::send_secure_audit_metrics(draiosproto::statsd_info* stats
 		             draiosproto::STATSD_GAUGE,
 		             get_secure_audit_connections_dropped_count());
 		write_metric(statsd_info,
+			     "dragent.secure_audit.file_accesses_drop",
+			     draiosproto::STATSD_GAUGE,
+			     get_secure_audit_file_accesses_dropped_count());
+		write_metric(statsd_info,
 		             "dragent.secure_audit.k8s_drop",
 		             draiosproto::STATSD_GAUGE,
 		             get_secure_audit_k8s_dropped_count());
@@ -452,6 +460,10 @@ void internal_metrics::send_secure_audit_metrics(draiosproto::statsd_info* stats
 		             "dragent.secure_audit.connections_no_interactive_drop",
 		             draiosproto::STATSD_GAUGE,
 		             get_secure_audit_connections_not_interactive_dropped());
+		write_metric(statsd_info,
+			     "dragent.secure_audit.file_accesses_no_interactive_drop",
+			     draiosproto::STATSD_GAUGE,
+			     get_secure_audit_file_accesses_not_interactive_dropped_count());
 		write_metric(statsd_info,
 		             "dragent.secure_audit.k8s_enrich_errors",
 		             draiosproto::STATSD_GAUGE,

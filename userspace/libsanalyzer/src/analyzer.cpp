@@ -623,7 +623,7 @@ void sinsp_analyzer::on_capture_start()
 
 	if (m_secure_audit != nullptr)
 	{
-		m_secure_audit->init(m_ipv4_connections);
+		m_secure_audit->init(m_ipv4_connections, m_fd_listener);
 	}
 
 	const std::set<double>& pctls = m_configuration->get_percentiles();
@@ -1004,23 +1004,31 @@ void sinsp_analyzer::set_secure_audit_internal_metrics(const int n_sent_protobuf
 }
 
 void sinsp_analyzer::set_secure_audit_sent_counters(int n_executed_commands,
-                                                    int n_connections,
-                                                    int n_k8s,
-                                                    int n_executed_commands_dropped,
-                                                    int n_connections_dropped,
-                                                    int n_k8s_dropped,
-                                                    int n_connections_not_interactive_dropped,
-                                                    int n_k8s_enrich_errors)
+						    int n_connections,
+						    int n_k8s,
+						    int n_file_accesses,
+						    int n_executed_commands_dropped,
+						    int n_connections_dropped,
+						    int n_k8s_dropped,
+						    int n_file_accesses_dropped,
+						    int n_connections_not_interactive_dropped,
+						    int n_file_accesses_not_interactive_dropped,
+						    int n_k8s_enrich_errors)
 {
 	m_internal_metrics->set_secure_audit_executed_commands_count(n_executed_commands);
 	m_internal_metrics->set_secure_audit_connections_count(n_connections);
 	m_internal_metrics->set_secure_audit_k8s_count(n_k8s);
 	m_internal_metrics->set_secure_audit_executed_commands_dropped_count(
 	    n_executed_commands_dropped);
+	m_internal_metrics->set_secure_audit_file_accesses_count(n_file_accesses);
+
 	m_internal_metrics->set_secure_audit_connections_dropped_count(n_connections_dropped);
+	m_internal_metrics->set_secure_audit_file_accesses_dropped_count(n_file_accesses_dropped);
 	m_internal_metrics->set_secure_audit_k8s_dropped_count(n_k8s_dropped);
 	m_internal_metrics->set_secure_audit_connections_not_interactive_dropped(
 	    n_connections_not_interactive_dropped);
+	m_internal_metrics->set_secure_audit_file_accesses_not_interactive_dropped(
+	    n_file_accesses_not_interactive_dropped);
 	m_internal_metrics->set_secure_audit_k8s_enrich_errors(n_k8s_enrich_errors);
 }
 

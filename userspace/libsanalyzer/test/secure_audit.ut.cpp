@@ -32,18 +32,23 @@ public:
 	secure_audit_internal_metrics_dummy();
 	void set_secure_audit_internal_metrics(int n_sent_protobufs, uint64_t flush_time_ms) override;
 	void set_secure_audit_sent_counters(int n_executed_commands,
-	                                    int n_connections,
-	                                    int n_k8s,
-	                                    int n_executed_commands_dropped,
-	                                    int n_connections_dropped,
-	                                    int n_k8s_dropped,
-	                                    int n_connections_not_interactive_dropped,
-	                                    int n_k8s_enrich_errors) override;
+					    int n_connections,
+					    int n_k8s,
+					    int n_file_accesses,
+					    int n_executed_commands_dropped,
+					    int n_connections_dropped,
+					    int n_k8s_dropped,
+					    int n_file_accesses_dropped,
+					    int n_connections_not_interactive_dropped,
+					    int n_file_accesses_not_interactive_dropped,
+					    int n_k8s_enrich_errors) override;
 
 	int get_secure_audit_n_sent_protobufs() const;
 	int get_secure_audit_fl_ms() const;
 	int get_secure_audit_connections_count() const;
 	int get_secure_audit_connections_dropped_count() const;
+	int get_secure_audit_file_accesses_count() const;
+	int get_secure_audit_file_accesses_dropped_count() const;
 
 private:
 	int m_sent_protobufs;
@@ -51,24 +56,30 @@ private:
 	int m_executed_commands;
 	int m_connections;
 	int m_k8s;
+	int m_file_accesses;
 	int m_executed_commands_dropped;
 	int m_connections_dropped;
 	int m_k8s_dropped;
+	int m_file_accesses_dropped;
 	int m_connections_not_interactive_dropped;
+	int m_file_accesses_not_interactive_dropped;
 	int m_k8s_enrich_errors;
 };
 
-secure_audit_internal_metrics_dummy::secure_audit_internal_metrics_dummy()
-    : m_sent_protobufs(-1),
-      m_flush_time_ms(-1),
-      m_executed_commands(-1),
-      m_connections(-1),
-      m_k8s(-1),
-      m_executed_commands_dropped(-1),
-      m_connections_dropped(-1),
-      m_k8s_dropped(-1),
-      m_connections_not_interactive_dropped(-1),
-      m_k8s_enrich_errors(-1)
+secure_audit_internal_metrics_dummy::secure_audit_internal_metrics_dummy():
+	m_sent_protobufs(-1),
+	m_flush_time_ms(-1),
+	m_executed_commands(-1),
+	m_connections(-1),
+	m_k8s(-1),
+	m_file_accesses(-1),
+	m_executed_commands_dropped(-1),
+	m_connections_dropped(-1),
+	m_k8s_dropped(-1),
+	m_file_accesses_dropped(-1),
+	m_connections_not_interactive_dropped(-1),
+	m_file_accesses_not_interactive_dropped(-1),
+	m_k8s_enrich_errors(-1)
 {
 }
 
@@ -79,23 +90,29 @@ void secure_audit_internal_metrics_dummy::set_secure_audit_internal_metrics(int 
 	m_flush_time_ms = flush_time_ms;
 }
 
-void secure_audit_internal_metrics_dummy::set_secure_audit_sent_counters(
-    int n_executed_commands,
-    int n_connections,
-    int n_k8s,
-    int n_executed_commands_dropped,
-    int n_connections_dropped,
-    int n_k8s_dropped,
-    int n_connections_not_interactive_dropped,
-    int n_k8s_enrich_errors)
+void secure_audit_internal_metrics_dummy::set_secure_audit_sent_counters(int n_executed_commands,
+	int n_connections,
+	int n_k8s,
+	int n_file_accesses,
+	int n_executed_commands_dropped,
+	int n_connections_dropped,
+	int n_k8s_dropped,
+	int n_file_accesses_dropped,
+	int n_connections_not_interactive_dropped,
+	int n_file_accesses_not_interactive_dropped,
+	int n_k8s_enrich_errors)
+
 {
 	m_executed_commands = n_executed_commands;
 	m_connections = n_connections;
 	m_k8s = n_k8s;
+	m_file_accesses = n_file_accesses;
 	m_executed_commands_dropped = n_executed_commands_dropped;
 	m_connections_dropped = n_connections_dropped;
 	m_k8s_dropped = n_k8s_dropped;
+	m_file_accesses_dropped = n_file_accesses_dropped;
 	m_connections_not_interactive_dropped = n_connections_not_interactive_dropped;
+	m_file_accesses_not_interactive_dropped = n_file_accesses_not_interactive_dropped;
 	m_k8s_enrich_errors = n_k8s_enrich_errors;
 }
 
@@ -117,6 +134,16 @@ int secure_audit_internal_metrics_dummy::get_secure_audit_connections_count() co
 int secure_audit_internal_metrics_dummy::get_secure_audit_connections_dropped_count() const
 {
 	return m_connections_dropped;
+}
+
+int secure_audit_internal_metrics_dummy::get_secure_audit_file_accesses_count() const
+{
+	return m_file_accesses;
+}
+
+int secure_audit_internal_metrics_dummy::get_secure_audit_file_accesses_dropped_count() const
+{
+	return m_file_accesses_dropped;
 }
 
 // dummy implementation used for testing
@@ -1108,6 +1135,288 @@ void check_connections_helper(secure_audit* audit,
 	}
 }
 
+struct file_access_testcase {
+	uint64_t ts;
+	std::string fullpath;
+	uint32_t flags;
+};
+
+void add_file_access_helper(secure_audit* audit,
+			    std::vector<file_access_testcase> testcases,
+			    bool interactive = false)
+{
+	const int64_t expected_pid = 7;
+	const std::string expected_name = "/usr/bin/add_file_access_helper";
+	const std::string expected_comm = "add_file_access_helper";
+
+	const std::string expected_container_id = "sysd1gcl0ud2";
+
+	// Build Thread Info
+	sinsp_mock inspector;
+
+	inspector.build_thread()
+		.pid(expected_pid)
+		.comm(expected_comm)
+		.exe(expected_name)
+		.commit();
+
+	inspector.open();
+
+	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
+	proc = inspector.get_thread_ref(expected_pid,
+					false /*don't query the os if not found*/,
+					true /*lookup only*/);
+
+	proc->m_container_id = expected_container_id;
+
+	sinsp_threadinfo* main_thread = proc->get_main_thread();
+	thread_analyzer_info* tainfo = new thread_analyzer_info();
+	main_thread->m_ainfo = tainfo;
+
+	ASSERT_NE(main_thread, nullptr);
+	ASSERT_NE(main_thread->m_ainfo, nullptr);
+
+	if(interactive)
+	{
+		// Set process as interactive
+		main_thread->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
+	}
+	else
+	{
+		// Set process as no INTERACTIVE
+		main_thread->m_ainfo->m_th_analysis_flags &= ~thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
+	}
+
+	// Sanity checks for Thread Info
+	ASSERT_EQ(expected_pid, proc->m_pid);
+	ASSERT_EQ(expected_pid, proc->m_tid);
+	ASSERT_EQ(expected_name, proc->m_exe);
+	ASSERT_EQ(expected_comm, proc->get_comm());
+	ASSERT_EQ(expected_container_id, proc->m_container_id);
+
+	for (auto testcase : testcases) {
+		audit->emit_file_access_async(proc.get(), testcase.ts, testcase.fullpath, testcase.flags);
+	}
+}
+
+struct file_access_expected {
+	uint64_t ts;
+	std::string directory;
+	std::string file_name;
+	std::string permissions;
+};
+
+void check_file_access_helper(secure_audit* audit,
+			      secure_audit_data_ready_dummy* data_ready,
+			      std::vector<file_access_expected> expected)
+{
+	const int64_t expected_pid = 7;
+	const std::string expected_name = "/usr/bin/add_file_access_helper";
+	const std::string expected_comm = "add_file_access_helper";
+
+	const std::string expected_container_id = "sysd1gcl0ud2";
+
+	const secure::Audit* audit_pb = data_ready->get_secure_audits_once();
+	if(expected.size() == 0)
+	{
+		ASSERT_EQ(nullptr, audit_pb);
+		return;
+	}
+
+	ASSERT_NE(nullptr, audit_pb);
+
+	ASSERT_EQ(audit_pb->file_accesses_size(), expected.size());
+
+	for (uint64_t i = 0; i < expected.size(); i++) {
+		const secure::FileAccess& f = audit_pb->file_accesses(i);
+		ASSERT_EQ(expected[i].directory, f.directory());
+		ASSERT_EQ(expected[i].file_name, f.file_name());
+		ASSERT_EQ(expected[i].permissions, f.permissions());
+		ASSERT_EQ(expected[i].ts, f.timestamp());
+		ASSERT_EQ(expected_pid, f.pid());
+		ASSERT_EQ(expected_comm, f.comm());
+		ASSERT_EQ(expected_container_id, f.container_id());
+	}
+}
+
+TEST(secure_audit_test, file_writes_disabled)
+{
+	// Secure Audit
+	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
+	test_helpers::scoped_config<bool> enable_file_writes("secure_audit_streams.file_writes", false);
+	test_helpers::scoped_config<bool> enable_interactive_file_writes("secure_audit_streams.file_writes_only_interactive", false);
+
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&internal_metrics_handler);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
+
+	// Test empty protobuf
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
+
+	add_file_access_helper(&audit, {{ts, "/home/test/test_file", PPM_O_WRONLY}}, true);
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	check_file_access_helper(&audit, &data_ready_handler, {});
+}
+
+TEST(secure_audit_test, file_writes_interactive)
+{
+	// Secure Audit
+	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
+	test_helpers::scoped_config<bool> enable_file_writes("secure_audit_streams.file_writes", true);
+	test_helpers::scoped_config<bool> enable_interactive_file_writes("secure_audit_streams.file_writes_only_interactive", true);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&internal_metrics_handler);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
+
+	// Test empty protobuf
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
+
+	add_file_access_helper(&audit, {{ts, "/home/test/test_file", PPM_O_WRONLY}}, true);
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	check_file_access_helper(&audit, &data_ready_handler, {{ts, "/home/test/", "test_file", "w"}});
+}
+
+TEST(secure_audit_test, file_writes_not_interactive_filtered)
+{
+	// Secure Audit
+	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
+	test_helpers::scoped_config<bool> enable_file_writes("secure_audit_streams.file_writes", true);
+	test_helpers::scoped_config<bool> enable_interactive_file_writes("secure_audit_streams.file_writes_only_interactive", true);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&internal_metrics_handler);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
+
+	// Test empty protobuf
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
+
+	add_file_access_helper(&audit, {{ts, "/home/test/test_file", PPM_O_WRONLY}}, false);
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	check_file_access_helper(&audit, &data_ready_handler, {});
+}
+
+TEST(secure_audit_test, file_writes_blacklisted)
+{
+	// Secure Audit
+	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
+	test_helpers::scoped_config<bool> enable_file_writes("secure_audit_streams.file_writes", true);
+	test_helpers::scoped_config<bool> enable_interactive_file_writes("secure_audit_streams.file_writes_only_interactive", true);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&internal_metrics_handler);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
+
+	// Test empty protobuf
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
+
+	add_file_access_helper(&audit, {
+		{ts+0, "/home/test/test_file", PPM_O_WRONLY}, 
+		{ts+1, "/dev/null", PPM_O_WRONLY},
+		{ts+2, "/home/another_regular_file", PPM_O_WRONLY},
+	}, true);
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	check_file_access_helper(&audit, &data_ready_handler, {
+		{ts+0, "/home/test/", "test_file", "w"},
+		{ts+2, "/home/", "another_regular_file", "w"}});
+}
+
+TEST(secure_audit_test, file_writes_excluded)
+{
+	// Secure Audit
+	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
+	test_helpers::scoped_config<bool> enable_file_writes("secure_audit_streams.file_writes", true);
+	test_helpers::scoped_config<bool> enable_interactive_file_writes("secure_audit_streams.file_writes_only_interactive", true);
+	test_helpers::scoped_config<std::vector<std::string>> file_writes_exclude("secure_audit_streams.file_writes_exclude", 
+		{"/home/excluded_file", "/home/excluded_directory/*"});
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&internal_metrics_handler);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
+
+	// Test empty protobuf
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
+
+	audit.init(nullptr, nullptr);
+
+	add_file_access_helper(&audit, {
+		{ts+0, "/home/test/test_file", PPM_O_WRONLY}, 
+		{ts+1, "/dev/null", PPM_O_WRONLY},
+		{ts+2, "/home/another_regular_file", PPM_O_WRONLY},
+		{ts+3, "/home/excluded_file", PPM_O_WRONLY},
+		{ts+4, "/home/excluded_directory/filename.txt", PPM_O_WRONLY}
+	}, true);
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	check_file_access_helper(&audit, &data_ready_handler, {
+		{ts+0, "/home/test/", "test_file", "w"},
+		{ts+2, "/home/", "another_regular_file", "w"}});
+}
+
+TEST(secure_audit_test, file_writes_flags)
+{
+	// Secure Audit
+	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
+	test_helpers::scoped_config<bool> enable_file_writes("secure_audit_streams.file_writes", true);
+	test_helpers::scoped_config<bool> enable_interactive_file_writes("secure_audit_streams.file_writes_only_interactive", true);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&internal_metrics_handler);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
+
+	// Test empty protobuf
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
+
+	add_file_access_helper(&audit, {
+		{ts+0, "/test_file_wronly", PPM_O_WRONLY},
+		{ts+1, "/test_file_rdwrite", PPM_O_RDWR},
+		{ts+2, "/test_file_append", PPM_O_WRONLY | PPM_O_APPEND},
+		{ts+3, "/test_file_rwcreat", PPM_O_CREAT | PPM_O_RDWR}
+	}, true);
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	check_file_access_helper(&audit, &data_ready_handler, {
+		{ts+0, "/", "test_file_wronly", "w"},
+		{ts+1, "/", "test_file_rdwrite", "rw"},
+		{ts+2, "/", "test_file_append", "w"},
+		{ts+3, "/", "test_file_rwcreat", "rw"}});
+}
+
 TEST(secure_audit_test, connections_base_client)
 {
 	// Secure Audit
@@ -1957,7 +2266,7 @@ secure_audit_streams:
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.init(nullptr);
+	audit.init(nullptr, nullptr);
 
 	// Flush with no data -> no protobuf emitted
 	audit.flush(ts);
@@ -2060,4 +2369,39 @@ TEST(secure_audit_test, connections_limit_metrics)
 	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 1);
 	ASSERT_EQ(internal_metrics_handler.get_secure_audit_connections_count(), 2);
 	ASSERT_EQ(internal_metrics_handler.get_secure_audit_connections_dropped_count(), 1);
+}
+
+TEST(secure_audit_test, file_accesses_limit_metrics)
+{
+	// Secure Audit
+	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
+	test_helpers::scoped_config<bool> enable_file_writes("secure_audit_streams.file_writes", true);
+	test_helpers::scoped_config<int> enable_file_accesses_limit("secure_audit_streams.file_accesses_limit", 2);
+
+	secure_audit audit;
+	secure_audit_data_ready_dummy data_ready_handler;
+	secure_audit_internal_metrics_dummy internal_metrics_handler;
+
+	audit.set_data_handler(&data_ready_handler);
+	audit.set_internal_metrics(&internal_metrics_handler);
+
+	uint64_t ts = sinsp_utils::get_current_time_ns();
+
+	// Test empty protobuf
+	audit.flush(ts);
+	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
+
+	add_file_access_helper(&audit, {
+		{ts+0, "/home/test/test_file_0", PPM_O_WRONLY},
+		{ts+1, "/home/test/test_file_1", PPM_O_WRONLY},
+		{ts+2, "/home/test/test_file_2", PPM_O_WRONLY},
+	}, true);
+	audit.flush((uint64_t)ts + (uint64_t)DEFAULT_FREQUENCY);
+	check_file_access_helper(&audit, &data_ready_handler, {
+		{ts+0, "/home/test/", "test_file_0", "w"},
+		{ts+1, "/home/test/", "test_file_1", "w"}});
+
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_n_sent_protobufs(), 1);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_file_accesses_count(), 2);
+	ASSERT_EQ(internal_metrics_handler.get_secure_audit_file_accesses_dropped_count(), 1);
 }

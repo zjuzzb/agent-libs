@@ -1015,15 +1015,23 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 
 void sinsp_analyzer_fd_listener::on_file_open(sinsp_evt* evt, const std::string& fullpath, uint32_t flags)
 {
-	//
-	// File open count update
-	//
 	if(evt->m_fdinfo && evt->m_errorcode == 0)
 	{
 		ASSERT(evt->m_fdinfo->is_file());
 		ASSERT(evt->m_fdinfo->m_name == fullpath);
 		if(evt->m_fdinfo->is_file())
 		{
+			if(flags & (PPM_O_WRONLY | PPM_O_CREAT | PPM_O_APPEND))
+			{
+				for(const auto &on_file_open_write_cb : m_on_file_open_write_cb)
+				{
+					on_file_open_write_cb(evt->get_thread_info(), evt->get_ts(), fullpath, flags);
+				}
+			}
+
+			//
+			// File open count update
+			//
 			account_file_open(evt->get_thread_info(), fullpath, evt->m_fdinfo->m_dev);
 		}
 	}

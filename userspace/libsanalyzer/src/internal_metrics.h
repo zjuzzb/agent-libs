@@ -118,10 +118,13 @@ public:
 	void set_secure_audit_executed_commands_count(int64_t val);
 	void set_secure_audit_connections_count(int64_t val);
 	void set_secure_audit_k8s_count(int64_t val);
+	void set_secure_audit_file_accesses_count(int64_t val);
 	void set_secure_audit_executed_commands_dropped_count(int64_t val);
 	void set_secure_audit_connections_dropped_count(int64_t val);
 	void set_secure_audit_k8s_dropped_count(int64_t val);
+	void set_secure_audit_file_accesses_dropped_count(int64_t val);
 	void set_secure_audit_connections_not_interactive_dropped(int64_t val);
+	void set_secure_audit_file_accesses_not_interactive_dropped(int64_t val);
 	void set_secure_audit_k8s_enrich_errors(int64_t val);
 
 	// Set the process ids associated with the various
@@ -149,10 +152,13 @@ public:
 	int64_t get_secure_audit_executed_commands_count() const;
 	int64_t get_secure_audit_connections_count() const;
 	int64_t get_secure_audit_k8s_count() const;
+	int64_t get_secure_audit_file_accesses_count() const;
 	int64_t get_secure_audit_executed_commands_dropped_count() const;
 	int64_t get_secure_audit_connections_dropped_count() const;
 	int64_t get_secure_audit_k8s_dropped_count() const;
+	int64_t get_secure_audit_file_accesses_dropped_count() const;
 	int64_t get_secure_audit_connections_not_interactive_dropped() const;
+	int64_t get_secure_audit_file_accesses_not_interactive_dropped_count() const;
 	int64_t get_secure_audit_k8s_enrich_errors() const;
 
 	// For other metrics sources e.g. security manager event
@@ -309,10 +315,13 @@ private:
 		int64_t secure_audit_executed_commands_count = -1;
 		int64_t secure_audit_connections_count = -1;
 		int64_t secure_audit_k8s_count = -1;
+		int64_t secure_audit_file_accesses_count = -1;
 		int64_t secure_audit_executed_commands_dropped_count = -1;
 		int64_t secure_audit_connections_dropped_count = -1;
+		int64_t secure_audit_file_accesses_dropped_count = -1;
 		int64_t secure_audit_k8s_dropped_count = -1;
 		int64_t secure_audit_connections_not_interactive_dropped = -1;
+		int64_t secure_audit_file_accesses_not_interactive_dropped_count = -1;
 		int64_t secure_audit_k8s_enrich_errors = -1;
 
 		int64_t agent_cpu;
@@ -698,6 +707,11 @@ inline void internal_metrics::set_secure_audit_connections_count(int64_t val)
 	m_analyzer.secure_audit_connections_count = val;
 }
 
+inline void internal_metrics::set_secure_audit_file_accesses_count(int64_t val)
+{
+	m_analyzer.secure_audit_file_accesses_count = val;
+}
+
 inline void internal_metrics::set_secure_audit_k8s_count(int64_t val)
 {
 	m_analyzer.secure_audit_k8s_count = val;
@@ -718,9 +732,19 @@ inline void internal_metrics::set_secure_audit_k8s_dropped_count(int64_t val)
 	m_analyzer.secure_audit_k8s_dropped_count = val;
 }
 
+inline void internal_metrics::set_secure_audit_file_accesses_dropped_count(int64_t val)
+{
+	m_analyzer.secure_audit_file_accesses_dropped_count = val;
+}
+
 inline void internal_metrics::set_secure_audit_connections_not_interactive_dropped(int64_t val)
 {
 	m_analyzer.secure_audit_connections_not_interactive_dropped = val;
+}
+
+inline void internal_metrics::set_secure_audit_file_accesses_not_interactive_dropped(int64_t val)
+{
+	m_analyzer.secure_audit_file_accesses_not_interactive_dropped_count = val;
 }
 
 inline void internal_metrics::set_secure_audit_k8s_enrich_errors(int64_t val)
@@ -743,6 +767,11 @@ inline int64_t internal_metrics::get_secure_audit_k8s_count() const
 	return m_analyzer.secure_audit_k8s_count;
 }
 
+inline int64_t internal_metrics::get_secure_audit_file_accesses_count() const
+{
+	return m_analyzer.secure_audit_file_accesses_count;
+}
+
 inline int64_t internal_metrics::get_secure_audit_executed_commands_dropped_count() const
 {
 	return m_analyzer.secure_audit_executed_commands_dropped_count;
@@ -758,9 +787,19 @@ inline int64_t internal_metrics::get_secure_audit_k8s_dropped_count() const
 	return m_analyzer.secure_audit_k8s_dropped_count;
 }
 
+inline int64_t internal_metrics::get_secure_audit_file_accesses_dropped_count() const
+{
+	return m_analyzer.secure_audit_file_accesses_dropped_count;
+}
+
 inline int64_t internal_metrics::get_secure_audit_connections_not_interactive_dropped() const
 {
 	return m_analyzer.secure_audit_connections_not_interactive_dropped;
+}
+
+inline int64_t internal_metrics::get_secure_audit_file_accesses_not_interactive_dropped_count() const
+{
+	return m_analyzer.secure_audit_file_accesses_not_interactive_dropped_count;
 }
 
 inline int64_t internal_metrics::get_secure_audit_k8s_enrich_errors() const

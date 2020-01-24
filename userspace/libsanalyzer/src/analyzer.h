@@ -569,13 +569,16 @@ public:
 	void set_secure_audit_internal_metrics(int n_sent_protobufs, uint64_t flush_time_ms) override;
 
 	void set_secure_audit_sent_counters(int n_executed_commands,
-	                                    int n_connections,
-	                                    int n_k8s,
-	                                    int n_executed_commands_dropped,
-	                                    int n_connections_dropped,
-	                                    int n_k8s_dropped,
-	                                    int n_connections_not_interactive_dropped,
-	                                    int n_k8s_enrich_errors) override;
+					    int n_connections,
+					    int n_k8s,
+					    int n_file_accesses,
+					    int n_executed_commands_dropped,
+					    int n_connections_dropped,
+					    int n_k8s_dropped,
+					    int n_file_accesses_dropped,
+					    int n_connections_not_interactive_dropped,
+					    int n_file_accesses_not_interactive_dropped,
+					    int n_k8s_enrich_errors) override;
 
 	void secure_audit_filter_and_append_k8s_audit(
 	    const nlohmann::json& j,

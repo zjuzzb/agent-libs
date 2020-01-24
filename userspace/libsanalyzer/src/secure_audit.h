@@ -7,6 +7,7 @@
 #include "analyzer.h"
 #include "common_logger.h"
 #include "connectinfo.h"
+#include "analyzer_fd.h"
 #include "type_config.h"
 #include "analyzer_thread.h"
 #include "infrastructure_state.h"
@@ -47,10 +48,11 @@ public:
 	void set_data_handler(secure_audit_data_ready_handler* handler);
 	void set_internal_metrics(secure_audit_internal_metrics* internal_metrics);
 
-	void init(sinsp_ipv4_connection_manager* conn);
+	void init(sinsp_ipv4_connection_manager* conn, sinsp_analyzer_fd_listener *analyzer_fd_listener);
 
 	void emit_commands_audit(std::unordered_map<std::string, std::vector<sinsp_executed_command>>* executed_commands);
 	void emit_connection_async(const _ipv4tuple& tuple, sinsp_connection& conn, sinsp_connection::state_transition transition);
+	void emit_file_access_async(sinsp_threadinfo* tinfo, uint64_t ts, const std::string& fullpath, uint32_t flags);
 	void filter_and_append_k8s_audit(const nlohmann::json& j,
 					 std::vector<std::string>& k8s_active_filters,
 					 std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters,
@@ -61,11 +63,16 @@ public:
 	static type_config<int> c_secure_audit_executed_commands_per_container_limit;
 	static type_config<int> c_secure_audit_executed_commands_limit;
 	static type_config<bool> c_secure_audit_connections_enabled;
+	static type_config<bool> c_secure_audit_file_writes_enabled;
+	static type_config<std::vector<std::string>> c_secure_audit_file_writes_exclude;
+	static type_config<bool> c_secure_audit_file_writes_cmdline;
+	static type_config<bool> c_secure_audit_file_writes_only_interactive;
 	static type_config<bool> c_secure_audit_connections_local;
 	static type_config<bool> c_secure_audit_connections_cmdline;
 	static type_config<int> c_secure_audit_connections_cmdline_maxlen;
 	static type_config<bool> c_secure_audit_connections_only_interactive;
 	static type_config<int> c_secure_audit_connections_limit;
+	static type_config<int> c_secure_audit_file_accesses_limit;
 	static type_config<bool> c_secure_audit_k8s_audit_enabled;
 	static type_config<int> c_secure_audit_k8s_limit;
 	static type_config<int>::mutable_ptr c_secure_audit_frequency;
@@ -81,10 +88,14 @@ private:
 	const secure::Audit* get_events(uint64_t timestamp);
 	void clear();
 
+	static const std::vector<std::string> BLACKLISTED_FILES;
+	std::vector<wildcard_filter<std::string>> m_file_writes_exclude_filters;
+
 	secure_audit_data_ready_handler* m_audit_data_handler;
 	secure_audit_internal_metrics* m_audit_internal_metrics;
 	secure::Audit* m_secure_audit_batch;
 	sinsp_ipv4_connection_manager* m_connection_manager;
+	sinsp_analyzer_fd_listener* m_analyzer_fd_listener;
 	std::unique_ptr<run_on_interval> m_get_events_interval;
 	bool secure_audit_sent;
 	bool secure_audit_run;
@@ -92,11 +103,14 @@ private:
 	int m_executed_commands_count;
 	int m_connections_count;
 	int m_k8s_audit_count;
+	int m_file_accesses_count;
 
 	int m_executed_commands_dropped_count;
 	int m_connections_dropped_count;
 	int m_k8s_audit_dropped_count;
+	int m_file_accesses_dropped_count;
 
 	int m_connections_not_interactive_dropped_count;
+	int m_file_accesses_not_interactive_dropped_count;
 	int m_k8s_audit_enrich_errors_count;
 };

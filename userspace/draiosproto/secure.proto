@@ -9,6 +9,7 @@ message Audit {
     repeated Connection connections = 3;
     repeated ExecutedCommand executed_commands = 4;
     repeated K8sAudit k8s_audits = 5;
+    repeated FileAccess file_accesses = 6;
 }
 
 enum ConnectionStatus {
@@ -73,4 +74,15 @@ message K8sAudit {
     string blob = 1; // String representation of Json Audit event
     string container_id = 2;
     string hostname = 3;
+}
+
+message FileAccess {
+    string directory = 1;
+    string file_name = 2;
+    string permissions = 3;
+    uint64 pid = 4;
+    uint64 timestamp = 5;
+    string container_id = 6;
+    string comm = 7;
+    string cmdline = 8;
 }

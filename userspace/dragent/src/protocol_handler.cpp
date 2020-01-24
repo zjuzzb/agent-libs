@@ -283,6 +283,7 @@ void protocol_handler::secure_audit_data_ready(uint64_t ts_ns, const secure::Aud
 			   + ", conn=" + NumberFormatter::format(secure_audit->connections().size())
 			   + ", cmd=" + NumberFormatter::format(secure_audit->executed_commands().size())
 			   + ", ke=" + NumberFormatter::format(secure_audit->k8s_audits().size())
+			   + ", file=" + NumberFormatter::format(secure_audit->file_accesses().size())
 			   );
 
 	if(!m_queue.put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))

@@ -35,6 +35,12 @@ public:
 	bool patch_network_role(sinsp_threadinfo* ptinfo, sinsp_fdinfo_t* pfdinfo, bool incoming);
 	void set_ipv4_connection_manager(sinsp_ipv4_connection_manager* ipv4_connection_manager);
 
+	using on_file_open_cb = std::function<void(sinsp_threadinfo* tinfo, uint64_t ts, const std::string& fullpath, uint32_t flags)>;
+	// Register a callback for every file opened for writing
+	void subscribe_on_file_open_write(on_file_open_cb callback) {
+		m_on_file_open_write_cb.emplace_back(callback);
+	}
+
 	analyzer_top_file_stat_map m_files_stat;
 	analyzer_top_device_stat_map m_devs_stat;
 
@@ -69,4 +75,5 @@ private:
 	sinsp_proto_detector m_proto_detector;
 	sinsp_configuration* m_sinsp_config;
 	sinsp_ipv4_connection_manager* m_ipv4_connections;
+	std::list<on_file_open_cb> m_on_file_open_write_cb;
 };
