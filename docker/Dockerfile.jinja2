@@ -68,7 +68,6 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false \
         software-properties-common \
         {% if not p.thin %}
             python \
-            python3.7 \
             && apt-get install -y --no-install-recommends apt-transport-https \
             && curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - \
             && apt-add-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs | sed 's/^sid$/buster/') stable" \
@@ -225,3 +224,4 @@ rm /opt/draios/share/sdjagent.jar
 {% endif %}
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
+

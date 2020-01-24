@@ -4,26 +4,19 @@ import sys
 import os.path
 
 install_prefix = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, install_prefix + '/lib/python')
 
 # Get python version
-python_version = sys.version_info[0:2]
-bin_deps_dir = install_prefix + '/lib/python-deps%d.%d' % python_version
+python_version = "%d.%d" % sys.version_info[:2]
 
-if python_version == (2, 6):
+# Add our path, before system ones to avoid collisions
+bin_deps_dir = install_prefix + '/lib/python-deps%s' % python_version
+sys.path.insert(0, install_prefix + '/lib/python')
+
+if python_version == "2.6":
     sys.path.insert(1, bin_deps_dir)
 else:
     sys.path.insert(1, install_prefix + '/lib/python-deps')
-    if python_version == (2, 7):
-        sys.path.insert(2, bin_deps_dir)
-    elif (3, 5) <= python_version <= (3, 7):
-        sys.path.insert(2, bin_deps_dir)
-        bin_deps3_common_dir = install_prefix + '/lib/python-deps3'
-        sys.path.insert(3, bin_deps3_common_dir)
-        site.addsitedir(bin_deps3_common_dir)
-    else:
-        raise Exception('Python version (%d.%d) is not supported. Please use Python2.7/3.5/3.6/3.7' % python_version)
-
+    sys.path.insert(2, bin_deps_dir)
 
 # Add site dirs so .pth files are evaluated
 site.addsitedir(install_prefix + '/lib/python-deps')

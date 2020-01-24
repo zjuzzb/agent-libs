@@ -455,34 +455,6 @@ if [ $OS != "Windows_NT" ]; then
 		make -j $MAKE_JOBS install
 	fi
 
-	PYTHON36_VER=3.6.9
-	PYTHON36_EXT=tgz
-	PYTHON36_DIR=$DEPENDENCIES/Python-$PYTHON36_VER
-	if [ ! -d "${PYTHON36_DIR}" ]; then
-		cd $DEPENDENCIES
-		wget $DEPENDENCIES_URL/Python-$PYTHON36_VER.$PYTHON36_EXT
-		tar xfz Python-$PYTHON36_VER.$PYTHON36_EXT
-		cd $PYTHON36_DIR
-		echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist
-		./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON36_DIR/target --with-ensurepip=install --enable-unicode=ucs4
-		make -j $MAKE_JOBS
-		make -j $MAKE_JOBS install
-	fi
-
-	PYTHON35_VER=3.5.9
-	PYTHON35_EXT=tgz
-	PYTHON35_DIR=$DEPENDENCIES/Python-$PYTHON35_VER
-	if [ ! -d "${PYTHON35_DIR}" ]; then
-		cd $DEPENDENCIES
-		wget $DEPENDENCIES_URL/Python-$PYTHON35_VER.$PYTHON35_EXT
-		tar xfz Python-$PYTHON35_VER.$PYTHON35_EXT
-		cd $PYTHON35_DIR
-		echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist
-		./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON35_DIR/target --with-ensurepip=install --enable-unicode=ucs4
-		make -j $MAKE_JOBS
-		make -j $MAKE_JOBS install
-	fi
-
 	PYTHON_VER=2.7.16
 	PYTHON_EXT=tgz
 	PYTHON_DIR=$DEPENDENCIES/Python-$PYTHON_VER
