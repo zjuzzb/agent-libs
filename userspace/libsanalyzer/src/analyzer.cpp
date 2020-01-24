@@ -140,39 +140,39 @@ type_config<bool>::ptr c_test_only_send_infra_state_containers =
         .mutable_only_in_internal_build()
         .build();
 
-type_config<uint32_t>::ptr c_drop_upper_threshhold =
+type_config<uint32_t>::ptr c_drop_upper_threshold =
     type_config_builder<uint32_t>(
         5,
         "Percent of time alotted to event processing before we increase sampling",
         "autodrop",
-        "upper_threshhold")
+        "upper_threshold")
         .max(100)
         .build();
 
-type_config<uint32_t>::ptr c_drop_lower_threshhold =
+type_config<uint32_t>::ptr c_drop_lower_threshold =
     type_config_builder<uint32_t>(
         3,
         "Percent of time alotted to event processing before we decrease sampling",
         "autodrop",
-        "lower_threshhold")
+        "lower_threshold")
         .max(100)
         .build();
 
-type_config<uint32_t>::ptr c_drop_upper_threshhold_baseliner =
+type_config<uint32_t>::ptr c_drop_upper_threshold_baseliner =
     type_config_builder<uint32_t>(30,
                                   "Percent of time alotted to event processing before we increase "
                                   "sampling when baseliner enabled",
                                   "autodrop",
-                                  "baseliner_upper_threshhold")
+                                  "baseliner_upper_threshold")
         .max(100)
         .build();
 
-type_config<uint32_t>::ptr c_drop_lower_threshhold_baseliner =
+type_config<uint32_t>::ptr c_drop_lower_threshold_baseliner =
     type_config_builder<uint32_t>(27,
                                   "Percent of time alotted to event processing before we decrease "
                                   "sampling when baseliner enabled",
                                   "autodrop",
-                                  "baseliner_lower_threshhold")
+                                  "baseliner_lower_threshold")
         .max(100)
         .build();
 
@@ -185,7 +185,7 @@ type_config<bool>::ptr c_adjust_threshold_for_cpu_count =
 
 type_config<uint32_t>::ptr c_drop_seconds_before_action =
     type_config_builder<uint32_t>(5,
-                                  "Consecutive seconds crossing a threshhold before we take action",
+                                  "Consecutive seconds crossing a threshold before we take action",
                                   "autodrop",
                                   "seconds_before_action")
         .build();
@@ -197,12 +197,13 @@ type_config<bool>::ptr c_autodrop_enabled =
                               "enabled")
         .build();
 
+// would prefer to be autodrop.sampling_ratio, but alternate_key untested
 type_config<uint32_t>::ptr c_fixed_sampling_ratio =
     type_config_builder<uint32_t>(0,
                                   "Set to non-zero to force sampling at the given ratio. Overrides "
                                   "all other autodrop configs.",
-                                  "autodrop",
-                                  "fixed_ratio")
+                                  "subsampling",
+                                  "ratio")
         .build();
 
 type_config<uint64_t>::ptr c_flush_interval =
@@ -3818,21 +3819,21 @@ void sinsp_analyzer::adjust_sampling_ratio()
 		return;
 	}
 
-	double upper_threshhold = m_configuration->get_falco_baselining_enabled()
-	                              ? (double)c_drop_upper_threshhold_baseliner->get_value()
-	                              : (double)c_drop_upper_threshhold->get_value();
+	double upper_threshold = m_configuration->get_falco_baselining_enabled()
+	                              ? (double)c_drop_upper_threshold_baseliner->get_value()
+	                              : (double)c_drop_upper_threshold->get_value();
 	if (c_adjust_threshold_for_cpu_count->get_value())
 	{
 		ASSERT(m_machine_info->num_cpus > 0);
-		upper_threshhold = std::min(upper_threshhold + m_machine_info->num_cpus - 1, (double)100);
+		upper_threshold = std::min(upper_threshold + m_machine_info->num_cpus - 1, (double)100);
 	}
-	if (sampling_metric >= upper_threshhold)
+	if (sampling_metric >= upper_threshold)
 	{
 		m_seconds_above_thresholds++;
 
 		g_logger.format(sinsp_logger::SEV_INFO,
 		                "sinsp above drop threshold %d secs: %" PRIu32 ":%" PRIu32,
-		                (int)c_drop_upper_threshhold->get_value(),
+		                (int)c_drop_upper_threshold->get_value(),
 		                m_seconds_above_thresholds,
 		                c_drop_seconds_before_action->get_value());
 	}
@@ -3865,16 +3866,16 @@ void sinsp_analyzer::adjust_sampling_ratio()
 		}
 	}
 
-	double lower_threshhold = m_configuration->get_falco_baselining_enabled()
-	                              ? (double)c_drop_lower_threshhold_baseliner->get_value()
-	                              : (double)c_drop_lower_threshhold->get_value();
+	double lower_threshold = m_configuration->get_falco_baselining_enabled()
+	                              ? (double)c_drop_lower_threshold_baseliner->get_value()
+	                              : (double)c_drop_lower_threshold->get_value();
 	if (c_adjust_threshold_for_cpu_count->get_value())
 	{
 		ASSERT(m_machine_info->num_cpus > 0);
-		lower_threshhold =
-		    std::min(lower_threshhold + (m_machine_info->num_cpus - 1) * 4 / (double)5, (double)90);
+		lower_threshold =
+		    std::min(lower_threshold + (m_machine_info->num_cpus - 1) * 4 / (double)5, (double)90);
 	}
-	if (sampling_metric <= lower_threshhold)
+	if (sampling_metric <= lower_threshold)
 	{
 		m_seconds_below_thresholds++;
 
@@ -3882,7 +3883,7 @@ void sinsp_analyzer::adjust_sampling_ratio()
 		{
 			g_logger.format(sinsp_logger::SEV_INFO,
 			                "sinsp below drop threshold %d secs: %" PRIu32 ":%" PRIu32,
-			                (int)c_drop_lower_threshhold->get_value(),
+			                (int)c_drop_lower_threshold->get_value(),
 			                m_seconds_below_thresholds,
 			                c_drop_seconds_before_action->get_value());
 		}
