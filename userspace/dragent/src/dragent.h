@@ -34,7 +34,6 @@
 #endif
 #include "draios.pb.h"
 #include "analyzer_utils.h"
-#include "run_once_after.h"
 
 class watchdog_state
 {
@@ -189,5 +188,4 @@ private:
 	};
 	std::vector<monitor_file_state> m_monitored_files;
 	dragent::watchdog_runnable_pool m_pool;
-	userspace_shared::run_once_after m_inspector_delayed_start;
 };

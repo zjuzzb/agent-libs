@@ -110,8 +110,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_last_mode_switch_time(0),
 	m_next_iflist_refresh_ns(0),
 	m_aws_metadata_refresher(*configuration),
-	m_internal_metrics(im),
-	m_capture_paused(false)
+	m_internal_metrics(im)
 { }
 
 sinsp_worker::~sinsp_worker()
@@ -366,7 +365,6 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 	{
 		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
 		m_inspector->open("");
-		pause_capture();
 		m_inspector->set_simpledriver_mode();
 		m_analyzer->set_simpledriver_mode();
 	}
@@ -375,7 +373,6 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
 
 		m_inspector->open("");
-		pause_capture();
 
 		if(m_configuration->m_snaplen != 0)
 		{
@@ -505,7 +502,6 @@ void sinsp_worker::run()
 	int32_t res;
 	sinsp_evt* ev;
 	uint64_t ts;
-	bool capture_was_paused = m_capture_paused;
 
 	m_pthread_id = pthread_self();
 
@@ -538,15 +534,6 @@ void sinsp_worker::run()
 			dragent_configuration::m_terminate = true;
 			break;
 		}
-
-		// Restart the capture if it was paused; refresh the proc list
-		// to pick up anything missed while paused
-		if(capture_was_paused && !m_capture_paused)
-		{
-			m_inspector->start_capture();
-			m_inspector->refresh_proc_list();
-		}
-		capture_was_paused = m_capture_paused;
 
 		res = m_inspector->next(&ev);
 
@@ -918,13 +905,3 @@ void sinsp_worker::process_job_requests(bool should_dump)
 	}
 }
 
-void sinsp_worker::pause_capture()
-{
-	m_inspector->stop_capture();
-	m_capture_paused = true;
-}
-
-void sinsp_worker::unpause_capture()
-{
-	m_capture_paused = false;
-}
