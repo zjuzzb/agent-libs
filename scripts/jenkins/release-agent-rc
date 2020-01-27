@@ -235,6 +235,7 @@ function push_docker_images {
 		# 3. Manipulate the image tags to read as "agent-slim" instead of agent-slim-v2
 		if [[ "${IMAGE_NAME}" == "agent-slim-v2" ]]; then
 			cp "$REPO_DIR/$REPO_BASENAME/tgz/$BASEARCH/draios-${AGENT_VERSION}-${BASEARCH}-agent-slim.tar.gz" .
+			rm -rf ./opt/draios
 			tar -xzf *agent-slim.tar.gz
 			find ./opt/draios/bin -type f | xargs file | awk '/ELF/ { sub(/:$/, "", $1); print $1 }' | xargs strip -g
 			rm -rf ./opt/draios/lib/python-deps2.6/

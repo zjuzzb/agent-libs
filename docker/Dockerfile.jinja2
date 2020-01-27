@@ -201,7 +201,7 @@ procps \
 iproute2 \
 openssl \
 docker-cli \
-&& mkdir /opt/draios/run \
+&& mkdir -p /opt/draios/run \
 && rm -rf /tmp/*.apk /var/cache/apk/* \
 && rm -rf /opt/draios/lib/python-deps2.6 \
 && chown -R root:root "${JAVA_HOME}" \

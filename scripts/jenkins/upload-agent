@@ -210,6 +210,7 @@ function trigger_docker_builds {
 		if [[ "${IMAGE_NAME}" == "agent-slim-v2" ]]; then
 			echo "Extracting agent-slim.tar.gz for 'agent-slim-v2'"
 			cp "${BINARIES_DIR}"/release/*agent-slim.tar.gz .
+			rm -rf ./opt/draios
 			tar -xzf *agent-slim.tar.gz
 			find ./opt/draios/bin -type f | xargs file | awk '/ELF/ { sub(/:$/, "", $1); print $1 }' | xargs strip -g
 			rm -rf ./opt/draios/lib/python-deps2.6/
