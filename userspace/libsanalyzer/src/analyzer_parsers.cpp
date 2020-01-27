@@ -119,6 +119,17 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 	case PPME_SYSCALL_EPOLLWAIT_X:
 		parse_select_poll_epollwait_exit(evt);
 		return true;
+	case PPME_SYSCALL_CLONE_11_X:
+	case PPME_SYSCALL_CLONE_16_X:
+	case PPME_SYSCALL_CLONE_17_X:
+	case PPME_SYSCALL_FORK_X:
+	case PPME_SYSCALL_FORK_17_X:
+	case PPME_SYSCALL_VFORK_X:
+	case PPME_SYSCALL_VFORK_17_X:
+	case PPME_SYSCALL_CLONE_20_X:
+	case PPME_SYSCALL_FORK_20_X:
+	case PPME_SYSCALL_VFORK_20_X:
+		return parse_clone_exit(evt);
 	case PPME_SYSCALL_EXECVE_8_X:
 	case PPME_SYSCALL_EXECVE_13_X:
 	case PPME_SYSCALL_EXECVE_14_X:
@@ -270,6 +281,76 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 	}
 }
 
+bool sinsp_analyzer_parsers::parse_clone_exit(sinsp_evt* evt)
+{
+	//
+	// For now this only sets the AF_IS_DESCENDENT_OF_CONTAINER_INIT flag, which is only used by Secure Audit,
+	// therefore we can avoid running it at all if secure audit is not enabled.
+	//
+	const sinsp_configuration* sinsp_conf = m_analyzer->get_configuration_read_only();
+
+	if(!sinsp_conf->get_executed_commands_capture_enabled())
+	{
+		return true;
+	}
+
+	sinsp_threadinfo* tinfo = evt->get_thread_info();
+	if(tinfo == nullptr)
+	{	
+		return true;
+	}
+
+	// 
+	// Set the AF_IS_DESCENDANT_OF_CONTAINER_INIT flag to any child of a container init (vpid 1)
+	// and propagate the flag to all descendant processes
+	//
+
+	// Discard clone calls that create threads of an existing process
+	if(!tinfo->is_main_thread())
+	{
+		return true;
+	}
+
+	sinsp_threadinfo *ptinfo = tinfo->get_parent_thread();
+	if(ptinfo == nullptr)
+	{
+		return true;
+	}
+
+	auto tainfo = tinfo->m_ainfo;
+	if(tainfo == nullptr)
+	{
+		return true;
+	}
+
+	// Set the flag for children of container init processes
+	if(ptinfo->m_vpid != ptinfo->m_pid && !ptinfo->m_container_id.empty() && ptinfo->m_vpid == 1)
+	{
+		tainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_DESCENDANT_OF_CONTAINER_INIT;
+		return true;
+	}
+
+	if(!ptinfo->is_main_thread())
+	{
+		ptinfo = ptinfo->get_main_thread();
+	}
+
+	auto ptainfo = ptinfo->m_ainfo;
+	if(ptainfo == nullptr)
+	{
+		return true;
+	}	
+
+	// Propagate the flag to their child processes
+	if(ptainfo->m_th_analysis_flags & thread_analyzer_info::flags::AF_IS_DESCENDANT_OF_CONTAINER_INIT)
+	{
+		tainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_DESCENDANT_OF_CONTAINER_INIT;
+		return true;
+	}
+
+	return true;
+}
+
 bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
@@ -344,10 +425,6 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		uint32_t cl = ptinfo->m_comm.size();
 		if(cl >= 2 && ptinfo->m_comm[cl - 2] == 's' && ptinfo->m_comm[cl - 1] == 'h')
 		{
-			//
-			// We found a shell. Patch the descendat but don't stop here since there might
-			// be another parent shell
-			//
 			login_shell_id = ptinfo->m_tid;
 			shell_dist = cur_dist;
 		}
@@ -355,6 +432,9 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		cur_dist++;
 		return true;
 	};
+
+	found_container_init |= (
+		(tainfo->m_th_analysis_flags & thread_analyzer_info::flags::AF_IS_DESCENDANT_OF_CONTAINER_INIT) != 0);
 
 	if(visitor(tinfo))
 	{
@@ -402,6 +482,12 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		container_exec = true;
 	}
 
+	//
+	// Only allow this function to continue if ANY of the following conditions holds true:
+	// - mode_ok: this is an interactive process according to config (e.g. we want processes w/ TTYs and this has a TTY)
+	// - valid_ancestor: it's a descendant of a process that is one of valid_ancestors in the config
+	// - container_exec: it's running in a container and is not a descendant of the container init
+	//
 	if(!mode_ok && !valid_ancestor && !container_exec)
 	{
 		return true;
