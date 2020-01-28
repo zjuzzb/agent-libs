@@ -9,6 +9,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"io/ioutil"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -16,7 +17,7 @@ import (
 func (impl *LinuxBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
 	args := []string{"--json", "--outputfile", "OUTPUT_DIR/linux-bench_results.json"}
 
-	impl.variant = "1.1.0" // linux-bench runs CIS benchmark 1.1.0 by default
+	impl.variant = "2.0.0" // Run CIS benchmark 2.0.0 by default
 
 	// If "benchmark" was provided as a param, add it as a benchmark argument.
 	for _, param := range stask.task.TaskParams {
@@ -28,7 +29,7 @@ func (impl *LinuxBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
 			case "cis-2.0":
 				impl.variant = "2.0.0"
 			default:
-				impl.variant = "1.1.0"
+				impl.variant = "2.0.0"
 			}
 			args = append(args, "--version", impl.variant)
 		}
@@ -204,8 +205,8 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 	for _, section := range bres.Tests {
 		sectionParts := strings.Split(section.Section, ".")
 
-		// Ignore top level sections
-		if len(sectionParts) >= 2 {
+		// Ignore top level sections and empty sections
+		if len(sectionParts) >= 2 && len(section.Results) > 0 {
 			sectionNumber := fmt.Sprintf("%s.%s", sectionParts[0], sectionParts[1])
 
 			normalizedSection, sectionExists := sectionMap[sectionNumber]
@@ -215,10 +216,31 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 				normalizedSection.Warn += section.Warn
 				normalizedSection.Fail += section.Fail
 				normalizedSection.Results = append(normalizedSection.Results, section.Results...)
+
+				// When merging, sort like semantic version i.e. make sure 4.1.1.a comes before 4.1.2
+				sort.Slice(normalizedSection.Results, func(i, j int) bool {
+					partsA := strings.Split(normalizedSection.Results[i].TestNumber, ".")
+					partsB := strings.Split(normalizedSection.Results[j].TestNumber, ".")
+
+					for depth := 0; ; depth++ {
+						a, err := strconv.Atoi(partsA[depth])
+						if err != nil {
+							return false
+						}
+						b, err := strconv.Atoi(partsB[depth])
+						if err != nil {
+							return true
+						}
+						if a != b {
+							return a < b
+						}
+					}
+				})
 			} else {
 				normalizedSection = section
 			}
 
+			normalizedSection.Section = sectionNumber
 			sectionMap[sectionNumber] = normalizedSection
 		}
 	}
@@ -254,6 +276,10 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 		for _, test := range section.Results {
 
 			result.Risk = impl.AssignRisk(test.TestNumber, test.Status, result.Risk)
+
+			if strings.Compare(test.TestNumber, resSection.SectionId) == 0 {
+				test.TestNumber = fmt.Sprintf("%s.1", test.TestNumber)
+			}
 
 			resTest := &TaskResultTest{
 				TestNumber: test.TestNumber,
