@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace libsanalyzer {
 
@@ -173,6 +174,11 @@ std::string get_k8s_audit_server_x509_cert_file();
  * Returns the configured path to the k8s audit server x509 key file.
  */
 std::string get_k8s_audit_server_x509_key_file();
+
+/**
+ * Returns a list of path uris on which the k8s audit server will accept k8s audit events.
+ */
+const std::vector<std::string> &get_k8s_audit_server_path_uris();
 
 /**
  * Logs the state of the security configuration to the standard logger.

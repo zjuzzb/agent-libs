@@ -254,6 +254,7 @@ message k8s_audit_server_load {
     required uint32 port = 2;
     required bool tls_enabled = 3;
     repeated k8s_audit_server_X509 x509 = 4;
+    repeated string path_uris = 5;
 }
 
 message k8s_audit_server_load_result {

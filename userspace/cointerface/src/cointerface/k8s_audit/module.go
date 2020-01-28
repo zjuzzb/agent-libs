@@ -49,7 +49,9 @@ func (ks *k8sAuditServer) Load(ctx context.Context, load *sdc_internal.K8SAuditS
 
 	/* common HTTP/HTTPS configuration */
 	httpHandler := http.NewServeMux()
-	httpHandler.Handle("/k8s_audit", ks)
+	for _, path := range load.PathUris {
+		httpHandler.Handle(path, ks)
+	}
 	var httpServer = &http.Server {
 		Addr: load.GetUrl() + ":" + strconv.Itoa(int(load.GetPort())),
 		Handler: httpHandler,

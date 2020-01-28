@@ -1617,6 +1617,16 @@ void security_mgr::load_k8s_audit_server()
 	load.set_url(security_config::get_k8s_audit_server_url());
 	load.set_port(security_config::get_k8s_audit_server_port());
 
+	for(auto path : security_config::get_k8s_audit_server_path_uris())
+	{
+		// If path doesn't start with a /, add one.
+		if(path.size() > 0 && path.at(0) != '/')
+		{
+			path = "/" + path;
+		}
+		load.add_path_uris(path);
+	}
+
 	if (security_config::get_k8s_audit_server_tls_enabled())
 	{
 		sdc_internal::k8s_audit_server_X509 *x509 = load.add_x509();

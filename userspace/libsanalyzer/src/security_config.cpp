@@ -5,6 +5,9 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
+
+#include <vector>
+
 #include "security_config.h"
 #include "common_logger.h"
 #include "type_config.h"
@@ -242,9 +245,18 @@ type_config<std::string>::ptr c_k8s_audit_server_x509_key_file =
 	.hidden()
 	.build();
 
+type_config<std::vector<std::string>>::ptr c_k8s_audit_server_path_uris =
+	type_config_builder<std::vector<std::string>>(
+		{"/k8s_audit", "/k8s-audit"},
+		"Kubernetes audit server path uris",
+		"security",
+		"k8s_audit_server_path_uris")
+	.hidden()
+	.build();
+
 } // end namespace
 
-namespace libsanalyzer 
+namespace libsanalyzer
 {
 
 bool security_config::is_enabled()
@@ -402,6 +414,11 @@ std::string security_config::get_k8s_audit_server_x509_key_file()
 	return c_k8s_audit_server_x509_key_file->get_value();
 }
 
+const std::vector<std::string> &security_config::get_k8s_audit_server_path_uris()
+{
+	return c_k8s_audit_server_path_uris->get_value();
+}
+
 void security_config::generate_status_log()
 {
 	if(c_default_compliance_schedule->get_value() != "")
@@ -458,6 +475,8 @@ void security_config::generate_status_log()
 			LOG_INFO(std::string("K8s Audit Server tls enabled:  ") + std::to_string(c_k8s_audit_server_tls_enabled->get_value()));
 			LOG_INFO(std::string("K8s Audit Server URL:  ") + c_k8s_audit_server_url->get_value());
 			LOG_INFO(std::string("K8s Audit Server port: ") + std::to_string(c_k8s_audit_server_port->get_value()));
+			LOG_INFO(std::string("K8s Audit Server path uris: ") + c_k8s_audit_server_path_uris->value_to_string());
+
 			if(c_k8s_audit_server_tls_enabled->get_value())
 			{
 				LOG_INFO(std::string("K8s Audit Server X509 crt file: ") + c_k8s_audit_server_x509_cert_file->get_value());

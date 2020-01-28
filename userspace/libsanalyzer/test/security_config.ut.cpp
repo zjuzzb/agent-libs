@@ -420,6 +420,30 @@ security:
 	          security_config::get_k8s_audit_server_x509_key_file());
 }
 
+TEST(security_config_test, default_k8s_audit_server_path_uris)
+{
+	auto paths = security_config::get_k8s_audit_server_path_uris();
+
+	ASSERT_EQ(paths.size(), 2);
+	ASSERT_STREQ(paths[0].c_str(), "/k8s_audit");
+	ASSERT_STREQ(paths[1].c_str(), "/k8s-audit");
+}
+
+TEST(security_config_test, configured_k8s_audit_server_path_uris)
+{
+	const std::string config = R"EOF(
+security:
+  k8s_audit_server_path_uris: ["/some-path", "/some-other-path"]
+)EOF";
+	test_helpers::scoped_configuration enabled_config(config);
+
+	auto paths = security_config::get_k8s_audit_server_path_uris();
+
+	ASSERT_EQ(paths.size(), 2);
+	ASSERT_STREQ(paths[0].c_str(), "/some-path");
+	ASSERT_STREQ(paths[1].c_str(), "/some-other-path");
+}
+
 TEST(security_config_test, set_enabled)
 {
 	test_helpers::scoped_configuration enabled_config;
