@@ -31,6 +31,37 @@ if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
     do
 	ln -s $SYSDIG_HOST_ROOT/usr/src/$i /usr/src/$i
     done
+
+    KERNEL_DIR=$SYSDIG_HOST_ROOT/lib/modules/$(uname -r)/build
+    if [ ! -e "$KERNEL_DIR" ]
+    then
+	echo "* Kernel headers not found in $KERNEL_DIR, continuing anyway" >&2
+    else
+	for compile_h in $KERNEL_DIR/include/generated/compile.h $KERNEL_DIR/include/linux/compile.h
+	do
+	    if [ ! -e "$compile_h" ]
+	    then
+		continue
+	    fi
+
+	    GCC_VERSION=$(grep -Po '(?<=^#define LINUX_COMPILER "gcc version )[0-9.]+' $compile_h)
+	    GCC_VERSION="${GCC_VERSION%.*}"
+	    GCC_BINARY=$(ls -U /usr/bin/gcc-[0-9]* | sort -V | awk -v target=/usr/bin/gcc-${GCC_VERSION} '
+			$1 < target { older = $1 }
+			$1 == target { exact = $1 }
+			$1 > target && !newer { newer = $1 }
+
+			END {
+				if (exact) { print exact }
+				else if (newer) { print newer }
+				else { print older }
+			}
+			')
+	    echo "* Will use $GCC_BINARY to build kernel module if needed"
+	    ln -sf $GCC_BINARY /usr/bin/gcc
+	    break
+	done
+    fi
 fi
 
 KERNEL_ERR_MESSAGE="The Sysdig Agent kernel probe could not be built and a probe could not be found to download. Upgrading to the latest version of the Sysdig agent could solve this problem. For additional assistance contact support@sysdig.com with the output of uname -r"
