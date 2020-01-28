@@ -419,23 +419,36 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 #ifndef CYGWING_AGENT
 	for(const auto type : m_configuration->m_suppressed_types)
 	{
-		g_log->debug("Setting eventmask for ignored type: " + to_string(type));
+		const std::string type_str = to_string(type);
+
 		try
 		{
+			LOG_DEBUG("Setting eventmask for ignored type: %s",
+			          type_str.c_str());
 			m_inspector->unset_eventmask(type);
 		}
-		catch (sinsp_exception& e)
+		catch (const sinsp_exception& ex)
 		{
-			g_log->error("Setting eventmask failed: " + string(e.what()));
+			LOG_ERROR("Setting eventmask for type '%s' failed, err: %s",
+			          type_str.c_str(),
+			          ex.what());
 		}
 	}
 #endif // CYGWING_AGENT
 
 	if(m_configuration->m_procfs_scan_thread)
 	{
-		g_log->information("Procfs scan thread enabled, ignoring switch events");
-		m_inspector->unset_eventmask(PPME_SCHEDSWITCH_1_E);
-		m_inspector->unset_eventmask(PPME_SCHEDSWITCH_6_E);
+		LOG_INFO("Procfs scan thread enabled, ignoring switch events");
+		try
+		{
+			m_inspector->unset_eventmask(PPME_SCHEDSWITCH_1_E);
+			m_inspector->unset_eventmask(PPME_SCHEDSWITCH_6_E);
+		}
+		catch (const sinsp_exception& ex)
+		{
+			LOG_ERROR("Failed to ignore switch events, err: %s",
+			          ex.what());
+		}
 	}
 
 	if(m_configuration->m_aws_metadata.m_public_ipv4)
