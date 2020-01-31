@@ -237,7 +237,7 @@ dragent_app::dragent_app()
                      &m_capture_job_handler),
       m_log_reporter(m_protocol_handler, &m_configuration),
       m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),
-	m_last_dump_s(0)
+      m_last_dump_s(0)
 {
 }
 

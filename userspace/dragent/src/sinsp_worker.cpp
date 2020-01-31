@@ -5,6 +5,7 @@
 #include "error_handler.h"
 #include "infrastructure_state.h"
 #include "memdumper.h"
+#include "run_once_after.h"
 #include "security_config.h"
 #include "sinsp_factory.h"
 #include "utils.h"
@@ -34,6 +35,17 @@ type_config<uint16_t> config_increased_snaplen_port_range_end(
 		0,
 		"Ending port in the range of ports to enable a larger snaplen on",
 		"increased_snaplen_port_range_end");
+
+type_config<uint16_t>::ptr c_inspector_start_delay_s =
+    type_config_builder<uint16_t>(1,
+                                  "Amount of time to wait before starting the"
+                                  " system call inspector.  It can be useful to"
+                                  " delay the inspector if the agent terminates"
+                                  " soon after starting because it gets behind"
+                                  " in processing system calls",
+                                  "inspector_start_delay_s")
+        .min(1)
+        .build();
 
 } // namespace
 
@@ -109,7 +121,8 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_last_mode_switch_time(0),
 	m_next_iflist_refresh_ns(0),
 	m_aws_metadata_refresher(*configuration),
-	m_internal_metrics(im)
+	m_internal_metrics(im),
+	m_capture_paused(false)
 { }
 
 sinsp_worker::~sinsp_worker()
@@ -364,6 +377,7 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 	{
 		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
 		m_inspector->open("");
+		pause_capture();
 		m_inspector->set_simpledriver_mode();
 		m_analyzer->set_simpledriver_mode();
 	}
@@ -372,6 +386,7 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
 
 		m_inspector->open("");
+		pause_capture();
 
 		if(m_configuration->m_snaplen != 0)
 		{
@@ -506,6 +521,10 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 
 void sinsp_worker::run()
 {
+	userspace_shared::run_once_after inspector_delayed_start(
+			c_inspector_start_delay_s->get_value() * ONE_SECOND_IN_NS,
+			sinsp_utils::get_current_time_ns);
+
 	uint64_t nevts = 0;
 	int32_t res;
 	sinsp_evt* ev;
@@ -541,6 +560,20 @@ void sinsp_worker::run()
 		{
 			dragent_configuration::m_terminate = true;
 			break;
+		}
+
+		if (m_capture_paused)
+		{
+			// Run once c_inspector_start_delay_s seconds after
+			// the sinsp_worker thread starts
+			inspector_delayed_start.run(
+				[this]()
+				{
+					LOG_INFO("Resuming capture");
+					m_capture_paused = false;
+					m_inspector->start_capture();
+					m_inspector->refresh_proc_list();
+				});
 		}
 
 		res = m_inspector->next(&ev);
@@ -913,3 +946,9 @@ void sinsp_worker::process_job_requests(bool should_dump)
 	}
 }
 
+void sinsp_worker::pause_capture()
+{
+	LOG_INFO("Pausing capture");
+	m_inspector->stop_capture();
+	m_capture_paused = true;
+}
