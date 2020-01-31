@@ -225,11 +225,11 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 					for depth := 0; ; depth++ {
 						a, err := strconv.Atoi(partsA[depth])
 						if err != nil {
-							return false
+							return true
 						}
 						b, err := strconv.Atoi(partsB[depth])
 						if err != nil {
-							return true
+							return false
 						}
 						if a != b {
 							return a < b
