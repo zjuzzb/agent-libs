@@ -195,12 +195,14 @@ COPY ./opt/draios /opt/draios
 
 RUN apk update \
 && apk add --no-cache curl \
-python \
+python2 \
+python3 \
 bash \
 procps \
 iproute2 \
 openssl \
 docker-cli \
+tar \
 && mkdir -p /opt/draios/run \
 && rm -rf /tmp/*.apk /var/cache/apk/* \
 && rm -rf /opt/draios/lib/python-deps2.6 \
