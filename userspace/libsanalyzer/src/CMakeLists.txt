@@ -114,6 +114,9 @@ set(SANALYZER_SOURCES
 	app_checks.cpp
 	app_check_emitter.cpp
 	audit_tap.cpp
+	audit_tap_connection_aggregator.cpp
+	audit_tap_connection_info.cpp
+	audit_tap_network_connection.cpp
 	secure_audit.cpp
 	baseliner.cpp
 	blake2/blake2b.c

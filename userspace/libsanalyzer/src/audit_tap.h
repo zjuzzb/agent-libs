@@ -1,5 +1,6 @@
 #pragma once
 
+#include "audit_tap_connection_aggregator.h"
 #include "env_hash.h"
 #include <string>
 #include <unordered_map>
@@ -66,7 +67,6 @@ public:
 private:
 	void emit_process(sinsp_threadinfo *tinfo, userdb *userdb);
 	bool emit_environment(tap::NewProcess *proc, sinsp_threadinfo *tinfo);
-	bool should_emit_network_audit();
 
 	void emit_network_audit(tap::ConnectionAudit* conn_audit,
                                 const _ipv4tuple& iptuple,
@@ -82,5 +82,5 @@ private:
 	std::unordered_map<env_hash, uint64_t> m_sent_envs;
 	env_hash_config* m_config;
 	int m_num_envs_sent;
-	uint64_t m_last_run_audit_ns;
+	audit_tap_connection_aggregator m_connection_aggregator;
 };

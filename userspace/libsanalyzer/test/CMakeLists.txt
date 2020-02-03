@@ -41,6 +41,9 @@ list(APPEND libsanalyzer_uts
 	analyzer.ut.cpp
 	app_metric.ut.cpp
 	audit_tap.ut.cpp
+	audit_tap_connection_aggregator.ut.cpp
+	audit_tap_connection_info.ut.cpp
+	audit_tap_network_connection.ut.cpp
 	infrastructure_state.ut.cpp
 	main.cpp
 	metric_store.ut.cpp

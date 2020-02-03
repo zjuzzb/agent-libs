@@ -45,17 +45,6 @@ type_config<std::string>::ptr c_protobuf_dir =
 		})
 	.build();
 
-type_config<uint64_t>::ptr c_audit_internal_s =
-	type_config_builder<uint64_t>(
-		60,
-		"The time interval, in seconds, on which the agent sends network audit information",
-		"audit_tap",
-		"network_audit_interval_s")
-
-	.hidden()
-	.min(60)
-	.build();
-
 
 void write_to_file(const tap::AuditLog& tap)
 {
@@ -118,7 +107,7 @@ audit_tap::audit_tap(env_hash_config *config, const std::string &machine_id, boo
 	m_event_batch(new tap::AuditLog),
 	m_config(config),
 	m_num_envs_sent(0),
-	m_last_run_audit_ns(0)
+	m_connection_aggregator(sinsp_utils::get_current_time_ns)
 {
 	clear();
 }
@@ -138,23 +127,8 @@ void audit_tap::on_exit(uint64_t pid)
 	}
 }
 
-bool audit_tap::should_emit_network_audit()
-{
-	const auto now = sinsp_utils::get_current_time_ns();
-
-	if((now - m_last_run_audit_ns) <= (c_audit_internal_s->get_value() * ONE_SECOND_IN_NS))
-	{
-		return false;
-	}
-
-	m_last_run_audit_ns = now;
-	return true;
-}
-
 void audit_tap::emit_connections(sinsp_ipv4_connection_manager* conn_manager, userdb* userdb)
 {
-	const bool emit_audit = should_emit_network_audit();
-
 	for(auto& it : conn_manager->m_connections)
 	{
 		const ipv4tuple& iptuple = it.first;
@@ -202,13 +176,12 @@ void audit_tap::emit_connections(sinsp_ipv4_connection_manager* conn_manager, us
 			emit_process(connection.m_dproc.get(), userdb);
 		}
 
-		if(emit_audit)
-		{
-			emit_network_audit(m_event_batch->mutable_connectionaudit(),
-			                   iptuple,
-			                   connection);
-		}
+		m_connection_aggregator.update_connection_info(iptuple,
+		                                               connection);
 	}
+
+	m_connection_aggregator.emit_on_schedule(
+			*m_event_batch->mutable_connectionaudit());
 }
 
 void audit_tap::emit_network_audit(tap::ConnectionAudit* const conn_audit,
