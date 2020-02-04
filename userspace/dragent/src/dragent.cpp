@@ -1467,6 +1467,8 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
 		    m_configuration.m_falco_baselining_autodisable_interval_ns);
 		sconfig->set_falco_baselining_max_drops_buffer_rate_percentage(
 		    m_configuration.m_falco_baselining_max_drops_buffer_rate_percentage);
+		sconfig->set_falco_baselining_max_sampling_ratio(
+		    m_configuration.m_falco_baselining_max_sampling_ratio);
 
 		analyzer->enable_secure_profiling();
 	}

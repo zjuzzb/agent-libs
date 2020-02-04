@@ -3801,9 +3801,11 @@ void sinsp_analyzer::adjust_sampling_ratio()
 		{
 			m_requested_sampling_ratio = std::min(m_acked_sampling_ratio * 2, (uint64_t)128);
 
-			if (m_falco_baseliner->is_baseline_runtime_enabled())
+			if (m_falco_baseliner->is_baseline_runtime_enabled() &&
+			    m_requested_sampling_ratio > m_configuration->get_falco_baselining_max_sampling_ratio())
 			{
-				g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
+				g_logger.format(sinsp_logger::SEV_WARNING,
+						"disabling falco baselining because sampling ratio is too high.");
 				m_falco_baseliner->disable_baseline_calculation();
 				m_falco_baseliner->clear_tables();
 			}

@@ -302,6 +302,7 @@ public:
 	uint64_t m_falco_baselining_report_interval_ns;
 	uint64_t m_falco_baselining_autodisable_interval_ns;
 	float m_falco_baselining_max_drops_buffer_rate_percentage;
+	uint32_t m_falco_baselining_max_sampling_ratio;
 
 	bool m_commandlines_capture_enabled;
 	sinsp_configuration::command_capture_mode_t m_command_lines_capture_mode;

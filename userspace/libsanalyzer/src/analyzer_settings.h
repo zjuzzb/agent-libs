@@ -135,6 +135,17 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 #define DEFAULT_FALCO_BASELINING_MAX_DROPS_BUFFER_RATE_PERCENTAGE 0.01f
 
 //
+// Max sampling ratio allowed to keep the baseliner operational. If
+// the sample ratio is set a higher value the baseliner is disabled.
+// Sampling ratio of 1 means no sample. The agent tries to keep its
+// CPU consumtion lower then a configured threshold. If the agent
+// surpasses the threshold for a given amount of consecutive seconds,
+// the sampling ratio is doubled. The maximum allowed value for
+// sampling ratio is 128.
+//
+#define DEFAULT_FALCO_BASELINING_MAX_SAMPLING_RATIO 1
+
+//
 // FD class customized with the storage we need
 //
 template<class T> class sinsp_fdinfo;
