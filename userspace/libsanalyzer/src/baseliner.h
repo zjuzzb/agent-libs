@@ -1342,7 +1342,7 @@ public:
 	sinsp* get_inspector();
 	void enable_baseline_calculation();
 	void disable_baseline_calculation();
-	bool is_baseline_calculation_enabled() const;
+	bool is_baseline_runtime_enabled() const;
 	bool is_drops_buffer_rate_critical(float max_drops_buffer_rate_percentage) const;
 
 private:

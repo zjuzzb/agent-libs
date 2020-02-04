@@ -3801,7 +3801,7 @@ void sinsp_analyzer::adjust_sampling_ratio()
 		{
 			m_requested_sampling_ratio = std::min(m_acked_sampling_ratio * 2, (uint64_t)128);
 
-			if (m_falco_baseliner->is_baseline_calculation_enabled())
+			if (m_falco_baseliner->is_baseline_runtime_enabled())
 			{
 				g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
 				m_falco_baseliner->disable_baseline_calculation();
@@ -4072,7 +4072,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 	// if it's time to emit the falco baseline, do the serialization and then restart it
 	//
 	tracer_emitter falco_trc("falco_baseline", f_trc);
-	if (m_falco_baseliner->is_baseline_calculation_enabled())
+	if (m_falco_baseliner->is_baseline_runtime_enabled())
 	{
 		scap_stats st;
 		m_inspector->get_capture_stats(&st);
@@ -4134,7 +4134,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 	if (m_internal_metrics)
 	{
 		m_internal_metrics->set_baseliner_enabled(
-		    m_falco_baseliner->is_baseline_calculation_enabled());
+		    m_falco_baseliner->is_baseline_runtime_enabled());
 	}
 
 	falco_trc.stop();
@@ -5134,7 +5134,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 		adjust_sampling_ratio();
 	}
 
-	if (m_falco_baseliner->is_baseline_calculation_enabled())
+	if (m_falco_baseliner->is_baseline_runtime_enabled())
 	{
 		// If, between two emit interval, we notice a lot of
 		// dropped events due to the buffer being full with

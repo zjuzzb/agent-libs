@@ -1287,7 +1287,7 @@ void sinsp_baseliner::disable_baseline_calculation()
 
 }
 
-bool sinsp_baseliner::is_baseline_calculation_enabled() const
+bool sinsp_baseliner::is_baseline_runtime_enabled() const
 {
 	return m_do_baseline_calculation;
 }
