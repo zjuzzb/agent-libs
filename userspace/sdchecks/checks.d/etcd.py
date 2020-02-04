@@ -86,7 +86,9 @@ class Etcd(AgentCheck):
             'ssl_ca_certs': instance.get('ssl_ca_certs'),
         }
 
-        for key, param in ssl_params.items():
+        # necessary to avoid mutating a dict while iterating over it
+        ssl_params_copy = ssl_params.copy()
+        for key, param in ssl_params_copy.items():
             if param is None:
                 del ssl_params[key]
         # Append the instance's URL in case there are more than one, that
