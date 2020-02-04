@@ -4072,7 +4072,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 	// if it's time to emit the falco baseline, do the serialization and then restart it
 	//
 	tracer_emitter falco_trc("falco_baseline", f_trc);
-	if (m_configuration->get_falco_baselining_enabled())
+	if (m_falco_baseliner->is_baseline_calculation_enabled())
 	{
 		scap_stats st;
 		m_inspector->get_capture_stats(&st);
@@ -4095,43 +4095,40 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 			m_last_falco_dump_ts = evt->get_ts();
 		}
 	}
-	else
+	else if (m_configuration->get_falco_baselining_enabled())
 	{
-		if (m_configuration->get_falco_baselining_enabled())
+		//
+		// Once in a while, try to turn baseline calculation on again
+		//
+		if (m_acked_sampling_ratio == 1)
+		{
+			if (evt != NULL &&
+			    evt->get_ts() - m_last_falco_dump_ts >
+			    m_configuration->get_falco_baselining_autodisable_interval_ns())
+			{
+				//
+				// It's safe to turn baselining on again.
+				// Reset the tables and restart the baseline time counter.
+				//
+				scap_stats st;
+				m_inspector->get_capture_stats(&st);
+
+				m_falco_baseliner->clear_tables();
+				m_falco_baseliner->enable_baseline_calculation();
+				m_last_falco_dump_ts = evt->get_ts();
+				m_falco_baseliner->load_tables(evt->get_ts());
+				g_logger.format(
+					"enabling falco baselining creation after a %lus pause",
+					m_configuration->get_falco_baselining_autodisable_interval_ns() /
+					1000000000);
+			}
+		}
+		else
 		{
 			//
-			// Once in a while, try to turn baseline calculation on again
+			// Sampling ratio is still high, reset the baseline counter
 			//
-			if (m_acked_sampling_ratio == 1)
-			{
-				if (evt != NULL &&
-				    evt->get_ts() - m_last_falco_dump_ts >
-				        m_configuration->get_falco_baselining_autodisable_interval_ns())
-				{
-					//
-					// It's safe to turn baselining on again.
-					// Reset the tables and restart the baseline time counter.
-					//
-					scap_stats st;
-					m_inspector->get_capture_stats(&st);
-
-					m_falco_baseliner->clear_tables();
-					m_falco_baseliner->enable_baseline_calculation();
-					m_last_falco_dump_ts = evt->get_ts();
-					m_falco_baseliner->load_tables(evt->get_ts());
-					g_logger.format(
-					    "enabling falco baselining creation after a %lus pause",
-					    m_configuration->get_falco_baselining_autodisable_interval_ns() /
-					        1000000000);
-				}
-			}
-			else
-			{
-				//
-				// Sampling ratio is still high, reset the baseline counter
-				//
-				m_last_falco_dump_ts = evt->get_ts();
-			}
+			m_last_falco_dump_ts = evt->get_ts();
 		}
 	}
 	if (m_internal_metrics)
@@ -4958,7 +4955,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			}
 
 			// Secure Profiling - Emit and Flush
-			if (m_falco_baseliner->is_baseline_calculation_enabled())
+			if (m_configuration->get_falco_baselining_enabled())
 			{
 				emit_baseline(evt, is_eof, f_trc);
 			}
