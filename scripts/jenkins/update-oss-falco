@@ -6,10 +6,11 @@ rm -rf oss-falco
 git clone git@github.com:draios/oss-falco.git
 
 cd oss-falco
+git checkout master
 git remote add upstream git://github.com/falcosecurity/falco.git
 git fetch upstream
 
-git pull upstream dev
+git pull upstream master
 
 git push
 

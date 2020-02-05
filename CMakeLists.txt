@@ -105,6 +105,13 @@ set(FALCO_SINSP_LIBRARY sanalyzer)
 set(FALCO_SHARE_DIR "${CMAKE_INSTALL_PREFIX}/share")
 set(FALCO_ABSOLUTE_SHARE_DIR "${FALCO_SHARE_DIR}")
 set(FALCO_COMPONENT agent-slim)
+set(SYSDIG_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../sysdig")
+
+# This suppresses warnings where a project in add_dependencies() is
+# missing. This happens for dependencies of falco engine, where the
+# agent cmakefiles create the dependencies but don't create
+# ExternalProjects for them.
+cmake_policy(SET CMP0046 OLD)
 add_subdirectory(${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine ${PROJECT_BINARY_DIR}/userspace/engine)
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap)
