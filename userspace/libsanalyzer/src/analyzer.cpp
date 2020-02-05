@@ -2105,7 +2105,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	// (used as the reference value to calculate process CPU usages in the threadtable loop)
 	//
 #ifndef CYGWING_AGENT
-	tracer_emitter jiffies_trc("jiffies", proc_trc, 1);
+	tracer_emitter jiffies_trc("jiffies", proc_trc);
 	if (!m_inspector->is_capture() &&
 	    (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT) && !m_skip_proc_parsing)
 	{
