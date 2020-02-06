@@ -125,7 +125,7 @@ void sinsp_configuration::set_falco_baselining_max_sampling_ratio(uint32_t max_s
 	m_falco_baselining_max_sampling_ratio = max_sampling_ratio;
 }
 
-ool sinsp_configuration::get_commandlines_capture_enabled() const
+bool sinsp_configuration::get_commandlines_capture_enabled() const
 {
 	return m_commandlines_capture_enabled;
 }
