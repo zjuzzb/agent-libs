@@ -1,15 +1,14 @@
 #pragma once
 
-#include <event.h>
-#include <cstdlib> // for rand
-#include <functional>
 #include <assert.h>
+#include <cstdlib>  // for rand
+#include <event.h>
+#include <functional>
 
 class sinsp;
 
 namespace test_helpers
 {
-
 /**
  * Easy way to create sinsp_threadinfo in unit test. Setters are provided
  * for many fields and the class (should) create defaults for any mandatory
@@ -29,16 +28,15 @@ namespace test_helpers
 class thread_builder
 {
 public:
-
 	using mutable_threadinfo_ptr_t = std::shared_ptr<sinsp_threadinfo>;
-	using commit_delegate = std::function<void(sinsp_threadinfo *thread_info)>;
+	using commit_delegate = std::function<void(sinsp_threadinfo* thread_info)>;
 	/**
 	 * ctor with a commit delegate where the generated events are
 	 * sent to a consumer.
 	 */
-	thread_builder(sinsp *inspector, const commit_delegate& delegate) :
-	   m_commit(delegate),
-	   m_threadinfo(new sinsp_threadinfo(inspector))
+	thread_builder(sinsp* inspector, const commit_delegate& delegate)
+	    : m_commit(delegate),
+	      m_threadinfo(new sinsp_threadinfo(inspector))
 	{
 		set_defaults();
 	}
@@ -46,15 +44,11 @@ public:
 	/**
 	 * ctor without commit.
 	 */
-	thread_builder() :
-	   m_threadinfo(new sinsp_threadinfo())
-	{
-		set_defaults();
-	}
+	thread_builder() : m_threadinfo(new sinsp_threadinfo()) { set_defaults(); }
 
 	~thread_builder()
 	{
-		if(m_threadinfo)
+		if (m_threadinfo)
 		{
 			assert(!"This shouldn't happen if you are using this "
 				"class correctly. Either call commit or release "
@@ -91,7 +85,7 @@ public:
 	/**
 	 * Set the command
 	 */
-	thread_builder& comm(const std::string &value)
+	thread_builder& comm(const std::string& value)
 	{
 		m_threadinfo->m_comm = value;
 		return *this;
@@ -109,7 +103,7 @@ public:
 	/**
 	 * Add an argument
 	 */
-	thread_builder& arg(const std::string &value)
+	thread_builder& arg(const std::string& value)
 	{
 		m_threadinfo->m_args.push_back(value);
 		return *this;
@@ -127,7 +121,7 @@ public:
 			// a random value.
 			m_threadinfo->m_pid = m_threadinfo->m_tid = rand();
 		}
-		if(m_threadinfo->m_comm.empty())
+		if (m_threadinfo->m_comm.empty())
 		{
 			m_threadinfo->m_comm = "default_command";
 		}
@@ -137,7 +131,7 @@ public:
 	 * Complete the threadinfo and pass ownership to the consumer. Pass a
 	 * non-owning reference back to the client.
 	 */
-	sinsp_threadinfo &commit()
+	sinsp_threadinfo& commit()
 	{
 		fill_empty_fields();
 		m_commit(m_threadinfo);
@@ -156,15 +150,14 @@ public:
 	}
 
 private:
-
 	/**
 	 * This class stores a raw_ptr copy of the data. This function clears
 	 * ownership from this class (so that it won't be deleted) and returns the
 	 * raw pointer.
 	 */
-	sinsp_threadinfo *release_ptr()
+	sinsp_threadinfo* release_ptr()
 	{
-		sinsp_threadinfo *temp = m_threadinfo;
+		sinsp_threadinfo* temp = m_threadinfo;
 		m_threadinfo = nullptr;
 		return temp;
 	}
@@ -178,8 +171,7 @@ private:
 	}
 
 	commit_delegate m_commit;
-	sinsp_threadinfo *m_threadinfo;
-
+	sinsp_threadinfo* m_threadinfo;
 };
 
-}
+}  // namespace test_helpers

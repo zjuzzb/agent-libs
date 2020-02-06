@@ -1,10 +1,11 @@
-#include <gtest.h>
-#include <sinsp_int.h>
 #include "container_emitter.h"
-#include <config.h>
+
 #include <analyzer.h>
+#include <config.h>
 #include <connectinfo.h>
+#include <gtest.h>
 #include <proc_filter.h>
+#include <sinsp_int.h>
 
 using namespace std;
 
@@ -16,8 +17,7 @@ static const uint32_t test_flush_flags = 4543;
 class fake_analyzer_t
 {
 public:
-	fake_analyzer_t()
-		: m_configuration(&m_configuration_instance)
+	fake_analyzer_t() : m_configuration(&m_configuration_instance)
 	{
 		m_container_filter.reset(new proc_filter::conf("container_filter"));
 		m_container_filter->set_enabled(true);
@@ -45,17 +45,11 @@ public:
 		m_configuration_instance.set_container_filter(m_container_filter);
 	}
 
-	const sinsp_configuration* get_configuration_read_only()
-	{
-		return m_configuration;
-	}
+	const sinsp_configuration* get_configuration_read_only() { return m_configuration; }
 
-	uint64_t get_prev_flush_time_ns() const
-	{
-		return m_prev_flush_time_ns;
-	}
+	uint64_t get_prev_flush_time_ns() const { return m_prev_flush_time_ns; }
 
-        shared_ptr<proc_filter::conf> m_container_filter;
+	shared_ptr<proc_filter::conf> m_container_filter;
 
 	std::unordered_map<std::string, analyzer_container_state> containers;
 	std::unordered_map<string, vector<sinsp_threadinfo*>> progtable;
@@ -68,37 +62,36 @@ public:
 	}
 	sinsp_configuration m_configuration_instance;
 	sinsp_configuration* m_configuration;
-	infrastructure_state* infra_state()
-	{
-		return NULL;
-	}
+	infrastructure_state* infra_state() { return NULL; }
 	uint64_t m_prev_flush_time_ns;
 
 	vector<string> emittable_containers;
 	static void send_containers_to_statsite_fowarder(
-			fake_analyzer_t& fake_analyzer,
-			const vector<string>& containers,
-			const unordered_map<string, vector<sinsp_threadinfo*>> progtable)
+	    fake_analyzer_t& fake_analyzer,
+	    const vector<string>& containers,
+	    const unordered_map<string, vector<sinsp_threadinfo*>> progtable)
 	{
 		fake_analyzer.emittable_containers.insert(fake_analyzer.emittable_containers.end(),
-							  containers.begin(),
-							  containers.end());
+		                                          containers.begin(),
+		                                          containers.end());
 	}
 	set<string> high_priority_emitted_containers;
 	set<string> low_priority_emitted_containers;
 
-	void emit_container(const string &container_id,
-				   unsigned *statsd_limit,
-				   uint64_t total_cpu_shares,
-				   sinsp_threadinfo* tinfo,
-				   uint32_t flush_flags,
-				   const std::list<uint32_t> groups)
+	void emit_container(const string& container_id,
+	                    unsigned* statsd_limit,
+	                    uint64_t total_cpu_shares,
+	                    sinsp_threadinfo* tinfo,
+	                    uint32_t flush_flags,
+	                    const std::list<uint32_t> groups)
 	{
 		ASSERT_EQ(flush_flags, test_flush_flags);
 		if (groups.size() > 0)
 		{
 			high_priority_emitted_containers.insert(container_id);
-		} else {
+		}
+		else
+		{
 			low_priority_emitted_containers.insert(container_id);
 		}
 	}
@@ -132,21 +125,23 @@ TEST(container_emitter, patterns)
 	patterns.emplace_back("gadget");
 
 	test_container_emitter emitter(fake_analyzer,
-				       fake_analyzer.containers,
-				       test_statsd_limit,
-				       fake_analyzer.progtable,
-				       patterns,
-				       test_flush_flags,
-				       1000000,
-				       false,
-				       emitted_containers);
+	                               fake_analyzer.containers,
+	                               test_statsd_limit,
+	                               fake_analyzer.progtable,
+	                               patterns,
+	                               test_flush_flags,
+	                               1000000,
+	                               false,
+	                               emitted_containers);
 	emitter.emit_containers();
 
 	ASSERT_EQ(fake_analyzer.low_priority_emitted_containers.size(), 1);
-	ASSERT_NE(fake_analyzer.low_priority_emitted_containers.find("maybe container 2"), fake_analyzer.low_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.low_priority_emitted_containers.find("maybe container 2"),
+	          fake_analyzer.low_priority_emitted_containers.end());
 	ASSERT_EQ(fake_analyzer.emittable_containers.size(), 1);
 	ASSERT_EQ(emitted_containers.size(), 1);
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"maybe container 2"), emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "maybe container 2"),
+	          emitted_containers.end());
 }
 
 TEST(container_emitter, smart_filter_test)
@@ -178,57 +173,67 @@ TEST(container_emitter, smart_filter_test)
 	fake_analyzer.containers["old container"].m_reported_count = 10000000;
 	fake_analyzer.progtable["old container"] = {NULL};
 	fake_analyzer.sinsp_containers["old container"] = make_shared<sinsp_container_info>();
-	fake_analyzer.sinsp_containers["old container"]->m_labels["container.label.com.sysdig.report"] = "true";
+	fake_analyzer.sinsp_containers["old container"]->m_labels["container.label.com.sysdig.report"] =
+	    "true";
 
 	fake_analyzer.containers["young container"].m_reported_count = 0;
 	fake_analyzer.containers["young container"].m_metrics.m_cpuload = 100000;
 	fake_analyzer.progtable["young container"] = {NULL};
 	fake_analyzer.sinsp_containers["young container"] = make_shared<sinsp_container_info>();
-	fake_analyzer.sinsp_containers["young container"]->m_labels["container.label.com.sysdig.report"] = "true";
+	fake_analyzer.sinsp_containers["young container"]
+	    ->m_labels["container.label.com.sysdig.report"] = "true";
 
 	fake_analyzer.containers["high net"].m_req_metrics.m_io_net.add_in(1, 100000, 1000000);
 	fake_analyzer.containers["high net"].m_reported_count = 1;
 	fake_analyzer.progtable["high net"] = {NULL};
 	fake_analyzer.sinsp_containers["high net"] = make_shared<sinsp_container_info>();
-	fake_analyzer.sinsp_containers["high net"]->m_labels["container.label.com.sysdig.report"] = "true";
+	fake_analyzer.sinsp_containers["high net"]->m_labels["container.label.com.sysdig.report"] =
+	    "true";
 
 	fake_analyzer.containers["high cpu"].m_metrics.m_cpuload = 100000;
 	fake_analyzer.containers["high cpu"].m_reported_count = 1;
 	fake_analyzer.progtable["high cpu"] = {NULL};
 	fake_analyzer.sinsp_containers["high cpu"] = make_shared<sinsp_container_info>();
-	fake_analyzer.sinsp_containers["high cpu"]->m_labels["container.label.com.sysdig.report"] = "true";
+	fake_analyzer.sinsp_containers["high cpu"]->m_labels["container.label.com.sysdig.report"] =
+	    "true";
 
 	fake_analyzer.containers["high file"].m_req_metrics.m_io_file.add_in(1, 100000, 1000000);
 	fake_analyzer.containers["high file"].m_reported_count = 1;
 	fake_analyzer.progtable["high file"] = {NULL};
 	fake_analyzer.sinsp_containers["high file"] = make_shared<sinsp_container_info>();
-	fake_analyzer.sinsp_containers["high file"]->m_labels["container.label.com.sysdig.report"] = "true";
+	fake_analyzer.sinsp_containers["high file"]->m_labels["container.label.com.sysdig.report"] =
+	    "true";
 
 	fake_analyzer.containers["high mem"].m_metrics.m_res_memory_used_kb = 100000;
 	fake_analyzer.containers["high mem"].m_reported_count = 1;
 	fake_analyzer.progtable["high mem"] = {NULL};
 	fake_analyzer.sinsp_containers["high mem"] = make_shared<sinsp_container_info>();
-	fake_analyzer.sinsp_containers["high mem"]->m_labels["container.label.com.sysdig.report"] = "true";
+	fake_analyzer.sinsp_containers["high mem"]->m_labels["container.label.com.sysdig.report"] =
+	    "true";
 
 	fake_analyzer.containers["low net"].m_reported_count = 1;
 	fake_analyzer.progtable["low net"] = {NULL};
 	fake_analyzer.sinsp_containers["low net"] = make_shared<sinsp_container_info>();
-	fake_analyzer.sinsp_containers["low net"]->m_labels["container.label.com.sysdig.report"] = "true";
+	fake_analyzer.sinsp_containers["low net"]->m_labels["container.label.com.sysdig.report"] =
+	    "true";
 
 	fake_analyzer.containers["low cpu"].m_reported_count = 1;
 	fake_analyzer.progtable["low cpu"] = {NULL};
 	fake_analyzer.sinsp_containers["low cpu"] = make_shared<sinsp_container_info>();
-	fake_analyzer.sinsp_containers["low cpu"]->m_labels["container.label.com.sysdig.report"] = "true";
+	fake_analyzer.sinsp_containers["low cpu"]->m_labels["container.label.com.sysdig.report"] =
+	    "true";
 
 	fake_analyzer.containers["low file"].m_reported_count = 1;
 	fake_analyzer.progtable["low file"] = {NULL};
 	fake_analyzer.sinsp_containers["low file"] = make_shared<sinsp_container_info>();
-	fake_analyzer.sinsp_containers["low file"]->m_labels["container.label.com.sysdig.report"] = "true";
+	fake_analyzer.sinsp_containers["low file"]->m_labels["container.label.com.sysdig.report"] =
+	    "true";
 
 	fake_analyzer.containers["low mem"].m_reported_count = 1;
 	fake_analyzer.progtable["low mem"] = {NULL};
 	fake_analyzer.sinsp_containers["low mem"] = make_shared<sinsp_container_info>();
-	fake_analyzer.sinsp_containers["low mem"]->m_labels["container.label.com.sysdig.report"] = "true";
+	fake_analyzer.sinsp_containers["low mem"]->m_labels["container.label.com.sysdig.report"] =
+	    "true";
 
 	// absolute ordering should be:
 	// old
@@ -237,20 +242,19 @@ TEST(container_emitter, smart_filter_test)
 	// young container
 	// maybe container 1/2
 
-
 	// First subtest: higher limit than container count
 	vector<string> emitted_containers;
 
 	vector<string> patterns;
 	test_container_emitter emitter(fake_analyzer,
-				       fake_analyzer.containers,
-				       test_statsd_limit,
-				       fake_analyzer.progtable,
-				       patterns,
-				       test_flush_flags,
-				       1000000,
-				       false,
-				       emitted_containers);
+	                               fake_analyzer.containers,
+	                               test_statsd_limit,
+	                               fake_analyzer.progtable,
+	                               patterns,
+	                               test_flush_flags,
+	                               1000000,
+	                               false,
+	                               emitted_containers);
 	emitter.emit_containers();
 
 	// validate the following all contain the correct containers
@@ -259,50 +263,116 @@ TEST(container_emitter, smart_filter_test)
 	// 3) returned list of containers which we claimed to emit
 	ASSERT_EQ(fake_analyzer.low_priority_emitted_containers.size(), 2);
 	ASSERT_EQ(fake_analyzer.high_priority_emitted_containers.size(), 10);
-	ASSERT_EQ(fake_analyzer.high_priority_emitted_containers.find("k8s container"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_EQ(fake_analyzer.low_priority_emitted_containers.find("k8s container"), fake_analyzer.low_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.low_priority_emitted_containers.find("maybe container 1"), fake_analyzer.low_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.low_priority_emitted_containers.find("maybe container 2"), fake_analyzer.low_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("young container"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high net"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high cpu"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high file"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high mem"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low mem"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low file"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low net"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low cpu"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_EQ(fake_analyzer.high_priority_emitted_containers.find("k8s container"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_EQ(fake_analyzer.low_priority_emitted_containers.find("k8s container"),
+	          fake_analyzer.low_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.low_priority_emitted_containers.find("maybe container 1"),
+	          fake_analyzer.low_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.low_priority_emitted_containers.find("maybe container 2"),
+	          fake_analyzer.low_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("young container"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high net"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high cpu"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high file"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high mem"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low mem"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low file"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low net"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low cpu"),
+	          fake_analyzer.high_priority_emitted_containers.end());
 
 	ASSERT_EQ(fake_analyzer.emittable_containers.size(), 12);
-	ASSERT_EQ(std::find(fake_analyzer.emittable_containers.begin(), fake_analyzer.emittable_containers.end(),"k8s container"), fake_analyzer.emittable_containers.end());
-	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(), fake_analyzer.emittable_containers.end(),"maybe container 1"), fake_analyzer.emittable_containers.end());
-	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(), fake_analyzer.emittable_containers.end(),"maybe container 2"), fake_analyzer.emittable_containers.end());
-	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(), fake_analyzer.emittable_containers.end(),"old container"), fake_analyzer.emittable_containers.end());
-	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(), fake_analyzer.emittable_containers.end(),"young container"), fake_analyzer.emittable_containers.end());
-	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(), fake_analyzer.emittable_containers.end(),"high net"), fake_analyzer.emittable_containers.end());
-	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(), fake_analyzer.emittable_containers.end(),"high cpu"), fake_analyzer.emittable_containers.end());
-	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(), fake_analyzer.emittable_containers.end(),"high file"), fake_analyzer.emittable_containers.end());
-	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(), fake_analyzer.emittable_containers.end(),"high mem"), fake_analyzer.emittable_containers.end());
-	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(), fake_analyzer.emittable_containers.end(),"low mem"), fake_analyzer.emittable_containers.end());
-	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(), fake_analyzer.emittable_containers.end(),"low file"), fake_analyzer.emittable_containers.end());
-	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(), fake_analyzer.emittable_containers.end(),"low net"), fake_analyzer.emittable_containers.end());
-	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(), fake_analyzer.emittable_containers.end(),"low cpu"), fake_analyzer.emittable_containers.end());
+	ASSERT_EQ(std::find(fake_analyzer.emittable_containers.begin(),
+	                    fake_analyzer.emittable_containers.end(),
+	                    "k8s container"),
+	          fake_analyzer.emittable_containers.end());
+	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(),
+	                    fake_analyzer.emittable_containers.end(),
+	                    "maybe container 1"),
+	          fake_analyzer.emittable_containers.end());
+	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(),
+	                    fake_analyzer.emittable_containers.end(),
+	                    "maybe container 2"),
+	          fake_analyzer.emittable_containers.end());
+	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(),
+	                    fake_analyzer.emittable_containers.end(),
+	                    "old container"),
+	          fake_analyzer.emittable_containers.end());
+	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(),
+	                    fake_analyzer.emittable_containers.end(),
+	                    "young container"),
+	          fake_analyzer.emittable_containers.end());
+	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(),
+	                    fake_analyzer.emittable_containers.end(),
+	                    "high net"),
+	          fake_analyzer.emittable_containers.end());
+	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(),
+	                    fake_analyzer.emittable_containers.end(),
+	                    "high cpu"),
+	          fake_analyzer.emittable_containers.end());
+	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(),
+	                    fake_analyzer.emittable_containers.end(),
+	                    "high file"),
+	          fake_analyzer.emittable_containers.end());
+	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(),
+	                    fake_analyzer.emittable_containers.end(),
+	                    "high mem"),
+	          fake_analyzer.emittable_containers.end());
+	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(),
+	                    fake_analyzer.emittable_containers.end(),
+	                    "low mem"),
+	          fake_analyzer.emittable_containers.end());
+	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(),
+	                    fake_analyzer.emittable_containers.end(),
+	                    "low file"),
+	          fake_analyzer.emittable_containers.end());
+	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(),
+	                    fake_analyzer.emittable_containers.end(),
+	                    "low net"),
+	          fake_analyzer.emittable_containers.end());
+	ASSERT_NE(std::find(fake_analyzer.emittable_containers.begin(),
+	                    fake_analyzer.emittable_containers.end(),
+	                    "low cpu"),
+	          fake_analyzer.emittable_containers.end());
 
 	ASSERT_EQ(emitted_containers.size(), 12);
-	ASSERT_EQ(std::find(emitted_containers.begin(), emitted_containers.end(),"k8s container"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"maybe container 1"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"maybe container 2"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"old container"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"young container"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"high net"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"high cpu"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"high file"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"high mem"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"low mem"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"low file"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"low net"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"low cpu"), emitted_containers.end());
+	ASSERT_EQ(std::find(emitted_containers.begin(), emitted_containers.end(), "k8s container"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "maybe container 1"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "maybe container 2"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "old container"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "young container"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "high net"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "high cpu"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "high file"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "high mem"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "low mem"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "low file"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "low net"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "low cpu"),
+	          emitted_containers.end());
 
 	// check that we incremented the ages
 	ASSERT_EQ(fake_analyzer.containers["young container"].m_reported_count, 1);
@@ -314,41 +384,61 @@ TEST(container_emitter, smart_filter_test)
 	fake_analyzer.low_priority_emitted_containers.clear();
 
 	test_container_emitter emitter2(fake_analyzer,
-					fake_analyzer.containers,
-					test_statsd_limit,
-					fake_analyzer.progtable,
-					patterns,
-					test_flush_flags,
-					10,
-					false,
-					emitted_containers);
+	                                fake_analyzer.containers,
+	                                test_statsd_limit,
+	                                fake_analyzer.progtable,
+	                                patterns,
+	                                test_flush_flags,
+	                                10,
+	                                false,
+	                                emitted_containers);
 	emitter2.emit_containers();
 
-	//ASSERT_EQ(fake_analyzer.emitted_containers.size(), 10);
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("young container"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high net"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high cpu"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high file"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high mem"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low mem"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low file"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low net"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low cpu"), fake_analyzer.high_priority_emitted_containers.end());
+	// ASSERT_EQ(fake_analyzer.emitted_containers.size(), 10);
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("young container"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high net"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high cpu"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high file"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high mem"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low mem"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low file"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low net"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low cpu"),
+	          fake_analyzer.high_priority_emitted_containers.end());
 
 	ASSERT_EQ(fake_analyzer.emittable_containers.size(), 12);
 
 	ASSERT_EQ(emitted_containers.size(), 10);
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"old container"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"young container"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"high net"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"high cpu"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"high file"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"high mem"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"low mem"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"low file"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"low net"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"low cpu"), emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "old container"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "young container"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "high net"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "high cpu"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "high file"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "high mem"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "low mem"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "low file"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "low net"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "low cpu"),
+	          emitted_containers.end());
 
 	ASSERT_EQ(fake_analyzer.containers["young container"].m_reported_count, 2);
 
@@ -359,31 +449,41 @@ TEST(container_emitter, smart_filter_test)
 	fake_analyzer.high_priority_emitted_containers.clear();
 
 	test_container_emitter emitter3(fake_analyzer,
-					fake_analyzer.containers,
-					test_statsd_limit,
-					fake_analyzer.progtable,
-					patterns,
-					test_flush_flags,
-					5,
-					false,
-					emitted_containers);
+	                                fake_analyzer.containers,
+	                                test_statsd_limit,
+	                                fake_analyzer.progtable,
+	                                patterns,
+	                                test_flush_flags,
+	                                5,
+	                                false,
+	                                emitted_containers);
 	emitter3.emit_containers();
 
 	ASSERT_EQ(fake_analyzer.high_priority_emitted_containers.size(), 5);
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high net"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high cpu"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high file"), fake_analyzer.high_priority_emitted_containers.end());
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high mem"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high net"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high cpu"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high file"),
+	          fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high mem"),
+	          fake_analyzer.high_priority_emitted_containers.end());
 
 	ASSERT_EQ(fake_analyzer.emittable_containers.size(), 12);
 
 	ASSERT_EQ(emitted_containers.size(), 5);
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"old container"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"high net"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"high cpu"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"high file"), emitted_containers.end());
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"high mem"), emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "old container"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "high net"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "high cpu"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "high file"),
+	          emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "high mem"),
+	          emitted_containers.end());
 
 	// negative test...ensure we don't increment stuff we don't emit
 	ASSERT_EQ(fake_analyzer.containers["young container"].m_reported_count, 2);
@@ -395,23 +495,25 @@ TEST(container_emitter, smart_filter_test)
 	fake_analyzer.high_priority_emitted_containers.clear();
 
 	test_container_emitter emitter4(fake_analyzer,
-					fake_analyzer.containers,
-					test_statsd_limit,
-					fake_analyzer.progtable,
-					patterns,
-					test_flush_flags,
-					1,
-					false,
-					emitted_containers);
+	                                fake_analyzer.containers,
+	                                test_statsd_limit,
+	                                fake_analyzer.progtable,
+	                                patterns,
+	                                test_flush_flags,
+	                                1,
+	                                false,
+	                                emitted_containers);
 	emitter4.emit_containers();
 
 	ASSERT_EQ(fake_analyzer.high_priority_emitted_containers.size(), 1);
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"),
+	          fake_analyzer.high_priority_emitted_containers.end());
 
 	ASSERT_EQ(fake_analyzer.emittable_containers.size(), 12);
 
 	ASSERT_EQ(emitted_containers.size(), 1);
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"old container"), emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "old container"),
+	          emitted_containers.end());
 
 	ASSERT_EQ(fake_analyzer.containers["young container"].m_reported_count, 2);
 
@@ -422,27 +524,28 @@ TEST(container_emitter, smart_filter_test)
 	fake_analyzer.high_priority_emitted_containers.clear();
 
 	test_container_emitter emitter5(fake_analyzer,
-					fake_analyzer.containers,
-					test_statsd_limit,
-					fake_analyzer.progtable,
-					patterns,
-					test_flush_flags,
-					3,
-					false,
-					emitted_containers);
+	                                fake_analyzer.containers,
+	                                test_statsd_limit,
+	                                fake_analyzer.progtable,
+	                                patterns,
+	                                test_flush_flags,
+	                                3,
+	                                false,
+	                                emitted_containers);
 	emitter5.emit_containers();
 
 	ASSERT_EQ(fake_analyzer.high_priority_emitted_containers.size(), 1);
-	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"),
+	          fake_analyzer.high_priority_emitted_containers.end());
 
 	ASSERT_EQ(fake_analyzer.emittable_containers.size(), 12);
 
 	ASSERT_EQ(emitted_containers.size(), 1);
-	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"old container"), emitted_containers.end());
+	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(), "old container"),
+	          emitted_containers.end());
 
 	ASSERT_EQ(fake_analyzer.containers["young container"].m_reported_count, 2);
 }
-
 
 TEST(container_emitter, end_of_list_fencepost)
 {
@@ -472,14 +575,14 @@ TEST(container_emitter, end_of_list_fencepost)
 	vector<string> emitted_containers;
 	vector<string> patterns;
 	test_container_emitter emitter(fake_analyzer,
-				       fake_analyzer.containers,
-				       test_statsd_limit,
-				       fake_analyzer.progtable,
-				       patterns,
-				       test_flush_flags,
-				       5,
-				       false,
-				       emitted_containers);
+	                               fake_analyzer.containers,
+	                               test_statsd_limit,
+	                               fake_analyzer.progtable,
+	                               patterns,
+	                               test_flush_flags,
+	                               5,
+	                               false,
+	                               emitted_containers);
 	emitter.emit_containers();
 
 	ASSERT_EQ(fake_analyzer.low_priority_emitted_containers.size(), 5);
@@ -499,14 +602,14 @@ TEST(container_emitter, next_age_empty)
 	vector<string> emitted_containers;
 	vector<string> patterns;
 	test_container_emitter emitter(fake_analyzer,
-				       fake_analyzer.containers,
-				       test_statsd_limit,
-				       fake_analyzer.progtable,
-				       patterns,
-				       test_flush_flags,
-				       5,
-				       false,
-				       emitted_containers);
+	                               fake_analyzer.containers,
+	                               test_statsd_limit,
+	                               fake_analyzer.progtable,
+	                               patterns,
+	                               test_flush_flags,
+	                               5,
+	                               false,
+	                               emitted_containers);
 	emitter.emit_containers();
 
 	ASSERT_EQ(fake_analyzer.low_priority_emitted_containers.size(), 1);
@@ -537,14 +640,14 @@ TEST(container_emitter, not_too_many_maybes)
 	vector<string> emitted_containers;
 	vector<string> patterns;
 	test_container_emitter emitter(fake_analyzer,
-				       fake_analyzer.containers,
-				       test_statsd_limit,
-				       fake_analyzer.progtable,
-				       patterns,
-				       test_flush_flags,
-				       3,
-				       false,
-				       emitted_containers);
+	                               fake_analyzer.containers,
+	                               test_statsd_limit,
+	                               fake_analyzer.progtable,
+	                               patterns,
+	                               test_flush_flags,
+	                               3,
+	                               false,
+	                               emitted_containers);
 	emitter.emit_containers();
 
 	ASSERT_EQ(fake_analyzer.low_priority_emitted_containers.size(), 3);

@@ -1,70 +1,79 @@
 
-template <typename callback_type, typename callback_arg_type>
-container_emitter<callback_type,callback_arg_type>::container_emitter(callback_type& t,
-					std::unordered_map<std::string, analyzer_container_state>& containers,
-					unsigned statsd_limit,
-					const std::unordered_map<std::string, std::vector<sinsp_threadinfo*>>& progtable_by_container,
-					const std::vector<std::string>& container_patterns,
-					callback_arg_type flshflags,
-					uint32_t limit,
-					bool nodriver,
-					std::vector<std::string>& emitted_containers)
-	: m_t(t),
-	  m_containers(containers),
-	  m_must_report(),
-	  m_can_report(),
-	  m_statsd_limit(statsd_limit),
-	  m_emitted_containers(),
-	  m_emitted_containers_out(emitted_containers),
-	  m_total_cpu_shares(0),
-	  m_progtable_by_container(progtable_by_container),
-	  m_flshflags(flshflags),
-	  m_container_patterns(container_patterns),
-	  m_container_limit(limit),
-	  m_used(false),
-	  m_nodriver(nodriver)
+template<typename callback_type, typename callback_arg_type>
+container_emitter<callback_type, callback_arg_type>::container_emitter(
+    callback_type& t,
+    std::unordered_map<std::string, analyzer_container_state>& containers,
+    unsigned statsd_limit,
+    const std::unordered_map<std::string, std::vector<sinsp_threadinfo*>>& progtable_by_container,
+    const std::vector<std::string>& container_patterns,
+    callback_arg_type flshflags,
+    uint32_t limit,
+    bool nodriver,
+    std::vector<std::string>& emitted_containers)
+    : m_t(t),
+      m_containers(containers),
+      m_must_report(),
+      m_can_report(),
+      m_statsd_limit(statsd_limit),
+      m_emitted_containers(),
+      m_emitted_containers_out(emitted_containers),
+      m_total_cpu_shares(0),
+      m_progtable_by_container(progtable_by_container),
+      m_flshflags(flshflags),
+      m_container_patterns(container_patterns),
+      m_container_limit(limit),
+      m_used(false),
+      m_nodriver(nodriver)
 {
 }
 
-template <typename callback_type, typename callback_arg_type>
-double container_emitter<callback_type,callback_arg_type>::cpu_extractor(const analyzer_container_state& analyzer_state)
+template<typename callback_type, typename callback_arg_type>
+double container_emitter<callback_type, callback_arg_type>::cpu_extractor(
+    const analyzer_container_state& analyzer_state)
 {
 	return analyzer_state.m_metrics.m_cpuload;
 }
 
-template <typename callback_type, typename callback_arg_type>
-int64_t container_emitter<callback_type,callback_arg_type>::mem_extractor(const analyzer_container_state& analyzer_state)
+template<typename callback_type, typename callback_arg_type>
+int64_t container_emitter<callback_type, callback_arg_type>::mem_extractor(
+    const analyzer_container_state& analyzer_state)
 {
 	return analyzer_state.m_metrics.m_res_memory_used_kb;
 }
 
-template <typename callback_type, typename callback_arg_type>
-uint64_t container_emitter<callback_type,callback_arg_type>::file_io_extractor(const analyzer_container_state& analyzer_state)
+template<typename callback_type, typename callback_arg_type>
+uint64_t container_emitter<callback_type, callback_arg_type>::file_io_extractor(
+    const analyzer_container_state& analyzer_state)
 {
 	return analyzer_state.m_req_metrics.m_io_file.get_tot_bytes();
 }
 
-template <typename callback_type, typename callback_arg_type>
-uint64_t container_emitter<callback_type,callback_arg_type>::net_io_extractor(const analyzer_container_state& analyzer_state)
+template<typename callback_type, typename callback_arg_type>
+uint64_t container_emitter<callback_type, callback_arg_type>::net_io_extractor(
+    const analyzer_container_state& analyzer_state)
 {
 	return analyzer_state.m_req_metrics.m_io_net.get_tot_bytes();
 }
 
-template <typename callback_type, typename callback_arg_type>
-uint64_t container_emitter<callback_type,callback_arg_type>::age_extractor(const analyzer_container_state& analyzer_state)
+template<typename callback_type, typename callback_arg_type>
+uint64_t container_emitter<callback_type, callback_arg_type>::age_extractor(
+    const analyzer_container_state& analyzer_state)
 {
 	return analyzer_state.m_reported_count;
 }
 
-template <typename callback_type, typename callback_arg_type>
-void container_emitter<callback_type,callback_arg_type>::check_and_emit_containers(std::vector<std::string>& containers,
-										   const uint32_t containers_limit,
-										   bool high_priority)
+template<typename callback_type, typename callback_arg_type>
+void container_emitter<callback_type, callback_arg_type>::check_and_emit_containers(
+    std::vector<std::string>& containers,
+    const uint32_t containers_limit,
+    bool high_priority)
 {
 	// first sort containers by who has been emitted the longest
 	sort(containers.begin(),
 	     containers.end(),
-	     containers_cmp<decltype(&age_extractor)>(&m_containers, &m_emitted_containers, &age_extractor));
+	     containers_cmp<decltype(&age_extractor)>(&m_containers,
+	                                              &m_emitted_containers,
+	                                              &age_extractor));
 
 	// now start walking through the list. For each value of age, if we have enough
 	// space left in the limit, report it. Otherwise, given the remaining range available,
@@ -78,7 +87,9 @@ void container_emitter<callback_type,callback_arg_type>::check_and_emit_containe
 		uint32_t distance = 0;
 
 		// move rabbit it to the next age category
-		while (rabbit_it != containers.end() && age_extractor(m_containers.find(*rabbit_it)->second) == age_extractor(m_containers.find(*turtle_it)->second))
+		while (rabbit_it != containers.end() &&
+		       age_extractor(m_containers.find(*rabbit_it)->second) ==
+		           age_extractor(m_containers.find(*turtle_it)->second))
 		{
 			distance++;
 			rabbit_it++;
@@ -90,42 +101,52 @@ void container_emitter<callback_type,callback_arg_type>::check_and_emit_containe
 			emit_range(turtle_it, distance, high_priority);
 			remaining_limit -= distance;
 		}
-		else // they all won't fit....sort by stats
+		else  // they all won't fit....sort by stats
 		{
 			uint32_t limit_per_type = remaining_limit / stat_categories;
 			partial_sort(turtle_it,
-				    turtle_it + limit_per_type,
-				    rabbit_it,
-				    containers_cmp<decltype(&mem_extractor)>(&m_containers, &m_emitted_containers, &mem_extractor));
+			             turtle_it + limit_per_type,
+			             rabbit_it,
+			             containers_cmp<decltype(&mem_extractor)>(&m_containers,
+			                                                      &m_emitted_containers,
+			                                                      &mem_extractor));
 			emit_range(turtle_it, limit_per_type, high_priority);
 
 			partial_sort(turtle_it,
-				    turtle_it + limit_per_type,
-				    rabbit_it,
-				    containers_cmp<decltype(&file_io_extractor)>(&m_containers, &m_emitted_containers, &file_io_extractor));
+			             turtle_it + limit_per_type,
+			             rabbit_it,
+			             containers_cmp<decltype(&file_io_extractor)>(&m_containers,
+			                                                          &m_emitted_containers,
+			                                                          &file_io_extractor));
 			emit_range(turtle_it, limit_per_type, high_priority);
 
 			// in cases where we have no driver, skip net_io, and emit double cpu
 			if (m_nodriver)
 			{
 				partial_sort(turtle_it,
-					    turtle_it + limit_per_type,
-					    rabbit_it,
-					    containers_cmp<decltype(&cpu_extractor)>(&m_containers, &m_emitted_containers, &cpu_extractor));
+				             turtle_it + limit_per_type,
+				             rabbit_it,
+				             containers_cmp<decltype(&cpu_extractor)>(&m_containers,
+				                                                      &m_emitted_containers,
+				                                                      &cpu_extractor));
 			}
 			else
 			{
 				partial_sort(turtle_it,
-					    turtle_it + limit_per_type,
-					    rabbit_it,
-					    containers_cmp<decltype(&net_io_extractor)>(&m_containers, &m_emitted_containers, &net_io_extractor));
+				             turtle_it + limit_per_type,
+				             rabbit_it,
+				             containers_cmp<decltype(&net_io_extractor)>(&m_containers,
+				                                                         &m_emitted_containers,
+				                                                         &net_io_extractor));
 			}
 			emit_range(turtle_it, limit_per_type, high_priority);
 
 			partial_sort(turtle_it,
-				    turtle_it + limit_per_type,
-				    rabbit_it,
-				    containers_cmp<decltype(&cpu_extractor)>(&m_containers, &m_emitted_containers, &cpu_extractor));
+			             turtle_it + limit_per_type,
+			             rabbit_it,
+			             containers_cmp<decltype(&cpu_extractor)>(&m_containers,
+			                                                      &m_emitted_containers,
+			                                                      &cpu_extractor));
 			emit_range(turtle_it, limit_per_type, high_priority);
 
 			remaining_limit = 0;
@@ -136,8 +157,8 @@ void container_emitter<callback_type,callback_arg_type>::check_and_emit_containe
 	}
 }
 
-template <typename callback_type, typename callback_arg_type>
-void container_emitter<callback_type,callback_arg_type>::emit_containers()
+template<typename callback_type, typename callback_arg_type>
+void container_emitter<callback_type, callback_arg_type>::emit_containers()
 {
 	assert(!m_used);
 	m_used = true;
@@ -152,29 +173,34 @@ void container_emitter<callback_type,callback_arg_type>::emit_containers()
 	//    info for it, we prepare to emit it by adding it to the list of container IDs
 	//    and add its protostate stuff to our global sorting marker
 	uint64_t total_cpu_shares = 0;
-	for(const auto& item : m_progtable_by_container)
+	for (const auto& item : m_progtable_by_container)
 	{
 		const std::string& container_id = item.first;
 		const auto sinsp_container_info_instance = m_t.get_container(container_id);
-		if(sinsp_container_info_instance && !sinsp_container_info_instance->is_pod_sandbox())
+		if (sinsp_container_info_instance && !sinsp_container_info_instance->is_pod_sandbox())
 		{
 			if (patterns_contain(*sinsp_container_info_instance))
 			{
 				auto analyzer_container_info = m_containers.find(container_id);
 				bool optional;
-				if((analyzer_container_info != m_containers.end()) &&
-				   analyzer_container_info->second.should_report_container(m_t.get_configuration_read_only(),
-											   *sinsp_container_info_instance,
-											   m_t.infra_state(),
-											   m_t.get_prev_flush_time_ns(),
-											   optional))
+				if ((analyzer_container_info != m_containers.end()) &&
+				    analyzer_container_info->second.should_report_container(
+				        m_t.get_configuration_read_only(),
+				        *sinsp_container_info_instance,
+				        m_t.infra_state(),
+				        m_t.get_prev_flush_time_ns(),
+				        optional))
 				{
-					if (optional) {
+					if (optional)
+					{
 						m_can_report.push_back(container_id);
-					} else {
+					}
+					else
+					{
 						m_must_report.push_back(container_id);
 					}
-					containers_protostate_marker.add(analyzer_container_info->second.m_metrics.m_protostate);
+					containers_protostate_marker.add(
+					    analyzer_container_info->second.m_metrics.m_protostate);
 				}
 			}
 
@@ -199,15 +225,9 @@ void container_emitter<callback_type,callback_arg_type>::emit_containers()
 	// set.
 	std::vector<std::string> all_containers;
 
-	all_containers.insert(all_containers.end(),
-	                      m_must_report.begin(),
-	                      m_must_report.end());
-	all_containers.insert(all_containers.end(),
-	                      m_can_report.begin(),
-	                      m_can_report.end());
-	m_t.send_containers_to_statsite_fowarder(m_t,
-	                                         all_containers,
-	                                         m_progtable_by_container);
+	all_containers.insert(all_containers.end(), m_must_report.begin(), m_must_report.end());
+	all_containers.insert(all_containers.end(), m_can_report.begin(), m_can_report.end());
+	m_t.send_containers_to_statsite_fowarder(m_t, all_containers, m_progtable_by_container);
 
 	g_logger.format(sinsp_logger::SEV_DEBUG, "total_cpu_shares=%lu", total_cpu_shares);
 	containers_protostate_marker.mark_top(CONTAINERS_PROTOS_TOP_LIMIT);
@@ -239,6 +259,5 @@ void container_emitter<callback_type,callback_arg_type>::emit_containers()
 	{
 		m_emitted_containers_out.emplace_back(*it);
 		m_containers.find(*it)->second.m_reported_count++;
-	}	
+	}
 }
-

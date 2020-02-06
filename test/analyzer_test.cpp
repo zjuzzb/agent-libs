@@ -1,87 +1,83 @@
-#include <termios.h>
-#include <fcntl.h>
 #include <errno.h>
-#include <sys/ioctl.h>
+#include <fcntl.h>
 #include <poll.h>
+#include <sys/ioctl.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>
+#include <termios.h>
 #include <unistd.h>
 
 #define VISIBILITY_PRIVATE
 
-#include "sys_call_test.h"
-#include <gtest.h>
-#include <algorithm>
+#include "analyzer.h"
+#include "analyzer_fd.h"
+#include "analyzer_thread.h"
+#include "connectinfo.h"
+#include "delays.h"
 #include "event_capture.h"
-#include <sys/stat.h>
-#include <Poco/Process.h>
-#include <Poco/PipeStream.h>
-#include <list>
-#include <cassert>
-#include <event.h>
-#include <Poco/StringTokenizer.h>
-#include <Poco/NumberFormatter.h>
-#include <Poco/NumberParser.h>
-#include <ifaddrs.h>
-#include <netinet/in.h>
-#include <signal.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-
-#include <sinsp.h>
-#include <sinsp_int.h>
-#include <sinsp_errno.h>
+#include "metrics.h"
+#include "parsers.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
-#include "parsers.h"
-#include "connectinfo.h"
-#include "metrics.h"
-#include "analyzer.h"
-#include "delays.h"
-#include "analyzer_thread.h"
-#include "analyzer_fd.h"
-#include <sys/prctl.h>
+#include "sys_call_test.h"
+
+#include <Poco/NumberFormatter.h>
+#include <Poco/NumberParser.h>
+#include <Poco/PipeStream.h>
+#include <Poco/Process.h>
+#include <Poco/StringTokenizer.h>
+
+#include <algorithm>
+#include <cassert>
+#include <event.h>
+#include <gtest.h>
+#include <ifaddrs.h>
+#include <list>
+#include <netinet/in.h>
 #include <signal.h>
+#include <sinsp.h>
+#include <sinsp_errno.h>
+#include <sinsp_int.h>
+#include <sys/prctl.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <thread>
 
 using namespace std;
 
-using Poco::StringTokenizer;
 using Poco::NumberFormatter;
 using Poco::NumberParser;
+using Poco::StringTokenizer;
 
 TEST_F(sys_call_test, analyzer_errors)
 {
-//	int callnum = 0;
+	//	int callnum = 0;
 
 	//
 	// FILTER
 	//
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return m_tid_filter(evt);
-	};
+	event_filter_t filter = [&](sinsp_evt* evt) { return m_tid_filter(evt); };
 
 	//
 	// TEST CODE
 	//
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		char* const* pnt1 = NULL;
 		char* pnt2 = NULL;
 
-		FILE* f = fopen("/nonexistent", "r");	// generates ENOENT
+		FILE* f = fopen("/nonexistent", "r");  // generates ENOENT
 		f = fopen("/nonexistent", "r");
 		f = fopen("/nonexistent", "r");
 		f = fopen("/nonexistent", "r");
 		f = fopen("/nonexistent", "r");
-		EXPECT_EQ(NULL, f);	// just to avoid the compiler from emitting a warning
-		close(3333); // generates EBADF
+		EXPECT_EQ(NULL, f);  // just to avoid the compiler from emitting a warning
+		close(3333);         // generates EBADF
 		close(3333);
 		close(3333);
-		execve(pnt2, pnt1, pnt1); // generates EFAULT
+		execve(pnt2, pnt1, pnt1);  // generates EFAULT
 		execve(pnt2, pnt1, pnt1);
-		accept(3333, NULL, NULL); // generates EBADF
+		accept(3333, NULL, NULL);  // generates EBADF
 
 		// We use a random call to tee to signal that we're done
 		tee(-1, -1, 0, 0);
@@ -90,13 +86,12 @@ TEST_F(sys_call_test, analyzer_errors)
 	//
 	// OUTPUT VALDATION
 	//
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_evt* e = param.m_evt;
 
-		if(e->get_type() == PPME_GENERIC_E)
+		if (e->get_type() == PPME_GENERIC_E)
 		{
-			if(NumberParser::parse(e->get_param_value_str("ID", false)) == PPM_SC_TEE)
+			if (NumberParser::parse(e->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
 				sinsp_error_counters* ec = &param.m_analyzer->m_host_metrics.m_syscall_errors;
 
@@ -116,21 +111,17 @@ TEST_F(sys_call_test, analyzer_errors)
 		}
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 
-//	EXPECT_EQ(7, callnum);
+	//	EXPECT_EQ(7, callnum);
 }
 
 TEST_F(sys_call_test, analyzer_procrename)
 {
-
 	//
 	// FILTER
 	//
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return m_tid_filter(evt);
-	};
+	event_filter_t filter = [&](sinsp_evt* evt) { return m_tid_filter(evt); };
 
 	int child_pid = 0;
 
@@ -147,21 +138,19 @@ TEST_F(sys_call_test, analyzer_procrename)
 	//
 	// TEST CODE
 	//
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		// Wait a bit so the first flush will be executed
-		usleep(1500*1000);
+		usleep(1500 * 1000);
 		getuid();
 	};
 
 	//
 	// OUTPUT VALIDATION
 	//
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_evt* e = param.m_evt;
 
-		if(e->get_type() == PPME_SYSCALL_GETUID_X)
+		if (e->get_type() == PPME_SYSCALL_GETUID_X)
 		{
 			auto* thread_table = param.m_inspector->m_thread_manager->get_threads();
 			ASSERT_NE(nullptr, thread_table->get(child_pid));
@@ -172,7 +161,7 @@ TEST_F(sys_call_test, analyzer_procrename)
 		}
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	kill(child_pid, SIGTERM);
 	waitpid(child_pid, NULL, 0);
 }
@@ -184,16 +173,12 @@ TEST_F(sys_call_test, analyzer_fdstats)
 	//
 	// FILTER
 	//
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return m_tid_filter(evt);
-	};
+	event_filter_t filter = [&](sinsp_evt* evt) { return m_tid_filter(evt); };
 
 	//
 	// TEST CODE
 	//
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		int fd;
 		ssize_t res;
 
@@ -202,7 +187,7 @@ TEST_F(sys_call_test, analyzer_fdstats)
 		fd = open("/tmp/nonexistent", O_RDONLY);
 		EXPECT_EQ(-1, fd);
 
-		for(uint32_t j = 0; j < 10; ++j)
+		for (uint32_t j = 0; j < 10; ++j)
 		{
 			fd = open("/tmp/testfile_opencount", O_RDWR | O_CREAT, 0666);
 			EXPECT_LT(0, fd);
@@ -212,22 +197,22 @@ TEST_F(sys_call_test, analyzer_fdstats)
 		fd = open("/tmp/testfile_rdwr", O_RDWR | O_CREAT, 0666);
 		EXPECT_LT(0, fd);
 		res = write(fd, "token1", sizeof("token1"));
-		EXPECT_EQ(sizeof("token1"), (uint64_t) res);
+		EXPECT_EQ(sizeof("token1"), (uint64_t)res);
 		res = write(fd, "token1", sizeof("token1"));
-		EXPECT_EQ(sizeof("token1"), (uint64_t) res);
+		EXPECT_EQ(sizeof("token1"), (uint64_t)res);
 		res = write(fd, "token1", sizeof("token1"));
-		EXPECT_EQ(sizeof("token1"), (uint64_t) res);
+		EXPECT_EQ(sizeof("token1"), (uint64_t)res);
 		res = write(fd, "token1", sizeof("token1"));
-		EXPECT_EQ(sizeof("token1"), (uint64_t) res);
+		EXPECT_EQ(sizeof("token1"), (uint64_t)res);
 		res = write(fd, "token1", sizeof("token1"));
-		EXPECT_EQ(sizeof("token1"), (uint64_t) res);
+		EXPECT_EQ(sizeof("token1"), (uint64_t)res);
 		close(fd);
 
 		fd = open("/tmp/testfile_rdwr", O_RDONLY);
 		EXPECT_LT(0, fd);
 		char buf[512];
 		res = read(fd, buf, sizeof(buf));
-		EXPECT_EQ(5 * sizeof("token1"), (uint64_t) res);
+		EXPECT_EQ(5 * sizeof("token1"), (uint64_t)res);
 		close(fd);
 
 		res = renameat(0, "/tmp/testfile_rdwr", 0, "/tmp/testfile_rdonly");
@@ -246,58 +231,57 @@ TEST_F(sys_call_test, analyzer_fdstats)
 	//
 	// OUTPUT VALDATION
 	//
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_evt* e = param.m_evt;
 
-		if(e->get_type() == PPME_GENERIC_E)
+		if (e->get_type() == PPME_GENERIC_E)
 		{
-			if(NumberParser::parse(e->get_param_value_str("ID", false)) == PPM_SC_TEE)
+			if (NumberParser::parse(e->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
 				found = true;
 
 				const auto& files_stat = param.m_analyzer->m_fd_listener->m_files_stat;
 
-				EXPECT_NE((uint64_t) 0, files_stat.size());
+				EXPECT_NE((uint64_t)0, files_stat.size());
 
 				analyzer_top_file_stat_map::const_iterator it = files_stat.find("/tmp/nonexistent");
 				EXPECT_NE(files_stat.end(), it);
 				if (it != files_stat.end())
 				{
-					EXPECT_EQ((uint64_t) 0, it->second.time_ns());
-					EXPECT_EQ((uint64_t) 0, it->second.bytes());
-					EXPECT_EQ((uint64_t) 1, it->second.errors());
-					EXPECT_EQ((uint64_t) 0, it->second.open_count());
+					EXPECT_EQ((uint64_t)0, it->second.time_ns());
+					EXPECT_EQ((uint64_t)0, it->second.bytes());
+					EXPECT_EQ((uint64_t)1, it->second.errors());
+					EXPECT_EQ((uint64_t)0, it->second.open_count());
 				}
 
 				it = files_stat.find("/tmp/testfile_opencount");
 				EXPECT_NE(files_stat.end(), it);
 				if (it != files_stat.end())
 				{
-					EXPECT_EQ((uint64_t) 0, it->second.time_ns());
-					EXPECT_EQ((uint64_t) 0, it->second.bytes());
-					EXPECT_EQ((uint64_t) 0, it->second.errors());
-					EXPECT_EQ((uint64_t) 10, it->second.open_count());
+					EXPECT_EQ((uint64_t)0, it->second.time_ns());
+					EXPECT_EQ((uint64_t)0, it->second.bytes());
+					EXPECT_EQ((uint64_t)0, it->second.errors());
+					EXPECT_EQ((uint64_t)10, it->second.open_count());
 				}
 
 				it = files_stat.find("/tmp/testfile_rdwr");
 				EXPECT_NE(files_stat.end(), it);
 				if (it != files_stat.end())
 				{
-					EXPECT_NE((uint64_t) 0, it->second.time_ns());
+					EXPECT_NE((uint64_t)0, it->second.time_ns());
 					EXPECT_EQ(10 * sizeof("token1"), it->second.bytes());
-					EXPECT_EQ((uint64_t) 0, it->second.errors());
-					EXPECT_EQ((uint64_t) 2, it->second.open_count());
+					EXPECT_EQ((uint64_t)0, it->second.errors());
+					EXPECT_EQ((uint64_t)2, it->second.open_count());
 				}
 
 				it = files_stat.find("/tmp/testfile_rdonly");
 				EXPECT_NE(files_stat.end(), it);
 				if (it != files_stat.end())
 				{
-					EXPECT_EQ((uint64_t) 0, it->second.time_ns());
-					EXPECT_EQ((uint64_t) 0, it->second.bytes());
-					EXPECT_EQ((uint64_t) 1, it->second.errors());
-					EXPECT_EQ((uint64_t) 1, it->second.open_count());
+					EXPECT_EQ((uint64_t)0, it->second.time_ns());
+					EXPECT_EQ((uint64_t)0, it->second.bytes());
+					EXPECT_EQ((uint64_t)1, it->second.errors());
+					EXPECT_EQ((uint64_t)1, it->second.open_count());
 				}
 
 				const auto& tid_metrics = e->m_tinfo->m_ainfo->m_metrics;
@@ -308,7 +292,7 @@ TEST_F(sys_call_test, analyzer_fdstats)
 		}
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 
 	EXPECT_TRUE(found);
 }
@@ -932,17 +916,14 @@ TEST_F(sys_call_test, procname_refresh_lt_1s)
 {
 	int callnum = 0;
 	int child;
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return m_tid_filter(evt) &&
-			evt->get_type() == PPME_SYSCALL_CLOSE_X &&
-			evt->get_param_value_str("res", false) != "0";
+	event_filter_t filter = [&](sinsp_evt* evt) {
+		return m_tid_filter(evt) && evt->get_type() == PPME_SYSCALL_CLOSE_X &&
+		       evt->get_param_value_str("res", false) != "0";
 	};
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		// Use close events as sentinels
 		child = fork();
-		if(child == 0)
+		if (child == 0)
 		{
 			auto ret = prctl(PR_SET_NAME, "changed");
 			EXPECT_EQ(0, ret);
@@ -956,8 +937,7 @@ TEST_F(sys_call_test, procname_refresh_lt_1s)
 		}
 		sleep(2);
 	};
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		auto parent = param.m_inspector->get_thread(getpid());
 		ASSERT_NE(nullptr, parent);
 		EXPECT_EQ(string("tests"), parent->m_comm) << "parent";
@@ -966,7 +946,7 @@ TEST_F(sys_call_test, procname_refresh_lt_1s)
 		EXPECT_EQ(string("tests"), childt->m_comm) << "child";
 		++callnum;
 	};
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	EXPECT_EQ(1, callnum);
 }
 
@@ -974,17 +954,14 @@ TEST_F(sys_call_test, procname_refresh_gt_1s)
 {
 	int callnum = 0;
 	int child;
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return m_tid_filter(evt) &&
-			evt->get_type() == PPME_SYSCALL_CLOSE_X &&
-			evt->get_param_value_str("res", false) != "0";
+	event_filter_t filter = [&](sinsp_evt* evt) {
+		return m_tid_filter(evt) && evt->get_type() == PPME_SYSCALL_CLOSE_X &&
+		       evt->get_param_value_str("res", false) != "0";
 	};
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		// Use close events as sentinels
 		child = fork();
-		if(child == 0)
+		if (child == 0)
 		{
 			auto ret = prctl(PR_SET_NAME, "changed");
 			EXPECT_EQ(0, ret);
@@ -998,8 +975,7 @@ TEST_F(sys_call_test, procname_refresh_gt_1s)
 			waitpid(child, NULL, 0);
 		}
 	};
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		auto parent = param.m_inspector->get_thread(getpid());
 		ASSERT_NE(nullptr, parent);
 		EXPECT_EQ(string("tests"), parent->m_comm) << "parent";
@@ -1008,7 +984,7 @@ TEST_F(sys_call_test, procname_refresh_gt_1s)
 		EXPECT_EQ(string("changed"), childt->m_comm) << "child";
 		++callnum;
 	};
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	EXPECT_EQ(1, callnum);
 }
 
@@ -1020,17 +996,10 @@ TEST_F(sys_call_test, DISABLED_more_sinsp_instances)
 	static const int EVENTS = 400;
 	Poco::Event termination;
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return true;
-	};
-	run_callback_t test = [&](sinsp* inspector)
-	{
-		termination.wait();
-	};
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
-		if(callnum >= EVENTS)
+	event_filter_t filter = [&](sinsp_evt* evt) { return true; };
+	run_callback_t test = [&](sinsp* inspector) { termination.wait(); };
+	captured_event_callback_t callback = [&](const callback_param& param) {
+		if (callnum >= EVENTS)
 		{
 			termination.set();
 		}
@@ -1041,15 +1010,12 @@ TEST_F(sys_call_test, DISABLED_more_sinsp_instances)
 	};
 
 	vector<unique_ptr<thread>> threads;
-	for(int j = 0; j < INSTANCES; ++j)
+	for (int j = 0; j < INSTANCES; ++j)
 	{
-		threads.push_back(make_unique<thread>([&]
-			{
-				ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
-			}
-		));
+		threads.push_back(make_unique<thread>(
+		    [&] { ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); }); }));
 	}
-	for(auto it = threads.begin(); it != threads.end(); ++it)
+	for (auto it = threads.begin(); it != threads.end(); ++it)
 	{
 		it->get()->join();
 	}

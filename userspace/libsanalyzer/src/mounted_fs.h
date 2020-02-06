@@ -1,7 +1,7 @@
 #pragma once
 
-#include "posix_queue.h"
 #include "mount_points_limits.h"
+#include "posix_queue.h"
 
 #ifdef EXPOSE_INTERNALS_MOUNTED_FS_H
 #define MOUNTED_FS_H_VISIBILITY_PRIVATE public:
@@ -11,24 +11,21 @@
 
 #include <istream>
 
-namespace draiosproto {
+namespace draiosproto
+{
 class mounted_fs;
 }
 
-namespace sdc_internal {
+namespace sdc_internal
+{
 class mounted_fs_request;
 class mounted_fs_response;
-}
+}  // namespace sdc_internal
 
 class mounted_fs
 {
 public:
-	mounted_fs():
-		size_bytes(0),
-		used_bytes(0),
-		available_bytes(0),
-		total_inodes(0),
-		used_inodes(0)
+	mounted_fs() : size_bytes(0), used_bytes(0), available_bytes(0), total_inodes(0), used_inodes(0)
 	{
 	}
 	explicit mounted_fs(const draiosproto::mounted_fs& proto);
@@ -37,7 +34,7 @@ public:
 
 	void to_protobuf(draiosproto::mounted_fs* proto) const;
 
-MOUNTED_FS_H_VISIBILITY_PRIVATE
+	MOUNTED_FS_H_VISIBILITY_PRIVATE
 	std::string device;
 	std::string mount_dir;
 	std::string type;
@@ -56,9 +53,11 @@ struct mounted_fs_list
 	std::unordered_map<std::string, std::vector<mounted_fs>> m_mounted_fs;
 	std::unordered_map<dev_t, std::string> m_device_map;
 
-	mounted_fs_list(decltype(m_mounted_fs)&& mounted_fs, decltype(m_device_map)&& device_map) :
-		m_mounted_fs(std::move(mounted_fs)),
-		m_device_map(std::move(device_map)) {}
+	mounted_fs_list(decltype(m_mounted_fs)&& mounted_fs, decltype(m_device_map)&& device_map)
+	    : m_mounted_fs(std::move(mounted_fs)),
+	      m_device_map(std::move(device_map))
+	{
+	}
 };
 
 class mounted_fs_proxy
@@ -67,6 +66,7 @@ public:
 	explicit mounted_fs_proxy();
 	mounted_fs_list receive_mounted_fs_list();
 	bool send_container_list(const std::vector<sinsp_threadinfo*>& containers);
+
 private:
 	posix_queue m_input;
 	posix_queue m_output;
@@ -75,17 +75,19 @@ private:
 class mounted_fs_reader
 {
 public:
-	mounted_fs_reader(bool remotefs, const mount_points_filter_vec& mount_points, unsigned mounts_limit_size);
+	mounted_fs_reader(bool remotefs,
+	                  const mount_points_filter_vec& mount_points,
+	                  unsigned mounts_limit_size);
 	int run();
-	std::vector<mounted_fs> get_mounted_fs_list(const std::string& mtab="/etc/mtab");
-	const mount_points_limits::sptr_t& get_limits() const {
-		return m_mount_points;
-	}
+	std::vector<mounted_fs> get_mounted_fs_list(const std::string& mtab = "/etc/mtab");
+	const mount_points_limits::sptr_t& get_limits() const { return m_mount_points; }
 
-MOUNTED_FS_H_VISIBILITY_PRIVATE
+	MOUNTED_FS_H_VISIBILITY_PRIVATE
 #ifndef CYGWING_AGENT
-	int handle_mounted_fs_request(const char* root_dir, int home_fd, const sdc_internal::mounted_fs_request& request,
-		sdc_internal::mounted_fs_response& response);
+	int handle_mounted_fs_request(const char* root_dir,
+	                              int home_fd,
+	                              const sdc_internal::mounted_fs_request& request,
+	                              sdc_internal::mounted_fs_response& response);
 #endif
 
 #ifndef CYGWING_AGENT

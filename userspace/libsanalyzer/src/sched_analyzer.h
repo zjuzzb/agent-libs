@@ -40,10 +40,13 @@ public:
 	//
 	// Called when the end of the sample is reached
 	//
-	void flush(sinsp_evt* evt, uint64_t flush_time, bool is_eof, analyzer_emitter::flush_flags flshflags);
+	void flush(sinsp_evt* evt,
+	           uint64_t flush_time,
+	           bool is_eof,
+	           analyzer_emitter::flush_flags flshflags);
 
 	//
-	// Called by the engine after opening the event source and before 
+	// Called by the engine after opening the event source and before
 	// receiving the first event. Can be used to make adjustments based on
 	// the user's changes to the configuration.
 	//
@@ -57,5 +60,5 @@ private:
 	sinsp_analyzer& m_analyzer;
 	sinsp* m_inspector;
 	uint32_t m_ncpus;
-	uint64_t m_sample_length_ns;};
-
+	uint64_t m_sample_length_ns;
+};

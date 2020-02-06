@@ -5,16 +5,17 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
-#include <gtest.h>
-#include "process_emitter.h"
-#include "sinsp_mock.h"
-#include <unordered_set>
-#include <string>
-#include <tuple>
-#include <scoped_config.h>
-#include <stdint.h>
 #include "analyzer.h"
 #include "analyzer_thread.h"
+#include "process_emitter.h"
+#include "sinsp_mock.h"
+
+#include <gtest.h>
+#include <scoped_config.h>
+#include <stdint.h>
+#include <string>
+#include <tuple>
+#include <unordered_set>
 
 using namespace test_helpers;
 
@@ -23,19 +24,19 @@ class test_helper
 public:
 	template<class Iterator>
 	static void filter_top_programs(process_emitter& emitter,
-					Iterator progtable_begin,
-					Iterator progtable_end,
-					bool cs_only,
-					uint32_t how_many,
-					const std::set<sinsp_threadinfo*>& blacklist,
-					std::set<sinsp_threadinfo*>& processes_to_emit)
+	                                Iterator progtable_begin,
+	                                Iterator progtable_end,
+	                                bool cs_only,
+	                                uint32_t how_many,
+	                                const std::set<sinsp_threadinfo*>& blacklist,
+	                                std::set<sinsp_threadinfo*>& processes_to_emit)
 	{
 		emitter.filter_top_programs(progtable_begin,
-					    progtable_end,
-					    cs_only,
-					    how_many,
-					    blacklist,
-					    processes_to_emit);
+		                            progtable_end,
+		                            cs_only,
+		                            how_many,
+		                            blacklist,
+		                            processes_to_emit);
 	}
 
 	static void set_simpledriver(sinsp_analyzer& analyzer, bool val)
@@ -43,35 +44,27 @@ public:
 		analyzer.m_simpledriver_enabled = val;
 	}
 
-	static void set_proc_filter_rules(process_manager& manager, 
-					  std::vector<object_filter_config::filter_rule> rules)
+	static void set_proc_filter_rules(process_manager& manager,
+	                                  std::vector<object_filter_config::filter_rule> rules)
 	{
 		manager.m_flush_filter.set_rules(rules);
 	}
 
-	static void set_config(type_config<uint32_t>& config,
-			       uint32_t val)
-	{
-		config.m_data = val;
-	}
+	static void set_config(type_config<uint32_t>& config, uint32_t val) { config.m_data = val; }
 
-	static void set_inspector_mode(sinsp& inspector, scap_mode_t mode)
-	{
-		inspector.m_mode = mode;
-	}
+	static void set_inspector_mode(sinsp& inspector, scap_mode_t mode) { inspector.m_mode = mode; }
 };
 
 class fake_thread : public sinsp_threadinfo
 {
 public:
-	fake_thread()
-		: sinsp_threadinfo()
+	fake_thread() : sinsp_threadinfo()
 	{
 		HASH++;
 		m_program_hash = HASH;
 		m_pid = HASH;
 		m_tid = HASH;
-		m_ainfo = new thread_analyzer_info();
+		m_ainfo = new thread_analyzer_info(nullptr, nullptr);
 		m_ainfo->m_tinfo = this;
 		m_ainfo->m_procinfo = new sinsp_procinfo();
 		m_ainfo->m_th_analysis_flags = 0;
@@ -92,63 +85,53 @@ uint64_t fake_thread::HASH = 0;
 
 // Legacy functionality that should be tested if someone
 // modifies that code
-TEST(environment_emitter_test, DISABLED_test)
-{
-}
+TEST(environment_emitter_test, DISABLED_test) {}
 
-TEST(jmx_emitter_test, DISABLED_test)
-{
-}
+TEST(jmx_emitter_test, DISABLED_test) {}
 
-TEST(app_check_emitter_test, DISABLED_test)
-{
-}
+TEST(app_check_emitter_test, DISABLED_test) {}
 
 class easy_process_emitter
 {
 public:
-	easy_process_emitter(bool simpledriver,
-			     bool nodriver)
-		: m_inspector(),
-		  m_process_manager(),
-		  m_proc_trc("who knows!", UINT64_MAX - 1),
-		  m_device_map(),
-		  m_procfs_parser(0, 0, false, 0, 0),
-		  m_hash_config(),
-		  m_metrics(),
-		  m_environment_emitter(0, m_hash_config, m_metrics),
-		  m_jmx_metrics(),
-		  m_jmx_metrics_by_container(),
-		  m_jmx_emitter(m_jmx_metrics, 0, 0, m_jmx_metrics_by_container),
-		  m_prom_conf(),
-		  m_app_checks_by_container(),
-		  m_prometheus_by_container(),
-		  m_process_emitter(m_process_manager,
-				    m_inspector,
-				    simpledriver,
-				    nodriver,
-				    m_proc_trc,
-				    0,
-				    m_device_map,
-				    false,
-				    false,
-				    0,
-				    nullptr,
-				    false,
-				    m_procfs_parser,
-				    1,
-				    1,
-				    m_environment_emitter,
-				    m_jmx_emitter,
-				    nullptr)
+	easy_process_emitter(bool simpledriver, bool nodriver)
+	    : m_inspector(),
+	      m_process_manager(),
+	      m_proc_trc("who knows!", UINT64_MAX - 1),
+	      m_device_map(),
+	      m_procfs_parser(0, 0, false, 0, 0),
+	      m_hash_config(),
+	      m_metrics(),
+	      m_environment_emitter(0, m_hash_config, m_metrics),
+	      m_jmx_metrics(),
+	      m_jmx_metrics_by_container(),
+	      m_jmx_emitter(m_jmx_metrics, 0, 0, m_jmx_metrics_by_container),
+	      m_prom_conf(),
+	      m_app_checks_by_container(),
+	      m_prometheus_by_container(),
+	      m_process_emitter(m_process_manager,
+	                        m_inspector,
+	                        simpledriver,
+	                        nodriver,
+	                        m_proc_trc,
+	                        0,
+	                        m_device_map,
+	                        false,
+	                        false,
+	                        0,
+	                        nullptr,
+	                        false,
+	                        m_procfs_parser,
+	                        1,
+	                        1,
+	                        m_environment_emitter,
+	                        m_jmx_emitter,
+	                        nullptr)
 	{
 		test_helper::set_inspector_mode(m_inspector, SCAP_MODE_LIVE);
 	}
 
-	process_emitter& operator*()
-	{
-		return m_process_emitter;
-	}
+	process_emitter& operator*() { return m_process_emitter; }
 
 	test_helpers::sinsp_mock m_inspector;
 	process_manager m_process_manager;
@@ -189,13 +172,13 @@ TEST(process_emitter_test, emit_process)
 	sinsp_counter_time tot;
 	hi_stats1.m_ainfo->m_procinfo->m_proc_metrics.get_total(&tot);
 	(*emitter).emit_process(hi_stats1,
-				*emitter.m_metrics.add_programs(),
-				progtable_by_container,
-				*hi_stats1.m_ainfo->m_procinfo,
-				tot,
-				emitter.m_metrics,
-				all_uids,
-				false /*not high priority*/);
+	                        *emitter.m_metrics.add_programs(),
+	                        progtable_by_container,
+	                        *hi_stats1.m_ainfo->m_procinfo,
+	                        tot,
+	                        emitter.m_metrics,
+	                        all_uids,
+	                        false /*not high priority*/);
 
 	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().comm(), "my_process_name");
 	// low priority process doesn't get a group
@@ -240,18 +223,19 @@ TEST(process_emitter_test, max_command_arg_length)
 	sinsp_counter_time tot;
 	hi_stats1.m_ainfo->m_procinfo->m_proc_metrics.get_total(&tot);
 	(*emitter).emit_process(hi_stats1,
-				*emitter.m_metrics.add_programs(),
-				progtable_by_container,
-				*hi_stats1.m_ainfo->m_procinfo,
-				tot,
-				emitter.m_metrics,
-				all_uids,
-				false /*not high priority*/);
+	                        *emitter.m_metrics.add_programs(),
+	                        progtable_by_container,
+	                        *hi_stats1.m_ainfo->m_procinfo,
+	                        tot,
+	                        emitter.m_metrics,
+	                        all_uids,
+	                        false /*not high priority*/);
 
 	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().comm(), "my_process_name");
 	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().args_size(), 2);
 	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().args(0), hi_stats1.m_args[0]);
-	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().args(1), std::string(LIMIT, 'z'));
+	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().args(1),
+	          std::string(LIMIT, 'z'));
 	// low priority process doesn't get a group
 	EXPECT_EQ(emitter.m_metrics.programs()[0].program_reporting_group_id().size(), 0);
 }
@@ -264,8 +248,8 @@ TEST(process_emitter_test, filter_top_programs_eligible)
 
 	std::set<sinsp_threadinfo*> blacklist;
 	analyzer_emitter::progtable_t progtable(10,
-						sinsp_threadinfo::hasher(),
-						sinsp_threadinfo::comparer());
+	                                        sinsp_threadinfo::hasher(),
+	                                        sinsp_threadinfo::comparer());
 	const analyzer_emitter::progtable_t& progtable_ref = progtable;
 	std::set<sinsp_threadinfo*> processes_to_emit;
 	fake_thread regular_process;
@@ -278,12 +262,12 @@ TEST(process_emitter_test, filter_top_programs_eligible)
 	progtable.insert(&blacklist_process);
 
 	test_helper::filter_top_programs(*emitter,
-					 progtable_ref.begin(),
-					 progtable_ref.end(),
-					 false,
-					 100,
-					 blacklist,
-					 processes_to_emit);
+	                                 progtable_ref.begin(),
+	                                 progtable_ref.end(),
+	                                 false,
+	                                 100,
+	                                 blacklist,
+	                                 processes_to_emit);
 
 	EXPECT_EQ(processes_to_emit.size(), 1);
 	EXPECT_NE(processes_to_emit.find(&regular_process), processes_to_emit.end());
@@ -292,17 +276,16 @@ TEST(process_emitter_test, filter_top_programs_eligible)
 	easy_process_emitter emitter_simpledriver(true, false);
 	processes_to_emit.clear();
 	test_helper::filter_top_programs(*emitter_simpledriver,
-					 progtable_ref.begin(),
-					 progtable_ref.end(),
-					 false,
-					 100,
-					 blacklist,
-					 processes_to_emit);
+	                                 progtable_ref.begin(),
+	                                 progtable_ref.end(),
+	                                 false,
+	                                 100,
+	                                 blacklist,
+	                                 processes_to_emit);
 
 	EXPECT_EQ(processes_to_emit.size(), 1);
 	EXPECT_NE(processes_to_emit.find(&regular_process), processes_to_emit.end());
 
-	
 	// sinpledriver and non-zero net count
 	fake_thread net_count_process;
 	net_count_process.m_ainfo->m_procinfo->m_proc_metrics.m_net.m_count = 1;
@@ -311,15 +294,14 @@ TEST(process_emitter_test, filter_top_programs_eligible)
 	processes_to_emit.clear();
 
 	test_helper::filter_top_programs(*emitter_simpledriver,
-					 progtable_ref.begin(),
-					 progtable_ref.end(),
-					 true,
-					 100,
-					 blacklist,
-					 processes_to_emit);
-	EXPECT_EQ(processes_to_emit.size(), 1); // regular process has 0 new count
+	                                 progtable_ref.begin(),
+	                                 progtable_ref.end(),
+	                                 true,
+	                                 100,
+	                                 blacklist,
+	                                 processes_to_emit);
+	EXPECT_EQ(processes_to_emit.size(), 1);  // regular process has 0 new count
 	EXPECT_NE(processes_to_emit.find(&net_count_process), processes_to_emit.end());
-
 
 	// not simpledriver and local/remote IPV4 server/client
 	fake_thread local_server;
@@ -337,14 +319,14 @@ TEST(process_emitter_test, filter_top_programs_eligible)
 	processes_to_emit.clear();
 
 	test_helper::filter_top_programs(*emitter,
-					 progtable_ref.begin(),
-					 progtable_ref.end(),
-					 true,
-					 100,
-					 blacklist,
-					 processes_to_emit);
+	                                 progtable_ref.begin(),
+	                                 progtable_ref.end(),
+	                                 true,
+	                                 100,
+	                                 blacklist,
+	                                 processes_to_emit);
 
-	EXPECT_EQ(processes_to_emit.size(), 4); // have to have flag set
+	EXPECT_EQ(processes_to_emit.size(), 4);  // have to have flag set
 	EXPECT_NE(processes_to_emit.find(&local_server), processes_to_emit.end());
 	EXPECT_NE(processes_to_emit.find(&local_client), processes_to_emit.end());
 	EXPECT_NE(processes_to_emit.find(&remote_server), processes_to_emit.end());
@@ -355,11 +337,11 @@ TEST(process_emitter_test, filter_top_programs_eligible)
 TEST(process_emitter_test, filter_top_programs_stats)
 {
 	easy_process_emitter emitter(false, false);
-	
+
 	std::set<sinsp_threadinfo*> blacklist;
 	analyzer_emitter::progtable_t progtable(10,
-						sinsp_threadinfo::hasher(),
-						sinsp_threadinfo::comparer());
+	                                        sinsp_threadinfo::hasher(),
+	                                        sinsp_threadinfo::comparer());
 	const analyzer_emitter::progtable_t& progtable_ref = progtable;
 	std::set<sinsp_threadinfo*> processes_to_emit;
 
@@ -397,12 +379,12 @@ TEST(process_emitter_test, filter_top_programs_stats)
 	progtable.insert(&do_nothing_2);
 
 	test_helper::filter_top_programs(*emitter,
-					 progtable_ref.begin(),
-					 progtable_ref.end(),
-					 false,
-					 1,
-					 blacklist,
-					 processes_to_emit);
+	                                 progtable_ref.begin(),
+	                                 progtable_ref.end(),
+	                                 false,
+	                                 1,
+	                                 blacklist,
+	                                 processes_to_emit);
 
 	EXPECT_EQ(processes_to_emit.size(), 4);
 	EXPECT_NE(processes_to_emit.find(&cpu_process), processes_to_emit.end());
@@ -415,18 +397,18 @@ TEST(process_emitter_test, filter_top_programs_stats)
 	// needs to have a large value to be larger than the others (we aggregate all of them)
 	syscall_process.m_ainfo->m_procinfo->m_proc_metrics.m_other.m_count = 500;
 	// needs to have non-zero net io (don't ask me...)
-	syscall_process.m_ainfo->m_procinfo->m_proc_metrics.m_io_net.add_in(1,1,1);
-	progtable.insert(&syscall_process);	
-	
+	syscall_process.m_ainfo->m_procinfo->m_proc_metrics.m_io_net.add_in(1, 1, 1);
+	progtable.insert(&syscall_process);
+
 	easy_process_emitter emitter_simpledriver(true, false);
 	processes_to_emit.clear();
 	test_helper::filter_top_programs(*emitter_simpledriver,
-					 progtable_ref.begin(),
-					 progtable_ref.end(),
-					 false,
-					 1,
-					 blacklist,
-					 processes_to_emit);
+	                                 progtable_ref.begin(),
+	                                 progtable_ref.end(),
+	                                 false,
+	                                 1,
+	                                 blacklist,
+	                                 processes_to_emit);
 	EXPECT_EQ(processes_to_emit.size(), 4);
 	EXPECT_NE(processes_to_emit.find(&cpu_process), processes_to_emit.end());
 	EXPECT_NE(processes_to_emit.find(&mem_process), processes_to_emit.end());
@@ -436,12 +418,12 @@ TEST(process_emitter_test, filter_top_programs_stats)
 	easy_process_emitter emitter_nodriver(false, true);
 	processes_to_emit.clear();
 	test_helper::filter_top_programs(*emitter_nodriver,
-					 progtable_ref.begin(),
-					 progtable_ref.end(),
-					 false,
-					 1,
-					 blacklist,
-					 processes_to_emit);
+	                                 progtable_ref.begin(),
+	                                 progtable_ref.end(),
+	                                 false,
+	                                 1,
+	                                 blacklist,
+	                                 processes_to_emit);
 	EXPECT_EQ(processes_to_emit.size(), 3);
 	EXPECT_NE(processes_to_emit.find(&cpu_process), processes_to_emit.end());
 	EXPECT_NE(processes_to_emit.find(&mem_process), processes_to_emit.end());
@@ -457,34 +439,33 @@ TEST(process_emitter_test, filter_top_programs_stats)
 	progtable.clear();
 	processes_to_emit.clear();
 	test_helper::filter_top_programs(*emitter,
-					 progtable_ref.begin(),
-					 progtable_ref.end(),
-					 false,
-					 1,
-					 blacklist,
-					 processes_to_emit);
+	                                 progtable_ref.begin(),
+	                                 progtable_ref.end(),
+	                                 false,
+	                                 1,
+	                                 blacklist,
+	                                 processes_to_emit);
 	EXPECT_EQ(processes_to_emit.size(), 0);
 	processes_to_emit.clear();
 
 	test_helper::filter_top_programs(*emitter_simpledriver,
-					 progtable_ref.begin(),
-					 progtable_ref.end(),
-					 false,
-					 1,
-					 blacklist,
-					 processes_to_emit);
+	                                 progtable_ref.begin(),
+	                                 progtable_ref.end(),
+	                                 false,
+	                                 1,
+	                                 blacklist,
+	                                 processes_to_emit);
 	EXPECT_EQ(processes_to_emit.size(), 0);
 	processes_to_emit.clear();
 	test_helper::filter_top_programs(*emitter_nodriver,
-					 progtable_ref.begin(),
-					 progtable_ref.end(),
-					 false,
-					 1,
-					 blacklist,
-					 processes_to_emit);
+	                                 progtable_ref.begin(),
+	                                 progtable_ref.end(),
+	                                 false,
+	                                 1,
+	                                 blacklist,
+	                                 processes_to_emit);
 	EXPECT_EQ(processes_to_emit.size(), 0);
 	processes_to_emit.clear();
-
 }
 
 // validates that some top processes per host are released before everyone else,
@@ -494,8 +475,8 @@ TEST(process_emitter_test, top_per_host)
 	easy_process_emitter emitter(false, false);
 
 	analyzer_emitter::progtable_t progtable(10,
-						sinsp_threadinfo::hasher(),
-						sinsp_threadinfo::comparer());
+	                                        sinsp_threadinfo::hasher(),
+	                                        sinsp_threadinfo::comparer());
 	std::set<sinsp_threadinfo*> processes_to_emit;
 
 	std::string proc_only_filter = R"(
@@ -511,7 +492,6 @@ process:
 	ASSERT_EQ(0, config_yaml.errors().size());
 	test_helper::set_proc_filter_rules(emitter.m_process_manager,
 	                                   emitter.m_process_manager.c_process_filter.get_value());
-
 
 	// create a process with low stats that matches the filter, then one with higher
 	// stats that doesn't, and ensure the one that matches the filter gets reported
@@ -538,13 +518,13 @@ process:
 	std::set<uint64_t> all_uids;
 	std::set<sinsp_threadinfo*> emitted_processes;
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
-				  progtable,
-				  progtable_by_container,
-				  emitted_containers,
-				  emitter.m_metrics,
-				  all_uids,
-				  emitted_processes);
-	
+	                          progtable,
+	                          progtable_by_container,
+	                          emitted_containers,
+	                          emitter.m_metrics,
+	                          all_uids,
+	                          emitted_processes);
+
 	EXPECT_EQ(emitted_processes.size(), 1);
 	EXPECT_NE(emitted_processes.find(&hi_stats), emitted_processes.end());
 }
@@ -555,8 +535,8 @@ TEST(process_emitter_test, high_priority)
 	easy_process_emitter emitter(false, false);
 
 	analyzer_emitter::progtable_t progtable(10,
-						sinsp_threadinfo::hasher(),
-						sinsp_threadinfo::comparer());
+	                                        sinsp_threadinfo::hasher(),
+	                                        sinsp_threadinfo::comparer());
 	std::set<sinsp_threadinfo*> processes_to_emit;
 
 	std::string proc_only_filter = R"(
@@ -572,7 +552,6 @@ process:
 	ASSERT_EQ(0, config_yaml.errors().size());
 	test_helper::set_proc_filter_rules(emitter.m_process_manager,
 	                                   emitter.m_process_manager.c_process_filter.get_value());
-
 
 	// create a process with low stats that matches the filter, then one with higher
 	// stats that doesn't, and ensure the one that matches the filter gets reported
@@ -600,13 +579,13 @@ process:
 	std::set<uint64_t> all_uids;
 	std::set<sinsp_threadinfo*> emitted_processes;
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
-				  progtable,
-				  progtable_by_container,
-				  emitted_containers,
-				  emitter.m_metrics,
-				  all_uids,
-				  emitted_processes);
-	
+	                          progtable,
+	                          progtable_by_container,
+	                          emitted_containers,
+	                          emitter.m_metrics,
+	                          all_uids,
+	                          emitted_processes);
+
 	EXPECT_EQ(emitted_processes.size(), 1);
 	EXPECT_NE(emitted_processes.find(&matching_process), emitted_processes.end());
 
@@ -637,18 +616,19 @@ process:
 	container.m_lookup_state = sinsp_container_lookup_state::SUCCESSFUL;
 	progtable_by_container[container.m_id].emplace_back(&matching_container_process);
 	auto container_ptr = std::make_shared<sinsp_container_info>(container);
-	emitter.m_inspector.m_container_manager.add_container(container_ptr, &matching_container_process);
+	emitter.m_inspector.m_container_manager.add_container(container_ptr,
+	                                                      &matching_container_process);
 
 	progtable.insert(&hi_stats);
 	emitted_processes.clear();
 
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
-				  progtable,
-				  progtable_by_container,
-				  emitted_containers,
-				  emitter.m_metrics,
-				  all_uids,
-				  emitted_processes);
+	                          progtable,
+	                          progtable_by_container,
+	                          emitted_containers,
+	                          emitter.m_metrics,
+	                          all_uids,
+	                          emitted_processes);
 
 	EXPECT_EQ(emitted_processes.size(), 1);
 	EXPECT_NE(emitted_processes.find(&matching_container_process), emitted_processes.end());
@@ -660,8 +640,8 @@ TEST(process_emitter_test, container_procs)
 	easy_process_emitter emitter(false, false);
 
 	analyzer_emitter::progtable_t progtable(10,
-						sinsp_threadinfo::hasher(),
-						sinsp_threadinfo::comparer());
+	                                        sinsp_threadinfo::hasher(),
+	                                        sinsp_threadinfo::comparer());
 	std::set<sinsp_threadinfo*> processes_to_emit;
 
 	fake_thread hi_stats;
@@ -684,7 +664,8 @@ TEST(process_emitter_test, container_procs)
 	analyzer_emitter::progtable_by_container_t progtable_by_container;
 	progtable_by_container[container.m_id].emplace_back(&matching_container_process);
 	auto container_ptr = std::make_shared<sinsp_container_info>(container);
-	emitter.m_inspector.m_container_manager.add_container(container_ptr, &matching_container_process);
+	emitter.m_inspector.m_container_manager.add_container(container_ptr,
+	                                                      &matching_container_process);
 	std::vector<std::string> emitted_containers;
 	emitted_containers.push_back(container.m_id);
 
@@ -696,13 +677,13 @@ TEST(process_emitter_test, container_procs)
 	std::set<uint64_t> all_uids;
 	std::set<sinsp_threadinfo*> emitted_processes;
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
-				  progtable,
-				  progtable_by_container,
-				  emitted_containers,
-				  emitter.m_metrics,
-				  all_uids,
-				  emitted_processes);
-	
+	                          progtable,
+	                          progtable_by_container,
+	                          emitted_containers,
+	                          emitter.m_metrics,
+	                          all_uids,
+	                          emitted_processes);
+
 	EXPECT_EQ(emitted_processes.size(), 1);
 	EXPECT_NE(emitted_processes.find(&matching_container_process), emitted_processes.end());
 }
@@ -715,8 +696,8 @@ TEST(process_emitter_test, other_procs)
 	easy_process_emitter emitter(false, false);
 
 	analyzer_emitter::progtable_t progtable(10,
-						sinsp_threadinfo::hasher(),
-						sinsp_threadinfo::comparer());
+	                                        sinsp_threadinfo::hasher(),
+	                                        sinsp_threadinfo::comparer());
 	std::set<sinsp_threadinfo*> processes_to_emit;
 
 	fake_thread hi_stats1;
@@ -740,12 +721,12 @@ TEST(process_emitter_test, other_procs)
 	std::set<uint64_t> all_uids;
 	std::set<sinsp_threadinfo*> emitted_processes;
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
-				  progtable,
-				  progtable_by_container,
-				  emitted_containers,
-				  emitter.m_metrics,
-				  all_uids,
-				  emitted_processes);
+	                          progtable,
+	                          progtable_by_container,
+	                          emitted_containers,
+	                          emitter.m_metrics,
+	                          all_uids,
+	                          emitted_processes);
 
 	// the limit gets divided by 8, so we should get max 1 of the extra processes.
 	EXPECT_EQ(emitted_processes.size(), 1);
@@ -760,8 +741,8 @@ TEST(process_emitter_test, main_loop)
 	easy_process_emitter emitter(false, false);
 
 	analyzer_emitter::progtable_t progtable(10,
-						sinsp_threadinfo::hasher(),
-						sinsp_threadinfo::comparer());
+	                                        sinsp_threadinfo::hasher(),
+	                                        sinsp_threadinfo::comparer());
 	std::set<sinsp_threadinfo*> processes_to_emit;
 
 	fake_thread hi_stats1;
@@ -785,12 +766,12 @@ TEST(process_emitter_test, main_loop)
 	std::set<uint64_t> all_uids;
 	std::set<sinsp_threadinfo*> emitted_processes;
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
-				  progtable,
-				  progtable_by_container,
-				  emitted_containers,
-				  emitter.m_metrics,
-				  all_uids,
-				  emitted_processes);
+	                          progtable,
+	                          progtable_by_container,
+	                          emitted_containers,
+	                          emitter.m_metrics,
+	                          all_uids,
+	                          emitted_processes);
 
 	// the limit gets divided by 8, so we should get max 1 of the extra processes.
 	// check that the right process is emitted, and populated in the emitted process list
@@ -811,8 +792,8 @@ TEST(process_emitter_test, reporting_group)
 	easy_process_emitter emitter(false, false);
 
 	analyzer_emitter::progtable_t progtable(10,
-						sinsp_threadinfo::hasher(),
-						sinsp_threadinfo::comparer());
+	                                        sinsp_threadinfo::hasher(),
+	                                        sinsp_threadinfo::comparer());
 	std::set<sinsp_threadinfo*> processes_to_emit;
 
 	std::string proc_only_filter = R"(
@@ -847,12 +828,12 @@ process:
 	std::set<uint64_t> all_uids;
 	std::set<sinsp_threadinfo*> emitted_processes;
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
-				  progtable,
-				  progtable_by_container,
-				  emitted_containers,
-				  emitter.m_metrics,
-				  all_uids,
-				  emitted_processes);
+	                          progtable,
+	                          progtable_by_container,
+	                          emitted_containers,
+	                          emitter.m_metrics,
+	                          all_uids,
+	                          emitted_processes);
 
 	EXPECT_EQ(emitted_processes.size(), 2);
 	if (emitter.m_metrics.programs()[0].procinfo().details().comm() == "my_process_name")
@@ -872,8 +853,8 @@ TEST(process_emitter_test, syscall_count)
 	easy_process_emitter emitter(false, false);
 
 	analyzer_emitter::progtable_t progtable(10,
-						sinsp_threadinfo::hasher(),
-						sinsp_threadinfo::comparer());
+	                                        sinsp_threadinfo::hasher(),
+	                                        sinsp_threadinfo::comparer());
 	std::set<sinsp_threadinfo*> processes_to_emit;
 
 	fake_thread thread_1;
@@ -888,20 +869,19 @@ TEST(process_emitter_test, syscall_count)
 	std::set<uint64_t> all_uids;
 	std::set<sinsp_threadinfo*> emitted_processes;
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
-				  progtable,
-				  progtable_by_container,
-				  emitted_containers,
-				  emitter.m_metrics,
-				  all_uids,
-				  emitted_processes);
+	                          progtable,
+	                          progtable_by_container,
+	                          emitted_containers,
+	                          emitter.m_metrics,
+	                          all_uids,
+	                          emitted_processes);
 
 	// double check we got the thread emitted
 	EXPECT_EQ(emitted_processes.size(), 1);
 	EXPECT_NE(emitted_processes.find(&thread_1), emitted_processes.end());
 
 	// check that we got syscall count
-	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().resource_counters().syscall_count(),
-		  7);
+	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().resource_counters().syscall_count(), 7);
 
 	// we can't easily check that host/container metrics emit correctly as those aren't
 	// as nicely wrapped, but at least check that the proc count is propagated correctly
@@ -911,6 +891,5 @@ TEST(process_emitter_test, syscall_count)
 	host_metrics.add(thread_1.m_ainfo->m_procinfo);
 	sinsp_counter_time tc;
 	host_metrics.m_metrics.get_total(&tc);
-	EXPECT_EQ(tc.m_count,
-		  8);
+	EXPECT_EQ(tc.m_count, 8);
 }

@@ -1,54 +1,53 @@
-#include "audit_tap.h"
 #include "analyzer.h"
 #include "analyzer_thread.h"
+#include "audit_tap.h"
 #include "common_logger.h"
 #include "connectinfo.h"
 #include "sinsp_int.h"
 #include "tap.pb.h"
 #include "type_config.h"
+
+#include <Poco/File.h>
+#include <google/protobuf/util/json_util.h>
+
 #include <fstream>
 #include <sstream>
-#include <google/protobuf/util/json_util.h>
-#include <Poco/File.h>
 
-namespace {
-
+namespace
+{
 COMMON_LOGGER();
 
 type_config<unsigned int>::ptr c_max_argument_length =
-	type_config_builder<unsigned int>(
-			100 /*default*/,
-			"The maximum length to send for arguments to the command line",
-			"audit_tap",
-			"max_command_arg_length")
-	.min(10)
-	.max(64 * 1024)
-	.build();
-
+    type_config_builder<unsigned int>(
+        100 /*default*/,
+        "The maximum length to send for arguments to the command line",
+        "audit_tap",
+        "max_command_arg_length")
+        .min(10)
+        .max(64 * 1024)
+        .build();
 
 type_config<std::string>::ptr c_protobuf_dir =
-	type_config_builder<std::string>(
-		"",
-		"Full path of the directory into which the agent will write JSON "
-		"representations of each audit tap protobufs",
-		"audit_tap",
-		"metricsfile")
-	.hidden()
-	.post_init([](type_config<std::string>& config)
-		{
-			// Create the directory if it doesn't exist
-			if(config.get_value() != "")
-			{
-				Poco::File dir(config.get_value());
-				dir.createDirectories();
-			}
-		})
-	.build();
-
+    type_config_builder<std::string>(
+        "",
+        "Full path of the directory into which the agent will write JSON "
+        "representations of each audit tap protobufs",
+        "audit_tap",
+        "metricsfile")
+        .hidden()
+        .post_init([](type_config<std::string>& config) {
+	        // Create the directory if it doesn't exist
+	        if (config.get_value() != "")
+	        {
+		        Poco::File dir(config.get_value());
+		        dir.createDirectories();
+	        }
+        })
+        .build();
 
 void write_to_file(const tap::AuditLog& tap)
 {
-	if(c_protobuf_dir->get_value().empty())
+	if (c_protobuf_dir->get_value().empty())
 	{
 		return;
 	}
@@ -60,7 +59,7 @@ void write_to_file(const tap::AuditLog& tap)
 	const std::string filename = out.str();
 	std::ofstream out_file(c_protobuf_dir->get_value() + "/" + filename);
 
-	if(!out_file)
+	if (!out_file)
 	{
 		LOG_INFO("Unable to create protobuf file: %s",
 		         (c_protobuf_dir->get_value() + "/" + filename).c_str());
@@ -73,26 +72,24 @@ void write_to_file(const tap::AuditLog& tap)
 
 	out_file << json_string;
 
-	const std::string symbolic_link = c_protobuf_dir->get_value() +
-	                                  "/tap_latest.json";
+	const std::string symbolic_link = c_protobuf_dir->get_value() + "/tap_latest.json";
 	unlink(symbolic_link.c_str());
 	symlink(filename.c_str(), symbolic_link.c_str());
 }
 
 tap::ConnectionStatus conn_status(const uint8_t flags, const int errorcode)
 {
-	if(flags & sinsp_connection::AF_PENDING)
+	if (flags & sinsp_connection::AF_PENDING)
 	{
 		return tap::ConnectionStatus::PENDING;
 	}
-	else if(flags & sinsp_connection::AF_CLOSED)
+	else if (flags & sinsp_connection::AF_CLOSED)
 	{
 		return tap::ConnectionStatus::CLOSED;
 	}
 	else
 	{
-		return errorcode == 0 ? tap::ConnectionStatus::ESTABLISHED
-		                      : tap::ConnectionStatus::FAILED;
+		return errorcode == 0 ? tap::ConnectionStatus::ESTABLISHED : tap::ConnectionStatus::FAILED;
 	}
 }
 
@@ -119,7 +116,7 @@ audit_tap::~audit_tap()
 
 void audit_tap::on_exit(uint64_t pid)
 {
-	if(m_pids.erase(pid))
+	if (m_pids.erase(pid))
 	{
 		auto pb_exit = m_event_batch->add_processexitevents();
 		pb_exit->set_pid(pid);
@@ -134,11 +131,8 @@ void audit_tap::emit_connections(sinsp_ipv4_connection_manager* conn_manager, us
 		const ipv4tuple& iptuple = it.first;
 		sinsp_connection& connection = it.second;
 
-		if (
-			iptuple.m_fields.m_sip == 0 &&
-			iptuple.m_fields.m_sport == 0 &&
-			iptuple.m_fields.m_dip == 0 &&
-			iptuple.m_fields.m_dport == 0)
+		if (iptuple.m_fields.m_sip == 0 && iptuple.m_fields.m_sport == 0 &&
+		    iptuple.m_fields.m_dip == 0 && iptuple.m_fields.m_dport == 0)
 		{
 			continue;
 		}
@@ -151,7 +145,7 @@ void audit_tap::emit_connections(sinsp_ipv4_connection_manager* conn_manager, us
 		auto history = connection.get_state_history();
 		bool have_connections = false;
 
-		for(const auto& transition : history)
+		for (const auto& transition : history)
 		{
 			auto pb_conn = m_event_batch->add_connectionevents();
 
@@ -170,7 +164,7 @@ void audit_tap::emit_connections(sinsp_ipv4_connection_manager* conn_manager, us
 			have_connections = true;
 		}
 
-		if(have_connections)
+		if (have_connections)
 		{
 			emit_process(connection.m_sproc.get(), userdb);
 			emit_process(connection.m_dproc.get(), userdb);
@@ -188,7 +182,7 @@ void audit_tap::emit_network_audit(tap::ConnectionAudit* const conn_audit,
                                    const ipv4tuple& iptuple,
                                    const sinsp_connection& connection)
 {
-	if(conn_audit == nullptr)
+	if (conn_audit == nullptr)
 	{
 		LOG_ERROR("Failed to allocate tap::ConnectionAudit");
 		return;
@@ -209,7 +203,7 @@ void audit_tap::emit_network_audit(tap::ConnectionAudit* const conn_audit,
 	conn->set_errorcount(connection.m_metrics.get_error_count());
 
 	const sinsp_counter_bytes* counters = nullptr;
-	if(connection.is_server_only())
+	if (connection.is_server_only())
 	{
 		counters = &connection.m_metrics.m_server;
 		conn_audit->set_connectioncountin(conn_audit->connectioncountin() + 1);
@@ -238,24 +232,26 @@ void audit_tap::emit_pending_envs(sinsp* inspector)
 	std::unordered_set<uint64_t> still_unsent;
 
 	size_t num_unsent = m_unsent_envs.size();
-	if(num_unsent == 0)
+	if (num_unsent == 0)
 	{
 		return;
 	}
 
-	for(const auto& pid : m_unsent_envs) {
-		if(m_num_envs_sent >= m_config->m_envs_per_flush) {
+	for (const auto& pid : m_unsent_envs)
+	{
+		if (m_num_envs_sent >= m_config->m_envs_per_flush)
+		{
 			still_unsent.insert(pid);
 			continue;
 		}
 
 		auto tinfo = inspector->get_thread(pid);
-		if(!tinfo)
+		if (!tinfo)
 		{
 			continue;
 		}
 
-		if(!emit_environment(nullptr, tinfo))
+		if (!emit_environment(nullptr, tinfo))
 		{
 			still_unsent.insert(pid);
 		}
@@ -263,8 +259,11 @@ void audit_tap::emit_pending_envs(sinsp* inspector)
 
 	m_unsent_envs = std::move(still_unsent);
 
-	g_logger.format(sinsp_logger::SEV_INFO, "audit_tap: %d environments still unsent (from %d)", m_unsent_envs.size(), num_unsent);
-	if(g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
+	g_logger.format(sinsp_logger::SEV_INFO,
+	                "audit_tap: %d environments still unsent (from %d)",
+	                m_unsent_envs.size(),
+	                num_unsent);
+	if (g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
 	{
 		for (auto pid : m_unsent_envs)
 		{
@@ -273,7 +272,7 @@ void audit_tap::emit_pending_envs(sinsp* inspector)
 	}
 }
 
-void audit_tap::emit_process(sinsp_threadinfo *tinfo, userdb *userdb)
+void audit_tap::emit_process(sinsp_threadinfo* tinfo, userdb* userdb)
 {
 	if (tinfo == nullptr)
 	{
@@ -293,14 +292,14 @@ void audit_tap::emit_process(sinsp_threadinfo *tinfo, userdb *userdb)
 	// which this thread was forked.
 	proc->set_parentpid(tinfo->get_main_thread()->m_ptid);
 	proc->set_name(tinfo->m_exe);
-	for(const auto& arg : tinfo->m_args)
+	for (const auto& arg : tinfo->m_args)
 	{
-		if(arg.empty())
+		if (arg.empty())
 		{
 			continue;
 		}
 
-		if(arg.size() <= max_command_argument_length())
+		if (arg.size() <= max_command_argument_length())
 		{
 			proc->add_commandline(arg);
 		}
@@ -325,7 +324,7 @@ void audit_tap::emit_process(sinsp_threadinfo *tinfo, userdb *userdb)
 	proc->set_timestamp(tinfo->m_clone_ts / 1000000);
 }
 
-bool audit_tap::emit_environment(tap::NewProcess *proc, sinsp_threadinfo *tinfo)
+bool audit_tap::emit_environment(tap::NewProcess* proc, sinsp_threadinfo* tinfo)
 {
 	auto mt_ainfo = tinfo->m_ainfo->main_thread_ainfo();
 	auto env_hash = mt_ainfo->m_env_hash.get_hash();
@@ -341,61 +340,83 @@ bool audit_tap::emit_environment(tap::NewProcess *proc, sinsp_threadinfo *tinfo)
 	// new_env.first->second: last sent timestamp
 	// new_env.second: if true, insertion took place (first time we're sending this hash)
 
-	if(!new_env.second && new_env.first->second >= now) {
+	if (!new_env.second && new_env.first->second >= now)
+	{
 		return true;
 	}
 
-	if(++m_num_envs_sent > m_config->m_envs_per_flush) {
+	if (++m_num_envs_sent > m_config->m_envs_per_flush)
+	{
 		g_logger.format(sinsp_logger::SEV_INFO, "Environment flush limit reached, throttling");
-		if(new_env.second) {
+		if (new_env.second)
+		{
 			m_sent_envs.erase(new_env.first);
 		}
 		m_num_envs_sent--;
 		m_unsent_envs.insert(tinfo->m_pid);
 		return false;
-	} else {
+	}
+	else
+	{
 		size_t env_bytes_sent = 0;
 
 		auto env = m_event_batch->add_environmentvariables();
 		env->set_hash(env_hash.data(), env_hash.size());
 
-		for(const auto& entry : tinfo->get_env()) {
-			if(entry.empty() || entry[0] == '=') {
+		for (const auto& entry : tinfo->get_env())
+		{
+			if (entry.empty() || entry[0] == '=')
+			{
 				continue;
 			}
 			bool blacklisted = false;
-			for(const auto& regex : *m_config->m_env_blacklist) {
-				if(regex.match(entry)) {
+			for (const auto& regex : *m_config->m_env_blacklist)
+			{
+				if (regex.match(entry))
+				{
 					blacklisted = true;
 					break;
 				}
 			}
 
-			if(blacklisted) {
+			if (blacklisted)
+			{
 				continue;
 			}
 
-			env_bytes_sent += entry.size() + 1; // 1 for the trailing NUL
-			if(env_bytes_sent > m_config->m_max_env_size) {
+			env_bytes_sent += entry.size() + 1;  // 1 for the trailing NUL
+			if (env_bytes_sent > m_config->m_max_env_size)
+			{
 				break;
 			}
 
 			env->add_variables(entry);
 		}
 
-		if(env_bytes_sent > m_config->m_max_env_size) {
-			g_logger.format(sinsp_logger::SEV_INFO, "Environment of process %lu (%s) too large, truncating to %d bytes (limit is %d)",
-					tinfo->m_pid, tinfo->m_comm.c_str(), env_bytes_sent, m_config->m_max_env_size);
-			if(g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
+		if (env_bytes_sent > m_config->m_max_env_size)
+		{
+			g_logger.format(
+			    sinsp_logger::SEV_INFO,
+			    "Environment of process %lu (%s) too large, truncating to %d bytes (limit is %d)",
+			    tinfo->m_pid,
+			    tinfo->m_comm.c_str(),
+			    env_bytes_sent,
+			    m_config->m_max_env_size);
+			if (g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
 			{
-				for(const auto& entry : tinfo->m_env) {
-					g_logger.format(sinsp_logger::SEV_DEBUG, "Environment of process %lu (%s): %s",
-							tinfo->m_pid, tinfo->m_comm.c_str(), entry.c_str());
+				for (const auto& entry : tinfo->m_env)
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+					                "Environment of process %lu (%s): %s",
+					                tinfo->m_pid,
+					                tinfo->m_comm.c_str(),
+					                entry.c_str());
 				}
 			}
 		}
 
-		if(!new_env.second) {
+		if (!new_env.second)
+		{
 			new_env.first->second = now + m_config->m_env_hash_ttl;
 		}
 	}
@@ -406,9 +427,9 @@ bool audit_tap::emit_environment(tap::NewProcess *proc, sinsp_threadinfo *tinfo)
 const tap::AuditLog* audit_tap::get_events()
 {
 	if (m_event_batch->newprocessevents_size() == 0 &&
-		m_event_batch->processexitevents_size() == 0 &&
-		m_event_batch->connectionevents_size() == 0 &&
-		m_event_batch->environmentvariables_size() == 0)
+	    m_event_batch->processexitevents_size() == 0 &&
+	    m_event_batch->connectionevents_size() == 0 &&
+	    m_event_batch->environmentvariables_size() == 0)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "No audit tap messages generated");
 		return nullptr;

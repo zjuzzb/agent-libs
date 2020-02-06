@@ -1,21 +1,23 @@
 #pragma once
 
+#include "sinsp_public.h"  // for SINSP_PUBLIC
+
 #include <stack>
 #include <stdexcept>
-
-#include "sinsp_public.h" // for SINSP_PUBLIC
+#include <memory.h>
 
 #ifdef CYGWING_AGENT
 #define SINSP_PUBLIC
 #endif
 
-class copyexcept : public std::runtime_error {
+class copyexcept : public std::runtime_error
+{
 public:
-    copyexcept(const std::string& message)
-        : std::runtime_error(message) { };
+	copyexcept(const std::string& message) : std::runtime_error(message){};
 };
 
-template<class T> class sinsp_fdinfo;
+template<class T>
+class sinsp_fdinfo;
 class sinsp_transaction_manager;
 class sinsp_connection;
 class sinsp_analyzer;
@@ -31,14 +33,11 @@ class sinsp_procinfo;
 class sinsp_autobuffer
 {
 public:
-	sinsp_autobuffer()
-	{
-		reset();
-	}
+	sinsp_autobuffer() { reset(); }
 
 	~sinsp_autobuffer()
 	{
-		if(m_storage != NULL)
+		if (m_storage != NULL)
 		{
 			free(m_storage);
 		}
@@ -58,14 +57,16 @@ public:
 	{
 		char* res;
 
-		if(size + terminate_string + m_storage_cursize >= m_storage_totsize)
+		if (size + terminate_string + m_storage_cursize >= m_storage_totsize)
 		{
 			m_storage_totsize = m_storage_cursize + size + 256;
 
 			m_storage = (char*)realloc(m_storage, m_storage_totsize);
-			if(m_storage == NULL)
+			if (m_storage == NULL)
 			{
-				throw copyexcept(std::string("memory allocation error in sinsp_partial_transaction::copy_to_reassebly_storage"));
+				throw copyexcept(
+				    std::string("memory allocation error in "
+				                "sinsp_partial_transaction::copy_to_reassebly_storage"));
 			}
 		}
 
@@ -73,11 +74,10 @@ public:
 		memcpy(m_storage + m_storage_cursize, data, size);
 		m_storage_cursize += (size + terminate_string);
 
-		if(terminate_string == 1)
+		if (terminate_string == 1)
 		{
 			m_storage[m_storage_cursize - 1] = 0;
 		}
-
 
 		return res;
 	}
@@ -87,7 +87,7 @@ public:
 		char* res;
 		uint32_t size = strnlen(data, maxsize);
 
-		if(size > maxsize)
+		if (size > maxsize)
 		{
 			*copied_size = 0;
 			return NULL;
@@ -104,12 +104,12 @@ public:
 		//
 		// Skip initial spaces
 		//
-		while(*data == ' ' || *data == '\t' || *data == '\r' || *data == '\n')
+		while (*data == ' ' || *data == '\t' || *data == '\r' || *data == '\n')
 		{
 			data++;
 			size--;
 
-			if(size == 0)
+			if (size == 0)
 			{
 				return NULL;
 			}
@@ -120,12 +120,12 @@ public:
 		//
 		char* end = data + size - 1;
 
-		while(*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n')
+		while (*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n')
 		{
 			end--;
 			size--;
 
-			if(size == 0)
+			if (size == 0)
 			{
 				return NULL;
 			}
@@ -137,25 +137,13 @@ public:
 		return copy(data, size, terminate_string);
 	}
 
-	inline char* get_buf()
-	{
-		return m_storage;
-	}
+	inline char* get_buf() { return m_storage; }
 
-	inline char* get_buf_end()
-	{
-		return m_storage + m_storage_cursize;
-	}
+	inline char* get_buf_end() { return m_storage + m_storage_cursize; }
 
-	inline uint32_t get_size()
-	{
-		return m_storage_cursize;
-	}
+	inline uint32_t get_size() { return m_storage_cursize; }
 
-	inline void clear()
-	{
-		m_storage_cursize = 0;
-	}
+	inline void clear() { m_storage_cursize = 0; }
 
 private:
 	char* m_storage;
@@ -171,10 +159,10 @@ class SINSP_PUBLIC sinsp_partial_transaction
 public:
 	enum type
 	{
-	    TYPE_UNKNOWN = 0, // Unknown protocols, don't count requests
-	    TYPE_IP = 1, // Known client/server protocols, count requests
-	    TYPE_HTTP = 2, // as for TYPE_IP but also parse protocol
-	    TYPE_MYSQL = 3,
+		TYPE_UNKNOWN = 0,  // Unknown protocols, don't count requests
+		TYPE_IP = 1,       // Known client/server protocols, count requests
+		TYPE_HTTP = 2,     // as for TYPE_IP but also parse protocol
+		TYPE_MYSQL = 3,
 		TYPE_POSTGRES = 4,
 		TYPE_MONGODB = 5,
 		TYPE_TLS = 6
@@ -182,62 +170,53 @@ public:
 
 	enum family
 	{
-	    IP,
-	    UNIX
+		IP,
+		UNIX
 	};
 
 	enum direction
 	{
-	    DIR_UNKNOWN,
-	    DIR_IN,
-	    DIR_OUT,
-	    DIR_CLOSE,  // Not technically a direction, indicates that the connection is being closed
+		DIR_UNKNOWN,
+		DIR_IN,
+		DIR_OUT,
+		DIR_CLOSE,  // Not technically a direction, indicates that the connection is being closed
 	};
 
 	enum updatestate
 	{
-	    STATE_ONGOING = (1 << 0),
-	    STATE_SWITCHED = (1 << 1),
-	    STATE_NO_TRANSACTION = (1 << 2),	// Set when, based on timing observation, this is detected as 
-											// not being a client/server transaction.
+		STATE_ONGOING = (1 << 0),
+		STATE_SWITCHED = (1 << 1),
+		STATE_NO_TRANSACTION = (1 << 2),  // Set when, based on timing observation, this is detected
+		                                  // as not being a client/server transaction.
 	};
 
 	sinsp_partial_transaction();
 	~sinsp_partial_transaction();
-	sinsp_partial_transaction(const sinsp_partial_transaction &other);
+	sinsp_partial_transaction(const sinsp_partial_transaction& other);
 
 	void reset();
-	void update(sinsp_analyzer* analyzer, 
-		sinsp_threadinfo* ptinfo,
-		void* fdinfo,
-		sinsp_connection* pconn,
-		uint64_t enter_ts, 
-		uint64_t exit_ts, 
-		int32_t cpuid,
-		direction dir,
+	void update(sinsp_analyzer* analyzer,
+	            sinsp_threadinfo* ptinfo,
+	            void* fdinfo,
+	            sinsp_connection* pconn,
+	            uint64_t enter_ts,
+	            uint64_t exit_ts,
+	            int32_t cpuid,
+	            direction dir,
 #if _DEBUG
-		sinsp_evt *evt,
-		uint64_t fd,
+	            sinsp_evt* evt,
+	            uint64_t fd,
 #endif
-		char *data,
-		uint32_t original_len, 
-		uint32_t len);
+	            char* data,
+	            uint32_t original_len,
+	            uint32_t len);
 	void mark_active_and_reset(sinsp_partial_transaction::type newtype);
 	void mark_inactive();
-	inline bool is_active()
-	{
-		return m_is_active;
-	}
+	inline bool is_active() { return m_is_active; }
 
-	bool is_ipv4_flow()
-	{
-		return m_family == family::IP;
-	}
+	bool is_ipv4_flow() { return m_family == family::IP; }
 
-	bool is_unix_flow()
-	{
-		return m_family == family::UNIX;
-	}
+	bool is_unix_flow() { return m_family == family::UNIX; }
 
 	sinsp_partial_transaction::type m_type;
 	direction m_direction;
@@ -263,17 +242,19 @@ public:
 	uint32_t m_prev_bytes_out;
 	int32_t m_cpuid;
 	uint32_t m_flags;
-	uint32_t m_n_direction_switches; // Number of times this transaction has switched direction 
+	uint32_t m_n_direction_switches;  // Number of times this transaction has switched direction
 	sinsp_protocol_parser* m_protoparser;
 	sinsp_autobuffer m_reassembly_buffer;
 
 private:
-	inline sinsp_partial_transaction::updatestate update_int(
-		sinsp_threadinfo* ptinfo,
-		uint64_t enter_ts, 
-		uint64_t exit_ts, direction dir, 
-		char* data, uint32_t original_len, uint32_t len, 
-		bool is_server);
+	inline sinsp_partial_transaction::updatestate update_int(sinsp_threadinfo* ptinfo,
+	                                                         uint64_t enter_ts,
+	                                                         uint64_t exit_ts,
+	                                                         direction dir,
+	                                                         char* data,
+	                                                         uint32_t original_len,
+	                                                         uint32_t len,
+	                                                         bool is_server);
 
 	bool m_is_active;
 };
@@ -305,9 +286,9 @@ class SINSP_PUBLIC sinsp_trlist_entry
 public:
 	enum flags
 	{
-	    FL_NONE = 0,
-	    FL_FILTERED_OUT = (1 << 0),
-	    FL_EXTERNAL = (1 << 1),
+		FL_NONE = 0,
+		FL_FILTERED_OUT = (1 << 0),
+		FL_EXTERNAL = (1 << 1),
 	};
 
 	sinsp_trlist_entry(uint64_t stime, uint64_t etime, flags f)
@@ -317,14 +298,14 @@ public:
 		m_flags = f;
 	}
 
-	uint64_t m_stime;	// start time
-	uint64_t m_etime;	// end time
-	int32_t m_flags;	// pid of the program main process
+	uint64_t m_stime;  // start time
+	uint64_t m_etime;  // end time
+	int32_t m_flags;   // pid of the program main process
 };
 
 struct sinsp_trlist_entry_comparer
 {
-    bool operator() (const sinsp_trlist_entry& first, const sinsp_trlist_entry& second) const 
+	bool operator()(const sinsp_trlist_entry& first, const sinsp_trlist_entry& second) const
 	{
 		return first.m_stime < second.m_stime;
 	}
@@ -340,14 +321,15 @@ public:
 	sinsp_transaction_table(sinsp_analyzer& analyzer);
 	~sinsp_transaction_table();
 
-	void emit(sinsp_threadinfo* ptinfo, 
-		void* fdinfo,
-		sinsp_connection* pconn,
-		sinsp_partial_transaction* tr
+	void emit(sinsp_threadinfo* ptinfo,
+	          void* fdinfo,
+	          sinsp_connection* pconn,
+	          sinsp_partial_transaction* tr
 #if _DEBUG
-		, sinsp_evt *evt,
-		uint64_t fd,
-		uint64_t ts
+	          ,
+	          sinsp_evt* evt,
+	          uint64_t fd,
+	          uint64_t ts
 #endif
 	);
 
@@ -359,7 +341,7 @@ public:
 	uint32_t m_n_server_transactions;
 
 private:
-	bool is_transaction_server(sinsp_threadinfo *ptinfo);
+	bool is_transaction_server(sinsp_threadinfo* ptinfo);
 
 	sinsp_analyzer& m_analyzer;
 	friend class sinsp_partial_transaction;

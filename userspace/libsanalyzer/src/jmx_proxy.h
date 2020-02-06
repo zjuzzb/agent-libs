@@ -1,11 +1,13 @@
 #pragma once
 
 #ifndef _WIN32
-#include "third-party/jsoncpp/json/json.h"
-#include <utility>
-#include "threadinfo.h"
-#include "posix_queue.h"
 #include "metric_limits.h"
+#include "posix_queue.h"
+#include "threadinfo.h"
+
+#include "third-party/jsoncpp/json/json.h"
+
+#include <utility>
 
 class jmx_proxy;
 class java_process;
@@ -16,15 +18,13 @@ class java_bean_attribute
 public:
 	typedef std::vector<java_bean_attribute> subattribute_list_t;
 
-	void to_protobuf(draiosproto::jmx_attribute *attribute, unsigned sampling) const;
+	void to_protobuf(draiosproto::jmx_attribute* attribute, unsigned sampling) const;
 	explicit java_bean_attribute(const Json::Value&);
 	const std::string& name() const { return m_name; }
 	const std::string& alias() const { return m_alias; }
 	double value() const { return m_value; }
-	const subattribute_list_t& subattributes() const
-	{
-		return m_subattributes;
-	}
+	const subattribute_list_t& subattributes() const { return m_subattributes; }
+
 private:
 	inline bool check_member(const Json::Value& json, const std::string& name, Json::ValueType type)
 	{
@@ -40,32 +40,25 @@ private:
 	std::map<std::string, std::string> m_segment_by;
 };
 
-class java_bean {
+class java_bean
+{
 public:
 	typedef std::vector<java_bean_attribute> attribute_list_t;
 
 	java_bean(const Json::Value&, const metric_limits::sptr_t& ml);
 
-	inline const std::string& name() const
-	{
-		return m_name;
-	}
+	inline const std::string& name() const { return m_name; }
 
-	inline size_t attribute_count() const
-	{
-		return m_attributes.size();
-	}
+	inline size_t attribute_count() const { return m_attributes.size(); }
 
-	inline const attribute_list_t& attributes() const
-	{
-		return m_attributes;
-	}
+	inline const attribute_list_t& attributes() const { return m_attributes; }
 
-	unsigned int to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit, const std::string& limit_type, unsigned max_limit) const; 
-	unsigned total_metrics() const
-	{
-		return m_total_metrics;
-	}
+	unsigned int to_protobuf(draiosproto::jmx_bean* proto_bean,
+	                         unsigned sampling,
+	                         unsigned limit,
+	                         const std::string& limit_type,
+	                         unsigned max_limit) const;
+	unsigned total_metrics() const { return m_total_metrics; }
 
 private:
 	std::string m_name;
@@ -74,29 +67,22 @@ private:
 	friend class java_process;
 };
 
-class java_process {
+class java_process
+{
 public:
-	inline int pid() const
-	{
-		return m_pid;
-	}
+	inline int pid() const { return m_pid; }
 
-	inline const std::string& name() const
-	{
-		return m_name;
-	}
+	inline const std::string& name() const { return m_name; }
 
-	inline const std::list<java_bean>& beans() const
-	{
-		return m_beans;
-	}
+	inline const std::list<java_bean>& beans() const { return m_beans; }
 
-	unsigned int to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned limit, const std::string& limit_type, unsigned max_limit) const;
+	unsigned int to_protobuf(draiosproto::java_info* protobuf,
+	                         unsigned sampling,
+	                         unsigned limit,
+	                         const std::string& limit_type,
+	                         unsigned max_limit) const;
 
-	unsigned total_metrics() const
-	{
-		return m_total_metrics;
-	}
+	unsigned total_metrics() const { return m_total_metrics; }
 
 private:
 	java_process(const Json::Value&, const metric_limits::sptr_t& ml);
@@ -121,6 +107,7 @@ public:
 	// This attribute is public because is simply a switch to print
 	// JSON on stdout, does not change object behaviour
 	bool m_print_json;
+
 private:
 	static Json::Value tinfo_to_json(sinsp_threadinfo* tinfo);
 	posix_queue m_outqueue;
@@ -129,4 +116,4 @@ private:
 	Json::FastWriter m_json_writer;
 };
 
-#endif // _WIN32
+#endif  // _WIN32

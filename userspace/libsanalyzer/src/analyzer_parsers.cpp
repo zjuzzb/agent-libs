@@ -1,27 +1,31 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
+#define __STDC_FORMAT_MACROS
 
-#include "sinsp.h"
-#include "sinsp_int.h"
-#include "../../driver/ppm_ringbuffer.h"
-
-#include "parsers.h"
-#include "analyzer_int.h"
 #include "analyzer.h"
+#include "analyzer_int.h"
 #include "analyzer_parsers.h"
 #include "metrics.h"
+#include "parsers.h"
+#include "sinsp.h"
+#include "sinsp_int.h"
+
+#include "../../driver/ppm_ringbuffer.h"
+
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <inttypes.h>
 #undef min
 #undef max
-#include "draios.pb.h"
-#include "delays.h"
-#include "scores.h"
-#include "procfs_parser.h"
-#include "sinsp_errno.h"
-#include "sched_analyzer.h"
-#include "analyzer_thread.h"
 #include "analyzer_fd.h"
+#include "analyzer_thread.h"
+#include "delays.h"
+#include "draios.pb.h"
 #include "infrastructure_state.h"
+#include "procfs_parser.h"
+#include "sched_analyzer.h"
+#include "scores.h"
+#include "sinsp_errno.h"
+
 #include <Poco/Path.h>
 
 namespace
@@ -29,19 +33,18 @@ namespace
 std::string get_command_basename(std::string command)
 {
 	// Trim trailing whitespace from command
-	command.erase(std::find_if(command.rbegin(),
-				   command.rend(),
-				   std::bind1st(std::not_equal_to<char>(), ' ')).base(),
-				   command.end());
+	command.erase(
+	    std::find_if(command.rbegin(), command.rend(), std::bind1st(std::not_equal_to<char>(), ' '))
+	        .base(),
+	    command.end());
 
-	if(command.find(" ") != std::string::npos)
+	if (command.find(" ") != std::string::npos)
 	{
 		std::stringstream sstream(command);
 		std::string first_token;
 		std::string rest;
 
-		if(std::getline(sstream, first_token, ' ') &&
-		   std::getline(sstream, rest))
+		if (std::getline(sstream, first_token, ' ') && std::getline(sstream, rest))
 		{
 			Poco::Path cmd_path(first_token);
 
@@ -78,18 +81,19 @@ void populate_cmdline_exe(std::string& cmdline_exe, sinsp_threadinfo* tinfo)
 
 	const std::size_t nargs = tinfo->m_args.size();
 
-	for(size_t j = 0; j < nargs; j++)
+	for (size_t j = 0; j < nargs; j++)
 	{
 		cmdline_exe += " " + tinfo->m_args[j];
 	}
 }
-} // namespace
+}  // namespace
 
-sinsp_analyzer_parsers::sinsp_analyzer_parsers(sinsp_analyzer* const analyzer):
-	m_analyzer(analyzer),
-	m_sched_analyzer2(nullptr),
-	m_last_drop_was_enter(false)
-{ }
+sinsp_analyzer_parsers::sinsp_analyzer_parsers(sinsp_analyzer* const analyzer)
+    : m_analyzer(analyzer),
+      m_sched_analyzer2(nullptr),
+      m_last_drop_was_enter(false)
+{
+}
 
 //
 // This is similar to sinsp_parser::process_event, but it's for draios-only event
@@ -99,11 +103,11 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 {
 	uint16_t etype = evt->get_type();
 
-	switch(etype)
+	switch (etype)
 	{
 	case PPME_SCHEDSWITCH_1_E:
 	case PPME_SCHEDSWITCH_6_E:
-		if(m_analyzer->get_thread_count() < DROP_SCHED_ANALYZER_THRESHOLD)
+		if (m_analyzer->get_thread_count() < DROP_SCHED_ANALYZER_THRESHOLD)
 		{
 			m_sched_analyzer2->process_event(evt);
 		}
@@ -112,7 +116,8 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 	case PPME_SOCKET_ACCEPT4_X:
 	case PPME_SOCKET_ACCEPT_5_X:
 	case PPME_SOCKET_ACCEPT4_5_X:
-		parse_accept_exit(evt);;
+		parse_accept_exit(evt);
+		;
 		return true;
 	case PPME_SYSCALL_SELECT_X:
 	case PPME_SYSCALL_POLL_X:
@@ -140,7 +145,7 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 	case PPME_SYSCALL_EXECVE_19_X:
 		return parse_execve_exit(evt);
 	case PPME_DROP_E:
-		if(!m_last_drop_was_enter)
+		if (!m_last_drop_was_enter)
 		{
 			parse_drop(evt);
 			m_analyzer->simulate_drop_mode(true);
@@ -152,12 +157,15 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 
 		return false;
 	case PPME_DROP_X:
-		if(m_last_drop_was_enter)
+		if (m_last_drop_was_enter)
 		{
 			parse_drop(evt);
 			m_analyzer->simulate_drop_mode(false);
 
-			m_analyzer->flush(evt, evt->get_ts(), false, analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT);
+			m_analyzer->flush(evt,
+			                  evt->get_ts(),
+			                  false,
+			                  analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT);
 
 			m_last_drop_was_enter = false;
 		}
@@ -183,17 +191,17 @@ void sinsp_analyzer_parsers::parse_accept_exit(sinsp_evt* evt)
 	//
 	// Extract the request queue length
 	//
-	sinsp_evt_param *parinfo = evt->get_param(2);
+	sinsp_evt_param* parinfo = evt->get_param(2);
 	ASSERT(parinfo->m_len == sizeof(uint8_t));
 	uint8_t queueratio = *(uint8_t*)parinfo->m_val;
 	ASSERT(queueratio <= 100);
 
-	if(evt->m_tinfo == NULL)
+	if (evt->m_tinfo == NULL)
 	{
 		return;
 	}
 
-	if(queueratio > evt->m_tinfo->m_ainfo->m_connection_queue_usage_pct)
+	if (queueratio > evt->m_tinfo->m_ainfo->m_connection_queue_usage_pct)
 	{
 		evt->m_tinfo->m_ainfo->m_connection_queue_usage_pct = queueratio;
 	}
@@ -205,18 +213,18 @@ void sinsp_analyzer_parsers::parse_accept_exit(sinsp_evt* evt)
 	evt->m_tinfo->m_ainfo->m_last_wait_duration_ns = 0;
 }
 
-void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt *evt)
+void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt* evt)
 {
-	sinsp_evt_param *parinfo;
+	sinsp_evt_param* parinfo;
 	int64_t retval;
 	uint16_t etype = evt->get_type();
 
-	if(evt->m_tinfo == NULL)
+	if (evt->m_tinfo == NULL)
 	{
 		return;
 	}
 
-	if(etype != evt->m_tinfo->m_lastevent_type + 1)
+	if (etype != evt->m_tinfo->m_lastevent_type + 1)
 	{
 		//
 		// Packet drop. Previuos event didn't have a chance to
@@ -228,47 +236,48 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 	// Extract the return value
 	//
 	parinfo = evt->get_param(0);
-	retval = *(int64_t *)parinfo->m_val;
+	retval = *(int64_t*)parinfo->m_val;
 	ASSERT(parinfo->m_len == sizeof(int64_t));
 
 	//
 	// Check if the syscall was successful
 	//
-	if(retval >= 0)
+	if (retval >= 0)
 	{
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
 
-		if(tinfo == NULL)
+		if (tinfo == NULL)
 		{
 			ASSERT(false);
 			return;
 		}
 
-		if(tinfo->is_lastevent_data_valid() && evt->m_tinfo->m_lastevent_data)
+		if (tinfo->is_lastevent_data_valid() && evt->m_tinfo->m_lastevent_data)
 		{
 			//
 			// We categorize this based on the next I/O operation only if the number of
 			// FDs that were waited for is 1
 			//
-			if(retval == 0)
+			if (retval == 0)
 			{
 				tinfo->m_ainfo->m_last_wait_duration_ns = 0;
 			}
 			else
 			{
 				//
-				// If this was a wait on a *single* fd, we can easily categorize it with certainty and
-				// we encode the delta as a positive number.
-				// If this was a wait on multiple FDs, we encode the delta as a negative number so
-				// the next steps will know that it needs to be handled with more care.
+				// If this was a wait on a *single* fd, we can easily categorize it with certainty
+				// and we encode the delta as a positive number. If this was a wait on multiple FDs,
+				// we encode the delta as a negative number so the next steps will know that it
+				// needs to be handled with more care.
 				//
 				uint64_t sample_duration = m_analyzer->get_sample_duration();
 				uint64_t ts = evt->get_ts();
 
 				tinfo->m_ainfo->m_last_wait_end_time_ns = ts;
-				uint64_t start_time_ns = MAX(ts - ts % sample_duration, *(uint64_t*)evt->m_tinfo->m_lastevent_data);
+				uint64_t start_time_ns =
+				    MAX(ts - ts % sample_duration, *(uint64_t*)evt->m_tinfo->m_lastevent_data);
 
-				if(retval == 1)
+				if (retval == 1)
 				{
 					tinfo->m_ainfo->m_last_wait_duration_ns = ts - start_time_ns;
 				}
@@ -284,67 +293,70 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 bool sinsp_analyzer_parsers::parse_clone_exit(sinsp_evt* evt)
 {
 	//
-	// For now this only sets the AF_IS_DESCENDENT_OF_CONTAINER_INIT flag, which is only used by Secure Audit,
-	// therefore we can avoid running it at all if secure audit is not enabled.
+	// For now this only sets the AF_IS_DESCENDENT_OF_CONTAINER_INIT flag, which is only used by
+	// Secure Audit, therefore we can avoid running it at all if secure audit is not enabled.
 	//
 	const sinsp_configuration* sinsp_conf = m_analyzer->get_configuration_read_only();
 
-	if(!sinsp_conf->get_executed_commands_capture_enabled())
+	if (!sinsp_conf->get_executed_commands_capture_enabled())
 	{
 		return true;
 	}
 
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
-	if(tinfo == nullptr)
-	{	
+	if (tinfo == nullptr)
+	{
 		return true;
 	}
 
-	// 
+	//
 	// Set the AF_IS_DESCENDANT_OF_CONTAINER_INIT flag to any child of a container init (vpid 1)
 	// and propagate the flag to all descendant processes
 	//
 
 	// Discard clone calls that create threads of an existing process
-	if(!tinfo->is_main_thread())
+	if (!tinfo->is_main_thread())
 	{
 		return true;
 	}
 
-	sinsp_threadinfo *ptinfo = tinfo->get_parent_thread();
-	if(ptinfo == nullptr)
+	sinsp_threadinfo* ptinfo = tinfo->get_parent_thread();
+	if (ptinfo == nullptr)
 	{
 		return true;
 	}
 
 	auto tainfo = tinfo->m_ainfo;
-	if(tainfo == nullptr)
+	if (tainfo == nullptr)
 	{
 		return true;
 	}
 
 	// Set the flag for children of container init processes
-	if(ptinfo->m_vpid != ptinfo->m_pid && !ptinfo->m_container_id.empty() && ptinfo->m_vpid == 1)
+	if (ptinfo->m_vpid != ptinfo->m_pid && !ptinfo->m_container_id.empty() && ptinfo->m_vpid == 1)
 	{
-		tainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_DESCENDANT_OF_CONTAINER_INIT;
+		tainfo->m_th_analysis_flags |=
+		    thread_analyzer_info::flags::AF_IS_DESCENDANT_OF_CONTAINER_INIT;
 		return true;
 	}
 
-	if(!ptinfo->is_main_thread())
+	if (!ptinfo->is_main_thread())
 	{
 		ptinfo = ptinfo->get_main_thread();
 	}
 
 	auto ptainfo = ptinfo->m_ainfo;
-	if(ptainfo == nullptr)
+	if (ptainfo == nullptr)
 	{
 		return true;
-	}	
+	}
 
 	// Propagate the flag to their child processes
-	if(ptainfo->m_th_analysis_flags & thread_analyzer_info::flags::AF_IS_DESCENDANT_OF_CONTAINER_INIT)
+	if (ptainfo->m_th_analysis_flags &
+	    thread_analyzer_info::flags::AF_IS_DESCENDANT_OF_CONTAINER_INIT)
 	{
-		tainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_DESCENDANT_OF_CONTAINER_INIT;
+		tainfo->m_th_analysis_flags |=
+		    thread_analyzer_info::flags::AF_IS_DESCENDANT_OF_CONTAINER_INIT;
 		return true;
 	}
 
@@ -354,7 +366,7 @@ bool sinsp_analyzer_parsers::parse_clone_exit(sinsp_evt* evt)
 bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
-	if(tinfo == NULL)
+	if (tinfo == NULL)
 	{
 		return true;
 	}
@@ -362,12 +374,12 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	// Check the result of the call
 	//
-	sinsp_evt_param *parinfo;
+	sinsp_evt_param* parinfo;
 	parinfo = evt->get_param(0);
 	ASSERT(parinfo->m_len == sizeof(int64_t));
 	int64_t res = *(int64_t*)parinfo->m_val;
 
-	if(res < 0)
+	if (res < 0)
 	{
 		return true;
 	}
@@ -380,7 +392,7 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	// Detect if this is a stress tool and in that case request to go in nodriver mode
 	//
-	if(m_analyzer->detect_and_match_stress_tool(tinfo->m_comm))
+	if (m_analyzer->detect_and_match_stress_tool(tinfo->m_comm))
 	{
 		return true;
 	}
@@ -393,7 +405,7 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	// - commandlines_capture/enabled - "old" way to send executed commands
 	// - secure_audit/executed_commands - "new" audit feature
 	//
-	if(!sinsp_conf->get_executed_commands_capture_enabled())
+	if (!sinsp_conf->get_executed_commands_capture_enabled())
 	{
 		return true;
 	}
@@ -408,22 +420,24 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	bool valid_ancestor = false;
 	bool found_container_init = false;
 
-	sinsp_threadinfo::visitor_func_t visitor =
-		[sinsp_conf, &login_shell_id, &shell_dist, &cur_dist,
-		 &valid_ancestor, &found_container_init] (sinsp_threadinfo *ptinfo)
-	{
-		if(cur_dist && sinsp_conf->is_command_lines_valid_ancestor(ptinfo->m_comm))
+	sinsp_threadinfo::visitor_func_t visitor = [sinsp_conf,
+	                                            &login_shell_id,
+	                                            &shell_dist,
+	                                            &cur_dist,
+	                                            &valid_ancestor,
+	                                            &found_container_init](sinsp_threadinfo* ptinfo) {
+		if (cur_dist && sinsp_conf->is_command_lines_valid_ancestor(ptinfo->m_comm))
 		{
 			valid_ancestor = true;
 		}
 
-		if(ptinfo->m_vpid == 1 && !ptinfo->m_container_id.empty())
+		if (ptinfo->m_vpid == 1 && !ptinfo->m_container_id.empty())
 		{
 			found_container_init = true;
 		}
 
 		uint32_t cl = ptinfo->m_comm.size();
-		if(cl >= 2 && ptinfo->m_comm[cl - 2] == 's' && ptinfo->m_comm[cl - 1] == 'h')
+		if (cl >= 2 && ptinfo->m_comm[cl - 2] == 's' && ptinfo->m_comm[cl - 1] == 'h')
 		{
 			login_shell_id = ptinfo->m_tid;
 			shell_dist = cur_dist;
@@ -433,41 +447,42 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		return true;
 	};
 
-	found_container_init |= (
-		(tainfo->m_th_analysis_flags & thread_analyzer_info::flags::AF_IS_DESCENDANT_OF_CONTAINER_INIT) != 0);
+	found_container_init |=
+	    ((tainfo->m_th_analysis_flags &
+	      thread_analyzer_info::flags::AF_IS_DESCENDANT_OF_CONTAINER_INIT) != 0);
 
-	if(visitor(tinfo))
+	if (visitor(tinfo))
 	{
 		tinfo->traverse_parent_state(visitor);
 	}
 
 	// If the parents chain is broken, ignore login_shell_id and shell_dist because not meaningful
-	if(tinfo->m_parent_loop_detected)
+	if (tinfo->m_parent_loop_detected)
 	{
 		login_shell_id = 0;
 		shell_dist = 0;
 	}
 
 	bool mode_ok = false;
-	switch(sinsp_conf->get_command_lines_capture_mode())
+	switch (sinsp_conf->get_command_lines_capture_mode())
 	{
-		case sinsp_configuration::command_capture_mode_t::CM_TTY:
-			if(tinfo->m_tty)
-			{
-				mode_ok = true;
-			}
-			break;
-		case sinsp_configuration::command_capture_mode_t::CM_SHELL_ANCESTOR:
-			if(login_shell_id)
-			{
-				mode_ok = true;
-			}
-			break;
-		case sinsp_configuration::command_capture_mode_t::CM_ALL:
+	case sinsp_configuration::command_capture_mode_t::CM_TTY:
+		if (tinfo->m_tty)
+		{
 			mode_ok = true;
-			break;
-		default:
-			ASSERT(false);
+		}
+		break;
+	case sinsp_configuration::command_capture_mode_t::CM_SHELL_ANCESTOR:
+		if (login_shell_id)
+		{
+			mode_ok = true;
+		}
+		break;
+	case sinsp_configuration::command_capture_mode_t::CM_ALL:
+		mode_ok = true;
+		break;
+	default:
+		ASSERT(false);
 	}
 
 	//
@@ -476,19 +491,19 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	// pid ns), very likely it comes from docker exec
 	//
 	bool container_exec = false;
-	if(!tinfo->m_container_id.empty() && !found_container_init &&
-		tinfo->m_vpid != tinfo->m_pid)
+	if (!tinfo->m_container_id.empty() && !found_container_init && tinfo->m_vpid != tinfo->m_pid)
 	{
 		container_exec = true;
 	}
 
 	//
 	// Only allow this function to continue if ANY of the following conditions holds true:
-	// - mode_ok: this is an interactive process according to config (e.g. we want processes w/ TTYs and this has a TTY)
+	// - mode_ok: this is an interactive process according to config (e.g. we want processes w/ TTYs
+	// and this has a TTY)
 	// - valid_ancestor: it's a descendant of a process that is one of valid_ancestors in the config
 	// - container_exec: it's running in a container and is not a descendant of the container init
 	//
-	if(!mode_ok && !valid_ancestor && !container_exec)
+	if (!mode_ok && !valid_ancestor && !container_exec)
 	{
 		return true;
 	}
@@ -497,19 +512,19 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 
 	m_analyzer->incr_command_lines_category(convert_category(tinfo->m_category));
 
-	if(tinfo->is_health_probe() &&
-	   !sinsp_conf->get_command_lines_include_container_healthchecks())
+	if (tinfo->is_health_probe() && !sinsp_conf->get_command_lines_include_container_healthchecks())
 	{
 		return true;
 	}
 
 	// store AF_IS_INTERACTIVE_COMMAND in thread_analyzer_info
-	if(!tinfo->is_health_probe())
+	if (!tinfo->is_health_probe())
 	{
 		sinsp_threadinfo* main_thread = tinfo->get_main_thread();
-		if(main_thread != nullptr && main_thread->m_ainfo != nullptr)
+		if (main_thread != nullptr && main_thread->m_ainfo != nullptr)
 		{
-			main_thread->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
+			main_thread->m_ainfo->m_th_analysis_flags |=
+			    thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
 		}
 	}
 
@@ -518,7 +533,7 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	sinsp_executed_command cmdinfo;
 
-	if(tinfo->m_clone_ts != 0)
+	if (tinfo->m_clone_ts != 0)
 	{
 		cmdinfo.m_ts = tinfo->m_clone_ts;
 	}
@@ -542,7 +557,7 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	uint32_t nargs = tinfo->m_args.size();
 
-	for(uint32_t j = 0; j < nargs; j++)
+	for (uint32_t j = 0; j < nargs; j++)
 	{
 		cmdinfo.m_cmdline += ' ';
 		cmdinfo.m_cmdline += tinfo->m_args[j];
@@ -555,15 +570,16 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	// Determine if this command was executed in a pipe and if yes
 	// where it belongs in the pipe
 	//
-	if((tinfo->m_flags & (PPM_CL_PIPE_SRC | PPM_CL_PIPE_DST)) == (PPM_CL_PIPE_SRC | PPM_CL_PIPE_DST))
+	if ((tinfo->m_flags & (PPM_CL_PIPE_SRC | PPM_CL_PIPE_DST)) ==
+	    (PPM_CL_PIPE_SRC | PPM_CL_PIPE_DST))
 	{
 		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_MIDDLE;
 	}
-	else if((tinfo->m_flags & (PPM_CL_PIPE_SRC)) == (PPM_CL_PIPE_SRC))
+	else if ((tinfo->m_flags & (PPM_CL_PIPE_SRC)) == (PPM_CL_PIPE_SRC))
 	{
 		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_HEAD;
 	}
-	else if((tinfo->m_flags & (PPM_CL_PIPE_DST)) == (PPM_CL_PIPE_DST))
+	else if ((tinfo->m_flags & (PPM_CL_PIPE_DST)) == (PPM_CL_PIPE_DST))
 	{
 		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_TAIL;
 	}
@@ -580,27 +596,28 @@ void sinsp_analyzer_parsers::parse_drop(sinsp_evt* evt)
 	//
 	// If required, update the sample length
 	//
-	sinsp_evt_param *parinfo;
+	sinsp_evt_param* parinfo;
 	parinfo = evt->get_param(0);
 	ASSERT(parinfo->m_len == sizeof(int32_t));
 
-	if(*(uint32_t*)parinfo->m_val != m_analyzer->get_acked_sampling_ratio())
+	if (*(uint32_t*)parinfo->m_val != m_analyzer->get_acked_sampling_ratio())
 	{
-		g_logger.format(sinsp_logger::SEV_INFO, "sinsp Switching sampling ratio from % " PRIu32 " to %" PRIu32,
-			m_analyzer->get_acked_sampling_ratio(),
-			*(uint32_t*)parinfo->m_val);
-
+		g_logger.format(sinsp_logger::SEV_INFO,
+		                "sinsp Switching sampling ratio from % " PRIu32 " to %" PRIu32,
+		                m_analyzer->get_acked_sampling_ratio(),
+		                *(uint32_t*)parinfo->m_val);
 	}
 
 	m_analyzer->ack_sampling_ratio(*(uint32_t*)parinfo->m_val);
 }
 
-draiosproto::command_category sinsp_analyzer_parsers::convert_category(sinsp_threadinfo::command_category &tcat)
+draiosproto::command_category sinsp_analyzer_parsers::convert_category(
+    sinsp_threadinfo::command_category& tcat)
 {
 	// Explicitly converting to point out mismatches
 	draiosproto::command_category cat;
 
-	switch(tcat)
+	switch (tcat)
 	{
 	case sinsp_threadinfo::CAT_NONE:
 		cat = draiosproto::CAT_NONE;
@@ -618,7 +635,9 @@ draiosproto::command_category sinsp_analyzer_parsers::convert_category(sinsp_thr
 		cat = draiosproto::CAT_READINESS_PROBE;
 		break;
 	default:
-		g_logger.format(sinsp_logger::SEV_ERROR, "Unknown command category %d, using CAT_NONE", tcat);
+		g_logger.format(sinsp_logger::SEV_ERROR,
+		                "Unknown command category %d, using CAT_NONE",
+		                tcat);
 		cat = draiosproto::CAT_NONE;
 	}
 
@@ -632,10 +651,16 @@ void sinsp_analyzer_parsers::lookup_k8s_probes(sinsp_threadinfo* tinfo)
 	std::string value_readiness;
 	std::string value_liveness;
 
-	bool found_liveness = m_analyzer->infra_state()->find_tag(entry, "kubernetes.pod.probe.liveness." + tinfo->m_container_id, value_liveness);
-	bool found_readiness = m_analyzer->infra_state()->find_tag(entry, "kubernetes.pod.probe.readiness." + tinfo->m_container_id, value_readiness);
+	bool found_liveness = m_analyzer->infra_state()->find_tag(
+	    entry,
+	    "kubernetes.pod.probe.liveness." + tinfo->m_container_id,
+	    value_liveness);
+	bool found_readiness = m_analyzer->infra_state()->find_tag(
+	    entry,
+	    "kubernetes.pod.probe.readiness." + tinfo->m_container_id,
+	    value_readiness);
 
-	if(!found_liveness && !found_readiness)
+	if (!found_liveness && !found_readiness)
 	{
 		return;
 	}
@@ -649,19 +674,19 @@ void sinsp_analyzer_parsers::lookup_k8s_probes(sinsp_threadinfo* tinfo)
 	std::string cmdline_comm;
 	sinsp_threadinfo::populate_cmdline(cmdline_comm, tinfo);
 
-	if(found_liveness)
+	if (found_liveness)
 	{
-		if(strcmp_relative_path(cmdline_exe, value_liveness) ||
-		   strcmp_relative_path(cmdline_comm, value_liveness))
+		if (strcmp_relative_path(cmdline_exe, value_liveness) ||
+		    strcmp_relative_path(cmdline_comm, value_liveness))
 		{
 			tinfo->m_category = sinsp_threadinfo::CAT_LIVENESS_PROBE;
 		}
 	}
 
-	if(found_readiness)
+	if (found_readiness)
 	{
-		if(strcmp_relative_path(cmdline_exe, value_readiness) ||
-		   strcmp_relative_path(cmdline_comm, value_readiness))
+		if (strcmp_relative_path(cmdline_exe, value_readiness) ||
+		    strcmp_relative_path(cmdline_comm, value_readiness))
 		{
 			tinfo->m_category = sinsp_threadinfo::CAT_READINESS_PROBE;
 		}

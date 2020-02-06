@@ -1,8 +1,8 @@
 #pragma once
 
+#include <container_analyzer.h>
 #include <sinsp_int.h>
 #include <unordered_map>
-#include <container_analyzer.h>
 
 // Class: container Emitter
 //
@@ -27,24 +27,26 @@
 // 6) m_prev_flush_time_ns
 //
 // callback_arg_type = opaque type which is passed into the  emit_container cb
-// 
-template <typename callback_type, typename callback_arg_type>
-class container_emitter {
+//
+template<typename callback_type, typename callback_arg_type>
+class container_emitter
+{
 public:
 	container_emitter(callback_type& t,
-			  std::unordered_map<std::string, analyzer_container_state>& containers,
-			  unsigned statsd_limit,
-			  const std::unordered_map<std::string, std::vector<sinsp_threadinfo*>>& progtable_by_container,
-			  const std::vector<std::string>& container_patterns,
-			  callback_arg_type flshflags,
-			  uint32_t limit,
-			  bool nodriver,
-			  std::vector<std::string>& emitted_containers);
+	                  std::unordered_map<std::string, analyzer_container_state>& containers,
+	                  unsigned statsd_limit,
+	                  const std::unordered_map<std::string, std::vector<sinsp_threadinfo*>>&
+	                      progtable_by_container,
+	                  const std::vector<std::string>& container_patterns,
+	                  callback_arg_type flshflags,
+	                  uint32_t limit,
+	                  bool nodriver,
+	                  std::vector<std::string>& emitted_containers);
 
 	void emit_containers();
 
 private:
-	static const uint32_t stat_categories = 4; 
+	static const uint32_t stat_categories = 4;
 	// if you're adding categories, bump the count!
 	static double cpu_extractor(const analyzer_container_state& analyzer_state);
 	static int64_t mem_extractor(const analyzer_container_state& analyzer_state);
@@ -55,12 +57,15 @@ private:
 	static uint64_t age_extractor(const analyzer_container_state& analyzer_state);
 
 	callback_type& m_t;
-	std::unordered_map<std::string, analyzer_container_state>& m_containers; // input containers
-	std::vector<std::string> m_must_report; // ids of all container which explicitly match filter rules
-	std::vector<std::string> m_can_report; // ids of containers which are not must report containers, but are also not explicitly excluded
+	std::unordered_map<std::string, analyzer_container_state>& m_containers;  // input containers
+	std::vector<std::string>
+	    m_must_report;  // ids of all container which explicitly match filter rules
+	std::vector<std::string> m_can_report;  // ids of containers which are not must report
+	                                        // containers, but are also not explicitly excluded
 	unsigned m_statsd_limit;
-	std::set<std::string> m_emitted_containers; // set of emitted containers...set for fast lookup
-	std::vector<std::string>& m_emitted_containers_out; //ref to std::vector that we ultimately have to return
+	std::set<std::string> m_emitted_containers;  // set of emitted containers...set for fast lookup
+	std::vector<std::string>&
+	    m_emitted_containers_out;  // ref to std::vector that we ultimately have to return
 	uint64_t m_total_cpu_shares;
 	const std::unordered_map<std::string, std::vector<sinsp_threadinfo*>>& m_progtable_by_container;
 	callback_arg_type m_flshflags;
@@ -69,19 +74,22 @@ private:
 	bool m_used;
 	bool m_nodriver;
 
-	void check_and_emit_containers(std::vector<std::string>& containers, const uint32_t containers_limit, bool high_priority);
+	void check_and_emit_containers(std::vector<std::string>& containers,
+	                               const uint32_t containers_limit,
+	                               bool high_priority);
 
 	template<typename Extractor>
 	class containers_cmp
 	{
 	public:
 		containers_cmp(const std::unordered_map<std::string, analyzer_container_state>* containers,
-			       const std::set<std::string>* emitted_containers,
-			       Extractor extractor):
-			m_containers(containers),
-			m_emitted_containers(emitted_containers),
-			m_extractor(extractor)
-		{}
+		               const std::set<std::string>* emitted_containers,
+		               Extractor extractor)
+		    : m_containers(containers),
+		      m_emitted_containers(emitted_containers),
+		      m_extractor(extractor)
+		{
+		}
 
 		bool operator()(const std::string& lhs, const std::string& rhs)
 		{
@@ -100,7 +108,7 @@ private:
 			const auto it_analyzer_lhs = m_containers->find(lhs);
 			ASSERT(it_analyzer_lhs != m_containers->end());
 			decltype(m_extractor(it_analyzer_lhs->second)) cmp_lhs = 0;
-			if(it_analyzer_lhs != m_containers->end())
+			if (it_analyzer_lhs != m_containers->end())
 			{
 				cmp_lhs = m_extractor(it_analyzer_lhs->second);
 			}
@@ -108,19 +116,21 @@ private:
 			const auto it_analyzer_rhs = m_containers->find(rhs);
 			ASSERT(it_analyzer_rhs != m_containers->end());
 			decltype(m_extractor(it_analyzer_rhs->second)) cmp_rhs = 0;
-			if(it_analyzer_rhs != m_containers->end())
+			if (it_analyzer_rhs != m_containers->end())
 			{
 				cmp_rhs = m_extractor(it_analyzer_rhs->second);
 			}
 
-			if(cmp_lhs != cmp_rhs)
+			if (cmp_lhs != cmp_rhs)
 			{
 				return cmp_lhs > cmp_rhs;
 			}
 
-			// do it in alphabetical order if all things else are equal. if names are equal, then this doesn't matter
+			// do it in alphabetical order if all things else are equal. if names are equal, then
+			// this doesn't matter
 			return lhs.compare(rhs) > 0;
 		}
+
 	private:
 		// map of IDs to actual container state
 		const std::unordered_map<std::string, analyzer_container_state>* m_containers;
@@ -130,18 +140,18 @@ private:
 
 	bool patterns_contain(const sinsp_container_info& container_info)
 	{
-		if (m_container_patterns.empty()) 
+		if (m_container_patterns.empty())
 		{
 			return true;
 		}
-              
-		auto result = std::find_if(m_container_patterns.begin(),
-					   m_container_patterns.end(),
-					   [&container_info](const std::string& pattern)
-					   {
-						return container_info.m_name.find(pattern) != std::string::npos ||
-						container_info.m_image.find(pattern) != std::string::npos;
-					   });
+
+		auto result =
+		    std::find_if(m_container_patterns.begin(),
+		                 m_container_patterns.end(),
+		                 [&container_info](const std::string& pattern) {
+			                 return container_info.m_name.find(pattern) != std::string::npos ||
+			                        container_info.m_image.find(pattern) != std::string::npos;
+		                 });
 
 		return result != m_container_patterns.end();
 	}
@@ -173,15 +183,14 @@ private:
 			}
 
 			m_t.emit_container(*i,
-					   &m_statsd_limit,
-					   m_total_cpu_shares,
-					   m_progtable_by_container.at(*i).front(),
-					   m_flshflags,
-					   groups);
+			                   &m_statsd_limit,
+			                   m_total_cpu_shares,
+			                   m_progtable_by_container.at(*i).front(),
+			                   m_flshflags,
+			                   groups);
 			m_emitted_containers.emplace(*i);
 		}
 	}
-
 };
 
 #include "container_emitter.hh"

@@ -1,69 +1,72 @@
 #define VISIBILITY_PRIVATE
 
-#include "sys_call_test.h"
-#include <gtest.h>
-#include <algorithm>
 #include "event_capture.h"
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <poll.h>
-#include <event.h>
-#include <Poco/Process.h>
-#include <Poco/PipeStream.h>
-#include <Poco/StringTokenizer.h>
-#include <list>
-#include <cassert>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/syscall.h>
-#include <netdb.h>
-#include <sys/socket.h>
+#include "sys_call_test.h"
+
+#include "Poco/Exception.h"
+#include "Poco/Net/FTPStreamFactory.h"
+#include "Poco/Net/HTTPSStreamFactory.h"
+#include "Poco/Net/HTTPStreamFactory.h"
+#include "Poco/NullStream.h"
+#include "Poco/Path.h"
+#include "Poco/StreamCopier.h"
+#include "Poco/URI.h"
+#include "Poco/URIStreamOpener.h"
+
 #include <Poco/NumberFormatter.h>
 #include <Poco/NumberParser.h>
-#include "Poco/URIStreamOpener.h"
-#include "Poco/StreamCopier.h"
-#include "Poco/Path.h"
-#include "Poco/URI.h"
-#include "Poco/Exception.h"
-#include "Poco/Net/HTTPStreamFactory.h"
-#include "Poco/Net/HTTPSStreamFactory.h"
-#include "Poco/Net/FTPStreamFactory.h"
-#include "Poco/NullStream.h"
+#include <Poco/PipeStream.h>
+#include <Poco/Process.h>
+#include <Poco/StringTokenizer.h>
+
+#include <algorithm>
+#include <arpa/inet.h>
+#include <cassert>
+#include <event.h>
+#include <fcntl.h>
+#include <gtest.h>
+#include <list>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <poll.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
 
 // For HTTP server
-#include <Poco/Net/ServerSocket.h>
-#include <Poco/Net/SecureServerSocket.h>
-#include <Poco/Net/SecureStreamSocket.h>
-#include <Poco/Net/HTTPServer.h>
+#include "analyzer_thread.h"
+#include "configuration_manager.h"
+#include "connectinfo.h"
+#include "procfs_parser.h"
+#include "protostate.h"
+#include "sinsp_int.h"
+
+#include "test-helpers/scoped_config.h"
+
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPRequestHandlerFactory.h>
 #include <Poco/Net/HTTPResponse.h>
-#include <Poco/Net/HTTPServerRequest.h>
-#include <Poco/Net/HTTPServerResponse.h>
-#include <Poco/Net/HTTPServerRequestImpl.h>
 #include <Poco/Net/HTTPSClientSession.h>
+#include <Poco/Net/HTTPServer.h>
+#include <Poco/Net/HTTPServerRequest.h>
+#include <Poco/Net/HTTPServerRequestImpl.h>
+#include <Poco/Net/HTTPServerResponse.h>
+#include <Poco/Net/SecureServerSocket.h>
+#include <Poco/Net/SecureStreamSocket.h>
+#include <Poco/Net/ServerSocket.h>
 
-#include <unistd.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
-#include <openssl/ssl.h>
+#include <array>
+#include <memory>
 #include <openssl/err.h>
 #include <openssl/pem.h>
+#include <openssl/ssl.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
-
-#include "sinsp_int.h"
-#include "connectinfo.h"
-#include "analyzer_thread.h"
-#include "protostate.h"
-#include "procfs_parser.h"
-#include <array>
+#include <sys/socket.h>
 #include <thread>
-#include <memory>
-#include "configuration_manager.h"
-#include "test-helpers/scoped_config.h"
+#include <unistd.h>
 
 using namespace std;
 
@@ -71,25 +74,24 @@ using Poco::NumberFormatter;
 using Poco::NumberParser;
 using Poco::SharedPtr;
 
-using Poco::URIStreamOpener;
-using Poco::StreamCopier;
-using Poco::Path;
-using Poco::URI;
 using Poco::Exception;
-using Poco::Net::HTTPStreamFactory;
-using Poco::Net::HTTPSStreamFactory;
-using Poco::Net::FTPStreamFactory;
 using Poco::NullOutputStream;
+using Poco::Path;
+using Poco::StreamCopier;
+using Poco::URI;
+using Poco::URIStreamOpener;
+using Poco::Net::FTPStreamFactory;
+using Poco::Net::HTTPSStreamFactory;
+using Poco::Net::HTTPStreamFactory;
 
+using Poco::Net::HTTPResponse;
 using Poco::Net::HTTPServer;
+using Poco::Net::HTTPServerParams;
 using Poco::Net::HTTPServerRequest;
 using Poco::Net::HTTPServerResponse;
-using Poco::Net::HTTPServerParams;
-using Poco::Net::HTTPResponse;
-using Poco::Net::ServerSocket;
 using Poco::Net::SecureServerSocket;
 using Poco::Net::SecureStreamSocket;
-
+using Poco::Net::ServerSocket;
 
 #define SITE "www.google.com"
 #define SITE1 "www.yahoo.com"
@@ -100,9 +102,10 @@ using Poco::Net::SecureStreamSocket;
 /*
  * error - wrapper for perror
  */
-void error(char *msg) {
-    perror(msg);
-    exit(0);
+void error(char* msg)
+{
+	perror(msg);
+	exit(0);
 }
 
 //
@@ -125,13 +128,13 @@ void load_certs(SSL_CTX* ctx, string cert_fn, string key_fn)
 	X509* cert_x509 = PEM_read_X509(certf, NULL, NULL, NULL);
 	EVP_PKEY* pkey = PEM_read_PrivateKey(keyf, NULL, NULL, NULL);
 
-	if(cert_x509 == nullptr)
+	if (cert_x509 == nullptr)
 	{
 		cerr << "Error reading certificate" << endl;
 		ERR_print_errors_fp(stderr);
 		goto cleanup;
 	}
-	if(pkey == nullptr)
+	if (pkey == nullptr)
 	{
 		cerr << "Error reading private key" << endl;
 		ERR_print_errors_fp(stderr);
@@ -140,14 +143,14 @@ void load_certs(SSL_CTX* ctx, string cert_fn, string key_fn)
 
 	// Set the cert and key in the context
 	ret = SSL_CTX_use_certificate(ctx, cert_x509);
-	if(ret <= 0)
+	if (ret <= 0)
 	{
 		cerr << "Error using certificate: " << ret << endl;
 		ERR_print_errors_fp(stderr);
 		goto cleanup;
 	}
 	ret = SSL_CTX_use_PrivateKey(ctx, pkey);
-	if(ret <= 0)
+	if (ret <= 0)
 	{
 		cerr << "Error using private key: " << ret << endl;
 		ERR_print_errors_fp(stderr);
@@ -168,7 +171,8 @@ class ssl_socket
 	int sock_err = 0;
 	SSL_CTX* ctx = nullptr;
 	bool run_server = false;
- public:
+
+public:
 	ssl_socket()
 	{
 		SSL_load_error_strings();
@@ -177,7 +181,7 @@ class ssl_socket
 
 		// Create the SSL context
 		ctx = SSL_CTX_new(SSLv23_server_method());
-		if(!ctx)
+		if (!ctx)
 		{
 			cerr << "Unable to build SSL context" << endl;
 			ERR_print_errors_fp(stderr);
@@ -192,11 +196,11 @@ class ssl_socket
 
 	~ssl_socket()
 	{
-		if(run_server)
+		if (run_server)
 		{
 			stop();
 		}
-		if(sock_fd > 0)
+		if (sock_fd > 0)
 		{
 			close(sock_fd);
 			sock_fd = -1;
@@ -205,10 +209,7 @@ class ssl_socket
 		EVP_cleanup();
 	}
 
-	bool error()
-	{
-		return sock_err != 0;
-	}
+	bool error() { return sock_err != 0; }
 
 	void start(uint16_t port)
 	{
@@ -218,94 +219,94 @@ class ssl_socket
 		std::mutex mtx;
 		std::condition_variable cv;
 
-		thread t([this, &server_started, &mtx, &cv](uint16_t port)
-		{
-			// Create the socket and begin listening
+		thread t(
+		    [this, &server_started, &mtx, &cv](uint16_t port) {
+			    // Create the socket and begin listening
 
-			struct sockaddr_in addr;
-			addr.sin_family = AF_INET;
-			addr.sin_addr.s_addr = htonl(INADDR_ANY);
-			addr.sin_port = htons(port);
+			    struct sockaddr_in addr;
+			    addr.sin_family = AF_INET;
+			    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+			    addr.sin_port = htons(port);
 
-			int s = socket(addr.sin_family, SOCK_STREAM, 0);
-			if(s < 0)
-			{
-				cerr << "Unable to create socket: " << s << endl;
-				sock_err = s;
-				return;
-			}
+			    int s = socket(addr.sin_family, SOCK_STREAM, 0);
+			    if (s < 0)
+			    {
+				    cerr << "Unable to create socket: " << s << endl;
+				    sock_err = s;
+				    return;
+			    }
 
-			if(bind(s, (struct sockaddr*)&addr, sizeof(addr)) < 0)
-			{
-				cerr << "Unable to bind to address: " << s << endl;
-				sock_err = s;
-				close(s);
-				return;
-			}
+			    if (bind(s, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+			    {
+				    cerr << "Unable to bind to address: " << s << endl;
+				    sock_err = s;
+				    close(s);
+				    return;
+			    }
 
-			int ret = listen(s, 1);
-			if(ret < 0)
-			{
-				cerr << "Unable to listen on socket: " << ret << endl;
-				sock_err = ret;
-				close(s);
-				return;
-			}
+			    int ret = listen(s, 1);
+			    if (ret < 0)
+			    {
+				    cerr << "Unable to listen on socket: " << ret << endl;
+				    sock_err = ret;
+				    close(s);
+				    return;
+			    }
 
-			sock_fd = s;
-			std::unique_lock<std::mutex> lck(mtx);
-			server_started = true;
-			cv.notify_one(); // Let the parent function know the server is ready to roll
-			lck.unlock();
+			    sock_fd = s;
+			    std::unique_lock<std::mutex> lck(mtx);
+			    server_started = true;
+			    cv.notify_one();  // Let the parent function know the server is ready to roll
+			    lck.unlock();
 
-			while(run_server)
-			{
-				struct sockaddr_in addr;
-				uint32_t len = sizeof(addr);
-				SSL* ssl = nullptr;
+			    while (run_server)
+			    {
+				    struct sockaddr_in addr;
+				    uint32_t len = sizeof(addr);
+				    SSL* ssl = nullptr;
 
-				int conn_fd = accept(sock_fd, (struct sockaddr*)&addr, &len);
-				if(conn_fd < 0)
-				{
-					cerr << "Error while accepting incoming connection: " << conn_fd << endl;
-					sock_err = conn_fd;
-					run_server = false;
-					continue;
-				}
+				    int conn_fd = accept(sock_fd, (struct sockaddr*)&addr, &len);
+				    if (conn_fd < 0)
+				    {
+					    cerr << "Error while accepting incoming connection: " << conn_fd << endl;
+					    sock_err = conn_fd;
+					    run_server = false;
+					    continue;
+				    }
 
-				ssl = SSL_new(ctx);
-				SSL_set_fd(ssl, conn_fd);
-				int ret = SSL_accept(ssl);
+				    ssl = SSL_new(ctx);
+				    SSL_set_fd(ssl, conn_fd);
+				    int ret = SSL_accept(ssl);
 
-				if(ret <= 0)
-				{
-					cerr << "SSL error accepting incoming connection: " << ret << endl;
-					ERR_print_errors_fp(stderr);
-					run_server = false;
-					continue;
-				}
-				else
-				{
-					char buf[128] =
-					{};
-					string response = "Goodbye from Sysdig test SSL server, signing off!";
-					SSL_read(ssl, buf, sizeof(buf));
-					SSL_write(ssl, buf, strlen(buf));
-					SSL_write(ssl, response.c_str(), response.length());
-					sleep(1);
-				}
+				    if (ret <= 0)
+				    {
+					    cerr << "SSL error accepting incoming connection: " << ret << endl;
+					    ERR_print_errors_fp(stderr);
+					    run_server = false;
+					    continue;
+				    }
+				    else
+				    {
+					    char buf[128] = {};
+					    string response = "Goodbye from Sysdig test SSL server, signing off!";
+					    SSL_read(ssl, buf, sizeof(buf));
+					    SSL_write(ssl, buf, strlen(buf));
+					    SSL_write(ssl, response.c_str(), response.length());
+					    sleep(1);
+				    }
 
-				SSL_free(ssl);
-				close(conn_fd);
-			}
-		}, port);
+				    SSL_free(ssl);
+				    close(conn_fd);
+			    }
+		    },
+		    port);
 		t.detach();
 
 		// Wait for the server to actually start before returning
 		std::unique_lock<std::mutex> guard(mtx);
-		while(!server_started)
+		while (!server_started)
 		{
-			if(cv.wait_for(guard, std::chrono::milliseconds(MAX_WAIT_MS)) == cv_status::timeout)
+			if (cv.wait_for(guard, std::chrono::milliseconds(MAX_WAIT_MS)) == cv_status::timeout)
 			{
 				cerr << "Never got notified that the server got started!" << endl;
 				ASSERT(false);
@@ -321,7 +322,6 @@ class ssl_socket
 	}
 };
 
-
 //
 // HTTP server stuff
 //
@@ -334,7 +334,7 @@ class ssl_socket
 class HTTPHandler : public Poco::Net::HTTPRequestHandler
 {
 public:
-	virtual void handleRequest(HTTPServerRequest &request, HTTPServerResponse &response) override
+	virtual void handleRequest(HTTPServerRequest& request, HTTPServerResponse& response) override
 	{
 		response.setStatus(HTTPResponse::HTTP_OK);
 		response.setContentType("text/html");
@@ -343,9 +343,8 @@ public:
 		out << "<html><body>"
 		    << "<h1>Sysdig agent test</h1>"
 		    << "<p>Request host = " << request.getHost() << "</p>"
-		    << "<p>Request URI = "  << request.getURI()  << "</p>"
-		    << "</body></html>"
-		    << flush;
+		    << "<p>Request URI = " << request.getURI() << "</p>"
+		    << "</body></html>" << flush;
 	}
 };
 
@@ -356,8 +355,8 @@ class HTTPRHFactory : public Poco::Net::HTTPRequestHandlerFactory
 {
 public:
 	static const uint16_t port = 9090;
-	static const uint16_t secure_port = 443; // The proto analyzer will barf if it's a wonky port
-	virtual HTTPHandler* createRequestHandler(const HTTPServerRequest &)
+	static const uint16_t secure_port = 443;  // The proto analyzer will barf if it's a wonky port
+	virtual HTTPHandler* createRequestHandler(const HTTPServerRequest&)
 	{
 		return new HTTPHandler();
 	}
@@ -387,101 +386,100 @@ unique_ptr<SecureServerSocket> get_ssl_socket(uint16_t port)
 ///
 bool localhost_ssl_request(uint16_t port)
 {
-    BIO* server = nullptr;
-    SSL_CTX* ctx = nullptr;
-    SSL *ssl = nullptr;
+	BIO* server = nullptr;
+	SSL_CTX* ctx = nullptr;
+	SSL* ssl = nullptr;
 
-    // Build the context
-    ctx = SSL_CTX_new(SSLv23_method());
-    if(ctx == nullptr)
-    {
-        cerr << "Unable to build SSL context for client" << endl;
-        ERR_print_errors_fp(stderr);
-        return false;
-    }
+	// Build the context
+	ctx = SSL_CTX_new(SSLv23_method());
+	if (ctx == nullptr)
+	{
+		cerr << "Unable to build SSL context for client" << endl;
+		ERR_print_errors_fp(stderr);
+		return false;
+	}
 
-    // Set up the context
-    SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, nullptr);
-    const long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
-    SSL_CTX_set_options(ctx, flags);
-    int res = SSL_CTX_load_verify_locations(ctx, "certificate.pem", nullptr);
-    if(res != 1)
-    {
-        cerr << "Couldn't load certificate: " << res << endl;
-        ERR_print_errors_fp(stderr);
-        return false;
-    }
+	// Set up the context
+	SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, nullptr);
+	const long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
+	SSL_CTX_set_options(ctx, flags);
+	int res = SSL_CTX_load_verify_locations(ctx, "certificate.pem", nullptr);
+	if (res != 1)
+	{
+		cerr << "Couldn't load certificate: " << res << endl;
+		ERR_print_errors_fp(stderr);
+		return false;
+	}
 
-    // Create the server IO stream and SSL object
-    server = BIO_new_ssl_connect(ctx);
-    if(server == nullptr)
-    {
-        cerr << "Couldn't create SSL BIO object" << endl;
-        ERR_print_errors_fp(stderr);
-        return false;
-    }
+	// Create the server IO stream and SSL object
+	server = BIO_new_ssl_connect(ctx);
+	if (server == nullptr)
+	{
+		cerr << "Couldn't create SSL BIO object" << endl;
+		ERR_print_errors_fp(stderr);
+		return false;
+	}
 
-    stringstream ss;
+	stringstream ss;
 	ss << "127.0.0.1:" << port;
 
-    BIO_set_conn_hostname(server, ss.str().c_str());
-    BIO_get_ssl(server, &ssl);
+	BIO_set_conn_hostname(server, ss.str().c_str());
+	BIO_get_ssl(server, &ssl);
 
-    if(ssl == nullptr)
-    {
-        cerr << "Couldn't create SSL object" << endl;
-        ERR_print_errors_fp(stderr);
-        return false;
-    }
+	if (ssl == nullptr)
+	{
+		cerr << "Couldn't create SSL object" << endl;
+		ERR_print_errors_fp(stderr);
+		return false;
+	}
 
-    SSL_set_tlsext_host_name(ssl, "127.0.0.1");
+	SSL_set_tlsext_host_name(ssl, "127.0.0.1");
 
-    // Connect the IO stream to the server
-    res = BIO_do_connect(server);
-    if(res != 1)
-    {
-        cerr << "Client connect failed: " << res << endl;
-        return false;
-    }
+	// Connect the IO stream to the server
+	res = BIO_do_connect(server);
+	if (res != 1)
+	{
+		cerr << "Client connect failed: " << res << endl;
+		return false;
+	}
 
-    res = BIO_do_handshake(server);
-    if(res != 1)
-    {
-        cerr << "Client handshake failed: " << res << endl;
-        return false;
-    }
+	res = BIO_do_handshake(server);
+	if (res != 1)
+	{
+		cerr << "Client handshake failed: " << res << endl;
+		return false;
+	}
 
-    // Send the payload
-    BIO_puts(server, "Hello from Sysdig test SSL client!");
+	// Send the payload
+	BIO_puts(server, "Hello from Sysdig test SSL client!");
 
-    // Read the responses until the socket is shut down
-    int len = 0;
-    char buf[256] = {};
+	// Read the responses until the socket is shut down
+	int len = 0;
+	char buf[256] = {};
 
-    while(true)
-    {
+	while (true)
+	{
 		len = BIO_read(server, buf, sizeof(buf));
 
-		if(len <= 0)
+		if (len <= 0)
 		{
 			break;
 		}
-    }
+	}
 
-    // Cleanup
-    if(server != nullptr)
-    {
-    	BIO_free_all(server);
-    }
+	// Cleanup
+	if (server != nullptr)
+	{
+		BIO_free_all(server);
+	}
 
-    if(ctx != nullptr)
-    {
-    	SSL_CTX_free(ctx);
-    }
+	if (ctx != nullptr)
+	{
+		SSL_CTX_free(ctx);
+	}
 
-    return true;
+	return true;
 }
-
 
 ///
 /// Make an HTTP request to the built-in server
@@ -498,7 +496,8 @@ bool localhost_ssl_request(uint16_t port)
 bool localhost_http_request(uint16_t port)
 {
 	cerr << "Sending http request" << endl;
-	try {
+	try
+	{
 		NullOutputStream ostr;
 		stringstream ss;
 
@@ -507,7 +506,9 @@ bool localhost_http_request(uint16_t port)
 		Poco::Net::HTTPResponse response;
 		session.sendRequest(request);
 		session.receiveResponse(response);
-	} catch (const Exception& ex) {
+	}
+	catch (const Exception& ex)
+	{
 		cerr << "Exception: " << ex.displayText() << endl;
 		return false;
 	}
@@ -522,20 +523,16 @@ TEST_F(sys_call_test, net_web_requests)
 	//
 	// FILTER
 	//
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return m_tid_filter(evt);
-	};
+	event_filter_t filter = [&](sinsp_evt* evt) { return m_tid_filter(evt); };
 
 	//
 	// TEST CODE
 	//
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		int sockfd, n, j, k;
 		struct sockaddr_in serveraddr;
-		struct hostent *server;
-		char *hostname = (char*)SITE;
+		struct hostent* server;
+		char* hostname = (char*)SITE;
 		int portno = 80;
 		string reqstr;
 		char reqbody[BUFSIZE] = "GET / HTTP/1.0\n\n";
@@ -544,7 +541,7 @@ TEST_F(sys_call_test, net_web_requests)
 		server = gethostbyname(hostname);
 		ASSERT_TRUE(server) << "ERROR, no such host as " << hostname;
 
-		for(j = 0; j < N_CONNECTIONS; j++)
+		for (j = 0; j < N_CONNECTIONS; j++)
 		{
 			// socket: create the socket
 			sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -554,19 +551,18 @@ TEST_F(sys_call_test, net_web_requests)
 			}
 
 			// build the server's Internet address
-			bzero((char *) &serveraddr, sizeof(serveraddr));
+			bzero((char*)&serveraddr, sizeof(serveraddr));
 			serveraddr.sin_family = AF_INET;
-			bcopy((char *)server->h_addr,
-			  (char *)&serveraddr.sin_addr.s_addr, server->h_length);
+			bcopy((char*)server->h_addr, (char*)&serveraddr.sin_addr.s_addr, server->h_length);
 			serveraddr.sin_port = htons(portno);
 
 			// create a connection with the server
-			if(connect(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) < 0)
+			if (connect(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) < 0)
 			{
 				error((char*)"ERROR connecting");
 			}
 
-			for(k = 0; k < N_REQS_PER_CONNECTION; k++)
+			for (k = 0; k < N_REQS_PER_CONNECTION; k++)
 			{
 				reqstr = string("GET ") + "/dfw" + NumberFormatter::format(k) + " HTTP/1.0\n\n";
 
@@ -579,19 +575,19 @@ TEST_F(sys_call_test, net_web_requests)
 
 				// get the server's reply
 				bzero(reqbody, BUFSIZE);
-				while(true)
+				while (true)
 				{
 					n = read(sockfd, reqbody, BUFSIZE);
-					if(n == 0)
+					if (n == 0)
 					{
 						break;
 					}
-					if(n < 0)
+					if (n < 0)
 					{
 						error((char*)"ERROR reading from socket");
 					}
 				}
-				//printf("Echo from server: %s", reqbody);
+				// printf("Echo from server: %s", reqbody);
 			}
 
 			close(sockfd);
@@ -604,19 +600,19 @@ TEST_F(sys_call_test, net_web_requests)
 	//
 	// OUTPUT VALIDATION
 	//
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
-		sinsp_evt *evt = param.m_evt;
+	captured_event_callback_t callback = [&](const callback_param& param) {
+		sinsp_evt* evt = param.m_evt;
 
-		if(evt->get_type() == PPME_GENERIC_E)
+		if (evt->get_type() == PPME_GENERIC_E)
 		{
-			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
+			if (NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
 				unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
-				for(cit = param.m_analyzer->m_ipv4_connections->m_connections.begin();
-					cit != param.m_analyzer->m_ipv4_connections->m_connections.end(); ++cit)
+				for (cit = param.m_analyzer->m_ipv4_connections->m_connections.begin();
+				     cit != param.m_analyzer->m_ipv4_connections->m_connections.end();
+				     ++cit)
 				{
-					if(cit->second.m_stid == mytid && cit->first.m_fields.m_dport == 80)
+					if (cit->second.m_stid == mytid && cit->first.m_fields.m_dport == 80)
 					{
 						SCOPED_TRACE(nconns);
 						nconns++;
@@ -624,16 +620,25 @@ TEST_F(sys_call_test, net_web_requests)
 				}
 				SCOPED_TRACE("evaluating assertions");
 				sinsp_threadinfo* ti = evt->get_thread_info();
-				ASSERT_EQ((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in);
-				ASSERT_EQ((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
-				ASSERT_EQ((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
-				ASSERT_EQ((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+				ASSERT_EQ((uint64_t)0,
+				          ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in);
+				ASSERT_EQ((uint64_t)0,
+				          ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
+				ASSERT_EQ((uint64_t)0,
+				          ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
+				ASSERT_EQ((uint64_t)0,
+				          ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 				// Note: +1 is because of the DNS lookup
-				ASSERT_GE(ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_out, (uint64_t) N_CONNECTIONS);
-				ASSERT_LE(ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_out, (uint64_t) N_CONNECTIONS + 1);
-				ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_out);
-				ASSERT_EQ((uint64_t) 1, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_out);
-				ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_out);
+				ASSERT_GE(ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_out,
+				          (uint64_t)N_CONNECTIONS);
+				ASSERT_LE(ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_out,
+				          (uint64_t)N_CONNECTIONS + 1);
+				ASSERT_NE((uint64_t)0,
+				          ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_out);
+				ASSERT_EQ((uint64_t)1,
+				          ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_out);
+				ASSERT_NE((uint64_t)0,
+				          ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_out);
 			}
 		}
 	};
@@ -643,14 +648,13 @@ TEST_F(sys_call_test, net_web_requests)
 	//
 	sinsp_configuration configuration;
 
-
 	// Set DNS port, /etc/services is read only from dragent context
 	// port 80 is not needed, because it's http protocol and is autodiscovered
 	ports_set known_ports;
 	known_ports.set(53);
 	configuration.set_known_ports(known_ports);
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 
 	ASSERT_EQ(N_CONNECTIONS, nconns);
 }
@@ -661,8 +665,7 @@ TEST_F(sys_call_test, net_ssl_requests)
 	//
 	// FILTER
 	//
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		auto tinfo = evt->get_thread_info(false);
 		return (tinfo != nullptr && tinfo->m_comm == "tests") || m_tid_filter(evt);
 	};
@@ -670,17 +673,16 @@ TEST_F(sys_call_test, net_ssl_requests)
 	//
 	// TEST CODE
 	//
-	run_callback_t test = [&](sinsp* inspector)
-	{
-	    ssl_socket sock;
+	run_callback_t test = [&](sinsp* inspector) {
+		ssl_socket sock;
 
-	    sock.start(443);
+		sock.start(443);
 
-	    if(!localhost_ssl_request(443))
-	    {
-	        cerr << "A bad thing happened attempting to connect to the SSL server." << endl;
-	    }
-	    sock.stop();
+		if (!localhost_ssl_request(443))
+		{
+			cerr << "A bad thing happened attempting to connect to the SSL server." << endl;
+		}
+		sock.stop();
 
 		// We use a random call to tee to signal that we're done
 		tee(-1, -1, 0, 0);
@@ -691,44 +693,41 @@ TEST_F(sys_call_test, net_ssl_requests)
 	//
 	// OUTPUT VALIDATION
 	//
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
-		sinsp_evt *evt = param.m_evt;
+	captured_event_callback_t callback = [&](const callback_param& param) {
+		sinsp_evt* evt = param.m_evt;
 
-		if(evt->get_type() == PPME_GENERIC_E &&
-		   NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
+		if (evt->get_type() == PPME_GENERIC_E &&
+		    NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 		{
 			auto threadtable = param.m_inspector->m_thread_manager->get_threads();
 			sinsp_transaction_counters transaction_metrics;
 			transaction_metrics.clear();
-			threadtable->loop([&] (sinsp_threadinfo& tinfo)
-			{
-				if(tinfo.m_comm == "tests")
+			threadtable->loop([&](sinsp_threadinfo& tinfo) {
+				if (tinfo.m_comm == "tests")
 				{
 					transaction_metrics.add(&tinfo.m_ainfo->m_transaction_metrics);
 				}
 				return true;
 			});
 
-			EXPECT_EQ((uint64_t) 1, transaction_metrics.get_counter()->m_count_in);
-			EXPECT_LT((uint64_t) 0, transaction_metrics.get_counter()->m_time_ns_in);
-			EXPECT_EQ((uint64_t) 1, transaction_metrics.get_max_counter()->m_count_in);
-			EXPECT_LT((uint64_t) 0, transaction_metrics.get_max_counter()->m_time_ns_in);
+			EXPECT_EQ((uint64_t)1, transaction_metrics.get_counter()->m_count_in);
+			EXPECT_LT((uint64_t)0, transaction_metrics.get_counter()->m_time_ns_in);
+			EXPECT_EQ((uint64_t)1, transaction_metrics.get_max_counter()->m_count_in);
+			EXPECT_LT((uint64_t)0, transaction_metrics.get_max_counter()->m_time_ns_in);
 
-			EXPECT_EQ((uint64_t) 1, transaction_metrics.get_counter()->m_count_out);
-			EXPECT_NE((uint64_t) 0, transaction_metrics.get_counter()->m_time_ns_out);
-			EXPECT_EQ((uint64_t) 1, transaction_metrics.get_max_counter()->m_count_out);
-			EXPECT_NE((uint64_t) 0, transaction_metrics.get_max_counter()->m_time_ns_out);
+			EXPECT_EQ((uint64_t)1, transaction_metrics.get_counter()->m_count_out);
+			EXPECT_NE((uint64_t)0, transaction_metrics.get_counter()->m_time_ns_out);
+			EXPECT_EQ((uint64_t)1, transaction_metrics.get_max_counter()->m_count_out);
+			EXPECT_NE((uint64_t)0, transaction_metrics.get_max_counter()->m_time_ns_out);
 		}
 	};
-
 
 	sinsp_configuration configuration;
 	ports_set ports;
 	ports.set(443);
 	configuration.set_known_ports(ports);
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 }
 
 //
@@ -744,38 +743,36 @@ TEST_F(sys_call_test, net_double_udp_connect)
 	//
 	// FILTER
 	//
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return m_tid_filter(evt);
-	};
+	event_filter_t filter = [&](sinsp_evt* evt) { return m_tid_filter(evt); };
 
 	//
 	// TEST CODE
 	//
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		int sockfd, n;
 		struct sockaddr_in serveraddr;
 		struct sockaddr_in serveraddr1;
-		struct hostent *server;
-		struct hostent *server1;
-		char *hostname = (char*)SITE;
-		char *hostname1 = (char*)SITE1;
+		struct hostent* server;
+		struct hostent* server1;
+		char* hostname = (char*)SITE;
+		char* hostname1 = (char*)SITE1;
 		int portno = 80;
 		string reqstr;
 
 		// get the first server's DNS entry
 		server = gethostbyname(hostname);
-		if (server == NULL) {
-		    fprintf(stderr,(char*)"ERROR, no such host as %s\n", hostname);
-		    exit(0);
+		if (server == NULL)
+		{
+			fprintf(stderr, (char*)"ERROR, no such host as %s\n", hostname);
+			exit(0);
 		}
 
 		// get the second server's DNS entry
 		server1 = gethostbyname(hostname1);
-		if(server1 == NULL) {
-		    fprintf(stderr,(char*)"ERROR, no such host as %s\n", hostname1);
-		    exit(0);
+		if (server1 == NULL)
+		{
+			fprintf(stderr, (char*)"ERROR, no such host as %s\n", hostname1);
+			exit(0);
 		}
 
 		// create the socket
@@ -786,33 +783,31 @@ TEST_F(sys_call_test, net_double_udp_connect)
 		}
 
 		// build the server's Internet address
-		bzero((char *) &serveraddr, sizeof(serveraddr));
+		bzero((char*)&serveraddr, sizeof(serveraddr));
 		serveraddr.sin_family = AF_INET;
-		bcopy((char *)server->h_addr,
-		  (char *)&serveraddr.sin_addr.s_addr, server->h_length);
+		bcopy((char*)server->h_addr, (char*)&serveraddr.sin_addr.s_addr, server->h_length);
 		serveraddr.sin_port = 0;
 
 		// create a connection with google
-		if(connect(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) < 0)
+		if (connect(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) < 0)
 		{
 			error((char*)"ERROR connecting");
 		}
 
 		// create a SECOND connection with google
-		if(connect(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) < 0)
+		if (connect(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) < 0)
 		{
 			error((char*)"ERROR connecting");
 		}
 
 		// build the server's Internet address
-		bzero((char *) &serveraddr1, sizeof(serveraddr1));
+		bzero((char*)&serveraddr1, sizeof(serveraddr1));
 		serveraddr1.sin_family = AF_INET;
-		bcopy((char *)server1->h_addr,
-		  (char *)&serveraddr1.sin_addr.s_addr, server1->h_length);
+		bcopy((char*)server1->h_addr, (char*)&serveraddr1.sin_addr.s_addr, server1->h_length);
 		serveraddr1.sin_port = htons(portno);
 
 		// create a connection with yahoo
-		if(connect(sockfd, (struct sockaddr*)&serveraddr1, sizeof(serveraddr1)) < 0)
+		if (connect(sockfd, (struct sockaddr*)&serveraddr1, sizeof(serveraddr1)) < 0)
 		{
 			error((char*)"ERROR connecting");
 		}
@@ -843,19 +838,19 @@ TEST_F(sys_call_test, net_double_udp_connect)
 	//
 	// OUTPUT VALIDATION
 	//
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
-		sinsp_evt *evt = param.m_evt;
+	captured_event_callback_t callback = [&](const callback_param& param) {
+		sinsp_evt* evt = param.m_evt;
 
-		if(evt->get_type() == PPME_GENERIC_E)
+		if (evt->get_type() == PPME_GENERIC_E)
 		{
-			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
+			if (NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
 				unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
-				for(cit = param.m_analyzer->m_ipv4_connections->m_connections.begin();
-					cit != param.m_analyzer->m_ipv4_connections->m_connections.end(); ++cit)
+				for (cit = param.m_analyzer->m_ipv4_connections->m_connections.begin();
+				     cit != param.m_analyzer->m_ipv4_connections->m_connections.end();
+				     ++cit)
 				{
-					if(cit->second.m_stid == mytid && cit->first.m_fields.m_dport == 80)
+					if (cit->second.m_stid == mytid && cit->first.m_fields.m_dport == 80)
 					{
 						nconns++;
 					}
@@ -869,7 +864,7 @@ TEST_F(sys_call_test, net_double_udp_connect)
 	//
 	sinsp_configuration configuration;
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 
 	ASSERT_EQ(1, nconns);
 }
@@ -877,31 +872,29 @@ TEST_F(sys_call_test, net_double_udp_connect)
 TEST_F(sys_call_test, net_connection_table_limit)
 {
 	int nconns = 0;
-//	int mytid = getpid();
+	//	int mytid = getpid();
 
 	//
 	// FILTER
 	//
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return m_tid_filter(evt);
-	};
+	event_filter_t filter = [&](sinsp_evt* evt) { return m_tid_filter(evt); };
 
 	//
 	// TEST CODE
 	//
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		const int REQUESTS_TO_SEND = 5;
 		int num_requests = 0;
 		// Spin up a thread to run the HTTP server
-	    std::thread ws_thread([&num_requests]
-		{
-			HTTPServer srv(new HTTPRHFactory, ServerSocket(HTTPRHFactory::port), new HTTPServerParams);
+		std::thread ws_thread([&num_requests] {
+			HTTPServer srv(new HTTPRHFactory,
+			               ServerSocket(HTTPRHFactory::port),
+			               new HTTPServerParams);
 
 			srv.start();
 
-			while (num_requests < REQUESTS_TO_SEND) {
+			while (num_requests < REQUESTS_TO_SEND)
+			{
 				std::this_thread::sleep_for(chrono::milliseconds(250));
 			}
 
@@ -920,8 +913,10 @@ TEST_F(sys_call_test, net_connection_table_limit)
 			std::this_thread::sleep_for(chrono::milliseconds(500));
 
 			std::unique_ptr<std::istream> pStrs[REQUESTS_TO_SEND];
-			for (int i = 0; i < REQUESTS_TO_SEND; ++i) {
-				pStrs[i] = std::move(std::unique_ptr<std::istream>(URIStreamOpener::defaultOpener().open(uri)));
+			for (int i = 0; i < REQUESTS_TO_SEND; ++i)
+			{
+				pStrs[i] = std::move(
+				    std::unique_ptr<std::istream>(URIStreamOpener::defaultOpener().open(uri)));
 				StreamCopier::copyStream(*pStrs[i].get(), ostr);
 				++num_requests;
 			}
@@ -941,17 +936,17 @@ TEST_F(sys_call_test, net_connection_table_limit)
 	//
 	// OUTPUT VALIDATION
 	//
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
-		sinsp_evt *evt = param.m_evt;
+	captured_event_callback_t callback = [&](const callback_param& param) {
+		sinsp_evt* evt = param.m_evt;
 
-		if(evt->get_type() == PPME_GENERIC_E)
+		if (evt->get_type() == PPME_GENERIC_E)
 		{
-			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
+			if (NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
 				unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
-				for(cit = param.m_analyzer->m_ipv4_connections->m_connections.begin();
-					cit != param.m_analyzer->m_ipv4_connections->m_connections.end(); ++cit)
+				for (cit = param.m_analyzer->m_ipv4_connections->m_connections.begin();
+				     cit != param.m_analyzer->m_ipv4_connections->m_connections.end();
+				     ++cit)
 				{
 					nconns++;
 				}
@@ -971,7 +966,7 @@ TEST_F(sys_call_test, net_connection_table_limit)
 	//
 	configuration_manager::instance().get_mutable_config<uint32_t>("connection.max_count")->set(3);
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 }
 
 TEST_F(sys_call_test, DISABLED_net_connection_aggregation)
@@ -981,16 +976,12 @@ TEST_F(sys_call_test, DISABLED_net_connection_aggregation)
 	//
 	// FILTER
 	//
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return m_tid_filter(evt);
-	};
+	event_filter_t filter = [&](sinsp_evt* evt) { return m_tid_filter(evt); };
 
 	//
 	// TEST CODE
 	//
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		try
 		{
 			HTTPStreamFactory::registerFactory();
@@ -1011,7 +1002,7 @@ TEST_F(sys_call_test, DISABLED_net_connection_aggregation)
 
 			// We use a random call to tee to signal that we're done
 			tee(-1, -1, 0, 0);
-//			sleep(5);
+			//			sleep(5);
 		}
 		catch (Exception& exc)
 		{
@@ -1025,18 +1016,18 @@ TEST_F(sys_call_test, DISABLED_net_connection_aggregation)
 	//
 	// OUTPUT VALIDATION
 	//
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
-return;
-		sinsp_evt *evt = param.m_evt;
+	captured_event_callback_t callback = [&](const callback_param& param) {
+		return;
+		sinsp_evt* evt = param.m_evt;
 
-		if(evt->get_type() == PPME_GENERIC_E)
+		if (evt->get_type() == PPME_GENERIC_E)
 		{
-			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
+			if (NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
 				unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
-				for(cit = param.m_analyzer->m_ipv4_connections->m_connections.begin();
-					cit != param.m_analyzer->m_ipv4_connections->m_connections.end(); ++cit)
+				for (cit = param.m_analyzer->m_ipv4_connections->m_connections.begin();
+				     cit != param.m_analyzer->m_ipv4_connections->m_connections.end();
+				     ++cit)
 				{
 					nconns++;
 				}
@@ -1051,7 +1042,7 @@ return;
 	//
 	sinsp_configuration configuration;
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, configuration);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 }
 
 TEST(sinsp_protostate, test_zero)
@@ -1069,20 +1060,22 @@ TEST(sinsp_protostate, test_zero)
 class test_helper
 {
 public:
-    static vector<unordered_map<string, sinsp_url_details>::iterator>* get_server_urls(sinsp_protostate_marker* spm)
-    {
-        return &spm->m_http.m_server_urls;
-    }
+	static vector<unordered_map<string, sinsp_url_details>::iterator>* get_server_urls(
+	    sinsp_protostate_marker* spm)
+	{
+		return &spm->m_http.m_server_urls;
+	}
 
-    static vector<unordered_map<string, sinsp_url_details>::iterator>* get_client_urls(sinsp_protostate_marker* spm)
-    {
-        return &spm->m_http.m_client_urls;
-    }
+	static vector<unordered_map<string, sinsp_url_details>::iterator>* get_client_urls(
+	    sinsp_protostate_marker* spm)
+	{
+		return &spm->m_http.m_client_urls;
+	}
 
-    static sinsp_http_parser::Result* get_result(sinsp_http_parser* parser)
-    {
-	    return &parser->m_result;
-    }
+	static sinsp_http_parser::Result* get_result(sinsp_http_parser* parser)
+	{
+		return &parser->m_result;
+	}
 };
 
 // need 3 classes of URLs for this test
@@ -1093,77 +1086,75 @@ public:
 // we'll use 1 for our test...because easier
 TEST(sinsp_protostate, test_url_groups)
 {
-    sinsp_protostate protostate;
-    set<string> groups = {".*group.*"};
-    protostate.set_url_groups(groups);
+	sinsp_protostate protostate;
+	set<string> groups = {".*group.*"};
+	protostate.set_url_groups(groups);
 
-    for (int i = 0; i < 5; ++i)
-    {
-        auto transaction = make_unique<sinsp_partial_transaction>();
-        auto http_parser = new sinsp_http_parser();
-        auto url = string("http://test");
+	for (int i = 0; i < 5; ++i)
+	{
+		auto transaction = make_unique<sinsp_partial_transaction>();
+		auto http_parser = new sinsp_http_parser();
+		auto url = string("http://test");
+		test_helper::get_result(http_parser)->url = const_cast<char*>(url.c_str());
+		test_helper::get_result(http_parser)->status_code = 200;
+		http_parser->m_is_valid = true;
+		transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
+		transaction->m_protoparser = http_parser;
+		protostate.update(transaction.get(), 1, false, 512);
+	}
+
+	for (int i = 0; i < 3; ++i)
+	{
+		auto transaction = make_unique<sinsp_partial_transaction>();
+		auto http_parser = new sinsp_http_parser();
+		auto url = string("http://testgroup1");
+		test_helper::get_result(http_parser)->url = const_cast<char*>(url.c_str());
+		test_helper::get_result(http_parser)->status_code = 200;
+		http_parser->m_is_valid = true;
+		transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
+		transaction->m_protoparser = http_parser;
+		protostate.update(transaction.get(), 1, false, 512);
+	}
+
+	auto transaction = make_unique<sinsp_partial_transaction>();
+	auto http_parser = new sinsp_http_parser();
+	auto url = string("http://testgroup2");
 	test_helper::get_result(http_parser)->url = const_cast<char*>(url.c_str());
 	test_helper::get_result(http_parser)->status_code = 200;
-        http_parser->m_is_valid = true;
-        transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
-        transaction->m_protoparser = http_parser;
-        protostate.update(transaction.get(), 1, false, 512);
-    }
+	http_parser->m_is_valid = true;
+	transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
+	transaction->m_protoparser = http_parser;
+	protostate.update(transaction.get(), 1, false, 512);
 
-    for (int i = 0; i < 3; ++i)
-    {
-        auto transaction = make_unique<sinsp_partial_transaction>();
-        auto http_parser = new sinsp_http_parser();
-        auto url = string("http://testgroup1");
-	test_helper::get_result(http_parser)->url = const_cast<char*>(url.c_str());
-	test_helper::get_result(http_parser)->status_code = 200;
-        http_parser->m_is_valid = true;
-        transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
-        transaction->m_protoparser = http_parser;
-        protostate.update(transaction.get(), 1, false, 512);
-    }
+	sinsp_protostate_marker marker;
+	marker.add(&protostate);
+	marker.mark_top(1);
 
-    auto transaction = make_unique<sinsp_partial_transaction>();
-    auto http_parser = new sinsp_http_parser();
-    auto url = string("http://testgroup2");
-    test_helper::get_result(http_parser)->url = const_cast<char*>(url.c_str());
-    test_helper::get_result(http_parser)->status_code = 200;
-    http_parser->m_is_valid = true;
-    transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
-    transaction->m_protoparser = http_parser;
-    protostate.update(transaction.get(), 1, false, 512);
+	auto client_urls = test_helper::get_client_urls(&marker);
+	EXPECT_EQ(client_urls->size(), 3);
 
-    sinsp_protostate_marker marker;
-    marker.add(&protostate);
-    marker.mark_top(1);
+	for (auto url = client_urls->begin(); url != client_urls->end(); ++url)
+	{
+		if ((*url)->first == "http://testgroup1")
+		{
+			EXPECT_GT((*url)->second.m_flags & SRF_INCLUDE_IN_SAMPLE, 0);
+		}
+		else
+		{
+			EXPECT_EQ((*url)->second.m_flags & SRF_INCLUDE_IN_SAMPLE, 0);
+		}
+	}
 
-    auto client_urls = test_helper::get_client_urls(&marker);
-    EXPECT_EQ(client_urls->size(), 3);
-
-    for (auto url = client_urls->begin(); url != client_urls->end(); ++url)
-    {
-        if ((*url)->first == "http://testgroup1")
-        {
-            EXPECT_GT((*url)->second.m_flags & SRF_INCLUDE_IN_SAMPLE, 0);
-        }
-        else
-        {
-            EXPECT_EQ((*url)->second.m_flags & SRF_INCLUDE_IN_SAMPLE, 0);
-        }
-    }
-
-    delete sinsp_protostate::s_url_groups;
-    sinsp_protostate::s_url_groups = NULL;
+	delete sinsp_protostate::s_url_groups;
+	sinsp_protostate::s_url_groups = NULL;
 }
-
-
 
 TEST(sinsp_protostate, test_per_container_distribution)
 {
 	std::array<sinsp_protostate, 80> protostates;
-	for(auto& protostate : protostates)
+	for (auto& protostate : protostates)
 	{
-		for(auto j = 0; j < 100; ++j)
+		for (auto j = 0; j < 100; ++j)
 		{
 			auto transaction = make_unique<sinsp_partial_transaction>();
 			auto http_parser = new sinsp_http_parser();
@@ -1177,21 +1168,21 @@ TEST(sinsp_protostate, test_per_container_distribution)
 		}
 	}
 	sinsp_protostate_marker marker;
-	for(auto& protostate: protostates)
+	for (auto& protostate : protostates)
 	{
 		marker.add(&protostate);
 	}
 	marker.mark_top(15);
 	auto has_urls = 0;
-	for(auto& protostate : protostates)
+	for (auto& protostate : protostates)
 	{
 		auto protos = make_unique<draiosproto::proto_info>();
 		protostate.to_protobuf(protos.get(), 1, 15);
-		if(protos->has_http())
+		if (protos->has_http())
 		{
 			auto http = protos->http();
 
-			if(http.client_urls().size() > 0)
+			if (http.client_urls().size() > 0)
 			{
 				has_urls += 1;
 			}
@@ -1206,9 +1197,9 @@ TEST(sinsp_protostate, test_per_container_distribution)
 TEST(sinsp_protostate, test_top_call_should_be_present)
 {
 	std::array<sinsp_protostate, 80> protostates;
-	for(auto& protostate : protostates)
+	for (auto& protostate : protostates)
 	{
-		for(auto j = 0; j < 100; ++j)
+		for (auto j = 0; j < 100; ++j)
 		{
 			auto transaction = make_unique<sinsp_partial_transaction>();
 			auto http_parser = new sinsp_http_parser();
@@ -1236,7 +1227,7 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 
 	{
 		auto& protostate = protostates.at(50);
-		for(auto j = 0; j < 500; ++j)
+		for (auto j = 0; j < 500; ++j)
 		{
 			auto transaction = make_unique<sinsp_partial_transaction>();
 			auto http_parser = new sinsp_http_parser();
@@ -1251,7 +1242,7 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 	}
 
 	sinsp_protostate_marker marker;
-	for(auto& protostate: protostates)
+	for (auto& protostate : protostates)
 	{
 		marker.add(&protostate);
 	}
@@ -1259,31 +1250,31 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 	auto found_slow = false;
 	auto found_top_call = false;
 	auto top_ncalls = 0;
-	for(auto& protostate : protostates)
+	for (auto& protostate : protostates)
 	{
 		auto protos = make_unique<draiosproto::proto_info>();
 		protostate.to_protobuf(protos.get(), 1, 15);
-		if(protos->has_http())
+		if (protos->has_http())
 		{
 			auto http = protos->http();
 
-			if(http.client_urls().size() > 0)
+			if (http.client_urls().size() > 0)
 			{
-				for(auto url : http.client_urls())
+				for (auto url : http.client_urls())
 				{
-					if(url.url().find("slow") != string::npos)
+					if (url.url().find("slow") != string::npos)
 					{
 						found_slow = true;
 					}
-					if(url.url().find("topcall") != string::npos)
+					if (url.url().find("topcall") != string::npos)
 					{
 						found_top_call = true;
 					}
 				}
 			}
-			for(auto status_code : http.client_status_codes())
+			for (auto status_code : http.client_status_codes())
 			{
-				if(status_code.status_code() == 204)
+				if (status_code.status_code() == 204)
 				{
 					top_ncalls = status_code.ncalls();
 				}
@@ -1314,12 +1305,12 @@ TEST(sinsp_procfs_parser, DISABLED_test_read_network_interfaces_stats)
 
 TEST(sinsp_procfs_parser, test_add_ports_from_proc_fs)
 {
-	const char *filename="resources/procfs.tcp";
-	set<uint16_t> oldports = { 2379 };
+	const char* filename = "resources/procfs.tcp";
+	set<uint16_t> oldports = {2379};
 	set<uint16_t> newports;
 	// These inodes should match local ports 42602, 2379, 2380 and 59042
 	// Port 59042 is a connection to a remote host and not a listening port
-	set<uint64_t> inodes = { 17550, 18661, 18655, 128153, 12345 };
+	set<uint64_t> inodes = {17550, 18661, 18655, 128153, 12345};
 
 	// Since oldports already has 2379 the expected ports added in newports should be 42602 and 2380
 	EXPECT_EQ(sinsp_procfs_parser::add_ports_from_proc_fs(filename, oldports, newports, inodes), 2);

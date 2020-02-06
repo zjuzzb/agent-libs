@@ -5,12 +5,13 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
-#include <gtest.h>
-#include "base_filter.h"
-#include "sinsp.h"
 #include "analyzer_thread.h"
+#include "base_filter.h"
 #include "object_filter.h"
 #include "scoped_temp_file.h"
+#include "sinsp.h"
+
+#include <gtest.h>
 
 class test_helper
 {
@@ -21,26 +22,20 @@ public:
 		    std::unique_ptr<std::set<uint16_t>>(new std::set<uint16_t>(ports));
 	}
 
-	static void clear_app_check(thread_analyzer_info* ainfo)
-	{
-		ainfo->m_app_checks_found.clear();
-	}
+	static void clear_app_check(thread_analyzer_info* ainfo) { ainfo->m_app_checks_found.clear(); }
 
 	static void insert_app_check(thread_analyzer_info* ainfo, std::string value)
 	{
 		ainfo->m_app_checks_found.insert(value);
 	}
 
-	static std::string filter_name(const object_filter& filter)
-	{
-		return filter.m_name;
-	}
+	static std::string filter_name(const object_filter& filter) { return filter.m_name; }
 };
 
 TEST(object_filter_test, port_filter_single_against_range)
 {
 	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info();
+	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
 	std::set<uint16_t> ports = {12};
 	test_helper::set_listening_ports(tinfo.m_ainfo, ports);
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
@@ -81,7 +76,7 @@ TEST(object_filter_test, port_filter_single_against_range)
 TEST(object_filter_test, port_filter_single_against_set)
 {
 	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info();
+	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
 	std::set<uint16_t> ports = {12};
 	test_helper::set_listening_ports(tinfo.m_ainfo, ports);
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
@@ -115,7 +110,7 @@ TEST(object_filter_test, port_filter_single_against_set)
 TEST(object_filter_test, port_filter_multiple_against_range)
 {
 	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info();
+	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
 	std::set<uint16_t> ports = {12, 20};
 	test_helper::set_listening_ports(tinfo.m_ainfo, ports);
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
@@ -165,7 +160,7 @@ TEST(object_filter_test, port_filter_multiple_against_range)
 TEST(object_filter_test, port_filter_multiple_against_set)
 {
 	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info();
+	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
 	std::set<uint16_t> ports = {12, 20};
 	test_helper::set_listening_ports(tinfo.m_ainfo, ports);
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
@@ -195,7 +190,7 @@ TEST(object_filter_test, port_filter_multiple_against_set)
 TEST(object_filter_test, port_filter_include_exclude)
 {
 	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info();
+	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
 	std::set<uint16_t> ports = {25, 75, 76, 81, 82};
 	test_helper::set_listening_ports(tinfo.m_ainfo, ports);
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
@@ -394,7 +389,7 @@ TEST(object_filter_test, app_check_filter)
 	bool high_priority = false;
 	std::string reason = "";
 	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info;
+	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
 	test_helper::insert_app_check(tinfo.m_ainfo, "some app check");
 	process_filter_args args(NULL, &tinfo, NULL, NULL);
 	matches = my_filter.matches(args, exclude, high_priority, &reason);
@@ -423,7 +418,10 @@ TEST(object_filter_test, none_test)
 	    "name",
 	    true,
 	    {object_filter_config::filter_condition(
-	        object_filter_config::filter_condition::param_type::none, "", "", {})},
+	        object_filter_config::filter_condition::param_type::none,
+	        "",
+	        "",
+	        {})},
 	    object_filter_config::rule_config());
 
 	std::vector<object_filter_config::filter_rule> rules{none_filter_rule};
@@ -500,7 +498,10 @@ TEST(object_filter_test, object_filter)
 	    "name",
 	    true,
 	    {object_filter_config::filter_condition(
-	        object_filter_config::filter_condition::param_type::tag, "tag", "pattern", {})},
+	        object_filter_config::filter_condition::param_type::tag,
+	        "tag",
+	        "pattern",
+	        {})},
 	    object_filter_config::rule_config());
 	object_filter_config::filter_rule app_check_filter_rule(
 	    "name",
@@ -515,19 +516,27 @@ TEST(object_filter_test, object_filter)
 	    "name",
 	    true,
 	    {object_filter_config::filter_condition(
-	        object_filter_config::filter_condition::param_type::all, "", "", {})},
+	        object_filter_config::filter_condition::param_type::all,
+	        "",
+	        "",
+	        {})},
 	    object_filter_config::rule_config());
 
-	std::vector<object_filter_config::filter_rule> rules{
-	    port_filter_rule,           process_name_filter_rule,    process_cmd_line_filter_rule,
-	    container_name_filter_rule, container_image_filter_rule, container_label_filter_rule,
-	    tag_filter_rule,            app_check_filter_rule,       all_filter_rule};
+	std::vector<object_filter_config::filter_rule> rules{port_filter_rule,
+	                                                     process_name_filter_rule,
+	                                                     process_cmd_line_filter_rule,
+	                                                     container_name_filter_rule,
+	                                                     container_image_filter_rule,
+	                                                     container_label_filter_rule,
+	                                                     tag_filter_rule,
+	                                                     app_check_filter_rule,
+	                                                     all_filter_rule};
 
 	my_filter.set_rules(rules);
 
 	// now go through and check that each rule matches
 	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info();
+	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
 	test_helper::set_listening_ports(tinfo.m_ainfo, ports);
 
 	bool matches = false;
@@ -690,17 +699,25 @@ TEST(object_filter_test, register_annotations)
 	    "name",
 	    true,
 	    {object_filter_config::filter_condition(
-	        object_filter_config::filter_condition::param_type::tag, "register", "", {})},
-	    object_filter_config::rule_config(
-	        "{register}", true, "{register}", true, option_map, true, tag_map, true));
+	        object_filter_config::filter_condition::param_type::tag,
+	        "register",
+	        "",
+	        {})},
+	    object_filter_config::rule_config("{register}",
+	                                      true,
+	                                      "{register}",
+	                                      true,
+	                                      option_map,
+	                                      true,
+	                                      tag_map,
+	                                      true));
 
 	std::vector<object_filter_config::filter_rule> rule_list{filter_rule};
 	object_filter my_filter("my filter");
 	my_filter.set_rules(rule_list);
 
 	uint32_t cb_count = 0;
-	my_filter.register_annotations([&](const std::string& arg)
-	{
+	my_filter.register_annotations([&](const std::string& arg) {
 		EXPECT_EQ(arg, "register");
 		cb_count++;
 	});

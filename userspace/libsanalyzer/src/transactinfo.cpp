@@ -7,33 +7,33 @@
 
 #define VISIBILITY_PRIVATE
 
-#include "sinsp.h"
-#include "sinsp_int.h"
-#include "analyzer_int.h"
 #include "analyzer.h"
 #include "analyzer_int.h"
-#include "connectinfo.h"
 #include "analyzer_thread.h"
+#include "connectinfo.h"
 #include "parser_http.h"
+#include "sinsp.h"
+#include "sinsp_int.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_transact_table implementation
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_transaction_table::sinsp_transaction_table(sinsp_analyzer& analyzer)
-	: m_n_client_transactions(0),
-	  m_n_server_transactions(0),
-	  m_analyzer(analyzer)
+    : m_n_client_transactions(0),
+      m_n_server_transactions(0),
+      m_analyzer(analyzer)
 {
 }
 
-sinsp_transaction_table::~sinsp_transaction_table()
-{
-}
+sinsp_transaction_table::~sinsp_transaction_table() {}
 
-bool sinsp_transaction_table::is_transaction_server(sinsp_threadinfo *ptinfo)
+bool sinsp_transaction_table::is_transaction_server(sinsp_threadinfo* ptinfo)
 {
-	if(ptinfo->m_ainfo->m_transaction_metrics.get_counter()->m_count_in >= TRANSACTION_SERVER_EURISTIC_MIN_CONNECTIONS &&
-		ptinfo->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in / ptinfo->m_ainfo->m_transaction_metrics.get_counter()->m_count_in < TRANSACTION_SERVER_EURISTIC_MAX_DELAY_NS)
+	if (ptinfo->m_ainfo->m_transaction_metrics.get_counter()->m_count_in >=
+	        TRANSACTION_SERVER_EURISTIC_MIN_CONNECTIONS &&
+	    ptinfo->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in /
+	            ptinfo->m_ainfo->m_transaction_metrics.get_counter()->m_count_in <
+	        TRANSACTION_SERVER_EURISTIC_MAX_DELAY_NS)
 	{
 		return true;
 	}
@@ -44,28 +44,30 @@ bool sinsp_transaction_table::is_transaction_server(sinsp_threadinfo *ptinfo)
 }
 
 void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
-								   void* fdinfo,
-								   sinsp_connection* pconn,
-								   sinsp_partial_transaction* tr
+                                   void* fdinfo,
+                                   sinsp_connection* pconn,
+                                   sinsp_partial_transaction* tr
 #if _DEBUG
-									, sinsp_evt *evt,
-									uint64_t fd,
-									uint64_t ts
+                                   ,
+                                   sinsp_evt* evt,
+                                   uint64_t fd,
+                                   uint64_t ts
 #endif
-									)
+)
 {
-	std::unordered_map<int64_t, std::vector<sinsp_transaction > >::iterator it;
+	std::unordered_map<int64_t, std::vector<sinsp_transaction> >::iterator it;
 
 	sinsp_partial_transaction::direction startdir;
 	sinsp_partial_transaction::direction enddir;
 
-	sinsp_fdinfo_t* ffdinfo = (sinsp_fdinfo_t*)fdinfo; 
+	sinsp_fdinfo_t* ffdinfo = (sinsp_fdinfo_t*)fdinfo;
 
 	//
 	// Detect the side and and determine the trigger directions
 	//
-	ASSERT(ffdinfo->m_flags & (sinsp_fdinfo_t::FLAGS_ROLE_CLIENT | sinsp_fdinfo_t::FLAGS_ROLE_SERVER));
-	if(ffdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)
+	ASSERT(ffdinfo->m_flags &
+	       (sinsp_fdinfo_t::FLAGS_ROLE_CLIENT | sinsp_fdinfo_t::FLAGS_ROLE_SERVER));
+	if (ffdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)
 	{
 		startdir = sinsp_partial_transaction::DIR_IN;
 		enddir = sinsp_partial_transaction::DIR_OUT;
@@ -79,7 +81,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 	//
 	// Based on the direction, add the transaction
 	//
-	if(tr->m_prev_direction == startdir)
+	if (tr->m_prev_direction == startdir)
 	{
 		tr->m_prev_prev_start_time = tr->m_prev_start_time;
 		tr->m_prev_prev_end_time = tr->m_prev_end_time;
@@ -89,13 +91,14 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 	// right now apply protocol validation also on TLS. Because in case of subsampling
 	// protocol parsing may fail for other protocols and return wrong result. On TLS instead
 	// a strict protocol parsing is needed
-	else if( (tr->m_protoparser == nullptr ||
-			tr->m_protoparser->get_type() != sinsp_protocol_parser::PROTO_TLS ||
-			  (tr->m_protoparser->get_type() == sinsp_protocol_parser::PROTO_TLS && tr->m_protoparser->m_is_valid)
-			 ) &&
-			(tr->m_prev_direction == enddir || tr->m_prev_direction == sinsp_partial_transaction::DIR_CLOSE))
+	else if ((tr->m_protoparser == nullptr ||
+	          tr->m_protoparser->get_type() != sinsp_protocol_parser::PROTO_TLS ||
+	          (tr->m_protoparser->get_type() == sinsp_protocol_parser::PROTO_TLS &&
+	           tr->m_protoparser->m_is_valid)) &&
+	         (tr->m_prev_direction == enddir ||
+	          tr->m_prev_direction == sinsp_partial_transaction::DIR_CLOSE))
 	{
-		if(tr->m_prev_prev_start_time == 0)
+		if (tr->m_prev_prev_start_time == 0)
 		{
 			//
 			// This can happen if we drop events or if a connection
@@ -113,23 +116,25 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 
 		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_start_of_transaction_time;
 
-		if(ffdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)
+		if (ffdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)
 		{
 			bool isexternal = pconn->is_server_only();
 			m_n_server_transactions++;
 
-			if(ffdinfo->m_type == SCAP_FD_IPV4_SOCK)
+			if (ffdinfo->m_type == SCAP_FD_IPV4_SOCK)
 			{
-				if(isexternal)
+				if (isexternal)
 				{
-					ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER;
+					ptinfo->m_ainfo->m_th_analysis_flags |=
+					    thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER;
 				}
 				else
 				{
-					ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER;
+					ptinfo->m_ainfo->m_th_analysis_flags |=
+					    thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER;
 				}
 			}
-			else if(ffdinfo->m_type == SCAP_FD_UNIX_SOCK)
+			else if (ffdinfo->m_type == SCAP_FD_UNIX_SOCK)
 			{
 				ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_UNIX_SERVER;
 			}
@@ -141,17 +146,20 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 			ptinfo->m_ainfo->m_transaction_metrics.add_in(1, delta);
 			pconn->m_transaction_metrics.add_in(1, delta);
 
-			if(isexternal)
+			if (isexternal)
 			{
 				ptinfo->m_ainfo->m_external_transaction_metrics.add_in(1, delta);
 			}
 
 			ptinfo->m_ainfo->add_completed_server_transaction(tr, isexternal);
 
-			if(tr->m_protoparser != NULL)
+			if (tr->m_protoparser != NULL)
 			{
-				ptinfo->m_ainfo->main_thread_ainfo()->m_protostate.update(tr, delta, true,
-					m_analyzer.m_configuration->get_protocols_truncation_size());
+				ptinfo->m_ainfo->main_thread_ainfo()->m_protostate.update(
+				    tr,
+				    delta,
+				    true,
+				    m_analyzer.m_configuration->get_protocols_truncation_size());
 			}
 		}
 		else
@@ -159,18 +167,20 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 			bool isexternal = pconn->is_client_only();
 			m_n_client_transactions++;
 
-			if(ffdinfo->m_type == SCAP_FD_IPV4_SOCK)
+			if (ffdinfo->m_type == SCAP_FD_IPV4_SOCK)
 			{
-				if(isexternal)
+				if (isexternal)
 				{
-					ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT;
+					ptinfo->m_ainfo->m_th_analysis_flags |=
+					    thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT;
 				}
 				else
 				{
-					ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT;
+					ptinfo->m_ainfo->m_th_analysis_flags |=
+					    thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT;
 				}
 			}
-			else if(ffdinfo->m_type == SCAP_FD_UNIX_SOCK)
+			else if (ffdinfo->m_type == SCAP_FD_UNIX_SOCK)
 			{
 				ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_UNIX_CLIENT;
 			}
@@ -182,17 +192,20 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 			ptinfo->m_ainfo->m_transaction_metrics.add_out(1, delta);
 			pconn->m_transaction_metrics.add_out(1, delta);
 
-			if(isexternal)
+			if (isexternal)
 			{
 				ptinfo->m_ainfo->m_external_transaction_metrics.add_out(1, delta);
 			}
 
 			ptinfo->m_ainfo->add_completed_client_transaction(tr, isexternal);
 
-			if(tr->m_protoparser != NULL)
+			if (tr->m_protoparser != NULL)
 			{
-				ptinfo->m_ainfo->main_thread_ainfo()->m_protostate.update(tr, delta, false,
-					m_analyzer.m_configuration->get_protocols_truncation_size());
+				ptinfo->m_ainfo->main_thread_ainfo()->m_protostate.update(
+				    tr,
+				    delta,
+				    false,
+				    m_analyzer.m_configuration->get_protocols_truncation_size());
 			}
 		}
 
@@ -313,14 +326,14 @@ void sinsp_partial_transaction::reset()
 
 sinsp_partial_transaction::~sinsp_partial_transaction()
 {
-	if(m_protoparser)
+	if (m_protoparser)
 	{
 		delete m_protoparser;
 		m_protoparser = nullptr;
 	}
 }
 
-sinsp_partial_transaction::sinsp_partial_transaction(const sinsp_partial_transaction &other)
+sinsp_partial_transaction::sinsp_partial_transaction(const sinsp_partial_transaction& other)
 {
 	*this = other;
 
@@ -328,24 +341,25 @@ sinsp_partial_transaction::sinsp_partial_transaction(const sinsp_partial_transac
 	m_reassembly_buffer.reset();
 }
 
-inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(sinsp_threadinfo* ptinfo,
-		uint64_t enter_ts,
-		uint64_t exit_ts, 
-		direction dir,
-		char* data,
-		uint32_t original_len,
-		uint32_t len,
-		bool is_server)
+inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(
+    sinsp_threadinfo* ptinfo,
+    uint64_t enter_ts,
+    uint64_t exit_ts,
+    direction dir,
+    char* data,
+    uint32_t original_len,
+    uint32_t len,
+    bool is_server)
 {
-	if(dir == DIR_IN)
+	if (dir == DIR_IN)
 	{
 		m_bytes_in += len;
 
-		if(m_direction != DIR_IN)
+		if (m_direction != DIR_IN)
 		{
 			updatestate res;
 
-			if(m_direction == DIR_UNKNOWN)
+			if (m_direction == DIR_UNKNOWN)
 			{
 				res = STATE_SWITCHED;
 				m_bytes_in = len;
@@ -364,11 +378,11 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 
 			m_start_time = enter_ts;
 			m_end_time = exit_ts;
-			if(len != 0)
+			if (len != 0)
 			{
 				m_direction = dir;
 
-				if(m_bytes_in == len)
+				if (m_bytes_in == len)
 				{
 					m_start_of_transaction_time = exit_ts;
 				}
@@ -384,12 +398,12 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 		{
 			ASSERT(exit_ts >= m_end_time);
 
-			if(is_server)
+			if (is_server)
 			{
-				if(exit_ts - m_end_time > TRANSACTION_READ_LIMIT_NS)
+				if (exit_ts - m_end_time > TRANSACTION_READ_LIMIT_NS)
 				{
 					//
-					// This server-side transaction has stopped on a read for 
+					// This server-side transaction has stopped on a read for
 					// a long time. We assume it's not a client server transaction
 					// (it could be an upload or a peer to peer application)
 					// and we drop it.
@@ -402,15 +416,15 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 			return STATE_ONGOING;
 		}
 	}
-	else if(dir == DIR_OUT)
+	else if (dir == DIR_OUT)
 	{
 		m_bytes_out += len;
 
-		if(m_direction != DIR_OUT)
+		if (m_direction != DIR_OUT)
 		{
 			updatestate res;
 
-			if(m_direction == DIR_UNKNOWN)
+			if (m_direction == DIR_UNKNOWN)
 			{
 				res = STATE_SWITCHED;
 				m_bytes_out = len;
@@ -429,11 +443,11 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 
 			m_start_time = enter_ts;
 			m_end_time = exit_ts;
-			if(len != 0)
+			if (len != 0)
 			{
 				m_direction = dir;
 
-				if(m_bytes_out == len)
+				if (m_bytes_out == len)
 				{
 					m_start_of_transaction_time = exit_ts;
 				}
@@ -449,12 +463,12 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 		{
 			ASSERT(exit_ts >= m_end_time);
 
-			if(!is_server)
+			if (!is_server)
 			{
-				if(exit_ts - m_end_time > TRANSACTION_READ_LIMIT_NS)
+				if (exit_ts - m_end_time > TRANSACTION_READ_LIMIT_NS)
 				{
 					//
-					// This client-side transaction has stopped on a write for 
+					// This client-side transaction has stopped on a write for
 					// a long time. We assume it's not a client server transaction
 					// (it could be an upload or a peer to peer application)
 					// and we drop it.
@@ -467,7 +481,7 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 			return STATE_ONGOING;
 		}
 	}
-	else if(dir == DIR_CLOSE)
+	else if (dir == DIR_CLOSE)
 	{
 		m_prev_direction = m_direction;
 		m_prev_start_time = m_start_time;
@@ -486,83 +500,90 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 	}
 }
 
-void sinsp_partial_transaction::update(sinsp_analyzer* analyzer, 
-	sinsp_threadinfo* ptinfo,
-	void* fdinfo,
-	sinsp_connection* pconn,
-	uint64_t enter_ts, 
-	uint64_t exit_ts, 
-	int32_t cpuid,
-	direction dir, 
+void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
+                                       sinsp_threadinfo* ptinfo,
+                                       void* fdinfo,
+                                       sinsp_connection* pconn,
+                                       uint64_t enter_ts,
+                                       uint64_t exit_ts,
+                                       int32_t cpuid,
+                                       direction dir,
 #if _DEBUG
-		sinsp_evt *evt,
-		uint64_t fd,
+                                       sinsp_evt* evt,
+                                       uint64_t fd,
 #endif
-	char* data,
-	uint32_t original_len, 
-	uint32_t len)
+                                       char* data,
+                                       uint32_t original_len,
+                                       uint32_t len)
 {
-	if(pconn == NULL)
+	if (pconn == NULL)
 	{
 		mark_inactive();
 		return;
 	}
 
-	if(cpuid != -1)
+	if (cpuid != -1)
 	{
 		m_cpuid = cpuid;
 	}
 
-	sinsp_fdinfo_t* ffdinfo = (sinsp_fdinfo_t*)fdinfo; 
+	sinsp_fdinfo_t* ffdinfo = (sinsp_fdinfo_t*)fdinfo;
 
-	sinsp_partial_transaction::updatestate res = update_int(ptinfo, 
-		enter_ts, exit_ts, dir, data, len, 
-		original_len, ffdinfo->is_role_server());
-	if(res == STATE_SWITCHED)
+	sinsp_partial_transaction::updatestate res = update_int(ptinfo,
+	                                                        enter_ts,
+	                                                        exit_ts,
+	                                                        dir,
+	                                                        data,
+	                                                        len,
+	                                                        original_len,
+	                                                        ffdinfo->is_role_server());
+	if (res == STATE_SWITCHED)
 	{
 		m_tid = ptinfo->m_tid;
 		m_n_direction_switches++;
 
-		analyzer->m_trans_table->emit(ptinfo, fdinfo, pconn, this 
+		analyzer->m_trans_table->emit(ptinfo,
+		                              fdinfo,
+		                              pconn,
+		                              this
 #if _DEBUG
-			, evt, fd, exit_ts 
-#endif	
-			);
+		                              ,
+		                              evt,
+		                              fd,
+		                              exit_ts
+#endif
+		);
 
-		if(dir == DIR_CLOSE)
+		if (dir == DIR_CLOSE)
 		{
 			m_prev_direction = DIR_UNKNOWN;
 		}
 	}
-	else if(res == STATE_NO_TRANSACTION)
+	else if (res == STATE_NO_TRANSACTION)
 	{
 		reset();
 		return;
 	}
 
-	if(m_protoparser && len)
+	if (m_protoparser && len)
 	{
 		sinsp_protocol_parser::msg_type mtype =
-			m_protoparser->should_parse(ffdinfo,
-						    dir,
-						    res == STATE_SWITCHED,
-						    data,
-						    len);
+		    m_protoparser->should_parse(ffdinfo, dir, res == STATE_SWITCHED, data, len);
 
-		if(sinsp_protocol_parser::MSG_REQUEST == mtype)
+		if (sinsp_protocol_parser::MSG_REQUEST == mtype)
 		{
-			if(m_protoparser->parse_request(data, len))
+			if (m_protoparser->parse_request(data, len))
 			{
 				//
 				// This is related to measuring transaction resources, and is not
 				// implemented yet.
 				//
-				//ptinfo->m_ainfo->m_transactions_in_progress.push_back(this);
+				// ptinfo->m_ainfo->m_transactions_in_progress.push_back(this);
 			}
 		}
-		else if(sinsp_protocol_parser::MSG_RESPONSE == mtype)
+		else if (sinsp_protocol_parser::MSG_RESPONSE == mtype)
 		{
-			if(m_protoparser->m_is_req_valid)
+			if (m_protoparser->m_is_req_valid)
 			{
 				m_protoparser->parse_response(data, len);
 			}

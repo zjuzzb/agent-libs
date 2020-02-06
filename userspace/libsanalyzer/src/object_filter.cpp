@@ -1,16 +1,17 @@
-#include "object_filter.h"
-#include <fnmatch.h>
 #include "analyzer_thread.h"
 #include "infrastructure_state.h"
+#include "object_filter.h"
 
-template <typename filter_param>
+#include <fnmatch.h>
+
+template<typename filter_param>
 std::string process_name_filter<filter_param>::no_data = "";
-template <typename filter_param>
+template<typename filter_param>
 std::string container_name_filter<filter_param>::no_data = "";
-template <typename filter_param>
+template<typename filter_param>
 std::string container_image_filter<filter_param>::no_data = "";
 
-template <typename filter_param>
+template<typename filter_param>
 bool process_cmd_line_filter<filter_param>::matches(const filter_param& arg,
                                                     bool& exclude,
                                                     bool& high_priority,
@@ -25,9 +26,9 @@ bool process_cmd_line_filter<filter_param>::matches(const filter_param& arg,
 	if (arg.m_tinfo->m_exe.find(m_pattern) == std::string::npos &&
 	    find_if(arg.m_tinfo->m_args.begin(),
 	            arg.m_tinfo->m_args.end(),
-	            [this](const std::string& candidate)
-	{ return !fnmatch(m_pattern.c_str(), candidate.c_str(), FNM_EXTMATCH); }) ==
-	        arg.m_tinfo->m_args.end())
+	            [this](const std::string& candidate) {
+		            return !fnmatch(m_pattern.c_str(), candidate.c_str(), FNM_EXTMATCH);
+	            }) == arg.m_tinfo->m_args.end())
 	{
 		return false;
 	}
@@ -41,7 +42,7 @@ bool process_cmd_line_filter<filter_param>::matches(const filter_param& arg,
 	return true;
 }
 
-template <typename filter_param>
+template<typename filter_param>
 bool port_filter<filter_param>::matches(const filter_param& arg,
                                         bool& exclude,
                                         bool& high_priority,
@@ -70,7 +71,7 @@ bool port_filter<filter_param>::matches(const filter_param& arg,
 	return false;
 }
 
-template <typename filter_param>
+template<typename filter_param>
 std::set<uint16_t> port_filter<filter_param>::filter_ports(
     const std::set<uint16_t>& sports,
     const std::vector<object_filter_config::port_filter_rule>& rules)
@@ -122,7 +123,7 @@ std::set<uint16_t> port_filter<filter_param>::filter_ports(
 	return filtered_ports;
 }
 
-template <typename filter_param>
+template<typename filter_param>
 bool container_label_filter<filter_param>::matches(const filter_param& arg,
                                                    bool& exclude,
                                                    bool& high_priority,
@@ -154,7 +155,7 @@ bool container_label_filter<filter_param>::matches(const filter_param& arg,
 	return true;
 }
 
-template <typename filter_param>
+template<typename filter_param>
 bool tag_filter<filter_param>::matches(const filter_param& arg,
                                        bool& exclude,
                                        bool& high_priority,
@@ -190,7 +191,7 @@ bool tag_filter<filter_param>::matches(const filter_param& arg,
 	return true;
 }
 
-template <typename filter_param>
+template<typename filter_param>
 bool app_check_filter<filter_param>::matches(const filter_param& arg,
                                              bool& exclude,
                                              bool& high_priority,
@@ -277,47 +278,48 @@ void object_filter::set_rules(const std::vector<object_filter_config::filter_rul
 				std::shared_ptr<base_filter<process_filter_args>> filter;
 				switch (condition.m_param_type)
 				{
-					case object_filter_config::filter_condition::param_type::none:
-						g_logger.format(sinsp_logger::SEV_WARNING,
-						                "Object filter rule is type none: param %s",
-						                condition.m_param.c_str());
-						continue;
-					case object_filter_config::filter_condition::param_type::port:
-						filter = std::make_shared<port_filter<process_filter_args>>(
-						    condition.m_port_match);
-						break;
-					case object_filter_config::filter_condition::param_type::container_image:
-						filter = std::make_shared<container_image_filter<process_filter_args>>(
-						    condition.m_pattern);
-						break;
-					case object_filter_config::filter_condition::param_type::container_name:
-						filter = std::make_shared<container_name_filter<process_filter_args>>(
-						    condition.m_pattern);
-						break;
-					case object_filter_config::filter_condition::param_type::container_label:
-						filter = std::make_shared<container_label_filter<process_filter_args>>(
-						    condition.m_param, condition.m_pattern);
-						break;
-					case object_filter_config::filter_condition::param_type::process_name:
-						filter = std::make_shared<process_name_filter<process_filter_args>>(
-						    condition.m_pattern);
-						break;
-					case object_filter_config::filter_condition::param_type::process_cmdline:
-						filter = std::make_shared<process_cmd_line_filter<process_filter_args>>(
-						    condition.m_pattern);
-						break;
-					case object_filter_config::filter_condition::param_type::app_check_match:
-						filter = std::make_shared<app_check_filter<process_filter_args>>(
-						    condition.m_pattern);
-						break;
-					case object_filter_config::filter_condition::param_type::k8s_annotation:
-					case object_filter_config::filter_condition::param_type::tag:
-						filter = std::make_shared<tag_filter<process_filter_args>>(
-						    condition.m_param, condition.m_pattern);
-						break;
-					case object_filter_config::filter_condition::param_type::all:
-						filter = std::make_shared<all_filter<process_filter_args>>(false);
-						break;
+				case object_filter_config::filter_condition::param_type::none:
+					g_logger.format(sinsp_logger::SEV_WARNING,
+					                "Object filter rule is type none: param %s",
+					                condition.m_param.c_str());
+					continue;
+				case object_filter_config::filter_condition::param_type::port:
+					filter =
+					    std::make_shared<port_filter<process_filter_args>>(condition.m_port_match);
+					break;
+				case object_filter_config::filter_condition::param_type::container_image:
+					filter = std::make_shared<container_image_filter<process_filter_args>>(
+					    condition.m_pattern);
+					break;
+				case object_filter_config::filter_condition::param_type::container_name:
+					filter = std::make_shared<container_name_filter<process_filter_args>>(
+					    condition.m_pattern);
+					break;
+				case object_filter_config::filter_condition::param_type::container_label:
+					filter = std::make_shared<container_label_filter<process_filter_args>>(
+					    condition.m_param,
+					    condition.m_pattern);
+					break;
+				case object_filter_config::filter_condition::param_type::process_name:
+					filter = std::make_shared<process_name_filter<process_filter_args>>(
+					    condition.m_pattern);
+					break;
+				case object_filter_config::filter_condition::param_type::process_cmdline:
+					filter = std::make_shared<process_cmd_line_filter<process_filter_args>>(
+					    condition.m_pattern);
+					break;
+				case object_filter_config::filter_condition::param_type::app_check_match:
+					filter = std::make_shared<app_check_filter<process_filter_args>>(
+					    condition.m_pattern);
+					break;
+				case object_filter_config::filter_condition::param_type::k8s_annotation:
+				case object_filter_config::filter_condition::param_type::tag:
+					filter = std::make_shared<tag_filter<process_filter_args>>(condition.m_param,
+					                                                           condition.m_pattern);
+					break;
+				case object_filter_config::filter_condition::param_type::all:
+					filter = std::make_shared<all_filter<process_filter_args>>(false);
+					break;
 				}
 
 				conditions.push_back(filter);

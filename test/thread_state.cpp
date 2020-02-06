@@ -1,9 +1,8 @@
-#include <vector>
-#include <memory>
 #include <future>
-#include <thread>
-
 #include <gtest.h>
+#include <memory>
+#include <thread>
+#include <vector>
 
 // Make otherwise-private stuff in libsinsp public
 #define VISIBILITY_PRIVATE
@@ -16,54 +15,60 @@ using namespace std;
 class thread_state_test : public ::testing::Test
 {
 protected:
-	virtual void SetUp() {
+	virtual void SetUp()
+	{
 		// Each entry in the vector has a parent of the previous
 		// entry. The first entry has a parent of 1.
-		for(int64_t pid = 100, i = 0; i < m_max; pid++, i++)
+		for (int64_t pid = 100, i = 0; i < m_max; pid++, i++)
 		{
-			int64_t ppid = (i == 0 ? 1 : m_threads[i-1]->m_tid);
+			int64_t ppid = (i == 0 ? 1 : m_threads[i - 1]->m_tid);
 			sinsp_threadinfo* thr = new sinsp_threadinfo(&m_inspector);
 			thr->init();
 			thr->m_tid = pid;
 			thr->m_ptid = ppid;
 
 			m_inspector.add_thread(thr);
-			sinsp_threadinfo *tinfo = m_inspector.get_thread(pid);
+			sinsp_threadinfo* tinfo = m_inspector.get_thread(pid);
 
 			m_threads.push_back(tinfo);
 		}
 	}
 
-	virtual void TearDown() {
-	}
+	virtual void TearDown() {}
 
-	void reset() {
+	void reset()
+	{
 		// Reset the state
-		for(uint32_t i = 0; i < m_max; i++)
+		for (uint32_t i = 0; i < m_max; i++)
 		{
-			int64_t ppid = (i == 0 ? 1 : m_threads[i-1]->m_tid);
-			sinsp_threadinfo *tinfo = m_threads[i];
+			int64_t ppid = (i == 0 ? 1 : m_threads[i - 1]->m_tid);
+			sinsp_threadinfo* tinfo = m_threads[i];
 			tinfo->m_lastevent_fd = 0;
 			tinfo->m_parent_loop_detected = false;
 			tinfo->m_ptid = ppid;
 		}
 	}
 
-	void traverse_with_timeout(sinsp_threadinfo *tinfo) {
-
+	void traverse_with_timeout(sinsp_threadinfo* tinfo)
+	{
 		promise<bool> finished;
 		auto result = finished.get_future();
 
-		sinsp_threadinfo::visitor_func_t visitor = [] (sinsp_threadinfo *tinfo)
-			{
-				tinfo->m_lastevent_fd = 1;
-				return true;
-			};
+		sinsp_threadinfo::visitor_func_t visitor = [](sinsp_threadinfo* tinfo) {
+			tinfo->m_lastevent_fd = 1;
+			return true;
+		};
 
-		thread runner = thread([](promise<bool> finished, sinsp_threadinfo *tinfo, sinsp_threadinfo::visitor_func_t visitor) {
-				tinfo->traverse_parent_state(visitor);
-				finished.set_value(true);
-			}, std::move(finished), tinfo, visitor);
+		thread runner = thread(
+		    [](promise<bool> finished,
+		       sinsp_threadinfo* tinfo,
+		       sinsp_threadinfo::visitor_func_t visitor) {
+			    tinfo->traverse_parent_state(visitor);
+			    finished.set_value(true);
+		    },
+		    std::move(finished),
+		    tinfo,
+		    visitor);
 
 		runner.detach();
 
@@ -74,16 +79,17 @@ protected:
 	// This just verifies that the mechanism of wait_for with a
 	// timeout actually works in the face of a thread that never
 	// stops
-	void loop_almost_forever() {
+	void loop_almost_forever()
+	{
 		promise<bool> finished;
 		auto result = finished.get_future();
 
 		// This runs for 3 seconds which is greater than the 1
 		// second timeout below
 		thread runner = thread([&finished]() {
-				sleep(3);
-				finished.set_value(true);
-			});
+			sleep(3);
+			finished.set_value(true);
+		});
 
 		runner.detach();
 
@@ -93,18 +99,19 @@ protected:
 		EXPECT_TRUE(result.wait_for(chrono::milliseconds(1000)) != future_status::timeout);
 	}
 
-	void verify(uint32_t test_idx, bool loop_detected, vector<uint32_t> &visited)
+	void verify(uint32_t test_idx, bool loop_detected, vector<uint32_t>& visited)
 	{
 		SCOPED_TRACE("test_idx=" + to_string(test_idx));
 		EXPECT_EQ(m_threads[test_idx]->m_parent_loop_detected, loop_detected);
-		for(uint32_t i = 0; i < m_max; i++) {
+		for (uint32_t i = 0; i < m_max; i++)
+		{
 			SCOPED_TRACE("i=" + to_string(i));
 			EXPECT_EQ(m_threads[i]->m_lastevent_fd, visited[i]);
 		}
 	}
 
 	sinsp m_inspector;
-	vector<sinsp_threadinfo *> m_threads;
+	vector<sinsp_threadinfo*> m_threads;
 	uint32_t m_max = 5;
 };
 
@@ -187,6 +194,3 @@ TEST_F(thread_state_test, parent_state_verify_timeout)
 {
 	loop_almost_forever();
 }
-
-
-

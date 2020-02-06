@@ -1,14 +1,15 @@
-#include "process_manager.h"
 #include "analyzer_thread.h"
+#include "process_manager.h"
+
 #include <gtest.h>
 
 class test_helper
 {
 public:
-        static void insert_app_check(thread_analyzer_info* ainfo, std::string value)
-        {
-                ainfo->m_app_checks_found.insert(value);
-        }
+	static void insert_app_check(thread_analyzer_info* ainfo, std::string value)
+	{
+		ainfo->m_app_checks_found.insert(value);
+	}
 };
 
 TEST(process_manager_test, app_checks_always_send_config)
@@ -29,15 +30,17 @@ app_checks_always_send: true
 	process_manager my_manager;
 
 	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info;
+	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
 	bool matches = false;
 	bool generic_match = false;
-	matches = my_manager.get_flush_filter().matches(NULL, &tinfo, NULL, NULL, &generic_match, NULL, NULL);
+	matches =
+	    my_manager.get_flush_filter().matches(NULL, &tinfo, NULL, NULL, &generic_match, NULL, NULL);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(generic_match, true);
 
 	test_helper::insert_app_check(tinfo.m_ainfo, "some app check");
-	matches = my_manager.get_flush_filter().matches(NULL, &tinfo, NULL, NULL, &generic_match, NULL, NULL);
+	matches =
+	    my_manager.get_flush_filter().matches(NULL, &tinfo, NULL, NULL, &generic_match, NULL, NULL);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(generic_match, false);
 

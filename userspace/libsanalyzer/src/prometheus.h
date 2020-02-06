@@ -2,41 +2,45 @@
 #ifndef CYGWING_AGENT
 #ifndef _WIN32
 
-#include <string>
-#include <map>
-#include <vector>
-#include <algorithm>
+#include "analyzer_settings.h"
+#include "app_checks_proxy_interface.h"
+#include "draios.pb.h"
+#include "metric_forwarding_configuration.h"
+#include "metric_limits.h"
+#include "posix_queue.h"
+#include "proc_filter.h"
 
 #include "third-party/jsoncpp/json/json.h"
-#include "posix_queue.h"
-#include "metric_limits.h"
-#include "draios.pb.h"
-#include "analyzer_settings.h"
-#include "proc_filter.h"
-#include "app_checks_proxy_interface.h"
-#include "metric_forwarding_configuration.h"
+
+#include <algorithm>
+#include <map>
+#include <string>
+#include <vector>
 
 Json::Value yaml_to_json(const YAML::Node& node);
 class sinsp_container_info;
 class yaml_configuration;
 class infrastructure_state;
 
-class prometheus_conf: public proc_filter::conf
+class prometheus_conf : public proc_filter::conf
 {
 	using base = proc_filter::conf;
-public:
-	explicit prometheus_conf():
-	base("Prometheus autodetection"),
-		m_log_errors(true),
-		m_interval(-1),
-		m_max_metrics_per_proc(-1),
-		m_max_tags_per_metric(-1),
-		m_histograms(false),
-		m_ingest_raw(false),
-		m_ingest_calculated(false)
-	{}
 
-	typedef struct {
+public:
+	explicit prometheus_conf()
+	    : base("Prometheus autodetection"),
+	      m_log_errors(true),
+	      m_interval(-1),
+	      m_max_metrics_per_proc(-1),
+	      m_max_tags_per_metric(-1),
+	      m_histograms(false),
+	      m_ingest_raw(false),
+	      m_ingest_calculated(false)
+	{
+	}
+
+	typedef struct
+	{
 		std::set<uint16_t> ports;
 		std::string path;
 		std::map<std::string, std::string> options;
@@ -47,21 +51,27 @@ public:
 	// if so, adds a prom_process to prom_procs.
 	// If use_host_filter is enabled multiple rules can match resulting in multiple
 	// additions to prom_procs
-	bool match_and_fill(const sinsp_threadinfo* tinfo, sinsp_threadinfo* mtinfo,
-			    const sinsp_container_info *container, const infrastructure_state &is,
-			    std::vector<prom_process> &prom_procs, bool use_host_filter) const;
+	bool match_and_fill(const sinsp_threadinfo* tinfo,
+	                    sinsp_threadinfo* mtinfo,
+	                    const sinsp_container_info* container,
+	                    const infrastructure_state& is,
+	                    std::vector<prom_process>& prom_procs,
+	                    bool use_host_filter) const;
 
 private:
 	// Function to get called when a filtering rule matches in order to determine
 	// the configuration parameters for this process
-	bool get_rule_params(const object_filter_config::filter_rule &rule, const sinsp_threadinfo *tinfo,
-			     const sinsp_container_info *container, const infrastructure_state &infra_state,
-			     bool use_host_filter, prom_params_t &out_params) const;
+	bool get_rule_params(const object_filter_config::filter_rule& rule,
+	                     const sinsp_threadinfo* tinfo,
+	                     const sinsp_container_info* container,
+	                     const infrastructure_state& infra_state,
+	                     bool use_host_filter,
+	                     prom_params_t& out_params) const;
 
 public:
 	// Configuration parameter that controls prometheus timeout
 	static type_config<uint32_t>::ptr c_prometheus_timeout;
-	
+
 	bool log_errors() const { return m_log_errors; }
 	void set_log_errors(bool val) { m_log_errors = val; }
 
@@ -72,7 +82,11 @@ public:
 	 * Returns the the maximum number of prometheus metrics to
 	 * forward.
 	 */
-	unsigned max_metrics() const { return static_cast<unsigned>(metric_forwarding_configuration::c_prometheus_max->get_value()); }
+	unsigned max_metrics() const
+	{
+		return static_cast<unsigned>(
+		    metric_forwarding_configuration::c_prometheus_max->get_value());
+	}
 
 	int max_metrics_per_proc() const { return m_max_metrics_per_proc; }
 	void set_max_metrics_per_proc(int val) { m_max_metrics_per_proc = val; }
@@ -83,17 +97,24 @@ public:
 	bool histograms() const { return m_histograms; }
 	void set_histograms(bool val) { m_histograms = val; }
 
-	bool ingest_raw() const { return m_ingest_raw ; }
+	bool ingest_raw() const { return m_ingest_raw; }
 	void set_ingest_raw(bool val) { m_ingest_raw = val; }
 
-	bool ingest_calculated() const { return m_ingest_calculated ; }
+	bool ingest_calculated() const { return m_ingest_calculated; }
 	void set_ingest_calculated(bool val) { m_ingest_calculated = val; }
 
-	void set_host_rules(std::vector<object_filter_config::filter_rule> rules) { m_host_rules = std::move(rules); }
-	const std::vector<object_filter_config::filter_rule>& host_rules() const { return m_host_rules; }
+	void set_host_rules(std::vector<object_filter_config::filter_rule> rules)
+	{
+		m_host_rules = std::move(rules);
+	}
+	const std::vector<object_filter_config::filter_rule>& host_rules() const
+	{
+		return m_host_rules;
+	}
 
 	// Overloaded from the base class to include host rules
-	void register_annotations(std::function<void (const std::string &str)> reg);
+	void register_annotations(std::function<void(const std::string& str)> reg);
+
 private:
 	bool m_log_errors;
 	int m_interval;
@@ -108,14 +129,32 @@ private:
 class prom_process
 {
 public:
-	explicit prom_process(const std::string name, int pid, int vpid, const std::set<uint16_t> &ports, const std::string path, const std::map<std::string, std::string> &options, const std::map<std::string, std::string> &tags) :
-		m_name(name), m_pid(pid), m_vpid(vpid), m_ports(ports), m_path(path), m_options(options), m_tags(tags) { }
+	explicit prom_process(const std::string name,
+	                      int pid,
+	                      int vpid,
+	                      const std::set<uint16_t>& ports,
+	                      const std::string path,
+	                      const std::map<std::string, std::string>& options,
+	                      const std::map<std::string, std::string>& tags)
+	    : m_name(name),
+	      m_pid(pid),
+	      m_vpid(vpid),
+	      m_ports(ports),
+	      m_path(path),
+	      m_options(options),
+	      m_tags(tags)
+	{
+	}
 
-	Json::Value to_json(const prometheus_conf &conf) const;
+	Json::Value to_json(const prometheus_conf& conf) const;
 
-	static void filter_procs(std::vector<prom_process> &procs, threadinfo_map_t &threadtable, const app_checks_proxy_interface::raw_metric_map_t &app_metrics, uint64_t now);
+	static void filter_procs(std::vector<prom_process>& procs,
+	                         threadinfo_map_t& threadtable,
+	                         const app_checks_proxy_interface::raw_metric_map_t& app_metrics,
+	                         uint64_t now);
+
 private:
-	std::string m_name;	// Just for debugging
+	std::string m_name;  // Just for debugging
 	int m_pid;
 	int m_vpid;
 	std::set<uint16_t> m_ports;
@@ -124,5 +163,5 @@ private:
 	std::map<std::string, std::string> m_tags;
 };
 
-#endif // _WIN32
-#endif // CYGWING_AGENT
+#endif  // _WIN32
+#endif  // CYGWING_AGENT

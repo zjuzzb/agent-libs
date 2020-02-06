@@ -3,26 +3,25 @@
 #include "setns.h"
 #include "subprocess.h"
 
-#include <unordered_set>
 #include <mntent.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <unistd.h>
+#include <unordered_set>
 
-mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto):
-	device(proto.device()),
-	mount_dir(proto.mount_dir()),
-	type(proto.type()),
-	size_bytes(proto.size_bytes()),
-	used_bytes(proto.used_bytes()),
-	available_bytes(proto.available_bytes()),
-	total_inodes(proto.total_inodes()),
-	used_inodes(proto.used_inodes())
+mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto)
+    : device(proto.device()),
+      mount_dir(proto.mount_dir()),
+      type(proto.type()),
+      size_bytes(proto.size_bytes()),
+      used_bytes(proto.used_bytes()),
+      available_bytes(proto.available_bytes()),
+      total_inodes(proto.total_inodes()),
+      used_inodes(proto.used_inodes())
 {
-
 }
 
-void mounted_fs::to_protobuf(draiosproto::mounted_fs *fs) const
+void mounted_fs::to_protobuf(draiosproto::mounted_fs* fs) const
 {
 	fs->set_device(device);
 	fs->set_mount_dir(mount_dir);
@@ -34,11 +33,10 @@ void mounted_fs::to_protobuf(draiosproto::mounted_fs *fs) const
 	fs->set_used_inodes(used_inodes);
 }
 
-mounted_fs_proxy::mounted_fs_proxy():
-	m_input("/sdc_mounted_fs_reader_out", posix_queue::direction_t::RECEIVE),
-	m_output("/sdc_mounted_fs_reader_in", posix_queue::direction_t::SEND)
+mounted_fs_proxy::mounted_fs_proxy()
+    : m_input("/sdc_mounted_fs_reader_out", posix_queue::direction_t::RECEIVE),
+      m_output("/sdc_mounted_fs_reader_in", posix_queue::direction_t::SEND)
 {
-
 }
 
 mounted_fs_list mounted_fs_proxy::receive_mounted_fs_list()
@@ -48,28 +46,30 @@ mounted_fs_list mounted_fs_proxy::receive_mounted_fs_list()
 	std::unordered_map<dev_t, std::string> device_map;
 	auto last_msg = m_input.receive();
 	decltype(last_msg) msg;
-	while(!last_msg.empty())
+	while (!last_msg.empty())
 	{
 		msg = std::move(last_msg);
 		last_msg = m_input.receive();
 	}
-	if(!msg.empty())
+	if (!msg.empty())
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Received from mounted_fs_reader: %lu bytes", msg.size());
+		g_logger.format(sinsp_logger::SEV_DEBUG,
+		                "Received from mounted_fs_reader: %lu bytes",
+		                msg.size());
 		sdc_internal::mounted_fs_response response_proto;
-		if(response_proto.ParseFromArray(&msg[0], msg.size()))
+		if (response_proto.ParseFromArray(&msg[0], msg.size()))
 		{
 			fs_map.clear();
-			for(const auto& c : response_proto.containers())
+			for (const auto& c : response_proto.containers())
 			{
 				std::vector<mounted_fs> fslist;
-				for( const auto& m : c.mounts())
+				for (const auto& m : c.mounts())
 				{
 					fslist.emplace_back(m);
 				}
 				fs_map.emplace(c.container_id(), std::move(fslist));
 			}
-			for(const auto& d : response_proto.devices())
+			for (const auto& d : response_proto.devices())
 			{
 				device_map.emplace(d.number(), d.name());
 			}
@@ -82,16 +82,18 @@ mounted_fs_list mounted_fs_proxy::receive_mounted_fs_list()
 #endif
 }
 
-bool mounted_fs_proxy::send_container_list(const std::vector<sinsp_threadinfo*> &containers)
+bool mounted_fs_proxy::send_container_list(const std::vector<sinsp_threadinfo*>& containers)
 {
 #ifndef CYGWING_AGENT
 	sdc_internal::mounted_fs_request req;
-	for(const auto& item : containers)
+	for (const auto& item : containers)
 	{
 		// Safety check, it should never happen
-		if(item->m_root.empty())
+		if (item->m_root.empty())
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Process root of pid %ld is empty, skipping ", item->m_pid);
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+			                "Process root of pid %ld is empty, skipping ",
+			                item->m_pid);
 			continue;
 		}
 
@@ -117,9 +119,11 @@ bool mounted_fs_proxy::send_container_list(const std::vector<sinsp_threadinfo*> 
 #endif
 }
 
-mounted_fs_reader::mounted_fs_reader(bool remotefs, const mount_points_filter_vec& filters, unsigned mounts_limit_size):
-	m_mount_points(std::make_shared<mount_points_limits>(filters, mounts_limit_size)),
-	m_remotefs(remotefs)
+mounted_fs_reader::mounted_fs_reader(bool remotefs,
+                                     const mount_points_filter_vec& filters,
+                                     unsigned mounts_limit_size)
+    : m_mount_points(std::make_shared<mount_points_limits>(filters, mounts_limit_size)),
+      m_remotefs(remotefs)
 {
 }
 
@@ -136,12 +140,12 @@ bool mounted_fs_reader::change_ns(int destpid)
 	g_logger.format(sinsp_logger::SEV_DEBUG, "Set to ns pid %d", destpid);
 	// Go to container mnt ns
 	auto fd = open_ns_fd(destpid);
-	if(fd <= 0)
+	if (fd <= 0)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Cannot open namespace fd for pid=%d", destpid);
 		return false;
 	}
-	if(setns(fd, CLONE_NEWNS) != 0)
+	if (setns(fd, CLONE_NEWNS) != 0)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Cannot setns to pid=%d", destpid);
 		close(fd);
@@ -156,27 +160,32 @@ bool mounted_fs_reader::change_ns(int destpid)
 }
 
 #ifndef CYGWING_AGENT
-int mounted_fs_reader::handle_mounted_fs_request(const char* root_dir, int home_fd,
-	const sdc_internal::mounted_fs_request& request, sdc_internal::mounted_fs_response& response)
+int mounted_fs_reader::handle_mounted_fs_request(const char* root_dir,
+                                                 int home_fd,
+                                                 const sdc_internal::mounted_fs_request& request,
+                                                 sdc_internal::mounted_fs_response& response)
 {
 	std::unordered_set<dev_t> seen_devices;
 
-	for(const auto& container_proto : request.containers())
+	for (const auto& container_proto : request.containers())
 	{
 		// Go to container mnt ns
-		if(!change_ns(container_proto.pid()))
+		if (!change_ns(container_proto.pid()))
 		{
 			continue;
 		}
 		try
 		{
-			if(container_proto.root() != "/")
+			if (container_proto.root() != "/")
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "chroot to: %s", container_proto.root().c_str());
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+				                "chroot to: %s",
+				                container_proto.root().c_str());
 				auto res = chroot(container_proto.root().c_str());
-				if(res != 0)
+				if (res != 0)
 				{
-					throw sinsp_exception(std::string("chroot on ") + container_proto.root() + " failed: " + strerror(errno));
+					throw sinsp_exception(std::string("chroot on ") + container_proto.root() +
+					                      " failed: " + strerror(errno));
 				}
 			}
 			char filename[SCAP_MAX_PATH_SIZE];
@@ -184,7 +193,7 @@ int mounted_fs_reader::handle_mounted_fs_request(const char* root_dir, int home_
 			// Because when entering a mount namespace, we don't have
 			// a self entry on /proc
 			struct stat mtab_stat;
-			if(lstat("/etc/mtab", &mtab_stat) == 0 && !S_ISLNK(mtab_stat.st_mode))
+			if (lstat("/etc/mtab", &mtab_stat) == 0 && !S_ISLNK(mtab_stat.st_mode))
 			{
 				snprintf(filename, sizeof(filename), "/etc/mtab");
 			}
@@ -195,7 +204,7 @@ int mounted_fs_reader::handle_mounted_fs_request(const char* root_dir, int home_
 			auto fs_list = get_mounted_fs_list(filename);
 			auto container_mounts_proto = response.add_containers();
 			container_mounts_proto->set_container_id(container_proto.id());
-			for(const auto& fs : fs_list)
+			for (const auto& fs : fs_list)
 			{
 				auto fsinfo = container_mounts_proto->add_mounts();
 				fs.to_protobuf(fsinfo);
@@ -203,17 +212,18 @@ int mounted_fs_reader::handle_mounted_fs_request(const char* root_dir, int home_
 
 			snprintf(filename, sizeof(filename), "/proc/%lu/mountinfo", container_proto.vpid());
 			std::ifstream mountinfo(filename);
-			if(!mountinfo)
+			if (!mountinfo)
 			{
-				throw sinsp_exception(std::string("error opening ") + filename + ": " + strerror(errno));
+				throw sinsp_exception(std::string("error opening ") + filename + ": " +
+				                      strerror(errno));
 			}
 
 			auto devices = read_mountinfo(mountinfo);
 
-			for(const auto &dev : devices)
+			for (const auto& dev : devices)
 			{
 				auto new_device = seen_devices.insert(dev.first);
-				if(new_device.second)
+				if (new_device.second)
 				{
 					auto dev_info = response.add_devices();
 					dev_info->set_number(dev.first);
@@ -223,10 +233,15 @@ int mounted_fs_reader::handle_mounted_fs_request(const char* root_dir, int home_
 		}
 		catch (const sinsp_exception& ex)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Exception for container=%s pid=%d, vpid=%d: %s", container_proto.id().c_str(), container_proto.pid(), container_proto.vpid(), ex.what());
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+			                "Exception for container=%s pid=%d, vpid=%d: %s",
+			                container_proto.id().c_str(),
+			                container_proto.pid(),
+			                container_proto.vpid(),
+			                ex.what());
 		}
 		// Back home
-		if(setns(home_fd, CLONE_NEWNS) != 0)
+		if (setns(home_fd, CLONE_NEWNS) != 0)
 		{
 			g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
 			return ERROR_EXIT;
@@ -247,12 +262,12 @@ int mounted_fs_reader::handle_mounted_fs_request(const char* root_dir, int home_
 	return 0;
 }
 
-std::unordered_map<uint32_t, std::string> mounted_fs_reader::read_mountinfo(std::istream &mountinfo)
+std::unordered_map<uint32_t, std::string> mounted_fs_reader::read_mountinfo(std::istream& mountinfo)
 {
 	std::unordered_map<uint32_t, std::string> dev_numbers;
 	std::string buf_str;
 
-	while(std::getline(mountinfo, buf_str))
+	while (std::getline(mountinfo, buf_str))
 	{
 		uint32_t major, minor;
 		char device[4096];
@@ -263,20 +278,28 @@ std::unordered_map<uint32_t, std::string> mounted_fs_reader::read_mountinfo(std:
 		// 177 232 0:51 /sysrq-trigger /proc/sysrq-trigger ro,relatime - proc proc rw
 		int ret;
 		const char* buf = buf_str.c_str();
-		if((ret = sscanf(buf, "%*d %*d %d:%d %*s %s", &major, &minor, mountpoint)) != 3)
+		if ((ret = sscanf(buf, "%*d %*d %d:%d %*s %s", &major, &minor, mountpoint)) != 3)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Failed to get device number (ret=%d) from \"%s\"", ret, buf);
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+			                "Failed to get device number (ret=%d) from \"%s\"",
+			                ret,
+			                buf);
 			continue;
 		}
-		const char *p = strstr(buf, " - ");
+		const char* p = strstr(buf, " - ");
 		if (!p)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Failed to find option separator in \"%s\"", buf);
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+			                "Failed to find option separator in \"%s\"",
+			                buf);
 			continue;
 		}
-		if((ret = sscanf(p, " - %s %s", fs_type, device)) != 2)
+		if ((ret = sscanf(p, " - %s %s", fs_type, device)) != 2)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Failed to get device name (ret=%d) from \"%s\"", ret, buf);
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+			                "Failed to get device name (ret=%d) from \"%s\"",
+			                ret,
+			                buf);
 			continue;
 		}
 		if (!m_mount_points->allow(device, fs_type, mountpoint))
@@ -300,7 +323,7 @@ int mounted_fs_reader::run()
 
 	g_logger.format(sinsp_logger::SEV_INFO, "Starting mounted_fs_reader with pid %u", pid);
 	int home_fd = 0;
-	if(getppid() == 1)
+	if (getppid() == 1)
 	{
 		// If `--pid host` is not used, we take the mnt from /proc
 		// as we don't know our hostpid
@@ -313,20 +336,22 @@ int mounted_fs_reader::run()
 		home_fd = open_ns_fd(pid);
 	}
 
-	if(home_fd <= 0)
+	if (home_fd <= 0)
 	{
 		return DONT_RESTART_EXIT;
 	}
 
-	// The procedure of traversing containers and their mounted file systems (the loop below) requires changing
-	// namespace (and perhaps the root directory) of the agent/mounted_fs_reader to the one of a container. When examining
-	// of a mounted file system is over, a step back to the home namespace and it's root directory is performed.
-	// Executing `setns` to the home namespace together with `chroot` to the original root directory and then `chdir` is
+	// The procedure of traversing containers and their mounted file systems (the loop below)
+	// requires changing namespace (and perhaps the root directory) of the agent/mounted_fs_reader
+	// to the one of a container. When examining of a mounted file system is over, a step back to
+	// the home namespace and it's root directory is performed. Executing `setns` to the home
+	// namespace together with `chroot` to the original root directory and then `chdir` is
 	// sufficient in most cases to switch back.
-	// However, there are situations like in case of Rkt containers when this is not good enough to break the root jail
-	// (made by Rkt). To force jail break, there is an initial `setns` to the home namespace (which resets the root
-	// directory) and then subsequent calls to `chroot` and `chdir` to set the real root directory. Since the purpose of
-	// this trick is not obvious, it should be considered for refactoring in the future.
+	// However, there are situations like in case of Rkt containers when this is not good enough to
+	// break the root jail (made by Rkt). To force jail break, there is an initial `setns` to the
+	// home namespace (which resets the root directory) and then subsequent calls to `chroot` and
+	// `chdir` to set the real root directory. Since the purpose of this trick is not obvious, it
+	// should be considered for refactoring in the future.
 
 	if (setns(home_fd, CLONE_NEWNS) != 0)
 	{
@@ -356,28 +381,31 @@ int mounted_fs_reader::run()
 		return ERROR_EXIT;
 	}
 
-	while(true)
+	while (true)
 	{
 		// Send heartbeat
 		send_subprocess_heartbeat();
 		auto request_s = input.receive(1);
-		if(request_s.empty())
+		if (request_s.empty())
 		{
 			continue;
 		}
 
 		sdc_internal::mounted_fs_request request_proto;
-		if(!request_proto.ParseFromArray(&request_s[0], request_s.size()))
+		if (!request_proto.ParseFromArray(&request_s[0], request_s.size()))
 		{
 			continue;
 		}
 
 		sdc_internal::mounted_fs_response response_proto;
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Look mounted_fs for %d containers", request_proto.containers_size());
-		// g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from dragent; %s", request_proto.DebugString().c_str());
+		g_logger.format(sinsp_logger::SEV_DEBUG,
+		                "Look mounted_fs for %d containers",
+		                request_proto.containers_size());
+		// g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from dragent; %s",
+		// request_proto.DebugString().c_str());
 
 		int ret = handle_mounted_fs_request(root_dir, home_fd, request_proto, response_proto);
-		if(ret != 0)
+		if (ret != 0)
 		{
 			return ret;
 		}
@@ -397,16 +425,17 @@ std::vector<mounted_fs> mounted_fs_reader::get_mounted_fs_list(const std::string
 
 #if !defined(_WIN32) && !defined(CYGWING_AGENT)
 	FILE* fp = setmntent(mtab.c_str(), "r");
-	if(fp == NULL)
+	if (fp == NULL)
 	{
 		throw sinsp_exception("error opening " + mtab);
 	}
 
 	m_mount_points->reset();
-	while(!m_mount_points->limit_is_reached())	// stops looking for more mount point entries when mount limit is reached
+	while (!m_mount_points->limit_is_reached())  // stops looking for more mount point entries when
+	                                             // mount limit is reached
 	{
 		struct mntent* entry = getmntent(fp);
-		if(entry == NULL)
+		if (entry == NULL)
 		{
 			break;
 		}
@@ -422,13 +451,12 @@ std::vector<mounted_fs> mounted_fs_reader::get_mounted_fs_list(const std::string
 		//
 		// From coreutils, if dev contains ':', then remote
 		//
-		if(!m_remotefs)
+		if (!m_remotefs)
 		{
 			// if remotefs are disabled, recognize them and skip
-			if((colon_found && strstr(entry->mnt_fsname, "docker") == NULL)
-			   || strcmp(entry->mnt_type, "nfs") == 0 // remote fs
-			   || strcmp(entry->mnt_type, "smbfs") == 0
-			   || strcmp(entry->mnt_type, "cifs") == 0)
+			if ((colon_found && strstr(entry->mnt_fsname, "docker") == NULL) ||
+			    strcmp(entry->mnt_type, "nfs") == 0  // remote fs
+			    || strcmp(entry->mnt_type, "smbfs") == 0 || strcmp(entry->mnt_type, "cifs") == 0)
 			{
 				continue;
 			}
@@ -440,19 +468,21 @@ std::vector<mounted_fs> mounted_fs_reader::get_mounted_fs_list(const std::string
 		}
 
 		struct statvfs statfs;
-		if(statvfs(entry->mnt_dir, &statfs) < 0)
+		if (statvfs(entry->mnt_dir, &statfs) < 0)
 		{
-			g_logger.log("unable to get details for " + std::string(entry->mnt_dir) + ": " + strerror(errno), sinsp_logger::SEV_DEBUG);
+			g_logger.log(
+			    "unable to get details for " + std::string(entry->mnt_dir) + ": " + strerror(errno),
+			    sinsp_logger::SEV_DEBUG);
 			continue;
 		}
 
-		if(statfs.f_blocks == 0)
+		if (statfs.f_blocks == 0)
 		{
 			continue;
 		}
 
 		uint64_t blocksize;
-		if(statfs.f_frsize)
+		if (statfs.f_frsize)
 		{
 			blocksize = statfs.f_frsize;
 		}
@@ -461,13 +491,12 @@ std::vector<mounted_fs> mounted_fs_reader::get_mounted_fs_list(const std::string
 			blocksize = statfs.f_bsize;
 		}
 
-
 		m_mount_points->increase();
 
 		mounted_fs fs;
 		fs.device = entry->mnt_fsname;
 		fs.mount_dir = entry->mnt_dir;
-		fs.type =  entry->mnt_type;
+		fs.type = entry->mnt_type;
 		fs.available_bytes = blocksize * statfs.f_bavail;
 		fs.size_bytes = blocksize * statfs.f_blocks;
 		fs.used_bytes = blocksize * (statfs.f_blocks - statfs.f_bfree);
@@ -479,24 +508,25 @@ std::vector<mounted_fs> mounted_fs_reader::get_mounted_fs_list(const std::string
 	endmntent(fp);
 
 	m_mount_points->log_if_max_mount_limit_reached();
-#else // !defined(_WIN32) && !defined(CYGWING_AGENT)
-	#ifdef CYGWING_AGENT
+#else  // !defined(_WIN32) && !defined(CYGWING_AGENT)
+#ifdef CYGWING_AGENT
 	wh_mountlist mtable = wh_wmi_get_mounts(m_whhandle);
-	if(mtable.m_result == 0)
+	if (mtable.m_result == 0)
 	{
-		throw sinsp_exception(std::string("error calling wh_wmi_get_mounts:") + wh_getlasterror(m_whhandle));
+		throw sinsp_exception(std::string("error calling wh_wmi_get_mounts:") +
+		                      wh_getlasterror(m_whhandle));
 	}
 
 	m_mount_points->reset();
 
-	for(uint32_t j = 0; j < mtable.m_count; ++j)
+	for (uint32_t j = 0; j < mtable.m_count; ++j)
 	{
 		wh_mounted_fs_info* wmi = &mtable.m_mounts[j];
 
 		mounted_fs fs;
 		fs.device = wmi->device;
 		fs.mount_dir = wmi->mount_dir;
-		fs.type =  wmi->type;
+		fs.type = wmi->type;
 		fs.available_bytes = wmi->available_bytes;
 		fs.size_bytes = wmi->size_bytes;
 		fs.used_bytes = wmi->used_bytes;
@@ -505,11 +535,10 @@ std::vector<mounted_fs> mounted_fs_reader::get_mounted_fs_list(const std::string
 
 		mount_points[fs.mount_dir] = std::move(fs);
 	}
-#endif // CYGWING_AGENT
-#endif // !defined(_WIN32) && !defined(CYGWING_AGENT)
+#endif  // CYGWING_AGENT
+#endif  // !defined(_WIN32) && !defined(CYGWING_AGENT)
 	std::vector<mounted_fs> ret;
 	for (auto& mp : mount_points)
 		ret.emplace_back(std::move(mp.second));
 	return ret;
 }
-

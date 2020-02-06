@@ -3,21 +3,21 @@
 //
 #pragma once
 
-#include <memory>
-
 #include "sinsp.h"
 
+#include <memory>
+
 #ifndef _WIN32
-#include "third-party/jsoncpp/json/json.h"
-#include "posix_queue.h"
-#include "metric_limits.h"
 #include "draios.pb.h"
+#include "metric_limits.h"
+#include "posix_queue.h"
+
+#include "third-party/jsoncpp/json/json.h"
 // suppress deprecated warnings for auto_ptr in boost
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <yaml-cpp/yaml.h>
 #pragma GCC diagnostic pop
-
 
 Json::Value yaml_to_json(const YAML::Node& node);
 class prometheus_conf;
@@ -26,30 +26,23 @@ class prom_process;
 class app_check
 {
 public:
-	explicit app_check():
-		m_port_pattern(0),
-		m_enabled(true),
-		m_log_errors(true),
-		m_retry(true),
-		m_interval(-1),
-		m_conf(Json::objectValue)
-	{}
+	explicit app_check()
+	    : m_port_pattern(0),
+	      m_enabled(true),
+	      m_log_errors(true),
+	      m_retry(true),
+	      m_interval(-1),
+	      m_conf(Json::objectValue)
+	{
+	}
 
 	bool match(sinsp_threadinfo* tinfo) const;
 
-	const std::string& name() const
-	{
-		return m_name;
-	}
+	const std::string& name() const { return m_name; }
 
-	const std::string& module() const
-	{
-		return m_check_module;
-	}
+	const std::string& module() const { return m_check_module; }
 
-	bool enabled() const {
-		return m_enabled;
-	}
+	bool enabled() const { return m_enabled; }
 
 	Json::Value to_json() const;
 
@@ -69,14 +62,16 @@ private:
 	Json::Value m_conf;
 };
 
-namespace YAML {
-	template<>
-	struct convert<app_check> {
-		static Node encode(const app_check& rhs);
+namespace YAML
+{
+template<>
+struct convert<app_check>
+{
+	static Node encode(const app_check& rhs);
 
-		static bool decode(const Node& node, app_check& rhs);
-	};
-}
+	static bool decode(const Node& node, app_check& rhs);
+};
+}  // namespace YAML
 
 // In some cases, an app check may want to have a custom way to
 // generate config values to match against the check's config. This
@@ -86,7 +81,7 @@ class app_process_conf_vals
 {
 public:
 	app_process_conf_vals() {}
-	virtual ~app_process_conf_vals() {};
+	virtual ~app_process_conf_vals(){};
 
 	virtual Json::Value vals() = 0;
 };
@@ -96,14 +91,11 @@ class app_process
 public:
 	explicit app_process(const app_check& check, sinsp_threadinfo* tinfo);
 
-	void set_conf_vals(std::shared_ptr<app_process_conf_vals> &conf_vals);
+	void set_conf_vals(std::shared_ptr<app_process_conf_vals>& conf_vals);
 
 	Json::Value to_json() const;
 
-	inline const std::string& name() const
-	{
-		return m_check.name();
-	}
+	inline const std::string& name() const { return m_check.name(); }
 
 private:
 	int m_pid;
@@ -118,33 +110,33 @@ private:
 	void get_port_from_cmd(sinsp_threadinfo* tinfo);
 };
 
-
 class app_metric
 {
 public:
 	// These must match the values of app_metric_type in draios.proto.
 	enum class type_t
 	{
-		GAUGE           = 1,
-		RATE            = 2,
-		BUCKETS         = 3,
-		PROMETHEUS_RAW  = 4
+		GAUGE = 1,
+		RATE = 2,
+		BUCKETS = 3,
+		PROMETHEUS_RAW = 4
 	};
 	// These must match the values of prometheus_type in draios.proto.
 	enum class prometheus_type_t
 	{
-		INVALID         = 0,
-		COUNTER         = 1,
-		GAUGE           = 2,
-		HISTOGRAM       = 3,
-		SUMMARY         = 4,
-		UNKNOWN         = 5
+		INVALID = 0,
+		COUNTER = 1,
+		GAUGE = 2,
+		HISTOGRAM = 3,
+		SUMMARY = 4,
+		UNKNOWN = 5
 	};
 	explicit app_metric(const Json::Value& obj);
 	template<typename message>
 	void to_protobuf(message* proto) const;
 
 	const std::string& name() const;
+
 private:
 	std::string m_name;
 	double m_value;
@@ -153,7 +145,8 @@ private:
 	std::map<std::string, std::string> m_tags;
 	std::map<std::string, uint64_t> m_buckets;
 
-	static const std::unordered_map<std::string, std::pair<type_t, prometheus_type_t>> metric_type_mapping;
+	static const std::unordered_map<std::string, std::pair<type_t, prometheus_type_t>>
+	    metric_type_mapping;
 };
 
 inline const std::string& app_metric::name() const
@@ -176,6 +169,7 @@ public:
 	template<typename message>
 	void to_protobuf_as_metric(message* proto) const;
 	const std::string& name() const;
+
 private:
 	status_t m_status;
 	std::map<std::string, std::string> m_tags;
@@ -201,63 +195,32 @@ public:
 	};
 
 	// Added for unordered_map::operator[]
-	app_check_data():
-			m_pid(0),
-			m_expiration_ts(0),
-			m_total_metrics(0)
-	{};
+	app_check_data() : m_pid(0), m_expiration_ts(0), m_total_metrics(0){};
 
 	explicit app_check_data(const Json::Value& obj, const metric_limits::sptr_t& ml = nullptr);
 
-	check_type type() const
-	{
-		return m_type;
-	}
+	check_type type() const { return m_type; }
 
-	void set_type(const check_type t)
-	{
-		m_type = t;
-	}
+	void set_type(const check_type t) { m_type = t; }
 
-	int pid() const
-	{
-		return m_pid;
-	}
+	int pid() const { return m_pid; }
 
-	uint64_t expiration_ts() const
-	{
-		return m_expiration_ts;
-	}
+	uint64_t expiration_ts() const { return m_expiration_ts; }
 
 	// metric is either an draiosproto::app_metric or prometheus_metric
 	// since they largely support the same types, but are different classes
 	template<typename metric>
-	unsigned to_protobuf(metric *proto, unsigned int& limit, unsigned int max_limit) const;
+	unsigned to_protobuf(metric* proto, unsigned int& limit, unsigned int max_limit) const;
 
-	const std::string& name() const
-	{
-		return m_process_name;
-	}
+	const std::string& name() const { return m_process_name; }
 
-	const metrics_t& metrics() const
-	{
-		return m_metrics;
-	}
+	const metrics_t& metrics() const { return m_metrics; }
 
-	const services_t& services() const
-	{
-		return m_service_checks;
-	}
+	const services_t& services() const { return m_service_checks; }
 
-	unsigned num_metrics() const
-	{
-		return m_metrics.size() + m_service_checks.size();
-	}
+	unsigned num_metrics() const { return m_metrics.size() + m_service_checks.size(); }
 
-	unsigned total_metrics() const
-	{
-		return m_total_metrics;
-	}
+	unsigned total_metrics() const { return m_total_metrics; }
 
 private:
 	check_type m_type;
@@ -269,4 +232,4 @@ private:
 	unsigned m_total_metrics;
 };
 
-#endif // _WIN32
+#endif  // _WIN32

@@ -2,29 +2,28 @@
 // Created by Luca Marturana on 29/06/15.
 //
 
+#include "analyzer_int.h"
+#include "analyzer_thread.h"
 #include "app_checks_proxy_interface.h"
 #include "common_logger.h"
 #include "prometheus.h"
 #include "sinsp_int.h"
-#include "analyzer_int.h"
-#include "analyzer_thread.h"
 #include "type_config.h"
+
 #include <utils.h>
 
 namespace
 {
-
 COMMON_LOGGER();
 
 }
-
 
 using namespace std;
 
 Json::Value yaml_to_json(const YAML::Node& yaml)
 {
 	Json::Value ret;
-	switch(yaml.Type())
+	switch (yaml.Type())
 	{
 	case YAML::NodeType::Scalar:
 	{
@@ -54,7 +53,7 @@ Json::Value yaml_to_json(const YAML::Node& yaml)
 	}
 	case YAML::NodeType::Sequence:
 	{
-		for(auto it = yaml.begin(); it != yaml.end(); ++it)
+		for (auto it = yaml.begin(); it != yaml.end(); ++it)
 		{
 			ret.append(yaml_to_json(*it));
 		}
@@ -62,7 +61,7 @@ Json::Value yaml_to_json(const YAML::Node& yaml)
 	}
 	case YAML::NodeType::Map:
 	{
-		for(auto it = yaml.begin(); it != yaml.end(); ++it)
+		for (auto it = yaml.begin(); it != yaml.end(); ++it)
 		{
 			ret[it->first.as<string>()] = yaml_to_json(it->second);
 		}
@@ -75,29 +74,29 @@ Json::Value yaml_to_json(const YAML::Node& yaml)
 	return ret;
 }
 
-bool app_check::match(sinsp_threadinfo *tinfo) const
+bool app_check::match(sinsp_threadinfo* tinfo) const
 {
 	// At least a pattern should be specified
-	bool ret = (!m_comm_pattern.empty() || !m_exe_pattern.empty() || m_port_pattern > 0 || !m_arg_pattern.empty());
-	if(!m_comm_pattern.empty())
+	bool ret = (!m_comm_pattern.empty() || !m_exe_pattern.empty() || m_port_pattern > 0 ||
+	            !m_arg_pattern.empty());
+	if (!m_comm_pattern.empty())
 	{
 		ret &= tinfo->m_comm.find(m_comm_pattern) != string::npos;
 	}
-	if(!m_exe_pattern.empty())
+	if (!m_exe_pattern.empty())
 	{
 		ret &= tinfo->m_exe.find(m_exe_pattern) != string::npos;
 	}
-	if(m_port_pattern > 0)
+	if (m_port_pattern > 0)
 	{
 		auto ports = tinfo->m_ainfo->listening_ports();
 		ret &= ports.find(m_port_pattern) != ports.end();
 	}
-	if(!m_arg_pattern.empty())
+	if (!m_arg_pattern.empty())
 	{
-		ret &= find_if(tinfo->m_args.begin(), tinfo->m_args.end(), [this](const string& arg)
-		{
-			return arg.find(m_arg_pattern) != string::npos;
-		}) != tinfo->m_args.end();
+		ret &= find_if(tinfo->m_args.begin(), tinfo->m_args.end(), [this](const string& arg) {
+			       return arg.find(m_arg_pattern) != string::npos;
+		       }) != tinfo->m_args.end();
 	}
 	return ret;
 }
@@ -106,12 +105,12 @@ Json::Value app_check::to_json() const
 {
 	Json::Value ret;
 	ret["name"] = m_name;
-	if(!m_check_module.empty())
+	if (!m_check_module.empty())
 	{
 		ret["check_module"] = m_check_module;
 	}
 	ret["conf"] = m_conf;
-	if(m_interval > 0)
+	if (m_interval > 0)
 	{
 		ret["interval"] = m_interval;
 	}
@@ -119,7 +118,7 @@ Json::Value app_check::to_json() const
 	ret["retry"] = m_retry;
 	return ret;
 }
-bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
+bool YAML::convert<app_check>::decode(const YAML::Node& node, app_check& rhs)
 {
 	/*
 	 * Example:
@@ -134,53 +133,53 @@ bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 	 */
 	rhs.m_name = node["name"].as<string>();
 	auto check_module_node = node["check_module"];
-	if(check_module_node.IsScalar())
+	if (check_module_node.IsScalar())
 	{
 		rhs.m_check_module = check_module_node.as<string>();
 	}
 	auto enabled_node = node["enabled"];
-	if(enabled_node.IsScalar())
+	if (enabled_node.IsScalar())
 	{
 		rhs.m_enabled = enabled_node.as<bool>();
 	}
 	auto log_errors_node = node["log_errors"];
-	if(log_errors_node.IsScalar())
+	if (log_errors_node.IsScalar())
 	{
 		rhs.m_log_errors = log_errors_node.as<bool>();
 	}
 	auto retry_node = node["retry"];
-	if(retry_node.IsScalar())
+	if (retry_node.IsScalar())
 	{
 		rhs.m_retry = retry_node.as<bool>();
 	}
 
 	auto pattern_node = node["pattern"];
-	if(pattern_node.IsMap())
+	if (pattern_node.IsMap())
 	{
 		auto comm_node = pattern_node["comm"];
-		if(comm_node.IsScalar())
+		if (comm_node.IsScalar())
 		{
 			rhs.m_comm_pattern = comm_node.as<string>();
 		}
 		auto exe_node = pattern_node["exe"];
-		if(exe_node.IsScalar())
+		if (exe_node.IsScalar())
 		{
 			rhs.m_exe_pattern = exe_node.as<string>();
 		}
 		auto port_node = pattern_node["port"];
-		if(port_node.IsScalar())
+		if (port_node.IsScalar())
 		{
 			rhs.m_port_pattern = port_node.as<uint16_t>();
 		}
 		auto arg_node = pattern_node["arg"];
-		if(arg_node.IsScalar())
+		if (arg_node.IsScalar())
 		{
 			rhs.m_arg_pattern = arg_node.as<string>();
 		}
 	}
 
 	auto interval_node = node["interval"];
-	if(interval_node.IsScalar())
+	if (interval_node.IsScalar())
 	{
 		rhs.m_interval = interval_node.as<int>();
 	}
@@ -193,14 +192,14 @@ bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 	return true;
 }
 
-app_process::app_process(const app_check& check, sinsp_threadinfo *tinfo):
-	m_pid(tinfo->m_pid),
-	m_vpid(tinfo->m_vpid),
-	m_ports(tinfo->m_ainfo->listening_ports()),
-	m_check(check),
-	m_solr_port(0)
+app_process::app_process(const app_check& check, sinsp_threadinfo* tinfo)
+    : m_pid(tinfo->m_pid),
+      m_vpid(tinfo->m_vpid),
+      m_ports(tinfo->m_ainfo->listening_ports()),
+      m_check(check),
+      m_solr_port(0)
 {
-	if(is_solr())
+	if (is_solr())
 	{
 		get_port_from_cmd(tinfo);
 		if (m_ports.empty())
@@ -210,12 +209,16 @@ app_process::app_process(const app_check& check, sinsp_threadinfo *tinfo):
 			for (auto arg : tinfo->m_args)
 			{
 				cmdline = cmdline + " " + arg;
-				if (++i >= 10) {
+				if (++i >= 10)
+				{
 					cmdline = cmdline + " ...";
 					break;
 				}
 			}
-			g_logger.format(sinsp_logger::SEV_DEBUG, "No listening ports found for solr process: %d: %s", tinfo->m_pid, cmdline.c_str());
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+			                "No listening ports found for solr process: %d: %s",
+			                tinfo->m_pid,
+			                cmdline.c_str());
 		}
 	}
 }
@@ -225,26 +228,28 @@ bool app_process::is_solr() const
 	return m_check.module() == "solr";
 }
 
-void app_process::get_port_from_cmd(sinsp_threadinfo *tinfo)
+void app_process::get_port_from_cmd(sinsp_threadinfo* tinfo)
 {
 	static const string& SOLR_PORT_ARG = "-Djetty.port=";
 	assert(tinfo != nullptr);
 	std::vector<std::string> args = tinfo->m_args;
 	m_solr_port = 0;
 
-	for(auto arg : args)
+	for (auto arg : args)
 	{
-		if(arg.size() > SOLR_PORT_ARG.size())
+		if (arg.size() > SOLR_PORT_ARG.size())
 		{
-			if(arg.substr(0, SOLR_PORT_ARG.size()) == SOLR_PORT_ARG)
+			if (arg.substr(0, SOLR_PORT_ARG.size()) == SOLR_PORT_ARG)
 			{
 				try
 				{
 					m_solr_port = std::stoi(arg.substr(SOLR_PORT_ARG.size()));
 				}
-				catch(const std::exception& e)
+				catch (const std::exception& e)
 				{
-					g_logger.format(sinsp_logger::SEV_DEBUG, "unable to get solr port from arg %s", arg.c_str());
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+					                "unable to get solr port from arg %s",
+					                arg.c_str());
 				}
 				break;
 			}
@@ -252,7 +257,7 @@ void app_process::get_port_from_cmd(sinsp_threadinfo *tinfo)
 	}
 }
 
-void app_process::set_conf_vals(shared_ptr<app_process_conf_vals> &conf_vals)
+void app_process::set_conf_vals(shared_ptr<app_process_conf_vals>& conf_vals)
 {
 	m_conf_vals = conf_vals;
 }
@@ -263,17 +268,17 @@ Json::Value app_process::to_json() const
 	ret["pid"] = m_pid;
 	ret["vpid"] = m_vpid;
 	ret["check"] = m_check.to_json();
-	if(is_solr() && m_solr_port > 0)
+	if (is_solr() && m_solr_port > 0)
 	{
 		ret["solr_port"] = m_solr_port;
 	}
 	ret["ports"] = Json::Value(Json::arrayValue);
-	for(auto port : m_ports)
+	for (auto port : m_ports)
 	{
 		ret["ports"].append(Json::UInt(port));
 	}
 	Json::Value conf_vals;
-	if(m_conf_vals)
+	if (m_conf_vals)
 	{
 		conf_vals = m_conf_vals->vals();
 	}
@@ -287,32 +292,39 @@ Json::Value app_process::to_json() const
 	return ret;
 }
 
-app_check_data::app_check_data(const Json::Value &obj, const metric_limits::sptr_t& ml):
-	m_pid(obj["pid"].asInt()),
-	m_expiration_ts(obj["expiration_ts"].asUInt64()),
-	m_total_metrics(0)
+app_check_data::app_check_data(const Json::Value& obj, const metric_limits::sptr_t& ml)
+    : m_pid(obj["pid"].asInt()),
+      m_expiration_ts(obj["expiration_ts"].asUInt64()),
+      m_total_metrics(0)
 {
-	if(obj.isMember("display_name"))
+	if (obj.isMember("display_name"))
 	{
 		m_process_name = obj["display_name"].asString();
 	}
-	if(obj.isMember("metrics"))
+	if (obj.isMember("metrics"))
 	{
-		for(auto& m : obj["metrics"])
+		for (auto& m : obj["metrics"])
 		{
-			if(m.isArray() && !m.empty() && m[0].isConvertibleTo(Json::stringValue))
+			if (m.isArray() && !m.empty() && m[0].isConvertibleTo(Json::stringValue))
 			{
-				if(ml)
+				if (ml)
 				{
 					std::string filter;
-					if(ml->allow(m[0].asString(), filter, nullptr, "app_check")) // allow() will log if logging is enabled
+					if (ml->allow(m[0].asString(),
+					              filter,
+					              nullptr,
+					              "app_check"))  // allow() will log if logging is enabled
 					{
 						m_metrics.emplace_back(m);
 					}
 				}
-				else // no filters, add all metrics and log explicitly
+				else  // no filters, add all metrics and log explicitly
 				{
-					metric_limits::log(m[0].asString(), "app_check", true, metric_limits::log_enabled(), " ");
+					metric_limits::log(m[0].asString(),
+					                   "app_check",
+					                   true,
+					                   metric_limits::log_enabled(),
+					                   " ");
 					m_metrics.emplace_back(m);
 				}
 				++m_total_metrics;
@@ -320,25 +332,32 @@ app_check_data::app_check_data(const Json::Value &obj, const metric_limits::sptr
 		}
 	}
 
-	if(obj.isMember("service_checks"))
+	if (obj.isMember("service_checks"))
 	{
 		const Json::Value& service_checks = obj["service_checks"];
 
-		for(const auto& s : service_checks)
+		for (const auto& s : service_checks)
 		{
-			if(s.isMember("check") && s["check"].isConvertibleTo(Json::stringValue))
+			if (s.isMember("check") && s["check"].isConvertibleTo(Json::stringValue))
 			{
-				if(ml)
+				if (ml)
 				{
 					std::string filter;
-					if(ml->allow(s["check"].asString(), filter, nullptr, "app_check")) // allow() will log if logging is enabled
+					if (ml->allow(s["check"].asString(),
+					              filter,
+					              nullptr,
+					              "app_check"))  // allow() will log if logging is enabled
 					{
 						m_service_checks.emplace_back(s);
 					}
 				}
-				else // no filters, add all metrics and log explicitly
+				else  // no filters, add all metrics and log explicitly
 				{
-					metric_limits::log(s["check"].asString(), "app_check", true, metric_limits::log_enabled(), " ");
+					metric_limits::log(s["check"].asString(),
+					                   "app_check",
+					                   true,
+					                   metric_limits::log_enabled(),
+					                   " ");
 					m_service_checks.emplace_back(s);
 				}
 				++m_total_metrics;
@@ -348,127 +367,157 @@ app_check_data::app_check_data(const Json::Value &obj, const metric_limits::sptr
 }
 
 template<typename metric>
-unsigned app_check_data::to_protobuf(metric *proto, unsigned int& limit, unsigned int max_limit) const
+unsigned app_check_data::to_protobuf(metric* proto,
+                                     unsigned int& limit,
+                                     unsigned int max_limit) const
 {
 	unsigned emitted_metrics = 0;
 
 	bool ml_log = metric_limits::log_enabled();
-	if(limit == 0 && !ml_log) { return emitted_metrics; }
+	if (limit == 0 && !ml_log)
+	{
+		return emitted_metrics;
+	}
 	// Right now process name is not used by backend
-	//proto->set_process_name(m_process_name);
-	for(const auto& m : m_metrics)
+	// proto->set_process_name(m_process_name);
+	for (const auto& m : m_metrics)
 	{
 		ASSERT(((limit == 0) && ml_log) || (limit != 0));
-		if((limit == 0) && ml_log)
+		if ((limit == 0) && ml_log)
 		{
-			g_logger.format(sinsp_logger::SEV_INFO, "[app_check] metric over limit (total, %u max): %s",
-							max_limit, m.name().c_str());
+			g_logger.format(sinsp_logger::SEV_INFO,
+			                "[app_check] metric over limit (total, %u max): %s",
+			                max_limit,
+			                m.name().c_str());
 			continue;
 		}
 		m.to_protobuf(proto->add_metrics());
 		emitted_metrics++;
-		if((--limit == 0) && !ml_log) { return emitted_metrics; }
+		if ((--limit == 0) && !ml_log)
+		{
+			return emitted_metrics;
+		}
 	}
 
 	// Right now service checks are not supported by the backend
 	// we are sending them as 1/0 metrics
-	for(const auto& s : m_service_checks)
+	for (const auto& s : m_service_checks)
 	{
 		ASSERT(((limit == 0) && ml_log) || (limit != 0));
-		if((limit == 0) && ml_log)
+		if ((limit == 0) && ml_log)
 		{
-			g_logger.format(sinsp_logger::SEV_INFO, "[app_check] metric over limit (total, %u max): %s",
-							max_limit, s.name().c_str());
+			g_logger.format(sinsp_logger::SEV_INFO,
+			                "[app_check] metric over limit (total, %u max): %s",
+			                max_limit,
+			                s.name().c_str());
 			continue;
 		}
 		s.to_protobuf_as_metric(proto->add_metrics());
 		emitted_metrics++;
-		if((--limit == 0) && !ml_log) { return emitted_metrics; }
+		if ((--limit == 0) && !ml_log)
+		{
+			return emitted_metrics;
+		}
 	}
 
 	return emitted_metrics;
 }
 
-template unsigned app_check_data::to_protobuf<draiosproto::app_info>(draiosproto::app_info *proto, unsigned int& limit, unsigned int max_limit) const;
-template unsigned app_check_data::to_protobuf<draiosproto::prometheus_info>(draiosproto::prometheus_info *proto, unsigned int& limit, unsigned int max_limit) const;
+template unsigned app_check_data::to_protobuf<draiosproto::app_info>(draiosproto::app_info* proto,
+                                                                     unsigned int& limit,
+                                                                     unsigned int max_limit) const;
+template unsigned app_check_data::to_protobuf<draiosproto::prometheus_info>(
+    draiosproto::prometheus_info* proto,
+    unsigned int& limit,
+    unsigned int max_limit) const;
 
-const std::unordered_map<string, std::pair<app_metric::type_t, app_metric::prometheus_type_t>> app_metric::metric_type_mapping = {
-		{"gauge",   {app_metric::type_t::GAUGE,          app_metric::prometheus_type_t::INVALID}},
-		{"rate",    {app_metric::type_t::RATE,           app_metric::prometheus_type_t::INVALID}},
-		{"buckets", {app_metric::type_t::BUCKETS,        app_metric::prometheus_type_t::INVALID}},
-		{"pr-c",    {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::COUNTER}},
-		{"pr-g",    {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::GAUGE}},
-		{"pr-h",    {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::HISTOGRAM}},
-		{"pr-s",    {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::SUMMARY}},
-		{"pr-u",    {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::UNKNOWN}},
+const std::unordered_map<string, std::pair<app_metric::type_t, app_metric::prometheus_type_t>>
+    app_metric::metric_type_mapping = {
+        {"gauge", {app_metric::type_t::GAUGE, app_metric::prometheus_type_t::INVALID}},
+        {"rate", {app_metric::type_t::RATE, app_metric::prometheus_type_t::INVALID}},
+        {"buckets", {app_metric::type_t::BUCKETS, app_metric::prometheus_type_t::INVALID}},
+        {"pr-c", {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::COUNTER}},
+        {"pr-g", {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::GAUGE}},
+        {"pr-h", {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::HISTOGRAM}},
+        {"pr-s", {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::SUMMARY}},
+        {"pr-u", {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::UNKNOWN}},
 };
 
-app_metric::app_metric(const Json::Value &obj):
-	m_name(obj[0].asString()),
-	m_type(type_t::GAUGE)
+app_metric::app_metric(const Json::Value& obj) : m_name(obj[0].asString()), m_type(type_t::GAUGE)
 {
 	auto metadata = obj[3];
-	if(metadata.isMember("type"))
+	if (metadata.isMember("type"))
 	{
 		auto type = metadata["type"].asString();
 		auto iter(metric_type_mapping.find(type));
-		if (iter != metric_type_mapping.end()) {
+		if (iter != metric_type_mapping.end())
+		{
 			m_type = iter->second.first;
 
-			if (m_type == type_t::PROMETHEUS_RAW) {
+			if (m_type == type_t::PROMETHEUS_RAW)
+			{
 				// obj[2] is either "NaN" or a double
 				m_prometheus_type = iter->second.second;
-				if (obj[2].isString() && !strcmp("NaN", obj[2].asCString())) {
+				if (obj[2].isString() && !strcmp("NaN", obj[2].asCString()))
+				{
 					m_value = nan("");
-				} else {
+				}
+				else
+				{
 					m_value = obj[2].asDouble();
 				}
-
-			} else if (m_type == type_t::BUCKETS) {
+			}
+			else if (m_type == type_t::BUCKETS)
+			{
 				// obj[2] is a map of <label, count>
-				const auto &buckets(obj[2]);
+				const auto& buckets(obj[2]);
 				const auto labels = buckets.getMemberNames();
-				for (const auto& l: labels)
+				for (const auto& l : labels)
 				{
 					try
 					{
 						m_buckets.emplace(l, buckets[l].asUInt64());
 					}
-					catch(const Json::LogicError& ex)
+					catch (const Json::LogicError& ex)
 					{
 						// This can happen if we try to parse
 						// a negative value
-						LOG_ERROR("Cannot convert bucket value for "
-						          "metric '%s' to UInt64: \"%s\": %s; dropping. "
-						          "Error: %s",
-						          Json::FastWriter().write(obj).c_str(),
-						          l.c_str(),
-						          Json::FastWriter().write(buckets[l]).c_str(),
-						          ex.what());
+						LOG_ERROR(
+						    "Cannot convert bucket value for "
+						    "metric '%s' to UInt64: \"%s\": %s; dropping. "
+						    "Error: %s",
+						    Json::FastWriter().write(obj).c_str(),
+						    l.c_str(),
+						    Json::FastWriter().write(buckets[l]).c_str(),
+						    ex.what());
 					}
 				}
-
-			} else {
+			}
+			else
+			{
 				// obj[2] is just a double
 				m_value = obj[2].asDouble();
 			}
-
-		} else {
-			g_logger.format(sinsp_logger::SEV_ERROR, "[app_check] unknown metric type: %s",
+		}
+		else
+		{
+			g_logger.format(sinsp_logger::SEV_ERROR,
+			                "[app_check] unknown metric type: %s",
 			                type.c_str());
 			m_value = obj[2].asDouble();
 		}
 	}
 
-	if(metadata.isMember("tags"))
+	if (metadata.isMember("tags"))
 	{
-		for(const auto& tag_obj : metadata["tags"])
+		for (const auto& tag_obj : metadata["tags"])
 		{
 			auto tag_as_str = tag_obj.asString();
 			auto colon = tag_as_str.find(':');
-			if(colon != string::npos)
+			if (colon != string::npos)
 			{
-				m_tags[tag_as_str.substr(0, colon)] = tag_as_str.substr(colon+1, tag_as_str.size()-colon);
+				m_tags[tag_as_str.substr(0, colon)] =
+				    tag_as_str.substr(colon + 1, tag_as_str.size() - colon);
 			}
 			else
 			{
@@ -479,35 +528,42 @@ app_metric::app_metric(const Json::Value &obj):
 }
 
 template<typename message>
-void app_metric::to_protobuf(message *proto) const
+void app_metric::to_protobuf(message* proto) const
 {
 	proto->set_name(m_name);
 	proto->set_type(static_cast<draiosproto::app_metric_type>(m_type));
-	if (m_type != type_t::BUCKETS) {
+	if (m_type != type_t::BUCKETS)
+	{
 		proto->set_value(m_value);
-	} else {
-		for (auto &b: m_buckets) {
+	}
+	else
+	{
+		for (auto& b : m_buckets)
+		{
 			auto bucket = proto->add_buckets();
 			bucket->set_label(b.first);
 			bucket->set_count(b.second);
 		}
 	}
-	if (m_type == type_t::PROMETHEUS_RAW) {
+	if (m_type == type_t::PROMETHEUS_RAW)
+	{
 		proto->set_prometheus_type(static_cast<draiosproto::prometheus_type>(m_prometheus_type));
 	}
-	for(const auto& tag : m_tags)
+	for (const auto& tag : m_tags)
 	{
 		auto tag_proto = proto->add_tags();
 		tag_proto->set_key(tag.first);
-		if(!tag.second.empty())
+		if (!tag.second.empty())
 		{
 			tag_proto->set_value(tag.second);
 		}
 	}
 }
 
-template void app_metric::to_protobuf<draiosproto::app_metric>(draiosproto::app_metric *proto) const;
-template void app_metric::to_protobuf<draiosproto::prom_metric>(draiosproto::prom_metric *proto) const;
+template void app_metric::to_protobuf<draiosproto::app_metric>(
+    draiosproto::app_metric* proto) const;
+template void app_metric::to_protobuf<draiosproto::prom_metric>(
+    draiosproto::prom_metric* proto) const;
 
 /*
  * example:
@@ -515,19 +571,20 @@ template void app_metric::to_protobuf<draiosproto::prom_metric>(draiosproto::pro
  *   "timestamp": 1435684284.087451, "check": "redis.can_connect",
  *   "host_name": "vagrant-ubuntu-vivid-64", "message": null, "id": 44}
  */
-app_service_check::app_service_check(const Json::Value &obj):
-	m_status(static_cast<status_t>(obj["status"].asUInt())),
-	m_name(obj["check"].asString())
+app_service_check::app_service_check(const Json::Value& obj)
+    : m_status(static_cast<status_t>(obj["status"].asUInt())),
+      m_name(obj["check"].asString())
 {
-	if(obj.isMember("tags"))
+	if (obj.isMember("tags"))
 	{
-		for(const auto& tag_obj : obj["tags"])
+		for (const auto& tag_obj : obj["tags"])
 		{
 			auto tag_as_str = tag_obj.asString();
 			auto colon = tag_as_str.find(':');
-			if(colon != string::npos)
+			if (colon != string::npos)
 			{
-				m_tags[tag_as_str.substr(0, colon)] = tag_as_str.substr(colon+1, tag_as_str.size()-colon);
+				m_tags[tag_as_str.substr(0, colon)] =
+				    tag_as_str.substr(colon + 1, tag_as_str.size() - colon);
 			}
 			else
 			{
@@ -535,32 +592,32 @@ app_service_check::app_service_check(const Json::Value &obj):
 			}
 		}
 	}
-	if(obj.isMember("message") && obj["message"].isString())
+	if (obj.isMember("message") && obj["message"].isString())
 	{
 		m_message = obj["message"].asString();
 	}
 }
 
-void app_service_check::to_protobuf(draiosproto::app_check *proto) const
+void app_service_check::to_protobuf(draiosproto::app_check* proto) const
 {
 	proto->set_name(m_name);
 	proto->set_value(static_cast<draiosproto::app_check_value>(m_status));
-	for(const auto& tag : m_tags)
+	for (const auto& tag : m_tags)
 	{
 		auto tag_proto = proto->add_tags();
 		tag_proto->set_key(tag.first);
-		if(!tag.second.empty())
+		if (!tag.second.empty())
 		{
 			tag_proto->set_value(tag.second);
 		}
 	}
 }
 
-template <typename message>
-void app_service_check::to_protobuf_as_metric(message *proto) const
+template<typename message>
+void app_service_check::to_protobuf_as_metric(message* proto) const
 {
 	proto->set_name(m_name);
-	if(m_status == status_t::OK)
+	if (m_status == status_t::OK)
 	{
 		proto->set_value(1.0);
 	}
@@ -568,16 +625,18 @@ void app_service_check::to_protobuf_as_metric(message *proto) const
 	{
 		proto->set_value(0.0);
 	}
-	for(const auto& tag : m_tags)
+	for (const auto& tag : m_tags)
 	{
 		auto tag_proto = proto->add_tags();
 		tag_proto->set_key(tag.first);
-		if(!tag.second.empty())
+		if (!tag.second.empty())
 		{
 			tag_proto->set_value(tag.second);
 		}
 	}
 }
 
-template void app_service_check::to_protobuf_as_metric<draiosproto::app_metric>(draiosproto::app_metric *proto) const ;
-template void app_service_check::to_protobuf_as_metric<draiosproto::prom_metric>(draiosproto::prom_metric *proto) const ;
+template void app_service_check::to_protobuf_as_metric<draiosproto::app_metric>(
+    draiosproto::app_metric* proto) const;
+template void app_service_check::to_protobuf_as_metric<draiosproto::prom_metric>(
+    draiosproto::prom_metric* proto) const;

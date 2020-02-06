@@ -7,7 +7,8 @@
  * This may progress to a class which holds transient data during flush to align
  * with other *_emitter class philosophies.
  */
-namespace analyzer_emitter {
+namespace analyzer_emitter
+{
 /**
  * When subsampling, the kernel module sends a PPME_DROP_{E_X} event when we start dropping.
  * When this happens, we flush with the FORCE_FLUSH flush before the end of the interval.
@@ -28,9 +29,8 @@ enum flush_flags
 	DF_EOF,
 };
 
-using progtable_t = std::unordered_set<sinsp_threadinfo*,
-				       sinsp_threadinfo::hasher,
-				       sinsp_threadinfo::comparer>;
+using progtable_t =
+    std::unordered_set<sinsp_threadinfo*, sinsp_threadinfo::hasher, sinsp_threadinfo::comparer>;
 
 using progtable_by_container_t = std::unordered_map<std::string, std::vector<sinsp_threadinfo*>>;
-}
+}  // namespace analyzer_emitter

@@ -243,7 +243,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
       m_very_high_cpu_switcher("agent cpu usage with sr=128"),
       m_internal_metrics(internal_metrics),
       m_statsd_emitter(new null_statsd_emitter()),
-	  m_app_checks_proxy(std::move(the_app_checks_proxy)),
+      m_app_checks_proxy(std::move(the_app_checks_proxy)),
       m_metric_limits(the_metric_limits),
       m_label_limits(the_label_limits),
       m_audit_tap_handler(tap_handler),
@@ -308,7 +308,9 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	//
 	// Listeners
 	//
+#ifndef USE_AGENT_THREAD
 	m_thread_memory_id = inspector->reserve_thread_memory(sizeof(thread_analyzer_info));
+#endif
 
 	m_threadtable_listener = new analyzer_threadtable_listener(inspector, *this);
 	inspector->m_thread_manager->set_listener((sinsp_threadtable_listener*)m_threadtable_listener);
@@ -1007,16 +1009,16 @@ void sinsp_analyzer::set_secure_audit_internal_metrics(const int n_sent_protobuf
 }
 
 void sinsp_analyzer::set_secure_audit_sent_counters(int n_executed_commands,
-						    int n_connections,
-						    int n_k8s,
-						    int n_file_accesses,
-						    int n_executed_commands_dropped,
-						    int n_connections_dropped,
-						    int n_k8s_dropped,
-						    int n_file_accesses_dropped,
-						    int n_connections_not_interactive_dropped,
-						    int n_file_accesses_not_interactive_dropped,
-						    int n_k8s_enrich_errors)
+                                                    int n_connections,
+                                                    int n_k8s,
+                                                    int n_file_accesses,
+                                                    int n_executed_commands_dropped,
+                                                    int n_connections_dropped,
+                                                    int n_k8s_dropped,
+                                                    int n_file_accesses_dropped,
+                                                    int n_connections_not_interactive_dropped,
+                                                    int n_file_accesses_not_interactive_dropped,
+                                                    int n_k8s_enrich_errors)
 {
 	m_internal_metrics->set_secure_audit_executed_commands_count(n_executed_commands);
 	m_internal_metrics->set_secure_audit_connections_count(n_connections);
@@ -1043,7 +1045,7 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 {
 	uint32_t j;
 
-	vector<sinsp_threadinfo*> prog_sortable_list;
+	vector<THREAD_TYPE*> prog_sortable_list;
 
 	for (auto ptit = progtable_begin; ptit != progtable_end; (++ptit))
 	{
@@ -1070,7 +1072,7 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 	{
 		for (j = 0; j < prog_sortable_list.size(); j++)
 		{
-			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
 		}
 
 		return;
@@ -1086,9 +1088,9 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 
 	for (j = 0; j < howmany; j++)
 	{
-		if (prog_sortable_list[j]->m_ainfo->m_cpuload > 0)
+		if (GET_AGENT_THREAD(prog_sortable_list[j])->m_cpuload > 0)
 		{
-			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
 		}
 		else
 		{
@@ -1108,7 +1110,7 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 	{
 		if (prog_sortable_list[j]->m_vmsize_kb > 0)
 		{
-			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
 		}
 		else
 		{
@@ -1126,12 +1128,12 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 
 	for (j = 0; j < howmany; j++)
 	{
-		ASSERT(prog_sortable_list[j]->m_ainfo->m_procinfo != NULL);
+		ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != NULL);
 
-		if (prog_sortable_list[j]->m_ainfo->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() >
-		    0)
+		if (GET_AGENT_THREAD(prog_sortable_list[j])
+		        ->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() > 0)
 		{
-			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
 		}
 		else
 		{
@@ -1152,12 +1154,12 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 
 		for (j = 0; j < howmany; j++)
 		{
-			ASSERT(prog_sortable_list[j]->m_ainfo->m_procinfo != NULL);
+			ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != NULL);
 
-			if (prog_sortable_list[j]
-			        ->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
+			if (GET_AGENT_THREAD(prog_sortable_list[j])
+			        ->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
 			{
-				prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+				GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
 			}
 			else
 			{
@@ -1165,27 +1167,6 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 			}
 		}
 	}
-
-	//
-	// Mark the top transaction generators
-	//
-	// partial_sort(prog_sortable_list.begin(),
-	//	prog_sortable_list.begin() + howmany,
-	//	prog_sortable_list.end(),
-	//	threadinfo_cmp_transactions);
-
-	// for(j = 0; j < howmany; j++)
-	//{
-	//	if(prog_sortable_list[j]->m_ainfo->m_procinfo->m_proc_transaction_metrics.m_counter.get_tot_count()
-	//> 0)
-	//	{
-	//		prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
-	//	}
-	//	else
-	//	{
-	//		break;
-	//	}
-	//}
 }
 
 //
@@ -1200,13 +1181,13 @@ void sinsp_analyzer::filter_top_programs_simpledriver_deprecated(Iterator progta
 {
 	uint32_t j;
 
-	vector<sinsp_threadinfo*> prog_sortable_list;
+	vector<THREAD_TYPE*> prog_sortable_list;
 
 	for (auto ptit = progtable_begin; ptit != progtable_end; (++ptit))
 	{
 		if (cs_only)
 		{
-			uint64_t netops = (*ptit)->m_ainfo->m_procinfo->m_proc_metrics.m_net.m_count;
+			uint64_t netops = GET_AGENT_THREAD((*ptit))->m_procinfo->m_proc_metrics.m_net.m_count;
 
 			if (netops != 0)
 			{
@@ -1223,7 +1204,7 @@ void sinsp_analyzer::filter_top_programs_simpledriver_deprecated(Iterator progta
 	{
 		for (j = 0; j < prog_sortable_list.size(); j++)
 		{
-			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
 		}
 
 		return;
@@ -1239,9 +1220,9 @@ void sinsp_analyzer::filter_top_programs_simpledriver_deprecated(Iterator progta
 
 	for (j = 0; j < howmany; j++)
 	{
-		if (prog_sortable_list[j]->m_ainfo->m_cpuload > 0)
+		if (GET_AGENT_THREAD(prog_sortable_list[j])->m_cpuload > 0)
 		{
-			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
 		}
 		else
 		{
@@ -1261,7 +1242,7 @@ void sinsp_analyzer::filter_top_programs_simpledriver_deprecated(Iterator progta
 	{
 		if (prog_sortable_list[j]->m_vmsize_kb > 0)
 		{
-			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
 		}
 		else
 		{
@@ -1279,11 +1260,12 @@ void sinsp_analyzer::filter_top_programs_simpledriver_deprecated(Iterator progta
 
 	for (j = 0; j < howmany; j++)
 	{
-		ASSERT(prog_sortable_list[j]->m_ainfo->m_procinfo != NULL);
+		ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != NULL);
 
-		if (prog_sortable_list[j]->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
+		if (GET_AGENT_THREAD(prog_sortable_list[j])
+		        ->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
 		{
-			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
 		}
 		else
 		{
@@ -1626,7 +1608,7 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 	return nullptr;
 }
 
-uint32_t sinsp_analyzer::get_mesos_api_server_port(sinsp_threadinfo* main_tinfo)
+uint32_t sinsp_analyzer::get_mesos_api_server_port(THREAD_TYPE* main_tinfo)
 {
 	if (main_tinfo)
 	{
@@ -1689,14 +1671,22 @@ std::string& sinsp_analyzer::detect_mesos(std::string& mesos_api_server, uint32_
 	return mesos_api_server;
 }
 
-sinsp_threadinfo* sinsp_analyzer::get_main_thread_info(int64_t& tid)
+THREAD_TYPE* sinsp_analyzer::get_main_thread_info(int64_t& tid)
 {
 	if (tid != -1)
 	{
-		sinsp_threadinfo* tinfo = m_inspector->m_thread_manager->m_threadtable.get(tid);
-		if (tinfo != nullptr)
+		sinsp_threadinfo* sinsp_thread = m_inspector->m_thread_manager->m_threadtable.get(tid);
+		if (sinsp_thread != nullptr)
 		{
-			return tinfo->get_main_thread();
+			sinsp_threadinfo* main_thread = sinsp_thread->get_main_thread();
+#ifdef USE_AGENT_THREAD
+			thread_analyzer_info* analyzer_main_thread =
+			    dynamic_cast<thread_analyzer_info*>(main_thread);
+			ASSERT(analyzer_main_thread == main_thread);
+			return analyzer_main_thread;
+#else
+			return main_thread;
+#endif
 		}
 		else
 		{
@@ -1706,7 +1696,7 @@ sinsp_threadinfo* sinsp_analyzer::get_main_thread_info(int64_t& tid)
 	return nullptr;
 }
 
-std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
+std::string sinsp_analyzer::detect_mesos(THREAD_TYPE* main_tinfo)
 {
 	string mesos_api_server = m_configuration->get_mesos_state_uri();
 	if (!m_mesos)
@@ -1967,12 +1957,13 @@ void sinsp_analyzer::emit_processes_deprecated(
 			{
 				for (auto prog : progtable)
 				{
-					if(
-						prog->m_ainfo->m_procinfo->m_exclude_from_sample &&
-						m_app_checks_proxy->have_metrics_for_pid(prog->m_pid))
+					if (GET_AGENT_THREAD(prog)->get_exclude_from_sample() &&
+					    m_app_checks_proxy->have_metrics_for_pid(prog->m_pid))
 					{
-						g_logger.format(sinsp_logger::SEV_DEBUG, "Added pid %d with appcheck metrics to top processes", prog->m_pid);
-						prog->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+						g_logger.format(sinsp_logger::SEV_DEBUG,
+						                "Added pid %d with appcheck metrics to top processes",
+						                prog->m_pid);
+						GET_AGENT_THREAD(prog)->set_exclude_from_sample(false);
 					}
 				}
 			}
@@ -1986,13 +1977,13 @@ void sinsp_analyzer::emit_processes_deprecated(
 	tracer_emitter at_trc("aggregate_threads", proc_trc);
 	for (auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
-		sinsp_threadinfo* tinfo = *it;
+		THREAD_TYPE* tinfo = *it;
 
 		//
 		// If this is the main thread of a process, add an entry into the processes
 		// section too
 		//
-		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
+		sinsp_procinfo* procinfo = GET_AGENT_THREAD(tinfo)->m_procinfo;
 
 		sinsp_counter_time tot;
 
@@ -2007,7 +1998,7 @@ void sinsp_analyzer::emit_processes_deprecated(
 		//  - top 30 clients/servers
 		//  - top 30 programs that were active
 
-		if (!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample || !progtable_needs_filtering)
+		if (!GET_AGENT_THREAD(tinfo)->get_exclude_from_sample() || !progtable_needs_filtering)
 		{
 			draiosproto::program* prog = m_metrics->add_programs();
 
@@ -2025,7 +2016,7 @@ void sinsp_analyzer::emit_processes_deprecated(
 		//
 		// Clear the thread metrics, so we're ready for the next sample
 		//
-		tinfo->m_ainfo->clear_all_metrics();
+		GET_AGENT_THREAD(tinfo)->clear_all_metrics();
 	}
 	at_trc.stop();
 }
@@ -2047,7 +2038,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	                                        sinsp_threadinfo::comparer());
 	analyzer_emitter::progtable_by_container_t progtable_by_container;
 #ifndef _WIN32
-	vector<sinsp_threadinfo*> java_process_requests;
+	vector<THREAD_TYPE*> java_process_requests;
 	vector<app_process> app_checks_processes;
 	bool can_disable_nodriver = true;
 #ifndef CYGWING_AGENT
@@ -2071,9 +2062,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				m_jmx_metrics = move(jmx_metrics);
 			}
 		}
-		if(m_app_checks_proxy)
+		if (m_app_checks_proxy)
 		{
-			auto flush_time_s = m_prev_flush_time_ns/ONE_SECOND_IN_NS;
+			auto flush_time_s = m_prev_flush_time_ns / ONE_SECOND_IN_NS;
 			m_app_checks_proxy->refresh_metrics(flush_time_s, 0);
 		}
 	}
@@ -2129,10 +2120,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	// and aggregate them into processes
 	///////////////////////////////////////////////////////////////////////////
 	tracer_emitter am_trc("aggregate_metrics", proc_trc);
-	m_inspector->m_thread_manager->m_threadtable.loop([&](sinsp_threadinfo& tinfo) {
-		thread_analyzer_info* ainfo = tinfo.m_ainfo;
-		sinsp_threadinfo* main_tinfo = tinfo.get_main_thread();
-		thread_analyzer_info* main_ainfo = main_tinfo->m_ainfo;
+	m_inspector->m_thread_manager->m_threadtable.loop([&](sinsp_threadinfo& sinsp_tinfo) {
+#ifdef USE_AGENT_THREAD
+		thread_analyzer_info& tinfo = dynamic_cast<thread_analyzer_info&>(sinsp_tinfo);
+		ASSERT(tinfo == sinsp_tinfo);
+		THREAD_TYPE* main_tinfo = tinfo.get_main_thread_info();
+#else
+		sinsp_threadinfo& tinfo = sinsp_tinfo;
+		THREAD_TYPE* main_tinfo = tinfo.get_main_thread();
+#endif
 		analyzer_container_state* container = NULL;
 
 		// xxx/nags : why not do this once for the main_thread?
@@ -2179,7 +2175,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		// proc is reread anyway
 		if (m_inspector->is_live() && (tinfo.m_flags & PPM_CL_CLOSED) == 0 &&
 		    m_prev_flush_time_ns - main_tinfo->m_clone_ts > ONE_SECOND_IN_NS &&
-		    m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns >
+		    m_prev_flush_time_ns - GET_AGENT_THREAD(main_tinfo)->m_last_cmdline_sync_ns >
 		        CMDLINE_UPDATE_INTERVAL_S * ONE_SECOND_IN_NS)
 		{
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
@@ -2197,7 +2193,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				                          proc_args.end());
 			}
 			main_tinfo->compute_program_hash();
-			main_ainfo->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
+			GET_AGENT_THREAD(main_tinfo)->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
 		}
 
 #ifndef CYGWING_AGENT
@@ -2256,12 +2252,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				cat = &tcat;
 			}
 
-			add_syscall_time(&ainfo->m_metrics, cat, delta, 0, false);
+			add_syscall_time(&GET_AGENT_THREAD(&tinfo)->m_metrics, cat, delta, 0, false);
 
 			//
 			// Flag the thread so we know that part of this event has already been attributed
 			//
-			ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_PARTIAL_METRIC;
+			GET_AGENT_THREAD(&tinfo)->m_th_analysis_flags |=
+			    thread_analyzer_info::AF_PARTIAL_METRIC;
 		}
 
 		//
@@ -2269,7 +2266,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		//
 #ifdef _DEBUG
 		sinsp_counter_time ttot;
-		ainfo->m_metrics.get_total(&ttot);
+		GET_AGENT_THREAD(&tinfo)->m_metrics.get_total(&ttot);
 #endif
 
 		//
@@ -2289,12 +2286,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			is_subsampling = true;
 		}
 
-		ainfo->flush_inactive_transactions(m_prev_flush_time_ns, trtimeout, is_subsampling);
+		GET_AGENT_THREAD(&tinfo)->flush_inactive_transactions(m_prev_flush_time_ns,
+		                                                      trtimeout,
+		                                                      is_subsampling);
 
 		//
 		// If this is a process, compute CPU load and memory usage
 		//
-		ainfo->m_cpuload = 0;
+		GET_AGENT_THREAD(&tinfo)->m_cpuload = 0;
 
 		if (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
@@ -2311,27 +2310,33 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 						{
 							if (m_procfs_scan_thread)
 							{
-								ainfo->m_cpuload =
+								GET_AGENT_THREAD(&tinfo)->m_cpuload =
 								    m_procfs_parser->get_process_cpu_load(tinfo.m_pid);
 							}
 							else
 							{
-								ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load_sync(
-								    tinfo.m_pid,
-								    &ainfo->m_old_proc_jiffies);
+								GET_AGENT_THREAD(&tinfo)->m_cpuload =
+								    m_procfs_parser->get_process_cpu_load_sync(
+								        tinfo.m_pid,
+								        &GET_AGENT_THREAD(&tinfo)->m_old_proc_jiffies);
 							}
 						}
 
 						if (m_inspector->is_nodriver())
 						{
 #ifndef CYGWING_AGENT
-							auto file_io_stats =
-							    m_procfs_parser->read_proc_file_stats(tinfo.m_pid,
-							                                          &ainfo->m_file_io_stats);
-							ainfo->m_metrics.m_io_file.m_bytes_in = file_io_stats.m_read_bytes;
-							ainfo->m_metrics.m_io_file.m_bytes_out = file_io_stats.m_write_bytes;
-							ainfo->m_metrics.m_io_file.m_count_in = file_io_stats.m_syscr;
-							ainfo->m_metrics.m_io_file.m_count_out = file_io_stats.m_syscw;
+							auto file_io_stats = m_procfs_parser->read_proc_file_stats(
+							    tinfo.m_pid,
+							    &GET_AGENT_THREAD(&tinfo)->m_file_io_stats);
+
+							GET_AGENT_THREAD(&tinfo)->m_metrics.m_io_file.m_bytes_in =
+							    file_io_stats.m_read_bytes;
+							GET_AGENT_THREAD(&tinfo)->m_metrics.m_io_file.m_bytes_out =
+							    file_io_stats.m_write_bytes;
+							GET_AGENT_THREAD(&tinfo)->m_metrics.m_io_file.m_count_in =
+							    file_io_stats.m_syscr;
+							GET_AGENT_THREAD(&tinfo)->m_metrics.m_io_file.m_count_out =
+							    file_io_stats.m_syscw;
 
 							if (m_mode_switch_state == sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER)
 							{
@@ -2375,22 +2380,22 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			{
 				progtable_by_container[mtinfo->m_container_id].emplace_back(mtinfo);
 			}
-			ainfo->set_main_program_thread(true);
+			GET_AGENT_THREAD(&tinfo)->set_main_program_thread(true);
 		}
 		else
 		{
-			ainfo->set_main_program_thread(false);
+			GET_AGENT_THREAD(&tinfo)->set_main_program_thread(false);
 		}
 
 		ASSERT(mtinfo != NULL);
 
-		ainfo->m_main_thread_pid = mtinfo->m_pid;
+		GET_AGENT_THREAD(&tinfo)->m_main_thread_pid = mtinfo->m_pid;
 
-		mtinfo->m_ainfo->add_all_metrics(ainfo);
+		GET_AGENT_THREAD(mtinfo)->add_all_metrics(GET_AGENT_THREAD(&tinfo));
 
 		if (!emplaced.second)
 		{
-			ainfo->clear_all_metrics();
+			GET_AGENT_THREAD(&tinfo)->clear_all_metrics();
 		}
 #ifndef _WIN32
 		if (tinfo.is_main_thread() && !(tinfo.m_flags & PPM_CL_CLOSED) &&
@@ -2400,14 +2405,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		{
 			const auto& procs = m_configuration->get_procfs_scan_procs();
 			bool procfs_scan = procs.find(tinfo.m_comm) != procs.end();
-			tinfo.m_ainfo->scan_listening_ports(procfs_scan,
-			                                    m_configuration->get_procfs_scan_interval());
+			GET_AGENT_THREAD(&tinfo)->scan_listening_ports(
+			    procfs_scan,
+			    m_configuration->get_procfs_scan_interval());
 
 			if (m_jmx_proxy && tinfo.get_comm() == "java")
 			{
-				if (!tinfo.m_ainfo->m_root_refreshed)
+				if (!GET_AGENT_THREAD(&tinfo)->m_root_refreshed)
 				{
-					tinfo.m_ainfo->m_root_refreshed = true;
+					GET_AGENT_THREAD(&tinfo)->m_root_refreshed = true;
 					tinfo.m_root = m_procfs_parser->read_proc_root(tinfo.m_pid);
 				}
 				java_process_requests.emplace_back(&tinfo);
@@ -2420,9 +2426,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			// aggregation may choose the young one. So now we are trying to match a check for every
 			// process in the program grouping and when we find a matching check, we mark it on the
 			// main_thread of the group as we don't need more checks instances for each process.
-			if(m_app_checks_proxy)
+			if (m_app_checks_proxy)
 			{
-				const auto& custom_checks = mtinfo->m_ainfo->get_proc_config().app_checks();
+				const auto& custom_checks =
+				    GET_AGENT_THREAD(mtinfo)->get_proc_config().app_checks();
 				vector<app_process> app_checks;
 
 				match_checks_list(&tinfo, mtinfo, custom_checks, app_checks, "env");
@@ -2437,7 +2444,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				// Prometheus checks are done through the app proxy as well.
 				// Looking for prometheus matches after app_checks because
 				// a rule may be specified for finding an app_checks match
-				if(!m_app_checks_proxy->have_prometheus_metrics_for_pid(tinfo.m_pid, flush_time))
+				if (!m_app_checks_proxy->have_prometheus_metrics_for_pid(tinfo.m_pid, flush_time))
 				{
 					match_prom_checks(&tinfo, mtinfo, prom_procs, false);
 				}
@@ -2445,7 +2452,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 
 				for (auto& appcheck : app_checks)
 				{
-					if(m_app_checks_proxy->have_app_check_metrics_for_pid(tinfo.m_pid, flush_time, appcheck.name()))
+					if (m_app_checks_proxy->have_app_check_metrics_for_pid(tinfo.m_pid,
+					                                                       flush_time,
+					                                                       appcheck.name()))
 					{
 						// Found metrics for this pid and name that won't
 						// expire this cycle so we use them instead of
@@ -2493,7 +2502,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	tracer_emitter pt_trc("walk_progtable", proc_trc);
 	for (auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
-		sinsp_threadinfo* tinfo = *it;
+		THREAD_TYPE* tinfo = *it;
 		analyzer_container_state* container = NULL;
 		if (!tinfo->m_container_id.empty())
 		{
@@ -2505,7 +2514,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			}
 		}
 
-		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
+		sinsp_procinfo* procinfo = GET_AGENT_THREAD(tinfo)->m_procinfo;
 
 		//
 		// ... Add to the host ones
@@ -2597,7 +2606,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				sinsp_score_info scores = m_score_calculator->get_process_capacity_score(
 				    tinfo,
 				    prog_delays,
-				    (uint32_t)tinfo->m_ainfo->m_procinfo->m_n_transaction_threads,
+				    (uint32_t)GET_AGENT_THREAD(tinfo)->m_procinfo->m_n_transaction_threads,
 				    m_prev_flush_time_ns,
 				    sample_duration);
 
@@ -2642,17 +2651,18 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 
 				if (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 				{
-					g_logger.format(sinsp_logger::SEV_DEBUG,
-					                " %s (%" PRIu64 ")%" PRIu64
-					                " h:%.2f(s:%.2f) cpu:%.2f %%f:%" PRIu32 " %%c:%" PRIu32,
-					                tinfo->m_comm.c_str(),
-					                tinfo->m_tid,
-					                (uint64_t)tinfo->m_ainfo->m_procinfo->m_program_pids.size(),
-					                procinfo->m_capacity_score,
-					                procinfo->m_stolen_capacity_score,
-					                (float)procinfo->m_cpuload,
-					                procinfo->m_fd_usage_pct,
-					                procinfo->m_connection_queue_usage_pct);
+					g_logger.format(
+					    sinsp_logger::SEV_DEBUG,
+					    " %s (%" PRIu64 ")%" PRIu64 " h:%.2f(s:%.2f) cpu:%.2f %%f:%" PRIu32
+					    " %%c:%" PRIu32,
+					    tinfo->m_comm.c_str(),
+					    tinfo->m_tid,
+					    (uint64_t)GET_AGENT_THREAD(tinfo)->m_procinfo->m_program_pids.size(),
+					    procinfo->m_capacity_score,
+					    procinfo->m_stolen_capacity_score,
+					    (float)procinfo->m_cpuload,
+					    procinfo->m_fd_usage_pct,
+					    procinfo->m_connection_queue_usage_pct);
 
 					g_logger.format(
 					    sinsp_logger::SEV_DEBUG,
@@ -2784,14 +2794,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	tracer_emitter mountedfs_trc("mountedfs", proc_trc);
 	if (!m_inspector->is_capture() && m_mounted_fs_proxy)
 	{
-		vector<sinsp_threadinfo*> containers_for_mounted_fs;
+		vector<THREAD_TYPE*> containers_for_mounted_fs;
 		for (const auto& it : progtable_by_container)
 		{
 			const auto container_info = m_inspector->m_container_manager.get_container(it.first);
 			if (container_info && !container_info->is_pod_sandbox())
 			{
 				auto long_running_proc =
-				    find_if(it.second.begin(), it.second.end(), [this](sinsp_threadinfo* tinfo) {
+				    find_if(it.second.begin(), it.second.end(), [this](THREAD_TYPE* tinfo) {
 					    return !(tinfo->m_flags & PPM_CL_CLOSED) &&
 					           (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >=
 					               ASSUME_LONG_LIVING_PROCESS_UPTIME_S * ONE_SECOND_IN_NS;
@@ -2799,9 +2809,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 
 				if (long_running_proc != it.second.end())
 				{
-					if (!(*long_running_proc)->m_ainfo->m_root_refreshed)
+					if (!GET_AGENT_THREAD(*long_running_proc)->m_root_refreshed)
 					{
-						(*long_running_proc)->m_ainfo->m_root_refreshed = true;
+						GET_AGENT_THREAD(*long_running_proc)->m_root_refreshed = true;
 						(*long_running_proc)->m_root =
 						    m_procfs_parser->read_proc_root((*long_running_proc)->m_pid);
 					}
@@ -2830,15 +2840,16 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	                                 metric_forwarding_configuration::c_jmx_max->get_value(),
 	                                 m_jmx_metrics_by_containers);
 	std::unique_ptr<app_check_emitter> app_check_emitter_instance = nullptr;
-	if (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT && m_app_checks_proxy != nullptr)
+	if (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT &&
+	    m_app_checks_proxy != nullptr)
 	{
 		app_check_emitter_instance = make_unique<app_check_emitter>(
-			m_app_checks_proxy->get_all_metrics(),
-			metric_forwarding_configuration::c_app_checks_max->get_value(),
-			m_prom_conf,
-			m_app_checks_by_containers,
-			m_prometheus_by_containers,
-			m_prev_flush_time_ns);
+		    m_app_checks_proxy->get_all_metrics(),
+		    metric_forwarding_configuration::c_app_checks_max->get_value(),
+		    m_prom_conf,
+		    m_app_checks_by_containers,
+		    m_prometheus_by_containers,
+		    m_prev_flush_time_ns);
 	}
 
 	environment_emitter environment_emitter_instance(m_prev_flush_time_ns,
@@ -2864,7 +2875,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	                                         app_check_emitter_instance.get());
 	if (process_manager::c_process_flush_filter_enabled.get_value())
 	{
-		std::set<sinsp_threadinfo*> emitted_processes;
+		std::set<THREAD_TYPE*> emitted_processes;
 		process_emitter_instance.emit_processes(flushflags,
 		                                        progtable,
 		                                        progtable_by_container,
@@ -2919,7 +2930,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		    std::get<1>(m_prometheus_by_containers[container_id]));
 	}
 
-	if(app_check_emitter_instance)
+	if (app_check_emitter_instance)
 	{
 		app_check_emitter_instance->log_result();
 	}
@@ -2935,7 +2946,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		}
 		send_jmx_trc.stop();
 #ifndef CYGWING_AGENT
-		if(m_app_checks_proxy)
+		if (m_app_checks_proxy)
 		{
 			tracer_emitter app_check_trc("app_checks", proc_trc);
 			if (!prom_procs.empty())
@@ -2949,8 +2960,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			}
 			// Get our own thread info to match for prometheus host_filter
 			// (for scraping remote endpoints)
-			sinsp_threadinfo* our_tinfo =
-			    m_inspector->m_thread_manager->m_threadtable.get(getpid());
+			THREAD_TYPE* our_tinfo = get_thread_by_pid(getpid());
 			if (!our_tinfo)
 			{
 				g_logger.format(sinsp_logger::SEV_WARNING,
@@ -2968,18 +2978,27 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				// XXX: This will have to be revisited if we're going to allow
 				// different intervals for different endpoints or if we want to start
 				// interleaving multiple endpoints.
-				if(!m_app_checks_proxy->have_prometheus_metrics_for_pid(
-					our_tinfo->m_pid,
-					m_prev_flush_time_ns/ONE_SECOND_IN_NS))
+				if (!m_app_checks_proxy->have_prometheus_metrics_for_pid(
+				        our_tinfo->m_pid,
+				        m_prev_flush_time_ns / ONE_SECOND_IN_NS))
 				{
-					match_prom_checks(our_tinfo, our_tinfo->get_main_thread(), prom_procs, true);
+					match_prom_checks(our_tinfo,
+#ifdef USE_AGENT_THREAD
+					                  our_tinfo->get_main_thread_info(),
+#else
+					                  our_tinfo->get_main_thread(),
+#endif
+					                  prom_procs,
+					                  true);
 				}
 			}
 
 			if (!app_checks_processes.empty() || !prom_procs.empty())
 			{
 				tracer_emitter prom_filter_procs_trc("send_get_metrics_cmd", app_check_trc);
-				m_app_checks_proxy->send_get_metrics_cmd(app_checks_processes, prom_procs, &m_prom_conf);
+				m_app_checks_proxy->send_get_metrics_cmd(app_checks_processes,
+				                                         prom_procs,
+				                                         &m_prom_conf);
 			}
 		}
 #endif
@@ -2989,7 +3008,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 
 void sinsp_analyzer::flush_processes()
 {
-	for (vector<sinsp_threadinfo*>::const_iterator it = m_threads_to_remove.begin();
+	for (vector<THREAD_TYPE*>::const_iterator it = m_threads_to_remove.begin();
 	     it != m_threads_to_remove.end();
 	     ++it)
 	{
@@ -3115,7 +3134,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 
 		if (cit->second.m_spid != 0)
 		{
-			auto tinfo = m_inspector->get_thread(cit->second.m_spid, false, true);
+			auto tinfo = get_thread_by_pid(cit->second.m_spid, false, true);
 			if (tinfo == NULL)
 			{
 				//
@@ -3125,13 +3144,13 @@ void sinsp_analyzer::emit_aggregated_connections()
 				continue;
 			}
 
-			prog_spid = tinfo->m_ainfo->m_main_thread_pid;
+			prog_spid = GET_AGENT_THREAD(tinfo)->m_main_thread_pid;
 			prog_scontainerid = tinfo->m_container_id;
 		}
 
 		if (cit->second.m_dpid != 0)
 		{
-			auto tinfo = m_inspector->get_thread(cit->second.m_dpid, false, true);
+			auto tinfo = get_thread_by_pid(cit->second.m_dpid, false, true);
 			if (tinfo == NULL)
 			{
 				//
@@ -3141,7 +3160,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				continue;
 			}
 
-			prog_dpid = tinfo->m_ainfo->m_main_thread_pid;
+			prog_dpid = GET_AGENT_THREAD(tinfo)->m_main_thread_pid;
 			prog_dcontainerid = tinfo->m_container_id;
 		}
 
@@ -3378,22 +3397,22 @@ void sinsp_analyzer::emit_aggregated_connections()
 
 				switch (trunc)
 				{
-					case 1:
-						evt_desc = "Reported " + to_string(reported_conns) + " out of " +
-						           to_string(num_conns) + " connections";
-						break;
-					case 2:
-						evt_desc = "Reported " + to_string(reported_incomplete_conns) + " out of " +
-						           to_string(num_incomplete_conns) + " incomplete connections";
-						break;
-					case 3:
-						evt_desc = "Reported " + to_string(reported_conns) + " out of " +
-						           to_string(num_conns) + " successful connections and " +
-						           to_string(reported_incomplete_conns) + " out of " +
-						           to_string(num_incomplete_conns) + " incomplete connections";
-						break;
-					default:
-						ASSERT(false);
+				case 1:
+					evt_desc = "Reported " + to_string(reported_conns) + " out of " +
+					           to_string(num_conns) + " connections";
+					break;
+				case 2:
+					evt_desc = "Reported " + to_string(reported_incomplete_conns) + " out of " +
+					           to_string(num_incomplete_conns) + " incomplete connections";
+					break;
+				case 3:
+					evt_desc = "Reported " + to_string(reported_conns) + " out of " +
+					           to_string(num_conns) + " successful connections and " +
+					           to_string(reported_incomplete_conns) + " out of " +
+					           to_string(num_incomplete_conns) + " incomplete connections";
+					break;
+				default:
+					ASSERT(false);
 				}
 
 				if (m_connection_truncate_log_interval > 0 &&
@@ -3752,8 +3771,8 @@ void sinsp_analyzer::adjust_sampling_ratio()
 	}
 
 	double upper_threshold = m_configuration->get_falco_baselining_enabled()
-	                              ? (double)c_drop_upper_threshold_baseliner->get_value()
-	                              : (double)c_drop_upper_threshold->get_value();
+	                             ? (double)c_drop_upper_threshold_baseliner->get_value()
+	                             : (double)c_drop_upper_threshold->get_value();
 	if (c_adjust_threshold_for_cpu_count->get_value())
 	{
 		ASSERT(m_machine_info->num_cpus > 0);
@@ -3799,8 +3818,8 @@ void sinsp_analyzer::adjust_sampling_ratio()
 	}
 
 	double lower_threshold = m_configuration->get_falco_baselining_enabled()
-	                              ? (double)c_drop_lower_threshold_baseliner->get_value()
-	                              : (double)c_drop_lower_threshold->get_value();
+	                             ? (double)c_drop_lower_threshold_baseliner->get_value()
+	                             : (double)c_drop_lower_threshold->get_value();
 	if (c_adjust_threshold_for_cpu_count->get_value())
 	{
 		ASSERT(m_machine_info->num_cpus > 0);
@@ -4960,7 +4979,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 				                         m_prev_flushes_duration_ns,
 				                         m_inspector->m_n_proc_lookups,
 				                         m_inspector->m_n_main_thread_lookups,
-										 m_inspector->max_buf_used(),
+				                         m_inspector->max_buf_used(),
 				                         static_cast<uint64_t>(m_my_cpuload + 0.500001));
 			}
 
@@ -5224,8 +5243,8 @@ void sinsp_analyzer::flush_done_handler(const sinsp_evt* evt)
 //
 void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 {
-	thread_analyzer_info* tainfo = evt->m_tinfo->m_ainfo;
-	int64_t wd = evt->m_tinfo->m_ainfo->m_last_wait_duration_ns;
+	thread_analyzer_info* tainfo = GET_AGENT_THREAD(evt->m_tinfo);
+	int64_t wd = tainfo->m_last_wait_duration_ns;
 
 	ASSERT(tainfo != NULL);
 
@@ -5280,56 +5299,56 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 			{
 				switch (cat->m_subcategory)
 				{
-					case sinsp_evt::SC_NET:
-						if (cat->m_category == EC_IO_READ)
-						{
-							break;
-						}
-						else if (cat->m_category == EC_IO_WRITE)
-						{
-							metrics->m_wait_net.add_out(1, delta);
-						}
-						else
-						{
-							metrics->m_wait_net.add_other(1, delta);
-						}
+				case sinsp_evt::SC_NET:
+					if (cat->m_category == EC_IO_READ)
+					{
+						break;
+					}
+					else if (cat->m_category == EC_IO_WRITE)
+					{
+						metrics->m_wait_net.add_out(1, delta);
+					}
+					else
+					{
+						metrics->m_wait_net.add_other(1, delta);
+					}
 
-						metrics->m_wait_other.subtract(1, delta);
-						break;
-					case sinsp_evt::SC_FILE:
-						if (cat->m_category == EC_IO_READ)
-						{
-							metrics->m_wait_file.add_in(1, delta);
-						}
-						else if (cat->m_category == EC_IO_WRITE)
-						{
-							metrics->m_wait_file.add_out(1, delta);
-						}
-						else
-						{
-							metrics->m_wait_file.add_other(1, delta);
-						}
+					metrics->m_wait_other.subtract(1, delta);
+					break;
+				case sinsp_evt::SC_FILE:
+					if (cat->m_category == EC_IO_READ)
+					{
+						metrics->m_wait_file.add_in(1, delta);
+					}
+					else if (cat->m_category == EC_IO_WRITE)
+					{
+						metrics->m_wait_file.add_out(1, delta);
+					}
+					else
+					{
+						metrics->m_wait_file.add_other(1, delta);
+					}
 
-						metrics->m_wait_other.subtract(1, delta);
-						break;
-					case sinsp_evt::SC_IPC:
-						if (cat->m_category == EC_IO_READ)
-						{
-							metrics->m_wait_ipc.add_in(1, delta);
-						}
-						else if (cat->m_category == EC_IO_WRITE)
-						{
-							metrics->m_wait_ipc.add_out(1, delta);
-						}
-						else
-						{
-							metrics->m_wait_ipc.add_other(1, delta);
-						}
+					metrics->m_wait_other.subtract(1, delta);
+					break;
+				case sinsp_evt::SC_IPC:
+					if (cat->m_category == EC_IO_READ)
+					{
+						metrics->m_wait_ipc.add_in(1, delta);
+					}
+					else if (cat->m_category == EC_IO_WRITE)
+					{
+						metrics->m_wait_ipc.add_out(1, delta);
+					}
+					else
+					{
+						metrics->m_wait_ipc.add_other(1, delta);
+					}
 
-						metrics->m_wait_other.subtract(1, delta);
-						break;
-					default:
-						break;
+					metrics->m_wait_other.subtract(1, delta);
+					break;
+				default:
+					break;
 				}
 			}
 		}
@@ -5354,17 +5373,17 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 
 	switch (rc)
 	{
-		case libsinsp::EVENT_RETURN_TIMEOUT:
-			flushflags = analyzer_emitter::DF_TIMEOUT;
-			break;
-		case libsinsp::EVENT_RETURN_EOF:
-			flushflags = analyzer_emitter::DF_EOF;
-			break;
-		case libsinsp::EVENT_RETURN_NONE:
+	case libsinsp::EVENT_RETURN_TIMEOUT:
+		flushflags = analyzer_emitter::DF_TIMEOUT;
+		break;
+	case libsinsp::EVENT_RETURN_EOF:
+		flushflags = analyzer_emitter::DF_EOF;
+		break;
+	case libsinsp::EVENT_RETURN_NONE:
 #ifndef _DEBUG
-		default:
+	default:
 #endif
-			flushflags = analyzer_emitter::DF_NONE;
+		flushflags = analyzer_emitter::DF_NONE;
 	}
 	//
 	// If there is no event, assume that this is an EOF and use the
@@ -5494,7 +5513,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 		return;
 	}
 
-	tainfo = evt->m_tinfo->m_ainfo;
+	tainfo = GET_AGENT_THREAD(evt->m_tinfo);
 
 	if (tainfo == NULL)
 	{
@@ -5611,10 +5630,9 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 
 		m_host_metrics.m_syscall_errors.add(evt);
 
-		ASSERT(evt->m_tinfo);
-		ASSERT(evt->m_tinfo->m_ainfo);
+		ASSERT(GET_AGENT_THREAD(evt->m_tinfo));
 
-		evt->m_tinfo->m_ainfo->m_syscall_errors.add(evt);
+		GET_AGENT_THREAD(evt->m_tinfo)->m_syscall_errors.add(evt);
 
 		if (!evt->m_tinfo->m_container_id.empty())
 		{
@@ -5633,134 +5651,134 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 
 	switch (cat->m_category)
 	{
-		case EC_UNKNOWN:
-			metrics->m_unknown.add(cnt_delta, delta);
+	case EC_UNKNOWN:
+		metrics->m_unknown.add(cnt_delta, delta);
+		break;
+	case EC_OTHER:
+		metrics->m_other.add(cnt_delta, delta);
+		break;
+	case EC_FILE:
+		metrics->m_file.add(cnt_delta, delta);
+		break;
+	case EC_NET:
+		metrics->m_net.add(cnt_delta, delta);
+		break;
+	case EC_IPC:
+		metrics->m_ipc.add(cnt_delta, delta);
+		break;
+	case EC_MEMORY:
+		metrics->m_memory.add(cnt_delta, delta);
+		break;
+	case EC_PROCESS:
+		metrics->m_process.add(cnt_delta, delta);
+		break;
+	case EC_SLEEP:
+		metrics->m_sleep.add(cnt_delta, delta);
+		break;
+	case EC_SYSTEM:
+		metrics->m_system.add(cnt_delta, delta);
+		break;
+	case EC_SIGNAL:
+		metrics->m_signal.add(cnt_delta, delta);
+		break;
+	case EC_USER:
+		metrics->m_user.add(cnt_delta, delta);
+		break;
+	case EC_TIME:
+		metrics->m_time.add(cnt_delta, delta);
+		break;
+	case EC_PROCESSING:
+		metrics->m_processing.add(cnt_delta, delta);
+		break;
+	case EC_IO_READ:
+	{
+		switch (cat->m_subcategory)
+		{
+		case sinsp_evt::SC_FILE:
+			metrics->m_io_file.add_in(cnt_delta, delta, bytes);
 			break;
-		case EC_OTHER:
-			metrics->m_other.add(cnt_delta, delta);
+		case sinsp_evt::SC_NET:
+			metrics->m_io_net.add_in(cnt_delta, delta, bytes);
 			break;
-		case EC_FILE:
-			metrics->m_file.add(cnt_delta, delta);
-			break;
-		case EC_NET:
-			metrics->m_net.add(cnt_delta, delta);
-			break;
-		case EC_IPC:
+		case sinsp_evt::SC_IPC:
 			metrics->m_ipc.add(cnt_delta, delta);
 			break;
-		case EC_MEMORY:
-			metrics->m_memory.add(cnt_delta, delta);
+		case sinsp_evt::SC_UNKNOWN:
+		case sinsp_evt::SC_OTHER:
+			metrics->m_io_other.add_in(cnt_delta, delta, bytes);
 			break;
-		case EC_PROCESS:
-			metrics->m_process.add(cnt_delta, delta);
-			break;
-		case EC_SLEEP:
-			metrics->m_sleep.add(cnt_delta, delta);
-			break;
-		case EC_SYSTEM:
-			metrics->m_system.add(cnt_delta, delta);
-			break;
-		case EC_SIGNAL:
-			metrics->m_signal.add(cnt_delta, delta);
-			break;
-		case EC_USER:
-			metrics->m_user.add(cnt_delta, delta);
-			break;
-		case EC_TIME:
-			metrics->m_time.add(cnt_delta, delta);
-			break;
-		case EC_PROCESSING:
-			metrics->m_processing.add(cnt_delta, delta);
-			break;
-		case EC_IO_READ:
-		{
-			switch (cat->m_subcategory)
-			{
-				case sinsp_evt::SC_FILE:
-					metrics->m_io_file.add_in(cnt_delta, delta, bytes);
-					break;
-				case sinsp_evt::SC_NET:
-					metrics->m_io_net.add_in(cnt_delta, delta, bytes);
-					break;
-				case sinsp_evt::SC_IPC:
-					metrics->m_ipc.add(cnt_delta, delta);
-					break;
-				case sinsp_evt::SC_UNKNOWN:
-				case sinsp_evt::SC_OTHER:
-					metrics->m_io_other.add_in(cnt_delta, delta, bytes);
-					break;
-				case sinsp_evt::SC_NONE:
-					metrics->m_io_other.add_in(cnt_delta, delta, bytes);
-					break;
-				default:
-					ASSERT(false);
-					metrics->m_io_other.add_in(cnt_delta, delta, bytes);
-					break;
-			}
-		}
-		break;
-		case EC_IO_WRITE:
-		{
-			switch (cat->m_subcategory)
-			{
-				case sinsp_evt::SC_FILE:
-					metrics->m_io_file.add_out(cnt_delta, delta, bytes);
-					break;
-				case sinsp_evt::SC_NET:
-					metrics->m_io_net.add_out(cnt_delta, delta, bytes);
-					break;
-				case sinsp_evt::SC_IPC:
-					metrics->m_ipc.add(cnt_delta, delta);
-					break;
-				case sinsp_evt::SC_UNKNOWN:
-				case sinsp_evt::SC_OTHER:
-					metrics->m_io_other.add_out(cnt_delta, delta, bytes);
-					break;
-				case sinsp_evt::SC_NONE:
-					metrics->m_io_other.add_out(cnt_delta, delta, bytes);
-					break;
-				default:
-					ASSERT(false);
-					metrics->m_io_other.add_out(cnt_delta, delta, bytes);
-					break;
-			}
-		}
-		break;
-		case EC_IO_OTHER:
-		{
-			switch (cat->m_subcategory)
-			{
-				case sinsp_evt::SC_FILE:
-					metrics->m_io_file.add_other(cnt_delta, delta, bytes);
-					break;
-				case sinsp_evt::SC_NET:
-					metrics->m_io_net.add_other(cnt_delta, delta, bytes);
-					break;
-				case sinsp_evt::SC_IPC:
-					metrics->m_ipc.add(cnt_delta, delta);
-					break;
-				case sinsp_evt::SC_UNKNOWN:
-				case sinsp_evt::SC_OTHER:
-					metrics->m_io_other.add_other(cnt_delta, delta, bytes);
-					break;
-				case sinsp_evt::SC_NONE:
-					metrics->m_io_other.add_other(cnt_delta, delta, bytes);
-					break;
-				default:
-					ASSERT(false);
-					metrics->m_io_other.add_other(cnt_delta, delta, bytes);
-					break;
-			}
-		}
-		break;
-		case EC_WAIT:
-			metrics->m_wait_other.add(cnt_delta, delta);
-			break;
-		case EC_SCHEDULER:
-		case EC_INTERNAL:
+		case sinsp_evt::SC_NONE:
+			metrics->m_io_other.add_in(cnt_delta, delta, bytes);
 			break;
 		default:
 			ASSERT(false);
+			metrics->m_io_other.add_in(cnt_delta, delta, bytes);
+			break;
+		}
+	}
+	break;
+	case EC_IO_WRITE:
+	{
+		switch (cat->m_subcategory)
+		{
+		case sinsp_evt::SC_FILE:
+			metrics->m_io_file.add_out(cnt_delta, delta, bytes);
+			break;
+		case sinsp_evt::SC_NET:
+			metrics->m_io_net.add_out(cnt_delta, delta, bytes);
+			break;
+		case sinsp_evt::SC_IPC:
+			metrics->m_ipc.add(cnt_delta, delta);
+			break;
+		case sinsp_evt::SC_UNKNOWN:
+		case sinsp_evt::SC_OTHER:
+			metrics->m_io_other.add_out(cnt_delta, delta, bytes);
+			break;
+		case sinsp_evt::SC_NONE:
+			metrics->m_io_other.add_out(cnt_delta, delta, bytes);
+			break;
+		default:
+			ASSERT(false);
+			metrics->m_io_other.add_out(cnt_delta, delta, bytes);
+			break;
+		}
+	}
+	break;
+	case EC_IO_OTHER:
+	{
+		switch (cat->m_subcategory)
+		{
+		case sinsp_evt::SC_FILE:
+			metrics->m_io_file.add_other(cnt_delta, delta, bytes);
+			break;
+		case sinsp_evt::SC_NET:
+			metrics->m_io_net.add_other(cnt_delta, delta, bytes);
+			break;
+		case sinsp_evt::SC_IPC:
+			metrics->m_ipc.add(cnt_delta, delta);
+			break;
+		case sinsp_evt::SC_UNKNOWN:
+		case sinsp_evt::SC_OTHER:
+			metrics->m_io_other.add_other(cnt_delta, delta, bytes);
+			break;
+		case sinsp_evt::SC_NONE:
+			metrics->m_io_other.add_other(cnt_delta, delta, bytes);
+			break;
+		default:
+			ASSERT(false);
+			metrics->m_io_other.add_other(cnt_delta, delta, bytes);
+			break;
+		}
+	}
+	break;
+	case EC_WAIT:
+		metrics->m_wait_other.add(cnt_delta, delta);
+		break;
+	case EC_SCHEDULER:
+	case EC_INTERNAL:
+		break;
+	default:
+		ASSERT(false);
 	}
 }
 
@@ -6547,12 +6565,11 @@ vector<string> sinsp_analyzer::emit_containers_deprecated(
 			// Since we're using it also to read cgroups, try to pick vpid=1
 			// first.
 			const auto& container_progs = progtable_by_container.at(containerid);
-			auto container_init =
-			    find_if(container_progs.begin(),
-			            container_progs.end(),
-			            [](sinsp_threadinfo* tinfo) { return tinfo->m_vtid == 1; });
+			auto container_init = find_if(container_progs.begin(),
+			                              container_progs.end(),
+			                              [](THREAD_TYPE* tinfo) { return tinfo->m_vtid == 1; });
 
-			sinsp_threadinfo* tinfo;
+			THREAD_TYPE* tinfo;
 			if (container_init != container_progs.end())
 			{
 				tinfo = *container_init;
@@ -6672,7 +6689,7 @@ vector<string> sinsp_analyzer::emit_containers_deprecated(
 void sinsp_analyzer::emit_container(const string& container_id,
                                     unsigned* statsd_limit,
                                     uint64_t total_cpu_shares,
-                                    sinsp_threadinfo* tinfo,
+                                    THREAD_TYPE* tinfo,
                                     analyzer_emitter::flush_flags flushflags,
                                     const std::list<uint32_t>& groups)
 {
@@ -6699,46 +6716,46 @@ void sinsp_analyzer::emit_container(const string& container_id,
 
 	switch (container_info->m_type)
 	{
-		case CT_DOCKER:
-			container->set_type(draiosproto::DOCKER);
-			break;
-		case CT_LXC:
-			container->set_type(draiosproto::LXC);
-			break;
-		case CT_LIBVIRT_LXC:
-			container->set_type(draiosproto::LIBVIRT_LXC);
-			break;
-		case CT_MESOS:
-			container->set_type(draiosproto::MESOS);
-			// Sanity check the mesos task id. if it's trivially small, log a warning.
-			if (container_info->m_mesos_task_id.length() < 3)
-			{
-				g_logger.format(sinsp_logger::SEV_WARNING,
-				                "Suspicious mesos task id for container id '%s': '%s'",
-				                container_id.c_str(),
-				                container_info->m_mesos_task_id.c_str());
-			}
-			break;
-		case CT_RKT:
-			container->set_type(draiosproto::RKT);
-			break;
-		case CT_CUSTOM:
-			container->set_type(draiosproto::CUSTOM);
-			break;
-		case CT_CRI:
-			container->set_type(draiosproto::CRI);
-			break;
-		case CT_CONTAINERD:
-			container->set_type(draiosproto::CONTAINERD);
-			break;
-		case CT_CRIO:
-			container->set_type(draiosproto::CRIO);
-			break;
-		case CT_BPM:
-			container->set_type(draiosproto::CUSTOM);
-			break;
-		default:
-			ASSERT(false);
+	case CT_DOCKER:
+		container->set_type(draiosproto::DOCKER);
+		break;
+	case CT_LXC:
+		container->set_type(draiosproto::LXC);
+		break;
+	case CT_LIBVIRT_LXC:
+		container->set_type(draiosproto::LIBVIRT_LXC);
+		break;
+	case CT_MESOS:
+		container->set_type(draiosproto::MESOS);
+		// Sanity check the mesos task id. if it's trivially small, log a warning.
+		if (container_info->m_mesos_task_id.length() < 3)
+		{
+			g_logger.format(sinsp_logger::SEV_WARNING,
+			                "Suspicious mesos task id for container id '%s': '%s'",
+			                container_id.c_str(),
+			                container_info->m_mesos_task_id.c_str());
+		}
+		break;
+	case CT_RKT:
+		container->set_type(draiosproto::RKT);
+		break;
+	case CT_CUSTOM:
+		container->set_type(draiosproto::CUSTOM);
+		break;
+	case CT_CRI:
+		container->set_type(draiosproto::CRI);
+		break;
+	case CT_CONTAINERD:
+		container->set_type(draiosproto::CONTAINERD);
+		break;
+	case CT_CRIO:
+		container->set_type(draiosproto::CRIO);
+		break;
+	case CT_BPM:
+		container->set_type(draiosproto::CUSTOM);
+		break;
+	default:
+		ASSERT(false);
 	}
 
 	if (container_info->is_successful())
@@ -7323,12 +7340,12 @@ void sinsp_analyzer::emit_user_events()
 }
 
 #ifndef CYGWING_AGENT
-void sinsp_analyzer::match_prom_checks(sinsp_threadinfo* tinfo,
-                                       sinsp_threadinfo* mtinfo,
+void sinsp_analyzer::match_prom_checks(THREAD_TYPE* tinfo,
+                                       THREAD_TYPE* mtinfo,
                                        vector<prom_process>& prom_procs,
                                        bool use_host_filter)
 {
-	if (!m_prom_conf.enabled() || mtinfo->m_ainfo->found_prom_check())
+	if (!m_prom_conf.enabled() || GET_AGENT_THREAD(mtinfo)->found_prom_check())
 		return;
 
 	const auto container = m_inspector->m_container_manager.get_container(tinfo->m_container_id);
@@ -7342,21 +7359,21 @@ void sinsp_analyzer::match_prom_checks(sinsp_threadinfo* tinfo,
 }
 #endif
 
-void sinsp_analyzer::match_checks_list(sinsp_threadinfo* tinfo,
-                                       sinsp_threadinfo* mtinfo,
+void sinsp_analyzer::match_checks_list(THREAD_TYPE* tinfo,
+                                       THREAD_TYPE* mtinfo,
                                        const vector<app_check>& checks,
                                        vector<app_process>& app_checks_processes,
                                        const char* location)
 {
 	for (const auto& check : checks)
 	{
-		if (mtinfo->m_ainfo->found_app_check(check))
+		if (GET_AGENT_THREAD(mtinfo)->found_app_check(check))
 			continue;
 		if (check.match(tinfo))
 		{
 			string mm = "master.mesos";
 			shared_ptr<app_process_conf_vals> conf_vals;
-			set<uint16_t> listening_ports = tinfo->m_ainfo->listening_ports();
+			set<uint16_t> listening_ports = GET_AGENT_THREAD(tinfo)->listening_ports();
 
 			g_logger.format(sinsp_logger::SEV_DEBUG,
 			                "Found check %s for process %d:%d from %s",
@@ -7447,7 +7464,7 @@ void sinsp_analyzer::match_checks_list(sinsp_threadinfo* tinfo,
 #endif  // CYGWING_AGENT
 
 			app_checks_processes.emplace_back(check, tinfo);
-			mtinfo->m_ainfo->set_found_app_check(check);
+			GET_AGENT_THREAD(mtinfo)->set_found_app_check(check);
 
 			if (conf_vals)
 			{
@@ -7520,25 +7537,32 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf,
 	REPORT("threads: %d\n", (int)m_inspector->m_thread_manager->m_threadtable.size());
 	REPORT("connections: %d\n", (int)m_ipv4_connections->size());
 
-	m_inspector->m_thread_manager->m_threadtable.loop([&](sinsp_threadinfo& tinfo) {
+	m_inspector->m_thread_manager->m_threadtable.loop([&](sinsp_threadinfo& sinsp_tinfo) {
+#ifdef USE_AGENT_THREAD
+		thread_analyzer_info& tinfo = dynamic_cast<thread_analyzer_info&>(sinsp_tinfo);
+		ASSERT(tinfo == sinsp_tinfo);
+#else
+		sinsp_threadinfo& tinfo = sinsp_tinfo;
+#endif
+
 		if (!tinfo.is_main_thread())
 		{
 			return true;
 		}
-		auto ainfo = tinfo.m_ainfo->main_thread_ainfo();
+		main_thread_analyzer_info* main_info = GET_AGENT_THREAD(&tinfo)->main_thread_ainfo();
 
-		for (uint32_t j = 0; j < ainfo->m_server_transactions_per_cpu.size(); j++)
+		for (uint32_t j = 0; j < main_info->m_server_transactions_per_cpu.size(); j++)
 		{
-			nqueuedtransactions_server += ainfo->m_server_transactions_per_cpu[j].size();
+			nqueuedtransactions_server += main_info->m_server_transactions_per_cpu[j].size();
 			nqueuedtransactions_server_capacity +=
-			    ainfo->m_server_transactions_per_cpu[j].capacity();
+			    main_info->m_server_transactions_per_cpu[j].capacity();
 		}
 
-		for (uint32_t j = 0; j < ainfo->m_client_transactions_per_cpu.size(); j++)
+		for (uint32_t j = 0; j < main_info->m_client_transactions_per_cpu.size(); j++)
 		{
-			nqueuedtransactions_client += ainfo->m_client_transactions_per_cpu[j].size();
+			nqueuedtransactions_client += main_info->m_client_transactions_per_cpu[j].size();
 			nqueuedtransactions_client_capacity +=
-			    ainfo->m_client_transactions_per_cpu[j].capacity();
+			    main_info->m_client_transactions_per_cpu[j].capacity();
 		}
 
 		if (do_complete_report)
@@ -7556,54 +7580,54 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf,
 
 			switch (fdit->second.m_type)
 			{
-				case SCAP_FD_FILE:
-				case SCAP_FD_FILE_V2:
-					nfds_file++;
-					break;
-				case SCAP_FD_IPV4_SOCK:
-					nfds_ipv4++;
-					break;
-				case SCAP_FD_IPV6_SOCK:
-					nfds_ipv6++;
-					break;
-				case SCAP_FD_DIRECTORY:
-					nfds_dir++;
-					break;
-				case SCAP_FD_IPV4_SERVSOCK:
-					nfds_ipv4s++;
-					break;
-				case SCAP_FD_IPV6_SERVSOCK:
-					nfds_ipv6s++;
-					break;
-				case SCAP_FD_FIFO:
-					nfds_fifo++;
-					break;
-				case SCAP_FD_UNIX_SOCK:
-					nfds_unix++;
-					break;
-				case SCAP_FD_EVENT:
-					nfds_event++;
-					break;
-				case SCAP_FD_UNKNOWN:
-					nfds_unknown++;
-					break;
-				case SCAP_FD_UNSUPPORTED:
-					nfds_unsupported++;
-					break;
-				case SCAP_FD_SIGNALFD:
-					nfds_signal++;
-					break;
-				case SCAP_FD_EVENTPOLL:
-					nfds_evtpoll++;
-					break;
-				case SCAP_FD_INOTIFY:
-					nfds_inotify++;
-					break;
-				case SCAP_FD_TIMERFD:
-					nfds_timerfd++;
-					break;
-				default:
-					nfds_unknown++;
+			case SCAP_FD_FILE:
+			case SCAP_FD_FILE_V2:
+				nfds_file++;
+				break;
+			case SCAP_FD_IPV4_SOCK:
+				nfds_ipv4++;
+				break;
+			case SCAP_FD_IPV6_SOCK:
+				nfds_ipv6++;
+				break;
+			case SCAP_FD_DIRECTORY:
+				nfds_dir++;
+				break;
+			case SCAP_FD_IPV4_SERVSOCK:
+				nfds_ipv4s++;
+				break;
+			case SCAP_FD_IPV6_SERVSOCK:
+				nfds_ipv6s++;
+				break;
+			case SCAP_FD_FIFO:
+				nfds_fifo++;
+				break;
+			case SCAP_FD_UNIX_SOCK:
+				nfds_unix++;
+				break;
+			case SCAP_FD_EVENT:
+				nfds_event++;
+				break;
+			case SCAP_FD_UNKNOWN:
+				nfds_unknown++;
+				break;
+			case SCAP_FD_UNSUPPORTED:
+				nfds_unsupported++;
+				break;
+			case SCAP_FD_SIGNALFD:
+				nfds_signal++;
+				break;
+			case SCAP_FD_EVENTPOLL:
+				nfds_evtpoll++;
+				break;
+			case SCAP_FD_INOTIFY:
+				nfds_inotify++;
+				break;
+			case SCAP_FD_TIMERFD:
+				nfds_timerfd++;
+				break;
+			default:
+				nfds_unknown++;
 			}
 
 			if (fdit->second.is_transaction())
@@ -7616,23 +7640,23 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf,
 					{
 						switch (fdit->second.m_usrstate->m_protoparser->get_type())
 						{
-							case sinsp_protocol_parser::PROTO_HTTP:
-								ntransactions_http++;
-								break;
-							case sinsp_protocol_parser::PROTO_MYSQL:
-								ntransactions_mysql++;
-								break;
-							case sinsp_protocol_parser::PROTO_POSTGRES:
-								ntransactions_postgres++;
-								break;
-							case sinsp_protocol_parser::PROTO_MONGODB:
-								ntransactions_mongodb++;
-								break;
-							case sinsp_protocol_parser::PROTO_TLS:
-								break;
-							default:
-								ASSERT(false);
-								break;
+						case sinsp_protocol_parser::PROTO_HTTP:
+							ntransactions_http++;
+							break;
+						case sinsp_protocol_parser::PROTO_MYSQL:
+							ntransactions_mysql++;
+							break;
+						case sinsp_protocol_parser::PROTO_POSTGRES:
+							ntransactions_postgres++;
+							break;
+						case sinsp_protocol_parser::PROTO_MONGODB:
+							ntransactions_mongodb++;
+							break;
+						case sinsp_protocol_parser::PROTO_TLS:
+							break;
+						default:
+							ASSERT(false);
+							break;
 						}
 					}
 				}
@@ -7908,7 +7932,7 @@ void sinsp_analyzer::inject_statsd_metric(const std::string& container_id,
 }
 
 bool sinsp_analyzer::resolve_custom_container(sinsp_container_manager* const manager,
-                                              sinsp_threadinfo* const tinfo,
+                                              THREAD_TYPE* const tinfo,
                                               const bool query_os_for_missing_info)
 {
 	return m_custom_container.resolve(manager, tinfo, query_os_for_missing_info);
@@ -7990,6 +8014,17 @@ std::string sinsp_analyzer::get_metrics_dir()
 {
 	std::unique_lock<std::mutex> lock(m_metrics_dir_mutex);
 	return m_metrics_dir;
+}
+
+sinsp_threadinfo* sinsp_analyzer::build_threadinfo(sinsp* inspector)
+{
+#ifdef USE_AGENT_THREAD
+	auto tinfo = new thread_analzyer_info(inspector, this);
+	tinfo->init();
+	return tinfo;
+#else
+	return new sinsp_threadinfo(inspector);
+#endif
 }
 
 uint64_t sinsp_analyzer::get_sample_duration() const

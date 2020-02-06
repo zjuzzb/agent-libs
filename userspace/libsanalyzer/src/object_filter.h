@@ -1,7 +1,8 @@
 #pragma once
-#include "object_filter_config.h"
 #include "base_filter.h"
+#include "object_filter_config.h"
 #include "sinsp.h"
+
 #include <vector>
 
 class infrastructure_state;
@@ -17,7 +18,10 @@ public:
 	                    const sinsp_threadinfo* mtinfo,
 	                    const sinsp_container_info* container,
 	                    const infrastructure_state* is)
-	    : m_tinfo(tinfo), m_mtinfo(mtinfo), m_container(container), m_is(is)
+	    : m_tinfo(tinfo),
+	      m_mtinfo(mtinfo),
+	      m_container(container),
+	      m_is(is)
 	{
 	}
 
@@ -43,7 +47,7 @@ public:
 class object_filter
 {
 public:
-	object_filter(const std::string& name) : m_name(name) {};
+	object_filter(const std::string& name) : m_name(name){};
 
 	/**
 	 * apply a match against the 4 provided arguments. If any sub-filter requires info from
@@ -108,17 +112,20 @@ private:
  *
  *  This filter always returns a high_priority result and never excludes.
  */
-template <typename filter_param>
+template<typename filter_param>
 class port_filter : public base_filter<filter_param>
 {
 public:
 	port_filter(const std::vector<object_filter_config::port_filter_rule>& ports)
-	    : base_filter<filter_param>(false), m_ports(ports)
+	    : base_filter<filter_param>(false),
+	      m_ports(ports)
 	{
 	}
 
-	bool matches(const filter_param& arg, bool& exclude, bool& high_priority, std::string* reason)
-	    const final;
+	bool matches(const filter_param& arg,
+	             bool& exclude,
+	             bool& high_priority,
+	             std::string* reason) const final;
 
 	static std::set<uint16_t> filter_ports(
 	    const std::set<uint16_t>& sports,
@@ -133,15 +140,16 @@ private:
  *
  * This filter always returns a high_priority result and never excludes.
  */
-template <typename filter_param>
+template<typename filter_param>
 class process_name_filter : public wildcard_filter<filter_param>
 {
 public:
 	process_name_filter(const std::string& pattern)
 	    : wildcard_filter<filter_param>(false,
 	                                    pattern,
-	                                    [](const process_filter_args & arg)->const std::string &
-	{ return arg.m_tinfo ? arg.m_tinfo->m_comm : no_data; })
+	                                    [](const process_filter_args& arg) -> const std::string& {
+		                                    return arg.m_tinfo ? arg.m_tinfo->m_comm : no_data;
+	                                    })
 	{
 	}
 
@@ -154,17 +162,20 @@ public:
  *
  * This filter always returns a high_priority result and never excludes.
  */
-template <typename filter_param>
+template<typename filter_param>
 class process_cmd_line_filter : public base_filter<filter_param>
 {
 public:
 	process_cmd_line_filter(const std::string& pattern)
-	    : base_filter<filter_param>(false), m_pattern(pattern)
+	    : base_filter<filter_param>(false),
+	      m_pattern(pattern)
 	{
 	}
 
-	bool matches(const filter_param& arg, bool& exclude, bool& high_priority, std::string* reason)
-	    const final;
+	bool matches(const filter_param& arg,
+	             bool& exclude,
+	             bool& high_priority,
+	             std::string* reason) const final;
 
 private:
 	std::string m_pattern;
@@ -175,30 +186,34 @@ private:
  *
  * This filter always returns a high_priority result and never excludes.
  */
-template <typename filter_param>
+template<typename filter_param>
 class container_name_filter : public wildcard_filter<filter_param>
 {
 public:
 	container_name_filter(const std::string& pattern)
 	    : wildcard_filter<filter_param>(false,
 	                                    pattern,
-	                                    [](const process_filter_args & arg)->const std::string &
-	{ return arg.m_container ? arg.m_container->m_name : no_data; })
+	                                    [](const process_filter_args& arg) -> const std::string& {
+		                                    return arg.m_container ? arg.m_container->m_name
+		                                                           : no_data;
+	                                    })
 	{
 	}
 
 	static std::string no_data;
 };
 
-template <typename filter_param>
+template<typename filter_param>
 class container_image_filter : public wildcard_filter<filter_param>
 {
 public:
 	container_image_filter(const std::string& pattern)
 	    : wildcard_filter<filter_param>(false,
 	                                    pattern,
-	                                    [](const process_filter_args & arg)->const std::string &
-	{ return arg.m_container ? arg.m_container->m_image : no_data; })
+	                                    [](const process_filter_args& arg) -> const std::string& {
+		                                    return arg.m_container ? arg.m_container->m_image
+		                                                           : no_data;
+	                                    })
 	{
 	}
 
@@ -211,17 +226,21 @@ public:
  *
  * This filter always returns a high_priority result and never excludes.
  */
-template <typename filter_param>
+template<typename filter_param>
 class container_label_filter : public base_filter<filter_param>
 {
 public:
 	container_label_filter(const std::string& label, const std::string& pattern)
-	    : base_filter<filter_param>(false), m_label(label), m_pattern(pattern)
+	    : base_filter<filter_param>(false),
+	      m_label(label),
+	      m_pattern(pattern)
 	{
 	}
 
-	bool matches(const filter_param& arg, bool& exclude, bool& high_priority, std::string* reason)
-	    const final;
+	bool matches(const filter_param& arg,
+	             bool& exclude,
+	             bool& high_priority,
+	             std::string* reason) const final;
 
 private:
 	std::string m_label;
@@ -234,17 +253,21 @@ private:
  *
  * This filter always returns a high_priority result and never excludes.
  */
-template <typename filter_param>
+template<typename filter_param>
 class tag_filter : public base_filter<filter_param>
 {
 public:
 	tag_filter(const std::string& label, const std::string& pattern)
-	    : base_filter<filter_param>(false), m_label(label), m_pattern(pattern)
+	    : base_filter<filter_param>(false),
+	      m_label(label),
+	      m_pattern(pattern)
 	{
 	}
 
-	bool matches(const filter_param& arg, bool& exclude, bool& high_priority, std::string* reason)
-	    const final;
+	bool matches(const filter_param& arg,
+	             bool& exclude,
+	             bool& high_priority,
+	             std::string* reason) const final;
 
 private:
 	std::string m_label;
@@ -256,17 +279,20 @@ private:
  *
  * This filter always returns a high_priority result and never excludes.
  */
-template <typename filter_param>
+template<typename filter_param>
 class app_check_filter : public base_filter<filter_param>
 {
 public:
 	app_check_filter(const std::string& pattern)
-	    : base_filter<filter_param>(false), m_pattern(pattern)
+	    : base_filter<filter_param>(false),
+	      m_pattern(pattern)
 	{
 	}
 
-	bool matches(const filter_param& arg, bool& exclude, bool& high_priority, std::string* reason)
-	    const final;
+	bool matches(const filter_param& arg,
+	             bool& exclude,
+	             bool& high_priority,
+	             std::string* reason) const final;
 
 private:
 	std::string m_pattern;

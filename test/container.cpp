@@ -1,30 +1,32 @@
 #define VISIBILITY_PRIVATE
 
-#include <sys/syscall.h>
-#include "sys_call_test.h"
-#include <gtest.h>
-#include <algorithm>
-#include "event_capture.h"
-#include <stdio.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <poll.h>
-#include <event.h>
-#include <Poco/Process.h>
-#include <Poco/PipeStream.h>
-#include <Poco/StringTokenizer.h>
-#include <Poco/NumberFormatter.h>
-#include <Poco/NumberParser.h>
-#include <thread>
-#include <list>
-#include <fstream>
-#include <sstream>
-#include <cassert>
-#include <memory>
-#include <atomic>
-#include "scap-int.h"
 #include "common_logger.h"
 #include "docker_utils.h"
+#include "event_capture.h"
+#include "scap-int.h"
+#include "sys_call_test.h"
+
+#include <Poco/NumberFormatter.h>
+#include <Poco/NumberParser.h>
+#include <Poco/PipeStream.h>
+#include <Poco/Process.h>
+#include <Poco/StringTokenizer.h>
+
+#include <algorithm>
+#include <atomic>
+#include <cassert>
+#include <event.h>
+#include <fcntl.h>
+#include <fstream>
+#include <gtest.h>
+#include <list>
+#include <memory>
+#include <poll.h>
+#include <sstream>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <thread>
 
 using namespace std;
 
@@ -36,21 +38,17 @@ TEST_F(sys_call_test, container_cgroups)
 	//
 	// FILTER
 	//
-	event_filter_t filter = [&](sinsp_evt* evt)
-	{
-		return evt->get_tid() == ctid;
-	};
+	event_filter_t filter = [&](sinsp_evt* evt) { return evt->get_tid() == ctid; };
 
 	//
 	// TEST CODE
 	//
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		ctid = fork();
 
-		if(ctid >= 0)
+		if (ctid >= 0)
 		{
-			if(ctid == 0)
+			if (ctid == 0)
 			{
 				sleep(1);
 				exit(0);
@@ -69,9 +67,8 @@ TEST_F(sys_call_test, container_cgroups)
 	//
 	// OUTPUT VALDATION
 	//
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
-		if(param.m_evt->get_type() == PPME_SYSCALL_CLONE_20_X)
+	captured_event_callback_t callback = [&](const callback_param& param) {
+		if (param.m_evt->get_type() == PPME_SYSCALL_CLONE_20_X)
 		{
 			struct scap_threadinfo scap_tinfo;
 			sinsp_threadinfo sinsp_tinfo;
@@ -86,30 +83,32 @@ TEST_F(sys_call_test, container_cgroups)
 			ASSERT_TRUE(res == SCAP_SUCCESS);
 
 			sinsp_tinfo.set_cgroups(scap_tinfo.cgroups, scap_tinfo.cgroups_len);
-			if(scap_tinfo.cgroups_len)
+			if (scap_tinfo.cgroups_len)
 			{
 				ASSERT_TRUE(sinsp_tinfo.m_cgroups.size() > 0);
 			}
 
 			map<string, string> cgroups_kernel;
-			for(uint32_t j = 0; j < tinfo->m_cgroups.size(); ++j)
+			for (uint32_t j = 0; j < tinfo->m_cgroups.size(); ++j)
 			{
-				cgroups_kernel.insert(pair<string, string>(tinfo->m_cgroups[j].first, tinfo->m_cgroups[j].second));
+				cgroups_kernel.insert(
+				    pair<string, string>(tinfo->m_cgroups[j].first, tinfo->m_cgroups[j].second));
 			}
 
 			map<string, string> cgroups_proc;
-			for(uint32_t j = 0; j < sinsp_tinfo.m_cgroups.size(); ++j)
+			for (uint32_t j = 0; j < sinsp_tinfo.m_cgroups.size(); ++j)
 			{
-				cgroups_proc.insert(pair<string, string>(sinsp_tinfo.m_cgroups[j].first, sinsp_tinfo.m_cgroups[j].second));
+				cgroups_proc.insert(pair<string, string>(sinsp_tinfo.m_cgroups[j].first,
+				                                         sinsp_tinfo.m_cgroups[j].second));
 			}
 
 			ASSERT_TRUE(cgroups_kernel.size() > 0);
 			ASSERT_TRUE(cgroups_proc.size() > 0);
 
-			for(auto& it_proc : cgroups_proc)
+			for (auto& it_proc : cgroups_proc)
 			{
 				auto it_kernel = cgroups_kernel.find(it_proc.first);
-				if(it_kernel != cgroups_kernel.end())
+				if (it_kernel != cgroups_kernel.end())
 				{
 					EXPECT_EQ(it_kernel->first, it_proc.first);
 					EXPECT_EQ(it_kernel->second, it_proc.second);
@@ -117,16 +116,18 @@ TEST_F(sys_call_test, container_cgroups)
 			}
 
 			done = true;
-		} else {
+		}
+		else
+		{
 			printf("event type: %d != %d\n", param.m_evt->get_type(), PPME_SYSCALL_CLONE_20_X);
 		}
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	ASSERT_TRUE(done);
 }
 
-static int clone_callback_3(void *arg)
+static int clone_callback_3(void* arg)
 {
 	sleep(1);
 	sleep(1);
@@ -145,31 +146,27 @@ TEST_F(sys_call_test, container_clone_nspid)
 	//
 	// FILTER
 	//
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return evt->get_tid() == ctid;
-	};
+	event_filter_t filter = [&](sinsp_evt* evt) { return evt->get_tid() == ctid; };
 
 	//
 	// TEST CODE
 	//
-	run_callback_t test = [&](sinsp* inspector)
-	{
-		const int STACK_SIZE = 65536;       /* Stack size for cloned child */
-		char *stack;                        /* Start of stack buffer area */
-		char *stack_top;                     /* End of stack buffer area */
+	run_callback_t test = [&](sinsp* inspector) {
+		const int STACK_SIZE = 65536; /* Stack size for cloned child */
+		char* stack;                  /* Start of stack buffer area */
+		char* stack_top;              /* End of stack buffer area */
 
 		stack = (char*)malloc(STACK_SIZE);
-		if(stack == NULL)
+		if (stack == NULL)
 		{
-		    FAIL();
+			FAIL();
 		}
 		stack_top = stack + STACK_SIZE;
 
 		ctid = clone(clone_callback_3, stack_top, flags, NULL);
-		if(ctid == -1)
+		if (ctid == -1)
 		{
-		    FAIL();
+			FAIL();
 		}
 
 		wait(NULL);
@@ -178,10 +175,9 @@ TEST_F(sys_call_test, container_clone_nspid)
 	//
 	// OUTPUT VALDATION
 	//
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_evt* e = param.m_evt;
-		if(e->get_type() == PPME_SYSCALL_CLONE_20_X)
+		if (e->get_type() == PPME_SYSCALL_CLONE_20_X)
 		{
 			sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 			ASSERT_TRUE(tinfo != NULL);
@@ -192,7 +188,7 @@ TEST_F(sys_call_test, container_clone_nspid)
 		}
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	ASSERT_TRUE(done);
 }
 
@@ -203,45 +199,38 @@ TEST_F(sys_call_test, container_clone_nspid_ioctl)
 	bool done = false;
 
 	const int STACK_SIZE = 65536;
-	char *stack;
-	char *stack_top;
+	char* stack;
+	char* stack_top;
 
 	stack = (char*)malloc(STACK_SIZE);
-	if(stack == NULL)
+	if (stack == NULL)
 	{
-	    FAIL();
+		FAIL();
 	}
 	stack_top = stack + STACK_SIZE;
 
 	ctid = clone(clone_callback_3, stack_top, flags, NULL);
-	if(ctid == -1)
+	if (ctid == -1)
 	{
-	    FAIL();
+		FAIL();
 	}
 
 	//
 	// FILTER
 	//
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return evt->get_tid() == ctid;
-	};
+	event_filter_t filter = [&](sinsp_evt* evt) { return evt->get_tid() == ctid; };
 
 	//
 	// TEST CODE
 	//
-	run_callback_t test = [&](sinsp* inspector)
-	{
-		wait(NULL);
-	};
+	run_callback_t test = [&](sinsp* inspector) { wait(NULL); };
 
 	//
 	// OUTPUT VALDATION
 	//
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			EXPECT_EQ(1, tinfo->m_vtid);
 			EXPECT_EQ(1, tinfo->m_vpid);
@@ -250,7 +239,7 @@ TEST_F(sys_call_test, container_clone_nspid_ioctl)
 		}
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	ASSERT_TRUE(done);
 }
 
@@ -259,16 +248,15 @@ TEST_F(sys_call_test, container_docker_netns_ioctl)
 	bool done = false;
 	bool first = true;
 
-	if(!dutils_check_docker())
+	if (!dutils_check_docker())
 	{
 		printf("Docker not running, skipping test\n");
 		return;
 	}
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return !tinfo->m_container_id.empty();
 		}
@@ -280,9 +268,9 @@ TEST_F(sys_call_test, container_docker_netns_ioctl)
 	ASSERT_TRUE(system("docker rm -v ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
 
 #ifdef __s390x__
-	if(system("docker run -d --name ilovesysdig_docker s390x/busybox ping -w 10 127.0.0.1") != 0)
+	if (system("docker run -d --name ilovesysdig_docker s390x/busybox ping -w 10 127.0.0.1") != 0)
 #else
-	if(system("docker run -d --name ilovesysdig_docker busybox ping -w 10 127.0.0.1") != 0)
+	if (system("docker run -d --name ilovesysdig_docker busybox ping -w 10 127.0.0.1") != 0)
 #endif
 	{
 		ASSERT_TRUE(false);
@@ -293,8 +281,7 @@ TEST_F(sys_call_test, container_docker_netns_ioctl)
 	//
 	// TEST CODE
 	//
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		sleep(5);
 
 		ASSERT_TRUE(system("docker kill ilovesysdig_docker > /dev/null 2>&1") == 0);
@@ -304,10 +291,9 @@ TEST_F(sys_call_test, container_docker_netns_ioctl)
 	//
 	// OUTPUT VALDATION
 	//
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_evt* e = param.m_evt;
-		if(e->get_type() == PPME_SOCKET_SENDTO_E)
+		if (e->get_type() == PPME_SOCKET_SENDTO_E)
 		{
 			string tuple = e->get_param_value_str("tuple");
 
@@ -316,7 +302,7 @@ TEST_F(sys_call_test, container_docker_netns_ioctl)
 			//
 			// The first one doesn't have fd set
 			//
-			if(first)
+			if (first)
 			{
 				first = false;
 				return;
@@ -329,7 +315,7 @@ TEST_F(sys_call_test, container_docker_netns_ioctl)
 		}
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	ASSERT_TRUE(done);
 }
 
@@ -337,26 +323,24 @@ static void run_container_docker_test(bool fork_after_container_start)
 {
 	bool done = false;
 
-	if(!dutils_check_docker())
+	if (!dutils_check_docker())
 	{
 		printf("Docker not running, skipping test\n");
 		return;
 	}
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		return (evt->get_type() == PPME_CONTAINER_JSON_E);
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		ASSERT_TRUE(system("docker kill ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
 		ASSERT_TRUE(system("docker rm -v ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
 
 #ifdef __s390x__
-		if(system("docker run -d --name ilovesysdig_docker s390x/busybox") != 0)
+		if (system("docker run -d --name ilovesysdig_docker s390x/busybox") != 0)
 #else
-		if(system("docker run -d --name ilovesysdig_docker busybox") != 0)
+		if (system("docker run -d --name ilovesysdig_docker busybox") != 0)
 #endif
 		{
 			ASSERT_TRUE(false);
@@ -367,7 +351,7 @@ static void run_container_docker_test(bool fork_after_container_start)
 		ASSERT_TRUE(system("docker kill ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
 		ASSERT_TRUE(system("docker rm -v ilovesysdig_docker > /dev/null 2>&1") == 0);
 
-		if(fork_after_container_start)
+		if (fork_after_container_start)
 		{
 			int child_pid = fork();
 
@@ -387,8 +371,7 @@ static void run_container_docker_test(bool fork_after_container_start)
 		}
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 		ASSERT_TRUE(tinfo->m_vtid != tinfo->m_tid);
@@ -397,7 +380,7 @@ static void run_container_docker_test(bool fork_after_container_start)
 		ASSERT_TRUE(tinfo->m_container_id.length() == 12);
 
 		const auto container_info =
-		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_TRUE(container_info != NULL);
 
 		EXPECT_EQ(sinsp_container_lookup_state::SUCCESSFUL, container_info->m_lookup_state);
@@ -412,7 +395,7 @@ static void run_container_docker_test(bool fork_after_container_start)
 		done = true;
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	ASSERT_TRUE(done);
 }
 
@@ -448,35 +431,33 @@ TEST_F(sys_call_test, container_docker_bad_socket)
 {
 	bool done = false;
 
-	if(!dutils_check_docker())
+	if (!dutils_check_docker())
 	{
 		printf("Docker not running, skipping test\n");
 		return;
 	}
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		if(evt->get_type() == PPME_CONTAINER_JSON_E)
+	event_filter_t filter = [&](sinsp_evt* evt) {
+		if (evt->get_type() == PPME_CONTAINER_JSON_E)
 		{
 			return true;
 		}
 		auto tinfo = evt->get_thread_info();
-		if(tinfo)
+		if (tinfo)
 		{
 			return !tinfo->m_container_id.empty();
 		}
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		ASSERT_TRUE(system("docker kill ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
 		ASSERT_TRUE(system("docker rm -v ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
 
 #ifdef __s390x__
-		if(system("docker run -d --name ilovesysdig_docker s390x/busybox") != 0)
+		if (system("docker run -d --name ilovesysdig_docker s390x/busybox") != 0)
 #else
-		if(system("docker run -d --name ilovesysdig_docker busybox") != 0)
+		if (system("docker run -d --name ilovesysdig_docker busybox") != 0)
 #endif
 		{
 			ASSERT_TRUE(false);
@@ -488,8 +469,7 @@ TEST_F(sys_call_test, container_docker_bad_socket)
 		ASSERT_TRUE(system("docker rm -v ilovesysdig_docker > /dev/null 2>&1") == 0);
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		// can't get a container event for failed lookup
 		ASSERT_NE(PPME_CONTAINER_JSON_E, param.m_evt->get_type());
 
@@ -497,37 +477,34 @@ TEST_F(sys_call_test, container_docker_bad_socket)
 		ASSERT_TRUE(tinfo->m_container_id.length() == 12);
 		ASSERT_TRUE(param.m_inspector->m_container_manager.container_exists(tinfo->m_container_id));
 		const auto container_info =
-			param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
-		if(container_info && container_info->m_type == CT_DOCKER)
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		if (container_info && container_info->m_type == CT_DOCKER)
 		{
 			EXPECT_EQ(sinsp_container_lookup_state::FAILED, container_info->m_lookup_state);
 			done = true;
 		}
 	};
 
-	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
-	{
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		inspector->set_docker_socket_path("/invalid/path");
 	};
 
-	before_close_t cleanup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
-	{
+	before_close_t cleanup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		inspector->set_docker_socket_path("/var/run/docker.sock");
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup, cleanup);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, setup, cleanup); });
 	ASSERT_TRUE(done);
 }
 
 TEST_F(sys_call_test, container_custom)
 {
 	volatile bool done = false;
-	proc test_proc = proc("./test_helper", { "custom_container"});
+	proc test_proc = proc("./test_helper", {"custom_container"});
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return tinfo->m_exe == "/bin/echo" && !tinfo->m_container_id.empty();
 		}
@@ -535,8 +512,7 @@ TEST_F(sys_call_test, container_custom)
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
 		auto time_started = sinsp_utils::get_current_time_ns();
@@ -546,14 +522,14 @@ TEST_F(sys_call_test, container_custom)
 		}
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info =
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -563,8 +539,7 @@ TEST_F(sys_call_test, container_custom)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
-	{
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
 		res.set_id_pattern("<cgroup:1>");
@@ -576,19 +551,18 @@ TEST_F(sys_call_test, container_custom)
 		analyzer->set_custom_container_conf(move(res));
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, setup); });
 	ASSERT_TRUE(done);
 }
 
 TEST_F(sys_call_test, container_custom_env_match)
 {
 	volatile bool done = false;
-	proc test_proc = proc("./test_helper", { "custom_container"});
+	proc test_proc = proc("./test_helper", {"custom_container"});
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return tinfo->m_exe == "/bin/echo" && !tinfo->m_container_id.empty();
 		}
@@ -596,8 +570,7 @@ TEST_F(sys_call_test, container_custom_env_match)
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
 		auto time_started = sinsp_utils::get_current_time_ns();
@@ -607,14 +580,14 @@ TEST_F(sys_call_test, container_custom_env_match)
 		}
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info =
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -624,12 +597,11 @@ TEST_F(sys_call_test, container_custom_env_match)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
-	{
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
 		res.set_environ_match({
-			{ "CUSTOM_CONTAINER_NAME",  "custom_(.*)" },
+		    {"CUSTOM_CONTAINER_NAME", "custom_(.*)"},
 		});
 		res.set_id_pattern("<cgroup:1>");
 		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
@@ -640,19 +612,18 @@ TEST_F(sys_call_test, container_custom_env_match)
 		analyzer->set_custom_container_conf(move(res));
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, setup); });
 	ASSERT_TRUE(done);
 }
 
 TEST_F(sys_call_test, container_custom_env_match_last)
 {
 	volatile bool done = false;
-	proc test_proc = proc("./test_helper", { "custom_container"});
+	proc test_proc = proc("./test_helper", {"custom_container"});
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return tinfo->m_exe == "/bin/echo" && !tinfo->m_container_id.empty();
 		}
@@ -660,8 +631,7 @@ TEST_F(sys_call_test, container_custom_env_match_last)
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
 		auto time_started = sinsp_utils::get_current_time_ns();
@@ -671,14 +641,14 @@ TEST_F(sys_call_test, container_custom_env_match_last)
 		}
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info =
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -688,12 +658,11 @@ TEST_F(sys_call_test, container_custom_env_match_last)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
-	{
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
 		res.set_environ_match({
-			{ "CUSTOM_CONTAINER_IMAGE",  "custom_(.*)" },
+		    {"CUSTOM_CONTAINER_IMAGE", "custom_(.*)"},
 		});
 		res.set_id_pattern("<cgroup:1>");
 		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
@@ -704,19 +673,18 @@ TEST_F(sys_call_test, container_custom_env_match_last)
 		analyzer->set_custom_container_conf(move(res));
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, setup); });
 	ASSERT_TRUE(done);
 }
 
 TEST_F(sys_call_test, container_custom_env_match_all)
 {
 	volatile bool done = false;
-	proc test_proc = proc("./test_helper", { "custom_container"});
+	proc test_proc = proc("./test_helper", {"custom_container"});
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return tinfo->m_exe == "/bin/echo" && !tinfo->m_container_id.empty();
 		}
@@ -724,8 +692,7 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
 		auto time_started = sinsp_utils::get_current_time_ns();
@@ -735,14 +702,14 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 		}
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info =
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -752,14 +719,11 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
-	{
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_environ_match({
-			{ "CUSTOM_CONTAINER_NAME",  "custom_(.*)" },
-			{ "CUSTOM_CONTAINER_IMAGE",  "custom_(.*)" }
-		});
+		res.set_environ_match(
+		    {{"CUSTOM_CONTAINER_NAME", "custom_(.*)"}, {"CUSTOM_CONTAINER_IMAGE", "custom_(.*)"}});
 		res.set_id_pattern("<cgroup:1>");
 		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
 		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
@@ -769,19 +733,18 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 		analyzer->set_custom_container_conf(move(res));
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, setup); });
 	ASSERT_TRUE(done);
 }
 
 TEST_F(sys_call_test, container_custom_env_match_flipped)
 {
 	volatile bool done = false;
-	proc test_proc = proc("./test_helper", { "custom_container"});
+	proc test_proc = proc("./test_helper", {"custom_container"});
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return tinfo->m_exe == "/bin/echo" && !tinfo->m_container_id.empty();
 		}
@@ -789,8 +752,7 @@ TEST_F(sys_call_test, container_custom_env_match_flipped)
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
 		auto time_started = sinsp_utils::get_current_time_ns();
@@ -800,14 +762,14 @@ TEST_F(sys_call_test, container_custom_env_match_flipped)
 		}
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info =
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -817,14 +779,11 @@ TEST_F(sys_call_test, container_custom_env_match_flipped)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
-	{
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_environ_match({
-			{ "CUSTOM_CONTAINER_IMAGE",  "custom_(.*)" },
-			{ "CUSTOM_CONTAINER_NAME",  "custom_(.*)" }
-		});
+		res.set_environ_match(
+		    {{"CUSTOM_CONTAINER_IMAGE", "custom_(.*)"}, {"CUSTOM_CONTAINER_NAME", "custom_(.*)"}});
 		res.set_id_pattern("<cgroup:1>");
 		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
 		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
@@ -834,7 +793,7 @@ TEST_F(sys_call_test, container_custom_env_match_flipped)
 		analyzer->set_custom_container_conf(move(res));
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, setup); });
 	ASSERT_TRUE(done);
 }
 
@@ -842,12 +801,11 @@ TEST_F(sys_call_test, container_custom_halfnhalf)
 {
 	volatile bool done = false;
 	string container_name, container_image;
-	proc test_proc = proc("./test_helper", { "custom_container", "halfnhalf" });
+	proc test_proc = proc("./test_helper", {"custom_container", "halfnhalf"});
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return tinfo->m_container_id == "foo";
 		}
@@ -855,8 +813,7 @@ TEST_F(sys_call_test, container_custom_halfnhalf)
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
 		auto time_started = sinsp_utils::get_current_time_ns();
@@ -866,14 +823,14 @@ TEST_F(sys_call_test, container_custom_halfnhalf)
 		}
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info =
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -883,8 +840,7 @@ TEST_F(sys_call_test, container_custom_halfnhalf)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
-	{
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
 		res.set_id_pattern("<cgroup:1>");
@@ -897,26 +853,26 @@ TEST_F(sys_call_test, container_custom_halfnhalf)
 		analyzer->set_custom_container_conf(move(res));
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, setup); });
 
-	// we're building the metadata process by process, so we can only expect it to be complete at the end
+	// we're building the metadata process by process, so we can only expect it to be complete at
+	// the end
 	EXPECT_EQ("custom_name", container_name);
 	EXPECT_EQ("custom_image", container_image);
 	ASSERT_TRUE(done);
 }
 
 /// Test the happy path for large environment support
-/// Loading the environment from /proc is racy but this process is a "sleep 1" so we should have plenty
-/// of time to do it
+/// Loading the environment from /proc is racy but this process is a "sleep 1" so we should have
+/// plenty of time to do it
 TEST_F(sys_call_test, container_custom_huge_env)
 {
 	volatile bool done = false;
-	proc test_proc = proc("./test_helper", { "custom_container", "huge_env" });
+	proc test_proc = proc("./test_helper", {"custom_container", "huge_env"});
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return tinfo->m_container_id == "foo";
 		}
@@ -924,8 +880,7 @@ TEST_F(sys_call_test, container_custom_huge_env)
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
 		auto time_started = sinsp_utils::get_current_time_ns();
@@ -935,14 +890,14 @@ TEST_F(sys_call_test, container_custom_huge_env)
 		}
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info =
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -952,14 +907,11 @@ TEST_F(sys_call_test, container_custom_huge_env)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
-	{
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_environ_match({
-					      { "CUSTOM_CONTAINER_IMAGE",  "custom_(.*)" },
-					      { "CUSTOM_CONTAINER_NAME",  "custom_(.*)" }
-				      });
+		res.set_environ_match(
+		    {{"CUSTOM_CONTAINER_IMAGE", "custom_(.*)"}, {"CUSTOM_CONTAINER_NAME", "custom_(.*)"}});
 		res.set_id_pattern("<cgroup:1>");
 		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
 		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
@@ -972,21 +924,21 @@ TEST_F(sys_call_test, container_custom_huge_env)
 		inspector->set_large_envs(true);
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, setup); });
 	ASSERT_TRUE(done);
 }
 
-/// Run a fast process with a large environment, where the interesting variables are at the beginning
-/// We don't read the environment from /proc in this test but we still should have the initial 4K available
+/// Run a fast process with a large environment, where the interesting variables are at the
+/// beginning We don't read the environment from /proc in this test but we still should have the
+/// initial 4K available
 TEST_F(sys_call_test, container_custom_huge_env_echo)
 {
 	volatile bool done = false;
-	proc test_proc = proc("./test_helper", { "custom_container", "huge_env_echo" });
+	proc test_proc = proc("./test_helper", {"custom_container", "huge_env_echo"});
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return tinfo->m_container_id == "foo";
 		}
@@ -994,8 +946,7 @@ TEST_F(sys_call_test, container_custom_huge_env_echo)
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
 		auto time_started = sinsp_utils::get_current_time_ns();
@@ -1005,14 +956,14 @@ TEST_F(sys_call_test, container_custom_huge_env_echo)
 		}
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info =
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -1022,14 +973,11 @@ TEST_F(sys_call_test, container_custom_huge_env_echo)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
-	{
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_environ_match({
-					      { "CUSTOM_CONTAINER_IMAGE",  "custom_(.*)" },
-					      { "CUSTOM_CONTAINER_NAME",  "custom_(.*)" }
-				      });
+		res.set_environ_match(
+		    {{"CUSTOM_CONTAINER_IMAGE", "custom_(.*)"}, {"CUSTOM_CONTAINER_NAME", "custom_(.*)"}});
 		res.set_id_pattern("<cgroup:1>");
 		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
 		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
@@ -1039,22 +987,21 @@ TEST_F(sys_call_test, container_custom_huge_env_echo)
 		analyzer->set_custom_container_conf(move(res));
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, setup); });
 	ASSERT_TRUE(done);
 }
 
-/// Run a fast process with a large environment, where the interesting variables are at the beginning
-/// We'll (probably) fail to read the environment from /proc before the process exits
-/// but we still should have the initial 4K available
+/// Run a fast process with a large environment, where the interesting variables are at the
+/// beginning We'll (probably) fail to read the environment from /proc before the process exits but
+/// we still should have the initial 4K available
 TEST_F(sys_call_test, container_custom_huge_env_echo_proc)
 {
 	volatile bool done = false;
-	proc test_proc = proc("./test_helper", { "custom_container", "huge_env_echo" });
+	proc test_proc = proc("./test_helper", {"custom_container", "huge_env_echo"});
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return tinfo->m_container_id == "foo";
 		}
@@ -1062,8 +1009,7 @@ TEST_F(sys_call_test, container_custom_huge_env_echo_proc)
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
 		auto time_started = sinsp_utils::get_current_time_ns();
@@ -1073,14 +1019,14 @@ TEST_F(sys_call_test, container_custom_huge_env_echo_proc)
 		}
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info =
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -1090,14 +1036,11 @@ TEST_F(sys_call_test, container_custom_huge_env_echo_proc)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
-	{
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_environ_match({
-					      { "CUSTOM_CONTAINER_IMAGE",  "custom_(.*)" },
-					      { "CUSTOM_CONTAINER_NAME",  "custom_(.*)" }
-				      });
+		res.set_environ_match(
+		    {{"CUSTOM_CONTAINER_IMAGE", "custom_(.*)"}, {"CUSTOM_CONTAINER_NAME", "custom_(.*)"}});
 		res.set_id_pattern("<cgroup:1>");
 		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
 		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
@@ -1110,25 +1053,24 @@ TEST_F(sys_call_test, container_custom_huge_env_echo_proc)
 		inspector->set_large_envs(true);
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, setup); });
 	ASSERT_TRUE(done);
 }
 
 /// Test that loading the environment from /proc actually works
-/// Loading the environment from /proc is racy but this process is a "sleep 1" so we should have plenty
-/// of time to do it. This test will fail if we only use the initial 4K of the environment
+/// Loading the environment from /proc is racy but this process is a "sleep 1" so we should have
+/// plenty of time to do it. This test will fail if we only use the initial 4K of the environment
 /// (the interesting variables are at the end of the environment)
 /// An analogous test with a short-lived process (e.g. echo) will most probably fail
 /// (we won't be able to read the environment before the process exits)
 TEST_F(sys_call_test, container_custom_huge_env_at_end)
 {
 	volatile bool done = false;
-	proc test_proc = proc("./test_helper", { "custom_container", "huge_env_at_end" });
+	proc test_proc = proc("./test_helper", {"custom_container", "huge_env_at_end"});
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return tinfo->m_container_id == "foo";
 		}
@@ -1136,8 +1078,7 @@ TEST_F(sys_call_test, container_custom_huge_env_at_end)
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
 		auto time_started = sinsp_utils::get_current_time_ns();
@@ -1147,14 +1088,14 @@ TEST_F(sys_call_test, container_custom_huge_env_at_end)
 		}
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
 		EXPECT_EQ("foo", tinfo->m_container_id);
 
-		const auto container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container_info =
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
@@ -1164,14 +1105,11 @@ TEST_F(sys_call_test, container_custom_huge_env_at_end)
 		done = true;
 	};
 
-	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
-	{
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		custom_container::resolver res;
 		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_environ_match({
-					      { "CUSTOM_CONTAINER_IMAGE",  "custom_(.*)" },
-					      { "CUSTOM_CONTAINER_NAME",  "custom_(.*)" }
-				      });
+		res.set_environ_match(
+		    {{"CUSTOM_CONTAINER_IMAGE", "custom_(.*)"}, {"CUSTOM_CONTAINER_NAME", "custom_(.*)"}});
 		res.set_id_pattern("<cgroup:1>");
 		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
 		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
@@ -1184,7 +1122,7 @@ TEST_F(sys_call_test, container_custom_huge_env_at_end)
 		inspector->set_large_envs(true);
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, setup); });
 	ASSERT_TRUE(done);
 }
 
@@ -1192,16 +1130,15 @@ TEST_F(sys_call_test, container_rkt_after)
 {
 	bool done = false;
 
-	if(system("rkt version > /dev/null 2>&1") != 0)
+	if (system("rkt version > /dev/null 2>&1") != 0)
 	{
 		printf("rkt not installed, skipping test\n");
 		return;
 	}
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return !tinfo->m_container_id.empty();
 		}
@@ -1209,8 +1146,7 @@ TEST_F(sys_call_test, container_rkt_after)
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		if (std::ifstream("/tmp/myrkt"))
 		{
 			ASSERT_TRUE(system("xargs -a /tmp/myrkt rkt stop > /dev/null") == 0);
@@ -1223,7 +1159,9 @@ TEST_F(sys_call_test, container_rkt_after)
 			ASSERT_TRUE(false);
 		}
 
-		rc = system("systemd-run rkt run --uuid-file-save=/tmp/myrkt docker://busybox --name=myrkt --exec=sleep -- 5");
+		rc = system(
+		    "systemd-run rkt run --uuid-file-save=/tmp/myrkt docker://busybox --name=myrkt "
+		    "--exec=sleep -- 5");
 		if (rc != 0)
 		{
 			ASSERT_TRUE(false);
@@ -1236,8 +1174,7 @@ TEST_F(sys_call_test, container_rkt_after)
 		remove("/tmp/myrkt");
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 		if (tinfo->m_comm != "init")
@@ -1246,10 +1183,11 @@ TEST_F(sys_call_test, container_rkt_after)
 			ASSERT_NE(tinfo->m_vpid, tinfo->m_pid);
 		}
 
-		ASSERT_EQ(42u, tinfo->m_container_id.length()) << "container_id is " << tinfo->m_container_id;
+		ASSERT_EQ(42u, tinfo->m_container_id.length())
+		    << "container_id is " << tinfo->m_container_id;
 
 		const auto container_info =
-		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_TRUE(container_info != NULL);
 
 		EXPECT_EQ(sinsp_container_type::CT_RKT, container_info->m_type);
@@ -1259,7 +1197,7 @@ TEST_F(sys_call_test, container_rkt_after)
 		done = true;
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	ASSERT_TRUE(done);
 }
 
@@ -1267,7 +1205,7 @@ TEST_F(sys_call_test, container_rkt_before)
 {
 	bool done = false;
 
-	if(system("rkt version > /dev/null 2>&1") != 0)
+	if (system("rkt version > /dev/null 2>&1") != 0)
 	{
 		printf("rkt not installed, skipping test\n");
 		return;
@@ -1287,16 +1225,17 @@ TEST_F(sys_call_test, container_rkt_before)
 		ASSERT_TRUE(false);
 	}
 
-	rc = system("systemd-run rkt run --uuid-file-save=/tmp/myrkt docker://busybox --name=myrkt --exec=sleep -- 5");
+	rc = system(
+	    "systemd-run rkt run --uuid-file-save=/tmp/myrkt docker://busybox --name=myrkt "
+	    "--exec=sleep -- 5");
 	if (rc != 0)
 	{
 		ASSERT_TRUE(false);
 	}
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return !tinfo->m_container_id.empty();
 		}
@@ -1304,8 +1243,7 @@ TEST_F(sys_call_test, container_rkt_before)
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		// wait to be sure that rkt container is started and verified by the callback below
 		sleep(10);
 
@@ -1314,8 +1252,7 @@ TEST_F(sys_call_test, container_rkt_before)
 		remove("/tmp/myrkt");
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 		if (tinfo->m_comm != "init")
@@ -1324,10 +1261,11 @@ TEST_F(sys_call_test, container_rkt_before)
 			ASSERT_NE(tinfo->m_vpid, tinfo->m_pid);
 		}
 
-		ASSERT_EQ(42u, tinfo->m_container_id.length()) << "container_id is " << tinfo->m_container_id;
+		ASSERT_EQ(42u, tinfo->m_container_id.length())
+		    << "container_id is " << tinfo->m_container_id;
 
 		const auto container_info =
-		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_TRUE(container_info != NULL);
 
 		EXPECT_EQ(sinsp_container_type::CT_RKT, container_info->m_type);
@@ -1337,7 +1275,7 @@ TEST_F(sys_call_test, container_rkt_before)
 		done = true;
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	ASSERT_TRUE(done);
 }
 
@@ -1345,16 +1283,15 @@ TEST_F(sys_call_test, DISABLED_container_lxc)
 {
 	bool done = false;
 
-	if(system("lxc-create --help > /dev/null 2>&1") != 0)
+	if (system("lxc-create --help > /dev/null 2>&1") != 0)
 	{
 		printf("LXC not installed, skipping test\n");
 		return;
 	}
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return !tinfo->m_container_id.empty();
 		}
@@ -1362,21 +1299,20 @@ TEST_F(sys_call_test, DISABLED_container_lxc)
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		ASSERT_TRUE(system("lxc-stop --name ilovesysdig_lxc > /dev/null 2>&1 || true") == 0);
 		ASSERT_TRUE(system("lxc-destroy --name ilovesysdig_lxc > /dev/null 2>&1 || true") == 0);
 
 #ifdef __s390x__
-		if(system("lxc-create -n ilovesysdig_lxc -t s390x/busybox") != 0)
+		if (system("lxc-create -n ilovesysdig_lxc -t s390x/busybox") != 0)
 #else
-		if(system("lxc-create -n ilovesysdig_lxc -t busybox") != 0)
+		if (system("lxc-create -n ilovesysdig_lxc -t busybox") != 0)
 #endif
 		{
 			ASSERT_TRUE(false);
 		}
 
-		if(system("lxc-start -n ilovesysdig_lxc -d") != 0)
+		if (system("lxc-start -n ilovesysdig_lxc -d") != 0)
 		{
 			ASSERT_TRUE(false);
 		}
@@ -1387,8 +1323,7 @@ TEST_F(sys_call_test, DISABLED_container_lxc)
 		ASSERT_TRUE(system("lxc-destroy --name ilovesysdig_lxc > /dev/null 2>&1") == 0);
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 		ASSERT_TRUE(tinfo->m_vtid != tinfo->m_tid);
@@ -1397,7 +1332,7 @@ TEST_F(sys_call_test, DISABLED_container_lxc)
 		ASSERT_TRUE(tinfo->m_container_id == "ilovesysdig_lxc");
 
 		const auto container_info =
-		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_TRUE(container_info != NULL);
 
 		ASSERT_TRUE(container_info->m_type == sinsp_container_type::CT_LXC);
@@ -1407,7 +1342,7 @@ TEST_F(sys_call_test, DISABLED_container_lxc)
 		done = true;
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	ASSERT_TRUE(done);
 }
 
@@ -1415,16 +1350,15 @@ TEST_F(sys_call_test, container_libvirt)
 {
 	bool done = false;
 
-	if(system("virsh --help > /dev/null 2>&1") != 0)
+	if (system("virsh --help > /dev/null 2>&1") != 0)
 	{
 		printf("libvirt not installed, skipping test\n");
 		return;
 	}
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
+		if (tinfo)
 		{
 			return !tinfo->m_container_id.empty() && tinfo->m_comm == "sh";
 		}
@@ -1432,33 +1366,34 @@ TEST_F(sys_call_test, container_libvirt)
 		return false;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		FILE* f = fopen("/tmp/conf.xml", "w");
 		ASSERT_TRUE(f != NULL);
 		fprintf(f,
-			"<domain type='lxc'>\n"
-			"   <name>libvirt-container</name>\n"
-			"   <memory>128000</memory>\n"
-			"   <os>\n"
-			"      <type>exe</type>\n"
-			"      <init>/bin/sh</init>\n"
-			"   </os>\n"
-			"   <devices>\n"
-			"      <console type='pty'/>\n"
-			"   </devices>\n"
-			"</domain>");
+		        "<domain type='lxc'>\n"
+		        "   <name>libvirt-container</name>\n"
+		        "   <memory>128000</memory>\n"
+		        "   <os>\n"
+		        "      <type>exe</type>\n"
+		        "      <init>/bin/sh</init>\n"
+		        "   </os>\n"
+		        "   <devices>\n"
+		        "      <console type='pty'/>\n"
+		        "   </devices>\n"
+		        "</domain>");
 		fclose(f);
 
-		ASSERT_TRUE(system("virsh -c lxc:/// undefine libvirt-container > /dev/null 2>&1 || true") == 0);
-		ASSERT_TRUE(system("virsh -c lxc:/// destroy libvirt-container > /dev/null 2>&1 || true") == 0);
+		ASSERT_TRUE(
+		    system("virsh -c lxc:/// undefine libvirt-container > /dev/null 2>&1 || true") == 0);
+		ASSERT_TRUE(system("virsh -c lxc:/// destroy libvirt-container > /dev/null 2>&1 || true") ==
+		            0);
 
-		if(system("virsh -c lxc:/// define /tmp/conf.xml") != 0)
+		if (system("virsh -c lxc:/// define /tmp/conf.xml") != 0)
 		{
 			ASSERT_TRUE(false);
 		}
 
-		if(system("virsh -c lxc:/// start libvirt-container") != 0)
+		if (system("virsh -c lxc:/// start libvirt-container") != 0)
 		{
 			ASSERT_TRUE(false);
 		}
@@ -1469,8 +1404,7 @@ TEST_F(sys_call_test, container_libvirt)
 		ASSERT_TRUE(system("virsh -c lxc:/// destroy libvirt-container > /dev/null 2>&1") == 0);
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 		ASSERT_TRUE(tinfo->m_vtid != tinfo->m_tid);
@@ -1478,10 +1412,11 @@ TEST_F(sys_call_test, container_libvirt)
 
 		unsigned int lxc_id;
 		ASSERT_TRUE(tinfo->m_container_id.find("libvirt\\x2dcontainer") != string::npos ||
-		            sscanf(tinfo->m_container_id.c_str(), "lxc-%u-libvirt-container", &lxc_id) == 1);
+		            sscanf(tinfo->m_container_id.c_str(), "lxc-%u-libvirt-container", &lxc_id) ==
+		                1);
 
 		const auto container_info =
-		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_TRUE(container_info != NULL);
 
 		ASSERT_TRUE(container_info->m_type == sinsp_container_type::CT_LIBVIRT_LXC);
@@ -1491,7 +1426,7 @@ TEST_F(sys_call_test, container_libvirt)
 		done = true;
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	ASSERT_TRUE(done);
 }
 
@@ -1499,68 +1434,69 @@ TEST_F(sys_call_test, nsenterok)
 {
 	unsigned evtcount = 0;
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return m_tid_filter(evt) && (evt->get_type() == PPME_SYSCALL_SETNS_E || evt->get_type() == PPME_SYSCALL_SETNS_X);
+	event_filter_t filter = [&](sinsp_evt* evt) {
+		return m_tid_filter(evt) &&
+		       (evt->get_type() == PPME_SYSCALL_SETNS_E || evt->get_type() == PPME_SYSCALL_SETNS_X);
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		nsenter enter(1, "net");
 		try
 		{
 			nsenter enter(1, "uts");
 			throw exception();
-		} catch (const exception& ex)
+		}
+		catch (const exception& ex)
 		{
 		}
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		auto evt = param.m_evt;
 		auto type = evt->get_type();
-		switch(type)
+		switch (type)
 		{
 		case PPME_SYSCALL_SETNS_E:
-			switch(evtcount)
+			switch (evtcount)
 			{
-				case 0:
-					EXPECT_EQ("<f>/proc/1/ns/net", evt->get_param_value_str("fd"));
-					break;
-				case 2:
-					EXPECT_EQ("<f>/proc/1/ns/uts", evt->get_param_value_str("fd"));
-					break;
-				case 4:
-					EXPECT_EQ(string("<f>/proc/") + to_string(getpid()) +"/ns/uts", evt->get_param_value_str("fd"));
-					break;
-				case 6:
-					EXPECT_EQ(string("<f>/proc/") + to_string(getpid()) + "/ns/net", evt->get_param_value_str("fd"));
-					break;
+			case 0:
+				EXPECT_EQ("<f>/proc/1/ns/net", evt->get_param_value_str("fd"));
+				break;
+			case 2:
+				EXPECT_EQ("<f>/proc/1/ns/uts", evt->get_param_value_str("fd"));
+				break;
+			case 4:
+				EXPECT_EQ(string("<f>/proc/") + to_string(getpid()) + "/ns/uts",
+				          evt->get_param_value_str("fd"));
+				break;
+			case 6:
+				EXPECT_EQ(string("<f>/proc/") + to_string(getpid()) + "/ns/net",
+				          evt->get_param_value_str("fd"));
+				break;
 			}
 			break;
 		case PPME_SYSCALL_SETNS_X:
-			switch(evtcount)
+			switch (evtcount)
 			{
-				case 1:
-					EXPECT_EQ("0", evt->get_param_value_str("res"));
-					break;
-				case 3:
-					EXPECT_EQ("0", evt->get_param_value_str("res"));
-					break;
-				case 5:
-					EXPECT_EQ("0", evt->get_param_value_str("res"));
-					break;
-				case 7:
-					EXPECT_EQ("0", evt->get_param_value_str("res"));
-					break;
+			case 1:
+				EXPECT_EQ("0", evt->get_param_value_str("res"));
+				break;
+			case 3:
+				EXPECT_EQ("0", evt->get_param_value_str("res"));
+				break;
+			case 5:
+				EXPECT_EQ("0", evt->get_param_value_str("res"));
+				break;
+			case 7:
+				EXPECT_EQ("0", evt->get_param_value_str("res"));
+				break;
 			}
 			break;
 		}
 		evtcount += 1;
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	ASSERT_EQ(8u, evtcount);
 }
 
@@ -1568,34 +1504,31 @@ TEST_F(sys_call_test, nsenter_fail)
 {
 	unsigned evtcount = 0;
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		return m_tid_filter(evt) && (evt->get_type() == PPME_SYSCALL_SETNS_E || evt->get_type() == PPME_SYSCALL_SETNS_X);
+	event_filter_t filter = [&](sinsp_evt* evt) {
+		return m_tid_filter(evt) &&
+		       (evt->get_type() == PPME_SYSCALL_SETNS_E || evt->get_type() == PPME_SYSCALL_SETNS_X);
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		EXPECT_THROW(nsenter enter(-1, "net"), sinsp_exception);
 		EXPECT_THROW(nsenter enter(-1, "zzz"), sinsp_exception);
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
-		evtcount += 1;
-	};
+	captured_event_callback_t callback = [&](const callback_param& param) { evtcount += 1; };
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	ASSERT_EQ(0u, evtcount);
 }
 
-class container_state {
+class container_state
+{
 public:
-	container_state() :
-		container_w_health_probe(false),
-		root_cmd_seen(false),
-		second_cmd_seen(false),
-		healthcheck_seen(false) {};
-	virtual ~container_state() {};
+	container_state()
+	    : container_w_health_probe(false),
+	      root_cmd_seen(false),
+	      second_cmd_seen(false),
+	      healthcheck_seen(false){};
+	virtual ~container_state(){};
 
 	bool container_w_health_probe;
 	bool root_cmd_seen;
@@ -1603,41 +1536,41 @@ public:
 	bool healthcheck_seen;
 };
 
-static std::string capture_stats(sinsp *inspector)
+static std::string capture_stats(sinsp* inspector)
 {
 	scap_stats st;
 	inspector->get_capture_stats(&st);
 
 	std::stringstream ss;
 
-	ss << "capture stats: dropped=" << st.n_drops <<
-		" buf=" << st.n_drops_buffer <<
-		" pf=" << st.n_drops_pf <<
-		" bug=" << st.n_drops_bug;
+	ss << "capture stats: dropped=" << st.n_drops << " buf=" << st.n_drops_buffer
+	   << " pf=" << st.n_drops_pf << " bug=" << st.n_drops_bug;
 
 	return ss.str();
 }
 
-static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_state &cstate,
-				   sinsp_threadinfo::command_category expected_cat)
+static void update_container_state(sinsp* inspector,
+                                   sinsp_evt* evt,
+                                   container_state& cstate,
+                                   sinsp_threadinfo::command_category expected_cat)
 {
 	sinsp_threadinfo* tinfo = evt->m_tinfo;
 
-	if(tinfo == NULL)
+	if (tinfo == NULL)
 	{
 		return;
 	}
 
-	if(inspector->m_container_manager.container_exists(tinfo->m_container_id))
+	if (inspector->m_container_manager.container_exists(tinfo->m_container_id))
 	{
 		std::string cmdline;
 
 		sinsp_threadinfo::populate_cmdline(cmdline, tinfo);
 
 		const auto container_info =
-			inspector->m_container_manager.get_container(tinfo->m_container_id);
+		    inspector->m_container_manager.get_container(tinfo->m_container_id);
 
-		if(container_info && !container_info->m_health_probes.empty())
+		if (container_info && !container_info->m_health_probes.empty())
 		{
 			cstate.container_w_health_probe = true;
 		}
@@ -1646,13 +1579,14 @@ static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_s
 		// where the health check is the same command, we will see this
 		// command twice--the first time it should not be identified as
 		// a health check, and the second time it should.
-		if(cmdline == "sh -c /bin/sleep 10")
+		if (cmdline == "sh -c /bin/sleep 10")
 		{
-			if(!cstate.root_cmd_seen)
+			if (!cstate.root_cmd_seen)
 			{
 				cstate.root_cmd_seen = true;
 
-				ASSERT_EQ(tinfo->m_category, sinsp_threadinfo::CAT_CONTAINER) << capture_stats(inspector);
+				ASSERT_EQ(tinfo->m_category, sinsp_threadinfo::CAT_CONTAINER)
+				    << capture_stats(inspector);
 			}
 			else
 			{
@@ -1660,7 +1594,7 @@ static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_s
 				// complete (1.5 seconds) that a healthcheck proc might be run before the container
 				// info has been updated. So only require the threadinfo category to match once
 				// the container info has a health probe.
-				if(cstate.container_w_health_probe)
+				if (cstate.container_w_health_probe)
 				{
 					cstate.healthcheck_seen = true;
 					ASSERT_EQ(tinfo->m_category, expected_cat) << capture_stats(inspector);
@@ -1670,17 +1604,18 @@ static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_s
 
 		// Child process of the above sh command. Same handling as above,
 		// will see twice only when health check is same as root command.
-		if(cmdline == "sleep 10")
+		if (cmdline == "sleep 10")
 		{
-			if(!cstate.second_cmd_seen)
+			if (!cstate.second_cmd_seen)
 			{
 				cstate.second_cmd_seen = true;
-				ASSERT_EQ(tinfo->m_category, sinsp_threadinfo::CAT_CONTAINER) << capture_stats(inspector);
+				ASSERT_EQ(tinfo->m_category, sinsp_threadinfo::CAT_CONTAINER)
+				    << capture_stats(inspector);
 			}
 			else
 			{
 				// See above caveat about slow container info fetches
-				if(cstate.container_w_health_probe)
+				if (cstate.container_w_health_probe)
 				{
 					// Should inherit container healthcheck property from parent.
 					ASSERT_EQ(tinfo->m_category, expected_cat) << capture_stats(inspector);
@@ -1690,28 +1625,28 @@ static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_s
 
 		// Commandline for the health check of the healthcheck containers,
 		// in direct exec and shell formats.
-		if(cmdline == "sysdig-ut-healt" || cmdline == "sh -c /bin/sysdig-ut-health-check")
+		if (cmdline == "sysdig-ut-healt" || cmdline == "sh -c /bin/sysdig-ut-health-check")
 		{
 			cstate.healthcheck_seen = true;
 
 			ASSERT_EQ(tinfo->m_category, expected_cat) << capture_stats(inspector);
 		}
 	}
-
 }
 
 // Start up a container with the provided dockerfile, and track the
 // state of the initial command for the container, a child proces of
 // that initial command, and a health check (if one is configured).
-static void healthcheck_helper(const char *dockerfile,
-			       bool expect_healthcheck,
-			       sinsp_threadinfo::command_category expected_cat=sinsp_threadinfo::CAT_HEALTHCHECK)
+static void healthcheck_helper(
+    const char* dockerfile,
+    bool expect_healthcheck,
+    sinsp_threadinfo::command_category expected_cat = sinsp_threadinfo::CAT_HEALTHCHECK)
 {
 	container_state cstate;
 	bool exited_early = false;
 	std::string capture_stats_str = "(Not Collected Yet)";
 
-	if(!dutils_check_docker())
+	if (!dutils_check_docker())
 	{
 		return;
 	}
@@ -1719,59 +1654,55 @@ static void healthcheck_helper(const char *dockerfile,
 	dutils_kill_container("cont_health_ut");
 	dutils_kill_image("cont_health_ut_img");
 
-	std::string build_cmdline = string("cd resources/health_dockerfiles && docker build -t cont_health_ut_img -f ") +
-		dockerfile +
-		" . > /dev/null 2>&1";
+	std::string build_cmdline =
+	    string("cd resources/health_dockerfiles && docker build -t cont_health_ut_img -f ") +
+	    dockerfile + " . > /dev/null 2>&1";
 
 	ASSERT_TRUE(system(build_cmdline.c_str()) == 0);
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
 
-		return (strcmp(evt->get_name(), "execve")==0 && evt->get_direction() == SCAP_ED_OUT && tinfo->m_container_id != "");
+		return (strcmp(evt->get_name(), "execve") == 0 && evt->get_direction() == SCAP_ED_OUT &&
+		        tinfo->m_container_id != "");
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		// Setting dropping mode preserves the execs but
 		// reduces the chances that we'll drop events during
 		// the docker fetch.
 		inspector->start_dropping_mode(1);
 
 		// --network=none speeds up the container setup a bit.
-		int rc = system("docker run --rm --network=none --name cont_health_ut cont_health_ut_img /bin/sh -c '/bin/sleep 10' > /dev/null 2>&1");
+		int rc = system(
+		    "docker run --rm --network=none --name cont_health_ut cont_health_ut_img /bin/sh -c "
+		    "'/bin/sleep 10' > /dev/null 2>&1");
 
 		ASSERT_TRUE(exited_early || (rc == 0));
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		update_container_state(param.m_inspector, param.m_evt, cstate, expected_cat);
 
 		// Exit as soon as we've seen all the initial commands
 		// and the health check (if expecting one)
-		if(!exited_early &&
-		   cstate.root_cmd_seen &&
-		   cstate.second_cmd_seen &&
-		   (cstate.healthcheck_seen || !expect_healthcheck))
+		if (!exited_early && cstate.root_cmd_seen && cstate.second_cmd_seen &&
+		    (cstate.healthcheck_seen || !expect_healthcheck))
 		{
-			exited_early=true;
+			exited_early = true;
 			dutils_kill_container("cont_health_ut");
 		}
 	};
 
-	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
-	{
+	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	};
 
-	before_close_t cleanup = [&](sinsp* inspector, sinsp_analyzer* analyzer)
-	{
+	before_close_t cleanup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
 		capture_stats_str = capture_stats(inspector);
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup, cleanup);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, setup, cleanup); });
 
 	ASSERT_TRUE(cstate.root_cmd_seen) << capture_stats_str;
 	ASSERT_TRUE(cstate.second_cmd_seen) << capture_stats_str;
@@ -1779,17 +1710,18 @@ static void healthcheck_helper(const char *dockerfile,
 	ASSERT_EQ(cstate.healthcheck_seen, expect_healthcheck) << capture_stats_str;
 }
 
-static void healthcheck_tracefile_helper(const char *dockerfile,
-					 bool expect_healthcheck,
-					 sinsp_threadinfo::command_category expected_cat=sinsp_threadinfo::CAT_HEALTHCHECK)
+static void healthcheck_tracefile_helper(
+    const char* dockerfile,
+    bool expect_healthcheck,
+    sinsp_threadinfo::command_category expected_cat = sinsp_threadinfo::CAT_HEALTHCHECK)
 {
 	container_state cstate;
 	std::unique_ptr<sinsp> inspector;
 	char dumpfile[20] = "/tmp/captureXXXXXX";
 	int dumpfile_fd;
 
-        inspector.reset(NULL);
-        inspector.reset(new sinsp());
+	inspector.reset(NULL);
+	inspector.reset(new sinsp());
 	inspector->set_hostname_and_port_resolution_mode(false);
 	inspector->set_log_callback(common_logger::sinsp_logger_callback);
 
@@ -1805,14 +1737,13 @@ static void healthcheck_tracefile_helper(const char *dockerfile,
 	std::atomic_bool done;
 
 	done = false;
-	std::thread dump_thread = std::thread([&] ()
-	{
-		while(!done)
+	std::thread dump_thread = std::thread([&]() {
+		while (!done)
 		{
-			sinsp_evt *ev;
+			sinsp_evt* ev;
 			int32_t res = inspector->next(&ev);
 
-			if(res == SCAP_TIMEOUT)
+			if (res == SCAP_TIMEOUT)
 			{
 				continue;
 			}
@@ -1824,37 +1755,38 @@ static void healthcheck_tracefile_helper(const char *dockerfile,
 		inspector->close();
 	});
 
-	std::string build_cmdline = string("cd resources/health_dockerfiles && docker build -t cont_health_ut_img -f ") +
-		dockerfile +
-		" . > /dev/null 2>&1";
+	std::string build_cmdline =
+	    string("cd resources/health_dockerfiles && docker build -t cont_health_ut_img -f ") +
+	    dockerfile + " . > /dev/null 2>&1";
 	ASSERT_TRUE(system(build_cmdline.c_str()) == 0);
 
 	// --network=none speeds up the container setup a bit.
-	ASSERT_TRUE((system("docker run --rm --network=none --name cont_health_ut cont_health_ut_img /bin/sh -c '/bin/sleep 10' > /dev/null 2>&1")) == 0);
+	ASSERT_TRUE((system("docker run --rm --network=none --name cont_health_ut cont_health_ut_img "
+	                    "/bin/sh -c '/bin/sleep 10' > /dev/null 2>&1")) == 0);
 
-	done=true;
+	done = true;
 	dump_thread.join();
 
 	// Now reread the file we just wrote and pass it through
 	// update_container_state.
 
-        inspector.reset(NULL);
+	inspector.reset(NULL);
 	inspector.reset(new sinsp());
 	inspector->set_hostname_and_port_resolution_mode(false);
 	inspector->set_log_callback(common_logger::sinsp_logger_callback);
 	inspector->set_filter("evt.type=execve and evt.dir=<");
 	inspector->open(dumpfile);
 
-	while(1)
+	while (1)
 	{
-		sinsp_evt *ev;
+		sinsp_evt* ev;
 		int32_t res = inspector->next(&ev);
 
-		if(res == SCAP_TIMEOUT)
+		if (res == SCAP_TIMEOUT)
 		{
 			continue;
 		}
-		else if(res == SCAP_EOF)
+		else if (res == SCAP_EOF)
 		{
 			break;
 		}
@@ -1880,16 +1812,14 @@ static void healthcheck_tracefile_helper(const char *dockerfile,
 //  or a second process spawned after as a health check process.
 TEST_F(sys_call_test, docker_container_no_healthcheck)
 {
-	healthcheck_helper("Dockerfile.no_healthcheck",
-			   false);
+	healthcheck_helper("Dockerfile.no_healthcheck", false);
 }
 
 // A container with HEALTHCHECK=none should behave identically to one
 // without any container at all.
 TEST_F(sys_call_test, docker_container_none_healthcheck)
 {
-	healthcheck_helper("Dockerfile.none_healthcheck",
-			   false);
+	healthcheck_helper("Dockerfile.none_healthcheck", false);
 }
 
 //  Run container w/ health check. Should find health check for
@@ -1898,8 +1828,7 @@ TEST_F(sys_call_test, docker_container_none_healthcheck)
 //  check executed for container.
 TEST_F(sys_call_test, docker_container_healthcheck)
 {
-	healthcheck_helper("Dockerfile.healthcheck",
-			   true);
+	healthcheck_helper("Dockerfile.healthcheck", true);
 }
 
 //  Run container w/ health check and entrypoint having identical
@@ -1907,15 +1836,13 @@ TEST_F(sys_call_test, docker_container_healthcheck)
 //  health check process.
 TEST_F(sys_call_test, docker_container_healthcheck_cmd_overlap)
 {
-	healthcheck_helper("Dockerfile.healthcheck_cmd_overlap",
-			   true);
+	healthcheck_helper("Dockerfile.healthcheck_cmd_overlap", true);
 }
 
 // A health check using shell exec instead of direct exec.
 TEST_F(sys_call_test, docker_container_healthcheck_shell)
 {
-	healthcheck_helper("Dockerfile.healthcheck_shell",
-			   true);
+	healthcheck_helper("Dockerfile.healthcheck_shell", true);
 }
 
 // A health check where the container has docker labels that make it
@@ -1923,50 +1850,48 @@ TEST_F(sys_call_test, docker_container_healthcheck_shell)
 TEST_F(sys_call_test, docker_container_liveness_probe)
 {
 	healthcheck_helper("Dockerfile.healthcheck_liveness",
-			   true,
-			   sinsp_threadinfo::CAT_LIVENESS_PROBE);
+	                   true,
+	                   sinsp_threadinfo::CAT_LIVENESS_PROBE);
 }
 
 TEST_F(sys_call_test, docker_container_readiness_probe)
 {
 	healthcheck_helper("Dockerfile.healthcheck_readiness",
-			   true,
-			   sinsp_threadinfo::CAT_READINESS_PROBE);
+	                   true,
+	                   sinsp_threadinfo::CAT_READINESS_PROBE);
 }
 
 // Identical to above tests, but read events from a trace file instead
 // of live. Only doing selected cases.
 TEST_F(sys_call_test, docker_container_healthcheck_trace)
 {
-	healthcheck_tracefile_helper("Dockerfile.healthcheck",
-				     true);
+	healthcheck_tracefile_helper("Dockerfile.healthcheck", true);
 }
 
 TEST_F(sys_call_test, docker_container_healthcheck_cmd_overlap_trace)
 {
-	healthcheck_tracefile_helper("Dockerfile.healthcheck_cmd_overlap",
-				     true);
+	healthcheck_tracefile_helper("Dockerfile.healthcheck_cmd_overlap", true);
 }
 
 TEST_F(sys_call_test, docker_container_liveness_probe_trace)
 {
 	healthcheck_tracefile_helper("Dockerfile.healthcheck_liveness",
-				     true,
-				     sinsp_threadinfo::CAT_LIVENESS_PROBE);
+	                             true,
+	                             sinsp_threadinfo::CAT_LIVENESS_PROBE);
 }
 
 TEST_F(sys_call_test, docker_container_readiness_probe_trace)
 {
 	healthcheck_tracefile_helper("Dockerfile.healthcheck_readiness",
-				     true,
-				     sinsp_threadinfo::CAT_READINESS_PROBE);
+	                             true,
+	                             sinsp_threadinfo::CAT_READINESS_PROBE);
 }
 
 TEST_F(sys_call_test, docker_container_large_json)
 {
 	bool saw_container_evt = false;
 
-	if(!dutils_check_docker())
+	if (!dutils_check_docker())
 	{
 		return;
 	}
@@ -1974,30 +1899,30 @@ TEST_F(sys_call_test, docker_container_large_json)
 	dutils_kill_container("large_container_ut");
 	dutils_kill_image("large_container_ut_img");
 
-	ASSERT_TRUE(system("cd resources/large_container_dockerfiles && docker build -t large_container_ut_img -f Dockerfile.long_labels . > /dev/null") == 0);
+	ASSERT_TRUE(system("cd resources/large_container_dockerfiles && docker build -t "
+	                   "large_container_ut_img -f Dockerfile.long_labels . > /dev/null") == 0);
 
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
+	event_filter_t filter = [&](sinsp_evt* evt) {
 		return evt->get_type() == PPME_CONTAINER_JSON_E;
 	};
 
-	run_callback_t test = [&](sinsp* inspector)
-	{
+	run_callback_t test = [&](sinsp* inspector) {
 		// --network=none speeds up the container setup a bit.
-		int rc = system("docker run --rm --network=none --name large_container_ut large_container_ut_img /bin/sh -c '/bin/sleep 3' > /dev/null 2>&1");
+		int rc = system(
+		    "docker run --rm --network=none --name large_container_ut large_container_ut_img "
+		    "/bin/sh -c '/bin/sleep 3' > /dev/null 2>&1");
 
 		ASSERT_TRUE(rc == 0);
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	captured_event_callback_t callback = [&](const callback_param& param) {
 		saw_container_evt = true;
 
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
 		const auto container_info =
-			param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(nullptr, container_info);
 		ASSERT_EQ(container_info->m_type, CT_DOCKER);
 
@@ -2005,17 +1930,18 @@ TEST_F(sys_call_test, docker_container_large_json)
 		ASSERT_STREQ(container_info->m_image.c_str(), "large_container_ut_img");
 
 		std::unordered_set<std::string> labels = {
-			"url2",
-			"summary2",
-			"vcs-type2",
-			"vcs-ref2",
-			"description2",
-			"io.k8s.description2",
+		    "url2",
+		    "summary2",
+		    "vcs-type2",
+		    "vcs-ref2",
+		    "description2",
+		    "io.k8s.description2",
 		};
 
 		const std::string aaaaaa(4096, 'a');
 
-		for(const auto& label : container_info->m_labels) {
+		for (const auto& label : container_info->m_labels)
+		{
 			EXPECT_EQ(1, labels.erase(label.first));
 			EXPECT_EQ(4096, label.second.size());
 			EXPECT_EQ(aaaaaa, label.second);
@@ -2024,6 +1950,6 @@ TEST_F(sys_call_test, docker_container_large_json)
 		EXPECT_TRUE(labels.empty());
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	ASSERT_TRUE(saw_container_evt);
 }
