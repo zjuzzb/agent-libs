@@ -277,13 +277,13 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_last_profile_flush_ns = 0;
 	m_trace_count = 0;
 
-	m_procfs_parser = NULL;
-	m_sched_analyzer2 = NULL;
-	m_score_calculator = NULL;
-	m_delay_calculator = NULL;
+	m_procfs_parser = nullptr;
+	m_sched_analyzer2 = nullptr;
+	m_score_calculator = nullptr;
+	m_delay_calculator = nullptr;
 
-	m_ipv4_connections = NULL;
-	m_trans_table = NULL;
+	m_ipv4_connections = nullptr;
+	m_trans_table = nullptr;
 	m_last_dropmode_switch_time = 0;
 	m_seconds_above_thresholds = 0;
 	m_seconds_below_thresholds = 0;
@@ -374,13 +374,13 @@ sinsp_analyzer::~sinsp_analyzer()
 	}
 	m_chisels.clear();
 
-	if (m_falco_baseliner != NULL)
+	if (m_falco_baseliner != nullptr)
 	{
 		delete m_falco_baseliner;
 	}
 
 #ifndef CYGWING_AGENT
-	if (m_infrastructure_state != NULL)
+	if (m_infrastructure_state != nullptr)
 	{
 		delete m_infrastructure_state;
 	}
@@ -543,7 +543,7 @@ void sinsp_analyzer::on_capture_start()
 	}
 
 	m_initialized = true;
-	if (m_procfs_parser != NULL)
+	if (m_procfs_parser != nullptr)
 	{
 		//
 		// Note, we can get here if we switch from regular to nodriver and vice
@@ -580,7 +580,7 @@ void sinsp_analyzer::on_capture_start()
 	// Hardware-dependent inits
 	//
 	m_machine_info = m_inspector->get_machine_info();
-	if (m_machine_info == NULL)
+	if (m_machine_info == nullptr)
 	{
 		ASSERT(false);
 		const std::string err = "analyzer: machine info missing, analyzer can't start";
@@ -623,7 +623,7 @@ void sinsp_analyzer::on_capture_start()
 	//
 	// Allocations
 	//
-	ASSERT(m_ipv4_connections == NULL);
+	ASSERT(m_ipv4_connections == nullptr);
 	m_ipv4_connections = new sinsp_ipv4_connection_manager(m_inspector, *this);
 
 	if (m_secure_audit != nullptr)
@@ -642,7 +642,7 @@ void sinsp_analyzer::on_capture_start()
 	//
 	// Notify the scheduler analyzer
 	//
-	ASSERT(m_sched_analyzer2 != NULL);
+	ASSERT(m_sched_analyzer2 != nullptr);
 	m_parser->set_sched_analyzer2(m_sched_analyzer2);
 	m_sched_analyzer2->on_capture_start();
 
@@ -742,7 +742,7 @@ void sinsp_analyzer::add_chisel_dirs()
 	//
 	char* s_user_cdirs = getenv("SYSDIG_CHISEL_DIR");
 
-	if (s_user_cdirs != NULL)
+	if (s_user_cdirs != nullptr)
 	{
 		vector<string> user_cdirs = sinsp_split(s_user_cdirs, ';');
 
@@ -933,7 +933,7 @@ sinsp_configuration* sinsp_analyzer::get_configuration()
 	//
 	// The configuration can currently only be read or modified before the capture starts
 	//
-	if (m_inspector->m_h != NULL)
+	if (m_inspector->m_h != nullptr)
 	{
 		ASSERT(false);
 		std::string err = "Attempting to get the configuration while the inspector is capturing";
@@ -954,7 +954,7 @@ void sinsp_analyzer::set_configuration(const sinsp_configuration& configuration)
 	//
 	// The configuration can currently only be read or modified before the capture starts
 	//
-	if (m_inspector->m_h != NULL)
+	if (m_inspector->m_h != nullptr)
 	{
 		ASSERT(false);
 		std::string err = "Attempting to set the configuration while the inspector is capturing";
@@ -976,7 +976,7 @@ void sinsp_analyzer::remove_expired_connections(uint64_t ts)
 sinsp_connection* sinsp_analyzer::get_connection(const ipv4tuple& tuple, uint64_t timestamp)
 {
 	sinsp_connection* connection = m_ipv4_connections->get_connection(tuple, timestamp);
-	if (NULL == connection)
+	if (nullptr == connection)
 	{
 		// try to find the connection with source/destination reversed
 		ipv4tuple tuple_reversed;
@@ -986,7 +986,7 @@ sinsp_connection* sinsp_analyzer::get_connection(const ipv4tuple& tuple, uint64_
 		tuple_reversed.m_fields.m_dport = tuple.m_fields.m_sport;
 		tuple_reversed.m_fields.m_l4proto = tuple.m_fields.m_l4proto;
 		connection = m_ipv4_connections->get_connection(tuple_reversed, timestamp);
-		if (NULL != connection)
+		if (nullptr != connection)
 		{
 			((ipv4tuple*)&tuple)->m_fields = tuple_reversed.m_fields;
 		}
@@ -1128,7 +1128,7 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 
 	for (j = 0; j < howmany; j++)
 	{
-		ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != NULL);
+		ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != nullptr);
 
 		if (GET_AGENT_THREAD(prog_sortable_list[j])
 		        ->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() > 0)
@@ -1154,7 +1154,7 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 
 		for (j = 0; j < howmany; j++)
 		{
-			ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != NULL);
+			ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != nullptr);
 
 			if (GET_AGENT_THREAD(prog_sortable_list[j])
 			        ->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
@@ -1260,7 +1260,7 @@ void sinsp_analyzer::filter_top_programs_simpledriver_deprecated(Iterator progta
 
 	for (j = 0; j < howmany; j++)
 	{
-		ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != NULL);
+		ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != nullptr);
 
 		if (GET_AGENT_THREAD(prog_sortable_list[j])
 		        ->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
@@ -1987,7 +1987,7 @@ void sinsp_analyzer::emit_processes_deprecated(
 
 		sinsp_counter_time tot;
 
-		ASSERT(procinfo != NULL);
+		ASSERT(procinfo != nullptr);
 
 		procinfo->m_proc_metrics.get_total(&tot);
 
@@ -2129,7 +2129,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		sinsp_threadinfo& tinfo = sinsp_tinfo;
 		THREAD_TYPE* main_tinfo = tinfo.get_main_thread();
 #endif
-		analyzer_container_state* container = NULL;
+		analyzer_container_state* container = nullptr;
 
 		// xxx/nags : why not do this once for the main_thread?
 		if (!tinfo.m_container_id.empty())
@@ -2353,7 +2353,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		}
 
 		if (tinfo.m_flags & PPM_CL_CLOSED &&
-		    !(evt != NULL &&
+		    !(evt != nullptr &&
 		      (evt->get_type() == PPME_PROCEXIT_E || evt->get_type() == PPME_PROCEXIT_1_E) &&
 		      evt->m_tinfo == &tinfo))
 		{
@@ -2387,7 +2387,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			GET_AGENT_THREAD(&tinfo)->set_main_program_thread(false);
 		}
 
-		ASSERT(mtinfo != NULL);
+		ASSERT(mtinfo != nullptr);
 
 		GET_AGENT_THREAD(&tinfo)->m_main_thread_pid = mtinfo->m_pid;
 
@@ -2503,7 +2503,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	for (auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
 		THREAD_TYPE* tinfo = *it;
-		analyzer_container_state* container = NULL;
+		analyzer_container_state* container = nullptr;
 		if (!tinfo->m_container_id.empty())
 		{
 			container = &m_containers[tinfo->m_container_id];
@@ -2543,7 +2543,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 
 		sinsp_counter_time tot;
 
-		ASSERT(procinfo != NULL);
+		ASSERT(procinfo != nullptr);
 
 		procinfo->m_proc_metrics.get_total(&tot);
 
@@ -2563,8 +2563,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			{
 				m_delay_calculator->compute_program_delays(&m_host_client_transactions,
 				                                           &m_host_server_transactions,
-				                                           NULL,
-				                                           NULL,
+				                                           nullptr,
+				                                           nullptr,
 				                                           tinfo,
 				                                           prog_delays);
 			}
@@ -3135,7 +3135,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		if (cit->second.m_spid != 0)
 		{
 			auto tinfo = get_thread_by_pid(cit->second.m_spid, false, true);
-			if (tinfo == NULL)
+			if (tinfo == nullptr)
 			{
 				//
 				// No thread info for this connection?
@@ -3151,7 +3151,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		if (cit->second.m_dpid != 0)
 		{
 			auto tinfo = get_thread_by_pid(cit->second.m_dpid, false, true);
-			if (tinfo == NULL)
+			if (tinfo == nullptr)
 			{
 				//
 				// No thread info for this connection?
@@ -4024,13 +4024,13 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest,
 
 				if (host_dest)
 				{
-					ASSERT(container_dest == NULL);
+					ASSERT(container_dest == nullptr);
 					cd = host_dest->add_commands();
 				}
 				else
 				{
-					ASSERT(host_dest == NULL);
-					ASSERT(container_dest != NULL);
+					ASSERT(host_dest == nullptr);
+					ASSERT(container_dest != nullptr);
 					cd = container_dest->add_commands();
 				}
 
@@ -4074,9 +4074,6 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 	tracer_emitter falco_trc("falco_baseline", f_trc);
 	if (m_falco_baseliner->is_baseline_runtime_enabled())
 	{
-		scap_stats st;
-		m_inspector->get_capture_stats(&st);
-
 		if (is_eof)
 		{
 			//
@@ -4084,7 +4081,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 			//
 			m_falco_baseliner->emit_as_protobuf(0);
 		}
-		else if (evt != NULL && evt->get_ts() - m_last_falco_dump_ts >
+		else if (evt != nullptr && evt->get_ts() - m_last_falco_dump_ts >
 		                            m_configuration->get_falco_baselining_report_interval_ns())
 		{
 			if (m_last_falco_dump_ts != 0)
@@ -4102,7 +4099,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 		//
 		if (m_acked_sampling_ratio == 1)
 		{
-			if (evt != NULL &&
+			if (evt != nullptr &&
 			    evt->get_ts() - m_last_falco_dump_ts >
 			    m_configuration->get_falco_baselining_autodisable_interval_ns())
 			{
@@ -4110,9 +4107,6 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 				// It's safe to turn baselining on again.
 				// Reset the tables and restart the baseline time counter.
 				//
-				scap_stats st;
-				m_inspector->get_capture_stats(&st);
-
 				m_falco_baseliner->clear_tables();
 				m_falco_baseliner->enable_baseline_calculation();
 				m_last_falco_dump_ts = evt->get_ts();
@@ -4637,7 +4631,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			//
 			if (m_configuration->get_commandlines_capture_enabled())
 			{
-				emit_executed_commands(m_metrics.get(), NULL, &(m_executed_commands[""]));
+				emit_executed_commands(m_metrics.get(), nullptr, &(m_executed_commands[""]));
 			}
 
 			//
@@ -5120,7 +5114,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 		// In either case, evt->m_tinfo would become invalid.
 		// To avoid that, we refresh evt->m_tinfo.
 		//
-		evt->m_tinfo = NULL;  // This is important to avoid using a stale cached value!
+		evt->m_tinfo = nullptr;  // This is important to avoid using a stale cached value!
 		evt->m_tinfo = evt->get_thread_info();
 	}
 
@@ -5243,7 +5237,7 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 	thread_analyzer_info* tainfo = GET_AGENT_THREAD(evt->m_tinfo);
 	int64_t wd = tainfo->m_last_wait_duration_ns;
 
-	ASSERT(tainfo != NULL);
+	ASSERT(tainfo != nullptr);
 
 	if (wd != 0)
 	{
@@ -5386,7 +5380,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 	// If there is no event, assume that this is an EOF and use the
 	// next sample event as target time
 	//
-	if (evt != NULL)
+	if (evt != nullptr)
 	{
 		ts = evt->get_ts();
 		etype = evt->get_type();
@@ -5480,7 +5474,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 	//
 	// This happens if the flush was generated by a timeout
 	//
-	if (evt == NULL)
+	if (evt == nullptr)
 	{
 		return;
 	}
@@ -5502,7 +5496,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 	// This is where normal event parsing starts.
 	// The following code is executed for every event
 	//
-	if (evt->m_tinfo == NULL || etype == PPME_SCHEDSWITCH_1_E || etype == PPME_SCHEDSWITCH_6_E)
+	if (evt->m_tinfo == nullptr || etype == PPME_SCHEDSWITCH_1_E || etype == PPME_SCHEDSWITCH_6_E)
 	{
 		//
 		// No thread associated to this event, nothing to do
@@ -5512,7 +5506,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 
 	tainfo = GET_AGENT_THREAD(evt->m_tinfo);
 
-	if (tainfo == NULL)
+	if (tainfo == nullptr)
 	{
 		//
 		// No analyzer state associated to this thread.
@@ -5796,7 +5790,7 @@ void sinsp_analyzer::get_k8s_data()
 		}
 		else if (!m_metrics)
 		{
-			g_logger.log("Proto metrics are NULL.", sinsp_logger::SEV_ERROR);
+			g_logger.log("Proto metrics are nullptr.", sinsp_logger::SEV_ERROR);
 		}
 	}
 }
@@ -7108,7 +7102,7 @@ void sinsp_analyzer::emit_container(const string& container_id,
 
 		if (ecit != m_executed_commands.end())
 		{
-			emit_executed_commands(NULL, container, &(ecit->second));
+			emit_executed_commands(nullptr, container, &(ecit->second));
 		}
 	}
 #endif
@@ -7631,9 +7625,9 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf,
 			{
 				ntransactions++;
 
-				if (fdit->second.m_usrstate != NULL)
+				if (fdit->second.m_usrstate != nullptr)
 				{
-					if (fdit->second.m_usrstate->m_protoparser != NULL)
+					if (fdit->second.m_usrstate->m_protoparser != nullptr)
 					{
 						switch (fdit->second.m_usrstate->m_protoparser->get_type())
 						{

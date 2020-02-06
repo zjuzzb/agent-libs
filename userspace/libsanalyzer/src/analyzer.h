@@ -1146,11 +1146,11 @@ public:
 	//
 	// Baseliner
 	//
-	sinsp_baseliner* m_falco_baseliner = NULL;
+	sinsp_baseliner* m_falco_baseliner = nullptr;
 	uint64_t m_last_falco_dump_ts = 0;
 
 #ifndef CYGWING_AGENT
-	infrastructure_state* m_infrastructure_state = NULL;
+	infrastructure_state* m_infrastructure_state = nullptr;
 #endif
 
 	//
