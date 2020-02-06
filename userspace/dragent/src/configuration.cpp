@@ -684,7 +684,7 @@ void dragent_configuration::init()
 	m_falco_baselining_report_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "report_interval", DEFAULT_FALCO_BASELINING_DUMP_DELTA_NS);
 	m_falco_baselining_autodisable_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "autodisable_interval", DEFAULT_FALCO_BASELINING_DISABLE_TIME_NS);
 	m_falco_baselining_max_drops_buffer_rate_percentage = m_config->get_scalar<float>("falcobaseline", "max_drops_buffer_rate_percentage", DEFAULT_FALCO_BASELINING_MAX_DROPS_BUFFER_RATE_PERCENTAGE);
-	m_falco_baselining_max_sampling_ratio = m_config->get_scalar<float>("falcobaseline", "max_sampling_ratio", DEFAULT_FALCO_BASELINING_MAX_SAMPLING_RATIO);
+	m_falco_baselining_max_sampling_ratio = m_config->get_scalar<uint32_t>("falcobaseline", "max_sampling_ratio", DEFAULT_FALCO_BASELINING_MAX_SAMPLING_RATIO);
 
 	if(libsanalyzer::security_config::is_enabled())
 	{
