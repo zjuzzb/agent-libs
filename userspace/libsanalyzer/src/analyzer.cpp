@@ -4068,6 +4068,13 @@ void sinsp_analyzer::secure_profiling_data_ready(
 	m_secure_profiling_handler.secure_profiling_data_ready(ts, secure_profiling_fingerprint);
 }
 
+void sinsp_analyzer::set_secure_profiling_internal_metrics(const int n_sent_protobufs,
+                                                       const uint64_t flush_time_ms)
+{
+	m_internal_metrics->set_secure_profiling_n_sent_protobufs(n_sent_protobufs);
+	m_internal_metrics->set_secure_profiling_fl_ms(flush_time_ms);
+}
+
 void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter& f_trc)
 {
 	//
@@ -4088,9 +4095,14 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 		{
 			if (m_last_falco_dump_ts != 0)
 			{
+				uint64_t emit_start_time = sinsp_utils::get_current_time_ns();
 				m_falco_baseliner->emit_as_protobuf(evt->get_ts());
-			}
+				uint64_t emit_time_ms = (sinsp_utils::get_current_time_ns() - emit_start_time) / 1000000;
+				m_internal_metrics->set_secure_profiling_emit_ms(emit_time_ms);
 
+				m_falco_baseliner->flush(evt->get_ts());
+			}
+			
 			m_last_falco_dump_ts = evt->get_ts();
 		}
 	}
@@ -7778,6 +7790,7 @@ void sinsp_analyzer::enable_secure_audit()
 void sinsp_analyzer::enable_secure_profiling()
 {
 	m_falco_baseliner->set_data_handler(this);
+	m_falco_baseliner->set_internal_metrics(this);
 }
 
 void sinsp_analyzer::dump_infrastructure_state_on_next_flush()

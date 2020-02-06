@@ -127,6 +127,11 @@ void sinsp_baseliner::set_data_handler(secure_profiling_data_ready_handler* hand
 	m_profiling_data_handler = handler;
 }
 
+void sinsp_baseliner::set_internal_metrics(secure_profiling_internal_metrics* internal_metrics)
+{
+	m_profiling_internal_metrics = internal_metrics;
+}
+
 void sinsp_baseliner::load_tables(uint64_t time)
 {
 #ifdef ASYNC_PROC_PARSING
@@ -796,9 +801,13 @@ void sinsp_baseliner::emit_as_protobuf(uint64_t ts)
 #ifdef ASYNC_PROC_PARSING
 	merge_proc_data();
 #endif
-	g_logger.format(sinsp_logger::SEV_INFO, "emitting falco baseline %" PRIu64, ts);
 
 	serialize_protobuf();
+}
+
+void sinsp_baseliner::flush(uint64_t ts)
+{
+	uint64_t flush_start_time = sinsp_utils::get_current_time_ns();
 
 	m_profiling_data_handler->secure_profiling_data_ready(ts, &m_secure_profiling_fingerprint_batch);
 
@@ -807,6 +816,12 @@ void sinsp_baseliner::emit_as_protobuf(uint64_t ts)
 		clear_tables();
 		load_tables(ts);
 	}
+	uint64_t flush_time_ms = (sinsp_utils::get_current_time_ns() - flush_start_time) / 1000000;
+
+	m_profiling_internal_metrics->set_secure_profiling_internal_metrics(1, flush_time_ms);
+	// m_profiling_internal_metrics->set_secure_profiling_n_sent_protobufs(1);
+	// m_profiling_internal_metrics->set_secure_profiling_fl_ms(flush_time_ms);
+	g_logger.format(sinsp_logger::SEV_INFO, "secure_profiling (baseliner): flushing fl.ms=%d ", flush_time_ms);
 }
 
 inline blprogram* sinsp_baseliner::get_program(sinsp_threadinfo* tinfo)

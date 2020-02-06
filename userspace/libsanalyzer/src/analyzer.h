@@ -49,6 +49,7 @@
 #include "secure_audit_data_ready_handler.h"
 #include "secure_audit_handler.h"
 #include "secure_audit_internal_metrics.h"
+#include "secure_profiling_internal_metrics.h"
 #include "statsd_emitter.h"
 #include "userdb.h"
 
@@ -241,9 +242,10 @@ private:
 //
 // The main analyzer class
 //
-class SINSP_PUBLIC sinsp_analyzer : public secure_audit_data_ready_handler,
+class SINSP_PUBLIC sinsp_analyzer : public secure_profiling_internal_metrics,
                                     public secure_profiling_data_ready_handler,
                                     public secure_audit_internal_metrics,
+                                    public secure_audit_data_ready_handler,
                                     public libsinsp::event_processor
 {
 public:
@@ -617,6 +619,7 @@ public:
 
 	void enable_secure_profiling();
 	bool secure_profiling_enabled() const { return m_falco_baseliner != nullptr; }
+	void set_secure_profiling_internal_metrics(int n_sent_protobufs, uint64_t flush_time_ms) override;
 
 	/**
 	 * Dump the infrastructure state to a file in the log directory.

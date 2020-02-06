@@ -276,11 +276,6 @@ bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info, uint64_t 
 		             draiosproto::STATSD_GAUGE,
 		             m_analyzer.n_command_lines);
 
-		write_metric(statsd_info,
-		             "dragent.analyzer.baseliner_enabled",
-		             draiosproto::STATSD_GAUGE,
-		             m_analyzer.baseliner_enabled ? 1 : 0);
-
 		send_command_categories(statsd_info);
 
 		// subprocesses
@@ -468,6 +463,20 @@ void internal_metrics::send_secure_audit_metrics(draiosproto::statsd_info* stats
 		             "dragent.secure_audit.k8s_enrich_errors",
 		             draiosproto::STATSD_GAUGE,
 		             get_secure_audit_k8s_enrich_errors());
+	}
+
+	// secure_profiling metrics
+	if (get_secure_profiling_n_sent_protobufs() != -1)
+	{
+		write_metric(statsd_info,
+		             "dragent.secure_profiling.n_sent_protobufs",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_profiling_n_sent_protobufs());
+		write_metric(statsd_info,
+		             "dragent.secure_profiling.baseliner_enabled",
+		             draiosproto::STATSD_GAUGE,
+		             m_analyzer.baseliner_enabled ? 1 : 0);
+
 	}
 }
 

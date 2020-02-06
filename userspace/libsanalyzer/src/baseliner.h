@@ -2,6 +2,7 @@
 
 #include "profiling.pb.h"
 #include "secure_profiling_handler.h"
+#include "secure_profiling_internal_metrics.h"
 
 #include <analyzer_fd.h>
 #include <atomic>
@@ -1317,6 +1318,7 @@ public:
 
 	void init();
 	void set_data_handler(secure_profiling_data_ready_handler* handler);
+	void set_internal_metrics(secure_profiling_internal_metrics* internal_metrics);
 	void load_tables(uint64_t time);
 	void clear_tables();
 	void register_callbacks(sinsp_fd_listener* listener);
@@ -1326,6 +1328,7 @@ public:
 #endif
 	void serialize_protobuf();
 	void emit_as_protobuf(uint64_t time);
+	void flush(uint64_t time);
 
 	void on_file_open(sinsp_evt* evt, std::string& name, uint32_t openflags);
 	void on_new_proc(sinsp_evt* evt, sinsp_threadinfo* tinfo);
@@ -1349,6 +1352,7 @@ private:
 	// Protobuf containing fingerprints emitted to the collector
 	secure::profiling::fingerprint m_secure_profiling_fingerprint_batch;
 	secure_profiling_data_ready_handler* m_profiling_data_handler;
+	secure_profiling_internal_metrics* m_profiling_internal_metrics;
 
 	// Statistics about an in progress baseliner capture.  This is
 	// a subset of scap_stats, containing only the relevant field
