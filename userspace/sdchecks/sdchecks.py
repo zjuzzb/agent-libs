@@ -637,11 +637,11 @@ def prepare_prom_checks(promchecks):
         if pc.get("options") and pc["options"].get("url"):
             # Just set port to 0. prepare_prom_check() will figure out the right port
             newcheck, newproc = prepare_prom_check(pc, 0)
+            checks.append((newcheck, newproc))
         else:
             for port in ports:
                 newcheck, newproc = prepare_prom_check(pc, port)
-
-        checks.append((newcheck, newproc))
+                checks.append((newcheck, newproc))
 
     return checks
 
