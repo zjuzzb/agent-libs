@@ -1,4 +1,5 @@
 #pragma once
+#include "analyzer_thread.h"
 #include "base_filter.h"
 #include "object_filter_config.h"
 #include "sinsp.h"
@@ -14,8 +15,8 @@ class infrastructure_state;
 class process_filter_args
 {
 public:
-	process_filter_args(const sinsp_threadinfo* tinfo,
-	                    const sinsp_threadinfo* mtinfo,
+	process_filter_args(const THREAD_TYPE* tinfo,
+	                    const THREAD_TYPE* mtinfo,
 	                    const sinsp_container_info* container,
 	                    const infrastructure_state* is)
 	    : m_tinfo(tinfo),
@@ -25,8 +26,8 @@ public:
 	{
 	}
 
-	const sinsp_threadinfo* m_tinfo;
-	const sinsp_threadinfo* m_mtinfo;
+	const THREAD_TYPE* m_tinfo;
+	const THREAD_TYPE* m_mtinfo;
 	const sinsp_container_info* m_container;
 	const infrastructure_state* m_is;
 };
@@ -59,8 +60,8 @@ public:
 	 * @param[out] returns a pointer to the rule which defines the filter which
 	 *             ultimately matched
 	 */
-	bool matches(const sinsp_threadinfo* tinfo,
-	             const sinsp_threadinfo* mtinfo,
+	bool matches(const THREAD_TYPE* tinfo,
+	             const THREAD_TYPE* mtinfo,
 	             const sinsp_container_info* container,
 	             const infrastructure_state* is,
 	             bool* generic_match,

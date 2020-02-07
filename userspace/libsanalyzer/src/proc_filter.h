@@ -13,9 +13,10 @@
 #include <yaml-cpp/yaml.h>
 #pragma GCC diagnostic pop
 
+#include "analyzer_thread.h"
+
 class sinsp_container_info;
 class infrastructure_state;
-class sinsp_threadinfo;
 
 namespace proc_filter
 {
@@ -49,8 +50,8 @@ public:
 	std::pair<bool, bool> match_rule(
 	    const object_filter_config::filter_rule& rule,
 	    int rule_num,
-	    const sinsp_threadinfo* tinfo,
-	    const sinsp_threadinfo* mtinfo,
+	    const THREAD_TYPE* tinfo,
+	    const THREAD_TYPE* mtinfo,
 	    const sinsp_container_info* container,
 	    const infrastructure_state& is,
 	    std::function<bool(const object_filter_config::filter_rule& rule)> on_match = nullptr,
@@ -60,8 +61,8 @@ public:
 	// the first matching rule. It returns whether or not it matched an include rule
 	// (or the result of the called on_match() callback, if defined)
 	bool match(
-	    const sinsp_threadinfo* tinfo,
-	    const sinsp_threadinfo* mtinfo,
+	    const THREAD_TYPE* tinfo,
+	    const THREAD_TYPE* mtinfo,
 	    const sinsp_container_info* container,
 	    const infrastructure_state& is,
 	    std::function<bool(const object_filter_config::filter_rule& rule)> on_match = nullptr,

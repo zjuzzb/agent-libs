@@ -64,8 +64,8 @@ std::set<uint16_t> filter_ports(const std::set<uint16_t>& sports,
 std::pair<bool, bool> conf::match_rule(
     const object_filter_config::filter_rule& rule,
     int rule_num,
-    const sinsp_threadinfo* tinfo,
-    const sinsp_threadinfo* mtinfo,
+    const THREAD_TYPE* tinfo,
+    const THREAD_TYPE* mtinfo,
     const sinsp_container_info* container,
     const infrastructure_state& infra_state,
     std::function<bool(const object_filter_config::filter_rule& rule)> on_match,
@@ -273,8 +273,8 @@ std::pair<bool, bool> conf::match_rule(
 	return ret;
 }
 
-bool conf::match(const sinsp_threadinfo* tinfo,
-                 const sinsp_threadinfo* mtinfo,
+bool conf::match(const THREAD_TYPE* tinfo,
+                 const THREAD_TYPE* mtinfo,
                  const sinsp_container_info* container,
                  const infrastructure_state& infra_state,
                  std::function<bool(const object_filter_config::filter_rule& rule)> on_match,
