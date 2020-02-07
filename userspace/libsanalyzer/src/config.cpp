@@ -125,6 +125,16 @@ void sinsp_configuration::set_falco_baselining_max_sampling_ratio(uint32_t max_s
 	m_falco_baselining_max_sampling_ratio = max_sampling_ratio;
 }
 
+bool sinsp_configuration::get_falco_baselining_randomize_start() const
+{
+	return m_falco_baselining_randomize_start;
+}
+
+void sinsp_configuration::set_falco_baselining_randomize_start(bool enabled)
+{
+	m_falco_baselining_randomize_start = enabled;
+}
+
 bool sinsp_configuration::get_commandlines_capture_enabled() const
 {
 	return m_commandlines_capture_enabled;

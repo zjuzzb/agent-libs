@@ -28,7 +28,7 @@ void proc_parser(proc_parser_state* state)
 	state->m_inspector->set_hostname_and_port_resolution_mode(false);
 
 	g_logger.format(sinsp_logger::SEV_INFO,
-		"baseliner /proc scanner thread started");
+		"secure_profiling (baselining) /proc scanner thread started");
 
 	try
 	{
@@ -44,7 +44,7 @@ void proc_parser(proc_parser_state* state)
 	catch(...)
 	{
 		g_logger.format(sinsp_logger::SEV_ERROR,
-			"baseliner proc parser failure: can't open inspector %s",
+			"secure_profiling (baselining) proc parser failure: can't open inspector %s",
 			state->m_inspector->getlasterr().c_str());
 		return;
 	}
@@ -71,7 +71,9 @@ sinsp_baseliner::sinsp_baseliner(sinsp_analyzer& analyzer,
 	m_procparser_state(nullptr),
 #endif
 	m_nofd_fs_extractors(),
-	m_do_baseline_calculation(false)
+	m_do_baseline_calculation(false),
+	m_baseline_runtime_enable_start_time(0),
+	m_baseline_runtime_start_init(false)
 { }
 
 void sinsp_baseliner::init()
@@ -127,9 +129,16 @@ void sinsp_baseliner::set_data_handler(secure_profiling_data_ready_handler* hand
 	m_profiling_data_handler = handler;
 }
 
+
 void sinsp_baseliner::set_internal_metrics(secure_profiling_internal_metrics* internal_metrics)
 {
 	m_profiling_internal_metrics = internal_metrics;
+}
+
+void sinsp_baseliner::set_baseline_runtime_enable_start_time(uint64_t ts)
+{
+	m_baseline_runtime_enable_start_time = ts;
+	m_baseline_runtime_start_init = false;
 }
 
 void sinsp_baseliner::load_tables(uint64_t time)
@@ -761,7 +770,7 @@ void sinsp_baseliner::merge_proc_data()
 	if(m_procparser_state->m_inspector != NULL)
 	{
 		g_logger.format(sinsp_logger::SEV_INFO,
-			"merging baseliner /proc data during interval switch");
+			"merging secure_profiling (baselining) /proc data during interval switch");
 
 		//
 		// If the /proc thread is still scanning, we have a problem
@@ -769,7 +778,7 @@ void sinsp_baseliner::merge_proc_data()
 		if(!m_procparser_state->m_done)
 		{
 			g_logger.format(sinsp_logger::SEV_ERROR,
-				"baseliner proc parser thread not done after a full interval. Skipping baseline emission.");
+				"secure_profiling (baselining) proc parser thread not done after a full interval. Skipping baseline emission.");
 			return;
 		}
 
@@ -801,6 +810,7 @@ void sinsp_baseliner::emit_as_protobuf(uint64_t ts)
 #ifdef ASYNC_PROC_PARSING
 	merge_proc_data();
 #endif
+	g_logger.format(sinsp_logger::SEV_INFO, "secure_profiling (baseline) emitting fingerprint %" PRIu64, ts);
 
 	serialize_protobuf();
 }
@@ -1283,6 +1293,28 @@ sinsp* sinsp_baseliner::get_inspector()
 	return m_inspector;
 }
 
+void sinsp_baseliner::start_baseline_calculation()
+{
+	enable_baseline_calculation();
+	m_baseline_runtime_start_init = true;
+}
+
+bool sinsp_baseliner::is_baseline_runtime_start_init()
+{
+	return m_baseline_runtime_start_init;
+}
+
+bool sinsp_baseliner::should_start_baseline_calculation()
+{
+	if (!m_baseline_runtime_start_init &&
+	    sinsp_utils::get_current_time_ns() >= m_baseline_runtime_enable_start_time)
+	{
+		return true;
+	}
+
+	return false;
+}
+
 void sinsp_baseliner::enable_baseline_calculation()
 {
 	scap_stats st;
@@ -1325,7 +1357,7 @@ bool sinsp_baseliner::is_drops_buffer_rate_critical(float max_drops_buffer_rate_
 	if(drop_rate > max_drops_buffer_rate_percentage)
 	{
 		g_logger.format(sinsp_logger::SEV_WARNING,
-				"critical drop buffer rate %f (upper threshold %f)",
+				"secure_profiling critical drop buffer rate %f (upper threshold %f)",
 				drop_rate, max_drops_buffer_rate_percentage);
 		return true;
 	}
@@ -1456,7 +1488,7 @@ void sinsp_baseliner::process_event(sinsp_evt *evt)
 	if(m_procparser_state->m_inspector != NULL && m_procparser_state->m_done)
 	{
 		g_logger.format(sinsp_logger::SEV_INFO,
-			"merging baseliner /proc data during syscall parsing");
+			"merging secure_profiling (baselining) /proc data during syscall parsing");
 
 		//
 		// Merge the data extracted by the /proc scanner

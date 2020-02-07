@@ -1459,8 +1459,9 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
 
 	if (m_configuration.m_falco_baselining_enabled)
 	{
-		g_log->information("Setting falco baselining");
-		sconfig->set_falco_baselining_enabled(m_configuration.m_falco_baselining_enabled);
+		g_log->information("Setting secure profiling (baselining)");
+		sconfig->set_falco_baselining_enabled(
+		    m_configuration.m_falco_baselining_enabled);
 		sconfig->set_falco_baselining_report_interval_ns(
 		    m_configuration.m_falco_baselining_report_interval_ns);
 		sconfig->set_falco_baselining_autodisable_interval_ns(
@@ -1469,6 +1470,8 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
 		    m_configuration.m_falco_baselining_max_drops_buffer_rate_percentage);
 		sconfig->set_falco_baselining_max_sampling_ratio(
 		    m_configuration.m_falco_baselining_max_sampling_ratio);
+		sconfig->set_falco_baselining_randomize_start(
+		    m_configuration.m_falco_baselining_randomize_start);
 
 		analyzer->enable_secure_profiling();
 	}

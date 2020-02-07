@@ -1319,6 +1319,7 @@ public:
 	void init();
 	void set_data_handler(secure_profiling_data_ready_handler* handler);
 	void set_internal_metrics(secure_profiling_internal_metrics* internal_metrics);
+	void set_baseline_runtime_enable_start_time(uint64_t ts);
 	void load_tables(uint64_t time);
 	void clear_tables();
 	void register_callbacks(sinsp_fd_listener* listener);
@@ -1343,6 +1344,9 @@ public:
 	inline void add_fd_from_io_evt(sinsp_evt* evt, enum ppm_event_category category);
 
 	sinsp* get_inspector();
+	void start_baseline_calculation();
+	bool is_baseline_runtime_start_init();
+	bool should_start_baseline_calculation();
 	void enable_baseline_calculation();
 	void disable_baseline_calculation();
 	bool is_baseline_runtime_enabled() const;
@@ -1378,6 +1382,8 @@ private:
 #endif
 	std::unordered_multimap<uint16_t, std::shared_ptr<sinsp_filter_check>> m_nofd_fs_extractors;
 	bool m_do_baseline_calculation;
+	uint64_t m_baseline_runtime_enable_start_time;
+	bool m_baseline_runtime_start_init;
 
 	// The baseliner stats stores counters in order to compute the
 	// buffer drop ratio, during a baseliner capture.  They

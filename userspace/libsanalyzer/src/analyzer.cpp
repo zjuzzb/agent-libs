@@ -657,9 +657,24 @@ void sinsp_analyzer::on_capture_start()
 	const bool do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
 	if (do_baseline_calculation)
 	{
-		glogf("starting falco baselining");
+		glogf("init secure_profiling (baselining)");
 		m_falco_baseliner->init();
-		m_falco_baseliner->enable_baseline_calculation();
+
+		if (m_configuration->get_falco_baselining_randomize_start())
+		{
+			// we randomize the baseline runtime enable start time, in
+			// order to spread evenly the fingerprint message emission to
+			// the collectors, across multiple agents.
+			srand(time(NULL));
+			uint64_t ts =  (rand() % (m_configuration->get_falco_baselining_report_interval_ns() / ONE_SECOND_IN_NS)) * ONE_SECOND_IN_NS;
+			glogf("secure_profiling (baselining) randomize start time in %" PRIu64 " sec", ts / ONE_SECOND_IN_NS);
+			m_falco_baseliner->set_baseline_runtime_enable_start_time(sinsp_utils::get_current_time_ns() + ts);
+		}
+		else
+		{
+			glogf("starting secure_profiling (baselining) without randomized start time");
+			m_falco_baseliner->start_baseline_calculation();
+		}
 	}
 
 #ifndef CYGWING_AGENT
@@ -3805,9 +3820,11 @@ void sinsp_analyzer::adjust_sampling_ratio()
 			    m_requested_sampling_ratio > m_configuration->get_falco_baselining_max_sampling_ratio())
 			{
 				g_logger.format(sinsp_logger::SEV_WARNING,
-						"disabling falco baselining because sampling ratio is too high.");
+						"disabling secure_profiling (baselining) because sampling ratio is too high.");
 				m_falco_baseliner->disable_baseline_calculation();
 				m_falco_baseliner->clear_tables();
+				// a disable message is considered a dump activity
+				m_last_falco_dump_ts = sinsp_utils::get_current_time_ns();
 			}
 
 			m_inspector->start_dropping_mode(m_requested_sampling_ratio);
@@ -4106,12 +4123,18 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 			m_last_falco_dump_ts = evt->get_ts();
 		}
 	}
-	else if (m_configuration->get_falco_baselining_enabled())
+	else if (m_falco_baseliner->should_start_baseline_calculation())
+	{
+		glogf("starting secure_profiling (baselining)");
+		m_falco_baseliner->start_baseline_calculation();
+	}
+	else if (m_configuration->get_falco_baselining_enabled() &&
+		 m_falco_baseliner->is_baseline_runtime_start_init())
 	{
 		//
 		// Once in a while, try to turn baseline calculation on again
 		//
-		if (m_acked_sampling_ratio == 1)
+		if (m_acked_sampling_ratio <= m_configuration->get_falco_baselining_max_sampling_ratio())
 		{
 			if (evt != nullptr &&
 			    evt->get_ts() - m_last_falco_dump_ts >
@@ -4121,14 +4144,14 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 				// It's safe to turn baselining on again.
 				// Reset the tables and restart the baseline time counter.
 				//
+				g_logger.format(
+					"enabling secure_profiling (baselining) creation after a %lus pause",
+					m_configuration->get_falco_baselining_autodisable_interval_ns() /
+					ONE_SECOND_IN_NS);
 				m_falco_baseliner->clear_tables();
 				m_falco_baseliner->enable_baseline_calculation();
 				m_last_falco_dump_ts = evt->get_ts();
 				m_falco_baseliner->load_tables(evt->get_ts());
-				g_logger.format(
-					"enabling falco baselining creation after a %lus pause",
-					m_configuration->get_falco_baselining_autodisable_interval_ns() /
-					1000000000);
 			}
 		}
 		else
@@ -5154,9 +5177,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 		        m_configuration->get_falco_baselining_max_drops_buffer_rate_percentage()))
 		{
 			g_logger.format(sinsp_logger::SEV_WARNING,
-			                "disabling falco baselining because of critical drops buffer rate.");
+			                "disabling secure_profiling (baselining) because of critical drops buffer rate.");
 			m_falco_baseliner->disable_baseline_calculation();
 			m_falco_baseliner->clear_tables();
+			// a disable message is considered a dump activity
+			m_last_falco_dump_ts = sinsp_utils::get_current_time_ns();
 		}
 	}
 
