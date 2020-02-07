@@ -472,13 +472,19 @@ TEST_F(sys_call_test, udp_client_server)
 		uint16_t type = e->get_type();
 		if (type == PPME_SYSCALL_CLOSE_X && udps.is_server_tid(e->get_tid()))
 		{
+#ifdef USE_AGENT_THREAD
+			thread_analyzer_info* ti = dynamic_cast<thread_analyzer_info*>(e->get_thread_info());
+#else
 			sinsp_threadinfo* ti = e->get_thread_info();
-			ASSERT_EQ((uint64_t)2, ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in);
-			ASSERT_NE((uint64_t)0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
-			ASSERT_EQ((uint64_t)1,
-			          ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
+#endif
+			ASSERT_EQ((uint64_t)2,
+			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_count_in);
 			ASSERT_NE((uint64_t)0,
-			          ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t)1,
+			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_max_counter()->m_count_in);
+			ASSERT_NE((uint64_t)0,
+			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 		}
 
 		if (type == PPME_SOCKET_RECVFROM_E)
@@ -654,10 +660,16 @@ TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
 		}
 		for (auto& srv : udps.get_servers())
 		{
+#ifdef USE_AGENT_THREAD
+			thread_analyzer_info* ti = dyanamic_cast<thread_analyzer_info*>(
+			    param.m_inspector->get_thread(srv->get_tid(), false, true));
+#else
 			sinsp_threadinfo* ti = param.m_inspector->get_thread(srv->get_tid(), false, true);
+#endif
 			if (ti)
 			{
-				transaction_count = ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in;
+				transaction_count =
+				    GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_count_in;
 			}
 		}
 	};
@@ -694,13 +706,19 @@ TEST_F(sys_call_test, udp_client_server_sendmsg)
 
 		if (type == PPME_SYSCALL_CLOSE_X && udps.is_server_tid(e->get_tid()))
 		{
+#ifdef USE_AGENT_THREAD
+			thread_analyzer_info* ti = dynamic_cast<thread_analyzer_info*>(e->get_thread_info());
+#else
 			sinsp_threadinfo* ti = e->get_thread_info();
-			ASSERT_EQ((uint64_t)2, ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in);
-			ASSERT_NE((uint64_t)0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
-			ASSERT_EQ((uint64_t)1,
-			          ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
+#endif
+			ASSERT_EQ((uint64_t)2,
+			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_count_in);
 			ASSERT_NE((uint64_t)0,
-			          ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t)1,
+			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_max_counter()->m_count_in);
+			ASSERT_NE((uint64_t)0,
+			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 		}
 
 		if (type == PPME_SOCKET_RECVMSG_X)
@@ -781,13 +799,19 @@ TEST_F(sys_call_test, udp_client_server_sendmsg_2buf)
 
 		if (type == PPME_SYSCALL_CLOSE_X && udps.is_server_tid(e->get_tid()))
 		{
+#ifdef USE_AGENT_THREAD
+			thread_analyzer_info* ti = dynamic_cast<thread_analyzer_info*>(e->get_thread_info());
+#else
 			sinsp_threadinfo* ti = e->get_thread_info();
-			ASSERT_EQ((uint64_t)2, ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in);
-			ASSERT_NE((uint64_t)0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
-			ASSERT_EQ((uint64_t)1,
-			          ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
+#endif
+			ASSERT_EQ((uint64_t)2,
+			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_count_in);
 			ASSERT_NE((uint64_t)0,
-			          ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t)1,
+			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_max_counter()->m_count_in);
+			ASSERT_NE((uint64_t)0,
+			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 		}
 
 		if (type == PPME_SOCKET_RECVMSG_X)

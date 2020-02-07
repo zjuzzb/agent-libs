@@ -100,8 +100,12 @@ TEST_F(sys_call_test, analyzer_errors)
 				EXPECT_LE((size_t)5, ec->m_count_file_open);
 				EXPECT_LE((size_t)1, ec->m_count_net);
 
+#ifdef USE_AGENT_THREAD
+				thread_analyzer_info* tinfo = dynamic_cast<thread_analyzer_info*>(param.m_inspector->find_thread_test(getpid(), true));
+#else
 				sinsp_threadinfo* tinfo = param.m_inspector->find_thread_test(getpid(), true);
-				ec = &tinfo->m_ainfo->m_syscall_errors;
+#endif
+				ec = &GET_AGENT_THREAD(tinfo)->m_syscall_errors;
 
 				EXPECT_LE((size_t)10, ec->m_count);
 				EXPECT_LE((size_t)5, ec->m_count_file);

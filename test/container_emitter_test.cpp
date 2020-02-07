@@ -52,7 +52,7 @@ public:
 	shared_ptr<proc_filter::conf> m_container_filter;
 
 	std::unordered_map<std::string, analyzer_container_state> containers;
-	std::unordered_map<string, vector<sinsp_threadinfo*>> progtable;
+	std::unordered_map<string, vector<THREAD_TYPE*>> progtable;
 	std::unordered_map<string, std::shared_ptr<sinsp_container_info>> sinsp_containers;
 
 	// stuff necessary for template
@@ -69,7 +69,7 @@ public:
 	static void send_containers_to_statsite_fowarder(
 	    fake_analyzer_t& fake_analyzer,
 	    const vector<string>& containers,
-	    const unordered_map<string, vector<sinsp_threadinfo*>> progtable)
+	    const unordered_map<string, vector<THREAD_TYPE*>> progtable)
 	{
 		fake_analyzer.emittable_containers.insert(fake_analyzer.emittable_containers.end(),
 		                                          containers.begin(),
@@ -81,7 +81,7 @@ public:
 	void emit_container(const string& container_id,
 	                    unsigned* statsd_limit,
 	                    uint64_t total_cpu_shares,
-	                    sinsp_threadinfo* tinfo,
+	                    THREAD_TYPE* tinfo,
 	                    uint32_t flush_flags,
 	                    const std::list<uint32_t> groups)
 	{

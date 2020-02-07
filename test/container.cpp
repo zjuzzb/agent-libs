@@ -71,7 +71,7 @@ TEST_F(sys_call_test, container_cgroups)
 		if (param.m_evt->get_type() == PPME_SYSCALL_CLONE_20_X)
 		{
 			struct scap_threadinfo scap_tinfo;
-			sinsp_threadinfo sinsp_tinfo;
+			sinsp_threadinfo sinsp_tinfo(nullptr);
 			char buf[100];
 
 			sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;

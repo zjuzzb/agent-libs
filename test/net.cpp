@@ -619,26 +619,30 @@ TEST_F(sys_call_test, net_web_requests)
 					}
 				}
 				SCOPED_TRACE("evaluating assertions");
+#ifdef USE_AGENT_THREAD
+				thread_analyzer_info* ti = dynamic_cast<thread_analyzer_info*>(evt->get_thread_info());
+#else
 				sinsp_threadinfo* ti = evt->get_thread_info();
+#endif
 				ASSERT_EQ((uint64_t)0,
-				          ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in);
+				          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_count_in);
 				ASSERT_EQ((uint64_t)0,
-				          ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
+				          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_time_ns_in);
 				ASSERT_EQ((uint64_t)0,
-				          ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
+				          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_max_counter()->m_count_in);
 				ASSERT_EQ((uint64_t)0,
-				          ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+				          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 				// Note: +1 is because of the DNS lookup
-				ASSERT_GE(ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_out,
+				ASSERT_GE(GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_count_out,
 				          (uint64_t)N_CONNECTIONS);
-				ASSERT_LE(ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_out,
+				ASSERT_LE(GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_count_out,
 				          (uint64_t)N_CONNECTIONS + 1);
 				ASSERT_NE((uint64_t)0,
-				          ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_out);
+				          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_time_ns_out);
 				ASSERT_EQ((uint64_t)1,
-				          ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_out);
+				          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_max_counter()->m_count_out);
 				ASSERT_NE((uint64_t)0,
-				          ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_out);
+				          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_max_counter()->m_time_ns_out);
 			}
 		}
 	};
@@ -705,7 +709,7 @@ TEST_F(sys_call_test, net_ssl_requests)
 			threadtable->loop([&](sinsp_threadinfo& tinfo) {
 				if (tinfo.m_comm == "tests")
 				{
-					transaction_metrics.add(&tinfo.m_ainfo->m_transaction_metrics);
+					transaction_metrics.add(&GET_AGENT_THREAD(&tinfo)->m_transaction_metrics);
 				}
 				return true;
 			});

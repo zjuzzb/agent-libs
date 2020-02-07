@@ -41,7 +41,7 @@ static void run_test(test_type ttype,
                      vector<string>& expected,
                      string expectedrem)
 {
-	sinsp_threadinfo ti;
+	sinsp_threadinfo ti(nullptr);
 	struct iovec* iov;
 	int iovcnt;
 	string rem;

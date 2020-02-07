@@ -22,7 +22,7 @@ protected:
 		for (int64_t pid = 100, i = 0; i < m_max; pid++, i++)
 		{
 			int64_t ppid = (i == 0 ? 1 : m_threads[i - 1]->m_tid);
-			sinsp_threadinfo* thr = new sinsp_threadinfo(&m_inspector);
+			sinsp_threadinfo* thr = m_inspector.build_threadinfo();
 			thr->init();
 			thr->m_tid = pid;
 			thr->m_ptid = ppid;
