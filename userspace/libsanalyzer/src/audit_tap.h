@@ -1,5 +1,6 @@
 #pragma once
 
+#include "analyzer_thread_type.h"
 #include "audit_tap_connection_aggregator.h"
 #include "env_hash.h"
 
@@ -17,7 +18,7 @@ class NewProcess;
 union _ipv4tuple;
 class sinsp_connection;
 class sinsp_ipv4_connection_manager;
-class sinsp_threadinfo;
+class THREAD_TYPE;
 class sinsp;
 class userdb;
 
@@ -67,8 +68,8 @@ public:
 	static unsigned int max_command_argument_length();
 
 private:
-	void emit_process(sinsp_threadinfo *tinfo, userdb *userdb);
-	bool emit_environment(tap::NewProcess *proc, sinsp_threadinfo *tinfo);
+	void emit_process(THREAD_TYPE *tinfo, userdb *userdb);
+	bool emit_environment(tap::NewProcess *proc, THREAD_TYPE *tinfo);
 
 	void emit_network_audit(tap::ConnectionAudit* conn_audit,
 	                        const _ipv4tuple& iptuple,
