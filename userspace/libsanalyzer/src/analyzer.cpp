@@ -38,6 +38,7 @@
 #include "type_config.h"
 #include "uri.h"
 #include "user_event_logger.h"
+#include "libsanalizer_exceptions.h"
 
 #include "../../driver/ppm_ringbuffer.h"
 #include "Poco/File.h"
@@ -4146,6 +4147,46 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 #define HIGH_EVT_THRESHOLD 300 * 1000
 #define HIGH_SINGLE_EVT_THRESHOLD 100 * 1000
 
+// Get the number of CPUs. Check for correctness.
+// Throw an exception if cannot get a correct value and let dragent
+// commit suicide
+uint32_t sinsp_analyzer::get_num_cpus()
+{
+	// m_loads is a vector whose size equals the number of CPUs. If this condition is not met,
+	// some metrics (namely cpu.cores.used) are messed up.
+	// We, therefore, need to validate the values of num_cpus and load_size at runtime
+	// and avoid sending bad values to the backend
+	uint32_t num_cpus = m_machine_info->num_cpus;
+	size_t load_size = m_proc_stat.m_loads.size();
+
+	ASSERT(load_size == 0 || num_cpus == load_size);
+
+	if(load_size != 0 && load_size != num_cpus)
+	{
+		// Something nasty happened
+		g_logger.format(sinsp_logger::SEV_WARNING, "Inconsistent number of CPUs. num_cpus: %ld, load.size: %ld,"
+				" machine_info: 0x%x, inspector.machine_info: 0x%x"
+				, num_cpus
+				, load_size
+				, m_machine_info
+				, m_inspector->m_machine_info);
+
+		// Let's try to re-get m_machine_info
+		g_logger.format(sinsp_logger::SEV_WARNING, "Trying to re-read the number of CPUs");
+		m_machine_info = m_inspector->get_machine_info();
+		num_cpus = m_machine_info->num_cpus;
+
+		//re-check again
+		if(num_cpus != load_size)
+		{
+			// Still got an error. Throw an exception
+			throw cpu_num_detection_error("Unable to correctly determine the number of CPUs");
+		}
+
+	}
+	return num_cpus;
+}
+
 void sinsp_analyzer::flush(sinsp_evt* evt,
                            uint64_t ts,
                            bool is_eof,
@@ -4433,13 +4474,16 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			////////////////////////////////////////////////////////////////////////////
 			// emit host stuff
 			////////////////////////////////////////////////////////////////////////////
+
+			uint32_t num_cpus = get_num_cpus();
+
 			m_metrics->set_machine_id(m_configuration->get_machine_id());
 			m_metrics->set_customer_id(m_configuration->get_customer_id());
 			m_metrics->set_timestamp_ns(m_prev_flush_time_ns);
 			m_metrics->set_sampling_ratio(m_acked_sampling_ratio);
 
 			m_metrics->mutable_hostinfo()->set_hostname(sinsp_gethostname());
-			m_metrics->mutable_hostinfo()->set_num_cpus(m_machine_info->num_cpus);
+			m_metrics->mutable_hostinfo()->set_num_cpus(num_cpus);
 			m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(
 			    m_inspector->m_machine_info->memory_size_bytes);
 
@@ -4458,8 +4502,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 				m_metrics->set_instance_id(m_configuration->get_instance_id());
 			}
 
-			ASSERT(m_proc_stat.m_loads.size() == 0 ||
-			       m_proc_stat.m_loads.size() == m_machine_info->num_cpus);
 			ASSERT(m_proc_stat.m_loads.size() == m_proc_stat.m_steal.size());
 
 			for (uint32_t k = 0; k < m_proc_stat.m_loads.size(); k++)

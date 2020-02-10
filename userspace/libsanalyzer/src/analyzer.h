@@ -1006,6 +1006,8 @@ public:
 	 */
 	void flush_done_handler(const sinsp_evt* evt);
 
+	uint32_t get_num_cpus();
+
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
 	double m_prev_flush_cpu_pct;
