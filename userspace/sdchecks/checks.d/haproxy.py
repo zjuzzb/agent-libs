@@ -132,7 +132,8 @@ class HAProxy(AgentCheck):
 
         tag_service_check_by_host = _is_affirmative(instance.get('tag_service_check_by_host', False))
 
-        enable_service_check = _is_affirmative(instance.get('enable_service_check', False))
+        # For `enable_service_check`, default value by Datadaog is changed to `True`
+        enable_service_check = _is_affirmative(instance.get('enable_service_check', True))
 
         services_incl_filter = instance.get('services_include', [])
         services_excl_filter = instance.get('services_exclude', [])
