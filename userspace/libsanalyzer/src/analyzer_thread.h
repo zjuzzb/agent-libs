@@ -317,6 +317,31 @@ public:
 #endif
 	}
 
+	inline THREAD_TYPE* get_parent_thread_info()
+	{
+#ifdef USE_AGENT_THREAD
+		sinsp_threadinfo* sinsp_thread = parent_thread();
+		thread_analyzer_info* analyzer_thread =
+		    dynamic_cast<thread_analyzer_info*>(sinsp_thread);
+		ASSERT(sinsp_thread == analyzer_thread);
+		return analyzer_thread;
+#else
+		return m_tinfo->get_parent_thread();
+#endif
+	}
+
+	static inline THREAD_TYPE* get_thread_from_event(sinsp_evt* evt)
+	{
+#ifdef USE_AGENT_THREAD
+		thread_analyzer_info* analyzer_thread =
+		    dynamic_cast<thread_analyzer_info*>(evt->get_thread_info());
+		ASSERT(evt->get_thread_info() == analyzer_thread);
+		return analyzer_thread;
+#else
+		return evt->get_thread_info();
+#endif
+	}
+
 private:
 	static const uint32_t RESCAN_PORT_INTERVAL_SECS = 20;
 	using time_point_t = std::chrono::time_point<std::chrono::steady_clock>;

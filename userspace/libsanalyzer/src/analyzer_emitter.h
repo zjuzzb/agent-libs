@@ -1,4 +1,6 @@
 #pragma once
+#include "analyzer_thread.h"
+
 #include <unordered_set>
 
 /**
@@ -30,7 +32,7 @@ enum flush_flags
 };
 
 using progtable_t =
-    std::unordered_set<sinsp_threadinfo*, sinsp_threadinfo::hasher, sinsp_threadinfo::comparer>;
+    std::unordered_set<THREAD_TYPE*, sinsp_threadinfo::hasher, sinsp_threadinfo::comparer>;
 
-using progtable_by_container_t = std::unordered_map<std::string, std::vector<sinsp_threadinfo*>>;
+using progtable_by_container_t = std::unordered_map<std::string, std::vector<THREAD_TYPE*>>;
 }  // namespace analyzer_emitter

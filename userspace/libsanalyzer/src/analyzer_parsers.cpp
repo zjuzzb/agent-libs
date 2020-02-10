@@ -201,16 +201,16 @@ void sinsp_analyzer_parsers::parse_accept_exit(sinsp_evt* evt)
 		return;
 	}
 
-	if (queueratio > evt->m_tinfo->m_ainfo->m_connection_queue_usage_pct)
+	if (queueratio > GET_AGENT_THREAD(evt->m_tinfo)->m_connection_queue_usage_pct)
 	{
-		evt->m_tinfo->m_ainfo->m_connection_queue_usage_pct = queueratio;
+		GET_AGENT_THREAD(evt->m_tinfo)->m_connection_queue_usage_pct = queueratio;
 	}
 
 	//
 	// If this comes after a wait, reset the last wait time, since we don't count
 	// time waiting for an accept as I/O time
 	//
-	evt->m_tinfo->m_ainfo->m_last_wait_duration_ns = 0;
+	GET_AGENT_THREAD(evt->m_tinfo)->m_last_wait_duration_ns = 0;
 }
 
 void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt* evt)
@@ -244,7 +244,7 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt* evt)
 	//
 	if (retval >= 0)
 	{
-		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		THREAD_TYPE* tinfo = evt->m_tinfo;
 
 		if (tinfo == NULL)
 		{
@@ -260,7 +260,7 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt* evt)
 			//
 			if (retval == 0)
 			{
-				tinfo->m_ainfo->m_last_wait_duration_ns = 0;
+				GET_AGENT_THREAD(tinfo)->m_last_wait_duration_ns = 0;
 			}
 			else
 			{
@@ -273,17 +273,17 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt* evt)
 				uint64_t sample_duration = m_analyzer->get_sample_duration();
 				uint64_t ts = evt->get_ts();
 
-				tinfo->m_ainfo->m_last_wait_end_time_ns = ts;
+				GET_AGENT_THREAD(tinfo)->m_last_wait_end_time_ns = ts;
 				uint64_t start_time_ns =
 				    MAX(ts - ts % sample_duration, *(uint64_t*)evt->m_tinfo->m_lastevent_data);
 
 				if (retval == 1)
 				{
-					tinfo->m_ainfo->m_last_wait_duration_ns = ts - start_time_ns;
+					GET_AGENT_THREAD(tinfo)->m_last_wait_duration_ns = ts - start_time_ns;
 				}
 				else
 				{
-					tinfo->m_ainfo->m_last_wait_duration_ns = start_time_ns - ts;
+					GET_AGENT_THREAD(tinfo)->m_last_wait_duration_ns = start_time_ns - ts;
 				}
 			}
 		}
@@ -303,7 +303,7 @@ bool sinsp_analyzer_parsers::parse_clone_exit(sinsp_evt* evt)
 		return true;
 	}
 
-	sinsp_threadinfo* tinfo = evt->get_thread_info();
+	THREAD_TYPE* tinfo = thread_analyzer_info::get_thread_from_event(evt);
 	if (tinfo == nullptr)
 	{
 		return true;
@@ -320,13 +320,13 @@ bool sinsp_analyzer_parsers::parse_clone_exit(sinsp_evt* evt)
 		return true;
 	}
 
-	sinsp_threadinfo* ptinfo = tinfo->get_parent_thread();
+	THREAD_TYPE* ptinfo = GET_AGENT_THREAD(tinfo)->get_parent_thread_info();
 	if (ptinfo == nullptr)
 	{
 		return true;
 	}
 
-	auto tainfo = tinfo->m_ainfo;
+	auto tainfo = GET_AGENT_THREAD(tinfo);
 	if (tainfo == nullptr)
 	{
 		return true;
@@ -342,10 +342,10 @@ bool sinsp_analyzer_parsers::parse_clone_exit(sinsp_evt* evt)
 
 	if (!ptinfo->is_main_thread())
 	{
-		ptinfo = ptinfo->get_main_thread();
+		ptinfo = GET_AGENT_THREAD(ptinfo)->get_main_thread_info();
 	}
 
-	auto ptainfo = ptinfo->m_ainfo;
+	auto ptainfo = GET_AGENT_THREAD(ptinfo);
 	if (ptainfo == nullptr)
 	{
 		return true;
@@ -365,7 +365,7 @@ bool sinsp_analyzer_parsers::parse_clone_exit(sinsp_evt* evt)
 
 bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 {
-	sinsp_threadinfo* tinfo = evt->get_thread_info();
+	THREAD_TYPE* tinfo = thread_analyzer_info::get_thread_from_event(evt);
 	if (tinfo == NULL)
 	{
 		return true;
@@ -384,8 +384,7 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		return true;
 	}
 
-	thread_analyzer_info* tainfo = evt->m_tinfo->m_ainfo;
-	tainfo->m_called_execve = true;
+	GET_AGENT_THREAD(tinfo)->m_called_execve = true;
 
 	const sinsp_configuration* sinsp_conf = m_analyzer->get_configuration_read_only();
 
@@ -448,7 +447,7 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	};
 
 	found_container_init |=
-	    ((tainfo->m_th_analysis_flags &
+	    ((GET_AGENT_THREAD(tinfo)->m_th_analysis_flags &
 	      thread_analyzer_info::flags::AF_IS_DESCENDANT_OF_CONTAINER_INIT) != 0);
 
 	if (visitor(tinfo))
@@ -520,10 +519,10 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	// store AF_IS_INTERACTIVE_COMMAND in thread_analyzer_info
 	if (!tinfo->is_health_probe())
 	{
-		sinsp_threadinfo* main_thread = tinfo->get_main_thread();
-		if (main_thread != nullptr && main_thread->m_ainfo != nullptr)
+		THREAD_TYPE* main_thread = GET_AGENT_THREAD(tinfo)->get_main_thread_info();
+		if (main_thread != nullptr && GET_AGENT_THREAD(main_thread) != nullptr)
 		{
-			main_thread->m_ainfo->m_th_analysis_flags |=
+			GET_AGENT_THREAD(main_thread)->m_th_analysis_flags |=
 			    thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
 		}
 	}
