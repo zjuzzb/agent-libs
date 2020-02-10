@@ -666,7 +666,7 @@ void sinsp_analyzer::on_capture_start()
 			// order to spread evenly the fingerprint message emission to
 			// the collectors, across multiple agents.
 			srand(time(NULL));
-			uint64_t ts =  (rand() % (m_configuration->get_falco_baselining_report_interval_ns() / ONE_SECOND_IN_NS)) * ONE_SECOND_IN_NS;
+			uint64_t ts = ((rand() % (m_configuration->get_falco_baselining_report_interval_ns() / ONE_SECOND_IN_NS)) + 1) * ONE_SECOND_IN_NS;
 			glogf("secure_profiling (baselining) randomize start time in %" PRIu64 " sec", ts / ONE_SECOND_IN_NS);
 			m_falco_baseliner->set_baseline_runtime_enable_start_time(sinsp_utils::get_current_time_ns() + ts);
 		}
@@ -4097,7 +4097,9 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 	//
 	// if it's time to emit the falco baseline, do the serialization and then restart it
 	//
-	tracer_emitter falco_trc("falco_baseline", f_trc);
+	tracer_emitter secure_profiling_trc("secure_profiling", f_trc);
+	bool secure_profiling_fingerprint_sent = false;
+
 	if (m_falco_baseliner->is_baseline_runtime_enabled())
 	{
 		if (is_eof)
@@ -4118,8 +4120,10 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 				m_internal_metrics->set_secure_profiling_emit_ms(emit_time_ms);
 
 				m_falco_baseliner->flush(evt->get_ts());
+
+				secure_profiling_fingerprint_sent = true;
 			}
-			
+
 			m_last_falco_dump_ts = evt->get_ts();
 		}
 	}
@@ -4164,11 +4168,20 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 	}
 	if (m_internal_metrics)
 	{
-		m_internal_metrics->set_baseliner_enabled(
+		// always report the baseliner runtime status
+		m_internal_metrics->set_secure_profiling_enabled(
 		    m_falco_baseliner->is_baseline_runtime_enabled());
+
+		// if no fingerprint has been sent, reset the counters
+		if (!secure_profiling_fingerprint_sent)
+		{
+			m_internal_metrics->set_secure_profiling_n_sent_protobufs(0);
+			m_internal_metrics->set_secure_profiling_fl_ms(0);
+			m_internal_metrics->set_secure_profiling_emit_ms(0);
+		}
 	}
 
-	falco_trc.stop();
+	secure_profiling_trc.stop();
 }
 
 #define HIGH_EVT_THRESHOLD 300 * 1000

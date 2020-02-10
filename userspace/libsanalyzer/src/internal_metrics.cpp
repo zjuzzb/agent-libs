@@ -469,14 +469,21 @@ void internal_metrics::send_secure_audit_metrics(draiosproto::statsd_info* stats
 	if (get_secure_profiling_n_sent_protobufs() != -1)
 	{
 		write_metric(statsd_info,
+		             "dragent.secure_profiling.baseliner_enabled",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_profiling_enabled() ? 1 : 0);
+		write_metric(statsd_info,
 		             "dragent.secure_profiling.n_sent_protobufs",
 		             draiosproto::STATSD_GAUGE,
 		             get_secure_profiling_n_sent_protobufs());
 		write_metric(statsd_info,
-		             "dragent.secure_profiling.baseliner_enabled",
+		             "dragent.secure_profiling.fl.ms",
 		             draiosproto::STATSD_GAUGE,
-		             m_analyzer.baseliner_enabled ? 1 : 0);
-
+		             get_secure_profiling_fl_ms());
+		write_metric(statsd_info,
+		             "dragent.secure_profiling.emit.ms",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_profiling_emit_ms());
 	}
 }
 
