@@ -1,3 +1,6 @@
+from __future__ import division
+from builtins import filter
+from past.utils import old_div
 # stdlib
 from collections import defaultdict
 from glob import glob
@@ -35,7 +38,7 @@ class Jenkins(AgentCheck):
         if timestamp is None or not timestamp.text:
             raise Skip('the timestamp cannot be found', dir_name)
         else:
-            return int(timestamp.text) / 1000.0
+            return old_div(int(timestamp.text), 1000.0)
 
     def _timestamp_from_dirname(self, dir_name):
         if not os.path.isdir(dir_name):
@@ -136,7 +139,7 @@ class Jenkins(AgentCheck):
                     # If it not a new build, stop here
                     else:
                         break
-        except Exception, e:
+        except Exception as e:
             self.log.error("Error while working on job %s, exception: %s" % (job_name, e))
 
     def find_jobs_dirs(self, jenkins_home, dir_name, excluded_jobs, depth=1):
@@ -171,8 +174,8 @@ class Jenkins(AgentCheck):
         if not jenkins_home:
             raise Exception("No jenkins_home directory set in the config file")
 
-        jobs_paths = filter(self.find_jobs_dirs(
-            jenkins_home, 'jobs', excluded_jobs, depth=jobs_folder_depth), os.walk(jenkins_home))
+        jobs_paths = list(filter(self.find_jobs_dirs(
+            jenkins_home, 'jobs', excluded_jobs, depth=jobs_folder_depth), os.walk(jenkins_home)))
         jobs_paths = [dirpath for dirpath, dirnames, filenames in jobs_paths]
 
         if excluded_jobs:
@@ -209,7 +212,7 @@ class Jenkins(AgentCheck):
 
                         if 'branch' in output:
                             tags.append('branch:%s' % output['branch'])
-                        self.gauge("jenkins.job.duration", float(output['duration'])/1000.0, tags=tags)
+                        self.gauge("jenkins.job.duration", old_div(float(output['duration']),1000.0), tags=tags)
 
                         if output['result'] == 'SUCCESS':
                             self.increment('jenkins.job.success', tags=tags)
