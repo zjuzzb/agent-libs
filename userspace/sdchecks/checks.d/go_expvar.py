@@ -209,7 +209,6 @@ class GoExpvar(AgentCheck):
                 object_items = object.iteritems()
             for new_key, new_content in object_items:
                 yield str(new_key), new_content
-
-    else:
+        else:
             self.log.warning("Could not parse this object, check the json"
                              "served by the expvar")
