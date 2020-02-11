@@ -1,4 +1,5 @@
 #pragma once
+#include "analyzer_thread_type.h"
 #include "draios.pb.h"
 #include "env_hash.h"
 
@@ -20,7 +21,7 @@ public:
 	/**
 	 * emit the environment of a single process
 	 */
-	void emit_environment(sinsp_threadinfo& tinfo, draiosproto::program& prog);
+	void emit_environment(THREAD_TYPE& tinfo, draiosproto::program& prog);
 
 private:
 	uint64_t m_num_envs_sent = 0;

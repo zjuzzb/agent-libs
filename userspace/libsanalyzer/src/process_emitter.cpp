@@ -67,11 +67,11 @@ void process_emitter::filter_top_programs(Iterator progtable_begin,
                                           Iterator progtable_end,
                                           bool cs_only,
                                           uint32_t how_many,
-                                          const std::set<sinsp_threadinfo*>& blacklist,
-                                          std::set<sinsp_threadinfo*>& processes_to_emit)
+                                          const std::set<THREAD_TYPE*>& blacklist,
+                                          std::set<THREAD_TYPE*>& processes_to_emit)
 {
 	// build the list of things we can emit here based on cs_only and driver type
-	std::vector<sinsp_threadinfo*> prog_sortable_list;
+	std::vector<THREAD_TYPE*> prog_sortable_list;
 
 	for (auto ptit = progtable_begin; ptit != progtable_end; ++ptit)
 	{
@@ -81,14 +81,14 @@ void process_emitter::filter_top_programs(Iterator progtable_begin,
 		}
 
 		if (m_simpledriver_enabled &&
-		    (!cs_only || (*ptit)->m_ainfo->m_procinfo->m_proc_metrics.m_net.m_count != 0))
+		    (!cs_only || GET_AGENT_THREAD(*ptit)->m_procinfo->m_proc_metrics.m_net.m_count != 0))
 		{
 			prog_sortable_list.push_back(*ptit);
 		}
 
 		if (!m_simpledriver_enabled &&
 		    (!cs_only ||
-		     (*ptit)->m_ainfo->m_th_analysis_flags &
+		     GET_AGENT_THREAD(*ptit)->m_th_analysis_flags &
 		         (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |  // this should probably be
 		                                                           // defined by
 		                                                           // thread_analyzer_info
@@ -121,7 +121,7 @@ void process_emitter::filter_top_programs(Iterator progtable_begin,
 	// the zero check here does not use the same value as the comparator, which uses
 	// m_ainfo->m_procinfo->m_cpuload. This is probably wrong, but it's how legacy code
 	// did it.
-	for (uint32_t i = 0; i < how_many && prog_sortable_list[i]->m_ainfo->m_cpuload > 0; i++)
+	for (uint32_t i = 0; i < how_many && GET_AGENT_THREAD(prog_sortable_list[i])->m_cpuload > 0; i++)
 	{
 		processes_to_emit.insert(prog_sortable_list[i]);
 	}
@@ -155,7 +155,7 @@ void process_emitter::filter_top_programs(Iterator progtable_begin,
 
 		for (uint32_t i = 0;
 		     i < how_many &&
-		     prog_sortable_list[i]->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() >
+		     GET_AGENT_THREAD(prog_sortable_list[i])->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() >
 		         0;
 		     i++)
 		{
@@ -176,7 +176,7 @@ void process_emitter::filter_top_programs(Iterator progtable_begin,
 		// not sure why we just use net io for the 0 check.
 		for (uint32_t i = 0;
 		     i < how_many &&
-		     prog_sortable_list[i]->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() >
+		     GET_AGENT_THREAD(prog_sortable_list[i])->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() >
 		         0;
 		     i++)
 		{
@@ -195,7 +195,7 @@ void process_emitter::filter_top_programs(Iterator progtable_begin,
 
 		for (uint32_t i = 0;
 		     i < how_many &&
-		     prog_sortable_list[i]->m_ainfo->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() >
+		     GET_AGENT_THREAD(prog_sortable_list[i])->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() >
 		         0;
 		     i++)
 		{
@@ -204,11 +204,11 @@ void process_emitter::filter_top_programs(Iterator progtable_begin,
 	}
 }
 
-void process_emitter::filter_process(sinsp_threadinfo* tinfo,
+void process_emitter::filter_process(THREAD_TYPE* tinfo,
                                      const sinsp_container_info* container_info,
-                                     std::set<sinsp_threadinfo*>& high_priority_processes,
-                                     std::set<sinsp_threadinfo*>& low_priority_processes,
-                                     std::set<sinsp_threadinfo*>& blacklist_processes)
+                                     std::set<THREAD_TYPE*>& high_priority_processes,
+                                     std::set<THREAD_TYPE*>& low_priority_processes,
+                                     std::set<THREAD_TYPE*>& blacklist_processes)
 {
 	// already matched this process. bail.
 	if (high_priority_processes.find(tinfo) != high_priority_processes.end() ||
@@ -252,18 +252,18 @@ void process_emitter::emit_processes(
     const std::vector<std::string>& emitted_containers,
     draiosproto::metrics& metrics,
     std::set<uint64_t>& all_uids,
-    std::set<sinsp_threadinfo*>& emitted_processes)
+    std::set<THREAD_TYPE*>& emitted_processes)
 {
 	if (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "progtable size: %u", progtable.size());
 	}
 
-	std::set<sinsp_threadinfo*>& processes_to_emit = emitted_processes;
+	std::set<THREAD_TYPE*>& processes_to_emit = emitted_processes;
 
-	std::set<sinsp_threadinfo*> high_priority_processes;
-	std::set<sinsp_threadinfo*> low_priority_processes;
-	std::set<sinsp_threadinfo*> blacklist_processes;
+	std::set<THREAD_TYPE*> high_priority_processes;
+	std::set<THREAD_TYPE*> low_priority_processes;
+	std::set<THREAD_TYPE*> blacklist_processes;
 
 	// first step: get list of emittable processes
 	for (const auto& container_it : progtable_by_container)
@@ -379,7 +379,7 @@ void process_emitter::emit_processes(
 	tracer_emitter at_trc("aggregate_threads", m_proc_trc);
 	for (auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
-		sinsp_threadinfo* tinfo = *it;
+		THREAD_TYPE* tinfo = *it;
 		if (!tinfo)
 		{
 			continue;
@@ -389,7 +389,7 @@ void process_emitter::emit_processes(
 		// If this is the main thread of a process, add an entry into the processes
 		// section too
 		//
-		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
+		sinsp_procinfo* procinfo = GET_AGENT_THREAD(tinfo)->m_procinfo;
 
 		sinsp_counter_time tot;
 
@@ -413,13 +413,13 @@ void process_emitter::emit_processes(
 		//
 		// Clear the thread metrics, so we're ready for the next sample
 		//
-		tinfo->m_ainfo->clear_all_metrics();
+		GET_AGENT_THREAD(tinfo)->clear_all_metrics();
 	}
 	at_trc.stop();
 }
 
 void process_emitter::emit_process(
-    sinsp_threadinfo& tinfo,
+    THREAD_TYPE& tinfo,
     draiosproto::program& prog,
     const analyzer_emitter::progtable_by_container_t& progtable_by_container,
     sinsp_procinfo& procinfo,
@@ -501,28 +501,28 @@ void process_emitter::emit_process(
 	//
 	uint32_t netrole = 0;
 
-	if (tinfo.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
+	if (GET_AGENT_THREAD(&tinfo)->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
 	{
 		netrole |= draiosproto::IS_REMOTE_IPV4_SERVER;
 	}
-	else if (tinfo.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
+	else if (GET_AGENT_THREAD(&tinfo)->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
 	{
 		netrole |= draiosproto::IS_LOCAL_IPV4_SERVER;
 	}
-	else if (tinfo.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
+	else if (GET_AGENT_THREAD(&tinfo)->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
 	{
 		netrole |= draiosproto::IS_UNIX_SERVER;
 	}
 
-	if (tinfo.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
+	if (GET_AGENT_THREAD(&tinfo)->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
 	{
 		netrole |= draiosproto::IS_REMOTE_IPV4_CLIENT;
 	}
-	else if (tinfo.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
+	else if (GET_AGENT_THREAD(&tinfo)->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
 	{
 		netrole |= draiosproto::IS_LOCAL_IPV4_CLIENT;
 	}
-	else if (tinfo.m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
+	else if (GET_AGENT_THREAD(&tinfo)->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
 	{
 		netrole |= draiosproto::IS_UNIX_CLIENT;
 	}

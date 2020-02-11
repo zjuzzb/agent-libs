@@ -28,8 +28,8 @@ public:
 	                                Iterator progtable_end,
 	                                bool cs_only,
 	                                uint32_t how_many,
-	                                const std::set<sinsp_threadinfo*>& blacklist,
-	                                std::set<sinsp_threadinfo*>& processes_to_emit)
+	                                const std::set<THREAD_TYPE*>& blacklist,
+	                                std::set<THREAD_TYPE*>& processes_to_emit)
 	{
 		emitter.filter_top_programs(progtable_begin,
 		                            progtable_end,
@@ -55,27 +55,37 @@ public:
 	static void set_inspector_mode(sinsp& inspector, scap_mode_t mode) { inspector.m_mode = mode; }
 };
 
-class fake_thread : public sinsp_threadinfo
+class fake_thread : public THREAD_TYPE
 {
 public:
-	fake_thread() : sinsp_threadinfo()
+	fake_thread() : THREAD_TYPE()
 	{
 		HASH++;
 		m_program_hash = HASH;
 		m_pid = HASH;
 		m_tid = HASH;
+#ifndef USE_AGENT_THREAD
 		m_ainfo = new thread_analyzer_info(nullptr, nullptr);
 		m_ainfo->m_tinfo = this;
 		m_ainfo->m_procinfo = new sinsp_procinfo();
 		m_ainfo->m_th_analysis_flags = 0;
+#else
+		m_ainfo->m_procinfo = new sinsp_procinfo();
+		m_ainfo->m_th_analysis_flags = 0;
+#endif
 	}
 
 	~fake_thread()
 	{
+#ifndef USE_AGENT_THREAD
 		delete m_ainfo->m_procinfo;
 		m_ainfo->m_procinfo = nullptr;
 		delete m_ainfo;
 		m_ainfo = nullptr;
+#else
+		delete m_procinfo;
+		m_procinfo = nullptr;
+#endif
 	}
 
 	static uint64_t HASH;
@@ -156,9 +166,9 @@ TEST(process_emitter_test, emit_process)
 	easy_process_emitter emitter(false, false);
 
 	fake_thread hi_stats1;
-	hi_stats1.m_ainfo->m_cpuload = 100;
+	GET_AGENT_THREAD(&hi_stats1)->m_cpuload = 100;
 	hi_stats1.m_comm = "my_process_name";
-	hi_stats1.m_ainfo->m_procinfo->m_cpuload = 100;
+	GET_AGENT_THREAD(&hi_stats1)->m_procinfo->m_cpuload = 100;
 
 	analyzer_emitter::progtable_by_container_t progtable_by_container;
 	std::vector<std::string> emitted_containers;
@@ -170,11 +180,11 @@ TEST(process_emitter_test, emit_process)
 	std::set<uint64_t> all_uids;
 
 	sinsp_counter_time tot;
-	hi_stats1.m_ainfo->m_procinfo->m_proc_metrics.get_total(&tot);
+	GET_AGENT_THREAD(&hi_stats1)->m_procinfo->m_proc_metrics.get_total(&tot);
 	(*emitter).emit_process(hi_stats1,
 	                        *emitter.m_metrics.add_programs(),
 	                        progtable_by_container,
-	                        *hi_stats1.m_ainfo->m_procinfo,
+	                        *GET_AGENT_THREAD(&hi_stats1)->m_procinfo,
 	                        tot,
 	                        emitter.m_metrics,
 	                        all_uids,
@@ -205,11 +215,11 @@ TEST(process_emitter_test, max_command_arg_length)
 	easy_process_emitter emitter(false, false);
 
 	fake_thread hi_stats1;
-	hi_stats1.m_ainfo->m_cpuload = 100;
+	GET_AGENT_THREAD(&hi_stats1)->m_cpuload = 100;
 	hi_stats1.m_comm = "my_process_name";
 	hi_stats1.m_args.push_back(std::string(14, 'y'));
 	hi_stats1.m_args.push_back(std::string(40, 'z'));
-	hi_stats1.m_ainfo->m_procinfo->m_cpuload = 100;
+	GET_AGENT_THREAD(&hi_stats1)->m_procinfo->m_cpuload = 100;
 
 	analyzer_emitter::progtable_by_container_t progtable_by_container;
 	std::vector<std::string> emitted_containers;
@@ -221,11 +231,11 @@ TEST(process_emitter_test, max_command_arg_length)
 	std::set<uint64_t> all_uids;
 
 	sinsp_counter_time tot;
-	hi_stats1.m_ainfo->m_procinfo->m_proc_metrics.get_total(&tot);
+	GET_AGENT_THREAD(&hi_stats1)->m_procinfo->m_proc_metrics.get_total(&tot);
 	(*emitter).emit_process(hi_stats1,
 	                        *emitter.m_metrics.add_programs(),
 	                        progtable_by_container,
-	                        *hi_stats1.m_ainfo->m_procinfo,
+	                        *GET_AGENT_THREAD(&hi_stats1)->m_procinfo,
 	                        tot,
 	                        emitter.m_metrics,
 	                        all_uids,
@@ -246,12 +256,12 @@ TEST(process_emitter_test, filter_top_programs_eligible)
 {
 	easy_process_emitter emitter(false, false);
 
-	std::set<sinsp_threadinfo*> blacklist;
+	std::set<THREAD_TYPE*> blacklist;
 	analyzer_emitter::progtable_t progtable(10,
 	                                        sinsp_threadinfo::hasher(),
 	                                        sinsp_threadinfo::comparer());
 	const analyzer_emitter::progtable_t& progtable_ref = progtable;
-	std::set<sinsp_threadinfo*> processes_to_emit;
+	std::set<THREAD_TYPE*> processes_to_emit;
 	fake_thread regular_process;
 	progtable.insert(&regular_process);
 
@@ -288,7 +298,7 @@ TEST(process_emitter_test, filter_top_programs_eligible)
 
 	// sinpledriver and non-zero net count
 	fake_thread net_count_process;
-	net_count_process.m_ainfo->m_procinfo->m_proc_metrics.m_net.m_count = 1;
+	GET_AGENT_THREAD(&net_count_process)->m_procinfo->m_proc_metrics.m_net.m_count = 1;
 
 	progtable.insert(&net_count_process);
 	processes_to_emit.clear();
@@ -305,16 +315,16 @@ TEST(process_emitter_test, filter_top_programs_eligible)
 
 	// not simpledriver and local/remote IPV4 server/client
 	fake_thread local_server;
-	local_server.m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER;
+	GET_AGENT_THREAD(&local_server)->m_th_analysis_flags |= thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER;
 	progtable.insert(&local_server);
 	fake_thread remote_server;
-	remote_server.m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER;
+	GET_AGENT_THREAD(&remote_server)->m_th_analysis_flags |= thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER;
 	progtable.insert(&remote_server);
 	fake_thread local_client;
-	local_client.m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT;
+	GET_AGENT_THREAD(&local_client)->m_th_analysis_flags |= thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT;
 	progtable.insert(&local_client);
 	fake_thread remote_client;
-	remote_client.m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT;
+	GET_AGENT_THREAD(&remote_client)->m_th_analysis_flags |= thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT;
 	progtable.insert(&remote_client);
 	processes_to_emit.clear();
 
@@ -338,44 +348,44 @@ TEST(process_emitter_test, filter_top_programs_stats)
 {
 	easy_process_emitter emitter(false, false);
 
-	std::set<sinsp_threadinfo*> blacklist;
+	std::set<THREAD_TYPE*> blacklist;
 	analyzer_emitter::progtable_t progtable(10,
 	                                        sinsp_threadinfo::hasher(),
 	                                        sinsp_threadinfo::comparer());
 	const analyzer_emitter::progtable_t& progtable_ref = progtable;
-	std::set<sinsp_threadinfo*> processes_to_emit;
+	std::set<THREAD_TYPE*> processes_to_emit;
 
 	// CPU
 	fake_thread cpu_process;
-	cpu_process.m_ainfo->m_cpuload = 100;
-	cpu_process.m_ainfo->m_procinfo->m_cpuload = 100;
+	GET_AGENT_THREAD(&cpu_process)->m_cpuload = 100;
+	GET_AGENT_THREAD(&cpu_process)->m_procinfo->m_cpuload = 100;
 	progtable.insert(&cpu_process);
 	// memory
 	fake_thread mem_process;
 	mem_process.m_vmsize_kb = 100;
-	mem_process.m_ainfo->m_procinfo->m_vmrss_kb = 100;
+	GET_AGENT_THREAD(&mem_process)->m_procinfo->m_vmrss_kb = 100;
 	progtable.insert(&mem_process);
 	// net IO in non-nodriver mode
 	fake_thread net_io_process;
-	net_io_process.m_ainfo->m_procinfo->m_proc_metrics.m_io_net.add_in(100, 100, 100);
+	GET_AGENT_THREAD(&net_io_process)->m_procinfo->m_proc_metrics.m_io_net.add_in(100, 100, 100);
 	progtable.insert(&net_io_process);
 	// disk IO in non-simpledriver
 	fake_thread disk_io_process;
-	disk_io_process.m_ainfo->m_procinfo->m_proc_metrics.m_io_file.add_in(100, 100, 100);
+	GET_AGENT_THREAD(&disk_io_process)->m_procinfo->m_proc_metrics.m_io_file.add_in(100, 100, 100);
 	progtable.insert(&disk_io_process);
 
 	// bunch of do-nothing processes which have non-zero stats
 	fake_thread do_nothing_1;
-	do_nothing_1.m_ainfo->m_procinfo->m_cpuload = 5;
-	do_nothing_1.m_ainfo->m_procinfo->m_vmrss_kb = 5;
-	do_nothing_1.m_ainfo->m_procinfo->m_proc_metrics.m_io_net.add_in(5, 5, 5);
-	do_nothing_1.m_ainfo->m_procinfo->m_proc_metrics.m_io_file.add_in(5, 5, 5);
+	GET_AGENT_THREAD(&do_nothing_1)->m_procinfo->m_cpuload = 5;
+	GET_AGENT_THREAD(&do_nothing_1)->m_procinfo->m_vmrss_kb = 5;
+	GET_AGENT_THREAD(&do_nothing_1)->m_procinfo->m_proc_metrics.m_io_net.add_in(5, 5, 5);
+	GET_AGENT_THREAD(&do_nothing_1)->m_procinfo->m_proc_metrics.m_io_file.add_in(5, 5, 5);
 	progtable.insert(&do_nothing_1);
 	fake_thread do_nothing_2;
-	do_nothing_2.m_ainfo->m_procinfo->m_cpuload = 5;
-	do_nothing_2.m_ainfo->m_procinfo->m_vmrss_kb = 5;
-	do_nothing_2.m_ainfo->m_procinfo->m_proc_metrics.m_io_net.add_in(5, 5, 5);
-	do_nothing_2.m_ainfo->m_procinfo->m_proc_metrics.m_io_file.add_in(5, 5, 5);
+	GET_AGENT_THREAD(&do_nothing_2)->m_procinfo->m_cpuload = 5;
+	GET_AGENT_THREAD(&do_nothing_2)->m_procinfo->m_vmrss_kb = 5;
+	GET_AGENT_THREAD(&do_nothing_2)->m_procinfo->m_proc_metrics.m_io_net.add_in(5, 5, 5);
+	GET_AGENT_THREAD(&do_nothing_2)->m_procinfo->m_proc_metrics.m_io_file.add_in(5, 5, 5);
 	progtable.insert(&do_nothing_2);
 
 	test_helper::filter_top_programs(*emitter,
@@ -395,9 +405,9 @@ TEST(process_emitter_test, filter_top_programs_stats)
 	// syscall in simpledriver
 	fake_thread syscall_process;
 	// needs to have a large value to be larger than the others (we aggregate all of them)
-	syscall_process.m_ainfo->m_procinfo->m_proc_metrics.m_other.m_count = 500;
+	GET_AGENT_THREAD(&syscall_process)->m_procinfo->m_proc_metrics.m_other.m_count = 500;
 	// needs to have non-zero net io (don't ask me...)
-	syscall_process.m_ainfo->m_procinfo->m_proc_metrics.m_io_net.add_in(1, 1, 1);
+	GET_AGENT_THREAD(&syscall_process)->m_procinfo->m_proc_metrics.m_io_net.add_in(1, 1, 1);
 	progtable.insert(&syscall_process);
 
 	easy_process_emitter emitter_simpledriver(true, false);
@@ -477,7 +487,7 @@ TEST(process_emitter_test, top_per_host)
 	analyzer_emitter::progtable_t progtable(10,
 	                                        sinsp_threadinfo::hasher(),
 	                                        sinsp_threadinfo::comparer());
-	std::set<sinsp_threadinfo*> processes_to_emit;
+	std::set<THREAD_TYPE*> processes_to_emit;
 
 	std::string proc_only_filter = R"(
 process:
@@ -502,12 +512,12 @@ process:
 	progtable.insert(&matching_process);
 
 	fake_thread hi_stats;
-	hi_stats.m_ainfo->m_cpuload = 100;
-	hi_stats.m_ainfo->m_procinfo->m_cpuload = 100;
+	GET_AGENT_THREAD(&hi_stats)->m_cpuload = 100;
+	GET_AGENT_THREAD(&hi_stats)->m_procinfo->m_cpuload = 100;
 	hi_stats.m_vmsize_kb = 100;
-	hi_stats.m_ainfo->m_procinfo->m_vmrss_kb = 100;
-	hi_stats.m_ainfo->m_procinfo->m_proc_metrics.m_io_net.add_in(100, 100, 100);
-	hi_stats.m_ainfo->m_procinfo->m_proc_metrics.m_io_file.add_in(100, 100, 100);
+	GET_AGENT_THREAD(&hi_stats)->m_procinfo->m_vmrss_kb = 100;
+	GET_AGENT_THREAD(&hi_stats)->m_procinfo->m_proc_metrics.m_io_net.add_in(100, 100, 100);
+	GET_AGENT_THREAD(&hi_stats)->m_procinfo->m_proc_metrics.m_io_file.add_in(100, 100, 100);
 	progtable.insert(&hi_stats);
 
 	test_helper::set_config(process_manager::c_top_processes_per_host, 1);
@@ -516,7 +526,7 @@ process:
 	analyzer_emitter::progtable_by_container_t progtable_by_container;
 	std::vector<std::string> emitted_containers;
 	std::set<uint64_t> all_uids;
-	std::set<sinsp_threadinfo*> emitted_processes;
+	std::set<THREAD_TYPE*> emitted_processes;
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
 	                          progtable,
 	                          progtable_by_container,
@@ -537,7 +547,7 @@ TEST(process_emitter_test, high_priority)
 	analyzer_emitter::progtable_t progtable(10,
 	                                        sinsp_threadinfo::hasher(),
 	                                        sinsp_threadinfo::comparer());
-	std::set<sinsp_threadinfo*> processes_to_emit;
+	std::set<THREAD_TYPE*> processes_to_emit;
 
 	std::string proc_only_filter = R"(
 process:
@@ -562,12 +572,12 @@ process:
 	progtable.insert(&matching_process);
 
 	fake_thread hi_stats;
-	hi_stats.m_ainfo->m_cpuload = 100;
-	hi_stats.m_ainfo->m_procinfo->m_cpuload = 100;
+	GET_AGENT_THREAD(&hi_stats)->m_cpuload = 100;
+	GET_AGENT_THREAD(&hi_stats)->m_procinfo->m_cpuload = 100;
 	hi_stats.m_vmsize_kb = 100;
-	hi_stats.m_ainfo->m_procinfo->m_vmrss_kb = 100;
-	hi_stats.m_ainfo->m_procinfo->m_proc_metrics.m_io_net.add_in(100, 100, 100);
-	hi_stats.m_ainfo->m_procinfo->m_proc_metrics.m_io_file.add_in(100, 100, 100);
+	GET_AGENT_THREAD(&hi_stats)->m_procinfo->m_vmrss_kb = 100;
+	GET_AGENT_THREAD(&hi_stats)->m_procinfo->m_proc_metrics.m_io_net.add_in(100, 100, 100);
+	GET_AGENT_THREAD(&hi_stats)->m_procinfo->m_proc_metrics.m_io_file.add_in(100, 100, 100);
 	progtable.insert(&hi_stats);
 
 	// set so we skip the top per host
@@ -577,7 +587,7 @@ process:
 	analyzer_emitter::progtable_by_container_t progtable_by_container;
 	std::vector<std::string> emitted_containers;
 	std::set<uint64_t> all_uids;
-	std::set<sinsp_threadinfo*> emitted_processes;
+	std::set<THREAD_TYPE*> emitted_processes;
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
 	                          progtable,
 	                          progtable_by_container,
@@ -642,15 +652,15 @@ TEST(process_emitter_test, container_procs)
 	analyzer_emitter::progtable_t progtable(10,
 	                                        sinsp_threadinfo::hasher(),
 	                                        sinsp_threadinfo::comparer());
-	std::set<sinsp_threadinfo*> processes_to_emit;
+	std::set<THREAD_TYPE*> processes_to_emit;
 
 	fake_thread hi_stats;
-	hi_stats.m_ainfo->m_cpuload = 100;
-	hi_stats.m_ainfo->m_procinfo->m_cpuload = 100;
+	GET_AGENT_THREAD(&hi_stats)->m_cpuload = 100;
+	GET_AGENT_THREAD(&hi_stats)->m_procinfo->m_cpuload = 100;
 	hi_stats.m_vmsize_kb = 100;
-	hi_stats.m_ainfo->m_procinfo->m_vmrss_kb = 100;
-	hi_stats.m_ainfo->m_procinfo->m_proc_metrics.m_io_net.add_in(100, 100, 100);
-	hi_stats.m_ainfo->m_procinfo->m_proc_metrics.m_io_file.add_in(100, 100, 100);
+	GET_AGENT_THREAD(&hi_stats)->m_procinfo->m_vmrss_kb = 100;
+	GET_AGENT_THREAD(&hi_stats)->m_procinfo->m_proc_metrics.m_io_net.add_in(100, 100, 100);
+	GET_AGENT_THREAD(&hi_stats)->m_procinfo->m_proc_metrics.m_io_file.add_in(100, 100, 100);
 	progtable.insert(&hi_stats);
 
 	fake_thread matching_container_process;
@@ -675,7 +685,7 @@ TEST(process_emitter_test, container_procs)
 	test_helper::set_config(process_manager::c_top_processes_per_container, 1);
 
 	std::set<uint64_t> all_uids;
-	std::set<sinsp_threadinfo*> emitted_processes;
+	std::set<THREAD_TYPE*> emitted_processes;
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
 	                          progtable,
 	                          progtable_by_container,
@@ -698,16 +708,16 @@ TEST(process_emitter_test, other_procs)
 	analyzer_emitter::progtable_t progtable(10,
 	                                        sinsp_threadinfo::hasher(),
 	                                        sinsp_threadinfo::comparer());
-	std::set<sinsp_threadinfo*> processes_to_emit;
+	std::set<THREAD_TYPE*> processes_to_emit;
 
 	fake_thread hi_stats1;
-	hi_stats1.m_ainfo->m_cpuload = 100;
-	hi_stats1.m_ainfo->m_procinfo->m_cpuload = 100;
+	GET_AGENT_THREAD(&hi_stats1)->m_cpuload = 100;
+	GET_AGENT_THREAD(&hi_stats1)->m_procinfo->m_cpuload = 100;
 	progtable.insert(&hi_stats1);
 
 	fake_thread hi_stats2;
-	hi_stats2.m_ainfo->m_cpuload = 99;
-	hi_stats2.m_ainfo->m_procinfo->m_cpuload = 99;
+	GET_AGENT_THREAD(&hi_stats2)->m_cpuload = 99;
+	GET_AGENT_THREAD(&hi_stats2)->m_procinfo->m_cpuload = 99;
 	progtable.insert(&hi_stats2);
 
 	analyzer_emitter::progtable_by_container_t progtable_by_container;
@@ -719,7 +729,7 @@ TEST(process_emitter_test, other_procs)
 	test_helper::set_config(process_manager::c_top_processes_per_container, 0);
 
 	std::set<uint64_t> all_uids;
-	std::set<sinsp_threadinfo*> emitted_processes;
+	std::set<THREAD_TYPE*> emitted_processes;
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
 	                          progtable,
 	                          progtable_by_container,
@@ -743,17 +753,17 @@ TEST(process_emitter_test, main_loop)
 	analyzer_emitter::progtable_t progtable(10,
 	                                        sinsp_threadinfo::hasher(),
 	                                        sinsp_threadinfo::comparer());
-	std::set<sinsp_threadinfo*> processes_to_emit;
+	std::set<THREAD_TYPE*> processes_to_emit;
 
 	fake_thread hi_stats1;
-	hi_stats1.m_ainfo->m_cpuload = 100;
+	GET_AGENT_THREAD(&hi_stats1)->m_cpuload = 100;
 	hi_stats1.m_comm = "my_process_name";
-	hi_stats1.m_ainfo->m_procinfo->m_cpuload = 100;
+	GET_AGENT_THREAD(&hi_stats1)->m_procinfo->m_cpuload = 100;
 	progtable.insert(&hi_stats1);
 
 	fake_thread hi_stats2;
-	hi_stats2.m_ainfo->m_cpuload = 99;
-	hi_stats2.m_ainfo->m_procinfo->m_cpuload = 99;
+	GET_AGENT_THREAD(&hi_stats2)->m_cpuload = 99;
+	GET_AGENT_THREAD(&hi_stats2)->m_procinfo->m_cpuload = 99;
 	progtable.insert(&hi_stats2);
 
 	analyzer_emitter::progtable_by_container_t progtable_by_container;
@@ -764,7 +774,7 @@ TEST(process_emitter_test, main_loop)
 	test_helper::set_config(process_manager::c_process_limit, 1);
 
 	std::set<uint64_t> all_uids;
-	std::set<sinsp_threadinfo*> emitted_processes;
+	std::set<THREAD_TYPE*> emitted_processes;
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
 	                          progtable,
 	                          progtable_by_container,
@@ -779,8 +789,8 @@ TEST(process_emitter_test, main_loop)
 	EXPECT_NE(emitted_processes.find(&hi_stats1), emitted_processes.end());
 
 	// validates that stats are cleared on the processes
-	EXPECT_EQ(hi_stats1.m_ainfo->m_cpuload, 0);
-	EXPECT_EQ(hi_stats2.m_ainfo->m_cpuload, 0);
+	EXPECT_EQ(GET_AGENT_THREAD(&hi_stats1)->m_cpuload, 0);
+	EXPECT_EQ(GET_AGENT_THREAD(&hi_stats2)->m_cpuload, 0);
 
 	// validates that protobuf was actually populated
 	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().comm(), "my_process_name");
@@ -794,7 +804,7 @@ TEST(process_emitter_test, reporting_group)
 	analyzer_emitter::progtable_t progtable(10,
 	                                        sinsp_threadinfo::hasher(),
 	                                        sinsp_threadinfo::comparer());
-	std::set<sinsp_threadinfo*> processes_to_emit;
+	std::set<THREAD_TYPE*> processes_to_emit;
 
 	std::string proc_only_filter = R"(
 process:
@@ -811,12 +821,12 @@ process:
 	                                   emitter.m_process_manager.c_process_filter.get_value());
 
 	fake_thread matched_process;
-	matched_process.m_ainfo->m_cpuload = 1;
+	GET_AGENT_THREAD(&matched_process)->m_cpuload = 1;
 	matched_process.m_comm = "my_process_name";
 	progtable.insert(&matched_process);
 
 	fake_thread unmatched_process;
-	unmatched_process.m_ainfo->m_cpuload = 1;
+	GET_AGENT_THREAD(&unmatched_process)->m_cpuload = 1;
 	unmatched_process.m_comm = "something else";
 	progtable.insert(&unmatched_process);
 
@@ -826,7 +836,7 @@ process:
 	test_helper::set_config(process_manager::c_process_limit, 100);
 
 	std::set<uint64_t> all_uids;
-	std::set<sinsp_threadinfo*> emitted_processes;
+	std::set<THREAD_TYPE*> emitted_processes;
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
 	                          progtable,
 	                          progtable_by_container,
@@ -855,19 +865,19 @@ TEST(process_emitter_test, syscall_count)
 	analyzer_emitter::progtable_t progtable(10,
 	                                        sinsp_threadinfo::hasher(),
 	                                        sinsp_threadinfo::comparer());
-	std::set<sinsp_threadinfo*> processes_to_emit;
+	std::set<THREAD_TYPE*> processes_to_emit;
 
 	fake_thread thread_1;
-	thread_1.m_ainfo->m_cpuload = 100;
-	thread_1.m_ainfo->m_procinfo->m_cpuload = 100;
-	thread_1.m_ainfo->m_procinfo->m_proc_metrics.m_unknown.m_count = 7;
+	GET_AGENT_THREAD(&thread_1)->m_cpuload = 100;
+	GET_AGENT_THREAD(&thread_1)->m_procinfo->m_cpuload = 100;
+	GET_AGENT_THREAD(&thread_1)->m_procinfo->m_proc_metrics.m_unknown.m_count = 7;
 	progtable.insert(&thread_1);
 
 	analyzer_emitter::progtable_by_container_t progtable_by_container;
 	std::vector<std::string> emitted_containers;
 
 	std::set<uint64_t> all_uids;
-	std::set<sinsp_threadinfo*> emitted_processes;
+	std::set<THREAD_TYPE*> emitted_processes;
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
 	                          progtable,
 	                          progtable_by_container,
@@ -886,9 +896,9 @@ TEST(process_emitter_test, syscall_count)
 	// we can't easily check that host/container metrics emit correctly as those aren't
 	// as nicely wrapped, but at least check that the proc count is propagated correctly
 	// when you call add. Containers use the same metrics type.
-	thread_1.m_ainfo->m_procinfo->m_proc_metrics.m_unknown.m_count = 8;
+	GET_AGENT_THREAD(&thread_1)->m_procinfo->m_proc_metrics.m_unknown.m_count = 8;
 	sinsp_host_metrics host_metrics;
-	host_metrics.add(thread_1.m_ainfo->m_procinfo);
+	host_metrics.add(GET_AGENT_THREAD(&thread_1)->m_procinfo);
 	sinsp_counter_time tc;
 	host_metrics.m_metrics.get_total(&tc);
 	EXPECT_EQ(tc.m_count, 8);

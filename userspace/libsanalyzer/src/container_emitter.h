@@ -1,5 +1,6 @@
 #pragma once
 
+#include "analyzer_thread_type.h"
 #include <container_analyzer.h>
 #include <sinsp_int.h>
 #include <unordered_map>
@@ -35,7 +36,7 @@ public:
 	container_emitter(callback_type& t,
 	                  std::unordered_map<std::string, analyzer_container_state>& containers,
 	                  unsigned statsd_limit,
-	                  const std::unordered_map<std::string, std::vector<sinsp_threadinfo*>>&
+	                  const std::unordered_map<std::string, std::vector<THREAD_TYPE*>>&
 	                      progtable_by_container,
 	                  const std::vector<std::string>& container_patterns,
 	                  callback_arg_type flshflags,
@@ -67,7 +68,7 @@ private:
 	std::vector<std::string>&
 	    m_emitted_containers_out;  // ref to std::vector that we ultimately have to return
 	uint64_t m_total_cpu_shares;
-	const std::unordered_map<std::string, std::vector<sinsp_threadinfo*>>& m_progtable_by_container;
+	const std::unordered_map<std::string, std::vector<THREAD_TYPE*>>& m_progtable_by_container;
 	callback_arg_type m_flshflags;
 	const std::vector<std::string>& m_container_patterns;
 	uint64_t m_container_limit;

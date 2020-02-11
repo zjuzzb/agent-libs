@@ -4,7 +4,7 @@ container_emitter<callback_type, callback_arg_type>::container_emitter(
     callback_type& t,
     std::unordered_map<std::string, analyzer_container_state>& containers,
     unsigned statsd_limit,
-    const std::unordered_map<std::string, std::vector<sinsp_threadinfo*>>& progtable_by_container,
+    const std::unordered_map<std::string, std::vector<THREAD_TYPE*>>& progtable_by_container,
     const std::vector<std::string>& container_patterns,
     callback_arg_type flshflags,
     uint32_t limit,
