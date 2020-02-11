@@ -31,9 +31,10 @@ func (impl *LinuxBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
 			default:
 				impl.variant = "2.0.0"
 			}
-			args = append(args, "--version", impl.variant)
 		}
 	}
+
+	args = append(args, "--version", impl.variant)
 
 	return args, nil
 }
@@ -222,19 +223,7 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 					partsA := strings.Split(normalizedSection.Results[i].TestNumber, ".")
 					partsB := strings.Split(normalizedSection.Results[j].TestNumber, ".")
 
-					for depth := 0; ; depth++ {
-						a, err := strconv.Atoi(partsA[depth])
-						if err != nil {
-							return true
-						}
-						b, err := strconv.Atoi(partsB[depth])
-						if err != nil {
-							return false
-						}
-						if a != b {
-							return a < b
-						}
-					}
+					return sortByTestNumber(partsA, partsB)
 				})
 			} else {
 				normalizedSection = section
@@ -348,4 +337,35 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 	}
 
 	return nil
+}
+
+func sortByTestNumber(a, b []string) bool {
+	if a == nil {
+		return true
+	}
+
+	if b == nil {
+		return false
+	}
+
+	if a[0] == b[0] {
+		return sortByTestNumber(a[1:], b[1:])
+	}
+
+	intA, errA := strconv.Atoi(a[0])
+	intB, errB := strconv.Atoi(b[0])
+
+	if errA == nil { // A is number
+		if errB == nil { // A and B are numbers
+			return intA < intB
+		} else { // A is number, B is letter
+			return true
+		}
+	} else { // A is letter
+		if errB == nil { // A is letter, B is number
+			return false
+		} else { // A and B are letters
+			return a[0] < b[0]
+		}
+	}
 }
