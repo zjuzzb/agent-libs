@@ -426,6 +426,21 @@ public:
 #endif
 	}
 
+	inline THREAD_TYPE* get_mutable_thread_by_pid(uint64_t tid,
+	                                              bool query_os_if_not_found,
+	                                              bool lookup_only)
+	{
+		sinsp_threadinfo* sinsp_thread =
+		    m_inspector->get_thread(tid, query_os_if_not_found, lookup_only);
+#ifdef USE_AGENT_THREAD
+		thread_analyzer_info* analyzer_thread = dynamic_cast<thread_analyzer_info*>(sinsp_thread);
+		ASSERT(sinsp_thread == analyzer_thread);
+		return analyzer_thread;
+#else
+		return sinsp_thread;
+#endif
+	}
+
 	inline std::shared_ptr<THREAD_TYPE> get_thread_ref(int64_t tid,
 	                                                   bool query_os_if_not_found,
 	                                                   bool lookup_only,

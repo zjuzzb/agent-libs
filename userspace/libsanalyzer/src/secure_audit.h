@@ -56,7 +56,7 @@ public:
 	void emit_connection_async(const _ipv4tuple& tuple,
 	                           sinsp_connection& conn,
 	                           sinsp_connection::state_transition transition);
-	void emit_file_access_async(sinsp_threadinfo* tinfo,
+	void emit_file_access_async(THREAD_TYPE* tinfo,
 	                            uint64_t ts,
 	                            const std::string& fullpath,
 	                            uint32_t flags);

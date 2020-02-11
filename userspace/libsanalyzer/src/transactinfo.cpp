@@ -27,12 +27,12 @@ sinsp_transaction_table::sinsp_transaction_table(sinsp_analyzer& analyzer)
 
 sinsp_transaction_table::~sinsp_transaction_table() {}
 
-bool sinsp_transaction_table::is_transaction_server(sinsp_threadinfo* ptinfo)
+bool sinsp_transaction_table::is_transaction_server(THREAD_TYPE* ptinfo)
 {
-	if (ptinfo->m_ainfo->m_transaction_metrics.get_counter()->m_count_in >=
+	if (GET_AGENT_THREAD(ptinfo)->m_transaction_metrics.get_counter()->m_count_in >=
 	        TRANSACTION_SERVER_EURISTIC_MIN_CONNECTIONS &&
-	    ptinfo->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in /
-	            ptinfo->m_ainfo->m_transaction_metrics.get_counter()->m_count_in <
+	    GET_AGENT_THREAD(ptinfo)->m_transaction_metrics.get_counter()->m_time_ns_in /
+	            GET_AGENT_THREAD(ptinfo)->m_transaction_metrics.get_counter()->m_count_in <
 	        TRANSACTION_SERVER_EURISTIC_MAX_DELAY_NS)
 	{
 		return true;
@@ -43,7 +43,7 @@ bool sinsp_transaction_table::is_transaction_server(sinsp_threadinfo* ptinfo)
 	}
 }
 
-void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
+void sinsp_transaction_table::emit(THREAD_TYPE* ptinfo,
                                    void* fdinfo,
                                    sinsp_connection* pconn,
                                    sinsp_partial_transaction* tr
@@ -125,37 +125,37 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 			{
 				if (isexternal)
 				{
-					ptinfo->m_ainfo->m_th_analysis_flags |=
+					GET_AGENT_THREAD(ptinfo)->m_th_analysis_flags |=
 					    thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER;
 				}
 				else
 				{
-					ptinfo->m_ainfo->m_th_analysis_flags |=
+					GET_AGENT_THREAD(ptinfo)->m_th_analysis_flags |=
 					    thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER;
 				}
 			}
 			else if (ffdinfo->m_type == SCAP_FD_UNIX_SOCK)
 			{
-				ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_UNIX_SERVER;
+				GET_AGENT_THREAD(ptinfo)->m_th_analysis_flags |= thread_analyzer_info::AF_IS_UNIX_SERVER;
 			}
 			else
 			{
 				ASSERT(false);
 			}
 
-			ptinfo->m_ainfo->m_transaction_metrics.add_in(1, delta);
+			GET_AGENT_THREAD(ptinfo)->m_transaction_metrics.add_in(1, delta);
 			pconn->m_transaction_metrics.add_in(1, delta);
 
 			if (isexternal)
 			{
-				ptinfo->m_ainfo->m_external_transaction_metrics.add_in(1, delta);
+				GET_AGENT_THREAD(ptinfo)->m_external_transaction_metrics.add_in(1, delta);
 			}
 
-			ptinfo->m_ainfo->add_completed_server_transaction(tr, isexternal);
+			GET_AGENT_THREAD(ptinfo)->add_completed_server_transaction(tr, isexternal);
 
 			if (tr->m_protoparser != NULL)
 			{
-				ptinfo->m_ainfo->main_thread_ainfo()->m_protostate.update(
+				GET_AGENT_THREAD(ptinfo)->main_thread_ainfo()->m_protostate.update(
 				    tr,
 				    delta,
 				    true,
@@ -171,37 +171,37 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 			{
 				if (isexternal)
 				{
-					ptinfo->m_ainfo->m_th_analysis_flags |=
+					GET_AGENT_THREAD(ptinfo)->m_th_analysis_flags |=
 					    thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT;
 				}
 				else
 				{
-					ptinfo->m_ainfo->m_th_analysis_flags |=
+					GET_AGENT_THREAD(ptinfo)->m_th_analysis_flags |=
 					    thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT;
 				}
 			}
 			else if (ffdinfo->m_type == SCAP_FD_UNIX_SOCK)
 			{
-				ptinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::AF_IS_UNIX_CLIENT;
+				GET_AGENT_THREAD(ptinfo)->m_th_analysis_flags |= thread_analyzer_info::AF_IS_UNIX_CLIENT;
 			}
 			else
 			{
 				ASSERT(false);
 			}
 
-			ptinfo->m_ainfo->m_transaction_metrics.add_out(1, delta);
+			GET_AGENT_THREAD(ptinfo)->m_transaction_metrics.add_out(1, delta);
 			pconn->m_transaction_metrics.add_out(1, delta);
 
 			if (isexternal)
 			{
-				ptinfo->m_ainfo->m_external_transaction_metrics.add_out(1, delta);
+				GET_AGENT_THREAD(ptinfo)->m_external_transaction_metrics.add_out(1, delta);
 			}
 
-			ptinfo->m_ainfo->add_completed_client_transaction(tr, isexternal);
+			GET_AGENT_THREAD(ptinfo)->add_completed_client_transaction(tr, isexternal);
 
 			if (tr->m_protoparser != NULL)
 			{
-				ptinfo->m_ainfo->main_thread_ainfo()->m_protostate.update(
+				GET_AGENT_THREAD(ptinfo)->main_thread_ainfo()->m_protostate.update(
 				    tr,
 				    delta,
 				    false,
@@ -342,7 +342,7 @@ sinsp_partial_transaction::sinsp_partial_transaction(const sinsp_partial_transac
 }
 
 inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_int(
-    sinsp_threadinfo* ptinfo,
+    THREAD_TYPE* ptinfo,
     uint64_t enter_ts,
     uint64_t exit_ts,
     direction dir,
@@ -501,7 +501,7 @@ inline sinsp_partial_transaction::updatestate sinsp_partial_transaction::update_
 }
 
 void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
-                                       sinsp_threadinfo* ptinfo,
+                                       THREAD_TYPE* ptinfo,
                                        void* fdinfo,
                                        sinsp_connection* pconn,
                                        uint64_t enter_ts,

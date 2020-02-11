@@ -25,7 +25,7 @@ public:
 	             sinsp* inspector,
 	             sinsp_sched_analyzer2* sched_analyzer2);
 
-	sinsp_score_info get_process_capacity_score(sinsp_threadinfo* mainthread_info,
+	sinsp_score_info get_process_capacity_score(THREAD_TYPE* mainthread_info,
 	                                            sinsp_delays_info* delays,
 	                                            uint32_t n_server_threads,
 	                                            uint64_t sample_end_time,
@@ -36,7 +36,7 @@ private:
 	                                                   uint32_t n_server_threads,
 	                                                   uint64_t sample_end_time,
 	                                                   uint64_t sample_duration,
-	                                                   sinsp_threadinfo* program_info);
+	                                                   THREAD_TYPE* program_info);
 	float calculate_score_5(float ntr, float ntrcpu, float nother, uint32_t n_server_programs);
 
 	sinsp_analyzer& m_analyzer;
