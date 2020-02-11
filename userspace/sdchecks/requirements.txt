@@ -64,3 +64,6 @@ pymongo==3.2
 
 # checks.d/spark.py
 beautifulsoup4==4.5.1
+
+# used only by supervisord.py
+supervisor==4.0.3

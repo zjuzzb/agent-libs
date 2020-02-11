@@ -20,9 +20,6 @@ pymysql==0.9.3
 # needed for sdchecks.py and config.py
 pyyaml==5.1
 
-# used only by supervisord.py
-supervisor==4.0.3
-
 # used by sdchecks.py
 posix_ipc==1.0.0
 

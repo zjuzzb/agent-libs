@@ -1,20 +1,17 @@
-# (C) Datadog, Inc. 2010-2016
-# (C) Sysdig, Inc. 2015-2017
+# (C) Datadog, Inc. 2010-2017
 # All rights reserved
 # Licensed under Simplified BSD License (see LICENSE)
 
-# stdlib
-from collections import defaultdict
 import itertools
 import re
 import socket
 import time
-import xmlrpclib
+from collections import defaultdict
 
-# 3p
 import supervisor.xmlrpc
+from six.moves import xmlrpc_client as xmlrpclib
+from six.moves.urllib.parse import urlparse
 
-# project
 from checks import AgentCheck
 
 DEFAULT_HOST = 'localhost'
@@ -29,20 +26,16 @@ DD_STATUS = {
     'STOPPING': AgentCheck.CRITICAL,
     'EXITED': AgentCheck.CRITICAL,
     'FATAL': AgentCheck.CRITICAL,
-    'UNKNOWN': AgentCheck.UNKNOWN
+    'UNKNOWN': AgentCheck.UNKNOWN,
 }
 
-PROCESS_STATUS = {
-    AgentCheck.CRITICAL: 'down',
-    AgentCheck.OK: 'up',
-    AgentCheck.UNKNOWN: 'unknown'
-}
+PROCESS_STATUS = {AgentCheck.CRITICAL: 'down', AgentCheck.OK: 'up', AgentCheck.UNKNOWN: 'unknown'}
 
 SERVER_TAG = 'supervisord_server'
 
 PROCESS_TAG = 'supervisord_process'
 
-FORMAT_TIME = lambda x: time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(x))
+FORMAT_TIME = lambda x: time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(x))  # noqa E731
 
 SERVER_SERVICE_CHECK = 'supervisord.can_connect'
 PROCESS_SERVICE_CHECK = 'supervisord.process.status'
@@ -57,7 +50,8 @@ class SupervisordCheck(AgentCheck):
         if not server_name or not server_name.strip():
             raise Exception("Supervisor server name not specified in yaml configuration.")
 
-        server_service_check_tags = ['%s:%s' % (SERVER_TAG, server_name)]
+        instance_tags = instance.get('tags', [])
+        instance_tags.append('{}:{}'.format(SERVER_TAG, server_name))
         supe = self._connect(instance)
         count_by_status = defaultdict(int)
 
@@ -66,43 +60,40 @@ class SupervisordCheck(AgentCheck):
             processes = supe.getAllProcessInfo()
         except xmlrpclib.Fault as error:
             raise Exception(
-                'An error occurred while reading process information: %s %s'
-                % (error.faultCode, error.faultString)
+                'An error occurred while reading process information: {} {}'.format(error.faultCode, error.faultString)
             )
-        except socket.error, e:
+        except socket.error:
             host = instance.get('host', DEFAULT_HOST)
             port = instance.get('port', DEFAULT_PORT)
             sock = instance.get('socket')
             if sock is None:
-                msg = 'Cannot connect to http://%s:%s. ' \
-                      'Make sure supervisor is running and XML-RPC ' \
-                      'inet interface is enabled.' % (host, port)
+                msg = (
+                    'Cannot connect to http://{}:{}. '
+                    'Make sure supervisor is running and XML-RPC '
+                    'inet interface is enabled.'.format(host, port)
+                )
             else:
-                msg = 'Cannot connect to %s. Make sure sure supervisor ' \
-                      'is running and socket is enabled and socket file' \
-                      ' has the right permissions.' % sock
+                msg = (
+                    'Cannot connect to {}. Make sure sure supervisor '
+                    'is running and socket is enabled and socket file'
+                    ' has the right permissions.'.format(sock)
+                )
 
-            self.service_check(SERVER_SERVICE_CHECK, AgentCheck.CRITICAL,
-                               tags=server_service_check_tags,
-                               message=msg)
+            self.service_check(SERVER_SERVICE_CHECK, AgentCheck.CRITICAL, tags=instance_tags, message=msg)
 
             raise Exception(msg)
 
         except xmlrpclib.ProtocolError as e:
             if e.errcode == 401:  # authorization error
-                msg = 'Username or password to %s are incorrect.' % server_name
+                msg = 'Username or password to {} are incorrect.'.format(server_name)
             else:
-                msg = "An error occurred while connecting to %s: "\
-                    "%s %s " % (server_name, e.errcode, e.errmsg)
+                msg = 'An error occurred while connecting to {}: {} {}'.format(server_name, e.errcode, e.errmsg)
 
-            self.service_check(SERVER_SERVICE_CHECK, AgentCheck.CRITICAL,
-                               tags=server_service_check_tags,
-                               message=msg)
+            self.service_check(SERVER_SERVICE_CHECK, AgentCheck.CRITICAL, tags=instance_tags, message=msg)
             raise Exception(msg)
 
         # If we're here, we were able to connect to the server
-        self.service_check(SERVER_SERVICE_CHECK, AgentCheck.OK,
-                           tags=server_service_check_tags)
+        self.service_check(SERVER_SERVICE_CHECK, AgentCheck.OK, tags=instance_tags)
 
         # Filter monitored processes on configuration directives
         proc_regex = instance.get('proc_regex', [])
@@ -131,38 +122,42 @@ class SupervisordCheck(AgentCheck):
         # Report service checks and uptime for each process
         for proc in monitored_processes:
             proc_name = proc['name']
-            tags = ['%s:%s' % (SERVER_TAG, server_name),
-                    '%s:%s' % (PROCESS_TAG, proc_name)]
+            tags = instance_tags + ['{}:{}'.format(PROCESS_TAG, proc_name)]
 
             # Report Service Check
             status = DD_STATUS[proc['statename']]
             msg = self._build_message(proc)
             count_by_status[status] += 1
-            self.service_check(PROCESS_SERVICE_CHECK,
-                               status, tags=tags, message=msg)
+            self.service_check(PROCESS_SERVICE_CHECK, status, tags=tags, message=msg)
             # Report Uptime
             uptime = self._extract_uptime(proc)
             self.gauge('supervisord.process.uptime', uptime, tags=tags)
 
         # Report counts by status
-        tags = ['%s:%s' % (SERVER_TAG, server_name)]
         for status in PROCESS_STATUS:
-            self.gauge('supervisord.process.count', count_by_status[status],
-                       tags=tags + ['status:%s' % PROCESS_STATUS[status]])
+            self.gauge(
+                'supervisord.process.count',
+                count_by_status[status],
+                tags=instance_tags + ['status:{}'.format(PROCESS_STATUS[status])],
+            )
 
     @staticmethod
     def _connect(instance):
         sock = instance.get('socket')
         if sock is not None:
+            host = instance.get('host', DEFAULT_SOCKET_IP)
+            parsed_host = urlparse(host)
+            if not parsed_host.scheme or "://" not in parsed_host.geturl():
+                host = 'http://{}'.format(host)
             transport = supervisor.xmlrpc.SupervisorTransport(None, None, sock)
-            server = xmlrpclib.ServerProxy(DEFAULT_SOCKET_IP, transport=transport)
+            server = xmlrpclib.ServerProxy(host, transport=transport)
         else:
             host = instance.get('host', DEFAULT_HOST)
             port = instance.get('port', DEFAULT_PORT)
             user = instance.get('user')
             password = instance.get('pass')
-            auth = '%s:%s@' % (user, password) if user and password else ''
-            server = xmlrpclib.Server('http://%s%s:%s/RPC2' % (auth, host, port))
+            auth = '{}:{}@'.format(user, password) if user and password else ''
+            server = xmlrpclib.Server('http://{}{}:{}/RPC2'.format(auth, host, port))
         return server.supervisor
 
     @staticmethod
@@ -179,7 +174,8 @@ class SupervisordCheck(AgentCheck):
         proc['start_str'] = FORMAT_TIME(start)
         proc['stop_str'] = '' if stop == 0 else FORMAT_TIME(stop)
 
-        return """Current time: %(now_str)s
+        return (
+            """Current time: %(now_str)s
 Process name: %(name)s
 Process group: %(group)s
 Description: %(description)s
@@ -189,4 +185,6 @@ Log file: %(logfile)s
 State: %(statename)s
 Start time: %(start_str)s
 Stop time: %(stop_str)s
-Exit Status: %(exitstatus)s""" % proc
+Exit Status: %(exitstatus)s"""
+            % proc
+        )
