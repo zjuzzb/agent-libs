@@ -2,6 +2,7 @@
 #ifndef CYGWING_AGENT
 #ifndef _WIN32
 
+#include "analyzer_thread_type.h"
 #include "analyzer_settings.h"
 #include "app_checks_proxy_interface.h"
 #include "draios.pb.h"
@@ -51,8 +52,8 @@ public:
 	// if so, adds a prom_process to prom_procs.
 	// If use_host_filter is enabled multiple rules can match resulting in multiple
 	// additions to prom_procs
-	bool match_and_fill(const sinsp_threadinfo* tinfo,
-	                    sinsp_threadinfo* mtinfo,
+	bool match_and_fill(const THREAD_TYPE* tinfo,
+	                    THREAD_TYPE* mtinfo,
 	                    const sinsp_container_info* container,
 	                    const infrastructure_state& is,
 	                    std::vector<prom_process>& prom_procs,
@@ -62,7 +63,7 @@ private:
 	// Function to get called when a filtering rule matches in order to determine
 	// the configuration parameters for this process
 	bool get_rule_params(const object_filter_config::filter_rule& rule,
-	                     const sinsp_threadinfo* tinfo,
+	                     const THREAD_TYPE* tinfo,
 	                     const sinsp_container_info* container,
 	                     const infrastructure_state& infra_state,
 	                     bool use_host_filter,

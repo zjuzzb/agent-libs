@@ -1,3 +1,4 @@
+#include "analyzer_thread_type.h"
 #include "mounted_fs.h"
 #include "sdc_internal.pb.h"
 #include "setns.h"
@@ -82,7 +83,7 @@ mounted_fs_list mounted_fs_proxy::receive_mounted_fs_list()
 #endif
 }
 
-bool mounted_fs_proxy::send_container_list(const std::vector<sinsp_threadinfo*>& containers)
+bool mounted_fs_proxy::send_container_list(const std::vector<THREAD_TYPE*>& containers)
 {
 #ifndef CYGWING_AGENT
 	sdc_internal::mounted_fs_request req;
