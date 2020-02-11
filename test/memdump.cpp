@@ -485,7 +485,7 @@ protected:
 				// and following file open.
 
 				ASSERT_NO_FATAL_FAILURE({
-						send_dump_request(to_string(i), 1500, 1500, false, false, false);
+						send_dump_request(to_string(i), 1500, 1500, true, false, false);
 					});
 				active_dumps.insert(to_string(i));
 
