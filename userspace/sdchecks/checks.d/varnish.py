@@ -1,4 +1,5 @@
 # stdlib
+from builtins import object
 from collections import defaultdict
 import re
 import xml.parsers.expat # python 2.4 compatible
@@ -41,12 +42,12 @@ class Varnish(AgentCheck):
         if name == "stat":
             m_name = self.normalize(self._current_metric)
             if self._current_type in ("a", "c"):
-                self.rate(m_name, long(self._current_value), tags=tags)
+                self.rate(m_name, int(self._current_value), tags=tags)
             elif self._current_type in ("i", "g"):
                 if m_name in self.GAUGE_TO_RATE_METRICS:
-                    self.rate(m_name, long(self._current_value), tags=tags)
+                    self.rate(m_name, int(self._current_value), tags=tags)
                 else:
-                    self.gauge(m_name, long(self._current_value), tags=tags)
+                    self.gauge(m_name, int(self._current_value), tags=tags)
             else:
                 # Unsupported data type, ignore
                 self._reset()
@@ -64,7 +65,7 @@ class Varnish(AgentCheck):
         data = data.strip()
         if len(data) > 0 and self._current_element != "":
             if self._current_element == "value":
-                self._current_value = long(data)
+                self._current_value = int(data)
             elif self._current_element == "flag":
                 self._current_type = data
             else:
@@ -245,7 +246,7 @@ class Varnish(AgentCheck):
                         message = ''
                     backends_by_status[status].append((backend, message))
 
-        for status, backends in backends_by_status.iteritems():
+        for status, backends in backends_by_status.items():
             check_status = BackendStatus.to_check_status(status)
             for backend, message in backends:
                 tags = ['backend:%s' % backend]
