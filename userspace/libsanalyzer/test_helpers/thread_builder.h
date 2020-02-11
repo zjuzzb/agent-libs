@@ -4,8 +4,7 @@
 #include <cstdlib>  // for rand
 #include <event.h>
 #include <functional>
-
-class sinsp;
+#include "sinsp.h"
 
 namespace test_helpers
 {
@@ -36,7 +35,7 @@ public:
 	 */
 	thread_builder(sinsp* inspector, const commit_delegate& delegate)
 	    : m_commit(delegate),
-	      m_threadinfo(new sinsp_threadinfo(inspector))
+	      m_threadinfo(inspector->build_threadinfo())
 	{
 		set_defaults();
 	}

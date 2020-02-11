@@ -39,6 +39,8 @@ TEST(event_builder_test, fields)
 class my_event_committer
 {
 public:
+	my_event_committer() : mythread(nullptr) {}
+
 	event_builder build_event()
 	{
 		// Create an event builder that will commit into this class

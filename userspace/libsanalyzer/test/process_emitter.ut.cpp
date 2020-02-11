@@ -58,7 +58,13 @@ public:
 class fake_thread : public THREAD_TYPE
 {
 public:
-	fake_thread() : THREAD_TYPE()
+
+	fake_thread()
+#ifdef USE_AGENT_THREAD
+		: thread_analyzer_info(nullptr, nullptr)
+#else
+		: sinsp_threadinfo()
+#endif
 	{
 		HASH++;
 		m_program_hash = HASH;
@@ -70,8 +76,8 @@ public:
 		m_ainfo->m_procinfo = new sinsp_procinfo();
 		m_ainfo->m_th_analysis_flags = 0;
 #else
-		m_ainfo->m_procinfo = new sinsp_procinfo();
-		m_ainfo->m_th_analysis_flags = 0;
+		m_procinfo = new sinsp_procinfo();
+		m_th_analysis_flags = 0;
 #endif
 	}
 

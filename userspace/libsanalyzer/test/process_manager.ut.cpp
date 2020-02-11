@@ -29,8 +29,12 @@ app_checks_always_send: true
 
 	process_manager my_manager;
 
+#ifdef USE_AGENT_THREAD
+	thread_analyzer_info tinfo(nullptr, nullptr);
+#else
 	sinsp_threadinfo tinfo;
 	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
+#endif
 	bool matches = false;
 	bool generic_match = false;
 	matches =
@@ -44,5 +48,7 @@ app_checks_always_send: true
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(generic_match, false);
 
+#ifndef USE_AGENT_THREAD
 	delete tinfo.m_ainfo;
+#endif
 }

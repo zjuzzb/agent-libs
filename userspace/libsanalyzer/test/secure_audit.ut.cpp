@@ -818,6 +818,26 @@ const std::string expected_arg_5 =
     "tas_integer_eget_aliquet_nibh._Facilisis_magna_etiam_tempor_orci_eu_"
     "lobortis_elementum_nibh_tellus.";
 
+namespace
+{
+class external_processor_dummy : public libsinsp::event_processor
+{
+	void on_capture_start() override {}
+	void process_event(sinsp_evt* evt, libsinsp::event_return rc) override {}
+	void add_chisel_metric(statsd_metric* metric) override {}
+	sinsp_threadinfo* build_threadinfo(sinsp* inspector) override
+	{
+#ifdef USE_AGENT_THREAD
+		auto tinfo = new thread_analzyer_info(inspector, this);
+		tinfo->init();
+		return tinfo;
+#else
+		return new sinsp_threadinfo(inspector);
+#endif
+	}
+};
+}  // namespace
+
 void add_connections_helper(secure_audit* audit,
                             uint64_t ts,
                             int n_client,
@@ -858,6 +878,8 @@ void add_connections_helper(secure_audit* audit,
 
 	// Build Thread Info
 	sinsp_mock inspector;
+	external_processor_dummy epd;
+	inspector.register_external_event_processor(epd);
 
 	if (cmdline)
 	{
@@ -886,30 +908,35 @@ void add_connections_helper(secure_audit* audit,
 
 	inspector.open();
 
-	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
+	std::shared_ptr<THREAD_TYPE> proc = nullptr;
 	proc = inspector.get_thread_ref(expected_pid,
 	                                false /*don't query the os if not found*/,
 	                                true /*lookup only*/);
 
 	proc->m_container_id = expected_container_id;
 
+#ifdef USE_AGENT_THREAD
+	thread_analyzer_info* main_thread = dynamic_cast<thread_analyzer_info*>(proc->get_main_thread());
+	ASSERT_EQ(main_thread, proc->get_main_thread());
+#else
 	sinsp_threadinfo* main_thread = proc->get_main_thread();
 	thread_analyzer_info* tainfo = new thread_analyzer_info(nullptr, nullptr);
 	main_thread->m_ainfo = tainfo;
+#endif
 
 	ASSERT_NE(main_thread, nullptr);
-	ASSERT_NE(main_thread->m_ainfo, nullptr);
+	ASSERT_NE(GET_AGENT_THREAD(main_thread), nullptr);
 
 	if (interactive)
 	{
 		// Set process as interactive
-		main_thread->m_ainfo->m_th_analysis_flags |=
+		GET_AGENT_THREAD(main_thread)->m_th_analysis_flags |=
 		    thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
 	}
 	else
 	{
 		// Set process as no INTERACTIVE
-		main_thread->m_ainfo->m_th_analysis_flags &=
+		GET_AGENT_THREAD(main_thread)->m_th_analysis_flags &=
 		    ~thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
 	}
 
@@ -1155,6 +1182,8 @@ void add_file_access_helper(secure_audit* audit,
 
 	// Build Thread Info
 	sinsp_mock inspector;
+	external_processor_dummy epd;
+	inspector.register_external_event_processor(epd);
 
 	inspector.build_thread().pid(expected_pid).comm(expected_comm).exe(expected_name).commit();
 
@@ -1166,24 +1195,28 @@ void add_file_access_helper(secure_audit* audit,
 	                                true /*lookup only*/);
 
 	proc->m_container_id = expected_container_id;
-
+#ifdef USE_AGENT_THREAD
+	thread_analyzer_info* main_thread = dynamic_cast<thread_analyzer_info*>(proc->get_main_thread());
+	ASSERT_EQ(main_thread, proc->get_main_thread());
+#else
 	sinsp_threadinfo* main_thread = proc->get_main_thread();
 	thread_analyzer_info* tainfo = new thread_analyzer_info(nullptr, nullptr);
 	main_thread->m_ainfo = tainfo;
+#endif
 
 	ASSERT_NE(main_thread, nullptr);
-	ASSERT_NE(main_thread->m_ainfo, nullptr);
+	ASSERT_NE(GET_AGENT_THREAD(main_thread), nullptr);
 
 	if (interactive)
 	{
 		// Set process as interactive
-		main_thread->m_ainfo->m_th_analysis_flags |=
+		GET_AGENT_THREAD(main_thread)->m_th_analysis_flags |=
 		    thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
 	}
 	else
 	{
 		// Set process as no INTERACTIVE
-		main_thread->m_ainfo->m_th_analysis_flags &=
+		GET_AGENT_THREAD(main_thread)->m_th_analysis_flags &=
 		    ~thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
 	}
 
