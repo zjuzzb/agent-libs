@@ -278,13 +278,13 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_last_profile_flush_ns = 0;
 	m_trace_count = 0;
 
-	m_procfs_parser = NULL;
-	m_sched_analyzer2 = NULL;
-	m_score_calculator = NULL;
-	m_delay_calculator = NULL;
+	m_procfs_parser = nullptr;
+	m_sched_analyzer2 = nullptr;
+	m_score_calculator = nullptr;
+	m_delay_calculator = nullptr;
 
-	m_ipv4_connections = NULL;
-	m_trans_table = NULL;
+	m_ipv4_connections = nullptr;
+	m_trans_table = nullptr;
 	m_last_dropmode_switch_time = 0;
 	m_seconds_above_thresholds = 0;
 	m_seconds_below_thresholds = 0;
@@ -375,13 +375,13 @@ sinsp_analyzer::~sinsp_analyzer()
 	}
 	m_chisels.clear();
 
-	if (m_falco_baseliner != NULL)
+	if (m_falco_baseliner != nullptr)
 	{
 		delete m_falco_baseliner;
 	}
 
 #ifndef CYGWING_AGENT
-	if (m_infrastructure_state != NULL)
+	if (m_infrastructure_state != nullptr)
 	{
 		delete m_infrastructure_state;
 	}
@@ -544,7 +544,7 @@ void sinsp_analyzer::on_capture_start()
 	}
 
 	m_initialized = true;
-	if (m_procfs_parser != NULL)
+	if (m_procfs_parser != nullptr)
 	{
 		//
 		// Note, we can get here if we switch from regular to nodriver and vice
@@ -581,7 +581,7 @@ void sinsp_analyzer::on_capture_start()
 	// Hardware-dependent inits
 	//
 	m_machine_info = m_inspector->get_machine_info();
-	if (m_machine_info == NULL)
+	if (m_machine_info == nullptr)
 	{
 		ASSERT(false);
 		const std::string err = "analyzer: machine info missing, analyzer can't start";
@@ -624,7 +624,7 @@ void sinsp_analyzer::on_capture_start()
 	//
 	// Allocations
 	//
-	ASSERT(m_ipv4_connections == NULL);
+	ASSERT(m_ipv4_connections == nullptr);
 	m_ipv4_connections = new sinsp_ipv4_connection_manager(m_inspector, *this);
 
 	if (m_secure_audit != nullptr)
@@ -643,7 +643,7 @@ void sinsp_analyzer::on_capture_start()
 	//
 	// Notify the scheduler analyzer
 	//
-	ASSERT(m_sched_analyzer2 != NULL);
+	ASSERT(m_sched_analyzer2 != nullptr);
 	m_parser->set_sched_analyzer2(m_sched_analyzer2);
 	m_sched_analyzer2->on_capture_start();
 
@@ -658,9 +658,24 @@ void sinsp_analyzer::on_capture_start()
 	const bool do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
 	if (do_baseline_calculation)
 	{
-		glogf("starting falco baselining");
+		glogf("init secure_profiling (baselining)");
 		m_falco_baseliner->init();
-		m_falco_baseliner->enable_baseline_calculation();
+
+		if (m_configuration->get_falco_baselining_randomize_start())
+		{
+			// we randomize the baseline runtime enable start time, in
+			// order to spread evenly the fingerprint message emission to
+			// the collectors, across multiple agents.
+			srand(time(NULL));
+			uint64_t ts = ((rand() % (m_configuration->get_falco_baselining_report_interval_ns() / ONE_SECOND_IN_NS)) + 1) * ONE_SECOND_IN_NS;
+			glogf("secure_profiling (baselining) randomize start time in %" PRIu64 " sec", ts / ONE_SECOND_IN_NS);
+			m_falco_baseliner->set_baseline_runtime_enable_start_time(sinsp_utils::get_current_time_ns() + ts);
+		}
+		else
+		{
+			glogf("starting secure_profiling (baselining) without randomized start time");
+			m_falco_baseliner->start_baseline_calculation();
+		}
 	}
 
 #ifndef CYGWING_AGENT
@@ -743,7 +758,7 @@ void sinsp_analyzer::add_chisel_dirs()
 	//
 	char* s_user_cdirs = getenv("SYSDIG_CHISEL_DIR");
 
-	if (s_user_cdirs != NULL)
+	if (s_user_cdirs != nullptr)
 	{
 		vector<string> user_cdirs = sinsp_split(s_user_cdirs, ';');
 
@@ -934,7 +949,7 @@ sinsp_configuration* sinsp_analyzer::get_configuration()
 	//
 	// The configuration can currently only be read or modified before the capture starts
 	//
-	if (m_inspector->m_h != NULL)
+	if (m_inspector->m_h != nullptr)
 	{
 		ASSERT(false);
 		std::string err = "Attempting to get the configuration while the inspector is capturing";
@@ -955,7 +970,7 @@ void sinsp_analyzer::set_configuration(const sinsp_configuration& configuration)
 	//
 	// The configuration can currently only be read or modified before the capture starts
 	//
-	if (m_inspector->m_h != NULL)
+	if (m_inspector->m_h != nullptr)
 	{
 		ASSERT(false);
 		std::string err = "Attempting to set the configuration while the inspector is capturing";
@@ -977,7 +992,7 @@ void sinsp_analyzer::remove_expired_connections(uint64_t ts)
 sinsp_connection* sinsp_analyzer::get_connection(const ipv4tuple& tuple, uint64_t timestamp)
 {
 	sinsp_connection* connection = m_ipv4_connections->get_connection(tuple, timestamp);
-	if (NULL == connection)
+	if (nullptr == connection)
 	{
 		// try to find the connection with source/destination reversed
 		ipv4tuple tuple_reversed;
@@ -987,7 +1002,7 @@ sinsp_connection* sinsp_analyzer::get_connection(const ipv4tuple& tuple, uint64_
 		tuple_reversed.m_fields.m_dport = tuple.m_fields.m_sport;
 		tuple_reversed.m_fields.m_l4proto = tuple.m_fields.m_l4proto;
 		connection = m_ipv4_connections->get_connection(tuple_reversed, timestamp);
-		if (NULL != connection)
+		if (nullptr != connection)
 		{
 			((ipv4tuple*)&tuple)->m_fields = tuple_reversed.m_fields;
 		}
@@ -1129,7 +1144,7 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 
 	for (j = 0; j < howmany; j++)
 	{
-		ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != NULL);
+		ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != nullptr);
 
 		if (GET_AGENT_THREAD(prog_sortable_list[j])
 		        ->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() > 0)
@@ -1155,7 +1170,7 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 
 		for (j = 0; j < howmany; j++)
 		{
-			ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != NULL);
+			ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != nullptr);
 
 			if (GET_AGENT_THREAD(prog_sortable_list[j])
 			        ->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
@@ -1261,7 +1276,7 @@ void sinsp_analyzer::filter_top_programs_simpledriver_deprecated(Iterator progta
 
 	for (j = 0; j < howmany; j++)
 	{
-		ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != NULL);
+		ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != nullptr);
 
 		if (GET_AGENT_THREAD(prog_sortable_list[j])
 		        ->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
@@ -1988,7 +2003,7 @@ void sinsp_analyzer::emit_processes_deprecated(
 
 		sinsp_counter_time tot;
 
-		ASSERT(procinfo != NULL);
+		ASSERT(procinfo != nullptr);
 
 		procinfo->m_proc_metrics.get_total(&tot);
 
@@ -2130,7 +2145,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		sinsp_threadinfo& tinfo = sinsp_tinfo;
 		THREAD_TYPE* main_tinfo = tinfo.get_main_thread();
 #endif
-		analyzer_container_state* container = NULL;
+		analyzer_container_state* container = nullptr;
 
 		// xxx/nags : why not do this once for the main_thread?
 		if (!tinfo.m_container_id.empty())
@@ -2354,7 +2369,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		}
 
 		if (tinfo.m_flags & PPM_CL_CLOSED &&
-		    !(evt != NULL &&
+		    !(evt != nullptr &&
 		      (evt->get_type() == PPME_PROCEXIT_E || evt->get_type() == PPME_PROCEXIT_1_E) &&
 		      evt->m_tinfo == &tinfo))
 		{
@@ -2388,7 +2403,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			GET_AGENT_THREAD(&tinfo)->set_main_program_thread(false);
 		}
 
-		ASSERT(mtinfo != NULL);
+		ASSERT(mtinfo != nullptr);
 
 		GET_AGENT_THREAD(&tinfo)->m_main_thread_pid = mtinfo->m_pid;
 
@@ -2504,7 +2519,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	for (auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
 		THREAD_TYPE* tinfo = *it;
-		analyzer_container_state* container = NULL;
+		analyzer_container_state* container = nullptr;
 		if (!tinfo->m_container_id.empty())
 		{
 			container = &m_containers[tinfo->m_container_id];
@@ -2544,7 +2559,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 
 		sinsp_counter_time tot;
 
-		ASSERT(procinfo != NULL);
+		ASSERT(procinfo != nullptr);
 
 		procinfo->m_proc_metrics.get_total(&tot);
 
@@ -2564,8 +2579,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			{
 				m_delay_calculator->compute_program_delays(&m_host_client_transactions,
 				                                           &m_host_server_transactions,
-				                                           NULL,
-				                                           NULL,
+				                                           nullptr,
+				                                           nullptr,
 				                                           tinfo,
 				                                           prog_delays);
 			}
@@ -3136,7 +3151,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		if (cit->second.m_spid != 0)
 		{
 			auto tinfo = get_thread_by_pid(cit->second.m_spid, false, true);
-			if (tinfo == NULL)
+			if (tinfo == nullptr)
 			{
 				//
 				// No thread info for this connection?
@@ -3152,7 +3167,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		if (cit->second.m_dpid != 0)
 		{
 			auto tinfo = get_thread_by_pid(cit->second.m_dpid, false, true);
-			if (tinfo == NULL)
+			if (tinfo == nullptr)
 			{
 				//
 				// No thread info for this connection?
@@ -3802,11 +3817,15 @@ void sinsp_analyzer::adjust_sampling_ratio()
 		{
 			m_requested_sampling_ratio = std::min(m_acked_sampling_ratio * 2, (uint64_t)128);
 
-			if (m_falco_baseliner->is_baseline_calculation_enabled())
+			if (m_falco_baseliner->is_baseline_runtime_enabled() &&
+			    m_requested_sampling_ratio > m_configuration->get_falco_baselining_max_sampling_ratio())
 			{
-				g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
+				g_logger.format(sinsp_logger::SEV_WARNING,
+						"disabling secure_profiling (baselining) because sampling ratio is too high.");
 				m_falco_baseliner->disable_baseline_calculation();
 				m_falco_baseliner->clear_tables();
+				// a disable message is considered a dump activity
+				m_last_falco_dump_ts = sinsp_utils::get_current_time_ns();
 			}
 
 			m_inspector->start_dropping_mode(m_requested_sampling_ratio);
@@ -4025,13 +4044,13 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest,
 
 				if (host_dest)
 				{
-					ASSERT(container_dest == NULL);
+					ASSERT(container_dest == nullptr);
 					cd = host_dest->add_commands();
 				}
 				else
 				{
-					ASSERT(host_dest == NULL);
-					ASSERT(container_dest != NULL);
+					ASSERT(host_dest == nullptr);
+					ASSERT(container_dest != nullptr);
 					cd = container_dest->add_commands();
 				}
 
@@ -4067,17 +4086,23 @@ void sinsp_analyzer::secure_profiling_data_ready(
 	m_secure_profiling_handler.secure_profiling_data_ready(ts, secure_profiling_fingerprint);
 }
 
+void sinsp_analyzer::set_secure_profiling_internal_metrics(const int n_sent_protobufs,
+                                                       const uint64_t flush_time_ms)
+{
+	m_internal_metrics->set_secure_profiling_n_sent_protobufs(n_sent_protobufs);
+	m_internal_metrics->set_secure_profiling_fl_ms(flush_time_ms);
+}
+
 void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter& f_trc)
 {
 	//
 	// if it's time to emit the falco baseline, do the serialization and then restart it
 	//
-	tracer_emitter falco_trc("falco_baseline", f_trc);
-	if (m_configuration->get_falco_baselining_enabled())
-	{
-		scap_stats st;
-		m_inspector->get_capture_stats(&st);
+	tracer_emitter secure_profiling_trc("secure_profiling", f_trc);
+	bool secure_profiling_fingerprint_sent = false;
 
+	if (m_falco_baseliner->is_baseline_runtime_enabled())
+	{
 		if (is_eof)
 		{
 			//
@@ -4085,63 +4110,79 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 			//
 			m_falco_baseliner->emit_as_protobuf(0);
 		}
-		else if (evt != NULL && evt->get_ts() - m_last_falco_dump_ts >
+		else if (evt != nullptr && evt->get_ts() - m_last_falco_dump_ts >
 		                            m_configuration->get_falco_baselining_report_interval_ns())
 		{
 			if (m_last_falco_dump_ts != 0)
 			{
+				uint64_t emit_start_time = sinsp_utils::get_current_time_ns();
 				m_falco_baseliner->emit_as_protobuf(evt->get_ts());
+				uint64_t emit_time_ms = (sinsp_utils::get_current_time_ns() - emit_start_time) / 1000000;
+				m_internal_metrics->set_secure_profiling_emit_ms(emit_time_ms);
+
+				m_falco_baseliner->flush(evt->get_ts());
+
+				secure_profiling_fingerprint_sent = true;
 			}
 
 			m_last_falco_dump_ts = evt->get_ts();
 		}
 	}
-	else
+	else if (m_falco_baseliner->should_start_baseline_calculation())
 	{
-		if (m_configuration->get_falco_baselining_enabled())
+		glogf("starting secure_profiling (baselining)");
+		m_falco_baseliner->start_baseline_calculation();
+	}
+	else if (m_configuration->get_falco_baselining_enabled() &&
+		 m_falco_baseliner->is_baseline_runtime_start_init())
+	{
+		//
+		// Once in a while, try to turn baseline calculation on again
+		//
+		if (m_acked_sampling_ratio <= m_configuration->get_falco_baselining_max_sampling_ratio())
+		{
+			if (evt != nullptr &&
+			    evt->get_ts() - m_last_falco_dump_ts >
+			    m_configuration->get_falco_baselining_autodisable_interval_ns())
+			{
+				//
+				// It's safe to turn baselining on again.
+				// Reset the tables and restart the baseline time counter.
+				//
+				g_logger.format(
+					"enabling secure_profiling (baselining) creation after a %lus pause",
+					m_configuration->get_falco_baselining_autodisable_interval_ns() /
+					ONE_SECOND_IN_NS);
+				m_falco_baseliner->clear_tables();
+				m_falco_baseliner->enable_baseline_calculation();
+				m_last_falco_dump_ts = evt->get_ts();
+				m_falco_baseliner->load_tables(evt->get_ts());
+			}
+		}
+		else
 		{
 			//
-			// Once in a while, try to turn baseline calculation on again
+			// Sampling ratio is still high, reset the baseline counter
 			//
-			if (m_acked_sampling_ratio == 1)
-			{
-				if (evt != NULL &&
-				    evt->get_ts() - m_last_falco_dump_ts >
-				        m_configuration->get_falco_baselining_autodisable_interval_ns())
-				{
-					//
-					// It's safe to turn baselining on again.
-					// Reset the tables and restart the baseline time counter.
-					//
-					scap_stats st;
-					m_inspector->get_capture_stats(&st);
-
-					m_falco_baseliner->clear_tables();
-					m_falco_baseliner->enable_baseline_calculation();
-					m_last_falco_dump_ts = evt->get_ts();
-					m_falco_baseliner->load_tables(evt->get_ts());
-					g_logger.format(
-					    "enabling falco baselining creation after a %lus pause",
-					    m_configuration->get_falco_baselining_autodisable_interval_ns() /
-					        1000000000);
-				}
-			}
-			else
-			{
-				//
-				// Sampling ratio is still high, reset the baseline counter
-				//
-				m_last_falco_dump_ts = evt->get_ts();
-			}
+			m_last_falco_dump_ts = evt->get_ts();
 		}
 	}
 	if (m_internal_metrics)
 	{
-		m_internal_metrics->set_baseliner_enabled(
-		    m_falco_baseliner->is_baseline_calculation_enabled());
+		// always report the baseliner runtime status
+		m_internal_metrics->set_secure_profiling_enabled(
+		    m_falco_baseliner->is_baseline_runtime_enabled());
+
+		// if no fingerprint has been sent, reset the counters
+		if (!secure_profiling_fingerprint_sent)
+		{
+			m_internal_metrics->set_secure_profiling_n_sent_protobufs(0);
+			m_internal_metrics->set_secure_profiling_fl_ms(0);
+			m_internal_metrics->set_secure_profiling_emit_ms(0);
+		}
 	}
 
-	falco_trc.stop();
+	secure_profiling_trc.stop();
 }
 
 #define HIGH_EVT_THRESHOLD 300 * 1000
@@ -4682,7 +4723,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			//
 			if (m_configuration->get_commandlines_capture_enabled())
 			{
-				emit_executed_commands(m_metrics.get(), NULL, &(m_executed_commands[""]));
+				emit_executed_commands(m_metrics.get(), nullptr, &(m_executed_commands[""]));
 			}
 
 			//
@@ -5000,7 +5041,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			}
 
 			// Secure Profiling - Emit and Flush
-			if (m_falco_baseliner->is_baseline_calculation_enabled())
+			if (m_configuration->get_falco_baselining_enabled())
 			{
 				emit_baseline(evt, is_eof, f_trc);
 			}
@@ -5165,7 +5206,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 		// In either case, evt->m_tinfo would become invalid.
 		// To avoid that, we refresh evt->m_tinfo.
 		//
-		evt->m_tinfo = NULL;  // This is important to avoid using a stale cached value!
+		evt->m_tinfo = nullptr;  // This is important to avoid using a stale cached value!
 		evt->m_tinfo = evt->get_thread_info();
 	}
 
@@ -5179,7 +5220,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 		adjust_sampling_ratio();
 	}
 
-	if (m_falco_baseliner->is_baseline_calculation_enabled())
+	if (m_falco_baseliner->is_baseline_runtime_enabled())
 	{
 		// If, between two emit interval, we notice a lot of
 		// dropped events due to the buffer being full with
@@ -5191,9 +5232,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 		        m_configuration->get_falco_baselining_max_drops_buffer_rate_percentage()))
 		{
 			g_logger.format(sinsp_logger::SEV_WARNING,
-			                "disabling falco baselining because of critical drops buffer rate.");
+			                "disabling secure_profiling (baselining) because of critical drops buffer rate.");
 			m_falco_baseliner->disable_baseline_calculation();
 			m_falco_baseliner->clear_tables();
+			// a disable message is considered a dump activity
+			m_last_falco_dump_ts = sinsp_utils::get_current_time_ns();
 		}
 	}
 
@@ -5288,7 +5331,7 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 	thread_analyzer_info* tainfo = GET_AGENT_THREAD(evt->m_tinfo);
 	int64_t wd = tainfo->m_last_wait_duration_ns;
 
-	ASSERT(tainfo != NULL);
+	ASSERT(tainfo != nullptr);
 
 	if (wd != 0)
 	{
@@ -5431,7 +5474,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 	// If there is no event, assume that this is an EOF and use the
 	// next sample event as target time
 	//
-	if (evt != NULL)
+	if (evt != nullptr)
 	{
 		ts = evt->get_ts();
 		etype = evt->get_type();
@@ -5525,7 +5568,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 	//
 	// This happens if the flush was generated by a timeout
 	//
-	if (evt == NULL)
+	if (evt == nullptr)
 	{
 		return;
 	}
@@ -5547,7 +5590,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 	// This is where normal event parsing starts.
 	// The following code is executed for every event
 	//
-	if (evt->m_tinfo == NULL || etype == PPME_SCHEDSWITCH_1_E || etype == PPME_SCHEDSWITCH_6_E)
+	if (evt->m_tinfo == nullptr || etype == PPME_SCHEDSWITCH_1_E || etype == PPME_SCHEDSWITCH_6_E)
 	{
 		//
 		// No thread associated to this event, nothing to do
@@ -5557,7 +5600,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 
 	tainfo = GET_AGENT_THREAD(evt->m_tinfo);
 
-	if (tainfo == NULL)
+	if (tainfo == nullptr)
 	{
 		//
 		// No analyzer state associated to this thread.
@@ -5841,7 +5884,7 @@ void sinsp_analyzer::get_k8s_data()
 		}
 		else if (!m_metrics)
 		{
-			g_logger.log("Proto metrics are NULL.", sinsp_logger::SEV_ERROR);
+			g_logger.log("Proto metrics are nullptr.", sinsp_logger::SEV_ERROR);
 		}
 	}
 }
@@ -7153,7 +7196,7 @@ void sinsp_analyzer::emit_container(const string& container_id,
 
 		if (ecit != m_executed_commands.end())
 		{
-			emit_executed_commands(NULL, container, &(ecit->second));
+			emit_executed_commands(nullptr, container, &(ecit->second));
 		}
 	}
 #endif
@@ -7676,9 +7719,9 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf,
 			{
 				ntransactions++;
 
-				if (fdit->second.m_usrstate != NULL)
+				if (fdit->second.m_usrstate != nullptr)
 				{
-					if (fdit->second.m_usrstate->m_protoparser != NULL)
+					if (fdit->second.m_usrstate->m_protoparser != nullptr)
 					{
 						switch (fdit->second.m_usrstate->m_protoparser->get_type())
 						{
@@ -7827,6 +7870,7 @@ void sinsp_analyzer::enable_secure_audit()
 void sinsp_analyzer::enable_secure_profiling()
 {
 	m_falco_baseliner->set_data_handler(this);
+	m_falco_baseliner->set_internal_metrics(this);
 }
 
 void sinsp_analyzer::dump_infrastructure_state_on_next_flush()

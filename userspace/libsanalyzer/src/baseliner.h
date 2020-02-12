@@ -2,6 +2,7 @@
 
 #include "profiling.pb.h"
 #include "secure_profiling_handler.h"
+#include "secure_profiling_internal_metrics.h"
 
 #include <analyzer_fd.h>
 #include <atomic>
@@ -1317,6 +1318,9 @@ public:
 
 	void init();
 	void set_data_handler(secure_profiling_data_ready_handler* handler);
+	const secure::profiling::fingerprint* get_fingerprint(uint64_t timestamp);	
+	void set_internal_metrics(secure_profiling_internal_metrics* internal_metrics);
+	void set_baseline_runtime_enable_start_time(uint64_t ts);
 	void load_tables(uint64_t time);
 	void clear_tables();
 	void register_callbacks(sinsp_fd_listener* listener);
@@ -1326,6 +1330,7 @@ public:
 #endif
 	void serialize_protobuf();
 	void emit_as_protobuf(uint64_t time);
+	void flush(uint64_t time);
 
 	void on_file_open(sinsp_evt* evt, std::string& name, uint32_t openflags);
 	void on_new_proc(sinsp_evt* evt, sinsp_threadinfo* tinfo);
@@ -1340,15 +1345,19 @@ public:
 	inline void add_fd_from_io_evt(sinsp_evt* evt, enum ppm_event_category category);
 
 	sinsp* get_inspector();
+	void start_baseline_calculation();
+	bool is_baseline_runtime_start_init();
+	bool should_start_baseline_calculation();
 	void enable_baseline_calculation();
 	void disable_baseline_calculation();
-	bool is_baseline_calculation_enabled() const;
+	bool is_baseline_runtime_enabled() const;
 	bool is_drops_buffer_rate_critical(float max_drops_buffer_rate_percentage) const;
 
 private:
 	// Protobuf containing fingerprints emitted to the collector
-	secure::profiling::fingerprint m_secure_profiling_fingerprint_batch;
+	secure::profiling::fingerprint* m_secure_profiling_fingerprint_batch;
 	secure_profiling_data_ready_handler* m_profiling_data_handler;
+	secure_profiling_internal_metrics* m_profiling_internal_metrics;
 
 	// Statistics about an in progress baseliner capture.  This is
 	// a subset of scap_stats, containing only the relevant field
@@ -1374,6 +1383,8 @@ private:
 #endif
 	std::unordered_multimap<uint16_t, std::shared_ptr<sinsp_filter_check>> m_nofd_fs_extractors;
 	bool m_do_baseline_calculation;
+	uint64_t m_baseline_runtime_enable_start_time;
+	bool m_baseline_runtime_start_init;
 
 	// The baseliner stats stores counters in order to compute the
 	// buffer drop ratio, during a baseliner capture.  They

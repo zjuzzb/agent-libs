@@ -76,8 +76,6 @@ public:
 	void set_n_command_lines(int64_t val);
 	void set_command_categories(std::map<draiosproto::command_category,uint64_t> &cats);
 
-	void set_baseliner_enabled(bool val);
-
 	int64_t get_process() const;
 	int64_t get_thread() const;
 	int64_t get_thread_drops() const;
@@ -127,6 +125,11 @@ public:
 	void set_secure_audit_file_accesses_not_interactive_dropped(int64_t val);
 	void set_secure_audit_k8s_enrich_errors(int64_t val);
 
+	void set_secure_profiling_enabled(bool val);
+	void set_secure_profiling_n_sent_protobufs(int64_t val);
+	void set_secure_profiling_fl_ms(int64_t val);
+	void set_secure_profiling_emit_ms(int64_t val);
+
 	// Set the process ids associated with the various
 	// subprocesses
 	void set_subprocesses(subprocs_t &subprocesses);
@@ -160,6 +163,11 @@ public:
 	int64_t get_secure_audit_connections_not_interactive_dropped() const;
 	int64_t get_secure_audit_file_accesses_not_interactive_dropped_count() const;
 	int64_t get_secure_audit_k8s_enrich_errors() const;
+
+	bool get_secure_profiling_enabled() const;
+	int64_t get_secure_profiling_n_sent_protobufs() const;
+	int64_t get_secure_profiling_fl_ms() const;
+	int64_t get_secure_profiling_emit_ms() const;
 
 	// For other metrics sources e.g. security manager event
 	// counts, you can provide objects derived from this type and
@@ -306,8 +314,6 @@ private:
 		int64_t n_command_lines = -1;
 		std::map<draiosproto::command_category,uint64_t> m_command_categories;
 
-		bool baseliner_enabled = false;
-
 		int64_t secure_audit_n_sent_protobufs = -1;
 		int64_t secure_audit_fl_ms = -1;
 		int64_t secure_audit_emit_ms = -1;
@@ -323,6 +329,11 @@ private:
 		int64_t secure_audit_connections_not_interactive_dropped = -1;
 		int64_t secure_audit_file_accesses_not_interactive_dropped_count = -1;
 		int64_t secure_audit_k8s_enrich_errors = -1;
+
+		bool secure_profiling_enabled = false;
+		int64_t secure_profiling_n_sent_protobufs = -1;
+		int64_t secure_profiling_fl_ms = -1;
+		int64_t secure_profiling_emit_ms = -1;
 
 		int64_t agent_cpu;
 		int64_t agent_memory;
@@ -515,11 +526,6 @@ inline void internal_metrics::set_n_command_lines(int64_t val)
 inline void internal_metrics::set_command_categories(std::map<draiosproto::command_category,uint64_t> &cats)
 {
 	m_analyzer.m_command_categories = cats;
-}
-
-inline void internal_metrics::set_baseliner_enabled(bool val)
-{
-	m_analyzer.baseliner_enabled = val;
 }
 
 inline int64_t internal_metrics::get_process() const
@@ -806,3 +812,44 @@ inline int64_t internal_metrics::get_secure_audit_k8s_enrich_errors() const
 {
 	return m_analyzer.secure_audit_k8s_enrich_errors;
 }
+
+inline bool internal_metrics::get_secure_profiling_enabled() const
+{
+	return m_analyzer.secure_profiling_enabled;
+}
+
+inline void internal_metrics::set_secure_profiling_enabled(bool val)
+{
+	m_analyzer.secure_profiling_enabled = val;
+}
+
+inline int64_t internal_metrics::get_secure_profiling_n_sent_protobufs() const
+{
+	return m_analyzer.secure_profiling_n_sent_protobufs;
+}
+
+inline void internal_metrics::set_secure_profiling_n_sent_protobufs(int64_t val)
+{
+	m_analyzer.secure_profiling_n_sent_protobufs = val;
+}
+
+inline int64_t internal_metrics::get_secure_profiling_fl_ms() const
+{
+	return m_analyzer.secure_profiling_fl_ms;
+}
+
+inline void internal_metrics::set_secure_profiling_fl_ms(int64_t val)
+{
+	m_analyzer.secure_profiling_fl_ms = val;
+}
+
+inline int64_t internal_metrics::get_secure_profiling_emit_ms() const
+{
+	return m_analyzer.secure_profiling_emit_ms;
+}
+
+inline void internal_metrics::set_secure_profiling_emit_ms(int64_t val)
+{
+	m_analyzer.secure_profiling_emit_ms = val;
+}
+

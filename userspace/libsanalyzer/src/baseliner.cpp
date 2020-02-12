@@ -28,7 +28,7 @@ void proc_parser(proc_parser_state* state)
 	state->m_inspector->set_hostname_and_port_resolution_mode(false);
 
 	g_logger.format(sinsp_logger::SEV_INFO,
-		"baseliner /proc scanner thread started");
+		"secure_profiling (baselining) /proc scanner thread started");
 
 	try
 	{
@@ -44,7 +44,7 @@ void proc_parser(proc_parser_state* state)
 	catch(...)
 	{
 		g_logger.format(sinsp_logger::SEV_ERROR,
-			"baseliner proc parser failure: can't open inspector %s",
+			"secure_profiling (baselining) proc parser failure: can't open inspector %s",
 			state->m_inspector->getlasterr().c_str());
 		return;
 	}
@@ -62,6 +62,7 @@ void proc_parser(proc_parser_state* state)
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_baseliner::sinsp_baseliner(sinsp_analyzer& analyzer,
 				 sinsp* inspector):
+	m_secure_profiling_fingerprint_batch(new secure::profiling::fingerprint),
 	m_inspector(inspector),
 	m_analyzer(analyzer),
 	m_ifaddr_list(nullptr),
@@ -71,7 +72,9 @@ sinsp_baseliner::sinsp_baseliner(sinsp_analyzer& analyzer,
 	m_procparser_state(nullptr),
 #endif
 	m_nofd_fs_extractors(),
-	m_do_baseline_calculation(false)
+	m_do_baseline_calculation(false),
+	m_baseline_runtime_enable_start_time(0),
+	m_baseline_runtime_start_init(false)
 { }
 
 void sinsp_baseliner::init()
@@ -120,11 +123,45 @@ sinsp_baseliner::~sinsp_baseliner()
 		delete m_procparser_state;
 	}
 #endif
+	delete m_secure_profiling_fingerprint_batch;
 }
 
 void sinsp_baseliner::set_data_handler(secure_profiling_data_ready_handler* handler)
 {
 	m_profiling_data_handler = handler;
+}
+
+const secure::profiling::fingerprint* sinsp_baseliner::get_fingerprint(uint64_t timestamp)
+{
+	// We do baseline calculatation only if the agent's resource usage is low
+	if(!m_do_baseline_calculation)
+	{
+		return nullptr;
+	}
+
+	if (m_secure_profiling_fingerprint_batch->container_size() == 0 &&
+	    m_secure_profiling_fingerprint_batch->progs_size() == 0)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "No secure profiling fingerprint generated");
+		return nullptr;
+	}
+
+	m_secure_profiling_fingerprint_batch->set_machine_id(m_analyzer.m_configuration->get_machine_id());
+	m_secure_profiling_fingerprint_batch->set_customer_id(m_analyzer.m_configuration->get_customer_id());
+	m_secure_profiling_fingerprint_batch->set_timestamp_ns(timestamp);
+
+	return m_secure_profiling_fingerprint_batch;
+}
+
+void sinsp_baseliner::set_internal_metrics(secure_profiling_internal_metrics* internal_metrics)
+{
+	m_profiling_internal_metrics = internal_metrics;
+}
+
+void sinsp_baseliner::set_baseline_runtime_enable_start_time(uint64_t ts)
+{
+	m_baseline_runtime_enable_start_time = ts;
+	m_baseline_runtime_start_init = false;
 }
 
 void sinsp_baseliner::load_tables(uint64_t time)
@@ -171,7 +208,7 @@ void sinsp_baseliner::clear_tables()
 	//
 	m_progtable.clear();
 
-	m_secure_profiling_fingerprint_batch.Clear();
+	m_secure_profiling_fingerprint_batch->Clear();
 }
 
 void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_fds)
@@ -608,16 +645,16 @@ void sinsp_baseliner::serialize_protobuf()
 	////////////////////////////////////////////////////////////////////////////
 	// emit host stuff
 	////////////////////////////////////////////////////////////////////////////
-	m_secure_profiling_fingerprint_batch.set_machine_id(m_analyzer.m_configuration->get_machine_id());
-	m_secure_profiling_fingerprint_batch.set_customer_id(m_analyzer.m_configuration->get_customer_id());
-	m_secure_profiling_fingerprint_batch.set_timestamp_ns(sinsp_utils::get_current_time_ns());
+	m_secure_profiling_fingerprint_batch->set_machine_id(m_analyzer.m_configuration->get_machine_id());
+	m_secure_profiling_fingerprint_batch->set_customer_id(m_analyzer.m_configuration->get_customer_id());
+	m_secure_profiling_fingerprint_batch->set_timestamp_ns(sinsp_utils::get_current_time_ns());
 
 	//
 	// Serialize the programs
 	//
 	for(auto& it : m_progtable)
 	{
-		secure::profiling::program_fingerprint* prog = m_secure_profiling_fingerprint_batch.mutable_progs()->Add();
+		secure::profiling::program_fingerprint* prog = m_secure_profiling_fingerprint_batch->mutable_progs()->Add();
 
 		prog->set_comm(it.second->m_comm);
 		prog->set_exe(it.second->m_exe);
@@ -717,7 +754,7 @@ void sinsp_baseliner::serialize_protobuf()
 	//
 	for (const auto& it : *m_inspector->m_container_manager.get_containers())
 	{
-		secure::profiling::container_fingerprint* container = m_secure_profiling_fingerprint_batch.mutable_container()->Add();
+		secure::profiling::container_fingerprint* container = m_secure_profiling_fingerprint_batch->mutable_container()->Add();
 
 		container->set_id(it.first);
 		container->set_name(it.second->m_name);
@@ -756,7 +793,7 @@ void sinsp_baseliner::merge_proc_data()
 	if(m_procparser_state->m_inspector != NULL)
 	{
 		g_logger.format(sinsp_logger::SEV_INFO,
-			"merging baseliner /proc data during interval switch");
+			"merging secure_profiling (baselining) /proc data during interval switch");
 
 		//
 		// If the /proc thread is still scanning, we have a problem
@@ -764,7 +801,7 @@ void sinsp_baseliner::merge_proc_data()
 		if(!m_procparser_state->m_done)
 		{
 			g_logger.format(sinsp_logger::SEV_ERROR,
-				"baseliner proc parser thread not done after a full interval. Skipping baseline emission.");
+				"secure_profiling (baselining) proc parser thread not done after a full interval. Skipping baseline emission.");
 			return;
 		}
 
@@ -796,11 +833,21 @@ void sinsp_baseliner::emit_as_protobuf(uint64_t ts)
 #ifdef ASYNC_PROC_PARSING
 	merge_proc_data();
 #endif
-	g_logger.format(sinsp_logger::SEV_INFO, "emitting falco baseline %" PRIu64, ts);
+	g_logger.format(sinsp_logger::SEV_INFO, "secure_profiling (baseline) emitting host fingerprint");
 
 	serialize_protobuf();
+}
 
-	m_profiling_data_handler->secure_profiling_data_ready(ts, &m_secure_profiling_fingerprint_batch);
+void sinsp_baseliner::flush(uint64_t ts)
+{
+	uint64_t flush_start_time = sinsp_utils::get_current_time_ns();
+
+	m_profiling_data_handler->secure_profiling_data_ready(ts, m_secure_profiling_fingerprint_batch);
+
+	uint64_t flush_time_ms = (sinsp_utils::get_current_time_ns() - flush_start_time) / 1000000;
+
+	m_profiling_internal_metrics->set_secure_profiling_internal_metrics(1, flush_time_ms);
+	g_logger.format(sinsp_logger::SEV_INFO, "secure_profiling (baseliner): flushing fl.ms=%d ", flush_time_ms);
 
 	if(m_inspector->is_live())
 	{
@@ -1268,6 +1315,28 @@ sinsp* sinsp_baseliner::get_inspector()
 	return m_inspector;
 }
 
+void sinsp_baseliner::start_baseline_calculation()
+{
+	enable_baseline_calculation();
+	m_baseline_runtime_start_init = true;
+}
+
+bool sinsp_baseliner::is_baseline_runtime_start_init()
+{
+	return m_baseline_runtime_start_init;
+}
+
+bool sinsp_baseliner::should_start_baseline_calculation()
+{
+	if (!m_baseline_runtime_start_init &&
+	    sinsp_utils::get_current_time_ns() >= m_baseline_runtime_enable_start_time)
+	{
+		return true;
+	}
+
+	return false;
+}
+
 void sinsp_baseliner::enable_baseline_calculation()
 {
 	scap_stats st;
@@ -1287,7 +1356,7 @@ void sinsp_baseliner::disable_baseline_calculation()
 
 }
 
-bool sinsp_baseliner::is_baseline_calculation_enabled() const
+bool sinsp_baseliner::is_baseline_runtime_enabled() const
 {
 	return m_do_baseline_calculation;
 }
@@ -1310,7 +1379,7 @@ bool sinsp_baseliner::is_drops_buffer_rate_critical(float max_drops_buffer_rate_
 	if(drop_rate > max_drops_buffer_rate_percentage)
 	{
 		g_logger.format(sinsp_logger::SEV_WARNING,
-				"critical drop buffer rate %f (upper threshold %f)",
+				"secure_profiling critical drop buffer rate %f (upper threshold %f)",
 				drop_rate, max_drops_buffer_rate_percentage);
 		return true;
 	}
@@ -1441,7 +1510,7 @@ void sinsp_baseliner::process_event(sinsp_evt *evt)
 	if(m_procparser_state->m_inspector != NULL && m_procparser_state->m_done)
 	{
 		g_logger.format(sinsp_logger::SEV_INFO,
-			"merging baseliner /proc data during syscall parsing");
+			"merging secure_profiling (baselining) /proc data during syscall parsing");
 
 		//
 		// Merge the data extracted by the /proc scanner

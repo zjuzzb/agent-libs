@@ -166,7 +166,7 @@ protected:
 
 		m_baseliner = new sinsp_baseliner(*m_analyzer, m_inspector);
 		m_baseliner->init();
-		m_baseliner->enable_baseline_calculation();
+		m_baseliner->start_baseline_calculation();
 
 		m_sinsp_worker = new test_sinsp_worker(m_inspector, m_baseliner, getpid());
 		ThreadPool::defaultPool().start(*m_sinsp_worker, "test_sinsp_worker");
@@ -223,8 +223,9 @@ TEST_F(baseliner_test, nofd_ops)
 
 	sleep(1);
 
-	secure::profiling::fingerprint result;
+	const secure::profiling::fingerprint* result;
 	m_baseliner->serialize_protobuf();
+	result = m_baseliner->get_fingerprint(0);
 
 	std::set<std::string> expected_files = {"/tmp/test_baseliner_nofd_ops/file"};
 	std::set<std::string> expected_dirs = {"/tmp/test_baseliner_nofd_ops/",
@@ -233,7 +234,7 @@ TEST_F(baseliner_test, nofd_ops)
 	                                       "/tmp/test_baseliner_nofd_ops/three",
 	                                       "/tmp/test_baseliner_nofd_ops/four"};
 
-	for (const auto& prog : result.progs())
+	for (const auto& prog : result->progs())
 	{
 		if (prog.comm() != "tests")
 		{
@@ -274,6 +275,6 @@ TEST_F(baseliner_test, nofd_ops)
 			}
 		}
 	}
-	// EXPECT_EQ(expected_files.size(), 0u);
-	// EXPECT_EQ(expected_dirs.size(), 0u);
+	EXPECT_EQ(expected_files.size(), 0u);
+	EXPECT_EQ(expected_dirs.size(), 0u);
 }
