@@ -14,7 +14,7 @@
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;DebugInternal;ReleaseInternal;DebugInternalCodeCoverage" CACHE STRING "" FORCE)
 
 #set(DRAIOS_FEATURE_FLAGS "-DPPM_ENABLE_SENTINEL")
-set(CMAKE_COMMON_FLAGS "-Wall -ggdb ${DRAIOS_FEATURE_FLAGS}")
+set(CMAKE_COMMON_FLAGS "-Wall -g ${DRAIOS_FEATURE_FLAGS}")
 if(BUILD_WARNINGS_AS_ERRORS)
 	set(CMAKE_SUPPRESSED_WARNINGS "-Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare -Wno-type-limits")
 	set(CMAKE_COMMON_FLAGS "${CMAKE_COMMON_FLAGS} -Wextra -Werror ${CMAKE_SUPPRESSED_WARNINGS}")
