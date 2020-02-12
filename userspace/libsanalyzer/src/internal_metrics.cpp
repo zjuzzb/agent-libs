@@ -469,7 +469,7 @@ void internal_metrics::send_secure_audit_metrics(draiosproto::statsd_info* stats
 	if (get_secure_profiling_n_sent_protobufs() != -1)
 	{
 		write_metric(statsd_info,
-		             "dragent.secure_profiling.baseliner_enabled",
+		             "dragent.secure_profiling.baseliner_runtime_enabled",
 		             draiosproto::STATSD_GAUGE,
 		             get_secure_profiling_enabled() ? 1 : 0);
 		write_metric(statsd_info,

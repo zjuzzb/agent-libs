@@ -1213,6 +1213,7 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("falcobaseline.report_interval: " + NumberFormatter::format(m_falco_baselining_report_interval_ns));
 	LOG_INFO("falcobaseline.autodisable_interval: " + NumberFormatter::format(m_falco_baselining_autodisable_interval_ns));
 	LOG_INFO("falcobaseline.max_drops_buffer_rate_percentage: " + NumberFormatter::format(m_falco_baselining_max_drops_buffer_rate_percentage));
+	LOG_INFO("falcobaseline.max_sampling_ratio: " + NumberFormatter::format(m_falco_baselining_max_sampling_ratio));
 	LOG_INFO("falcobaseline.randomize_start: " + NumberFormatter::format(m_falco_baselining_randomize_start));
 	LOG_INFO("commandlines_capture.enabled: " + bool_as_text(m_commandlines_capture_enabled));
 	LOG_INFO("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));

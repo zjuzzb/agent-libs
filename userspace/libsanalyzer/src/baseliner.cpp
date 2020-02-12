@@ -62,6 +62,7 @@ void proc_parser(proc_parser_state* state)
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_baseliner::sinsp_baseliner(sinsp_analyzer& analyzer,
 				 sinsp* inspector):
+	m_secure_profiling_fingerprint_batch(new secure::profiling::fingerprint),
 	m_inspector(inspector),
 	m_analyzer(analyzer),
 	m_ifaddr_list(nullptr),
@@ -122,6 +123,7 @@ sinsp_baseliner::~sinsp_baseliner()
 		delete m_procparser_state;
 	}
 #endif
+	delete m_secure_profiling_fingerprint_batch;
 }
 
 void sinsp_baseliner::set_data_handler(secure_profiling_data_ready_handler* handler)
@@ -129,6 +131,27 @@ void sinsp_baseliner::set_data_handler(secure_profiling_data_ready_handler* hand
 	m_profiling_data_handler = handler;
 }
 
+const secure::profiling::fingerprint* sinsp_baseliner::get_fingerprint(uint64_t timestamp)
+{
+	// We do baseline calculatation only if the agent's resource usage is low
+	if(!m_do_baseline_calculation)
+	{
+		return nullptr;
+	}
+
+	if (m_secure_profiling_fingerprint_batch->container_size() == 0 &&
+	    m_secure_profiling_fingerprint_batch->progs_size() == 0)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "No secure profiling fingerprint generated");
+		return nullptr;
+	}
+
+	m_secure_profiling_fingerprint_batch->set_machine_id(m_analyzer.m_configuration->get_machine_id());
+	m_secure_profiling_fingerprint_batch->set_customer_id(m_analyzer.m_configuration->get_customer_id());
+	m_secure_profiling_fingerprint_batch->set_timestamp_ns(timestamp);
+
+	return m_secure_profiling_fingerprint_batch;
+}
 
 void sinsp_baseliner::set_internal_metrics(secure_profiling_internal_metrics* internal_metrics)
 {
@@ -185,7 +208,7 @@ void sinsp_baseliner::clear_tables()
 	//
 	m_progtable.clear();
 
-	m_secure_profiling_fingerprint_batch.Clear();
+	m_secure_profiling_fingerprint_batch->Clear();
 }
 
 void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_fds)
@@ -622,16 +645,16 @@ void sinsp_baseliner::serialize_protobuf()
 	////////////////////////////////////////////////////////////////////////////
 	// emit host stuff
 	////////////////////////////////////////////////////////////////////////////
-	m_secure_profiling_fingerprint_batch.set_machine_id(m_analyzer.m_configuration->get_machine_id());
-	m_secure_profiling_fingerprint_batch.set_customer_id(m_analyzer.m_configuration->get_customer_id());
-	m_secure_profiling_fingerprint_batch.set_timestamp_ns(sinsp_utils::get_current_time_ns());
+	m_secure_profiling_fingerprint_batch->set_machine_id(m_analyzer.m_configuration->get_machine_id());
+	m_secure_profiling_fingerprint_batch->set_customer_id(m_analyzer.m_configuration->get_customer_id());
+	m_secure_profiling_fingerprint_batch->set_timestamp_ns(sinsp_utils::get_current_time_ns());
 
 	//
 	// Serialize the programs
 	//
 	for(auto& it : m_progtable)
 	{
-		secure::profiling::program_fingerprint* prog = m_secure_profiling_fingerprint_batch.mutable_progs()->Add();
+		secure::profiling::program_fingerprint* prog = m_secure_profiling_fingerprint_batch->mutable_progs()->Add();
 
 		prog->set_comm(it.second->m_comm);
 		prog->set_exe(it.second->m_exe);
@@ -731,7 +754,7 @@ void sinsp_baseliner::serialize_protobuf()
 	//
 	for (const auto& it : *m_inspector->m_container_manager.get_containers())
 	{
-		secure::profiling::container_fingerprint* container = m_secure_profiling_fingerprint_batch.mutable_container()->Add();
+		secure::profiling::container_fingerprint* container = m_secure_profiling_fingerprint_batch->mutable_container()->Add();
 
 		container->set_id(it.first);
 		container->set_name(it.second->m_name);
@@ -819,7 +842,7 @@ void sinsp_baseliner::flush(uint64_t ts)
 {
 	uint64_t flush_start_time = sinsp_utils::get_current_time_ns();
 
-	m_profiling_data_handler->secure_profiling_data_ready(ts, &m_secure_profiling_fingerprint_batch);
+	m_profiling_data_handler->secure_profiling_data_ready(ts, m_secure_profiling_fingerprint_batch);
 
 	uint64_t flush_time_ms = (sinsp_utils::get_current_time_ns() - flush_start_time) / 1000000;
 
