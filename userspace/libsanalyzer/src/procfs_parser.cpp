@@ -43,25 +43,25 @@ COMMON_LOGGER();
 
 
 
-type_config<uint32_t>::ptr c_missing_jiffies_threshold =
+type_config<uint32_t>::ptr c_missing_jiffies_threshold_host =
 	type_config_builder<uint32_t>(
 		90,
-		"If the number of CPU jiffies counted in one second "
+		"If the number of CPU jiffies counted in one second for the host "
 		"is below this threshold, we assign the missing jiffies "
 		"to the Stolen CPU and set the total CPU to 100",
 		"cpu_calculation",
-		"missing_jiffies_threshold")
+		"missing_jiffies_threshold_host")
 		.max(100)
 	        .build();
 
-type_config<uint32_t>::ptr c_missing_jiffies_threshold_per_container =
+type_config<uint32_t>::ptr c_missing_jiffies_threshold_container =
 	type_config_builder<uint32_t>(
 		90,
-		"If the number of CPU jiffies, per container, counted in one second "
+		"If the number of CPU jiffies, per container, counted in one second for the container"
 		"is below this threshold, we assign the missing jiffies "
 		"to the Stolen CPU and set the total CPU to 100",
 		"cpu_calculation",
-		"missing_jiffies_threshold_per_container")
+		"missing_jiffies_threshold_container")
 		.max(100)
 	        .build();
 
@@ -415,7 +415,7 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat *proc_stat, char *li
 		}
 		// XXX: this depends on actual wall clock time since the last read, if it's not 1 second, then the (arbitrary)
 		// 80 ticks value won't be appropriate
-		if (delta[CPU_TOTAL] < c_missing_jiffies_threshold->get_value())
+		if (delta[CPU_TOTAL] < c_missing_jiffies_threshold_host->get_value())
 		{
 			static ratelimit r;
 			r.run([&] {
@@ -1014,7 +1014,7 @@ double sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
 	// For some reason, sometimes more CPU share has been stolen than gets reported
 	// by /proc/stat. Heuristically, if it's < 80 per CPU then we assume this is the
 	// case and fix it up. This mirrors the code in sinsp_procfs_parser::get_cpus_load.
-	if(delta_jiffies < (c_missing_jiffies_threshold_per_container->get_value() * m_ncpus))
+	if(delta_jiffies < (c_missing_jiffies_threshold_container->get_value() * m_ncpus))
 	{
 		static ratelimit r;
 		int normalized_cpu_ticks = 100 * m_ncpus;
