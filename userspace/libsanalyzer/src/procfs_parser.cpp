@@ -413,8 +413,13 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat *proc_stat, char *li
 								"See: https://0xstubs.org/debugging-a-flaky-cpu-steal-time-counter-on-a-paravirtualized-xen-guest/");
 			});
 		}
-		// XXX: this depends on actual wall clock time since the last read, if it's not 1 second, then the (arbitrary)
-		// 80 ticks value won't be appropriate
+
+		// For some reason, sometimes more CPU share has been stolen than gets reported
+		// by /proc/stat. Heuristically, if it's less than a threshold
+		// (namely c_missing_jiffies_threshold_host) per CPU then we assume this is the
+		// case and fix it up.
+		// The threshold must be a percentage of the /proc/stat sampling rate expressed in jiffies
+		// (e.g. 1/sec is 100 jiffies, 2/sec is 200 jiffies and so on).
 		if (delta[CPU_TOTAL] < c_missing_jiffies_threshold_host->get_value())
 		{
 			static ratelimit r;
@@ -1012,7 +1017,8 @@ double sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
 	}
 
 	// For some reason, sometimes more CPU share has been stolen than gets reported
-	// by /proc/stat. Heuristically, if it's < 80 per CPU then we assume this is the
+	// by /proc/stat. Heuristically, if it's less than a threshold
+	// (namely c_missing_jiffies_threshold_container) per CPU then we assume this is the
 	// case and fix it up. This mirrors the code in sinsp_procfs_parser::get_cpus_load.
 	if(delta_jiffies < (c_missing_jiffies_threshold_container->get_value() * m_ncpus))
 	{
