@@ -27,12 +27,12 @@ func newHorizontalPodAutoscalerCongroup(hpa *v1as.HorizontalPodAutoscaler) (*dra
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_hpa"),
 			Id:proto.String(string(hpa.GetUID()))},
+		Namespace:proto.String(hpa.GetNamespace()),
 	}
 
 	ret.Tags = GetTags(hpa.ObjectMeta, "kubernetes.hpa.")
 	ret.InternalTags = GetAnnotations(hpa.ObjectMeta, "kubernetes.hpa.")
 	addHorizontalPodAutoscalerMetrics(&ret.Metrics, hpa)
-	AddNSParents(&ret.Parents, hpa.GetNamespace())
 	AddPodChildrenFromOwnerRef(&ret.Children, hpa.ObjectMeta)
 	if (hpa.Spec.ScaleTargetRef.Kind == "Deployment") {
 		AddDeploymentChildrenByName(&ret.Children, hpa.GetNamespace(), hpa.Spec.ScaleTargetRef.Name)
@@ -69,21 +69,6 @@ func AddHorizontalPodAutoscalerParents(parents *[]*draiosproto.CongroupUid, name
 			*parents = append(*parents, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_hpa"),
 				Id:proto.String(string(hpa.GetUID()))})
-		}
-	}
-}
-
-func AddHorizontalPodAutoscalerChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if !resourceReady("horizontalpodautoscalers") {
-		return
-	}
-
-	for _, obj := range horizontalPodAutoscalerInf.GetStore().List() {
-		horizontalPodAutoscaler := obj.(*v1as.HorizontalPodAutoscaler)
-		if horizontalPodAutoscaler.GetNamespace() == namespaceName {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_hpa"),
-				Id:proto.String(string(horizontalPodAutoscaler.GetUID()))})
 		}
 	}
 }

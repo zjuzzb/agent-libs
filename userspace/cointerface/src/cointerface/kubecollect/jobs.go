@@ -85,12 +85,12 @@ func newJobConGroup(job coJob, setLinks bool) (*draiosproto.ContainerGroup) {
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_job"),
 			Id:proto.String(string(job.GetUID()))},
+			Namespace:proto.String(job.GetNamespace()),
 	}
 
 	ret.Tags = GetTags(job.ObjectMeta, "kubernetes.job.")
 	addJobMetrics(&ret.Metrics, job)
 	if setLinks {
-		AddNSParents(&ret.Parents, job.GetNamespace())
 		AddPodChildrenFromOwnerRef(&ret.Children, job.ObjectMeta)
 		AddCronJobParent(&ret.Parents, job)
 	}
@@ -105,21 +105,6 @@ func addJobMetrics(metrics *[]*draiosproto.AppMetric, job coJob) {
 	AppendMetricInt32(metrics, prefix+"status.active", job.Status.Active)
 	AppendMetricInt32(metrics, prefix+"status.succeeded", job.Status.Succeeded)
 	AppendMetricInt32(metrics, prefix+"status.failed", job.Status.Failed)
-}
-
-func AddJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if !resourceReady("jobs") {
-		return
-	}
-
-	for _, obj := range jobInf.GetStore().List() {
-		job := coJob{obj.(*v1batch.Job)}
-		if job.GetNamespace() == namespaceName {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_job"),
-				Id:proto.String(string(job.GetUID()))})
-		}
-	}
 }
 
 func startJobsSInformer(ctx context.Context,

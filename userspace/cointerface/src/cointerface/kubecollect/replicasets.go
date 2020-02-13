@@ -107,13 +107,13 @@ func newReplicaSetCongroup(replicaSet coReplicaSet, setLinks bool) (*draiosproto
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_replicaset"),
 			Id:proto.String(string(replicaSet.GetUID()))},
+		Namespace:proto.String(replicaSet.GetNamespace()),
 	}
 
 	ret.Tags = GetTags(replicaSet.ObjectMeta, "kubernetes.replicaSet.")
 	ret.InternalTags = GetAnnotations(replicaSet.ObjectMeta, "kubernetes.replicaSet.")
 	addReplicaSetMetrics(&ret.Metrics, replicaSet)
 	if setLinks {
-		AddNSParents(&ret.Parents, replicaSet.GetNamespace())
 		AddDeploymentParents(&ret.Parents, replicaSet)
 		AddPodChildrenFromOwnerRef(&ret.Children, replicaSet.ObjectMeta)
 		AddHorizontalPodAutoscalerParents(&ret.Parents, replicaSet.GetNamespace(), replicaSet.APIVersion, replicaSet.Kind, replicaSet.GetName() )
@@ -141,21 +141,6 @@ func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, selector labels
 		}
 
 		if selector.Matches(labels.Set(replicaSet.GetLabels())) {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_replicaset"),
-				Id:proto.String(string(replicaSet.GetUID()))})
-		}
-	}
-}
-
-func AddReplicaSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if !resourceReady("replicasets") {
-		return
-	}
-
-	for _, obj := range replicaSetInf.GetStore().List() {
-		replicaSet := obj.(*appsv1.ReplicaSet)
-		if replicaSet.GetNamespace() == namespaceName {
 			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_replicaset"),
 				Id:proto.String(string(replicaSet.GetUID()))})
