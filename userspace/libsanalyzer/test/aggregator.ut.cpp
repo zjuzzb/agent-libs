@@ -2721,6 +2721,8 @@ TEST(aggregator, file_stat)
 	in->set_time_ns(3);
 	in->set_open_count(4);
 	in->set_errors(5);
+	in->set_bytes_in(6);
+	in->set_bytes_out(7);
 
 	auto input2 = input;
 	aggregator->aggregate(input2, output, false);
@@ -2729,16 +2731,22 @@ TEST(aggregator, file_stat)
 	EXPECT_EQ(output.top_files()[0].aggr_time_ns().sum(), 3);
 	EXPECT_EQ(output.top_files()[0].aggr_open_count().sum(), 4);
 	EXPECT_EQ(output.top_files()[0].aggr_errors().sum(), 5);
+	EXPECT_EQ(output.top_files()[0].aggr_bytes_in().sum(), 6);
+	EXPECT_EQ(output.top_files()[0].aggr_bytes_out().sum(), 7);
 
 	in->set_bytes(100);
 	in->set_time_ns(100);
 	in->set_open_count(100);
 	in->set_errors(100);
+	in->set_bytes_in(100);
+	in->set_bytes_out(100);
 	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.top_files()[0].aggr_bytes().sum(), 102);
 	EXPECT_EQ(output.top_files()[0].aggr_time_ns().sum(), 103);
 	EXPECT_EQ(output.top_files()[0].aggr_open_count().sum(), 104);
 	EXPECT_EQ(output.top_files()[0].aggr_errors().sum(), 105);
+	EXPECT_EQ(output.top_files()[0].aggr_bytes_in().sum(), 106);
+	EXPECT_EQ(output.top_files()[0].aggr_bytes_out().sum(), 107);
 
 	// validate primary key
 	draiosproto::file_stat lhs;
@@ -2752,6 +2760,8 @@ TEST(aggregator, file_stat)
 	rhs.set_time_ns(3);
 	rhs.set_open_count(4);
 	rhs.set_errors(5);
+	rhs.set_bytes_in(6);
+	rhs.set_bytes_out(7);
 	EXPECT_TRUE(file_stat_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(file_stat_message_aggregator::hasher()(&lhs),
 	          file_stat_message_aggregator::hasher()(&rhs));

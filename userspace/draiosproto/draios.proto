@@ -995,7 +995,10 @@ message file_stat {
     optional aggregations64 aggr_errors = 8;
 
     optional uint32 bytes_in = 10;
+    optional aggregations64 aggr_bytes_in = 12;
+
     optional uint32 bytes_out = 11;
+    optional aggregations64 aggr_bytes_out = 13;
 }
 
 message process {
