@@ -2,7 +2,7 @@
 // links:
 //   http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
 //   http://stackoverflow.com/questions/1420426/calculating-cpu-usage-of-a-process-in-linux
-// 
+//
 #include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>
@@ -115,9 +115,9 @@ void sinsp_procfs_parser::jiffies_t::set()
 #ifndef CYGWING_AGENT
 sinsp_procfs_parser::sinsp_procfs_parser(
 #else
-sinsp_procfs_parser::sinsp_procfs_parser(sinsp* inspector, 
+sinsp_procfs_parser::sinsp_procfs_parser(sinsp* inspector,
 #endif
-					 uint32_t ncpus, 
+					 uint32_t ncpus,
 					 int64_t physical_memory_kb,
 					 bool is_live_capture,
 					 uint64_t ttl_s_cpu,
@@ -138,7 +138,7 @@ sinsp_procfs_parser::sinsp_procfs_parser(sinsp* inspector,
 	if(m_whhandle == NULL)
 	{
 		throw sinsp_exception("sinsp_procfs_parser::sinsp_procfs_parser initialization error: m_whhandle=NULL");
-	} 
+	}
 #endif
 }
 
@@ -610,7 +610,7 @@ uint64_t sinsp_procfs_parser::global_steal_pct()
 #else // CYGWING_AGENT
 	//
 	// We assume windows is mostly run in the datacenter and therefore this is not relevant.
-	// We always return 0. 
+	// We always return 0.
 	//
 	return 0;
 #endif // CYGWING_AGENT
