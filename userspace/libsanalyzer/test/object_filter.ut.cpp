@@ -81,8 +81,13 @@ TEST(object_filter_test, port_filter_single_against_range)
 
 TEST(object_filter_test, port_filter_single_against_set)
 {
-	THREAD_TYPE tinfo;
-	GET_AGENT_THREAD(&tinfo) = new thread_analyzer_info(nullptr, nullptr);
+#ifdef USE_AGENT_THREAD
+	thread_analyzer_info tinfo(nullptr, nullptr);
+#else
+	sinsp_threadinfo tinfo;
+	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
+#endif
+
 	std::set<uint16_t> ports = {12};
 	test_helper::set_listening_ports(GET_AGENT_THREAD(&tinfo), ports);
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
@@ -267,7 +272,11 @@ TEST(object_filter_test, process_name_filter)
 	bool exclude = true;
 	bool high_priority = false;
 	std::string reason = "";
-	THREAD_TYPE tinfo;
+#ifdef USE_AGENT_THREAD
+	thread_analyzer_info tinfo(nullptr, nullptr);
+#else
+	sinsp_threadinfo tinfo;
+#endif
 	tinfo.m_comm = "process_name";
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
 	matches = my_filter.matches(args, exclude, high_priority, &reason);
@@ -293,7 +302,11 @@ TEST(object_filter_test, process_cmd_line_filter)
 	bool exclude = true;
 	bool high_priority = false;
 	std::string reason = "";
-	THREAD_TYPE tinfo;
+#ifdef USE_AGENT_THREAD
+	thread_analyzer_info tinfo(nullptr, nullptr);
+#else
+	sinsp_threadinfo tinfo;
+#endif
 	tinfo.m_exe = "barfo?baz";
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
 	matches = my_filter.matches(args, exclude, high_priority, &reason);
@@ -569,8 +582,12 @@ TEST(object_filter_test, object_filter)
 	my_filter.set_rules(rules);
 
 	// now go through and check that each rule matches
-	THREAD_TYPE tinfo;
-	GET_AGENT_THREAD(&tinfo) = new thread_analyzer_info(nullptr, nullptr);
+#ifdef USE_AGENT_THREAD
+	thread_analyzer_info tinfo(nullptr, nullptr);
+#else
+	sinsp_threadinfo tinfo;
+	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
+#endif
 	test_helper::set_listening_ports(GET_AGENT_THREAD(&tinfo), ports);
 
 	bool matches = false;

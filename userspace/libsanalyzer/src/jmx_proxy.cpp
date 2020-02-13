@@ -1,5 +1,6 @@
 #define __STDC_FORMAT_MACROS
 
+#include "analyzer_thread.h"
 #include "analyzer_thread_type.h"
 #include "analyzer_int.h"
 #include "jmx_proxy.h"

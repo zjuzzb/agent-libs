@@ -105,13 +105,32 @@ void main_thread_analyzer_info::hash_environment(THREAD_TYPE* tinfo,
 // thread_analyzer_info implementation
 ///////////////////////////////////////////////////////////////////////////////
 
-thread_analyzer_info::thread_analyzer_info(sinsp* inspector, sinsp_analyzer* analyzer)
+thread_analyzer_info::thread_analyzer_info(sinsp* inspector,
+                                           sinsp_analyzer* analyzer)
+	:
+#ifdef USE_AGENT_THREAD
+      sinsp_threadinfo(inspector),
+#endif
+      m_inspector(inspector),
+      m_analyzer(analyzer),
+      m_tap(nullptr),
+      m_procinfo(nullptr),
+      m_prom_check_found(false),
+      m_last_port_scan(time_point_t::min()),
+      m_last_procfs_port_scan(time_point_t::min())
+{
+}
+
+thread_analyzer_info::thread_analyzer_info(sinsp* inspector,
+                                           sinsp_analyzer* analyzer,
+                                           std::shared_ptr<audit_tap>& audit_tap)
     :
 #ifdef USE_AGENT_THREAD
       sinsp_threadinfo(inspector),
 #endif
-	  m_inspector(inspector),
+      m_inspector(inspector),
       m_analyzer(analyzer),
+      m_tap(audit_tap),
       m_procinfo(nullptr),
       m_prom_check_found(false),
       m_last_port_scan(time_point_t::min()),
@@ -189,14 +208,10 @@ void thread_analyzer_info::init(sinsp_threadinfo* tinfo)
 
 	if (m_analyzer->is_tracking_environment())
 	{
-		if (m_tinfo->is_main_thread())
+		if (GET_SINSP_THREAD(this)->is_main_thread())
 		{
 			auto mt_ainfo = main_thread_ainfo();
-#ifdef USE_AGENT_THREAD
-			mt_ainfo->hash_environment(this, m_analyzer->get_environment_blacklist());
-#else
-			mt_ainfo->hash_environment(m_tinfo, m_analyzer->get_environment_blacklist());
-#endif
+			mt_ainfo->hash_environment(GET_SINSP_THREAD(this), m_analyzer->get_environment_blacklist());
 		}
 	}
 }
@@ -438,7 +453,7 @@ void thread_analyzer_info::clear_role_flags()
 	      AF_IS_LOCAL_IPV4_CLIENT | AF_IS_REMOTE_IPV4_CLIENT | AF_IS_UNIX_CLIENT);
 }
 
-void thread_analyzer_info::scan_listening_ports(bool scan_procfs, uint32_t procfs_scan_interval)
+void thread_analyzer_info::scan_listening_ports(bool scan_procfs, uint32_t procfs_scan_interval) const
 {
 	time_point_t now = time_point_t::min();
 
@@ -517,7 +532,7 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
                                                        uint64_t timeout_ns,
                                                        bool is_subsampling)
 {
-	sinsp_fdtable* fdtable = GET_SINSP_THREAD(this)->get_fd_table();
+	const sinsp_fdtable* fdtable = GET_SINSP_THREAD(this)->get_fd_table();
 	bool has_thread_exited = (GET_SINSP_THREAD(this)->m_flags & PPM_CL_CLOSED) != 0;
 
 	if (fdtable == &GET_SINSP_THREAD(this)->m_fdtable)
@@ -649,8 +664,8 @@ const proc_config& thread_analyzer_info::get_proc_config()
 		// 2. As last chance, use the Env coming from Docker
 		if (conf.empty() && !GET_SINSP_THREAD(this)->m_container_id.empty())
 		{
-			const auto container_info =
-			    m_inspector->m_container_manager.get_container(GET_SINSP_THREAD(this)->m_container_id);
+			const auto container_info = m_inspector->m_container_manager.get_container(
+			    GET_SINSP_THREAD(this)->m_container_id);
 			if (container_info)
 			{
 				conf = container_info->m_sysdig_agent_conf;
@@ -765,7 +780,8 @@ bool threadinfo_cmp_cpu(THREAD_TYPE* src, THREAD_TYPE* dst)
 	ASSERT(GET_AGENT_THREAD(src)->m_procinfo);
 	ASSERT(GET_AGENT_THREAD(dst)->m_procinfo);
 
-	return (GET_AGENT_THREAD(src)->m_procinfo->m_cpuload > GET_AGENT_THREAD(dst)->m_procinfo->m_cpuload);
+	return (GET_AGENT_THREAD(src)->m_procinfo->m_cpuload >
+	        GET_AGENT_THREAD(dst)->m_procinfo->m_cpuload);
 }
 
 bool threadinfo_cmp_memory(THREAD_TYPE* src, THREAD_TYPE* dst)
@@ -777,7 +793,8 @@ bool threadinfo_cmp_memory(THREAD_TYPE* src, THREAD_TYPE* dst)
 	ASSERT(GET_AGENT_THREAD(src)->m_procinfo);
 	ASSERT(GET_AGENT_THREAD(dst)->m_procinfo);
 
-	return (GET_AGENT_THREAD(src)->m_procinfo->m_vmrss_kb > GET_AGENT_THREAD(dst)->m_procinfo->m_vmrss_kb);
+	return (GET_AGENT_THREAD(src)->m_procinfo->m_vmrss_kb >
+	        GET_AGENT_THREAD(dst)->m_procinfo->m_vmrss_kb);
 }
 
 bool threadinfo_cmp_io(THREAD_TYPE* src, THREAD_TYPE* dst)
@@ -818,8 +835,11 @@ bool threadinfo_cmp_transactions(THREAD_TYPE* src, THREAD_TYPE* dst)
 	ASSERT(GET_AGENT_THREAD(src)->m_procinfo);
 	ASSERT(GET_AGENT_THREAD(dst)->m_procinfo);
 
-	return (GET_AGENT_THREAD(src)->m_procinfo->m_proc_transaction_metrics.get_counter()->get_tot_count() >
-	        GET_AGENT_THREAD(dst)->m_procinfo->m_proc_transaction_metrics.get_counter()->get_tot_count());
+	return (GET_AGENT_THREAD(src)
+	            ->m_procinfo->m_proc_transaction_metrics.get_counter()
+	            ->get_tot_count() > GET_AGENT_THREAD(dst)
+	                                    ->m_procinfo->m_proc_transaction_metrics.get_counter()
+	                                    ->get_tot_count());
 }
 
 bool threadinfo_cmp_evtcnt(THREAD_TYPE* src, THREAD_TYPE* dst)
@@ -844,12 +864,12 @@ bool threadinfo_cmp_evtcnt(THREAD_TYPE* src, THREAD_TYPE* dst)
 
 bool threadinfo_cmp_cpu_cs(THREAD_TYPE* src, THREAD_TYPE* dst)
 {
-	int is_src_server =
-	    (GET_AGENT_THREAD(src)->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                                          thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
-	int is_dst_server =
-	    (GET_AGENT_THREAD(dst)->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                                          thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_src_server = (GET_AGENT_THREAD(src)->m_th_analysis_flags &
+	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server = (GET_AGENT_THREAD(dst)->m_th_analysis_flags &
+	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
 
 	double s = GET_AGENT_THREAD(src)->m_procinfo->m_cpuload * (is_src_server * 1000);
 	double d = GET_AGENT_THREAD(dst)->m_procinfo->m_cpuload * (is_dst_server * 1000);
@@ -859,12 +879,12 @@ bool threadinfo_cmp_cpu_cs(THREAD_TYPE* src, THREAD_TYPE* dst)
 
 bool threadinfo_cmp_memory_cs(THREAD_TYPE* src, THREAD_TYPE* dst)
 {
-	int is_src_server =
-	    (GET_AGENT_THREAD(src)->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                                          thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
-	int is_dst_server =
-	    (GET_AGENT_THREAD(dst)->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                                          thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_src_server = (GET_AGENT_THREAD(src)->m_th_analysis_flags &
+	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server = (GET_AGENT_THREAD(dst)->m_th_analysis_flags &
+	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
 
 	uint64_t s = GET_AGENT_THREAD(src)->m_procinfo->m_vmrss_kb * (is_src_server * 1000);
 	uint64_t d = GET_AGENT_THREAD(dst)->m_procinfo->m_vmrss_kb * (is_dst_server * 1000);
@@ -874,53 +894,55 @@ bool threadinfo_cmp_memory_cs(THREAD_TYPE* src, THREAD_TYPE* dst)
 
 bool threadinfo_cmp_io_cs(THREAD_TYPE* src, THREAD_TYPE* dst)
 {
-	int is_src_server =
-	    (GET_AGENT_THREAD(src)->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                                          thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
-	int is_dst_server =
-	    (GET_AGENT_THREAD(dst)->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                                          thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_src_server = (GET_AGENT_THREAD(src)->m_th_analysis_flags &
+	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server = (GET_AGENT_THREAD(dst)->m_th_analysis_flags &
+	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
 
-	uint64_t s =
-	    GET_AGENT_THREAD(src)->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() * (is_src_server * 1000);
-	uint64_t d =
-	    GET_AGENT_THREAD(dst)->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() * (is_dst_server * 1000);
+	uint64_t s = GET_AGENT_THREAD(src)->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() *
+	             (is_src_server * 1000);
+	uint64_t d = GET_AGENT_THREAD(dst)->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() *
+	             (is_dst_server * 1000);
 
 	return (s > d);
 }
 
 bool threadinfo_cmp_net_cs(THREAD_TYPE* src, THREAD_TYPE* dst)
 {
-	int is_src_server =
-	    (GET_AGENT_THREAD(src)->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                                          thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
-	int is_dst_server =
-	    (GET_AGENT_THREAD(dst)->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                                          thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_src_server = (GET_AGENT_THREAD(src)->m_th_analysis_flags &
+	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server = (GET_AGENT_THREAD(dst)->m_th_analysis_flags &
+	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
 
-	uint64_t s =
-	    GET_AGENT_THREAD(src)->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() * (is_src_server * 1000);
-	uint64_t d =
-	    GET_AGENT_THREAD(dst)->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() * (is_dst_server * 1000);
+	uint64_t s = GET_AGENT_THREAD(src)->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() *
+	             (is_src_server * 1000);
+	uint64_t d = GET_AGENT_THREAD(dst)->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() *
+	             (is_dst_server * 1000);
 
 	return (s > d);
 }
 
 bool threadinfo_cmp_transactions_cs(THREAD_TYPE* src, THREAD_TYPE* dst)
 {
-	int is_src_server =
-	    (GET_AGENT_THREAD(src)->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                                          thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
-	int is_dst_server =
-	    (GET_AGENT_THREAD(dst)->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                                          thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_src_server = (GET_AGENT_THREAD(src)->m_th_analysis_flags &
+	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server = (GET_AGENT_THREAD(dst)->m_th_analysis_flags &
+	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
 
-	uint64_t s =
-	    GET_AGENT_THREAD(src)->m_procinfo->m_proc_transaction_metrics.get_counter()->get_tot_count() *
-	    (is_src_server * 1000);
-	uint64_t d =
-	    GET_AGENT_THREAD(dst)->m_procinfo->m_proc_transaction_metrics.get_counter()->get_tot_count() *
-	    (is_dst_server * 1000);
+	uint64_t s = GET_AGENT_THREAD(src)
+	                 ->m_procinfo->m_proc_transaction_metrics.get_counter()
+	                 ->get_tot_count() *
+	             (is_src_server * 1000);
+	uint64_t d = GET_AGENT_THREAD(dst)
+	                 ->m_procinfo->m_proc_transaction_metrics.get_counter()
+	                 ->get_tot_count() *
+	             (is_dst_server * 1000);
 
 	return (s > d);
 }

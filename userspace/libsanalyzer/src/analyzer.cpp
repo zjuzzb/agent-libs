@@ -5328,7 +5328,7 @@ void sinsp_analyzer::flush_done_handler(const sinsp_evt* evt)
 //
 void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 {
-	thread_analyzer_info* tainfo = GET_AGENT_THREAD(evt->m_tinfo);
+	thread_analyzer_info* tainfo = GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt));
 	int64_t wd = tainfo->m_last_wait_duration_ns;
 
 	ASSERT(tainfo != nullptr);
@@ -5598,7 +5598,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 		return;
 	}
 
-	tainfo = GET_AGENT_THREAD(evt->m_tinfo);
+	tainfo = GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt));
 
 	if (tainfo == nullptr)
 	{
@@ -5715,9 +5715,9 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 
 		m_host_metrics.m_syscall_errors.add(evt);
 
-		ASSERT(GET_AGENT_THREAD(evt->m_tinfo));
+		ASSERT(GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt)));
 
-		GET_AGENT_THREAD(evt->m_tinfo)->m_syscall_errors.add(evt);
+		GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt))->m_syscall_errors.add(evt);
 
 		if (!evt->m_tinfo->m_container_id.empty())
 		{
@@ -8105,7 +8105,7 @@ std::string sinsp_analyzer::get_metrics_dir()
 sinsp_threadinfo* sinsp_analyzer::build_threadinfo(sinsp* inspector)
 {
 #ifdef USE_AGENT_THREAD
-	auto tinfo = new thread_analzyer_info(inspector, this);
+	auto tinfo = new thread_analyzer_info(inspector, this, m_tap);
 	tinfo->init();
 	return tinfo;
 #else

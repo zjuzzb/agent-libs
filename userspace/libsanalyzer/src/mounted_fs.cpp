@@ -1,3 +1,4 @@
+#include "analyzer_thread.h"
 #include "analyzer_thread_type.h"
 #include "mounted_fs.h"
 #include "sdc_internal.pb.h"

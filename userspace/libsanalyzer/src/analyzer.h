@@ -448,17 +448,29 @@ public:
 	                                                   bool lookup_only,
 	                                                   bool main_thread = false)
 	{
+		return sinsp_analyzer::get_thread_ref(*m_inspector,
+		                                      tid,
+		                                      query_os_if_not_found,
+		                                      lookup_only,
+		                                      main_thread);
+	}
+
+	static inline std::shared_ptr<THREAD_TYPE> get_thread_ref(sinsp& inspector,
+	                                                          int64_t tid,
+	                                                          bool query_os_if_not_found,
+	                                                          bool lookup_only,
+	                                                          bool main_thread = false)
+	{
 		auto sinsp_thread =
-		    m_inspector->get_thread_ref(tid, query_os_if_not_found, lookup_only, main_thread);
+		    inspector.get_thread_ref(tid, query_os_if_not_found, lookup_only, main_thread);
 #ifdef USE_AGENT_THREAD
-		auto analyzer_thread = std::dynamic_ptr_cast<thread_analyzer_info>(sinsp_thread);
+		auto analyzer_thread = std::dynamic_pointer_cast<thread_analyzer_info>(sinsp_thread);
 		ASSERT(sinsp_thread == analyzer_thread);
 		return analyzer_thread;
 #else
 		return sinsp_thread;
 #endif
 	}
-
 	inline sinsp_container_info::ptr_t get_container(const std::string& container_id)
 	{
 		return m_inspector->m_container_manager.get_container(container_id);

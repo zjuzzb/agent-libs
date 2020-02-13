@@ -586,7 +586,7 @@ void secure_audit::append_connection(connection_type type,
 	}
 	else
 	{
-#if USE_AGENT_THREAD
+#ifdef USE_AGENT_THREAD
 		tinfo = dynamic_cast<thread_analyzer_info*>(conn.m_dproc.get()->get_main_thread());
 #else
 		tinfo = conn.m_dproc.get()->get_main_thread();

@@ -661,7 +661,7 @@ TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
 		for (auto& srv : udps.get_servers())
 		{
 #ifdef USE_AGENT_THREAD
-			thread_analyzer_info* ti = dyanamic_cast<thread_analyzer_info*>(
+			thread_analyzer_info* ti = dynamic_cast<thread_analyzer_info*>(
 			    param.m_inspector->get_thread(srv->get_tid(), false, true));
 #else
 			sinsp_threadinfo* ti = param.m_inspector->get_thread(srv->get_tid(), false, true);

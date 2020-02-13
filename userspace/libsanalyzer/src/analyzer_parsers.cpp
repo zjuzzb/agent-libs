@@ -11,9 +11,9 @@
 #include "../../driver/ppm_ringbuffer.h"
 
 #include <fcntl.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <inttypes.h>
 #undef min
 #undef max
 #include "analyzer_fd.h"
@@ -201,16 +201,16 @@ void sinsp_analyzer_parsers::parse_accept_exit(sinsp_evt* evt)
 		return;
 	}
 
-	if (queueratio > GET_AGENT_THREAD(evt->m_tinfo)->m_connection_queue_usage_pct)
+	if (queueratio > GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt))->m_connection_queue_usage_pct)
 	{
-		GET_AGENT_THREAD(evt->m_tinfo)->m_connection_queue_usage_pct = queueratio;
+		GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt))->m_connection_queue_usage_pct = queueratio;
 	}
 
 	//
 	// If this comes after a wait, reset the last wait time, since we don't count
 	// time waiting for an accept as I/O time
 	//
-	GET_AGENT_THREAD(evt->m_tinfo)->m_last_wait_duration_ns = 0;
+	GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt))->m_last_wait_duration_ns = 0;
 }
 
 void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt* evt)
@@ -244,7 +244,7 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt* evt)
 	//
 	if (retval >= 0)
 	{
-		THREAD_TYPE* tinfo = evt->m_tinfo;
+		THREAD_TYPE* tinfo = thread_analyzer_info::get_thread_from_event(evt);
 
 		if (tinfo == NULL)
 		{

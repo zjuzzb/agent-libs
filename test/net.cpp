@@ -709,7 +709,11 @@ TEST_F(sys_call_test, net_ssl_requests)
 			threadtable->loop([&](sinsp_threadinfo& tinfo) {
 				if (tinfo.m_comm == "tests")
 				{
-					transaction_metrics.add(&GET_AGENT_THREAD(&tinfo)->m_transaction_metrics);
+#ifdef USE_AGENT_THREAD
+					transaction_metrics.add(&dynamic_cast<thread_analyzer_info*>(&tinfo)->m_transaction_metrics);
+#else
+					transaction_metrics.add(&tinfo.m_ainfo->m_transaction_metrics);
+#endif
 				}
 				return true;
 			});

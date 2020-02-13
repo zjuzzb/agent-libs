@@ -1,8 +1,8 @@
 #pragma once
 
-#include "analyzer_thread_type.h"
 #include "analyzer_file_stat.h"
 #include "analyzer_settings.h"
+#include "analyzer_thread_type.h"
 #include "analyzer_utils.h" /* make_unique */
 #include "app_checks_proxy_interface.h"
 #include "delays.h"
@@ -13,6 +13,8 @@
 
 #include <chrono>
 #include <memory>
+
+class audit_tap;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Information that is included only in processes that are main threads
@@ -137,7 +139,11 @@ public:
 	};
 	// clang-format on
 
-	thread_analyzer_info(sinsp* inspector, sinsp_analyzer* analyzer);
+	thread_analyzer_info(sinsp* inspector,
+	                     sinsp_analyzer* analyzer);
+	thread_analyzer_info(sinsp* inspector,
+	                     sinsp_analyzer* analyzer,
+	                     std::shared_ptr<audit_tap>& audit_tap);
 	~thread_analyzer_info();
 
 	thread_analyzer_info(const thread_analyzer_info&) = delete;
@@ -181,7 +187,7 @@ public:
 
 	const proc_config& get_proc_config();
 
-	inline const std::set<uint16_t>& listening_ports()
+	inline const std::set<uint16_t>& listening_ports() const
 	{
 		if (!m_listening_ports)
 		{
@@ -212,6 +218,7 @@ public:
 	// Global state
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;
+	std::shared_ptr<audit_tap> m_tap;
 #ifndef USE_AGENT_THREAD
 	sinsp_threadinfo* m_tinfo;
 #endif
@@ -286,8 +293,9 @@ public:
 		}
 	}
 
-	void scan_listening_ports(bool add_procfs_scan = false,
-	                          uint32_t procfs_scan_interval = DEFAULT_PROCFS_SCAN_INTERVAL_SECS);
+	void scan_listening_ports(
+	    bool add_procfs_scan = false,
+	    uint32_t procfs_scan_interval = DEFAULT_PROCFS_SCAN_INTERVAL_SECS) const;
 
 	inline void set_exclude_from_sample(bool val) { m_procinfo->m_exclude_from_sample = val; }
 
@@ -309,9 +317,8 @@ public:
 	inline THREAD_TYPE* get_parent_thread_info()
 	{
 #ifdef USE_AGENT_THREAD
-		sinsp_threadinfo* sinsp_thread = parent_thread();
-		thread_analyzer_info* analyzer_thread =
-		    dynamic_cast<thread_analyzer_info*>(sinsp_thread);
+		sinsp_threadinfo* sinsp_thread = get_parent_thread();
+		thread_analyzer_info* analyzer_thread = dynamic_cast<thread_analyzer_info*>(sinsp_thread);
 		ASSERT(sinsp_thread == analyzer_thread);
 		return analyzer_thread;
 #else
@@ -335,12 +342,12 @@ private:
 	static const uint32_t RESCAN_PORT_INTERVAL_SECS = 20;
 	using time_point_t = std::chrono::time_point<std::chrono::steady_clock>;
 	std::unique_ptr<main_thread_analyzer_info> m_main_thread_ainfo;
-	std::unique_ptr<std::set<uint16_t>> m_listening_ports;
-	std::set<uint16_t> m_procfs_found_ports;
+	mutable std::unique_ptr<std::set<uint16_t>> m_listening_ports;
+	mutable std::set<uint16_t> m_procfs_found_ports;
 	std::set<std::string> m_app_checks_found;
 	bool m_prom_check_found;
-	time_point_t m_last_port_scan;
-	time_point_t m_last_procfs_port_scan;
+	mutable time_point_t m_last_port_scan;
+	mutable time_point_t m_last_procfs_port_scan;
 
 	static std::string ports_to_string(const std::set<uint16_t>& ports);
 

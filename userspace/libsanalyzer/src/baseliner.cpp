@@ -305,7 +305,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 			//
 			// Process the FD table
 			//
-			sinsp_fdtable* fdt = tinfo.get_fd_table();
+			const sinsp_fdtable* fdt = tinfo.get_fd_table();
 
 			if(fdt != NULL)
 			{

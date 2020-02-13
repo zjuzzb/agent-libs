@@ -828,7 +828,7 @@ class external_processor_dummy : public libsinsp::event_processor
 	sinsp_threadinfo* build_threadinfo(sinsp* inspector) override
 	{
 #ifdef USE_AGENT_THREAD
-		auto tinfo = new thread_analzyer_info(inspector, this);
+		auto tinfo = new thread_analyzer_info(inspector, nullptr);
 		tinfo->init();
 		return tinfo;
 #else
@@ -909,14 +909,16 @@ void add_connections_helper(secure_audit* audit,
 	inspector.open();
 
 	std::shared_ptr<THREAD_TYPE> proc = nullptr;
-	proc = inspector.get_thread_ref(expected_pid,
-	                                false /*don't query the os if not found*/,
-	                                true /*lookup only*/);
+	proc = sinsp_analyzer::get_thread_ref(inspector,
+	                                      expected_pid,
+	                                      false /*don't query the os if not found*/,
+	                                      true /*lookup only*/);
 
 	proc->m_container_id = expected_container_id;
 
 #ifdef USE_AGENT_THREAD
-	thread_analyzer_info* main_thread = dynamic_cast<thread_analyzer_info*>(proc->get_main_thread());
+	thread_analyzer_info* main_thread =
+	    dynamic_cast<thread_analyzer_info*>(proc->get_main_thread());
 	ASSERT_EQ(main_thread, proc->get_main_thread());
 #else
 	sinsp_threadinfo* main_thread = proc->get_main_thread();
@@ -1196,7 +1198,8 @@ void add_file_access_helper(secure_audit* audit,
 
 	proc->m_container_id = expected_container_id;
 #ifdef USE_AGENT_THREAD
-	thread_analyzer_info* main_thread = dynamic_cast<thread_analyzer_info*>(proc->get_main_thread());
+	thread_analyzer_info* main_thread =
+	    dynamic_cast<thread_analyzer_info*>(proc->get_main_thread());
 	ASSERT_EQ(main_thread, proc->get_main_thread());
 #else
 	sinsp_threadinfo* main_thread = proc->get_main_thread();
@@ -1229,7 +1232,17 @@ void add_file_access_helper(secure_audit* audit,
 
 	for (auto testcase : testcases)
 	{
-		audit->emit_file_access_async(proc.get(), testcase.ts, testcase.fullpath, testcase.flags);
+#ifdef USE_AGENT_THREAD
+		audit->emit_file_access_async(dynamic_cast<thread_analyzer_info*>(proc.get()),
+		                              testcase.ts,
+		                              testcase.fullpath,
+		                              testcase.flags);
+#else
+		audit->emit_file_access_async(proc.get(),
+		                              testcase.ts,
+		                              testcase.fullpath,
+		                              testcase.flags);
+#endif
 	}
 }
 

@@ -313,7 +313,7 @@ sinsp_analyzer_fd_listener::sinsp_analyzer_fd_listener(sinsp* const inspector,
 {
 }
 
-bool sinsp_analyzer_fd_listener::patch_network_role(sinsp_threadinfo* ptinfo,
+bool sinsp_analyzer_fd_listener::patch_network_role(THREAD_TYPE* ptinfo,
                                                     sinsp_fdinfo_t* pfdinfo,
                                                     bool incoming)
 {
@@ -402,7 +402,8 @@ sinsp_connection* sinsp_analyzer_fd_listener::get_ipv4_connection(sinsp_fdinfo_t
 		// Create a connection entry here and try to automatically detect if this is the client or
 		// the server.
 		//
-		if (fdinfo->is_role_none() && !patch_network_role(evt->m_tinfo, fdinfo, incoming))
+		if (fdinfo->is_role_none() &&
+		    !patch_network_role(thread_analyzer_info::get_thread_from_event(evt), fdinfo, incoming))
 		{
 			return nullptr;
 		}
@@ -417,7 +418,8 @@ sinsp_connection* sinsp_analyzer_fd_listener::get_ipv4_connection(sinsp_fdinfo_t
 		connection->reset();
 		connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 
-		if (fdinfo->is_role_none() && !patch_network_role(evt->m_tinfo, fdinfo, incoming))
+		if (fdinfo->is_role_none() &&
+		    !patch_network_role(thread_analyzer_info::get_thread_from_event(evt), fdinfo, incoming))
 		{
 			// XXX should we return connection (without adding it to the table???) or nullptr?
 			// XXX how can we end up here?
@@ -467,7 +469,10 @@ sinsp_connection* sinsp_analyzer_fd_listener::get_ipv4_connection(sinsp_fdinfo_t
 
 			connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 
-			if (fdinfo->is_role_none() && !patch_network_role(evt->m_tinfo, fdinfo, incoming))
+			if (fdinfo->is_role_none() &&
+			    !patch_network_role(thread_analyzer_info::get_thread_from_event(evt),
+			                        fdinfo,
+			                        incoming))
 			{
 				// XXX should we return connection (without adding it to the table???) or nullptr?
 				// XXX how can we end up here?
@@ -548,8 +553,8 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt* evt,
 		}
 		else if (fdinfo->is_role_client())
 		{
-			GET_AGENT_THREAD(evt->m_tinfo)->m_th_analysis_flags |=
-			    thread_analyzer_info::flags::AF_IS_NET_CLIENT;
+			GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt))
+			    ->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 			connection->m_metrics.m_client.add_in(1, original_len);
 		}
 		else
@@ -633,8 +638,8 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt* evt,
 		}
 		else if (fdinfo->is_role_client())
 		{
-			GET_AGENT_THREAD(evt->m_tinfo)->m_th_analysis_flags |=
-			    thread_analyzer_info::flags::AF_IS_NET_CLIENT;
+			GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt))
+			    ->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 			connection->m_metrics.m_client.add_out(1, original_len);
 		}
 		else
@@ -657,37 +662,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt* evt,
 
 namespace
 {
-#if 0
-void log_statsd_message(const sinsp_fdinfo_t* const fdinfo,
-			const std::string& container_id)
-{
-	const uint32_t client_ip = fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip;
-	const uint16_t client_port = fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport;
-	const uint32_t server_ip = fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip;
-	const uint16_t server_port = fdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport;
-
-	g_logger.format(sinsp_logger::SEV_DEBUG,
-	                "Detected statsd message ipv4: %u.%u.%u.%u:%u -> "
-			"%u.%u.%u.%u:%u container: %s",
-			client_ip & 0xFF,
-			(client_ip >>  8) & 0xFF,
-			(client_ip >> 16) & 0xFF,
-			(client_ip >> 24) & 0xFF,
-			client_port,
-			server_ip & 0xFF,
-			(server_ip >>  8) & 0xFF,
-			(server_ip >> 16) & 0xFF,
-			(server_ip >> 24) & 0xFF,
-			server_port,
-			container_id.c_str());
-
-}
-
-#define LOG_STATSD_MESSAGE(...) log_statsd_message(__VA_ARGS__)
-#else
 #define LOG_STATSD_MESSAGE(...)
-#endif
-
 }  // end namespace
 
 void sinsp_analyzer_fd_listener::handle_statsd_write(sinsp_evt* const evt,
@@ -834,7 +809,7 @@ void sinsp_analyzer_fd_listener::add_client_ipv4_connection(sinsp_evt* evt)
 	                                   flags,
 	                                   evt->m_errorcode);
 
-	GET_AGENT_THREAD(evt->m_tinfo)->m_th_analysis_flags |=
+	GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt))->m_th_analysis_flags |=
 	    thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 }
 
@@ -972,7 +947,12 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 	if (params->m_fdinfo->is_cloned() &&
 	    (params->m_fdinfo->is_ipv4_socket() || params->m_fdinfo->is_ipv6_socket()))
 	{
+#ifdef USE_AGENT_THREAD
+		THREAD_TYPE* ptinfo =
+		    dynamic_cast<thread_analyzer_info*>(params->m_tinfo)->get_parent_thread_info();
+#else
 		THREAD_TYPE* ptinfo = params->m_tinfo->get_parent_thread();
+#endif
 		if (ptinfo)
 		{
 			sinsp_fdinfo_t* pfdinfo = ptinfo->get_fd(params->m_fd);

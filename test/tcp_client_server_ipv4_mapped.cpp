@@ -678,8 +678,13 @@ void runtest_ipv4m(iotype iot,
 					          (GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_count_in +
 					           GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_count_out +
 					           GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_count_other));
-
-					ti = param.m_inspector->get_thread(ctid, false, true);
+#ifdef USE_AGENT_THREAD
+					ti = dynamic_cast<thread_analyzer_info*>(
+					    param.m_inspector->get_thread(ctid, false, true));
+#else
+					ti =
+					    param.m_inspector->get_thread(ctid, false, true);
+#endif
 					ASSERT_EQ((uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2,
 					          (GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_bytes_in +
 					           GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_bytes_out));
