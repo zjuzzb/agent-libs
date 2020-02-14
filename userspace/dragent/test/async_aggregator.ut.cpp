@@ -1,8 +1,9 @@
+#include "analyzer_utils.h"  // make_unique
 #include "async_aggregator.h"
-#include "analyzer_utils.h" // make_unique
-#include "watchdog_runnable_pool.h"
 #include "configuration_manager.h"
 #include "draios.pb.h"
+#include "watchdog_runnable_pool.h"
+
 #include <gtest.h>
 #include <iostream>
 
@@ -17,7 +18,6 @@ public:
 	{
 		return aggregator.m_count_since_flush;
 	}
-
 };
 
 // make sure pushing a single PB through the aggregator works
@@ -26,12 +26,13 @@ TEST(async_aggregator, single)
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);
 
-	dragent::async_aggregator aggregator(input_queue,
-	                                     output_queue,
-	                                     // stupid short timeout because aint nobody got time for waiting for cleanup!
-	                                     1,
-	                                     10,
-	                                     "");
+	dragent::async_aggregator aggregator(
+	    input_queue,
+	    output_queue,
+	    // stupid short timeout because aint nobody got time for waiting for cleanup!
+	    1,
+	    10,
+	    "");
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);
 	std::atomic<bool> sent_metrics(false);
@@ -41,11 +42,14 @@ TEST(async_aggregator, single)
 	input.set_machine_id(machine_id);
 
 	input_queue.put(std::make_shared<flush_data_message>(
-		1,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5
-	)); // random numbers since we don't propagate those fields
+	    1,
+	    &sent_metrics,
+	    make_unique<draiosproto::metrics>(input),
+	    1,
+	    2,
+	    3,
+	    4,
+	    5));  // random numbers since we don't propagate those fields
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
 	{
 		usleep(1000);
@@ -76,12 +80,13 @@ TEST(async_aggregator, multiple)
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);
 
-	dragent::async_aggregator aggregator(input_queue,
-	                                     output_queue,
-	                                     // stupid short timeout because aint nobody got time for waiting for cleanup!
-	                                     1,
-	                                     2,
-	                                     "");
+	dragent::async_aggregator aggregator(
+	    input_queue,
+	    output_queue,
+	    // stupid short timeout because aint nobody got time for waiting for cleanup!
+	    1,
+	    2,
+	    "");
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 1);
 	std::atomic<bool> sent_metrics(false);
@@ -91,21 +96,27 @@ TEST(async_aggregator, multiple)
 
 	uint32_t timestamp = 1 * NSECS_PER_SEC;
 	input_queue.put(std::make_shared<flush_data_message>(
-		timestamp,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5
-	)); // random numbers since we don't propagate those fields
+	    timestamp,
+	    &sent_metrics,
+	    make_unique<draiosproto::metrics>(input),
+	    1,
+	    2,
+	    3,
+	    4,
+	    5));  // random numbers since we don't propagate those fields
 
 	input.set_sampling_ratio(2);
 	input_queue.put(std::make_shared<flush_data_message>(
-		timestamp + 1 * NSECS_PER_SEC,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5
-	)); // random numbers since we don't propagate those fields
+	    timestamp + 1 * NSECS_PER_SEC,
+	    &sent_metrics,
+	    make_unique<draiosproto::metrics>(input),
+	    1,
+	    2,
+	    3,
+	    4,
+	    5));  // random numbers since we don't propagate those fields
 
-	// sleep 
+	// sleep
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
 	{
 		usleep(1000);
@@ -115,7 +126,7 @@ TEST(async_aggregator, multiple)
 	std::shared_ptr<flush_data_message> output;
 	bool ret = output_queue.get(&output, 0);
 	ASSERT_TRUE(ret);
-	EXPECT_EQ(output->m_ts, timestamp + 1 * NSECS_PER_SEC); // should get second timestamp
+	EXPECT_EQ(output->m_ts, timestamp + 1 * NSECS_PER_SEC);  // should get second timestamp
 	EXPECT_EQ(output->m_metrics_sent, &sent_metrics);
 	EXPECT_EQ(output->m_metrics->aggr_sampling_ratio().sum(), 3);
 
@@ -137,12 +148,13 @@ TEST(async_aggregator, followup_aggregation)
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);
 
-	dragent::async_aggregator aggregator(input_queue,
-	                                     output_queue,
-	                                     // stupid short timeout because aint nobody got time for waiting for cleanup!
-	                                     1,
-	                                     10,
-	                                     "");
+	dragent::async_aggregator aggregator(
+	    input_queue,
+	    output_queue,
+	    // stupid short timeout because aint nobody got time for waiting for cleanup!
+	    1,
+	    10,
+	    "");
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 1);
 	std::atomic<bool> sent_metrics(false);
@@ -151,19 +163,25 @@ TEST(async_aggregator, followup_aggregation)
 	input.set_sampling_ratio(1);
 
 	input_queue.put(std::make_shared<flush_data_message>(
-		0,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5
-	)); // random numbers since we don't propagate those fields
+	    0,
+	    &sent_metrics,
+	    make_unique<draiosproto::metrics>(input),
+	    1,
+	    2,
+	    3,
+	    4,
+	    5));  // random numbers since we don't propagate those fields
 
 	input.set_sampling_ratio(2);
 	input_queue.put(std::make_shared<flush_data_message>(
-		1,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5
-	)); // random numbers since we don't propagate those fields
+	    1,
+	    &sent_metrics,
+	    make_unique<draiosproto::metrics>(input),
+	    1,
+	    2,
+	    3,
+	    4,
+	    5));  // random numbers since we don't propagate those fields
 
 	for (uint32_t i = 0; output_queue.size() != 2 && i < 5000; ++i)
 	{
@@ -195,12 +213,13 @@ TEST(async_aggregator, limiter)
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);
 
-	dragent::async_aggregator aggregator(input_queue,
-	                                     output_queue,
-	                                     // stupid short timeout because aint nobody got time for waiting for cleanup!
-	                                     1,
-	                                     10,
-	                                     "");
+	dragent::async_aggregator aggregator(
+	    input_queue,
+	    output_queue,
+	    // stupid short timeout because aint nobody got time for waiting for cleanup!
+	    1,
+	    10,
+	    "");
 
 	// check that we have default limit
 	EXPECT_EQ(dragent::aggregator_limits::global_limits->m_containers, UINT32_MAX);
@@ -222,18 +241,21 @@ TEST(async_aggregator, limiter)
 	draiosproto::metrics input;
 	std::string machine_id = "zipperbox";
 	input.set_machine_id(machine_id);
-	for(int i = 0; i < 20; i++)
+	for (int i = 0; i < 20; i++)
 	{
 		auto container = input.add_containers();
 		container->set_id(std::to_string(i));
 	}
 
 	input_queue.put(std::make_shared<flush_data_message>(
-		0,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5
-	)); // random numbers since we don't propagate those fields
+	    0,
+	    &sent_metrics,
+	    make_unique<draiosproto::metrics>(input),
+	    1,
+	    2,
+	    3,
+	    4,
+	    5));  // random numbers since we don't propagate those fields
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
 	{
 		usleep(1000);
@@ -247,8 +269,11 @@ TEST(async_aggregator, limiter)
 
 	// double check the one-off config based limit twiddleable got set properly during
 	// limiting
-	EXPECT_EQ(configuration_manager::instance().get_config<double>("aggregator.prom_metrics_weight")->get_value(), .1);
-	
+	EXPECT_EQ(configuration_manager::instance()
+	              .get_config<double>("aggregator.prom_metrics_weight")
+	              ->get_value(),
+	          .1);
+
 	aggregator.stop();
 	pool.stop_all();
 	// we twiddled the global limit state, so reset it
@@ -293,7 +318,9 @@ TEST(async_aggregator, limit_jmx_attributes_helper)
 	EXPECT_EQ(ji.beans()[2].attributes().size(), 0);
 	EXPECT_EQ(ji.beans()[3].attributes()[0].subattributes().size(), 1);
 	EXPECT_EQ(ji.beans()[3].attributes()[0].subattributes()[0].subattributes().size(), 1);
-	EXPECT_EQ(ji.beans()[3].attributes()[0].subattributes()[0].subattributes()[0].subattributes().size(), 0);
+	EXPECT_EQ(
+	    ji.beans()[3].attributes()[0].subattributes()[0].subattributes()[0].subattributes().size(),
+	    0);
 	EXPECT_EQ(ji.beans()[4].attributes().size(), 0);
 }
 
@@ -305,10 +332,28 @@ TEST(async_aggregator, limit_jmx_attributes)
 	// fall off appropriately
 	metrics.mutable_protos()->mutable_java()->add_beans()->add_attributes();
 	metrics.mutable_protos()->mutable_java()->add_beans()->add_attributes();
-	metrics.mutable_unreported_counters()->mutable_protos()->mutable_java()->add_beans()->add_attributes();
-	metrics.mutable_unreported_counters()->mutable_protos()->mutable_java()->add_beans()->add_attributes();
-	metrics.add_programs()->mutable_procinfo()->mutable_protos()->mutable_java()->add_beans()->add_attributes();
-	metrics.add_programs()->mutable_procinfo()->mutable_protos()->mutable_java()->add_beans()->add_attributes();
+	metrics.mutable_unreported_counters()
+	    ->mutable_protos()
+	    ->mutable_java()
+	    ->add_beans()
+	    ->add_attributes();
+	metrics.mutable_unreported_counters()
+	    ->mutable_protos()
+	    ->mutable_java()
+	    ->add_beans()
+	    ->add_attributes();
+	metrics.add_programs()
+	    ->mutable_procinfo()
+	    ->mutable_protos()
+	    ->mutable_java()
+	    ->add_beans()
+	    ->add_attributes();
+	metrics.add_programs()
+	    ->mutable_procinfo()
+	    ->mutable_protos()
+	    ->mutable_java()
+	    ->add_beans()
+	    ->add_attributes();
 	metrics.add_containers()->mutable_protos()->mutable_java()->add_beans()->add_attributes();
 	metrics.add_containers()->mutable_protos()->mutable_java()->add_beans()->add_attributes();
 
@@ -325,19 +370,20 @@ TEST(async_aggregator, limit_jmx_attributes)
 	EXPECT_EQ(metrics.protos().java().beans()[0].attributes().size(), 1);
 	EXPECT_EQ(metrics.protos().java().beans()[1].attributes().size(), 0);
 }
-	
+
 // make sure the post-aggregate substitutions are happening
 TEST(async_aggregator, substitutions)
 {
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);
 
-	dragent::async_aggregator aggregator(input_queue,
-	                                     output_queue,
-	                                     // stupid short timeout because aint nobody got time for waiting for cleanup!
-	                                     1,
-	                                     10,
-	                                     "");
+	dragent::async_aggregator aggregator(
+	    input_queue,
+	    output_queue,
+	    // stupid short timeout because aint nobody got time for waiting for cleanup!
+	    1,
+	    10,
+	    "");
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);
 	std::atomic<bool> sent_metrics(false);
@@ -345,7 +391,8 @@ TEST(async_aggregator, substitutions)
 	draiosproto::metrics input;
 	auto proc = input.add_programs();
 	proc->mutable_procinfo()->mutable_details()->set_comm("wrong");
-	proc->mutable_procinfo()->mutable_details()->set_exe("something just to make the hash different");
+	proc->mutable_procinfo()->mutable_details()->set_exe(
+	    "something just to make the hash different");
 	proc->mutable_procinfo()->mutable_protos()->mutable_java()->set_process_name("right");
 	uint64_t spid = 8675309;
 	proc->add_pids(spid);
@@ -361,11 +408,14 @@ TEST(async_aggregator, substitutions)
 	iconn->set_state(draiosproto::connection_state::CONN_FAILED);
 
 	input_queue.put(std::make_shared<flush_data_message>(
-		0,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5
-	)); // random numbers since we don't propagate those fields
+	    0,
+	    &sent_metrics,
+	    make_unique<draiosproto::metrics>(input),
+	    1,
+	    2,
+	    3,
+	    4,
+	    5));  // random numbers since we don't propagate those fields
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
 	{
 		usleep(1000);
@@ -378,21 +428,23 @@ TEST(async_aggregator, substitutions)
 	EXPECT_EQ(output->m_metrics->programs().size(), 2);
 	EXPECT_EQ(output->m_metrics->programs()[0].procinfo().details().comm(), "right");
 	EXPECT_EQ(output->m_metrics->programs()[0].pids().size(), 1);
-	EXPECT_EQ(output->m_metrics->programs()[0].pids()[0],
-			  metrics_message_aggregator_impl::program_java_hasher(output->m_metrics->programs()[0]));
-	EXPECT_EQ(output->m_metrics->programs()[1].pids()[0],
-			  metrics_message_aggregator_impl::program_java_hasher(output->m_metrics->programs()[1]));
+	EXPECT_EQ(
+	    output->m_metrics->programs()[0].pids()[0],
+	    metrics_message_aggregator_impl::program_java_hasher(output->m_metrics->programs()[0]));
+	EXPECT_EQ(
+	    output->m_metrics->programs()[1].pids()[0],
+	    metrics_message_aggregator_impl::program_java_hasher(output->m_metrics->programs()[1]));
 	EXPECT_EQ(output->m_metrics->ipv4_connections().size(), 1);
 	EXPECT_EQ(output->m_metrics->ipv4_connections()[0].spid(),
-			  output->m_metrics->programs()[0].pids()[0]);
+	          output->m_metrics->programs()[0].pids()[0]);
 	EXPECT_EQ(output->m_metrics->ipv4_connections()[0].dpid(),
-			  output->m_metrics->programs()[1].pids()[0]);
+	          output->m_metrics->programs()[1].pids()[0]);
 	EXPECT_EQ(output->m_metrics->ipv4_incomplete_connections_v2().size(), 1);
 	EXPECT_EQ(output->m_metrics->ipv4_incomplete_connections_v2()[0].spid(),
-			  output->m_metrics->programs()[0].pids()[0]);
+	          output->m_metrics->programs()[0].pids()[0]);
 	EXPECT_EQ(output->m_metrics->ipv4_incomplete_connections_v2()[0].dpid(),
-			  output->m_metrics->programs()[1].pids()[0]);
-	
+	          output->m_metrics->programs()[1].pids()[0]);
+
 	aggregator.stop();
 	pool.stop_all();
 }
@@ -416,12 +468,14 @@ TEST(async_aggregator, relocate_prom_metrics)
 	EXPECT_EQ(pi.prometheus().process_name(), "process");
 	ASSERT_EQ(pi.prometheus().metrics().size(), 2);
 	EXPECT_EQ(pi.prometheus().metrics()[0].name(), "metric 1");
-	EXPECT_EQ(pi.prometheus().metrics()[1].type(), draiosproto::app_metric_type::APP_METRIC_TYPE_PROMETHEUS_RAW);
+	EXPECT_EQ(pi.prometheus().metrics()[1].type(),
+	          draiosproto::app_metric_type::APP_METRIC_TYPE_PROMETHEUS_RAW);
 	EXPECT_EQ(pi.prometheus().metrics()[1].value(), 2);
 	EXPECT_EQ(pi.prometheus().metrics()[1].aggr_value_double().sum(), 3);
 	EXPECT_EQ(pi.prometheus().metrics()[1].tags()[0].key(), "some key");
 	EXPECT_EQ(pi.prometheus().metrics()[1].buckets()[0].count(), 4);
-	EXPECT_EQ(pi.prometheus().metrics()[1].prometheus_type(), draiosproto::prometheus_type::PROMETHEUS_TYPE_GAUGE);
+	EXPECT_EQ(pi.prometheus().metrics()[1].prometheus_type(),
+	          draiosproto::prometheus_type::PROMETHEUS_TYPE_GAUGE);
 }
 
 TEST(async_aggregator, relocate_moved_fields)
@@ -438,7 +492,8 @@ TEST(async_aggregator, relocate_moved_fields)
 	m.mutable_protos()->mutable_prom_info()->set_process_name("5");
 	m.mutable_unreported_counters()->mutable_protos()->mutable_prom_info()->set_process_name("6");
 	m.add_containers()->mutable_protos()->mutable_prom_info()->set_process_name("7");
-	m.add_programs()->mutable_procinfo()->mutable_protos()->mutable_prom_info()->set_process_name("8");
+	m.add_programs()->mutable_procinfo()->mutable_protos()->mutable_prom_info()->set_process_name(
+	    "8");
 
 	dragent::async_aggregator::relocate_moved_fields(m);
 	ASSERT_EQ(m.ipv4_incomplete_connections().size(), 1);
@@ -446,12 +501,77 @@ TEST(async_aggregator, relocate_moved_fields)
 	EXPECT_EQ(m.ipv4_incomplete_connections()[0].spid(), 2);
 	EXPECT_EQ(m.ipv4_incomplete_connections()[0].dpid(), 3);
 	EXPECT_EQ(m.ipv4_incomplete_connections()[0].counters().n_aggregated_connections(), 4);
-	EXPECT_EQ(m.ipv4_incomplete_connections()[0].state(), draiosproto::connection_state::CONN_FAILED);
+	EXPECT_EQ(m.ipv4_incomplete_connections()[0].state(),
+	          draiosproto::connection_state::CONN_FAILED);
 	EXPECT_EQ(m.ipv4_incomplete_connections()[0].error_code(), draiosproto::error_code::ERR_ECHILD);
 	EXPECT_EQ(m.protos().prometheus().process_name(), "5");
 	EXPECT_EQ(m.unreported_counters().protos().prometheus().process_name(), "6");
 	EXPECT_EQ(m.containers()[0].protos().prometheus().process_name(), "7");
 	EXPECT_EQ(m.programs()[0].procinfo().protos().prometheus().process_name(), "8");
+}
+
+TEST(async_aggregator, empty_unreported_containers)
+{
+	dragent::async_aggregator::queue_t input_queue(10);
+	dragent::async_aggregator::queue_t output_queue(10);
+
+	dragent::async_aggregator aggregator(
+	    input_queue,
+	    output_queue,
+	    // stupid short timeout because aint nobody got time for waiting for cleanup!
+	    1,
+	    10,
+	    "");
+	dragent::watchdog_runnable_pool pool;
+	pool.start(aggregator, 10);
+	std::atomic<bool> sent_metrics(false);
+
+	draiosproto::metrics input;
+
+	input_queue.put(std::make_shared<flush_data_message>(
+	    0,
+	    &sent_metrics,
+	    make_unique<draiosproto::metrics>(input),
+	    1,
+	    2,
+	    3,
+	    4,
+	    5));  // random numbers since we don't propagate those fields
+	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
+	{
+		usleep(1000);
+	}
+
+	ASSERT_EQ(output_queue.size(), 1);
+	std::shared_ptr<flush_data_message> output;
+	bool ret = output_queue.get(&output, 0);
+	ASSERT_TRUE(ret);
+	EXPECT_FALSE(output->m_metrics->has_unreported_counters());
+
+	draiosproto::metrics input2;
+	input2.mutable_unreported_counters()->add_names("some_name");
+	input_queue.put(std::make_shared<flush_data_message>(
+	    0,
+	    &sent_metrics,
+	    make_unique<draiosproto::metrics>(input2),
+	    1,
+	    2,
+	    3,
+	    4,
+	    5));  // random numbers since we don't propagate those fields
+	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
+	{
+		usleep(1000);
+	}
+
+	ASSERT_EQ(output_queue.size(), 1);
+	ret = output_queue.get(&output, 0);
+	ASSERT_TRUE(ret);
+	EXPECT_TRUE(output->m_metrics->has_unreported_counters());
+	EXPECT_EQ(output->m_metrics->unreported_counters().names().size(), 1);
+
+	aggregator.stop();
+	pool.stop_all();
 }
 
 // note: can't just wait for queue size here as possibility of race if
@@ -471,12 +591,13 @@ TEST(async_aggregator, flush_interval_zero)
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);
 
-	dragent::async_aggregator aggregator(input_queue,
-	                                     output_queue,
-	                                     // stupid short timeout because aint nobody got time for waiting for cleanup!
-	                                     1,
-	                                     5,
-	                                     "");
+	dragent::async_aggregator aggregator(
+	    input_queue,
+	    output_queue,
+	    // stupid short timeout because aint nobody got time for waiting for cleanup!
+	    1,
+	    5,
+	    "");
 
 	dragent::watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);
@@ -486,17 +607,19 @@ TEST(async_aggregator, flush_interval_zero)
 	EXPECT_EQ(test_helper::get_flush_interval(aggregator), 4);
 	aggregator.set_aggregation_interval(0);
 
-
 	draiosproto::metrics input;
 
 	// check that no aggregation works
 	std::atomic<bool> sent_metrics(false);
 	input.set_sampling_ratio(1);
-	input_queue.put(std::make_shared<flush_data_message>(
-		1,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5));
+	input_queue.put(std::make_shared<flush_data_message>(1,
+	                                                     &sent_metrics,
+	                                                     make_unique<draiosproto::metrics>(input),
+	                                                     1,
+	                                                     2,
+	                                                     3,
+	                                                     4,
+	                                                     5));
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
 	{
 		usleep(1000);
@@ -512,19 +635,25 @@ TEST(async_aggregator, flush_interval_zero)
 	// check that switching to zero while aggregation in flight works
 	aggregator.set_aggregation_interval(2);
 	input.set_sampling_ratio(2);
-	input_queue.put(std::make_shared<flush_data_message>(
-		1 * NSECS_PER_SEC,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5));
+	input_queue.put(std::make_shared<flush_data_message>(1 * NSECS_PER_SEC,
+	                                                     &sent_metrics,
+	                                                     make_unique<draiosproto::metrics>(input),
+	                                                     1,
+	                                                     2,
+	                                                     3,
+	                                                     4,
+	                                                     5));
 	wait_aggr(aggregator, 1);
 	aggregator.set_aggregation_interval(0);
 	input.set_sampling_ratio(3);
-	input_queue.put(std::make_shared<flush_data_message>(
-		2 * NSECS_PER_SEC,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5));
+	input_queue.put(std::make_shared<flush_data_message>(2 * NSECS_PER_SEC,
+	                                                     &sent_metrics,
+	                                                     make_unique<draiosproto::metrics>(input),
+	                                                     1,
+	                                                     2,
+	                                                     3,
+	                                                     4,
+	                                                     5));
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
 	{
 		usleep(1000);
@@ -539,17 +668,23 @@ TEST(async_aggregator, flush_interval_zero)
 	// check that we can aggregate after the above scenario
 	aggregator.set_aggregation_interval(2);
 	input.set_sampling_ratio(4);
-	input_queue.put(std::make_shared<flush_data_message>(
-		1 * NSECS_PER_SEC,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5));
+	input_queue.put(std::make_shared<flush_data_message>(1 * NSECS_PER_SEC,
+	                                                     &sent_metrics,
+	                                                     make_unique<draiosproto::metrics>(input),
+	                                                     1,
+	                                                     2,
+	                                                     3,
+	                                                     4,
+	                                                     5));
 	input.set_sampling_ratio(5);
-	input_queue.put(std::make_shared<flush_data_message>(
-		2 * NSECS_PER_SEC,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5));
+	input_queue.put(std::make_shared<flush_data_message>(2 * NSECS_PER_SEC,
+	                                                     &sent_metrics,
+	                                                     make_unique<draiosproto::metrics>(input),
+	                                                     1,
+	                                                     2,
+	                                                     3,
+	                                                     4,
+	                                                     5));
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
 	{
 		usleep(1000);
@@ -563,25 +698,34 @@ TEST(async_aggregator, flush_interval_zero)
 
 	// check that if we increase aggregation interval while aggregation in flight, it works
 	input.set_sampling_ratio(6);
-	input_queue.put(std::make_shared<flush_data_message>(
-		1 * NSECS_PER_SEC,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5));
+	input_queue.put(std::make_shared<flush_data_message>(1 * NSECS_PER_SEC,
+	                                                     &sent_metrics,
+	                                                     make_unique<draiosproto::metrics>(input),
+	                                                     1,
+	                                                     2,
+	                                                     3,
+	                                                     4,
+	                                                     5));
 	wait_aggr(aggregator, 1);
 	aggregator.set_aggregation_interval(3);
 	input.set_sampling_ratio(7);
-	input_queue.put(std::make_shared<flush_data_message>(
-		2 * NSECS_PER_SEC,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5));
+	input_queue.put(std::make_shared<flush_data_message>(2 * NSECS_PER_SEC,
+	                                                     &sent_metrics,
+	                                                     make_unique<draiosproto::metrics>(input),
+	                                                     1,
+	                                                     2,
+	                                                     3,
+	                                                     4,
+	                                                     5));
 	input.set_sampling_ratio(8);
-	input_queue.put(std::make_shared<flush_data_message>(
-		3 * NSECS_PER_SEC,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5));
+	input_queue.put(std::make_shared<flush_data_message>(3 * NSECS_PER_SEC,
+	                                                     &sent_metrics,
+	                                                     make_unique<draiosproto::metrics>(input),
+	                                                     1,
+	                                                     2,
+	                                                     3,
+	                                                     4,
+	                                                     5));
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
 	{
 		usleep(1000);
@@ -595,31 +739,43 @@ TEST(async_aggregator, flush_interval_zero)
 
 	// check that if we DECREASE interval while in flight, it works
 	input.set_sampling_ratio(6);
-	input_queue.put(std::make_shared<flush_data_message>(
-		1 * NSECS_PER_SEC,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5));
+	input_queue.put(std::make_shared<flush_data_message>(1 * NSECS_PER_SEC,
+	                                                     &sent_metrics,
+	                                                     make_unique<draiosproto::metrics>(input),
+	                                                     1,
+	                                                     2,
+	                                                     3,
+	                                                     4,
+	                                                     5));
 	input.set_sampling_ratio(7);
-	input_queue.put(std::make_shared<flush_data_message>(
-		2 * NSECS_PER_SEC,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5));
+	input_queue.put(std::make_shared<flush_data_message>(2 * NSECS_PER_SEC,
+	                                                     &sent_metrics,
+	                                                     make_unique<draiosproto::metrics>(input),
+	                                                     1,
+	                                                     2,
+	                                                     3,
+	                                                     4,
+	                                                     5));
 	wait_aggr(aggregator, 2);
 	aggregator.set_aggregation_interval(2);
 	input.set_sampling_ratio(8);
-	input_queue.put(std::make_shared<flush_data_message>(
-		3 * NSECS_PER_SEC,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5));
+	input_queue.put(std::make_shared<flush_data_message>(3 * NSECS_PER_SEC,
+	                                                     &sent_metrics,
+	                                                     make_unique<draiosproto::metrics>(input),
+	                                                     1,
+	                                                     2,
+	                                                     3,
+	                                                     4,
+	                                                     5));
 	input.set_sampling_ratio(9);
-	input_queue.put(std::make_shared<flush_data_message>(
-		4 * NSECS_PER_SEC,
-		&sent_metrics,
-		make_unique<draiosproto::metrics>(input),
-		1,2,3,4,5));
+	input_queue.put(std::make_shared<flush_data_message>(4 * NSECS_PER_SEC,
+	                                                     &sent_metrics,
+	                                                     make_unique<draiosproto::metrics>(input),
+	                                                     1,
+	                                                     2,
+	                                                     3,
+	                                                     4,
+	                                                     5));
 	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
 	{
 		usleep(1000);

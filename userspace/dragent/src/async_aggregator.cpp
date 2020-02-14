@@ -6,15 +6,16 @@
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
 #define __STDC_FORMAT_MACROS
-#include "async_aggregator.h"
 #include "analyzer_flush_message.h"
 #include "analyzer_utils.h"  // make_unique
-#include "dragent_message_queues.h"
-#include "type_config.h"
-#include "Poco/Path.h"
-#include "Poco/File.h"
-#include "metric_store.h"
+#include "async_aggregator.h"
 #include "configuration_manager.h"
+#include "dragent_message_queues.h"
+#include "metric_store.h"
+#include "type_config.h"
+
+#include "Poco/File.h"
+#include "Poco/Path.h"
 
 namespace
 {
@@ -22,7 +23,8 @@ type_config<std::string>::ptr c_pre_agg_dump_dir =
     type_config_builder<std::string>("",
                                      "Dump directory for pre-aggregated protobuf metrics",
                                      "metricsfile",
-                                     "preagg_location").build();
+                                     "preagg_location")
+        .build();
 
 type_config<bool> c_emit_protobuf_json(
     false,
@@ -30,17 +32,15 @@ type_config<bool> c_emit_protobuf_json(
     "metricsfile",
     "preagg_json");
 
-type_config<bool> c_pre_agg_rest(
-    false,
-    "If true, expose raw protobufs through rest",
-    "aggregator",
-    "preagg_rest");
+type_config<bool> c_pre_agg_rest(false,
+                                 "If true, expose raw protobufs through rest",
+                                 "aggregator",
+                                 "preagg_rest");
 
-}
+}  // namespace
 
 namespace dragent
 {
-
 std::shared_ptr<aggregator_limits> aggregator_limits::global_limits =
     std::make_shared<aggregator_limits>();
 
@@ -61,8 +61,14 @@ async_aggregator::async_aggregator(flush_queue& input_queue,
       m_file_emitter()
 {
 	m_aggregator = new metrics_message_aggregator_impl(m_builder);
-	m_aggregated_data = std::make_shared<flush_data_message>(
-	    0, nullptr, make_unique<draiosproto::metrics>(), 0, 0, 0, 0, 0);
+	m_aggregated_data = std::make_shared<flush_data_message>(0,
+	                                                         nullptr,
+	                                                         make_unique<draiosproto::metrics>(),
+	                                                         0,
+	                                                         0,
+	                                                         0,
+	                                                         0,
+	                                                         0);
 	if (!c_pre_agg_dump_dir->get_value().empty())
 	{
 		std::string dir = Poco::Path(root_dir).append(c_pre_agg_dump_dir->get_value()).toString();
@@ -235,7 +241,8 @@ void async_aggregator::limit_jmx_attributes(draiosproto::metrics& metrics, uint3
 
 void async_aggregator::relocate_prom_metrics(draiosproto::proto_info& proto_info)
 {
-	proto_info.mutable_prometheus()->set_allocated_process_name(proto_info.mutable_prom_info()->release_process_name());
+	proto_info.mutable_prometheus()->set_allocated_process_name(
+	    proto_info.mutable_prom_info()->release_process_name());
 	for (uint32_t i = 0; i < proto_info.prom_info().metrics().size(); i++)
 	{
 		auto new_metric = proto_info.mutable_prometheus()->add_metrics();
@@ -255,23 +262,26 @@ void async_aggregator::relocate_moved_fields(draiosproto::metrics& metrics)
 	for (uint32_t i = 0; i < metrics.ipv4_incomplete_connections_v2().size(); i++)
 	{
 		auto new_conn = metrics.add_ipv4_incomplete_connections();
-		new_conn->set_allocated_tuple((*metrics.mutable_ipv4_incomplete_connections_v2())[i].release_tuple());
+		new_conn->set_allocated_tuple(
+		    (*metrics.mutable_ipv4_incomplete_connections_v2())[i].release_tuple());
 		new_conn->set_spid(metrics.ipv4_incomplete_connections_v2()[i].spid());
 		new_conn->set_dpid(metrics.ipv4_incomplete_connections_v2()[i].dpid());
-		new_conn->set_allocated_counters((*metrics.mutable_ipv4_incomplete_connections_v2())[i].release_counters());
+		new_conn->set_allocated_counters(
+		    (*metrics.mutable_ipv4_incomplete_connections_v2())[i].release_counters());
 		new_conn->set_state(metrics.ipv4_incomplete_connections_v2()[i].state());
 		new_conn->set_error_code(metrics.ipv4_incomplete_connections_v2()[i].error_code());
 	}
 
 	relocate_prom_metrics(*metrics.mutable_protos());
 	relocate_prom_metrics(*metrics.mutable_unreported_counters()->mutable_protos());
-	for (uint32_t i = 0 ; i < metrics.containers().size(); i++)
+	for (uint32_t i = 0; i < metrics.containers().size(); i++)
 	{
 		relocate_prom_metrics(*(*metrics.mutable_containers())[i].mutable_protos());
 	}
-	for (uint32_t i = 0 ; i < metrics.programs().size(); i++)
+	for (uint32_t i = 0; i < metrics.programs().size(); i++)
 	{
-		relocate_prom_metrics(*(*metrics.mutable_programs())[i].mutable_procinfo()->mutable_protos());
+		relocate_prom_metrics(
+		    *(*metrics.mutable_programs())[i].mutable_procinfo()->mutable_protos());
 	}
 }
 void async_aggregator::do_run()
@@ -295,7 +305,8 @@ void async_aggregator::do_run()
 		// aggregation is destructive, so need to make a copy
 		if (c_pre_agg_rest.get_value())
 		{
-			libsanalyzer::metric_store::store_pre_aggregated(std::make_shared<draiosproto::metrics>(*input_data->m_metrics));
+			libsanalyzer::metric_store::store_pre_aggregated(
+			    std::make_shared<draiosproto::metrics>(*input_data->m_metrics));
 		}
 
 		if (c_emit_protobuf_json.get_value())
@@ -314,8 +325,8 @@ void async_aggregator::do_run()
 		if (m_aggregation_interval_source)
 		{
 			// Read from source so long as we have a valid value
-			std::chrono::seconds s = m_aggregation_interval_source->
-			                         get_negotiated_aggregation_interval();
+			std::chrono::seconds s =
+			    m_aggregation_interval_source->get_negotiated_aggregation_interval();
 			if (s != std::chrono::seconds::max())
 			{
 				interval = s.count();
@@ -329,8 +340,15 @@ void async_aggregator::do_run()
 			    sinsp_logger::SEV_INFO,
 			    "Decreased aggregation interval. Discarding previously aggregated data.");
 			m_aggregator->reset();
-			m_aggregated_data = std::make_shared<flush_data_message>(
-			    0, nullptr, make_unique<draiosproto::metrics>(), 0, 0, 0, 0, 0);
+			m_aggregated_data =
+			    std::make_shared<flush_data_message>(0,
+			                                         nullptr,
+			                                         make_unique<draiosproto::metrics>(),
+			                                         0,
+			                                         0,
+			                                         0,
+			                                         0,
+			                                         0);
 			m_count_since_flush = 0;
 		}
 
@@ -371,14 +389,28 @@ void async_aggregator::do_run()
 					relocate_moved_fields(*m_aggregated_data->m_metrics);
 				}
 
+				// SMBACK-4115: BE doesn't properly handle this field when empty, so clear it
+				// for them. This field is "added" when we ask for "mutable_unreported_counters"
+				if (m_aggregated_data->m_metrics->unreported_counters().names().size() == 0)
+				{
+					m_aggregated_data->m_metrics->clear_unreported_counters();
+				}
+
 				m_aggregated_data->m_flush_interval = aggr_interval_cache;
 
 				if (!m_output_queue.put(m_aggregated_data))
 				{
 					g_logger.format(sinsp_logger::SEV_WARNING, "Queue full, discarding sample");
 				}
-				m_aggregated_data = std::make_shared<flush_data_message>(
-				    0, nullptr, make_unique<draiosproto::metrics>(), 0, 0, 0, 0, 0);
+				m_aggregated_data =
+				    std::make_shared<flush_data_message>(0,
+				                                         nullptr,
+				                                         make_unique<draiosproto::metrics>(),
+				                                         0,
+				                                         0,
+				                                         0,
+				                                         0,
+				                                         0);
 				m_count_since_flush = 0;
 			}
 		}
