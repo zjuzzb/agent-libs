@@ -944,7 +944,7 @@ void dragent_configuration::init()
 	// K8s
 	// new_k8s takes precedence over dev_new_k8s but still turn it on
 	// if all they specify is "dev_new_k8s: true"
-	m_use_new_k8s = m_config->get_scalar<bool>("dev_new_k8s", false);
+	m_use_new_k8s = m_config->get_scalar<bool>("dev_new_k8s", true);
 	m_use_new_k8s = m_config->get_scalar<bool>("new_k8s", m_use_new_k8s);
 	m_k8s_cluster_name = m_config->get_scalar<string>("k8s_cluster_name", "");
 	m_k8s_local_update_frequency = m_config->get_scalar<uint16_t>("k8s_local_update_frequency", 1);
