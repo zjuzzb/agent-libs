@@ -602,11 +602,11 @@ if [ ! -d "${KUBE_BENCH_DIR}" ]; then
 	tar -xzf kube-bench-0.0.24.2.tar.gz
 fi
 
-LINUX_BENCH_DIR=$DEPENDENCIES/linux-bench-0.2.0.1
+LINUX_BENCH_DIR=$DEPENDENCIES/linux-bench-0.2.0.2
 if [ ! -d "${LINUX_BENCH_DIR}" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/linux-bench-0.2.0.1.tar.gz
-	tar -xzf linux-bench-0.2.0.1.tar.gz
+	wget $DEPENDENCIES_URL/linux-bench-0.2.0.2.tar.gz
+	tar -xzf linux-bench-0.2.0.2.tar.gz
 fi
 
 if [ $OS == "Windows_NT" ]; then
