@@ -1714,6 +1714,8 @@ void security_mgr::start_k8s_audit_server_tasks()
 
 						// instead of calling directly process_event, it might be worth enqueue into a list and have a worker thread processing the list
 						process_event(&jev);
+
+						m_metrics.incr(metrics::MET_NUM_K8S_AUDIT_EVTS);
 					}
 					return true;
 				}

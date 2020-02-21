@@ -141,6 +141,7 @@ private:
 			MET_POLICY_EVTS_NETWORK,
 			MET_POLICY_EVTS_SYSCALL,
 			MET_POLICY_EVTS_FALCO,
+			MET_NUM_K8S_AUDIT_EVTS,
 			MET_MAX
 		};
 
@@ -283,7 +284,8 @@ private:
 				"security.policy_evts.filesystem",
 				"security.policy_evts.network",
 				"security.policy_evts.syscall",
-				"security.policy_evts.falco"
+				"security.policy_evts.falco",
+				"security.evts.k8s_audit",
 				};
 
 		// Counts by policy name
