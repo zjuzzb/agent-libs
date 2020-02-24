@@ -1,5 +1,7 @@
 #pragma once
 
+#define USE_AGENT_THREAD
+
 // A temporary define used to aid in staging the transition from one to the other.
 // Will be removed when transition to thread_analyzer_info is complete
 #ifdef USE_AGENT_THREAD

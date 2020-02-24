@@ -111,7 +111,7 @@ std::pair<bool, bool> conf::match_rule(
 				break;
 			}
 
-			auto start_ports = tinfo->m_ainfo->listening_ports();
+			auto start_ports = GET_AGENT_THREAD(tinfo)->listening_ports();
 			auto ports = filter_ports(start_ports, cond.m_port_match);
 			if (!ports.empty())
 			{
@@ -225,7 +225,7 @@ std::pair<bool, bool> conf::match_rule(
 				break;
 			}
 
-			matchcond = mtinfo->m_ainfo->found_app_check_by_fnmatch(cond.m_pattern);
+			matchcond = GET_AGENT_THREAD(mtinfo)->found_app_check_by_fnmatch(cond.m_pattern);
 			if (matchcond)
 			{
 				reason << "app_check found for " << cond.m_pattern;

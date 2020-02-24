@@ -148,10 +148,10 @@ void arg_length_test(const int limit)
 
 	analyzer.enable_audit_tap(true /*emit local connections*/);
 	inspector->register_external_event_processor(analyzer);
+	inspector->open();
 
 	auto& thread1 =
 	    inspector->build_thread().pid(DEFAULT_PID).comm("dragent").arg(arg_150).commit();
-	inspector->open();
 
 	audit_tap tap(default_hash_config(), MACHINE_ID_FOR_TEST, true /*emit local connections*/);
 
@@ -204,6 +204,7 @@ TEST(audit_tap_test, basic)
 	// correct data.
 	analyzer.enable_audit_tap(true /*emit local connections*/);
 	inspector->register_external_event_processor(analyzer);
+	inspector->open();
 
 	// Build some threads that we'll add connections to.
 	(void)inspector->build_thread().commit();
@@ -217,7 +218,6 @@ TEST(audit_tap_test, basic)
 	                    .commit();
 	(void)inspector->build_thread().pid(expected_pid).tid(1234).commit();
 	(void)inspector->build_thread().commit();
-	inspector->open();
 
 	// Sanity checks
 	ASSERT_EQ(expected_pid, thread1.m_pid);

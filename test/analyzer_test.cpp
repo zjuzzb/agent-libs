@@ -288,7 +288,7 @@ TEST_F(sys_call_test, analyzer_fdstats)
 					EXPECT_EQ((uint64_t)1, it->second.open_count());
 				}
 
-				const auto& tid_metrics = e->m_tinfo->m_ainfo->m_metrics;
+				const auto& tid_metrics = GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(e))->m_metrics;
 				ASSERT_GT(tid_metrics.m_file.m_time_ns, 0);
 				ASSERT_GT(tid_metrics.m_io_file.m_bytes_in, 0);
 				ASSERT_GT(tid_metrics.m_io_file.m_bytes_out, 0);

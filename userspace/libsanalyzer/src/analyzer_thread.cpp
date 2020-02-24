@@ -141,7 +141,7 @@ thread_analyzer_info::thread_analyzer_info(sinsp* inspector,
 thread_analyzer_info::~thread_analyzer_info()
 {
 #ifdef USE_AGENT_THREAD
-	if (is_main_thread() && m_tap != nullptr)
+	if (m_tap != nullptr && is_main_thread())
 	{
 		m_tap->on_exit(m_pid);
 	}
@@ -206,7 +206,7 @@ void thread_analyzer_info::init(sinsp_threadinfo* tinfo)
 #endif
 	}
 
-	if (m_analyzer->is_tracking_environment())
+	if (m_analyzer != nullptr && m_analyzer->is_tracking_environment())
 	{
 		if (GET_SINSP_THREAD(this)->is_main_thread())
 		{
@@ -378,7 +378,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 		m_procinfo->m_devs_stat.add(other->m_main_thread_ainfo->m_devs_stat);
 	}
 
-	m_procinfo->m_fd_count += GET_SINSP_THREAD(other)->m_fdtable.size();
+	m_procinfo->m_fd_count += GET_SINSP_THREAD(other)->get_fd_table()->size();
 
 	if (other->m_called_execve)
 	{
@@ -535,12 +535,12 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 	const sinsp_fdtable* fdtable = GET_SINSP_THREAD(this)->get_fd_table();
 	bool has_thread_exited = (GET_SINSP_THREAD(this)->m_flags & PPM_CL_CLOSED) != 0;
 
-	if (fdtable == &GET_SINSP_THREAD(this)->m_fdtable)
+	if (fdtable == GET_SINSP_THREAD(this)->get_fd_table())
 	{
 		std::unordered_map<int64_t, sinsp_fdinfo_t>::iterator it;
 
-		for (it = GET_SINSP_THREAD(this)->m_fdtable.m_table.begin();
-		     it != GET_SINSP_THREAD(this)->m_fdtable.m_table.end();
+		for (it = GET_SINSP_THREAD(this)->get_fd_table()->m_table.begin();
+		     it != GET_SINSP_THREAD(this)->get_fd_table()->m_table.end();
 		     it++)
 		{
 			uint64_t endtime = sample_end_time;

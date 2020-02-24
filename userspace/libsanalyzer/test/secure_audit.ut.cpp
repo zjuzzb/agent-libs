@@ -880,6 +880,7 @@ void add_connections_helper(secure_audit* audit,
 	sinsp_mock inspector;
 	external_processor_dummy epd;
 	inspector.register_external_event_processor(epd);
+	inspector.open();
 
 	if (cmdline)
 	{
@@ -906,7 +907,6 @@ void add_connections_helper(secure_audit* audit,
 		    .commit();
 	}
 
-	inspector.open();
 
 	std::shared_ptr<THREAD_TYPE> proc = nullptr;
 	proc = sinsp_analyzer::get_thread_ref(inspector,
@@ -1186,10 +1186,10 @@ void add_file_access_helper(secure_audit* audit,
 	sinsp_mock inspector;
 	external_processor_dummy epd;
 	inspector.register_external_event_processor(epd);
+	inspector.open();
 
 	inspector.build_thread().pid(expected_pid).comm(expected_comm).exe(expected_name).commit();
 
-	inspector.open();
 
 	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
 	proc = inspector.get_thread_ref(expected_pid,

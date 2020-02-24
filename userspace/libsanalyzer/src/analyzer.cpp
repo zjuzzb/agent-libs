@@ -1067,7 +1067,7 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 	{
 		if (cs_only)
 		{
-			int is_cs = ((*ptit)->m_ainfo->m_th_analysis_flags &
+			int is_cs = (GET_AGENT_THREAD(*ptit)->m_th_analysis_flags &
 			             (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
 			              thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
 			              thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT |
@@ -2139,7 +2139,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	m_inspector->m_thread_manager->m_threadtable.loop([&](sinsp_threadinfo& sinsp_tinfo) {
 #ifdef USE_AGENT_THREAD
 		thread_analyzer_info& tinfo = dynamic_cast<thread_analyzer_info&>(sinsp_tinfo);
-		ASSERT(tinfo == sinsp_tinfo);
+		ASSERT(&tinfo == &sinsp_tinfo);
 		THREAD_TYPE* main_tinfo = tinfo.get_main_thread_info();
 #else
 		sinsp_threadinfo& tinfo = sinsp_tinfo;
@@ -7625,7 +7625,7 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf,
 	m_inspector->m_thread_manager->m_threadtable.loop([&](sinsp_threadinfo& sinsp_tinfo) {
 #ifdef USE_AGENT_THREAD
 		thread_analyzer_info& tinfo = dynamic_cast<thread_analyzer_info&>(sinsp_tinfo);
-		ASSERT(tinfo == sinsp_tinfo);
+		ASSERT(&tinfo == &sinsp_tinfo);
 #else
 		sinsp_threadinfo& tinfo = sinsp_tinfo;
 #endif

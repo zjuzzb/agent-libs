@@ -24,14 +24,6 @@ TEST(analyzer_test, end_to_end_basic)
 	scoped_config<bool> config("autodrop.enabled", false);
 	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock());
 
-	auto& thread55 = inspector->build_thread().tid(55).commit();
-	auto& thread75 = inspector->build_thread().tid(75).commit();
-
-	// Make some fake events
-	uint64_t ts = 1095379199000000000ULL;
-	inspector->build_event(thread55).ts(ts).count(5).commit();
-	inspector->build_event(thread55).ts(ts).count(1000).commit();
-	inspector->build_event(thread75).count(1).commit();
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 
 	sinsp_analyzer analyzer(inspector.get(),
@@ -42,11 +34,29 @@ TEST(analyzer_test, end_to_end_basic)
 	                        g_secure_profiling_handler,
 	                        &g_queue,
 	                        []() -> bool { return true; });
+
+	// we need to register the analyzer as the external processor before we add
+	// events
+	init_sinsp_with_analyzer(*inspector, analyzer);
+
+	auto& thread55 = inspector->build_thread().tid(55).commit();
+	auto& thread75 = inspector->build_thread().tid(75).commit();
+
+	// Make some fake events
+	uint64_t ts = 1095379199000000000ULL;
+	inspector->build_event(thread55).ts(ts).count(5).commit();
+	inspector->build_event(thread55).ts(ts).count(1000).commit();
+	inspector->build_event(thread75).count(1).commit();
+
 	run_sinsp_with_analyzer(*inspector, analyzer);
 
 	std::shared_ptr<flush_data_message> last_flush;
-	while (g_queue.get(&last_flush, 0))
-		;
+	for (uint32_t i = 0; i < 5000 && g_queue.size() == 0; i++)
+	{
+		usleep(1000);
+	}
+	ASSERT_NE(g_queue.size(), 0);
+	g_queue.get(&last_flush, 0);
 
 	std::shared_ptr<draiosproto::metrics> metrics = last_flush->m_metrics;
 
@@ -322,8 +332,6 @@ TEST(analyzer_test, print_profiling_error)
 	scoped_sinsp_logger_capture capture;
 
 	std::unique_ptr<sinsp_mock> inspector(new sinsp_mock());
-	auto& tinfo = inspector->build_thread().commit();
-	inspector->build_event(tinfo).count(10).commit();
 
 	internal_metrics::sptr_t int_metrics = std::make_shared<internal_metrics>();
 	sinsp_analyzer analyzer(inspector.get(),
@@ -336,6 +344,9 @@ TEST(analyzer_test, print_profiling_error)
 	                        []() -> bool { return true; });
 
 	// Run the analyzer to induce calling flush
+	init_sinsp_with_analyzer(*inspector, analyzer);
+	auto& tinfo = inspector->build_thread().commit();
+	inspector->build_event(tinfo).count(10).commit();
 	run_sinsp_with_analyzer(*inspector, analyzer);
 
 	ASSERT_TRUE(capture.find("Profiling is not supported in this build variant."));
