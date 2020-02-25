@@ -374,6 +374,9 @@ void async_aggregator::do_run()
 			// timestamp is in NS, so convert to seconds and check if %n == 0
 			if ((m_aggregated_data->m_ts / NSECS_PER_SEC) % aggr_interval_cache == 0)
 			{
+				// we're committed to flushing now. Get whatever "last minute" data
+				make_preemit_callbacks();
+
 				m_aggregator->override_primary_keys(*m_aggregated_data->m_metrics);
 				m_aggregator->reset();
 				if (aggregator_limits::global_limits->m_do_limiting)
@@ -431,6 +434,33 @@ void async_aggregator::set_aggregation_interval(uint32_t interval_s)
 void async_aggregator::set_aggregation_interval_source(aggregation_interval_source* source)
 {
 	m_aggregation_interval_source = source;
+}
+
+void async_aggregator::register_metrics_request_callback(async_aggregator::metrics_request_cb cb)
+{
+	std::lock_guard<std::mutex> lock(m_metrics_request_callbacks_lock);
+	m_staged_metrics_request_callbacks.insert(cb);
+}
+
+void async_aggregator::make_preemit_callbacks()
+{
+	{
+		std::lock_guard<std::mutex> lock(m_metrics_request_callbacks_lock);
+		for (auto i : m_staged_metrics_request_callbacks)
+		{
+			m_metrics_request_callbacks.insert(i);
+		}
+		m_staged_metrics_request_callbacks.clear();
+	}
+
+	for (auto i : m_metrics_request_callbacks)
+	{
+		std::shared_ptr<draiosproto::metrics> extra_metrics = i();
+		if (extra_metrics != nullptr)
+		{
+			m_aggregator->aggregate(*extra_metrics, *m_aggregated_data->m_metrics, false);
+		}
+	}
 }
 
 }  // end namespace dragent

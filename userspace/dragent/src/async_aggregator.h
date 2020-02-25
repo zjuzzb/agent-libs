@@ -7,28 +7,26 @@
  */
 #pragma once
 
+#include "aggregation_context.pb.h"
 #include "aggregator_overrides.h"
 #include "analyzer_flush_message.h"
-#include "thread_safe_container/blocking_queue.h"
-#include "watchdog_runnable.h"
 #include "connection_manager.h"  // because aggregator_limits is a message_handler. should probably be broken down a bit.
-#include "metrics_file_emitter.h"
-#include "aggregation_context.pb.h"
 #include "dragent_settings_interface.h"
+#include "metrics_file_emitter.h"
+#include "watchdog_runnable.h"
+
+#include "thread_safe_container/blocking_queue.h"
 
 class test_helper;
 
 namespace dragent
 {
-
 class aggregator_limits : public connection_manager::message_handler
 {
 public:
 	static std::shared_ptr<aggregator_limits> global_limits;
 
-	aggregator_limits()
-	{
-	}
+	aggregator_limits() {}
 
 	void cache_limits(const draiosproto::aggregation_context& context);
 	bool handle_message(const draiosproto::message_type type,
@@ -90,7 +88,10 @@ public:
 class async_aggregator : public dragent::watchdog_runnable
 {
 public:
-	using queue_t = typename thread_safe_container::blocking_queue<std::shared_ptr<flush_data_message>>;
+	using queue_t =
+	    typename thread_safe_container::blocking_queue<std::shared_ptr<flush_data_message>>;
+
+	typedef std::shared_ptr<draiosproto::metrics> (*metrics_request_cb)();
 
 	/**
 	 * Initialize this async_aggregator.
@@ -104,6 +105,18 @@ public:
 	~async_aggregator();
 
 	void stop();
+
+	/**
+	 * registers a callback that the aggregator will invoke immediately before
+	 * emitting a set of aggregated metrics to the serializer. This callback will be
+	 * invoked exactly once per registrant per aggregation interval, and will be guaranteed
+	 * to happen after all aggregations which arrive via the async queue for that interval.
+	 * If there are multiple registrants, there is no guarantee of ordering among them, and
+	 * such callbacks may happen simultaneously. Registrants should populate a
+	 * draiosproto::metrics message with whatever stats they want aggregated into the outgoing
+	 * protobuf.
+	 */
+	void register_metrics_request_callback(metrics_request_cb cb);
 
 	/**
 	 * sets the number of input protobufs to aggregate before generating an output.
@@ -131,6 +144,13 @@ private:
 	 * async_aggregator is destroyed or stop() is called.
 	 */
 	void do_run();
+
+	/**
+	 * before submitting aggregated metrics to the serializer, we have to make registered
+	 * callbacks for final metrics to be added. This function covers that. Serializes
+	 * itself with the registration function.
+	 */
+	void make_preemit_callbacks();
 
 public:
 	/**
@@ -164,6 +184,17 @@ private:
 	uint32_t m_aggregation_interval;
 
 	metrics_file_emitter m_file_emitter;
+
+	// Notes on the flow here:
+	// registering a callback happens on another thread than the
+	// aggregator thread actually performing them, so we want to synchronize them. We also
+	// don't want to hold the lock while we're actually doing the callbacks, as they might be
+	// lengthy...so we stage the new requests in the staging list, then move them to the
+	// actual list while holding the lock, which should be fast...and then the time-consuming
+	// callbacks can be performed outside the critical section
+	std::mutex m_metrics_request_callbacks_lock;
+	std::set<metrics_request_cb> m_staged_metrics_request_callbacks;
+	std::set<metrics_request_cb> m_metrics_request_callbacks;
 
 	friend class ::test_helper;
 };
