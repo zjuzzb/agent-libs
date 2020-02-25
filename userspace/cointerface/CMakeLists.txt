@@ -18,10 +18,12 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${target}
 endfunction()
 
 # Keep this version in sync with the various go.mod files
+# This is super ugly, as dependencies should be managed by the bootstrap-agent, but the
+# coupling is tight enough that updating it on the fly is worth it.
 set(GOGO_PROTOBUF_VER "v1.3.1")
 set(GOGO_PROTOBUF_PATH "github.com/gogo/protobuf/protoc-gen-gofast")
 set(GOGO_PROTOBUF_DIR "${CMAKE_CURRENT_BINARY_DIR}/gogo_protobuf")
-set(GOGO_PROTOBUF_VER_FILE "${GOGO_PROTOBUF_DIR}/${GOGO_PROTOBUF_VER}.txt")
+set(GOGO_PROTOBUF_VER_FILE "${GOPATH}/${GOGO_PROTOBUF_VER}.txt")
 add_custom_target(install_go_generate_deps ALL
 	DEPENDS ${GOGO_PROTOBUF_VER_FILE})
 add_custom_command(OUTPUT ${GOGO_PROTOBUF_VER_FILE}
