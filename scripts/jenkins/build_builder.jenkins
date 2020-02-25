@@ -1,0 +1,93 @@
+pipeline {
+	agent { label 'agent-docker-builder' }
+	stages {
+		stage('Check out dependencies') {
+			steps {
+				dir('agent') {
+					checkout scm
+				}
+				dir('oss-falco') {
+					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
+					sh "git checkout ${params.FALCO_BRANCH}"
+				}
+				dir('sysdig') {
+					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/sysdig']]])
+					sh "git checkout ${params.SYSDIG_BRANCH}"
+				}
+				dir('protorepo') {
+					checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/sysdig']]])
+					sh "git checkout ${params.PROTOREPO_BRANCH}"
+				}
+			}
+		}
+
+		stage('Tag Prev') {
+			when {
+				expression { params.TAG_LATEST == true }
+			}
+			steps {
+				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+					sh label: '', script: '''
+						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+						docker pull quay.io/sysdig/agent-builder:latest
+						docker tag quay.io/sysdig/agent-builder:latest quay.io/sysdig/agent-builder:prev_latest
+					'''
+				}
+			}
+		}
+
+		stage('Build') {
+			steps {
+				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+					sh label: '', script: '''
+						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+						docker pull quay.io/sysdig/agent-builder:latest
+						docker pull quay.io/sysdig/agent-builder:${AGENT_BRANCH}
+						docker build --build-arg max_parallelism=$(nproc) -t quay.io/sysdig/agent-builder:$AGENT_BRANCH -f agent/docker/builder/Dockerfile --pull agent/docker/builder
+					'''
+				}
+			}
+		}
+
+		stage('Upload') {
+			steps {
+				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+					sh label: '', script: '''
+						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+						docker push quay.io/sysdig/agent-builder:$AGENT_BRANCH
+					'''
+				}
+			}
+		}
+
+		stage('Upload Latest') {
+			when {
+				expression { params.TAG_LATEST == true }
+			}
+			steps {
+				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+					sh label: '', script: '''
+						LATEST_ID=`docker images --format '{{.ID}}' quay.io/sysdig/agent-builder:latest`
+PREV_ID=`docker images --format '{{.ID}}' quay.io/sysdig/agent-builder:prev_latest`
+						if [ -n "$LATEST_ID" -a "$LATEST_ID" != "$PREV_ID" ]; then
+							docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+							docker tag quay.io/sysdig/agent-builder:$AGENT_BRANCH quay.io/sysdig/agent-builder:latest
+							docker push quay.io/sysdig/agent-builder:prev_latest
+							docker push quay.io/sysdig/agent-builder:latest
+						fi
+					'''
+				}
+			}
+		}
+	}
+
+	post {
+		always {
+			sh label: '', script: '''
+				docker rmi -f quay.io/sysdig/agent-builder:$AGENT_BRANCH
+				docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+			'''
+			cleanWs deleteDirs: true, notFailBuild: true
+		}
+	}
+}
