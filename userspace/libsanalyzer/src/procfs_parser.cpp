@@ -420,12 +420,15 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat *proc_stat, char *li
 		// case and fix it up.
 		// The threshold must be a percentage of the /proc/stat sampling rate expressed in jiffies
 		// (e.g. 1/sec is 100 jiffies, 2/sec is 200 jiffies and so on).
-		if (delta[CPU_TOTAL] < c_missing_jiffies_threshold_host->get_value())
+		uint32_t c_missing_jiffies_threshold_host_value = c_missing_jiffies_threshold_host->get_value();
+		if (delta[CPU_TOTAL] < c_missing_jiffies_threshold_host_value)
 		{
 			static ratelimit r;
 			r.run([&] {
 				g_logger.format(sinsp_logger::SEV_WARNING,
-				                "Total CPU time for host below 80%%, assigning the missing %d ticks to steal", 100 - delta[CPU_TOTAL]);
+				                "Total CPU time for host below %d%%, assigning the missing %d ticks to steal"
+						, c_missing_jiffies_threshold_host_value
+						, 100 - delta[CPU_TOTAL]);
 			});
 			delta[CPU_STEAL] += 100 - delta[CPU_TOTAL];
 			delta[CPU_TOTAL] = 100;
@@ -1020,14 +1023,16 @@ double sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
 	// by /proc/stat. Heuristically, if it's less than a threshold
 	// (namely c_missing_jiffies_threshold_container) per CPU then we assume this is the
 	// case and fix it up. This mirrors the code in sinsp_procfs_parser::get_cpus_load.
-	if(delta_jiffies < (c_missing_jiffies_threshold_container->get_value() * m_ncpus))
+	uint32_t c_missing_jiffies_threshold_container_value = c_missing_jiffies_threshold_container->get_value();
+	if(delta_jiffies < (c_missing_jiffies_threshold_container_value * m_ncpus))
 	{
 		static ratelimit r;
 		int normalized_cpu_ticks = 100 * m_ncpus;
 		r.run([&] {
 			g_logger.format(sinsp_logger::SEV_WARNING,
-			                "Total CPU time for container below 80%% per CPU, normalizing by %d ticks",
-			                normalized_cpu_ticks - delta_jiffies);
+			                "Total CPU time for container below %d%% per CPU, normalizing by %d ticks"
+					, c_missing_jiffies_threshold_container_value
+			                , normalized_cpu_ticks - delta_jiffies);
 		});
 		delta_jiffies = normalized_cpu_ticks;
 	}
