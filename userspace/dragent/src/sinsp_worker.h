@@ -125,6 +125,7 @@ public:
 	                          std::string &errstr) override;
 	void receive_hosts_metadata(const draiosproto::orchestrator_events &evts) override;
 #endif
+
 private:
 	/**
 	 * Callers must hold m_security_mgr_creation_mutex.
@@ -144,13 +145,6 @@ private:
 	void get_internal_metrics();
 
 	bool get_statsd_limit() const;
-
-	/**
-	 * Pause capturing live system call events.  In this state the agent
-	 * has the inspector open, but is not interested in receiving events
-	 * from it.
-	 */
-	void pause_capture();
 
 	static const std::string m_name;
 
@@ -191,8 +185,6 @@ private:
 	std::unique_ptr<draiosproto::policies> m_security_policies_backup;
 	std::unique_ptr<draiosproto::policies_v2> m_security_policies_v2_backup;
 	std::unique_ptr<compliance_calendar_backup> m_security_compliance_calendar_backup;
-
-	std::atomic<bool> m_capture_paused;
 
 	friend class dragent_app;
 	friend class memdump_test;
