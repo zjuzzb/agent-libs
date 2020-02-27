@@ -46,7 +46,10 @@ if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
 
 	    GCC_VERSION=$(grep -Po '(?<=^#define LINUX_COMPILER "gcc version )[0-9.]+' $compile_h)
 	    GCC_VERSION="${GCC_VERSION%.*}"
-	    GCC_BINARY=$(ls -U /usr/bin/gcc-[0-9]* | sort -V | awk -v target=/usr/bin/gcc-${GCC_VERSION} '
+	    # gcc-4.8 and gcc-4.9 are symlinks to gcc (for legacy Debian kernels)
+	    # so we skip them while trying to find a candidate to point gcc to
+	    # (symlinking gcc to gcc-4.8 or gcc-4.9 would create a symlink loop)
+	    GCC_BINARY=$(ls -U /usr/bin/gcc-[5-9]* | sort -V | awk -v target=/usr/bin/gcc-${GCC_VERSION} '
 			$1 < target { older = $1 }
 			$1 == target { exact = $1 }
 			$1 > target && !newer { newer = $1 }
