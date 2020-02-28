@@ -957,6 +957,13 @@ void dragent_configuration::init()
 	auto k8s_extensions_v = m_config->get_merged_sequence<k8s_ext_list_t::value_type>("k8s_extensions");
 	m_k8s_extensions = k8s_ext_list_t(k8s_extensions_v.begin(), k8s_extensions_v.end());
 
+	// go_k8s_user_events need new_k8s enabled
+	if(m_go_k8s_user_events && !m_use_new_k8s)
+	{
+		m_config->add_warning("Disabling go_k8s_user_events because new_k8s is disabled");
+		m_go_k8s_user_events = false;
+	}
+
 	// End K8s
 
 	// Mesos
