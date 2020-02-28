@@ -67,11 +67,11 @@ pipeline {
 			steps {
 				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
 					sh label: '', script: '''
+						docker tag quay.io/sysdig/agent-builder:$AGENT_BRANCH quay.io/sysdig/agent-builder:latest
 						LATEST_ID=`docker images --format '{{.ID}}' quay.io/sysdig/agent-builder:latest`
-PREV_ID=`docker images --format '{{.ID}}' quay.io/sysdig/agent-builder:prev_latest`
+						PREV_ID=`docker images --format '{{.ID}}' quay.io/sysdig/agent-builder:prev_latest`
 						if [ -n "$LATEST_ID" -a "$LATEST_ID" != "$PREV_ID" ]; then
 							docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
-							docker tag quay.io/sysdig/agent-builder:$AGENT_BRANCH quay.io/sysdig/agent-builder:latest
 							docker push quay.io/sysdig/agent-builder:prev_latest
 							docker push quay.io/sysdig/agent-builder:latest
 						fi
