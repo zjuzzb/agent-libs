@@ -1607,9 +1607,13 @@ void dragent_configuration::print_configuration() const
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom
-	for(const auto& item : m_config->warnings())
+	for(const auto& item : m_config->debugs())
 	{
 		LOG_DEBUG(item);
+	}
+	for(const auto& item : m_config->warnings())
+	{
+		LOG_WARNING(item);
 	}
 	for(const auto& item : m_config->errors())
 	{

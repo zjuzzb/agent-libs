@@ -76,7 +76,7 @@ public:
 				}
 				else
 				{
-					m_warnings.emplace_back(std::string("Config file: ") + path + " does not exists");
+					m_debugs.emplace_back(std::string("Config file: ") + path + " does not exist");
 				}
 			}
 			catch(const YAML::BadFile& ex)
@@ -471,20 +471,30 @@ public:
 		return m_warnings;
 	}
 
+	inline const std::vector<std::string>& debugs() const
+	{
+		return m_debugs;
+	}
+
+	void add_error(const std::string& err)
+	{
+		m_errors.emplace_back(err);
+	}
+
 	void add_warning(const std::string& warning)
 	{
 		m_warnings.emplace_back(warning);
+	}
+
+	void add_debug(const std::string& err)
+	{
+		m_debugs.emplace_back(err);
 	}
 
 	// WARN: when possible we should avoid using directly underlying YAML nodes
 	const std::vector<YAML::Node>& get_roots() const
 	{
 		return m_roots;
-	}
-
-	void add_error(const std::string& err)
-	{
-		m_errors.emplace_back(err);
 	}
 
 private:
@@ -538,5 +548,6 @@ private:
 	std::vector<YAML::Node> m_roots;
 	mutable std::vector<std::string> m_errors;
 	mutable std::vector<std::string> m_warnings;
+	mutable std::vector<std::string> m_debugs;
 };
 
