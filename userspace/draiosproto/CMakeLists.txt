@@ -6,6 +6,19 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include) # for yaml for type_config
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION}) # for boost for type_config
 
+add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/common.proto
+						  ${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
+						  ${CMAKE_CURRENT_SOURCE_DIR}/handshake.proto
+						  ${CMAKE_CURRENT_SOURCE_DIR}/aggregation_context.proto
+	COMMENT "Fetching proto files from proto repo"
+	DEPENDS ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/draios.proto
+	DEPENDS ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/common.proto
+	DEPENDS ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/handshake.proto
+	DEPENDS ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/aggregation_context.proto
+
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	COMMAND ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/cpp/preproc.sh ${CMAKE_CURRENT_SOURCE_DIR}
+)
 
 if(NOT CYGWIN)
 	add_library(draiosproto STATIC

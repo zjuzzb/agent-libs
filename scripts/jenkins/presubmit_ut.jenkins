@@ -14,6 +14,10 @@ pipeline {
 					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/sysdig']]])
 					sh "git checkout ${params.SYSDIG_BRANCH}"
 				}
+				dir('protorepo') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
+                    sh "git checkout ${params.PROTOREPO_BRANCH}"
+                }
 			}
 		}
 		stage('Build and Unit Test') {
