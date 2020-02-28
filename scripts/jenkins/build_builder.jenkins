@@ -55,6 +55,8 @@ pipeline {
 					sh label: '', script: '''
 						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
 						docker push quay.io/sysdig/agent-builder:$AGENT_BRANCH
+						docker tag quay.io/sysdig/agent-builder:$AGENT_BRANCH quay.io/sysdig/agent-builder:$CONTAINER_NAME
+						docker push quay.io/sysdig/agent-builder:$CONTAINER_NAME
 					'''
 				}
 			}
