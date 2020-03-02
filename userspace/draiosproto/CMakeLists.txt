@@ -6,18 +6,41 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include) # for yaml for type_config
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION}) # for boost for type_config
 
-add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/common.proto
-						  ${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
-						  ${CMAKE_CURRENT_SOURCE_DIR}/handshake.proto
-						  ${CMAKE_CURRENT_SOURCE_DIR}/aggregation_context.proto
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.h
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.cpp
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.cpp
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.h
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_base.h
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/draios_proto_extension.py
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/profiling.proto
+	 DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/promex.proto
+	 DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
+	 DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/secure.proto
+	 DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tap.proto
+	 DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/common.proto
+						  ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
+						  ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
+						  ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
 	COMMENT "Fetching proto files from proto repo"
 	DEPENDS ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/draios.proto
 	DEPENDS ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/common.proto
 	DEPENDS ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/handshake.proto
 	DEPENDS ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/aggregation_context.proto
 
-	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-	COMMAND ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/cpp/preproc.sh ${CMAKE_CURRENT_SOURCE_DIR}
+	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+	COMMAND ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/cpp/preproc.sh ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 if(NOT CYGWIN)
@@ -61,7 +84,7 @@ endif()
 
 set(PROTOC_CMDLINE LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/lib
                    ${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/bin/protoc
-                   -I ${PROJECT_SOURCE_DIR}/userspace/draiosproto)
+				   -I ${PROJECT_BINARY_DIR}/userspace/draiosproto)
 
 if(NOT CYGWIN)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
@@ -69,14 +92,14 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
                           ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc
 	                  ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.h
 	COMMENT "Building sdc_internal cpp sources from .proto files"
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto ${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto ${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.proto ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.proto ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.proto
 	COMMAND ${PROTOC_CMDLINE}
 	        --cpp_out=.
-		${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
+			${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
-		${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
+				${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.proto
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
@@ -90,26 +113,26 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
                           ${CMAKE_CURRENT_BINARY_DIR}/handshake.pb.h
                           ${CMAKE_CURRENT_BINARY_DIR}/handshake.pb.cc
 	COMMENT "Building draiosproto cpp sources from .proto files"
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/common.proto
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregation_context.proto
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/handshake.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/common.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
-		${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
+			${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --cpp_out=.
-		${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
+		${CMAKE_CURRENT_BINARY_DIR}/draios.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --cpp_out=.
-		${CMAKE_CURRENT_SOURCE_DIR}/common.proto
+		${CMAKE_CURRENT_BINARY_DIR}/common.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --cpp_out=.
-		${CMAKE_CURRENT_SOURCE_DIR}/aggregation_context.proto
+		${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --cpp_out=.
-		${CMAKE_CURRENT_SOURCE_DIR}/handshake.proto
+		${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 else()
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
@@ -121,37 +144,25 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
                           ${CMAKE_CURRENT_BINARY_DIR}/handshake.pb.h
                           ${CMAKE_CURRENT_BINARY_DIR}/handshake.pb.cc
 	COMMENT "Building draiosproto cpp sources from .proto files"
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/common.proto
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregation_context.proto
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/handshake.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/common.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --cpp_out=.
-		${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
+		${CMAKE_CURRENT_BINARY_DIR}/draios.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --cpp_out=.
-		${CMAKE_CURRENT_SOURCE_DIR}/common.proto
+		${CMAKE_CURRENT_BINARY_DIR}/common.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --cpp_out=.
-		${CMAKE_CURRENT_SOURCE_DIR}/aggregation_context.proto
+		${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --cpp_out=.
-		${CMAKE_CURRENT_SOURCE_DIR}/handshake.proto
+		${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.h
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.cpp
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.cpp
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.h
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_base.h
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/draios_proto_extension.py
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/aggr_pbs
         DESTINATION ${CMAKE_INSTALL_PREFIX}/test
         COMPONENT tests)
@@ -159,14 +170,14 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios.proto_builder.cpp
 	                  ${CMAKE_CURRENT_BINARY_DIR}/draios.proto_builder.h
 			  ${CMAKE_CURRENT_BINARY_DIR}/draios.proto.h
 	COMMENT "Building aggregator sources from .proto files"
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/common.proto
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregation_context.proto
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/handshake.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/common.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios-aggregator-plugin.py
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios_proto_extension.py
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/protoc_plugin.sh
-	COMMAND scl enable python27 "${CMAKE_CURRENT_SOURCE_DIR}/protoc_plugin.sh ${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/bin/ ${PROJECT_SOURCE_DIR}/userspace/draiosproto ${CMAKE_CURRENT_SOURCE_DIR}/draios-aggregator-plugin.py ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/draios.proto"
+	COMMAND scl enable python27 "${CMAKE_CURRENT_SOURCE_DIR}/protoc_plugin.sh ${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/bin/ ${PROJECT_BINARY_DIR}/userspace/draiosproto ${CMAKE_CURRENT_SOURCE_DIR}/draios-aggregator-plugin.py ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/draios.proto"
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 if(NOT CYGWIN)
@@ -174,24 +185,24 @@ add_custom_command(
 		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/tap.pb.cc
 		       ${CMAKE_CURRENT_BINARY_DIR}/tap.pb.h
 		COMMENT "Building tap cpp sources from .proto files"
-		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tap.proto
-		COMMAND ${PROTOC_CMDLINE} --cpp_out=. ${CMAKE_CURRENT_SOURCE_DIR}/tap.proto
+		DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/tap.proto
+		COMMAND ${PROTOC_CMDLINE} --cpp_out=. ${CMAKE_CURRENT_BINARY_DIR}/tap.proto
 		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_command(
 		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/secure.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/secure.pb.h
 		COMMENT "Building secure cpp sources from .proto files"
-		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/secure.proto
-		COMMAND ${PROTOC_CMDLINE} --cpp_out=. ${CMAKE_CURRENT_SOURCE_DIR}/secure.proto
+		DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/secure.proto
+		COMMAND ${PROTOC_CMDLINE} --cpp_out=. ${CMAKE_CURRENT_BINARY_DIR}/secure.proto
 		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_command(
 		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/profiling.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/profiling.pb.h
 		COMMENT "Building profiling cpp sources from .proto files"
-		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/profiling.proto
-		COMMAND ${PROTOC_CMDLINE} --cpp_out=. ${CMAKE_CURRENT_SOURCE_DIR}/profiling.proto
+		DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/profiling.proto
+		COMMAND ${PROTOC_CMDLINE} --cpp_out=. ${CMAKE_CURRENT_BINARY_DIR}/profiling.proto
 		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/promex.pb.cc
@@ -199,13 +210,13 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/promex.pb.cc
                           ${CMAKE_CURRENT_BINARY_DIR}/promex.grpc.pb.cc
 	                  ${CMAKE_CURRENT_BINARY_DIR}/promex.grpc.pb.h
 	COMMENT "Building promex cpp sources from .proto files"
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/promex.proto ${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/promex.proto ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
 	COMMAND ${PROTOC_CMDLINE}
 	        --cpp_out=.
-		${CMAKE_CURRENT_SOURCE_DIR}/promex.proto
+		${CMAKE_CURRENT_BINARY_DIR}/promex.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
-		${CMAKE_CURRENT_SOURCE_DIR}/promex.proto
+		${CMAKE_CURRENT_BINARY_DIR}/promex.proto
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 

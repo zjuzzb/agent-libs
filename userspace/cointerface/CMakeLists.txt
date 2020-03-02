@@ -39,7 +39,7 @@ add_custom_command(OUTPUT ${GOGO_PROTOBUF_VER_FILE}
 # The ARGC/ARGV handling is hardcoded and will need fixing if the
 # function signature changes.
 function(GoGenerate target pbgofile protofile)
-set(PROTO_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto")
+set(PROTO_SRC_DIR "${CMAKE_CURRENT_BINARY_DIR}/../draiosproto")
 set(GO_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/${target}")
 set(OUT_DIR "${GEN_GO_DIR}/${target}")
 set(GO_MOD_DST "${OUT_DIR}/go.mod")
@@ -52,14 +52,14 @@ add_custom_target(generate_${target} ALL
         DEPENDS ${OUTFILES}
 	)
 add_custom_command(OUTPUT ${OUTFILES}
-        COMMAND ${GOGENENV} PROTO_SRC_DIR="${PROTO_SRC_DIR}" PROTO_OUT_DIR="${OUT_DIR}" go generate ${target}
+		COMMAND ${GOGENENV} PROTO_SRC_DIR="${PROTO_SRC_DIR}" PROTO_OUT_DIR="${OUT_DIR}" go generate ${target}
         COMMAND ${CMAKE_COMMAND} -E copy ${GO_SRC_DIR}/go.mod ${GO_MOD_DST}
         WORKING_DIRECTORY ${GO_SRC_DIR}
-	DEPENDS ${GO_SRC_DIR}/generate.go
+		DEPENDS ${GO_SRC_DIR}/generate.go
                 ${GO_SRC_DIR}/go.mod
-                ${PROTO_SRC_DIR}/draios.proto
-                ${PROTO_SRC_DIR}/common.proto
-                ${PROTO_SRC_DIR}/${protofile}
+				${PROTO_SRC_DIR}/draios.proto
+				${PROTO_SRC_DIR}/common.proto
+				${PROTO_SRC_DIR}/${protofile}
                 ${GOGO_PROTOBUF_VER_FILE}
                 install_go_generate_deps
 		)
