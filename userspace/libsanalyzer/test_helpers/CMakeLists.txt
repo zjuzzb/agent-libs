@@ -16,22 +16,21 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/include)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include)
+include_directories(
+    ${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include
+)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/json-3.3.0/single_include)
 
-add_definitions( -DHAS_ANALYZER )
+add_definitions(-DHAS_ANALYZER)
 
-add_library(test-helpers-libsanalyzer STATIC
-	dummy_statsd_stats_source.cpp
-	run.cpp
-	scoped_sinsp_logger_capture.cpp
-	scoped_metric_store.cpp
-	sinsp_evt_wrapper.cpp
-	sinsp_mock.cpp
+add_library(
+    test-helpers-libsanalyzer STATIC
+    dummy_statsd_stats_source.cpp run.cpp scoped_sinsp_logger_capture.cpp scoped_metric_store.cpp
+    sinsp_evt_wrapper.cpp sinsp_mock.cpp
 )
 
 target_compile_definitions(test-helpers-libsanalyzer PUBLIC SYSDIG_TEST)

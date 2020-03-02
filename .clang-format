@@ -1,0 +1,39 @@
+BasedOnStyle: Google
+AccessModifierOffset: -4
+AllowAllArgumentsOnNextLine: false
+AllowAllConstructorInitializersOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBraces: Allman
+ColumnLimit: 100
+DerivePointerBinding: false
+# include order:
+# 0 - main header
+# 1 - headers from the same directory
+# 2 - internal headers from other directories
+# 3 - other collections of stuff (google/poco)
+# 4 - system-y headers, which have <
+#     then from category 2
+IncludeCategories:
+# matches all poco includes
+  - Regex: '^<(google/|Poco/)'
+    Priority: 3
+# matches all of <
+  - Regex: '^<'
+    Priority: 4
+# matches matches includes with a path
+  - Regex: '/'
+    Priority: 2
+# matches remaining includes
+  - Regex: '.*'
+    Priority: 1
+IncludeIsMainRegex: '([.](ut|bm))?$'
+IndentCaseLabels: false
+IndentWidth: 4
+SpaceAfterTemplateKeyword: false
+TabWidth: 4
+UseTab: ForIndentation

@@ -4,14 +4,14 @@ project(draios)
 
 option(BUILD_WARNINGS_AS_ERRORS "Enable building with -Wextra -Werror flags")
 
-# Versions of all third-party libraries used. These may be referred to
-# in lower CMakeLists.txt files.
+# Versions of all third-party libraries used. These may be referred to in lower CMakeLists.txt
+# files.
 set(DRAIOS_OPENSSL_VERSION "1.0.2n")
 set(DRAIOS_PROTOBUF_VERSION "3.9.2")
 if(NOT CYGWIN)
-set(DRAIOS_ZLIB_VERSION "1.2.11")
+    set(DRAIOS_ZLIB_VERSION "1.2.11")
 else()
-set(DRAIOS_ZLIB_VERSION "1.2.8")
+    set(DRAIOS_ZLIB_VERSION "1.2.8")
 endif()
 set(DRAIOS_POCO_VERSION "1.9.0-all")
 set(DRAIOS_GTEST_VERSION "1.7.0")
@@ -23,22 +23,21 @@ set(DRAIOS_B64_VERSION "1.2")
 set(DRAIOS_GRPC_VERSION "1.24.3")
 set(DRAIOS_GPERFTOOLS_VERSION "2.5")
 if(CYGWIN)
-	set(DRAIOS_LUAJIT_VERSION "2.0.5")
+    set(DRAIOS_LUAJIT_VERSION "2.0.5")
 else()
-	set(DRAIOS_LUAJIT_VERSION "2.0.3")
+    set(DRAIOS_LUAJIT_VERSION "2.0.3")
 endif()
 set(DRAIOS_CARES_VERSION "1.13.0")
 set(DRAIOS_KUBECTL_VERSION "1.9.6")
 set(DRAIOS_KUBE_BENCH_VERSION "0.0.24.2")
 if(NOT CYGWIN)
-	set(DRAIOS_TBB_VERSION "2018_U5")
+    set(DRAIOS_TBB_VERSION "2018_U5")
 endif()
 set(DRAIOS_NJSON_VERSION "3.3.0")
 set(DRAIOS_BENCHMARK_VERSION "1.5.0")
 
 # Add path for custom CMake modules used to build dependencies from sysdig (libscap, libsinsp)
-list(APPEND CMAKE_MODULE_PATH
-	"${PROJECT_SOURCE_DIR}/../sysdig/cmake/modules")
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/../sysdig/cmake/modules")
 
 # Set up the different flavors of agent binaries
 include(CMakeConfigurationTypes.cmake)
@@ -46,21 +45,21 @@ include(CMakeConfigurationTypes.cmake)
 add_definitions(-DPLATFORM_NAME="${CMAKE_SYSTEM_NAME}")
 add_definitions(-DHAS_CAPTURE)
 if(CYGWIN)
-	add_definitions(-DCYGWING_AGENT)
+    add_definitions(-DCYGWING_AGENT)
 endif()
 
 add_definitions(-D_GNU_SOURCE)
 
 if(DEFINED ENV{CMAKE_INSTALL_PREFIX})
-	set (CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-	set(KBUILD_FLAGS "${DRAIOS_DEBUG_FLAGS} ${DRAIOS_FEATURE_FLAGS}")
-	set(CPACK_STRIP_FILES "OFF")
+    set(KBUILD_FLAGS "${DRAIOS_DEBUG_FLAGS} ${DRAIOS_FEATURE_FLAGS}")
+    set(CPACK_STRIP_FILES "OFF")
 else()
-	set(KBUILD_FLAGS "${DRAIOS_FEATURE_FLAGS}")
-	set(CPACK_STRIP_FILES "ON")
+    set(KBUILD_FLAGS "${DRAIOS_FEATURE_FLAGS}")
+    set(CPACK_STRIP_FILES "ON")
 endif()
 
 set(PACKAGE_NAME "draios-agent")
@@ -69,32 +68,32 @@ set(PROBE_NAME "sysdigcloud-probe")
 set(PROBE_DEVICE_NAME "sysdigcloud")
 
 if(NOT CYGWIN)
-	add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/driver ${PROJECT_BINARY_DIR}/driver)
-	set(ZLIB_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.11")
-	set(ZLIB_LIB "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.11/libz.a")
+    add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/driver ${PROJECT_BINARY_DIR}/driver)
+    set(ZLIB_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.11")
+    set(ZLIB_LIB "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.11/libz.a")
 else()
-	set(ZLIB_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8")
-	set(ZLIB_LIB "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a")
+    set(ZLIB_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8")
+    set(ZLIB_LIB "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a")
 endif()
 
 add_custom_target(zlib)
 
 if(NOT CYGWIN)
-	if(EXISTS "${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.3/src")
-		set(LUAJIT_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.3/src")
-		set(LUALIB "${LUAJIT_INCLUDE}/libluajit.a")
-	else()
-		set(LUAJIT_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/lua-5.1.5/src")
-		set(LUALIB "${LUAJIT_INCLUDE}/liblua.a")
-	endif()
-	set(CURL_INCLUDE_DIR "${DRAIOS_DEPENDENCIES_DIR}/curl-7.61.0/include")
-	set(TBB_INCLUDE_DIR "${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include/")
+    if(EXISTS "${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.3/src")
+        set(LUAJIT_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.3/src")
+        set(LUALIB "${LUAJIT_INCLUDE}/libluajit.a")
+    else()
+        set(LUAJIT_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/lua-5.1.5/src")
+        set(LUALIB "${LUAJIT_INCLUDE}/liblua.a")
+    endif()
+    set(CURL_INCLUDE_DIR "${DRAIOS_DEPENDENCIES_DIR}/curl-7.61.0/include")
+    set(TBB_INCLUDE_DIR "${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include/")
 else()
-	set(LUAJIT_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.5/src")
-	set(LUALIB "${LUAJIT_INCLUDE}/libluajit.a")
-	set(CURL_INCLUDE_DIR "${DRAIOS_DEPENDENCIES_DIR}/curl-7.61.0/include")
-	set(WIN_HAL_INCLUDE "${DRAGENT_WINHAL_DIR}/target/include")
-	set(WIN_HAL_LIB "${DRAGENT_WINHAL_DIR}/target/lib")
+    set(LUAJIT_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.5/src")
+    set(LUALIB "${LUAJIT_INCLUDE}/libluajit.a")
+    set(CURL_INCLUDE_DIR "${DRAIOS_DEPENDENCIES_DIR}/curl-7.61.0/include")
+    set(WIN_HAL_INCLUDE "${DRAGENT_WINHAL_DIR}/target/include")
+    set(WIN_HAL_LIB "${DRAGENT_WINHAL_DIR}/target/lib")
 endif()
 
 set(NJSON_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/json-3.3.0/single_include")
@@ -107,16 +106,17 @@ set(FALCO_ABSOLUTE_SHARE_DIR "${FALCO_SHARE_DIR}")
 set(FALCO_COMPONENT agent-slim)
 set(SYSDIG_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../sysdig")
 
-# This suppresses warnings where a project in add_dependencies() is
-# missing. This happens for dependencies of falco engine, where the
-# agent cmakefiles create the dependencies but don't create
+# This suppresses warnings where a project in add_dependencies() is missing. This happens for
+# dependencies of falco engine, where the agent cmakefiles create the dependencies but don't create
 # ExternalProjects for them.
 cmake_policy(SET CMP0046 OLD)
-add_subdirectory(${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine ${PROJECT_BINARY_DIR}/userspace/engine)
+add_subdirectory(
+    ${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine ${PROJECT_BINARY_DIR}/userspace/engine
+)
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap)
 if(NOT CYGWIN)
-	add_subdirectory(userspace/cointerface)
+    add_subdirectory(userspace/cointerface)
 endif()
 add_subdirectory(userspace/comp_modules)
 add_subdirectory(userspace/dragent/src)
@@ -125,42 +125,48 @@ add_subdirectory(userspace/libsanalyzer/src)
 add_subdirectory(userspace/librest/src)
 add_subdirectory(userspace/userspace-shared/src)
 if(NOT CYGWIN)
-	add_subdirectory(userspace/sdjagent)
-	add_subdirectory(userspace/sdchecks)
-	add_subdirectory(scripts)
-	add_subdirectory(docker)
+    add_subdirectory(userspace/sdjagent)
+    add_subdirectory(userspace/sdchecks)
+    add_subdirectory(scripts)
+    add_subdirectory(docker)
 endif()
 
 if(ADD_INTERNAL_TEST_TARGETS)
-	include(CMakeListsForTest.cmake)
+    include(CMakeListsForTest.cmake)
 endif()
 
-# The /test tests and associated test-helpers run in the release jenkins job.
-# That uses the production (non-internal) build.
+# The /test tests and associated test-helpers run in the release jenkins job. That uses the
+# production (non-internal) build.
 if(NOT CYGWIN)
-	add_subdirectory(test)
+    add_subdirectory(test)
 endif()
 add_subdirectory(userspace/test_helpers/src)
 add_subdirectory(userspace/test_helpers/test)
 
-install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-${STATSITE_VERSION}/statsite
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent-slim)
+install(
+    PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-${STATSITE_VERSION}/statsite
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+    COMPONENT agent-slim
+)
 
-install(PROGRAMS ${PROJECT_SOURCE_DIR}/../sysdig/scripts/sysdig-probe-loader
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	RENAME sysdigcloud-probe-loader
-	COMPONENT agent-slim)
+install(
+    PROGRAMS ${PROJECT_SOURCE_DIR}/../sysdig/scripts/sysdig-probe-loader
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+    RENAME sysdigcloud-probe-loader
+    COMPONENT agent-slim
+)
 
-install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/gen-support-bundle
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent-slim)
+install(
+    PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/gen-support-bundle
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+    COMPONENT agent-slim
+)
 
-if (NOT DEFINED COMBINED_PACKAGE)
+if(NOT DEFINED COMBINED_PACKAGE)
     set(COMBINED_PACKAGE ON)
 endif()
 
-if (COMBINED_PACKAGE STREQUAL "ON")
+if(COMBINED_PACKAGE STREQUAL "ON")
     set(CPACK_COMPONENT_AGENT-SLIM_GROUP agent)
     set(CPACK_COMPONENT_AGENT-KMODULE_GROUP agent)
     set(CPACK_COMPONENTS_GROUPING ONE_PER_GROUP)
@@ -170,19 +176,21 @@ set(CPACK_PACKAGE_NAME "draios")
 set(CPACK_PACKAGE_VENDOR "Sysdig Inc.")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Sysdig Agent")
 set(CPACK_PACKAGE_VERSION "${AGENT_VERSION}")
-if (DEFINED AGENT_BUILD_COMMIT)
+if(DEFINED AGENT_BUILD_COMMIT)
     set(CPACK_PACKAGE_VERSION_PATCH "${AGENT_BUILD_COMMIT}")
 endif()
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_SYSTEM_PROCESSOR}")
+set(CPACK_PACKAGE_FILE_NAME
+    "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_SYSTEM_PROCESSOR}"
+)
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${PROJECT_SOURCE_DIR}/description.txt")
 set(CPACK_PROJECT_CONFIG_FILE "${PROJECT_SOURCE_DIR}/CMakeCPackOptions.cmake")
 set(CPACK_PACKAGE_RELOCATABLE "OFF")
 set(CPACK_DRAIOS_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
 if(PACKAGE_DEB_ONLY STREQUAL "ON")
-  set(CPACK_GENERATOR DEB)
+    set(CPACK_GENERATOR DEB)
 else()
-  set(CPACK_GENERATOR DEB RPM TGZ)
+    set(CPACK_GENERATOR DEB RPM TGZ)
 endif()
 
 set(CPACK_DEB_COMPONENT_INSTALL "ON")
@@ -192,29 +200,42 @@ set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "http://www.sysdig.com")
 set(CPACK_DEBIAN_AGENT-SLIM_PACKAGE_DEPENDS "python")
 set(CPACK_DEBIAN_AGENT-KMODULE_PACKAGE_DEPENDS "dkms (>= 2.1.0.0)")
 set(CPACK_DEBIAN_AGENT_PACKAGE_DEPENDS "dkms (>= 2.1.0.0), python")
-set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_BINARY_DIR}/scripts/debian/postinst;${CMAKE_BINARY_DIR}/scripts/debian/prerm;${PROJECT_SOURCE_DIR}/scripts/debian/postrm")
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
+    "${CMAKE_BINARY_DIR}/scripts/debian/postinst;${CMAKE_BINARY_DIR}/scripts/debian/prerm;${PROJECT_SOURCE_DIR}/scripts/debian/postrm"
+)
 
 set(CPACK_RPM_COMPONENT_INSTALL "ON")
 set(CPACK_RPM_agent-slim_PACKAGE_REQUIRES "python2")
-set(CPACK_RPM_agent-slim_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall.slim")
-set(CPACK_RPM_agent-slim_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall.slim")
-set(CPACK_RPM_agent-slim_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")
+set(CPACK_RPM_agent-slim_POST_INSTALL_SCRIPT_FILE
+    "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall.slim"
+)
+set(CPACK_RPM_agent-slim_PRE_UNINSTALL_SCRIPT_FILE
+    "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall.slim"
+)
+set(CPACK_RPM_agent-slim_POST_UNINSTALL_SCRIPT_FILE
+    "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall"
+)
 
 set(CPACK_RPM_agent-kmodule_PACKAGE_REQUIRES "dkms, gcc, make, kernel-devel, perl")
-set(CPACK_RPM_agent-kmodule_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall.kmodule")
-set(CPACK_RPM_agent-kmodule_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall.kmodule")
+set(CPACK_RPM_agent-kmodule_POST_INSTALL_SCRIPT_FILE
+    "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall.kmodule"
+)
+set(CPACK_RPM_agent-kmodule_PRE_UNINSTALL_SCRIPT_FILE
+    "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall.kmodule"
+)
 
 set(CPACK_RPM_agent_PACKAGE_REQUIRES "dkms, gcc, make, kernel-devel, perl, python2")
 set(CPACK_RPM_agent_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall")
 set(CPACK_RPM_agent_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall")
 set(CPACK_RPM_agent_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")
 
-set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION
-	/etc/rc.d
-	/etc/rc.d/init.d
-	${CMAKE_INSTALL_PREFIX})
+set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION /etc/rc.d /etc/rc.d/init.d
+                                                  ${CMAKE_INSTALL_PREFIX}
+)
 set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
-set(CPACK_RPM_SPEC_MORE_DEFINE "%global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')")
+set(CPACK_RPM_SPEC_MORE_DEFINE
+    "%global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')"
+)
 set(CPACK_RPM_PACKAGE_RELOCATABLE "ON")
 set(CPACK_RPM_RELOCATION_PATHS ${CMAKE_INSTALL_PREFIX})
 

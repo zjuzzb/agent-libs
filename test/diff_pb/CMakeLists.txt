@@ -19,13 +19,12 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/metrics_list.pb.cc
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-add_executable(diff_pb
-	${CMAKE_CURRENT_BINARY_DIR}/metrics_list.pb.cc
-	diff_pb.cpp)
-	
-target_link_libraries(diff_pb
-	draiosproto)
+add_executable(diff_pb ${CMAKE_CURRENT_BINARY_DIR}/metrics_list.pb.cc diff_pb.cpp)
 
-install(TARGETS diff_pb
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-        COMPONENT tests)
+target_link_libraries(diff_pb draiosproto)
+
+install(
+    TARGETS diff_pb
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
+    COMPONENT tests
+)

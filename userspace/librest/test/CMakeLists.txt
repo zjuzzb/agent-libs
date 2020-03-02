@@ -6,61 +6,71 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 
-add_executable(unit-test-librest
-	main.cpp
-	dummy_server_request.ut.cpp
-	dummy_server_response.ut.cpp
-	rest_exception.ut.cpp
-	rest_request_handler.ut.cpp
-	rest_request_handler_factory.ut.cpp
-	rest_server.ut.cpp
-	rest_util.ut.cpp
+add_executable(
+    unit-test-librest
+    main.cpp
+    dummy_server_request.ut.cpp
+    dummy_server_response.ut.cpp
+    rest_exception.ut.cpp
+    rest_request_handler.ut.cpp
+    rest_request_handler_factory.ut.cpp
+    rest_server.ut.cpp
+    rest_util.ut.cpp
 )
 
-target_link_libraries(unit-test-librest
-	librestl
-	test-helpers-librest
-	userspace-shared
-	rt
-	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
-	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
-	pthread
+target_link_libraries(
+    unit-test-librest
+    librestl
+    test-helpers-librest
+    userspace-shared
+    rt
+    ${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
+    ${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
+    pthread
 )
 
-file(
-	COPY valgrind/helgrind.suppressions
-	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
-)
+file(COPY valgrind/helgrind.suppressions DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)
-	add_custom_target(run-unit-test-librest
-		DEPENDS unit-test-librest
-		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-librest librest.lcov
-	)
+    add_custom_target(
+        run-unit-test-librest
+        DEPENDS unit-test-librest
+        COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-librest librest.lcov
+    )
 else()
-	add_custom_target(run-unit-test-librest
-		DEPENDS unit-test-librest
-		COMMAND unit-test-librest
-	)
+    add_custom_target(
+        run-unit-test-librest
+        DEPENDS unit-test-librest
+        COMMAND unit-test-librest
+    )
 endif()
 
-# Valgrind's thread analyzer, helgrind, doesn't work well with the release
-# version of the unit test binary -- the backtraces that we want to suppress
-# don't match reality in the code.  Rather than add suppressions for these
-# unexpected backtraces, we'll run helgrind only for debug builds.
+# Valgrind's thread analyzer, helgrind, doesn't work well with the release version of the unit test
+# binary -- the backtraces that we want to suppress don't match reality in the code.  Rather than
+# add suppressions for these unexpected backtraces, we'll run helgrind only for debug builds.
 if(CMAKE_BUILD_TYPE STREQUAL "DebugInternal")
-	add_custom_target(valgrind-unit-test-librest
-	DEPENDS unit-test-librest
-		COMMAND valgrind --error-exitcode=1 --leak-check=full --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-librest
-		COMMAND valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind --soname-synonyms=somalloc=tcmalloc ./unit-test-librest
-	)
+    add_custom_target(
+        valgrind-unit-test-librest
+        DEPENDS unit-test-librest
+        COMMAND valgrind --error-exitcode=1 --leak-check=full --gen-suppressions=all
+                --soname-synonyms=somalloc=tcmalloc ./unit-test-librest
+        COMMAND
+            valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions
+            --gen-suppressions=all --tool=helgrind --soname-synonyms=somalloc=tcmalloc
+            ./unit-test-librest
+    )
 else()
-	add_custom_target(valgrind-unit-test-librest
-		COMMAND echo "Error: Valgrind not supported in this build variant. Use the debug-internal build instead." && false
-	)
+    add_custom_target(
+        valgrind-unit-test-librest
+        COMMAND
+            echo
+            "Error: Valgrind not supported in this build variant. Use the debug-internal build instead."
+            && false
+    )
 endif()
 
-install(TARGETS unit-test-librest
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-	COMPONENT unit-test-librest
+install(
+    TARGETS unit-test-librest
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
+    COMPONENT unit-test-librest
 )

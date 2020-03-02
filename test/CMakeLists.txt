@@ -34,147 +34,161 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/incl
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 
-add_definitions( -DHAS_ANALYZER )
+add_definitions(-DHAS_ANALYZER)
 
-add_executable(tests
-	auid.cpp
-	analyzer_test.cpp
-	app_checks.cpp
-	baseliner.cpp
-	capture_to_file_test.cpp
-	configuration_test.cpp
-	container.cpp
-	container_cgroup.cpp
-	container_cri.cpp
-	container_emitter_test.cpp
-	container_image_splitting.cpp
-	coclient_test.cpp
-	compliance.cpp
-	custom_container.cpp
-	dns_manager.cpp
-	docker_utils.cpp
-	emit_tracers.cpp
-	event_capture.cpp
-	evttype_filter.cpp
-	forking.cpp
-	fs.cpp
-	grpc.cpp
-	# infrastructure_state_test.cpp
-	inf_state_test.cpp
-	internal_metrics.cpp
-	ipv6.cpp
-	jmx_proxy.cpp
-	json_query.cpp
-	k8s_limits.cpp
-	label_limits.cpp
-	main.cpp
-	memdump.cpp
-	metric_limits.cpp
-	mounted_fs.cpp
-	net.cpp
-	nodriver.cpp
-	paths.cpp
-	percentile.cpp
-	pgid.cpp
-	pipe.cpp
-	prefix_search_test.cpp
-	process.cpp
-	security_policies.cpp
-	sql.cpp
-	suppress_events.cpp
-	sys_call_test.cpp
-	tcp_client_server.cpp
-	tcp_client_server_ipv4_mapped.cpp
-	thread_state.cpp
-	threadinfo.cpp
-	token_bucket_test.cpp
-	tracers.cpp
-	udp_client_server.cpp
-	unix_client_server.cpp
-	unix_udp_client_server.cpp
-	uri.cpp
-	user_event.cpp
-	yaml_configuration.cpp
-	sysdig/userspace/async/async_key_value_source.ut.cpp
-	sysdig/userspace/libsinsp/cgroup_list_counter.ut.cpp
-	sysdig/userspace/libsinsp/logger.ut.cpp
-	sysdig/userspace/libsinsp/user_event_logger.ut.cpp
+add_executable(
+    tests
+    auid.cpp
+    analyzer_test.cpp
+    app_checks.cpp
+    baseliner.cpp
+    capture_to_file_test.cpp
+    configuration_test.cpp
+    container.cpp
+    container_cgroup.cpp
+    container_cri.cpp
+    container_emitter_test.cpp
+    container_image_splitting.cpp
+    coclient_test.cpp
+    compliance.cpp
+    custom_container.cpp
+    dns_manager.cpp
+    docker_utils.cpp
+    emit_tracers.cpp
+    event_capture.cpp
+    evttype_filter.cpp
+    forking.cpp
+    fs.cpp
+    grpc.cpp
+    # infrastructure_state_test.cpp
+    inf_state_test.cpp
+    internal_metrics.cpp
+    ipv6.cpp
+    jmx_proxy.cpp
+    json_query.cpp
+    k8s_limits.cpp
+    label_limits.cpp
+    main.cpp
+    memdump.cpp
+    metric_limits.cpp
+    mounted_fs.cpp
+    net.cpp
+    nodriver.cpp
+    paths.cpp
+    percentile.cpp
+    pgid.cpp
+    pipe.cpp
+    prefix_search_test.cpp
+    process.cpp
+    security_policies.cpp
+    sql.cpp
+    suppress_events.cpp
+    sys_call_test.cpp
+    tcp_client_server.cpp
+    tcp_client_server_ipv4_mapped.cpp
+    thread_state.cpp
+    threadinfo.cpp
+    token_bucket_test.cpp
+    tracers.cpp
+    udp_client_server.cpp
+    unix_client_server.cpp
+    unix_udp_client_server.cpp
+    uri.cpp
+    user_event.cpp
+    yaml_configuration.cpp
+    sysdig/userspace/async/async_key_value_source.ut.cpp
+    sysdig/userspace/libsinsp/cgroup_list_counter.ut.cpp
+    sysdig/userspace/libsinsp/logger.ut.cpp
+    sysdig/userspace/libsinsp/user_event_logger.ut.cpp
 )
 
-target_link_libraries(tests
-	pthread
-	sanalyzer
-	dragentl
-	draiosproto
-	falco_engine
-	test_helpers
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
-	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
-	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
-	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
-	${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a
-	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
-	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a)
+target_link_libraries(
+    tests
+    pthread
+    sanalyzer
+    dragentl
+    draiosproto
+    falco_engine
+    test_helpers
+    ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
+    ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
+    ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
+    ${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
+    ${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
+    ${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
+    ${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a
+    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
+    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
+)
 
-add_executable(test_helper
-	test_helper.cpp)
+add_executable(test_helper test_helper.cpp)
 
-target_link_libraries(test_helper
-	pthread)
+target_link_libraries(test_helper pthread)
 
-add_executable(vtidcollision
-	vtidcollision.c)
+add_executable(vtidcollision vtidcollision.c)
 
-execute_process(COMMAND "uname" "-m" OUTPUT_VARIABLE ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(
+    COMMAND "uname" "-m"
+    OUTPUT_VARIABLE ARCH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 
 if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-	add_executable(test_helper_32
-		test_helper.cpp)
-	if("${ARCH}" STREQUAL "s390x")
-		set_target_properties(test_helper_32 PROPERTIES COMPILE_FLAGS "-m31" LINK_FLAGS "-m31")
-	else("${ARCH}" STREQUAL "s390x")
-		set_target_properties(test_helper_32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
-	endif("${ARCH}" STREQUAL "s390x")
-	install(TARGETS test_helper_32
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-		COMPONENT tests)
-	target_link_libraries(test_helper_32
-		pthread)
+    add_executable(test_helper_32 test_helper.cpp)
+    if("${ARCH}" STREQUAL "s390x")
+        set_target_properties(test_helper_32 PROPERTIES COMPILE_FLAGS "-m31" LINK_FLAGS "-m31")
+    else("${ARCH}" STREQUAL "s390x")
+        set_target_properties(test_helper_32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+    endif("${ARCH}" STREQUAL "s390x")
+    install(
+        TARGETS test_helper_32
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
+        COMPONENT tests
+    )
+    target_link_libraries(test_helper_32 pthread)
 endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/captures)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/resources/run)
 
-install(DIRECTORY
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/captures
-	COMPONENT tests)
+install(
+    DIRECTORY
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/test/captures
+    COMPONENT tests
+)
 
-install(DIRECTORY
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/resources/run
-	COMPONENT tests)
+install(
+    DIRECTORY
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/test/resources/run
+    COMPONENT tests
+)
 
-install(TARGETS test_helper vtidcollision
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-	COMPONENT tests)
+install(
+    TARGETS test_helper vtidcollision
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
+    COMPONENT tests
+)
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_helper.sh
-	${CMAKE_CURRENT_BINARY_DIR}/test_helper.sh
-	COPYONLY)
-	
-install(FILES test_certs/certificate.pem test_certs/key.pem
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-	PERMISSIONS OWNER_WRITE OWNER_READ
-	COMPONENT tests)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_helper.sh ${CMAKE_CURRENT_BINARY_DIR}/test_helper.sh COPYONLY
+)
 
-install(FILES test_helper.sh
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-	PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-	COMPONENT tests)
+install(
+    FILES test_certs/certificate.pem test_certs/key.pem
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
+    PERMISSIONS OWNER_WRITE OWNER_READ
+    COMPONENT tests
+)
 
-install(TARGETS tests
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-	COMPONENT tests)
+install(
+    FILES test_helper.sh
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
+    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
+    COMPONENT tests
+)
 
+install(
+    TARGETS tests
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
+    COMPONENT tests
+)

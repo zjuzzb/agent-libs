@@ -17,209 +17,233 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/include)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include)
+include_directories(
+    ${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include
+)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 
-add_definitions( -DHAS_ANALYZER )
+add_definitions(-DHAS_ANALYZER)
 
-list(APPEND targetfiles
-	app_checks_proxy.cpp
-	async_aggregator.cpp
-	avoid_block_channel.cpp
-	baseline_mgr.cpp
-	capture_job_handler.cpp
-	compliance_mgr.cpp
-	configlist_rest_request_handler.cpp
-	configuration.cpp
-	config_data_message_handler.cpp
-	config_data_rest_request_handler.cpp
-	config_rest_request_handler.cpp
-	config_update.cpp
-	container_size_requestor.cpp
-	connection_manager.cpp
-	crash_handler.cpp
-	dragent.cpp
-	dragent_memdump_logger.cpp
-	dragent_user_event_callback.cpp
-	dump_request_start_message_handler.cpp
-	dump_request_stop_message_handler.cpp
-	error_handler.cpp
-	faultlist_rest_request_handler.cpp
-	fault_rest_request_handler.cpp
-	file_rest_registry.cpp
-	file_rest_request_handler.cpp
-	metric_serializer.cpp
-	metrics_file_emitter.cpp
-	pre_aggregated_metrics_rest_request_handler.cpp
-	post_aggregated_metrics_rest_request_handler.cpp
-	metrics_rest_request_helper.cpp
-	monitor.cpp
-	null_message_handler.cpp
-	protocol.cpp
-	security_action.cpp
-	security_compliance_calendar_message_handler.cpp
-	security_compliance_run_message_handler.cpp
-	security_mgr.cpp
-	security_orchestrator_events_message_handler.cpp
-	security_policy.cpp
-	protobuf_metric_serializer.cpp
-	protocol_handler.cpp
-	security_policies_message_handler.cpp
-	security_policies_v2_message_handler.cpp
-	security_rule.cpp
-	sinsp_factory.cpp
-	sinsp_worker.cpp
-	subprocesses_logger.cpp
-	uptime.cpp
-	user_event_channel.cpp
-	watchdog_runnable_pool.cpp
-	watchdog_runnable.cpp
-	webpage.cpp
-	webpage_rest_request_handler.cpp
+list(
+    APPEND
+    targetfiles
+    app_checks_proxy.cpp
+    async_aggregator.cpp
+    avoid_block_channel.cpp
+    baseline_mgr.cpp
+    capture_job_handler.cpp
+    compliance_mgr.cpp
+    configlist_rest_request_handler.cpp
+    configuration.cpp
+    config_data_message_handler.cpp
+    config_data_rest_request_handler.cpp
+    config_rest_request_handler.cpp
+    config_update.cpp
+    container_size_requestor.cpp
+    connection_manager.cpp
+    crash_handler.cpp
+    dragent.cpp
+    dragent_memdump_logger.cpp
+    dragent_user_event_callback.cpp
+    dump_request_start_message_handler.cpp
+    dump_request_stop_message_handler.cpp
+    error_handler.cpp
+    faultlist_rest_request_handler.cpp
+    fault_rest_request_handler.cpp
+    file_rest_registry.cpp
+    file_rest_request_handler.cpp
+    metric_serializer.cpp
+    metrics_file_emitter.cpp
+    pre_aggregated_metrics_rest_request_handler.cpp
+    post_aggregated_metrics_rest_request_handler.cpp
+    metrics_rest_request_helper.cpp
+    monitor.cpp
+    null_message_handler.cpp
+    protocol.cpp
+    security_action.cpp
+    security_compliance_calendar_message_handler.cpp
+    security_compliance_run_message_handler.cpp
+    security_mgr.cpp
+    security_orchestrator_events_message_handler.cpp
+    security_policy.cpp
+    protobuf_metric_serializer.cpp
+    protocol_handler.cpp
+    security_policies_message_handler.cpp
+    security_policies_v2_message_handler.cpp
+    security_rule.cpp
+    sinsp_factory.cpp
+    sinsp_worker.cpp
+    subprocesses_logger.cpp
+    uptime.cpp
+    user_event_channel.cpp
+    watchdog_runnable_pool.cpp
+    watchdog_runnable.cpp
+    webpage.cpp
+    webpage_rest_request_handler.cpp
 )
 
 if(CYGWIN)
-	# windows specific implementation
-	list(APPEND targetfiles
-		windows_helpers.cpp
-		windows/process_helpers.cpp)
+    # windows specific implementation
+    list(APPEND targetfiles windows_helpers.cpp windows/process_helpers.cpp)
 else()
-	# linux specific implementation
-	list(APPEND targetfiles
-		linux/process_helpers.cpp)
+    # linux specific implementation
+    list(APPEND targetfiles linux/process_helpers.cpp)
 endif()
-
 
 if(CYGWIN)
-	set(POCO_LIB_DIR "bin")
-	set(POCO_LIB_PREFIX "cyg")
+    set(POCO_LIB_DIR "bin")
+    set(POCO_LIB_PREFIX "cyg")
 else()
-	set(POCO_LIB_DIR "lib")
-	set(POCO_LIB_PREFIX "lib")
+    set(POCO_LIB_DIR "lib")
+    set(POCO_LIB_PREFIX "lib")
 endif()
 
-list(APPEND dragent_link_libraries
-	${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/src/libb64.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoNetSSL.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoUtil.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoNet.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoFoundation.a
-	rt
-	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a)
+list(
+    APPEND
+    dragent_link_libraries
+    ${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/src/libb64.a
+    ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoNetSSL.a
+    ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoUtil.a
+    ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoNet.a
+    ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoFoundation.a
+    rt
+    ${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
+)
 
 add_library(dragentl STATIC ${targetfiles})
 target_link_libraries(dragentl falco_engine ${dragent_link_libraries})
 
 if(INCLUDE_INTERNAL_TEST_CODE)
-	target_compile_definitions(dragentl PUBLIC SYSDIG_TEST)
+    target_compile_definitions(dragentl PUBLIC SYSDIG_TEST)
 endif()
 
-add_executable(dragent
-	main.cpp)
+add_executable(dragent main.cpp)
 
-target_link_libraries(dragent
-	pthread
-	sanalyzer
-	dragentl
-	draiosproto
-	librestl
-)
+target_link_libraries(dragent pthread sanalyzer dragentl draiosproto librestl)
 
 if(NOT CYGWIN)
-	target_link_libraries(dragent
-		${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
-		${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
-		${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/lib/libtcmalloc_and_profiler.a)
+    target_link_libraries(
+        dragent
+        ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
+        ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
+        ${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/lib/libtcmalloc_and_profiler.a
+    )
 else()
-	target_link_libraries(dragent
-		${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
-		/lib/w32api/libiphlpapi.a
-	)
+    target_link_libraries(
+        dragent ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
+        /lib/w32api/libiphlpapi.a
+    )
 endif()
 
 file(COPY ${PROJECT_SOURCE_DIR}/scripts/rpm/dragent.in
-	DESTINATION ${PROJECT_BINARY_DIR}/scripts/rpm)
+     DESTINATION ${PROJECT_BINARY_DIR}/scripts/rpm
+)
 
-file(COPY root.cert
-	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY root.cert DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-file(COPY chisels
-	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY chisels DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 file(COPY ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/common.lua
-		${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/dkjson.lua
-		DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/chisels)
+          ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/dkjson.lua
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/chisels
+)
 
-if (DEFINED AGENT_BUILD_COMMIT OR DEFINED AGENT_BUILD_DATE)
-	if (DEFINED AGENT_BUILD_COMMIT)
-		file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/.agent_build "commit: ${AGENT_BUILD_COMMIT}\n")
-	endif()
-	if (DEFINED AGENT_BUILD_DATE)
-		file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/.agent_build "build date: ${AGENT_BUILD_DATE}\n")
-	endif()
-	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/.agent_build
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
-		COMPONENT agent-slim)
+if(DEFINED AGENT_BUILD_COMMIT OR DEFINED AGENT_BUILD_DATE)
+    if(DEFINED AGENT_BUILD_COMMIT)
+        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/.agent_build "commit: ${AGENT_BUILD_COMMIT}\n")
+    endif()
+    if(DEFINED AGENT_BUILD_DATE)
+        file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/.agent_build "build date: ${AGENT_BUILD_DATE}\n")
+    endif()
+    install(
+        FILES ${CMAKE_CURRENT_BINARY_DIR}/.agent_build
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
+        COMPONENT agent-slim
+    )
 endif()
 
-install(TARGETS dragent
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent-slim)
+install(
+    TARGETS dragent
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+    COMPONENT agent-slim
+)
 
-install(FILES root.cert
-	DESTINATION ${CMAKE_INSTALL_PREFIX}
-	COMPONENT agent-slim)
+install(
+    FILES root.cert
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
+    COMPONENT agent-slim
+)
 
-install(FILES dragent.default.yaml
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
-	COMPONENT agent-slim)
+install(
+    FILES dragent.default.yaml
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
+    COMPONENT agent-slim
+)
 
-install(DIRECTORY chisels
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/share
-	COMPONENT agent-slim)
+install(
+    DIRECTORY chisels
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/share
+    COMPONENT agent-slim
+)
 
-install(FILES ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/common.lua
-		${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/dkjson.lua
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/chisels
-		COMPONENT agent-slim)
+install(
+    FILES ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/common.lua
+          ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/dkjson.lua
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/share/chisels
+    COMPONENT agent-slim
+)
 
 if(CYGWIN)
-install(FILES ${DRAGENT_WINHAL_DIR}/target/bin/dragent_win_hal.dll
-	PERMISSIONS OWNER_EXECUTE OWNER_READ
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent-slim)
+    install(
+        FILES ${DRAGENT_WINHAL_DIR}/target/bin/dragent_win_hal.dll
+        PERMISSIONS OWNER_EXECUTE OWNER_READ
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+        COMPONENT agent-slim
+    )
 
-install(FILES /bin/cygstdc++-6.dll
-	PERMISSIONS OWNER_EXECUTE OWNER_READ
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent-slim)
+    install(
+        FILES /bin/cygstdc++-6.dll
+        PERMISSIONS OWNER_EXECUTE OWNER_READ
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+        COMPONENT agent-slim
+    )
 
-install(FILES /bin/cyggcc_s-seh-1.dll
-	PERMISSIONS OWNER_EXECUTE OWNER_READ
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent-slim)
+    install(
+        FILES /bin/cyggcc_s-seh-1.dll
+        PERMISSIONS OWNER_EXECUTE OWNER_READ
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+        COMPONENT agent-slim
+    )
 
-install(FILES /bin/cygwin1.dll
-	PERMISSIONS OWNER_EXECUTE OWNER_READ
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent-slim)
+    install(
+        FILES /bin/cygwin1.dll
+        PERMISSIONS OWNER_EXECUTE OWNER_READ
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+        COMPONENT agent-slim
+    )
 
-install(FILES ${DRAGENT_WINHAL_DIR}/target/bin/DragentService.exe
-	PERMISSIONS OWNER_EXECUTE OWNER_READ
-	DESTINATION ${CMAKE_INSTALL_PREFIX}
-	COMPONENT agent-slim)
+    install(
+        FILES ${DRAGENT_WINHAL_DIR}/target/bin/DragentService.exe
+        PERMISSIONS OWNER_EXECUTE OWNER_READ
+        DESTINATION ${CMAKE_INSTALL_PREFIX}
+        COMPONENT agent-slim
+    )
 
-install(FILES ${PROJECT_SOURCE_DIR}/windows/wix_installer/dragent.wxs
-	DESTINATION ${CMAKE_INSTALL_PREFIX}
-	COMPONENT agent-slim)
+    install(
+        FILES ${PROJECT_SOURCE_DIR}/windows/wix_installer/dragent.wxs
+        DESTINATION ${CMAKE_INSTALL_PREFIX}
+        COMPONENT agent-slim
+    )
 
-install(FILES ${PROJECT_SOURCE_DIR}/windows/wix_installer/make_msi.sh
-	PERMISSIONS OWNER_EXECUTE OWNER_READ
-	DESTINATION ${CMAKE_INSTALL_PREFIX}
-	COMPONENT agent-slim)
+    install(
+        FILES ${PROJECT_SOURCE_DIR}/windows/wix_installer/make_msi.sh
+        PERMISSIONS OWNER_EXECUTE OWNER_READ
+        DESTINATION ${CMAKE_INSTALL_PREFIX}
+        COMPONENT agent-slim
+    )
 endif()
 
 configure_file(agent-config.h.in agent-config.h)

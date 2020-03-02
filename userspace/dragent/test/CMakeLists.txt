@@ -30,81 +30,92 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/incl
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 
-add_definitions( -DHAS_ANALYZER )
+add_definitions(-DHAS_ANALYZER)
 
-add_executable(unit-test-dragent
-	main.cpp
-	async_aggregator.ut.cpp
-	configlist_rest_request_handler.ut.cpp
-	config_data_rest_request_handler.ut.cpp
-	config_rest_request_handler.ut.cpp
-	connection_manager.ut.cpp
-	container_size_requestor.ut.cpp
-	crash_handler.ut.cpp
-	dragent_memdump_logger.ut.cpp
-	dragent_user_event_callback.ut.cpp
-	faultlist_rest_request_handler.ut.cpp
-	fault_rest_request_handler.ut.cpp
-	file_rest_registry.ut.cpp
-	file_rest_request_handler.ut.cpp
-	metric_serializer.ut.cpp
-	pre_aggregated_metrics_rest_request_handler.ut.cpp
-	post_aggregated_metrics_rest_request_handler.ut.cpp
-	process_helpers.ut.cpp
-	protobuf_metric_serializer.ut.cpp
-	protocol_handler.ut.cpp
-	sinsp_worker.ut.cpp
-	spinlock.ut.cpp
-	watchdog_runnable.ut.cpp
-	webpage_rest_request_handler.ut.cpp
+add_executable(
+    unit-test-dragent
+    main.cpp
+    async_aggregator.ut.cpp
+    configlist_rest_request_handler.ut.cpp
+    config_data_rest_request_handler.ut.cpp
+    config_rest_request_handler.ut.cpp
+    connection_manager.ut.cpp
+    container_size_requestor.ut.cpp
+    crash_handler.ut.cpp
+    dragent_memdump_logger.ut.cpp
+    dragent_user_event_callback.ut.cpp
+    faultlist_rest_request_handler.ut.cpp
+    fault_rest_request_handler.ut.cpp
+    file_rest_registry.ut.cpp
+    file_rest_request_handler.ut.cpp
+    metric_serializer.ut.cpp
+    pre_aggregated_metrics_rest_request_handler.ut.cpp
+    post_aggregated_metrics_rest_request_handler.ut.cpp
+    process_helpers.ut.cpp
+    protobuf_metric_serializer.ut.cpp
+    protocol_handler.ut.cpp
+    sinsp_worker.ut.cpp
+    spinlock.ut.cpp
+    watchdog_runnable.ut.cpp
+    webpage_rest_request_handler.ut.cpp
 )
 
-target_link_libraries(unit-test-dragent
-	sanalyzer
-	dragentl
-	draiosproto
-	fake-collector-core
-	librestl
-	test_helpers
-	test-helpers-librest
-	test-helpers-libsanalyzer
-	test-helpers-userspace-shared
-	userspace-shared
-	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
+target_link_libraries(
+    unit-test-dragent
+    sanalyzer
+    dragentl
+    draiosproto
+    fake-collector-core
+    librestl
+    test_helpers
+    test-helpers-librest
+    test-helpers-libsanalyzer
+    test-helpers-userspace-shared
+    userspace-shared
+    ${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 )
 
 target_compile_definitions(unit-test-dragent PUBLIC SYSDIG_TEST)
 
-file(
-	COPY valgrind/helgrind.suppressions
-	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
-)
+# cmake-format: off
+file(COPY valgrind/helgrind.suppressions
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+# cmake-format: on
 
 if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)
-	add_custom_target(run-unit-test-dragent
-		DEPENDS unit-test-dragent
-		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-dragent dragent.lcov
-	)
+    add_custom_target(
+        run-unit-test-dragent
+        DEPENDS unit-test-dragent
+        COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-dragent dragent.lcov
+    )
 else()
-	add_custom_target(run-unit-test-dragent
-		DEPENDS unit-test-dragent
-		COMMAND unit-test-dragent
-	)
+    add_custom_target(
+        run-unit-test-dragent
+        DEPENDS unit-test-dragent
+        COMMAND unit-test-dragent
+    )
 endif()
-
 
 if(CMAKE_BUILD_TYPE STREQUAL "DebugInternal")
-	# We should add helgrind to this
-	add_custom_target(valgrind-unit-test-dragent
-		DEPENDS unit-test-dragent
-		COMMAND valgrind --error-exitcode=1 --track-origins=yes --gen-suppressions=all ./unit-test-dragent
-	)
+    # We should add helgrind to this
+    add_custom_target(
+        valgrind-unit-test-dragent
+        DEPENDS unit-test-dragent
+        COMMAND valgrind --error-exitcode=1 --track-origins=yes --gen-suppressions=all
+                ./unit-test-dragent
+    )
 else()
-	add_custom_target(valgrind-unit-test-dragent
-		COMMAND echo "Error: Valgrind not supported in this build variant. Use the debug-internal build instead." && false
-	)
+    add_custom_target(
+        valgrind-unit-test-dragent
+        COMMAND
+            echo
+            "Error: Valgrind not supported in this build variant. Use the debug-internal build instead."
+            && false
+    )
 endif()
 
-install(TARGETS unit-test-dragent
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-	COMPONENT tests)
+install(
+    TARGETS unit-test-dragent
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
+    COMPONENT tests
+)

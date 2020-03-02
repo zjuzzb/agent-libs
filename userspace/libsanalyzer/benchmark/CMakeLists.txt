@@ -1,4 +1,3 @@
-
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace)
@@ -24,26 +23,22 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/inclu
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/json-3.3.0/single_include)
 
-add_executable(benchmark-libsanalyzer
-	analyzer.bm.cpp
-	main.cpp)
+add_executable(benchmark-libsanalyzer analyzer.bm.cpp main.cpp)
 
 add_definitions(-DHAS_ANALYZER)
 
-target_link_libraries(benchmark-libsanalyzer
-	sanalyzer
-	draiosproto
-	test-helpers-libsanalyzer
-	${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/build/src/libbenchmark.a
-	${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/build/src/libbenchmark_main.a
+target_link_libraries(
+    benchmark-libsanalyzer sanalyzer draiosproto test-helpers-libsanalyzer
+    ${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/build/src/libbenchmark.a
+    ${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/build/src/libbenchmark_main.a
 )
 
 target_compile_definitions(benchmark-libsanalyzer PUBLIC SYSDIG_TEST)
 
-add_custom_target(run-benchmark-libsanalyzer
-		COMMAND benchmark-libsanalyzer
-)
+add_custom_target(run-benchmark-libsanalyzer COMMAND benchmark-libsanalyzer)
 
-install(TARGETS benchmark-libsanalyzer
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-	COMPONENT tests)
+install(
+    TARGETS benchmark-libsanalyzer
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
+    COMPONENT tests
+)

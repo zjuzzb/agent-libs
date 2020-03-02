@@ -2,7 +2,6 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fus
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(../src)
 
-
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
@@ -19,73 +18,86 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/include)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include)
+include_directories(
+    ${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include
+)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 
-add_definitions( -DHAS_ANALYZER )
+add_definitions(-DHAS_ANALYZER)
 
-add_executable(unit-test-testhelpers
-	main.cpp
-	scoped_file_descriptor.ut.cpp
-	scoped_file_pointer.ut.cpp
-	scoped_fmemopen.ut.cpp
-	scoped_pipe.ut.cpp
-	scoped_stdout_capture.ut.cpp
-	scoped_temp_directory.ut.cpp
-	scoped_temp_file.ut.cpp
+add_executable(
+    unit-test-testhelpers
+    main.cpp
+    scoped_file_descriptor.ut.cpp
+    scoped_file_pointer.ut.cpp
+    scoped_fmemopen.ut.cpp
+    scoped_pipe.ut.cpp
+    scoped_stdout_capture.ut.cpp
+    scoped_temp_directory.ut.cpp
+    scoped_temp_file.ut.cpp
 )
 
 target_compile_definitions(unit-test-testhelpers PUBLIC DRAIOS_TEST)
 
 if(CYGWIN)
-	set(POCO_LIB_DIR "bin")
-	set(POCO_LIB_PREFIX "cyg")
+    set(POCO_LIB_DIR "bin")
+    set(POCO_LIB_PREFIX "cyg")
 else()
-	set(POCO_LIB_DIR "lib")
-	set(POCO_LIB_PREFIX "lib")
+    set(POCO_LIB_DIR "lib")
+    set(POCO_LIB_PREFIX "lib")
 endif()
 
-target_link_libraries(unit-test-testhelpers
-	test_helpers
-	pthread
-	rt
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoFoundation.a
-	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
+target_link_libraries(
+    unit-test-testhelpers
+    test_helpers
+    pthread
+    rt
+    ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoFoundation.a
+    ${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 )
 
-file(
-	COPY valgrind/helgrind.suppressions
-	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
-)
+file(COPY valgrind/helgrind.suppressions DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)
-	add_custom_target(run-unit-test-testhelpers
-		DEPENDS unit-test-testhelpers
-		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-testhelpers testhelpers.lcov
-	)
+    add_custom_target(
+        run-unit-test-testhelpers
+        DEPENDS unit-test-testhelpers
+        COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-testhelpers
+                testhelpers.lcov
+    )
 else()
-	add_custom_target(run-unit-test-testhelpers
-		DEPENDS unit-test-testhelpers
-		COMMAND unit-test-testhelpers
-	)
+    add_custom_target(
+        run-unit-test-testhelpers
+        DEPENDS unit-test-testhelpers
+        COMMAND unit-test-testhelpers
+    )
 endif()
-
 
 if(CMAKE_BUILD_TYPE STREQUAL "DebugInternal")
-	add_custom_target(valgrind-unit-test-testhelpers
-		DEPENDS unit-test-testhelpers
-		COMMAND valgrind --error-exitcode=1 --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-testhelpers
-		COMMAND valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind --soname-synonyms=somalloc=tcmalloc ./unit-test-testhelpers
-	)
+    add_custom_target(
+        valgrind-unit-test-testhelpers
+        DEPENDS unit-test-testhelpers
+        COMMAND valgrind --error-exitcode=1 --gen-suppressions=all
+                --soname-synonyms=somalloc=tcmalloc ./unit-test-testhelpers
+        COMMAND
+            valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions
+            --gen-suppressions=all --tool=helgrind --soname-synonyms=somalloc=tcmalloc
+            ./unit-test-testhelpers
+    )
 else()
-	add_custom_target(valgrind-unit-test-testhelpers
-		COMMAND echo "Error: Valgrind not supported in this build variant. Use the debug-internal build instead." && false
-	)
+    add_custom_target(
+        valgrind-unit-test-testhelpers
+        COMMAND
+            echo
+            "Error: Valgrind not supported in this build variant. Use the debug-internal build instead."
+            && false
+    )
 endif()
 
-install(TARGETS unit-test-testhelpers
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-	COMPONENT tests
+install(
+    TARGETS unit-test-testhelpers
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
+    COMPONENT tests
 )

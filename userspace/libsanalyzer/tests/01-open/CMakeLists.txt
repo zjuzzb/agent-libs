@@ -18,21 +18,18 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../../draiosproto)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/json-3.3.0/single_include)
-add_definitions( -DHAS_ANALYZER )
+add_definitions(-DHAS_ANALYZER)
 
-add_executable(sinsp-open 
-	test.cpp)
+add_executable(sinsp-open test.cpp)
 
-target_link_libraries(sinsp-open
-	sanalyzer
-	draiosproto
-	pthread)
+target_link_libraries(sinsp-open sanalyzer draiosproto pthread)
 
 if(CYGWIN)
-target_link_libraries(sinsp-open
-	/lib/w32api/libiphlpapi.a)
+    target_link_libraries(sinsp-open /lib/w32api/libiphlpapi.a)
 endif()
 
-install(TARGETS sinsp-open 
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT tests)
+install(
+    TARGETS sinsp-open
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+    COMPONENT tests
+)
