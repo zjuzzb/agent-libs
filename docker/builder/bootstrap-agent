@@ -602,6 +602,13 @@ if [ ! -d "${KUBE_BENCH_DIR}" ]; then
 	tar -xzf kube-bench-0.0.24.2.tar.gz
 fi
 
+LINUX_BENCH_DIR=$DEPENDENCIES/linux-bench-0.2.0.3
+if [ ! -d "${LINUX_BENCH_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/linux-bench-0.2.0.3.tar.gz
+	tar -xzf linux-bench-0.2.0.3.tar.gz
+fi
+
 if [ $OS == "Windows_NT" ]; then
 	WINHAL_DIR=$DEPENDENCIES/dragent-win-hal-1.0
 	if [ ! -d "${WINHAL_DIR}" ]; then

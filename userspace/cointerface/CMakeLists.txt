@@ -86,6 +86,7 @@ gobuild(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/cointerface.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/docker_bench_scraper.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/kube_bench_scraper.go
+	${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/linux_bench_scraper.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/module.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/module_mgr.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/test_module_scraper.go
