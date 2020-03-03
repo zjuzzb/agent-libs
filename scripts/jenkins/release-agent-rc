@@ -181,16 +181,21 @@ function configure_tgz_repo {
 }
 
 function configure_installers {
-	TEMPLATE_FILE="${SCRIPTS_DIR}/install-agent"
-	cp ${TEMPLATE_FILE} ${REPO_DIR}/$REPO_NAME/install-agent
 
 	# Some jenkins jobs don't have permission to overwrite the
 	# install-script. Allow for them to skip this without failing
 	if [[ ! ( ${SKIP_OVERWRITE_SCRIPTS-} == 'yes' ) ]]
 	then
-	    sed -i s/_REPOSITORY_NAME_/${REPO_NAME}/g ${REPO_DIR}/$REPO_NAME/install-agent
-	    aws s3 cp $REPO_DIR/$REPO_NAME/install-agent $S3_BUCKET/$REPO_NAME/ --acl public-read
-	    aws s3 cp $SCRIPTS_DIR/smoke-tests $S3_BUCKET/ --acl public-read
+
+		for FILE_NAME in install-agent install-agent-kubernetes; do
+
+			TEMPLATE_FILE="${SCRIPTS_DIR}/${FILE_NAME}"
+			cp ${TEMPLATE_FILE} ${REPO_DIR}/$REPO_NAME/${FILE_NAME}
+			sed -i s/_REPOSITORY_NAME_/${REPO_NAME}/g ${REPO_DIR}/$REPO_NAME/${FILE_NAME}
+			aws s3 cp $REPO_DIR/$REPO_NAME/${FILE_NAME} $S3_BUCKET/$REPO_NAME/ --acl public-read
+		done
+
+		aws s3 cp $SCRIPTS_DIR/smoke-tests $S3_BUCKET/ --acl public-read
 	fi
 }
 
