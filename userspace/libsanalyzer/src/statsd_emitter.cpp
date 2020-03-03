@@ -12,7 +12,7 @@
 
 namespace libsanalyzer {
 
-const unsigned statsd_emitter::MAX_SECURITY_METRICS = 100;
+const unsigned statsd_emitter::MAX_SECURITY_METRICS = 250;
 
 unsigned statsd_emitter::get_limit()
 {
