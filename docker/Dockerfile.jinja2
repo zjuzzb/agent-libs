@@ -209,6 +209,9 @@ iproute2 \
 openssl \
 docker-cli \
 tar \
+&& sed -i -e 's/v[[:digit:]]\..*\//edge\//g' /etc/apk/repositories \
+&& apk update \
+&& apk add -u python2 \
 && mkdir -p /opt/draios/run \
 && rm -rf /tmp/*.apk /var/cache/apk/* \
 && rm -rf /opt/draios/lib/python-deps2.6 \
