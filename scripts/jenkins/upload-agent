@@ -156,7 +156,7 @@ function configure_installers {
 	then
 		for FILE_NAME in install-agent install-agent-kubernetes; do
 
-			TEMPLATE_FILE="${SCRIPTS_DIR}/S{FILE_NAME}"
+			TEMPLATE_FILE="${SCRIPTS_DIR}/${FILE_NAME}"
 			cp ${TEMPLATE_FILE} ${REPOSITORY_DIR}/${FILE_NAME}
 
 			sed -i s/_REPOSITORY_NAME_/${REPOSITORY_NAME}/g ${REPOSITORY_DIR}/${FILE_NAME}
