@@ -32,5 +32,6 @@ add_library(
     dummy_statsd_stats_source.cpp run.cpp scoped_sinsp_logger_capture.cpp scoped_metric_store.cpp
     sinsp_evt_wrapper.cpp sinsp_mock.cpp
 )
+add_dependencies(test-helpers-libsanalyzer draiosproto)
 
 target_compile_definitions(test-helpers-libsanalyzer PUBLIC SYSDIG_TEST)
