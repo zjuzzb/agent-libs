@@ -1,17 +1,15 @@
-# (C) Datadog, Inc. 2010-2016
+# (C) Datadog, Inc. 2010-2017
 # All rights reserved
 # Licensed under Simplified BSD License (see LICENSE)
+import warnings
 
-# stdlib
-import urlparse
-
-# 3rd party
 import requests
+from six.moves.urllib.parse import urlparse
+from urllib3.exceptions import InsecureRequestWarning
 
-# project
 from checks import AgentCheck
-from util import headers
 from config import _is_affirmative
+from util import headers
 
 
 class Apache(AgentCheck):
@@ -19,6 +17,7 @@ class Apache(AgentCheck):
 
     See http://httpd.apache.org/docs/2.2/mod/mod_status.html for more details
     """
+
     GAUGES = {
         'IdleWorkers': 'apache.performance.idle_workers',
         'BusyWorkers': 'apache.performance.busy_workers',
@@ -29,13 +28,10 @@ class Apache(AgentCheck):
         'ConnsTotal': 'apache.conns_total',
         'ConnsAsyncWriting': 'apache.conns_async_writing',
         'ConnsAsyncKeepAlive': 'apache.conns_async_keep_alive',
-        'ConnsAsyncClosing' : 'apache.conns_async_closing'
+        'ConnsAsyncClosing': 'apache.conns_async_closing',
     }
 
-    RATES = {
-        'Total kBytes': 'apache.net.bytes_per_s',
-        'Total Accesses': 'apache.net.request_per_s'
-    }
+    RATES = {'Total kBytes': 'apache.net.bytes_per_s', 'Total Accesses': 'apache.net.request_per_s'}
 
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
@@ -59,33 +55,40 @@ class Apache(AgentCheck):
             auth = (instance['apache_user'], instance['apache_password'])
 
         # Submit a service check for status page availability.
-        parsed_url = urlparse.urlparse(url)
+        parsed_url = urlparse(url)
         apache_host = parsed_url.hostname
         apache_port = parsed_url.port or 80
         service_check_name = 'apache.can_connect'
-        service_check_tags = ['host:%s' % apache_host, 'port:%s' % apache_port]
+        service_check_tags = ['host:%s' % apache_host, 'port:%s' % apache_port] + tags
         try:
-            self.log.debug('apache check initiating request, connect timeout %d receive %d' %
-                           (connect_timeout, receive_timeout))
-            r = requests.get(url, auth=auth, headers=headers(self.agentConfig),
-                             verify=not disable_ssl_validation, timeout=(connect_timeout, receive_timeout))
+            self.log.debug(
+                'apache check initiating request, connect timeout %d receive %d' % (connect_timeout, receive_timeout)
+            )
+            with warnings.catch_warnings():
+                if _is_affirmative(instance.get('tls_ignore_warning', False)):
+                    warnings.simplefilter('ignore', InsecureRequestWarning)
+
+                r = requests.get(
+                    url,
+                    auth=auth,
+                    headers=headers(self.agentConfig),
+                    verify=not disable_ssl_validation,
+                    timeout=(connect_timeout, receive_timeout),
+                )
             r.raise_for_status()
 
         except Exception as e:
             self.log.warning("Caught exception %s" % str(e))
-            self.service_check(service_check_name, AgentCheck.CRITICAL,
-                               tags=service_check_tags)
+            self.service_check(service_check_name, AgentCheck.CRITICAL, tags=service_check_tags)
             raise
         else:
-            self.service_check(service_check_name, AgentCheck.OK,
-                               tags=service_check_tags)
+            self.service_check(service_check_name, AgentCheck.OK, tags=service_check_tags)
         self.log.debug("apache check succeeded")
-        response = r.content
         metric_count = 0
         # Loop through and extract the numerical values
-        for line in response.splitlines():
+        for line in r.iter_lines(decode_unicode=True):
             values = line.split(': ')
-            if len(values) == 2: # match
+            if len(values) == 2:  # match
                 metric, value = values
                 try:
                     value = float(value)
@@ -114,4 +117,7 @@ class Apache(AgentCheck):
                 self.warning("Assuming url was not correct. Trying to add ?auto suffix to the url")
                 self.check(instance)
             else:
-                raise Exception("No metrics were fetched for this instance. Make sure that %s is the proper url." % instance['apache_status_url'])
+                raise Exception(
+                    ("No metrics were fetched for this instance. Make sure that %s is the proper url.")
+                    % instance['apache_status_url']
+                )
