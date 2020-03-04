@@ -1,13 +1,20 @@
-# (C) Datadog, Inc. 2010-2017
+# (C) Datadog, Inc. 2018
+# (C) Sysdig, Inc. 2020
 # All rights reserved
-# Licensed under Simplified BSD License (see LICENSE)
-from collections import defaultdict
+# Licensed under a 3-clause BSD style license (see LICENSE)
+from __future__ import division
+
 import re
 import time
+from collections import defaultdict
+from copy import deepcopy
 
 import redis
+from six import iteritems
 
 from checks import AgentCheck
+from config import is_affirmative
+from utils.common import round_value, ensure_unicode
 
 DEFAULT_MAX_SLOW_ENTRIES = 128
 MAX_SLOW_ENTRIES_KEY = "slowlog-max-len"
@@ -26,68 +33,61 @@ class Redis(AgentCheck):
 
     GAUGE_KEYS = {
         # Append-only metrics
-        'aof_last_rewrite_time_sec':    'redis.aof.last_rewrite_time',
-        'aof_rewrite_in_progress':      'redis.aof.rewrite',
-        'aof_current_size':             'redis.aof.size',
-        'aof_buffer_length':            'redis.aof.buffer_length',
-
+        'aof_last_rewrite_time_sec': 'redis.aof.last_rewrite_time',
+        'aof_rewrite_in_progress': 'redis.aof.rewrite',
+        'aof_current_size': 'redis.aof.size',
+        'aof_buffer_length': 'redis.aof.buffer_length',
         # Network
-        'connected_clients':            'redis.net.clients',
-        'connected_slaves':             'redis.net.slaves',
-        'rejected_connections':         'redis.net.rejected',
-
+        'connected_clients': 'redis.net.clients',
+        'connected_slaves': 'redis.net.slaves',
+        'rejected_connections': 'redis.net.rejected',
         # clients
-        'blocked_clients':              'redis.clients.blocked',
-        'client_biggest_input_buf':     'redis.clients.biggest_input_buf',
-        'client_longest_output_list':   'redis.clients.longest_output_list',
-
+        'blocked_clients': 'redis.clients.blocked',
+        'client_biggest_input_buf': 'redis.clients.biggest_input_buf',
+        'client_longest_output_list': 'redis.clients.longest_output_list',
         # Keys
-        'evicted_keys':                 'redis.keys.evicted',
-        'expired_keys':                 'redis.keys.expired',
-
+        'evicted_keys': 'redis.keys.evicted',
+        'expired_keys': 'redis.keys.expired',
         # stats
-        'latest_fork_usec':             'redis.perf.latest_fork_usec',
-        'bytes_received_per_sec':       'redis.bytes_received_per_sec',
-        'bytes_sent_per_sec':           'redis.bytes_sent_per_sec',
+        'latest_fork_usec': 'redis.perf.latest_fork_usec',
+        'bytes_received_per_sec': 'redis.bytes_received_per_sec',
+        'bytes_sent_per_sec': 'redis.bytes_sent_per_sec',
         # Note: 'bytes_received_per_sec' and 'bytes_sent_per_sec' are only
         # available on Azure Redis
-
         # pubsub
-        'pubsub_channels':              'redis.pubsub.channels',
-        'pubsub_patterns':              'redis.pubsub.patterns',
-
+        'pubsub_channels': 'redis.pubsub.channels',
+        'pubsub_patterns': 'redis.pubsub.patterns',
         # rdb
-        'rdb_bgsave_in_progress':       'redis.rdb.bgsave',
-        'rdb_changes_since_last_save':  'redis.rdb.changes_since_last',
-        'rdb_last_bgsave_time_sec':     'redis.rdb.last_bgsave_time',
-
+        'rdb_bgsave_in_progress': 'redis.rdb.bgsave',
+        'rdb_changes_since_last_save': 'redis.rdb.changes_since_last',
+        'rdb_last_bgsave_time_sec': 'redis.rdb.last_bgsave_time',
         # memory
-        'mem_fragmentation_ratio':      'redis.mem.fragmentation_ratio',
-        'used_memory':                  'redis.mem.used',
-        'used_memory_lua':              'redis.mem.lua',
-        'used_memory_peak':             'redis.mem.peak',
-        'used_memory_rss':              'redis.mem.rss',
-        'maxmemory':                    'redis.mem.maxmemory',
-
+        'mem_fragmentation_ratio': 'redis.mem.fragmentation_ratio',
+        'used_memory': 'redis.mem.used',
+        'used_memory_lua': 'redis.mem.lua',
+        'used_memory_peak': 'redis.mem.peak',
+        'used_memory_rss': 'redis.mem.rss',
+        'used_memory_startup': 'redis.mem.startup',
+        'used_memory_overhead': 'redis.mem.overhead',
+        'maxmemory': 'redis.mem.maxmemory',
         # replication
-        'master_last_io_seconds_ago':   'redis.replication.last_io_seconds_ago',
-        'master_sync_in_progress':      'redis.replication.sync',
-        'master_sync_left_bytes':       'redis.replication.sync_left_bytes',
-        'repl_backlog_histlen':         'redis.replication.backlog_histlen',
-        'master_repl_offset':           'redis.replication.master_repl_offset',
-        'slave_repl_offset':            'redis.replication.slave_repl_offset',
+        'master_last_io_seconds_ago': 'redis.replication.last_io_seconds_ago',
+        'master_sync_in_progress': 'redis.replication.sync',
+        'master_sync_left_bytes': 'redis.replication.sync_left_bytes',
+        'repl_backlog_histlen': 'redis.replication.backlog_histlen',
+        'master_repl_offset': 'redis.replication.master_repl_offset',
+        'slave_repl_offset': 'redis.replication.slave_repl_offset',
     }
 
     RATE_KEYS = {
         # cpu
-        'used_cpu_sys':                 'redis.cpu.sys',
-        'used_cpu_sys_children':        'redis.cpu.sys_children',
-        'used_cpu_user':                'redis.cpu.user',
-        'used_cpu_user_children':       'redis.cpu.user_children',
-
+        'used_cpu_sys': 'redis.cpu.sys',
+        'used_cpu_sys_children': 'redis.cpu.sys_children',
+        'used_cpu_user': 'redis.cpu.user',
+        'used_cpu_user_children': 'redis.cpu.user_children',
         # stats
-        'keyspace_hits':                'redis.stats.keyspace_hits',
-        'keyspace_misses':              'redis.stats.keyspace_misses',
+        'keyspace_hits': 'redis.stats.keyspace_hits',
+        'keyspace_misses': 'redis.stats.keyspace_misses',
     }
 
     def __init__(self, name, init_config, agentConfig, instances=None):
@@ -95,7 +95,7 @@ class Redis(AgentCheck):
         self.connections = {}
         self.last_timestamp_seen = defaultdict(int)
         self.redis_mode = None
-        self.logging_scheduler = {"logging_start_time": time.time()}
+        self.logging_scheduler = {"logging_start_time": time.time() - LOGGING_INTERVAL}
 
     def get_library_versions(self):
         return {"redis": redis.__version__}
@@ -112,34 +112,48 @@ class Redis(AgentCheck):
                         return v
             return default
         except Exception:
-            self.log.exception("Cannot parse dictionary string: %s" % string)
+            self.log.exception("Cannot parse dictionary string: %s", string)
             return default
 
     def _generate_instance_key(self, instance):
         if 'unix_socket_path' in instance:
-            return (instance.get('unix_socket_path'), instance.get('db'))
+            return instance.get('unix_socket_path'), instance.get('db')
         else:
-            return (instance.get('host'), instance.get('port'), instance.get('db'))
+            return instance.get('host'), instance.get('port'), instance.get('db')
 
     def _get_conn(self, instance):
+        no_cache = is_affirmative(instance.get('disable_connection_cache', False))
         key = self._generate_instance_key(instance)
-        if key not in self.connections:
-            try:
 
+        if no_cache or key not in self.connections:
+            try:
                 # Only send useful parameters to the redis client constructor
-                list_params = ['host', 'port', 'db', 'password', 'socket_timeout',
-                               'connection_pool', 'charset', 'errors', 'unix_socket_path', 'ssl',
-                               'ssl_certfile', 'ssl_keyfile', 'ssl_ca_certs', 'ssl_cert_reqs']
+                list_params = [
+                    'host',
+                    'port',
+                    'db',
+                    'password',
+                    'socket_timeout',
+                    'connection_pool',
+                    'charset',
+                    'errors',
+                    'unix_socket_path',
+                    'ssl',
+                    'ssl_certfile',
+                    'ssl_keyfile',
+                    'ssl_ca_certs',
+                    'ssl_cert_reqs',
+                ]
 
                 # Set a default timeout (in seconds) if no timeout is specified in the instance config
                 instance['socket_timeout'] = instance.get('socket_timeout', 5)
-
                 connection_params = dict((k, instance[k]) for k in list_params if k in instance)
-
+                # If caching is disabled, we overwrite the dictionary value so the old connection
+                # will be closed as soon as the corresponding Python object gets garbage collected
                 self.connections[key] = redis.Redis(**connection_params)
 
             except TypeError:
-                msg = "You need a redis library that supports authenticated connections. Try sudo easy_install redis."
+                msg = "You need a redis library that supports authenticated connections. Try `pip install redis`."
                 raise Exception(msg)
 
         return self.connections[key]
@@ -148,15 +162,9 @@ class Redis(AgentCheck):
         tags = set(custom_tags or [])
 
         if 'unix_socket_path' in instance:
-            tags_to_add = [
-                "redis_host:%s" % instance.get("unix_socket_path"),
-                "redis_port:unix_socket",
-            ]
+            tags_to_add = ["redis_host:%s" % instance.get("unix_socket_path"), "redis_port:unix_socket"]
         else:
-            tags_to_add = [
-                "redis_host:%s" % instance.get('host'),
-                "redis_port:%s" % instance.get('port')
-            ]
+            tags_to_add = ["redis_host:%s" % instance.get('host'), "redis_port:%s" % instance.get('port')]
 
         tags = sorted(tags.union(tags_to_add))
 
@@ -164,13 +172,11 @@ class Redis(AgentCheck):
 
     def _check_db(self, instance, custom_tags=None):
         conn = self._get_conn(instance)
-
         tags = self._get_tags(custom_tags, instance)
 
         # Ping the database for info, and track the latency.
         # Process the service check: the check passes if we can connect to Redis
         start = time.time()
-        info = None
         try:
             info = conn.info()
             self.redis_mode = info["redis_mode"]
@@ -194,36 +200,35 @@ class Redis(AgentCheck):
             self.service_check('redis.can_connect', status, tags=tags)
             raise
 
-        latency_ms = round((time.time() - start) * 1000, 2)
+        latency_ms = round_value((time.time() - start) * 1000, 2)
         self.gauge('redis.info.latency_ms', latency_ms, tags=tags)
 
         # Save the database statistics.
         for key in info.keys():
             if self.db_key_pattern.match(key):
-                db_tags = list(tags) + ["redis_db:" + key]
+                db_tags = tags + ["redis_db:" + key]
                 # allows tracking percentage of expired keys as DD does not
                 # currently allow arithmetic on metric for monitoring
                 expires_keys = info[key]["expires"]
                 total_keys = info[key]["keys"]
                 persist_keys = total_keys - expires_keys
                 self.gauge("redis.persist", persist_keys, tags=db_tags)
-                self.gauge("redis.persist.percent", 100.0 * persist_keys / total_keys, tags=db_tags)
-                self.gauge("redis.expires.percent", 100.0 * expires_keys / total_keys, tags=db_tags)
+                self.gauge("redis.persist.percent", 100 * persist_keys / total_keys, tags=db_tags)
+                self.gauge("redis.expires.percent", 100 * expires_keys / total_keys, tags=db_tags)
 
                 for subkey in self.subkeys:
                     # Old redis module on ubuntu 10.04 (python-redis 0.6.1) does not
                     # returns a dict for those key but a string: keys=3,expires=0
                     # Try to parse it (see lighthouse #46)
-                    val = -1
                     try:
                         val = info[key].get(subkey, -1)
                     except AttributeError:
                         val = self._parse_dict_string(info[key], subkey, -1)
-                    metric = '.'.join(['redis', subkey])
+                    metric = 'redis.{}'.format(subkey)
                     self.gauge(metric, val, tags=db_tags)
 
         # Save a subset of db-wide statistics
-        for info_name, value in info.iteritems():
+        for info_name in info:
             if info_name in self.GAUGE_KEYS:
                 self.gauge(self.GAUGE_KEYS[info_name], info[info_name], tags=tags)
             elif info_name in self.RATE_KEYS:
@@ -231,56 +236,138 @@ class Redis(AgentCheck):
 
         # Save the number of commands.
         if self.redis_mode.lower() != 'sentinel':
-            self.rate('redis.net.commands', info['total_commands_processed'],
-                      tags=tags)
-
+            self.rate('redis.net.commands', info['total_commands_processed'], tags=tags)
         if 'instantaneous_ops_per_sec' in info:
-            self.gauge('redis.net.instantaneous_ops_per_sec', info['instantaneous_ops_per_sec'],
-                       tags=tags)
+            self.gauge('redis.net.instantaneous_ops_per_sec', info['instantaneous_ops_per_sec'], tags=tags)
 
         # Check some key lengths if asked
-        key_list = instance.get('keys')
-        if key_list is not None:
-            if not isinstance(key_list, list) or len(key_list) == 0:
-                self.warning("keys in redis configuration is either not a list or empty")
-            else:
-                l_tags = list(tags)
+        self._check_key_lengths(conn, instance, list(tags))
 
-                for key_pattern in key_list:
-                    if re.search(r"(?<!\\)[*?[]", key_pattern):
-                        keys = conn.scan_iter(match=key_pattern)
-                    else:
-                        keys = [key_pattern, ]
-
-                    for key in keys:
-                        try:
-                            key_type = conn.type(key)
-                        except redis.ResponseError:
-                            self.log.info("key {} on remote server; skipping".format(key))
-                            continue
-                        key_tags = l_tags + ['key:' + key]
-
-                        if key_type == 'list':
-                            self.gauge('redis.key.length', conn.llen(key), tags=key_tags)
-                        elif key_type == 'set':
-                            self.gauge('redis.key.length', conn.scard(key), tags=key_tags)
-                        elif key_type == 'zset':
-                            self.gauge('redis.key.length', conn.zcard(key), tags=key_tags)
-                        elif key_type == 'hash':
-                            self.gauge('redis.key.length', conn.hlen(key), tags=key_tags)
-                        else:
-                            # If the type is unknown, it might be because the key doesn't exist,
-                            # which can be because the list is empty. So always send 0 in that case.
-                            if instance.get("warn_on_missing_keys", True):
-                                self.warning("{0} key not found in redis".format(key))
-                            self.gauge('redis.key.length', 0, tags=key_tags)
-
+        # Check replication
         self._check_replication(info, tags)
         if instance.get("command_stats", False):
             self._check_command_stats(conn, tags)
 
-    def _check_replication(self, info, tags):
+    def _check_key_lengths(self, conn, instance, tags):
+        """
+        Compute the length of the configured keys across all the databases
+        """
+        key_list = instance.get('keys')
 
+        if key_list is None:
+            return
+
+        instance_db = instance.get('db')
+
+        if not isinstance(key_list, list) or not key_list:
+            self.warning("keys in redis configuration is either not a list or empty")
+            return
+
+        warn_on_missing_keys = is_affirmative(instance.get("warn_on_missing_keys", True))
+
+        # get all the available databases
+        databases = list(conn.info('keyspace'))
+        if not databases:
+            self.warning("Redis database is empty")
+            if warn_on_missing_keys:
+                for key in key_list:
+                    key_tags = ['key:{}'.format(key)]
+                    if instance_db:
+                        key_tags.append('redis_db:db{}'.format(instance_db))
+                    key_tags.extend(tags)
+                    self.gauge('redis.key.length', 0, tags=key_tags)
+                    self.warning("{} key not found in redis".format(key))
+            return
+
+        # convert to integer the output of `keyspace`, from `db0` to `0`
+        # and store items in a set
+        databases = [int(dbstring[2:]) for dbstring in databases]
+
+        # user might have configured the instance to target one specific db
+        if instance_db:
+            if instance_db not in databases:
+                self.warning("Cannot find database {}".format(instance_db))
+                return
+            databases = [instance_db]
+
+        # maps a key to the total length across databases
+        lengths_overall = defaultdict(int)
+
+        # don't overwrite the configured instance, use a copy
+        tmp_instance = deepcopy(instance)
+
+        for db in databases:
+            lengths = defaultdict(lambda: defaultdict(int))
+            tmp_instance['db'] = db
+            db_conn = self._get_conn(tmp_instance)
+
+            for key_pattern in key_list:
+                if re.search(r"(?<!\\)[*?[]", key_pattern):
+                    keys = db_conn.scan_iter(match=key_pattern)
+                else:
+                    keys = [key_pattern]
+
+                for key in keys:
+                    text_key = ensure_unicode(key)
+                    try:
+                        key_type = ensure_unicode(db_conn.type(key))
+                    except redis.ResponseError:
+                        self.log.info("key {} on remote server; skipping".format(text_key))
+                        continue
+
+                    if key_type == 'list':
+                        keylen = db_conn.llen(key)
+                        lengths[text_key]["length"] += keylen
+                        lengths_overall[text_key] += keylen
+                    elif key_type == 'set':
+                        keylen = db_conn.scard(key)
+                        lengths[text_key]["length"] += keylen
+                        lengths_overall[text_key] += keylen
+                    elif key_type == 'zset':
+                        keylen = db_conn.zcard(key)
+                        lengths[text_key]["length"] += keylen
+                        lengths_overall[text_key] += keylen
+                    elif key_type == 'hash':
+                        keylen = db_conn.hlen(key)
+                        lengths[text_key]["length"] += keylen
+                        lengths_overall[text_key] += keylen
+                    elif key_type == 'string':
+                        # Send 1 if the key exists as a string
+                        lengths[text_key]["length"] += 1
+                        lengths_overall[text_key] += 1
+                    else:
+                        # If the type is unknown, it might be because the key doesn't exist,
+                        # which can be because the list is empty. So always send 0 in that case.
+                        lengths[text_key]["length"] += 0
+                        lengths_overall[text_key] += 0
+
+                    # Tagging with key_type since the same key can exist with a
+                    # different key_type in another db
+                    lengths[text_key]["key_type"] = key_type
+
+            # Send the metrics for each db in the redis instance.
+            for key, total in iteritems(lengths):
+                # Only send non-zeros if tagged per db.
+                if total["length"] > 0:
+                    self.gauge(
+                        'redis.key.length',
+                        total["length"],
+                        tags=tags
+                        + ['key:{}'.format(key), 'key_type:{}'.format(total["key_type"]), 'redis_db:db{}'.format(db)],
+                    )
+
+        # Warn if a key is missing from the entire redis instance.
+        # Send 0 if the key is missing/empty from the entire redis instance.
+        for key, total in iteritems(lengths_overall):
+            if total == 0 and warn_on_missing_keys:
+                key_tags = ['key:{}'.format(key)]
+                if instance_db:
+                    key_tags.append('redis_db:db{}'.format(instance_db))
+                key_tags.extend(tags)
+                self.gauge('redis.key.length', 0, tags=key_tags)
+                self.warning("{} key not found in redis".format(key))
+
+    def _check_replication(self, info, tags):
         # Save the replication delay for each slave
         for key in info:
             if self.slave_key_pattern.match(key) and isinstance(info[key], dict):
@@ -292,7 +379,7 @@ class Redis(AgentCheck):
                     slave_tags = tags[:]
                     for slave_tag in ('ip', 'port'):
                         if slave_tag in info[key]:
-                            slave_tags.append('slave_{0}:{1}'.format(slave_tag, info[key][slave_tag]))
+                            slave_tags.append('slave_{}:{}'.format(slave_tag, info[key][slave_tag]))
                     slave_tags.append('slave_id:%s' % key.lstrip('slave'))
                     self.gauge('redis.replication.delay', delay, tags=slave_tags)
 
@@ -322,9 +409,12 @@ class Redis(AgentCheck):
             try:
                 max_slow_entries = int(conn.config_get(MAX_SLOW_ENTRIES_KEY)[MAX_SLOW_ENTRIES_KEY])
                 if max_slow_entries > DEFAULT_MAX_SLOW_ENTRIES:
-                    self.warning("Redis {0} is higher than {1}. Defaulting to {1}."
-                                 "If you need a higher value, please set {0} in your check config"
-                                 .format(MAX_SLOW_ENTRIES_KEY, DEFAULT_MAX_SLOW_ENTRIES))
+                    self.warning(
+                        "Redis {0} is higher than {1}. Defaulting to {1}. "
+                        "If you need a higher value, please set {0} in your check config".format(
+                            MAX_SLOW_ENTRIES_KEY, DEFAULT_MAX_SLOW_ENTRIES
+                        )
+                    )
                     max_slow_entries = DEFAULT_MAX_SLOW_ENTRIES
             # No config on AWS Elasticache
             except redis.ResponseError:
@@ -358,7 +448,7 @@ class Redis(AgentCheck):
             # an empty `command` field
             # FIXME when https://github.com/andymccurdy/redis-py/pull/622 is released in redis-py
             if command:
-                slowlog_tags.append('command:{0}'.format(command[0]))
+                slowlog_tags.append('command:{}'.format(ensure_unicode(command[0])))
 
             value = slowlog['duration']
             self.histogram('redis.slowlog.micros', value, tags=slowlog_tags)
@@ -371,14 +461,18 @@ class Redis(AgentCheck):
         try:
             command_stats = conn.info("commandstats")
         except Exception:
-            self.warning("Could not retrieve command stats from Redis."
-                         "INFO COMMANDSTATS only works with Redis >= 2.6.")
+            self.warning('Could not retrieve command stats from Redis. INFO COMMANDSTATS only works with Redis >= 2.6.')
             return
 
-        for key, stats in command_stats.iteritems():
+        for key, stats in iteritems(command_stats):
             command = key.split('_', 1)[1]
-            command_tags = tags + ['command:%s' % command]
-            self.gauge('redis.command.calls', stats['calls'], tags=command_tags)
+            command_tags = tags + ['command:{}'.format(command)]
+
+            # When `host:` is passed as a command, `calls` ends up having a leading `:`
+            # see https://github.com/DataDog/integrations-core/issues/839
+            calls = stats.get('calls') if command != 'host' else stats.get(':calls')
+
+            self.gauge('redis.command.calls', calls, tags=command_tags)
             self.gauge('redis.command.usec_per_call', stats['usec_per_call'], tags=command_tags)
 
     def check(self, instance):
