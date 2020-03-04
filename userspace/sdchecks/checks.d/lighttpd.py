@@ -1,11 +1,12 @@
-# stdlib
+# (C) Datadog, Inc. 2010-2017
+# All rights reserved
+# Licensed under Simplified BSD License (see LICENSE)
+
 import re
-import urlparse
 
-# 3rd party
 import requests
+from six.moves.urllib.parse import urlparse
 
-# project
 from checks import AgentCheck
 from util import headers
 
@@ -21,50 +22,43 @@ class Lighttpd(AgentCheck):
 
     SERVICE_CHECK_NAME = 'lighttpd.can_connect'
 
-    URL_SUFFIX_PER_VERSION = {
-        1: '?auto',
-        2: '?format=plain',
-        'Unknown': '?auto'
-    }
+    URL_SUFFIX_PER_VERSION = {1: '?auto', 2: '?format=plain', 'Unknown': '?auto'}
 
     GAUGES = {
-        'IdleServers': 'lighttpd.performance.idle_server',
-        'BusyServers': 'lighttpd.performance.busy_servers',
-        'Uptime': 'lighttpd.performance.uptime',
-        'Total kBytes': 'lighttpd.net.bytes',
-        'Total Accesses': 'lighttpd.net.hits',
-        'memory_usage': 'lighttpd.performance.memory_usage',
-        'requests_avg': 'lighttpd.net.requests_avg',
-        'traffic_out_avg': 'lighttpd.net.bytes_out_avg',
-        'traffic_in_avg': 'lighttpd.net.bytes_in_avg',
-        'connections_avg': 'lighttpd.net.connections_avg',
-        'connection_state_start': 'lighttpd.connections.state_start',
-        'connection_state_read_header': 'lighttpd.connections.state_read_header',
-        'connection_state_handle_request': 'lighttpd.connections.state_handle_request',
-        'connection_state_write_response': 'lighttpd.connections.state_write_response',
-        'connection_state_keep_alive': 'lighttpd.connections.state_keep_alive',
-        'requests_avg_5sec': 'lighttpd.net.requests_avg_5sec',
-        'traffic_out_avg_5sec': 'lighttpd.net.bytes_out_avg_5sec',
-        'traffic_in_avg_5sec': 'lighttpd.net.bytes_in_avg_5sec',
-        'connections_avg_5sec': 'lighttpd.net.connections_avg_5sec',
+        b'IdleServers': 'lighttpd.performance.idle_server',
+        b'BusyServers': 'lighttpd.performance.busy_servers',
+        b'Uptime': 'lighttpd.performance.uptime',
+        b'Total kBytes': 'lighttpd.net.bytes',
+        b'Total Accesses': 'lighttpd.net.hits',
+        b'memory_usage': 'lighttpd.performance.memory_usage',
+        b'requests_avg': 'lighttpd.net.requests_avg',
+        b'traffic_out_avg': 'lighttpd.net.bytes_out_avg',
+        b'traffic_in_avg': 'lighttpd.net.bytes_in_avg',
+        b'connections_avg': 'lighttpd.net.connections_avg',
+        b'connection_state_start': 'lighttpd.connections.state_start',
+        b'connection_state_read_header': 'lighttpd.connections.state_read_header',
+        b'connection_state_handle_request': 'lighttpd.connections.state_handle_request',
+        b'connection_state_write_response': 'lighttpd.connections.state_write_response',
+        b'connection_state_keep_alive': 'lighttpd.connections.state_keep_alive',
+        b'requests_avg_5sec': 'lighttpd.net.requests_avg_5sec',
+        b'traffic_out_avg_5sec': 'lighttpd.net.bytes_out_avg_5sec',
+        b'traffic_in_avg_5sec': 'lighttpd.net.bytes_in_avg_5sec',
+        b'connections_avg_5sec': 'lighttpd.net.connections_avg_5sec',
     }
 
     COUNTERS = {
-        'requests_abs': 'lighttpd.net.requests_total',
-        'traffic_out_abs': 'lighttpd.net.bytes_out',
-        'traffic_in_abs': 'lighttpd.net.bytes_in',
-        'connections_abs': 'lighttpd.net.connections_total',
-        'status_1xx': 'lighttpd.response.status_1xx',
-        'status_2xx': 'lighttpd.response.status_2xx',
-        'status_3xx': 'lighttpd.response.status_3xx',
-        'status_4xx': 'lighttpd.response.status_4xx',
-        'status_5xx': 'lighttpd.response.status_5xx',
+        b'requests_abs': 'lighttpd.net.requests_total',
+        b'traffic_out_abs': 'lighttpd.net.bytes_out',
+        b'traffic_in_abs': 'lighttpd.net.bytes_in',
+        b'connections_abs': 'lighttpd.net.connections_total',
+        b'status_1xx': 'lighttpd.response.status_1xx',
+        b'status_2xx': 'lighttpd.response.status_2xx',
+        b'status_3xx': 'lighttpd.response.status_3xx',
+        b'status_4xx': 'lighttpd.response.status_4xx',
+        b'status_5xx': 'lighttpd.response.status_5xx',
     }
 
-    RATES = {
-        'Total kBytes': 'lighttpd.net.bytes_per_s',
-        'Total Accesses': 'lighttpd.net.request_per_s'
-    }
+    RATES = {b'Total kBytes': 'lighttpd.net.bytes_per_s', b'Total Accesses': 'lighttpd.net.request_per_s'}
 
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
@@ -77,27 +71,35 @@ class Lighttpd(AgentCheck):
         url = self.assumed_url.get(instance['lighttpd_status_url'], instance['lighttpd_status_url'])
 
         tags = instance.get('tags', [])
-        self.log.debug("Connecting to %s" % url)
 
         auth = None
-        if 'user' in instance and 'password' in instance:
-            auth = (instance['user'], instance['password'])
+        auth_type = instance.get('auth_type', 'basic').lower()
+
+        if auth_type == 'basic':
+            if 'user' in instance and 'password' in instance:
+                auth = (instance['user'], instance['password'])
+        elif auth_type == 'digest':
+            if 'user' in instance and 'password' in instance:
+                auth = requests.auth.HTTPDigestAuth(instance['user'], instance['password'])
+        else:
+            msg = "Unsupported value of 'auth_type' variable in Lighttpd config: {}".format(auth_type)
+            raise Exception(msg)
+
+        self.log.debug("Connecting to %s" % url)
 
         # Submit a service check for status page availability.
-        parsed_url = urlparse.urlparse(url)
+        parsed_url = urlparse(url)
         lighttpd_url = parsed_url.hostname
         lighttpd_port = parsed_url.port or 80
-        service_check_tags = ['host:%s' % lighttpd_url, 'port:%s' % lighttpd_port]
+        service_check_tags = ['host:%s' % lighttpd_url, 'port:%s' % lighttpd_port] + tags
         try:
             r = requests.get(url, auth=auth, headers=headers(self.agentConfig))
             r.raise_for_status()
         except Exception:
-            self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.CRITICAL,
-                               tags=service_check_tags)
+            self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.CRITICAL, tags=service_check_tags)
             raise
         else:
-            self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.OK,
-                               tags=service_check_tags)
+            self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.OK, tags=service_check_tags)
 
         headers_resp = r.headers
         server_version = self._get_server_version(headers_resp)
@@ -105,8 +107,8 @@ class Lighttpd(AgentCheck):
 
         metric_count = 0
         # Loop through and extract the numerical values
-        for line in response.split('\n'):
-            values = line.split(': ')
+        for line in response.split(b'\n'):
+            values = line.split(b': ')
             if len(values) == 2:  # match
                 metric, value = values
                 try:
@@ -115,7 +117,7 @@ class Lighttpd(AgentCheck):
                     continue
 
                 # Special case: kBytes => bytes
-                if metric == 'Total kBytes':
+                if metric == b'Total kBytes':
                     value = value * 1024
 
                 # Send metric as a gauge, if applicable
@@ -138,13 +140,15 @@ class Lighttpd(AgentCheck):
 
         if metric_count == 0:
             url_suffix = self.URL_SUFFIX_PER_VERSION[server_version]
-            if self.assumed_url.get(instance['lighttpd_status_url']) is None and url[-len(url_suffix):] != url_suffix:
+            if self.assumed_url.get(instance['lighttpd_status_url']) is None and url[-len(url_suffix) :] != url_suffix:
                 self.assumed_url[instance['lighttpd_status_url']] = '%s%s' % (url, url_suffix)
                 self.warning("Assuming url was not correct. Trying to add %s suffix to the url" % url_suffix)
                 self.check(instance)
             else:
-                raise Exception("No metrics were fetched for this instance. Make sure "
-                                "that %s is the proper url." % instance['lighttpd_status_url'])
+                raise Exception(
+                    "No metrics were fetched for this instance. Make sure "
+                    "that %s is the proper url." % instance['lighttpd_status_url']
+                )
 
     def _get_server_version(self, headers):
         server_version = headers.get("server", "")
