@@ -589,17 +589,17 @@ if [ ! -d "${LYAML_DIR}" ]; then
 	sh -c "cp -R ${LYAML_DIR}/lib/* ${ROOT_SOURCEDIR}/oss-falco/userspace/engine/lua"
 fi
 
-KUBECTL_BINARY=$DEPENDENCIES/kubectl-1.9.6
+KUBECTL_BINARY=$DEPENDENCIES/kubectl-1.11.10
 if [ ! -f "${KUBECTL_BINARY}" ]; then
 	cd $DEPENDENCIES
-	wget https://storage.googleapis.com/kubernetes-release/release/v1.9.6/bin/linux/amd64/kubectl -O $KUBECTL_BINARY
+	wget https://storage.googleapis.com/kubernetes-release/release/v1.11.10/bin/linux/amd64/kubectl -O $KUBECTL_BINARY
 fi
 
-KUBE_BENCH_DIR=$DEPENDENCIES/kube-bench-0.0.24.2
+KUBE_BENCH_DIR=$DEPENDENCIES/kube-bench-0.2.3
 if [ ! -d "${KUBE_BENCH_DIR}" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/kube-bench-0.0.24.2.tar.gz
-	tar -xzf kube-bench-0.0.24.2.tar.gz
+	wget $DEPENDENCIES_URL/kube-bench-0.2.3.tar.gz
+	tar -xzf kube-bench-0.2.3.tar.gz
 fi
 
 LINUX_BENCH_DIR=$DEPENDENCIES/linux-bench-0.2.0.3

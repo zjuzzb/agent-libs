@@ -82,7 +82,16 @@ func (impl *KubeBenchImpl) Variant(stask *ScheduledTask) (string) {
 }
 
 func (impl *KubeBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
-	return []string{"--json", impl.Variant(stask)}, nil
+	args := []string{"--json", impl.Variant(stask)}
+
+	// If "benchmark" was provided as a param, add it as a benchmark argument.
+	for _, param := range stask.task.TaskParams {
+		if *param.Key == "benchmark" {
+			args = append(args, "--benchmark", *param.Val)
+		}
+	}
+
+	return args, nil
 }
 
 func (impl *KubeBenchImpl) ShouldRun(stask *ScheduledTask) bool {
@@ -108,6 +117,7 @@ type kubeTestSection struct {
 	Pass uint64 `json:"pass"`
 	Fail uint64 `json:"fail"`
 	Warn uint64 `json:"warn"`
+	Info uint64 `json:"info"`
 	Desc string `json:"desc"`
 	Results []kubeTestResult `json:"results"`
 }
@@ -121,6 +131,7 @@ type kubeBenchResults struct {
 	TotalPass uint64 `json:"total_pass"`
 	TotalFail uint64 `json:"total_fail"`
 	TotalWarn uint64 `json:"total_warn"`
+	TotalInfo uint64 `json:"total_info"`
 }
 
 // Given a test id, result, and current risk, assign a new risk based
@@ -217,11 +228,18 @@ func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 		HostMac: impl.machineId,
 		TaskName: *task.Name,
 		ResultSchema: bres.Version,
-		TestsRun: bres.TotalPass + bres.TotalFail + bres.TotalWarn,
-		PassCount: bres.TotalPass,
+		TestsRun: bres.TotalPass + bres.TotalFail + bres.TotalWarn + bres.TotalInfo,
+		PassCount: bres.TotalPass + bres.TotalInfo,
 		FailCount: bres.TotalFail,
 		WarnCount: bres.TotalWarn,
 		Risk: low,
+	}
+
+	// If "benchmark" was provided as a param, set the ResultSchema to that value.
+	for _, param := range task.TaskParams {
+		if *param.Key == "benchmark" {
+			result.ResultSchema = *param.Val
+		}
 	}
 
 	attr := &TaskResultAttribute{
@@ -234,8 +252,8 @@ func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 
 		res_section := &TaskResultSection {
 			SectionId: section.Section,
-			TestsRun: section.Pass + section.Fail + section.Warn,
-			PassCount: section.Pass,
+			TestsRun: section.Pass + section.Fail + section.Warn + section.Info,
+			PassCount: section.Pass + section.Info,
 			FailCount: section.Fail,
 			WarnCount: section.Warn,
 		}
@@ -263,7 +281,7 @@ func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 				res_test.Description = test.TestDesc
 			}
 
-			if test.Status != "PASS" {
+			if (test.Status != "PASS" && test.Status != "INFO") {
 
 				fields := map[string]string{
 					"Task": moduleName,
