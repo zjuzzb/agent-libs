@@ -1683,7 +1683,8 @@ void dragent_configuration::refresh_aws_metadata()
 bool dragent_configuration::check_python_version26()
 {
 	bool ret = false;
-	FILE *out = popen("python --version -d 2>&1", "r");
+	std::string cmd = m_python_binary + " --version -d 2>&1"; 
+	FILE *out = popen(cmd.c_str(), "r");
 	if (!out)
 	{
 		return ret;
