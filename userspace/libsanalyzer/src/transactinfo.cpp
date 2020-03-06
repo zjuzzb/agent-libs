@@ -65,9 +65,8 @@ void sinsp_transaction_table::emit(THREAD_TYPE* ptinfo,
 	//
 	// Detect the side and and determine the trigger directions
 	//
-	ASSERT(ffdinfo->m_flags &
-	       (sinsp_fdinfo_t::FLAGS_ROLE_CLIENT | sinsp_fdinfo_t::FLAGS_ROLE_SERVER));
-	if (ffdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)
+	ASSERT(ffdinfo->is_role_server() || ffdinfo->is_role_client());
+	if (ffdinfo->is_role_server())
 	{
 		startdir = sinsp_partial_transaction::DIR_IN;
 		enddir = sinsp_partial_transaction::DIR_OUT;
@@ -116,7 +115,7 @@ void sinsp_transaction_table::emit(THREAD_TYPE* ptinfo,
 
 		uint64_t delta = tr->m_prev_end_time - tr->m_prev_prev_start_of_transaction_time;
 
-		if (ffdinfo->m_flags & sinsp_fdinfo_t::FLAGS_ROLE_SERVER)
+		if (ffdinfo->is_role_server())
 		{
 			bool isexternal = pconn->is_server_only();
 			m_n_server_transactions++;

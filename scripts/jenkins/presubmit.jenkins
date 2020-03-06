@@ -28,7 +28,23 @@ pipeline {
 	options {
 		timeout(time: 60, unit: 'MINUTES')
 	}
+	parameters {
+		booleanParam(name: 'BUILD_BUILDER', defaultValue: false, description: "set to true to build the builder for this branch. name will be same as agent branch")
+		string(name: 'BUILDER_VERSION', defaultValue: "latest", description: "build container to use for building the agent")
+		string(name: 'SYSDIG_BRANCH', defaultValue: "dev")
+		string(name: 'FALCO_BRANCH', defaultValue: "dev")
+		string(name: 'PROTOREPO_BRANCH', defaultValue: "master")
+	}
 	stages {
+		stage('Build Builder') {
+			when {   
+				expression { params.BUILD_BUILDER == true }
+			}
+			steps {
+				build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),string(name:'SYSDIG_BRANCH', value:"${params.SYSDIG_BRANCH}"),string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}")]
+			}
+		}
+
 		stage('Check out dependencies') {
 			steps {
 				// First set the statuses on github
@@ -45,7 +61,7 @@ pipeline {
 				stage('Unit Test') {
 					steps {
 						setBuildStatus('Unit Test', 'In Progress', 'PENDING')
-						build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value: "${env.BRANCH_NAME}")]
+						build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"), string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"), string(name:'SYSDIG_BRANCH', value:"${params.SYSDIG_BRANCH}"), string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
 					}
 					post {
 						success {
@@ -59,7 +75,7 @@ pipeline {
 				stage('System Test') {
 					steps {
 						setBuildStatus('System Test', 'In Progress', 'PENDING')
-						build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}")]
+						build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"), string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"), string(name:'SYSDIG_BRANCH', value:"${params.SYSDIG_BRANCH}"), string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
 					}
 					post {
 						success {
@@ -75,7 +91,7 @@ pipeline {
 						stage('Build Container') {
 							steps {
 								setBuildStatus('QA Test', 'Building Container', 'PENDING')
-								build job:'agent-build-container',parameters:[string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}")]
+								build job:'agent-build-container',parameters:[string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"), string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"), string(name:'SYSDIG_BRANCH', value:"${params.SYSDIG_BRANCH}"), string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
 							}
 						}
 						stage('Run Test') {
