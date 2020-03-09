@@ -59,7 +59,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
                                                                  uint32_t n_server_threads,
                                                                  uint64_t sample_end_time,
                                                                  uint64_t sample_duration,
-                                                                 THREAD_TYPE* program_info)
+                                                                 thread_analyzer_info* program_info)
 {
 	sinsp_score_info res(-1, -1);
 	int32_t cpuid;
@@ -125,9 +125,9 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
 
 		if (program_info != NULL)
 		{
-			ASSERT(GET_AGENT_THREAD(program_info)->m_procinfo != NULL);
+			ASSERT(program_info->m_procinfo != NULL);
 
-			int32_t nct = (int32_t)GET_AGENT_THREAD(program_info)->m_procinfo->m_cpu_time_ns.size();
+			int32_t nct = (int32_t)program_info->m_procinfo->m_cpu_time_ns.size();
 
 			//
 			// This can happen when we drop or filter scheduler events
@@ -139,7 +139,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
 
 			ASSERT(nct == num_cpus);
 
-			tr_cpu_time = GET_AGENT_THREAD(program_info)->m_procinfo->m_cpu_time_ns[cpuid];
+			tr_cpu_time = program_info->m_procinfo->m_cpu_time_ns[cpuid];
 		}
 		else
 		{
@@ -275,7 +275,7 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
 	return res;
 }
 
-sinsp_score_info sinsp_scores::get_process_capacity_score(THREAD_TYPE* mainthread_info,
+sinsp_score_info sinsp_scores::get_process_capacity_score(thread_analyzer_info* mainthread_info,
                                                           sinsp_delays_info* delays,
                                                           uint32_t n_server_threads,
                                                           uint64_t sample_end_time,
@@ -289,11 +289,10 @@ sinsp_score_info sinsp_scores::get_process_capacity_score(THREAD_TYPE* mainthrea
 	                                                         sample_duration,
 	                                                         mainthread_info);
 
-	if (GET_AGENT_THREAD(mainthread_info)->m_procinfo->m_connection_queue_usage_pct > 50)
+	if (mainthread_info->m_procinfo->m_connection_queue_usage_pct > 50)
 	{
 		res.m_current_capacity =
-		    MAX(res.m_current_capacity,
-		        GET_AGENT_THREAD(mainthread_info)->m_procinfo->m_connection_queue_usage_pct);
+		    MAX(res.m_current_capacity, mainthread_info->m_procinfo->m_connection_queue_usage_pct);
 	}
 
 	return res;

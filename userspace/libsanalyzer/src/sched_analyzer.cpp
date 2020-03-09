@@ -55,7 +55,7 @@ void sinsp_sched_analyzer2::on_capture_start()
 	m_sample_length_ns = (size_t)m_analyzer.get_sample_duration();
 }
 
-void sinsp_sched_analyzer2::update(THREAD_TYPE* tinfo, uint64_t ts, int16_t cpu, int64_t nexttid)
+void sinsp_sched_analyzer2::update(thread_analyzer_info* tinfo, uint64_t ts, int16_t cpu, int64_t nexttid)
 {
 	cpustate2& state = m_cpu_states[cpu];
 	int64_t delta;
@@ -113,20 +113,20 @@ void sinsp_sched_analyzer2::update(THREAD_TYPE* tinfo, uint64_t ts, int16_t cpu,
 	}
 	else
 	{
-		if (GET_AGENT_THREAD(tinfo)->m_cpu_time_ns.size() != m_ncpus)
+		if (tinfo->m_cpu_time_ns.size() != m_ncpus)
 		{
-			ASSERT(GET_AGENT_THREAD(tinfo)->m_cpu_time_ns.size() == 0);
-			GET_AGENT_THREAD(tinfo)->m_cpu_time_ns.resize(m_ncpus);
+			ASSERT(tinfo->m_cpu_time_ns.size() == 0);
+			tinfo->m_cpu_time_ns.resize(m_ncpus);
 		}
 
-		GET_AGENT_THREAD(tinfo)->m_cpu_time_ns[cpu] += delta;
+		tinfo->m_cpu_time_ns[cpu] += delta;
 
 		//
 		// XXX
 		// including AF_IS_UNIX_SERVER could catch a lot of noise from stuff like dbus-daemon.
 		// Don't really know how to address it.
 		//
-		if (GET_AGENT_THREAD(tinfo)->m_th_analysis_flags &
+		if (tinfo->m_th_analysis_flags &
 		    (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
 		     thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
 		     thread_analyzer_info::AF_IS_UNIX_SERVER))
@@ -186,7 +186,7 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt,
 		//
 		// Complete the state for this CPU
 		//
-		THREAD_TYPE* tinfo = m_analyzer.get_mutable_thread_by_pid(state.m_last_switch_tid, false, true);
+		thread_analyzer_info* tinfo = m_analyzer.get_mutable_thread_by_pid(state.m_last_switch_tid, false, true);
 		uint64_t utime = MAX(flush_time - 1, state.m_last_switch_time);
 		update(tinfo, utime, j, state.m_last_switch_tid);
 

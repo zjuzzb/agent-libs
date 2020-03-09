@@ -34,14 +34,9 @@ public:
 
 TEST(object_filter_test, port_filter_single_against_range)
 {
-#ifdef USE_AGENT_THREAD
 	thread_analyzer_info tinfo(nullptr, nullptr);
-#else
-	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
-#endif
 	std::set<uint16_t> ports = {12};
-	test_helper::set_listening_ports(GET_AGENT_THREAD(&tinfo), ports);
+	test_helper::set_listening_ports(&tinfo, ports);
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
 
 	std::set<uint16_t> ports2 = {};
@@ -73,23 +68,14 @@ TEST(object_filter_test, port_filter_single_against_range)
 	    {object_filter_config::port_filter_rule(true, false, 12, 20, ports2)});
 	matches = my_filter3.matches(args, exclude, high_priority, &reason);
 	EXPECT_EQ(matches, true);
-
-#ifndef USE_AGENT_THREAD
-	delete GET_AGENT_THREAD(&tinfo);
-#endif
 }
 
 TEST(object_filter_test, port_filter_single_against_set)
 {
-#ifdef USE_AGENT_THREAD
 	thread_analyzer_info tinfo(nullptr, nullptr);
-#else
-	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
-#endif
 
 	std::set<uint16_t> ports = {12};
-	test_helper::set_listening_ports(GET_AGENT_THREAD(&tinfo), ports);
+	test_helper::set_listening_ports(&tinfo, ports);
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
 
 	std::set<uint16_t> ports2 = {10, 20};
@@ -114,22 +100,13 @@ TEST(object_filter_test, port_filter_single_against_set)
 	matches = my_filter5.matches(args, exclude, high_priority, &reason);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(reason, "1 ports match: 12");
-
-#ifndef USE_AGENT_THREAD
-	delete GET_AGENT_THREAD(&tinfo);
-#endif
 }
 
 TEST(object_filter_test, port_filter_multiple_against_range)
 {
-#ifdef USE_AGENT_THREAD
 	thread_analyzer_info tinfo(nullptr, nullptr);
-#else
-	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
-#endif
 	std::set<uint16_t> ports = {12, 20};
-	test_helper::set_listening_ports(GET_AGENT_THREAD(&tinfo), ports);
+	test_helper::set_listening_ports(&tinfo, ports);
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
 
 	bool matches = false;
@@ -170,22 +147,13 @@ TEST(object_filter_test, port_filter_multiple_against_range)
 	    {object_filter_config::port_filter_rule(true, false, 0, 11, ports2)});
 	matches = my_filter2.matches(args, exclude, high_priority, &reason);
 	EXPECT_EQ(matches, false);
-
-#ifndef USE_AGENT_THREAD
-	delete GET_AGENT_THREAD(&tinfo);
-#endif
 }
 
 TEST(object_filter_test, port_filter_multiple_against_set)
 {
-#ifdef USE_AGENT_THREAD
 	thread_analyzer_info tinfo(nullptr, nullptr);
-#else
-	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
-#endif
 	std::set<uint16_t> ports = {12, 20};
-	test_helper::set_listening_ports(GET_AGENT_THREAD(&tinfo), ports);
+	test_helper::set_listening_ports(&tinfo, ports);
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
 
 	bool matches = false;
@@ -206,23 +174,14 @@ TEST(object_filter_test, port_filter_multiple_against_set)
 	    {object_filter_config::port_filter_rule(true, true, 0, 0, ports3)});
 	matches = my_filter7.matches(args, exclude, high_priority, &reason);
 	EXPECT_EQ(matches, false);
-
-#ifndef USE_AGENT_THREAD
-	delete GET_AGENT_THREAD(&tinfo);
-#endif
 }
 
 TEST(object_filter_test, port_filter_include_exclude)
 {
-#ifdef USE_AGENT_THREAD
 	thread_analyzer_info tinfo(nullptr, nullptr);
-#else
-	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
-#endif
 
 	std::set<uint16_t> ports = {25, 75, 76, 81, 82};
-	test_helper::set_listening_ports(GET_AGENT_THREAD(&tinfo), ports);
+	test_helper::set_listening_ports(&tinfo, ports);
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
 
 	// tests with multiple rules filter and exclude
@@ -241,7 +200,7 @@ TEST(object_filter_test, port_filter_include_exclude)
 	{
 		ports.insert(i);
 	}
-	test_helper::set_listening_ports(GET_AGENT_THREAD(&tinfo), ports);
+	test_helper::set_listening_ports(&tinfo, ports);
 	bool matches = false;
 	bool exclude = true;
 	bool high_priority = false;
@@ -258,10 +217,6 @@ TEST(object_filter_test, port_filter_include_exclude)
 	    {object_filter_config::port_filter_rule(true, false, 0, 12, ports3)});
 	matches = my_filter.matches(null_args, exclude, high_priority, &reason);
 	EXPECT_EQ(matches, false);
-
-#ifndef USE_AGENT_THREAD
-	delete GET_AGENT_THREAD(&tinfo);
-#endif
 }
 
 TEST(object_filter_test, process_name_filter)
@@ -272,11 +227,7 @@ TEST(object_filter_test, process_name_filter)
 	bool exclude = true;
 	bool high_priority = false;
 	std::string reason = "";
-#ifdef USE_AGENT_THREAD
 	thread_analyzer_info tinfo(nullptr, nullptr);
-#else
-	sinsp_threadinfo tinfo;
-#endif
 	tinfo.m_comm = "process_name";
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
 	matches = my_filter.matches(args, exclude, high_priority, &reason);
@@ -302,11 +253,7 @@ TEST(object_filter_test, process_cmd_line_filter)
 	bool exclude = true;
 	bool high_priority = false;
 	std::string reason = "";
-#ifdef USE_AGENT_THREAD
 	thread_analyzer_info tinfo(nullptr, nullptr);
-#else
-	sinsp_threadinfo tinfo;
-#endif
 	tinfo.m_exe = "barfo?baz";
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
 	matches = my_filter.matches(args, exclude, high_priority, &reason);
@@ -428,14 +375,9 @@ TEST(object_filter_test, app_check_filter)
 	bool exclude = true;
 	bool high_priority = false;
 	std::string reason = "";
-#ifdef USE_AGENT_THREAD
 	thread_analyzer_info tinfo(nullptr, nullptr);
-#else
-	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
-#endif
 
-	test_helper::insert_app_check(GET_AGENT_THREAD(&tinfo), "some app check");
+	test_helper::insert_app_check(&tinfo, "some app check");
 	process_filter_args args(NULL, &tinfo, NULL, NULL);
 	matches = my_filter.matches(args, exclude, high_priority, &reason);
 	EXPECT_EQ(matches, true);
@@ -443,18 +385,14 @@ TEST(object_filter_test, app_check_filter)
 	EXPECT_EQ(high_priority, true);
 	EXPECT_EQ(reason, "found app check: some app?check");
 
-	test_helper::clear_app_check(GET_AGENT_THREAD(&tinfo));
-	test_helper::insert_app_check(GET_AGENT_THREAD(&tinfo), "some other app check");
+	test_helper::clear_app_check(&tinfo);
+	test_helper::insert_app_check(&tinfo, "some other app check");
 	matches = my_filter.matches(args, exclude, high_priority, &reason);
 	EXPECT_EQ(matches, false);
 
 	process_filter_args null_args(NULL, NULL, NULL, NULL);
 	matches = my_filter.matches(null_args, exclude, high_priority, &reason);
 	EXPECT_EQ(matches, false);
-
-#ifndef USE_AGENT_THREAD
-	delete GET_AGENT_THREAD(&tinfo);
-#endif
 }
 
 // just make sure we don't die if you give a none filter
@@ -582,13 +520,8 @@ TEST(object_filter_test, object_filter)
 	my_filter.set_rules(rules);
 
 	// now go through and check that each rule matches
-#ifdef USE_AGENT_THREAD
 	thread_analyzer_info tinfo(nullptr, nullptr);
-#else
-	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
-#endif
-	test_helper::set_listening_ports(GET_AGENT_THREAD(&tinfo), ports);
+	test_helper::set_listening_ports(&tinfo, ports);
 
 	bool matches = false;
 	bool generic_match = true;
@@ -599,7 +532,7 @@ TEST(object_filter_test, object_filter)
 	EXPECT_EQ(rule_num->m_cond[0].m_param_type,
 	          object_filter_config::filter_condition::param_type::port);
 	ports.clear();
-	test_helper::set_listening_ports(GET_AGENT_THREAD(&tinfo), ports);
+	test_helper::set_listening_ports(&tinfo, ports);
 
 	tinfo.m_comm = "my_process_name";
 	matches = false;
@@ -652,7 +585,7 @@ TEST(object_filter_test, object_filter)
 	          object_filter_config::filter_condition::param_type::container_label);
 	container.m_labels.clear();
 
-	test_helper::insert_app_check(GET_AGENT_THREAD(&tinfo), "app check");
+	test_helper::insert_app_check(&tinfo, "app check");
 	matches = false;
 	generic_match = true;
 	matches = my_filter.matches(NULL, &tinfo, NULL, NULL, &generic_match, &rule_num, NULL);
@@ -660,7 +593,7 @@ TEST(object_filter_test, object_filter)
 	EXPECT_EQ(generic_match, false);
 	EXPECT_EQ(rule_num->m_cond[0].m_param_type,
 	          object_filter_config::filter_condition::param_type::app_check_match);
-	test_helper::clear_app_check(GET_AGENT_THREAD(&tinfo));
+	test_helper::clear_app_check(&tinfo);
 
 	matches = false;
 	generic_match = true;
@@ -737,10 +670,6 @@ TEST(object_filter_test, object_filter)
 	matches = my_filter.matches(NULL, NULL, &container, NULL, &generic_match, &rule_num, NULL);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(generic_match, true);
-
-#ifndef USE_AGENT_THREAD
-	delete GET_AGENT_THREAD(&tinfo);
-#endif
 }
 
 TEST(object_filter_test, register_annotations)

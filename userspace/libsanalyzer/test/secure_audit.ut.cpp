@@ -827,13 +827,9 @@ class external_processor_dummy : public libsinsp::event_processor
 	void add_chisel_metric(statsd_metric* metric) override {}
 	sinsp_threadinfo* build_threadinfo(sinsp* inspector) override
 	{
-#ifdef USE_AGENT_THREAD
 		auto tinfo = new thread_analyzer_info(inspector, nullptr);
 		tinfo->init();
 		return tinfo;
-#else
-		return new sinsp_threadinfo(inspector);
-#endif
 	}
 };
 }  // namespace
@@ -908,7 +904,7 @@ void add_connections_helper(secure_audit* audit,
 	}
 
 
-	std::shared_ptr<THREAD_TYPE> proc = nullptr;
+	std::shared_ptr<thread_analyzer_info> proc = nullptr;
 	proc = sinsp_analyzer::get_thread_ref(inspector,
 	                                      expected_pid,
 	                                      false /*don't query the os if not found*/,
@@ -916,29 +912,23 @@ void add_connections_helper(secure_audit* audit,
 
 	proc->m_container_id = expected_container_id;
 
-#ifdef USE_AGENT_THREAD
 	thread_analyzer_info* main_thread =
 	    dynamic_cast<thread_analyzer_info*>(proc->get_main_thread());
 	ASSERT_EQ(main_thread, proc->get_main_thread());
-#else
-	sinsp_threadinfo* main_thread = proc->get_main_thread();
-	thread_analyzer_info* tainfo = new thread_analyzer_info(nullptr, nullptr);
-	main_thread->m_ainfo = tainfo;
-#endif
 
 	ASSERT_NE(main_thread, nullptr);
-	ASSERT_NE(GET_AGENT_THREAD(main_thread), nullptr);
+	ASSERT_NE(main_thread, nullptr);
 
 	if (interactive)
 	{
 		// Set process as interactive
-		GET_AGENT_THREAD(main_thread)->m_th_analysis_flags |=
+		main_thread->m_th_analysis_flags |=
 		    thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
 	}
 	else
 	{
 		// Set process as no INTERACTIVE
-		GET_AGENT_THREAD(main_thread)->m_th_analysis_flags &=
+		main_thread->m_th_analysis_flags &=
 		    ~thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
 	}
 
@@ -1197,29 +1187,23 @@ void add_file_access_helper(secure_audit* audit,
 	                                true /*lookup only*/);
 
 	proc->m_container_id = expected_container_id;
-#ifdef USE_AGENT_THREAD
 	thread_analyzer_info* main_thread =
 	    dynamic_cast<thread_analyzer_info*>(proc->get_main_thread());
 	ASSERT_EQ(main_thread, proc->get_main_thread());
-#else
-	sinsp_threadinfo* main_thread = proc->get_main_thread();
-	thread_analyzer_info* tainfo = new thread_analyzer_info(nullptr, nullptr);
-	main_thread->m_ainfo = tainfo;
-#endif
 
 	ASSERT_NE(main_thread, nullptr);
-	ASSERT_NE(GET_AGENT_THREAD(main_thread), nullptr);
+	ASSERT_NE(main_thread, nullptr);
 
 	if (interactive)
 	{
 		// Set process as interactive
-		GET_AGENT_THREAD(main_thread)->m_th_analysis_flags |=
+		main_thread->m_th_analysis_flags |=
 		    thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
 	}
 	else
 	{
 		// Set process as no INTERACTIVE
-		GET_AGENT_THREAD(main_thread)->m_th_analysis_flags &=
+		main_thread->m_th_analysis_flags &=
 		    ~thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND;
 	}
 
@@ -1232,17 +1216,10 @@ void add_file_access_helper(secure_audit* audit,
 
 	for (auto testcase : testcases)
 	{
-#ifdef USE_AGENT_THREAD
 		audit->emit_file_access_async(dynamic_cast<thread_analyzer_info*>(proc.get()),
 		                              testcase.ts,
 		                              testcase.fullpath,
 		                              testcase.flags);
-#else
-		audit->emit_file_access_async(proc.get(),
-		                              testcase.ts,
-		                              testcase.fullpath,
-		                              testcase.flags);
-#endif
 	}
 }
 

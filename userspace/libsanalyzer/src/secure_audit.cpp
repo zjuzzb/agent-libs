@@ -198,7 +198,7 @@ void secure_audit::init(sinsp_ipv4_connection_manager* conn,
 
 		// Register callback
 		analyzer_fd_listener->subscribe_on_file_open_write(
-		    [this](THREAD_TYPE* tinfo,
+		    [this](thread_analyzer_info* tinfo,
 		           uint64_t ts,
 		           const std::string& fullpath,
 		           uint32_t flags) { emit_file_access_async(tinfo, ts, fullpath, flags); });
@@ -575,22 +575,14 @@ void secure_audit::append_connection(connection_type type,
 		return;
 	}
 
-	THREAD_TYPE* tinfo = nullptr;
+	thread_analyzer_info* tinfo = nullptr;
 	if (type == connection_type::SRC)
 	{
-#ifdef USE_AGENT_THREAD
 		tinfo = dynamic_cast<thread_analyzer_info*>(conn.m_sproc.get()->get_main_thread());
-#else
-		tinfo = conn.m_sproc.get()->get_main_thread();
-#endif
 	}
 	else
 	{
-#ifdef USE_AGENT_THREAD
 		tinfo = dynamic_cast<thread_analyzer_info*>(conn.m_dproc.get()->get_main_thread());
-#else
-		tinfo = conn.m_dproc.get()->get_main_thread();
-#endif
 	}
 
 	if (c_secure_audit_connections_only_interactive.get_value())
@@ -600,7 +592,7 @@ void secure_audit::append_connection(connection_type type,
 			return;
 		}
 
-		if ((tinfo != nullptr) && (!(GET_AGENT_THREAD(tinfo)->m_th_analysis_flags &
+		if ((tinfo != nullptr) && (!(tinfo->m_th_analysis_flags &
 		                             thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND)))
 		{
 			m_connections_not_interactive_dropped_count++;
@@ -713,7 +705,7 @@ void secure_audit::emit_connection_async(const _ipv4tuple& tuple,
 	}
 }
 
-void secure_audit::emit_file_access_async(THREAD_TYPE* tinfo,
+void secure_audit::emit_file_access_async(thread_analyzer_info* tinfo,
                                           uint64_t ts,
                                           const std::string& fullpath,
                                           uint32_t flags)
@@ -732,12 +724,12 @@ void secure_audit::emit_file_access_async(THREAD_TYPE* tinfo,
 
 	if (c_secure_audit_file_writes_only_interactive.get_value())
 	{
-		if (tinfo == nullptr || GET_AGENT_THREAD(tinfo) == nullptr)
+		if (tinfo == nullptr)
 		{
 			return;
 		}
 
-		if (!(GET_AGENT_THREAD(tinfo)->m_th_analysis_flags &
+		if (!(tinfo->m_th_analysis_flags &
 		      thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND))
 		{
 			m_file_accesses_not_interactive_dropped_count++;

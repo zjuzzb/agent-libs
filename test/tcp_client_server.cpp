@@ -316,19 +316,11 @@ void runtest(iotype iot,
 			}
 
 			state = 1;
-#ifdef USE_AGENT_THREAD
 			thread_analyzer_info* ti = dynamic_cast<thread_analyzer_info*>(evt->get_thread_info());
-#else
-			sinsp_threadinfo* ti = evt->get_thread_info();
-#endif
-			ASSERT_EQ(ntransactions,
-			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_count_in);
-			ASSERT_NE((uint64_t)0,
-			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_time_ns_in);
-			ASSERT_EQ((uint64_t)1,
-			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_max_counter()->m_count_in);
-			ASSERT_NE((uint64_t)0,
-			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+			ASSERT_EQ(ntransactions, ti->m_transaction_metrics.get_counter()->m_count_in);
+			ASSERT_NE((uint64_t)0, ti->m_transaction_metrics.get_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t)1, ti->m_transaction_metrics.get_max_counter()->m_count_in);
+			ASSERT_NE((uint64_t)0, ti->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 		}
 
 		if (!(use_shutdown || exit_no_close))
@@ -337,33 +329,25 @@ void runtest(iotype iot,
 			{
 				if (NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 				{
-#ifdef USE_AGENT_THREAD
 					thread_analyzer_info* ti = dynamic_cast<thread_analyzer_info*>(
 					    param.m_inspector->get_thread(server_pid, false, true));
-#else
-					sinsp_threadinfo* ti = param.m_inspector->get_thread(server_pid, false, true);
-#endif
-					ASSERT_EQ((uint32_t)payload.length() * ntransactions * 2,
-					          (GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_bytes_in +
-					           GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_bytes_out));
-					ASSERT_EQ((uint32_t)(ntransactions * 2 + 2),
-					          (GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_count_in +
-					           GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_count_out +
-					           GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_count_other));
+					ASSERT_EQ(
+					    (uint32_t)payload.length() * ntransactions * 2,
+					    (ti->m_metrics.m_io_net.m_bytes_in + ti->m_metrics.m_io_net.m_bytes_out));
+					ASSERT_EQ(
+					    (uint32_t)(ntransactions * 2 + 2),
+					    (ti->m_metrics.m_io_net.m_count_in + ti->m_metrics.m_io_net.m_count_out +
+					     ti->m_metrics.m_io_net.m_count_other));
 
-#ifdef USE_AGENT_THREAD
 					ti = dynamic_cast<thread_analyzer_info*>(
 					    param.m_inspector->get_thread(ctid, false, true));
-#else
-					ti = param.m_inspector->get_thread(ctid, false, true);
-#endif
-					ASSERT_EQ((uint32_t)payload.length() * ntransactions * 2,
-					          (GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_bytes_in +
-					           GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_bytes_out));
-					ASSERT_EQ((uint32_t)(ntransactions * 2 + 1),
-					          (GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_count_in +
-					           GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_count_out +
-					           GET_AGENT_THREAD(ti)->m_metrics.m_io_net.m_count_other));
+					ASSERT_EQ(
+					    (uint32_t)payload.length() * ntransactions * 2,
+					    (ti->m_metrics.m_io_net.m_bytes_in + ti->m_metrics.m_io_net.m_bytes_out));
+					ASSERT_EQ(
+					    (uint32_t)(ntransactions * 2 + 1),
+					    (ti->m_metrics.m_io_net.m_count_in + ti->m_metrics.m_io_net.m_count_out +
+					     ti->m_metrics.m_io_net.m_count_other));
 				}
 			}
 		}
@@ -469,19 +453,11 @@ TEST_F(sys_call_test, tcp_client_server_with_connection_before_capturing_starts)
 		if (PPME_SYSCALL_CLOSE_X == evt->get_type() && evt->get_tid() == server.get_tid())
 		{
 			state = 1;
-#ifdef USE_AGENT_THREAD
 			thread_analyzer_info* ti = dynamic_cast<thread_analyzer_info*>(evt->get_thread_info());
-#else
-			sinsp_threadinfo* ti = evt->get_thread_info();
-#endif
-			ASSERT_EQ((uint64_t)1,
-			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_count_in);
-			ASSERT_NE((uint64_t)0,
-			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_counter()->m_time_ns_in);
-			ASSERT_EQ((uint64_t)1,
-			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_max_counter()->m_count_in);
-			ASSERT_NE((uint64_t)0,
-			          GET_AGENT_THREAD(ti)->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t)1, ti->m_transaction_metrics.get_counter()->m_count_in);
+			ASSERT_NE((uint64_t)0, ti->m_transaction_metrics.get_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t)1, ti->m_transaction_metrics.get_max_counter()->m_count_in);
+			ASSERT_NE((uint64_t)0, ti->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 		}
 	};
 

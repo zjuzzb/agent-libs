@@ -6,9 +6,9 @@
 class test_helper
 {
 public:
-	static void insert_app_check(THREAD_TYPE* ainfo, std::string value)
+	static void insert_app_check(thread_analyzer_info* ainfo, std::string value)
 	{
-		GET_AGENT_THREAD(ainfo)->m_app_checks_found.insert(value);
+		ainfo->m_app_checks_found.insert(value);
 	}
 };
 
@@ -29,12 +29,7 @@ app_checks_always_send: true
 
 	process_manager my_manager;
 
-#ifdef USE_AGENT_THREAD
 	thread_analyzer_info tinfo(nullptr, nullptr);
-#else
-	sinsp_threadinfo tinfo;
-	tinfo.m_ainfo = new thread_analyzer_info(nullptr, nullptr);
-#endif
 	bool matches = false;
 	bool generic_match = false;
 	matches =
@@ -47,8 +42,4 @@ app_checks_always_send: true
 	    my_manager.get_flush_filter().matches(NULL, &tinfo, NULL, NULL, &generic_match, NULL, NULL);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(generic_match, false);
-
-#ifndef USE_AGENT_THREAD
-	delete tinfo.m_ainfo;
-#endif
 }

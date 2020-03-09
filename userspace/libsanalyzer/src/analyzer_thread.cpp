@@ -95,7 +95,7 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 	return res;
 }
 
-void main_thread_analyzer_info::hash_environment(THREAD_TYPE* tinfo,
+void main_thread_analyzer_info::hash_environment(thread_analyzer_info* tinfo,
                                                  const env_hash::regex_list_t& blacklist)
 {
 	m_env_hash.update(tinfo, blacklist);
@@ -105,12 +105,8 @@ void main_thread_analyzer_info::hash_environment(THREAD_TYPE* tinfo,
 // thread_analyzer_info implementation
 ///////////////////////////////////////////////////////////////////////////////
 
-thread_analyzer_info::thread_analyzer_info(sinsp* inspector,
-                                           sinsp_analyzer* analyzer)
-	:
-#ifdef USE_AGENT_THREAD
-      sinsp_threadinfo(inspector),
-#endif
+thread_analyzer_info::thread_analyzer_info(sinsp* inspector, sinsp_analyzer* analyzer)
+    : sinsp_threadinfo(inspector),
       m_inspector(inspector),
       m_analyzer(analyzer),
       m_tap(nullptr),
@@ -124,10 +120,7 @@ thread_analyzer_info::thread_analyzer_info(sinsp* inspector,
 thread_analyzer_info::thread_analyzer_info(sinsp* inspector,
                                            sinsp_analyzer* analyzer,
                                            std::shared_ptr<audit_tap>& audit_tap)
-    :
-#ifdef USE_AGENT_THREAD
-      sinsp_threadinfo(inspector),
-#endif
+    : sinsp_threadinfo(inspector),
       m_inspector(inspector),
       m_analyzer(analyzer),
       m_tap(audit_tap),
@@ -140,12 +133,10 @@ thread_analyzer_info::thread_analyzer_info(sinsp* inspector,
 
 thread_analyzer_info::~thread_analyzer_info()
 {
-#ifdef USE_AGENT_THREAD
 	if (m_tap != nullptr && is_main_thread())
 	{
 		m_tap->on_exit(m_pid);
 	}
-#endif
 	if (m_procinfo)
 	{
 		delete m_procinfo;
@@ -154,14 +145,8 @@ thread_analyzer_info::~thread_analyzer_info()
 	m_listening_ports.reset();
 }
 
-#ifdef USE_AGENT_THREAD
 void thread_analyzer_info::init()
 {
-#else
-void thread_analyzer_info::init(sinsp_threadinfo* tinfo)
-{
-	m_tinfo = tinfo;
-#endif
 	m_th_analysis_flags = AF_PARTIAL_METRIC;
 	clear_found_app_checks();
 	clear_found_prom_check();
@@ -182,7 +167,6 @@ void thread_analyzer_info::init(sinsp_threadinfo* tinfo)
 		// all the threads that belong to a process will share the
 		// same percentile store allocated for the main thread
 
-#ifdef USE_AGENT_THREAD
 		thread_analyzer_info* main_thread = dynamic_cast<thread_analyzer_info*>(get_main_thread());
 		bool share_store = this != main_thread;
 		m_metrics.set_percentiles(m_percentiles, share_store ? &(main_thread->m_metrics) : nullptr);
@@ -192,26 +176,14 @@ void thread_analyzer_info::init(sinsp_threadinfo* tinfo)
 		m_external_transaction_metrics.set_percentiles(
 		    m_percentiles,
 		    share_store ? &(main_thread->m_external_transaction_metrics) : nullptr);
-#else
-		auto main_thread = m_tinfo->get_main_thread();
-		auto mt_ainfo = (main_thread != nullptr) ? main_thread->m_ainfo : nullptr;
-		bool share_store = ((mt_ainfo != nullptr) && (this != mt_ainfo));
-		m_metrics.set_percentiles(m_percentiles, share_store ? &(mt_ainfo->m_metrics) : nullptr);
-		m_transaction_metrics.set_percentiles(
-		    m_percentiles,
-		    share_store ? &(mt_ainfo->m_transaction_metrics) : nullptr);
-		m_external_transaction_metrics.set_percentiles(
-		    m_percentiles,
-		    share_store ? &(mt_ainfo->m_external_transaction_metrics) : nullptr);
-#endif
 	}
 
 	if (m_analyzer != nullptr && m_analyzer->is_tracking_environment())
 	{
-		if (GET_SINSP_THREAD(this)->is_main_thread())
+		if (is_main_thread())
 		{
 			auto mt_ainfo = main_thread_ainfo();
-			mt_ainfo->hash_environment(GET_SINSP_THREAD(this), m_analyzer->get_environment_blacklist());
+			mt_ainfo->hash_environment(this, m_analyzer->get_environment_blacklist());
 		}
 	}
 }
@@ -270,9 +242,9 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 		m_procinfo->m_proc_transaction_metrics.add(&other->m_transaction_metrics);
 	}
 
-	if (GET_SINSP_THREAD(other)->get_fd_usage_pct() > m_procinfo->m_fd_usage_pct)
+	if (other->get_fd_usage_pct() > m_procinfo->m_fd_usage_pct)
 	{
-		m_procinfo->m_fd_usage_pct = (uint32_t)GET_SINSP_THREAD(other)->get_fd_usage_pct();
+		m_procinfo->m_fd_usage_pct = (uint32_t)other->get_fd_usage_pct();
 	}
 
 	if (other->m_connection_queue_usage_pct > m_procinfo->m_connection_queue_usage_pct)
@@ -289,15 +261,15 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	// The memory is just per-process, so we sum it into the parent program
 	// just if this is not a child thread
 	//
-	if (GET_SINSP_THREAD(other)->is_main_thread())
+	if (other->is_main_thread())
 	{
-		m_procinfo->m_vmsize_kb += GET_SINSP_THREAD(other)->m_vmsize_kb;
-		m_procinfo->m_vmrss_kb += GET_SINSP_THREAD(other)->m_vmrss_kb;
-		m_procinfo->m_vmswap_kb += GET_SINSP_THREAD(other)->m_vmswap_kb;
+		m_procinfo->m_vmsize_kb += other->m_vmsize_kb;
+		m_procinfo->m_vmrss_kb += other->m_vmrss_kb;
+		m_procinfo->m_vmswap_kb += other->m_vmswap_kb;
 	}
 
-	m_procinfo->m_pfmajor += (GET_SINSP_THREAD(other)->m_pfmajor - other->m_old_pfmajor);
-	m_procinfo->m_pfminor += (GET_SINSP_THREAD(other)->m_pfminor - other->m_old_pfminor);
+	m_procinfo->m_pfmajor += (other->m_pfmajor - other->m_old_pfmajor);
+	m_procinfo->m_pfminor += (other->m_pfminor - other->m_old_pfminor);
 
 	//
 	// Propagate client-server flags
@@ -335,12 +307,8 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	// If we are returning programs to the backend, add the child pid to the
 	// m_program_pids list
 	//
-#ifndef USE_AGENT_THREAD
-	ASSERT(other->m_tinfo != NULL);
-#endif
-
-	m_procinfo->m_program_pids.insert(GET_SINSP_THREAD(other)->m_pid);
-	m_procinfo->m_program_uids.insert(GET_SINSP_THREAD(other)->m_uid);
+	m_procinfo->m_program_pids.insert(other->m_pid);
+	m_procinfo->m_program_uids.insert(other->m_uid);
 
 	if (other->m_transaction_metrics.get_counter()->m_count_in != 0)
 	{
@@ -378,14 +346,14 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 		m_procinfo->m_devs_stat.add(other->m_main_thread_ainfo->m_devs_stat);
 	}
 
-	m_procinfo->m_fd_count += GET_SINSP_THREAD(other)->get_fd_table()->size();
+	m_procinfo->m_fd_count += other->get_fd_table()->size();
 
 	if (other->m_called_execve)
 	{
 		m_procinfo->m_start_count += 1;
 	}
 
-	if (GET_SINSP_THREAD(other)->is_main_thread())
+	if (other->is_main_thread())
 	{
 		m_procinfo->m_proc_count++;
 	}
@@ -394,10 +362,6 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 void thread_analyzer_info::clear_all_metrics()
 {
-#ifndef USE_AGENT_THREAD
-	ASSERT(m_tinfo != NULL);
-#endif
-
 	if (m_procinfo != NULL)
 	{
 		m_procinfo->clear();
@@ -408,8 +372,8 @@ void thread_analyzer_info::clear_all_metrics()
 	m_external_transaction_metrics.clear();
 	m_connection_queue_usage_pct = 0;
 	m_cpuload = 0;
-	m_old_pfmajor = GET_SINSP_THREAD(this)->m_pfmajor;
-	m_old_pfminor = GET_SINSP_THREAD(this)->m_pfminor;
+	m_old_pfmajor = m_pfmajor;
+	m_old_pfminor = m_pfminor;
 
 	std::vector<uint64_t>::iterator it;
 	for (it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); ++it)
@@ -453,14 +417,14 @@ void thread_analyzer_info::clear_role_flags()
 	      AF_IS_LOCAL_IPV4_CLIENT | AF_IS_REMOTE_IPV4_CLIENT | AF_IS_UNIX_CLIENT);
 }
 
-void thread_analyzer_info::scan_listening_ports(bool scan_procfs, uint32_t procfs_scan_interval) const
+void thread_analyzer_info::scan_listening_ports(bool scan_procfs,
+                                                uint32_t procfs_scan_interval) const
 {
 	time_point_t now = time_point_t::min();
 
 	// If this pid has a lot of open fds, only rescan
 	// every RESCAN_PORT_INTERVAL_SECS
-	if (m_listening_ports &&
-	    (GET_SINSP_THREAD(this)->get_fd_opencount() >= LISTENING_PORT_SCAN_FDLIMIT))
+	if (m_listening_ports && (get_fd_opencount() >= LISTENING_PORT_SCAN_FDLIMIT))
 	{
 		now = time_point_t::clock::now();
 		auto elapsed_secs =
@@ -472,7 +436,7 @@ void thread_analyzer_info::scan_listening_ports(bool scan_procfs, uint32_t procf
 	}
 
 	m_listening_ports = make_unique<std::set<uint16_t>>();
-	auto fd_table = GET_SINSP_THREAD(this)->get_fd_table();
+	auto fd_table = get_fd_table();
 	for (const auto& fd : fd_table->m_table)
 	{
 		if (fd.second.m_type == SCAP_FD_IPV4_SERVSOCK)
@@ -501,7 +465,7 @@ void thread_analyzer_info::scan_listening_ports(bool scan_procfs, uint32_t procf
 			int prev_size = m_procfs_found_ports.size();
 			m_procfs_found_ports.clear();
 
-			sinsp_procfs_parser::read_process_serverports(GET_SINSP_THREAD(this)->m_pid,
+			sinsp_procfs_parser::read_process_serverports(m_pid,
 			                                              *m_listening_ports,
 			                                              m_procfs_found_ports);
 			m_last_procfs_port_scan = now;
@@ -511,8 +475,8 @@ void thread_analyzer_info::scan_listening_ports(bool scan_procfs, uint32_t procf
 				g_logger.format(sinsp_logger::SEV_INFO,
 				                "Updated list of listening ports for pid %" PRIi64
 				                ", %s. Found %d new ports: %s",
-				                GET_SINSP_THREAD(this)->m_pid,
-				                GET_SINSP_THREAD(this)->m_comm.c_str(),
+				                m_pid,
+				                m_comm.c_str(),
 				                m_procfs_found_ports.size() - prev_size,
 				                ports_to_string(m_procfs_found_ports).c_str());
 			}
@@ -532,23 +496,21 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
                                                        uint64_t timeout_ns,
                                                        bool is_subsampling)
 {
-	const sinsp_fdtable* fdtable = GET_SINSP_THREAD(this)->get_fd_table();
-	bool has_thread_exited = (GET_SINSP_THREAD(this)->m_flags & PPM_CL_CLOSED) != 0;
+	const sinsp_fdtable* fdtable = get_fd_table();
+	bool has_thread_exited = (m_flags & PPM_CL_CLOSED) != 0;
 
-	if (fdtable == GET_SINSP_THREAD(this)->get_fd_table())
+	if (fdtable == get_fd_table())
 	{
 		std::unordered_map<int64_t, sinsp_fdinfo_t>::iterator it;
 
-		for (it = GET_SINSP_THREAD(this)->get_fd_table()->m_table.begin();
-		     it != GET_SINSP_THREAD(this)->get_fd_table()->m_table.end();
-		     it++)
+		for (it = get_fd_table()->m_table.begin(); it != get_fd_table()->m_table.end(); it++)
 		{
 			uint64_t endtime = sample_end_time;
 
 			if (it->second.is_transaction())
 			{
-				if ((it->second.is_role_server() &&
-				     it->second.get_usrstate()->m_direction == sinsp_partial_transaction::DIR_OUT) ||
+				if ((it->second.is_role_server() && it->second.get_usrstate()->m_direction ==
+				                                        sinsp_partial_transaction::DIR_OUT) ||
 				    (it->second.is_role_client() &&
 				     it->second.get_usrstate()->m_direction == sinsp_partial_transaction::DIR_IN))
 				{
@@ -596,7 +558,7 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 							sinsp_partial_transaction* trinfo = it->second.get_usrstate();
 
 							trinfo->update(m_analyzer,
-							               GET_SINSP_THREAD(this),
+							               this,
 							               &it->second,
 							               connection,
 							               0,
@@ -648,9 +610,9 @@ const proc_config& thread_analyzer_info::get_proc_config()
 	{
 		// 1. some processes (eg. redis) wipe their env
 		// try to grab the env from it up to its parent (within the same container)
-		auto conf = GET_SINSP_THREAD(this)->get_env(SYSDIG_AGENT_CONF);
+		auto conf = get_env(SYSDIG_AGENT_CONF);
 		sinsp_threadinfo::visitor_func_t visitor = [&conf, this](sinsp_threadinfo* ptinfo) {
-			if (!conf.empty() || ptinfo->m_container_id != GET_SINSP_THREAD(this)->m_container_id)
+			if (!conf.empty() || ptinfo->m_container_id != m_container_id)
 			{
 				return false;
 			}
@@ -659,13 +621,13 @@ const proc_config& thread_analyzer_info::get_proc_config()
 			return true;
 		};
 
-		GET_SINSP_THREAD(this)->traverse_parent_state(visitor);
+		traverse_parent_state(visitor);
 
 		// 2. As last chance, use the Env coming from Docker
-		if (conf.empty() && !GET_SINSP_THREAD(this)->m_container_id.empty())
+		if (conf.empty() && !m_container_id.empty())
 		{
-			const auto container_info = m_inspector->m_container_manager.get_container(
-			    GET_SINSP_THREAD(this)->m_container_id);
+			const auto container_info =
+			    m_inspector->m_container_manager.get_container(m_container_id);
 			if (container_info)
 			{
 				conf = container_info->m_sysdig_agent_conf;
@@ -676,7 +638,7 @@ const proc_config& thread_analyzer_info::get_proc_config()
 		{
 			g_logger.format(sinsp_logger::SEV_DEBUG,
 			                "Found process %ld with custom conf, SYSDIG_AGENT_CONF=%s",
-			                GET_SINSP_THREAD(this)->m_pid,
+			                m_pid,
 			                conf.c_str());
 		}
 		m_proc_config = make_unique<proc_config>(conf);
@@ -736,32 +698,9 @@ analyzer_threadtable_listener::analyzer_threadtable_listener(sinsp* const inspec
 {
 }
 
-void analyzer_threadtable_listener::on_thread_created(sinsp_threadinfo* tinfo)
-{
-#ifndef USE_AGENT_THREAD
-	void* buffer = tinfo->get_private_state(m_analyzer.get_thread_memory_id());
+void analyzer_threadtable_listener::on_thread_created(sinsp_threadinfo* tinfo) {}
 
-	std::memset(buffer, 0, sizeof(thread_analyzer_info));
-
-	tinfo->m_ainfo = new (buffer) thread_analyzer_info(m_inspector, &m_analyzer);  // placement new
-	tinfo->m_ainfo->m_percentiles = m_analyzer.get_configuration_read_only()->get_percentiles();
-	tinfo->m_ainfo->init(tinfo);
-#endif
-}
-
-void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* const tinfo)
-{
-#ifndef USE_AGENT_THREAD
-	if (tinfo->is_main_thread() && m_tap != nullptr)
-	{
-		m_tap->on_exit(tinfo->m_pid);
-	}
-	if (tinfo->m_ainfo)
-	{
-		tinfo->m_ainfo->~thread_analyzer_info();
-	}
-#endif
-}
+void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* const tinfo) {}
 
 void analyzer_threadtable_listener::set_audit_tap(const std::shared_ptr<audit_tap>& tap)
 {
@@ -771,177 +710,136 @@ void analyzer_threadtable_listener::set_audit_tap(const std::shared_ptr<audit_ta
 ///////////////////////////////////////////////////////////////////////////////
 // Support for thread sorting
 ///////////////////////////////////////////////////////////////////////////////
-bool threadinfo_cmp_cpu(THREAD_TYPE* src, THREAD_TYPE* dst)
+bool threadinfo_cmp_cpu(thread_analyzer_info* src, thread_analyzer_info* dst)
 {
-#ifndef USE_AGENT_THREAD
-	ASSERT(src->m_ainfo);
-	ASSERT(dst->m_ainfo);
-#endif
-	ASSERT(GET_AGENT_THREAD(src)->m_procinfo);
-	ASSERT(GET_AGENT_THREAD(dst)->m_procinfo);
+	ASSERT(src->m_procinfo);
+	ASSERT(dst->m_procinfo);
 
-	return (GET_AGENT_THREAD(src)->m_procinfo->m_cpuload >
-	        GET_AGENT_THREAD(dst)->m_procinfo->m_cpuload);
+	return (src->m_procinfo->m_cpuload > dst->m_procinfo->m_cpuload);
 }
 
-bool threadinfo_cmp_memory(THREAD_TYPE* src, THREAD_TYPE* dst)
+bool threadinfo_cmp_memory(thread_analyzer_info* src, thread_analyzer_info* dst)
 {
-#ifndef USE_AGENT_THREAD
-	ASSERT(src->m_ainfo);
-	ASSERT(dst->m_ainfo);
-#endif
-	ASSERT(GET_AGENT_THREAD(src)->m_procinfo);
-	ASSERT(GET_AGENT_THREAD(dst)->m_procinfo);
+	ASSERT(src->m_procinfo);
+	ASSERT(dst->m_procinfo);
 
-	return (GET_AGENT_THREAD(src)->m_procinfo->m_vmrss_kb >
-	        GET_AGENT_THREAD(dst)->m_procinfo->m_vmrss_kb);
+	return (src->m_procinfo->m_vmrss_kb > dst->m_procinfo->m_vmrss_kb);
 }
 
-bool threadinfo_cmp_io(THREAD_TYPE* src, THREAD_TYPE* dst)
+bool threadinfo_cmp_io(thread_analyzer_info* src, thread_analyzer_info* dst)
 {
-#ifndef USE_AGENT_THREAD
-	ASSERT(src->m_ainfo);
-	ASSERT(dst->m_ainfo);
-#endif
+	ASSERT(src->m_procinfo);
+	ASSERT(dst->m_procinfo);
 
-	ASSERT(GET_AGENT_THREAD(src)->m_procinfo);
-	ASSERT(GET_AGENT_THREAD(dst)->m_procinfo);
-
-	return (GET_AGENT_THREAD(src)->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() >
-	        GET_AGENT_THREAD(dst)->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes());
+	return (src->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() >
+	        dst->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes());
 }
 
-bool threadinfo_cmp_net(THREAD_TYPE* src, THREAD_TYPE* dst)
+bool threadinfo_cmp_net(thread_analyzer_info* src, thread_analyzer_info* dst)
 {
-#ifndef USE_AGENT_THREAD
-	ASSERT(src->m_ainfo);
-	ASSERT(dst->m_ainfo);
-#endif
+	ASSERT(src->m_procinfo);
+	ASSERT(dst->m_procinfo);
 
-	ASSERT(GET_AGENT_THREAD(src)->m_procinfo);
-	ASSERT(GET_AGENT_THREAD(dst)->m_procinfo);
-
-	return (GET_AGENT_THREAD(src)->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() >
-	        GET_AGENT_THREAD(dst)->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes());
+	return (src->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() >
+	        dst->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes());
 }
 
-bool threadinfo_cmp_transactions(THREAD_TYPE* src, THREAD_TYPE* dst)
+bool threadinfo_cmp_transactions(thread_analyzer_info* src, thread_analyzer_info* dst)
 {
-#ifndef USE_AGENT_THREAD
-	ASSERT(src->m_ainfo);
-	ASSERT(dst->m_ainfo);
-#endif
+	ASSERT(src->m_procinfo);
+	ASSERT(dst->m_procinfo);
 
-	ASSERT(GET_AGENT_THREAD(src)->m_procinfo);
-	ASSERT(GET_AGENT_THREAD(dst)->m_procinfo);
-
-	return (GET_AGENT_THREAD(src)
-	            ->m_procinfo->m_proc_transaction_metrics.get_counter()
-	            ->get_tot_count() > GET_AGENT_THREAD(dst)
-	                                    ->m_procinfo->m_proc_transaction_metrics.get_counter()
-	                                    ->get_tot_count());
+	return (src->m_procinfo->m_proc_transaction_metrics.get_counter()->get_tot_count() >
+	        dst->m_procinfo->m_proc_transaction_metrics.get_counter()->get_tot_count());
 }
 
-bool threadinfo_cmp_evtcnt(THREAD_TYPE* src, THREAD_TYPE* dst)
+bool threadinfo_cmp_evtcnt(thread_analyzer_info* src, thread_analyzer_info* dst)
 {
-#ifndef USE_AGENT_THREAD
-	ASSERT(src->m_ainfo);
-	ASSERT(dst->m_ainfo);
-#endif
-
-	ASSERT(GET_AGENT_THREAD(src)->m_procinfo);
-	ASSERT(GET_AGENT_THREAD(dst)->m_procinfo);
+	ASSERT(src->m_procinfo);
+	ASSERT(dst->m_procinfo);
 
 	sinsp_counter_time tot;
-	GET_AGENT_THREAD(src)->m_procinfo->m_proc_metrics.get_total(&tot);
+	src->m_procinfo->m_proc_metrics.get_total(&tot);
 	uint64_t srctot = tot.m_count;
 	tot.clear();
-	GET_AGENT_THREAD(dst)->m_procinfo->m_proc_metrics.get_total(&tot);
+	dst->m_procinfo->m_proc_metrics.get_total(&tot);
 	uint64_t dsttot = tot.m_count;
 
 	return (srctot > dsttot);
 }
 
-bool threadinfo_cmp_cpu_cs(THREAD_TYPE* src, THREAD_TYPE* dst)
+bool threadinfo_cmp_cpu_cs(thread_analyzer_info* src, thread_analyzer_info* dst)
 {
-	int is_src_server = (GET_AGENT_THREAD(src)->m_th_analysis_flags &
-	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
-	int is_dst_server = (GET_AGENT_THREAD(dst)->m_th_analysis_flags &
-	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_src_server =
+	    (src->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                                 thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server =
+	    (dst->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                                 thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
 
-	double s = GET_AGENT_THREAD(src)->m_procinfo->m_cpuload * (is_src_server * 1000);
-	double d = GET_AGENT_THREAD(dst)->m_procinfo->m_cpuload * (is_dst_server * 1000);
+	double s = src->m_procinfo->m_cpuload * (is_src_server * 1000);
+	double d = dst->m_procinfo->m_cpuload * (is_dst_server * 1000);
 
 	return (s > d);
 }
 
-bool threadinfo_cmp_memory_cs(THREAD_TYPE* src, THREAD_TYPE* dst)
+bool threadinfo_cmp_memory_cs(thread_analyzer_info* src, thread_analyzer_info* dst)
 {
-	int is_src_server = (GET_AGENT_THREAD(src)->m_th_analysis_flags &
-	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
-	int is_dst_server = (GET_AGENT_THREAD(dst)->m_th_analysis_flags &
-	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_src_server =
+	    (src->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                                 thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server =
+	    (dst->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                                 thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
 
-	uint64_t s = GET_AGENT_THREAD(src)->m_procinfo->m_vmrss_kb * (is_src_server * 1000);
-	uint64_t d = GET_AGENT_THREAD(dst)->m_procinfo->m_vmrss_kb * (is_dst_server * 1000);
+	uint64_t s = src->m_procinfo->m_vmrss_kb * (is_src_server * 1000);
+	uint64_t d = dst->m_procinfo->m_vmrss_kb * (is_dst_server * 1000);
 
 	return (s > d);
 }
 
-bool threadinfo_cmp_io_cs(THREAD_TYPE* src, THREAD_TYPE* dst)
+bool threadinfo_cmp_io_cs(thread_analyzer_info* src, thread_analyzer_info* dst)
 {
-	int is_src_server = (GET_AGENT_THREAD(src)->m_th_analysis_flags &
-	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
-	int is_dst_server = (GET_AGENT_THREAD(dst)->m_th_analysis_flags &
-	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_src_server =
+	    (src->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                                 thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server =
+	    (dst->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                                 thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
 
-	uint64_t s = GET_AGENT_THREAD(src)->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() *
+	uint64_t s = src->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() * (is_src_server * 1000);
+	uint64_t d = dst->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() * (is_dst_server * 1000);
+
+	return (s > d);
+}
+
+bool threadinfo_cmp_net_cs(thread_analyzer_info* src, thread_analyzer_info* dst)
+{
+	int is_src_server =
+	    (src->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                                 thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server =
+	    (dst->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                                 thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+
+	uint64_t s = src->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() * (is_src_server * 1000);
+	uint64_t d = dst->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() * (is_dst_server * 1000);
+
+	return (s > d);
+}
+
+bool threadinfo_cmp_transactions_cs(thread_analyzer_info* src, thread_analyzer_info* dst)
+{
+	int is_src_server =
+	    (src->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                                 thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+	int is_dst_server =
+	    (dst->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
+	                                 thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
+
+	uint64_t s = src->m_procinfo->m_proc_transaction_metrics.get_counter()->get_tot_count() *
 	             (is_src_server * 1000);
-	uint64_t d = GET_AGENT_THREAD(dst)->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() *
-	             (is_dst_server * 1000);
-
-	return (s > d);
-}
-
-bool threadinfo_cmp_net_cs(THREAD_TYPE* src, THREAD_TYPE* dst)
-{
-	int is_src_server = (GET_AGENT_THREAD(src)->m_th_analysis_flags &
-	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
-	int is_dst_server = (GET_AGENT_THREAD(dst)->m_th_analysis_flags &
-	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
-
-	uint64_t s = GET_AGENT_THREAD(src)->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() *
-	             (is_src_server * 1000);
-	uint64_t d = GET_AGENT_THREAD(dst)->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() *
-	             (is_dst_server * 1000);
-
-	return (s > d);
-}
-
-bool threadinfo_cmp_transactions_cs(THREAD_TYPE* src, THREAD_TYPE* dst)
-{
-	int is_src_server = (GET_AGENT_THREAD(src)->m_th_analysis_flags &
-	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
-	int is_dst_server = (GET_AGENT_THREAD(dst)->m_th_analysis_flags &
-	                     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
-	                      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
-
-	uint64_t s = GET_AGENT_THREAD(src)
-	                 ->m_procinfo->m_proc_transaction_metrics.get_counter()
-	                 ->get_tot_count() *
-	             (is_src_server * 1000);
-	uint64_t d = GET_AGENT_THREAD(dst)
-	                 ->m_procinfo->m_proc_transaction_metrics.get_counter()
-	                 ->get_tot_count() *
+	uint64_t d = dst->m_procinfo->m_proc_transaction_metrics.get_counter()->get_tot_count() *
 	             (is_dst_server * 1000);
 
 	return (s > d);

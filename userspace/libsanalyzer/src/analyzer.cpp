@@ -309,10 +309,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	//
 	// Listeners
 	//
-#ifndef USE_AGENT_THREAD
-	m_thread_memory_id = inspector->reserve_thread_memory(sizeof(thread_analyzer_info));
-#endif
-
 	m_threadtable_listener = new analyzer_threadtable_listener(inspector, *this);
 	inspector->m_thread_manager->set_listener((sinsp_threadtable_listener*)m_threadtable_listener);
 
@@ -1061,13 +1057,13 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 {
 	uint32_t j;
 
-	vector<THREAD_TYPE*> prog_sortable_list;
+	vector<thread_analyzer_info*> prog_sortable_list;
 
 	for (auto ptit = progtable_begin; ptit != progtable_end; (++ptit))
 	{
 		if (cs_only)
 		{
-			int is_cs = (GET_AGENT_THREAD(*ptit)->m_th_analysis_flags &
+			int is_cs = ((*ptit)->m_th_analysis_flags &
 			             (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER |
 			              thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
 			              thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT |
@@ -1088,7 +1084,7 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 	{
 		for (j = 0; j < prog_sortable_list.size(); j++)
 		{
-			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
+			prog_sortable_list[j]->set_exclude_from_sample(false);
 		}
 
 		return;
@@ -1104,9 +1100,9 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 
 	for (j = 0; j < howmany; j++)
 	{
-		if (GET_AGENT_THREAD(prog_sortable_list[j])->m_cpuload > 0)
+		if (prog_sortable_list[j]->m_cpuload > 0)
 		{
-			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
+			prog_sortable_list[j]->set_exclude_from_sample(false);
 		}
 		else
 		{
@@ -1126,7 +1122,7 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 	{
 		if (prog_sortable_list[j]->m_vmsize_kb > 0)
 		{
-			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
+			prog_sortable_list[j]->set_exclude_from_sample(false);
 		}
 		else
 		{
@@ -1144,12 +1140,12 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 
 	for (j = 0; j < howmany; j++)
 	{
-		ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != nullptr);
+		ASSERT(prog_sortable_list[j]->m_procinfo != nullptr);
 
-		if (GET_AGENT_THREAD(prog_sortable_list[j])
+		if (prog_sortable_list[j]
 		        ->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() > 0)
 		{
-			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
+			prog_sortable_list[j]->set_exclude_from_sample(false);
 		}
 		else
 		{
@@ -1170,12 +1166,12 @@ void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progta
 
 		for (j = 0; j < howmany; j++)
 		{
-			ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != nullptr);
+			ASSERT(prog_sortable_list[j]->m_procinfo != NULL);
 
-			if (GET_AGENT_THREAD(prog_sortable_list[j])
+			if (prog_sortable_list[j]
 			        ->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
 			{
-				GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
+				prog_sortable_list[j]->set_exclude_from_sample(false);
 			}
 			else
 			{
@@ -1197,13 +1193,13 @@ void sinsp_analyzer::filter_top_programs_simpledriver_deprecated(Iterator progta
 {
 	uint32_t j;
 
-	vector<THREAD_TYPE*> prog_sortable_list;
+	vector<thread_analyzer_info*> prog_sortable_list;
 
 	for (auto ptit = progtable_begin; ptit != progtable_end; (++ptit))
 	{
 		if (cs_only)
 		{
-			uint64_t netops = GET_AGENT_THREAD((*ptit))->m_procinfo->m_proc_metrics.m_net.m_count;
+			uint64_t netops = (*ptit)->m_procinfo->m_proc_metrics.m_net.m_count;
 
 			if (netops != 0)
 			{
@@ -1220,7 +1216,7 @@ void sinsp_analyzer::filter_top_programs_simpledriver_deprecated(Iterator progta
 	{
 		for (j = 0; j < prog_sortable_list.size(); j++)
 		{
-			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
+			prog_sortable_list[j]->set_exclude_from_sample(false);
 		}
 
 		return;
@@ -1236,9 +1232,9 @@ void sinsp_analyzer::filter_top_programs_simpledriver_deprecated(Iterator progta
 
 	for (j = 0; j < howmany; j++)
 	{
-		if (GET_AGENT_THREAD(prog_sortable_list[j])->m_cpuload > 0)
+		if (prog_sortable_list[j]->m_cpuload > 0)
 		{
-			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
+			prog_sortable_list[j]->set_exclude_from_sample(false);
 		}
 		else
 		{
@@ -1258,7 +1254,7 @@ void sinsp_analyzer::filter_top_programs_simpledriver_deprecated(Iterator progta
 	{
 		if (prog_sortable_list[j]->m_vmsize_kb > 0)
 		{
-			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
+			prog_sortable_list[j]->set_exclude_from_sample(false);
 		}
 		else
 		{
@@ -1276,12 +1272,12 @@ void sinsp_analyzer::filter_top_programs_simpledriver_deprecated(Iterator progta
 
 	for (j = 0; j < howmany; j++)
 	{
-		ASSERT(GET_AGENT_THREAD(prog_sortable_list[j])->m_procinfo != nullptr);
+		ASSERT(prog_sortable_list[j]->m_procinfo != NULL);
 
-		if (GET_AGENT_THREAD(prog_sortable_list[j])
+		if (prog_sortable_list[j]
 		        ->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
 		{
-			GET_AGENT_THREAD(prog_sortable_list[j])->set_exclude_from_sample(false);
+			prog_sortable_list[j]->set_exclude_from_sample(false);
 		}
 		else
 		{
@@ -1624,7 +1620,7 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 	return nullptr;
 }
 
-uint32_t sinsp_analyzer::get_mesos_api_server_port(THREAD_TYPE* main_tinfo)
+uint32_t sinsp_analyzer::get_mesos_api_server_port(thread_analyzer_info* main_tinfo)
 {
 	if (main_tinfo)
 	{
@@ -1687,7 +1683,7 @@ std::string& sinsp_analyzer::detect_mesos(std::string& mesos_api_server, uint32_
 	return mesos_api_server;
 }
 
-THREAD_TYPE* sinsp_analyzer::get_main_thread_info(int64_t& tid)
+thread_analyzer_info* sinsp_analyzer::get_main_thread_info(int64_t& tid)
 {
 	if (tid != -1)
 	{
@@ -1695,14 +1691,10 @@ THREAD_TYPE* sinsp_analyzer::get_main_thread_info(int64_t& tid)
 		if (sinsp_thread != nullptr)
 		{
 			sinsp_threadinfo* main_thread = sinsp_thread->get_main_thread();
-#ifdef USE_AGENT_THREAD
 			thread_analyzer_info* analyzer_main_thread =
 			    dynamic_cast<thread_analyzer_info*>(main_thread);
 			ASSERT(analyzer_main_thread == main_thread);
 			return analyzer_main_thread;
-#else
-			return main_thread;
-#endif
 		}
 		else
 		{
@@ -1712,7 +1704,7 @@ THREAD_TYPE* sinsp_analyzer::get_main_thread_info(int64_t& tid)
 	return nullptr;
 }
 
-std::string sinsp_analyzer::detect_mesos(THREAD_TYPE* main_tinfo)
+std::string sinsp_analyzer::detect_mesos(thread_analyzer_info* main_tinfo)
 {
 	string mesos_api_server = m_configuration->get_mesos_state_uri();
 	if (!m_mesos)
@@ -1973,13 +1965,13 @@ void sinsp_analyzer::emit_processes_deprecated(
 			{
 				for (auto prog : progtable)
 				{
-					if (GET_AGENT_THREAD(prog)->get_exclude_from_sample() &&
+					if (prog->get_exclude_from_sample() &&
 					    m_app_checks_proxy->have_metrics_for_pid(prog->m_pid))
 					{
 						g_logger.format(sinsp_logger::SEV_DEBUG,
 						                "Added pid %d with appcheck metrics to top processes",
 						                prog->m_pid);
-						GET_AGENT_THREAD(prog)->set_exclude_from_sample(false);
+						prog->set_exclude_from_sample(false);
 					}
 				}
 			}
@@ -1993,13 +1985,13 @@ void sinsp_analyzer::emit_processes_deprecated(
 	tracer_emitter at_trc("aggregate_threads", proc_trc);
 	for (auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
-		THREAD_TYPE* tinfo = *it;
+		thread_analyzer_info* tinfo = *it;
 
 		//
 		// If this is the main thread of a process, add an entry into the processes
 		// section too
 		//
-		sinsp_procinfo* procinfo = GET_AGENT_THREAD(tinfo)->m_procinfo;
+		sinsp_procinfo* procinfo = tinfo->m_procinfo;
 
 		sinsp_counter_time tot;
 
@@ -2014,7 +2006,7 @@ void sinsp_analyzer::emit_processes_deprecated(
 		//  - top 30 clients/servers
 		//  - top 30 programs that were active
 
-		if (!GET_AGENT_THREAD(tinfo)->get_exclude_from_sample() || !progtable_needs_filtering)
+		if (!tinfo->get_exclude_from_sample() || !progtable_needs_filtering)
 		{
 			draiosproto::program* prog = m_metrics->add_programs();
 
@@ -2032,7 +2024,7 @@ void sinsp_analyzer::emit_processes_deprecated(
 		//
 		// Clear the thread metrics, so we're ready for the next sample
 		//
-		GET_AGENT_THREAD(tinfo)->clear_all_metrics();
+		tinfo->clear_all_metrics();
 	}
 	at_trc.stop();
 }
@@ -2054,7 +2046,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	                                        sinsp_threadinfo::comparer());
 	analyzer_emitter::progtable_by_container_t progtable_by_container;
 #ifndef _WIN32
-	vector<THREAD_TYPE*> java_process_requests;
+	vector<thread_analyzer_info*> java_process_requests;
 	vector<app_process> app_checks_processes;
 	bool can_disable_nodriver = true;
 #ifndef CYGWING_AGENT
@@ -2137,14 +2129,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	///////////////////////////////////////////////////////////////////////////
 	tracer_emitter am_trc("aggregate_metrics", proc_trc);
 	m_inspector->m_thread_manager->m_threadtable.loop([&](sinsp_threadinfo& sinsp_tinfo) {
-#ifdef USE_AGENT_THREAD
 		thread_analyzer_info& tinfo = dynamic_cast<thread_analyzer_info&>(sinsp_tinfo);
 		ASSERT(&tinfo == &sinsp_tinfo);
-		THREAD_TYPE* main_tinfo = tinfo.get_main_thread_info();
-#else
-		sinsp_threadinfo& tinfo = sinsp_tinfo;
-		THREAD_TYPE* main_tinfo = tinfo.get_main_thread();
-#endif
+		thread_analyzer_info* main_tinfo = tinfo.get_main_thread_info();
 		analyzer_container_state* container = nullptr;
 
 		// xxx/nags : why not do this once for the main_thread?
@@ -2191,7 +2178,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		// proc is reread anyway
 		if (m_inspector->is_live() && (tinfo.m_flags & PPM_CL_CLOSED) == 0 &&
 		    m_prev_flush_time_ns - main_tinfo->m_clone_ts > ONE_SECOND_IN_NS &&
-		    m_prev_flush_time_ns - GET_AGENT_THREAD(main_tinfo)->m_last_cmdline_sync_ns >
+		    m_prev_flush_time_ns - main_tinfo->m_last_cmdline_sync_ns >
 		        CMDLINE_UPDATE_INTERVAL_S * ONE_SECOND_IN_NS)
 		{
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
@@ -2209,7 +2196,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				                          proc_args.end());
 			}
 			main_tinfo->compute_program_hash();
-			GET_AGENT_THREAD(main_tinfo)->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
+			main_tinfo->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
 		}
 
 #ifndef CYGWING_AGENT
@@ -2268,12 +2255,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				cat = &tcat;
 			}
 
-			add_syscall_time(&GET_AGENT_THREAD(&tinfo)->m_metrics, cat, delta, 0, false);
+			add_syscall_time(&tinfo.m_metrics, cat, delta, 0, false);
 
 			//
 			// Flag the thread so we know that part of this event has already been attributed
 			//
-			GET_AGENT_THREAD(&tinfo)->m_th_analysis_flags |=
+			tinfo.m_th_analysis_flags |=
 			    thread_analyzer_info::AF_PARTIAL_METRIC;
 		}
 
@@ -2282,7 +2269,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		//
 #ifdef _DEBUG
 		sinsp_counter_time ttot;
-		GET_AGENT_THREAD(&tinfo)->m_metrics.get_total(&ttot);
+		tinfo.m_metrics.get_total(&ttot);
 #endif
 
 		//
@@ -2302,14 +2289,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			is_subsampling = true;
 		}
 
-		GET_AGENT_THREAD(&tinfo)->flush_inactive_transactions(m_prev_flush_time_ns,
+		tinfo.flush_inactive_transactions(m_prev_flush_time_ns,
 		                                                      trtimeout,
 		                                                      is_subsampling);
 
 		//
 		// If this is a process, compute CPU load and memory usage
 		//
-		GET_AGENT_THREAD(&tinfo)->m_cpuload = 0;
+		tinfo.m_cpuload = 0;
 
 		if (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
@@ -2326,15 +2313,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 						{
 							if (m_procfs_scan_thread)
 							{
-								GET_AGENT_THREAD(&tinfo)->m_cpuload =
+								tinfo.m_cpuload =
 								    m_procfs_parser->get_process_cpu_load(tinfo.m_pid);
 							}
 							else
 							{
-								GET_AGENT_THREAD(&tinfo)->m_cpuload =
+								tinfo.m_cpuload =
 								    m_procfs_parser->get_process_cpu_load_sync(
 								        tinfo.m_pid,
-								        &GET_AGENT_THREAD(&tinfo)->m_old_proc_jiffies);
+								        &tinfo.m_old_proc_jiffies);
 							}
 						}
 
@@ -2343,15 +2330,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 #ifndef CYGWING_AGENT
 							auto file_io_stats = m_procfs_parser->read_proc_file_stats(
 							    tinfo.m_pid,
-							    &GET_AGENT_THREAD(&tinfo)->m_file_io_stats);
+							    &tinfo.m_file_io_stats);
 
-							GET_AGENT_THREAD(&tinfo)->m_metrics.m_io_file.m_bytes_in =
+							tinfo.m_metrics.m_io_file.m_bytes_in =
 							    file_io_stats.m_read_bytes;
-							GET_AGENT_THREAD(&tinfo)->m_metrics.m_io_file.m_bytes_out =
+							tinfo.m_metrics.m_io_file.m_bytes_out =
 							    file_io_stats.m_write_bytes;
-							GET_AGENT_THREAD(&tinfo)->m_metrics.m_io_file.m_count_in =
+							tinfo.m_metrics.m_io_file.m_count_in =
 							    file_io_stats.m_syscr;
-							GET_AGENT_THREAD(&tinfo)->m_metrics.m_io_file.m_count_out =
+							tinfo.m_metrics.m_io_file.m_count_out =
 							    file_io_stats.m_syscw;
 
 							if (m_mode_switch_state == sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER)
@@ -2396,22 +2383,22 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			{
 				progtable_by_container[mtinfo->m_container_id].emplace_back(mtinfo);
 			}
-			GET_AGENT_THREAD(&tinfo)->set_main_program_thread(true);
+			tinfo.set_main_program_thread(true);
 		}
 		else
 		{
-			GET_AGENT_THREAD(&tinfo)->set_main_program_thread(false);
+			tinfo.set_main_program_thread(false);
 		}
 
 		ASSERT(mtinfo != nullptr);
 
-		GET_AGENT_THREAD(&tinfo)->m_main_thread_pid = mtinfo->m_pid;
+		tinfo.m_main_thread_pid = mtinfo->m_pid;
 
-		GET_AGENT_THREAD(mtinfo)->add_all_metrics(GET_AGENT_THREAD(&tinfo));
+		mtinfo->add_all_metrics(&tinfo);
 
 		if (!emplaced.second)
 		{
-			GET_AGENT_THREAD(&tinfo)->clear_all_metrics();
+			tinfo.clear_all_metrics();
 		}
 #ifndef _WIN32
 		if (tinfo.is_main_thread() && !(tinfo.m_flags & PPM_CL_CLOSED) &&
@@ -2421,15 +2408,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		{
 			const auto& procs = m_configuration->get_procfs_scan_procs();
 			bool procfs_scan = procs.find(tinfo.m_comm) != procs.end();
-			GET_AGENT_THREAD(&tinfo)->scan_listening_ports(
+			tinfo.scan_listening_ports(
 			    procfs_scan,
 			    m_configuration->get_procfs_scan_interval());
 
 			if (m_jmx_proxy && tinfo.get_comm() == "java")
 			{
-				if (!GET_AGENT_THREAD(&tinfo)->m_root_refreshed)
+				if (!tinfo.m_root_refreshed)
 				{
-					GET_AGENT_THREAD(&tinfo)->m_root_refreshed = true;
+					tinfo.m_root_refreshed = true;
 					tinfo.m_root = m_procfs_parser->read_proc_root(tinfo.m_pid);
 				}
 				java_process_requests.emplace_back(&tinfo);
@@ -2445,7 +2432,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			if (m_app_checks_proxy)
 			{
 				const auto& custom_checks =
-				    GET_AGENT_THREAD(mtinfo)->get_proc_config().app_checks();
+				    mtinfo->get_proc_config().app_checks();
 				vector<app_process> app_checks;
 
 				match_checks_list(&tinfo, mtinfo, custom_checks, app_checks, "env");
@@ -2518,7 +2505,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	tracer_emitter pt_trc("walk_progtable", proc_trc);
 	for (auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
-		THREAD_TYPE* tinfo = *it;
+		thread_analyzer_info* tinfo = *it;
 		analyzer_container_state* container = nullptr;
 		if (!tinfo->m_container_id.empty())
 		{
@@ -2530,7 +2517,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			}
 		}
 
-		sinsp_procinfo* procinfo = GET_AGENT_THREAD(tinfo)->m_procinfo;
+		sinsp_procinfo* procinfo = tinfo->m_procinfo;
 
 		//
 		// ... Add to the host ones
@@ -2622,7 +2609,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				sinsp_score_info scores = m_score_calculator->get_process_capacity_score(
 				    tinfo,
 				    prog_delays,
-				    (uint32_t)GET_AGENT_THREAD(tinfo)->m_procinfo->m_n_transaction_threads,
+				    (uint32_t)tinfo->m_procinfo->m_n_transaction_threads,
 				    m_prev_flush_time_ns,
 				    sample_duration);
 
@@ -2673,7 +2660,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 					    " %%c:%" PRIu32,
 					    tinfo->m_comm.c_str(),
 					    tinfo->m_tid,
-					    (uint64_t)GET_AGENT_THREAD(tinfo)->m_procinfo->m_program_pids.size(),
+					    (uint64_t)tinfo->m_procinfo->m_program_pids.size(),
 					    procinfo->m_capacity_score,
 					    procinfo->m_stolen_capacity_score,
 					    (float)procinfo->m_cpuload,
@@ -2810,14 +2797,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	tracer_emitter mountedfs_trc("mountedfs", proc_trc);
 	if (!m_inspector->is_capture() && m_mounted_fs_proxy)
 	{
-		vector<THREAD_TYPE*> containers_for_mounted_fs;
+		vector<thread_analyzer_info*> containers_for_mounted_fs;
 		for (const auto& it : progtable_by_container)
 		{
 			const auto container_info = m_inspector->m_container_manager.get_container(it.first);
 			if (container_info && !container_info->is_pod_sandbox())
 			{
 				auto long_running_proc =
-				    find_if(it.second.begin(), it.second.end(), [this](THREAD_TYPE* tinfo) {
+				    find_if(it.second.begin(), it.second.end(), [this](thread_analyzer_info* tinfo) {
 					    return !(tinfo->m_flags & PPM_CL_CLOSED) &&
 					           (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >=
 					               ASSUME_LONG_LIVING_PROCESS_UPTIME_S * ONE_SECOND_IN_NS;
@@ -2825,9 +2812,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 
 				if (long_running_proc != it.second.end())
 				{
-					if (!GET_AGENT_THREAD(*long_running_proc)->m_root_refreshed)
+					if (!(*long_running_proc)->m_root_refreshed)
 					{
-						GET_AGENT_THREAD(*long_running_proc)->m_root_refreshed = true;
+						(*long_running_proc)->m_root_refreshed = true;
 						(*long_running_proc)->m_root =
 						    m_procfs_parser->read_proc_root((*long_running_proc)->m_pid);
 					}
@@ -2891,7 +2878,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	                                         app_check_emitter_instance.get());
 	if (process_manager::c_process_flush_filter_enabled.get_value())
 	{
-		std::set<THREAD_TYPE*> emitted_processes;
+		std::set<thread_analyzer_info*> emitted_processes;
 		process_emitter_instance.emit_processes(flushflags,
 		                                        progtable,
 		                                        progtable_by_container,
@@ -2976,7 +2963,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			}
 			// Get our own thread info to match for prometheus host_filter
 			// (for scraping remote endpoints)
-			THREAD_TYPE* our_tinfo = get_thread_by_pid(getpid());
+			thread_analyzer_info* our_tinfo = get_thread_by_pid(getpid());
 			if (!our_tinfo)
 			{
 				g_logger.format(sinsp_logger::SEV_WARNING,
@@ -2999,11 +2986,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				        m_prev_flush_time_ns / ONE_SECOND_IN_NS))
 				{
 					match_prom_checks(our_tinfo,
-#ifdef USE_AGENT_THREAD
 					                  our_tinfo->get_main_thread_info(),
-#else
-					                  our_tinfo->get_main_thread(),
-#endif
 					                  prom_procs,
 					                  true);
 				}
@@ -3024,7 +3007,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 
 void sinsp_analyzer::flush_processes()
 {
-	for (vector<THREAD_TYPE*>::const_iterator it = m_threads_to_remove.begin();
+	for (vector<thread_analyzer_info*>::const_iterator it = m_threads_to_remove.begin();
 	     it != m_threads_to_remove.end();
 	     ++it)
 	{
@@ -3160,7 +3143,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				continue;
 			}
 
-			prog_spid = GET_AGENT_THREAD(tinfo)->m_main_thread_pid;
+			prog_spid = tinfo->m_main_thread_pid;
 			prog_scontainerid = tinfo->m_container_id;
 		}
 
@@ -3176,7 +3159,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				continue;
 			}
 
-			prog_dpid = GET_AGENT_THREAD(tinfo)->m_main_thread_pid;
+			prog_dpid = tinfo->m_main_thread_pid;
 			prog_dcontainerid = tinfo->m_container_id;
 		}
 
@@ -5328,7 +5311,7 @@ void sinsp_analyzer::flush_done_handler(const sinsp_evt* evt)
 //
 void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 {
-	thread_analyzer_info* tainfo = GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt));
+	thread_analyzer_info* tainfo = thread_analyzer_info::get_thread_from_event(evt);
 	int64_t wd = tainfo->m_last_wait_duration_ns;
 
 	ASSERT(tainfo != nullptr);
@@ -5598,7 +5581,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 		return;
 	}
 
-	tainfo = GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt));
+	tainfo = thread_analyzer_info::get_thread_from_event(evt);
 
 	if (tainfo == nullptr)
 	{
@@ -5715,9 +5698,9 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 
 		m_host_metrics.m_syscall_errors.add(evt);
 
-		ASSERT(GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt)));
+		ASSERT(thread_analyzer_info::get_thread_from_event(evt));
 
-		GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt))->m_syscall_errors.add(evt);
+		thread_analyzer_info::get_thread_from_event(evt)->m_syscall_errors.add(evt);
 
 		if (!evt->m_tinfo->m_container_id.empty())
 		{
@@ -6652,9 +6635,9 @@ vector<string> sinsp_analyzer::emit_containers_deprecated(
 			const auto& container_progs = progtable_by_container.at(containerid);
 			auto container_init = find_if(container_progs.begin(),
 			                              container_progs.end(),
-			                              [](THREAD_TYPE* tinfo) { return tinfo->m_vtid == 1; });
+			                              [](thread_analyzer_info* tinfo) { return tinfo->m_vtid == 1; });
 
-			THREAD_TYPE* tinfo;
+			thread_analyzer_info* tinfo;
 			if (container_init != container_progs.end())
 			{
 				tinfo = *container_init;
@@ -6774,7 +6757,7 @@ vector<string> sinsp_analyzer::emit_containers_deprecated(
 void sinsp_analyzer::emit_container(const string& container_id,
                                     unsigned* statsd_limit,
                                     uint64_t total_cpu_shares,
-                                    THREAD_TYPE* tinfo,
+                                    thread_analyzer_info* tinfo,
                                     analyzer_emitter::flush_flags flushflags,
                                     const std::list<uint32_t>& groups)
 {
@@ -7425,12 +7408,12 @@ void sinsp_analyzer::emit_user_events()
 }
 
 #ifndef CYGWING_AGENT
-void sinsp_analyzer::match_prom_checks(THREAD_TYPE* tinfo,
-                                       THREAD_TYPE* mtinfo,
+void sinsp_analyzer::match_prom_checks(thread_analyzer_info* tinfo,
+                                       thread_analyzer_info* mtinfo,
                                        vector<prom_process>& prom_procs,
                                        bool use_host_filter)
 {
-	if (!m_prom_conf.enabled() || GET_AGENT_THREAD(mtinfo)->found_prom_check())
+	if (!m_prom_conf.enabled() || mtinfo->found_prom_check())
 		return;
 
 	const auto container = m_inspector->m_container_manager.get_container(tinfo->m_container_id);
@@ -7444,21 +7427,21 @@ void sinsp_analyzer::match_prom_checks(THREAD_TYPE* tinfo,
 }
 #endif
 
-void sinsp_analyzer::match_checks_list(THREAD_TYPE* tinfo,
-                                       THREAD_TYPE* mtinfo,
+void sinsp_analyzer::match_checks_list(thread_analyzer_info* tinfo,
+                                       thread_analyzer_info* mtinfo,
                                        const vector<app_check>& checks,
                                        vector<app_process>& app_checks_processes,
                                        const char* location)
 {
 	for (const auto& check : checks)
 	{
-		if (GET_AGENT_THREAD(mtinfo)->found_app_check(check))
+		if (mtinfo->found_app_check(check))
 			continue;
 		if (check.match(tinfo))
 		{
 			string mm = "master.mesos";
 			shared_ptr<app_process_conf_vals> conf_vals;
-			set<uint16_t> listening_ports = GET_AGENT_THREAD(tinfo)->listening_ports();
+			set<uint16_t> listening_ports = tinfo->listening_ports();
 
 			g_logger.format(sinsp_logger::SEV_DEBUG,
 			                "Found check %s for process %d:%d from %s",
@@ -7549,7 +7532,7 @@ void sinsp_analyzer::match_checks_list(THREAD_TYPE* tinfo,
 #endif  // CYGWING_AGENT
 
 			app_checks_processes.emplace_back(check, tinfo);
-			GET_AGENT_THREAD(mtinfo)->set_found_app_check(check);
+			mtinfo->set_found_app_check(check);
 
 			if (conf_vals)
 			{
@@ -7623,18 +7606,14 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf,
 	REPORT("connections: %d\n", (int)m_ipv4_connections->size());
 
 	m_inspector->m_thread_manager->m_threadtable.loop([&](sinsp_threadinfo& sinsp_tinfo) {
-#ifdef USE_AGENT_THREAD
 		thread_analyzer_info& tinfo = dynamic_cast<thread_analyzer_info&>(sinsp_tinfo);
 		ASSERT(&tinfo == &sinsp_tinfo);
-#else
-		sinsp_threadinfo& tinfo = sinsp_tinfo;
-#endif
 
 		if (!tinfo.is_main_thread())
 		{
 			return true;
 		}
-		main_thread_analyzer_info* main_info = GET_AGENT_THREAD(&tinfo)->main_thread_ainfo();
+		main_thread_analyzer_info* main_info = tinfo.main_thread_ainfo();
 
 		for (uint32_t j = 0; j < main_info->m_server_transactions_per_cpu.size(); j++)
 		{
@@ -8018,7 +7997,7 @@ void sinsp_analyzer::inject_statsd_metric(const std::string& container_id,
 }
 
 bool sinsp_analyzer::resolve_custom_container(sinsp_container_manager* const manager,
-                                              THREAD_TYPE* const tinfo,
+                                              thread_analyzer_info* const tinfo,
                                               const bool query_os_for_missing_info)
 {
 	return m_custom_container.resolve(manager, tinfo, query_os_for_missing_info);
@@ -8104,13 +8083,9 @@ std::string sinsp_analyzer::get_metrics_dir()
 
 sinsp_threadinfo* sinsp_analyzer::build_threadinfo(sinsp* inspector)
 {
-#ifdef USE_AGENT_THREAD
 	auto tinfo = new thread_analyzer_info(inspector, this, m_tap);
 	tinfo->init();
 	return tinfo;
-#else
-	return new sinsp_threadinfo(inspector);
-#endif
 }
 
 uint64_t sinsp_analyzer::get_sample_duration() const

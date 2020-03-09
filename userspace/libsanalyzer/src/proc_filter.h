@@ -50,8 +50,8 @@ public:
 	std::pair<bool, bool> match_rule(
 	    const object_filter_config::filter_rule& rule,
 	    int rule_num,
-	    const THREAD_TYPE* tinfo,
-	    const THREAD_TYPE* mtinfo,
+	    const thread_analyzer_info* tinfo,
+	    const thread_analyzer_info* mtinfo,
 	    const sinsp_container_info* container,
 	    const infrastructure_state& is,
 	    std::function<bool(const object_filter_config::filter_rule& rule)> on_match = nullptr,
@@ -61,8 +61,8 @@ public:
 	// the first matching rule. It returns whether or not it matched an include rule
 	// (or the result of the called on_match() callback, if defined)
 	bool match(
-	    const THREAD_TYPE* tinfo,
-	    const THREAD_TYPE* mtinfo,
+	    const thread_analyzer_info* tinfo,
+	    const thread_analyzer_info* mtinfo,
 	    const sinsp_container_info* container,
 	    const infrastructure_state& is,
 	    std::function<bool(const object_filter_config::filter_rule& rule)> on_match = nullptr,

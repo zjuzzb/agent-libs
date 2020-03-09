@@ -15,8 +15,8 @@ class infrastructure_state;
 class process_filter_args
 {
 public:
-	process_filter_args(const THREAD_TYPE* tinfo,
-	                    const THREAD_TYPE* mtinfo,
+	process_filter_args(const thread_analyzer_info* tinfo,
+	                    const thread_analyzer_info* mtinfo,
 	                    const sinsp_container_info* container,
 	                    const infrastructure_state* is)
 	    : m_tinfo(tinfo),
@@ -26,8 +26,8 @@ public:
 	{
 	}
 
-	const THREAD_TYPE* m_tinfo;
-	const THREAD_TYPE* m_mtinfo;
+	const thread_analyzer_info* m_tinfo;
+	const thread_analyzer_info* m_mtinfo;
 	const sinsp_container_info* m_container;
 	const infrastructure_state* m_is;
 };
@@ -60,8 +60,8 @@ public:
 	 * @param[out] returns a pointer to the rule which defines the filter which
 	 *             ultimately matched
 	 */
-	bool matches(const THREAD_TYPE* tinfo,
-	             const THREAD_TYPE* mtinfo,
+	bool matches(const thread_analyzer_info* tinfo,
+	             const thread_analyzer_info* mtinfo,
 	             const sinsp_container_info* container,
 	             const infrastructure_state* is,
 	             bool* generic_match,

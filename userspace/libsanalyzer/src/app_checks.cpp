@@ -74,7 +74,7 @@ Json::Value yaml_to_json(const YAML::Node& yaml)
 	return ret;
 }
 
-bool app_check::match(THREAD_TYPE* tinfo) const
+bool app_check::match(thread_analyzer_info* tinfo) const
 {
 	// At least a pattern should be specified
 	bool ret = (!m_comm_pattern.empty() || !m_exe_pattern.empty() || m_port_pattern > 0 ||
@@ -89,7 +89,7 @@ bool app_check::match(THREAD_TYPE* tinfo) const
 	}
 	if (m_port_pattern > 0)
 	{
-		auto ports = GET_AGENT_THREAD(tinfo)->listening_ports();
+		auto ports = tinfo->listening_ports();
 		ret &= ports.find(m_port_pattern) != ports.end();
 	}
 	if (!m_arg_pattern.empty())
@@ -192,10 +192,10 @@ bool YAML::convert<app_check>::decode(const YAML::Node& node, app_check& rhs)
 	return true;
 }
 
-app_process::app_process(const app_check& check, THREAD_TYPE* tinfo)
+app_process::app_process(const app_check& check, thread_analyzer_info* tinfo)
     : m_pid(tinfo->m_pid),
       m_vpid(tinfo->m_vpid),
-      m_ports(GET_AGENT_THREAD(tinfo)->listening_ports()),
+      m_ports(tinfo->listening_ports()),
       m_check(check),
       m_solr_port(0)
 {
@@ -228,7 +228,7 @@ bool app_process::is_solr() const
 	return m_check.module() == "solr";
 }
 
-void app_process::get_port_from_cmd(THREAD_TYPE* tinfo)
+void app_process::get_port_from_cmd(thread_analyzer_info* tinfo)
 {
 	static const string& SOLR_PORT_ARG = "-Djetty.port=";
 	assert(tinfo != nullptr);

@@ -2,7 +2,6 @@
 
 #include "analyzer_file_stat.h"
 #include "analyzer_settings.h"
-#include "analyzer_thread_type.h"
 #include "analyzer_utils.h" /* make_unique */
 #include "app_checks_proxy_interface.h"
 #include "delays.h"
@@ -99,7 +98,7 @@ struct main_thread_analyzer_info
 	analyzer_top_file_stat_map m_files_stat;
 	analyzer_top_device_stat_map m_devs_stat;
 
-	void hash_environment(THREAD_TYPE* tinfo, const env_hash::regex_list_t& blacklist);
+	void hash_environment(thread_analyzer_info* tinfo, const env_hash::regex_list_t& blacklist);
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -107,11 +106,7 @@ struct main_thread_analyzer_info
 // WARNING: This class is allocated with `placement new`, so destructor must be
 //          called manually.
 ///////////////////////////////////////////////////////////////////////////////
-#ifdef USE_AGENT_THREAD
 class thread_analyzer_info : public sinsp_threadinfo
-#else
-class thread_analyzer_info
-#endif
 {
 public:
 	//
@@ -139,8 +134,7 @@ public:
 	};
 	// clang-format on
 
-	thread_analyzer_info(sinsp* inspector,
-	                     sinsp_analyzer* analyzer);
+	thread_analyzer_info(sinsp* inspector, sinsp_analyzer* analyzer);
 	thread_analyzer_info(sinsp* inspector,
 	                     sinsp_analyzer* analyzer,
 	                     std::shared_ptr<audit_tap>& audit_tap);
@@ -150,11 +144,7 @@ public:
 	thread_analyzer_info(thread_analyzer_info&&) = delete;
 	thread_analyzer_info& operator=(const thread_analyzer_info&) = delete;
 
-#ifdef USE_AGENT_THREAD
 	void init();
-#else
-	void init(sinsp_threadinfo* tinfo);
-#endif
 	const sinsp_counters* get_metrics();
 	void allocate_procinfo_if_not_present();
 	void propagate_flag(flags flags, thread_analyzer_info* other);
@@ -219,9 +209,6 @@ public:
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;
 	std::shared_ptr<audit_tap> m_tap;
-#ifndef USE_AGENT_THREAD
-	sinsp_threadinfo* m_tinfo;
-#endif
 	int64_t m_main_thread_pid;
 
 	// Flags word used by the analysis engine.
@@ -265,15 +252,10 @@ public:
 
 	main_thread_analyzer_info* main_thread_ainfo()
 	{
-#ifdef USE_AGENT_THREAD
-		THREAD_TYPE* main_thread = get_main_thread_info();
+		thread_analyzer_info* main_thread = get_main_thread_info();
 		if (main_thread != nullptr && this != main_thread)
-#else
-		THREAD_TYPE* main_thread = m_tinfo->get_main_thread();
-		if (main_thread != nullptr && m_tinfo != main_thread)
-#endif
 		{
-			return GET_AGENT_THREAD(main_thread)->main_thread_ainfo();
+			return main_thread->main_thread_ainfo();
 		}
 		else
 		{
@@ -301,41 +283,29 @@ public:
 
 	inline bool get_exclude_from_sample() const { return m_procinfo->m_exclude_from_sample; }
 
-	inline THREAD_TYPE* get_main_thread_info()
+	inline thread_analyzer_info* get_main_thread_info()
 	{
-#ifdef USE_AGENT_THREAD
 		sinsp_threadinfo* sinsp_main_thread = get_main_thread();
 		thread_analyzer_info* analyzer_main_thread =
 		    dynamic_cast<thread_analyzer_info*>(sinsp_main_thread);
 		ASSERT(sinsp_main_thread == analyzer_main_thread);
 		return analyzer_main_thread;
-#else
-		return m_tinfo->get_main_thread();
-#endif
 	}
 
-	inline THREAD_TYPE* get_parent_thread_info()
+	inline thread_analyzer_info* get_parent_thread_info()
 	{
-#ifdef USE_AGENT_THREAD
 		sinsp_threadinfo* sinsp_thread = get_parent_thread();
 		thread_analyzer_info* analyzer_thread = dynamic_cast<thread_analyzer_info*>(sinsp_thread);
 		ASSERT(sinsp_thread == analyzer_thread);
 		return analyzer_thread;
-#else
-		return m_tinfo->get_parent_thread();
-#endif
 	}
 
-	static inline THREAD_TYPE* get_thread_from_event(sinsp_evt* evt)
+	static inline thread_analyzer_info* get_thread_from_event(sinsp_evt* evt)
 	{
-#ifdef USE_AGENT_THREAD
 		thread_analyzer_info* analyzer_thread =
 		    dynamic_cast<thread_analyzer_info*>(evt->get_thread_info());
 		ASSERT(evt->get_thread_info() == analyzer_thread);
 		return analyzer_thread;
-#else
-		return evt->get_thread_info();
-#endif
 	}
 
 private:
@@ -377,15 +347,15 @@ private:
 ///////////////////////////////////////////////////////////////////////////////
 // Support for thread sorting
 ///////////////////////////////////////////////////////////////////////////////
-bool threadinfo_cmp_cpu(THREAD_TYPE* src, THREAD_TYPE* dst);
-bool threadinfo_cmp_memory(THREAD_TYPE* src, THREAD_TYPE* dst);
-bool threadinfo_cmp_io(THREAD_TYPE* src, THREAD_TYPE* dst);
-bool threadinfo_cmp_net(THREAD_TYPE* src, THREAD_TYPE* dst);
-bool threadinfo_cmp_transactions(THREAD_TYPE* src, THREAD_TYPE* dst);
-bool threadinfo_cmp_evtcnt(THREAD_TYPE* src, THREAD_TYPE* dst);
+bool threadinfo_cmp_cpu(thread_analyzer_info* src, thread_analyzer_info* dst);
+bool threadinfo_cmp_memory(thread_analyzer_info* src, thread_analyzer_info* dst);
+bool threadinfo_cmp_io(thread_analyzer_info* src, thread_analyzer_info* dst);
+bool threadinfo_cmp_net(thread_analyzer_info* src, thread_analyzer_info* dst);
+bool threadinfo_cmp_transactions(thread_analyzer_info* src, thread_analyzer_info* dst);
+bool threadinfo_cmp_evtcnt(thread_analyzer_info* src, thread_analyzer_info* dst);
 
-bool threadinfo_cmp_cpu_cs(THREAD_TYPE* src, THREAD_TYPE* dst);
-bool threadinfo_cmp_memory_cs(THREAD_TYPE* src, THREAD_TYPE* dst);
-bool threadinfo_cmp_io_cs(THREAD_TYPE* src, THREAD_TYPE* dst);
-bool threadinfo_cmp_net_cs(THREAD_TYPE* src, THREAD_TYPE* dst);
-bool threadinfo_cmp_transactions_cs(THREAD_TYPE* src, THREAD_TYPE* dst);
+bool threadinfo_cmp_cpu_cs(thread_analyzer_info* src, thread_analyzer_info* dst);
+bool threadinfo_cmp_memory_cs(thread_analyzer_info* src, thread_analyzer_info* dst);
+bool threadinfo_cmp_io_cs(thread_analyzer_info* src, thread_analyzer_info* dst);
+bool threadinfo_cmp_net_cs(thread_analyzer_info* src, thread_analyzer_info* dst);
+bool threadinfo_cmp_transactions_cs(thread_analyzer_info* src, thread_analyzer_info* dst);

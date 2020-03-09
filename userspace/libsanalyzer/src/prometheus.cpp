@@ -78,7 +78,7 @@ type_config<uint32_t>::ptr prometheus_conf::c_prometheus_timeout =
         .build();
 
 bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule& rule,
-                                      const THREAD_TYPE* tinfo,
+                                      const thread_analyzer_info* tinfo,
                                       const sinsp_container_info* container,
                                       const infrastructure_state& infra_state,
                                       bool use_host_filter,
@@ -100,7 +100,7 @@ bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule& r
 	set<uint16_t> start_ports;
 	if (!use_host_filter)
 	{
-		start_ports = GET_AGENT_THREAD(tinfo)->listening_ports();
+		start_ports = tinfo->listening_ports();
 	}
 	params.ports = start_ports;
 	if (!rule.m_config.m_port.empty())
@@ -236,8 +236,8 @@ bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule& r
 	return true;
 }
 
-bool prometheus_conf::match_and_fill(const THREAD_TYPE* tinfo,
-                                     THREAD_TYPE* mtinfo,
+bool prometheus_conf::match_and_fill(const thread_analyzer_info* tinfo,
+                                     thread_analyzer_info* mtinfo,
                                      const sinsp_container_info* container,
                                      const infrastructure_state& infra_state,
                                      vector<prom_process>& prom_procs,
@@ -280,7 +280,7 @@ bool prometheus_conf::match_and_fill(const THREAD_TYPE* tinfo,
 				                params.tags);
 				prom_procs.emplace_back(pp);
 
-				GET_AGENT_THREAD(mtinfo)->set_found_prom_check();
+				mtinfo->set_found_prom_check();
 			}
 			// If not using host_filter return after the first match
 			if (!use_host_filter)
@@ -375,12 +375,8 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 			// This pid doesn't have unexpired prometheus metrics
 			continue;
 		}
-#ifdef USE_AGENT_THREAD
 		thread_analyzer_info* tinfo = dynamic_cast<thread_analyzer_info*>(threadtable.get(app_met_pid.first));
-#else
-		sinsp_threadinfo* tinfo = threadtable.get(app_met_pid.first);
-#endif
-		if (!tinfo || !GET_AGENT_THREAD(tinfo))
+		if (!tinfo)
 		{
 			g_logger.format(sinsp_logger::SEV_DEBUG,
 			                "Prometheus: Couldn't get thread info for pid %d",
@@ -390,7 +386,7 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 
 		string portstr;
 		// Mark all this pid's ports as associated with the non-expired metrics
-		for (uint16_t port : GET_AGENT_THREAD(tinfo)->listening_ports())
+		for (uint16_t port : tinfo->listening_ports())
 		{
 			portstr = portstr + " " + to_string(port);
 			portmetricmap.emplace(make_pair(tinfo->m_container_id, port));

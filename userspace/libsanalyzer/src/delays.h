@@ -1,6 +1,5 @@
 #pragma once
 
-#include "analyzer_thread_type.h"
 #include "metrics.h" /*for sinsp_transaction_counters*/
 
 class sinsp_percpu_delays
@@ -47,7 +46,7 @@ public:
 	    std::vector<std::vector<sinsp_trlist_entry>>* host_server_transactions,
 	    std::vector<std::vector<sinsp_trlist_entry>>* container_client_transactions,
 	    std::vector<std::vector<sinsp_trlist_entry>>* container_server_transactions,
-	    THREAD_TYPE* program_info,
+	    thread_analyzer_info* program_info,
 	    OUT sinsp_delays_info* delays);
 	void compute_host_container_delays(
 	    sinsp_transaction_counters* transaction_counters,
@@ -64,7 +63,7 @@ public:
 	    std::vector<std::vector<sinsp_trlist_entry>>* host_server_transactions,
 	    std::vector<std::vector<sinsp_trlist_entry>>* container_client_transactions,
 	    std::vector<std::vector<sinsp_trlist_entry>>* container_server_transactions,
-	    THREAD_TYPE* program_info,
+	    thread_analyzer_info* program_info,
 	    int32_t cpuid,
 	    sinsp_delays_info* delays);
 	void compute_host_container_percpu_delays(

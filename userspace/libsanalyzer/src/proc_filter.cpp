@@ -64,8 +64,8 @@ std::set<uint16_t> filter_ports(const std::set<uint16_t>& sports,
 std::pair<bool, bool> conf::match_rule(
     const object_filter_config::filter_rule& rule,
     int rule_num,
-    const THREAD_TYPE* tinfo,
-    const THREAD_TYPE* mtinfo,
+    const thread_analyzer_info* tinfo,
+    const thread_analyzer_info* mtinfo,
     const sinsp_container_info* container,
     const infrastructure_state& infra_state,
     std::function<bool(const object_filter_config::filter_rule& rule)> on_match,
@@ -111,7 +111,7 @@ std::pair<bool, bool> conf::match_rule(
 				break;
 			}
 
-			auto start_ports = GET_AGENT_THREAD(tinfo)->listening_ports();
+			auto start_ports = tinfo->listening_ports();
 			auto ports = filter_ports(start_ports, cond.m_port_match);
 			if (!ports.empty())
 			{
@@ -225,7 +225,7 @@ std::pair<bool, bool> conf::match_rule(
 				break;
 			}
 
-			matchcond = GET_AGENT_THREAD(mtinfo)->found_app_check_by_fnmatch(cond.m_pattern);
+			matchcond = mtinfo->found_app_check_by_fnmatch(cond.m_pattern);
 			if (matchcond)
 			{
 				reason << "app_check found for " << cond.m_pattern;
@@ -273,8 +273,8 @@ std::pair<bool, bool> conf::match_rule(
 	return ret;
 }
 
-bool conf::match(const THREAD_TYPE* tinfo,
-                 const THREAD_TYPE* mtinfo,
+bool conf::match(const thread_analyzer_info* tinfo,
+                 const thread_analyzer_info* mtinfo,
                  const sinsp_container_info* container,
                  const infrastructure_state& infra_state,
                  std::function<bool(const object_filter_config::filter_rule& rule)> on_match,

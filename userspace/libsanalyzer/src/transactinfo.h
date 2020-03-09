@@ -1,6 +1,5 @@
 #pragma once
 
-#include "analyzer_thread_type.h"
 #include "sinsp_public.h"  // for SINSP_PUBLIC
 
 #include <stack>
@@ -198,7 +197,7 @@ public:
 
 	void reset();
 	void update(sinsp_analyzer* analyzer,
-	            THREAD_TYPE* ptinfo,
+	            thread_analyzer_info* ptinfo,
 	            void* fdinfo,
 	            sinsp_connection* pconn,
 	            uint64_t enter_ts,
@@ -249,7 +248,7 @@ public:
 	sinsp_autobuffer m_reassembly_buffer;
 
 private:
-	inline sinsp_partial_transaction::updatestate update_int(THREAD_TYPE* ptinfo,
+	inline sinsp_partial_transaction::updatestate update_int(thread_analyzer_info* ptinfo,
 	                                                         uint64_t enter_ts,
 	                                                         uint64_t exit_ts,
 	                                                         direction dir,
@@ -323,7 +322,7 @@ public:
 	sinsp_transaction_table(sinsp_analyzer& analyzer);
 	~sinsp_transaction_table();
 
-	void emit(THREAD_TYPE* ptinfo,
+	void emit(thread_analyzer_info* ptinfo,
 	          void* fdinfo,
 	          sinsp_connection* pconn,
 	          sinsp_partial_transaction* tr
@@ -343,7 +342,7 @@ public:
 	uint32_t m_n_server_transactions;
 
 private:
-	bool is_transaction_server(THREAD_TYPE* ptinfo);
+	bool is_transaction_server(thread_analyzer_info* ptinfo);
 
 	sinsp_analyzer& m_analyzer;
 	friend class sinsp_partial_transaction;

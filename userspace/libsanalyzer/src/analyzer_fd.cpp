@@ -313,7 +313,7 @@ sinsp_analyzer_fd_listener::sinsp_analyzer_fd_listener(sinsp* const inspector,
 {
 }
 
-bool sinsp_analyzer_fd_listener::patch_network_role(THREAD_TYPE* ptinfo,
+bool sinsp_analyzer_fd_listener::patch_network_role(thread_analyzer_info* ptinfo,
                                                     sinsp_fdinfo_t* pfdinfo,
                                                     bool incoming)
 {
@@ -553,8 +553,8 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt* evt,
 		}
 		else if (fdinfo->is_role_client())
 		{
-			GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt))
-			    ->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_NET_CLIENT;
+			thread_analyzer_info::get_thread_from_event(evt)->m_th_analysis_flags |=
+			    thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 			connection->m_metrics.m_client.add_in(1, original_len);
 		}
 		else
@@ -638,8 +638,8 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt* evt,
 		}
 		else if (fdinfo->is_role_client())
 		{
-			GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt))
-			    ->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_NET_CLIENT;
+			thread_analyzer_info::get_thread_from_event(evt)->m_th_analysis_flags |=
+			    thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 			connection->m_metrics.m_client.add_out(1, original_len);
 		}
 		else
@@ -809,7 +809,7 @@ void sinsp_analyzer_fd_listener::add_client_ipv4_connection(sinsp_evt* evt)
 	                                   flags,
 	                                   evt->m_errorcode);
 
-	GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(evt))->m_th_analysis_flags |=
+	thread_analyzer_info::get_thread_from_event(evt)->m_th_analysis_flags |=
 	    thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 }
 
@@ -918,11 +918,7 @@ inline void sinsp_analyzer_fd_listener::flush_transaction(erase_fd_params* param
 	if (connection)
 	{
 		params->m_fdinfo->m_usrstate->update(m_analyzer,
-#ifdef USE_AGENT_THREAD
 		                                     dynamic_cast<thread_analyzer_info*>(params->m_tinfo),
-#else
-		                                     params->m_tinfo,
-#endif
 		                                     params->m_fdinfo,
 		                                     connection,
 		                                     params->m_ts,
@@ -947,12 +943,8 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 	if (params->m_fdinfo->is_cloned() &&
 	    (params->m_fdinfo->is_ipv4_socket() || params->m_fdinfo->is_ipv6_socket()))
 	{
-#ifdef USE_AGENT_THREAD
-		THREAD_TYPE* ptinfo =
+		thread_analyzer_info* ptinfo =
 		    dynamic_cast<thread_analyzer_info*>(params->m_tinfo)->get_parent_thread_info();
-#else
-		THREAD_TYPE* ptinfo = params->m_tinfo->get_parent_thread();
-#endif
 		if (ptinfo)
 		{
 			sinsp_fdinfo_t* pfdinfo = ptinfo->get_fd(params->m_fd);
@@ -1139,13 +1131,12 @@ void sinsp_analyzer_fd_listener::on_execve(sinsp_evt* evt)
 
 	if (m_analyzer->is_tracking_environment())
 	{
-		THREAD_TYPE* tinfo = thread_analyzer_info::get_thread_from_event(evt);
+		thread_analyzer_info* tinfo = thread_analyzer_info::get_thread_from_event(evt);
 
-		if (tinfo && GET_AGENT_THREAD(tinfo))
+		if (tinfo)
 		{
-			GET_AGENT_THREAD(tinfo)->main_thread_ainfo()->hash_environment(
-			    tinfo,
-			    m_analyzer->get_environment_blacklist());
+			tinfo->main_thread_ainfo()->hash_environment(tinfo,
+			                                             m_analyzer->get_environment_blacklist());
 		}
 	}
 }
@@ -1167,11 +1158,7 @@ bool sinsp_analyzer_fd_listener::on_resolve_container(sinsp_container_manager* c
 
 #if !defined(CYGWING_AGENT)
 	resolved = m_analyzer->resolve_custom_container(manager,
-#ifdef USE_AGENT_THREAD
 	                                                dynamic_cast<thread_analyzer_info*>(tinfo),
-#else
-	                                                tinfo,
-#endif
 	                                                query_os_for_missing_info);
 #endif
 	return resolved;
@@ -1186,7 +1173,7 @@ void sinsp_analyzer_fd_listener::on_clone(sinsp_evt* evt, sinsp_threadinfo* newt
 	m_falco_baseliner->on_new_proc(evt, newtinfo);
 }
 
-inline bool sinsp_analyzer_fd_listener::should_account_io(const THREAD_TYPE* tinfo)
+inline bool sinsp_analyzer_fd_listener::should_account_io(const thread_analyzer_info* tinfo)
 {
 #if defined(HAS_CAPTURE)
 	//
@@ -1199,7 +1186,7 @@ inline bool sinsp_analyzer_fd_listener::should_account_io(const THREAD_TYPE* tin
 #endif
 	return true;
 }
-void sinsp_analyzer_fd_listener::account_io(THREAD_TYPE* const tinfo,
+void sinsp_analyzer_fd_listener::account_io(thread_analyzer_info* const tinfo,
                                             const std::string& name,
                                             const uint32_t dev,
                                             const uint32_t bytes,
@@ -1213,7 +1200,7 @@ void sinsp_analyzer_fd_listener::account_io(THREAD_TYPE* const tinfo,
 
 	m_files_stat[name].account_io(bytes, time_ns, direction);
 
-	auto mt_ainfo = GET_AGENT_THREAD(tinfo)->main_thread_ainfo();
+	auto mt_ainfo = tinfo->main_thread_ainfo();
 	if (m_analyzer->detailed_fileio_reporting())
 	{
 		mt_ainfo->m_files_stat[name].account_io(bytes, time_ns, direction);
@@ -1232,7 +1219,7 @@ void sinsp_analyzer_fd_listener::account_io(THREAD_TYPE* const tinfo,
 	}
 }
 
-void sinsp_analyzer_fd_listener::account_file_open(THREAD_TYPE* tinfo,
+void sinsp_analyzer_fd_listener::account_file_open(thread_analyzer_info* tinfo,
                                                    const std::string& name,
                                                    uint32_t dev)
 {
@@ -1243,7 +1230,7 @@ void sinsp_analyzer_fd_listener::account_file_open(THREAD_TYPE* tinfo,
 
 	m_files_stat[name].account_file_open();
 
-	auto mt_ainfo = GET_AGENT_THREAD(tinfo)->main_thread_ainfo();
+	auto mt_ainfo = tinfo->main_thread_ainfo();
 	if (m_analyzer->detailed_fileio_reporting())
 	{
 		mt_ainfo->m_files_stat[name].account_file_open();
@@ -1262,7 +1249,7 @@ void sinsp_analyzer_fd_listener::account_file_open(THREAD_TYPE* tinfo,
 	}
 }
 
-void sinsp_analyzer_fd_listener::account_error(THREAD_TYPE* tinfo,
+void sinsp_analyzer_fd_listener::account_error(thread_analyzer_info* tinfo,
                                                const std::string& name,
                                                uint32_t dev)
 {
@@ -1273,7 +1260,7 @@ void sinsp_analyzer_fd_listener::account_error(THREAD_TYPE* tinfo,
 
 	m_files_stat[name].account_error();
 
-	auto mt_ainfo = GET_AGENT_THREAD(tinfo)->main_thread_ainfo();
+	auto mt_ainfo = tinfo->main_thread_ainfo();
 	if (m_analyzer->detailed_fileio_reporting())
 	{
 		mt_ainfo->m_files_stat[name].account_error();

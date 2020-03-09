@@ -1,7 +1,5 @@
 #pragma once
 
-#include "analyzer_thread_type.h"
-
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 // V2
@@ -57,7 +55,7 @@ public:
 	std::vector<cpustate2> m_cpu_states;
 
 private:
-	void update(THREAD_TYPE* tinfo, uint64_t ts, int16_t cpu, int64_t nexttid);
+	void update(thread_analyzer_info* tinfo, uint64_t ts, int16_t cpu, int64_t nexttid);
 
 	sinsp_analyzer& m_analyzer;
 	sinsp* m_inspector;

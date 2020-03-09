@@ -3,7 +3,6 @@
 //
 #pragma once
 
-#include "analyzer_thread_type.h"
 #include "sinsp.h"
 
 #include <memory>
@@ -37,7 +36,7 @@ public:
 	{
 	}
 
-	bool match(THREAD_TYPE* tinfo) const;
+	bool match(thread_analyzer_info* tinfo) const;
 
 	const std::string& name() const { return m_name; }
 
@@ -90,7 +89,7 @@ public:
 class app_process
 {
 public:
-	explicit app_process(const app_check& check, THREAD_TYPE* tinfo);
+	explicit app_process(const app_check& check, thread_analyzer_info* tinfo);
 
 	void set_conf_vals(std::shared_ptr<app_process_conf_vals>& conf_vals);
 
@@ -108,7 +107,7 @@ private:
 	// Solr temporary patch
 	std::uint16_t m_solr_port;
 	bool is_solr() const;
-	void get_port_from_cmd(THREAD_TYPE* tinfo);
+	void get_port_from_cmd(thread_analyzer_info* tinfo);
 };
 
 class app_metric

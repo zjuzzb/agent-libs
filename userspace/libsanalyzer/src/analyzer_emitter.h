@@ -32,7 +32,8 @@ enum flush_flags
 };
 
 using progtable_t =
-    std::unordered_set<THREAD_TYPE*, sinsp_threadinfo::hasher, sinsp_threadinfo::comparer>;
+    std::unordered_set<thread_analyzer_info*, sinsp_threadinfo::hasher, sinsp_threadinfo::comparer>;
 
-using progtable_by_container_t = std::unordered_map<std::string, std::vector<THREAD_TYPE*>>;
+using progtable_by_container_t =
+    std::unordered_map<std::string, std::vector<thread_analyzer_info*>>;
 }  // namespace analyzer_emitter

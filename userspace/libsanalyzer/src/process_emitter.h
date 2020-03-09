@@ -45,12 +45,12 @@ public:
 	                    const std::vector<std::string>& emitted_containers,
 	                    draiosproto::metrics& metrics,
 	                    std::set<uint64_t>& all_uids,
-	                    std::set<THREAD_TYPE*>& emitted_processes);
+	                    std::set<thread_analyzer_info*>& emitted_processes);
 
 	/**
 	 * emit data for a single process
 	 */
-	void emit_process(THREAD_TYPE& tinfo,
+	void emit_process(thread_analyzer_info& tinfo,
 	                  draiosproto::program& prog,
 	                  const analyzer_emitter::progtable_by_container_t& progtable_by_container,
 	                  sinsp_procinfo& procinfo,
@@ -79,8 +79,8 @@ private:
 	                         Iterator progtable_end,
 	                         bool cs_only,
 	                         uint32_t how_many,
-	                         const std::set<THREAD_TYPE*>& blacklist,
-	                         std::set<THREAD_TYPE*>& processes_to_emit);
+	                         const std::set<thread_analyzer_info*>& blacklist,
+	                         std::set<thread_analyzer_info*>& processes_to_emit);
 
 	/**
 	 * take a given thread and sort it into the appropriate list
@@ -88,11 +88,11 @@ private:
 	 *
 	 * appropriately deals with multiple calls with the same thread.
 	 */
-	void filter_process(THREAD_TYPE* tinfo,
+	void filter_process(thread_analyzer_info* tinfo,
 	                    const sinsp_container_info* container_info,
-	                    std::set<THREAD_TYPE*>& high_priority_processes,
-	                    std::set<THREAD_TYPE*>& low_priority_processes,
-	                    std::set<THREAD_TYPE*>& blacklist_processes);
+	                    std::set<thread_analyzer_info*>& high_priority_processes,
+	                    std::set<thread_analyzer_info*>& low_priority_processes,
+	                    std::set<thread_analyzer_info*>& blacklist_processes);
 
 	const process_manager& m_process_manager;
 	sinsp& m_inspector;

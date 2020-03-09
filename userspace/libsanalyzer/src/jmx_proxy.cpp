@@ -1,7 +1,6 @@
 #define __STDC_FORMAT_MACROS
 
 #include "analyzer_thread.h"
-#include "analyzer_thread_type.h"
 #include "analyzer_int.h"
 #include "jmx_proxy.h"
 #include "sinsp.h"
@@ -313,7 +312,7 @@ jmx_proxy::jmx_proxy()
 {
 }
 
-Json::Value jmx_proxy::tinfo_to_json(THREAD_TYPE* tinfo)
+Json::Value jmx_proxy::tinfo_to_json(thread_analyzer_info* tinfo)
 {
 	static const unsigned MAX_ARG_SIZE = 100;
 	Json::Value ret;
@@ -372,7 +371,7 @@ Json::Value jmx_proxy::tinfo_to_json(THREAD_TYPE* tinfo)
 	return ret;
 }
 
-void jmx_proxy::send_get_metrics(const std::vector<THREAD_TYPE*>& processes)
+void jmx_proxy::send_get_metrics(const std::vector<thread_analyzer_info*>& processes)
 {
 	Json::Value command_obj;
 	command_obj["command"] = "getMetrics";

@@ -100,12 +100,8 @@ TEST_F(sys_call_test, analyzer_errors)
 				EXPECT_LE((size_t)5, ec->m_count_file_open);
 				EXPECT_LE((size_t)1, ec->m_count_net);
 
-#ifdef USE_AGENT_THREAD
 				thread_analyzer_info* tinfo = dynamic_cast<thread_analyzer_info*>(param.m_inspector->find_thread_test(getpid(), true));
-#else
-				sinsp_threadinfo* tinfo = param.m_inspector->find_thread_test(getpid(), true);
-#endif
-				ec = &GET_AGENT_THREAD(tinfo)->m_syscall_errors;
+				ec = &tinfo->m_syscall_errors;
 
 				EXPECT_LE((size_t)10, ec->m_count);
 				EXPECT_LE((size_t)5, ec->m_count_file);
@@ -288,7 +284,7 @@ TEST_F(sys_call_test, analyzer_fdstats)
 					EXPECT_EQ((uint64_t)1, it->second.open_count());
 				}
 
-				const auto& tid_metrics = GET_AGENT_THREAD(thread_analyzer_info::get_thread_from_event(e))->m_metrics;
+				const auto& tid_metrics = thread_analyzer_info::get_thread_from_event(e)->m_metrics;
 				ASSERT_GT(tid_metrics.m_file.m_time_ns, 0);
 				ASSERT_GT(tid_metrics.m_io_file.m_bytes_in, 0);
 				ASSERT_GT(tid_metrics.m_io_file.m_bytes_out, 0);

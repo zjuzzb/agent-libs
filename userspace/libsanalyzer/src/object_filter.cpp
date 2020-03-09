@@ -48,12 +48,12 @@ bool port_filter<filter_param>::matches(const filter_param& arg,
                                         bool& high_priority,
                                         std::string* reason) const
 {
-	if (!arg.m_tinfo || !GET_AGENT_THREAD(arg.m_tinfo))
+	if (!arg.m_tinfo)
 	{
 		return false;
 	}
 
-	auto start_ports = GET_AGENT_THREAD(arg.m_tinfo)->listening_ports();
+	auto start_ports = arg.m_tinfo->listening_ports();
 	auto ports = filter_ports(start_ports, m_ports);
 
 	if (!ports.empty())
@@ -197,12 +197,12 @@ bool app_check_filter<filter_param>::matches(const filter_param& arg,
                                              bool& high_priority,
                                              std::string* reason) const
 {
-	if (!arg.m_mtinfo || !GET_AGENT_THREAD(arg.m_mtinfo))
+	if (!arg.m_mtinfo)
 	{
 		return false;
 	}
 
-	if (!GET_AGENT_THREAD(arg.m_mtinfo)->found_app_check_by_fnmatch(m_pattern))
+	if (!arg.m_mtinfo->found_app_check_by_fnmatch(m_pattern))
 	{
 		return false;
 	}
@@ -216,8 +216,8 @@ bool app_check_filter<filter_param>::matches(const filter_param& arg,
 	return true;
 }
 
-bool object_filter::matches(const THREAD_TYPE* tinfo,
-                            const THREAD_TYPE* mtinfo,
+bool object_filter::matches(const thread_analyzer_info* tinfo,
+                            const thread_analyzer_info* mtinfo,
                             const sinsp_container_info* container,
                             const infrastructure_state* is,
                             bool* generic_match,

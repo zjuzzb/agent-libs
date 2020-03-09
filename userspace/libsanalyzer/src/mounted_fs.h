@@ -1,6 +1,5 @@
 #pragma once
 
-#include "analyzer_thread_type.h"
 #include "mount_points_limits.h"
 #include "posix_queue.h"
 
@@ -66,7 +65,7 @@ class mounted_fs_proxy
 public:
 	explicit mounted_fs_proxy();
 	mounted_fs_list receive_mounted_fs_list();
-	bool send_container_list(const std::vector<THREAD_TYPE*>& containers);
+	bool send_container_list(const std::vector<thread_analyzer_info*>& containers);
 
 private:
 	posix_queue m_input;

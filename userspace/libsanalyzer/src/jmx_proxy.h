@@ -1,7 +1,6 @@
 #pragma once
 
 #ifndef _WIN32
-#include "analyzer_thread_type.h"
 #include "metric_limits.h"
 #include "posix_queue.h"
 #include "threadinfo.h"
@@ -101,7 +100,7 @@ public:
 
 	jmx_proxy();
 
-	void send_get_metrics(const std::vector<THREAD_TYPE*>& processes);
+	void send_get_metrics(const std::vector<thread_analyzer_info*>& processes);
 
 	process_map_t read_metrics(const metric_limits::sptr_t& ml = nullptr);
 
@@ -110,7 +109,7 @@ public:
 	bool m_print_json;
 
 private:
-	static Json::Value tinfo_to_json(THREAD_TYPE* tinfo);
+	static Json::Value tinfo_to_json(thread_analyzer_info* tinfo);
 	posix_queue m_outqueue;
 	posix_queue m_inqueue;
 	Json::Reader m_json_reader;

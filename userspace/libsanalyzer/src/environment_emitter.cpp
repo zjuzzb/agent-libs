@@ -12,19 +12,19 @@ environment_emitter::environment_emitter(const uint64_t prev_flush_time_ns,
 {
 }
 
-void environment_emitter::emit_environment(THREAD_TYPE& tinfo, draiosproto::program& prog)
+void environment_emitter::emit_environment(thread_analyzer_info& tinfo, draiosproto::program& prog)
 {
 	if (!m_env_hash_config.m_send_metrics)
 	{
 		return;
 	}
 
-	auto mt_ainfo = GET_AGENT_THREAD(&tinfo)->main_thread_ainfo();
+	auto mt_ainfo = tinfo.main_thread_ainfo();
 	auto env_hash = mt_ainfo->m_env_hash.get_hash();
 	prog.set_environment_hash(env_hash.data(), env_hash.size());
 
 	auto af_flag = thread_analyzer_info::AF_IS_NET_CLIENT;
-	if (!(GET_AGENT_THREAD(&tinfo)->m_th_analysis_flags & af_flag))
+	if (!(tinfo.m_th_analysis_flags & af_flag))
 	{
 		return;
 	}

@@ -166,13 +166,8 @@ void audit_tap::emit_connections(sinsp_ipv4_connection_manager* conn_manager, us
 
 		if (have_connections)
 		{
-#ifdef USE_AGENT_THREAD
 			emit_process(dynamic_cast<thread_analyzer_info*>(connection.m_sproc.get()), userdb);
 			emit_process(dynamic_cast<thread_analyzer_info*>(connection.m_dproc.get()), userdb);
-#else
-			emit_process(connection.m_sproc.get(), userdb);
-			emit_process(connection.m_dproc.get(), userdb);
-#endif
 		}
 
 		m_connection_aggregator.update_connection_info(iptuple,
@@ -250,11 +245,7 @@ void audit_tap::emit_pending_envs(sinsp* inspector)
 			continue;
 		}
 
-#ifdef USE_AGENT_THREAD
 		auto tinfo = dynamic_cast<thread_analyzer_info*>(inspector->get_thread(pid));
-#else
-		auto tinfo = inspector->get_thread(pid);
-#endif
 		if (!tinfo)
 		{
 			continue;
@@ -281,7 +272,7 @@ void audit_tap::emit_pending_envs(sinsp* inspector)
 	}
 }
 
-void audit_tap::emit_process(THREAD_TYPE* tinfo, userdb* userdb)
+void audit_tap::emit_process(thread_analyzer_info* tinfo, userdb* userdb)
 {
 	if (tinfo == nullptr)
 	{
@@ -333,9 +324,9 @@ void audit_tap::emit_process(THREAD_TYPE* tinfo, userdb* userdb)
 	proc->set_timestamp(tinfo->m_clone_ts / 1000000);
 }
 
-bool audit_tap::emit_environment(tap::NewProcess* proc, THREAD_TYPE* tinfo)
+bool audit_tap::emit_environment(tap::NewProcess* proc, thread_analyzer_info* tinfo)
 {
-	auto mt_ainfo = GET_AGENT_THREAD(tinfo)->main_thread_ainfo();
+	auto mt_ainfo = tinfo->main_thread_ainfo();
 	auto env_hash = mt_ainfo->m_env_hash.get_hash();
 	if (proc)
 	{

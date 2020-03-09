@@ -396,54 +396,42 @@ public:
 #endif
 #endif  // _WIN32
 
-	inline const THREAD_TYPE* get_agent_thread()
+	inline const thread_analyzer_info* get_agent_thread()
 	{
 		return get_thread_by_pid(m_inspector->m_sysdig_pid);
 	}
 
-	inline THREAD_TYPE* get_thread_by_pid(uint64_t pid)
+	inline thread_analyzer_info* get_thread_by_pid(uint64_t pid)
 	{
 		sinsp_threadinfo* sinsp_thread = m_inspector->m_thread_manager->m_threadtable.get(pid);
-#ifdef USE_AGENT_THREAD
 		thread_analyzer_info* analyzer_thread = dynamic_cast<thread_analyzer_info*>(sinsp_thread);
 		ASSERT(sinsp_thread == analyzer_thread);
 		return analyzer_thread;
-#else
-		return sinsp_thread;
-#endif
 	}
 
-	inline const THREAD_TYPE* get_thread_by_pid(uint64_t tid,
+	inline const thread_analyzer_info* get_thread_by_pid(uint64_t tid,
 	                                            bool query_os_if_not_found,
 	                                            bool lookup_only)
 	{
 		sinsp_threadinfo* sinsp_thread =
 		    m_inspector->get_thread(tid, query_os_if_not_found, lookup_only);
-#ifdef USE_AGENT_THREAD
 		thread_analyzer_info* analyzer_thread = dynamic_cast<thread_analyzer_info*>(sinsp_thread);
 		ASSERT(sinsp_thread == analyzer_thread);
 		return analyzer_thread;
-#else
-		return sinsp_thread;
-#endif
 	}
 
-	inline THREAD_TYPE* get_mutable_thread_by_pid(uint64_t tid,
+	inline thread_analyzer_info* get_mutable_thread_by_pid(uint64_t tid,
 	                                              bool query_os_if_not_found,
 	                                              bool lookup_only)
 	{
 		sinsp_threadinfo* sinsp_thread =
 		    m_inspector->get_thread(tid, query_os_if_not_found, lookup_only);
-#ifdef USE_AGENT_THREAD
 		thread_analyzer_info* analyzer_thread = dynamic_cast<thread_analyzer_info*>(sinsp_thread);
 		ASSERT(sinsp_thread == analyzer_thread);
 		return analyzer_thread;
-#else
-		return sinsp_thread;
-#endif
 	}
 
-	inline std::shared_ptr<THREAD_TYPE> get_thread_ref(int64_t tid,
+	inline std::shared_ptr<thread_analyzer_info> get_thread_ref(int64_t tid,
 	                                                   bool query_os_if_not_found,
 	                                                   bool lookup_only,
 	                                                   bool main_thread = false)
@@ -455,7 +443,7 @@ public:
 		                                      main_thread);
 	}
 
-	static inline std::shared_ptr<THREAD_TYPE> get_thread_ref(sinsp& inspector,
+	static inline std::shared_ptr<thread_analyzer_info> get_thread_ref(sinsp& inspector,
 	                                                          int64_t tid,
 	                                                          bool query_os_if_not_found,
 	                                                          bool lookup_only,
@@ -463,13 +451,9 @@ public:
 	{
 		auto sinsp_thread =
 		    inspector.get_thread_ref(tid, query_os_if_not_found, lookup_only, main_thread);
-#ifdef USE_AGENT_THREAD
 		auto analyzer_thread = std::dynamic_pointer_cast<thread_analyzer_info>(sinsp_thread);
 		ASSERT(sinsp_thread == analyzer_thread);
 		return analyzer_thread;
-#else
-		return sinsp_thread;
-#endif
 	}
 	inline sinsp_container_info::ptr_t get_container(const std::string& container_id)
 	{
@@ -754,7 +738,7 @@ public:
 	 * Attempts to resolve a custom container.
 	 */
 	bool resolve_custom_container(sinsp_container_manager* manager,
-	                              THREAD_TYPE* tinfo,
+	                              thread_analyzer_info* tinfo,
 	                              bool query_os_for_missing_info);
 
 	/**
@@ -836,7 +820,7 @@ public:
 	void emit_container(const std::string& container_id,
 	                    unsigned* statsd_limit,
 	                    uint64_t total_cpu_shares,
-	                    THREAD_TYPE* tinfo,
+	                    thread_analyzer_info* tinfo,
 	                    analyzer_emitter::flush_flags flushflags,
 	                    const std::list<uint32_t>& groups);
 
@@ -952,11 +936,11 @@ public:
 	// Append the cluster name as a "cluster:$NAME" tag
 	// if no "cluster:*" tag is already configured
 	std::string get_host_tags_with_cluster();
-	uint32_t get_mesos_api_server_port(THREAD_TYPE* main_tinfo);
+	uint32_t get_mesos_api_server_port(thread_analyzer_info* main_tinfo);
 #endif
-	THREAD_TYPE* get_main_thread_info(int64_t& tid);
+	thread_analyzer_info* get_main_thread_info(int64_t& tid);
 	std::string& detect_mesos(std::string& mesos_api_server, uint32_t port);
-	std::string detect_mesos(THREAD_TYPE* main_tinfo = 0);
+	std::string detect_mesos(thread_analyzer_info* main_tinfo = 0);
 	bool check_mesos_server(std::string& addr);
 	void make_mesos(std::string&& json);
 	void get_mesos(const std::string& mesos_uri);
@@ -1004,12 +988,12 @@ public:
 #endif
 	void emit_chisel_metrics();
 	void emit_user_events();
-	void match_prom_checks(THREAD_TYPE* tinfo,
-	                       THREAD_TYPE* mtinfo,
+	void match_prom_checks(thread_analyzer_info* tinfo,
+	                       thread_analyzer_info* mtinfo,
 	                       std::vector<prom_process>& prom_procs,
 	                       bool use_host_filter);
-	void match_checks_list(THREAD_TYPE* tinfo,
-	                       THREAD_TYPE* mtinfo,
+	void match_checks_list(thread_analyzer_info* tinfo,
+	                       thread_analyzer_info* mtinfo,
 	                       const std::vector<app_check>& checks,
 	                       std::vector<app_process>& app_checks_processes,
 	                       const char* location);
@@ -1152,7 +1136,7 @@ public:
 	run_on_interval m_containers_cleaner_interval = {60 * ONE_SECOND_IN_NS};
 	run_on_interval m_containers_check_interval = {60 * ONE_SECOND_IN_NS};
 
-	std::vector<THREAD_TYPE*> m_threads_to_remove;
+	std::vector<thread_analyzer_info*> m_threads_to_remove;
 
 	//
 	// Subsampling-related stuff
