@@ -3,6 +3,11 @@
 # All rights reserved
 # Licensed under Simplified BSD License (see LICENSE)
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from past.builtins import basestring
+
 # stdlib
 from datetime import datetime
 import _strptime # noqa
@@ -12,7 +17,7 @@ import socket
 import ssl
 import time
 import warnings
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 # 3rd party
 import requests
@@ -307,7 +312,7 @@ class HTTPCheck(AgentCheck):
             # Check content matching is set
             if content_match:
                 # r.text is the response content decoded by `requests`, of type `unicode`
-                content = r.text if type(content_match) is unicode else r.content
+                content = r.text if type(content_match) is str else r.content
                 if re.search(content_match, content, re.UNICODE):
                     if reverse_content_match:
                         send_status_down("%s is found in return content with the reverse_content_match option" % content_match,

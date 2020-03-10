@@ -3,6 +3,8 @@
 # All rights reserved
 # Licensed under Simplified BSD License (see LICENSE)
 
+from builtins import str
+
 # stdlib
 import socket
 import time
