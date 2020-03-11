@@ -3,3 +3,6 @@ future==0.17.1
 
 # needed for sdchecks.py and config.py
 pyyaml==5.1
+
+# checks.d/mcache.py
+python-memcached==1.59

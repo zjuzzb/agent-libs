@@ -11,15 +11,15 @@ python_version = sys.version_info[0:2]
 bin_deps_dir = install_prefix + '/lib/python-deps%d.%d' % python_version
 
 if python_version == (2, 6):
-    sys.path.insert(1, bin_deps_dir)
+    sys.path.insert(0, bin_deps_dir)
 else:
-    sys.path.insert(1, install_prefix + '/lib/python-deps')
+    sys.path.insert(0, install_prefix + '/lib/python-deps')
     if python_version == (2, 7):
-        sys.path.insert(2, bin_deps_dir)
+        sys.path.insert(0, bin_deps_dir)
     elif (3, 5) <= python_version <= (3, 7):
-        sys.path.insert(2, bin_deps_dir)
+        sys.path.insert(0, bin_deps_dir)
         bin_deps3_common_dir = install_prefix + '/lib/python-deps3'
-        sys.path.insert(3, bin_deps3_common_dir)
+        sys.path.insert(0, bin_deps3_common_dir)
         site.addsitedir(bin_deps3_common_dir)
     else:
         raise Exception('Python version (%d.%d) is not supported. Please use Python2.7/3.5/3.6/3.7' % python_version)
