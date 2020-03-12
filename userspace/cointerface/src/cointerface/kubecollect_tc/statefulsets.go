@@ -1,6 +1,7 @@
-package kubecollect
+package kubecollect_tc
 
 import (
+	"cointerface/kubecollect"
 	"cointerface/kubecollect_common"
 	draiosproto "protorepo/agent-be/proto"
 	"context"
@@ -13,8 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	appsv1 "k8s.io/api/apps/v1"
 )
-
-var StatefulSetInf cache.SharedInformer
 
 func statefulSetEvent(ss *appsv1.StatefulSet, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
@@ -33,28 +32,18 @@ func newStatefulSetCongroup(statefulSet *appsv1.StatefulSet) (*draiosproto.Conta
 
 	ret.Tags = kubecollect_common.GetTags(statefulSet.ObjectMeta, "kubernetes.statefulset.")
 	ret.InternalTags = kubecollect_common.GetAnnotations(statefulSet.ObjectMeta, "kubernetes.statefulset.")
-	AddStatefulSetMetrics(&ret.Metrics, statefulSet)
-	AddPodChildrenFromOwnerRef(&ret.Children, statefulSet.ObjectMeta)
+	kubecollect.AddStatefulSetMetrics(&ret.Metrics, statefulSet)
 	AddServiceParentsFromServiceName(&ret.Parents, statefulSet.GetNamespace(), statefulSet.Spec.ServiceName)
 
 	return ret
 }
 
-func AddStatefulSetMetrics(metrics *[]*draiosproto.AppMetric, statefulSet *appsv1.StatefulSet) {
-	prefix := "kubernetes.statefulset."
-	kubecollect_common.AppendMetricPtrInt32(metrics, prefix+"replicas", statefulSet.Spec.Replicas)
-	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.replicas", statefulSet.Status.Replicas)
-	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.replicas.current", statefulSet.Status.CurrentReplicas)
-	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.replicas.ready", statefulSet.Status.ReadyReplicas)
-	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.replicas.updated", statefulSet.Status.UpdatedReplicas)
-}
-
-func AddStatefulSetChildrenFromService(children *[]*draiosproto.CongroupUid, service CoService) {
+func AddStatefulSetChildrenFromService(children *[]*draiosproto.CongroupUid, service kubecollect.CoService) {
 	if !kubecollect_common.ResourceReady("statefulsets") {
 		return
 	}
 
-	for _, obj := range StatefulSetInf.GetStore().List() {
+	for _, obj := range kubecollect.StatefulSetInf.GetStore().List() {
 		statefulSet := obj.(*appsv1.StatefulSet)
 		if service.GetNamespace() == statefulSet.GetNamespace() && service.GetName() == statefulSet.Spec.ServiceName {
 			*children = append(*children, &draiosproto.CongroupUid{
@@ -67,20 +56,20 @@ func AddStatefulSetChildrenFromService(children *[]*draiosproto.CongroupUid, ser
 func startStatefulSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.AppsV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "StatefulSets", v1meta.NamespaceAll, fields.Everything())
-	StatefulSetInf = cache.NewSharedInformer(lw, &appsv1.StatefulSet{}, kubecollect_common.RsyncInterval)
+	kubecollect.StatefulSetInf = cache.NewSharedInformer(lw, &appsv1.StatefulSet{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
 		watchStatefulSets(evtc)
-		StatefulSetInf.Run(ctx.Done())
+		kubecollect.StatefulSetInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
 func watchStatefulSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
-	log.Debugf("In WatchStatefulSets()")
+	log.Debugf("In WatchStatefulSets() from package %s", kubecollect_common.GetPkg(KubecollectClientTc{}))
 
-	StatefulSetInf.AddEventHandler(
+	kubecollect.StatefulSetInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				kubecollect_common.EventReceived("statefulsets")

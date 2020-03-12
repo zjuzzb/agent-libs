@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	draiosproto "protorepo/agent-be/proto"
 	"context"
 	"sync"
@@ -13,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 )
 
-var nodeInf cache.SharedInformer
+var NodeInf cache.SharedInformer
 
 func nodeEvent(node *v1.Node, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
@@ -22,21 +23,21 @@ func nodeEvent(node *v1.Node, eventType *draiosproto.CongroupEventType) (draiosp
 	}
 }
 
-func nodeEquals(oldNode *v1.Node, newNode *v1.Node) bool {
+func NodeEquals(oldNode *v1.Node, newNode *v1.Node) bool {
 
 	if oldNode.GetName() != newNode.GetName() {
 		return false
 	}
 
-	if !EqualLabels(oldNode.ObjectMeta, newNode.ObjectMeta) ||
-        !EqualAnnotations(oldNode.ObjectMeta, newNode.ObjectMeta) {
+	if !kubecollect_common.EqualLabels(oldNode.ObjectMeta, newNode.ObjectMeta) ||
+        !kubecollect_common.EqualAnnotations(oldNode.ObjectMeta, newNode.ObjectMeta) {
 		return false
 	}
 
 	// Anything used in addNodeMetrics() needs to be checked here
 	if oldNode.Spec.Unschedulable != newNode.Spec.Unschedulable ||
-		!equalResourceList(oldNode.Status.Capacity, newNode.Status.Capacity) ||
-		!equalResourceList(oldNode.Status.Allocatable, newNode.Status.Allocatable) ||
+		!kubecollect_common.EqualResourceList(oldNode.Status.Capacity, newNode.Status.Capacity) ||
+		!kubecollect_common.EqualResourceList(oldNode.Status.Allocatable, newNode.Status.Allocatable) ||
 		!equalNodeConditions(oldNode.Status.Conditions, newNode.Status.Conditions) {
 		return false
 	}
@@ -92,22 +93,22 @@ func newNodeCongroup(node *v1.Node) (*draiosproto.ContainerGroup) {
 		}
 	}
 
-	ret.Tags = GetTags(node.ObjectMeta, "kubernetes.node.")
-	ret.InternalTags = GetAnnotations(node.ObjectMeta, "kubernetes.node.")
-	addNodeMetrics(&ret.Metrics, node)
+	ret.Tags = kubecollect_common.GetTags(node.ObjectMeta, "kubernetes.node.")
+	ret.InternalTags = kubecollect_common.GetAnnotations(node.ObjectMeta, "kubernetes.node.")
+	AddNodeMetrics(&ret.Metrics, node)
 	AddPodChildrenFromNodeName(&ret.Children, node.GetName())
 	return ret
 }
 
-func addNodeMetrics(metrics *[]*draiosproto.AppMetric, node *v1.Node) {
+func AddNodeMetrics(metrics *[]*draiosproto.AppMetric, node *v1.Node) {
 	prefix := "kubernetes.node."
-	AppendMetricBool(metrics, prefix+"spec.unschedulable", node.Spec.Unschedulable)
-	appendMetricResource(metrics, prefix+"status.capacity.cpuCores", node.Status.Capacity, v1.ResourceCPU)
-	appendMetricResource(metrics, prefix+"status.capacity.memoryBytes", node.Status.Capacity, v1.ResourceMemory)
-	appendMetricResource(metrics, prefix+"status.capacity.pods", node.Status.Capacity, v1.ResourcePods)
-	appendMetricResource(metrics, prefix+"status.allocatable.cpuCores", node.Status.Allocatable, v1.ResourceCPU)
-	appendMetricResource(metrics, prefix+"status.allocatable.memoryBytes", node.Status.Allocatable, v1.ResourceMemory)
-	appendMetricResource(metrics, prefix+"status.allocatable.pods", node.Status.Allocatable, v1.ResourcePods)
+	kubecollect_common.AppendMetricBool(metrics, prefix+"spec.unschedulable", node.Spec.Unschedulable)
+	kubecollect_common.AppendMetricResource(metrics, prefix+"status.capacity.cpuCores", node.Status.Capacity, v1.ResourceCPU)
+	kubecollect_common.AppendMetricResource(metrics, prefix+"status.capacity.memoryBytes", node.Status.Capacity, v1.ResourceMemory)
+	kubecollect_common.AppendMetricResource(metrics, prefix+"status.capacity.pods", node.Status.Capacity, v1.ResourcePods)
+	kubecollect_common.AppendMetricResource(metrics, prefix+"status.allocatable.cpuCores", node.Status.Allocatable, v1.ResourceCPU)
+	kubecollect_common.AppendMetricResource(metrics, prefix+"status.allocatable.memoryBytes", node.Status.Allocatable, v1.ResourceMemory)
+	kubecollect_common.AppendMetricResource(metrics, prefix+"status.allocatable.pods", node.Status.Allocatable, v1.ResourcePods)
 	appendMetricNodeCondition(metrics, prefix+"status.ready", node.Status.Conditions, v1.NodeReady)
 	appendMetricNodeCondition(metrics, prefix+"status.memoryPressure", node.Status.Conditions, v1.NodeMemoryPressure)
 	appendMetricNodeCondition(metrics, prefix+"status.diskPressure", node.Status.Conditions, v1.NodeDiskPressure)
@@ -133,16 +134,16 @@ func appendMetricNodeCondition(metrics *[]*draiosproto.AppMetric, name string, c
 	}
 
 	if found {
-		AppendMetric(metrics, name, val)
+		kubecollect_common.AppendMetric(metrics, name, val)
 	}
 }
 
 func AddNodeParents(parents *[]*draiosproto.CongroupUid, nodeName string) {
-	if !resourceReady("nodes") {
+	if !kubecollect_common.ResourceReady("nodes") {
 		return
 	}
 
-	for _, obj := range nodeInf.GetStore().List() {
+	for _, obj := range NodeInf.GetStore().List() {
 		node := obj.(*v1.Node)
 		if node.GetName() == nodeName {
 			*parents = append(*parents, &draiosproto.CongroupUid{
@@ -155,12 +156,12 @@ func AddNodeParents(parents *[]*draiosproto.CongroupUid, nodeName string) {
 func startNodesSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "Nodes", v1meta.NamespaceAll, fields.Everything())
-	nodeInf = cache.NewSharedInformer(lw, &v1.Node{}, RsyncInterval)
+	NodeInf = cache.NewSharedInformer(lw, &v1.Node{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
 		watchNodes(evtc)
-		nodeInf.Run(ctx.Done())
+		NodeInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
@@ -168,23 +169,23 @@ func startNodesSInformer(ctx context.Context, kubeClient kubeclient.Interface, w
 func watchNodes(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchNodes()")
 
-	nodeInf.AddEventHandler(
+	NodeInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				eventReceived("nodes")
+				kubecollect_common.EventReceived("nodes")
 				evtc <- nodeEvent(obj.(*v1.Node),
 					draiosproto.CongroupEventType_ADDED.Enum())
-				addEvent("Node", EVENT_ADD)
+				kubecollect_common.AddEvent("Node", kubecollect_common.EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldNode := oldObj.(*v1.Node)
 				newNode := newObj.(*v1.Node)
-				if oldNode.GetResourceVersion() != newNode.GetResourceVersion() && !nodeEquals(oldNode, newNode) {
+				if oldNode.GetResourceVersion() != newNode.GetResourceVersion() && !NodeEquals(oldNode, newNode) {
 					evtc <- nodeEvent(newNode,
 						draiosproto.CongroupEventType_UPDATED.Enum())
-					addEvent("Node", EVENT_UPDATE_AND_SEND)
+					kubecollect_common.AddEvent("Node", kubecollect_common.EVENT_UPDATE_AND_SEND)
 				}
-				addEvent("Node", EVENT_UPDATE)
+				kubecollect_common.AddEvent("Node", kubecollect_common.EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldNode := (*v1.Node)(nil)
@@ -214,7 +215,7 @@ func watchNodes(evtc chan<- draiosproto.CongroupUpdateEvent) {
 							Id:proto.String(string(oldNode.GetUID()))},
 					},
 				}
-				addEvent("Node", EVENT_DELETE)
+				kubecollect_common.AddEvent("Node", kubecollect_common.EVENT_DELETE)
 			},
 		},
 	)

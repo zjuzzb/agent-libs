@@ -113,6 +113,19 @@ gobuild(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/selector_cache.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/services.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/statefulsets.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_common/client.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_common/kubecollect_interface.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_tc/client.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_tc/daemonsets.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_tc/deployments.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_tc/horizontalpodautoscalers.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_tc/jobs.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_tc/nodes.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_tc/pods.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_tc/replicasets.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_tc/replicationcontrollers.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_tc/services.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_tc/statefulsets.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/profile/profile.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/server.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/swarm.go

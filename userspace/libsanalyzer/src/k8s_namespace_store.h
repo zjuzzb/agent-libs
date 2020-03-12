@@ -10,6 +10,7 @@
 
 
 //! A store that helps to associate a kubernetes object with its namespace
+// this cache must be moved in the k8s_store_manager (SMAGENT-2615)
 class k8s_namespace_store
 {
 public:

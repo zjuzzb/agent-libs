@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	"context"
 	"fmt"
 	log "github.com/cihub/seelog"
@@ -75,7 +76,7 @@ func toLowerArray(ar []string) []string {
 	return ret
 }
 
-func startPodStatusWatcher(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
+func StartPodStatusWatcher(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debug("startPodStatusWatcher starts")
 
 	reset()
@@ -280,7 +281,7 @@ func createCongroupUpdateEvent(ns string, status string, count int64) draiosprot
 	cg.Tags = make(map[string]string)
 	cg.Tags["kubernetes.podstatuscounter.label.status"] = status
 
-	AppendMetricInt64(&cg.Metrics, "kubernetes.podstatuscounter.count", int64(count))
+	kubecollect_common.AppendMetricInt64(&cg.Metrics, "kubernetes.podstatuscounter.count", int64(count))
 	var eventType draiosproto.CongroupEventType
 
 	if _, exists := alreadySentCongroupUid[key]; exists {

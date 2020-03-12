@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	"context"
 	"math/rand"
 	"strconv"
@@ -118,7 +119,7 @@ func TestBasicResourceOrdering(t *testing.T) {
 	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(rand.Intn(20)),
 		createAPIResourceList(rand.Intn(30))}
 
-	resourceOrder := getResourceTypes(resourceList, nil)
+	resourceOrder := kubecollect_common.GetResourceTypes(resourceList, nil)
 
 	checkNoRepeatsHelper(t, resourceOrder, true)
 	
@@ -134,7 +135,7 @@ func TestBasicResourceOrdering(t *testing.T) {
 		})
 	}
 
-	resourceOrderNew := getResourceTypes(resourceList, nil)
+	resourceOrderNew := kubecollect_common.GetResourceTypes(resourceList, nil)
 	checkNoRepeatsHelper(t, resourceOrderNew, true)
 	checkNodesAndNamespacesFirstHelper(t ,resourceOrderNew, true)	
 }
@@ -166,7 +167,7 @@ func TestCronjobExistsInResourceOrder(t *testing.T) {
 		Name: "cronjobs",
 	})
 
-	resourceOrderWithOutCronjobs := getResourceTypes(resourceList, nil)
+	resourceOrderWithOutCronjobs := kubecollect_common.GetResourceTypes(resourceList, nil)
 	
 	// Since group version by default is
 	// v1ForTesting, no cronjobs should be added
@@ -175,7 +176,7 @@ func TestCronjobExistsInResourceOrder(t *testing.T) {
 	// Now modify groupversion to the supported value and check cronjobs exist
 	resourceList[0].GroupVersion = "batch/v2alpha1"
 	
-	resourceOrderWithCronjobs := getResourceTypes(resourceList, nil)
+	resourceOrderWithCronjobs := kubecollect_common.GetResourceTypes(resourceList, nil)
 	checkNoCronjobsExistHelper(t,resourceOrderWithCronjobs, false)
 }
 
@@ -207,7 +208,7 @@ func TestResourceTypeIncludes(t *testing.T) {
 		v1meta.APIResource{ Name: "horizontalpodautoscalers", },
 		v1meta.APIResource{ Name: "resourcequotas", } )
 
-	resourceswithoutextras := getResourceTypes(resourceList, nil)
+	resourceswithoutextras := kubecollect_common.GetResourceTypes(resourceList, nil)
 
 	// Since extras aren't taken by default, these should not exist
 	checkExtraResourceTypesHelper(t, resourceswithoutextras, "services", false)
@@ -217,7 +218,7 @@ func TestResourceTypeIncludes(t *testing.T) {
 	// Now add them to the include list and they should now exist
 	includeList := []string{ "services", "horizontalpodautoscalers", "resourcequotas" }
 
-	resourceswithextras := getResourceTypes(resourceList, includeList)
+	resourceswithextras := kubecollect_common.GetResourceTypes(resourceList, includeList)
 	checkExtraResourceTypesHelper(t, resourceswithextras, "services", true)
 	checkExtraResourceTypesHelper(t, resourceswithextras, "horizontalpodautoscalers", true)
 	checkExtraResourceTypesHelper(t, resourceswithextras, "resourcequotas", true)
@@ -233,7 +234,7 @@ func TestResourceTypeIncludesWithBoolFalse(t *testing.T) {
 
 	// If we pass the bool value as false for "checkIncludeOptional" parameter;
 	// then we should see the extras included ; even with include list empty
-	resourceswithoutextras := getResourceTypes(resourceList, nil, false)
+	resourceswithoutextras := kubecollect_common.GetResourceTypes(resourceList, nil, false)
 
 	// All the extra resources should show up; even though includeStrings is nil
 	checkExtraResourceTypesHelper(t, resourceswithoutextras, "services", true)
@@ -258,7 +259,7 @@ func setupChanTestInfra() (
 // Also tests whether the server.go can receive all the events correctly
 // This mimicks a bit of code in server.go to achieve this.
 // Would be nice if we can UT other methods in client.go and server.go
-func TestEvtArrayChanEvents(t* testing.T) {
+func TestEvtArrayChanEvents(t *testing.T) {
 
 	// This is a test involving goroutines and channels.
 	// Skip it during normal operation
@@ -271,7 +272,7 @@ func TestEvtArrayChanEvents(t* testing.T) {
 	t.Skip("skipping test for now during compile time.")
 	
 	evtChan , evtArrChan, ctx := setupChanTestInfra()
-	InformerChannel = evtChan
+	kubecollect_common.InformerChannel = evtChan
 
 	numNamespaces := 1000
 	queueLen := uint32(0)
@@ -279,7 +280,7 @@ func TestEvtArrayChanEvents(t* testing.T) {
 	go startNamespaceSends(evtChan, numNamespaces)
 	
 	// Call the batchEvents in client.go to UT it. Use defaults for batchsizes (for now)
-	go batchEvents(ctx, evtArrChan, uint32(100), uint32(100), &queueLen)
+	go kubecollect_common.BatchEvents(ctx, evtArrChan, uint32(100), uint32(100), &queueLen)
 
 	nameSpace := 0
 
@@ -310,7 +311,7 @@ func TestEvtArrayChanEvents(t* testing.T) {
 }
 
 // Test the method DrainChan on a chan of type evtChan
-func TestDrainChanOnEvtChan(t* testing.T){
+func TestDrainChanOnEvtChan(t *testing.T) {
 	// This is a test involving goroutines and channels.
 	// Skip it during normal operation
 	t.Skip("skipping test for now during compile time.")
@@ -320,7 +321,7 @@ func TestDrainChanOnEvtChan(t* testing.T){
 	go startNamespaceSends(evtChan, 200)
 	
 	// Test the DrainChan by draining on the evtChan (receive only chan)
-	DrainChan((<-chan draiosproto.CongroupUpdateEvent)(evtChan))
+	kubecollect_common.DrainChan((<-chan draiosproto.CongroupUpdateEvent)(evtChan))
 
 	// Test that the chan is empty
 	_, ok := <-evtChan
@@ -332,13 +333,13 @@ func TestDrainChanOnEvtChan(t* testing.T){
 }
 
 // Test the method DrainChan on a chan of type evtArrChan
-func TestDrainChanOnEvtArrayChan(t* testing.T){
+func TestDrainChanOnEvtArrayChan(t *testing.T) {
 	// This is a test involving goroutines and channels.
 	// Skip it during normal operation
 	t.Skip("skipping test for now during compile time.")
 	
 	evtChan , evtArrChan, ctx := setupChanTestInfra()
-	InformerChannel = evtChan
+	kubecollect_common.InformerChannel = evtChan
 	queueLen := uint32(0)
 
 	// Now let's do this same test with batchEvents and
@@ -346,11 +347,11 @@ func TestDrainChanOnEvtArrayChan(t* testing.T){
 	go startNamespaceSends(evtChan, 300)
 
 	// Call the batchEvents in client.go to UT it. Use defaults for batchsizes (for now)
-	go batchEvents(ctx, evtArrChan, uint32(100), uint32(100), &queueLen)
+	go kubecollect_common.BatchEvents(ctx, evtArrChan, uint32(100), uint32(100), &queueLen)
 
 	// Test DrainChan on evtArrChan by sending full chan
 	// This should return back without draining a single event
-	DrainChan(evtArrChan)
+	kubecollect_common.DrainChan(evtArrChan)
 
 	_, ok := <-evtArrChan
 	if !ok {
@@ -359,7 +360,7 @@ func TestDrainChanOnEvtArrayChan(t* testing.T){
 	}
 
 	// Drain using the receive chan (cast it to a receive-only chan)
-	DrainChan((<-chan sdc_internal.ArrayCongroupUpdateEvent)(evtArrChan))
+	kubecollect_common.DrainChan((<-chan sdc_internal.ArrayCongroupUpdateEvent)(evtArrChan))
 	
 	// Now check again
 	_, ok = <-evtArrChan

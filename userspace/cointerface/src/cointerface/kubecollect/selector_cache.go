@@ -49,18 +49,18 @@ type cacheableSelector interface {
 // The caller is responsible for calling Remove() when objects are deleted
 // to avoid leaking. It's safe to call Remove() even if we don't have a
 // selector cached, so types should always call it in their DeleteFunc.
-type selectorCache struct {
+type SelectorCache struct {
 	selectors map[types.UID]labels.Selector
 	cacheMutex sync.RWMutex
 }
 
-func newSelectorCache() *selectorCache {
-	return &selectorCache{
+func NewSelectorCache() *SelectorCache {
+	return &SelectorCache{
 		selectors: make(map[types.UID]labels.Selector),
 	}
 }
 
-func (c *selectorCache) Add(obj cacheableSelector) labels.Selector {
+func (c *SelectorCache) Add(obj cacheableSelector) labels.Selector {
 	// This is the cpu-heavy piece, so keep it outside the lock
 	sel := obj.Selector()
 
@@ -73,13 +73,13 @@ func (c *selectorCache) Add(obj cacheableSelector) labels.Selector {
 	return sel
 }
 
-func (c *selectorCache) Remove(obj cacheableSelector) {
+func (c *SelectorCache) Remove(obj cacheableSelector) {
 	c.cacheMutex.Lock()
 	delete(c.selectors, obj.GetUID())
 	c.cacheMutex.Unlock()
 }
 
-func (c *selectorCache) Get(obj cacheableSelector) (labels.Selector, bool) {
+func (c *SelectorCache) Get(obj cacheableSelector) (labels.Selector, bool) {
 	// Objects with no possible children never go in the cache to keep
 	// memory consumption down
 	if obj.Filtered() || obj.ActiveChildren() == 0 {
@@ -97,7 +97,7 @@ func (c *selectorCache) Get(obj cacheableSelector) (labels.Selector, bool) {
 	return s, true
 }
 
-func (c *selectorCache) Update(obj cacheableSelector) {
+func (c *SelectorCache) Update(obj cacheableSelector) {
 	if obj.Filtered() || obj.ActiveChildren() == 0 {
 		c.Remove(obj)
 	} else {

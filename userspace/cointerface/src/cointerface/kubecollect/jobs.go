@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	draiosproto "protorepo/agent-be/proto"
 	"context"
 	"reflect"
@@ -18,32 +19,32 @@ import (
 // Globals are reset in startJobsSInformer
 var jobInf cache.SharedInformer
 
-type coJob struct {
+type CoJob struct {
 	*v1batch.Job
 }
 
-func (job coJob) Selector() labels.Selector {
+func (job CoJob) Selector() labels.Selector {
 	s, _ := v1meta.LabelSelectorAsSelector(job.Spec.Selector)
 	return s
 }
 
-func (job coJob) Filtered() bool {
+func (job CoJob) Filtered() bool {
 	return false
 }
 
-func (job coJob) ActiveChildren() int32 {
+func (job CoJob) ActiveChildren() int32 {
 	return job.Status.Active
 }
 
 // make this a library function?
-func jobEvent(job coJob, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
+func jobEvent(job CoJob, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
 		Object: newJobConGroup(job, setLinks),
 	}
 }
 
-func jobEquals(lhs coJob, rhs coJob) (bool, bool) {
+func jobEquals(lhs CoJob, rhs CoJob) (bool, bool) {
 	sameEntity := true
 	sameLinks := true
 
@@ -51,7 +52,7 @@ func jobEquals(lhs coJob, rhs coJob) (bool, bool) {
 		sameEntity = false
 	}
 
-	sameEntity = sameEntity && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta)
+	sameEntity = sameEntity && kubecollect_common.EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta)
 
 	if lhs.Status.Active != rhs.Status.Active {
 		sameEntity = false
@@ -80,7 +81,7 @@ func jobEquals(lhs coJob, rhs coJob) (bool, bool) {
 	return sameEntity, sameLinks
 }
 
-func newJobConGroup(job coJob, setLinks bool) (*draiosproto.ContainerGroup) {
+func newJobConGroup(job CoJob, setLinks bool) (*draiosproto.ContainerGroup) {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_job"),
@@ -88,8 +89,8 @@ func newJobConGroup(job coJob, setLinks bool) (*draiosproto.ContainerGroup) {
 			Namespace:proto.String(job.GetNamespace()),
 	}
 
-	ret.Tags = GetTags(job.ObjectMeta, "kubernetes.job.")
-	addJobMetrics(&ret.Metrics, job)
+	ret.Tags = kubecollect_common.GetTags(job.ObjectMeta, "kubernetes.job.")
+	AddJobMetrics(&ret.Metrics, job)
 	if setLinks {
 		AddPodChildrenFromOwnerRef(&ret.Children, job.ObjectMeta)
 		AddCronJobParent(&ret.Parents, job)
@@ -97,14 +98,14 @@ func newJobConGroup(job coJob, setLinks bool) (*draiosproto.ContainerGroup) {
 	return ret
 }
 
-func addJobMetrics(metrics *[]*draiosproto.AppMetric, job coJob) {
+func AddJobMetrics(metrics *[]*draiosproto.AppMetric, job CoJob) {
 	prefix := "kubernetes.job."
 
-	AppendMetricPtrInt32(metrics, prefix+"spec.parallelism", job.Spec.Parallelism)
-	AppendMetricPtrInt32(metrics, prefix+"spec.completions", job.Spec.Completions)
-	AppendMetricInt32(metrics, prefix+"status.active", job.Status.Active)
-	AppendMetricInt32(metrics, prefix+"status.succeeded", job.Status.Succeeded)
-	AppendMetricInt32(metrics, prefix+"status.failed", job.Status.Failed)
+	kubecollect_common.AppendMetricPtrInt32(metrics, prefix+"spec.parallelism", job.Spec.Parallelism)
+	kubecollect_common.AppendMetricPtrInt32(metrics, prefix+"spec.completions", job.Spec.Completions)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.active", job.Status.Active)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.succeeded", job.Status.Succeeded)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.failed", job.Status.Failed)
 }
 
 func startJobsSInformer(ctx context.Context,
@@ -113,7 +114,7 @@ func startJobsSInformer(ctx context.Context,
 			evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.BatchV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "jobs", v1meta.NamespaceAll, fields.Everything())
-	jobInf = cache.NewSharedInformer(lw, &v1batch.Job{}, RsyncInterval)
+	jobInf = cache.NewSharedInformer(lw, &v1batch.Job{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -129,15 +130,15 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	jobInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				eventReceived("jobs")
-				evtc <- jobEvent(coJob{obj.(*v1batch.Job)},
+				kubecollect_common.EventReceived("jobs")
+				evtc <- jobEvent(CoJob{obj.(*v1batch.Job)},
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
-				addEvent("Job", EVENT_ADD)
+				kubecollect_common.AddEvent("Job", kubecollect_common.EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				addEvent("Job", EVENT_UPDATE)
-				oldJob := coJob{oldObj.(*v1batch.Job)}
-				newJob := coJob{newObj.(*v1batch.Job)}
+				kubecollect_common.AddEvent("Job", kubecollect_common.EVENT_UPDATE)
+				oldJob := CoJob{oldObj.(*v1batch.Job)}
+				newJob := CoJob{newObj.(*v1batch.Job)}
 				if oldJob.GetResourceVersion() == newJob.GetResourceVersion() {
 					return
 				}
@@ -146,19 +147,19 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				if !sameEntity || !sameLinks {
 					evtc <- jobEvent(newJob,
 						draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
-					addEvent("Job", EVENT_UPDATE_AND_SEND)
+					kubecollect_common.AddEvent("Job", kubecollect_common.EVENT_UPDATE_AND_SEND)
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				job := coJob{nil}
+				job := CoJob{nil}
 				switch obj.(type) {
 				case *v1batch.Job:
-					job = coJob{obj.(*v1batch.Job)}
+					job = CoJob{obj.(*v1batch.Job)}
 				case cache.DeletedFinalStateUnknown:
 					d := obj.(cache.DeletedFinalStateUnknown)
 					o, ok := (d.Obj).(*v1batch.Job)
 					if ok {
-						job = coJob{o}
+						job = CoJob{o}
 					} else {
 						log.Warn("DeletedFinalStateUnknown without job object")
 					}
@@ -171,7 +172,7 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 
 				evtc <- jobEvent(job,
 					draiosproto.CongroupEventType_REMOVED.Enum(), false)
-				addEvent("Job", EVENT_DELETE)
+				kubecollect_common.AddEvent("Job", kubecollect_common.EVENT_DELETE)
 			},
 		},
 	)

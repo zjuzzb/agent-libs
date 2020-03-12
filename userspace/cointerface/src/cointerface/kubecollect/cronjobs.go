@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	"context"
 	"sync"
 
@@ -52,8 +53,8 @@ func newCronJobConGroup(cronjob *v2alpha1.CronJob) (*draiosproto.ContainerGroup)
 
 var cronJobInf cache.SharedInformer
 
-func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job coJob) {
-	if !resourceReady("cronjobs") {
+func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job CoJob) {
+	if !kubecollect_common.ResourceReady("cronjobs") {
 		return
 	}
 
@@ -69,10 +70,10 @@ func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job coJob) {
 	}
 }
 
-func startCronJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
+func StartCronJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.BatchV2alpha1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "cronjobs", v1meta.NamespaceAll, fields.Everything())
-	cronJobInf = cache.NewSharedInformer(lw, &v2alpha1.CronJob{}, RsyncInterval)
+	cronJobInf = cache.NewSharedInformer(lw, &v2alpha1.CronJob{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -90,10 +91,10 @@ func watchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	cronJobInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				eventReceived("cronjobs")
+				kubecollect_common.EventReceived("cronjobs")
 				evtc <- cronJobEvent(obj.(*v2alpha1.CronJob),
 					draiosproto.CongroupEventType_ADDED.Enum())
-				addEvent("Cronjob", EVENT_ADD)
+				kubecollect_common.AddEvent("Cronjob", kubecollect_common.EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldJob := oldObj.(*v2alpha1.CronJob)
@@ -109,9 +110,9 @@ func watchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					// fnew.WriteString("\n")
 					evtc <- cronJobEvent(newJob,
 						draiosproto.CongroupEventType_UPDATED.Enum())
-					addEvent("Cronjob", EVENT_UPDATE_AND_SEND)
+					kubecollect_common.AddEvent("Cronjob", kubecollect_common.EVENT_UPDATE_AND_SEND)
 				}
-				addEvent("Cronjob", EVENT_UPDATE)
+				kubecollect_common.AddEvent("Cronjob", kubecollect_common.EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldCronJob := (*v2alpha1.CronJob)(nil)
@@ -135,7 +136,7 @@ func watchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 
 				evtc <- cronJobEvent(oldCronJob,
 					draiosproto.CongroupEventType_REMOVED.Enum())
-				addEvent("Cronjob", EVENT_DELETE)
+				kubecollect_common.AddEvent("Cronjob", kubecollect_common.EVENT_DELETE)
 			},
 		},
 	)

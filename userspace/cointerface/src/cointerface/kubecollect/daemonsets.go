@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	draiosproto "protorepo/agent-be/proto"
 	"context"
 	"reflect"
@@ -18,31 +19,31 @@ import (
 // Globals are reset in startDaemonSetsSInformer
 var daemonSetInf cache.SharedInformer
 
-type coDaemonSet struct {
+type CoDaemonSet struct {
 	*appsv1.DaemonSet
 }
 
-func (ds coDaemonSet) Selector() labels.Selector {
+func (ds CoDaemonSet) Selector() labels.Selector {
 	s, _ := v1meta.LabelSelectorAsSelector(ds.Spec.Selector)
 	return s
 }
 
-func (ds coDaemonSet) Filtered() bool {
+func (ds CoDaemonSet) Filtered() bool {
 	return false
 }
 
-func (ds coDaemonSet) ActiveChildren() int32 {
+func (ds CoDaemonSet) ActiveChildren() int32 {
 	return ds.Status.CurrentNumberScheduled + ds.Status.NumberMisscheduled
 }
 
-func daemonSetEvent(ds coDaemonSet, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
+func daemonSetEvent(ds CoDaemonSet, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
 		Object: newDaemonSetCongroup(ds, setLinks),
 	}
 }
 
-func dsEquals(lhs coDaemonSet, rhs coDaemonSet) (bool, bool) {
+func dsEquals(lhs CoDaemonSet, rhs CoDaemonSet) (bool, bool) {
 	sameEntity := true
 	sameLinks := true
 
@@ -50,8 +51,8 @@ func dsEquals(lhs coDaemonSet, rhs coDaemonSet) (bool, bool) {
 		sameEntity = false
 	}
 
-	sameEntity = sameEntity && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
-        EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
+	sameEntity = sameEntity && kubecollect_common.EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
+		kubecollect_common.EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
 	if lhs.ActiveChildren() != rhs.ActiveChildren() {
 		sameEntity = false
@@ -82,7 +83,7 @@ func dsEquals(lhs coDaemonSet, rhs coDaemonSet) (bool, bool) {
 	return sameEntity, sameLinks
 }
 
-func newDaemonSetCongroup(daemonSet coDaemonSet, setLinks bool) (*draiosproto.ContainerGroup) {
+func newDaemonSetCongroup(daemonSet CoDaemonSet, setLinks bool) (*draiosproto.ContainerGroup) {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_daemonset"),
@@ -90,27 +91,27 @@ func newDaemonSetCongroup(daemonSet coDaemonSet, setLinks bool) (*draiosproto.Co
 		Namespace:proto.String(daemonSet.GetNamespace()),
 	}
 
-	ret.Tags = GetTags(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
-	ret.InternalTags = GetAnnotations(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
-	addDaemonSetMetrics(&ret.Metrics, daemonSet)
+	ret.Tags = kubecollect_common.GetTags(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
+	ret.InternalTags = kubecollect_common.GetAnnotations(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
+	AddDaemonSetMetrics(&ret.Metrics, daemonSet)
 	if setLinks {
 		AddPodChildrenFromOwnerRef(&ret.Children, daemonSet.ObjectMeta)
 	}
 	return ret
 }
 
-func addDaemonSetMetrics(metrics *[]*draiosproto.AppMetric, daemonSet coDaemonSet) {
+func AddDaemonSetMetrics(metrics *[]*draiosproto.AppMetric, daemonSet CoDaemonSet) {
 	prefix := "kubernetes.daemonSet."
-	AppendMetricInt32(metrics, prefix+"status.currentNumberScheduled", daemonSet.Status.CurrentNumberScheduled)
-	AppendMetricInt32(metrics, prefix+"status.numberMisscheduled", daemonSet.Status.NumberMisscheduled)
-	AppendMetricInt32(metrics, prefix+"status.desiredNumberScheduled", daemonSet.Status.DesiredNumberScheduled)
-	AppendMetricInt32(metrics, prefix+"status.numberReady", daemonSet.Status.NumberReady)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.currentNumberScheduled", daemonSet.Status.CurrentNumberScheduled)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.numberMisscheduled", daemonSet.Status.NumberMisscheduled)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.desiredNumberScheduled", daemonSet.Status.DesiredNumberScheduled)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.numberReady", daemonSet.Status.NumberReady)
 }
 
 func startDaemonSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.AppsV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "DaemonSets", v1meta.NamespaceAll, fields.Everything())
-	daemonSetInf = cache.NewSharedInformer(lw, &appsv1.DaemonSet{}, RsyncInterval)
+	daemonSetInf = cache.NewSharedInformer(lw, &appsv1.DaemonSet{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -126,16 +127,16 @@ func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	daemonSetInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				eventReceived("daemonsets")
+				kubecollect_common.EventReceived("daemonsets")
 				//log.Debugf("AddFunc dumping DaemonSet: %v", obj.(*appsv1.DaemonSet))
-				evtc <- daemonSetEvent(coDaemonSet{obj.(*appsv1.DaemonSet)},
+				evtc <- daemonSetEvent(CoDaemonSet{obj.(*appsv1.DaemonSet)},
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
-				addEvent("DaemonSet", EVENT_ADD)
+				kubecollect_common.AddEvent("DaemonSet", kubecollect_common.EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				addEvent("DaemonSet", EVENT_UPDATE)
-				oldDS := coDaemonSet{oldObj.(*appsv1.DaemonSet)}
-				newDS := coDaemonSet{newObj.(*appsv1.DaemonSet)}
+				kubecollect_common.AddEvent("DaemonSet", kubecollect_common.EVENT_UPDATE)
+				oldDS := CoDaemonSet{oldObj.(*appsv1.DaemonSet)}
+				newDS := CoDaemonSet{newObj.(*appsv1.DaemonSet)}
 				if oldDS.GetResourceVersion() == newDS.GetResourceVersion() {
 					return
 				}
@@ -144,19 +145,19 @@ func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				if !sameEntity || !sameLinks {
 					evtc <- daemonSetEvent(newDS,
 						draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
-					addEvent("DaemonSet", EVENT_UPDATE_AND_SEND)
+					kubecollect_common.AddEvent("DaemonSet", kubecollect_common.EVENT_UPDATE_AND_SEND)
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				ds := coDaemonSet{nil}
+				ds := CoDaemonSet{nil}
 				switch obj.(type) {
 				case *appsv1.DaemonSet:
-					ds = coDaemonSet{obj.(*appsv1.DaemonSet)}
+					ds = CoDaemonSet{obj.(*appsv1.DaemonSet)}
 				case cache.DeletedFinalStateUnknown:
 					d := obj.(cache.DeletedFinalStateUnknown)
 					o, ok := (d.Obj).(*appsv1.DaemonSet)
 					if ok {
-						ds = coDaemonSet{o}
+						ds = CoDaemonSet{o}
 					} else {
 						log.Warn("DeletedFinalStateUnknown without daemonset object")
 					}
@@ -169,7 +170,7 @@ func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 
 				evtc <- daemonSetEvent(ds,
 					draiosproto.CongroupEventType_REMOVED.Enum(), false)
-				addEvent("DaemonSet", EVENT_DELETE)
+				kubecollect_common.AddEvent("DaemonSet", kubecollect_common.EVENT_DELETE)
 			},
 		},
 	)

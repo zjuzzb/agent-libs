@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	draiosproto "protorepo/agent-be/proto"
 	"context"
 	"sync"
@@ -62,8 +63,8 @@ func newIngressCongroup(ingress *v1beta1.Ingress) (*draiosproto.ContainerGroup) 
 
 var ingressInf cache.SharedInformer
 
-func AddIngressParents(parents *[]*draiosproto.CongroupUid, service coService) {
-	if !resourceReady("ingress") {
+func AddIngressParents(parents *[]*draiosproto.CongroupUid, service CoService) {
+	if !kubecollect_common.ResourceReady("ingress") {
 		return
 	}
 
@@ -92,10 +93,10 @@ func AddIngressParents(parents *[]*draiosproto.CongroupUid, service coService) {
 	}
 }
 
-func startIngressSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
+func StartIngressSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ingresses", v1meta.NamespaceAll, fields.Everything())
-	ingressInf = cache.NewSharedInformer(lw, &v1beta1.Ingress{}, RsyncInterval)
+	ingressInf = cache.NewSharedInformer(lw, &v1beta1.Ingress{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -111,10 +112,10 @@ func watchIngress(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	ingressInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				eventReceived("ingress")
+				kubecollect_common.EventReceived("ingress")
 				evtc <- ingressEvent(obj.(*v1beta1.Ingress),
 					draiosproto.CongroupEventType_ADDED.Enum())
-				addEvent("Ingress", EVENT_ADD)
+				kubecollect_common.AddEvent("Ingress", kubecollect_common.EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldIngress := oldObj.(*v1beta1.Ingress)
@@ -124,9 +125,9 @@ func watchIngress(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					//log.Debugf("UpdateFunc dumping Service newIngress %v", newIngress)
 					evtc <- ingressEvent(newIngress,
 						draiosproto.CongroupEventType_UPDATED.Enum())
-					addEvent("Ingress", EVENT_UPDATE_AND_SEND)
+					kubecollect_common.AddEvent("Ingress", kubecollect_common.EVENT_UPDATE_AND_SEND)
 				}
-				addEvent("Ingress", EVENT_UPDATE)
+				kubecollect_common.AddEvent("Ingress", kubecollect_common.EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldIngress := (*v1beta1.Ingress)(nil)
@@ -150,7 +151,7 @@ func watchIngress(evtc chan<- draiosproto.CongroupUpdateEvent) {
 
 				evtc <- ingressEvent(oldIngress,
 					draiosproto.CongroupEventType_REMOVED.Enum())
-				addEvent("Ingress", EVENT_DELETE)
+				kubecollect_common.AddEvent("Ingress", kubecollect_common.EVENT_DELETE)
 			},
 		},
 	)

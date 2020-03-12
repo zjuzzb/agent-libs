@@ -13,7 +13,7 @@ import (
 	"fmt"
 	log "github.com/cihub/seelog"
 	"os"
-        "github.com/draios/install_prefix"
+    "github.com/draios/install_prefix"
 	"cointerface/profile"
 )
 

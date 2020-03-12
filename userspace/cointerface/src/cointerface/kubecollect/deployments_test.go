@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -12,19 +13,19 @@ import (
 	draiosproto "protorepo/agent-be/proto"
 )
 
-var replicaset coReplicaSet
+var replicaset CoReplicaSet
 
 func deployment_fixture() {
 	// Initialize some variables used in kubecollect package
-	if startedMap == nil {
-		startedMap = make(map[string]bool)
+	if kubecollect_common.StartedMap == nil {
+		kubecollect_common.StartedMap = make(map[string]bool)
 	}
 
 	// Make resource "deployment" ready
-	startedMap["deployments"] = true
+	kubecollect_common.StartedMap["deployments"] = true
 
 	// Create a selector cache
-	deploySelectorCache = newSelectorCache()
+	deploySelectorCache = NewSelectorCache()
 
 	// Run the deployment informer with a fake client.
 	// This is needed by AddDeploymentParents to work properly
@@ -50,7 +51,7 @@ func deployment_fixture() {
 }
 
 // Creates two deployment objects that are DeepEqual
-func createDeploymentCopies() (coDeployment, coDeployment) {
+func createDeploymentCopies() (CoDeployment, CoDeployment) {
 	var numReplicas int32 = 5
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -79,12 +80,12 @@ func createDeploymentCopies() (coDeployment, coDeployment) {
 		},
 	}
 
-	orig := coDeployment{ Deployment: deploy }
-	copy := coDeployment{ Deployment: deploy.DeepCopy() }
+	orig := CoDeployment{ Deployment: deploy }
+	copy := CoDeployment{ Deployment: deploy.DeepCopy() }
 	return orig, copy
 }
 
-func deploymentEqualsHelper(t *testing.T, old coDeployment, new coDeployment, expected bool) {
+func deploymentEqualsHelper(t *testing.T, old CoDeployment, new CoDeployment, expected bool) {
 	sameEntity, sameLinks := deploymentEquals(old, new)
 	res := sameEntity && sameLinks
 	if (!sameLinks && sameEntity) || (res != expected)  {

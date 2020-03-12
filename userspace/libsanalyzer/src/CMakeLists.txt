@@ -224,6 +224,10 @@ set(SANALYZER_SOURCES
     transactinfo.cpp
     userdb.cpp
     k8s_namespace_store.cpp
+    k8s_hpa_store.cpp
+    k8s_pod_store.cpp
+    k8s_object_store.cpp
+    k8s_store_manager.cpp
     ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cgroup_limits.cpp
     ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel.cpp
     ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel_api.cpp

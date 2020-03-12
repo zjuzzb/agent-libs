@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	draiosproto "protorepo/agent-be/proto"
 	"context"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,26 +19,26 @@ import (
 
 // Globals are reset in startDeploymentsSInformer
 var deploymentInf cache.SharedInformer
-var deploySelectorCache *selectorCache
+var deploySelectorCache *SelectorCache
 
-type coDeployment struct {
+type CoDeployment struct {
 	*appsv1.Deployment
 }
 
-func (deploy coDeployment) Selector() labels.Selector {
+func (deploy CoDeployment) Selector() labels.Selector {
 	s, _ := v1meta.LabelSelectorAsSelector(deploy.Spec.Selector)
 	return s
 }
 
-func (deploy coDeployment) Filtered() bool {
+func (deploy CoDeployment) Filtered() bool {
 	return false
 }
 
-func (deploy coDeployment) ActiveChildren() int32 {
+func (deploy CoDeployment) ActiveChildren() int32 {
 	return deploy.Status.Replicas
 }
 
-func deploymentEvent(dep coDeployment, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
+func deploymentEvent(dep CoDeployment, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
 		Object: newDeploymentCongroup(dep, setLinks),
@@ -45,7 +46,7 @@ func deploymentEvent(dep coDeployment, eventType *draiosproto.CongroupEventType,
 }
 
 // sameEntity will always be false when sameLinks is false
-func deploymentEquals(lhs coDeployment, rhs coDeployment) (sameEntity bool, sameLinks bool) {
+func deploymentEquals(lhs CoDeployment, rhs CoDeployment) (sameEntity bool, sameLinks bool) {
 	if rhs.Deployment == nil || lhs.Deployment == nil {
 		return false, false
 	}
@@ -78,15 +79,15 @@ func deploymentEquals(lhs coDeployment, rhs coDeployment) (sameEntity bool, same
 		lhs.Status.UpdatedReplicas != rhs.Status.UpdatedReplicas {
 		return false, true
 	}
-	if !EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) ||
-		!EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta) {
+	if !kubecollect_common.EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) ||
+		!kubecollect_common.EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta) {
 		return false, true
 	}
 
 	return true, true
 }
 
-func newDeploymentCongroup(deployment coDeployment, setLinks bool) (*draiosproto.ContainerGroup) {
+func newDeploymentCongroup(deployment CoDeployment, setLinks bool) (*draiosproto.ContainerGroup) {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_deployment"),
@@ -94,9 +95,9 @@ func newDeploymentCongroup(deployment coDeployment, setLinks bool) (*draiosproto
 		Namespace:proto.String(deployment.GetNamespace()),
 	}
 
-	ret.Tags = GetTags(deployment.ObjectMeta, "kubernetes.deployment.")
-	ret.InternalTags = GetAnnotations(deployment.ObjectMeta, "kubernetes.deployment.")
-	addDeploymentMetrics(&ret.Metrics, deployment)
+	ret.Tags = kubecollect_common.GetTags(deployment.ObjectMeta, "kubernetes.deployment.")
+	ret.InternalTags = kubecollect_common.GetAnnotations(deployment.ObjectMeta, "kubernetes.deployment.")
+	AddDeploymentMetrics(&ret.Metrics, deployment)
 	if setLinks {
 
 		selector, ok := deploySelectorCache.Get(deployment)
@@ -108,24 +109,24 @@ func newDeploymentCongroup(deployment coDeployment, setLinks bool) (*draiosproto
 	return ret
 }
 
-func addDeploymentMetrics(metrics *[]*draiosproto.AppMetric, deployment coDeployment) {
+func AddDeploymentMetrics(metrics *[]*draiosproto.AppMetric, deployment CoDeployment) {
 	prefix := "kubernetes.deployment."
-	AppendMetricInt32(metrics, prefix+"status.replicas", deployment.Status.ReadyReplicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.replicas", deployment.Status.ReadyReplicas)
 	// kube-state-metrics uses "kube_deployment_status_replicas_available" but
 	// we use availableReplicas instead of replicasAvailable because it matches
 	// the name in DeploymentStatus and other resources like ReplicationControllers
-	AppendMetricInt32(metrics, prefix+"status.availableReplicas", deployment.Status.AvailableReplicas)
-	AppendMetricInt32(metrics, prefix+"status.unavailableReplicas", deployment.Status.UnavailableReplicas)
-	AppendMetricInt32(metrics, prefix+"status.updatedReplicas", deployment.Status.UpdatedReplicas)
-	AppendMetricPtrInt32(metrics, prefix+"spec.replicas", deployment.Spec.Replicas)
-	AppendMetricBool(metrics, prefix+"spec.paused", deployment.Spec.Paused)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.availableReplicas", deployment.Status.AvailableReplicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.unavailableReplicas", deployment.Status.UnavailableReplicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.updatedReplicas", deployment.Status.UpdatedReplicas)
+	kubecollect_common.AppendMetricPtrInt32(metrics, prefix+"spec.replicas", deployment.Spec.Replicas)
+	kubecollect_common.AppendMetricBool(metrics, prefix+"spec.paused", deployment.Spec.Paused)
 	//if deployment.Spec.Strategy.RollingUpdate != nil {
 	//	metrics[prefix + "spec.strategy.rollingupdate.max.unavailable"] = uint32(deployment.Spec.Strategy.RollingUpdate.MaxUnavailable)
 	//}
 }
 
-func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, rs coReplicaSet) {
-	if !resourceReady("deployments") {
+func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, rs CoReplicaSet) {
+	if !kubecollect_common.ResourceReady("deployments") {
 		return
 	}
 
@@ -143,7 +144,7 @@ func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, rs coReplicaSet) 
 		// did not find an owner reference. Use usual selector, label mechanism
 		rsLabels := labels.Set(rs.GetLabels())
 		for _, obj := range deploymentInf.GetStore().List() {
-			deploy := coDeployment{obj.(*appsv1.Deployment)}
+			deploy := CoDeployment{obj.(*appsv1.Deployment)}
 			if rs.GetNamespace() != deploy.GetNamespace() {
 				continue
 			}
@@ -165,7 +166,7 @@ func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, rs coReplicaSet) 
 }
 
 func AddDeploymentChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if !resourceReady("deployments") {
+	if !kubecollect_common.ResourceReady("deployments") {
 		return
 	}
 
@@ -180,7 +181,7 @@ func AddDeploymentChildrenFromNamespace(children *[]*draiosproto.CongroupUid, na
 }
 
 func AddDeploymentChildrenByName(children *[]*draiosproto.CongroupUid, namespace string, name string) {
-	if !resourceReady("deployments") {
+	if !kubecollect_common.ResourceReady("deployments") {
 		return
 	}
 
@@ -196,10 +197,10 @@ func AddDeploymentChildrenByName(children *[]*draiosproto.CongroupUid, namespace
 }
 
 func startDeploymentsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
-	deploySelectorCache = newSelectorCache()
+	deploySelectorCache = NewSelectorCache()
 	client := kubeClient.AppsV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "Deployments", v1meta.NamespaceAll, fields.Everything())
-	deploymentInf = cache.NewSharedInformer(lw, &appsv1.Deployment{}, RsyncInterval)
+	deploymentInf = cache.NewSharedInformer(lw, &appsv1.Deployment{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -215,15 +216,15 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	deploymentInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				eventReceived("deployments")
-				evtc <- deploymentEvent(coDeployment{obj.(*appsv1.Deployment)},
+				kubecollect_common.EventReceived("deployments")
+				evtc <- deploymentEvent(CoDeployment{obj.(*appsv1.Deployment)},
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
-				addEvent("Deployment", EVENT_ADD)
+				kubecollect_common.AddEvent("Deployment", kubecollect_common.EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				addEvent("Deployment", EVENT_UPDATE)
-				oldDeployment := coDeployment{oldObj.(*appsv1.Deployment)}
-				newDeployment := coDeployment{newObj.(*appsv1.Deployment)}
+				kubecollect_common.AddEvent("Deployment", kubecollect_common.EVENT_UPDATE)
+				oldDeployment := CoDeployment{oldObj.(*appsv1.Deployment)}
+				newDeployment := CoDeployment{newObj.(*appsv1.Deployment)}
 				if oldDeployment.GetResourceVersion() == newDeployment.GetResourceVersion() {
 					return
 				}
@@ -235,19 +236,19 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				if !sameEntity || !sameLinks {
 					evtc <- deploymentEvent(newDeployment,
 						draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
-					addEvent("Deployment", EVENT_UPDATE_AND_SEND)
+					kubecollect_common.AddEvent("Deployment", kubecollect_common.EVENT_UPDATE_AND_SEND)
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				oldDeployment := coDeployment{nil}
+				oldDeployment := CoDeployment{nil}
 				switch obj.(type) {
 				case *appsv1.Deployment:
-					oldDeployment = coDeployment{obj.(*appsv1.Deployment)}
+					oldDeployment = CoDeployment{obj.(*appsv1.Deployment)}
 				case cache.DeletedFinalStateUnknown:
 					d := obj.(cache.DeletedFinalStateUnknown)
 					o, ok := (d.Obj).(*appsv1.Deployment)
 					if ok {
-						oldDeployment = coDeployment{o}
+						oldDeployment = CoDeployment{o}
 					} else {
 						log.Warn("DeletedFinalStateUnknown without deployment object")
 					}
@@ -266,7 +267,7 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 							Id:proto.String(string(oldDeployment.GetUID()))},
 					},
 				}
-				addEvent("Deployment", EVENT_DELETE)
+				kubecollect_common.AddEvent("Deployment", kubecollect_common.EVENT_DELETE)
 			},
 		},
 	)

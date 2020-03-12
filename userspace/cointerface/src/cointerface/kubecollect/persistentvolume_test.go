@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	draiosproto "protorepo/agent-be/proto"
 	"encoding/json"
 	"github.com/gogo/protobuf/proto"
@@ -77,8 +78,8 @@ func getExpected() *draiosproto.ContainerGroup {
 		Tags:                 tags,
 	}
 
-	AppendMetricInt64(&ret.Metrics, "kubernetes.persistentvolume.storage", 500000000)
-	AppendMetricInt32(&ret.Metrics, "kubernetes.persistentvolume.count", 1)
+	kubecollect_common.AppendMetricInt64(&ret.Metrics, "kubernetes.persistentvolume.storage", 500000000)
+	kubecollect_common.AppendMetricInt32(&ret.Metrics, "kubernetes.persistentvolume.count", 1)
 
 	return ret
 }

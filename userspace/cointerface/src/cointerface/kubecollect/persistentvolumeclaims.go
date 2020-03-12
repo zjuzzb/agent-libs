@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	draiosproto "protorepo/agent-be/proto"
 	"context"
 	log "github.com/cihub/seelog"
@@ -16,10 +17,10 @@ import (
 var persistentVolumeClaimsInf cache.SharedInformer
 var pvcMetricPrefix = "kubernetes.persistentvolumeclaim."
 
-func startPersistentVolumeClaimsInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
+func StartPersistentVolumeClaimsInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "PersistentVolumeClaims", v1meta.NamespaceAll, fields.Everything())
-	persistentVolumeClaimsInf = cache.NewSharedInformer(lw, &v1.PersistentVolumeClaim{}, RsyncInterval)
+	persistentVolumeClaimsInf = cache.NewSharedInformer(lw, &v1.PersistentVolumeClaim{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -81,10 +82,10 @@ func addPersistentVolumeClaimMetrics(metrics *[]*draiosproto.AppMetric, pvc *v1.
 	storage, _ := pvc.Status.Capacity["storage"]
 
 	if requestStorage, ok := pvc.Spec.Resources.Requests[v1.ResourceStorage]; ok {
-		AppendMetricInt64(metrics, pvcMetricPrefix + "requests.storage", requestStorage.Value())
+		kubecollect_common.AppendMetricInt64(metrics, pvcMetricPrefix + "requests.storage", requestStorage.Value())
 	}
 
-	AppendMetricInt64(metrics, pvcMetricPrefix + "storage", storage.Value())
+	kubecollect_common.AppendMetricInt64(metrics, pvcMetricPrefix + "storage", storage.Value())
 }
 
 func watchPersistentVolumeClaims(evtc chan <- draiosproto.CongroupUpdateEvent) {
@@ -93,11 +94,11 @@ func watchPersistentVolumeClaims(evtc chan <- draiosproto.CongroupUpdateEvent) {
 	persistentVolumeClaimsInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				eventReceived("persistentvolumeclaims")
+				kubecollect_common.EventReceived("persistentvolumeclaims")
 				log.Debugf("PVC: %v", obj.(*v1.PersistentVolumeClaim))
 				evtc <- persistentVolumeClaimEvent(obj.(*v1.PersistentVolumeClaim),
 					draiosproto.CongroupEventType_ADDED.Enum())
-				addEvent("PersistentVolumeClaim", EVENT_ADD)
+				kubecollect_common.AddEvent("PersistentVolumeClaim", kubecollect_common.EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldPersistentVolumeClaim := oldObj.(*v1.PersistentVolumeClaim)
@@ -106,7 +107,7 @@ func watchPersistentVolumeClaims(evtc chan <- draiosproto.CongroupUpdateEvent) {
 					evtc <- persistentVolumeClaimEvent(newPersistentVolumeClaim,
 						draiosproto.CongroupEventType_UPDATED.Enum())
 				}
-				addEvent("PersistentVolumeClaim", EVENT_UPDATE)
+				kubecollect_common.AddEvent("PersistentVolumeClaim", kubecollect_common.EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldPVC := (*v1.PersistentVolumeClaim)(nil)
@@ -130,7 +131,7 @@ func watchPersistentVolumeClaims(evtc chan <- draiosproto.CongroupUpdateEvent) {
 
 				evtc <- persistentVolumeClaimEvent(oldPVC,
 					draiosproto.CongroupEventType_REMOVED.Enum())
-				addEvent("PersistentVolumeClaim", EVENT_DELETE)
+				kubecollect_common.AddEvent("PersistentVolumeClaim", kubecollect_common.EVENT_DELETE)
 			},
 		},
 	)

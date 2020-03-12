@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	draiosproto "protorepo/agent-be/proto"
 	"context"
 	"reflect"
@@ -19,11 +20,11 @@ import (
 var replicationControllerInf cache.SharedInformer
 var filterEmptyRc bool
 
-type coReplicationController struct {
+type CoReplicationController struct {
 	*v1.ReplicationController
 }
 
-func (rc coReplicationController) Selector() labels.Selector {
+func (rc CoReplicationController) Selector() labels.Selector {
 	return labels.Set(rc.Spec.Selector).AsSelector()
 }
 
@@ -31,18 +32,18 @@ func (rc coReplicationController) Selector() labels.Selector {
 // scaled down to 0 pods in the spec. Those objects are rarely useful and
 // can grow to a majority of the objects in the cluster, so we filter them
 // out to keep load down in infra_state and the protobuf/backend.
-func (rc coReplicationController) Filtered() bool {
+func (rc CoReplicationController) Filtered() bool {
 	if filterEmptyRc && rc.specReplicas() == 0 {
 		return true
 	}
 	return false
 }
 
-func (rc coReplicationController) ActiveChildren() int32 {
+func (rc CoReplicationController) ActiveChildren() int32 {
 	return rc.Status.Replicas
 }
 
-func (rc coReplicationController) specReplicas() int32 {
+func (rc CoReplicationController) specReplicas() int32 {
 	if rc.Spec.Replicas == nil {
 		return 1
 	}
@@ -50,14 +51,14 @@ func (rc coReplicationController) specReplicas() int32 {
 }
 
 // make this a library function?
-func replicationControllerEvent(rc coReplicationController, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
+func replicationControllerEvent(rc CoReplicationController, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
 		Object: newReplicationControllerCongroup(rc, setLinks),
 	}
 }
 
-func rcEquals(lhs coReplicationController, rhs coReplicationController) (bool, bool) {
+func rcEquals(lhs CoReplicationController, rhs CoReplicationController) (bool, bool) {
 	sameEntity := true
 	sameLinks := true
 
@@ -65,8 +66,8 @@ func rcEquals(lhs coReplicationController, rhs coReplicationController) (bool, b
 		sameEntity = false
 	}
 
-	sameEntity = sameEntity && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
-        EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
+	sameEntity = sameEntity && kubecollect_common.EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
+        kubecollect_common.EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
 	if lhs.Status.Replicas != rhs.Status.Replicas {
 			sameEntity = false
@@ -102,7 +103,7 @@ func rcEquals(lhs coReplicationController, rhs coReplicationController) (bool, b
 	return sameEntity, sameLinks
 }
 
-func newReplicationControllerCongroup(replicationController coReplicationController, setLinks bool) (*draiosproto.ContainerGroup) {
+func newReplicationControllerCongroup(replicationController CoReplicationController, setLinks bool) (*draiosproto.ContainerGroup) {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_replicationcontroller"),
@@ -110,9 +111,9 @@ func newReplicationControllerCongroup(replicationController coReplicationControl
 		Namespace:proto.String(replicationController.GetNamespace()),
 	}
 
-	ret.Tags = GetTags(replicationController.ObjectMeta, "kubernetes.replicationController.")
-	ret.InternalTags = GetAnnotations(replicationController.ObjectMeta, "kubernetes.replicationController.")
-	addReplicationControllerMetrics(&ret.Metrics, replicationController)
+	ret.Tags = kubecollect_common.GetTags(replicationController.ObjectMeta, "kubernetes.replicationController.")
+	ret.InternalTags = kubecollect_common.GetAnnotations(replicationController.ObjectMeta, "kubernetes.replicationController.")
+	AddReplicationControllerMetrics(&ret.Metrics, replicationController)
 	if setLinks {
 		AddPodChildrenFromOwnerRef(&ret.Children, replicationController.ObjectMeta)
 		AddHorizontalPodAutoscalerParents(&ret.Parents, replicationController.GetNamespace(), replicationController.APIVersion, replicationController.Kind, replicationController.GetName() )
@@ -120,17 +121,17 @@ func newReplicationControllerCongroup(replicationController coReplicationControl
 	return ret
 }
 
-func addReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicationController coReplicationController) {
+func AddReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicationController CoReplicationController) {
 	prefix := "kubernetes.replicationController."
-	AppendMetricInt32(metrics, prefix+"status.replicas", replicationController.Status.ReadyReplicas)
-	AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicationController.Status.FullyLabeledReplicas)
-	AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicationController.Status.ReadyReplicas)
-	AppendMetricInt32(metrics, prefix+"status.availableReplicas", replicationController.Status.AvailableReplicas)
-	AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicationController.Spec.Replicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.replicas", replicationController.Status.ReadyReplicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicationController.Status.FullyLabeledReplicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicationController.Status.ReadyReplicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.availableReplicas", replicationController.Status.AvailableReplicas)
+	kubecollect_common.AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicationController.Spec.Replicas)
 }
 
 func AddReplicationControllerChildrenByName(children *[]*draiosproto.CongroupUid, namespace string, name string) {
-	if !resourceReady("replicationcontrollers") {
+	if !kubecollect_common.ResourceReady("replicationcontrollers") {
 		return
 	}
 
@@ -149,7 +150,7 @@ func startReplicationControllersSInformer(ctx context.Context, kubeClient kubecl
 	filterEmptyRc = filterEmpty
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicationControllers", v1meta.NamespaceAll, fields.Everything())
-	replicationControllerInf = cache.NewSharedInformer(lw, &v1.ReplicationController{}, RsyncInterval)
+	replicationControllerInf = cache.NewSharedInformer(lw, &v1.ReplicationController{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -165,21 +166,21 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	replicationControllerInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				eventReceived("replicationcontrollers")
+				kubecollect_common.EventReceived("replicationcontrollers")
 
-				rc := coReplicationController{obj.(*v1.ReplicationController)}
+				rc := CoReplicationController{obj.(*v1.ReplicationController)}
 				if rc.Filtered() {
 					return
 				}
 
 				evtc <- replicationControllerEvent(rc,
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
-				addEvent("ReplicationController", EVENT_ADD)
+				kubecollect_common.AddEvent("ReplicationController", kubecollect_common.EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				addEvent("ReplicationController", EVENT_UPDATE)
-				oldRC := coReplicationController{oldObj.(*v1.ReplicationController)}
-				newRC := coReplicationController{newObj.(*v1.ReplicationController)}
+				kubecollect_common.AddEvent("ReplicationController", kubecollect_common.EVENT_UPDATE)
+				oldRC := CoReplicationController{oldObj.(*v1.ReplicationController)}
+				newRC := CoReplicationController{newObj.(*v1.ReplicationController)}
 				if oldRC.GetResourceVersion() == newRC.GetResourceVersion() {
 					return
 				}
@@ -191,7 +192,7 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				} else if filterEmptyRc && oldReplicas == 0 && newReplicas > 0 {
 					evtc <- replicationControllerEvent(newRC,
 						draiosproto.CongroupEventType_ADDED.Enum(), true)
-					addEvent("ReplicationController", EVENT_UPDATE_AND_SEND)
+					kubecollect_common.AddEvent("ReplicationController", kubecollect_common.EVENT_UPDATE_AND_SEND)
 					return
 				} else if filterEmptyRc && oldReplicas > 0 && newReplicas == 0 {
 					evtc <- draiosproto.CongroupUpdateEvent {
@@ -202,27 +203,27 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 								Id:proto.String(string(newRC.GetUID()))},
 						},
 					}
-					addEvent("ReplicationController", EVENT_UPDATE_AND_SEND)
+					kubecollect_common.AddEvent("ReplicationController", kubecollect_common.EVENT_UPDATE_AND_SEND)
 					return
 				} else {
 					sameEntity, sameLinks := rcEquals(oldRC, newRC)
 					if !sameEntity || !sameLinks {
 						evtc <- replicationControllerEvent(newRC,
 							draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
-						addEvent("ReplicationController", EVENT_UPDATE_AND_SEND)
+						kubecollect_common.AddEvent("ReplicationController", kubecollect_common.EVENT_UPDATE_AND_SEND)
 					}
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				rc := coReplicationController{nil}
+				rc := CoReplicationController{nil}
 				switch obj.(type) {
 				case *v1.ReplicationController:
-					rc = coReplicationController{obj.(*v1.ReplicationController)}
+					rc = CoReplicationController{obj.(*v1.ReplicationController)}
 				case cache.DeletedFinalStateUnknown:
 					d := obj.(cache.DeletedFinalStateUnknown)
 					o, ok := (d.Obj).(*v1.ReplicationController)
 					if ok {
-						rc = coReplicationController{o}
+						rc = CoReplicationController{o}
 					} else {
 						log.Warn("DeletedFinalStateUnknown without replicationcontroller object")
 					}
@@ -245,7 +246,7 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 							Id:proto.String(string(rc.GetUID()))},
 					},
 				}
-				addEvent("ReplicationController", EVENT_DELETE)
+				kubecollect_common.AddEvent("ReplicationController", kubecollect_common.EVENT_DELETE)
 			},
 		},
 	)

@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	draiosproto "protorepo/agent-be/proto"
 	"context"
 	"sync"
@@ -30,9 +31,9 @@ func newHorizontalPodAutoscalerCongroup(hpa *v1as.HorizontalPodAutoscaler) (*dra
 		Namespace:proto.String(hpa.GetNamespace()),
 	}
 
-	ret.Tags = GetTags(hpa.ObjectMeta, "kubernetes.hpa.")
-	ret.InternalTags = GetAnnotations(hpa.ObjectMeta, "kubernetes.hpa.")
-	addHorizontalPodAutoscalerMetrics(&ret.Metrics, hpa)
+	ret.Tags = kubecollect_common.GetTags(hpa.ObjectMeta, "kubernetes.hpa.")
+	ret.InternalTags = kubecollect_common.GetAnnotations(hpa.ObjectMeta, "kubernetes.hpa.")
+	AddHorizontalPodAutoscalerMetrics(&ret.Metrics, hpa)
 	AddPodChildrenFromOwnerRef(&ret.Children, hpa.ObjectMeta)
 	if (hpa.Spec.ScaleTargetRef.Kind == "Deployment") {
 		AddDeploymentChildrenByName(&ret.Children, hpa.GetNamespace(), hpa.Spec.ScaleTargetRef.Name)
@@ -45,16 +46,16 @@ func newHorizontalPodAutoscalerCongroup(hpa *v1as.HorizontalPodAutoscaler) (*dra
 	return ret
 }
 
-func addHorizontalPodAutoscalerMetrics(metrics *[]*draiosproto.AppMetric, horizontalPodAutoscaler *v1as.HorizontalPodAutoscaler) {
+func AddHorizontalPodAutoscalerMetrics(metrics *[]*draiosproto.AppMetric, horizontalPodAutoscaler *v1as.HorizontalPodAutoscaler) {
 	prefix := "kubernetes.hpa."
-	AppendMetricPtrInt32(metrics, prefix+"replicas.min", horizontalPodAutoscaler.Spec.MinReplicas)
-	AppendMetricInt32(metrics, prefix+"replicas.max", horizontalPodAutoscaler.Spec.MaxReplicas)
-	AppendMetricInt32(metrics, prefix+"replicas.current", horizontalPodAutoscaler.Status.CurrentReplicas)
-	AppendMetricInt32(metrics, prefix+"replicas.desired", horizontalPodAutoscaler.Status.DesiredReplicas)
+	kubecollect_common.AppendMetricPtrInt32(metrics, prefix+"replicas.min", horizontalPodAutoscaler.Spec.MinReplicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"replicas.max", horizontalPodAutoscaler.Spec.MaxReplicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"replicas.current", horizontalPodAutoscaler.Status.CurrentReplicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"replicas.desired", horizontalPodAutoscaler.Status.DesiredReplicas)
 }
 
 func AddHorizontalPodAutoscalerParents(parents *[]*draiosproto.CongroupUid, namespace string, apiversion string, kind string, name string) {
-	if !resourceReady("horizontalpodautoscalers") {
+	if !kubecollect_common.ResourceReady("horizontalpodautoscalers") {
 		return
 	}
 
@@ -76,7 +77,7 @@ func AddHorizontalPodAutoscalerParents(parents *[]*draiosproto.CongroupUid, name
 func startHorizontalPodAutoscalersSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.AutoscalingV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "HorizontalPodAutoscalers", v1meta.NamespaceAll, fields.Everything())
-	horizontalPodAutoscalerInf = cache.NewSharedInformer(lw, &v1as.HorizontalPodAutoscaler{}, RsyncInterval)
+	horizontalPodAutoscalerInf = cache.NewSharedInformer(lw, &v1as.HorizontalPodAutoscaler{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -92,11 +93,11 @@ func watchHorizontalPodAutoscalers(evtc chan<- draiosproto.CongroupUpdateEvent) 
 	horizontalPodAutoscalerInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				eventReceived("horizontalpodautoscalers")
+				kubecollect_common.EventReceived("horizontalpodautoscalers")
 				//log.Debugf("AddFunc dumping HorizontalPodAutoscaler: %v", obj.(*v1as.HorizontalPodAutoscaler))
 				evtc <- horizontalPodAutoscalerEvent(obj.(*v1as.HorizontalPodAutoscaler),
 					draiosproto.CongroupEventType_ADDED.Enum())
-				addEvent("HPA", EVENT_ADD)
+				kubecollect_common.AddEvent("HPA", kubecollect_common.EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldHorizontalPodAutoscaler := oldObj.(*v1as.HorizontalPodAutoscaler)
@@ -106,9 +107,9 @@ func watchHorizontalPodAutoscalers(evtc chan<- draiosproto.CongroupUpdateEvent) 
 					//log.Debugf("UpdateFunc dumping HorizontalPodAutoscaler newHorizontalPodAutoscaler %v", newHorizontalPodAutoscaler)
 					evtc <- horizontalPodAutoscalerEvent(newHorizontalPodAutoscaler,
 						draiosproto.CongroupEventType_UPDATED.Enum())
-					addEvent("HPA", EVENT_UPDATE_AND_SEND)
+					kubecollect_common.AddEvent("HPA", kubecollect_common.EVENT_UPDATE_AND_SEND)
 				}
-				addEvent("HPA", EVENT_UPDATE)
+				kubecollect_common.AddEvent("HPA", kubecollect_common.EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldHPA := (*v1as.HorizontalPodAutoscaler)(nil)
@@ -132,7 +133,7 @@ func watchHorizontalPodAutoscalers(evtc chan<- draiosproto.CongroupUpdateEvent) 
 
 				evtc <- horizontalPodAutoscalerEvent(oldHPA,
 					draiosproto.CongroupEventType_REMOVED.Enum())
-				addEvent("HPA", EVENT_DELETE)
+				kubecollect_common.AddEvent("HPA", kubecollect_common.EVENT_DELETE)
 			},
 		},
 	)

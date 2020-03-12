@@ -1,6 +1,8 @@
 package main
 
 import (
+	"cointerface/kubecollect_common"
+	"cointerface/kubecollect_tc"
 	"fmt"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -189,19 +191,19 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	log.Infof("[PerformOrchestratorEventsStream] Starting orchestrator events stream.")
 	log.Debugf("[PerformOrchestratorEventsStream] using options: %v", cmd)
 
-	kubecollect.ChannelMutex.Lock()
+	kubecollect_common.ChannelMutex.Lock()
 
 	// either another stream has attached to this, or a previous one hasn't finished
 	// cleaning up. Try again later.
-	if (kubecollect.InformerChannelInUse) {
-		kubecollect.ChannelMutex.Unlock()
+	if (kubecollect_common.InformerChannelInUse) {
+		kubecollect_common.ChannelMutex.Unlock()
 		log.Errorf("[PerformOrchestratorEventsStream] Error: informer channel in use")
 		return errors.New("informer channel in use")
 	}
 
 	// this remains true until channels are cleaned up and closed by the informer wg
-	kubecollect.InformerChannelInUse = true
-	kubecollect.ChannelMutex.Unlock()
+	kubecollect_common.InformerChannelInUse = true
+	kubecollect_common.ChannelMutex.Unlock()
 
 	// Golang's default garbage collection allows for a lot of bloat,
 	// so we set a more aggressive garbage collection because the initial
@@ -225,7 +227,16 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	// It must be cleared either when context is cancelled or cleaned up, or if, for instance, 
 	// the function returns with an error before starting informers
 	// Get the arrayChan for sending events to dragent
-	evtArrayChan, fetchDone, err := kubecollect.WatchCluster(ctx, cmd)
+
+	var pkg kubecollect_common.KubecollectInterface
+
+	if *cmd.ThinCointerface == true {
+		pkg = kubecollect_tc.KubecollectClientTc{}
+	} else {
+		pkg = kubecollect.KubecollectClient{}
+	}
+
+	evtArrayChan, fetchDone, err := kubecollect_common.WatchCluster(ctx, cmd, pkg)
 	if err != nil {
 		log.Errorf("[PerformOrchestratorEventsStream] Error: failure to start informers. Cleaning up")
 
@@ -259,11 +270,11 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		ctxCancel()
 
 		// Close kube client channel to make sure events stream shuts down as well
-		kubecollect.CloseKubeClient()
+		kubecollect_common.CloseKubeClient()
 
 		// drain all messages from every queue
 		// do event channel too, just in case 
-		kubecollect.DrainChan(evtArrayChan)
+		kubecollect_common.DrainChan(evtArrayChan)
 
 		// notify the GC function so it resets the GC back to normal
 		close(rpcDone)
@@ -322,7 +333,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventMessageStream(cmd *sdc_inter
 		ctxCancel()
 		// Drain channel just in case the event sender is blocked
 		// Cast it to a receive-only channel before sending to DrainChan
-		kubecollect.DrainChan((<-chan sdc_internal.K8SUserEvent)(userEventChannel))
+		kubecollect_common.DrainChan((<-chan sdc_internal.K8SUserEvent)(userEventChannel))
 		// Not keeping state in globals in the event code, so we might be able
 		// to get rid of the wg.Wait() to allow a new watch to start while the old
 		// one is cleaning up

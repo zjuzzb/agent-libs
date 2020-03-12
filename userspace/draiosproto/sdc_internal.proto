@@ -125,6 +125,7 @@ message orchestrator_events_stream_command {
     required uint32 batch_msgs_tick_interval_ms = 19;
     required uint32 max_rnd_conn_delay = 23;
     repeated string pod_status_allowlist = 24;
+    required bool thin_cointerface = 25;
 }
 
 message orchestrator_attach_user_events_stream_command {

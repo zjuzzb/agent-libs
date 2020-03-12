@@ -16,6 +16,9 @@
 #include "sdc_internal.pb.h"
 #include "type_config.h"
 #include "k8s_namespace_store.h"
+#include "k8s_store_manager.h"
+#include "k8s_hpa_store.h"
+#include "k8s_pod_store.h"
 
 #include <gtest/gtest_prod.h>
 
@@ -246,6 +249,7 @@ private:
 
 	void connect_to_namespace(const infrastructure_state::uid_t& key);
 	void connect_orphans();
+
 	void connect(const infrastructure_state::uid_t& key);
 
 	// Remove given key. Set update to true if the key will be reinstantiated as part of an update
@@ -277,6 +281,7 @@ private:
 	std::unordered_map<uid_t, std::vector<uid_t>> m_orphans;
 	std::unordered_map<uid_t, std::unordered_set<uid_t>> m_parents;
 	k8s_namespace_store m_k8s_namespace_store;
+	k8s_store_manager m_k8s_store_manager;
 
 	struct reg_scope_t {
 		bool m_host_scope;
@@ -382,6 +387,7 @@ public: // configs
 	static type_config<bool> c_k8s_autodetect;
 	static type_config<uint64_t> c_k8s_refresh_interval;
 	static type_config<uint32_t>::ptr c_k8s_max_rnd_conn_delay;
+	static type_config<bool>::ptr c_thin_cointerface_enabled;
 
 private: // configs which have non-static fields that we actually use. You probably don't
 	 // want these. In almost all cases, you'll probably want to use the normalized

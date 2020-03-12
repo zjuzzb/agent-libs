@@ -73,6 +73,8 @@ list(
     aggregator_overrides.ut.cpp
     aggregator_limits.ut.cpp
     internal_metrics.ut.cpp
+    k8s_pod_store.ut.cpp
+    k8s_hpa_store.ut.cpp
 )
 
 # We test both the libanalyzer itself and its test helpers in this library

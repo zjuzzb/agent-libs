@@ -110,6 +110,14 @@ type_config<uint32_t>::ptr infrastructure_state::c_k8s_max_rnd_conn_delay =
         .min(0)
         .max(900)
         .build();
+type_config<bool>::ptr infrastructure_state::c_thin_cointerface_enabled =
+	type_config_builder<bool>(
+		false,
+		"Enable the Thin Cointerface feature (i.e. retryWatchers)",
+		"thin_cointerface_enabled"
+		).hidden()
+	         .build();
+
 
 namespace
 {
@@ -322,8 +330,9 @@ infrastructure_state::infrastructure_state(sinsp_analyzer& analyzer,
                                            sinsp* inspector,
                                            const std::string& rootdir,
                                            const k8s_limits::sptr_t& the_k8s_limits,
-                                           bool force_k8s_subscribed)
-    : m_analyzer(analyzer),
+                                           bool force_k8s_subscribed):
+      m_k8s_store_manager(std::move(k8s_store_manager_builder<k8s_pod_store, k8s_hpa_store>(c_thin_cointerface_enabled->get_value()).build())),
+      m_analyzer(analyzer),
       m_inspector(inspector),
       m_k8s_coclient(rootdir),
       m_k8s_subscribed(force_k8s_subscribed),
@@ -498,6 +507,8 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 		    *cmd.mutable_pod_status_allowlist() = {c_k8s_pod_status_wl.get_value().begin(),
 		                                           c_k8s_pod_status_wl.get_value().end()};
 
+		    cmd.set_thin_cointerface(c_thin_cointerface_enabled->get_value());
+
 		    m_k8s_subscribed = true;
 		    m_k8s_connected = true;
 		    m_k8s_coclient.get_orchestrator_events(cmd, m_k8s_callback);
@@ -666,6 +677,7 @@ void infrastructure_state::reset()
 		m_orphans.clear();
 		m_state.clear();
 		m_k8s_namespace_store.clear();
+		m_k8s_store_manager.clear();
 		m_k8s_cached_cluster_id.clear();
 		m_k8s_node.clear();
 		m_k8s_node_uid.clear();
@@ -1011,8 +1023,9 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 
 			// Connect group with its namespace
 			connect_to_namespace(key);
+			m_k8s_store_manager.handle_add(key, m_state);
 
-			if (evt->object().uid().kind() == k8s_namespace_store::KIND_NAMESPACE)
+			if(kind == k8s_namespace_store::KIND_NAMESPACE)
 			{
 				connect_orphans();
 			}
@@ -1059,35 +1072,16 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			break;
 		case draiosproto::REMOVED:
 			print_obj(key);
+			m_k8s_store_manager.handle_delete(key, m_state);
 			remove(key);
 			break;
 		case draiosproto::UPDATED:
-			if (evt->object().parents().size() > 0 || evt->object().children().size() > 0 ||
-			    evt->object().ports().size() > 0)
-			{
-				LOG_DEBUG(
-				    "infra_state: UPDATED event will change relationships, remove the container "
-				    "group then connect it again");
-				remove(key, true);
-				m_state[key] = make_unique<draiosproto::container_group>();
-				purge_tags_and_copy(key, evt->object());
-				connect_to_namespace(key);
-				connect(key);
-			}
-			else
-			{
-				LOG_DEBUG(
-				    "infra_state: UPDATED event will not change relationships, just update the "
-				    "metadata");
-				*m_state[key]->mutable_tags() = evt->object().tags();
-				if (m_k8s_limits)
-				{
-					m_k8s_limits->purge_tags(*m_state[key].get());
-				}
-				*m_state[key]->mutable_internal_tags() = evt->object().internal_tags();
-				m_state[key]->mutable_ip_addresses()->CopyFrom(evt->object().ip_addresses());
-				m_state[key]->mutable_metrics()->CopyFrom(evt->object().metrics());
-			}
+			remove(key, true);
+			m_state[key] = make_unique<draiosproto::container_group>();
+			purge_tags_and_copy(key, evt->object());
+			m_k8s_store_manager.handle_update(key, m_state);
+			connect_to_namespace(key);
+			connect(key);
 			print_obj(key);
 			break;
 		}
@@ -2021,6 +2015,7 @@ void infrastructure_state::get_state(container_groups* state, const uint64_t ts)
 			}
 		}
 	}
+	m_k8s_store_manager.print_store_status();
 }
 
 void infrastructure_state::resolve_names(draiosproto::k8s_state* state)
@@ -2395,6 +2390,7 @@ void infrastructure_state::get_state(draiosproto::k8s_state* state, uint64_t ts)
 		emit(it.second.get(), state, ts);
 	}
 	resolve_names(state);
+	m_k8s_store_manager.print_store_status();
 }
 
 void infrastructure_state::on_new_container(const sinsp_container_info& container_info,

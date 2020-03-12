@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	draiosproto "protorepo/agent-be/proto"
 	"encoding/json"
 	"github.com/gogo/protobuf/proto"
@@ -25,10 +26,10 @@ func fixture() {
 
 	// Inizialize some variables used in kubecollect package
 	// Make resource "namespace" ready
-	if startedMap == nil {
-		startedMap = make(map[string]bool)
+	if kubecollect_common.StartedMap == nil {
+		kubecollect_common.StartedMap = make(map[string]bool)
 	}
-	startedMap["namespaces"] = true
+	kubecollect_common.StartedMap["namespaces"] = true
 	// Add a namespace in the namespace informer. Otherwise
 	// AddNSParents does not work
 	namespace := &v1.Namespace{
@@ -149,7 +150,7 @@ func getPVCExpected() *draiosproto.ContainerGroup {
 		Namespace:proto.String(namespaceName),
 	}
 
-	AppendMetricInt64(&ret.Metrics, "kubernetes.persistentvolumeclaim.storage", 500000000)
+	kubecollect_common.AppendMetricInt64(&ret.Metrics, "kubernetes.persistentvolumeclaim.storage", 500000000)
 	return ret
 }
 

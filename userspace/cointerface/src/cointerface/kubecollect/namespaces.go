@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	draiosproto "protorepo/agent-be/proto"
 	"context"
 	"sync"
@@ -26,8 +27,8 @@ func nsEquals(lhs *v1.Namespace, rhs *v1.Namespace) bool {
 		return false
 	}
 
-	if !EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) ||
-        !EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta) {
+	if !kubecollect_common.EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) ||
+        !kubecollect_common.EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta) {
 		return false
 	}
 
@@ -35,8 +36,8 @@ func nsEquals(lhs *v1.Namespace, rhs *v1.Namespace) bool {
 }
 
 func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (*draiosproto.ContainerGroup) {
-	tags:= GetTags(ns.ObjectMeta, "kubernetes.namespace.")
-	inttags:= GetAnnotations(ns.ObjectMeta, "kubernetes.namespace.")
+	tags:= kubecollect_common.GetTags(ns.ObjectMeta, "kubernetes.namespace.")
+	inttags:= kubecollect_common.GetAnnotations(ns.ObjectMeta, "kubernetes.namespace.")
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
@@ -52,10 +53,10 @@ func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (
 
 var namespaceInf cache.SharedInformer
 
-func startNamespacesSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
+func StartNamespacesSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "namespaces", v1meta.NamespaceAll, fields.Everything())
-	namespaceInf = cache.NewSharedInformer(lw, &v1.Namespace{}, RsyncInterval)
+	namespaceInf = cache.NewSharedInformer(lw, &v1.Namespace{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -71,11 +72,11 @@ func watchNamespaces(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	namespaceInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				eventReceived("namespaces")
+				kubecollect_common.EventReceived("namespaces")
 				//log.Debugf("AddFunc dumping namespace: %v", obj.(*v1.Namespace))
 				evtc <- nsEvent(obj.(*v1.Namespace),
 					draiosproto.CongroupEventType_ADDED.Enum())
-				addEvent("Namespace", EVENT_ADD)
+				kubecollect_common.AddEvent("Namespace", kubecollect_common.EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldNS := oldObj.(*v1.Namespace)
@@ -85,9 +86,9 @@ func watchNamespaces(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					//log.Debugf("UpdateFunc dumping namespace newNS %v", newNS)
 					evtc <- nsEvent(newNS,
 						draiosproto.CongroupEventType_UPDATED.Enum())
-					addEvent("Namespace", EVENT_UPDATE_AND_SEND)
+					kubecollect_common.AddEvent("Namespace", kubecollect_common.EVENT_UPDATE_AND_SEND)
 				}
-				addEvent("Namespace", EVENT_UPDATE)
+				kubecollect_common.AddEvent("Namespace", kubecollect_common.EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldNS := (*v1.Namespace)(nil)
@@ -117,7 +118,7 @@ func watchNamespaces(evtc chan<- draiosproto.CongroupUpdateEvent) {
 							Id:proto.String(string(oldNS.GetUID()))},
 					},
 				}
-				addEvent("Namespace", EVENT_DELETE)
+				kubecollect_common.AddEvent("Namespace", kubecollect_common.EVENT_DELETE)
 			},
 		},
 	)

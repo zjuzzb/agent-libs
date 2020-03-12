@@ -1,21 +1,20 @@
 package kubecollect
 
 import (
-	draiosproto "protorepo/agent-be/proto"
+	"cointerface/kubecollect_common"
 	"context"
-	"errors"
-	"strings"
-	"sync"
-	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
+	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"regexp"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	draiosproto "protorepo/agent-be/proto"
+	"strings"
+	"sync"
 )
 
 var podInf cache.SharedInformer
@@ -30,7 +29,6 @@ var podEvtcHandle chan<- draiosproto.CongroupUpdateEvent
 // - containerd
 // - cri-o
 // rkt uses a different container ID format: rkt://<pod_id>:<app_id>
-var containerIDRegex = regexp.MustCompile("^([a-z0-9-]+)://([0-9a-fA-F]{12})[0-9a-fA-F]*$")
 
 // pods get their own special version because they send events for containers too
 func sendPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool)  {
@@ -46,7 +44,7 @@ func newContainerEvent(containerEvents *[]*draiosproto.CongroupUpdateEvent,
 	podUID types.UID,
 	eventType draiosproto.CongroupEventType,
 ) {
-	containerID, err := parseContainerID(cstat.ContainerID)
+	containerID, err := kubecollect_common.ParseContainerID(cstat.ContainerID)
 	if err != nil {
 		log.Debugf("Unable to parse ContainerID %v: %v", containerID, err)
 		return
@@ -74,11 +72,11 @@ func newContainerEvent(containerEvents *[]*draiosproto.CongroupUpdateEvent,
 		},
 	})
 	if eventType == draiosproto.CongroupEventType_ADDED {
-		addEvent("Container", EVENT_ADD)
+		kubecollect_common.AddEvent("Container", kubecollect_common.EVENT_ADD)
 	} else if eventType == draiosproto.CongroupEventType_REMOVED {
-		addEvent("Container", EVENT_DELETE)
+		kubecollect_common.AddEvent("Container", kubecollect_common.EVENT_DELETE)
 	} else {
-		addEvent("Container", EVENT_UPDATE)
+		kubecollect_common.AddEvent("Container", kubecollect_common.EVENT_UPDATE)
 	}
 }
 
@@ -112,7 +110,7 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 		if (state < running) {
 			continue
 		} else if (state == running) {
-			containerID, err := parseContainerID(c.ContainerID)
+			containerID, err := kubecollect_common.ParseContainerID(c.ContainerID)
 			if err != nil {
 				log.Debugf("Unable to parse ContainerID %v: %v", containerID, err)
 				continue
@@ -163,47 +161,15 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 	}
 }
 
-func parseContainerID(containerID string) (string, error) {
-	var err error = nil
-
-	// Kubernetes reports containers in this format:
-	// docker://<fulldockercontainerid>
-	// rkt://<rktpodid>:<rktappname>
-	// We instead use
-	// <dockershortcontainerid>
-	// <rktpodid>:<rktappname>
-	// so here we are doing this conversion
-	matches := containerIDRegex.FindStringSubmatch(containerID);
-	if matches != nil {
-		// matches[0] is the whole ID,
-		// matches[1] is the scheme (e.g. "docker")
-		// matches[2] is the first 12 hex digits of the ID
-		return matches[2], nil
-	} else if strings.HasPrefix(containerID, "rkt://") {
-		// XXX Will the parsed rkt id always
-		// be 12 char like for docker?
-		if len(containerID) >= 7 {
-			containerID = containerID[6:]
-		} else {
-			err = errors.New("ID too short for rkt format")
-		}
-	} else {
-		err = errors.New("Unknown containerID format")
-	}
-
-	return containerID, err
-}
-
 func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 	in := true
 	out := true
-
 	if lhs.GetName() != rhs.GetName() {
 		in = false
 	}
 
-	in = in && EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
-	in = in && EqualProbes(lhs, rhs)
+	in = in && kubecollect_common.EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
+	in = in && kubecollect_common.EqualProbes(lhs, rhs)
 
 	if in && lhs.Status.PodIP != rhs.Status.PodIP {
 		in = false
@@ -242,7 +208,7 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 		}
 	}
 
-	out = out && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta)
+	out = out && kubecollect_common.EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta)
 
 	if lhs.GetNamespace() != rhs.GetNamespace() {
 		out = false
@@ -328,13 +294,13 @@ func AddParentsToPodViaOwnerRef(parents *[]*draiosproto.CongroupUid, pod *v1.Pod
 }
 
 func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool) ([]*draiosproto.CongroupUpdateEvent) {
-	tags := GetTags(pod.ObjectMeta, "kubernetes.pod.")
+	tags := kubecollect_common.GetTags(pod.ObjectMeta, "kubernetes.pod.")
 	// This gets specially added as a tag since we don't have a
 	// better way to report values that can be one of many strings
 	tags["kubernetes.pod.label.status.phase"] = string(pod.Status.Phase)
-	annotations := GetAnnotations(pod.ObjectMeta, "kubernetes.pod.")
-	probes := GetProbes(pod)
-	inttags := MergeInternalTags(annotations, probes)
+	annotations := kubecollect_common.GetAnnotations(pod.ObjectMeta, "kubernetes.pod.")
+	probes := kubecollect_common.GetProbes(pod)
+	inttags := kubecollect_common.MergeInternalTags(annotations, probes)
 
 	var ips []string
 	if pod.Status.PodIP != "" {
@@ -401,9 +367,9 @@ func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 	restartCount += initRestarts
 	waitingCount += initWaiting
 
-	AppendMetricInt32(metrics, prefix+"container.status.restarts", restartCount)
-	appendRateMetric(metrics, prefix+"container.status.restart_rate", float64(restartCount))
-	AppendMetricInt32(metrics, prefix+"container.status.waiting", waitingCount)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"container.status.restarts", restartCount)
+	kubecollect_common.AppendRateMetric(metrics, prefix+"container.status.restart_rate", float64(restartCount))
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"container.status.waiting", waitingCount)
 	appendMetricPodCondition(metrics, prefix+"status.ready", pod.Status.Conditions, v1.PodReady)
 	appendMetricContainerResources(metrics, prefix, pod)
 }
@@ -432,7 +398,7 @@ func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, co
 	val, found := getPodConditionMetric(conditions, ctype)
 
 	if found {
-		AppendMetric(metrics, name, val)
+		kubecollect_common.AppendMetric(metrics, name, val)
 	}
 }
 
@@ -474,10 +440,10 @@ func getPodContainerResources(pod *v1.Pod) (requestsCpu float64, limitsCpu float
 func appendMetricContainerResources(metrics *[]*draiosproto.AppMetric, prefix string, pod *v1.Pod) {
 	requestsCpu, limitsCpu, requestsMem, limitsMem := getPodContainerResources(pod)
 
-	AppendMetric(metrics, prefix+"resourceRequests.cpuCores", requestsCpu)
-	AppendMetric(metrics, prefix+"resourceLimits.cpuCores", limitsCpu)
-	AppendMetric(metrics, prefix+"resourceRequests.memoryBytes", requestsMem)
-	AppendMetric(metrics, prefix+"resourceLimits.memoryBytes", limitsMem)
+	kubecollect_common.AppendMetric(metrics, prefix+"resourceRequests.cpuCores", requestsCpu)
+	kubecollect_common.AppendMetric(metrics, prefix+"resourceLimits.cpuCores", limitsCpu)
+	kubecollect_common.AppendMetric(metrics, prefix+"resourceRequests.memoryBytes", requestsMem)
+	kubecollect_common.AppendMetric(metrics, prefix+"resourceLimits.memoryBytes", limitsMem)
 }
 
 func resourceVal(rList v1.ResourceList, rName v1.ResourceName) float64 {
@@ -492,7 +458,7 @@ func resourceVal(rList v1.ResourceList, rName v1.ResourceName) float64 {
 }
 
 func resolveTargetPort(name string, selector labels.Selector, namespace string) uint32 {
-	if !resourceReady("pods") {
+	if !kubecollect_common.ResourceReady("pods") {
 		return 0
 	}
 
@@ -514,7 +480,7 @@ func resolveTargetPort(name string, selector labels.Selector, namespace string) 
 }
 
 func AddPodChildrenFromSelectors(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
-	if !resourceReady("pods") {
+	if !kubecollect_common.ResourceReady("pods") {
 		return
 	}
 
@@ -529,7 +495,7 @@ func AddPodChildrenFromSelectors(children *[]*draiosproto.CongroupUid, selector 
 }
 
 func AddPodChildrenFromNodeName(children *[]*draiosproto.CongroupUid, nodeName string) {
-	if !resourceReady("pods") {
+	if !kubecollect_common.ResourceReady("pods") {
 		return
 	}
 
@@ -544,7 +510,7 @@ func AddPodChildrenFromNodeName(children *[]*draiosproto.CongroupUid, nodeName s
 }
 
 func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1meta.ObjectMeta) {
-	if !resourceReady("pods") {
+	if !kubecollect_common.ResourceReady("pods") {
 		return
 	}
 
@@ -564,7 +530,7 @@ func startPodsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg
 	client := kubeClient.CoreV1().RESTClient()
 	fSelector, _ := fields.ParseSelector("status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded") // they don't support or operator...
 	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, fSelector)
-	podInf = cache.NewSharedInformer(lw, &v1.Pod{}, RsyncInterval)
+	podInf = cache.NewSharedInformer(lw, &v1.Pod{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -602,7 +568,7 @@ func podDeleteFunc(obj interface{}) {
 
 	// we have to call the function in this case because it will remove the containers too
 	sendPodEvents(oldPod, draiosproto.CongroupEventType_REMOVED, nil, true)
-	addEvent("Pod", EVENT_DELETE)
+	kubecollect_common.AddEvent("Pod", kubecollect_common.EVENT_DELETE)
 }
 
 func watchPods() {
@@ -611,10 +577,10 @@ func watchPods() {
 	podInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				eventReceived("pods")
+				kubecollect_common.EventReceived("pods")
 				newPod := obj.(*v1.Pod)
 				sendPodEvents(newPod, draiosproto.CongroupEventType_ADDED, nil, true)
-				addEvent("Pod", EVENT_ADD)
+				kubecollect_common.AddEvent("Pod", kubecollect_common.EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldPod := oldObj.(*v1.Pod)
@@ -623,10 +589,10 @@ func watchPods() {
 					sameEntity, sameLinks := podEquals(oldPod, newPod)
 					if !sameEntity || !sameLinks {
 						sendPodEvents(newPod, draiosproto.CongroupEventType_UPDATED, oldPod, !sameLinks)
-						addEvent("Pod", EVENT_UPDATE_AND_SEND)
+						kubecollect_common.AddEvent("Pod", kubecollect_common.EVENT_UPDATE_AND_SEND)
 					}
 				}
-				addEvent("Pod", EVENT_UPDATE)
+				kubecollect_common.AddEvent("Pod", kubecollect_common.EVENT_UPDATE)
 			},
 			DeleteFunc: podDeleteFunc,
 		},

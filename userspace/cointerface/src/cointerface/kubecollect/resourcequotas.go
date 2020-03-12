@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	draiosproto "protorepo/agent-be/proto"
 	"context"
 	log "github.com/cihub/seelog"
@@ -51,9 +52,9 @@ func setScope(tags map[string]string, resourcequota *v1.ResourceQuota) () {
 func resourceQuotaEquals(oldResourceQuota *v1.ResourceQuota, newResourceQuota *v1.ResourceQuota) bool {
 	ret := true;
 	if oldResourceQuota.GetName() != newResourceQuota.GetName() ||
-		!EqualLabels(oldResourceQuota.ObjectMeta, newResourceQuota.ObjectMeta) ||
-		!EqualAnnotations(oldResourceQuota.ObjectMeta, newResourceQuota.ObjectMeta) ||
-		!equalResourceList(oldResourceQuota.Status.Used, newResourceQuota.Status.Used){
+		!kubecollect_common.EqualLabels(oldResourceQuota.ObjectMeta, newResourceQuota.ObjectMeta) ||
+		!kubecollect_common.EqualAnnotations(oldResourceQuota.ObjectMeta, newResourceQuota.ObjectMeta) ||
+		!kubecollect_common.EqualResourceList(oldResourceQuota.Status.Used, newResourceQuota.Status.Used){
 		ret = false
 	}
 	return ret
@@ -91,15 +92,15 @@ func AddResourceQuotaMetrics(metrics *[]*draiosproto.AppMetric, resourceQuota *v
 
 		// Take MilliValue() and divide because
 		// we could lose precision with Value()
-		AppendMetric(metrics, prefix+k.String()+".hard", float64(hard.MilliValue())/1000);
-		AppendMetric(metrics, prefix+k.String()+".used", float64(v.MilliValue())/1000);
+		kubecollect_common.AppendMetric(metrics, prefix+k.String()+".hard", float64(hard.MilliValue())/1000);
+		kubecollect_common.AppendMetric(metrics, prefix+k.String()+".used", float64(v.MilliValue())/1000);
 	}
 }
 
-func startResourceQuotasSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
+func StartResourceQuotasSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ResourceQuotas", v1meta.NamespaceAll, fields.Everything())
-	resourceQuotaInf = cache.NewSharedInformer(lw, &v1.ResourceQuota{}, RsyncInterval)
+	resourceQuotaInf = cache.NewSharedInformer(lw, &v1.ResourceQuota{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -115,10 +116,10 @@ func watchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	resourceQuotaInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				eventReceived("resourcequotas")
+				kubecollect_common.EventReceived("resourcequotas")
 				evtc <- resourceQuotaEvent(obj.(*v1.ResourceQuota),
 					draiosproto.CongroupEventType_ADDED.Enum())
-				addEvent("ResourceQuota", EVENT_ADD)
+				kubecollect_common.AddEvent("ResourceQuota", kubecollect_common.EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldResourceQuota := oldObj.(*v1.ResourceQuota)
@@ -128,9 +129,9 @@ func watchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) {
 
 					evtc <- resourceQuotaEvent(newResourceQuota,
 						draiosproto.CongroupEventType_UPDATED.Enum())
-					addEvent("ResourceQuota", EVENT_UPDATE_AND_SEND)
+					kubecollect_common.AddEvent("ResourceQuota", kubecollect_common.EVENT_UPDATE_AND_SEND)
 				}
-				addEvent("ResourceQuota", EVENT_UPDATE)
+				kubecollect_common.AddEvent("ResourceQuota", kubecollect_common.EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldRQ := (*v1.ResourceQuota)(nil)
@@ -155,7 +156,7 @@ func watchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) {
 
 				evtc <- resourceQuotaEvent(oldRQ,
 					draiosproto.CongroupEventType_REMOVED.Enum())
-				addEvent("ResourceQuota", EVENT_DELETE)
+				kubecollect_common.AddEvent("ResourceQuota", kubecollect_common.EVENT_DELETE)
 			},
 		},
 	)

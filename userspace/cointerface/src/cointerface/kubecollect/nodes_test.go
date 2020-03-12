@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	"testing"
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,7 +63,7 @@ func createNodeCopies() (*v1.Node, *v1.Node) {
 }
 
 func nodeEqualsHelper(t *testing.T, oldNode *v1.Node, newNode *v1.Node, expected bool) {
-	res := nodeEquals(oldNode, newNode)
+	res := NodeEquals(oldNode, newNode)
 	if res != expected  {
 		t.Logf("nodeEquals expected %v, got %v", expected, res)
 		t.Logf("oldNode: %#v", oldNode)
@@ -100,7 +101,7 @@ func TestNodeEqualsLabelsModified(t *testing.T) {
 
 func TestNodeEqualsAnnotationsExtra(t *testing.T) {
 	annots := []string{"annotation.filter"}
-	setAnnotFilt(annots)
+	kubecollect_common.SetAnnotFilt(annots)
 	oldNode, newNode := createNodeCopies()
 	newNode.Annotations["extra_key"] = "extra_val"
 
@@ -109,7 +110,7 @@ func TestNodeEqualsAnnotationsExtra(t *testing.T) {
 
 func TestNodeEqualsAnnotationsModified(t *testing.T) {
 	annots := []string{"annotation.filter"}
-	setAnnotFilt(annots)
+	kubecollect_common.SetAnnotFilt(annots)
 	oldNode, newNode := createNodeCopies()
 	newNode.Annotations["annotation_key1"] = "modified_val"
 
@@ -117,7 +118,7 @@ func TestNodeEqualsAnnotationsModified(t *testing.T) {
 }
 
 func TestNodeEqualsAnnotationsExtraNoFilters(t *testing.T) {
-	setAnnotFilt(nil)
+	kubecollect_common.SetAnnotFilt(nil)
 	oldNode, newNode := createNodeCopies()
 	newNode.Annotations["extra_key"] = "extra_val"
 
@@ -125,7 +126,7 @@ func TestNodeEqualsAnnotationsExtraNoFilters(t *testing.T) {
 }
 
 func TestNodeEqualsAnnotationsModifiedNoFilters(t *testing.T) {
-	setAnnotFilt(nil)
+	kubecollect_common.SetAnnotFilt(nil)
 	oldNode, newNode := createNodeCopies()
 	newNode.Annotations["annotation_key1"] = "modified_val"
 

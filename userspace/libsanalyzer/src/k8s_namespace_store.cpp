@@ -163,8 +163,10 @@ void k8s_namespace_store::handle_event(const draiosproto::congroup_update_event 
 	}
 }
 
-// If namespace, adds uid if store already has a uncomplete namespace, or add a new one from scratch
-// if an object, create an uncomplete namespace and add the orphan.
+// If cg is a namespace, and we already had stored its namespace name, then just add to it
+// the namespace uid. Otherwise add to the store the namespace and its uid
+// if cg is an object different from namespace and we have not seen its namespace yet,
+// create the namespace and add the orphan to it.
 // children ARE NOT added here
 void k8s_namespace_store::handle_add(const draiosproto::container_group& cg)
 {

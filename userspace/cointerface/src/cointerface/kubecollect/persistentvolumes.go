@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	draiosproto "protorepo/agent-be/proto"
 	"context"
 	log "github.com/cihub/seelog"
@@ -17,10 +18,10 @@ var persistentVolumesInf cache.SharedInformer
 
 var metricPrefix = "kubernetes.persistentvolume."
 
-func startPersistentVolumesInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
+func StartPersistentVolumesInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "PersistentVolumes", v1meta.NamespaceAll, fields.Everything())
-	persistentVolumesInf = cache.NewSharedInformer(lw, &v1.PersistentVolume{}, RsyncInterval)
+	persistentVolumesInf = cache.NewSharedInformer(lw, &v1.PersistentVolume{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -98,7 +99,7 @@ func newPersistentVolumeCongroup(pv *v1.PersistentVolume) (*draiosproto.Containe
 		tags[label_tag_name+ k] = v
 	}
 
-	inttags := GetAnnotations(pv.ObjectMeta, internal_tag_name)
+	inttags := kubecollect_common.GetAnnotations(pv.ObjectMeta, internal_tag_name)
 	tags[internal_tag_name+ "storageclass"] = pv.Spec.StorageClassName
 	tags[internal_tag_name+ "status.phase"] = string(pv.Status.Phase)
 	if (pv.Spec.ClaimRef != nil) {
@@ -131,11 +132,11 @@ func newPersistentVolumeCongroup(pv *v1.PersistentVolume) (*draiosproto.Containe
 
 func addPersistentVolumeMetrics(metrics *[]*draiosproto.AppMetric, pv *v1.PersistentVolume) {
 	size, _ := pv.Spec.Capacity["storage"]
-	AppendMetricInt64(metrics, metricPrefix+"storage", size.Value())
+	kubecollect_common.AppendMetricInt64(metrics, metricPrefix+"storage", size.Value())
 
 	// A cluster-wide count of PVs. the usual namespace-wide count does not apply
 	// for PV as it is not bound to any namespace
-	AppendMetricInt32(metrics, metricPrefix+"count", 1)
+	kubecollect_common.AppendMetricInt32(metrics, metricPrefix+"count", 1)
 }
 
 func watchPersistentVolumes(evtc chan <- draiosproto.CongroupUpdateEvent) {
@@ -144,11 +145,11 @@ func watchPersistentVolumes(evtc chan <- draiosproto.CongroupUpdateEvent) {
 	persistentVolumesInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				eventReceived("persistentvolumes")
+				kubecollect_common.EventReceived("persistentvolumes")
 				log.Debugf("PV: %v", obj.(*v1.PersistentVolume))
 				evtc <- persistentVolumeEvent(obj.(*v1.PersistentVolume),
 					draiosproto.CongroupEventType_ADDED.Enum())
-				addEvent("PersistentVolume", EVENT_ADD)
+				kubecollect_common.AddEvent("PersistentVolume", kubecollect_common.EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldPersistentVolume := oldObj.(*v1.PersistentVolume)
@@ -157,7 +158,7 @@ func watchPersistentVolumes(evtc chan <- draiosproto.CongroupUpdateEvent) {
 					evtc <- persistentVolumeEvent(newPersistentVolume,
 						draiosproto.CongroupEventType_UPDATED.Enum())
 				}
-				addEvent("PersistentVolume", EVENT_UPDATE)
+				kubecollect_common.AddEvent("PersistentVolume", kubecollect_common.EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldPV := (*v1.PersistentVolume)(nil)
@@ -181,7 +182,7 @@ func watchPersistentVolumes(evtc chan <- draiosproto.CongroupUpdateEvent) {
 
 				evtc <- persistentVolumeEvent(oldPV,
 					draiosproto.CongroupEventType_REMOVED.Enum())
-				addEvent("PersistentVolume", EVENT_DELETE)
+				kubecollect_common.AddEvent("PersistentVolume", kubecollect_common.EVENT_DELETE)
 			},
 		},
 	)

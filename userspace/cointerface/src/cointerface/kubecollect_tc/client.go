@@ -1,19 +1,20 @@
-package kubecollect
+package kubecollect_tc
 
 import (
+	"cointerface/kubecollect"
 	"cointerface/kubecollect_common"
-	"github.com/draios/protorepo/sdc_internal"
 	"golang.org/x/net/context"
-	kubeclient "k8s.io/client-go/kubernetes"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
+	kubeclient "k8s.io/client-go/kubernetes"
 )
 
-func startInformers(
+func startWatcherAndInformers(
 	ctx context.Context,
 	kubeClient kubeclient.Interface,
 	wg *sync.WaitGroup,
@@ -43,39 +44,39 @@ func startInformers(
 		channelType := kubecollect_common.ChannelTypeInformer
 		switch resource {
 		case "cronjobs":
-			StartCronJobsSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			kubecollect.StartCronJobsSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "daemonsets":
-			startDaemonSetsSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			startDaemonSetsWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "deployments":
-			startDeploymentsSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			startDeploymentsWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "horizontalpodautoscalers":
-			startHorizontalPodAutoscalersSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			startHPAWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "ingress":
-			StartIngressSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			kubecollect.StartIngressSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "jobs":
-			startJobsSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			startJobsWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "namespaces":
-			StartNamespacesSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			kubecollect.StartNamespacesSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "nodes":
 			startNodesSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "pods":
-			startPodsSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			startPodWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "replicasets":
-			startReplicaSetsSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel, filterEmpty)
+			startReplicaSetWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel, filterEmpty)
 		case "replicationcontrollers":
-			startReplicationControllersSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel, filterEmpty)
+			startReplicationControllerWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel, filterEmpty)
 		case "services":
 			startServicesSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "statefulsets":
 			startStatefulSetsSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "resourcequotas":
-			StartResourceQuotasSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			kubecollect.StartResourceQuotasSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "persistentvolumes":
-			StartPersistentVolumesInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			kubecollect.StartPersistentVolumesInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "persistentvolumeclaims":
-			StartPersistentVolumeClaimsInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			kubecollect.StartPersistentVolumeClaimsInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "podstatuscounter":
-			StartPodStatusWatcher(ctx, opts, kubeClient, wg, kubecollect_common.InformerChannel)
+			kubecollect.StartPodStatusWatcher(ctx, opts, kubeClient, wg, kubecollect_common.InformerChannel)
 		default:
 			log.Debugf("No kubecollect support for %v", resource)
 			infStarted = false
@@ -153,9 +154,9 @@ func startInformers(
 	}()
 }
 
-type KubecollectClient struct {}
+type KubecollectClientTc struct {}
 
-func (c KubecollectClient) StartInformers(
+func (c KubecollectClientTc) StartInformers(
 	ctx context.Context,
 	kubeClient kubeclient.Interface,
 	wg *sync.WaitGroup,
@@ -163,6 +164,5 @@ func (c KubecollectClient) StartInformers(
 	opts *sdc_internal.OrchestratorEventsStreamCommand,
 	resourceTypes []string,
 	queueLength *uint32) {
-	startInformers(ctx, kubeClient, wg, fetchDone, opts, resourceTypes, queueLength)
+	startWatcherAndInformers(ctx, kubeClient, wg, fetchDone, opts, resourceTypes, queueLength)
 }
-

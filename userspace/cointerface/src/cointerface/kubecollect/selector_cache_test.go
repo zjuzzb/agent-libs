@@ -46,7 +46,7 @@ func (obj coMockCacheable) ActiveChildren() int32 {
 }
 
 func TestSelectorCache(t *testing.T) {
-	cache := newSelectorCache()
+	cache := NewSelectorCache()
 	obj1 := newCoMockCacheable("abcdef")
 	obj2 := newCoMockCacheable("fedcba")
 

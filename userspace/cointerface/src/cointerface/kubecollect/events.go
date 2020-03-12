@@ -1,6 +1,7 @@
 package kubecollect
 
 import (
+	"cointerface/kubecollect_common"
 	"context"
 	"sort"
 	"sync"
@@ -149,7 +150,7 @@ func StartUserEventsWatch(userEventContext context.Context,
 	includeTypes []string) bool {
 
 	log.Debug("UserEvents: In StartUserEventsWatch");
-	kubeClient, kubeClientChan := getKubeClient()
+	kubeClient, kubeClientChan := kubecollect_common.GetKubeClient()
 	if kubeClient == nil {
 		log.Debugf("UserEvents: No kube client yet")
 		return false
@@ -167,10 +168,10 @@ func StartUserEventsWatch(userEventContext context.Context,
 
 		sort.Strings(includeTypes)
 		// Add services and hpas based on includeTypes
-		if !in_sorted_array("services" , includeTypes) {
+		if !kubecollect_common.InSortedArray("services" , includeTypes) {
 			fieldstr = fieldstr + ",involvedObject.kind!=Services"
 		}
-		if !in_sorted_array("horizontalpodautoscalars" , includeTypes) {
+		if !kubecollect_common.InSortedArray("horizontalpodautoscalars" , includeTypes) {
 			fieldstr = fieldstr + ",involvedObject.kind!=HorizontalPodAutoscaler"
 		}
 	}

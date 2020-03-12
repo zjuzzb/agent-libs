@@ -1,5 +1,6 @@
 package kubecollect
 import (
+	"cointerface/kubecollect_common"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -10,19 +11,19 @@ import (
 	draiosproto "protorepo/agent-be/proto"
 )
 
-var rsTestreplicaset coReplicaSet
+var rsTestreplicaset CoReplicaSet
 
 func replicaset_fixture() {
 	// Initialize some variables used in kubecollect package
-	if startedMap == nil {
-		startedMap = make(map[string]bool)
+	if kubecollect_common.StartedMap == nil {
+		kubecollect_common.StartedMap = make(map[string]bool)
 	}
 
 	// Make resource "pod" ready
-	startedMap["pods"] = true
+	kubecollect_common.StartedMap["pods"] = true
 
 	// Create a selector cache
-	deploySelectorCache = newSelectorCache()
+	deploySelectorCache = NewSelectorCache()
 
 	// Run the pod informer with a fake client.
 	// This is needed by AddPodChildrenFromOwnerRef to work properly
@@ -63,7 +64,7 @@ func replicaset_fixture() {
 }
 
 // Creates two replicaset objects that are DeepEqual
-func createReplicaSetCopies() (coReplicaSet, coReplicaSet) {
+func createReplicaSetCopies() (CoReplicaSet, CoReplicaSet) {
 	var numReplicas int32 = 5
 	rs := &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -89,12 +90,12 @@ func createReplicaSetCopies() (coReplicaSet, coReplicaSet) {
 		},
 	}
 
-	orig := coReplicaSet{ ReplicaSet: rs }
-	copy := coReplicaSet{ ReplicaSet: rs.DeepCopy() }
+	orig := CoReplicaSet{ ReplicaSet: rs }
+	copy := CoReplicaSet{ ReplicaSet: rs.DeepCopy() }
 	return orig, copy
 }
 
-func replicaSetEqualsHelper(t *testing.T, old coReplicaSet, new coReplicaSet, expected bool) {
+func replicaSetEqualsHelper(t *testing.T, old CoReplicaSet, new CoReplicaSet, expected bool) {
 	sameEntity, sameLinks := replicaSetEquals(old, new)
 	res := sameEntity && sameLinks
 	if (!sameLinks && sameEntity) || (res != expected)  {

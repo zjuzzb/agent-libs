@@ -224,10 +224,10 @@ TEST(infrastructure_state_test, connect_to_namespace)
 
 	// We also expect that deployment container group has a namespace parent,
 	// and namespace container group has a deployment children
-	const draiosproto::container_group& deployement_from_state = *is.m_state[deployment_uid].get();
-	EXPECT_EQ(deployement_from_state.parents_size(), 1);
-	EXPECT_EQ(deployement_from_state.parents(0).kind(), default_namespace_uid.first);
-	EXPECT_EQ(deployement_from_state.parents(0).id(), default_namespace_uid.second);
+	draiosproto::container_group* deployement_from_state = is.m_state[deployment_uid].get();
+	EXPECT_EQ(deployement_from_state->parents_size(), 1);
+	EXPECT_EQ(deployement_from_state->parents(0).kind(), default_namespace_uid.first);
+	EXPECT_EQ(deployement_from_state->parents(0).id(), default_namespace_uid.second);
 
 	const draiosproto::container_group& namespace_from_state = *is.m_state[default_namespace_uid].get();
 	EXPECT_EQ(namespace_from_state.children_size(), 1);
@@ -244,9 +244,11 @@ TEST(infrastructure_state_test, connect_to_namespace)
 	is.handle_event(&update_deployment_event);
 
 	// We still expect that deployment has a parent and namespace has a child
-	EXPECT_EQ(deployement_from_state.parents_size(), 1);
-	EXPECT_EQ(deployement_from_state.parents(0).kind(), default_namespace_uid.first);
-	EXPECT_EQ(deployement_from_state.parents(0).id(), default_namespace_uid.second);
+	deployement_from_state = is.m_state[deployment_uid].get();
+	EXPECT_NE(deployement_from_state, nullptr);
+	EXPECT_EQ(deployement_from_state->parents_size(), 1);
+	EXPECT_EQ(deployement_from_state->parents(0).kind(), default_namespace_uid.first);
+	EXPECT_EQ(deployement_from_state->parents(0).id(), default_namespace_uid.second);
 	EXPECT_EQ(namespace_from_state.children_size(), 1);
 	EXPECT_EQ(namespace_from_state.children(0).kind(), deployment_uid.first);
 	EXPECT_EQ(namespace_from_state.children(0).id(), deployment_uid.second);
