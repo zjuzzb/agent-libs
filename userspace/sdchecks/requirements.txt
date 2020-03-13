@@ -37,9 +37,6 @@ kazoo==2.4.0
 # checks.d/gearman.py
 gearman==2.0.2
 
-# checks.d/mcache.py
-python-memcached==1.53
-
 # checks.d/redis.py
 redis==3.2.1
 

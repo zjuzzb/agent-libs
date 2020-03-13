@@ -25,3 +25,6 @@ posix_ipc==1.0.0
 
 # solr/solr_5.py
 enum34==1.1.6
+
+# checks.d/mcache.py
+python-memcached==1.53
