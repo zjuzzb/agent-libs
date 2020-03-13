@@ -43,7 +43,7 @@ if [ -z "$WORKDIR" ]; then
 fi
 
 DEPENDENCIES=$WORKDIR/agent/dependencies
-DEPENDENCIES_URL="https://s3.amazonaws.com/download.draios.com/dependencies"
+DEPENDENCIES_URL="https://download.sysdig.com/dependencies"
 
 if [ ! -d "$DEPENDENCIES" ]; then
 	mkdir -p $DEPENDENCIES

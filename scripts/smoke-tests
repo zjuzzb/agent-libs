@@ -115,7 +115,7 @@ function install_tests {
 
 	ARCH=$(uname -m)
 	FILE_NAME="draios-$AGENT_VERSION-$ARCH-tests.tar.gz"
-	wget http://download.draios.com/$REPOSITORY/tgz/$ARCH/$FILE_NAME
+	wget https://download.sysdig.com/$REPOSITORY/tgz/$ARCH/$FILE_NAME
 	tar zxvf $FILE_NAME
 	mkdir ./opt/draios/test/captures
 	rm -rf $FILE_NAME
@@ -156,7 +156,7 @@ function install_memcached {
 function run_java_test_app {
 	# Assume java already installed
 	if [ ! -f "TestJMX.jar" ]; then
-		wget https://s3.amazonaws.com/download.draios.com/TestJMX.jar
+		wget https://download.sysdig.com/TestJMX.jar
 	fi
 	java -jar TestJMX.jar &
 	sleep 0.5
@@ -168,26 +168,26 @@ install_memcached
 
 uninstall
 REPOSITORY=$BASE_REPOSITORY
-curl -s http://download.draios.com/$REPOSITORY/install-agent | bash -s 342b8432-12ee-4b75-915f-df5422e40de9
+curl -s https://download.sysdig.com/$REPOSITORY/install-agent | bash -s 342b8432-12ee-4b75-915f-df5422e40de9
 install_tests
 smoke_tests
 
 uninstall
 REPOSITORY=$BASE_REPOSITORY-debug
-curl -s http://download.draios.com/$REPOSITORY/install-agent | bash -s 342b8432-12ee-4b75-915f-df5422e40de9
+curl -s https://download.sysdig.com/$REPOSITORY/install-agent | bash -s 342b8432-12ee-4b75-915f-df5422e40de9
 install_tests
 smoke_tests
 
 uninstall
 REPOSITORY=$BASE_REPOSITORY-debug
-curl -s http://download.draios.com/$REPOSITORY/install-sysdig | bash
+curl -s https://download.sysdig.com/$REPOSITORY/install-sysdig | bash
 sysdig -n 50
 sysdig -cstdout -n 50
 rmmod sysdig-probe
 
 uninstall
 REPOSITORY=$BASE_REPOSITORY
-curl -s http://download.draios.com/$REPOSITORY/install-sysdig | bash
+curl -s https://download.sysdig.com/$REPOSITORY/install-sysdig | bash
 sysdig -n 50
 sysdig -cstdout -n 50
 

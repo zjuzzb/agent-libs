@@ -8,9 +8,9 @@ SHELL ["powershell", "-command", "$ErrorActionPreference = 'Stop';"]
 
 # install Windows Installer XML toolset
 RUN mkdir C:\sxs ; `
-	Invoke-WebRequest -Uri https://s3.amazonaws.com/download.draios.com/dependencies/microsoft-windows-netfx3-ondemand-package.cab -OutFile C:\sxs\microsoft-windows-netfx3-ondemand-package.cab ; `
+	Invoke-WebRequest -Uri https://download.sysdig.com/dependencies/microsoft-windows-netfx3-ondemand-package.cab -OutFile C:\sxs\microsoft-windows-netfx3-ondemand-package.cab ; `
 	Install-WindowsFeature Net-Framework-Core -Source C:\sxs ; `
-	Invoke-WebRequest -Uri https://s3.amazonaws.com/download.draios.com/dependencies/wix311.exe -OutFile wix311.exe ; `
+	Invoke-WebRequest -Uri https://download.sysdig.com/dependencies/wix311.exe -OutFile wix311.exe ; `
 	Start-Process .\wix311.exe -Wait -ArgumentList @('-q') ;
 
 # install cygwin and all related packages that we need

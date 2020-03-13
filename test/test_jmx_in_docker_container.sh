@@ -34,7 +34,7 @@ function kafka_traffic(){
 }
 
 function install_agent(){
-    curl -s https://s3.amazonaws.com/download.draios.com/dev/install-agent | bash -s -- -a ${SYSDIG_ACCESS_KEY} -t role:jmx-agent-container -c ${COLLECTOR_ENDPOINT}
+    curl -s https://download.sysdig.com/dev/install-agent | bash -s -- -a ${SYSDIG_ACCESS_KEY} -t role:jmx-agent-container -c ${COLLECTOR_ENDPOINT}
 }
 
 function install_agent_in_container(){

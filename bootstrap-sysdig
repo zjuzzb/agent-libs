@@ -22,7 +22,7 @@ fi
 CMAKE_DIR=$DEPENDENCIES/cmake-3.3.2
 if [ ! -d "$CMAKE_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://s3.amazonaws.com/download.draios.com/dependencies/cmake-3.3.2.tar.gz
+	wget https://download.sysdig.com/dependencies/cmake-3.3.2.tar.gz
 	tar -xzf cmake-3.3.2.tar.gz
 	cd $CMAKE_DIR
 	./bootstrap

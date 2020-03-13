@@ -1,5 +1,5 @@
 Install-WindowsFeature Net-Framework-Core -source \\network\share\sxs
-Invoke-WebRequest -Uri https://s3.amazonaws.com/download.draios.com/dependencies/wix311.exe -OutFile wix311.exe
+Invoke-WebRequest -Uri https://download.sysdig.com/dependencies/wix311.exe -OutFile wix311.exe
 & .\wix311.exe -q
 Invoke-WebRequest -Uri https://cygwin.com/setup-x86_64.exe -OutFile setup-x86_64.exe
 & .\setup-x86_64.exe --quiet-mode --site http://cygwin.mirror.constant.com --packages bash | Out-Null

@@ -82,7 +82,7 @@ if [ ! -d "$PYTHON_DEPS/benchmark" ]; then
 
     cd $PYTHON_DEPS
     # This matches what is done in bootstrap-agent
-    DEPENDENCIES_URL="https://s3.amazonaws.com/download.draios.com/dependencies"
+    DEPENDENCIES_URL="https://download.sysdig.com/dependencies"
     BENCHMARK_COMMIT=b8ca0c42179b7b5d656494e61dda8b861057122f
     cd $PYTHON_DEPS
     wget $DEPENDENCIES_URL/google-benchmark-$BENCHMARK_COMMIT.zip
