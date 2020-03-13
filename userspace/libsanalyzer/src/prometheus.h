@@ -153,6 +153,21 @@ public:
 	                         const app_checks_proxy_interface::raw_metric_map_t& app_metrics,
 	                         uint64_t now);
 
+	inline bool operator==(const prom_process &rhs) const
+	{
+		return (m_pid == rhs.m_pid) && (m_vpid == rhs.m_vpid) &&
+			(m_ports == rhs.m_ports) && (m_name == rhs.m_name) &&
+			(m_path == rhs.m_path) && (m_options == rhs.m_options) &&
+			(m_tags == rhs.m_tags);
+	}
+
+	const std::string &name() const { return m_name; }
+	int pid() const { return m_pid; }
+	int vpid() const { return m_vpid; }
+	const std::set<uint16_t> &ports() const { return m_ports; }
+	const std::string &path() const { return m_path; }
+	const std::map<std::string, std::string> &options() const { return m_options; }
+	const std::map<std::string, std::string> &tags() const { return m_tags; }
 private:
 	std::string m_name;  // Just for debugging
 	int m_pid;

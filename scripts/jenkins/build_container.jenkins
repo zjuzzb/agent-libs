@@ -18,6 +18,10 @@ pipeline {
                     checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
 					sh "git checkout ${params.PROTOREPO_BRANCH}"
 				}
+				dir('prometheus') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/prometheus']]])
+					sh "git checkout ${params.PROMETHEUS_BRANCH}"
+				}
 			}
 		}
 		stage('Build') {

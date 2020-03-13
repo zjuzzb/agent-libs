@@ -229,7 +229,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
                                const metric_limits::sptr_t& the_metric_limits,
                                const label_limits::sptr_t& the_label_limits,
                                const k8s_limits::sptr_t& the_k8s_limits,
-                               std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy)
+                               std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy,
+                               std::shared_ptr<promscrape> promscrape)
     : m_configuration(new sinsp_configuration()),
       m_inspector(inspector),
       m_metrics(make_unique<draiosproto::metrics>()),
@@ -253,7 +254,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
       m_check_disable_dropping(check_disable_dropping),
       m_metrics_dir_mutex(),
       m_metrics_dir(""),
-      m_flush_queue(flush_queue)
+      m_flush_queue(flush_queue),
+      m_promscrape(promscrape)
 {
 	ASSERT(m_internal_metrics);
 	m_initialized = false;
@@ -2422,6 +2424,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				java_process_requests.emplace_back(&tinfo);
 			}
 
+			auto flush_time = m_prev_flush_time_ns / ONE_SECOND_IN_NS;
+
 			// May happen that for processes like apache with mpm_prefork there are hundred of
 			// apache processes with same comm, cmdline and ports, some of them are always alive,
 			// some die and are recreated.
@@ -2441,18 +2445,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				{
 					match_checks_list(&tinfo, mtinfo, m_app_checks, app_checks, "global list");
 				}
-				auto flush_time = m_prev_flush_time_ns / ONE_SECOND_IN_NS;
-
-#ifndef CYGWING_AGENT
-				// Prometheus checks are done through the app proxy as well.
-				// Looking for prometheus matches after app_checks because
-				// a rule may be specified for finding an app_checks match
-				if (!m_app_checks_proxy->have_prometheus_metrics_for_pid(tinfo.m_pid, flush_time))
-				{
-					match_prom_checks(&tinfo, mtinfo, prom_procs, false);
-				}
-#endif  // CYGWING_AGENT
-
 				for (auto& appcheck : app_checks)
 				{
 					if (m_app_checks_proxy->have_app_check_metrics_for_pid(tinfo.m_pid,
@@ -2473,6 +2465,21 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 					}
 				}
 			}
+
+#ifndef CYGWING_AGENT
+			// Looking for prometheus matches after app_checks because
+			// a rule may be specified for finding an app_checks match
+
+			// With promscrape enabled we'll always select target processes
+			// Without promscrape we only select processes for which we don't have
+			// unexpired prometheus metrics yet.
+			if (promscrape::c_use_promscrape.get_value() || (m_app_checks_proxy &&
+				!m_app_checks_proxy->have_prometheus_metrics_for_pid(tinfo.m_pid, flush_time)))
+			{
+				match_prom_checks(&tinfo, mtinfo, prom_procs, false);
+			}
+#endif  // CYGWING_AGENT
+
 		}
 #endif
 		return true;
@@ -2843,6 +2850,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	                                 metric_forwarding_configuration::c_jmx_max->get_value(),
 	                                 m_jmx_metrics_by_containers);
 	std::unique_ptr<app_check_emitter> app_check_emitter_instance = nullptr;
+	// XXX: We still want to run the app_check_emitter if we have promscrape metrics
+	// but m_app_checks_proxy is null. To be fixed with SMAGENT-2292
 	if (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT &&
 	    m_app_checks_proxy != nullptr)
 	{
@@ -2850,6 +2859,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		    m_app_checks_proxy->get_all_metrics(),
 		    metric_forwarding_configuration::c_app_checks_max->get_value(),
 		    m_prom_conf,
+		    m_promscrape,
 		    m_app_checks_by_containers,
 		    m_prometheus_by_containers,
 		    m_prev_flush_time_ns);
@@ -2978,12 +2988,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				// prometheus metrics associated with our pid.
 				// If we have multiple endpoints configured they will all be scraped
 				// in the same cycle
-				// XXX: This will have to be revisited if we're going to allow
-				// different intervals for different endpoints or if we want to start
-				// interleaving multiple endpoints.
-				if (!m_app_checks_proxy->have_prometheus_metrics_for_pid(
-				        our_tinfo->m_pid,
-				        m_prev_flush_time_ns / ONE_SECOND_IN_NS))
+
+				// With promscrape enabled we'll always select target processes
+				// Without promscrape we only select processes for which we don't have
+				// unexpired prometheus metrics yet.
+				if (promscrape::c_use_promscrape.get_value() || (m_app_checks_proxy &&
+					(!m_app_checks_proxy->have_prometheus_metrics_for_pid(
+					our_tinfo->m_pid, m_prev_flush_time_ns/ONE_SECOND_IN_NS))))
 				{
 					match_prom_checks(our_tinfo,
 					                  our_tinfo->get_main_thread_info(),
@@ -2992,7 +3003,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				}
 			}
 
-			if (!app_checks_processes.empty() || !prom_procs.empty())
+			if (promscrape::c_use_promscrape.get_value() && m_promscrape != nullptr)
+			{
+				// Always sendconfig, even if empty to make sure old jobs get stopped
+				m_promscrape->sendconfig(prom_procs);
+				if (!app_checks_processes.empty())
+				{
+					vector<prom_process> empty_procs;
+					m_app_checks_proxy->send_get_metrics_cmd(app_checks_processes, empty_procs, &m_prom_conf);
+				}
+			}
+			else if(!app_checks_processes.empty() || !prom_procs.empty())
 			{
 				tracer_emitter prom_filter_procs_trc("send_get_metrics_cmd", app_check_trc);
 				m_app_checks_proxy->send_get_metrics_cmd(app_checks_processes,
@@ -4431,6 +4452,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 					tracer_emitter copy_trc("copy_swarm_state", f_trc);
 					// Copy from cached swarm state
 					m_metrics->mutable_swarm()->CopyFrom(*m_docker_swarm_state);
+				}
+
+				if (promscrape::c_use_promscrape.get_value() && m_promscrape != nullptr)
+				{
+					m_promscrape->next(ts);
 				}
 #endif
 

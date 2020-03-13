@@ -7,7 +7,11 @@ set(PROTOC LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF
 )
 
 add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/agent-prom.grpc.pb.cc
+           ${CMAKE_CURRENT_BINARY_DIR}/agent-prom.grpc.pb.h
+           ${CMAKE_CURRENT_BINARY_DIR}/agent-prom.pb.cc
+           ${CMAKE_CURRENT_BINARY_DIR}/agent-prom.pb.h
+           ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc
            ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.h
            ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
            ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.h
@@ -20,15 +24,18 @@ add_custom_command(
            ${CMAKE_CURRENT_BINARY_DIR}/common.grpc.pb.cc
            ${CMAKE_CURRENT_BINARY_DIR}/common.grpc.pb.h
     COMMENT "Generate sdc_internal grpc code"
+    DEPENDS ${PROJECT_SOURCE_DIR}/../protorepo/agent/agent-prom.proto
     DEPENDS ${PROJECT_BINARY_DIR}/userspace/draiosproto/sdc_internal.proto
     DEPENDS ${PROJECT_BINARY_DIR}/userspace/draiosproto/draios.proto
     DEPENDS ${PROJECT_BINARY_DIR}/userspace/draiosproto/common.proto
+    COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/../protorepo/agent --cpp_out=. ${PROJECT_SOURCE_DIR}/../protorepo/agent/agent-prom.proto
     COMMAND ${PROTOC} -I ${PROJECT_BINARY_DIR}/userspace/draiosproto --cpp_out=.
             ${PROJECT_BINARY_DIR}/userspace/draiosproto/sdc_internal.proto
     COMMAND ${PROTOC} -I ${PROJECT_BINARY_DIR}/userspace/draiosproto --cpp_out=.
             ${PROJECT_BINARY_DIR}/userspace/draiosproto/draios.proto
     COMMAND ${PROTOC} -I ${PROJECT_BINARY_DIR}/userspace/draiosproto --cpp_out=.
             ${PROJECT_BINARY_DIR}/userspace/draiosproto/common.proto
+    COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/../protorepo/agent --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin ${PROJECT_SOURCE_DIR}/../protorepo/agent/agent-prom.proto
     COMMAND
         ${PROTOC} -I ${PROJECT_BINARY_DIR}/userspace/draiosproto --grpc_out=.
         --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin

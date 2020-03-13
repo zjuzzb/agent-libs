@@ -97,6 +97,7 @@ class metric_limits;
 class sinsp_ipv4_connection_manager;
 class sinsp_connection_aggregator;
 class sinsp_container_manager;
+class promscrape;
 
 //
 // Aggregated connection table: entry and hashing infrastructure
@@ -271,7 +272,8 @@ public:
 	               const metric_limits::sptr_t& the_metric_limits = nullptr,
 	               const label_limits::sptr_t& the_label_limits = nullptr,
 	               const k8s_limits::sptr_t& the_k8s_limits = nullptr,
-	               std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy = nullptr);
+	               std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy = nullptr,
+	               std::shared_ptr<promscrape> promscrape = nullptr);
 	~sinsp_analyzer();
 
 	//
@@ -1381,6 +1383,8 @@ public:
 	 * Message queue to send flush data down the pipeline.
 	 */
 	flush_queue* m_flush_queue;
+
+	std::shared_ptr<promscrape> m_promscrape;
 
 	//
 	// Please do not add any friends.

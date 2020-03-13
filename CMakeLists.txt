@@ -63,6 +63,22 @@ else()
     set(CPACK_STRIP_FILES "ON")
 endif()
 
+set(GOPATH "${DRAIOS_DEPENDENCIES_DIR}/go")
+set(GOENV scl enable rh-git29 -- env GOPATH=${GOPATH} GO111MODULE=on)
+
+add_custom_target(promscrape ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/promscrape)
+
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/promscrape
+    COMMAND echo "building promscrape"
+    COMMAND ${GOENV} GOPROXY=off go build -mod=vendor -o ${CMAKE_CURRENT_BINARY_DIR}/promscrape -x ./cmd/promscrape
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../prometheus
+    )
+
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/promscrape
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+    COMPONENT agent-slim)
+
 set(PACKAGE_NAME "draios-agent")
 set(PROBE_VERSION "${AGENT_VERSION}")
 set(PROBE_NAME "sysdigcloud-probe")

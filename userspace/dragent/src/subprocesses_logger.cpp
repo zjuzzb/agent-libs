@@ -360,6 +360,46 @@ void sinsp_encoded_parser::operator()(const string& s)
 	g_log->log(m_prefix + s.substr(sev_len), priority);
 }
 
+void promscrape_parser::operator()(const string& data)
+{
+	// Parse log level and use it
+	Json::Value log;
+	bool parsing_ok = m_json_reader.parse(data, log, false);
+	if(parsing_ok &&
+	   log.isObject() &&
+	   log.isMember("level") &&
+	   log.isMember("msg"))
+	{
+		Poco::Message::Priority priority = Poco::Message::Priority::PRIO_TRACE;
+		bool validlevel = true;
+
+		if(log["level"] == "trace") {
+			priority = Poco::Message::Priority::PRIO_TRACE;
+		} else if(log["level"] == "debug") {
+			priority = Poco::Message::Priority::PRIO_DEBUG;
+		} else if(log["level"] == "info") {
+			priority = Poco::Message::Priority::PRIO_INFORMATION;
+		} else if(log["level"] == "warn") {
+			priority = Poco::Message::Priority::PRIO_WARNING;
+		} else if(log["level"] == "error") {
+			priority = Poco::Message::Priority::PRIO_ERROR;
+		} else if(log["level"] == "critical") {
+			priority = Poco::Message::Priority::PRIO_CRITICAL;
+		} else {
+			g_log->critical("promscrape-srv: unparsable log level: " + log["level"].asString() + ", data:" + data);
+			validlevel = false;
+		}
+		if (validlevel)
+		{
+			g_log->log("promscrape-srv: " + log["msg"].asString(), priority);
+		}
+	}
+	else
+	{
+		g_log->critical("promscrape-srv: unparsable log message: " + data);
+	}
+}
+
 const unsigned subprocesses_logger::READ_BUFFER_SIZE = 4096;
 
 subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, log_reporter* reporter, protocol_queue& queue) :

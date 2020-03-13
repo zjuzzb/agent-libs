@@ -146,6 +146,7 @@ bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule& r
 	if (use_host_filter)
 	{
 		// For remote scraping we require at least a configured port or url
+		// XXX: Handling of "urls" still needs to be added downstream, see SMAGENT-2294
 		if (params.ports.empty() &&
 		    (rule.m_config.m_options.find("url") == rule.m_config.m_options.end()) &&
 		    (rule.m_config.m_options.find("urls") == rule.m_config.m_options.end()))
@@ -354,6 +355,7 @@ void prom_process::filter_procs(vector<prom_process>& procs,
                                 const app_checks_proxy_interface::raw_metric_map_t& app_metrics,
                                 uint64_t now)
 {
+	// TODO: Add search for existing prometheus metrics from promscrape. SMAGENT-2295
 	// Set of container_id and listening port for non-expired prometheus metrics
 	// to ensure we don't try scanning those ports again for a different pid.
 	std::set<std::pair<string, uint16_t>> portmetricmap;

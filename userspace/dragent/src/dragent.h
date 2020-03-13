@@ -89,6 +89,8 @@ private:
 	friend class dragent_app;
 };
 
+class promscrape;
+class promscrape_proxy;
 class user_event_channel;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -130,7 +132,8 @@ private:
 		const metric_limits::sptr_t& the_metric_limits,
 		const label_limits::sptr_t& the_label_limits,
 		const k8s_limits::sptr_t& the_k8s_limits,
-		std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy);
+		std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy,
+		std::shared_ptr<promscrape> promscrape);
 	void setup_coredumps();
 	void log_sysinfo();
 
@@ -161,6 +164,9 @@ private:
 	std::unique_ptr<errpipe_manager> m_statsite_forwarder_pipe;
 	std::unique_ptr<pipe_manager> m_cointerface_pipes;
 	std::unique_ptr<pipe_manager> m_promex_pipes;
+	std::unique_ptr<pipe_manager> m_promscrape_pipes;
+
+	std::shared_ptr<promscrape_proxy> m_promscrape_proxy;
 
 	internal_metrics::sptr_t m_internal_metrics;
 	protocol_handler m_protocol_handler;

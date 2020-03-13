@@ -143,6 +143,7 @@ public:
 	std::unordered_map<std::string, std::tuple<unsigned, unsigned>> m_jmx_metrics_by_container;
 	jmx_emitter m_jmx_emitter;
 	prometheus_conf m_prom_conf;
+	std::shared_ptr<promscrape> m_promscrape;
 	std::unordered_map<std::string, std::tuple<unsigned, unsigned>> m_app_checks_by_container;
 	std::unordered_map<std::string, std::tuple<unsigned, unsigned>> m_prometheus_by_container;
 	process_emitter m_process_emitter;

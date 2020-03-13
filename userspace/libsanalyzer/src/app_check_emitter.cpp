@@ -1,10 +1,12 @@
 #include "app_check_emitter.h"
 #include "analyzer_thread.h"
 #include "configuration_manager.h"
+#include "promscrape.h"
 
 app_check_emitter::app_check_emitter(const app_checks_proxy_interface::metric_map_t& app_metrics,
 				     const unsigned int app_metrics_limit,
 				     const prometheus_conf& prom_conf,
+				     std::shared_ptr<promscrape> prom_scrape,
 				     std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& app_checks_by_container,
 				     std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& prometheus_by_container,
 				     const uint64_t prev_flush_time_ns)
@@ -12,6 +14,7 @@ app_check_emitter::app_check_emitter(const app_checks_proxy_interface::metric_ma
 	  m_app_metrics_limit(app_metrics_limit),
 	  m_app_metrics_remaining(app_metrics_limit),
 	  m_prom_conf(prom_conf),
+	  m_promscrape(prom_scrape),
 	  m_prom_metrics_remaining(m_prom_conf.max_metrics()),
 	  m_app_checks_by_container(app_checks_by_container),
 	  m_prometheus_by_container(prometheus_by_container),
@@ -30,6 +33,36 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 	unsigned sent_prometheus_metrics = 0;
 	unsigned filtered_prometheus_metrics = 0;
 	unsigned total_prometheus_metrics = 0;
+
+	// First check if promscrape has metrics for these pids, if enabled
+	if (promscrape::c_use_promscrape.get_value())
+	{
+		for(auto pid: procinfo.m_program_pids)
+		{
+			if (m_promscrape->pid_has_jobs((int)pid))
+			{
+				if (configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value())
+				{
+					sent_prometheus_metrics += m_promscrape->pid_to_protobuf((int)pid,
+						proc.mutable_protos()->mutable_prom_info(),
+						m_prom_metrics_remaining,
+						m_prom_conf.max_metrics(),
+						&filtered_prometheus_metrics,
+						&total_prometheus_metrics);
+				}
+				else
+				{
+					sent_prometheus_metrics += m_promscrape->pid_to_protobuf((int)pid,
+						proc.mutable_protos()->mutable_prometheus(),
+						m_prom_metrics_remaining,
+						m_prom_conf.max_metrics(),
+						&filtered_prometheus_metrics,
+						&total_prometheus_metrics);
+				}
+			}
+		}
+	}
+
 	// Map of app_check data by app-check name and how long the
 	// metrics have been expired to ensure we serve the most recent
 	// metrics available

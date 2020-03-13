@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include "app_checks_proxy_interface.h"
 #include "prometheus.h"
+#include "promscrape.h"
 
 /**
  * Does the work of emitting the app check metrics of processes during the scope of a SINGLE
@@ -15,6 +16,7 @@ public:
 	app_check_emitter(const app_checks_proxy_interface::metric_map_t& app_metrics,
 		    const unsigned int app_metrics_limit,
 		    const prometheus_conf& prom_conf,
+		    std::shared_ptr<promscrape> prom_scrape,
 		    std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& app_checks_by_container,
 		    std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& prometheus_by_container,
 		    const uint64_t prev_flush_time_ns);
@@ -37,6 +39,7 @@ private:
 	const int m_app_metrics_limit;
 	unsigned int m_app_metrics_remaining;
 	const prometheus_conf& m_prom_conf;
+	std::shared_ptr<promscrape> m_promscrape;
 	unsigned int m_prom_metrics_remaining;
 	std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& m_app_checks_by_container;
         std::unordered_map<std::string, std::tuple<unsigned, unsigned>>& m_prometheus_by_container;

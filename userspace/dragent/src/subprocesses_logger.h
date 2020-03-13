@@ -132,6 +132,14 @@ private:
 	Poco::Message::Priority m_last_sev;
 };
 
+class promscrape_parser
+{
+public:
+	void operator()(const std::string&);
+private:
+	Json::Reader m_json_reader;
+};
+
 class subprocesses_logger : public dragent::watchdog_runnable
 {
 public:

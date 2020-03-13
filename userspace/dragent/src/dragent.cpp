@@ -52,6 +52,8 @@
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
 #include <time.h>
+#include "promscrape.h"
+#include "promscrape_proxy.h"
 
 #ifndef CYGWING_AGENT
 #include <gperftools/malloc_extension.h>
@@ -108,6 +110,16 @@ type_config<uint64_t> c_app_check_timeout_s(
 	60,
 	"Watchdog timeout for the app_check thread",
 	"app_check_timeout");
+
+type_config<bool> c_promscrape_thread(
+	true,
+	"Run a dedicated thread for promscrape processing",
+	"promscrape_thread");
+
+type_config<uint64_t> c_promscrape_timeout_s(
+	60,
+	"Watchdog timeout for the promscrape thread",
+	"promscrape_thread_timeout");
 
 type_config<bool>::ptr c_10s_flush_enabled =
     type_config_builder<bool>(false, "Enable flag to force 10s flush behavior", "10s_flush_enable")
@@ -820,6 +832,29 @@ int dragent_app::main(const std::vector<std::string>& args)
 			return (EXIT_FAILURE);
 		});
 	}
+
+	if (promscrape::c_use_promscrape.get_value())
+	{
+		m_promscrape_pipes = make_unique<pipe_manager>();
+		auto* state = &m_subprocesses_state["promscrape"];
+		state->set_name("promscrape");
+		m_subprocesses_logger.add_logfd(
+		    m_promscrape_pipes->get_out_fd(), promscrape_parser(), state);
+		m_subprocesses_logger.add_logfd(
+		    m_promscrape_pipes->get_err_fd(), promscrape_parser(), state);
+		monitor_process.emplace_process("promscrape",
+		                                [=]()
+		{
+			default_cpu_cgroup.enter();
+			m_promscrape_pipes->attach_child_stdio();
+
+			execl((m_configuration.c_root_dir.get_value() + "/bin/promscrape").c_str(),
+			      "promscrape", "--log.format=json",
+			      (char*)NULL);
+
+			return (EXIT_FAILURE);
+		});
+	}
 #endif
 
 	monitor_process.set_cleanup_function([=]() {
@@ -1091,12 +1126,32 @@ int dragent_app::sdagent_main()
 			}
 		}
 
+		std::shared_ptr<promscrape> the_promscrape = nullptr;
+		if (m_configuration.m_prom_conf.enabled() && promscrape::c_use_promscrape.get_value())
+		{
+			auto interval_cb = [cm]() -> int
+			{
+				std::chrono::seconds s = cm->get_negotiated_aggregation_interval();
+				return (s != std::chrono::seconds::max()) ? s.count() : 10;
+			};
+			the_promscrape = std::make_shared<promscrape>(the_metric_limits,
+				m_configuration.m_prom_conf,
+				c_promscrape_thread.get_value(),
+				interval_cb);
+			if (c_promscrape_thread.get_value())
+			{
+				m_promscrape_proxy = std::make_shared<promscrape_proxy>(the_promscrape);
+				m_pool.start(*m_promscrape_proxy.get(), c_promscrape_timeout_s.get_value());
+			}
+		}
+
 		analyzer = build_analyzer(inspector,
 		                          m_aggregator_queue,
 		                          the_metric_limits,
 		                          the_label_limits,
 		                          the_k8s_limits,
-		                          the_app_checks_proxy);
+		                          the_app_checks_proxy,
+		                          the_promscrape);
 		LOG_INFO("Created analyzer");
 
 		inspector->register_external_event_processor(*analyzer);
@@ -1294,7 +1349,8 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
                                             const metric_limits::sptr_t& the_metric_limits,
                                             const label_limits::sptr_t& the_label_limits,
                                             const k8s_limits::sptr_t& the_k8s_limits,
-                                            std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy)
+                                            std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy,
+                                            std::shared_ptr<promscrape> promscrape)
 {
 	sinsp_analyzer* analyzer = new sinsp_analyzer(
 	    inspector.get(),
@@ -1308,7 +1364,8 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
 	    the_metric_limits,
 	    the_label_limits,
 	    the_k8s_limits,
-	    std::move(the_app_checks_proxy));
+	    std::move(the_app_checks_proxy),
+	    promscrape);
 	sinsp_configuration* sconfig = analyzer->get_configuration();
 
 	analyzer->set_procfs_scan_thread(m_configuration.m_procfs_scan_thread);

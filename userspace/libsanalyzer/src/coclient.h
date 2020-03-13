@@ -20,6 +20,7 @@
 #include "grpc_channel_registry.h"
 
 #include "sdc_internal.grpc.pb.h"
+#include "agent-prom.grpc.pb.h"
 
 // This generally follows the example at
 // https://github.com/grpc/grpc/blob/v1.0.0/examples/cpp/helloworld/greeter_async_client2.cc,
@@ -46,11 +47,11 @@ template<class Stub> std::shared_ptr<Stub> grpc_connect(const std::string& socke
 	return std::make_shared<Stub>(libsinsp::grpc_channel_registry::get_channel(socket_url));
 }
 
-template<class Stub> std::shared_ptr<Stub> grpc_connect(const std::string& socket_url, int connect_timeout_ms)
+template<class Stub> std::shared_ptr<Stub> grpc_connect(const std::string& socket_url, int connect_timeout_ms, const grpc::ChannelArguments *args = nullptr)
 {
 	g_logger.log("CONNECTING TO SOCKET " + socket_url, sinsp_logger::SEV_DEBUG);
 
-	auto channel = libsinsp::grpc_channel_registry::get_channel(socket_url);
+	auto channel = libsinsp::grpc_channel_registry::get_channel(socket_url, args);
 	auto deadline = gpr_time_add(gpr_now(GPR_CLOCK_MONOTONIC), gpr_time_from_millis(connect_timeout_ms, GPR_TIMESPAN));
 	bool connected = channel->WaitForConnected(deadline);
 	if(connected)

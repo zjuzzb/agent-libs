@@ -15,7 +15,7 @@ pipeline {
 					sh "git checkout ${params.SYSDIG_BRANCH}"
 				}
 				dir('protorepo') {
-					checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/sysdig']]])
+					checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
 					sh "git checkout ${params.PROTOREPO_BRANCH}"
 				}
 			}
@@ -42,7 +42,7 @@ pipeline {
 					sh label: '', script: '''
 						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
 						docker pull quay.io/sysdig/agent-builder:latest
-						docker pull quay.io/sysdig/agent-builder:${AGENT_BRANCH}
+						# docker pull quay.io/sysdig/agent-builder:${AGENT_BRANCH}
 						docker build --build-arg max_parallelism=$(nproc) -t quay.io/sysdig/agent-builder:$AGENT_BRANCH -f agent/docker/builder/Dockerfile --pull agent/docker/builder
 					'''
 				}
