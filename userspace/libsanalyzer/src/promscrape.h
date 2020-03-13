@@ -22,6 +22,7 @@ public:
 	typedef struct {
 		int pid;
 		std::string url;
+		std::string container_id;
 		uint64_t config_ts;
 		uint64_t data_ts;
 		uint64_t last_total_samples;
@@ -42,6 +43,7 @@ public:
 	const int job_prune_time_s = 60;
 
 	static type_config<bool>c_use_promscrape;
+	static type_config<bool>c_export_fastproto;
 
 	explicit promscrape(metric_limits::sptr_t ml, const prometheus_conf &prom_conf, bool threaded, interval_cb_t interval_cb);
 
@@ -82,15 +84,19 @@ private:
 	void try_start();
 	void reset();
 	void start();
-	int64_t assign_job_id(int pid, const std::string &url, const tag_map_t &tags, uint64_t ts);
+	int64_t assign_job_id(int pid, const std::string &url,
+		const std::string &container_id, const tag_map_t &tags, uint64_t ts);
 	void addscrapeconfig(agent_promscrape::Config &config, int pid, const std::string &url,
-		const std::map<std::string, std::string> &options, uint16_t port,
-		const tag_map_t &tags, uint64_t ts);
+		const std::string &container_id, const std::map<std::string, std::string> &options,
+		uint16_t port, const tag_map_t &tags, uint64_t ts);
 	void settargetauth(agent_promscrape::Target *target,
 		const std::map<std::string, std::string> &options);
 	void applyconfig(agent_promscrape::Config &config);
 	void handle_result(agent_promscrape::ScrapeResult &result);
 	void prune_jobs(uint64_t ts);
+
+	std::shared_ptr<agent_promscrape::ScrapeResult> get_job_result_ptr(uint64_t job_id,
+		prom_job_config *config_copy);
 
 	// Mutex to protect all 3 maps, might want finer granularity some day
 	std::mutex m_map_mutex;

@@ -23,10 +23,15 @@ public:
 
 	/**
 	 * emit the app metrics for a single process/thread
+	 * Only one of proc or metrics will be filled in, depending on whether or not
+	 * promscrape::c_export_fastproto is set.
+     * proc is for per-process app_check data
+	 * metrics is for prometheus timeseries for meerkat
 	 */
 	void emit_apps(sinsp_procinfo& procinfo,
 		       sinsp_threadinfo& tinfo,
-		       draiosproto::process& proc);
+		       draiosproto::process& proc,
+		       draiosproto::metrics& metrics);
 
 	/**
 	 * log the results of an entire flush. Will log warning of some results were

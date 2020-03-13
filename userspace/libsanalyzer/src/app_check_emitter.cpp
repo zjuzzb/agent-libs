@@ -24,7 +24,8 @@ app_check_emitter::app_check_emitter(const app_checks_proxy_interface::metric_ma
 
 void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 				  sinsp_threadinfo& tinfo,
-				  draiosproto::process& proc)
+				  draiosproto::process& proc,
+				  draiosproto::metrics& metrics)
 {
 	// Send data for each app-check for the processes in procinfo
 	unsigned sent_app_checks_metrics = 0;
@@ -41,7 +42,14 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 		{
 			if (m_promscrape->pid_has_jobs((int)pid))
 			{
-				if (configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value())
+				if (promscrape::c_export_fastproto.get_value())
+				{
+					sent_prometheus_metrics += m_promscrape->pid_to_protobuf((int)pid,
+						&metrics,
+						m_prom_metrics_remaining, m_prom_conf.max_metrics(),
+						&filtered_prometheus_metrics, &total_prometheus_metrics);
+				}
+				else if (configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value())
 				{
 					sent_prometheus_metrics += m_promscrape->pid_to_protobuf((int)pid,
 						proc.mutable_protos()->mutable_prom_info(),

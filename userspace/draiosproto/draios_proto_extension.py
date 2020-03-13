@@ -354,6 +354,9 @@ field_extension = {
                  42: {LIMITED}},
     "pod_status_count" : {1: {PRIMARY_KEY},
                           2:100},
+    "prom_sample" : {1: {PRIMARY_KEY},
+                     2:102,
+                     4: {PRIMARY_KEY, UNIQUE}},
 }
 
 # This set describes types which we will skip. We won't generate any aggregation

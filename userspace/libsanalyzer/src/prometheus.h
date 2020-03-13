@@ -129,16 +129,18 @@ private:
 class prom_process
 {
 public:
-	explicit prom_process(const std::string name,
+	explicit prom_process(const std::string &name,
 	                      int pid,
 	                      int vpid,
+	                      const std::string &container_id,
 	                      const std::set<uint16_t>& ports,
-	                      const std::string path,
+	                      const std::string &path,
 	                      const std::map<std::string, std::string>& options,
 	                      const std::map<std::string, std::string>& tags)
 	    : m_name(name),
 	      m_pid(pid),
 	      m_vpid(vpid),
+	      m_container_id(container_id),
 	      m_ports(ports),
 	      m_path(path),
 	      m_options(options),
@@ -157,6 +159,7 @@ public:
 	{
 		return (m_pid == rhs.m_pid) && (m_vpid == rhs.m_vpid) &&
 			(m_ports == rhs.m_ports) && (m_name == rhs.m_name) &&
+			(m_container_id == rhs.m_container_id) &&
 			(m_path == rhs.m_path) && (m_options == rhs.m_options) &&
 			(m_tags == rhs.m_tags);
 	}
@@ -164,6 +167,7 @@ public:
 	const std::string &name() const { return m_name; }
 	int pid() const { return m_pid; }
 	int vpid() const { return m_vpid; }
+	const std::string &container_id() const { return m_container_id; }
 	const std::set<uint16_t> &ports() const { return m_ports; }
 	const std::string &path() const { return m_path; }
 	const std::map<std::string, std::string> &options() const { return m_options; }
@@ -172,6 +176,7 @@ private:
 	std::string m_name;  // Just for debugging
 	int m_pid;
 	int m_vpid;
+	std::string m_container_id;
 	std::set<uint16_t> m_ports;
 	std::string m_path;
 	std::map<std::string, std::string> m_options;

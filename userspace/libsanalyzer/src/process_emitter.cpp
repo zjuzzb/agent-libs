@@ -546,7 +546,7 @@ void process_emitter::emit_process(
 	}
 	if (m_app_check_emitter)
 	{
-		m_app_check_emitter->emit_apps(procinfo, tinfo, *proc);
+		m_app_check_emitter->emit_apps(procinfo, tinfo, *proc, metrics);
 	}
 #endif
 

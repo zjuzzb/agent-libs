@@ -20,7 +20,7 @@ static void set_sample_result(agent_promscrape::ScrapeResult *res,
 	sample->set_value(value);
 }
 
-TEST(promscrape_test, enter_and_output_result)
+TEST(promscrape_test, DISABLED_enter_and_output_result)
 {
 	prometheus_conf conf;
 	promscrape scrape(nullptr, conf, false, nullptr);

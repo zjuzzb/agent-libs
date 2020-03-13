@@ -27,6 +27,11 @@ type_config<int> c_promscrape_connect_interval(
     "Interval for attempting to connect to promscrape",
     "promscrape_connect_interval");
 
+type_config<bool> promscrape::c_export_fastproto(
+    false,
+    "Whether or not to export metrics using newer protocol",
+    "promscrape_fastproto");
+
 promscrape::promscrape(metric_limits::sptr_t ml,
 	const prometheus_conf &prom_conf,
 	bool threaded,
@@ -136,7 +141,8 @@ void promscrape::applyconfig(agent_promscrape::Config &config)
 
 static int64_t g_prom_job_id = 0;
 
-int64_t promscrape::assign_job_id(int pid, const string &url, const tag_map_t &tags, uint64_t ts)
+int64_t promscrape::assign_job_id(int pid, const string &url, const string &container_id,
+	const tag_map_t &tags, uint64_t ts)
 {
 	int64_t job_id = 0;
 	auto pid_it = m_pids.find(pid);
@@ -167,7 +173,7 @@ int64_t promscrape::assign_job_id(int pid, const string &url, const tag_map_t &t
 			}
 		}
 	}
-	prom_job_config conf = {pid, url, ts, 0, 0, tags};
+	prom_job_config conf = {pid, url, container_id, ts, 0, 0, tags};
 
 	job_id = ++g_prom_job_id;
 	LOG_DEBUG("promscrape: creating job %" PRId64 " for %d.%s", job_id, pid, url.c_str());
@@ -177,8 +183,8 @@ int64_t promscrape::assign_job_id(int pid, const string &url, const tag_map_t &t
 }
 
 void promscrape::addscrapeconfig(agent_promscrape::Config &config, int pid, const string &url,
-        const map<string, string> &options, uint16_t port,
-        const tag_map_t &tags, uint64_t ts)
+        const string &container_id, const map<string, string> &options,
+		uint16_t port, const tag_map_t &tags, uint64_t ts)
 {
 	string joburl;
 	auto scrape = config.add_scrape_configs();
@@ -226,7 +232,7 @@ void promscrape::addscrapeconfig(agent_promscrape::Config &config, int pid, cons
 
 	// Set auth method if configured in options
 	settargetauth(target, options);
-	int64_t job_id = assign_job_id(pid, joburl, tags, ts);
+	int64_t job_id = assign_job_id(pid, joburl, container_id, tags, ts);
 	scrape->set_job_id(job_id);
 }
 
@@ -309,7 +315,7 @@ void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 			if (opt_it != p.options().end())
 			{
 				// Specified url overrides everything else
-				addscrapeconfig(config, p.pid(), opt_it->second, p.options(), 0, p.tags(), m_next_ts);
+				addscrapeconfig(config, p.pid(), opt_it->second, p.container_id(), p.options(), 0, p.tags(), m_next_ts);
 				continue;
 			}
 			if (p.ports().empty())
@@ -320,7 +326,7 @@ void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 
 			for (auto port : p.ports())
 			{
-				addscrapeconfig(config, p.pid(), empty, p.options(), port, p.tags(), m_next_ts);
+				addscrapeconfig(config, p.pid(), empty, p.container_id(), p.options(), port, p.tags(), m_next_ts);
 			}
 		}
 	}
@@ -408,7 +414,7 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 			if (m_metric_limits->allow(sample.metric_name(), filter, nullptr, "promscrape"))
 			{
 				auto newsample = result_ptr->add_samples();
-				*newsample = std::move(sample);
+				*newsample = sample;
 				++num_samples;
 			}
 			++total_samples;
@@ -487,6 +493,35 @@ bool promscrape::pid_has_jobs(int pid)
 	return m_pids.find(pid) != m_pids.end();
 }
 
+std::shared_ptr<agent_promscrape::ScrapeResult> promscrape::get_job_result_ptr(
+	uint64_t job_id, prom_job_config *config_copy)
+{
+	std::shared_ptr<agent_promscrape::ScrapeResult> result_ptr;
+	std::lock_guard<std::mutex> lock(m_map_mutex);
+
+	auto it = m_metrics.find(job_id);
+	if (it == m_metrics.end())
+	{
+		// No metrics for this job (yet)
+		return nullptr;
+	}
+	result_ptr = it->second;
+
+	auto jobit = m_jobs.find(job_id);
+	if (jobit == m_jobs.end())
+	{
+		LOG_WARNING("promscrape: missing config for job %" PRId64, job_id);
+		return nullptr;
+	}
+	// Copy the job config so the caller doesn't need to hold a lock
+	if (config_copy)
+	{
+		*config_copy = jobit->second;
+	}
+
+	return result_ptr;
+}
+
 template<typename metric>
 unsigned int promscrape::pid_to_protobuf(int pid, metric *proto,
 	unsigned int &limit, unsigned int max_limit,
@@ -533,6 +568,9 @@ template unsigned int promscrape::pid_to_protobuf<draiosproto::app_info>(int pid
 template unsigned int promscrape::pid_to_protobuf<draiosproto::prometheus_info>(int pid, draiosproto::prometheus_info *proto,
 	unsigned int &limit, unsigned int max_limit,
 	unsigned int *filtered, unsigned int *total);
+template unsigned int promscrape::pid_to_protobuf<draiosproto::metrics>(int pid, draiosproto::metrics *proto,
+	unsigned int &limit, unsigned int max_limit,
+	unsigned int *filtered, unsigned int *total);
 
 template<typename metric>
 unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
@@ -540,35 +578,17 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 	unsigned int *filtered, unsigned int *total)
 {
 	unsigned int num_samples = 0;
-	tag_map_t add_tags;
+	prom_job_config job_config;
 
 	// We're going to use the results without a lock as it shouldn't get changed anywhere and
 	// handle_result() always puts incoming data into a new shared_ptr
-	std::shared_ptr<agent_promscrape::ScrapeResult> result_ptr;
-
+	std::shared_ptr<agent_promscrape::ScrapeResult> result_ptr =
+		get_job_result_ptr(job_id, &job_config);
+	if (result_ptr == nullptr)
 	{
-		std::lock_guard<std::mutex> lock(m_map_mutex);
-
-		auto it = m_metrics.find(job_id);
-		if (it == m_metrics.end())
-		{
-			// No metrics for this job (yet)
-			return num_samples;
-		}
-		result_ptr = it->second;
-
-		auto jobit = m_jobs.find(job_id);
-		if (jobit == m_jobs.end())
-		{
-			LOG_WARNING("promscrape: missing config for job %" PRId64, job_id);
-			return num_samples;
-		}
-		add_tags = jobit->second.add_tags;
-		if (total)
-		{
-			*total += jobit->second.last_total_samples;
-		}
+		return num_samples;
 	}
+
 	LOG_DEBUG("promscrape: have metrics for job %" PRId64, job_id);
 
 	bool ml_log = metric_limits::log_enabled();
@@ -586,28 +606,113 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 			continue;
 		}
 		auto newmet = proto->add_metrics();
-		newmet->set_name(std::move(sample.metric_name()));
+		newmet->set_name(sample.metric_name());
 		newmet->set_value(sample.value());
 		newmet->set_type(static_cast<draiosproto::app_metric_type>(sample.legacy_metric_type()));
 		newmet->set_prometheus_type(static_cast<draiosproto::prometheus_type>(sample.raw_metric_type()));
 		for (const auto &bucket : sample.buckets())
 		{
 			auto newbucket = newmet->add_buckets();
-			newbucket->set_label(std::move(bucket.label()));
+			newbucket->set_label(bucket.label());
 			newbucket->set_count(bucket.count());
 		}
 		for (const auto &label : sample.labels())
 		{
 			auto newtag = newmet->add_tags();
-			newtag->set_key(std::move(label.name()));
-			newtag->set_value(std::move(label.value()));
+			newtag->set_key(label.name());
+			newtag->set_value(label.value());
 		}
 		// Add configured tags
-		for (const auto &tag : add_tags)
+		for (const auto &tag : job_config.add_tags)
 		{
 			auto newtag = newmet->add_tags();
-			newtag->set_key(std::move(tag.first));
-			newtag->set_value(std::move(tag.second));
+			newtag->set_key(tag.first);
+			newtag->set_value(tag.second);
+		}
+		++num_samples;
+		--limit;
+	}
+
+	if (filtered)
+	{
+		// Metric filtering happens on ingestion (in handle_result)
+		// so the number of samples here is the filtered count
+		*filtered += result_ptr->samples().size();
+	}
+	if (total)
+	{
+		*total += job_config.last_total_samples;
+	}
+
+	return num_samples;
+}
+
+template unsigned int promscrape::job_to_protobuf<draiosproto::app_info>(int64_t job_id,
+	draiosproto::app_info *proto, unsigned int &limit, unsigned int max_limit,
+	unsigned int *filtered, unsigned int *total);
+template unsigned int promscrape::job_to_protobuf<draiosproto::prometheus_info>(int64_t job_id,
+	draiosproto::prometheus_info *proto, unsigned int &limit, unsigned int max_limit,
+	unsigned int *filtered, unsigned int *total);
+
+template<>
+unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *proto,
+	unsigned int &limit, unsigned int max_limit,
+	unsigned int *filtered, unsigned int *total)
+{
+	unsigned int num_samples = 0;
+	prom_job_config job_config;
+
+	// We're going to use the results without a lock as it shouldn't get changed anywhere and
+	// handle_result() always puts incoming data into a new shared_ptr
+	std::shared_ptr<agent_promscrape::ScrapeResult> result_ptr =
+		get_job_result_ptr(job_id, &job_config);
+	if (result_ptr == nullptr)
+	{
+		return num_samples;
+	}
+
+	LOG_DEBUG("promscrape: have metrics for job %" PRId64, job_id);
+
+	bool ml_log = metric_limits::log_enabled();
+
+	auto prom = proto->add_prometheus();
+	prom->set_pid(job_config.pid);
+	if (!job_config.container_id.empty())
+	{
+		prom->set_container_id(job_config.container_id);
+	}
+	prom->set_timestamp(result_ptr->timestamp());
+	for (const auto &tag : job_config.add_tags)
+	{
+		auto newtag = prom->add_common_labels();
+		newtag->set_name(tag.first);
+		newtag->set_value(tag.second);
+	}
+	for (const auto &sample : result_ptr->samples())
+	{
+		if(limit <= 0)
+		{
+			if(!ml_log)
+			{
+				break;
+			}
+			LOG_INFO("[promscrape] metric over limit (total, %u max): %s",
+				max_limit, sample.metric_name().c_str());
+			continue;
+		}
+
+		// Only supported for RAW prometheus metrics
+		auto newmet = prom->add_samples();
+		newmet->set_metric_name(sample.metric_name());
+		newmet->set_value(sample.value());
+
+		newmet->set_type(static_cast<draiosproto::prometheus_type>(sample.raw_metric_type()));
+
+		for (const auto &label : sample.labels())
+		{
+			auto newtag = newmet->add_labels();
+			newtag->set_name(label.name());
+			newtag->set_value(label.value());
 		}
 		++num_samples;
 		--limit;
@@ -622,10 +727,3 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 
 	return num_samples;
 }
-
-template unsigned int promscrape::job_to_protobuf<draiosproto::app_info>(int64_t job_id,
-	draiosproto::app_info *proto, unsigned int &limit, unsigned int max_limit,
-	unsigned int *filtered, unsigned int *total);
-template unsigned int promscrape::job_to_protobuf<draiosproto::prometheus_info>(int64_t job_id,
-	draiosproto::prometheus_info *proto, unsigned int &limit, unsigned int max_limit,
-	unsigned int *filtered, unsigned int *total);
