@@ -290,7 +290,7 @@ TEST(protobuf_metric_serializer_test, serialize)
 	// there.
 	//
 	const std::string dam_file =
-	    dragent::metrics_file_emitter::generate_dam_filename(s->get_metrics_directory(), TIMESTAMP);
+	    dragent::file_emitter::generate_dam_filename(s->get_metrics_directory(), TIMESTAMP);
 
 	//
 	// We could parse this file, but I'm not sure what parser can consume

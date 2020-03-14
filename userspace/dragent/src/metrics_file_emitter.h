@@ -10,12 +10,13 @@
 #include <string>
 #include <memory>
 #include <fstream>
+#include "file_emitter.h"
 #include "analyzer_flush_message.h"
 
 namespace dragent
 {
 
-class metrics_file_emitter
+class metrics_file_emitter : public file_emitter
 {
 public:
 	metrics_file_emitter();
@@ -28,10 +29,7 @@ public:
 	/**
 	 * @return whether the data was written or not
 	 */
-	bool emit_metrics_to_json_file(const std::shared_ptr<flush_data_message>& data) const;
-
-	static std::string generate_dam_filename(const std::string& directory,
-	                                         const uint64_t timestamp);
+	bool emit_metrics_to_json_file(const std::shared_ptr<flush_data_message>& data);
 
 	/**
 	 * Returns true if this metric_serializer is configured to emit
@@ -55,14 +53,9 @@ public:
 	void set_metrics_directory(const std::string&);
 
 private:
-	void emit_log(const std::shared_ptr<flush_data_message>& data) const;
 	bool should_dump() const;
 
-	std::ofstream m_protobuf_file;
-
 	mutable std::mutex m_metrics_dir_mutex;
-	std::string m_root_dir;
-	std::string m_metrics_dir;
 };
 
 }  // end namespace dragent

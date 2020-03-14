@@ -5,6 +5,7 @@
 #include "watchdog_runnable.h"
 #include "dragent_message_queues.h"
 #include "dragent_settings_interface.h"
+#include "protobuf_file_emitter.h"
 
 #ifndef CYGWING_AGENT
 #include "promex.pb.h"
@@ -581,6 +582,7 @@ private:
 	uint64_t m_sequence;
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
+	std::unique_ptr<dragent::protobuf_file_emitter> m_protobuf_file_emitter;
 	pending_message m_pending_message;
 	uint32_t m_negotiated_aggregation_interval;
 	std::shared_ptr<protobuf_compressor> m_negotiated_compression_method;

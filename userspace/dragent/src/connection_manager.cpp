@@ -247,6 +247,9 @@ connection_manager::~connection_manager()
 
 bool connection_manager::init()
 {
+
+	m_protobuf_file_emitter.reset(new dragent::protobuf_file_emitter(m_configuration->c_root_dir.get_value()));
+
 	if (m_configuration->m_server_addr == "" || m_configuration->m_server_port == 0)
 	{
 		LOG_WARNING("Server address has not been specified");
@@ -789,7 +792,6 @@ void connection_manager::do_run()
 
 			if (item)
 			{
-
 				//
 				// Got a message, transmit it
 				//
@@ -816,6 +818,13 @@ void connection_manager::do_run()
 					{
 						on_metrics_send(header, item);
 					}
+
+					// Possibly write to local files
+					if(!m_protobuf_file_emitter->emit(item))
+					{
+						LOG_DEBUG("Protobuf file not written");
+					}
+
 					item = nullptr;
 				}
 				// If the transmit is unsuccessful, we fall out of the loop

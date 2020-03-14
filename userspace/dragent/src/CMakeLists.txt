@@ -53,11 +53,13 @@ list(
     error_handler.cpp
     faultlist_rest_request_handler.cpp
     fault_rest_request_handler.cpp
+    file_emitter.cpp
     file_rest_registry.cpp
     file_rest_request_handler.cpp
     metric_serializer.cpp
     metrics_file_emitter.cpp
     pre_aggregated_metrics_rest_request_handler.cpp
+    protobuf_file_emitter.cpp
     post_aggregated_metrics_rest_request_handler.cpp
     metrics_rest_request_helper.cpp
     monitor.cpp
