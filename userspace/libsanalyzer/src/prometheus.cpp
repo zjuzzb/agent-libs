@@ -283,16 +283,33 @@ bool prometheus_conf::match_and_fill(const thread_analyzer_info* tinfo,
 					{
 						infrastructure_state::uid_t c_uid;
 						c_uid = make_pair("container", container->m_id);
-						infrastructure_state::tag_cb_t infra_tag_cb = [&infra_tags,&infra_state](const std::pair<std::string, std::string> &tag) -> bool
+						infrastructure_state::tag_cb_t infra_tag_cb = [&infra_tags,&infra_state](const std::pair<std::string, std::string> &tag, bool &stop) -> int
 						{
 							std::string shortname;
 							if (infra_state.match_name(tag.first, &shortname))
 							{
 								infra_tags[shortname] = tag.second;
+								return 1;
 							}
-							return true;
+							return 0;
 						};
 						infra_state.iterate_parent_tags(c_uid, infra_tag_cb);
+
+						// Promscrape can't enter the target namespace and in kubernetes
+						// it probably won't be able to reach the target port through localhost.
+						// If a host or url haven't been explicitly configured,
+						// we look up the pod IP and use that.
+						if ((params.options.find("host") == params.options.end()) &&
+							(params.options.find("url") == params.options.end()))
+						{
+							std::string podip = infra_state.get_parent_ip_address(c_uid);
+							if (!podip.empty())
+							{
+								g_logger.format(sinsp_logger::SEV_DEBUG,
+									"Prometheus: Found IP address %s for pid %d", podip.c_str(), tinfo->m_pid);
+								params.options["host"] = std::move(podip);
+							}
+						}
 					}
 					if(tinfo)
 					{

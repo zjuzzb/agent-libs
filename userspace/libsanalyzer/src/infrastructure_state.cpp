@@ -2461,38 +2461,62 @@ void infrastructure_state::add_annotation_filter(const string &ann)
 	m_annotation_filter.emplace(ann);
 }
 
-void infrastructure_state::iterate_parent_tags(uid_t uid,
-	tag_cb_t tag_cb,
+int infrastructure_state::iterate_parents(const uid_t &uid,
+	cg_cb_t cg_cb,
+	bool &stop,
 	std::unordered_set<uid_t> &visited) const
 {
 	if (visited.find(uid) != visited.end()) {
-		return;
+		return 0;
 	}
 	visited.emplace(uid);
 
 	auto it = m_state.find(uid);
 	if (it == m_state.end())
 	{
-		return;
+		return 0;
 	}
 	const draiosproto::container_group *cg = it->second.get();
 
 	if (!cg) {	// Shouldn't happen
-		return;
-	}
-	// Look for object name tags and add them to the scope
-	for (const auto &tag : cg->tags()) {
-		if (!tag_cb(tag))
-		{
-			return;
-		}
+		return 0;
 	}
 
-	for(const auto &p_uid : cg->parents()) {
+	int sum = 0;
+	sum = cg_cb(cg, stop);
+
+	for(const auto &p_uid : cg->parents())
+	{
+		if (stop)
+		{
+			return sum;
+		}
 		auto pkey = make_pair(p_uid.kind(), p_uid.id());
 
-		iterate_parent_tags(pkey, tag_cb, visited);
+		sum += iterate_parents(pkey, cg_cb, stop, visited);
 	}
+	return sum;
+}
+
+int infrastructure_state::iterate_parent_tags(const uid_t &uid, tag_cb_t tag_cb) const
+{
+	// Lambda to iterate over tags within a container group
+	infrastructure_state::cg_cb_t cg_cb =
+		[&tag_cb](const draiosproto::container_group *cg, bool &stop) -> int
+	{
+		int sum = 0;
+		for (const auto &tag : cg->tags())
+		{
+			sum += tag_cb(tag, stop);
+			if (stop)
+			{
+				return sum;
+			}
+		}
+		return sum;
+	};
+
+	return iterate_parents(uid, cg_cb);
 }
 
 bool infrastructure_state::match_name(const std::string &name, std::string *shortname) const
@@ -2507,68 +2531,41 @@ bool infrastructure_state::match_name(const std::string &name, std::string *shor
 	return true;
 }
 
-int infrastructure_state::get_scope_names(uid_t uid, event_scope *scope, std::unordered_set<uid_t> &visited) const
+int infrastructure_state::get_scope_names(const uid_t &uid, event_scope *scope) const
 {
-	int ret = 0;
-
-	if (!has(uid) || (visited.find(uid) != visited.end())) {
-		return ret;
-	}
-	visited.emplace(uid);
-
-	auto *cg = m_state.find(uid)->second.get();
-
-	if (!cg) {	// Shouldn't happen
-		return ret;
-	}
-	// Look for object name tags and add them to the scope
-	for (const auto &tag : cg->tags()) {
+	// Lambda to iterate over all parent tags
+	infrastructure_state::tag_cb_t tag_cb =
+		[this,&scope,&uid](const std::pair<std::string, std::string> &tag, bool &stop) -> int
+	{
+		// Look for object name tags and add them to the scope
 		if (match_name(tag.first))
 		{
 			glogf(sinsp_logger::SEV_DEBUG, "scope_name: %s:%s tag %s added to scope", uid.first.c_str(), uid.second.c_str(), tag.first.c_str());
 			scope->add(tag.first, tag.second);
-			ret++;
+			return 1;
 		}
-	}
+		return 0;
+	};
 
-	for(const auto &p_uid : cg->parents()) {
-		auto pkey = make_pair(p_uid.kind(), p_uid.id());
-
-		ret += get_scope_names(pkey, scope, visited);
-	}
-
-	return ret;
+	return iterate_parent_tags(uid, tag_cb);
 }
 
-bool infrastructure_state::find_parent_kind(const uid_t uid, string kind,
-	uid_t &found_id, std::unordered_set<uid_t> &visited) const
+bool infrastructure_state::find_parent_kind(const uid_t &uid,
+	const string &kind,
+	uid_t &found_id) const
 {
-	if (!has(uid) || (visited.find(uid) != visited.end())) {
-		return false;
-	}
-	visited.emplace(uid);
-
-	auto *cg = m_state.find(uid)->second.get();
-
-	if (!cg) {	// Shouldn't happen
-		return false;
-	}
-	if (cg->uid().kind() == kind)
+	// Lambda to iterate over all parent container groups
+	infrastructure_state::cg_cb_t cg_cb =
+		[&kind,&found_id](const draiosproto::container_group *cg, bool &stop) -> int
 	{
+		if (cg->uid().kind() != kind)
+			return 0;
 		found_id = make_pair(cg->uid().kind(), cg->uid().id());
-		return true;
-	}
+		stop = true;
+		return 1;
+	};
 
-	for(const auto &p_uid : cg->parents()) {
-		auto pkey = make_pair(p_uid.kind(), p_uid.id());
-
-		if (find_parent_kind(pkey, kind, found_id, visited))
-		{
-			return true;
-		}
-	}
-
-	return false;
+	return iterate_parents(uid, cg_cb) > 0;
 }
 
 void infrastructure_state::find_our_k8s_node(const std::vector<string> *container_ids)
@@ -2980,6 +2977,27 @@ std::string infrastructure_state::get_container_id_from_k8s_pod_and_k8s_pod_name
 	}
 
 	return "";
+}
+
+std::string infrastructure_state::get_parent_ip_address(const uid_t &uid) const
+{
+	std::string parent_ip;
+	// Lambda to iterate over all parent container groups
+	infrastructure_state::cg_cb_t cg_cb =
+		[&parent_ip](const draiosproto::container_group *cg, bool &stop) -> int
+	{
+		if ((cg->uid().kind() != "k8s_pod") && (cg->uid().kind() != "k8s_service"))
+			return 0;
+		if (cg->ip_addresses().empty())
+			return 0;
+		parent_ip = cg->ip_addresses()[0];
+		// Found an ip, stop searching
+		stop = true;
+		return 1;
+	};
+
+	iterate_parents(uid, cg_cb);
+	return parent_ip;
 }
 
 const string infrastructure_state::POD_STATUS_PHASE_LABEL = "kubernetes.pod.label.status.phase";

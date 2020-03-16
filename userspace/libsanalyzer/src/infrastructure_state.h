@@ -107,13 +107,17 @@ public:
 
 	bool match_name(const std::string &name, std::string *shortname = nullptr) const;
 
-	typedef std::function<bool(const std::pair<std::string, std::string> &)> tag_cb_t;
-	void iterate_parent_tags(uid_t uid, tag_cb_t tag_cb) const
+	typedef std::function<int(const draiosproto::container_group *cg, bool &stop)> cg_cb_t;
+	int iterate_parents(const uid_t &uid, cg_cb_t cg_cb) const
 	{
 		std::unordered_set<uid_t> visited;
-		return iterate_parent_tags(uid, tag_cb, visited);
+		bool stop = false;
+		return iterate_parents(uid, cg_cb, stop, visited);
 	}
-	void iterate_parent_tags(uid_t uid, tag_cb_t tag_cb, std::unordered_set<uid_t> &visited) const;
+	int iterate_parents(const uid_t &uid, cg_cb_t cg_cb, bool &stop, std::unordered_set<uid_t> &visited) const;
+
+	typedef std::function<int(const std::pair<std::string, std::string> &tag, bool &stop)> tag_cb_t;
+	int iterate_parent_tags(const uid_t &uid, tag_cb_t tag_cb) const;
 
 	/// Find list of key-value tags present in infrastructure_state
 	/// \param uid  UID of the starting node of the graph
@@ -125,11 +129,8 @@ public:
 		std::unordered_set<uid_t> visited;
 		return find_tag_list(uid, tags_set, labels, visited);
 	}
-	int get_scope_names(uid_t uid, event_scope *scope) const
-	{
-		std::unordered_set<uid_t> visited;
-		return get_scope_names(uid, scope, visited);
-	}
+	// Get object names from object and its parents and add them to scope
+	int get_scope_names(const uid_t &uid, event_scope *scope) const;
 
 	void scrape_mesos_env(const sinsp_container_info& container, sinsp_threadinfo *tinfo);
 	void get_orch_labels(const uid_t uid, google::protobuf::RepeatedPtrField<draiosproto::container_label>* labels, std::unordered_set<uid_t> *visited = nullptr);
@@ -150,11 +151,7 @@ public:
 	std::string get_k8s_cluster_id() const;
 
 	void add_annotation_filter(const std::string &ann);
-	bool find_parent_kind(const uid_t uid, std::string kind, uid_t &found_id)
-	{
-		std::unordered_set<uid_t> visited;
-		return find_parent_kind(uid, kind, found_id, visited);
-	}
+	bool find_parent_kind(const uid_t &uid, const std::string &kind, uid_t &found_id) const;
 
 	// Find our k8s node from our current container, any of the given container ids
 	// or from IP address, in that order, if not found already
@@ -165,6 +162,8 @@ public:
 
 	// Return the container ID from the pod UID and the pod container name
 	std::string get_container_id_from_k8s_pod_and_k8s_pod_name(const uid_t& p_uid, const std::string &pod_container_name) const;
+
+	std::string get_parent_ip_address(const uid_t &uid) const;
 
 	const std::string& get_k8s_url();
 	const std::string& get_k8s_ca_certificate();
@@ -188,15 +187,9 @@ private:
 		      container_groups* state,
 		      std::unordered_set<uid_t>& visited, uint64_t ts);
 
-	// Get object names from object and its parents and add them to scope
-	int get_scope_names(uid_t uid, event_scope *scope, std::unordered_set<uid_t> &visited) const;
-
 	void state_of(const draiosproto::container_group *grp,
 		      draiosproto::k8s_state *state,
 		      std::unordered_set<uid_t>& visited, uint64_t ts);
-
-	bool find_parent_kind(const uid_t child_id, string kind, uid_t &found_id,
-		std::unordered_set<uid_t> &visited) const;
 
 	bool find_tag(const uid_t& uid, const std::string& tag, std::string &value, std::unordered_set<uid_t> &visited) const;
 	int find_tag_list(uid_t uid, std::unordered_set<string> &tags_set, std::unordered_map<string,string> &labels, std::unordered_set<uid_t> &visited) const;
