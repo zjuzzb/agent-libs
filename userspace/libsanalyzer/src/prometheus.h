@@ -136,7 +136,8 @@ public:
 	                      const std::set<uint16_t>& ports,
 	                      const std::string &path,
 	                      const std::map<std::string, std::string>& options,
-	                      const std::map<std::string, std::string>& tags)
+	                      const std::map<std::string, std::string>& tags,
+	                      std::unordered_map<std::string, std::string>&& infra_tags)
 	    : m_name(name),
 	      m_pid(pid),
 	      m_vpid(vpid),
@@ -144,7 +145,8 @@ public:
 	      m_ports(ports),
 	      m_path(path),
 	      m_options(options),
-	      m_tags(tags)
+	      m_tags(tags),
+	      m_infra_tags(std::move(infra_tags))
 	{
 	}
 
@@ -161,7 +163,7 @@ public:
 			(m_ports == rhs.m_ports) && (m_name == rhs.m_name) &&
 			(m_container_id == rhs.m_container_id) &&
 			(m_path == rhs.m_path) && (m_options == rhs.m_options) &&
-			(m_tags == rhs.m_tags);
+			(m_tags == rhs.m_tags) && (m_infra_tags == rhs.m_infra_tags);
 	}
 
 	const std::string &name() const { return m_name; }
@@ -172,6 +174,7 @@ public:
 	const std::string &path() const { return m_path; }
 	const std::map<std::string, std::string> &options() const { return m_options; }
 	const std::map<std::string, std::string> &tags() const { return m_tags; }
+	const std::unordered_map<std::string, std::string> &infra_tags() const { return m_infra_tags; }
 private:
 	std::string m_name;  // Just for debugging
 	int m_pid;
@@ -181,6 +184,7 @@ private:
 	std::string m_path;
 	std::map<std::string, std::string> m_options;
 	std::map<std::string, std::string> m_tags;
+	std::unordered_map<std::string, std::string> m_infra_tags;
 };
 
 #endif  // _WIN32

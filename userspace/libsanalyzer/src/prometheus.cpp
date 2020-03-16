@@ -5,6 +5,7 @@
 #include "analyzer_thread.h"
 #include "infrastructure_state.h"
 #include "prometheus.h"
+#include "promscrape.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
 
@@ -272,6 +273,34 @@ bool prometheus_conf::match_and_fill(const thread_analyzer_info* tinfo,
 			// Should rule be applied
 			if (matched.second)
 			{
+				std::unordered_map<std::string, std::string> infra_tags;
+				// Look for infrastructure state name tags
+				// Currently only used for promscrape to select relabeling rules,
+				// so don't waste time if promscrape is not enabled
+				if (promscrape::c_use_promscrape.get_value())
+				{
+					if (container)
+					{
+						infrastructure_state::uid_t c_uid;
+						c_uid = make_pair("container", container->m_id);
+						infrastructure_state::tag_cb_t infra_tag_cb = [&infra_tags,&infra_state](const std::pair<std::string, std::string> &tag) -> bool
+						{
+							std::string shortname;
+							if (infra_state.match_name(tag.first, &shortname))
+							{
+								infra_tags[shortname] = tag.second;
+							}
+							return true;
+						};
+						infra_state.iterate_parent_tags(c_uid, infra_tag_cb);
+					}
+					if(tinfo)
+					{
+						infra_tags["process"] = tinfo->m_comm;
+					}
+					infra_tags["host"] = sinsp_gethostname();
+				}
+
 				prom_process pp(tinfo->m_comm,
 				                tinfo->m_pid,
 				                tinfo->m_vpid,
@@ -279,7 +308,8 @@ bool prometheus_conf::match_and_fill(const thread_analyzer_info* tinfo,
 				                params.ports,
 				                params.path,
 				                params.options,
-				                params.tags);
+				                params.tags,
+				                std::move(infra_tags));
 				prom_procs.emplace_back(pp);
 
 				mtinfo->set_found_prom_check();

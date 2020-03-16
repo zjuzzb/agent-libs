@@ -2461,27 +2461,50 @@ void infrastructure_state::add_annotation_filter(const string &ann)
 	m_annotation_filter.emplace(ann);
 }
 
-static bool match_name(std::string str)
+void infrastructure_state::iterate_parent_tags(uid_t uid,
+	tag_cb_t tag_cb,
+	std::unordered_set<uid_t> &visited) const
 {
-	// These are name tags as sent from cointerface
-	// Make sure this list is up to date, at least for those objects that
-	// need to be added to event scopes
-	static const set<std::string> name_map =
-	{
-		"kubernetes.daemonSet.name",
-		"kubernetes.deployment.name",
-		"kubernetes.hpa.name",
-		"kubernetes.namespace.name",
-		"kubernetes.node.name",
-		"kubernetes.pod.name",
-		"kubernetes.replicaSet.name",
-		"kubernetes.replicationController.name",
-		"kubernetes.resourcequota.name",
-		"kubernetes.service.name",
-		"kubernetes.statefulset.name"
-	};
+	if (visited.find(uid) != visited.end()) {
+		return;
+	}
+	visited.emplace(uid);
 
-	return name_map.find(str) != name_map.end();
+	auto it = m_state.find(uid);
+	if (it == m_state.end())
+	{
+		return;
+	}
+	const draiosproto::container_group *cg = it->second.get();
+
+	if (!cg) {	// Shouldn't happen
+		return;
+	}
+	// Look for object name tags and add them to the scope
+	for (const auto &tag : cg->tags()) {
+		if (!tag_cb(tag))
+		{
+			return;
+		}
+	}
+
+	for(const auto &p_uid : cg->parents()) {
+		auto pkey = make_pair(p_uid.kind(), p_uid.id());
+
+		iterate_parent_tags(pkey, tag_cb, visited);
+	}
+}
+
+bool infrastructure_state::match_name(const std::string &name, std::string *shortname) const
+{
+	auto it = m_name_map.find(name);
+	if (it == m_name_map.end())
+		return false;
+	if (shortname != nullptr)
+	{
+		*shortname = it->second;
+	}
+	return true;
 }
 
 int infrastructure_state::get_scope_names(uid_t uid, event_scope *scope, std::unordered_set<uid_t> &visited) const

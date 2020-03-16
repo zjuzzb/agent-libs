@@ -184,7 +184,7 @@ int64_t promscrape::assign_job_id(int pid, const string &url, const string &cont
 
 void promscrape::addscrapeconfig(agent_promscrape::Config &config, int pid, const string &url,
         const string &container_id, const map<string, string> &options,
-		uint16_t port, const tag_map_t &tags, uint64_t ts)
+		uint16_t port, const tag_map_t &tags, const tag_umap_t &infra_tags, uint64_t ts)
 {
 	string joburl;
 	auto scrape = config.add_scrape_configs();
@@ -203,6 +203,10 @@ void promscrape::addscrapeconfig(agent_promscrape::Config &config, int pid, cons
 		{
 			target->set_metrics_path(uri.get_path() + "?" + uri.get_query());
 		}
+
+		auto tagp = target->add_tags();
+		tagp->set_name("port");
+		tagp->set_value(to_string(uri.get_port()));
 	} else {
 		string scheme("http");
 		auto opt_it = options.find("use_https");
@@ -227,8 +231,17 @@ void promscrape::addscrapeconfig(agent_promscrape::Config &config, int pid, cons
 		target->set_scheme(scheme);
 		target->set_address(host + ":" + to_string(port));
 		target->set_metrics_path(path);
+
+		auto tagp = target->add_tags();
+		tagp->set_name("port");
+		tagp->set_value(to_string(port));
 	}
-	// scrape->set_job_name(to_string(pid) + "." + joburl);
+	for (const auto &infra_tag : infra_tags)
+	{
+		auto tagp = target->add_tags();
+		tagp->set_name(infra_tag.first);
+		tagp->set_value(infra_tag.second);
+	}
 
 	// Set auth method if configured in options
 	settargetauth(target, options);
@@ -315,7 +328,7 @@ void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 			if (opt_it != p.options().end())
 			{
 				// Specified url overrides everything else
-				addscrapeconfig(config, p.pid(), opt_it->second, p.container_id(), p.options(), 0, p.tags(), m_next_ts);
+				addscrapeconfig(config, p.pid(), opt_it->second, p.container_id(), p.options(), 0, p.tags(), p.infra_tags(), m_next_ts);
 				continue;
 			}
 			if (p.ports().empty())
@@ -326,7 +339,7 @@ void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 
 			for (auto port : p.ports())
 			{
-				addscrapeconfig(config, p.pid(), empty, p.container_id(), p.options(), port, p.tags(), m_next_ts);
+				addscrapeconfig(config, p.pid(), empty, p.container_id(), p.options(), port, p.tags(), p.infra_tags(), m_next_ts);
 			}
 		}
 	}

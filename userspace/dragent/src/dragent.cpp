@@ -842,15 +842,42 @@ int dragent_app::main(const std::vector<std::string>& args)
 		    m_promscrape_pipes->get_out_fd(), promscrape_parser(), state);
 		m_subprocesses_logger.add_logfd(
 		    m_promscrape_pipes->get_err_fd(), promscrape_parser(), state);
+
+		// Try to find prometheus.yaml
+		std::string prom_conf_arg;
+		std::vector<std::string> prompaths =
+		{
+			m_configuration.m_default_root_dir + "/etc/prometheus.yaml",
+			m_configuration.m_default_root_dir + "/prometheus.yaml",
+			m_configuration.m_default_root_dir + "/etc/kubernetes/config/prometheus.yaml"
+		};
+		for (const auto &p : prompaths)
+		{
+			if (Poco::File(p).exists())
+			{
+				prom_conf_arg = "--config.file=" + p;
+				break;
+			}
+		}
 		monitor_process.emplace_process("promscrape",
 		                                [=]()
 		{
+			string log_level = (g_logger.get_severity() >= sinsp_logger::SEV_DEBUG) ?
+				"--log.level=debug" : "--log.level=info";
 			default_cpu_cgroup.enter();
 			m_promscrape_pipes->attach_child_stdio();
-
-			execl((m_configuration.c_root_dir.get_value() + "/bin/promscrape").c_str(),
-			      "promscrape", "--log.format=json",
-			      (char*)NULL);
+			if (prom_conf_arg.empty())
+			{
+				execl((m_configuration.c_root_dir.get_value() + "/bin/promscrape").c_str(),
+				      "promscrape", "--log.format=json", log_level.c_str(),
+				      (char*)NULL);
+			}
+			else
+			{
+				execl((m_configuration.c_root_dir.get_value() + "/bin/promscrape").c_str(),
+				      "promscrape", "--log.format=json", log_level.c_str(), prom_conf_arg.c_str(),
+				      (char*)NULL);
+			}
 
 			return (EXIT_FAILURE);
 		});

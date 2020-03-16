@@ -3006,7 +3006,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			if (promscrape::c_use_promscrape.get_value() && m_promscrape != nullptr)
 			{
 				// Always sendconfig, even if empty to make sure old jobs get stopped
-				m_promscrape->sendconfig(prom_procs);
+				m_promscrape->sendconfig(std::move(prom_procs));
 				if (!app_checks_processes.empty())
 				{
 					vector<prom_process> empty_procs;

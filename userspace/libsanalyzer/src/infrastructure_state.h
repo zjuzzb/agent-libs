@@ -105,6 +105,16 @@ public:
 		return find_tag(uid, tag, value, visited);
 	}
 
+	bool match_name(const std::string &name, std::string *shortname = nullptr) const;
+
+	typedef std::function<bool(const std::pair<std::string, std::string> &)> tag_cb_t;
+	void iterate_parent_tags(uid_t uid, tag_cb_t tag_cb) const
+	{
+		std::unordered_set<uid_t> visited;
+		return iterate_parent_tags(uid, tag_cb, visited);
+	}
+	void iterate_parent_tags(uid_t uid, tag_cb_t tag_cb, std::unordered_set<uid_t> &visited) const;
+
 	/// Find list of key-value tags present in infrastructure_state
 	/// \param uid  UID of the starting node of the graph
 	/// \param tags_set  Set of tags we are looking for
@@ -295,6 +305,25 @@ private:
 	 * adjusts path for changes in configured root dir
 	 */
 	std::string normalize_path(const std::string& path) const;
+public:
+	// These are name tags as sent from cointerface
+	// Make sure this list is up to date, at least for those objects that
+	// need to be added to event scopes or promscrape
+
+	const std::unordered_map<std::string, std::string> m_name_map =
+	{
+		{"kubernetes.daemonSet.name",	"daemonset"},
+		{"kubernetes.deployment.name",	"deployment"},
+		{"kubernetes.hpa.name",		"hpa"},
+		{"kubernetes.namespace.name",	"namespace"},
+		{"kubernetes.node.name",	"node"},
+		{"kubernetes.pod.name",		"pod"},
+		{"kubernetes.replicaSet.name",	"replicaset"},
+		{"kubernetes.replicationController.name",	"replicationcontroller"},
+		{"kubernetes.resourcequota.name",   "resourcequota"},
+		{"kubernetes.service.name",	"service"},
+		{"kubernetes.statefulset.name",	"statefulset"}
+	};
 
 public: // configs
 	static type_config<uint32_t> c_orchestrator_queue_len;

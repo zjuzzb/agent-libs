@@ -19,6 +19,7 @@
 class promscrape {
 public:
 	typedef std::map<std::string, std::string> tag_map_t;
+	typedef std::unordered_map<std::string, std::string> tag_umap_t;
 	typedef struct {
 		int pid;
 		std::string url;
@@ -88,7 +89,7 @@ private:
 		const std::string &container_id, const tag_map_t &tags, uint64_t ts);
 	void addscrapeconfig(agent_promscrape::Config &config, int pid, const std::string &url,
 		const std::string &container_id, const std::map<std::string, std::string> &options,
-		uint16_t port, const tag_map_t &tags, uint64_t ts);
+		uint16_t port, const tag_map_t &tags, const tag_umap_t &infra_tags, uint64_t ts);
 	void settargetauth(agent_promscrape::Target *target,
 		const std::map<std::string, std::string> &options);
 	void applyconfig(agent_promscrape::Config &config);
