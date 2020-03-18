@@ -30,9 +30,6 @@ python-memcached==1.53
 # checks.d/redis.py
 redis==2.10.5
 
-# checks.d/hdfs.py
-snakebite==2.7.1
-
 # checks.d/snmp.py
 # Require a compiler because pycrypto is a dep
 pysnmp-mibs==0.1.6
