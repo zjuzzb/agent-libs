@@ -170,6 +170,8 @@ void fill_congroup(draiosproto::container_group& to_be_filled
 
 TEST(infrastructure_state_test, connect_to_namespace)
 {
+	static const std::string DEFAULT_NAMESPACE_NAME = "default";
+
 	// check that we properly normalize path
 	test_helpers::sinsp_mock inspector;
 	audit_tap_handler_dummy athd;
@@ -191,13 +193,13 @@ TEST(infrastructure_state_test, connect_to_namespace)
 	draiosproto::congroup_update_event deployment_add_event;
 	deployment_add_event.set_type(draiosproto::congroup_event_type::ADDED);
 	draiosproto::container_group* deployment_congroup = deployment_add_event.mutable_object();
-	fill_congroup(*deployment_congroup, deployment_uid.first, deployment_uid.second, "default");
+	fill_congroup(*deployment_congroup, deployment_uid.first, deployment_uid.second, DEFAULT_NAMESPACE_NAME);
 	is.handle_event(&deployment_add_event);
 
 	// We expect that the incomplete default namespace has been created
 	const auto& namespaces = is.m_k8s_namespace_store.get_namespaces();
 	EXPECT_EQ(namespaces.size(), 1);
-	EXPECT_EQ(namespaces.begin()->first, "default");
+	EXPECT_EQ(namespaces.begin()->first, DEFAULT_NAMESPACE_NAME);
 	EXPECT_EQ(namespaces.begin()->second.is_complete(), false);
 
 	// No parent <-> child relationship should be established yet
@@ -208,13 +210,13 @@ TEST(infrastructure_state_test, connect_to_namespace)
 	draiosproto::congroup_update_event namespace_add_event;
 	namespace_add_event.set_type(draiosproto::congroup_event_type::ADDED);
 	draiosproto::container_group* namespace_congroup = namespace_add_event.mutable_object();
-	fill_congroup(*namespace_congroup, default_namespace_uid.first, default_namespace_uid.second, "default");
+	fill_congroup(*namespace_congroup, default_namespace_uid.first, default_namespace_uid.second, DEFAULT_NAMESPACE_NAME);
 	is.handle_event(&namespace_add_event);
 
 	// We expect to have 1 namespace
 	EXPECT_EQ(namespaces.size(), 1);
 	// Whose name is default
-	EXPECT_EQ(namespaces.begin()->first, "default");
+	EXPECT_EQ(namespaces.begin()->first, DEFAULT_NAMESPACE_NAME);
 	// And complete
 	EXPECT_EQ(namespaces.begin()->second.is_complete(), true);
 	// Without orphans
@@ -237,7 +239,7 @@ TEST(infrastructure_state_test, connect_to_namespace)
 	update_deployment_event.set_type(draiosproto::congroup_event_type::UPDATED);
 	draiosproto::container_group* update_congroup = update_deployment_event.mutable_object();
 	// For the sake of this test this congroup can be
-	fill_congroup(*update_congroup, deployment_uid.first, deployment_uid.second, "default");
+	fill_congroup(*update_congroup, deployment_uid.first, deployment_uid.second, DEFAULT_NAMESPACE_NAME);
 
 	is.handle_event(&update_deployment_event);
 
@@ -258,7 +260,7 @@ TEST(infrastructure_state_test, connect_to_namespace)
 		draiosproto::congroup_uid rs_uid;
 		rs_uid.set_kind("k8s_replicaset");
 		rs_uid.set_id("rs_test");
-		fill_congroup(rs_cg, rs_uid.kind(), rs_uid.id(), "default");
+		fill_congroup(rs_cg, rs_uid.kind(), rs_uid.id(), DEFAULT_NAMESPACE_NAME);
 		draiosproto::congroup_uid& parent = *rs_cg.mutable_parents()->Add();
 		parent.set_kind("k8s_deployment");
 		parent.set_id("spacchitempu");
@@ -268,7 +270,7 @@ TEST(infrastructure_state_test, connect_to_namespace)
 		draiosproto::congroup_update_event rs_update;
 		rs_update.set_type(draiosproto::congroup_event_type::UPDATED);
 		auto& rs_updated_cg = *rs_update.mutable_object();
-		fill_congroup(rs_updated_cg, "k8s_replicaset", "rs_test", "default");
+		fill_congroup(rs_updated_cg, "k8s_replicaset", "rs_test", DEFAULT_NAMESPACE_NAME);
 		rs_updated_cg.mutable_parents()->Add()->CopyFrom(parent);
 		is.handle_event(&rs_update);
 
@@ -287,13 +289,13 @@ TEST(infrastructure_state_test, connect_to_namespace)
 		draiosproto::congroup_update_event delete_deployment_event;
 		delete_deployment_event.set_type(draiosproto::congroup_event_type::REMOVED);
 		draiosproto::container_group* delete_congroup = delete_deployment_event.mutable_object();
-		fill_congroup(*delete_congroup, deployment_uid.first, deployment_uid.second, "default");
+		fill_congroup(*delete_congroup, deployment_uid.first, deployment_uid.second, DEFAULT_NAMESPACE_NAME);
 		is.handle_event(&delete_deployment_event);
 
 		// We expect namespace default has one children now
 		EXPECT_EQ(namespace_from_state.children_size(), 1);
 		// Namespace default in the store should not have orphans
-		EXPECT_EQ(namespaces.find(default_namespace_uid.second)->second.get_orphans().empty(), true);
+		EXPECT_EQ(namespaces.find(DEFAULT_NAMESPACE_NAME)->second.get_orphans().empty(), true);
 	}
 }
 

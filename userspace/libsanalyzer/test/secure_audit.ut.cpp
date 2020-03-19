@@ -2048,6 +2048,7 @@ TEST(secure_audit_test, k8s_audit_base)
 	evt.set_type(draiosproto::ADDED);
 	evt.mutable_object()->mutable_uid()->set_kind("k8s_namespace");
 	evt.mutable_object()->mutable_uid()->set_id("namespaceUID");
+        evt.mutable_object()->set_namespace_("sysdigcloud");
 
 	(*evt.mutable_object()->mutable_tags())["kubernetes.namespace.name"] =
 	    "sysdigcloud";  // as in json_exec_{1,2}
