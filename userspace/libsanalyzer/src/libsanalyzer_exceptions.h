@@ -13,3 +13,18 @@ public:
 	{
 	}
 };
+
+class k8s_namespace_store_error : public std::runtime_error
+{
+public:
+	explicit k8s_namespace_store_error(const std::string& msg)
+		: runtime_error(msg)
+	{
+	}
+
+	virtual ~k8s_namespace_store_error() noexcept
+	{
+	}
+};
+
+

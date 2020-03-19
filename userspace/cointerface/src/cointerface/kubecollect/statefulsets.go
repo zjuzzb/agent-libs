@@ -27,12 +27,12 @@ func newStatefulSetCongroup(statefulSet *appsv1.StatefulSet) (*draiosproto.Conta
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_statefulset"),
 			Id:proto.String(string(statefulSet.GetUID()))},
+		Namespace:proto.String(statefulSet.GetNamespace()),
 	}
 
 	ret.Tags = GetTags(statefulSet.ObjectMeta, "kubernetes.statefulset.")
 	ret.InternalTags = GetAnnotations(statefulSet.ObjectMeta, "kubernetes.statefulset.")
 	addStatefulSetMetrics(&ret.Metrics, statefulSet)
-	AddNSParents(&ret.Parents, statefulSet.GetNamespace())
 	AddPodChildrenFromOwnerRef(&ret.Children, statefulSet.ObjectMeta)
 	AddServiceParentsFromServiceName(&ret.Parents, statefulSet.GetNamespace(), statefulSet.Spec.ServiceName)
 
@@ -56,21 +56,6 @@ func AddStatefulSetChildrenFromService(children *[]*draiosproto.CongroupUid, ser
 	for _, obj := range statefulSetInf.GetStore().List() {
 		statefulSet := obj.(*appsv1.StatefulSet)
 		if service.GetNamespace() == statefulSet.GetNamespace() && service.GetName() == statefulSet.Spec.ServiceName {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_statefulset"),
-				Id:proto.String(string(statefulSet.GetUID()))})
-		}
-	}
-}
-
-func AddStatefulSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if !resourceReady("statefulsets") {
-		return
-	}
-
-	for _, obj := range statefulSetInf.GetStore().List() {
-		statefulSet := obj.(*appsv1.StatefulSet)
-		if statefulSet.GetNamespace() == namespaceName {
 			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_statefulset"),
 				Id:proto.String(string(statefulSet.GetUID()))})
