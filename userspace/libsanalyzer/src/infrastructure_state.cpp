@@ -1878,7 +1878,8 @@ void infrastructure_state::emit(const draiosproto::container_group* cg, draiospr
 		// TODO I don't think cointerface exposes this
                 // optional string host_ip = 4;
 
-		calculate_rate(m_pod_restart_rate[cg->uid().id()], pod->restart_rate(), ts);
+		double rate = calculate_rate(m_pod_restart_rate[cg->uid().id()], pod->restart_rate(), ts);
+		pod->set_restart_rate(rate);
 	}
 	else if(kind == "k8s_replicaset")
 	{
