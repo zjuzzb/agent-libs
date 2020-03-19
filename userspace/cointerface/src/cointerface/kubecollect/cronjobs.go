@@ -39,9 +39,8 @@ func newCronJobConGroup(cronjob *v2alpha1.CronJob) (*draiosproto.ContainerGroup)
 			Kind:proto.String("k8s_cronjob"),
 			Id:proto.String(string(cronjob.GetUID()))},
 		Tags: tags,
-		Namespace: proto.String(cronjob.GetNamespace()),
 	}
-
+	AddNSParents(&ret.Parents, cronjob.GetNamespace())
 	for _, job := range cronjob.Status.Active {
 		ret.Children = append(ret.Children, &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_job"),
@@ -65,6 +64,21 @@ func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job coJob) {
 					Kind:proto.String("k8s_cronjob"),
 					Id:proto.String(string(cronJob.UID))})
 			}
+		}
+	}
+}
+
+func AddCronJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	if !resourceReady("cronjobs") {
+		return
+	}
+
+	for _, obj := range cronJobInf.GetStore().List() {
+		cronJob := obj.(*v2alpha1.CronJob)
+		if cronJob.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_cronjob"),
+				Id:proto.String(string(cronJob.GetUID()))})
 		}
 	}
 }

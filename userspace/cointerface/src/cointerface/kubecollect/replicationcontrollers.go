@@ -107,13 +107,13 @@ func newReplicationControllerCongroup(replicationController coReplicationControl
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_replicationcontroller"),
 			Id:proto.String(string(replicationController.GetUID()))},
-		Namespace:proto.String(replicationController.GetNamespace()),
 	}
 
 	ret.Tags = GetTags(replicationController.ObjectMeta, "kubernetes.replicationController.")
 	ret.InternalTags = GetAnnotations(replicationController.ObjectMeta, "kubernetes.replicationController.")
 	addReplicationControllerMetrics(&ret.Metrics, replicationController)
 	if setLinks {
+		AddNSParents(&ret.Parents, replicationController.GetNamespace())
 		AddPodChildrenFromOwnerRef(&ret.Children, replicationController.ObjectMeta)
 		AddHorizontalPodAutoscalerParents(&ret.Parents, replicationController.GetNamespace(), replicationController.APIVersion, replicationController.Kind, replicationController.GetName() )
 	}
@@ -127,6 +127,21 @@ func addReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicat
 	AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicationController.Status.ReadyReplicas)
 	AppendMetricInt32(metrics, prefix+"status.availableReplicas", replicationController.Status.AvailableReplicas)
 	AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicationController.Spec.Replicas)
+}
+
+func AddReplicationControllerChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	if !resourceReady("replicationcontrollers") {
+		return
+	}
+
+	for _, obj := range replicationControllerInf.GetStore().List() {
+		replicationController := obj.(*v1.ReplicationController)
+		if replicationController.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_replicationcontroller"),
+				Id:proto.String(string(replicationController.GetUID()))})
+		}
+	}
 }
 
 func AddReplicationControllerChildrenByName(children *[]*draiosproto.CongroupUid, namespace string, name string) {

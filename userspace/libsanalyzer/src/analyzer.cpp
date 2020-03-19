@@ -38,7 +38,7 @@
 #include "type_config.h"
 #include "uri.h"
 #include "user_event_logger.h"
-#include "libsanalyzer_exceptions.h"
+#include "libsanalizer_exceptions.h"
 
 #include "../../driver/ppm_ringbuffer.h"
 #include "Poco/File.h"

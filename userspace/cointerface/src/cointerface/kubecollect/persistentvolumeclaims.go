@@ -37,43 +37,43 @@ func persistentVolumeClaimEvent(pv *v1.PersistentVolumeClaim, eventType *draiosp
 	}
 }
 
-func newPersistentVolumeClaimCongroup(pvc *v1.PersistentVolumeClaim) (*draiosproto.ContainerGroup) {
+func newPersistentVolumeClaimCongroup(pv *v1.PersistentVolumeClaim) (*draiosproto.ContainerGroup) {
 	label_tag_name := pvcMetricPrefix + "label."
 	internal_tag_name := pvcMetricPrefix + "label."
 
 	tags := make(map[string]string)
-	for k, v := range pvc.GetLabels() {
+	for k, v := range pv.GetLabels() {
 		tags[label_tag_name+ k] = v
 	}
 
 	var accessMode string
-	for _, v := range pvc.Spec.AccessModes {
+	for _, v := range pv.Spec.AccessModes {
 		accessMode += string(v)
 	}
 
 	tags[internal_tag_name + "accessmode"] = string(accessMode)
 
-	tags[internal_tag_name + "volumename"] = pvc.Spec.VolumeName
+	tags[internal_tag_name + "volumename"] = pv.Spec.VolumeName
 
-	if pvc.Spec.StorageClassName != nil {
-		tags[internal_tag_name + "storageclassname"] = *pvc.Spec.StorageClassName
+	if pv.Spec.StorageClassName != nil {
+		tags[internal_tag_name + "storageclassname"] = *pv.Spec.StorageClassName
 	}
 
-	tags[internal_tag_name + "status.phase"] = string(pvc.Status.Phase)
-	storage := pvc.Status.Capacity["storage"]
+	tags[internal_tag_name + "status.phase"] = string(pv.Status.Phase)
+	storage := pv.Status.Capacity["storage"]
 	tags[internal_tag_name + "storage"] = storage.String()
-	tags[pvcMetricPrefix + "name"] = pvc.GetName()
+	tags[pvcMetricPrefix + "name"] = pv.GetName()
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_persistentvolumeclaim"),
-			Id:proto.String(string(pvc.GetUID()))},
+			Id:proto.String(string(pv.GetUID()))},
 		Tags: tags,
-		Namespace:proto.String(pvc.GetNamespace()),
 	}
 
-	addPersistentVolumeClaimMetrics(&ret.Metrics, pvc)
+	addPersistentVolumeClaimMetrics(&ret.Metrics, pv)
 
+	AddNSParents(&ret.Parents, pv.GetNamespace())
 	return ret
 }
 
@@ -134,5 +134,20 @@ func watchPersistentVolumeClaims(evtc chan <- draiosproto.CongroupUpdateEvent) {
 			},
 		},
 	)
+}
+
+func AddPersistentVolumeClaimChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	if !resourceReady("persistentvolumeclaims") {
+		return
+	}
+
+	for _, obj := range persistentVolumeClaimsInf.GetStore().List() {
+		persistentVolumeClaim := obj.(*v1.PersistentVolumeClaim)
+		if (persistentVolumeClaim.GetNamespace() == namespaceName) {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_persistentvolumeclaim"),
+				Id:proto.String(string(persistentVolumeClaim.GetUID()))})
+		}
+	}
 }
 

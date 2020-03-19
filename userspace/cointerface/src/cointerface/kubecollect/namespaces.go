@@ -44,13 +44,57 @@ func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (
 			Id:proto.String(string(ns.GetUID()))},
 		Tags: tags,
 		InternalTags: inttags,
-		Namespace:proto.String(tags["kubernetes.namespace.name"]),
+	}
+	if *eventType == draiosproto.CongroupEventType_ADDED {
+		AddDeploymentChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddDaemonSetChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddServiceChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddCronJobChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddJobChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddPodChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddReplicaSetChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddReplicationControllerChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddResourceQuotaChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddStatefulSetChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddIngressChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddHorizontalPodAutoscalerChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddPersistentVolumeClaimChildrenFromNamespace(&ret.Children, ns.GetName())
 	}
 
 	return ret
 }
 
 var namespaceInf cache.SharedInformer
+
+func AddNSParents(parents *[]*draiosproto.CongroupUid, ns string) {
+	if !resourceReady("namespaces") {
+		return
+	}
+
+	nsUid := getNamespaceUid(ns);
+
+	if nsUid != "" {
+		*parents = append(*parents, &draiosproto.CongroupUid{
+			Kind:proto.String("k8s_namespace"),
+			Id:proto.String(string(nsUid))})
+	}
+}
+
+
+func getNamespaceUid(ns string) string {
+	ret := ""
+	if resourceReady("namespaces") {
+		for _, obj := range namespaceInf.GetStore().List() {
+			nsObj := obj.(*v1.Namespace)
+			if ns == nsObj.GetName() {
+				ret = string(nsObj.GetUID())
+				break
+			}
+		}
+	}
+
+	return ret
+}
 
 func startNamespacesSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.CoreV1().RESTClient()

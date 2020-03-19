@@ -1,4 +1,3 @@
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
 include_directories(${LUAJIT_INCLUDE})
@@ -222,7 +221,6 @@ set(SANALYZER_SOURCES
     statsite_forwarder.cpp
     transactinfo.cpp
     userdb.cpp
-    k8s_namespace_store.cpp
     ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cgroup_limits.cpp
     ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel.cpp
     ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel_api.cpp

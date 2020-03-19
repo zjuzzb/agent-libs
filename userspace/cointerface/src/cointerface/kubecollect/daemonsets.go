@@ -87,13 +87,13 @@ func newDaemonSetCongroup(daemonSet coDaemonSet, setLinks bool) (*draiosproto.Co
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_daemonset"),
 			Id:proto.String(string(daemonSet.GetUID()))},
-		Namespace:proto.String(daemonSet.GetNamespace()),
 	}
 
 	ret.Tags = GetTags(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
 	ret.InternalTags = GetAnnotations(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
 	addDaemonSetMetrics(&ret.Metrics, daemonSet)
 	if setLinks {
+		AddNSParents(&ret.Parents, daemonSet.GetNamespace())
 		AddPodChildrenFromOwnerRef(&ret.Children, daemonSet.ObjectMeta)
 	}
 	return ret
@@ -105,6 +105,21 @@ func addDaemonSetMetrics(metrics *[]*draiosproto.AppMetric, daemonSet coDaemonSe
 	AppendMetricInt32(metrics, prefix+"status.numberMisscheduled", daemonSet.Status.NumberMisscheduled)
 	AppendMetricInt32(metrics, prefix+"status.desiredNumberScheduled", daemonSet.Status.DesiredNumberScheduled)
 	AppendMetricInt32(metrics, prefix+"status.numberReady", daemonSet.Status.NumberReady)
+}
+
+func AddDaemonSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	if !resourceReady("daemonsets") {
+		return
+	}
+
+	for _, obj := range daemonSetInf.GetStore().List() {
+		daemonSet := obj.(*appsv1.DaemonSet)
+		if daemonSet.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_daemonset"),
+				Id:proto.String(string(daemonSet.GetUID()))})
+		}
+	}
 }
 
 func startDaemonSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {

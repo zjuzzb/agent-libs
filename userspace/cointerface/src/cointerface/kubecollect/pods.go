@@ -346,6 +346,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 
 	var parents []*draiosproto.CongroupUid
 	if setLinks {
+		AddNSParents(&parents, pod.GetNamespace())
 		AddNodeParents(&parents, pod.Spec.NodeName)
 
 		AddParentsToPodViaOwnerRef(&parents, pod);
@@ -383,7 +384,6 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 			Metrics: metrics,
 			Parents: parents,
 			Children: children,
-			Namespace:proto.String(pod.GetNamespace()),
 		},
 	})
 	cg = append(cg, containerEvents...)
@@ -536,6 +536,21 @@ func AddPodChildrenFromNodeName(children *[]*draiosproto.CongroupUid, nodeName s
 	for _, obj := range podInf.GetStore().List() {
 		pod := obj.(*v1.Pod)
 		if pod.Spec.NodeName == nodeName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_pod"),
+				Id:proto.String(string(pod.GetUID()))})
+		}
+	}
+}
+
+func AddPodChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	if !resourceReady("pods") {
+		return
+	}
+
+	for _, obj := range podInf.GetStore().List() {
+		pod := obj.(*v1.Pod)
+		if pod.GetNamespace() == namespaceName {
 			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_pod"),
 				Id:proto.String(string(pod.GetUID()))})

@@ -5,7 +5,6 @@ add_subdirectory(grpc_test_server)
 
 include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fused-src/gtest)
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/driver)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace)

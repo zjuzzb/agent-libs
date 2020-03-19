@@ -21,10 +21,12 @@ import (
 
 type podMetaData struct {
 	namespace string
+	namespaceUid string
 	uid       string
 	status    string
 }
 
+var namespacesUid map[string]string
 var clusterPods map[string]podMetaData
 var statusMap map[string]map[string]uint64
 var alreadySentCongroupUid map[string]bool
@@ -32,12 +34,14 @@ var alreadySentCongroupUid map[string]bool
 var podStatusAllowed []string
 
 func initStructures() {
+	namespacesUid = make(map[string]string)
 	clusterPods = make(map[string]podMetaData)
 	statusMap = make(map[string]map[string]uint64)
 	alreadySentCongroupUid = make(map[string]bool)
 }
 
 func reset() {
+	namespacesUid = nil
 	clusterPods = nil
 	statusMap = nil
 	alreadySentCongroupUid = nil
@@ -152,7 +156,8 @@ func handleEvent(event watch.Event) bool {
 			// 1) Insert in clusterPods
 			// 2) Update statusMap
 
-			clusterPods[podUid] = podMetaData{podNamespace, podUid, podStatus}
+			clusterPods[podUid] = podMetaData{podNamespace, getNamespaceUid(podNamespace), podUid, podStatus}
+			namespacesUid[podNamespace] = getNamespaceUid(podNamespace)
 			increaseStatusMap(podNamespace, podStatus)
 			ret = true
 		}
@@ -177,7 +182,8 @@ func handleEvent(event watch.Event) bool {
 			if(oldStatus != newStatus) {
 				decreaseStatusMap(pod.namespace, oldStatus)
 				increaseStatusMap(pod.namespace, newStatus)
-				clusterPods[podUid] = podMetaData{pod.namespace, pod.uid, newStatus}
+				clusterPods[podUid] = podMetaData{pod.namespace, getNamespaceUid(pod.namespace), pod.uid, newStatus}
+				namespacesUid[podNamespace] = getNamespaceUid(podNamespace)
 				ret = true
 			}
 		}
@@ -275,12 +281,17 @@ func createCongroupUpdateEvent(ns string, status string, count int64) draiosprot
 			Kind: proto.String("podstatuscounter"),
 			Id:   proto.String(key),
 		},
-		Namespace:proto.String(ns),
 	}
 	cg.Tags = make(map[string]string)
 	cg.Tags["kubernetes.podstatuscounter.label.status"] = status
 
+	nsUid := namespacesUid[ns]
+	cg.Parents = append(cg.Parents, &draiosproto.CongroupUid{
+		Kind: proto.String("k8s_namespace"),
+		Id:   proto.String(nsUid)})
+
 	AppendMetricInt64(&cg.Metrics, "kubernetes.podstatuscounter.count", int64(count))
+
 	var eventType draiosproto.CongroupEventType
 
 	if _, exists := alreadySentCongroupUid[key]; exists {

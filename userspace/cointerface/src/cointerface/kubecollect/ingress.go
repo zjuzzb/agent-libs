@@ -36,8 +36,8 @@ func newIngressCongroup(ingress *v1beta1.Ingress) (*draiosproto.ContainerGroup) 
 			Kind:proto.String("k8s_ingress"),
 			Id:proto.String(string(ingress.GetUID()))},
 		Tags: tags,
-		Namespace:proto.String(ingress.GetNamespace()),
 	}
+	AddNSParents(&ret.Parents, ingress.GetNamespace())
 	if backend := ingress.Spec.Backend; backend != nil {
 		if serviceUid := lookupServiceByName(backend.ServiceName, ingress.GetNamespace()); serviceUid != "" {
 			ret.Children = append(ret.Children, &draiosproto.CongroupUid{
@@ -88,6 +88,21 @@ func AddIngressParents(parents *[]*draiosproto.CongroupUid, service coService) {
 					}
 				}
 			}
+		}
+	}
+}
+
+func AddIngressChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	if !resourceReady("ingress") {
+		return
+	}
+
+	for _, obj := range ingressInf.GetStore().List() {
+		ingress := obj.(*v1beta1.Ingress)
+		if ingress.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_ingress"),
+				Id:proto.String(string(ingress.GetUID()))})
 		}
 	}
 }

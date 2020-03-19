@@ -91,14 +91,13 @@ func newDeploymentCongroup(deployment coDeployment, setLinks bool) (*draiosproto
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_deployment"),
 			Id:proto.String(string(deployment.GetUID()))},
-		Namespace:proto.String(deployment.GetNamespace()),
 	}
 
 	ret.Tags = GetTags(deployment.ObjectMeta, "kubernetes.deployment.")
 	ret.InternalTags = GetAnnotations(deployment.ObjectMeta, "kubernetes.deployment.")
 	addDeploymentMetrics(&ret.Metrics, deployment)
 	if setLinks {
-
+		AddNSParents(&ret.Parents, deployment.GetNamespace())
 		selector, ok := deploySelectorCache.Get(deployment)
 		if ok {
 			AddReplicaSetChildren(&ret.Children, selector, deployment.GetNamespace())
