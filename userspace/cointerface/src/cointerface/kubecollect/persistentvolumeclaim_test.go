@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"github.com/draios/protorepo/draiosproto"
 	"encoding/json"
+	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -145,12 +146,7 @@ func getPVCExpected() *draiosproto.ContainerGroup {
 			Id: &id_pv,
 		},
 		Tags: tags,
-		Parents: []* draiosproto.CongroupUid {
-			{
-				Kind: &namespaceKind,
-				Id: &namespaceName,
-			},
-		},
+		Namespace:proto.String(namespaceName),
 	}
 
 	AppendMetricInt64(&ret.Metrics, "kubernetes.persistentvolumeclaim.storage", 500000000)

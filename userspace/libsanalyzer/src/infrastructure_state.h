@@ -15,6 +15,9 @@
 #include "k8s_limits.h"
 #include "sdc_internal.pb.h"
 #include "type_config.h"
+#include "k8s_namespace_store.h"
+
+#include <gtest/gtest_prod.h>
 
 namespace std
 {
@@ -173,6 +176,7 @@ public:
 	std::unordered_set<std::string> test_only_get_container_ids() const;
 
 private:
+	FRIEND_TEST(infrastructure_state_test, connect_to_namespace);
 
 	void configure_k8s_environment();
 
@@ -203,7 +207,9 @@ private:
 
 	void refresh_hosts_metadata();
 
-	void connect(infrastructure_state::uid_t& key);
+	void connect_to_namespace(const infrastructure_state::uid_t& key);
+	void connect_orphans();
+	void connect(const infrastructure_state::uid_t& key);
 
 	// Remove given key. Set update to true if the key will be reinstantiated as part of an update
 	void remove(infrastructure_state::uid_t& key, bool update = false);
@@ -233,6 +239,7 @@ private:
 	std::map<std::string, pod_status_set_t> m_pod_status;
 	std::unordered_map<uid_t, std::vector<uid_t>> m_orphans;
 	std::unordered_map<uid_t, std::unordered_set<uid_t>> m_parents;
+	k8s_namespace_store m_k8s_namespace_store;
 
 	struct reg_scope_t {
 		bool m_host_scope;

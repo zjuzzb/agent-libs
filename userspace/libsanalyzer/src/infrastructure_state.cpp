@@ -206,7 +206,7 @@ bool infrastructure_state::get_cached_result(const std::string &entity_id, size_
 			return true;
 		}
 	}
-	
+
 	return false;
 }
 
@@ -616,6 +616,7 @@ void infrastructure_state::reset()
 		m_policy_cache.clear();
 		m_orphans.clear();
 		m_state.clear();
+		m_k8s_namespace_store.clear();
 		m_k8s_cached_cluster_id.clear();
 		m_k8s_node.clear();
 		m_k8s_node_uid.clear();
@@ -891,11 +892,23 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 	glogf(sinsp_logger::SEV_DEBUG, "infra_state: Handling %s event with uid <%s,%s>", draiosproto::congroup_event_type_Name(evt->type()).c_str(), kind.c_str(), id.c_str());
 	auto key = make_pair(kind, id);
 
+	m_k8s_namespace_store.handle_event(*evt);
+
+
 	if(!has(key)) {
 		switch(evt->type()) {
 		case draiosproto::ADDED:
 			m_state[key] = make_unique<draiosproto::container_group>();
 			purge_tags_and_copy(key, evt->object());
+
+			// Connect group with its namespace
+			connect_to_namespace(key);
+
+			if(evt->object().uid().kind() == k8s_namespace_store::KIND_NAMESPACE)
+			{
+				connect_orphans();
+			}
+
 			connect(key);
 			print_obj(key);
 			break;
@@ -932,6 +945,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 				remove(key, true);
 				m_state[key] = make_unique<draiosproto::container_group>();
 				purge_tags_and_copy(key, evt->object());
+				connect_to_namespace(key);
 				connect(key);
 			} else {
 				glogf(sinsp_logger::SEV_DEBUG, "infra_state: UPDATED event will not change relationships, just update the metadata");
@@ -1010,7 +1024,76 @@ void infrastructure_state::update_parent_child_links(const uid_t& uid)
 	}
 }
 
-void infrastructure_state::connect(infrastructure_state::uid_t& key)
+void infrastructure_state::connect_to_namespace(const infrastructure_state::uid_t& key)
+{
+	ASSERT(m_state[key] != nullptr);
+
+	draiosproto::container_group& cg = *m_state[key].get();
+	if(k8s_namespace_store::object_kind_is_namespaced(key.first))
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Entered connect_to_namespace <%s,%s>", key.first.c_str(), key.second.c_str());
+
+		auto ns_name = cg.namespace_();
+
+		// If we already have a complete namespace, connect this object to it.
+		// Otherwise we had already added this object as orphan to the incomplete namespace, and then nothing has to be done here.
+		if(!ns_name.empty() && m_k8s_namespace_store.seen_namespace_object(ns_name))
+		{
+			m_k8s_namespace_store.add_child_to_namespace(ns_name, key.second);
+			// Get the namespace name
+			std::string ns_uid = m_k8s_namespace_store.lookup_ns_by_object_uid(key.second);
+			ASSERT(!ns_uid.empty());
+			g_logger.format(sinsp_logger::SEV_DEBUG, "infra_state connecting <%s,%s> to namespace %s", key.first.c_str(), key.second.c_str() , ns_name.c_str());
+			draiosproto::congroup_uid* parent_uid =  m_state[key]->mutable_parents()->Add();
+			parent_uid->set_kind("k8s_namespace");
+			parent_uid->set_id(ns_uid);
+			// The reverse link will be done later in connect
+		}
+		// Remove namespace field from container group
+		cg.release_namespace_();
+	}
+
+}
+
+void infrastructure_state::connect_orphans()
+{
+	//look for namespaces with orphans ready for linking(e.g. namespace ADD event arrived)
+	for(const auto& el : m_k8s_namespace_store.get_all_orphans_of_complete_namespaces())
+	{
+		const std::string& ns_name = el.first.first;
+		const std::string& ns_uid = el.first.second;
+		const std::vector<uid_t>& orphan_vec = el.second;
+
+		auto father_pos = m_state.find(std::make_pair("k8s_namespace", ns_uid));
+		ASSERT(father_pos != m_state.end());
+		draiosproto::container_group& father = *father_pos->second.get();
+
+
+		for(const auto& orphan_id : orphan_vec)
+		{
+			ASSERT(has(orphan_id));
+			draiosproto::congroup_uid *parent = m_state[orphan_id]->mutable_parents()->Add();
+			parent->set_kind("k8s_namespace");
+			parent->set_id(ns_uid);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "infra_state add parent namespace %s to <%s,%s>"
+					, ns_name.c_str()
+					, orphan_id.first.c_str()
+					, orphan_id.second.c_str());
+
+			draiosproto::congroup_uid *child = father.mutable_children()->Add();
+			child->set_kind(orphan_id.first);
+			child->set_id(orphan_id.second);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "infra_state add child <%s,%s> to <k8s_namespace,%s>"
+					, child->kind().c_str()
+					, child->id().c_str()
+					, ns_name.c_str());
+			m_k8s_namespace_store.add_child_to_namespace(ns_name, orphan_id.second);
+		}
+		m_k8s_namespace_store.clear_namespace_orphans(ns_name);
+	}
+}
+
+void infrastructure_state::connect(const infrastructure_state::uid_t& key)
 {
 	//
 	// Connect the new group to his parents
@@ -1019,8 +1102,11 @@ void infrastructure_state::connect(infrastructure_state::uid_t& key)
 		auto pkey = make_pair(x.kind(), x.id());
 		if(!has(pkey)) {
 			// keep track of the missing parent. We will fix the children links when this event arrives
-			if(m_orphans.find(pkey) == m_orphans.end())
-				m_orphans[pkey] = std::vector<uid_t>();
+			g_logger.format(sinsp_logger::SEV_DEBUG, "infra_state: adding orphan for <%s,%s> : <%s,%s>"
+					, key.first.c_str()
+					, key.second.c_str()
+					, x.kind().c_str()
+					, x.id().c_str());
 			m_orphans[pkey].emplace_back(key.first, key.second);
 		} else if(!has_link(m_state[pkey]->children(), key)) {
 			draiosproto::congroup_uid *child = m_state[pkey]->mutable_children()->Add();
@@ -1318,7 +1404,7 @@ bool infrastructure_state::is_valid_for_export(const draiosproto::container_grou
 	if((grp->uid().kind()).substr(0,4) != "k8s_") {
 		return true;
 	}
-	
+
 	// Always return node and namespace
 	if(grp->uid().kind() == "k8s_namespace" || grp->uid().kind() == "k8s_node" ||
 		grp->uid().kind() == "k8s_persistentvolume") {
@@ -1327,7 +1413,7 @@ bool infrastructure_state::is_valid_for_export(const draiosproto::container_grou
 
 	// Now check for parents conditions based on rules above
 	bool has_k8s_namespace(false), has_k8s_node(false);
-	
+
 	for(const auto &p_uid : grp->parents()) {
 		auto pkey = make_pair(p_uid.kind(), p_uid.id());
 
@@ -1401,7 +1487,7 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 			// We don't have this parent (yet...)
 			continue;
 		}
-		
+
 		//
 		// Build parent state
 		//
@@ -2035,7 +2121,7 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 		evt_new.set_type(draiosproto::REMOVED);
 		auto cg_new = evt_new.mutable_object();
 		cg_new->CopyFrom(*cg);
-		
+
 		// Remove event
 		handle_event(&evt_new, true);
 	}
@@ -2282,7 +2368,7 @@ void infrastructure_state::print_state() const
 	{
 		return;
 	}
-	
+
 	glogf(sinsp_logger::SEV_TRACE, "infra_state: INFRASTRUCTURE STATE (size: %d)", m_state.size());
 
 	for (auto it = m_state.begin(), e = m_state.end(); it != e; ++it) {
@@ -2336,10 +2422,10 @@ void infrastructure_state::print_obj(const uid_t &key) const
 // Main method to extract the value of $NAME in "cluster:$NAME"
 // IFF a tag called "cluster:" exists in the agent tags.
 std::string infrastructure_state::get_cluster_name_from_agent_tags() const
-{	
+{
 	std::string cluster_tag("");
 	std::string tags = m_analyzer.m_configuration->get_host_tags();
-       
+
 	// Matches for pattern:
 	// cluster:$NAME    OR
 	// ,  cluster:$NAME OR
@@ -2381,7 +2467,7 @@ std::string infrastructure_state::get_k8s_cluster_name()
 	if(!m_analyzer.m_configuration->get_k8s_cluster_name().empty())
 	{
 		m_k8s_cluster_name = m_analyzer.m_configuration->get_k8s_cluster_name();
-	} // Priority 2: get it from agent tag "cluster:*" 
+	} // Priority 2: get it from agent tag "cluster:*"
 	else if(!get_cluster_name_from_agent_tags().empty())
 	{
 		m_k8s_cluster_name = get_cluster_name_from_agent_tags();
@@ -2392,7 +2478,7 @@ std::string infrastructure_state::get_k8s_cluster_name()
 		// In future this could be obtained from GKE for example.
 		m_k8s_cluster_name = "default";
 	}
-	
+
  	return m_k8s_cluster_name;
 }
 

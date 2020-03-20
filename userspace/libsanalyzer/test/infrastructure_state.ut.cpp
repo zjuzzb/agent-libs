@@ -155,3 +155,188 @@ k8s_ssl_key: key_path
 	test_helper::configure_k8s_environment(is);
 	EXPECT_EQ(is.get_k8s_url(), "https://some_host:12346");
 }
+
+void fill_congroup(draiosproto::container_group& to_be_filled
+		   , const std::string& kind
+		   , const std::string& id
+		   , const std::string& namespace_name)
+{
+	draiosproto::congroup_uid* uid = to_be_filled.mutable_uid();
+	uid->set_kind(kind);
+	uid->set_id(id);
+	to_be_filled.set_namespace_(namespace_name);
+}
+
+
+TEST(infrastructure_state_test, connect_to_namespace)
+{
+	static const std::string DEFAULT_NAMESPACE_NAME = "default";
+
+	// check that we properly normalize path
+	test_helpers::sinsp_mock inspector;
+	audit_tap_handler_dummy athd;
+	null_secure_audit_handler sahd;
+	null_secure_profiling_handler sphd;
+	sinsp_analyzer analyzer(&inspector,
+	                        "",
+	                        std::make_shared<internal_metrics>(),
+	                        athd,
+	                        sahd,
+	                        sphd,
+	                        nullptr,
+	                        []() -> bool { return true; });
+	infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
+
+    	infrastructure_state::uid_t deployment_uid(std::make_pair("k8s_deployment", "spacchitempu"));
+
+	// A deployment ADD event arrives. No namespaces yet.
+	draiosproto::congroup_update_event deployment_add_event;
+	deployment_add_event.set_type(draiosproto::congroup_event_type::ADDED);
+	draiosproto::container_group* deployment_congroup = deployment_add_event.mutable_object();
+	fill_congroup(*deployment_congroup, deployment_uid.first, deployment_uid.second, DEFAULT_NAMESPACE_NAME);
+	is.handle_event(&deployment_add_event);
+
+	// We expect that the incomplete default namespace has been created
+	const auto& namespaces = is.m_k8s_namespace_store.get_namespaces();
+	EXPECT_EQ(namespaces.size(), 1);
+	EXPECT_EQ(namespaces.begin()->first, DEFAULT_NAMESPACE_NAME);
+	EXPECT_EQ(namespaces.begin()->second.is_complete(), false);
+
+	// No parent <-> child relationship should be established yet
+	EXPECT_EQ(is.m_state[deployment_uid]->parents_size(), 0);
+
+	// Let now simulate an ADD event for namespace default arrives
+	infrastructure_state::uid_t default_namespace_uid(std::make_pair("k8s_namespace", "abcd1234"));
+	draiosproto::congroup_update_event namespace_add_event;
+	namespace_add_event.set_type(draiosproto::congroup_event_type::ADDED);
+	draiosproto::container_group* namespace_congroup = namespace_add_event.mutable_object();
+	fill_congroup(*namespace_congroup, default_namespace_uid.first, default_namespace_uid.second, DEFAULT_NAMESPACE_NAME);
+	is.handle_event(&namespace_add_event);
+
+	// We expect to have 1 namespace
+	EXPECT_EQ(namespaces.size(), 1);
+	// Whose name is default
+	EXPECT_EQ(namespaces.begin()->first, DEFAULT_NAMESPACE_NAME);
+	// And complete
+	EXPECT_EQ(namespaces.begin()->second.is_complete(), true);
+	// Without orphans
+	EXPECT_EQ(namespaces.begin()->second.has_orphans(), false);
+
+	// We also expect that deployment container group has a namespace parent,
+	// and namespace container group has a deployment children
+	const draiosproto::container_group& deployement_from_state = *is.m_state[deployment_uid].get();
+	EXPECT_EQ(deployement_from_state.parents_size(), 1);
+	EXPECT_EQ(deployement_from_state.parents(0).kind(), default_namespace_uid.first);
+	EXPECT_EQ(deployement_from_state.parents(0).id(), default_namespace_uid.second);
+
+	const draiosproto::container_group& namespace_from_state = *is.m_state[default_namespace_uid].get();
+	EXPECT_EQ(namespace_from_state.children_size(), 1);
+	EXPECT_EQ(namespace_from_state.children(0).kind(), deployment_uid.first);
+	EXPECT_EQ(namespace_from_state.children(0).id(), deployment_uid.second);
+
+	// Let's check now what happens when deployment is UPDATED
+	draiosproto::congroup_update_event update_deployment_event;
+	update_deployment_event.set_type(draiosproto::congroup_event_type::UPDATED);
+	draiosproto::container_group* update_congroup = update_deployment_event.mutable_object();
+	// For the sake of this test this congroup can be
+	fill_congroup(*update_congroup, deployment_uid.first, deployment_uid.second, DEFAULT_NAMESPACE_NAME);
+
+	is.handle_event(&update_deployment_event);
+
+	// We still expect that deployment has a parent and namespace has a child
+	EXPECT_EQ(deployement_from_state.parents_size(), 1);
+	EXPECT_EQ(deployement_from_state.parents(0).kind(), default_namespace_uid.first);
+	EXPECT_EQ(deployement_from_state.parents(0).id(), default_namespace_uid.second);
+	EXPECT_EQ(namespace_from_state.children_size(), 1);
+	EXPECT_EQ(namespace_from_state.children(0).kind(), deployment_uid.first);
+	EXPECT_EQ(namespace_from_state.children(0).id(), deployment_uid.second);
+
+
+	{
+		// Add a replicaset under the deployement
+		draiosproto::congroup_update_event rs_event;
+		rs_event.set_type(draiosproto::congroup_event_type::ADDED);
+		draiosproto::container_group& rs_cg = *rs_event.mutable_object();
+		draiosproto::congroup_uid rs_uid;
+		rs_uid.set_kind("k8s_replicaset");
+		rs_uid.set_id("rs_test");
+		fill_congroup(rs_cg, rs_uid.kind(), rs_uid.id(), DEFAULT_NAMESPACE_NAME);
+		draiosproto::congroup_uid& parent = *rs_cg.mutable_parents()->Add();
+		parent.set_kind("k8s_deployment");
+		parent.set_id("spacchitempu");
+		is.handle_event(&rs_event);
+
+		// Update this replicaset
+		draiosproto::congroup_update_event rs_update;
+		rs_update.set_type(draiosproto::congroup_event_type::UPDATED);
+		auto& rs_updated_cg = *rs_update.mutable_object();
+		fill_congroup(rs_updated_cg, "k8s_replicaset", "rs_test", DEFAULT_NAMESPACE_NAME);
+		rs_updated_cg.mutable_parents()->Add()->CopyFrom(parent);
+		is.handle_event(&rs_update);
+
+		draiosproto::container_group& rs_from_state = *is.m_state[std::make_pair(rs_uid.kind(), rs_uid.id())].get();
+
+		EXPECT_EQ(rs_from_state.parents_size(), 2);
+		EXPECT_EQ(rs_from_state.parents(0).kind(), deployment_uid.first);
+		EXPECT_EQ(rs_from_state.parents(0).id(), deployment_uid.second);
+		EXPECT_EQ(rs_from_state.parents(1).kind(), default_namespace_uid.first);
+		EXPECT_EQ(rs_from_state.parents(1).id(), default_namespace_uid.second);
+	}
+
+
+	{
+		// Delete the deployment
+		draiosproto::congroup_update_event delete_deployment_event;
+		delete_deployment_event.set_type(draiosproto::congroup_event_type::REMOVED);
+		draiosproto::container_group* delete_congroup = delete_deployment_event.mutable_object();
+		fill_congroup(*delete_congroup, deployment_uid.first, deployment_uid.second, DEFAULT_NAMESPACE_NAME);
+		is.handle_event(&delete_deployment_event);
+
+		// We expect namespace default has one children now
+		EXPECT_EQ(namespace_from_state.children_size(), 1);
+		// Namespace default in the store should not have orphans
+		EXPECT_EQ(namespaces.find(DEFAULT_NAMESPACE_NAME)->second.get_orphans().empty(), true);
+	}
+}
+
+TEST(infrastructure_state_test, k8s_namespace_store_test)
+{
+	k8s_namespace_store namespace_store;
+
+	namespace_store.add_namespace("default");
+	EXPECT_EQ(namespace_store.seen_namespace_object("default"), false);
+
+	namespace_store.m_namespaces.find("default")->second.set_uid("namespace-abcd");
+	EXPECT_EQ(namespace_store.seen_namespace_object("default"), true);
+
+	namespace_store.add_child_to_namespace("default", "child-abcd");
+	EXPECT_EQ(namespace_store.m_child_to_namespace_uid.size(), 1);
+
+	// Remove the child with an event
+	draiosproto::congroup_update_event evt;
+	evt.set_type(::draiosproto::congroup_event_type::REMOVED);
+	draiosproto::container_group* removed_cg = evt.mutable_object();
+	auto* uid = removed_cg->mutable_uid();
+	uid->set_id("child-abcd");
+	uid->set_kind("k8s_qualcosa");
+	namespace_store.handle_event(evt);
+	EXPECT_EQ(namespace_store.m_child_to_namespace_uid.size(), 0);
+
+	{
+		draiosproto::container_group cg;
+		auto* uid = cg.mutable_uid();
+		uid->set_kind("k8s_namespace");
+		uid->set_id("marepazzo");
+		cg.set_namespace_("pazzomare");
+		EXPECT_EQ(cg.namespace_(), "pazzomare");
+	}
+
+	{
+		draiosproto::container_group cg;
+		auto* uid = cg.mutable_uid();
+		uid->set_kind("k8s_deployment");
+		uid->set_id("marepazzo");
+		cg.set_namespace_("wanderful_namespace");
+		EXPECT_EQ(cg.namespace_(), "wanderful_namespace");
+	}
+}
