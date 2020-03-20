@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# This script uploads the agent install scripts in
+# /agent/scripts  to our s3 bucket
+# We need to set the value for $S3_BUCKET prior to calling this script
+
+if [ -z "$S3_BUCKET" ]
+then
+	echo "S3_BUCKET must be set" >&2
+	exit 1
+fi
+
+SCRIPT=$(readlink -f $0)
+SCRIPTS_DIR=$(dirname $(dirname $SCRIPT))
+
+if [ -z "$WORKSPACE" ]
+then
+	echo "WORKSPACE var must be set by the jenkins job" >&2
+	exit 1
+fi
+
+set -exuo pipefail
+
+# Need to clean some of this up
+REPO_NAME="stable"
+REPO_DIR=$WORKSPACE/repo
+
+rm -rf $REPO_DIR
+
+mkdir -p $REPO_DIR/$REPO_NAME
+
+export AWS_DEFAULT_REGION="us-east-1"
+
+cd $WORKSPACE
+
+function upload_installers {
+
+        for FILE_NAME in install-agent install-agent-kubernetes; do
+
+	        TEMPLATE_FILE="${SCRIPTS_DIR}/${FILE_NAME}"
+		sed s/_REPOSITORY_NAME_/${REPO_NAME}/g < ${TEMPLATE_FILE} > ${REPO_DIR}/$REPO_NAME/${FILE_NAME}
+	        aws s3 cp $REPO_DIR/$REPO_NAME/${FILE_NAME} $S3_BUCKET/$REPO_NAME/ --acl public-read
+        done
+
+}
+
+upload_installers
+
+rm -rf ${REPO_DIR}
