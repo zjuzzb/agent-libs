@@ -28,6 +28,7 @@ import ast
 import config
 import platform
 import glob
+from stat import *
 
 # project
 from checks import AgentCheck
@@ -55,7 +56,7 @@ from requests.packages.urllib3.exceptions import (
 
 # %s will be replaced by the install prefix
 CHECKS_DIRECTORY = "%s/lib/python/checks.d"
-CUSTOM_CHECKS_DIRECTORY = "%s/lib/python/checks.custom.d"
+DEFAULT_CUSTOM_CHECKS_DIRECTORY = "%s/lib/python/checks.custom.d"
 GLOBAL_PERCENTILES = []
 
 DONT_SEND_LOG_REPORT = 19
@@ -171,12 +172,12 @@ def _load_check_module(name, module_name, directory):
         traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
         raise AppCheckException('Unable to import check module %s.py from %s: %s' % (module_name, directory, traceback_message))
 
-def _load_check_class(check_module_name, install_prefix):
+def _load_check_class(check_module_name, check_directory, custom_check_directory):
     try:
-        check_module = _load_check_module(check_module_name, check_module_name, CUSTOM_CHECKS_DIRECTORY % install_prefix)
+        check_module = _load_check_module(check_module_name, check_module_name, custom_check_directory)
     except IOError:
         try:
-            check_module = _load_check_module(check_module_name, check_module_name, CHECKS_DIRECTORY % install_prefix)
+            check_module = _load_check_module(check_module_name, check_module_name, check_directory)
         except IOError as ex:
             raise AppCheckException('Unable to find AgentCheck class for %s reason=%s' % (check_module_name, str(ex)))
 
@@ -199,11 +200,11 @@ def _load_check_class(check_module_name, install_prefix):
 
 # LOADED_CHECKS acts as a static store for
 # check classes already loaded
-def get_check_class(check_name, install_prefix, LOADED_CHECKS={}):
+def get_check_class(check_name, check_directory, custom_check_directory, LOADED_CHECKS={}):
     try:
         return LOADED_CHECKS[check_name]
     except KeyError:
-        check_class = _load_check_class(check_name, install_prefix)
+        check_class = _load_check_class(check_name, check_directory, custom_check_directory)
         LOADED_CHECKS[check_name] = check_class
         return check_class
 
@@ -255,7 +256,7 @@ class AppCheckInstance(object):
         "port": lambda p: p["ports"][0],
         "port.high": lambda p: p["ports"][-1],
     }
-    def __init__(self, check, proc_data, config):
+    def __init__(self, check, proc_data, config, container_support = True):
         self.name = check["name"]
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
@@ -267,6 +268,8 @@ class AppCheckInstance(object):
         self.log_limit_flag = True
         self.app_started_time = datetime.now()
         self.log_exception_time = datetime.now()
+        self.custom_directory = self._get_custom_directory(DEFAULT_CUSTOM_CHECKS_DIRECTORY % self.install_prefix, config.get_custom_directory())
+        self.OBJ_CONTAINER_SUPPORT = container_support
         return_dict = config.check_conf_by_name(self.name)
         return_dict = return_dict if return_dict else config._yaml_config.get_single('prometheus')
 
@@ -292,9 +295,9 @@ class AppCheckInstance(object):
             check_module = self.name
         self.AGENT_CONFIG["histogram_percentiles"] = GLOBAL_PERCENTILES
         self.AGENT_CONFIG["install_prefix"] = self.install_prefix
-        self.check_instance = get_check_class(check_module, self.install_prefix)(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
+        self.check_instance = get_check_class(check_module, CHECKS_DIRECTORY % self.install_prefix, self.custom_directory)(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
 
-        if self.CONTAINER_SUPPORT:
+        if self.CONTAINER_SUPPORT and self.OBJ_CONTAINER_SUPPORT:
             mnt_ns_path = build_ns_path(self.pid, "mnt")
             try:
                 mntns_inode = os.stat(mnt_ns_path).st_ino
@@ -451,6 +454,28 @@ class AppCheckInstance(object):
         except Exception as ex:
             raise AppCheckException("Cannot expand template for %s, proc_data %s, and conf_vals %s: %s" % (value, repr(proc_data), repr(conf_vals), ex))
 
+    def _get_custom_directory(self, default, custom):
+        ret = default
+
+        if custom == None:
+            logging.debug("Custom app check directory is not set. Using default directory %s" % default)
+            return default
+
+        dir_exists = os.path.isdir(custom)
+        if dir_exists:
+            dir_mode = os.stat(custom).st_mode
+            is_writable = bool(dir_mode & S_IWUSR or dir_mode & S_IWGRP or dir_mode & S_IWGRP)
+            if is_writable:
+                logging.debug("Custom app check directory %s is writable. Using default directory %s instead" % (custom, default))
+            else:
+                logging.debug("Using custom app check directory %s" % custom)
+                ret = custom
+        else:
+            logging.debug("Custom app check directory %s does not exist. Using default directory %s instead" % (custom, default))
+
+        return ret
+
+
 class Config(object):
     def __init__(self, install_prefix):
         self.install_prefix = install_prefix
@@ -506,6 +531,9 @@ class Config(object):
                                                "60") # This should match the default
                                                      # in dragent/configuration.cpp
         return int(timeout)
+
+    def get_custom_directory(self):
+        return self._yaml_config.get_single("app_checks_custom_directory")
 
 class PosixQueueType(object):
     SEND = 0
