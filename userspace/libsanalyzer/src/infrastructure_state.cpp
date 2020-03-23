@@ -1732,6 +1732,8 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state *state)
 		ns.set_resourcequota_count(0);
 		ns.set_persistentvolumeclaim_count(0);
 		ns.set_hpa_count(0);
+		ns.set_pod_desired_count(0);
+		ns.set_pod_available_count(0);
 		ns.set_pod_running_count(0);
 		namespaces[ns.common().uid()] = &ns;
 	}
@@ -1779,8 +1781,15 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state *state)
 
 	for(auto& obj : *(state->mutable_controllers()))
 	{
+		auto ns = namespaces.find(obj.common().namespace_());
+		if(ns != namespaces.end())
+		{
+			ns->second->set_pod_desired_count(ns->second->pod_desired_count() + obj.replicas_desired() );
+			ns->second->set_pod_available_count(ns->second->pod_available_count() + obj.replicas_available() );
+		}
 		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
 	}
+
 	for(auto& obj : *(state->mutable_services()))
 	{
 		auto ns = namespaces.find(obj.common().namespace_());
@@ -1805,11 +1814,19 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state *state)
 		if(ns != namespaces.end())
 		{
 			ns->second->set_deployment_count(ns->second->deployment_count() + 1);
+			ns->second->set_pod_desired_count(ns->second->pod_desired_count() + obj.replicas_desired() );
+			ns->second->set_pod_available_count(ns->second->pod_available_count() + obj.replicas_available() );
 		}
 		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
 	}
 	for(auto& obj : *(state->mutable_daemonsets()))
 	{
+		auto ns = namespaces.find(obj.common().namespace_());
+		if(ns != namespaces.end())
+		{
+			ns->second->set_pod_desired_count(ns->second->pod_desired_count() + obj.desired_scheduled());
+			ns->second->set_pod_available_count(ns->second->pod_available_count() + obj.current_scheduled());
+		}
 		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
 	}
 	for(auto& obj : *(state->mutable_statefulsets()))
@@ -1818,6 +1835,8 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state *state)
 		if(ns != namespaces.end())
 		{
 			ns->second->set_statefulset_count(ns->second->statefulset_count() + 1);
+			ns->second->set_pod_desired_count(ns->second->pod_desired_count() + obj.replicas() );
+			ns->second->set_pod_available_count(ns->second->pod_available_count() + obj.status_replicas_current());
 		}
 		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
 	}
@@ -1849,6 +1868,8 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state *state)
 		if(ns != namespaces.end())
 		{
 			ns->second->set_hpa_count(ns->second->hpa_count() + 1);
+			ns->second->set_pod_desired_count(ns->second->pod_desired_count() + obj.replicas_desired() );
+			ns->second->set_pod_available_count(ns->second->pod_available_count() + obj.replicas_current());
 		}
 		legacy_k8s::set_namespace(obj.mutable_common(), ns_names);
 	}
