@@ -78,6 +78,7 @@ public:
 	    m_working_version(0),
 	    m_delay_acks(false),
 	    m_num_disconnects(0),
+	    m_num_connects(0),
 		m_silent(silent)
 	{}
 
@@ -222,6 +223,13 @@ public:
 	}
 
 	/**
+	 * Get the number of connects seen by the collector.
+	 */
+	uint32_t get_num_connects() const
+	{
+		return m_num_connects;
+	}
+	/**
 	 *	Deserialize a buffer into a protobuf
 	 */
 	template<typename T>
@@ -251,6 +259,7 @@ private:
 	bool m_delay_acks;
 	std::queue<buf> m_delayed_metrics;
 	uint32_t m_num_disconnects;
+	uint32_t m_num_connects;
 	bool m_silent;
 
 	/**

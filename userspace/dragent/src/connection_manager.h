@@ -358,6 +358,16 @@ public:
 		return sequence_less_or_equal(first, second);
 	}
 
+	uint32_t get_reconnect_interval() const
+	{
+		return m_reconnect_interval;
+	}
+
+	void set_working_interval(uint32_t new_interval)
+	{
+		m_working_interval = std::chrono::seconds(new_interval);
+	}
+
 	uint32_t m_connect_timeout_us = SOCKET_TIMEOUT_DURING_CONNECT_US;
 	volatile bool m_timed_out = false;
 #endif
@@ -370,8 +380,6 @@ public:
 	{
 		return m_generation;
 	}
-
-	void disconnect();
 
 	std::chrono::seconds get_negotiated_aggregation_interval() const
 	{
@@ -408,7 +416,6 @@ private:
 	                cm_state_machine::state state = cm_state_machine::state::INIT);
 	void do_run() override;
 	bool connect();
-	void disconnect(socket_ptr& ssp);
 	/**
 	 * Send a byte buffer out on the wire.
 	 */
@@ -418,6 +425,8 @@ private:
 	bool transmit_buffer(uint64_t now,
 	                     dragent_protocol_header_v5* header,
 	                     std::shared_ptr<serialized_buffer> &item);
+	int32_t send_bytes(uint8_t* buf, uint32_t len);
+
 
 	/**
 	 * Receive a message from the collector.
@@ -564,6 +573,9 @@ private:
 	// the string in the search path (substituting $OPENSSLDIR with the actual path)
 	static std::string find_ca_cert_path(const std::vector<std::string>& search_paths);
 
+	void disconnect();
+	void disconnect_and_backoff();
+
 #ifndef CYGWING_AGENT
 	bool prometheus_connected() const;
 #endif
@@ -571,7 +583,6 @@ private:
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
 	static const uint32_t RECONNECT_MIN_INTERVAL_S;
 	static const unsigned int SOCKET_TCP_TIMEOUT_MS = 60 * 1000;
-	static const std::chrono::seconds WORKING_INTERVAL_S;
 
 	message_handler_map m_handler_map;
 	std::vector<dragent_protocol::protocol_version> m_supported_protocol_versions;
@@ -594,7 +605,9 @@ private:
 	dragent_protocol::protocol_version m_negotiated_protocol_version;
 
 	uint32_t m_reconnect_interval;
-	std::chrono::time_point<std::chrono::system_clock> m_last_connect;
+	std::chrono::time_point<std::chrono::steady_clock> m_last_connect;
+	std::chrono::seconds m_working_interval;
+
 	std::unique_ptr<cm_state_machine> m_fsm;
 
 	std::list<unacked_message> m_messages_awaiting_ack;

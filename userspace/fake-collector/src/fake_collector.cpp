@@ -339,12 +339,14 @@ void fake_collector::thread_loop(int listen_sock_fd, sockaddr_in addr, fake_coll
 				fds[nfds].fd = agent_fd;
 				fds[nfds].events = POLLIN;
 				++nfds;
+				++fc.m_num_connects;
 			}
 			else // Descriptor is for a client connection that's become readable
 			{
 				if(!fc.handle_one_message(fds[fd].fd))
 				{
 					fds[fd].fd = -1;
+					agent_fd = -1;
 					// We'll need to compact the FD list if we start supporting multiple agent connections
 					--nfds;
 					++fc.m_num_disconnects;

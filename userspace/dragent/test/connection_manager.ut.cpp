@@ -1250,3 +1250,296 @@ TEST(connection_manager_test, test_error_message_handler)
 
 	t.join();
 }
+
+TEST(connection_manager_test, backoff)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration::m_terminate = false;
+	dragent_configuration config;
+	config.init();
+
+	// Create and spin up the fake collector (get an ephemeral port)
+	fake_collector fc(false); // Don't auto respond
+	fc.start(0);
+	ASSERT_NE(0, fc.get_port());
+
+	// Set the config for the CM
+	config.m_server_addr = "127.0.0.1";
+	config.m_server_port = fc.get_port();
+	config.m_ssl_enabled = false;
+	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
+	config.m_terminate = false;
+
+	// Create the shared blocking queues
+	flush_queue fqueue(MAX_QUEUE_LEN);
+	protocol_queue pqueue(MAX_QUEUE_LEN);
+
+	// All the stuff to build a serializer
+	std::shared_ptr<const capture_stats_source> stats_source =
+	    std::make_shared<bogus_capture_stats_source>();
+	protocol_handler ph(pqueue);
+	auto compressor = gzip_protobuf_compressor::get(-1);
+
+	// Create and spin up the connection manager
+	connection_manager cm(&config, &pqueue, {5});
+	protobuf_metric_serializer serializer(stats_source,
+	                                      "",
+	                                      ph,
+	                                      &fqueue,
+	                                      &pqueue,
+	                                      compressor,
+	                                      &cm);
+
+	std::thread t([&cm]()
+	{
+		cm.test_run();
+	});
+
+	std::thread st([&serializer]()
+	{
+		serializer.test_run();
+	});
+
+	// Wait for the CM to start the handshake
+	for(uint32_t loops = 0; fc.has_data() == 0 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+
+	ASSERT_EQ(fc.has_data(), 1);
+
+	// Ensure it's a PROTOCOL_INIT message
+	fake_collector::buf b = fc.pop_data();
+	ASSERT_EQ(draiosproto::message_type::PROTOCOL_INIT, b.hdr.v4.messagetype);
+
+	draiosproto::protocol_init pi;
+	dragent_protocol::buffer_to_protobuf(b.ptr,
+	                                     b.payload_len,
+	                                     &pi,
+	                                     protocol_compression_method::NONE);
+
+	ASSERT_EQ(1, pi.supported_protocol_versions().size());
+	dragent_protocol::protocol_version version = pi.supported_protocol_versions()[0];
+	ASSERT_EQ(dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH, version);
+
+	ASSERT_EQ(0, fc.get_num_disconnects());
+	ASSERT_EQ(0, cm.get_reconnect_interval());
+
+	// Now send an INVALID CUSTOMER KEY error
+	draiosproto::error_message err;
+	err.set_type(draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY);
+	err.set_description("CM UNIT TEST");
+
+	// Send the message
+	bool ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
+	                                     false,
+	                                     err);
+	ASSERT_TRUE(ret);
+
+	// Ensure the CM drops the connection
+	for(uint32_t loops = 0; fc.get_num_disconnects() < 1 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+
+	// The backoff should now be 1
+	ASSERT_EQ(1, cm.get_reconnect_interval());
+
+	ASSERT_EQ(0, fc.has_data());
+	// Wait for the CM to start the handshake again
+	for(uint32_t loops = 0; fc.has_data() == 0 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+
+	ASSERT_EQ(fc.has_data(), 1);
+
+	// Now send the INVALID CUSTOMER KEY error again
+	err.set_type(draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY);
+	err.set_description("CM UNIT TEST");
+	ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
+	                                false,
+	                                err);
+	ASSERT_TRUE(ret);
+
+	// Ensure the CM drops the connection yet again
+	for(uint32_t loops = 0; fc.get_num_disconnects() < 2 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+
+	// The backoff should now be 2
+	ASSERT_EQ(2, cm.get_reconnect_interval());
+
+	// Shut down all the things
+	config.m_terminate = true;
+	fc.stop();
+
+	t.join();
+	serializer.stop();
+	st.join();
+}
+
+TEST(connection_manager_test, backoff_recovery_v4)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration::m_terminate = false;
+	dragent_configuration config;
+	std::atomic<bool> metrics_sent(false);
+	config.init();
+
+	// Create and spin up the fake collector (get an ephemeral port)
+	fake_collector fc(false); // Don't auto respond
+	fc.start(0);
+	ASSERT_NE(0, fc.get_port());
+
+	// Set the config for the CM
+	config.m_server_addr = "127.0.0.1";
+	config.m_server_port = fc.get_port();
+	config.m_ssl_enabled = false;
+	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
+	config.m_terminate = false;
+
+	// Create the shared blocking queues
+	flush_queue fqueue(MAX_QUEUE_LEN);
+	protocol_queue pqueue(MAX_QUEUE_LEN);
+
+	// All the stuff to build a serializer
+	std::shared_ptr<const capture_stats_source> stats_source =
+	    std::make_shared<bogus_capture_stats_source>();
+	protocol_handler ph(pqueue);
+	auto compressor = gzip_protobuf_compressor::get(-1);
+
+	// Create and spin up the connection manager
+	connection_manager cm(&config, &pqueue, {4});
+	cm.set_working_interval(1); // Don't want to wait for 10 seconds
+	protobuf_metric_serializer serializer(stats_source,
+	                                      "",
+	                                      ph,
+	                                      &fqueue,
+	                                      &pqueue,
+	                                      compressor,
+	                                      &cm);
+
+	std::thread t([&cm]()
+	{
+		cm.test_run();
+	});
+
+	std::thread st([&serializer]()
+	{
+		serializer.test_run();
+	});
+
+	// Wait for the CM to connect
+	uint32_t loops = 0;
+	while(fc.get_num_connects() < 1 && loops < 10000)
+	{
+		usleep(1000);
+		++loops;
+	}
+	ASSERT_EQ(cm_state_machine::state::STEADY_STATE, cm.get_state());
+	ASSERT_EQ(1, fc.get_num_connects());
+
+	// Now send an INVALID CUSTOMER KEY error
+	draiosproto::error_message err;
+	err.set_type(draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY);
+	err.set_description("CM UNIT TEST");
+
+	// Send the message
+	bool ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
+	                                     false,
+	                                     err);
+	ASSERT_TRUE(ret);
+
+	// Ensure the CM drops the connection
+	for(uint32_t loops = 0; fc.get_num_disconnects() < 1 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+
+	// The backoff should now be 1
+	ASSERT_EQ(1, cm.get_reconnect_interval());
+
+	// Wait for the CM to connect again
+	loops = 0;
+	while(fc.get_num_connects() < 2 && loops < 10000)
+	{
+		usleep(1000);
+		++loops;
+	}
+	ASSERT_EQ(cm_state_machine::state::STEADY_STATE, cm.get_state());
+	ASSERT_EQ(2, fc.get_num_connects());
+
+	// Send some metrics
+	{
+		auto metrics = build_test_metrics(1);
+		serializer.serialize(std::make_shared<flush_data_message>(
+		                         sinsp_utils::get_current_time_ns(),
+		                         &metrics_sent,
+		                         std::unique_ptr<draiosproto::metrics>(metrics),
+		                         MAX_QUEUE_LEN,
+		                         0,
+		                         1.0,
+		                         1,
+		                         0));
+	}
+
+	// Now send the INVALID CUSTOMER KEY error again
+	err.set_type(draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY);
+	err.set_description("CM UNIT TEST");
+	ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
+	                                false,
+	                                err);
+	ASSERT_TRUE(ret);
+
+	// Ensure the CM drops the connection yet again
+	for(uint32_t loops = 0; fc.get_num_disconnects() < 2 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+
+	ASSERT_EQ(2, fc.get_num_disconnects());
+	// The backoff should now be 2
+	ASSERT_EQ(2, cm.get_reconnect_interval());
+
+
+	// Wait for the CM to connect again
+	loops = 0;
+	while(fc.get_num_connects() < 3 && loops < 21000)
+	{
+		usleep(1000);
+		++loops;
+	}
+	ASSERT_EQ(cm_state_machine::state::STEADY_STATE, cm.get_state());
+	ASSERT_EQ(3, fc.get_num_connects());
+
+	uint32_t index = 2;
+	// Build and send metrics until the backoff goes back to 1
+	for(uint32_t loops = 0; cm.get_reconnect_interval() > 1 && loops < 15; ++loops)
+	{
+		auto metrics = build_test_metrics(index++);
+		serializer.serialize(std::make_shared<flush_data_message>(
+		                         sinsp_utils::get_current_time_ns(),
+		                         &metrics_sent,
+		                         std::unique_ptr<draiosproto::metrics>(metrics),
+		                         MAX_QUEUE_LEN,
+		                         0,
+		                         1.0,
+		                         1,
+		                         0));
+		usleep(200000); // 200 ms
+	}
+
+	ASSERT_EQ(0, cm.get_reconnect_interval());
+
+	// Shut down all the things
+	config.m_terminate = true;
+	fc.stop();
+
+	t.join();
+	serializer.stop();
+	st.join();
+}

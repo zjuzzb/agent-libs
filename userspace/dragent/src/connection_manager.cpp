@@ -42,8 +42,8 @@ namespace security_config = libsanalyzer::security_config;
 
 COMMON_LOGGER();
 
-const chrono::seconds connection_manager::WORKING_INTERVAL_S(10);
 const uint32_t connection_manager::RECONNECT_MIN_INTERVAL_S = 1;
+const uint32_t DEFAULT_WORKING_INTERVAL_S = 10;
 
 class LoggingCertificateHandler : public Poco::Net::InvalidCertificateHandler
 {
@@ -222,7 +222,8 @@ connection_manager::connection_manager(dragent_configuration* configuration,
       m_negotiated_aggregation_interval(UINT32_MAX),
       m_negotiated_compression_method(nullptr),
       m_negotiated_protocol_version(0),
-      m_reconnect_interval(0)
+      m_reconnect_interval(0),
+      m_working_interval(DEFAULT_WORKING_INTERVAL_S)
 {
 	Poco::Net::initializeSSL();
 
@@ -443,7 +444,7 @@ bool connection_manager::connect()
 			//  * Every subsequent disconnect, the backoff is doubled
 			//  * If the connection is determined to be working, reset to 0
 			//     * For protocol v4, working means connected for more than
-			//       WORKING_INTERVAL_S
+			//       m_working_interval
 			//     * For protocol v5, working means successful handshake
 			std::chrono::seconds time_slept = std::chrono::seconds(0);
 			LOG_INFO("Connect backoff: waiting for " +
@@ -618,28 +619,17 @@ bool connection_manager::connect()
 
 void connection_manager::disconnect()
 {
-	disconnect(m_socket);
-}
-
-void connection_manager::disconnect(socket_ptr& ssp)
-{
-	// Update exponential backoff
 	if (m_reconnect_interval == 0)
 	{
+		// Back off slightly just to prevent slamming the collector
+		// with reconnects in the case the collector is down
 		m_reconnect_interval = RECONNECT_MIN_INTERVAL_S;
 	}
-	else
-	{
-		m_reconnect_interval = std::min(
-		    std::max(connection_manager::RECONNECT_MIN_INTERVAL_S, m_reconnect_interval * 2),
-		    c_reconnect_max_backoff_s.get_value());
-	}
-
-	if (ssp)
+	if (m_socket)
 	{
 		LOG_INFO("Disconnecting from collector");
-		ssp->close();
-		ssp.reset();
+		m_socket->close();
+		m_socket.reset();
 	}
 	if (m_fsm)
 	{
@@ -652,6 +642,22 @@ void connection_manager::disconnect(socket_ptr& ssp)
 	m_prom_channel = nullptr;
 	m_prom_conn = nullptr;
 #endif
+}
+
+void connection_manager::disconnect_and_backoff()
+{
+	// Update exponential backoff
+	if (m_reconnect_interval == 0)
+	{
+		m_reconnect_interval = RECONNECT_MIN_INTERVAL_S;
+	}
+	else
+	{
+		m_reconnect_interval = std::min(
+		    std::max(connection_manager::RECONNECT_MIN_INTERVAL_S, m_reconnect_interval * 2),
+		    c_reconnect_max_backoff_s.get_value());
+	}
+	disconnect();
 }
 
 #ifndef CYGWING_AGENT
@@ -765,7 +771,7 @@ void connection_manager::do_run()
 		//
 		// The main loop while the connection is established
 		//
-		m_last_connect = std::chrono::system_clock::now();
+		m_last_connect = std::chrono::steady_clock::now();
 		while (heartbeat() && is_connected())
 		{
 			// Check if we received a message
@@ -807,6 +813,7 @@ void connection_manager::do_run()
 				                           m_generation,
 				                           m_sequence))
 				{
+					LOG_ERROR("Error building protocol header. Reconnecting");
 					disconnect();
 					continue;
 				}
@@ -1099,9 +1106,9 @@ bool connection_manager::perform_handshake()
 				return true;
 
 			case draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY:
-				// Disconnect will trigger exponential backoff
+				// Perform exponential backoff
 				LOG_ERROR("Received error message: INVALID_CUSTOMER_KEY");
-				disconnect();
+				disconnect_and_backoff();
 				return false;
 
 			default:
@@ -1263,6 +1270,56 @@ bool connection_manager::perform_handshake()
 	return true;
 }
 
+int32_t connection_manager::send_bytes(uint8_t* buf, uint32_t len)
+{
+	if (!m_socket)
+	{
+		return false;
+	}
+
+	bool retry = false;
+	do
+	{
+		int32_t res = m_socket->sendBytes(buf, len);
+		if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
+		{
+			LOG_ERROR("Got SSL_WANT_READ on a write. Attempting reconnect. "
+			          "If the problem persists, try restarting the agent.");
+			disconnect();
+			return -1;
+		}
+		if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
+		{
+			if (retry)
+			{
+				// We already retried once. Time to bail.
+				LOG_ERROR("Retry of SSL_WANT_WRITE failed. Reconnecting. "
+				          "If the problem persists, try restarting the agent.");
+				disconnect();
+				return -1;
+			}
+			LOG_WARNING("Got SSL_WANT_WRITE on a write. Retrying write.");
+			retry = true;
+			continue;
+		}
+		if (res != len)
+		{
+			LOG_ERROR("sendBytes sent just " +
+			          NumberFormatter::format(res) +
+			          ", expected " +
+			          NumberFormatter::format(len));
+
+			disconnect();
+
+			ASSERT(false);
+			return -1;
+		}
+		return res;
+	} while (retry);
+
+	return -1;
+}
+
 bool connection_manager::transmit_buffer(uint64_t now,
                                          dragent_protocol_header_v4* header,
                                          std::shared_ptr<serialized_buffer>& item)
@@ -1320,46 +1377,27 @@ bool connection_manager::transmit_buffer(uint64_t now,
 
 	try
 	{
-		if (!m_socket)
-		{
-			return false;
-		}
-
-		// Only send the bits of the header that are appropriate for the header version
+		// Only send the bits of the header that are appropriate for
+		// this header version
 		uint32_t send_len = dragent_protocol::header_len(header->hdr);
-		int32_t res = m_socket->sendBytes((uint8_t*)header, send_len);
-		if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ||
-		    res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
+		if (send_len == 0)
 		{
-			return false;
+			LOG_ERROR("Incorrect header length detected. Discarding metrics");
+			return true; // Returning true will drop the metrics and continue
 		}
-		if (res != send_len)
+		int32_t res = send_bytes((uint8_t*)header, send_len);
+		if (res < 0)
 		{
-			LOG_ERROR("sendBytes sent just " + NumberFormatter::format(res) + ", expected " +
-			          NumberFormatter::format(item->buffer.size()));
-
-			disconnect();
-
-			ASSERT(false);
+			ASSERT(!is_connected());
 			return false;
 		}
 
-		res = m_socket->sendBytes(item->buffer.data(), item->buffer.size());
-		if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ||
-		    res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
-		{
-			return false;
-		}
-
+		// Send the payload
 		ASSERT(item->buffer.size() <= INT32_MAX);
-		if (res != (int32_t)item->buffer.size())
+		res = send_bytes((uint8_t*)item->buffer.data(), item->buffer.size());
+		if (res < 0)
 		{
-			LOG_ERROR("sendBytes sent just " + NumberFormatter::format(res) + ", expected " +
-			          NumberFormatter::format(item->buffer.size()));
-
-			disconnect();
-
-			ASSERT(false);
+			ASSERT(!is_connected());
 			return false;
 		}
 
@@ -1388,10 +1426,10 @@ bool connection_manager::transmit_buffer(uint64_t now,
 			// caused by an attempted send larger than the buffer size
 			if (item->buffer.size() > m_configuration->m_transmitbuffer_size)
 			{
-				LOG_ERROR("transmit larger than bufsize failed (" +
-				          NumberFormatter::format(item->buffer.size()) + ">" +
-				          NumberFormatter::format(m_configuration->m_transmitbuffer_size) + "): " +
-				          e.displayText());
+				LOG_ERROR("transmit larger than bufsize failed (%lu > %u): %s",
+				          item->buffer.size(),
+				          m_configuration->m_transmitbuffer_size,
+				          e.displayText().c_str());
 				disconnect();
 			}
 			else
@@ -1452,16 +1490,17 @@ bool connection_manager::receive_message()
 				                           MSG_WAITALL);
 				if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
 				{
-					// But we just did a read?
-					LOG_ERROR("SSL handshake error (reading message)");
-					disconnect();
-					ASSERT(false);
-					return false;
+					// Re-read
+					LOG_INFO("Got SSL_WANT_READ on receive, retrying");
+					continue;
 				}
 				if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
 				{
-					// This case will return true so we can go to the write case
-					return true;
+					// I believe this should only happen with non-blocking sockets.
+					// This is an odd case and shouldn't happen, but if it does
+					// then doing nothing may be an appropriate action.
+					LOG_INFO("Got SSL_WANT_WRITE on receive, retrying");
+					continue;
 				}
 
 				if (res == 0)
@@ -1528,37 +1567,57 @@ bool connection_manager::receive_message()
 		msg_len = ntohl(v4_hdr->len);
 		uint32_t used_buf = m_pending_message.m_buffer_used;
 
-		auto res = m_socket->receiveBytes(m_pending_message.m_buffer.begin() + used_buf,
-		                                  msg_len - used_buf,
-		                                  MSG_WAITALL);
-
-		if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
+		int32_t res;
+		bool retry = false;
+		do
 		{
-			// But we just did a read?
-			LOG_ERROR("SSL handshake error (reading message)");
-			disconnect();
-			ASSERT(false);
-			return false;
-		}
-		if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
-		{
-			// This case will return true so we can go to the write case
-			return true;
-		}
+			res = m_socket->receiveBytes(m_pending_message.m_buffer.begin() + used_buf,
+			                             msg_len - used_buf,
+			                             MSG_WAITALL);
 
-		if (res <= 0)
-		{
-			std::string error_msg = "Lost connection (reading message)";
-
-			if (res < 0)
+			if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
 			{
-				error_msg = "Connection error while reading: " + NumberFormatter::format(res);
+				if (retry)
+				{
+					reset_backoff();
+					LOG_ERROR("Retry of SSL_WANT_READ failed. Reconnecting. "
+					          "If the problem persists, try restarting the agent.");
+					disconnect();
+					return false;
+				}
+				LOG_INFO("Got SSL_WANT_READ on receive, retrying");
+				retry = true;
+				continue;
 			}
-			LOG_ERROR("%s", error_msg.c_str());
-			disconnect();
-			ASSERT(false);
-			return false;
-		}
+			if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
+			{
+				if (retry)
+				{
+					LOG_ERROR("Retry of SSL_WANT_WRITE failed. Reconnecting. "
+					          "If the problem persists, try restarting the agent.");
+					disconnect();
+					return false;
+				}
+				LOG_INFO("Got SSL_WANT_WRITE on receive, retrying");
+				retry = true;
+				continue;
+			}
+
+			if (res <= 0)
+			{
+				std::string error_msg = "Lost connection (reading message)";
+
+				if (res < 0)
+				{
+					error_msg = "Connection error while reading: " +
+					            NumberFormatter::format(res);
+				}
+				LOG_ERROR("%s", error_msg.c_str());
+				disconnect();
+				ASSERT(false);
+				return false;
+			}
+		} while (retry && heartbeat());
 
 		m_pending_message.m_buffer_used += res;
 		LOG_DEBUG("Receiving message version=" + NumberFormatter::format(v4_hdr->version) +
@@ -1675,8 +1734,12 @@ void connection_manager::on_metrics_send(dragent_protocol_header_v5& header,
 
 	if (get_current_protocol_version() == dragent_protocol::PROTOCOL_VERSION_NUMBER)
 	{
+		std::chrono::seconds elapsed_s =
+		    std::chrono::duration_cast<std::chrono::seconds>(
+		            std::chrono::steady_clock::now() -
+		                m_last_connect);
 		// Check to see how long we've been functional
-		if (std::chrono::system_clock::now() - m_last_connect >= WORKING_INTERVAL_S)
+		if (elapsed_s >= m_working_interval)
 		{
 			reset_backoff();
 		}
@@ -1836,9 +1899,8 @@ void connection_manager::handle_collector_error(draiosproto::error_message& msg)
 		// Sometimes customers will decide to no longer be customers
 		// but will leave an agent running for some reason. The agent
 		// will just pound away trying to connect to the collector.
-		// Make the agent backoff in this case (the agent will use
-		// the default backoff mechanism).
-		disconnect();
+		// Make the agent backoff in this case.
+		disconnect_and_backoff();
 	}
 
 	if(term)
