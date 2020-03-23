@@ -28,8 +28,6 @@
 #
 # $Id$
 
-from past.builtins import chr
-from builtins import object
 __author__ = 'Allan Saddi <allan@saddi.com>'
 __version__ = '$Revision$'
 
@@ -328,7 +326,6 @@ class FCGIApp(object):
         # Main loop. Process FCGI_STDOUT, FCGI_STDERR, FCGI_END_REQUEST
         # records from the application.
         result = []
-        err = ''
         while True:
             inrec = Record()
             inrec.read(sock)
@@ -341,8 +338,7 @@ class FCGIApp(object):
                     pass
             elif inrec.type == FCGI_STDERR:
                 # Simply forward to wsgi.errors
-                err += inrec.contentData
-                #environ['wsgi.errors'].write(inrec.contentData)
+                environ['wsgi.errors'].write(inrec.contentData)
             elif inrec.type == FCGI_END_REQUEST:
                 # TODO: Process appStatus/protocolStatus fields?
                 break
@@ -390,10 +386,8 @@ class FCGIApp(object):
         result = result[pos:]
 
         # Set WSGI status, headers, and return result.
-        #start_response(status, headers)
-        #return [result]
-
-        return status, headers, result, err
+        start_response(status, headers)
+        return [result]
 
     def _getConnection(self):
         if self._connect is not None:

@@ -6,3 +6,6 @@ pyyaml==5.1
 
 # checks.d/mcache.py
 python-memcached==1.59
+
+# checks.d/php-fpm.py
+flup-py3==1.0.3
