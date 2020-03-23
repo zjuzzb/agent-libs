@@ -17,9 +17,13 @@ hdfs.datanode.num_blocks_cached              The number of blocks cached
 hdfs.datanode.num_blocks_failed_to_cache     The number of blocks that failed to cache
 hdfs.datanode.num_blocks_failed_to_uncache   The number of failed blocks to remove from cache
 '''
+from future import standard_library
+standard_library.install_aliases()
+from builtins import next
+from builtins import str
 
 # stdlib
-from urlparse import urljoin
+from urllib.parse import urljoin
 
 # 3rd party
 import requests
@@ -86,7 +90,7 @@ class HDFSDataNode(AgentCheck):
 
             self.log.debug('Bean name retrieved: %s' % (bean_name))
 
-            for metric, (metric_name, metric_type) in HDFS_METRICS.iteritems():
+            for metric, (metric_name, metric_type) in HDFS_METRICS.items():
                 metric_value = bean.get(metric)
 
                 if metric_value is not None:
@@ -116,7 +120,7 @@ class HDFSDataNode(AgentCheck):
 
         # Add query_params as arguments
         if query_params:
-            query = '&'.join(['{0}={1}'.format(key, value) for key, value in query_params.iteritems()])
+            query = '&'.join(['{0}={1}'.format(key, value) for key, value in query_params.items()])
             url = urljoin(url, '?' + query)
 
         self.log.debug('Attempting to connect to "%s"' % url)
