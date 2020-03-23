@@ -1853,16 +1853,6 @@ sub process_cli_options {
 }
 
 sub load_config {
-	my @configfiles = @_;
-
-	for my $configfile (@configfiles) {
-		$configfile = (glob($configfile))[0];
-		
-		if ($configfile && -r $configfile) {
-			%config = %{read_config_file($configfile) || {}};
-		}
-	}
-
 	($maintainer = ($config{'DEBSIGN_MAINT'} || "")) =~ s/^"(.+)"$/$1/ if ! $maintainer;
 	($key        = ($config{'DPKGSIG_KEYID'} || $config{'DEBSIGN_KEYID'} || "")) =~ s/^"(.+)"$/$1/ if ! $key;
 	($cache_pass = ($config{'DPKGSIG_CACHE_PASS'} || "")) =~ s/^"(.+)"$/$1/ if ! $cache_pass;
