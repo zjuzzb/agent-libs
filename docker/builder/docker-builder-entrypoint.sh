@@ -143,6 +143,25 @@ build_sysdig()
 	docker build -t $SYSDIG_IMAGE -f $DOCKERFILE --pull .
 }
 
+build_sysdig_release()
+{
+	cd /code/agent
+	mkdir -p /out/sysdig-{debug,release}
+	scl enable devtoolset-2 ./bootstrap-sysdig
+
+	cd /code/sysdig/build/release
+	make -j$MAKE_JOBS package
+	cp *.rpm *.deb *.tar.gz /out/sysdig-release
+
+	cp /code/sysdig/docker/local/* /out/sysdig-release
+	sed -i "-es@^ENV SYSDIG_VERSION .*@ENV SYSDIG_VERSION $SYSDIG_VERSION@" /out/sysdig-release/Dockerfile
+	docker build -t $SYSDIG_IMAGE -f /out/sysdig-release/$DOCKERFILE --pull /out/sysdig-release
+
+	cd /code/sysdig/build/debug
+	make -j$MAKE_JOBS package
+	cp *.rpm *.deb *.tar.gz /out/sysdig-debug
+}
+
 # $1 is release/debug
 # $2 is filename
 build_single_cpp()
@@ -240,6 +259,9 @@ case "$1" in
 		;;
 	sysdig)
 		build_sysdig
+		;;
+	sysdig-release)
+		build_sysdig_release
 		;;
 	presubmit)
 		# used by the agent-build-presubmit jenkins job
