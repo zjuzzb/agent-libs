@@ -2850,8 +2850,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	                                 metric_forwarding_configuration::c_jmx_max->get_value(),
 	                                 m_jmx_metrics_by_containers);
 	std::unique_ptr<app_check_emitter> app_check_emitter_instance = nullptr;
-	// XXX: We still want to run the app_check_emitter if we have promscrape metrics
-	// but m_app_checks_proxy is null. To be fixed with SMAGENT-2292
+
 	if (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT &&
 	    m_app_checks_proxy != nullptr)
 	{
