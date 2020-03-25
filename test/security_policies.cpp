@@ -2216,11 +2216,6 @@ TEST_F(security_policies_test_cointerface, falco_k8s_audit_messy_client)
 	ASSERT_EQ(system("curl -sX POST localhost:7765/this-is-not-the-good-door -d "
 	                 "@./resources/k8s_audit_events.txt | grep -qx '404 page not found' || false"),
 	          0);
-
-	// Malformed JSONs
-	ASSERT_EQ(system("curl -sX POST localhost:7765/k8s_audit -d '{\"this is\"} : clearly \"not\" a "
-	                 "well formatted json' | grep -qx 'Malformed JSON' || false > /dev/null 2>&1"),
-	          0);
 }
 
 TEST_F(security_policies_test, baseline_only)

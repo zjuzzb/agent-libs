@@ -3,7 +3,6 @@ package k8s_audit
 import (
 	"github.com/draios/protorepo/sdc_internal"
 	"crypto/tls"
-	"encoding/json"
 	"github.com/gogo/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -25,7 +24,7 @@ type k8sAuditServer struct {
 }
 
 func (ks *k8sAuditServer) Init() error {
-	ks.evtsChannel = make(chan *sdc_internal.K8SAuditEvent)
+	ks.evtsChannel = make(chan *sdc_internal.K8SAuditEvent, 16)
 
 	ks.initialized = true
 
@@ -151,7 +150,7 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 	for {
 		select {
 		case evt := <- ks.evtsChannel:
-			log.Debugf("Sending K8s Audit Event to agent %s", evt.GetEvtId())
+			log.Debugf("Sending K8s Audit Event to agent %d", evt.GetEvtId())
 			if err := stream.Send(evt); err != nil {
 				log.Errorf("Could not send event %s: %v",
 					evt.GetEvtId(), err.Error())
@@ -193,17 +192,15 @@ func (ks *k8sAuditServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPost:
-		var j json.RawMessage
 		jsn, err := ioutil.ReadAll(r.Body)
 
 		if (err != nil) {
 			log.Errorf("Invalid K8s audit event: error while reading")
 			w.WriteHeader(http.StatusInternalServerError)
 			message = "Invalid Body"
-		} else if err := json.Unmarshal(jsn, &j); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			message = "Malformed JSON\n"
 		} else {
+			log.Debugf("K8s Audit Post Received (%d bytes)", len(jsn))
+
 			// Create a new record.
 			evt := &sdc_internal.K8SAuditEvent{
 				EvtId: proto.Uint64(k8sEvtID),
@@ -212,7 +209,11 @@ func (ks *k8sAuditServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			k8sEvtID += 1 // it's ok if we overflow
 			message = "<html><body>Ok</body></html>"
-			ks.evtsChannel <- evt
+			select {
+			case ks.evtsChannel <- evt:
+			default:
+				log.Errorf("Dropping Audit Content (buffer full)")
+			}
 		}
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
