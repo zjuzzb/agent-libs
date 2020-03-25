@@ -236,10 +236,5 @@ rm -rf $(whereis python3 | sed -e 's/^python3://') && \
 rm /opt/draios/share/sdjagent.jar
 {% endif %}
 
-{% if not p.thin and p.launch_dragent and not p.build_kernel_module %}
-# copy backports for mesos/marathon python2.7 compatibility
-RUN cp -r /opt/draios/lib/python-deps/backports /usr/lib/python2.7/dist-packages/backports
-{% endif %}
-
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
