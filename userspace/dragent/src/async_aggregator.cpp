@@ -439,7 +439,7 @@ void async_aggregator::set_aggregation_interval_source(aggregation_interval_sour
 void async_aggregator::register_metrics_request_callback(async_aggregator::metrics_request_cb cb)
 {
 	std::lock_guard<std::mutex> lock(m_metrics_request_callbacks_lock);
-	m_staged_metrics_request_callbacks.insert(cb);
+	m_staged_metrics_request_callbacks.emplace_back(cb);
 }
 
 void async_aggregator::make_preemit_callbacks()
@@ -448,7 +448,7 @@ void async_aggregator::make_preemit_callbacks()
 		std::lock_guard<std::mutex> lock(m_metrics_request_callbacks_lock);
 		for (auto i : m_staged_metrics_request_callbacks)
 		{
-			m_metrics_request_callbacks.insert(i);
+			m_metrics_request_callbacks.emplace_back(i);
 		}
 		m_staged_metrics_request_callbacks.clear();
 	}

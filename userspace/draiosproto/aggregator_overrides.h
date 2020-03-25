@@ -171,6 +171,11 @@ private:
 	                                                      draiosproto::metrics& output,
 	                                                      bool in_place);
 
+	// just concatenate (raw) prometheus metrics
+	virtual void aggregate_prometheus(draiosproto::metrics& input,
+	                                  draiosproto::metrics& output,
+	                                  bool in_place);
+
 public:
 	// need to reset the pid_map field
 	virtual void reset()

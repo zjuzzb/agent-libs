@@ -91,7 +91,7 @@ public:
 	using queue_t =
 	    typename thread_safe_container::blocking_queue<std::shared_ptr<flush_data_message>>;
 
-	typedef std::shared_ptr<draiosproto::metrics> (*metrics_request_cb)();
+	typedef std::function<std::shared_ptr<draiosproto::metrics>()> metrics_request_cb;
 
 	/**
 	 * Initialize this async_aggregator.
@@ -193,8 +193,8 @@ private:
 	// actual list while holding the lock, which should be fast...and then the time-consuming
 	// callbacks can be performed outside the critical section
 	std::mutex m_metrics_request_callbacks_lock;
-	std::set<metrics_request_cb> m_staged_metrics_request_callbacks;
-	std::set<metrics_request_cb> m_metrics_request_callbacks;
+	std::vector<metrics_request_cb> m_staged_metrics_request_callbacks;
+	std::vector<metrics_request_cb> m_metrics_request_callbacks;
 
 	friend class ::test_helper;
 };

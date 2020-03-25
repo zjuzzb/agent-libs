@@ -73,11 +73,16 @@ public:
 	template<typename metric>
 	unsigned int pid_to_protobuf(int pid, metric *proto,
 		unsigned int &limit, unsigned int max_limit,
-		unsigned int *filtered, unsigned int *total);
+		unsigned int *filtered, unsigned int *total, bool callback = false);
 	template<typename metric>
 	unsigned int job_to_protobuf(int64_t job_id, metric *proto,
 		unsigned int &limit, unsigned int max_limit,
 		unsigned int *filtered, unsigned int *total);
+
+	// Returns whether or not the metrics_request_callback can be used by
+	// the aggregator to populate the metrics protobuf
+	static bool can_use_metrics_request_callback();
+	std::shared_ptr<draiosproto::metrics> metrics_request_callback();
 private:
 	void sendconfig_th(const vector<prom_process> &prom_procs);
 
@@ -115,6 +120,7 @@ private:
 	run_on_interval m_start_interval;
 
 	std::atomic<uint64_t> m_next_ts;
+	uint64_t m_last_config_ts;
 	uint64_t m_last_ts;
 	bool m_start_failed = false;
 
@@ -126,6 +132,10 @@ private:
 	vector<prom_process> m_last_prom_procs;
 	interval_cb_t m_interval_cb;
 	uint64_t m_last_proto_ts;
+
+	// Mutex to protect m_export_pids
+	std::mutex m_export_pids_mutex;
+	std::set<int> m_export_pids;	// Populated by pid_to_protobuf for 10s flush callback.
 
 	friend class test_helper;
 };

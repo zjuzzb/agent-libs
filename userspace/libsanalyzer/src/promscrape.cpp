@@ -342,6 +342,7 @@ void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 				addscrapeconfig(config, p.pid(), empty, p.container_id(), p.options(), port, p.tags(), p.infra_tags(), m_next_ts);
 			}
 		}
+		m_last_config_ts = m_next_ts;
 	}
 	LOG_DEBUG("promscrape: sending config %s", config.DebugString().c_str());
 	applyconfig(config);
@@ -368,11 +369,9 @@ void promscrape::next_th()
 	}
 	if (m_threaded)
 	{
-		LOG_DEBUG("promscrape: on thread looking for config");
 		vector<prom_process> procs;
 		if (m_config_queue.get(&procs, 100))
 		{
-			LOG_DEBUG("promscrape: on thread got config");
 			sendconfig_th(procs);
 		}
 	}
@@ -500,6 +499,59 @@ void promscrape::prune_jobs(uint64_t ts)
 	}
 }
 
+// Currently only supported for 10s flush when fastproto is enabled
+bool promscrape::can_use_metrics_request_callback()
+{
+	return promscrape::c_export_fastproto.get_value() &&
+		configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value();
+}
+
+// metrics request callback
+// Should only get called once per flush interval by the async aggregator
+// Only when 10s flush is enabled
+std::shared_ptr<draiosproto::metrics> promscrape::metrics_request_callback()
+{
+	unsigned int sent = 0;
+	unsigned int remaining = m_prom_conf.max_metrics();
+	unsigned int filtered = 0;
+	unsigned int total = 0;
+	shared_ptr<draiosproto::metrics> metrics = make_shared<draiosproto::metrics>();
+
+	set<int> export_pids;
+	{
+		std::lock_guard<std::mutex> lock(m_export_pids_mutex);
+		export_pids = std::move(m_export_pids);
+		m_export_pids.clear();
+	}
+
+	for (int pid : export_pids)
+	{
+		LOG_DEBUG("callback: exporting pid %d", pid);
+		if (promscrape::c_export_fastproto.get_value())
+		{
+			sent += pid_to_protobuf(pid, metrics.get(), remaining, m_prom_conf.max_metrics(),
+				&filtered, &total, true);
+		}
+		else
+		{
+			// Shouldn't get here yet
+			LOG_DEBUG("callback: export pid %d: not yet supported for per-process export", pid);
+		}
+	}
+	if (remaining == 0)
+	{
+		LOG_WARNING("Prometheus metrics limit (%u) reached, %u sent of %u filtered, %u total",
+			m_prom_conf.max_metrics(), sent, filtered, total);
+	}
+	else
+	{
+		LOG_DEBUG("Sent %u Prometheus metrics of %u filtered, %u total",
+			sent, filtered, total);
+	}
+
+	return metrics;
+}
+
 bool promscrape::pid_has_jobs(int pid)
 {
 	std::lock_guard<std::mutex> lock(m_map_mutex);
@@ -512,6 +564,19 @@ std::shared_ptr<agent_promscrape::ScrapeResult> promscrape::get_job_result_ptr(
 	std::shared_ptr<agent_promscrape::ScrapeResult> result_ptr;
 	std::lock_guard<std::mutex> lock(m_map_mutex);
 
+	auto jobit = m_jobs.find(job_id);
+	if (jobit == m_jobs.end())
+	{
+		LOG_WARNING("promscrape: missing config for job %" PRId64, job_id);
+		return nullptr;
+	}
+	if (jobit->second.config_ts < m_last_config_ts)
+	{
+		LOG_DEBUG("promscrape: job %" PRId64 " was dropped %d seconds before latest config",
+			job_id, elapsed_s(jobit->second.config_ts, m_last_config_ts));
+		return nullptr;
+	}
+
 	auto it = m_metrics.find(job_id);
 	if (it == m_metrics.end())
 	{
@@ -520,12 +585,6 @@ std::shared_ptr<agent_promscrape::ScrapeResult> promscrape::get_job_result_ptr(
 	}
 	result_ptr = it->second;
 
-	auto jobit = m_jobs.find(job_id);
-	if (jobit == m_jobs.end())
-	{
-		LOG_WARNING("promscrape: missing config for job %" PRId64, job_id);
-		return nullptr;
-	}
 	// Copy the job config so the caller doesn't need to hold a lock
 	if (config_copy)
 	{
@@ -538,24 +597,42 @@ std::shared_ptr<agent_promscrape::ScrapeResult> promscrape::get_job_result_ptr(
 template<typename metric>
 unsigned int promscrape::pid_to_protobuf(int pid, metric *proto,
 	unsigned int &limit, unsigned int max_limit,
-	unsigned int *filtered, unsigned int *total)
+	unsigned int *filtered, unsigned int *total,
+	bool callback)
 {
 	unsigned int num_metrics = 0;
 
-	if (configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value())
+	if (!callback)
 	{
-		// Hack to only write protobufs once per interval, where interval is the
-		// negotiated interval between agent and collector
-		// XXX: Use new aggregator callback instead of this interval. See SMAGENT-2293
-		int interval = (m_interval_cb != nullptr) ? m_interval_cb() : 10;
-		// Timestamp will be the same for different pids in same flush cycle
-		if ((m_next_ts > m_last_proto_ts) &&
-			(m_next_ts < (m_last_proto_ts + (interval * ONE_SECOND_IN_NS))))
+		if (can_use_metrics_request_callback())
 		{
-			LOG_DEBUG("promscrape: skipping protobuf");
-			return num_metrics;
+			// Add pid to export set. The metrics_request_callback will trigger the
+			// actual population of the protobuf by calling into this method with the
+			// callback bool set to true
+			LOG_DEBUG("promscrape: adding pid %d to export set", pid);
+
+			std::lock_guard<std::mutex> lock(m_export_pids_mutex);
+			m_export_pids.emplace(pid);
+			return 0;
 		}
-		m_last_proto_ts = m_next_ts;
+		else if (configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value())
+		{
+			// Hack to only write protobufs once per interval, where interval is the
+			// negotiated interval between agent and collector
+			// XXX: The new aggregator callback doesn't work yet for per-process metrics.
+			// Once it does we can use that instead, like we do for the fastproto case above
+			// See SMAGENT-2293
+			int interval = (m_interval_cb != nullptr) ? m_interval_cb() : 10;
+			// Timestamp will be the same for different pids in same flush cycle
+			if ((m_next_ts > m_last_proto_ts) &&
+				(m_next_ts < (m_last_proto_ts + (interval * ONE_SECOND_IN_NS) -
+				(ONE_SECOND_IN_NS / 2))))
+			{
+				LOG_DEBUG("promscrape: skipping protobuf");
+				return num_metrics;
+			}
+			m_last_proto_ts = m_next_ts;
+		}
 	}
 
 	std::list<int64_t> jobs;
@@ -577,13 +654,16 @@ unsigned int promscrape::pid_to_protobuf(int pid, metric *proto,
 
 template unsigned int promscrape::pid_to_protobuf<draiosproto::app_info>(int pid, draiosproto::app_info *proto,
 	unsigned int &limit, unsigned int max_limit,
-	unsigned int *filtered, unsigned int *total);
+	unsigned int *filtered, unsigned int *total,
+	bool callback);
 template unsigned int promscrape::pid_to_protobuf<draiosproto::prometheus_info>(int pid, draiosproto::prometheus_info *proto,
 	unsigned int &limit, unsigned int max_limit,
-	unsigned int *filtered, unsigned int *total);
+	unsigned int *filtered, unsigned int *total,
+	bool callback);
 template unsigned int promscrape::pid_to_protobuf<draiosproto::metrics>(int pid, draiosproto::metrics *proto,
 	unsigned int &limit, unsigned int max_limit,
-	unsigned int *filtered, unsigned int *total);
+	unsigned int *filtered, unsigned int *total,
+	bool callback);
 
 template<typename metric>
 unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
@@ -736,6 +816,10 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 		// Metric filtering happens on ingestion (in handle_result)
 		// so the number of samples here is the filtered count
 		*filtered += result_ptr->samples().size();
+	}
+	if (total)
+	{
+		*total += job_config.last_total_samples;
 	}
 
 	return num_samples;

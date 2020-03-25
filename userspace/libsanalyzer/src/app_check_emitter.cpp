@@ -182,17 +182,27 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 
 void app_check_emitter::log_result()
 {
+	string sent_or_aggr = "sent";
+	string Sent_or_Aggr = "Sent";
+	if (configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value())
+	{
+		// With 10s flush, these numbers haven't been sent, but aggregated
+		sent_or_aggr = "aggregated";
+		Sent_or_Aggr = "Aggregated";
+	}
 	if(m_app_metrics_remaining == 0)
         {
                 g_logger.format(sinsp_logger::SEV_WARNING,
-				"App checks metrics limit (%u) reached, %u sent of %u filtered, %u total",
+				"App checks metrics limit (%u) reached, %u %s of %u filtered, %u total",
 				m_app_metrics_limit,
 				m_num_app_check_metrics_sent,
+				sent_or_aggr.c_str(),
 				m_num_app_check_metrics_filtered,
 				m_num_app_check_metrics_total);
         } else {
                 g_logger.format(sinsp_logger::SEV_DEBUG,
-				"Sent %u Appcheck metrics of %u filtered, %u total",
+				"%s %u Appcheck metrics of %u filtered, %u total",
+				Sent_or_Aggr.c_str(),
 				m_num_app_check_metrics_sent,
 				m_num_app_check_metrics_filtered,
 				m_num_app_check_metrics_total);
@@ -202,14 +212,16 @@ void app_check_emitter::log_result()
         if(m_prom_metrics_remaining == 0)
         {
                 g_logger.format(sinsp_logger::SEV_WARNING,
-				"Prometheus metrics limit (%u) reached, %u sent of %u filtered, %u total",
+				"Prometheus metrics limit (%u) reached, %u %s of %u filtered, %u total",
 				m_prom_conf.max_metrics(),
 				m_num_prometheus_metrics_sent,
+				sent_or_aggr.c_str(),
 				m_num_prometheus_metrics_filtered,
 				m_num_prometheus_metrics_total);
         } else {
                 g_logger.format(sinsp_logger::SEV_DEBUG,
-				"Sent %u Prometheus metrics of %u filtered, %u total",
+				"%s %u Prometheus metrics of %u filtered, %u total",
+				Sent_or_Aggr.c_str(),
 				m_num_prometheus_metrics_sent,
 				m_num_prometheus_metrics_filtered,
 				m_num_prometheus_metrics_total);

@@ -529,6 +529,36 @@ void metrics_message_aggregator_impl::aggregate_ipv4_incomplete_connections_v2(
 	}
 }
 
+void metrics_message_aggregator_impl::aggregate_prometheus(draiosproto::metrics& input,
+                                                           draiosproto::metrics& output,
+                                                           bool in_place)
+{
+	if (!in_place)
+	{
+		for (auto& i : input.prometheus())
+		{
+			auto new_prometheus = new draiosproto::prom_metrics(std::move(i));
+
+			for (auto& sample : *(new_prometheus->mutable_samples()))
+			{
+				default_aggregate_value(sample.value(), *sample.mutable_agg_value());
+			}
+
+			output.mutable_prometheus()->UnsafeArenaAddAllocated(new_prometheus);
+		}
+	}
+	else
+	{
+		for (auto& i : *output.mutable_prometheus())
+		{
+			for (auto& sample : *i.mutable_samples())
+			{
+				default_aggregate_value(sample.value(), *sample.mutable_agg_value());
+			}
+		}
+	}
+}
+
 void metrics_message_aggregator_impl::aggregate(draiosproto::metrics& input,
                                                 draiosproto::metrics& output,
                                                 bool in_place)

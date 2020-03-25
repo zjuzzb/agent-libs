@@ -1204,6 +1204,20 @@ int dragent_app::sdagent_main()
 		m_pool.start(*aggregator, c_serializer_timeout_s.get_value());
 		LOG_INFO("Created and started aggregator");
 
+		if ((the_promscrape != nullptr) &&
+			promscrape::can_use_metrics_request_callback())
+		{
+			// Set metric request callback for async aggregator
+			async_aggregator::metrics_request_cb metrics_request_cb =
+				[&the_promscrape]() -> std::shared_ptr<draiosproto::metrics>
+			{
+				return the_promscrape->metrics_request_callback();
+			};
+
+			aggregator->register_metrics_request_callback(metrics_request_cb);
+			LOG_INFO("Registered promscrape metrics callback with aggregator");
+		}
+
 		// Create and set up the serializer
 		auto s = new protobuf_metric_serializer(inspector,
 		                                        m_configuration.c_root_dir.get_value(),
