@@ -147,12 +147,17 @@ bool file_emitter::emit_flush_data_message(const std::shared_ptr<flush_data_mess
 		if(ofile)
 		{
 			const std::string symbolic_link = m_output_dir + "latest.dams.json";
-			if (unlink(symbolic_link.c_str()) != 0)
+			Poco::File sf(symbolic_link);
+
+			if (sf.exists())
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR,
-						"Could not remove symlink to %s (%s)",
-						symbolic_link.c_str(), strerror(errno));
-				return false;
+				if (unlink(symbolic_link.c_str()) != 0)
+				{
+					g_logger.format(sinsp_logger::SEV_ERROR,
+							"Could not remove symlink to %s (%s)",
+							symbolic_link.c_str(), strerror(errno));
+					return false;
+				}
 			}
 
 			if (symlink(filename.c_str(), symbolic_link.c_str()) != 0)
