@@ -20,6 +20,8 @@ file_emitter::file_emitter()
 
 void file_emitter::set_output_dir(const std::string &output_dir)
 {
+	m_createdir_attempted = false;
+
 	m_output_dir = output_dir;
 
 	// Add a trailing '/' to output dir if necessary
@@ -191,6 +193,12 @@ bool file_emitter::create_output_directory()
 	}
 
 	m_createdir_attempted = true;
+
+	if(m_output_dir == "")
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Empty output directory, skipping");
+		return false;
+	}
 
 	g_logger.format(sinsp_logger::SEV_DEBUG, "Creating file output directory %s", m_output_dir.c_str());
 
