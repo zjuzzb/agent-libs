@@ -4,6 +4,8 @@
 # Licensed under Simplified BSD License (see LICENSE)
 from __future__ import division
 
+from builtins import map
+from builtins import range
 import random
 from collections import defaultdict
 from time import time, sleep
@@ -110,7 +112,7 @@ class KafkaCheck(AgentCheck):
             if consumer_groups:
                 # if consumer-group is specified by param consumer_groups
                 # is also matched by regex, append topics to it
-                for consumer in filtered_consumer_groups.keys():
+                for consumer in list(filtered_consumer_groups.keys()):
                     if consumer_groups.get(consumer):
                         consumer_groups[consumer].update(filtered_consumer_groups[consumer])
                     else:
@@ -258,7 +260,7 @@ class KafkaCheck(AgentCheck):
                     if coord_resp and coord_resp.error_code == 0:
                         client.cluster.add_group_coordinator(group, coord_resp)
                         coord_id = client.cluster.coordinator_for_group(group)
-                        if coord_id is not None and coord_id >= 0:
+                        if coord_id is not None:
                             return coord_id
                 except AssertionError:
                     continue
@@ -358,7 +360,7 @@ class KafkaCheck(AgentCheck):
             unled_topic_partitions = []
         if tags is None:
             tags = []
-        for (consumer_group, topic, partition), consumer_offset in consumer_offsets.iteritems():
+        for (consumer_group, topic, partition), consumer_offset in consumer_offsets.items():
             # Report the consumer group offsets and consumer lag
             if (topic, partition) not in highwater_offsets:
                 self.log.warn("[%s] topic: %s partition: %s was not available in the consumer "
@@ -404,8 +406,8 @@ class KafkaCheck(AgentCheck):
                 topics_data[(topic, consumer_group)].update({partition: (consumer_offset, consumer_lag)})
 
         if agg_partitions:
-            for (topic, consumer_group), data in topics_data.iteritems():
-                partitions = data.values()
+            for (topic, consumer_group), data in topics_data.items():
+                partitions = list(data.values())
                 consumer_agg_offset = sum(map(operator.itemgetter(0), partitions))
                 consumer_agg_lag = sum(map(operator.itemgetter(1), partitions))
                 consumer_group_tags = ['topic:%s' % topic, 'consumer_group:%s' % consumer_group] + tags
@@ -528,7 +530,7 @@ class KafkaCheck(AgentCheck):
             tps[topic] = tps[text_type(topic)].union(set(partitions))
 
         consumer_offsets = {}
-        if coord_id is not None and coord_id >= 0:
+        if coord_id is not None:
             broker_ids = [coord_id]
         else:
             broker_ids = [b.nodeId for b in client.cluster.brokers()]
@@ -634,8 +636,8 @@ class KafkaCheck(AgentCheck):
         """
         filtered_consumer_groups = {}
 
-        for consumer, topics in all_consumer_groups.items():
-            for consumer_regex, topics_regex in consumer_groups_regex.items():
+        for consumer, topics in list(all_consumer_groups.items()):
+            for consumer_regex, topics_regex in list(consumer_groups_regex.items()):
                 if re.match(consumer_regex, consumer):
                     if topics_regex:
                         topics_regex = set(topics_regex)
