@@ -69,6 +69,10 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false \
         {% if not p.thin %}
             python \
             python3.7 \
+	    # requirement for SSL/Requests library
+	    {% if p.launch_dragent %}
+	       python-certifi \
+	    {% endif %}
             && apt-get install -y --no-install-recommends apt-transport-https \
             && curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - \
             && apt-add-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs | sed 's/^sid$/buster/') stable" \
@@ -208,11 +212,13 @@ procps \
 iproute2 \
 openssl \
 docker-cli \
+py-certifi \
 tar \
 && sed -i -e 's/v[[:digit:]]\..*\//edge\//g' /etc/apk/repositories \
 && apk update \
 && apk add -u python2 \
 && mkdir -p /opt/draios/run \
+&& cp -r /usr/lib/python3*/site-packages/certifi /usr/lib/python2.7/site-packages/certifi \
 && rm -rf /tmp/*.apk /var/cache/apk/* \
 && rm -rf /opt/draios/lib/python-deps2.6 \
 && rm -rf /opt/draios/lib/python-deps3.5 \

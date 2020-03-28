@@ -1,16 +1,17 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import os
 import sys
 import getopt
 import jinja2
 
 def usage():
-    print 'usage: %s [-i|--image <image>] [-r|--repo] [-a|--agent-version <version>]' % sys.argv[0]
-    print '     --image: Can be one of "agent", "agent-kmodule", "agent-slim", "agent-kmodule-thin", or "local" (agent, but using local debian package) '
-    print '     --repo: Can be one of "dev", "stable", "rc" '
-    print '     --agent-version: set the agent version directly in the image instead '
-    print '                      of extracting from dragent binary'
+    print('usage: %s [-i|--image <image>] [-r|--repo] [-a|--agent-version <version>]' % sys.argv[0])
+    print('     --image: Can be one of "agent", "agent-kmodule", "agent-slim", "agent-kmodule-thin", or "local" (agent, but using local debian package) ')
+    print('     --repo: Can be one of "dev", "stable", "rc" ')
+    print('     --agent-version: set the agent version directly in the image instead ')
+    print('                      of extracting from dragent binary')
     sys.exit(1)
 
 try:
@@ -75,8 +76,8 @@ elif image == "agent-kmodule-thin":
     p['sysdig_repository'] = repo
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 1
-    p['thin'] = 1
     p['launch_dragent'] = 0
+    p['thin'] = 1
 
 if agent_version != "":
     p['agent_version'] = agent_version
