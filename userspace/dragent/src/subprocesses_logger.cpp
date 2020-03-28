@@ -367,8 +367,7 @@ void promscrape_parser::operator()(const string& data)
 	bool parsing_ok = m_json_reader.parse(data, log, false);
 	if(parsing_ok &&
 	   log.isObject() &&
-	   log.isMember("level") &&
-	   log.isMember("msg"))
+	   log.isMember("level"))
 	{
 		Poco::Message::Priority priority = Poco::Message::Priority::PRIO_TRACE;
 		bool validlevel = true;
@@ -391,7 +390,20 @@ void promscrape_parser::operator()(const string& data)
 		}
 		if (validlevel)
 		{
-			g_log->log("promscrape-srv: " + log["msg"].asString(), priority);
+			string logline;
+			if (log.isMember("msg"))
+			{
+				logline.append("msg=\"" + log["msg"].asString() + "\" ");
+			}
+			for (auto it = log.begin(); it != log.end(); ++it)
+			{
+				if ((it.key() == "msg") || (it.key() == "level") || (it.key() == "ts"))
+				{
+					continue;
+				}
+				logline.append(it.key().asString() + "=" + it->asString() + " ");
+			}
+			g_log->log("promscrape-srv: " + logline, priority);
 		}
 	}
 	else
