@@ -72,6 +72,7 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false \
 	    # requirement for SSL/Requests library
 	    {% if p.launch_dragent %}
 	       python-certifi \
+	       python3-certifi \
 	    {% endif %}
             && apt-get install -y --no-install-recommends apt-transport-https \
             && curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - \
