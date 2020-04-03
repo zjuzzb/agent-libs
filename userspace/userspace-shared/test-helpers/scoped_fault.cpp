@@ -10,6 +10,8 @@
 #include "fault_handler_registry.h"
 #include <stdexcept>
 
+#if defined(FAULT_INJECTION_ENABLED)
+
 using userspace_shared::fault_handler;
 using userspace_shared::fault_handler_registry;
 
@@ -49,3 +51,5 @@ userspace_shared::fault_handler* scoped_fault::handler()
 }
 
 } // namespace test_helpers
+
+#endif

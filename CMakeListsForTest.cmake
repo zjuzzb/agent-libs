@@ -7,7 +7,6 @@ add_subdirectory(userspace/libsanalyzer/test)
 add_subdirectory(userspace/libsanalyzer/tests)
 add_subdirectory(userspace/libsanalyzer/test_helpers)
 add_subdirectory(userspace/userspace-shared/test)
-add_subdirectory(userspace/userspace-shared/test-helpers)
 add_subdirectory(userspace/librest/test)
 add_subdirectory(userspace/librest/test_helpers)
 

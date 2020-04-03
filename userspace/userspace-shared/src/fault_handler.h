@@ -290,13 +290,11 @@ public:
 	 */
 	static fault_mode fault_mode_from_string(const std::string& str);
 
-#if defined(SYSDIG_TEST)
 	/**
 	 * Enable unit tests to seed the underlying random generator with
 	 * constant values for consistent results.
 	 */
 	static void seed_random_generator(unsigned seed = 0);
-#endif
 
 private:
 	/**

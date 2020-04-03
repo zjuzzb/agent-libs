@@ -10,6 +10,8 @@
 #include "fault_handler.h"
 #include <string>
 
+#if defined(FAULT_INJECTION_ENABLED)
+
 namespace test_helpers
 {
 
@@ -47,3 +49,5 @@ private:
 };
 
 } // namespace test_helpers
+
+#endif

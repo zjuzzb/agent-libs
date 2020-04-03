@@ -530,12 +530,10 @@ fault_handler::exception::exception(const std::string& message):
 	std::runtime_error("fault_handler::exception: " + message)
 { }
 
-#if defined(SYSDIG_TEST)
 void fault_handler::seed_random_generator(const unsigned seed)
 {
 	s_rand_generator = std::default_random_engine(seed);
 }
-#endif
 
 } // end namespace userspace_shared
 
