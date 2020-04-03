@@ -671,7 +671,7 @@ void sinsp_analyzer_fd_listener::handle_statsd_write(sinsp_evt* const evt,
                                                      const uint32_t len) const
 {
 	if (m_analyzer->has_statsite_proxy() && fdinfo->is_role_client() && fdinfo->is_udp_socket() &&
-	    fdinfo->get_serverport() == statsite_config::get_udp_port())
+	    fdinfo->get_serverport() == statsite_config::instance().get_udp_port())
 	{
 		const static bool use_forwarder =
 		    configuration_manager::instance().get_config<bool>("statsd.use_forwarder")->get_value();

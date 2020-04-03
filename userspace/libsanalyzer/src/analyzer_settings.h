@@ -112,11 +112,6 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 #define CHISEL_METRIC_LIMIT 300
 
 //
-// Determines if falco baselining is going to happen by default
-//
-#define FALCO_BASELINING_ENABLED false
-
-//
 // Falco baseline emit interval
 //
 #define DEFAULT_FALCO_BASELINING_DUMP_DELTA_NS (60LL * 15LL * 1000000000)

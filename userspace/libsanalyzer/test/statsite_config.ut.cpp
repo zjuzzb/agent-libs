@@ -15,12 +15,12 @@
 using namespace libsanalyzer;
 
 /**
- * Ensure that by default, is_enabled() returns DEFAULT_ENABLED.
+ * Ensure that by default, get_enabled() returns true
  */
 TEST(statsite_config_test, default_enabled)
 {
-	ASSERT_EQ(statsite_config::DEFAULT_ENABLED,
-	          statsite_config::is_enabled());
+	feature_manager::instance().initialize();
+	ASSERT_TRUE(statsite_config::instance().get_enabled());
 }
 
 /**
@@ -28,8 +28,8 @@ TEST(statsite_config_test, default_enabled)
  */
 TEST(statsite_config_test, default_flush_interval)
 {
-	ASSERT_EQ(statsite_config::DEFAULT_FLUSH_INTERVAL,
-	          statsite_config::get_flush_interval());
+	ASSERT_EQ(statsite_config::instance().DEFAULT_FLUSH_INTERVAL,
+	          statsite_config::instance().get_flush_interval());
 }
 
 /**
@@ -37,8 +37,8 @@ TEST(statsite_config_test, default_flush_interval)
  */
 TEST(statsite_config_test, default_udp_port)
 {
-	ASSERT_EQ(statsite_config::DEFAULT_STATSD_PORT,
-	          statsite_config::get_udp_port());
+	ASSERT_EQ(statsite_config::instance().DEFAULT_STATSD_PORT,
+	          statsite_config::instance().get_udp_port());
 }
 
 /**
@@ -46,8 +46,8 @@ TEST(statsite_config_test, default_udp_port)
  */
 TEST(statsite_config_test, default_tcp_port)
 {
-	ASSERT_EQ(statsite_config::DEFAULT_STATSD_PORT,
-	          statsite_config::get_tcp_port());
+	ASSERT_EQ(statsite_config::instance().DEFAULT_STATSD_PORT,
+	          statsite_config::instance().get_tcp_port());
 }
 
 /**
@@ -55,8 +55,8 @@ TEST(statsite_config_test, default_tcp_port)
  */
 TEST(statsite_config_test, default_ip_address)
 {
-	ASSERT_EQ(statsite_config::DEFAULT_IP_ADDRESS,
-	          statsite_config::get_ip_address());
+	ASSERT_EQ(statsite_config::instance().DEFAULT_IP_ADDRESS,
+	          statsite_config::instance().get_ip_address());
 }
 
 /**
@@ -64,12 +64,12 @@ TEST(statsite_config_test, default_ip_address)
  */
 TEST(statsite_config_test, default_use_host_statsd)
 {
-	ASSERT_EQ(statsite_config::DEFAULT_USE_HOST_STATSD,
-	          statsite_config::use_host_statsd());
+	ASSERT_EQ(statsite_config::instance().DEFAULT_USE_HOST_STATSD,
+	          statsite_config::instance().use_host_statsd());
 }
 
 /**
- * Ensure that if statsd is configured disabled, is_enabled() returns false.
+ * Ensure that if statsd is configured disabled, get_enabled() returns false.
  */
 TEST(statsite_config_test, config_disabled)
 {
@@ -78,9 +78,10 @@ statsd:
   enabled: false
 )EOF";
 	test_helpers::scoped_configuration enabled_config(config);
+	feature_manager::instance().initialize();
 
 	ASSERT_TRUE(enabled_config.loaded());
-	ASSERT_FALSE(statsite_config::is_enabled());
+	ASSERT_FALSE(statsite_config::instance().get_enabled());
 }
 
 /**
@@ -96,7 +97,7 @@ statsd:
 	test_helpers::scoped_configuration enabled_config(config);
 
 	ASSERT_TRUE(enabled_config.loaded());
-	ASSERT_EQ(27, statsite_config::get_flush_interval());
+	ASSERT_EQ(27, statsite_config::instance().get_flush_interval());
 }
 
 /*
@@ -112,7 +113,7 @@ statsd:
 	test_helpers::scoped_configuration enabled_config(config);
 
 	ASSERT_TRUE(enabled_config.loaded());
-	ASSERT_EQ(18125, statsite_config::get_udp_port());
+	ASSERT_EQ(18125, statsite_config::instance().get_udp_port());
 }
 
 /*
@@ -128,7 +129,7 @@ statsd:
 	test_helpers::scoped_configuration enabled_config(config);
 
 	ASSERT_TRUE(enabled_config.loaded());
-	ASSERT_EQ(18125, statsite_config::get_tcp_port());
+	ASSERT_EQ(18125, statsite_config::instance().get_tcp_port());
 }
 
 /*
@@ -144,7 +145,7 @@ statsd:
 	test_helpers::scoped_configuration enabled_config(config);
 
 	ASSERT_TRUE(enabled_config.loaded());
-	ASSERT_EQ("1.2.3.4", statsite_config::get_ip_address());
+	ASSERT_EQ("1.2.3.4", statsite_config::instance().get_ip_address());
 }
 
 /**
@@ -160,7 +161,7 @@ statsd:
 	test_helpers::scoped_configuration enabled_config(config);
 
 	ASSERT_TRUE(enabled_config.loaded());
-	ASSERT_TRUE(statsite_config::use_host_statsd());
+	ASSERT_TRUE(statsite_config::instance().use_host_statsd());
 }
 
 /**
@@ -176,7 +177,7 @@ statsd:
 	test_helpers::scoped_configuration enabled_config(config);
 
 	ASSERT_TRUE(enabled_config.loaded());
-	ASSERT_EQ(0, statsite_config::get_udp_port());
+	ASSERT_EQ(0, statsite_config::instance().get_udp_port());
 }
 
 /**
@@ -192,7 +193,7 @@ statsd:
 	test_helpers::scoped_configuration enabled_config(config);
 
 	ASSERT_TRUE(enabled_config.loaded());
-	ASSERT_EQ(0, statsite_config::get_tcp_port());
+	ASSERT_EQ(0, statsite_config::instance().get_tcp_port());
 }
 
 /**
@@ -206,12 +207,13 @@ statsd:
   enabled: false
 )EOF";
 	test_helpers::scoped_configuration enabled_config(config);
+	feature_manager::instance().initialize();
 	std::stringstream out;
 	const std::string loglevel = "trace";
 	const std::set<double> percentiles;
 
 	ASSERT_TRUE(enabled_config.loaded());
-	statsite_config::write_statsite_configuration(out, loglevel, percentiles);
+	statsite_config::instance().write_statsite_configuration(out, loglevel, percentiles);
 
 	ASSERT_EQ(std::string(), out.str());
 }
@@ -237,7 +239,8 @@ flush_interval = 1
 parse_stdin = 1
 )EOF";
 
-	statsite_config::write_statsite_configuration(out, loglevel, percentiles);
+	feature_manager::instance().initialize();
+	statsite_config::instance().write_statsite_configuration(out, loglevel, percentiles);
 	ASSERT_EQ(expected_config, out.str());
 }
 
@@ -263,7 +266,8 @@ flush_interval = 1
 parse_stdin = 1
 )EOF";
 
-	statsite_config::write_statsite_configuration(out, loglevel, percentiles);
+	feature_manager::instance().initialize();
+	statsite_config::instance().write_statsite_configuration(out, loglevel, percentiles);
 	ASSERT_EQ(expected_config, out.str());
 }
 
@@ -290,7 +294,8 @@ parse_stdin = 1
 quantiles = 0.99
 )EOF";
 
-	statsite_config::write_statsite_configuration(out, loglevel, percentiles);
+	feature_manager::instance().initialize();
+	statsite_config::instance().write_statsite_configuration(out, loglevel, percentiles);
 	ASSERT_EQ(expected_config, out.str());
 }
 
@@ -316,6 +321,7 @@ parse_stdin = 1
 quantiles = 0.44,0.55,0.66,0.77,0.88,0.99
 )EOF";
 
-	statsite_config::write_statsite_configuration(out, loglevel, percentiles);
+	feature_manager::instance().initialize();
+	statsite_config::instance().write_statsite_configuration(out, loglevel, percentiles);
 	ASSERT_EQ(expected_config, out.str());
 }

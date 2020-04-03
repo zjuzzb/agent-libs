@@ -19,11 +19,10 @@
 #include <protocol.h>
 #include "security_config.h"
 #include <thread_safe_container/blocking_queue.h>
+#include "scoped_config.h"
 
 using namespace std;
 using namespace thread_safe_container;
-
-namespace security_config = libsanalyzer::security_config;
 
 class memdump_error_handler : public Poco::ErrorHandler
 {
@@ -201,10 +200,16 @@ protected:
 		dragent_configuration::m_terminate = false;
 
 		m_configuration.m_capture_dragent_events  = capture_dragent_events;
-		m_configuration.m_memdump_enabled = true;
-		security_config::set_enabled(false);
 		m_configuration.m_max_sysdig_captures = max_captures;
 		m_configuration.m_memdump_max_init_attempts = 10;
+
+		// so long as this is in scope when we initialize the feature manager, we're
+		// good. It's annoying that we can't easily keep it in scope for the whole test,
+		// but such is life.
+		test_helpers::scoped_config<bool> memdump("memdump.enabled", true);
+		test_helpers::scoped_config<bool> secure("security.enabled", false);
+
+		feature_manager::instance().initialize();
 
 		// The (global) logger only needs to be set up once
 		if(!g_log)

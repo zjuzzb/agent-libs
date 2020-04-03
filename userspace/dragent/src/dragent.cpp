@@ -29,6 +29,8 @@
 #include "pre_aggregated_metrics_rest_request_handler.h"
 #include "process_helpers.h"
 #include "procfs_parser.h"
+#include "promscrape.h"
+#include "promscrape_proxy.h"
 #include "protobuf_compression.h"
 #include "protobuf_metric_serializer.h"
 #include "rest_request_handler_factory.h"
@@ -52,8 +54,6 @@
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
 #include <time.h>
-#include "promscrape.h"
-#include "promscrape_proxy.h"
 
 #ifndef CYGWING_AGENT
 #include <gperftools/malloc_extension.h>
@@ -101,31 +101,26 @@ type_config<uint64_t> c_serializer_timeout_s(10,
                                              "Watchdog timeout for the serializer thread",
                                              "serializer_timeout");
 
-type_config<bool> c_app_check_thread(
-	true,
-	"Run a dedicated thread for app_check processing",
-	"app_check_thread");
+type_config<bool> c_app_check_thread(true,
+                                     "Run a dedicated thread for app_check processing",
+                                     "app_check_thread");
 
-type_config<uint64_t> c_app_check_timeout_s(
-	60,
-	"Watchdog timeout for the app_check thread",
-	"app_check_timeout");
+type_config<uint64_t> c_app_check_timeout_s(60,
+                                            "Watchdog timeout for the app_check thread",
+                                            "app_check_timeout");
 
-type_config<bool> c_promscrape_thread(
-	true,
-	"Run a dedicated thread for promscrape processing",
-	"promscrape_thread");
+type_config<bool> c_promscrape_thread(true,
+                                      "Run a dedicated thread for promscrape processing",
+                                      "promscrape_thread");
 
-type_config<uint64_t> c_promscrape_timeout_s(
-	60,
-	"Watchdog timeout for the promscrape thread",
-	"promscrape_thread_timeout");
+type_config<uint64_t> c_promscrape_timeout_s(60,
+                                             "Watchdog timeout for the promscrape thread",
+                                             "promscrape_thread_timeout");
 
 type_config<bool>::ptr c_10s_flush_enabled =
     type_config_builder<bool>(false, "Enable flag to force 10s flush behavior", "10s_flush_enable")
         .hidden()
         .build();
-
 
 type_config<bool> c_compression_enabled(true,
                                         "set to true to compress protobufs sent to the collector",
@@ -249,7 +244,7 @@ dragent_app::dragent_app()
                      &m_capture_job_handler),
       m_log_reporter(m_protocol_handler, &m_configuration),
       m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),
-	m_last_dump_s(0)
+      m_last_dump_s(0)
 {
 }
 
@@ -370,15 +365,6 @@ void dragent_app::handleOption(const std::string& name, const std::string& value
 	{
 		m_configuration.m_evtcnt = NumberParser::parse64(value);
 	}
-	else if (name == "configtest")
-	{
-		m_configuration.m_cointerface_enabled = false;
-		m_configuration.m_system_supports_containers = false;
-		m_configuration.m_app_checks_enabled = false;
-		libsanalyzer::statsite_config::set_enabled(false);
-		m_configuration.m_sdjagent_enabled = false;
-		m_configuration.m_config_test = true;
-	}
 	else if (name == "customerid")
 	{
 		m_configuration.m_customer_id = value;
@@ -439,18 +425,18 @@ static void dragent_gpr_log(gpr_log_func_args* args)
 
 	switch (args->severity)
 	{
-		case GPR_LOG_SEVERITY_DEBUG:
-			LOG_DEBUG(os.str());
-			break;
-		case GPR_LOG_SEVERITY_INFO:
-			LOG_INFO(os.str());
-			break;
-		case GPR_LOG_SEVERITY_ERROR:
-			LOG_ERROR(os.str());
-			break;
-		default:
-			LOG_DEBUG(os.str());
-			break;
+	case GPR_LOG_SEVERITY_DEBUG:
+		LOG_DEBUG(os.str());
+		break;
+	case GPR_LOG_SEVERITY_INFO:
+		LOG_INFO(os.str());
+		break;
+	case GPR_LOG_SEVERITY_ERROR:
+		LOG_ERROR(os.str());
+		break;
+	default:
+		LOG_DEBUG(os.str());
+		break;
 	}
 }
 #endif
@@ -501,6 +487,42 @@ int dragent_app::main(const std::vector<std::string>& args)
 		std::cerr << "Failed to init sinsp_worker. Exception message: " << ex.what() << '\n';
 		dragent_configuration::m_terminate = true;
 	}
+
+	// superhack: the old driver mode config doesn't play nice with the feature manager. So
+	// we perform a translation here.
+	if (m_configuration.m_mode == dragent_mode_t::STANDARD)
+	{
+		configuration_manager::instance().get_mutable_config<bool>("feature.driver")->set(true);
+		configuration_manager::instance()
+		    .get_mutable_config<bool>("feature.full_syscalls")
+		    ->set(true);
+	}
+	if (m_configuration.m_mode == dragent_mode_t::NODRIVER)
+	{
+		configuration_manager::instance().get_mutable_config<bool>("feature.driver")->set(false);
+		configuration_manager::instance()
+		    .get_mutable_config<bool>("feature.full_syscalls")
+		    ->set(false);
+	}
+	if (m_configuration.m_mode == dragent_mode_t::SIMPLEDRIVER)
+	{
+		configuration_manager::instance().get_mutable_config<bool>("feature.driver")->set(true);
+		configuration_manager::instance()
+		    .get_mutable_config<bool>("feature.full_syscalls")
+		    ->set(false);
+	}
+
+	// Ensure the feature manager has validatead the config
+	if (!feature_manager::instance().initialize())
+	{
+		std::cerr << "Failed to init features." << '\n';
+		dragent_configuration::m_terminate = true;
+	}
+
+	// superhack: prom tries to manage it's own enablement, which is not yet fully integrated
+	// with the feature manager. As such, if the feature manager determines it's disabled,
+	// we need to ensure that gets forwarded to the prom feature
+	m_configuration.m_prom_conf.set_enabled(feature_manager::instance().get_enabled(PROMETHEUS));
 
 #ifndef _WIN32
 	//
@@ -586,7 +608,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 		    return this->sdagent_main();
 	    },
 	    true);
-	if (m_configuration.java_present() && m_configuration.m_sdjagent_enabled && getpid() != 1)
+
+	if (m_configuration.java_present() && feature_manager::instance().get_enabled(JMX) &&
+	    getpid() != 1)
 	{
 		m_jmx_pipes = make_unique<errpipe_manager>();
 		auto* state = &m_subprocesses_state["sdjagent"];
@@ -639,8 +663,19 @@ int dragent_app::main(const std::vector<std::string>& args)
 	}
 
 	// Configure statsite subprocess
-	if (libsanalyzer::statsite_config::is_enabled())
+	if (feature_manager::instance().get_enabled(STATSD))
 	{
+		const std::string statsite_ini = m_configuration.c_root_dir.get_value() +
+#ifndef CYGWING_AGENT
+		                                 "statsite.ini";
+#else
+		                                 "/etc/statstite.ini";
+#endif
+		libsanalyzer::statsite_config::instance().write_statsite_configuration(
+		    statsite_ini,
+		    m_configuration.m_raw_file_priority,
+		    m_configuration.m_percentiles);
+
 		m_statsite_pipes = make_shared<pipe_manager>();
 		m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [this](const string& data) {
 			if (data.find("Failed to bind") != string::npos)
@@ -663,22 +698,19 @@ int dragent_app::main(const std::vector<std::string>& args)
 		monitor_process.emplace_process("statsite", [=]() -> int {
 			default_cpu_cgroup.enter();
 			this->m_statsite_pipes->attach_child_stdio();
-			if (this->m_configuration.m_agent_installed)
-			{
+#ifndef CYGWING_AGENT
 				execl((m_configuration.c_root_dir.get_value() + "/bin/statsite").c_str(),
 				      "statsite",
 				      "-f",
 				      (m_configuration.c_root_dir.get_value() + "/etc/statsite.ini").c_str(),
 				      (char*)NULL);
-			}
-			else
-			{
+#else
 				execl("../../../../dependencies/statsite-private-0.7.0-sysdig3/statsite",
 				      "statsite",
 				      "-f",
 				      "statsite.ini",
 				      (char*)NULL);
-			}
+#endif
 			return (EXIT_FAILURE);
 		});
 
@@ -694,7 +726,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			monitor_process.emplace_process("statsite_forwarder", [this]() -> int {
 				m_statsite_forwarder_pipe->attach_child();
 				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(),
-				                       libsanalyzer::statsite_config::get_udp_port(),
+				                       libsanalyzer::statsite_config::instance().get_udp_port(),
 				                       m_configuration.m_statsite_check_format);
 				return fwd.run();
 			});
@@ -702,8 +734,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 	}
 
 #ifndef CYGWING_AGENT
-	if (m_configuration.python_present() &&
-	    (m_configuration.m_app_checks_enabled || m_configuration.m_prom_conf.enabled()))
+	if (m_configuration.python_present() && (feature_manager::instance().get_enabled(APP_CHECKS) ||
+	                                         m_configuration.m_prom_conf.enabled()))
 	{
 		m_sdchecks_pipes = make_unique<errpipe_manager>();
 		auto state = &m_subprocesses_state["sdchecks"];
@@ -717,7 +749,13 @@ int dragent_app::main(const std::vector<std::string>& args)
 			             "Please upgrade to Python 2.7. "
 			             "Contact Sysdig Support for additional help."
 			          << std::endl;
-			m_configuration.m_app_checks_enabled = false;
+
+			bool success = feature_manager::instance().disable(APP_CHECKS);
+			if (!success)
+			{
+				std::cerr << "Error: Cannot disable App Checks.\n";
+				return EXIT_FAILURE;
+			}
 		}
 		else
 		{
@@ -765,7 +803,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		});
 	}
 #endif
-	if (m_configuration.m_cointerface_enabled)
+	if (feature_manager::instance().get_enabled(COINTERFACE))
 	{
 		m_cointerface_pipes = make_unique<pipe_manager>();
 		auto* state = &m_subprocesses_state["cointerface"];
@@ -838,20 +876,20 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_promscrape_pipes = make_unique<pipe_manager>();
 		auto* state = &m_subprocesses_state["promscrape"];
 		state->set_name("promscrape");
-		m_subprocesses_logger.add_logfd(
-		    m_promscrape_pipes->get_out_fd(), promscrape_parser(), state);
-		m_subprocesses_logger.add_logfd(
-		    m_promscrape_pipes->get_err_fd(), promscrape_parser(), state);
+		m_subprocesses_logger.add_logfd(m_promscrape_pipes->get_out_fd(),
+		                                promscrape_parser(),
+		                                state);
+		m_subprocesses_logger.add_logfd(m_promscrape_pipes->get_err_fd(),
+		                                promscrape_parser(),
+		                                state);
 
 		// Try to find prometheus.yaml
 		std::string prom_conf_arg;
-		std::vector<std::string> prompaths =
-		{
-			m_configuration.m_default_root_dir + "/etc/prometheus.yaml",
-			m_configuration.m_default_root_dir + "/prometheus.yaml",
-			m_configuration.m_default_root_dir + "/etc/kubernetes/config/prometheus.yaml"
-		};
-		for (const auto &p : prompaths)
+		std::vector<std::string> prompaths = {
+		    m_configuration.m_default_root_dir + "/etc/prometheus.yaml",
+		    m_configuration.m_default_root_dir + "/prometheus.yaml",
+		    m_configuration.m_default_root_dir + "/etc/kubernetes/config/prometheus.yaml"};
+		for (const auto& p : prompaths)
 		{
 			if (Poco::File(p).exists())
 			{
@@ -859,23 +897,27 @@ int dragent_app::main(const std::vector<std::string>& args)
 				break;
 			}
 		}
-		monitor_process.emplace_process("promscrape",
-		                                [=]()
-		{
-			string log_level = (g_logger.get_severity() >= sinsp_logger::SEV_DEBUG) ?
-				"--log.level=debug" : "--log.level=info";
+		monitor_process.emplace_process("promscrape", [=]() {
+			string log_level = (g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
+			                       ? "--log.level=debug"
+			                       : "--log.level=info";
 			default_cpu_cgroup.enter();
 			m_promscrape_pipes->attach_child_stdio();
 			if (prom_conf_arg.empty())
 			{
 				execl((m_configuration.c_root_dir.get_value() + "/bin/promscrape").c_str(),
-				      "promscrape", "--log.format=json", log_level.c_str(),
+				      "promscrape",
+				      "--log.format=json",
+				      log_level.c_str(),
 				      (char*)NULL);
 			}
 			else
 			{
 				execl((m_configuration.c_root_dir.get_value() + "/bin/promscrape").c_str(),
-				      "promscrape", "--log.format=json", log_level.c_str(), prom_conf_arg.c_str(),
+				      "promscrape",
+				      "--log.format=json",
+				      log_level.c_str(),
+				      prom_conf_arg.c_str(),
 				      (char*)NULL);
 			}
 
@@ -1141,13 +1183,14 @@ int dragent_app::sdagent_main()
 		                                                      m_configuration.m_k8s_cache_size);
 
 		std::shared_ptr<app_checks_proxy> the_app_checks_proxy = nullptr;
-		if(
-			(m_configuration.m_app_checks_enabled && !m_configuration.m_app_checks.empty()) ||
-			m_configuration.m_prom_conf.enabled())
+		if ((feature_manager::instance().get_enabled(APP_CHECKS) &&
+		     !m_configuration.m_app_checks.empty()) ||
+		    m_configuration.m_prom_conf.enabled())
 		{
 			bool app_check_thread = c_app_check_thread.get_value();
-			the_app_checks_proxy = std::make_shared<app_checks_proxy>(the_metric_limits, app_check_thread);
-			if(app_check_thread)
+			the_app_checks_proxy =
+			    std::make_shared<app_checks_proxy>(the_metric_limits, app_check_thread);
+			if (app_check_thread)
 			{
 				m_pool.start(*the_app_checks_proxy.get(), c_app_check_timeout_s.get_value());
 			}
@@ -1156,15 +1199,14 @@ int dragent_app::sdagent_main()
 		std::shared_ptr<promscrape> the_promscrape = nullptr;
 		if (m_configuration.m_prom_conf.enabled() && promscrape::c_use_promscrape.get_value())
 		{
-			auto interval_cb = [cm]() -> int
-			{
+			auto interval_cb = [cm]() -> int {
 				std::chrono::seconds s = cm->get_negotiated_aggregation_interval();
 				return (s != std::chrono::seconds::max()) ? s.count() : 10;
 			};
 			the_promscrape = std::make_shared<promscrape>(the_metric_limits,
-				m_configuration.m_prom_conf,
-				c_promscrape_thread.get_value(),
-				interval_cb);
+			                                              m_configuration.m_prom_conf,
+			                                              c_promscrape_thread.get_value(),
+			                                              interval_cb);
 			if (c_promscrape_thread.get_value())
 			{
 				m_promscrape_proxy = std::make_shared<promscrape_proxy>(the_promscrape);
@@ -1385,13 +1427,14 @@ void dragent_app::init_inspector(sinsp::ptr inspector)
 	inspector->set_min_log_severity(static_cast<sinsp_logger::severity>(min_priority));
 }
 
-sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
-                                            flush_queue& flush_queue,
-                                            const metric_limits::sptr_t& the_metric_limits,
-                                            const label_limits::sptr_t& the_label_limits,
-                                            const k8s_limits::sptr_t& the_k8s_limits,
-                                            std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy,
-                                            std::shared_ptr<promscrape> promscrape)
+sinsp_analyzer* dragent_app::build_analyzer(
+    const sinsp::ptr& inspector,
+    flush_queue& flush_queue,
+    const metric_limits::sptr_t& the_metric_limits,
+    const label_limits::sptr_t& the_label_limits,
+    const k8s_limits::sptr_t& the_k8s_limits,
+    std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy,
+    std::shared_ptr<promscrape> promscrape)
 {
 	sinsp_analyzer* analyzer = new sinsp_analyzer(
 	    inspector.get(),
@@ -1417,7 +1460,7 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
 	sconfig->set_mounts_filter(m_configuration.m_mounts_filter);
 	sconfig->set_mounts_limit_size(m_configuration.m_mounts_limit_size);
 
-	if (m_configuration.java_present() && m_configuration.m_sdjagent_enabled)
+	if (m_configuration.java_present() && feature_manager::instance().get_enabled(JMX))
 	{
 		analyzer->enable_jmx(protocol_handler::c_print_protobuf.get_value(),
 		                     m_configuration.m_jmx_sampling);
@@ -1555,11 +1598,9 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
 		sconfig->set_host_hidden(m_configuration.m_host_hidden);
 	}
 
-	if (m_configuration.m_falco_baselining_enabled)
+	if (feature_manager::instance().get_enabled(BASELINER))
 	{
 		g_log->information("Setting secure profiling (baselining)");
-		sconfig->set_falco_baselining_enabled(
-		    m_configuration.m_falco_baselining_enabled);
 		sconfig->set_falco_baselining_report_interval_ns(
 		    m_configuration.m_falco_baselining_report_interval_ns);
 		sconfig->set_falco_baselining_autodisable_interval_ns(
@@ -1574,7 +1615,8 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
 		analyzer->enable_secure_profiling();
 	}
 
-	if (m_configuration.m_commandlines_capture_enabled || m_configuration.m_secure_audit_enabled)
+	if (feature_manager::instance().get_enabled(COMMAND_LINE_CAPTURE) ||
+	    feature_manager::instance().get_enabled(SECURE_AUDIT))
 	{
 		g_log->information("Setting command lines capture");
 		sconfig->set_executed_commands_capture_enabled(true);
@@ -1583,8 +1625,6 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
 		    m_configuration.m_command_lines_include_container_healthchecks);
 		sconfig->set_command_lines_valid_ancestors(m_configuration.m_command_lines_valid_ancestors);
 	}
-
-	sconfig->set_commandlines_capture_enabled(m_configuration.m_commandlines_capture_enabled);
 
 	if (m_configuration.m_capture_dragent_events)
 	{
@@ -1600,19 +1640,20 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
 	sconfig->set_protocols_truncation_size(m_configuration.m_protocols_truncation_size);
 	analyzer->set_fs_usage_from_external_proc(m_configuration.m_system_supports_containers);
 
-	sconfig->set_cointerface_enabled(m_configuration.m_cointerface_enabled);
 	sconfig->set_swarm_enabled(m_configuration.m_swarm_enabled);
 
 #ifndef CYGWING_AGENT
-	if(m_configuration.m_app_checks_enabled)
+	if (feature_manager::instance().get_enabled(APP_CHECKS))
 	{
 		analyzer->set_app_checks(m_configuration.m_app_checks);
 	}
+
 	analyzer->set_prometheus_conf(m_configuration.m_prom_conf);
 	if (m_configuration.m_config_test)
 	{
 		m_configuration.m_custom_container.set_config_test(true);
 	}
+
 	analyzer->set_custom_container_conf(move(m_configuration.m_custom_container));
 #endif
 
@@ -1642,7 +1683,7 @@ sinsp_analyzer* dragent_app::build_analyzer(const sinsp::ptr& inspector,
 		analyzer->enable_audit_tap(m_configuration.m_audit_tap_emit_local_connections);
 	}
 
-	if (m_configuration.m_secure_audit_enabled)
+	if (feature_manager::instance().get_enabled(SECURE_AUDIT))
 	{
 		analyzer->enable_secure_audit();
 	}
@@ -1793,7 +1834,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 	}
 
 #ifndef CYGWING_AGENT
-	if (m_configuration.m_cointerface_enabled)
+	if (feature_manager::instance().get_enabled(COINTERFACE))
 	{
 		if (!m_coclient)
 		{

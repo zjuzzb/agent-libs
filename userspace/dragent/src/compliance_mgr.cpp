@@ -9,7 +9,7 @@
 #include "statsite_config.h"
 
 using namespace std;
-namespace security_config = libsanalyzer::security_config;
+using namespace libsanalyzer;
 
 namespace
 {
@@ -119,10 +119,10 @@ void compliance_mgr::refresh_compliance_tasks()
 
 	start.set_machine_id(m_configuration->machine_id());
 	start.set_customer_id(m_configuration->m_customer_id);
-	start.set_include_desc(security_config::get_include_desc_in_compliance_results());
-	start.set_send_failed_results(security_config::get_compliance_send_failed_results());
-	start.set_save_temp_files(security_config::get_compliance_save_temp_files());
-	start.set_metrics_statsd_port(libsanalyzer::statsite_config::get_udp_port());
+	start.set_include_desc(security_config::instance().get_include_desc_in_compliance_results());
+	start.set_send_failed_results(security_config::instance().get_compliance_send_failed_results());
+	start.set_save_temp_files(security_config::instance().get_compliance_save_temp_files());
+	start.set_metrics_statsd_port(libsanalyzer::statsite_config::instance().get_udp_port());
 
 	for(auto &task : m_compliance_calendar.tasks())
 	{
@@ -162,11 +162,11 @@ void compliance_mgr::refresh_compliance_tasks()
 		// If the task is a kube-bench task and if the agent
 		// is configured to run a specific variant, pass the
 		// variant as a param.
-		if(security_config::get_compliance_kube_bench_variant() != "")
+		if(security_config::instance().get_compliance_kube_bench_variant() != "")
 		{
 			draiosproto::comp_task_param *param = run_task->add_task_params();
 			param->set_key("variant");
-			param->set_val(security_config::get_compliance_kube_bench_variant());
+			param->set_val(security_config::instance().get_compliance_kube_bench_variant());
 		}
 
 		new_tasks.insert(task.id());
@@ -327,7 +327,7 @@ void compliance_mgr::check_pending_task_results()
 			LOG_ERROR("Could not start compliance tasks (%s),"
 			          " trying again in %" PRIu64 " seconds",
 			          res.error_message().c_str(),
-			          security_config::get_compliance_refresh_interval() / 1000000000);
+			          security_config::instance().get_compliance_refresh_interval() / 1000000000);
 		}
 		else
 		{
@@ -348,7 +348,7 @@ void compliance_mgr::check_pending_task_results()
 			LOG_ERROR("Could not initialize compliance task %s (%s), trying again in %" PRIu64 " seconds",
 			          cevent.task_name().c_str(),
 			          cevent.errstr().c_str(),
-			          security_config::get_compliance_refresh_interval() / 1000000000);
+			          security_config::instance().get_compliance_refresh_interval() / 1000000000);
 
 			m_num_grpc_errs++;
 

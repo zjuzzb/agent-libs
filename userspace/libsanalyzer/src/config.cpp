@@ -24,14 +24,11 @@ sinsp_configuration::sinsp_configuration():
 	m_jmx_limit = 500;
 	m_app_checks_always_send = false;
 	m_memdump_size = 0;
-	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
 	m_executed_commands_capture_enabled = false;
-	m_commandlines_capture_enabled = false;
 	m_command_lines_capture_mode = command_capture_mode_t::CM_TTY;
 	m_command_lines_include_container_healthchecks = false;
 	m_capture_dragent_events = false;
 	m_detect_stress_tools = false;
-	m_cointerface_enabled = true;
 	m_swarm_enabled = true;
 }
 
@@ -73,16 +70,6 @@ bool sinsp_configuration::get_aggregate_connections_in_proto() const
 void sinsp_configuration::set_aggregate_connections_in_proto(bool aggregate)
 {
 	m_aggregate_connections_in_proto = aggregate;
-}
-
-bool sinsp_configuration::get_falco_baselining_enabled() const
-{
-	return m_falco_baselining_enabled;
-}
-
-void sinsp_configuration::set_falco_baselining_enabled(bool enabled)
-{
-	m_falco_baselining_enabled = enabled;
 }
 
 uint64_t sinsp_configuration::get_falco_baselining_report_interval_ns() const
@@ -133,16 +120,6 @@ bool sinsp_configuration::get_falco_baselining_randomize_start() const
 void sinsp_configuration::set_falco_baselining_randomize_start(bool enabled)
 {
 	m_falco_baselining_randomize_start = enabled;
-}
-
-bool sinsp_configuration::get_commandlines_capture_enabled() const
-{
-	return m_commandlines_capture_enabled;
-}
-
-void sinsp_configuration::set_commandlines_capture_enabled(bool enabled)
-{
-	m_commandlines_capture_enabled = enabled;
 }
 
 bool sinsp_configuration::get_executed_commands_capture_enabled() const
@@ -662,16 +639,6 @@ bool sinsp_configuration::get_app_checks_always_send() const
 void sinsp_configuration::set_app_checks_always_send(bool value)
 {
 	m_app_checks_always_send = value;
-}
-
-bool sinsp_configuration::get_cointerface_enabled() const
-{
-	return m_cointerface_enabled;
-}
-
-void sinsp_configuration::set_cointerface_enabled(bool val)
-{
-	m_cointerface_enabled = val;
 }
 
 bool sinsp_configuration::get_detect_stress_tools() const

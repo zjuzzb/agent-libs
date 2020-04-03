@@ -18,7 +18,7 @@ unsigned statsd_emitter::get_limit()
 {
 	unsigned limit = metric_forwarding_configuration::c_statsd_max->get_value();
 
-	if(security_config::is_enabled())
+	if(security_config::instance().get_enabled())
 	{
 		// If security is enabled the increase the limit on the number
 		// of statsd metrics by 100. When compliance is enabled, up to

@@ -134,12 +134,11 @@ public:
 	static std::atomic<bool> m_send_log_report;
 	static std::atomic<bool> m_config_update;
 
+	std::string m_raw_file_priority;
 	Message::Priority m_min_console_priority;
 	Message::Priority m_min_file_priority;
 	Message::Priority m_min_event_priority;
 	bool m_curl_debug;
-
-	bool m_secure_audit_enabled;
 
 	// the operation of the root dir is a bit hokey.
 	// we have a "default" root dir that is the effectively the install dir. we use that
@@ -237,16 +236,13 @@ public:
 	bool m_remotefs_enabled;
 	std::string m_java_binary;
 	std::string m_sdjagent_opts;
-	bool m_agent_installed;
 	bool m_sysdig_capture_enabled;
 	uint32_t m_max_sysdig_captures;
 	double m_sysdig_capture_transmit_rate;
 	int32_t m_sysdig_capture_compression_level;
 
-	bool m_sdjagent_enabled;
 	std::vector<app_check> m_app_checks;
 	std::string m_python_binary;
-	bool m_app_checks_enabled;
 	bool m_app_checks_always_send;
 	uint32_t m_containers_limit;
 	uint32_t m_containers_labels_max_len;
@@ -298,18 +294,15 @@ public:
 	std::set<std::string> m_marathon_skip_labels;
 #endif
 
-	bool m_falco_baselining_enabled;
 	uint64_t m_falco_baselining_report_interval_ns;
 	uint64_t m_falco_baselining_autodisable_interval_ns;
 	float m_falco_baselining_max_drops_buffer_rate_percentage;
 	uint32_t m_falco_baselining_max_sampling_ratio;
 	bool m_falco_baselining_randomize_start;
 
-	bool m_commandlines_capture_enabled;
 	sinsp_configuration::command_capture_mode_t m_command_lines_capture_mode;
 	std::set<std::string> m_command_lines_valid_ancestors;
 	bool m_command_lines_include_container_healthchecks;
-	bool m_memdump_enabled;
 	uint64_t m_memdump_size;
 	uint64_t m_memdump_max_init_attempts;
 	bool m_memdump_autodisable;
@@ -339,7 +332,6 @@ public:
 	bool m_enable_grpc_tracing = false;
 	unsigned long m_rlimit_msgqueue;
 
-	bool m_enable_falco_engine;
 	std::string m_falco_default_rules_filename;
 	std::string m_falco_fallback_default_rules_filename;
 	std::string m_falco_auto_rules_filename;
@@ -363,12 +355,6 @@ public:
 	bool m_detect_stress_tools = false;
 	std::vector<std::string> m_stress_tools;
 	bool m_large_envs;
-
-	/**
-	 * Whether to turn on the cointerface process which is used to
-	 * collect kubernetes information.
-	 */
-	bool m_cointerface_enabled;
 
 	uint32_t m_coclient_max_loop_evts = 100;
 	bool m_swarm_enabled;

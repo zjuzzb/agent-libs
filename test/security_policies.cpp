@@ -1,5 +1,6 @@
 #include "container_config.h"
 #include "docker_utils.h"
+#include "scoped_config.h"
 #include "security_config.h"
 #include "sys_call_test.h"
 
@@ -27,7 +28,7 @@
 #include <thread>
 
 using namespace std;
-namespace security_config = libsanalyzer::security_config;
+using namespace libsanalyzer;
 
 class test_helper
 {
@@ -253,19 +254,25 @@ protected:
 		dragent_configuration::m_terminate = false;
 
 		m_configuration.m_capture_dragent_events = true;
-		m_configuration.m_memdump_enabled = false;
-		security_config::set_enabled(true);
+
+		// so long as this is in scope when we initialize the feature manager, we're
+		// good. It's annoying that we can't easily keep it in scope for the whole test,
+		// but such is life.
+		test_helpers::scoped_config<bool> memdump("memdump.enabled", false);
+		test_helpers::scoped_config<bool> secure("security.enabled", true);
+
 		m_configuration.m_max_sysdig_captures = 10;
-		security_config::set_policies_file(
+		security_config::instance().set_policies_file(
 		    "./resources/security_policies_messages/all_policy_types.txt");
-		security_config::set_baselines_file("./resources/security_policies_messages/baseline.txt");
-		security_config::set_policies_v2_file(policies_file());
+		security_config::instance().set_baselines_file(
+		    "./resources/security_policies_messages/baseline.txt");
+		security_config::instance().set_policies_v2_file(policies_file());
 		m_configuration.m_falco_engine_sampling_multiplier = 0;
 		m_configuration.m_containers_labels_max_len = 100;
 		if (delayed_reports)
 		{
-			security_config::set_throttled_report_interval_ns(1000000000);
-			security_config::set_report_interval_ns(15000000000);
+			security_config::instance().set_throttled_report_interval_ns(1000000000);
+			security_config::instance().set_report_interval_ns(15000000000);
 		}
 
 		// The (global) logger only needs to be set up once
@@ -315,12 +322,13 @@ protected:
 
 		// Note that capture job handler is NULL. So no actions that perform captures.
 		m_mgr.init(m_inspector, m_analyzer, NULL, &m_configuration, m_internal_metrics);
-		std::string policies_file = (m_load_v1_policies ? security_config::get_policies_file()
-		                                                : security_config::get_policies_v2_file());
+		std::string policies_file =
+		    (m_load_v1_policies ? security_config::instance().get_policies_file()
+		                        : security_config::instance().get_policies_v2_file());
 		m_sinsp_worker = new test_sinsp_worker(m_inspector,
 		                                       &m_mgr,
 		                                       m_load_v1_policies,
-		                                       security_config::get_baselines_file(),
+		                                       security_config::instance().get_baselines_file(),
 		                                       policies_file);
 
 		Poco::ErrorHandler::set(&m_error_handler);
@@ -644,20 +652,20 @@ public:
 		draiosproto::policy_events* pe;
 		switch (item->message_type)
 		{
-			case draiosproto::message_type::THROTTLED_POLICY_EVENTS:
-				tpe = new draiosproto::throttled_policy_events();
-				dragent_protocol::buffer_to_protobuf(buf, size, tpe);
-				msg.reset(tpe);
-				break;
+		case draiosproto::message_type::THROTTLED_POLICY_EVENTS:
+			tpe = new draiosproto::throttled_policy_events();
+			dragent_protocol::buffer_to_protobuf(buf, size, tpe);
+			msg.reset(tpe);
+			break;
 
-			case draiosproto::message_type::POLICY_EVENTS:
-				pe = new draiosproto::policy_events();
-				dragent_protocol::buffer_to_protobuf(buf, size, pe);
-				msg.reset(pe);
-				break;
+		case draiosproto::message_type::POLICY_EVENTS:
+			pe = new draiosproto::policy_events();
+			dragent_protocol::buffer_to_protobuf(buf, size, pe);
+			msg.reset(pe);
+			break;
 
-			default:
-				FAIL() << "Received unknown message " << to_string(item->message_type);
+		default:
+			FAIL() << "Received unknown message " << to_string(item->message_type);
 		}
 	}
 
@@ -2784,24 +2792,24 @@ static void events_flood(security_policies_test* ptest, bool v1_metrics)
 
 		switch (mtype)
 		{
-			case draiosproto::message_type::THROTTLED_POLICY_EVENTS:
-				throttled_policy_event_count++;
-				tpe = (draiosproto::throttled_policy_events*)msg.get();
+		case draiosproto::message_type::THROTTLED_POLICY_EVENTS:
+			throttled_policy_event_count++;
+			tpe = (draiosproto::throttled_policy_events*)msg.get();
 
-				event_count += tpe->events(0).count();
+			event_count += tpe->events(0).count();
 
-				break;
+			break;
 
-			case draiosproto::message_type::POLICY_EVENTS:
-				pe = (draiosproto::policy_events*)msg.get();
-				g_log->debug("Read policy event with " + to_string(pe->events_size()) + " events");
-				policy_event_count++;
-				event_count += pe->events_size();
+		case draiosproto::message_type::POLICY_EVENTS:
+			pe = (draiosproto::policy_events*)msg.get();
+			g_log->debug("Read policy event with " + to_string(pe->events_size()) + " events");
+			policy_event_count++;
+			event_count += pe->events_size();
 
-				break;
+			break;
 
-			default:
-				FAIL() << "Received unknown message " << mtype;
+		default:
+			FAIL() << "Received unknown message " << mtype;
 		}
 
 		if (policy_event_count == 1 && throttled_policy_event_count >= 8 &&

@@ -37,13 +37,13 @@ bool security_policies_v2_message_handler::handle_message(
 	draiosproto::policies_v2 policies_v2;
 	std::string errstr;
 
-	if(!libsanalyzer::security_config::is_enabled())
+	if(!libsanalyzer::security_config::instance().get_enabled())
 	{
 		LOG_DEBUG("Security disabled, ignoring POLICIES message");
 		return false;
 	}
 
-	if(libsanalyzer::security_config::get_policies_v2_file() != "")
+	if(libsanalyzer::security_config::instance().get_policies_v2_file() != "")
 	{
 		LOG_INFO("Security policies file configured in dragent.yaml, "
 		         "ignoring POLICIES_V2 message");

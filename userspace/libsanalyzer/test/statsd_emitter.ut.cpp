@@ -8,6 +8,7 @@
 #include "metric_forwarding_configuration.h"
 #include "scoped_config.h"
 #include "statsd_emitter.h"
+#include "feature_manager.h"
 #include <gtest.h>
 
 using libsanalyzer::statsd_emitter;
@@ -31,6 +32,7 @@ TEST(statsd_emitter_test, get_limit_security_disabled)
 TEST(statsd_emitter_test, get_limit_security_enabled)
 {
 	test_helpers::scoped_config<bool> enable_security("security.enabled", true);
+	feature_manager::instance().initialize();
 
 	const unsigned expected_limit =
 		metric_forwarding_configuration::c_statsd_max->get_value() +

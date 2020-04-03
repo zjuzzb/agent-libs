@@ -202,7 +202,7 @@ protected:
 		memset(&saddr, 0, sizeof(saddr));
 		saddr.sin_family = AF_INET;
 		saddr.sin_addr.s_addr = htonl(INADDR_ANY);
-		saddr.sin_port = htons(libsanalyzer::statsite_config::get_udp_port());
+		saddr.sin_port = htons(libsanalyzer::statsite_config::instance().get_udp_port());
 
 		if(bind(m_statsd_sock, (struct sockaddr *) &saddr, sizeof(saddr)) < 0)
 		{

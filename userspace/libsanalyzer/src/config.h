@@ -112,8 +112,6 @@ public:
 	unsigned get_mounts_limit_size() const;
 	void set_mounts_limit_size(unsigned mounts_limit_size);
 
-	bool get_falco_baselining_enabled() const;
-	void set_falco_baselining_enabled(bool enabled);
 	uint64_t get_falco_baselining_report_interval_ns() const;
 	void set_falco_baselining_report_interval_ns(uint64_t report_interval);
 	uint64_t get_falco_baselining_autodisable_interval_ns() const;
@@ -125,8 +123,6 @@ public:
 	bool get_falco_baselining_randomize_start() const;
 	void set_falco_baselining_randomize_start(bool enabled);
 
-	bool get_commandlines_capture_enabled() const;
-	void set_commandlines_capture_enabled(bool enabled);
 	bool get_executed_commands_capture_enabled() const;
 	void set_executed_commands_capture_enabled(bool enabled);
 	command_capture_mode_t get_command_lines_capture_mode() const;
@@ -163,8 +159,6 @@ public:
 
 	bool get_app_checks_always_send() const;
 	void set_app_checks_always_send(bool);
-	bool get_cointerface_enabled() const;
-	void set_cointerface_enabled(bool enabled);
 	bool get_detect_stress_tools() const;
 	void set_detect_stress_tools(bool enabled);
 	bool get_swarm_enabled() const;
@@ -261,7 +255,6 @@ private:
 	bool m_curl_debug;
 
 	bool m_executed_commands_capture_enabled;
-	bool m_commandlines_capture_enabled;
 	command_capture_mode_t m_command_lines_capture_mode;
 	bool m_command_lines_include_container_healthchecks;
 	std::set<std::string> m_command_lines_valid_ancestors;
@@ -281,10 +274,8 @@ private:
 	bool m_app_checks_always_send;
 
 	bool m_detect_stress_tools;
-	bool m_cointerface_enabled;
 	bool m_swarm_enabled;
 
-	bool m_falco_baselining_enabled;
 	uint64_t m_falco_baselining_report_interval_ns;
 	uint64_t m_falco_baselining_autodisable_interval_ns;
 	float m_falco_baselining_max_drops_buffer_rate_percentage;

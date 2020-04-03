@@ -36,7 +36,7 @@ bool security_compliance_calendar_message_handler::handle_message(
 	draiosproto::comp_calendar calendar;
 	std::string errstr;
 
-	if(!libsanalyzer::security_config::is_enabled())
+	if(!libsanalyzer::security_config::instance().get_enabled())
 	{
 		LOG_DEBUG("Security disabled, ignoring COMP_CALENDAR message");
 		return false;
@@ -46,8 +46,8 @@ bool security_compliance_calendar_message_handler::handle_message(
 
 	if (!m_receiver.set_compliance_calendar(
 				calendar,
-				libsanalyzer::security_config::get_send_compliance_results(),
-				libsanalyzer::security_config::get_send_compliance_events(),
+				libsanalyzer::security_config::instance().get_send_compliance_results(),
+				libsanalyzer::security_config::instance().get_send_compliance_events(),
 				errstr))
 	{
 		LOG_WARNING("Could not set compliance calendar: %s",

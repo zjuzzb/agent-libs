@@ -218,7 +218,11 @@ TEST_F(configuration_manager_test, print_config)
 	ASSERT_EQ(log_output.find(c3.to_string()), std::string::npos);
 }
 
-TEST_F(configuration_manager_test, to_yaml)
+// This test makes the assumption that there are no other type configs in userspace-shared,
+// which is untrue. In order to fix, add a param to type_config which allows registering
+// with a different configuration manager, so that we can have a local instance for
+// this test with only the type_configs we need
+TEST_F(configuration_manager_test, DISABLED_to_yaml)
 {
 	// Initialize out of order
 	type_config<uint16_t> c5(5, "description", "key4", "subkey4A");
@@ -247,7 +251,6 @@ key5:
 
 	std::string yaml = configuration_manager::instance().to_yaml();
 	ASSERT_EQ(expected, yaml);
-	printf(yaml.c_str());
 }
 
 /**

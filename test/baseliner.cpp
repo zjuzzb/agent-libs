@@ -155,8 +155,6 @@ protected:
 		                                []() -> bool { return true; });
 		m_inspector->register_external_event_processor(*m_analyzer);
 
-		m_analyzer->get_configuration()->set_falco_baselining_enabled(
-		    m_configuration.m_falco_baselining_enabled);
 		m_inspector->set_debug_mode(true);
 		m_inspector->set_hostname_and_port_resolution_mode(false);
 

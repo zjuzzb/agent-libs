@@ -1,6 +1,7 @@
 #include "capture_job_handler.h"
 #include "configuration_manager.h"
 #include "dragent_message_queues.h"
+#include "feature_manager.h"
 #include "protocol.h"
 #include "sinsp_worker.h"
 
@@ -617,7 +618,7 @@ void capture_job_handler::init(const sinsp* inspector)
 		                          m_configuration->m_sysdig_capture_transmit_rate / 4.0);
 	}
 
-	if (m_configuration->m_memdump_enabled)
+	if (feature_manager::instance().get_enabled(MEMDUMP))
 	{
 		g_log->information(
 		    m_name + ": enabling memdump, size=" + to_string(m_configuration->m_memdump_size));
@@ -706,7 +707,7 @@ void capture_job_handler::process_event(sinsp_evt* ev)
 	//
 	// If required, dump the event in the memory circular buffer
 	//
-	if (m_configuration->m_memdump_enabled)
+	if (feature_manager::instance().get_enabled(MEMDUMP))
 	{
 		Poco::ScopedLock<Poco::Mutex> lck(m_membuf_mtx);
 		m_memdumper->process_event(ev);
@@ -830,84 +831,83 @@ void capture_job_handler::process_job_requests()
 		             " token=" + request->m_token);
 		switch (request->m_request_type)
 		{
-			case dump_job_request::JOB_START:
+		case dump_job_request::JOB_START:
 
-				if (!request->m_start_details)
-				{
-					send_error(request->m_token, "no details provided for start job");
-					return;
-				}
-
-				if (request->m_start_details->m_duration_ns == 0 &&
-				    request->m_start_details->m_past_duration_ns == 0)
-				{
-					send_error(request->m_token,
-					           "either duration or past_duration must be nonzero");
-					return;
-				}
-
-				// As a resource exaustion prevention
-				// mechanism, only allow "max sysdig captures"
-				// to be outstanding at one time.
-				if (m_jobs.size() >= m_configuration->m_max_sysdig_captures)
-				{
-					send_error(request->m_token,
-					           "maximum number of outstanding captures (" +
-					               to_string(m_configuration->m_max_sysdig_captures) + ") reached");
-					return;
-				}
-
-				start_job(request->m_token, *(request->m_start_details));
-
-				break;
-			case dump_job_request::JOB_STOP:
+			if (!request->m_start_details)
 			{
-				Poco::ScopedReadRWLock jobs_lck(m_jobs_lock);
-
-				bool found = false;
-
-				for (auto& job : m_jobs)
-				{
-					if (job->token() == request->m_token)
-					{
-						job->stop(request->m_stop_details->m_remove_unsent_job);
-						found = true;
-						break;
-					}
-				}
-
-				if (!found)
-				{
-					g_log->error(m_name + ": can't find job " + request->m_token);
-				}
-
-				break;
+				send_error(request->m_token, "no details provided for start job");
+				return;
 			}
-			case dump_job_request::JOB_SEND_START:
+
+			if (request->m_start_details->m_duration_ns == 0 &&
+			    request->m_start_details->m_past_duration_ns == 0)
 			{
-				Poco::ScopedReadRWLock jobs_lck(m_jobs_lock);
-
-				bool found = false;
-
-				for (auto& job : m_jobs)
-				{
-					if (job->token() == request->m_token)
-					{
-						job->send_start();
-						found = true;
-						break;
-					}
-				}
-
-				if (!found)
-				{
-					g_log->error(m_name + ": can't find job " + request->m_token);
-				}
-
-				break;
+				send_error(request->m_token, "either duration or past_duration must be nonzero");
+				return;
 			}
-			default:
-				ASSERT(false);
+
+			// As a resource exaustion prevention
+			// mechanism, only allow "max sysdig captures"
+			// to be outstanding at one time.
+			if (m_jobs.size() >= m_configuration->m_max_sysdig_captures)
+			{
+				send_error(request->m_token,
+				           "maximum number of outstanding captures (" +
+				               to_string(m_configuration->m_max_sysdig_captures) + ") reached");
+				return;
+			}
+
+			start_job(request->m_token, *(request->m_start_details));
+
+			break;
+		case dump_job_request::JOB_STOP:
+		{
+			Poco::ScopedReadRWLock jobs_lck(m_jobs_lock);
+
+			bool found = false;
+
+			for (auto& job : m_jobs)
+			{
+				if (job->token() == request->m_token)
+				{
+					job->stop(request->m_stop_details->m_remove_unsent_job);
+					found = true;
+					break;
+				}
+			}
+
+			if (!found)
+			{
+				g_log->error(m_name + ": can't find job " + request->m_token);
+			}
+
+			break;
+		}
+		case dump_job_request::JOB_SEND_START:
+		{
+			Poco::ScopedReadRWLock jobs_lck(m_jobs_lock);
+
+			bool found = false;
+
+			for (auto& job : m_jobs)
+			{
+				if (job->token() == request->m_token)
+				{
+					job->send_start();
+					found = true;
+					break;
+				}
+			}
+
+			if (!found)
+			{
+				g_log->error(m_name + ": can't find job " + request->m_token);
+			}
+
+			break;
+		}
+		default:
+			ASSERT(false);
 		}
 	}
 }
@@ -935,12 +935,12 @@ void capture_job_handler::start_job(string& token, const start_job_details& deta
 	}
 
 	if (details.m_past_duration_ns != 0 &&
-	    (!m_configuration->m_memdump_enabled || !m_memdumper->is_enabled()))
+	    (!feature_manager::instance().get_enabled(MEMDUMP) || !m_memdumper->is_enabled()))
 	{
 		send_error(token,
 		           string("memory dump functionality not enabled in the target agent ") +
 		               string("configured=") +
-		               (m_configuration->m_memdump_enabled ? "true" : "false") +
+		               (feature_manager::instance().get_enabled(MEMDUMP) ? "true" : "false") +
 		               string(" enabled=") + (m_memdumper->is_enabled() ? "true" : "false") +
 		               string(". Cannot perform back in time capture."));
 		return;

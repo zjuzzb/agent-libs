@@ -98,19 +98,19 @@ set(PROTOC_CMDLINE
 )
 
 if(NOT CYGWIN)
-add_custom_command(
+    add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/agent-prom.pb.cc
                ${CMAKE_CURRENT_BINARY_DIR}/agent-prom.pb.h
                ${CMAKE_CURRENT_BINARY_DIR}/agent-prom.grpc.pb.cc
                ${CMAKE_CURRENT_BINARY_DIR}/agent-prom.grpc.pb.h
         COMMENT "Building agent-prom cpp sources from .proto files"
         DEPENDS ${PROJECT_SOURCE_DIR}/../protorepo/agent/agent-prom.proto
-        COMMAND ${PROTOC_CMDLINE} -I ${PROJECT_SOURCE_DIR}/../protorepo/agent
-                --cpp_out=.
+        COMMAND ${PROTOC_CMDLINE} -I ${PROJECT_SOURCE_DIR}/../protorepo/agent --cpp_out=.
                 ${PROJECT_SOURCE_DIR}/../protorepo/agent/agent-prom.proto
-        COMMAND ${PROTOC_CMDLINE} -I ${PROJECT_SOURCE_DIR}/../protorepo/agent
-                --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
-                ${PROJECT_SOURCE_DIR}/../protorepo/agent/agent-prom.proto
+        COMMAND
+            ${PROTOC_CMDLINE} -I ${PROJECT_SOURCE_DIR}/../protorepo/agent --grpc_out=.
+            --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
+            ${PROJECT_SOURCE_DIR}/../protorepo/agent/agent-prom.proto
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
 

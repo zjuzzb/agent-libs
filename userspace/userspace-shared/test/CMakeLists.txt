@@ -9,6 +9,8 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fus
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../draiosproto)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/include)
 
 add_executable(
     unit-test-userspace-shared
@@ -19,6 +21,7 @@ add_executable(
     fault_handler.ut.cpp
     fault_injection_macro_set.ut.cpp
     fault_injection_macro_unset.ut.cpp
+    feature_manager.ut.cpp
     filter.ut.cpp
     scoped_config.ut.cpp
     scoped_configuration.ut.cpp
@@ -40,6 +43,7 @@ target_link_libraries(
     ${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
     ${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
     pthread
+    draiosproto
 )
 
 file(COPY valgrind/helgrind.suppressions DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

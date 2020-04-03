@@ -36,7 +36,7 @@ bool security_compliance_run_message_handler::handle_message(
 	draiosproto::comp_run run;
 	std::string errstr;
 
-	if(!libsanalyzer::security_config::is_enabled())
+	if(!libsanalyzer::security_config::instance().get_enabled())
 	{
 		LOG_DEBUG("Security disabled, ignoring COMP_RUN message");
 		return false;

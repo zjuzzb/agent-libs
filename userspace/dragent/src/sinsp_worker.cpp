@@ -18,8 +18,7 @@
 
 using namespace std;
 using namespace dragent;
-
-namespace security_config = libsanalyzer::security_config;
+using namespace libsanalyzer;
 
 namespace
 {
@@ -158,15 +157,9 @@ void sinsp_worker::init_security()
 
 	std::lock_guard<std::mutex> lock(m_security_mgr_creation_mutex);
 
-	if(security_config::is_enabled())
+	if(security_config::instance().get_enabled())
 	{
-		if(!m_configuration->m_cointerface_enabled)
-		{
-			LOGGED_THROW(sinsp_exception,
-				     "Security capabilities depend on cointerface, "
-				     "but cointerface is disabled.");
-		}
-
+		assert(feature_manager::instance().get_enabled(COINTERFACE));
 		m_security_mgr = new security_mgr(m_configuration->c_root_dir.get_value(),
 						  m_protocol_handler);
 		m_security_mgr->init(m_inspector.get(),
@@ -175,12 +168,12 @@ void sinsp_worker::init_security()
 				     m_configuration,
 				     m_internal_metrics);
 
-		if(security_config::get_policies_v2_file() != "")
+		if(security_config::instance().get_policies_v2_file() != "")
 		{
 			std::string errstr;
 
 			if(!m_security_mgr->load_policies_v2_file(
-						security_config::get_policies_v2_file().c_str(),
+						security_config::instance().get_policies_v2_file().c_str(),
 						errstr))
 			{
 				LOGGED_THROW(sinsp_exception,
@@ -188,12 +181,12 @@ void sinsp_worker::init_security()
 					     errstr.c_str());
 			}
 		}
-		else if(security_config::get_policies_file() != "")
+		else if(security_config::instance().get_policies_file() != "")
 		{
 			std::string errstr;
 
 			if(!m_security_mgr->load_policies_file(
-						security_config::get_policies_file().c_str(),
+						security_config::instance().get_policies_file().c_str(),
 						errstr))
 			{
 				LOGGED_THROW(sinsp_exception,
@@ -202,12 +195,12 @@ void sinsp_worker::init_security()
 			}
 		}
 
-		if(security_config::get_baselines_file() != "")
+		if(security_config::instance().get_baselines_file() != "")
 		{
 			std::string errstr;
 
 			if(!m_security_mgr->load_baselines_file(
-						security_config::get_baselines_file().c_str(),
+						security_config::instance().get_baselines_file().c_str(),
 						errstr))
 			{
 				LOGGED_THROW(sinsp_exception,
@@ -217,7 +210,7 @@ void sinsp_worker::init_security()
 		}
 	}
 
-	if(m_configuration->m_cointerface_enabled)
+	if(feature_manager::instance().get_enabled(COINTERFACE))
 	{
 		const std::string run_dir =
 			m_configuration->c_root_dir.get_value() + "/run";
@@ -226,7 +219,7 @@ void sinsp_worker::init_security()
 		m_compliance_mgr->init(m_analyzer,
 				       m_configuration);
 
-		if(security_config::get_default_compliance_schedule() != "")
+		if(security_config::instance().get_default_compliance_schedule() != "")
 		{
 			std::string errstr;
 			draiosproto::comp_calendar cal;
@@ -236,21 +229,21 @@ void sinsp_worker::init_security()
 			k8s_task->set_name("Check K8s Environment");
 			k8s_task->set_mod_name("kube-bench");
 			k8s_task->set_enabled(true);
-			k8s_task->set_schedule(security_config::get_default_compliance_schedule());
+			k8s_task->set_schedule(security_config::instance().get_default_compliance_schedule());
 
 			draiosproto::comp_task* const docker_task = cal.add_tasks();
 			docker_task->set_id(2);
 			docker_task->set_name("Check Docker Environment");
 			docker_task->set_mod_name("docker-bench-security");
 			docker_task->set_enabled(true);
-			docker_task->set_schedule(security_config::get_default_compliance_schedule());
+			docker_task->set_schedule(security_config::instance().get_default_compliance_schedule());
 
 			draiosproto::comp_task* const linux_task = cal.add_tasks();
 			linux_task->set_id(3);
 			linux_task->set_name("Check Linux Environment");
 			linux_task->set_mod_name("linux-bench");
 			linux_task->set_enabled(true);
-			linux_task->set_schedule(security_config::get_default_compliance_schedule());
+			linux_task->set_schedule(security_config::instance().get_default_compliance_schedule());
 
 			// When using a default calendar, never send results or events
 			const bool send_results = false;
@@ -359,7 +352,7 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 	{
 		m_inspector->open(m_configuration->m_input_filename);
 	}
-	else if(m_configuration->m_mode == dragent_mode_t::NODRIVER)
+	else if(!feature_manager::instance().get_enabled(DRIVER))
 	{
 		m_inspector->open_nodriver();
 		// Change these values so the inactive thread pruning
@@ -367,7 +360,7 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 		m_inspector->m_thread_timeout_ns = 0;
 		m_inspector->m_inactive_thread_scan_time_ns = NODRIVER_PROCLIST_REFRESH_INTERVAL_NS;
 	}
-	else if (m_configuration->m_mode == dragent_mode_t::SIMPLEDRIVER)
+	else if (!feature_manager::instance().get_enabled(FULL_SYSCALLS))
 	{
 		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
 		m_inspector->open("");
@@ -403,7 +396,7 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 			}
 		}
 
-		const uint16_t statsd_port = libsanalyzer::statsite_config::get_udp_port();
+		const uint16_t statsd_port = libsanalyzer::statsite_config::instance().get_udp_port();
 
 		if(statsd_port != libsanalyzer::statsite_config::DEFAULT_STATSD_PORT)
 		{

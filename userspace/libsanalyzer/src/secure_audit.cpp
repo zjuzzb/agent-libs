@@ -1,4 +1,5 @@
 #include "secure_audit.h"
+#include "feature_manager.h"
 
 #include <tuples.h>
 
@@ -13,11 +14,6 @@ uint64_t seconds_to_ns(const int seconds)
 	return ((uint64_t)seconds * ONE_SECOND_IN_NS);
 }
 }  // namespace
-
-type_config<bool> secure_audit::c_secure_audit_enabled(false,
-                                                       "Secure Audit Enabled",
-                                                       "secure_audit_streams",
-                                                       "enabled");
 
 type_config<bool> secure_audit::c_secure_audit_executed_commands_enabled(
     false,
@@ -222,7 +218,7 @@ void secure_audit::set_internal_metrics(secure_audit_internal_metrics* internal_
 
 const secure::Audit* secure_audit::get_events(uint64_t timestamp)
 {
-	if (!c_secure_audit_enabled.get_value())
+	if (!feature_manager::instance().get_enabled(SECURE_AUDIT))
 	{
 		return nullptr;
 	}
@@ -355,7 +351,7 @@ bool executed_command_cmp_secure(const sinsp_executed_command& src,
 void secure_audit::emit_commands_audit(
     std::unordered_map<std::string, std::vector<sinsp_executed_command>>* executed_commands)
 {
-	if (!(c_secure_audit_enabled.get_value() &&
+	if (!(feature_manager::instance().get_enabled(SECURE_AUDIT) &&
 	      c_secure_audit_executed_commands_enabled.get_value()))
 	{
 		return;
@@ -673,7 +669,7 @@ void secure_audit::emit_connection_async(const _ipv4tuple& tuple,
                                          sinsp_connection& conn,
                                          sinsp_connection::state_transition transition)
 {
-	if (!(c_secure_audit_enabled.get_value() && c_secure_audit_connections_enabled.get_value()))
+	if (!(feature_manager::instance().get_enabled(SECURE_AUDIT) && c_secure_audit_connections_enabled.get_value()))
 	{
 		return;
 	}
@@ -710,7 +706,7 @@ void secure_audit::emit_file_access_async(thread_analyzer_info* tinfo,
                                           const std::string& fullpath,
                                           uint32_t flags)
 {
-	if (!c_secure_audit_enabled.get_value() || !c_secure_audit_file_writes_enabled.get_value())
+	if (!feature_manager::instance().get_enabled(SECURE_AUDIT) || !c_secure_audit_file_writes_enabled.get_value())
 	{
 		return;
 	}
@@ -805,7 +801,7 @@ void secure_audit::filter_and_append_k8s_audit(
     std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters,
     infrastructure_state* infra_state)
 {
-	if (!(c_secure_audit_enabled.get_value() && c_secure_audit_k8s_audit_enabled.get_value()))
+	if (!(feature_manager::instance().get_enabled(SECURE_AUDIT) && c_secure_audit_k8s_audit_enabled.get_value()))
 	{
 		return;
 	}

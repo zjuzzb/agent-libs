@@ -35,7 +35,7 @@ bool security_orchestrator_events_message_handler::handle_message(
 #if !defined(CYGWING_AGENT)
 	draiosproto::orchestrator_events evts;
 
-	if(!libsanalyzer::security_config::is_enabled())
+	if(!libsanalyzer::security_config::instance().get_enabled())
 	{
 		LOG_DEBUG("Security disabled, ignoring ORCHESTRATOR_EVENTS message");
 		return false;

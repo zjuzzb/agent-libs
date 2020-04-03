@@ -14,7 +14,7 @@
 
 using namespace std;
 using nlohmann::json;
-namespace security_config = libsanalyzer::security_config;
+using namespace libsanalyzer;
 
 type_config<bool> security_mgr::c_event_labels_enabled(
         true,
@@ -80,7 +80,7 @@ security_mgr::security_mgr(const string& install_root,
 
 security_mgr::~security_mgr()
 {
-	if (security_config::get_k8s_audit_server_enabled())
+	if (security_config::instance().get_k8s_audit_server_enabled())
 	{
 	    stop_k8s_audit_tasks();
 	}
@@ -110,10 +110,10 @@ void security_mgr::init(sinsp *inspector,
 	m_evttypes.assign(PPM_EVENT_MAX+1, false);
 	m_evtsources.assign(ESRC_MAX+1, false);
 
-	m_report_events_interval = make_unique<run_on_interval>(security_config::get_report_interval_ns());
-	m_report_throttled_events_interval = make_unique<run_on_interval>(security_config::get_throttled_report_interval_ns());
+	m_report_events_interval = make_unique<run_on_interval>(security_config::instance().get_report_interval_ns());
+	m_report_throttled_events_interval = make_unique<run_on_interval>(security_config::instance().get_throttled_report_interval_ns());
 
-	m_actions_poll_interval = make_unique<run_on_interval>(security_config::get_actions_poll_interval_ns());
+	m_actions_poll_interval = make_unique<run_on_interval>(security_config::instance().get_actions_poll_interval_ns());
 
 	// Only check the above every second
 	m_check_periodic_tasks_interval = make_unique<run_on_interval>(1000000000);
@@ -743,7 +743,7 @@ void security_mgr::perform_periodic_tasks(uint64_t ts_ns)
 			m_actions.periodic_cleanup(ts_ns);
 		}, ts_ns);
 
-		if (security_config::get_k8s_audit_server_enabled())
+		if (security_config::instance().get_k8s_audit_server_enabled())
 		{
 			if(m_k8s_audit_server_load)
 			{
@@ -1137,8 +1137,8 @@ bool security_mgr::throttle_policy_event(uint64_t ts_ns,
 	    it->first != scope)
 	{
 		it = m_policy_rates.emplace_hint(it, make_pair(scope, token_bucket()));
-		it->second.init(security_config::get_policy_events_rate(),
-		                security_config::get_policy_events_max_burst(),
+		it->second.init(security_config::instance().get_policy_events_rate(),
+		                security_config::instance().get_policy_events_max_burst(),
 		                ts_ns);
 
 		g_log->debug("security_mgr::accept_policy_event creating new token bucket for policy=" + policy_name
@@ -1496,7 +1496,7 @@ void security_mgr::report_throttled_events(uint64_t ts_ns)
 	{
 		if((ts_ns - bucket->second.get_last_seen()) >
 		   (1000000000UL *
-			(1 / security_config::get_policy_events_rate()) * security_config::get_policy_events_max_burst()))
+			(1 / security_config::instance().get_policy_events_rate()) * security_config::instance().get_policy_events_max_burst()))
 		{
 			g_log->debug("Removing token bucket for container=" + bucket->first.first
 				     + ", policy_id=" + to_string(bucket->first.second));
@@ -1613,11 +1613,11 @@ std::shared_ptr<security_mgr::security_rules_group> security_mgr::get_rules_grou
 void security_mgr::load_k8s_audit_server()
 {
 	sdc_internal::k8s_audit_server_load load;
-	load.set_tls_enabled(security_config::get_k8s_audit_server_tls_enabled());
-	load.set_url(security_config::get_k8s_audit_server_url());
-	load.set_port(security_config::get_k8s_audit_server_port());
+	load.set_tls_enabled(security_config::instance().get_k8s_audit_server_tls_enabled());
+	load.set_url(security_config::instance().get_k8s_audit_server_url());
+	load.set_port(security_config::instance().get_k8s_audit_server_port());
 
-	for(auto path : security_config::get_k8s_audit_server_path_uris())
+	for(auto path : security_config::instance().get_k8s_audit_server_path_uris())
 	{
 		// If path doesn't start with a /, add one.
 		if(path.size() > 0 && path.at(0) != '/')
@@ -1627,11 +1627,11 @@ void security_mgr::load_k8s_audit_server()
 		load.add_path_uris(path);
 	}
 
-	if (security_config::get_k8s_audit_server_tls_enabled())
+	if (security_config::instance().get_k8s_audit_server_tls_enabled())
 	{
 		sdc_internal::k8s_audit_server_X509 *x509 = load.add_x509();
-		x509->set_x509_cert_file(security_config::get_k8s_audit_server_x509_cert_file());
-		x509->set_x509_key_file(security_config::get_k8s_audit_server_x509_key_file());
+		x509->set_x509_cert_file(security_config::instance().get_k8s_audit_server_x509_cert_file());
+		x509->set_x509_key_file(security_config::instance().get_k8s_audit_server_x509_key_file());
 	}
 
 	auto callback = [this](bool successful, sdc_internal::k8s_audit_server_load_result &lresult)
@@ -1673,13 +1673,13 @@ void security_mgr::start_k8s_audit_server_tasks()
 			if(status == streaming_grpc::ERROR)
 			{
 				g_log->error("Could not start K8s Audit Server tasks, trying again in " +
-					     NumberFormatter::format(security_config::get_k8s_audit_server_refresh_interval() / 1000000000) +
+					     NumberFormatter::format(security_config::instance().get_k8s_audit_server_refresh_interval() / 1000000000) +
 					     " seconds");
 			}
 			else if(status == streaming_grpc::SHUTDOWN)
 			{
 				g_log->error("K8s Audit Server shut down connection, trying again in " +
-					     NumberFormatter::format(security_config::get_k8s_audit_server_refresh_interval() / 1000000000) +
+					     NumberFormatter::format(security_config::instance().get_k8s_audit_server_refresh_interval() / 1000000000) +
 					     " seconds");
 			}
 			else
@@ -1687,7 +1687,7 @@ void security_mgr::start_k8s_audit_server_tasks()
 				if(!jevt.successful())
 				{
 					g_log->error(string("Could not start K8s Audit Server tasks (") + jevt.errstr()+ "), trying again in " +
-						     NumberFormatter::format(security_config::get_k8s_audit_server_refresh_interval() / 1000000000) +
+						     NumberFormatter::format(security_config::instance().get_k8s_audit_server_refresh_interval() / 1000000000) +
 						     " seconds");
 				} else {
 					std::list<json_event> jevts;

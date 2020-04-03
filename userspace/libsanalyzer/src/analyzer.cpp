@@ -653,7 +653,7 @@ void sinsp_analyzer::on_capture_start()
 	//
 	// Start the falco baseliner
 	//
-	const bool do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
+	const bool do_baseline_calculation = feature_manager::instance().get_enabled(BASELINER);
 	if (do_baseline_calculation)
 	{
 		glogf("init secure_profiling (baselining)");
@@ -677,7 +677,7 @@ void sinsp_analyzer::on_capture_start()
 	}
 
 #ifndef CYGWING_AGENT
-	if (security_config::is_enabled() || m_use_new_k8s || m_prom_conf.enabled())
+	if (security_config::instance().get_enabled() || m_use_new_k8s || m_prom_conf.enabled())
 	{
 		glogf("initializing infrastructure state");
 		m_infrastructure_state->init(m_configuration->get_machine_id(),
@@ -3760,7 +3760,7 @@ void sinsp_analyzer::adjust_sampling_ratio()
 
 	// in certain cases we request a switch to nodriver mode.
 	// This is handled in sinsp_worker, but should probably be handled here.
-	if (m_inspector->is_live() && !security_config::is_enabled())
+	if (m_inspector->is_live() && !security_config::instance().get_enabled())
 	{
 		auto evts_per_second_by_cpu = get_n_tracepoint_diff();
 		auto max_iter = max_element(evts_per_second_by_cpu.begin(), evts_per_second_by_cpu.end());
@@ -3789,7 +3789,7 @@ void sinsp_analyzer::adjust_sampling_ratio()
 		return;
 	}
 
-	double upper_threshold = m_configuration->get_falco_baselining_enabled()
+	double upper_threshold = feature_manager::instance().get_enabled(BASELINER)
 	                             ? (double)c_drop_upper_threshold_baseliner->get_value()
 	                             : (double)c_drop_upper_threshold->get_value();
 	if (c_adjust_threshold_for_cpu_count->get_value())
@@ -3840,7 +3840,7 @@ void sinsp_analyzer::adjust_sampling_ratio()
 		}
 	}
 
-	double lower_threshold = m_configuration->get_falco_baselining_enabled()
+	double lower_threshold = feature_manager::instance().get_enabled(BASELINER)
 	                             ? (double)c_drop_lower_threshold_baseliner->get_value()
 	                             : (double)c_drop_lower_threshold->get_value();
 	if (c_adjust_threshold_for_cpu_count->get_value())
@@ -4136,7 +4136,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 		glogf("starting secure_profiling (baselining)");
 		m_falco_baseliner->start_baseline_calculation();
 	}
-	else if (m_configuration->get_falco_baselining_enabled() &&
+	else if (feature_manager::instance().get_enabled(BASELINER) &&
 		 m_falco_baseliner->is_baseline_runtime_start_init())
 	{
 		//
@@ -4393,7 +4393,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			{
 #ifndef CYGWING_AGENT
 				// Only run every 10 seconds or 5 minutes
-				if (m_configuration->get_cointerface_enabled() &&
+				if (feature_manager::instance().get_enabled(COINTERFACE) &&
 				    m_configuration->get_swarm_enabled())
 				{
 					tracer_emitter ss_trc("get_swarm_state", f_trc);
@@ -4729,7 +4729,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			//
 			// Executed commands
 			//
-			if (m_configuration->get_commandlines_capture_enabled())
+			if (feature_manager::instance().get_enabled(COMMAND_LINE_CAPTURE))
 			{
 				emit_executed_commands(m_metrics.get(), nullptr, &(m_executed_commands[""]));
 			}
@@ -5049,10 +5049,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			}
 
 			// Secure Profiling - Emit and Flush
-			if (m_configuration->get_falco_baselining_enabled())
+			if (feature_manager::instance().get_enabled(BASELINER))
 			{
 				emit_baseline(evt, is_eof, f_trc);
 			}
+			
+			feature_manager::instance().to_protobuf(*m_metrics->mutable_features());
 
 			//
 			// Internal metrics
@@ -5585,7 +5587,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 
 #ifndef CYGWING_AGENT
 	if (m_infrastructure_state &&
-	    (security_config::is_enabled() || m_infrastructure_state->subscribed()))
+	    (security_config::instance().get_enabled() || m_infrastructure_state->subscribed()))
 	{
 		//
 		// Refresh the infrastructure state with pending orchestrators or hosts events
@@ -7198,7 +7200,7 @@ void sinsp_analyzer::emit_container(const string& container_id,
 	//
 	// Emit the executed commands for this container
 	//
-	if (m_configuration->get_commandlines_capture_enabled())
+	if (feature_manager::instance().get_enabled(COMMAND_LINE_CAPTURE))
 	{
 		auto ecit = m_executed_commands.find(container_id);
 
@@ -7799,7 +7801,7 @@ void sinsp_analyzer::set_statsd_iofds(const std::pair<FILE*, FILE*>& iofds, cons
 
 	g_logger.format(sinsp_logger::SEV_INFO,
 	                "Creating statsd_emitter, security_enabled:  %s",
-	                (security_config::is_enabled() ? "true" : "false"));
+	                (security_config::instance().get_enabled() ? "true" : "false"));
 
 	m_statsd_emitter = statsd_emitter_factory::create(m_statsite_proxy, m_metric_limits);
 
@@ -8015,7 +8017,7 @@ void sinsp_analyzer::inject_statsd_metric(const std::string& container_id,
 		m_statsite_proxy->send_container_metric(container_id, data, len);
 	}
 	else if (m_statsd_capture_localhost.load(memory_order_relaxed) || !dest_is_ipv4_localhost ||
-	         statsite_config::use_host_statsd())
+	         statsite_config::instance().use_host_statsd())
 	{
 		m_statsite_proxy->send_metric(data, len);
 	}

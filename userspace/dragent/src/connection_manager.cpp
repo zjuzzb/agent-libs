@@ -3,9 +3,9 @@
 #include "common_logger.h"
 #include "handshake.pb.h"
 #include "draios.pb.h"
+#include "feature_manager.h"
 #include "protocol.h"
 #include "protobuf_compression.h"
-#include "security_config.h"
 #include "spinlock.h"
 #include "utils.h"
 #include "watchdog_runnable_fatal_error.h"
@@ -31,7 +31,7 @@ type_config<uint32_t> c_reconnect_max_backoff_s(
         "reconnect_max_backoff");
 
 using namespace std;
-namespace security_config = libsanalyzer::security_config;
+
 
 #ifndef TCP_USER_TIMEOUT
 // Define it here because old glibc versions do not have this flag (eg, Centos6)
@@ -999,6 +999,8 @@ bool connection_manager::send_handshake_negotiation()
 	// Get the default compressor
 	auto compressor =
 	        protobuf_compressor_factory::get(protobuf_compressor_factory::get_default());
+
+	feature_manager::instance().to_protobuf(*msg_hs.mutable_features());
 
 	// Serialize the message
 	std::shared_ptr<serialized_buffer>
