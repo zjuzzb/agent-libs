@@ -3,12 +3,15 @@
 #include "analyzer.h"
 #include "analyzer_int.h"
 #include "analyzer_thread.h"
+#include "common_logger.h"
 #include "connectinfo.h"
 #include "sched_analyzer.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
 
 #include <inttypes.h>
+
+COMMON_LOGGER();
 
 ///////////////////////////////////////////////////////////////////////////////
 // cpustate2 implementation
@@ -208,8 +211,7 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt,
 
 		if (flshflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-			                "CPU %" PRIu32 " srv:%" PRIu64 " o:%" PRIu64 " u:%" PRIu64 " i:%" PRIu64
+			                LOG_DEBUG("CPU %" PRIu32 " srv:%" PRIu64 " o:%" PRIu64 " u:%" PRIu64 " i:%" PRIu64
 			                "(c:%lf i:%lf s:%lf)",
 			                j,
 			                state.m_lastsample_server_processes_ns,

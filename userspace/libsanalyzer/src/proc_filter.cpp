@@ -1,5 +1,6 @@
 #include "analyzer_int.h"
 #include "analyzer_thread.h"
+#include "common_logger.h"
 #include "infrastructure_state.h"
 #include "proc_filter.h"
 #include "sinsp.h"
@@ -8,6 +9,11 @@
 #include <fnmatch.h>
 #include <sstream>
 #include <utils.h>
+
+namespace
+{
+COMMON_LOGGER();
+}
 
 namespace proc_filter
 {
@@ -232,10 +238,9 @@ std::pair<bool, bool> conf::match_rule(
 			}
 			break;
 		default:
-			g_logger.format(sinsp_logger::SEV_INFO,
-			                "%s: Condition for param_type %d not yet implemented",
-			                m_context.c_str(),
-			                cond.m_param_type);
+			LOG_INFO("%s: Condition for param_type %d not yet implemented",
+			         m_context.c_str(),
+			         cond.m_param_type);
 			matchcond = false;
 			break;
 		}
@@ -251,21 +256,19 @@ std::pair<bool, bool> conf::match_rule(
 	{
 		if (tinfo != nullptr)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-			                "%s: Process with pid %d matches rule: %d: %s",
-			                m_context.c_str(),
-			                (int)tinfo->m_pid,
-			                rule_num,
-			                reason.str().c_str());
+			LOG_DEBUG("%s: Process with pid %d matches rule: %d: %s",
+			          m_context.c_str(),
+			          (int)tinfo->m_pid,
+			          rule_num,
+			          reason.str().c_str());
 		}
 		else if (container != nullptr)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-			                "%s: Container '%s' matches rule: %d: %s",
-			                m_context.c_str(),
-			                container->m_name.c_str(),
-			                rule_num,
-			                reason.str().c_str());
+			LOG_DEBUG("%s: Container '%s' matches rule: %d: %s",
+			          m_context.c_str(),
+			          container->m_name.c_str(),
+			          rule_num,
+			          reason.str().c_str());
 		}
 
 		ret.second = on_match ? on_match(rule) : rule.m_include;
@@ -325,10 +328,7 @@ void conf::register_annotations(std::function<void(const std::string&)> reg,
 				continue;
 
 			reg(cond.m_param);
-			g_logger.format(sinsp_logger::SEV_INFO,
-			                "%s: registering annotation %s",
-			                m_context.c_str(),
-			                cond.m_param.c_str());
+			LOG_INFO("%s: registering annotation %s", m_context.c_str(), cond.m_param.c_str());
 		}
 		if (rule.m_config.m_port_subst)
 		{
@@ -336,10 +336,7 @@ void conf::register_annotations(std::function<void(const std::string&)> reg,
 			for (const auto& token : tokens)
 			{
 				reg(token);
-				g_logger.format(sinsp_logger::SEV_INFO,
-				                "%s: registering port annotation %s",
-				                m_context.c_str(),
-				                token.c_str());
+				LOG_INFO("%s: registering port annotation %s", m_context.c_str(), token.c_str());
 			}
 		}
 		if (rule.m_config.m_path_subst)
@@ -348,10 +345,7 @@ void conf::register_annotations(std::function<void(const std::string&)> reg,
 			for (const auto& token : tokens)
 			{
 				reg(token);
-				g_logger.format(sinsp_logger::SEV_INFO,
-				                "%s: registering path annotation %s",
-				                m_context.c_str(),
-				                token.c_str());
+				LOG_INFO("%s: registering path annotation %s", m_context.c_str(), token.c_str());
 			}
 		}
 		if (rule.m_config.m_options_subst)
@@ -362,10 +356,9 @@ void conf::register_annotations(std::function<void(const std::string&)> reg,
 				for (const auto& token : tokens)
 				{
 					reg(token);
-					g_logger.format(sinsp_logger::SEV_INFO,
-					                "%s: registering option annotation %s",
-					                m_context.c_str(),
-					                token.c_str());
+					LOG_INFO("%s: registering option annotation %s",
+					         m_context.c_str(),
+					         token.c_str());
 				}
 			}
 		}
@@ -377,10 +370,7 @@ void conf::register_annotations(std::function<void(const std::string&)> reg,
 				for (const auto& token : tokens)
 				{
 					reg(token);
-					g_logger.format(sinsp_logger::SEV_INFO,
-					                "%s: registering tag annotation %s",
-					                m_context.c_str(),
-					                token.c_str());
+					LOG_INFO("%s: registering tag annotation %s", m_context.c_str(), token.c_str());
 				}
 			}
 		}

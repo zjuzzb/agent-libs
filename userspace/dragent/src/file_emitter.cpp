@@ -1,24 +1,28 @@
 #define __STDC_FORMAT_MACROS
-#include "file_emitter.h"
 #include "common_logger.h"
-#include <google/protobuf/util/json_util.h>
-#include <inttypes.h>
-#include <unistd.h>
-#include <sstream>
-#include <fstream>
 #include "draios.pb.h"
-#include "Poco/Path.h"
+#include "file_emitter.h"
+
 #include "Poco/File.h"
+#include "Poco/Path.h"
+
+#include <google/protobuf/util/json_util.h>
+
+#include <fstream>
+#include <inttypes.h>
+#include <sstream>
+#include <unistd.h>
+
+namespace
+{
+COMMON_LOGGER();
+}
 
 namespace dragent
 {
+file_emitter::file_emitter() : m_createdir_attempted(false) {}
 
-file_emitter::file_emitter()
-	: m_createdir_attempted(false)
-{
-}
-
-void file_emitter::set_output_dir(const std::string &output_dir)
+void file_emitter::set_output_dir(const std::string& output_dir)
 {
 	m_createdir_attempted = false;
 
@@ -48,7 +52,7 @@ bool file_emitter::emit_json(const std::shared_ptr<flush_data_message>& data)
 
 bool file_emitter::emit_raw(const std::shared_ptr<serialized_buffer>& data)
 {
-	if(!create_output_directory())
+	if (!create_output_directory())
 	{
 		return false;
 	}
@@ -58,30 +62,28 @@ bool file_emitter::emit_raw(const std::shared_ptr<serialized_buffer>& data)
 	std::string filename = generate_dam_filename(m_output_dir, data->ts_ns, data->message_type);
 	std::ofstream ofile(filename);
 
-	if(!ofile)
+	if (!ofile)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR,
-				"Could not open output file %s (%s)", filename.c_str(), strerror(errno));
+		LOG_ERROR("Could not open output file %s (%s)", filename.c_str(), strerror(errno));
 		return false;
 	}
 
-	g_logger.format(sinsp_logger::SEV_DEBUG,
-			"writing serialized buffer to output file %s", filename.c_str());
+	LOG_DEBUG("writing serialized buffer to output file %s", filename.c_str());
 
 	ofile << data->buffer << std::flush;
 	ofile.close();
 
-	if(!ofile)
+	if (!ofile)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR,
-				"Could not write to output file %s (%s)", filename.c_str(), strerror(errno));
+		LOG_ERROR("Could not write to output file %s (%s)", filename.c_str(), strerror(errno));
 		return false;
 	}
 
 	return true;
 }
 
-std::string file_emitter::generate_dam_filename(const std::string &directory, const uint64_t timestamp)
+std::string file_emitter::generate_dam_filename(const std::string& directory,
+                                                const uint64_t timestamp)
 {
 	std::stringstream out;
 
@@ -90,7 +92,9 @@ std::string file_emitter::generate_dam_filename(const std::string &directory, co
 	return out.str();
 }
 
-std::string file_emitter::generate_dam_filename(const std::string &directory, const uint64_t timestamp, const uint64_t message_type)
+std::string file_emitter::generate_dam_filename(const std::string& directory,
+                                                const uint64_t timestamp,
+                                                const uint64_t message_type)
 {
 	std::stringstream out;
 
@@ -99,7 +103,8 @@ std::string file_emitter::generate_dam_filename(const std::string &directory, co
 	return out.str();
 }
 
-bool file_emitter::emit_flush_data_message(const std::shared_ptr<flush_data_message>& data, bool json)
+bool file_emitter::emit_flush_data_message(const std::shared_ptr<flush_data_message>& data,
+                                           bool json)
 {
 	if (!create_output_directory())
 	{
@@ -110,17 +115,16 @@ bool file_emitter::emit_flush_data_message(const std::shared_ptr<flush_data_mess
 
 	std::string filename = generate_dam_filename(m_output_dir, data->m_ts);
 
-	if(json)
+	if (json)
 	{
 		filename += ".json";
 	}
 
 	std::ofstream ofile(filename);
 
-	if(!ofile)
+	if (!ofile)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR,
-				"Could not open output file %s (%s)", filename.c_str(), strerror(errno));
+		LOG_ERROR("Could not open output file %s (%s)", filename.c_str(), strerror(errno));
 		return false;
 	}
 
@@ -131,10 +135,11 @@ bool file_emitter::emit_flush_data_message(const std::shared_ptr<flush_data_mess
 	// appears to be a metrics_list item (i.e., message).
 	//
 
-	g_logger.format(sinsp_logger::SEV_DEBUG,
-			"writing%s flush data message to output file %s", (json ? " json" : " "), filename.c_str());
+	LOG_DEBUG("writing%s flush data message to output file %s",
+	          (json ? " json" : " "),
+	          filename.c_str());
 
-	if(json)
+	if (json)
 	{
 		std::string json_string;
 
@@ -144,7 +149,7 @@ bool file_emitter::emit_flush_data_message(const std::shared_ptr<flush_data_mess
 
 		// Only change the symlink if the write
 		// succeeded. Error return/log happens later.
-		if(ofile)
+		if (ofile)
 		{
 			const std::string symbolic_link = m_output_dir + "latest.dams.json";
 			Poco::File sf(symbolic_link);
@@ -153,19 +158,19 @@ bool file_emitter::emit_flush_data_message(const std::shared_ptr<flush_data_mess
 			{
 				if (unlink(symbolic_link.c_str()) != 0)
 				{
-					g_logger.format(sinsp_logger::SEV_ERROR,
-							"Could not remove symlink to %s (%s)",
-							symbolic_link.c_str(), strerror(errno));
+					LOG_ERROR("Could not remove symlink to %s (%s)",
+					          symbolic_link.c_str(),
+					          strerror(errno));
 					return false;
 				}
 			}
 
 			if (symlink(filename.c_str(), symbolic_link.c_str()) != 0)
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR,
-						"Could not set symlink from %s to %s (%s)",
-						filename.c_str(), symbolic_link.c_str(),
-						strerror(errno));
+				LOG_ERROR("Could not set symlink from %s to %s (%s)",
+				          filename.c_str(),
+				          symbolic_link.c_str(),
+				          strerror(errno));
 				return false;
 			}
 		}
@@ -180,10 +185,9 @@ bool file_emitter::emit_flush_data_message(const std::shared_ptr<flush_data_mess
 		ofile.close();
 	}
 
-	if(!ofile)
+	if (!ofile)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR,
-				"Could not write to output file %s (%s)", filename.c_str(), strerror(errno));
+		LOG_ERROR("Could not write to output file %s (%s)", filename.c_str(), strerror(errno));
 		return false;
 	}
 
@@ -192,28 +196,33 @@ bool file_emitter::emit_flush_data_message(const std::shared_ptr<flush_data_mess
 
 bool file_emitter::create_output_directory()
 {
-	if(m_createdir_attempted)
+	if (m_createdir_attempted)
 	{
 		return (m_output_dir != "");
 	}
 
 	m_createdir_attempted = true;
 
-	if(m_output_dir == "")
+	if (m_output_dir == "")
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Empty output directory, skipping");
+		LOG_DEBUG("Empty output directoyr, skipping");
 		return false;
 	}
 
-	g_logger.format(sinsp_logger::SEV_DEBUG, "Creating file output directory %s", m_output_dir.c_str());
+	LOG_DEBUG("Creating file output directory %s", m_output_dir.c_str());
 
-	try {
+	try
+	{
 		Poco::File md(m_output_dir);
 		md.createDirectories();
 	}
-	catch (Poco::Exception &e)
+	catch (Poco::Exception& e)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR, "Could not create file output directory %s (%s). Later attempts to write files will fail", m_output_dir.c_str(), e.what());
+		LOG_ERROR(
+		    "Could not create file output directory %s (%s). Later attempts to write "
+		    "files will fail",
+		    m_output_dir.c_str(),
+		    e.what());
 		m_output_dir = "";
 		return false;
 	}
@@ -223,23 +232,22 @@ bool file_emitter::create_output_directory()
 
 void file_emitter::log_flush_data_message(const std::shared_ptr<flush_data_message>& data) const
 {
-	g_logger.format(sinsp_logger::SEV_INFO,
-	                "to_file ts=%" PRIu64 ", ne=%" PRIu64 ", de=%" PRIu64
-	                ", c=%.2lf"
-	                ", sr=%" PRIu32 ", st=%" PRIu64,
-	                data->m_ts / 100000000,
-	                data->m_nevts,
-	                data->m_num_drop_events,
-	                data->m_my_cpuload,
-	                data->m_sampling_ratio,
-	                data->m_n_tids_suppressed);
+	LOG_INFO("to_file ts=%" PRIu64 ", ne=%" PRIu64 ", de=%" PRIu64
+	         ", c=%.2lf"
+	         ", sr=%" PRIu32 ", st=%" PRIu64,
+	         data->m_ts / 100000000,
+	         data->m_nevts,
+	         data->m_num_drop_events,
+	         data->m_my_cpuload,
+	         data->m_sampling_ratio,
+	         data->m_n_tids_suppressed);
 }
 
 void file_emitter::log_serialized_buffer(const std::shared_ptr<serialized_buffer>& data) const
 {
-	g_logger.format(sinsp_logger::SEV_INFO,
-	                "to_file ts=%" PRIu64 " msgtype=%" PRIu64,
-	                data->ts_ns / 100000000, data->message_type);
+	LOG_INFO("to_file ts=%" PRIu64 " msgtype=%" PRIu32,
+	         data->ts_ns / 100000000,
+	         data->message_type);
 }
 
-}
+}  // namespace dragent

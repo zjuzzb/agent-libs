@@ -4,6 +4,8 @@
 
 namespace
 {
+COMMON_LOGGER();
+
 type_config<unsigned int>::ptr c_max_argument_length =
     type_config_builder<unsigned int>(
         100 /*default*/,
@@ -192,8 +194,8 @@ void process_emitter::filter_top_programs(Iterator progtable_begin,
 		             (cs_only) ? threadinfo_cmp_io_cs : threadinfo_cmp_io);
 
 		for (uint32_t i = 0;
-		     i < how_many && prog_sortable_list[i]
-		                             ->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() > 0;
+		     i < how_many &&
+		     prog_sortable_list[i]->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() > 0;
 		     i++)
 		{
 			processes_to_emit.insert(prog_sortable_list[i]);
@@ -253,7 +255,7 @@ void process_emitter::emit_processes(
 {
 	if (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "progtable size: %u", progtable.size());
+		LOG_DEBUG("progtable size: %lu", progtable.size());
 	}
 
 	std::set<thread_analyzer_info*>& processes_to_emit = emitted_processes;
@@ -428,10 +430,7 @@ void process_emitter::emit_process(
 	auto main_thread = tinfo.get_main_thread();
 	if (!main_thread)
 	{
-		g_logger.format(sinsp_logger::SEV_WARNING,
-		                "Thread %lu without main process %lu\n",
-		                tinfo.m_tid,
-		                tinfo.m_pid);
+		LOG_WARNING("Thread %lu without main process %lu\n", tinfo.m_tid, tinfo.m_pid);
 		return;
 	}
 
@@ -498,34 +497,28 @@ void process_emitter::emit_process(
 	//
 	uint32_t netrole = 0;
 
-	if (tinfo.m_th_analysis_flags &
-	    thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
+	if (tinfo.m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
 	{
 		netrole |= draiosproto::IS_REMOTE_IPV4_SERVER;
 	}
-	else if (tinfo.m_th_analysis_flags &
-	         thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
+	else if (tinfo.m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
 	{
 		netrole |= draiosproto::IS_LOCAL_IPV4_SERVER;
 	}
-	else if (tinfo.m_th_analysis_flags &
-	         thread_analyzer_info::AF_IS_UNIX_SERVER)
+	else if (tinfo.m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
 	{
 		netrole |= draiosproto::IS_UNIX_SERVER;
 	}
 
-	if (tinfo.m_th_analysis_flags &
-	    thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
+	if (tinfo.m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
 	{
 		netrole |= draiosproto::IS_REMOTE_IPV4_CLIENT;
 	}
-	else if (tinfo.m_th_analysis_flags &
-	         thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
+	else if (tinfo.m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
 	{
 		netrole |= draiosproto::IS_LOCAL_IPV4_CLIENT;
 	}
-	else if (tinfo.m_th_analysis_flags &
-	         thread_analyzer_info::AF_IS_UNIX_CLIENT)
+	else if (tinfo.m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
 	{
 		netrole |= draiosproto::IS_UNIX_CLIENT;
 	}

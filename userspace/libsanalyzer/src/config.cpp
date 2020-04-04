@@ -1,15 +1,21 @@
+#include "analyzer_int.h"
+#include "common_logger.h"
+#include "proc_filter.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
-#include "analyzer_int.h"
-#include "proc_filter.h"
+
+namespace
+{
+COMMON_LOGGER();
+}
 
 using namespace std;
 
-sinsp_configuration::sinsp_configuration():
-	m_tracepoint_hits_threshold(N_TRACEPOINT_HITS_THRESHOLD, SWITCHER_NSECONDS),
-	m_cpu_max_sr_threshold(CPU_MAX_SR_THRESHOLD, SWITCHER_NSECONDS),
-	m_procfs_scan_interval_ms(0),
-	m_procfs_scan_mem_interval_ms(0)
+sinsp_configuration::sinsp_configuration()
+    : m_tracepoint_hits_threshold(N_TRACEPOINT_HITS_THRESHOLD, SWITCHER_NSECONDS),
+      m_cpu_max_sr_threshold(CPU_MAX_SR_THRESHOLD, SWITCHER_NSECONDS),
+      m_procfs_scan_interval_ms(0),
+      m_procfs_scan_mem_interval_ms(0)
 {
 	m_machine_id = "<NA>";
 	m_customer_id = "<NA>";
@@ -87,7 +93,8 @@ uint64_t sinsp_configuration::get_falco_baselining_autodisable_interval_ns() con
 	return m_falco_baselining_autodisable_interval_ns;
 }
 
-void sinsp_configuration::set_falco_baselining_autodisable_interval_ns(uint64_t autodisable_interval)
+void sinsp_configuration::set_falco_baselining_autodisable_interval_ns(
+    uint64_t autodisable_interval)
 {
 	m_falco_baselining_autodisable_interval_ns = autodisable_interval;
 }
@@ -97,7 +104,8 @@ float sinsp_configuration::get_falco_baselining_max_drops_buffer_rate_percentage
 	return m_falco_baselining_max_drops_buffer_rate_percentage;
 }
 
-void sinsp_configuration::set_falco_baselining_max_drops_buffer_rate_percentage(float max_drops_buffer_rate_percentage)
+void sinsp_configuration::set_falco_baselining_max_drops_buffer_rate_percentage(
+    float max_drops_buffer_rate_percentage)
 {
 	m_falco_baselining_max_drops_buffer_rate_percentage = max_drops_buffer_rate_percentage;
 }
@@ -132,7 +140,8 @@ void sinsp_configuration::set_executed_commands_capture_enabled(bool enabled)
 	m_executed_commands_capture_enabled = enabled;
 }
 
-sinsp_configuration::command_capture_mode_t sinsp_configuration::get_command_lines_capture_mode() const
+sinsp_configuration::command_capture_mode_t sinsp_configuration::get_command_lines_capture_mode()
+    const
 {
 	return m_command_lines_capture_mode;
 }
@@ -149,7 +158,7 @@ void sinsp_configuration::set_command_lines_include_container_healthchecks(bool 
 
 bool sinsp_configuration::get_command_lines_include_container_healthchecks() const
 {
-	return 	m_command_lines_include_container_healthchecks;
+	return m_command_lines_include_container_healthchecks;
 }
 
 set<string> sinsp_configuration::get_command_lines_valid_ancestors() const
@@ -257,30 +266,30 @@ void sinsp_configuration::set_instance_id(const string& instance_id)
 	m_instance_id = instance_id;
 }
 
-void sinsp_configuration::set_known_ports(const ports_set &v)
+void sinsp_configuration::set_known_ports(const ports_set& v)
 {
 	m_known_ports = v;
 }
 
-const ports_set & sinsp_configuration::get_known_ports() const
+const ports_set& sinsp_configuration::get_known_ports() const
 {
 	return m_known_ports;
 }
 
-void sinsp_configuration::set_blacklisted_ports(const vector<uint16_t> &ports)
+void sinsp_configuration::set_blacklisted_ports(const vector<uint16_t>& ports)
 {
-	for(auto port : ports)
+	for (auto port : ports)
 	{
 		m_blacklisted_ports.set(port);
 	}
 }
 
-void sinsp_configuration::set_blacklisted_ports(const ports_set &v)
+void sinsp_configuration::set_blacklisted_ports(const ports_set& v)
 {
 	m_blacklisted_ports = v;
 }
 
-const ports_set & sinsp_configuration::get_blacklisted_ports() const
+const ports_set& sinsp_configuration::get_blacklisted_ports() const
 {
 	return m_blacklisted_ports;
 }
@@ -306,7 +315,7 @@ const std::set<std::string>& sinsp_configuration::get_k8s_extensions() const
 	return m_k8s_extensions;
 }
 
-void sinsp_configuration::set_k8s_cluster_name(const std::string &k8s_cluster_name)
+void sinsp_configuration::set_k8s_cluster_name(const std::string& k8s_cluster_name)
 {
 	m_k8s_cluster_name = k8s_cluster_name;
 }
@@ -318,21 +327,21 @@ const std::string& sinsp_configuration::get_k8s_cluster_name() const
 
 string sinsp_configuration::get_mesos_uri(const std::string& sought_url) const
 {
-	if(sought_url.empty())
+	if (sought_url.empty())
 	{
 		return sought_url;
 	}
 	uri url(sought_url);
-	if(!m_mesos_credentials.first.empty())
+	if (!m_mesos_credentials.first.empty())
 	{
 		url.set_credentials(m_mesos_credentials);
 	}
 	return url.to_string(true);
 }
 
-void sinsp_configuration::set_mesos_uri(string& url, const string & new_url)
+void sinsp_configuration::set_mesos_uri(string& url, const string& new_url)
 {
-	if(!new_url.empty())
+	if (!new_url.empty())
 	{
 		try
 		{
@@ -340,9 +349,10 @@ void sinsp_configuration::set_mesos_uri(string& url, const string & new_url)
 			u.set_path("");
 			url = u.to_string(true);
 		}
-		catch(sinsp_exception& ex)
+		catch (sinsp_exception& ex)
 		{
-			g_logger.log(std::string("Error setting Mesos URI: ").append(ex.what()), sinsp_logger::SEV_ERROR);
+			g_logger.log(std::string("Error setting Mesos URI: ").append(ex.what()),
+			             sinsp_logger::SEV_ERROR);
 		}
 		return;
 	}
@@ -354,7 +364,7 @@ string sinsp_configuration::get_mesos_state_uri() const
 	return get_mesos_uri(m_mesos_state_uri);
 }
 
-void sinsp_configuration::set_mesos_state_uri(const string & url)
+void sinsp_configuration::set_mesos_state_uri(const string& url)
 {
 	set_mesos_uri(m_mesos_state_uri, url);
 }
@@ -364,21 +374,22 @@ string sinsp_configuration::get_mesos_state_original_uri() const
 	return get_mesos_uri(m_mesos_state_original_uri);
 }
 
-void sinsp_configuration::set_mesos_state_original_uri(const string & url)
+void sinsp_configuration::set_mesos_state_original_uri(const string& url)
 {
 	set_mesos_uri(m_mesos_state_original_uri, url);
 }
 
 const vector<string>& sinsp_configuration::get_marathon_uris() const
 {
-	if(!m_marathon_uris.empty())
+	if (!m_marathon_uris.empty())
 	{
-		for(vector<string>::iterator it = m_marathon_uris.begin(); it != m_marathon_uris.end(); ++it)
+		for (vector<string>::iterator it = m_marathon_uris.begin(); it != m_marathon_uris.end();
+		     ++it)
 		{
-			if(!it->empty())
+			if (!it->empty())
 			{
 				uri url(*it);
-				if(!m_marathon_credentials.first.empty())
+				if (!m_marathon_credentials.first.empty())
 				{
 					url.set_credentials(m_marathon_credentials);
 				}
@@ -389,11 +400,11 @@ const vector<string>& sinsp_configuration::get_marathon_uris() const
 	return m_marathon_uris;
 }
 
-void sinsp_configuration::set_marathon_uris(const vector<string> & uris)
+void sinsp_configuration::set_marathon_uris(const vector<string>& uris)
 {
-	for(const auto& u : uris)
+	for (const auto& u : uris)
 	{
-		if(!u.empty())
+		if (!u.empty())
 		{
 			uri::check(u);
 		}
@@ -473,16 +484,16 @@ void sinsp_configuration::set_dcos_enterprise_credentials(const mesos::credentia
 	m_dcos_enterprise_credentials = creds;
 }
 
-void sinsp_configuration::set_marathon_skip_labels(const std::set<std::string> &labels)
+void sinsp_configuration::set_marathon_skip_labels(const std::set<std::string>& labels)
 {
 	m_marathon_skip_labels = labels;
 }
 
-const std::set<std::string> & sinsp_configuration::get_marathon_skip_labels() const
+const std::set<std::string>& sinsp_configuration::get_marathon_skip_labels() const
 {
 	return m_marathon_skip_labels;
 }
-#endif // CYGWING_AGENT
+#endif  // CYGWING_AGENT
 
 bool sinsp_configuration::get_curl_debug() const
 {
@@ -565,7 +576,7 @@ shared_ptr<proc_filter::group_pctl_conf> sinsp_configuration::get_group_pctl_con
 }
 
 void sinsp_configuration::set_percentiles(const std::set<double>& percentiles,
-		shared_ptr<proc_filter::group_pctl_conf> group_pctl_conf)
+                                          shared_ptr<proc_filter::group_pctl_conf> group_pctl_conf)
 {
 	m_percentiles = percentiles;
 	m_group_pctl_conf = group_pctl_conf;
@@ -613,12 +624,12 @@ bool sinsp_configuration::get_add_event_scopes() const
 
 void sinsp_configuration::set_statsite_check_format(bool enabled)
 {
-	        m_statsite_check_format = enabled;
+	m_statsite_check_format = enabled;
 }
 
 bool sinsp_configuration::get_statsite_check_format() const
 {
-	        return m_statsite_check_format;
+	return m_statsite_check_format;
 }
 
 void sinsp_configuration::set_log_dir(const string& dir)
@@ -711,17 +722,17 @@ uint32_t sinsp_configuration::get_procfs_scan_mem_interval_ms() const
 	return m_procfs_scan_mem_interval_ms;
 }
 
-void sinsp_configuration::set_procfs_scan_procs(const set<string> &procs, uint32_t interval)
+void sinsp_configuration::set_procfs_scan_procs(const set<string>& procs, uint32_t interval)
 {
 	m_procfs_scan_procs = procs;
 	m_procfs_scan_interval = interval;
-	for (const auto &proc : m_procfs_scan_procs)
+	for (const auto& proc : m_procfs_scan_procs)
 	{
-		g_logger.format(sinsp_logger::SEV_INFO, "procfs_scan_proc: %s", proc.c_str());
+		LOG_INFO("procfs_scan_proc: %s", proc.c_str());
 	}
-	g_logger.format(sinsp_logger::SEV_INFO, "procfs_scan_interval: %d", m_procfs_scan_interval);
+	LOG_INFO("procfs_scan_interval: %d", m_procfs_scan_interval);
 }
-const set<string> &sinsp_configuration::get_procfs_scan_procs()
+const set<string>& sinsp_configuration::get_procfs_scan_procs()
 {
 	return m_procfs_scan_procs;
 }

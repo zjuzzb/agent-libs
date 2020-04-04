@@ -1,19 +1,21 @@
+#include "analyzer_int.h"
+#include "analyzer_thread.h"
+#include "infrastructure_state.h"
 #include "object_filter.h"
 #include "object_filter_config.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
-#include "analyzer_int.h"
-#include "analyzer_thread.h"
-#include "infrastructure_state.h"
-#include <utils.h>
+
 #include <sstream>
+#include <utils.h>
 
 using namespace std;
 
 namespace
 {
+COMMON_LOGGER();
 
-template <typename T>
+template<typename T>
 vector<T> get_sequence(YAML::Node node)
 {
 	vector<T> ret;
@@ -34,11 +36,10 @@ bool contains_token(const string& str)
 		return false;
 	return (bc > bo);
 }
-}
+}  // namespace
 
 namespace object_filter_config
 {
-
 bool portdef_to_pfrule(const string& str, port_filter_rule& out_rule)
 {
 	port_filter_rule rule;
@@ -147,7 +148,8 @@ object_filter_config_data::object_filter_config_data(const std::string& descript
                                                      const std::string& key,
                                                      const std::string& subkey,
                                                      const std::string& subsubkey)
-    : configuration_unit(key, subkey, subsubkey, description), m_data()
+    : configuration_unit(key, subkey, subsubkey, description),
+      m_data()
 {
 }
 
@@ -174,46 +176,46 @@ std::string filter_condition::to_string() const
 	std::stringstream out;
 	switch (m_param_type)
 	{
-		case none:
-			break;
-		case port:
-			out << "Port filter\n";
-			for (uint32_t i = 0; i < m_port_match.size(); i++)
-			{
-				out << "\tRule " << i << ": ";
-				out << m_port_match[i].to_string();
-			}
-			break;
-		case container_image:
-			out << "Container Image Glob: " << m_pattern;
-			break;
-		case container_name:
-			out << "Container Name Glob: " << m_pattern;
-			break;
-		case container_label:
-			out << "Container Label: " << m_param << ": " << m_pattern;
-			break;
-		case process_name:
-			out << "Process Name Glob: " << m_pattern;
-			break;
-		case process_cmdline:
-			out << "Process Cmdline Glob: " << m_pattern;
-			break;
-		case app_check_match:
-			out << "App Check Glob: " << m_pattern;
-			break;
-		case k8s_annotation:
-			out << "K8s Annotation: " << m_param << ": " << m_pattern;
-			break;
-		case tag:
-			out << "Tag: " << m_param << ": " << m_pattern;
-			break;
-		case all:
-			out << "All";
-			break;
+	case none:
+		break;
+	case port:
+		out << "Port filter\n";
+		for (uint32_t i = 0; i < m_port_match.size(); i++)
+		{
+			out << "\tRule " << i << ": ";
+			out << m_port_match[i].to_string();
+		}
+		break;
+	case container_image:
+		out << "Container Image Glob: " << m_pattern;
+		break;
+	case container_name:
+		out << "Container Name Glob: " << m_pattern;
+		break;
+	case container_label:
+		out << "Container Label: " << m_param << ": " << m_pattern;
+		break;
+	case process_name:
+		out << "Process Name Glob: " << m_pattern;
+		break;
+	case process_cmdline:
+		out << "Process Cmdline Glob: " << m_pattern;
+		break;
+	case app_check_match:
+		out << "App Check Glob: " << m_pattern;
+		break;
+	case k8s_annotation:
+		out << "K8s Annotation: " << m_param << ": " << m_pattern;
+		break;
+	case tag:
+		out << "Tag: " << m_param << ": " << m_pattern;
+		break;
+	case all:
+		out << "All";
+		break;
 #ifndef _DEBUG
-		default:
-			break;
+	default:
+		break;
 #endif
 	}
 	return out.str();
@@ -251,8 +253,7 @@ std::string object_filter_config_data::value_to_yaml() const
 }
 bool object_filter_config_data::string_to_value(const std::string& value)
 {
-	g_logger.format(sinsp_logger::SEV_DEBUG,
-	                "string_to_value() unsupported for object_filter_config_data");
+	LOG_DEBUG("string_to_value() unsupported for object_filter_config_data");
 	return false;
 }
 
@@ -266,12 +267,15 @@ void object_filter_config_data::init(const yaml_configuration& raw_config)
 	else if (get_subsubkey().empty())
 	{
 		m_data = raw_config.get_first_deep_sequence<std::vector<object_filter_config::filter_rule>>(
-		    get_key(), get_subkey());
+		    get_key(),
+		    get_subkey());
 	}
 	else
 	{
 		m_data = raw_config.get_first_deep_sequence<std::vector<object_filter_config::filter_rule>>(
-		    get_key(), get_subkey(), get_subsubkey());
+		    get_key(),
+		    get_subkey(),
+		    get_subsubkey());
 	}
 }
 
@@ -284,7 +288,6 @@ const std::vector<object_filter_config::filter_rule>& object_filter_config_data:
 
 namespace YAML
 {
-
 bool convert<object_filter_config::port_filter_rule>::decode(
     const Node& node,
     object_filter_config::port_filter_rule& rhs)
@@ -382,15 +385,12 @@ bool convert<object_filter_config::rule_config>::decode(const Node& node,
 		else if (conf_line->first.as<string>() == "tags")
 		{
 			// Should be a map
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Tags type: %d", conf_line->second.Type());
+			LOG_DEBUG("Tags type: %d", conf_line->second.Type());
 			if (conf_line->second.IsMap())
 			{
 				for (auto m : conf_line->second)
 				{
-					g_logger.format(sinsp_logger::SEV_DEBUG,
-					                "Tags item type 1: %d, type 2: %d",
-					                m.first.Type(),
-					                m.second.Type());
+					LOG_DEBUG("Tags item type 1: %d, type 2: %d", m.first.Type(), m.second.Type());
 					if (!m.first.IsScalar())
 						continue;
 					string value;
@@ -462,9 +462,7 @@ bool convert<object_filter_config::filter_rule>::decode(const Node& node,
 			}
 			else if (cond.m_param_type != object_filter_config::filter_condition::param_type::none)
 			{
-				g_logger.format(sinsp_logger::SEV_WARNING,
-				                "Rule condition %s requires comparison value",
-				                cond.m_param.c_str());
+				LOG_WARNING("Rule condition %s requires comparison value", cond.m_param.c_str());
 			}
 		}
 		if (!rule_it->second.IsMap())

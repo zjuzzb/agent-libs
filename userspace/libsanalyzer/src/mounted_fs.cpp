@@ -1,4 +1,5 @@
 #include "analyzer_thread.h"
+#include "common_logger.h"
 #include "mounted_fs.h"
 #include "sdc_internal.pb.h"
 #include "setns.h"
@@ -9,6 +10,11 @@
 #include <sys/statvfs.h>
 #include <unistd.h>
 #include <unordered_set>
+
+namespace
+{
+COMMON_LOGGER();
+}
 
 mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto)
     : device(proto.device()),
@@ -92,9 +98,7 @@ bool mounted_fs_proxy::send_container_list(const std::vector<thread_analyzer_inf
 		// Safety check, it should never happen
 		if (item->m_root.empty())
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-			                "Process root of pid %ld is empty, skipping ",
-			                item->m_pid);
+			LOG_DEBUG("Process root of pid %ld is empty, skipping ", item->m_pid);
 			continue;
 		}
 

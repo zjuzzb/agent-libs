@@ -6,20 +6,23 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
-#include "protobuf_metric_serializer.h"
 #include "analyzer_flush_message.h"
-#include "dragent_message_queues.h"
 #include "config.h"
+#include "dragent_message_queues.h"
 #include "metric_store.h"
+#include "protobuf_metric_serializer.h"
+#include "protocol.h"
 #include "tracer_emitter.h"
 #include "type_config.h"
-#include "Poco/Path.h"
+
 #include "Poco/File.h"
+#include "Poco/Path.h"
+
 #include <chrono>
-#include "protocol.h"
 
 namespace
 {
+COMMON_LOGGER();
 
 type_config<bool> s_emit_protobuf_json(false,
                                        "If true, emit each protobuf as a separate JSON file",
@@ -34,8 +37,10 @@ class scoped_duration_logger
 {
 public:
 	scoped_duration_logger(const std::string label,
-	                       const sinsp_logger::severity severity = sinsp_logger::SEV_INFO)
-	    : m_start_time(std::chrono::steady_clock::now()), m_label(label), m_severity(severity)
+	                       const Poco::Message::Priority severity = Poco::Message::Priority::PRIO_INFORMATION)
+	    : m_start_time(std::chrono::steady_clock::now()),
+	      m_label(label),
+	      m_severity(severity)
 	{
 	}
 
@@ -44,22 +49,24 @@ public:
 		const auto now = std::chrono::steady_clock::now();
 		const auto duration_ms =
 		    std::chrono::duration_cast<std::chrono::milliseconds>(now - m_start_time).count();
-		g_logger.format(
-		    m_severity, "%s: duration: %zu ms", m_label.c_str(), static_cast<size_t>(duration_ms));
+		LOG_AT_PRIO_(m_severity,
+		             "%s: duration: %zu ms",
+		             m_label.c_str(),
+		             static_cast<size_t>(duration_ms));
 	}
 
 private:
 	const std::chrono::time_point<std::chrono::steady_clock> m_start_time;
 	const std::string m_label;
-	const sinsp_logger::severity m_severity;
+	const Poco::Message::Priority m_severity;
 };
 
 }  // end namespace
 
 namespace dragent
 {
-
-protobuf_metric_serializer::protobuf_metric_serializer(std::shared_ptr<const capture_stats_source> stats_source,
+protobuf_metric_serializer::protobuf_metric_serializer(
+    std::shared_ptr<const capture_stats_source> stats_source,
     const std::string& root_dir,
     uncompressed_sample_handler& sample_handler,
     flush_queue* input_queue,
@@ -77,7 +84,7 @@ protobuf_metric_serializer::protobuf_metric_serializer(std::shared_ptr<const cap
 {
 	if (!compressor && !source)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR, "Created a serializer with no compressor");
+		LOG_ERROR("Created a serializer with no compressor");
 	}
 	if (!c_metrics_dir.get_value().empty())
 	{
@@ -117,21 +124,18 @@ void protobuf_metric_serializer::do_run()
 		}
 		catch (const std::ifstream::failure& ex)
 		{
-			g_logger.format(
-			    sinsp_logger::SEV_ERROR, "ifstream::failure during serialization: %s", ex.what());
+			LOG_ERROR("ifstream::failure during serialization: %s", ex.what());
 		}
 		catch (const sinsp_exception& ex)
 		{
-			g_logger.format(
-			    sinsp_logger::SEV_ERROR, "sinsp_exception during serialization: %s", ex.what());
+			LOG_ERROR("sinsp_exception during serialization: %s", ex.what());
 		}
 	}
 }
 
 void protobuf_metric_serializer::do_serialization(flush_data& data)
 {
-
-	scoped_duration_logger scoped_log("protobuf serialization", sinsp_logger::SEV_DEBUG);
+	scoped_duration_logger scoped_log("protobuf serialization", Poco::Message::Priority::PRIO_DEBUG);
 
 	std::shared_ptr<protobuf_compressor> compressor = m_compressor;
 	if (m_compression_source)
@@ -157,15 +161,14 @@ void protobuf_metric_serializer::do_serialization(flush_data& data)
 	libsanalyzer::metric_store::store(data->m_metrics);
 	data->m_metrics_sent->exchange(true);
 	std::shared_ptr<serialized_buffer> q_item =
-	    m_uncompressed_sample_handler.handle_uncompressed_sample(
-	        data->m_ts,
-	        data->m_metrics,
-	        data->m_flush_interval,
-	        compressor);
+	    m_uncompressed_sample_handler.handle_uncompressed_sample(data->m_ts,
+	                                                             data->m_metrics,
+	                                                             data->m_flush_interval,
+	                                                             compressor);
 
 	if (!m_output_queue->put(q_item, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
-		g_logger.format(sinsp_logger::SEV_WARNING, "Queue full, discarding sample");
+		LOG_WARNING("Queue full, discarding sample");
 	}
 
 	if (s_emit_protobuf_json.get_value())

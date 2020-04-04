@@ -7,6 +7,7 @@
 #include "utils.h"
 
 class sinsp_evttables;
+class sinsp_evttype_filter;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Hashing support for stl pairs

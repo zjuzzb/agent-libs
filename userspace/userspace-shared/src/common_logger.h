@@ -8,13 +8,15 @@
 #pragma once
 
 #include "logger.h"
+
+#include <Poco/Message.h>
+
 #include <atomic>
 #include <exception>
 #include <memory>
 #include <stdarg.h>
 #include <string>
 #include <vector>
-#include <Poco/Message.h>
 
 namespace Poco
 {
@@ -76,13 +78,10 @@ public:
 
 	log_sink(const std::string& file, const std::string& component);
 
-	void log(Poco::Message::Priority severity,
-	         int line,
-	         const char *fmt, ...) const __attribute__ ((format (printf, 4, 5)));
-	void log(Poco::Message::Priority severity,
-	         int line,
-	         const std::string& str) const;
-	std::string build(const char *fmt, ...) const;
+	void log(Poco::Message::Priority severity, int line, const char* fmt, ...) const
+	    __attribute__((format(printf, 4, 5)));
+	void log(Poco::Message::Priority severity, int line, const std::string& str) const;
+	std::string build(const char* fmt, ...) const;
 	const std::string& tag() const { return m_tag; };
 
 private:
@@ -90,7 +89,7 @@ private:
 	                                    int line,
 	                                    const char* fmt,
 	                                    va_list& args) const;
-	std::string build(int line, const char *fmt, va_list& args) const;
+	std::string build(int line, const char* fmt, va_list& args) const;
 
 	// [<optional component>:]<filname without extension>
 	const std::string m_tag;
@@ -104,16 +103,18 @@ extern std::unique_ptr<common_logger> g_log;
 #define COMMON_LOGGER(__optional_prefix) \
 	static const log_sink s_log_sink(__FILE__, "" __optional_prefix)
 
-#define LOG_AT_PRIO_(priority, ...)                                            \
-	do                                                                     \
-	{                                                                      \
-		if(g_log && g_log->is_enabled(priority))                       \
-		{                                                              \
-			s_log_sink.log((priority), __LINE__, __VA_ARGS__);     \
-		}                                                              \
-	}                                                                      \
-	while(false)
+#define LOG_AT_PRIO_(priority, ...)                            \
+	do                                                         \
+	{                                                          \
+		if (g_log && g_log->is_enabled(priority))              \
+		{                                                      \
+			s_log_sink.log((priority), __LINE__, __VA_ARGS__); \
+		}                                                      \
+	} while (false)
 
+#define LOG_WILL_EMIT(priority) (g_log && g_log->is_enabled(priority))
+
+// clang-format off
 // Macros to use in the cpp file to interface with the component logger.
 #define LOG_TRACE(...)    LOG_AT_PRIO_(Poco::Message::Priority::PRIO_TRACE,       __VA_ARGS__)
 #define LOG_DEBUG(...)    LOG_AT_PRIO_(Poco::Message::Priority::PRIO_DEBUG,       __VA_ARGS__)
@@ -143,16 +144,14 @@ extern std::unique_ptr<common_logger> g_log;
 #    define DBG_LOG_CRITICAL(...)
 #    define DBG_LOG_FATAL(...)
 #endif
+// clang-format on
 
 // Shorthand macro to log and throw a exception which takes a single string
 // for construction.
-#define LOGGED_THROW(__exception_type, __fmt, ...)                             \
-do {                                                                           \
-	std::string c_err_ = s_log_sink.build(__fmt,                           \
-					      ##__VA_ARGS__);                  \
-	s_log_sink.log(Poco::Message::Priority::PRIO_ERROR,                    \
-		       __LINE__,                                               \
-		       "Throwing: " + c_err_);                                 \
-	throw __exception_type(c_err_.c_str());                                \
-} while(false)
-
+#define LOGGED_THROW(__exception_type, __fmt, ...)                                            \
+	do                                                                                        \
+	{                                                                                         \
+		std::string c_err_ = s_log_sink.build(__fmt, ##__VA_ARGS__);                          \
+		s_log_sink.log(Poco::Message::Priority::PRIO_ERROR, __LINE__, "Throwing: " + c_err_); \
+		throw __exception_type(c_err_.c_str());                                               \
+	} while (false)

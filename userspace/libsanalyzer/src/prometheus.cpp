@@ -3,6 +3,7 @@
 // #include "../dragent/configuration.h"
 #include "analyzer_int.h"
 #include "analyzer_thread.h"
+#include "common_logger.h"
 #include "infrastructure_state.h"
 #include "prometheus.h"
 #include "promscrape.h"
@@ -15,6 +16,7 @@ using namespace std;
 
 namespace
 {
+COMMON_LOGGER();
 string replace_tokens(const string src,
                       const sinsp_container_info* container,
                       const infrastructure_state& infra_state,
@@ -126,16 +128,14 @@ bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule& r
 			// or otherwise) we can still try using a port-filter.
 			if (p && (start_ports.find(p) != start_ports.end()))
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-				                "Prometheus autodetection: process %d defined port %d found",
-				                (int)tinfo->m_pid,
-				                (int)p);
+				LOG_DEBUG("Prometheus autodetection: process %d defined port %d found",
+				          (int)tinfo->m_pid,
+				          (int)p);
 				params.ports.emplace(p);
 			}
 			else if (p)
 			{
-				g_logger.format(
-				    sinsp_logger::SEV_DEBUG,
+				LOG_DEBUG(
 				    "Prometheus autodetection: process %d defined port %d not found, not scanning",
 				    (int)tinfo->m_pid,
 				    (int)p);
@@ -152,9 +152,9 @@ bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule& r
 		    (rule.m_config.m_options.find("url") == rule.m_config.m_options.end()) &&
 		    (rule.m_config.m_options.find("urls") == rule.m_config.m_options.end()))
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-			                "Prometheus autodetection: host_filter rule is missing url,urls or "
-			                "host/port config");
+			LOG_DEBUG(
+			    "Prometheus autodetection: host_filter rule is missing url,urls or "
+			    "host/port config");
 			return false;
 		}
 	}
@@ -183,20 +183,18 @@ bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule& r
 		for (const auto& option : rule.m_config.m_options)
 		{
 			string value = replace_tokens(option.second, container, infra_state, c_uid);
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-			                "Prometheus token subst: process %d, option %s: %s = %s",
-			                (int)tinfo->m_pid,
-			                option.first.c_str(),
-			                option.second.c_str(),
-			                value.c_str());
+			LOG_DEBUG("Prometheus token subst: process %d, option %s: %s = %s",
+			          (int)tinfo->m_pid,
+			          option.first.c_str(),
+			          option.second.c_str(),
+			          value.c_str());
 			if (value.empty())
 			{
 				// Not scanning when configured option is empty because an
 				// annotation may not be available in the hierarchy yet and we
 				// don't want the appcheck to get blacklisted prematurely
 				// Seen with user/pass coming from service annotations
-				g_logger.format(
-				    sinsp_logger::SEV_DEBUG,
+				LOG_DEBUG(
 				    "Prometheus autodetection: process %d defined option %s is empty, not scanning",
 				    (int)tinfo->m_pid,
 				    option.first.c_str());
@@ -214,19 +212,17 @@ bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule& r
 		for (const auto& tag : rule.m_config.m_tags)
 		{
 			string value = replace_tokens(tag.second, container, infra_state, c_uid);
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-			                "Prometheus token subst: process %d, tag %s: %s = %s",
-			                (int)tinfo->m_pid,
-			                tag.first.c_str(),
-			                tag.second.c_str(),
-			                value.c_str());
+			LOG_DEBUG("Prometheus token subst: process %d, tag %s: %s = %s",
+			          (int)tinfo->m_pid,
+			          tag.first.c_str(),
+			          tag.second.c_str(),
+			          value.c_str());
 			if (value.empty())
 			{
 				// Just logging when tag is empty but still scanning
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-				                "Prometheus autodetection: process %d defined tag %s is empty",
-				                (int)tinfo->m_pid,
-				                tag.first.c_str());
+				LOG_DEBUG("Prometheus autodetection: process %d defined tag %s is empty",
+				          (int)tinfo->m_pid,
+				          tag.first.c_str());
 			}
 			params.tags[tag.first] = move(value);
 		}
@@ -283,8 +279,10 @@ bool prometheus_conf::match_and_fill(const thread_analyzer_info* tinfo,
 					{
 						infrastructure_state::uid_t c_uid;
 						c_uid = make_pair("container", container->m_id);
-						infrastructure_state::tag_cb_t infra_tag_cb = [&infra_tags,&infra_state](const std::pair<std::string, std::string> &tag, bool &stop) -> int
-						{
+						infrastructure_state::tag_cb_t infra_tag_cb =
+						    [&infra_tags, &infra_state](
+						        const std::pair<std::string, std::string>& tag,
+						        bool& stop) -> int {
 							std::string shortname;
 							if (infra_state.match_name(tag.first, &shortname))
 							{
@@ -300,18 +298,19 @@ bool prometheus_conf::match_and_fill(const thread_analyzer_info* tinfo,
 						// If a host or url haven't been explicitly configured,
 						// we look up the pod IP and use that.
 						if ((params.options.find("host") == params.options.end()) &&
-							(params.options.find("url") == params.options.end()))
+						    (params.options.find("url") == params.options.end()))
 						{
 							std::string podip = infra_state.get_parent_ip_address(c_uid);
 							if (!podip.empty())
 							{
-								g_logger.format(sinsp_logger::SEV_DEBUG,
-									"Prometheus: Found IP address %s for pid %d", podip.c_str(), tinfo->m_pid);
+								LOG_DEBUG("Prometheus: Found IP address %s for pid %ld",
+								          podip.c_str(),
+								          tinfo->m_pid);
 								params.options["host"] = std::move(podip);
 							}
 						}
 					}
-					if(tinfo)
+					if (tinfo)
 					{
 						infra_tags["process"] = tinfo->m_comm;
 					}
@@ -425,12 +424,11 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 			// This pid doesn't have unexpired prometheus metrics
 			continue;
 		}
-		thread_analyzer_info* tinfo = dynamic_cast<thread_analyzer_info*>(threadtable.get(app_met_pid.first));
+		thread_analyzer_info* tinfo =
+		    dynamic_cast<thread_analyzer_info*>(threadtable.get(app_met_pid.first));
 		if (!tinfo)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-			                "Prometheus: Couldn't get thread info for pid %d",
-			                app_met_pid.first);
+			LOG_DEBUG("Prometheus: Couldn't get thread info for pid %d", app_met_pid.first);
 			continue;
 		}
 
@@ -441,11 +439,10 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 			portstr = portstr + " " + to_string(port);
 			portmetricmap.emplace(make_pair(tinfo->m_container_id, port));
 		}
-		g_logger.format(sinsp_logger::SEV_TRACE,
-		                "Prometheus filter: container %s, pid %d, unexpired metrics for ports %s",
-		                tinfo->m_container_id.c_str(),
-		                app_met_pid.first,
-		                portstr.c_str());
+		LOG_TRACE("Prometheus filter: container %s, pid %d, unexpired metrics for ports %s",
+		          tinfo->m_container_id.c_str(),
+		          app_met_pid.first,
+		          portstr.c_str());
 	}
 
 	if (procs.size() <= 1 && portmetricmap.empty())
@@ -461,10 +458,10 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 		sinsp_threadinfo* tinfo = threadtable.get(proc.m_pid);
 		if (!tinfo)
 		{
-			g_logger.format(sinsp_logger::SEV_INFO,
-			                "Prometheus filter: Couldn't get thread info for pid %d, skipping port "
-			                "uniqueness filter",
-			                proc.m_pid);
+			LOG_INFO(
+			    "Prometheus filter: Couldn't get thread info for pid %d, skipping port "
+			    "uniqueness filter",
+			    proc.m_pid);
 			continue;
 		}
 
@@ -473,11 +470,11 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 		{
 			if (portmetricmap.find(make_pair(tinfo->m_container_id, *it)) != portmetricmap.end())
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-				                "Prometheus filter: removing scan for port %d (pid %d) because "
-				                "metrics already exist",
-				                *it,
-				                tinfo->m_pid);
+				LOG_DEBUG(
+				    "Prometheus filter: removing scan for port %d (pid %ld) because "
+				    "metrics already exist",
+				    *it,
+				    tinfo->m_pid);
 				it = proc.m_ports.erase(it);
 			}
 			else
@@ -517,8 +514,7 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 				sinsp_threadinfo* otinfo = threadtable.get(oproc->m_pid);
 				if (!otinfo)
 				{
-					g_logger.format(
-					    sinsp_logger::SEV_WARNING,
+					LOG_WARNING(
 					    "Prometheus: Couldn't get thread info for pid %d, can't compare with %d",
 					    oproc->m_pid,
 					    proc.m_pid);
@@ -529,8 +525,7 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 				// Assuming the clone timestamps will be different
 				if (otinfo->m_clone_ts <= tinfo->m_clone_ts)
 				{
-					g_logger.format(
-					    sinsp_logger::SEV_DEBUG,
+					LOG_DEBUG(
 					    "Prometheus: both pids %d and %d are listening to %d %s%s, %d is older",
 					    oproc->m_pid,
 					    proc.m_pid,
@@ -543,8 +538,7 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 				}
 				else
 				{
-					g_logger.format(
-					    sinsp_logger::SEV_DEBUG,
+					LOG_DEBUG(
 					    "Prometheus: both pids %d and %d are listening to %d %s%s, %d is older",
 					    oproc->m_pid,
 					    proc.m_pid,
@@ -571,9 +565,7 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 	{
 		if (it->m_ports.empty())
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-			                "Prometheus: no ports left to scan in pid %d",
-			                it->m_pid);
+			LOG_DEBUG("Prometheus: no ports left to scan in pid %d", it->m_pid);
 			it = procs.erase(it);
 		}
 		else

@@ -4,6 +4,11 @@
 
 #include <fnmatch.h>
 
+namespace
+{
+COMMON_LOGGER();
+}
+
 template<typename filter_param>
 std::string process_name_filter<filter_param>::no_data = "";
 template<typename filter_param>
@@ -235,13 +240,12 @@ bool object_filter::matches(const thread_analyzer_info* tinfo,
 
 	if (match)
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG,
-		                "%s: Object with tpid %d, mtpid %d, container %s matches rule: %s",
-		                m_name.c_str(),
-		                tinfo ? (uint32_t)tinfo->m_pid : -1,
-		                mtinfo ? (uint32_t)mtinfo->m_pid : -1,
-		                container ? container->m_name.c_str() : "",
-		                reason ? reason->c_str() : "reason disabled");
+		LOG_DEBUG("%s: Object with tpid %d, mtpid %d, container %s matches rule: %s",
+		          m_name.c_str(),
+		          tinfo ? (uint32_t)tinfo->m_pid : -1,
+		          mtinfo ? (uint32_t)mtinfo->m_pid : -1,
+		          container ? container->m_name.c_str() : "",
+		          reason ? reason->c_str() : "reason disabled");
 
 		if (match_rule)
 		{
@@ -279,9 +283,8 @@ void object_filter::set_rules(const std::vector<object_filter_config::filter_rul
 				switch (condition.m_param_type)
 				{
 				case object_filter_config::filter_condition::param_type::none:
-					g_logger.format(sinsp_logger::SEV_WARNING,
-					                "Object filter rule is type none: param %s",
-					                condition.m_param.c_str());
+					LOG_WARNING("Object filter rule is type none: param %s",
+					            condition.m_param.c_str());
 					continue;
 				case object_filter_config::filter_condition::param_type::port:
 					filter =
@@ -346,10 +349,7 @@ void object_filter::register_annotations(std::function<void(const std::string&)>
 			}
 
 			reg(cond.m_param);
-			g_logger.format(sinsp_logger::SEV_INFO,
-			                "%s: registering annotation %s",
-			                m_name.c_str(),
-			                cond.m_param.c_str());
+			LOG_INFO("%s: registering annotation %s", m_name.c_str(), cond.m_param.c_str());
 		}
 		if (rule.m_config.m_port_subst)
 		{
@@ -357,10 +357,7 @@ void object_filter::register_annotations(std::function<void(const std::string&)>
 			for (const auto& token : tokens)
 			{
 				reg(token);
-				g_logger.format(sinsp_logger::SEV_INFO,
-				                "%s: registering port annotation %s",
-				                m_name.c_str(),
-				                token.c_str());
+				LOG_INFO("%s: registering port annotation %s", m_name.c_str(), token.c_str());
 			}
 		}
 		if (rule.m_config.m_path_subst)
@@ -369,10 +366,7 @@ void object_filter::register_annotations(std::function<void(const std::string&)>
 			for (const auto& token : tokens)
 			{
 				reg(token);
-				g_logger.format(sinsp_logger::SEV_INFO,
-				                "%s: registering path annotation %s",
-				                m_name.c_str(),
-				                token.c_str());
+				LOG_INFO("%s: registering path annotation %s", m_name.c_str(), token.c_str());
 			}
 		}
 		if (rule.m_config.m_options_subst)
@@ -383,10 +377,7 @@ void object_filter::register_annotations(std::function<void(const std::string&)>
 				for (const auto& token : tokens)
 				{
 					reg(token);
-					g_logger.format(sinsp_logger::SEV_INFO,
-					                "%s: registering option annotation %s",
-					                m_name.c_str(),
-					                token.c_str());
+					LOG_INFO("%s: registering option annotation %s", m_name.c_str(), token.c_str());
 				}
 			}
 		}

@@ -1,10 +1,12 @@
-#include "secure_audit.h"
+#include "common_logger.h"
 #include "feature_manager.h"
+#include "secure_audit.h"
 
 #include <tuples.h>
 
 namespace
 {
+COMMON_LOGGER();
 const uint32_t LOCAL_IP_ADDRESS = 16777343;  // 127.0.0.1
 const int DEFAULT_AUDIT_FREQUENCY_S = 10;
 const uint64_t FREQUENCY_THRESHOLD_NS = 100000000;  // 100 ms
@@ -228,7 +230,7 @@ const secure::Audit* secure_audit::get_events(uint64_t timestamp)
 	    m_secure_audit_batch->k8s_audits_size() == 0 &&
 	    m_secure_audit_batch->file_accesses_size() == 0)
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "No secure audit messages generated");
+		LOG_DEBUG("No secure audit messages generated");
 		return nullptr;
 	}
 	m_secure_audit_batch->set_timestamp(timestamp);
@@ -267,9 +269,7 @@ void secure_audit::flush(uint64_t ts)
 		    if (secure_audit_sent)
 		    {
 			    m_audit_internal_metrics->set_secure_audit_internal_metrics(1, flush_time_ms);
-			    g_logger.format(sinsp_logger::SEV_INFO,
-			                    "secure_audit: flushing fl.ms=%d ",
-			                    flush_time_ms);
+			    LOG_INFO("secure_audit: flushing fl.ms=%ld ", flush_time_ms);
 		    }
 		    m_audit_internal_metrics->set_secure_audit_sent_counters(
 		        m_executed_commands_count,
@@ -335,7 +335,7 @@ secure::CommandCategory command_category_to_secure_audit_enum(draiosproto::comma
 		cat = secure::CommandCategory::COMMAND_CATEGORY_READINESS_PROBE;
 		break;
 	default:
-		g_logger.format(sinsp_logger::SEV_ERROR, "Unknown command category, using CAT_NONE");
+		LOG_ERROR("Unknown command category, using CAT_NONE");
 		cat = secure::CommandCategory::COMMAND_CATEGORY_NONE;
 	}
 
@@ -370,11 +370,10 @@ void secure_audit::emit_commands_audit(
 
 	int executed_commands_size_final = m_secure_audit_batch->executed_commands_size();
 
-	g_logger.format(sinsp_logger::SEV_DEBUG,
-	                "secure_audit: emit commands audit (%d) - batch size (%d -> %d)",
-	                executed_commands_size_final - executed_commands_size_initial,
-	                executed_commands_size_initial,
-	                executed_commands_size_final);
+	LOG_DEBUG("secure_audit: emit commands audit (%d) - batch size (%d -> %d)",
+	          executed_commands_size_final - executed_commands_size_initial,
+	          executed_commands_size_initial,
+	          executed_commands_size_final);
 }
 
 void secure_audit::emit_commands_audit_item(vector<sinsp_executed_command>* commands,
@@ -669,7 +668,8 @@ void secure_audit::emit_connection_async(const _ipv4tuple& tuple,
                                          sinsp_connection& conn,
                                          sinsp_connection::state_transition transition)
 {
-	if (!(feature_manager::instance().get_enabled(SECURE_AUDIT) && c_secure_audit_connections_enabled.get_value()))
+	if (!(feature_manager::instance().get_enabled(SECURE_AUDIT) &&
+	      c_secure_audit_connections_enabled.get_value()))
 	{
 		return;
 	}
@@ -706,7 +706,8 @@ void secure_audit::emit_file_access_async(thread_analyzer_info* tinfo,
                                           const std::string& fullpath,
                                           uint32_t flags)
 {
-	if (!feature_manager::instance().get_enabled(SECURE_AUDIT) || !c_secure_audit_file_writes_enabled.get_value())
+	if (!feature_manager::instance().get_enabled(SECURE_AUDIT) ||
+	    !c_secure_audit_file_writes_enabled.get_value())
 	{
 		return;
 	}
@@ -725,8 +726,7 @@ void secure_audit::emit_file_access_async(thread_analyzer_info* tinfo,
 			return;
 		}
 
-		if (!(tinfo->m_th_analysis_flags &
-		      thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND))
+		if (!(tinfo->m_th_analysis_flags & thread_analyzer_info::flags::AF_IS_INTERACTIVE_COMMAND))
 		{
 			m_file_accesses_not_interactive_dropped_count++;
 			return;
@@ -801,7 +801,8 @@ void secure_audit::filter_and_append_k8s_audit(
     std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters,
     infrastructure_state* infra_state)
 {
-	if (!(feature_manager::instance().get_enabled(SECURE_AUDIT) && c_secure_audit_k8s_audit_enabled.get_value()))
+	if (!(feature_manager::instance().get_enabled(SECURE_AUDIT) &&
+	      c_secure_audit_k8s_audit_enabled.get_value()))
 	{
 		return;
 	}

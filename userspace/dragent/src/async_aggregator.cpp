@@ -19,6 +19,7 @@
 
 namespace
 {
+COMMON_LOGGER();
 type_config<std::string>::ptr c_pre_agg_dump_dir =
     type_config_builder<std::string>("",
                                      "Dump directory for pre-aggregated protobuf metrics",
@@ -121,9 +122,7 @@ bool aggregator_limits::handle_message(const draiosproto::message_type type,
 {
 	if (type != draiosproto::message_type::AGGREGATION_CONTEXT)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR,
-		                "Aggregator received unexpected message of type %d, ignoring.",
-		                type);
+		LOG_ERROR("Aggregator received unexpected message of type %d, ignoring.", type);
 		return false;
 	}
 
@@ -336,9 +335,7 @@ void async_aggregator::do_run()
 
 		if (m_count_since_flush >= aggr_interval_cache && m_count_since_flush != 0)
 		{
-			g_logger.format(
-			    sinsp_logger::SEV_INFO,
-			    "Decreased aggregation interval. Discarding previously aggregated data.");
+			LOG_INFO("Decreased aggregation interval. Discarding previously aggregated data.");
 			m_aggregator->reset();
 			m_aggregated_data =
 			    std::make_shared<flush_data_message>(0,
@@ -358,7 +355,7 @@ void async_aggregator::do_run()
 			input_data->m_flush_interval = 0;
 			if (!m_output_queue.put(input_data))
 			{
-				g_logger.format(sinsp_logger::SEV_WARNING, "Queue full, discarding sample");
+				LOG_WARNING("Queue full, discarding sample");
 			}
 		}
 		else
@@ -403,7 +400,7 @@ void async_aggregator::do_run()
 
 				if (!m_output_queue.put(m_aggregated_data))
 				{
-					g_logger.format(sinsp_logger::SEV_WARNING, "Queue full, discarding sample");
+					LOG_WARNING("Queue full, discarding sample");
 				}
 				m_aggregated_data =
 				    std::make_shared<flush_data_message>(0,
