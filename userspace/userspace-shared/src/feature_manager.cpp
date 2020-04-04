@@ -4,6 +4,8 @@
 #include "feature_manager.h"
 namespace
 {
+COMMON_LOGGER();
+
 feature_manager* s_instance = nullptr;
 
 type_config<std::string> c_agent_mode("none", "the agent mode to execute in.", "feature", "mode");
@@ -124,7 +126,7 @@ bool feature_manager::initialize()
 		}
 	}
 
-	// g_log->information("Agent set in " + mode_definitions[m_agent_mode].m_name + " mode");
+	LOG_INFO("Agent set in %s mode", mode_definitions[m_agent_mode].m_name.c_str());
 
 	if (m_agent_mode == AGENT_MODE_NONE)
 	{
@@ -151,8 +153,9 @@ bool feature_manager::initialize()
 	// Walk through all the enabled features and ensure their dependencies are enabled
 	for (auto& i : m_feature_map)
 	{
-		// g_log->information("Feature " + feature_configs[i.first].n + " is tentatively " +
-		//                  (i.second.get_enabled() ? "enabled" : "disabled"));
+		LOG_INFO("Feature %s is tentatively %s",
+		         feature_configs[i.first].n.c_str(),
+		         i.second.get_enabled() ? "enabled" : "disabled");
 		if (i.second.get_enabled())
 		{
 			if (!i.second.verify_dependencies())
@@ -170,7 +173,8 @@ bool feature_manager::initialize()
 		{
 			if (!i.second.initialize())
 			{
-				// g_log->error("Initialization failed for feature " + feature_configs[i.first].n);
+				LOG_ERROR("Initialization failed for feature %s",
+				          feature_configs[i.first].n.c_str());
 				return false;
 			}
 		}
@@ -195,7 +199,8 @@ void feature_manager::register_feature(feature_name name, feature_base& feature)
 	assert(preexisting_feature == m_feature_map.end());
 	if (preexisting_feature != m_feature_map.end())
 	{
-		// g_log->error("Feature " + feature_configs[name].n + " already exists, skipping.");
+		// note can't log string here as table is not guaranteed to be initialized yet
+		LOG_ERROR("Feature %d already exists, skipping", name);
 		return;
 	}
 
@@ -215,8 +220,9 @@ bool feature_manager::disable(feature_name name)
 		                                        i.second.get_dependencies().end(),
 		                                        name) != i.second.get_dependencies().end())
 		{
-			// g_log->error("Failed to disable feature " + feature_configs[name].n + " as " +
-			//            feature_configs[i.first].n + " depends on it");
+			LOG_ERROR("Failed to disable feature %s as %s depends on it",
+			          feature_configs[name].n.c_str(),
+			          feature_configs[i.first].n.c_str());
 			return false;
 		}
 	}
@@ -266,8 +272,9 @@ bool feature_base::verify_dependencies() const
 	{
 		if (!m_manager.get_enabled(j))
 		{
-			// g_log->error("Dependency validation for feature " + feature_configs[m_name].n + "
-			// failed. Requires " + feature_configs[j].n + " to be enabled");
+			LOG_ERROR("Dependency validation for feature %s failed. Requires %s to be enabled",
+			          feature_manager::feature_configs[m_name].n.c_str(),
+			          feature_manager::feature_configs[j].n.c_str());
 			return false;
 		}
 	}
