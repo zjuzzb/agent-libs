@@ -4,6 +4,7 @@
 #include "sinsp_worker.h"
 #include "infrastructure_state.h"
 #include "common_logger.h"
+#include "configuration_manager.h"
 
 #include "security_config.h"
 #include "security_mgr.h"
@@ -1388,7 +1389,7 @@ void security_mgr::set_event_labels(std::string &container_id,
 
 	// Agent Tags
 	if (m_event_labels.find("agent.tag") != m_event_labels.end()) {
-		std::vector<std::string> tags = sinsp_split(m_configuration->m_host_tags, ',');
+		std::vector<std::string> tags = sinsp_split(configuration_manager::instance().get_config<std::string>("tags")->get_value(), ',');
 
 		std::string tag_prefix = "agent.tag.";
 

@@ -8,6 +8,7 @@
 
 #include "common.pb.h"
 #include "common_logger.h"
+#include "configuration_manager.h"
 #include "security_config.h"
 #include "type_config.h"
 
@@ -216,7 +217,9 @@ namespace libsanalyzer
 security_config* security_config::c_security_config = new security_config();
 
 security_config::security_config()
-    : feature_base(SECURE, &draiosproto::feature_status::set_secure_enabled, {COINTERFACE, DRIVER, FULL_SYSCALLS})
+    : feature_base(SECURE,
+                   &draiosproto::feature_status::set_secure_enabled,
+                   {COINTERFACE, DRIVER, FULL_SYSCALLS})
 {
 }
 
@@ -377,6 +380,17 @@ const std::vector<std::string>& security_config::get_k8s_audit_server_path_uris(
 
 bool security_config::initialize()
 {
+	// Add security to tags. Should probably have some sort of tag manager, but this
+	// will have to do
+	std::string tags =
+	    configuration_manager::instance().get_config<std::string>("tags")->get_value();
+	if (tags != "")
+	{
+		tags += ",";
+	}
+	tags += "sysdig_secure.enabled:true";
+	configuration_manager::instance().get_mutable_config<std::string>("tags")->set(tags);
+
 	generate_status_log();
 	return true;
 }

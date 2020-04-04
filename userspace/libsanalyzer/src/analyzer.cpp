@@ -216,6 +216,9 @@ type_config<uint64_t>::ptr c_flush_interval =
         "flush_interval")
         .hidden()
         .build();
+
+type_config<std::string> c_host_tags("", "Set of key-value tags assigned to this agent", "tags");
+
 }  // end namespace
 
 const uint64_t flush_data_message::NO_EVENT_NUMBER = std::numeric_limits<uint64_t>::max();
@@ -5940,7 +5943,8 @@ std::string sinsp_analyzer::get_k8s_cluster_name()
 //     other kube cluster and ask forits name
 std::string sinsp_analyzer::get_host_tags_with_cluster()
 {
-	std::string tags = m_configuration->get_host_tags();
+	std::string tags =
+	    configuration_manager::instance().get_config<std::string>("tags")->get_value();
 	if (!(m_use_new_k8s && m_infrastructure_state->subscribed()))
 	{
 		return tags;

@@ -206,16 +206,6 @@ void sinsp_configuration::set_host_custom_name(string host_custom_name)
 	m_host_custom_name = host_custom_name;
 }
 
-const string& sinsp_configuration::get_host_tags() const
-{
-	return m_host_tags;
-}
-
-void sinsp_configuration::set_host_tags(const string& host_tags)
-{
-	m_host_tags = host_tags;
-}
-
 bool sinsp_configuration::get_host_hidden() const
 {
 	return m_host_hidden;

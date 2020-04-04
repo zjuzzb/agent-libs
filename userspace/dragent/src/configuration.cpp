@@ -759,7 +759,6 @@ void dragent_configuration::init()
 	m_cpu_usage_max_sr_ntimes = m_config->get_scalar<unsigned>("cpu_usage_max_sr_seconds", 5);
 
 	m_host_custom_name = m_config->get_scalar<string>("ui", "customname", "");
-	m_host_tags = m_config->get_scalar<string>("tags", "");
 	m_host_custom_map = m_config->get_scalar<string>("ui", "custommap", "");
 	m_host_hidden = m_config->get_scalar<bool>("ui", "is_hidden", false);
 	m_hidden_processes = m_config->get_scalar<string>("ui", "hidden_processes", "");
@@ -806,7 +805,6 @@ void dragent_configuration::init()
 
 	uint64_t default_max_memory_usage_mb = 512;
 	uint64_t default_warn_memory_usage_mb = default_max_memory_usage_mb / 2;
-
 
 	// this could be better integrated with the feature manager
 	if (m_config->get_scalar<bool>("memdump", "enabled", false))
@@ -1123,17 +1121,6 @@ void dragent_configuration::init()
 	m_user_events_rate = m_config->get_scalar<uint64_t>("events", "rate", 1);
 	m_user_max_burst_events = m_config->get_scalar<uint64_t>("events", "max_burst", 1000);
 
-	if(m_config->get_scalar<bool>("security", "enabled", false))
-	{	
-		// Note that this agent has secure enabled by adding to the host tags	
-		// Must be done after we set m_host_tags so it doesn't get overwritten	
-		if(m_host_tags != "")	
-		{	
-			m_host_tags += ",";	
-		}	
-		m_host_tags += "sysdig_secure.enabled:true";	
-	}
-
 	auto suppressed_comms = m_config->get_merged_sequence<string>("skip_events_by_process");
 	for (auto& comm : suppressed_comms)
 	{
@@ -1393,7 +1380,6 @@ void dragent_configuration::print_configuration() const
 		    " seconds=" + NumberFormatter::format(m_cpu_usage_max_sr_ntimes));
 	}
 	LOG_INFO("ui.customname: " + m_host_custom_name);
-	LOG_INFO("tags: " + m_host_tags);
 	LOG_INFO("ui.custommap: " + m_host_custom_map);
 	LOG_INFO("ui.is_hidden: " + bool_as_text(m_host_hidden));
 	LOG_INFO("ui.hidden_processes: " + m_hidden_processes);

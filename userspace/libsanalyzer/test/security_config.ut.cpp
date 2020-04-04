@@ -5,8 +5,10 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
-#include "security_config.h"
+#include "scoped_config.h"
 #include "scoped_configuration.h"
+#include "security_config.h"
+
 #include <gtest.h>
 
 using namespace libsanalyzer;
@@ -41,8 +43,7 @@ security:
 )EOF";
 	test_helpers::scoped_configuration enabled_config(config);
 
-	ASSERT_EQ("/path/to/some/policy/file.txt",
-	          security_config::instance().get_policies_file());
+	ASSERT_EQ("/path/to/some/policy/file.txt", security_config::instance().get_policies_file());
 }
 
 TEST(security_config_test, default_policies_v2_file)
@@ -75,8 +76,7 @@ security:
 )EOF";
 	test_helpers::scoped_configuration enabled_config(config);
 
-	ASSERT_EQ("/path/to/some/baselines/file.txt",
-	          security_config::instance().get_baselines_file());
+	ASSERT_EQ("/path/to/some/baselines/file.txt", security_config::instance().get_baselines_file());
 }
 
 TEST(security_config_test, default_security_report_interval)
@@ -177,8 +177,7 @@ security:
 
 TEST(security_config_test, default_security_compliance_schedule)
 {
-	ASSERT_EQ("08:00:00Z/P1D",
-	          security_config::instance().get_default_compliance_schedule());
+	ASSERT_EQ("08:00:00Z/P1D", security_config::instance().get_default_compliance_schedule());
 }
 
 TEST(security_config_test, configured_security_compliance_schedule)
@@ -189,8 +188,7 @@ security:
 )EOF";
 	test_helpers::scoped_configuration enabled_config(config);
 
-	ASSERT_EQ("13:14:15Z/P1D",
-	          security_config::instance().get_default_compliance_schedule());
+	ASSERT_EQ("13:14:15Z/P1D", security_config::instance().get_default_compliance_schedule());
 }
 
 TEST(security_config_test, default_send_security_compliance_events)
@@ -323,8 +321,7 @@ security:
 
 TEST(security_config_test, default_k8s_audit_server_refresh_interval)
 {
-	ASSERT_EQ(120000000000,
-	          security_config::instance().get_k8s_audit_server_refresh_interval());
+	ASSERT_EQ(120000000000, security_config::instance().get_k8s_audit_server_refresh_interval());
 }
 
 TEST(security_config_test, configured_k8s_audit_server_refresh_interval)
@@ -335,8 +332,7 @@ security:
 )EOF";
 	test_helpers::scoped_configuration enabled_config(config);
 
-	ASSERT_EQ(2345,
-	          security_config::instance().get_k8s_audit_server_refresh_interval());
+	ASSERT_EQ(2345, security_config::instance().get_k8s_audit_server_refresh_interval());
 }
 
 TEST(security_config_test, default_audit_server_url)
@@ -417,8 +413,7 @@ security:
 )EOF";
 	test_helpers::scoped_configuration enabled_config(config);
 
-	ASSERT_EQ("/path/to/key.pem",
-	          security_config::instance().get_k8s_audit_server_x509_key_file());
+	ASSERT_EQ("/path/to/key.pem", security_config::instance().get_k8s_audit_server_x509_key_file());
 }
 
 TEST(security_config_test, default_k8s_audit_server_path_uris)
@@ -444,24 +439,13 @@ security:
 	ASSERT_STREQ(paths[0].c_str(), "/some-path");
 	ASSERT_STREQ(paths[1].c_str(), "/some-other-path");
 }
-//TODO remove this if possible
-# if 0
-TEST(security_config_test, set_enabled)
-{
-	test_helpers::scoped_configuration enabled_config;
-
-	security_config::instance().set_enabled(true);
-	ASSERT_TRUE(security_config::instance().get_enabled());
-}
-# endif
 
 TEST(security_config_test, set_policies_file)
 {
 	test_helpers::scoped_configuration enabled_config;
 
 	security_config::instance().set_policies_file("/path/to/policies/file.txt");
-	ASSERT_EQ("/path/to/policies/file.txt",
-	          security_config::instance().get_policies_file());
+	ASSERT_EQ("/path/to/policies/file.txt", security_config::instance().get_policies_file());
 }
 
 TEST(security_config_test, set_baselines_file)
@@ -469,8 +453,7 @@ TEST(security_config_test, set_baselines_file)
 	test_helpers::scoped_configuration enabled_config;
 
 	security_config::instance().set_baselines_file("/path/to/baselines/file.txt");
-	ASSERT_EQ("/path/to/baselines/file.txt",
-	          security_config::instance().get_baselines_file());
+	ASSERT_EQ("/path/to/baselines/file.txt", security_config::instance().get_baselines_file());
 }
 
 TEST(security_config_test, set_report_interval_ns)
@@ -487,4 +470,24 @@ TEST(security_config_test, set_throttled_report_interval_ns)
 
 	security_config::instance().set_throttled_report_interval_ns(1996);
 	ASSERT_EQ(1996, security_config::instance().get_throttled_report_interval_ns());
+}
+
+TEST(security_config_test, tags)
+{
+	{
+		test_helpers::scoped_config<std::string> sc("tags", "");
+		EXPECT_EQ(configuration_manager::instance().get_config<std::string>("tags")->get_value(),
+		          "");
+		security_config::instance().initialize();
+		EXPECT_EQ(configuration_manager::instance().get_config<std::string>("tags")->get_value(),
+		          "sysdig_secure.enabled:true");
+	}
+	{
+		test_helpers::scoped_config<std::string> sc("tags", "foo");
+		EXPECT_EQ(configuration_manager::instance().get_config<std::string>("tags")->get_value(),
+		          "foo");
+		security_config::instance().initialize();
+		EXPECT_EQ(configuration_manager::instance().get_config<std::string>("tags")->get_value(),
+		          "foo,sysdig_secure.enabled:true");
+	}
 }

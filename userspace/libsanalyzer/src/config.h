@@ -51,8 +51,6 @@ public:
 	void set_aggregate_connections_in_proto(bool aggregate);
 	const std::string& get_host_custom_name() const;
 	void set_host_custom_name(std::string host_custom_name);
-	const std::string& get_host_tags() const;
-	void set_host_tags(const std::string& host_tags);
 	bool get_host_hidden() const;
 	void set_host_hidden(bool host_hidden);
 	const std::string& get_hidden_processes() const;
@@ -207,7 +205,6 @@ private:
 	uint32_t m_max_connections_in_proto;
 	bool m_aggregate_connections_in_proto;
 	std::string m_host_custom_name;
-	std::string m_host_tags;
 	bool m_host_hidden;
 	std::string m_hidden_processes;
 	std::string m_host_custom_map;

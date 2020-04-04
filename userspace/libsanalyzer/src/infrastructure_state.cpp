@@ -2817,7 +2817,7 @@ void infrastructure_state::print_obj(const uid_t& key) const
 std::string infrastructure_state::get_cluster_name_from_agent_tags() const
 {
 	std::string cluster_tag("");
-	std::string tags = m_analyzer.m_configuration->get_host_tags();
+	std::string tags = configuration_manager::instance().get_config<std::string>("tags")->get_value();
 
 	// Matches for pattern:
 	// cluster:$NAME    OR

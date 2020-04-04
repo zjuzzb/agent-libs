@@ -177,7 +177,6 @@ public:
 	unsigned m_cpu_usage_max_sr_ntimes;
 
 	std::string m_host_custom_name;
-	std::string m_host_tags;
 	std::string m_host_custom_map;
 	bool m_host_hidden;
 	std::string m_hidden_processes;

@@ -1574,12 +1574,6 @@ sinsp_analyzer* dragent_app::build_analyzer(
 		sconfig->set_host_custom_name(m_configuration.m_host_custom_name);
 	}
 
-	if (m_configuration.m_host_tags != "")
-	{
-		g_log->information("Setting tags=" + m_configuration.m_host_tags);
-		sconfig->set_host_tags(m_configuration.m_host_tags);
-	}
-
 	if (m_configuration.m_host_custom_map != "")
 	{
 		g_log->information("Setting custom map=" + m_configuration.m_host_custom_map);
