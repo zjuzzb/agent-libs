@@ -651,6 +651,24 @@ primary_key1: 99
 	EXPECT_THROW(some_config.init(config_yaml), yaml_configuration_exception);
 }
 
+TEST_F(type_config_test, set_in_config)
+{
+	const int random_default = 439843;
+	type_config<int> some_config(random_default, "", "some_key_not_in_yaml");
+	type_config<bool> some_other_config(true, "", "bool_true");
+
+ 	yaml_configuration config_yaml({get_conf_file()});
+ 	ASSERT_EQ(0, config_yaml.errors().size());
+
+	some_config.init(config_yaml);
+	some_other_config.init(config_yaml);
+
+	ASSERT_EQ(random_default, some_config.get_value());
+	ASSERT_FALSE(some_config.get_set_in_config());
+	ASSERT_TRUE(some_other_config.get_set_in_config());
+}
+
+
 TEST_F(type_config_test, builder_defaults)
 {
 	const std::string key = "int_12345";

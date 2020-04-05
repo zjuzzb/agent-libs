@@ -9,13 +9,13 @@
 
 #include <algorithm>
 #include <cctype>
+#include <functional>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
-#include <sstream>
 #include <type_traits>
 #include <vector>
-#include <functional>
 
 class yaml_configuration;
 
@@ -72,9 +72,9 @@ public:
 	 * configuration_manager class.
 	 */
 	configuration_unit(const std::string& key,
-			   const std::string& subkey,
-			   const std::string& subsubkey,
-			   const std::string& description);
+	                   const std::string& subkey,
+	                   const std::string& subsubkey,
+	                   const std::string& description);
 	virtual ~configuration_unit();
 
 	/**
@@ -153,8 +153,8 @@ public:
 
 	/** Set alternate key; this is useful for legacy key names */
 	void alternate_key(const std::string& key,
-			   const std::string& subkey = std::string(),
-			   const std::string& subsubkey = std::string())
+	                   const std::string& subkey = std::string(),
+	                   const std::string& subsubkey = std::string())
 	{
 		m_keys.push_back(config_key(key, subkey, subsubkey));
 	}
@@ -176,15 +176,14 @@ public:
 	void from_json(const std::string& json);
 
 protected:
-
 	struct config_key
 	{
 		config_key(const std::string& key_value,
-			   const std::string& subkey_value,
-			   const std::string& subsubkey_value) :
-		   key(key_value),
-		   subkey(subkey_value),
-		   subsubkey(subsubkey_value)
+		           const std::string& subkey_value,
+		           const std::string& subsubkey_value)
+		    : key(key_value),
+		      subkey(subkey_value),
+		      subsubkey(subsubkey_value)
 		{
 		}
 
@@ -208,10 +207,7 @@ protected:
 		const std::string subkey;
 		const std::string subsubkey;
 	};
-	const std::vector<config_key> &keys()
-	{
-		return m_keys;
-	}
+	const std::vector<config_key>& keys() { return m_keys; }
 
 	/**
 	 * Returns a string representation for anything that std::to_string() can
@@ -273,7 +269,7 @@ protected:
 		out << str;
 		out >> value_in;
 
-		if(out)
+		if (out)
 		{
 			value = value_in;
 			return true;
@@ -295,10 +291,7 @@ protected:
 	}
 
 private:
-	const config_key& primary_key() const
-	{
-		return m_keys[0];
-	}
+	const config_key& primary_key() const { return m_keys[0]; }
 
 	// The primary key is kept at index 0 and is populated by the
 	// constructor so it should always exist. Alternate keys, if they exist,
@@ -331,7 +324,6 @@ inline std::string configuration_unit::get_value_string<std::string>(const std::
 	return value;
 }
 
-
 /**
  * An implementation of configuration_unit which supports scalar types.
  *
@@ -341,10 +333,9 @@ inline std::string configuration_unit::get_value_string<std::string>(const std::
 template<typename data_type>
 class type_config : public configuration_unit
 {
-	static_assert(!std::is_same<data_type, uint8_t>::value,
-	              "data_type = uint8_t is not supported");
-	static_assert(!std::is_same<data_type, int8_t>::value,
-	              "data_type = int8_t is not supported");
+	static_assert(!std::is_same<data_type, uint8_t>::value, "data_type = uint8_t is not supported");
+	static_assert(!std::is_same<data_type, int8_t>::value, "data_type = int8_t is not supported");
+
 public:
 	using ptr = std::shared_ptr<const type_config<data_type>>;
 	using mutable_ptr = std::shared_ptr<type_config<data_type>>;
@@ -359,13 +350,12 @@ public:
 	 * so will be valid, even if the yaml file has not been parsed yet.
 	 */
 	type_config(const data_type& default_value,
-		    const std::string& description,
-		    const std::string& key,
-		    const std::string& subkey = "",
-		    const std::string& subsubkey = "");
+	            const std::string& description,
+	            const std::string& key,
+	            const std::string& subkey = "",
+	            const std::string& subsubkey = "");
 
-public: // stuff for configuration_unit
-
+public:  // stuff for configuration_unit
 	std::string value_to_string() const override;
 	std::string value_to_yaml() const override;
 	bool string_to_value(const std::string& value) override;
@@ -384,14 +374,19 @@ public: // stuff for configuration_unit
 	const data_type& get_value() const;
 
 	/**
-         * Returns a non-const reference to the current value of this
-         * type_config.
-         *
-         * @return the value of this config
-         */
-        data_type& get_value();
+	 * Returns a non-const reference to the current value of this
+	 * type_config.
+	 *
+	 * @return the value of this config
+	 */
+	data_type& get_value();
 
-public: // other stuff
+	/**
+	 * Returns whether this was set via a config file, or just assumed the default value
+	 */
+	bool get_set_in_config() { return m_data_set_in_config; }
+
+public:  // other stuff
 	/**
 	 * Returns a the value configured in the yaml (or the default).
 	 * This is useful to get what the value was before the
@@ -442,7 +437,7 @@ public: // other stuff
 	 *	config.get_value() = c_other_config.configured() == 0 ? 0 : config.get_value();
 	 * });
 	 */
-	using post_init_delegate = std::function<void(type_config<data_type> &)>;
+	using post_init_delegate = std::function<void(type_config<data_type>&)>;
 	void post_init(const post_init_delegate& value);
 
 	/**
@@ -453,6 +448,7 @@ public: // other stuff
 private:
 	data_type m_default;
 	data_type m_data;
+	bool m_data_set_in_config;
 
 	/**
 	 * The value configured by the user. This can vary from m_data when
@@ -480,12 +476,14 @@ class type_config_builder
 {
 public:
 	type_config_builder(const data_type& default_value,
-			    const std::string& description,
-			    const std::string& key,
-			    const std::string& subkey = "",
-			    const std::string& subsubkey = "") :
-	   m_type_config(new type_config<data_type>(default_value, description, key, subkey, subsubkey))
-	{}
+	                    const std::string& description,
+	                    const std::string& key,
+	                    const std::string& subkey = "",
+	                    const std::string& subsubkey = "")
+	    : m_type_config(
+	          new type_config<data_type>(default_value, description, key, subkey, subsubkey))
+	{
+	}
 
 	/**
 	 * Set the max configuration value
@@ -516,8 +514,8 @@ public:
 
 	/** Set alternate key; this is useful for legacy key names */
 	void alternate_key(const std::string& key,
-			   const std::string& subkey = std::string(),
-			   const std::string& subsubkey = std::string())
+	                   const std::string& subkey = std::string(),
+	                   const std::string& subsubkey = std::string())
 	{
 		m_type_config->alternate_key(key, subkey, subsubkey);
 		return *this;
@@ -542,26 +540,19 @@ public:
 	{
 		m_type_config->post_init(value);
 		return *this;
-
 	}
 
 	/**
 	 * Return the generated instance
 	 */
-	typename type_config<data_type>::ptr build()
-	{
-		return m_type_config;
-	}
+	typename type_config<data_type>::ptr build() { return m_type_config; }
 
 	/**
 	 * Return a mutable version of the generated instance. Since
 	 * these configs are meant to only be changed during static
 	 * init, make sure you know what you are doing if you use this.
 	 */
-	typename type_config<data_type>::mutable_ptr build_mutable()
-	{
-		return m_type_config;
-	}
+	typename type_config<data_type>::mutable_ptr build_mutable() { return m_type_config; }
 
 private:
 	typename type_config<data_type>::mutable_ptr m_type_config;
@@ -586,16 +577,18 @@ inline bool configuration_unit::get_value<bool>(const std::string& str, bool& va
 	bool parse_successful = true;
 	std::string lower_str = str;
 
+	// clang-format off
 	std::transform(lower_str.begin(),
 	               lower_str.end(),
 	               lower_str.begin(),
-	               [](char c) { return std::tolower(c); });
+	               [](char c){return std::tolower(c);});
+	// clang-format on
 
-	if(lower_str == "true")
+	if (lower_str == "true")
 	{
 		value = true;
 	}
-	else if(lower_str == "false")
+	else if (lower_str == "false")
 	{
 		value = false;
 	}
@@ -607,6 +600,4 @@ inline bool configuration_unit::get_value<bool>(const std::string& str, bool& va
 	return parse_successful;
 }
 
-
 #include "type_config.hpp"
-

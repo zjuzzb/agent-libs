@@ -192,8 +192,6 @@ public:
 	uint64_t m_watchdog_subprocesses_logger_timeout_s;
 	uint64_t m_watchdog_analyzer_tid_collision_check_interval_s;
 	uint64_t m_watchdog_sinsp_data_handler_timeout_s;
-	uint64_t m_watchdog_max_memory_usage_mb;
-	uint64_t m_watchdog_warn_memory_usage_mb;
 #ifndef CYGWING_AGENT
 	uint64_t m_watchdog_heap_profiling_interval_s;
 #endif

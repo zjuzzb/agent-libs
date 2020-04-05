@@ -127,6 +127,16 @@ type_config<bool> c_compression_enabled(true,
                                         "compression",
                                         "enabled");
 
+type_config<uint64_t> c_watchdog_max_memory_usage_mb(512,
+                                                     "maximum memory usage for watchdog",
+                                                     "watchdog",
+                                                     "max_memory_usage_mb");
+
+type_config<uint64_t> c_watchdog_warn_memory_usage_mb(256,
+                                                      "warn memory usage for watchdog",
+                                                      "watchdog",
+                                                      "warn_memory_usage_mb");
+
 string compute_sha1_digest(SHA1Engine& engine, const string& path)
 {
 	engine.reset();
@@ -699,11 +709,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 			default_cpu_cgroup.enter();
 			this->m_statsite_pipes->attach_child_stdio();
 #ifndef CYGWING_AGENT
-				execl((m_configuration.c_root_dir.get_value() + "/bin/statsite").c_str(),
-				      "statsite",
-				      "-f",
-				      (m_configuration.c_root_dir.get_value() + "/etc/statsite.ini").c_str(),
-				      (char*)NULL);
+			execl((m_configuration.c_root_dir.get_value() + "/bin/statsite").c_str(),
+			      "statsite",
+			      "-f",
+			      (m_configuration.c_root_dir.get_value() + "/etc/statsite.ini").c_str(),
+			      (char*)NULL);
 #else
 				execl("../../../../dependencies/statsite-private-0.7.0-sysdig3/statsite",
 				      "statsite",
@@ -1246,13 +1256,11 @@ int dragent_app::sdagent_main()
 		m_pool.start(*aggregator, c_serializer_timeout_s.get_value());
 		LOG_INFO("Created and started aggregator");
 
-		if ((the_promscrape != nullptr) &&
-			promscrape::can_use_metrics_request_callback())
+		if ((the_promscrape != nullptr) && promscrape::can_use_metrics_request_callback())
 		{
 			// Set metric request callback for async aggregator
 			async_aggregator::metrics_request_cb metrics_request_cb =
-				[&the_promscrape]() -> std::shared_ptr<draiosproto::metrics>
-			{
+			    [&the_promscrape]() -> std::shared_ptr<draiosproto::metrics> {
 				return the_promscrape->metrics_request_callback();
 			};
 
@@ -1897,7 +1905,28 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			throttle = false;
 		}
 
-		if (memory > m_configuration.m_watchdog_max_memory_usage_mb)
+		uint64_t watchdog_max = c_watchdog_max_memory_usage_mb.get_value();
+		uint64_t watchdog_warn = c_watchdog_warn_memory_usage_mb.get_value();
+		if (feature_manager::instance().get_enabled(MEMDUMP))
+		{
+			if (!c_watchdog_max_memory_usage_mb.get_set_in_config())
+			{
+				watchdog_max += m_configuration.m_memdump_size / 1024 / 1024;
+			}
+			if (!c_watchdog_warn_memory_usage_mb.get_set_in_config())
+			{
+				watchdog_warn += m_configuration.m_memdump_size / 1024 / 1024;
+			}
+		}
+		if (watchdog_warn > watchdog_max)
+		{
+			LOG_WARNING(
+			    "watchdog:warn_memory_usage_mb cannot be higher than watchdog:max_memory_usage_mb. "
+			    "Lowering Warn.");
+			watchdog_warn = watchdog_max;
+		}
+
+		if (memory > watchdog_max)
 		{
 			char line[128];
 			snprintf(line, sizeof(line), "watchdog: Fatal memory usage, %" PRId64 " MiB\n", memory);
@@ -1917,7 +1946,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			}
 			to_kill = true;
 		}
-		else if (memory > m_configuration.m_watchdog_warn_memory_usage_mb)
+		else if (memory > watchdog_warn)
 		{
 			LOG_NOTICE("watchdog: memory usage " + NumberFormatter::format(memory) + " MiB");
 			if (heap_profiling)

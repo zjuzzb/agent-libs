@@ -256,8 +256,6 @@ dragent_configuration::dragent_configuration()
 	m_watchdog_connection_manager_timeout_s = 0;
 	m_watchdog_analyzer_tid_collision_check_interval_s = 0;
 	m_watchdog_sinsp_data_handler_timeout_s = 0;
-	m_watchdog_max_memory_usage_mb = 0;
-	m_watchdog_warn_memory_usage_mb = 0;
 #ifndef CYGWING_AGENT
 	m_watchdog_heap_profiling_interval_s = 0;
 #endif
@@ -803,32 +801,6 @@ void dragent_configuration::init()
 	        "sinsp_data_handler_timeout_s",
 	        60);
 
-	uint64_t default_max_memory_usage_mb = 512;
-	uint64_t default_warn_memory_usage_mb = default_max_memory_usage_mb / 2;
-
-	// this could be better integrated with the feature manager
-	if (m_config->get_scalar<bool>("memdump", "enabled", false))
-	{
-		uint64_t memdump_size_mb = m_memdump_size / 1024 / 1024;
-		default_max_memory_usage_mb += memdump_size_mb;
-		default_warn_memory_usage_mb += memdump_size_mb;
-	}
-
-	m_watchdog_max_memory_usage_mb =
-	    m_config->get_scalar<decltype(m_watchdog_max_memory_usage_mb)>("watchdog",
-	                                                                   "max_memory_usage_mb",
-	                                                                   default_max_memory_usage_mb);
-	m_watchdog_warn_memory_usage_mb =
-	    m_config->get_scalar<decltype(m_watchdog_warn_memory_usage_mb)>(
-	        "watchdog",
-	        "warn_memory_usage_mb",
-	        default_warn_memory_usage_mb);
-	if (m_watchdog_warn_memory_usage_mb > m_watchdog_max_memory_usage_mb)
-	{
-		m_config->add_warning(
-		    "watchdog:warn_memory_usage_mb cannot be higher than watchdog:max_memory_usage_mb");
-		m_watchdog_warn_memory_usage_mb = m_watchdog_max_memory_usage_mb;
-	}
 #ifndef CYGWING_AGENT
 	m_watchdog_heap_profiling_interval_s =
 	    m_config->get_scalar<decltype(m_watchdog_heap_profiling_interval_s)>(
@@ -1403,10 +1375,6 @@ void dragent_configuration::print_configuration() const
 	         NumberFormatter::format(m_watchdog_analyzer_tid_collision_check_interval_s));
 	LOG_INFO("watchdog.sinsp_data_handler_timeout_s: " +
 	         NumberFormatter::format(m_watchdog_sinsp_data_handler_timeout_s));
-	LOG_INFO("watchdog.max_memory_usage_mb: " +
-	         NumberFormatter::format(m_watchdog_max_memory_usage_mb));
-	LOG_INFO("watchdog.warn_memory_usage_mb: " +
-	         NumberFormatter::format(m_watchdog_warn_memory_usage_mb));
 #ifndef CYGWING_AGENT
 	LOG_INFO("watchdog.heap_profiling_interval_s: " +
 	         NumberFormatter::format(m_watchdog_heap_profiling_interval_s));

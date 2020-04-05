@@ -18,6 +18,7 @@ type_config<data_type>::type_config(const data_type& default_value,
         : configuration_unit(key, subkey, subsubkey, description),
           m_default(default_value),
           m_data(default_value),
+		  m_data_set_in_config(false),
 	  m_configured(default_value),
 	  m_mutable_only_in_internal(false)
 {
@@ -79,6 +80,7 @@ void type_config<data_type>::init(const yaml_configuration& raw_config)
 		{
 			// The lower the value, the higher the priority
 			m_data = value;
+			m_data_set_in_config = true;
 			current_data_priority = priority;
 		}
 		else if (current_data_priority == priority)
