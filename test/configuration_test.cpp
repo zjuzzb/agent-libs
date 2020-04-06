@@ -23,7 +23,7 @@ protected:
 
 //		fprintf(stdout, "Set auto config root to %s\n", m_auto_config_dir.c_str());
 
-		m_config.init(NULL);
+		m_config.init(NULL, true);
 		m_config.set_auto_config_directory(m_auto_config_dir);
 
 		// The (global) logger only needs to be set up once

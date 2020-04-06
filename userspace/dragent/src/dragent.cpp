@@ -490,7 +490,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	try
 	{
-		m_configuration.init(this);
+		m_configuration.init(this, true);
 	}
 	catch (const yaml_configuration_exception& ex)
 	{
@@ -675,12 +675,13 @@ int dragent_app::main(const std::vector<std::string>& args)
 	// Configure statsite subprocess
 	if (feature_manager::instance().get_enabled(STATSD))
 	{
-		const std::string statsite_ini = m_configuration.c_root_dir.get_value() +
+		const std::string statsite_ini =
 #ifndef CYGWING_AGENT
-		                                 "statsite.ini";
+		    m_configuration.c_root_dir.get_value() + "/etc/statsite.ini";
 #else
-		                                 "/etc/statstite.ini";
+		    "statsite.ini";
 #endif
+
 		libsanalyzer::statsite_config::instance().write_statsite_configuration(
 		    statsite_ini,
 		    m_configuration.m_raw_file_priority,
@@ -712,13 +713,13 @@ int dragent_app::main(const std::vector<std::string>& args)
 			execl((m_configuration.c_root_dir.get_value() + "/bin/statsite").c_str(),
 			      "statsite",
 			      "-f",
-			      (m_configuration.c_root_dir.get_value() + "/etc/statsite.ini").c_str(),
+			      statsite_ini.c_str(),
 			      (char*)NULL);
 #else
 				execl("../../../../dependencies/statsite-private-0.7.0-sysdig3/statsite",
 				      "statsite",
 				      "-f",
-				      "statsite.ini",
+				      statsite_ini.c_str(),
 				      (char*)NULL);
 #endif
 			return (EXIT_FAILURE);

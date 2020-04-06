@@ -114,7 +114,7 @@ public:
 	/**
 	 * Initialize the configuration with a yaml file
 	 */
-	void init(Application* app, bool use_installed_dragent_yaml=true);
+	void init(Application* app, bool use_installed_dragent_yaml);
 
 	/**
 	 * Initialize the configuration to defaults.
