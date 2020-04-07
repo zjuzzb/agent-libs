@@ -220,6 +220,7 @@ tar \
 && apk add -u python2 \
 && mkdir -p /opt/draios/run \
 && cp -r /usr/lib/python3*/site-packages/certifi /usr/lib/python2.7/site-packages/certifi \
+&& cp -r /opt/draios/lib/python-deps/backports /usr/lib/python2.7/site-packages/backports \
 && rm -rf /tmp/*.apk /var/cache/apk/* \
 && rm -rf /opt/draios/lib/python-deps2.6 \
 && rm -rf /opt/draios/lib/python-deps3.5 \
@@ -241,6 +242,11 @@ rm -rf $(whereis python2 | sed -e 's/^python2://') && \
 rm -rf $(whereis python3 | sed -e 's/^python3://') && \
 # remove jackson-databind
 rm /opt/draios/share/sdjagent.jar
+{% endif %}
+
+# copy backports for mesos/marathon python2.7 compatibility
+{% if p.launch_dragent and p.base_docker_image != "adoptopenjdk/openjdk8:alpine-slim" %}
+RUN cp -r /opt/draios/lib/python-deps/backports /usr/lib/python2.7/dist-packages/backports
 {% endif %}
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
