@@ -3,6 +3,8 @@
 Collects metrics from mesos slave node.
 """
 # stdlib
+from builtins import str
+from builtins import map
 from hashlib import md5
 
 # 3rd party
@@ -92,7 +94,7 @@ class MesosSlave(AgentCheck):
 
     def _get_json(self, url, timeout):
         # Use a hash of the URL as an aggregation key
-        aggregation_key = md5(url).hexdigest()
+        aggregation_key = md5(url.encode('utf-8')).hexdigest()
         tags = ["url:%s" % url]
         msg = None
         status = None
@@ -125,10 +127,14 @@ class MesosSlave(AgentCheck):
         return r.json()
 
     def _get_state(self, url, timeout):
-        return self._get_json(url + '/state.json', timeout)
+        try:
+            return self._get_json(url + '/state.json', timeout)
+        except CheckException:
+            # if Mesos version >= 1.8
+            return self._get_json(url + '/state', timeout)
 
     def _get_stats(self, url, timeout):
-        if self.version >= [0, 22, 0]:
+        if list(self.version) >= [0, 22, 0]:
             endpoint = '/metrics/snapshot'
         else:
             endpoint = '/stats.json'
@@ -139,7 +145,7 @@ class MesosSlave(AgentCheck):
         if self.version is None:
             state_metrics = self._get_state(url, timeout)
             if state_metrics is not None:
-                self.version = map(int, state_metrics['version'].split('.'))
+                self.version = list(map(int, state_metrics['version'].split('.')))
                 #proto = 'http://'
                 #if self.auth_token != '':
                 #    proto = 'https://'
@@ -191,7 +197,7 @@ class MesosSlave(AgentCheck):
                             if task.lower() in t['name'].lower() and t['slave_id'] == state_metrics['id']:
                                 task_tags = ['task_name:' + t['name']] + tags
                                 self.service_check(t['name'] + '.ok', self.TASK_STATUS[t['state']], tags=task_tags)
-                                for key_name, (metric_name, metric_func) in self.TASK_METRICS.iteritems():
+                                for key_name, (metric_name, metric_func) in list(self.TASK_METRICS.items()):
                                     metric_func(self, metric_name, t['resources'][key_name], tags=task_tags)
 
         stats_metrics = self._get_stats(url, timeout)
@@ -200,7 +206,7 @@ class MesosSlave(AgentCheck):
             metrics = [self.SLAVE_TASKS_METRICS, self.SYSTEM_METRICS, self.SLAVE_RESOURCE_METRICS,
                       self.SLAVE_EXECUTORS_METRICS, self.STATS_METRICS]
             for m in metrics:
-                for key_name, (metric_name, metric_func) in m.iteritems():
+                for key_name, (metric_name, metric_func) in list(m.items()):
                     metric_func(self, metric_name, stats_metrics[key_name], tags=tags)
 
         self.service_check_needed = True

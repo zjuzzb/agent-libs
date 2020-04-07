@@ -3,6 +3,8 @@
 Collects metrics from mesos master node, only the leader is sending metrics.
 """
 # stdlib
+from builtins import str
+from builtins import map
 from hashlib import md5
 
 # 3rd party
@@ -126,7 +128,7 @@ class MesosMaster(AgentCheck):
 
     def _get_json(self, url, timeout):
         # Use a hash of the URL as an aggregation key
-        aggregation_key = md5(url).hexdigest()
+        aggregation_key = md5(url.encode('utf-8')).hexdigest()
         tags = ["url:%s" % url]
         msg = None
         status = None
@@ -172,24 +174,32 @@ class MesosMaster(AgentCheck):
         return json.load(r.raw)
 
     def _get_master_state(self, url, timeout):
-        return self._get_json(url + '/state.json', timeout)
+        try:
+            return self._get_json(url + '/state.json', timeout)
+        except CheckException:
+            # if Mesos version >= 1.8
+            return self._get_json(url + '/state', timeout)
 
     def _get_master_stats(self, url, timeout):
-        if self.version >= [0, 22, 0]:
+        if list(self.version) >= [0, 22, 0]:
             endpoint = '/metrics/snapshot'
         else:
             endpoint = '/stats.json'
         return self._get_json(url + endpoint, timeout)
 
     def _get_master_roles(self, url, timeout):
-        return self._get_json(url + '/roles.json', timeout)
+        try:
+            return self._get_json(url + '/roles.json', timeout)
+        except CheckException:
+            # if Mesos version >= 1.8
+            return self._get_json(url + '/roles', timeout)
 
     def _check_leadership(self, url, timeout):
         state_metrics = self._get_master_state(url, timeout)
         self.leader = False
 
         if state_metrics is not None:
-            self.version = map(int, state_metrics['version'].split('.'))
+            self.version = list(map(int, state_metrics['version'].split('.')))
             if state_metrics['leader'] == state_metrics['pid']:
                 self.leader = True
 
@@ -231,7 +241,7 @@ class MesosMaster(AgentCheck):
                     framework_tags = ['framework_name:' + framework['name']] + tags
                     self.GAUGE('mesos.framework.total_tasks', len(framework['tasks']), tags=framework_tags)
                     resources = framework['used_resources']
-                    for key_name, (metric_name, metric_func) in self.FRAMEWORK_METRICS.iteritems():
+                    for key_name, (metric_name, metric_func) in list(self.FRAMEWORK_METRICS.items()):
                         metric_func(self, metric_name, resources[key_name], tags=framework_tags)
 
                 role_metrics = self._get_master_roles(url, timeout)
@@ -240,7 +250,7 @@ class MesosMaster(AgentCheck):
                         role_tags = ['mesos_role:' + role['name']] + tags
                         self.GAUGE('mesos.role.frameworks.count', len(role['frameworks']), tags=role_tags)
                         self.GAUGE('mesos.role.weight', role['weight'], tags=role_tags)
-                        for key_name, (metric_name, metric_func) in self.ROLE_RESOURCES_METRICS.iteritems():
+                        for key_name, (metric_name, metric_func) in list(self.ROLE_RESOURCES_METRICS.items()):
                             metric_func(self, metric_name, role['resources'][key_name], tags=role_tags)
 
             stats_metrics = self._get_master_stats(url, timeout)
@@ -251,7 +261,7 @@ class MesosMaster(AgentCheck):
                                self.CLUSTER_RESOURCES_METRICS, self.CLUSTER_REGISTRAR_METRICS,
                                self.CLUSTER_FRAMEWORK_METRICS, self.STATS_METRICS]
                 for m in metrics:
-                    for key_name, (metric_name, metric_func) in m.iteritems():
+                    for key_name, (metric_name, metric_func) in list(m.items()):
                         metric_func(self, metric_name, stats_metrics[key_name], tags=tags)
 
         self.service_check_needed = True
