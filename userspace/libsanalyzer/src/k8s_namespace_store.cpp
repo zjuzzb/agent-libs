@@ -357,7 +357,8 @@ bool k8s_namespace_store::object_kind_is_namespaced(const std::string& kind)
 	return kind != "container"
 		&& kind != "host"
 		&& kind != "k8s_node"
-		&& kind != "k8s_namespace";
+		&& kind != "k8s_namespace"
+		&& kind != "k8s_persistentvolume";
 }
 
 const std::string k8s_namespace_store::KUBERNETES_NAMESPACE_NAME = "kubernetes.namespace.name";

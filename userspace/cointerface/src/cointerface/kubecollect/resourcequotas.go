@@ -25,10 +25,10 @@ func resourceQuotaEvent(rq *v1.ResourceQuota, eventType *draiosproto.CongroupEve
 
 func setScope(tags map[string]string, resourcequota *v1.ResourceQuota) () {
 	scopes := resourcequota.Spec.Scopes;
-	var terminatingTag = "kubernetes.resourcequota.scope.terminating";
-	var nonterminatingTag = "kubernetes.resourcequota.scope.notterminating"
-	var besteffortTag = "kubernetes.resourcequota.scope.besteffort"
-	var nonbesteffortTag = "kubernetes.resourcequota.scope.notbesteffort"
+	var terminatingTag = "kubernetes.resourcequota.label.scope.terminating";
+	var nonterminatingTag = "kubernetes.resourcequota.label.scope.notterminating"
+	var besteffortTag = "kubernetes.resourcequota.label.scope.besteffort"
+	var nonbesteffortTag = "kubernetes.resourcequota.label.scope.notbesteffort"
 
 	tags[terminatingTag] = "false"
 	tags[nonterminatingTag] = "false"
