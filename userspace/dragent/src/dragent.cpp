@@ -580,6 +580,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 	    c_cointerface_cpu_quota.get_value());
 	cointerface_cpu_cgroup.create();
 
+	// Sanity check some prometheus and promscrape configs. May change some configs.
+	// Making sure to do it before sdagent_main() which prints the configuration
+	m_configuration.m_prom_conf.validate_config();
+
 	// Add our main process
 	monitor_process.emplace_process(
 	    "sdagent",

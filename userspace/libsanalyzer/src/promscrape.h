@@ -44,7 +44,7 @@ public:
 	const int job_prune_time_s = 60;
 
 	static type_config<bool>c_use_promscrape;
-	static type_config<bool>c_export_fastproto;
+	static type_config<bool>::mutable_ptr c_export_fastproto;
 
 	explicit promscrape(metric_limits::sptr_t ml, const prometheus_conf &prom_conf, bool threaded, interval_cb_t interval_cb);
 
@@ -83,6 +83,10 @@ public:
 	// the aggregator to populate the metrics protobuf
 	static bool can_use_metrics_request_callback();
 	std::shared_ptr<draiosproto::metrics> metrics_request_callback();
+
+	// Called by prometheus::validate_config() right after prometheus configuration
+	// has been read from config file. Ensures that configuration is consistent
+	static void validate_config(prometheus_conf &conf);
 private:
 	void sendconfig_th(const vector<prom_process> &prom_procs);
 

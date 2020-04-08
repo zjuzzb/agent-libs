@@ -1,6 +1,6 @@
 #ifndef CYGWING_AGENT
 #include <fnmatch.h>
-// #include "../dragent/configuration.h"
+#include "common_logger.h"
 #include "analyzer_int.h"
 #include "analyzer_thread.h"
 #include "common_logger.h"
@@ -152,9 +152,8 @@ bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule& r
 		    (rule.m_config.m_options.find("url") == rule.m_config.m_options.end()) &&
 		    (rule.m_config.m_options.find("urls") == rule.m_config.m_options.end()))
 		{
-			LOG_DEBUG(
-			    "Prometheus autodetection: host_filter rule is missing url,urls or "
-			    "host/port config");
+			LOG_DEBUG("Prometheus autodetection: host_filter rule is missing url,urls or "
+			          "host/port config");
 			return false;
 		}
 	}
@@ -347,6 +346,32 @@ void prometheus_conf::register_annotations(std::function<void(const std::string&
 	base::register_annotations(reg, &m_host_rules);
 }
 
+void prometheus_conf::validate_config()
+{
+	if (enabled())
+	{
+		LOG_INFO("Prometheus: %d process_filter rules found, %d remote_services rules found.",
+			(int)m_rules.size(), (int)m_host_rules.size());
+		if (m_rules.empty() && m_host_rules.empty())
+		{
+			LOG_WARNING("Prometheus enabled, but no rules found for process_filter or remote_services, disabling");
+			set_enabled(false);
+		}
+		if (!ingest_raw() && !ingest_calculated())
+		{
+			LOG_WARNING("Prometheus enabled, but neither ingest_raw or ingest_calculated are selected, disabling");
+			set_enabled(false);
+		}
+		if (ingest_raw() && ingest_calculated())
+		{
+			LOG_INFO("Prometheus: both ingest_raw and ingest_calculated are enabled."
+				" Some timeseries will be reported twice");
+		}
+	}
+
+	promscrape::validate_config(*this);
+}
+
 Json::Value prom_process::to_json(const prometheus_conf& conf) const
 {
 	Json::Value ret;
@@ -458,10 +483,8 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 		sinsp_threadinfo* tinfo = threadtable.get(proc.m_pid);
 		if (!tinfo)
 		{
-			LOG_INFO(
-			    "Prometheus filter: Couldn't get thread info for pid %d, skipping port "
-			    "uniqueness filter",
-			    proc.m_pid);
+			LOG_INFO("Prometheus filter: Couldn't get thread info for pid %d, skipping port "
+			         "uniqueness filter", proc.m_pid);
 			continue;
 		}
 
@@ -470,11 +493,10 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 		{
 			if (portmetricmap.find(make_pair(tinfo->m_container_id, *it)) != portmetricmap.end())
 			{
-				LOG_DEBUG(
-				    "Prometheus filter: removing scan for port %d (pid %ld) because "
-				    "metrics already exist",
-				    *it,
-				    tinfo->m_pid);
+				LOG_DEBUG("Prometheus filter: removing scan for port %d (pid %ld) because "
+				          "metrics already exist",
+				          *it,
+				          tinfo->m_pid);
 				it = proc.m_ports.erase(it);
 			}
 			else

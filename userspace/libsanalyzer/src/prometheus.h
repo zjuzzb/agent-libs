@@ -115,6 +115,9 @@ public:
 	// Overloaded from the base class to include host rules
 	void register_annotations(std::function<void(const std::string& str)> reg);
 
+	// Validate config. Log and correct inconsistencies as needed
+	void validate_config();
+
 private:
 	bool m_log_errors;
 	int m_interval;

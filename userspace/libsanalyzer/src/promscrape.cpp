@@ -27,10 +27,41 @@ type_config<int> c_promscrape_connect_interval(
     "Interval for attempting to connect to promscrape",
     "promscrape_connect_interval");
 
-type_config<bool> promscrape::c_export_fastproto(
-    false,
-    "Whether or not to export metrics using newer protocol",
-    "promscrape_fastproto");
+type_config<bool>::mutable_ptr promscrape::c_export_fastproto =
+	type_config_builder<bool>(false,
+		"Whether or not to export metrics using newer protocol",
+		"promscrape_fastproto")
+	.post_init([](type_config<bool>& config)
+	{
+		bool &value = config.get_value();
+		if (!value)
+		{
+			return;
+		}
+		if (!c_use_promscrape.get_value())
+		{
+			LOG_INFO("promscrape_fastproto enabled without promscrape, disabling");
+			value = false;
+		}
+	})
+	.build_mutable();
+
+void promscrape::validate_config(prometheus_conf &prom_conf)
+{
+	bool &use_promscrape = c_use_promscrape.get_value();
+	if (use_promscrape && !prom_conf.enabled())
+	{
+		LOG_INFO("promscrape enabled without prometheus, disabling");
+		use_promscrape = false;
+	}
+	bool &fastproto = (*c_export_fastproto).get_value();
+	if (fastproto && !prom_conf.ingest_raw())
+	{
+		LOG_INFO("promscrape_fastproto is only supported for raw metrics, disabling."
+			" Enable prometheus.ingest_raw to enable fastproto");
+		fastproto = false;
+	}
+}
 
 promscrape::promscrape(metric_limits::sptr_t ml,
 	const prometheus_conf &prom_conf,
@@ -502,7 +533,7 @@ void promscrape::prune_jobs(uint64_t ts)
 // Currently only supported for 10s flush when fastproto is enabled
 bool promscrape::can_use_metrics_request_callback()
 {
-	return promscrape::c_export_fastproto.get_value() &&
+	return promscrape::c_export_fastproto->get_value() &&
 		configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value();
 }
 
@@ -527,7 +558,7 @@ std::shared_ptr<draiosproto::metrics> promscrape::metrics_request_callback()
 	for (int pid : export_pids)
 	{
 		LOG_DEBUG("callback: exporting pid %d", pid);
-		if (promscrape::c_export_fastproto.get_value())
+		if (promscrape::c_export_fastproto->get_value())
 		{
 			sent += pid_to_protobuf(pid, metrics.get(), remaining, m_prom_conf.max_metrics(),
 				&filtered, &total, true);

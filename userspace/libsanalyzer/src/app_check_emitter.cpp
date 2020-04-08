@@ -42,7 +42,7 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 		{
 			if (m_promscrape->pid_has_jobs((int)pid))
 			{
-				if (promscrape::c_export_fastproto.get_value())
+				if (promscrape::c_export_fastproto->get_value())
 				{
 					sent_prometheus_metrics += m_promscrape->pid_to_protobuf((int)pid,
 						&metrics,
