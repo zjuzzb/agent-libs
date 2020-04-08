@@ -959,8 +959,14 @@ void dragent_configuration::init()
 
 #endif  // CYGWING_AGENT
 
-	vector<string> default_pythons = {"/usr/bin/python2.7",
+	vector<string> default_pythons = {"/usr/bin/python3.9",
+					  "/usr/bin/python3.8",
+					  "/usr/bin/python3.7",
+					  "/usr/bin/python3.6",
+					  "/usr/bin/python3.5",
+	                                  "/usr/bin/python2.7",
 	                                  "/usr/bin/python27",
+					  "/usr/bin/python3",
 	                                  "/usr/bin/python2",
 	                                  "/usr/bin/python2.6",
 	                                  "/usr/bin/python26"};
