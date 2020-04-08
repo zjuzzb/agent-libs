@@ -841,10 +841,15 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 	bool ml_log = metric_limits::log_enabled();
 
 	auto prom = proto->add_prometheus();
-	prom->set_pid(job_config.pid);
+	// Add pid in source_metadata
+	auto meta = prom->add_source_metadata();
+	meta->set_name("pid");
+	meta->set_value(to_string(job_config.pid));
 	if (!job_config.container_id.empty())
 	{
-		prom->set_container_id(job_config.container_id);
+		meta = prom->add_source_metadata();
+		meta->set_name("container_id");
+		meta->set_value(job_config.container_id);
 	}
 	prom->set_timestamp(result_ptr->timestamp());
 	for (const auto &tag : job_config.add_tags)
