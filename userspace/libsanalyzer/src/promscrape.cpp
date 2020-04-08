@@ -27,6 +27,11 @@ type_config<int> c_promscrape_connect_interval(
     "Interval for attempting to connect to promscrape",
     "promscrape_connect_interval");
 
+type_config<int> c_promscrape_connect_delay(
+    8,
+    "Delay before attempting to connect to promscrape",
+    "promscrape_connect_delay");
+
 type_config<bool>::mutable_ptr promscrape::c_export_fastproto =
 	type_config_builder<bool>(false,
 		"Whether or not to export metrics using newer protocol",
@@ -74,6 +79,7 @@ promscrape::promscrape(metric_limits::sptr_t ml,
 		m_threaded(threaded),
 		m_prom_conf(prom_conf),
 		m_config_queue(3),
+		m_resend_config(false),
 		m_interval_cb(interval_cb),
 		m_last_proto_ts(0)
 {
@@ -129,9 +135,22 @@ void promscrape::start()
 	m_grpc_start->do_rpc(empty, callback);
 }
 
+int elapsed_s(uint64_t old, uint64_t now)
+{
+	return (now - old) / ONE_SECOND_IN_NS;
+}
+
 void promscrape::try_start()
 {
 	if (started())
+	{
+		return;
+	}
+	if (!m_boot_ts)
+	{
+		m_boot_ts = sinsp_utils::get_current_time_ns();
+	}
+	if (elapsed_s(m_boot_ts, sinsp_utils::get_current_time_ns()) < c_promscrape_connect_delay.get_value())
 	{
 		return;
 	}
@@ -143,15 +162,36 @@ void promscrape::try_start()
 
 void promscrape::reset()
 {
-	m_grpc_start = nullptr;
+	LOG_INFO("promscrape: resetting connection");
 	m_start_failed = false;
+	m_grpc_start = nullptr;
+	m_start_conn = nullptr;
+
+	// Resetting config connection as well
+	m_config_conn = nullptr;
+	m_grpc_applyconfig = nullptr;
+	m_resend_config = true;
 }
 
-void promscrape::applyconfig(agent_promscrape::Config &config)
+void promscrape::applyconfig()
 {
+	if (!started())
+	{
+		m_resend_config = true;
+		return;
+	}
+
 	auto callback = [this](bool ok, agent_promscrape::Empty& empty)
 	{
-		LOG_DEBUG("promscrape: config sent %s", ok ? "successfully" : "not ok");
+		if (ok)
+		{
+			LOG_DEBUG("promscrape: config sent successfully");
+		}
+		else
+		{
+			LOG_INFO("promscrape: failed to send config, retrying");
+			m_resend_config = true;
+		}
 	};
 
 	if (!m_config_conn) {
@@ -163,11 +203,13 @@ void promscrape::applyconfig(agent_promscrape::Config &config)
 		m_config_conn = grpc_connect<agent_promscrape::ScrapeService::Stub>(m_sock, 10, &args);
 		if (!m_config_conn) {
 			LOG_ERROR("promscrape: failed to connect to %s", m_sock.c_str());
+			m_resend_config = true;
 			return;
 		}
 	}
 	m_grpc_applyconfig = make_unique<unary_grpc_client(&agent_promscrape::ScrapeService::Stub::AsyncApplyConfig)>(m_config_conn);
-	m_grpc_applyconfig->do_rpc(config, callback);
+	m_grpc_applyconfig->do_rpc(*m_config, callback);
+	m_resend_config = false;
 }
 
 static int64_t g_prom_job_id = 0;
@@ -213,12 +255,12 @@ int64_t promscrape::assign_job_id(int pid, const string &url, const string &cont
 	return job_id;
 }
 
-void promscrape::addscrapeconfig(agent_promscrape::Config &config, int pid, const string &url,
+void promscrape::addscrapeconfig(int pid, const string &url,
         const string &container_id, const map<string, string> &options,
 		uint16_t port, const tag_map_t &tags, const tag_umap_t &infra_tags, uint64_t ts)
 {
 	string joburl;
-	auto scrape = config.add_scrape_configs();
+	auto scrape = m_config->add_scrape_configs();
 	auto target = scrape->mutable_target();
 	// Specified url overrides scheme, host, port, path
 	if (!url.empty()) {
@@ -343,11 +385,11 @@ void promscrape::sendconfig(const vector<prom_process> &prom_procs)
 
 void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 {
-	agent_promscrape::Config config;
-	config.set_scrape_interval_sec(m_prom_conf.interval());
-	config.set_ingest_raw(m_prom_conf.ingest_raw());
-	config.set_ingest_legacy(m_prom_conf.ingest_calculated());
-	config.set_legacy_histograms(m_prom_conf.histograms());
+	m_config = make_shared<agent_promscrape::Config>();
+	m_config->set_scrape_interval_sec(m_prom_conf.interval());
+	m_config->set_ingest_raw(m_prom_conf.ingest_raw());
+	m_config->set_ingest_legacy(m_prom_conf.ingest_calculated());
+	m_config->set_legacy_histograms(m_prom_conf.histograms());
 
 	{	// Scoping lock here because applyconfig doesn't need it and prune_jobs takes its own lock
 		std::lock_guard<std::mutex> lock(m_map_mutex);
@@ -359,7 +401,7 @@ void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 			if (opt_it != p.options().end())
 			{
 				// Specified url overrides everything else
-				addscrapeconfig(config, p.pid(), opt_it->second, p.container_id(), p.options(), 0, p.tags(), p.infra_tags(), m_next_ts);
+				addscrapeconfig(p.pid(), opt_it->second, p.container_id(), p.options(), 0, p.tags(), p.infra_tags(), m_next_ts);
 				continue;
 			}
 			if (p.ports().empty())
@@ -370,13 +412,13 @@ void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 
 			for (auto port : p.ports())
 			{
-				addscrapeconfig(config, p.pid(), empty, p.container_id(), p.options(), port, p.tags(), p.infra_tags(), m_next_ts);
+				addscrapeconfig(p.pid(), empty, p.container_id(), p.options(), port, p.tags(), p.infra_tags(), m_next_ts);
 			}
 		}
 		m_last_config_ts = m_next_ts;
 	}
-	LOG_DEBUG("promscrape: sending config %s", config.DebugString().c_str());
-	applyconfig(config);
+	LOG_DEBUG("promscrape: sending config %s", m_config->DebugString().c_str());
+	applyconfig();
 	prune_jobs(m_next_ts);
 }
 
@@ -418,11 +460,10 @@ void promscrape::next_th()
 			reset();
 		}
 	}
-}
-
-int elapsed_s(uint64_t old, uint64_t now)
-{
-	return (now - old) / ONE_SECOND_IN_NS;
+	if (m_resend_config && started())
+	{
+		applyconfig();
+	}
 }
 
 void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
@@ -435,7 +476,7 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 		auto job_it = m_jobs.find(job_id);
 		if (job_it == m_jobs.end())
 		{
-			LOG_WARNING("promscrape: received results for unknown job %" PRId64, job_id);
+			LOG_INFO("promscrape: received results for unknown job %" PRId64, job_id);
 			// Dropping results for unknown (possibly pruned) job
 			return;
 		}

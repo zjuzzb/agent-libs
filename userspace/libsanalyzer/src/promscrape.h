@@ -96,12 +96,12 @@ private:
 	void start();
 	int64_t assign_job_id(int pid, const std::string &url,
 		const std::string &container_id, const tag_map_t &tags, uint64_t ts);
-	void addscrapeconfig(agent_promscrape::Config &config, int pid, const std::string &url,
+	void addscrapeconfig(int pid, const std::string &url,
 		const std::string &container_id, const std::map<std::string, std::string> &options,
 		uint16_t port, const tag_map_t &tags, const tag_umap_t &infra_tags, uint64_t ts);
 	void settargetauth(agent_promscrape::Target *target,
 		const std::map<std::string, std::string> &options);
-	void applyconfig(agent_promscrape::Config &config);
+	void applyconfig();
 	void handle_result(agent_promscrape::ScrapeResult &result);
 	void prune_jobs(uint64_t ts);
 
@@ -122,6 +122,7 @@ private:
 	std::unique_ptr<unary_grpc_client(&agent_promscrape::ScrapeService::Stub::AsyncApplyConfig)> m_grpc_applyconfig;
 
 	run_on_interval m_start_interval;
+	uint64_t m_boot_ts = 0;
 
 	std::atomic<uint64_t> m_next_ts;
 	uint64_t m_last_config_ts;
@@ -134,6 +135,8 @@ private:
 
 	thread_safe_container::blocking_queue<vector<prom_process>> m_config_queue;
 	vector<prom_process> m_last_prom_procs;
+	std::shared_ptr<agent_promscrape::Config> m_config;
+	bool m_resend_config;
 	interval_cb_t m_interval_cb;
 	uint64_t m_last_proto_ts;
 
