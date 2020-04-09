@@ -30,10 +30,9 @@ pipeline {
 			expression { params.CREATE_RELEASE_BRANCH == true }
 	    }
 	    steps {
-			slackSend channel: '#docs', message: "@here Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
-			slackSend channel: '#support', message: "@here Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
+			slackSend channel: '#docs', message: "Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
+			slackSend channel: '#support', message: "Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
 			slackSend channel: '#ws-agent-core', message: "@here Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
-			slackSend channel: '#ws-agent-core-team', message: "Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
 			withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
 				dir('agent') {
 					sh label: '', script: """
@@ -157,7 +156,7 @@ pipeline {
 						echo "Deleting release id \$RELEASE_ID"
 						curl -sH "Authorization: token $GITHUB_PASSWORD" -X DELETE https://api.github.com/repos/draios/agent/releases/\$RELEASE_ID
 					fi
-					curl -H "Authorization: token $GITHUB_PASSWORD" --data '{"tag_name":"${params.RELEASE_VERSION}","name":"${params.RELEASE_VERSION}","body":"https://sysdig.atlassian.net/issues/?jql=fixVersion%20%3D%2${params.RELEASE_VERSION} \\n\\n $ADDITIONAL_RELEASE_TEXT","target_commitish":"release-${params.RELEASE_VERSION}","draft":false}' https://api.github.com/repos/draios/agent/releases
+					curl -H "Authorization: token $GITHUB_PASSWORD" --data '{"tag_name":"${params.RELEASE_VERSION}","name":"${params.RELEASE_VERSION}","body":"https://sysdig.atlassian.net/issues/?jql=fixVersion%20%3D%20${params.RELEASE_VERSION} \\n\\n $ADDITIONAL_RELEASE_TEXT","target_commitish":"release-${params.RELEASE_VERSION}","draft":false}' https://api.github.com/repos/draios/agent/releases
 					RELEASE_ID=`curl -sH "Authorization: token $GITHUB_PASSWORD" https://api.github.com/repos/draios/agent/releases/tags/$RELEASE_VERSION | grep \"id\" | head -n 1 | awk '{print \$2}' | sed 's/.\$//'`
 					curl -H "Authorization: token $GITHUB_PASSWORD" --data '{"draft":false}' https://api.github.com/repos/draios/agent/releases/\$RELEASE_ID
 				"""
