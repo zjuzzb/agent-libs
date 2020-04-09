@@ -16,7 +16,7 @@ else:
     sys.path.insert(0, install_prefix + '/lib/python-deps')
     if python_version == (2, 7):
         sys.path.insert(0, bin_deps_dir)
-    elif (3, 5) <= python_version <= (3, 7):
+    elif (3, 5) <= python_version <= (3, 9):
         sys.path.insert(0, bin_deps_dir)
         bin_deps3_common_dir = install_prefix + '/lib/python-deps3'
         sys.path.insert(0, bin_deps3_common_dir)
