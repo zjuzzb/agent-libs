@@ -66,7 +66,11 @@ func (impl *KubeBenchImpl) Variant(stask *ScheduledTask) (string) {
 		// at this level we only need to distinguish between master
 		// and node versions.
 
-		servercmds := []string{"kube-apiserver", "hyperkube apiserver", "apiserver", "hypershift openshift-kube-apiserver"}
+		servercmds := []string{"kube-apiserver",
+			"hyperkube apiserver",
+			"hyperkube kube-apiserver",
+			"apiserver",
+			"hypershift openshift-kube-apiserver"}
 		if findProcess(servercmds, stask.env) {
 			impl.variant = "master"
 		} else {
