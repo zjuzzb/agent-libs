@@ -42,8 +42,8 @@ pipeline {
 					sh label: '', script: '''
 						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
 						docker pull quay.io/sysdig/agent-builder:latest
-						docker pull quay.io/sysdig/agent-builder:${AGENT_BRANCH} || echo "agent-builder:${AGENT_BRANCH} not found"
-						docker build --build-arg max_parallelism=$(nproc) -t quay.io/sysdig/agent-builder:$AGENT_BRANCH -f agent/docker/builder/Dockerfile --pull agent/docker/builder
+						docker pull quay.io/sysdig/agent-builder:$CONTAINER_NAME || echo "agent-builder:$CONTAINER_NAME not found"
+						docker build --build-arg max_parallelism=$(nproc) -t quay.io/sysdig/agent-builder:$CONTAINER_NAME -f agent/docker/builder/Dockerfile --pull agent/docker/builder
 					'''
 				}
 			}
