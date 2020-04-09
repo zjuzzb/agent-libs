@@ -119,7 +119,7 @@ pipeline {
 			}
 			stage('System Test') {
 				steps {
-					build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOMETHEUS_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION")]
+					build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROMETHEUS_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION")]
 				}
 			}
 		}
