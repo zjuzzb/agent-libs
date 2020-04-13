@@ -7,6 +7,7 @@
 #include "infrastructure_state.h"
 #include "security_config.h"
 #include "statsite_config.h"
+#include <utils.h>
 
 using namespace std;
 using namespace libsanalyzer;
@@ -371,8 +372,8 @@ void compliance_mgr::check_pending_task_results()
 		{
 			if(cevent.results().results_size() > 0)
 			{
-				m_result_handler.security_mgr_comp_results_ready(cevent.results().results(0).timestamp_ns(),
-										 &(cevent.results()));
+				m_result_handler.security_mgr_comp_results_ready(sinsp_utils::get_current_time_ns(),
+				                                                 &(cevent.results()));
 			}
 		}
 	}
