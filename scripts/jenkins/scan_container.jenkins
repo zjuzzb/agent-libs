@@ -1,0 +1,37 @@
+pipeline {
+    agent { label 'agent-docker-builder' }
+
+    stages {
+
+	stage('Pull Container') {
+		steps {
+            withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME'), usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+                sh label: '', script: """
+                    docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+                    docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+					docker pull ${params.CONTAINER_NAME}
+					echo ${params.CONTAINER_NAME} > file_with_name_of_container
+                """
+            }
+		}
+	}
+
+	stage('Scan Container') {
+		steps {
+			sysdig engineRetries: '10000', name: 'file_with_name_of_container'
+		}
+	}
+
+	}
+
+	post {
+		always {
+			sh label: '', script: """
+				docker rmi ${params.CONTAINER_NAME}
+			"""
+			cleanWs deleteDirs: true, notFailBuild: true
+		}
+	}
+
+}
+
