@@ -12,6 +12,7 @@ using namespace std;
 #include "sinsp_mock.h"
 #include "watchdog_runnable.h"
 #include "connection_manager.h"
+#include "cm_proxy_tunnel.h"
 #include "fake_collector.h"
 #include "handshake.pb.h"
 #include "draios.pb.h"
@@ -19,6 +20,7 @@ using namespace std;
 
 #include "protobuf_metric_serializer.h"
 #include "protocol_handler.h"
+#include "http_server.h"
 
 #include <Poco/Net/SSLManager.h>
 
@@ -1542,4 +1544,290 @@ TEST(connection_manager_test, backoff_recovery_v4)
 	t.join();
 	serializer.stop();
 	st.join();
+}
+
+////////////////////////////////////////////////////////////
+// HTTP Proxy tests
+////////////////////////////////////////////////////////////
+
+// Build an HTTPResponseHandler that will verify the proxy connect
+class HTTPProxyHandler : public Poco::Net::HTTPRequestHandler
+{
+public:
+	virtual void handleRequest(Poco::Net::HTTPServerRequest& request,
+	                           Poco::Net::HTTPServerResponse& response) override
+	{
+		// Validate the request
+		if (request.getMethod() != Poco::Net::HTTPRequest::HTTP_CONNECT)
+		{
+			std::cerr << "Mismatch: " << request.getMethod()
+			          << " != " << Poco::Net::HTTPRequest::HTTP_CONNECT
+			          << std::endl;
+			++bad_requests;
+			return;
+		}
+		if (request.getHost() != "sysdig.com:1234")
+		{
+			std::cerr << "Mismatch: " << request.getHost()
+			          << " != sysdig.com:1234" << std::endl;
+			++bad_requests;
+			return;
+		}
+
+		response.setStatus(Poco::Net::HTTPResponse::HTTP_OK);
+		response.setContentType("text/html");
+
+		std::ostream& out = response.send();
+		out << "<html><body>"
+		    << "<h1>Sysdig agent proxy test test</h1>"
+		    << "<p>Request host = " << request.getHost() << "</p>"
+		    << "<p>Request URI = " << request.getURI() << "</p>"
+		    << "</body></html>" << std::flush;
+
+		++good_requests;
+	}
+
+	static uint32_t good_requests;
+	static uint32_t bad_requests;
+	static void reset()
+	{
+		good_requests = 0;
+		bad_requests = 0;
+	}
+};
+
+uint32_t HTTPProxyHandler::good_requests = 0;
+uint32_t HTTPProxyHandler::bad_requests = 0;
+
+class HTTPProxyBigRespHandler : public HTTPProxyHandler
+{
+public:
+	std::string get_random_string(uint32_t length)
+	{
+		std::stringstream ss;
+		char c;
+
+		for (uint32_t i = 0; i < length; ++i)
+		{
+			c = 'A' + (rand() % ('z' - 'A'));
+			ss << c;
+		}
+		return ss.str();
+	}
+
+	virtual void handleRequest(Poco::Net::HTTPServerRequest& request,
+	                           Poco::Net::HTTPServerResponse& response) override
+	{
+		// Validate the request
+		if (request.getMethod() != Poco::Net::HTTPRequest::HTTP_CONNECT)
+		{
+			std::cerr << "Mismatch: " << request.getMethod()
+			          << " != " << Poco::Net::HTTPRequest::HTTP_CONNECT
+			          << std::endl;
+			++HTTPProxyHandler::bad_requests;
+			return;
+		}
+		if (request.getHost() != "sysdig.com:1234")
+		{
+			std::cerr << "Mismatch: " << request.getHost()
+			          << " != sysdig.com:1234" << std::endl;
+			++HTTPProxyHandler::bad_requests;
+			return;
+		}
+
+		response.setStatus(Poco::Net::HTTPResponse::HTTP_OK);
+		response.setContentType("text/html");
+		response.set("x-application-garbage-data", get_random_string(1024));
+
+		std::ostream& out = response.send();
+		out << "<html><body>"
+		    << "<h1>Sysdig agent proxy test test</h1>"
+		    << "<p>Request host = " << request.getHost() << "</p>"
+		    << "<p>Request URI = " << request.getURI() << "</p>";
+
+		out << "</body></html>" << std::flush;
+
+		++HTTPProxyHandler::good_requests;
+	}
+};
+
+///
+/// Sample request handler factory for a trivial HTTP request handler
+///
+class HTTPPHFactory : public Poco::Net::HTTPRequestHandlerFactory
+{
+public:
+	HTTPPHFactory() : HTTPPHFactory(false) {}
+	HTTPPHFactory(bool big_resp) : m_big_resp(big_resp) {}
+
+	virtual Poco::Net::HTTPRequestHandler* createRequestHandler(
+	        const Poco::Net::HTTPServerRequest&)
+	{
+		if (m_big_resp)
+		{
+			return new HTTPProxyBigRespHandler;
+		}
+
+		return new HTTPProxyHandler();
+	}
+
+private:
+	bool m_big_resp;
+};
+
+TEST(connection_manager_test, incomplete_resp)
+{
+	Poco::Buffer<char> resp(0);
+	std::string str;
+
+	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
+
+	str = "General nonsense";
+	resp.append(str.c_str(), str.length());
+
+	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
+
+	str = "\r\n";
+	resp.append(str.c_str(), str.length());
+
+	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
+
+	str = "Specific nonsense \r with embedded nonsense \n\r\n";
+	resp.append(str.c_str(), str.length());
+
+	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
+
+	str = "Bogosity without end \r\n \r\n";
+	resp.append(str.c_str(), str.length());
+
+	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
+
+	str = "\n\r\n\n\n\n\r\n";
+	resp.append(str.c_str(), str.length());
+
+	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
+}
+
+TEST(connection_manager_test, complete_resp)
+{
+	Poco::Buffer<char> resp(0);
+	std::string str;
+
+	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
+
+	str = "General nonsense\r\n"
+	      "Thing: other thing\r\n"
+	      "Foo: Bar\r\n"
+	      "\r\n";
+	resp.append(str.c_str(), str.length());
+
+	ASSERT_TRUE(http_tunnel::is_resp_complete(resp));
+
+	str = "\r\n\r\n";
+	resp.assign(str.c_str(), str.length());
+
+	ASSERT_TRUE(http_tunnel::is_resp_complete(resp));
+}
+
+TEST(connection_manager_test, parse_resp)
+{
+	std::string resp;
+	Poco::Buffer<char> buf(0);
+	http_tunnel::http_response rcode;
+
+	// 1. Standard success response (taken from an actual proxy)
+	buf.clear();
+	resp = "HTTP/1.1 200 Connection established\r\n\r\n";
+	buf.assign(resp.c_str(), resp.length());
+	rcode = http_tunnel::parse_resp(buf);
+	ASSERT_TRUE(rcode.is_valid);
+	ASSERT_EQ(200, rcode.resp_code);
+
+	// 2. Standard failure response (taken from an actual proxy)
+	// Note: this string is truncated at 1024 bytes as it would
+	//       be in the actual http tunnel.
+	buf.clear();
+	resp = "HTTP/1.1 503 Service Unavailable\r\n"
+	       "Server: squid/3.5.12\r\n"
+	       "Mime-Version: 1.0\r\n"
+	       "Date: Fri, 03 Apr 2020 10:30:33 GMT\r\n"
+	       "Content-Type: text/html;charset=utf-8\r\n"
+	       "Content-Length: 3613\r\n"
+	       "X-Squid-Error: ERR_CONNECT_FAIL 111\r\n"
+	       "Vary: Accept-Language\r\n"
+	       "Content-Language: en\r\n"
+	       "\r\n\r\n"
+	       "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\" "
+	       "\"http://www.w3.org/TR/html4/strict.dtd\">\r\n"
+	       "<html><head>\r\n"
+	       "<meta type=\"copyright\" "
+	       "content=\"Copyright (C) 1996-2015 The Squid Software Foundation and contributors\">\r\n"
+	       "<meta http-equiv=\"Content-Type\" CONTENT=\"text/html; charset=utf-8\">\r\n"
+	       "<title>ERROR: The requested URL could not be retrieved</title>\r\n"
+	       "<style type=\"text/css\"><!-- \r\n"
+	       " /*\r\n"
+	       " * Copyright (C) 1996-2015 The Squid Software Foundation and contributors\r\n"
+	       " * \r\n"
+	       " * Squid software is distributed under GPLv2+ license and includes\r\n"
+	       "\r\n * contributions from numerous individuals and organizations."
+	       " * Please see the COPYING and CONTRIBUTORS files for details.\r\n"
+	       " */\r\n"
+	       "\r\n"
+	       "/*\r\n"
+	       " Stylesheet for Squid Error pages\r\n"
+	       " Adapted from design by Free CSS Templates\r\n"
+	       " http://www.freecsstemplates.org\r\n"
+	       " Release\r\n";
+	buf.assign(resp.c_str(), resp.length());
+	rcode = http_tunnel::parse_resp(buf);
+	ASSERT_TRUE(rcode.is_valid);
+	ASSERT_EQ(503, rcode.resp_code);
+
+	// 3. Empty string
+	buf.clear();
+	rcode = http_tunnel::parse_resp(buf);
+	ASSERT_FALSE(rcode.is_valid);
+
+	// 4. Garbage string
+	buf.clear();
+	resp = "Who are you calling garbage, mister?";
+	buf.assign(resp.c_str(), resp.length());
+	rcode = http_tunnel::parse_resp(buf);
+	ASSERT_FALSE(rcode.is_valid);
+}
+
+TEST(connection_manager_test, basic_proxy_connect)
+{
+	HTTPProxyHandler::reset();
+	scoped_http_server srv(9090, new HTTPPHFactory());
+
+	try
+	{
+		auto ret = http_tunnel::establish_tunnel("127.0.0.1", 9090, "sysdig.com", 1234);
+	}
+	catch (Poco::Exception& ex)
+	{
+		std::cerr << "Poco exception " << ex.displayText() << std::endl;
+	}
+
+	ASSERT_EQ(1, HTTPProxyHandler::good_requests);
+	ASSERT_EQ(0, HTTPProxyHandler::bad_requests);
+}
+
+TEST(connection_manager_test, proxy_connect_big_resp)
+{
+	HTTPProxyHandler::reset();
+	scoped_http_server srv(9090, new HTTPPHFactory(true));
+
+	try
+	{
+		auto ret = http_tunnel::establish_tunnel("127.0.0.1", 9090, "sysdig.com", 1234);
+	}
+	catch (Poco::Exception& ex)
+	{
+		std::cerr << "Poco exception " << ex.displayText() << std::endl;
+	}
+
+	ASSERT_EQ(1, HTTPProxyHandler::good_requests);
+	ASSERT_EQ(0, HTTPProxyHandler::bad_requests);
 }

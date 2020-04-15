@@ -10,6 +10,7 @@
 #include "utils.h"
 #include "watchdog_runnable_fatal_error.h"
 #include "async_aggregator.h" // For aggregator limits
+#include "cm_proxy_tunnel.h"
 #include <future>
 #include <errno.h>
 #include <memory>
@@ -29,6 +30,20 @@ type_config<uint32_t> c_reconnect_max_backoff_s(
         360,
         "The ceiling for the exponential backoff on error, in seconds.",
         "reconnect_max_backoff");
+
+type_config<std::string> c_proxy_host(
+        "",
+        "Address or hostname of an HTTP proxy server to connect through. "
+        "Requires proxy_port to also be set.",
+        "http_proxy",
+        "proxy_host");
+
+type_config<uint32_t> c_proxy_port(
+        0,
+        "Port of an HTTP proxy server to connect through. "
+        "Requires proxy_host to also be set.",
+        "http_proxy",
+        "proxy_port");
 
 using namespace std;
 
@@ -404,6 +419,62 @@ std::string connection_manager::find_ca_cert_path(const std::vector<std::string>
 	return "";
 }
 
+connection_manager::socket_ptr socket_connect(const SocketAddress sa,
+                                              uint32_t timeout_us)
+{
+	auto ssp = std::make_shared<Poco::Net::StreamSocket>();
+	ssp->connect(sa, timeout_us);
+
+
+	return ssp;
+}
+
+connection_manager::socket_ptr ssl_connect(const SocketAddress sa,
+                                           const std::string hostname,
+                                           uint32_t timeout_us)
+{
+	auto sss = new Poco::Net::SecureStreamSocket();
+
+	sss->setLazyHandshake(true);
+	sss->setPeerHostName(hostname);
+	sss->connect(sa, timeout_us);
+	//
+	// This is done to prevent getting stuck forever waiting during the handshake
+	// if the server doesn't speak to us
+	//
+	sss->setSendTimeout(timeout_us);
+	sss->setReceiveTimeout(timeout_us);
+
+	LOG_INFO("Performing SSL handshake");
+	int32_t ret = sss->completeHandshake();
+
+	if (ret == 1)
+	{
+		sss->verifyPeerCertificate();
+		LOG_INFO("SSL identity verified");
+	}
+	else
+	{
+		LOG_ERROR("SSL Handshake didn't complete");
+		return nullptr;  // This will restart the connection process
+	}
+
+	Poco::Net::StreamSocket* ss = sss;
+	connection_manager::socket_ptr sp(ss);
+	return sp;
+}
+
+connection_manager::socket_ptr http_proxy_connect(const std::string collector_address,
+                                                  uint16_t collector_port,
+                                                  const std::string proxy_address,
+                                                  uint16_t proxy_port)
+{
+	return http_tunnel::establish_tunnel(proxy_address,
+	                                     proxy_port,
+	                                     collector_address,
+	                                     collector_port);
+}
+
 bool connection_manager::connect()
 {
 	uint32_t connect_timeout_us = connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US;
@@ -432,7 +503,7 @@ bool connection_manager::connect()
 	                                                       const uint32_t reconnect_interval,
 	                                                       const uint32_t connect_timeout_us)
 	{
-		StreamSocket* ssp = nullptr;
+		connection_manager::socket_ptr ssp = nullptr;
 
 		try
 		{
@@ -463,44 +534,43 @@ bool connection_manager::connect()
 				return;
 			}
 
-			SocketAddress sa(hostname, port);
-			// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-			LOG_INFO("Connecting to collector " + sa.toString());
 
-			if (ssl_enabled)
+			if (!c_proxy_host.get_value().empty() && c_proxy_port.get_value() != 0)
 			{
-				auto sss = new Poco::Net::SecureStreamSocket();
-
-				sss->setLazyHandshake(true);
-				sss->setPeerHostName(hostname);
-				sss->connect(sa, connect_timeout_us);
-				//
-				// This is done to prevent getting stuck forever waiting during the handshake
-				// if the server doesn't speak to us
-				//
-				sss->setSendTimeout(connect_timeout_us);
-				sss->setReceiveTimeout(connect_timeout_us);
-
-				LOG_INFO("Performing SSL handshake");
-				int32_t ret = sss->completeHandshake();
-
-				if (ret == 1)
-				{
-					sss->verifyPeerCertificate();
-					LOG_INFO("SSL identity verified");
-				}
-				else
-				{
-					LOG_ERROR("SSL Handshake didn't complete");
-					sock_promise.set_value(nullptr);
-					return;  // This will restart the connection process
-				}
-				ssp = sss;
+				// Connect using proxy
+				ssp = http_proxy_connect(hostname,
+				                         port,
+				                         c_proxy_host.get_value(),
+				                         c_proxy_port.get_value());
 			}
 			else
 			{
-				ssp = new Poco::Net::StreamSocket();
-				ssp->connect(sa, connect_timeout_us);
+				if ((!c_proxy_host.get_value().empty() && c_proxy_port.get_value() == 0) ||
+				    (c_proxy_host.get_value().empty() && c_proxy_port.get_value() != 0))
+				{
+					// Having a proxy host without a proxy port or vice versa is
+					// not a valid configuration
+					LOG_WARNING("proxy_host and proxy_port must both be set before "
+					            "HTTP proxy tunneling will work");
+				}
+				SocketAddress sa(hostname, port);
+				// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
+				LOG_INFO("Connecting to collector " + sa.toString());
+
+				if (ssl_enabled)
+				{
+					ssp = ssl_connect(sa, hostname, connect_timeout_us);
+				}
+				else
+				{
+					ssp = socket_connect(sa, connect_timeout_us);
+				}
+			}
+
+			if (ssp == nullptr)
+			{
+				sock_promise.set_value(nullptr);
+				return;
 			}
 
 			// Set additional socket options post-connect

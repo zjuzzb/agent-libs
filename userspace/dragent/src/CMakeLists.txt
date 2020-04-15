@@ -36,6 +36,7 @@ list(
     avoid_block_channel.cpp
     baseline_mgr.cpp
     capture_job_handler.cpp
+    cm_proxy_tunnel.cpp
     compliance_mgr.cpp
     configlist_rest_request_handler.cpp
     configuration.cpp

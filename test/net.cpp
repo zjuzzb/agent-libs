@@ -43,6 +43,7 @@
 #include "sinsp_int.h"
 
 #include "test-helpers/scoped_config.h"
+#include "test-helpers/http_server.h"
 
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPRequestHandlerFactory.h>
@@ -322,46 +323,6 @@ public:
 	}
 };
 
-//
-// HTTP server stuff
-//
-
-///
-/// Handle incoming HTTP requests
-///
-/// Implements a very simple request handler
-///
-class HTTPHandler : public Poco::Net::HTTPRequestHandler
-{
-public:
-	virtual void handleRequest(HTTPServerRequest& request, HTTPServerResponse& response) override
-	{
-		response.setStatus(HTTPResponse::HTTP_OK);
-		response.setContentType("text/html");
-
-		ostream& out = response.send();
-		out << "<html><body>"
-		    << "<h1>Sysdig agent test</h1>"
-		    << "<p>Request host = " << request.getHost() << "</p>"
-		    << "<p>Request URI = " << request.getURI() << "</p>"
-		    << "</body></html>" << flush;
-	}
-};
-
-///
-/// Build a request handler when requested by the server
-///
-class HTTPRHFactory : public Poco::Net::HTTPRequestHandlerFactory
-{
-public:
-	static const uint16_t port = 9090;
-	static const uint16_t secure_port = 443;  // The proto analyzer will barf if it's a wonky port
-	virtual HTTPHandler* createRequestHandler(const HTTPServerRequest&)
-	{
-		return new HTTPHandler();
-	}
-};
-
 ///
 /// So that callers don't have to remember all the magic words to get the socket.
 ///
@@ -478,40 +439,6 @@ bool localhost_ssl_request(uint16_t port)
 		SSL_CTX_free(ctx);
 	}
 
-	return true;
-}
-
-///
-/// Make an HTTP request to the built-in server
-///
-/// This function knows how to connect to the above server class and provides
-/// a convenient interface for making a simple request (assuming we don't care
-/// about the response).
-///
-/// It will block until the response is received.
-///
-/// @return  true   The request was made successfully
-/// @return  false  The request failed before it could be made
-///
-bool localhost_http_request(uint16_t port)
-{
-	cerr << "Sending http request" << endl;
-	try
-	{
-		NullOutputStream ostr;
-		stringstream ss;
-
-		Poco::Net::HTTPClientSession session("http://127.0.0.1", port);
-		Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_GET);
-		Poco::Net::HTTPResponse response;
-		session.sendRequest(request);
-		session.receiveResponse(response);
-	}
-	catch (const Exception& ex)
-	{
-		cerr << "Exception: " << ex.displayText() << endl;
-		return false;
-	}
 	return true;
 }
 
@@ -880,21 +807,7 @@ TEST_F(sys_call_test, net_connection_table_limit)
 	run_callback_t test = [&](sinsp* inspector) {
 		const int REQUESTS_TO_SEND = 5;
 		int num_requests = 0;
-		// Spin up a thread to run the HTTP server
-		std::thread ws_thread([&num_requests] {
-			HTTPServer srv(new HTTPRHFactory,
-			               ServerSocket(HTTPRHFactory::port),
-			               new HTTPServerParams);
-
-			srv.start();
-
-			while (num_requests < REQUESTS_TO_SEND)
-			{
-				std::this_thread::sleep_for(chrono::milliseconds(250));
-			}
-
-			srv.stop();
-		});
+		test_helpers::scoped_http_server srv(9090);
 
 		try
 		{
@@ -924,7 +837,10 @@ TEST_F(sys_call_test, net_connection_table_limit)
 			FAIL();
 		}
 
-		ws_thread.join();
+		while (num_requests < REQUESTS_TO_SEND)
+		{
+			std::this_thread::sleep_for(chrono::milliseconds(250));
+		}
 		return;
 	};
 

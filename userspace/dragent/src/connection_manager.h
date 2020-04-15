@@ -137,6 +137,8 @@ class connection_manager : public dragent::watchdog_runnable,
                            public compression_method_source
 {
 public:
+	using socket_ptr = std::shared_ptr<Poco::Net::StreamSocket>;
+
 	class message_handler
 	{
 	public:
@@ -403,8 +405,6 @@ public:
 	}
 
 private:
-	using socket_ptr = std::shared_ptr<Poco::Net::StreamSocket>;
-
 	struct unacked_message
 	{
 		dragent_protocol_header_v5 header;
@@ -579,11 +579,13 @@ private:
 #ifndef CYGWING_AGENT
 	bool prometheus_connected() const;
 #endif
+public:
 	static const uint32_t MAX_RECEIVER_BUFSIZE = 1 * 1024 * 1024; // 1MiB
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
 	static const uint32_t RECONNECT_MIN_INTERVAL_S;
 	static const unsigned int SOCKET_TCP_TIMEOUT_MS = 60 * 1000;
 
+private:
 	message_handler_map m_handler_map;
 	std::vector<dragent_protocol::protocol_version> m_supported_protocol_versions;
 	std::vector<protocol_compression_method> m_supported_compression_methods;

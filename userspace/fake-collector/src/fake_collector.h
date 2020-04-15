@@ -201,7 +201,6 @@ public:
 		if (!should_delay)
 		{
 			// Send delayed acks
-			std::cout << "Sending " << m_delayed_metrics.size() << " delayed acks" << std::endl;
 			while (!m_delayed_metrics.empty())
 			{
 				auto m = m_delayed_metrics.front();
