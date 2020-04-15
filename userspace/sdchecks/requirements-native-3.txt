@@ -13,12 +13,3 @@ python-memcached==1.59
 # checks.d/php-fpm.py
 flup-py3==1.0.3
 
-pyopenssl==19.0.0
-
-# checks.d/postgres.py
-# checks.d/pgbouncer.py
-# Require libpq
-psycopg2==2.7.3.2
-
-# checks.d/mysql.py
-pymysql==0.9.3
