@@ -24,7 +24,7 @@ void setBuildStatus(String context, String message, String state) {
 }
 
 pipeline {
-	agent { label 'agent-docker-builder' }
+	agent { label 'agent-builder-parallel' }
 	options {
 		timeout(time: 60, unit: 'MINUTES')
 	}
