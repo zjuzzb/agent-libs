@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'agent-docker-builder' }
+    agent { label 'agent-builder-parallel' }
 
     stages {
 
@@ -22,6 +22,29 @@ pipeline {
 				checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/prometheus']]])
 			}
 	    }
+	}
+
+	stage('Switch to Release Base') {
+		when {
+			expression { params.RELEASE_BASE != dev }
+		}
+		steps {
+			dir('agent') {
+				sh "git checkout release-${params.RELEASE_BASE}"
+			}
+			dir('sysdig') {
+				sh "git checkout agent-release-${params.RELEASE_BASE}"
+			}
+			dir('oss-falco') {
+				sh "git checkout agent-release-${params.RELEASE_BASE}"
+			}
+			dir('protorepo') {
+				sh "git checkout agent-release-${params.RELEASE_BASE}"
+			}
+			dir('prometheus') {
+				sh "git checkout agent-release-${params.RELEASE_BASE}"
+			}
+		}
 	}
 
 	// if we need to push the release branch, do so
@@ -128,21 +151,18 @@ pipeline {
 	// Uploaded image should be sysdig/agent:${params.RELEASE_VERSION}-rc
 	stage('Build RC') {
 		steps {
-            withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME'), usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
-                sh label: '', script: """
-                    docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-                    docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
-                    export S3_BUCKET="s3://download.draios.com"
-                    export AGENT_VERSION="${params.RELEASE_VERSION}"
-                    agent/scripts/jenkins/build-agent-release rc
-                """
-            }
-
-			// build job:'agent-build-rc',parameters:[string(name:'RELEASE_VERSION',value:"${params.RELEASE_VERSION}")]
+			build job:'agent-build-rc',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROMETHEUS_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION"),string(name:'RELEASE_VERSION', value:"$RELEASE_VERSION"),booleanParam(name:'UPLOAD', value:true),booleanParam(name:'PUBLIC_RELEASE', value:true)]
 		}
 	}
 
-	// create github release
+	stage('Scan Release Container') {
+		steps {
+			build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"sysdig/agent:${params.RELEASE_VERSION}-rc")],propagate: false
+		}
+	}
+
+	// create github release. For some reason this doesn't publish. We even send the
+	// code to commit it twice. shrug.
 	stage('github release') {
 	    steps {
 			withCredentials([usernamePassword(credentialsId: 'github-jenkins-user-token', passwordVariable: 'GITHUB_PASSWORD', usernameVariable: 'GITHUB_USERNAME')]) { 
@@ -252,56 +272,50 @@ pipeline {
 			}
 	    }
 	}
+	*/
 
-	stage('Wait for QA') {
-	    steps {
-			//slackSend channel: '#ws-agent-core', message: "@here Agent release ${params.RELEASE_VERSION} is ready for testing. When complete, go to https://sysdig-jenkins.internal.sysdig.com/job/agent-release/ and approve the release.", tokenCredentialId: 'slack'
-			slackSend channel: '#ws-agent-core-team', message: "Agent release ${params.RELEASE_VERSION} is ready for testing. When complete, go to https://sysdig-jenkins.internal.sysdig.com/job/agent-release/ and approve the release.", tokenCredentialId: 'slack'
-			input message: 'QA Complete', ok: 'Approve Release'
-	    }
-	}
-
-	stage('Wait for Docs') {
-	    steps {
-			//slackSend channel: '#ws-agent-core', message: "@here Agent release ${params.RELEASE_VERSION} is QA approved and awaits Docs team for approvals. When complete, go to https://sysdig-jenkins.internal.sysdig.com/job/agent-release/ and approve the release.", tokenCredentialId: 'slack'
-			//slackSend channel: '#docs', message: "@here Agent release ${params.RELEASE_VERSION} is QA approved and awaits Docs team for approvals. When complete, go to https://sysdig-jenkins.internal.sysdig.com/job/agent-release/ and approve the release.", tokenCredentialId: 'slack'
-			slackSend channel: '#ws-agent-core-team', message: "Agent release ${params.RELEASE_VERSION} is QA approved and awaits Docs team for approvals. When complete, go to https://sysdig-jenkins.internal.sysdig.com/job/agent-release/ and approve the release.", tokenCredentialId: 'slack'
-			input message: 'Docs Complete', ok: 'Approve Release'
-	    }
-	}
-
-	// Promotes the RC to release
-	stage('Promote RC') {
-	    steps {
-			withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME'), usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
-				sh label: '', script: '''
-					docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-					docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
-					export S3_BUCKET="s3://download.draios.com"
-					export AGENT_VERSION=${params.RELEASE_VERSION}
-					//agent/scripts/jenkins/release-agent-rc
-				'''
+	stage('Wait for Commit') {
+		stages {
+			stage {'Wait for Other People'} {
+				 parallel {
+					stage('Wait for QA') {
+						steps {
+							slackSend channel: '@adam', message: "Agent release ${params.RELEASE_VERSION} is ready for testing. When complete, go to https://sysdig-jenkins.internal.sysdig.com/job/agent-release/ and approve the release.", tokenCredentialId: 'slack'
+							input message: 'QA Complete', ok: 'Approve Release'
+						}
+					}
+					stage('Wait for Docs') {
+						steps {
+							slackSend channel: '#docs', message: "Agent release ${params.RELEASE_VERSION} is awaiting docs approval. When complete, go to https://sysdig-jenkins.internal.sysdig.com/job/agent-release/ and approve the release.", tokenCredentialId: 'slack'
+							input message: 'Docs Complete', ok: 'Approve Release'
+						}
+					}
+			    }
+			}
+			stage {'Wait for Final Go'} {
+				 parallel {
+					stage('Wait for Manager') {
+						steps {
+							slackSend channel: '@UBYCWGBG9', message: "Agent release ${params.RELEASE_VERSION} is awaiting managerial approval. When complete, go to https://sysdig-jenkins.internal.sysdig.com/job/agent-release/ and approve the release.", tokenCredentialId: 'slack'
+							input message: 'Manager Complete', ok: 'Approve Release'
+						}
+					}
+					stage('Wait for Releaser') {
+						steps {
+							slackSend channel: '#ws-agent-core-team', message: "Agent release ${params.RELEASE_VERSION} is awaiting releaser approval. When complete, go to https://sysdig-jenkins.internal.sysdig.com/job/agent-release/ and approve the release.", tokenCredentialId: 'slack'
+							input message: 'Releaser Complete', ok: 'Approve Release'
+						}
+					}
+			    }
 			}
 	    }
 	}
 
-	// dev agent and support
-	stage ('Notify Slack') {
-	    steps {
-			slackSend channel: '#ws-agent-core', message: "@here *new agent release*: https://github.com/draios/agent/releases/tag/${params.RELEASE_VERSION}\nDo *not* distribute the release notes publicly unless approved by Product", tokenCredentialId: 'slack'
-			slackSend channel: '#support', message: "@here *new agent release*: https://github.com/draios/agent/releases/tag/${params.RELEASE_VERSION}\nDo *not* distribute the release notes publicly unless approved by Product", tokenCredentialId: 'slack'
-	    }
-	}
-
-	*/
-	/*  SMAGENT-2052
-	// checks that we can get the downloaded images
-	stage('Smoke Test') {
-	    steps {
-	    }
-	}
-	 */
+	stage('Promote') {
+		steps {
+			build job:'agent-promote',parameters:[string(name:'RELEASE_VERSION', value:"${params.RELEASE_VERSION})]
     }
+
 	post {
 		always {
 			cleanWs deleteDirs: true, notFailBuild: true

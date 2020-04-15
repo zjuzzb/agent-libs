@@ -1,0 +1,67 @@
+pipeline {
+	agent { label 'agent-docker-builder' }
+	stages {
+	
+	// Promotes the RC to release
+    stage('Promote RC') {
+        steps {
+            withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME'), usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+                sh label: '', script: '''
+                    docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+                    docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+                    export S3_BUCKET="s3://download.draios.com"
+                    export AGENT_VERSION=${params.RELEASE_VERSION}
+                    agent/scripts/jenkins/release-agent-rc
+                '''
+            }
+        }
+    }
+
+	stage('Smoke RC') {
+		steps {
+			sh label: '', script: '''
+				docker pull sysdig/agent:${params.RELEASE_VERSION}
+			'''
+		}
+	}
+
+	stage('Upload to IBM') {
+		parallel {
+			stage('Agent') {
+				steps {
+					build job:'IBM-agent-push-to-registry',parameters:[string(name:'AGENT_IMAGE', value:"sysdig/agent:${params.RELEASE_VERSION}),booleanParam(name:'PUSH_ALSO_AS_LATEST_TAG', value:true)]
+				}
+			}
+			stage('Agent Slim') {
+				steps {
+					build job:'IBM-agent-push-to-registry',parameters:[string(name:'AGENT_IMAGE', value:"sysdig/agent-slim:${params.RELEASE_VERSION}),booleanParam(name:'PUSH_ALSO_AS_LATEST_TAG', value:true)]
+				}
+			}
+			stage('Agent Kmodule') {
+				steps {
+					build job:'IBM-agent-push-to-registry',parameters:[string(name:'AGENT_IMAGE', value:"sysdig/agent-kmodule:${params.RELEASE_VERSION}),booleanParam(name:'PUSH_ALSO_AS_LATEST_TAG', value:true)]
+				}
+			}
+			stage('Agent Kmodule Thin') {
+				steps {
+					build job:'IBM-agent-push-to-registry',parameters:[string(name:'AGENT_IMAGE', value:"sysdig/agent-kmodule-thin:${params.RELEASE_VERSION}),booleanParam(name:'PUSH_ALSO_AS_LATEST_TAG', value:true)]
+				}
+			}
+		}
+	}
+
+	stage('Notify People') {
+		steps {
+			slackSend channel '@UBYCWGBG9', message: "Agent has been promoted. Please release in jira.", tokenCredentialId: 'slack'
+			 slackSend channel: '#ws-agent-core', message: "@here new agent release ${params.RELEASE_VERSION} has been promoted", tokenCredentialId: 'slack'
+			 slackSend channel: '#support', message: "new agent release ${params.RELEASE_VERSION} has been promoted", tokenCredentialId: 'slack'
+		}
+	}
+
+	}
+	post {
+        always {
+            cleanWs deleteDirs: true, notFailBuild: true
+        }
+    }
+
