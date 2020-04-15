@@ -1,9 +1,6 @@
 # used by all sdchecks core files
 future==0.17.1
 
-# used by sdchecks.py
-posix_ipc==1.0.0
-
 # needed for sdchecks.py and config.py
 pyyaml==5.1
 
@@ -12,4 +9,3 @@ python-memcached==1.59
 
 # checks.d/php-fpm.py
 flup-py3==1.0.3
-
