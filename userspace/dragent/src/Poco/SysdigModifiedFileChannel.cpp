@@ -1,9 +1,9 @@
 //
-// FileChannel.cpp
+// SysdigModifiedFileChannel.cpp
 //
 // Library: Foundation
 // Package: Logging
-// Module:  FileChannel
+// Module:  SysdigModifiedFileChannel
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
@@ -12,7 +12,7 @@
 //
 
 
-#include "Poco/FileChannel.h"
+#include "SysdigModifiedFileChannel.h"
 #include "Poco/ArchiveStrategy.h"
 #include "Poco/RotateStrategy.h"
 #include "Poco/PurgeStrategy.h"
@@ -29,17 +29,17 @@
 namespace Poco {
 
 
-const std::string FileChannel::PROP_PATH         = "path";
-const std::string FileChannel::PROP_ROTATION     = "rotation";
-const std::string FileChannel::PROP_ARCHIVE      = "archive";
-const std::string FileChannel::PROP_TIMES        = "times";
-const std::string FileChannel::PROP_COMPRESS     = "compress";
-const std::string FileChannel::PROP_PURGEAGE     = "purgeAge";
-const std::string FileChannel::PROP_PURGECOUNT   = "purgeCount";
-const std::string FileChannel::PROP_FLUSH        = "flush";
-const std::string FileChannel::PROP_ROTATEONOPEN = "rotateOnOpen";
+const std::string SysdigModifiedFileChannel::PROP_PATH         = "path";
+const std::string SysdigModifiedFileChannel::PROP_ROTATION     = "rotation";
+const std::string SysdigModifiedFileChannel::PROP_ARCHIVE      = "archive";
+const std::string SysdigModifiedFileChannel::PROP_TIMES        = "times";
+const std::string SysdigModifiedFileChannel::PROP_COMPRESS     = "compress";
+const std::string SysdigModifiedFileChannel::PROP_PURGEAGE     = "purgeAge";
+const std::string SysdigModifiedFileChannel::PROP_PURGECOUNT   = "purgeCount";
+const std::string SysdigModifiedFileChannel::PROP_FLUSH        = "flush";
+const std::string SysdigModifiedFileChannel::PROP_ROTATEONOPEN = "rotateOnOpen";
 
-FileChannel::FileChannel(): 
+SysdigModifiedFileChannel::SysdigModifiedFileChannel():
 	_times("utc"),
 	_compress(false),
 	_flush(true),
@@ -52,7 +52,7 @@ FileChannel::FileChannel():
 }
 
 
-FileChannel::FileChannel(const std::string& path):
+SysdigModifiedFileChannel::SysdigModifiedFileChannel(const std::string& path):
 	_path(path),
 	_times("utc"),
 	_compress(false),
@@ -66,7 +66,7 @@ FileChannel::FileChannel(const std::string& path):
 }
 
 
-FileChannel::~FileChannel()
+SysdigModifiedFileChannel::~SysdigModifiedFileChannel()
 {
 	try
 	{
@@ -82,7 +82,7 @@ FileChannel::~FileChannel()
 }
 
 
-void FileChannel::open()
+void SysdigModifiedFileChannel::open()
 {
 	FastMutex::ScopedLock lock(_mutex);
 	
@@ -101,11 +101,13 @@ void FileChannel::open()
 				_pFile = new LogFile(_path);
 			}
 		}
+
+		onRotate(_path);
 	}
 }
 
 
-void FileChannel::close()
+void SysdigModifiedFileChannel::close()
 {
 	FastMutex::ScopedLock lock(_mutex);
 
@@ -114,7 +116,7 @@ void FileChannel::close()
 }
 
 
-void FileChannel::log(const Message& msg)
+void SysdigModifiedFileChannel::log(const Message& msg)
 {
 	open();
 
@@ -135,12 +137,14 @@ void FileChannel::log(const Message& msg)
 		// RotateByIntervalStrategy a chance to write its timestamp
 		// to the new file.
 		_pRotateStrategy->mustRotate(_pFile);
+
+		onRotate(_path);
 	}
 	_pFile->write(msg.getText(), _flush);
 }
 
 	
-void FileChannel::setProperty(const std::string& name, const std::string& value)
+void SysdigModifiedFileChannel::setProperty(const std::string& name, const std::string& value)
 {
 	FastMutex::ScopedLock lock(_mutex);
 
@@ -175,7 +179,7 @@ void FileChannel::setProperty(const std::string& name, const std::string& value)
 }
 
 
-std::string FileChannel::getProperty(const std::string& name) const
+std::string SysdigModifiedFileChannel::getProperty(const std::string& name) const
 {
 	if (name == PROP_TIMES)
 		return _times;
@@ -200,7 +204,7 @@ std::string FileChannel::getProperty(const std::string& name) const
 }
 
 
-Timestamp FileChannel::creationDate() const
+Timestamp SysdigModifiedFileChannel::creationDate() const
 {
 	if (_pFile)
 		return _pFile->creationDate();
@@ -209,7 +213,7 @@ Timestamp FileChannel::creationDate() const
 }
 
 	
-UInt64 FileChannel::size() const
+UInt64 SysdigModifiedFileChannel::size() const
 {
 	if (_pFile)
 		return _pFile->size();
@@ -218,13 +222,13 @@ UInt64 FileChannel::size() const
 }
 
 
-const std::string& FileChannel::path() const
+const std::string& SysdigModifiedFileChannel::path() const
 {
 	return _path;
 }
 
 
-void FileChannel::setRotation(const std::string& rotation)
+void SysdigModifiedFileChannel::setRotation(const std::string& rotation)
 {
 	std::string::const_iterator it  = rotation.begin();
 	std::string::const_iterator end = rotation.end();
@@ -277,7 +281,7 @@ void FileChannel::setRotation(const std::string& rotation)
 }
 
 
-void FileChannel::setArchive(const std::string& archive)
+void SysdigModifiedFileChannel::setArchive(const std::string& archive)
 {
 	ArchiveStrategy* pStrategy = 0;
 	if (archive == "number")
@@ -301,7 +305,7 @@ void FileChannel::setArchive(const std::string& archive)
 }
 
 
-void FileChannel::setCompress(const std::string& compress)
+void SysdigModifiedFileChannel::setCompress(const std::string& compress)
 {
 	_compress = icompare(compress, "true") == 0;
 	if (_pArchiveStrategy)
@@ -309,7 +313,7 @@ void FileChannel::setCompress(const std::string& compress)
 }
 
 
-void FileChannel::setPurgeAge(const std::string& age)
+void SysdigModifiedFileChannel::setPurgeAge(const std::string& age)
 {
 	if (setNoPurge(age)) return;
 
@@ -322,7 +326,7 @@ void FileChannel::setPurgeAge(const std::string& age)
 }
 
 
-void FileChannel::setPurgeCount(const std::string& count)
+void SysdigModifiedFileChannel::setPurgeCount(const std::string& count)
 {
 	if (setNoPurge(count)) return;
 
@@ -331,19 +335,19 @@ void FileChannel::setPurgeCount(const std::string& count)
 }
 
 
-void FileChannel::setFlush(const std::string& flush)
+void SysdigModifiedFileChannel::setFlush(const std::string& flush)
 {
 	_flush = icompare(flush, "true") == 0;
 }
 
 
-void FileChannel::setRotateOnOpen(const std::string& rotateOnOpen)
+void SysdigModifiedFileChannel::setRotateOnOpen(const std::string& rotateOnOpen)
 {
 	_rotateOnOpen = icompare(rotateOnOpen, "true") == 0;
 }
 
 
-void FileChannel::purge()
+void SysdigModifiedFileChannel::purge()
 {
 	if (_pPurgeStrategy)
 	{
@@ -358,7 +362,7 @@ void FileChannel::purge()
 }
 
 
-bool FileChannel::setNoPurge(const std::string& value)
+bool SysdigModifiedFileChannel::setNoPurge(const std::string& value)
 {
 	if (value.empty() || 0 == icompare(value, "none"))
 	{
@@ -371,7 +375,7 @@ bool FileChannel::setNoPurge(const std::string& value)
 }
 
 
-int FileChannel::extractDigit(const std::string& value, std::string::const_iterator* nextToDigit) const
+int SysdigModifiedFileChannel::extractDigit(const std::string& value, std::string::const_iterator* nextToDigit) const
 {
 	std::string::const_iterator it  = value.begin();
 	std::string::const_iterator end = value.end();
@@ -392,14 +396,14 @@ int FileChannel::extractDigit(const std::string& value, std::string::const_itera
 }
 
 
-void FileChannel::setPurgeStrategy(PurgeStrategy* strategy)
+void SysdigModifiedFileChannel::setPurgeStrategy(PurgeStrategy* strategy)
 {
 	delete _pPurgeStrategy;
 	_pPurgeStrategy = strategy;
 }
 
 
-Timespan::TimeDiff FileChannel::extractFactor(const std::string& value, std::string::const_iterator start) const
+Timespan::TimeDiff SysdigModifiedFileChannel::extractFactor(const std::string& value, std::string::const_iterator start) const
 {
 	while (start != value.end() && Ascii::isSpace(*start)) ++start;
 

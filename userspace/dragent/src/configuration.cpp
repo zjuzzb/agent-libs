@@ -218,7 +218,8 @@ private:
 	const vector<string> m_forbidden_keys;
 };
 
-dragent_configuration::dragent_configuration()
+dragent_configuration::dragent_configuration() :
+   m_globally_readable_log_files(false)
 {
 	m_server_port = 0;
 	m_transmitbuffer_size = 0;
@@ -546,6 +547,8 @@ void dragent_configuration::init()
 	m_log_rotate = m_config->get_scalar("log", "rotate", 10);
 
 	m_max_log_size = m_config->get_scalar("log", "max_size", 10);
+
+	m_globally_readable_log_files = m_config->get_scalar<bool>("log", "globally_readable", false);
 
 	ifstream kubernetes_access_key(c_root_dir.get_value() + "/etc/kubernetes/secrets/access-key");
 	if (kubernetes_access_key.good())
@@ -1279,6 +1282,7 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("rootdir: " + c_root_dir.get_value());
 	LOG_INFO("conffile: " + m_conf_file);
 	LOG_INFO("log.location: " + m_log_dir);
+	LOG_INFO("log.globally_readable: %s", m_globally_readable_log_files ? "true" : "false");
 	LOG_INFO("collector: " + m_server_addr);
 	LOG_INFO("collector_port: " + NumberFormatter::format(m_server_port));
 	LOG_INFO("log.file_priority: " + NumberFormatter::format(m_min_file_priority));

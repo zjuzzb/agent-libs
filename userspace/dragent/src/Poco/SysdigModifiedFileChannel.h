@@ -1,11 +1,11 @@
 //
-// FileChannel.h
+// SysdigModifiedFileChannel.h
 //
 // Library: Foundation
 // Package: Logging
-// Module:  FileChannel
+// Module:  SysdigModifiedFileChannel
 //
-// Definition of the FileChannel class.
+// Definition of the SysdigModifiedFileChannel class.
 //
 // Copyright (c) 2004-2006, Applied Informatics Software Engineering GmbH.
 // and Contributors.
@@ -14,8 +14,8 @@
 //
 
 
-#ifndef Foundation_FileChannel_INCLUDED
-#define Foundation_FileChannel_INCLUDED
+#ifndef Foundation_SysdigModifiedFileChannel_INCLUDED
+#define Foundation_SysdigModifiedFileChannel_INCLUDED
 
 
 #include "Poco/Foundation.h"
@@ -33,8 +33,11 @@ class RotateStrategy;
 class ArchiveStrategy;
 class PurgeStrategy;
 
-
-class Foundation_API FileChannel: public Channel
+/// Sysdig
+/// This is a copy of Poco's FileChannel class with a pure virtual OnRotate
+/// function which is called when a new file is created.
+///
+class Foundation_API SysdigModifiedFileChannel: public Channel
 	/// A Channel that writes to a file. This class supports
 	/// flexible log file rotation and archiving, as well
 	/// as automatic purging of archived log files.
@@ -45,7 +48,7 @@ class Foundation_API FileChannel: public Channel
 	/// Chain this channel to a FormattingChannel with an
 	/// appropriate Formatter to control what is in the text. 
 	///
-	/// The FileChannel support log file rotation based
+	/// The SysdigModifiedFileChannel support log file rotation based
 	/// on log file size or time intervals.
 	/// Archived log files can be compressed in gzip format.
 	/// Older archived files can be automatically deleted
@@ -162,20 +165,22 @@ class Foundation_API FileChannel: public Channel
 	///            if it exists (unless other conditions for a rotation are met). 
 	///            This is the default.
 	///
-	/// For a more lightweight file channel class, see SimpleFileChannel.
+	/// For a more lightweight file channel class, see SimpleSysdigModifiedFileChannel.
 {
 public:
-	FileChannel();
-		/// Creates the FileChannel.
+	virtual void onRotate(const std::string &path) = 0;
 
-	FileChannel(const std::string& path);
-		/// Creates the FileChannel for a file with the given path.
+	SysdigModifiedFileChannel();
+		/// Creates the SysdigModifiedFileChannel.
+
+	SysdigModifiedFileChannel(const std::string& path);
+		/// Creates the SysdigModifiedFileChannel for a file with the given path.
 
 	void open();
-		/// Opens the FileChannel and creates the log file if necessary.
+		/// Opens the SysdigModifiedFileChannel and creates the log file if necessary.
 		
 	void close();
-		/// Closes the FileChannel.
+		/// Closes the SysdigModifiedFileChannel.
 
 	void log(const Message& msg);
 		/// Logs the given message to the file.
@@ -186,22 +191,22 @@ public:
 		/// The following properties are supported:
 		///   * path:         The log file's path.
 		///   * rotation:     The log file's rotation mode. See the 
-		///                   FileChannel class for details.
+		///                   SysdigModifiedFileChannel class for details.
 		///   * archive:      The log file's archive mode. See the
-		///                   FileChannel class for details.
+		///                   SysdigModifiedFileChannel class for details.
 		///   * times:        The log file's time mode. See the
-		///                   FileChannel class for details.
+		///                   SysdigModifiedFileChannel class for details.
 		///   * compress:     Enable or disable compression of
-		///                   archived files. See the FileChannel class
+		///                   archived files. See the SysdigModifiedFileChannel class
 		///                   for details.
 		///   * purgeAge:     Maximum age of an archived log file before
-		///                   it is purged. See the FileChannel class for
+		///                   it is purged. See the SysdigModifiedFileChannel class for
 		///                   details.
 		///   * purgeCount:   Maximum number of archived log files before
-		///                   files are purged. See the FileChannel class
+		///                   files are purged. See the SysdigModifiedFileChannel class
 		///                   for details.
 		///   * flush:        Specifies whether messages are immediately
-		///                   flushed to the log file. See the FileChannel class
+		///                   flushed to the log file. See the SysdigModifiedFileChannel class
 		///                   for details.
 		///   * rotateOnOpen: Specifies whether an existing log file should be 
 		///                   rotated and archived when the channel is opened.
@@ -231,7 +236,7 @@ public:
 	static const std::string PROP_ROTATEONOPEN;
 
 protected:
-	~FileChannel();
+	~SysdigModifiedFileChannel();
 	void setRotation(const std::string& rotation);
 	void setArchive(const std::string& archive);
 	void setCompress(const std::string& compress);
@@ -267,4 +272,4 @@ private:
 } // namespace Poco
 
 
-#endif // Foundation_FileChannel_INCLUDED
+#endif // Foundation_SysdigModifiedFileChannel_INCLUDED

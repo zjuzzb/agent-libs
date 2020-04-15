@@ -7,6 +7,7 @@
  */
 #include "avoid_block_channel.h"
 #include "common_logger.h"
+#include "Poco/SysdigModifiedFileChannel.h"
 #include "user_event.h"
 #include "user_event_logger.h"
 #include "utils.h"
@@ -15,10 +16,9 @@
 #include <sstream>
 #include <unordered_map>
 #include <sys/statvfs.h>
-#include <Poco/FileChannel.h>
 
 avoid_block_channel::avoid_block_channel(
-		const Poco::AutoPtr<Poco::FileChannel>& file_channel,
+		const Poco::AutoPtr<Poco::SysdigModifiedFileChannel>& file_channel,
 		const std::string& machine_id):
 	m_file_channel(file_channel),
 	m_machine_id(machine_id),

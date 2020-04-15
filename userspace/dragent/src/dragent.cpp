@@ -21,6 +21,7 @@
 #include "fault_rest_request_handler.h"
 #include "faultlist_rest_request_handler.h"
 #include "file_rest_request_handler.h"
+#include "globally_readable_file_channel.h"
 #include "memdump_logger.h"
 #include "metric_serializer.h"
 #include "monitor.h"
@@ -2242,7 +2243,7 @@ void dragent_app::initialize_logging()
 	// Setup the logging
 	//
 
-	AutoPtr<FileChannel> file_channel(new FileChannel(logsdir));
+	AutoPtr<globally_readable_file_channel> file_channel(new globally_readable_file_channel(logsdir, m_configuration.m_globally_readable_log_files));
 
 	file_channel->setProperty("purgeCount", std::to_string(m_configuration.m_log_rotate));
 	file_channel->setProperty("rotation", std::to_string(m_configuration.m_max_log_size) + "M");

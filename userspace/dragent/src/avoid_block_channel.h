@@ -15,13 +15,13 @@
 
 namespace Poco
 {
-class FileChannel;
+class SysdigModifiedFileChannel;
 }
 
 class avoid_block_channel : public Poco::Channel
 {
 public:
-	avoid_block_channel(const Poco::AutoPtr<Poco::FileChannel>& file_channel,
+	avoid_block_channel(const Poco::AutoPtr<Poco::SysdigModifiedFileChannel>& file_channel,
 	                    const std::string& machine_id);
 
 	virtual void log(const Poco::Message& message) override;
@@ -29,7 +29,7 @@ public:
 	virtual void close() override;
 
 private:
-	Poco::AutoPtr<Poco::FileChannel> m_file_channel;
+	Poco::AutoPtr<Poco::SysdigModifiedFileChannel> m_file_channel;
 	const std::string m_machine_id;
 	std::atomic<bool> m_error_event_sent;
 };
