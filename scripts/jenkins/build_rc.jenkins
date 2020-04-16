@@ -51,7 +51,7 @@ pipeline {
 							TARGET=rc
 						fi
 						export AGENT_VERSION=$RELEASE_VERSION
-						agent/scripts/jenkins/upload-agent $TARGET $PWD/out repo "s3://download.draios.com"
+						sudo agent/scripts/jenkins/upload-agent $TARGET $PWD/out repo "s3://download.draios.com"
 					'''
 				}
 			}
