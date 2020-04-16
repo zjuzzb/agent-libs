@@ -200,7 +200,7 @@ pipeline {
 				dir('sysdig') {
 					sh label: '', script: """
 						export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-						git remote add origin2 ssh://git@github.com/draios/sysdig.git
+						git remote add origin2 ssh://git@github.com/draios/sysdig.git || echo "remote already exists"
 						git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
 						git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
 						git tag agent/${params.RELEASE_VERSION}
@@ -210,7 +210,7 @@ pipeline {
 				dir('oss-falco') {
 					sh label: '', script: """
 						export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-						git remote add origin2 ssh://git@github.com/draios/oss-falco.git
+						git remote add origin2 ssh://git@github.com/draios/oss-falco.git || echo "remote already exists"
 						git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
 						git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
 						git tag agent/${params.RELEASE_VERSION}
@@ -220,7 +220,7 @@ pipeline {
 				dir('protorepo') {
 					sh label: '', script: """
 						export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-						git remote add origin2 ssh://git@github.com/draios/protorepo.git
+						git remote add origin2 ssh://git@github.com/draios/protorepo.git || echo "remote already exists"
 						git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
 						git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
 						git tag agent/${params.RELEASE_VERSION}
@@ -230,7 +230,7 @@ pipeline {
 				dir('prometheus') {
 					sh label: '', script: """
 						export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-						git remote add origin2 ssh://git@github.com/draios/prometheus.git
+						git remote add origin2 ssh://git@github.com/draios/prometheus.git || echo "remote already exists"
 						git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
 						git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
 						git tag agent/${params.RELEASE_VERSION}
