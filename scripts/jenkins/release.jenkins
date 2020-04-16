@@ -313,7 +313,7 @@ pipeline {
 
 	stage('Promote') {
 		steps {
-			build job:'agent-promote',parameters:[string(name:'RELEASE_VERSION', value:"${params.RELEASE_VERSION})]
+			build job:'agent-promote',parameters:[string(name:'RELEASE_VERSION', value:"${params.RELEASE_VERSION}")]
     }
 
 	post {
