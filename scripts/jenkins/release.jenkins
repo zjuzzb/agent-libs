@@ -121,7 +121,7 @@ pipeline {
 			}
 	    }
 	}
-/*
+
 	// build and push the docker builder. this is to ensure we are not affected by
 	// non-backwards compatible changes to the builder and can always build
 	// this release easily from quay
@@ -146,7 +146,7 @@ pipeline {
 			}
 		}
 	}
-*/
+
 	// builds the RC, runs integration tests, and uploads to docker/quay
 	// Uploaded image should be sysdig/agent:${params.RELEASE_VERSION}-rc
 	stage('Build RC') {
@@ -156,8 +156,27 @@ pipeline {
 	}
 
 	stage('Scan Release Container') {
-		steps {
-			build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"sysdig/agent:${params.RELEASE_VERSION}-rc")],propagate: false
+		parallel {
+			stage('agent') {
+				steps {
+					build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"sysdig/agent:${params.RELEASE_VERSION}-rc")],propagate: false
+				}
+			}
+			stage('agent slim') {
+				steps {
+					build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"sysdig/agent-slim:${params.RELEASE_VERSION}-rc")],propagate: false
+				}
+			}
+			stage('agent slim v1') {
+				steps {
+					build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"sysdig/agent-slim:${params.RELEASE_VERSION}-rc-v1")],propagate: false
+				}
+			}
+			stage('agent kmod thin') {
+				steps {
+					build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"sysdig/agent-kmodule-thin:${params.RELEASE_VERSION}-rc")],propagate: false
+				}
+			}
 		}
 	}
 
@@ -272,43 +291,47 @@ pipeline {
 			}
 	    }
 	}
+*/
+    stage('Wait for Commit') {
+        stages {
+            stage ('Wait for Other People') {
+                 parallel {
+                    stage('Wait for QA') {
+                        steps {
+                            // Adam Roberts
+                            slackSend channel: '@UEJ2F1PCJ', message: "Agent release ${params.RELEASE_VERSION} is ready for testing. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
+                            input message: 'QA Complete', ok: 'Approve Release'
+                        }
+                    }
+                    stage('Wait for Docs') {
+                        steps {
+                            slackSend channel: '#docs', message: "Agent release ${params.RELEASE_VERSION} is awaiting docs approval. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
+                            input message: 'Docs Complete', ok: 'Approve Release'
+                        }
+                    }
+                }
+            }
+            stage ('Wait for Final Go') {
+                 parallel {
+                    stage('Wait for Manager') {
+                        steps {
+                            // Naveen Bali
+                            slackSend channel: '@UBYCWGBG9', message: "Agent release ${params.RELEASE_VERSION} is awaiting managerial approval. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
+                            input message: 'Manager Complete', ok: 'Approve Release'
+                        }
+                    }
+                    stage('Wait for Releaser') {
+                        steps {
+                            slackSend channel: '#ws-agent-core', message: "Agent release ${params.RELEASE_VERSION} is awaiting releaser approval. When complete, go to ${env.BUILD_URL}input
+and approve the release.", tokenCredentialId: 'slack'
+                            input message: 'Releaser Complete', ok: 'Approve Release'
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-	stage('Wait for Commit') {
-		stages {
-			stage {'Wait for Other People'} {
-				 parallel {
-					stage('Wait for QA') {
-						steps {
-							slackSend channel: '@adam', message: "Agent release ${params.RELEASE_VERSION} is ready for testing. When complete, go to https://sysdig-jenkins.internal.sysdig.com/job/agent-release/ and approve the release.", tokenCredentialId: 'slack'
-							input message: 'QA Complete', ok: 'Approve Release'
-						}
-					}
-					stage('Wait for Docs') {
-						steps {
-							slackSend channel: '#docs', message: "Agent release ${params.RELEASE_VERSION} is awaiting docs approval. When complete, go to https://sysdig-jenkins.internal.sysdig.com/job/agent-release/ and approve the release.", tokenCredentialId: 'slack'
-							input message: 'Docs Complete', ok: 'Approve Release'
-						}
-					}
-			    }
-			}
-			stage {'Wait for Final Go'} {
-				 parallel {
-					stage('Wait for Manager') {
-						steps {
-							slackSend channel: '@UBYCWGBG9', message: "Agent release ${params.RELEASE_VERSION} is awaiting managerial approval. When complete, go to https://sysdig-jenkins.internal.sysdig.com/job/agent-release/ and approve the release.", tokenCredentialId: 'slack'
-							input message: 'Manager Complete', ok: 'Approve Release'
-						}
-					}
-					stage('Wait for Releaser') {
-						steps {
-							slackSend channel: '#ws-agent-core-team', message: "Agent release ${params.RELEASE_VERSION} is awaiting releaser approval. When complete, go to https://sysdig-jenkins.internal.sysdig.com/job/agent-release/ and approve the release.", tokenCredentialId: 'slack'
-							input message: 'Releaser Complete', ok: 'Approve Release'
-						}
-					}
-			    }
-			}
-	    }
-	}
 
 	stage('Promote') {
 		steps {
@@ -316,7 +339,6 @@ pipeline {
 		}
 	}
 
-	*/
 	}
 
 	post {
