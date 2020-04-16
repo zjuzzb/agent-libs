@@ -272,7 +272,6 @@ pipeline {
 			}
 	    }
 	}
-	*/
 
 	stage('Wait for Commit') {
 		stages {
@@ -317,6 +316,7 @@ pipeline {
 		}
 	}
 
+	*/
 	}
 
 	post {
