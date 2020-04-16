@@ -1,9 +1,9 @@
 #!/bin/bash
 set -exuo pipefail
 
-if [ $# -ne 4 ]
+if [ $# -ne 5 ]
 then
-    echo "Usage: $0 repo-name bin-dir repo-dir s3-bucket" >&2
+    echo "Usage: $0 repo-name bin-dir repo-dir s3-bucket agent_version" >&2
     exit 1
 fi
 
