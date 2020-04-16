@@ -32,7 +32,7 @@ pipeline {
 						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
 						AGENT_BUILD_COMMIT="`git -C agent rev-parse --short HEAD`"
 						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
-						docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_VERSION=$RELEASE_VERSION -e AGENT_BUILD_COMMIT -e AGENT_BUILD_DATE="`date`" -v $PWD:/draios:ro -v out:/out -v /var/run/docker.sock:/var/run/docker.sock -v pipcache:/root/.cache quay.io/sysdig/agent-builder:$BUILDER_VERSION release 
+						docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_VERSION=$RELEASE_VERSION -e AGENT_BUILD_COMMIT -e AGENT_BUILD_DATE="`date`" -v $PWD:/draios:ro -v $PWD/out:/out -v /var/run/docker.sock:/var/run/docker.sock -v pipcache:/root/.cache quay.io/sysdig/agent-builder:$BUILDER_VERSION release 
 					'''
 				}
 			}
@@ -51,7 +51,7 @@ pipeline {
 							TARGET=rc
 						fi
 						export AGENT_VERSION=$RELEASE_VERSION
-						agent/scripts/jenkins/upload-agent $TARGET out repo "s3://download.draios.com"
+						agent/scripts/jenkins/upload-agent $TARGET $PWD/out repo "s3://download.draios.com"
 					'''
 				}
 			}

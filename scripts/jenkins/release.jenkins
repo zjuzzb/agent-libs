@@ -121,7 +121,7 @@ pipeline {
 			}
 	    }
 	}
-
+/*
 	// build and push the docker builder. this is to ensure we are not affected by
 	// non-backwards compatible changes to the builder and can always build
 	// this release easily from quay
@@ -146,7 +146,7 @@ pipeline {
 			}
 		}
 	}
-
+*/
 	// builds the RC, runs integration tests, and uploads to docker/quay
 	// Uploaded image should be sysdig/agent:${params.RELEASE_VERSION}-rc
 	stage('Build RC') {
