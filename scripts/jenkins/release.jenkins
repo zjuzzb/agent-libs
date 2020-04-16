@@ -26,7 +26,7 @@ pipeline {
 
 	stage('Switch to Release Base') {
 		when {
-			expression { params.RELEASE_BASE != dev }
+			expression { params.RELEASE_BASE != "dev" }
 		}
 		steps {
 			dir('agent') {
