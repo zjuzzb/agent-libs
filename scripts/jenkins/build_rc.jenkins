@@ -50,7 +50,7 @@ pipeline {
 						then
 							TARGET=rc
 						fi
-						export AGENT_VERSION="${params.RELEASE_VERSION}"
+						export AGENT_VERSION=$RELEASE_VERSION
 						agent/scripts/jenkins/upload-agent $TARGET out repo "s3://download.draios.com"
 					'''
 				}
