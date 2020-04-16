@@ -322,8 +322,7 @@ pipeline {
                     }
                     stage('Wait for Releaser') {
                         steps {
-                            slackSend channel: '#ws-agent-core', message: "Agent release ${params.RELEASE_VERSION} is awaiting releaser approval. When complete, go to ${env.BUILD_URL}input
-and approve the release.", tokenCredentialId: 'slack'
+                            slackSend channel: '#ws-agent-core', message: "Agent release ${params.RELEASE_VERSION} is awaiting releaser approval. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
                             input message: 'Releaser Complete', ok: 'Approve Release'
                         }
                     }
