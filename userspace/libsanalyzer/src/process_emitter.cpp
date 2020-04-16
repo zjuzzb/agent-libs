@@ -529,8 +529,6 @@ void process_emitter::emit_process(
 	proc->mutable_resource_counters()->set_jmx_total(0);
 	proc->mutable_resource_counters()->set_app_checks_sent(0);
 	proc->mutable_resource_counters()->set_app_checks_total(0);
-	proc->mutable_resource_counters()->set_prometheus_sent(0);
-	proc->mutable_resource_counters()->set_prometheus_total(0);
 
 	// Add JMX metrics
 	if (m_jmx_proxy)
@@ -540,6 +538,11 @@ void process_emitter::emit_process(
 	if (m_app_check_emitter)
 	{
 		m_app_check_emitter->emit_apps(procinfo, tinfo, *proc, metrics);
+	}
+	else
+	{
+		proc->mutable_resource_counters()->set_prometheus_sent(0);
+		proc->mutable_resource_counters()->set_prometheus_total(0);
 	}
 #endif
 

@@ -158,14 +158,22 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 	}
 	proc.mutable_resource_counters()->set_app_checks_sent(sent_app_checks_metrics);
 	proc.mutable_resource_counters()->set_app_checks_total(total_app_checks_metrics);
-	proc.mutable_resource_counters()->set_prometheus_sent(sent_prometheus_metrics);
-	proc.mutable_resource_counters()->set_prometheus_total(total_prometheus_metrics);
 	if(!tinfo.m_container_id.empty())
 	{
 		std::get<0>(m_app_checks_by_container[tinfo.m_container_id]) += sent_app_checks_metrics;
 		std::get<1>(m_app_checks_by_container[tinfo.m_container_id]) += total_app_checks_metrics;
-		std::get<0>(m_prometheus_by_container[tinfo.m_container_id]) += sent_prometheus_metrics;
-		std::get<1>(m_prometheus_by_container[tinfo.m_container_id]) += total_prometheus_metrics;
+	}
+
+	if (!promscrape::c_use_promscrape.get_value() || (m_promscrape == nullptr) ||
+		m_promscrape->emit_counters())
+	{
+		proc.mutable_resource_counters()->set_prometheus_sent(sent_prometheus_metrics);
+		proc.mutable_resource_counters()->set_prometheus_total(total_prometheus_metrics);
+		if(!tinfo.m_container_id.empty())
+		{
+			std::get<0>(m_prometheus_by_container[tinfo.m_container_id]) += sent_prometheus_metrics;
+			std::get<1>(m_prometheus_by_container[tinfo.m_container_id]) += total_prometheus_metrics;
+		}
 	}
 	std::get<0>(m_app_checks_by_container[""]) += sent_app_checks_metrics;
 	std::get<1>(m_app_checks_by_container[""]) += total_app_checks_metrics;

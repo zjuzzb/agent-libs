@@ -607,9 +607,11 @@ std::shared_ptr<draiosproto::metrics> promscrape::metrics_request_callback()
 		else
 		{
 			// Shouldn't get here yet
-			LOG_DEBUG("callback: export pid %d: not yet supported for per-process export", pid);
+			LOG_INFO("callback: export pid %d: not yet supported for per-process export", pid);
 		}
 	}
+	metrics->mutable_hostinfo()->mutable_resource_counters()->set_prometheus_sent(sent);
+	metrics->mutable_hostinfo()->mutable_resource_counters()->set_prometheus_total(total);
 	if (remaining == 0)
 	{
 		LOG_WARNING("Prometheus metrics limit (%u) reached, %u sent of %u filtered, %u total",
@@ -666,6 +668,17 @@ std::shared_ptr<agent_promscrape::ScrapeResult> promscrape::get_job_result_ptr(
 	return result_ptr;
 }
 
+// Called by analyzer flush loop to ask if it should emit counters itself
+bool promscrape::emit_counters() const
+{
+	if (!c_use_promscrape.get_value() ||
+		!(configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value()))
+	{
+		return true;
+	}
+	return m_emit_counters;
+}
+
 template<typename metric>
 unsigned int promscrape::pid_to_protobuf(int pid, metric *proto,
 	unsigned int &limit, unsigned int max_limit,
@@ -685,6 +698,7 @@ unsigned int promscrape::pid_to_protobuf(int pid, metric *proto,
 
 			std::lock_guard<std::mutex> lock(m_export_pids_mutex);
 			m_export_pids.emplace(pid);
+			m_emit_counters = false;
 			return 0;
 		}
 		else if (configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value())
@@ -701,8 +715,10 @@ unsigned int promscrape::pid_to_protobuf(int pid, metric *proto,
 				(ONE_SECOND_IN_NS / 2))))
 			{
 				LOG_DEBUG("promscrape: skipping protobuf");
+				m_emit_counters = false;
 				return num_metrics;
 			}
+			m_emit_counters = true;
 			m_last_proto_ts = m_next_ts;
 		}
 	}
