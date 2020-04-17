@@ -607,6 +607,20 @@ prometheus:
             port: "{kubernetes.pod.annotation.prometheus.io/port}"
     - exclude:
         kubernetes.pod.annotation.prometheus.io/scrape: false
+    - include:
+        kubernetes.service.annotation.prometheus.io/scrape: true
+        kubernetes.service.annotation.prometheus.io/scheme: "https"
+        conf:
+            use_https: true
+            path: "{kubernetes.service.annotation.prometheus.io/path}"
+            port: "{kubernetes.service.annotation.prometheus.io/port}"
+    - include:
+        kubernetes.service.annotation.prometheus.io/scrape: true
+        conf:
+            path: "{kubernetes.service.annotation.prometheus.io/path}"
+            port: "{kubernetes.service.annotation.prometheus.io/port}"
+    - exclude:
+        kubernetes.service.annotation.prometheus.io/scrape: false
 
 app_checks:
   - name: ceph

@@ -37,8 +37,14 @@ public:
 	// Map from job_id to scrape results
 	typedef std::map<int64_t, std::shared_ptr<agent_promscrape::ScrapeResult>> prom_metric_map_t;
 
+	// There are a few hacks in here related to 10s flush. Hopefully those can go away if/when
+	// we get support for a callback that lets promscrape override the outgoing protobuf
 	// Hack to get dynamic interval from dragent without adding dependency
 	typedef std::function<int()> interval_cb_t;
+
+	// Other hack to let analyzer flush loop know if it can populate the prometheus metric
+	// counters (otherwise promscrape will be managing them instead)
+	bool emit_counters() const;
 
 	// jobs that haven't been used for this long will be pruned.
 	const int job_prune_time_s = 60;
@@ -143,6 +149,8 @@ private:
 	// Mutex to protect m_export_pids
 	std::mutex m_export_pids_mutex;
 	std::set<int> m_export_pids;	// Populated by pid_to_protobuf for 10s flush callback.
+
+	bool m_emit_counters = true;
 
 	friend class test_helper;
 };
