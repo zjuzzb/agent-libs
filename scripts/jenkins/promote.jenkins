@@ -9,9 +9,7 @@ pipeline {
                 sh label: '', script: '''
                     docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
                     docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
-                    export S3_BUCKET="s3://download.draios.com"
-                    export AGENT_VERSION=${params.RELEASE_VERSION}
-                    agent/scripts/jenkins/release-agent-rc
+                    agent/scripts/jenkins/release-agent-rc "s3://download.draios.com" $RELEASE_VERSION
                 '''
             }
         }
@@ -20,7 +18,7 @@ pipeline {
 	stage('Smoke RC') {
 		steps {
 			sh label: '', script: '''
-				docker pull sysdig/agent:${params.RELEASE_VERSION}
+				docker pull sysdig/agent:$RELEASE_VERSION
 			'''
 		}
 	}

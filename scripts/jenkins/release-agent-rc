@@ -2,17 +2,8 @@
 # Copy all agent files with the right version from rc to stable
 # Rebuild docker hub 
 
-if [ -z "$AGENT_VERSION" ]
-then
-	echo "AGENT_VERSION must be set" >&2
-	exit 1
-fi
-
-if [ -z "$S3_BUCKET" ]
-then
-	echo "S3_BUCKET must be set" >&2
-	exit 1
-fi
+S3_BUCKET=$1
+AGENT_VERSIOn=$2
 
 SCRIPT=$(readlink -f $0)
 SCRIPTS_DIR=$(dirname $(dirname $SCRIPT))
