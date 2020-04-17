@@ -32,7 +32,7 @@ pipeline {
 						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
 						AGENT_BUILD_COMMIT="`git -C agent rev-parse --short HEAD`"
 						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
-						sudo rm -rf $pwd/out
+						sudo rm -rf $PWD/out
 						docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_VERSION=$RELEASE_VERSION -e AGENT_BUILD_COMMIT -e AGENT_BUILD_DATE="`date`" -v $PWD:/draios:ro -v $PWD/out:/out -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/pipcache:/root/.cache quay.io/sysdig/agent-builder:$BUILDER_VERSION release
 					'''
 				}
