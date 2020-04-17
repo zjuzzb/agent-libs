@@ -1,7 +1,15 @@
 pipeline {
 	agent { label 'agent-docker-builder' }
 	stages {
-	
+
+	stage('Check out dependencies') {
+	   steps {
+			dir('agent') {
+				checkout scm
+			}
+	    }
+	}
+
 	// Promotes the RC to release
     stage('Promote RC') {
         steps {
@@ -9,7 +17,7 @@ pipeline {
                 sh label: '', script: '''
                     docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
                     docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
-                    agent/scripts/jenkins/release-agent-rc "s3://download.draios.com" $RELEASE_VERSION
+                    sudo agent/scripts/jenkins/release-agent-rc "s3://download.draios.com" $RELEASE_VERSION
                 '''
             }
         }
