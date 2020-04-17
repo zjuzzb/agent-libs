@@ -3,7 +3,7 @@
 # Rebuild docker hub 
 
 S3_BUCKET=$1
-AGENT_VERSIOn=$2
+AGENT_VERSION=$2
 
 SCRIPT=$(readlink -f $0)
 SCRIPTS_DIR=$(dirname $(dirname $SCRIPT))
