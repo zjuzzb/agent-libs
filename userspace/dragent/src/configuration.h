@@ -155,6 +155,7 @@ public:
 	uint16_t m_log_rotate;
 	// Log size in megabytes
 	uint16_t m_max_log_size;
+	bool m_globally_readable_log_files;
 	std::string m_customer_id;
 	std::string m_server_addr;
 	uint16_t m_server_port;

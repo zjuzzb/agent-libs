@@ -58,6 +58,7 @@ list(
     file_emitter.cpp
     file_rest_registry.cpp
     file_rest_request_handler.cpp
+    globally_readable_file_channel.cpp
     metric_serializer.cpp
     metrics_file_emitter.cpp
     pre_aggregated_metrics_rest_request_handler.cpp
@@ -87,6 +88,7 @@ list(
     watchdog_runnable.cpp
     webpage.cpp
     webpage_rest_request_handler.cpp
+    Poco/SysdigModifiedFileChannel.cpp
 )
 
 if(CYGWIN)

@@ -46,7 +46,6 @@
 #include "Poco/AutoPtr.h"
 #include "Poco/ConsoleChannel.h"
 #include "Poco/SplitterChannel.h"
-#include "Poco/FileChannel.h"
 #include "Poco/PatternFormatter.h"
 #include "Poco/FormattingChannel.h"
 #include "Poco/Message.h"
@@ -99,7 +98,6 @@ using Poco::AutoPtr;
 using Poco::Channel;
 using Poco::ConsoleChannel;
 using Poco::SplitterChannel;
-using Poco::FileChannel;
 using Poco::FormattingChannel;
 using Poco::Formatter;
 using Poco::PatternFormatter;

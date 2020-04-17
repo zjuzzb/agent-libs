@@ -1,5 +1,6 @@
 #include "avoid_block_channel.h"
 #include "common_logger.h"
+#include "globally_readable_file_channel.h"
 #include "sys_call_test.h"
 #include <cstdlib>
 #include <gtest.h>
@@ -9,14 +10,13 @@
 #include <Poco/Formatter.h>
 #include <Poco/FormattingChannel.h>
 #include <Poco/File.h>
-#include <Poco/FileChannel.h>
 #include <Poco/Logger.h>
 #include <Poco/Path.h>
 #include <Poco/PatternFormatter.h>
 
 using namespace Poco;
-
 using namespace std;
+using namespace dragent;
 
 namespace {
 
@@ -39,7 +39,7 @@ private:
 		p.setFileName("draios_test.log");
 		string logsdir = p.toString();
 
-		AutoPtr<FileChannel> file_channel(new FileChannel(logsdir));
+		AutoPtr<globally_readable_file_channel> file_channel(new globally_readable_file_channel(logsdir, false));
 
 		file_channel->setProperty("purgeCount", std::to_string(10));
 		file_channel->setProperty("rotation", "10M");
