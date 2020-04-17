@@ -180,86 +180,96 @@ pipeline {
 		}
 	}
 
-	// create github release. For some reason this doesn't publish. We even send the
-	// code to commit it twice. shrug.
-	stage('github release') {
-	    steps {
-			withCredentials([usernamePassword(credentialsId: 'github-jenkins-user-token', passwordVariable: 'GITHUB_PASSWORD', usernameVariable: 'GITHUB_USERNAME')]) { 
-				sh label: '', script: """
-					curl -sH "Authorization: token $GITHUB_PASSWORD" https://api.github.com/repos/draios/agent/releases/tags/$RELEASE_VERSION
-					RELEASE_ID=`curl -sH "Authorization: token $GITHUB_PASSWORD" https://api.github.com/repos/draios/agent/releases/tags/$RELEASE_VERSION | grep \"id\" | head -n 1 | awk '{print \$2}' | sed 's/.\$//'`
-					if [ -z \$RELEASE_ID ];
-					then
-						echo "No prior release found, nothing to delete"
-					else
-						echo "Deleting release id \$RELEASE_ID"
-						curl -sH "Authorization: token $GITHUB_PASSWORD" -X DELETE https://api.github.com/repos/draios/agent/releases/\$RELEASE_ID
-					fi
-					curl -H "Authorization: token $GITHUB_PASSWORD" --data '{"tag_name":"${params.RELEASE_VERSION}","name":"${params.RELEASE_VERSION}","body":"https://sysdig.atlassian.net/issues/?jql=fixVersion%20%3D%20${params.RELEASE_VERSION} \\n\\n $ADDITIONAL_RELEASE_TEXT","target_commitish":"release-${params.RELEASE_VERSION}","draft":false}' https://api.github.com/repos/draios/agent/releases
-					RELEASE_ID=`curl -sH "Authorization: token $GITHUB_PASSWORD" https://api.github.com/repos/draios/agent/releases/tags/$RELEASE_VERSION | grep \"id\" | head -n 1 | awk '{print \$2}' | sed 's/.\$//'`
-					curl -H "Authorization: token $GITHUB_PASSWORD" --data '{"draft":false}' https://api.github.com/repos/draios/agent/releases/\$RELEASE_ID
-				"""
-			}
-	    }
-	}
+    // github has a weird behavior where if you move tags, it auto moves a release from publish
+    // to draft. Once it's there, we can't find it by tags anymore, and finding it by name
+    // is a bit more of a pain. So to solve that, we do this in 3 stages:
+    // 1: delete an old github release, which we can find by tag
+    // 2: move/create the new tag
+    // 3: create the new release, which should be publishable
+    stage('delete duplicate github release') {
+        steps {
+            withCredentials([usernamePassword(credentialsId: 'github-jenkins-user-token', passwordVariable: 'GITHUB_PASSWORD', usernameVariable: 'GITHUB_USERNAME')]) {
+                sh label: '', script: """
+                    curl -sH "Authorization: token $GITHUB_PASSWORD" https://api.github.com/repos/draios/agent/releases/tags/$RELEASE_VERSION
+                    RELEASE_ID=`curl -sH "Authorization: token $GITHUB_PASSWORD" https://api.github.com/repos/draios/agent/releases/tags/$RELEASE_VERSION | grep \"id\" | head -n 1 | awk '{print \$2}' | sed 's/.\$//'`
+                    if [ -z \$RELEASE_ID ];
+                    then
+                        echo "No prior release found, nothing to delete"
+                    else
+                        echo "Deleting release id \$RELEASE_ID"
+                        curl -sH "Authorization: token $GITHUB_PASSWORD" -X DELETE https://api.github.com/repos/draios/agent/releases/\$RELEASE_ID
+                    fi
+                """
+            }
+        }
+    }
 
-	// push the release tags to git.
-	stage('Push Tags') {
-	    steps {
-			withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
-				dir('agent') {
-					sh label: '', script: """
-						export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-						git tag -d ${params.RELEASE_VERSION} || echo "Tag not found. No problem."
-						git push origin :refs/tags/${params.RELEASE_VERSION}
-						git tag ${params.RELEASE_VERSION}
-						git push origin ${params.RELEASE_VERSION}
-					"""
-				}
-				dir('sysdig') {
-					sh label: '', script: """
-						export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-						git remote add origin2 ssh://git@github.com/draios/sysdig.git || echo "remote already exists"
-						git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
-						git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
-						git tag agent/${params.RELEASE_VERSION}
-						git push origin2 agent/${params.RELEASE_VERSION}
-					"""
-				}
-				dir('oss-falco') {
-					sh label: '', script: """
-						export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-						git remote add origin2 ssh://git@github.com/draios/oss-falco.git || echo "remote already exists"
-						git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
-						git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
-						git tag agent/${params.RELEASE_VERSION}
-						git push origin2 agent/${params.RELEASE_VERSION}
-					"""
-				}
-				dir('protorepo') {
-					sh label: '', script: """
-						export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-						git remote add origin2 ssh://git@github.com/draios/protorepo.git || echo "remote already exists"
-						git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
-						git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
-						git tag agent/${params.RELEASE_VERSION}
-						git push origin2 agent/${params.RELEASE_VERSION}
-					"""
-				}
-				dir('prometheus') {
-					sh label: '', script: """
-						export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-						git remote add origin2 ssh://git@github.com/draios/prometheus.git || echo "remote already exists"
-						git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
-						git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
-						git tag agent/${params.RELEASE_VERSION}
-						git push origin2 agent/${params.RELEASE_VERSION}
-					"""
-				}
+    // push the release tags to git.
+    stage('Push Tags') {
+        steps {
+            withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
+                dir('agent') {
+                    sh label: '', script: """
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git tag -d ${params.RELEASE_VERSION} || echo "Tag not found. No problem."
+                        git push origin :refs/tags/${params.RELEASE_VERSION}
+                        git tag ${params.RELEASE_VERSION}
+                        git push origin ${params.RELEASE_VERSION}
+                    """
+                }
+                dir('sysdig') {
+                    sh label: '', script: """
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git remote add origin2 ssh://git@github.com/draios/sysdig.git || echo "remote already exists"
+                        git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
+                        git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
+                        git tag agent/${params.RELEASE_VERSION}
+                        git push origin2 agent/${params.RELEASE_VERSION}
+                    """
+                }
+                dir('oss-falco') {
+                    sh label: '', script: """
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git remote add origin2 ssh://git@github.com/draios/oss-falco.git || echo "remote already exists"
+                        git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
+                        git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
+                        git tag agent/${params.RELEASE_VERSION}
+                        git push origin2 agent/${params.RELEASE_VERSION}
+                    """
+                }
+                dir('protorepo') {
+                    sh label: '', script: """
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git remote add origin2 ssh://git@github.com/draios/protorepo.git || echo "remote already exists"
+                        git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
+                        git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
+                        git tag agent/${params.RELEASE_VERSION}
+                        git push origin2 agent/${params.RELEASE_VERSION}
+                    """
+                }
+                dir('prometheus') {
+                    sh label: '', script: """
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git remote add origin2 ssh://git@github.com/draios/prometheus.git || echo "remote already exists"
+                        git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
+                        git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
+                        git tag agent/${params.RELEASE_VERSION}
+                        git push origin2 agent/${params.RELEASE_VERSION}
+                    """
+                }
+            }
+        }
+    }
 
-			}
-	    }
-	}
+    stage('create github release') {
+        steps {
+            withCredentials([usernamePassword(credentialsId: 'github-jenkins-user-token', passwordVariable: 'GITHUB_PASSWORD', usernameVariable: 'GITHUB_USERNAME')]) {
+                sh label: '', script: """
+                    curl -H "Authorization: token $GITHUB_PASSWORD" --data '{"tag_name":"${params.RELEASE_VERSION}","name":"${params.RELEASE_VERSION}","body":"https://sysdig.atlassian.net/issues/?jql=fixVersion%20%3D%20${params.RELEASE_VERSION} \\n\\n $ADDITIONAL_RELEASE_TEXT","target_commitish":"release-${params.RELEASE_VERSION}","draft":false}' https://api.github.com/repos/draios/agent/releases
+                """
+            }
+        }
+    }
 
 	// kick off the probe builder with the correct version. This does not update
 	// the default of that job, so we will keep building current GA release until
