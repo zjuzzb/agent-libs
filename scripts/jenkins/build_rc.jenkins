@@ -5,6 +5,7 @@ pipeline {
            steps {
                 dir('agent') {
                     checkout scm
+                    sh "git checkout ${params.AGENT_BRANCH}"
                 }
                 dir('oss-falco') {
                     checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
@@ -22,7 +23,6 @@ pipeline {
                     checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/prometheus']]])
                     sh "git checkout ${params.PROMETHEUS_BRANCH}"
                 }
-
             }
 		}
 		stage('Build Release') {
