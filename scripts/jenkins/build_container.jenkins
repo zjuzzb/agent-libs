@@ -30,7 +30,7 @@ pipeline {
 					sh label: '', script: '''
 						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
 						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
-						docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agent-$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION container
+						docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agent-internal:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION container
 					'''
 				}
 			}
@@ -40,7 +40,7 @@ pipeline {
 				script {
 					docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
 						sh label: '', script: '''
-							docker tag agent-$AGENT_BRANCH  docker.internal.sysdig.com/agent-internal:$AGENT_BRANCH
+							docker tag agent-internal:$AGENT_BRANCH  docker.internal.sysdig.com/agent-internal:$AGENT_BRANCH
 							docker push docker.internal.sysdig.com/agent-internal:$AGENT_BRANCH
 						'''
 					}
@@ -51,7 +51,7 @@ pipeline {
 	post {
 		always {
 			sh label: '', script: '''
-				docker rmi -f agent-$AGENT_BRANCH
+				docker rmi -f agent-internal:$AGENT_BRANCH
 				docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
 			'''
 			cleanWs deleteDirs: true, notFailBuild: true
