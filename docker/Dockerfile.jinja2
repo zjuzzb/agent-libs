@@ -27,7 +27,7 @@ ENV HOME /root
 
 {% endif %}
 
-{% if p.base_docker_image != "adoptopenjdk/openjdk8:alpine-slim" %}
+{% if p.base_docker_image != "adoptopenjdk/openjdk8:jdk8u222-b10-alpine-slim" %}
 {% if p.include_agent_package == "apt" %}
 ADD https://download.sysdig.com/apt-draios-priority /etc/apt/preferences.d/
 
@@ -245,7 +245,7 @@ rm /opt/draios/share/sdjagent.jar
 {% endif %}
 
 # copy backports for mesos/marathon python2.7 compatibility
-{% if p.launch_dragent and p.base_docker_image != "adoptopenjdk/openjdk8:alpine-slim" %}
+{% if p.launch_dragent and p.base_docker_image != "adoptopenjdk/openjdk8:jdk8u222-b10-alpine-slim" %}
 RUN cp -r /opt/draios/lib/python-deps/backports /usr/lib/python2.7/dist-packages/backports
 {% endif %}
 
