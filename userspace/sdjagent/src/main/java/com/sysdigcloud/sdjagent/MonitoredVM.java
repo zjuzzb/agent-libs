@@ -74,20 +74,27 @@ public class MonitoredVM {
 
     private void retrieveVmInfoFromContainer(VMRequest request) {
         String data = null;
-        final String sdjagentPath = String.format("%s/tmp/sdjagent.jar", request.getRoot());
-        LOGGER.fine(String.format("Copying sdjagent jar to %s", sdjagentPath));
-        if (CLibrary.copyToContainer(Prefix.getInstallPrefix() + "/share/sdjagent.jar", request.getPid(), sdjagentPath)) {
-            final String[] command = {"java", "-Dsdjagent.loadjnilibrary=false", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
-            // Using /proc/<pid>/exe because sometimes java command is not on PATH
-            final String javaExe = String.format("/proc/%d/exe", request.getVpid());
-            data = CLibrary.runOnContainer(request.getPid(), request.getVpid(), javaExe, command, request.getRoot());
-        } else {
-            // These logs are with debug priority because may happen for every short lived java process
-            LOGGER.fine(String.format("Cannot copy sdjagent files on container for pid (%d:%d)", request.getPid(),
-                    request.getVpid()));
-        }
 
-        CLibrary.rmFromContainer(request.getPid(), sdjagentPath);
+        // Try to get jvm data from jni without running sdjagent in the container
+        data = CLibrary.getJMXAddressFromContainer(request.getPid(), request.getVpid());
+
+        // backup to copy into container
+        if(data == null) {
+            LOGGER.info(String.format("Unable to get jmx address from JNI. Trying to copy and run sdjagent on the app container"));
+            final String sdjagentPath = String.format("%s/tmp/sdjagent.jar", request.getRoot());
+            LOGGER.fine(String.format("Copying sdjagent jar to %s", sdjagentPath));
+            if (CLibrary.copyToContainer(Prefix.getInstallPrefix() + "/share/sdjagent.jar", request.getPid(), sdjagentPath)) {
+                final String[] command = {"java", "-Dsdjagent.loadjnilibrary=false", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
+                // Using /proc/<pid>/exe because sometimes java command is not on PATH
+                final String javaExe = String.format("/proc/%d/exe", request.getVpid());
+                data = CLibrary.runOnContainer(request.getPid(), request.getVpid(), javaExe, command, request.getRoot());
+            } else {
+                // These logs are with debug priority because may happen for every short lived java process
+                LOGGER.fine(String.format("Cannot copy sdjagent files on container for pid (%d:%d)", request.getPid(),
+                        request.getVpid()));
+            }
+            CLibrary.rmFromContainer(request.getPid(), sdjagentPath);
+        }
 
         if (data != null && !data.isEmpty())
         {

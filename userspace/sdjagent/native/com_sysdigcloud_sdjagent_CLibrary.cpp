@@ -16,18 +16,14 @@
 #include <signal.h>
 #include <string.h>
 #include <limits.h>
+#include <unordered_map>
+#include <dirent.h>
 #include "setns.h"
 
 #include "jni_utils.h"
+#include "hsperfdata_reader.h"
 
 using namespace std;
-
-// calculate a literal or const static string length at compile time.
-// This is an utility method that should be better moved in a miscellaneous utilities directory
-static int constexpr LENGTH(const char* str)
-{
-	return *str ? 1 + LENGTH(str + 1) : 0;
-}
 
 class file_descriptor
 {
@@ -550,3 +546,108 @@ JNIEXPORT jlong JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_getInodeOfFile
 		return 0;
 	}
 }
+
+JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_getJmxInfo
+(JNIEnv *env, jclass, jint pid, jint vpid)
+{
+	timed_waitpid wait_pid;
+	jstring res = nullptr;
+
+	// Open here the namespace so we are sure that the process is live before forking
+	char mntnspath[128];
+	snprintf(mntnspath, sizeof(mntnspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
+	file_descriptor ns_fd(mntnspath, O_RDONLY);
+	if(!ns_fd.is_valid())
+	{
+		log("SEVERE", "Process %d: could not switch mount namespace", pid);
+		return res;
+	}
+
+	int pipefd[2];
+
+	if(pipe(pipefd) == -1)
+	{
+		return res;
+	}
+
+	pid_t child = fork();
+
+	if(child == 0)
+	{
+		prctl(PR_SET_PDEATHSIG, SIGKILL);
+
+		close(pipefd[0]);
+		setns(ns_fd.fd(), CLONE_NEWNS);
+
+		// Try with root user first
+		string filename = "/tmp/hsperfdata_root/" + std::to_string(vpid);
+
+		int fd = open(filename.c_str(), O_RDONLY);
+
+		if(fd < 0)
+		{
+			// Maybe the user is not root.
+			// Look for /tmp/hsperfdata_*/vpid
+			filename = hsperfdata_utils::find_hsperfdata_by_pid(vpid);
+
+			if(!filename.empty())
+			{
+				fd = open(filename.c_str(), O_RDONLY);
+				if(fd < 0)
+				{
+					log("DEBUG", "Process %d: could not open %s", filename.c_str());
+					exit(EXIT_FAILURE);
+				}
+			}
+			else
+			{
+				log("DEBUG", "Did not found any hsperfdata file for vpid %ld", vpid);
+				exit(EXIT_FAILURE);
+			}
+		}
+
+		struct stat statbuf = {};
+		if (fstat(fd, &statbuf) < 0)
+		{
+			exit(EXIT_FAILURE);
+		}
+
+		hsperfdata_reader::byte_buffer_t bytes(statbuf.st_size);
+		ssize_t num = read(fd, &bytes[0], bytes.size());
+
+		if(num > 0)
+		{
+			auto info_json = hsperfdata_reader::get_jmx_connector_server(std::move(bytes));
+			write(pipefd[1], info_json.c_str(), info_json.size());
+		}
+
+		close(pipefd[1]);
+		exit(EXIT_SUCCESS);
+	}
+	else if (child > 0)
+	{
+		close(pipefd[1]);
+		auto wait_res = wait_pid.wait(child);
+		if(wait_res >= 0)
+		{
+			static const size_t BUFFER_SIZE = 1024;
+			char buf[BUFFER_SIZE] = {0};
+			ssize_t num = read(pipefd[0], buf, sizeof(buf));
+			if(num == BUFFER_SIZE)
+			{
+				buf[BUFFER_SIZE -1] = 0;
+			}
+			res = env->NewStringUTF(buf);
+			close(pipefd[0]);
+		}
+		else
+		{
+			kill(child, SIGKILL);
+			waitpid(child, NULL, 0);
+		}
+	}
+
+	return res;
+}
+
+

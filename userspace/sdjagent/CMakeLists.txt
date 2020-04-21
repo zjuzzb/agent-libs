@@ -45,7 +45,9 @@ if(JNI_FOUND)
         sdjagentjni SHARED
         native/com_sysdigcloud_sdjagent_CLibrary.h native/com_sysdigcloud_sdjagent_CLibrary.cpp
         native/com_sysdigcloud_sdjagent_PosixQueue.h native/com_sysdigcloud_sdjagent_PosixQueue.cpp
+        native/hsperfdata_reader.cpp
         native/jni_utils.h
+	native/jni_utils.cpp
     )
     target_link_libraries(sdjagentjni ${JAVA_JVM_LIBRARY} rt)
     install(

@@ -206,6 +206,16 @@ final public class CLibrary {
         }
     }
 
+    public static String getJMXAddressFromContainer(int pid, int vpid){
+        if(!libraryLoaded) {
+            return null;
+        }
+
+        String address = getJmxInfo(pid, vpid);
+
+        return (address == null || address.isEmpty()) ? null : address;
+    }
+
     // Export C function as-is and then provide a tiny wrapper to be more Java friendly
     private static native int real_seteuid(long euid);
     private static native int real_setegid(long egid);
@@ -218,6 +228,7 @@ final public class CLibrary {
     private static native String realRunOnContainer(int pid, int vpid, String exe, String[] command, String root);
     private static native int realRmFromContainer(int pid, String filepath);
     private static native long getInodeOfFile(String path);
+    private static native String getJmxInfo(int pid, int vpid);
 
     private CLibrary() {
         // Deny create instances of this class
