@@ -256,7 +256,7 @@ int64_t promscrape::assign_job_id(int pid, const string &url, const string &cont
 }
 
 void promscrape::addscrapeconfig(int pid, const string &url,
-        const string &container_id, const map<string, string> &options,
+        const string &container_id, const map<string, string> &options, const string &path,
 		uint16_t port, const tag_map_t &tags, const tag_umap_t &infra_tags, uint64_t ts)
 {
 	string joburl;
@@ -292,12 +292,6 @@ void promscrape::addscrapeconfig(int pid, const string &url,
 		if (opt_it != options.end())
 		{
 		    host = opt_it->second;
-		}
-		string path;
-		opt_it = options.find("path");
-		if (opt_it != options.end())
-		{
-		    path = opt_it->second;
 		}
 
 		joburl = scheme + "://" + host + ":" + to_string(port) + path;
@@ -401,7 +395,8 @@ void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 			if (opt_it != p.options().end())
 			{
 				// Specified url overrides everything else
-				addscrapeconfig(p.pid(), opt_it->second, p.container_id(), p.options(), 0, p.tags(), p.infra_tags(), m_next_ts);
+				addscrapeconfig(p.pid(), opt_it->second, p.container_id(), p.options(),
+					p.path(), 0, p.tags(), p.infra_tags(), m_next_ts);
 				continue;
 			}
 			if (p.ports().empty())
@@ -412,7 +407,8 @@ void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 
 			for (auto port : p.ports())
 			{
-				addscrapeconfig(p.pid(), empty, p.container_id(), p.options(), port, p.tags(), p.infra_tags(), m_next_ts);
+				addscrapeconfig(p.pid(), empty, p.container_id(), p.options(), p.path(),
+					port, p.tags(), p.infra_tags(), m_next_ts);
 			}
 		}
 		m_last_config_ts = m_next_ts;
