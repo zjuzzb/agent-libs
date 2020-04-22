@@ -58,9 +58,11 @@ pipeline {
 
 	stage('Notify People') {
 		steps {
+			// Naveen Bali
 			slackSend channel: '@UBYCWGBG9', message: "Agent has been promoted. Please release in jira.", tokenCredentialId: 'slack'
 			 slackSend channel: '#ws-agent-core', message: "@here new agent release ${params.RELEASE_VERSION} has been promoted", tokenCredentialId: 'slack'
 			 slackSend channel: '#support', message: "new agent release ${params.RELEASE_VERSION} has been promoted", tokenCredentialId: 'slack'
+			 slackSend channel: '#docs', message: "new agent release ${params.RELEASE_VERSION} has been promoted. Please publish the release notes at this time.", tokenCredentialId: 'slack'
 		}
 	}
 
