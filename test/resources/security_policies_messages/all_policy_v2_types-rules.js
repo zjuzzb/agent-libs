@@ -347,7 +347,82 @@
     "processes": {
         "items": ["gzip"],
         "matchItems": true
+      }
+     }
+    },
+    {"id": 1024,
+    "name": "match process lzcat",
+    "origin": "secure UI",
+    "versionId": "0.1.1",
+    "filename": "fastengine_rules.yaml",
+    "tags": [],
+    "description": "",
+    "details": {
+    "ruleType": "PROCESS",
+    "processes": {
+        "items": ["lzcat"],
+        "matchItems": true
+      }
+     }
+    },
+    {"id": 1025,
+    "name": "match process bzip2",
+    "origin": "secure UI",
+    "versionId": "0.1.1",
+    "filename": "fastengine_rules.yaml",
+    "tags": [],
+    "description": "",
+    "details": {
+    "ruleType": "PROCESS",
+    "processes": {
+        "items": ["bzip2"],
+        "matchItems": true
+      }
+     }
+    },
+    {"id": 1026,
+    "name": "match process bunzip2",
+    "origin": "secure UI",
+    "versionId": "0.1.1",
+    "filename": "fastengine_rules.yaml",
+    "tags": [],
+    "description": "",
+    "details": {
+    "ruleType": "PROCESS",
+    "processes": {
+        "items": ["bunzip2"],
+        "matchItems": true
+      }
+     }
+    },
+    {"id": 1027,
+    "name": "match process bzcat",
+    "origin": "secure UI",
+    "versionId": "0.1.1",
+    "filename": "fastengine_rules.yaml",
+    "tags": [],
+    "description": "",
+    "details": {
+    "ruleType": "PROCESS",
+    "processes": {
+        "items": ["bzcat"],
+        "matchItems": true
+      }
+     }
+    },    
+    {"id": 1028,
+     "name": "read sample-sensitive-file-4.txt",
+     "origin": "secure UI",
+     "versionId": 1,
+     "filename": "fastengine_rules.yaml",
+     "tags": [],
+     "description": "",
+     "details": {
+	 "ruleType": "FILESYSTEM",
+	 "readPaths": {
+	     "items": ["/tmp/sample-sensitive-file-4.txt"],
+	     "matchItems": true
+	 }
+     }
     }
-    }
-   }
 ]

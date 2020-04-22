@@ -18,7 +18,7 @@ class dump_job_request_queue
 public:
 	virtual ~dump_job_request_queue() = default;
 
-	virtual void queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request) = 0;
+	virtual void queue_job_request(std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request) = 0;
 };
 
 } // namespace dragent

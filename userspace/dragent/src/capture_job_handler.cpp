@@ -37,7 +37,7 @@ public:
 	// objects intact.
 	bool start(sinsp* inspector,
 	           string& token,
-	           const capture_job_handler::start_job_details& details,
+	           const capture_job_queue_handler::start_job_details& details,
 	           string& errstr,
 	           std::shared_ptr<capture_job>& job_state);
 	void stop(bool remove_unsent_job = false);
@@ -152,7 +152,7 @@ capture_job::~capture_job()
 
 bool capture_job::start(sinsp* inspector,
                         string& token,
-                        const capture_job_handler::start_job_details& details,
+                        const capture_job_queue_handler::start_job_details& details,
                         string& errstr,
                         std::shared_ptr<capture_job>& job_state)
 {

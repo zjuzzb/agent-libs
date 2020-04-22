@@ -61,7 +61,7 @@ security_mgr::security_mgr(const string& install_root,
 	  m_inspector(NULL),
 	  m_result_handler(result_handler),
 	  m_analyzer(NULL),
-	  m_capture_job_handler(NULL),
+	  m_capture_job_queue_handler(NULL),
 	  m_configuration(NULL),
 	  m_install_root(install_root),
 	  m_cointerface_sock_path("unix:" + install_root + "/run/cointerface.sock")
@@ -89,14 +89,14 @@ security_mgr::~security_mgr()
 
 void security_mgr::init(sinsp *inspector,
 			sinsp_analyzer *analyzer,
-			capture_job_handler *capture_job_handler,
+			capture_job_queue_handler *capture_job_queue_handler,
 			dragent_configuration *configuration,
 			const internal_metrics::sptr_t& metrics)
 
 {
 	m_inspector = inspector;
 	m_analyzer = analyzer;
-	m_capture_job_handler = capture_job_handler;
+	m_capture_job_queue_handler = capture_job_queue_handler;
 	m_configuration = configuration;
 
 	m_fastengine_rules_library = make_shared<security_rule_library>();
@@ -906,10 +906,17 @@ void security_mgr::process_event_v1(gen_event *evt)
 					// Not throttled--perform the actions associated
 					// with the policy. The actions will add their action
 					// results to the policy event as they complete.
+
+					// (V1 policies only have the
+					// original set of actions so
+					// use an empty actions array)
+					security_actions::v2actions no_v2_actions;
+
 					m_actions.perform_actions(evt->get_ts(),
 								  tinfo,
 								  match->policy()->name(),
 								  match->policy()->actions(),
+								  no_v2_actions,
 								  event);
 				}
 
@@ -1001,6 +1008,7 @@ void security_mgr::process_event_v2(gen_event *evt)
 							  tinfo,
 							  result.m_policy->name(),
 							  result.m_policy->actions(),
+							  result.m_policy->v2actions(),
 							  event);
 			}
 		}
@@ -1017,12 +1025,12 @@ bool security_mgr::start_capture(uint64_t ts_ns,
 				 uint64_t pid,
 				 std::string &errstr)
 {
-	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
-		std::make_shared<capture_job_handler::dump_job_request>();
+	std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request =
+		std::make_shared<capture_job_queue_handler::dump_job_request>();
 
-	job_request->m_start_details = make_unique<capture_job_handler::start_job_details>();
+	job_request->m_start_details = make_unique<capture_job_queue_handler::start_job_details>();
 
-	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
+	job_request->m_request_type = capture_job_queue_handler::dump_job_request::JOB_START;
 	job_request->m_token = token;
 
 	job_request->m_start_details->m_filter = filter;
@@ -1046,20 +1054,20 @@ bool security_mgr::start_capture(uint64_t ts_ns,
 	job_request->m_start_details->m_defer_send = true;
 
 	// Note: Not enforcing any maximum size.
-	return m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr);
+	return m_capture_job_queue_handler->queue_job_request(m_inspector, job_request, errstr);
 }
 
 void security_mgr::start_sending_capture(const string &token)
 {
 	string errstr;
 
-	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
-		std::make_shared<capture_job_handler::dump_job_request>();
+	std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request =
+		std::make_shared<capture_job_queue_handler::dump_job_request>();
 
-	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_SEND_START;
+	job_request->m_request_type = capture_job_queue_handler::dump_job_request::JOB_SEND_START;
 	job_request->m_token = token;
 
-	if (!m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr))
+	if (!m_capture_job_queue_handler->queue_job_request(m_inspector, job_request, errstr))
 	{
 		g_log->error("security_mgr::start_sending_capture could not start sending capture token=" + token + "(" + errstr + "). Trying to stop capture.");
 		stop_capture(token);
@@ -1070,19 +1078,19 @@ void security_mgr::stop_capture(const string &token)
 {
 	string errstr;
 
-	std::shared_ptr<capture_job_handler::dump_job_request> stop_request =
-		std::make_shared<capture_job_handler::dump_job_request>();
+	std::shared_ptr<capture_job_queue_handler::dump_job_request> stop_request =
+		std::make_shared<capture_job_queue_handler::dump_job_request>();
 
-	stop_request->m_stop_details = make_unique<capture_job_handler::stop_job_details>();
+	stop_request->m_stop_details = make_unique<capture_job_queue_handler::stop_job_details>();
 
-	stop_request->m_request_type = capture_job_handler::dump_job_request::JOB_STOP;
+	stop_request->m_request_type = capture_job_queue_handler::dump_job_request::JOB_STOP;
 	stop_request->m_token = token;
 
 	// Any call to security_mgr::stop_capture is for an aborted
 	// capture, in which case the capture should not be sent at all.
 	stop_request->m_stop_details->m_remove_unsent_job = true;
 
-	if (!m_capture_job_handler->queue_job_request(m_inspector, stop_request, errstr))
+	if (!m_capture_job_queue_handler->queue_job_request(m_inspector, stop_request, errstr))
 	{
 		g_log->critical("security_mgr::start_sending_capture could not stop capture token=" + token + "(" + errstr + ")");
 

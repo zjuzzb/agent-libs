@@ -570,6 +570,28 @@ void cri_container_sleep_gzip(const vector<string>& args)
 	return cri_container_simple(exargs);
 }
 
+void cri_container_sleep_bzip2(const vector<string>& args)
+{
+	if (!cri_container_set_cgroup())
+	{
+		return;
+	}
+
+	char *const exargs[] = {(char *) "/bin/bash", (char *) "-c", (char *) "sleep 2; bzip2 -h > /dev/null 2>&1; sleep 1", nullptr};
+	return cri_container_simple(exargs);
+}
+
+void cri_container_sleep_lzcat(const vector<string>& args)
+{
+	if (!cri_container_set_cgroup())
+	{
+		return;
+	}
+
+	char *const exargs[] = {(char *) "/bin/bash", (char *) "-c", (char *) "sleep 2; lzcat --help; sleep 1", nullptr};
+	return cri_container_simple(exargs);
+}
+
 const unordered_map<string, function<void(const vector<string>&)>> func_map = {
 			{ "proc_mgmt", proc_mgmt},
 			{ "mmap_test", mmap_test},
@@ -604,7 +626,9 @@ const unordered_map<string, function<void(const vector<string>&)>> func_map = {
 			{ "pgid_test", pgid_test},
 			{ "custom_container", custom_container},
 			{ "cri_container_echo", cri_container_echo},
-			{ "cri_container_sleep_gzip", cri_container_sleep_gzip}
+			{ "cri_container_sleep_gzip", cri_container_sleep_gzip},
+			{ "cri_container_sleep_bzip2", cri_container_sleep_bzip2},
+			{ "cri_container_sleep_lzcat", cri_container_sleep_lzcat}
 	};
 
 // Helper to test ia32 emulation on 64bit

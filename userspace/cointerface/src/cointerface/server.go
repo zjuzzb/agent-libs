@@ -81,6 +81,9 @@ func (c *coInterfaceServer) PerformCriCommand(ctx context.Context, cmd *sdc_inte
     case sdc_internal.ContainerCmdType_UNPAUSE:
         err = cri.UnpauseContainer(cmd.GetContainerId())
 
+    case sdc_internal.ContainerCmdType_KILL:
+        err = cri.StopContainer(cmd.GetContainerId(), 0)
+
     default:
         ferr := fmt.Errorf("Unknown cri-o command %d", int(cmd.GetCmd()))
         log.Errorf(ferr.Error())
@@ -117,6 +120,9 @@ func (c *coInterfaceServer) PerformDockerCommand(ctx context.Context, cmd *sdc_i
 
 	case sdc_internal.ContainerCmdType_UNPAUSE:
 		err = cli.ContainerUnpause(ctx, cmd.GetContainerId())
+
+	case sdc_internal.ContainerCmdType_KILL:
+		err = cli.ContainerKill(ctx, cmd.GetContainerId(), "SIGKILL")
 
 	default:
 		ferr := fmt.Errorf("Unknown docker command %d", int(cmd.GetCmd()))

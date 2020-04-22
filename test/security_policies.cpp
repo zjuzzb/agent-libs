@@ -73,6 +73,27 @@ audit_tap_handler_dummy g_audit_handler;
 null_secure_audit_handler g_secure_audit_handler;
 null_secure_profiling_handler g_secure_profiling_handler;
 
+class test_capture_job_queue_handler :
+		public capture_job_queue_handler
+{
+public:
+	test_capture_job_queue_handler()
+	{
+	}
+
+	virtual ~test_capture_job_queue_handler()
+	{
+	}
+
+	bool queue_job_request(sinsp *inspector, std::shared_ptr<dump_job_request> job_request, std::string &errstr)
+	{
+		m_job_requests.push_back(job_request);
+		return true;
+	}
+
+	std::vector<std::shared_ptr<dump_job_request>> m_job_requests;
+};
+
 class test_sinsp_worker : public Runnable
 {
 public:
@@ -148,7 +169,7 @@ public:
 				string filter =
 				    "(proc.name = tests or proc.aname = tests) or container.id = "
 				    "aec4c703604b4504df03108eef12e8256870eca8aabcb251855a35bf4f0337f1 or "
-				    "container.name in (sec_ut, stop_me_docker_test, fs-root-image, "
+				    "container.name in (sec_ut, stop_me_docker_test, kill_me_docker_test, capture_me_docker_test, fs-root-image, "
 				    "blacklisted_image, non_alpine, busybox_some_tag, baseline-test, denyme, "
 				    "inout_test, fs_usecase, mycurl, overlap_test, helloworld) or container.image "
 				    "= swarm_service_ut_image:latest";
@@ -320,8 +341,9 @@ protected:
 
 		m_inspector->open("");
 
-		// Note that capture job handler is NULL. So no actions that perform captures.
-		m_mgr.init(m_inspector, m_analyzer, NULL, &m_configuration, m_internal_metrics);
+		m_capture_job_queue_handler = new test_capture_job_queue_handler();
+
+		m_mgr.init(m_inspector, m_analyzer, m_capture_job_queue_handler, &m_configuration, m_internal_metrics);
 		std::string policies_file =
 		    (m_load_v1_policies ? security_config::instance().get_policies_file()
 		                        : security_config::instance().get_policies_v2_file());
@@ -355,6 +377,7 @@ protected:
 		createFile("/tmp/sample-sensitive-file-1.txt");
 		createFile("/tmp/sample-sensitive-file-2.txt");
 		createFile("/tmp/sample-sensitive-file-3.txt");
+		createFile("/tmp/sample-sensitive-file-4.txt");
 		createFile("/tmp/matchlist-order.txt");
 		createFile("/tmp/matchlist-order-2.txt");
 		createFile("/tmp/overall-order-1.txt");
@@ -385,6 +408,7 @@ protected:
 		ThreadPool::defaultPool().joinAll();
 		ThreadPool::defaultPool().stopAll();
 
+		delete m_capture_job_queue_handler;
 		delete m_sinsp_worker;
 		delete m_inspector;
 		delete m_analyzer;
@@ -397,6 +421,7 @@ protected:
 		remove("/tmp/sample-sensitive-file-1.txt");
 		remove("/tmp/sample-sensitive-file-2.txt");
 		remove("/tmp/sample-sensitive-file-3.txt");
+		remove("/tmp/sample-sensitive-file-4.txt");
 		remove("/tmp/matchlist-order.txt");
 		remove("/tmp/matchlist-order-2.txt");
 		remove("/tmp/overall-order-1.txt");
@@ -426,7 +451,9 @@ public:
 		      output_type(ot),
 		      output_fields(ofk),
 		      baseline_id(""),
-		      event_scope(HOST_OR_CONTAINER)
+		      event_scope(HOST_OR_CONTAINER),
+		      check_act_result(false),
+		      check_v2act_result(false)
 		{
 		}
 		expected_policy_event(uint64_t p,
@@ -437,7 +464,9 @@ public:
 		      output_type(ot),
 		      output_fields(ofk),
 		      baseline_id(b_id),
-		      event_scope(HOST_OR_CONTAINER)
+		      event_scope(HOST_OR_CONTAINER),
+		      check_act_result(false),
+		      check_v2act_result(false)
 		{
 		}
 		expected_policy_event(uint64_t p,
@@ -448,7 +477,9 @@ public:
 		      output_type(ot),
 		      output_fields(ofk),
 		      baseline_id(""),
-		      event_scope(scope)
+		      event_scope(scope),
+		      check_act_result(false),
+		      check_v2act_result(false)
 		{
 		}
 		expected_policy_event(uint64_t p,
@@ -460,15 +491,54 @@ public:
 		      output_type(ot),
 		      output_fields(ofk),
 		      baseline_id(b_id),
-		      event_scope(scope)
+		      event_scope(scope),
+		      check_act_result(false),
+		      check_v2act_result(false)
 		{
 		}
+		expected_policy_event(uint64_t p,
+		                      draiosproto::policy_type ot,
+		                      map<string, string> ofk,
+		                      string b_id,
+		                      event_scope_t scope,
+				      bool check_action_result,
+				      bool check_v2action_result,
+				      int atype,
+				      bool asuccessful,
+				      std::string aerrmsg)
+
+		    : policy_id(p),
+		      output_type(ot),
+		      output_fields(ofk),
+		      baseline_id(b_id),
+		      event_scope(scope),
+		      check_act_result(check_action_result),
+		      check_v2act_result(check_v2action_result),
+		      act_type(atype),
+		      act_successful(asuccessful),
+		      act_errmsg(aerrmsg)
+		{
+		}
+
 		uint64_t policy_id;
 		draiosproto::policy_type output_type;
 		map<string, string> output_fields;
 		string baseline_id;
 		event_scope_t event_scope;
+
+		// Note, only checking a single action/actionv2 result
+		bool check_act_result;
+		bool check_v2act_result;
+
+		int act_type;
+		bool act_successful;
+		string act_errmsg;
 	};
+
+	bool capture_jobs_empty()
+	{
+		return m_capture_job_queue_handler->m_job_requests.empty();
+	}
 
 	void check_policy_events(std::vector<expected_policy_event>& expected)
 	{
@@ -525,6 +595,9 @@ public:
 					    details.output_type() == expected[i].output_type &&
 					    check_output_fields(evt_output_fields, expected[i].output_fields))
 					{
+						check_v2action_result(evt, expected[i]);
+						check_action_result(evt, expected[i]);
+
 						bool has_bl_details = evt.event_details().has_baseline_details();
 						string bl_id =
 						    has_bl_details ? evt.event_details().baseline_details().id() : "";
@@ -560,6 +633,85 @@ public:
 				       << " output_fields: " << expected[i].output_fields;
 			}
 		}
+	}
+
+	void compare_act_type(int evttype, int exptype, const char *atype)
+	{
+		if(evttype != exptype)
+		{
+			FAIL() << "Policy Event"
+			       << atype
+			       << "action result type mismatch. Evt: "
+			       << evttype
+			       << " Expected: "
+			       << exptype;
+		}
+	}
+
+	void compare_act_successful(bool evtsuccessful, bool expsuccessful, const char *atype)
+	{
+		if(evtsuccessful != expsuccessful)
+		{
+			FAIL() << "Policy Event"
+			       << atype
+			       << "action result successful mismatch. Evt: "
+			       << evtsuccessful
+			       << " Expected: "
+			       << expsuccessful;
+		}
+	}
+
+	void compare_act_errmsg(const std::string &evterrmsg, const std::string &experrmsg, const char *atype)
+	{
+		if(evterrmsg != experrmsg)
+		{
+			FAIL() << "Policy Event"
+			       << atype
+			       << "action result errmsg mismatch. Evt: "
+			       << evterrmsg
+			       << " Expected: "
+			       << experrmsg;
+		}
+	}
+
+	void check_action_result(const draiosproto::policy_event &evt,
+				 const expected_policy_event &expevt)
+	{
+		if(!expevt.check_act_result)
+		{
+			return;
+		}
+
+		if(evt.action_results_size() != 1)
+		{
+			FAIL() << "Policy Event did not have exactly 1 action result. Evt: "
+			       << evt.DebugString();
+		}
+
+		const draiosproto::action_result &res = evt.action_results(0);
+		compare_act_type(res.type(), expevt.act_type, " ");
+		compare_act_successful(res.successful(), expevt.act_successful, " ");
+		compare_act_errmsg(res.errmsg(), expevt.act_errmsg, " ");
+	}
+
+	void check_v2action_result(const draiosproto::policy_event &evt,
+				   const expected_policy_event &expevt)
+	{
+		if(!expevt.check_v2act_result)
+		{
+			return;
+		}
+
+		if(evt.v2action_results_size() != 1)
+		{
+			FAIL() << "Policy Event did not have exactly 1 v2 action result. Evt: "
+			       << evt.DebugString();
+		}
+
+		const draiosproto::v2action_result &res = evt.v2action_results(0);
+		compare_act_type(res.type(), expevt.act_type, " v2 ");
+		compare_act_successful(res.successful(), expevt.act_successful, " v2 ");
+		compare_act_errmsg(res.errmsg(), expevt.act_errmsg, " v2 ");
 	}
 
 	struct expected_internal_metric
@@ -743,6 +895,7 @@ protected:
 	internal_metrics::sptr_t m_internal_metrics;
 	protocol_handler m_data_handler;
 	security_mgr m_mgr;
+	test_capture_job_queue_handler *m_capture_job_queue_handler;
 	test_sinsp_worker* m_sinsp_worker;
 	dragent_configuration m_configuration;
 	security_policy_error_handler m_error_handler;
@@ -1050,65 +1203,243 @@ TEST_F(security_policies_test, readwrite_fs_only)
 	return readwrite_fs_test(this, v1_metrics);
 };
 
-TEST_F(security_policies_v2_test_cointerface, stop_action_docker_test)
+enum actions_type {
+	ACTIONS = 0,
+	V2ACTIONS
+};
+
+static void stop_action_docker_test(security_policies_test* ptest,
+				    actions_type atype)
 {
 	if (!dutils_check_docker())
 	{
 		return;
 	}
 
-	ASSERT_EQ(system("docker run --name stop_me_docker_test --rm busybox:latest sh -c 'sleep 2; "
-	                 "gzip -V; sleep 1' > /dev/null 2>&1"),
-	          0);
+	uint64_t policy_id;
+	std::string comm;
+	std::string cmd;
+	int action;
 
-	unique_ptr<draiosproto::policy_events> pe;
-	this->get_policy_evts_msg(pe);
-	ASSERT_NE(pe, nullptr);
-	bool stop_found = false;
-	for (int i = 0; i < pe->events_size(); i++)
+	if(atype == ACTIONS)
 	{
-		auto evt = pe->events(i);
-		for (int j = 0; j < evt.action_results_size(); j++)
-		{
-			auto result = evt.action_results(j);
-			if (result.type() == draiosproto::ACTION_STOP && result.successful() == true)
-			{
-				stop_found = true;
-			}
-		}
+		policy_id = 36;
+		comm = "gzip";
+		cmd = "gzip -V";
+		action = draiosproto::ACTION_STOP;
+	}
+	else
+	{
+		policy_id = 37;
+		comm = "bzip2";
+		cmd = "bzip2 -h";
+		action = draiosproto::V2ACTION_STOP;
 	}
 
-	ASSERT_TRUE(stop_found);
+	// We want the return value to be non-zero as the container is stopped
+	std::string docker_cmd = string("docker run --name stop_me_docker_test --rm busybox:latest sh -c 'sleep 2; ") +
+		cmd +
+		string("; sleep 40' > /dev/null 2>&1");
+
+	ASSERT_NE(system(docker_cmd.c_str()), 0);
+
+	std::vector<security_policies_test::expected_policy_event> expected = {
+		{policy_id,
+		 draiosproto::policy_type::PTYPE_PROCESS,
+		 {{"proc.name", comm}, {"proc.cmdline", cmd}},
+		 "",
+		 security_policies_test::expected_policy_event::HOST_OR_CONTAINER,
+		 (atype == ACTIONS),
+		 (atype == V2ACTIONS),
+		 action,
+		 true,
+		 ""}};
+
+	ptest->check_policy_events(expected);
 
 	// Perform cleanup in case the action failed
 	dutils_kill_container_if_exists("stop_me_docker_test");
+}
+
+TEST_F(security_policies_v2_test_cointerface, stop_action_docker_test)
+{
+	stop_action_docker_test(this, ACTIONS);
 };
 
-TEST_F(security_policies_v2_test_cointerface, stop_action_cri_test)
+TEST_F(security_policies_v2_test_cointerface, stop_v2action_docker_test)
 {
-	proc test_proc = proc("./test_helper", {"cri_container_sleep_gzip"});
+	stop_action_docker_test(this, V2ACTIONS);
+};
+
+static void capture_action_docker_test(security_policies_test* ptest,
+				       actions_type atype)
+{
+	if (!dutils_check_docker())
+	{
+		return;
+	}
+
+	uint64_t policy_id;
+	std::string comm;
+	std::string cmd;
+	int action;
+
+	if(atype == ACTIONS)
+	{
+		policy_id = 39;
+		comm = "bunzip2";
+		cmd = "bunzip2 -h";
+		action = draiosproto::ACTION_CAPTURE;
+	}
+	else
+	{
+		policy_id = 40;
+		comm = "bzcat";
+		cmd = "bzcat -h";
+		action = draiosproto::V2ACTION_CAPTURE;
+	}
+
+	// We want the return value to be non-zero as the container is captureped
+	std::string docker_cmd = string("docker run --name capture_me_docker_test --rm busybox:latest sh -c 'sleep 2; ") +
+		cmd +
+		string("; sleep 1' > /dev/null 2>&1");
+
+	ASSERT_EQ(system(docker_cmd.c_str()), 0);
+
+	std::vector<security_policies_test::expected_policy_event> expected = {
+		{policy_id,
+		 draiosproto::policy_type::PTYPE_PROCESS,
+		 {{"proc.name", comm}, {"proc.cmdline", cmd}},
+		 "",
+		 security_policies_test::expected_policy_event::HOST_OR_CONTAINER,
+		 (atype == ACTIONS),
+		 (atype == V2ACTIONS),
+		 action,
+		 true,
+		 ""}};
+
+	ptest->check_policy_events(expected);
+
+	ASSERT_FALSE(ptest->capture_jobs_empty()) << "No capture job requested";
+
+	// Perform cleanup in case the action failed
+	dutils_kill_container_if_exists("capture_me_docker_test");
+}
+
+TEST_F(security_policies_v2_test_cointerface, capture_action_docker_test)
+{
+	capture_action_docker_test(this, ACTIONS);
+};
+
+TEST_F(security_policies_v2_test_cointerface, capture_v2action_docker_test)
+{
+	capture_action_docker_test(this, V2ACTIONS);
+};
+
+TEST_F(security_policies_v2_test_cointerface, kill_action_docker_test)
+{
+	if (!dutils_check_docker())
+	{
+		return;
+	}
+
+	// We want the return value to be non-zero as the container is killed
+	ASSERT_NE(system("docker run --name kill_me_docker_test --rm busybox:latest sh -c 'sleep 2; "
+	                 "lzcat --help; sleep 40' > /dev/null 2>&1"),
+	          0);
+
+	std::vector<expected_policy_event> expected = {
+		{38,
+		 draiosproto::policy_type::PTYPE_PROCESS,
+		 {{"proc.name", "lzcat"}, {"proc.cmdline", "lzcat --help"}},
+		 "",
+		 expected_policy_event::HOST_OR_CONTAINER,
+		 false,
+		 true,
+		 draiosproto::V2ACTION_KILL,
+		 true,
+		 ""}};
+
+	check_policy_events(expected);
+
+	// Perform cleanup in case the action failed
+	dutils_kill_container_if_exists("kill_me_docker_test");
+};
+
+static void stop_action_cri_test(security_policies_test* ptest,
+				 actions_type atype)
+{
+	uint64_t policy_id;
+	std::string comm;
+	std::string cmd;
+	int action;
+	std::string test_helper_arg;
+
+	if(atype == ACTIONS)
+	{
+		policy_id = 36;
+		comm = "gzip";
+		cmd = "gzip -V";
+		action = draiosproto::ACTION_STOP;
+		test_helper_arg = "cri_container_sleep_gzip";
+	}
+	else
+	{
+		policy_id = 37;
+		comm = "bzip2";
+		cmd = "bzip2 -h";
+		action = draiosproto::V2ACTION_STOP;
+		test_helper_arg = "cri_container_sleep_bzip2";
+	}
+
+	proc test_proc = proc("./test_helper", {test_helper_arg.c_str()});
 	auto handle = start_process(&test_proc);
 	std::get<0>(handle).wait();
 
-	unique_ptr<draiosproto::policy_events> pe;
-	this->get_policy_evts_msg(pe);
-	ASSERT_NE(pe, nullptr);
-	bool stop_found = false;
-	ASSERT_TRUE(pe->events_size() > 0);
-	for (int i = 0; i < pe->events_size(); i++)
-	{
-		auto evt = pe->events(i);
-		for (int j = 0; j < evt.action_results_size(); j++)
-		{
-			auto result = evt.action_results(j);
-			if (result.type() == draiosproto::ACTION_STOP && result.successful() == true)
-			{
-				stop_found = true;
-			}
-		}
-	}
+	std::vector<security_policies_test::expected_policy_event> expected = {
+		{policy_id,
+		 draiosproto::policy_type::PTYPE_PROCESS,
+		 {{"proc.name", comm}, {"proc.cmdline", cmd}},
+		 "",
+		 security_policies_test::expected_policy_event::HOST_OR_CONTAINER,
+		 (atype == ACTIONS),
+		 (atype == V2ACTIONS),
+		 action,
+		 true,
+		 ""}};
 
-	ASSERT_TRUE(stop_found);
+	ptest->check_policy_events(expected);
+}
+
+TEST_F(security_policies_v2_test_cointerface, stop_action_cri_test)
+{
+	stop_action_cri_test(this, ACTIONS);
+};
+
+TEST_F(security_policies_v2_test_cointerface, stop_v2action_cri_test)
+{
+	stop_action_cri_test(this, V2ACTIONS);
+};
+
+TEST_F(security_policies_v2_test_cointerface, kill_action_cri_test)
+{
+	proc test_proc = proc("./test_helper", {"cri_container_sleep_lzcat"});
+	auto handle = start_process(&test_proc);
+	std::get<0>(handle).wait();
+
+	std::vector<expected_policy_event> expected = {
+		{38,
+		 draiosproto::policy_type::PTYPE_PROCESS,
+		 {{"proc.name", "lzcat"}, {"proc.cmdline", "lzcat --help"}},
+		 "",
+		 expected_policy_event::HOST_OR_CONTAINER,
+		 false,
+		 true,
+		 draiosproto::V2ACTION_KILL,
+		 true,
+		 ""}};
+
+	check_policy_events(expected);
 };
 
 TEST_F(security_policies_v2_test, readwrite_fs_only)
@@ -2897,3 +3228,34 @@ TEST_F(security_policies_v2_test, docker_swarm)
 	bool v1_metrics = false;
 	return docker_swarm(this, v1_metrics);
 };
+
+TEST_F(security_policies_v2_test, policy_with_unknown_action)
+{
+	int fd = open("/tmp/sample-sensitive-file-4.txt", O_RDONLY);
+	close(fd);
+
+	std::vector<security_policies_test::expected_policy_event> expected = {
+	    {41,
+	     draiosproto::policy_type::PTYPE_FILESYSTEM,
+	     {{"fd.name", "/tmp/sample-sensitive-file-4.txt"},
+	      {"evt.type", "open"},
+	      {"proc.name", "tests"}},
+	     "",
+	     expected_policy_event::HOST_OR_CONTAINER,
+	     false,
+	     true,
+	     draiosproto::V2ACTION_UNKNOWN,
+	     false,
+	     "Policy Action 0 not implemented yet"}};
+
+	check_policy_events(expected);
+
+	std::map<string, security_policies_test::expected_internal_metric> metrics = {
+		{"security.files-readonly.match.match_items",
+		 {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+		{"security.files-readonly.match.not_match_items",
+		 {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+
+	check_expected_internal_metrics(metrics);
+}
+

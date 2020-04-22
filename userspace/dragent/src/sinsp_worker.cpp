@@ -695,10 +695,10 @@ bool sinsp_worker::handle_signal_dump()
 	return true;
 }
 
-void sinsp_worker::queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request)
+void sinsp_worker::queue_job_request(std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request)
 {
 	g_log->information(m_name + ": scheduling job request type=" +
-			   capture_job_handler::dump_job_request::request_type_str(job_request->m_request_type) +
+			   capture_job_queue_handler::dump_job_request::request_type_str(job_request->m_request_type) +
 			    ", token= " + job_request->m_token);
 
 	if(!m_dump_job_requests.put(job_request))
@@ -870,12 +870,12 @@ void sinsp_worker::process_job_requests(bool should_dump)
 	{
 		g_log->information("Received SIGUSR1, starting dump");
 
-		std::shared_ptr<capture_job_handler::dump_job_request> job_request
-			= make_shared<capture_job_handler::dump_job_request>();
+		std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request
+			= make_shared<capture_job_queue_handler::dump_job_request>();
 
-		job_request->m_start_details = make_unique<capture_job_handler::start_job_details>();
+		job_request->m_start_details = make_unique<capture_job_queue_handler::start_job_details>();
 
-		job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
+		job_request->m_request_type = capture_job_queue_handler::dump_job_request::JOB_START;
 		job_request->m_token = string("dump").append(NumberFormatter::format(time(NULL)));
 		job_request->m_start_details->m_duration_ns = 20000000000LL;
 		job_request->m_start_details->m_delete_file_when_done = false;
@@ -896,7 +896,7 @@ void sinsp_worker::process_job_requests(bool should_dump)
 		}
 	}
 
-	std::shared_ptr<capture_job_handler::dump_job_request> request;
+	std::shared_ptr<capture_job_queue_handler::dump_job_request> request;
 	while(m_dump_job_requests.get(&request, 0))
 	{
 		string errstr;

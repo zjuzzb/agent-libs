@@ -305,6 +305,81 @@ policy_list {
     op: NOT_EQ
   }
 }
+policy_list {
+  id: 37
+  name: "V2Stop on process bzip2 in container"
+  rule_names: "match process bzip2"
+  v2actions {
+    type: V2ACTION_STOP
+    stop: {}
+  }
+  enabled: 1
+  scope_predicates {
+    key: "container.id"
+    values: ""
+    op: NOT_EQ
+  }
+}
+policy_list {
+  id: 38
+  name: "Kill on process lzcat in container"
+  rule_names: "match process lzcat"
+  v2actions {
+    type: V2ACTION_KILL
+    kill: {}
+  }
+  enabled: 1
+  scope_predicates {
+    key: "container.id"
+    values: ""
+    op: NOT_EQ
+  }
+}
+policy_list {
+  id: 39
+  name: "Capture on process bunzip2 in container"
+  rule_names: "match process bunzip2"
+  actions {
+    type: ACTION_CAPTURE
+    capture: {
+      before_event_ns: 0
+      after_event_ns: 1000000000
+    }
+  }
+  enabled: 1
+  scope_predicates {
+    key: "container.id"
+    values: ""
+    op: NOT_EQ
+  }
+}
+policy_list {
+  id: 40
+  name: "V2Capture on process bzcat in container"
+  rule_names: "match process bzcat"
+  v2actions {
+    type: V2ACTION_CAPTURE
+    capture: {
+      before_event_ns: 0
+      after_event_ns: 1000000000
+    }
+  }
+  enabled: 1
+  scope_predicates {
+    key: "container.id"
+    values: ""
+    op: NOT_EQ
+  }
+}
+policy_list {
+  id: 41
+  name: "Policy With Undefined Action"
+  rule_names: "read sample-sensitive-file-4.txt"
+  v2actions {
+    type: V2ACTION_UNKNOWN
+  }
+  enabled: 1
+}
 falco_group {
   default_files {
     tag: "0.1.1test"

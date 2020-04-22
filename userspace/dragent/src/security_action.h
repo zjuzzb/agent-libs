@@ -10,6 +10,7 @@ class SINSP_PUBLIC security_actions
 {
 public:
 	typedef google::protobuf::RepeatedPtrField<draiosproto::action> actions;
+	typedef google::protobuf::RepeatedPtrField<draiosproto::v2action> v2actions;
 
 	security_actions();
 	virtual ~security_actions();
@@ -28,6 +29,7 @@ public:
 			     sinsp_threadinfo *tinfo,
 			     const std::string &policy_name,
 			     const actions &actions,
+			     const v2actions &v2actions,
 			     draiosproto::policy_event *event);
 
 	// Check the list of outstanding actions and see if any are
@@ -64,6 +66,27 @@ protected:
 		bool m_send_now;
 	};
 
+	// Wrapper around draiosproto::action_result/v2action_result
+	// that allows for unified setters of successful/errmsg.
+	class actions_result
+	{
+	public:
+		actions_result();
+
+		void add_result(draiosproto::action_result *result);
+		void add_v2result(draiosproto::v2action_result *v2result);
+
+		void set_successful(bool succesful);
+		void set_errmsg(const std::string &errmsg);
+		void set_token(const std::string &token);
+
+		std::string to_string();
+
+	private:
+		draiosproto::action_result *m_result;
+		draiosproto::v2action_result *m_v2result;
+	};
+
 	// Return whether or not this event has an action result of
 	// the specified type. Return a pointer to that action result
 	// or NULL.
@@ -76,9 +99,17 @@ protected:
 	void perform_container_action(uint64_t ts_ns,
 				      sdc_internal::container_cmd_type cmd,
 				      std::string &container_id,
-				      const draiosproto::action &action,
-				      draiosproto::action_result *result,
+				      const std::string &action,
+				      std::shared_ptr<actions_result> result,
 				      std::shared_ptr<actions_state> astate);
+
+	void perform_capture_action(uint64_t ts_ns,
+								const std::string &policy_name,
+								std::string &container_id,
+								uint64_t pid,
+								const draiosproto::capture_action &capture,
+								shared_ptr<actions_result> result,
+								shared_ptr<actions_state> astate);
 
 	std::vector<std::shared_ptr<actions_state>> m_outstanding_actions;
 

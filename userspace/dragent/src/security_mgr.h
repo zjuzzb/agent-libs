@@ -41,7 +41,7 @@ public:
 
 	void init(sinsp *inspector,
 		  sinsp_analyzer *analyzer,
-		  capture_job_handler *capture_job_handler,
+		  capture_job_queue_handler *capture_job_queue_handler,
 		  dragent_configuration *configuration,
 		  const internal_metrics::sptr_t& metrics);
 
@@ -397,7 +397,7 @@ private:
 	sinsp* m_inspector;
 	security_result_handler& m_result_handler;
 	sinsp_analyzer *m_analyzer;
-	capture_job_handler *m_capture_job_handler;
+	capture_job_queue_handler *m_capture_job_queue_handler;
 	dragent_configuration *m_configuration;
 	std::string m_install_root;
 	std::string m_cointerface_sock_path;

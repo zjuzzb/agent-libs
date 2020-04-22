@@ -35,12 +35,12 @@ bool dump_request_start_message_handler::handle_message(
 
 	dragent_protocol::buffer_to_protobuf(buffer, buffer_size, &request);
 
-	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
-		make_shared<capture_job_handler::dump_job_request>();
+	std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request =
+		make_shared<capture_job_queue_handler::dump_job_request>();
 
-	job_request->m_start_details = make_unique<capture_job_handler::start_job_details>();
+	job_request->m_start_details = make_unique<capture_job_queue_handler::start_job_details>();
 
-	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
+	job_request->m_request_type = capture_job_queue_handler::dump_job_request::JOB_START;
 	job_request->m_token = request.token();
 
 	if(request.has_filters())

@@ -55,7 +55,7 @@ public:
 	// request along to the capture_job_handler thread, but does
 	// some necessary prep work such as creating sinsp_dumper
 	// objects, etc.
-	void queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request) override;
+	void queue_job_request(std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request) override;
 
 	uint64_t get_last_loop_ns() const
 	{
@@ -163,7 +163,7 @@ private:
 	std::atomic_flag m_hosts_metadata_uptodate;
 #endif
 	capture_job_handler *m_capture_job_handler;
-	thread_safe_container::blocking_queue<std::shared_ptr<capture_job_handler::dump_job_request>> m_dump_job_requests;
+	thread_safe_container::blocking_queue<std::shared_ptr<capture_job_queue_handler::dump_job_request>> m_dump_job_requests;
 	std::atomic<uint64_t> m_last_loop_ns;
 	std::atomic<pthread_t> m_pthread_id;
 	std::shared_ptr<pipe_manager> m_statsite_pipes;

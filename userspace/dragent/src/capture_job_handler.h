@@ -28,12 +28,12 @@
 #include "dragent_message_queues.h"
 #include "thread_safe_container/blocking_queue.h"
 
-class capture_job;
-class capture_job_handler : public dragent::watchdog_runnable,
-                            public dragent::infra_event_sink
+// Generic interface to allow queuing of capture job requests
+class capture_job_queue_handler
 {
-	friend class capture_job;
 public:
+
+	public:
 
 	class start_job_details
 	{
@@ -125,6 +125,17 @@ public:
 		std::unique_ptr<stop_job_details> m_stop_details;
 	};
 
+	virtual bool queue_job_request(sinsp *inspector, std::shared_ptr<dump_job_request> job_request, std::string &errstr) = 0;
+};
+
+class capture_job;
+class capture_job_handler : public dragent::watchdog_runnable,
+	                    public dragent::infra_event_sink,
+			    public capture_job_queue_handler
+{
+public:
+	friend class capture_job;
+
 	capture_job_handler(dragent_configuration *configuration,
 			    protocol_queue *queue);
 
@@ -148,7 +159,7 @@ public:
 	// otherwise. Even when returning true, the capture job might
 	// return an error later. In that case, an error message will
 	// be sent to the connection manager's queue.
-	bool queue_job_request(sinsp *inspector, std::shared_ptr<dump_job_request> job_request, std::string &errstr);
+	bool queue_job_request(sinsp *inspector, std::shared_ptr<dump_job_request> job_request, std::string &errstr) final;
 
 	// Change the chunk size used for event captures. This is only
 	// used for testing.
