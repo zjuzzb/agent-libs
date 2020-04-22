@@ -18,7 +18,7 @@ type_config<bool> promscrape::c_use_promscrape(
     "use_promscrape");
 
 type_config<string> c_promscrape_sock(
-    "localhost:9876",
+    "127.0.0.1:9876",
     "Socket address URL for promscrape server",
     "promscrape_address");
 
@@ -28,7 +28,7 @@ type_config<int> c_promscrape_connect_interval(
     "promscrape_connect_interval");
 
 type_config<int> c_promscrape_connect_delay(
-    8,
+    10,
     "Delay before attempting to connect to promscrape",
     "promscrape_connect_delay");
 
@@ -50,6 +50,11 @@ type_config<bool>::mutable_ptr promscrape::c_export_fastproto =
 		}
 	})
 	.build_mutable();
+
+int elapsed_s(uint64_t old, uint64_t now)
+{
+	return (now - old) / ONE_SECOND_IN_NS;
+}
 
 void promscrape::validate_config(prometheus_conf &prom_conf)
 {
@@ -120,24 +125,29 @@ void promscrape::start()
 	};
 
 	if (!m_start_conn) {
-		LOG_INFO("promscrape: opening GRPC connection to %s", m_sock.c_str());
+		LOG_INFO("opening GRPC connection to %s", m_sock.c_str());
 		grpc::ChannelArguments args;
 		// Set maximum receive message size to unlimited
 		args.SetMaxReceiveMessageSize(-1);
 
 		m_start_conn = grpc_connect<agent_promscrape::ScrapeService::Stub>(m_sock, 10, &args);
 		if (!m_start_conn) {
-			LOG_ERROR("promscrape: failed to connect to %s", m_sock.c_str());
+			// Only log at error if we've been up for a while
+			if (elapsed_s(m_boot_ts, sinsp_utils::get_current_time_ns()) < 30)
+			{
+				LOG_INFO("failed to connect to %s, retrying in %ds", m_sock.c_str(),
+					c_promscrape_connect_interval.get_value());
+			}
+			else
+			{
+				LOG_ERROR("failed to connect to %s, retrying in %ds", m_sock.c_str(),
+					c_promscrape_connect_interval.get_value());
+			}
 			return;
 		}
 	}
 	m_grpc_start = make_unique<streaming_grpc_client(&agent_promscrape::ScrapeService::Stub::AsyncGetData)>(m_start_conn);
 	m_grpc_start->do_rpc(empty, callback);
-}
-
-int elapsed_s(uint64_t old, uint64_t now)
-{
-	return (now - old) / ONE_SECOND_IN_NS;
 }
 
 void promscrape::try_start()
@@ -162,7 +172,7 @@ void promscrape::try_start()
 
 void promscrape::reset()
 {
-	LOG_INFO("promscrape: resetting connection");
+	LOG_INFO("resetting connection");
 	m_start_failed = false;
 	m_grpc_start = nullptr;
 	m_start_conn = nullptr;
@@ -185,24 +195,33 @@ void promscrape::applyconfig()
 	{
 		if (ok)
 		{
-			LOG_DEBUG("promscrape: config sent successfully");
+			LOG_DEBUG("config sent successfully");
 		}
 		else
 		{
-			LOG_INFO("promscrape: failed to send config, retrying");
+			LOG_INFO("failed to send config, retrying");
 			m_resend_config = true;
 		}
 	};
 
 	if (!m_config_conn) {
-		LOG_INFO("promscrape: opening GRPC connection to %s", m_sock.c_str());
+		LOG_INFO("opening GRPC connection to %s", m_sock.c_str());
 		grpc::ChannelArguments args;
 		// Set maximum receive message size to unlimited
 		args.SetMaxReceiveMessageSize(-1);
 
 		m_config_conn = grpc_connect<agent_promscrape::ScrapeService::Stub>(m_sock, 10, &args);
 		if (!m_config_conn) {
-			LOG_ERROR("promscrape: failed to connect to %s", m_sock.c_str());
+			if (elapsed_s(m_boot_ts, sinsp_utils::get_current_time_ns()) < 30)
+			{
+				LOG_INFO("failed to connect to %s, retrying in %ds", m_sock.c_str(),
+					c_promscrape_connect_interval.get_value());
+			}
+			else
+			{
+				LOG_ERROR("failed to connect to %s, retrying in %ds", m_sock.c_str(),
+					c_promscrape_connect_interval.get_value());
+			}
 			m_resend_config = true;
 			return;
 		}
@@ -228,7 +247,7 @@ int64_t promscrape::assign_job_id(int pid, const string &url, const string &cont
 			auto job_it = m_jobs.find(job_id);
 			if (job_it == m_jobs.end())
 			{
-				LOG_WARNING("promscrape: job %" PRId64 " missing from job-map ", job_id);
+				LOG_WARNING("job %" PRId64 " missing from job-map ", job_id);
 				continue;
 			}
 			else
@@ -236,7 +255,7 @@ int64_t promscrape::assign_job_id(int pid, const string &url, const string &cont
 				// Compare existing job to proposed one
 				if ((job_it->second.pid == pid) && (job_it->second.url == url))
 				{
-					LOG_DEBUG("promscrape: found existing job %" PRId64 " for %d.%s", job_id, pid, url.c_str());
+					LOG_DEBUG("found existing job %" PRId64 " for %d.%s", job_id, pid, url.c_str());
 					// Update config timestamp
 					job_it->second.config_ts = ts;
 
@@ -249,7 +268,7 @@ int64_t promscrape::assign_job_id(int pid, const string &url, const string &cont
 	prom_job_config conf = {pid, url, container_id, ts, 0, 0, tags};
 
 	job_id = ++g_prom_job_id;
-	LOG_DEBUG("promscrape: creating job %" PRId64 " for %d.%s", job_id, pid, url.c_str());
+	LOG_DEBUG("creating job %" PRId64 " for %d.%s", job_id, pid, url.c_str());
 	m_jobs.emplace(job_id, std::move(conf));
 	m_pids[pid].emplace_back(job_id);
 	return job_id;
@@ -359,7 +378,7 @@ void promscrape::sendconfig(const vector<prom_process> &prom_procs)
 	// Comparison may fail if ordering is different, but shouldn't happen usually
 	if (prom_procs == m_last_prom_procs)
 	{
-		LOG_DEBUG("promscrape: not sending duplicate config");
+		LOG_DEBUG("not sending duplicate config");
 		return;
 	}
 	m_last_prom_procs = prom_procs;
@@ -372,7 +391,7 @@ void promscrape::sendconfig(const vector<prom_process> &prom_procs)
 	{
 		if (!m_config_queue.put(prom_procs))
 		{
-			LOG_INFO("promscrape: config queue full");
+			LOG_INFO("config queue full");
 		}
 	}
 }
@@ -401,7 +420,7 @@ void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 			}
 			if (p.ports().empty())
 			{
-				LOG_WARNING("promscrape: scrape rule for pid %d doesn't include port number or url", p.pid());
+				LOG_WARNING("scrape rule for pid %d doesn't include port number or url", p.pid());
 				continue;
 			}
 
@@ -413,7 +432,7 @@ void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 		}
 		m_last_config_ts = m_next_ts;
 	}
-	LOG_DEBUG("promscrape: sending config %s", m_config->DebugString().c_str());
+	LOG_DEBUG("sending config %s", m_config->DebugString().c_str());
 	applyconfig();
 	prune_jobs(m_next_ts);
 }
@@ -472,7 +491,7 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 		auto job_it = m_jobs.find(job_id);
 		if (job_it == m_jobs.end())
 		{
-			LOG_INFO("promscrape: received results for unknown job %" PRId64, job_id);
+			LOG_INFO("received results for unknown job %" PRId64, job_id);
 			// Dropping results for unknown (possibly pruned) job
 			return;
 		}
@@ -516,7 +535,7 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 		if (job_it == m_jobs.end())
 		{
 			// Job must have gotten pruned while we were copying the result
-			LOG_INFO("promscrape: job %" PRId64" got pruned while processing", job_id);
+			LOG_INFO("job %" PRId64" got pruned while processing", job_id);
 			return;
 		}
 		// Overwriting previous entry for job_id
@@ -526,9 +545,9 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 		job_it->second.last_total_samples = total_samples;
 	}
 
-	LOG_DEBUG("promscrape: got %d of %d samples for job %" PRId64, num_samples, total_samples, job_id);
+	LOG_DEBUG("got %d of %d samples for job %" PRId64, num_samples, total_samples, job_id);
 #ifdef DEBUG_PROMSCRAPE
-	LOG_DEBUG("promscrape: received result: %s", result.DebugString().c_str());
+	LOG_DEBUG("received result: %s", result.DebugString().c_str());
 #endif
 }
 
@@ -544,11 +563,11 @@ void promscrape::prune_jobs(uint64_t ts)
 			continue;
 		}
 		// Remove job from pid-jobs list
-		LOG_DEBUG("promscrape: retiring scrape job %" PRId64 ", pid %d after %d seconds inactivity", it->first, it->second.pid, elapsed);
+		LOG_DEBUG("retiring scrape job %" PRId64 ", pid %d after %d seconds inactivity", it->first, it->second.pid, elapsed);
 		auto pidmap_it = m_pids.find(it->second.pid);
 		if (pidmap_it == m_pids.end())
 		{
-			LOG_WARNING("promscrape: pid %d not found in pidmap for job %" PRId64, it->second.pid, it->first);
+			LOG_WARNING("pid %d not found in pidmap for job %" PRId64, it->second.pid, it->first);
 		}
 		else
 		{
@@ -556,7 +575,7 @@ void promscrape::prune_jobs(uint64_t ts)
 			if (pidmap_it->second.empty())
 			{
 				// No jobs left for pid
-				LOG_DEBUG("promscrape: no scrape jobs left for pid %d, removing", it->second.pid);
+				LOG_DEBUG("no scrape jobs left for pid %d, removing", it->second.pid);
 				m_pids.erase(pidmap_it);
 			}
 		}
@@ -637,12 +656,12 @@ std::shared_ptr<agent_promscrape::ScrapeResult> promscrape::get_job_result_ptr(
 	auto jobit = m_jobs.find(job_id);
 	if (jobit == m_jobs.end())
 	{
-		LOG_WARNING("promscrape: missing config for job %" PRId64, job_id);
+		LOG_WARNING("missing config for job %" PRId64, job_id);
 		return nullptr;
 	}
 	if (jobit->second.config_ts < m_last_config_ts)
 	{
-		LOG_DEBUG("promscrape: job %" PRId64 " was dropped %d seconds before latest config",
+		LOG_DEBUG("job %" PRId64 " was dropped %d seconds before latest config",
 			job_id, elapsed_s(jobit->second.config_ts, m_last_config_ts));
 		return nullptr;
 	}
@@ -690,7 +709,7 @@ unsigned int promscrape::pid_to_protobuf(int pid, metric *proto,
 			// Add pid to export set. The metrics_request_callback will trigger the
 			// actual population of the protobuf by calling into this method with the
 			// callback bool set to true
-			LOG_DEBUG("promscrape: adding pid %d to export set", pid);
+			LOG_DEBUG("adding pid %d to export set", pid);
 
 			std::lock_guard<std::mutex> lock(m_export_pids_mutex);
 			m_export_pids.emplace(pid);
@@ -710,7 +729,7 @@ unsigned int promscrape::pid_to_protobuf(int pid, metric *proto,
 				(m_next_ts < (m_last_proto_ts + (interval * ONE_SECOND_IN_NS) -
 				(ONE_SECOND_IN_NS / 2))))
 			{
-				LOG_DEBUG("promscrape: skipping protobuf");
+				LOG_DEBUG("skipping protobuf");
 				m_emit_counters = false;
 				return num_metrics;
 			}
@@ -730,7 +749,7 @@ unsigned int promscrape::pid_to_protobuf(int pid, metric *proto,
 	}
 
 	for (auto job : jobs) {
-		LOG_DEBUG("promscrape: pid %d: have job %" PRId64, pid, job);
+		LOG_DEBUG("pid %d: have job %" PRId64, pid, job);
 		num_metrics += job_to_protobuf(job, proto, limit, max_limit, filtered, total);
 	}
 	return num_metrics;
@@ -766,7 +785,7 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 		return num_samples;
 	}
 
-	LOG_DEBUG("promscrape: have metrics for job %" PRId64, job_id);
+	LOG_DEBUG("have metrics for job %" PRId64, job_id);
 
 	bool ml_log = metric_limits::log_enabled();
 
@@ -848,7 +867,7 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 		return num_samples;
 	}
 
-	LOG_DEBUG("promscrape: have metrics for job %" PRId64, job_id);
+	LOG_DEBUG("have metrics for job %" PRId64, job_id);
 
 	bool ml_log = metric_limits::log_enabled();
 
