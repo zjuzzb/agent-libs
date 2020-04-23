@@ -1927,7 +1927,7 @@ void sinsp_analyzer::emit_processes_deprecated(
 				}
 			}
 			// Add all processes with appcheck metrics
-			if (process_manager::c_always_send_app_checks.get_value())
+			if (feature_manager::instance().get_enabled(APP_CHECKS) && process_manager::c_always_send_app_checks.get_value())
 			{
 				for (auto prog : progtable)
 				{
