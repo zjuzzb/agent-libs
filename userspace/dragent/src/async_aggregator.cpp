@@ -79,6 +79,9 @@ async_aggregator::async_aggregator(flush_queue& input_queue,
 
 void aggregator_limits::cache_limits(const draiosproto::aggregation_context& context)
 {
+	LOG_INFO("Updating Aggregator ObjectLimits...");
+	LOG_INFO(context.DebugString());
+
 	m_jmx = context.metr_limits().jmx();
 	m_statsd = context.metr_limits().statsd();
 	m_app_check = context.metr_limits().app_check();
