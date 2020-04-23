@@ -518,6 +518,7 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 			}
 			++total_samples;
 		}
+		result_ptr->mutable_meta_samples()->CopyFrom(result.meta_samples());
 	}
 	else
 	{
@@ -789,18 +790,9 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 
 	bool ml_log = metric_limits::log_enabled();
 
-	for (const auto &sample : result_ptr->samples())
+	// Lambda for adding samples from samples or metasamples
+	auto add_sample = [&proto,&job_config](const agent_promscrape::Sample& sample)
 	{
-		if(limit <= 0)
-		{
-			if(!ml_log)
-			{
-				break;
-			}
-			LOG_INFO("[promscrape] metric over limit (total, %u max): %s",
-				max_limit, sample.metric_name().c_str());
-			continue;
-		}
 		auto newmet = proto->add_metrics();
 		newmet->set_name(sample.metric_name());
 		newmet->set_value(sample.value());
@@ -825,8 +817,37 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 			newtag->set_key(tag.first);
 			newtag->set_value(tag.second);
 		}
+	};
+
+	for (const auto &sample : result_ptr->samples())
+	{
+		if(limit <= 0)
+		{
+			if(!ml_log)
+			{
+				break;
+			}
+			LOG_INFO("[promscrape] metric over limit (total, %u max): %s",
+				max_limit, sample.metric_name().c_str());
+			continue;
+		}
+
+		add_sample(sample);
+
 		++num_samples;
 		--limit;
+	}
+
+	// Add metadata samples. These should always get sent and
+	// don't count towards the metric limit either.
+	for (auto &sample : *result_ptr->mutable_meta_samples())
+	{
+		// Adjust scrape_series_added to reflect agent metric limits and filters
+		if (sample.metric_name() == "scrape_series_added")
+		{
+			sample.set_value(num_samples);
+		}
+		add_sample(sample);
 	}
 
 	if (filtered)
@@ -889,19 +910,10 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 		newtag->set_name(tag.first);
 		newtag->set_value(tag.second);
 	}
-	for (const auto &sample : result_ptr->samples())
-	{
-		if(limit <= 0)
-		{
-			if(!ml_log)
-			{
-				break;
-			}
-			LOG_INFO("[promscrape] metric over limit (total, %u max): %s",
-				max_limit, sample.metric_name().c_str());
-			continue;
-		}
 
+	// Lambda for adding samples from samples or metasamples
+	auto add_sample = [&prom](const agent_promscrape::Sample& sample)
+	{
 		// Only supported for RAW prometheus metrics
 		auto newmet = prom->add_samples();
 		newmet->set_metric_name(sample.metric_name());
@@ -915,8 +927,37 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 			newtag->set_name(label.name());
 			newtag->set_value(label.value());
 		}
+	};
+
+	for (const auto &sample : result_ptr->samples())
+	{
+		if(limit <= 0)
+		{
+			if(!ml_log)
+			{
+				break;
+			}
+			LOG_INFO("[promscrape] metric over limit (total, %u max): %s",
+				max_limit, sample.metric_name().c_str());
+			continue;
+		}
+
+		add_sample(sample);
+
 		++num_samples;
 		--limit;
+	}
+
+	// Add metadata samples. These should always get sent and
+	// don't count towards the metric limit either.
+	for (auto &sample : *result_ptr->mutable_meta_samples())
+	{
+		// Adjust scrape_series_added to reflect agent metric limits and filters
+		if (sample.metric_name() == "scrape_series_added")
+		{
+			sample.set_value(num_samples);
+		}
+		add_sample(sample);
 	}
 
 	if (filtered)
