@@ -6,6 +6,7 @@
 #include <Poco/Net/StreamSocket.h>
 #include <Poco/NumberFormatter.h>
 #include <Poco/Buffer.h>
+#include <Poco/Base64Encoder.h>
 
 #include <cstdint>
 #include <memory>
@@ -18,9 +19,57 @@ COMMON_LOGGER();
 
 const uint32_t http_tunnel::default_chunk_size = 1024;
 
-http_tunnel::socket_ptr http_tunnel::establish_tunnel(std::string proxy_host,
+
+http_tunnel::socket_ptr http_tunnel::connect(const std::string& proxy_host,
+                                             uint16_t proxy_port,
+                                             const std::string& http_connect_message)
+{
+	// Connect to the proxy and send the CONNECT method
+	Poco::Net::SocketAddress sa(proxy_host, proxy_port);
+	socket_ptr ssp = std::make_shared<Poco::Net::StreamSocket>();
+	ssp->connect(sa);
+	ssp->sendBytes(http_connect_message.c_str(), http_connect_message.length());
+
+	// Receive the HTTP response.
+	// We don't actually need all of it, just the status line.
+	Poco::Buffer<char> buf(0);
+	Poco::FIFOBuffer read_buf(default_chunk_size);
+	int res = ssp->receiveBytes(read_buf);
+
+	if (res <= 0)
+	{
+		return nullptr;
+	}
+	read_buf.read(buf);
+	buf.append('\0');
+
+	http_response resp = parse_resp(buf);
+
+	if (!resp.is_valid)
+	{
+		LOG_ERROR("Received invalid response from proxy server");
+		return nullptr;
+	}
+
+	if (resp.resp_code == 407) // Authentication failure
+	{
+		LOG_ERROR("Proxy server authentication failed (error code %u)", resp.resp_code);
+		return nullptr;
+	}
+	else if (resp.resp_code != 200)
+	{
+		LOG_ERROR("Proxy server returned non-success error code %u", resp.resp_code);
+		return nullptr;
+	}
+
+	LOG_INFO("Connected through HTTP proxy");
+
+	return ssp;
+}
+
+http_tunnel::socket_ptr http_tunnel::establish_tunnel(const std::string& proxy_host,
                                                       uint16_t proxy_port,
-                                                      std::string remote_host,
+                                                      const std::string& remote_host,
                                                       uint16_t remote_port)
 {
 	// Build a connection string that looks like:
@@ -44,42 +93,41 @@ http_tunnel::socket_ptr http_tunnel::establish_tunnel(std::string proxy_host,
 	LOG_INFO("Attempting to connect to proxy server %s:%u", proxy_host.c_str(), proxy_port);
 	LOG_TRACE(connect_string);
 
-	// Connect to the proxy and send the CONNECT method
-	Poco::Net::SocketAddress sa(proxy_host, proxy_port);
-	socket_ptr ssp = std::make_shared<Poco::Net::StreamSocket>();
-	ssp->connect(sa);
-	ssp->sendBytes(connect_string.c_str(), connect_string.length());
+	return connect(proxy_host, proxy_port, connect_string);
+}
 
-	// Receive the HTTP response.
-	// We don't actually need all of it, just the status line.
-	Poco::Buffer<char> buf(0);
-	Poco::FIFOBuffer read_buf(default_chunk_size);
-	int res = ssp->receiveBytes(read_buf);
+http_tunnel::socket_ptr http_tunnel::establish_tunnel(const std::string& proxy_host,
+                                                      uint16_t proxy_port,
+                                                      const std::string& remote_host,
+                                                      uint16_t remote_port,
+                                                      const std::string& username,
+                                                      const std::string& password)
+{
+	// Build a connection string that looks like:
+	//
+	// CONNECT app.sysdigcloud.com:6667 HTTP/1.0
+	// Host: app.sysdigcloud.com:6667
+	// Proxy-Authorization: Basic c3lzZGlnOnBhc3N3b3Jk
+	// Content-Length: 0
+	// Connection: Keep-Alive
+	// Pragma: no-cache
+	std::string port_str = Poco::NumberFormatter::format(remote_port);
+	std::string auth_str = encode_auth(username, password);
+	std::stringstream connect_stream;
+	connect_stream << "CONNECT " <<
+	                  remote_host << ":" << port_str <<
+	                  " HTTP/1.0\r\n" <<
+	                  "Host: " << remote_host << ":" << port_str << "\r\n" <<
+	                  "Proxy-Authorization: Basic " << auth_str << "\r\n" <<
+	                  "Content-Length: 0\r\n" <<
+	                  "Connection: Keep-Alive\r\n" <<
+	                  "Pragma: no-cache\r\n\r\n";
+	std::string connect_string = connect_stream.str();
 
-	if (res <= 0)
-	{
-		return nullptr;
-	}
-	read_buf.read(buf);
-	buf.append('\0');
+	LOG_INFO("Attempting to connect to proxy server %s:%u", proxy_host.c_str(), proxy_port);
+	LOG_TRACE(connect_string);
 
-	http_response resp = parse_resp(buf);
-
-	if (!resp.is_valid)
-	{
-		LOG_ERROR("Received invalid response from proxy server");
-		return nullptr;
-	}
-
-	if (resp.resp_code != 200)
-	{
-		LOG_ERROR("Proxy server returned non-success error code %u", resp.resp_code);
-		return nullptr;
-	}
-
-	LOG_INFO("Connected to %s:%u through HTTP proxy", remote_host.c_str(), remote_port);
-
-	return ssp;
+	return connect(proxy_host, proxy_port, connect_string);
 }
 
 bool http_tunnel::is_resp_complete(const Poco::Buffer<char>& buf)
@@ -226,4 +274,16 @@ parse_error:
 
 	resp.is_valid = false;
 	return resp;
+}
+
+std::string http_tunnel::encode_auth(const std::string& user,
+                                     const std::string& password)
+{
+	std::stringstream ss;
+
+	Poco::Base64Encoder encoder(ss);
+	encoder << user << ':' << password;
+	encoder.close();
+
+	return ss.str();
 }

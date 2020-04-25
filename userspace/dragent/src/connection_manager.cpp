@@ -45,6 +45,19 @@ type_config<uint32_t> c_proxy_port(
         "http_proxy",
         "proxy_port");
 
+type_config<std::string> c_proxy_user(
+        "",
+        "Username for HTTP authentication. "
+        "Setting the username enables sending proxy authentication credentials.",
+        "http_proxy",
+        "proxy_user");
+
+type_config<std::string> c_proxy_password(
+        "",
+        "Password for HTTP authentication.",
+        "http_proxy",
+        "proxy_password");
+
 using namespace std;
 
 
@@ -469,6 +482,16 @@ connection_manager::socket_ptr http_proxy_connect(const std::string collector_ad
                                                   const std::string proxy_address,
                                                   uint16_t proxy_port)
 {
+
+	if (!c_proxy_user.get_value().empty())
+	{
+		return http_tunnel::establish_tunnel(proxy_address,
+		                                     proxy_port,
+		                                     collector_address,
+		                                     collector_port,
+		                                     c_proxy_user.get_value(),
+		                                     c_proxy_password.get_value());
+	}
 	return http_tunnel::establish_tunnel(proxy_address,
 	                                     proxy_port,
 	                                     collector_address,

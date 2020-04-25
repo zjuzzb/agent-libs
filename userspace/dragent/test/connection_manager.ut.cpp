@@ -23,6 +23,7 @@ using namespace std;
 #include "http_server.h"
 
 #include <Poco/Net/SSLManager.h>
+#include <Poco/Net/NetException.h>
 
 using namespace dragent;
 using namespace test_helpers;
@@ -1550,58 +1551,43 @@ TEST(connection_manager_test, backoff_recovery_v4)
 // HTTP Proxy tests
 ////////////////////////////////////////////////////////////
 
-// Build an HTTPResponseHandler that will verify the proxy connect
-class HTTPProxyHandler : public Poco::Net::HTTPRequestHandler
+struct http_context
 {
-public:
-	virtual void handleRequest(Poco::Net::HTTPServerRequest& request,
-	                           Poco::Net::HTTPServerResponse& response) override
+	struct credentials
 	{
-		// Validate the request
-		if (request.getMethod() != Poco::Net::HTTPRequest::HTTP_CONNECT)
-		{
-			std::cerr << "Mismatch: " << request.getMethod()
-			          << " != " << Poco::Net::HTTPRequest::HTTP_CONNECT
-			          << std::endl;
-			++bad_requests;
-			return;
-		}
-		if (request.getHost() != "sysdig.com:1234")
-		{
-			std::cerr << "Mismatch: " << request.getHost()
-			          << " != sysdig.com:1234" << std::endl;
-			++bad_requests;
-			return;
-		}
+		std::string user;
+		std::string password;
+	};
 
-		response.setStatus(Poco::Net::HTTPResponse::HTTP_OK);
-		response.setContentType("text/html");
+	bool big_resp;
+	bool validate_credentials;
+	std::vector<credentials> creds;
+	std::string host;
+	uint32_t good_requests;
+	uint32_t bad_requests;
+	uint32_t auth_mismatches;
 
-		std::ostream& out = response.send();
-		out << "<html><body>"
-		    << "<h1>Sysdig agent proxy test test</h1>"
-		    << "<p>Request host = " << request.getHost() << "</p>"
-		    << "<p>Request URI = " << request.getURI() << "</p>"
-		    << "</body></html>" << std::flush;
-
-		++good_requests;
-	}
-
-	static uint32_t good_requests;
-	static uint32_t bad_requests;
-	static void reset()
+	static http_context build_default()
 	{
-		good_requests = 0;
-		bad_requests = 0;
+		return http_context
+		{
+			false,
+			false,
+			{},
+			"sysdig.com:1234"
+		};
 	}
 };
 
-uint32_t HTTPProxyHandler::good_requests = 0;
-uint32_t HTTPProxyHandler::bad_requests = 0;
-
-class HTTPProxyBigRespHandler : public HTTPProxyHandler
+///
+/// Handles and validates proxy CONNECT requests
+///
+class HTTPProxyHandler : public Poco::Net::HTTPRequestHandler
 {
 public:
+	HTTPProxyHandler(http_context* context) : m_ctxt(context) {}
+
+	// Build a string with random chars just to pad space
 	std::string get_random_string(uint32_t length)
 	{
 		std::stringstream ss;
@@ -1624,31 +1610,77 @@ public:
 			std::cerr << "Mismatch: " << request.getMethod()
 			          << " != " << Poco::Net::HTTPRequest::HTTP_CONNECT
 			          << std::endl;
-			++HTTPProxyHandler::bad_requests;
+			++m_ctxt->bad_requests;
 			return;
 		}
-		if (request.getHost() != "sysdig.com:1234")
+		if (request.getHost() != m_ctxt->host)
 		{
 			std::cerr << "Mismatch: " << request.getHost()
-			          << " != sysdig.com:1234" << std::endl;
-			++HTTPProxyHandler::bad_requests;
+			          << " != " << m_ctxt->host << std::endl;
+			++m_ctxt->bad_requests;
 			return;
 		}
 
-		response.setStatus(Poco::Net::HTTPResponse::HTTP_OK);
+		// Optionally validate authentication credentials
+		if (m_ctxt->validate_credentials)
+		{
+			std::string scheme, auth;
+			bool found = false;
+
+			try
+			{
+				request.getProxyCredentials(scheme, auth);
+				for (auto c : m_ctxt->creds)
+				{
+					std::string result = http_tunnel::encode_auth(c.user, c.password);
+					if (auth == result)
+					{
+						found = true;
+						break;
+					}
+				}
+			}
+			catch (Poco::Net::NotAuthenticatedException& ex)
+			{
+				// No credentials specified but credentials expected
+				found = false;
+			}
+
+			// Credentials matched
+			if (found)
+			{
+				++m_ctxt->good_requests;
+				response.setStatus(Poco::Net::HTTPResponse::HTTP_OK);
+			}
+			else // Mismatch
+			{
+				++m_ctxt->auth_mismatches;
+				response.setStatus(Poco::Net::HTTPResponse::HTTP_PROXY_AUTHENTICATION_REQUIRED);
+			}
+		}
+		else // Not validating credentials, just return good response
+		{
+			response.setStatus(Poco::Net::HTTPResponse::HTTP_OK);
+			++m_ctxt->good_requests;
+		}
+
 		response.setContentType("text/html");
-		response.set("x-application-garbage-data", get_random_string(1024));
+
+		if (m_ctxt->big_resp)
+		{
+			response.set("x-application-garbage-data", get_random_string(1024));
+		}
 
 		std::ostream& out = response.send();
 		out << "<html><body>"
 		    << "<h1>Sysdig agent proxy test test</h1>"
 		    << "<p>Request host = " << request.getHost() << "</p>"
-		    << "<p>Request URI = " << request.getURI() << "</p>";
-
-		out << "</body></html>" << std::flush;
-
-		++HTTPProxyHandler::good_requests;
+		    << "<p>Request URI = " << request.getURI() << "</p>"
+		    << "</body></html>" << std::flush;
 	}
+
+private:
+	http_context* m_ctxt;
 };
 
 ///
@@ -1657,22 +1689,16 @@ public:
 class HTTPPHFactory : public Poco::Net::HTTPRequestHandlerFactory
 {
 public:
-	HTTPPHFactory() : HTTPPHFactory(false) {}
-	HTTPPHFactory(bool big_resp) : m_big_resp(big_resp) {}
+	HTTPPHFactory(http_context* context) : m_ctxt(context) {}
 
 	virtual Poco::Net::HTTPRequestHandler* createRequestHandler(
-	        const Poco::Net::HTTPServerRequest&)
+	        const Poco::Net::HTTPServerRequest&) override
 	{
-		if (m_big_resp)
-		{
-			return new HTTPProxyBigRespHandler;
-		}
-
-		return new HTTPProxyHandler();
+		return new HTTPProxyHandler(m_ctxt);
 	}
 
 private:
-	bool m_big_resp;
+	http_context* m_ctxt;
 };
 
 TEST(connection_manager_test, incomplete_resp)
@@ -1798,36 +1824,125 @@ TEST(connection_manager_test, parse_resp)
 
 TEST(connection_manager_test, basic_proxy_connect)
 {
-	HTTPProxyHandler::reset();
-	scoped_http_server srv(9090, new HTTPPHFactory());
+	http_context ctxt = http_context::build_default();
+	scoped_http_server srv(9090, new HTTPPHFactory(&ctxt));
 
 	try
 	{
 		auto ret = http_tunnel::establish_tunnel("127.0.0.1", 9090, "sysdig.com", 1234);
+		ASSERT_NE(nullptr, ret);
 	}
 	catch (Poco::Exception& ex)
 	{
 		std::cerr << "Poco exception " << ex.displayText() << std::endl;
 	}
 
-	ASSERT_EQ(1, HTTPProxyHandler::good_requests);
-	ASSERT_EQ(0, HTTPProxyHandler::bad_requests);
+	ASSERT_EQ(1, ctxt.good_requests);
+	ASSERT_EQ(0, ctxt.bad_requests);
 }
 
 TEST(connection_manager_test, proxy_connect_big_resp)
 {
-	HTTPProxyHandler::reset();
-	scoped_http_server srv(9090, new HTTPPHFactory(true));
+	http_context ctxt = http_context::build_default();
+	ctxt.big_resp = true;
+	scoped_http_server srv(9090, new HTTPPHFactory(&ctxt));
 
 	try
 	{
 		auto ret = http_tunnel::establish_tunnel("127.0.0.1", 9090, "sysdig.com", 1234);
+		ASSERT_NE(nullptr, ret);
 	}
 	catch (Poco::Exception& ex)
 	{
 		std::cerr << "Poco exception " << ex.displayText() << std::endl;
 	}
 
-	ASSERT_EQ(1, HTTPProxyHandler::good_requests);
-	ASSERT_EQ(0, HTTPProxyHandler::bad_requests);
+	ASSERT_EQ(1, ctxt.good_requests);
+	ASSERT_EQ(0, ctxt.bad_requests);
+}
+
+TEST(connection_manager_test, proxy_connect_auth)
+{
+	http_context::credentials creds {"sysdig", "password"};
+	http_context ctxt = http_context::build_default();
+	ctxt.validate_credentials = true;
+	ctxt.creds.push_back(creds);
+	scoped_http_server srv(9090, new HTTPPHFactory(&ctxt));
+
+	try
+	{
+		auto ret = http_tunnel::establish_tunnel("127.0.0.1",
+		                                         9090,
+		                                         "sysdig.com",
+		                                         1234,
+		                                         creds.user,
+		                                         creds.password);
+		ASSERT_NE(nullptr, ret);
+	}
+	catch (Poco::Exception& ex)
+	{
+		std::cerr << "Poco exception " << ex.displayText() << std::endl;
+	}
+
+	ASSERT_EQ(1, ctxt.good_requests);
+	ASSERT_EQ(0, ctxt.bad_requests);
+	ASSERT_EQ(0, ctxt.auth_mismatches);
+}
+
+TEST(connection_manager_test, proxy_auth_failure)
+{
+	http_context::credentials creds {"sysdig", "password"};
+	http_context ctxt = http_context::build_default();
+	ctxt.validate_credentials = true;
+	ctxt.creds.push_back(creds);
+	scoped_http_server srv(9090, new HTTPPHFactory(&ctxt));
+
+	try
+	{
+		std::string badpass = "barf";
+		auto ret = http_tunnel::establish_tunnel("127.0.0.1",
+		                                         9090,
+		                                         "sysdig.com",
+		                                         1234,
+		                                         creds.user,
+		                                         "barf");
+		ASSERT_EQ(nullptr, ret);
+	}
+	catch (Poco::Exception& ex)
+	{
+		std::cerr << "Poco exception " << ex.displayText() << std::endl;
+	}
+
+	ASSERT_EQ(0, ctxt.good_requests);
+	ASSERT_EQ(0, ctxt.bad_requests);
+	ASSERT_EQ(1, ctxt.auth_mismatches);
+}
+
+TEST(connection_manager_test, encode_auth)
+{
+	struct pw_entry
+	{
+		std::string username;
+		std::string password;
+		std::string encode;
+	};
+	// I got these values from the base64 program that ships with my distro
+	std::vector<pw_entry> auth_list
+	{
+		{"sysdig", "sysdig", "c3lzZGlnOnN5c2RpZw=="},
+		{"sysdig", "sysdig1!", "c3lzZGlnOnN5c2RpZzEh"},
+		{"a",      "b",   "YTpi"},
+		{"1", "2", "MToy"},
+		{"testusernamethatsabitlongerthantheusualones", "password", "dGVzdHVzZXJuYW1ldGhhdHNhYml0bG9uZ2VydGhhbnRoZXVzdWFsb25lczpwYXNzd29yZA=="},
+		{"username", "testpasswordthatsabitlongerthantheusualones", "dXNlcm5hbWU6dGVzdHBhc3N3b3JkdGhhdHNhYml0bG9uZ2VydGhhbnRoZXVzdWFsb25lcw=="},
+		{"username", "pass:word", "dXNlcm5hbWU6cGFzczp3b3Jk"},
+		{"username", "", "dXNlcm5hbWU6"},
+		{"username", "!@#$%^&*()asdf<>?:\";'[]{}\\|", "dXNlcm5hbWU6IUAjJCVeJiooKWFzZGY8Pj86IjsnW117fVx8"},
+	};
+
+	for (auto entry : auth_list)
+	{
+		std::string result = http_tunnel::encode_auth(entry.username, entry.password);
+		ASSERT_EQ(entry.encode, result);
+	}
 }
