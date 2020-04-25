@@ -162,8 +162,23 @@ void thread_analyzer_info::init()
 	m_syscall_errors.clear();
 	m_called_execve = false;
 	m_last_cmdline_sync_ns = 0;
-	if (m_percentiles.size())
+
+	if (m_analyzer != nullptr && m_analyzer->is_tracking_environment())
 	{
+		if (is_main_thread())
+		{
+			auto mt_ainfo = main_thread_ainfo();
+			mt_ainfo->hash_environment(this, m_analyzer->get_environment_blacklist());
+		}
+	}
+}
+
+const std::set<double>& thread_analyzer_info::get_percentiles()
+{
+	// This works because we're single threaded
+	if (!m_percentiles_initialized)
+	{
+		m_percentiles = m_analyzer->get_configuration_read_only()->get_percentiles();
 		// all the threads that belong to a process will share the
 		// same percentile store allocated for the main thread
 
@@ -176,16 +191,11 @@ void thread_analyzer_info::init()
 		m_external_transaction_metrics.set_percentiles(
 		    m_percentiles,
 		    share_store ? &(main_thread->m_external_transaction_metrics) : nullptr);
+
+		m_percentiles_initialized = true;
 	}
 
-	if (m_analyzer != nullptr && m_analyzer->is_tracking_environment())
-	{
-		if (is_main_thread())
-		{
-			auto mt_ainfo = main_thread_ainfo();
-			mt_ainfo->hash_environment(this, m_analyzer->get_environment_blacklist());
-		}
-	}
+	return m_percentiles;
 }
 
 const sinsp_counters* thread_analyzer_info::get_metrics()
@@ -203,12 +213,12 @@ void thread_analyzer_info::allocate_procinfo_if_not_present()
 		m_procinfo->m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
 
 		m_procinfo->clear();
-		if (m_percentiles.size())
+		if (get_percentiles().size())
 		{
-			m_procinfo->m_protostate.set_percentiles(m_percentiles);
-			m_procinfo->m_proc_metrics.set_percentiles(m_percentiles);
-			m_procinfo->m_proc_transaction_metrics.set_percentiles(m_percentiles);
-			m_procinfo->m_external_transaction_metrics.set_percentiles(m_percentiles);
+			m_procinfo->m_protostate.set_percentiles(get_percentiles());
+			m_procinfo->m_proc_metrics.set_percentiles(get_percentiles());
+			m_procinfo->m_proc_transaction_metrics.set_percentiles(get_percentiles());
+			m_procinfo->m_external_transaction_metrics.set_percentiles(get_percentiles());
 		}
 	}
 }
@@ -231,6 +241,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 {
 	uint32_t j;
 
+	get_percentiles();
 	allocate_procinfo_if_not_present();
 
 	sinsp_counter_time ttot;

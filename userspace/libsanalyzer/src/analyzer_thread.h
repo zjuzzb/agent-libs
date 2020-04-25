@@ -245,10 +245,19 @@ public:
 
 	bool m_called_execve;
 	uint64_t m_last_cmdline_sync_ns;
-	std::set<double> m_percentiles;
 	// Used just by nodriver mode
 	sinsp_proc_file_stats m_file_io_stats;
 	bool m_root_refreshed;
+
+private:
+	// there are issues with the way that sinsp constructs the threadinfo that prevent
+	// us from initializing this during construction, where it ought be. So instead
+	// we'll add a flag and initialize it lazily the first time it's requested.
+	bool m_percentiles_initialized = false;
+	std::set<double> m_percentiles;
+
+public:
+	const std::set<double>& get_percentiles();
 
 	main_thread_analyzer_info* main_thread_ainfo()
 	{
@@ -266,9 +275,9 @@ public:
 				    m_inspector->get_machine_info()->num_cpus);
 				m_main_thread_ainfo->m_client_transactions_per_cpu.resize(
 				    m_inspector->get_machine_info()->num_cpus);
-				if (!m_percentiles.empty())
+				if (!get_percentiles().empty())
 				{
-					m_main_thread_ainfo->m_protostate.set_percentiles(m_percentiles);
+					m_main_thread_ainfo->m_protostate.set_percentiles(get_percentiles());
 				}
 			}
 			return m_main_thread_ainfo.get();
