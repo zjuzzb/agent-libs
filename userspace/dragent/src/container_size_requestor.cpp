@@ -9,17 +9,23 @@ namespace {
 
 COMMON_LOGGER();
 
-type_config<uint64_t> c_interval_s(
-   0 /*default*/,
+type_config<bool> c_enabled(
+   false,
+   "Enable the container size request subsystem.",
+   "container_size_request",
+   "enabled");
+
+type_config<uint64_t>::ptr c_interval_s = type_config_builder<uint64_t>(
+   4 * 60 * 60 /*default 4 hours*/,
    "The number of seconds between each request for the size of a container's "
    "container-layer. This is not gathered every second because determining the "
-   "size can be time consuming and cpu intensive. Set to 0 to disable.",
+   "size can be time consuming and cpu intensive.",
    "container_size_request",
-   "interval_s");
-
+   "interval_s")
+   .min(1).build();
 
 type_config<uint64_t> c_first_request_delay_s(
-   5 /*default*/,
+   30 /*default*/,
    "The number of seconds to wait before requesting container sizes after the "
    "agent boots. This delay allows the agent to reach a steady state before "
    "querying the container socket.",
@@ -39,8 +45,6 @@ container_size_requestor::container_size_requestor(const sinsp_container_manager
 
 void container_size_requestor::request(const uint64_t uptime_ms)
 {
-	assert(0 != c_interval_s.get_value());
-
 	// If enough time has passed then send one or more requests.
 	send_requests(uptime_ms);
 
@@ -63,7 +67,7 @@ bool container_size_requestor::is_time_to_update_cache(const uint64_t uptime_ms)
 
 	// Afterwards update at the configured interval.
 	const uint64_t time_since_update_ms = uptime_ms - m_last_cache_update_ms;
-	return time_since_update_ms >= c_interval_s.get_value() * 1000;
+	return time_since_update_ms >= c_interval_s->get_value() * 1000;
 }
 
 void container_size_requestor::load_container_subset_cache(const uint64_t uptime_ms)
@@ -96,11 +100,11 @@ void container_size_requestor::load_container_subset_cache(const uint64_t uptime
 
 	m_original_cache_container_count = m_cache.size();
 	m_last_cache_update_ms = uptime_ms;
-	const float containers_per_second = float(m_original_cache_container_count) / float(c_interval_s.get_value());
-	LOG_DEBUG("Will request size update for %zu containers at roughly %f "
-	          "containers per second",
-	          m_cache.size(),
-		  containers_per_second);
+	const float containers_per_second = float(m_original_cache_container_count) / float(c_interval_s->get_value());
+	LOG_INFO("Will request size update for %zu containers at roughly %f "
+	         "containers per second",
+	         m_cache.size(),
+             containers_per_second);
 }
 
 void container_size_requestor::send_requests(const uint64_t uptime_ms)
@@ -110,7 +114,7 @@ void container_size_requestor::send_requests(const uint64_t uptime_ms)
 		return;
 	}
 
-	const float containers_per_second = static_cast<float>(m_original_cache_container_count) / static_cast<float>(c_interval_s.get_value());
+	const float containers_per_second = static_cast<float>(m_original_cache_container_count) / static_cast<float>(c_interval_s->get_value());
 	const uint64_t time_passed_since_queue_update_s = (uptime_ms - m_last_cache_update_ms) / 1000;
 	const unsigned int containers_to_request_since_queue_update = static_cast<unsigned int>(containers_per_second * time_passed_since_queue_update_s);
 	const unsigned int containers_requested_so_far = m_original_cache_container_count - m_cache.size();
@@ -148,7 +152,7 @@ container_size_requestor_runnable::container_size_requestor_runnable(sinsp_conta
 // static
 bool container_size_requestor_runnable::enabled()
 {
-	return c_interval_s.get_value() != 0;
+	return c_enabled.get_value();
 }
 
 void container_size_requestor_runnable::do_run()
