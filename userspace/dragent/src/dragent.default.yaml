@@ -553,6 +553,8 @@ jmx:
               alias: hbase.region.server.store.index.file.size
     elasticsearch:
       pattern: "elasticsearch"
+
+use_promscrape: true
 prometheus:
   enabled: false
   interval: 10

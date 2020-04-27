@@ -13,7 +13,7 @@ COMMON_LOGGER();
 using namespace std;
 
 type_config<bool> promscrape::c_use_promscrape(
-    false,
+    true,
     "Whether or not to use promscrape for prometheus metrics",
     "use_promscrape");
 

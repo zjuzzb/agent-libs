@@ -9,6 +9,7 @@
 #include "promscrape.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
+#include "configuration_manager.h"
 
 #include <utils.h>
 
@@ -366,6 +367,21 @@ void prometheus_conf::validate_config()
 		{
 			LOG_INFO("Prometheus: both ingest_raw and ingest_calculated are enabled."
 				" Some timeseries will be reported twice");
+		}
+		if (configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value()
+			&& (interval() < 10))
+		{
+			if (ingest_calculated())
+			{
+				LOG_WARNING("Prometheus: ingest_calculated is enabled with 10s flush and scrape "
+					"interval is less than 10s which is not supported. Setting interval to 10s");
+				set_interval(10);
+			}
+			else
+			{
+				LOG_INFO("Prometheus: 10s flush is enabled and scrape interval is "
+					"less than 10s. You're scraping more often than is useful");
+			}
 		}
 	}
 
