@@ -1916,11 +1916,14 @@ double infrastructure_state::calculate_rate(rate_metric_state_t& prev, double va
 			{
 				// This shouldn't happen. We're either called more than
 				// twice per second or with a different time source.
-				LOG_WARNING("Time difference too small for rate calculation: %" PRIu64
-				            " ns, time now: %" PRIu64 ", last: %" PRIu64,
-				            timediff,
-				            ts,
-				            prev.ts);
+				static ratelimit r(1, 1 * NSECS_PER_SEC);
+				r.run([&] {
+					LOG_WARNING("Time difference too small for rate calculation: %" PRIu64
+							  " ns, time now: %" PRIu64 ", last: %" PRIu64,
+						  timediff,
+						  ts,
+						  prev.ts);
+				});
 			}
 			return prev.last_rate;
 		}
