@@ -257,6 +257,7 @@ void async_aggregator::relocate_prom_metrics(draiosproto::proto_info& proto_info
 		new_metric->mutable_buckets()->UnsafeArenaSwap(old_metric->mutable_buckets());
 		new_metric->set_prometheus_type(old_metric->prometheus_type());
 	}
+	proto_info.clear_prom_info();
 }
 
 void async_aggregator::relocate_moved_fields(draiosproto::metrics& metrics)

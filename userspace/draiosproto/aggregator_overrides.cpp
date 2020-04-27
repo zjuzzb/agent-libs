@@ -1,6 +1,12 @@
 #include "aggregator_overrides.h"
+#include "type_config.h"
 
 #include <sstream>
+
+type_config<bool> c_aggregate_prometheus(
+    false,
+    "Whether or not to aggregate prometheus metrics",
+    "aggregate_prometheus");
 
 // unlike almost every other repeated non-message field, this is a list, not
 // a set. It is also a primary key. So in this case, the first time we call
@@ -533,6 +539,14 @@ void metrics_message_aggregator_impl::aggregate_prometheus(draiosproto::metrics&
                                                            draiosproto::metrics& output,
                                                            bool in_place)
 {
+	if (!c_aggregate_prometheus.get_value())
+	{
+		if (!in_place && !input.prometheus().empty())
+		{
+			output.mutable_prometheus()->UnsafeArenaSwap(input.mutable_prometheus());
+		}
+		return;
+	}
 	if (!in_place)
 	{
 		for (auto& i : input.prometheus())
@@ -654,6 +668,14 @@ void prometheus_info_message_aggregator_impl::aggregate_metrics(
     draiosproto::prometheus_info& output,
     bool in_place)
 {
+	if (!c_aggregate_prometheus.get_value())
+	{
+		if (!in_place && !input.metrics().empty())
+		{
+			output.mutable_metrics()->UnsafeArenaSwap(input.mutable_metrics());
+		}
+		return;
+	}
 	if (in_place)
 	{
 		// create aggregators, recursively invoke
@@ -1107,6 +1129,7 @@ message_aggregator_builder_impl::build_prometheus_info() const
 {
 	return *(new prometheus_info_message_aggregator_impl(*this));
 }
+
 agent_message_aggregator<draiosproto::swarm_task>&
 message_aggregator_builder_impl::build_swarm_task() const
 {

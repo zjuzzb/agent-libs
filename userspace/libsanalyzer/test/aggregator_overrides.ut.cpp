@@ -7,6 +7,7 @@
 #include "aggregator_overrides.h"
 #include "draios.pb.h"
 #include "draios.proto.h"
+#include "scoped_config.h"
 
 TEST(aggregator_overrides, process_details_args)
 {
@@ -619,6 +620,7 @@ TEST(aggregator_overrides, prom_canonical_name)
 
 TEST(aggregator_overrides, prom_metrics)
 {
+	test_helpers::scoped_config<bool> enable_prom_agg("aggregate_prometheus", true);
 	message_aggregator_builder_impl builder;
 	prometheus_info_message_aggregator_impl aggregator(builder);
 

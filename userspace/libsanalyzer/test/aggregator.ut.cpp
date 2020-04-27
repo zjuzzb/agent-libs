@@ -10,6 +10,7 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include "aggregator_overrides.h"
 #include "aggregator_limits.h"
+#include "scoped_config.h"
 
 class test_helper
 {
@@ -2600,6 +2601,7 @@ TEST(aggregator, app_tag)
 
 TEST(aggregator, prometheus_info)
 {
+	test_helpers::scoped_config<bool> enable_prom_agg("aggregate_prometheus", true);
 	message_aggregator_builder_impl builder;
 	std::unique_ptr<agent_message_aggregator<draiosproto::metrics>> aggregator = std::unique_ptr<agent_message_aggregator<draiosproto::metrics>>(&builder.build_metrics());
 
