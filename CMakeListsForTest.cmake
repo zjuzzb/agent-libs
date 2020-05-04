@@ -9,6 +9,7 @@ add_subdirectory(userspace/libsanalyzer/test_helpers)
 add_subdirectory(userspace/userspace-shared/test)
 add_subdirectory(userspace/librest/test)
 add_subdirectory(userspace/librest/test_helpers)
+add_subdirectory(userspace/sdjagent/test)
 
 # Run all unit tests
 add_custom_target(run-unit-tests
