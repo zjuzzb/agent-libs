@@ -6,6 +6,14 @@
 #include <jni.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <string>
+
+// calculate a literal or const static string length at compile time.
+// This is an utility method that should be better moved in a miscellaneous utilities directory
+static int constexpr LENGTH(const char* str)
+{
+	return *str ? 1 + LENGTH(str + 1) : 0;
+}
 
 // Wraps the conversion between a jstring and a const char*
 class java_string
@@ -79,3 +87,13 @@ void log(const char* sev, const char* msgfmt, Args... args)
 	fprintf(stderr, logfmt, getpid(), sev, msg);
 	fflush(stderr);
 }
+
+namespace hsperfdata_utils
+{
+
+int scandir_selector(const struct dirent *dir);
+std::string find_hsperfdata_by_pid(uint32_t pid);
+
+}
+
+

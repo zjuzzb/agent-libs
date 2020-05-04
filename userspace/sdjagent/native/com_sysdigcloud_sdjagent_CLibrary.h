@@ -74,7 +74,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 /*
  * Class:     com_sysdigcloud_sdjagent_CLibrary
  * Method:    realRunOnContainer
- * Signature: (ILjava/lang/String;[Ljava/lang/String;)Ljava/lang/String;
+ * Signature: (ILjava/lang/String;[Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContainer
   (JNIEnv *, jclass, jint, jint, jstring, jobjectArray, jstring);
@@ -94,6 +94,14 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContaine
  */
 JNIEXPORT jlong JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_getInodeOfFile
   (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     com_sysdigcloud_sdjagent_CLibrary
+ * Method:    getJmxInfo
+ * Signature: (II)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_getJmxInfo
+  (JNIEnv *, jclass, jint, jint);
 
 #ifdef __cplusplus
 }
