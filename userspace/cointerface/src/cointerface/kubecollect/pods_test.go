@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/draios/protorepo/draiosproto"
+	draiosproto "protorepo/agent-be/proto"
 )
 
 // Creates two pod objects that are DeepEqual

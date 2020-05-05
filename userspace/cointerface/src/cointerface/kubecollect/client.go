@@ -27,7 +27,7 @@ import (
 	discovery "k8s.io/client-go/discovery"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/draios/protorepo/draiosproto"
+	draiosproto "protorepo/agent-be/proto"
 	"cointerface/profile"
 	"github.com/draios/protorepo/sdc_internal"
 

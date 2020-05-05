@@ -10,7 +10,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/draios/protorepo/draiosproto"
+	draiosproto "protorepo/agent-be/proto"
 
 	"github.com/gogo/protobuf/proto"
 )

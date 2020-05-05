@@ -1,7 +1,7 @@
 package kubecollect
 
 import (
-	"github.com/draios/protorepo/draiosproto"
+	draiosproto "protorepo/agent-be/proto"
 	"encoding/json"
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"

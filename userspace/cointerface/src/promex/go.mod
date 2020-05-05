@@ -6,7 +6,7 @@ require (
 	github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 // indirect
 	github.com/draios/heartbeat v0.0.0-00010101000000-000000000000
 	github.com/draios/install_prefix v0.0.0-00010101000000-000000000000
-	github.com/draios/protorepo/draiosproto v0.0.0-00010101000000-000000000000
+    protorepo/agent-be/proto v0.0.0-00010101000000-000000000000
 	github.com/draios/protorepo/promex_pb v0.0.0-00010101000000-000000000000
 	github.com/golang/protobuf v1.3.2
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
@@ -19,7 +19,7 @@ require (
 )
 
 // The generated-go path comes from GEN_GO_DIR in userspace/cointerface/CMakeLists.txt
-replace github.com/draios/protorepo/draiosproto => ../../../../build/generated-go/draiosproto
+replace protorepo/agent-be/proto => ../../../../build/generated-go/draiosproto/protorepo/agent-be/proto
 
 replace github.com/draios/protorepo/promex_pb => ../../../../build/generated-go/promex_pb
 

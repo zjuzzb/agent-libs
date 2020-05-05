@@ -3,7 +3,7 @@ package compliance
 import (
 	"bytes"
 	"github.com/draios/protorepo/sdc_internal"
-	"github.com/draios/protorepo/draiosproto"
+	draiosproto "protorepo/agent-be/proto"
 	"encoding/json"
 	"fmt"
 	"golang.org/x/net/context"

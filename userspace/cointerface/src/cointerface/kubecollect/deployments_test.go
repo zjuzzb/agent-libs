@@ -9,7 +9,7 @@ import (
 	clientgoInformersLib "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 
-	"github.com/draios/protorepo/draiosproto"
+	draiosproto "protorepo/agent-be/proto"
 )
 
 var replicaset coReplicaSet

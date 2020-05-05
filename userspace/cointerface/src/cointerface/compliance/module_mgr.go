@@ -1,7 +1,7 @@
 package compliance
 
 import (
-	"github.com/draios/protorepo/draiosproto"
+	draiosproto "protorepo/agent-be/proto"
 	"github.com/draios/protorepo/sdc_internal"
 	"fmt"
 	log "github.com/cihub/seelog"

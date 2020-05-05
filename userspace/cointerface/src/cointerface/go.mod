@@ -12,7 +12,7 @@ require (
 	github.com/docker/docker v1.14.0-0.20190319215453-e7b5f7dbe98c
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/draios/install_prefix v0.0.0-00010101000000-000000000000
-	github.com/draios/protorepo/draiosproto v0.0.0-00010101000000-000000000000
+	protorepo/agent-be/proto v0.0.0-00010101000000-000000000000
 	github.com/draios/protorepo/sdc_internal v0.0.0-00010101000000-000000000000
 	github.com/draios/test_helpers v0.0.0
 	github.com/go-ole/go-ole v1.2.2 // indirect
@@ -46,4 +46,4 @@ replace github.com/draios/test_helpers => ../test_helpers
 // The generated-go path comes from GEN_GO_DIR in userspace/cointerface/CMakeLists.txt
 replace github.com/draios/protorepo/sdc_internal => ../../../../build/generated-go/sdc_internal
 
-replace github.com/draios/protorepo/draiosproto => ../../../../build/generated-go/draiosproto
+replace protorepo/agent-be/proto => ../../../../build/generated-go/draiosproto/protorepo/agent-be/proto

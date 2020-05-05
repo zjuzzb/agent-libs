@@ -1,7 +1,7 @@
 package kubecollect
 
 import (
-	"github.com/draios/protorepo/draiosproto"
+	draiosproto "protorepo/agent-be/proto"
 	"context"
 	"errors"
 	"strings"

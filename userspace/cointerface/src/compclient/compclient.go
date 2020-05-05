@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/draios/protorepo/draiosproto"
+	draiosproto "protorepo/agent-be/proto"
 	"github.com/draios/install_prefix"
 	"github.com/draios/protorepo/sdc_internal"
 

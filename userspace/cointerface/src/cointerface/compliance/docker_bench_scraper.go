@@ -2,7 +2,7 @@ package compliance
 
 import (
 	"bytes"
-	"github.com/draios/protorepo/draiosproto"
+	draiosproto "protorepo/agent-be/proto"
 	"github.com/draios/protorepo/sdc_internal"
 	"encoding/json"
 	"fmt"

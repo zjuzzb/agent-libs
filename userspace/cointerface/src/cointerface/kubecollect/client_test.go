@@ -9,7 +9,7 @@ import (
 	
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	
-	"github.com/draios/protorepo/draiosproto"
+	draiosproto "protorepo/agent-be/proto"
 	"github.com/draios/protorepo/sdc_internal"
 	
 	"github.com/gogo/protobuf/proto"	

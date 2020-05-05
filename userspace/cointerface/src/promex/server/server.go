@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"golang.org/x/net/context"
-	"github.com/draios/protorepo/draiosproto"
+	draiosproto "protorepo/agent-be/proto"
 	pb "github.com/draios/protorepo/promex_pb"
 	"strconv"
 	"sync"

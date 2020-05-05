@@ -10,10 +10,10 @@ import (
 	"k8s.io/client-go/tools/cache"
 	kubeclient "k8s.io/client-go/kubernetes"
 
-	"github.com/draios/protorepo/draiosproto"
+	draiosproto "protorepo/agent-be/proto"
 
 	log "github.com/cihub/seelog"
-	"github.com/gogo/protobuf/proto"
+    "github.com/gogo/protobuf/proto"
 )
 
 // make this a library function?

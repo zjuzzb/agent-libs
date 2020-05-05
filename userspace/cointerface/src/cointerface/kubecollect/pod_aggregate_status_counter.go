@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	log "github.com/cihub/seelog"
-	"github.com/draios/protorepo/draiosproto"
+	draiosproto "protorepo/agent-be/proto"
 	"github.com/draios/protorepo/sdc_internal"
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
