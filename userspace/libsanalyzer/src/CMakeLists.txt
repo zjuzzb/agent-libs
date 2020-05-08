@@ -199,6 +199,7 @@ set(SANALYZER_SOURCES
     parser_tls.cpp
     percentile.cpp
     proc_filter.cpp
+    protocol_manager.cpp
     process_emitter.cpp
     posix_queue.cpp
     proc_config.h

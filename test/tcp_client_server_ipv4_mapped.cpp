@@ -1,6 +1,7 @@
 #define VISIBILITY_PRIVATE
 
 #include "event_capture.h"
+#include "scoped_configuration.h"
 #include "sys_call_test.h"
 
 #include <Poco/NumberFormatter.h>
@@ -24,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 
+using namespace test_helpers;
 using Poco::NumberFormatter;
 using Poco::NumberParser;
 using Poco::StringTokenizer;
@@ -683,9 +685,9 @@ void runtest_ipv4m(iotype iot,
 	// OUTPUT VALDATION
 	//
 	sinsp_configuration configuration;
-	ports_set known_ports;
-	known_ports.set(SERVER_PORT);
-	configuration.set_known_ports(known_ports);
+	stringstream configss;
+	configss << "known_ports:\n  - " << SERVER_PORT_STR;
+	scoped_configuration config(configss.str());
 
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 
@@ -778,9 +780,9 @@ TEST_F(sys_call_test, tcp_client_server_with_connection_before_capturing_starts_
 	client.wait_till_ready();
 
 	sinsp_configuration configuration;
-	ports_set known_ports;
-	known_ports.set(SERVER_PORT);
-	configuration.set_known_ports(known_ports);
+	stringstream configss;
+	configss << "known_ports:\n  - " << SERVER_PORT_STR;
+	scoped_configuration config(configss.str());
 
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 	ASSERT_EQ(1, state);

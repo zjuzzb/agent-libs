@@ -61,11 +61,6 @@ public:
 	void set_version(const std::string& version);
 	const std::string& get_instance_id() const;
 	void set_instance_id(const std::string& instance_id);
-	void set_known_ports(const ports_set & v);
-	const ports_set & get_known_ports() const;
-	void set_blacklisted_ports(const std::vector<uint16_t> & v);
-	void set_blacklisted_ports(const ports_set & v);
-	const ports_set & get_blacklisted_ports() const;
 #ifndef CYGWING_AGENT
 	void set_k8s_delegated_nodes(int k8s_delegated_nodes);
 	int get_k8s_delegated_nodes() const;
@@ -210,8 +205,6 @@ private:
 	std::string m_host_custom_map;
 	std::string m_version;
 	std::string m_instance_id;
-	ports_set m_known_ports;
-	ports_set m_blacklisted_ports;
 
 	std::set<double> m_percentiles;
 	std::shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;

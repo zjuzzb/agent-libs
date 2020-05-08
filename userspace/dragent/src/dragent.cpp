@@ -1642,8 +1642,6 @@ sinsp_analyzer* dragent_app::build_analyzer(
 
 	sconfig->set_version(AGENT_VERSION);
 	sconfig->set_instance_id(m_configuration.m_aws_metadata.m_instance_id);
-	sconfig->set_known_ports(m_configuration.m_known_server_ports);
-	sconfig->set_blacklisted_ports(m_configuration.m_blacklisted_ports);
 	sconfig->set_app_checks_always_send(m_configuration.m_app_checks_always_send);
 	sconfig->set_protocols_truncation_size(m_configuration.m_protocols_truncation_size);
 	analyzer->set_fs_usage_from_external_proc(m_configuration.m_system_supports_containers);

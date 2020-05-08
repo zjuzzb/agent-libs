@@ -57,6 +57,7 @@ list(
     process_manager.ut.cpp
     prometheus.ut.cpp
     promscrape.ut.cpp
+    protocol_manager.ut.cpp
     security_config.ut.cpp
     scoped_sinsp_logger_capture.ut.cpp
     secure_audit.ut.cpp

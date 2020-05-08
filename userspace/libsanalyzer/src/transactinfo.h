@@ -2,6 +2,7 @@
 
 #include "sinsp_public.h"  // for SINSP_PUBLIC
 
+#include <vector>
 #include <stack>
 #include <stdexcept>
 #include <memory.h>

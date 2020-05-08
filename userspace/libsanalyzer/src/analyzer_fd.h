@@ -3,7 +3,9 @@
 #include "analyzer_file_stat.h"
 #include "analyzer_thread.h"
 #include "protostate.h"
+#include "type_config.h"
 
+#include <bitset>
 #include <sinsp_int.h>
 
 class sinsp_ipv4_connection_manager;
@@ -92,20 +94,49 @@ private:
 	                         uint32_t len) const;
 #endif
 
-	void update_transaction(sinsp_evt* evt,
-	                        int64_t fd,
-	                        sinsp_fdinfo_t* fdinfo,
-	                        char* data,
-	                        uint32_t original_len,
-	                        uint32_t len,
-	                        sinsp_connection* connection,
-	                        sinsp_partial_transaction::direction trdir);
-
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;
 	sinsp_baseliner* m_falco_baseliner;
-	sinsp_proto_detector m_proto_detector;
 	sinsp_configuration* m_sinsp_config;
 	sinsp_ipv4_connection_manager* m_ipv4_connections;
 	std::list<on_file_open_cb> m_on_file_open_write_cb;
+};
+
+class yaml_configuration;
+class port_list_config : public configuration_unit
+{
+public:
+	/**
+	 * Our yaml interface has three levels of keys possible. If a given
+	 * value only requries fewer values, set the other strings to "". This
+	 * constructor should register this object with the configuration_manager
+	 * class.
+	 *
+	 * The value of this config is set to the default at construction, and
+	 * so will be valid, even if the yaml file has not been parsed yet.
+	 */
+	port_list_config(const std::string& description, const std::string& key);
+
+public:  // stuff for configuration_unit
+	std::string value_to_string() const override;
+	std::string value_to_yaml() const override;
+	bool string_to_value(const std::string& value) override;
+	void init(const yaml_configuration& raw_config) override;
+	void post_init() override
+	{ /*no-op*/
+	}
+
+public:  // other stuff
+	using ports_set = std::bitset<std::numeric_limits<uint16_t>::max() + 1>;
+
+	/**
+	 * Returns a const reference to the current value of this type_config.
+	 *
+	 * @return the value of this config
+	 */
+	const ports_set& get_value() const;
+
+private:
+	ports_set m_data;
+	uint32_t m_count;
 };

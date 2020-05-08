@@ -328,7 +328,7 @@ public:
 	* get_merged_sequence<std::string>("common_metrics")
 	*/
 	template<typename T>
-	std::vector<T> get_merged_sequence(const std::string& key)
+	std::vector<T> get_merged_sequence(const std::string& key) const
 	{
 		std::vector<T> ret;
 		for(const auto& root : m_roots)
@@ -349,7 +349,7 @@ public:
 	}
 
 	template<typename T>
-	std::vector<T> get_merged_sequence(const std::string& key, std::vector<T> &default_value)
+	std::vector<T> get_merged_sequence(const std::string& key, std::vector<T> &default_value) const
 	{
 		bool defined = false;
 		std::vector<T> ret;
@@ -398,7 +398,7 @@ public:
 	* get_merged_map<std::vector<std::string>>("per_process_metrics")
 	*/
 	template<typename T>
-	std::unordered_map<std::string, T> get_merged_map(const std::string& key)
+	std::unordered_map<std::string, T> get_merged_map(const std::string& key) const
 	{
 		std::unordered_map<std::string, T> ret;
 		for(auto it = m_roots.rbegin(); it != m_roots.rend(); ++it)
@@ -419,7 +419,7 @@ public:
 	}
 
 	template<typename T>
-	void get_map(std::unordered_map<std::string, T>& ret, const YAML::Node& node, const std::string& key)
+	void get_map(std::unordered_map<std::string, T>& ret, const YAML::Node& node, const std::string& key) const
 	{
 		YAML::Node child_node = node[key];
 		if(child_node.IsDefined())
@@ -439,7 +439,7 @@ public:
 	}
 
 	template<typename T, typename... Args>
-	void get_map(std::unordered_map<std::string, T>& ret, const YAML::Node& node, const std::string& key, Args... args)
+	void get_map(std::unordered_map<std::string, T>& ret, const YAML::Node& node, const std::string& key, Args... args) const
 	{
 		YAML::Node child_node = node[key];
 		if(child_node.IsDefined())

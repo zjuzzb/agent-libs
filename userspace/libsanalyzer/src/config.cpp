@@ -256,34 +256,6 @@ void sinsp_configuration::set_instance_id(const string& instance_id)
 	m_instance_id = instance_id;
 }
 
-void sinsp_configuration::set_known_ports(const ports_set& v)
-{
-	m_known_ports = v;
-}
-
-const ports_set& sinsp_configuration::get_known_ports() const
-{
-	return m_known_ports;
-}
-
-void sinsp_configuration::set_blacklisted_ports(const vector<uint16_t>& ports)
-{
-	for (auto port : ports)
-	{
-		m_blacklisted_ports.set(port);
-	}
-}
-
-void sinsp_configuration::set_blacklisted_ports(const ports_set& v)
-{
-	m_blacklisted_ports = v;
-}
-
-const ports_set& sinsp_configuration::get_blacklisted_ports() const
-{
-	return m_blacklisted_ports;
-}
-
 #ifndef CYGWING_AGENT
 void sinsp_configuration::set_k8s_delegated_nodes(int k8s_delegated_nodes)
 {

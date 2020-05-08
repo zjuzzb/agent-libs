@@ -996,12 +996,6 @@ void dragent_configuration::init()
 	m_containers_labels_max_len =
 	    m_config->get_scalar<uint32_t>("containers", "labels_max_len", 100);
 	m_container_patterns = m_config->get_scalar<vector<string>>("containers", "include", {});
-	auto known_server_ports = m_config->get_merged_sequence<uint16_t>("known_ports");
-	for (auto p : known_server_ports)
-	{
-		m_known_server_ports.set(p);
-	}
-	m_blacklisted_ports = m_config->get_merged_sequence<uint16_t>("blacklisted_ports");
 
 	for (const auto& root : m_config->get_roots())
 	{
@@ -1486,7 +1480,6 @@ void dragent_configuration::print_configuration() const
 	}
 #endif
 	LOG_INFO("python binary: " + m_python_binary);
-	LOG_INFO("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
 	LOG_INFO("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
 	if (m_k8s_delegated_nodes)
 	{
@@ -1511,10 +1504,6 @@ void dragent_configuration::print_configuration() const
 	if (!m_k8s_cluster_name.empty())
 	{
 		LOG_INFO("K8s cluster name: " + m_k8s_cluster_name);
-	}
-	if (!m_blacklisted_ports.empty())
-	{
-		LOG_INFO("blacklisted_ports count: " + NumberFormatter::format(m_blacklisted_ports.size()));
 	}
 	if (!m_aws_metadata.m_instance_id.empty())
 	{

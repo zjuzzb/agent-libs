@@ -2,6 +2,7 @@
 
 #include "event_capture.h"
 #include "sys_call_test.h"
+#include "scoped_configuration.h"
 
 #include "Poco/Exception.h"
 #include "Poco/Net/FTPStreamFactory.h"
@@ -70,6 +71,7 @@
 #include <unistd.h>
 
 using namespace std;
+using namespace test_helpers;
 
 using Poco::NumberFormatter;
 using Poco::NumberParser;
@@ -571,9 +573,10 @@ TEST_F(sys_call_test, net_web_requests)
 
 	// Set DNS port, /etc/services is read only from dragent context
 	// port 80 is not needed, because it's http protocol and is autodiscovered
-	ports_set known_ports;
-	known_ports.set(53);
-	configuration.set_known_ports(known_ports);
+	scoped_configuration config(R"(
+known_ports:
+  - 53
+)");
 
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 
@@ -582,7 +585,6 @@ TEST_F(sys_call_test, net_web_requests)
 
 TEST_F(sys_call_test, net_ssl_requests)
 {
-	test_helpers::scoped_config<uint64_t> interval("flush_interval", 100 * ONE_SECOND_IN_NS);
 	//
 	// FILTER
 	//
@@ -645,9 +647,13 @@ TEST_F(sys_call_test, net_ssl_requests)
 	};
 
 	sinsp_configuration configuration;
-	ports_set ports;
-	ports.set(443);
-	configuration.set_known_ports(ports);
+
+	scoped_configuration config(R"(
+known_ports:
+  - 443
+)");
+	test_helpers::scoped_config<uint64_t> interval("flush_interval", 100 * ONE_SECOND_IN_NS);
+
 
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 }

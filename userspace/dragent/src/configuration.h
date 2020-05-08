@@ -245,8 +245,6 @@ public:
 	uint32_t m_containers_limit;
 	uint32_t m_containers_labels_max_len;
 	std::vector<std::string> m_container_patterns;
-	ports_set m_known_server_ports;
-	std::vector<uint16_t> m_blacklisted_ports;
 	std::vector<sinsp_chisel_details> m_chisel_details;
 	bool m_system_supports_containers;
 #ifndef CYGWING_AGENT

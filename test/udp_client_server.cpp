@@ -1,5 +1,6 @@
 #define VISIBILITY_PRIVATE
 
+#include "scoped_configuration.h"
 #include "sys_call_test.h"
 
 #include <Poco/NumberParser.h>
@@ -17,10 +18,8 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 
-//#define __STDC_FORMAT_MACROS
-//#include <inttypes.h>
-
 using namespace std;
+using namespace test_helpers;
 using Poco::NumberParser;
 using Poco::StringTokenizer;
 
@@ -382,7 +381,7 @@ public:
 
 		for (uint32_t idx = 0; idx < num_servers; idx++)
 		{
-			m_server_ports.set(SERVER_PORT + idx);
+			m_server_ports.insert(SERVER_PORT + idx);
 			m_threads.emplace_back(std::make_shared<Poco::Thread>());
 			m_servers.emplace_back(
 			    std::make_shared<udp_server>(use_unix, use_sendmsg, recvmsg_twobufs, idx));
@@ -417,7 +416,15 @@ public:
 
 	bool filter(sinsp_evt* evt) { return is_server_tid(evt->get_tid()); }
 
-	ports_set& server_ports() { return m_server_ports; }
+	std::string server_port_yaml()
+	{
+		std::stringstream out;
+		for (auto port : m_server_ports)
+		{
+			out << "  - " << port << "\n";
+		}
+		return out.str();
+	}
 
 	void start()
 	{
@@ -442,7 +449,7 @@ private:
 	std::string m_server_address;
 	std::vector<std::shared_ptr<Poco::Thread>> m_threads;
 	std::vector<std::shared_ptr<udp_server>> m_servers;
-	ports_set m_server_ports;
+	std::set<uint16_t> m_server_ports;
 	bool m_use_connect;
 };
 
@@ -473,14 +480,10 @@ TEST_F(sys_call_test, udp_client_server)
 		if (type == PPME_SYSCALL_CLOSE_X && udps.is_server_tid(e->get_tid()))
 		{
 			thread_analyzer_info* ti = dynamic_cast<thread_analyzer_info*>(e->get_thread_info());
-			ASSERT_EQ((uint64_t)2,
-			          ti->m_transaction_metrics.get_counter()->m_count_in);
-			ASSERT_NE((uint64_t)0,
-			          ti->m_transaction_metrics.get_counter()->m_time_ns_in);
-			ASSERT_EQ((uint64_t)1,
-			          ti->m_transaction_metrics.get_max_counter()->m_count_in);
-			ASSERT_NE((uint64_t)0,
-			          ti->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t)2, ti->m_transaction_metrics.get_counter()->m_count_in);
+			ASSERT_NE((uint64_t)0, ti->m_transaction_metrics.get_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t)1, ti->m_transaction_metrics.get_max_counter()->m_count_in);
+			ASSERT_NE((uint64_t)0, ti->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 		}
 
 		if (type == PPME_SOCKET_RECVFROM_E)
@@ -605,7 +608,9 @@ TEST_F(sys_call_test, udp_client_server)
 	};
 
 	sinsp_configuration configuration;
-	configuration.set_known_ports(udps.server_ports());
+	stringstream configss;
+	configss << "known_ports:\n  - " << SERVER_PORT_STR;
+	scoped_configuration config(configss.str());
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 }
 
@@ -660,14 +665,13 @@ TEST_F(sys_call_test, udp_client_server_with_connect_by_client)
 			    param.m_inspector->get_thread(srv->get_tid(), false, true));
 			if (ti)
 			{
-				transaction_count =
-				    ti->m_transaction_metrics.get_counter()->m_count_in;
+				transaction_count = ti->m_transaction_metrics.get_counter()->m_count_in;
 			}
 		}
 	};
 
 	sinsp_configuration configuration;
-	configuration.set_known_ports(udps.server_ports());
+	scoped_configuration config("known_ports:\n" + udps.server_port_yaml());
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 	ASSERT_EQ(1, callnum);
 	ASSERT_EQ((size_t)NTRANSACTIONS, transaction_count);
@@ -699,14 +703,10 @@ TEST_F(sys_call_test, udp_client_server_sendmsg)
 		if (type == PPME_SYSCALL_CLOSE_X && udps.is_server_tid(e->get_tid()))
 		{
 			thread_analyzer_info* ti = dynamic_cast<thread_analyzer_info*>(e->get_thread_info());
-			ASSERT_EQ((uint64_t)2,
-			          ti->m_transaction_metrics.get_counter()->m_count_in);
-			ASSERT_NE((uint64_t)0,
-			          ti->m_transaction_metrics.get_counter()->m_time_ns_in);
-			ASSERT_EQ((uint64_t)1,
-			          ti->m_transaction_metrics.get_max_counter()->m_count_in);
-			ASSERT_NE((uint64_t)0,
-			          ti->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t)2, ti->m_transaction_metrics.get_counter()->m_count_in);
+			ASSERT_NE((uint64_t)0, ti->m_transaction_metrics.get_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t)1, ti->m_transaction_metrics.get_max_counter()->m_count_in);
+			ASSERT_NE((uint64_t)0, ti->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 		}
 
 		if (type == PPME_SOCKET_RECVMSG_X)
@@ -757,7 +757,7 @@ TEST_F(sys_call_test, udp_client_server_sendmsg)
 	};
 
 	sinsp_configuration configuration;
-	configuration.set_known_ports(udps.server_ports());
+	scoped_configuration config("known_ports:\n" + udps.server_port_yaml());
 
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 }
@@ -788,14 +788,10 @@ TEST_F(sys_call_test, udp_client_server_sendmsg_2buf)
 		if (type == PPME_SYSCALL_CLOSE_X && udps.is_server_tid(e->get_tid()))
 		{
 			thread_analyzer_info* ti = dynamic_cast<thread_analyzer_info*>(e->get_thread_info());
-			ASSERT_EQ((uint64_t)2,
-			          ti->m_transaction_metrics.get_counter()->m_count_in);
-			ASSERT_NE((uint64_t)0,
-			          ti->m_transaction_metrics.get_counter()->m_time_ns_in);
-			ASSERT_EQ((uint64_t)1,
-			          ti->m_transaction_metrics.get_max_counter()->m_count_in);
-			ASSERT_NE((uint64_t)0,
-			          ti->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t)2, ti->m_transaction_metrics.get_counter()->m_count_in);
+			ASSERT_NE((uint64_t)0, ti->m_transaction_metrics.get_counter()->m_time_ns_in);
+			ASSERT_EQ((uint64_t)1, ti->m_transaction_metrics.get_max_counter()->m_count_in);
+			ASSERT_NE((uint64_t)0, ti->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 		}
 
 		if (type == PPME_SOCKET_RECVMSG_X)
@@ -846,7 +842,7 @@ TEST_F(sys_call_test, udp_client_server_sendmsg_2buf)
 	};
 
 	sinsp_configuration configuration;
-	configuration.set_known_ports(udps.server_ports());
+	scoped_configuration config("known_ports:\n" + udps.server_port_yaml());
 
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 }
@@ -888,7 +884,7 @@ static void run_fd_name_changed_test(bool use_sendmsg,
 	};
 
 	sinsp_configuration configuration;
-	configuration.set_known_ports(udps.server_ports());
+	scoped_configuration config("known_ports:\n" + udps.server_port_yaml());
 
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 

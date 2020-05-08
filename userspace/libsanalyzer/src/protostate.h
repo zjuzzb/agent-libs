@@ -59,37 +59,6 @@ public:
 class sinsp_configuration;
 
 ///////////////////////////////////////////////////////////////////////////////
-// The DPI-based protocol detector
-///////////////////////////////////////////////////////////////////////////////
-class sinsp_proto_detector
-{
-public:
-	sinsp_proto_detector(sinsp_configuration* config);
-
-	sinsp_partial_transaction::type detect_proto(sinsp_evt *evt, 
-		sinsp_partial_transaction *trinfo, 
-		sinsp_partial_transaction::direction trdir,
-		uint8_t* buf, uint32_t buflen);
-
-	bool parse_request(char* buf, uint32_t buflen);
-
-	std::string m_url;
-	std::string m_agent;
-
-private:
-	uint32_t m_http_options_intval;
-	uint32_t m_http_get_intval;
-	uint32_t m_http_head_intval;
-	uint32_t m_http_post_intval;
-	uint32_t m_http_put_intval;
-	uint32_t m_http_delete_intval;
-	uint32_t m_http_trace_intval;
-	uint32_t m_http_connect_intval;
-	uint32_t m_http_resp_intval;
-	sinsp_configuration* m_sinsp_config;
-};
-
-///////////////////////////////////////////////////////////////////////////////
 // Table entries
 ///////////////////////////////////////////////////////////////////////////////
 typedef enum sinsp_request_flags

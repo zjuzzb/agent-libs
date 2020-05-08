@@ -518,13 +518,6 @@ int main(int argc, char** argv)
 			}
 		}
 
-		// Get transactions from all ports as here we don't have services file
-		ports_set known_ports;
-		known_ports.set();
-		known_ports.reset(32000);
-		known_ports.reset(31000);
-		g_analyzer->get_configuration()->set_known_ports(known_ports);
-
 		//
 		// the filter is specified at the end of the command line
 		//
