@@ -1197,7 +1197,7 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 	char net_dev_path[100];
 	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/net/dev", scap_get_host_root());
 	static const vector<const char*> BAD_INTERFACE_NAMES =
-	    {"lo", "stf", "gif", "dummy", "vmnet", "docker", "veth"};
+	    {"lo", "stf", "gif", "dummy", "vmnet", "docker", "veth", "cali", "tun"};
 	return read_net_dev(net_dev_path, &m_last_in_bytes, &m_last_out_bytes, BAD_INTERFACE_NAMES);
 #else   // CYGWING_AGENT
 	wh_machine_bandwidth_info mi = wh_wmi_get_machine_net_totbytes(m_whhandle);
