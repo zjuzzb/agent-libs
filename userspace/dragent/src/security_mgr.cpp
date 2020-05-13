@@ -895,13 +895,12 @@ void security_mgr::process_event_v1(gen_event *evt)
 
 					add_policy_event_metrics(*match);
 
-					draiosproto::policy_event *event = create_policy_event(evt->get_ts(),
+					draiosproto::policy_event *event = create_policy_event(evt,
 											       container_id,
 											       tinfo,
 											       match->policy()->id(),
 											       match->take_detail(),
-											       policy_version,
-											       evt->get_source());
+											       policy_version);
 
 					// Not throttled--perform the actions associated
 					// with the policy. The actions will add their action
@@ -993,13 +992,12 @@ void security_mgr::process_event_v2(gen_event *evt)
 
 				add_policy_event_metrics(result);
 
-				draiosproto::policy_event *event = create_policy_event(evt->get_ts(),
+				draiosproto::policy_event *event = create_policy_event(evt,
 										       container_id,
 										       tinfo,
 										       result.m_policy->id(),
 										       result.m_detail,
-										       policy_version,
-										       evt->get_source());
+										       policy_version);
 
 				// Not throttled--perform the actions associated
 				// with the policy. The actions will add their action
@@ -1282,15 +1280,17 @@ void security_mgr::add_policy_event_metrics(const security_rules::match_result &
 	m_metrics.incr_policy(res.m_policy->name());
 }
 
-draiosproto::policy_event * security_mgr::create_policy_event(int64_t ts_ns,
+draiosproto::policy_event * security_mgr::create_policy_event(gen_event *evt,
 							      std::string &container_id,
 							      sinsp_threadinfo *tinfo,
 							      uint64_t policy_id,
 							      draiosproto::event_detail *details,
-							      uint64_t policy_version,
-							      uint16_t event_source)
+							      uint64_t policy_version)
 {
 	draiosproto::policy_event *event = new draiosproto::policy_event();
+
+	int64_t ts_ns = evt->get_ts();
+	uint16_t event_source = evt->get_source();
 
 	event->set_timestamp_ns(ts_ns);
 	event->set_policy_id(policy_id);
@@ -1317,23 +1317,31 @@ draiosproto::policy_event * security_mgr::create_policy_event(int64_t ts_ns,
 		event->set_sinsp_events_dropped(analyzer()->recent_sinsp_events_dropped());
 	}
 
-	if (c_event_labels_enabled.get_value() && event_source != ESRC_K8S_AUDIT)
+	if (c_event_labels_enabled.get_value())
 	{
-		set_event_labels(container_id, tinfo, event);
+		if (event_source == ESRC_K8S_AUDIT)
+		{
+			set_event_labels_k8s_audit(details, event, evt);
+		}
+		else
+		{
+			set_event_labels(container_id, tinfo, event);
+		}
 	}
-
 	return event;
 }
 
-draiosproto::policy_event * security_mgr::create_policy_event(int64_t ts_ns,
+draiosproto::policy_event * security_mgr::create_policy_event(gen_event *evt,
 							      std::string &container_id,
 							      sinsp_threadinfo *tinfo,
 							      uint64_t policy_id,
 							      draiosproto::event_detail &details,
-							      uint64_t policy_version,
-							      uint16_t event_source)
+							      uint64_t policy_version)
 {
 	draiosproto::policy_event *event = new draiosproto::policy_event();
+
+	int64_t ts_ns = evt->get_ts();
+	uint16_t event_source = evt->get_source();
 
 	event->set_timestamp_ns(ts_ns);
 	event->set_policy_id(policy_id);
@@ -1361,11 +1369,17 @@ draiosproto::policy_event * security_mgr::create_policy_event(int64_t ts_ns,
 		event->set_sinsp_events_dropped(analyzer()->recent_sinsp_events_dropped());
 	}
 
-	if (c_event_labels_enabled.get_value() && event_source != ESRC_K8S_AUDIT)
+	if (c_event_labels_enabled.get_value())
 	{
-		set_event_labels(container_id, tinfo, event);
+		if (event_source == ESRC_K8S_AUDIT)
+		{
+			set_event_labels_k8s_audit(mdetails, event, evt);
+		}
+		else
+		{
+			set_event_labels(container_id, tinfo, event);
+		}
 	}
-
 	return event;
 }
 
@@ -1439,12 +1453,91 @@ void security_mgr::set_event_labels(std::string &container_id,
 		// Use Pod Name label to check it
 		if (event_labels.find("kubernetes.pod.name") != event_labels.end())
 		{
-			if (!m_configuration->m_k8s_cluster_name.empty())
+			if (!m_analyzer->infra_state()->get_k8s_cluster_name().empty())
 			{
 				(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_analyzer->infra_state()->get_k8s_cluster_name();
 			}
 		}
 	}
+}
+
+void security_mgr::set_event_labels_k8s_audit(draiosproto::event_detail *details, draiosproto::policy_event *event, gen_event *evt)
+{
+	if (!m_analyzer->infra_state()->get_k8s_cluster_name().empty())
+	{
+		(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_analyzer->infra_state()->get_k8s_cluster_name();
+	}
+
+	json_event * j_evt = NULL;
+
+	j_evt = dynamic_cast<json_event *>(evt);
+	if (!j_evt)
+	{
+		return;
+	}
+
+	const nlohmann::json& j = j_evt->jevt();
+
+	try
+	{
+		nlohmann::json::json_pointer r_jptr("/objectRef/resource");
+		if (m_analyzer->infra_state() != nullptr && j.at(r_jptr) == "pods")
+		{
+			// if the object of this audit event is a pod,
+			// get its container.id and host.hostName
+			// from infrastructure state
+			nlohmann::json::json_pointer ns_jptr("/objectRef/namespace"),
+				n_jptr("/objectRef/name");
+			std::string pod_uid = m_analyzer->infra_state()->get_k8s_pod_uid(j.at(ns_jptr), j.at(n_jptr));
+			if (!pod_uid.empty())
+			{
+				infrastructure_state::uid_t uid = make_pair("k8s_pod", pod_uid);
+
+				// labels retrieval
+				std::unordered_map<std::string, std::string> event_labels;
+				m_analyzer->infra_state()->find_tag_list(uid, m_event_labels, event_labels);
+
+				for (auto &it: event_labels)
+				{
+					(*event->mutable_event_labels())[it.first] = std::move(it.second);
+				}
+
+				if (m_event_labels.find("agent.tag") != m_event_labels.end()) {
+					// lookup host.mac
+					std::string host_mac;
+					m_analyzer->infra_state()->find_tag(uid, "host.mac", host_mac);
+
+					// lookup agent tags from host
+					uid = make_pair("host", host_mac);
+					std::unordered_map<std::string, std::string> host_tags;
+					m_analyzer->infra_state()->get_tags(uid, host_tags);
+
+					int count_tags = 0;
+					for (auto &it: host_tags)
+					{
+						if (count_tags >= c_event_labels_max_agent_tags.get_value())
+						{
+							break;
+						}
+
+						// filter out tags that are not agent.tag
+						size_t found = it.first.find("agent.tag");
+						if (found != string::npos)
+						{
+							(*event->mutable_event_labels())[it.first] = std::move(it.second);
+							count_tags++;
+						}
+					}
+				}
+			}
+		}
+
+	}
+	catch (nlohmann::json::out_of_range&)
+	{
+		g_log->debug("security_mgr::set_event_labels_k8s_audit: catch exception");
+	}
+	return;
 }
 
 void security_mgr::report_events(uint64_t ts_ns)

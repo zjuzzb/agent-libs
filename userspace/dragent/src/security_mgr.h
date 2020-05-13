@@ -307,21 +307,19 @@ private:
 	void add_policy_event_metrics(const security_policies::match_result &res);
 	void add_policy_event_metrics(const security_rules::match_result &res);
 
-	draiosproto::policy_event * create_policy_event(int64_t ts_ns,
+	draiosproto::policy_event * create_policy_event(gen_event *evt,
 							std::string &container_id,
 							sinsp_threadinfo *tinfo,
 							uint64_t policy_id,
 							draiosproto::event_detail *details,
-							uint64_t policy_version,
-							uint16_t event_source);
+							uint64_t policy_version);
 
-	draiosproto::policy_event * create_policy_event(int64_t ts_ns,
+	draiosproto::policy_event * create_policy_event(gen_event *evt,
 							std::string &container_id,
 							sinsp_threadinfo *tinfo,
 							uint64_t policy_id,
 							draiosproto::event_detail &details,
-							uint64_t policy_version,
-							uint16_t event_source);
+							uint64_t policy_version);
 
 	void load_policy(const security_policy &spolicy, std::list<std::string> &ids);
 	void load_policy_v2(std::shared_ptr<security_policy_v2> spolicy_v2, std::list<std::string> &ids);
@@ -364,6 +362,7 @@ private:
 	void report_events_now(uint64_t ts_ns, draiosproto::policy_events &events);
 
 	void set_event_labels(std::string &container_id, sinsp_threadinfo *tinfo, draiosproto::policy_event *event);
+	void set_event_labels_k8s_audit(draiosproto::event_detail *details, draiosproto::policy_event *event, gen_event *evt);
 
 	// Send counts of throttled policy events to the backend
 	void report_throttled_events(uint64_t ts_ns);

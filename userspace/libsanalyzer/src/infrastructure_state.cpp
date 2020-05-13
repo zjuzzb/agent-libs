@@ -769,6 +769,32 @@ bool infrastructure_state::find_tag(const uid_t& uid,
 	return false;
 }
 
+int infrastructure_state::get_tags(uid_t uid, std::unordered_map<string, string>& tags_map) const
+{
+	int ret = 0;
+
+	if (!has(uid))
+	{
+		return ret;
+	}
+
+	auto* cg = m_state.find(uid)->second.get();
+
+	if (!cg)
+	{  // Shouldn't happen
+		return ret;
+	}
+
+	// Look for object name tags and add them to tags_map
+	for (const auto& tag : cg->tags())
+	{
+		tags_map[tag.first] = tag.second;
+		ret++;
+	}
+
+	return ret;
+}
+
 int infrastructure_state::find_tag_list(uid_t uid,
                                         std::unordered_set<string>& tags_set,
                                         std::unordered_map<string, string>& labels,

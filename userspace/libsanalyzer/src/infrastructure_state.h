@@ -132,6 +132,7 @@ public:
 		std::unordered_set<uid_t> visited;
 		return find_tag_list(uid, tags_set, labels, visited);
 	}
+	int get_tags(uid_t uid, std::unordered_map<string, string>& tags_map) const;
 	// Get object names from object and its parents and add them to scope
 	int get_scope_names(const uid_t &uid, event_scope *scope) const;
 
