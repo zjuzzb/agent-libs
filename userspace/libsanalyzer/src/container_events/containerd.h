@@ -26,12 +26,13 @@
 // - we have an instance of this class (we're connected to containerd's gRPC endpoint)
 // - we have an active event subscription
 // and then calls ->tick() to fetch new events over gRPC
+class sinsp_container_manager;
 
 class containerd_events {
 public:
 	typedef user_event_filter_t::ptr_t event_filter_ptr_t;
 
-	explicit containerd_events(const std::string& containerd_sock, const std::string& machine_id, event_filter_ptr_t&& filter);
+	explicit containerd_events(const std::string& containerd_sock, const std::string& machine_id, event_filter_ptr_t&& filter, const sinsp_container_manager& container_manager);
 	void subscribe();
 	void tick();
 	inline bool is_open() const {
@@ -52,6 +53,8 @@ private:
 
 	void emit_event(user_event_logger::severity severity, uint64_t ts, event_scope& scope, std::string& name, std::string& desc);
 
+	bool is_pod_sandbox_event(const std::string& container_id, std::string& desc);
+
 	std::unique_ptr<streaming_grpc_client(&containerd::services::events::v1::Events::Stub::AsyncSubscribe)> m_grpc_subscribe;
 
 	std::string m_containerd_sock;
@@ -61,6 +64,7 @@ private:
 
 	bool m_container_exit_filter;
 	bool m_container_die_filter;
+	const sinsp_container_manager& m_container_manager;
 
 	static std::unordered_map<std::string, event_emitter_t> s_event_emitters;
 };

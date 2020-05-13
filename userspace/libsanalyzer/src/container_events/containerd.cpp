@@ -4,7 +4,6 @@
 #include <unordered_map>
 
 #include "analyzer_utils.h"
-
 #include <container_events/containerd_container.pb.h>
 #include <container_events/containerd_image.pb.h>
 #include <container_events/containerd_task.pb.h>
@@ -25,10 +24,11 @@ std::string trim_container_id(const std::string& container_id)
 }
 }
 
-containerd_events::containerd_events(const std::string& containerd_sock, const std::string& machine_id, event_filter_ptr_t&& filter):
+containerd_events::containerd_events(const std::string& containerd_sock, const std::string& machine_id, event_filter_ptr_t&& filter, const sinsp_container_manager& container_manager):
 	m_containerd_sock(containerd_sock),
 	m_machine_id(machine_id),
-	m_event_filter(filter)
+	m_event_filter(filter),
+	m_container_manager(container_manager)
 {
 	m_filters.clear();
 
@@ -138,8 +138,13 @@ void containerd_events::emit_containers_create(Envelope& event, event_scope& sco
 	const std::string& container_image = details.image();
 
 	scope.add("container.id", container_id);
+
 	std::string name = "Container created";
 	std::string desc = "namespace: " + event.namespace_() + "; ID: " + container_id + "; image: " + container_image;
+
+	if(is_pod_sandbox_event(container_id, desc)) {
+		return;
+	}
 
 	emit_event(user_event_logger::SEV_EVT_INFORMATION, event.timestamp().seconds(), scope, name, desc);
 }
@@ -210,6 +215,10 @@ void containerd_events::emit_tasks_oom(Envelope& event, event_scope& scope)
 	std::string name = "Container out of memory";
 	std::string desc = "namespace: " + event.namespace_() + "; ID: " + container_id;
 
+	if(is_pod_sandbox_event(container_id, desc)) {
+		return;
+	}
+
 	emit_event(user_event_logger::SEV_EVT_INFORMATION, event.timestamp().seconds(), scope, name, desc);
 }
 
@@ -227,8 +236,13 @@ void containerd_events::emit_tasks_exit(Envelope& event, event_scope& scope)
 	user_event_logger::severity log_level = user_event_logger::SEV_EVT_INFORMATION;
 
 	scope.add("container.id", container_id);
+
 	std::string name = "Container exited";
 	std::string desc = "namespace: " + event.namespace_() + "; ID: " + container_id;
+
+	if(is_pod_sandbox_event(container_id, desc)) {
+		return;
+	}
 
 	if (details.id() != details.container_id())
 	{
@@ -276,6 +290,34 @@ void containerd_events::emit_event(user_event_logger::severity severity, uint64_
 	{
 		g_logger.log("CRI EVENT: scheduled for sending\n" + evt.to_string(), sinsp_logger::SEV_TRACE);
 	}
+}
+
+// This function does 3 things:
+// 1.) First check if container_info exists for a container_id and if metadata lookup is complete
+// 2.) If yes, then first check if it is a pod sandbox. If yes return true. We don't emit pod sandbox
+// container events.
+// 3.) If it is not a pod sandbox, then check and poplate the container_name metadata in the "desc" field
+// 4.) For now only the container_name metadata is being requested. This API May change if more metadata
+// is desired.
+bool containerd_events::is_pod_sandbox_event(const std::string& container_id, std::string& desc)
+{
+	auto container_info = m_container_manager.get_container(container_id);
+	if(container_info != nullptr && container_info->is_successful()) {
+		if(container_info->is_pod_sandbox()) {
+			return true;
+		}
+
+		std::string container_name = container_info->m_name ;
+
+		if(!container_name.empty()) {
+			desc = desc + "; Name: " + container_name;
+		}
+	}
+
+	// Either it isn't a pod sandbox event,
+	// OR we couldn't judge because metadata lookup isn't complete
+	// Either way, we don't know. Allow the event if so.
+	return false;
 }
 
 std::unordered_map<std::string, containerd_events::event_emitter_t> containerd_events::s_event_emitters({

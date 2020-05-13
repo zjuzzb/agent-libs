@@ -6316,9 +6316,10 @@ void sinsp_analyzer::emit_containerd_events()
 		}
 		LOG_INFO("Connecting to containerd socket at %s for events", cri_socket.c_str());
 		m_containerd_events = make_unique<containerd_events>(
-		    std::string("unix://") + scap_get_host_root() + cri_socket,
-		    m_configuration->get_machine_id(),
-		    m_configuration->get_containerd_event_filter());
+			std::string("unix://") + scap_get_host_root() + cri_socket,
+			m_configuration->get_machine_id(),
+			m_configuration->get_containerd_event_filter(),
+			m_inspector->m_container_manager);
 	}
 
 	if (!m_containerd_events->is_open())
