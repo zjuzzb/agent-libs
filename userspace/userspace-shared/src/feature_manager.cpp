@@ -16,8 +16,11 @@ const feature_manager::agent_mode_container feature_manager::mode_definitions[] 
     {feature_manager::AGENT_MODE_NONE, "none", {}},
     {feature_manager::AGENT_MODE_MONITOR,
      "monitor",
-     {STATSD, JMX, APP_CHECKS, COINTERFACE, DRIVER, FULL_SYSCALLS}},
-    {feature_manager::AGENT_MODE_MONITOR_LIGHT, "monitor_light", {}}};
+     {STATSD, JMX, APP_CHECKS, COINTERFACE, DRIVER, FULL_SYSCALLS, PROTOCOL_STATS}},
+    {feature_manager::AGENT_MODE_MONITOR_LIGHT, "monitor_light", {}},
+    {feature_manager::AGENT_MODE_ESSENTIALS,
+     "essentials",
+     {STATSD, JMX, APP_CHECKS, COINTERFACE, DRIVER, FULL_SYSCALLS}}};
 
 static_assert(feature_manager::agent_mode::AGENT_MODE_COUNT ==
                   sizeof(feature_manager::mode_definitions) /
@@ -72,7 +75,19 @@ const feature_manager::agent_feature_container feature_manager::feature_configs[
 	{FULL_SYSCALLS,        "full syscalls",        type_config<bool>(true,
 	                                                                 "enable collection of complete syscalls. Note feature.driver",
 	                                                                 "feature",
-	                                                                 "full_syscalls")}
+	                                                                 "full_syscalls")},
+    {NETWORK_BREAKDOWN,    "network breakdown",    type_config<bool>(true,
+                                                                     "enable collection of network stats by remote endpoint.",
+                                                                     "feature",
+                                                                     "network_breakdown")},
+    {FILE_BREAKDOWN,       "file breakdown",       type_config<bool>(true,
+                                                                     "enable collection of file stats on a per-file basis",
+                                                                     "feature",
+                                                                     "file_breakdown")},
+    {PROTOCOL_STATS,       "protocol stats",       type_config<bool>(true,
+                                                                     "enable collection of protocol stats",
+                                                                     "feature",
+                                                                     "protocol_stats")}
 };
 // clang-format on
 
@@ -102,6 +117,9 @@ static_assert(feature_manager::agent_mode::AGENT_MODE_MONITOR ==
               "agent modes must match");
 static_assert(feature_manager::agent_mode::AGENT_MODE_MONITOR_LIGHT ==
                   (feature_manager::agent_mode)draiosproto::agent_mode::light,
+              "agent modes must match");
+static_assert(feature_manager::agent_mode::AGENT_MODE_ESSENTIALS ==
+                  (feature_manager::agent_mode)draiosproto::agent_mode::essentials,
               "agent modes must match");
 
 bool feature_manager::initialize()
@@ -328,6 +346,13 @@ feature_base memdump_feature(MEMDUMP, &draiosproto::feature_status::set_memdump_
 feature_base secure_audit_feature(SECURE_AUDIT,
                                   &draiosproto::feature_status::set_secure_audit_enabled,
                                   {SECURE});
+
+feature_base network_breakdown_feature(NETWORK_BREAKDOWN,
+                                       &draiosproto::feature_status::set_network_breakdown_enabled,
+                                       {FULL_SYSCALLS});
+feature_base file_breakdown_feature(FILE_BREAKDOWN,
+                                    &draiosproto::feature_status::set_file_breakdown_enabled,
+                                    {FULL_SYSCALLS});
 
 /**
  * command line has a weird dependency where it gets disabled if secure audit

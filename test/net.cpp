@@ -3,6 +3,7 @@
 #include "event_capture.h"
 #include "sys_call_test.h"
 #include "scoped_configuration.h"
+#include "feature_manager.h"
 
 #include "Poco/Exception.h"
 #include "Poco/Net/FTPStreamFactory.h"
@@ -577,6 +578,7 @@ TEST_F(sys_call_test, net_web_requests)
 known_ports:
   - 53
 )");
+	feature_manager::instance().initialize();
 
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 
@@ -653,7 +655,7 @@ known_ports:
   - 443
 )");
 	test_helpers::scoped_config<uint64_t> interval("flush_interval", 100 * ONE_SECOND_IN_NS);
-
+	feature_manager::instance().initialize();
 
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 }

@@ -1,12 +1,13 @@
 #pragma once
 #include "analyzer_settings.h"  //sinsp_fdinfo_t really can't be foredeclared because of this
+#include "feature_manager.h"
 
 #include <stdint.h>
 
 class sinsp_evt;
 class sinsp_connection;
 
-class protocol_manager
+class protocol_manager : public feature_base
 {
 private:
 	static protocol_manager* s_protocol_manager;

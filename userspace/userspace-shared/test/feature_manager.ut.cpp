@@ -5,6 +5,54 @@
 
 #include <gtest.h>
 
+namespace
+{
+class dummy_features
+{
+public:
+	dummy_features(feature_manager& fm)
+	    : fb0(PROMETHEUS, &draiosproto::feature_status::set_prometheus_enabled, {}, fm),
+	      fb1(STATSD, &draiosproto::feature_status::set_statsd_enabled, {}, fm),
+	      fb2(JMX, &draiosproto::feature_status::set_jmx_enabled, {}, fm),
+	      fb3(APP_CHECKS, &draiosproto::feature_status::set_app_checks_enabled, {}, fm),
+	      fb4(COINTERFACE, &draiosproto::feature_status::set_cointerface_enabled, {}, fm),
+	      fb5(DRIVER, &draiosproto::feature_status::set_driver_enabled, {}, fm),
+	      fb6(SECURE, &draiosproto::feature_status::set_secure_enabled, {}, fm),
+	      fb7(COMMAND_LINE_CAPTURE,
+	          &draiosproto::feature_status::set_commandline_capture_enabled,
+	          {},
+	          fm),
+	      fb8(BASELINER, &draiosproto::feature_status::set_baseliner_enabled, {}, fm),
+	      fb9(MEMDUMP, &draiosproto::feature_status::set_memdump_enabled, {}, fm),
+	      fb10(SECURE_AUDIT, &draiosproto::feature_status::set_secure_audit_enabled, {}, fm),
+	      fb11(FULL_SYSCALLS, &draiosproto::feature_status::set_full_syscalls_enabled, {}, fm),
+	      fb12(NETWORK_BREAKDOWN,
+	           &draiosproto::feature_status::set_network_breakdown_enabled,
+	           {},
+	           fm),
+	      fb13(FILE_BREAKDOWN, &draiosproto::feature_status::set_file_breakdown_enabled, {}, fm),
+	      fb14(PROTOCOL_STATS, &draiosproto::feature_status::set_protocol_stats_enabled, {}, fm)
+	{
+	}
+
+	feature_base fb0;
+	feature_base fb1;
+	feature_base fb2;
+	feature_base fb3;
+	feature_base fb4;
+	feature_base fb5;
+	feature_base fb6;
+	feature_base fb7;
+	feature_base fb8;
+	feature_base fb9;
+	feature_base fb10;
+	feature_base fb11;
+	feature_base fb12;
+	feature_base fb13;
+	feature_base fb14;
+};
+}  // namespace
+
 TEST(feature_manager, base_dependencies)
 {
 	feature_manager fm;
@@ -50,35 +98,13 @@ TEST(feature_manager, base_verify_dependencies)
 TEST(feature_manager, basic)
 {
 	feature_manager fm;
-
-	// Why do we have 11 of these things? Feature manager needs an implementation of each
-	// feature before it will let you inititialize. There are 11 features. I have
-	// to provide some CB function in the feature constructor, so i just stuff
-	// prometheus_enabled in since I don't really care. it's a dummy.
-	feature_base fb0((feature_name)0, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb1((feature_name)1, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb2((feature_name)2, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb3((feature_name)3, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb4((feature_name)4, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb5((feature_name)5, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb6((feature_name)6, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb7((feature_name)7, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb8((feature_name)8, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb9((feature_name)9, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb10((feature_name)10,
-	                  &draiosproto::feature_status::set_prometheus_enabled,
-	                  {},
-	                  fm);
-	feature_base fb11((feature_name)11,
-	                  &draiosproto::feature_status::set_prometheus_enabled,
-	                  {},
-	                  fm);
+	dummy_features df(fm);
 
 	fm.initialize();
 
-	fb0.set_enabled(false);
+	df.fb0.set_enabled(false);
 	EXPECT_FALSE(fm.get_enabled((feature_name)0));
-	fb0.set_enabled(true);
+	df.fb0.set_enabled(true);
 	EXPECT_TRUE(fm.get_enabled((feature_name)0));
 }
 
@@ -123,6 +149,18 @@ TEST(feature_manager, base_initialize_called)
 	                  &draiosproto::feature_status::set_prometheus_enabled,
 	                  {},
 	                  fm);
+	feature_base fb12((feature_name)12,
+	                  &draiosproto::feature_status::set_prometheus_enabled,
+	                  {},
+	                  fm);
+	feature_base fb13((feature_name)13,
+	                  &draiosproto::feature_status::set_prometheus_enabled,
+	                  {},
+	                  fm);
+	feature_base fb14((feature_name)14,
+	                  &draiosproto::feature_status::set_prometheus_enabled,
+	                  {},
+	                  fm);
 
 	test_helpers::scoped_config<bool> memdump("prometheus.enabled", true);
 	ASSERT_FALSE(fb.m_init_called);
@@ -159,25 +197,7 @@ TEST(feature_manager, base_disable)
 TEST(feature_manager, invalid_mode)
 {
 	feature_manager fm;
-	feature_base fb0((feature_name)0, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb1((feature_name)1, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb2((feature_name)2, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb3((feature_name)3, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb4((feature_name)4, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb5((feature_name)5, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb6((feature_name)6, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb7((feature_name)7, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb8((feature_name)8, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb9((feature_name)9, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb10((feature_name)10,
-	                  &draiosproto::feature_status::set_prometheus_enabled,
-	                  {},
-	                  fm);
-	feature_base fb11((feature_name)11,
-	                  &draiosproto::feature_status::set_prometheus_enabled,
-	                  {},
-	                  fm);
-
+	dummy_features df(fm);
 	{
 		test_helpers::scoped_config<bool> pom("prometheus.enabled", true);
 		test_helpers::scoped_config<bool> sd("statsd.enabled", false);
@@ -199,25 +219,7 @@ TEST(feature_manager, invalid_mode)
 TEST(feature_manager, monitor_mode)
 {
 	feature_manager fm;
-	feature_base fb0((feature_name)0, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb1((feature_name)1, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb2((feature_name)2, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb3((feature_name)3, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb4((feature_name)4, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb5((feature_name)5, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb6((feature_name)6, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb7((feature_name)7, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb8((feature_name)8, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb9((feature_name)9, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb10((feature_name)10,
-	                  &draiosproto::feature_status::set_prometheus_enabled,
-	                  {},
-	                  fm);
-	feature_base fb11((feature_name)11,
-	                  &draiosproto::feature_status::set_prometheus_enabled,
-	                  {},
-	                  fm);
-
+	dummy_features df(fm);
 	{
 		test_helpers::scoped_config<bool> pom("prometheus.enabled", true);
 		test_helpers::scoped_config<bool> sd("statsd.enabled", false);
@@ -241,25 +243,7 @@ TEST(feature_manager, monitor_mode)
 TEST(feature_manager, monitor_light_mode)
 {
 	feature_manager fm;
-	feature_base fb0((feature_name)0, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb1((feature_name)1, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb2((feature_name)2, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb3((feature_name)3, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb4((feature_name)4, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb5((feature_name)5, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb6((feature_name)6, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb7((feature_name)7, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb8((feature_name)8, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb9((feature_name)9, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb10((feature_name)10,
-	                  &draiosproto::feature_status::set_prometheus_enabled,
-	                  {},
-	                  fm);
-	feature_base fb11((feature_name)11,
-	                  &draiosproto::feature_status::set_prometheus_enabled,
-	                  {},
-	                  fm);
-
+	dummy_features df(fm);
 	{
 		test_helpers::scoped_config<bool> pom("prometheus.enabled", true);
 		test_helpers::scoped_config<bool> sd("statsd.enabled", false);
@@ -280,6 +264,29 @@ TEST(feature_manager, monitor_light_mode)
 	}
 }
 
+TEST(feature_manager, essentials_mode)
+{
+	feature_manager fm;
+	dummy_features df(fm);
+	{
+		test_helpers::scoped_config<bool> pom("prometheus.enabled", true);
+		test_helpers::scoped_config<bool> sd("statsd.enabled", false);
+		test_helpers::scoped_config<std::string> mode("feature.mode", "essentials");
+		fm.initialize();
+
+		EXPECT_FALSE(fm.get_enabled(PROMETHEUS));
+		EXPECT_TRUE(fm.get_enabled(STATSD));
+	}
+	{
+		test_helpers::scoped_config<bool> pom("prometheus.enabled", false);
+		test_helpers::scoped_config<bool> sd("statsd.enabled", true);
+		test_helpers::scoped_config<std::string> mode("feature.mode", "essentials");
+		fm.initialize();
+
+		EXPECT_FALSE(fm.get_enabled(PROMETHEUS));
+		EXPECT_TRUE(fm.get_enabled(STATSD));
+	}
+}
 TEST(feature_manager, base_emit_protobuf)
 {
 	feature_manager fm;
@@ -297,25 +304,7 @@ TEST(feature_manager, base_emit_protobuf)
 TEST(feature_manager, to_protobuf)
 {
 	feature_manager fm;
-	feature_base fb0((feature_name)0, &draiosproto::feature_status::set_prometheus_enabled, {}, fm);
-	feature_base fb1((feature_name)1, &draiosproto::feature_status::set_statsd_enabled, {}, fm);
-	feature_base fb2((feature_name)2, &draiosproto::feature_status::set_jmx_enabled, {}, fm);
-	feature_base fb3((feature_name)3, &draiosproto::feature_status::set_app_checks_enabled, {}, fm);
-	feature_base fb4((feature_name)4, &draiosproto::feature_status::set_cointerface_enabled, {}, fm);
-	feature_base fb5((feature_name)5, &draiosproto::feature_status::set_driver_enabled, {}, fm);
-	feature_base fb6((feature_name)6, &draiosproto::feature_status::set_secure_enabled, {}, fm);
-	feature_base fb7((feature_name)7, &draiosproto::feature_status::set_commandline_capture_enabled, {}, fm);
-	feature_base fb8((feature_name)8, &draiosproto::feature_status::set_baseliner_enabled, {}, fm);
-	feature_base fb9((feature_name)9, &draiosproto::feature_status::set_memdump_enabled, {}, fm);
-	feature_base fb10((feature_name)10,
-	                  &draiosproto::feature_status::set_secure_audit_enabled,
-	                  {},
-	                  fm);
-	feature_base fb11((feature_name)11,
-	                  &draiosproto::feature_status::set_full_syscalls_enabled,
-	                  {},
-	                  fm);
-
+	dummy_features df(fm);
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "monitor_light");
 		fm.initialize();
@@ -334,6 +323,9 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.memdump_enabled());
 		EXPECT_FALSE(proto.secure_audit_enabled());
 		EXPECT_FALSE(proto.full_syscalls_enabled());
+		EXPECT_FALSE(proto.network_breakdown_enabled());
+		EXPECT_FALSE(proto.file_breakdown_enabled());
+		EXPECT_FALSE(proto.protocol_stats_enabled());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "none");
@@ -360,5 +352,31 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.memdump_enabled());
 		EXPECT_FALSE(proto.secure_audit_enabled());
 		EXPECT_TRUE(proto.full_syscalls_enabled());
+		EXPECT_FALSE(proto.network_breakdown_enabled());
+		EXPECT_FALSE(proto.file_breakdown_enabled());
+		EXPECT_TRUE(proto.protocol_stats_enabled());
 	}
+	{
+		test_helpers::scoped_config<std::string> mode("feature.mode", "essentials");
+		fm.initialize();
+		draiosproto::feature_status proto;
+		fm.to_protobuf(proto);
+		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::essentials);
+		EXPECT_FALSE(proto.prometheus_enabled());
+		EXPECT_TRUE(proto.statsd_enabled());
+		EXPECT_TRUE(proto.jmx_enabled());
+		EXPECT_TRUE(proto.app_checks_enabled());
+		EXPECT_TRUE(proto.cointerface_enabled());
+		EXPECT_TRUE(proto.driver_enabled());
+		EXPECT_FALSE(proto.secure_enabled());
+		EXPECT_FALSE(proto.commandline_capture_enabled());
+		EXPECT_FALSE(proto.baseliner_enabled());
+		EXPECT_FALSE(proto.memdump_enabled());
+		EXPECT_FALSE(proto.secure_audit_enabled());
+		EXPECT_TRUE(proto.full_syscalls_enabled());
+		EXPECT_FALSE(proto.network_breakdown_enabled());
+		EXPECT_FALSE(proto.file_breakdown_enabled());
+		EXPECT_FALSE(proto.protocol_stats_enabled());
+	}
+
 }

@@ -1927,7 +1927,8 @@ void sinsp_analyzer::emit_processes_deprecated(
 				}
 			}
 			// Add all processes with appcheck metrics
-			if (feature_manager::instance().get_enabled(APP_CHECKS) && process_manager::c_always_send_app_checks.get_value())
+			if (feature_manager::instance().get_enabled(APP_CHECKS) &&
+			    process_manager::c_always_send_app_checks.get_value())
 			{
 				for (auto prog : progtable)
 				{
@@ -2693,21 +2694,25 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	// run before emit_containers, because it aggregates network connections by server port
 	// per each container
 	// WARNING: the following methods emit but also clear the metrics
-	if (m_configuration->get_aggregate_connections_in_proto())
+	if (feature_manager::instance().get_enabled(NETWORK_BREAKDOWN))
 	{
-		//
-		// Aggregate external connections and limit the number of entries in the connection table
-		//
-		tracer_emitter agg_conns_trc("emit_aggregated_connections", proc_trc);
-		emit_aggregated_connections();
-	}
-	else
-	{
-		//
-		// Emit all the connections
-		//
-		tracer_emitter full_conns_trc("emit_full_connections", proc_trc);
-		emit_full_connections();
+		if (m_configuration->get_aggregate_connections_in_proto())
+		{
+			//
+			// Aggregate external connections and limit the number of entries in the connection
+			// table
+			//
+			tracer_emitter agg_conns_trc("emit_aggregated_connections", proc_trc);
+			emit_aggregated_connections();
+		}
+		else
+		{
+			//
+			// Emit all the connections
+			//
+			tracer_emitter full_conns_trc("emit_full_connections", proc_trc);
+			emit_full_connections();
+		}
 	}
 
 	// Filter and emit containers, we do it now because when filtering processes we add
@@ -4734,10 +4739,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			}
 
 			tracer_emitter misc_trc("misc_emit", f_trc);
-			m_fd_listener->m_files_stat.emit(m_metrics.get(), m_top_files_per_host);
-			m_fd_listener->m_devs_stat.emit(m_metrics.get(),
-			                                m_device_map,
-			                                m_top_file_devices_per_host);
+			if (feature_manager::instance().get_enabled(FILE_BREAKDOWN))
+			{
+				m_fd_listener->m_files_stat.emit(m_metrics.get(), m_top_files_per_host);
+				m_fd_listener->m_devs_stat.emit(m_metrics.get(),
+				                                m_device_map,
+				                                m_top_file_devices_per_host);
+			}
 
 			m_fd_listener->m_files_stat.clear();
 			m_fd_listener->m_devs_stat.clear();
@@ -6316,10 +6324,10 @@ void sinsp_analyzer::emit_containerd_events()
 		}
 		LOG_INFO("Connecting to containerd socket at %s for events", cri_socket.c_str());
 		m_containerd_events = make_unique<containerd_events>(
-			std::string("unix://") + scap_get_host_root() + cri_socket,
-			m_configuration->get_machine_id(),
-			m_configuration->get_containerd_event_filter(),
-			m_inspector->m_container_manager);
+		    std::string("unix://") + scap_get_host_root() + cri_socket,
+		    m_configuration->get_machine_id(),
+		    m_configuration->get_containerd_event_filter(),
+		    m_inspector->m_container_manager);
 	}
 
 	if (!m_containerd_events->is_open())
@@ -7091,13 +7099,22 @@ void sinsp_analyzer::emit_container(const string& container_id,
 	}
 #endif
 
-	it_analyzer->second.m_files_stat.emit(container, m_top_files_per_container);
-	it_analyzer->second.m_devs_stat.emit(container, m_device_map, m_top_file_devices_per_container);
+	if (feature_manager::instance().get_enabled(FILE_BREAKDOWN))
+	{
+		it_analyzer->second.m_files_stat.emit(container, m_top_files_per_container);
+		it_analyzer->second.m_devs_stat.emit(container,
+		                                     m_device_map,
+		                                     m_top_file_devices_per_container);
+	}
 
-	sinsp_connection_aggregator::filter_and_emit(*it_analyzer->second.m_connections_by_serverport,
-	                                             container,
-	                                             TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER,
-	                                             m_acked_sampling_ratio);
+	if (feature_manager::instance().get_enabled(NETWORK_BREAKDOWN))
+	{
+		sinsp_connection_aggregator::filter_and_emit(
+		    *it_analyzer->second.m_connections_by_serverport,
+		    container,
+		    TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER,
+		    m_acked_sampling_ratio);
+	}
 
 	sinsp_counter_time totals;
 	it_analyzer->second.m_metrics.m_metrics.get_total(&totals);

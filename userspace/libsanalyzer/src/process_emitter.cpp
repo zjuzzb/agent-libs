@@ -1,6 +1,7 @@
 #include "analyzer_thread.h"
 #include "process_emitter.h"
 #include "tracer_emitter.h"
+#include "feature_manager.h"
 
 namespace
 {
@@ -489,8 +490,11 @@ void process_emitter::emit_process(
 
 	tinfo.m_flags &= ~PPM_CL_NAME_CHANGED;
 
-	procinfo.m_files_stat.emit(proc, m_top_files_per_prog);
-	procinfo.m_devs_stat.emit(proc, m_device_map, m_top_file_devices_per_prog);
+	if (feature_manager::instance().get_enabled(FILE_BREAKDOWN))
+	{
+		procinfo.m_files_stat.emit(proc, m_top_files_per_prog);
+		procinfo.m_devs_stat.emit(proc, m_device_map, m_top_file_devices_per_prog);
+	}
 
 	//
 	// client-server role

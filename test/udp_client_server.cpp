@@ -2,6 +2,7 @@
 
 #include "scoped_configuration.h"
 #include "sys_call_test.h"
+#include "feature_manager.cpp"
 
 #include <Poco/NumberParser.h>
 #include <Poco/RunnableAdapter.h>
@@ -611,6 +612,7 @@ TEST_F(sys_call_test, udp_client_server)
 	stringstream configss;
 	configss << "known_ports:\n  - " << SERVER_PORT_STR;
 	scoped_configuration config(configss.str());
+	feature_manager::instance().initialize();
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 }
 

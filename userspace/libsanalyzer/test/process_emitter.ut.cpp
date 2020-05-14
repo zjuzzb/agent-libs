@@ -7,6 +7,7 @@
  */
 #include "analyzer.h"
 #include "analyzer_thread.h"
+#include "feature_manager.h"
 #include "process_emitter.h"
 #include "sinsp_mock.h"
 
@@ -58,9 +59,7 @@ public:
 class fake_thread : public thread_analyzer_info
 {
 public:
-
-	fake_thread()
-		: thread_analyzer_info(nullptr, nullptr)
+	fake_thread() : thread_analyzer_info(nullptr, nullptr)
 	{
 		HASH++;
 		m_program_hash = HASH;
@@ -89,6 +88,7 @@ TEST(jmx_emitter_test, DISABLED_test) {}
 
 TEST(app_check_emitter_test, DISABLED_test) {}
 
+#define SOME_DEVICE_NUMBER 12345
 class easy_process_emitter
 {
 public:
@@ -96,7 +96,6 @@ public:
 	    : m_inspector(),
 	      m_process_manager(),
 	      m_proc_trc("who knows!", UINT64_MAX - 1),
-	      m_device_map(),
 	      m_procfs_parser(0, 0, false, 0, 0),
 	      m_hash_config(),
 	      m_metrics(),
@@ -112,11 +111,11 @@ public:
 	                        simpledriver,
 	                        nodriver,
 	                        m_proc_trc,
-	                        0,
+	                        1,
 	                        m_device_map,
 	                        false,
 	                        false,
-	                        0,
+	                        1,
 	                        nullptr,
 	                        false,
 	                        m_procfs_parser,
@@ -134,7 +133,7 @@ public:
 	test_helpers::sinsp_mock m_inspector;
 	process_manager m_process_manager;
 	tracer_emitter m_proc_trc;
-	std::unordered_map<dev_t, std::string> m_device_map;
+	std::unordered_map<dev_t, std::string> m_device_map = {{SOME_DEVICE_NUMBER, "device"}};
 	sinsp_procfs_parser m_procfs_parser;
 	env_hash_config m_hash_config;
 	draiosproto::metrics m_metrics;
@@ -891,4 +890,98 @@ TEST(process_emitter_test, syscall_count)
 	sinsp_counter_time tc;
 	host_metrics.m_metrics.get_total(&tc);
 	EXPECT_EQ(tc.m_count, 8);
+}
+
+TEST(process_emitter_test, files_and_devs)
+{
+	easy_process_emitter emitter(false, false);
+
+	analyzer_emitter::progtable_t progtable(10,
+	                                        sinsp_threadinfo::hasher(),
+	                                        sinsp_threadinfo::comparer());
+	std::set<thread_analyzer_info*> processes_to_emit;
+
+	fake_thread thread_1;
+	thread_1.m_cpuload = 100;
+	thread_1.m_procinfo->m_cpuload = 100;
+	thread_1.m_procinfo->m_proc_metrics.m_unknown.m_count = 7;
+	thread_1.m_procinfo->m_files_stat["some_file"].account_io(
+	    15,
+	    100,
+	    analyzer_file_stat::io_direction::READ);
+	thread_1.m_procinfo->m_devs_stat[SOME_DEVICE_NUMBER].account_io(
+	    15,
+	    100,
+	    analyzer_file_stat::io_direction::READ);
+	progtable.insert(&thread_1);
+
+	analyzer_emitter::progtable_by_container_t progtable_by_container;
+	std::vector<std::string> emitted_containers;
+
+	std::set<uint64_t> all_uids;
+	std::set<thread_analyzer_info*> emitted_processes;
+	feature_manager::instance().initialize();
+	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
+	                          progtable,
+	                          progtable_by_container,
+	                          emitted_containers,
+	                          emitter.m_metrics,
+	                          all_uids,
+	                          emitted_processes);
+
+	// double check we got the thread emitted
+	EXPECT_EQ(emitted_processes.size(), 1);
+	EXPECT_NE(emitted_processes.find(&thread_1), emitted_processes.end());
+
+	// check that we got syscall count
+	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().top_files().size(), 1);
+	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().top_devices().size(), 1);
+
+}
+TEST(process_emitter_test, disable_files_and_devs)
+{
+	easy_process_emitter emitter(false, false);
+
+	analyzer_emitter::progtable_t progtable(10,
+	                                        sinsp_threadinfo::hasher(),
+	                                        sinsp_threadinfo::comparer());
+	std::set<thread_analyzer_info*> processes_to_emit;
+
+	fake_thread thread_1;
+	thread_1.m_cpuload = 100;
+	thread_1.m_procinfo->m_cpuload = 100;
+	thread_1.m_procinfo->m_proc_metrics.m_unknown.m_count = 7;
+	thread_1.m_procinfo->m_files_stat["some_file"].account_io(
+	    15,
+	    100,
+	    analyzer_file_stat::io_direction::READ);
+	thread_1.m_procinfo->m_devs_stat[SOME_DEVICE_NUMBER].account_io(
+	    15,
+	    100,
+	    analyzer_file_stat::io_direction::READ);
+	progtable.insert(&thread_1);
+
+	analyzer_emitter::progtable_by_container_t progtable_by_container;
+	std::vector<std::string> emitted_containers;
+
+	std::set<uint64_t> all_uids;
+	std::set<thread_analyzer_info*> emitted_processes;
+	scoped_config<bool> config("feature.file_breakdown", false);
+	feature_manager::instance().initialize();
+	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
+	                          progtable,
+	                          progtable_by_container,
+	                          emitted_containers,
+	                          emitter.m_metrics,
+	                          all_uids,
+	                          emitted_processes);
+
+	// double check we got the thread emitted
+	EXPECT_EQ(emitted_processes.size(), 1);
+	EXPECT_NE(emitted_processes.find(&thread_1), emitted_processes.end());
+
+	// check that we DIDN'T get the file/dev stats
+	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().top_files().size(), 0);
+	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().top_devices().size(), 0);
+
 }

@@ -40,7 +40,12 @@ protocol_manager& protocol_manager::instance()
 	return *protocol_manager::s_protocol_manager;
 }
 
-protocol_manager::protocol_manager() {}
+protocol_manager::protocol_manager()
+    : feature_base(PROTOCOL_STATS,
+                   &draiosproto::feature_status::set_protocol_stats_enabled,
+                   {FULL_SYSCALLS})
+{
+}
 
 void protocol_manager::protocol_event_received(sinsp_evt* evt,
                                                int64_t fd,
@@ -117,6 +122,12 @@ sinsp_partial_transaction::type protocol_manager::detect_proto(
     uint8_t* buf,
     uint32_t buflen)
 {
+	if (!instance().get_enabled())
+	{
+		trinfo->m_protoparser = NULL;
+		return sinsp_partial_transaction::TYPE_UNKNOWN;
+	}
+
 	uint16_t serverport = evt->m_fdinfo->get_serverport();
 
 	if (buflen >= MIN_VALID_PROTO_BUF_SIZE)
