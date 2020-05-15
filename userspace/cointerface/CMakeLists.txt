@@ -76,9 +76,9 @@ endfunction()
 
 gogenerate(sdc_internal sdc_internal sdc_internal.pb.go sdc_internal.proto)
 gogenerate(promex_pb promex_pb promex.pb.go promex.proto)
-# Passing draios.proto is redundant but makes the function impl easier.
-# The draios.proto and common.proto files have the go_package option
-# set so we need to redirect the go.mod into that folder.
+# Passing draios.proto is redundant but makes the function impl easier. The draios.proto and
+# common.proto files have the go_package option set so we need to redirect the go.mod into that
+# folder.
 gogenerate(draiosproto draiosproto/protorepo/agent-be/proto draios.pb.go draios.proto common.pb.go)
 
 gobuild(

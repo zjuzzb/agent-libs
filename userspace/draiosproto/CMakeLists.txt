@@ -7,25 +7,49 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include
 )# for yaml for type_config
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION}) # for boost for
-                                                                              # type_config
+# type_config
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.h
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
+# These copies are very very jank. Originally we used the file(copy construct, but cmake doesn't
+# necessarily wait for the copy to complete before trying to build dependencies based off it, so it
+# often lead to invalid downstream results that required a clean we cannot have individual copy
+# commands for each of them, as cmake does not see the dependency on the .h files, so we have to
+# encode them here. In short, CMAKE is a disaster, so we have to do ugly things like this.
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/aggregator_overrides.cpp
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/aggregator_overrides.h
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/aggregator_limits.h
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/aggregator_limits.cpp
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/aggregator_base.h
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.cpp
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.h
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.h
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.cpp
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_base.h
+    COMMENT "Copying aggregator_overrides sources to binary dir."
+    COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.cpp ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.h ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.h ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.cpp ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_base.h ${CMAKE_CURRENT_BINARY_DIR}
 )
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.cpp
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
-)
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.cpp DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_base.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/draios_proto_extension.py
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
-)
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/profiling.proto DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/promex.proto DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/secure.proto DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tap.proto DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+function(copy_proto_source target)
+
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${target}
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${target}
+        COMMENT "Copying ${target} to binary dir."
+        COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/${target} ${CMAKE_CURRENT_BINARY_DIR}
+    )
+
+endfunction()
+
+copy_proto_source(draios_proto_extension.py)
+copy_proto_source(profiling.proto)
+copy_proto_source(promex.proto)
+copy_proto_source(sdc_internal.proto)
+copy_proto_source(secure.proto)
+copy_proto_source(tap.proto)
 
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/common.proto ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
