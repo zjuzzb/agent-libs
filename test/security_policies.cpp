@@ -2082,6 +2082,7 @@ static void falco_only(security_policies_test* ptest, bool v1_metrics)
 	unique_ptr<draiosproto::policy_events> pe;
 	ptest->get_policy_evts_msg(pe);
 	ASSERT_NE(pe, nullptr);
+	// Note that for v2 policies this skips policy 42, which has a substring of the actual rule name
 	ASSERT_EQ(pe->events_size(), 1);
 	ASSERT_EQ(pe->events(0).policy_id(), 1u);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);

@@ -380,6 +380,17 @@ policy_list {
   }
   enabled: 1
 }
+policy_list {
+  id: 42
+  name: "Policy with falco rule name substring"
+  rule_names: "read_sensitive"
+  enabled: 1
+  scope_predicates {
+    key: "container.id"
+    values: ""
+    op: EQ
+  }
+}
 falco_group {
   default_files {
     tag: "0.1.1test"

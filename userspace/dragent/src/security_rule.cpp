@@ -671,7 +671,7 @@ void falco_security_rules::add_policy(policy_v2_sptr policy)
 		// also be fast engine rules. That should be okay though.
 		for(auto &rule_name : policy->rule_names())
 		{
-			m_falco_engine->enable_rule(rule_name, true, ruleset);
+			m_falco_engine->enable_rule_exact(rule_name, true, ruleset);
 		}
 
 		if(m_falco_engine->num_rules_for_ruleset(ruleset) > 0)
