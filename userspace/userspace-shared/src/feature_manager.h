@@ -1,5 +1,6 @@
 #pragma once
 #include "type_config.h"
+
 #include <functional>
 #include <list>
 #include <map>
@@ -62,6 +63,26 @@ enum feature_name
 	PROTOCOL_STATS,
 
 	FEATURE_COUNT
+};
+
+class feature_config
+{
+public:
+	feature_config(bool default_value,
+	               const std::string& description,
+	               const std::string& key,
+	               const std::string& sub_key);
+
+	feature_config(bool default_value, const std::string& description, const std::string& key);
+
+	// whether the config says to enable a feature,
+	type_config<bool> m_feature_enabled;
+	// if this feature is explicitly enabled, enable all its dependencies, unless
+	// explicitly disabled, in which case, bail
+	type_config<bool> m_feature_force;
+	// disable this feature if one of its dependencies is disabled, unless explicitly
+	// enabled, in which case, bail
+	type_config<bool> m_feature_weak;
 };
 
 class feature_manager;
@@ -133,9 +154,19 @@ public:
 	 */
 	const std::list<feature_name>& get_dependencies() const;
 
+	/**
+	 * indicates that the value of this config ought not be changed again
+	 */
+	void set_locked();
+	void set_unlocked();  // should really only ever be used in test code
+	bool locked() const;
+
+	const feature_name m_name;
+
 private:
-	feature_name m_name;
 	bool m_enabled;
+	bool m_locked;  // When a feature is "locked" its value can not be changed. If something
+	                // tries to change it, the config is invalid and will be rejected
 	void (draiosproto::feature_status::*m_pb_extractor)(bool);
 	const std::list<feature_name> m_dependencies;
 	feature_manager& m_manager;
@@ -181,10 +212,9 @@ public:
 
 	struct agent_feature_container
 	{
-
 		const feature_name f;
 		const std::string n;
-		const type_config<bool> c;
+		const feature_config c;
 	};
 
 	static const agent_feature_container feature_configs[];
@@ -212,8 +242,11 @@ public:
 	 * disable the named feature. May fail if some other enabled feature depends on this
 	 * or if the feature itself does not want to be disabled (for instance, if it is
 	 * already running and doesn't support not running without a restart)
+	 *
+	 * considered deprecated as this will not be long term supported behavior when
+	 * profiles support disabled dependencies (instead of just enabled)
 	 */
-	bool disable(feature_name name);
+	bool deprecated_disable(feature_name name);
 
 	/**
 	 * get the global instance of the feature_manager
@@ -228,7 +261,16 @@ public:
 	 */
 	bool initialize();
 
+
 private:
+	bool enable(feature_name feature, bool force);
+	bool disable(feature_name feature, bool force);
+	bool try_enable(feature_name feature);
+	bool try_disable(feature_name feature);
+	bool verify_dependencies();
+
 	agent_mode m_agent_mode;
-	std::map<feature_name, feature_base&> m_feature_map;
+	std::map<feature_name, feature_base*> m_feature_map;
+
+	friend class test_helper;
 };

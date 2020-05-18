@@ -664,8 +664,8 @@ TEST_F(type_config_test, set_in_config)
 	some_other_config.init(config_yaml);
 
 	ASSERT_EQ(random_default, some_config.get_value());
-	ASSERT_FALSE(some_config.get_set_in_config());
-	ASSERT_TRUE(some_other_config.get_set_in_config());
+	ASSERT_FALSE(some_config.is_set_in_config());
+	ASSERT_TRUE(some_other_config.is_set_in_config());
 }
 
 

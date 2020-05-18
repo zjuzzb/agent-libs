@@ -6,31 +6,31 @@
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
 #include "yaml_configuration.h"
-#include <vector>
+
 #include <sstream>
+#include <vector>
 
 template<typename data_type>
 type_config<data_type>::type_config(const data_type& default_value,
-				    const std::string& description,
-				    const std::string& key,
-				    const std::string& subkey,
-				    const std::string& subsubkey)
-        : configuration_unit(key, subkey, subsubkey, description),
-          m_default(default_value),
-          m_data(default_value),
-		  m_data_set_in_config(false),
-	  m_configured(default_value),
-	  m_mutable_only_in_internal(false)
+                                    const std::string& description,
+                                    const std::string& key,
+                                    const std::string& subkey,
+                                    const std::string& subsubkey)
+    : configuration_unit(key, subkey, subsubkey, description),
+      m_default(default_value),
+      m_data(default_value),
+      m_data_set_in_config(false),
+      m_configured(default_value),
+      m_mutable_only_in_internal(false)
 {
 }
 
 template<typename data_type>
 void type_config<data_type>::init(const yaml_configuration& raw_config)
 {
-
 #ifndef SYSDIG_TEST
 	// Some configuration params are only available on internal test builds.
-	if(m_mutable_only_in_internal)
+	if (m_mutable_only_in_internal)
 	{
 		return;
 	}
@@ -46,29 +46,25 @@ void type_config<data_type>::init(const yaml_configuration& raw_config)
 	const int PRIORITY_NOT_FOUND = -1;
 	int current_data_priority = std::numeric_limits<int>::max();
 	m_data = m_default;
+	m_data_set_in_config = false;
 
-	for(const config_key &key : keys())
+	for (const config_key& key : keys())
 	{
 		data_type value = m_default;
 		int priority = PRIORITY_NOT_FOUND;
 
 		if (key.subkey.empty())
 		{
-			priority = raw_config.get_scalar_depth<data_type>(key.key,
-									  value);
+			priority = raw_config.get_scalar_depth<data_type>(key.key, value);
 		}
 		else if (key.subsubkey.empty())
 		{
-			priority = raw_config.get_scalar_depth<data_type>(key.key,
-									  key.subkey,
-									  value);
+			priority = raw_config.get_scalar_depth<data_type>(key.key, key.subkey, value);
 		}
 		else
 		{
-			priority = raw_config.get_scalar_depth<data_type>(key.key,
-									  key.subkey,
-									  key.subsubkey,
-									  value);
+			priority =
+			    raw_config.get_scalar_depth<data_type>(key.key, key.subkey, key.subsubkey, value);
 		}
 
 		if (priority == PRIORITY_NOT_FOUND)
@@ -85,9 +81,8 @@ void type_config<data_type>::init(const yaml_configuration& raw_config)
 		}
 		else if (current_data_priority == priority)
 		{
-			const std::string message =
-				get_key_string() + " and " + key.to_string() +
-				" are alternate keys but exist in the same yaml file";
+			const std::string message = get_key_string() + " and " + key.to_string() +
+			                            " are alternate keys but exist in the same yaml file";
 			throw yaml_configuration_exception(message);
 		}
 	}
@@ -173,9 +168,8 @@ void type_config<data_type>::post_init(const post_init_delegate& value)
 template<typename data_type>
 void type_config<data_type>::post_init()
 {
-	if(m_post_init)
+	if (m_post_init)
 	{
 		m_post_init(*this);
 	}
 }
-

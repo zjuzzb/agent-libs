@@ -766,7 +766,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			             "Contact Sysdig Support for additional help."
 			          << std::endl;
 
-			bool success = feature_manager::instance().disable(APP_CHECKS);
+			bool success = feature_manager::instance().deprecated_disable(APP_CHECKS);
 			if (!success)
 			{
 				std::cerr << "Error: Cannot disable App Checks.\n";
@@ -1913,11 +1913,11 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		uint64_t watchdog_warn = c_watchdog_warn_memory_usage_mb.get_value();
 		if (feature_manager::instance().get_enabled(MEMDUMP))
 		{
-			if (!c_watchdog_max_memory_usage_mb.get_set_in_config())
+			if (!c_watchdog_max_memory_usage_mb.is_set_in_config())
 			{
 				watchdog_max += m_configuration.m_memdump_size / 1024 / 1024;
 			}
-			if (!c_watchdog_warn_memory_usage_mb.get_set_in_config())
+			if (!c_watchdog_warn_memory_usage_mb.is_set_in_config())
 			{
 				watchdog_warn += m_configuration.m_memdump_size / 1024 / 1024;
 			}

@@ -29,6 +29,12 @@ public:
 private:
 	yaml_configuration m_yaml;
 	std::string m_old_yaml;
+
+	// This is necessary because of the shortcomings of trying to stash everything in
+	// the yaml. There is other metadata that must be saved. Until such a time as
+	// we can fix this properly, perhaps by copying the value of the entire config
+	// map, we'll just cache these values here
+	std::map<std::string, bool> m_set_in_config_map;
 };
 
 } // namespace test_helpers

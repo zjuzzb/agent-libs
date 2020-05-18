@@ -71,6 +71,11 @@ public:
 	void print_config(const log_delegate& logger);
 
 	/**
+	 * Populates the input map with information on which keys are explicitly set in the config
+	 */
+	void populate_set_in_config_map(std::map<std::string, bool>& the_map);
+
+	/**
 	 * Registers a configuration_unit to be inited/printed at the
 	 * appropriate time.
 	 *

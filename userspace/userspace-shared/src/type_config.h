@@ -19,6 +19,12 @@
 
 class yaml_configuration;
 
+namespace test_helpers
+{
+template<typename config_type>
+class scoped_config;
+}
+
 /**
  * This configuration scheme provides an easy way of acquiring
  * config values from a central location without having to pass
@@ -174,6 +180,16 @@ public:
 	 *         this configuration_unit based on the given json.
 	 */
 	void from_json(const std::string& json);
+
+	/**
+	 * Returns whether this was set via a config file, or just assumed the default value
+	 */
+	virtual bool is_set_in_config() const { return false; }
+
+	/**
+	 * API for explicitly setting the value in config. generally only for test usage
+	 */
+	virtual void set_set_in_config(bool val) {}
 
 protected:
 	struct config_key
@@ -384,7 +400,12 @@ public:  // stuff for configuration_unit
 	/**
 	 * Returns whether this was set via a config file, or just assumed the default value
 	 */
-	bool get_set_in_config() { return m_data_set_in_config; }
+	virtual bool is_set_in_config() const override { return m_data_set_in_config; }
+
+	/**
+	 * Only for test usage
+	 */
+	virtual void set_set_in_config(bool val) override { m_data_set_in_config = val; }
 
 public:  // other stuff
 	/**
@@ -463,6 +484,8 @@ private:
 	post_init_delegate m_post_init;
 
 	friend class test_helper;
+	template<typename config_type>
+	friend class test_helpers::scoped_config;
 };
 
 /**

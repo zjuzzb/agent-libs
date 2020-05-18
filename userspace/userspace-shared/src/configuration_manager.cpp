@@ -5,26 +5,25 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
-#include "configuration_manager.h"
 #include "common_logger.h"
+#include "configuration_manager.h"
 #include "type_config.h"
+
 #include <assert.h>
-#include <map>
 #include <json/json.h>
+#include <map>
 
 namespace
 {
-
 COMMON_LOGGER();
 
 configuration_manager* s_instance = nullptr;
 
-} // end namespace
-
+}  // end namespace
 
 configuration_manager& configuration_manager::instance()
 {
-	if(s_instance == nullptr)
+	if (s_instance == nullptr)
 	{
 		s_instance = new configuration_manager();
 	}
@@ -39,7 +38,7 @@ void configuration_manager::init_config(const yaml_configuration& raw_config)
 		config.second->init(raw_config);
 	}
 
-	for(const auto& config : m_config_map)
+	for (const auto& config : m_config_map)
 	{
 		config.second->post_init();
 	}
@@ -49,10 +48,18 @@ void configuration_manager::print_config(const log_delegate& logger)
 {
 	for (const auto& config : m_config_map)
 	{
-		if(!config.second->hidden())
+		if (!config.second->hidden())
 		{
 			logger(config.second->to_string());
 		}
+	}
+}
+
+void configuration_manager::populate_set_in_config_map(std::map<std::string, bool>& the_map)
+{
+	for (const auto& config : m_config_map)
+	{
+		the_map.insert(std::pair<std::string, bool>(config.first, config.second->is_set_in_config()));
 	}
 }
 
@@ -93,15 +100,15 @@ std::string configuration_manager::to_yaml() const
 	std::string yaml;
 	yaml.reserve(1024);
 
-	const std::string *previous_key = nullptr;
-	const std::string *previous_subkey = nullptr;
-	const std::string *previous_subsubkey = nullptr;
+	const std::string* previous_key = nullptr;
+	const std::string* previous_subkey = nullptr;
+	const std::string* previous_subsubkey = nullptr;
 
-	for(const auto& value : m_config_map)
+	for (const auto& value : m_config_map)
 	{
-		const configuration_unit &config = *value.second;
+		const configuration_unit& config = *value.second;
 
-		if(!previous_key || config.get_key() != *previous_key)
+		if (!previous_key || config.get_key() != *previous_key)
 		{
 			yaml += "\n" + config.get_key() + ":";
 			previous_key = &config.get_key();
@@ -109,9 +116,9 @@ std::string configuration_manager::to_yaml() const
 			previous_subsubkey = nullptr;
 		}
 
-		if(!config.get_subkey().empty())
+		if (!config.get_subkey().empty())
 		{
-			if(!previous_subkey || config.get_subkey() != *previous_subkey)
+			if (!previous_subkey || config.get_subkey() != *previous_subkey)
 			{
 				yaml += "\n  " + config.get_subkey() + ":";
 				previous_subkey = &config.get_subkey();
@@ -119,9 +126,9 @@ std::string configuration_manager::to_yaml() const
 			}
 		}
 
-		if(!config.get_subsubkey().empty())
+		if (!config.get_subsubkey().empty())
 		{
-			if(!previous_subsubkey || config.get_subsubkey() != *previous_subsubkey)
+			if (!previous_subsubkey || config.get_subsubkey() != *previous_subsubkey)
 			{
 				previous_subsubkey = &config.get_subsubkey();
 				yaml += "\n    " + config.get_subsubkey() + ":";
@@ -141,21 +148,19 @@ std::string configuration_manager::to_json() const
 	Json::Value config_list;
 	int i = 0;
 
-	for(const auto& itr : m_config_map)
+	for (const auto& itr : m_config_map)
 	{
 		Json::Value value;
 		Json::Reader reader;
 
-		if(reader.parse(itr.second->to_json(), value))
+		if (reader.parse(itr.second->to_json(), value))
 		{
 			config_list[i++] = value;
 		}
 		else
 		{
-			LOG_WARNING("Failed to parse '%s' into JSON",
-			            itr.second->to_json().c_str());
+			LOG_WARNING("Failed to parse '%s' into JSON", itr.second->to_json().c_str());
 		}
-
 	}
 
 	result["configs"] = config_list;
@@ -164,29 +169,9 @@ std::string configuration_manager::to_json() const
 }
 
 const configuration_unit* configuration_manager::get_configuration_unit(
-		const std::string& name) const
+    const std::string& name) const
 {
 	configuration_unit* config = nullptr;
-	config_map_t::const_iterator itr = m_config_map.find(name);
-	
-	if(itr != m_config_map.end())
-	{
-		config = itr->second;
-	}
-
-	if(config == nullptr)
-	{
-		LOG_WARNING("config \"%s\" should not be nullptr",
-		            name.c_str());
-	}
-
-	return config;
-}
-
-configuration_unit* configuration_manager::get_mutable_configuration_unit(
-   const std::string& name)
-{
-	configuration_unit *config = nullptr;
 	config_map_t::const_iterator itr = m_config_map.find(name);
 
 	if (itr != m_config_map.end())
@@ -196,8 +181,25 @@ configuration_unit* configuration_manager::get_mutable_configuration_unit(
 
 	if (config == nullptr)
 	{
-		LOG_WARNING("config \"%s\" should not be nullptr",
-			    name.c_str());
+		LOG_WARNING("config \"%s\" should not be nullptr", name.c_str());
+	}
+
+	return config;
+}
+
+configuration_unit* configuration_manager::get_mutable_configuration_unit(const std::string& name)
+{
+	configuration_unit* config = nullptr;
+	config_map_t::const_iterator itr = m_config_map.find(name);
+
+	if (itr != m_config_map.end())
+	{
+		config = itr->second;
+	}
+
+	if (config == nullptr)
+	{
+		LOG_WARNING("config \"%s\" should not be nullptr", name.c_str());
 	}
 
 	return config;
