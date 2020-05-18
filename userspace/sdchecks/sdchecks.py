@@ -463,13 +463,7 @@ class AppCheckInstance(object):
 
         dir_exists = os.path.isdir(custom)
         if dir_exists:
-            dir_mode = os.stat(custom).st_mode
-            is_writable = bool(dir_mode & S_IWUSR or dir_mode & S_IWGRP or dir_mode & S_IWGRP)
-            if is_writable:
-                logging.debug("Custom app check directory %s is writable. Using default directory %s instead" % (custom, default))
-            else:
-                logging.debug("Using custom app check directory %s" % custom)
-                ret = custom
+            ret = custom
         else:
             logging.debug("Custom app check directory %s does not exist. Using default directory %s instead" % (custom, default))
 

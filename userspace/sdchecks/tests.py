@@ -68,15 +68,10 @@ class MyCustomCheck(AgentCheck):
 
     ac = AppCheckInstance(check, proc_data, config, container_support=False)
 
-    # Custom check dir exists but it is writable
-    assert ac._get_custom_directory(default_custom_check_dir, my_custom_check_dir) == default_custom_check_dir
-
-    # Custom check not writable
-    os.chmod(my_custom_check_dir, S_IMODE(os.stat(my_custom_check_dir).st_mode) & ~(S_IWRITE | S_IWGRP | S_IROTH))
     assert ac._get_custom_directory(default_custom_check_dir, my_custom_check_dir) == my_custom_check_dir
 
     # Custom check does not exist
-    os.chmod(my_custom_check_dir, S_IMODE(os.stat(my_custom_check_dir).st_mode) | S_IWRITE)
     os.remove(my_custom_check_dir + "/voltdb.py")
+    os.remove(my_custom_check_dir + "/voltdb.pyc")
     os.rmdir(my_custom_check_dir)
     assert ac._get_custom_directory(default_custom_check_dir, my_custom_check_dir) == default_custom_check_dir
