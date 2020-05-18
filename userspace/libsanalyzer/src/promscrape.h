@@ -47,7 +47,7 @@ public:
 	bool emit_counters() const;
 
 	// jobs that haven't been used for this long will be pruned.
-	const int job_prune_time_s = 60;
+	const int job_prune_time_s = 15;
 
 	static type_config<bool>c_use_promscrape;
 	static type_config<bool>::mutable_ptr c_export_fastproto;

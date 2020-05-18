@@ -443,9 +443,11 @@ void prom_process::filter_procs(vector<prom_process>& procs,
                                 const app_checks_proxy_interface::raw_metric_map_t& app_metrics,
                                 uint64_t now)
 {
-	// TODO: Add search for existing prometheus metrics from promscrape. SMAGENT-2295
 	// Set of container_id and listening port for non-expired prometheus metrics
 	// to ensure we don't try scanning those ports again for a different pid.
+	// When promscrape is enabled, we don't need to check for existing metrics
+	// because each target pid will be in the procs vector regardless of us
+	// already having metrics for it.
 	std::set<std::pair<string, uint16_t>> portmetricmap;
 	// Populate port metric map based on app_metrics
 	for (const auto& app_met_pid : app_metrics)

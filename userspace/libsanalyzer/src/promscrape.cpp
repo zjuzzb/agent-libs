@@ -378,7 +378,7 @@ void promscrape::sendconfig(const vector<prom_process> &prom_procs)
 	// Comparison may fail if ordering is different, but shouldn't happen usually
 	if (prom_procs == m_last_prom_procs)
 	{
-		LOG_DEBUG("not sending duplicate config");
+		LOG_TRACE("not sending duplicate config");
 		return;
 	}
 	m_last_prom_procs = prom_procs;
