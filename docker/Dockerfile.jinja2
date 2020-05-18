@@ -206,10 +206,7 @@ RUN dpkg -i /draios-${AGENT_VERSION}-x86_64-agent.deb \
 {% else %}
 COPY ./opt/draios /opt/draios
 
-
-
-RUN find /opt/draios/lib -name '*psycopg2*' -exec rm -rf {} + 2>/dev/null \
-&& apk update \
+RUN apk update \
 && apk add --no-cache curl \
 python2 \
 python3 \
@@ -239,6 +236,8 @@ py-pip \
 && rm -rf /opt/draios/lib/python-deps2.6 \
 && rm -rf /opt/draios/lib/python-deps3.5 \
 && rm -rf /opt/draios/lib/python-deps3.6 \
+&& rm -rf /opt/draios/lib/libpq.so.5 \
+&& cp /usr/lib/libpq.so.5 /opt/draios/lib \
 && apk del \
 py-pip \
 musl-dev \
