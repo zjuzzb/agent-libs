@@ -169,6 +169,8 @@ public:
 	int64_t get_secure_profiling_fl_ms() const;
 	int64_t get_secure_profiling_emit_ms() const;
 
+	const std::map<std::string,std::string>& get_system_info() const;
+
 	// For other metrics sources e.g. security manager event
 	// counts, you can provide objects derived from this type and
 	// maintain the counts in that object.
@@ -209,7 +211,6 @@ private: // helper methods used during emit
 
 	// Add a limited set of metrics to the provided protobuf.
 	bool send_some(draiosproto::statsd_info* statsd_info, uint64_t max_sinsp_buf_used);
-
 public:
 	template<typename T>
 	static draiosproto::statsd_metric* write_metric(draiosproto::statsd_info* statsd_info,
@@ -347,6 +348,7 @@ private:
 		int64_t statsite_forwarder_memory;
 		int64_t cointerface_cpu;
 		int64_t cointerface_memory;
+		std::map<std::string, std::string> system_info;
 
 		// Can be set/read from multiple threads, so protected by a read/write lock.
 		subprocs_t subprocs;
@@ -851,5 +853,10 @@ inline int64_t internal_metrics::get_secure_profiling_emit_ms() const
 inline void internal_metrics::set_secure_profiling_emit_ms(int64_t val)
 {
 	m_analyzer.secure_profiling_emit_ms = val;
+}
+
+inline const std::map<std::string, std::string>& internal_metrics::get_system_info() const
+{
+	return m_analyzer.system_info;
 }
 

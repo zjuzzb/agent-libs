@@ -64,7 +64,6 @@ add_executable(
     grpc.cpp
     # infrastructure_state_test.cpp
     inf_state_test.cpp
-    internal_metrics.cpp
     ipv6.cpp
     jmx_proxy.cpp
     json_query.cpp

@@ -3,13 +3,32 @@
 
 
 #include <algorithm>
+#include <sys/utsname.h>
 
 type_config<bool> internal_metrics::c_extra_internal_metrics(
     false,
     "set to true to send full complement of internal metrics",
     "extra_internal_metrics");
 
-internal_metrics::internal_metrics() {}
+internal_metrics::internal_metrics()
+{
+	// build the system info as uname -a
+	struct utsname utsname;
+
+	int c_ret = uname(&utsname);
+
+	if(0 != c_ret)
+	{
+		g_logger.format(sinsp_logger::SEV_ERROR, "Could not determine uname");
+	}
+	else
+	{
+		m_analyzer.system_info["host.uname.kernel.name"] = utsname.sysname;
+		m_analyzer.system_info["host.uname.kernel.release"] = utsname.release;
+		m_analyzer.system_info["host.uname.kernel.version"] = utsname.version;
+		m_analyzer.system_info["host.machine"] = utsname.machine;
+	}
+}
 
 void internal_metrics::notify(Poco::Message::Priority sev)
 {
@@ -346,6 +365,11 @@ bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info, uint64_t 
 		             draiosproto::STATSD_GAUGE,
 		             m_analyzer.statsite_forwarder_memory);
 
+		write_metric(statsd_info, "host.uname",
+			     m_analyzer.system_info,
+			     draiosproto::STATSD_GAUGE,
+			     1);
+
 		send_secure_audit_metrics(statsd_info);
 
 		// external sources
@@ -422,6 +446,11 @@ bool internal_metrics::send_some(draiosproto::statsd_info* statsd_info, uint64_t
 		             draiosproto::STATSD_GAUGE,
 		             m_analyzer.cointerface_memory);
 
+		write_metric(statsd_info, "host.uname",
+			     m_analyzer.system_info,
+			     draiosproto::STATSD_GAUGE,
+			     1);
+
 		send_secure_audit_metrics(statsd_info);
 
 		// external sources
@@ -466,7 +495,7 @@ void internal_metrics::send_secure_audit_metrics(draiosproto::statsd_info* stats
 		             "dragent.secure_audit.k8s",
 		             draiosproto::STATSD_GAUGE,
 		             get_secure_audit_k8s_count());
-		write_metric(statsd_info, 
+		write_metric(statsd_info,
 			     "dragent.secure_audit.file_accesses",
 			     draiosproto::STATSD_GAUGE,
 			     get_secure_audit_file_accesses_count());
