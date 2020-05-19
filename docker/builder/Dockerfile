@@ -47,12 +47,12 @@ RUN curl -o docker.tgz https://get.docker.com/builds/Linux/x86_64/docker-1.11.0.
 
 RUN rpm --import https://mirror.go-repo.io/centos/RPM-GPG-KEY-GO-REPO && \
     curl -s https://mirror.go-repo.io/centos/go-repo.repo | tee /etc/yum.repos.d/go-repo.repo && \
-    yum -y install golang centos-release-scl && yum -y install rh-git29
+    yum -y install golang centos-release-scl && yum -y install sclo-git212
 
 RUN mkdir -p /code/agent
 ADD bootstrap-agent /code/agent/
 RUN mkdir -p /code/oss-falco/userspace/engine/lua
-ADD https://raw.githubusercontent.com/draios/oss-falco/dev/scripts/build-lpeg.sh /code/oss-falco/scripts/build-lpeg.sh
+ADD https://raw.githubusercontent.com/draios/oss-falco/master/scripts/build-lpeg.sh /code/oss-falco/scripts/build-lpeg.sh
 RUN chmod +x /code/oss-falco/scripts/build-lpeg.sh
 
 RUN cd /code/agent && ONLY_DEPS=true MAKE_JOBS=${max_parallelism} scl enable devtoolset-2 "./bootstrap-agent" && rm -fr dependencies/*.tar* dependencies/*.zip ./bootstrap-agent && ln -s docker/builder/bootstrap-agent
