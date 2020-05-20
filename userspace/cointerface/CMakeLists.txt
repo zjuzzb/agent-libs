@@ -4,7 +4,7 @@ set(GEN_GO_DIR "${CMAKE_SOURCE_DIR}/build/generated-go")
 # We should set GOPROXY=https://proxy.golang.org here but that breaks the docker/docker replace
 # directive. Add it back later after upgrading docker.
 # cmake-format: off
-set(GOENV scl enable rh-git29 -- env GOPATH=${GOPATH} GO111MODULE=on)
+set(GOENV scl enable sclo-git212 -- env GOPATH=${GOPATH} GO111MODULE=on)
 # cmake-format: on
 
 set(GOGENENV ${GOENV} PATH="${GOPATH}/bin:${PROTOC_DIR}/bin:$ENV{PATH}"
