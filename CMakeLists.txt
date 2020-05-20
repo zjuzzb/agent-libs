@@ -67,7 +67,7 @@ set(GOPATH "${DRAIOS_DEPENDENCIES_DIR}/go")
 set(GOENV
     scl
     enable
-    rh-git29
+    sclo-git212
     --
     env
     GOPATH=${GOPATH}
