@@ -147,7 +147,7 @@ bool feature_manager::enable(feature_name feature, bool force)
 	{
 		if (!input.get_enabled())
 		{
-			std::cerr << "Attempt to enable feature " << feature
+			std::cerr << "Attempt to enable feature " << feature_configs[feature].n
 			          << " but previous dependency or config has locked it off.\n";
 			return false;
 		}
@@ -179,7 +179,7 @@ bool feature_manager::enable(feature_name feature, bool force)
 			else if (next.locked() && !next.get_enabled())
 			{
 				// case 2: already processed, but wrong. bail
-				std::cerr << "Dependency " << next.m_name << " of feature " << on.m_name
+				std::cerr << "Dependency " << feature_configs[next.m_name].n << " of feature " << feature_configs[on.m_name].n
 				          << " has been disabled by another feature and therefore could not be "
 				             "enabled. Fix the configuration which is disabling the dependency.\n";
 				return false;
@@ -196,13 +196,13 @@ bool feature_manager::enable(feature_name feature, bool force)
 				// In all three cases, we can set it to enabled, and we must lock. Then recurse
 				next.set_enabled(true);
 				next.set_locked();
-				std::cerr << "Feature " << on.m_name << " has enabled dependency " << next.m_name << ".\n";
+				std::cerr << "Feature " << feature_configs[on.m_name].n << " has enabled dependency " << feature_configs[next.m_name].n << ".\n";
 				q.push_back(next.m_name);
 			}
 			else
 			{
 				// case 4: can't enable. bail
-				std::cerr << "Feature " << on.m_name << " cannot enable dependency " << next.m_name
+				std::cerr << "Feature " << feature_configs[on.m_name].n << " cannot enable dependency " << feature_configs[next.m_name].n
 				          << " because it is not on by default or disabled by config. Either use "
 				             "the .force option, use a profile with the dependency enabled, or "
 				             "enable the dependency in the config.\n";
@@ -226,7 +226,7 @@ bool feature_manager::disable(feature_name feature, bool force)
 	{
 		if (input.get_enabled())
 		{
-			std::cerr << "Attempt to disable feature " << feature
+			std::cerr << "Attempt to disable feature " << feature_configs[feature].n
 			          << " but previous dependency or config has locked it on.\n";
 			return false;
 		}
@@ -265,7 +265,7 @@ bool feature_manager::disable(feature_name feature, bool force)
 					{
 						// case 2: already processed, but wrong. bail
 						std::cerr
-						    << "Dependency " << next.m_name << " of feature " << on.m_name
+						    << "Dependency " << feature_configs[next.m_name].n << " of feature " << feature_configs[on.m_name].n
 						    << " has been enabled by another feature and therefore could not be "
 						       "disabled. Fix the configuration which is disabling the "
 						       "dependency.\n";
@@ -284,16 +284,16 @@ bool feature_manager::disable(feature_name feature, bool force)
 						// recurse
 						next.set_enabled(false);
 						next.set_locked();
-						std::cerr << "Feature " << on.m_name << " has disabled dependency "
-						          << next.m_name << ".\n";
+						std::cerr << "Feature " << feature_configs[on.m_name].n << " has disabled dependency "
+						          << feature_configs[next.m_name].n << ".\n";
 						q.push_back(next.m_name);
 					}
 					else
 					{
 						// case 4: can't disable. bail
 						std::cerr
-						    << "Feature " << on.m_name << " cannot disable dependency "
-						    << next.m_name
+						    << "Feature " << feature_configs[on.m_name].n << " cannot disable dependency "
+						    << feature_configs[next.m_name].n
 						    << " because it is on by default or enabled by config. Either use "
 						       "the .force option, use a profile with the dependency disabled, or "
 						       "disable the dependency in the config.\n";
@@ -498,7 +498,7 @@ bool feature_manager::initialize()
 		}
 		for (const auto& i : mode_definitions[m_agent_mode].m_enabled_features)
 		{
-			std::cerr << "Profile enabling feature " << i << "\n";
+			std::cerr << "Profile enabling feature " << feature_configs[i].n << "\n";
 			m_feature_map[i]->set_enabled(true);
 		}
 
