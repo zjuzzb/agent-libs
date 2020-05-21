@@ -555,8 +555,10 @@ jmx:
       pattern: "elasticsearch"
 
 use_promscrape: true
+# prometheus is managed by the "feature: mode" config. It can be overridden by uncommenting
+# the "enabled" key in this block
 prometheus:
-  enabled: false
+  # enabled: false
   interval: 10
   log_errors: true
   max_metrics: 1000
@@ -1310,8 +1312,10 @@ ca_cert_paths:
   - $OPENSSLDIR/certs/ca-bundle.crt # in case RHEL ever moves from /etc/pki/tls
   - $OPENSSLDIR/certs # others: try to autodetect from `openssl version -d`
 
+# secure audit is managed by the "feature: mode" config. It can be overridden by uncommenting
+# the "enabled" key in this block.
 secure_audit_streams:
-  enabled: false
+  # enabled: false
 
   #COMMANDS
   executed_commands: true # executed commands enabled
@@ -1352,8 +1356,10 @@ secure_audit_streams:
   debug: false # print protobuf sent
 
 
+# baseliner is managed by the "feature: mode" config. It can be overridden by uncommenting
+# the "enabled" key in this block
 falcobaseline:
-  enabled: false
+  # enabled: false
   debug: false # print protobuf sent
 
 memdump:

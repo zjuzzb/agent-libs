@@ -8,7 +8,10 @@ COMMON_LOGGER();
 
 feature_manager* s_instance = nullptr;
 
-type_config<std::string> c_agent_mode("none", "the agent mode to execute in.", "feature", "mode");
+type_config<std::string> c_agent_mode("monitor",
+                                      "the agent mode to execute in.",
+                                      "feature",
+                                      "mode");
 
 }  // namespace
 
@@ -20,7 +23,18 @@ const feature_manager::agent_mode_container feature_manager::mode_definitions[] 
     {feature_manager::AGENT_MODE_MONITOR_LIGHT, "monitor_light", {}},
     {feature_manager::AGENT_MODE_ESSENTIALS,
      "essentials",
-     {STATSD, JMX, APP_CHECKS, COINTERFACE, DRIVER, FULL_SYSCALLS}}};
+     {STATSD, JMX, APP_CHECKS, COINTERFACE, DRIVER, FULL_SYSCALLS}},
+    {feature_manager::AGENT_MODE_TROUBLESHOOTING,
+     "troubleshooting",
+     {STATSD,
+      JMX,
+      APP_CHECKS,
+      COINTERFACE,
+      DRIVER,
+      FULL_SYSCALLS,
+      PROTOCOL_STATS,
+      NETWORK_BREAKDOWN,
+      FILE_BREAKDOWN}}};
 
 static_assert(feature_manager::agent_mode::AGENT_MODE_COUNT ==
                   sizeof(feature_manager::mode_definitions) /
@@ -139,6 +153,9 @@ static_assert(feature_manager::agent_mode::AGENT_MODE_MONITOR_LIGHT ==
 static_assert(feature_manager::agent_mode::AGENT_MODE_ESSENTIALS ==
                   (feature_manager::agent_mode)draiosproto::agent_mode::essentials,
               "agent modes must match");
+static_assert(feature_manager::agent_mode::AGENT_MODE_TROUBLESHOOTING ==
+                  (feature_manager::agent_mode)draiosproto::agent_mode::troubleshooting,
+              "agent modes must match");
 
 bool feature_manager::enable(feature_name feature, bool force)
 {
@@ -179,7 +196,8 @@ bool feature_manager::enable(feature_name feature, bool force)
 			else if (next.locked() && !next.get_enabled())
 			{
 				// case 2: already processed, but wrong. bail
-				std::cerr << "Dependency " << feature_configs[next.m_name].n << " of feature " << feature_configs[on.m_name].n
+				std::cerr << "Dependency " << feature_configs[next.m_name].n << " of feature "
+				          << feature_configs[on.m_name].n
 				          << " has been disabled by another feature and therefore could not be "
 				             "enabled. Fix the configuration which is disabling the dependency.\n";
 				return false;
@@ -196,13 +214,15 @@ bool feature_manager::enable(feature_name feature, bool force)
 				// In all three cases, we can set it to enabled, and we must lock. Then recurse
 				next.set_enabled(true);
 				next.set_locked();
-				std::cerr << "Feature " << feature_configs[on.m_name].n << " has enabled dependency " << feature_configs[next.m_name].n << ".\n";
+				std::cerr << "Feature " << feature_configs[on.m_name].n
+				          << " has enabled dependency " << feature_configs[next.m_name].n << ".\n";
 				q.push_back(next.m_name);
 			}
 			else
 			{
 				// case 4: can't enable. bail
-				std::cerr << "Feature " << feature_configs[on.m_name].n << " cannot enable dependency " << feature_configs[next.m_name].n
+				std::cerr << "Feature " << feature_configs[on.m_name].n
+				          << " cannot enable dependency " << feature_configs[next.m_name].n
 				          << " because it is not on by default or disabled by config. Either use "
 				             "the .force option, use a profile with the dependency enabled, or "
 				             "enable the dependency in the config.\n";
@@ -265,7 +285,8 @@ bool feature_manager::disable(feature_name feature, bool force)
 					{
 						// case 2: already processed, but wrong. bail
 						std::cerr
-						    << "Dependency " << feature_configs[next.m_name].n << " of feature " << feature_configs[on.m_name].n
+						    << "Dependency " << feature_configs[next.m_name].n << " of feature "
+						    << feature_configs[on.m_name].n
 						    << " has been enabled by another feature and therefore could not be "
 						       "disabled. Fix the configuration which is disabling the "
 						       "dependency.\n";
@@ -284,16 +305,17 @@ bool feature_manager::disable(feature_name feature, bool force)
 						// recurse
 						next.set_enabled(false);
 						next.set_locked();
-						std::cerr << "Feature " << feature_configs[on.m_name].n << " has disabled dependency "
-						          << feature_configs[next.m_name].n << ".\n";
+						std::cerr << "Feature " << feature_configs[on.m_name].n
+						          << " has disabled dependency " << feature_configs[next.m_name].n
+						          << ".\n";
 						q.push_back(next.m_name);
 					}
 					else
 					{
 						// case 4: can't disable. bail
 						std::cerr
-						    << "Feature " << feature_configs[on.m_name].n << " cannot disable dependency "
-						    << feature_configs[next.m_name].n
+						    << "Feature " << feature_configs[on.m_name].n
+						    << " cannot disable dependency " << feature_configs[next.m_name].n
 						    << " because it is on by default or enabled by config. Either use "
 						       "the .force option, use a profile with the dependency disabled, or "
 						       "disable the dependency in the config.\n";

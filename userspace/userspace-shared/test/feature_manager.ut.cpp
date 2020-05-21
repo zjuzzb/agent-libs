@@ -1753,6 +1753,7 @@ app_checks_enabled_opt:
 TEST(feature_manager, invalid_mode)
 {
 	feature_manager fm;
+	test_helpers::scoped_config<std::string> mode("feature.mode", "foobar");
 	dummy_features df(fm);
 	{
 		test_helpers::scoped_config<bool> pom("prometheus.enabled", true);
