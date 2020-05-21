@@ -70,7 +70,9 @@ func (impl *KubeBenchImpl) Variant(stask *ScheduledTask) (string) {
 			"hyperkube apiserver",
 			"hyperkube kube-apiserver",
 			"apiserver",
-			"hypershift openshift-kube-apiserver"}
+			//OpenShift specific checks
+			"hypershift openshift-kube-apiserver",
+			"openshift start master api"}
 		if findProcess(servercmds, stask.env) {
 			impl.variant = "master"
 		} else {
