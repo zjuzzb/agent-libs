@@ -795,7 +795,9 @@ class Application(object):
             if pidname in self.excluded_pidnames:
                 logging.debug("Process with pid=%d,name=%s is excluded", pidname[0], pidname[1])
                 return False, 0
-            logging.debug("Requested check %s", repr(check))
+            # Don't print entire config. Just the name.
+            # This keeps sensitive info from being published.
+            logging.debug("Requested check %s", repr(check["name"]))
 
             is_supported = self.is_app_check_supported(pidname[1])
             if not is_supported:

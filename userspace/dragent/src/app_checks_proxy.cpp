@@ -24,7 +24,9 @@ void app_checks_proxy::send_get_metrics_cmd_sync(const vector<app_process> &proc
 	command["processes"] = procs;
 	command["prometheus"] = promps;
 	string data = m_json_writer.write(command);
-	LOG_DEBUG("Send to sdchecks: %s", data.c_str());
+	// This following command publishes entire app_check config in logs (including username, password)
+	// Filter it out for now. 
+	//LOG_DEBUG("Send to sdchecks: %s", data.c_str());
 	m_outqueue.send(data);
 }
 
