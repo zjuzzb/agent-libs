@@ -31,6 +31,16 @@ type_config<uint32_t> c_reconnect_max_backoff_s(
         "The ceiling for the exponential backoff on error, in seconds.",
         "reconnect_max_backoff");
 
+type_config<uint32_t> c_socket_timeout_ms(
+        1000,
+        "Timeout for send and receive operations to the collector, in milliseconds.",
+        "socket_timeout");
+
+type_config<uint32_t> c_transmit_delay_ms(
+        1,
+        "Timeout for send and receive operations to the collector, in milliseconds.",
+        "transmit_delay");
+
 type_config<std::string> c_proxy_host(
         "",
         "Address or hostname of an HTTP proxy server to connect through. "
@@ -59,6 +69,11 @@ type_config<std::string> c_proxy_password(
         "proxy_password");
 
 using namespace std;
+using std::chrono::microseconds;
+using std::chrono::milliseconds;
+using std::chrono::seconds;
+using std::chrono::steady_clock;
+using std::chrono::duration_cast;
 
 
 #ifndef TCP_USER_TIMEOUT
@@ -70,8 +85,9 @@ using namespace std;
 
 COMMON_LOGGER();
 
-const uint32_t connection_manager::RECONNECT_MIN_INTERVAL_S = 1;
-const uint32_t DEFAULT_WORKING_INTERVAL_S = 10;
+const seconds connection_manager::RECONNECT_MIN_INTERVAL(1);
+const seconds DEFAULT_WORKING_INTERVAL(10);
+const milliseconds SEND_TIME_LOG_INTERVAL(500);
 
 class LoggingCertificateHandler : public Poco::Net::InvalidCertificateHandler
 {
@@ -251,7 +267,8 @@ connection_manager::connection_manager(dragent_configuration* configuration,
       m_negotiated_compression_method(nullptr),
       m_negotiated_protocol_version(0),
       m_reconnect_interval(0),
-      m_working_interval(DEFAULT_WORKING_INTERVAL_S)
+      m_working_interval(DEFAULT_WORKING_INTERVAL),
+      m_send_recv_timeout(c_socket_timeout_ms.get_value())
 {
 	Poco::Net::initializeSSL();
 
@@ -500,13 +517,13 @@ connection_manager::socket_ptr http_proxy_connect(const std::string collector_ad
 
 bool connection_manager::connect()
 {
-	uint32_t connect_timeout_us = connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US;
+	microseconds connect_timeout(connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
 #ifdef SYSDIG_TEST
-	connect_timeout_us = m_connect_timeout_us;
+	connect_timeout = microseconds(m_connect_timeout_us);
 #endif
 
-	LOG_INFO("Initiating connection to collector (trying for %u seconds)",
-	         US_TO_S(connect_timeout_us));
+	LOG_INFO("Initiating connection to collector (trying for %ld seconds)",
+	         duration_cast<seconds>(connect_timeout).count());
 	ASSERT(m_fsm->get_state() == cm_state_machine::state::CONNECTING);
 
 	std::promise<socket_ptr> sock_promise;
@@ -523,8 +540,9 @@ bool connection_manager::connect()
 	                                                       const uint16_t port,
 	                                                       bool ssl_enabled,
 	                                                       const uint32_t transmit_buffer_size,
-	                                                       const uint32_t reconnect_interval,
-	                                                       const uint32_t connect_timeout_us)
+	                                                       const seconds reconnect_interval,
+	                                                       const microseconds connect_timeout,
+	                                                       const milliseconds post_connect_timeout)
 	{
 		connection_manager::socket_ptr ssp = nullptr;
 
@@ -533,7 +551,7 @@ bool connection_manager::connect()
 			// Reconnect backoff
 			// How reconnect backoff works, briefly:
 			//  * The backoff starts at 0
-			//  * The first disconnect(), the backoff is set to RECONNECT_MIN_INTERVAL_S
+			//  * The first disconnect(), the backoff is set to RECONNECT_MIN_INTERVAL
 			//    (currently 1 second)
 			//  * Every subsequent disconnect, the backoff is doubled
 			//  * If the connection is determined to be working, reset to 0
@@ -541,9 +559,9 @@ bool connection_manager::connect()
 			//       m_working_interval
 			//     * For protocol v5, working means successful handshake
 			std::chrono::seconds time_slept = std::chrono::seconds(0);
-			LOG_INFO("Connect backoff: waiting for " +
-			          std::to_string(reconnect_interval) + " seconds");
-			while (time_slept < std::chrono::seconds(reconnect_interval) && !terminate)
+			LOG_INFO("Connect backoff: waiting for %ld seconds",
+			         reconnect_interval.count());
+			while (time_slept < reconnect_interval && !terminate)
 			{
 				std::chrono::seconds time_to_sleep = std::chrono::seconds(1);
 				std::this_thread::sleep_for(time_to_sleep);
@@ -582,11 +600,11 @@ bool connection_manager::connect()
 
 				if (ssl_enabled)
 				{
-					ssp = ssl_connect(sa, hostname, connect_timeout_us);
+					ssp = ssl_connect(sa, hostname, connect_timeout.count());
 				}
 				else
 				{
-					ssp = socket_connect(sa, connect_timeout_us);
+					ssp = socket_connect(sa, connect_timeout.count());
 				}
 			}
 
@@ -597,9 +615,10 @@ bool connection_manager::connect()
 			}
 
 			// Set additional socket options post-connect
+			std::chrono::microseconds timeout = post_connect_timeout;
 			ssp->setSendBufferSize(transmit_buffer_size);
-			ssp->setSendTimeout(connection_manager::SOCKET_TIMEOUT_AFTER_CONNECT_US);
-			ssp->setReceiveTimeout(connection_manager::SOCKET_TIMEOUT_AFTER_CONNECT_US);
+			ssp->setSendTimeout(timeout.count());
+			ssp->setReceiveTimeout(timeout.count());
 
 			try
 			{
@@ -649,17 +668,18 @@ bool connection_manager::connect()
 	                           m_configuration->m_ssl_enabled,
 	                           m_configuration->m_transmitbuffer_size,
 	                           m_reconnect_interval,
-	                           connect_timeout_us);
+	                           connect_timeout,
+	                           m_send_recv_timeout);
 
 	//
 	// End thread
 	//
 
 	uint32_t waited_time_s = 0;
-	const uint32_t wait_for_s = US_TO_S(connect_timeout_us) + m_reconnect_interval;
+	const seconds wait_for = duration_cast<seconds>(connect_timeout + m_reconnect_interval);
 
-	LOG_INFO("Waiting to connect %u s", wait_for_s);
-	for (waited_time_s = 0; waited_time_s <= wait_for_s; ++waited_time_s)
+	LOG_INFO("Waiting to connect %ld s", wait_for.count());
+	for (waited_time_s = 0; waited_time_s <= wait_for.count(); ++waited_time_s)
 	{
 		// SMAGENT-1449
 		// We can't break out of this loop even if the program is being terminated
@@ -681,7 +701,7 @@ bool connection_manager::connect()
 	// almost certainly hosed anyway.
 	connect_thread.join();
 
-	if (waited_time_s >= wait_for_s)
+	if (waited_time_s >= wait_for.count())
 	{
 #ifdef SYSDIG_TEST
 		m_timed_out = true;
@@ -712,11 +732,11 @@ bool connection_manager::connect()
 
 void connection_manager::disconnect()
 {
-	if (m_reconnect_interval == 0)
+	if (m_reconnect_interval.count() == 0)
 	{
 		// Back off slightly just to prevent slamming the collector
 		// with reconnects in the case the collector is down
-		m_reconnect_interval = RECONNECT_MIN_INTERVAL_S;
+		m_reconnect_interval = RECONNECT_MIN_INTERVAL;
 	}
 	if (m_socket)
 	{
@@ -740,15 +760,17 @@ void connection_manager::disconnect()
 void connection_manager::disconnect_and_backoff()
 {
 	// Update exponential backoff
-	if (m_reconnect_interval == 0)
+	if (m_reconnect_interval.count() == 0)
 	{
-		m_reconnect_interval = RECONNECT_MIN_INTERVAL_S;
+		m_reconnect_interval = RECONNECT_MIN_INTERVAL;
 	}
 	else
 	{
-		m_reconnect_interval = std::min(
-		    std::max(connection_manager::RECONNECT_MIN_INTERVAL_S, m_reconnect_interval * 2),
-		    c_reconnect_max_backoff_s.get_value());
+		m_reconnect_interval *= 2;
+		m_reconnect_interval = std::max(connection_manager::RECONNECT_MIN_INTERVAL,
+		                                m_reconnect_interval);
+		m_reconnect_interval = std::min(seconds(c_reconnect_max_backoff_s.get_value()),
+		                                m_reconnect_interval);
 	}
 	disconnect();
 }
@@ -864,7 +886,8 @@ void connection_manager::do_run()
 		//
 		// The main loop while the connection is established
 		//
-		m_last_connect = std::chrono::steady_clock::now();
+		m_last_connect = steady_clock::now();
+		milliseconds transmit_delay = milliseconds(c_transmit_delay_ms.get_value());
 		while (heartbeat() && is_connected())
 		{
 			// Check if we received a message
@@ -895,7 +918,12 @@ void connection_manager::do_run()
 				// Got a message, transmit it
 				//
 
-				// First build the header
+				// SMAGENT-2427
+				// Don't overwhelm OpenSSL and the network stack when we have
+				// a lot of messages to send at once.
+				std::this_thread::sleep_for(milliseconds(transmit_delay));
+
+				// Build the header
 				// Note that we use the v5 header here, but if the protocol
 				// version is v4 then we just use the legacy fields of the
 				// header.
@@ -1373,9 +1401,27 @@ int32_t connection_manager::send_bytes(uint8_t* buf, uint32_t len)
 	}
 
 	bool retry = false;
+	int32_t res = 0;
 	do
 	{
-		int32_t res = m_socket->sendBytes(buf, len);
+		try
+		{
+			res = m_socket->sendBytes(buf, len);
+			retry = false;
+		}
+		catch (const Poco::TimeoutException& e)
+		{
+			if (retry)
+			{
+				// Already retried once. Rethrow
+				LOG_WARNING("Send operation timed out multiple times.");
+				throw;
+			}
+			LOG_WARNING("Retrying timed-out send operation.");
+			retry = true;
+		}
+
+		// Handle errorful result codes
 		if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
 		{
 			LOG_ERROR("Got SSL_WANT_READ on a write. Attempting reconnect. "
@@ -1393,26 +1439,23 @@ int32_t connection_manager::send_bytes(uint8_t* buf, uint32_t len)
 				disconnect();
 				return -1;
 			}
+
 			LOG_WARNING("Got SSL_WANT_WRITE on a write. Retrying write.");
 			retry = true;
-			continue;
 		}
-		if (res != len)
-		{
-			LOG_ERROR("sendBytes sent just " +
-			          NumberFormatter::format(res) +
-			          ", expected " +
-			          NumberFormatter::format(len));
+	} while (heartbeat() && retry);
 
-			disconnect();
+	if (res != len)
+	{
+		LOG_ERROR("sendBytes returned %u, expected %u", res, len);
 
-			ASSERT(false);
-			return -1;
-		}
-		return res;
-	} while (retry);
+		disconnect();
 
-	return -1;
+		ASSERT(false);
+		return -1;
+	}
+
+	return res;
 }
 
 bool connection_manager::transmit_buffer(uint64_t now,
@@ -1449,7 +1492,7 @@ bool connection_manager::transmit_buffer(uint64_t now,
 	if (item->message_type == draiosproto::message_type::METRICS && prometheus_connected())
 	{
 		grpc::ClientContext context;
-		auto deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(20);
+		auto deadline = std::chrono::system_clock::now() + milliseconds(20);
 		context.set_deadline(deadline);
 
 		draiosproto::metrics msg;
@@ -1480,6 +1523,7 @@ bool connection_manager::transmit_buffer(uint64_t now,
 			LOG_ERROR("Incorrect header length detected. Discarding metrics");
 			return true; // Returning true will drop the metrics and continue
 		}
+		LOG_DEBUG("Sending header length %u", send_len);
 		int32_t res = send_bytes((uint8_t*)header, send_len);
 		if (res < 0)
 		{
@@ -1489,7 +1533,19 @@ bool connection_manager::transmit_buffer(uint64_t now,
 
 		// Send the payload
 		ASSERT(item->buffer.size() <= INT32_MAX);
+		LOG_DEBUG("Sending buffer length %u", (uint32_t)item->buffer.size());
+		std::chrono::time_point<steady_clock> start = steady_clock::now();
+
 		res = send_bytes((uint8_t*)item->buffer.data(), item->buffer.size());
+
+		milliseconds elapsed =
+		    duration_cast<milliseconds>(steady_clock::now() - start);
+
+		if (elapsed > SEND_TIME_LOG_INTERVAL)
+		{
+			LOG_WARNING("Sending data took %ld ms", elapsed.count());
+		}
+
 		if (res < 0)
 		{
 			ASSERT(!is_connected());
@@ -1498,8 +1554,8 @@ bool connection_manager::transmit_buffer(uint64_t now,
 
 		// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 		LOG_INFO("Sent msgtype=" + to_string((int)item->message_type) + " len=" +
-		         Poco::NumberFormatter::format(sizeof(header) + item->buffer.size()) +
-		         " to collector");
+		         Poco::NumberFormatter::format(dragent_protocol::header_len(header->hdr) +
+		         item->buffer.size()) + " to collector");
 		if (header->hdr.version == dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH)
 		{
 			uint64_t gen = ntohll(header->generation);
@@ -1529,7 +1585,7 @@ bool connection_manager::transmit_buffer(uint64_t now,
 			}
 			else
 			{
-				LOG_DEBUG("transmit: Ignoring: " + e.displayText());
+				LOG_INFO("transmit: Ignoring: " + e.displayText());
 			}
 		}
 		else
@@ -1540,7 +1596,18 @@ bool connection_manager::transmit_buffer(uint64_t now,
 	}
 	catch (const Poco::TimeoutException& e)
 	{
-		LOG_DEBUG("transmit:Timeout: " + e.displayText());
+		// If we get here, we've already retried the send once.
+		LOG_WARNING("Transmission timed out (took longer than %u ms). If this "
+		            "occurs frequently, increase socket_timeout setting in "
+		            "the agent configuration. Attempting reconnect.",
+		            c_socket_timeout_ms.get_value());
+		// This code used to fall out of this function and retry the send later.
+		// However, this will not work anymore as messages are transmitted across
+		// two send operations and if the second one timed out, retrying would
+		// erroneously send the header twice. Since we've already retried once in
+		// send_bytes(), at this point we'll just drop the connection and hope
+		// it works better on reconnect.
+		disconnect();
 	}
 
 	return false;
@@ -1829,12 +1896,10 @@ void connection_manager::on_metrics_send(dragent_protocol_header_v5& header,
 
 	if (get_current_protocol_version() == dragent_protocol::PROTOCOL_VERSION_NUMBER)
 	{
-		std::chrono::seconds elapsed_s =
-		    std::chrono::duration_cast<std::chrono::seconds>(
-		            std::chrono::steady_clock::now() -
-		                m_last_connect);
+		seconds elapsed =
+		    duration_cast<seconds>(steady_clock::now() - m_last_connect);
 		// Check to see how long we've been functional
-		if (elapsed_s >= m_working_interval)
+		if (elapsed >= m_working_interval)
 		{
 			reset_backoff();
 		}

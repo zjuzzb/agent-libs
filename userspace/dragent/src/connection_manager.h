@@ -136,6 +136,10 @@ class connection_manager : public dragent::watchdog_runnable,
                            public aggregation_interval_source,
                            public compression_method_source
 {
+
+	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000; // 60 seconds
+	static const uint32_t CONNECTION_TIMEOUT_WAIT_S = 10;
+
 public:
 	using socket_ptr = std::shared_ptr<Poco::Net::StreamSocket>;
 
@@ -321,10 +325,6 @@ public:
 		return (m_fsm->get_state() == cm_state_machine::state::STEADY_STATE) && m_socket;
 	}
 
-	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000;
-	static const uint32_t SOCKET_TIMEOUT_AFTER_CONNECT_US = 100 * 1000;
-	static const uint32_t CONNECTION_TIMEOUT_WAIT_S = 10;
-
 #ifdef SYSDIG_TEST
 	void test_run() { do_run(); }
 
@@ -362,7 +362,7 @@ public:
 
 	uint32_t get_reconnect_interval() const
 	{
-		return m_reconnect_interval;
+		return m_reconnect_interval.count();
 	}
 
 	void set_working_interval(uint32_t new_interval)
@@ -555,7 +555,7 @@ private:
 	 */
 	void reset_backoff()
 	{
-		m_reconnect_interval = 0;
+		m_reconnect_interval = std::chrono::seconds(0);
 	}
 
 	/**
@@ -582,7 +582,7 @@ private:
 public:
 	static const uint32_t MAX_RECEIVER_BUFSIZE = 1 * 1024 * 1024; // 1MiB
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
-	static const uint32_t RECONNECT_MIN_INTERVAL_S;
+	static const std::chrono::seconds RECONNECT_MIN_INTERVAL;
 	static const unsigned int SOCKET_TCP_TIMEOUT_MS = 60 * 1000;
 
 private:
@@ -606,13 +606,14 @@ private:
 	mutable spinlock m_parameter_update_lock;
 	dragent_protocol::protocol_version m_negotiated_protocol_version;
 
-	uint32_t m_reconnect_interval;
+	std::chrono::seconds m_reconnect_interval;
 	std::chrono::time_point<std::chrono::steady_clock> m_last_connect;
 	std::chrono::seconds m_working_interval;
 
 	std::unique_ptr<cm_state_machine> m_fsm;
 
 	std::list<unacked_message> m_messages_awaiting_ack;
+	std::chrono::milliseconds m_send_recv_timeout;
 
 #ifndef CYGWING_AGENT
 	// communication with Prometheus exporter
