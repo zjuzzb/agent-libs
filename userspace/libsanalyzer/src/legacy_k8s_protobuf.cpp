@@ -252,7 +252,11 @@ const unordered_map<string, setter_t<k8s_resourcequota>> K8sResource<k8s_resourc
 	     pb->set_requests_cpu_hard(value);
 	     pb->set_double_request_cpu_hard(value);
      }},
-
+    {"kubernetes.resourcequota.cpu.hard",
+     [](k8s_resourcequota* pb, double value) -> void {
+	     pb->set_requests_cpu_hard(value);
+	     pb->set_double_request_cpu_hard(value);
+     }},
     {"kubernetes.resourcequota.limits.cpu.used",
      [](k8s_resourcequota* pb, double value) -> void {
 	     pb->set_limits_cpu_used(value);
@@ -263,20 +267,33 @@ const unordered_map<string, setter_t<k8s_resourcequota>> K8sResource<k8s_resourc
 	     pb->set_requests_cpu_used(value);
 	     pb->set_double_request_cpu_used(value);
      }},
+    {"kubernetes.resourcequota.cpu.used",
+     [](k8s_resourcequota* pb, double value) -> void {
+	     pb->set_requests_cpu_used(value);
+	     pb->set_double_request_cpu_used(value);
+     }},
 
     {"kubernetes.resourcequota.limits.memory.hard",
      SETTER(k8s_resourcequota, set_limits_memory_hard)},
     {"kubernetes.resourcequota.requests.memory.hard",
      SETTER(k8s_resourcequota, set_requests_memory_hard)},
+    {"kubernetes.resourcequota.memory.hard",
+     SETTER(k8s_resourcequota, set_requests_memory_hard)},
     {"kubernetes.resourcequota.limits.memory.used",
      SETTER(k8s_resourcequota, set_limits_memory_used)},
     {"kubernetes.resourcequota.requests.memory.used",
+     SETTER(k8s_resourcequota, set_requests_memory_used)},
+    {"kubernetes.resourcequota.memory.used",
      SETTER(k8s_resourcequota, set_requests_memory_used)},
 
     // storage
     {"kubernetes.resourcequota.requests.storage.hard",
      SETTER(k8s_resourcequota, set_requests_storage_hard)},
+    {"kubernetes.resourcequota.storage.hard",
+     SETTER(k8s_resourcequota, set_requests_storage_hard)},
     {"kubernetes.resourcequota.requests.storage.used",
+     SETTER(k8s_resourcequota, set_requests_storage_used)},
+    {"kubernetes.resourcequota.storage.used",
      SETTER(k8s_resourcequota, set_requests_storage_used)},
 
     // count
