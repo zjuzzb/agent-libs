@@ -1,0 +1,73 @@
+pipeline {
+	agent { label 'agent-builder-parallel' }
+	options {
+		timeout(time: 60, unit: 'MINUTES')
+	}
+	parameters {
+		string(name: 'SYSDIG_BRANCH', defaultValue: "dev")
+		string(name: 'BUILDER_VERSION', defaultValue: "latest")
+		string(name: 'AGENT_BRANCH', defaultValue: "dev")
+		string(name: 'PROTOREPO_BRANCH', defaultValue: "master")
+		string(name: 'PROMETHEUS_BRANCH', defaultValue: "master")
+		string(name: 'FALCO_SYNC_BRANCH', defaultValue: "master")
+	}
+	stages {
+		stage('Check out dependencies') {
+			steps {
+				dir('agent') {
+					checkout scm
+				}
+				dir('oss-falco') {
+					checkout([$class: 'GitSCM', branches: [[name: "${params.FALCO_SYNC_BRANCH}"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', url: 'git@github.com:draios/oss-falco.git']]])
+				}
+			}
+		}
+
+	    stage('Pull falcosecurity/falco master to temporary branch') {
+			steps {
+				withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
+					dir('oss-falco') {
+						sh label: '', script: """
+							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+							git remote add upstream git@github.com:falcosecurity/falco.git || true
+							git fetch upstream
+							(git show-ref --verify --quiet refs/heads/oss-falco-master-candidate && git branch -D oss-falco-master-candidate) || true
+							git checkout -b oss-falco-master-candidate upstream/master
+					   		git push --set-upstream origin oss-falco-master-candidate
+						"""
+					}
+				}
+			}
+		}
+
+		stage('Run Tests') {
+			parallel {
+				stage('Unit Test') {
+					steps {
+						build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"oss-falco-master-candidate"), string(name:'SYSDIG_BRANCH', value:"${params.SYSDIG_BRANCH}"), string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'PROMETHEUS_BRANCH', value:"${params.PROMETHEUS_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
+					}
+				}
+				stage('System Test') {
+					steps {
+						build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"oss-falco-master-candidate"), string(name:'SYSDIG_BRANCH', value:"${params.SYSDIG_BRANCH}"), string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'PROMETHEUS_BRANCH', value:"${params.PROMETHEUS_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
+					}
+				}
+			}
+		}
+
+		stage('Merge changes from temporary branch to main falco branch') {
+			steps {
+				withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
+					dir('oss-falco') {
+						sh label: '', script: """
+							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+							git checkout ${params.FALCO_SYNC_BRANCH}
+							git merge oss-falco-master-candidate
+					   		git push
+						"""
+					}
+				}
+			}
+		}
+	}
+}
