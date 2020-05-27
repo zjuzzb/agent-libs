@@ -609,6 +609,13 @@ if [ ! -d "${LINUX_BENCH_DIR}" ]; then
 	tar -xzf linux-bench-0.2.0.3.tar.gz
 fi
 
+STRING_VIEW_LITE_DIR=$DEPENDENCIES/string-view-lite-1.4.0
+if [ ! -d "${STRING_VIEW_LITE_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/string-view-lite-1.4.0.tar.gz
+	tar -xzf string-view-lite-1.4.0.tar.gz
+fi
+
 if [ $OS == "Windows_NT" ]; then
 	WINHAL_DIR=$DEPENDENCIES/dragent-win-hal-1.0
 	if [ ! -d "${WINHAL_DIR}" ]; then
