@@ -137,6 +137,30 @@ private:
 	void setup_coredumps();
 	void log_sysinfo();
 
+	/**
+	 * Create a file
+	 * @param dir Directory name
+	 * @param f File name
+	 * @return true on success,fail otherwise
+	 */
+	bool create_file(const std::string& dir, const std::string& f);
+
+	/**
+	 * Check for a file existence and remove it
+	 * @param dir Directory name
+	 * @param f File name
+	 * @return true if the file existed (and then removed), 0 otherwise
+	 */
+	bool remove_file_if_exists(const std::string& dir, const std::string& f);
+
+	/*
+	 * Create a sentinel file as soon as the agent had initialized and connected to the
+	 * backend. The file is used as a k8s probe and for auto detecting
+	 * unclean shutdown as well
+	 * @param cm Connection manager. It holds the BE <--> agent connection status
+	 */
+	void setup_startup_probe(const connection_manager& cm);
+
 	bool m_help_requested;
 	bool m_version_requested;
 #ifdef CYGWING_AGENT
@@ -195,4 +219,7 @@ private:
 	};
 	std::vector<monitor_file_state> m_monitored_files;
 	dragent::watchdog_runnable_pool m_pool;
+	bool m_had_unclean_shutdown = false;
+	bool m_startup_probe_set = false;
+	static const std::string K8S_PROBE_FILE;
 };

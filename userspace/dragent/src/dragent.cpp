@@ -501,6 +501,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 		running_state::instance().shut_down();
 	}
 
+	m_had_unclean_shutdown = remove_file_if_exists(m_configuration.m_log_dir, K8S_PROBE_FILE);
+
 	// superhack: the old driver mode config doesn't play nice with the feature manager. So
 	// we perform a translation here.
 	if (m_configuration.m_mode == dragent_mode_t::STANDARD)
@@ -1026,6 +1028,32 @@ void dragent_app::log_sysinfo()
 	}
 }
 
+
+bool dragent_app::create_file(const std::string& dir, const std::string& file_name)
+{
+	Path p;
+	p.parseDirectory(dir).setFileName(file_name);
+
+	File f(p);
+
+	return f.createFile();
+}
+
+bool dragent_app::remove_file_if_exists(const std::string& dir, const std::string& file_name)
+{
+	bool ret = false;
+	Path p;
+	p.parseDirectory(dir).setFileName(file_name);
+
+	File f(p);
+	if(f.exists())
+	{
+		ret = true;
+		f.remove();
+	}
+	return ret;
+}
+
 int dragent_app::sdagent_main()
 {
 	Poco::ErrorHandler::set(&m_error_handler);
@@ -1349,6 +1377,8 @@ int dragent_app::sdagent_main()
 		{
 			monitor_files(uptime_s);
 		}
+
+		setup_startup_probe(*cm);
 
 		Thread::sleep(1000);
 		++uptime_s;
@@ -2112,32 +2142,16 @@ void dragent_app::dump_heap_profile(uint64_t uptime_s, bool throttle)
 
 void dragent_app::check_for_clean_shutdown()
 {
-	Path p;
-	p.parseDirectory(m_configuration.m_log_dir);
-	p.setFileName("running");
-
-	File f(p);
-	if (f.exists())
+	if(m_had_unclean_shutdown)
 	{
+		LOG_DEBUG("Detected an unclean shutdown. Reporting to the backend");
 		m_log_reporter.send_report(m_transmit_queue, sinsp_utils::get_current_time_ns());
-	}
-	else
-	{
-		f.createFile();
 	}
 }
 
 void dragent_app::mark_clean_shutdown()
 {
-	Path p;
-	p.parseDirectory(m_configuration.m_log_dir);
-	p.setFileName("running");
-
-	File f(p);
-	if (f.exists())
-	{
-		f.remove();
-	}
+	remove_file_if_exists(m_configuration.m_log_dir, K8S_PROBE_FILE);
 }
 
 Logger* dragent_app::make_console_channel(AutoPtr<Formatter> formatter)
@@ -2284,3 +2298,16 @@ void dragent_app::monitor_files(uint64_t uptime_s)
 		running_state::instance().restart_for_config_update();
 	}
 }
+
+void dragent_app::setup_startup_probe(const connection_manager& cm)
+{
+	if(!m_startup_probe_set)
+	{
+		if(cm.is_connected())
+		{
+			m_startup_probe_set = create_file(m_configuration.m_log_dir, K8S_PROBE_FILE);
+		}
+	}
+}
+
+const std::string dragent_app::K8S_PROBE_FILE = "running";
