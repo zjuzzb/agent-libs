@@ -4292,8 +4292,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 				{
 					if (!m_inspector->is_capture())
 					{
-						LOG_ERROR("sample emission too fast (%" PRId64 "), skipping scanning proc",
-						          (int64_t)(wall_time - m_prev_flush_wall_time));
+						LOG_WARNING("sample emission too fast (%" PRId64
+						            "), skipping scanning proc",
+						            (int64_t)(wall_time - m_prev_flush_wall_time));
 					}
 
 					m_skip_proc_parsing = true;
