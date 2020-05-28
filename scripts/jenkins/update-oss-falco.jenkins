@@ -14,11 +14,8 @@ pipeline {
 	stages {
 		stage('Check out dependencies') {
 			steps {
-				dir('agent') {
-					checkout scm
-				}
 				dir('oss-falco') {
-					checkout([$class: 'GitSCM', branches: [[name: "${params.FALCO_SYNC_BRANCH}"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', url: 'git@github.com:draios/oss-falco.git']]])
+					checkout([$class: 'GitSCM', branches: [[name: "${params.FALCO_SYNC_BRANCH}"]], extensions: scm.extensions + [[$class: 'LocalBranch']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', url: 'git@github.com:draios/oss-falco.git']]])
 				}
 			}
 		}
@@ -29,11 +26,15 @@ pipeline {
 					dir('oss-falco') {
 						sh label: '', script: """
 							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+							# Check out the sync branch now so it tracks from from origin,
+							# before we add the upstream remote.
+							git checkout ${params.FALCO_SYNC_BRANCH}
 							git remote add upstream git@github.com:falcosecurity/falco.git || true
 							git fetch upstream
 							(git show-ref --verify --quiet refs/heads/oss-falco-master-candidate && git branch -D oss-falco-master-candidate) || true
 							git checkout -b oss-falco-master-candidate upstream/master
 					   		git push --set-upstream origin oss-falco-master-candidate
+							git checkout oss-falco-master-candidate
 						"""
 					}
 				}
@@ -61,6 +62,7 @@ pipeline {
 					dir('oss-falco') {
 						sh label: '', script: """
 							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+							# Check out the sync branch again to do the merge
 							git checkout ${params.FALCO_SYNC_BRANCH}
 							git merge oss-falco-master-candidate
 					   		git push
@@ -70,4 +72,9 @@ pipeline {
 			}
 		}
 	}
+    post {
+		always {
+			cleanWs()
+		}
+    }
 }
