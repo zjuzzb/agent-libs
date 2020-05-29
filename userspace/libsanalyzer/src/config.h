@@ -147,8 +147,6 @@ public:
 	void set_add_event_scopes(bool);
 	bool get_add_event_scopes() const;
 
-	bool get_statsite_check_format() const;
-	void set_statsite_check_format(bool enabled);
 
 	bool get_app_checks_always_send() const;
 	void set_app_checks_always_send(bool);
@@ -221,8 +219,6 @@ private:
 	bool m_add_event_scopes = false;
 
 	std::string m_log_dir;
-
-	bool m_statsite_check_format;
 
 #ifndef CYGWING_AGENT
 	int m_k8s_delegated_nodes;

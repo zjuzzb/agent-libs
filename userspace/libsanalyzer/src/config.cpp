@@ -584,16 +584,6 @@ bool sinsp_configuration::get_add_event_scopes() const
 	return m_add_event_scopes;
 }
 
-void sinsp_configuration::set_statsite_check_format(bool enabled)
-{
-	m_statsite_check_format = enabled;
-}
-
-bool sinsp_configuration::get_statsite_check_format() const
-{
-	return m_statsite_check_format;
-}
-
 void sinsp_configuration::set_log_dir(const string& dir)
 {
 	m_log_dir = dir;

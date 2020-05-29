@@ -32,13 +32,9 @@ public:
 	 *                         that will read and process statsd messages
 	 *                         that this statsite_forwarder forwards to it.
 	 * @param[in] statsd_port  The port on which statsd_servers will listen.
-	 * @param[in] check_format If true, this statsite_forwarder will
-	 *                         validate the format of any statsd messages
-	 *                         received before forwarding them.
 	 */
 	statsite_forwarder(const std::pair<FILE*, FILE*>& pipes,
-	                   uint16_t statsd_port,
-	                   bool check_format);
+	                   uint16_t statsd_port);
 	~statsite_forwarder();
 
 

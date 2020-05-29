@@ -5,17 +5,19 @@
  *
  * @copyright Copyright (c) 2015-2019 Sysdig Inc., All Rights Reserved
  */
-#include "statsite_proxy.h"
 #include "scoped_fmemopen.h"
-#include <string>
+#include "statsite_proxy.h"
+#include "scoped_config.h"
+
 #include <gtest.h>
+#include <string>
 
 using test_helpers::scoped_fmemopen;
 
 namespace
 {
-	const std::string STATSITE_OUTPUT = 
-R"EOF(counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam5|86.000000|1432288305
+const std::string STATSITE_OUTPUT =
+    R"EOF(counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam5|86.000000|1432288305
 counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam8|86.000000|1432288305
 counts.totam.sunt.consequatur.numquam.aperiam10|86.000000|1432288305
 counts.totam.sunt.consequatur.numquam.aperiam8|86.000000|1432288305
@@ -36,24 +38,25 @@ counts.totam.sunt.consequatur.numquam.aperiam1|85.000000|1432288305
 counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam3|86.000000|1432288305
 counts.totam.sunt.consequatur.numquam.aperiam2|85.000000|1432288305)EOF";
 
-	const std::string STATSITE_OUTPUT_LONG = ""
-		"counts.totam.sunt.consequatur.numquam.aperiamRRRRRRRRRRRRRRRRR"
-		"RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
-		"RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
-		"RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
-		"RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
-		"RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
-		"RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
-		"RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
-		"RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
-		"RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRREEEEEEEEEEEE"
-		"EEEEEEEEEEEEEEEEEALLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLYY"
-		"YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYLLLLLLLLLLLLL"
-		"LLLLLLLLLOOOOOOOOOOOOOOOOOOOOOOOONNNNNNNNNNNNNNNNNNNNGGGGGGGGG"
-		"GGGG|85.000000|1432288305";
+const std::string STATSITE_OUTPUT_LONG =
+    ""
+    "counts.totam.sunt.consequatur.numquam.aperiamRRRRRRRRRRRRRRRRR"
+    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRREEEEEEEEEEEE"
+    "EEEEEEEEEEEEEEEEEALLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLYY"
+    "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYLLLLLLLLLLLLL"
+    "LLLLLLLLLOOOOOOOOOOOOOOOOOOOOOOOONNNNNNNNNNNNNNNNNNNNGGGGGGGGG"
+    "GGGG|85.000000|1432288305";
 
-	const std::string STATSITE_OUTPUT_DIFFERENT_TIMESTAMPS = 
-R"EOF(counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam5|86.000000|1432288305
+const std::string STATSITE_OUTPUT_DIFFERENT_TIMESTAMPS =
+    R"EOF(counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam5|86.000000|1432288305
 counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam8|86.000000|1432288306)EOF";
 
 /**
@@ -62,19 +65,17 @@ counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam8|86.000000|1432288306
  * FILE*, which we can later inspect.
  *
  * @param[in] stats    a potential statsd metric (valid or invalid).
- * @param[in] expected What the client expects statsite_proxy to write to 
+ * @param[in] expected What the client expects statsite_proxy to write to
  *                     the FILE*.
  */
-void do_statsite_proxy_validation(const std::string& stats,
-		                  const std::string& expected)
+void do_statsite_proxy_validation(const std::string& stats, const std::string& expected)
 {
 	scoped_fmemopen in(512, "r+");
 	scoped_fmemopen out(2, "r+");
 
 	ASSERT_NO_THROW({
-		const bool check_format = true;
-		statsite_proxy proxy(std::make_pair(in.get_file(), out.get_file()),
-		                     check_format);
+		test_helpers::scoped_config<bool> c("statsite_check_format", true);
+		statsite_proxy proxy(std::make_pair(in.get_file(), out.get_file()));
 
 		proxy.send_metric(stats.c_str(), stats.size());
 	});
@@ -82,17 +83,14 @@ void do_statsite_proxy_validation(const std::string& stats,
 	ASSERT_EQ(expected, in.get_buffer_content());
 }
 
-} // end namespace
+}  // end namespace
 
 TEST(statsite_proxy_test, parser)
 {
 	scoped_fmemopen output_file(STATSITE_OUTPUT.size(), "r", STATSITE_OUTPUT);
 	scoped_fmemopen input_file(2, "w");
 
-	const bool check_format = false;
-	statsite_proxy proxy(std::make_pair(input_file.get_file(),
-	                                    output_file.get_file()),
-	                     check_format);
+	statsite_proxy proxy(std::make_pair(input_file.get_file(), output_file.get_file()));
 
 	const auto ret = proxy.read_metrics();
 	EXPECT_EQ(2U, ret.size());
@@ -100,36 +98,36 @@ TEST(statsite_proxy_test, parser)
 	EXPECT_EQ(10U, std::get<0>(ret.at("3ce9120d8307")).size());
 
 	std::set<std::string> reference_set;
-	for(unsigned j = 1; j < 11; ++j)
+	for (unsigned j = 1; j < 11; ++j)
 	{
-		reference_set.insert(std::string("totam.sunt.consequatur.numquam.aperiam") + std::to_string(j));
+		reference_set.insert(std::string("totam.sunt.consequatur.numquam.aperiam") +
+		                     std::to_string(j));
 	}
 
-	for(const auto& item : ret)
+	for (const auto& item : ret)
 	{
 		std::set<std::string> found_set;
 
-		for(const auto& m : std::get<0>(item.second))
+		for (const auto& m : std::get<0>(item.second))
 		{
 			found_set.insert(m.name());
 		}
-		for(const auto& ref : reference_set)
+		for (const auto& ref : reference_set)
 		{
-			EXPECT_TRUE(found_set.find(ref) != found_set.end()) << ref << " not found for " << item.first;
+			EXPECT_TRUE(found_set.find(ref) != found_set.end())
+			    << ref << " not found for " << item.first;
 		}
 	}
 }
 
-// same as the parser test, but we have a line in there longer than the buffer size to ensure it gets nuked from space properly
+// same as the parser test, but we have a line in there longer than the buffer size to ensure it
+// gets nuked from space properly
 TEST(statsite_proxy_test, parser_long)
 {
 	scoped_fmemopen output_file(STATSITE_OUTPUT_LONG.size(), "r", STATSITE_OUTPUT_LONG);
 	scoped_fmemopen input_file(2, "w");
 
-	const bool check_format = false;
-	statsite_proxy proxy(std::make_pair(input_file.get_file(),
-	                                    output_file.get_file()),
-	                     check_format);
+	statsite_proxy proxy(std::make_pair(input_file.get_file(), output_file.get_file()));
 
 	auto ret = proxy.read_metrics();
 	ASSERT_EQ(1U, ret.size());
@@ -140,17 +138,28 @@ TEST(statsite_proxy_test, parser_long)
 	// must match the string in the above file. Chosen to be longer than the
 	// default max length above which we have to reallocate a larger buffer and
 	// log a comment
-	reference_set.insert("totam.sunt.consequatur.numquam.aperiamRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRREEEEEEEEEEEEEEEEEEEEEEEEEEEEEALLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYLLLLLLLLLLLLLLLLLLLLLLOOOOOOOOOOOOOOOOOOOOOOOONNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGG");
-	for(const auto& item : ret)
+	reference_set.insert(
+	    "totam.sunt.consequatur.numquam."
+	    "aperiamRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+	    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+	    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+	    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+	    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+	    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+	    "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRREEEEEEEEEEEEEEEEEEEEEEEEEEEEEALLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
+	    "LLLLLLLLLLLLYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYLLLLLLLLLLLLLLLLLLLLLLOOOOO"
+	    "OOOOOOOOOOOOOOOOOOONNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGG");
+	for (const auto& item : ret)
 	{
 		std::set<std::string> found_set;
-		for(const auto& m : std::get<0>(item.second))
+		for (const auto& m : std::get<0>(item.second))
 		{
 			found_set.insert(m.name());
 		}
-		for(const auto& ref : reference_set)
+		for (const auto& ref : reference_set)
 		{
-			EXPECT_TRUE(found_set.find(ref) != found_set.end()) << ref << " not found for " << item.first;
+			EXPECT_TRUE(found_set.find(ref) != found_set.end())
+			    << ref << " not found for " << item.first;
 		}
 	}
 }
@@ -437,15 +446,9 @@ TEST(statsite_proxy_test, read_metrics_filter_wildcard)
 	scoped_fmemopen output_file(STATSITE_OUTPUT.size(), "r", STATSITE_OUTPUT);
 	scoped_fmemopen input_file(2, "w");
 
-	const bool check_format = false;
-	statsite_proxy proxy(std::make_pair(input_file.get_file(),
-	                                    output_file.get_file()),
-	                     check_format);
+	statsite_proxy proxy(std::make_pair(input_file.get_file(), output_file.get_file()));
 
-	filter_vec_t f = {
-		{"totam.sunt.consequatur.numquam.aperiam5", true},
-		{"totam.*", false}
-	};
+	filter_vec_t f = {{"totam.sunt.consequatur.numquam.aperiam5", true}, {"totam.*", false}};
 	metric_limits::sptr_t ml(new metric_limits(std::move(f)));
 	auto ret = proxy.read_metrics(ml);
 	EXPECT_EQ(2U, ret.size());
@@ -458,16 +461,11 @@ TEST(statsite_proxy_test, read_metrics_filter_questionmark)
 	scoped_fmemopen output_file(STATSITE_OUTPUT.size(), "r", STATSITE_OUTPUT);
 	scoped_fmemopen input_file(2, "w");
 
-	const bool check_format = false;
-	statsite_proxy proxy(std::make_pair(input_file.get_file(),
-	                                    output_file.get_file()),
-	                     check_format);
+	statsite_proxy proxy(std::make_pair(input_file.get_file(), output_file.get_file()));
 
-	filter_vec_t f = {
-		{"*1?", true},
-		{"totam.sunt.consequatur.numquam.aperiam7", true},
-		{"*", false}
-	};
+	filter_vec_t f = {{"*1?", true},
+	                  {"totam.sunt.consequatur.numquam.aperiam7", true},
+	                  {"*", false}};
 	metric_limits::sptr_t ml(new metric_limits(std::move(f)));
 	auto ret = proxy.read_metrics(ml);
 	EXPECT_EQ(2U, ret.size());
@@ -486,10 +484,7 @@ TEST(statsite_proxy_test, read_metrics_timestamps_differ)
 	                            STATSITE_OUTPUT_DIFFERENT_TIMESTAMPS);
 	scoped_fmemopen input_file(2, "w");
 
-	const bool check_format = false;
-	statsite_proxy proxy(std::make_pair(input_file.get_file(),
-	                                    output_file.get_file()),
-	                     check_format);
+	statsite_proxy proxy(std::make_pair(input_file.get_file(), output_file.get_file()));
 
 	auto ret = proxy.read_metrics();
 	EXPECT_EQ(1U, ret.size());

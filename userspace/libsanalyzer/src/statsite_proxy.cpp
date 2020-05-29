@@ -5,29 +5,33 @@
  *
  * @copyright Copyright (c) 2015-2019 Sysdig Inc., All Rights Reserved
  */
+#include "analyzer_int.h"
 #include "common_logger.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
-#include "analyzer_int.h"
 #include "statsite_proxy.h"
 #include "subprocess.h"
 #include "type_config.h"
-#include <algorithm>
+
 #include <Poco/Net/NetException.h>
 #include <Poco/Thread.h>
 
+#include <algorithm>
+
 namespace
 {
-
 COMMON_LOGGER();
 
 type_config<uint64_t> config_buffer_warning_length(
-		512,
-		"limit to how long a single entry from statsite is before we log a warning",
-		"statsite_buffer_warning_length");
+    512,
+    "limit to how long a single entry from statsite is before we log a warning",
+    "statsite_buffer_warning_length");
 
-} // end namespace
+type_config<bool> c_check_format(false,
+                                 "set to true to enable statsd format regex checking",
+                                 "statsite_check_format");
 
+}  // end namespace
 
 // Breaking down this regex:
 //
@@ -41,23 +45,24 @@ type_config<uint64_t> config_buffer_warning_length(
 // newline: \\n
 // close the line group and repeat: )*
 //
-// then we have the last line, which is the same except with a ? to indicate the optional concluding newline:
+// then we have the last line, which is the same except with a ? to indicate the optional concluding
+// newline:
 // [^:|\\n]+[:][^:|\\n]+[|][^:|\\n]+\\n?
 //
 // ending sentinel: $
-const std::string statsite_proxy::stats_validator_regex = "^([^:|\\n]+[:][^:|\\n]+[|][^:|\\n]+([|][^:|\\n]+)?\\n)*[^:|\\n]+[:][^:|\\n]+[|][^:|\\n]+([|][^:|\\n]+)?\\n?$";
+const std::string statsite_proxy::stats_validator_regex =
+    "^([^:|\\n]+[:][^:|\\n]+[|][^:|\\n]+([|][^:|\\n]+)?\\n)*[^:|\\n]+[:][^:|\\n]+[|][^:|\\n]+([|][^"
+    ":|\\n]+)?\\n?$";
 Poco::RegularExpression statsite_proxy::m_statsd_regex(statsite_proxy::stats_validator_regex);
 
-statsite_proxy::statsite_proxy(std::pair<FILE*, FILE*> const &fds,
-			       const bool check_format):
-	m_input_fd(fds.first),
-	m_output_fd(fds.second),
-	m_check_format(check_format)
+statsite_proxy::statsite_proxy(std::pair<FILE*, FILE*> const& fds)
+    : m_input_fd(fds.first),
+      m_output_fd(fds.second)
 {
 }
 
 statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
-		const metric_limits::sptr_t& ml)
+    const metric_limits::sptr_t& ml)
 {
 	// Sample data from statsite
 	// counts.statsd.test.1|1.000000|1441746724
@@ -72,15 +77,15 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 	unsigned metric_count = 0;
 	const std::size_t DEFAULT_BUFFER_SIZE = 300;
 
-	if(m_output_fd)
+	if (m_output_fd)
 	{
 		bool continue_loop = true;
-		while(continue_loop)
+		while (continue_loop)
 		{
 			std::vector<char> dyn_buffer(DEFAULT_BUFFER_SIZE);
-			char *read_buffer = &dyn_buffer[0];
+			char* read_buffer = &dyn_buffer[0];
 
-			if(!fgets_unlocked(read_buffer, DEFAULT_BUFFER_SIZE, m_output_fd))
+			if (!fgets_unlocked(read_buffer, DEFAULT_BUFFER_SIZE, m_output_fd))
 			{
 				break;
 			}
@@ -88,13 +93,13 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 			// if the line is longer than the buffer, the following 2 things will be true
 			// 1) the last character will be a \0
 			// 2) the second to last character will be neither \0 NOR \n
-			while(dyn_buffer[dyn_buffer.size() - 2] != '\0' && dyn_buffer[dyn_buffer.size() - 2] != '\n')
+			while (dyn_buffer[dyn_buffer.size() - 2] != '\0' &&
+			       dyn_buffer[dyn_buffer.size() - 2] != '\n')
 			{
 				// if we've exceeded our configured buffer size, log it
-				if(dyn_buffer.size() >= config_buffer_warning_length.get_value())
+				if (dyn_buffer.size() >= config_buffer_warning_length.get_value())
 				{
-					LOG_ERROR("Trace longer than warning size: %s",
-					          &dyn_buffer[0]);
+					LOG_ERROR("Trace longer than warning size: %s", &dyn_buffer[0]);
 				}
 
 				// we have to grow the buffer. So grow it by the default buffer
@@ -105,11 +110,11 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 
 				// note have to read 1 extra character since we have the null
 				// terminator from the previous read we're going to overwrite
-				if(!fgets_unlocked(read_buffer, DEFAULT_BUFFER_SIZE + 1, m_output_fd))
+				if (!fgets_unlocked(read_buffer, DEFAULT_BUFFER_SIZE + 1, m_output_fd))
 				{
 					continue_loop = false;
 
-					if(ferror(m_output_fd))
+					if (ferror(m_output_fd))
 					{
 						// have some data, but read failed. can't
 						// reliably parse, so bail
@@ -121,20 +126,20 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 						break;
 					}
 				}
-
 			}
 
 			// parsing code takes a char*, so just initialize one here and use it
 			// Probably should split this function into read/parse halves at some
 			// point. -zipper 1/7/19
-			char *buffer = &dyn_buffer[0];
+			char* buffer = &dyn_buffer[0];
 
 			LOG_TRACE("Received from statsite: %s", buffer);
-			try {
+			try
+			{
 				bool parsed = m_metric.parse_line(buffer);
-				if(!parsed)
+				if (!parsed)
 				{
-					if(timestamp == 0)
+					if (timestamp == 0)
 					{
 						timestamp = m_metric.timestamp();
 					}
@@ -144,25 +149,23 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 					++std::get<1>(ret[m_metric.container_id()]);
 
 					std::string filter;
-					if(ml)
+					if (ml)
 					{
 						// allow() will log if logging is enabled
-						if(ml->allow(m_metric.name(),
-							     filter,
-							     nullptr,
-							     "statsd"))
+						if (ml->allow(m_metric.name(), filter, nullptr, "statsd"))
 						{
-							std::get<0>(ret[m_metric.container_id()]).push_back(std::move(m_metric));
+							std::get<0>(ret[m_metric.container_id()])
+							    .push_back(std::move(m_metric));
 							++metric_count;
 						}
 					}
-					else // no filtering, add every metric and log explicitly
+					else  // no filtering, add every metric and log explicitly
 					{
 						metric_limits::log(m_metric.name(),
-								   "statsd",
-								   true,
-								   metric_limits::log_enabled(),
-								   " ");
+						                   "statsd",
+						                   true,
+						                   metric_limits::log_enabled(),
+						                   " ");
 						std::get<0>(ret[m_metric.container_id()]).push_back(std::move(m_metric));
 						++metric_count;
 					}
@@ -170,45 +173,42 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 
 					parsed = m_metric.parse_line(buffer);
 					ASSERT(parsed == true);
-					if(timestamp < m_metric.timestamp())
+					if (timestamp < m_metric.timestamp())
 					{
 						break;
 					}
 				}
 			}
-			catch(const statsd_metric::parse_exception& ex)
+			catch (const statsd_metric::parse_exception& ex)
 			{
-				LOG_ERROR("Parser exception on statsd, buffer: %s",
-				          buffer);
+				LOG_ERROR("Parser exception on statsd, buffer: %s", buffer);
 			}
 		}
 
-
-BREAK_LOOP:
-		if(m_metric.timestamp() &&
-		   (timestamp == 0 || timestamp == m_metric.timestamp()))
+	BREAK_LOOP:
+		if (m_metric.timestamp() && (timestamp == 0 || timestamp == m_metric.timestamp()))
 		{
 			LOG_DEBUG("Adding last sample");
 
 			std::string filter;
 			++std::get<1>(ret[m_metric.container_id()]);
 
-			if(ml)
+			if (ml)
 			{
 				// allow() will log if logging is enabled
-				if(ml->allow(m_metric.name(), filter, nullptr, "statsd"))
+				if (ml->allow(m_metric.name(), filter, nullptr, "statsd"))
 				{
 					std::get<0>(ret[m_metric.container_id()]).push_back(std::move(m_metric));
 					++metric_count;
 				}
 			}
-			else // otherwise, add indiscriminately and log explicitly
+			else  // otherwise, add indiscriminately and log explicitly
 			{
 				metric_limits::log(m_metric.name(),
-						   "statsd",
-						   true,
-						   metric_limits::log_enabled(),
-						   " ");
+				                   "statsd",
+				                   true,
+				                   metric_limits::log_enabled(),
+				                   " ");
 				std::get<0>(ret[m_metric.container_id()]).push_back(std::move(m_metric));
 				++metric_count;
 			}
@@ -217,17 +217,17 @@ BREAK_LOOP:
 
 		LOG_DEBUG("Ret vector size is: %u", metric_count);
 
-		if(m_metric.timestamp() > 0 &&
-		   (g_log && g_log->is_enabled(Poco::Message::Priority::PRIO_DEBUG)))
+		if (m_metric.timestamp() > 0 &&
+		    (g_log && g_log->is_enabled(Poco::Message::Priority::PRIO_DEBUG)))
 		{
 			uint64_t map_timestamp = 0;
 
 			const auto& itr = ret.begin();
-			if(itr != ret.end())
+			if (itr != ret.end())
 			{
 				const auto& metric_vect = std::get<0>(itr->second);
 
-				if(!metric_vect.empty())
+				if (!metric_vect.empty())
 				{
 					map_timestamp = metric_vect[0].timestamp();
 				}
@@ -255,7 +255,7 @@ bool statsite_proxy::validate_buffer(const char* const buf, const uint64_t len)
 
 void statsite_proxy::send_metric(const char* const buf, const uint64_t len)
 {
-	if(m_check_format && !validate_buffer(buf, len))
+	if (c_check_format.get_value() && !validate_buffer(buf, len))
 	{
 		std::string string_buf(buf, len);
 
@@ -263,11 +263,11 @@ void statsite_proxy::send_metric(const char* const buf, const uint64_t len)
 		return;
 	}
 
-	if(buf && len && m_input_fd)
+	if (buf && len && m_input_fd)
 	{
 		fwrite_unlocked(buf, sizeof(char), len, m_input_fd);
 
-		if(buf[len - 1] != '\n')
+		if (buf[len - 1] != '\n')
 		{
 			fputc_unlocked('\n', m_input_fd);
 		}
@@ -279,15 +279,14 @@ void statsite_proxy::send_metric(const char* const buf, const uint64_t len)
 	}
 }
 
-void statsite_proxy::send_container_metric(const std::string &container_id,
+void statsite_proxy::send_container_metric(const std::string& container_id,
                                            const char* const data,
                                            const uint64_t len)
 {
 	// Send the metric with containerid prefix
 	// Prefix container metrics with containerid and $
 	auto container_prefix =
-		statsd_metric::sanitize_container_id(container_id) +
-		statsd_metric::CONTAINER_ID_SEPARATOR;
+	    statsd_metric::sanitize_container_id(container_id) + statsd_metric::CONTAINER_ID_SEPARATOR;
 
 	// Init metric data with initial container_prefix
 	auto metric_data = container_prefix;
@@ -295,10 +294,10 @@ void statsite_proxy::send_container_metric(const std::string &container_id,
 
 	// Add container prefix to other metrics if they are present
 	auto endline_pos = metric_data.find('\n');
-	while(endline_pos != std::string::npos && endline_pos+1 < metric_data.size())
+	while (endline_pos != std::string::npos && endline_pos + 1 < metric_data.size())
 	{
-		metric_data.insert(endline_pos+1, container_prefix);
-		endline_pos = metric_data.find('\n', endline_pos+1);
+		metric_data.insert(endline_pos + 1, container_prefix);
+		endline_pos = metric_data.find('\n', endline_pos + 1);
 	}
 
 	send_metric(metric_data.data(), metric_data.size());

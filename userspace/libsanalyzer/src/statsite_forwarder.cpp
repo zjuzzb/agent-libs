@@ -124,9 +124,8 @@ private:
 };
 
 statsite_forwarder::statsite_forwarder(const std::pair<FILE*, FILE*>& pipes,
-				       const uint16_t port,
-				       const bool check_format):
-	m_proxy(make_unique<statsite_proxy>(pipes, check_format)),
+				       const uint16_t port)
+	: m_proxy(make_unique<statsite_proxy>(pipes)),
 	m_inqueue(make_unique<posix_queue>("/sdc_statsite_forwarder_in",
 	                                   posix_queue::RECEIVE,
 	                                   0)),

@@ -19,8 +19,7 @@ class statsite_proxy : public statsd_stats_source,
 public:
 	typedef std::unordered_map<std::string, std::vector<statsd_metric>> metric_map_t;
 
-	statsite_proxy(const std::pair<FILE*, FILE*>& pipes,
-		       bool check_format);
+	statsite_proxy(const std::pair<FILE*, FILE*>& pipes);
 	statsd_stats_source::container_statsd_map read_metrics(
 			const metric_limits::sptr_t& ml = nullptr) override;
 	void send_metric(const char *buf, uint64_t len) override;
@@ -41,5 +40,4 @@ private:
 	FILE* m_input_fd;
 	FILE* m_output_fd;
 	statsd_metric m_metric;
-	bool m_check_format = false;
 };

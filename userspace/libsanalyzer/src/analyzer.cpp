@@ -7687,8 +7687,7 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf,
 #ifndef _WIN32
 void sinsp_analyzer::set_statsd_iofds(const std::pair<FILE*, FILE*>& iofds, const bool forwarder)
 {
-	m_statsite_proxy =
-	    std::make_shared<statsite_proxy>(iofds, m_configuration->get_statsite_check_format());
+	m_statsite_proxy = std::make_shared<statsite_proxy>(iofds);
 
 	LOG_INFO("Creating statsd_emitter, security_enabled:  %s",
 	         (security_config::instance().get_enabled() ? "true" : "false"));

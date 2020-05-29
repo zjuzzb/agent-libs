@@ -742,8 +742,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			monitor_process.emplace_process("statsite_forwarder", [this]() -> int {
 				m_statsite_forwarder_pipe->attach_child();
 				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(),
-				                       libsanalyzer::statsite_config::instance().get_udp_port(),
-				                       m_configuration.m_statsite_check_format);
+				                       libsanalyzer::statsite_config::instance().get_udp_port());
 				return fwd.run();
 			});
 		}
@@ -1562,7 +1561,6 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	sconfig->set_go_k8s_user_events(m_configuration.m_go_k8s_user_events);
 	sconfig->set_add_event_scopes(m_configuration.m_add_event_scopes);
 
-	sconfig->set_statsite_check_format(m_configuration.m_statsite_check_format);
 	sconfig->set_log_dir(m_configuration.m_log_dir);
 
 	//

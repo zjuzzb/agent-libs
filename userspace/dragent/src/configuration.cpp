@@ -676,8 +676,6 @@ void dragent_configuration::init()
 	    m_config->get_scalar<int32_t>("cointerface_events_per_profile", 10000);
 	m_cointerface_total_profiles = m_config->get_scalar<int32_t>("cointerface_total_profiles", 30);
 
-	m_statsite_check_format = m_config->get_scalar<bool>("statsite_check_format", false);
-
 	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
 
 	m_transmitbuffer_size =
