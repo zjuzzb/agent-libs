@@ -6,6 +6,7 @@
 #include "feature_manager.h"
 #include "protocol.h"
 #include "protobuf_compression.h"
+#include "running_state.h"
 #include "spinlock.h"
 #include "utils.h"
 #include "watchdog_runnable_fatal_error.h"
@@ -711,7 +712,7 @@ bool connection_manager::connect()
 		return false;
 	}
 
-	if (dragent_configuration::m_terminate)
+	if (dragent::running_state::instance().is_terminated())
 	{
 		LOG_WARNING("Terminated during connection. Aborting.");
 		disconnect();
@@ -2066,6 +2067,6 @@ void connection_manager::handle_collector_error(draiosproto::error_message& msg)
 	if(term)
 	{
 		LOG_ERROR("Terminating agent due to collector message.");
-		dragent_configuration::m_terminate = true;
+		dragent::running_state::instance().shut_down();
 	}
 }

@@ -117,7 +117,7 @@ private:
 
 	void run() override;
 
-	std::atomic<bool> m_terminated;
+	std::atomic<bool> m_terminated_with_error;
 	std::atomic<uint64_t> m_last_heartbeat_ms;
 	std::atomic<pthread_t> m_pthread_id;
 

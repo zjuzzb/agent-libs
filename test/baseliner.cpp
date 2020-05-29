@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <gtest.h>
 #include <protocol.h>
+#include <running_state.h>
 #include <sinsp.h>
 #include <sinsp_worker.h>
 #include <stdlib.h>
@@ -24,19 +25,19 @@ public:
 
 	void exception(const Poco::Exception& exc)
 	{
-		dragent_configuration::m_terminate = true;
+		dragent::running_state::instance().shut_down();
 		FAIL() << "Got Poco::Exception " << exc.displayText();
 	}
 
 	void exception(const std::exception& exc)
 	{
-		dragent_configuration::m_terminate = true;
+		dragent::running_state::instance().shut_down();
 		FAIL() << "Got std::exception " << exc.what();
 	}
 
 	void exception()
 	{
-		dragent_configuration::m_terminate = true;
+		dragent::running_state::instance().shut_down();
 		FAIL() << "Got unknown exception";
 	}
 };
@@ -61,7 +62,7 @@ public:
 	{
 		g_log->information("test_sinsp_worker: Starting");
 
-		while (!dragent_configuration::m_terminate)
+		while (!dragent::running_state::instance().is_terminated())
 		{
 			int32_t res;
 			sinsp_evt* ev;
@@ -124,7 +125,7 @@ protected:
 	virtual void SetUp()
 	{
 		m_configuration.init(NULL, false);
-		dragent_configuration::m_terminate = false;
+		dragent::running_state::instance().reset_for_test();
 
 		if (!g_log)
 		{
@@ -178,7 +179,7 @@ protected:
 
 	virtual void TearDown()
 	{
-		dragent_configuration::m_terminate = true;
+		dragent::running_state::instance().shut_down();
 
 		ThreadPool::defaultPool().joinAll();
 		ThreadPool::defaultPool().stopAll();

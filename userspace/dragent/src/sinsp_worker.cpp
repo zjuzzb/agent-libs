@@ -5,6 +5,7 @@
 #include "error_handler.h"
 #include "infrastructure_state.h"
 #include "memdumper.h"
+#include "running_state.h"
 #include "security_config.h"
 #include "sinsp_factory.h"
 #include "utils.h"
@@ -520,15 +521,16 @@ void sinsp_worker::run()
 		throw sinsp_exception("Starting uninitialized worker");
 	}
 
+	auto &state = running_state::instance();
 	if (m_configuration->m_config_test)
 	{
-		dragent_configuration::m_terminate = true;
+		state.shut_down();
 		m_analyzer->dump_config_test();
 	}
 
 	m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
-	while(!dragent_configuration::m_terminate)
+	while(!state.is_terminated())
 	{
 		// This will happen only the first time after receiving the
 		// CONFIG_DATA message from the backend (or a timeout)
@@ -539,7 +541,7 @@ void sinsp_worker::run()
 
 		if(m_configuration->m_evtcnt != 0 && nevts == m_configuration->m_evtcnt)
 		{
-			dragent_configuration::m_terminate = true;
+			state.shut_down();
 			break;
 		}
 

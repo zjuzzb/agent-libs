@@ -18,6 +18,7 @@
 #include <memory>
 #include <metrics.h>
 #include <protocol.h>
+#include <running_state.h>
 #include <scap.h>
 #include <sinsp.h>
 #include <sinsp_worker.h>
@@ -46,19 +47,19 @@ public:
 
 	void exception(const Poco::Exception& exc)
 	{
-		dragent_configuration::m_terminate = true;
+		dragent::running_state::instance().shut_down();
 		FAIL() << "Got Poco::Exception " << exc.displayText();
 	}
 
 	void exception(const std::exception& exc)
 	{
-		dragent_configuration::m_terminate = true;
+		dragent::running_state::instance().shut_down();
 		FAIL() << "Got std::exception " << exc.what();
 	}
 
 	void exception()
 	{
-		dragent_configuration::m_terminate = true;
+		dragent::running_state::instance().shut_down();
 		FAIL() << "Got unknown exception";
 	}
 };
@@ -120,7 +121,7 @@ public:
 	{
 		g_log->information("test_sinsp_worker: Starting");
 
-		while (!dragent_configuration::m_terminate)
+		while (!dragent::running_state::instance().is_terminated())
 		{
 			int32_t res;
 			sinsp_evt* ev;
@@ -272,7 +273,7 @@ protected:
 			const_cast<type_config<std::string>*>(c_cri_socket_path.get())->set(fake_cri_socket);
 		}
 
-		dragent_configuration::m_terminate = false;
+		dragent::running_state::instance().reset_for_test();
 
 		m_configuration.m_capture_dragent_events = true;
 
@@ -403,7 +404,7 @@ protected:
 
 	void TearDownTest()
 	{
-		dragent_configuration::m_terminate = true;
+		dragent::running_state::instance().shut_down();
 
 		ThreadPool::defaultPool().joinAll();
 		ThreadPool::defaultPool().stopAll();

@@ -3,6 +3,7 @@
 #include <gtest.h>
 #include "configuration.h"
 #include "common_logger.h"
+#include "running_state_fixture.h"
 #include "watchdog_runnable.h"
 #include "watchdog_runnable_fatal_error.h"
 #include "watchdog_runnable_pool.h"
@@ -12,6 +13,15 @@ COMMON_LOGGER();
 using namespace dragent;
 
 namespace {
+
+/**
+ * Reset the running_state after each test
+ */
+class watchdog_runnable_fixture : public test_helpers::running_state_fixture 
+{
+public:
+	watchdog_runnable_fixture() {}
+};
 
 class test_runnable : public watchdog_runnable
 {
@@ -43,10 +53,8 @@ private:
 
 } // anonymous namespace
 
-TEST(watchdog_runnable_test, timeout)
+TEST_F(watchdog_runnable_fixture, timeout)
 {
-	dragent_configuration::m_terminate = false;
-
 	uint64_t timeout_s = 1;
 
 	test_runnable action1;
@@ -88,10 +96,8 @@ TEST(watchdog_runnable_test, timeout)
 	Poco::ThreadPool::defaultPool().joinAll();
 }
 
-TEST(watchdog_runnable_test, no_timeout)
+TEST_F(watchdog_runnable_fixture, no_timeout)
 {
-	dragent_configuration::m_terminate = false;
-
 	test_runnable action1;
 	ASSERT_FALSE(action1.is_started());
 
@@ -116,10 +122,8 @@ TEST(watchdog_runnable_test, no_timeout)
 	Poco::ThreadPool::defaultPool().joinAll();
 }
 
-TEST(watchdog_runnable_test, global_terminate)
+TEST_F(watchdog_runnable_fixture, global_terminate)
 {
-	dragent_configuration::m_terminate = false;
-
 	test_runnable action1;
 	ASSERT_FALSE(action1.is_started());
 
@@ -133,17 +137,15 @@ TEST(watchdog_runnable_test, global_terminate)
 
 	// Set the global terminate, this should cause the heartbeat function
 	// to fail and the task will exit
-	dragent_configuration::m_terminate = true;
+	dragent::running_state::instance().shut_down();
 
 	// This will wait until all tasks are complete so if this function
 	// ever exits then the test passes
 	Poco::ThreadPool::defaultPool().joinAll();
 }
 
-TEST(watchdog_runnable_test, fatal)
+TEST_F(watchdog_runnable_fixture, fatal)
 {
-	dragent_configuration::m_terminate = false;
-
 	test_runnable action1;
 
 	watchdog_runnable_pool pool;
@@ -176,7 +178,7 @@ TEST(watchdog_runnable_test, fatal)
 
 }
 
-TEST(watchdog_runnable_test, throw_fatal)
+TEST_F(watchdog_runnable_fixture, throw_fatal)
 {
 	try
 	{

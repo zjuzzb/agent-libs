@@ -1,9 +1,10 @@
 
 #include "watchdog_runnable.h"
-#include "configuration.h"
 #include "common_logger.h"
+#include "running_state.h"
 #include "uptime.h"
 #include "watchdog_runnable_fatal_error.h"
+#include <cinttypes>
 
 COMMON_LOGGER();
 
@@ -13,7 +14,7 @@ namespace dragent
 watchdog_runnable::watchdog_runnable(const std::string& name) :
 	// Purposely initializing heartbeat to 0 so that we can check
 	// whether runnable has ever started.
-	m_terminated(false),
+	m_terminated_with_error(false),
 	m_last_heartbeat_ms(0),
 	m_pthread_id(0),
 	m_timeout_ms(0),
@@ -35,8 +36,9 @@ void watchdog_runnable::timeout_ms(uint64_t value_ms)
 
 bool watchdog_runnable::heartbeat()
 {
-	if(dragent_configuration::m_terminate)
+	if(running_state::instance().is_terminated())
 	{
+		// If anything shut down dragent then we want all threads to exit
 		return false;
 	}
 
@@ -52,7 +54,7 @@ watchdog_runnable::health watchdog_runnable::is_healthy(int64_t& age_ms) const
 				      age_ms);
 
 	// Purposely doing this check after age_ms is recorded
-	if(m_terminated)
+	if(m_terminated_with_error)
 	{
 		return health::FATAL_ERROR;
 	}
@@ -121,20 +123,20 @@ void watchdog_runnable::run()
 				  ex.what());
 
 		}
-		m_terminated = true;
+		m_terminated_with_error = true;
 	}
 	catch (const std::exception& ex)
 	{
 		LOG_FATAL("Unexpected fatal error occurred in %s. Terminating gracefully. Detail: %s",
 			  m_name.c_str(),
 			  ex.what());
-		m_terminated = true;
+		m_terminated_with_error = true;
 	}
 	catch (...)
 	{
 		LOG_FATAL("Unknown fatal error occurred on %s. Terminating gracefully.",
 			  m_name.c_str());
-		m_terminated = true;
+		m_terminated_with_error = true;
 	}
 
 	LOG_INFO("%s terminating", m_name.c_str());

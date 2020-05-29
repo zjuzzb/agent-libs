@@ -68,6 +68,7 @@ list(
     monitor.cpp
     null_message_handler.cpp
     protocol.cpp
+    running_state.cpp
     security_action.cpp
     security_compliance_calendar_message_handler.cpp
     security_compliance_run_message_handler.cpp

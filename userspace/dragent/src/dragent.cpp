@@ -18,6 +18,7 @@
 #include "dump_request_start_message_handler.h"
 #include "dump_request_stop_message_handler.h"
 #include "error_handler.h"
+#include "exit_code.h"
 #include "fault_rest_request_handler.h"
 #include "faultlist_rest_request_handler.h"
 #include "file_rest_request_handler.h"
@@ -36,6 +37,7 @@
 #include "protobuf_metric_serializer.h"
 #include "rest_request_handler_factory.h"
 #include "rest_server.h"
+#include "running_state.h"
 #include "security_compliance_calendar_message_handler.h"
 #include "security_compliance_run_message_handler.h"
 #include "security_orchestrator_events_message_handler.h"
@@ -160,7 +162,7 @@ const uint32_t TIME_TO_UPDATE_PROCESS_PRIORITY = 5;
 
 static void g_signal_callback(int sig)
 {
-	dragent_configuration::m_terminate = true;
+	running_state::instance().shut_down();
 }
 
 static void g_usr_signal_callback(int sig)
@@ -496,7 +498,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	catch (const yaml_configuration_exception& ex)
 	{
 		std::cerr << "Failed to init sinsp_worker. Exception message: " << ex.what() << '\n';
-		dragent_configuration::m_terminate = true;
+		running_state::instance().shut_down();
 	}
 
 	// superhack: the old driver mode config doesn't play nice with the feature manager. So
@@ -527,7 +529,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	if (!feature_manager::instance().initialize())
 	{
 		std::cerr << "Failed to init features." << '\n';
-		dragent_configuration::m_terminate = true;
+		running_state::instance().shut_down();
 	}
 
 	// superhack: prom tries to manage it's own enablement, which is not yet fully integrated
@@ -1047,8 +1049,7 @@ int dragent_app::sdagent_main()
 	if (m_configuration.load_error())
 	{
 		LOG_ERROR("Unable to load configuration file");
-		// XXX Return EXIT_OK even on an error so we won't restart
-		return Application::EXIT_OK;
+		return exit_code::SHUT_DOWN;
 	}
 
 	// Set the configured default compression method
@@ -1073,13 +1074,13 @@ int dragent_app::sdagent_main()
 	if (m_configuration.m_customer_id.empty())
 	{
 		LOG_ERROR("customerid not specified");
-		return Application::EXIT_SOFTWARE;
+		return exit_code::RESTART;
 	}
 
 	if (m_configuration.machine_id() == "00:00:00:00:00:00")
 	{
 		LOG_ERROR("Invalid machine_id detected");
-		return Application::EXIT_SOFTWARE;
+		return exit_code::RESTART;
 	}
 
 	//
@@ -1114,12 +1115,12 @@ int dragent_app::sdagent_main()
 	ExitCode exit_code;
 
 	//
-	// Start monitored threads
+	// Start threads
 	//
 	if (!m_configuration.m_config_test)
 	{
 		m_pool.start(m_subprocesses_logger,
-		             m_configuration.m_watchdog_subprocesses_logger_timeout_s);
+			     m_configuration.m_watchdog_subprocesses_logger_timeout_s);
 	}
 
 	//
@@ -1288,11 +1289,12 @@ int dragent_app::sdagent_main()
 	catch (const sinsp_exception& e)
 	{
 		LOG_ERROR("Failed to setup internal components. Exception message: %s", e.what());
-		dragent_configuration::m_terminate = true;
-		dragent_error_handler::m_exception = true;
+		running_state::instance().restart();
 	}
 
-	if (!dragent_configuration::m_terminate)
+
+	auto &state = running_state::instance();
+	if (!state.is_terminated())
 	{
 		memdump_logger::register_callback(
 		    std::make_shared<dragent_memdump_logger>(&m_capture_job_handler));
@@ -1325,7 +1327,7 @@ int dragent_app::sdagent_main()
 	// the watch dog and monitoring config files until someone decides it's
 	// time to terminate.
 	//////////////////////////////
-	while (!dragent_configuration::m_terminate)
+	while (!state.is_terminated())
 	{
 		if (m_configuration.m_watchdog_enabled)
 		{
@@ -1338,7 +1340,7 @@ int dragent_app::sdagent_main()
 			if (!m_windows_helpers.is_parent_service_running())
 			{
 				LOG_INFO("Windows service stopped");
-				dragent_configuration::m_terminate = true;
+				state.shut_down();
 				break;
 			}
 		}
@@ -1366,29 +1368,15 @@ int dragent_app::sdagent_main()
 	}
 #endif
 
-	//
-	// Check for errorful exit and set exit code appropriately
-	//
-	if (dragent_error_handler::m_exception)
-	{
-		LOG_ERROR("Application::EXIT_SOFTWARE");
-		exit_code = Application::EXIT_SOFTWARE;
+	if (!state.is_terminated()) {
+		state.shut_down();
 	}
-	else if (dragent_configuration::m_config_update)
-	{
-		LOG_INFO("Application::EXIT_CONFIG_UPDATE");
-		exit_code = ExitCode(monitor::CONFIG_UPDATE_EXIT_CODE);
-	}
-	else
-	{
-		LOG_INFO("Application::EXIT_OK");
-		exit_code = Application::EXIT_OK;
-	}
+
+	exit_code = ExitCode(state.exit_code());
 
 	//
 	// Shut. Down. Everything.
 	//
-	dragent_configuration::m_terminate = true;
 	// This will stop everything in the default pool
 	m_pool.stop_all();
 	if (serializer)
@@ -1725,7 +1713,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	if (m_sinsp_worker.get_last_loop_ns() && m_sinsp_worker.is_stall_fatal())
 	{
-		int64_t diff_ns = sinsp_utils::get_current_time_ns() - m_sinsp_worker.get_last_loop_ns();
+		const int64_t diff_ns = sinsp_utils::get_current_time_ns() - m_sinsp_worker.get_last_loop_ns();
 
 		if (diff_ns < 0)
 		{
@@ -1969,20 +1957,27 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		ASSERT(false);
 	}
 
-	//
-	// Just wait a bit to give time to the other threads to print stacktrace
-	// or to terminate gracefully.
-	//
 	if (to_kill)
 	{
 		log_watchdog_report();
 
-		LOG_FATAL("Killing dragent process");
+		LOG_FATAL("Restarting dragent process immediately.");
 
+		// Wait a bit to give time to the other threads to print stacktrace
+		// or to terminate gracefully.
 		sleep(5);
 		char line[128];
-		snprintf(line, sizeof(line), "watchdog: committing suicide\n");
+		snprintf(line, sizeof(line), "watchdog: restarting immediately\n");
 		crash_handler::log_crashdump_message(line);
+
+		// Kill the process immediately. Monitor will restart it. 
+		// 
+		// The SIGKILL will immediately be handled by the operating system and
+		// dragent will not get any more cpu time. After the operating system 
+		// handles the kill, the monitor will see that the dragent process died.
+		// The monitor only has specific behavior for individual exit() codes, not
+		// death by signals, so this gets handled in the default way, i.e. by 
+		// restarting the process.
 		kill(getpid(), SIGKILL);
 	}
 
@@ -1994,7 +1989,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		{
 			LOG_DEBUG("valid subprocess: " + proc.first + ", " + to_string(state.memory_used()) +
 			          " KiB");
-			bool to_kill = false;
+			bool subprocess_to_kill = false;
 			if (m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.find(proc.first) !=
 			        m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.end() &&
 			    state.memory_used() / 1024 >
@@ -2002,7 +1997,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			{
 				g_log->critical("watchdog: " + proc.first + " using " +
 				                to_string(state.memory_used() / 1024) + "MiB of memory, killing");
-				to_kill = true;
+				subprocess_to_kill = true;
 			}
 			uint64_t last_loop_s = state.last_loop_s();
 			uint64_t diff = 0;
@@ -2029,10 +2024,10 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 				}
 				else
 				{
-					to_kill = true;
+					subprocess_to_kill = true;
 				}
 			}
-			if (to_kill)
+			if (subprocess_to_kill)
 			{
 				kill(state.pid(), SIGKILL);
 				state.reset();
@@ -2332,7 +2327,6 @@ void dragent_app::monitor_files(uint64_t uptime_s)
 	// trigger restart of all related processes
 	if (detected_change)
 	{
-		dragent_configuration::m_terminate = true;
-		dragent_configuration::m_config_update = true;
+		running_state::instance().restart_for_config_update();
 	}
 }

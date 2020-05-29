@@ -24,7 +24,6 @@ void run_sinsp_worker(const sinsp::ptr& inspector,
 {
 	sinsp_factory::inject(inspector);
 
-	dragent_configuration::m_terminate = false;
 	internal_metrics::sptr_t im = std::make_shared<internal_metrics>();
 
 	capture_job_handler job_handler(&config, &queue);

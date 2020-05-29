@@ -18,6 +18,7 @@
 #include <protocol.h>
 #include <protocol_handler.h>
 #include <compliance_mgr.h>
+#include <running_state.h>
 #include <statsite_config.h>
 #include <configuration_manager.h>
 
@@ -178,7 +179,7 @@ protected:
 		m_queue = new protocol_queue(100);
 
 		m_configuration.init(NULL, false);
-		dragent_configuration::m_terminate = false;
+		dragent::running_state::instance().reset_for_test();
 
 		m_old_config = configuration_manager::instance().to_yaml();
 		const std::string config = "statsd: {udp_port: " + std::to_string(m_statsd_port) + "}";

@@ -21,6 +21,7 @@ using namespace std;
 #include "protobuf_metric_serializer.h"
 #include "protocol_handler.h"
 #include "http_server.h"
+#include "running_state_fixture.h"
 
 #include <Poco/Net/SSLManager.h>
 #include <Poco/Net/NetException.h>
@@ -30,6 +31,16 @@ using namespace test_helpers;
 
 namespace
 {
+
+/**
+ * Reset the running_state after each test
+ */
+class connection_manager_fixture : public running_state_fixture 
+{
+public:
+	connection_manager_fixture() {}
+};
+
 /**
  * Sleep for the given number of milliseconds
  *
@@ -76,11 +87,10 @@ draiosproto::metrics* build_test_metrics(uint64_t index)
  * Test the case where the connection manager cannot connect to the collector.
  * The CM should not crash or fall over.
  */
-TEST(connection_manager_test, failure_to_connect)
+TEST_F(connection_manager_fixture, failure_to_connect)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	config.init();
 
@@ -89,7 +99,6 @@ TEST(connection_manager_test, failure_to_connect)
 	config.m_server_port = 7357;
 	config.m_ssl_enabled = false;
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -120,16 +129,15 @@ TEST(connection_manager_test, failure_to_connect)
 	}
 
 	// Shut down the CM
-	config.m_terminate = true;
+	running_state::instance().shut_down();
 
 	t.join();
 }
 
-TEST(connection_manager_test, connection_timeout)
+TEST_F(connection_manager_fixture, connection_timeout)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	config.init();
 
@@ -140,8 +148,7 @@ TEST(connection_manager_test, connection_timeout)
 	config.m_server_port = 81;
 	config.m_ssl_enabled = false;
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
-
+	
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
 
@@ -158,16 +165,15 @@ TEST(connection_manager_test, connection_timeout)
 	}
 
 	// Shut down all the things
-	config.m_terminate = true;
+	running_state::instance().shut_down();
 
 	t.join();
 }
 
-TEST(connection_manager_test, connect_transmit)
+TEST_F(connection_manager_fixture, connect_transmit)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	config.init();
 
@@ -182,7 +188,6 @@ TEST(connection_manager_test, connect_transmit)
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -225,7 +230,7 @@ TEST(connection_manager_test, connect_transmit)
 	ASSERT_EQ(0, fc.get_num_disconnects());
 
 	// Shut down all the things
-	config.m_terminate = true;
+	running_state::instance().shut_down();
 	fc.stop();
 
 	t.join();
@@ -240,11 +245,10 @@ TEST(connection_manager_test, connect_transmit)
 	}
 }
 
-TEST(connection_manager_test, generation)
+TEST_F(connection_manager_fixture, generation)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	config.init();
 
@@ -258,7 +262,6 @@ TEST(connection_manager_test, generation)
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -319,7 +322,7 @@ TEST(connection_manager_test, generation)
 	ASSERT_EQ(1, fc.get_num_disconnects());
 
 	// Shut down all the things
-	config.m_terminate = true;
+	running_state::instance().shut_down();
 	fc.stop();
 
 	t.join();
@@ -333,11 +336,10 @@ class bogus_capture_stats_source : public capture_stats_source
 	}
 };
 
-TEST(connection_manager_test, v5_end_to_end)
+TEST_F(connection_manager_fixture, v5_end_to_end)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	config.init();
 	std::atomic<bool> metrics_sent(false);
@@ -363,7 +365,6 @@ TEST(connection_manager_test, v5_end_to_end)
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
 
 	// Create and spin up the connection manager
 	connection_manager cm(&config, &pqueue, {5});
@@ -425,7 +426,7 @@ TEST(connection_manager_test, v5_end_to_end)
 	ASSERT_EQ(0, fc.get_num_disconnects());
 
 	// Shut down all the things
-	config.m_terminate = true;
+	running_state::instance().shut_down();
 	fc.stop();
 
 	ct.join();
@@ -501,7 +502,6 @@ bool test_collector_sends_message(dragent_protocol::protocol_version ver)
 	const size_t MAX_QUEUE_LEN = 64;
 	const std::string token = "DEADBEEF";
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	config.init();
 	auto mh = std::make_shared<counting_message_handler>(token);
@@ -519,7 +519,6 @@ bool test_collector_sends_message(dragent_protocol::protocol_version ver)
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -584,28 +583,27 @@ bool test_collector_sends_message(dragent_protocol::protocol_version ver)
 	}
 
 	// Shut down all the things
-	config.m_terminate = true;
+	running_state::instance().shut_down();
 	fc.stop();
 
 	t.join();
 	return true;
 }
 
-TEST(connection_manager_test, collector_sends_message_v4)
+TEST_F(connection_manager_fixture, collector_sends_message_v4)
 {
 	ASSERT_TRUE(test_collector_sends_message(4));
 }
 
-TEST(connection_manager_test, collector_sends_message_v5)
+TEST_F(connection_manager_fixture, collector_sends_message_v5)
 {
 	ASSERT_TRUE(test_collector_sends_message(5));
 }
 
-TEST(connection_manager_test, basic_connect_with_handshake)
+TEST_F(connection_manager_fixture, basic_connect_with_handshake)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	config.init();
 
@@ -619,7 +617,6 @@ TEST(connection_manager_test, basic_connect_with_handshake)
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -712,17 +709,16 @@ TEST(connection_manager_test, basic_connect_with_handshake)
 	ASSERT_EQ(0, fc.get_num_disconnects());
 
 	// Shut down all the things
-	config.m_terminate = true;
+	running_state::instance().shut_down();
 	fc.stop();
 
 	t.join();
 }
 
-TEST(connection_manager_test, metrics_ack)
+TEST_F(connection_manager_fixture, metrics_ack)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	uint64_t index = 1;
 	config.init();
@@ -739,7 +735,6 @@ TEST(connection_manager_test, metrics_ack)
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
 
 	// Create the shared blocking queues
 	flush_queue fqueue(MAX_QUEUE_LEN);
@@ -837,7 +832,7 @@ TEST(connection_manager_test, metrics_ack)
 	ASSERT_EQ(0, fc.get_num_disconnects());
 
 	// Shut down all the things
-	config.m_terminate = true;
+	running_state::instance().shut_down();
 	fc.stop();
 
 	t.join();
@@ -845,11 +840,10 @@ TEST(connection_manager_test, metrics_ack)
 	st.join();
 }
 
-TEST(connection_manager_test, change_aggregation_interval)
+TEST_F(connection_manager_fixture, change_aggregation_interval)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	config.init();
 
@@ -857,7 +851,6 @@ TEST(connection_manager_test, change_aggregation_interval)
 	config.m_server_addr = "127.0.0.1";
 	config.m_ssl_enabled = false;
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -875,11 +868,10 @@ TEST(connection_manager_test, change_aggregation_interval)
 
 }
 
-TEST(connection_manager_test, handshake_version_negotiation_failure)
+TEST_F(connection_manager_fixture, handshake_version_negotiation_failure)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	config.init();
 
@@ -893,7 +885,6 @@ TEST(connection_manager_test, handshake_version_negotiation_failure)
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -957,20 +948,18 @@ TEST(connection_manager_test, handshake_version_negotiation_failure)
 
 	// Shut down all the things (this will conveniently also test terminate
 	// in the middle of a handshake)
-	config.m_terminate = true;
+	running_state::instance().shut_down();
 	fc.stop();
 
 	t.join();
 }
 
-TEST(connection_manager_test, gen_seq_ordering)
+TEST_F(connection_manager_fixture, gen_seq_ordering)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	config.init();
-	config.m_terminate = false;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -1037,11 +1026,10 @@ TEST(connection_manager_test, gen_seq_ordering)
 	ASSERT_TRUE(cm.test_sequence_less_or_equal(&metrics_header, &ack_header));
 }
 
-TEST(connection_manager_test, legacy_fallback)
+TEST_F(connection_manager_fixture, legacy_fallback)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	uint64_t index = 1;
 	config.init();
@@ -1057,7 +1045,6 @@ TEST(connection_manager_test, legacy_fallback)
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
 
 	// Create the shared blocking queues
 	flush_queue fqueue(MAX_QUEUE_LEN);
@@ -1178,7 +1165,7 @@ TEST(connection_manager_test, legacy_fallback)
 	ASSERT_EQ(dragent_protocol::PROTOCOL_VERSION_NUMBER, b.hdr.v4.version);
 
 	// Shut down all the things
-	config.m_terminate = true;
+	running_state::instance().shut_down();
 	fc.stop();
 
 	t.join();
@@ -1186,11 +1173,10 @@ TEST(connection_manager_test, legacy_fallback)
 	st.join();
 }
 
-TEST(connection_manager_test, test_error_message_handler)
+TEST_F(connection_manager_fixture, test_error_message_handler)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	config.init();
 
@@ -1204,7 +1190,6 @@ TEST(connection_manager_test, test_error_message_handler)
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -1246,7 +1231,7 @@ TEST(connection_manager_test, test_error_message_handler)
 
 	ASSERT_EQ(1, fc.get_num_disconnects());
 	ASSERT_FALSE(cm.is_connected());
-	ASSERT_TRUE(config.m_terminate);
+	ASSERT_TRUE(running_state::instance().is_terminated());
 
 	// Shut down all the things
 	fc.stop();
@@ -1254,11 +1239,10 @@ TEST(connection_manager_test, test_error_message_handler)
 	t.join();
 }
 
-TEST(connection_manager_test, backoff)
+TEST_F(connection_manager_fixture, backoff)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	config.init();
 
@@ -1272,7 +1256,6 @@ TEST(connection_manager_test, backoff)
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
 
 	// Create the shared blocking queues
 	flush_queue fqueue(MAX_QUEUE_LEN);
@@ -1376,7 +1359,7 @@ TEST(connection_manager_test, backoff)
 	ASSERT_EQ(2, cm.get_reconnect_interval());
 
 	// Shut down all the things
-	config.m_terminate = true;
+	running_state::instance().shut_down();
 	fc.stop();
 
 	t.join();
@@ -1384,11 +1367,10 @@ TEST(connection_manager_test, backoff)
 	st.join();
 }
 
-TEST(connection_manager_test, backoff_recovery_v4)
+TEST_F(connection_manager_fixture, backoff_recovery_v4)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration::m_terminate = false;
 	dragent_configuration config;
 	std::atomic<bool> metrics_sent(false);
 	config.init();
@@ -1403,7 +1385,6 @@ TEST(connection_manager_test, backoff_recovery_v4)
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
 	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
-	config.m_terminate = false;
 
 	// Create the shared blocking queues
 	flush_queue fqueue(MAX_QUEUE_LEN);
@@ -1539,7 +1520,7 @@ TEST(connection_manager_test, backoff_recovery_v4)
 	ASSERT_EQ(0, cm.get_reconnect_interval());
 
 	// Shut down all the things
-	config.m_terminate = true;
+	running_state::instance().shut_down();
 	fc.stop();
 
 	t.join();
@@ -1701,7 +1682,7 @@ private:
 	http_context* m_ctxt;
 };
 
-TEST(connection_manager_test, incomplete_resp)
+TEST_F(connection_manager_fixture, incomplete_resp)
 {
 	Poco::Buffer<char> resp(0);
 	std::string str;
@@ -1734,7 +1715,7 @@ TEST(connection_manager_test, incomplete_resp)
 	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
 }
 
-TEST(connection_manager_test, complete_resp)
+TEST_F(connection_manager_fixture, complete_resp)
 {
 	Poco::Buffer<char> resp(0);
 	std::string str;
@@ -1755,7 +1736,7 @@ TEST(connection_manager_test, complete_resp)
 	ASSERT_TRUE(http_tunnel::is_resp_complete(resp));
 }
 
-TEST(connection_manager_test, parse_resp)
+TEST_F(connection_manager_fixture, parse_resp)
 {
 	std::string resp;
 	Poco::Buffer<char> buf(0);
@@ -1822,7 +1803,7 @@ TEST(connection_manager_test, parse_resp)
 	ASSERT_FALSE(rcode.is_valid);
 }
 
-TEST(connection_manager_test, basic_proxy_connect)
+TEST_F(connection_manager_fixture, basic_proxy_connect)
 {
 	http_context ctxt = http_context::build_default();
 	scoped_http_server srv(9090, new HTTPPHFactory(&ctxt));
@@ -1841,7 +1822,7 @@ TEST(connection_manager_test, basic_proxy_connect)
 	ASSERT_EQ(0, ctxt.bad_requests);
 }
 
-TEST(connection_manager_test, proxy_connect_big_resp)
+TEST_F(connection_manager_fixture, proxy_connect_big_resp)
 {
 	http_context ctxt = http_context::build_default();
 	ctxt.big_resp = true;
@@ -1861,7 +1842,7 @@ TEST(connection_manager_test, proxy_connect_big_resp)
 	ASSERT_EQ(0, ctxt.bad_requests);
 }
 
-TEST(connection_manager_test, proxy_connect_auth)
+TEST_F(connection_manager_fixture, proxy_connect_auth)
 {
 	http_context::credentials creds {"sysdig", "password"};
 	http_context ctxt = http_context::build_default();
@@ -1889,7 +1870,7 @@ TEST(connection_manager_test, proxy_connect_auth)
 	ASSERT_EQ(0, ctxt.auth_mismatches);
 }
 
-TEST(connection_manager_test, proxy_auth_failure)
+TEST_F(connection_manager_fixture, proxy_auth_failure)
 {
 	http_context::credentials creds {"sysdig", "password"};
 	http_context ctxt = http_context::build_default();
@@ -1918,7 +1899,7 @@ TEST(connection_manager_test, proxy_auth_failure)
 	ASSERT_EQ(1, ctxt.auth_mismatches);
 }
 
-TEST(connection_manager_test, encode_auth)
+TEST_F(connection_manager_fixture, encode_auth)
 {
 	struct pw_entry
 	{

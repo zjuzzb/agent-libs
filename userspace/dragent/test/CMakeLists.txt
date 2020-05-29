@@ -10,6 +10,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-par
 include_directories(${PROJECT_SOURCE_DIR}/userspace)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/src)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
+include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/test_helpers)
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/librest/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/librest/test_helpers)
@@ -55,6 +56,7 @@ add_executable(
     process_helpers.ut.cpp
     protobuf_metric_serializer.ut.cpp
     protocol_handler.ut.cpp
+    running_state.ut.cpp
     sinsp_worker.ut.cpp
     spinlock.ut.cpp
     watchdog_runnable.ut.cpp

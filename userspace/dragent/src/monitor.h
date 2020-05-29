@@ -71,10 +71,6 @@ public:
 	{
 		m_cleanup_function = f;
 	}
-
-	static const uint8_t DONT_RESTART_EXIT_CODE = 17;
-	static const uint8_t CONFIG_UPDATE_EXIT_CODE = 18;
-	static const uint8_t DONT_SEND_LOG_REPORT_EXIT_CODE = 19;
 private:
 	std::function<void(void)> m_cleanup_function;
 	std::string m_pidfile;

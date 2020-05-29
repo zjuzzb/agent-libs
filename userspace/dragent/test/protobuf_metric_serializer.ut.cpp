@@ -5,16 +5,16 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
-#include "protobuf_metric_serializer.h"
+#include "analyzer_flush_message.h"
 #include "analyzer_utils.h"
 #include "capture_stats_source.h"
+#include "configuration.h"
+#include "dragent_message_queues.h"
+#include "metrics_file_emitter.h"
+#include "protobuf_metric_serializer.h"
+#include "scoped_config.h"
 #include "scoped_temp_directory.h"
 #include "uncompressed_sample_handler.h"
-#include "scoped_config.h"
-#include "analyzer_flush_message.h"
-#include "dragent_message_queues.h"
-#include "configuration.h"
-#include "metrics_file_emitter.h"
 
 #include <chrono>
 #include <memory>
@@ -229,8 +229,6 @@ TEST(protobuf_metric_serializer_test, serialize)
 	    std::make_shared<precanned_capture_stats_source>();
 	dummy_sample_handler analyzer_callback;
 
-	dragent_configuration::m_terminate = false;
-
 	const uint64_t TIMESTAMP = static_cast<uint64_t>(0x0000000000654321);
 	const uint32_t SAMPLING_RATIO = 1;
 	const uint64_t INITIAL_PREV_FLUSH_DURATION_NS = 13;
@@ -327,8 +325,6 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	    std::make_shared<precanned_capture_stats_source>();
 	const uint32_t sleep_time_ms = 3;
 	dummy_sample_handler analyzer_callback(sleep_time_ms);
-
-	dragent_configuration::m_terminate = false;
 
 	const uint64_t TIMESTAMP = static_cast<uint64_t>(0x0000000000654321);
 	const uint32_t SAMPLING_RATIO = 1;

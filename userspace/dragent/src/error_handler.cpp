@@ -3,6 +3,7 @@
 #include "error_handler.h"
 
 #include "common_logger.h"
+#include "running_state.h"
 #include "utils.h"
 
 volatile bool dragent_error_handler::m_exception = false;
@@ -24,8 +25,7 @@ dragent_error_handler::dragent_error_handler()
 void dragent_error_handler::exception(const Poco::Exception& exc)
 {
 	g_log->error(exc.displayText());
-	m_exception = true;
-	dragent_configuration::m_terminate = true;
+	dragent::running_state::instance().restart();
 }
 	
 void dragent_error_handler::exception(const std::exception& exc)
@@ -48,15 +48,13 @@ void dragent_error_handler::exception(const std::exception& exc)
 #endif
 	g_log->error(exc.what());
 
-	m_exception = true;
-	dragent_configuration::m_terminate = true;
+	dragent::running_state::instance().restart();
 }
 
 void dragent_error_handler::exception()
 {
 	g_log->error("Unknown exception");
-	m_exception = true;
-	dragent_configuration::m_terminate = true;
+	dragent::running_state::instance().restart();
 }
 
 log_reporter::log_reporter(log_report_handler& handler, dragent_configuration * configuration):

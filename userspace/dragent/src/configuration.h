@@ -130,9 +130,7 @@ public:
 	// Static so that the signal handler can reach it
 	static std::atomic<bool> m_signal_dump;
 	static std::atomic<bool> m_enable_trace;
-	static std::atomic<bool> m_terminate;
 	static std::atomic<bool> m_send_log_report;
-	static std::atomic<bool> m_config_update;
 
 	std::string m_raw_file_priority;
 	Message::Priority m_min_console_priority;

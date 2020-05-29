@@ -1,6 +1,7 @@
 #include "common_logger.h"
 #include "configuration.h"
 #include "json_error_log.h"
+#include "running_state.h"
 #include "uri.h"
 #include "windows_helpers.h"
 #include "zlib.h"
@@ -28,9 +29,7 @@ COMMON_LOGGER("dragent");
 
 std::atomic<bool> dragent_configuration::m_signal_dump(false);
 std::atomic<bool> dragent_configuration::m_enable_trace(false);
-std::atomic<bool> dragent_configuration::m_terminate(false);
 std::atomic<bool> dragent_configuration::m_send_log_report(false);
-std::atomic<bool> dragent_configuration::m_config_update(false);
 
 type_config<std::string> dragent_configuration::c_root_dir(
     "/",
@@ -210,8 +209,7 @@ public:
 	void apply(dragent_configuration& config)
 	{
 		LOG_INFO("New agent auto config file applied");
-		config.m_config_update = true;
-		config.m_terminate = true;
+		dragent::running_state::instance().restart_for_config_update();
 	}
 
 private:

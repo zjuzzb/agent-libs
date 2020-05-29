@@ -1,5 +1,5 @@
 #include "monitor.h"
-#include "configuration.h"
+#include "exit_code.h"
 #include "Poco/Exception.h"
 
 #include <sys/types.h>
@@ -120,7 +120,7 @@ int monitor::run()
 			{
 				if(process.is_main() && WIFEXITED(status))
 				{
-					if(WEXITSTATUS(status) == 0)
+					if(WEXITSTATUS(status) == dragent::exit_code::SHUT_DOWN)
 					{
 						//
 						// Process terminated cleanly
@@ -128,7 +128,7 @@ int monitor::run()
 						delete_pid_file(m_pidfile);
 						exit(EXIT_SUCCESS);
 					}
-					else if(WEXITSTATUS(status) == CONFIG_UPDATE_EXIT_CODE)
+					else if(WEXITSTATUS(status) == dragent::exit_code::CONFIG_UPDATE)
 					{
 						for(const auto& process : m_processes)
 						{
@@ -168,7 +168,7 @@ int monitor::run()
 
 				if(!process.is_main())
 				{
-					if(WIFEXITED(status) && WEXITSTATUS(status) == DONT_RESTART_EXIT_CODE)
+					if(WIFEXITED(status) && WEXITSTATUS(status) == dragent::exit_code::DONT_RESTART)
 					{
 						// errorcode=17 tells monitor to not retry
 						// when a process fails (does not regard
@@ -177,8 +177,7 @@ int monitor::run()
 						continue;
 					}
 
-					if(!WIFEXITED(status) || (WEXITSTATUS(status) != 
-											  DONT_SEND_LOG_REPORT_EXIT_CODE))
+					if(!WIFEXITED(status) || (WEXITSTATUS(status) != dragent::exit_code::DONT_SEND_LOG_REPORT))
 					{
 						// Notify main process to send log report
 						for(const auto& process : m_processes)
@@ -192,7 +191,8 @@ int monitor::run()
 					}
 				}
 
-				// crashed, restart it
+				// If we reached here, the process crashed or it was purposefully killed 
+				// or it has exited with exit_code::RESTART
 				this_thread::sleep_for(chrono::seconds(1));
 
 				auto child_pid = fork();
