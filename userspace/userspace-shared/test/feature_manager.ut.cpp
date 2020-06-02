@@ -1871,7 +1871,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.memdump_enabled());
 		EXPECT_FALSE(proto.secure_audit_enabled());
 		EXPECT_TRUE(proto.full_syscalls_enabled());
-		EXPECT_FALSE(proto.network_breakdown_enabled());
+		EXPECT_TRUE(proto.network_breakdown_enabled());
 		EXPECT_FALSE(proto.file_breakdown_enabled());
 		EXPECT_TRUE(proto.protocol_stats_enabled());
 	}

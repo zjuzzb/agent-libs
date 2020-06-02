@@ -19,7 +19,7 @@ const feature_manager::agent_mode_container feature_manager::mode_definitions[] 
     {feature_manager::AGENT_MODE_NONE, "none", {}},
     {feature_manager::AGENT_MODE_MONITOR,
      "monitor",
-     {STATSD, JMX, APP_CHECKS, COINTERFACE, DRIVER, FULL_SYSCALLS, PROTOCOL_STATS}},
+     {STATSD, JMX, APP_CHECKS, COINTERFACE, DRIVER, FULL_SYSCALLS, PROTOCOL_STATS, NETWORK_BREAKDOWN}},
     {feature_manager::AGENT_MODE_MONITOR_LIGHT, "monitor_light", {}},
     {feature_manager::AGENT_MODE_ESSENTIALS,
      "essentials",
