@@ -81,7 +81,15 @@ func newNodeCongroup(node *v1.Node) (*draiosproto.ContainerGroup) {
 	}
 
 	for _, nodeAddress := range node.Status.Addresses {
-		ret.IpAddresses = append(ret.IpAddresses, nodeAddress.Address)
+		found := false
+		for _, addr := range ret.IpAddresses {
+			if nodeAddress.Address == addr {
+				found = true
+			}
+		}
+		if !found {
+			ret.IpAddresses = append(ret.IpAddresses, nodeAddress.Address)
+		}
 	}
 
 	ret.Tags = GetTags(node.ObjectMeta, "kubernetes.node.")
