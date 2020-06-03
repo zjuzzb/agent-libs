@@ -1,5 +1,6 @@
-#include "analyzer.h"
 #include "analyzer_fd.h"
+
+#include "analyzer.h"
 #include "analyzer_int.h"
 #include "analyzer_thread.h"
 #include "baseliner.h"

@@ -2,10 +2,10 @@
 
 #include "sinsp_public.h"  // for SINSP_PUBLIC
 
-#include <vector>
+#include <memory.h>
 #include <stack>
 #include <stdexcept>
-#include <memory.h>
+#include <vector>
 
 #ifdef CYGWING_AGENT
 #define SINSP_PUBLIC

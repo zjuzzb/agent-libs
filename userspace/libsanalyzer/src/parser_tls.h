@@ -3,17 +3,18 @@
 //
 
 #pragma once
+#include "protostate.h"
 
-class sinsp_tls_parser: public sinsp_protocol_parser
+class sinsp_tls_parser : public sinsp_protocol_parser
 {
 public:
 	explicit sinsp_tls_parser() = default;
 	virtual ~sinsp_tls_parser() = default;
 	virtual sinsp_protocol_parser::msg_type should_parse(sinsp_fdinfo_t* fdinfo,
-							     sinsp_partial_transaction::direction dir,
-							     bool is_switched,
-							     const char* buf,
-							     uint32_t buflen) override;
+	                                                     sinsp_partial_transaction::direction dir,
+	                                                     bool is_switched,
+	                                                     const char* buf,
+	                                                     uint32_t buflen) override;
 
 	virtual bool parse_request(const char* buf, uint32_t buflen) override;
 

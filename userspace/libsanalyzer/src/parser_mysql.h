@@ -1,11 +1,13 @@
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-// Protocol specs can be found at 
+// Protocol specs can be found at
 // http://dev.mysql.com/doc/internals/en/client-server-protocol.html
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include "feature_manager.h"
+#include "protocol_manager.h"
 #include "sqlparser.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -28,24 +30,44 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Capabilities
 ///////////////////////////////////////////////////////////////////////////////
-#define CAP_LONG_PASSWORD    1       // new more secure passwords
-#define CAP_FOUND_ROWS       2       // Found instead of affected rows
-#define CAP_LONG_FLAG        4       // Get all column flags
-#define CAP_CONNECT_WITH_DB  8       // One can specify db on connect
-#define CAP_NO_SCHEMA        16      // Don't allow database.table.column
-#define CAP_COMPRESS         32      // Can use compression protocol
-#define CAP_ODBC             64      // Odbc client
-#define CAP_LOCAL_FILES      128     // Can use LOAD DATA LOCAL
-#define CAP_IGNORE_SPACE     256     // Ignore spaces before '('
-#define CAP_PROTOCOL_41      512     // New 4.1 protocol
-#define CAP_INTERACTIVE      1024    // This is an interactive client
-#define CAP_SSL              2048    // Switch to SSL after handshake
-#define CAP_IGNORE_SIGPIPE   4096    // IGNORE sigpipes
-#define CAP_TRANSACTIONS     8192    // Client knows about transactions
-#define CAP_RESERVED         16384   // Old flag for 4.1 protocol 
+// clang-format off
+#define CAP_LONG_PASSWORD     1      // new more secure passwords
+#define CAP_FOUND_ROWS        2      // Found instead of affected rows
+#define CAP_LONG_FLAG         4      // Get all column flags
+#define CAP_CONNECT_WITH_DB   8      // One can specify db on connect
+#define CAP_NO_SCHEMA         16     // Don't allow database.table.column
+#define CAP_COMPRESS          32     // Can use compression protocol
+#define CAP_ODBC              64     // Odbc client
+#define CAP_LOCAL_FILES       128    // Can use LOAD DATA LOCAL
+#define CAP_IGNORE_SPACE      256    // Ignore spaces before '('
+#define CAP_PROTOCOL_41       512    // New 4.1 protocol
+#define CAP_INTERACTIVE       1024   // This is an interactive client
+#define CAP_SSL               2048   // Switch to SSL after handshake
+#define CAP_IGNORE_SIGPIPE    4096   // IGNORE sigpipes
+#define CAP_TRANSACTIONS      8192   // Client knows about transactions
+#define CAP_RESERVED          16384  // Old flag for 4.1 protocol
 #define CAP_SECURE_CONNECTION 32768  // New 4.1 authentication
-#define CAP_MULTI_STATEMENTS 65536   // Enable/disable multi-stmt support
-#define CAP_MULTI_RESULTS    131072  // Enable/disable multi-results
+#define CAP_MULTI_STATEMENTS  65536  // Enable/disable multi-stmt support
+#define CAP_MULTI_RESULTS     131072 // Enable/disable multi-results
+// clang-format on
+
+class protocol_mysql : public protocol_base, public feature_base
+{
+private:
+	static protocol_mysql* s_protocol_mysql;
+
+public:
+	protocol_mysql();
+
+	static protocol_mysql& instance();
+
+	bool is_protocol(sinsp_evt* evt,
+	                 sinsp_partial_transaction* trinfo,
+	                 sinsp_partial_transaction::direction trdir,
+	                 const uint8_t* buf,
+	                 uint32_t buflen,
+	                 uint16_t serverport) const override;
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 // MYSQL parser
@@ -62,11 +84,11 @@ public:
 	};
 
 	sinsp_mysql_parser();
-	sinsp_protocol_parser::msg_type should_parse(sinsp_fdinfo_t* fdinfo, 
-						     sinsp_partial_transaction::direction dir,
-						     bool is_switched,
-						     const char* buf,
-						     uint32_t buflen);
+	sinsp_protocol_parser::msg_type should_parse(sinsp_fdinfo_t* fdinfo,
+	                                             sinsp_partial_transaction::direction dir,
+	                                             bool is_switched,
+	                                             const char* buf,
+	                                             uint32_t buflen);
 	bool parse_request(const char* buf, uint32_t buflen);
 	bool parse_response(const char* buf, uint32_t buflen);
 	proto get_type();

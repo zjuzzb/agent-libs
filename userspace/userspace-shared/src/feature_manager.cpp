@@ -19,7 +19,7 @@ const feature_manager::agent_mode_container feature_manager::mode_definitions[] 
     {feature_manager::AGENT_MODE_NONE, "none", {}},
     {feature_manager::AGENT_MODE_MONITOR,
      "monitor",
-     {STATSD, JMX, APP_CHECKS, COINTERFACE, DRIVER, FULL_SYSCALLS, PROTOCOL_STATS, NETWORK_BREAKDOWN}},
+     {STATSD, JMX, APP_CHECKS, COINTERFACE, DRIVER, FULL_SYSCALLS, PROTOCOL_STATS, HTTP_STATS, NETWORK_BREAKDOWN}},
     {feature_manager::AGENT_MODE_MONITOR_LIGHT, "monitor_light", {}},
     {feature_manager::AGENT_MODE_ESSENTIALS,
      "essentials",
@@ -34,7 +34,11 @@ const feature_manager::agent_mode_container feature_manager::mode_definitions[] 
       FULL_SYSCALLS,
       PROTOCOL_STATS,
       NETWORK_BREAKDOWN,
-      FILE_BREAKDOWN}}};
+      FILE_BREAKDOWN,
+      HTTP_STATS,
+      MYSQL_STATS,
+      POSTGRES_STATS,
+      MONGODB_STATS}}};
 
 static_assert(feature_manager::agent_mode::AGENT_MODE_COUNT ==
                   sizeof(feature_manager::mode_definitions) /
@@ -101,7 +105,23 @@ const feature_manager::agent_feature_container feature_manager::feature_configs[
 	{PROTOCOL_STATS,       "protocol stats",       feature_config(true,
                                                                   "enable collection of protocol stats",
                                                                   "feature",
-                                                                  "protocol_stats")}
+                                                                  "protocol_stats")},
+	{HTTP_STATS,           "http stats",           feature_config(true,
+                                                                  "enable collection of http stats",
+                                                                  "feature",
+                                                                  "http_stats")},
+	{MYSQL_STATS,          "mysql stats",          feature_config(true,
+                                                                  "enable collection of mysql stats",
+                                                                  "feature",
+                                                                  "mysql_stats")},
+	{POSTGRES_STATS,        "postgres stats",      feature_config(true,
+                                                                  "enable collection of postgres stats",
+                                                                  "feature",
+                                                                  "postgres_stats")},
+	{MONGODB_STATS,          "mongodb stats",      feature_config(true,
+                                                                  "enable collection of mongodb stats",
+                                                                  "feature",
+                                                                  "mongodb_stats")}
 };
 // clang-format on
 

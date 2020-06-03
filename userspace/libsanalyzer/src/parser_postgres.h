@@ -1,12 +1,32 @@
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-// Protocol specs can be found at 
+// Protocol specs can be found at
 // http://dev.postgres.com/doc/internals/en/client-server-protocol.html
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include "feature_manager.h"
+#include "protocol_manager.h"
 #include "sqlparser.h"
+
+class protocol_postgres : public protocol_base, public feature_base
+{
+private:
+    static protocol_postgres* s_protocol_postgres;
+
+public:
+    protocol_postgres();
+
+    static protocol_postgres& instance();
+
+    bool is_protocol(sinsp_evt* evt,
+                     sinsp_partial_transaction* trinfo,
+                     sinsp_partial_transaction::direction trdir,
+                     const uint8_t* buf,
+                     uint32_t buflen,
+                     uint16_t serverport) const override;
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 // POSTGRES parser
@@ -23,11 +43,11 @@ public:
 	};
 
 	sinsp_postgres_parser();
-	sinsp_protocol_parser::msg_type should_parse(sinsp_fdinfo_t* fdinfo, 
-						     sinsp_partial_transaction::direction dir,
-						     bool is_switched,
-						     const char* buf,
-						     uint32_t buflen);
+	sinsp_protocol_parser::msg_type should_parse(sinsp_fdinfo_t* fdinfo,
+	                                             sinsp_partial_transaction::direction dir,
+	                                             bool is_switched,
+	                                             const char* buf,
+	                                             uint32_t buflen);
 	bool parse_request(const char* buf, uint32_t buflen);
 	bool parse_response(const char* buf, uint32_t buflen);
 	proto get_type();

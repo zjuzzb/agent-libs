@@ -1,9 +1,62 @@
-#include "sinsp.h"
-#include "sinsp_int.h"
 #include "analyzer_int.h"
 #include "parser_http.h"
+#include "sinsp.h"
+#include "sinsp_int.h"
 
 #define PARSE_REQUEST_N_TO_EXTRACT 2
+
+namespace
+{
+uint32_t s_http_options_intval = (*(uint32_t*)HTTP_OPTIONS_STR);
+uint32_t s_http_get_intval = (*(uint32_t*)HTTP_GET_STR);
+uint32_t s_http_head_intval = (*(uint32_t*)HTTP_HEAD_STR);
+uint32_t s_http_post_intval = (*(uint32_t*)HTTP_POST_STR);
+uint32_t s_http_put_intval = (*(uint32_t*)HTTP_PUT_STR);
+uint32_t s_http_delete_intval = (*(uint32_t*)HTTP_DELETE_STR);
+uint32_t s_http_trace_intval = (*(uint32_t*)HTTP_TRACE_STR);
+uint32_t s_http_connect_intval = (*(uint32_t*)HTTP_CONNECT_STR);
+uint32_t s_http_resp_intval = (*(uint32_t*)HTTP_RESP_STR);
+
+}  // namespace
+
+protocol_http* protocol_http::s_protocol_http = new protocol_http();
+
+protocol_http& protocol_http::instance()
+{
+	return *protocol_http::s_protocol_http;
+}
+
+protocol_http::protocol_http()
+    : protocol_base(),
+      feature_base(HTTP_STATS,
+                   &draiosproto::feature_status::set_http_stats_enabled,
+                   {PROTOCOL_STATS})
+{
+}
+
+bool protocol_http::is_protocol(sinsp_evt* evt,
+                                sinsp_partial_transaction* trinfo,
+                                sinsp_partial_transaction::direction trdir,
+                                const uint8_t* buf,
+                                uint32_t buflen,
+                                uint16_t serverport) const
+{
+	if (!get_enabled())
+	{
+		return false;
+	}
+
+	if (*(uint32_t*)buf == s_http_get_intval || *(uint32_t*)buf == s_http_post_intval ||
+	    *(uint32_t*)buf == s_http_put_intval || *(uint32_t*)buf == s_http_delete_intval ||
+	    *(uint32_t*)buf == s_http_trace_intval || *(uint32_t*)buf == s_http_connect_intval ||
+	    *(uint32_t*)buf == s_http_options_intval ||
+	    (*(uint32_t*)buf == s_http_resp_intval && buf[4] == '/'))
+	{
+		return true;
+	}
+
+	return false;
+}
 
 sinsp_protocol_parser::sinsp_protocol_parser()
 {
@@ -11,9 +64,7 @@ sinsp_protocol_parser::sinsp_protocol_parser()
 	m_is_req_valid = false;
 }
 
-sinsp_protocol_parser::~sinsp_protocol_parser()
-{
-}
+sinsp_protocol_parser::~sinsp_protocol_parser() {}
 
 sinsp_http_parser::sinsp_http_parser()
 {
@@ -26,12 +77,12 @@ sinsp_http_parser::sinsp_http_parser()
 
 sinsp_http_parser::~sinsp_http_parser()
 {
-	if(m_req_storage != m_req_initial_storage)
+	if (m_req_storage != m_req_initial_storage)
 	{
 		free(m_req_storage);
 	}
 
-	if(m_resp_storage != m_resp_initial_storage)
+	if (m_resp_storage != m_resp_initial_storage)
 	{
 		free(m_resp_storage);
 	}
@@ -42,36 +93,36 @@ sinsp_http_parser::proto sinsp_http_parser::get_type()
 	return sinsp_protocol_parser::PROTO_HTTP;
 }
 
-inline const char* sinsp_http_parser::check_and_extract(const char *buf,
-							uint32_t buflen,
-							char *tosearch,
-							uint32_t tosearchlen,
-							OUT uint32_t *reslen)
+inline const char* sinsp_http_parser::check_and_extract(const char* buf,
+                                                        uint32_t buflen,
+                                                        char* tosearch,
+                                                        uint32_t tosearchlen,
+                                                        OUT uint32_t* reslen)
 {
 	uint32_t k;
 
-	if(buflen > tosearchlen)
+	if (buflen > tosearchlen)
 	{
 		ASSERT(tosearchlen >= 2);
 
 		//
 		// Note: '| 0x20' converts to lowercase
 		//
-		if((buf[0] | 0x20) == tosearch[0] && (buf[1] | 0x20) == tosearch[1])
+		if ((buf[0] | 0x20) == tosearch[0] && (buf[1] | 0x20) == tosearch[1])
 		{
-			if(sinsp_strcmpi(buf, tosearch, tosearchlen - 1))
+			if (sinsp_strcmpi(buf, tosearch, tosearchlen - 1))
 			{
 				uint32_t uastart = tosearchlen;
 
 				// Skip initial white spaces after "tosearch" token
-				for(k=uastart; k < buflen && buf[k] == ' '; ++k)
+				for (k = uastart; k < buflen && buf[k] == ' '; ++k)
 				{
 					++uastart;
 				}
 
-				for(k = uastart; k < buflen; k++)
+				for (k = uastart; k < buflen; k++)
 				{
-					if(buf[k] == '\r' || buf[k] == '\n')
+					if (buf[k] == '\r' || buf[k] == '\n')
 					{
 						*reslen = k - uastart;
 						return buf + uastart;
@@ -86,9 +137,9 @@ inline const char* sinsp_http_parser::check_and_extract(const char *buf,
 
 inline void sinsp_http_parser::extend_req_buffer_len(uint32_t len)
 {
-	if(m_req_storage_pos + len >= m_req_storage_size)
+	if (m_req_storage_pos + len >= m_req_storage_size)
 	{
-		if(m_req_storage == m_req_initial_storage)
+		if (m_req_storage == m_req_initial_storage)
 		{
 			m_req_storage = NULL;
 		}
@@ -96,14 +147,15 @@ inline void sinsp_http_parser::extend_req_buffer_len(uint32_t len)
 		m_req_storage_size = m_req_storage_pos + len + 16;
 
 		m_req_storage = (char*)realloc(m_req_storage, m_req_storage_size);
-		if(m_req_storage == NULL)
+		if (m_req_storage == NULL)
 		{
-			throw sinsp_exception("memory allocation error in sinsp_http_parser::extend_req_buffer_len");
+			throw sinsp_exception(
+			    "memory allocation error in sinsp_http_parser::extend_req_buffer_len");
 		}
 	}
 }
 
-inline void sinsp_http_parser::req_assign(const char** dest, const char *src, uint32_t len)
+inline void sinsp_http_parser::req_assign(const char** dest, const char* src, uint32_t len)
 {
 	extend_req_buffer_len(len + 1);
 	memcpy(m_req_storage + m_req_storage_pos, src, len);
@@ -114,7 +166,10 @@ inline void sinsp_http_parser::req_assign(const char** dest, const char *src, ui
 
 //
 // Builds the URL string and prepends the method character to it
-inline void sinsp_http_parser::req_build_url(const char** dest, const char* url, uint32_t url_len, char method)
+inline void sinsp_http_parser::req_build_url(const char** dest,
+                                             const char* url,
+                                             uint32_t url_len,
+                                             char method)
 {
 	extend_req_buffer_len(url_len + 2);
 	m_req_storage[m_req_storage_pos] = method;
@@ -126,9 +181,9 @@ inline void sinsp_http_parser::req_build_url(const char** dest, const char* url,
 
 inline void sinsp_http_parser::extend_resp_buffer_len(uint32_t len)
 {
-	if(m_resp_storage_pos + len >= m_resp_storage_size)
+	if (m_resp_storage_pos + len >= m_resp_storage_size)
 	{
-		if(m_resp_storage == m_resp_initial_storage)
+		if (m_resp_storage == m_resp_initial_storage)
 		{
 			m_resp_storage = NULL;
 		}
@@ -136,14 +191,15 @@ inline void sinsp_http_parser::extend_resp_buffer_len(uint32_t len)
 		m_resp_storage_size = m_resp_storage_pos + len + 16;
 
 		m_resp_storage = (char*)realloc(m_resp_storage, m_resp_storage_size);
-		if(m_resp_storage == NULL)
+		if (m_resp_storage == NULL)
 		{
-			throw sinsp_exception("memory allocation error in sinsp_http_parser::extend_resp_buffer_len");
+			throw sinsp_exception(
+			    "memory allocation error in sinsp_http_parser::extend_resp_buffer_len");
 		}
 	}
 }
 
-inline void sinsp_http_parser::resp_assign(const char** dest, const char *src, uint32_t len)
+inline void sinsp_http_parser::resp_assign(const char** dest, const char* src, uint32_t len)
 {
 	extend_resp_buffer_len(len + 1);
 	memcpy(m_resp_storage + m_resp_storage_pos, src, len);
@@ -155,13 +211,13 @@ inline void sinsp_http_parser::resp_assign(const char** dest, const char *src, u
 bool sinsp_http_parser::parse_request(const char* buf, uint32_t buflen)
 {
 	uint32_t j;
-	const char *str = nullptr;
+	const char* str = nullptr;
 	uint32_t strlen;
 	uint32_t n_extracted = 0;
 	m_req_storage_pos = 0;
-	const char *host = nullptr;
+	const char* host = nullptr;
 	uint32_t hostlen = 0;
-	const char *path = nullptr;
+	const char* path = nullptr;
 	uint32_t pathlen = 0;
 	m_is_valid = false;
 	m_is_req_valid = false;
@@ -169,21 +225,21 @@ bool sinsp_http_parser::parse_request(const char* buf, uint32_t buflen)
 	bool agentvalid = false;
 	bool absoluteURI = false;
 
-	for(j = 0; j < buflen; j++)
+	for (j = 0; j < buflen; j++)
 	{
 		// end of string
-		if(buf[j] == 0)
+		if (buf[j] == 0)
 		{
 			break;
 		}
-		
-		if(!m_is_req_valid)
+
+		if (!m_is_req_valid)
 		{
 			// Search for the first two of these delimiters.
 			// The string between them is the path.
-			if(buf[j] == ' ' || buf[j] == '?' || buf[j] == ';')
+			if (buf[j] == ' ' || buf[j] == '?' || buf[j] == ';')
 			{
-				if(path == NULL)
+				if (path == NULL)
 				{
 					path = buf + j + 1;
 				}
@@ -199,8 +255,7 @@ bool sinsp_http_parser::parse_request(const char* buf, uint32_t buflen)
 		{
 			// After we decide that the string is a valid
 			// http request, we can pull out useragent and host
-			if((!agentvalid) &&
-				buf[j - 1] == '\n' &&
+			if ((!agentvalid) && buf[j - 1] == '\n' &&
 			    ((str = check_and_extract(buf + j,
 			                              buflen - j,
 			                              (char*)"user-agent:",
@@ -210,31 +265,30 @@ bool sinsp_http_parser::parse_request(const char* buf, uint32_t buflen)
 				agentvalid = true;
 				req_assign(&m_result.agent, str, strlen);
 				n_extracted++;
-				if(n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
+				if (n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
 				{
 					break;
 				}
 
 				continue;
 			}
-			else if((!hostvalid) &&
-			        buf[j - 1] == '\n' &&
-			        ((str = check_and_extract(buf + j,
-			                                  buflen - j,
-			                                  (char*)"host:",
-			                                  sizeof("host:") - 1,
-			                                  &strlen)) != NULL))
+			else if ((!hostvalid) && buf[j - 1] == '\n' &&
+			         ((str = check_and_extract(buf + j,
+			                                   buflen - j,
+			                                   (char*)"host:",
+			                                   sizeof("host:") - 1,
+			                                   &strlen)) != NULL))
 			{
 				// We ignore the host header if the URI is absolute in
 				// obedience to RFC 2616 (section 5.2)
-				if(!absoluteURI)
+				if (!absoluteURI)
 				{
 					hostvalid = true;
 				}
 				host = str;
 				hostlen = strlen;
 				n_extracted++;
-				if(n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
+				if (n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
 				{
 					break;
 				}
@@ -244,11 +298,11 @@ bool sinsp_http_parser::parse_request(const char* buf, uint32_t buflen)
 		}
 	}
 
-	if(m_is_req_valid)
+	if (m_is_req_valid)
 	{
 		m_req_storage[m_req_storage_pos++] = (char)m_result.method;
 
-		if(host && hostvalid)
+		if (host && hostvalid)
 		{
 			// If we found a host string then use it as the start
 			// of the url and append the path to it.
@@ -271,12 +325,12 @@ bool sinsp_http_parser::parse_request(const char* buf, uint32_t buflen)
 
 			// If we have been given an absolute URI, we can parse the
 			// host and path components ourselves
-			if(absoluteURI)
+			if (absoluteURI)
 			{
-				if(decompose_URI(m_result.url, pathlen, &host, hostlen, &path, pathlen))
+				if (decompose_URI(m_result.url, pathlen, &host, hostlen, &path, pathlen))
 				{
 					req_build_url(&m_result.url, host, hostlen + pathlen, m_result.url[0]);
-					if(pathlen > 0)
+					if (pathlen > 0)
 					{
 						req_assign(&m_result.path, path, pathlen);
 					}
@@ -295,38 +349,39 @@ bool sinsp_http_parser::parse_request(const char* buf, uint32_t buflen)
 bool sinsp_http_parser::parse_response(const char* buf, uint32_t buflen)
 {
 	uint32_t j;
-	const char *status_code = nullptr;
+	const char* status_code = nullptr;
 	uint32_t status_code_len;
 	uint32_t n_spaces = 0;
-	const char *str = nullptr;
+	const char* str = nullptr;
 	uint32_t strlen;
 	m_resp_storage_pos = 0;
 
-	for(j = 0; j < buflen; j++)
+	for (j = 0; j < buflen; j++)
 	{
-		if(buf[j] == 0)
+		if (buf[j] == 0)
 		{
 			return m_is_valid;
 		}
 
-		if(buf[j] == ' ')
+		if (buf[j] == ' ')
 		{
 			n_spaces++;
 
-			if(n_spaces == 1)
+			if (n_spaces == 1)
 			{
 				// The text after the first space is the start
 				// of the numerical status code
 				status_code = buf + j + 1;
 			}
-			else if(!m_is_valid)
+			else if (!m_is_valid)
 			{
 				// Now we've reached the second space so this
 				// is the end of the status code
 				status_code_len = (uint32_t)(buf + j - status_code);
-				
-				if(!sinsp_numparser::tryparsed32_fast(status_code, 
-					status_code_len, &m_result.status_code))
+
+				if (!sinsp_numparser::tryparsed32_fast(status_code,
+				                                       status_code_len,
+				                                       &m_result.status_code))
 				{
 					return false;
 				}
@@ -335,34 +390,35 @@ bool sinsp_http_parser::parse_response(const char* buf, uint32_t buflen)
 			}
 		}
 
-		if(m_is_valid)
+		if (m_is_valid)
 		{
-			if((str = check_and_extract(buf + j, 
-				buflen - j,
-				(char*)"content-type:",
-				sizeof("content-type:")-1,
-				&strlen)) != NULL)
+			if ((str = check_and_extract(buf + j,
+			                             buflen - j,
+			                             (char*)"content-type:",
+			                             sizeof("content-type:") - 1,
+			                             &strlen)) != NULL)
 			{
 				resp_assign(&m_result.content_type, str, strlen);
 				return true;
-			}			
+			}
 		}
 	}
 
 	return m_is_valid;
 }
 
-sinsp_protocol_parser::msg_type sinsp_http_parser::should_parse(sinsp_fdinfo_t* fdinfo, 
-								sinsp_partial_transaction::direction dir,
-								bool is_switched,
-								const char *buf,
-								uint32_t buflen)
+sinsp_protocol_parser::msg_type sinsp_http_parser::should_parse(
+    sinsp_fdinfo_t* fdinfo,
+    sinsp_partial_transaction::direction dir,
+    bool is_switched,
+    const char* buf,
+    uint32_t buflen)
 {
 	// We want to quickly throw away anything that doesn't match our scheme
 	// so we cast the buffer to an integer and process it numerically.
-	const uint64_t MSG_STR_RESP = 0x002E002F50545448; // "HTTP/X.X"
+	const uint64_t MSG_STR_RESP = 0x002E002F50545448;  // "HTTP/X.X"
 	const uint64_t MSG_STR_RESP_MASK = 0x00FF00FFFFFFFFFF;
-	const uint32_t MSG_STR_OPTIONS =  0x4954504f;
+	const uint32_t MSG_STR_OPTIONS = 0x4954504f;
 	const uint32_t MSG_STR_GET = 0x20544547;
 	const uint32_t MSG_STR_HEAD = 0x44414548;
 	const uint32_t MSG_STR_POST = 0x54534f50;
@@ -374,12 +430,12 @@ sinsp_protocol_parser::msg_type sinsp_http_parser::should_parse(sinsp_fdinfo_t* 
 	// Going back to at least HTTP 1.0, a Full-Response will always
 	// start with a "Status-Line" which begins with "HTTP/".
 	// https://www.w3.org/Protocols/HTTP/1.0/spec.html#Response
-	if((*reinterpret_cast<const uint64_t *>(buf) & MSG_STR_RESP_MASK) == MSG_STR_RESP)
+	if ((*reinterpret_cast<const uint64_t*>(buf) & MSG_STR_RESP_MASK) == MSG_STR_RESP)
 	{
 		return sinsp_protocol_parser::MSG_RESPONSE;
 	}
 
-	switch(*reinterpret_cast<const uint32_t *>(buf))
+	switch (*reinterpret_cast<const uint32_t*>(buf))
 	{
 	case MSG_STR_GET:
 		m_result.method = http_method::GET;
@@ -422,15 +478,15 @@ bool sinsp_http_parser::is_absoluteURI(const char* URI, uint32_t len)
 	// heuristic is to look for the :// sequence.
 	// We also only scan the first 16 characters as a heuristic performance
 	// improvement.
-	if(len > 16)
+	if (len > 16)
 	{
 		len = 16;
 	}
-	for(uint32_t i = 0; i < len; ++i)
+	for (uint32_t i = 0; i < len; ++i)
 	{
-		if(URI[i] == ':')
+		if (URI[i] == ':')
 		{
-			if(URI[i + 1] == '/' && URI[i + 2] == '/')
+			if (URI[i + 1] == '/' && URI[i + 2] == '/')
 			{
 				return true;
 			}
@@ -459,15 +515,15 @@ inline bool sinsp_http_parser::decompose_URI(const char* URI,
 	*host_out = nullptr;
 	*path_out = nullptr;
 
-	for(uint32_t i = 0; i <= URI_len; ++i)
+	for (uint32_t i = 0; i <= URI_len; ++i)
 	{
-		switch(state)
+		switch (state)
 		{
 		case START:
 			// Parse until we find :// and then start parsing the host
-			if(URI[i] == ':')
+			if (URI[i] == ':')
 			{
-				if(i < URI_len + 2 && URI[i + 1] == '/' && URI[i + 2] == '/')
+				if (i < URI_len + 2 && URI[i + 1] == '/' && URI[i + 2] == '/')
 				{
 					i += 3;
 					state = HOST;
@@ -479,7 +535,7 @@ inline bool sinsp_http_parser::decompose_URI(const char* URI,
 
 		case HOST:
 			// Parse until we find / and then start parsing the path
-			if(URI[i] == '/')
+			if (URI[i] == '/')
 			{
 				state = PATH;
 				path_len = 1;
@@ -493,7 +549,7 @@ inline bool sinsp_http_parser::decompose_URI(const char* URI,
 
 		case PATH:
 			// Parse until we find a path delimiter
-			if(URI[i] == ' ' || URI[i] == '?' || URI[i] == ';')
+			if (URI[i] == ' ' || URI[i] == '?' || URI[i] == ';')
 			{
 				state = END;
 				i = URI_len;
@@ -510,17 +566,17 @@ inline bool sinsp_http_parser::decompose_URI(const char* URI,
 		}
 	}
 
-	if(host_len == 0 && path_len == 0)
+	if (host_len == 0 && path_len == 0)
 	{
 		// If we haven't found a host, we're not an absoluteURI and parsing failed
 		return false;
 	}
-	if(*host_out == nullptr && *path_out == nullptr)
+	if (*host_out == nullptr && *path_out == nullptr)
 	{
 		// If we couldn't parse out a host and path, parsing failed
 		return false;
 	}
-	if((host_len > 0 && *host_out == nullptr) || (path_len > 0 && *path_out == nullptr))
+	if ((host_len > 0 && *host_out == nullptr) || (path_len > 0 && *path_out == nullptr))
 	{
 		ASSERT(false);
 		// We should never get here, but if we do we don't want to blow up
