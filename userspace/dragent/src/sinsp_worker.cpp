@@ -524,6 +524,7 @@ void sinsp_worker::run()
 	auto &state = running_state::instance();
 	if (m_configuration->m_config_test)
 	{
+		LOG_INFO("Config Test complete.");
 		state.shut_down();
 		m_analyzer->dump_config_test();
 	}
@@ -541,6 +542,7 @@ void sinsp_worker::run()
 
 		if(m_configuration->m_evtcnt != 0 && nevts == m_configuration->m_evtcnt)
 		{
+			LOG_INFO("All events have been processed.");
 			state.shut_down();
 			break;
 		}

@@ -2022,8 +2022,6 @@ void connection_manager::set_legacy_mode()
 
 void connection_manager::handle_collector_error(draiosproto::error_message& msg)
 {
-	bool term = false;
-
 	// Weed out bogus messages
 	if(!msg.has_type())
 	{
@@ -2034,8 +2032,8 @@ void connection_manager::handle_collector_error(draiosproto::error_message& msg)
 
 	if(!draiosproto::error_type_IsValid(err_type))
 	{
-		LOG_ERROR("Protocol error: received invalid error type: " +
-		          std::to_string(err_type));
+		LOG_ERROR("Protocol error: received invalid error type: %s",
+		          std::to_string(err_type).c_str());
 		return;
 	}
 
@@ -2051,7 +2049,12 @@ void connection_manager::handle_collector_error(draiosproto::error_message& msg)
 
 	if(err_type == draiosproto::error_type::ERR_PROTO_MISMATCH)
 	{
-		term = true;
+		LOG_ERROR("Received a PROTO_MISMATCH error from the backend. This is "
+			  "unexpected behavior and the agent will restart to get back "
+			  "into a stable state. Contact Sysdig Support for additional "
+			  "help.");
+		dragent::running_state::instance().restart();
+		return;
 	}
 
 	if(err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY)
@@ -2062,11 +2065,5 @@ void connection_manager::handle_collector_error(draiosproto::error_message& msg)
 		// will just pound away trying to connect to the collector.
 		// Make the agent backoff in this case.
 		disconnect_and_backoff();
-	}
-
-	if(term)
-	{
-		LOG_ERROR("Terminating agent due to collector message.");
-		dragent::running_state::instance().shut_down();
 	}
 }

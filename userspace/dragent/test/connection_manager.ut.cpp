@@ -9,6 +9,7 @@ using namespace std;
 #include <ctime>
 
 #include "configuration.h"
+#include "exit_code.h"
 #include "sinsp_mock.h"
 #include "watchdog_runnable.h"
 #include "connection_manager.h"
@@ -1232,6 +1233,7 @@ TEST_F(connection_manager_fixture, test_error_message_handler)
 	ASSERT_EQ(1, fc.get_num_disconnects());
 	ASSERT_FALSE(cm.is_connected());
 	ASSERT_TRUE(running_state::instance().is_terminated());
+	ASSERT_EQ(running_state::instance().exit_code(), dragent::exit_code::RESTART);
 
 	// Shut down all the things
 	fc.stop();
