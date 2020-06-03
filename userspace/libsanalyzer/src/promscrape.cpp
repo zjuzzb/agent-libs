@@ -12,6 +12,11 @@
 COMMON_LOGGER();
 using namespace std;
 
+type_config<int> c_promscrape_stats_log_interval(
+    60,
+    "Interval for logging promscrape timeseries statistics",
+    "promscrape_stats_log_interval");
+
 type_config<bool> promscrape::c_use_promscrape(
     true,
     "Whether or not to use promscrape for prometheus metrics",
@@ -484,6 +489,7 @@ void promscrape::next_th()
 void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 {
 	int64_t job_id = result.job_id();
+	std::string url;
 
 	{
 		// Temporary lock just to make sure the job still exists
@@ -495,11 +501,14 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 			// Dropping results for unknown (possibly pruned) job
 			return;
 		}
+		url = job_it->second.url;
 	}
 
 	std::shared_ptr<agent_promscrape::ScrapeResult> result_ptr;
-	int total_samples = 0;	// total before filtering
-	int num_samples = 0;	// after
+	int raw_total_samples = 0;	// total before filtering
+	int raw_num_samples = 0;	// after
+	int calc_total_samples = 0;
+	int calc_num_samples = 0;
 
 	// Do we need to filter incoming metrics?
 	if (m_metric_limits)
@@ -509,14 +518,23 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 		result_ptr->set_timestamp(result.timestamp());
 		for (const auto &sample : result.samples())
 		{
+			bool is_raw = (sample.legacy_metric_type() == agent_promscrape::Sample::MT_RAW);
 			string filter;
 			if (m_metric_limits->allow(sample.metric_name(), filter, nullptr, "promscrape"))
 			{
 				auto newsample = result_ptr->add_samples();
 				*newsample = sample;
-				++num_samples;
+				if (is_raw) {
+					++raw_num_samples;
+				} else {
+					++calc_num_samples;
+				}
 			}
-			++total_samples;
+			if (is_raw) {
+				++raw_total_samples;
+			} else {
+				++calc_total_samples;
+			}
 		}
 		result_ptr->mutable_meta_samples()->CopyFrom(result.meta_samples());
 	}
@@ -526,8 +544,48 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 		// For instance we could use a new version of streaming_grpc_client that
 		// just passes ownership of its protobuf
 		result_ptr = make_shared<agent_promscrape::ScrapeResult>(std::move(result));
-		num_samples = total_samples = (result_ptr->samples().size());
+		for (const auto &sample : result.samples())
+		{
+			if (sample.legacy_metric_type() == agent_promscrape::Sample::MT_RAW)
+			{
+				++raw_num_samples;
+				++raw_total_samples;
+			}
+			else
+			{
+				++calc_num_samples;
+				++calc_total_samples;
+			}
+		}
 	}
+
+	// Update metric stats
+	int scraped = -1;
+	int post_relabel = -1;
+	int added = -1;
+	for (const auto &meta_sample : result_ptr->meta_samples())
+	{
+		if (meta_sample.metric_name() == "scrape_samples_scraped")
+		{
+			scraped = meta_sample.value();
+		}
+		else if (meta_sample.metric_name() == "scrape_samples_post_metric_relabeling")
+		{
+			post_relabel = meta_sample.value();
+		}
+		else if (meta_sample.metric_name() == "scrape_series_added")
+		{
+			added = meta_sample.value();
+		}
+	}
+	// Currently the metadata metrics sent by promscrape only apply to raw metrics
+	if ((scraped < 0) || (post_relabel < 0) || (added < 0))
+	{
+		LOG_INFO("Missing metadata metrics for %s. Results may be incorrect in "
+			"subsequent metrics summary", url.c_str());
+		scraped = post_relabel = added = raw_total_samples;
+	}
+	m_stats.set_stats(url, scraped, scraped - post_relabel, post_relabel - added, raw_total_samples - raw_num_samples, calc_total_samples, 0, 0, calc_total_samples - calc_num_samples);
 
 	{
 		// Lock again to write maps
@@ -543,10 +601,11 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 		m_metrics[job_id] = result_ptr;
 
 		job_it->second.data_ts = m_last_ts; // Updating data timestamp
-		job_it->second.last_total_samples = total_samples;
+		job_it->second.last_total_samples = raw_total_samples + calc_total_samples;
 	}
 
-	LOG_DEBUG("got %d of %d samples for job %" PRId64, num_samples, total_samples, job_id);
+	LOG_DEBUG("got %d of %d raw and %d of %d calculated samples for job %" PRId64,
+		raw_num_samples, raw_total_samples, calc_num_samples, calc_total_samples, job_id);
 #ifdef DEBUG_PROMSCRAPE
 	LOG_DEBUG("received result: %s", result.DebugString().c_str());
 #endif
@@ -774,7 +833,9 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 	unsigned int &limit, unsigned int max_limit,
 	unsigned int *filtered, unsigned int *total)
 {
-	unsigned int num_samples = 0;
+	unsigned int raw_num_samples = 0;
+	unsigned int calc_num_samples = 0;
+	unsigned int over_limit = 0;
 	prom_job_config job_config;
 
 	// We're going to use the results without a lock as it shouldn't get changed anywhere and
@@ -783,7 +844,7 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 		get_job_result_ptr(job_id, &job_config);
 	if (result_ptr == nullptr)
 	{
-		return num_samples;
+		return 0;
 	}
 
 	LOG_DEBUG("have metrics for job %" PRId64, job_id);
@@ -819,6 +880,17 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 		}
 	};
 
+	// The current limit policy, similar to upstream prometheus, is:
+	//  - In order to avoid incorrect reporting, if the total number of timeseries
+	//    for the endpoint exceeds the metric limit, all the timeseries for that
+	//    endpoint will be dropped.
+
+	if (result_ptr->samples().size() > limit)
+	{
+		over_limit = result_ptr->samples().size() - limit;
+		limit = 0;
+	}
+
 	for (const auto &sample : result_ptr->samples())
 	{
 		if(limit <= 0)
@@ -833,9 +905,15 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 		}
 
 		add_sample(sample);
-
-		++num_samples;
 		--limit;
+		if (sample.legacy_metric_type() == agent_promscrape::Sample::MT_RAW)
+		{
+			++raw_num_samples;
+		}
+		else
+		{
+			++calc_num_samples;
+		}
 	}
 
 	// Add metadata samples. These should always get sent and
@@ -845,7 +923,8 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 		// Adjust scrape_series_added to reflect agent metric limits and filters
 		if (sample.metric_name() == "scrape_series_added")
 		{
-			sample.set_value(num_samples);
+			// Scrape metadata only applies to raw metrics
+			sample.set_value(raw_num_samples);
 		}
 		add_sample(sample);
 	}
@@ -861,7 +940,10 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 		*total += job_config.last_total_samples;
 	}
 
-	return num_samples;
+	// Update metric stats
+	m_stats.add_stats(job_config.url, over_limit, raw_num_samples, calc_num_samples);
+
+	return raw_num_samples + calc_num_samples;
 }
 
 template unsigned int promscrape::job_to_protobuf<draiosproto::app_info>(int64_t job_id,
@@ -876,7 +958,9 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 	unsigned int &limit, unsigned int max_limit,
 	unsigned int *filtered, unsigned int *total)
 {
-	unsigned int num_samples = 0;
+	unsigned int raw_num_samples = 0;
+	unsigned int calc_num_samples = 0;
+	unsigned int over_limit = 0;
 	prom_job_config job_config;
 
 	// We're going to use the results without a lock as it shouldn't get changed anywhere and
@@ -885,7 +969,7 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 		get_job_result_ptr(job_id, &job_config);
 	if (result_ptr == nullptr)
 	{
-		return num_samples;
+		return 0;
 	}
 
 	LOG_DEBUG("have metrics for job %" PRId64, job_id);
@@ -929,6 +1013,17 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 		}
 	};
 
+	// The current limit policy, similar to upstream prometheus, is:
+	//  - In order to avoid incorrect reporting, if the total number of timeseries
+	//    for the endpoint exceeds the metric limit, all the timeseries for that
+	//    endpoint will be dropped.
+
+	if (result_ptr->samples().size() > limit)
+	{
+		over_limit = result_ptr->samples().size() - limit;
+		limit = 0;
+	}
+
 	for (const auto &sample : result_ptr->samples())
 	{
 		if(limit <= 0)
@@ -943,9 +1038,15 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 		}
 
 		add_sample(sample);
-
-		++num_samples;
 		--limit;
+		if (sample.legacy_metric_type() == agent_promscrape::Sample::MT_RAW)
+		{
+			++raw_num_samples;
+		}
+		else
+		{
+			++calc_num_samples;
+		}
 	}
 
 	// Add metadata samples. These should always get sent and
@@ -955,7 +1056,8 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 		// Adjust scrape_series_added to reflect agent metric limits and filters
 		if (sample.metric_name() == "scrape_series_added")
 		{
-			sample.set_value(num_samples);
+			// Scrape metadata only applies to raw metrics
+			sample.set_value(raw_num_samples);
 		}
 		add_sample(sample);
 	}
@@ -971,5 +1073,104 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 		*total += job_config.last_total_samples;
 	}
 
-	return num_samples;
+	// Update metric stats
+	m_stats.add_stats(job_config.url, over_limit, raw_num_samples, calc_num_samples);
+
+	return raw_num_samples + calc_num_samples;
+}
+
+promscrape_stats::promscrape_stats() :
+		m_log_interval(c_promscrape_stats_log_interval.get_value() * ONE_SECOND_IN_NS)
+{
+}
+
+void promscrape_stats::set_stats(std::string url,
+	int raw_scraped, int raw_job_filter_dropped,
+	int raw_over_job_limit, int raw_global_filter_dropped,
+	int calc_scraped, int calc_job_filter_dropped,
+	int calc_over_job_limit, int calc_global_filter_dropped)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	metric_stats stats = {
+		raw_scraped,
+		raw_job_filter_dropped,
+		raw_over_job_limit,
+		raw_global_filter_dropped,
+		0,
+		calc_scraped,
+		calc_job_filter_dropped,
+		calc_over_job_limit,
+		calc_global_filter_dropped,
+		0,
+		0
+	};
+
+	m_stats_map[url] = std::move(stats);
+}
+
+void promscrape_stats::add_stats(std::string url, int over_global_limit, int raw_sent, int calc_sent)
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	auto it = m_stats_map.find(url);
+	if (it == m_stats_map.end())
+	{
+		LOG_DEBUG("Ignoring additional stats for endpoint without scraping stats, url: %s", url.c_str());
+		return;
+	}
+
+	it->second.over_global_limit = over_global_limit;
+	it->second.raw_sent = raw_sent;
+	it->second.calc_sent = calc_sent;
+}
+
+void promscrape_stats::log_summary()
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	LOG_INFO("Prometheus timeseries statistics, %lu endpoints", m_stats_map.size());
+	for (const auto &stat : m_stats_map) {
+		if (stat.second.over_global_limit || stat.second.raw_over_job_limit ||
+			stat.second.calc_over_job_limit)
+		{
+			int unsent = stat.second.raw_scraped - stat.second.raw_job_filter_dropped -
+				stat.second.raw_global_filter_dropped - stat.second.raw_sent;
+			unsent += stat.second.calc_scraped - stat.second.calc_job_filter_dropped -
+				stat.second.calc_global_filter_dropped - stat.second.calc_sent;
+			LOG_INFO("endpoint %s: %d timeseries (after filter) not sent because of %s "
+				"limit (%d over limit)", stat.first.c_str(), unsent,
+				stat.second.over_global_limit ? "prometheus metric" : "job sample",
+				stat.second.over_global_limit ? stat.second.over_global_limit :
+				(stat.second.raw_over_job_limit + stat.second.calc_over_job_limit));
+		}
+		else
+		{
+			LOG_INFO("endpoint %s: %d total timeseries sent", stat.first.c_str(), stat.second.raw_sent + stat.second.calc_sent);
+		}
+		LOG_INFO("endpoint %s: RAW: scraped %d, sent %d, dropped by: "
+			"job filter %d, global filter %d",
+			stat.first.c_str(), stat.second.raw_scraped, stat.second.raw_sent,
+			stat.second.raw_job_filter_dropped, stat.second.raw_global_filter_dropped);
+		LOG_INFO("endpoint %s: CALCULATED: scraped %d, sent %d, dropped by: "
+			"job filter %d, global filter %d",
+			stat.first.c_str(), stat.second.calc_scraped, stat.second.calc_sent,
+			stat.second.calc_job_filter_dropped, stat.second.calc_global_filter_dropped);
+	}
+}
+
+void promscrape_stats::clear()
+{
+	std::lock_guard<std::mutex> lock(m_mutex);
+
+	m_stats_map.clear();
+}
+
+void promscrape_stats::periodic_log_summary()
+{
+	m_log_interval.run([this]()
+	{
+		log_summary();
+		clear();
+	}, sinsp_utils::get_current_time_ns() );
 }

@@ -16,6 +16,43 @@
 #include <thread_safe_container/blocking_queue.h>
 #include <mutex>
 
+class promscrape_stats {
+public:
+	promscrape_stats();
+
+	void set_stats(std::string url,
+		int raw_scraped, int raw_job_filter_dropped,
+		int raw_over_job_limit, int raw_global_filter_dropped,
+		int calc_scraped, int calc_job_filter_dropped,
+		int calc_over_job_limit, int calc_global_filter_dropped);
+	void add_stats(std::string url, int over_global_limit,
+		int raw_sent, int calc_sent);
+	void periodic_log_summary();
+
+private:
+	void log_summary();
+	void clear();
+
+	typedef struct {
+		int raw_scraped;
+		int raw_job_filter_dropped;
+		int raw_over_job_limit;
+		int raw_global_filter_dropped;
+		int raw_sent;
+		int calc_scraped;
+		int calc_job_filter_dropped;
+		int calc_over_job_limit;
+		int calc_global_filter_dropped;
+		int calc_sent;
+		int over_global_limit;
+	} metric_stats;
+
+	std::mutex m_mutex;
+	std::map<std::string, metric_stats> m_stats_map;
+
+	run_on_interval m_log_interval;
+};
+
 class promscrape {
 public:
 	typedef std::map<std::string, std::string> tag_map_t;
@@ -93,6 +130,8 @@ public:
 	// Called by prometheus::validate_config() right after prometheus configuration
 	// has been read from config file. Ensures that configuration is consistent
 	static void validate_config(prometheus_conf &conf);
+
+	void periodic_log_summary() { m_stats.periodic_log_summary(); }
 private:
 	void sendconfig_th(const vector<prom_process> &prom_procs);
 
@@ -152,6 +191,8 @@ private:
 	std::set<int> m_export_pids;	// Populated by pid_to_protobuf for 10s flush callback.
 
 	bool m_emit_counters = true;
+
+	promscrape_stats m_stats;
 
 	friend class test_helper;
 };

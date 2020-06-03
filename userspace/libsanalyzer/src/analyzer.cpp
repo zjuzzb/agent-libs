@@ -4805,6 +4805,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 					    ->set_prometheus_total(checks_total);
 				}
 			}
+			if (promscrape::c_use_promscrape.get_value() && m_promscrape)
+			{
+				m_promscrape->periodic_log_summary();
+			}
+
 			// clear the cache for the next round of sampling
 			m_prometheus_by_containers.clear();
 #endif
