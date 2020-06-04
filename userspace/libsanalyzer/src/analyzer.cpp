@@ -2961,7 +2961,7 @@ bool sinsp_analyzer::aggregate_processes_into_programs(sinsp_threadinfo& sinsp_t
 		bool procfs_scan = procs.find(tinfo.m_comm) != procs.end();
 		tinfo.scan_listening_ports(procfs_scan, m_configuration->get_procfs_scan_interval());
 
-		if (m_jmx_proxy && tinfo.get_comm() == "java")
+		if (m_jmx_proxy && is_java_process(tinfo.get_comm()))
 		{
 			if (!tinfo.m_root_refreshed)
 			{
@@ -4218,6 +4218,14 @@ uint32_t sinsp_analyzer::get_num_cpus()
 		}
 	}
 	return num_cpus;
+}
+
+bool sinsp_analyzer::is_java_process(const std::string& comm) const
+{
+	// Jsvc is a set of libraries and applications for making Java applications run on UNIX more easily
+	// java app run with jsvc has jsvc in /prod/<pid>/comm
+	return comm == "java" ||
+		comm == "jsvc";
 }
 
 void sinsp_analyzer::flush(sinsp_evt* evt,

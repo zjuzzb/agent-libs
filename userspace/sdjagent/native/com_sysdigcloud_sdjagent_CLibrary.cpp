@@ -323,6 +323,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		// (which is absolutely funny considering that monitoring is our business.
 		// But creates problems as well :-) )
 		static const char* JAVA_TOOL_OPTIONS = "JAVA_TOOL_OPTIONS";
+		static const char* JAVA_HOME = "JAVA_HOME";
 		vector<string> container_environ;
 		char environ_path[200];
 		snprintf(environ_path, sizeof(environ_path), "%s/proc/%d/environ", scap_get_host_root(), pid);
@@ -340,11 +341,16 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 
 		const char** container_environ_ptr = (const char**) malloc(sizeof(char*)*(container_environ.size()+1));
 		int j = 0;
+		std::string java_home;
 		for(const auto& env : container_environ)
 		{
 			if(env.substr(0, LENGTH(JAVA_TOOL_OPTIONS)) != JAVA_TOOL_OPTIONS)
 			{
 				container_environ_ptr[j++] = env.c_str();
+				if(env.substr(0, LENGTH(JAVA_HOME)) == JAVA_HOME)
+				{
+					java_home = env.substr(env.find_first_of("=") + 1);
+				}
 			}
 		}
 		container_environ_ptr[j++] = NULL;
@@ -372,6 +378,26 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		vector<char> proc_exe_link(PATH_MAX, 0);
 		auto proc_exe_link_len = readlink(exe.c_str(), proc_exe_link.data(), proc_exe_link.size() - 1);
 		log("FINE", "readlink(%s) returned %s, vpid=%d, errno=%s", exe.c_str(), proc_exe_link.data(), vpid, strerror(errno));
+
+		// ensure proc_exe_link ends with java
+		std::string proc_exe_str(proc_exe_link.data());
+		std::string exe_basename = proc_exe_str.substr(proc_exe_str.find_last_of("/") + 1);
+
+		// This can happen if the java app is run with jsvc for example
+		if(exe_basename != "java")
+		{
+			if(!java_home.empty())
+			{
+				exe = java_string(env, env->NewStringUTF((java_home + "/bin/java").c_str()));
+			}
+			else
+			{
+				// We can't tell where JAVA is installed so we don't have
+				// a choice but give the default a try.
+				exe = java_string(env, env->NewStringUTF("/usr/bin/java"));
+			}
+			log("FINE", "Replaced java exe from %s to %s", proc_exe_str.c_str(), exe.c_str());
+		}
 
 		// read uid and gid of target process
 		char proc_status_path[200];

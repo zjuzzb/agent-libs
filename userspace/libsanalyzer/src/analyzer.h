@@ -1039,6 +1039,13 @@ public:
 
 	uint32_t get_num_cpus();
 
+	/**
+	 * Determine from /proc/<pid>/comm whether this is a java process
+	 * @param comm The comm proc content
+	 * @return True if this is a java process. False otherwise
+	 */
+	bool is_java_process(const std::string& comm) const;
+
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
 	double m_prev_flush_cpu_pct;
