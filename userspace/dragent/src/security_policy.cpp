@@ -66,7 +66,7 @@ bool security_policy::match_scope(std::string container_id, sinsp_analyzer *anal
 		uid = make_pair("host", analyzer->get_configuration_read_only()->get_machine_id());
 	}
 
-	return scope_predicates().empty() || analyzer->infra_state()->match_scope(uid, scope_predicates());
+	return scope_predicates().empty() || analyzer->mutable_infra_state()->match_scope(uid, scope_predicates());
 }
 
 // This object owns event_detail but not the policy.

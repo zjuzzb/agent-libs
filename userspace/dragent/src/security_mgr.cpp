@@ -199,7 +199,7 @@ void security_mgr::load_policy(const security_policy &spolicy, std::list<std::st
 			if(!id.empty() && spolicy.has_baseline_details())
 			{
 				// smart policy
-				baseline = m_baseline_mgr.lookup(id, m_analyzer->infra_state(), spolicy);
+				baseline = m_baseline_mgr.lookup(id, m_analyzer->mutable_infra_state(), spolicy);
 				if(!baseline)
 				{
 					// no baseline found for this container, skipping
@@ -333,7 +333,7 @@ bool security_mgr::load_v1(const draiosproto::policies &policies, const draiospr
 
 	if(m_analyzer)
 	{
-		m_analyzer->infra_state()->clear_scope_cache();
+		m_analyzer->mutable_infra_state()->clear_scope_cache();
 	}
 
 	m_baseline_mgr.load(baselines, errstr);
@@ -432,7 +432,7 @@ bool security_mgr::load_v1(const draiosproto::policies &policies, const draiospr
 	m_evtsources.assign(ESRC_MAX+1, false);
 	if(m_analyzer)
 	{
-		m_analyzer->infra_state()->clear_scope_cache();
+		m_analyzer->mutable_infra_state()->clear_scope_cache();
 	}
 
 	m_scoped_security_policies.clear();
@@ -513,7 +513,7 @@ bool security_mgr::load_v2(const draiosproto::policies_v2 &policies_v2, std::str
 
 	if(m_analyzer)
 	{
-		m_analyzer->infra_state()->clear_scope_cache();
+		m_analyzer->mutable_infra_state()->clear_scope_cache();
 	}
 
 	g_log->debug("Loading policies_v2 message: " + policies_v2.DebugString());
@@ -562,7 +562,7 @@ bool security_mgr::load_v2(const draiosproto::policies_v2 &policies_v2, std::str
 	m_evtsources.assign(ESRC_MAX+1, false);
 	if(m_analyzer)
 	{
-		m_analyzer->infra_state()->clear_scope_cache();
+		m_analyzer->mutable_infra_state()->clear_scope_cache();
 	}
 
 	m_scoped_security_rules.clear();
@@ -1453,9 +1453,9 @@ void security_mgr::set_event_labels(std::string &container_id,
 		// Use Pod Name label to check it
 		if (event_labels.find("kubernetes.pod.name") != event_labels.end())
 		{
-			if (!m_analyzer->infra_state()->get_k8s_cluster_name().empty())
+			if (!m_analyzer->mutable_infra_state()->get_k8s_cluster_name().empty())
 			{
-				(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_analyzer->infra_state()->get_k8s_cluster_name();
+				(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_analyzer->mutable_infra_state()->get_k8s_cluster_name();
 			}
 		}
 	}
@@ -1463,9 +1463,9 @@ void security_mgr::set_event_labels(std::string &container_id,
 
 void security_mgr::set_event_labels_k8s_audit(draiosproto::event_detail *details, draiosproto::policy_event *event, gen_event *evt)
 {
-	if (!m_analyzer->infra_state()->get_k8s_cluster_name().empty())
+	if (!m_analyzer->mutable_infra_state()->get_k8s_cluster_name().empty())
 	{
-		(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_analyzer->infra_state()->get_k8s_cluster_name();
+		(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_analyzer->mutable_infra_state()->get_k8s_cluster_name();
 	}
 
 	json_event * j_evt = NULL;

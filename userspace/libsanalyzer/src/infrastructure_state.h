@@ -82,7 +82,7 @@ public:
 
 	// Check a previously registered scope to see if it matches
 	// the current state
-	bool check_registered_scope(reg_id_t &reg);
+	bool check_registered_scope(reg_id_t &reg) const;
 
 	void calculate_rate_metrics(draiosproto::container_group *cg, const uint64_t ts);
 	void delete_rate_metrics(const uid_t &key);

@@ -1602,7 +1602,7 @@ bool infrastructure_state::register_scope(reg_id_t& reg,
 	return true;
 }
 
-bool infrastructure_state::check_registered_scope(reg_id_t& reg)
+bool infrastructure_state::check_registered_scope(reg_id_t& reg) const
 {
 	auto it = m_registered_scopes.find(reg);
 	if (it == m_registered_scopes.end())

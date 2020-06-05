@@ -305,7 +305,7 @@ public:
 	void process_event(sinsp_evt* evt, libsinsp::event_return rc);
 
 	void add_syscall_time(sinsp_counters* metrics,
-	                      sinsp_evt::category* cat,
+	                      const sinsp_evt::category* cat,
 	                      uint64_t delta,
 	                      uint32_t bytes,
 	                      bool inc_count);
@@ -501,7 +501,20 @@ public:
 	void emit_percentiles_config();
 
 #ifndef CYGWING_AGENT
-	infrastructure_state* infra_state();
+
+	/**
+	 * Access to the infrastructure_state class which manages 
+	 * kubernetes state. 
+	 */
+	const infrastructure_state* infra_state() const;
+
+	/**
+	 * Writable access to the infrastructure_state class which 
+	 * manages kubernetes state. This is purposely named different 
+	 * than the const access so that mutable acess can be audited 
+	 * more easily. 
+	 */
+	infrastructure_state* mutable_infra_state();
 
 	void set_use_new_k8s(bool v) { m_use_new_k8s = v; }
 
@@ -891,6 +904,23 @@ public:
 	                    const tracer_emitter& f_trc);
 
 	/**
+	 * Iterate through the process list and generate the programs, 
+	 * java processes and other lists for which we want to emit 
+	 * data. 
+	 */  
+	bool aggregate_processes_into_programs(sinsp_threadinfo& sinsp_tinfo,
+					       const sinsp_evt* evt,
+					       const uint64_t sample_duration,
+					       const analyzer_emitter::flush_flags flushflags,
+					       analyzer_emitter::progtable_t &progtable,
+					       analyzer_emitter::progtable_by_container_t &progtable_by_container,
+					       vector<thread_analyzer_info*> &java_process_requests,
+					       vector<app_process> &app_checks_processes,
+					       vector<prom_process> &prom_procs,
+					       uint64_t &process_count,
+					       bool &can_disable_nodriver);
+
+	/**
 	 * emit process data. This function emits data scoped to processes. It is
 	 * deprecated as it is to be replaced by the process_emitter class
 	 */
@@ -940,7 +970,7 @@ public:
 	std::string get_host_tags_with_cluster();
 	uint32_t get_mesos_api_server_port(thread_analyzer_info* main_tinfo);
 #endif
-	thread_analyzer_info* get_main_thread_info(int64_t& tid);
+	thread_analyzer_info* get_main_thread_info(int64_t& tid) const;
 	std::string& detect_mesos(std::string& mesos_api_server, uint32_t port);
 	std::string detect_mesos(thread_analyzer_info* main_tinfo = 0);
 	bool check_mesos_server(std::string& addr);
@@ -990,7 +1020,7 @@ public:
 #endif
 	void emit_chisel_metrics();
 	void emit_user_events();
-	void match_prom_checks(thread_analyzer_info* tinfo,
+	void match_prom_checks(const thread_analyzer_info* tinfo,
 	                       thread_analyzer_info* mtinfo,
 	                       std::vector<prom_process>& prom_procs,
 	                       bool use_host_filter);
@@ -1138,7 +1168,7 @@ public:
 	run_on_interval m_containers_cleaner_interval = {60 * ONE_SECOND_IN_NS};
 	run_on_interval m_containers_check_interval = {60 * ONE_SECOND_IN_NS};
 
-	std::vector<thread_analyzer_info*> m_threads_to_remove;
+	std::vector<const thread_analyzer_info*> m_threads_to_remove;
 
 	//
 	// Subsampling-related stuff

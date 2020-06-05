@@ -104,7 +104,7 @@ bool security_policy_v2::match_scope(std::string container_id, sinsp_analyzer *a
 	}
 
 	return scope_predicates().empty() ||
-		analyzer->infra_state()->match_scope(uid, (use_empty_preds ? empty_preds : scope_predicates()));
+		analyzer->mutable_infra_state()->match_scope(uid, (use_empty_preds ? empty_preds : scope_predicates()));
 }
 
 security_rule_library::rule::rule(const std::string &name, draiosproto::policy_type rule_type)

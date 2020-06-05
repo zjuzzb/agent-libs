@@ -141,10 +141,10 @@ void compliance_mgr::refresh_compliance_tasks()
 
 		if(m_analyzer)
 		{
-			m_analyzer->infra_state()->register_scope(reg,
-								  true,
-								  true,
-								  task.scope_predicates());
+			m_analyzer->mutable_infra_state()->register_scope(reg,
+			                                                  true,
+			                                                  true,
+			                                                  task.scope_predicates());
 
 			// For now, do a single check of the registered scope and only
 			// start the compliance modules if the scope matches. Later,

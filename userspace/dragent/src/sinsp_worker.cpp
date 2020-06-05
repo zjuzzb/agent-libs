@@ -837,7 +837,7 @@ bool sinsp_worker::run_compliance_tasks(const draiosproto::comp_run &run,
 
 void sinsp_worker::receive_hosts_metadata(const draiosproto::orchestrator_events &evts)
 {
-	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
+	m_analyzer->mutable_infra_state()->receive_hosts_metadata(evts.events());
 	m_hosts_metadata_uptodate.clear();
 }
 #endif

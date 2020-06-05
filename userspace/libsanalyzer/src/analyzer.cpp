@@ -530,7 +530,12 @@ void sinsp_analyzer::set_percentiles()
 }
 
 #ifndef CYGWING_AGENT
-infrastructure_state* sinsp_analyzer::infra_state()
+const infrastructure_state* sinsp_analyzer::infra_state() const
+{
+	return m_infrastructure_state;
+}
+
+infrastructure_state* sinsp_analyzer::mutable_infra_state()
 {
 	return m_infrastructure_state;
 }
@@ -742,7 +747,7 @@ void sinsp_analyzer::init_k8s_user_event_handler()
 		    K8S_EVENTS_POLL_INTERVAL_NS,
 		    m_root_dir,
 		    is_delegated,
-		    m_configuration->get_add_event_scopes() ? infra_state() : nullptr);
+		    m_configuration->get_add_event_scopes() ? mutable_infra_state() : nullptr);
 	}
 
 	LOG_INFO("initializing k8s event message handler");
@@ -1655,7 +1660,7 @@ std::string& sinsp_analyzer::detect_mesos(std::string& mesos_api_server, uint32_
 	return mesos_api_server;
 }
 
-thread_analyzer_info* sinsp_analyzer::get_main_thread_info(int64_t& tid)
+thread_analyzer_info* sinsp_analyzer::get_main_thread_info(int64_t& tid) const
 {
 	if (tid != -1)
 	{
@@ -2002,10 +2007,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
                                     const tracer_emitter& f_trc)
 {
 	tracer_emitter proc_trc("emit_processes", f_trc);
-	tracer_emitter init_trc("init", proc_trc);
-	int64_t delta;
-	sinsp_evt::category* cat;
-	sinsp_evt::category tcat;
+	tracer_emitter init_trc("init", proc_trc);;
 	m_server_programs.clear();
 	analyzer_emitter::progtable_t progtable(m_top_processes_in_sample,
 	                                        sinsp_threadinfo::hasher(),
@@ -2090,348 +2092,36 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	// and aggregate them into processes
 	///////////////////////////////////////////////////////////////////////////
 	tracer_emitter am_trc("aggregate_metrics", proc_trc);
-	m_inspector->m_thread_manager->m_threadtable.loop([&](sinsp_threadinfo& sinsp_tinfo) {
-		thread_analyzer_info& tinfo = dynamic_cast<thread_analyzer_info&>(sinsp_tinfo);
-		ASSERT(&tinfo == &sinsp_tinfo);
-		thread_analyzer_info* main_tinfo = tinfo.get_main_thread_info();
-		analyzer_container_state* container = nullptr;
-
-		// xxx/nags : why not do this once for the main_thread?
-		if (!tinfo.m_container_id.empty())
-		{
-			container = &m_containers[tinfo.m_container_id];
-			// Filtering out containers if use_container_filter is set
-			// Some day we might want to filter host processes as well
-			if (container)
-			{
-#ifndef CYGWING_AGENT
-				const auto cinfo =
-				    m_inspector->m_container_manager.get_container(tinfo.m_container_id);
-				bool optional;
-				if (cinfo && !container->should_report_container(m_configuration,
-				                                                 *cinfo,
-				                                                 infra_state(),
-				                                                 m_prev_flush_time_ns,
-				                                                 optional))
-				{
-					LOG_DEBUG("Not reporting thread %ld in container %s",
-					          tinfo.m_tid,
-					          tinfo.m_container_id.c_str());
-					// Just return from this lambda
-					return true;
-				}
-#endif
-			}
-
-			const std::set<double>& pctls = m_configuration->get_percentiles();
-			if (pctls.size())
-			{
-				container->set_percentiles(pctls);
-			}
-		}
-
-		if (tinfo.is_main_thread())
-		{
-			++process_count;
-		}
-
-		// We need to reread cmdline only in live mode, with nodriver mode
-		// proc is reread anyway
-		if (m_inspector->is_live() && (tinfo.m_flags & PPM_CL_CLOSED) == 0 &&
-		    m_prev_flush_time_ns - main_tinfo->m_clone_ts > ONE_SECOND_IN_NS &&
-		    m_prev_flush_time_ns - main_tinfo->m_last_cmdline_sync_ns >
-		        CMDLINE_UPDATE_INTERVAL_S * ONE_SECOND_IN_NS)
-		{
-			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
-			if (!proc_name.empty())
-			{
-				main_tinfo->m_comm = proc_name;
-			}
-			vector<string> proc_args = m_procfs_parser->read_process_cmdline(main_tinfo->m_pid);
-			if (!proc_args.empty())
-			{
-				main_tinfo->m_exe = proc_args.at(0);
-				main_tinfo->m_args.clear();
-				main_tinfo->m_args.insert(main_tinfo->m_args.begin(),
-				                          ++proc_args.begin(),
-				                          proc_args.end());
-			}
-			main_tinfo->compute_program_hash();
-			main_tinfo->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
-		}
-
-#ifndef CYGWING_AGENT
-		if ((m_prev_flush_time_ns / ONE_SECOND_IN_NS) % 5 == 0 && tinfo.is_main_thread() &&
-		    !m_inspector->is_capture())
-		{
-			// mesos autodetection flagging, happens only if mesos is not explicitly configured
-			// we only record the relevant mesos process thread ID here; later, this flag is
-			// detected by emit_mesos() and, if process is found to stil be alive, the appropriate
-			// action is taken (configuring appchecks and connecting to API server)
-			if (m_configuration->get_mesos_state_original_uri().empty() &&
-			    m_configuration->get_mesos_autodetect_enabled())
-			{
-				uint32_t port = get_mesos_api_server_port(main_tinfo);
-				if (port)
-				{
-					// always prefer master to slave when they are both found on the same host
-					if (port == MESOS_MASTER_PORT)
-					{
-						m_mesos_master_tid = main_tinfo->m_tid;
-						m_mesos_slave_tid = -1;
-					}
-					else if ((port == MESOS_SLAVE_PORT) && (m_mesos_master_tid == -1))
-					{
-						m_mesos_slave_tid = main_tinfo->m_tid;
-					}
-				}
-			}
-		}
-#endif
-
-		//
-		// Attribute the last pending event to this second
-		//
-		if (m_prev_flush_time_ns != 0)
-		{
-			delta = m_prev_flush_time_ns - tinfo.m_lastevent_ts;
-
-			if (delta > (int64_t)sample_duration)
-			{
-				delta =
-				    (tinfo.m_lastevent_ts / sample_duration * sample_duration + sample_duration) -
-				    tinfo.m_lastevent_ts;
-			}
-
-			tinfo.m_lastevent_ts = m_prev_flush_time_ns;
-
-			if (PPME_IS_ENTER(tinfo.m_lastevent_type))
-			{
-				cat = &tinfo.m_lastevent_category;
-			}
-			else
-			{
-				tcat.m_category = EC_PROCESSING;
-				tcat.m_subcategory = sinsp_evt::SC_NONE;
-				cat = &tcat;
-			}
-
-			add_syscall_time(&tinfo.m_metrics, cat, delta, 0, false);
-
-			//
-			// Flag the thread so we know that part of this event has already been attributed
-			//
-			tinfo.m_th_analysis_flags |= thread_analyzer_info::AF_PARTIAL_METRIC;
-		}
-
-		//
-		// Some assertions to validate that everything looks like expected
-		//
-#ifdef _DEBUG
-		sinsp_counter_time ttot;
-		tinfo.m_metrics.get_total(&ttot);
-#endif
-
-		//
-		// Go through the FD list to flush the transactions that haven't been active for a while
-		//
-		uint64_t trtimeout;
-		bool is_subsampling;
-
-		if (flushflags == analyzer_emitter::DF_NONE)
-		{
-			trtimeout = TRANSACTION_TIMEOUT_NS;
-			is_subsampling = false;
-		}
-		else
-		{
-			trtimeout = TRANSACTION_TIMEOUT_SUBSAMPLING_NS;
-			is_subsampling = true;
-		}
-
-		tinfo.flush_inactive_transactions(m_prev_flush_time_ns, trtimeout, is_subsampling);
-
-		//
-		// If this is a process, compute CPU load and memory usage
-		//
-		tinfo.m_cpuload = 0;
-
-		if (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
-		{
-			if (tinfo.is_main_thread())
-			{
-				if (!m_inspector->is_capture())
-				{
-					//
-					// It's pointless to try to get the CPU load if the process has been closed
-					//
-					if ((tinfo.m_flags & PPM_CL_CLOSED) == 0)
-					{
-						if (!m_skip_proc_parsing)
-						{
-							if (m_procfs_scan_thread)
-							{
-								tinfo.m_cpuload =
-								    m_procfs_parser->get_process_cpu_load(tinfo.m_pid);
-							}
-							else
-							{
-								tinfo.m_cpuload = m_procfs_parser->get_process_cpu_load_sync(
-								    tinfo.m_pid,
-								    &tinfo.m_old_proc_jiffies);
-							}
-						}
-
-						if (m_inspector->is_nodriver())
-						{
-#ifndef CYGWING_AGENT
-							auto file_io_stats =
-							    m_procfs_parser->read_proc_file_stats(tinfo.m_pid,
-							                                          &tinfo.m_file_io_stats);
-
-							tinfo.m_metrics.m_io_file.m_bytes_in = file_io_stats.m_read_bytes;
-							tinfo.m_metrics.m_io_file.m_bytes_out = file_io_stats.m_write_bytes;
-							tinfo.m_metrics.m_io_file.m_count_in = file_io_stats.m_syscr;
-							tinfo.m_metrics.m_io_file.m_count_out = file_io_stats.m_syscw;
-
-							if (m_mode_switch_state == sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER)
-							{
-								if (m_stress_tool_matcher.match(tinfo.m_comm))
-								{
-									can_disable_nodriver = false;
-								}
-							}
-#endif  // CYGWING_AGENT
-						}
-					}
-				}
-			}
-		}
-
-		if (tinfo.m_flags & PPM_CL_CLOSED &&
-		    !(evt != nullptr &&
-		      (evt->get_type() == PPME_PROCEXIT_E || evt->get_type() == PPME_PROCEXIT_1_E) &&
-		      evt->m_tinfo == &tinfo))
-		{
-			//
-			// Yes, remove the thread from the table, but NOT if the event currently under
-			// processing is an exit for this process. In that case we wait until next sample. Note:
-			// we clear the metrics no matter what because m_thread_manager->remove_thread might
-			//       not actually remove the thread if it has childs.
-			//
-			m_threads_to_remove.push_back(&tinfo);
-		}
-
-		//
-		// Add this thread's counters to the process ones...
-		//
-		ASSERT(tinfo.m_program_hash != 0);
-
-		auto emplaced = progtable.emplace(&tinfo);
-		auto mtinfo = *emplaced.first;
-		// Use first found thread of a program to collect all metrics
-		if (emplaced.second)
-		{
-			if (container)
-			{
-				progtable_by_container[mtinfo->m_container_id].emplace_back(mtinfo);
-			}
-			tinfo.set_main_program_thread(true);
-		}
-		else
-		{
-			tinfo.set_main_program_thread(false);
-		}
-
-		ASSERT(mtinfo != nullptr);
-
-		tinfo.m_main_thread_pid = mtinfo->m_pid;
-
-		mtinfo->add_all_metrics(&tinfo);
-
-		if (!emplaced.second)
-		{
-			tinfo.clear_all_metrics();
-		}
-#ifndef _WIN32
-		if (tinfo.is_main_thread() && !(tinfo.m_flags & PPM_CL_CLOSED) &&
-		    (m_next_flush_time_ns - tinfo.m_clone_ts) >
-		        ASSUME_LONG_LIVING_PROCESS_UPTIME_S * ONE_SECOND_IN_NS &&
-		    tinfo.m_vpid > 0)
-		{
-			const auto& procs = m_configuration->get_procfs_scan_procs();
-			bool procfs_scan = procs.find(tinfo.m_comm) != procs.end();
-			tinfo.scan_listening_ports(procfs_scan, m_configuration->get_procfs_scan_interval());
-
-			if (m_jmx_proxy && tinfo.get_comm() == "java")
-			{
-				if (!tinfo.m_root_refreshed)
-				{
-					tinfo.m_root_refreshed = true;
-					tinfo.m_root = m_procfs_parser->read_proc_root(tinfo.m_pid);
-				}
-				java_process_requests.emplace_back(&tinfo);
-			}
-
-			auto flush_time = m_prev_flush_time_ns / ONE_SECOND_IN_NS;
-
-			// May happen that for processes like apache with mpm_prefork there are hundred of
-			// apache processes with same comm, cmdline and ports, some of them are always alive,
-			// some die and are recreated.
-			// We send to app_checks only processes up at least for 10 seconds. But the programs
-			// aggregation may choose the young one. So now we are trying to match a check for every
-			// process in the program grouping and when we find a matching check, we mark it on the
-			// main_thread of the group as we don't need more checks instances for each process.
-			if (m_app_checks_proxy)
-			{
-				const auto& custom_checks = mtinfo->get_proc_config().app_checks();
-				vector<app_process> app_checks;
-
-				match_checks_list(&tinfo, mtinfo, custom_checks, app_checks, "env");
-				// Ignore the global list if we found custom checks
-				if (app_checks.empty())
-				{
-					match_checks_list(&tinfo, mtinfo, m_app_checks, app_checks, "global list");
-				}
-				for (auto& appcheck : app_checks)
-				{
-					if (m_app_checks_proxy->have_app_check_metrics_for_pid(tinfo.m_pid,
-					                                                       flush_time,
-					                                                       appcheck.name()))
-					{
-						// Found metrics for this pid and name that won't
-						// expire this cycle so we use them instead of
-						// running the check again
-						LOG_DEBUG("App metrics for %ld,%s are still good",
-						          tinfo.m_pid,
-						          appcheck.name().c_str());
-					}
-					else
-					{
-						app_checks_processes.push_back(move(appcheck));
-					}
-				}
-			}
-
-#ifndef CYGWING_AGENT
-			// Looking for prometheus matches after app_checks because
-			// a rule may be specified for finding an app_checks match
-
-			// With promscrape enabled we'll always select target processes
-			// Without promscrape we only select processes for which we don't have
-			// unexpired prometheus metrics yet.
-			if (promscrape::c_use_promscrape.get_value() ||
-			    (m_app_checks_proxy &&
-			     !m_app_checks_proxy->have_prometheus_metrics_for_pid(tinfo.m_pid, flush_time)))
-			{
-				match_prom_checks(&tinfo, mtinfo, prom_procs, false);
-			}
-#endif  // CYGWING_AGENT
-		}
-#endif
-		return true;
-	});
+	m_inspector->m_thread_manager->m_threadtable.loop(std::bind(&sinsp_analyzer::aggregate_processes_into_programs, 
+								    this, 
+								    std::placeholders::_1 /*sinsp_threadinfo*/,
+								    evt,
+								    sample_duration, 
+								    flushflags, 
+								    std::ref(progtable),
+								    std::ref(progtable_by_container),
+								    std::ref(java_process_requests),
+								    std::ref(app_checks_processes),
+								    std::ref(prom_procs),
+								    std::ref(process_count), 
+								    std::ref(can_disable_nodriver)));
 	am_trc.stop();
+
+	LOG_DEBUG("Aggregation complete\n"
+		  "processes: %zu\n"
+		  "\\ main threads: %lu\n"
+		  "  \\ programs: %zu\n"
+		  "  \\ containers: %zu\n"
+		  "  \\ java processes: %zu\n"
+		  "  \\ app_check processes: %zu\n"
+		  "  \\ prometheus processes: %zu",
+		  m_inspector->m_thread_manager->m_threadtable.size(),
+		  process_count,
+		  progtable.size(),
+		  progtable_by_container.size(),
+		  java_process_requests.size(),
+		  app_checks_processes.size(),
+		  prom_procs.size());
 
 	if (m_inspector->is_nodriver() &&
 	    m_mode_switch_state == sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER && can_disable_nodriver)
@@ -2977,9 +2667,372 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 #endif
 }
 
+bool sinsp_analyzer::aggregate_processes_into_programs(sinsp_threadinfo& sinsp_tinfo,
+						       const sinsp_evt* evt,
+						       const uint64_t sample_duration,
+						       const analyzer_emitter::flush_flags flushflags,
+						       analyzer_emitter::progtable_t &progtable,
+						       analyzer_emitter::progtable_by_container_t &progtable_by_container,
+						       vector<thread_analyzer_info*> &java_process_requests,
+						       vector<app_process> &app_checks_processes,
+						       vector<prom_process> &prom_procs,
+						       uint64_t &process_count,
+						       bool &can_disable_nodriver)
+{
+	thread_analyzer_info& tinfo = dynamic_cast<thread_analyzer_info&>(sinsp_tinfo);
+	ASSERT(&tinfo == &sinsp_tinfo);
+	thread_analyzer_info* main_tinfo = tinfo.get_main_thread_info();
+	analyzer_container_state* container = nullptr;
+
+	// xxx/nags : why not do this once for the main_thread?
+	if (!tinfo.m_container_id.empty())
+	{
+		container = &m_containers[tinfo.m_container_id];
+		// Filtering out containers if use_container_filter is set
+		// Some day we might want to filter host processes as well
+		if (container)
+		{
+#ifndef CYGWING_AGENT
+			const auto cinfo =
+				m_inspector->m_container_manager.get_container(tinfo.m_container_id);
+			bool optional;
+			if (cinfo && !container->should_report_container(m_configuration,
+									 *cinfo,
+									 infra_state(),
+									 m_prev_flush_time_ns,
+									 optional))
+			{
+				LOG_DEBUG("Not reporting thread %ld in container %s",
+						  tinfo.m_tid,
+						  tinfo.m_container_id.c_str());
+				// Just return from this lambda
+				return true;
+			}
+#endif
+		}
+
+		const std::set<double>& pctls = m_configuration->get_percentiles();
+		if (pctls.size())
+		{
+			container->set_percentiles(pctls);
+		}
+	}
+
+	if (tinfo.is_main_thread())
+	{
+		++process_count;
+	}
+
+	// We need to reread cmdline only in live mode, with nodriver mode
+	// proc is reread anyway
+	if (m_inspector->is_live() && (tinfo.m_flags & PPM_CL_CLOSED) == 0 &&
+		m_prev_flush_time_ns - main_tinfo->m_clone_ts > ONE_SECOND_IN_NS &&
+		m_prev_flush_time_ns - main_tinfo->m_last_cmdline_sync_ns >
+			CMDLINE_UPDATE_INTERVAL_S * ONE_SECOND_IN_NS)
+	{
+		string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
+		if (!proc_name.empty())
+		{
+			main_tinfo->m_comm = proc_name;
+		}
+		vector<string> proc_args = m_procfs_parser->read_process_cmdline(main_tinfo->m_pid);
+		if (!proc_args.empty())
+		{
+			main_tinfo->m_exe = proc_args.at(0);
+			main_tinfo->m_args.clear();
+			main_tinfo->m_args.insert(main_tinfo->m_args.begin(),
+									  ++proc_args.begin(),
+									  proc_args.end());
+		}
+		main_tinfo->compute_program_hash();
+		main_tinfo->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
+	}
+
+#ifndef CYGWING_AGENT
+	if ((m_prev_flush_time_ns / ONE_SECOND_IN_NS) % 5 == 0 && tinfo.is_main_thread() &&
+		!m_inspector->is_capture())
+	{
+		// mesos autodetection flagging, happens only if mesos is not explicitly configured
+		// we only record the relevant mesos process thread ID here; later, this flag is
+		// detected by emit_mesos() and, if process is found to stil be alive, the appropriate
+		// action is taken (configuring appchecks and connecting to API server)
+		if (m_configuration->get_mesos_state_original_uri().empty() &&
+			m_configuration->get_mesos_autodetect_enabled())
+		{
+			uint32_t port = get_mesos_api_server_port(main_tinfo);
+			if (port)
+			{
+				// always prefer master to slave when they are both found on the same host
+				if (port == MESOS_MASTER_PORT)
+				{
+					m_mesos_master_tid = main_tinfo->m_tid;
+					m_mesos_slave_tid = -1;
+				}
+				else if ((port == MESOS_SLAVE_PORT) && (m_mesos_master_tid == -1))
+				{
+					m_mesos_slave_tid = main_tinfo->m_tid;
+				}
+			}
+		}
+	}
+#endif
+
+	//
+	// Attribute the last pending event to this second
+	//
+	if (m_prev_flush_time_ns != 0)
+	{
+		int64_t delta;
+		delta = m_prev_flush_time_ns - tinfo.m_lastevent_ts;
+
+		if (delta > (int64_t)sample_duration)
+		{
+			delta =
+				(tinfo.m_lastevent_ts / sample_duration * sample_duration + sample_duration) -
+				tinfo.m_lastevent_ts;
+		}
+
+		tinfo.m_lastevent_ts = m_prev_flush_time_ns;
+
+
+		const sinsp_evt::category* cat;
+		sinsp_evt::category tcat;
+		if (PPME_IS_ENTER(tinfo.m_lastevent_type))
+		{
+			cat = &tinfo.m_lastevent_category;
+		}
+		else
+		{
+			tcat.m_category = EC_PROCESSING;
+			tcat.m_subcategory = sinsp_evt::SC_NONE;
+			cat = &tcat;
+		}
+
+		add_syscall_time(&tinfo.m_metrics, cat, delta, 0, false);
+
+		//
+		// Flag the thread so we know that part of this event has already been attributed
+		//
+		tinfo.m_th_analysis_flags |= thread_analyzer_info::AF_PARTIAL_METRIC;
+	}
+
+	//
+	// Some assertions to validate that everything looks like expected
+	//
+#ifdef _DEBUG
+	sinsp_counter_time ttot;
+	tinfo.m_metrics.get_total(&ttot);
+#endif
+
+	//
+	// Go through the FD list to flush the transactions that haven't been active for a while
+	//
+	uint64_t trtimeout;
+	bool is_subsampling;
+
+	if (flushflags == analyzer_emitter::DF_NONE)
+	{
+		trtimeout = TRANSACTION_TIMEOUT_NS;
+		is_subsampling = false;
+	}
+	else
+	{
+		trtimeout = TRANSACTION_TIMEOUT_SUBSAMPLING_NS;
+		is_subsampling = true;
+	}
+
+	tinfo.flush_inactive_transactions(m_prev_flush_time_ns, trtimeout, is_subsampling);
+
+	//
+	// If this is a process, compute CPU load and memory usage
+	//
+	tinfo.m_cpuload = 0;
+
+	if (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	{
+		if (tinfo.is_main_thread())
+		{
+			if (!m_inspector->is_capture())
+			{
+				//
+				// It's pointless to try to get the CPU load if the process has been closed
+				//
+				if ((tinfo.m_flags & PPM_CL_CLOSED) == 0)
+				{
+					if (!m_skip_proc_parsing)
+					{
+						if (m_procfs_scan_thread)
+						{
+							tinfo.m_cpuload =
+								m_procfs_parser->get_process_cpu_load(tinfo.m_pid);
+						}
+						else
+						{
+							tinfo.m_cpuload = m_procfs_parser->get_process_cpu_load_sync(
+								tinfo.m_pid,
+								&tinfo.m_old_proc_jiffies);
+						}
+					}
+
+					if (m_inspector->is_nodriver())
+					{
+#ifndef CYGWING_AGENT
+						auto file_io_stats =
+							m_procfs_parser->read_proc_file_stats(tinfo.m_pid,
+																  &tinfo.m_file_io_stats);
+
+						tinfo.m_metrics.m_io_file.m_bytes_in = file_io_stats.m_read_bytes;
+						tinfo.m_metrics.m_io_file.m_bytes_out = file_io_stats.m_write_bytes;
+						tinfo.m_metrics.m_io_file.m_count_in = file_io_stats.m_syscr;
+						tinfo.m_metrics.m_io_file.m_count_out = file_io_stats.m_syscw;
+
+						if (m_mode_switch_state == sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER)
+						{
+							if (m_stress_tool_matcher.match(tinfo.m_comm))
+							{
+								can_disable_nodriver = false;
+							}
+						}
+#endif  // CYGWING_AGENT
+					}
+				}
+			}
+		}
+	}
+
+	{
+	    // sinsp_evt get_type isn't const correct so deconst it here until the appropriate
+	    // change is propogated through sysdig and falco
+	    sinsp_evt *nonconst_evt = const_cast<sinsp_evt*>(evt);
+
+	    if (tinfo.m_flags & PPM_CL_CLOSED &&
+		    !(nonconst_evt != nullptr &&
+		      (nonconst_evt->get_type() == PPME_PROCEXIT_E || nonconst_evt->get_type() == PPME_PROCEXIT_1_E) &&
+		      nonconst_evt->m_tinfo == &tinfo))
+	    {
+		    //
+		    // Yes, remove the thread from the table, but NOT if the event currently under
+		    // processing is an exit for this process. In that case we wait until next sample. Note:
+		    // we clear the metrics no matter what because m_thread_manager->remove_thread might
+		    //       not actually remove the thread if it has childs.
+		    //
+		    m_threads_to_remove.push_back(&tinfo);
+	    }
+	}
+
+	//
+	// Add this thread's counters to the process ones...
+	//
+	ASSERT(tinfo.m_program_hash != 0);
+
+	auto emplaced = progtable.emplace(&tinfo);
+	auto mtinfo = *emplaced.first;
+	// Use first found thread of a program to collect all metrics
+	if (emplaced.second)
+	{
+		if (container)
+		{
+			progtable_by_container[mtinfo->m_container_id].emplace_back(mtinfo);
+		}
+		tinfo.set_main_program_thread(true);
+	}
+	else
+	{
+		tinfo.set_main_program_thread(false);
+	}
+
+	ASSERT(mtinfo != nullptr);
+
+	tinfo.m_main_thread_pid = mtinfo->m_pid;
+
+	mtinfo->add_all_metrics(&tinfo);
+
+	if (!emplaced.second)
+	{
+		tinfo.clear_all_metrics();
+	}
+#ifndef _WIN32
+	if (tinfo.is_main_thread() && !(tinfo.m_flags & PPM_CL_CLOSED) &&
+		(m_next_flush_time_ns - tinfo.m_clone_ts) >
+			ASSUME_LONG_LIVING_PROCESS_UPTIME_S * ONE_SECOND_IN_NS &&
+		tinfo.m_vpid > 0)
+	{
+		const auto& procs = m_configuration->get_procfs_scan_procs();
+		bool procfs_scan = procs.find(tinfo.m_comm) != procs.end();
+		tinfo.scan_listening_ports(procfs_scan, m_configuration->get_procfs_scan_interval());
+
+		if (m_jmx_proxy && tinfo.get_comm() == "java")
+		{
+			if (!tinfo.m_root_refreshed)
+			{
+				tinfo.m_root_refreshed = true;
+				tinfo.m_root = m_procfs_parser->read_proc_root(tinfo.m_pid);
+			}
+			java_process_requests.emplace_back(&tinfo);
+		}
+
+		auto flush_time = m_prev_flush_time_ns / ONE_SECOND_IN_NS;
+
+		// May happen that for processes like apache with mpm_prefork there are hundred of
+		// apache processes with same comm, cmdline and ports, some of them are always alive,
+		// some die and are recreated.
+		// We send to app_checks only processes up at least for 10 seconds. But the programs
+		// aggregation may choose the young one. So now we are trying to match a check for every
+		// process in the program grouping and when we find a matching check, we mark it on the
+		// main_thread of the group as we don't need more checks instances for each process.
+		if (m_app_checks_proxy)
+		{
+			const auto& custom_checks = mtinfo->get_proc_config().app_checks();
+			vector<app_process> app_checks;
+
+			match_checks_list(&tinfo, mtinfo, custom_checks, app_checks, "env");
+			// Ignore the global list if we found custom checks
+			if (app_checks.empty())
+			{
+				match_checks_list(&tinfo, mtinfo, m_app_checks, app_checks, "global list");
+			}
+			for (auto& appcheck : app_checks)
+			{
+				if (m_app_checks_proxy->have_app_check_metrics_for_pid(tinfo.m_pid,
+																	   flush_time,
+																	   appcheck.name()))
+				{
+					// Found metrics for this pid and name that won't
+					// expire this cycle so we use them instead of
+					// running the check again
+					LOG_DEBUG("App metrics for %ld,%s are still good",
+							  tinfo.m_pid,
+							  appcheck.name().c_str());
+				}
+				else
+				{
+					app_checks_processes.push_back(move(appcheck));
+				}
+			}
+		}
+
+#ifndef CYGWING_AGENT
+		// Looking for prometheus matches after app_checks because
+		// a rule may be specified for finding an app_checks match
+
+		// With promscrape enabled we'll always select target processes
+		// Without promscrape we only select processes for which we don't have
+		// unexpired prometheus metrics yet.
+		if (promscrape::c_use_promscrape.get_value() ||
+			(m_app_checks_proxy &&
+			 !m_app_checks_proxy->have_prometheus_metrics_for_pid(tinfo.m_pid, flush_time)))
+		{
+			match_prom_checks(&tinfo, mtinfo, prom_procs, false);
+		}
+#endif  // CYGWING_AGENT
+	}
+#endif
+	return true;
+}
+
 void sinsp_analyzer::flush_processes()
 {
-	for (vector<thread_analyzer_info*>::const_iterator it = m_threads_to_remove.begin();
+	for (vector<const thread_analyzer_info*>::const_iterator it = m_threads_to_remove.begin();
 	     it != m_threads_to_remove.end();
 	     ++it)
 	{
@@ -5665,7 +5718,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 }
 
 void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
-                                      sinsp_evt::category* cat,
+                                      const sinsp_evt::category* cat,
                                       uint64_t delta,
                                       uint32_t bytes,
                                       bool inc_count)
@@ -6284,7 +6337,7 @@ void sinsp_analyzer::emit_docker_events()
 		{
 			LOG_INFO("Creating Docker object ...");
 			m_docker.reset(
-			    new docker(m_configuration->get_add_event_scopes() ? infra_state() : nullptr));
+			    new docker(m_configuration->get_add_event_scopes() ? mutable_infra_state() : nullptr));
 			if (m_docker)
 			{
 				m_docker->set_event_filter(m_configuration->get_docker_event_filter());
@@ -7335,13 +7388,15 @@ void sinsp_analyzer::emit_user_events()
 }
 
 #ifndef CYGWING_AGENT
-void sinsp_analyzer::match_prom_checks(thread_analyzer_info* tinfo,
+void sinsp_analyzer::match_prom_checks(const thread_analyzer_info* tinfo,
                                        thread_analyzer_info* mtinfo,
                                        vector<prom_process>& prom_procs,
                                        bool use_host_filter)
 {
 	if (!m_prom_conf.enabled() || mtinfo->found_prom_check())
+	{
 		return;
+	}
 
 	const auto container = m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 
