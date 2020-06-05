@@ -1120,7 +1120,7 @@ int dragent_app::sdagent_main()
 	if (!m_configuration.m_config_test)
 	{
 		m_pool.start(m_subprocesses_logger,
-			     m_configuration.m_watchdog_subprocesses_logger_timeout_s);
+		             m_configuration.m_watchdog_subprocesses_logger_timeout_s);
 	}
 
 	//
@@ -1292,8 +1292,7 @@ int dragent_app::sdagent_main()
 		running_state::instance().restart();
 	}
 
-
-	auto &state = running_state::instance();
+	auto& state = running_state::instance();
 	if (!state.is_terminated())
 	{
 		memdump_logger::register_callback(
@@ -1368,7 +1367,8 @@ int dragent_app::sdagent_main()
 	}
 #endif
 
-	if (!state.is_terminated()) {
+	if (!state.is_terminated())
+	{
 		state.shut_down();
 	}
 
@@ -1452,11 +1452,6 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	    std::move(the_app_checks_proxy),
 	    promscrape);
 	sinsp_configuration* sconfig = analyzer->get_configuration();
-
-	analyzer->set_procfs_scan_thread(m_configuration.m_procfs_scan_thread);
-	sconfig->set_procfs_scan_delay_ms(m_configuration.m_procfs_scan_delay_ms);
-	sconfig->set_procfs_scan_interval_ms(m_configuration.m_procfs_scan_interval_ms);
-	sconfig->set_procfs_scan_mem_interval_ms(m_configuration.m_procfs_scan_mem_interval_ms);
 
 	sconfig->set_mounts_filter(m_configuration.m_mounts_filter);
 	sconfig->set_mounts_limit_size(m_configuration.m_mounts_limit_size);
@@ -1544,17 +1539,10 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	analyzer->set_percentiles();
 
 	sconfig->set_container_filter(m_configuration.m_container_filter);
-	sconfig->set_smart_container_reporting(m_configuration.m_smart_container_reporting);
 
 	sconfig->set_go_k8s_user_events(m_configuration.m_go_k8s_user_events);
-	sconfig->set_add_event_scopes(m_configuration.m_add_event_scopes);
 
 	sconfig->set_log_dir(m_configuration.m_log_dir);
-
-	//
-	// Configure connection aggregation
-	//
-	sconfig->set_aggregate_connections_in_proto(!m_configuration.m_emit_full_connections);
 
 	if (m_configuration.m_tracepoint_hits_threshold > 0)
 	{
@@ -1568,44 +1556,9 @@ sinsp_analyzer* dragent_app::build_analyzer(
 		                                  m_configuration.m_cpu_usage_max_sr_ntimes);
 	}
 
-	if (m_configuration.m_host_custom_name != "")
-	{
-		g_log->information("Setting custom name=" + m_configuration.m_host_custom_name);
-		sconfig->set_host_custom_name(m_configuration.m_host_custom_name);
-	}
-
-	if (m_configuration.m_host_custom_map != "")
-	{
-		g_log->information("Setting custom map=" + m_configuration.m_host_custom_map);
-		sconfig->set_host_custom_map(m_configuration.m_host_custom_map);
-	}
-
-	if (m_configuration.m_hidden_processes != "")
-	{
-		g_log->information("Setting hidden processes=" + m_configuration.m_hidden_processes);
-		sconfig->set_hidden_processes(m_configuration.m_hidden_processes);
-	}
-
-	if (m_configuration.m_host_hidden)
-	{
-		g_log->information("Setting host hidden");
-		sconfig->set_host_hidden(m_configuration.m_host_hidden);
-	}
-
 	if (feature_manager::instance().get_enabled(BASELINER))
 	{
 		g_log->information("Setting secure profiling (baselining)");
-		sconfig->set_falco_baselining_report_interval_ns(
-		    m_configuration.m_falco_baselining_report_interval_ns);
-		sconfig->set_falco_baselining_autodisable_interval_ns(
-		    m_configuration.m_falco_baselining_autodisable_interval_ns);
-		sconfig->set_falco_baselining_max_drops_buffer_rate_percentage(
-		    m_configuration.m_falco_baselining_max_drops_buffer_rate_percentage);
-		sconfig->set_falco_baselining_max_sampling_ratio(
-		    m_configuration.m_falco_baselining_max_sampling_ratio);
-		sconfig->set_falco_baselining_randomize_start(
-		    m_configuration.m_falco_baselining_randomize_start);
-
 		analyzer->enable_secure_profiling();
 	}
 
@@ -1628,11 +1581,8 @@ sinsp_analyzer* dragent_app::build_analyzer(
 
 	sconfig->set_version(AGENT_VERSION);
 	sconfig->set_instance_id(m_configuration.m_aws_metadata.m_instance_id);
-	sconfig->set_app_checks_always_send(m_configuration.m_app_checks_always_send);
 	sconfig->set_protocols_truncation_size(m_configuration.m_protocols_truncation_size);
 	analyzer->set_fs_usage_from_external_proc(m_configuration.m_system_supports_containers);
-
-	sconfig->set_swarm_enabled(m_configuration.m_swarm_enabled);
 
 #ifndef CYGWING_AGENT
 	if (feature_manager::instance().get_enabled(APP_CHECKS))
@@ -1649,8 +1599,7 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	analyzer->set_custom_container_conf(move(m_configuration.m_custom_container));
 #endif
 
-	sconfig->set_procfs_scan_procs(m_configuration.m_procfs_scan_procs,
-	                               m_configuration.m_procfs_scan_interval);
+	sconfig->set_procfs_scan_procs(m_configuration.m_procfs_scan_procs);
 
 	//
 	// Load the chisels
@@ -1713,7 +1662,8 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	if (m_sinsp_worker.get_last_loop_ns() && m_sinsp_worker.is_stall_fatal())
 	{
-		const int64_t diff_ns = sinsp_utils::get_current_time_ns() - m_sinsp_worker.get_last_loop_ns();
+		const int64_t diff_ns =
+		    sinsp_utils::get_current_time_ns() - m_sinsp_worker.get_last_loop_ns();
 
 		if (diff_ns < 0)
 		{
@@ -1899,13 +1849,16 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		uint64_t watchdog_warn = c_watchdog_warn_memory_usage_mb.get_value();
 		if (feature_manager::instance().get_enabled(MEMDUMP))
 		{
+			uint64_t configured_memdump_size =
+			    configuration_manager::instance().get_config<bool>("memdump.size")->get_value();
+
 			if (!c_watchdog_max_memory_usage_mb.is_set_in_config())
 			{
-				watchdog_max += m_configuration.m_memdump_size / 1024 / 1024;
+				watchdog_max += configured_memdump_size / 1024 / 1024;
 			}
 			if (!c_watchdog_warn_memory_usage_mb.is_set_in_config())
 			{
-				watchdog_warn += m_configuration.m_memdump_size / 1024 / 1024;
+				watchdog_warn += configured_memdump_size / 1024 / 1024;
 			}
 		}
 		if (watchdog_warn > watchdog_max)
@@ -1970,13 +1923,13 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		snprintf(line, sizeof(line), "watchdog: restarting immediately\n");
 		crash_handler::log_crashdump_message(line);
 
-		// Kill the process immediately. Monitor will restart it. 
-		// 
+		// Kill the process immediately. Monitor will restart it.
+		//
 		// The SIGKILL will immediately be handled by the operating system and
-		// dragent will not get any more cpu time. After the operating system 
+		// dragent will not get any more cpu time. After the operating system
 		// handles the kill, the monitor will see that the dragent process died.
 		// The monitor only has specific behavior for individual exit() codes, not
-		// death by signals, so this gets handled in the default way, i.e. by 
+		// death by signals, so this gets handled in the default way, i.e. by
 		// restarting the process.
 		kill(getpid(), SIGKILL);
 	}
@@ -2234,7 +2187,8 @@ void dragent_app::initialize_logging()
 	// Setup the logging
 	//
 
-	AutoPtr<globally_readable_file_channel> file_channel(new globally_readable_file_channel(logsdir, m_configuration.m_globally_readable_log_files));
+	AutoPtr<globally_readable_file_channel> file_channel(
+	    new globally_readable_file_channel(logsdir, m_configuration.m_globally_readable_log_files));
 
 	file_channel->setProperty("purgeCount", std::to_string(m_configuration.m_log_rotate));
 	file_channel->setProperty("rotation", std::to_string(m_configuration.m_max_log_size) + "M");

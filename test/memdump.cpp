@@ -202,7 +202,6 @@ protected:
 
 		m_configuration.m_capture_dragent_events  = capture_dragent_events;
 		m_configuration.m_max_sysdig_captures = max_captures;
-		m_configuration.m_memdump_max_init_attempts = 10;
 
 		// so long as this is in scope when we initialize the feature manager, we're
 		// good. It's annoying that we can't easily keep it in scope for the whole test,

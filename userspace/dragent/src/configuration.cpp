@@ -223,26 +223,13 @@ dragent_configuration::dragent_configuration() :
 	m_transmitbuffer_size = 0;
 	m_ssl_enabled = false;
 	m_ssl_verify_certificate = true;
-	m_emit_full_connections = false;
 	m_min_file_priority = (Message::Priority)-1;
 	m_min_console_priority = (Message::Priority)-1;
 	m_min_event_priority = (Message::Priority)-1;
 	m_evtcnt = 0;
 	m_config_test = false;
-	m_falco_baselining_report_interval_ns = DEFAULT_FALCO_BASELINING_DUMP_DELTA_NS;
-	m_falco_baselining_autodisable_interval_ns = DEFAULT_FALCO_BASELINING_DISABLE_TIME_NS;
-	m_falco_baselining_max_drops_buffer_rate_percentage =
-	    DEFAULT_FALCO_BASELINING_MAX_DROPS_BUFFER_RATE_PERCENTAGE;
-	m_falco_baselining_max_sampling_ratio = DEFAULT_FALCO_BASELINING_MAX_SAMPLING_RATIO;
-	m_falco_baselining_randomize_start = true;
 	m_command_lines_capture_mode = sinsp_configuration::CM_TTY;
 	m_command_lines_include_container_healthchecks = false;
-	m_memdump_size = 0;
-	m_memdump_max_init_attempts = 10;
-	m_memdump_autodisable = true;
-	m_memdump_capture_headers_percentage_threshold = 60;
-	m_memdump_min_time_between_switch_states_ms = 150;
-	m_memdump_re_enable_interval_minutes = 30;
 	m_tracepoint_hits_threshold = 0;
 	m_cpu_usage_max_sr_threshold = 0.0;
 	m_autoupdate_enabled = true;
@@ -275,14 +262,7 @@ dragent_configuration::dragent_configuration() :
 	m_user_max_burst_events = 1000;
 	m_load_error = false;
 	m_mode = dragent_mode_t::STANDARD;
-	m_app_checks_always_send = false;
-	m_detect_stress_tools = false;
-	m_swarm_enabled = true;
 	m_snaplen = 0;
-	m_procfs_scan_thread = false;
-	m_procfs_scan_mem_interval_ms = 30000;
-	m_procfs_scan_interval_ms = 5000;
-	m_procfs_scan_delay_ms = 100;
 	m_query_docker_image_info = true;
 }
 
@@ -660,11 +640,9 @@ void dragent_configuration::init()
 	m_container_filter->set_rules(
 	    m_config->get_first_deep_sequence<vector<object_filter_config::filter_rule>>(
 	        "container_filter"));
-	m_smart_container_reporting = m_config->get_scalar<bool>("smart_container_reporting", false);
 
 	// Go user events are turned ON by default
 	m_go_k8s_user_events = m_config->get_scalar<bool>("go_k8s_user_events", true);
-	m_add_event_scopes = m_config->get_scalar<bool>("add_event_scopes", false);
 
 	m_cointerface_cpu_profile_enabled =
 	    m_config->get_scalar<bool>("cointerface_cpu_profile_enabled", false);
@@ -691,27 +669,7 @@ void dragent_configuration::init()
 		m_ssl_ca_cert_paths.insert(m_ssl_ca_cert_paths.begin(), std::move(ssl_ca_cert_dir));
 	}
 
-	m_emit_full_connections = m_config->get_scalar<bool>("emitfullconnections_enabled", false);
 	m_dump_dir = m_config->get_scalar<string>("dumpdir", "/tmp/");
-
-	m_falco_baselining_report_interval_ns =
-	    m_config->get_scalar<uint64_t>("falcobaseline",
-	                                   "report_interval",
-	                                   DEFAULT_FALCO_BASELINING_DUMP_DELTA_NS);
-	m_falco_baselining_autodisable_interval_ns =
-	    m_config->get_scalar<uint64_t>("falcobaseline",
-	                                   "autodisable_interval",
-	                                   DEFAULT_FALCO_BASELINING_DISABLE_TIME_NS);
-	m_falco_baselining_max_drops_buffer_rate_percentage =
-	    m_config->get_scalar<float>("falcobaseline",
-	                                "max_drops_buffer_rate_percentage",
-	                                DEFAULT_FALCO_BASELINING_MAX_DROPS_BUFFER_RATE_PERCENTAGE);
-	m_falco_baselining_max_sampling_ratio =
-	    m_config->get_scalar<uint32_t>("falcobaseline",
-	                                   "max_sampling_ratio",
-	                                   DEFAULT_FALCO_BASELINING_MAX_SAMPLING_RATIO);
-	m_falco_baselining_randomize_start =
-	    m_config->get_scalar<bool>("falcobaseline", "randomize_start", true);
 
 	string command_lines_capture_mode_s =
 	    m_config->get_scalar<string>("commandlines_capture", "capture_mode", "tty");
@@ -733,32 +691,11 @@ void dragent_configuration::init()
 	m_command_lines_valid_ancestors =
 	    m_config->get_deep_merged_sequence<set<string>>("commandlines_capture", "valid_ancestors");
 
-	m_memdump_size = m_config->get_scalar<unsigned>("memdump", "size", 300 * 1024 * 1024);
-	m_memdump_max_init_attempts =
-	    m_config->get_scalar<unsigned>("memdump", "max_init_attempts", 10);
-	m_memdump_autodisable = m_config->get_scalar<bool>("memdump", "autodisable", "enabled", true);
-	m_memdump_capture_headers_percentage_threshold =
-	    m_config->get_scalar<unsigned>("memdump",
-	                                   "autodisable",
-	                                   "capture_headers_percentage_threshold",
-	                                   60);
-	m_memdump_min_time_between_switch_states_ms =
-	    m_config->get_scalar<unsigned>("memdump",
-	                                   "autodisable",
-	                                   "min_time_between_switch_states_ms",
-	                                   150);
-	m_memdump_re_enable_interval_minutes =
-	    m_config->get_scalar<unsigned>("memdump", "autodisable", "re_enable_interval_minutes", 30);
-
 	m_tracepoint_hits_threshold = m_config->get_scalar<long>("tracepoint_hits_threshold", 0);
 	m_tracepoint_hits_ntimes = m_config->get_scalar<unsigned>("tracepoint_hits_seconds", 5);
 	m_cpu_usage_max_sr_threshold = m_config->get_scalar<double>("cpu_usage_max_sr_threshold", 0.0);
 	m_cpu_usage_max_sr_ntimes = m_config->get_scalar<unsigned>("cpu_usage_max_sr_seconds", 5);
 
-	m_host_custom_name = m_config->get_scalar<string>("ui", "customname", "");
-	m_host_custom_map = m_config->get_scalar<string>("ui", "custommap", "");
-	m_host_hidden = m_config->get_scalar<bool>("ui", "is_hidden", false);
-	m_hidden_processes = m_config->get_scalar<string>("ui", "hidden_processes", "");
 	m_autoupdate_enabled = m_config->get_scalar<bool>("autoupdate_enabled", true);
 	m_json_parse_errors_logfile = m_config->get_scalar<string>("json_parse_errors_logfile", "");
 	m_json_parse_errors_events_rate =
@@ -986,8 +923,6 @@ void dragent_configuration::init()
 		}
 	}
 
-	m_app_checks_always_send = m_config->get_scalar<bool>("app_checks_always_send", false);
-
 	m_containers_limit = m_config->get_scalar<uint32_t>("containers", "limit", 200);
 	m_containers_labels_max_len =
 	    m_config->get_scalar<uint32_t>("containers", "labels_max_len", 100);
@@ -1152,7 +1087,6 @@ void dragent_configuration::init()
 	m_detect_stress_tools = !m_stress_tools.empty();
 	m_coclient_max_loop_evts =
 	    m_config->get_scalar<uint32_t>("coclient_max_loop_evts", m_coclient_max_loop_evts);
-	m_swarm_enabled = m_config->get_scalar<bool>("swarm_enabled", true);
 
 	m_snaplen = m_config->get_scalar<unsigned>("snaplen", 0);
 	m_monitor_files_freq_sec =
@@ -1172,16 +1106,6 @@ void dragent_configuration::init()
 
 	m_max_n_proc_lookups = m_config->get_scalar<int32_t>("max_n_proc_lookups", 1);
 	m_max_n_proc_socket_lookups = m_config->get_scalar<int32_t>("max_n_proc_socket_lookups", 1);
-
-#ifndef CYGWING_AGENT
-	m_procfs_scan_thread = m_config->get_scalar<bool>("procfs_scanner", "enabled", false);
-	m_procfs_scan_mem_interval_ms =
-	    m_config->get_scalar<uint32_t>("procfs_scanner", "mem_scan_interval_ms", 30000);
-	m_procfs_scan_interval_ms =
-	    m_config->get_scalar<uint32_t>("procfs_scanner", "cpu_scan_interval_ms", 5000);
-	m_procfs_scan_delay_ms =
-	    m_config->get_scalar<uint32_t>("procfs_scanner", "start_delay_ms", 100);
-#endif
 
 	m_query_docker_image_info = m_config->get_scalar<bool>("query_docker_image_info", true);
 
@@ -1251,8 +1175,6 @@ void dragent_configuration::init()
 		m_track_environment = false;
 	}
 	m_procfs_scan_procs = m_config->get_first_deep_sequence<set<string>>("procfs_scan_procs");
-	m_procfs_scan_interval =
-	    m_config->get_scalar<uint32_t>("procfs_scan_interval", DEFAULT_PROCFS_SCAN_INTERVAL_SECS);
 
 	m_secure_audit_k8s_active_filters =
 	    m_config->get_first_deep_sequence<vector<string>>("secure_audit_streams",
@@ -1307,18 +1229,7 @@ void dragent_configuration::print_configuration() const
 			LOG_INFO("    " + it2.first + " : " + it2.second);
 		}
 	}
-	LOG_INFO("emitfullconnections.enabled: " + bool_as_text(m_emit_full_connections));
 	LOG_INFO("dumpdir: " + m_dump_dir);
-	LOG_INFO("falcobaseline.report_interval: " +
-	         NumberFormatter::format(m_falco_baselining_report_interval_ns));
-	LOG_INFO("falcobaseline.autodisable_interval: " +
-	         NumberFormatter::format(m_falco_baselining_autodisable_interval_ns));
-	LOG_INFO("falcobaseline.max_drops_buffer_rate_percentage: " +
-	         NumberFormatter::format(m_falco_baselining_max_drops_buffer_rate_percentage));
-	LOG_INFO("falcobaseline.max_sampling_ratio: " +
-	         NumberFormatter::format(m_falco_baselining_max_sampling_ratio));
-	LOG_INFO("falcobaseline.randomize_start: " +
-	         NumberFormatter::format(m_falco_baselining_randomize_start));
 	LOG_INFO("commandlines_capture.capture_mode: " +
 	         NumberFormatter::format(m_command_lines_capture_mode));
 	LOG_INFO("Will" + string((m_command_lines_include_container_healthchecks ? " " : " not")) +
@@ -1330,15 +1241,6 @@ void dragent_configuration::print_configuration() const
 	}
 	LOG_INFO("commandlines_capture.valid_ancestors: " + ancestors);
 	LOG_INFO("absorb_event_bursts: " + bool_as_text(m_detect_stress_tools));
-	LOG_INFO("memdump.size: " + NumberFormatter::format(m_memdump_size));
-	LOG_INFO("memdump.max_init_attempts: " + NumberFormatter::format(m_memdump_max_init_attempts));
-	LOG_INFO("memdump.autodisable.enabled: " + bool_as_text(m_memdump_autodisable));
-	LOG_INFO("memdump.autodisable.capture_headers_percentage_threshold: " +
-	         NumberFormatter::format(m_memdump_capture_headers_percentage_threshold));
-	LOG_INFO("memdump.autodisable.min_time_between_switch_states_ms: " +
-	         NumberFormatter::format(m_memdump_min_time_between_switch_states_ms));
-	LOG_INFO("memdump.autodisable.re_enable_interval_minutes: " +
-	         NumberFormatter::format(m_memdump_re_enable_interval_minutes));
 	if (m_tracepoint_hits_threshold > 0)
 	{
 		LOG_INFO(
@@ -1351,10 +1253,6 @@ void dragent_configuration::print_configuration() const
 		    "cpu_usage_max_sr_threshold: " + NumberFormatter::format(m_cpu_usage_max_sr_threshold) +
 		    " seconds=" + NumberFormatter::format(m_cpu_usage_max_sr_ntimes));
 	}
-	LOG_INFO("ui.customname: " + m_host_custom_name);
-	LOG_INFO("ui.custommap: " + m_host_custom_map);
-	LOG_INFO("ui.is_hidden: " + bool_as_text(m_host_hidden));
-	LOG_INFO("ui.hidden_processes: " + m_hidden_processes);
 	LOG_INFO("autoupdate_enabled: " + bool_as_text(m_autoupdate_enabled));
 	if (m_json_parse_errors_logfile != "")
 	{

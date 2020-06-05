@@ -4,22 +4,23 @@
 #ifdef max
 #undef max
 #endif
-#include <limits>
-
-#include "user_event.h"
-#include "metric_limits.h"
 #include "label_limits.h"
+#include "metric_limits.h"
+#include "user_event.h"
+
+#include <limits>
 #ifndef CYGWING_AGENT
 #include "mesos.h"
 #endif
 
-using ports_set = std::bitset<std::numeric_limits<uint16_t>::max()+1>;
+using ports_set = std::bitset<std::numeric_limits<uint16_t>::max() + 1>;
 
 // fwd declaration
-namespace proc_filter {
+namespace proc_filter
+{
 class conf;
 class group_pctl_conf;
-};
+};  // namespace proc_filter
 
 class SINSP_PUBLIC sinsp_configuration
 {
@@ -31,7 +32,7 @@ public:
 		CM_ALL = 2
 	};
 
-	typedef std::set<std::string>      k8s_ext_list_t;
+	typedef std::set<std::string> k8s_ext_list_t;
 	typedef std::shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
 
 	sinsp_configuration();
@@ -45,18 +46,6 @@ public:
 	void set_machine_id(std::string machine_id);
 	const std::string& get_customer_id() const;
 	void set_customer_id(std::string customer_id);
-	uint32_t get_max_connections_in_proto() const;
-	void set_max_connections_in_proto(uint32_t max_connections_in_proto);
-	bool get_aggregate_connections_in_proto() const;
-	void set_aggregate_connections_in_proto(bool aggregate);
-	const std::string& get_host_custom_name() const;
-	void set_host_custom_name(std::string host_custom_name);
-	bool get_host_hidden() const;
-	void set_host_hidden(bool host_hidden);
-	const std::string& get_hidden_processes() const;
-	void set_hidden_processes(std::string hidden_processes);
-	const std::string& get_host_custom_map() const;
-	void set_host_custom_map(std::string host_custom_map);
 	const std::string& get_version() const;
 	void set_version(const std::string& version);
 	const std::string& get_instance_id() const;
@@ -66,13 +55,13 @@ public:
 	int get_k8s_delegated_nodes() const;
 	void set_k8s_extensions(const std::set<std::string>& k8s_extensions);
 	const std::set<std::string>& get_k8s_extensions() const;
-	void set_k8s_cluster_name(const std::string &k8s_cluster_name);
+	void set_k8s_cluster_name(const std::string& k8s_cluster_name);
 	const std::string& get_k8s_cluster_name() const;
 	std::string get_mesos_state_uri() const;
-	void set_mesos_state_uri(const std::string & uri);
+	void set_mesos_state_uri(const std::string& uri);
 	std::string get_mesos_state_original_uri() const;
-	const std::vector<std::string> & get_marathon_uris() const;
-	void set_marathon_uris(const std::vector<std::string> & uris);
+	const std::vector<std::string>& get_marathon_uris() const;
+	void set_marathon_uris(const std::vector<std::string>& uris);
 	bool get_mesos_autodetect_enabled() const;
 	void set_mesos_autodetect_enabled(bool enabled);
 	void set_mesos_timeout_ms(int mesos_timeout_ms);
@@ -86,10 +75,10 @@ public:
 	const mesos::credentials_t& get_marathon_credentials() const;
 	void set_marathon_credentials(const mesos::credentials_t& creds);
 	const mesos::credentials_t& get_dcos_enterprise_credentials() const;
-	void set_marathon_skip_labels(const std::set<std::string> &labels);
+	void set_marathon_skip_labels(const std::set<std::string>& labels);
 	const std::set<std::string>& get_marathon_skip_labels() const;
 	void set_dcos_enterprise_credentials(const mesos::credentials_t& creds);
-#endif // CYGWING_AGENT
+#endif  // CYGWING_AGENT
 	bool get_curl_debug() const;
 	void set_curl_debug(bool enabled);
 	uint32_t get_protocols_truncation_size() const;
@@ -105,17 +94,6 @@ public:
 	unsigned get_mounts_limit_size() const;
 	void set_mounts_limit_size(unsigned mounts_limit_size);
 
-	uint64_t get_falco_baselining_report_interval_ns() const;
-	void set_falco_baselining_report_interval_ns(uint64_t report_interval);
-	uint64_t get_falco_baselining_autodisable_interval_ns() const;
-	void set_falco_baselining_autodisable_interval_ns(uint64_t report_interval);
-	float get_falco_baselining_max_drops_buffer_rate_percentage() const;
-	void set_falco_baselining_max_drops_buffer_rate_percentage(float max_drops_buffer_rate_percentage);
-	uint32_t get_falco_baselining_max_sampling_ratio() const;
-	void set_falco_baselining_max_sampling_ratio(uint32_t max_sampling_ratio);
-	bool get_falco_baselining_randomize_start() const;
-	void set_falco_baselining_randomize_start(bool enabled);
-
 	bool get_executed_commands_capture_enabled() const;
 	void set_executed_commands_capture_enabled(bool enabled);
 	command_capture_mode_t get_command_lines_capture_mode() const;
@@ -127,8 +105,7 @@ public:
 	bool is_command_lines_valid_ancestor(const std::string& ancestor) const;
 	bool get_capture_dragent_events() const;
 	void set_capture_dragent_events(bool enabled);
-	uint64_t get_memdump_size() const;
-	void set_memdump_size(uint64_t size);
+
 	const std::set<double>& get_percentiles() const;
 	std::shared_ptr<proc_filter::group_pctl_conf> get_group_pctl_conf() const;
 	void set_percentiles(const std::set<double>&, std::shared_ptr<proc_filter::group_pctl_conf>);
@@ -139,84 +116,42 @@ public:
 
 	void set_container_filter(std::shared_ptr<proc_filter::conf>);
 
-	void set_smart_container_reporting(bool);
-	bool get_smart_container_reporting() const;
-
 	void set_go_k8s_user_events(bool);
 	bool get_go_k8s_user_events() const;
-	void set_add_event_scopes(bool);
-	bool get_add_event_scopes() const;
 
-
-	bool get_app_checks_always_send() const;
-	void set_app_checks_always_send(bool);
 	bool get_detect_stress_tools() const;
 	void set_detect_stress_tools(bool enabled);
-	bool get_swarm_enabled() const;
-	void set_swarm_enabled(bool enabled);
 
 	const std::pair<long, unsigned>& get_tracepoint_hits_threshold() const;
 	void set_tracepoint_hits_threshold(long, unsigned);
 	const std::pair<double, unsigned>& get_cpu_max_sr_threshold() const;
 	void set_cpu_max_sr_threshold(double, unsigned);
 
-	uint32_t get_orch_queue_len() const;
-	void set_orch_queue_len(uint32_t queue_len);
-	int32_t get_orch_gc() const;
-	void set_orch_gc(int32_t gc);
-	uint32_t get_orch_inf_wait_time_s() const;
-	void set_orch_inf_wait_time_s(uint32_t inf_wait_time_s);
-	uint32_t get_orch_tick_interval_ms() const;
-	void set_orch_tick_interval_ms(uint32_t tick_interval_ms);
-	uint32_t get_orch_low_ticks_needed() const;
-	void set_orch_low_ticks_needed(uint32_t low_ticks_needed);
-	uint32_t get_orch_low_evt_threshold() const;
-	void set_orch_low_evt_threshold(uint32_t low_evt_threshold);
-	bool get_orch_filter_empty() const;
-	void set_orch_filter_empty(bool filter_empty);
-	void set_procfs_scan_delay_ms(uint32_t scan_delay_ms);
-	uint32_t get_procfs_scan_delay_ms() const;
-	void set_procfs_scan_interval_ms(uint32_t scan_interval_ms);
-	uint32_t get_procfs_scan_interval_ms() const;
-	void set_procfs_scan_mem_interval_ms(uint32_t scan_interval_ms);
-	uint32_t get_procfs_scan_mem_interval_ms() const;
-	uint32_t get_orch_batch_msgs_queue_len() const;
-	void set_orch_batch_msgs_queue_len(uint32_t batch_queue_len);
-	uint32_t get_orch_batch_msgs_tick_interval_ms() const;
-	void set_orch_batch_msgs_tick_interval_ms(uint32_t batch_tick_interval_ms);
-	void set_procfs_scan_procs(const std::set<std::string> &procs, uint32_t interval);
-	const std::set<std::string> &get_procfs_scan_procs();
-	uint32_t get_procfs_scan_interval();
+	void set_procfs_scan_procs(const std::set<std::string>& procs);
+	const std::set<std::string>& get_procfs_scan_procs();
+
 private:
 	std::string get_mesos_uri(const std::string& sought_url) const;
-	void set_mesos_uri(std::string& url, const std::string & new_url);
-	void set_mesos_state_original_uri(const std::string & uri);
+	void set_mesos_uri(std::string& url, const std::string& new_url);
+	void set_mesos_state_original_uri(const std::string& uri);
 	friend class dragent_app;
 
 	std::string m_machine_id;
 	std::string m_customer_id;
-	uint32_t m_max_connections_in_proto;
-	bool m_aggregate_connections_in_proto;
-	std::string m_host_custom_name;
-	bool m_host_hidden;
-	std::string m_hidden_processes;
-	std::string m_host_custom_map;
 	std::string m_version;
 	std::string m_instance_id;
 
 	std::set<double> m_percentiles;
 	std::shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
 	std::shared_ptr<proc_filter::conf> m_container_filter;
-	bool m_smart_container_reporting = false;
 
 	/**
-         * Enable to route K8s user events through cointerface instead of dragent
-         * dragent will only serve as a middleman in this case. Leave false
-         * to cause dragent to directly talk to K8s API server to fetch events
-         */
+	 * Enable to route K8s user events through cointerface instead of dragent
+	 * dragent will only serve as a middleman in this case. Leave false
+	 * to cause dragent to directly talk to K8s API server to fetch events
+	 */
 	bool m_go_k8s_user_events = false;
 	bool m_go_k8s_debug_events = false;
-	bool m_add_event_scopes = false;
 
 	std::string m_log_dir;
 
@@ -236,7 +171,7 @@ private:
 	mesos::credentials_t m_marathon_credentials;
 	mesos::credentials_t m_dcos_enterprise_credentials;
 	std::set<std::string> m_marathon_skip_labels;
-#endif // CYGWING_AGENT
+#endif  // CYGWING_AGENT
 
 	bool m_curl_debug;
 
@@ -245,7 +180,6 @@ private:
 	bool m_command_lines_include_container_healthchecks;
 	std::set<std::string> m_command_lines_valid_ancestors;
 	bool m_capture_dragent_events;
-	uint64_t m_memdump_size;
 
 	uint32_t m_protocols_truncation_size;
 
@@ -257,27 +191,11 @@ private:
 	unsigned m_mounts_limit_size;
 
 	unsigned m_jmx_limit;
-	bool m_app_checks_always_send;
 
 	bool m_detect_stress_tools;
-	bool m_swarm_enabled;
-
-	uint64_t m_falco_baselining_report_interval_ns;
-	uint64_t m_falco_baselining_autodisable_interval_ns;
-	float m_falco_baselining_max_drops_buffer_rate_percentage;
-	uint32_t m_falco_baselining_max_sampling_ratio;
-	bool m_falco_baselining_randomize_start;
 
 	std::pair<long, unsigned> m_tracepoint_hits_threshold;
 	std::pair<double, unsigned> m_cpu_max_sr_threshold;
 
-	uint32_t m_procfs_scan_delay_ms;
-	uint32_t m_procfs_scan_interval_ms;
-	uint32_t m_procfs_scan_mem_interval_ms;
-
-	uint32_t m_orch_batch_msgs_queue_len;
-	uint32_t m_orch_batch_msgs_tick_interval_ms;
-
 	std::set<std::string> m_procfs_scan_procs;
-	uint32_t m_procfs_scan_interval;
 };

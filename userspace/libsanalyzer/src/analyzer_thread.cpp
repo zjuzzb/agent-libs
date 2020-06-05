@@ -28,6 +28,10 @@
 #include "scores.h"
 #include "sinsp_errno.h"
 
+namespace
+{
+type_config<uint32_t> c_procfs_scan_interval_s(20, "", "procfs_scan_interval");
+}
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_procinfo implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -428,8 +432,7 @@ void thread_analyzer_info::clear_role_flags()
 	      AF_IS_LOCAL_IPV4_CLIENT | AF_IS_REMOTE_IPV4_CLIENT | AF_IS_UNIX_CLIENT);
 }
 
-void thread_analyzer_info::scan_listening_ports(bool scan_procfs,
-                                                uint32_t procfs_scan_interval) const
+void thread_analyzer_info::scan_listening_ports(bool scan_procfs) const
 {
 	time_point_t now = time_point_t::min();
 
@@ -471,7 +474,7 @@ void thread_analyzer_info::scan_listening_ports(bool scan_procfs,
 		auto elapsed_secs =
 		    std::chrono::duration_cast<std::chrono::seconds>(now - m_last_procfs_port_scan).count();
 		if ((m_last_procfs_port_scan == time_point_t::min()) ||
-		    (elapsed_secs >= procfs_scan_interval))
+		    (elapsed_secs >= c_procfs_scan_interval_s.get_value()))
 		{
 			int prev_size = m_procfs_found_ports.size();
 			m_procfs_found_ports.clear();

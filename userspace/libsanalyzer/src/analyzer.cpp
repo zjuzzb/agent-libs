@@ -219,6 +219,69 @@ type_config<uint64_t>::ptr c_flush_interval =
 
 type_config<std::string> c_host_tags("", "Set of key-value tags assigned to this agent", "tags");
 
+type_config<bool> c_smart_container_reporting(
+    false,
+    "Set to true to get different container sorting behavior",
+    "smart_container_reporting");
+
+type_config<uint32_t> c_procfs_scan_interval_ms(
+    5000,
+    "default interval between procfs scans for cpu data, in ms",
+    "procfs_scanner",
+    "cpu_scan_interval_ms");
+
+type_config<uint32_t> c_procfs_scan_mem_interval_ms(
+    30000,
+    "default interval between procfs scans for memory data, in ms",
+    "procfs_scanner",
+    "mem_scan_interval_ms");
+
+type_config<bool> c_swarm_enabled(true, "set to enable swarm", "swarm_enabled");
+type_config<bool> c_add_event_scopes(false, "", "add_event_scopes");
+
+type_config<uint64_t> c_falco_baselining_report_interval_ns(15 * 60LL * ONE_SECOND_IN_NS,
+                                                            "falco baseline emit interval",
+                                                            "falcobaseline",
+                                                            "report_interval");
+type_config<uint64_t> c_falco_baselining_autodisable_interval_ns(
+    30 * 60LL * ONE_SECOND_IN_NS,
+    "time after which we should try to re-enable the falco baseliner that has been previously "
+    "disabled for performance reasons",
+    "falcobaseline",
+    "autodisable_interval");
+
+type_config<double> c_falco_baselining_max_drops_buffer_rate_percentage(
+    0.01f,
+    "Max percentage of dropped events (because of full ring buffer) over the total number of "
+    "processed events. Upon reaching this limit, the falco baseliner is disabled.",
+    "falcobasline",
+    "max_drops_buffer_rate_percentage");
+
+//
+// Max sampling ratio allowed to keep the baseliner operational. If
+// the sample ratio is set a higher value the baseliner is disabled.
+// Sampling ratio of 1 means no sample. The agent tries to keep its
+// CPU consumption lower then a configured threshold. If the agent
+// surpasses the threshold for a given amount of consecutive seconds,
+// the sampling ratio is doubled. The maximum allowed value for
+// sampling ratio is 128.
+//
+type_config<uint32_t> c_falco_baselining_max_sampling_ratio(
+    1,
+    " Max sampling ratio allowed to keep the baseliner operational.",
+    "falcobaseline",
+    "max_sampling_ratio");
+
+type_config<bool> c_falco_baselining_randomize_start(true, "", "falcobaseline", "randomize_start");
+type_config<bool> c_emit_full_connections(
+    false,
+    "incoming connections are aggregated in protobuf samples",
+    "emitfullconnections_enabled");
+
+type_config<std::string> c_host_custom_name("", "", "ui", "customname");
+type_config<bool> c_host_hidden(false, "", "ui", "is_hidden");
+type_config<std::string> c_hidden_processes("", "", "ui", "hidden_processes");
+
 }  // end namespace
 
 const uint64_t flush_data_message::NO_EVENT_NUMBER = std::numeric_limits<uint64_t>::max();
@@ -604,20 +667,18 @@ void sinsp_analyzer::on_capture_start()
 	m_total_evts_switcher.set_ntimes_max(tracepoint_hits_threshold.second);
 
 #ifndef CYGWING_AGENT
-	m_procfs_parser =
-	    new sinsp_procfs_parser(m_machine_info->num_cpus,
-	                            m_machine_info->memory_size_bytes / 1024,
-	                            !m_inspector->is_capture(),
-	                            m_configuration->get_procfs_scan_interval_ms() / 1000,
-	                            m_configuration->get_procfs_scan_mem_interval_ms() / 1000);
+	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus,
+	                                          m_machine_info->memory_size_bytes / 1024,
+	                                          !m_inspector->is_capture(),
+	                                          c_procfs_scan_interval_ms.get_value() / 1000,
+	                                          c_procfs_scan_mem_interval_ms.get_value() / 1000);
 #else
-	m_procfs_parser =
-	    new sinsp_procfs_parser(m_inspector,
-	                            m_machine_info->num_cpus,
-	                            m_machine_info->memory_size_bytes / 1024,
-	                            !m_inspector->is_capture(),
-	                            m_configuration->get_procfs_scan_interval_ms() / 1000,
-	                            m_configuration->get_procfs_scan_mem_interval_ms() / 1000);
+	m_procfs_parser = new sinsp_procfs_parser(m_inspector,
+	                                          m_machine_info->num_cpus,
+	                                          m_machine_info->memory_size_bytes / 1024,
+	                                          !m_inspector->is_capture(),
+	                                          c_procfs_scan_interval_ms.get_value() / 1000,
+	                                          c_procfs_scan_mem_interval_ms.get_value() / 1000);
 #endif
 	m_mounted_fs_reader.reset(new mounted_fs_reader(m_remotefs_enabled,
 	                                                m_configuration->get_mounts_filter(),
@@ -667,16 +728,16 @@ void sinsp_analyzer::on_capture_start()
 		LOG_INFO("init secure_profiling (baselining)");
 		m_falco_baseliner->init();
 
-		if (m_configuration->get_falco_baselining_randomize_start())
+		if (c_falco_baselining_randomize_start.get_value())
 		{
 			// we randomize the baseline runtime enable start time, in
 			// order to spread evenly the fingerprint message emission to
 			// the collectors, across multiple agents.
 			srand(time(NULL));
-			uint64_t ts = ((rand() % (m_configuration->get_falco_baselining_report_interval_ns() /
-			                          ONE_SECOND_IN_NS)) +
-			               1) *
-			              ONE_SECOND_IN_NS;
+			uint64_t ts =
+			    ((rand() % (c_falco_baselining_report_interval_ns.get_value() / ONE_SECOND_IN_NS)) +
+			     1) *
+			    ONE_SECOND_IN_NS;
 			LOG_INFO("secure_profiling (baselining) randomize start time in %lld sec",
 			         ts / ONE_SECOND_IN_NS);
 			m_falco_baseliner->set_baseline_runtime_enable_start_time(
@@ -747,7 +808,7 @@ void sinsp_analyzer::init_k8s_user_event_handler()
 		    K8S_EVENTS_POLL_INTERVAL_NS,
 		    m_root_dir,
 		    is_delegated,
-		    m_configuration->get_add_event_scopes() ? mutable_infra_state() : nullptr);
+		    c_add_event_scopes.get_value() ? mutable_infra_state() : nullptr);
 	}
 
 	LOG_INFO("initializing k8s event message handler");
@@ -2386,7 +2447,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	// WARNING: the following methods emit but also clear the metrics
 	if (feature_manager::instance().get_enabled(NETWORK_BREAKDOWN))
 	{
-		if (m_configuration->get_aggregate_connections_in_proto())
+		if (!c_emit_full_connections.get_value())
 		{
 			//
 			// Aggregate external connections and limit the number of entries in the connection
@@ -2409,7 +2470,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	// at least one process for each container
 	tracer_emitter container_trc("emit_container", proc_trc);
 	vector<string> emitted_containers;
-	if (m_configuration->get_smart_container_reporting())
+	if (c_smart_container_reporting.get_value())
 	{
 		update_percentile_data_serialization(progtable_by_container);
 
@@ -2959,7 +3020,7 @@ bool sinsp_analyzer::aggregate_processes_into_programs(sinsp_threadinfo& sinsp_t
 	{
 		const auto& procs = m_configuration->get_procfs_scan_procs();
 		bool procfs_scan = procs.find(tinfo.m_comm) != procs.end();
-		tinfo.scan_listening_ports(procfs_scan, m_configuration->get_procfs_scan_interval());
+		tinfo.scan_listening_ports(procfs_scan);
 
 		if (m_jmx_proxy && is_java_process(tinfo.get_comm()))
 		{
@@ -3814,8 +3875,7 @@ void sinsp_analyzer::adjust_sampling_ratio()
 			m_requested_sampling_ratio = std::min(m_acked_sampling_ratio * 2, (uint64_t)128);
 
 			if (m_falco_baseliner->is_baseline_runtime_enabled() &&
-			    m_requested_sampling_ratio >
-			        m_configuration->get_falco_baselining_max_sampling_ratio())
+			    m_requested_sampling_ratio > c_falco_baselining_max_sampling_ratio.get_value())
 			{
 				LOG_WARNING(
 				    "disabling secure_profiling (baselining) because sampling ratio is too high.");
@@ -4103,7 +4163,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 			m_falco_baseliner->emit_as_protobuf(0);
 		}
 		else if (evt != nullptr && evt->get_ts() - m_last_falco_dump_ts >
-		                               m_configuration->get_falco_baselining_report_interval_ns())
+		                               c_falco_baselining_report_interval_ns.get_value())
 		{
 			if (m_last_falco_dump_ts != 0)
 			{
@@ -4132,19 +4192,17 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 		//
 		// Once in a while, try to turn baseline calculation on again
 		//
-		if (m_acked_sampling_ratio <= m_configuration->get_falco_baselining_max_sampling_ratio())
+		if (m_acked_sampling_ratio <= c_falco_baselining_max_sampling_ratio.get_value())
 		{
-			if (evt != nullptr &&
-			    evt->get_ts() - m_last_falco_dump_ts >
-			        m_configuration->get_falco_baselining_autodisable_interval_ns())
+			if (evt != nullptr && evt->get_ts() - m_last_falco_dump_ts >
+			                          c_falco_baselining_autodisable_interval_ns.get_value())
 			{
 				//
 				// It's safe to turn baselining on again.
 				// Reset the tables and restart the baseline time counter.
 				//
 				LOG_INFO("enabling secure_profiling (baselining) creation after a %llus pause",
-				         m_configuration->get_falco_baselining_autodisable_interval_ns() /
-				             ONE_SECOND_IN_NS);
+				         c_falco_baselining_autodisable_interval_ns.get_value() / ONE_SECOND_IN_NS);
 				m_falco_baseliner->clear_tables();
 				m_falco_baseliner->enable_baseline_calculation();
 				m_last_falco_dump_ts = evt->get_ts();
@@ -4390,7 +4448,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 #ifndef CYGWING_AGENT
 				// Only run every 10 seconds or 5 minutes
 				if (feature_manager::instance().get_enabled(COINTERFACE) &&
-				    m_configuration->get_swarm_enabled())
+				    c_swarm_enabled.get_value())
 				{
 					tracer_emitter ss_trc("get_swarm_state", f_trc);
 					m_swarmstate_interval.run(
@@ -4528,12 +4586,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			//
 			// Map customizations coming from the analyzer.
 			//
-			m_metrics->set_host_custom_name(m_configuration->get_host_custom_name());
+			m_metrics->set_host_custom_name(c_host_custom_name.get_value());
 #ifndef CYGWING_AGENT
 			m_metrics->set_host_tags(std::move(get_host_tags_with_cluster()));
 #endif
-			m_metrics->set_is_host_hidden(m_configuration->get_host_hidden());
-			m_metrics->set_hidden_processes(m_configuration->get_hidden_processes());
+			m_metrics->set_is_host_hidden(c_host_hidden.get_value());
+			m_metrics->set_hidden_processes(c_hidden_processes.get_value());
 			m_metrics->set_version(m_configuration->get_version());
 			if (!m_configuration->get_instance_id().empty())
 			{
@@ -5230,7 +5288,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 		scap_stats st;
 		m_inspector->get_capture_stats(&st);
 		if (m_falco_baseliner->is_drops_buffer_rate_critical(
-		        m_configuration->get_falco_baselining_max_drops_buffer_rate_percentage()))
+		        c_falco_baselining_max_drops_buffer_rate_percentage.get_value()))
 		{
 			LOG_WARNING(
 			    "disabling secure_profiling (baselining) because of critical drops buffer rate.");
@@ -6344,8 +6402,7 @@ void sinsp_analyzer::emit_docker_events()
 		else
 		{
 			LOG_INFO("Creating Docker object ...");
-			m_docker.reset(
-			    new docker(m_configuration->get_add_event_scopes() ? mutable_infra_state() : nullptr));
+			m_docker.reset(new docker(c_add_event_scopes.get_value() ? mutable_infra_state() : nullptr));
 			if (m_docker)
 			{
 				m_docker->set_event_filter(m_configuration->get_docker_event_filter());

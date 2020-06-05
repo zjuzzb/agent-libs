@@ -284,9 +284,7 @@ public:
 		}
 	}
 
-	void scan_listening_ports(
-	    bool add_procfs_scan = false,
-	    uint32_t procfs_scan_interval = DEFAULT_PROCFS_SCAN_INTERVAL_SECS) const;
+	void scan_listening_ports(bool add_procfs_scan = false) const;
 
 	inline void set_exclude_from_sample(bool val) { m_procinfo->m_exclude_from_sample = val; }
 

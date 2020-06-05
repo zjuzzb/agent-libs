@@ -13,29 +13,21 @@ using namespace std;
 
 sinsp_configuration::sinsp_configuration()
     : m_tracepoint_hits_threshold(N_TRACEPOINT_HITS_THRESHOLD, SWITCHER_NSECONDS),
-      m_cpu_max_sr_threshold(CPU_MAX_SR_THRESHOLD, SWITCHER_NSECONDS),
-      m_procfs_scan_interval_ms(0),
-      m_procfs_scan_mem_interval_ms(0)
+      m_cpu_max_sr_threshold(CPU_MAX_SR_THRESHOLD, SWITCHER_NSECONDS)
 {
 	m_machine_id = "<NA>";
 	m_customer_id = "<NA>";
-	m_max_connections_in_proto = DEFAULT_MAX_CONNECTIONS_IN_PROTO;
-	m_aggregate_connections_in_proto = AGGREGATE_CONNECTIONS_IN_PROTO;
-	m_host_hidden = false;
 	m_protocols_truncation_size = 512;
 	m_mounts_limit_size = 15u;
 #ifndef CYGWING_AGENT
 	m_mesos_autodetect = true;
 #endif
 	m_jmx_limit = 500;
-	m_app_checks_always_send = false;
-	m_memdump_size = 0;
 	m_executed_commands_capture_enabled = false;
 	m_command_lines_capture_mode = command_capture_mode_t::CM_TTY;
 	m_command_lines_include_container_healthchecks = false;
 	m_capture_dragent_events = false;
 	m_detect_stress_tools = false;
-	m_swarm_enabled = true;
 }
 
 const string& sinsp_configuration::get_machine_id() const
@@ -56,78 +48,6 @@ const string& sinsp_configuration::get_customer_id() const
 void sinsp_configuration::set_customer_id(string customer_id)
 {
 	m_customer_id = customer_id;
-}
-
-uint32_t sinsp_configuration::get_max_connections_in_proto() const
-{
-	return m_max_connections_in_proto;
-}
-
-void sinsp_configuration::set_max_connections_in_proto(uint32_t max_connections_in_proto)
-{
-	m_max_connections_in_proto = max_connections_in_proto;
-}
-
-bool sinsp_configuration::get_aggregate_connections_in_proto() const
-{
-	return m_aggregate_connections_in_proto;
-}
-
-void sinsp_configuration::set_aggregate_connections_in_proto(bool aggregate)
-{
-	m_aggregate_connections_in_proto = aggregate;
-}
-
-uint64_t sinsp_configuration::get_falco_baselining_report_interval_ns() const
-{
-	return m_falco_baselining_report_interval_ns;
-}
-
-void sinsp_configuration::set_falco_baselining_report_interval_ns(uint64_t report_interval)
-{
-	m_falco_baselining_report_interval_ns = report_interval;
-}
-
-uint64_t sinsp_configuration::get_falco_baselining_autodisable_interval_ns() const
-{
-	return m_falco_baselining_autodisable_interval_ns;
-}
-
-void sinsp_configuration::set_falco_baselining_autodisable_interval_ns(
-    uint64_t autodisable_interval)
-{
-	m_falco_baselining_autodisable_interval_ns = autodisable_interval;
-}
-
-float sinsp_configuration::get_falco_baselining_max_drops_buffer_rate_percentage() const
-{
-	return m_falco_baselining_max_drops_buffer_rate_percentage;
-}
-
-void sinsp_configuration::set_falco_baselining_max_drops_buffer_rate_percentage(
-    float max_drops_buffer_rate_percentage)
-{
-	m_falco_baselining_max_drops_buffer_rate_percentage = max_drops_buffer_rate_percentage;
-}
-
-uint32_t sinsp_configuration::get_falco_baselining_max_sampling_ratio() const
-{
-	return m_falco_baselining_max_sampling_ratio;
-}
-
-void sinsp_configuration::set_falco_baselining_max_sampling_ratio(uint32_t max_sampling_ratio)
-{
-	m_falco_baselining_max_sampling_ratio = max_sampling_ratio;
-}
-
-bool sinsp_configuration::get_falco_baselining_randomize_start() const
-{
-	return m_falco_baselining_randomize_start;
-}
-
-void sinsp_configuration::set_falco_baselining_randomize_start(bool enabled)
-{
-	m_falco_baselining_randomize_start = enabled;
 }
 
 bool sinsp_configuration::get_executed_commands_capture_enabled() const
@@ -186,64 +106,14 @@ void sinsp_configuration::set_capture_dragent_events(bool enabled)
 	m_capture_dragent_events = enabled;
 }
 
-uint64_t sinsp_configuration::get_memdump_size() const
-{
-	return m_memdump_size;
-}
-
-void sinsp_configuration::set_memdump_size(uint64_t size)
-{
-	m_memdump_size = size;
-}
-
-const string& sinsp_configuration::get_host_custom_name() const
-{
-	return m_host_custom_name;
-}
-
-void sinsp_configuration::set_host_custom_name(string host_custom_name)
-{
-	m_host_custom_name = host_custom_name;
-}
-
-bool sinsp_configuration::get_host_hidden() const
-{
-	return m_host_hidden;
-}
-
-void sinsp_configuration::set_host_hidden(bool host_hidden)
-{
-	m_host_hidden = host_hidden;
-}
-
-const string& sinsp_configuration::get_hidden_processes() const
-{
-	return m_hidden_processes;
-}
-
-void sinsp_configuration::set_hidden_processes(string hidden_processes)
-{
-	m_hidden_processes = hidden_processes;
-}
-
-const string& sinsp_configuration::get_host_custom_map() const
-{
-	return m_host_custom_map;
-}
-
-void sinsp_configuration::set_host_custom_map(string host_custom_map)
-{
-	m_host_custom_map = host_custom_map;
-}
-
-const string& sinsp_configuration::get_version() const
-{
-	return m_version;
-}
-
 void sinsp_configuration::set_version(const string& version)
 {
 	m_version = version;
+}
+
+const std::string& sinsp_configuration::get_version(void) const
+{
+	return m_version;
 }
 
 const string& sinsp_configuration::get_instance_id() const
@@ -554,16 +424,6 @@ void sinsp_configuration::set_container_filter(shared_ptr<proc_filter::conf> con
 	m_container_filter = conf;
 }
 
-void sinsp_configuration::set_smart_container_reporting(bool enabled)
-{
-	m_smart_container_reporting = enabled;
-}
-
-bool sinsp_configuration::get_smart_container_reporting() const
-{
-	return m_smart_container_reporting;
-}
-
 void sinsp_configuration::set_go_k8s_user_events(bool enabled)
 {
 	m_go_k8s_user_events = enabled;
@@ -572,16 +432,6 @@ void sinsp_configuration::set_go_k8s_user_events(bool enabled)
 bool sinsp_configuration::get_go_k8s_user_events() const
 {
 	return m_go_k8s_user_events;
-}
-
-void sinsp_configuration::set_add_event_scopes(bool enabled)
-{
-	m_add_event_scopes = enabled;
-}
-
-bool sinsp_configuration::get_add_event_scopes() const
-{
-	return m_add_event_scopes;
 }
 
 void sinsp_configuration::set_log_dir(const string& dir)
@@ -594,16 +444,6 @@ string& sinsp_configuration::get_log_dir()
 	return m_log_dir;
 }
 
-bool sinsp_configuration::get_app_checks_always_send() const
-{
-	return m_app_checks_always_send;
-}
-
-void sinsp_configuration::set_app_checks_always_send(bool value)
-{
-	m_app_checks_always_send = value;
-}
-
 bool sinsp_configuration::get_detect_stress_tools() const
 {
 	return m_detect_stress_tools;
@@ -612,16 +452,6 @@ bool sinsp_configuration::get_detect_stress_tools() const
 void sinsp_configuration::set_detect_stress_tools(bool val)
 {
 	m_detect_stress_tools = val;
-}
-
-bool sinsp_configuration::get_swarm_enabled() const
-{
-	return m_swarm_enabled;
-}
-
-void sinsp_configuration::set_swarm_enabled(bool val)
-{
-	m_swarm_enabled = val;
 }
 
 const pair<long, unsigned>& sinsp_configuration::get_tracepoint_hits_threshold() const
@@ -644,51 +474,17 @@ void sinsp_configuration::set_cpu_max_sr_threshold(double threshold, unsigned nt
 	m_cpu_max_sr_threshold = make_pair(threshold, ntimes);
 }
 
-void sinsp_configuration::set_procfs_scan_delay_ms(uint32_t scan_delay_ms)
-{
-	m_procfs_scan_delay_ms = scan_delay_ms;
-}
-
-uint32_t sinsp_configuration::get_procfs_scan_delay_ms() const
-{
-	return m_procfs_scan_delay_ms;
-}
-
-void sinsp_configuration::set_procfs_scan_interval_ms(uint32_t scan_interval_ms)
-{
-	m_procfs_scan_interval_ms = scan_interval_ms;
-}
-
-uint32_t sinsp_configuration::get_procfs_scan_interval_ms() const
-{
-	return m_procfs_scan_interval_ms;
-}
-
-void sinsp_configuration::set_procfs_scan_mem_interval_ms(uint32_t scan_interval_ms)
-{
-	m_procfs_scan_mem_interval_ms = scan_interval_ms;
-}
-
-uint32_t sinsp_configuration::get_procfs_scan_mem_interval_ms() const
-{
-	return m_procfs_scan_mem_interval_ms;
-}
-
-void sinsp_configuration::set_procfs_scan_procs(const set<string>& procs, uint32_t interval)
+void sinsp_configuration::set_procfs_scan_procs(const set<string>& procs)
 {
 	m_procfs_scan_procs = procs;
-	m_procfs_scan_interval = interval;
 	for (const auto& proc : m_procfs_scan_procs)
 	{
 		LOG_INFO("procfs_scan_proc: %s", proc.c_str());
 	}
-	LOG_INFO("procfs_scan_interval: %d", m_procfs_scan_interval);
 }
+
 const set<string>& sinsp_configuration::get_procfs_scan_procs()
 {
-	return m_procfs_scan_procs;
+       return m_procfs_scan_procs;
 }
-uint32_t sinsp_configuration::get_procfs_scan_interval()
-{
-	return m_procfs_scan_interval;
-}
+

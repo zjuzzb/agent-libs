@@ -20,23 +20,9 @@
 #define MAX_SERIALIZATION_BUF_SIZE_BYTES 32000000
 
 //
-// Max number of connections that can go in a sample that is sent to the backend.
-// 0 means no limit.
-// This can be ovverridden through sinsp_configuration::set_max_connections_in_proto().
-//
-#define DEFAULT_MAX_CONNECTIONS_IN_PROTO 100
-
-//
 // Max number of executed commands that can be included in the protocol
 //
 #define DEFAULT_MAX_EXECUTED_COMMANDS_IN_PROTO 30
-
-//
-// If this is set, all the connections *coming* from the external world
-// are aggreagated into a single connection in the protocol samples.
-// This can be overridden by set_aggregate_connections_in_proto().
-//
-#define AGGREGATE_CONNECTIONS_IN_PROTO true
 
 //
 // Transaction constants
@@ -112,35 +98,6 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 #define CHISEL_METRIC_LIMIT 300
 
 //
-// Falco baseline emit interval
-//
-#define DEFAULT_FALCO_BASELINING_DUMP_DELTA_NS (60LL * 15LL * 1000000000)
-
-//
-// Time after which we should try to re-enable the falco baseliner,
-// that has been previously disabled for performance reasons.
-//
-#define DEFAULT_FALCO_BASELINING_DISABLE_TIME_NS (60LL * 30LL * 1000000000)
-
-//
-// Max percentage of dropped events (because of full ring buffer) over
-// the total number of processed events. Upon reaching this limit, the
-// falco baseliner is disabled.
-//
-#define DEFAULT_FALCO_BASELINING_MAX_DROPS_BUFFER_RATE_PERCENTAGE 0.01f
-
-//
-// Max sampling ratio allowed to keep the baseliner operational. If
-// the sample ratio is set a higher value the baseliner is disabled.
-// Sampling ratio of 1 means no sample. The agent tries to keep its
-// CPU consumption lower then a configured threshold. If the agent
-// surpasses the threshold for a given amount of consecutive seconds,
-// the sampling ratio is doubled. The maximum allowed value for
-// sampling ratio is 128.
-//
-#define DEFAULT_FALCO_BASELINING_MAX_SAMPLING_RATIO 1
-
-//
 // FD class customized with the storage we need
 //
 template<class T> class sinsp_fdinfo;
@@ -188,4 +145,3 @@ static const unsigned SWITCHER_NSECONDS = 5;
 
 static const size_t EVENT_QUEUE_LIMIT = 100;
 #define K8S_EVENTS_POLL_INTERVAL_NS (ONE_SECOND_IN_NS / 500)
-static const uint32_t DEFAULT_PROCFS_SCAN_INTERVAL_SECS = 20;

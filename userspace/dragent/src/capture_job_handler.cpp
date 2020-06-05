@@ -14,6 +14,27 @@
 
 using namespace std;
 
+type_config<uint64_t> c_memdump_size(300 * 1024 * 1024, "", "memdump", "size");
+
+type_config<uint32_t> c_memdump_max_init_attempts(10, "", "memdump", "max_init_attempts");
+type_config<bool> c_memdump_autodisable(true, "", "memdump", "autodisable", "enabled");
+type_config<uint32_t> c_memdump_capture_headers_percentage_threshold(
+    60,
+    "",
+    "memdump",
+    "autodisable",
+    "capture_headers_percentage_threshold");
+type_config<uint64_t> c_memdump_min_time_between_switch_states_ms(
+    150,
+    "",
+    "memdump",
+    "autodisable",
+    "min_time_between_switch_states_ms");
+type_config<uint32_t> c_memdump_re_enable_interval_minutes(30,
+                                                           "",
+                                                           "memdump",
+                                                           "autodisable",
+                                                           "re_enable_interval_minutes");
 class capture_job
 {
 public:
@@ -620,16 +641,16 @@ void capture_job_handler::init(const sinsp* inspector)
 
 	if (feature_manager::instance().get_enabled(MEMDUMP))
 	{
-		g_log->information(
-		    m_name + ": enabling memdump, size=" + to_string(m_configuration->m_memdump_size));
+		g_log->information(m_name +
+		                   ": enabling memdump, size=" + to_string(c_memdump_size.get_value()));
 		m_memdumper = make_unique<sinsp_memory_dumper>((sinsp*)inspector);
-		m_memdumper->init(m_configuration->m_memdump_size,
-		                  m_configuration->m_memdump_size,
-		                  m_configuration->m_memdump_max_init_attempts,
-		                  m_configuration->m_memdump_autodisable,
-		                  m_configuration->m_memdump_capture_headers_percentage_threshold,
-		                  m_configuration->m_memdump_min_time_between_switch_states_ms,
-		                  m_configuration->m_memdump_re_enable_interval_minutes);
+		m_memdumper->init(c_memdump_size.get_value(),
+		                  c_memdump_size.get_value(),
+		                  c_memdump_max_init_attempts.get_value(),
+		                  c_memdump_autodisable.get_value(),
+		                  c_memdump_capture_headers_percentage_threshold.get_value(),
+		                  c_memdump_min_time_between_switch_states_ms.get_value(),
+		                  c_memdump_re_enable_interval_minutes.get_value());
 	}
 
 	//

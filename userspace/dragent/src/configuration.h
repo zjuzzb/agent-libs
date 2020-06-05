@@ -163,7 +163,6 @@ public:
 	std::string m_ssl_ca_certificate;
 	std::vector<std::string> m_ssl_ca_cert_paths;
 	bool m_compression_enabled;
-	bool m_emit_full_connections;
 	std::string m_dump_dir;
 	std::string m_input_filename;
 	uint64_t m_evtcnt;
@@ -175,10 +174,6 @@ public:
 	double m_cpu_usage_max_sr_threshold;
 	unsigned m_cpu_usage_max_sr_ntimes;
 
-	std::string m_host_custom_name;
-	std::string m_host_custom_map;
-	bool m_host_hidden;
-	std::string m_hidden_processes;
 	bool m_autoupdate_enabled;
 	bool m_print_protobuf;
 	std::string m_json_parse_errors_logfile;
@@ -239,7 +234,6 @@ public:
 
 	std::vector<app_check> m_app_checks;
 	std::string m_python_binary;
-	bool m_app_checks_always_send;
 	uint32_t m_containers_limit;
 	uint32_t m_containers_labels_max_len;
 	std::vector<std::string> m_container_patterns;
@@ -288,21 +282,9 @@ public:
 	std::set<std::string> m_marathon_skip_labels;
 #endif
 
-	uint64_t m_falco_baselining_report_interval_ns;
-	uint64_t m_falco_baselining_autodisable_interval_ns;
-	float m_falco_baselining_max_drops_buffer_rate_percentage;
-	uint32_t m_falco_baselining_max_sampling_ratio;
-	bool m_falco_baselining_randomize_start;
-
 	sinsp_configuration::command_capture_mode_t m_command_lines_capture_mode;
 	std::set<std::string> m_command_lines_valid_ancestors;
 	bool m_command_lines_include_container_healthchecks;
-	uint64_t m_memdump_size;
-	uint64_t m_memdump_max_init_attempts;
-	bool m_memdump_autodisable;
-	uint64_t m_memdump_capture_headers_percentage_threshold;
-	uint64_t m_memdump_min_time_between_switch_states_ms;
-	uint64_t m_memdump_re_enable_interval_minutes;
 
 	user_event_filter_t::ptr_t m_k8s_event_filter;
 	user_event_filter_t::ptr_t m_docker_event_filter;
@@ -351,14 +333,12 @@ public:
 	bool m_large_envs;
 
 	uint32_t m_coclient_max_loop_evts = 100;
-	bool m_swarm_enabled;
 
 	std::set<double> m_percentiles;
 	static const unsigned MAX_PERCENTILES = 4;
 	std::vector<double> m_ignored_percentiles;
 	std::shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
 	std::shared_ptr<proc_filter::conf> m_container_filter;
-	bool m_smart_container_reporting = false;
 
 	/**
 	 * Enable to route K8s user events through cointerface instead of dragent
@@ -366,7 +346,6 @@ public:
 	 * to cause dragent to directly talk to K8s API server to fetch events
 	 */
 	bool m_go_k8s_user_events = false;
-	bool m_add_event_scopes = false;	// Add scopes to events from infra-state
 
  	bool m_cointerface_cpu_profile_enabled;
 	int32_t m_cointerface_events_per_profile;
@@ -397,11 +376,6 @@ public:
 	 * (involving sockets) before logging a message.
 	 */
 	int32_t m_max_n_proc_socket_lookups;
-
-	bool m_procfs_scan_thread;
-	uint32_t m_procfs_scan_interval_ms;
-	uint32_t m_procfs_scan_mem_interval_ms;
-	uint32_t m_procfs_scan_delay_ms;
 
 	bool m_query_docker_image_info;
 
@@ -447,7 +421,6 @@ public:
 	int m_top_file_devices_per_host = 0;
 
 	std::set<std::string> m_procfs_scan_procs;
-	uint32_t m_procfs_scan_interval = 20;
 
 	bool java_present() const
 	{
