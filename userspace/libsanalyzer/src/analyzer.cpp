@@ -4950,7 +4950,15 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			//
 			// User-configured events
 			//
-			emit_user_events();
+			// The idea of DONT_EMIT is that we are clearing the buffers so that the period that we
+			// emit matches the period in which we are processing syscalls. But user events do not
+			// need to be cleared because that is just a list of events and is not mathematically
+			// affected by the syscall period. During the next normal flush we want ALL of the user
+			// events to be sent.
+			if (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			{
+				emit_user_events();
+			}
 
 			//
 			// Percentile configuration
