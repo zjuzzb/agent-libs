@@ -231,6 +231,7 @@ py-pip \
 && apk add -u python2 \
 && mkdir -p /opt/draios/run \
 && cp -r /usr/lib/python3*/site-packages/certifi /usr/lib/python2.7/site-packages/certifi \
+&& cp /usr/lib/python3*/site-packages/certifi/cacert.pem /opt/draios/lib/python-deps/certifi/ \
 && cp -r /opt/draios/lib/python-deps/backports /usr/lib/python2.7/site-packages/backports \
 && rm -rf /tmp/*.apk /var/cache/apk/* \
 && rm -rf /opt/draios/lib/python-deps2.6 \
@@ -267,9 +268,12 @@ rm -rf $(whereis python3 | sed -e 's/^python3://') && \
 rm /opt/draios/share/sdjagent.jar
 {% endif %}
 
-# copy backports for mesos/marathon python2.7 compatibility
 {% if p.launch_dragent and p.base_docker_image != "adoptopenjdk/openjdk8:jdk8u222-b10-alpine-slim" %}
-RUN cp -r /opt/draios/lib/python-deps/backports /usr/lib/python2.7/dist-packages/backports
+# copy backports for mesos/marathon python2.7 compatibility
+# copy cacert.pem file into python-deps to allow compatibility
+# with python certify packages >= 2020.04.05.2
+RUN cp -r /opt/draios/lib/python-deps/backports /usr/lib/python2.7/dist-packages/backports && \
+cp /usr/lib/python3/dist-packages/certifi/cacert.pem /opt/draios/lib/python-deps/certifi/
 {% endif %}
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
