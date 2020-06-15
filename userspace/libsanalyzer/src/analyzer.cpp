@@ -2900,7 +2900,10 @@ bool sinsp_analyzer::aggregate_processes_into_programs(sinsp_threadinfo& sinsp_t
 		is_subsampling = true;
 	}
 
-	tinfo.flush_inactive_transactions(m_prev_flush_time_ns, trtimeout, is_subsampling);
+	if(tinfo.is_main_thread())
+	{
+		tinfo.flush_inactive_transactions(m_prev_flush_time_ns, trtimeout, is_subsampling);
+	}
 
 	//
 	// If this is a process, compute CPU load and memory usage

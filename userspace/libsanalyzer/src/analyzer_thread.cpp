@@ -514,94 +514,86 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
                                                        uint64_t timeout_ns,
                                                        bool is_subsampling)
 {
-	const sinsp_fdtable* fdtable = get_fd_table();
 	bool has_thread_exited = (m_flags & PPM_CL_CLOSED) != 0;
 
-	if (fdtable == get_fd_table())
+	for (auto& it : get_fd_table()->m_table)
 	{
-		std::unordered_map<int64_t, sinsp_fdinfo_t>::iterator it;
+		uint64_t endtime = sample_end_time;
 
-		for (it = get_fd_table()->m_table.begin(); it != get_fd_table()->m_table.end(); it++)
+		if (it.second.is_transaction())
 		{
-			uint64_t endtime = sample_end_time;
-
-			if (it->second.is_transaction())
+			if ((it.second.is_role_server() &&
+			     it.second.get_usrstate()->m_direction == sinsp_partial_transaction::DIR_OUT) ||
+			    (it.second.is_role_client() &&
+			     it.second.get_usrstate()->m_direction == sinsp_partial_transaction::DIR_IN))
 			{
-				if ((it->second.is_role_server() && it->second.get_usrstate()->m_direction ==
-				                                        sinsp_partial_transaction::DIR_OUT) ||
-				    (it->second.is_role_client() &&
-				     it->second.get_usrstate()->m_direction == sinsp_partial_transaction::DIR_IN))
+				if (it.second.get_usrstate()->m_end_time >= endtime)
 				{
-					if (it->second.get_usrstate()->m_end_time >= endtime)
+					//
+					// This happens when the sample-generating event is a read or write on a
+					// transaction FD. No big deal, we're sure that this transaction doesn't
+					// need to be flushed yet
+					//
+					return;
+				}
+
+				//
+				// Note: if the thread has exited, we don't care about the timeout and we flush
+				// the connection
+				//       no matter what. We can safely assume it's ended.
+				//
+				if (has_thread_exited ||
+				    (endtime - it.second.get_usrstate()->m_end_time > timeout_ns))
+				{
+					sinsp_connection* connection;
+
+					if (it.second.is_ipv4_socket())
 					{
-						//
-						// This happens when the sample-generating event is a read or write on a
-						// transaction FD. No big deal, we're sure that this transaction doesn't
-						// need to be flushed yet
-						//
+						connection =
+						    m_analyzer->get_connection(it.second.m_sockinfo.m_ipv4info, endtime);
+
+						ASSERT(connection || m_analyzer->get_num_dropped_ipv4_connections() != 0);
+					}
+					else if (it.second.is_unix_socket())
+					{
+						return;
+					}
+					else
+					{
+						ASSERT(false);
 						return;
 					}
 
-					//
-					// Note: if the thread has exited, we don't care about the timeout and we flush
-					// the connection
-					//       no matter what. We can safely assume it's ended.
-					//
-					if (has_thread_exited ||
-					    (endtime - it->second.get_usrstate()->m_end_time > timeout_ns))
+					if (connection != NULL)
 					{
-						sinsp_connection* connection;
+						sinsp_partial_transaction* trinfo = it.second.get_usrstate();
 
-						if (it->second.is_ipv4_socket())
-						{
-							connection =
-							    m_analyzer->get_connection(it->second.m_sockinfo.m_ipv4info,
-							                               endtime);
-
-							ASSERT(connection ||
-							       m_analyzer->get_num_dropped_ipv4_connections() != 0);
-						}
-						else if (it->second.is_unix_socket())
-						{
-							return;
-						}
-						else
-						{
-							ASSERT(false);
-							return;
-						}
-
-						if (connection != NULL)
-						{
-							sinsp_partial_transaction* trinfo = it->second.get_usrstate();
-
-							trinfo->update(m_analyzer,
-							               this,
-							               &it->second,
-							               connection,
-							               0,
-							               0,
-							               -1,
-							               sinsp_partial_transaction::DIR_CLOSE,
+						trinfo->update(m_analyzer,
+						               this,
+						               &it.second,
+						               connection,
+						               0,
+						               0,
+						               -1,
+						               sinsp_partial_transaction::DIR_CLOSE,
 #if _DEBUG
-							               NULL,
-							               0,
+						               NULL,
+						               0,
 #endif
-							               NULL,
-							               0,
-							               0);
+						               NULL,
+						               0,
+						               0);
 
-							trinfo->m_bytes_in = 0;
-							trinfo->m_bytes_out = 0;
-						}
+						trinfo->m_bytes_in = 0;
+						trinfo->m_bytes_out = 0;
 					}
 				}
+			}
 
-				if (is_subsampling)
-				{
-					sinsp_partial_transaction* trinfo = it->second.get_usrstate();
-					trinfo->reset();
-				}
+			if (is_subsampling)
+			{
+				sinsp_partial_transaction* trinfo = it.second.get_usrstate();
+				trinfo->reset();
 			}
 		}
 	}
