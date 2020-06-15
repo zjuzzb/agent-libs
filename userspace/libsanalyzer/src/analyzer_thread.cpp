@@ -518,16 +518,17 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 
 	for (auto& it : get_fd_table()->m_table)
 	{
+		auto& fd = it.second;
 		uint64_t endtime = sample_end_time;
 
-		if (it.second.is_transaction())
+		if (fd.is_transaction())
 		{
-			if ((it.second.is_role_server() &&
-			     it.second.get_usrstate()->m_direction == sinsp_partial_transaction::DIR_OUT) ||
-			    (it.second.is_role_client() &&
-			     it.second.get_usrstate()->m_direction == sinsp_partial_transaction::DIR_IN))
+			if ((fd.is_role_server() &&
+			     fd.get_usrstate()->m_direction == sinsp_partial_transaction::DIR_OUT) ||
+			    (fd.is_role_client() &&
+			     fd.get_usrstate()->m_direction == sinsp_partial_transaction::DIR_IN))
 			{
-				if (it.second.get_usrstate()->m_end_time >= endtime)
+				if (fd.get_usrstate()->m_end_time >= endtime)
 				{
 					//
 					// This happens when the sample-generating event is a read or write on a
@@ -542,19 +543,17 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 				// the connection
 				//       no matter what. We can safely assume it's ended.
 				//
-				if (has_thread_exited ||
-				    (endtime - it.second.get_usrstate()->m_end_time > timeout_ns))
+				if (has_thread_exited || (endtime - fd.get_usrstate()->m_end_time > timeout_ns))
 				{
 					sinsp_connection* connection;
 
-					if (it.second.is_ipv4_socket())
+					if (fd.is_ipv4_socket())
 					{
-						connection =
-						    m_analyzer->get_connection(it.second.m_sockinfo.m_ipv4info, endtime);
+						connection = m_analyzer->get_connection(fd.m_sockinfo.m_ipv4info, endtime);
 
 						ASSERT(connection || m_analyzer->get_num_dropped_ipv4_connections() != 0);
 					}
-					else if (it.second.is_unix_socket())
+					else if (fd.is_unix_socket())
 					{
 						return;
 					}
@@ -566,11 +565,11 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 
 					if (connection != NULL)
 					{
-						sinsp_partial_transaction* trinfo = it.second.get_usrstate();
+						sinsp_partial_transaction* trinfo = fd.get_usrstate();
 
 						trinfo->update(m_analyzer,
 						               this,
-						               &it.second,
+						               &fd,
 						               connection,
 						               0,
 						               0,
@@ -592,7 +591,7 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 
 			if (is_subsampling)
 			{
-				sinsp_partial_transaction* trinfo = it.second.get_usrstate();
+				sinsp_partial_transaction* trinfo = fd.get_usrstate();
 				trinfo->reset();
 			}
 		}
