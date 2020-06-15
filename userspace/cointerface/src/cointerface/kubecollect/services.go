@@ -9,7 +9,7 @@ import (
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/api/core/v1"	
+	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -60,6 +60,10 @@ func serviceEquals(lhs coService, rhs coService) (bool, bool) {
 	in = in && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
 		EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
+	if in && lhs.Spec.ClusterIP != rhs.Spec.ClusterIP {
+		in = false
+	}
+
 	if lhs.GetNamespace() != rhs.GetNamespace() {
 		out = false
 	} else if !reflect.DeepEqual(lhs.Spec.Selector, rhs.Spec.Selector) {
@@ -93,7 +97,11 @@ func newServiceCongroup(service coService, setLinks bool) (*draiosproto.Containe
 		Namespace:proto.String(service.GetNamespace()),
 	}
 
-	ret.IpAddresses = append(ret.IpAddresses, service.Spec.ClusterIP)
+	if service.Spec.ClusterIP != "None" {
+		ret.IpAddresses = append(ret.IpAddresses, service.Spec.ClusterIP)
+	}
+
+	addServicePorts(&ret.Ports, service)
 
 	if setLinks {
 		addServicePorts(&ret.Ports, service)
@@ -219,6 +227,9 @@ func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				sameEntity, sameLinks := true, true
 				if oldService.GetResourceVersion() != newService.GetResourceVersion() {
 					sameEntity, sameLinks = serviceEquals(oldService, newService)
+				} else if unresolvedPorts[newService.GetUID()] {
+					sameEntity, sameLinks = false, true
+					delete(unresolvedPorts, newService.GetUID())
 				} else {
 					portmapMutex.Lock()
 					if unresolvedPorts[newService.GetUID()] {
