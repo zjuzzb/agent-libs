@@ -155,7 +155,7 @@ double sinsp_procfs_parser::get_global_cpu_jiffies(uint64_t* stolen) const
 	}
 
 	char filename[SCAP_MAX_PATH_SIZE];
-	sprintf(filename, "%s/proc/stat", scap_get_host_root());
+	snprintf(filename, sizeof(filename), "%s/proc/stat", scap_get_host_root());
 	FILE* f = fopen(filename, "r");
 	if (f == NULL)
 	{
@@ -223,7 +223,7 @@ void sinsp_procfs_parser::get_proc_stat(OUT sinsp_proc_stat* proc_stat)
 	}
 
 	char filename[SCAP_MAX_PATH_SIZE];
-	sprintf(filename, "%s/proc/stat", scap_get_host_root());
+	snprintf(filename, sizeof(filename), "%s/proc/stat", scap_get_host_root());
 	FILE* f = fopen(filename, "r");
 	if (f == NULL)
 	{
@@ -516,7 +516,7 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory,
 	}
 
 	char filename[SCAP_MAX_PATH_SIZE];
-	sprintf(filename, "%s/proc/meminfo", scap_get_host_root());
+	snprintf(filename, sizeof(filename), "%s/proc/meminfo", scap_get_host_root());
 	FILE* f = fopen(filename, "r");
 	if (f == NULL)
 	{
@@ -1276,7 +1276,7 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_net_dev(
 	uint64_t tot_out_bytes = 0;
 
 	while (fscanf(net_dev,
-	              "%s %lu %*u %*u %*u %*u %*u %*u %*u %lu %*u %*u %*u %*u %*u %*u %*u",
+	              "%29s %lu %*u %*u %*u %*u %*u %*u %*u %lu %*u %*u %*u %*u %*u %*u %*u",
 	              interface_name,
 	              &in_bytes,
 	              &out_bytes) > 0)
@@ -1319,7 +1319,7 @@ sinsp_proc_file_stats sinsp_procfs_parser::read_proc_file_stats(int64_t pid,
 {
 #ifndef CYGWING_AGENT
 	char filepath[SCAP_MAX_PATH_SIZE];
-	snprintf(filepath, SCAP_MAX_PATH_SIZE, "%s/proc/%ld/io", scap_get_host_root(), pid);
+	snprintf(filepath, sizeof(filepath), "%s/proc/%ld/io", scap_get_host_root(), pid);
 
 	sinsp_proc_file_stats ret, last;
 
@@ -1337,7 +1337,7 @@ sinsp_proc_file_stats sinsp_procfs_parser::read_proc_file_stats(int64_t pid,
 
 	char field[20];
 	uint32_t value;
-	while (fscanf(io_file, "%s %u", field, &value) > 0)
+	while (fscanf(io_file, "%19s %u", field, &value) > 0)
 	{
 		string field_s(field);
 		if (field_s == "rchar:")

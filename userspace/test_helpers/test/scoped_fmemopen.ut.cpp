@@ -152,9 +152,9 @@ TEST(scoped_fmemopen_test, read_from_file_twice)
 	scoped_fmemopen buffer(capacity, "r", content);
 
 	char array[capacity] = {};
-	fscanf(buffer.get_file(), "%s", array);
+	fscanf(buffer.get_file(), "%31s", array);
 	ASSERT_EQ(hello, std::string(array));
 
-	fscanf(buffer.get_file(), "%s", array);
+	fscanf(buffer.get_file(), "%31s", array);
 	ASSERT_EQ(world, std::string(array));
 }

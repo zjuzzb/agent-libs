@@ -332,7 +332,7 @@ void executed_commands_build_and_test_generic(int n_commands_per_container,
 		else
 		{
 			char buffer[10];
-			sprintf(buffer, "%3d", i);
+			snprintf(buffer, sizeof(buffer), "%3d", i);
 			containers.push_back("s1sdygc0n" + std::string(buffer));
 		}
 	}
