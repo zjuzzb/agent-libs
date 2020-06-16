@@ -626,6 +626,8 @@ prometheus:
     - exclude:
         kubernetes.service.annotation.prometheus.io/scrape: false
 
+app_checks_always_send: true
+
 app_checks:
   - name: ceph
     interval: 30

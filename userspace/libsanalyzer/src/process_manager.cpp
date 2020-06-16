@@ -30,7 +30,7 @@ type_config<uint32_t> process_manager::c_process_limit(
 		"limit");
 
 type_config<bool> process_manager::c_always_send_app_checks(
-		false,
+		true,
 		"legacy config to force all processes which have app check metrics to be high priority. Users should instead define a filter which matches all processes with custom metrics.",
 		"app_checks_always_send");
 
