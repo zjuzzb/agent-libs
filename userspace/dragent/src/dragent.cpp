@@ -1879,7 +1879,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		if (feature_manager::instance().get_enabled(MEMDUMP))
 		{
 			uint64_t configured_memdump_size =
-			    configuration_manager::instance().get_config<bool>("memdump.size")->get_value();
+			    configuration_manager::instance().get_config<uint64_t>("memdump.size")->get_value();
 
 			if (!c_watchdog_max_memory_usage_mb.is_set_in_config())
 			{
