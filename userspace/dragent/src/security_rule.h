@@ -29,7 +29,7 @@ public:
 
 	bool has_action(const draiosproto::action_type &atype);
 
-	bool match_scope(std::string container_id, sinsp_analyzer *analyzer) const;
+	bool match_scope(std::string container_id, infrastructure_state_iface *infra_state) const;
 };
 
 typedef std::shared_ptr<security_policy_v2> policy_v2_sptr;
@@ -169,6 +169,9 @@ public:
 		bool m_match_items;
 	};
 
+	// Allocate a list if needed and add this result to the list
+	static std::list<match_result> *add_result(std::list<match_result> *results, match_result &result);
+
 	security_rules();
 	virtual ~security_rules();
 
@@ -191,26 +194,31 @@ public:
 
 	// Given an event, match against the set of rules. Returns
 	// match_result(s) matching the event, if any.
-	std::list<match_result> match_event(gen_event *evt)
+	std::list<match_result> *match_event(gen_event *evt)
 	{
 		sinsp_evt * s_evt = NULL;
 		json_event * j_evt = NULL;
 
-		std::list<match_result> none;
-
-		s_evt = dynamic_cast<sinsp_evt *>(evt);
-		if (s_evt)
+		switch (evt->get_source())
+		{
+		case ESRC_SINSP:
+			s_evt = static_cast<sinsp_evt *>(evt);
 			return match_event(s_evt);
-
-		j_evt = dynamic_cast<json_event *>(evt);
-		if (j_evt)
+			break;
+		case ESRC_K8S_AUDIT:
+			j_evt = static_cast<json_event *>(evt);
 			return match_event(j_evt);
+			break;
+		default:
+			assert(false);
+			return NULL;
+		}
 
 		assert(false);
-		return none;
+		return NULL;
 	}
-	virtual std::list<match_result> match_event(json_event *evt) = 0;
-	virtual std::list<match_result> match_event(sinsp_evt *evt) = 0;
+	virtual std::list<match_result> *match_event(json_event *evt) = 0;
+	virtual std::list<match_result> *match_event(sinsp_evt *evt) = 0;
 
 	// Return the number of rules loaded by this object.
 	uint64_t num_loaded_rules();
@@ -271,8 +279,8 @@ public:
 	draiosproto::policy_subtype rules_subtype() override;
 	std::set<std::string> default_output_fields_keys(sinsp_evt *evt) override;
 
-	std::list<match_result> match_event(json_event *evt) override;
-	std::list<match_result> match_event(sinsp_evt *evt) override;
+	std::list<match_result> *match_event(json_event *evt) override;
+	std::list<match_result> *match_event(sinsp_evt *evt) override;
 
 	void set_engine(std::shared_ptr<falco_engine> falco_engine);
 
@@ -323,8 +331,8 @@ public:
 
 	virtual void reset() override;
 
-	std::list<match_result> match_event(json_event *evt) override;
-	virtual std::list<match_result> match_event(sinsp_evt *evt) = 0;
+	std::list<match_result> *match_event(json_event *evt) override;
+	virtual std::list<match_result> *match_event(sinsp_evt *evt) = 0;
 
 	virtual draiosproto::policy_type rules_type() = 0;
 	virtual draiosproto::policy_subtype rules_subtype() = 0;
@@ -342,9 +350,9 @@ protected:
 	// Iterate over the set of default match rules, adding
 	// match_results to the provided list. Any rules with names in
 	// the provided set are skipped.
-	void add_default_matches(std::list<match_result> &results,
-				 match_info_set &cur_matches,
-				 sinsp_evt *evt);
+	std::list<match_result> *add_default_matches(std::list<match_result> *results,
+						     match_info_set &cur_matches,
+						     sinsp_evt *evt);
 
 	// For matchlist rules, the subclass has to override something
 	// slightly lower, loading any relevant information from the
@@ -374,7 +382,7 @@ public:
 	draiosproto::policy_subtype rules_subtype() override;
 	std::set<std::string> default_output_fields_keys(sinsp_evt *evt) override;
 
-	std::list<match_result> match_event(sinsp_evt *evt) override;
+	std::list<match_result> *match_event(sinsp_evt *evt) override;
 
 private:
 
@@ -425,7 +433,7 @@ public:
 	virtual draiosproto::policy_subtype rules_subtype() = 0;
 	virtual std::set<std::string> default_output_fields_keys(sinsp_evt *evt) = 0;
 
-	std::list<match_result> match_event(sinsp_evt *evt) override;
+	std::list<match_result> *match_event(sinsp_evt *evt) override;
 
 protected:
 
@@ -465,7 +473,7 @@ public:
 	draiosproto::policy_subtype rules_subtype() override;
 	std::set<std::string> default_output_fields_keys(sinsp_evt *evt) override;
 
-	std::list<match_result> match_event(sinsp_evt *evt) override;
+	std::list<match_result> *match_event(sinsp_evt *evt) override;
 
 protected:
 
@@ -552,7 +560,7 @@ public:
 	virtual draiosproto::policy_subtype rules_subtype() = 0;
 	virtual std::set<std::string> default_output_fields_keys(sinsp_evt *evt) = 0;
 
-	std::list<match_result> match_event(sinsp_evt *evt) override;
+	std::list<match_result> *match_event(sinsp_evt *evt) override;
 
 
 protected:

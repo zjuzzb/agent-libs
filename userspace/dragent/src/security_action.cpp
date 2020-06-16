@@ -93,10 +93,12 @@ security_actions::~security_actions()
 }
 
 void security_actions::init(security_mgr *mgr,
-			    std::shared_ptr<coclient> &coclient)
+			    std::shared_ptr<coclient> &coclient,
+			    infrastructure_state_iface *infra_state)
 {
 	m_mgr = mgr;
 	m_coclient = coclient;
+	m_infra_state = infra_state;
 }
 
 void security_actions::perform_container_action(uint64_t ts_ns,
@@ -114,7 +116,7 @@ void security_actions::perform_container_action(uint64_t ts_ns,
 	}
 	else
 	{
-		auto container = m_mgr->analyzer()->get_container(container_id);
+		auto container = m_infra_state->get_container_info(container_id);
 		if (!container) {
 			result->set_successful(false);
 			result->set_errmsg("Container not found");

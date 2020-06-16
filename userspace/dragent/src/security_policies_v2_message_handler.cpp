@@ -52,12 +52,7 @@ bool security_policies_v2_message_handler::handle_message(
 
 	dragent_protocol::buffer_to_protobuf(buffer, buffer_size, &policies_v2);
 
-	if (!m_policy_loader.load_policies_v2(policies_v2, errstr))
-	{
-		LOG_WARNING("Could not load policies_v2 message: %s",
-		            errstr.c_str());
-		return false;
-	}
+	m_policy_loader.request_load_policies_v2(policies_v2);
 #endif
 
 	return true;

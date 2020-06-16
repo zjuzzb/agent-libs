@@ -35,11 +35,11 @@ bool security_policy_v2::has_action(const draiosproto::action_type &atype)
 	return false;
 }
 
-bool security_policy_v2::match_scope(std::string container_id, sinsp_analyzer *analyzer) const
+bool security_policy_v2::match_scope(std::string container_id, infrastructure_state_iface *infra_state) const
 {
 	::scope_predicates empty_preds;
 
-	if(!analyzer)
+	if(!infra_state)
 	{
 		return true;
 	}
@@ -50,7 +50,7 @@ bool security_policy_v2::match_scope(std::string container_id, sinsp_analyzer *a
 		uid = make_pair("container", container_id);
 	} else
 	{
-		uid = make_pair("host", analyzer->get_configuration_read_only()->get_machine_id());
+		uid = make_pair("host", infra_state->get_machine_id());
 	}
 
 	// The way to express "run only on hosts and not in
@@ -104,7 +104,7 @@ bool security_policy_v2::match_scope(std::string container_id, sinsp_analyzer *a
 	}
 
 	return scope_predicates().empty() ||
-		analyzer->mutable_infra_state()->match_scope(uid, (use_empty_preds ? empty_preds : scope_predicates()));
+		infra_state->match_scope(uid, (use_empty_preds ? empty_preds : scope_predicates()));
 }
 
 security_rule_library::rule::rule(const std::string &name, draiosproto::policy_type rule_type)
@@ -514,6 +514,18 @@ rule_sptr security_rule_library::find(const std::string &name)
 	return it->second;
 }
 
+std::list<security_rules::match_result> *security_rules::add_result(std::list<security_rules::match_result> *results,
+								    security_rules::match_result &result)
+{
+	if(!results)
+	{
+		results = new std::list<match_result>();
+	}
+	results->push_back(result);
+
+	return results;
+}
+
 security_rules::security_rules()
 	: m_num_loaded_rules(0)
 {
@@ -616,6 +628,15 @@ std::string security_rules::qualifies()
 
 bool security_rules::event_qualifies(sinsp_evt *evt)
 {
+	// We have to check the evttype per-rule in addition to
+	// per-group as a group might have multiple rules for a
+	// collection of event types. A given rule is only applicable
+	// to subset of those event types, though.
+	if(!m_evttypes[evt->get_type()])
+	{
+		return false;
+	}
+
 	if(m_qualifies && !m_qualifies->run(evt))
 	{
 		m_metrics->incr(security_evt_metrics::EVM_MISS_QUAL);
@@ -761,9 +782,9 @@ bool falco_security_rules::check_conditions(json_event *evt)
 	return true;
 }
 
-std::list<security_rules::match_result> falco_security_rules::match_event(sinsp_evt *evt)
+std::list<security_rules::match_result> *falco_security_rules::match_event(sinsp_evt *evt)
 {
-	std::list<match_result> results;
+	std::list<match_result> *results = NULL;
 
 	if(!check_conditions(evt))
 	{
@@ -802,7 +823,7 @@ std::list<security_rules::match_result> falco_security_rules::match_event(sinsp_
 				}
 				bool match_items = true;
 				set_match_details(result.m_detail, match_items, evt);
-				results.push_back(result);
+				results = add_result(results, result);
 			}
 		}
 		catch (falco_exception& e)
@@ -814,9 +835,9 @@ std::list<security_rules::match_result> falco_security_rules::match_event(sinsp_
 	return results;
 }
 
-std::list<security_rules::match_result> falco_security_rules::match_event(json_event *evt)
+std::list<security_rules::match_result> *falco_security_rules::match_event(json_event *evt)
 {
-	std::list<match_result> results;
+	std::list<match_result> *results = NULL;
 
 	if(!check_conditions(evt))
 	{
@@ -859,7 +880,7 @@ std::list<security_rules::match_result> falco_security_rules::match_event(json_e
 
 				bool match_items = true;
 				set_match_details(result.m_detail, match_items, evt);
-				results.push_back(result);
+				results = add_result(results, result);
 			}
 		}
 		catch (falco_exception& e)
@@ -941,11 +962,9 @@ void matchlist_security_rules::reset()
 	m_num_loaded_rules = 0;
 }
 
-std::list<security_rules::match_result> matchlist_security_rules::match_event(json_event *evt)
+std::list<security_rules::match_result> *matchlist_security_rules::match_event(json_event *evt)
 {
-	std::list<match_result> res;
-
-	return res;
+	return NULL;
 }
 
 void matchlist_security_rules::add_default_match_rule(policy_v2_sptr policy, rule_sptr rule)
@@ -959,9 +978,10 @@ void matchlist_security_rules::add_default_match_rule(policy_v2_sptr policy, rul
 	m_default_matches.push_back(minfo);
 }
 
-void matchlist_security_rules::add_default_matches(std::list<security_rules::match_result> &results,
-						   match_info_set &cur_matches,
-						   sinsp_evt *evt)
+std::list<security_rules::match_result> * matchlist_security_rules::add_default_matches(
+	std::list<security_rules::match_result> *results,
+	match_info_set &cur_matches,
+	sinsp_evt *evt)
 {
 	for(auto &minfo : m_default_matches)
 	{
@@ -974,9 +994,11 @@ void matchlist_security_rules::add_default_matches(std::list<security_rules::mat
 			bool match_items = false;
 			set_match_details(result.m_detail, match_items, evt);
 
-			results.push_back(result);
+			results = add_result(results, result);
 		}
 	}
+
+	return results;
 }
 
 filtercheck_rules::filtercheck_rules()
@@ -1012,9 +1034,9 @@ filter_value_t filtercheck_rules::add_filter_value(uint8_t *val, uint32_t len)
 	return filter_value_t(&m_val_storages[m_val_storages.size()-1][0], len);
 }
 
-std::list<security_rules::match_result> filtercheck_rules::match_event(sinsp_evt *evt)
+std::list<security_rules::match_result> *filtercheck_rules::match_event(sinsp_evt *evt)
 {
-	std::list<match_result> results;
+	std::list<match_result> *results = NULL;
 	match_info_set matches_found;
 
 	if(!event_qualifies(evt))
@@ -1052,13 +1074,13 @@ std::list<security_rules::match_result> filtercheck_rules::match_event(sinsp_evt
 				bool match_items = true;
 				set_match_details(result.m_detail, match_items, evt);
 
-				results.push_back(result);
+				results = add_result(results, result);
 			}
 		}
 	}
 
 	// Also add any default matches for rules where we didn't find any values above.
-	add_default_matches(results, matches_found, evt);
+	results = add_default_matches(results, matches_found, evt);
 
 	return results;
 }
@@ -1145,9 +1167,9 @@ bool net_inbound_rules::add_rule(policy_v2_sptr policy,
 	return false;
 }
 
-std::list<security_rules::match_result> net_inbound_rules::match_event(sinsp_evt *evt)
+std::list<security_rules::match_result> *net_inbound_rules::match_event(sinsp_evt *evt)
 {
-	std::list<match_result> results;
+	std::list<match_result> *results = NULL;
 	match_info_set empty;
 
 	if(!event_qualifies(evt))
@@ -1156,7 +1178,7 @@ std::list<security_rules::match_result> net_inbound_rules::match_event(sinsp_evt
 	}
 
 	// If here, the event matches all rules. Return them as match results.
-	add_default_matches(results, empty, evt);
+	results = add_default_matches(results, empty, evt);
 
 	return results;
 }
@@ -1477,9 +1499,9 @@ bool syscall_rules::add_rule(policy_v2_sptr policy,
 	return added;
 }
 
-std::list<security_rules::match_result> syscall_rules::match_event(sinsp_evt *evt)
+std::list<security_rules::match_result> *syscall_rules::match_event(sinsp_evt *evt)
 {
-	std::list<match_result> results;
+	std::list<match_result> *results = NULL;
 	match_info_set matches_found;
 
 	uint16_t etype = evt->get_type();
@@ -1509,7 +1531,7 @@ std::list<security_rules::match_result> syscall_rules::match_event(sinsp_evt *ev
 				bool match_items = true;
 				set_match_details(result.m_detail, match_items, evt);
 
-				results.push_back(result);
+				results = add_result(results, result);
 			}
 		}
 	}
@@ -1529,13 +1551,13 @@ std::list<security_rules::match_result> syscall_rules::match_event(sinsp_evt *ev
 				bool match_items = true;
 				set_match_details(result.m_detail, match_items, evt);
 
-				results.push_back(result);
+				results = add_result(results, result);
 			}
 		}
 	}
 
 	// Also add default matches for any rules not found above
-	add_default_matches(results, matches_found, evt);
+	results = add_default_matches(results, matches_found, evt);
 
 	return results;
 }
@@ -1566,9 +1588,9 @@ void matchlist_map_security_rules::reset()
 	m_index.reset(new path_prefix_map<std::unordered_set<match_info>>());
 }
 
-std::list<security_rules::match_result> matchlist_map_security_rules::match_event(sinsp_evt *evt)
+std::list<security_rules::match_result> *matchlist_map_security_rules::match_event(sinsp_evt *evt)
 {
-	std::list<match_result> results;
+	std::list<match_result> *results = NULL;
 	match_info_set matches_found;
 
 	if(!event_qualifies(evt))
@@ -1622,14 +1644,14 @@ std::list<security_rules::match_result> matchlist_map_security_rules::match_even
 						bool match_items = true;
 						set_match_details(result.m_detail, match_items, evt);
 
-						results.push_back(result);
+						results = add_result(results, result);
 					}
 				}
 			}
 		}
 	}
 
-	add_default_matches(results, matches_found, evt);
+	results = add_default_matches(results, matches_found, evt);
 
 	return results;
 }

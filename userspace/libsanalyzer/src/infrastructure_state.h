@@ -34,14 +34,65 @@ namespace std
 typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
 typedef google::protobuf::RepeatedPtrField<draiosproto::container_group> container_groups;
 
-class event_scope;
+// An abstract-only class representing the interface used by clients
+// of infrastructure_state
 
-class infrastructure_state
+class infrastructure_state_iface
 {
 public:
 	// <kind, UID> strings
 	using uid_t = std::pair<std::string, std::string>;
+	using reg_id_t = std::string;
 
+	virtual void clear_scope_cache() = 0;
+
+	/// Find list of key-value tags present in infrastructure_state
+	/// \param uid  UID of the starting node of the graph
+	/// \param tags_set  Set of tags we are looking for
+	/// \param labels  Populated key/value map containing found tags
+	/// \return
+	virtual int find_tag_list(uid_t uid, std::unordered_set<string> &tags_set, std::unordered_map<string, string> &labels) const = 0;
+
+	// Return the cluster name that must be set
+	// for the orch state. This is what will be
+	// displayed on the front end.
+	virtual std::string get_k8s_cluster_name() = 0;
+
+	// Return the k8s pod UID from namespace and pod name
+	virtual std::string get_k8s_pod_uid(const std::string &namespace_name, const std::string &pod_name) const = 0;
+
+	virtual bool find_tag(const uid_t& uid, const std::string& tag, std::string &value) const = 0;
+
+	virtual int get_tags(uid_t uid, std::unordered_map<string, string>& tags_map) const = 0;
+
+	// Check the uid against the scope predicates in predicates
+	// and return whether or not the uid matches the predicates.
+	virtual bool match_scope(const uid_t &uid, const scope_predicates &predicates) = 0;
+
+	// Register a set of scope predicates with this object and
+	// keep track of whether the predicates match the current
+	// state. This is most interesting for container-level scope,
+	// where the predicates are re-tested as containers come and go.
+	//
+	// Returns true if the scope could be registered, false otherwise.
+	virtual bool register_scope(reg_id_t &reg,
+				    bool host_scope, bool container_scope,
+				    const scope_predicates &predicates) = 0;
+
+	// Check a previously registered scope to see if it matches
+	// the current state
+	virtual bool check_registered_scope(reg_id_t &reg) const = 0;
+
+	virtual std::string get_machine_id() = 0;
+
+	virtual sinsp_container_info::ptr_t get_container_info(const std::string& container_id) = 0;
+};
+
+class event_scope;
+
+class infrastructure_state : public infrastructure_state_iface
+{
+public:
 	// { host/container id : {scope hash : scope match result} }
 	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<size_t, bool>>;
 
@@ -51,9 +102,7 @@ public:
 						 const std::string& rootdir,
 						 const k8s_limits::sptr_t& the_k8s_limits,
 						 bool force_k8s_subscribed = false);
-	using reg_id_t = std::string;
-
-	~infrastructure_state();
+	virtual ~infrastructure_state();
 
 	void init(const std::string& machine_id, const std::string& host_tags);
 	bool inited();
@@ -66,23 +115,19 @@ public:
 
 	void refresh(uint64_t ts);
 
-	// Check the uid against the scope predicates in predicates
-	// and return whether or not the uid matches the predicates.
-	bool match_scope(const uid_t &uid, const scope_predicates &predicates);
+	bool match_scope(const uid_t &uid, const scope_predicates &predicates) override;
 
-	// Register a set of scope predicates with this object and
-	// keep track of whether the predicates match the current
-	// state. This is most interesting for container-level scope,
-	// where the predicates are re-tested as containers come and go.
-	//
-	// Returns true if the scope could be registered, false otherwise.
 	bool register_scope(reg_id_t &reg,
 			    bool host_scope, bool container_scope,
-			    const scope_predicates &predicates);
+			    const scope_predicates &predicates) override;
 
 	// Check a previously registered scope to see if it matches
 	// the current state
-	bool check_registered_scope(reg_id_t &reg) const;
+	bool check_registered_scope(reg_id_t &reg) const override;
+
+	std::string get_machine_id() override;
+
+	sinsp_container_info::ptr_t get_container_info(const std::string& container_id) override;
 
 	void calculate_rate_metrics(draiosproto::container_group *cg, const uint64_t ts);
 	void delete_rate_metrics(const uid_t &key);
@@ -98,11 +143,11 @@ public:
 
 	void receive_hosts_metadata(const google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events);
 
-	void clear_scope_cache();
+	void clear_scope_cache() override;
 
 	void load_single_event(const draiosproto::congroup_update_event &evt, bool overwrite = false);
 
-	bool find_tag(const uid_t& uid, const std::string& tag, std::string &value) const
+	bool find_tag(const uid_t& uid, const std::string& tag, std::string &value) const override
 	{
 		std::unordered_set<uid_t> visited;
 		return find_tag(uid, tag, value, visited);
@@ -122,17 +167,12 @@ public:
 	typedef std::function<int(const std::pair<std::string, std::string> &tag, bool &stop)> tag_cb_t;
 	int iterate_parent_tags(const uid_t &uid, tag_cb_t tag_cb) const;
 
-	/// Find list of key-value tags present in infrastructure_state
-	/// \param uid  UID of the starting node of the graph
-	/// \param tags_set  Set of tags we are looking for
-	/// \param labels  Populated key/value map containing found tags
-	/// \return
-	int find_tag_list(uid_t uid, std::unordered_set<string> &tags_set, std::unordered_map<string, string> &labels) const
+	int find_tag_list(uid_t uid, std::unordered_set<string> &tags_set, std::unordered_map<string, string> &labels) const override
 	{
 		std::unordered_set<uid_t> visited;
 		return find_tag_list(uid, tags_set, labels, visited);
 	}
-	int get_tags(uid_t uid, std::unordered_map<string, string>& tags_map) const;
+	int get_tags(uid_t uid, std::unordered_map<string, string>& tags_map) const override;
 	// Get object names from object and its parents and add them to scope
 	int get_scope_names(const uid_t &uid, event_scope *scope) const;
 
@@ -144,10 +184,7 @@ public:
 	bool has(uid_t uid) const;
 	unsigned int size();
 
-	// Return the cluster name that must be set
-	// for the orch state. This is what will be
-	// displayed on the front end.
-	std::string get_k8s_cluster_name();
+	std::string get_k8s_cluster_name() override;
 	// If the agent tags contain a tag for:
 	// cluster:$NAME ; then extract $NAME and return it
 	std::string get_cluster_name_from_agent_tags() const;
@@ -161,8 +198,7 @@ public:
 	// or from IP address, in that order, if not found already
 	void find_our_k8s_node(const std::vector<std::string> *container_ids);
 
-	// Return the k8s pod UID from namespace and pod name
-	std::string get_k8s_pod_uid(const std::string &namespace_name, const std::string &pod_name) const;
+	std::string get_k8s_pod_uid(const std::string &namespace_name, const std::string &pod_name) const override;
 
 	// Return the container ID from the pod UID and the pod container name
 	std::string get_container_id_from_k8s_pod_and_k8s_pod_name(const uid_t& p_uid, const std::string &pod_container_name) const;

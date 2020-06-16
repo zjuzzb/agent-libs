@@ -52,7 +52,7 @@ bool baseline_mgr::load(const draiosproto::baselines &baselines, std::string &er
 	return true;
 }
 
-std::shared_ptr<security_baseline> baseline_mgr::lookup(const std::string &container_id, infrastructure_state *infra_state, const security_policy &spolicy)
+std::shared_ptr<security_baseline> baseline_mgr::lookup(const std::string &container_id, infrastructure_state_iface *infra_state, const security_policy &spolicy)
 {
 	if(!spolicy.has_baseline_details())
 	{

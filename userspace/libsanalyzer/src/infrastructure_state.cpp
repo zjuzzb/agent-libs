@@ -1618,6 +1618,16 @@ bool infrastructure_state::check_registered_scope(reg_id_t& reg) const
 	return it->second.m_scope_match;
 }
 
+std::string infrastructure_state::get_machine_id()
+{
+	return m_machine_id;
+}
+
+sinsp_container_info::ptr_t infrastructure_state::get_container_info(const std::string& container_id)
+{
+	return m_inspector->m_container_manager.get_container(container_id);
+}
+
 // This function tests if a given congroup is valid for export
 // Rules:
 // 1.) ONLY Export: k8s_* objects
@@ -3094,8 +3104,7 @@ void infrastructure_state::find_our_k8s_node(const std::vector<string>* containe
 	sinsp_threadinfo* tinfo = m_inspector->m_thread_manager->get_threads()->get(getpid());
 	if (tinfo)
 	{
-		const auto container =
-		    m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		const auto container = get_container_info(tinfo->m_container_id);
 		if (container && !container->m_id.empty())
 		{
 			uid_t c_uid = make_pair("container", container->m_id);

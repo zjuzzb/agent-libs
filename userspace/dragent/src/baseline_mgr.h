@@ -40,7 +40,7 @@ public:
 	bool load(const draiosproto::baselines &baselines, std::string &errstr);
 
 	// Given a container_id and a smart policy, this method returns the baseline to match against.
-	std::shared_ptr<security_baseline> lookup(const std::string &container_id, infrastructure_state *infra_state, const security_policy &spolicy);
+	std::shared_ptr<security_baseline> lookup(const std::string &container_id, infrastructure_state_iface *infra_state, const security_policy &spolicy);
 private:
 
 	// (grouping_name, baseline_name) -> baseline

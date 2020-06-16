@@ -7971,6 +7971,15 @@ bool sinsp_analyzer::find_java_process_name(const int pid, std::string& name) co
 	return found;
 }
 
+void sinsp_analyzer::receive_k8s_audit_event(
+    const nlohmann::json& j,
+    std::vector<std::string>& k8s_active_filters,
+    std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters)
+{
+
+	return secure_audit_filter_and_append_k8s_audit(j, k8s_active_filters, k8s_filters);
+}
+
 void sinsp_analyzer::secure_audit_filter_and_append_k8s_audit(
     const nlohmann::json& j,
     std::vector<std::string>& k8s_active_filters,

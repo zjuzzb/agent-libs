@@ -115,8 +115,7 @@ public:
 #ifndef CYGWING_AGENT
 	bool load_policies(const draiosproto::policies &policies,
 	                   std::string &errstr) override;
-	bool load_policies_v2(const draiosproto::policies_v2 &policies_v2,
-	                      std::string &errstr) override;
+	void request_load_policies_v2(const draiosproto::policies_v2 &policies_v2) override;
 	bool set_compliance_calendar(const draiosproto::comp_calendar &calendar,
 				     bool send_results,
 				     bool send_events,

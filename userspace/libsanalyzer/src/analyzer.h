@@ -240,6 +240,15 @@ private:
 	static std::vector<std::string> m_comm_list;
 };
 
+// An abstract interface representing an object that can receive json k8s audit events.
+class secure_k8s_audit_event_sink_iface {
+public:
+	virtual void receive_k8s_audit_event(
+		const nlohmann::json& j,
+		std::vector<std::string>& k8s_active_filters,
+		std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters) = 0;
+};
+
 //
 // The main analyzer class
 //
@@ -247,7 +256,8 @@ class SINSP_PUBLIC sinsp_analyzer : public secure_profiling_internal_metrics,
                                     public secure_profiling_data_ready_handler,
                                     public secure_audit_internal_metrics,
                                     public secure_audit_data_ready_handler,
-                                    public libsinsp::event_processor
+                                    public libsinsp::event_processor,
+                                    public secure_k8s_audit_event_sink_iface
 {
 public:
 	typedef thread_safe_container::blocking_queue<std::shared_ptr<flush_data_message>> flush_queue;
@@ -637,6 +647,12 @@ public:
 	                                    int n_connections_not_interactive_dropped,
 	                                    int n_file_accesses_not_interactive_dropped,
 	                                    int n_k8s_enrich_errors) override;
+
+	// Just calls next function
+	void receive_k8s_audit_event(
+	   const nlohmann::json& j,
+	   std::vector<std::string>& k8s_active_filters,
+	   std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& k8s_filters) override;
 
 	void secure_audit_filter_and_append_k8s_audit(
 	    const nlohmann::json& j,

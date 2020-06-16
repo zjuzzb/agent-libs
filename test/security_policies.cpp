@@ -3,7 +3,7 @@
 #include "scoped_config.h"
 #include "security_config.h"
 #include "sys_call_test.h"
-
+#include "test_security_stub.h"
 #include <Poco/ConsoleChannel.h>
 #include <Poco/Formatter.h>
 #include <Poco/NullChannel.h>
@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <gtest.h>
+#include <chrono>
 #include <map>
 #include <memory>
 #include <metrics.h>
@@ -73,27 +74,6 @@ uncompressed_sample_handler_dummy g_sample_handler;
 audit_tap_handler_dummy g_audit_handler;
 null_secure_audit_handler g_secure_audit_handler;
 null_secure_profiling_handler g_secure_profiling_handler;
-
-class test_capture_job_queue_handler :
-		public capture_job_queue_handler
-{
-public:
-	test_capture_job_queue_handler()
-	{
-	}
-
-	virtual ~test_capture_job_queue_handler()
-	{
-	}
-
-	bool queue_job_request(sinsp *inspector, std::shared_ptr<dump_job_request> job_request, std::string &errstr)
-	{
-		m_job_requests.push_back(job_request);
-		return true;
-	}
-
-	std::vector<std::shared_ptr<dump_job_request>> m_job_requests;
-};
 
 class test_sinsp_worker : public Runnable
 {
@@ -156,7 +136,7 @@ public:
 				}
 				else
 				{
-					ASSERT_TRUE(m_mgr->load_policies_v2_file(m_policies_file.c_str(), errstr))
+					ASSERT_TRUE(m_mgr->request_load_policies_v2_file(m_policies_file.c_str(), errstr))
 					    << "Could not load v2 security policies file: " + errstr;
 				}
 				m_policies_loaded = true;
@@ -273,8 +253,6 @@ protected:
 			const_cast<type_config<std::string>*>(c_cri_socket_path.get())->set(fake_cri_socket);
 		}
 
-		dragent::running_state::instance().reset_for_test();
-
 		m_configuration.m_capture_dragent_events = true;
 
 		// so long as this is in scope when we initialize the feature manager, we're
@@ -289,6 +267,7 @@ protected:
 		security_config::instance().set_baselines_file(
 		    "./resources/security_policies_messages/baseline.txt");
 		security_config::instance().set_policies_v2_file(policies_file());
+		security_config::instance().set_k8s_audit_server_enabled(m_enable_k8s_audit_server);
 		m_configuration.m_falco_engine_sampling_multiplier = 0;
 		m_configuration.m_containers_labels_max_len = 100;
 		if (delayed_reports)
@@ -344,7 +323,9 @@ protected:
 
 		m_capture_job_queue_handler = new test_capture_job_queue_handler();
 
-		m_mgr.init(m_inspector, m_analyzer, m_capture_job_queue_handler, &m_configuration, m_internal_metrics);
+		m_k8s_audit_event_sink = new test_secure_k8s_audit_event_sink();
+
+		m_mgr.init(m_inspector, m_analyzer->mutable_infra_state(), m_k8s_audit_event_sink, m_capture_job_queue_handler, &m_configuration, m_internal_metrics);
 		std::string policies_file =
 		    (m_load_v1_policies ? security_config::instance().get_policies_file()
 		                        : security_config::instance().get_policies_v2_file());
@@ -413,6 +394,9 @@ protected:
 		delete m_sinsp_worker;
 		delete m_inspector;
 		delete m_analyzer;
+		delete m_k8s_audit_event_sink;
+
+		dragent::running_state::instance().reset_for_test();
 	}
 
 	virtual void TearDown()
@@ -847,7 +831,7 @@ protected:
 		}
 		else
 		{
-			ASSERT_TRUE(m_mgr.load_policies_v2_file(policies_file.c_str(), errstr));
+			ASSERT_TRUE(m_mgr.request_load_policies_v2_file(policies_file.c_str(), errstr));
 		}
 		ASSERT_STREQ(errstr.c_str(), "");
 
@@ -891,8 +875,10 @@ protected:
 	sinsp_analyzer::flush_queue m_flush_queue;
 	protocol_queue m_transmit_queue;
 	bool m_load_v1_policies = true;
+	bool m_enable_k8s_audit_server = false;
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;
+	test_secure_k8s_audit_event_sink *m_k8s_audit_event_sink;
 	internal_metrics::sptr_t m_internal_metrics;
 	protocol_handler m_data_handler;
 	security_mgr m_mgr;
@@ -979,6 +965,7 @@ protected:
 		    "./resources/fake_cri",
 		    {"unix://" + fake_cri_socket, "resources/fake_cri_crio", "cri-o"}));
 
+		m_enable_k8s_audit_server = true;
 		SetUpTest(false, fake_cri_socket);
 
 		int ret = -1;
@@ -3260,4 +3247,3 @@ TEST_F(security_policies_v2_test, policy_with_unknown_action)
 
 	check_expected_internal_metrics(metrics);
 }
-

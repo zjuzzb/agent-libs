@@ -24,8 +24,7 @@ class security_policy_v2_loader
 public:
 	virtual ~security_policy_v2_loader() = default;
 
-	virtual bool load_policies_v2(const draiosproto::policies_v2& policies,
-	                              std::string& errstr) = 0;
+	virtual void request_load_policies_v2(const draiosproto::policies_v2& policies) = 0;
 };
 
 } // namespace dragent

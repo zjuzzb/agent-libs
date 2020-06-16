@@ -21,6 +21,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/test-helpers)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/src)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
+include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/test_helpers)
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
 include_directories(${PROJECT_BINARY_DIR}/userspace/engine)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/test_helpers/src)
@@ -35,6 +36,8 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include)
+
 
 add_definitions(-DHAS_ANALYZER)
 
@@ -112,6 +115,7 @@ target_link_libraries(
     falco_engine
     test_helpers
     test-helpers-userspace-shared
+    test-helpers-dragent
     ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
     ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
     ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a

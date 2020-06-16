@@ -198,7 +198,6 @@ protected:
 		// dragent_configuration::init() takes an app, but I
 		// don't see it used anywhere.
 		m_configuration.init(NULL, false);
-		dragent::running_state::instance().reset_for_test();
 
 		m_configuration.m_capture_dragent_events  = capture_dragent_events;
 		m_configuration.m_max_sysdig_captures = max_captures;
@@ -272,6 +271,8 @@ protected:
 		{
 			ASSERT_EQ(unlink(file.c_str()), 0);
 		}
+
+		dragent::running_state::instance().reset_for_test();
 	}
 
 	string make_token(const string &tag)

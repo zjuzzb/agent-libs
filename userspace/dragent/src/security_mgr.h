@@ -9,11 +9,13 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+#include <functional>
 
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include <Poco/RWLock.h>
+#include <tbb/concurrent_queue.h>
 
 #include <sinsp.h>
 #include <token_bucket.h>
@@ -23,7 +25,7 @@
 
 #include "capture_job_handler.h"
 #include "configuration.h"
-#include "analyzer.h"
+#include "infrastructure_state.h"
 #include "security_result_handler.h"
 #include "security_policy.h"
 #include "security_rule.h"
@@ -40,31 +42,33 @@ public:
 	virtual ~security_mgr();
 
 	void init(sinsp *inspector,
-		  sinsp_analyzer *analyzer,
+		  infrastructure_state_iface *infra_state,
+		  secure_k8s_audit_event_sink_iface *k8s_audit_evt_sink,
 		  capture_job_queue_handler *capture_job_queue_handler,
 		  dragent_configuration *configuration,
 		  const internal_metrics::sptr_t& metrics);
 
 	bool load_policies_file(const char *filename, std::string &errstr);
-	bool load_policies_v2_file(const char *filename, std::string &errstr);
-
 	bool load_baselines_file(const char *filename, std::string &errstr);
-
-	// Helpers used by load_policies/load_policies_v2
-	void load_initial_steps();
 
 	// Returns true if loaded successfully, false otherwise. Sets
 	// errstr when returning false.
 	bool load_policies(const draiosproto::policies &policies, std::string &errstr);
 
-	// Returns true if loaded successfully, false otherwise. Sets
-	// errstr when returning false.
-	bool load_policies_v2(const draiosproto::policies_v2 &policies_v2, std::string &errstr);
+	//
+	// All of the below request_load_* and queue_reload_* methods
+	// can be called from a separate thread than the event
+	// processing thread.
+	//
 
-	// Reload policies using the last policies passed to
-	// load_policies(). Returns true if loaded successfully, false
-	// otherwise. Sets errstr when returning false.
-	bool reload_policies(std::string &errstr);
+	// Request that the security_mgr load the provided policies_v2
+	// file on the next call to process_event.
+	bool request_load_policies_v2_file(const char *filename, std::string &errstr);
+	void request_load_policies_v2(const draiosproto::policies_v2 &policies_v2);
+
+	// Reload the most recently provided policies_v2 message by
+	// calling request_load_policies_v2_file.
+	void request_reload_policies_v2();
 
 	// Attempt to match the event agains the set of policies. If
 	// the event matches one or more policies, will perform the
@@ -96,8 +100,6 @@ public:
 	void start_k8s_audit_server_tasks();
 	void stop_k8s_audit_tasks();
 
-	sinsp_analyzer *analyzer();
-
 	baseline_mgr &baseline_manager();
 
 	// configs
@@ -118,6 +120,8 @@ public:
 		"kubernetes.node.name"});
 
 	void configure_event_labels_set();
+
+	static std::string m_empty_container_id;
 
 private:
 
@@ -345,8 +349,8 @@ private:
 	void check_periodic_tasks(uint64_t ts_ns);
 
 	bool should_evaluate_event(gen_event *evt,
-				   std::string *container_id,
-				   sinsp_evt **sevt,
+				   uint64_t ts_ns,
+				   std::string* &container_id_ptr,
 				   sinsp_threadinfo **tinfo);
 
 	void process_event_v1(gen_event *evt);
@@ -362,7 +366,7 @@ private:
 	void report_events_now(uint64_t ts_ns, draiosproto::policy_events &events);
 
 	void set_event_labels(std::string &container_id, sinsp_threadinfo *tinfo, draiosproto::policy_event *event);
-	void set_event_labels_k8s_audit(draiosproto::event_detail *details, draiosproto::policy_event *event, gen_event *evt);
+	void set_event_labels_k8s_audit(draiosproto::event_detail *details, draiosproto::policy_event *event, json_event *j_evt);
 
 	// Send counts of throttled policy events to the backend
 	void report_throttled_events(uint64_t ts_ns);
@@ -372,8 +376,15 @@ private:
 
 	// The last policies/baselines we loaded
 	std::unique_ptr<draiosproto::policies> m_policies_msg;
-	std::unique_ptr<draiosproto::policies_v2> m_policies_v2_msg;
 	std::unique_ptr<draiosproto::baselines> m_baselines_msg;
+
+	// The last policies_v2 message passed to
+	// request_load_policies. Used for reload.
+	std::shared_ptr<draiosproto::policies_v2> m_policies_v2_msg;
+
+	// When new policies messages are available, they are pushed
+	// onto this queue. They are dequeued in process_event().
+	tbb::concurrent_queue<std::shared_ptr<draiosproto::policies_v2>> m_policies_v2_load_queue;
 
 	// Holds the token buckets that enforce rate limiting for
 	// policy events for a given policy + container.
@@ -395,7 +406,8 @@ private:
 	bool m_initialized;
 	sinsp* m_inspector;
 	security_result_handler& m_result_handler;
-	sinsp_analyzer *m_analyzer;
+	infrastructure_state_iface *m_infra_state;
+	secure_k8s_audit_event_sink_iface *m_k8s_audit_evt_sink;
 	capture_job_queue_handler *m_capture_job_queue_handler;
 	dragent_configuration *m_configuration;
 	std::string m_install_root;
@@ -583,13 +595,12 @@ private:
 			  m_inspector(inspector),
 			  m_configuration(configuration)
 		{
-			m_security_rules = {&m_process_rules, &m_container_rules,
-					       &m_readonly_fs_rules, &m_readwrite_fs_rules, &m_nofd_readwrite_fs_rules,
-					       &m_net_inbound_rules, &m_net_outbound_rules,
-					       &m_tcp_listenport_rules, &m_udp_listenport_rules,
-					       &m_syscall_rules, &m_falco_rules};
+			m_possible_security_rules = {&m_process_rules, &m_container_rules,
+						     &m_readonly_fs_rules, &m_readwrite_fs_rules, &m_nofd_readwrite_fs_rules,
+						     &m_net_inbound_rules, &m_net_outbound_rules,
+						     &m_tcp_listenport_rules, &m_udp_listenport_rules,
+						     &m_syscall_rules, &m_falco_rules};
 			m_evttypes.assign(PPM_EVENT_MAX+1, false);
-			m_evtsources.assign(ESRC_MAX+1, false);
 		};
 		virtual ~security_rules_group() {};
 
@@ -599,9 +610,9 @@ private:
 		{
 			m_falco_rules.set_engine(falco_engine);
 
-			auto s_it = m_security_rules.begin();
+			auto s_it = m_possible_security_rules.begin();
 			auto m_it = metrics.begin();
-			for (; s_it != m_security_rules.end(), m_it != metrics.end(); s_it++, m_it++)
+			for (; s_it != m_possible_security_rules.end(), m_it != metrics.end(); s_it++, m_it++)
 			{
 				security_rules *srule = *s_it;
 				srule->init(m_configuration, m_inspector, library, *m_it);
@@ -611,9 +622,9 @@ private:
 
 		void init_metrics(std::list<std::shared_ptr<security_evt_metrics>> &metrics)
 		{
-			auto s_it = m_security_rules.begin();
+			auto s_it = m_possible_security_rules.begin();
 			auto m_it = metrics.begin();
-			for (; s_it != m_security_rules.end(), m_it != metrics.end(); s_it++, m_it++)
+			for (; s_it != m_possible_security_rules.end(), m_it != metrics.end(); s_it++, m_it++)
 			{
 				security_rules *srule = *s_it;
 				(*m_it)->init(srule->name(), (srule->name() == "falco"));
@@ -629,35 +640,46 @@ private:
 
 			m_loaded_policies.insert(policy->id());
 
-			for (auto &srule : m_security_rules)
+			for (auto &srule : m_possible_security_rules)
 			{
 				srule->add_policy(policy);
+
+				if(srule->num_loaded_rules() > 0)
+				{
+					m_group_security_rules.insert(srule);
+				}
 
 				for(uint32_t evttype = 0; evttype < PPM_EVENT_MAX; evttype++)
 				{
 					m_evttypes[evttype] = m_evttypes[evttype] | srule->m_evttypes[evttype];
 				}
-
-				for(uint32_t evtsource = 0; evtsource < ESRC_MAX; evtsource++)
-				{
-					m_evtsources[evtsource] = m_evtsources[evtsource] | srule->m_evtsources[evtsource];
-				}
 			}
 		}
 
-		std::list<security_rules::match_result> match_event(gen_event *evt)
+		std::list<security_rules::match_result> *match_event(gen_event *evt)
 		{
-			std::list<security_rules::match_result> results;
-			for (const auto &srule : m_security_rules)
+			std::list<security_rules::match_result> *results = NULL;
+
+			if(m_evttypes[evt->get_type()])
 			{
-				if(srule->m_evtsources[evt->get_source()] &&
-				   srule->m_evttypes[evt->get_type()])
+				for (const auto &srule : m_group_security_rules)
 				{
-					std::list<security_rules::match_result> rules_results;
+					std::list<security_rules::match_result> *rules_results;
 
 					rules_results = srule->match_event(evt);
 
-					results.splice(results.end(), rules_results);
+					if(rules_results)
+					{
+						if(!results)
+						{
+							results = rules_results;
+						}
+						else
+						{
+							results->splice(results->end(), *rules_results);
+							delete rules_results;
+						}
+					}
 				}
 			}
 
@@ -678,7 +700,7 @@ private:
 				str += pred.DebugString();
 			}
 
-			for (auto &srule : m_security_rules)
+			for (auto &srule : m_possible_security_rules)
 			{
 				str += " " + srule->name() + "=" + std::to_string(srule->num_loaded_rules());
 			}
@@ -686,11 +708,18 @@ private:
 			return str;
 		}
 
+		// The union of event types handled by rules in this group
 		std::vector<bool> m_evttypes;
-		std::vector<bool> m_evtsources;
 		scope_predicates m_scope_predicates;
 	private:
-		std::list<security_rules *> m_security_rules;
+		// The list of security_rules objects that may be used for this group.
+		std::list<security_rules *> m_possible_security_rules;
+
+		// The list of security_rules objects that are
+		// actually used for this group. Items are added to
+		// this set in add_policy if num_loaded_rules is > 0.
+		std::set<security_rules *> m_group_security_rules;
+
 		std::set<uint64_t> m_loaded_policies;
 
 		falco_security_rules m_falco_rules;
@@ -709,13 +738,23 @@ private:
 		dragent_configuration *m_configuration;
 	};
 
+	typedef std::set<std::shared_ptr<security_rules_group>> security_rules_group_set;
+
 	// container id -> set(security_policies_group) for every scope matched
 	// "" is used as host key
 	std::unordered_map<std::string, std::set<std::shared_ptr<security_policies_group>>> m_scoped_security_policies;
 	std::list<std::shared_ptr<security_policies_group>> m_policies_groups;
 
-	std::unordered_map<std::string, std::set<std::shared_ptr<security_rules_group>>> m_scoped_security_rules;
+	// The "empty" set of security rules (ones related to pid 0, which never exists).
+	security_rules_group_set m_null_security_rules;
+
+	std::unordered_map<std::string, security_rules_group_set> m_scoped_security_rules;
 	std::list<std::shared_ptr<security_rules_group>> m_rules_groups;
+
+	// To avoid the overhead of hashing, save the last threadinfo
+	// pid and the security rules group it hashed to.
+	int64_t m_last_pid;
+	std::reference_wrapper<security_rules_group_set> m_last_security_rules_group;
 
 	// Maintained as a separate set as they don't honor scopes.
 	std::shared_ptr<security_rules_group> m_k8s_audit_security_rules;
@@ -747,7 +786,7 @@ private:
 	std::vector<bool> m_evttypes;
 	std::vector<bool> m_evtsources;
 
-	// must be initialized in the same order of security_policies_group::m_security_policies/m_security_rules
+	// must be initialized in the same order of security_policies_group::m_security_policies/m_possible_security_rules
 	std::list<std::shared_ptr<security_evt_metrics>> m_security_evt_metrics;
 
 	std::shared_ptr<security_rule_library> m_fastengine_rules_library;

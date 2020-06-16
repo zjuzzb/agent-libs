@@ -145,6 +145,12 @@ public:
 	bool get_compliance_save_temp_files();
 
 	/**
+	 * Enables/disables the security mgr communication with
+	 * cointerface's k8s audit server. Only used in tests.
+	 */
+	void set_k8s_audit_server_enabled(bool enabled);
+
+	/**
 	 * Returns true if we audit the k8s server, false otherwise.
 	 */
 	bool get_k8s_audit_server_enabled();

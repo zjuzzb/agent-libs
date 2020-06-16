@@ -146,13 +146,13 @@ type_config<bool>::ptr c_compliance_save_temp_files =
         .hidden()
         .build();
 
-type_config<bool>::ptr c_k8s_audit_server_enabled =
+type_config<bool>::mutable_ptr c_k8s_audit_server_enabled =
     type_config_builder<bool>(true,
                               "Kubernetes audit server enabled?",
                               "security",
                               "k8s_audit_server_enabled")
         .hidden()
-        .build();
+        .build_mutable();
 
 type_config<uint64_t>::ptr c_k8s_audit_server_refresh_interval =
     type_config_builder<uint64_t>(120000000000,
@@ -336,6 +336,11 @@ bool security_config::get_compliance_send_failed_results()
 bool security_config::get_compliance_save_temp_files()
 {
 	return c_compliance_save_temp_files->get_value();
+}
+
+void security_config::set_k8s_audit_server_enabled(bool enabled)
+{
+	c_k8s_audit_server_enabled->set(enabled);
 }
 
 bool security_config::get_k8s_audit_server_enabled()

@@ -153,16 +153,17 @@ void sinsp_worker::init_security()
 		m_security_mgr =
 		    new security_mgr(m_configuration->c_root_dir.get_value(), m_protocol_handler);
 		m_security_mgr->init(m_inspector.get(),
-		                     m_analyzer,
-		                     m_capture_job_handler,
-		                     m_configuration,
-		                     m_internal_metrics);
+				     m_analyzer->mutable_infra_state(),
+				     m_analyzer,
+				     m_capture_job_handler,
+				     m_configuration,
+				     m_internal_metrics);
 
 		if (security_config::instance().get_policies_v2_file() != "")
 		{
 			std::string errstr;
 
-			if (!m_security_mgr->load_policies_v2_file(
+			if (!m_security_mgr->request_load_policies_v2_file(
 			        security_config::instance().get_policies_v2_file().c_str(),
 			        errstr))
 			{
@@ -267,14 +268,8 @@ void sinsp_worker::init_security()
 
 	if (m_security_mgr && m_security_policies_v2_backup)
 	{
-		std::string errstr;
-
 		LOG_INFO("Loading backup security policies_v2");
-		if (!m_security_mgr->load_policies_v2(*m_security_policies_v2_backup, errstr))
-		{
-			LOG_ERROR("Failed to load backup policies_v2, err: %s", errstr.c_str());
-		}
-
+		m_security_mgr->request_load_policies_v2(*m_security_policies_v2_backup);
 		m_security_policies_v2_backup.reset();
 	}
 
@@ -650,12 +645,9 @@ void sinsp_worker::run()
 		if (m_security_mgr)
 		{
 			std::string errstr;
-			if (update_hosts_metadata && !m_security_mgr->reload_policies(errstr))
+			if(update_hosts_metadata)
 			{
-				LOG_ERROR(
-				    "Could not reload policies after receiving "
-				    "new hosts metadata: %s",
-				    errstr.c_str());
+				m_security_mgr->request_reload_policies_v2();
 			}
 			m_security_mgr->process_event(ev);
 		}
@@ -740,14 +732,14 @@ bool sinsp_worker::load_policies(const draiosproto::policies& policies, std::str
 	return false;
 }
 
-bool sinsp_worker::load_policies_v2(const draiosproto::policies_v2& policies_v2,
-                                    std::string& errstr)
+void sinsp_worker::request_load_policies_v2(const draiosproto::policies_v2 &policies_v2)
 {
 	std::lock_guard<std::mutex> lock(m_security_mgr_creation_mutex);
 
 	if (m_security_mgr)
 	{
-		return m_security_mgr->load_policies_v2(policies_v2, errstr);
+		m_security_mgr->request_load_policies_v2(policies_v2);
+		return;
 	}
 
 	LOG_INFO("Saving policies_v2");
@@ -759,9 +751,6 @@ bool sinsp_worker::load_policies_v2(const draiosproto::policies_v2& policies_v2,
 	{
 		m_security_policies_v2_backup = make_unique<draiosproto::policies_v2>(policies_v2);
 	}
-
-	errstr = "No Security Manager object created";
-	return false;
 }
 
 bool sinsp_worker::is_stall_fatal() const

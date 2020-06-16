@@ -179,9 +179,7 @@ protected:
 		m_queue = new protocol_queue(100);
 
 		m_configuration.init(NULL, false);
-		dragent::running_state::instance().reset_for_test();
 
-		m_old_config = configuration_manager::instance().to_yaml();
 		const std::string config = "statsd: {udp_port: " + std::to_string(m_statsd_port) + "}";
 		configuration_manager::instance().init_config(config);
 
@@ -304,7 +302,7 @@ protected:
 		delete m_data_handler;
 		delete m_queue;
 
-		configuration_manager::instance().init_config(m_old_config);
+		dragent::running_state::instance().reset_for_test();
 		g_log->information("TearDown() complete");
 	}
 
@@ -477,7 +475,6 @@ protected:
 		FAIL() << "After 10 seconds, did not see expected error \"" << expected << "\" for task name " << task_name;
 	}
 
-	std::string m_old_config;
 	protocol_queue *m_queue;
 	protocol_handler* m_data_handler;
 	compliance_mgr *m_compliance_mgr;

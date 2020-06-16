@@ -17,6 +17,8 @@
 
 #include <falco_engine.h>
 
+#include <infrastructure_state.h>
+
 class security_baseline;
 
 //
@@ -38,7 +40,7 @@ public:
 
 	bool has_action(const draiosproto::action_type &atype);
 
-	bool match_scope(std::string container_id, sinsp_analyzer *analyzer) const;
+	bool match_scope(std::string container_id, infrastructure_state_iface *infra_state) const;
 
 protected:
 	uint64_t m_order;
@@ -297,14 +299,20 @@ public:
 	{
 		sinsp_evt * s_evt = NULL;
 		json_event * j_evt = NULL;
-
-		s_evt = dynamic_cast<sinsp_evt *>(evt);
-		if (s_evt)
+		switch (evt->get_source())
+		{
+		case ESRC_SINSP:
+			s_evt = static_cast<sinsp_evt *>(evt);
 			return match_event(s_evt);
-
-		j_evt = dynamic_cast<json_event *>(evt);
-		if (j_evt)
+			break;
+		case ESRC_K8S_AUDIT:
+			j_evt = static_cast<json_event *>(evt);
 			return match_event(j_evt);
+			break;
+		default:
+			assert(false);
+			return NULL;
+		}
 
 		assert(false);
 		return NULL;

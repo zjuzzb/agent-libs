@@ -3,6 +3,8 @@
 // Responsible for managing actions that result from policies matching
 // events.
 
+#include <infrastructure_state.h>
+
 #include "security_policy.h"
 class security_mgr;
 
@@ -16,7 +18,8 @@ public:
 	virtual ~security_actions();
 
 	void init(security_mgr *mgr,
-		  std::shared_ptr<coclient> &coclient);
+		  std::shared_ptr<coclient> &coclient,
+		  infrastructure_state_iface *infra_state);
 
 	// Perform the actions for the provided policy, using the
 	// information from the given policy event. Any action results
@@ -120,5 +123,6 @@ protected:
 	security_mgr *m_mgr;
 	bool m_has_outstanding_actions;
 	std::shared_ptr<coclient> m_coclient;
+	infrastructure_state_iface *m_infra_state;
 };
 

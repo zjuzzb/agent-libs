@@ -125,7 +125,6 @@ protected:
 	virtual void SetUp()
 	{
 		m_configuration.init(NULL, false);
-		dragent::running_state::instance().reset_for_test();
 
 		if (!g_log)
 		{
@@ -188,6 +187,8 @@ protected:
 		delete m_baseliner;
 		delete m_inspector;
 		delete m_analyzer;
+
+		dragent::running_state::instance().reset_for_test();
 	}
 
 	sinsp* m_inspector;
@@ -200,8 +201,21 @@ protected:
 
 TEST_F(baseliner_test, nofd_ops)
 {
-	mkdir("/tmp/test_baseliner_nofd_ops/", 0777);
-	DIR* dirp = opendir("/tmp/test_baseliner_nofd_ops/");
+	char tmpl[] = "/tmp/test_baseliner_nofd_ops.XXXXXX";
+	char *tmpdir = mkdtemp(tmpl);
+	ASSERT_TRUE(tmpdir != NULL) << "Could not create temporary directory: " << strerror(errno);
+
+	std::string temp_dir_slash = string(tmpdir) + "/";
+	std::string one_dir = string(tmpdir) + "/one";
+	std::string two_dir = string(tmpdir) + "/two";
+	std::string three_dir = string(tmpdir) + "/three";
+	std::string four_dir = string(tmpdir) + "/four";
+	std::string touch_file = string(tmpdir) + "/file";
+	std::string touch_cmd = string("touch ") + touch_file;
+
+	DIR* dirp = opendir(tmpdir);
+
+	ASSERT_TRUE(dirp != NULL) << "Could not open local directory: " << strerror(errno);
 
 	mkdirat(dirfd(dirp), "./one", 0777);
 	mkdirat(dirfd(dirp), "./two", 0777);
@@ -210,15 +224,15 @@ TEST_F(baseliner_test, nofd_ops)
 
 	renameat(dirfd(dirp), "./two", dirfd(dirp), "./three");
 
-	rename("/tmp/test_baseliner_nofd_ops/three", "/tmp/test_baseliner_nofd_ops/four");
+	rename(three_dir.c_str(), four_dir.c_str());
 
-	ASSERT_TRUE(system("touch /tmp/test_baseliner_nofd_ops/file") == 0);
+	ASSERT_TRUE(system(touch_cmd.c_str()) == 0);
 
-	unlink("/tmp/test_baseliner_nofd_ops/file");
+	unlink(touch_file.c_str());
 
 	closedir(dirp);
-	rmdir("/tmp/test_baseliner_nofd_ops/four");
-	rmdir("/tmp/test_baseliner_nofd_ops");
+	rmdir(four_dir.c_str());
+	rmdir(tmpdir);
 
 	sleep(1);
 
@@ -226,12 +240,12 @@ TEST_F(baseliner_test, nofd_ops)
 	m_baseliner->serialize_protobuf();
 	result = m_baseliner->get_fingerprint(0);
 
-	std::set<std::string> expected_files = {"/tmp/test_baseliner_nofd_ops/file"};
-	std::set<std::string> expected_dirs = {"/tmp/test_baseliner_nofd_ops/",
-	                                       "/tmp/test_baseliner_nofd_ops/one",
-	                                       "/tmp/test_baseliner_nofd_ops/two",
-	                                       "/tmp/test_baseliner_nofd_ops/three",
-	                                       "/tmp/test_baseliner_nofd_ops/four"};
+	std::set<std::string> expected_files = {touch_file.c_str()};
+	std::set<std::string> expected_dirs = {temp_dir_slash.c_str(),
+	                                       one_dir.c_str(),
+	                                       two_dir.c_str(),
+	                                       three_dir.c_str(),
+	                                       four_dir.c_str()};
 
 	for (const auto& prog : result->progs())
 	{

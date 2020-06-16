@@ -40,6 +40,8 @@ type_config<std::vector<std::string>> security_mgr::c_event_labels_exclude(
 		"event_labels", "exclude"
 );
 
+std::string security_mgr::m_empty_container_id = "";
+
 // XXX/mstemm TODO
 // - Is there a good way to immediately check the status of a sysdig capture that I can put in the action result?
 // - The currently event handling doesn't actually work with on
@@ -60,11 +62,14 @@ security_mgr::security_mgr(const string& install_root,
 	  m_initialized(false),
 	  m_inspector(NULL),
 	  m_result_handler(result_handler),
-	  m_analyzer(NULL),
+	  m_infra_state(NULL),
+	  m_k8s_audit_evt_sink(NULL),
 	  m_capture_job_queue_handler(NULL),
 	  m_configuration(NULL),
 	  m_install_root(install_root),
-	  m_cointerface_sock_path("unix:" + install_root + "/run/cointerface.sock")
+	  m_cointerface_sock_path("unix:" + install_root + "/run/cointerface.sock"),
+	  m_last_pid(0),
+	  m_last_security_rules_group(m_null_security_rules)
 {
 	m_security_evt_metrics = {make_shared<security_evt_metrics>(m_process_metrics), make_shared<security_evt_metrics>(m_container_metrics),
 				  make_shared<security_evt_metrics>(m_readonly_fs_metrics),
@@ -88,14 +93,16 @@ security_mgr::~security_mgr()
 }
 
 void security_mgr::init(sinsp *inspector,
-			sinsp_analyzer *analyzer,
+			infrastructure_state_iface *infra_state,
+			secure_k8s_audit_event_sink_iface *k8s_audit_evt_sink,
 			capture_job_queue_handler *capture_job_queue_handler,
 			dragent_configuration *configuration,
 			const internal_metrics::sptr_t& metrics)
 
 {
 	m_inspector = inspector;
-	m_analyzer = analyzer;
+	m_infra_state = infra_state;
+	m_k8s_audit_evt_sink = k8s_audit_evt_sink;
 	m_capture_job_queue_handler = capture_job_queue_handler;
 	m_configuration = configuration;
 
@@ -121,7 +128,7 @@ void security_mgr::init(sinsp *inspector,
 
 	m_coclient = make_shared<coclient>(m_install_root);
 
-	m_actions.init(this, m_coclient);
+	m_actions.init(this, m_coclient, m_infra_state);
 
 	for(auto &metric : m_security_evt_metrics)
 	{
@@ -151,7 +158,7 @@ bool security_mgr::load_policies_file(const char *filename, std::string &errstr)
 	return load_policies(policies, errstr);
 }
 
-bool security_mgr::load_policies_v2_file(const char *filename, std::string &errstr)
+bool security_mgr::request_load_policies_v2_file(const char *filename, std::string &errstr)
 {
 	draiosproto::policies_v2 policies_v2;
 
@@ -165,7 +172,9 @@ bool security_mgr::load_policies_v2_file(const char *filename, std::string &errs
 	}
 	close(fd);
 
-	return load_policies_v2(policies_v2, errstr);
+	request_load_policies_v2(policies_v2);
+
+	return true;
 }
 
 
@@ -193,13 +202,13 @@ void security_mgr::load_policy(const security_policy &spolicy, std::list<std::st
 
 	for (const auto &id : ids)
 	{
-		if(spolicy.match_scope(id, m_analyzer))
+		if(spolicy.match_scope(id, m_infra_state))
 		{
 			std::shared_ptr<security_baseline> baseline = {};
 			if(!id.empty() && spolicy.has_baseline_details())
 			{
 				// smart policy
-				baseline = m_baseline_mgr.lookup(id, m_analyzer->mutable_infra_state(), spolicy);
+				baseline = m_baseline_mgr.lookup(id, m_infra_state, spolicy);
 				if(!baseline)
 				{
 					// no baseline found for this container, skipping
@@ -229,7 +238,7 @@ void security_mgr::load_policy_v2(std::shared_ptr<security_policy_v2> spolicy_v2
 
 	for (const auto &id : ids)
 	{
-		if(spolicy_v2->match_scope(id, m_analyzer))
+		if(spolicy_v2->match_scope(id, m_infra_state))
 		{
 			g_log->debug("Policy " + spolicy_v2->name() + " matched scope for container " + id);
 
@@ -305,12 +314,8 @@ bool security_mgr::load_falco_rules_files(const draiosproto::falco_rules_files &
 
 bool security_mgr::load(std::string &errstr)
 {
-	// Always use v2 policies if available
-	if(m_policies_v2_msg)
-	{
-		return load_v2(*(m_policies_v2_msg.get()), errstr);
-	}
-	else if (m_policies_msg && m_baselines_msg)
+	// Policy v2 support is now handled by different methods.
+	if (m_policies_msg && m_baselines_msg)
 	{
 		return load_v1(*(m_policies_msg.get()), *(m_baselines_msg.get()), errstr);
 	}
@@ -331,9 +336,9 @@ bool security_mgr::load_v1(const draiosproto::policies &policies, const draiospr
 
 	g_log->debug("Loading baselines message: " + tmp);
 
-	if(m_analyzer)
+	if(m_infra_state)
 	{
-		m_analyzer->mutable_infra_state()->clear_scope_cache();
+		m_infra_state->clear_scope_cache();
 	}
 
 	m_baseline_mgr.load(baselines, errstr);
@@ -430,9 +435,9 @@ bool security_mgr::load_v1(const draiosproto::policies &policies, const draiospr
 	m_policies.clear();
 	m_evttypes.assign(PPM_EVENT_MAX+1, false);
 	m_evtsources.assign(ESRC_MAX+1, false);
-	if(m_analyzer)
+	if(m_infra_state)
 	{
-		m_analyzer->mutable_infra_state()->clear_scope_cache();
+		m_infra_state->clear_scope_cache();
 	}
 
 	m_scoped_security_policies.clear();
@@ -509,11 +514,9 @@ bool security_mgr::load_v1(const draiosproto::policies &policies, const draiospr
 
 bool security_mgr::load_v2(const draiosproto::policies_v2 &policies_v2, std::string &errstr)
 {
-	Poco::ScopedWriteRWLock lck(m_policies_lock);
-
-	if(m_analyzer)
+	if(m_infra_state)
 	{
-		m_analyzer->mutable_infra_state()->clear_scope_cache();
+		m_infra_state->clear_scope_cache();
 	}
 
 	g_log->debug("Loading policies_v2 message: " + policies_v2.DebugString());
@@ -560,13 +563,14 @@ bool security_mgr::load_v2(const draiosproto::policies_v2 &policies_v2, std::str
 	m_policies_v2.clear();
 	m_evttypes.assign(PPM_EVENT_MAX+1, false);
 	m_evtsources.assign(ESRC_MAX+1, false);
-	if(m_analyzer)
+	if(m_infra_state)
 	{
-		m_analyzer->mutable_infra_state()->clear_scope_cache();
+		m_infra_state->clear_scope_cache();
 	}
 
 	m_scoped_security_rules.clear();
 	m_rules_groups.clear();
+	m_last_pid = 0;
 	::scope_predicates empty_preds;
 	m_k8s_audit_security_rules = make_shared<security_rules_group>(empty_preds, m_inspector, m_configuration);
 	m_k8s_audit_security_rules->init(m_falco_engine, m_fastengine_rules_library, m_security_evt_metrics);
@@ -606,13 +610,8 @@ bool security_mgr::load_v2(const draiosproto::policies_v2 &policies_v2, std::str
 		}
 	}
 
-	for(uint32_t evtsource = 0; evtsource < ESRC_MAX; evtsource++)
-	{
-		for(const auto &group: m_rules_groups)
-		{
-			m_evtsources[evtsource] = m_evtsources[evtsource] | group->m_evtsources[evtsource];
-		}
-	}
+	// There's no need to set m_evtsources here. It's handled at
+	// the group level now.
 
 	log_rules_group_info();
 
@@ -659,16 +658,18 @@ bool security_mgr::load_policies(const draiosproto::policies &policies, std::str
 	return load(errstr);
 }
 
-bool security_mgr::load_policies_v2(const draiosproto::policies_v2 &policies_v2, std::string &errstr)
+// This is expected to be called from a different thread than the one
+// calling security_mgr::process_event().
+void security_mgr::request_load_policies_v2(const draiosproto::policies_v2 &policies_v2)
 {
 	m_policies_v2_msg.reset(new draiosproto::policies_v2(policies_v2));
 
-	return load(errstr);
+	m_policies_v2_load_queue.push(m_policies_v2_msg);
 }
 
-bool security_mgr::reload_policies(std::string &errstr)
+void security_mgr::request_reload_policies_v2()
 {
-	return load(errstr);
+	m_policies_v2_load_queue.push(m_policies_v2_msg);
 }
 
 bool security_mgr::event_qualifies(sinsp_evt *evt)
@@ -765,35 +766,28 @@ void security_mgr::perform_periodic_tasks(uint64_t ts_ns)
 }
 
 bool security_mgr::should_evaluate_event(gen_event *evt,
-					 std::string *container_id,
-					 sinsp_evt **sevt,
+					 uint64_t ts_ns,
+					 std::string* &container_id_ptr,
 					 sinsp_threadinfo **tinfo)
 {
 	bool evaluate_event = false;
+	sinsp_evt *sevt;
 
 	switch (evt->get_source())
 	{
 	case ESRC_SINSP:
 		// Consider putting this in check_periodic_tasks above.
-		m_actions.check_outstanding_actions(evt->get_ts());
+		m_actions.check_outstanding_actions(ts_ns);
 
-		try
-		{
-			*sevt = dynamic_cast<sinsp_evt *>(evt);
-		}
-		catch (std::bad_cast& bc)
-		{
-			g_log->error("Bad cast for SINSP event");
-			break;
-		}
+		sevt = static_cast<sinsp_evt *>(evt);
 
-		*tinfo = (*sevt)->get_thread_info();
+		*tinfo = sevt->get_thread_info();
 
-		if(!m_evttypes[(*sevt)->get_type()])
+		if(!m_evttypes[sevt->get_type()])
 		{
 			m_metrics.incr(metrics::MET_MISS_EVTTYPE);
 		}
-		else if(!event_qualifies(*sevt))
+		else if(!event_qualifies(sevt))
 		{
 			m_metrics.incr(metrics::MET_MISS_QUAL);
 		}
@@ -803,7 +797,7 @@ bool security_mgr::should_evaluate_event(gen_event *evt,
 		}
 		else
 		{
-			*container_id = (*tinfo)->m_container_id;
+			container_id_ptr = &((*tinfo)->m_container_id);
 			evaluate_event = true;
 
 		}
@@ -841,18 +835,18 @@ void security_mgr::process_event_v1(gen_event *evt)
 		return;
 	}
 
-	perform_periodic_tasks(evt->get_ts());
+	uint64_t ts_ns = evt->get_ts();
+	perform_periodic_tasks(ts_ns);
 
-	std::string container_id = "";
-	sinsp_evt *sevt = NULL;
+	std::string *container_id_ptr = &m_empty_container_id;
 	sinsp_threadinfo *tinfo = NULL;
 
-	if (should_evaluate_event(evt, &container_id, &sevt, &tinfo))
+	if (should_evaluate_event(evt, ts_ns, container_id_ptr, &tinfo))
 	{
 		std::vector<security_policies::match_result *> best_matches;
 		security_policies::match_result *match;
 
-		for (const auto &group : m_scoped_security_policies[container_id])
+		for (const auto &group : m_scoped_security_policies[*(container_id_ptr)])
 		{
 			// An event matches a policy upon three
 			// matching of three conditions:
@@ -889,14 +883,14 @@ void security_mgr::process_event_v1(gen_event *evt)
 			{
 				g_log->debug("Taking DENY action via policy: " + match->policy()->name());
 
-				if(throttle_policy_event(evt->get_ts(), container_id, match->policy()->id(), match->policy()->name()))
+				if(throttle_policy_event(ts_ns, (*container_id_ptr), match->policy()->id(), match->policy()->name()))
 				{
 					uint64_t policy_version = 1;
 
 					add_policy_event_metrics(*match);
 
 					draiosproto::policy_event *event = create_policy_event(evt,
-											       container_id,
+											       (*container_id_ptr),
 											       tinfo,
 											       match->policy()->id(),
 											       match->take_detail(),
@@ -911,7 +905,7 @@ void security_mgr::process_event_v1(gen_event *evt)
 					// use an empty actions array)
 					security_actions::v2actions no_v2_actions;
 
-					m_actions.perform_actions(evt->get_ts(),
+					m_actions.perform_actions(ts_ns,
 								  tinfo,
 								  match->policy()->name(),
 								  match->policy()->actions(),
@@ -934,41 +928,54 @@ void security_mgr::process_event_v1(gen_event *evt)
 
 void security_mgr::process_event_v2(gen_event *evt)
 {
-	// Write lock acquired in load_*()
-	if(!m_initialized || !m_policies_lock.tryReadLock())
+	std::shared_ptr<draiosproto::policies_v2> policies_v2_msg;
+
+	if(m_policies_v2_load_queue.try_pop(policies_v2_msg))
 	{
-		return;
+		std::string errstr;
+		if (!load_v2(*(policies_v2_msg.get()), errstr))
+		{
+			g_log->warning("Could not load policies_v2 message: " + errstr);
+			return;
+		}
 	}
 
-	perform_periodic_tasks(evt->get_ts());
+	uint64_t ts_ns = evt->get_ts();
 
-	std::string container_id = "";
-	sinsp_evt *sevt = NULL;
+	perform_periodic_tasks(ts_ns);
+
+	std::string *container_id_ptr = &m_empty_container_id;
 	sinsp_threadinfo *tinfo = NULL;
 
-	if (should_evaluate_event(evt, &container_id, &sevt, &tinfo))
+	if (should_evaluate_event(evt, ts_ns, container_id_ptr, &tinfo))
 	{
-		std::list<security_rules::match_result> results;
+		std::list<security_rules::match_result> *results = NULL;
 
 		if(evt->get_source() == ESRC_SINSP)
 		{
-			for (const auto &group : m_scoped_security_rules[container_id])
+			if(tinfo->m_pid != m_last_pid)
 			{
-				// An event matches a policy upon three
-				// matching of three conditions:
-				// 1. event source overlap
-				// 2. event type overlap
-				// 3. at least one policy in the group match
-				//    the event and return a non-null match
+				m_last_security_rules_group = m_scoped_security_rules[(*container_id_ptr)];
+			}
+			m_last_pid = tinfo->m_pid;
 
-				if(group->m_evtsources[evt->get_source()] &&
-				   group->m_evttypes[evt->get_type()])
+			for (const auto &group : m_last_security_rules_group.get())
+			{
+				std::list<security_rules::match_result> *gresults;
+
+				gresults = group->match_event(evt);
+
+				if(gresults)
 				{
-					std::list<security_rules::match_result> gresults;
-
-					gresults = group->match_event(evt);
-
-					results.splice(results.end(), gresults);
+					if(!results)
+					{
+						results = gresults;
+					}
+					else
+					{
+						results->splice(results->end(), *gresults);
+						delete gresults;
+					}
 				}
 			}
 		}
@@ -981,19 +988,24 @@ void security_mgr::process_event_v2(gen_event *evt)
 			g_log->debug("Found unexpected event type " + to_string(evt->get_source()) + ", not matching against any security rules groups");
 		}
 
+		if(!results)
+		{
+			return;
+		}
+
 		// Take all actions for all results
-		for(auto &result : results)
+		for(auto &result : *results)
 		{
 			g_log->debug("Taking action via policy: " + result.m_policy->name() + ". detail=" + result.m_detail.DebugString());
 
-			if(throttle_policy_event(evt->get_ts(), container_id, result.m_policy->id(), result.m_policy->name()))
+			if(throttle_policy_event(ts_ns, (*container_id_ptr), result.m_policy->id(), result.m_policy->name()))
 			{
 				uint64_t policy_version = 2;
 
 				add_policy_event_metrics(result);
 
 				draiosproto::policy_event *event = create_policy_event(evt,
-										       container_id,
+										       (*container_id_ptr),
 										       tinfo,
 										       result.m_policy->id(),
 										       result.m_detail,
@@ -1002,7 +1014,7 @@ void security_mgr::process_event_v2(gen_event *evt)
 				// Not throttled--perform the actions associated
 				// with the policy. The actions will add their action
 				// results to the policy event as they complete.
-				m_actions.perform_actions(evt->get_ts(),
+				m_actions.perform_actions(ts_ns,
 							  tinfo,
 							  result.m_policy->name(),
 							  result.m_policy->actions(),
@@ -1010,9 +1022,9 @@ void security_mgr::process_event_v2(gen_event *evt)
 							  event);
 			}
 		}
-	}
 
-	m_policies_lock.unlock();
+		delete results;
+	}
 }
 
 bool security_mgr::start_capture(uint64_t ts_ns,
@@ -1096,11 +1108,6 @@ void security_mgr::stop_capture(const string &token)
 		// completion but is never sent, and a file on
 		// disk that is never cleaned up.
 	}
-}
-
-sinsp_analyzer *security_mgr::analyzer()
-{
-	return m_analyzer;
 }
 
 baseline_mgr &security_mgr::baseline_manager()
@@ -1312,16 +1319,12 @@ draiosproto::policy_event * security_mgr::create_policy_event(gen_event *evt,
 		fdet->set_output(details->output_details().output());
 	}
 
-	if(m_analyzer)
-	{
-		event->set_sinsp_events_dropped(analyzer()->recent_sinsp_events_dropped());
-	}
-
 	if (c_event_labels_enabled.get_value())
 	{
 		if (event_source == ESRC_K8S_AUDIT)
 		{
-			set_event_labels_k8s_audit(details, event, evt);
+			json_event *j_evt = static_cast<json_event *>(evt);
+			set_event_labels_k8s_audit(details, event, j_evt);
 		}
 		else
 		{
@@ -1364,16 +1367,12 @@ draiosproto::policy_event * security_mgr::create_policy_event(gen_event *evt,
 		fdet->set_output(details.output_details().output());
 	}
 
-	if(m_analyzer)
-	{
-		event->set_sinsp_events_dropped(analyzer()->recent_sinsp_events_dropped());
-	}
-
 	if (c_event_labels_enabled.get_value())
 	{
 		if (event_source == ESRC_K8S_AUDIT)
 		{
-			set_event_labels_k8s_audit(mdetails, event, evt);
+			json_event *j_evt = static_cast<json_event *>(evt);
+			set_event_labels_k8s_audit(mdetails, event, j_evt);
 		}
 		else
 		{
@@ -1439,7 +1438,7 @@ void security_mgr::set_event_labels(std::string &container_id,
 	uid = std::make_pair("container", container_id);
 
 	std::unordered_map<std::string, std::string>event_labels;
-	m_analyzer->infra_state()->find_tag_list(uid, m_event_labels, event_labels);
+	m_infra_state->find_tag_list(uid, m_event_labels, event_labels);
 
 	for (auto& it: event_labels)
 	{
@@ -1453,27 +1452,19 @@ void security_mgr::set_event_labels(std::string &container_id,
 		// Use Pod Name label to check it
 		if (event_labels.find("kubernetes.pod.name") != event_labels.end())
 		{
-			if (!m_analyzer->mutable_infra_state()->get_k8s_cluster_name().empty())
+			if (!m_infra_state->get_k8s_cluster_name().empty())
 			{
-				(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_analyzer->mutable_infra_state()->get_k8s_cluster_name();
+				(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_infra_state->get_k8s_cluster_name();
 			}
 		}
 	}
 }
 
-void security_mgr::set_event_labels_k8s_audit(draiosproto::event_detail *details, draiosproto::policy_event *event, gen_event *evt)
+void security_mgr::set_event_labels_k8s_audit(draiosproto::event_detail *details, draiosproto::policy_event *event, json_event *j_evt)
 {
-	if (!m_analyzer->mutable_infra_state()->get_k8s_cluster_name().empty())
+	if (!m_infra_state->get_k8s_cluster_name().empty())
 	{
-		(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_analyzer->mutable_infra_state()->get_k8s_cluster_name();
-	}
-
-	json_event * j_evt = NULL;
-
-	j_evt = dynamic_cast<json_event *>(evt);
-	if (!j_evt)
-	{
-		return;
+		(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_infra_state->get_k8s_cluster_name();
 	}
 
 	const nlohmann::json& j = j_evt->jevt();
@@ -1481,21 +1472,21 @@ void security_mgr::set_event_labels_k8s_audit(draiosproto::event_detail *details
 	try
 	{
 		nlohmann::json::json_pointer r_jptr("/objectRef/resource");
-		if (m_analyzer->infra_state() != nullptr && j.at(r_jptr) == "pods")
+		if (m_infra_state != nullptr && j.at(r_jptr) == "pods")
 		{
 			// if the object of this audit event is a pod,
 			// get its container.id and host.hostName
 			// from infrastructure state
 			nlohmann::json::json_pointer ns_jptr("/objectRef/namespace"),
 				n_jptr("/objectRef/name");
-			std::string pod_uid = m_analyzer->infra_state()->get_k8s_pod_uid(j.at(ns_jptr), j.at(n_jptr));
+			std::string pod_uid = m_infra_state->get_k8s_pod_uid(j.at(ns_jptr), j.at(n_jptr));
 			if (!pod_uid.empty())
 			{
 				infrastructure_state::uid_t uid = make_pair("k8s_pod", pod_uid);
 
 				// labels retrieval
 				std::unordered_map<std::string, std::string> event_labels;
-				m_analyzer->infra_state()->find_tag_list(uid, m_event_labels, event_labels);
+				m_infra_state->find_tag_list(uid, m_event_labels, event_labels);
 
 				for (auto &it: event_labels)
 				{
@@ -1505,12 +1496,12 @@ void security_mgr::set_event_labels_k8s_audit(draiosproto::event_detail *details
 				if (m_event_labels.find("agent.tag") != m_event_labels.end()) {
 					// lookup host.mac
 					std::string host_mac;
-					m_analyzer->infra_state()->find_tag(uid, "host.mac", host_mac);
+					m_infra_state->find_tag(uid, "host.mac", host_mac);
 
 					// lookup agent tags from host
 					uid = make_pair("host", host_mac);
 					std::unordered_map<std::string, std::string> host_tags;
-					m_analyzer->infra_state()->get_tags(uid, host_tags);
+					m_infra_state->get_tags(uid, host_tags);
 
 					int count_tags = 0;
 					for (auto &it: host_tags)
@@ -1810,7 +1801,7 @@ void security_mgr::start_k8s_audit_server_tasks()
 					}
 					for(auto jev : jevts)
 					{
-						m_analyzer->secure_audit_filter_and_append_k8s_audit(jev.jevt(),
+						m_k8s_audit_evt_sink->receive_k8s_audit_event(jev.jevt(),
 								m_configuration->m_secure_audit_k8s_active_filters,
 								m_configuration->m_secure_audit_k8s_filters);
 

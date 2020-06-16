@@ -39,9 +39,9 @@ bool security_policy::has_action(const draiosproto::action_type &atype)
 	return false;
 }
 
-bool security_policy::match_scope(std::string container_id, sinsp_analyzer *analyzer) const
+bool security_policy::match_scope(std::string container_id, infrastructure_state_iface *infra_state) const
 {
-	if(!analyzer)
+	if(!infra_state)
 	{
 		return true;
 	}
@@ -63,10 +63,10 @@ bool security_policy::match_scope(std::string container_id, sinsp_analyzer *anal
 		uid = make_pair("container", container_id);
 	} else
 	{
-		uid = make_pair("host", analyzer->get_configuration_read_only()->get_machine_id());
+		uid = make_pair("host", infra_state->get_machine_id());
 	}
 
-	return scope_predicates().empty() || analyzer->mutable_infra_state()->match_scope(uid, scope_predicates());
+	return scope_predicates().empty() || infra_state->match_scope(uid, scope_predicates());
 }
 
 // This object owns event_detail but not the policy.
