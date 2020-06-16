@@ -6,9 +6,9 @@
 class test_helper
 {
 public:
-	static void insert_app_check(thread_analyzer_info* ainfo, std::string value)
+	static void insert_app_check_metrics(thread_analyzer_info* ainfo)
 	{
-		ainfo->m_app_checks_found.insert(value);
+		ainfo->m_has_metrics = true;
 	}
 };
 
@@ -33,13 +33,13 @@ app_checks_always_send: true
 	bool matches = false;
 	bool generic_match = false;
 	matches =
-	    my_manager.get_flush_filter().matches(NULL, &tinfo, NULL, NULL, &generic_match, NULL, NULL);
+	    my_manager.get_flush_filter().matches(&tinfo, &tinfo, NULL, NULL, &generic_match, NULL, NULL);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(generic_match, true);
 
-	test_helper::insert_app_check(&tinfo, "some app check");
+	test_helper::insert_app_check_metrics(&tinfo);
 	matches =
-	    my_manager.get_flush_filter().matches(NULL, &tinfo, NULL, NULL, &generic_match, NULL, NULL);
+	    my_manager.get_flush_filter().matches(&tinfo, &tinfo, NULL, NULL, &generic_match, NULL, NULL);
 	EXPECT_EQ(matches, true);
 	EXPECT_EQ(generic_match, false);
 }

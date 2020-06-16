@@ -93,6 +93,7 @@ filter_condition::param_type filter_condition::param2type(std::string pstr)
 	                                                       {"process.name", process_name},
 	                                                       {"process.cmdline", process_cmdline},
 	                                                       {"appcheck.match", app_check_match},
+	                                                       {"has_metrics", has_metrics},
 	                                                       {K8S_ANNOTATION, k8s_annotation},
 	                                                       {"all", all},
 	                                                       {"always", all}};
@@ -203,6 +204,9 @@ std::string filter_condition::to_string() const
 		break;
 	case app_check_match:
 		out << "App Check Glob: " << m_pattern;
+		break;
+	case has_metrics:
+		out << "Has Metrics";
 		break;
 	case k8s_annotation:
 		out << "K8s Annotation: " << m_param << ": " << m_pattern;

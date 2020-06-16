@@ -116,6 +116,7 @@ thread_analyzer_info::thread_analyzer_info(sinsp* inspector, sinsp_analyzer* ana
       m_tap(nullptr),
       m_procinfo(nullptr),
       m_prom_check_found(false),
+      m_has_metrics(false),
       m_last_port_scan(time_point_t::min()),
       m_last_procfs_port_scan(time_point_t::min())
 {
@@ -130,6 +131,7 @@ thread_analyzer_info::thread_analyzer_info(sinsp* inspector,
       m_tap(audit_tap),
       m_procinfo(nullptr),
       m_prom_check_found(false),
+      m_has_metrics(false),
       m_last_port_scan(time_point_t::min()),
       m_last_procfs_port_scan(time_point_t::min())
 {
@@ -154,6 +156,7 @@ void thread_analyzer_info::init()
 	m_th_analysis_flags = AF_PARTIAL_METRIC;
 	clear_found_app_checks();
 	clear_found_prom_check();
+	clear_has_metrics();
 	m_procinfo = NULL;
 	m_connection_queue_usage_pct = 0;
 	m_old_proc_jiffies = -1;
@@ -423,6 +426,7 @@ void thread_analyzer_info::clear_all_metrics()
 	m_called_execve = false;
 	clear_found_app_checks();
 	clear_found_prom_check();
+	clear_has_metrics();
 }
 
 void thread_analyzer_info::clear_role_flags()

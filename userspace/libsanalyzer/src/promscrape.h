@@ -106,6 +106,9 @@ public:
 	// pid_has_jobs returns whether or not scrape jobs exist for the given pid.
 	bool pid_has_jobs(int pid);
 
+	// pid_has_metrics returns whether or not metrics exist for the given pid.
+	bool pid_has_metrics(int pid);
+
 	// pid_to_protobuf() packs prometheus metrics for the given pid into
 	// the protobuf "proto" by calling job_to_protobuf() for every job.
 	// "limit" indicates the limit of metrics that can still be added to the protobuf

@@ -707,6 +707,24 @@ bool promscrape::pid_has_jobs(int pid)
 	return m_pids.find(pid) != m_pids.end();
 }
 
+bool promscrape::pid_has_metrics(int pid)
+{
+	std::lock_guard<std::mutex> lock(m_map_mutex);
+	const auto pidmap_it = m_pids.find(pid);
+	if (pidmap_it == m_pids.end())
+	{
+		return false;
+	}
+	for (uint64_t job_id : pidmap_it->second)
+	{
+		if (m_metrics.find(job_id) != m_metrics.end())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 std::shared_ptr<agent_promscrape::ScrapeResult> promscrape::get_job_result_ptr(
 	uint64_t job_id, prom_job_config *config_copy)
 {

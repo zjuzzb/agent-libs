@@ -298,3 +298,23 @@ public:
 private:
 	std::string m_pattern;
 };
+
+/**
+ * checks whether a process has custom metrics
+ *
+ * This filter always returns a high_priority result and never excludes.
+ */
+template<typename filter_param>
+class has_metrics_filter : public base_filter<filter_param>
+{
+public:
+	has_metrics_filter()
+	    : base_filter<filter_param>(false)
+	{
+	}
+
+	bool matches(const filter_param& arg,
+	             bool& exclude,
+	             bool& high_priority,
+	             std::string* reason) const final;
+};

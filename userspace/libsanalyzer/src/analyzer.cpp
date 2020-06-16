@@ -1993,13 +1993,11 @@ void sinsp_analyzer::emit_processes_deprecated(
 				}
 			}
 			// Add all processes with appcheck metrics
-			if (feature_manager::instance().get_enabled(APP_CHECKS) &&
-			    process_manager::c_always_send_app_checks.get_value())
+			if (process_manager::c_always_send_app_checks.get_value())
 			{
 				for (auto prog : progtable)
 				{
-					if (prog->get_exclude_from_sample() &&
-					    m_app_checks_proxy->have_metrics_for_pid(prog->m_pid))
+					if (prog->get_exclude_from_sample() && prog->has_metrics())
 					{
 						LOG_DEBUG("Added pid %ld with appcheck metrics to top processes",
 						          prog->m_pid);
@@ -3043,6 +3041,14 @@ bool sinsp_analyzer::aggregate_processes_into_programs(sinsp_threadinfo& sinsp_t
 		// main_thread of the group as we don't need more checks instances for each process.
 		if (m_app_checks_proxy)
 		{
+			// Mark all processes that already have metrics so that they will be selected
+			// for emission if app_checks_always_send or a process_filter is enabled
+			if (m_app_checks_proxy->have_metrics_for_pid(tinfo.m_pid) ||
+				(promscrape::c_use_promscrape.get_value() &&
+				m_promscrape->pid_has_metrics(tinfo.m_pid)))
+			{
+				tinfo.set_has_metrics();
+			}
 			const auto& custom_checks = mtinfo->get_proc_config().app_checks();
 			vector<app_process> app_checks;
 

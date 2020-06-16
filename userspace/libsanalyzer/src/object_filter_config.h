@@ -66,6 +66,7 @@ struct filter_condition
 		process_name,
 		process_cmdline,
 		app_check_match,
+		has_metrics,
 		k8s_annotation,  // obsolete, to be replaced with generic tag
 		tag,
 		all  // Match all

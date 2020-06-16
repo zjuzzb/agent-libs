@@ -221,6 +221,31 @@ bool app_check_filter<filter_param>::matches(const filter_param& arg,
 	return true;
 }
 
+template<typename filter_param>
+bool has_metrics_filter<filter_param>::matches(const filter_param& arg,
+                                             bool& exclude,
+                                             bool& high_priority,
+                                             std::string* reason) const
+{
+	if (!arg.m_tinfo)
+	{
+		return false;
+	}
+
+	if (!arg.m_tinfo->has_metrics())
+	{
+		return false;
+	}
+
+	exclude = this->exclude_on_match();
+	high_priority = true;
+	if (reason)
+	{
+		*reason = "found custom metrics";
+	}
+	return true;
+}
+
 bool object_filter::matches(const thread_analyzer_info* tinfo,
                             const thread_analyzer_info* mtinfo,
                             const sinsp_container_info* container,
@@ -314,6 +339,9 @@ void object_filter::set_rules(const std::vector<object_filter_config::filter_rul
 				case object_filter_config::filter_condition::param_type::app_check_match:
 					filter = std::make_shared<app_check_filter<process_filter_args>>(
 					    condition.m_pattern);
+					break;
+				case object_filter_config::filter_condition::param_type::has_metrics:
+					filter = std::make_shared<has_metrics_filter<process_filter_args>>();
 					break;
 				case object_filter_config::filter_condition::param_type::k8s_annotation:
 				case object_filter_config::filter_condition::param_type::tag:

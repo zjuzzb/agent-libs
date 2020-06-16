@@ -31,7 +31,7 @@ type_config<uint32_t> process_manager::c_process_limit(
 
 type_config<bool> process_manager::c_always_send_app_checks(
 		false,
-		"legacy config to force all processes which have app checks to be high priority. Users should instead define a filter which matches all app checks.",
+		"legacy config to force all processes which have app check metrics to be high priority. Users should instead define a filter which matches all processes with custom metrics.",
 		"app_checks_always_send");
 
 process_manager::process_manager()
@@ -40,9 +40,9 @@ process_manager::process_manager()
 	std::vector<object_filter_config::filter_rule> rules = c_process_filter.get_value();
 	if (c_always_send_app_checks.get_value())
 	{
-		object_filter_config::filter_rule all_app_checks("all app checks",
+		object_filter_config::filter_rule all_app_checks("all custom metrics",
 								 true,
-								 {object_filter_config::filter_condition(object_filter_config::filter_condition::param_type::app_check_match,
+								 {object_filter_config::filter_condition(object_filter_config::filter_condition::param_type::has_metrics,
 													 "",
 													 "*",
 													 {})},

@@ -190,6 +190,10 @@ public:
 	inline void set_found_prom_check() { m_prom_check_found = true; }
 	inline void clear_found_prom_check() { m_prom_check_found = false; }
 
+	inline bool has_metrics() const { return m_has_metrics; }
+	inline void set_has_metrics() { m_has_metrics = true; }
+	inline void clear_has_metrics() { m_has_metrics = false; }
+
 	bool found_app_check_by_fnmatch(const std::string& pattern) const;
 	inline bool found_app_check_by_name(const std::string& name) const
 	{
@@ -198,6 +202,10 @@ public:
 	inline bool found_app_check(const app_check& check) const
 	{
 		return found_app_check_by_name(check.name());
+	}
+	inline void set_found_app_check_name(const std::string& name)
+	{
+		m_app_checks_found.emplace(name);
 	}
 	inline void set_found_app_check(const app_check& check)
 	{
@@ -323,6 +331,7 @@ private:
 	mutable std::set<uint16_t> m_procfs_found_ports;
 	std::set<std::string> m_app_checks_found;
 	bool m_prom_check_found;
+	bool m_has_metrics;
 	mutable time_point_t m_last_port_scan;
 	mutable time_point_t m_last_procfs_port_scan;
 
