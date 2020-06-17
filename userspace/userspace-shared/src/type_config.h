@@ -187,7 +187,9 @@ public:
 	virtual bool is_set_in_config() const { return false; }
 
 	/**
-	 * API for explicitly setting the value in config. generally only for test usage
+	 * API for explicitly setting the value in config. generally only for test usage,
+	 * and a few other cases where we have to "forward" information from one config
+	 * to another (see "run_mode")
 	 */
 	virtual void set_set_in_config(bool val) {}
 

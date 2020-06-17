@@ -327,7 +327,12 @@ public:
 
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;
+
+	// since we translate this mode into other configs consumable by feature manager,
+	// we have to cache whether it was set explicitly so we can forward that as well
 	dragent_mode_t m_mode;
+	bool m_mode_explicitly_set;
+
 	bool m_detect_stress_tools = false;
 	std::vector<std::string> m_stress_tools;
 	bool m_large_envs;

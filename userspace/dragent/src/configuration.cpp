@@ -1048,11 +1048,15 @@ void dragent_configuration::init()
 	m_emit_tracers = m_config->get_scalar("emit_tracers", true);
 	m_enable_grpc_tracing = m_config->get_scalar("enable_grpc_tracing", false);
 
-#ifndef CYGWING_AGENT
-	auto mode_s = m_config->get_scalar<string>("run_mode", "standard");
-#else
-	auto mode_s = m_config->get_scalar<string>("run_mode", "nodriver");
-#endif
+	// need to find out if it's explicitly set so we can forward it to
+	// the configs used by feature manager.
+	std::string mode_s;
+	uint32_t priority = m_config->get_scalar_depth<string>("run_mode", mode_s);
+	if (priority == -1)
+	{
+		mode_s = "standard";
+	}
+
 	if (mode_s == "nodriver")
 	{
 		m_mode = dragent_mode_t::NODRIVER;
@@ -1062,6 +1066,7 @@ void dragent_configuration::init()
 	{
 		m_mode = dragent_mode_t::SIMPLEDRIVER;
 	}
+	m_mode_explicitly_set = (priority != -1);
 
 	m_excess_metric_log = m_config->get_scalar("metrics_excess_log", false);
 	m_metrics_cache = m_config->get_scalar<unsigned>("metrics_cache_size", 0u);
@@ -1524,15 +1529,6 @@ void dragent_configuration::print_configuration() const
 	if (m_emit_tracers)
 	{
 		LOG_INFO("Emitting sysdig tracers enabled");
-	}
-
-	if (m_mode == dragent_mode_t::NODRIVER)
-	{
-		LOG_INFO("Running in nodriver mode, Security and Sysdig Captures will not work");
-	}
-	else if (m_mode == dragent_mode_t::SIMPLEDRIVER)
-	{
-		LOG_INFO("Running in simple driver mode, Security and Sysdig Captures will not work");
 	}
 
 	LOG_INFO("Metric filters and over limit logging:" + bool_as_text(m_excess_metric_log));

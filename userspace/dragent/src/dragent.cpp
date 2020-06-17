@@ -526,6 +526,12 @@ int dragent_app::main(const std::vector<std::string>& args)
 		    ->set(false);
 	}
 
+	if (m_configuration.m_mode_explicitly_set)
+	{
+		configuration_manager::instance().get_mutable_config<bool>("feature.driver")->set_set_in_config(true);
+		configuration_manager::instance().get_mutable_config<bool>("feature.full_syscalls")->set_set_in_config(true);
+	}
+
 	// Ensure the feature manager has validatead the config
 	if (!feature_manager::instance().initialize())
 	{
