@@ -83,7 +83,7 @@ type_config<bool>::ptr c_send_monitor_events =
         .build();
 
 type_config<std::string>::ptr c_default_compliance_schedule =
-    type_config_builder<std::string>("08:00:00Z/P1D",  // By default runs once per day at 8am utc
+    type_config_builder<std::string>("",  // Disabled by default
                                      "Default compliance schedule",
                                      "security",
                                      "default_compliance_schedule")

@@ -177,7 +177,7 @@ security:
 
 TEST(security_config_test, default_security_compliance_schedule)
 {
-	ASSERT_EQ("08:00:00Z/P1D", security_config::instance().get_default_compliance_schedule());
+	ASSERT_EQ("", security_config::instance().get_default_compliance_schedule());
 }
 
 TEST(security_config_test, configured_security_compliance_schedule)
