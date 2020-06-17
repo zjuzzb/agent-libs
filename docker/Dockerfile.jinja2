@@ -200,7 +200,8 @@ ADD draios-${AGENT_VERSION}-x86_64-agent.deb /
 RUN dpkg -i /draios-${AGENT_VERSION}-x86_64-agent.deb \
  && rm -rf /opt/draios/lib/python-deps2.6 \
  && rm -rf /opt/draios/lib/python-deps3.5 \
- && rm -rf /opt/draios/lib/python-deps3.6
+ && rm -rf /opt/draios/lib/python-deps3.6 \
+ && find /opt/draios/lib -type d -name "enum*" -exec rm -r {} + 2>/dev/null
 
 {% endif %}
 {% else %}

@@ -28,6 +28,7 @@ import ast
 import config
 import platform
 import glob
+import copy
 from stat import *
 
 # project
@@ -105,6 +106,21 @@ def setns(fd):
 
 def build_ns_path(pid, ns):
     return "%s/proc/%d/ns/%s" % (SYSDIG_HOST_ROOT, pid, ns)
+
+# This function masks sensitive user data in the check.
+# It deep copies the config and masks the sensitive info.
+def mask_sensitive_fields(check):
+    new_check = copy.deepcopy(check)
+    # Now get conf if it exists as a key or might be obj itself
+    if 'conf' in new_check:
+        conf_obj = new_check['conf']
+    else:
+        conf_obj = new_check
+
+    for key in conf_obj:
+        if key in ['username', 'password']:
+            conf_obj[key] = "**masked**"
+    return new_check
 
 class YamlConfig(object):
     def __init__(self, paths):
@@ -321,12 +337,13 @@ class AppCheckInstance(object):
 
         for key, value in list(check.get("conf", {}).items()):
             if isinstance(value, str):
-                self.instance_conf[key] = self._expand_template(value, proc_data, self.conf_vals)
+                self.instance_conf[key] = self._expand_template(key, value, proc_data, self.conf_vals)
             else:
                 self.instance_conf[key] = value
 
         self.get_os_info()
-        logging.debug("Created instance of check %s with conf: %s", self.name, repr(self.instance_conf))
+        # Don't print entire config. Get a copy with sensitive fields masked.
+        logging.debug("Created instance of check %s with conf: %s", self.name, repr(mask_sensitive_fields(self.instance_conf)))
 
     def switch_to_self_namespace(self):
         setns(self.MYNET)
@@ -425,9 +442,10 @@ class AppCheckInstance(object):
             # Return metrics and checks instead
             return self.check_instance.get_metrics(), self.check_instance.get_service_checks(), saved_ex
 
-    def _expand_template(self, value, proc_data, conf_vals):
+    def _expand_template(self, key, value, proc_data, conf_vals):
         try:
-            logging.debug("Expanding template: %s" % repr(value))
+            # Do not log values. Could be sensitive user info.
+            logging.debug("Expanding template for key: %s" % repr(key))
             ret = ""
             lastpos = 0
             for token_pos in re.finditer(self.TOKEN_PATTERN, value):
@@ -781,7 +799,7 @@ class Application(object):
                 # and lets the exception handler recreate the AppCheckInstance.
                 logging.debug("Recreating check %s as definition has changed from \"%s\" to \"%s\"",
                               conf["check"].get("name", "N/A"),
-                              str(check_instance.proc_data), str(conf))
+                              str(mask_sensitive_fields(check_instance.proc_data)), str(mask_sensitive_fields(conf)))
                 del self.known_instances[pidname]
                 check_instance = self.known_instances[pidname]
 
@@ -789,9 +807,8 @@ class Application(object):
             if pidname in self.excluded_pidnames:
                 logging.debug("Process with pid=%d,name=%s is excluded", pidname[0], pidname[1])
                 return False, 0
-            # Don't print entire config. Just the name.
-            # This keeps sensitive info from being published.
-            logging.debug("Requested check %s", repr(check["name"]))
+            # Don't print entire config. Get a copy with sensitive fields masked.
+            logging.debug("Requested check %s", repr(mask_sensitive_fields(check)))
 
             is_supported = self.is_app_check_supported(pidname[1])
             if not is_supported:
