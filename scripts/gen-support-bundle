@@ -152,7 +152,11 @@ function tarball()
 {
     progress "Archiving logs"
     tar -cvf $TAR_ARCHIVE $LOG_DIR/*.log* --transform s,$HOME_DIR_S,$MACHINE_ID, &>/dev/null
-    if [ $? -ne 0 ]; then
+    # tar returns 1 if some files changed while the command was running
+    # draios.log can get a lot of append activity, especially in debug mode
+    # so handle error 1 as a benign error
+    ret=$?
+    if [ "$ret" -ne 0 ] && [ "$ret" -ne 1 ]; then
         progress "failed"
         leave "Failed executing \`tar\`." 1
     fi
