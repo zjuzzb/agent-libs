@@ -341,26 +341,6 @@ private:
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-// Thread table changes listener
-///////////////////////////////////////////////////////////////////////////////
-class audit_tap;
-
-class analyzer_threadtable_listener : public sinsp_threadtable_listener
-{
-public:
-	analyzer_threadtable_listener(sinsp* inspector, sinsp_analyzer& analyzer);
-	void on_thread_created(sinsp_threadinfo* tinfo);
-	void on_thread_destroyed(sinsp_threadinfo* tinfo);
-
-	void set_audit_tap(const std::shared_ptr<audit_tap>& tap);
-
-private:
-	sinsp* m_inspector;
-	sinsp_analyzer& m_analyzer;
-	std::shared_ptr<audit_tap> m_tap;
-};
-
-///////////////////////////////////////////////////////////////////////////////
 // Support for thread sorting
 ///////////////////////////////////////////////////////////////////////////////
 bool threadinfo_cmp_cpu(thread_analyzer_info* src, thread_analyzer_info* dst);

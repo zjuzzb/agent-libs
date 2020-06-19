@@ -696,27 +696,6 @@ std::string thread_analyzer_info::ports_to_string(const std::set<uint16_t>& port
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// analyzer_threadtable_listener implementation
-///////////////////////////////////////////////////////////////////////////////
-analyzer_threadtable_listener::analyzer_threadtable_listener(sinsp* const inspector,
-                                                             sinsp_analyzer& analyzer)
-    : m_inspector(inspector),
-      m_analyzer(analyzer),
-      m_tap(nullptr)
-
-{
-}
-
-void analyzer_threadtable_listener::on_thread_created(sinsp_threadinfo* tinfo) {}
-
-void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* const tinfo) {}
-
-void analyzer_threadtable_listener::set_audit_tap(const std::shared_ptr<audit_tap>& tap)
-{
-	m_tap = tap;
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // Support for thread sorting
 ///////////////////////////////////////////////////////////////////////////////
 bool threadinfo_cmp_cpu(thread_analyzer_info* src, thread_analyzer_info* dst)

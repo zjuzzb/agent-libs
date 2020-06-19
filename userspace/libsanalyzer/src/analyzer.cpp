@@ -379,9 +379,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	//
 	// Listeners
 	//
-	m_threadtable_listener = new analyzer_threadtable_listener(inspector, *this);
-	inspector->m_thread_manager->set_listener((sinsp_threadtable_listener*)m_threadtable_listener);
-
 	m_fd_listener = new sinsp_analyzer_fd_listener(inspector, this, m_falco_baseliner);
 	inspector->m_parser->m_fd_listener = m_fd_listener;
 #ifndef _WIN32
@@ -427,7 +424,6 @@ sinsp_analyzer::~sinsp_analyzer()
 	delete m_procfs_parser;
 	delete m_sched_analyzer2;
 	delete m_delay_calculator;
-	delete m_threadtable_listener;
 	delete m_fd_listener;
 	delete m_ipv4_connections;
 
@@ -7894,7 +7890,6 @@ void sinsp_analyzer::enable_audit_tap(bool emit_local_connections)
 	m_tap = std::make_shared<audit_tap>(&m_env_hash_config,
 	                                    m_configuration->get_machine_id(),
 	                                    emit_local_connections);
-	m_threadtable_listener->set_audit_tap(m_tap);
 }
 
 void sinsp_analyzer::enable_secure_audit()

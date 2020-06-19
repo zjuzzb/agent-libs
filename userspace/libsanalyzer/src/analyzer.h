@@ -74,7 +74,6 @@ class sinsp_procfs_parser;
 class mounted_fs_proxy;
 class sinsp_sched_analyzer2;
 class sinsp_delays;
-class analyzer_threadtable_listener;
 class sinsp_analyzer_fd_listener;
 class sinsp_configuration;
 class sinsp_counters;
@@ -1154,7 +1153,6 @@ public:
 	// Thread-related state
 	//
 	uint32_t m_thread_memory_id;
-	analyzer_threadtable_listener* m_threadtable_listener;
 
 	//
 	// FD-related state
