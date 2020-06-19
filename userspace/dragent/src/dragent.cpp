@@ -121,7 +121,8 @@ type_config<uint64_t> c_promscrape_timeout_s(60,
                                              "promscrape_thread_timeout");
 
 type_config<bool>::ptr c_10s_flush_enabled =
-    type_config_builder<bool>(true, "Enable agent-side aggregation", "10s_flush_enable")
+    type_config_builder<bool>(false, "Enable agent-side aggregation", "10s_flush_enable")
+        .hidden()
         .build();
 
 type_config<bool> c_compression_enabled(true,
