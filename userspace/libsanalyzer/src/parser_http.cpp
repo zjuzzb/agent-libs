@@ -17,6 +17,10 @@ uint32_t s_http_trace_intval = (*(uint32_t*)HTTP_TRACE_STR);
 uint32_t s_http_connect_intval = (*(uint32_t*)HTTP_CONNECT_STR);
 uint32_t s_http_resp_intval = (*(uint32_t*)HTTP_RESP_STR);
 
+type_config<uint32_t> c_url_table_size(1024,
+                                       "Maximum number of URLs tracked for each protocol state",
+                                       "http",
+                                       "url_table_size");
 }  // namespace
 
 protocol_http* protocol_http::s_protocol_http = new protocol_http();
@@ -583,4 +587,217 @@ inline bool sinsp_http_parser::decompose_URI(const char* URI,
 		return false;
 	}
 	return state != START;
+}
+
+void sinsp_http_state::update(sinsp_partial_transaction* tr,
+                              uint64_t time_delta,
+                              bool is_server,
+                              uint32_t truncation_size)
+{
+	ASSERT(tr->m_protoparser != NULL);
+
+	if (tr->m_protoparser->m_is_valid)
+	{
+		sinsp_http_parser* pp = (sinsp_http_parser*)tr->m_protoparser;
+		bool is_error = ((pp->result().status_code >= 400) && (pp->result().status_code < 600));
+
+		//
+		// Update total counts
+		//
+		request_sorter<std::string, sinsp_request_details>::update(
+		    is_server ? &m_server_totals : &m_client_totals,
+		    tr,
+		    time_delta,
+		    is_error,
+		    m_percentiles);
+
+		//
+		// Update the URL table
+		//
+		if (c_url_table_size.get_value() != 0)
+		{
+			auto& table = is_server ? m_server_urls : m_client_urls;
+			auto url = truncate_str(pp->result().url, truncation_size);
+			if (table.size() < c_url_table_size.get_value() || table.find(url) != table.end())
+			{
+				request_sorter<std::string, sinsp_url_details>::update(&table[url],
+				                                                       tr,
+				                                                       time_delta,
+				                                                       is_error,
+				                                                       m_percentiles);
+			}
+		}
+
+		//
+		// Update the status code table
+		//
+		sinsp_request_details* status_code_entry;
+		if (is_server)
+		{
+			status_code_entry = &(m_server_status_codes[pp->result().status_code]);
+		}
+		else
+		{
+			status_code_entry = &(m_client_status_codes[pp->result().status_code]);
+		}
+		status_code_entry->m_ncalls += 1;
+	}
+}
+
+void sinsp_http_state::add(sinsp_http_state* other)
+{
+	//
+	// Add the URLs
+	//
+	request_sorter<string, sinsp_url_details>::merge_maps(&m_server_urls, &(other->m_server_urls));
+	request_sorter<string, sinsp_url_details>::merge_maps(&m_client_urls, &(other->m_client_urls));
+	request_sorter<uint32_t, sinsp_request_details>::merge_maps(&m_server_status_codes,
+	                                                            &(other->m_server_status_codes));
+	request_sorter<uint32_t, sinsp_request_details>::merge_maps(&m_client_status_codes,
+	                                                            &(other->m_client_status_codes));
+
+	m_server_totals += other->m_server_totals;
+	m_client_totals += other->m_client_totals;
+}
+
+void sinsp_http_state::url_table_to_protobuf(draiosproto::http_info* protobuf_msg,
+                                             unordered_map<string, sinsp_url_details>* table,
+                                             bool is_server,
+                                             uint32_t sampling_ratio,
+                                             uint32_t limit)
+{
+	draiosproto::url_details* ud;
+
+	//
+	// The table is small enough that we don't need to sort it
+	//
+	uint32_t j = 0;
+	for (auto uit = table->begin(); j < limit && uit != table->end(); ++uit, ++j)
+	{
+		if (uit->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
+		{
+			if (is_server)
+			{
+				ud = protobuf_msg->add_server_urls();
+			}
+			else
+			{
+				ud = protobuf_msg->add_client_urls();
+			}
+
+			ud->set_url(uit->first);
+			uit->second.to_protobuf(ud->mutable_counters(),
+			                        sampling_ratio,
+			                        [&](const sinsp_request_details::percentile_ptr_t pct) {
+				                        percentile_to_protobuf(ud->mutable_counters(), pct);
+			                        });
+		}
+	}
+}
+
+void sinsp_http_state::status_code_table_to_protobuf(
+    draiosproto::http_info* protobuf_msg,
+    unordered_map<uint32_t, sinsp_request_details>* table,
+    bool is_server,
+    uint32_t sampling_ratio,
+    uint32_t limit)
+{
+	draiosproto::status_code_details* ud;
+	//
+	// The table is small enough that we don't need to sort it
+	//
+	uint32_t j = 0;
+	for (auto uit = table->begin(); j < limit && uit != table->end(); ++uit, ++j)
+	{
+		if (uit->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
+		{
+			if (is_server)
+			{
+				ud = protobuf_msg->add_server_status_codes();
+			}
+			else
+			{
+				ud = protobuf_msg->add_client_status_codes();
+			}
+
+			ud->set_status_code(uit->first);
+			ud->set_ncalls(uit->second.m_ncalls * sampling_ratio);
+		}
+	}
+}
+
+void sinsp_http_state::to_protobuf(draiosproto::http_info* protobuf_msg,
+                                   uint32_t sampling_ratio,
+                                   uint32_t limit)
+{
+	if (m_server_urls.size() != 0)
+	{
+		url_table_to_protobuf(protobuf_msg, &m_server_urls, true, sampling_ratio, limit);
+	}
+
+	if (m_client_urls.size() != 0)
+	{
+		url_table_to_protobuf(protobuf_msg, &m_client_urls, false, sampling_ratio, limit);
+	}
+
+	if (m_server_status_codes.size() != 0)
+	{
+		status_code_table_to_protobuf(protobuf_msg,
+		                              &m_server_status_codes,
+		                              true,
+		                              sampling_ratio,
+		                              limit);
+	}
+
+	if (m_client_status_codes.size() != 0)
+	{
+		status_code_table_to_protobuf(protobuf_msg,
+		                              &m_client_status_codes,
+		                              false,
+		                              sampling_ratio,
+		                              limit);
+	}
+
+	draiosproto::counter_proto_entry* totals;
+
+	if (m_server_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_server_totals();
+		m_server_totals.to_protobuf(totals,
+		                            sampling_ratio,
+		                            [&](const sinsp_request_details::percentile_ptr_t pct) {
+			                            percentile_to_protobuf(totals, pct);
+		                            });
+	}
+
+	if (m_client_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_client_totals();
+		m_client_totals.to_protobuf(totals,
+		                            sampling_ratio,
+		                            [&](const sinsp_request_details::percentile_ptr_t pct) {
+			                            percentile_to_protobuf(totals, pct);
+		                            });
+	}
+}
+
+void sinsp_http_state::coalesce_protobuf(draiosproto::http_info* protobuf_msg,
+                                         uint32_t sampling_ratio)
+{
+	// don't bother with URLs and statuses since we're just duplicating host
+	// data at that point
+
+	draiosproto::counter_proto_entry* totals;
+
+	if (m_server_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_server_totals();
+		m_server_totals.coalesce_protobuf(totals, sampling_ratio);
+	}
+
+	if (m_client_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_client_totals();
+		m_client_totals.coalesce_protobuf(totals, sampling_ratio);
+	}
 }

@@ -2,6 +2,9 @@
 
 #include "feature_manager.h"
 #include "protocol_manager.h"
+#include "protocol_state.h"
+
+#include <Poco/RegularExpression.h>
 
 #define HTTP_GET_STR "GET "
 #define HTTP_OPTIONS_STR "OPTI"
@@ -13,6 +16,7 @@
 #define HTTP_CONNECT_STR "CONN"
 #define HTTP_RESP_STR "HTTP/"
 
+// The static singleton that does basic http protocol things
 class protocol_http : public protocol_base, public feature_base
 {
 private:
@@ -52,6 +56,7 @@ public:
 	                                 uint32_t& path_len);
 };
 
+// The representation of a single HTTP transaction
 class sinsp_http_parser : public sinsp_protocol_parser
 {
 public:
@@ -127,4 +132,156 @@ private:
 	friend class sinsp_protostate_test_top_call_should_be_present_Test;
 
 	friend class test_helper;
+};
+
+class sinsp_url_group
+{
+public:
+	sinsp_url_group(const std::string& pattern)
+	    : m_pattern(pattern, Poco::RegularExpression::RE_CASELESS)
+	{
+	}
+
+	///
+	/// determine whether a url, represented by a string, is a member of this group
+	/// @param url  string representation of the url to match
+	/// @returns    whether the url is a member of the group
+	///
+	bool contains(std::string url) const { return m_pattern.match(url); }
+
+private:
+	Poco::RegularExpression m_pattern;
+};
+
+// holding class for all our URL groups. they exist as either matched or unmatched.
+// newly created URL groups are considered unmatched and the next time we grab stats to
+// send out, we take all unmatched URLs and attempt to match them against all URLs in the
+// table. When new URLs are added, they are matched against all groups in the "matched groups"
+// list here.
+//
+// When a URL group is first matched against URLs, it is moved from the unmatched list to
+// the matched list.
+class sinsp_url_details;
+class sinsp_url_groups
+{
+public:
+	/// matches a url against all known url groups
+	///
+	/// @param url string representation of the url to match
+	/// @param url_details the details of the URL backing the url string
+	///
+	/// the url_details will be modified with an indication of which groups were matched
+	//
+	// a bit weird that we take BOTH the URl string AND the details. We need the
+	// url in order to actually match against the patterns, and we need the details
+	// to register the groups which matched. The details don't have a reference to the
+	// string and the lookup is only one way from string->details. We could add a reverse
+	// mapping or a reference to the string to avoid storing the string twice.....or we
+	// could just pass it in.
+	//
+	// The latter is simpler.
+	void match_new_url(const std::string& url, sinsp_url_details& url_details) const;
+
+	/// update our set of URL groups. expected to only be called once at initialization
+	/// time
+	/// @param group the set of regexes we that define the groups
+	void update_group_set(const std::set<std::string>& group);
+
+private:
+	std::map<std::string, std::shared_ptr<sinsp_url_group>>
+	    m_matched_groups;  // list of all URL groups which
+	                       // have been previously matched
+	                       // with all URLs in the url list
+};
+
+class sinsp_url_details : public sinsp_request_details
+{
+public:
+	sinsp_url_details() : sinsp_request_details(), m_matched(false), m_url_groups() {}
+
+	/// takes a URL, and if we haven't compared it to all known URL groups, does so
+	/// @param groups the list of groups to match against
+	/// @param url the string of the url we want to match
+	///
+	/// we have to pass in the URL explicitly since it isn't stored as part of
+	/// url_details
+	void match_url_if_unmatched(const sinsp_url_groups& groups, const std::string& url)
+	{
+		if (m_matched)
+		{
+			return;
+		}
+		groups.match_new_url(url, *this);
+		m_matched = true;
+	}
+
+	/// adds a group to this URL. Since URL groups are currently static, this
+	/// is a permanent action
+	void add_group(const std::shared_ptr<sinsp_url_group>& group) { m_url_groups.insert(group); }
+
+	std::unordered_set<std::shared_ptr<sinsp_url_group>>* get_group_list() { return &m_url_groups; }
+
+private:
+	bool m_matched;  // indicates whether this URL has already been matched against existing
+	                 // URL groups
+
+	// set of groups this URL matches
+	std::unordered_set<std::shared_ptr<sinsp_url_group>> m_url_groups;
+};
+
+// The persistent data storing all http transactions seen by a given object (process, container,
+// etc.)
+class sinsp_http_state : public protocol_state
+{
+public:
+	// constructor mainly to call clear so we can initialize the URL groups
+	sinsp_http_state() : m_url_groups_enabled(false), m_url_groups() { clear(); }
+
+	void clear()
+	{
+		m_server_urls.clear();
+		m_client_urls.clear();
+		m_server_status_codes.clear();
+		m_client_status_codes.clear();
+		m_server_totals = sinsp_request_details();
+		m_client_totals = sinsp_request_details();
+	}
+
+	bool has_data() { return !m_server_status_codes.empty() || !m_client_status_codes.empty(); }
+
+	void add(sinsp_http_state* other);
+
+	void update(sinsp_partial_transaction* tr,
+	            uint64_t time_delta,
+	            bool is_server,
+	            uint32_t truncation_size);
+
+	void to_protobuf(draiosproto::http_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
+	void coalesce_protobuf(draiosproto::http_info* protobuf_msg, uint32_t sampling_ratio);
+
+private:
+	friend class sinsp_http_marker;
+	void url_table_to_protobuf(draiosproto::http_info* protobuf_msg,
+	                           std::unordered_map<std::string, sinsp_url_details>* table,
+	                           bool is_server,
+	                           uint32_t sampling_ratio,
+	                           uint32_t limit);
+
+	void status_code_table_to_protobuf(draiosproto::http_info* protobuf_msg,
+	                                   std::unordered_map<uint32_t, sinsp_request_details>* table,
+	                                   bool is_server,
+	                                   uint32_t sampling_ratio,
+	                                   uint32_t limit);
+
+	std::unordered_map<std::string, sinsp_url_details> m_server_urls;
+	std::unordered_map<std::string, sinsp_url_details> m_client_urls;
+	std::unordered_map<uint32_t, sinsp_request_details> m_server_status_codes;
+	std::unordered_map<uint32_t, sinsp_request_details> m_client_status_codes;
+	sinsp_request_details m_server_totals;
+	sinsp_request_details m_client_totals;
+
+	bool m_url_groups_enabled;
+	sinsp_url_groups m_url_groups;
+
+	friend class sinsp_protostate;
 };
