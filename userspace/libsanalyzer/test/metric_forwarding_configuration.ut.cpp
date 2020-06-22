@@ -128,6 +128,55 @@ metric_forwarding_limit: 20000
 	ASSERT_EQ(10000, get_limit());
 }
 
+TEST(metric_forwarding_configuration_test, sum_hard_limit_100k_test_20k)
+{
+	scoped_configuration config(R"(
+flexible_metric_limits:
+  enabled: true
+  sysdig_test_100k_prom: true
+  fill_headroom: false
+metric_forwarding_limit: 20000
+prometheus:
+  max_metrics: 18000
+)");
+
+	ASSERT_TRUE(config.loaded());
+	ASSERT_EQ(20000, get_limit());
+	ASSERT_EQ(18000, metric_forwarding_configuration::c_prometheus_max->get_value());
+}
+
+TEST(metric_forwarding_configuration_test, sum_hard_limit_100k_test_100k)
+{
+	scoped_configuration config(R"(
+flexible_metric_limits:
+  enabled: true
+  sysdig_test_100k_prom: true
+  fill_headroom: false
+sysdig_test_100k_prom: true
+metric_forwarding_limit: 100000
+prometheus:
+  max_metrics: 80000
+)");
+
+	ASSERT_TRUE(config.loaded());
+	ASSERT_EQ(100000, get_limit());
+	ASSERT_EQ(80000, metric_forwarding_configuration::c_prometheus_max->get_value());
+}
+
+TEST(metric_forwarding_configuration_test, sum_hard_limit_100k_test_110k)
+{
+	scoped_configuration config(R"(
+flexible_metric_limits:
+  enabled: true
+  sysdig_test_100k_prom: true
+  fill_headroom: false
+metric_forwarding_limit: 110000
+)");
+
+	ASSERT_TRUE(config.loaded());
+	ASSERT_EQ(100000, get_limit());
+}
+
 TEST(metric_forwarding_configuration_test, override_matches_overriden_max)
 {
 	// Metrics add up to 9000. Set the limit to 9000

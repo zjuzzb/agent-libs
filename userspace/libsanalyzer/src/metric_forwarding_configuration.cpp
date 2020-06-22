@@ -10,6 +10,20 @@ const unsigned LEGACY_PROM_METRICS_HARD_LIMIT = 3000;
 const unsigned LEGACY_STATSD_METRIC_HARD_LIMIT = 3000;
 const unsigned LEGACY_APP_METRICS_HARD_LIMIT = 3000;
 const unsigned LEGACY_JMX_METRICS_HARD_LIMIT = 3000;
+const unsigned TEN_K_LIMIT = 10000;
+
+
+// When this is released on an external agent, the metric_forwarding_limit
+// should just be raised to 100k and this should be deleted. Alternatively,
+// the idea of "give limits from one type to another" could just go away.
+type_config<bool>::ptr c_enable_100k =
+   type_config_builder<bool>(false /*default*/,
+			     "Internal config to test 100k metrics",
+			     "flexible_metric_limits",
+			     "sysdig_test_100k_prom")
+	.hidden()
+	.mutable_only_in_internal_build()
+	.build();
 
 // Legacy backends don't support the number of metrics that the customer will
 // be able to send with this config.  Default to off and allow the backend to
@@ -29,7 +43,17 @@ type_config<int>::ptr c_metric_forwarding_sum =
 			    "and app check metrics.",
 			    "metric_forwarding_limit")
 	.min(0)
-	.max(10000)
+	.max(100000)
+	.post_init([](type_config<int>& config)
+	{
+		if (!c_enable_100k->configured() && 
+		    config.configured() > TEN_K_LIMIT)
+		{
+			// invalid value, drop to TEN_K_LIMIT
+			config.get_value() = TEN_K_LIMIT;
+		}
+
+	})
 	.hidden()
 	.build();
 
@@ -108,7 +132,7 @@ type_config<int>::ptr c_prometheus_max =
 			    "prometheus",
 			    "max_metrics")
 	.min(0)
-	.max(10000)
+	.max(100000)
 	.post_init([](type_config<int>& config)
 	{
 		adjust_limit(config.get_value(), LEGACY_PROM_METRICS_HARD_LIMIT);
