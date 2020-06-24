@@ -41,7 +41,7 @@ if [ ! -e $CONFIG_FILE ]; then
 	fi
 fi
 
-cacert=`find /usr/lib/python3.*/*-packages/certifi -name cacert.pem 2> /dev/null | head -n 1`
+cacert=`find /usr/lib/python3*/*-packages/certifi -name cacert.pem 2> /dev/null | head -n 1`
 if [ -e "$cacert" ]; then
        cp $cacert $INSTALL_PREFIX/lib/python-deps/certifi/
 else
