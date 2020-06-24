@@ -41,6 +41,16 @@ if [ ! -e $CONFIG_FILE ]; then
 	fi
 fi
 
+cacert=`find /usr/lib/python3.*/*-packages/certifi -name cacert.pem 2> /dev/null | head -n 1`
+if [ -e "$cacert" ]; then
+       cp $cacert $INSTALL_PREFIX/lib/python-deps/certifi/
+else
+       echo "WARNING: Could not find cacert.pem file for python3 certifi package."
+       echo "         Some appchecks might not work correctly. To correct this,"
+       echo "         run 'pip install certifi' and then re-run the installer."
+fi
+
+
 if [ "$INSTALL_PREFIX" != /opt/draios ]
 then
 	INITSCRIPT=/etc/rc.d/init.d/dragent

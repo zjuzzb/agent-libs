@@ -56,6 +56,15 @@ case "$1" in
 		;;
 esac
 
+cacert=`find /usr/lib/python3.*/*-packages/certifi -name cacert.pem 2> /dev/null | head -n 1`
+if [ -e "$cacert" ]; then
+	cp $cacert @CMAKE_INSTALL_PREFIX@/lib/python-deps/certifi/
+else
+	echo "WARNING: Could not find cacert.pem file for python3 certifi package."
+	echo "         Some appchecks might not work correctly. To correct this,"
+	echo "         run 'pip install certifi' and then re-run the installer."
+fi
+
 if [ -x "/etc/init.d/dragent" -a "$postinst_found" -eq 1 ]; then
         if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
                 invoke-rc.d dragent start || exit $?
