@@ -32,6 +32,10 @@ public:
 
 namespace
 {
+// this config normally lives in libsanalyzer, but we're in userspace shared, so we
+// have to declare an instance of it
+type_config<uint32_t> c_url_table_size(1024, "", "http", "url_table_size");
+
 class dummy_features
 {
 public:
@@ -70,6 +74,39 @@ public:
 	{
 	}
 
+	// This just provides us with a constructor to create the features with no deps.
+	// The ultimate issue was we were trying to initialize features with the dummy deps,
+	// but then we can't initialize some of the modes properly. so we just create
+	// a constructor that gives us a more relaxed version of dependencies
+	dummy_features(feature_manager& fm, bool no_deps)
+	    : fb0(PROMETHEUS, &draiosproto::feature_status::set_prometheus_enabled, {}, fm),
+	      fb1(STATSD, &draiosproto::feature_status::set_statsd_enabled, {}, fm),
+	      fb2(JMX, &draiosproto::feature_status::set_jmx_enabled, {}, fm),
+	      fb3(APP_CHECKS, &draiosproto::feature_status::set_app_checks_enabled, {}, fm),
+	      fb4(COINTERFACE, &draiosproto::feature_status::set_cointerface_enabled, {}, fm),
+	      fb5(DRIVER, &draiosproto::feature_status::set_driver_enabled, {}, fm),
+	      fb6(SECURE, &draiosproto::feature_status::set_secure_enabled, {}, fm),
+	      fb7(COMMAND_LINE_CAPTURE,
+	          &draiosproto::feature_status::set_commandline_capture_enabled,
+	          {},
+	          fm),
+	      fb8(BASELINER, &draiosproto::feature_status::set_baseliner_enabled, {}, fm),
+	      fb9(MEMDUMP, &draiosproto::feature_status::set_memdump_enabled, {}, fm),
+	      fb10(SECURE_AUDIT, &draiosproto::feature_status::set_secure_audit_enabled, {}, fm),
+	      fb11(FULL_SYSCALLS, &draiosproto::feature_status::set_full_syscalls_enabled, {}, fm),
+	      fb12(NETWORK_BREAKDOWN,
+	           &draiosproto::feature_status::set_network_breakdown_enabled,
+	           {},
+	           fm),
+	      fb13(FILE_BREAKDOWN, &draiosproto::feature_status::set_file_breakdown_enabled, {}, fm),
+	      fb14(PROTOCOL_STATS, &draiosproto::feature_status::set_protocol_stats_enabled, {}, fm),
+	      fb15(HTTP_STATS, &draiosproto::feature_status::set_http_stats_enabled, {}, fm),
+	      fb16(MYSQL_STATS, &draiosproto::feature_status::set_mysql_stats_enabled, {}, fm),
+	      fb17(POSTGRES_STATS, &draiosproto::feature_status::set_postgres_stats_enabled, {}, fm),
+	      fb18(MONGODB_STATS, &draiosproto::feature_status::set_mongodb_stats_enabled, {}, fm)
+	{
+	}
+
 	feature_base fb0;
 	feature_base fb1;
 	feature_base fb2;
@@ -90,6 +127,7 @@ public:
 	feature_base fb17;
 	feature_base fb18;
 };
+
 }  // namespace
 
 TEST(feature_manager, base_dependencies)
@@ -137,9 +175,9 @@ TEST(feature_manager, base_verify_dependencies)
 TEST(feature_manager, basic)
 {
 	feature_manager fm;
-	dummy_features df(fm);
+	dummy_features df(fm, true);
 
-	fm.initialize();
+	EXPECT_TRUE(fm.initialize());
 
 	df.fb0.set_enabled(false);
 	EXPECT_FALSE(fm.get_enabled((feature_name)0));
@@ -202,12 +240,18 @@ TEST(feature_manager, base_initialize_called)
 	                  fm);
 	feature_base fb15(HTTP_STATS, &draiosproto::feature_status::set_http_stats_enabled, {}, fm);
 	feature_base fb16(MYSQL_STATS, &draiosproto::feature_status::set_mysql_stats_enabled, {}, fm);
-	feature_base fb17(POSTGRES_STATS, &draiosproto::feature_status::set_postgres_stats_enabled, {}, fm);
-	feature_base fb18(MONGODB_STATS, &draiosproto::feature_status::set_mongodb_stats_enabled, {}, fm);
+	feature_base fb17(POSTGRES_STATS,
+	                  &draiosproto::feature_status::set_postgres_stats_enabled,
+	                  {},
+	                  fm);
+	feature_base fb18(MONGODB_STATS,
+	                  &draiosproto::feature_status::set_mongodb_stats_enabled,
+	                  {},
+	                  fm);
 
 	test_helpers::scoped_config<bool> memdump("prometheus.enabled", true);
 	ASSERT_FALSE(fb.m_init_called);
-	fm.initialize();
+	EXPECT_TRUE(fm.initialize());
 	ASSERT_TRUE(fb.m_init_called);
 }
 
@@ -1767,7 +1811,7 @@ TEST(feature_manager, invalid_mode)
 	{
 		test_helpers::scoped_config<bool> pom("prometheus.enabled", true);
 		test_helpers::scoped_config<bool> sd("statsd.enabled", false);
-		fm.initialize();
+		EXPECT_TRUE(fm.initialize());
 
 		EXPECT_TRUE(fm.get_enabled(PROMETHEUS));
 		EXPECT_FALSE(fm.get_enabled(STATSD));
@@ -1775,7 +1819,7 @@ TEST(feature_manager, invalid_mode)
 	{
 		test_helpers::scoped_config<bool> pom("prometheus.enabled", false);
 		test_helpers::scoped_config<bool> sd("statsd.enabled", true);
-		fm.initialize();
+		EXPECT_TRUE(fm.initialize());
 
 		EXPECT_FALSE(fm.get_enabled(PROMETHEUS));
 		EXPECT_TRUE(fm.get_enabled(STATSD));
@@ -1785,12 +1829,15 @@ TEST(feature_manager, invalid_mode)
 TEST(feature_manager, monitor_mode)
 {
 	feature_manager fm;
-	dummy_features df(fm);
+	dummy_features df(fm, true);
 	test_helpers::scoped_config<std::string> mode("feature.mode", "monitor");
-	fm.initialize();
+	EXPECT_TRUE(fm.initialize());
 
 	EXPECT_FALSE(fm.get_enabled(PROMETHEUS));
 	EXPECT_TRUE(fm.get_enabled(STATSD));
+	EXPECT_EQ(
+	    configuration_manager::instance().get_config<uint32_t>("http.url_table_size")->get_value(),
+	    0);
 }
 
 TEST(feature_manager, monitor_light_mode)
@@ -1798,10 +1845,13 @@ TEST(feature_manager, monitor_light_mode)
 	feature_manager fm;
 	dummy_features df(fm);
 	test_helpers::scoped_config<std::string> mode("feature.mode", "monitor_light");
-	fm.initialize();
+	EXPECT_TRUE(fm.initialize());
 
 	EXPECT_FALSE(fm.get_enabled(PROMETHEUS));
 	EXPECT_FALSE(fm.get_enabled(STATSD));
+	EXPECT_EQ(
+	    configuration_manager::instance().get_config<uint32_t>("http.url_table_size")->get_value(),
+	    0);
 }
 
 TEST(feature_manager, essentials_mode)
@@ -1809,10 +1859,13 @@ TEST(feature_manager, essentials_mode)
 	feature_manager fm;
 	dummy_features df(fm);
 	test_helpers::scoped_config<std::string> mode("feature.mode", "essentials");
-	fm.initialize();
+	EXPECT_TRUE(fm.initialize());
 
 	EXPECT_FALSE(fm.get_enabled(PROMETHEUS));
 	EXPECT_TRUE(fm.get_enabled(STATSD));
+	EXPECT_EQ(
+	    configuration_manager::instance().get_config<uint32_t>("http.url_table_size")->get_value(),
+	    0);
 }
 
 TEST(feature_manager, base_emit_protobuf)
@@ -1829,13 +1882,28 @@ TEST(feature_manager, base_emit_protobuf)
 	EXPECT_TRUE(proto.prometheus_enabled());
 }
 
+TEST(feature_manager, config_override)
+{
+	feature_manager fm;
+	dummy_features df(fm, true);
+	test_helpers::scoped_config<uint32_t> urls("http.url_table_size", 1);
+	test_helpers::scoped_config<std::string> mode("feature.mode", "monitor");
+	EXPECT_TRUE(fm.initialize());
+	EXPECT_EQ(
+	    configuration_manager::instance().get_config<uint32_t>("http.url_table_size")->get_value(),
+	    1);
+	draiosproto::feature_status proto;
+	fm.to_protobuf(proto);
+	EXPECT_TRUE(proto.custom_config());
+}
+
 TEST(feature_manager, to_protobuf)
 {
 	feature_manager fm;
-	dummy_features df(fm);
+	dummy_features df(fm, true);
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "monitor_light");
-		fm.initialize();
+		EXPECT_TRUE(fm.initialize());
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::light);
@@ -1858,17 +1926,18 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.mysql_stats_enabled());
 		EXPECT_FALSE(proto.postgres_stats_enabled());
 		EXPECT_FALSE(proto.mongodb_stats_enabled());
+		EXPECT_FALSE(proto.custom_config());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "none");
-		fm.initialize();
+		EXPECT_TRUE(fm.initialize());
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::legacy);
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "monitor");
-		fm.initialize();
+		EXPECT_TRUE(fm.initialize());
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::normal);
@@ -1891,10 +1960,11 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.mysql_stats_enabled());
 		EXPECT_FALSE(proto.postgres_stats_enabled());
 		EXPECT_FALSE(proto.mongodb_stats_enabled());
+		EXPECT_FALSE(proto.custom_config());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "essentials");
-		fm.initialize();
+		EXPECT_TRUE(fm.initialize());
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::essentials);
@@ -1917,10 +1987,11 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.mysql_stats_enabled());
 		EXPECT_FALSE(proto.postgres_stats_enabled());
 		EXPECT_FALSE(proto.mongodb_stats_enabled());
+		EXPECT_FALSE(proto.custom_config());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "troubleshooting");
-		fm.initialize();
+		EXPECT_TRUE(fm.initialize());
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::troubleshooting);
@@ -1943,6 +2014,6 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_TRUE(proto.mysql_stats_enabled());
 		EXPECT_TRUE(proto.postgres_stats_enabled());
 		EXPECT_TRUE(proto.mongodb_stats_enabled());
+		EXPECT_FALSE(proto.custom_config());
 	}
-
 }

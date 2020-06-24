@@ -1,5 +1,6 @@
 #pragma once
 #include "type_config.h"
+#include "configuration_manager.h"
 
 #include <functional>
 #include <list>
@@ -177,6 +178,59 @@ private:
 };
 
 /**
+ * the two following classes, config_placeholder, and config_placeholder_impl
+ * serve as the container that allows us to statically track type_configs that need
+ * to be enabled alongside each mode.
+ */
+class config_placeholder
+{
+public:
+	virtual bool enforce(std::string key) const = 0;
+};
+
+template<typename data_type>
+class config_placeholder_impl : public config_placeholder
+{
+public:
+	config_placeholder_impl(const data_type& value) : config_placeholder(), m_value(value) {}
+	const data_type m_value;
+
+	static config_placeholder_impl* build(data_type value)
+	{
+		return new config_placeholder_impl<data_type>(value);
+	}
+
+	bool enforce(std::string key) const override
+	{
+		type_config<data_type>* config =
+		    configuration_manager::instance().get_mutable_config<data_type>(key);
+
+		if (config == nullptr)
+		{
+			assert(false);
+			return false;
+		}
+
+		if (config->get_value() == m_value)
+		{
+			return true;
+		}
+		else
+		{
+			if (!config->is_set_in_config())
+			{
+				config->set(m_value);
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+};
+
+/**
  * manages configuration and enablement of all feature modules in the agent
  */
 class feature_manager
@@ -211,6 +265,11 @@ public:
 		 * the set of features to be enabled by default with this mode
 		 */
 		const std::set<feature_name> m_enabled_features;
+
+		/**
+		 * some additional configs may need to be set. We store them here
+		 */
+		const std::unordered_map<std::string, config_placeholder*> m_extra_configs;
 	};
 
 	static const agent_mode_container mode_definitions[];
@@ -225,6 +284,7 @@ public:
 	static const agent_feature_container feature_configs[];
 
 	feature_manager();
+	~feature_manager();
 
 	/**
 	 * invoke to emit the current feature-state to the input protobuf.
@@ -266,7 +326,6 @@ public:
 	 */
 	bool initialize();
 
-
 private:
 	bool enable(feature_name feature, bool force);
 	bool disable(feature_name feature, bool force);
@@ -276,6 +335,12 @@ private:
 
 	agent_mode m_agent_mode;
 	std::map<feature_name, feature_base*> m_feature_map;
+
+	/**
+	 * this indicates whether a config has been modified from the mode's
+	 * standard configuration. This is sent to the backend, and may impact pricing.
+	 */
+	bool m_custom_config;
 
 	friend class test_helper;
 };

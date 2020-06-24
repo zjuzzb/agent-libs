@@ -16,14 +16,27 @@ type_config<std::string> c_agent_mode("monitor",
 }  // namespace
 
 const feature_manager::agent_mode_container feature_manager::mode_definitions[] = {
-    {feature_manager::AGENT_MODE_NONE, "none", {}},
+    {feature_manager::AGENT_MODE_NONE, "none", {}, {}},
     {feature_manager::AGENT_MODE_MONITOR,
      "monitor",
-     {STATSD, JMX, APP_CHECKS, COINTERFACE, DRIVER, FULL_SYSCALLS, PROTOCOL_STATS, HTTP_STATS, NETWORK_BREAKDOWN}},
-    {feature_manager::AGENT_MODE_MONITOR_LIGHT, "monitor_light", {}},
+     {STATSD,
+      JMX,
+      APP_CHECKS,
+      COINTERFACE,
+      DRIVER,
+      FULL_SYSCALLS,
+      PROTOCOL_STATS,
+      HTTP_STATS,
+      NETWORK_BREAKDOWN},
+     {{"http.url_table_size", config_placeholder_impl<uint32_t>::build(0u)}}},
+    {feature_manager::AGENT_MODE_MONITOR_LIGHT,
+     "monitor_light",
+     {},
+     {{"http.url_table_size", config_placeholder_impl<uint32_t>::build(0u)}}},
     {feature_manager::AGENT_MODE_ESSENTIALS,
      "essentials",
-     {STATSD, JMX, APP_CHECKS, COINTERFACE, DRIVER, FULL_SYSCALLS}},
+     {STATSD, JMX, APP_CHECKS, COINTERFACE, DRIVER, FULL_SYSCALLS},
+     {{"http.url_table_size", config_placeholder_impl<uint32_t>::build(0u)}}},
     {feature_manager::AGENT_MODE_TROUBLESHOOTING,
      "troubleshooting",
      {STATSD,
@@ -38,7 +51,8 @@ const feature_manager::agent_mode_container feature_manager::mode_definitions[] 
       HTTP_STATS,
       MYSQL_STATS,
       POSTGRES_STATS,
-      MONGODB_STATS}}};
+      MONGODB_STATS},
+     {}}};
 
 static_assert(feature_manager::agent_mode::AGENT_MODE_COUNT ==
                   sizeof(feature_manager::mode_definitions) /
@@ -157,11 +171,25 @@ feature_manager& feature_manager::instance()
 	return *s_instance;
 }
 
-feature_manager::feature_manager() : m_agent_mode(AGENT_MODE_NONE), m_feature_map()
+feature_manager::feature_manager()
+    : m_agent_mode(AGENT_MODE_NONE),
+      m_feature_map(),
+      m_custom_config(false)
 {
 	// NOTE: don't reference the two const maps here. I couldn't find a way for
 	// them to actually get const initialized, so there's no guarantee they're
 	// ready when we get here.
+}
+
+feature_manager::~feature_manager()
+{
+	// This is super ugly, but in test, the feature manager will leak values through configs,
+	// which are global. So the best we can do is try to reset things once the
+	// feature manager is destroyed
+	auto config =
+	    configuration_manager::instance().get_mutable_config<uint32_t>("http.url_table_size");
+	config->set_set_in_config(false);
+	config->set(1024);
 }
 
 static_assert(feature_manager::agent_mode::AGENT_MODE_MONITOR ==
@@ -490,6 +518,7 @@ bool feature_manager::verify_dependencies()
 		{
 			if (!i.second->verify_dependencies())
 			{
+				std::cerr << "Dependency verification for feature " << feature_configs[i.first].n << " failed.\n";
 				return false;
 			}
 		}
@@ -614,6 +643,23 @@ bool feature_manager::initialize()
 		}
 	}
 
+	// Enable any one-off configs
+	for (const auto& i : mode_definitions[m_agent_mode].m_extra_configs)
+	{
+		bool rc = i.second->enforce(i.first);
+		if (!rc)
+		{
+			std::cerr << "Unable to enforce config " << i.first
+			          << " as it is explicitly overriden in the configuration. "
+			             "Custom-configuration will be indicated.\n";
+			m_custom_config = true;
+		}
+		else
+		{
+			std::cerr << "Config " << i.first << " updated by feature manager.\n";
+		}
+	}
+
 	// Give the features some opportunity to do some init work if they so choose
 	// before later startup. This may involve disabling themselves in certain circumstances.
 	for (auto& i : m_feature_map)
@@ -639,6 +685,7 @@ void feature_manager::to_protobuf(draiosproto::feature_status& feature_pb) const
 	{
 		feature.second->emit_enabled(feature_pb);
 	}
+	feature_pb.set_custom_config(m_custom_config);
 }
 
 void feature_manager::register_feature(feature_name name, feature_base& feature)
