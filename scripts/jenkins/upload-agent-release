@@ -221,6 +221,9 @@ function trigger_docker_builds {
 			tar -xzf *agent-slim.tar.gz
 			find ./opt/draios/bin -type f | xargs file | awk '/ELF/ { sub(/:$/, "", $1); print $1 }' | xargs strip -g
 			rm -rf ./opt/draios/lib/python-deps2.6/
+			# Blow away some python related unnecessary files
+			find ./opt/draios/lib -name '*psycopg2*' -exec rm -rf {} + 2>/dev/null
+			find ./opt/draios/lib -type d -name "enum*" -exec rm -r {} + 2>/dev/null
 
 			VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/agent-slim:${AGENT_VERSION}${VERSION_SUFFIX}"
 			DEV_IMAGE="${DOCKER_HUB_ROOT}/agent-slim:dev"
