@@ -5617,9 +5617,10 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 	if (m_acked_sampling_ratio != 1 &&
 	    ts - m_last_dropmode_switch_time > c_flush_interval->get_value() * 3 / 2)
 	{
-		LOG_WARNING("Did not receive drop event to confirm sampling_ratio " +
-		            to_string(m_acked_sampling_ratio) + ", forcing update");
-		ack_sampling_ratio(m_acked_sampling_ratio);
+		LOG_WARNING("Did not receive drop event to confirm sampling_ratio from " +
+			    to_string(m_acked_sampling_ratio) + " to " +
+			    to_string(m_requested_sampling_ratio) + ", forcing update");
+		ack_sampling_ratio(m_requested_sampling_ratio);
 		m_last_dropmode_switch_time = ts;
 	}
 
