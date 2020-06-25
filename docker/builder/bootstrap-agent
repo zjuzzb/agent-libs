@@ -441,6 +441,20 @@ if [ ! -d "${SCONS_DIR}" ]; then
 fi
 
 if [ $OS != "Windows_NT" ]; then
+        PYTHON38_VER=3.8.3
+        PYTHON38_EXT=tgz
+        PYTHON38_DIR=$DEPENDENCIES/Python-$PYTHON38_VER
+        if [ ! -d "${PYTHON38_DIR}" ]; then
+                cd $DEPENDENCIES
+                wget $DEPENDENCIES_URL/Python-$PYTHON38_VER.$PYTHON38_EXT
+                tar xfz Python-$PYTHON38_VER.$PYTHON38_EXT
+                cd $PYTHON38_DIR
+                echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist
+                ./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON38_DIR/target --with-ensurepip=install --enable-unicode=ucs4
+                make -j $MAKE_JOBS
+                make -j $MAKE_JOBS install
+        fi
+
 	PYTHON37_VER=3.7.3
 	PYTHON37_EXT=tgz
 	PYTHON37_DIR=$DEPENDENCIES/Python-$PYTHON37_VER
