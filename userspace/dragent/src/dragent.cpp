@@ -75,7 +75,7 @@ namespace
 COMMON_LOGGER();
 
 type_config<bool> c_use_statsite_forwarder(
-    false,
+    true,
     "Use statsite_forwarder instead of system call trace for container statsd metrics",
     "statsd",
     "use_forwarder");
