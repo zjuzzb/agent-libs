@@ -27,7 +27,7 @@ ENV HOME /root
 
 {% endif %}
 
-{% if p.base_docker_image != "adoptopenjdk/openjdk8:jdk8u222-b10-alpine-slim" %}
+{% if p.base_docker_image != "adoptopenjdk/openjdk8:alpine-slim" %}
 {% if p.include_agent_package == "apt" %}
 ADD https://download.sysdig.com/apt-draios-priority /etc/apt/preferences.d/
 
@@ -222,7 +222,6 @@ tar \
 musl-dev \
 py3-psycopg2 \
 gcc \
-python-dev \
 python3-dev \
 postgresql-dev \
 py-pip \
@@ -238,13 +237,13 @@ py-pip \
 && rm -rf /opt/draios/lib/python-deps2.6 \
 && rm -rf /opt/draios/lib/python-deps3.5 \
 && rm -rf /opt/draios/lib/python-deps3.6 \
+&& rm -rf /opt/draios/lib/python-deps3.7 \
 && rm -rf /opt/draios/lib/libpq.so.5 \
 && cp /usr/lib/libpq.so.5 /opt/draios/lib \
 && apk del \
 py-pip \
 musl-dev \
 gcc \
-python-dev \
 python3-dev \
 postgresql-dev \
 && chown -R root:root "${JAVA_HOME}" \
@@ -269,7 +268,7 @@ rm -rf $(whereis python3 | sed -e 's/^python3://') && \
 rm /opt/draios/share/sdjagent.jar
 {% endif %}
 
-{% if p.launch_dragent and p.base_docker_image != "adoptopenjdk/openjdk8:jdk8u222-b10-alpine-slim" %}
+{% if p.launch_dragent and p.base_docker_image != "adoptopenjdk/openjdk8:alpine-slim" %}
 # copy backports for mesos/marathon python2.7 compatibility
 # copy cacert.pem file into python-deps to allow compatibility
 # with python certify packages >= 2020.04.05.2

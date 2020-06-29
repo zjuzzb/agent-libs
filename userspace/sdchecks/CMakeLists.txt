@@ -1,5 +1,6 @@
 set(PYTHON27 "Python-2.7.16")
 set(PYTHON26 "Python-2.6.9")
+set(PYTHON38 "Python-3.8.3")
 set(PYTHON37 "Python-3.7.3")
 set(PYTHON36 "Python-3.6.9")
 set(PYTHON35 "Python-3.5.9")
@@ -12,6 +13,7 @@ add_custom_target(
             ${CMAKE_CURRENT_BINARY_DIR}/deps3.5
             ${CMAKE_CURRENT_BINARY_DIR}/deps3.6
             ${CMAKE_CURRENT_BINARY_DIR}/deps3.7
+            ${CMAKE_CURRENT_BINARY_DIR}/deps3.8
             ${CMAKE_CURRENT_BINARY_DIR}/deps2.6
 )
 add_custom_command(
@@ -79,6 +81,17 @@ add_custom_command(
         --target=${CMAKE_CURRENT_BINARY_DIR}/deps3.7 --upgrade -r
         ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-3.7.txt
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-3.7.txt
+)
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/deps3.8
+    COMMAND
+        ${CMAKE_COMMAND} -E env
+        PATH="${DRAIOS_DEPENDENCIES_DIR}/postgresql-9.4.15/target/bin:$ENV{PATH}"
+        ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON38}/target/bin/python3
+        ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON38}/target/bin/pip3 install -I
+        --target=${CMAKE_CURRENT_BINARY_DIR}/deps3.8 --upgrade -r
+        ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-3.8.txt
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-3.8.txt
 )
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/deps2.6
@@ -290,6 +303,42 @@ install(
 install(
     DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.7/psycopg2/
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.7/psycopg2/
+    COMPONENT agent-slim
+    FILES_MATCHING
+    PATTERN *.so*
+)
+
+install(
+    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.8/
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.8
+    COMPONENT agent-slim
+    FILES_MATCHING
+    PATTERN *.py
+)
+install(
+    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.8/
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.8
+    COMPONENT agent-slim
+    FILES_MATCHING
+    PATTERN *.pth
+)
+install(
+    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.8/
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.8
+    COMPONENT agent-slim
+    FILES_MATCHING
+    PATTERN *.so
+)
+install(
+    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.8/.libs_cffi_backend/
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.8/.libs_cffi_backend/
+    COMPONENT agent-slim
+    FILES_MATCHING
+    PATTERN *.so*
+)
+install(
+    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.8/psycopg2/
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.8/psycopg2/
     COMPONENT agent-slim
     FILES_MATCHING
     PATTERN *.so*
