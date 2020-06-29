@@ -347,7 +347,7 @@ void prometheus_conf::register_annotations(std::function<void(const std::string&
 	base::register_annotations(reg, &m_host_rules);
 }
 
-void prometheus_conf::validate_config()
+void prometheus_conf::validate_config(const std::string &root_dir)
 {
 	if (enabled())
 	{
@@ -385,7 +385,7 @@ void prometheus_conf::validate_config()
 		}
 	}
 
-	promscrape::validate_config(*this);
+	promscrape::validate_config(*this, root_dir);
 }
 
 Json::Value prom_process::to_json(const prometheus_conf& conf) const

@@ -87,6 +87,7 @@ public:
 	const int job_prune_time_s = 15;
 
 	static type_config<bool>c_use_promscrape;
+	static type_config<std::string>c_promscrape_sock;
 	static type_config<bool>::mutable_ptr c_export_fastproto;
 
 	explicit promscrape(metric_limits::sptr_t ml, const prometheus_conf &prom_conf, bool threaded, interval_cb_t interval_cb);
@@ -132,7 +133,7 @@ public:
 
 	// Called by prometheus::validate_config() right after prometheus configuration
 	// has been read from config file. Ensures that configuration is consistent
-	static void validate_config(prometheus_conf &conf);
+	static void validate_config(prometheus_conf &conf, const std::string &root_dir);
 
 	void periodic_log_summary() { m_stats.periodic_log_summary(); }
 private:

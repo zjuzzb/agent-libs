@@ -116,7 +116,7 @@ public:
 	void register_annotations(std::function<void(const std::string& str)> reg);
 
 	// Validate config. Log and correct inconsistencies as needed
-	void validate_config();
+	void validate_config(const std::string &root_dir);
 
 private:
 	bool m_log_errors;

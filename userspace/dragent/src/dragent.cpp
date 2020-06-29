@@ -593,7 +593,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	// Sanity check some prometheus and promscrape configs. May change some configs.
 	// Making sure to do it before sdagent_main() which prints the configuration
-	m_configuration.m_prom_conf.validate_config();
+	m_configuration.m_prom_conf.validate_config(m_configuration.c_root_dir.get_value());
 
 	// Add our main process
 	monitor_process.emplace_process(
@@ -926,12 +926,14 @@ int dragent_app::main(const std::vector<std::string>& args)
 			string log_level = (g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
 			                       ? "--log.level=debug"
 			                       : "--log.level=info";
+			string address = "--grpc.address=" + promscrape::c_promscrape_sock.get_value();
 			default_cpu_cgroup.enter();
 			m_promscrape_pipes->attach_child_stdio();
 			if (prom_conf_arg.empty())
 			{
 				execl((m_configuration.c_root_dir.get_value() + "/bin/promscrape").c_str(),
 				      "promscrape",
+				      address.c_str(),
 				      "--log.format=json",
 				      log_level.c_str(),
 				      (char*)NULL);
@@ -940,6 +942,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			{
 				execl((m_configuration.c_root_dir.get_value() + "/bin/promscrape").c_str(),
 				      "promscrape",
+				      address.c_str(),
 				      "--log.format=json",
 				      log_level.c_str(),
 				      prom_conf_arg.c_str(),

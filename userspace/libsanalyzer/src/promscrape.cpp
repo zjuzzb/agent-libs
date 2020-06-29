@@ -22,8 +22,10 @@ type_config<bool> promscrape::c_use_promscrape(
     "Whether or not to use promscrape for prometheus metrics",
     "use_promscrape");
 
-type_config<string> c_promscrape_sock(
-    "127.0.0.1:9876",
+// Promscrape GRPC server address: At this point the default agent root-dir is not yet
+// known, so it will be inserted during config validation
+type_config<string> promscrape::c_promscrape_sock(
+    "unix:/run/promscrape.sock",
     "Socket address URL for promscrape server",
     "promscrape_address");
 
@@ -61,7 +63,7 @@ int elapsed_s(uint64_t old, uint64_t now)
 	return (now - old) / ONE_SECOND_IN_NS;
 }
 
-void promscrape::validate_config(prometheus_conf &prom_conf)
+void promscrape::validate_config(prometheus_conf &prom_conf, const string &root_dir)
 {
 	bool &use_promscrape = c_use_promscrape.get_value();
 	if (use_promscrape && !prom_conf.enabled())
@@ -75,6 +77,12 @@ void promscrape::validate_config(prometheus_conf &prom_conf)
 		LOG_INFO("promscrape_fastproto is only supported for raw metrics, disabling."
 			" Enable prometheus.ingest_raw to enable fastproto");
 		fastproto = false;
+	}
+	string &sock = c_promscrape_sock.get_value();
+	if (sock.compare(0,6,"unix:/") == 0)
+	{
+		// Insert root-dir for unix socket address
+		sock = "unix:" + root_dir + "/" + sock.substr(6);
 	}
 }
 
