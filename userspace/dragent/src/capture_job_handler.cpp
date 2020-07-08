@@ -956,13 +956,14 @@ void capture_job_handler::start_job(string& token, const start_job_details& deta
 	}
 
 	if (details.m_past_duration_ns != 0 &&
-	    (!feature_manager::instance().get_enabled(MEMDUMP) || !m_memdumper->is_enabled()))
+	    (!feature_manager::instance().get_enabled(MEMDUMP) ||
+             !(m_memdumper && m_memdumper->is_enabled())))
 	{
 		send_error(token,
 		           string("memory dump functionality not enabled in the target agent ") +
 		               string("configured=") +
 		               (feature_manager::instance().get_enabled(MEMDUMP) ? "true" : "false") +
-		               string(" enabled=") + (m_memdumper->is_enabled() ? "true" : "false") +
+		               string(" enabled=") + (m_memdumper && m_memdumper->is_enabled() ? "true" : "false") +
 		               string(". Cannot perform back in time capture."));
 		return;
 	}
