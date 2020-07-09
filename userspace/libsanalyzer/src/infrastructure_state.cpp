@@ -2050,7 +2050,7 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state* state)
 		namespaces[ns.common().uid()] = &ns;
 	}
 
-	for (const auto& job : state->jobs())
+	for (auto& job : *(state->mutable_jobs()))
 	{
 		job_names[job.common().uid()] = job.common().name();
 		auto ns = namespaces.find(job.common().namespace_());
@@ -2058,6 +2058,7 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state* state)
 		{
 			ns->second->set_job_count(ns->second->job_count() + 1);
 		}
+		legacy_k8s::set_namespace(job.mutable_common(), ns_names);
 	}
 
 	for (const auto& node : state->nodes())
