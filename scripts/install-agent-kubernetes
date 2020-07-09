@@ -39,7 +39,7 @@ function download_yamls {
 		curl -H 'Cache-Control: no-cache' -s -o $WORKDIR/sysdig-image-analyzer-configmap.yaml https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-image-analyzer-configmap.yaml
 		echo "* Downloading Sysdig Image Analyzer daemonset v1 yaml"
 		curl -H 'Cache-Control: no-cache' -s -o $WORKDIR/sysdig-image-analyzer-daemonset.yaml https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-image-analyzer-daemonset.yaml
-    fi
+	fi
 }
 
 function unsupported {
@@ -231,7 +231,7 @@ function install_k8s_agent {
 		fi
 
 		kubectl apply -f $IA_CONFIG_FILE --namespace=$NAMESPACE
-    fi
+	fi
 
 	AGENT_STRING="agent"
 	if [ ! -z "$AGENT_SLIM" ]; then
@@ -245,8 +245,8 @@ function install_k8s_agent {
 
 	# Test for COS (Container-Optimized OS from Google)
 	# Enable EBPF if so.
-	IS_COS_OS=$(kubectl get nodes -o jsonpath='{.items[].status.nodeInfo.osImage}' | grep "Container-Optimized")
-
+	echo "Trying to detect COS (Container-Optimized OS) - to enable eBPF"
+	IS_COS_OS=$(kubectl get nodes -o jsonpath='{.items[*].status.nodeInfo.osImage}' | grep "Container-Optimized" 2>&1) || { echo "COS not detected."; }
 	if [ ! -z "$IS_COS_OS" ]; then
 		# enable ebpf
 		echo "COS os detected. Enabling eBPF"
@@ -310,7 +310,7 @@ function remove_agent {
 
 		echo "* Deleting the sysdig-image-analyzer configmap"
 		kubectl delete configmap sysdig-image-analyzer --namespace=$NAMESPACE
-    fi
+	fi
 
 	echo "* Deleting the sysdig-agent secret"
 	kubectl delete secret sysdig-agent --namespace=$NAMESPACE
