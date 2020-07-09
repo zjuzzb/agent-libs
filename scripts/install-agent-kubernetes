@@ -245,9 +245,9 @@ function install_k8s_agent {
 
 	# Test for COS (Container-Optimized OS from Google)
 	# Enable EBPF if so.
-	IS_COS_OS=$(kubectl get nodes -o wide | awk 'NR==2 {print $8}')
+	IS_COS_OS=$(kubectl get nodes -o jsonpath='{.items[].status.nodeInfo.osImage}' | grep "Container-Optimized")
 
-	if [ "$IS_COS_OS" == "Container-Optimized" ]; then
+	if [ ! -z "$IS_COS_OS" ]; then
 		# enable ebpf
 		echo "COS os detected. Enabling eBPF"
 		sed -i.bak -e "s|#env:|env:|" $DAEMONSET_FILE
