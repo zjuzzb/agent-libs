@@ -35,7 +35,8 @@ RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devto
         python27 \
         glibc-devel.i686 \
         devtoolset-2-libstdc++-devel.i686 \
-        devtoolset-2-elfutils-libelf-devel && \
+        devtoolset-2-elfutils-libelf-devel \
+        java-1.8.0-openjdk && \
     scl enable python27 "yum install -y python-pip" && \
     scl enable python27 "pip install protobuf" && \
     yum clean all
@@ -48,6 +49,10 @@ RUN curl -o docker.tgz https://get.docker.com/builds/Linux/x86_64/docker-1.11.0.
 RUN rpm --import https://mirror.go-repo.io/centos/RPM-GPG-KEY-GO-REPO && \
     curl -s https://mirror.go-repo.io/centos/go-repo.repo | tee /etc/yum.repos.d/go-repo.repo && \
     yum -y install golang centos-release-scl && yum -y install sclo-git212
+
+# For sonar to work, set JAVA_HOME and add it to the PATH
+ENV JAVA_HOME=/usr/lib/jvm/jre-openjdk \
+    PATH="$JAVA_HOME/bin:${PATH}"
 
 RUN mkdir -p /code/agent
 ADD bootstrap-agent /code/agent/

@@ -211,7 +211,54 @@ build_target()
 
 }
 
-#
+
+# Build using the sonar wrapper and report results to code sonar
+build_and_run_sonar_tools()
+{
+	# At the time this is written, code coverage doesn't work through sonar.
+	# The assumed reason is that we are generating lcov files instead of 
+	# gcov files but the sonar tools only support gcov. Despite
+	# this, we still run the code coverage variant anticipating that this
+	# will get fixed in the future. If/when this is fixed the 
+	# -Dsonar.cfamily.gcov.reportsPath property needs to get added to
+	# sonar-scanner below.
+	bootstrap_agent debug-internal-code-coverage
+
+	# All artifacts need to be built with the build-wrapper so start with
+	# a clean.
+	cd /code/agent/build/debug-internal-code-coverage
+	make clean
+
+	# bootstrap-agent has to run after clean to generate some directories 
+	# under generated-go
+	bootstrap_agent debug-internal-code-coverage
+
+	local BW_OUTPUT="/code/agent/build/debug-internal-code-coverage/bw-output"
+	rm -rf $BW_OUTPUT
+
+	# The sonar tools should have been mounted to /sonar
+	# 1. Run the build using the build wrapper
+	# 2. Run the sonar scanner to generate results and push to the cloud
+
+	/sonar/build-wrapper-linux-x86/build-wrapper-linux-x86-64 \
+	    --out-dir $BW_OUTPUT \
+	    make -j$MAKE_JOBS all
+
+	# Change into the directory to set the "project basedir". All files
+	# scanned must be in this directory.
+	cd /code/agent
+
+	/sonar/sonar-scanner-4.3.0.2102-linux/bin/sonar-scanner \
+	    -Dsonar.organization=draios \
+	    -Dsonar.projectKey=draios_agent \
+	    -Dsonar.sources=/code/agent \
+	    -Dsonar.host.url=https://sonarcloud.io \
+	    -Dsonar.cfamily.build-wrapper-output=$BW_OUTPUT \
+	    -Dsonar.login=6474d8d1de0191e510bdf77bef760973061ed26a \
+	    -Dsonar.inclusions=userspace/**/*.cpp
+}
+
+
 # Run whatever builds/tests we want to run within the build container before
 # we submit.
 build_presubmit()
@@ -248,6 +295,9 @@ case "$1" in
 	benchmarks)
 		# used by the agent-build-benchmarks jenkins job
 		build_benchmarks
+		;;
+	sonar)
+		build_and_run_sonar_tools
 		;;
 	package)
 		build_package
@@ -321,6 +371,10 @@ case "$1" in
 
 	To build a particular target or file for a specific variant:
 	$(bold "> agent-builder make-debug-internal unit-test-dragent")
+
+	To build and pass results to sonar:
+	$(bold "> agent-builder sonar")
+	with the sonar tools mounted to /sonar
 EOF
         set -x
 		;;
