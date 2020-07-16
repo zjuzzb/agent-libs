@@ -18,6 +18,7 @@ using namespace std;
 #include "handshake.pb.h"
 #include "draios.pb.h"
 #include "dragent_settings_interface.h"
+#include "scoped_config.h"
 
 #include "protobuf_metric_serializer.h"
 #include "protocol_handler.h"
@@ -26,7 +27,6 @@ using namespace std;
 
 #include <Poco/Net/SSLManager.h>
 #include <Poco/Net/NetException.h>
-
 using namespace dragent;
 using namespace test_helpers;
 
@@ -99,7 +99,6 @@ TEST_F(connection_manager_fixture, failure_to_connect)
 	config.m_server_addr = "127.0.0.1";
 	config.m_server_port = 7357;
 	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -148,13 +147,13 @@ TEST_F(connection_manager_fixture, connection_timeout)
 	config.m_server_addr = "www.sysdig.com";
 	config.m_server_port = 81;
 	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
+
+	test_helpers::scoped_config<uint32_t> conn_timeout("connect_timeout", 1500);
 	
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
 
 	connection_manager cm(&config, &queue, {4});
-	cm.set_connection_timeout(4 * 1000 * 1000);
 
 	// Create and spin up the connection manager
 	std::thread t([&queue, &config, &cm]()
@@ -188,7 +187,6 @@ TEST_F(connection_manager_fixture, connect_transmit)
 	config.m_server_addr = "127.0.0.1";
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -262,7 +260,6 @@ TEST_F(connection_manager_fixture, generation)
 	config.m_server_addr = "127.0.0.1";
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -365,7 +362,6 @@ TEST_F(connection_manager_fixture, v5_end_to_end)
 	config.m_server_addr = "127.0.0.1";
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 
 	// Create and spin up the connection manager
 	connection_manager cm(&config, &pqueue, {5});
@@ -519,7 +515,6 @@ bool test_collector_sends_message(dragent_protocol::protocol_version ver)
 	config.m_server_addr = "127.0.0.1";
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -617,7 +612,6 @@ TEST_F(connection_manager_fixture, basic_connect_with_handshake)
 	config.m_server_addr = "127.0.0.1";
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -735,7 +729,6 @@ TEST_F(connection_manager_fixture, metrics_ack)
 	config.m_server_addr = "127.0.0.1";
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 
 	// Create the shared blocking queues
 	flush_queue fqueue(MAX_QUEUE_LEN);
@@ -851,7 +844,6 @@ TEST_F(connection_manager_fixture, change_aggregation_interval)
 	// Set the config for the CM
 	config.m_server_addr = "127.0.0.1";
 	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -885,7 +877,6 @@ TEST_F(connection_manager_fixture, handshake_version_negotiation_failure)
 	config.m_server_addr = "127.0.0.1";
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -1045,7 +1036,6 @@ TEST_F(connection_manager_fixture, legacy_fallback)
 	config.m_server_addr = "127.0.0.1";
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 
 	// Create the shared blocking queues
 	flush_queue fqueue(MAX_QUEUE_LEN);
@@ -1190,7 +1180,6 @@ TEST_F(connection_manager_fixture, test_error_message_handler)
 	config.m_server_addr = "127.0.0.1";
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
@@ -1257,7 +1246,6 @@ TEST_F(connection_manager_fixture, backoff)
 	config.m_server_addr = "127.0.0.1";
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 
 	// Create the shared blocking queues
 	flush_queue fqueue(MAX_QUEUE_LEN);
@@ -1386,7 +1374,6 @@ TEST_F(connection_manager_fixture, backoff_recovery_v4)
 	config.m_server_addr = "127.0.0.1";
 	config.m_server_port = fc.get_port();
 	config.m_ssl_enabled = false;
-	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
 
 	// Create the shared blocking queues
 	flush_queue fqueue(MAX_QUEUE_LEN);
@@ -1686,76 +1673,65 @@ private:
 
 TEST_F(connection_manager_fixture, incomplete_resp)
 {
-	Poco::Buffer<char> resp(0);
-	std::string str;
+	std::string str = "";
 
-	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
+	ASSERT_FALSE(http_tunnel::is_resp_complete(str));
 
-	str = "General nonsense";
-	resp.append(str.c_str(), str.length());
+	str.append("General nonsense");
 
-	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
+	ASSERT_FALSE(http_tunnel::is_resp_complete(str));
 
-	str = "\r\n";
-	resp.append(str.c_str(), str.length());
+	str.append("\r\n");
 
-	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
+	ASSERT_FALSE(http_tunnel::is_resp_complete(str));
 
-	str = "Specific nonsense \r with embedded nonsense \n\r\n";
-	resp.append(str.c_str(), str.length());
+	str.append("Specific nonsense \r with embedded nonsense \n\r\n");
 
-	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
+	ASSERT_FALSE(http_tunnel::is_resp_complete(str));
 
-	str = "Bogosity without end \r\n \r\n";
-	resp.append(str.c_str(), str.length());
+	str.append("Bogosity without end \r\n \r\n");
 
-	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
+	ASSERT_FALSE(http_tunnel::is_resp_complete(str));
 
-	str = "\n\r\n\n\n\n\r\n";
-	resp.append(str.c_str(), str.length());
+	str.append("\n\r\n\n\n\n\r\n");
 
-	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
+	ASSERT_FALSE(http_tunnel::is_resp_complete(str));
 }
 
 TEST_F(connection_manager_fixture, complete_resp)
 {
-	Poco::Buffer<char> resp(0);
 	std::string str;
 
-	ASSERT_FALSE(http_tunnel::is_resp_complete(resp));
+	ASSERT_FALSE(http_tunnel::is_resp_complete(str));
 
 	str = "General nonsense\r\n"
 	      "Thing: other thing\r\n"
-	      "Foo: Bar\r\n"
-	      "\r\n";
-	resp.append(str.c_str(), str.length());
+	      "Foo: Bar\r\n";
+	ASSERT_FALSE(http_tunnel::is_resp_complete(str));
 
-	ASSERT_TRUE(http_tunnel::is_resp_complete(resp));
+	str.append("\r\n");
+
+	ASSERT_TRUE(http_tunnel::is_resp_complete(str));
 
 	str = "\r\n\r\n";
-	resp.assign(str.c_str(), str.length());
 
-	ASSERT_TRUE(http_tunnel::is_resp_complete(resp));
+	ASSERT_TRUE(http_tunnel::is_resp_complete(str));
 }
 
 TEST_F(connection_manager_fixture, parse_resp)
 {
 	std::string resp;
-	Poco::Buffer<char> buf(0);
 	http_tunnel::http_response rcode;
 
 	// 1. Standard success response (taken from an actual proxy)
-	buf.clear();
 	resp = "HTTP/1.1 200 Connection established\r\n\r\n";
-	buf.assign(resp.c_str(), resp.length());
-	rcode = http_tunnel::parse_resp(buf);
+	rcode = http_tunnel::parse_resp(resp);
 	ASSERT_TRUE(rcode.is_valid);
 	ASSERT_EQ(200, rcode.resp_code);
 
 	// 2. Standard failure response (taken from an actual proxy)
 	// Note: this string is truncated at 1024 bytes as it would
 	//       be in the actual http tunnel.
-	buf.clear();
 	resp = "HTTP/1.1 503 Service Unavailable\r\n"
 	       "Server: squid/3.5.12\r\n"
 	       "Mime-Version: 1.0\r\n"
@@ -1787,21 +1763,18 @@ TEST_F(connection_manager_fixture, parse_resp)
 	       " Adapted from design by Free CSS Templates\r\n"
 	       " http://www.freecsstemplates.org\r\n"
 	       " Release\r\n";
-	buf.assign(resp.c_str(), resp.length());
-	rcode = http_tunnel::parse_resp(buf);
+	rcode = http_tunnel::parse_resp(resp);
 	ASSERT_TRUE(rcode.is_valid);
 	ASSERT_EQ(503, rcode.resp_code);
 
 	// 3. Empty string
-	buf.clear();
-	rcode = http_tunnel::parse_resp(buf);
+	resp = "";
+	rcode = http_tunnel::parse_resp(resp);
 	ASSERT_FALSE(rcode.is_valid);
 
 	// 4. Garbage string
-	buf.clear();
 	resp = "Who are you calling garbage, mister?";
-	buf.assign(resp.c_str(), resp.length());
-	rcode = http_tunnel::parse_resp(buf);
+	rcode = http_tunnel::parse_resp(resp);
 	ASSERT_FALSE(rcode.is_valid);
 }
 
@@ -1812,7 +1785,7 @@ TEST_F(connection_manager_fixture, basic_proxy_connect)
 
 	try
 	{
-		auto ret = http_tunnel::establish_tunnel("127.0.0.1", 9090, "sysdig.com", 1234);
+		auto ret = http_tunnel::establish_tunnel({"127.0.0.1", 9090, "sysdig.com", 1234});
 		ASSERT_NE(nullptr, ret);
 	}
 	catch (Poco::Exception& ex)
@@ -1832,7 +1805,7 @@ TEST_F(connection_manager_fixture, proxy_connect_big_resp)
 
 	try
 	{
-		auto ret = http_tunnel::establish_tunnel("127.0.0.1", 9090, "sysdig.com", 1234);
+		auto ret = http_tunnel::establish_tunnel({"127.0.0.1", 9090, "sysdig.com", 1234});
 		ASSERT_NE(nullptr, ret);
 	}
 	catch (Poco::Exception& ex)
@@ -1854,12 +1827,12 @@ TEST_F(connection_manager_fixture, proxy_connect_auth)
 
 	try
 	{
-		auto ret = http_tunnel::establish_tunnel("127.0.0.1",
+		auto ret = http_tunnel::establish_tunnel({"127.0.0.1",
 		                                         9090,
 		                                         "sysdig.com",
 		                                         1234,
 		                                         creds.user,
-		                                         creds.password);
+		                                         creds.password});
 		ASSERT_NE(nullptr, ret);
 	}
 	catch (Poco::Exception& ex)
@@ -1883,12 +1856,12 @@ TEST_F(connection_manager_fixture, proxy_auth_failure)
 	try
 	{
 		std::string badpass = "barf";
-		auto ret = http_tunnel::establish_tunnel("127.0.0.1",
+		auto ret = http_tunnel::establish_tunnel({"127.0.0.1",
 		                                         9090,
 		                                         "sysdig.com",
 		                                         1234,
 		                                         creds.user,
-		                                         "barf");
+		                                         "barf"});
 		ASSERT_EQ(nullptr, ret);
 	}
 	catch (Poco::Exception& ex)
@@ -1927,5 +1900,42 @@ TEST_F(connection_manager_fixture, encode_auth)
 	{
 		std::string result = http_tunnel::encode_auth(entry.username, entry.password);
 		ASSERT_EQ(entry.encode, result);
+	}
+}
+
+void fill_buf_with_random(char* buf, uint32_t length)
+{
+	char c;
+
+	for (uint32_t i = 0; i < length; ++i)
+	{
+		c = 'A' + (rand() % ('z' - 'A'));
+		buf[i] = c;
+	}
+}
+
+TEST_F(connection_manager_fixture, string_append_test)
+{
+	char buf1[32];
+	char buf2[16];
+
+	fill_buf_with_random(buf1, sizeof(buf1));
+	fill_buf_with_random(buf2, sizeof(buf2));
+
+	std::string result;
+
+	result.append(buf1, sizeof(buf1));
+	result.append(buf2, sizeof(buf2));
+
+	ASSERT_EQ(sizeof(buf1) + sizeof(buf2), result.length());
+
+	for (uint32_t i = 0; i < sizeof(buf1); ++i)
+	{
+		ASSERT_EQ(buf1[i], result[i]);
+	}
+
+	for (uint32_t i = 0; i < sizeof(buf2); ++i)
+	{
+		ASSERT_EQ(buf2[i], result[sizeof(buf1) + i]);
 	}
 }

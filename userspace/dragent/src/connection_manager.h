@@ -19,9 +19,10 @@
 #include <functional>
 #include <chrono>
 #include <list>
-#include <functional>
 
 #include <Poco/Buffer.h>
+
+#include "cm_proxy_tunnel.h"
 
 class dragent_configuration;
 class connection_manager;
@@ -136,9 +137,6 @@ class connection_manager : public dragent::watchdog_runnable,
                            public aggregation_interval_source,
                            public compression_method_source
 {
-
-	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000; // 60 seconds
-	static const uint32_t CONNECTION_TIMEOUT_WAIT_S = 10;
 
 public:
 	using socket_ptr = std::shared_ptr<Poco::Net::StreamSocket>;
@@ -328,7 +326,6 @@ public:
 #ifdef SYSDIG_TEST
 	void test_run() { do_run(); }
 
-	void set_connection_timeout(uint32_t timeout_us) { m_connect_timeout_us = timeout_us; }
 	void set_aggregation_interval(uint32_t interval)
 	{
 		m_negotiated_aggregation_interval = interval;
@@ -370,7 +367,6 @@ public:
 		m_working_interval = std::chrono::seconds(new_interval);
 	}
 
-	uint32_t m_connect_timeout_us = SOCKET_TIMEOUT_DURING_CONNECT_US;
 	volatile bool m_timed_out = false;
 #endif
 
@@ -566,13 +562,6 @@ private:
 	 */
 	void handle_collector_error(draiosproto::error_message& msg);
 
-
-	static const std::string& get_openssldir();
-	// Walk over the CA path search list and return the first one that exists
-	// Note: we have to return a new string by value as we potentially alter
-	// the string in the search path (substituting $OPENSSLDIR with the actual path)
-	static std::string find_ca_cert_path(const std::vector<std::string>& search_paths);
-
 	void disconnect();
 	void disconnect_and_backoff();
 
@@ -583,14 +572,13 @@ public:
 	static const uint32_t MAX_RECEIVER_BUFSIZE = 1 * 1024 * 1024; // 1MiB
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
 	static const std::chrono::seconds RECONNECT_MIN_INTERVAL;
-	static const unsigned int SOCKET_TCP_TIMEOUT_MS = 60 * 1000;
 
 private:
 	message_handler_map m_handler_map;
 	std::vector<dragent_protocol::protocol_version> m_supported_protocol_versions;
 	std::vector<protocol_compression_method> m_supported_compression_methods;
 	std::vector<uint32_t> m_supported_aggregation_intervals;
-	socket_ptr m_socket;
+	cm_socket::ptr m_socket;
 	uint64_t m_generation;
 	uint64_t m_sequence;
 	dragent_configuration* m_configuration;

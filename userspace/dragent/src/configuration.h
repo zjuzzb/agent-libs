@@ -157,9 +157,7 @@ public:
 	std::string m_customer_id;
 	std::string m_server_addr;
 	uint16_t m_server_port;
-	uint32_t m_transmitbuffer_size;
 	bool m_ssl_enabled;
-	bool m_ssl_verify_certificate;
 	std::string m_ssl_ca_certificate;
 	std::vector<std::string> m_ssl_ca_cert_paths;
 	bool m_compression_enabled;

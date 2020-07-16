@@ -12,13 +12,13 @@
 #include "watchdog_runnable_fatal_error.h"
 #include "async_aggregator.h" // For aggregator limits
 #include "cm_proxy_tunnel.h"
+#include "cm_socket.h"
 #include <future>
 #include <errno.h>
 #include <memory>
-#include <Poco/File.h>
-#include <Poco/Net/InvalidCertificateHandler.h>
 #include <Poco/Net/SSLException.h>
 #include <functional>
+#include <chrono>
 
 #include <grpc_channel_registry.h>
 
@@ -31,11 +31,6 @@ type_config<uint32_t> c_reconnect_max_backoff_s(
         360,
         "The ceiling for the exponential backoff on error, in seconds.",
         "reconnect_max_backoff");
-
-type_config<uint32_t> c_socket_timeout_ms(
-        1000,
-        "Timeout for send and receive operations to the collector, in milliseconds.",
-        "socket_timeout");
 
 type_config<uint32_t> c_transmit_delay_ms(
         1,
@@ -76,12 +71,6 @@ using std::chrono::seconds;
 using std::chrono::steady_clock;
 using std::chrono::duration_cast;
 
-
-#ifndef TCP_USER_TIMEOUT
-// Define it here because old glibc versions do not have this flag (eg, Centos6)
-#define TCP_USER_TIMEOUT 18 /* How long for loss retry before timeout */
-#endif
-
 #define US_TO_S(_usec) ((_usec) / (1000 * 1000))
 
 COMMON_LOGGER();
@@ -89,24 +78,6 @@ COMMON_LOGGER();
 const seconds connection_manager::RECONNECT_MIN_INTERVAL(1);
 const seconds DEFAULT_WORKING_INTERVAL(10);
 const milliseconds SEND_TIME_LOG_INTERVAL(500);
-
-class LoggingCertificateHandler : public Poco::Net::InvalidCertificateHandler
-{
-public:
-	using Poco::Net::InvalidCertificateHandler::InvalidCertificateHandler;
-
-	// Mimicking Poco::Net::ConsoleCertificateHandler but no user input
-	virtual void onInvalidCertificate(const void* pSender,
-	                                  Poco::Net::VerificationErrorArgs& errorCert)
-	{
-		LOG_ERROR("Certificate verification failed: " + errorCert.errorMessage() + " (" +
-		          NumberFormatter::format(errorCert.errorNumber()) + ")" + ", Issuer: " +
-		          errorCert.certificate().issuerName() + ", Subject: " +
-		          errorCert.certificate().subjectName() + ", chain position " +
-		          NumberFormatter::format(errorCert.errorDepth()));
-	}
-};
-
 
 cm_state_machine::state connect_received_in_init(connection_manager* cm)
 {
@@ -268,8 +239,7 @@ connection_manager::connection_manager(dragent_configuration* configuration,
       m_negotiated_compression_method(nullptr),
       m_negotiated_protocol_version(0),
       m_reconnect_interval(0),
-      m_working_interval(DEFAULT_WORKING_INTERVAL),
-      m_send_recv_timeout(c_socket_timeout_ms.get_value())
+      m_working_interval(DEFAULT_WORKING_INTERVAL)
 {
 	Poco::Net::initializeSSL();
 
@@ -303,232 +273,16 @@ bool connection_manager::init()
 		return false;
 	}
 
-	if (!m_configuration->m_ssl_enabled)
-	{
-		return true;
-	}
-
-	LOG_INFO("SSL enabled, initializing context");
-
-	Poco::Net::Context::VerificationMode verification_mode;
-	SharedPtr<LoggingCertificateHandler> invalid_cert_handler = nullptr;
-	std::string cert_path;
-
-	if (m_configuration->m_ssl_verify_certificate)
-	{
-		verification_mode = Poco::Net::Context::VERIFY_STRICT;
-		invalid_cert_handler = new LoggingCertificateHandler(false);
-		cert_path = find_ca_cert_path(m_configuration->m_ssl_ca_cert_paths);
-		LOG_INFO("SSL CA cert path: " + cert_path);
-	}
-	else
-	{
-		verification_mode = Poco::Net::Context::VERIFY_NONE;
-	}
-
-	Poco::Net::Context::Ptr ptrContext =
-	    new Poco::Net::Context(Poco::Net::Context::CLIENT_USE,
-	                           "",
-	                           "",
-	                           cert_path,
-	                           verification_mode,
-	                           9,
-	                           false,
-	                           "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-
-	try
-	{
-		LOG_INFO("openssl loading cert: " + m_configuration->m_ssl_ca_certificate);
-		Poco::Crypto::X509Certificate ca_cert(m_configuration->m_ssl_ca_certificate);
-		ptrContext->addCertificateAuthority(ca_cert);
-	}
-	catch (const Poco::Net::SSLException& e)
-	{
-		// thrown by addCertificateAuthority()
-		LOG_ERROR("Unable to add ssl ca certificate: " + e.message());
-	}
-	catch (const Poco::IOException& e)
-	{
-		// thrown by X509Certificate constructor
-		LOG_ERROR("Unable to read ssl ca certificate: " + e.message());
-	}
-	catch (...)
-	{
-		LOG_ERROR("Unable to load ssl ca certificate: " + m_configuration->m_ssl_ca_certificate);
-	}
-
-	Poco::Net::SSLManager::instance().initializeClient(0, invalid_cert_handler, ptrContext);
-
 	return true;
-}
-
-// Find the host's default OPENSSLDIR
-// This is best effort for now, so don't log at warn/error
-const std::string& connection_manager::get_openssldir()
-{
-	static std::string path;
-
-	if (!path.empty())
-	{
-		return path;
-	}
-
-	errno = 0;
-	FILE* out = popen("openssl version -d 2>&1", "r");
-	if (!out)
-	{
-		LOG_INFO(string("openssl popen() failed: ") + strerror(errno));
-		return path;
-	}
-
-	// Sample output:
-	// $ openssl version -d
-	// OPENSSLDIR: "/usr/lib/ssl"
-	//
-	// It should only be one line, but read multiple lines in case the
-	// format changes. Also the while control structure works better
-	char buf[256];
-	int ii = 0;
-	const int max_lines = 10;
-	while (ii < max_lines && fgets(buf, sizeof(buf), out))
-	{
-		ii++;
-		std::string out_str(buf);
-		LOG_DEBUG("openssl read from popen(): " + out_str);
-
-		// Would use std::regex if we had compiler support
-		std::string start_targ("OPENSSLDIR: \"");
-		auto start_pos = out_str.find(start_targ);
-		if (start_pos == std::string::npos)
-		{
-			continue;
-		}
-		start_pos += start_targ.size();
-		std::string end_targ("\"");
-		auto end_pos = out_str.find(end_targ, start_pos);
-		if (end_pos == std::string::npos)
-		{
-			continue;
-		}
-
-		path = out_str.substr(start_pos, end_pos - start_pos);
-		LOG_DEBUG("found OPENSSLDIR: " + path);
-		break;
-	}
-
-	int ret = pclose(out);
-	LOG_DEBUG(string("openssl pclose() exit code: ") + std::to_string(WEXITSTATUS(ret)));
-	return path;
-}
-
-std::string connection_manager::find_ca_cert_path(const std::vector<std::string>& search_paths)
-{
-	std::vector<std::string> failed_paths;
-	for (auto path : search_paths)
-	{
-		auto pos = path.find("$OPENSSLDIR");
-		if (pos != std::string::npos)
-		{
-			path.replace(pos, strlen("$OPENSSLDIR"), get_openssldir());
-		}
-
-		LOG_DEBUG("Checking CA path: " + path);
-		if (Poco::File(path).exists())
-		{
-			return path;
-		}
-
-		failed_paths.emplace_back(path);
-	}
-
-	std::string msg("Could not find any valid CA path, tried:");
-	for (const auto& path : failed_paths)
-	{
-		msg.append(' ' + path);
-	}
-	LOG_WARNING(msg);
-	return "";
-}
-
-connection_manager::socket_ptr socket_connect(const SocketAddress sa,
-                                              uint32_t timeout_us)
-{
-	auto ssp = std::make_shared<Poco::Net::StreamSocket>();
-	ssp->connect(sa, timeout_us);
-
-
-	return ssp;
-}
-
-connection_manager::socket_ptr ssl_connect(const SocketAddress sa,
-                                           const std::string hostname,
-                                           uint32_t timeout_us)
-{
-	auto sss = new Poco::Net::SecureStreamSocket();
-
-	sss->setLazyHandshake(true);
-	sss->setPeerHostName(hostname);
-	sss->connect(sa, timeout_us);
-	//
-	// This is done to prevent getting stuck forever waiting during the handshake
-	// if the server doesn't speak to us
-	//
-	sss->setSendTimeout(timeout_us);
-	sss->setReceiveTimeout(timeout_us);
-
-	LOG_INFO("Performing SSL handshake");
-	int32_t ret = sss->completeHandshake();
-
-	if (ret == 1)
-	{
-		sss->verifyPeerCertificate();
-		LOG_INFO("SSL identity verified");
-	}
-	else
-	{
-		LOG_ERROR("SSL Handshake didn't complete");
-		return nullptr;  // This will restart the connection process
-	}
-
-	Poco::Net::StreamSocket* ss = sss;
-	connection_manager::socket_ptr sp(ss);
-	return sp;
-}
-
-connection_manager::socket_ptr http_proxy_connect(const std::string collector_address,
-                                                  uint16_t collector_port,
-                                                  const std::string proxy_address,
-                                                  uint16_t proxy_port)
-{
-
-	if (!c_proxy_user.get_value().empty())
-	{
-		return http_tunnel::establish_tunnel(proxy_address,
-		                                     proxy_port,
-		                                     collector_address,
-		                                     collector_port,
-		                                     c_proxy_user.get_value(),
-		                                     c_proxy_password.get_value());
-	}
-	return http_tunnel::establish_tunnel(proxy_address,
-	                                     proxy_port,
-	                                     collector_address,
-	                                     collector_port);
 }
 
 bool connection_manager::connect()
 {
-	microseconds connect_timeout(connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
-#ifdef SYSDIG_TEST
-	connect_timeout = microseconds(m_connect_timeout_us);
-#endif
-
-	LOG_INFO("Initiating connection to collector (trying for %ld seconds)",
-	         duration_cast<seconds>(connect_timeout).count());
+	LOG_INFO("Initiating connection to collector");
 	ASSERT(m_fsm->get_state() == cm_state_machine::state::CONNECTING);
 
-	std::promise<socket_ptr> sock_promise;
-	std::future<socket_ptr> future_sock = sock_promise.get_future();
+	std::promise<cm_socket::ptr> sock_promise;
+	std::future<cm_socket::ptr> future_sock = sock_promise.get_future();
 	std::atomic<bool> terminate(false);
 
 	//
@@ -540,12 +294,11 @@ bool connection_manager::connect()
 	std::thread connect_thread([&sock_promise, &terminate](const string& hostname,
 	                                                       const uint16_t port,
 	                                                       bool ssl_enabled,
-	                                                       const uint32_t transmit_buffer_size,
 	                                                       const seconds reconnect_interval,
-	                                                       const microseconds connect_timeout,
-	                                                       const milliseconds post_connect_timeout)
+	                                                       std::vector<std::string>& ca_cert_paths,
+	                                                       std::string& ssl_ca_certificate)
 	{
-		connection_manager::socket_ptr ssp = nullptr;
+		cm_socket::ptr sockptr = nullptr;
 
 		try
 		{
@@ -576,66 +329,49 @@ bool connection_manager::connect()
 				return;
 			}
 
+			// Choose which type of socket we're using
 
 			if (!c_proxy_host.get_value().empty() && c_proxy_port.get_value() != 0)
 			{
-				// Connect using proxy
-				ssp = http_proxy_connect(hostname,
-				                         port,
-				                         c_proxy_host.get_value(),
-				                         c_proxy_port.get_value());
+				// Connect through proxy
+				sockptr = http_tunnel::establish_tunnel({c_proxy_host.get_value(),
+				                                         (uint16_t)c_proxy_port.get_value(),
+				                                         hostname,
+				                                         port,
+				                                         c_proxy_user.get_value(),
+				                                         c_proxy_password.get_value(),
+				                                         ssl_enabled,
+				                                         ca_cert_paths,
+				                                         ssl_ca_certificate});
+			}
+			else if (ssl_enabled)
+			{
+				// Connect through encrypted socket
+				sockptr = std::make_shared<cm_poco_secure_socket>(ca_cert_paths,
+				                                                  ssl_ca_certificate);
+				if (sockptr && !sockptr->connect(hostname, port))
+				{
+					sockptr = nullptr;
+				}
 			}
 			else
 			{
-				if ((!c_proxy_host.get_value().empty() && c_proxy_port.get_value() == 0) ||
-				    (c_proxy_host.get_value().empty() && c_proxy_port.get_value() != 0))
+				// Unencrypted socket
+				sockptr = std::make_shared<cm_poco_socket>();
+				if (sockptr && !sockptr->connect(hostname, port))
 				{
-					// Having a proxy host without a proxy port or vice versa is
-					// not a valid configuration
-					LOG_WARNING("proxy_host and proxy_port must both be set before "
-					            "HTTP proxy tunneling will work");
-				}
-				SocketAddress sa(hostname, port);
-				// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-				LOG_INFO("Connecting to collector " + sa.toString());
-
-				if (ssl_enabled)
-				{
-					ssp = ssl_connect(sa, hostname, connect_timeout.count());
-				}
-				else
-				{
-					ssp = socket_connect(sa, connect_timeout.count());
+					sockptr = nullptr;
 				}
 			}
 
-			if (ssp == nullptr)
+			if (sockptr == nullptr)
 			{
 				sock_promise.set_value(nullptr);
 				return;
 			}
-
-			// Set additional socket options post-connect
-			std::chrono::microseconds timeout = post_connect_timeout;
-			ssp->setSendBufferSize(transmit_buffer_size);
-			ssp->setSendTimeout(timeout.count());
-			ssp->setReceiveTimeout(timeout.count());
-
-			try
-			{
-				// This option makes the connection fail earlier in case of unplugged cable
-				ssp->setOption(
-				    IPPROTO_TCP, TCP_USER_TIMEOUT, connection_manager::SOCKET_TCP_TIMEOUT_MS);
-			}
-			catch (const std::exception&)
-			{
-				// ignore if kernel does not support this
-				// alternatively, could be a setsockopt() call to avoid exception
-			}
-
 			LOG_INFO("Connected to collector");
 
-			sock_promise.set_value(socket_ptr(ssp));
+			sock_promise.set_value(sockptr);
 		}
 		catch (const Poco::IOException& e)
 		{
@@ -667,17 +403,16 @@ bool connection_manager::connect()
 	                           std::ref(m_configuration->m_server_addr),
 	                           m_configuration->m_server_port,
 	                           m_configuration->m_ssl_enabled,
-	                           m_configuration->m_transmitbuffer_size,
 	                           m_reconnect_interval,
-	                           connect_timeout,
-	                           m_send_recv_timeout);
-
+	                           std::ref(m_configuration->m_ssl_ca_cert_paths),
+	                           std::ref(m_configuration->m_ssl_ca_certificate));
 	//
 	// End thread
 	//
 
 	uint32_t waited_time_s = 0;
-	const seconds wait_for = duration_cast<seconds>(connect_timeout + m_reconnect_interval);
+	const seconds wait_for = duration_cast<seconds>(cm_socket::get_default_connect_timeout() +
+	                                                m_reconnect_interval);
 
 	LOG_INFO("Waiting to connect %ld s", wait_for.count());
 	for (waited_time_s = 0; waited_time_s <= wait_for.count(); ++waited_time_s)
@@ -743,7 +478,6 @@ void connection_manager::disconnect()
 	{
 		LOG_INFO("Disconnecting from collector");
 		m_socket->close();
-		m_socket.reset();
 	}
 	if (m_fsm)
 	{
@@ -1246,9 +980,8 @@ bool connection_manager::perform_handshake()
 		}
 		else
 		{
-			LOG_ERROR("Protocol error: unexpected handshake response (" +
-			          Poco::NumberFormatter::format((int)header->messagetype) +
-			          ")");
+			LOG_ERROR("Protocol error: unexpected handshake response (%d)",
+			          (int)header->messagetype);
 		}
 		disconnect();
 		return false;
@@ -1262,9 +995,10 @@ bool connection_manager::perform_handshake()
 	}
 
 	// Handle response
-	LOG_INFO("Received resp. ver: " + Poco::NumberFormatter::format((int)header->version)
-	          + " len: " + Poco::NumberFormatter::format(m_pending_message.m_buffer_used)
-	          + " message: " + Poco::NumberFormatter::format((int)m_pending_message.get_type()));
+	LOG_INFO("Received response of type %d (ver: %d len: %u)",
+	         (int)m_pending_message.get_type(),
+	         (int)header->version,
+	          m_pending_message.m_buffer_used);
 	draiosproto::protocol_init_response resp;
 	uint32_t payload_len = m_pending_message.get_total_length() -
 	                       dragent_protocol::header_len(*header);
@@ -1331,9 +1065,10 @@ bool connection_manager::perform_handshake()
 	}
 
 	header = m_pending_message.v4_header();
-	LOG_INFO("Received resp. ver: " + Poco::NumberFormatter::format((int)header->version)
-	          + " len: " + Poco::NumberFormatter::format(m_pending_message.m_buffer_used)
-	          + " message: " + Poco::NumberFormatter::format((int)m_pending_message.get_type()));
+	LOG_INFO("Received response of type %d (ver: %d len: %u)",
+	         (int)m_pending_message.get_type(),
+	         (int)header->version,
+	          m_pending_message.m_buffer_used);
 	if (header->messagetype != draiosproto::message_type::PROTOCOL_HANDSHAKE_V1_RESP)
 	{
 		LOG_ERROR("Protocol error: unexpected handshake response");
@@ -1402,53 +1137,44 @@ int32_t connection_manager::send_bytes(uint8_t* buf, uint32_t len)
 	}
 
 	bool retry = false;
-	int32_t res = 0;
+	int64_t res = 0;
 	do
 	{
-		try
-		{
-			res = m_socket->sendBytes(buf, len);
-			retry = false;
-		}
-		catch (const Poco::TimeoutException& e)
+		res = m_socket->send(buf, len);
+
+		if (res == -ETIMEDOUT) // Handle timeout
 		{
 			if (retry)
 			{
 				// Already retried once. Rethrow
-				LOG_WARNING("Send operation timed out multiple times.");
-				throw;
+				LOG_ERROR("Internal error: Send operation timed out multiple times.");
+				return res;
 			}
 			LOG_WARNING("Retrying timed-out send operation.");
 			retry = true;
 		}
-
-		// Handle errorful result codes
-		if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
-		{
-			LOG_ERROR("Got SSL_WANT_READ on a write. Attempting reconnect. "
-			          "If the problem persists, try restarting the agent.");
-			disconnect();
-			return -1;
-		}
-		if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
-		{
-			if (retry)
-			{
-				// We already retried once. Time to bail.
-				LOG_ERROR("Retry of SSL_WANT_WRITE failed. Reconnecting. "
-				          "If the problem persists, try restarting the agent.");
-				disconnect();
-				return -1;
-			}
-
-			LOG_WARNING("Got SSL_WANT_WRITE on a write. Retrying write.");
-			retry = true;
-		}
 	} while (heartbeat() && retry);
 
-	if (res != len)
+	if (res < 0)
 	{
-		LOG_ERROR("sendBytes returned %u, expected %u", res, len);
+		// We don't explicitly disconnect here because the error might be
+		// recoverable. The caller can choose to disconnect, or not, as
+		// desired.
+		LOG_ERROR("Error sending message to collector: %d", (int)res);
+	}
+	else if (res == 0)
+	{
+		LOG_ERROR("Connection terminated remotely. Reconnecting...");
+		// Call disconnect() and update our internal state to match reality
+		disconnect();
+		return -1;
+	}
+	else if (res != len)
+	{
+		// I don't expect us to ever hit this case, but might as well
+		// raise a big flag in case we do. If we do hit this case it's
+		// probably because the user change the transmit buffer length.
+		LOG_ERROR("sendBytes returned %u, expected %u", (uint32_t)res, len);
 
 		disconnect();
 
@@ -1480,8 +1206,9 @@ bool connection_manager::transmit_buffer(uint64_t now,
 	// Sometimes now can be less than ts_ns. The timestamp in
 	// metrics messages is rounded up to the following metrics
 	// interval.
-
-	if (now > item->ts_ns && (now - item->ts_ns) > 5000000000UL)
+	if (header->hdr.messagetype == draiosproto::message_type::METRICS &&
+	    now > item->ts_ns &&
+	    (now - item->ts_ns) > 5000000000UL)
 	{
 		LOG_WARNING("Transmitting delayed message. type=" + to_string(item->message_type) +
 		            ", now=" + to_string(now) + ", ts=" + to_string(item->ts_ns) + ", delay_ms=" +
@@ -1528,7 +1255,6 @@ bool connection_manager::transmit_buffer(uint64_t now,
 		int32_t res = send_bytes((uint8_t*)header, send_len);
 		if (res < 0)
 		{
-			ASSERT(!is_connected());
 			return false;
 		}
 
@@ -1549,7 +1275,6 @@ bool connection_manager::transmit_buffer(uint64_t now,
 
 		if (res < 0)
 		{
-			ASSERT(!is_connected());
 			return false;
 		}
 
@@ -1569,25 +1294,9 @@ bool connection_manager::transmit_buffer(uint64_t now,
 	}
 	catch (const Poco::IOException& e)
 	{
-		// When the underlying socket times out without sending data, this
-		// results in a TimeoutException for SSL connections and EWOULDBLOCK
-		// for non-SSL connections, so we'll treat them the same.
 		if ((e.code() == POCO_EWOULDBLOCK) || (e.code() == POCO_EAGAIN))
 		{
-			// We shouldn't risk hanging indefinitely if the EWOULDBLOCK is
-			// caused by an attempted send larger than the buffer size
-			if (item->buffer.size() > m_configuration->m_transmitbuffer_size)
-			{
-				LOG_ERROR("transmit larger than bufsize failed (%lu > %u): %s",
-				          item->buffer.size(),
-				          m_configuration->m_transmitbuffer_size,
-				          e.displayText().c_str());
-				disconnect();
-			}
-			else
-			{
-				LOG_INFO("transmit: Ignoring: " + e.displayText());
-			}
+			LOG_INFO("transmit: Ignoring: " + e.displayText());
 		}
 		else
 		{
@@ -1601,7 +1310,7 @@ bool connection_manager::transmit_buffer(uint64_t now,
 		LOG_WARNING("Transmission timed out (took longer than %u ms). If this "
 		            "occurs frequently, increase socket_timeout setting in "
 		            "the agent configuration. Attempting reconnect.",
-		            c_socket_timeout_ms.get_value());
+		            (uint32_t)m_socket->get_send_recv_timeout().count());
 		// This code used to fall out of this function and retry the send later.
 		// However, this will not work anymore as messages are transmitted across
 		// two send operations and if the second one timed out, retrying would
@@ -1631,7 +1340,7 @@ bool connection_manager::receive_message()
 		// immediately. This ensures that when the queue has
 		// multiple items queued we don't limit the rate at
 		// which we dequeue and send messages.
-		if (!m_socket->poll(Poco::Timespan(), Poco::Net::Socket::SELECT_READ))
+		if (!m_socket->has_pending())
 		{
 			return true;
 		}
@@ -1647,41 +1356,27 @@ bool connection_manager::receive_message()
 			uint32_t bytes_to_read = sizeof(dragent_protocol_header_v4);
 			while (bytes_read < bytes_to_read)
 			{
-				int32_t res =
-				    m_socket->receiveBytes(m_pending_message.m_buffer.begin() + bytes_read,
-				                           bytes_to_read - bytes_read,
-				                           MSG_WAITALL);
-				if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
-				{
-					// Re-read
-					LOG_INFO("Got SSL_WANT_READ on receive, retrying");
-					continue;
-				}
-				if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
-				{
-					// I believe this should only happen with non-blocking sockets.
-					// This is an odd case and shouldn't happen, but if it does
-					// then doing nothing may be an appropriate action.
-					LOG_INFO("Got SSL_WANT_WRITE on receive, retrying");
-					continue;
-				}
-
+				int64_t res = m_socket->receive(m_pending_message.m_buffer.begin() + bytes_read,
+				                                bytes_to_read - bytes_read);
 				if (res == 0)
 				{
 					LOG_ERROR("Lost connection (reading header)");
 					disconnect();
 					return false;
 				}
-				if (res > 0)
-				{
-					bytes_read += res;
-				}
 				if (res < 0)
 				{
-					LOG_ERROR("Connection error while reading: " + NumberFormatter::format(res));
+					LOG_ERROR("Socket error on header read: %d", (int)res);
 					disconnect();
-					ASSERT(false);
 					return false;
+				}
+				if (res > 0)
+				{
+					// Any sort of overflow here should be impossible, but
+					// just to be extra cautious...
+					ASSERT(res < UINT32_MAX);
+					ASSERT(UINT32_MAX - bytes_read > res);
+					bytes_read += res;
 				}
 
 				// Check the message version -- may have to read more header bytes
@@ -1730,63 +1425,33 @@ bool connection_manager::receive_message()
 		msg_len = ntohl(v4_hdr->len);
 		uint32_t used_buf = m_pending_message.m_buffer_used;
 
-		int32_t res;
+		int64_t res;
 		bool retry = false;
 		do
 		{
-			res = m_socket->receiveBytes(m_pending_message.m_buffer.begin() + used_buf,
-			                             msg_len - used_buf,
-			                             MSG_WAITALL);
+			res = m_socket->receive(m_pending_message.m_buffer.begin() + used_buf,
+			                        msg_len - used_buf);
 
-			if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
+			if (res == 0)
 			{
-				if (retry)
-				{
-					reset_backoff();
-					LOG_ERROR("Retry of SSL_WANT_READ failed. Reconnecting. "
-					          "If the problem persists, try restarting the agent.");
-					disconnect();
-					return false;
-				}
-				LOG_INFO("Got SSL_WANT_READ on receive, retrying");
-				retry = true;
-				continue;
-			}
-			if (res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
-			{
-				if (retry)
-				{
-					LOG_ERROR("Retry of SSL_WANT_WRITE failed. Reconnecting. "
-					          "If the problem persists, try restarting the agent.");
-					disconnect();
-					return false;
-				}
-				LOG_INFO("Got SSL_WANT_WRITE on receive, retrying");
-				retry = true;
-				continue;
-			}
-
-			if (res <= 0)
-			{
-				std::string error_msg = "Lost connection (reading message)";
-
-				if (res < 0)
-				{
-					error_msg = "Connection error while reading: " +
-					            NumberFormatter::format(res);
-				}
-				LOG_ERROR("%s", error_msg.c_str());
+				LOG_ERROR("Lost connection (reading message body)");
 				disconnect();
-				ASSERT(false);
+				return false;
+			}
+			if (res < 0)
+			{
+				LOG_ERROR("Socket error on message body read: %d", (int)res);
+				disconnect();
 				return false;
 			}
 		} while (retry && heartbeat());
 
 		m_pending_message.m_buffer_used += res;
-		LOG_DEBUG("Receiving message version=" + NumberFormatter::format(v4_hdr->version) +
-		          " len=" + NumberFormatter::format(msg_len) + " messagetype=" +
-		          NumberFormatter::format(v4_hdr->messagetype) + " received=" +
-		          NumberFormatter::format(m_pending_message.m_buffer_used));
+		LOG_DEBUG("Incoming message version=%d messagetype=%d received=%u / len=%u",
+		          (int)v4_hdr->version,
+		          (int)v4_hdr->messagetype,
+		          m_pending_message.m_buffer_used,
+		          msg_len);
 
 		if (m_pending_message.m_buffer_used > msg_len)
 		{

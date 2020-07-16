@@ -205,7 +205,7 @@ bool file_emitter::create_output_directory()
 
 	if (m_output_dir == "")
 	{
-		LOG_DEBUG("Empty output directoyr, skipping");
+		LOG_DEBUG("Empty output directory, skipping");
 		return false;
 	}
 

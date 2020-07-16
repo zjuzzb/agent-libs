@@ -1,12 +1,26 @@
 
 #include "cm_proxy_tunnel.h"
+#include "cm_socket.h"
 
 #include <common_logger.h>
 
 #include <Poco/Net/StreamSocket.h>
+#include <Poco/Net/SecureStreamSocket.h>
 #include <Poco/NumberFormatter.h>
 #include <Poco/Buffer.h>
 #include <Poco/Base64Encoder.h>
+
+#include <netdb.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <poll.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 #include <cstdint>
 #include <memory>
@@ -19,58 +33,206 @@ COMMON_LOGGER();
 
 const uint32_t http_tunnel::default_chunk_size = 1024;
 
-
-http_tunnel::socket_ptr http_tunnel::connect(const std::string& proxy_host,
-                                             uint16_t proxy_port,
-                                             const std::string& http_connect_message)
+cm_socket::ptr http_tunnel::connect(const std::string& proxy_host,
+                                    uint16_t proxy_port,
+                                    const std::string& http_connect_message)
 {
 	// Connect to the proxy and send the CONNECT method
-	Poco::Net::SocketAddress sa(proxy_host, proxy_port);
-	socket_ptr ssp = std::make_shared<Poco::Net::StreamSocket>();
-	ssp->connect(sa);
-	ssp->sendBytes(http_connect_message.c_str(), http_connect_message.length());
+	cm_socket::ptr sockptr = std::make_shared<cm_poco_socket>();
+	int64_t res;
 
-	// Receive the HTTP response.
-	// We don't actually need all of it, just the status line.
-	Poco::Buffer<char> buf(0);
-	Poco::FIFOBuffer read_buf(default_chunk_size);
-	int res = ssp->receiveBytes(read_buf);
-
-	if (res <= 0)
+	if (!sockptr->connect(proxy_host, proxy_port))
 	{
 		return nullptr;
 	}
-	read_buf.read(buf);
-	buf.append('\0');
 
-	http_response resp = parse_resp(buf);
+	uint32_t sent = 0;
+	uint32_t to_send = http_connect_message.length();
+	while (sent < to_send)
+	{
+		res = sockptr->send((uint8_t*)(http_connect_message.c_str() + sent),
+		                    http_connect_message.length() - sent);
+		if (res == 0)
+		{
+			LOG_ERROR("Connection to proxy unexpectedly terminated");
+			return nullptr;
+		}
+		if (res < 0)
+		{
+			LOG_ERROR("Error when connecting to proxy: %lld", (long long unsigned)res);
+			return nullptr;
+		}
+		sent += res;
+	}
+
+	// Receive the HTTP response
+	std::string proxy_resp;
+	char buf[default_chunk_size] = {};
+	do
+	{
+		res = sockptr->receive((uint8_t*)buf, sizeof(buf) - 1);
+		if (res == 0)
+		{
+			LOG_ERROR("Connection to proxy unexpectedly terminated during response");
+			return nullptr;
+		}
+		else if (res < 0)
+		{
+			LOG_ERROR("Error when reading proxy response: %d", (int)res);
+			return nullptr;
+		}
+
+		proxy_resp.append(buf, res);
+	} while (!is_resp_complete(proxy_resp));
+
+	http_response resp = parse_resp(proxy_resp);
 
 	if (!resp.is_valid)
 	{
 		LOG_ERROR("Received invalid response from proxy server");
+		LOG_DEBUG(proxy_resp);
 		return nullptr;
 	}
 
 	if (resp.resp_code == 407) // Authentication failure
 	{
 		LOG_ERROR("Proxy server authentication failed (error code %u)", resp.resp_code);
+		LOG_DEBUG(proxy_resp);
 		return nullptr;
 	}
 	else if (resp.resp_code != 200)
 	{
 		LOG_ERROR("Proxy server returned non-success error code %u", resp.resp_code);
+		LOG_DEBUG(proxy_resp);
 		return nullptr;
 	}
 
 	LOG_INFO("Connected through HTTP proxy");
 
-	return ssp;
+	return sockptr;
 }
 
-http_tunnel::socket_ptr http_tunnel::establish_tunnel(const std::string& proxy_host,
-                                                      uint16_t proxy_port,
-                                                      const std::string& remote_host,
-                                                      uint16_t remote_port)
+cm_socket::ptr http_tunnel::openssl_connect(const std::string& proxy_host,
+                                            uint16_t proxy_port,
+                                            const std::vector<std::string>& ca_cert_paths,
+                                            const std::string& ssl_ca_certificate,
+                                            const std::string& http_connect_message)
+{
+	Poco::Net::SocketAddress sa(proxy_host, proxy_port); // Cheat and use poco for DNS lookup
+	int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	int res;
+
+	if (sock < 0)
+	{
+		LOG_ERROR("Error creating socket: %d", sock);
+		return nullptr;
+	}
+
+	res = ::connect(sock, sa.addr(), sa.length());
+
+	if (res != 0)
+	{
+		LOG_ERROR("Could not connect to proxy server %s:%uh", proxy_host.c_str(), proxy_port);
+		return nullptr;
+	}
+
+	// Send the proxy connect message
+	uint32_t sent = 0;
+	uint32_t to_send = http_connect_message.length();
+	while (sent < to_send)
+	{
+		res = write(sock,
+		            http_connect_message.c_str() + sent,
+		            http_connect_message.length() - sent);
+
+		if (res == 0)
+		{
+			LOG_ERROR("Connection to proxy unexpectedly terminated");
+			return nullptr;
+		}
+		if (res < 0)
+		{
+			LOG_ERROR("Error when connecting to proxy: %d", res);
+			return nullptr;
+		}
+		sent += res;
+	}
+
+	// Read the HTTP response from the proxy
+	std::string proxy_resp;
+	char buf[default_chunk_size] = {};
+	do
+	{
+		res = read(sock, (uint8_t*)buf, sizeof(buf) - 1);
+		if (res == 0)
+		{
+			LOG_ERROR("Connection to proxy unexpectedly terminated during response");
+			return nullptr;
+		}
+		else if (res < 0)
+		{
+			LOG_ERROR("Error when reading proxy response: %d", (int)res);
+			return false;
+		}
+
+		proxy_resp.append(buf, res);
+	} while (!is_resp_complete(proxy_resp));
+
+	http_response resp = parse_resp(proxy_resp);
+
+	if (!resp.is_valid)
+	{
+		LOG_ERROR("Received invalid response from proxy server");
+		LOG_DEBUG(proxy_resp);
+		return nullptr;
+	}
+
+	if (resp.resp_code == 407) // Authentication failure
+	{
+		LOG_ERROR("Proxy server authentication failed (error code %u)", resp.resp_code);
+		LOG_DEBUG(proxy_resp);
+		return nullptr;
+	}
+	else if (resp.resp_code != 200)
+	{
+		LOG_ERROR("Proxy server returned non-success error code %u", resp.resp_code);
+		LOG_DEBUG(proxy_resp);
+		return nullptr;
+	}
+
+	// Once we've fully read the HTTP response, the socket magically becomes a tunnel
+	// to the remote endpoint. Wrap the socket in a cm_socket to keep it warm and cozy
+	// and send it on its way.
+	LOG_INFO("Setting up SSL connection");
+	auto oss = std::make_shared<cm_openssl_socket>(ca_cert_paths, ssl_ca_certificate);
+	if (oss->connect(sock, proxy_host) && oss->is_valid())
+	{
+		LOG_INFO("Connected through HTTP proxy");
+		return oss;
+	}
+	return nullptr;
+}
+
+cm_socket::ptr http_tunnel::establish_tunnel(const proxy_connection conn)
+{
+	std::string connect_string = build_proxy_connect_string(conn);
+	LOG_INFO("Attempting to connect to proxy server %s:%u",
+	         conn.proxy_host.c_str(),
+	         conn.proxy_port);
+	LOG_TRACE(connect_string);
+
+	if (conn.ssl)
+	{
+		return openssl_connect(conn.proxy_host,
+		                       conn.proxy_port,
+		                       conn.ca_cert_paths,
+		                       conn.ssl_ca_certificate,
+		                       connect_string);
+	}
+	return connect(conn.proxy_host, conn.proxy_port, connect_string);
+}
+
+std::string http_tunnel::build_proxy_connect_string(const http_tunnel::proxy_connection& conn)
 {
 	// Build a connection string that looks like:
 	//
@@ -79,62 +241,29 @@ http_tunnel::socket_ptr http_tunnel::establish_tunnel(const std::string& proxy_h
 	// Content-Length: 0
 	// Connection: Keep-Alive
 	// Pragma: no-cache
-	std::string port_str = Poco::NumberFormatter::format(remote_port);
-	std::stringstream connect_stream;
-	connect_stream << "CONNECT " <<
-	                  remote_host << ":" << port_str <<
-	                  " HTTP/1.0\r\n" <<
-	                  "Host: " << remote_host << ":" << port_str << "\r\n" <<
-	                  "Content-Length: 0\r\n" <<
-	                  "Connection: Keep-Alive\r\n" <<
-	                  "Pragma: no-cache\r\n\r\n";
-	std::string connect_string = connect_stream.str();
-
-	LOG_INFO("Attempting to connect to proxy server %s:%u", proxy_host.c_str(), proxy_port);
-	LOG_TRACE(connect_string);
-
-	return connect(proxy_host, proxy_port, connect_string);
-}
-
-http_tunnel::socket_ptr http_tunnel::establish_tunnel(const std::string& proxy_host,
-                                                      uint16_t proxy_port,
-                                                      const std::string& remote_host,
-                                                      uint16_t remote_port,
-                                                      const std::string& username,
-                                                      const std::string& password)
-{
-	// Build a connection string that looks like:
-	//
-	// CONNECT app.sysdigcloud.com:6667 HTTP/1.0
-	// Host: app.sysdigcloud.com:6667
 	// Proxy-Authorization: Basic c3lzZGlnOnBhc3N3b3Jk
-	// Content-Length: 0
-	// Connection: Keep-Alive
-	// Pragma: no-cache
-	std::string port_str = Poco::NumberFormatter::format(remote_port);
-	std::string auth_str = encode_auth(username, password);
 	std::stringstream connect_stream;
-	connect_stream << "CONNECT " <<
-	                  remote_host << ":" << port_str <<
-	                  " HTTP/1.0\r\n" <<
-	                  "Host: " << remote_host << ":" << port_str << "\r\n" <<
-	                  "Proxy-Authorization: Basic " << auth_str << "\r\n" <<
-	                  "Content-Length: 0\r\n" <<
-	                  "Connection: Keep-Alive\r\n" <<
-	                  "Pragma: no-cache\r\n\r\n";
-	std::string connect_string = connect_stream.str();
+	connect_stream << "CONNECT "
+	               << conn.remote_host << ":" << conn.remote_port << " HTTP/1.0\r\n"
+	               << "Host: " << conn.remote_host << ":" << conn.remote_port << "\r\n"
+	               << "Content-Length: 0\r\n"
+	               << "Connection: Keep-Alive\r\n"
+	               << "Pragma: no-cache\r\n";
+	if (!conn.username.empty())
+	{
+		std::string auth_str = encode_auth(conn.username, conn.password);
+		connect_stream << "Proxy-Authorization: Basic " << auth_str << "\r\n";
+	}
+	connect_stream << "\r\n";
 
-	LOG_INFO("Attempting to connect to proxy server %s:%u", proxy_host.c_str(), proxy_port);
-	LOG_TRACE(connect_string);
-
-	return connect(proxy_host, proxy_port, connect_string);
+	return connect_stream.str();
 }
 
-bool http_tunnel::is_resp_complete(const Poco::Buffer<char>& buf)
+bool http_tunnel::is_resp_complete(uint8_t* buf, uint32_t len)
 {
 	// According to RFC 2616, the response will end with two CRLF sequences
 	const char search_str[4] = {'\r', '\n', '\r', '\n'};
-	for(uint32_t i = 4; i <= buf.size(); ++i)
+	for(uint32_t i = 4; i <= len; ++i)
 	{
 		if (memcmp(search_str, &buf[i - 4], 4) == 0)
 		{
@@ -142,6 +271,13 @@ bool http_tunnel::is_resp_complete(const Poco::Buffer<char>& buf)
 		}
 	}
 	return false;
+}
+
+bool http_tunnel::is_resp_complete(std::string buf)
+{
+	// According to RFC 2616, the response will end with two CRLF sequences
+	const char search_str[4] = {'\r', '\n', '\r', '\n'};
+	return buf.rfind(search_str, std::string::npos, sizeof(search_str)) != std::string::npos;
 }
 
 
@@ -152,7 +288,7 @@ bool http_tunnel::is_resp_complete(const Poco::Buffer<char>& buf)
 // HTTP-Version   = "HTTP" "/" 1*DIGIT "." 1*DIGIT
 // Status-Line = HTTP-Version SP Status-Code SP Reason-Phrase CRLF
 // After that, it's just headers (which we ignore)
-http_tunnel::http_response http_tunnel::parse_resp(const Poco::Buffer<char>& buf)
+http_tunnel::http_response http_tunnel::parse_resp(const std::string& resp_str)
 {
 	enum
 	{
@@ -169,9 +305,9 @@ http_tunnel::http_response http_tunnel::parse_resp(const Poco::Buffer<char>& buf
 	// Response will be an HTTP status line, then some other headers
 	// we don't care about, then \r\n\r\n
 
-	for (uint32_t i = 0; i < buf.size(); ++i)
+	for (uint32_t i = 0; i < resp_str.length(); ++i)
 	{
-		char ch = buf[i];
+		char ch = resp_str[i];
 		switch(state)
 		{
 		case VERSION:
@@ -194,7 +330,7 @@ http_tunnel::http_response http_tunnel::parse_resp(const Poco::Buffer<char>& buf
 			// Next is the status code. It should be just a number.
 			if (ch == '\r')
 			{
-				if (i < buf.size() + 1 && buf[i + 1] != '\n')
+				if (i < resp_str.length() - 1 && resp_str[i + 1] != '\n')
 				{
 					goto parse_error;
 				}
@@ -228,7 +364,7 @@ http_tunnel::http_response http_tunnel::parse_resp(const Poco::Buffer<char>& buf
 			// server couldn't connect.
 			if (ch == '\r')
 			{
-				if (i < buf.size() + 1 && buf[i + 1] != '\n')
+				if (i < resp_str.length() - 1 && resp_str[i + 1] != '\n')
 				{
 					goto parse_error;
 				}
