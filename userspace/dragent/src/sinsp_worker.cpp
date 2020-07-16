@@ -616,26 +616,28 @@ void sinsp_worker::run()
 		m_job_requests_interval.run([this, should_dump]() { process_job_requests(should_dump); },
 		                            ts);
 
-		if (!m_inspector->is_capture() && (ts > m_next_iflist_refresh_ns) &&
-		    !m_aws_metadata_refresher.is_running())
-		{
-			ThreadPool::defaultPool().start(m_aws_metadata_refresher, "aws_metadata_refresher");
-			m_next_iflist_refresh_ns =
-			    sinsp_utils::get_current_time_ns() + IFLIST_REFRESH_TIMEOUT_NS;
-		}
-		if (m_aws_metadata_refresher.done())
-		{
-			g_log->information("Refresh network interfaces list");
-			m_inspector->refresh_ifaddr_list();
-			if (m_configuration->m_aws_metadata.m_public_ipv4)
+		if(dragent_configuration::c_enable_aws_metadata.get_value()) {
+			if (!m_inspector->is_capture() && (ts > m_next_iflist_refresh_ns) &&
+			    !m_aws_metadata_refresher.is_running())
 			{
-				sinsp_ipv4_ifinfo aws_interface(m_configuration->m_aws_metadata.m_public_ipv4,
-				                                m_configuration->m_aws_metadata.m_public_ipv4,
-				                                m_configuration->m_aws_metadata.m_public_ipv4,
-				                                "aws");
-				m_inspector->import_ipv4_interface(aws_interface);
+				ThreadPool::defaultPool().start(m_aws_metadata_refresher, "aws_metadata_refresher");
+				m_next_iflist_refresh_ns =
+					sinsp_utils::get_current_time_ns() + IFLIST_REFRESH_TIMEOUT_NS;
 			}
-			m_aws_metadata_refresher.reset();
+			if (m_aws_metadata_refresher.done())
+			{
+				g_log->information("Refresh network interfaces list");
+				m_inspector->refresh_ifaddr_list();
+				if (m_configuration->m_aws_metadata.m_public_ipv4)
+				{
+					sinsp_ipv4_ifinfo aws_interface(m_configuration->m_aws_metadata.m_public_ipv4,
+									m_configuration->m_aws_metadata.m_public_ipv4,
+									m_configuration->m_aws_metadata.m_public_ipv4,
+									"aws");
+					m_inspector->import_ipv4_interface(aws_interface);
+				}
+				m_aws_metadata_refresher.reset();
+			}
 		}
 
 #ifndef CYGWING_AGENT

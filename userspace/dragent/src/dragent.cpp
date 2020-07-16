@@ -1080,7 +1080,9 @@ int dragent_app::sdagent_main()
 	// Load the configuration
 	//
 	m_configuration.refresh_machine_id();
-	m_configuration.refresh_aws_metadata();
+	if(dragent_configuration::c_enable_aws_metadata.get_value()) {
+		m_configuration.refresh_aws_metadata();
+	}
 	m_configuration.print_configuration();
 
 	if (m_configuration.load_error())
@@ -1619,7 +1621,9 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	}
 
 	sconfig->set_version(AGENT_VERSION);
-	sconfig->set_instance_id(m_configuration.m_aws_metadata.m_instance_id);
+	if(dragent_configuration::c_enable_aws_metadata.get_value()) {
+		sconfig->set_instance_id(m_configuration.m_aws_metadata.m_instance_id);
+	}
 	sconfig->set_protocols_truncation_size(m_configuration.m_protocols_truncation_size);
 	analyzer->set_fs_usage_from_external_proc(m_configuration.m_system_supports_containers);
 

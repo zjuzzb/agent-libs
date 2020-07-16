@@ -36,6 +36,13 @@ type_config<std::string> dragent_configuration::c_root_dir(
     "the root directory for all logs and other artifacts",
     "rootdir");
 
+// By default we query aws endpoint 169.254.169.254 to get aws metadata
+// This config option allows us to turn that on/off
+type_config<bool> dragent_configuration::c_enable_aws_metadata(
+	true,
+	"Enables metadata collection from aws local endpoint",
+	"collect_aws_metadata");
+
 namespace
 {
 std::string bool_as_text(bool b)

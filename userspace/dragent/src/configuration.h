@@ -457,6 +457,8 @@ public:
 
 	void set_auto_config_directory(const std::string &config_directory);
 
+	static type_config<bool> c_enable_aws_metadata;
+
 private:
 	inline static bool is_executable(const std::string& path);
 	void write_statsite_configuration();
