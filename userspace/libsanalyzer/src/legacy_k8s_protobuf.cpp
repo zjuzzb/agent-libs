@@ -46,11 +46,20 @@ void fill_common(const uid_set_t& parents,
 			}
 			else
 			{
-				LOG_NOTICE("ignoring tag <%s> = <%s> for %s %s",
-				           tag_name.c_str(),
-				           tag_value.c_str(),
-				           kind.c_str(),
-				           id.c_str());
+				static std::unordered_map<std::string, ratelimit> ignored_tags;
+				auto it = ignored_tags.find(tag_name);
+				if(it == ignored_tags.end())
+				{
+					ignored_tags[tag_name] = ratelimit(1, LOG_INTERVAL_NSEC);
+				}
+				ignored_tags[tag_name].run([&]
+							   {
+								   LOG_NOTICE("ignoring tag <%s> = <%s> for %s %s",
+									      tag_name.c_str(),
+									      tag_value.c_str(),
+									      kind.c_str(),
+									      id.c_str());
+							   });
 			}
 		}
 	}
