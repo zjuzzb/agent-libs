@@ -63,6 +63,7 @@ public:
 #else
 	sinsp_procfs_parser(sinsp* inspector, uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture, uint64_t ttl_s_cou, uint64_t ttl_s_mem);
 #endif	
+        void init_proc_stat(sinsp_proc_stat* proc_stat) const;
 	void get_proc_stat(OUT sinsp_proc_stat* proc_stat);
 	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap, int64_t* avail_swap);
 
@@ -180,6 +181,23 @@ private:
 	friend class test_helper;
 #endif // CYGWING_AGENT
 };
+
+inline void sinsp_procfs_parser::init_proc_stat(sinsp_proc_stat* proc_stat) const
+{
+	proc_stat->m_user.clear();
+	proc_stat->m_nice.clear();
+	proc_stat->m_system.clear();
+	proc_stat->m_idle.clear();
+	proc_stat->m_iowait.clear();
+	proc_stat->m_irq.clear();
+	proc_stat->m_softirq.clear();
+	proc_stat->m_steal.clear();
+	proc_stat->m_loads.clear();
+#ifdef CYGWING_AGENT
+	proc_stat->m_btime = 0;
+	proc_stat->m_uptime = 0;
+#endif
+}
 
 #ifndef CYGWING_AGENT
 inline void sinsp_procfs_parser::lookup_memory_cgroup_dir()

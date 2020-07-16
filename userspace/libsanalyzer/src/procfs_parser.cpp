@@ -207,15 +207,7 @@ void sinsp_procfs_parser::get_proc_stat(OUT sinsp_proc_stat* proc_stat)
 	ASSERT(proc_stat);
 
 	char line[512];
-	proc_stat->m_user.clear();
-	proc_stat->m_nice.clear();
-	proc_stat->m_system.clear();
-	proc_stat->m_idle.clear();
-	proc_stat->m_iowait.clear();
-	proc_stat->m_irq.clear();
-	proc_stat->m_softirq.clear();
-	proc_stat->m_steal.clear();
-	proc_stat->m_loads.clear();
+	init_proc_stat(proc_stat);
 
 	if (!m_is_live_capture)
 	{
@@ -251,6 +243,10 @@ void sinsp_procfs_parser::get_proc_stat(OUT sinsp_proc_stat* proc_stat)
 			if (!get_cpus_load(proc_stat, line, j))
 			{
 				ASSERT(false);
+				// Some cpu lines may have been succesfully
+				// consumed before an error is encountered.
+				// Do init_proc_stat() to clear partial data.
+				init_proc_stat(proc_stat);
 				break;
 			}
 		}
@@ -273,17 +269,7 @@ void sinsp_procfs_parser::get_proc_stat(OUT sinsp_proc_stat* proc_stat)
 	fclose(f);
 	ASSERT(!proc_stat->m_loads.size() || proc_stat->m_loads.size() == m_ncpus);
 #else
-	proc_stat->m_user.clear();
-	proc_stat->m_nice.clear();
-	proc_stat->m_system.clear();
-	proc_stat->m_idle.clear();
-	proc_stat->m_iowait.clear();
-	proc_stat->m_irq.clear();
-	proc_stat->m_softirq.clear();
-	proc_stat->m_steal.clear();
-	proc_stat->m_loads.clear();
-	proc_stat->m_btime = 0;
-	proc_stat->m_uptime = 0;
+	init_proc_stat(proc_stat);
 
 	wh_cpulist clist = wh_wmi_get_cpus(m_whhandle);
 	if (clist.m_result == 0)
