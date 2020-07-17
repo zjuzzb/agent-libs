@@ -82,7 +82,9 @@ class Prometheus(AgentCheck):
         try:
             for family in metrics:
                 parse_sum = None
+                parse_sum_tags = None
                 parse_count = None
+                parse_count_tags = None
                 if max_metrics and self.__check_metric_limits(max_metrics, num, pid, query_url):
                     break
 
@@ -135,12 +137,17 @@ class Prometheus(AgentCheck):
                         hist_entry = hists.get(hkey)
 
                     # First handle summary
-                    # Unused, see above
                     if family.type == 'histogram' or family.type == 'summary':
                         if sname == name + '_sum':
                             parse_sum = value
+                            parse_sum_tags = tags
                         elif sname == name + '_count':
                             parse_count = value
+                            parse_count_tags = tags
+
+                            # Reporting .count separately from .avg as _sum isn't guaranteed to come
+                            self.rate(name+".count", parse_count, tags + conf_tags)
+                            num += 1
                         else:
                             if (family.type == 'histogram'):
                                 if (ret_histograms == False) or ('le' not in stags):
@@ -159,7 +166,7 @@ class Prometheus(AgentCheck):
                                 num += 1
                                 continue
 
-                        if parse_sum != None and parse_count != None:
+                        if parse_sum != None and parse_count != None and parse_sum_tags == parse_count_tags:
                             prev = self.metric_history.get(name+str(tags), None)
                             val = None
                             # The average value over our sample period is:
@@ -177,15 +184,17 @@ class Prometheus(AgentCheck):
                             if val != None and not math.isnan(val):
                                 # logging.debug('prom: Adding diff-avg %s%s = %s' %(name, repr(tags), str(val)))
                                 self.gauge(name+".avg", val, tags + conf_tags)
+                                # Not incrementing num as we never counted both .count and .avg
+                                # before and we already incremented for the .count above.
 
-                            self.rate(name+".count", parse_count, tags + conf_tags)
                             self.metric_history[name+str(tags)] = { "sum":parse_sum, "count":parse_count }
                             # reset refs to sum and count samples in order to
                             # have them point to other segments within the same
                             # family
                             parse_sum = None
+                            parse_sum_tags = None
                             parse_count = None
-                            num += 1
+                            parse_count_tags = None
                     elif (family.type == 'counter') and (not math.isnan(value)):
                         # logging.debug('prom: adding counter with name %s' %(name))
                         # Reporting sample name as metric name as opposed to
