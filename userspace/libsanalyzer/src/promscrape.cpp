@@ -914,12 +914,11 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 	if (result_ptr->samples().size() > limit)
 	{
 		over_limit = result_ptr->samples().size() - limit;
-		limit = 0;
 	}
 
 	for (const auto &sample : result_ptr->samples())
 	{
-		if(limit <= 0)
+		if(over_limit)
 		{
 			if(!ml_log)
 			{
@@ -1047,12 +1046,11 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 	if (result_ptr->samples().size() > limit)
 	{
 		over_limit = result_ptr->samples().size() - limit;
-		limit = 0;
 	}
 
 	for (const auto &sample : result_ptr->samples())
 	{
-		if(limit <= 0)
+		if(over_limit)
 		{
 			if(!ml_log)
 			{
@@ -1118,37 +1116,37 @@ void promscrape_stats::set_stats(std::string url,
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
-	metric_stats stats = {
-		raw_scraped,
-		raw_job_filter_dropped,
-		raw_over_job_limit,
-		raw_global_filter_dropped,
-		0,
-		calc_scraped,
-		calc_job_filter_dropped,
-		calc_over_job_limit,
-		calc_global_filter_dropped,
-		0,
-		0
-	};
+	if (m_stats_map.find(url) == m_stats_map.end())
+	{
+		metric_stats stats;
+		memset(&stats, 0, sizeof(stats));
+		m_stats_map[url] = std::move(stats);
+	}
 
-	m_stats_map[url] = std::move(stats);
+	m_stats_map[url].raw_scraped = raw_scraped;
+	m_stats_map[url].raw_job_filter_dropped;
+	m_stats_map[url].raw_over_job_limit;
+	m_stats_map[url].raw_global_filter_dropped;
+	m_stats_map[url].calc_scraped;
+	m_stats_map[url].calc_job_filter_dropped;
+	m_stats_map[url].calc_over_job_limit;
+	m_stats_map[url].calc_global_filter_dropped;
 }
 
 void promscrape_stats::add_stats(std::string url, int over_global_limit, int raw_sent, int calc_sent)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
-	auto it = m_stats_map.find(url);
-	if (it == m_stats_map.end())
+	if (m_stats_map.find(url) == m_stats_map.end())
 	{
-		LOG_DEBUG("Ignoring additional stats for endpoint without scraping stats, url: %s", url.c_str());
-		return;
+		metric_stats stats;
+		memset(&stats, 0, sizeof(stats));
+		m_stats_map[url] = std::move(stats);
 	}
 
-	it->second.over_global_limit = over_global_limit;
-	it->second.raw_sent = raw_sent;
-	it->second.calc_sent = calc_sent;
+	m_stats_map[url].over_global_limit = over_global_limit;
+	m_stats_map[url].raw_sent = raw_sent;
+	m_stats_map[url].calc_sent = calc_sent;
 }
 
 void promscrape_stats::log_summary()
