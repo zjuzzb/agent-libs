@@ -123,7 +123,7 @@ func newReplicaSetCongroup(replicaSet coReplicaSet, setLinks bool) (*draiosproto
 
 func addReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet coReplicaSet) {
 	prefix := "kubernetes.replicaset."
-	AppendMetricInt32(metrics, prefix+"status.replicas", replicaSet.Status.Replicas)
+	AppendMetricInt32(metrics, prefix+"status.replicas", replicaSet.Status.ReadyReplicas)
 	AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicaSet.Status.FullyLabeledReplicas)
 	AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicaSet.Status.ReadyReplicas)
 	AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicaSet.Spec.Replicas)
