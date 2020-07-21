@@ -229,6 +229,12 @@ function install_k8s_agent {
 			echo "* Setting CRI socket path"
 			echo "  cri_socket_path: $CRI_SOCKET_PATH" >> $IA_CONFIG_FILE
 		fi
+		if [ ! -z "$CHECK_CERT" ]; then
+			echo "* Setting SSL certificate check level"
+			echo "  ssl_verify_certificate: \"$CHECK_CERT\"" >> $IA_CONFIG_FILE
+		else
+			echo "  ssl_verify_certificate: \"true\"" >> $IA_CONFIG_FILE
+		fi
 
 		kubectl apply -f $IA_CONFIG_FILE --namespace=$NAMESPACE
 	fi
