@@ -152,6 +152,23 @@ private:
 	 */
 	void make_preemit_callbacks();
 
+	/**
+	 * Returns the value for the index field of the metrics protobuf.
+	 *
+	 * The index field is used to provide absolute ordering of all protobufs emitted
+	 * during this run.
+	 *
+	 * The index field has the following semantics:
+	 *  - The index field will be strictly increasing. A protobuf with index x arrived
+	 *    after a protobuf with index y if and only if x > y.
+	 *  - Two protobufs with equal indices are the same protobuf.
+	 *  - Indices start at 1. An index of 0 is invalid.
+	 *
+	 * The above only hold true while the agent process is alive. If the agent restarts,
+	 * the index will be reset to 1.
+	 */
+	uint64_t get_metrics_index() const;
+
 public:
 	/**
 	 * backend has a GLOBAL limit for jmx attributes. there's no
@@ -195,6 +212,7 @@ private:
 	std::mutex m_metrics_request_callbacks_lock;
 	std::vector<metrics_request_cb> m_staged_metrics_request_callbacks;
 	std::vector<metrics_request_cb> m_metrics_request_callbacks;
+	uint64_t m_metrics_index;
 
 	friend class ::test_helper;
 };

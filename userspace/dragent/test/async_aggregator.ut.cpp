@@ -856,3 +856,81 @@ TEST(async_aggregator, flush_interval_zero)
 	aggregator.stop();
 	pool.stop_all();
 }
+
+// Ensure index numbers are set correctly
+TEST(async_aggregator, index)
+{
+	dragent::async_aggregator::queue_t input_queue(10);
+	dragent::async_aggregator::queue_t output_queue(10);
+
+	dragent::async_aggregator aggregator(
+	    input_queue,
+	    output_queue,
+	    // stupid short timeout because aint nobody got time for waiting for cleanup!
+	    1,
+	    10,
+	    "");
+	dragent::watchdog_runnable_pool pool;
+	pool.start(aggregator, 10);
+	std::atomic<bool> sent_metrics(false);
+
+	draiosproto::metrics input;
+	std::string machine_id = "nathanb-box";
+	input.set_machine_id(machine_id);
+
+	input_queue.put(std::make_shared<flush_data_message>(
+	    1,
+	    &sent_metrics,
+	    make_unique<draiosproto::metrics>(input),
+	    1,
+	    2,
+	    3,
+	    4,
+	    5));  // random numbers since we don't propagate those fields
+	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
+	{
+		usleep(1000);
+	}
+
+	ASSERT_EQ(output_queue.size(), 1);
+	std::shared_ptr<flush_data_message> output;
+	bool ret = output_queue.get(&output, 0);
+	ASSERT_TRUE(ret);
+	EXPECT_EQ(output->m_ts, 1);
+	EXPECT_EQ(output->m_metrics_sent, &sent_metrics);
+	EXPECT_EQ(output->m_metrics->machine_id(), machine_id);
+	EXPECT_EQ(output->m_metrics->index(), 1);
+
+	// not applicable to aggregated output
+	EXPECT_EQ(output->m_nevts, 0);
+	EXPECT_EQ(output->m_num_drop_events, 0);
+	EXPECT_EQ(output->m_my_cpuload, 0);
+	EXPECT_EQ(output->m_sampling_ratio, 0);
+	EXPECT_EQ(output->m_n_tids_suppressed, 0);
+
+	input_queue.put(std::make_shared<flush_data_message>(
+	    1,
+	    &sent_metrics,
+	    make_unique<draiosproto::metrics>(input),
+	    1,
+	    2,
+	    3,
+	    4,
+	    5));  // random numbers since we don't propagate those fields
+
+	for (uint32_t i = 0; output_queue.size() == 0 && i < 5000; ++i)
+	{
+		usleep(1000);
+	}
+
+	ASSERT_EQ(output_queue.size(), 1);
+	ret = output_queue.get(&output, 0);
+	ASSERT_TRUE(ret);
+	EXPECT_EQ(output->m_ts, 1);
+	EXPECT_EQ(output->m_metrics_sent, &sent_metrics);
+	EXPECT_EQ(output->m_metrics->machine_id(), machine_id);
+	EXPECT_EQ(output->m_metrics->index(), 2);
+
+	aggregator.stop();
+	pool.stop_all();
+}

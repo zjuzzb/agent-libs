@@ -59,7 +59,8 @@ async_aggregator::async_aggregator(flush_queue& input_queue,
       m_aggregation_interval_source(nullptr),
       m_count_since_flush(0),
       m_aggregation_interval(default_aggregation_interval),
-      m_file_emitter()
+      m_file_emitter(),
+      m_metrics_index(1)
 {
 	m_aggregator = new metrics_message_aggregator_impl(m_builder);
 	m_aggregated_data = std::make_shared<flush_data_message>(0,
@@ -393,6 +394,11 @@ void async_aggregator::do_run()
 					relocate_moved_fields(*m_aggregated_data->m_metrics);
 				}
 
+				// Set the index number for the metrics message
+				m_aggregated_data->m_metrics->set_index(get_metrics_index());
+				// Now increment the stored index
+				++m_metrics_index;
+
 				// SMBACK-4115: BE doesn't properly handle this field when empty, so clear it
 				// for them. This field is "added" when we ask for "mutable_unreported_counters"
 				if (m_aggregated_data->m_metrics->unreported_counters().names().size() == 0)
@@ -462,6 +468,13 @@ void async_aggregator::make_preemit_callbacks()
 			m_aggregator->aggregate(*extra_metrics, *m_aggregated_data->m_metrics, false);
 		}
 	}
+}
+
+uint64_t async_aggregator::get_metrics_index() const
+{
+	ASSERT(m_metrics_index != 0);
+	ASSERT(m_metrics_index != UINT64_MAX);
+	return m_metrics_index;
 }
 
 }  // end namespace dragent

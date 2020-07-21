@@ -24,6 +24,9 @@ using namespace std;
 #include "protocol_handler.h"
 #include "http_server.h"
 #include "running_state_fixture.h"
+#include "async_aggregator.h"
+#include "watchdog_runnable_pool.h"
+#include "utils.h"
 
 #include <Poco/Net/SSLManager.h>
 #include <Poco/Net/NetException.h>
@@ -1937,5 +1940,140 @@ TEST_F(connection_manager_fixture, string_append_test)
 	for (uint32_t i = 0; i < sizeof(buf2); ++i)
 	{
 		ASSERT_EQ(buf2[i], result[sizeof(buf1) + i]);
+	}
+}
+
+// I wrote this test to make sure the index value gets propagated through
+TEST_F(connection_manager_fixture, aggregator_integration_test)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration config;
+	config.init();
+	std::atomic<bool> metrics_sent(false);
+
+	// Create the shared blocking queues
+	flush_queue fqueue(MAX_QUEUE_LEN);
+	protocol_queue pqueue(MAX_QUEUE_LEN);
+	dragent::async_aggregator::queue_t input(MAX_QUEUE_LEN);
+
+	// All the stuff to build a serializer
+	std::shared_ptr<const capture_stats_source> stats_source =
+	    std::make_shared<bogus_capture_stats_source>();
+	protocol_handler ph(pqueue);
+	auto compressor = gzip_protobuf_compressor::get(-1);
+
+	// Create and spin up the fake collector (get an ephemeral port)
+	fake_collector fc(true);
+	fc.start(0);
+
+	ASSERT_GT(fc.get_port(), 0);
+
+	// Set the config for the CM
+	config.m_server_addr = "127.0.0.1";
+	config.m_server_port = fc.get_port();
+	config.m_ssl_enabled = false;
+
+	// Create and spin up the bits
+	connection_manager cm(&config, &pqueue, {5});
+	protobuf_metric_serializer serializer(stats_source,
+	                                      "",
+	                                      ph,
+	                                      &fqueue,
+	                                      &pqueue,
+	                                      compressor,
+	                                      &cm);
+	dragent::async_aggregator aggregator(input,
+	                                     fqueue,
+	                                     1,
+	                                     1,
+	                                     "");
+	dragent::watchdog_runnable_pool pool;
+	std::thread ct([&cm]()
+	{
+		cm.test_run();
+	});
+
+	std::thread st([&serializer]()
+	{
+		serializer.test_run();
+	});
+
+	pool.start(aggregator, 10);
+
+	// Build the test data
+	std::list<draiosproto::metrics> test_data;
+	for (uint32_t i = 0; i < MAX_QUEUE_LEN; ++i)
+	{
+		draiosproto::metrics* m = build_test_metrics(i + 1);
+		m->set_timestamp_ns(sinsp_utils::get_current_time_ns());
+		test_data.push_back(*m);  // save for comparison
+		input.put(std::make_shared<flush_data_message>(
+		                         sinsp_utils::get_current_time_ns(),
+		                         &metrics_sent,
+		                         std::unique_ptr<draiosproto::metrics>(m),
+		                         MAX_QUEUE_LEN,
+		                         0,
+		                         1.0,
+		                         1,
+		                         0));
+
+		// Make sure each message gets sent before processing the next
+		for (uint32_t i = 0; cm.get_sequence() <= i && i < 5000; ++i)
+		{
+			msleep(100);
+		}
+	}
+
+	// wait for all the messages to be processed
+	for (uint32_t i = 0; cm.get_sequence() <= MAX_QUEUE_LEN && i < 5000; ++i)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(cm.get_sequence(), MAX_QUEUE_LEN + 1);
+
+	// Pop the handshake messages off the data queue
+	ASSERT_GT(fc.has_data(), 2);
+	(void)fc.pop_data();
+	(void)fc.pop_data();
+
+	// wait for all the data to be received
+	for (uint32_t i = 0; fc.has_data() < MAX_QUEUE_LEN && i < 5000; ++i)
+	{
+		usleep(1000);
+	}
+
+	ASSERT_EQ(fc.has_data(), MAX_QUEUE_LEN);
+	ASSERT_EQ(0, fc.get_num_disconnects());
+
+	// Shut down all the things
+	running_state::instance().shut_down();
+	fc.stop();
+
+	ct.join();
+	serializer.stop();
+	st.join();
+	aggregator.stop();
+	pool.stop_all();
+
+	// Validate the messages received by the fake collector
+	uint64_t idx = 1;
+	for (auto sent_data : test_data)
+	{
+		ASSERT_TRUE(fc.has_data());
+		fake_collector::buf b = fc.pop_data();
+
+		draiosproto::metrics received_metrics;
+		dragent_protocol::buffer_to_protobuf(b.ptr,
+		                                     b.payload_len,
+		                                     &received_metrics,
+		                                     protocol_compression_method::GZIP);
+
+		EXPECT_EQ(sent_data.timestamp_ns(), received_metrics.timestamp_ns());
+		EXPECT_EQ(sent_data.customer_id(), received_metrics.customer_id());
+		EXPECT_EQ(sent_data.machine_id(), received_metrics.machine_id());
+		EXPECT_EQ(sent_data.index(), received_metrics.index());
+		EXPECT_EQ(idx, received_metrics.index());
+		++idx;
 	}
 }

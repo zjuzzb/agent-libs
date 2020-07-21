@@ -1515,7 +1515,9 @@ bool connection_manager::handle_message()
 			// out of the buffer, bringing us to this point.
 			// It's an unexpected enough condition that we should log it, but
 			// at this point cycling the connection will just make things worse.
-			LOG_WARNING("Protocol error: ACK received for unknown message. Continuing.");
+			LOG_WARNING("Protocol error: ACK received for unknown message (%llu, %llu). Continuing.",
+			            (long long unsigned)ntohll(v5_hdr->generation),
+			            (long long unsigned)ntohll(v5_hdr->sequence));
 			return true;
 		}
 		return true;
