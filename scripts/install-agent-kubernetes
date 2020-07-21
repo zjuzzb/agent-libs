@@ -217,6 +217,13 @@ function install_k8s_agent {
 		# Image Analyzer config map
 		IA_CONFIG_FILE=$WORKDIR/sysdig-image-analyzer-configmap.yaml
 		
+		# If the collector was changed but the analysis manager was not this was
+		# most likely an onprem install, add the default analysis manager for that onprem
+		if [ ! -z "$COLLECTOR" ] && [ -z "$ANALYSIS_MANAGER" ]; then
+			ANALYSIS_MANAGER="https://${COLLECTOR}/internal/scanning/scanning-analysis-collector"
+			echo "* Configuring Analysis Manager endpoint to ${ANALYSIS_MANAGER}. You can also use the -am option to explicitly specify it."
+		fi
+
 		if [ ! -z "$ANALYSIS_MANAGER" ]; then
 			echo "* Setting Analysis Manager endpoint for Image Analyzer"
 			echo "  collector_endpoint: $ANALYSIS_MANAGER" >> $IA_CONFIG_FILE
