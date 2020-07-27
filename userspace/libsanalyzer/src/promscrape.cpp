@@ -1124,13 +1124,13 @@ void promscrape_stats::set_stats(std::string url,
 	}
 
 	m_stats_map[url].raw_scraped = raw_scraped;
-	m_stats_map[url].raw_job_filter_dropped;
-	m_stats_map[url].raw_over_job_limit;
-	m_stats_map[url].raw_global_filter_dropped;
-	m_stats_map[url].calc_scraped;
-	m_stats_map[url].calc_job_filter_dropped;
-	m_stats_map[url].calc_over_job_limit;
-	m_stats_map[url].calc_global_filter_dropped;
+	m_stats_map[url].raw_job_filter_dropped = raw_job_filter_dropped;
+	m_stats_map[url].raw_over_job_limit = raw_over_job_limit;
+	m_stats_map[url].raw_global_filter_dropped = raw_global_filter_dropped;
+	m_stats_map[url].calc_scraped = calc_scraped;
+	m_stats_map[url].calc_job_filter_dropped = calc_job_filter_dropped;
+	m_stats_map[url].calc_over_job_limit = calc_over_job_limit;
+	m_stats_map[url].calc_global_filter_dropped = calc_global_filter_dropped;
 }
 
 void promscrape_stats::add_stats(std::string url, int over_global_limit, int raw_sent, int calc_sent)
