@@ -749,8 +749,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 			m_subprocesses_logger.add_logfd(m_statsite_forwarder_pipe->get_file(),
 			                                sinsp_logger_parser("statsite_forwarder"),
 			                                state);
-			monitor_process.emplace_process("statsite_forwarder", [this]() -> int {
+			monitor_process.emplace_process("statsite_forwarder", [=]() -> int {
+				default_cpu_cgroup.enter();
 				m_statsite_forwarder_pipe->attach_child();
+				g_logger.add_stderr_log();
 				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(),
 				                       libsanalyzer::statsite_config::instance().get_udp_port());
 				return fwd.run();

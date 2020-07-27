@@ -100,9 +100,8 @@ public:
 			// we can switch back to the previous network namespace.
 			nsenter enter(container_pid, "net");
 
-			LOG_DEBUG("Starting statsd server on container=%s pid=%lu",
-				  containerid.c_str(),
-				  container_pid);
+			g_logger.log("Starting statsd server on container=" + containerid
+					+ " pid=" + std::to_string(container_pid));
 
 			m_server = make_unique<statsd_server>(containerid,
 			                                      proxy,
@@ -112,9 +111,8 @@ public:
 		catch(const sinsp_exception& ex)
 		{
 			m_server.reset();
-			LOG_WARNING("Cannot init statsd server on container=%s pid=%lu",
-				    containerid.c_str(),
-				    container_pid);
+			g_logger.log("Warning Cannot init statsd server on container=" + containerid
+					+ " pid=" + std::to_string(container_pid));
 		}
 	}
 
@@ -127,15 +125,13 @@ statsite_forwarder::statsite_forwarder(const std::pair<FILE*, FILE*>& pipes,
 				       const uint16_t port)
 	: m_proxy(make_unique<statsite_proxy>(pipes)),
 	m_inqueue(make_unique<posix_queue>("/sdc_statsite_forwarder_in",
-	                                   posix_queue::RECEIVE,
-	                                   0)),
+					posix_queue::RECEIVE, 1)),
 	m_servers(),
 	m_reactor(),
 	m_exitcode(0),
 	m_port(port),
 	m_terminate(false)
 {
-	g_logger.add_stderr_log();
 }
 
 statsite_forwarder::~statsite_forwarder()
@@ -157,7 +153,7 @@ int statsite_forwarder::run()
 #ifndef CYGWING_AGENT
 	ErrorHandler::set(this);
 
-	LOG_INFO("Info Starting with pid=%d\n", getpid());
+	g_logger.log("Info Starting with pid=" + std::to_string(getpid()));
 
 	Poco::Thread reactor_thread;
 	reactor_thread.start(m_reactor);
@@ -170,19 +166,20 @@ int statsite_forwarder::run()
 		}
 		send_subprocess_heartbeat();
 		auto msg = m_inqueue->receive(1);
+		std::string msg_str(msg.begin(), msg.end());
 
 		if(msg.empty())
 		{
 			continue;
 		}
 
-		LOG_DEBUG("Received msg=%s", &msg[0]);
+		g_logger.log("Received msg=" + msg_str);
 
 		Json::Reader json_reader;
 		Json::Value root;
 		if(!json_reader.parse(&msg[0], &msg[msg.size()], root))
 		{
-			LOG_ERROR("Error parsing msg=%s", &msg[0]);
+			g_logger.log("Error parsing msg=" + msg_str);
 			continue;
 		}
 
@@ -266,7 +263,7 @@ void statsite_forwarder::exception()
 
 void statsite_forwarder::terminate(const int code, const std::string& reason)
 {
-	LOG_ERROR("Fatal error occurred: %s, terminating", reason.c_str());
+	g_logger.log("Error: " + reason + " Fatal, terminating");
 	m_reactor.stop();
 	m_terminate = true;
 	m_exitcode = code;
