@@ -410,7 +410,6 @@ public:
 	bool m_env_audit_tap = true;
 
 	bool m_audit_tap_enabled = false;
-	bool m_audit_tap_emit_local_connections = false;
 
 	std::unordered_map<std::string, std::unordered_map<std::string, std::string>>m_secure_audit_k8s_filters;
 	std::vector<std::string>m_secure_audit_k8s_active_filters;

@@ -1666,7 +1666,7 @@ sinsp_analyzer* dragent_app::build_analyzer(
 
 	if (m_configuration.m_audit_tap_enabled)
 	{
-		analyzer->enable_audit_tap(m_configuration.m_audit_tap_emit_local_connections);
+		analyzer->enable_audit_tap();
 	}
 
 	if (feature_manager::instance().get_enabled(SECURE_AUDIT))

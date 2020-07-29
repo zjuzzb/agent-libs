@@ -199,6 +199,7 @@ public:
 	      m_analyzer(analyzer),
 	      m_n_drops(0)
 	{
+		m_track_pending_connections = m_analyzer.audit_tap_track_pending();
 	}
 	sinsp_connection* add_connection(const TKey& key,
 	                                 std::string* comm,
@@ -227,6 +228,8 @@ public:
 	uint64_t m_last_connection_removal_ts;
 	uint32_t m_n_drops;
 	std::set<double> m_percentiles;
+
+	bool m_track_pending_connections = false;
 
 	using on_new_tcp_connection_cb = std::function<
 	    void(const _ipv4tuple&, sinsp_connection&, sinsp_connection::state_transition)>;
@@ -409,7 +412,7 @@ sinsp_connection* sinsp_connection_manager<TKey, THash, TCompare>::add_connectio
 		conn.m_analysis_flags |= flags;
 	}
 
-	if (!(conn.m_analysis_flags & sinsp_connection::AF_PENDING))
+	if (!(conn.m_analysis_flags & sinsp_connection::AF_PENDING) || m_track_pending_connections)
 	{
 		conn.record_state_transition(timestamp);
 
@@ -420,7 +423,8 @@ sinsp_connection* sinsp_connection_manager<TKey, THash, TCompare>::add_connectio
 		// from client_only/server_only to client_and_server)
 		// Or REUSED connections
 		if (l4proto == SCAP_L4_TCP &&                                  // TCP
-		    !(conn.m_analysis_flags & sinsp_connection::AF_CLOSED) &&  // !CLOSED connection
+			!(conn.m_analysis_flags & sinsp_connection::AF_CLOSED) &&  // !CLOSED connection
+			!(conn.m_analysis_flags & sinsp_connection::AF_PENDING)  &&// !PENDING connection
 		    (new_tuple ||  // New tuple inserted into m_connections map
 		     (conn.m_refcount - prev_refcount ==
 		      1) ||  // 0->1 new connection; 1->2 client_only/server_only -> client_and_server

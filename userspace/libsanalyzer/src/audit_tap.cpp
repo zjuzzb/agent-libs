@@ -147,6 +147,7 @@ void audit_tap::emit_connections(sinsp_ipv4_connection_manager* conn_manager, us
 
 		for (const auto& transition : history)
 		{
+			auto status = conn_status(transition.state, transition.error_code);
 			auto pb_conn = m_event_batch->add_connectionevents();
 
 			pb_conn->set_clientipv4(htonl(iptuple.m_fields.m_sip));
@@ -157,7 +158,7 @@ void audit_tap::emit_connections(sinsp_ipv4_connection_manager* conn_manager, us
 			pb_conn->set_serverport(iptuple.m_fields.m_dport);
 			pb_conn->set_serverpid(connection.m_dpid);
 
-			pb_conn->set_status(conn_status(transition.state, transition.error_code));
+			pb_conn->set_status(status);
 			pb_conn->set_errorcode(transition.error_code);
 			pb_conn->set_timestamp(transition.timestamp / 1000000);
 

@@ -626,8 +626,9 @@ public:
 		m_env_hash_config.m_send_audit_tap = audit_tap;
 	}
 
-	void enable_audit_tap(bool emit_local_connections);
+	void enable_audit_tap();
 	bool audit_tap_enabled() const { return m_tap != nullptr; }
+	bool audit_tap_track_pending() const { return m_tap_track_pending; }
 
 	void enable_secure_audit();
 	bool secure_audit_enabled() const { return m_secure_audit != nullptr; }
@@ -1402,6 +1403,7 @@ public:
 	bool m_dump_global_infrastructure_state_on_next_flush = false;
 
 	std::shared_ptr<audit_tap> m_tap;
+	bool m_tap_track_pending = false;
 	std::shared_ptr<secure_audit> m_secure_audit;
 
 	/**

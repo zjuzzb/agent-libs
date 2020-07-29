@@ -131,6 +131,7 @@ void arg_length_test(const int limit)
 {
 	scoped_config<unsigned int> config("audit_tap.max_command_arg_length", limit);
 	scoped_config<bool> config2("autodrop.enabled", false);
+	scoped_config<bool> config3("audit_tap.emit_local_connections", true);
 
 	const std::string arg_150(150, 'x');
 
@@ -146,7 +147,7 @@ void arg_length_test(const int limit)
 	                        []() -> bool { return true; });
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);
 
-	analyzer.enable_audit_tap(true /*emit local connections*/);
+	analyzer.enable_audit_tap();
 	inspector->register_external_event_processor(analyzer);
 	inspector->open();
 
@@ -175,6 +176,7 @@ void arg_length_test(const int limit)
 TEST(audit_tap_test, basic)
 {
 	scoped_config<bool> config2("autodrop.enabled", false);
+	scoped_config<bool> config3("audit_tap.emit_local_connections", true);
 
 	const int64_t expected_pid = 4;
 	const std::string expected_name = "/usr/bin/gcc";
@@ -202,7 +204,7 @@ TEST(audit_tap_test, basic)
 	// For this test, we don't use the audit_tap in the analyzer, but if
 	// we don't enable it the the ipv4_connection_manager won't record the
 	// correct data.
-	analyzer.enable_audit_tap(true /*emit local connections*/);
+	analyzer.enable_audit_tap();
 	inspector->register_external_event_processor(analyzer);
 	inspector->open();
 

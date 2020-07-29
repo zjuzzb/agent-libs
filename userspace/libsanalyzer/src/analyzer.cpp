@@ -282,6 +282,9 @@ type_config<std::string> c_host_custom_name("", "", "ui", "customname");
 type_config<bool> c_host_hidden(false, "", "ui", "is_hidden");
 type_config<std::string> c_hidden_processes("", "", "ui", "hidden_processes");
 
+type_config<bool> c_audit_tap_emit_local_connections(false, "Track local connections", "audit_tap", "emit_local_connections");
+type_config<bool> c_audit_tap_emit_pending_connections(false, "Track pending connections", "audit_tap", "emit_pending_connections");
+
 }  // end namespace
 
 const uint64_t flush_data_message::NO_EVENT_NUMBER = std::numeric_limits<uint64_t>::max();
@@ -7886,11 +7889,12 @@ uint64_t sinsp_analyzer::flush_tracer_timeout()
 	}
 }
 
-void sinsp_analyzer::enable_audit_tap(bool emit_local_connections)
+void sinsp_analyzer::enable_audit_tap()
 {
-	m_tap = std::make_shared<audit_tap>(&m_env_hash_config,
-	                                    m_configuration->get_machine_id(),
-	                                    emit_local_connections);
+		m_tap_track_pending = c_audit_tap_emit_pending_connections.get_value();
+		m_tap = std::make_shared<audit_tap>(&m_env_hash_config,
+		                                    m_configuration->get_machine_id(),
+		                                    c_audit_tap_emit_local_connections.get_value());
 }
 
 void sinsp_analyzer::enable_secure_audit()

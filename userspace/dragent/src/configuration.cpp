@@ -1161,8 +1161,6 @@ void dragent_configuration::init()
 	m_large_envs = m_config->get_scalar<bool>("enable_large_environments", false);
 
 	m_audit_tap_enabled = m_config->get_scalar<bool>("audit_tap", "enabled", false);
-	m_audit_tap_emit_local_connections =
-	    m_config->get_scalar<bool>("audit_tap", "emit_local_connections", false);
 
 	m_top_files_per_prog = m_config->get_scalar<int>("top_files", "per_program", 0);
 	m_top_files_per_container = m_config->get_scalar<int>("top_files", "per_container", 0);
@@ -1583,11 +1581,6 @@ void dragent_configuration::print_configuration() const
 	if (m_username_lookups)
 	{
 		g_log->information("Username lookups enabled.");
-	}
-
-	if (m_audit_tap_enabled)
-	{
-		LOG_INFO("Auditing local connections: " + bool_as_text(m_audit_tap_emit_local_connections));
 	}
 
 	if (m_track_environment)
