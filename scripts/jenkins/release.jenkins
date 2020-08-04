@@ -303,7 +303,7 @@ pipeline {
 	// this one is promoted
 	stage('Build Probes') {
 		steps {
-			build job: 'sysdig-probe-builder', parameters: [string(name: 'AGENT_RELEASE', value: "${params.RELEASE_VERSION}")]
+			build job: 'agent-probe-builder', parameters: [string(name: 'AGENT_RELEASE', value: "${params.RELEASE_VERSION}")]
 		}
 		post {
 			success {
