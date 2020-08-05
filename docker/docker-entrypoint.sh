@@ -37,14 +37,31 @@ if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
     then
 	echo "* Kernel headers not found in $KERNEL_DIR, continuing anyway" >&2
     else
-	for compile_h in $KERNEL_DIR/include/generated/compile.h $KERNEL_DIR/include/linux/compile.h
-	do
-	    if [ ! -e "$compile_h" ]
-	    then
-		continue
-	    fi
+	# Try to find the gcc version used to build this particular kernel
+	# Check CONFIG_GCC_VERSION=90201 in the kernel config first
+	# as 5.8.0 seems to have a different format for the LINUX_COMPILER string
+	if [ -e $KERNEL_DIR/include/generated/autoconf.h ]
+	then
+		GCC_VERSION=$(grep -Po '(?<=^#define CONFIG_GCC_VERSION ).*' $KERNEL_DIR/include/generated/autoconf.h | sed '-res@(.*)(..)(..)$@\1\.\2\.\3@' '-es@\.0@\.@g')
+	else
+		GCC_VERSION=
+	fi
+	if [ -z "$GCC_VERSION" ]
+	then
+	    for compile_h in $KERNEL_DIR/include/generated/compile.h $KERNEL_DIR/include/linux/compile.h
+	    do
+		if [ ! -e "$compile_h" ]
+		then
+		    continue
+		fi
 
-	    GCC_VERSION=$(grep -Po '(?<=^#define LINUX_COMPILER "gcc version )[0-9.]+' $compile_h)
+		GCC_VERSION=$(grep -Po '(?<=^#define LINUX_COMPILER "gcc version )[0-9.]+' $compile_h)
+		break
+	    done
+	fi
+
+	if [ -n "$GCC_VERSION" ]
+	then
 	    GCC_VERSION="${GCC_VERSION%.*}"
 	    # gcc-4.8 and gcc-4.9 are symlinks to gcc (for legacy Debian kernels)
 	    # so we skip them while trying to find a candidate to point gcc to
@@ -60,11 +77,11 @@ if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
 				else { print older }
 			}
 			')
+
 	    GCC_BINARY=/usr/bin/gcc-$GCC_BINARY
 	    echo "* Will use $GCC_BINARY to build kernel module if needed"
 	    ln -sf $GCC_BINARY /usr/bin/gcc
-	    break
-	done
+	fi
     fi
 fi
 
