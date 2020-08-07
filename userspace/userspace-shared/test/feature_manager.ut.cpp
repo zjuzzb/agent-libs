@@ -70,7 +70,8 @@ public:
 	      fb15(HTTP_STATS, &draiosproto::feature_status::set_http_stats_enabled, {}, fm),
 	      fb16(MYSQL_STATS, &draiosproto::feature_status::set_mysql_stats_enabled, {}, fm),
 	      fb17(POSTGRES_STATS, &draiosproto::feature_status::set_postgres_stats_enabled, {}, fm),
-	      fb18(MONGODB_STATS, &draiosproto::feature_status::set_mongodb_stats_enabled, {}, fm)
+	      fb18(MONGODB_STATS, &draiosproto::feature_status::set_mongodb_stats_enabled, {}, fm),
+	      fb19(MONITOR, &draiosproto::feature_status::set_monitor_enabled, {}, fm)
 	{
 	}
 
@@ -103,7 +104,8 @@ public:
 	      fb15(HTTP_STATS, &draiosproto::feature_status::set_http_stats_enabled, {}, fm),
 	      fb16(MYSQL_STATS, &draiosproto::feature_status::set_mysql_stats_enabled, {}, fm),
 	      fb17(POSTGRES_STATS, &draiosproto::feature_status::set_postgres_stats_enabled, {}, fm),
-	      fb18(MONGODB_STATS, &draiosproto::feature_status::set_mongodb_stats_enabled, {}, fm)
+	      fb18(MONGODB_STATS, &draiosproto::feature_status::set_mongodb_stats_enabled, {}, fm),
+	      fb19(MONITOR, &draiosproto::feature_status::set_monitor_enabled, {}, fm)
 	{
 	}
 
@@ -126,6 +128,7 @@ public:
 	feature_base fb16;
 	feature_base fb17;
 	feature_base fb18;
+	feature_base fb19;
 };
 
 }  // namespace
@@ -245,6 +248,10 @@ TEST(feature_manager, base_initialize_called)
 	                  {},
 	                  fm);
 	feature_base fb18(MONGODB_STATS,
+	                  &draiosproto::feature_status::set_mongodb_stats_enabled,
+	                  {},
+	                  fm);
+	feature_base fb19(MONITOR,
 	                  &draiosproto::feature_status::set_mongodb_stats_enabled,
 	                  {},
 	                  fm);
@@ -1927,6 +1934,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.postgres_stats_enabled());
 		EXPECT_FALSE(proto.mongodb_stats_enabled());
 		EXPECT_FALSE(proto.custom_config());
+		EXPECT_TRUE(proto.monitor_enabled());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "none");
@@ -1961,6 +1969,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.postgres_stats_enabled());
 		EXPECT_FALSE(proto.mongodb_stats_enabled());
 		EXPECT_FALSE(proto.custom_config());
+		EXPECT_TRUE(proto.monitor_enabled());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "essentials");
@@ -1988,6 +1997,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.postgres_stats_enabled());
 		EXPECT_FALSE(proto.mongodb_stats_enabled());
 		EXPECT_FALSE(proto.custom_config());
+		EXPECT_TRUE(proto.monitor_enabled());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "troubleshooting");
@@ -2015,5 +2025,35 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_TRUE(proto.postgres_stats_enabled());
 		EXPECT_TRUE(proto.mongodb_stats_enabled());
 		EXPECT_FALSE(proto.custom_config());
+		EXPECT_TRUE(proto.monitor_enabled());
 	}
+	{
+		test_helpers::scoped_config<std::string> mode("feature.mode", "secure");
+		EXPECT_TRUE(fm.initialize());
+		draiosproto::feature_status proto;
+		fm.to_protobuf(proto);
+		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::secure);
+		EXPECT_FALSE(proto.prometheus_enabled());
+		EXPECT_TRUE(proto.statsd_enabled());
+		EXPECT_FALSE(proto.jmx_enabled());
+		EXPECT_FALSE(proto.app_checks_enabled());
+		EXPECT_TRUE(proto.cointerface_enabled());
+		EXPECT_TRUE(proto.driver_enabled());
+		EXPECT_FALSE(proto.secure_enabled());
+		EXPECT_FALSE(proto.commandline_capture_enabled());
+		EXPECT_FALSE(proto.baseliner_enabled());
+		EXPECT_FALSE(proto.memdump_enabled());
+		EXPECT_FALSE(proto.secure_audit_enabled());
+		EXPECT_TRUE(proto.full_syscalls_enabled());
+		EXPECT_FALSE(proto.network_breakdown_enabled());
+		EXPECT_FALSE(proto.file_breakdown_enabled());
+		EXPECT_FALSE(proto.protocol_stats_enabled());
+		EXPECT_FALSE(proto.http_stats_enabled());
+		EXPECT_FALSE(proto.mysql_stats_enabled());
+		EXPECT_FALSE(proto.postgres_stats_enabled());
+		EXPECT_FALSE(proto.mongodb_stats_enabled());
+		EXPECT_FALSE(proto.custom_config());
+		EXPECT_FALSE(proto.monitor_enabled());
+	}
+
 }

@@ -488,6 +488,8 @@ private:
 class message_aggregator_builder_impl : public message_aggregator_builder
 {
 public:
+	message_aggregator_builder_impl(bool in_should_aggregate_metrics = true);
+
 	virtual agent_message_aggregator<draiosproto::process_details>& build_process_details() const;
 	virtual agent_message_aggregator<draiosproto::process>& build_process() const;
 	virtual agent_message_aggregator<draiosproto::metrics>& build_metrics() const;
@@ -507,4 +509,9 @@ public:
 	virtual agent_message_aggregator<draiosproto::program>& build_program() const;
 	virtual agent_message_aggregator<draiosproto::environment>& build_environment() const;
 	virtual agent_message_aggregator<draiosproto::jmx_attribute>& build_jmx_attribute() const;
+
+	bool should_aggregate_metrics() const override;
+
+private:
+	bool m_should_aggregate_metrics;
 };

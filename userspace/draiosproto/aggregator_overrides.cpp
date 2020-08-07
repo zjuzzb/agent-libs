@@ -1171,3 +1171,14 @@ message_aggregator_builder_impl::build_jmx_attribute() const
 {
 	return *(new jmx_attribute_message_aggregator_impl(*this));
 }
+
+bool message_aggregator_builder_impl::should_aggregate_metrics() const
+{
+	return m_should_aggregate_metrics;
+}
+
+message_aggregator_builder_impl::message_aggregator_builder_impl(bool should_aggregate_metrics)
+	: message_aggregator_builder(),
+	  m_should_aggregate_metrics(should_aggregate_metrics)
+{
+}

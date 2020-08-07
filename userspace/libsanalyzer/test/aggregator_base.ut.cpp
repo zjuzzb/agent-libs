@@ -802,3 +802,41 @@ TEST(aggregator_base, repeated_message_unique_in_place)
 
 	delete output;
 }
+
+// This test checks that if we create an aggregator to not aggregate metrics,
+// that metrics don't get aggregated, but metadata does
+TEST(aggregator_base, should_aggregate_metrics)
+{
+	message_aggregator_builder_impl builder(false);
+	host_message_aggregator aggregator(builder);
+	auto input = new draiosproto::host();
+	input->set_hostname("foo");
+	input->add_cpu_loads(1);
+	input->add_cpu_loads(2);
+	input->set_num_cpus(3);
+	auto output = new draiosproto::host();
+	aggregator.aggregate(*input, *output, false);
+	EXPECT_EQ(output->hostname(), "foo");
+	EXPECT_EQ(output->cpu_loads().size(), 0);
+	EXPECT_EQ(output->aggr_cpu_loads().weight(), 0);
+	EXPECT_EQ(output->num_cpus(), 0);
+	EXPECT_EQ(output->aggr_num_cpus().weight(), 0);
+
+	delete input;
+	delete output;
+
+	input = new draiosproto::host();
+	input->set_hostname("foo");
+	input->add_cpu_loads(1);
+	input->add_cpu_loads(2);
+	input->set_num_cpus(3);
+
+	aggregator.aggregate(*input, *input, true);
+	EXPECT_EQ(input->hostname(), "foo");
+	EXPECT_EQ(input->cpu_loads().size(), 0);
+	EXPECT_EQ(input->aggr_cpu_loads().weight(), 0);
+	EXPECT_EQ(input->num_cpus(), 0);
+	EXPECT_EQ(input->aggr_num_cpus().weight(), 0);
+
+	delete input;
+}

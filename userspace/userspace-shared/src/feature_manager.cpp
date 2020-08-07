@@ -27,15 +27,16 @@ const feature_manager::agent_mode_container feature_manager::mode_definitions[] 
       FULL_SYSCALLS,
       PROTOCOL_STATS,
       HTTP_STATS,
-      NETWORK_BREAKDOWN},
+      NETWORK_BREAKDOWN,
+      MONITOR},
      {{"http.url_table_size", config_placeholder_impl<uint32_t>::build(0u)}}},
     {feature_manager::AGENT_MODE_MONITOR_LIGHT,
      "monitor_light",
-     {},
+     {MONITOR},
      {{"http.url_table_size", config_placeholder_impl<uint32_t>::build(0u)}}},
     {feature_manager::AGENT_MODE_ESSENTIALS,
      "essentials",
-     {STATSD, JMX, APP_CHECKS, COINTERFACE, DRIVER, FULL_SYSCALLS},
+     {STATSD, JMX, APP_CHECKS, COINTERFACE, DRIVER, FULL_SYSCALLS, MONITOR},
      {{"http.url_table_size", config_placeholder_impl<uint32_t>::build(0u)}}},
     {feature_manager::AGENT_MODE_TROUBLESHOOTING,
      "troubleshooting",
@@ -51,8 +52,10 @@ const feature_manager::agent_mode_container feature_manager::mode_definitions[] 
       HTTP_STATS,
       MYSQL_STATS,
       POSTGRES_STATS,
-      MONGODB_STATS},
-     {}}};
+      MONGODB_STATS,
+      MONITOR},
+     {}},
+    {feature_manager::AGENT_MODE_SECURE, "secure", {STATSD, COINTERFACE, DRIVER, FULL_SYSCALLS}, {}}};
 
 static_assert(feature_manager::agent_mode::AGENT_MODE_COUNT ==
                   sizeof(feature_manager::mode_definitions) /
@@ -128,14 +131,19 @@ const feature_manager::agent_feature_container feature_manager::feature_configs[
                                                                   "enable collection of mysql stats",
                                                                   "feature",
                                                                   "mysql_stats")},
-	{POSTGRES_STATS,        "postgres stats",      feature_config(true,
+	{POSTGRES_STATS,       "postgres stats",       feature_config(true,
                                                                   "enable collection of postgres stats",
                                                                   "feature",
                                                                   "postgres_stats")},
-	{MONGODB_STATS,          "mongodb stats",      feature_config(true,
+	{MONGODB_STATS,        "mongodb stats",        feature_config(true,
                                                                   "enable collection of mongodb stats",
                                                                   "feature",
-                                                                  "mongodb_stats")}
+                                                                  "mongodb_stats")},
+	{MONITOR,              "monitor",              feature_config(true,
+                                                                  "enable metrics",
+                                                                  "feature",
+                                                                  "monitor")}
+
 };
 // clang-format on
 
@@ -203,6 +211,9 @@ static_assert(feature_manager::agent_mode::AGENT_MODE_ESSENTIALS ==
               "agent modes must match");
 static_assert(feature_manager::agent_mode::AGENT_MODE_TROUBLESHOOTING ==
                   (feature_manager::agent_mode)draiosproto::agent_mode::troubleshooting,
+              "agent modes must match");
+static_assert(feature_manager::agent_mode::AGENT_MODE_SECURE ==
+                  (feature_manager::agent_mode)draiosproto::agent_mode::secure,
               "agent modes must match");
 
 bool feature_manager::enable(feature_name feature, bool force)
@@ -518,7 +529,8 @@ bool feature_manager::verify_dependencies()
 		{
 			if (!i.second->verify_dependencies())
 			{
-				std::cerr << "Dependency verification for feature " << feature_configs[i.first].n << " failed.\n";
+				std::cerr << "Dependency verification for feature " << feature_configs[i.first].n
+				          << " failed.\n";
 				return false;
 			}
 		}
@@ -832,6 +844,7 @@ feature_base app_checks_feature(APP_CHECKS,
 feature_base cointerface_feature(COINTERFACE,
                                  &draiosproto::feature_status::set_cointerface_enabled,
                                  {});
+feature_base monitor_feature(MONITOR, &draiosproto::feature_status::set_monitor_enabled, {});
 feature_base driver_feature(DRIVER, &draiosproto::feature_status::set_driver_enabled, {});
 
 feature_base full_syscalls_feature(FULL_SYSCALLS,

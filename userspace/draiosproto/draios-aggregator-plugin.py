@@ -210,8 +210,11 @@ def generate_field_aggregator_function(message_name, field, type_map, aggregatio
     if type_map[field.name] is AGG_TYPE_SINGLE_NUMERIC_AGGREGATED:
         out += """        if (input.has_%(field_name)s())
         {
-            default_aggregate_value<decltype(input.%(field_name)s()),
-                                    decltype(*output.mutable_%(target_name)s())>(input.%(field_name)s(), *output.mutable_%(target_name)s());
+            if (m_builder.should_aggregate_metrics())
+            {
+                default_aggregate_value<decltype(input.%(field_name)s()),
+                                        decltype(*output.mutable_%(target_name)s())>(input.%(field_name)s(), *output.mutable_%(target_name)s());
+            }
             if (in_place) {
                 input.clear_%(field_name)s();
             }
@@ -219,8 +222,11 @@ def generate_field_aggregator_function(message_name, field, type_map, aggregatio
 """ % string_map
 
     if type_map[field.name] is AGG_TYPE_REPEATED_NUMERIC_AGGREGATED:
-        out += """        default_aggregate_list<decltype(input.%(field_name)s()),
-                                                 decltype(*output.mutable_%(target_name)s())>(input.%(field_name)s(), *output.mutable_%(target_name)s());
+        out += """        if (m_builder.should_aggregate_metrics())
+        {
+            default_aggregate_list<decltype(input.%(field_name)s()),
+                                   decltype(*output.mutable_%(target_name)s())>(input.%(field_name)s(), *output.mutable_%(target_name)s());
+        }
         if (in_place) {
             input.clear_%(field_name)s();
         }
@@ -909,6 +915,12 @@ public:
         builder_header.content += """        m_%s_%s_limit(UINT32_MAX)""" % (limit[0], limit[1])
 
     builder_header.content += "\n    {}\n\n"
+
+    #add other one-off virtual functions
+    builder_header.content += """    virtual bool should_aggregate_metrics() const {
+        return true;
+    }
+"""
    
     builder_header.content += """};"""
 

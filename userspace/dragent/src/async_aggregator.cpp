@@ -11,6 +11,7 @@
 #include "async_aggregator.h"
 #include "configuration_manager.h"
 #include "dragent_message_queues.h"
+#include "feature_manager.h"
 #include "metric_store.h"
 #include "type_config.h"
 
@@ -55,7 +56,7 @@ async_aggregator::async_aggregator(flush_queue& input_queue,
       m_queue_timeout_ms(queue_timeout_ms),
       m_input_queue(input_queue),
       m_output_queue(output_queue),
-      m_builder(),
+      m_builder(feature_manager::instance().get_enabled(MONITOR)),
       m_aggregation_interval_source(nullptr),
       m_count_since_flush(0),
       m_aggregation_interval(default_aggregation_interval),
@@ -288,6 +289,7 @@ void async_aggregator::relocate_moved_fields(draiosproto::metrics& metrics)
 		    *(*metrics.mutable_programs())[i].mutable_procinfo()->mutable_protos());
 	}
 }
+
 void async_aggregator::do_run()
 {
 	while (!m_stop_thread && heartbeat())
