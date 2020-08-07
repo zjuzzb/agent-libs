@@ -62,6 +62,10 @@ public class Config {
         return yamlConfig.getSingle("jmx.sampling", 1);
     }
 
+    public int getMaxBeansPerProcess() {
+        return yamlConfig.getSingle("jmx.max_per_process_beans", 300);
+    }
+
     public List<BeanQuery> getDefaultBeanQueries() {
         return defaultBeanQueries;
     }

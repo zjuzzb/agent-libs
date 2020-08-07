@@ -283,6 +283,7 @@ public class Application {
     private MonitoredVM buildMonitoredVM(VMRequest request) {
         final MonitoredVM vm = new MonitoredVM(request);
         vm.addQueries(config.getDefaultBeanQueries());
+        vm.setBeansLimit(config.getMaxBeansPerProcess());
         // Configure VM name if it matches a pattern on configurations
         if(vm.isAvailable()) {
             Map<String, Config.Process> processes = config.getProcesses();

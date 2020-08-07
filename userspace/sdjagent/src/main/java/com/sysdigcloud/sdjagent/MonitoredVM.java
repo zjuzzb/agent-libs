@@ -21,7 +21,7 @@ public class MonitoredVM {
     private static final Logger LOGGER = Logger.getLogger(MonitoredVM.class.getName());
     private static final long BEAN_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes in ms
     private static final long RECONNECTION_TIMEOUT_MS = 1 * 60 * 1000; // 1 minute
-    private static final int BEANS_LIMIT = 300;
+    private int beansLimit = 300;
     private static final ObjectMapper MAPPER = new ObjectMapper();
     /**
      * Default hostname used to connect to JMX, "localhost" does not play well with containers
@@ -241,6 +241,10 @@ public class MonitoredVM {
         return address;
     }
 
+    public void setBeansLimit(int beansLimit) {
+        this.beansLimit = beansLimit;
+    }
+
     public void addQueries(List<Config.BeanQuery> queries) {
         queryList.addAll(queries);
     }
@@ -254,10 +258,12 @@ public class MonitoredVM {
                     matchingBeans.add(new BeanInstance(bean,query.getAttributes()));
                 }
             }
-            if (matchingBeans.size() >= BEANS_LIMIT) {
+            if (matchingBeans.size() >= beansLimit) {
+                LOGGER.warning(String.format("Hit bean limit (%d) for process %d (%s), ignoring further beans", beansLimit, pid, name));
                 break;
             }
         }
+        LOGGER.fine(String.format("Got %d/%d beans for process %d (%s)", matchingBeans.size(), beansLimit, pid, name));
     }
 
     public List<Map<String, Object>> availableMetrics(boolean all) throws IOException {
