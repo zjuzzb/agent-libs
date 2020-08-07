@@ -525,7 +525,12 @@ def create_filter(args):
 def analyze_proto(args, path, filter_f):
     if path.endswith("dam") or args.binary:
         with open(path, "rb") as f:
-            f.seek(2)
+            version = ord(f.read(1))
+            f.read(1) # message type
+            if version == 4:
+                pass
+            elif version == 5:
+                f.read(16) # generation + sequence
             metrics = draios_pb2.metrics.FromString(f.read())
             process_metrics(metrics, filter_f, path)
     elif path.endswith('json'):
