@@ -12,6 +12,7 @@
 #include "configuration_manager.h"
 
 #include <utils.h>
+#include <arpa/inet.h>
 
 using namespace std;
 
@@ -295,8 +296,12 @@ bool prometheus_conf::match_and_fill(const thread_analyzer_info* tinfo,
 
 						// Promscrape can't enter the target namespace and in kubernetes
 						// it probably won't be able to reach the target port through localhost.
+						// Even with plain docker containers we may not be able to access
+						// ports through localhost if a specific IP address has been set
+						// in the container port mappings, which appears to be the default
+						// behavior in Nomad.
 						// If a host or url haven't been explicitly configured,
-						// we look up the pod IP and use that.
+						// we look up either the pod IP or docker Host-IP and use that.
 						if ((params.options.find("host") == params.options.end()) &&
 						    (params.options.find("url") == params.options.end()))
 						{
@@ -304,9 +309,32 @@ bool prometheus_conf::match_and_fill(const thread_analyzer_info* tinfo,
 							if (!podip.empty())
 							{
 								LOG_DEBUG("Prometheus: Found IP address %s for pid %ld",
-								          podip.c_str(),
-								          tinfo->m_pid);
+								          podip.c_str(), tinfo->m_pid);
 								params.options["host"] = std::move(podip);
+							}
+							else
+							{
+								for (const auto& portmap : container->m_port_mappings)
+								{
+									if (portmap.m_host_ip == 0)
+									{
+										continue;
+									}
+									// If no ports are configured pick the first host ip
+									// otherwise pick the one with a matching port
+									if (params.ports.empty() ||
+										(params.ports.find(portmap.m_host_port) !=
+										params.ports.end()))
+									{
+										char addr[32];
+										uint32_t ip = htonl(portmap.m_host_ip);
+										inet_ntop(AF_INET, &ip, addr, sizeof(addr));
+										LOG_DEBUG("Prometheus: Found container IP address %s for pid %ld",
+											addr, tinfo->m_pid);
+										params.options["host"] = std::string(addr);
+										break;
+									}
+								}
 							}
 						}
 					}
