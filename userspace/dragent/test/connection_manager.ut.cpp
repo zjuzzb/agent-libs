@@ -551,7 +551,7 @@ bool test_collector_sends_message(dragent_protocol::protocol_version ver)
 
 	// Send the message
 	bool ret = fc.send_collector_message(draiosproto::message_type::DUMP_REQUEST_START,
-	                                     false,
+	                                     ver,
 	                                     dump_start);
 
 	if (!ret)
@@ -921,7 +921,7 @@ TEST_F(connection_manager_fixture, handshake_version_negotiation_failure)
 	pir.set_customer_id(pi.customer_id());
 	pir.set_protocol_version(3); // Unsupported version number
 	fc.send_collector_message(draiosproto::message_type::PROTOCOL_INIT_RESP,
-	                          false,
+	                          4,
 	                          pir,
 	                          0,
 	                          0,
@@ -1114,7 +1114,7 @@ TEST_F(connection_manager_fixture, legacy_fallback)
 
 	// Send the message
 	bool ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
-	                                     false,
+	                                     dragent_protocol::PROTOCOL_VERSION_NUMBER,
 	                                     err);
 	ASSERT_TRUE(ret);
 
@@ -1210,7 +1210,7 @@ TEST_F(connection_manager_fixture, test_error_message_handler)
 
 	// Send the message
 	bool ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
-	                                     false,
+	                                     dragent_protocol::PROTOCOL_VERSION_NUMBER,
 	                                     err);
 
 	ASSERT_TRUE(ret);
@@ -1312,7 +1312,7 @@ TEST_F(connection_manager_fixture, backoff)
 
 	// Send the message
 	bool ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
-	                                     false,
+	                                     dragent_protocol::PROTOCOL_VERSION_NUMBER,
 	                                     err);
 	ASSERT_TRUE(ret);
 
@@ -1338,7 +1338,7 @@ TEST_F(connection_manager_fixture, backoff)
 	err.set_type(draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY);
 	err.set_description("CM UNIT TEST");
 	ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
-	                                false,
+	                                dragent_protocol::PROTOCOL_VERSION_NUMBER,
 	                                err);
 	ASSERT_TRUE(ret);
 
@@ -1426,7 +1426,7 @@ TEST_F(connection_manager_fixture, backoff_recovery_v4)
 
 	// Send the message
 	bool ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
-	                                     false,
+	                                     dragent_protocol::PROTOCOL_VERSION_NUMBER,
 	                                     err);
 	ASSERT_TRUE(ret);
 
@@ -1467,7 +1467,7 @@ TEST_F(connection_manager_fixture, backoff_recovery_v4)
 	err.set_type(draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY);
 	err.set_description("CM UNIT TEST");
 	ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
-	                                false,
+	                                dragent_protocol::PROTOCOL_VERSION_NUMBER,
 	                                err);
 	ASSERT_TRUE(ret);
 
@@ -2076,4 +2076,102 @@ TEST_F(connection_manager_fixture, aggregator_integration_test)
 		EXPECT_EQ(idx, received_metrics.index());
 		++idx;
 	}
+}
+
+TEST_F(connection_manager_fixture, test_error_message_invalid_version)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration config;
+	config.init();
+
+	// Create and spin up the fake collector (get an ephemeral port)
+	fake_collector fc(true);
+	fc.start(0);
+	ASSERT_NE(0, fc.get_port());
+
+	// Set the config for the CM
+	config.m_server_addr = "127.0.0.1";
+	config.m_server_port = fc.get_port();
+	config.m_ssl_enabled = false;
+
+	// Create the shared blocking queue
+	protocol_queue queue(MAX_QUEUE_LEN);
+
+	// Create and spin up the connection manager
+	const std::string token = "B17EFACE";
+	auto mh = std::make_shared<counting_message_handler>(token);
+	connection_manager cm(&config,
+	                      &queue,
+	                      {5},
+	                      {{draiosproto::message_type::DUMP_REQUEST_START, mh}});
+
+	std::thread t([&cm]()
+	{
+		cm.test_run();
+	});
+
+	// Wait for the connection to be established
+	uint32_t loops = 0;
+	while(cm.get_state() != cm_state_machine::state::STEADY_STATE && loops < 10000)
+	{
+		usleep(1000);
+		++loops;
+	}
+	ASSERT_EQ(cm_state_machine::state::STEADY_STATE, cm.get_state());
+	ASSERT_EQ(0, cm.m_num_invalid_messages);
+
+	// Build a collector message
+	draiosproto::error_message err;
+	err.set_type(draiosproto::error_type::ERR_SERVER_BUSY);
+
+	// Send the message
+	bool ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
+	                                     2,
+	                                     err);
+
+	ASSERT_TRUE(ret);
+
+	loops = 0;
+	while (cm.m_num_invalid_messages == 0 && loops < 10000)
+	{
+		usleep(1000);
+		++loops;
+	}
+	ASSERT_EQ(1, cm.m_num_invalid_messages);
+	ASSERT_EQ(2, fc.has_data());
+
+	// Make sure the agent can still send and receive messages OK
+	auto buf = std::make_shared<serialized_buffer>();
+	buf->ts_ns = sinsp_utils::get_current_time_ns();
+	buf->message_type = draiosproto::message_type::METRICS;
+	buf->buffer = build_test_string(32);
+	queue.put(buf, protocol_queue::BQ_PRIORITY_HIGH);
+
+	for (uint32_t i = 0; fc.has_data() == 2 && i < 5000; ++i)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(fc.has_data(), 3);
+
+	// Build and send a collector message
+	draiosproto::dump_request_start dump_start;
+	dump_start.set_timestamp_ns(sinsp_utils::get_current_time_ns());
+	dump_start.set_machine_id("0");
+	dump_start.set_token(token);
+	ret = fc.send_collector_message(draiosproto::message_type::DUMP_REQUEST_START,
+	                                5,
+	                                dump_start);
+	ASSERT_TRUE(ret);
+	for (uint32_t i = 0; mh->num_received() == 0 && i < 5000; ++i)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(1, mh->num_received());
+	ASSERT_FALSE(mh->has_token_mismatch());
+
+	// Shut down all the things
+	running_state::instance().shut_down();
+	fc.stop();
+	t.join();
 }

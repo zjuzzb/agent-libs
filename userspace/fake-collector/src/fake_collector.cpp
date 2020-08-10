@@ -89,7 +89,7 @@ bool fake_collector::process_auto_response(buf& b)
 		else
 		{
 			send_collector_message(draiosproto::message_type::PROTOCOL_ACK,
-			                       true,
+			                       dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH,
 			                       nullptr,
 			                       0,
 			                       m_last_gen_num,
@@ -153,7 +153,7 @@ bool fake_collector::process_auto_response(buf& b)
 		pir.set_customer_id(pi.customer_id());
 		pir.set_protocol_version(m_working_version);
 		send_collector_message(draiosproto::message_type::PROTOCOL_INIT_RESP,
-							   false,
+		                       dragent_protocol::PROTOCOL_VERSION_NUMBER,
 		                       pir,
 		                       0,
 		                       0,
@@ -206,7 +206,7 @@ bool fake_collector::process_auto_response(buf& b)
 		hr.mutable_agg_context()->set_timestamp_ns(hr.timestamp_ns());
 		hr.mutable_agg_context()->set_machine_id(hr.machine_id());
 		send_collector_message(draiosproto::message_type::PROTOCOL_HANDSHAKE_V1_RESP,
-							   false,
+		                       dragent_protocol::PROTOCOL_VERSION_NUMBER,
 		                       hr,
 		                       0,
 		                       0,
@@ -283,6 +283,11 @@ void fake_collector::thread_loop(int listen_sock_fd, sockaddr_in addr, fake_coll
 			int write_ret = 0;
 			if (b.hdr.v4.version == dragent_protocol::PROTOCOL_VERSION_NUMBER)
 			{
+				write_ret = write(agent_fd, (uint8_t*)&b.hdr, sizeof(b.hdr.v4));
+			}
+			else if (b.hdr.v4.version < dragent_protocol::PROTOCOL_VERSION_NUMBER)
+			{
+				// Handle sending headers with invalid version numbers
 				write_ret = write(agent_fd, (uint8_t*)&b.hdr, sizeof(b.hdr.v4));
 			}
 			else
@@ -543,22 +548,26 @@ read_error:
 }
 
 bool fake_collector::send_collector_message(uint8_t message_type,
-                                            bool v5,
+                                            dragent_protocol::protocol_version version,
                                             uint8_t* buffer,
                                             uint32_t buf_len,
                                             uint64_t generation,
                                             uint64_t sequence)
 {
-	int32_t header_len = v5 ? sizeof(dragent_protocol_header_v5)
-	                             : sizeof(dragent_protocol_header_v4);
+	int32_t header_len = dragent_protocol::header_len(version);
+	if (header_len == 0)
+	{
+		// We were given an invalid version. That's OK, it's probably
+		// for testing. Just use v4.
+		header_len = sizeof(dragent_protocol_header_v4);
+	}
 
 	// Build the header
 	dragent_protocol_header_v5 hdr =
 	{
 	    {
 	        htonl(header_len + buf_len),
-	        v5 ? dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH
-	           : dragent_protocol::PROTOCOL_VERSION_NUMBER,
+	        version,
 	        message_type
 	    },
 	    htonll(generation),

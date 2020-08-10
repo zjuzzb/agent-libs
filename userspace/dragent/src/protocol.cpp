@@ -5,6 +5,12 @@
 
 #include <arpa/inet.h>  // htonl
 
+bool dragent_protocol::version_is_valid(protocol_version ver)
+{
+	return ver == PROTOCOL_VERSION_NUMBER ||
+	       ver == PROTOCOL_VERSION_NUMBER_10S_FLUSH;
+}
+
 std::shared_ptr<serialized_buffer> dragent_protocol::message_to_buffer(uint64_t ts_ns,
     uint8_t message_type,
     const google::protobuf::MessageLite& message,

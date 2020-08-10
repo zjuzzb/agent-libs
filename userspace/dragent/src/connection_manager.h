@@ -368,6 +368,7 @@ public:
 	}
 
 	volatile bool m_timed_out = false;
+	uint32_t m_num_invalid_messages = 0;
 #endif
 
 	uint64_t get_sequence() const
@@ -445,6 +446,18 @@ private:
 	 * @retval  false  Invalid message or not able to be handled
 	 */
 	bool handle_message();
+
+	/**
+	 * Handle a message with an invalid version number.
+	 *
+	 * A message with an invalid version number is a protocol error, but we
+	 * might be able to extract just enough information from it to write a
+	 * useful log message.
+	 *
+	 * @retval  true   Was able to extract enough to process a message
+	 * @retval  false  The message should be considered a failure
+	 */
+	bool handle_invalid_version();
 
 	/**
 	 * Executes a protocol handshake.

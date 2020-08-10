@@ -67,6 +67,8 @@ using protocol_version = uint8_t;
 const protocol_version PROTOCOL_VERSION_NUMBER = 4;
 const protocol_version PROTOCOL_VERSION_NUMBER_10S_FLUSH = 5;
 
+bool version_is_valid(protocol_version ver);
+
 std::shared_ptr<serialized_buffer> message_to_buffer(uint64_t ts_ns,
         uint8_t message_type,
         const google::protobuf::MessageLite& message,

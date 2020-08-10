@@ -1384,6 +1384,13 @@ bool connection_manager::receive_message()
 				{
 					auto* v4_hdr = (dragent_protocol_header_v4*)m_pending_message.m_buffer.begin();
 					bytes_to_read = dragent_protocol::header_len(*v4_hdr);
+					if (bytes_to_read == 0)
+					{
+						// Whoops, invalid version. We'll sort it out later.
+						// The header contains the total length of the message, so
+						// one way or another we're going to get it all read.
+						bytes_to_read = bytes_read;
+					}
 				}
 			}
 
@@ -1488,12 +1495,9 @@ bool connection_manager::handle_message()
 		return false;
 	}
 
-	if (m_pending_message.get_version() != dragent_protocol::PROTOCOL_VERSION_NUMBER &&
-	    m_pending_message.get_version() != dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH)
+	if (!dragent_protocol::version_is_valid(m_pending_message.get_version()))
 	{
-		LOG_ERROR("Protocol error: Received command for incompatible protocol version: " +
-		          NumberFormatter::format(m_pending_message.get_version()));
-		return false;
+		return handle_invalid_version();
 	}
 
 	draiosproto::message_type type =
@@ -1555,6 +1559,70 @@ bool connection_manager::handle_message()
 		return false;
 	}
 	return true;
+}
+
+bool connection_manager::handle_invalid_version()
+{
+#ifdef SYSDIG_TEST
+	++m_num_invalid_messages;
+#endif
+	auto type = static_cast<draiosproto::message_type>(m_pending_message.get_type());
+	dragent_protocol::protocol_version version = m_pending_message.get_version();
+
+	LOG_WARNING("Processing message with invalid version field %d", (int)version);
+
+	if (version > dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH)
+	{
+		// This version is greater than this agent understands. Don't try
+		// to do something with it, as it could be anything.
+		LOG_ERROR("Protocol error: Received command %d for incompatible protocol version %d",
+		          (int)type,
+		          (int)version);
+		return false;
+	}
+
+	// If the backend doesn't know what protocol version this session is it
+	// will send a message with the lowest version it supports, which might
+	// be lower than what the agent supports.
+
+	if (type == draiosproto::message_type::ERROR_MESSAGE)
+	{
+		draiosproto::error_message err_msg;
+		uint32_t header_len = dragent_protocol::header_len(*m_pending_message.v4_header());
+		if (header_len == 0)
+		{
+			auto v = dragent_protocol::PROTOCOL_VERSION_NUMBER;
+			header_len = dragent_protocol::header_len(v);
+		}
+		uint32_t payload_len = m_pending_message.get_total_length() - header_len;
+
+		// Try to handle the error message
+		try
+		{
+			// payload() is invalid thanks to the invalid header length
+			uint8_t* buf = m_pending_message.payload();
+			dragent_protocol::buffer_to_protobuf(&buf[header_len],
+			                                     payload_len,
+			                                     &err_msg);
+		}
+		catch (const dragent_protocol::protocol_error& ex)
+		{
+			// It's a lost cause
+			LOG_ERROR("Protocol error: Received unparseable error message "
+			          "(Type: %d, version %d)",
+			          (int)type,
+			          (int)version);
+			return false;
+		}
+
+		handle_collector_error(err_msg);
+		return true;
+	}
+
+	LOG_ERROR("Protocol error: Received command %d for incompatible protocol version %d",
+	          (int)type,
+	          (int)version);
+	return false;
 }
 
 void connection_manager::on_metrics_send(dragent_protocol_header_v5& header,

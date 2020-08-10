@@ -169,14 +169,14 @@ public:
 	 */
 	template<typename T>
 	bool send_collector_message(uint8_t message_type,
-	                            bool v5,
+	                            dragent_protocol::protocol_version version,
 	                            T& msg,
 	                            uint64_t generation = 0,
 	                            uint64_t sequence = 0,
 	                            protocol_compression_method compression =
 	                                    protocol_compression_method::GZIP);
 	bool send_collector_message(uint8_t message_type,
-	                            bool v5,
+	                            dragent_protocol::protocol_version version,
 	                            uint8_t* buf,
 	                            uint32_t buf_len,
 	                            uint64_t generation = 0,
@@ -298,7 +298,7 @@ private:
 
 template<typename T>
 bool fake_collector::send_collector_message(uint8_t message_type,
-                                            bool v5,
+                                            dragent_protocol::protocol_version version,
                                             T& msg,
                                             uint64_t generation,
                                             uint64_t sequence,
@@ -329,7 +329,7 @@ bool fake_collector::send_collector_message(uint8_t message_type,
 	memcpy(bytes, msg_buf->buffer.c_str(), msg_buf->buffer.length());
 
 	return send_collector_message(message_type,
-	                              v5,
+	                              version,
 	                              bytes,
 	                              msg_buf->buffer.length(),
 	                              generation,
