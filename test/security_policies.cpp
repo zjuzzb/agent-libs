@@ -967,7 +967,11 @@ protected:
 
 		m_enable_k8s_audit_server = true;
 		SetUpTest(false, fake_cri_socket);
+		WaitForK8sAuditServer();
+	}
 
+	void WaitForK8sAuditServer()
+	{
 		int ret = -1;
 
 		for (int i = 0; ret != 0 && i < 20; i++)
@@ -2411,6 +2415,18 @@ TEST_F(security_policies_test_cointerface, falco_k8s_audit)
 TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit)
 {
 	bool v1_metrics = false;
+	return falco_k8s_audit(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_restart_security_mgr)
+{
+	bool v1_metrics = false;
+	// This will cause the security_mgr to reconnect to
+	// cointerface, which will cause the earlier start() to clean
+	// itself up.
+	m_mgr.start_k8s_audit_server();
+	WaitForK8sAuditServer();
+
 	return falco_k8s_audit(this, v1_metrics);
 };
 

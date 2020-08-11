@@ -1,4 +1,7 @@
 #ifndef CYGWING_AGENT
+
+#include <sstream>
+
 #include <google/protobuf/text_format.h>
 
 #include "sinsp_worker.h"
@@ -56,10 +59,7 @@ std::string security_mgr::m_empty_container_id = "";
 
 security_mgr::security_mgr(const string& install_root,
 			   security_result_handler& result_handler)
-	: m_k8s_audit_server_started(false),
-	  m_k8s_audit_server_loaded(false),
-	  m_k8s_audit_server_load_in_progress(false),
-	  m_initialized(false),
+	: m_initialized(false),
 	  m_inspector(NULL),
 	  m_result_handler(result_handler),
 	  m_infra_state(NULL),
@@ -69,7 +69,8 @@ security_mgr::security_mgr(const string& install_root,
 	  m_install_root(install_root),
 	  m_cointerface_sock_path("unix:" + install_root + "/run/cointerface.sock"),
 	  m_last_pid(0),
-	  m_last_security_rules_group(m_null_security_rules)
+	  m_last_security_rules_group(m_null_security_rules),
+	  m_k8s_audit_server_started(false)
 {
 	m_security_evt_metrics = {make_shared<security_evt_metrics>(m_process_metrics), make_shared<security_evt_metrics>(m_container_metrics),
 				  make_shared<security_evt_metrics>(m_readonly_fs_metrics),
@@ -88,7 +89,7 @@ security_mgr::~security_mgr()
 {
 	if (security_config::instance().get_k8s_audit_server_enabled())
 	{
-	    stop_k8s_audit_tasks();
+	    stop_k8s_audit_server();
 	}
 }
 
@@ -126,6 +127,8 @@ void security_mgr::init(sinsp *inspector,
 	// Only check the above every second
 	m_check_periodic_tasks_interval = make_unique<run_on_interval>(1000000000);
 
+	m_check_k8s_audit_start_interval = make_unique<run_on_interval>(security_config::instance().get_k8s_audit_server_refresh_interval());
+
 	m_coclient = make_shared<coclient>(m_install_root);
 
 	m_actions.init(this, m_coclient, m_infra_state);
@@ -137,6 +140,15 @@ void security_mgr::init(sinsp *inspector,
 	}
 	m_metrics.reset();
 	metrics->add_ext_source(&m_metrics);
+
+	m_k8s_audit_events_queue = make_shared<tbb::concurrent_queue<sdc_internal::k8s_audit_event>>();
+
+	m_grpc_channel = libsinsp::grpc_channel_registry::get_channel(m_cointerface_sock_path);
+
+	if (security_config::instance().get_k8s_audit_server_enabled())
+	{
+		start_k8s_audit_server();
+	}
 
 	m_initialized = true;
 }
@@ -747,20 +759,15 @@ void security_mgr::perform_periodic_tasks(uint64_t ts_ns)
 
 		if (security_config::instance().get_k8s_audit_server_enabled())
 		{
-			if(m_k8s_audit_server_load)
-			{
-				m_k8s_audit_server_load->process_queue();
-			}
+			m_check_k8s_audit_start_interval->run([this, ts_ns]()
+                        {
+				if(!m_k8s_audit_server_started)
+				{
+					start_k8s_audit_server();
+				}
+			}, ts_ns);
 
-			if(m_k8s_audit_server_start)
-			{
-				m_k8s_audit_server_start->process_queue();
-			}
-
-			if(!m_k8s_audit_server_loaded && !m_k8s_audit_server_load_in_progress)
-			{
-				load_k8s_audit_server();
-			}
+			check_pending_k8s_audit_events();
 		}
 	}, ts_ns);
 }
@@ -816,6 +823,14 @@ bool security_mgr::should_evaluate_event(gen_event *evt,
 
 void security_mgr::process_event(gen_event *evt)
 {
+	uint64_t ts_ns = evt->get_ts();
+	perform_periodic_tasks(ts_ns);
+
+	return process_event_only(evt);
+}
+
+void security_mgr::process_event_only(gen_event *evt)
+{
 	// Always use v2 policies if available
 	if(m_policies_v2_msg)
 	{
@@ -836,7 +851,6 @@ void security_mgr::process_event_v1(gen_event *evt)
 	}
 
 	uint64_t ts_ns = evt->get_ts();
-	perform_periodic_tasks(ts_ns);
 
 	std::string *container_id_ptr = &m_empty_container_id;
 	sinsp_threadinfo *tinfo = NULL;
@@ -941,8 +955,6 @@ void security_mgr::process_event_v2(gen_event *evt)
 	}
 
 	uint64_t ts_ns = evt->get_ts();
-
-	perform_periodic_tasks(ts_ns);
 
 	std::string *container_id_ptr = &m_empty_container_id;
 	sinsp_threadinfo *tinfo = NULL;
@@ -1703,12 +1715,33 @@ std::shared_ptr<security_mgr::security_rules_group> security_mgr::get_rules_grou
 	return grp;
 };
 
-void security_mgr::load_k8s_audit_server()
+void security_mgr::start_k8s_audit_server()
 {
-	sdc_internal::k8s_audit_server_load load;
-	load.set_tls_enabled(security_config::instance().get_k8s_audit_server_tls_enabled());
-	load.set_url(security_config::instance().get_k8s_audit_server_url());
-	load.set_port(security_config::instance().get_k8s_audit_server_port());
+	auto work =
+		[](std::shared_ptr<grpc::Channel> chan,
+		   shared_k8s_audit_event_queue queue,
+		   sdc_internal::k8s_audit_server_start start)
+	{
+		grpc::ClientContext context;
+		std::unique_ptr<sdc_internal::K8sAudit::Stub> stub = sdc_internal::K8sAudit::NewStub(chan);
+		std::unique_ptr<grpc::ClientReader<sdc_internal::k8s_audit_event>> reader(stub->Start(&context, start));
+
+		sdc_internal::k8s_audit_event ev;
+
+		while(reader->Read(&ev))
+		{
+			queue->push(ev);
+		}
+
+		grpc::Status status = reader->Finish();
+
+		return status;
+	};
+
+	sdc_internal::k8s_audit_server_start start;
+	start.set_tls_enabled(security_config::instance().get_k8s_audit_server_tls_enabled());
+	start.set_url(security_config::instance().get_k8s_audit_server_url());
+	start.set_port(security_config::instance().get_k8s_audit_server_port());
 
 	for(auto path : security_config::instance().get_k8s_audit_server_path_uris())
 	{
@@ -1717,156 +1750,121 @@ void security_mgr::load_k8s_audit_server()
 		{
 			path = "/" + path;
 		}
-		load.add_path_uris(path);
+		start.add_path_uris(path);
 	}
 
 	if (security_config::instance().get_k8s_audit_server_tls_enabled())
 	{
-		sdc_internal::k8s_audit_server_X509 *x509 = load.add_x509();
+		sdc_internal::k8s_audit_server_X509 *x509 = start.add_x509();
 		x509->set_x509_cert_file(security_config::instance().get_k8s_audit_server_x509_cert_file());
 		x509->set_x509_key_file(security_config::instance().get_k8s_audit_server_x509_key_file());
 	}
 
-	auto callback = [this](bool successful, sdc_internal::k8s_audit_server_load_result &lresult)
+	g_log->debug(string("Sending start message to K8s Audit Server: ") + start.DebugString());
+	m_k8s_audit_server_start_future = std::async(std::launch::async, work, m_grpc_channel, m_k8s_audit_events_queue, start);
+	m_k8s_audit_server_started = true;
+}
+
+void security_mgr::check_pending_k8s_audit_events()
+{
+	if(m_k8s_audit_server_start_future.valid() &&
+	   m_k8s_audit_server_start_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
 	{
-		m_k8s_audit_server_load_in_progress = false;
-		if(successful)
+		grpc::Status res = m_k8s_audit_server_start_future.get();
+
+		if(!res.ok())
 		{
-			g_log->debug("Response from K8s Audit Server load: lresult=" +
-				     lresult.DebugString());
-			m_k8s_audit_server_loaded = true;
-			start_k8s_audit_server_tasks();
+			std::ostringstream os;
+			os << "Could not start k8s audit server ("
+			   << res.error_message()
+			   << "), trying again in "
+			   << NumberFormatter::format(security_config::instance().get_k8s_audit_server_refresh_interval() / 1000000000)
+			   << "seconds";
+
+			g_log->error(os.str());
 		}
 		else
 		{
-			g_log->error("Could not load K8s Audit Server.");
-		}
-	};
-
-	g_log->debug(string("Sending load message to K8s Audit Server: ") + load.DebugString());
-	m_k8s_audit_server_load_in_progress = true;
-
-	m_k8s_audit_server_load_conn = grpc_connect<sdc_internal::K8sAudit::Stub>(m_cointerface_sock_path);
-	m_k8s_audit_server_load = make_unique<unary_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncLoad)>(m_k8s_audit_server_load_conn);
-	m_k8s_audit_server_load->do_rpc(load, callback);
-}
-
-void security_mgr::start_k8s_audit_server_tasks()
-{
-	g_log->debug("Starting K8s Audit Server");
-	sdc_internal::k8s_audit_server_start start;
-
-	// just in case we get called multiple times, tear down the
-	// previous GRPCs objects
-	m_k8s_audit_server_start = NULL;
-	m_k8s_audit_server_start_conn = NULL;
-
-	auto callback = [this](streaming_grpc::Status status, sdc_internal::k8s_audit_event &jevt)
-		{
-			if(status == streaming_grpc::ERROR)
-			{
-				g_log->error("Could not start K8s Audit Server tasks, trying again in " +
-					     NumberFormatter::format(security_config::instance().get_k8s_audit_server_refresh_interval() / 1000000000) +
-					     " seconds");
-			}
-			else if(status == streaming_grpc::SHUTDOWN)
-			{
-				g_log->error("K8s Audit Server shut down connection, trying again in " +
-					     NumberFormatter::format(security_config::instance().get_k8s_audit_server_refresh_interval() / 1000000000) +
-					     " seconds");
-			}
-			else
-			{
-				if(!jevt.successful())
-				{
-					g_log->error(string("Could not start K8s Audit Server tasks (") + jevt.errstr()+ "), trying again in " +
-						     NumberFormatter::format(security_config::instance().get_k8s_audit_server_refresh_interval() / 1000000000) +
-						     " seconds");
-				} else {
-					std::list<json_event> jevts;
-					nlohmann::json j;
-
-					g_log->debug("Response from K8s Audit Server start: jevt=" +
-						     jevt.DebugString());
-					try {
-						j = json::parse( jevt.evt_json() );
-					} catch  (json::parse_error& e) {
-						g_log->error(string("Could not parse data: ") + e.what());
-						return false;
-					}
-					if(!m_falco_engine->parse_k8s_audit_json(j, jevts))
-					{
-						g_log->error(string("Data not recognized as a K8s Audit Event"));
-						return false;
-					}
-					for(auto jev : jevts)
-					{
-						m_k8s_audit_evt_sink->receive_k8s_audit_event(jev.jevt(),
-								m_configuration->m_secure_audit_k8s_active_filters,
-								m_configuration->m_secure_audit_k8s_filters);
-
-						// instead of calling directly process_event, it might be worth enqueue into a list and have a worker thread processing the list
-						process_event(&jev);
-
-						m_metrics.incr(metrics::MET_NUM_K8S_AUDIT_EVTS);
-					}
-					return true;
-				}
-			}
-			return false;
-		};
-
-	// m_k8s_audit_server_started = true;
-
-	g_log->debug(string("Sending start message to K8s Audit Server: ") + start.DebugString());
-
-	m_k8s_audit_server_start_conn = grpc_connect<sdc_internal::K8sAudit::Stub>(m_cointerface_sock_path);
-	m_k8s_audit_server_start = make_unique<streaming_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncStart)>(m_k8s_audit_server_start_conn);
-	m_k8s_audit_server_start->do_rpc(start, callback);
-}
-
-void security_mgr::stop_k8s_audit_tasks()
-{
-	bool stopped = false;
-	auto callback = [this, &stopped](bool successful, sdc_internal::k8s_audit_stop_result &res)
-	{
-		// cointerface might shut down before dragent, causing
-		// the stop to itself not complete. So only log
-		// failures at debug level.
-		if(!successful)
-		{
-			g_log->debug("K8s Audit Server Stop() call was not successful");
+			g_log->debug("K8s Audit Server GRPC completed");
 		}
 
-		if(!res.successful())
-		{
-			g_log->debug("K8s Audit Server Stop() call returned error " + res.errstr());
-		}
-
-		stopped = true;
-	};
-
-	sdc_internal::k8s_audit_server_stop stop;
-
-	shared_ptr<sdc_internal::K8sAudit::Stub> k8s_audit_stop_conn =
-		grpc_connect<sdc_internal::K8sAudit::Stub>(m_cointerface_sock_path);
-	unary_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncStop) grpc_stop(k8s_audit_stop_conn);
-
-	grpc_stop.do_rpc(stop, callback);
-
-	// Wait up to 10 seconds for a response
-	for(uint32_t i=0; i < 100; i++)
-	{
-		Poco::Thread::sleep(100);
-		grpc_stop.process_queue();
-
-		if(stopped)
-		{
-			return;
-		}
+		m_k8s_audit_server_started = false;
 	}
 
-        g_log->error("Did not receive response to K8s Audit Stop() call within 10 seconds");
+	// Now try to read any pending k8s audit events from the queue
+	sdc_internal::k8s_audit_event jevt;
+
+	while(m_k8s_audit_events_queue->try_pop(jevt))
+	{
+		std::list<json_event> jevts;
+		nlohmann::json j;
+
+		g_log->debug("Response from K8s Audit Server start: jevt=" +
+			     jevt.DebugString());
+		try {
+			j = json::parse( jevt.evt_json() );
+		} catch  (json::parse_error& e) {
+			g_log->error(string("Could not parse data: ") + e.what());
+			continue;
+		}
+		if(!m_falco_engine->parse_k8s_audit_json(j, jevts))
+		{
+			g_log->error(string("Data not recognized as a K8s Audit Event"));
+			continue;
+		}
+		for(auto jev : jevts)
+		{
+			m_k8s_audit_evt_sink->receive_k8s_audit_event(jev.jevt(),
+								      m_configuration->m_secure_audit_k8s_active_filters,
+								      m_configuration->m_secure_audit_k8s_filters);
+
+			// instead of calling directly process_event, it might be worth enqueue into a list and have a worker thread processing the list
+			process_event_only(&jev);
+
+			m_metrics.incr(metrics::MET_NUM_K8S_AUDIT_EVTS);
+		}
+	}
+}
+
+void security_mgr::stop_k8s_audit_server()
+{
+	auto work =
+		[](std::shared_ptr<grpc::Channel> chan)
+                {
+			sdc_internal::k8s_audit_server_stop stop;
+
+			std::unique_ptr<sdc_internal::K8sAudit::Stub> stub = sdc_internal::K8sAudit::NewStub(chan);
+			grpc::ClientContext context;
+			grpc::Status status;
+			sdc_internal::k8s_audit_server_stop_result res;
+
+			status = stub->Stop(&context, stop, &res);
+			if(!status.ok())
+			{
+				res.set_successful(false);
+				res.set_errstr(status.error_message());
+			}
+
+			return res;
+		};
+
+	std::future<sdc_internal::k8s_audit_server_stop_result> stop_future = std::async(std::launch::async, work, m_grpc_channel);
+
+	// Wait up to 10 seconds for the stop to complete.
+	if(stop_future.wait_for(std::chrono::seconds(10)) != std::future_status::ready)
+	{
+		g_log->error("Did not receive response to K8s Audit Server Stop() call within 10 seconds");
+		return;
+	}
+	else
+	{
+		sdc_internal::k8s_audit_server_stop_result res = stop_future.get();
+		if(!res.successful())
+		{
+			g_log->error(string("K8s Audit Server Stop() call returned error ") +
+				     res.errstr());
+		}
+	}
 }
 
 // Given two vectors of strings 'include' and 'exclude'

@@ -6,6 +6,7 @@
 // backend.
 
 #include <memory>
+#include <future>
 #include <map>
 #include <vector>
 #include <algorithm>
@@ -32,7 +33,6 @@
 #include "security_action.h"
 #include "baseline_mgr.h"
 #include "internal_metrics.h"
-#include "coclient.h"
 
 class SINSP_PUBLIC security_mgr
 {
@@ -73,6 +73,11 @@ public:
 	// Attempt to match the event agains the set of policies. If
 	// the event matches one or more policies, will perform the
 	// necessary actions and send agent events.
+	//
+	// This also calls perform_periodic_tasks, which may do things
+	// like flushing policy events, polling for new k8s audit
+	// events, etc. The (protected) method process_event_only()
+	// only does the rule matching.
 	void process_event(gen_event *evt);
 
 	// Send the provided policy event, either adding the event to
@@ -96,9 +101,9 @@ public:
 
 	void stop_capture(const std::string &token);
 
-	void load_k8s_audit_server();
-	void start_k8s_audit_server_tasks();
-	void stop_k8s_audit_tasks();
+	void start_k8s_audit_server();
+	void stop_k8s_audit_server();
+	void check_pending_k8s_audit_events();
 
 	baseline_mgr &baseline_manager();
 
@@ -353,6 +358,7 @@ private:
 				   std::string* &container_id_ptr,
 				   sinsp_threadinfo **tinfo);
 
+	void process_event_only(gen_event *evt);
 	void process_event_v1(gen_event *evt);
 	void process_event_v2(gen_event *evt);
 
@@ -398,10 +404,7 @@ private:
 	std::unique_ptr<run_on_interval> m_report_events_interval;
 	std::unique_ptr<run_on_interval> m_report_throttled_events_interval;
 	std::unique_ptr<run_on_interval> m_check_periodic_tasks_interval;
-
-	bool m_k8s_audit_server_started;
-	bool m_k8s_audit_server_loaded;
-	bool m_k8s_audit_server_load_in_progress;
+	std::unique_ptr<run_on_interval> m_check_k8s_audit_start_interval;
 
 	bool m_initialized;
 	sinsp* m_inspector;
@@ -805,11 +808,12 @@ private:
 
 	metrics m_metrics;
 
-	std::shared_ptr<sdc_internal::K8sAudit::Stub> m_k8s_audit_server_start_conn;
-	std::shared_ptr<sdc_internal::K8sAudit::Stub> m_k8s_audit_server_load_conn;
+	std::shared_ptr<grpc::Channel> m_grpc_channel;
+	std::future<grpc::Status> m_k8s_audit_server_start_future;
+	std::future<sdc_internal::k8s_audit_server_stop_result> m_k8s_audit_server_stop_future;
 
-	std::unique_ptr<streaming_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncStart)> m_k8s_audit_server_start;
-	std::unique_ptr<unary_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncLoad)> m_k8s_audit_server_load;
-
+	typedef std::shared_ptr<tbb::concurrent_queue<sdc_internal::k8s_audit_event>> shared_k8s_audit_event_queue;
+	shared_k8s_audit_event_queue m_k8s_audit_events_queue;
+	bool m_k8s_audit_server_started;
 };
 #endif // CYGWING_AGENT

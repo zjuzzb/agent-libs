@@ -1,11 +1,15 @@
 package k8s_audit
 
 import (
+	"fmt"
+
 	"github.com/draios/protorepo/sdc_internal"
 	"crypto/tls"
 	"github.com/gogo/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -18,41 +22,41 @@ var(
 )
 
 type k8sAuditServer struct {
-	evtsChannel chan *sdc_internal.K8SAuditEvent
-	initialized bool
-	cancel context.CancelFunc
+	cancel           context.CancelFunc
+
+	// When cancel is non-nil, a Stop() will send a message on
+	// this channel when the Stop() is complete.
+	cancelDone       chan bool
 }
 
-func (ks *k8sAuditServer) Init() error {
-	ks.evtsChannel = make(chan *sdc_internal.K8SAuditEvent, 16)
-
-	ks.initialized = true
-
-	return nil
+type k8sAuditHttpHandler struct {
+	evtsChannel       chan<- *sdc_internal.K8SAuditEvent
 }
 
-/* Support is given for a single endpoint at the time: either over HTTP or over HTTPS */
-func (ks *k8sAuditServer) Load(ctx context.Context, load *sdc_internal.K8SAuditServerLoad) (*sdc_internal.K8SAuditServerLoadResult, error) {
+func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream sdc_internal.K8SAudit_StartServer) error {
 
-	log.Debugf("Received K8s Audit Server Load message: %s", load.String())
+	log.Infof("Received K8s Audit Start message: %s", start.String())
 
-	if ! ks.initialized {
-		if err := ks.Init(); err != nil {
-			return nil, err
-		}
+	ctx := context.Background()
+
+	_, err := ks.Stop(ctx, &sdc_internal.K8SAuditServerStop{}); if err != nil {
+		errmsg := fmt.Sprintf("Stop() returned error: %v", err)
+		log.Errorf("K8s Audit Start: %s", errmsg)
+		return status.Error(codes.FailedPrecondition, errmsg)
 	}
 
-	result := &sdc_internal.K8SAuditServerLoadResult{
-		Successful: proto.Bool(true),
+	evtsChannel := make(chan *sdc_internal.K8SAuditEvent, 16)
+	auditHttpHandler := &k8sAuditHttpHandler{
+		evtsChannel: evtsChannel,
 	}
 
 	/* common HTTP/HTTPS configuration */
 	httpHandler := http.NewServeMux()
-	for _, path := range load.PathUris {
-		httpHandler.Handle(path, ks)
+	for _, path := range start.PathUris {
+		httpHandler.Handle(path, auditHttpHandler)
 	}
-	var httpServer = &http.Server {
-		Addr: load.GetUrl() + ":" + strconv.Itoa(int(load.GetPort())),
+	httpServer := &http.Server {
+		Addr: start.GetUrl() + ":" + strconv.Itoa(int(start.GetPort())),
 		Handler: httpHandler,
 		ReadTimeout: time.Second * 10,
 		WriteTimeout: time.Second * 10,
@@ -60,37 +64,32 @@ func (ks *k8sAuditServer) Load(ctx context.Context, load *sdc_internal.K8SAuditS
 	}
 
 	/* HTTP only (TLS is disabled) */
-	if  load.GetTlsEnabled() == false {
-		log.Debugf("K8s Audit Server setting up endpoint over HTTP")
+	if  start.GetTlsEnabled() == false {
+		log.Infof("K8s Audit Server setting up endpoint over HTTP: %v", httpServer.Addr)
 
-
-		go func() {
-			if err := httpServer.ListenAndServe(); err != nil {
-				log.Errorf("K8s Audit Server Load at ListenAndServe(): %s", err)
-				result.Successful = proto.Bool(false)
-				result.Errstr = proto.String(err.Error())
+		go func(){
+			if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+				// This only returns when the server has an error or is cancelled
+				errmsg := fmt.Sprintf("ListenAndServe returned error: %v", err)
+				log.Errorf("K8s Audit Start: %s", errmsg)
 			}
 		}()
 	} else {  /* HTTPS */
-		log.Debugf("K8s Audit Server setting up endpoint over HTTPS")
+		log.Infof("K8s Audit Server listening for K8s Audit Events over HTTPS: %v", httpServer.Addr)
 
 		/* Validate X509 object is present */
-		x509 := load.GetX509()
+		x509 := start.GetX509()
 
 		if x509 == nil {
-			err := "K8s Audit Server Load GetX509(): X509 object is not present"
-			log.Errorf(err)
-			result.Successful = proto.Bool(false)
-			result.Errstr = proto.String(err)
-			return result, nil
+			errmsg := "GetX509(): X509 object is not present"
+			log.Errorf("K8s Audit Start: %s", errmsg)
+			return status.Error(codes.InvalidArgument, errmsg)
 		}
 		/* Validation on the number of x509 objs */
 		if len(x509) > 3 {
-			err := "K8s Audit Server validate x509 object: too many certificates provided (max is 3)"
-			log.Errorf(err)
-			result.Successful = proto.Bool(false)
-			result.Errstr = proto.String(err)
-			return result, nil
+			errmsg := "Validate x509 object: too many certificates provided (max is 3)"
+			log.Errorf("K8s Audit Start: %s", errmsg)
+			return status.Error(codes.InvalidArgument, errmsg)
 		}
 
 		cfg := &tls.Config{
@@ -105,9 +104,9 @@ func (ks *k8sAuditServer) Load(ctx context.Context, load *sdc_internal.K8SAuditS
 				*x509[i].X509KeyFile)
 
 			if err != nil {
-				log.Errorf("K8s Audit Server Load at tls.LoadX509KeyPair(): %s", err)
-				result.Successful = proto.Bool(false)
-				result.Errstr = proto.String(err.Error())
+				errmsg := fmt.Sprintf("Could not load tls X509KeyPair(): %v", err)
+				log.Errorf("K8s Audit Start: %s", errmsg)
+				return status.Error(codes.InvalidArgument, errmsg)
 			}
 
 			cfg.Certificates = append(cfg.Certificates, cert)
@@ -117,69 +116,68 @@ func (ks *k8sAuditServer) Load(ctx context.Context, load *sdc_internal.K8SAuditS
 
 		httpServer.TLSConfig = cfg
 
-		go func() {
-			// passing empty string to ListenAndServeTLS, as we
-			// specify the location of the certificate in the tls
-			// config, as reference please see:
-			// https://github.com/golang/go/commit/f81f6d6ee8a7f578ab19ccb8b7dbc3b6fff81aa0
-			if err := httpServer.ListenAndServeTLS("", ""); err != nil {
-				log.Errorf("K8s Audit Server Load ListenAndServeTLS(): %s", err)
-				result.Successful = proto.Bool(false)
-				result.Errstr = proto.String(err.Error())
+		// passing empty string to ListenAndServeTLS, as we
+		// specify the location of the certificate in the tls
+		// config, as reference please see:
+		// https://github.com/golang/go/commit/f81f6d6ee8a7f578ab19ccb8b7dbc3b6fff81aa0
+		go func(){
+			if err := httpServer.ListenAndServeTLS("", ""); err != http.ErrServerClosed {
+				// This only returns when the server has an error or is cancelled
+				errmsg := fmt.Sprintf("ListenAndServeTLS returned error: %v", err)
+				log.Errorf("K8s Audit Start: %s", errmsg)
 			}
 		}()
 	}
 
-	return result, nil
-}
+	// The http server was started in the background above. Now
+	// read responses from it over evtsChannel until stopped.
+	evtsCtx, cancel := context.WithCancel(ctx)
 
-func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream sdc_internal.K8SAudit_StartServer) error {
-	log.Debugf("Received K8s Audit Start message: %s", start.String())
-
-	if ks.cancel != nil {
-		// Start() was previously called. Stop those tasks first.
-		ks.cancel()
-		ks.cancel = nil
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-
+	ks.cancelDone = make(chan bool)
 	ks.cancel = cancel
 
 	RunTasks:
 	for {
 		select {
-		case evt := <- ks.evtsChannel:
+		case evt := <- evtsChannel:
 			log.Debugf("Sending K8s Audit Event to agent %d", evt.GetEvtId())
 			if err := stream.Send(evt); err != nil {
 				log.Errorf("Could not send event %s: %v",
 					evt.GetEvtId(), err.Error())
 				return err
 			}
-		case <- ctx.Done():
+		case <- evtsCtx.Done():
+			log.Infof("Received K8S Audit Stop() notification, shutting down http server")
+			shutdownCtx, shutdownCancel := context.WithTimeout(ctx, 10 * time.Second)
+			defer shutdownCancel()
+			if err := httpServer.Shutdown(shutdownCtx); err != nil {
+				errmsg := fmt.Sprintf("Shutdown returned error: %v", err)
+				log.Errorf("K8s Audit Start: %s", errmsg)
+				return status.Error(codes.FailedPrecondition, errmsg)
+			}
 			break RunTasks
 		}
 	}
 
-	log.Debugf("Returning from K8s Audit Server Start")
+	log.Infof("K8s Audit Start: exiting")
+	ks.cancelDone <- true
 
 	return nil
 }
 
-func (ks *k8sAuditServer) Stop(ctx context.Context, load *sdc_internal.K8SAuditServerStop) (*sdc_internal.K8SAuditStopResult, error) {
-	log.Debugf("Received K8s Audit Stop message : %s", load.String())
+func (ks *k8sAuditServer) Stop(ctx context.Context, stop *sdc_internal.K8SAuditServerStop) (*sdc_internal.K8SAuditServerStopResult, error) {
+	log.Infof("Received K8s Audit Stop message : %s", stop.String())
 
-	result := &sdc_internal.K8SAuditStopResult{
+	result := &sdc_internal.K8SAuditServerStopResult{
 		Successful: proto.Bool(true),
 	}
 
-	if ! ks.initialized {
-		return result, nil
-	}
-
 	if ks.cancel != nil {
+		log.Infof("Cancelling prior K8s Audit Start()")
 		ks.cancel()
+		_ = <- ks.cancelDone
 		ks.cancel = nil
+		ks.cancelDone = nil
 	}
 
 	log.Debugf("Returning from K8s Audit Stop: %v", result)
@@ -187,7 +185,7 @@ func (ks *k8sAuditServer) Stop(ctx context.Context, load *sdc_internal.K8SAuditS
 	return result, nil
 }
 
-func (ks *k8sAuditServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (ks *k8sAuditHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var message string
 
 	switch r.Method {
@@ -205,7 +203,6 @@ func (ks *k8sAuditServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			evt := &sdc_internal.K8SAuditEvent{
 				EvtId: proto.Uint64(k8sEvtID),
 				EvtJson: proto.String(string(jsn[:])),
-				Successful: proto.Bool(true),
 			}
 			k8sEvtID += 1 // it's ok if we overflow
 			message = "<html><body>Ok</body></html>"
@@ -226,7 +223,6 @@ func (ks *k8sAuditServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func Register(grpcServer *grpc.Server) error {
 
 	ks := &k8sAuditServer{}
-	ks.Init()
 
 	sdc_internal.RegisterK8SAuditServer(grpcServer, ks)
 

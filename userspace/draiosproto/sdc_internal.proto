@@ -251,7 +251,8 @@ message k8s_audit_server_X509 {
 
 /* The K8s Audit Server sets up a single endpoint either HTTP or
  * HTTPS */
-message k8s_audit_server_load {
+
+message k8s_audit_server_start {
     required string url = 1;
     required uint32 port = 2;
     required bool tls_enabled = 3;
@@ -259,31 +260,21 @@ message k8s_audit_server_load {
     repeated string path_uris = 5;
 }
 
-message k8s_audit_server_load_result {
-    required bool successful = 1;
-    optional string errstr = 2;
-}
-
-message k8s_audit_server_start {
-}
-
 message k8s_audit_server_stop {
 }
 
 message k8s_audit_event {
-    required bool successful = 1;
     optional uint64 evt_id = 2;
     optional string evt_json = 3;
     optional string errstr = 4;
 }
 
-message k8s_audit_stop_result {
+message k8s_audit_server_stop_result {
     required bool successful = 1;
     optional string errstr = 2;
 }
 
 service K8sAudit {
-    rpc Load(k8s_audit_server_load) returns (k8s_audit_server_load_result) {}
     rpc Start(k8s_audit_server_start) returns (stream k8s_audit_event) {}
-    rpc Stop(k8s_audit_server_stop) returns (k8s_audit_stop_result) {}
+    rpc Stop(k8s_audit_server_stop) returns (k8s_audit_server_stop_result) {}
 }
