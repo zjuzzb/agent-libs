@@ -75,21 +75,15 @@ set(GOENV
     GO111MODULE=on
 )
 
-add_custom_target(promscrape ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/promscrape)
+if(NOT CYGWIN)
+    set(PROMSCRAPE_DIR "${DRAIOS_DEPENDENCIES_DIR}/promscrape")
 
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/promscrape
-    COMMAND echo "building promscrape"
-    COMMAND ${GOENV} GOPROXY=off go build -mod=vendor -o ${CMAKE_CURRENT_BINARY_DIR}/promscrape -x
-            ./cmd/promscrape
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../prometheus
-)
-
-install(
-    PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/promscrape
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-    COMPONENT agent-slim
-)
+    install(
+	PROGRAMS ${PROMSCRAPE_DIR}/promscrape_v1 ${PROMSCRAPE_DIR}/promscrape_v2
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+	COMPONENT agent-slim
+    )
+endif()
 
 set(PACKAGE_NAME "draios-agent")
 set(PROBE_VERSION "${AGENT_VERSION}")

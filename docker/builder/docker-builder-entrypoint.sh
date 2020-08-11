@@ -18,7 +18,6 @@ rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build /drai
 rsync --delete -t -r --exclude=.git /draios/protorepo/ /code/protorepo/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='driver/Makefile' --exclude='driver/driver_config.h' /draios/sysdig/ /code/sysdig/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' /draios/oss-falco/ /code/oss-falco/
-rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build /draios/prometheus/ /code/prometheus/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build /draios/protorepo/ /code/protorepo/
 
 if [[ $1 == "container" ]]; then

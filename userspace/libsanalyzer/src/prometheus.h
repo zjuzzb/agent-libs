@@ -35,7 +35,8 @@ public:
 	      m_max_tags_per_metric(-1),
 	      m_histograms(false),
 	      m_ingest_raw(false),
-	      m_ingest_calculated(false)
+	      m_ingest_calculated(false),
+	      m_prom_sd(false)
 	{
 	}
 
@@ -103,6 +104,10 @@ public:
 	bool ingest_calculated() const { return m_ingest_calculated; }
 	void set_ingest_calculated(bool val) { m_ingest_calculated = val; }
 
+	// Set whether or not we do service discovery through prometheus (promscrape v2)
+	bool prom_sd() const { return m_prom_sd; }
+	void set_prom_sd(bool val) { m_prom_sd = val; }
+
 	void set_host_rules(std::vector<object_filter_config::filter_rule> rules)
 	{
 		m_host_rules = std::move(rules);
@@ -127,6 +132,7 @@ private:
 	bool m_ingest_raw;
 	bool m_ingest_calculated;
 	std::vector<object_filter_config::filter_rule> m_host_rules;
+	bool m_prom_sd;
 };
 
 class prom_process

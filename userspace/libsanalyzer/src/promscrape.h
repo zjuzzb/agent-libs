@@ -16,6 +16,8 @@
 #include <thread_safe_container/blocking_queue.h>
 #include <mutex>
 
+class infrastructure_state;
+
 class promscrape_stats {
 public:
 	promscrape_stats();
@@ -73,6 +75,8 @@ public:
 	typedef std::map<int64_t, prom_job_config> prom_jobid_map_t;
 	// Map from job_id to scrape results
 	typedef std::map<int64_t, std::shared_ptr<agent_promscrape::ScrapeResult>> prom_metric_map_t;
+	// Map from job_url to job_id for Promscrape V2
+	typedef std::map<std::string, int64_t> prom_joburl_map_t;
 
 	// There are a few hacks in here related to 10s flush. Hopefully those can go away if/when
 	// we get support for a callback that lets promscrape override the outgoing protobuf
@@ -85,6 +89,10 @@ public:
 
 	// jobs that haven't been used for this long will be pruned.
 	const int job_prune_time_s = 15;
+	// XXX: In V2, promscrape does service discovery and is the only one to know the
+	// interval, so we can't just prune jobs arbitrarily.
+	// We still need a solution, for now we just set it to 75 seconds.
+	const int v2_job_prune_time_s = 75;
 
 	static type_config<bool>c_use_promscrape;
 	static type_config<std::string>c_promscrape_sock;
@@ -136,6 +144,15 @@ public:
 	static void validate_config(prometheus_conf &conf, const std::string &root_dir);
 
 	void periodic_log_summary() { m_stats.periodic_log_summary(); }
+
+	// With Promscrape V2 the agent will no longer find endpoints through the
+	// process_filter or remote_services rules.
+	// Promscrape will be doing service discovery instead
+	bool is_promscrape_v2() { return m_prom_conf.prom_sd(); }
+
+	static bool metric_type_is_raw(agent_promscrape::Sample::LegacyMetricType mt);
+
+	void set_infra_state(const infrastructure_state *is) { m_infra_state = is; }
 private:
 	void sendconfig_th(const vector<prom_process> &prom_procs);
 
@@ -143,6 +160,7 @@ private:
 	void try_start();
 	void reset();
 	void start();
+	int64_t job_url_to_job_id(const std::string &url);
 	int64_t assign_job_id(int pid, const std::string &url,
 		const std::string &container_id, const tag_map_t &tags, uint64_t ts);
 	void addscrapeconfig(int pid, const std::string &url,
@@ -158,11 +176,12 @@ private:
 	std::shared_ptr<agent_promscrape::ScrapeResult> get_job_result_ptr(uint64_t job_id,
 		prom_job_config *config_copy);
 
-	// Mutex to protect all 3 maps, might want finer granularity some day
+	// Mutex to protect all 4 maps, might want finer granularity some day
 	std::mutex m_map_mutex;
 	prom_metric_map_t m_metrics;
 	prom_jobid_map_t m_jobs;
 	prom_pid_map_t m_pids;
+	prom_joburl_map_t m_joburls;
 
 	std::string m_sock;
 	std::shared_ptr<agent_promscrape::ScrapeService::Stub> m_start_conn;
@@ -197,6 +216,7 @@ private:
 	bool m_emit_counters = true;
 
 	promscrape_stats m_stats;
+	const infrastructure_state *m_infra_state;
 
 	friend class test_helper;
 };

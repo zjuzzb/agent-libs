@@ -18,9 +18,6 @@ pipeline {
 			dir('protorepo') {
 				checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
 			}
-			dir('prometheus') {
-				checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/prometheus']]])
-			}
 	    }
 	}
 
@@ -39,9 +36,6 @@ pipeline {
 				sh "git checkout agent-release-${params.RELEASE_BASE}"
 			}
 			dir('protorepo') {
-				sh "git checkout agent-release-${params.RELEASE_BASE}"
-			}
-			dir('prometheus') {
 				sh "git checkout agent-release-${params.RELEASE_BASE}"
 			}
 		}
@@ -89,14 +83,6 @@ pipeline {
 						git push -u origin2 agent-release-${params.RELEASE_VERSION}
 					"""
 				}
-				dir('prometheus') {
-					sh label: '', script: """
-						git checkout -b agent-release-${params.RELEASE_VERSION}
-						export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-						git remote add origin2 ssh://git@github.com/draios/prometheus.git
-						git push -u origin2 agent-release-${params.RELEASE_VERSION}
-					"""
-				}
 
 			}
 	    }
@@ -117,9 +103,6 @@ pipeline {
 			dir('protorepo') {
 				sh "git checkout agent-release-${params.RELEASE_VERSION}"
 			}
-			dir('prometheus') {
-				sh "git checkout agent-release-${params.RELEASE_VERSION}"
-			}
 	    }
 	}
 
@@ -128,7 +111,7 @@ pipeline {
 	// this release easily from quay
 	stage('Build Builder') {
 	    steps {
-			build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROMETHEUS_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),booleanParam(name:'TAG_LATEST', value:false),string(name:'CONTAINER_NAME', value:"release-$RELEASE_VERSION")]
+			build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),booleanParam(name:'TAG_LATEST', value:false),string(name:'CONTAINER_NAME', value:"release-$RELEASE_VERSION")]
 		}
 		post {
 			success {
@@ -145,12 +128,12 @@ pipeline {
 		 parallel {
 			stage('Unit Test') {
 				steps {
-					build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROMETHEUS_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION")]
+					build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION")]
 				}
 			}
 			stage('System Test') {
 				steps {
-					build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROMETHEUS_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION")]
+					build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION")]
 				}
 			}
 		}
@@ -168,7 +151,7 @@ pipeline {
 	// Uploaded image should be sysdig/agent:${params.RELEASE_VERSION}-rc
 	stage('Build RC') {
 		steps {
-			build job:'agent-build-rc',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROMETHEUS_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION"),string(name:'RELEASE_VERSION', value:"$RELEASE_VERSION"),booleanParam(name:'UPLOAD', value:true),booleanParam(name:'PUBLIC_RELEASE', value:true)]
+			build job:'agent-build-rc',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION"),string(name:'RELEASE_VERSION', value:"$RELEASE_VERSION"),booleanParam(name:'UPLOAD', value:true),booleanParam(name:'PUBLIC_RELEASE', value:true)]
 		}
 		post {
 			success {
@@ -268,16 +251,6 @@ pipeline {
                     sh label: '', script: """
                         export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
                         git remote add origin2 ssh://git@github.com/draios/protorepo.git || echo "remote already exists"
-                        git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
-                        git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
-                        git tag agent/${params.RELEASE_VERSION}
-                        git push origin2 agent/${params.RELEASE_VERSION}
-                    """
-                }
-                dir('prometheus') {
-                    sh label: '', script: """
-                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-                        git remote add origin2 ssh://git@github.com/draios/prometheus.git || echo "remote already exists"
                         git tag -d agent/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
                         git push origin2 :refs/tags/agent/${params.RELEASE_VERSION}
                         git tag agent/${params.RELEASE_VERSION}

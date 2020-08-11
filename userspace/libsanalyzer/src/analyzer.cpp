@@ -377,6 +377,10 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_secure_audit = nullptr;
 #ifndef CYGWING_AGENT
 	m_infrastructure_state = new infrastructure_state(*this, inspector, root_dir, the_k8s_limits);
+	if (m_promscrape)
+	{
+		m_promscrape->set_infra_state(m_infrastructure_state);
+	}
 #endif
 
 	//
@@ -7475,7 +7479,9 @@ void sinsp_analyzer::match_prom_checks(const thread_analyzer_info* tinfo,
                                        vector<prom_process>& prom_procs,
                                        bool use_host_filter)
 {
-	if (!m_prom_conf.enabled() || mtinfo->found_prom_check())
+	// Skip if prometheus is disabled or if we've already selected a process in this group
+	// or if promscrape v2 will be doing service discovery instead
+	if (!m_prom_conf.enabled() || mtinfo->found_prom_check() || m_prom_conf.prom_sd())
 	{
 		return;
 	}

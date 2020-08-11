@@ -6,6 +6,7 @@
 #include "type_config.h"
 #include "uri.h"
 #include "configuration_manager.h"
+#include "infrastructure_state.h"
 
 // #define DEBUG_PROMSCRAPE	1
 
@@ -78,6 +79,11 @@ void promscrape::validate_config(prometheus_conf &prom_conf, const string &root_
 			" Enable prometheus.ingest_raw to enable fastproto");
 		fastproto = false;
 	}
+	if (fastproto && prom_conf.ingest_calculated())
+	{
+		LOG_INFO("ingest_calculated is enabled but not supported with promscrape_fastproto."
+			"You will only get raw prometheus metrics");
+	}
 	string &sock = c_promscrape_sock.get_value();
 	if (sock.compare(0,6,"unix:/") == 0)
 	{
@@ -99,7 +105,8 @@ promscrape::promscrape(metric_limits::sptr_t ml,
 		m_config_queue(3),
 		m_resend_config(false),
 		m_interval_cb(interval_cb),
-		m_last_proto_ts(0)
+		m_last_proto_ts(0),
+		m_infra_state(nullptr)
 {
 }
 
@@ -246,9 +253,31 @@ void promscrape::applyconfig()
 
 static int64_t g_prom_job_id = 0;
 
+int64_t promscrape::job_url_to_job_id(const std::string &url)
+{
+	std::lock_guard<std::mutex> lock(m_map_mutex);
+
+	auto url_it = m_joburls.find(url);
+	if (url_it != m_joburls.end())
+	{
+		return url_it->second;
+	}
+
+	int64_t job_id = 0;
+	prom_job_config conf = {0, url, "", m_next_ts, 0, 0, {}};
+
+	job_id = ++g_prom_job_id;
+	LOG_DEBUG("creating job %" PRId64 " for %s", job_id, url.c_str());
+	m_jobs.emplace(job_id, std::move(conf));
+	m_joburls.emplace(url, job_id);
+	m_pids[0].emplace_back(job_id);
+	return job_id;
+}
+
 int64_t promscrape::assign_job_id(int pid, const string &url, const string &container_id,
 	const tag_map_t &tags, uint64_t ts)
 {
+	// Not taking a lock here as it should already be held by the caller
 	int64_t job_id = 0;
 	auto pid_it = m_pids.find(pid);
 	if (pid_it != m_pids.end())
@@ -411,6 +440,11 @@ void promscrape::sendconfig(const vector<prom_process> &prom_procs)
 
 void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 {
+	// We don't send scrape configs for v2
+	if (is_promscrape_v2())
+	{
+		return;
+	}
 	m_config = make_shared<agent_promscrape::Config>();
 	m_config->set_scrape_interval_sec(m_prom_conf.interval());
 	m_config->set_ingest_raw(m_prom_conf.ingest_raw());
@@ -496,12 +530,30 @@ void promscrape::next_th()
 
 void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 {
-	int64_t job_id = result.job_id();
-	std::string url;
+#ifdef DEBUG_PROMSCRAPE
+	LOG_DEBUG("received result: %s", result.DebugString().c_str());
+#endif
+	int64_t job_id;
+	string url;
 
+	if (is_promscrape_v2())
+	{
+		// For promscrape_v2 we associate job_ids with urls
+		if (result.url().size() < 1)
+		{
+			LOG_INFO("Missing url from promscrape v2 result, dropping scrape results");
+			return;
+		}
+		url = result.url();
+		// job_url_to_job_id will create the job as needed
+		job_id = job_url_to_job_id(url);
+	}
+	else
 	{
 		// Temporary lock just to make sure the job still exists
 		std::lock_guard<std::mutex> lock(m_map_mutex);
+
+		job_id = result.job_id();
 		auto job_it = m_jobs.find(job_id);
 		if (job_it == m_jobs.end())
 		{
@@ -509,7 +561,19 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 			// Dropping results for unknown (possibly pruned) job
 			return;
 		}
-		url = job_it->second.url;
+		if (result.url().size() < 1)
+		{
+			url = job_it->second.url;
+		}
+		else
+		{
+			url = result.url();
+			if (url != job_it->second.url)
+			{
+				LOG_INFO("job %" PRId64 ": scraped url %s doesn't match requested url %s",
+					job_id, url.c_str(), job_it->second.url.c_str());
+			}
+		}
 	}
 
 	std::shared_ptr<agent_promscrape::ScrapeResult> result_ptr;
@@ -524,9 +588,10 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 		result_ptr = make_shared<agent_promscrape::ScrapeResult>();
 		result_ptr->set_job_id(job_id);
 		result_ptr->set_timestamp(result.timestamp());
+		result_ptr->set_url(result.url());
 		for (const auto &sample : result.samples())
 		{
-			bool is_raw = (sample.legacy_metric_type() == agent_promscrape::Sample::MT_RAW);
+			bool is_raw = metric_type_is_raw(sample.legacy_metric_type());
 			string filter;
 			if (m_metric_limits->allow(sample.metric_name(), filter, nullptr, "promscrape"))
 			{
@@ -545,6 +610,7 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 			}
 		}
 		result_ptr->mutable_meta_samples()->CopyFrom(result.meta_samples());
+		result_ptr->mutable_source_labels()->CopyFrom(result.source_labels());
 	}
 	else
 	{
@@ -554,7 +620,7 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 		result_ptr = make_shared<agent_promscrape::ScrapeResult>(std::move(result));
 		for (const auto &sample : result.samples())
 		{
-			if (sample.legacy_metric_type() == agent_promscrape::Sample::MT_RAW)
+			if (metric_type_is_raw(sample.legacy_metric_type()))
 			{
 				++raw_num_samples;
 				++raw_total_samples;
@@ -589,11 +655,49 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 	// Currently the metadata metrics sent by promscrape only apply to raw metrics
 	if ((scraped < 0) || (post_relabel < 0) || (added < 0))
 	{
-		LOG_INFO("Missing metadata metrics for %s. Results may be incorrect in "
-			"subsequent metrics summary", url.c_str());
+		if (m_prom_conf.ingest_raw())
+		{
+			LOG_INFO("Missing metadata metrics for %s. Results may be incorrect in "
+				"subsequent metrics summary", url.c_str());
+		}
 		scraped = post_relabel = added = raw_total_samples;
 	}
 	m_stats.set_stats(url, scraped, scraped - post_relabel, post_relabel - added, raw_total_samples - raw_num_samples, calc_total_samples, 0, 0, calc_total_samples - calc_num_samples);
+
+	// Attempt to find and fill in the container_id if it isn't available yet
+	string container_id;
+	string container_name;
+	string pod_id;
+
+	for (const auto &source_label : result_ptr->source_labels())
+	{
+		if (source_label.name() == "container_id")
+		{
+			container_id = source_label.value();
+			break;
+		}
+		else if (source_label.name() == "pod_id")
+		{
+			pod_id = source_label.value();
+		}
+		else if (source_label.name() == "container_name")
+		{
+			container_name = source_label.value();
+		}
+	}
+	if (container_id.empty() && !pod_id.empty() && !container_name.empty() && m_infra_state)
+	{
+		infrastructure_state::uid_t uid = make_pair("k8s_pod", pod_id);
+		container_id = m_infra_state->get_container_id_from_k8s_pod_and_k8s_pod_name(uid, container_name);
+		LOG_DEBUG("Correlated container id %s from %s:%s", container_id.c_str(),
+			pod_id.c_str(), container_name.c_str());
+		if (!container_id.empty())
+		{
+			auto new_source_label = result_ptr->add_source_labels();
+			new_source_label->set_name("container_id");
+			new_source_label->set_value(container_id);
+		}
+	}
 
 	{
 		// Lock again to write maps
@@ -614,9 +718,6 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 
 	LOG_DEBUG("got %d of %d raw and %d of %d calculated samples for job %" PRId64,
 		raw_num_samples, raw_total_samples, calc_num_samples, calc_total_samples, job_id);
-#ifdef DEBUG_PROMSCRAPE
-	LOG_DEBUG("received result: %s", result.DebugString().c_str());
-#endif
 }
 
 void promscrape::prune_jobs(uint64_t ts)
@@ -625,7 +726,8 @@ void promscrape::prune_jobs(uint64_t ts)
 	for (auto it = m_jobs.begin(); it != m_jobs.end(); )
 	{
 		int elapsed = elapsed_s(it->second.config_ts, ts);
-		if (elapsed < job_prune_time_s)
+		int prune_time = is_promscrape_v2() ? v2_job_prune_time_s : job_prune_time_s;
+		if (elapsed < prune_time)
 		{
 			++it;
 			continue;
@@ -645,6 +747,16 @@ void promscrape::prune_jobs(uint64_t ts)
 				// No jobs left for pid
 				LOG_DEBUG("no scrape jobs left for pid %d, removing", it->second.pid);
 				m_pids.erase(pidmap_it);
+			}
+		}
+		if (it->second.pid == 0)
+		{
+			auto joburl_it = m_joburls.find(it->second.url);
+			if (joburl_it != m_joburls.end())
+			{
+				// Removing entry joburls map
+				LOG_DEBUG("Removing job for %s", it->second.url.c_str());
+				m_joburls.erase(joburl_it);
 			}
 		}
 		// Remove job from scrape results
@@ -841,6 +953,16 @@ unsigned int promscrape::pid_to_protobuf(int pid, metric *proto,
 	return num_metrics;
 }
 
+bool promscrape::metric_type_is_raw(agent_promscrape::Sample::LegacyMetricType mt)
+{
+	// Promscrape v2 doesn't populate the legacy_metric_type field
+	// For some reason the C++ protobuf API doesn't have a way to check
+	// field existence but instead the field is reported as 0 which
+	// in this case equals MT_INVALID
+	return (mt == agent_promscrape::Sample::MT_RAW) ||
+		(mt == agent_promscrape::Sample::MT_INVALID);
+}
+
 template unsigned int promscrape::pid_to_protobuf<draiosproto::app_info>(int pid, draiosproto::app_info *proto,
 	unsigned int &limit, unsigned int max_limit,
 	unsigned int *filtered, unsigned int *total,
@@ -931,7 +1053,7 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 
 		add_sample(sample);
 		--limit;
-		if (sample.legacy_metric_type() == agent_promscrape::Sample::MT_RAW)
+		if (metric_type_is_raw(sample.legacy_metric_type()))
 		{
 			++raw_num_samples;
 		}
@@ -1002,13 +1124,16 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 	bool ml_log = metric_limits::log_enabled();
 
 	auto prom = proto->add_prometheus();
-	// Add pid in source_metadata
-	auto meta = prom->add_source_metadata();
-	meta->set_name("pid");
-	meta->set_value(to_string(job_config.pid));
+	// Add pid in source_metadata, if we have a pid
+	if (job_config.pid)
+	{
+		auto meta = prom->add_source_metadata();
+		meta->set_name("pid");
+		meta->set_value(to_string(job_config.pid));
+	}
 	if (!job_config.container_id.empty())
 	{
-		meta = prom->add_source_metadata();
+		auto meta = prom->add_source_metadata();
 		meta->set_name("container_id");
 		meta->set_value(job_config.container_id);
 	}
@@ -1019,6 +1144,13 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 		newtag->set_name(tag.first);
 		newtag->set_value(tag.second);
 	}
+	for (const auto &source_label : result_ptr->source_labels())
+	{
+		auto meta = prom->add_source_metadata();
+		meta->set_name(source_label.name());
+		meta->set_value(source_label.value());
+	}
+	LOG_DEBUG("job %" PRId64 ": Copied %d source labels: %d", job_id, result_ptr->source_labels().size(), prom->source_metadata().size());
 
 	// Lambda for adding samples from samples or metasamples
 	auto add_sample = [&prom](const agent_promscrape::Sample& sample)
@@ -1061,10 +1193,11 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 			continue;
 		}
 
-		add_sample(sample);
-		--limit;
-		if (sample.legacy_metric_type() == agent_promscrape::Sample::MT_RAW)
+		if (metric_type_is_raw(sample.legacy_metric_type()))
 		{
+			// Fastproto only supports raw metrics
+			add_sample(sample);
+			--limit;
 			++raw_num_samples;
 		}
 		else

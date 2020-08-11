@@ -120,6 +120,10 @@ type_config<uint64_t> c_promscrape_timeout_s(60,
                                              "Watchdog timeout for the promscrape thread",
                                              "promscrape_thread_timeout");
 
+type_config<std::string> c_promscrape_labels("--source.label=pod_id,sysdig_k8s_pod_uid,remove --source.label=container_name,sysdig_k8s_pod_container_name,remove",
+                                             "source labels for promscrape to attach to results",
+                                             "promscrape_labels");
+
 type_config<bool>::ptr c_10s_flush_enabled =
     type_config_builder<bool>(false, "Enable agent-side aggregation", "10s_flush_enable")
         .hidden()
@@ -931,25 +935,39 @@ int dragent_app::main(const std::vector<std::string>& args)
 			string address = "--grpc.address=" + promscrape::c_promscrape_sock.get_value();
 			default_cpu_cgroup.enter();
 			m_promscrape_pipes->attach_child_stdio();
-			if (prom_conf_arg.empty())
+			// Promscrape v2 does service discovery, v1 lets the agent find targets
+			string promscrape = m_configuration.m_prom_conf.prom_sd() ? "promscrape_v2" : "promscrape_v1";
+
+			const int maxargs = 40;
+			const char **argv = new const char *[maxargs];
+			int i = 0;
+			argv[i++] = promscrape.c_str();
+			argv[i++] = address.c_str();
+			argv[i++] = "--log.format=json";
+			argv[i++] = log_level.c_str();
+			if (!prom_conf_arg.empty())
 			{
-				execl((m_configuration.c_root_dir.get_value() + "/bin/promscrape").c_str(),
-				      "promscrape",
-				      address.c_str(),
-				      "--log.format=json",
-				      log_level.c_str(),
-				      (char*)NULL);
+				argv[i++] = prom_conf_arg.c_str();
 			}
-			else
+
+			char *labels = new char[c_promscrape_labels.get_value().length() + 1];
+			// source labels are only supported in promscrape v2
+			if (m_configuration.m_prom_conf.prom_sd())
 			{
-				execl((m_configuration.c_root_dir.get_value() + "/bin/promscrape").c_str(),
-				      "promscrape",
-				      address.c_str(),
-				      "--log.format=json",
-				      log_level.c_str(),
-				      prom_conf_arg.c_str(),
-				      (char*)NULL);
+				// Copy promscrape labels into new C char array so we can use strtok()
+				std::strcpy(labels, c_promscrape_labels.get_value().c_str());
+				for (char *arg = std::strtok(labels, " \t"); (i < (maxargs - 1)) && arg;
+					arg = std::strtok(NULL, " \t"))
+				{
+					argv[i++] = arg;
+				}
 			}
+			argv[i++] = (char *)NULL;
+
+			execv((m_configuration.c_root_dir.get_value() + "/bin/" + promscrape).c_str(), const_cast<char* const *>(argv));
+
+			delete[] labels;
+			delete[] argv;
 
 			return (EXIT_FAILURE);
 		});

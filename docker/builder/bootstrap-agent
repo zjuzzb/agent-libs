@@ -659,6 +659,21 @@ if [ -z "$AGENT_BUILD_DATE" ]; then
 	AGENT_BUILD_DATE="`date`"
 fi
 
+if [ -z "$ONLY_DEPS" -a $OS != "Windows_NT" ]; then
+	PROMSCRAPE_URL=$DEPENDENCIES_URL/promscrape
+	PROMSCRAPE_DIR=$DEPENDENCIES/promscrape
+	PROMSCRAPE_VERSION="$AGENT_VERSION"
+	if [[ "$PROMSCRAPE_VERSION" == *dev* ]]; then
+	    PROMSCRAPE_VERSION=dev
+	fi
+	# Always get latest promscrape binary, even for release versions
+	rm -rf $PROMSCRAPE_DIR
+	mkdir $PROMSCRAPE_DIR
+	cd $PROMSCRAPE_DIR
+	wget -O promscrape_v1 $PROMSCRAPE_URL/v1/promscrape_v1-$PROMSCRAPE_VERSION
+	wget -O promscrape_v2 $PROMSCRAPE_URL/v2/promscrape_v2-$PROMSCRAPE_VERSION
+fi
+
 if [ -z "$ONLY_DEPS" ]; then
 	AGENT_BUILD_DIR=$WORKDIR/agent/build
 	mkdir -p $AGENT_BUILD_DIR/debug

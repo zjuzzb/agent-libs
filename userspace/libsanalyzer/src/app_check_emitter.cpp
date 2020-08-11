@@ -40,7 +40,7 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 	{
 		for(auto pid: procinfo.m_program_pids)
 		{
-			if (m_promscrape->pid_has_jobs((int)pid))
+			auto export_prom = [&](int64_t pid)
 			{
 				if (promscrape::c_export_fastproto->get_value())
 				{
@@ -67,6 +67,16 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 						&filtered_prometheus_metrics,
 						&total_prometheus_metrics);
 				}
+			};
+			if (m_promscrape->pid_has_jobs((int)pid))
+			{
+				export_prom(pid);
+			}
+			// Hack: export metrics not associated with a process (as gotten from
+			// remote endpoints or from Promscrape V2) under our dragent pid
+			if (pid == getpid())
+			{
+				export_prom(0);
 			}
 		}
 	}
