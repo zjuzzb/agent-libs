@@ -124,7 +124,7 @@ void add_connection(sinsp& inspector,
 	}
 
 	userdb db;
-	tap.emit_connections(&mgr, &db);
+	tap.emit_connections(&mgr, &db, nullptr);
 }
 
 void arg_length_test(const int limit)

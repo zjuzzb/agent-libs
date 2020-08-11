@@ -18,6 +18,7 @@ union _ipv4tuple;
 class sinsp_connection;
 class sinsp_ipv4_connection_manager;
 class thread_analyzer_info;
+class infrastructure_state_iface;
 class sinsp;
 class userdb;
 
@@ -41,7 +42,7 @@ public:
 	 * Using the given connection table, emit the network connections between
 	 * processes.
 	 */
-	void emit_connections(sinsp_ipv4_connection_manager* conn_manager, userdb* userdb);
+	void emit_connections(sinsp_ipv4_connection_manager* conn_manager, userdb* userdb, infrastructure_state_iface *infra_state);
 
 	/**
 	 * When connections are emitted, we limit the number of environments
@@ -67,12 +68,16 @@ public:
 	static unsigned int max_command_argument_length();
 
 private:
-	void emit_process(thread_analyzer_info *tinfo, userdb *userdb);
+	void emit_process(thread_analyzer_info *tinfo, userdb *userdb, infrastructure_state_iface* infra_state);
 	bool emit_environment(tap::NewProcess *proc, thread_analyzer_info *tinfo);
 
 	void emit_network_audit(tap::ConnectionAudit* conn_audit,
 	                        const _ipv4tuple& iptuple,
 	                        const sinsp_connection& connection);
+
+	void emit_labels(tap::NewProcess *process, infrastructure_state_iface* infra_state);
+	void configure_labels_set();
+
 
 	std::string m_machine_id;
 	std::string m_hostname;
@@ -85,4 +90,5 @@ private:
 	env_hash_config* m_config;
 	int m_num_envs_sent;
 	audit_tap_connection_aggregator m_connection_aggregator;
+	std::unordered_set<std::string> m_labels;
 };

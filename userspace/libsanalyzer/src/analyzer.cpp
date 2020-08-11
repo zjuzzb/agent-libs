@@ -2434,7 +2434,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	tracer_emitter tap_trc("tap", proc_trc);
 	if (m_tap)
 	{
-		m_tap->emit_connections(m_ipv4_connections, m_username_lookups ? &m_userdb : nullptr);
+#ifndef CYGWING_AGENT
+		m_tap->emit_connections(m_ipv4_connections, m_username_lookups ? &m_userdb : nullptr, (infrastructure_state_iface*) m_infrastructure_state);
+#else
+        m_tap->emit_connections(m_ipv4_connections, m_username_lookups ? &m_userdb : nullptr);
+#endif
 	}
 	tap_trc.stop();
 

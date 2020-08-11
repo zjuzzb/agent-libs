@@ -1,8 +1,10 @@
+#include "audit_tap.h"
+
 #include "analyzer.h"
 #include "analyzer_thread.h"
-#include "audit_tap.h"
 #include "common_logger.h"
 #include "connectinfo.h"
+#include "infrastructure_state.h"
 #include "sinsp_int.h"
 #include "tap.pb.h"
 #include "type_config.h"
@@ -44,6 +46,23 @@ type_config<std::string>::ptr c_protobuf_dir =
 	        }
         })
         .build();
+
+type_config<bool> c_labels_enabled(false,
+                                   "Include labels for audit tap messages",
+                                   "audit_tap",
+                                   "enable_labels");
+type_config<int> c_max_agent_tags(30,
+                                  "Max amount of agent tags to consider (for performance reasons)",
+                                  "audit_tap",
+                                  "max_agent_tags");
+type_config<std::vector<std::string>> c_include_labels({},
+                                                       "Labels to include in audit tap",
+                                                       "audit_tap",
+                                                       "included_labels");
+type_config<std::vector<std::string>> c_exclude_labels({},
+                                                       "Labels to exclude in audit tap",
+                                                       "audit_tap",
+                                                       "excluded_labels");
 
 void write_to_file(const tap::AuditLog& tap)
 {
@@ -93,20 +112,30 @@ tap::ConnectionStatus conn_status(const uint8_t flags, const int errorcode)
 	}
 }
 
-} // end namespace
+}  // end namespace
 
-
-
-audit_tap::audit_tap(env_hash_config *config, const std::string &machine_id, bool emit_local_connections) :
-	m_machine_id(machine_id),
-	m_hostname(sinsp_gethostname()),
-	m_emit_local_connections(emit_local_connections),
-	m_event_batch(new tap::AuditLog),
-	m_config(config),
-	m_num_envs_sent(0),
-	m_connection_aggregator(sinsp_utils::get_current_time_ns)
+audit_tap::audit_tap(env_hash_config* config,
+                     const std::string& machine_id,
+                     bool emit_local_connections)
+    : m_machine_id(machine_id),
+      m_hostname(sinsp_gethostname()),
+      m_emit_local_connections(emit_local_connections),
+      m_event_batch(new tap::AuditLog),
+      m_config(config),
+      m_num_envs_sent(0),
+      m_connection_aggregator(sinsp_utils::get_current_time_ns),
+      m_labels({"process.name",
+                "host.hostName",
+                "agent.tag",
+                "container.name",
+                "kubernetes.cluster.name",
+                "kubernetes.namespace.name",
+                "kubernetes.deployment.name",
+                "kubernetes.pod.name",
+                "kubernetes.node.name"})
 {
 	clear();
+	configure_labels_set();
 }
 
 audit_tap::~audit_tap()
@@ -124,9 +153,11 @@ void audit_tap::on_exit(uint64_t pid)
 	}
 }
 
-void audit_tap::emit_connections(sinsp_ipv4_connection_manager* conn_manager, userdb* userdb)
+void audit_tap::emit_connections(sinsp_ipv4_connection_manager* conn_manager,
+                                 userdb* userdb,
+                                 infrastructure_state_iface* infra_state)
 {
-	for(auto& it : conn_manager->m_connections)
+	for (auto& it : conn_manager->m_connections)
 	{
 		const ipv4tuple& iptuple = it.first;
 		sinsp_connection& connection = it.second;
@@ -167,16 +198,18 @@ void audit_tap::emit_connections(sinsp_ipv4_connection_manager* conn_manager, us
 
 		if (have_connections)
 		{
-			emit_process(dynamic_cast<thread_analyzer_info*>(connection.m_sproc.get()), userdb);
-			emit_process(dynamic_cast<thread_analyzer_info*>(connection.m_dproc.get()), userdb);
+			emit_process(dynamic_cast<thread_analyzer_info*>(connection.m_sproc.get()),
+			             userdb,
+			             infra_state);
+			emit_process(dynamic_cast<thread_analyzer_info*>(connection.m_dproc.get()),
+			             userdb,
+			             infra_state);
 		}
 
-		m_connection_aggregator.update_connection_info(iptuple,
-		                                               connection);
+		m_connection_aggregator.update_connection_info(iptuple, connection);
 	}
 
-	m_connection_aggregator.emit_on_schedule(
-			*m_event_batch->mutable_connectionaudit());
+	m_connection_aggregator.emit_on_schedule(*m_event_batch->mutable_connectionaudit());
 }
 
 void audit_tap::emit_network_audit(tap::ConnectionAudit* const conn_audit,
@@ -273,7 +306,9 @@ void audit_tap::emit_pending_envs(sinsp* inspector)
 	}
 }
 
-void audit_tap::emit_process(thread_analyzer_info* tinfo, userdb* userdb)
+void audit_tap::emit_process(thread_analyzer_info* tinfo,
+                             userdb* userdb,
+                             infrastructure_state_iface* infra_state)
 {
 	if (tinfo == nullptr)
 	{
@@ -323,6 +358,10 @@ void audit_tap::emit_process(thread_analyzer_info* tinfo, userdb* userdb)
 	}
 
 	proc->set_timestamp(tinfo->m_clone_ts / 1000000);
+	if (c_labels_enabled.get_value())
+	{
+		emit_labels(proc, infra_state);
+	}
 }
 
 bool audit_tap::emit_environment(tap::NewProcess* proc, thread_analyzer_info* tinfo)
@@ -449,6 +488,96 @@ void audit_tap::clear()
 	m_event_batch->set_hostmac(m_machine_id);
 	m_event_batch->set_hostname(m_hostname);
 	m_num_envs_sent = 0;
+}
+
+void audit_tap::configure_labels_set()
+{
+	for (const auto& s : c_include_labels.get_value())
+	{
+		m_labels.insert(s);
+	}
+	for (const auto& s : c_exclude_labels.get_value())
+	{
+		m_labels.erase(s);
+	}
+}
+
+void audit_tap::emit_labels(tap::NewProcess* process, infrastructure_state_iface* infra_state)
+{
+	auto labels = process->mutable_event_labels();
+
+	if (m_labels.find("host.hostName") != m_labels.end())
+	{
+		string host_name = sinsp_gethostname();
+		if (!host_name.empty())
+		{
+			(*labels)["host.hostName"] = std::move(host_name);
+		}
+	}
+
+	// Agent Tags
+	if (m_labels.find("agent.tag") != m_labels.end())
+	{
+		std::vector<std::string> tags = sinsp_split(
+		    configuration_manager::instance().get_config<std::string>("tags")->get_value(),
+		    ',');
+
+		std::string tag_prefix = "agent.tag.";
+		int max_tags = c_max_agent_tags.get_value();
+
+		int count_tags = 0;
+		for (auto& pair : tags)
+		{
+			if (count_tags >= max_tags)
+			{
+				break;
+			}
+
+			std::vector<std::string> parts = sinsp_split(pair, ':');
+
+			if (parts.size() == 2)
+			{
+				// Do not include hardcoded "sysdig_secure.enabled" tag
+				if (parts[0] != "sysdig_secure.enabled")
+				{
+					(*labels)[tag_prefix + parts[0]] = parts[1];
+					count_tags++;
+				}
+			}
+		}
+	}
+
+#ifndef CYGWING_AGENT
+	if (infra_state == nullptr)
+	{
+		return;
+	}
+	// Infrastructure Lookup for Kubernetes Labels
+	infrastructure_state::uid_t uid;
+	uid = std::make_pair("container", process->containerid());
+
+	std::unordered_map<std::string, std::string> event_labels;
+	infra_state->find_tag_list(uid, m_labels, event_labels);
+
+	for (auto& it : event_labels)
+	{
+		(*labels)[it.first] = std::move(it.second);
+	}
+
+	// Kubernetes Cluster Name
+	if (m_labels.find("kubernetes.cluster.name") != m_labels.end())
+	{
+		// kubernetes.cluster.name should be pushed only if the event is related to k8s
+		// Use Pod Name label to check it
+		if (event_labels.find("kubernetes.pod.name") != event_labels.end())
+		{
+			if (!infra_state->get_k8s_cluster_name().empty())
+			{
+				(*labels)["kubernetes.cluster.name"] = infra_state->get_k8s_cluster_name();
+			}
+		}
+	}
+#endif
 }
 
 // static
