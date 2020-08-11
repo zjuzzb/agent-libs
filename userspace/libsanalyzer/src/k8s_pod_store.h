@@ -4,6 +4,10 @@
 #include <map>
 #include <vector>
 #include <gtest/gtest.h>
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/mem_fun.hpp>
+#include <boost/multi_index/member.hpp>
 
 #include "draios.pb.h"
 #include "k8s_object_store.h"
@@ -70,10 +74,11 @@ public:
 		/*!
 		  ctor
 		  \param uid The service's id
+		  \param name The service name
 		  \param ns The service's namespace
 		  \param selectors The service's selectors
 		 */
-		service(const std::string& uid, const std::string& ns, selector_set_t&& selectors);
+		service(const std::string& uid, const std::string& name, const std::string& ns, selector_set_t&& selectors);
 		service(const service&) = delete;
 		service(service&&);
 		~service();
@@ -84,7 +89,7 @@ public:
 		  if this service will be deleted
 		  \param uid The pod uid
 		 */
-		void add_matched_pod(const std::string& uid);
+		void add_matched_pod(const std::string& uid) const;
 
 		/*!
 		  Getter
@@ -100,6 +105,18 @@ public:
 
 		/*
 		  Getter
+		  \return The service's name
+		*/
+		const std::string& name() const;
+
+		/*
+		  Getter
+		  \return The service's namespace
+		*/
+		const std::string& namespace_() const;
+
+		/*
+		  Getter
 		  \return all the services under this service
 		 */
 		const std::set<std::string>& matched_pods() const;
@@ -108,13 +125,12 @@ public:
 		  Verifies if a pod is served by this service
 		  \param pod The target pod
 		 */
-		bool serves_pod(const pod& pod);
-
-
+		bool serves_pod(const pod& pod) const;
 
 	private:
-		std::set<std::string> m_matched_pod;
+		mutable std::set<std::string> m_matched_pod;
 		std::string m_uid;
+		std::string m_name;
 		std::string m_namespace;
 		selector_set_t m_selectors;
 	};
@@ -171,16 +187,40 @@ private:
 	FRIEND_TEST(k8s_pod_store_test, resolve_ports);
 	pod_cache_t m_pods;
 	node_map_t m_nodes;
-	std::map<std::string, service> m_services;
+
+	// Multi index map for storing services
+	// We index by service id and by service name
+	struct index_id
+	{
+	};
+
+	struct index_name
+	{
+	};
+ 	typedef boost::multi_index::multi_index_container<
+		service,
+		boost::multi_index::indexed_by<
+			boost::multi_index::ordered_non_unique<boost::multi_index::tag<struct index_name>, boost::multi_index::const_mem_fun<service, const std::string&, &service::name>>,
+			boost::multi_index::ordered_unique<boost::multi_index::tag<struct index_id>, boost::multi_index::const_mem_fun<service, const std::string&, &service::uid>>> >
+	service_map_t;
+
+	service_map_t m_services;
+
+	// Store statefulsets waiting for their parent service.
+	// We use a multimap whose key is the pair service's namespace and name. The value is the waiting
+	// statefulset id
+	std::multimap<std::pair<std::string, std::string>, std::string> m_statefulsets_waiting_for_service;
 
 	void add_pod(const uid_t& pod_uid, const std::string& ns, const std::string& node_name, label_set_t&& labels, port_names_t&& ports);
-	void add_service(const std::string& service_uid, const std::string& ns, selector_set_t&& selectors);
+	void add_service(const std::string& service_uid, const std::string& service_name, const std::string& ns, selector_set_t&& selectors);
 
 	// serch in the service set for a service whose selectors match the pod's label
 	std::string search_for_pod_parent_service(const std::string& pod_uid);
 
 	// search in pods set for all the target service's children
-	std::vector<std::string> search_for_service_children_pods(const std::string& service_uid);
+	std::vector<std::string> search_for_service_children_pods(const std::string& service_uid, const std::string& service_name);
+
+	std::string get_service_name(const draiosproto::container_group& cg);
 
 	label_set_t get_labels_from_cg(const draiosproto::container_group& cg) const;
 	port_names_t get_ports_from_cg(const draiosproto::container_group& cg) const;
@@ -190,5 +230,6 @@ private:
 	void handle_add_pod(draiosproto::container_group& cg, state_t& state);
 	void handle_add_service(draiosproto::container_group& cg, state_t& state);
 	void handle_add_node(draiosproto::container_group& cg, state_t& state);
+	void handle_add_statefulset(draiosproto::container_group& cg, state_t& state);
 	void remove_service_from_pod(const std::string& pod_id, const std::string& service_id, state_t& state);
 };

@@ -68,7 +68,7 @@ func startWatcherAndInformers(
 		case "replicationcontrollers":
 			startReplicationControllerWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel, filterEmpty)
 		case "services":
-			startServicesSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			startServicesWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "statefulsets":
 			startStatefulSetsSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "resourcequotas":

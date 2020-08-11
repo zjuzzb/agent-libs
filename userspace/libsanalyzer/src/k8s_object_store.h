@@ -34,6 +34,9 @@ public:
 	static const std::string SERVICE_KIND;
 	static const std::string POD_KIND;
 	static const std::string NODE_KIND;
+	static const std::string STATEFULSET_KIND;
+	static const std::string STATEFULSET_SERVICE_TAG;
+	static const std::string SERVICE_NAME_LABEL;
 	static const std::map<std::string, std::string> M_K8S_TO_SYSDIG_KIND;
 
 

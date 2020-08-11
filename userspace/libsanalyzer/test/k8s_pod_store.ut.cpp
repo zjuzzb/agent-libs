@@ -20,25 +20,25 @@ protected:
 	void SetUp() override
 	{
 		m_pod = create_container_group(k8s_pod_store::POD_KIND
-						  , "1"
-						  , "node"
-						  , "namespace"
-						  , {{".label.key1", "val1"}, {".label.key2", "val2"}, {".label.key3", "val3"}},
-						  {});
+					       , "1"
+					       , "node"
+					       , "namespace"
+					       , {{".label.key1", "val1"}, {".label.key2", "val2"}, {".label.key3", "val3"}},
+					       {});
 
 		m_service =  create_container_group(k8s_pod_store::SERVICE_KIND
-						       , "2"
-						       , "node"
-						       , "namespace"
-						       , {}
-						       , {{"key1", "val1"}, {"key2", "val2"}});
+						    , "2"
+						    , "node"
+						    , "namespace"
+						    , {}
+						    , {{"key1", "val1"}, {"key2", "val2"}});
 
 		m_service_in_another_ns = create_container_group(k8s_pod_store::SERVICE_KIND
-								    , "3"
-								    , "node"
-								    , "namespace2"
-								    , {}
-								    , {{"key1", "val1"}, {"key2", "val2"}});
+								 , "3"
+								 , "node"
+								 , "namespace2"
+								 , {}
+								 , {{"key1", "val1"}, {"key2", "val2"}});
 
 		m_node = create_container_group(k8s_pod_store::NODE_KIND, "4", "node", "", {}, {});
 
@@ -261,15 +261,15 @@ TEST_F(k8s_pod_store_test, search_pod_service_parent)
 {
 	m_pod_store.clear();
 
-	m_pod_store.m_services.emplace(std::make_pair("1", k8s_pod_store::service("1", "default", {{"key1", "val1"}, {"key2", "val2"}})));
+	m_pod_store.m_services.emplace(k8s_pod_store::service("2", "service_name", "default", {{"key1", "val1"}, {"key2", "val2"}}));
 
 	m_pod_store.m_pods.emplace(std::make_pair(
-					   "2",
-					   k8s_pod_store::pod("2", "default", "node", {{"key1", "val1"}, {"key2", "val2"}}, {})));
+					   "1",
+					   k8s_pod_store::pod("1", "default", "node", {{"key1", "val1"}, {"key2", "val2"}}, {})));
 
-	auto srv_id = m_pod_store.search_for_pod_parent_service("2");
+	auto srv_id = m_pod_store.search_for_pod_parent_service("1");
 
-	EXPECT_EQ(srv_id, "1");
+	EXPECT_EQ(srv_id, "2");
 
 	// Insert a non matching pod
 	m_pod_store.m_pods.emplace(std::make_pair(
@@ -317,4 +317,61 @@ TEST_F(k8s_pod_store_test, resolve_ports)
 
 	auto srv_port = service.ports(0).target_port();
 	EXPECT_EQ(srv_port, 12345) << service.DebugString();
+}
+
+TEST_F(k8s_pod_store_test, handle_statefulset_add)
+{
+	m_pod_store.clear();
+	clear_state();
+
+	draiosproto::container_group sfs_cgp = create_container_group(k8s_pod_store::STATEFULSET_KIND
+								      , "1"
+								      , "node"
+								      , "default"
+								      , {}
+								      , {});
+
+	sfs_cgp.mutable_internal_tags()->insert({k8s_pod_store::STATEFULSET_SERVICE_TAG, "the_service_name"});
+
+	draiosproto::container_group srv_cgp = create_container_group(k8s_pod_store::SERVICE_KIND
+								      , "2"
+								      , "node"
+								      , "default"
+								      , {}
+								      , {});
+
+	srv_cgp.mutable_tags()->insert({k8s_pod_store::SERVICE_NAME_LABEL, "the_service_name"});
+
+	add_container_groups_to_state(sfs_cgp, srv_cgp);
+
+	// Let simulate a service arrives before statefulset
+	handle_many_add(srv_cgp, sfs_cgp);
+
+	// Check that sfs_cgp has the service as a parent
+	draiosproto::container_group* sfs_from_state = m_state[{k8s_pod_store::STATEFULSET_KIND, "1"}].get();
+	size_t parents_size = sfs_from_state->parents().size();
+	EXPECT_EQ(parents_size, 1);
+
+	auto parent_id = sfs_from_state->parents(0).id();
+	auto parent_kind = sfs_from_state->parents(0).kind();
+	EXPECT_EQ(parent_id, srv_cgp.uid().id());
+	EXPECT_EQ(parent_kind, srv_cgp.uid().kind());
+
+	// Let' s test the other way round. Statefulset arrives before service
+	clear_state();
+	m_pod_store.clear();
+
+	add_container_groups_to_state(sfs_cgp, srv_cgp);
+
+	handle_many_add(sfs_cgp, srv_cgp);
+
+	// Check that sfs_cgp has the service as a parent
+	sfs_from_state = m_state[{k8s_pod_store::STATEFULSET_KIND, "1"}].get();
+	parents_size = sfs_from_state->parents().size();
+	EXPECT_EQ(parents_size, 1);
+
+	parent_id = sfs_from_state->parents(0).id();
+	parent_kind = sfs_from_state->parents(0).kind();
+	EXPECT_EQ(parent_id, srv_cgp.uid().id());
+	EXPECT_EQ(parent_kind, srv_cgp.uid().kind());
 }

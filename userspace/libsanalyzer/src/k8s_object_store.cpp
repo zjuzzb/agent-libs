@@ -97,6 +97,9 @@ const std::string k8s_object_store::TARGET_NAME_TAG = "hpa.scale.target.ref.name
 const std::string k8s_object_store::SERVICE_KIND = "k8s_service";
 const std::string k8s_object_store::POD_KIND = "k8s_pod";
 const std::string k8s_object_store::NODE_KIND = "k8s_node";
+const std::string k8s_object_store::STATEFULSET_KIND = "k8s_statefulset";
+const std::string k8s_object_store::STATEFULSET_SERVICE_TAG = "kubernetes.statefulset.service.name";
+const std::string k8s_object_store::SERVICE_NAME_LABEL = "kubernetes.service.name";
 const std::map<std::string, std::string> k8s_object_store::M_K8S_TO_SYSDIG_KIND(
 	{{"Deployment", k8s_object_store::DEPLOYMENT_KIND}
 	 , {"ReplicaSet", k8s_object_store::REPLICASET_KIND}

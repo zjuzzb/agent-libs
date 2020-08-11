@@ -32,26 +32,11 @@ func newStatefulSetCongroup(statefulSet *appsv1.StatefulSet) (*draiosproto.Conta
 
 	ret.Tags = kubecollect_common.GetTags(statefulSet.ObjectMeta, "kubernetes.statefulset.")
 	ret.InternalTags = kubecollect_common.GetAnnotations(statefulSet.ObjectMeta, "kubernetes.statefulset.")
+	ret.InternalTags["kubernetes.statefulset.service.name"] = statefulSet.Spec.ServiceName
 	kubecollect.AddStatefulSetMetrics(&ret.Metrics, statefulSet)
-	AddServiceParentsFromServiceName(&ret.Parents, statefulSet.GetNamespace(), statefulSet.Spec.ServiceName)
 
 	ret.LabelSelector = kubecollect_common.GetLabelSelector(*statefulSet.Spec.Selector)
 	return ret
-}
-
-func AddStatefulSetChildrenFromService(children *[]*draiosproto.CongroupUid, service kubecollect.CoService) {
-	if !kubecollect_common.ResourceReady("statefulsets") {
-		return
-	}
-
-	for _, obj := range kubecollect.StatefulSetInf.GetStore().List() {
-		statefulSet := obj.(*appsv1.StatefulSet)
-		if service.GetNamespace() == statefulSet.GetNamespace() && service.GetName() == statefulSet.Spec.ServiceName {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_statefulset"),
-				Id:proto.String(string(statefulSet.GetUID()))})
-		}
-	}
 }
 
 func startStatefulSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {

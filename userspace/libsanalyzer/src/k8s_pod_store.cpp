@@ -18,10 +18,10 @@ void k8s_pod_store::add_pod(const uid_t& pod_uid, const std::string& ns, const s
 	m_pods.emplace(pod_uid, k8s_pod_store::pod(pod_uid, ns, node_name, std::move(labels), std::move(ports)));
 }
 
-void k8s_pod_store::add_service(const std::string &service_uid, const std::string& ns, selector_set_t &&selectors)
+void k8s_pod_store::add_service(const std::string &service_uid, const std::string& srv_name, const std::string& ns, selector_set_t &&selectors)
 {
-	service srv(service_uid, ns, std::move(selectors));
-	m_services.emplace(std::make_pair(service_uid, std::move(srv)));
+	service srv(service_uid, srv_name, ns, std::move(selectors));
+	m_services.emplace(std::move(srv));
 }
 
 std::string k8s_pod_store::search_for_pod_parent_service(const std::string &pod_uid)
@@ -37,13 +37,13 @@ std::string k8s_pod_store::search_for_pod_parent_service(const std::string &pod_
 	{
 		for(auto& srv : m_services)
 		{
-			if(srv.second.serves_pod(pod_it->second))
+			if(srv.serves_pod(pod_it->second))
 			{
 				LOG_DEBUG("Found matched service %s for pod %s"
-					  , srv.first.c_str()
+					  , srv.uid().c_str()
 					  , pod_it->first.c_str());
-				ret = srv.first;
-				srv.second.add_matched_pod(pod_uid);
+				ret = srv.uid();
+				srv.add_matched_pod(pod_uid);
 				break;
 			}
 		}
@@ -52,13 +52,13 @@ std::string k8s_pod_store::search_for_pod_parent_service(const std::string &pod_
 	return ret;
 }
 
-std::vector<std::string> k8s_pod_store::search_for_service_children_pods(const std::string &service_uid)
+std::vector<std::string> k8s_pod_store::search_for_service_children_pods(const std::string &service_uid, const std::string& service_name)
 {
 	std::vector<std::string> ret;
 
-	auto srv_it = m_services.find(service_uid);
+	auto srv_it = m_services.get<index_id>().find(service_uid);
 
-	if(srv_it == m_services.end())
+	if(srv_it == m_services.get<index_id>().end())
 	{
 		LOG_DEBUG("Service %s not found in chache", service_uid.c_str());
 	}
@@ -66,10 +66,10 @@ std::vector<std::string> k8s_pod_store::search_for_service_children_pods(const s
 	{
 		for(const auto& target_pod : m_pods)
 		{
-			if(srv_it->second.serves_pod(target_pod.second))
+			if(srv_it->serves_pod(target_pod.second))
 			{
 				ret.push_back(target_pod.first);
-				srv_it->second.add_matched_pod(target_pod.first);
+				srv_it->add_matched_pod(target_pod.first);
 			}
 		}
 	}
@@ -82,6 +82,7 @@ void k8s_pod_store::clear()
 	m_pods.clear();
 	m_services.clear();
 	m_nodes.clear();
+	m_statefulsets_waiting_for_service.clear();
 }
 
 void k8s_pod_store::handle_add(const state_key_t& key, k8s_pod_store::state_t& state)
@@ -104,6 +105,10 @@ void k8s_pod_store::handle_add(const state_key_t& key, k8s_pod_store::state_t& s
 		{
 			handle_add_node(cg, state);
 		}
+		else if(kind == STATEFULSET_KIND)
+		{
+			handle_add_statefulset(cg, state);
+		}
 	}
 }
 
@@ -118,9 +123,9 @@ void k8s_pod_store::handle_delete(const state_key_t& key, state_t& state)
 	auto has_key = k8s_object_store::has_key(key, state);
 	if(has_key.first)
 	{
-		auto& pod_cg = *has_key.second->second.get();
-		const std::string& kind = pod_cg.uid().kind();
-		const std::string& id = pod_cg.uid().id();
+		auto& cg = *has_key.second->second.get();
+		const std::string& kind = cg.uid().kind();
+		const std::string& id = cg.uid().id();
 
 		if(kind == POD_KIND)
 		{
@@ -130,12 +135,12 @@ void k8s_pod_store::handle_delete(const state_key_t& key, state_t& state)
 			// For example may came from an UPDATE event, and infrastructure_state could handle
 			// the event without removing the object
 			// Therefore, we are going un unlink all the pod's services from m_state
- 			for(auto pod_prt_it = pod_cg.mutable_parents()->begin(); pod_prt_it != pod_cg.mutable_parents()->end();)
+ 			for(auto pod_prt_it = cg.mutable_parents()->begin(); pod_prt_it != cg.mutable_parents()->end();)
 			{
 				if(pod_prt_it->kind() == k8s_pod_store::SERVICE_KIND)
 				{
 					auto prt_srv_id = pod_prt_it->id();
-					pod_prt_it = pod_cg.mutable_parents()->erase(pod_prt_it);
+					pod_prt_it = cg.mutable_parents()->erase(pod_prt_it);
 
 					//Presumably this service has the pod as a child. Remove the child
 					auto srv_it = state.find({k8s_pod_store::SERVICE_KIND, prt_srv_id});
@@ -165,16 +170,17 @@ void k8s_pod_store::handle_delete(const state_key_t& key, state_t& state)
 		else if(kind == SERVICE_KIND)
 		{
 			// Unlink pods
-			auto it = m_services.find(id);
-			if(it != m_services.end())
+			auto service_name = get_service_name(cg);
+			auto it = m_services.get<struct index_id>().find(id);
+			if(it != m_services.get<struct index_id>().end())
 			{
-				auto linked_pods = it->second.matched_pods();
+				auto linked_pods = it->matched_pods();
 				for(auto& pod_uid : linked_pods)
 				{
 					remove_service_from_pod(pod_uid, id, state);
 				}
 			}
-			m_services.erase(id);
+			m_services.get<struct index_id>().erase(id);
 		}
 	}
 }
@@ -240,8 +246,9 @@ const std::string& k8s_pod_store::pod::namespace_() const
 	return m_namespace;
 }
 
-k8s_pod_store::service::service(const std::string& uid, const std::string& ns, selector_set_t&& selectors)
+k8s_pod_store::service::service(const std::string& uid, const std::string& name, const std::string& ns, selector_set_t&& selectors)
 	: m_uid(uid)
+	, m_name(name)
 	, m_namespace(ns)
 	, m_selectors(std::move(selectors))
 {
@@ -249,12 +256,13 @@ k8s_pod_store::service::service(const std::string& uid, const std::string& ns, s
 
 k8s_pod_store::service::service(k8s_pod_store::service&& other)
 	: m_uid(std::move(other.m_uid))
+	, m_name(std::move(other.m_name))
 	, m_namespace(std::move(other.m_namespace))
 	, m_selectors(std::move(other.m_selectors))
 {
 }
 
-void k8s_pod_store::service::add_matched_pod(const std::string &uid)
+void k8s_pod_store::service::add_matched_pod(const std::string &uid) const
 {
 	m_matched_pod.insert(uid);
 }
@@ -268,7 +276,7 @@ const std::set<std::string>& k8s_pod_store::service::matched_pods() const
 	return m_matched_pod;
 }
 
-bool k8s_pod_store::service::serves_pod(const pod& target_pod)
+bool k8s_pod_store::service::serves_pod(const pod& target_pod) const
 {
 	bool ret = true;
 	if(target_pod.labels().size() == 0 || m_selectors.size() == 0)
@@ -298,6 +306,21 @@ bool k8s_pod_store::service::serves_pod(const pod& target_pod)
 const k8s_object_store::selector_set_t& k8s_pod_store::service::selectors() const
 {
 	return m_selectors;
+}
+
+const std::string& k8s_pod_store::service::uid() const
+{
+	return m_uid;
+}
+
+const std::string& k8s_pod_store::service::name() const
+{
+	return m_name;
+}
+
+const std::string& k8s_pod_store::service::namespace_() const
+{
+	return m_namespace;
 }
 
 k8s_pod_store::port_names_t k8s_pod_store::get_ports_from_cg(const draiosproto::container_group& cg) const
@@ -390,15 +413,30 @@ void k8s_pod_store::handle_add_pod(draiosproto::container_group& cg, state_t& st
 	}
 }
 
+std::string k8s_pod_store::get_service_name(const draiosproto::container_group& cg)
+{
+	std::string ret;
+	for(auto it = cg.tags().begin(); it != cg.tags().end(); it++)
+	{
+		if(SERVICE_NAME_LABEL == it->first)
+		{
+			ret = it->second;
+			break;
+		}
+	}
+	return ret;
+}
+
 void k8s_pod_store::handle_add_service(draiosproto::container_group& cg, state_t& state)
 {
 	const auto& id = cg.uid().id();
+	auto service_name = get_service_name(cg);
 	selector_set_t selectors;
 	selectors.insert(cg.selectors().begin(), cg.selectors().end());
-	add_service(id, cg.namespace_(),  std::move(selectors));
+	add_service(id, get_service_name(cg), cg.namespace_(),  std::move(selectors));
 
 	// Look for matches in pods
-	std::vector<std::string> matches = search_for_service_children_pods(id);
+	std::vector<std::string> matches = search_for_service_children_pods(id, service_name);
 	resolve_ports(cg, matches);
 
 	if(!matches.empty())
@@ -425,6 +463,28 @@ void k8s_pod_store::handle_add_service(draiosproto::container_group& cg, state_t
 			}
 		}
 	}
+
+	// Check for Statefulsets waiting for this service
+	auto it = m_statefulsets_waiting_for_service.equal_range({service_name, cg.namespace_()});
+	for(; it.first != it.second; it.first++)
+	{
+		const std::string& waiting_statefulset_id = it.first->second;
+
+		// Get the statefulset from the state
+		auto sfs_it = state.find({k8s_pod_store::STATEFULSET_KIND, waiting_statefulset_id});
+		if(sfs_it != state.end())
+		{
+			draiosproto::container_group& sfs_cg = *sfs_it->second.get();
+			auto parent = sfs_cg.mutable_parents()->Add();
+			parent->set_id(id);
+			parent->set_kind(k8s_pod_store::SERVICE_KIND);
+		}
+		else
+		{
+			LOG_WARNING("Statefulset %s not found in state. Could not add parent", waiting_statefulset_id.c_str());
+		}
+	}
+	m_statefulsets_waiting_for_service.erase({service_name, cg.namespace_()});
 }
 
 void k8s_pod_store::handle_add_node(draiosproto::container_group& cg, state_t& state)
@@ -454,6 +514,47 @@ void k8s_pod_store::handle_add_node(draiosproto::container_group& cg, state_t& s
 	}
 }
 
+void k8s_pod_store::handle_add_statefulset(draiosproto::container_group& cg, state_t& state)
+{
+	std::string service_name;
+	std::string service_id;
+	for(auto it = cg.internal_tags().begin(); it != cg.internal_tags().end(); it++)
+	{
+		if(it->first == k8s_pod_store::STATEFULSET_SERVICE_TAG)
+		{
+			service_name = it->second;
+			break;
+		}
+	}
+
+	if(!service_name.empty())
+	{
+		auto srv_it = m_services.get<struct index_name>().find(service_name);
+		if(srv_it != m_services.get<struct index_name>().end())
+		{
+			if(srv_it->namespace_() == cg.namespace_())
+			{
+				auto has_key = k8s_pod_store::has_key(std::make_pair(k8s_pod_store::STATEFULSET_KIND, cg.uid().id()), state);
+				if(has_key.first)
+				{
+					draiosproto::container_group& sfs_cg = *has_key.second->second.get();
+					auto* parent = sfs_cg.mutable_parents()->Add();
+					parent->set_id(srv_it->uid());
+					parent->set_kind(k8s_pod_store::SERVICE_KIND);
+				}
+			}
+		}
+		else
+		{
+			LOG_DEBUG("Service %s not found. Cannot set parent to statefulset %s. Deferring the operation"
+				  , service_name.c_str()
+				  , cg.uid().id().c_str());
+
+			m_statefulsets_waiting_for_service.emplace(std::make_pair(service_name, cg.namespace_()), cg.uid().id());
+		}
+	}
+}
+
 void k8s_pod_store::remove_service_from_pod(const std::string& pod_id, const std::string& service_id, state_t& state)
 {
 	auto has_key = k8s_pod_store::has_key(std::make_pair(k8s_pod_store::POD_KIND, pod_id), state);
@@ -478,14 +579,15 @@ void k8s_pod_store::remove_service_from_pod(const std::string& pod_id, const std
 
 uint64_t k8s_pod_store::size() const
 {
-	return 	m_pods.size() + m_services.size() + m_nodes.size();
+	return 	m_pods.size() + m_services.size() + m_nodes.size() + m_statefulsets_waiting_for_service.size();
 }
 
 void k8s_pod_store::print_store_status() const
 {
-	LOG_DEBUG("STORE STAT pods: %ld - services: %ld - nodes: %ld"
+	LOG_DEBUG("STORE STAT pods: %ld - services: %ld - nodes: %ld - orphan statefulsets: %ld"
 		  , m_pods.size()
 		  , m_services.size()
-		  , m_nodes.size());
+		  , m_nodes.size()
+		  , m_statefulsets_waiting_for_service.size());
 }
 
