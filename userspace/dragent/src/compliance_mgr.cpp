@@ -123,7 +123,15 @@ void compliance_mgr::refresh_compliance_tasks()
 	start.set_include_desc(security_config::instance().get_include_desc_in_compliance_results());
 	start.set_send_failed_results(security_config::instance().get_compliance_send_failed_results());
 	start.set_save_temp_files(security_config::instance().get_compliance_save_temp_files());
-	start.set_metrics_statsd_port(libsanalyzer::statsite_config::instance().get_udp_port());
+	if(libsanalyzer::statsite_config::instance().get_enabled())
+	{
+		start.set_metrics_statsd_port(libsanalyzer::statsite_config::instance().get_udp_port());
+	}
+	else
+	{
+		// This disables statsd within the compliance modules in cointerface
+		start.set_metrics_statsd_port(0);
+	}
 
 	for(auto &task : m_compliance_calendar.tasks())
 	{

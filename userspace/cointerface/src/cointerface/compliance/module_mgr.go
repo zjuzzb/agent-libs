@@ -45,10 +45,17 @@ type ModuleMgr struct {
 
 func emitStatsdForever(mgr *ModuleMgr) {
 
-	statsdEndpoint := fmt.Sprintf("127.0.0.1:%d", mgr.metricsStatsdPort)
-	conn, err := net.Dial("udp", statsdEndpoint)
-	if err != nil {
-		log.Errorf("Could not connect to %s (%v)", statsdEndpoint, err.Error());
+	var conn net.Conn
+	var err error
+
+	if mgr.metricsStatsdPort != 0 {
+		statsdEndpoint := fmt.Sprintf("127.0.0.1:%d", mgr.metricsStatsdPort)
+		conn, err = net.Dial("udp", statsdEndpoint)
+		if err != nil {
+			log.Errorf("Could not connect to %s (%v)", statsdEndpoint, err.Error());
+		}
+	} else {
+		log.Infof("Not sending benchmarks metrics (statsd disabled)")
 	}
 
 	// Maps from metric name to complete statsd line
@@ -65,21 +72,25 @@ func emitStatsdForever(mgr *ModuleMgr) {
 				parts := strings.Split(metric, ":")
 				cur_metrics[parts[0]] = metric
 
-				// Also send the metric immediately
-				log.Debugf("Writing to statsd: %v", string(metric))
-				_, err := conn.Write([]byte(metric + "\n"))
-				if err != nil {
-					log.Errorf("Could not send metrics to 127.0.0.1:8125 (%v)", err.Error())
-				}
-			case <- mgr.metricsResetChannel:
-				cur_metrics = make(map[string]string)
-			case <-ticker.C:
-				// Send the current set of metrics
-				for _, metric := range cur_metrics {
+				if conn != nil {
+					// Also send the metric immediately
 					log.Debugf("Writing to statsd: %v", string(metric))
 					_, err := conn.Write([]byte(metric + "\n"))
 					if err != nil {
 						log.Errorf("Could not send metrics to 127.0.0.1:8125 (%v)", err.Error())
+					}
+				}
+			case <- mgr.metricsResetChannel:
+				cur_metrics = make(map[string]string)
+			case <-ticker.C:
+				// Send the current set of metrics, if a statsd server is configured
+				if conn != nil {
+					for _, metric := range cur_metrics {
+						log.Debugf("Writing to statsd: %v", string(metric))
+						_, err := conn.Write([]byte(metric + "\n"))
+						if err != nil {
+							log.Errorf("Could not send metrics to 127.0.0.1:8125 (%v)", err.Error())
+						}
 					}
 				}
 			}
@@ -197,7 +208,7 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 
 	var port uint32 = 8125
 
-	if start.MetricsStatsdPort != nil && *start.MetricsStatsdPort != 0 {
+	if start.MetricsStatsdPort != nil {
 		port = *start.MetricsStatsdPort
 	}
 

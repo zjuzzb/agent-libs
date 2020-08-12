@@ -1,5 +1,6 @@
 #include <thread>
 #include <memory>
+#include <sstream>
 
 #include <Poco/AutoPtr.h>
 #include <Poco/ConsoleChannel.h>
@@ -108,8 +109,9 @@ struct task_defs_t {
 class compliance_test : public testing::Test
 {
 public:
-	compliance_test(const uint16_t statsd_port = 8125)
-		: m_statsd_port(statsd_port)
+	compliance_test(const uint16_t statsd_port = 8125, bool statsd_enabled = true)
+		: m_statsd_port(statsd_port),
+		  m_statsd_enabled(statsd_enabled)
 	{
 	}
 
@@ -180,8 +182,12 @@ protected:
 
 		m_configuration.init(NULL, false);
 
-		const std::string config = "statsd: {udp_port: " + std::to_string(m_statsd_port) + "}";
-		configuration_manager::instance().init_config(config);
+		std::ostringstream os;
+		os << "statsd:" << std::endl <<
+			"  enabled: " << (m_statsd_enabled ? "true" : "false") << std::endl <<
+			"  udp_port: " << m_statsd_port << std::endl;
+		configuration_manager::instance().init_config(os.str());
+		feature_manager::instance().initialize();
 
 		m_data_handler = new protocol_handler(*m_queue);
 
@@ -192,6 +198,7 @@ protected:
 		m_compliance_mgr->init(NULL, &m_configuration, save_errors);
 
 		// Also create a server listening on the statsd port
+		// (Note we do this regardless of whether statsd is enabled in the comp manager)
 		if ((m_statsd_sock = socket(PF_INET, SOCK_DGRAM, 0)) < 0)
 		{
 			FAIL() << "Could not create socket for fake statsd server: " << strerror(errno);
@@ -451,6 +458,30 @@ protected:
 		FAIL() << "After 10 seconds, did not see expected metric for task " << def.name;
 	}
 
+	void verify_no_metric(task_defs_t &def)
+	{
+		std::string expected = string("compliance.") + def.name + ":tests_pass:" + def.scraper_id + "|g\n";
+
+		// Wait up to 10 seconds
+		for(uint32_t i=0; i < 1000; i++)
+		{
+			Poco::Thread::sleep(10);
+
+			m_compliance_mgr->check_tasks();
+
+			{
+				std::lock_guard<std::mutex> lock(m_metrics_mutex);
+				if(m_metrics.find(expected) != m_metrics.end())
+				{
+					FAIL() << "Unexpectedly saw metric for task " << def.name;
+				}
+			}
+		}
+
+		return;
+	}
+
+
 	void verify_error(std::string &task_name, std::string &expected)
 	{
 		// Wait up to 10 seconds
@@ -495,6 +526,7 @@ protected:
 
 private:
 	uint16_t m_statsd_port;
+	bool m_statsd_enabled;
 };
 
 class compliance_test_alternate_statsd_port : public compliance_test
@@ -502,6 +534,15 @@ class compliance_test_alternate_statsd_port : public compliance_test
 protected:
 	compliance_test_alternate_statsd_port()
 		: compliance_test(8188)
+	{
+	}
+};
+
+class compliance_test_statsd_disabled : public compliance_test
+{
+protected:
+	compliance_test_statsd_disabled()
+		: compliance_test(8125, false)
 	{
 	}
 };
@@ -568,6 +609,15 @@ TEST_F(compliance_test_alternate_statsd_port, start)
 	start_tasks(one_task);
 	verify_task_result(one_task[0]);
 	verify_metric(one_task[0]);
+
+	stop_tasks();
+}
+
+TEST_F(compliance_test_statsd_disabled, start)
+{
+	start_tasks(one_task);
+	verify_task_result(one_task[0]);
+	verify_no_metric(one_task[0]);
 
 	stop_tasks();
 }
