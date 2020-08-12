@@ -55,7 +55,10 @@ const feature_manager::agent_mode_container feature_manager::mode_definitions[] 
       MONGODB_STATS,
       MONITOR},
      {}},
-    {feature_manager::AGENT_MODE_SECURE, "secure", {STATSD, COINTERFACE, DRIVER, FULL_SYSCALLS}, {}}};
+    {feature_manager::AGENT_MODE_SECURE,
+     "secure",
+     {STATSD, COINTERFACE, DRIVER, FULL_SYSCALLS},
+     {{"10s_flush_enable", config_placeholder_impl<bool>::build(true)}}}};
 
 static_assert(feature_manager::agent_mode::AGENT_MODE_COUNT ==
                   sizeof(feature_manager::mode_definitions) /

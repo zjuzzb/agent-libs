@@ -35,6 +35,7 @@ namespace
 // this config normally lives in libsanalyzer, but we're in userspace shared, so we
 // have to declare an instance of it
 type_config<uint32_t> c_url_table_size(1024, "", "http", "url_table_size");
+type_config<bool> c_10s_flush_enable(false, "", "10s_flush_enable");
 
 class dummy_features
 {
