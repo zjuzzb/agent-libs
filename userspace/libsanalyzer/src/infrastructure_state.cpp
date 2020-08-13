@@ -387,6 +387,21 @@ infrastructure_state::infrastructure_state(sinsp_analyzer& analyzer,
 	    [this](const sinsp_container_info& container_info) {
 		    on_remove_container(container_info);
 	    });
+
+	if(c_thin_cointerface_enabled->get_value() == true)
+	{
+		m_handle_update_event = [this](const draiosproto::congroup_update_event* evt)
+				      {
+					      handle_update_event_thin_cointerface(evt);
+				      };
+	}
+	else
+	{
+		m_handle_update_event = [this](const draiosproto::congroup_update_event* evt)
+				      {
+					      handle_update_event_no_thin_cointerface(evt);
+				      };
+	}
 }
 
 infrastructure_state::~infrastructure_state() {}
@@ -1076,12 +1091,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			remove(key);
 			break;
 		case draiosproto::UPDATED:
-			remove(key, true);
-			m_state[key] = make_unique<draiosproto::container_group>();
-			purge_tags_and_copy(key, evt->object());
-			m_k8s_store_manager.handle_update(key, m_state);
-			connect_to_namespace(key);
-			connect(key);
+			m_handle_update_event(evt);
 			print_obj(key);
 			break;
 		}
@@ -2972,6 +2982,50 @@ bool infrastructure_state::match_scope_all_containers(const scope_predicates& pr
 	}
 
 	return false;
+}
+
+void infrastructure_state::handle_update_event_thin_cointerface(const draiosproto::congroup_update_event *evt)
+{
+	auto key = std::make_pair(evt->object().uid().kind(), evt->object().uid().id());
+	remove(key, true);
+	m_state[key] = make_unique<draiosproto::container_group>();
+	purge_tags_and_copy(key, evt->object());
+	m_k8s_store_manager.handle_update(key, m_state);
+	connect_to_namespace(key);
+	connect(key);
+
+}
+
+void infrastructure_state::handle_update_event_no_thin_cointerface(const draiosproto::congroup_update_event *evt)
+{
+	auto key = std::make_pair(evt->object().uid().kind(), evt->object().uid().id());
+
+	if (evt->object().parents().size() > 0 || evt->object().children().size() > 0 ||
+	    evt->object().ports().size() > 0)
+	{
+		LOG_DEBUG(
+			"infra_state: UPDATED event will change relationships, remove the container "
+			"group then connect it again");
+		remove(key, true);
+		m_state[key] = make_unique<draiosproto::container_group>();
+		purge_tags_and_copy(key, evt->object());
+		connect_to_namespace(key);
+		connect(key);
+	}
+	else
+	{
+		LOG_DEBUG(
+			"infra_state: UPDATED event will not change relationships, just update the "
+			"metadata");
+		*m_state[key]->mutable_tags() = evt->object().tags();
+		if (m_k8s_limits)
+		{
+			m_k8s_limits->purge_tags(*m_state[key].get());
+		}
+		*m_state[key]->mutable_internal_tags() = evt->object().internal_tags();
+		m_state[key]->mutable_ip_addresses()->CopyFrom(evt->object().ip_addresses());
+		m_state[key]->mutable_metrics()->CopyFrom(evt->object().metrics());
+	}
 }
 
 void infrastructure_state::add_annotation_filter(const string& ann)

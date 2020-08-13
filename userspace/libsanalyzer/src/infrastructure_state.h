@@ -274,6 +274,10 @@ private:
 
 	bool match_scope_all_containers(const scope_predicates &predicates);
 
+	std::function<void(const draiosproto::congroup_update_event *evt)> m_handle_update_event;
+	void handle_update_event_thin_cointerface(const draiosproto::congroup_update_event *evt);
+	void handle_update_event_no_thin_cointerface(const draiosproto::congroup_update_event *evt);
+
 	std::map<uid_t, std::unique_ptr<draiosproto::container_group>> m_state;
 
 	using pod_status_set_t = std::set<draiosproto::pod_status_count, std::less<draiosproto::pod_status_count>>;
