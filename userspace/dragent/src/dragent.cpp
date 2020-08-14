@@ -120,14 +120,13 @@ type_config<uint64_t> c_promscrape_timeout_s(60,
                                              "Watchdog timeout for the promscrape thread",
                                              "promscrape_thread_timeout");
 
+type_config<bool> c_10s_flush_enabled(false,
+                                      "Enable agent-side aggregation",
+                                      "10s_flush_enable");
+
 type_config<std::string> c_promscrape_labels("--source.label=pod_id,sysdig_k8s_pod_uid,remove --source.label=container_name,sysdig_k8s_pod_container_name,remove",
                                              "source labels for promscrape to attach to results",
                                              "promscrape_labels");
-
-type_config<bool>::ptr c_10s_flush_enabled =
-    type_config_builder<bool>(false, "Enable agent-side aggregation", "10s_flush_enable")
-        .hidden()
-        .build();
 
 type_config<bool> c_compression_enabled(true,
                                         "set to true to compress protobufs sent to the collector",
@@ -1212,7 +1211,7 @@ int dragent_app::sdagent_main()
 		cm = new connection_manager(
 		    &m_configuration,
 		    &m_transmit_queue,
-		    c_10s_flush_enabled->get_value()
+		    c_10s_flush_enabled.get_value()
 		        ? std::initializer_list<dragent_protocol::protocol_version>{4, 5}
 		        : std::initializer_list<dragent_protocol::protocol_version>{4},
 		    {
@@ -1314,7 +1313,7 @@ int dragent_app::sdagent_main()
 		aggregator = new async_aggregator(m_aggregator_queue,
 		                                  m_serializer_queue,
 		                                  300,
-		                                  c_10s_flush_enabled->get_value() ? 10 : 0,
+		                                  c_10s_flush_enabled.get_value() ? 10 : 0,
 		                                  m_configuration.c_root_dir.get_value());
 		aggregator->set_aggregation_interval_source(cm);
 
