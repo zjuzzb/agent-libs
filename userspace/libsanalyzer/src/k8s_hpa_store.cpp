@@ -195,7 +195,7 @@ k8s_hpa_store::uid_t k8s_hpa_store::lookup_target(const std::string& kind, const
 void k8s_hpa_store::set_hpa_waiting_for_target(const uid_t& hpa_uid, kind_and_name_t&& target)
 {
 	LOG_DEBUG("add hpa %s as waiting for target <%s,%s>", hpa_uid.c_str(), target.first.c_str(), target.second.c_str());
-	m_hpa_waiting_for_target.emplace(std::make_pair(std::forward<kind_and_name_t>(target), hpa_uid));
+	m_hpa_waiting_for_target.emplace(std::make_pair(std::move(target), hpa_uid));
 }
 
 bool k8s_hpa_store::has_hpa_waiting_for_target() const

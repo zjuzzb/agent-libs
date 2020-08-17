@@ -20,7 +20,7 @@ void k8s_pod_store::add_pod(const uid_t& pod_uid, const std::string& ns, const s
 
 void k8s_pod_store::add_service(const std::string &service_uid, const std::string& ns, selector_set_t &&selectors)
 {
-	service srv(service_uid, ns, std::forward<selector_set_t>(selectors));
+	service srv(service_uid, ns, std::move(selectors));
 	m_services.emplace(std::make_pair(service_uid, std::move(srv)));
 }
 
