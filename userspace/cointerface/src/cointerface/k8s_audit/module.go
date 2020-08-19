@@ -144,7 +144,6 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 			if err := stream.Send(evt); err != nil {
 				log.Errorf("Could not send event %s: %v",
 					evt.GetEvtId(), err.Error())
-				return err
 			}
 		case <- evtsCtx.Done():
 			log.Infof("Received K8S Audit Stop() notification, shutting down http server")
