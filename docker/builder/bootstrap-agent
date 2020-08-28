@@ -666,12 +666,21 @@ if [ -z "$ONLY_DEPS" -a $OS != "Windows_NT" ]; then
 	if [[ "$PROMSCRAPE_VERSION" == *dev* ]]; then
 	    PROMSCRAPE_VERSION=dev
 	fi
-	# Always get latest promscrape binary, even for release versions
-	rm -rf $PROMSCRAPE_DIR
-	mkdir $PROMSCRAPE_DIR
+	if [ ! -z "$ALWAYS_GET_PROMSCRAPE" ]
+	then
+	    # Always get latest promscrape binary, even for release versions
+	    rm -rf $PROMSCRAPE_DIR
+	fi
+	mkdir -p $PROMSCRAPE_DIR
 	cd $PROMSCRAPE_DIR
-	wget -O promscrape_v1 $PROMSCRAPE_URL/v1/promscrape_v1-$PROMSCRAPE_VERSION
-	wget -O promscrape_v2 $PROMSCRAPE_URL/v2/promscrape_v2-$PROMSCRAPE_VERSION
+	if [ ! -f promscrape_v1 ]
+	then
+	    wget -O promscrape_v1 $PROMSCRAPE_URL/v1/promscrape_v1-$PROMSCRAPE_VERSION
+	fi
+	if [ ! -f promscrape_v2 ]
+	then
+	    wget -O promscrape_v2 $PROMSCRAPE_URL/v2/promscrape_v2-$PROMSCRAPE_VERSION
+	fi
 fi
 
 if [ -z "$ONLY_DEPS" ]; then
