@@ -20,7 +20,7 @@ class infrastructure_state;
 
 class promscrape_stats {
 public:
-	promscrape_stats();
+	promscrape_stats(const prometheus_conf &prom_conf);
 
 	void set_stats(std::string url,
 		int raw_scraped, int raw_job_filter_dropped,
@@ -53,6 +53,7 @@ private:
 	std::map<std::string, metric_stats> m_stats_map;
 
 	run_on_interval m_log_interval;
+	prometheus_conf m_prom_conf;
 };
 
 class promscrape {

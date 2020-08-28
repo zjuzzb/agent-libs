@@ -106,6 +106,7 @@ promscrape::promscrape(metric_limits::sptr_t ml,
 		m_resend_config(false),
 		m_interval_cb(interval_cb),
 		m_last_proto_ts(0),
+		m_stats(prom_conf),
 		m_infra_state(nullptr)
 {
 }
@@ -1236,8 +1237,9 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 	return raw_num_samples + calc_num_samples;
 }
 
-promscrape_stats::promscrape_stats() :
-		m_log_interval(c_promscrape_stats_log_interval.get_value() * ONE_SECOND_IN_NS)
+promscrape_stats::promscrape_stats(const prometheus_conf &prom_conf) :
+		m_log_interval(c_promscrape_stats_log_interval.get_value() * ONE_SECOND_IN_NS),
+		m_prom_conf(prom_conf)
 {
 }
 
@@ -1285,6 +1287,8 @@ void promscrape_stats::add_stats(std::string url, int over_global_limit, int raw
 void promscrape_stats::log_summary()
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
+	int unsent_global = 0;
+	int unsent_job = 0;
 
 	LOG_INFO("Prometheus timeseries statistics, %lu endpoints", m_stats_map.size());
 	for (const auto &stat : m_stats_map) {
@@ -1300,6 +1304,15 @@ void promscrape_stats::log_summary()
 				stat.second.over_global_limit ? "prometheus metric" : "job sample",
 				stat.second.over_global_limit ? stat.second.over_global_limit :
 				(stat.second.raw_over_job_limit + stat.second.calc_over_job_limit));
+
+			if (stat.second.over_global_limit)
+			{
+				unsent_global += unsent;
+			}
+			else
+			{
+				unsent_job += unsent;
+			}
 		}
 		else
 		{
@@ -1313,6 +1326,18 @@ void promscrape_stats::log_summary()
 			"job filter %d, global filter %d",
 			stat.first.c_str(), stat.second.calc_scraped, stat.second.calc_sent,
 			stat.second.calc_job_filter_dropped, stat.second.calc_global_filter_dropped);
+	}
+	if (unsent_global)
+	{
+		LOG_WARNING("Prometheus metrics limit (%u) reached. %d timeseries not sent"
+			" to avoid data inconsistencies, see preceding info logs for details",
+			m_prom_conf.max_metrics(), unsent_global);
+	}
+	if (unsent_job)
+	{
+		LOG_WARNING("Prometheus job sample limit reached. %d timeseries not sent"
+			" to avoid data inconsistencies, see preceding info logs for details",
+			unsent_job);
 	}
 }
 
