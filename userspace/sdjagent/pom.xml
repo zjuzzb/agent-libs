@@ -9,7 +9,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.6</maven.compiler.source>
         <maven.compiler.target>1.6</maven.compiler.target>
-        <snakeyaml.version>1.13</snakeyaml.version>
+        <snakeyaml.version>1.26</snakeyaml.version>
         <jackson.version>2.9.10</jackson.version>
     </properties>
 
@@ -38,7 +38,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson.version}.5</version>
+            <version>${jackson.version}.6</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
