@@ -70,6 +70,7 @@ using std::chrono::milliseconds;
 using std::chrono::seconds;
 using std::chrono::steady_clock;
 using std::chrono::duration_cast;
+using std::chrono::time_point;
 
 #define US_TO_S(_usec) ((_usec) / (1000 * 1000))
 
@@ -903,25 +904,40 @@ bool connection_manager::perform_handshake()
 	if (!send_proto_init())
 	{
 		LOG_ERROR("Could not send initial handshake message. Disconnecting");
+		disconnect();
 		return false;
 	}
 
 	// Receive and process response
+	time_point<steady_clock> start = steady_clock::now();
+	const seconds timeout = duration_cast<seconds>(m_socket->get_connect_timeout());
+	LOG_INFO("Waiting for %d seconds for handshake to complete", (int)timeout.count());
 	do {
 		bool ret = receive_message();
 		if (!ret)
 		{
 			LOG_ERROR("Receive failed on handshake. Looping back to reconnect.");
+			disconnect();
 			return false;
 		}
 		if (!m_pending_message.is_complete())
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(5));
+			std::this_thread::sleep_for(milliseconds(5));
+		}
+		// Check for timeout
+		milliseconds elapsed = duration_cast<milliseconds>(steady_clock::now() - start);
+		if (elapsed > m_socket->get_connect_timeout())
+		{
+			LOG_ERROR("Handshake timed out after %d seconds. Reconnecting.",
+			          (int)timeout.count());
+			disconnect();
+			return false;
 		}
 	} while (!m_pending_message.is_complete() && heartbeat());
 
 	if (!heartbeat())
 	{
+		// We connected successfully but the agent is terminating
 		return false;
 	}
 
@@ -1046,21 +1062,35 @@ bool connection_manager::perform_handshake()
 
 	if (!send_handshake_negotiation())
 	{
+		disconnect();
 		return false;
 	}
 
 	// Receive response
+	start = steady_clock::now();
 	do {
 		bool ret = receive_message();
 		if (!ret)
 		{
 			LOG_WARNING("Receive failed on handshake phase 2. Looping back to reconnect.");
+			disconnect();
+			return false;
+		}
+
+		// Check for timeout
+		milliseconds elapsed = duration_cast<milliseconds>(steady_clock::now() - start);
+		if (elapsed > m_socket->get_connect_timeout())
+		{
+			LOG_ERROR("Handshake phase 2 timed out after %d seconds. Reconnecting.",
+			          (int)timeout.count());
+			disconnect();
 			return false;
 		}
 	} while (!m_pending_message.is_complete() && heartbeat());
 
 	if (!heartbeat())
 	{
+		disconnect();
 		return false;
 	}
 

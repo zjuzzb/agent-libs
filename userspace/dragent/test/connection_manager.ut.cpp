@@ -2175,3 +2175,69 @@ TEST_F(connection_manager_fixture, test_error_message_invalid_version)
 	fc.stop();
 	t.join();
 }
+
+TEST_F(connection_manager_fixture, handshake_timeout)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration config;
+	config.init();
+	test_helpers::scoped_config<uint32_t> conn_timeout("connect_timeout", 1500);
+
+	// Create and spin up the fake collector
+	fake_collector fc(false); // Don't auto respond
+	fc.start(0);
+	ASSERT_NE(0, fc.get_port());
+
+	// Set the config for the CM
+	config.m_server_addr = "127.0.0.1";
+	config.m_server_port = fc.get_port();
+	config.m_ssl_enabled = false;
+
+	// Create the shared blocking queue
+	protocol_queue queue(MAX_QUEUE_LEN);
+
+	// Create and spin up the connection manager
+	connection_manager cm(&config, &queue, {5});
+
+	std::thread t([&cm]()
+	{
+		cm.test_run();
+	});
+
+	for(uint32_t loops = 0; fc.has_data() == 0 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+
+	ASSERT_EQ(fc.has_data(), 1);
+
+	// Should have gotten a PROTOCOL_INIT message
+	fake_collector::buf b = fc.pop_data();
+	ASSERT_EQ(draiosproto::message_type::PROTOCOL_INIT, b.hdr.v4.messagetype);
+
+	// Validate the protocol_init message
+	draiosproto::protocol_init pi;
+	dragent_protocol::buffer_to_protobuf(b.ptr,
+	                                     b.payload_len,
+	                                     &pi,
+	                                     protocol_compression_method::NONE);
+
+	ASSERT_EQ(1, pi.supported_protocol_versions().size());
+	dragent_protocol::protocol_version version = pi.supported_protocol_versions()[0];
+	ASSERT_EQ(dragent_protocol::PROTOCOL_VERSION_NUMBER_10S_FLUSH, version);
+
+	// Wait for timeout
+	for(uint32_t loops = 0; fc.get_num_disconnects() == 0 && loops < 2000; ++loops)
+	{
+		usleep(1000);
+	}
+
+	ASSERT_EQ(1, fc.get_num_disconnects());
+
+	// Shut down all the things
+	running_state::instance().shut_down();
+	fc.stop();
+
+	t.join();
+}
