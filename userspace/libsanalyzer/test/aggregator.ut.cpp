@@ -2557,9 +2557,24 @@ TEST(aggregator, app_metric)
 	rhs.set_name("1");
 	EXPECT_FALSE(app_metric_message_aggregator::comparer()(&lhs, &rhs));
 	rhs.set_name("");
+	EXPECT_TRUE(app_metric_message_aggregator::comparer()(&lhs, &rhs));
+
+	// Validate keys
 	rhs.add_tags()->set_key("1");
 	EXPECT_FALSE(app_metric_message_aggregator::comparer()(&lhs, &rhs));
 	lhs.add_tags()->set_key("1");
+	EXPECT_TRUE(app_metric_message_aggregator::comparer()(&lhs, &rhs));
+
+	auto lhs_tag = lhs.add_tags();
+	auto rhs_tag = rhs.add_tags();
+	lhs_tag->set_key("5");
+	lhs_tag->set_value("6");
+	rhs_tag->set_key("5");
+	rhs_tag->set_value("7");
+
+	EXPECT_FALSE(app_metric_message_aggregator::comparer()(&lhs, &rhs));
+	rhs_tag->set_value("6");
+	EXPECT_TRUE(app_metric_message_aggregator::comparer()(&lhs, &rhs));
 
 	rhs.set_type((draiosproto::app_metric_type)1);
 	rhs.set_value(4);
@@ -2593,7 +2608,12 @@ TEST(aggregator, app_tag)
 	EXPECT_FALSE(app_tag_message_aggregator::comparer()(&lhs, &rhs));
 	rhs.set_key("");
 
+	// validate that the value is also included in the message (SMAGENT-2624)
 	rhs.set_value("4");
+	EXPECT_FALSE(app_tag_message_aggregator::comparer()(&lhs, &rhs));
+	EXPECT_NE(app_tag_message_aggregator::hasher()(&lhs),
+	          app_tag_message_aggregator::hasher()(&rhs));
+	lhs.set_value("4");
 	EXPECT_TRUE(app_tag_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(app_tag_message_aggregator::hasher()(&lhs),
 	          app_tag_message_aggregator::hasher()(&rhs));
@@ -5425,6 +5445,11 @@ void map_protos(google::protobuf::util::MessageDifferencer& md,
 	md.TreatAsMap(field->SUB("app")->SUB("checks"), field->SUB("app")->SUB("checks")->SUB("name"));
 	md.TreatAsMap(field->SUB("app")->SUB("checks")->SUB("tags"),
 	              field->SUB("app")->SUB("checks")->SUB("tags")->SUB("key"));
+
+	// SMAGENT-2624: The app_tag message now has two primary keys: key and value. However,
+	//               it's non-trivial to regenerate the set of protobufs used for
+	//               comparison so for right now this function will continue validating
+	//               the old behavior
 
 	md.TreatAsMapWithMultipleFieldsAsKey(field->SUB("app")->SUB("metrics"),
 	                                     {field->SUB("app")->SUB("metrics")->SUB("name"),

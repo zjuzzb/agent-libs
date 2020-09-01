@@ -121,7 +121,8 @@ field_extension = {
                        10:110,
                        11:111},
     "statsd_info" : {1: {LIMITED}},
-    "app_tag" : {1: {PRIMARY_KEY}},
+    "app_tag" : {1: {PRIMARY_KEY},
+                 2: {PRIMARY_KEY}}, # SMAGENT-2624
     "app_metric" : {1: {PRIMARY_KEY},
                     3:103,
                     4: {PRIMARY_KEY}},

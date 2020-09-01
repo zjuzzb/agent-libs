@@ -743,7 +743,7 @@ TEST(aggregator_base, repeated_message_unique)
 	// aggregate a new thing in, check that it works
 	input = new draiosproto::prom_metric();
 	input->add_tags()->set_key("2");
-	(*input->mutable_tags())[0].set_value("3");
+	(*input->mutable_tags())[0].set_value("2");
 	input->add_tags()->set_key("3");
 	aggregator.aggregate(*input, *output, false);
 	EXPECT_EQ(output->tags().size(), 3);
@@ -752,12 +752,28 @@ TEST(aggregator_base, repeated_message_unique)
 	EXPECT_EQ(output->tags()[1].value(), "2");
 	EXPECT_EQ(output->tags()[2].key(), "3");
 
+	// Same key, different value should be a new tag
 	delete input;
-	EXPECT_EQ(output->tags().size(), 3);
+	input = new draiosproto::prom_metric();
+	input->add_tags()->set_key("2");
+	(*input->mutable_tags())[0].set_value("3");
+	aggregator.aggregate(*input, *output, false);
+	EXPECT_EQ(output->tags().size(), 4);
 	EXPECT_EQ(output->tags()[0].key(), "1");
 	EXPECT_EQ(output->tags()[1].key(), "2");
 	EXPECT_EQ(output->tags()[1].value(), "2");
 	EXPECT_EQ(output->tags()[2].key(), "3");
+	EXPECT_EQ(output->tags()[3].key(), "2");
+	EXPECT_EQ(output->tags()[3].value(), "3");
+
+	delete input;
+	EXPECT_EQ(output->tags().size(), 4);
+	EXPECT_EQ(output->tags()[0].key(), "1");
+	EXPECT_EQ(output->tags()[1].key(), "2");
+	EXPECT_EQ(output->tags()[1].value(), "2");
+	EXPECT_EQ(output->tags()[2].key(), "3");
+	EXPECT_EQ(output->tags()[3].key(), "2");
+	EXPECT_EQ(output->tags()[3].value(), "3");
 
 	delete output;
 }
@@ -787,18 +803,22 @@ TEST(aggregator_base, repeated_message_unique_in_place)
 	(*input->mutable_tags())[0].set_value("3");
 	input->add_tags()->set_key("3");
 	aggregator.aggregate(*input, *output, false);
-	EXPECT_EQ(output->tags().size(), 3);
+	EXPECT_EQ(output->tags().size(), 4);
 	EXPECT_EQ(output->tags()[0].key(), "1");
 	EXPECT_EQ(output->tags()[1].key(), "2");
 	EXPECT_EQ(output->tags()[1].value(), "2");
-	EXPECT_EQ(output->tags()[2].key(), "3");
+	EXPECT_EQ(output->tags()[2].key(), "2");
+	EXPECT_EQ(output->tags()[2].value(), "3");
+	EXPECT_EQ(output->tags()[3].key(), "3");
 
 	delete input;
-	EXPECT_EQ(output->tags().size(), 3);
+	EXPECT_EQ(output->tags().size(), 4);
 	EXPECT_EQ(output->tags()[0].key(), "1");
 	EXPECT_EQ(output->tags()[1].key(), "2");
 	EXPECT_EQ(output->tags()[1].value(), "2");
-	EXPECT_EQ(output->tags()[2].key(), "3");
+	EXPECT_EQ(output->tags()[2].key(), "2");
+	EXPECT_EQ(output->tags()[2].value(), "3");
+	EXPECT_EQ(output->tags()[3].key(), "3");
 
 	delete output;
 }
