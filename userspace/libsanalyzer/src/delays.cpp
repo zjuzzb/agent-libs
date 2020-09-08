@@ -6,8 +6,6 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 
-#include "../../driver/ppm_ringbuffer.h"
-
 #include <algorithm>
 
 using std::vector;

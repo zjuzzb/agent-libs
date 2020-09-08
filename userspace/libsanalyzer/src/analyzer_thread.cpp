@@ -8,8 +8,6 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 
-#include "../../driver/ppm_ringbuffer.h"
-
 #include <cstring>
 #include <fcntl.h>
 #include <fnmatch.h>

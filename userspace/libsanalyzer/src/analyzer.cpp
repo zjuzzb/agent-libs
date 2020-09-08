@@ -40,7 +40,6 @@
 #include "uri.h"
 #include "user_event_logger.h"
 
-#include "../../driver/ppm_ringbuffer.h"
 #include "Poco/File.h"
 #include "Poco/RegularExpression.h"
 #include "b64/encode.h"

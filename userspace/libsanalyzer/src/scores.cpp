@@ -8,8 +8,6 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 
-#include "../../driver/ppm_ringbuffer.h"
-
 #include <algorithm>
 
 sinsp_scores::sinsp_scores(sinsp_analyzer& analyzer,
