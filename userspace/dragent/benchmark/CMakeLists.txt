@@ -54,10 +54,7 @@ install(
     COMPONENT tests
 )
 
-add_executable(
-    benchmark-securitymgr
-    security_mgr.bm.cpp
-)
+add_executable(benchmark-securitymgr security_mgr.bm.cpp)
 
 target_link_libraries(
     benchmark-securitymgr

@@ -48,7 +48,6 @@ list(
     container_size_requestor.cpp
     connection_manager.cpp
     crash_handler.cpp
-    dragent.cpp
     dragent_memdump_logger.cpp
     dragent_user_event_callback.cpp
     dump_request_start_message_handler.cpp
@@ -93,6 +92,10 @@ list(
     Poco/SysdigModifiedFileChannel.cpp
 )
 
+list(APPEND dragentfiles dragent.cpp)
+
+list(APPEND agentonefiles agentone.cpp)
+
 if(CYGWIN)
     # windows specific implementation
     list(APPEND targetfiles windows_helpers.cpp windows/process_helpers.cpp)
@@ -121,30 +124,39 @@ list(
     ${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
 )
 
-add_library(dragentl STATIC ${targetfiles})
-target_link_libraries(dragentl falco_engine ${dragent_link_libraries})
-
-if(INCLUDE_INTERNAL_TEST_CODE)
-    target_compile_definitions(dragentl PUBLIC SYSDIG_TEST)
-endif()
-
-add_executable(dragent main.cpp)
-
-target_link_libraries(dragent pthread sanalyzer dragentl draiosproto librestl)
-
+# These libraries cause issues if included in UTs, so we have to link them outside
+# of the libraries, and only link them into the actual application.
 if(NOT CYGWIN)
-    target_link_libraries(
-        dragent
+    list(
+        APPEND
+        dragent_application_link_libraries
         ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
         ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
         ${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/lib/libtcmalloc_and_profiler.a
     )
 else()
-    target_link_libraries(
-        dragent ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
-        /lib/w32api/libiphlpapi.a
+    list(APPEND
+        dragent_application_link_libraries
+         ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
+         /lib/w32api/libiphlpapi.a
     )
 endif()
+
+add_library(dragentl STATIC ${targetfiles} ${dragentfiles})
+target_link_libraries(dragentl falco_engine ${dragent_link_libraries})
+
+add_library(agentonel STATIC ${targetfiles} ${agentonefiles})
+target_link_libraries(agentonel falco_engine ${dragent_link_libraries})
+
+if(INCLUDE_INTERNAL_TEST_CODE)
+    target_compile_definitions(dragentl PUBLIC SYSDIG_TEST)
+endif()
+
+add_executable(dragent agent_main.cpp)
+add_executable(agentone agentone_main.cpp)
+
+target_link_libraries(dragent pthread sanalyzer dragentl draiosproto librestl ${dragent_application_link_libraries})
+target_link_libraries(agentone pthread sanalyzer agentonel draiosproto librestl ${dragent_application_link_libraries})
 
 file(COPY ${PROJECT_SOURCE_DIR}/scripts/rpm/dragent.in
      DESTINATION ${PROJECT_BINARY_DIR}/scripts/rpm
@@ -177,6 +189,12 @@ install(
     TARGETS dragent
     DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
     COMPONENT agent-slim
+)
+
+install(
+    TARGETS agentone
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+    COMPONENT agentone
 )
 
 install(

@@ -2,11 +2,7 @@
 
 #include "main.h"
 
-#ifndef CYGWING_AGENT
-#ifndef _WIN32
 #include <sys/prctl.h>
-#endif
-#endif
 
 #include "coclient.h"
 #include "crash_handler.h"
@@ -14,7 +10,6 @@
 #include "connection_manager.h"
 #include "watchdog_runnable_pool.h"
 #include "error_handler.h"
-#include "capture_job_handler.h"
 #include "sinsp_worker.h"
 #include "common_logger.h"
 #include "monitor.h"
@@ -27,27 +22,21 @@
 #include "dragent_message_queues.h"
 #include "protobuf_compression.h"
 
-#ifndef CYGWING_AGENT
 #include "sdc_internal.pb.h"
-#else
-#include "windows_helpers.h"
-#endif
 #include "draios.pb.h"
 #include "analyzer_utils.h"
 #include "watchdog.h"
 
-class promscrape;
-class promscrape_proxy;
 class user_event_channel;
 
 ///////////////////////////////////////////////////////////////////////////////
 // The main application class
 ///////////////////////////////////////////////////////////////////////////////
-class dragent_app: public Poco::Util::ServerApplication
+class agentone_app: public Poco::Util::ServerApplication
 {
 public:
-	dragent_app();
-	~dragent_app();
+	agentone_app();
+	~agentone_app();
 
 protected:
 	void initialize(Application& self);
@@ -72,17 +61,7 @@ private:
 	void update_subprocesses();
 	void update_subprocesses_priority();
 	void monitor_files(uint64_t uptime_s);
-	void init_inspector(sinsp::ptr inspector);
-	sinsp_analyzer* build_analyzer(
-		const sinsp::ptr& inspector,
-		flush_queue& flush_queue,
-		const metric_limits::sptr_t& the_metric_limits,
-		const label_limits::sptr_t& the_label_limits,
-		const k8s_limits::sptr_t& the_k8s_limits,
-		std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy,
-		std::shared_ptr<promscrape> promscrape);
 	void setup_coredumps();
-	void log_sysinfo();
 
 	/**
 	 * Create a file
@@ -108,16 +87,9 @@ private:
 	 */
 	void setup_startup_probe(const connection_manager& cm);
 
-	bool m_help_requested;
-	bool m_version_requested;
-#ifdef CYGWING_AGENT
-	windows_helpers m_windows_helpers;
-	bool m_windows_service_parent;
-#endif
 	std::string m_pidfile;
-#ifndef CYGWING_AGENT
 	bool m_unshare_ipcns;
-#endif
+
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
 	/// Queue for input to the aggregator
@@ -126,33 +98,18 @@ private:
 	flush_queue m_serializer_queue;
 	/// Queue consumed by connection_manager for transmission to backend
 	protocol_queue m_transmit_queue;
-	std::atomic<bool> m_enable_autodrop;
 
-	std::unique_ptr<errpipe_manager> m_jmx_pipes;
-	std::shared_ptr<pipe_manager> m_statsite_pipes;
-	std::unique_ptr<errpipe_manager> m_sdchecks_pipes;
-	std::unique_ptr<errpipe_manager> m_mounted_fs_reader_pipe;
-	std::unique_ptr<errpipe_manager> m_statsite_forwarder_pipe;
 	std::unique_ptr<pipe_manager> m_cointerface_pipes;
-	std::unique_ptr<pipe_manager> m_promex_pipes;
-	std::unique_ptr<pipe_manager> m_promscrape_pipes;
 
-	std::shared_ptr<promscrape_proxy> m_promscrape_proxy;
-
-	internal_metrics::sptr_t m_internal_metrics;
 	protocol_handler m_protocol_handler;
-	capture_job_handler m_capture_job_handler;
-	sinsp_worker m_sinsp_worker;
 
 	log_reporter m_log_reporter;
 	subprocesses_logger m_subprocesses_logger;
 	typedef std::unordered_map<std::string, watchdog_state> ProcessStateMap;
 	ProcessStateMap m_subprocesses_state;
 	uint64_t m_last_dump_s;
-#ifndef CYGWING_AGENT
 	std::unique_ptr<coclient> m_coclient;
 	run_on_interval m_cointerface_ping_interval = {5*ONE_SECOND_IN_NS};
-#endif
 
 	struct monitor_file_state {
 		monitor_file_state(std::string const &path,

@@ -160,7 +160,6 @@ install(
     PATTERN *.so
 )
 
-
 install(
     DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps2.7/psycopg2/
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps2.7/psycopg2/
@@ -213,7 +212,6 @@ install(
     PATTERN *.so
 )
 
-
 install(
     DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.5/psycopg2/
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.5/psycopg2/
@@ -244,7 +242,6 @@ install(
     PATTERN *.so
 )
 
-
 install(
     DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.6/psycopg2/
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.6/psycopg2/
@@ -274,7 +271,6 @@ install(
     FILES_MATCHING
     PATTERN *.so
 )
-
 
 install(
     DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.7/psycopg2/

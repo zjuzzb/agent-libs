@@ -79,9 +79,9 @@ if(NOT CYGWIN)
     set(PROMSCRAPE_DIR "${DRAIOS_DEPENDENCIES_DIR}/promscrape")
 
     install(
-	PROGRAMS ${PROMSCRAPE_DIR}/promscrape_v1 ${PROMSCRAPE_DIR}/promscrape_v2
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent-slim
+        PROGRAMS ${PROMSCRAPE_DIR}/promscrape_v1 ${PROMSCRAPE_DIR}/promscrape_v2
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+        COMPONENT agent-slim
     )
 endif()
 
@@ -111,7 +111,9 @@ if(NOT CYGWIN)
     endif()
     set(CURL_INCLUDE_DIR "${DRAIOS_DEPENDENCIES_DIR}/curl-7.61.0/include")
     # Matches name actually used by falco CMakeLists.txt
-    set(STRING_VIEW_LITE_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/string-view-lite-${DRAIOS_STRING_VIEW_LITE_VERSION}/include/")
+    set(STRING_VIEW_LITE_INCLUDE
+        "${DRAIOS_DEPENDENCIES_DIR}/string-view-lite-${DRAIOS_STRING_VIEW_LITE_VERSION}/include/"
+    )
     set(TBB_INCLUDE_DIR "${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include/")
 else()
     set(LUAJIT_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.5/src")

@@ -21,9 +21,6 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/inc
 
 add_definitions(-DHAS_ANALYZER)
 
-add_library(
-	test-helpers-dragent STATIC
-	test_security_stub.cpp
-)
+add_library(test-helpers-dragent STATIC test_security_stub.cpp)
 
 add_dependencies(test-helpers-dragent draiosproto)
