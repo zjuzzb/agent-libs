@@ -155,8 +155,24 @@ endif()
 add_executable(dragent agent_main.cpp)
 add_executable(agentone agentone_main.cpp)
 
-target_link_libraries(dragent pthread sanalyzer dragentl draiosproto librestl ${dragent_application_link_libraries})
-target_link_libraries(agentone pthread sanalyzer agentonel draiosproto librestl ${dragent_application_link_libraries})
+target_link_libraries(
+    dragent
+    pthread
+    sanalyzer
+    dragentl
+    draiosproto
+    librestl
+    ${dragent_application_link_libraries}
+)
+target_link_libraries(
+    agentone
+    pthread
+    sanalyzer
+    agentonel
+    draiosproto
+    librestl
+    ${dragent_application_link_libraries}
+)
 
 file(COPY ${PROJECT_SOURCE_DIR}/scripts/rpm/dragent.in
      DESTINATION ${PROJECT_BINARY_DIR}/scripts/rpm
@@ -207,6 +223,18 @@ install(
     FILES dragent.default.yaml
     DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
     COMPONENT agent-slim
+)
+
+install(
+    FILES root.cert
+    DESTINATION ${CMAKE_INSTALL_PREFIX}
+    COMPONENT agentone
+)
+
+install(
+    FILES dragent.default.yaml
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
+    COMPONENT agentone
 )
 
 install(

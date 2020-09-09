@@ -190,10 +190,40 @@ install(
     DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
     COMPONENT agent-slim
 )
+install(
+    PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/gen-support-bundle
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+    COMPONENT agentone
+)
 
 if(NOT DEFINED COMBINED_PACKAGE)
     set(COMBINED_PACKAGE ON)
 endif()
+
+# So some quick notes on how everything happens at the interaction of CPack and CMake. From a 10k'
+# level, each install command takes a component. CPack creates a package for each component. It also
+# allows you to package multiple components together in the form of a group. The agent-slim is the
+# former of these, and the regular agent, the latter.
+#
+# The grouping happens in the following CPACK_COMPONENT-<foo>-GROUP statements, which tells cpack
+# the agent is a combination of the agent-slim and agent-kmodule components. For some ungodly
+# reason, the component needs to be capitalized in some cpack variable names, but not in others
+# (like the RPM ones below).
+#
+# Since we expect to package our distributables together, every bit which needs to be included in
+# the final distributable needs to be in the same component or component group. While there is a way
+# to specify dependencies on both the package and the components themselves, it's not clear exactly
+# how this works, so if a bit needs to go in multiple distinct components, it needs to be installed
+# twice (see the support bundle)
+#
+# Ultimately, cmake is run multiple times. The first time with COMBINED_PACKAGE off, which builds
+# each component individually. This will ultimately produce the agent-slim, agentone, and
+# agent-kmodule packages (among all others, technically). The second time, with COMBINED_PACKAGE on,
+# which will produce the agent package. (Note: it may be possible to do this in a single run, but
+# who knows)
+#
+# Below and in CMakeCPackOptions, there are extra rules per package/group/component. It's not clear
+# why things are where they are.
 
 if(COMBINED_PACKAGE STREQUAL "ON")
     set(CPACK_COMPONENT_AGENT-SLIM_GROUP agent)
@@ -257,6 +287,15 @@ set(CPACK_RPM_agent_PACKAGE_REQUIRES "dkms, gcc, make, kernel-devel, perl, pytho
 set(CPACK_RPM_agent_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall")
 set(CPACK_RPM_agent_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall")
 set(CPACK_RPM_agent_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")
+
+set(CPACK_RPM_agentone_POST_INSTALL_SCRIPT_FILE
+    "${PROJECT_SOURCE_DIR}/scripts/rpc/postinstall.slim"
+)
+set(CPACK_RPM_agentone_PRE_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpc/preinstall.slim")
+
+set(CPACK_RPM_agentone_PRE_UNINSTALL_SCRIPT_FILE
+    "${PROJECT_SOURCE_DIR}/scripts/rpc/preuninstall.slim"
+)
 
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION /etc/rc.d /etc/rc.d/init.d
                                                   ${CMAKE_INSTALL_PREFIX}

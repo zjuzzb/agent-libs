@@ -20,11 +20,6 @@ rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exc
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' /draios/oss-falco/ /code/oss-falco/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build /draios/protorepo/ /code/protorepo/
 
-if [[ $1 == "container" ]]; then
-	# Must be set before calling cmake in bootstrap-agent
-	export BUILD_DEB_ONLY=ON
-fi
-
 if [[ "`uname -m`" == "s390x" ]]; then
 	DOCKERFILE=Dockerfile.s390x
 	bootstrap_agent() {
@@ -104,6 +99,24 @@ build_container()
 	# the whole /out directory as the Docker build context
 	cp draios-*-agent.deb "$DOCKER_CONTEXT"
 	build_docker_image "$DOCKER_CONTEXT"
+
+	rm -rf "$DOCKER_CONTEXT"
+}
+
+build_agentone()
+{
+	DOCKER_CONTEXT=$(mktemp -d /out/agent-container.XXXXXX)
+	make -j$MAKE_JOBS package
+
+	# copy the agent package to a temporary directory so that we don't send
+	# the whole /out directory as the Docker build context
+	cp draios-0.1.1dev-x86_64-agentone.deb "$DOCKER_CONTEXT"
+	cp docker/agentone/local/Dockerfile $DOCKER_CONTEXT
+	cp docker/agentone/local/agentone-entrypoint.sh $DOCKER_CONTEXT
+
+	cd $DOCKER_CONTEXT;
+	docker build -t $AGENT_IMAGE --pull .
+	cd -
 
 	rm -rf "$DOCKER_CONTEXT"
 }
@@ -282,8 +295,14 @@ case "$1" in
 		bash
 		;;
 	container)
+		export BUILD_DEB_ONLY=ON
 		bootstrap_agent "${2:-"release-internal"}"
 		build_container
+		;;
+	agentone)
+		export BUILD_DEB_ONLY=ON
+		bootstrap_agent "${2:-"release-internal"}"
+		build_agentone
 		;;
 	install-test)
 		;& # deprecated; just fall through

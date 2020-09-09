@@ -1,0 +1,11 @@
+from debian:stable
+
+MAINTAINER Sysdig <support@sysdig.com>
+
+RUN apt-get update -o Acquire::Check-Valid-Until=false \
+ && apt-get dist-upgrade -y \
+ && apt-get install -y --no-install-recommends
+ADD draios-0.1.1dev-x86_64-agentone.deb /
+RUN dpkg -i /draios-0.1.1dev-x86_64-agentone.deb
+COPY ./agentone-entrypoint.sh /
+ENTRYPOINT ["/agentone-entrypoint.sh"]
