@@ -2035,7 +2035,7 @@ TEST(feature_manager, to_protobuf)
 		fm.to_protobuf(proto);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::secure);
 		EXPECT_FALSE(proto.prometheus_enabled());
-		EXPECT_TRUE(proto.statsd_enabled());
+		EXPECT_FALSE(proto.statsd_enabled());
 		EXPECT_FALSE(proto.jmx_enabled());
 		EXPECT_FALSE(proto.app_checks_enabled());
 		EXPECT_TRUE(proto.cointerface_enabled());
