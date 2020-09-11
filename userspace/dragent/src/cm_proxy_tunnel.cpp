@@ -3,6 +3,7 @@
 #include "cm_socket.h"
 
 #include <common_logger.h>
+#include <configuration_manager.h>
 
 #include <Poco/Net/StreamSocket.h>
 #include <Poco/Net/SecureStreamSocket.h>
@@ -32,6 +33,17 @@
 COMMON_LOGGER();
 
 const uint32_t http_tunnel::default_chunk_size = 1024;
+
+type_config<bool> c_ssl_verify_proxy_certificate(true,
+                                                 "Should the agent verify the SSL certificate "
+                                                 "sent by the proxy?",
+                                                 "http_proxy",
+                                                 "ssl_verify_certificate");
+
+type_config<std::string> c_proxy_ca_certificate("root.cert",
+                                                "Path to the CA cert for the proxy",
+                                                "http_proxy",
+                                                "ca_certificate");
 
 cm_socket::ptr http_tunnel::connect(const std::string& proxy_host,
                                     uint16_t proxy_port,
@@ -213,6 +225,153 @@ cm_socket::ptr http_tunnel::openssl_connect(const std::string& proxy_host,
 	return nullptr;
 }
 
+cm_socket::ptr http_tunnel::doublessl_connect(const std::string& proxy_host,
+                                              uint16_t proxy_port,
+                                              const std::vector<std::string>& ca_cert_paths,
+                                              const std::string& ssl_ca_certificate,
+                                              const std::string& http_connect_message)
+{
+	//
+	// SSL connection 1: Agent <=> Proxy
+	//
+
+	BIO* proxy = nullptr;
+	SSL_CTX* proxy_ctx = nullptr;
+	SSL *proxy_ssl = nullptr;
+
+	proxy_ctx = SSL_CTX_new(SSLv23_client_method());
+	if (proxy_ctx == nullptr)
+	{
+		LOG_ERROR("Unable to build SSL context for proxy connection");
+		return nullptr;
+	}
+
+	if (c_ssl_verify_proxy_certificate.get_value())
+	{
+		SSL_CTX_set_verify(proxy_ctx, SSL_VERIFY_PEER, nullptr);
+	}
+	else
+	{
+		SSL_CTX_set_verify(proxy_ctx, SSL_VERIFY_NONE, nullptr);
+	}
+
+	SSL_CTX_set_verify_depth(proxy_ctx, 9);
+	const long flags = SSL_OP_NO_COMPRESSION;
+	SSL_CTX_set_options(proxy_ctx, flags);
+	SSL_CTX_set_mode(proxy_ctx, SSL_MODE_AUTO_RETRY);
+
+	std::string ca_cert_path(cm_socket::find_ca_cert_path(ca_cert_paths));
+	int res = SSL_CTX_load_verify_locations(proxy_ctx,
+	                                        c_proxy_ca_certificate.get_value().c_str(),
+	                                        ca_cert_path.c_str());
+
+	if (res != 1)
+	{
+		LOG_ERROR("Couldn't load certificate for proxy: %d", res);
+		return nullptr;
+	}
+
+	proxy = BIO_new_ssl_connect(proxy_ctx);
+	if (proxy == nullptr)
+	{
+		LOG_ERROR("Couldn't create SSL BIO object for proxy");
+		return nullptr;
+	}
+
+	std::stringstream ss;
+	ss << proxy_host << ":" << proxy_port;
+	BIO_set_conn_hostname(proxy, ss.str().c_str());
+
+	BIO_get_ssl(proxy, &proxy_ssl);
+	if (proxy_ssl == nullptr)
+	{
+		LOG_ERROR("Couldn't set up SSL for proxy");
+		return nullptr;
+	}
+
+	res = SSL_connect(proxy_ssl);
+	if (res != 1)
+	{
+		ERR_print_errors_fp(stderr);
+		LOG_ERROR("Establishing SSL connection to proxy failed: %d", res);
+		return nullptr;
+	}
+
+	// Send the proxy connect message
+	res = BIO_puts(proxy, http_connect_message.c_str());
+	if (res > 0)
+	{
+		(void)BIO_flush(proxy);
+	}
+	else if (res == 0)
+	{
+		LOG_ERROR("Connection to proxy unexpectedly terminated");
+		return nullptr;
+	}
+	else // (res < 0)
+	{
+		LOG_ERROR("Error when connecting to proxy: %d", res);
+		return nullptr;
+	}
+
+	// Read the HTTP response from the proxy
+	std::string proxy_resp;
+	char buf[default_chunk_size] = {};
+	do
+	{
+		res = BIO_read(proxy, buf, sizeof(buf));
+		if (res == 0)
+		{
+			LOG_ERROR("Connection to proxy unexpectedly terminated during response");
+			return nullptr;
+		}
+		else if (res < 0)
+		{
+			LOG_ERROR("Error when reading proxy response: %d", (int)res);
+			return false;
+		}
+
+		proxy_resp.append(buf, res);
+	} while (!is_resp_complete(proxy_resp));
+
+	http_response resp = parse_resp(proxy_resp);
+
+	if (!resp.is_valid)
+	{
+		LOG_ERROR("Received invalid response from proxy server");
+		LOG_DEBUG(proxy_resp);
+		return nullptr;
+	}
+
+	if (resp.resp_code == 407) // Authentication failure
+	{
+		LOG_ERROR("Proxy server authentication failed (error code %u)", resp.resp_code);
+		LOG_DEBUG(proxy_resp);
+		return nullptr;
+	}
+	else if (resp.resp_code != 200)
+	{
+		LOG_ERROR("Proxy server returned non-success error code %u", resp.resp_code);
+		LOG_DEBUG(proxy_resp);
+		return nullptr;
+	}
+
+	//
+	// SSL connection 2: Proxy <=> Collector
+	//
+	// Once we've fully read the HTTP response, the socket magically becomes a tunnel
+	// to the remote endpoint. Now we need to create a second SSL connection to the
+	// remote server, which is handled by the openssl_socket.
+	LOG_INFO("Setting up SSL connection to collector");
+	auto oss = std::make_shared<cm_openssl_socket>(ca_cert_paths, ssl_ca_certificate);
+	if (oss->connect(proxy) && oss->is_valid())
+	{
+		LOG_INFO("Connected through HTTP proxy");
+		return oss;
+	}
+	return nullptr;
+}
+
 cm_socket::ptr http_tunnel::establish_tunnel(const proxy_connection conn)
 {
 	std::string connect_string = build_proxy_connect_string(conn);
@@ -221,13 +380,39 @@ cm_socket::ptr http_tunnel::establish_tunnel(const proxy_connection conn)
 	         conn.proxy_port);
 	LOG_TRACE(connect_string);
 
-	if (conn.ssl)
+	// SSL connection table
+	//  1. ssl_to_proxy: false, ssl_to_collector: false
+	//    \_ connect()
+	//  2. ssl_to_proxy: true, ssl_to_collector: false
+	//    \_ invalid configuration
+	//  3. ssl_to_proxy: false, ssl_to_collector: true
+	//    \_ openssl_connect()
+	//  4. ssl_to_proxy: true, ssl_to_collector: true
+	//    \_ doublessl_connect()
+
+	if (conn.ssl_to_proxy)
 	{
-		return openssl_connect(conn.proxy_host,
-		                       conn.proxy_port,
-		                       conn.ca_cert_paths,
-		                       conn.ssl_ca_certificate,
-		                       connect_string);
+		if (conn.ssl_to_collector)
+		{
+			return doublessl_connect(conn.proxy_host,
+			                         conn.proxy_port,
+			                         conn.ca_cert_paths,
+			                         conn.ssl_ca_certificate,
+			                         connect_string);
+		}
+		LOG_ERROR("Invalid configuration: SSL enabled to proxy but not to collector");
+		return nullptr;
+	}
+	else
+	{
+		if (conn.ssl_to_collector)
+		{
+			return openssl_connect(conn.proxy_host,
+			                       conn.proxy_port,
+			                       conn.ca_cert_paths,
+			                       conn.ssl_ca_certificate,
+			                       connect_string);
+		}
 	}
 	return connect(conn.proxy_host, conn.proxy_port, connect_string);
 }

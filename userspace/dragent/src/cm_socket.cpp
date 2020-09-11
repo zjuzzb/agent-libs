@@ -110,38 +110,6 @@ const std::string& get_openssldir()
 	LOG_DEBUG("openssl pclose() exit code: %d", WEXITSTATUS(ret));
 	return path;
 }
-
-// Walk over the CA path search list and return the first one that exists
-// Note: we have to return a new string by value as we potentially alter
-// the string in the search path (substituting $OPENSSLDIR with the actual path)
-std::string find_ca_cert_path(const std::vector<std::string>& search_paths)
-{
-	std::vector<std::string> failed_paths;
-	for (auto path : search_paths)
-	{
-		auto pos = path.find("$OPENSSLDIR");
-		if (pos != std::string::npos)
-		{
-			path.replace(pos, strlen("$OPENSSLDIR"), get_openssldir());
-		}
-
-		LOG_DEBUG("Checking CA path: " + path);
-		if (Poco::File(path).exists())
-		{
-			return path;
-		}
-
-		failed_paths.emplace_back(path);
-	}
-
-	std::string msg("Could not find any valid CA path, tried:");
-	for (const auto& path : failed_paths)
-	{
-		msg.append(' ' + path);
-	}
-	LOG_WARNING(msg);
-	return "";
-}
 }
 
 const milliseconds SOCKET_TCP_TIMEOUT = seconds(60);
@@ -210,6 +178,35 @@ milliseconds cm_socket::get_default_connect_timeout()
 	return milliseconds(c_connect_timeout_ms.get_value());
 }
 
+std::string cm_socket::find_ca_cert_path(const std::vector<std::string>& search_paths)
+{
+	std::vector<std::string> failed_paths;
+	for (auto path : search_paths)
+	{
+		auto pos = path.find("$OPENSSLDIR");
+		if (pos != std::string::npos)
+		{
+			path.replace(pos, strlen("$OPENSSLDIR"), get_openssldir());
+		}
+
+		LOG_DEBUG("Checking CA path: " + path);
+		if (Poco::File(path).exists())
+		{
+			return path;
+		}
+
+		failed_paths.emplace_back(path);
+	}
+
+	std::string msg("Could not find any valid CA path, tried:");
+	for (const auto& path : failed_paths)
+	{
+		msg.append(' ' + path);
+	}
+	LOG_WARNING(msg);
+	return "";
+}
+
 
 /**************************************************************************
  * OpenSSL socket
@@ -222,6 +219,7 @@ cm_openssl_socket::cm_openssl_socket(const std::vector<std::string>& ca_cert_pat
 	m_socket = -1;
 	m_valid = false;
 	m_ctx = SSL_CTX_new(SSLv23_client_method());
+	m_server = m_proxy = nullptr;
 
 	ASSERT(m_ctx != nullptr);
 	if (m_ctx == nullptr)
@@ -266,12 +264,17 @@ cm_openssl_socket::cm_openssl_socket(const std::vector<std::string>& ca_cert_pat
 
 cm_openssl_socket::~cm_openssl_socket()
 {
-	if (m_valid)
+	LOG_WARNING("Destructing");
+	close();
+	if (m_server && m_proxy)
 	{
-		if (m_ssl) SSL_free(m_ssl);
-		if (m_ctx) SSL_CTX_free(m_ctx);
-		::close(m_socket);
+		BIO_free_all(m_server);
 	}
+	else if (m_ssl)
+	{
+		SSL_free(m_ssl);
+	}
+	if (m_ctx) SSL_CTX_free(m_ctx);
 }
 
 bool cm_openssl_socket::connect(const std::string& hostname, uint16_t port)
@@ -335,15 +338,65 @@ bool cm_openssl_socket::connect(int sock_fd, const std::string& hostname)
 	return true;
 }
 
+bool cm_openssl_socket::connect(BIO* proxy)
+{
+	// We receive a BIO object for the proxy, and link one for
+	// the remote server
+	if (m_ctx == nullptr)
+	{
+		return false;
+	}
+
+	BIO* server = BIO_new_ssl(m_ctx, 1); // 1 = client, 0 = server
+	if (server == nullptr)
+	{
+		LOG_ERROR("Couldn't create SSL BIO object");
+		return false;
+	}
+
+	// Link BIOs together
+	BIO_push(server, proxy);
+
+	SSL* server_ssl = nullptr;
+	BIO_get_ssl(server, &server_ssl);
+	if (server_ssl == nullptr)
+	{
+		LOG_ERROR("Couldn't create SSL object for server connection");
+		return false;
+	}
+
+	int res = SSL_set_cipher_list(server_ssl, PREFERRED_CIPHERS);
+	if (res != 1)
+	{
+		LOG_ERROR("Error setting cipher list: %d", res);
+	}
+
+	res = BIO_get_fd(proxy, &m_socket);
+	if (res <= 0)
+	{
+		LOG_ERROR("BIO_get_fd failed: %d", res);
+		return false;
+	}
+
+	LOG_INFO("SSL connection successful");
+	m_ssl = server_ssl;
+	m_proxy = proxy;
+	m_server = server;
+	m_valid = true;
+	return true;
+}
+
 void cm_openssl_socket::close()
 {
 	if (m_valid)
 	{
 		SSL_shutdown(m_ssl);
-		::close(m_socket);
+		if (m_socket > 0)
+		{
+			::close(m_socket);
+		}
 	}
 	m_socket = -1;
-	m_ssl = nullptr;
 	m_valid = false;
 }
 
@@ -351,6 +404,7 @@ int64_t cm_openssl_socket::send(const uint8_t* buf, uint32_t len)
 {
 	if (!is_valid())
 	{
+		LOG_ERROR("Attempt to send data on invalid connection");
 		return -1;
 	}
 	return SSL_write(m_ssl, buf, len);
@@ -360,6 +414,7 @@ int64_t cm_openssl_socket::receive(uint8_t* buf, uint32_t len)
 {
 	if (!is_valid())
 	{
+		LOG_ERROR("Attempt to read data on invalid connection");
 		return -1;
 	}
 	return SSL_read(m_ssl, buf, len);
@@ -401,7 +456,7 @@ int cm_openssl_socket::translate_error(int ret) const
 
 bool cm_openssl_socket::is_valid() const
 {
-	return m_valid && m_ssl && m_socket > 0;
+	return m_valid && m_ssl && (m_socket > 0 || m_server);
 }
 
 /***************************************************************************

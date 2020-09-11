@@ -108,6 +108,13 @@ public:
 
 	static std::chrono::milliseconds get_default_connect_timeout();
 
+	/*
+	 * Walk over the CA path search list and return the first one that exists.
+	 * Note: we have to return a new string by value as we potentially alter
+	 * the string in the search path (substituting $OPENSSLDIR with the actual path)
+	 */
+	static std::string find_ca_cert_path(const std::vector<std::string>& search_paths);
+
 protected:
 	std::chrono::milliseconds m_connect_timeout;
 	std::chrono::milliseconds m_send_recv_timeout;
@@ -130,6 +137,7 @@ public:
 
 	virtual bool connect(const std::string& hostname, uint16_t port) override;
 	bool connect(int sock_fd, const std::string& hostname);
+	bool connect(BIO* proxy);
 	virtual void close() override;
 
 	virtual int64_t send(const uint8_t* buf, uint32_t len) override;
@@ -148,6 +156,8 @@ public:
 private:
 	SSL* m_ssl;
 	SSL_CTX* m_ctx;
+	BIO* m_server;
+	BIO* m_proxy;
 	int m_socket;
 	bool m_valid;
 };

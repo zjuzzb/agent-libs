@@ -64,6 +64,12 @@ type_config<std::string> c_proxy_password(
         "http_proxy",
         "proxy_password");
 
+type_config<bool> c_proxy_ssl(
+        false,
+        "Use SSL to connect to proxy.",
+        "http_proxy",
+        "ssl");
+
 using namespace std;
 using std::chrono::microseconds;
 using std::chrono::milliseconds;
@@ -342,6 +348,7 @@ bool connection_manager::connect()
 				                                         c_proxy_user.get_value(),
 				                                         c_proxy_password.get_value(),
 				                                         ssl_enabled,
+				                                         c_proxy_ssl.get_value(),
 				                                         ca_cert_paths,
 				                                         ssl_ca_certificate});
 			}
@@ -816,9 +823,7 @@ bool connection_manager::send_proto_init()
 		return false;
 	}
 
-	return transmit_buffer(now,
-	                       &header.hdr,
-	                       msg_buf);
+	return transmit_buffer(now, &header.hdr, msg_buf);
 }
 
 bool connection_manager::send_handshake_negotiation()
@@ -1171,7 +1176,6 @@ int32_t connection_manager::send_bytes(uint8_t* buf, uint32_t len)
 	do
 	{
 		res = m_socket->send(buf, len);
-
 		if (res == -ETIMEDOUT) // Handle timeout
 		{
 			if (retry)
@@ -1468,7 +1472,6 @@ bool connection_manager::receive_message()
 		{
 			res = m_socket->receive(m_pending_message.m_buffer.begin() + used_buf,
 			                        msg_len - used_buf);
-
 			if (res == 0)
 			{
 				LOG_ERROR("Lost connection (reading message body)");

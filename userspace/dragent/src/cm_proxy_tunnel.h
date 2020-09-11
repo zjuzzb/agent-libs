@@ -37,7 +37,8 @@ public:
 		uint16_t remote_port;
 		std::string username;
 		std::string password;
-		bool ssl;
+		bool ssl_to_collector;
+		bool ssl_to_proxy;
 		std::vector<std::string> ca_cert_paths;
 		std::string ssl_ca_certificate;
 	};
@@ -80,14 +81,43 @@ private:
 	 */
 	static std::string build_proxy_connect_string(const proxy_connection& conn);
 
+	/**
+	 * Create an unencrypted connection to the proxy.
+	 */
 	static cm_socket::ptr connect(const std::string& proxy_host,
 	                              uint16_t proxy_port,
 	                              const std::string& http_connect_message);
 
+	/**
+	 * Connect to the proxy and encrypt the tunnel to the collector.
+	 */
 	static cm_socket::ptr openssl_connect(const std::string& proxy_host,
 	                                      uint16_t proxy_port,
 	                                      const std::vector<std::string>& ca_cert_paths,
 	                                      const std::string& ssl_ca_certificate,
 	                                      const std::string& http_connect_message);
+
+	/**
+	 * Establish an encrypted sonnection to the proxy and a separately-encrypted
+	 * tunnel to the collector.
+	 *
+	 * "Why would you do that?" you ask?
+	 *
+	 * According to Product, some customers demand that the connection between the
+	 * agent and the proxy be encrypted. Although when using the above method all
+	 * metrics are encrypted end-to-end, the initial CONNECT message is sent in
+	 * plaintext. Some customers apparently want this one message encrypted so badly
+	 * that they're willing to double-encrypt all traffic from the agent in order to
+	 * get that.
+	 *
+	 * This may be useful if the customer is using HTTP authentication and doesn't
+	 * want attackers snooping the password. Though why there would be an attacker
+	 * inside your internal network to begin with is a more serious question.
+	 */
+	static cm_socket::ptr doublessl_connect(const std::string& proxy_host,
+	                                        uint16_t proxy_port,
+	                                        const std::vector<std::string>& ca_cert_paths,
+	                                        const std::string& ssl_ca_certificate,
+	                                        const std::string& http_connect_message);
 
 };
