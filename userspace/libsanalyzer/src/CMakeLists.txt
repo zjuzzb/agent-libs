@@ -28,6 +28,7 @@ include_directories(
     ${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include
 )
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/json-3.3.0/single_include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/c-ares-${DRAIOS_CARES_VERSION}/target/include)
 
 if(CYGWIN)
     include_directories("${WIN_HAL_INCLUDE}")
@@ -228,6 +229,7 @@ set(SANALYZER_SOURCES
     k8s_pod_store.cpp
     k8s_object_store.cpp
     k8s_store_manager.cpp
+    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/addrinfo.cpp
     ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cgroup_limits.cpp
     ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel.cpp
     ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel_api.cpp

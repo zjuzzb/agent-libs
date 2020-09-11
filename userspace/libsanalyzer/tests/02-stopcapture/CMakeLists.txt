@@ -8,6 +8,8 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/inclu
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/json-3.3.0/single_include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/c-ares-${DRAIOS_CARES_VERSION}/target/include)
+
 add_definitions(-DHAS_ANALYZER)
 
 add_executable(sinsp-stopcapture test.cpp)
