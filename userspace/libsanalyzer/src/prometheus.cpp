@@ -114,33 +114,48 @@ bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule& r
 		string pstr = rule.m_config.m_port_subst
 		                  ? replace_tokens(rule.m_config.m_port, container, infra_state, c_uid)
 		                  : rule.m_config.m_port;
-		uint16_t p = atoi(pstr.c_str());
+		uint16_t port = atoi(pstr.c_str());
 
 		// In the host_filter, which is used to select remote endpoints we cannot
 		// check if the port is actually listened to, so we just use it.
 		if (use_host_filter)
 		{
-			params.ports.emplace(p);
+			params.ports.emplace(port);
 		}
-		else
+		else if (port)
 		{
 			// If port is non-null we assume only that port should be
 			// scanned, so a mismatch means we don't scan.
 			// If the port is 0 (because a token couldn't be resolved
 			// or otherwise) we can still try using a port-filter.
-			if (p && (start_ports.find(p) != start_ports.end()))
-			{
-				LOG_DEBUG("Prometheus autodetection: process %d defined port %d found",
-				          (int)tinfo->m_pid,
-				          (int)p);
-				params.ports.emplace(p);
+
+			// If the port is remapped between container and host, we need to check
+			// that the process is listening to the container port as opposed to the
+			// advertized host port.
+			int cont_port = port;
+			if (container) {
+				for (const auto& portmap : container->m_port_mappings)
+				{
+					if (portmap.m_host_port == port) {
+						cont_port = portmap.m_container_port;
+						break;
+					}
+				}
 			}
-			else if (p)
+			if (start_ports.find(cont_port) != start_ports.end())
+			{
+				LOG_DEBUG("Prometheus autodetection: process %d defined port %d (container port %d) found",
+				          (int)tinfo->m_pid, (int)port, (int)cont_port);
+				// Since the python scraper enters the target network namespace it
+				// should scrape the container port, whereas promscrape must scrape
+				// the (advertized) host port.
+				params.ports.emplace(promscrape::c_use_promscrape.get_value() ? port : cont_port);
+			}
+			else
 			{
 				LOG_DEBUG(
-				    "Prometheus autodetection: process %d defined port %d not found, not scanning",
-				    (int)tinfo->m_pid,
-				    (int)p);
+				    "Prometheus autodetection: process %d defined port %d (container port %d) not found, not scanning",
+				    (int)tinfo->m_pid, (int)port, (int)cont_port);
 				// port is non-null but not found -> skip scan.
 				return false;
 			}
