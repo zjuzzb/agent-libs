@@ -1694,6 +1694,8 @@ sinsp_analyzer* dragent_app::build_analyzer(
 
 	analyzer->set_remotefs_enabled(m_configuration.m_remotefs_enabled);
 
+	analyzer->init_cpu_profiler();
+
 	return analyzer;
 }
 

@@ -166,6 +166,7 @@ set(SANALYZER_SOURCES
     config.cpp
     container_config.cpp
     container_events/docker.cpp
+    cpu_profiler.cpp
     custom_container.cpp
     delays.cpp
     environment_emitter.cpp

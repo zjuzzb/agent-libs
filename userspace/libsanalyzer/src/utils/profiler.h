@@ -16,7 +16,7 @@ namespace profiler {
 /**
  * Start the profiler
  */
-void start(const std::string &filename)
+static inline void start(const std::string &filename)
 {
 #ifndef SYSDIG_TEST
 	ProfilerStart(filename.c_str());
@@ -28,7 +28,7 @@ void start(const std::string &filename)
 /**
  * Stop the profiler
  */
-void stop()
+static inline void stop()
 {
 #ifndef SYSDIG_TEST
 	ProfilerStop();

@@ -119,20 +119,6 @@ void init_host_level_percentiles(T& metrics, const std::set<double>& pctls)
 	metrics.set_serialize_pctl_data(true);
 }
 
-type_config<bool> c_dragent_cpu_profile(false,
-                                        "Create dragent cpu profiles and save to the log directory",
-                                        "dragent_cpu_profile_enabled");
-
-type_config<int32_t> c_dragent_cpu_profile_seconds(
-    120,
-    "The number of seconds to collect data for a single cpu profile",
-    "dragent_profile_time_seconds");
-
-type_config<int32_t> c_dragent_cpu_profile_total_profiles(
-    30,
-    "The total number of cpu profiles to collect before overwriting old profiles",
-    "dragent_total_profiles");
-
 type_config<bool>::ptr c_test_only_send_infra_state_containers =
     type_config_builder<bool>(
         false,
@@ -302,6 +288,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
                                std::shared_ptr<app_checks_proxy_interface> the_app_checks_proxy,
                                std::shared_ptr<promscrape> promscrape)
     : m_configuration(new sinsp_configuration()),
+      m_cpu_profiler(nullptr),
       m_inspector(inspector),
       m_metrics(make_unique<draiosproto::metrics>()),
 #ifndef CYGWING_AGENT
@@ -346,9 +333,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_client_tr_time_by_servers = 0;
 
 	m_sent_metrics = false;
-	m_trace_started = false;
-	m_last_profile_flush_ns = 0;
-	m_trace_count = 0;
 
 	m_procfs_parser = nullptr;
 	m_sched_analyzer2 = nullptr;
@@ -421,11 +405,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 
 sinsp_analyzer::~sinsp_analyzer()
 {
-	if (c_dragent_cpu_profile.get_value())
-	{
-		utils::profiler::stop();
-	}
-
 	delete m_score_calculator;
 	delete m_procfs_parser;
 	delete m_sched_analyzer2;
@@ -4323,27 +4302,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 		return;
 	}
 
-	if (c_dragent_cpu_profile.get_value())
+	if(m_cpu_profiler)
 	{
-		if (!m_trace_started)
-		{
-			m_trace_started = true;
-			std::string filename =
-			    m_configuration->get_log_dir() + "/drcpu.prof." + to_string(m_trace_count);
-			utils::profiler::start(filename);
-			m_last_profile_flush_ns = flush_start_ns;
-		}
-		if ((flush_start_ns - m_last_profile_flush_ns) / 1000000000 >
-		    c_dragent_cpu_profile_seconds.get_value())
-		{
-			utils::profiler::stop();
-			m_trace_count++;
-			m_trace_count %= c_dragent_cpu_profile_total_profiles.get_value();
-			std::string filename =
-			    m_configuration->get_log_dir() + "/drcpu.prof." + to_string(m_trace_count);
-			utils::profiler::start(filename.c_str());
-			m_last_profile_flush_ns = flush_start_ns;
-		}
+		m_cpu_profiler->tick();
 	}
 
 	if (flushflags == analyzer_emitter::DF_FORCE_NOFLUSH)
@@ -7868,6 +7829,11 @@ void sinsp_analyzer::set_fs_usage_from_external_proc(bool value)
 void sinsp_analyzer::set_emit_tracers(bool enabled)
 {
 	tracer_emitter::set_enabled(enabled);
+}
+
+void sinsp_analyzer::init_cpu_profiler()
+{
+	m_cpu_profiler = make_unique<cpu_profiler>(m_configuration->get_log_dir() + "/drcpu.prof.");
 }
 
 void sinsp_analyzer::rearm_tracer_logging()

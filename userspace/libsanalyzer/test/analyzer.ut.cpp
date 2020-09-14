@@ -343,6 +343,7 @@ TEST(analyzer_test, print_profiling_error)
 	                        &g_queue,
 	                        []() -> bool { return true; });
 
+	analyzer.init_cpu_profiler();
 	// Run the analyzer to induce calling flush
 	init_sinsp_with_analyzer(*inspector, analyzer);
 	auto& tinfo = inspector->build_thread().commit();

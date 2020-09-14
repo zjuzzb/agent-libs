@@ -36,6 +36,7 @@
 #include "app_check_emitter.h"
 #include "audit_tap_handler.h"
 #include "baseliner.h"
+#include "cpu_profiler.h"
 #include "env_hash.h"
 #include "environment_emitter.h"
 #include "internal_metrics.h"
@@ -881,6 +882,13 @@ public:
 	 */
 	sinsp_threadinfo* build_threadinfo(sinsp* inspector) override;
 
+	/**
+	 * @brief set up the CPU profiler
+	 * Called after construction, once we have all the configuration
+	 * initialized
+	 */
+	void init_cpu_profiler();
+
 	VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(std::string&);
 
@@ -1083,9 +1091,7 @@ public:
 	 * be read from/written to on different threads.
 	 */
 	std::atomic<bool> m_sent_metrics;
-	bool m_trace_started;
-	uint64_t m_last_profile_flush_ns;
-	uint32_t m_trace_count;
+	std::unique_ptr<cpu_profiler> m_cpu_profiler;
 
 	sinsp_analyzer_parsers* m_parser;
 	bool m_initialized;  // In some cases (e.g. when parsing the containers list from a file) some
