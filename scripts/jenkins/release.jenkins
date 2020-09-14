@@ -361,7 +361,7 @@ pipeline {
 			cleanWs deleteDirs: true, notFailBuild: true
 		}
 		success {
-			slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job success!", tokenCredentialId: 'slack'
+			slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job success! Don't forget to update the agent version to ${params.RELEASE_VERSION} in the sysdig-probe-builder job.", tokenCredentialId: 'slack'
 		}
 		failure {
 			slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job failure.", tokenCredentialId: 'slack'
