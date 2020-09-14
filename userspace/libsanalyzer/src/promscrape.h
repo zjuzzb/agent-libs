@@ -195,8 +195,8 @@ private:
 	uint64_t m_boot_ts = 0;
 
 	std::atomic<uint64_t> m_next_ts;
-	uint64_t m_last_config_ts;
-	uint64_t m_last_ts;
+	uint64_t m_last_config_ts = 0;
+	uint64_t m_last_ts = 0;
 	bool m_start_failed = false;
 
 	metric_limits::sptr_t m_metric_limits;
@@ -208,7 +208,7 @@ private:
 	std::shared_ptr<agent_promscrape::Config> m_config;
 	bool m_resend_config;
 	interval_cb_t m_interval_cb;
-	uint64_t m_last_proto_ts;
+	uint64_t m_last_proto_ts = 0;
 
 	// Mutex to protect m_export_pids
 	std::mutex m_export_pids_mutex;
@@ -217,7 +217,7 @@ private:
 	bool m_emit_counters = true;
 
 	promscrape_stats m_stats;
-	const infrastructure_state *m_infra_state;
+	const infrastructure_state *m_infra_state = nullptr;
 
 	friend class test_helper;
 };

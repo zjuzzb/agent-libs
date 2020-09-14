@@ -265,7 +265,15 @@ int64_t promscrape::job_url_to_job_id(const std::string &url)
 	}
 
 	int64_t job_id = 0;
-	prom_job_config conf = {0, url, "", m_next_ts, 0, 0, {}};
+	prom_job_config conf = {
+		0,	// pid
+		url,	// url
+		"",	// container_id
+		m_next_ts,  // config_ts
+		0,	// data_ts
+		0,	// last_total_samples
+		{}	// add_tags
+	};
 
 	job_id = ++g_prom_job_id;
 	LOG_DEBUG("creating job %" PRId64 " for %s", job_id, url.c_str());
@@ -858,7 +866,10 @@ std::shared_ptr<agent_promscrape::ScrapeResult> promscrape::get_job_result_ptr(
 		LOG_WARNING("missing config for job %" PRId64, job_id);
 		return nullptr;
 	}
-	if (jobit->second.config_ts < m_last_config_ts)
+	// Promscrape v1 sends all currently active targets each cycle, so if a job
+	// was configured before the last cycle, it must have been dropped 
+	// Doesn't apply to v2 since Promscrape does all discovery by itself.
+	if (!is_promscrape_v2() && (jobit->second.config_ts < m_last_config_ts))
 	{
 		LOG_DEBUG("job %" PRId64 " was dropped %d seconds before latest config",
 			job_id, elapsed_s(jobit->second.config_ts, m_last_config_ts));
@@ -1074,6 +1085,13 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 			// Scrape metadata only applies to raw metrics
 			sample.set_value(raw_num_samples);
 		}
+		// Promscrape tends to send these as metric type unknown, which tends
+		// to confuse the backend. They make most sense as gauges.
+		if ((sample.raw_metric_type() == agent_promscrape::Sample::RAW_INVALID) ||
+		    (sample.raw_metric_type() == agent_promscrape::Sample::RAW_UNKNOWN))
+		{
+			sample.set_raw_metric_type(agent_promscrape::Sample::RAW_GAUGE);
+		}
 		add_sample(sample);
 	}
 
@@ -1216,6 +1234,13 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 		{
 			// Scrape metadata only applies to raw metrics
 			sample.set_value(raw_num_samples);
+		}
+		// Promscrape tends to send these as metric type unknown, which tends
+		// to confuse the backend. They make most sense as gauges.
+		if ((sample.raw_metric_type() == agent_promscrape::Sample::RAW_INVALID) ||
+		    (sample.raw_metric_type() == agent_promscrape::Sample::RAW_UNKNOWN))
+		{
+			sample.set_raw_metric_type(agent_promscrape::Sample::RAW_GAUGE);
 		}
 		add_sample(sample);
 	}
