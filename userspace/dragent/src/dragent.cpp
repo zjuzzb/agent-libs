@@ -489,7 +489,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 //
 #ifndef CYGWING_AGENT
 	string me = config().getString("application.path", CMAKE_INSTALL_PREFIX "/bin/dragent");
-	monitor monitor_process(m_pidfile, move(me));
+	monitor monitor_process(m_pidfile, move(me), {"--noipcns"});
 #else
 	monitor monitor_process(m_pidfile, m_windows_service_parent);
 #endif

@@ -19,16 +19,6 @@ if [ ! -z "$ACCESS_KEY" ]; then
 	fi
 fi
 
-if [ ! -z "$TAGS" ]; then
-	echo "* Setting tags"
-
-	if ! grep ^tags $CONFIG_FILE > /dev/null 2>&1; then
-		echo "tags: $TAGS" >> $CONFIG_FILE
-	else
-		sed -i "s/^tags.*/tags: $TAGS/g" $CONFIG_FILE
-	fi
-fi
-
 if [ ! -z "$COLLECTOR" ]; then
 	echo "* Setting collector endpoint"
 
@@ -79,16 +69,13 @@ if [ ! -z "$ADDITIONAL_CONF" ]; then
 	fi
 fi
 
-if [ ! -z "$RUN_MODE" ]; then
-	if ! grep ^run_mode: $CONFIG_FILE > /dev/null 2>&1; then
-		echo "run_mode: $RUN_MODE" >> $CONFIG_FILE
-	else
-		sed -i "s/^run_mode:.*/run_mode: $RUN_MODE/g" $CONFIG_FILE
-	fi
+if [ -z "$HOSTNAME" ]
+then
+	HOSTNAME="unknown hostname"
 fi
 
 if [ $# -eq 0 ]; then
-	exec /opt/draios/bin/agentone
+	exec /opt/draios/bin/agentone --name $HOSTNAME
 else
 	exec "$@"
 fi

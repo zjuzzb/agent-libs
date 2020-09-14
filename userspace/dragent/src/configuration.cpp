@@ -454,7 +454,7 @@ string dragent_configuration::get_install_prefix(const Application* app)
 void dragent_configuration::init(Application* app, bool use_installed_dragent_yaml)
 {
 	refresh_machine_id();
-	string install_prefix = get_install_prefix(app);
+	std::string install_prefix = get_install_prefix(app);
 
 	File package_dir(install_prefix);
 	if (package_dir.exists() && use_installed_dragent_yaml)

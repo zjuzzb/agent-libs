@@ -126,4 +126,7 @@ private:
 	bool m_had_unclean_shutdown = false;
 	bool m_startup_probe_set = false;
 	static const std::string K8S_PROBE_FILE;
+
+	// input parameter. Used in the hostname field in the protobuf.
+	std::string m_hostname;
 };

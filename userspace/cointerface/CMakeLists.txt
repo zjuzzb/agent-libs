@@ -190,6 +190,18 @@ install(
 )
 
 install(
+    DIRECTORY
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/run
+    COMPONENT agentone
+)
+
+install(
+	PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cointerface
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+	COMPONENT agentone
+	)
+
+install(
     PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/decode_proto
     DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
     COMPONENT tests

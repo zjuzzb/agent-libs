@@ -1,5 +1,6 @@
-#include "monitor.h"
 #include "exit_code.h"
+#include "monitor.h"
+
 #include "Poco/Exception.h"
 
 #include <sys/types.h>
@@ -10,8 +11,9 @@
 #include "windows_helpers.h"
 #endif
 #include "subprocesses_logger.h"
-#include <thread>
+
 #include <posix_queue.h>
+#include <thread>
 
 using namespace std;
 
@@ -19,7 +21,7 @@ static int g_signal_received = 0;
 
 static void g_monitor_signal_callback(int sig)
 {
-	if(g_signal_received == 0)
+	if (g_signal_received == 0)
 	{
 		g_signal_received = sig;
 	}
@@ -27,10 +29,10 @@ static void g_monitor_signal_callback(int sig)
 
 static void create_pid_file(const string& pidfile)
 {
-	if(!pidfile.empty())
+	if (!pidfile.empty())
 	{
 		std::ofstream ostr(pidfile);
-		if(ostr.good())
+		if (ostr.good())
 		{
 			ostr << Poco::Process::id() << std::endl;
 		}
@@ -39,14 +41,14 @@ static void create_pid_file(const string& pidfile)
 
 static void delete_pid_file(const string& pidfile)
 {
-	if(!pidfile.empty())
+	if (!pidfile.empty())
 	{
 		try
 		{
 			File f(pidfile);
 			f.remove(true);
 		}
-		catch(Poco::Exception&)
+		catch (Poco::Exception&)
 		{
 		}
 	}
@@ -62,13 +64,14 @@ int monitored_process::exec()
 }
 
 #ifndef CYGWING_AGENT
-monitor::monitor(string pidfile, string self):
-	m_pidfile(move(pidfile)),
-	m_self_binary(move(self))
+monitor::monitor(string pidfile, string self, std::list<std::string> restart_args)
+    : m_pidfile(move(pidfile)),
+      m_self_binary(move(self)),
+      m_restart_args(restart_args)
 #else
-monitor::monitor(string pidfile, bool windows_service_parent):
-	m_pidfile(move(pidfile)),
-	m_windows_service_parent(windows_service_parent)
+monitor::monitor(string pidfile, bool windows_service_parent)
+    : m_pidfile(move(pidfile)),
+      m_windows_service_parent(windows_service_parent)
 #endif
 {
 	create_pid_file(m_pidfile);
@@ -82,15 +85,15 @@ int monitor::run()
 	signal(SIGUSR1, SIG_IGN);
 	signal(SIGUSR2, SIG_IGN);
 
-	for(auto& process : m_processes)
+	for (auto& process : m_processes)
 	{
 		auto child_pid = fork();
-		if(child_pid < 0)
+		if (child_pid < 0)
 		{
 			delete_pid_file(m_pidfile);
 			exit(EXIT_FAILURE);
 		}
-		else if(child_pid == 0)
+		else if (child_pid == 0)
 		{
 			return process.exec();
 		}
@@ -100,27 +103,27 @@ int monitor::run()
 		}
 	}
 
-	while(g_signal_received == 0)
+	while (g_signal_received == 0)
 	{
 		int status = 0;
-		for(auto& process : m_processes)
+		for (auto& process : m_processes)
 		{
-			if(!process.is_enabled())
+			if (!process.is_enabled())
 			{
 				continue;
 			}
 
 			auto waited_pid = waitpid(process.pid(), &status, WNOHANG);
-			if(waited_pid < 0)
+			if (waited_pid < 0)
 			{
 				delete_pid_file(m_pidfile);
 				exit(EXIT_FAILURE);
 			}
-			else if(waited_pid > 0)
+			else if (waited_pid > 0)
 			{
-				if(process.is_main() && WIFEXITED(status))
+				if (process.is_main() && WIFEXITED(status))
 				{
-					if(WEXITSTATUS(status) == dragent::exit_code::SHUT_DOWN)
+					if (WEXITSTATUS(status) == dragent::exit_code::SHUT_DOWN)
 					{
 						//
 						// Process terminated cleanly
@@ -128,15 +131,15 @@ int monitor::run()
 						delete_pid_file(m_pidfile);
 						exit(EXIT_SUCCESS);
 					}
-					else if(WEXITSTATUS(status) == dragent::exit_code::CONFIG_UPDATE)
+					else if (WEXITSTATUS(status) == dragent::exit_code::CONFIG_UPDATE)
 					{
-						for(const auto& process : m_processes)
+						for (const auto& process : m_processes)
 						{
 							//
 							// Send TERM to all others
-							if(!process.is_main())
+							if (!process.is_main())
 							{
-								if(kill(process.pid(), SIGKILL) != 0)
+								if (kill(process.pid(), SIGKILL) != 0)
 								{
 									delete_pid_file(m_pidfile);
 									exit(EXIT_FAILURE);
@@ -148,10 +151,19 @@ int monitor::run()
 						}
 						m_cleanup_function();
 #ifndef CYGWING_AGENT
-						execl(m_self_binary.c_str(), m_self_binary.c_str(), "--noipcns", (char*)NULL);
+
+						std::vector<char*> argv;
+						argv.push_back(const_cast<char*>(m_self_binary.c_str()));
+						for (const auto& arg : m_restart_args)
+						{
+							argv.push_back(const_cast<char*>(arg.c_str()));
+						}
+						argv.push_back((char*)NULL);
+						execv(m_self_binary.c_str(), &argv.front());
 #else
-						string executable = windows_helpers::get_executable_parent_dir() + "/bin/dragent.exe";
-						if(m_windows_service_parent)
+						string executable =
+						    windows_helpers::get_executable_parent_dir() + "/bin/dragent.exe";
+						if (m_windows_service_parent)
 						{
 							execl(executable.c_str(), "dragent", "--serviceparent", (char*)NULL);
 						}
@@ -166,9 +178,10 @@ int monitor::run()
 					}
 				}
 
-				if(!process.is_main())
+				if (!process.is_main())
 				{
-					if(WIFEXITED(status) && WEXITSTATUS(status) == dragent::exit_code::DONT_RESTART)
+					if (WIFEXITED(status) &&
+					    WEXITSTATUS(status) == dragent::exit_code::DONT_RESTART)
 					{
 						// errorcode=17 tells monitor to not retry
 						// when a process fails (does not regard
@@ -177,12 +190,15 @@ int monitor::run()
 						continue;
 					}
 
-					if(!WIFEXITED(status) || (WEXITSTATUS(status) != dragent::exit_code::DONT_SEND_LOG_REPORT))
+					if (!WIFEXITED(status) ||
+					    (WEXITSTATUS(status) != dragent::exit_code::DONT_SEND_LOG_REPORT))
 					{
+						std::cerr << "Process " << process.m_name
+						          << "exited. Notifying sdagent process.\n";
 						// Notify main process to send log report
-						for(const auto& process : m_processes)
+						for (const auto& process : m_processes)
 						{
-							if(process.is_main())
+							if (process.is_main())
 							{
 								kill(process.pid(), SIGUSR2);
 								break;
@@ -191,17 +207,17 @@ int monitor::run()
 					}
 				}
 
-				// If we reached here, the process crashed or it was purposefully killed 
+				// If we reached here, the process crashed or it was purposefully killed
 				// or it has exited with exit_code::RESTART
 				this_thread::sleep_for(chrono::seconds(1));
 
 				auto child_pid = fork();
-				if(child_pid < 0)
+				if (child_pid < 0)
 				{
 					delete_pid_file(m_pidfile);
 					exit(EXIT_FAILURE);
 				}
-				else if(child_pid == 0)
+				else if (child_pid == 0)
 				{
 					return process.exec();
 				}
@@ -214,20 +230,20 @@ int monitor::run()
 		this_thread::sleep_for(chrono::seconds(1));
 	}
 
-	for(const auto& process : m_processes)
+	for (const auto& process : m_processes)
 	{
 		//
 		// Signal received, forward it to the child and
 		// wait for it to terminate
 		//
-		if(process.pid() > 0)
+		if (process.pid() > 0)
 		{
-			if(kill(process.pid(), g_signal_received) != 0)
+			if (kill(process.pid(), g_signal_received) != 0)
 			{
 				delete_pid_file(m_pidfile);
 				exit(EXIT_FAILURE);
 			}
-			if(process.is_main())
+			if (process.is_main())
 			{
 				waitpid(process.pid(), NULL, 0);
 			}
@@ -236,5 +252,5 @@ int monitor::run()
 
 	m_cleanup_function();
 	delete_pid_file(m_pidfile);
-	return(EXIT_SUCCESS);
+	return (EXIT_SUCCESS);
 }

@@ -77,7 +77,7 @@ type_config<uint64_t> c_serializer_timeout_s(10,
                                              "Watchdog timeout for the serializer thread",
                                              "serializer_timeout");
 
-type_config<bool> c_10s_flush_enabled(false, "Enable agent-side aggregation", "10s_flush_enable");
+type_config<bool> c_10s_flush_enabled(true, "Enable agent-side aggregation", "10s_flush_enable");
 
 type_config<bool> c_compression_enabled(true,
                                         "set to true to compress protobufs sent to the collector",
@@ -220,9 +220,34 @@ void agentone_app::uninitialize()
 	ServerApplication::uninitialize();
 }
 
-void agentone_app::defineOptions(OptionSet& options) {}
+void agentone_app::defineOptions(OptionSet& options)
+{
+	ServerApplication::defineOptions(options);
 
-void agentone_app::handleOption(const std::string& name, const std::string& value) {}
+	// This is used when we restart the agent from the same monitor process
+	options.addOption(Option("noipcns", "", "keep IPC namespace (for internal use)")
+	                      .required(false)
+	                      .repeatable(false));
+
+	options.addOption(Option("name", "", "the name used to identify this agentone to the backend")
+	                      .required(true)
+	                      .repeatable(false));
+
+}
+
+void agentone_app::handleOption(const std::string& name, const std::string& value)
+{
+	ServerApplication::handleOption(name, value);
+
+	if (name == "noipcns")
+	{
+		m_unshare_ipcns = false;
+	}
+	if (name == "name")
+	{
+		m_hostname = value;
+	}
+}
 
 void agentone_app::displayHelp() {}
 
@@ -274,7 +299,7 @@ int agentone_app::main(const std::vector<std::string>& args)
 	// It's important that the pidfile gets created immediately!
 	//
 	string me = config().getString("application.path", CMAKE_INSTALL_PREFIX "/bin/dragent");
-	monitor monitor_process(m_pidfile, move(me));
+	monitor monitor_process(m_pidfile, move(me), {"--noipcns", "--name", m_hostname});
 
 	try
 	{
@@ -645,6 +670,7 @@ int agentone_app::sdagent_main()
 	// the watch dog and monitoring config files until someone decides it's
 	// time to terminate.
 	//////////////////////////////
+	int index = 0;
 	while (!state.is_terminated())
 	{
 		if (m_configuration.m_watchdog_enabled)
@@ -659,6 +685,22 @@ int agentone_app::sdagent_main()
 		}
 
 		setup_startup_probe(*cm);
+
+		auto metrics = make_unique<draiosproto::metrics>();
+		metrics->set_timestamp_ns(time(nullptr) * ONE_SECOND_IN_NS);
+		metrics->set_index(++index);
+		metrics->set_machine_id(m_configuration.machine_id());
+		metrics->set_customer_id(m_configuration.m_customer_id);
+		metrics->mutable_hostinfo()->set_hostname(m_hostname);
+
+		m_aggregator_queue.put(std::make_shared<flush_data_message>(time(nullptr) * ONE_SECOND_IN_NS,
+		                                                            nullptr,
+		                                                            std::move(metrics),
+		                                                            0,
+		                                                            0,
+		                                                            0,
+		                                                            1,
+		                                                            0));
 
 		Thread::sleep(1000);
 		++uptime_s;
@@ -851,20 +893,6 @@ void agentone_app::watchdog_check(uint64_t uptime_s)
 
 		uint64_t watchdog_max = c_watchdog_max_memory_usage_mb.get_value();
 		uint64_t watchdog_warn = c_watchdog_warn_memory_usage_mb.get_value();
-		if (feature_manager::instance().get_enabled(MEMDUMP))
-		{
-			uint64_t configured_memdump_size =
-			    configuration_manager::instance().get_config<uint64_t>("memdump.size")->get_value();
-
-			if (!c_watchdog_max_memory_usage_mb.is_set_in_config())
-			{
-				watchdog_max += configured_memdump_size / 1024 / 1024;
-			}
-			if (!c_watchdog_warn_memory_usage_mb.is_set_in_config())
-			{
-				watchdog_warn += configured_memdump_size / 1024 / 1024;
-			}
-		}
 		if (watchdog_warn > watchdog_max)
 		{
 			LOG_WARNING(
@@ -1136,8 +1164,8 @@ Logger* agentone_app::make_event_channel()
 		AutoPtr<user_event_channel> event_channel = new user_event_channel();
 		Logger& loggere =
 		    Logger::create("DraiosLogE", event_channel, m_configuration.m_min_event_priority);
-		//TODO fix this
-		//m_sinsp_worker.set_user_event_queue(event_channel->get_event_queue());
+		// TODO fix this
+		// m_sinsp_worker.set_user_event_queue(event_channel->get_event_queue());
 		return &loggere;
 	}
 	return NULL;

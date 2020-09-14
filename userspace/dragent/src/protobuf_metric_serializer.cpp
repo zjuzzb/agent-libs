@@ -159,7 +159,10 @@ void protobuf_metric_serializer::do_serialization(flush_data& data)
 	}
 
 	libsanalyzer::metric_store::store(data->m_metrics);
-	data->m_metrics_sent->exchange(true);
+	if (data->m_metrics_sent != nullptr)
+	{
+		data->m_metrics_sent->exchange(true);
+	}
 	std::shared_ptr<serialized_buffer> q_item =
 	    m_uncompressed_sample_handler.handle_uncompressed_sample(data->m_ts,
 	                                                             data->m_metrics,

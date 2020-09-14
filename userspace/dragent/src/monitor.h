@@ -7,35 +7,26 @@ class pipe_manager;
 class monitored_process
 {
 public:
-	monitored_process(std::string name, std::function<int(void)>&& exec, bool is_main=false):
-		m_name(std::move(name)),
-		m_main(is_main),
-		m_exec(exec),
-		m_pid(0),
-		m_enabled(true)
-	{}
-
-	pid_t pid() const
+	monitored_process(std::string name,
+	                  std::function<int(void)>&& exec,
+	                  bool is_main = false)
+	    : m_name(std::move(name)),
+	      m_main(is_main),
+	      m_exec(exec),
+	      m_pid(0),
+	      m_enabled(true)
 	{
-		return m_pid;
 	}
 
-	void set_pid(pid_t pid)
-	{
-		m_pid = pid;
-	}
+	pid_t pid() const { return m_pid; }
+
+	void set_pid(pid_t pid) { m_pid = pid; }
 
 	inline int exec();
 
-	bool is_main() const
-	{
-		return m_main;
-	}
+	bool is_main() const { return m_main; }
 
-	bool is_enabled() const
-	{
-		return m_enabled;
-	}
+	bool is_enabled() const { return m_enabled; }
 
 	void disable()
 	{
@@ -43,7 +34,6 @@ public:
 		m_pid = 0;
 	}
 
-private:
 	std::string m_name;
 	bool m_main;
 	std::function<int(void)> m_exec;
@@ -55,7 +45,7 @@ class monitor
 {
 public:
 #ifndef CYGWING_AGENT
-	monitor(std::string pidfile, std::string self);
+	monitor(std::string pidfile, std::string self, std::list<std::string> restart_args);
 #else
 	monitor(std::string pidfile, bool windows_service_parent);
 #endif
@@ -67,16 +57,15 @@ public:
 		m_processes.emplace_back(std::forward<Ts>(args)...);
 	}
 
-	void set_cleanup_function(std::function<void(void)>&& f)
-	{
-		m_cleanup_function = f;
-	}
+	void set_cleanup_function(std::function<void(void)>&& f) { m_cleanup_function = f; }
+
 private:
 	std::function<void(void)> m_cleanup_function;
 	std::string m_pidfile;
 	std::vector<monitored_process> m_processes;
 #ifndef CYGWING_AGENT
 	std::string m_self_binary;
+	std::list<std::string> m_restart_args;
 #else
 	bool m_windows_service_parent = true;
 #endif
