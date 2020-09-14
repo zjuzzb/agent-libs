@@ -918,7 +918,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 		std::vector<std::string> prompaths = {
 		    m_configuration.m_default_root_dir + "/etc/prometheus.yaml",
 		    m_configuration.m_default_root_dir + "/prometheus.yaml",
-		    m_configuration.m_default_root_dir + "/etc/kubernetes/config/prometheus.yaml"};
+		    m_configuration.m_default_root_dir + "/etc/kubernetes/config/prometheus.yaml",
+		    m_configuration.m_default_root_dir + (m_configuration.m_prom_conf.prom_sd() ? "/etc/prometheus-v2.default.yaml" : "/etc/prometheus-v1.default.yaml") };
 		for (const auto& p : prompaths)
 		{
 			if (Poco::File(p).exists())

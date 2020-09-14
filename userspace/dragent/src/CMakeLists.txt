@@ -227,6 +227,12 @@ install(
 )
 
 install(
+    FILES prometheus-v2.default.yaml
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
+    COMPONENT agent-slim
+)
+
+install(
     FILES root.cert
     DESTINATION ${CMAKE_INSTALL_PREFIX}
     COMPONENT agentone
@@ -234,6 +240,12 @@ install(
 
 install(
     FILES dragent.default.yaml
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
+    COMPONENT agentone
+)
+
+install(
+    FILES prometheus-v2.default.yaml
     DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
     COMPONENT agentone
 )
