@@ -319,6 +319,12 @@ std::unordered_map<uint32_t, std::string> mounted_fs_reader::read_mountinfo(std:
 }
 #endif
 
+static std::atomic<bool> s_got_signal;
+static void sighandler(int _sig)
+{
+	s_got_signal = true;
+}
+
 int mounted_fs_reader::run()
 {
 #ifndef CYGWING_AGENT
@@ -327,6 +333,9 @@ int mounted_fs_reader::run()
 	posix_queue output("/sdc_mounted_fs_reader_out", posix_queue::direction_t::SEND);
 
 	g_logger.format(sinsp_logger::SEV_INFO, "Starting mounted_fs_reader with pid %u", pid);
+	signal(SIGINT, sighandler);
+	signal(SIGTERM, sighandler);
+
 	int home_fd = 0;
 	if (getppid() == 1)
 	{
@@ -386,7 +395,7 @@ int mounted_fs_reader::run()
 		return ERROR_EXIT;
 	}
 
-	while (true)
+	while (!s_got_signal)
 	{
 		// Send heartbeat
 		send_subprocess_heartbeat();
@@ -418,6 +427,8 @@ int mounted_fs_reader::run()
 		auto response_s = response_proto.SerializeAsString();
 		output.send(response_s);
 	}
+
+	return 0;
 #else
 	ASSERT(false);
 	throw sinsp_exception("mounted_fs_reader::run not implemented on Windows");
