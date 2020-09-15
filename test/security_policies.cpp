@@ -152,7 +152,7 @@ public:
 				    "aec4c703604b4504df03108eef12e8256870eca8aabcb251855a35bf4f0337f1 or "
 				    "container.name in (sec_ut, stop_me_docker_test, kill_me_docker_test, capture_me_docker_test, fs-root-image, "
 				    "blacklisted_image, non_alpine, busybox_some_tag, baseline-test, denyme, "
-				    "inout_test, fs_usecase, mycurl, overlap_test, helloworld) or container.image "
+				    "inout_test, fs_usecase, mycurl, overlap_test, helloworld, syscall-whitelist) or container.image "
 				    "= swarm_service_ut_image:latest";
 				m_inspector->set_filter(filter.c_str());
 				m_ready = true;
@@ -1785,6 +1785,48 @@ TEST_F(security_policies_v2_test, syscall_only)
 {
 	bool v1_metrics = false;
 	return syscall_only(this, v1_metrics);
+};
+
+TEST_F(security_policies_v2_test, syscall_only_whitelist)
+{
+	if (!dutils_check_docker())
+	{
+		return;
+	}
+
+	dutils_kill_container("syscall-whitelist");
+	dutils_create_tag("busybox:syscall-whitelist", "busybox:latest");
+
+	if (system("docker run -d --rm --name syscall-whitelist busybox:syscall-whitelist sh -c 'while "
+		   "true; do touch /tmp/foobar; sleep 1; "
+		   "done' > /dev/null 2>&1") != 0)
+	{
+		ASSERT_TRUE(false);
+	}
+
+	sleep(5);
+
+	dutils_kill_container("syscall-whitelist");
+
+	dutils_kill_image("busybox:syscall-whitelist");
+
+
+	// We should only see policy events for the procexit event
+	// (processes exiting). All other syscalls should be
+	// whitelisted.
+	std::vector<security_policies_test::expected_policy_event> expected = {
+	    {50,
+	     draiosproto::policy_type::PTYPE_SYSCALL,
+	     {{"evt.type", "procexit"}}}};
+	check_policy_events(expected);
+
+	std::map<string, security_policies_test::expected_internal_metric> metrics;
+	metrics = {{"security.syscalls.match.match_items",
+		    {security_policies_test::expected_internal_metric::CMP_EQ, 0}},
+		   {"security.syscalls.match.not_match_items",
+		    {security_policies_test::expected_internal_metric::CMP_GE, 1}}};
+
+	check_expected_internal_metrics(metrics);
 };
 
 static void container_only(security_policies_test* ptest, bool v1_metrics)

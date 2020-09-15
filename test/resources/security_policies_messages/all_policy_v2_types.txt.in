@@ -391,6 +391,17 @@ policy_list {
     op: EQ
   }
 }
+policy_list {
+  id: 50
+  name: "Whitelist syscalls for busybox:syscall-whitelist"
+  rule_names: "busybox syscall-whitelist"
+  enabled: 1
+  scope_predicates {
+    key: "container.name"
+    values: "syscall-whitelist"
+    op: EQ
+  }
+}
 falco_group {
   default_files {
     tag: "0.1.1test"

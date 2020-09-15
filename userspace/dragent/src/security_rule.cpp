@@ -1406,6 +1406,7 @@ void syscall_rules::reset()
 {
 	matchlist_security_rules::reset();
 
+	g_log->debug("in syscall_rules::reset()");
 	m_event_index.clear();
 	m_event_index.resize(PPM_EVENT_MAX+1);
 
@@ -1430,6 +1431,10 @@ std::set<std::string> syscall_rules::default_output_fields_keys(sinsp_evt *evt)
 
 bool syscall_rules::event_qualifies(sinsp_evt *evt)
 {
+	if (!PPME_IS_ENTER(evt->get_type()))
+	{
+		return false;
+	}
 	return evt->simple_consumer_consider();
 }
 
@@ -1444,6 +1449,7 @@ bool syscall_rules::add_rule(policy_v2_sptr policy,
 
 	if(!details)
 	{
+		g_log->debug("syscall_rules: " + rule->name() + " had no syscall_details section? skipping");
 		return added;
 	}
 
@@ -1466,6 +1472,7 @@ bool syscall_rules::add_rule(policy_v2_sptr policy,
 				minfo.m_rule = rule;
 				minfo.m_match_items = details->m_syscalls.m_match_items;
 
+				g_log->debug("syscall_rules: Adding event " + to_string(evtnum) + "/" + evtstr + " to rule " + rule->name() + " match " + to_string(minfo.m_match_items));
 				m_event_index[evtnum].push_back(minfo);
 			}
 		}
@@ -1484,6 +1491,7 @@ bool syscall_rules::add_rule(policy_v2_sptr policy,
 				minfo.m_rule = rule;
 				minfo.m_match_items = details->m_syscalls.m_match_items;
 
+				g_log->debug("syscall_rules: Adding syscall " + to_string(it2->second) + "/" + evtstr + " to rule " + rule->name() + " match " + to_string(details->m_syscalls.m_match_items));
 				m_syscall_index[it2->second].push_back(minfo);
 			}
 

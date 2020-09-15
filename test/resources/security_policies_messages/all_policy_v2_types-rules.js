@@ -78,6 +78,36 @@
 	 }
      }
     },
+    {"id": 1999,
+     "name": "busybox syscall-whitelist",
+     "origin": "secure UI",
+     "versionId": "0.1.1",
+     "filename": "fastengine_rules.yaml",
+     "tags": [],
+     "description": "",
+     "details": {
+       "ruleType": "SYSCALL",
+       "syscalls": {
+           "items": ["arch_prctl",
+		     "brk",
+		     "clone",
+		     "container",
+		     "execve",
+		     "exit_group",
+		     "getuid",
+		     "ioctl",
+		     "nanosleep",
+		     "open",
+		     "rt_sigaction",
+		     "signaldeliver",
+		     "sigreturn",
+		     "switch",
+		     "utimes",
+		     "wait4"],
+         "matchItems": false
+        }
+      }
+    },
     {"id": 1005,
      "name": "match blacklist-image-name container",
      "origin": "secure UI",
