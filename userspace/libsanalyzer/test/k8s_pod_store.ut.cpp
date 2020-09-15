@@ -261,7 +261,7 @@ TEST_F(k8s_pod_store_test, search_pod_service_parent)
 {
 	m_pod_store.clear();
 
-	m_pod_store.m_services.emplace(std::make_pair("1", k8s_pod_store::service("2", "default", {{"key1", "val1"}, {"key2", "val2"}})));
+	m_pod_store.m_services.emplace(std::make_pair("1", k8s_pod_store::service("1", "default", {{"key1", "val1"}, {"key2", "val2"}})));
 
 	m_pod_store.m_pods.emplace(std::make_pair(
 					   "2",
@@ -273,14 +273,13 @@ TEST_F(k8s_pod_store_test, search_pod_service_parent)
 
 	// Insert a non matching pod
 	m_pod_store.m_pods.emplace(std::make_pair(
-					   "2",
+					   "3",
 					   k8s_pod_store::pod("3", "default", "node", {{"key1", "val10000"}, {"key2", "val20000"}}, {})));
 
 
 	srv_id = m_pod_store.search_for_pod_parent_service("3");
 	EXPECT_EQ(srv_id, "");
 }
-
 
 TEST_F(k8s_pod_store_test, get_labels_from_cg)
 {

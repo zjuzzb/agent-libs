@@ -1196,8 +1196,6 @@ void infrastructure_state::connect_to_namespace(const infrastructure_state::uid_
 			parent_uid->set_id(ns_uid);
 			// The reverse link will be done later in connect
 		}
-		// Remove namespace field from container group
-		cg.release_namespace_();
 	}
 }
 
