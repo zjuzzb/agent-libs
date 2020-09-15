@@ -36,6 +36,7 @@ private:
 	mqd_t m_queue_d;
 	direction_t m_direction;
 	std::string m_name;
+	std::vector<char> m_buf;
 	static const long MAX_MSGSIZE = 3 << 20; // 3 MiB
 	static const long MAX_QUEUES = 10;
 	static const long MAX_MSGS = 3;

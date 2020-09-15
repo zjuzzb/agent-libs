@@ -10,7 +10,8 @@
 
 posix_queue::posix_queue(std::string name, direction_t dir, long maxmsgs):
 	m_direction(dir),
-	m_name(std::move(name))
+	m_name(std::move(name)),
+	m_buf()
 {
 	ASSERT(name.size() <= NAME_MAX);
 	int flags = dir | O_CREAT;
@@ -21,6 +22,10 @@ posix_queue::posix_queue(std::string name, direction_t dir, long maxmsgs):
 		// on receive we use a timeout
 		flags |= O_NONBLOCK;
 		queue_attrs.mq_flags = O_NONBLOCK;
+	}
+	else
+	{
+		m_buf.resize(MAX_MSGSIZE);
 	}
 	queue_attrs.mq_maxmsg = maxmsgs;
 	queue_attrs.mq_msgsize = MAX_MSGSIZE;
@@ -73,24 +78,22 @@ bool posix_queue::send(const std::string &msg)
 
 std::vector<char> posix_queue::receive(uint64_t timeout_s)
 {
-	std::vector<char> buf;
 	if(!m_queue_d)
 	{
 		g_logger.log("Error: posix_queue[" + m_name + "]: cannot receive (no queue)", sinsp_logger::SEV_ERROR);
-		return buf;
+		return std::vector<char>();
 	}
 
 	struct timespec ts = {0};
 	uint64_t now = sinsp_utils::get_current_time_ns();
 	ts.tv_sec = now / ONE_SECOND_IN_NS + timeout_s;
 	unsigned int prio = 0;
-	buf.resize(MAX_MSGSIZE);
-	auto res = mq_timedreceive(m_queue_d, &buf[0], MAX_MSGSIZE, &prio, &ts);
+
+	auto res = mq_timedreceive(m_queue_d, &m_buf[0], MAX_MSGSIZE, &prio, &ts);
 
 	if(res >= 0)
 	{
-		buf.resize(res);
-		return buf;
+		return vector<char>(m_buf.begin(), m_buf.begin() + res);
 	} else if (errno == ETIMEDOUT || errno == EINTR) {
 		return std::vector<char>();
 	} else {
