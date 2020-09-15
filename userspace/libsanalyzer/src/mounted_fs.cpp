@@ -1,5 +1,6 @@
 #include "analyzer_thread.h"
 #include "common_logger.h"
+#include "cpu_profiler.h"
 #include "mounted_fs.h"
 #include "sdc_internal.pb.h"
 #include "setns.h"
@@ -126,9 +127,11 @@ bool mounted_fs_proxy::send_container_list(const std::vector<thread_analyzer_inf
 
 mounted_fs_reader::mounted_fs_reader(bool remotefs,
                                      const mount_points_filter_vec& filters,
-                                     unsigned mounts_limit_size)
+                                     unsigned mounts_limit_size,
+                                     std::string log_dir)
     : m_mount_points(std::make_shared<mount_points_limits>(filters, mounts_limit_size)),
-      m_remotefs(remotefs)
+      m_remotefs(remotefs),
+      m_log_dir(std::move(log_dir))
 {
 }
 
@@ -336,6 +339,8 @@ int mounted_fs_reader::run()
 	signal(SIGINT, sighandler);
 	signal(SIGTERM, sighandler);
 
+	cpu_profiler cpu_prof(m_log_dir + "/mountedfscpu.prof.");
+
 	int home_fd = 0;
 	if (getppid() == 1)
 	{
@@ -399,6 +404,7 @@ int mounted_fs_reader::run()
 	{
 		// Send heartbeat
 		send_subprocess_heartbeat();
+		cpu_prof.tick();
 		auto request_s = input.receive(1);
 		if (request_s.empty())
 		{

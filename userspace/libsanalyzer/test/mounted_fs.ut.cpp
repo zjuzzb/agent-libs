@@ -14,7 +14,7 @@ TEST_F(mounted_fs_test, get_mounted_fs_list_etc_mtab)
 					 {"*|sysfs|*", false}, {"*|devfs|*", false}, {"*|devtmpfs|*", false}, {"*|kernfs|*", false},
 					 {"*|ignore|*", false}, {"*|rootfs|*", false}, {"*|none|*", false}, {"*|*|*", true}});
 
-	mounted_fs_reader reader(false, filters, 15);
+	mounted_fs_reader reader(false, filters, 15, "/opt/draios/log");
 	std::vector<mounted_fs> fs_list = reader.get_mounted_fs_list();
 	EXPECT_EQ(reader.get_limits()->get_filters().size(), filters.size());
 	EXPECT_GE(fs_list.size(), 1u);
@@ -36,7 +36,7 @@ TEST_F(mounted_fs_test, get_mounted_fs_list) {
 	int fd = mkstemp(mtab);
 	EXPECT_EQ(strlen(mtab_contents), write(fd, mtab_contents, strlen(mtab_contents)));
 
-	mounted_fs_reader reader(false, filters, 15);
+	mounted_fs_reader reader(false, filters, 15, "/opt/draios/log");
 	std::vector<mounted_fs> fs_list = reader.get_mounted_fs_list(mtab);
 
 	auto num_fs = fs_list.size();
@@ -83,7 +83,7 @@ TEST_F(mounted_fs_test, get_mounted_fs_list_remote) {
 	int fd = mkstemp(mtab);
 	EXPECT_EQ(strlen(mtab_contents), write(fd, mtab_contents, strlen(mtab_contents)));
 
-	mounted_fs_reader reader(true, filters, 15);
+	mounted_fs_reader reader(true, filters, 15, "/opt/draios/log");
 	std::vector<mounted_fs> fs_list = reader.get_mounted_fs_list(mtab);
 
 	auto num_fs = fs_list.size();
@@ -170,7 +170,7 @@ TEST_F(mounted_fs_test, read_mountinfo) {
 
 	std::istringstream iss(mountinfo);
 
-	mounted_fs_reader reader(true, filters, 15);
+	mounted_fs_reader reader(true, filters, 15, "/opt/draios/log");
 	auto device_map = reader.read_mountinfo(iss);
 
 	EXPECT_EQ("/dev/sda3", device_map[makedev(8, 3)]);

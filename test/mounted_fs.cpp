@@ -19,7 +19,7 @@ TEST_F(mounted_fs_reader_test, container_mounts)
 					 {"*|sysfs|*", false}, {"*|devfs|*", false}, {"*|devtmpfs|*", false}, {"*|kernfs|*", false},
 					 {"*|ignore|*", false}, {"*|rootfs|*", false}, {"*|none|*", false}, {"*|*|*", true}});
 
-	mounted_fs_reader reader(false, filters, 15);
+	mounted_fs_reader reader(false, filters, 15, "/opt/draios/log");
 	int home_fd = mounted_fs_reader::open_ns_fd(getpid());
 
 	char root_dir[PATH_MAX];

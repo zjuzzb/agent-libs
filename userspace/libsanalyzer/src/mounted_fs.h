@@ -77,7 +77,8 @@ class mounted_fs_reader
 public:
 	mounted_fs_reader(bool remotefs,
 	                  const mount_points_filter_vec& mount_points,
-	                  unsigned mounts_limit_size);
+	                  unsigned mounts_limit_size,
+	                  std::string log_dir);
 	int run();
 	std::vector<mounted_fs> get_mounted_fs_list(const std::string& mtab = "/etc/mtab");
 	const mount_points_limits::sptr_t& get_limits() const { return m_mount_points; }
@@ -101,4 +102,5 @@ public:
 
 	mount_points_limits::sptr_t m_mount_points;
 	bool m_remotefs;
+	const std::string m_log_dir;
 };
