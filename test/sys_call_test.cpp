@@ -2470,7 +2470,7 @@ TEST_F(sys_call_test, thread_lookup_static)
 
 	char err_buf[SCAP_LASTERR_SIZE];
 	int rc = 0;
-	scap_open_args oargs;
+	scap_open_args oargs = {};
 	oargs.mode = SCAP_MODE_LIVE;
 	oargs.fname = nullptr;
 	oargs.proc_callback = nullptr;
@@ -2508,7 +2508,7 @@ TEST_F(sys_call_test, thread_lookup_live)
 {
 	char err_buf[SCAP_LASTERR_SIZE];
 	int rc = 0;
-	scap_open_args oargs;
+	scap_open_args oargs = {};
 	oargs.mode = SCAP_MODE_LIVE;
 	oargs.fname = nullptr;
 	oargs.proc_callback = nullptr;
