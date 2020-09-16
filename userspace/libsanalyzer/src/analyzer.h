@@ -1448,4 +1448,6 @@ public:
 	//
 	// Please do not add any friends.
 	//
+	void mounted_fs_request(const tracer_emitter& proc_trc,
+				const analyzer_emitter::progtable_by_container_t& progtable_by_container) const;
 };
