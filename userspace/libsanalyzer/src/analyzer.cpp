@@ -2674,48 +2674,54 @@ void sinsp_analyzer::mounted_fs_request(const tracer_emitter& proc_trc,
 					const analyzer_emitter::progtable_by_container_t& progtable_by_container) const
 {
 	tracer_emitter mountedfs_trc("mountedfs", proc_trc);
-	if (!m_inspector->is_capture() && m_mounted_fs_proxy)
+
+	if(m_inspector->is_capture() || !m_mounted_fs_proxy)
 	{
-		vector<thread_analyzer_info*> containers_for_mounted_fs;
-		for (const auto& it : progtable_by_container)
-		{
-			const auto container_info = m_inspector->m_container_manager.get_container(it.first);
-			if (container_info && !container_info->is_pod_sandbox())
-			{
-				auto long_running_proc = find_if(
-				    it.second.begin(),
-				    it.second.end(),
-				    [this](thread_analyzer_info* tinfo) {
-					    return !(tinfo->m_flags & PPM_CL_CLOSED) &&
-						   (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >=
-					               ASSUME_LONG_LIVING_PROCESS_UPTIME_S * ONE_SECOND_IN_NS;
-				    });
-
-				if (long_running_proc != it.second.end())
-				{
-					if (!(*long_running_proc)->m_root_refreshed)
-					{
-						(*long_running_proc)->m_root_refreshed = true;
-						(*long_running_proc)->m_root =
-						    m_procfs_parser->read_proc_root((*long_running_proc)->m_pid);
-					}
-
-					LOG_DEBUG(
-					    "[mountedfs_reader] picked process %s (tid=%ld/%ld) for "
-					    "container %s (tinfo->container_id=%s)",
-					    (*long_running_proc)->get_comm().c_str(),
-					    (*long_running_proc)->m_tid,
-					    (*long_running_proc)->m_vtid,
-					    it.first.c_str(),
-					    (*long_running_proc)->m_container_id.c_str());
-
-					containers_for_mounted_fs.push_back(*long_running_proc);
-				}
-			}
-		}
-		m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
+		return;
 	}
-	mountedfs_trc.stop();
+
+	vector<thread_analyzer_info*> containers_for_mounted_fs;
+	for (const auto& it : progtable_by_container)
+	{
+		const auto container_info = m_inspector->m_container_manager.get_container(it.first);
+		if (!container_info || container_info->is_pod_sandbox())
+		{
+			continue;
+		}
+
+		auto long_running_proc = find_if(
+		    it.second.begin(),
+		    it.second.end(),
+		    [this](thread_analyzer_info* tinfo) {
+			    return !(tinfo->m_flags & PPM_CL_CLOSED) &&
+				   (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >=
+				       ASSUME_LONG_LIVING_PROCESS_UPTIME_S * ONE_SECOND_IN_NS;
+		    });
+
+		if (long_running_proc == it.second.end())
+		{
+			continue;
+		}
+
+		if (!(*long_running_proc)->m_root_refreshed)
+		{
+			(*long_running_proc)->m_root_refreshed = true;
+			(*long_running_proc)->m_root =
+			    m_procfs_parser->read_proc_root((*long_running_proc)->m_pid);
+		}
+
+		LOG_DEBUG(
+		    "[mountedfs_reader] picked process %s (tid=%ld/%ld) for "
+		    "container %s (tinfo->container_id=%s)",
+		    (*long_running_proc)->get_comm().c_str(),
+		    (*long_running_proc)->m_tid,
+		    (*long_running_proc)->m_vtid,
+		    it.first.c_str(),
+		    (*long_running_proc)->m_container_id.c_str());
+
+		containers_for_mounted_fs.push_back(*long_running_proc);
+	}
+	m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
 }
 
 bool sinsp_analyzer::aggregate_processes_into_programs(sinsp_threadinfo& sinsp_tinfo,
