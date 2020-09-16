@@ -221,6 +221,11 @@ type_config<uint32_t> c_procfs_scan_mem_interval_ms(
     "procfs_scanner",
     "mem_scan_interval_ms");
 
+type_config<uint32_t> c_mountedfs_scan_interval_ms(
+	1000,
+	"default interval between disk space scans, in ms",
+	"mountedfs_interval_ms");
+
 type_config<bool> c_swarm_enabled(true, "set to enable swarm", "swarm_enabled");
 type_config<bool> c_add_event_scopes(false, "", "add_event_scopes");
 
@@ -2480,8 +2485,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	}
 	container_trc.stop();
 
-	// notify mounted_fs proxy of containers which have long-running procs
-	mounted_fs_request(proc_trc, progtable_by_container);
+	if(m_mounted_fs_request_interval)
+	{
+		m_mounted_fs_request_interval->run(
+			[&]() {
+				// notify mounted_fs proxy of containers which have long-running procs
+				this->mounted_fs_request(proc_trc, progtable_by_container);
+			},
+			m_prev_flush_time_ns);
+	}
 
 	tracer_emitter actually_emit_trc("actually_emit", proc_trc);
 	std::set<uint64_t> all_uids;
@@ -7832,10 +7844,15 @@ void sinsp_analyzer::set_fs_usage_from_external_proc(bool value)
 	if (value)
 	{
 		m_mounted_fs_proxy = make_unique<mounted_fs_proxy>();
+		m_mounted_fs_request_interval = make_unique<run_on_interval>(
+			c_mountedfs_scan_interval_ms.get_value() * 1000000ULL, // interval in ns
+			1000000000ULL // one second slack, since we check the intervals every flush (1/sec)
+		);
 	}
 	else
 	{
 		m_mounted_fs_proxy.reset();
+		m_mounted_fs_request_interval.reset();
 	}
 }
 

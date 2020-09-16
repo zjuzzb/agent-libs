@@ -1260,6 +1260,7 @@ public:
 	std::vector<app_check> m_app_checks;
 	std::shared_ptr<app_checks_proxy_interface> m_app_checks_proxy;
 
+	std::unique_ptr<run_on_interval> m_mounted_fs_request_interval;
 	std::unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
 	std::unordered_map<std::string, std::vector<mounted_fs>> m_mounted_fs_map;
 	std::unique_ptr<mounted_fs_reader> m_mounted_fs_reader;
