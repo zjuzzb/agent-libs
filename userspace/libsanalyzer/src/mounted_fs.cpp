@@ -67,6 +67,10 @@ mounted_fs_list mounted_fs_proxy::receive_mounted_fs_list()
 		sdc_internal::mounted_fs_response response_proto;
 		if (response_proto.ParseFromArray(&msg[0], msg.size()))
 		{
+			LOG_DEBUG("Got mountedfs_reader response: %d mounts, %d devices",
+			     response_proto.containers_size(),
+			     response_proto.devices_size());
+
 			fs_map.clear();
 			for (const auto& c : response_proto.containers())
 			{
@@ -116,6 +120,8 @@ bool mounted_fs_proxy::send_container_list(const std::vector<thread_analyzer_inf
 	host->set_pid(1U);
 	host->set_vpid(1U);
 	host->set_root("/");
+
+	LOG_DEBUG("Sending mountedfs_reader request: %d containers", req.containers_size());
 
 	auto req_s = req.SerializeAsString();
 	return m_output.send(req_s);
