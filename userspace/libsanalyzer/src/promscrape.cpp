@@ -1017,7 +1017,14 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 		auto newmet = proto->add_metrics();
 		newmet->set_name(sample.metric_name());
 		newmet->set_value(sample.value());
-		newmet->set_type(static_cast<draiosproto::app_metric_type>(sample.legacy_metric_type()));
+		if (sample.legacy_metric_type() == agent_promscrape::Sample::MT_INVALID)
+		{
+			newmet->set_type(draiosproto::app_metric_type::APP_METRIC_TYPE_PROMETHEUS_RAW);
+		}
+		else
+		{
+			newmet->set_type(static_cast<draiosproto::app_metric_type>(sample.legacy_metric_type()));
+		}
 		newmet->set_prometheus_type(static_cast<draiosproto::prometheus_type>(sample.raw_metric_type()));
 		for (const auto &bucket : sample.buckets())
 		{
