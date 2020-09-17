@@ -1170,24 +1170,20 @@ int32_t connection_manager::send_bytes(uint8_t* buf, uint32_t len)
 	{
 		return false;
 	}
-
-	bool retry = false;
 	int64_t res = 0;
-	do
+
+	res = m_socket->send(buf, len);
+	if (res == -ETIMEDOUT && heartbeat()) // Handle timeout
 	{
+		// Try again
 		res = m_socket->send(buf, len);
-		if (res == -ETIMEDOUT) // Handle timeout
+		if (res == -ETIMEDOUT)
 		{
-			if (retry)
-			{
-				// Already retried once. Rethrow
-				LOG_ERROR("Internal error: Send operation timed out multiple times.");
-				return res;
-			}
-			LOG_WARNING("Retrying timed-out send operation.");
-			retry = true;
+			// Already retried once. Kill the connection.
+			LOG_ERROR("Internal error: Send operation timed out multiple times.");
+			return res;
 		}
-	} while (heartbeat() && retry);
+	}
 
 	if (res < 0)
 	{
