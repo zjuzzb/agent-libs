@@ -50,7 +50,7 @@ func increaseStatusMap(namespace string, status string) {
 	}
 
 	if statusMap[namespace][status] < 0 {
-		panic("Key [" + namespace + "," + status + "]:" + string(statusMap[namespace][status]))
+		panic("Key [" + namespace + "," + status + "]:" + fmt.Sprint(statusMap[namespace][status]))
 	}
 	statusMap[namespace][status]++
 }
@@ -62,7 +62,7 @@ func decreaseStatusMap(namespace string, status string){
 
 	statusMap[namespace][status]--
 	if statusMap[namespace][status] < 0 {
-		panic("Key [" + namespace + "," + status + "]:" + string(statusMap[namespace][status]))
+		panic("Key [" + namespace + "," + status + "]:" + fmt.Sprint(statusMap[namespace][status]))
 	}
 }
 
