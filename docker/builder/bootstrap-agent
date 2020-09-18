@@ -639,6 +639,16 @@ if [ $OS == "Windows_NT" ]; then
 	fi
 fi
 
+SONARCLOUD_DIR=$DEPENDENCIES/sonarcloud
+if [ ! -d "${SONARCLOUD_DIR}" ]; then
+	mkdir -p $SONARCLOUD_DIR
+	cd $SONARCLOUD_DIR
+	wget $DEPENDENCIES_URL/build-wrapper-linux-x86.zip
+	wget $DEPENDENCIES_URL/sonar-scanner-cli-4.3.0.2102-linux.zip
+	unzip build-wrapper-linux-x86.zip
+	unzip sonar-scanner-cli-4.3.0.2102-linux.zip
+fi
+
 if [ -z "$AGENT_VERSION" ]; then
 	AGENT_VERSION="0.1.1dev"
 fi

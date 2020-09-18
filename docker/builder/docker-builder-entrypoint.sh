@@ -248,11 +248,10 @@ build_and_run_sonar_tools()
 	local BW_OUTPUT="/code/agent/build/debug-internal-code-coverage/bw-output"
 	rm -rf $BW_OUTPUT
 
-	# The sonar tools should have been mounted to /sonar
 	# 1. Run the build using the build wrapper
 	# 2. Run the sonar scanner to generate results and push to the cloud
 
-	/sonar/build-wrapper-linux-x86/build-wrapper-linux-x86-64 \
+	/code/agent/dependencies/sonarcloud/build-wrapper-linux-x86/build-wrapper-linux-x86-64 \
 	    --out-dir $BW_OUTPUT \
 	    make -j$MAKE_JOBS all
 
@@ -260,7 +259,7 @@ build_and_run_sonar_tools()
 	# scanned must be in this directory.
 	cd /code/agent
 
-	/sonar/sonar-scanner-4.3.0.2102-linux/bin/sonar-scanner \
+	/code/agent/dependencies/sonarcloud/sonar-scanner-4.3.0.2102-linux/bin/sonar-scanner \
 	    -Dsonar.organization=draios \
 	    -Dsonar.projectKey=draios_agent \
 	    -Dsonar.sources=/code/agent \
@@ -392,7 +391,6 @@ case "$1" in
 
 	To build and pass results to sonar:
 	$(bold "> agent-builder sonar")
-	with the sonar tools mounted to /sonar
 EOF
         set -x
 		;;
