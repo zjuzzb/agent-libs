@@ -502,9 +502,11 @@ TEST_F(sys_call_test, fs_openat)
 	{
 		sinsp_evt* e = param.m_evt;
 		uint16_t type = e->get_type();
+		std::string filepath = cwd + FILENAME;
 
-		if(type == PPME_SYSCALL_OPENAT_2_X && param.m_evt->get_param_value_str("name") == FILENAME &&
-		   (string("<f>") + cwd + FILENAME) == e->get_param_value_str("fd"))
+		if(type == PPME_SYSCALL_OPENAT_2_X &&
+		   param.m_evt->get_param_value_str("name") == filepath &&
+		   (string("<f>") + filepath) == e->get_param_value_str("fd"))
 		{
 			if(callnum == 0)
 			{
