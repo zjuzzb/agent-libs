@@ -87,6 +87,7 @@ target_link_libraries(
     draiosproto
     test-helpers-libsanalyzer
     test-helpers-userspace-shared
+    userspace-shared
     test_helpers
     ${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 )

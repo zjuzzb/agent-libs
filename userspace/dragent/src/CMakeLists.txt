@@ -84,7 +84,6 @@ list(
     sinsp_factory.cpp
     sinsp_worker.cpp
     subprocesses_logger.cpp
-    uptime.cpp
     user_event_channel.cpp
     watchdog_runnable_pool.cpp
     watchdog_runnable.cpp

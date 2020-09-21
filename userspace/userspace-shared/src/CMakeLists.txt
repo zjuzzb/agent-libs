@@ -14,7 +14,10 @@ add_library(
     fault_handler.cpp
     fault_handler_registry.cpp
     feature_manager.cpp
+    posix_queue.cpp
     thread_utils.cpp
+    uptime.cpp
+    wall_time.cpp
     ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
 )
 

@@ -203,7 +203,6 @@ set(SANALYZER_SOURCES
     proc_filter.cpp
     protocol_manager.cpp
     process_emitter.cpp
-    posix_queue.cpp
     proc_config.h
     process_manager.cpp
     procfs_parser.cpp

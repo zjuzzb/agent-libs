@@ -11,6 +11,7 @@
 
 #include <Poco/Message.h>
 
+#include <assert.h>
 #include <atomic>
 #include <exception>
 #include <memory>

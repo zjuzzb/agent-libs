@@ -22,13 +22,9 @@ const std::chrono::time_point<std::chrono::steady_clock>& DO_NOT_USE = getStart(
 
 } // anonymous namespace
 
-namespace dragent
-{
-
 namespace uptime
 {
 
-// static
 uint64_t milliseconds()
 {
 	auto diff = std::chrono::steady_clock::now() - getStart();
@@ -36,5 +32,3 @@ uint64_t milliseconds()
 }
 
 } // namespace uptime
-
-} // namespace dragent

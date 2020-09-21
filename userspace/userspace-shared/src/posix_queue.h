@@ -1,7 +1,3 @@
-//
-// Created by Luca Marturana on 30/06/15.
-//
-
 #pragma once
 
 #ifndef _WIN32
@@ -12,6 +8,13 @@
 
 #include "noncopyable.h"
 
+/**
+ * A queue to pass string between processes. 
+ *  
+ *  Expected usage is for two components to have two queues each
+ *  where one goes from A->B and the other from B->A.
+ *  
+ */
 class posix_queue: noncopyable
 {
 public:
@@ -29,8 +32,19 @@ public:
 	posix_queue(std::string name, direction_t dir, long maxmsgs=MAX_MSGS);
 	~posix_queue();
 
+	/**
+	 * Send a string from a SEND queue
+	 */
 	bool send(const std::string& msg);
+
+	/**
+	 * Receive arbitrary data from a RECEIVE queue
+	 */
 	std::vector<char> receive(uint64_t timeout_s=0);
+
+	/**
+	 * Remove the queue from the underlying OS
+	 */
 	static bool remove(const std::string& name);
 private:
 	mqd_t m_queue_d;

@@ -1,12 +1,12 @@
-//
-// Created by Luca Marturana on 30/06/15.
-//
-
 #include "posix_queue.h"
-#include <sinsp_int.h>
+#include "common_logger.h"
+#include "wall_time.h"
 #include <sys/stat.h>
 #include <sys/resource.h>
 #include <limits.h>
+#include <string.h>
+
+COMMON_LOGGER();
 
 posix_queue::posix_queue(std::string name, direction_t dir, long maxmsgs):
 	m_direction(dir),
@@ -33,7 +33,7 @@ posix_queue::posix_queue(std::string name, direction_t dir, long maxmsgs):
 	m_queue_d = mq_open(m_name.c_str(), flags, S_IRWXU, &queue_attrs);
 	if(m_queue_d < 0)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR, "Error: Cannot create queue %s, errno: %s", m_name.c_str(), strerror(errno));
+		LOG_ERROR("Cannot create queue %s, errno: %s", m_name.c_str(), strerror(errno));
 	}
 }
 
@@ -59,20 +59,20 @@ bool posix_queue::send(const std::string &msg)
 			switch(errno)
 			{
 			case EAGAIN:
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Debug: Cannot send on queue %s, is full", m_name.c_str());
+				LOG_DEBUG("Cannot send on queue %s, is full", m_name.c_str());
 				break;
 			case EMSGSIZE:
-				g_logger.format(sinsp_logger::SEV_WARNING, "Warning: Cannot send on queue %s, msg too big size=%u", m_name.c_str(), msg.size());
+				LOG_WARNING("Cannot send on queue %s, msg too big size=%zu", m_name.c_str(), msg.size());
 				break;
 			default:
-				g_logger.format(sinsp_logger::SEV_WARNING, "Warning: Cannot send on queue %s, errno: %s", m_name.c_str(), strerror(errno));
+				LOG_WARNING("Cannot send on queue %s, errno: %s", m_name.c_str(), strerror(errno));
 				break;
 			}
 			return false;
 		}
 	}
 
-	g_logger.log("Error: posix_queue[" + m_name + "]: cannot send (no queue)", sinsp_logger::SEV_ERROR);
+	LOG_ERROR("[" + m_name + "]: cannot send (no queue)");
 	return false;
 }
 
@@ -80,24 +80,23 @@ std::vector<char> posix_queue::receive(uint64_t timeout_s)
 {
 	if(!m_queue_d)
 	{
-		g_logger.log("Error: posix_queue[" + m_name + "]: cannot receive (no queue)", sinsp_logger::SEV_ERROR);
+		LOG_ERROR("[" + m_name + "]: cannot receive (no queue)");
 		return std::vector<char>();
 	}
 
 	struct timespec ts = {0};
-	uint64_t now = sinsp_utils::get_current_time_ns();
-	ts.tv_sec = now / ONE_SECOND_IN_NS + timeout_s;
+	ts.tv_sec = wall_time::seconds() + timeout_s;
 	unsigned int prio = 0;
 
 	auto res = mq_timedreceive(m_queue_d, &m_buf[0], MAX_MSGSIZE, &prio, &ts);
 
 	if(res >= 0)
 	{
-		return vector<char>(m_buf.begin(), m_buf.begin() + res);
+		return std::vector<char>(m_buf.begin(), m_buf.begin() + res);
 	} else if (errno == ETIMEDOUT || errno == EINTR) {
 		return std::vector<char>();
 	} else {
-		g_logger.format(sinsp_logger::SEV_ERROR, "Unexpected error on posix queue receive: %s", strerror(errno));
+		LOG_ERROR("Unexpected error on posix queue receive: %s", strerror(errno));
 		if(timeout_s > 0)
 		{
 			// At this point the application may go to infinite loop if it relies
@@ -110,7 +109,7 @@ std::vector<char> posix_queue::receive(uint64_t timeout_s)
 			// in this case is better to crash
 			// otherwise if timeout=0 like our dragent. let's keep it running
 			// as posix queue healthness is not vital
-			throw sinsp_exception("Unexpected error on posix queue receive");
+			throw std::runtime_error("Unexpected error on posix queue receive");
 		}
 		return std::vector<char>();
 	}
