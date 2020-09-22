@@ -35,7 +35,14 @@ pipeline {
 		stage('Insert Module') {
 			steps {
 				sh label: '', script: '''
-					sudo rmmod sysdigcloud-probe || echo "not currently loaded"
+					sudo pkill -9 run-tests || echo "no tests to kill"
+					sudo pkill -9 tests || echo "no tests to kill"
+
+				    COUNT=$(lsmod | grep sysdigcloud-probe | wc -l)
+					if [ $COUNT != 0 ]
+					then
+						sudo rmmod sysdigcloud-probe
+					fi
 					docker pull sysdig/agent-kmodule:dev
 					docker run -i --privileged --rm --name sysdig-agent-kmodule -v /usr:/host/usr:ro -v /boot:/host/boot:ro -v /lib/modules:/host/lib/modules:ro sysdig/agent-kmodule:dev
 				'''
@@ -51,8 +58,17 @@ pipeline {
 	}
 	post {
 		always {
+			// sometimes for some reason the tests don't stop. this blocks the kmod
+			// from being unloaded while also not relinquishing control, so
+			// ensure everything is nuked
 			sh label: '', script: '''
+			    sudo pkill -9 run-tests || echo "no tests to kill"
+
+				sudo pkill -9 tests || echo "no tests to kill"
+
 				sudo rmmod sysdigcloud-probe || echo "not currently loaded"
+				sudo rm -rf ./install
+				docker rmi $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
 			'''
 			cleanWs deleteDirs: true, notFailBuild: true
 		}

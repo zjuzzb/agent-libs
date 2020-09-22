@@ -34,6 +34,10 @@ pipeline {
 	}
 	post {
 		always {
+			sh label: '', script: '''
+				docker rmi $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+				docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+			'''
 			cleanWs deleteDirs: true, notFailBuild: true
 		}
 	}
