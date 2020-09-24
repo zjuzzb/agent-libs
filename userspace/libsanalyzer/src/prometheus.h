@@ -107,6 +107,8 @@ public:
 	// Set whether or not we do service discovery through prometheus (promscrape v2)
 	bool prom_sd() const { return m_prom_sd; }
 	void set_prom_sd(bool val) { m_prom_sd = val; }
+	int metric_expiration() const { return m_metric_expiration; }
+	void set_metric_expiration(int sec) { m_metric_expiration = sec; }
 
 	void set_host_rules(std::vector<object_filter_config::filter_rule> rules)
 	{
@@ -133,6 +135,7 @@ private:
 	bool m_ingest_calculated;
 	std::vector<object_filter_config::filter_rule> m_host_rules;
 	bool m_prom_sd;
+	int m_metric_expiration;
 };
 
 class prom_process

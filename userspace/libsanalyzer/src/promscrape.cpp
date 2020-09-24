@@ -735,7 +735,15 @@ void promscrape::prune_jobs(uint64_t ts)
 	for (auto it = m_jobs.begin(); it != m_jobs.end(); )
 	{
 		int elapsed = elapsed_s(it->second.config_ts, ts);
-		int prune_time = is_promscrape_v2() ? v2_job_prune_time_s : job_prune_time_s;
+		int prune_time = job_prune_time_s;
+		if (is_promscrape_v2())
+		{
+			// Promscrape V2 does service discovery itself, so we can't prune
+			// based on configuration time. We prune based on expiration after
+			// reception of data instead.
+			elapsed = elapsed_s(it->second.data_ts, ts);
+			prune_time = m_prom_conf.metric_expiration();
+		}
 		if (elapsed < prune_time)
 		{
 			++it;

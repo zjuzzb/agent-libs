@@ -90,10 +90,6 @@ public:
 
 	// jobs that haven't been used for this long will be pruned.
 	const int job_prune_time_s = 15;
-	// XXX: In V2, promscrape does service discovery and is the only one to know the
-	// interval, so we can't just prune jobs arbitrarily.
-	// We still need a solution, for now we just set it to 75 seconds.
-	const int v2_job_prune_time_s = 75;
 
 	static type_config<bool>c_use_promscrape;
 	static type_config<std::string>c_promscrape_sock;
