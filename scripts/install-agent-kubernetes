@@ -67,11 +67,12 @@ function help {
 	echo " -av : if provided, use the agent-version specified. (default: latest)"
 	echo " -r  : if provided, will remove the sysdig agent's daemonset, configmap, clusterrolebinding,"
 	echo "       serviceacccount and secret from the specified namespace"
+	echo " -ia : if provided, will install the Node Image Analyzer"
 	echo " -am : Analysis Manager endpoint for Sysdig Secure"
 	echo " -ds : docker socket for Image Analyzer"
 	echo " -cs : CRI socket for Image Analyzer"
+	echo " -cd : CRI-containerd socket for Image Analyzer"
 	echo " -cv : custom volume for Image Analyzer"
-	echo " -ia : if not provided, will skip Image Analyzer installation"
 	echo " -h  : print this usage and exit"
 	echo
 	exit 1
@@ -235,6 +236,10 @@ function install_k8s_agent {
 		if [ ! -z "$CRI_SOCKET_PATH" ]; then
 			echo "* Setting CRI socket path"
 			echo "  cri_socket_path: $CRI_SOCKET_PATH" >> $IA_CONFIG_FILE
+		fi
+		if [ ! -z "$CRI_CONTAINERD_SOCKET_PATH" ]; then
+			echo "* Setting CRI-containerd socket path"
+			echo "  containerd_socket_path: $CRI_CONTAINERD_SOCKET_PATH" >> $IA_CONFIG_FILE
 		fi
 		if [ ! -z "$CHECK_CERT" ]; then
 			echo "* Setting SSL certificate check level"
@@ -481,6 +486,15 @@ do
 				CRI_SOCKET_PATH="${2}"
 			else
 				echo "ERROR: no value provided for CRI socket path option, use -h | --help for $(basename ${0}) Usage"
+				exit 1
+			fi
+			shift
+			;;
+		-cd|--cricontainerdsocket)
+			if is_valid_value "${2}"; then
+				CRI_CONTAINERD_SOCKET_PATH="${2}"
+			else
+				echo "ERROR: no value provided for CRI-containerd socket path option, use -h | --help for $(basename ${0}) Usage"
 				exit 1
 			fi
 			shift
