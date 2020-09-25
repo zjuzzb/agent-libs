@@ -99,11 +99,8 @@ func newDeploymentCongroup(deployment CoDeployment, setLinks bool) (*draiosproto
 	ret.InternalTags = kubecollect_common.GetAnnotations(deployment.ObjectMeta, "kubernetes.deployment.")
 	AddDeploymentMetrics(&ret.Metrics, deployment)
 	if setLinks {
-
-		selector, ok := deploySelectorCache.Get(deployment)
-		if ok {
-			AddReplicaSetChildren(&ret.Children, selector, deployment.GetNamespace())
-		}
+		selector, _ := deploySelectorCache.Get(deployment)
+		AddReplicaSetChildren(&ret.Children, selector, deployment.GetNamespace(), deployment.ObjectMeta)
 		AddHorizontalPodAutoscalerParents(&ret.Parents, deployment.GetNamespace(), deployment.APIVersion, deployment.Kind, deployment.GetName() )
 	}
 	return ret

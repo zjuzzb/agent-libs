@@ -2,6 +2,7 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
+	"k8s.io/apimachinery/pkg/types"
 	draiosproto "protorepo/agent-be/proto"
 	"context"
 	"sync"
@@ -130,22 +131,42 @@ func AddReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet CoReplic
 	kubecollect_common.AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicaSet.Spec.Replicas)
 }
 
-func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, ns string) {
+func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, ns string, parentDeployment v1meta.ObjectMeta) {
 	if !kubecollect_common.ResourceReady("replicasets") {
 		return
 	}
 
+	childUid := types.UID("")
 	for _, obj := range replicaSetInf.GetStore().List() {
-		replicaSet := obj.(*appsv1.ReplicaSet)
-		if replicaSet.GetNamespace() != ns {
-			continue
+		rs := obj.(*appsv1.ReplicaSet)
+		for _, rsOwner := range rs.GetOwnerReferences() {
+			if rsOwner.UID == parentDeployment.UID {
+				childUid = rs.GetUID()
+				break
+			}
 		}
+		if childUid != "" {
+			break
+		}
+	}
 
-		if selector.Matches(labels.Set(replicaSet.GetLabels())) {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_replicaset"),
-				Id:proto.String(string(replicaSet.GetUID()))})
+	if childUid == "" {
+		for _, obj := range replicaSetInf.GetStore().List() {
+			replicaSet := obj.(*appsv1.ReplicaSet)
+			if replicaSet.GetNamespace() != ns {
+				continue
+			}
+
+			if selector.Matches(labels.Set(replicaSet.GetLabels())) {
+				childUid = replicaSet.GetUID()
+			}
 		}
+	}
+
+	if childUid != "" {
+		*children = append(*children, &draiosproto.CongroupUid{
+			Kind: proto.String("k8s_replicaset"),
+			Id:   proto.String(string(childUid))})
 	}
 }
 
