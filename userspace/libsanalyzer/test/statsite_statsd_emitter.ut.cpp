@@ -101,6 +101,67 @@ TEST(statsite_statsd_emitter_test, emit_container_counter_metric)
 	ASSERT_EQ(value, container.protos().statsd().statsd_metrics(0).value());
 }
 
+TEST(statsite_statsd_emitter_test, emit_dual_context_counter_metric)
+{
+	const std::string name = "some_metric";
+	const double value = 42.7;
+	const uint64_t ts = sinsp_utils::get_current_time_ns();
+	const std::string host_metric = "";
+	const std::string container_id = "deadbeef";
+	const std::string container_name = "my_cool_container";
+	const metric_limits::sptr_t limits;
+	const unsigned limit = 1000;
+
+	std::shared_ptr<dummy_statsd_stats_source> source =
+		std::make_shared<dummy_statsd_stats_source>();
+	::draiosproto::host host;
+	::draiosproto::container container;
+	::draiosproto::statsd_info metrics;
+
+	source->add_counter(name, value, ts, host_metric, {"a:b", "c:d"});
+	source->add_counter(name, value, ts, container_id, {"a:b", "c:d"});
+
+	statsite_statsd_emitter emitter(source, limits);
+
+	emitter.fetch_metrics(ts);
+	emitter.emit(&host, &metrics);
+	emitter.emit(container_id, container_name, &container, limit);
+
+	// Validate host metrics
+	ASSERT_TRUE(host.mutable_resource_counters()->has_statsd_total());
+	ASSERT_EQ(1, host.mutable_resource_counters()->statsd_total());
+
+	ASSERT_TRUE(host.mutable_resource_counters()->has_statsd_sent());
+	ASSERT_EQ(1, host.mutable_resource_counters()->statsd_sent());
+
+	ASSERT_EQ(1, metrics.statsd_metrics_size());
+	ASSERT_EQ(name, metrics.statsd_metrics(0).name());
+	ASSERT_EQ(2, metrics.statsd_metrics(0).tags_size());
+	ASSERT_EQ("a", metrics.statsd_metrics(0).tags(0).key());
+	ASSERT_EQ("b", metrics.statsd_metrics(0).tags(0).value());
+	ASSERT_EQ("c", metrics.statsd_metrics(0).tags(1).key());
+	ASSERT_EQ("d", metrics.statsd_metrics(0).tags(1).value());
+	ASSERT_EQ(draiosproto::STATSD_COUNT, metrics.statsd_metrics(0).type());
+	ASSERT_EQ(value, metrics.statsd_metrics(0).value());
+	ASSERT_TRUE(metrics.statsd_metrics(0).has_duplicate());
+	ASSERT_TRUE(metrics.statsd_metrics(0).duplicate());
+
+	// Validate container metrics
+	ASSERT_TRUE(container.mutable_resource_counters()->has_statsd_total());
+	ASSERT_EQ(1, container.mutable_resource_counters()->statsd_total());
+
+	ASSERT_TRUE(container.mutable_resource_counters()->has_statsd_sent());
+	ASSERT_EQ(1, container.mutable_resource_counters()->statsd_sent());
+	ASSERT_TRUE(container.protos().has_statsd());
+	ASSERT_EQ(name, container.protos().statsd().statsd_metrics(0).name());
+	ASSERT_EQ(2, container.protos().statsd().statsd_metrics(0).tags_size());
+	ASSERT_EQ("a", container.protos().statsd().statsd_metrics(0).tags(0).key());
+	ASSERT_EQ("b", container.protos().statsd().statsd_metrics(0).tags(0).value());
+	ASSERT_EQ("c", container.protos().statsd().statsd_metrics(0).tags(1).key());
+	ASSERT_EQ("d", container.protos().statsd().statsd_metrics(0).tags(1).value());
+	ASSERT_FALSE(container.protos().statsd().statsd_metrics(0).has_duplicate());
+}
+
 /**
  * Ensure that fetch_metrics() + emit for the host writes the expected gauge
  * metrics to the given protobufs.
