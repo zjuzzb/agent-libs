@@ -1,0 +1,43 @@
+pipeline {
+    agent { label 'agent-builder-parallel' }
+
+    stages {
+
+    // grab the repos we need
+    stage('Check out dependencies') {
+        steps {
+            dir('agent') {
+                checkout scm
+            }
+        }
+    }
+
+    // update the file that the probe builder uses for agent releases
+    stage('Update Probe Builder') {
+        steps {
+            withCredentials([usernamePassword(credentialsId: 'github-jenkins-user-token', passwordVariable: 'GITHUB_PASSWORD', usernameVariable: 'GITHUB_USERNAME')]) {
+                sh label: '', script: """
+                    curl -sH "Authorization: token $GITHUB_PASSWORD" https://api.github.com/repos/draios/agent/releases | grep tag_name | head -n 5 | awk '{ print \$2 }' | cut -c2- | rev | cut -c3- | rev > releases
+                    cat releases
+                """
+            }
+            script {
+                def releases = readFile(file:'releases').split()
+                for (release in releases) {
+					build job: 'sysdig-probe-builder', parameters: [string(name: 'RELEASE_NUMBER', value: release), string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')]
+                }
+            }
+        }
+
+    }
+
+    }
+
+   post {
+        always {
+            cleanWs deleteDirs: true, notFailBuild: true
+        }
+    }
+
+}
+

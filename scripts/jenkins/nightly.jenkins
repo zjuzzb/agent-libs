@@ -8,6 +8,12 @@ pipeline {
 						build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"dev"),string(name:'SYSDIG_BRANCH', value:"dev"),string(name:'FALCO_BRANCH', value:"master"),string(name:'PROTOREPO_BRANCH', value:"master"),booleanParam(name:'TAG_LATEST', value:true)]
 					}
 				}
+				stage('Build Probes') {
+					steps {
+						build job:'agent-build-probes'
+					}
+				}
+
 			}
 		}
 	}

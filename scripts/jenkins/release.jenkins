@@ -276,7 +276,7 @@ pipeline {
 	// this one is promoted
 	stage('Build Probes') {
 		steps {
-			build job: 'agent-probe-builder', parameters: [string(name: 'AGENT_RELEASE', value: "${params.RELEASE_VERSION}")]
+			build job: 'sysdig-probe-builder', parameters: [string(name: 'RELEASE_NUMBER', value: "${params.RELEASE_VERSION}"), string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')]
 		}
 		post {
 			success {
@@ -285,6 +285,12 @@ pipeline {
 			failure {
 				slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release failed to build probes. Aborting release. Please contact dev agent team, as this is currently an unhandled exception.", tokenCredentialId: 'slack'
 			}
+		}
+	}
+
+	stage('Build Sonar') {
+		steps {
+			build job:'agent-run-builder',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION"), string(name:'TARGET', value:'sonar')]
 		}
 	}
 
@@ -361,7 +367,7 @@ pipeline {
 			cleanWs deleteDirs: true, notFailBuild: true
 		}
 		success {
-			slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job success! Don't forget to update the agent version to ${params.RELEASE_VERSION} in the sysdig-probe-builder job.", tokenCredentialId: 'slack'
+			slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job success!", tokenCredentialId: 'slack'
 		}
 		failure {
 			slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job failure.", tokenCredentialId: 'slack'
