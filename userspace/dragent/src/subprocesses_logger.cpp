@@ -415,7 +415,7 @@ void promscrape_parser::operator()(const string& data)
 const unsigned subprocesses_logger::READ_BUFFER_SIZE = 4096;
 
 subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, log_reporter* reporter, protocol_queue& queue) :
-		dragent::watchdog_runnable("subprocesses_logger"),
+		dragent::running_state_runnable("subprocesses_logger"),
 		m_configuration(configuration),
         m_log_reporter(reporter),
         m_queue(queue)

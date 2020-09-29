@@ -8,7 +8,6 @@
 #include "crash_handler.h"
 #include "configuration.h"
 #include "connection_manager.h"
-#include "watchdog_runnable_pool.h"
 #include "error_handler.h"
 #include "sinsp_worker.h"
 #include "common_logger.h"
@@ -21,6 +20,7 @@
 #include "async_aggregator.h"
 #include "dragent_message_queues.h"
 #include "protobuf_compression.h"
+#include "watchdog_runnable_pool.h"
 
 #include "sdc_internal.pb.h"
 #include "draios.pb.h"
@@ -122,7 +122,8 @@ private:
 		std::string m_digest;
 	};
 	std::vector<monitor_file_state> m_monitored_files;
-	dragent::watchdog_runnable_pool m_pool;
+	
+	watchdog_runnable_pool m_pool;
 	bool m_had_unclean_shutdown = false;
 	bool m_startup_probe_set = false;
 	static const std::string K8S_PROBE_FILE;

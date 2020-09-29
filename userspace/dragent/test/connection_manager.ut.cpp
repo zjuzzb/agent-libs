@@ -1988,7 +1988,7 @@ TEST_F(connection_manager_fixture, aggregator_integration_test)
 	                                     1,
 	                                     1,
 	                                     "");
-	dragent::watchdog_runnable_pool pool;
+	watchdog_runnable_pool pool;
 	std::thread ct([&cm]()
 	{
 		cm.test_run();

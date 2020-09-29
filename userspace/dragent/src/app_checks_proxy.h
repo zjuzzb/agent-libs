@@ -8,7 +8,7 @@
 #include <thread_safe_container/blocking_queue.h>
 #include <metric_limits.h>
 #include <prometheus.h>
-#include "watchdog_runnable.h"
+#include "running_state_runnable.h"
 
 struct app_check_request
 {
@@ -18,10 +18,10 @@ struct app_check_request
 };
 
 
-class app_checks_proxy : public dragent::watchdog_runnable, public app_checks_proxy_interface {
+class app_checks_proxy : public dragent::running_state_runnable, public app_checks_proxy_interface {
 public:
 	explicit app_checks_proxy(metric_limits::sptr_t metric_limits, bool threaded):
-		dragent::watchdog_runnable("app_checks_proxy"),
+		dragent::running_state_runnable("app_checks_proxy"),
 		m_threaded(threaded),
 		m_outqueue("/sdc_app_checks_in", posix_queue::SEND, 1),
 		m_inqueue("/sdc_app_checks_out", posix_queue::RECEIVE, 2),

@@ -4,8 +4,9 @@
 
 COMMON_LOGGER();
 
-namespace dragent
+watchdog_runnable_pool::watchdog_runnable_pool()
 {
+}
 
 void watchdog_runnable_pool::start(watchdog_runnable& to_start, uint64_t timeout_s)
 {
@@ -51,5 +52,3 @@ void watchdog_runnable_pool::log_report() const
 	}
 }
 
-
-} // namespace dragent

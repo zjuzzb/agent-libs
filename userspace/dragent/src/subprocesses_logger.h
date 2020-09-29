@@ -1,7 +1,7 @@
 #pragma once
 
 #include "configuration.h"
-#include "watchdog_runnable.h"
+#include "running_state_runnable.h"
 #include "third-party/jsoncpp/json/json.h"
 #include "error_handler.h"
 #include "noncopyable.h"
@@ -140,7 +140,7 @@ private:
 	Json::Reader m_json_reader;
 };
 
-class subprocesses_logger : public dragent::watchdog_runnable
+class subprocesses_logger : public dragent::running_state_runnable
 {
 public:
 	class log_state {

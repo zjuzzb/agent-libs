@@ -9,7 +9,7 @@
 
 #include "metric_serializer.h"
 #include "dragent_message_queues.h"
-#include "watchdog_runnable.h"
+#include "running_state_runnable.h"
 #include "protobuf_compression.h"
 
 #include <condition_variable>
@@ -30,7 +30,7 @@ namespace dragent
  * A concrete metric_serializer for asynchronously writing metrics in
  * protobuf format to the back-end.
  */
-class protobuf_metric_serializer : public metric_serializer, public dragent::watchdog_runnable
+class protobuf_metric_serializer : public metric_serializer, public running_state_runnable
 {
 	const uint64_t DEFAULT_MQUEUE_READ_TIMEOUT_MS = 300;
 

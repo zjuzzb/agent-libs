@@ -13,7 +13,7 @@
 #include "connection_manager.h"  // because aggregator_limits is a message_handler. should probably be broken down a bit.
 #include "dragent_settings_interface.h"
 #include "metrics_file_emitter.h"
-#include "watchdog_runnable.h"
+#include "running_state_runnable.h"
 
 #include "thread_safe_container/blocking_queue.h"
 
@@ -85,7 +85,7 @@ public:
  * The async stage which takes queue items, runs them through the aggregator
  * and eventually puts them on an output queue.
  */
-class async_aggregator : public dragent::watchdog_runnable
+class async_aggregator : public running_state_runnable
 {
 public:
 	using queue_t =

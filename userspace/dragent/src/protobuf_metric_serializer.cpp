@@ -74,7 +74,7 @@ protobuf_metric_serializer::protobuf_metric_serializer(
     std::shared_ptr<protobuf_compressor>& compressor,
     compression_method_source* source)
     : metric_serializer(root_dir, sample_handler, input_queue, output_queue),
-      dragent::watchdog_runnable("serializer"),
+      running_state_runnable("serializer"),
       m_stop_thread(false),
       m_capture_stats_source(stats_source),
       m_serializations_completed(0),

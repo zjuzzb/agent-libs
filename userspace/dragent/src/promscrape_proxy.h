@@ -1,15 +1,15 @@
 #pragma once
 
 #include "promscrape.h"
+#include "running_state_runnable.h"
 
 #include <metric_limits.h>
 #include <prometheus.h>
-#include "watchdog_runnable.h"
 
-class promscrape_proxy : public dragent::watchdog_runnable {
+class promscrape_proxy : public dragent::running_state_runnable {
 public:
 	explicit promscrape_proxy(std::shared_ptr<promscrape> ps) :
-		dragent::watchdog_runnable("promscrape"),
+		dragent::running_state_runnable("promscrape"),
 		m_promscrape(ps)
 	{
 	}

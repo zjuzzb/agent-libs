@@ -1,24 +1,22 @@
 
 #include "watchdog_runnable.h"
 #include "common_logger.h"
-#include "running_state.h"
 #include "uptime.h"
 #include "watchdog_runnable_fatal_error.h"
 #include <cinttypes>
 
 COMMON_LOGGER();
 
-namespace dragent
-{
-
-watchdog_runnable::watchdog_runnable(const std::string& name) :
+watchdog_runnable::watchdog_runnable(const std::string& name, 
+	                             const is_terminated_delgate& terminated_delegate) :
 	// Purposely initializing heartbeat to 0 so that we can check
 	// whether runnable has ever started.
 	m_terminated_with_error(false),
 	m_last_heartbeat_ms(0),
 	m_pthread_id(0),
 	m_timeout_ms(0),
-	m_name(name)
+	m_name(name),
+	is_terminated(terminated_delegate)
 {
 }
 
@@ -36,9 +34,8 @@ void watchdog_runnable::timeout_ms(uint64_t value_ms)
 
 bool watchdog_runnable::heartbeat()
 {
-	if(running_state::instance().is_terminated())
+	if(nullptr != is_terminated && is_terminated())
 	{
-		// If anything shut down dragent then we want all threads to exit
 		return false;
 	}
 
@@ -147,5 +144,3 @@ void watchdog_runnable::log_report()
 	const int64_t age_ms = uptime::milliseconds() - m_last_heartbeat_ms;
 	LOG_INFO("%s last activity %" PRId64" ms ago", m_name.c_str(), age_ms);
 }
-
-} // namespace dragent

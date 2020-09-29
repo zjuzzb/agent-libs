@@ -609,7 +609,7 @@ const uint64_t capture_job_handler::m_keepalive_interval_ns = 30 * 1000000000LL;
 
 capture_job_handler::capture_job_handler(dragent_configuration* configuration,
                                          protocol_queue* queue)
-    : dragent::watchdog_runnable("capture_job_manager"),
+    : running_state_runnable("capture_job_manager"),
       m_sysdig_pid(getpid()),
       m_sysdig_sid(0),
       m_log_stats_interval(10000000000),

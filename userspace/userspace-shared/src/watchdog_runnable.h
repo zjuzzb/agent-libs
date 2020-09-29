@@ -3,10 +3,6 @@
 #include <atomic>
 #include <Poco/Thread.h>
 
-
-namespace dragent 
-{
-
 /**
  * Implements the POCO Runnable class and provides a simple
  * interface for a watchdog process to check if the class
@@ -17,7 +13,9 @@ class watchdog_runnable : public Poco::Runnable
 public:
 	static const uint64_t NO_TIMEOUT = 0;
 
-	watchdog_runnable(const std::string& name);
+	using is_terminated_delgate = std::function<bool(void)>;
+	watchdog_runnable(const std::string& name, 
+	                  const is_terminated_delgate& terminated_delegate);
 
 	/**
 	 * @return whether this runnable has ever called heartbeat
@@ -125,7 +123,8 @@ private:
 	// started so it does not need to be atomic.
 	uint32_t m_timeout_ms;
 	const std::string m_name;
+	// Callback to the client to check whether the application has been
+	// terminated
+	is_terminated_delgate is_terminated;
 };
-
-} // namespace dragent
 

@@ -18,6 +18,8 @@ add_library(
     thread_utils.cpp
     uptime.cpp
     wall_time.cpp
+    watchdog_runnable_pool.cpp
+    watchdog_runnable.cpp
     ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
 )
 

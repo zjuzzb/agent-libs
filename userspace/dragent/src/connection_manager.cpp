@@ -226,7 +226,7 @@ connection_manager::connection_manager(dragent_configuration* configuration,
     protocol_queue* queue,
     std::initializer_list<dragent_protocol::protocol_version> supported_protocol_versions,
     std::initializer_list<message_handler_map::value_type> message_handlers)
-    : dragent::watchdog_runnable("connection_manager"),
+    : dragent::running_state_runnable("connection_manager"),
       m_handler_map(message_handlers),
       m_supported_protocol_versions(supported_protocol_versions),
       // Why isn't this configurable via the constructor?
@@ -557,7 +557,7 @@ void connection_manager::do_run()
 {
 	if (!init())
 	{
-		THROW_DRAGENT_WR_FATAL_ERROR("initialization failed");
+		THROW_WATCHDOG_RUNNABLE_FATAL_ERROR("initialization failed");
 	}
 	ASSERT(m_fsm->get_state() == cm_state_machine::state::INIT);
 

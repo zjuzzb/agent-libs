@@ -51,7 +51,7 @@ async_aggregator::async_aggregator(flush_queue& input_queue,
                                    uint64_t queue_timeout_ms,
                                    uint32_t default_aggregation_interval,
                                    const std::string& root_dir)
-    : dragent::watchdog_runnable("aggregator"),
+    : running_state_runnable("aggregator"),
       m_stop_thread(false),
       m_queue_timeout_ms(queue_timeout_ms),
       m_input_queue(input_queue),

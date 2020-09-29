@@ -1,33 +1,20 @@
 #include <atomic>
 #include <exception>
 #include <gtest.h>
-#include "configuration.h"
 #include "common_logger.h"
-#include "running_state_fixture.h"
 #include "watchdog_runnable.h"
 #include "watchdog_runnable_fatal_error.h"
 #include "watchdog_runnable_pool.h"
 
 COMMON_LOGGER();
 
-using namespace dragent;
-
 namespace {
-
-/**
- * Reset the running_state after each test
- */
-class watchdog_runnable_fixture : public test_helpers::running_state_fixture 
-{
-public:
-	watchdog_runnable_fixture() {}
-};
 
 class test_runnable : public watchdog_runnable
 {
 public:
-	test_runnable() :
-	   watchdog_runnable("test_runnable"),
+	test_runnable(const watchdog_runnable::is_terminated_delgate& terminated_delegate = nullptr) :
+		   watchdog_runnable("test_runnable", terminated_delegate),
 	   m_continue(true),
 	   m_hijinks(false)
 	{
@@ -43,7 +30,7 @@ private:
 		{
 			if(m_hijinks)
 			{
-				THROW_DRAGENT_WR_FATAL_ERROR("hijinks %d!", 123);
+				THROW_WATCHDOG_RUNNABLE_FATAL_ERROR("hijinks %d!", 123);
 			}
 
 			Poco::Thread::sleep(1);
@@ -51,9 +38,17 @@ private:
 	}
 };
 
+class test_running_state
+{
+public:
+	bool m_terminated = false;
+
+	bool is_terminated() { return m_terminated; }
+};
+
 } // anonymous namespace
 
-TEST_F(watchdog_runnable_fixture, timeout)
+TEST(watchdog_runnable, timeout)
 {
 	uint64_t timeout_s = 1;
 
@@ -96,7 +91,7 @@ TEST_F(watchdog_runnable_fixture, timeout)
 	Poco::ThreadPool::defaultPool().joinAll();
 }
 
-TEST_F(watchdog_runnable_fixture, no_timeout)
+TEST(watchdog_runnable, no_timeout)
 {
 	test_runnable action1;
 	ASSERT_FALSE(action1.is_started());
@@ -122,9 +117,10 @@ TEST_F(watchdog_runnable_fixture, no_timeout)
 	Poco::ThreadPool::defaultPool().joinAll();
 }
 
-TEST_F(watchdog_runnable_fixture, global_terminate)
+TEST(watchdog_runnable, global_terminate)
 {
-	test_runnable action1;
+	test_running_state state;
+	test_runnable action1(std::bind(&test_running_state::is_terminated, &state));
 	ASSERT_FALSE(action1.is_started());
 
 	watchdog_runnable_pool pool;
@@ -137,14 +133,14 @@ TEST_F(watchdog_runnable_fixture, global_terminate)
 
 	// Set the global terminate, this should cause the heartbeat function
 	// to fail and the task will exit
-	dragent::running_state::instance().shut_down();
+	state.m_terminated = true;
 
 	// This will wait until all tasks are complete so if this function
 	// ever exits then the test passes
 	Poco::ThreadPool::defaultPool().joinAll();
 }
 
-TEST_F(watchdog_runnable_fixture, fatal)
+TEST(watchdog_runnable, fatal)
 {
 	test_runnable action1;
 
@@ -163,7 +159,7 @@ TEST_F(watchdog_runnable_fixture, fatal)
 	action1.m_hijinks = true;
 
 	// Call join all to wait until thread dies
-	Poco::ThreadPool::defaultPool() .joinAll();
+	Poco::ThreadPool::defaultPool().joinAll();
 
 	// Validate that the task failed due to a fatal error
 	unhealthy = pool.unhealthy_list();
@@ -178,14 +174,14 @@ TEST_F(watchdog_runnable_fixture, fatal)
 
 }
 
-TEST_F(watchdog_runnable_fixture, throw_fatal)
+TEST(watchdog_runnable, throw_fatal)
 {
 	try
 	{
-		THROW_DRAGENT_WR_FATAL_ERROR("uh oh %d!", 77);
+		THROW_WATCHDOG_RUNNABLE_FATAL_ERROR("uh oh %d!", 77);
 		ASSERT_TRUE(false);
 	}
-	catch (const dragent::watchdog_runnable_fatal_error& ex)
+	catch (const watchdog_runnable_fatal_error& ex)
 	{
 		ASSERT_EQ(std::string("uh oh 77!"), ex.what());
 		ASSERT_EQ(std::string("watchdog_runnable.ut"), ex.where());

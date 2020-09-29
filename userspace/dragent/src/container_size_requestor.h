@@ -2,7 +2,7 @@
 
 #include <deque>
 #include <container.h>
-#include "watchdog_runnable.h"
+#include "running_state_runnable.h"
 
 class sinsp_container_info;
 
@@ -56,7 +56,7 @@ private:
 /**
  * Runnable to periodically call into the container_size_requestor.
  */
-class container_size_requestor_runnable : public dragent::watchdog_runnable
+class container_size_requestor_runnable : public dragent::running_state_runnable
 {
 public:
 	container_size_requestor_runnable(sinsp_container_manager& mgr);

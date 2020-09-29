@@ -2,7 +2,7 @@
 
 #include "protocol.h"
 #include "spinlock.h"
-#include "watchdog_runnable.h"
+#include "running_state_runnable.h"
 #include "dragent_message_queues.h"
 #include "dragent_settings_interface.h"
 #include "protobuf_file_emitter.h"
@@ -133,7 +133,7 @@ private:
 	connection_manager* m_cm;
 };
 
-class connection_manager : public dragent::watchdog_runnable,
+class connection_manager : public dragent::running_state_runnable,
                            public aggregation_interval_source,
                            public compression_method_source
 {

@@ -258,7 +258,9 @@ void log_sink::log(const Poco::Message::Priority severity,
 	std::string message = build(line, fmt, args);
 	va_end(args);
 
-	g_log->log(message, severity);
+	if (nullptr != g_log) {
+		g_log->log(message, severity);
+	}
 }
 
 void log_sink::log(const Poco::Message::Priority severity,

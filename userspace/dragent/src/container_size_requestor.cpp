@@ -142,7 +142,7 @@ container_size_requestor::container_info_subset::container_info_subset(const sin
 }
 
 container_size_requestor_runnable::container_size_requestor_runnable(sinsp_container_manager& mgr) :
-   watchdog_runnable("container_size_requestor"),
+   dragent::running_state_runnable("container_size_requestor"),
    m_requestor(mgr, std::bind(&sinsp_container_manager::update_container_with_size,
 			      &mgr,
 			      std::placeholders::_1,

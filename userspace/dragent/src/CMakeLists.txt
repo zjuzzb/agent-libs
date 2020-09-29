@@ -85,8 +85,6 @@ list(
     sinsp_worker.cpp
     subprocesses_logger.cpp
     user_event_channel.cpp
-    watchdog_runnable_pool.cpp
-    watchdog_runnable.cpp
     webpage.cpp
     webpage_rest_request_handler.cpp
     Poco/SysdigModifiedFileChannel.cpp

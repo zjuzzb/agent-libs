@@ -30,6 +30,7 @@ add_executable(
     thread_safe_container/guarded_cache.ut.cpp
     thread_utils.ut.cpp
     type_config.ut.cpp
+    watchdog_runnable.ut.cpp
     yaml_configuration.ut.cpp
 )
 

@@ -35,7 +35,7 @@ TEST(async_aggregator, single)
 	    1,
 	    10,
 	    "");
-	dragent::watchdog_runnable_pool pool;
+	watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);
 	std::atomic<bool> sent_metrics(false);
 
@@ -108,7 +108,7 @@ TEST(async_aggregator, callbacks)
 	    1,
 	    10,
 	    "");
-	dragent::watchdog_runnable_pool pool;
+	watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);
 	std::atomic<bool> sent_metrics(false);
 
@@ -158,7 +158,7 @@ TEST(async_aggregator, multiple)
 	    1,
 	    2,
 	    "");
-	dragent::watchdog_runnable_pool pool;
+	watchdog_runnable_pool pool;
 	pool.start(aggregator, 1);
 	std::atomic<bool> sent_metrics(false);
 
@@ -226,7 +226,7 @@ TEST(async_aggregator, followup_aggregation)
 	    1,
 	    10,
 	    "");
-	dragent::watchdog_runnable_pool pool;
+	watchdog_runnable_pool pool;
 	pool.start(aggregator, 1);
 	std::atomic<bool> sent_metrics(false);
 
@@ -305,7 +305,7 @@ TEST(async_aggregator, limiter)
 	EXPECT_EQ(dragent::aggregator_limits::global_limits->m_jmx, 1);
 	EXPECT_EQ(dragent::aggregator_limits::global_limits->m_containers, 5);
 
-	dragent::watchdog_runnable_pool pool;
+	watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);
 	std::atomic<bool> sent_metrics(false);
 
@@ -455,7 +455,7 @@ TEST(async_aggregator, substitutions)
 	    1,
 	    10,
 	    "");
-	dragent::watchdog_runnable_pool pool;
+	watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);
 	std::atomic<bool> sent_metrics(false);
 
@@ -593,7 +593,7 @@ TEST(async_aggregator, empty_unreported_containers)
 	    1,
 	    10,
 	    "");
-	dragent::watchdog_runnable_pool pool;
+	watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);
 	std::atomic<bool> sent_metrics(false);
 
@@ -670,7 +670,7 @@ TEST(async_aggregator, flush_interval_zero)
 	    5,
 	    "");
 
-	dragent::watchdog_runnable_pool pool;
+	watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);
 
 	EXPECT_EQ(test_helper::get_flush_interval(aggregator), 5);
@@ -875,7 +875,7 @@ TEST(async_aggregator, index)
 	    1,
 	    10,
 	    "");
-	dragent::watchdog_runnable_pool pool;
+	watchdog_runnable_pool pool;
 	pool.start(aggregator, 10);
 	std::atomic<bool> sent_metrics(false);
 

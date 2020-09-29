@@ -24,7 +24,7 @@
 #include "configuration.h"
 #include "infra_event_sink.h"
 #include "protocol.h"
-#include "watchdog_runnable.h"
+#include "running_state_runnable.h"
 #include "dragent_message_queues.h"
 #include "thread_safe_container/blocking_queue.h"
 
@@ -129,7 +129,7 @@ public:
 };
 
 class capture_job;
-class capture_job_handler : public dragent::watchdog_runnable,
+class capture_job_handler : public dragent::running_state_runnable,
 	                    public dragent::infra_event_sink,
 			    public capture_job_queue_handler
 {

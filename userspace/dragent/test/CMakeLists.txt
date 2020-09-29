@@ -60,7 +60,6 @@ add_executable(
     running_state.ut.cpp
     sinsp_worker.ut.cpp
     spinlock.ut.cpp
-    watchdog_runnable.ut.cpp
     webpage_rest_request_handler.ut.cpp
 )
 
