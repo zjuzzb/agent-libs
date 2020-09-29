@@ -16,29 +16,11 @@
 namespace
 {
 
-/**
- * emit_metrics Build statsd metric protobufs
- *
- * @param metric_list  The list of received statsd metrics
- * @param statsd_info  Pointer to the protobuf to emit metrics into
- * @param limit
- * @param max_limit
- * @param context      String to indicate statsd context
- * @param host         Are these host metrics or not?
- *
- * Note: The 'host' parameter is used to avoid duplicate metrics on meerkat
- *       backends. The meerkat backend doesn't understand context (container
- *       vs host) and will display duplicate metrics for containers. In order
- *       to avoid this problem, the backend added a flag ('duplicate') in the
- *       protobuf that the agent can use to indicate that these are host
- *       metrics (SMAGENT-2564)
- */
 unsigned emit_metrics(const std::vector<statsd_metric>& metric_list,
                       ::draiosproto::statsd_info* const statsd_info,
                       const unsigned limit,
                       const unsigned max_limit,
-                      const std::string& context,
-                      const bool host = false)
+                      const std::string& context)
 {
 	unsigned num_metrics = 0;
 
@@ -65,10 +47,6 @@ unsigned emit_metrics(const std::vector<statsd_metric>& metric_list,
 			auto statsd_proto = statsd_info->add_statsd_metrics();
 
 			metric.to_protobuf(statsd_proto);
-			if (host)
-			{
-				statsd_proto->set_duplicate(true);
-			}
 			++num_metrics;
 		}
 	}
@@ -141,12 +119,12 @@ void statsite_statsd_emitter::emit(::draiosproto::host* const host,
 	if(m_statsd_metrics.find(HOST_KEY) != m_statsd_metrics.end())
 	{
 		statsd_total = std::get<1>(m_statsd_metrics.at(HOST_KEY));
-		statsd_sent = emit_metrics(std::get<0>(m_statsd_metrics.at(HOST_KEY)),
-		                           metrics,
-		                           limit,
-		                           limit,
-		                           "host=" + sinsp_gethostname(),
-		                           true); // Host metrics need "duplicate" set
+		statsd_sent = emit_metrics(
+				std::get<0>(m_statsd_metrics.at(HOST_KEY)),
+				metrics,
+				limit,
+				limit,
+				"host=" + sinsp_gethostname());
 	}
 
 	host->mutable_resource_counters()->set_statsd_total(statsd_total);
