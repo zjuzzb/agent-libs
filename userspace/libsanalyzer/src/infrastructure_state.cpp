@@ -118,6 +118,32 @@ type_config<bool>::ptr infrastructure_state::c_thin_cointerface_enabled =
 		).hidden()
 	         .build();
 
+// We have seen clusters where object's ownerReferences were not standard k8s objects
+// (e.g. Kafka to mention one). We must ensure that we are handling only types with any Watchers in cointerface.
+// The risk is to fatten some internal structures with elements that won't be removed
+type_config<std::vector<std::string>>::ptr infrastructure_state::c_k8s_allow_list_kinds =
+	type_config_builder<std::vector<std::string>>(
+		{"k8s_cronjob",
+		 "k8s_daemonset",
+		 "k8s_deployment",
+		 "k8s_hpa",
+		 "k8s_ingress",
+		 "k8s_job",
+		 "k8s_namespace",
+		 "k8s_node",
+		 "k8s_persistentvolume",
+		 "k8s_persistentvolumeclaim",
+		 "k8s_pod",
+		 "k8s_replicaset",
+		 "k8s_replicationcontroller",
+		 "k8s_resourcequota",
+		 "k8s_service",
+		 "k8s_statefulset"},
+		"List of k8s types that the agent will handle",
+		"k8s_allow_list_kinds"
+		).hidden()
+	         .build();
+
 
 namespace
 {
@@ -401,6 +427,11 @@ infrastructure_state::infrastructure_state(sinsp_analyzer& analyzer,
 				      {
 					      handle_update_event_no_thin_cointerface(evt);
 				      };
+	}
+
+	for(const auto& kind : c_k8s_allow_list_kinds->get_value())
+	{
+		m_allow_list_kinds.insert(kind);
 	}
 }
 
@@ -1244,6 +1275,18 @@ void infrastructure_state::connect(const infrastructure_state::uid_t& key)
 	for (const auto& x : m_state[key]->parents())
 	{
 		auto pkey = make_pair(x.kind(), x.id());
+
+		// If the parent is not in the allowed list just skip all
+		if(!kind_is_allowed(pkey.first))
+		{
+			LOG_DEBUG("Skipping connection <%s,%s> with <%s,%s> because its kind is not in the allowed list",
+				  key.first.c_str(),
+				  key.second.c_str(),
+				  pkey.first.c_str(),
+				  pkey.second.c_str());
+			continue;
+		}
+
 		if (!has(pkey))
 		{
 			// keep track of the missing parent. We will fix the children links when this event
@@ -1282,6 +1325,18 @@ void infrastructure_state::connect(const infrastructure_state::uid_t& key)
 	for (const auto& x : m_state[key]->children())
 	{
 		auto ckey = make_pair(x.kind(), x.id());
+
+		// If the child is not in the allowed list kind just skip all
+		if(!kind_is_allowed(ckey.first))
+		{
+			LOG_DEBUG("Skipping connection <%s,%s> with child <%s,%s> because its kind is not in the allowed list",
+				  key.first.c_str(),
+				  key.second.c_str(),
+				  ckey.first.c_str(),
+				  ckey.second.c_str());
+			continue;
+		}
+
 		if (!has(ckey))
 		{
 			// the connection will be created when the child arrives
@@ -1359,43 +1414,42 @@ void infrastructure_state::remove(infrastructure_state::uid_t& key, bool update)
 		{
 			// parent has already been deleted
 			LOG_DEBUG("infra_state: Container group <%s,%s> has been already deleted",
-			          pkey.first.c_str(),
-			          pkey.second.c_str());
+				  pkey.first.c_str(),
+				  pkey.second.c_str());
 			continue;
 		}
 
 		bool erased = false;
 		LOG_DEBUG("infra_state: Searching children links inside container group <%s,%s>",
-		          pkey.first.c_str(),
-		          pkey.second.c_str());
+			  pkey.first.c_str(),
+			  pkey.second.c_str());
 
 		for (auto pos = m_state[pkey]->children().begin(); pos != m_state[pkey]->children().end();)
 		{
 			if (pos->kind() == key.first && pos->id() == key.second)
 			{
 				LOG_DEBUG("infra_state: Erase child link from <%s,%s>",
-				          pkey.first.c_str(),
-				          pkey.second.c_str());
+					  pkey.first.c_str(),
+					  pkey.second.c_str());
 				m_state[pkey]->mutable_children()->erase(pos);
 				LOG_DEBUG("infra_state: Child link erased.");
 				erased = true;
 				break;
 			}
-			else
-			{
-				++pos;
-			}
+
+			++pos;
+
 		}
 
 		if (!erased)
 		{
 			LOG_DEBUG(
-			    "infra_state: Container groups inconsistency detected. <%s,%s> should be a child "
-			    "of <%s,%s>.",
-			    m_state[key]->uid().kind().c_str(),
-			    m_state[key]->uid().id().c_str(),
-			    m_state[pkey]->uid().kind().c_str(),
-			    m_state[pkey]->uid().id().c_str());
+				"infra_state: Container groups inconsistency detected. <%s,%s> should be a child "
+				"of <%s,%s>.",
+				m_state[key]->uid().kind().c_str(),
+				m_state[key]->uid().id().c_str(),
+				m_state[pkey]->uid().kind().c_str(),
+				m_state[pkey]->uid().id().c_str());
 		}
 	}
 
@@ -3024,6 +3078,11 @@ void infrastructure_state::handle_update_event_no_thin_cointerface(const draiosp
 		m_state[key]->mutable_ip_addresses()->CopyFrom(evt->object().ip_addresses());
 		m_state[key]->mutable_metrics()->CopyFrom(evt->object().metrics());
 	}
+}
+
+bool infrastructure_state::kind_is_allowed(const std::string& kind) const
+{
+	return m_allow_list_kinds.find(kind) != m_allow_list_kinds.end();
 }
 
 void infrastructure_state::add_annotation_filter(const string& ann)

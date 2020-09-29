@@ -342,3 +342,46 @@ TEST(infrastructure_state_test, k8s_namespace_store_test)
 		EXPECT_EQ(cg.namespace_(), "wanderful_namespace");
 	}
 }
+
+TEST(infrastructure_state_test, allowed_kinds_test)
+{
+	// check that we properly normalize path
+	test_helpers::sinsp_mock inspector;
+	audit_tap_handler_dummy athd;
+	null_secure_audit_handler sahd;
+	null_secure_profiling_handler sphd;
+	sinsp_analyzer analyzer(&inspector,
+	                        "",
+	                        std::make_shared<internal_metrics>(),
+	                        athd,
+	                        sahd,
+	                        sphd,
+	                        nullptr,
+	                        []() -> bool { return true; });
+	infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
+
+	draiosproto::congroup_update_event update_event;
+	update_event.mutable_object()->mutable_uid()->set_kind("k8s_deployement");
+	is.handle_event(&update_event);
+	ASSERT_EQ(is.m_state.size(), 1);
+
+	is.m_state.clear();
+	auto* parent = update_event.mutable_object()->mutable_parents()->Add();
+	parent->set_kind("Grafana");
+	parent->set_id("abcd");
+	is.handle_event(&update_event);
+	// We need to check here that is has not added our object in the orphan structure
+	ASSERT_EQ(is.m_orphans.size(), 0);
+	ASSERT_EQ(is.m_state.size(), 1);
+
+	// Now get a pod with a good parent and verify the parent ends up in m_orphans
+	update_event.Clear();
+	update_event.mutable_object()->mutable_uid()->set_kind(k8s_pod_store::POD_KIND);
+	update_event.mutable_object()->mutable_uid()->set_id("pod_id");
+	parent = update_event.mutable_object()->mutable_parents()->Add();
+	parent->set_kind(k8s_pod_store::DEPLOYMENT_KIND);
+	parent->set_id("dep_id");
+	is.handle_event(&update_event);
+
+	ASSERT_EQ(is.m_orphans.size(), 1);
+}

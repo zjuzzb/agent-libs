@@ -217,6 +217,7 @@ public:
 
 private:
 	FRIEND_TEST(infrastructure_state_test, connect_to_namespace);
+	FRIEND_TEST(infrastructure_state_test, allowed_kinds_test);
 
 	void configure_k8s_environment();
 
@@ -277,6 +278,7 @@ private:
 	std::function<void(const draiosproto::congroup_update_event *evt)> m_handle_update_event;
 	void handle_update_event_thin_cointerface(const draiosproto::congroup_update_event *evt);
 	void handle_update_event_no_thin_cointerface(const draiosproto::congroup_update_event *evt);
+	bool kind_is_allowed(const std::string& kind) const;
 
 	std::map<uid_t, std::unique_ptr<draiosproto::container_group>> m_state;
 
@@ -345,6 +347,7 @@ private:
 	std::string m_k8s_ssl_key;
 	// Local cache for k8s_cluster_name
 	std::string m_k8s_cluster_name;
+	std::set<std::string> m_allow_list_kinds;
 
 private:
 	/**
@@ -392,6 +395,7 @@ public: // configs
 	static type_config<uint64_t> c_k8s_refresh_interval;
 	static type_config<uint32_t>::ptr c_k8s_max_rnd_conn_delay;
 	static type_config<bool>::ptr c_thin_cointerface_enabled;
+	static type_config<std::vector<std::string>>::ptr c_k8s_allow_list_kinds;
 
 private: // configs which have non-static fields that we actually use. You probably don't
 	 // want these. In almost all cases, you'll probably want to use the normalized
