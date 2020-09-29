@@ -495,11 +495,21 @@ func GetHostDir() string {
 
 func (module *Module) Env(mgr *ModuleMgr, runWithChroot bool) []string {
 
+	var newenv []string
 	moduleDir := path.Join(mgr.ModulesDir, module.Name)
+
+	if runWithChroot {
+		newenv = append(newenv, "DOCKER_HOST=unix:///var/run/docker.sock");
+
+		moduleDir = path.Join("/benchmarks", module.Name)
+	} else {
+		// If SYSDIG_HOST_ROOT is set, use that as a part of the socket path.
+		dockerSock := fmt.Sprintf("unix://%s/var/run/docker.sock", GetHostDir())
+		newenv = append(newenv, "DOCKER_HOST=" + dockerSock);
+	}
 
 	// Add the module dir to PATH
 	env := os.Environ()
-	var newenv []string
 	for _, item := range env {
 		splits := strings.Split(item, "=")
 		key := splits[0]
@@ -508,14 +518,6 @@ func (module *Module) Env(mgr *ModuleMgr, runWithChroot bool) []string {
 			val = val + ":" + moduleDir
 		}
 		newenv = append(newenv, key + "=" + val)
-	}
-
-	if runWithChroot {
-		newenv = append(newenv, "DOCKER_HOST=unix:///var/run/docker.sock");
-	} else {
-		// If SYSDIG_HOST_ROOT is set, use that as a part of the socket path.
-		dockerSock := fmt.Sprintf("unix://%s/var/run/docker.sock", GetHostDir())
-		newenv = append(newenv, "DOCKER_HOST=" + dockerSock);
 	}
 
 	return newenv
