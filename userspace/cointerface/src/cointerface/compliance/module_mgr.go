@@ -155,7 +155,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 
 	mgr.availModules["kube-bench"] = &Module{
 		Name: "kube-bench",
-		Prog: "MODULE_DIR/kube-bench",
+		Prog: "./kube-bench",
 		Impl: &KubeBenchImpl{
 			customerId: customerId,
 			machineId: machineId,
@@ -164,7 +164,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 
 	mgr.availModules["linux-bench"] = &Module{
 		Name: "linux-bench",
-		Prog: "MODULE_DIR/linux-bench",
+		Prog: "./linux-bench",
 		Impl: &LinuxBenchImpl{
 			customerId: customerId,
 			machineId: machineId,
@@ -173,7 +173,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 
 	mgr.availModules["test-module"] = &Module{
 		Name: "test-module",
-		Prog: "MODULE_DIR/run.sh",
+		Prog: "bash",
 		Impl: &TestModuleImpl{
 			customerId: customerId,
 			machineId: machineId,
@@ -182,7 +182,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 
 	mgr.availModules["fail-module"] = &Module{
 		Name: "fail-module",
-		Prog: "MODULE_DIR/not-runnable",
+		Prog: "not-runnable",
 		Impl: &TestModuleImpl{
 			customerId: customerId,
 			machineId: machineId,
@@ -253,7 +253,7 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 			err = fmt.Errorf("Path for module %s not found",
 				*task.ModName)
 		} else {
-			stask = NewScheduledTask(mgr, task, module.Env(mgr))
+			stask = NewScheduledTask(mgr, task, module.Env(mgr, false))
 			log.Debugf("Parsing schedule %s", *task.Schedule)
 			err = stask.ParseSchedule(*task.Schedule, time.Now())
 		}
@@ -396,7 +396,7 @@ func (mgr *ModuleMgr) RunTasks(ctx context.Context, req *draiosproto.CompRun) (*
 			return ret, nil
 		}
 
-		stask = NewScheduledTask(mgr, task, module.Env(mgr))
+		stask = NewScheduledTask(mgr, task, module.Env(mgr, false))
 
 		if err = stask.RunNow(ctx); err != nil {
 			ret.Successful = proto.Bool(false)
