@@ -1,0 +1,44 @@
+pipeline {
+	agent { label 'agent-docker-builder' }
+	stages {
+		stage('Check out dependencies') {
+			steps {
+				dir('agent') {
+					checkout scm
+				}
+				dir('oss-falco') {
+					checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
+					sh "git checkout ${params.FALCO_BRANCH}"
+				}
+				dir('sysdig') {
+					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/sysdig']]])
+					sh "git checkout ${params.SYSDIG_BRANCH}"
+				}
+				dir('protorepo') {
+					checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
+					sh "git checkout ${params.PROTOREPO_BRANCH}"
+				}
+			}
+		}
+		stage('run') {
+			steps {
+				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+					sh label: '', script: '''
+						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
+						docker run -i --rm -e MAKE_JOBS=$(nproc) -v $PWD:/draios:ro quay.io/sysdig/agent-builder:$BUILDER_VERSION $TARGET
+					'''
+				}
+			}
+		}
+	}
+	post {
+		always {
+			sh label: '', script: '''
+				docker rmi $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+				docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+			'''
+			cleanWs deleteDirs: true, notFailBuild: true
+		}
+	}
+}
