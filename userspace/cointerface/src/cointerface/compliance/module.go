@@ -484,6 +484,15 @@ type ExtendedTaskResult struct {
 	Attributes []TaskResultAttribute `json:"attributes,omitempty"`
 }
 
+func GetHostDir() string {
+	// If SYSDIG_HOST_ROOT is set, use that as a part of the socket path.
+	sysdigRoot := os.Getenv("SYSDIG_HOST_ROOT")
+	if sysdigRoot == "" {
+		return "/host"
+	}
+	return sysdigRoot
+}
+
 func (module *Module) Env(mgr *ModuleMgr, runWithChroot bool) []string {
 
 	moduleDir := path.Join(mgr.ModulesDir, module.Name)
@@ -505,11 +514,7 @@ func (module *Module) Env(mgr *ModuleMgr, runWithChroot bool) []string {
 		newenv = append(newenv, "DOCKER_HOST=unix:///var/run/docker.sock");
 	} else {
 		// If SYSDIG_HOST_ROOT is set, use that as a part of the socket path.
-		sysdigRoot := os.Getenv("SYSDIG_HOST_ROOT")
-		if sysdigRoot != "" {
-			sysdigRoot = sysdigRoot + "/"
-		}
-		dockerSock := fmt.Sprintf("unix:///%svar/run/docker.sock", sysdigRoot)
+		dockerSock := fmt.Sprintf("unix://%s/var/run/docker.sock", GetHostDir())
 		newenv = append(newenv, "DOCKER_HOST=" + dockerSock);
 	}
 
@@ -560,10 +565,10 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 	var cmd *exec.Cmd
 	var outputDir string
 
-	// If `/host/bin` exists, we assume we are running containerized, and all the required
-	// directories are mounted under `/host`
+	// If `SYSDIG_HOST_ROOT/bin` exists, we assume we are running containerized, and all the required
+	// directories are mounted under `/SYSDIG_HOST_ROOT`
 	runWithChroot := false
-	if _, err := os.Stat("/host/bin"); !os.IsNotExist(err) {
+	if _, err := os.Stat(GetHostDir() + "/bin"); !os.IsNotExist(err) {
 		runWithChroot = true
 	}
 
@@ -574,15 +579,15 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 	moduleDir := path.Join(stask.mgr.ModulesDir, module.Name)
 
 	if runWithChroot {
-		if err := os.Mkdir("/host/benchmarks", 700); err != nil && !os.IsExist(err) {
+		if err := os.Mkdir(GetHostDir() + "/benchmarks", 700); err != nil && !os.IsExist(err) {
 			err = fmt.Errorf("Could not create benchmark directory (%s)", err.Error());
 			return err
 		}
 
-		// Copy benchmark binary below `/host` if it does not already exist
-		hostModuleDir := path.Join("/host/benchmarks", module.Name)
+		// Copy benchmark binary below `/SYSDIG_HOST_ROOT` if it does not already exist
+		hostModuleDir := path.Join(GetHostDir() + "/benchmarks", module.Name)
 		if _, err := os.Stat(hostModuleDir); os.IsNotExist(err) {
-			log.Infof("Copying /host/benchmarks/%s", module.Name)
+			log.Infof("Copying %s/benchmarks/%s", GetHostDir(), module.Name)
 
 			cpCmd := exec.Command("cp", "-r", moduleDir, hostModuleDir)
 			if _, err := cpCmd.Output(); err != nil {
@@ -591,21 +596,21 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 
 		}
 
-		rootOutputDir := "/host/benchmarks/out"
+		rootOutputDir := GetHostDir() + "/benchmarks/out"
 		if err := os.Mkdir(rootOutputDir, 700); err != nil && !os.IsExist(err) {
 			err = fmt.Errorf("Could not create output directory (%s)", err.Error());
 			return err
 		}
 
-		// Create temp dir under /host/benchmark/out where this module's output will go.
+		// Create temp dir under /SYSDIG_HOST_ROOT/benchmark/out where this module's output will go.
 		outputDir, err = ioutil.TempDir(rootOutputDir, "module-" + module.Name + "-output"); if err != nil {
 			err = fmt.Errorf("Could not create temporary directory (%s)", err.Error());
 			return err
 		}
 
-		// moduleCmd is run within "chroot /host", so we omit the leading "/host"
-		outputDirChroot := strings.TrimPrefix(outputDir, "/host")
-		moduleDirChroot := strings.TrimPrefix(hostModuleDir, "/host")
+		// moduleCmd is run within "chroot /SYSDIG_HOST_ROOT", so we omit the leading "/SYSDIG_HOST_ROOT"
+		outputDirChroot := strings.TrimPrefix(outputDir, GetHostDir())
+		moduleDirChroot := strings.TrimPrefix(hostModuleDir, GetHostDir())
 
 		moduleCmd := fmt.Sprintf("%s %s", module.Prog, strings.Join(moduleArgs, " "))
 
@@ -616,11 +621,11 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 		moduleCmd = fmt.Sprintf("cd %s && %s", moduleDirChroot, moduleCmd)
 
 		//Replace OUTPUT_DIR with the temporary output directory.
-		// The actual OUTPUT_DIR is /host/benchmarks, but this will be referenced from within
-		// a "chroot /host" call, so we omit the leading "/host" by using outputDirChroot
+		// The actual OUTPUT_DIR is /SYSDIG_HOST_ROOT/benchmarks, but this will be referenced from within
+		// a "chroot /SYSDIG_HOST_ROOT" call, so we omit the leading "/SYSDIG_HOST_ROOT" by using outputDirChroot
 		moduleCmd = strings.Replace(moduleCmd, "OUTPUT_DIR", outputDirChroot, -1)
 
-		cmd = exec.CommandContext(ctx, "chroot", "/host", "/bin/bash", "-c", moduleCmd)
+		cmd = exec.CommandContext(ctx, "chroot", GetHostDir(), "/bin/bash", "-c", moduleCmd)
 	} else {
 		outputDir, err := ioutil.TempDir("", "module-" + module.Name + "-output"); if err != nil {
 			err = fmt.Errorf("Could not create temporary directory (%s)", err.Error());

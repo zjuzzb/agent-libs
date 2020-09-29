@@ -6,7 +6,6 @@
 #
 # Checks for dozens of common best-practices around deploying Docker containers in production.
 # ------------------------------------------------------------------------------
-cd $(dirname $0)
 
 version='1.3.4'
 
