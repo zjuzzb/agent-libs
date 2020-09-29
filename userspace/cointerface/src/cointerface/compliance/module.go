@@ -627,7 +627,7 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 
 		cmd = exec.CommandContext(ctx, "chroot", GetHostDir(), "/bin/bash", "-c", moduleCmd)
 	} else {
-		outputDir, err := ioutil.TempDir("", "module-" + module.Name + "-output"); if err != nil {
+		outputDir, err = ioutil.TempDir("", "module-" + module.Name + "-output"); if err != nil {
 			err = fmt.Errorf("Could not create temporary directory (%s)", err.Error());
 			return err
 		}
