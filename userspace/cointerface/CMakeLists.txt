@@ -38,13 +38,14 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E touch ${GOGO_PROTOBUF_VER_FILE}
 )
 
+set(PROTO_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto")
+set(PROTO_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/../draiosproto")
 # This function generate pb.go files for proto files that depend on draios.proto and common.proto.
 # The generate_draiosproto target has an extra output pb.go, and that's handled by an optional
 # argument. The ARGC/ARGV handling is hardcoded and will need fixing if the function signature
 # changes.
 function(GoGenerate target folder pbgofile protofile)
 
-    set(PROTO_SRC_DIR "${CMAKE_CURRENT_BINARY_DIR}/../draiosproto")
     set(GO_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/${target}")
     set(OUT_DIR "${GEN_GO_DIR}/${target}")
     set(GO_MOD_DST "${GEN_GO_DIR}/${folder}")
@@ -56,15 +57,15 @@ function(GoGenerate target folder pbgofile protofile)
     add_custom_target(generate_${target} ALL DEPENDS ${OUTFILES})
     add_custom_command(
         OUTPUT ${OUTFILES}
-        COMMAND ${GOGENENV} PROTO_SRC_DIR="${PROTO_SRC_DIR}" PROTO_OUT_DIR="${OUT_DIR}" go generate
-                ${target}
+        COMMAND ${GOGENENV} PROTO_SRC_DIR="${PROTO_SRC_DIR}" PROTO_BIN_DIR="${PROTO_BIN_DIR}"
+                PROTO_OUT_DIR="${OUT_DIR}" go generate ${target}
         COMMAND ${CMAKE_COMMAND} -E copy ${GO_SRC_DIR}/go.mod ${GO_MOD_DST}
         WORKING_DIRECTORY ${GO_SRC_DIR}
         DEPENDS ${GO_SRC_DIR}/generate.go
                 ${GO_SRC_DIR}/go.mod
-                ${PROTO_SRC_DIR}/draios.proto
-                ${PROTO_SRC_DIR}/common.proto
-                ${PROTO_SRC_DIR}/${protofile}
+                ${PROTO_BIN_DIR}/draios.proto
+                ${PROTO_BIN_DIR}/common.proto
+                ${protofile}
                 ${GOGO_PROTOBUF_VER_FILE}
                 install_go_generate_deps
     )
@@ -74,12 +75,15 @@ function(GoGenerate target folder pbgofile protofile)
     )
 endfunction()
 
-gogenerate(sdc_internal sdc_internal sdc_internal.pb.go sdc_internal.proto)
-gogenerate(promex_pb promex_pb promex.pb.go promex.proto)
+gogenerate(sdc_internal sdc_internal sdc_internal.pb.go ${PROTO_SRC_DIR}/sdc_internal.proto)
+gogenerate(promex_pb promex_pb promex.pb.go ${PROTO_SRC_DIR}/promex.proto)
 # Passing draios.proto is redundant but makes the function impl easier. The draios.proto and
 # common.proto files have the go_package option set so we need to redirect the go.mod into that
 # folder.
-gogenerate(draiosproto draiosproto/protorepo/agent-be/proto draios.pb.go draios.proto common.pb.go)
+gogenerate(
+    draiosproto draiosproto/protorepo/agent-be/proto draios.pb.go ${PROTO_BIN_DIR}/draios.proto
+    common.pb.go
+)
 
 gobuild(
     cointerface

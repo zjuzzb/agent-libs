@@ -1,73 +1,15 @@
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/include)
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${PROJECT_SOURCE_DIR}/userspace/draiosproto)
+include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
 
-set(PROTOC LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/lib
-           ${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/bin/protoc
-)
+add_executable(grpc_test_server grpc_test_server.cpp)
 
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/agent-prom.grpc.pb.cc
-           ${CMAKE_CURRENT_BINARY_DIR}/agent-prom.grpc.pb.h
-           ${CMAKE_CURRENT_BINARY_DIR}/agent-prom.pb.cc
-           ${CMAKE_CURRENT_BINARY_DIR}/agent-prom.pb.h
-           ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc
-           ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.h
-           ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
-           ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.h
-           ${CMAKE_CURRENT_BINARY_DIR}/draios.grpc.pb.cc
-           ${CMAKE_CURRENT_BINARY_DIR}/draios.grpc.pb.h
-           ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
-           ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.h
-           ${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
-           ${CMAKE_CURRENT_BINARY_DIR}/common.pb.h
-           ${CMAKE_CURRENT_BINARY_DIR}/common.grpc.pb.cc
-           ${CMAKE_CURRENT_BINARY_DIR}/common.grpc.pb.h
-    COMMENT "Generate sdc_internal grpc code"
-    DEPENDS ${PROJECT_SOURCE_DIR}/../protorepo/agent/agent-prom.proto
-    DEPENDS ${PROJECT_BINARY_DIR}/userspace/draiosproto/sdc_internal.proto
-    DEPENDS ${PROJECT_BINARY_DIR}/userspace/draiosproto/draios.proto
-    DEPENDS ${PROJECT_BINARY_DIR}/userspace/draiosproto/common.proto
-    COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/../protorepo/agent --cpp_out=.
-            ${PROJECT_SOURCE_DIR}/../protorepo/agent/agent-prom.proto
-    COMMAND ${PROTOC} -I ${PROJECT_BINARY_DIR}/userspace/draiosproto --cpp_out=.
-            ${PROJECT_BINARY_DIR}/userspace/draiosproto/sdc_internal.proto
-    COMMAND ${PROTOC} -I ${PROJECT_BINARY_DIR}/userspace/draiosproto --cpp_out=.
-            ${PROJECT_BINARY_DIR}/userspace/draiosproto/draios.proto
-    COMMAND ${PROTOC} -I ${PROJECT_BINARY_DIR}/userspace/draiosproto --cpp_out=.
-            ${PROJECT_BINARY_DIR}/userspace/draiosproto/common.proto
-    COMMAND
-        ${PROTOC} -I ${PROJECT_SOURCE_DIR}/../protorepo/agent --grpc_out=.
-        --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
-        ${PROJECT_SOURCE_DIR}/../protorepo/agent/agent-prom.proto
-    COMMAND
-        ${PROTOC} -I ${PROJECT_BINARY_DIR}/userspace/draiosproto --grpc_out=.
-        --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
-        ${PROJECT_BINARY_DIR}/userspace/draiosproto/sdc_internal.proto
-    COMMAND
-        ${PROTOC} -I ${PROJECT_BINARY_DIR}/userspace/draiosproto --grpc_out=.
-        --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
-        ${PROJECT_BINARY_DIR}/userspace/draiosproto/draios.proto
-    COMMAND
-        ${PROTOC} -I ${PROJECT_BINARY_DIR}/userspace/draiosproto --grpc_out=.
-        --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
-        ${PROJECT_BINARY_DIR}/userspace/draiosproto/common.proto
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
-
-add_executable(
-    grpc_test_server
-    grpc_test_server.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc
-    ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
-    ${CMAKE_CURRENT_BINARY_DIR}/draios.grpc.pb.cc
-    ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
-    ${CMAKE_CURRENT_BINARY_DIR}/common.grpc.pb.cc
-    ${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
-)
+add_dependencies(grpc_test_server draiosproto)
 
 target_link_libraries(
     grpc_test_server
+    draiosproto
     ${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/libs/opt/libgrpc++_unsecure.a
     ${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/libs/opt/libgrpc_unsecure.a
     ${DRAIOS_DEPENDENCIES_DIR}/c-ares-${DRAIOS_CARES_VERSION}/target/lib/libcares.a
