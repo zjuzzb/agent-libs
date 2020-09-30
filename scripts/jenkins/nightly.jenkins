@@ -1,5 +1,5 @@
 pipeline {
-	agent { label 'agent-docker-builder' }
+	agent { label 'agent-builder-parallel' }
 	stages {
 		stage('Spawn Jobs') {
 			parallel {
