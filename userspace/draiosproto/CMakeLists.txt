@@ -9,29 +9,8 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION}) # for boost for
 # type_config
 
-# These copies are very very jank. Originally we used the file(copy construct, but cmake doesn't
-# necessarily wait for the copy to complete before trying to build dependencies based off it, so it
-# often lead to invalid downstream results that required a clean we cannot have individual copy
-# commands for each of them, as cmake does not see the dependency on the .h files, so we have to
-# encode them here. In short, CMAKE is a disaster, so we have to do ugly things like this.
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/aggregator_overrides.cpp
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/aggregator_overrides.h
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/aggregator_limits.h
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/aggregator_limits.cpp
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/aggregator_base.h
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.cpp
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.h
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.h
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.cpp
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_base.h
-    COMMENT "Copying aggregator_overrides sources to binary dir."
-    COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.cpp ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_overrides.h ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.h ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_limits.cpp ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/aggregator_base.h ${CMAKE_CURRENT_BINARY_DIR}
-)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}) # generated files
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}) # generated files refer to shipped ones
 
 function(copy_proto_source target)
 
@@ -67,8 +46,8 @@ add_custom_command(
 if(NOT CYGWIN)
     add_library(
         draiosproto STATIC
-        ${CMAKE_CURRENT_BINARY_DIR}/aggregator_overrides.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/aggregator_limits.cpp
+        aggregator_overrides.cpp
+        aggregator_limits.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.pb.cc

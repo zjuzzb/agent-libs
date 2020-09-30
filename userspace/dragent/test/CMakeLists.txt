@@ -13,6 +13,7 @@ include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_c
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/test_helpers)
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/librest/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/draiosproto)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/librest/test_helpers)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/test_helpers)
