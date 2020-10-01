@@ -115,12 +115,6 @@ func (impl *KubeBenchImpl) genTargets(benchmark, variant string) string {
 		} else {
 			return "master,controlplane,etcd,policies"
 		}
-	case "cis-1.5":
-		if variant == "node" {
-			return "node,policies"
-		} else {
-			return "master,controlplane,etcd,policies"
-		}
 	case "gke-1.0":
 		if variant == "node" {
 			return "node,policies"
@@ -281,7 +275,12 @@ func (impl *KubeBenchImpl) Scrape(
 	err = json.Unmarshal(raw, &targets)
 	if err != nil {
 		var bRes kubeBenchResults
-		err = json.Unmarshal(raw, &bRes)
+		switch err.(type) {
+		case *json.SyntaxError: // broken json array, kube-bench .024
+			err = json.Unmarshal(raw[:err.(*json.SyntaxError).Offset-1], &bRes)
+		case *json.UnmarshalTypeError: // single object, kube-bench .024
+			err = json.Unmarshal(raw, &bRes)
+		}
 		if err != nil {
 			_ = log.Errorf("Could not read json output: %v", err.Error())
 			return err
