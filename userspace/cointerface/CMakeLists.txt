@@ -200,10 +200,10 @@ install(
 )
 
 install(
-	PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cointerface
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agentone
-	)
+    PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cointerface
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+    COMPONENT agentone
+)
 
 install(
     PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/decode_proto

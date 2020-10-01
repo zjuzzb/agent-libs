@@ -123,8 +123,8 @@ list(
     ${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
 )
 
-# These libraries cause issues if included in UTs, so we have to link them outside
-# of the libraries, and only link them into the actual application.
+# These libraries cause issues if included in UTs, so we have to link them outside of the libraries,
+# and only link them into the actual application.
 if(NOT CYGWIN)
     list(
         APPEND
@@ -134,8 +134,7 @@ if(NOT CYGWIN)
         ${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/lib/libtcmalloc_and_profiler.a
     )
 else()
-    list(APPEND
-        dragent_application_link_libraries
+    list(APPEND dragent_application_link_libraries
          ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
          /lib/w32api/libiphlpapi.a
     )
