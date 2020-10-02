@@ -616,11 +616,11 @@ if [ ! -d "${KUBE_BENCH_DIR}" ]; then
 	tar -xzf kube-bench-0.2.5.tar.gz
 fi
 
-LINUX_BENCH_DIR=$DEPENDENCIES/linux-bench-0.2.0.3
+LINUX_BENCH_DIR=$DEPENDENCIES/linux-bench-0.2.0.4
 if [ ! -d "${LINUX_BENCH_DIR}" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/linux-bench-0.2.0.3.tar.gz
-	tar -xzf linux-bench-0.2.0.3.tar.gz
+	wget $DEPENDENCIES_URL/linux-bench-0.2.0.4.tar.gz
+	tar -xzf linux-bench-0.2.0.4.tar.gz
 fi
 
 STRING_VIEW_LITE_DIR=$DEPENDENCIES/string-view-lite-1.4.0
