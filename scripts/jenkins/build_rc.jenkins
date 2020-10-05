@@ -56,7 +56,8 @@ pipeline {
 	}
 	post {
         always {
-			docker rmi $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+			sudo rm -rf ./build
+			docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
             cleanWs deleteDirs: true, notFailBuild: true
         }
     }

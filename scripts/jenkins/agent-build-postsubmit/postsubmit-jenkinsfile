@@ -42,6 +42,7 @@ pipeline {
 		}
 	}
 	post {
+		sudo rm -rf ./install ./build
 		always {
 			cleanWs deleteDirs: true, notFailBuild: true
 		}
