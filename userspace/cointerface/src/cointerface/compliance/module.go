@@ -484,13 +484,32 @@ type ExtendedTaskResult struct {
 	Attributes []TaskResultAttribute `json:"attributes,omitempty"`
 }
 
-func (module *Module) Env(mgr *ModuleMgr) []string {
+func GetHostDir() string {
+	// If SYSDIG_HOST_ROOT is set, use that as a part of the socket path.
+	sysdigRoot := os.Getenv("SYSDIG_HOST_ROOT")
+	if sysdigRoot == "" {
+		return "/host"
+	}
+	return sysdigRoot
+}
 
+func (module *Module) Env(mgr *ModuleMgr, runWithChroot bool) []string {
+
+	var newenv []string
 	moduleDir := path.Join(mgr.ModulesDir, module.Name)
+
+	if runWithChroot {
+		newenv = append(newenv, "DOCKER_HOST=unix:///var/run/docker.sock");
+
+		moduleDir = path.Join("/benchmarks", module.Name)
+	} else {
+		// If SYSDIG_HOST_ROOT is set, use that as a part of the socket path.
+		dockerSock := fmt.Sprintf("unix://%s/var/run/docker.sock", GetHostDir())
+		newenv = append(newenv, "DOCKER_HOST=" + dockerSock);
+	}
 
 	// Add the module dir to PATH
 	env := os.Environ()
-	var newenv []string
 	for _, item := range env {
 		splits := strings.Split(item, "=")
 		key := splits[0]
@@ -500,14 +519,6 @@ func (module *Module) Env(mgr *ModuleMgr) []string {
 		}
 		newenv = append(newenv, key + "=" + val)
 	}
-
-	// If SYSDIG_HOST_ROOT is set, use that as a part of the socket path.
-	sysdigRoot := os.Getenv("SYSDIG_HOST_ROOT")
-	if sysdigRoot != "" {
-		sysdigRoot = sysdigRoot + "/"
-	}
-	dockerSock := fmt.Sprintf("unix:///%svar/run/docker.sock", sysdigRoot)
-	newenv = append(newenv, "DOCKER_HOST=" + dockerSock);
 
 	return newenv
 }
@@ -548,41 +559,91 @@ func (module *Module) Run(start_ctx context.Context, stask *ScheduledTask) error
 
 func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask) error {
 
-	// Create a temporary directory where this module's output will go
-	outputDir, err := ioutil.TempDir("", "module-" + module.Name + "-output"); if err != nil {
-		err = fmt.Errorf("Could not create temporary directory (%s)", err.Error());
+	// Note that this is intentionally a separate context so if
+	// start_ctx is cancelled, we can cancel the command context
+	// and not consider the non-zero result as an error.
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var cmd *exec.Cmd
+	var outputDir string
+
+	// If `SYSDIG_HOST_ROOT/bin` exists, we assume we are running containerized, and all the required
+	// directories are mounted under `/SYSDIG_HOST_ROOT`
+	runWithChroot := false
+	if _, err := os.Stat(GetHostDir() + "/bin"); !os.IsNotExist(err) {
+		runWithChroot = true
+	}
+
+	moduleArgs, err := module.Impl.GenArgs(stask); if err != nil {
 		return err
 	}
 
 	moduleDir := path.Join(stask.mgr.ModulesDir, module.Name)
 
-	// Replace MODULE_DIR with the path to the module and
-	// OUTPUT_DIR with the temporary output directory.
+	if runWithChroot {
+		if err := os.Mkdir(GetHostDir() + "/benchmarks", 700); err != nil && !os.IsExist(err) {
+			err = fmt.Errorf("Could not create benchmark directory (%s)", err.Error());
+			return err
+		}
 
-	prog :=	strings.Replace(strings.Replace(module.Prog, "MODULE_DIR", moduleDir, -1),
-		"OUTPUT_DIR", outputDir, -1)
+		// Copy benchmark binary below `/SYSDIG_HOST_ROOT` if it does not already exist
+		hostModuleDir := path.Join(GetHostDir() + "/benchmarks", module.Name)
+		if _, err := os.Stat(hostModuleDir); os.IsNotExist(err) {
+			log.Infof("Copying %s/benchmarks/%s", GetHostDir(), module.Name)
 
-	args, err := module.Impl.GenArgs(stask); if err != nil {
-		return err
+			cpCmd := exec.Command("cp", "-r", moduleDir, hostModuleDir)
+			if _, err := cpCmd.Output(); err != nil {
+				return fmt.Errorf("Could not copy benchmark directory (%s)", err.Error());
+			}
+
+		}
+
+		rootOutputDir := GetHostDir() + "/benchmarks/out"
+		if err := os.Mkdir(rootOutputDir, 700); err != nil && !os.IsExist(err) {
+			err = fmt.Errorf("Could not create output directory (%s)", err.Error());
+			return err
+		}
+
+		// Create temp dir under /SYSDIG_HOST_ROOT/benchmark/out where this module's output will go.
+		outputDir, err = ioutil.TempDir(rootOutputDir, "module-" + module.Name + "-output"); if err != nil {
+			err = fmt.Errorf("Could not create temporary directory (%s)", err.Error());
+			return err
+		}
+
+		// moduleCmd is run within "chroot /SYSDIG_HOST_ROOT", so we omit the leading "/SYSDIG_HOST_ROOT"
+		outputDirChroot := strings.TrimPrefix(outputDir, GetHostDir())
+		moduleDirChroot := strings.TrimPrefix(hostModuleDir, GetHostDir())
+
+		moduleCmd := fmt.Sprintf("%s %s", module.Prog, strings.Join(moduleArgs, " "))
+
+		// We can't specify the command directory when using chroot, so we prepend
+		// `cd MODULE_DIR && ` to the command.
+		// e.g. `bash docker-bench-security.sh <args>` becomes:
+		// `cd /benchmarks/docker-bench-security && bash docker-bench-security.sh <args>`
+		moduleCmd = fmt.Sprintf("cd %s && %s", moduleDirChroot, moduleCmd)
+
+		//Replace OUTPUT_DIR with the temporary output directory.
+		// The actual OUTPUT_DIR is /SYSDIG_HOST_ROOT/benchmarks, but this will be referenced from within
+		// a "chroot /SYSDIG_HOST_ROOT" call, so we omit the leading "/SYSDIG_HOST_ROOT" by using outputDirChroot
+		moduleCmd = strings.Replace(moduleCmd, "OUTPUT_DIR", outputDirChroot, -1)
+
+		cmd = exec.CommandContext(ctx, "chroot", GetHostDir(), "/bin/bash", "-c", moduleCmd)
+	} else {
+		outputDir, err = ioutil.TempDir("", "module-" + module.Name + "-output"); if err != nil {
+			err = fmt.Errorf("Could not create temporary directory (%s)", err.Error());
+			return err
+		}
+
+		var args []string
+		for _, arg := range moduleArgs {
+			args = append(args, strings.Replace(arg, "OUTPUT_DIR", outputDir, -1))
+		}
+
+		cmd = exec.CommandContext(ctx, module.Prog, args...)
+		cmd.Dir = moduleDir
 	}
 
-	var subArgs []string
-
-	for _, arg := range args {
-		subArgs = append(subArgs,
-			strings.Replace(strings.Replace(arg, "MODULE_DIR", moduleDir, -1),
-				"OUTPUT_DIR", outputDir, -1))
-	}
-
-	// Note that this is intentionally a separate context so if
-	// start_ctx is cancelled, we can cancel the command context
-	// and not consider the non-zero result as an error.
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	cmd := exec.CommandContext(ctx, prog, subArgs...)
-	cmd.Env = module.Env(stask.mgr)
-	cmd.Dir = moduleDir
+	cmd.Env = module.Env(stask.mgr, runWithChroot)
 
 	stask.cmd = cmd
 

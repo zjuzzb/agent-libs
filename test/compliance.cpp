@@ -561,10 +561,10 @@ static std::vector<task_defs_t> bad_schedule_2 = {{"PT1K1M", 1, "bad-schedule-ta
 static std::vector<task_defs_t> bad_schedule_leading_junk = {{"junkPT1H", 1, "bad-schedule-task-leading-junk", "test-module", "1", "5"}};
 static std::vector<task_defs_t> bad_schedule_trailing_junk = {{"PT-1H", 1, "bad-schedule-task-trailing-junk", "test-module", "1", "5"}};
 static std::vector<task_defs_t> bad_module = {{"PT1H", 1, "bad-module-task", "not-a-real-module", "1", "0"}};
-static std::vector<task_defs_t> exit_failure = {{"PT1H", 1, "exit-failure-task-1", "test-module", "1", "0", "1", false, "^module test-module via {Path=.*test/resources/modules_dir/test-module/run.sh Args=\\[.*/test/resources/modules_dir/test-module/run.sh 0 1\\] Env=\\[.*\\] Dir=.*/test/resources/modules_dir/test-module} exited with error \\(exit status 1\\) Stdout: \"This is to stdout\\n\" Stderr: \"This is to stderr\\n\""}};
+static std::vector<task_defs_t> exit_failure = {{"PT1H", 1, "exit-failure-task-1", "test-module", "1", "0", "1", false, "^module test-module via {Path=/bin/bash Args=\\[bash run.sh 0 1\\] Env=\\[.*\\] Dir=.*/test/resources/modules_dir/test-module} exited with error \\(exit status 1\\) Stdout: \"This is to stdout\\n\" Stderr: \"This is to stderr\\n\""}};
 
 // This module is defined, but its command line doesn't exist, meaning it will fail every time it is run.
-static std::vector<task_defs_t> fail_module = {{"PT1H", 1, "fail-task-1", "fail-module", "1", "0", "1", false, "^Could not start module fail-module via {Path=.*/test/resources/modules_dir/fail-module/not-runnable Args=\\[.*/test/resources/modules_dir/fail-module/not-runnable 0 1\\] Env=\\[.*\\] Dir=.*/test/resources/modules_dir/fail-module} \\(fork/exec .*/test/resources/modules_dir/fail-module/not-runnable: permission denied\\)"}};
+static std::vector<task_defs_t> fail_module = {{"PT1H", 1, "fail-task-1", "fail-module", "1", "0", "1", false, "^Could not start module fail-module via {Path=not-runnable Args=\\[not-runnable run.sh 0 1\\] Env=\\[.*\\] Dir=.*/test/resources/modules_dir/fail-module} \\(exec: \"not-runnable\": executable file not found in \\$PATH\\)"}};
 
 static std::vector<task_defs_t> multiple_intervals = {{"[R1/PT1S, PT1H]", 1, "multiple-intervals", "test-module", "1", "0"}};
 

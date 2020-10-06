@@ -24,7 +24,7 @@ func (impl *TestModuleImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
 		}
 	}
 
-	return []string{sleepTime, rc}, nil
+	return []string{"run.sh", sleepTime, rc}, nil
 }
 
 func (impl *TestModuleImpl) ShouldRun(stask *ScheduledTask) bool {
