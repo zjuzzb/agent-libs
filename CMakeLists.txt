@@ -256,15 +256,16 @@ set(CPACK_DEB_COMPONENT_INSTALL "ON")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Sysdig <support@sysdig.com>")
 set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "http://www.sysdig.com")
-set(CPACK_DEBIAN_AGENT-SLIM_PACKAGE_DEPENDS "python")
+set(CPACK_DEBIAN_AGENT-SLIM_PACKAGE_RECOMMENDS "python3")
 set(CPACK_DEBIAN_AGENT-KMODULE_PACKAGE_DEPENDS "dkms (>= 2.1.0.0)")
-set(CPACK_DEBIAN_AGENT_PACKAGE_DEPENDS "dkms (>= 2.1.0.0), python")
+set(CPACK_DEBIAN_AGENT_PACKAGE_DEPENDS "dkms (>= 2.1.0.0)")
+set(CPACK_DEBIAN_AGENT_PACKAGE_RECOMMENDS "python3")
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
     "${CMAKE_BINARY_DIR}/scripts/debian/postinst;${CMAKE_BINARY_DIR}/scripts/debian/prerm;${PROJECT_SOURCE_DIR}/scripts/debian/postrm"
 )
 
 set(CPACK_RPM_COMPONENT_INSTALL "ON")
-set(CPACK_RPM_agent-slim_PACKAGE_REQUIRES "python2")
+set(CPACK_RPM_agent-slim_PACKAGE_SUGGESTS "python3")
 set(CPACK_RPM_agent-slim_POST_INSTALL_SCRIPT_FILE
     "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall.slim"
 )
@@ -283,7 +284,8 @@ set(CPACK_RPM_agent-kmodule_PRE_UNINSTALL_SCRIPT_FILE
     "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall.kmodule"
 )
 
-set(CPACK_RPM_agent_PACKAGE_REQUIRES "dkms, gcc, make, kernel-devel, perl, python2")
+set(CPACK_RPM_agent_PACKAGE_REQUIRES "dkms, gcc, make, kernel-devel, perl")
+set(CPACK_RPM_agent_PACKAGE_SUGGESTS "python3")
 set(CPACK_RPM_agent_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall")
 set(CPACK_RPM_agent_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall")
 set(CPACK_RPM_agent_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")

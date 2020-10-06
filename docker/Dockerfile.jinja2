@@ -69,11 +69,9 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false \
         gnupg2 \
         software-properties-common \
         {% if not p.thin %}
-            python \
             python3.7 \
 	    # requirement for SSL/Requests library
 	    {% if p.launch_dragent %}
-	       python-certifi \
 	       python3-certifi \
 	    {% endif %}
             && apt-get install -y --no-install-recommends apt-transport-https \
@@ -171,6 +169,7 @@ RUN curl -s https://download.sysdig.com/DRAIOS-GPG-KEY.public | apt-key add - \
 {% endif %}
  && apt-get clean \
  && rm -rf /opt/draios/lib/python-deps2.6 \
+ && rm -rf /opt/draios/lib/python-deps2.7 \
  && rm -rf /opt/draios/lib/python-deps3.5 \
  && rm -rf /opt/draios/lib/python-deps3.6 \
  && rm -rf /var/lib/apt/lists/* \
@@ -199,6 +198,7 @@ RUN rm -df /lib/modules \
 ADD draios-${AGENT_VERSION}-x86_64-agent.deb /
 RUN dpkg -i /draios-${AGENT_VERSION}-x86_64-agent.deb \
  && rm -rf /opt/draios/lib/python-deps2.6 \
+ && rm -rf /opt/draios/lib/python-deps2.7 \
  && rm -rf /opt/draios/lib/python-deps3.5 \
  && rm -rf /opt/draios/lib/python-deps3.6 \
  && find /opt/draios/lib -type d -name "enum*" -exec rm -r {} + 2>/dev/null
@@ -209,7 +209,6 @@ COPY ./opt/draios /opt/draios
 
 RUN apk update \
 && apk add --no-cache curl \
-python2 \
 python3 \
 bash \
 procps \
@@ -228,13 +227,11 @@ py-pip \
 && pip install psycopg2-binary \
 && sed -i -e 's/v[[:digit:]]\..*\//edge\//g' /etc/apk/repositories \
 && apk update \
-&& apk add -u python2 \
 && mkdir -p /opt/draios/run \
-&& cp -r /usr/lib/python3*/site-packages/certifi /usr/lib/python2.7/site-packages/certifi \
 && cp /usr/lib/python3*/site-packages/certifi/cacert.pem /opt/draios/lib/python-deps/certifi/ \
-&& cp -r /opt/draios/lib/python-deps/backports /usr/lib/python2.7/site-packages/backports \
 && rm -rf /tmp/*.apk /var/cache/apk/* \
 && rm -rf /opt/draios/lib/python-deps2.6 \
+&& rm -rf /opt/draios/lib/python-deps2.7 \
 && rm -rf /opt/draios/lib/python-deps3.5 \
 && rm -rf /opt/draios/lib/python-deps3.6 \
 && rm -rf /opt/draios/lib/python-deps3.7 \
@@ -269,11 +266,9 @@ rm /opt/draios/share/sdjagent.jar
 {% endif %}
 
 {% if p.launch_dragent and p.base_docker_image != "adoptopenjdk/openjdk8:alpine-slim" %}
-# copy backports for mesos/marathon python2.7 compatibility
 # copy cacert.pem file into python-deps to allow compatibility
 # with python certify packages >= 2020.04.05.2
-RUN cp -r /opt/draios/lib/python-deps/backports /usr/lib/python2.7/dist-packages/backports && \
-cp /usr/lib/python3/dist-packages/certifi/cacert.pem /opt/draios/lib/python-deps/certifi/
+RUN cp /usr/lib/python3/dist-packages/certifi/cacert.pem /opt/draios/lib/python-deps/certifi/
 {% endif %}
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
