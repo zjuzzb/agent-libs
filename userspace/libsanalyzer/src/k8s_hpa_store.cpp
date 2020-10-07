@@ -69,9 +69,6 @@ void k8s_hpa_store::handle_delete(const state_key_t &key, state_t &state)
 					break;
 				}
 			}
-
-			// Unlink children in the m_state object
-			state[key]->mutable_children()->Clear();
 		}
 	}
 }
@@ -281,7 +278,7 @@ uint64_t k8s_hpa_store::size() const
 
 void k8s_hpa_store::print_store_status() const
 {
-	LOG_DEBUG("targets: %ld - hpa: %ld"
+	LOG_DEBUG("STORE STAT targets: %ld - hpa: %ld"
 		  , m_targets.size()
 		  , m_hpa_waiting_for_target.size());
 }

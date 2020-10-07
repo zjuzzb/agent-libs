@@ -785,7 +785,6 @@ void infrastructure_state::reset()
 			connect_to_k8s();
 		}
 
-		m_host_events_queue_mutex.unlock();
 		LOG_DEBUG("infra_state: Reset of hosts metadata completed and lock unlocked.");
 	}
 	else
@@ -1643,6 +1642,14 @@ void infrastructure_state::remove(infrastructure_state::uid_t& key, bool update)
 	// Delete IP mappings for this group
 	remove_ip_mappings(m_state[key]);
 
+	// If this is not an updated
+	// discend into the status graph and remove this parent
+	// Notice that recursion is needed for m_parents structure
+	if(update == false)
+	{
+		remove_parent_recursively(key, key);
+	}
+
 	// Remove the group itself
 	m_state.erase(key);
 
@@ -1659,6 +1666,45 @@ void infrastructure_state::remove(infrastructure_state::uid_t& key, bool update)
 	LOG_DEBUG("infra_state: Container group <%s,%s> removed.",
 	          key.first.c_str(),
 	          key.second.c_str());
+}
+
+void infrastructure_state::remove_parent_recursively(const uid_t& what_uid, const uid_t& father_uid)
+{
+	if(!has(father_uid))
+	{
+		return;
+	}
+
+	for(const auto& child : m_state[father_uid]->children())
+	{
+		auto child_id = std::make_pair(child.kind(), child.id());
+		LOG_DEBUG("Looking for parent <%s,%s> in child <%s,%s>",
+			  what_uid.first.c_str(),
+			  what_uid.second.c_str(),
+			  child_id.first.c_str(),
+			  child_id.second.c_str());
+		if(has(child_id))
+		{
+			remove_parent_recursively(what_uid, child_id);
+
+			// Erase root_uid from the actual node
+			for(auto it = m_state[child_id]->mutable_parents()->begin(); it != m_state[child_id]->mutable_parents()->end(); )
+			{
+				if(std::make_pair(it->kind(), it->id()) == what_uid)
+				{
+					LOG_DEBUG("Removing parent <%s,%s> from <%s,%s>",
+						  it->kind().c_str(),
+						  it->id().c_str(),
+						  child.kind().c_str(),
+						  child.id().c_str());
+					it = m_state[child_id]->mutable_parents()->erase(it);
+					break;
+				}
+				it++;
+			}
+			m_parents[child_id].erase(what_uid);
+		}
+	}
 }
 
 bool infrastructure_state::walk_and_match(draiosproto::container_group* congroup,
@@ -2737,7 +2783,7 @@ void infrastructure_state::get_state(draiosproto::k8s_state* state, uint64_t ts)
 		emit(it.second.get(), state, ts);
 	}
 	resolve_names(state);
-	m_k8s_store_manager.print_store_status();
+	dump_memory_info();
 }
 
 void infrastructure_state::on_new_container(const sinsp_container_info& container_info,
@@ -4007,6 +4053,74 @@ bool infrastructure_state::find_local_ip(const std::string &src_ip, uid_t *uid) 
 		LOG_DEBUG("Didn't find ip %s in node %s", src_ip.c_str(), m_k8s_node_uid.c_str());
 	}
 	return found;
+}
+
+std::map<infrastructure_state::uid_t, uint32_t> infrastructure_state::get_duplicated_link(const google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& links) const
+{
+	std::map<uid_t, uint32_t> duplicated;
+	for(const auto& el : links)
+	{
+		duplicated[std::make_pair(el.kind(), el.id())]++;
+	}
+
+	for(auto pos = duplicated.begin(); pos!=duplicated.end();)
+	{
+		if(pos->second == 1)
+		{
+			pos = duplicated.erase(pos);
+		}
+		else
+		{
+			pos->second -=1;
+			pos ++;
+		}
+	}
+	return duplicated;
+}
+
+void infrastructure_state::dump_memory_info() const
+{
+	auto dump_log = [this]() {
+		std::string prefix("MEM DUMP");
+		LOG_DEBUG("%s m_orphans size: %ld", prefix.c_str(), m_orphans.size());
+		LOG_DEBUG("%s m_parents size: %ld", prefix.c_str(), m_parents.size());
+		LOG_DEBUG("%s m_state size: %ld", prefix.c_str(), m_state.size());
+		m_k8s_store_manager.print_store_status();
+
+		for (const auto& el : m_state)
+		{
+			draiosproto::container_group& cg = *el.second.get();
+
+			auto duplicated_parents = get_duplicated_link(cg.parents());
+			auto duplicated_children = get_duplicated_link(cg.children());
+
+			for (const auto& dup : duplicated_parents)
+			{
+				LOG_DEBUG("%s container_group <%s,%s> has parent <%s,%s> duplicated %d times",
+				          prefix.c_str(),
+				          el.first.first.c_str(),
+				          el.first.second.c_str(),
+				          dup.first.first.c_str(),
+				          dup.first.second.c_str(),
+				          dup.second);
+				LOG_DEBUG("%s", cg.DebugString().c_str());
+			}
+
+			for (const auto& dup : duplicated_children)
+			{
+				LOG_DEBUG("%s container_group <%s,%s> has child <%s,%s> duplicated %d times",
+				          prefix.c_str(),
+				          el.first.first.c_str(),
+				          el.first.second.c_str(),
+				          dup.first.first.c_str(),
+				          dup.first.second.c_str(),
+				          dup.second);
+			}
+		}
+	};
+
+	static ratelimit r(1, 30*NSECS_PER_SEC);
+	r.run(dump_log);
 }
 
 const string infrastructure_state::POD_STATUS_PHASE_LABEL = "kubernetes.pod.label.status.phase";
