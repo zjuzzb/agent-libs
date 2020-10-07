@@ -253,13 +253,14 @@ postgresql-dev \
 {% endif %}
 COPY ./docker-entrypoint.sh /
 
-{% if p.thin %}
+#{% if p.thin %}
+# Address this section: SMAGENT-2713
 # remove python binaries and java packages to prevent CVE/VULNs
-RUN dpkg -r --force-depends python python-minimal python2 python2.7 python2-minimal python3 python3.7 python3-minimal \
-linux-libc-dev python3.7-minimal libpython3.7-minimal libpython3.7-stdlib && \
+# RUN dpkg -r --force-depends python python-minimal python2 python2.7 python2-minimal python3 python3.7 python3-minimal \
+# linux-libc-dev python3.7-minimal libpython3.7-minimal libpython3.7-stdlib && \
 # remove jackson-databind
-rm /opt/draios/share/sdjagent.jar
-{% endif %}
+#rm /opt/draios/share/sdjagent.jar
+#{% endif %}
 
 {% if p.launch_dragent and p.base_docker_image != "adoptopenjdk/openjdk8:alpine-slim" %}
 # copy cacert.pem file into python-deps to allow compatibility
