@@ -2,11 +2,8 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fus
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
-include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace)
-include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/async)
-include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
-include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
-include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
+include_directories(${LIBSCAP_INCLUDE_DIR})
+include_directories(${LIBSINSP_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/userspace)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/src)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h

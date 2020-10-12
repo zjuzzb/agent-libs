@@ -38,8 +38,16 @@ endif()
 set(DRAIOS_NJSON_VERSION "3.3.0")
 set(DRAIOS_BENCHMARK_VERSION "1.5.0")
 
+set(LIBSINSP_DIR "${PROJECT_SOURCE_DIR}/../sysdig/")
+set(LIBSCAP_DIR "${PROJECT_SOURCE_DIR}/../sysdig/")
+set(LIBSCAP_INCLUDE_DIR ${LIBSCAP_DIR}/userspace/libscap)
+# required for falco build
+set(SYSDIG_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../sysdig")
+# required for test code which directly interfaces with driver
+set(DRIVER_INCLUDE_DIR "${SYSDIG_SOURCE_DIR}/driver")
+
 # Add path for custom CMake modules used to build dependencies from sysdig (libscap, libsinsp)
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/../sysdig/cmake/modules")
+list(APPEND CMAKE_MODULE_PATH "${LIBSCAP_DIR}/cmake/modules")
 
 # Set up the different flavors of agent binaries
 include(CMakeConfigurationTypes.cmake)
@@ -91,7 +99,6 @@ set(PROBE_NAME "sysdigcloud-probe")
 set(PROBE_DEVICE_NAME "sysdigcloud")
 
 if(NOT CYGWIN)
-    add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/driver ${PROJECT_BINARY_DIR}/driver)
     set(ZLIB_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.11")
     set(ZLIB_LIB "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.11/libz.a")
 else()
@@ -131,17 +138,22 @@ set(FALCO_SINSP_LIBRARY sanalyzer)
 set(FALCO_SHARE_DIR "${CMAKE_INSTALL_PREFIX}/share")
 set(FALCO_ABSOLUTE_SHARE_DIR "${FALCO_SHARE_DIR}")
 set(FALCO_COMPONENT agent-slim)
-set(SYSDIG_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../sysdig")
+
+add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/driver ${PROJECT_BINARY_DIR}/driver)
+add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap)
+
+set(LIBSINSP_SOURCE_DIR ${LIBSINSP_DIR}/userspace/libsinsp)
+set(LIBSINSP_INCLUDE_DIRS ${LIBSINSP_SOURCE_DIR} ${LIBSINSP_SOURCE_DIR}/../async ${LIBSINSP_SOURCE_DIR}/third-party/jsoncpp)
 
 # This suppresses warnings where a project in add_dependencies() is missing. This happens for
 # dependencies of falco engine, where the agent cmakefiles create the dependencies but don't create
 # ExternalProjects for them.
 cmake_policy(SET CMP0046 OLD)
+include_directories(${LIBSCAP_INCLUDE_DIRS} ${LIBSINSP_INCLUDE_DIRS})
 add_subdirectory(
     ${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine ${PROJECT_BINARY_DIR}/userspace/engine
 )
 
-add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap)
 if(NOT CYGWIN)
     add_subdirectory(userspace/cointerface)
 endif()

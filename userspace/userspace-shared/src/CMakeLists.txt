@@ -1,5 +1,4 @@
-include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
-include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
+include_directories(${LIBSINSP_INCLUDE_DIRS})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
@@ -20,7 +19,7 @@ add_library(
     wall_time.cpp
     watchdog_runnable_pool.cpp
     watchdog_runnable.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
+    ${LIBSINSP_SOURCE_DIR}/third-party/jsoncpp/jsoncpp.cpp
 )
 
 add_dependencies(userspace-shared draiosproto)

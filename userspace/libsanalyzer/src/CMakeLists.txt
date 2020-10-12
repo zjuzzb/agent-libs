@@ -7,13 +7,8 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/incl
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
-include_directories(${PROJECT_SOURCE_DIR}/../sysdig/common)
-include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace)
-include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/async)
-include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
-include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
-include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/include)
-include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
+include_directories(${LIBSCAP_INCLUDE_DIR})
+include_directories(${LIBSINSP_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
@@ -47,13 +42,13 @@ if(NOT CYGWIN)
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cri.grpc.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/cri.grpc.pb.h
                ${CMAKE_CURRENT_BINARY_DIR}/cri.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/cri.pb.h
         COMMENT "Generate CRI grpc code"
-        DEPENDS ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.proto
-        COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp --cpp_out=.
-                ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.proto
+        DEPENDS ${LIBSINSP_SOURCE_DIR}/cri.proto
+        COMMAND ${PROTOC} -I ${LIBSINSP_SOURCE_DIR} --cpp_out=.
+                ${LIBSINSP_SOURCE_DIR}/cri.proto
         COMMAND
-            ${PROTOC} -I ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp --grpc_out=.
+            ${PROTOC} -I ${LIBSINSP_SOURCE_DIR} --grpc_out=.
             --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
-            ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.proto
+            ${LIBSINSP_SOURCE_DIR}/cri.proto
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
 
@@ -230,98 +225,98 @@ set(SANALYZER_SOURCES
     k8s_pod_store.cpp
     k8s_object_store.cpp
     k8s_store_manager.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/addrinfo.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cgroup_limits.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel_api.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cyclewriter.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/container_engine_base.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/docker_common.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_info.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dns_manager.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dumper.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/event.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/eventformatter.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/fdinfo.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filter.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filterchecks.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/gen_filter.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/grpc_channel_registry.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_parser.c
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_reason.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/ifinfo.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/internal_metrics.cpp
-    # ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
+    ${LIBSINSP_SOURCE_DIR}/addrinfo.cpp
+    ${LIBSINSP_SOURCE_DIR}/cgroup_limits.cpp
+    ${LIBSINSP_SOURCE_DIR}/chisel.cpp
+    ${LIBSINSP_SOURCE_DIR}/chisel_api.cpp
+    ${LIBSINSP_SOURCE_DIR}/cyclewriter.cpp
+    ${LIBSINSP_SOURCE_DIR}/container.cpp
+    ${LIBSINSP_SOURCE_DIR}/container_engine/container_engine_base.cpp
+    ${LIBSINSP_SOURCE_DIR}/container_engine/docker_common.cpp
+    ${LIBSINSP_SOURCE_DIR}/container_info.cpp
+    ${LIBSINSP_SOURCE_DIR}/dns_manager.cpp
+    ${LIBSINSP_SOURCE_DIR}/dumper.cpp
+    ${LIBSINSP_SOURCE_DIR}/event.cpp
+    ${LIBSINSP_SOURCE_DIR}/eventformatter.cpp
+    ${LIBSINSP_SOURCE_DIR}/fdinfo.cpp
+    ${LIBSINSP_SOURCE_DIR}/filter.cpp
+    ${LIBSINSP_SOURCE_DIR}/filterchecks.cpp
+    ${LIBSINSP_SOURCE_DIR}/gen_filter.cpp
+    ${LIBSINSP_SOURCE_DIR}/grpc_channel_registry.cpp
+    ${LIBSINSP_SOURCE_DIR}/http_parser.c
+    ${LIBSINSP_SOURCE_DIR}/http_reason.cpp
+    ${LIBSINSP_SOURCE_DIR}/ifinfo.cpp
+    ${LIBSINSP_SOURCE_DIR}/internal_metrics.cpp
+    # ${LIBSINSP_SOURCE_DIR}/third-party/jsoncpp/jsoncpp.cpp
     k8s_config.cpp
     legacy_k8s_protobuf.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/logger.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/lua_parser.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/lua_parser_api.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/prefix_search.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tracers.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp_auth.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp_curl.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_api_error.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_api_handler.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_component.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_daemonset_handler.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_deployment_handler.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_dispatcher.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_event_data.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_event_handler.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_handler.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_namespace_handler.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_net.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_node_handler.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_pod_handler.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_replicationcontroller_handler.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_replicaset_handler.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_service_handler.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_state.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/json_query.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/json_error_log.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_component.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_http.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_auth.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_collector.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_component.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_http.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_state.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/parsers.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/protodecoder.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/threadinfo.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stats.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stopwatch.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/token_bucket.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tracer_emitter.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tuples.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tuples.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri_parser.c
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/user_event.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/user_event_logger.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/value_parser.cpp
-    ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/viewinfo.cpp
+    ${LIBSINSP_SOURCE_DIR}/logger.cpp
+    ${LIBSINSP_SOURCE_DIR}/lua_parser.cpp
+    ${LIBSINSP_SOURCE_DIR}/lua_parser_api.cpp
+    ${LIBSINSP_SOURCE_DIR}/prefix_search.cpp
+    ${LIBSINSP_SOURCE_DIR}/tracers.cpp
+    ${LIBSINSP_SOURCE_DIR}/sinsp_auth.cpp
+    ${LIBSINSP_SOURCE_DIR}/sinsp_curl.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_api_error.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_api_handler.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_component.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_daemonset_handler.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_deployment_handler.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_dispatcher.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_event_data.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_event_handler.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_handler.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_namespace_handler.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_net.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_node_handler.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_pod_handler.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_replicationcontroller_handler.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_replicaset_handler.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_service_handler.cpp
+    ${LIBSINSP_SOURCE_DIR}/k8s_state.cpp
+    ${LIBSINSP_SOURCE_DIR}/json_query.cpp
+    ${LIBSINSP_SOURCE_DIR}/json_error_log.cpp
+    ${LIBSINSP_SOURCE_DIR}/marathon_component.cpp
+    ${LIBSINSP_SOURCE_DIR}/marathon_http.cpp
+    ${LIBSINSP_SOURCE_DIR}/mesos_auth.cpp
+    ${LIBSINSP_SOURCE_DIR}/mesos.cpp
+    ${LIBSINSP_SOURCE_DIR}/mesos_collector.cpp
+    ${LIBSINSP_SOURCE_DIR}/mesos_component.cpp
+    ${LIBSINSP_SOURCE_DIR}/mesos_http.cpp
+    ${LIBSINSP_SOURCE_DIR}/mesos_state.cpp
+    ${LIBSINSP_SOURCE_DIR}/parsers.cpp
+    ${LIBSINSP_SOURCE_DIR}/protodecoder.cpp
+    ${LIBSINSP_SOURCE_DIR}/threadinfo.cpp
+    ${LIBSINSP_SOURCE_DIR}/sinsp.cpp
+    ${LIBSINSP_SOURCE_DIR}/stats.cpp
+    ${LIBSINSP_SOURCE_DIR}/stopwatch.cpp
+    ${LIBSINSP_SOURCE_DIR}/token_bucket.cpp
+    ${LIBSINSP_SOURCE_DIR}/tracer_emitter.cpp
+    ${LIBSINSP_SOURCE_DIR}/tuples.cpp
+    ${LIBSINSP_SOURCE_DIR}/tuples.cpp
+    ${LIBSINSP_SOURCE_DIR}/uri_parser.c
+    ${LIBSINSP_SOURCE_DIR}/uri.cpp
+    ${LIBSINSP_SOURCE_DIR}/user_event.cpp
+    ${LIBSINSP_SOURCE_DIR}/user_event_logger.cpp
+    ${LIBSINSP_SOURCE_DIR}/utils.cpp
+    ${LIBSINSP_SOURCE_DIR}/value_parser.cpp
+    ${LIBSINSP_SOURCE_DIR}/viewinfo.cpp
 )
 
 if(NOT CYGWIN)
     list(
         APPEND
         SANALYZER_SOURCES
-        ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.cpp
-        ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/bpm.cpp
-        ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/cri.cpp
-        ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/docker_linux.cpp
-        ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/libvirt_lxc.cpp
-        ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/lxc.cpp
-        ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/mesos.cpp
-        ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/rkt.cpp
-        ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/runc.cpp
+        ${LIBSINSP_SOURCE_DIR}/cri.cpp
+        ${LIBSINSP_SOURCE_DIR}/container_engine/bpm.cpp
+        ${LIBSINSP_SOURCE_DIR}/container_engine/cri.cpp
+        ${LIBSINSP_SOURCE_DIR}/container_engine/docker_linux.cpp
+        ${LIBSINSP_SOURCE_DIR}/container_engine/libvirt_lxc.cpp
+        ${LIBSINSP_SOURCE_DIR}/container_engine/lxc.cpp
+        ${LIBSINSP_SOURCE_DIR}/container_engine/mesos.cpp
+        ${LIBSINSP_SOURCE_DIR}/container_engine/rkt.cpp
+        ${LIBSINSP_SOURCE_DIR}/runc.cpp
         container_events/containerd_container.grpc.pb.cc
         container_events/containerd_container.pb.cc
         container_events/containerd_events.grpc.pb.cc
@@ -338,7 +333,7 @@ if(NOT CYGWIN)
     )
 else()
     list(APPEND SANALYZER_SOURCES
-         ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/docker_win.cpp
+         ${LIBSINSP_SOURCE_DIR}/container_engine/docker_win.cpp
     )
 endif()
 
