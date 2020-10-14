@@ -280,8 +280,18 @@ void statsite_proxy::send_metric(const char* const buf, const uint64_t len)
 }
 
 void statsite_proxy::send_container_metric(const std::string& container_id,
-                                           const char* const data,
-                                           const uint64_t len)
+                                 const char* const data,
+                                 const uint64_t len)
+{
+	append_and_send(container_id, data, len);
+	// Send the metric with an empty container id, so it will be 
+	// aggregated as a duplicate host metric
+	append_and_send("", data, len);
+}
+
+void statsite_proxy::append_and_send(const std::string& container_id,
+                                     const char* const data,
+                                     const uint64_t len)
 {
 	// Send the metric with containerid prefix
 	// Prefix container metrics with containerid and $

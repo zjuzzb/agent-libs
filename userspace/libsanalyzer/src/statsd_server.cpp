@@ -189,7 +189,6 @@ void statsd_server::on_read(Poco::Net::ReadableNotification* const notification)
 		m_statsite.send_container_metric(m_containerid,
 		                                 m_read_buffer.data(),
 		                                 bytes_received);
-		m_statsite.send_metric(m_read_buffer.data(), bytes_received);
 	}
 }
 

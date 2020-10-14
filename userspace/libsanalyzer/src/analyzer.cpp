@@ -8057,8 +8057,6 @@ void sinsp_analyzer::inject_statsd_metric(const std::string& container_id,
 
 	if (!container_id.empty())
 	{
-		// Send the metric as is, so it will be aggregated by host
-		m_statsite_proxy->send_metric(data, len);
 		m_statsite_proxy->send_container_metric(container_id, data, len);
 	}
 	else if (m_statsd_capture_localhost.load(memory_order_relaxed) || !dest_is_ipv4_localhost ||

@@ -28,6 +28,10 @@ public:
 	                           uint64_t len) override;
 
 private:
+
+	void append_and_send(const std::string& container_id,
+	                     const char* data,
+	                     uint64_t len);
 	bool validate_buffer(const char *buf, uint64_t len);
 
 	// This regex SHOULD match strings in such a way that each line goes:

@@ -26,7 +26,8 @@ statsd_metric::statsd_metric():
 	m_max(0.0),
 	m_count(0.0),
 	m_stdev(0.0),
-	m_percentiles()
+	m_percentiles(),
+	m_container_metric_duplicated_to_host(false)
 { }
 
 bool statsd_metric::parse_line(const std::string& line)
@@ -106,12 +107,22 @@ bool statsd_metric::parse_line(const std::string& line)
 			}
 			m_name = name;
 
-			auto container_id = desanitize_container_id(name_and_container_id_split.at(0));
-			if(m_full_identifier_parsed && m_container_id != container_id)
+			if (name_and_container_id_split.at(0).empty()) 
 			{
-				return false;
+				// If the container id is empty then this is a
+				// container metric that we're duplicating to
+				// the host
+				m_container_metric_duplicated_to_host = true;
 			}
-			m_container_id = std::move(container_id);
+			else 
+			{
+				auto container_id = desanitize_container_id(name_and_container_id_split.at(0));
+				if(m_full_identifier_parsed && m_container_id != container_id)
+				{
+					return false;
+				}
+				m_container_id = std::move(container_id);
+			}
 		}
 		else
 		{
@@ -251,6 +262,11 @@ void statsd_metric::to_protobuf(draiosproto::statsd_metric* const proto) const
 	else
 	{
 		proto->set_value(m_value);
+	}
+
+	if (m_container_metric_duplicated_to_host) 
+	{
+		proto->set_duplicate(true);
 	}
 }
 

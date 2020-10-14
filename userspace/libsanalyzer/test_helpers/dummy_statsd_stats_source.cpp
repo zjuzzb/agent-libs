@@ -81,6 +81,20 @@ void dummy_statsd_stats_source::add_gauge(const std::string& name,
 	add_metric(metric);
 }
 
+void dummy_statsd_stats_source::add_duplicate_gauge(const std::string& name,
+                                                    const double value,
+                                                    const uint64_t ts,
+                                                    const taglist& tags)
+{
+	const std::string metric = "gauges." +
+	                           encode_duplicate_name(name) +
+	                           encode_tags(tags) + "|" +
+	                           std::to_string(value) + "|" +
+	                           std::to_string(ts);
+
+	add_metric(metric);
+}
+
 void dummy_statsd_stats_source::add_histogram(const std::string& name,
                                               const double value,
 		                              const uint64_t ts,
@@ -140,6 +154,13 @@ std::string dummy_statsd_stats_source::encode_name(
 	{
 		return container_id + "$" + name;
 	}
+}
+
+std::string dummy_statsd_stats_source::encode_duplicate_name(const std::string& name)
+{
+	// A container metric that is duplicated to the host is indicated with a
+	// container delimiter prefix without a container id
+	return "$" + name;
 }
 
 std::string dummy_statsd_stats_source::encode_tags(const taglist& tags)

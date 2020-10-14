@@ -71,6 +71,9 @@ public:
 
 		m_content.push_back(std::make_pair(container_id,
 		                                   std::string(data, len)));
+
+		// Duplicated host metric
+		m_content.push_back(std::make_pair("", std::string(data, len)));
 	}
 
 	/**

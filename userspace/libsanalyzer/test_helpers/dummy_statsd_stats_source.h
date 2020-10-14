@@ -62,6 +62,14 @@ public:
 	               const taglist& tags = taglist());
 
 	/**
+	 * Add a duplicate gauge-type metric with the given properties.
+	 */
+	void add_duplicate_gauge(const std::string& name,
+	                         double value,
+	                         uint64_t ts,
+	                         const taglist& tags = taglist());
+
+	/**
 	 * Add a histogram-type metric with the given properties.
 	 */
 	void add_histogram(const std::string& name,
@@ -78,6 +86,12 @@ public:
 	 */
 	static std::string encode_name(const std::string& name,
 	                               const std::string& container_id = "");
+
+	/**
+	 * Encodes the name of a metric to indicate that it is a 
+	 * container metric which should be duplicated to the host.
+	 */
+	static std::string encode_duplicate_name(const std::string& name);
 
 	/**
 	 * Encodes the given list of tags.  If there are no tags, then this

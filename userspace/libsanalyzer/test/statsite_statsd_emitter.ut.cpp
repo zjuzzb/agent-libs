@@ -56,6 +56,7 @@ TEST(statsite_statsd_emitter_test, emit_host_counter_metric)
 	ASSERT_EQ("d", metrics.statsd_metrics(0).tags(1).value());
 	ASSERT_EQ(draiosproto::STATSD_COUNT, metrics.statsd_metrics(0).type());
 	ASSERT_EQ(value, metrics.statsd_metrics(0).value());
+	ASSERT_FALSE(metrics.statsd_metrics(0).has_duplicate());
 }
 
 /**
@@ -99,6 +100,7 @@ TEST(statsite_statsd_emitter_test, emit_container_counter_metric)
 	ASSERT_EQ(draiosproto::STATSD_COUNT,
 	          container.protos().statsd().statsd_metrics(0).type());
 	ASSERT_EQ(value, container.protos().statsd().statsd_metrics(0).value());
+	ASSERT_FALSE(container.protos().statsd().statsd_metrics(0).has_duplicate());
 }
 
 /**
@@ -140,6 +142,49 @@ TEST(statsite_statsd_emitter_test, emit_host_gauge_metric)
 	ASSERT_EQ("d", metrics.statsd_metrics(0).tags(1).value());
 	ASSERT_EQ(draiosproto::STATSD_GAUGE, metrics.statsd_metrics(0).type());
 	ASSERT_EQ(value, metrics.statsd_metrics(0).value());
+	ASSERT_FALSE(metrics.statsd_metrics(0).has_duplicate());
+}
+
+/**
+ * Ensure that fetch_metrics() + emit for the host writes the expected gauge
+ * metrics to the given protobufs.
+ */
+TEST(statsite_statsd_emitter_test, emit_duplicate_host_gauge_metric)
+{
+	const std::string name = "some_metric";
+	const double value = 42.7;
+	const uint64_t ts = 8123456789LL;
+	const metric_limits::sptr_t limits;
+
+	std::shared_ptr<dummy_statsd_stats_source> source =
+		std::make_shared<dummy_statsd_stats_source>();
+	::draiosproto::host host;
+	::draiosproto::statsd_info metrics;
+
+	source->add_duplicate_gauge(name, value, ts, {"a:b", "c:d"});
+
+	statsite_statsd_emitter emitter(source, limits);
+
+	emitter.fetch_metrics(ts);
+	emitter.emit(&host, &metrics);
+
+	ASSERT_TRUE(host.mutable_resource_counters()->has_statsd_total());
+	ASSERT_EQ(1, host.mutable_resource_counters()->statsd_total());
+
+	ASSERT_TRUE(host.mutable_resource_counters()->has_statsd_sent());
+	ASSERT_EQ(1, host.mutable_resource_counters()->statsd_sent());
+
+	ASSERT_EQ(1, metrics.statsd_metrics_size());
+	ASSERT_EQ(name, metrics.statsd_metrics(0).name());
+	ASSERT_TRUE(metrics.statsd_metrics(0).duplicate());
+	ASSERT_EQ(2, metrics.statsd_metrics(0).tags_size());
+	ASSERT_EQ("a", metrics.statsd_metrics(0).tags(0).key());
+	ASSERT_EQ("b", metrics.statsd_metrics(0).tags(0).value());
+	ASSERT_EQ("c", metrics.statsd_metrics(0).tags(1).key());
+	ASSERT_EQ("d", metrics.statsd_metrics(0).tags(1).value());
+	ASSERT_EQ(draiosproto::STATSD_GAUGE, metrics.statsd_metrics(0).type());
+	ASSERT_EQ(value, metrics.statsd_metrics(0).value());
+	ASSERT_TRUE(metrics.statsd_metrics(0).duplicate());
 }
 
 /**
@@ -183,6 +228,7 @@ TEST(statsite_statsd_emitter_test, emit_container_gauge_metric)
 	ASSERT_EQ(draiosproto::STATSD_GAUGE,
 	          container.protos().statsd().statsd_metrics(0).type());
 	ASSERT_EQ(value, container.protos().statsd().statsd_metrics(0).value());
+	ASSERT_FALSE(container.protos().statsd().statsd_metrics(0).has_duplicate());
 }
 
 /**
@@ -224,6 +270,7 @@ TEST(statsite_statsd_emitter_test, emit_host_set_metric)
 	ASSERT_EQ("d", metrics.statsd_metrics(0).tags(1).value());
 	ASSERT_EQ(draiosproto::STATSD_SET, metrics.statsd_metrics(0).type());
 	ASSERT_EQ(value, metrics.statsd_metrics(0).value());
+	ASSERT_FALSE(metrics.statsd_metrics(0).has_duplicate());
 }
 
 /**
@@ -266,6 +313,7 @@ TEST(statsite_statsd_emitter_test, emit_container_set_metric)
 	ASSERT_EQ(draiosproto::STATSD_SET,
 	          container.protos().statsd().statsd_metrics(0).type());
 	ASSERT_EQ(value, container.protos().statsd().statsd_metrics(0).value());
+	ASSERT_FALSE(container.protos().statsd().statsd_metrics(0).has_duplicate());
 }
 
 /**
@@ -324,6 +372,7 @@ TEST(statsite_statsd_emitter_test, emit_host_histogram_metric)
 	ASSERT_EQ(99, metrics.statsd_metrics(0).percentile(2).percentile());
 	ASSERT_EQ(static_cast<int>(value),
 	          metrics.statsd_metrics(0).percentile(2).value());
+	ASSERT_FALSE(metrics.statsd_metrics(0).has_duplicate());
 }
 
 /**
@@ -387,6 +436,7 @@ TEST(statsite_statsd_emitter_test, emit_container_histogram_metric)
 	ASSERT_EQ(99, container.protos().statsd().statsd_metrics(0).percentile(2).percentile());
 	ASSERT_EQ(static_cast<int>(value),
 	          container.protos().statsd().statsd_metrics(0).percentile(2).value());
+	ASSERT_FALSE(container.protos().statsd().statsd_metrics(0).has_duplicate());
 }
 
 /**

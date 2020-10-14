@@ -250,6 +250,7 @@ private:
 	double m_count;
 	double m_stdev;
 	std::map<int, double> m_percentiles;
+	bool m_container_metric_duplicated_to_host;
 
 	friend class lua_cbacks;
 };

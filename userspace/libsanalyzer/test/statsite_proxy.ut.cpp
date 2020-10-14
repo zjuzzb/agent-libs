@@ -59,6 +59,20 @@ const std::string STATSITE_OUTPUT_DIFFERENT_TIMESTAMPS =
     R"EOF(counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam5|86.000000|1432288305
 counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam8|86.000000|1432288306)EOF";
 
+std::vector<string> split_string(const std::string &s, char delim)
+{
+	vector<string> res;
+	istringstream f(s);
+	string ts;
+
+	while(getline(f, ts, delim))
+	{
+		res.push_back(ts);
+	}
+
+	return res;
+}
+
 /**
  * Send the given stats to statsite_proxy and let it validate it for
  * correctness.  If it's valid, statsite_proxy will write it to the appropriate
@@ -68,7 +82,7 @@ counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam8|86.000000|1432288306
  * @param[in] expected What the client expects statsite_proxy to write to
  *                     the FILE*.
  */
-void do_statsite_proxy_validation(const std::string& stats, const std::string& expected)
+void do_statsite_proxy_host_validation(const std::string& stats, const std::string& expected)
 {
 	scoped_fmemopen in(512, "r+");
 	scoped_fmemopen out(2, "r+");
@@ -76,11 +90,77 @@ void do_statsite_proxy_validation(const std::string& stats, const std::string& e
 	ASSERT_NO_THROW({
 		test_helpers::scoped_config<bool> c("statsite_check_format", true);
 		statsite_proxy proxy(std::make_pair(in.get_file(), out.get_file()));
-
 		proxy.send_metric(stats.c_str(), stats.size());
 	});
 
 	ASSERT_EQ(expected, in.get_buffer_content());
+}
+
+/**
+ * Send the given container stats to statsite_proxy and let it
+ * validate it for correctness.  If it's valid, statsite_proxy
+ * will write it to the appropriate FILE*, which we can later
+ * inspect.
+ *
+ * @param[in] stats    a potential statsd metric (valid or invalid).
+ * @param[in] expected What the client expects statsite_proxy to write to
+ *                     the FILE*.
+ */
+void do_statsite_proxy_container_validation(const std::string& stats, const std::string& expected)
+{
+	scoped_fmemopen in(512, "r+");
+	scoped_fmemopen out(2, "r+");
+	const std::string CONTAINER_ID = "pattywack";
+
+	ASSERT_NO_THROW({
+		test_helpers::scoped_config<bool> c("statsite_check_format", true);
+		statsite_proxy proxy(std::make_pair(in.get_file(), out.get_file()));
+		proxy.send_container_metric(CONTAINER_ID,
+					    stats.c_str(),
+					    stats.size());
+	});
+
+	const char CONTAINER_DELIMITER = '$';
+	const auto expected_list = split_string(expected, '\n');
+	const auto found_list = split_string(in.get_buffer_content(), '\n');
+	auto found_list_itr = found_list.begin();
+
+	// The metric(s) will be in the list twice.
+	ASSERT_EQ(expected_list.size()*2, found_list.size());
+
+	// The first set will be the metrics with the container id attached
+	for (const auto &expected : expected_list)
+	{
+		ASSERT_NE(found_list_itr->find(CONTAINER_DELIMITER), string::npos);
+		const auto metric_pair = split_string(*found_list_itr, CONTAINER_DELIMITER);
+
+		ASSERT_EQ(2, metric_pair.size());
+		ASSERT_EQ(CONTAINER_ID, metric_pair[0]);
+		ASSERT_EQ(expected, metric_pair[1]);
+
+		++found_list_itr;
+	}
+
+	// The second set will be the metrics with an empty containerid.
+	// This indicates that it is a host metric that is a duplicate
+	// of a container metric.
+	for (const auto &expected : expected_list)
+	{
+		ASSERT_NE(found_list_itr->find(CONTAINER_DELIMITER), string::npos);
+		const auto metric_pair = split_string(*found_list_itr, CONTAINER_DELIMITER);
+
+		ASSERT_EQ(2, metric_pair.size());
+		ASSERT_EQ("", metric_pair[0]);
+		ASSERT_EQ(expected, metric_pair[1]);
+
+		++found_list_itr;
+	}
+}
+
+void do_statsite_proxy_validation(const std::string& stats, const std::string& expected)
+{
+	do_statsite_proxy_host_validation(stats, expected);
+	do_statsite_proxy_container_validation(stats, expected);
 }
 
 }  // end namespace
