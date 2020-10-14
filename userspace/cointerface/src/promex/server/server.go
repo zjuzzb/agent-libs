@@ -59,6 +59,51 @@ func derefOrEmpty(sp *string) string {
 	}
 }
 
+func singleOrAggrValueU32(single *uint32, aggr *draiosproto.Aggregations64) float64 {
+	if aggr != nil {
+		return float64(*aggr.Sum) / float64(*aggr.Weight)
+	}
+	if single != nil {
+		return float64(*single)
+	}
+	return 0.0
+}
+
+func singleOrAggrValueU64(single *uint64, aggr *draiosproto.Aggregations64) float64 {
+	if aggr != nil {
+		return float64(*aggr.Sum) / float64(*aggr.Weight)
+	}
+	if single != nil {
+		return float64(*single)
+	}
+	return 0.0
+}
+
+func singleOrAggrPercentages(single []uint32, aggr *draiosproto.Aggregations64Repeated) []prometheusMetricValue {
+	var percentages []prometheusMetricValue
+
+	if aggr != nil {
+		for i, cpu := range aggr.Sum {
+			percentages = append(percentages, prometheusMetricValue{
+				float64(cpu) / (float64(*aggr.Weight) * 100.0),
+				[]string{
+					strconv.Itoa(i),
+				},
+			})
+		}
+	} else if single != nil {
+		for i, cpu := range single {
+			percentages = append(percentages, prometheusMetricValue{
+				float64(cpu) / 100.0,
+				[]string{
+					strconv.Itoa(i),
+				},
+			})
+		}
+	}
+	return percentages
+}
+
 func (s* prometheusExporterServer) containerLabelValues(container *draiosproto.Container) []string {
 	labels := []string{
 		derefOrEmpty(container.Id),
@@ -124,7 +169,7 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			valueType: prometheus.GaugeValue,
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
 				return []prometheusMetricValue{{
-					float64(*s.lastMetrics.SamplingRatio),
+					singleOrAggrValueU32(s.lastMetrics.SamplingRatio, s.lastMetrics.AggrSamplingRatio),
 					nil,
 				}}, nil
 			},
@@ -140,15 +185,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			),
 			valueType: prometheus.GaugeValue,
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
-				var cpus []prometheusMetricValue
-				for i, cpu := range s.lastMetrics.Hostinfo.CpuLoads {
-					cpus = append(cpus, prometheusMetricValue{
-						float64(cpu) / 100.0,
-						[]string{
-							strconv.Itoa(i),
-						},
-					})
-				}
+				cpus := singleOrAggrPercentages(
+					s.lastMetrics.Hostinfo.CpuLoads,
+					s.lastMetrics.Hostinfo.AggrCpuLoads,
+					)
 				return cpus, nil
 			},
 		},
@@ -161,15 +201,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			),
 			valueType: prometheus.GaugeValue,
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
-				var cpus []prometheusMetricValue
-				for i, cpu := range s.lastMetrics.Hostinfo.CpuIdle {
-					cpus = append(cpus, prometheusMetricValue{
-						float64(cpu) / 100.0,
-						[]string{
-							strconv.Itoa(i),
-						},
-					})
-				}
+				cpus := singleOrAggrPercentages(
+					s.lastMetrics.Hostinfo.CpuIdle,
+					s.lastMetrics.Hostinfo.AggrCpuIdle,
+				)
 				return cpus, nil
 			},
 		},
@@ -182,15 +217,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			),
 			valueType: prometheus.GaugeValue,
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
-				var cpus []prometheusMetricValue
-				for i, cpu := range s.lastMetrics.Hostinfo.IowaitCpu {
-					cpus = append(cpus, prometheusMetricValue{
-						float64(cpu) / 100.0,
-						[]string{
-							strconv.Itoa(i),
-						},
-					})
-				}
+				cpus := singleOrAggrPercentages(
+					s.lastMetrics.Hostinfo.IowaitCpu,
+					s.lastMetrics.Hostinfo.AggrIowaitCpu,
+				)
 				return cpus, nil
 			},
 		},
@@ -203,15 +233,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			),
 			valueType: prometheus.GaugeValue,
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
-				var cpus []prometheusMetricValue
-				for i, cpu := range s.lastMetrics.Hostinfo.NiceCpu {
-					cpus = append(cpus, prometheusMetricValue{
-						float64(cpu) / 100.0,
-						[]string{
-							strconv.Itoa(i),
-						},
-					})
-				}
+				cpus := singleOrAggrPercentages(
+					s.lastMetrics.Hostinfo.NiceCpu,
+					s.lastMetrics.Hostinfo.AggrNiceCpu,
+				)
 				return cpus, nil
 			},
 		},
@@ -224,15 +249,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			),
 			valueType: prometheus.GaugeValue,
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
-				var cpus []prometheusMetricValue
-				for i, cpu := range s.lastMetrics.Hostinfo.CpuSteal {
-					cpus = append(cpus, prometheusMetricValue{
-						float64(cpu) / 100.0,
-						[]string{
-							strconv.Itoa(i),
-						},
-					})
-				}
+				cpus := singleOrAggrPercentages(
+					s.lastMetrics.Hostinfo.CpuSteal,
+					s.lastMetrics.Hostinfo.AggrCpuSteal,
+				)
 				return cpus, nil
 			},
 		},
@@ -245,15 +265,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			),
 			valueType: prometheus.GaugeValue,
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
-				var cpus []prometheusMetricValue
-				for i, cpu := range s.lastMetrics.Hostinfo.SystemCpu {
-					cpus = append(cpus, prometheusMetricValue{
-						float64(cpu) / 100.0,
-						[]string{
-							strconv.Itoa(i),
-						},
-					})
-				}
+				cpus := singleOrAggrPercentages(
+					s.lastMetrics.Hostinfo.SystemCpu,
+					s.lastMetrics.Hostinfo.AggrSystemCpu,
+				)
 				return cpus, nil
 			},
 		},
@@ -266,19 +281,13 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			),
 			valueType: prometheus.GaugeValue,
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
-				var cpus []prometheusMetricValue
-				for i, cpu := range s.lastMetrics.Hostinfo.UserCpu {
-					cpus = append(cpus, prometheusMetricValue{
-						float64(cpu) / 100.0,
-						[]string{
-							strconv.Itoa(i),
-						},
-					})
-				}
+				cpus := singleOrAggrPercentages(
+					s.lastMetrics.Hostinfo.UserCpu,
+					s.lastMetrics.Hostinfo.AggrUserCpu,
+				)
 				return cpus, nil
 			},
 		},
-
 		// host-wide memory metrics
 		{
 			description: prometheus.NewDesc(
@@ -290,7 +299,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			valueType: prometheus.GaugeValue,
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
 				return []prometheusMetricValue{
-					{float64(*s.lastMetrics.Hostinfo.PhysicalMemorySizeBytes), nil},
+					{singleOrAggrValueU64(
+						s.lastMetrics.Hostinfo.PhysicalMemorySizeBytes,
+						s.lastMetrics.Hostinfo.AggrPhysicalMemorySizeBytes,
+						), nil},
 				}, nil
 			},
 		},
@@ -304,7 +316,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			valueType: prometheus.GaugeValue,
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
 				return []prometheusMetricValue{
-					{float64(*s.lastMetrics.Hostinfo.MemoryBytesAvailableKb * 1024), nil},
+					{singleOrAggrValueU64(
+						s.lastMetrics.Hostinfo.MemoryBytesAvailableKb,
+						s.lastMetrics.Hostinfo.AggrMemoryBytesAvailableKb,
+						) * 1024, nil},
 				}, nil
 			},
 		},
@@ -318,7 +333,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			valueType: prometheus.GaugeValue,
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
 				return []prometheusMetricValue{
-					{float64(*s.lastMetrics.Hostinfo.ResourceCounters.ResidentMemoryUsageKb) * 1024, nil},
+					{singleOrAggrValueU32(
+						s.lastMetrics.Hostinfo.ResourceCounters.ResidentMemoryUsageKb,
+						s.lastMetrics.Hostinfo.ResourceCounters.AggrResidentMemoryUsageKb,
+						) * 1024, nil},
 				}, nil
 			},
 		},
@@ -333,7 +351,11 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
 				var virtual uint64
 				for _, prog := range s.lastMetrics.Programs {
-					virtual = virtual + (uint64(*prog.Procinfo.ResourceCounters.VirtualMemoryUsageKb) * 1024)
+					progVirtual := singleOrAggrValueU32(
+						prog.Procinfo.ResourceCounters.VirtualMemoryUsageKb,
+						prog.Procinfo.ResourceCounters.AggrVirtualMemoryUsageKb,
+					)
+					virtual = virtual + (uint64(progVirtual) * 1024)
 				}
 				return []prometheusMetricValue{
 					{float64(virtual), nil},
@@ -352,7 +374,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			valueType: prometheus.GaugeValue,
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
 				return []prometheusMetricValue{
-					{float64(*s.lastMetrics.Hostinfo.ResourceCounters.SwapMemoryTotalKb) * 1024.0, nil},
+					{singleOrAggrValueU32(
+						s.lastMetrics.Hostinfo.ResourceCounters.SwapMemoryTotalKb,
+						s.lastMetrics.Hostinfo.ResourceCounters.AggrSwapMemoryTotalKb,
+						) * 1024.0, nil},
 				}, nil
 			},
 		},
@@ -366,7 +391,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			valueType: prometheus.GaugeValue,
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
 				return []prometheusMetricValue{
-					{float64(*s.lastMetrics.Hostinfo.ResourceCounters.SwapMemoryAvailableKb) * 1024.0, nil},
+					{singleOrAggrValueU32(
+						s.lastMetrics.Hostinfo.ResourceCounters.SwapMemoryAvailableKb,
+						s.lastMetrics.Hostinfo.ResourceCounters.AggrSwapMemoryAvailableKb,
+						) * 1024.0, nil},
 				}, nil
 			},
 		},
@@ -380,7 +408,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			valueType: prometheus.GaugeValue,
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
 				return []prometheusMetricValue{
-					{float64(*s.lastMetrics.Hostinfo.ResourceCounters.SwapMemoryUsageKb) * 1024.0, nil},
+					{singleOrAggrValueU32(
+						s.lastMetrics.Hostinfo.ResourceCounters.SwapMemoryUsageKb,
+						s.lastMetrics.Hostinfo.ResourceCounters.AggrSwapMemoryUsageKb,
+						) * 1024.0, nil},
 				}, nil
 			},
 		},
@@ -397,8 +428,12 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
 				var metrics []prometheusMetricValue
 				for _, container := range s.lastMetrics.Containers {
+					containerCpu := singleOrAggrValueU32(
+						container.ResourceCounters.CpuPct,
+						container.ResourceCounters.AggrCpuPct,
+						)
 					metrics = append(metrics, prometheusMetricValue{
-						value: float64(*container.ResourceCounters.CpuPct) / 100.0,
+						value:  containerCpu / 100.0,
 						labels: s.containerLabelValues(container),
 					})
 				}
@@ -419,8 +454,12 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
 				var metrics []prometheusMetricValue
 				for _, container := range s.lastMetrics.Containers {
+					containerMem := singleOrAggrValueU32(
+						container.ResourceCounters.ResidentMemoryUsageKb,
+						container.ResourceCounters.AggrResidentMemoryUsageKb,
+					)
 					metrics = append(metrics, prometheusMetricValue{
-						value: float64(*container.ResourceCounters.ResidentMemoryUsageKb) * 1024.0,
+						value:  containerMem * 1024.0,
 						labels: s.containerLabelValues(container),
 					})
 				}
@@ -441,7 +480,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
 				return []prometheusMetricValue{
 					{
-						value: float64(*s.lastMetrics.Hostinfo.Tcounters.IoFile.TimeNsIn) / 1e9,
+						value: singleOrAggrValueU64(
+							s.lastMetrics.Hostinfo.Tcounters.IoFile.TimeNsIn,
+							s.lastMetrics.Hostinfo.Tcounters.IoFile.AggrTimeNsIn,
+					) / 1e9,
 						labels: nil,
 					},
 				}, nil
@@ -458,7 +500,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
 				return []prometheusMetricValue{
 					{
-						value: float64(*s.lastMetrics.Hostinfo.Tcounters.IoFile.TimeNsOut) / 1e9,
+						value: singleOrAggrValueU64(
+							s.lastMetrics.Hostinfo.Tcounters.IoFile.TimeNsOut,
+							s.lastMetrics.Hostinfo.Tcounters.IoFile.AggrTimeNsOut,
+						) / 1e9,
 						labels: nil,
 					},
 				}, nil
@@ -475,7 +520,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 			function: func(server *prometheusExporterServer) ([]prometheusMetricValue, error) {
 				return []prometheusMetricValue{
 					{
-						value: float64(*s.lastMetrics.Hostinfo.Tcounters.IoFile.TimeNsOther) / 1e9,
+						value: singleOrAggrValueU64(
+							s.lastMetrics.Hostinfo.Tcounters.IoFile.TimeNsOther,
+							s.lastMetrics.Hostinfo.Tcounters.IoFile.AggrTimeNsOther,
+						) / 1e9,
 						labels: nil,
 					},
 				}, nil
@@ -496,7 +544,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 				var metrics []prometheusMetricValue
 				for _, container := range s.lastMetrics.Containers {
 					metrics = append(metrics, prometheusMetricValue{
-						value: float64(*container.Tcounters.IoFile.TimeNsIn) / 1e9,
+						value: singleOrAggrValueU64(
+							container.Tcounters.IoFile.TimeNsIn,
+							container.Tcounters.IoFile.AggrTimeNsIn,
+						) / 1e9,
 						labels: s.containerLabelValues(container),
 					})
 				}
@@ -516,7 +567,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 				var metrics []prometheusMetricValue
 				for _, container := range s.lastMetrics.Containers {
 					metrics = append(metrics, prometheusMetricValue{
-						value: float64(*container.Tcounters.IoFile.TimeNsOut) / 1e9,
+						value: singleOrAggrValueU64(
+							container.Tcounters.IoFile.TimeNsOut,
+							container.Tcounters.IoFile.AggrTimeNsOut,
+						) / 1e9,
 						labels: s.containerLabelValues(container),
 					})
 				}
@@ -536,7 +590,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 				var metrics []prometheusMetricValue
 				for _, container := range s.lastMetrics.Containers {
 					metrics = append(metrics, prometheusMetricValue{
-						value: float64(*container.Tcounters.IoFile.TimeNsOther) / 1e9,
+						value: singleOrAggrValueU64(
+							container.Tcounters.IoFile.TimeNsOther,
+							container.Tcounters.IoFile.AggrTimeNsOther,
+						) / 1e9,
 						labels: s.containerLabelValues(container),
 					})
 				}
@@ -558,7 +615,10 @@ func (s *prometheusExporterServer) MustRegisterMetrics() {
 				var metrics []prometheusMetricValue
 				for _, container := range s.lastMetrics.Containers {
 					metrics = append(metrics, prometheusMetricValue{
-						value: float64(*container.ResourceCounters.SwapMemoryUsageKb) * 1024.0,
+						value: singleOrAggrValueU32(
+							container.ResourceCounters.SwapMemoryUsageKb,
+							container.ResourceCounters.AggrSwapMemoryUsageKb,
+						) * 1024.0,
 						labels: s.containerLabelValues(container),
 					})
 				}
