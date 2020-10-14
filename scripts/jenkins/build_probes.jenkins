@@ -21,10 +21,19 @@ pipeline {
                     cat releases
                 """
             }
+			// only fail the job if the latest release doesn't build
+            // I can probably do the propagate release by just passing the
+            // variable in directly, but i'm not good enough with groovy to care to try
             script {
                 def releases = readFile(file:'releases').split()
+                def latest_release = true
                 for (release in releases) {
-					build job: 'sysdig-probe-builder', parameters: [string(name: 'RELEASE_NUMBER', value: release), string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')]
+                    if (latest_release) {
+                        build job: 'sysdig-probe-builder', parameters: [string(name: 'RELEASE_NUMBER', value: release), string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')]
+                        latest_release = false
+                    } else {
+                        build job: 'sysdig-probe-builder', parameters: [string(name: 'RELEASE_NUMBER', value: release), string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')],propagate: false
+                    }
                 }
             }
         }

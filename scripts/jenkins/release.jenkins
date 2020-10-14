@@ -3,192 +3,209 @@ pipeline {
 
     stages {
 
-	// grab the repos we need
-	stage('Check out dependencies') {
-	    steps {
-			dir('agent') {
-				checkout scm
-			}
-			dir('oss-falco') {
-				checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
-			}
-			dir('sysdig') {
-				checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/sysdig']]])
-			}
-			dir('protorepo') {
-				checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
-			}
-	    }
-	}
+    // grab the repos we need
+    stage('Check out dependencies') {
+        steps {
+            dir('agent') {
+                checkout scm
+            }
+            dir('oss-falco') {
+                checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
+            }
+            dir('sysdig') {
+                checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/sysdig']]])
+            }
+            dir('protorepo') {
+                checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
+            }
+        }
+    }
 
-	stage('Switch to Release Base') {
-		when {
-			expression { params.RELEASE_BASE != "dev" }
-		}
-		steps {
-			dir('agent') {
-				sh "git checkout release-${params.RELEASE_BASE}"
-			}
-			dir('sysdig') {
-				sh "git checkout agent-release-${params.RELEASE_BASE}"
-			}
-			dir('oss-falco') {
-				sh "git checkout agent-release-${params.RELEASE_BASE}"
-			}
-			dir('protorepo') {
-				sh "git checkout agent-release-${params.RELEASE_BASE}"
-			}
-		}
-	}
+    stage('Switch to Release Base') {
+        when {
+            expression { params.RELEASE_BASE != "dev" }
+        }
+        steps {
+            dir('agent') {
+                sh "git checkout release-${params.RELEASE_BASE}"
+            }
+            dir('sysdig') {
+                sh "git checkout agent-release-${params.RELEASE_BASE}"
+            }
+            dir('oss-falco') {
+                sh "git checkout agent-release-${params.RELEASE_BASE}"
+            }
+            dir('protorepo') {
+                sh "git checkout agent-release-${params.RELEASE_BASE}"
+            }
+        }
+    }
 
-	// if we need to push the release branch, do so
-	stage('Push Release Branch') {
-	    when {
-			expression { params.CREATE_RELEASE_BRANCH == true }
-	    }
-	    steps {
-			slackSend channel: '#docs,#support', message: "Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
-			slackSend channel: '#ws-agent-core', message: "@here Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
-			slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
+    // if we need to push the release branch, do so
+    stage('Push Release Branch') {
+        when {
+            expression { params.CREATE_RELEASE_BRANCH == true }
+        }
+        steps {
+            slackSend channel: '#docs,#support', message: "Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
+            slackSend channel: '#ws-agent-core', message: "@here Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
+            slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
 
-			withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
-				dir('agent') {
-					sh label: '', script: """
-						git checkout -b release-${params.RELEASE_VERSION}
-						export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-						git push -u origin release-${params.RELEASE_VERSION}
-					"""
-				}
-				dir('sysdig') {
-					sh label: '', script: """
-						git checkout -b agent-release-${params.RELEASE_VERSION}
-						export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-						git remote add origin2 ssh://git@github.com/draios/sysdig.git
-						git push -u origin2 agent-release-${params.RELEASE_VERSION}
-					"""
-				}
-				dir('oss-falco') {
-					sh label: '', script: """
-						git checkout -b agent-release-${params.RELEASE_VERSION}
-						export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-						git remote add origin2 ssh://git@github.com/draios/oss-falco.git
-						git push -u origin2 agent-release-${params.RELEASE_VERSION}
-					"""
-				}
-				dir('protorepo') {
-					sh label: '', script: """
-						git checkout -b agent-release-${params.RELEASE_VERSION}
-						export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-						git remote add origin2 ssh://git@github.com/draios/protorepo.git
-						git push -u origin2 agent-release-${params.RELEASE_VERSION}
-					"""
-				}
+            withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
+                dir('agent') {
+                    sh label: '', script: """
+                        git checkout -b release-${params.RELEASE_VERSION}
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git push -u origin release-${params.RELEASE_VERSION}
+                    """
+                }
+                dir('sysdig') {
+                    sh label: '', script: """
+                        git checkout -b agent-release-${params.RELEASE_VERSION}
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git remote add origin2 ssh://git@github.com/draios/sysdig.git
+                        git push -u origin2 agent-release-${params.RELEASE_VERSION}
+                    """
+                }
+                dir('oss-falco') {
+                    sh label: '', script: """
+                        git checkout -b agent-release-${params.RELEASE_VERSION}
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git remote add origin2 ssh://git@github.com/draios/oss-falco.git
+                        git push -u origin2 agent-release-${params.RELEASE_VERSION}
+                    """
+                }
+                dir('protorepo') {
+                    sh label: '', script: """
+                        git checkout -b agent-release-${params.RELEASE_VERSION}
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git remote add origin2 ssh://git@github.com/draios/protorepo.git
+                        git push -u origin2 agent-release-${params.RELEASE_VERSION}
+                    """
+                }
 
-			}
-	    }
-	}
+            }
+        }
+    }
 
-	// switch all clients to the release branch. necessary if we didn't push a release branch
-	stage('Switch To Release Branch') {
-	    steps {
-			dir('agent') {
-				sh "git checkout release-${params.RELEASE_VERSION}"
-			}
-			dir('sysdig') {
-				sh "git checkout agent-release-${params.RELEASE_VERSION}"
-			}
-			dir('oss-falco') {
-				sh "git checkout agent-release-${params.RELEASE_VERSION}"
-			}
-			dir('protorepo') {
-				sh "git checkout agent-release-${params.RELEASE_VERSION}"
-			}
-	    }
-	}
+    // switch all clients to the release branch. necessary if we didn't push a release branch
+    stage('Switch To Release Branch') {
+        steps {
+            dir('agent') {
+                sh "git checkout release-${params.RELEASE_VERSION}"
+            }
+            dir('sysdig') {
+                sh "git checkout agent-release-${params.RELEASE_VERSION}"
+            }
+            dir('oss-falco') {
+                sh "git checkout agent-release-${params.RELEASE_VERSION}"
+            }
+            dir('protorepo') {
+                sh "git checkout agent-release-${params.RELEASE_VERSION}"
+            }
+        }
+    }
 
-	// build and push the docker builder. this is to ensure we are not affected by
-	// non-backwards compatible changes to the builder and can always build
-	// this release easily from quay
-	stage('Build Builder') {
-	    steps {
-			build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),booleanParam(name:'TAG_LATEST', value:false),string(name:'CONTAINER_NAME', value:"release-$RELEASE_VERSION")]
-		}
-		post {
-			success {
-				slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Build container successfully built for release.", tokenCredentialId: 'slack'
-			}
-			failure {
-				slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release failed to build build container. Aborting release. Please fix in the new release branch and rerun with CREATE_RELEASE_BRANCH unchecked.", tokenCredentialId: 'slack'
-			}
-		}
-	}
+    // build the promscraper releases. Currently they are hard coded to release branch
+    // names, so must be built before anything else will work
+    stage('Build Promscrape') {
+        parallel {
+            stage('Build v1') {
+                steps {
+                    build job:'promscrape-v1-build',parameters:[string(name:'AGENT_RELEASE', value:"$RELEASE_VERSION")]
+                }
+            }
+            stage('Build v2') {
+                steps {
+                    build job:'promscrape-v2-build',parameters:[string(name:'AGENT_RELEASE', value:"$RELEASE_VERSION")]
+                }
+            }
+        }
+    }
 
-	// double checks that presubmit tests pass
-	stage('Run Presubmit') {
-		 parallel {
-			stage('Unit Test') {
-				steps {
-					build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION")]
-				}
-			}
-			stage('System Test') {
-				steps {
-					build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION")]
-				}
-			}
-		}
-		post {
-			success {
-				slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release branch passed presubmit tests.", tokenCredentialId: 'slack'
-			}
-			failure {
-				slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release failed presubmit tests. Aborting release. Please fix in the new release branch and rerun with CREATE_RELEASE_BRANCH unchecked.", tokenCredentialId: 'slack'
-			}
-		}
-	}
+    // build and push the docker builder. this is to ensure we are not affected by
+    // non-backwards compatible changes to the builder and can always build
+    // this release easily from quay
+    stage('Build Builder') {
+        steps {
+            build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),booleanParam(name:'TAG_LATEST', value:false),string(name:'CONTAINER_NAME', value:"release-$RELEASE_VERSION")]
+        }
+        post {
+            success {
+                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Build container successfully built for release.", tokenCredentialId: 'slack'
+            }
+            failure {
+                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release failed to build build container. Aborting release. Please fix in the new release branch and rerun with CREATE_RELEASE_BRANCH unchecked.", tokenCredentialId: 'slack'
+            }
+        }
+    }
 
-	// builds the RC, runs integration tests, and uploads to docker/quay
-	// Uploaded image should be sysdig/agent:${params.RELEASE_VERSION}-rc
-	stage('Build RC') {
-		steps {
-			build job:'agent-build-rc',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION"),string(name:'RELEASE_VERSION', value:"$RELEASE_VERSION"),booleanParam(name:'UPLOAD', value:true),booleanParam(name:'PUBLIC_RELEASE', value:true)]
-		}
-		post {
-			success {
-				slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "RC successfully built.", tokenCredentialId: 'slack'
-				// Adam Roberts, Bala Kanaraj
-				slackSend channel: '@UEJ2F1PCJ,@UAR86L8BU', message: "RC successfully built. Testing can begin which does not depend on probes.", tokenCredentialId: 'slack'
-			}
-			failure {
-				slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release failed to build RC. Aborting release. Please fix in the new release branch and rerun with CREATE_RELEASE_BRANCH unchecked.", tokenCredentialId: 'slack'
-			}
-		}
-	}
+    // double checks that presubmit tests pass
+    stage('Run Presubmit') {
+         parallel {
+            stage('Unit Test') {
+                steps {
+                    build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION")]
+                }
+            }
+            stage('System Test') {
+                steps {
+                    build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION")]
+                }
+            }
+        }
+        post {
+            success {
+                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release branch passed presubmit tests.", tokenCredentialId: 'slack'
+            }
+            failure {
+                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release failed presubmit tests. Aborting release. Please fix in the new release branch and rerun with CREATE_RELEASE_BRANCH unchecked.", tokenCredentialId: 'slack'
+            }
+        }
+    }
 
-	stage('Scan Release Container') {
-		parallel {
-			stage('agent') {
-				steps {
-					build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"sysdig/agent:${params.RELEASE_VERSION}-rc")],propagate: false
-				}
-			}
-			stage('agent slim') {
-				steps {
-					build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"sysdig/agent-slim:${params.RELEASE_VERSION}-rc")],propagate: false
-				}
-			}
-			stage('agent slim v1') {
-				steps {
-					build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"sysdig/agent-slim:${params.RELEASE_VERSION}-rc-v1")],propagate: false
-				}
-			}
-			stage('agent kmod thin') {
-				steps {
-					build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"sysdig/agent-kmodule-thin:${params.RELEASE_VERSION}-rc")],propagate: false
-				}
-			}
-		}
-	}
+    // builds the RC, runs integration tests, and uploads to docker/quay
+    // Uploaded image should be sysdig/agent:${params.RELEASE_VERSION}-rc
+    stage('Build RC') {
+        steps {
+            build job:'agent-build-rc',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION"),string(name:'RELEASE_VERSION', value:"$RELEASE_VERSION"),booleanParam(name:'UPLOAD', value:true),booleanParam(name:'PUBLIC_RELEASE', value:true)]
+        }
+        post {
+            success {
+                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "RC successfully built.", tokenCredentialId: 'slack'
+                // Adam Roberts, Bala Kanaraj
+                slackSend channel: '@UEJ2F1PCJ,@UAR86L8BU', message: "RC successfully built. Testing can begin which does not depend on probes.", tokenCredentialId: 'slack'
+            }
+            failure {
+                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release failed to build RC. Aborting release. Please fix in the new release branch and rerun with CREATE_RELEASE_BRANCH unchecked.", tokenCredentialId: 'slack'
+            }
+        }
+    }
+
+    stage('Scan Release Container') {
+        parallel {
+            stage('agent') {
+                steps {
+                    build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"sysdig/agent:${params.RELEASE_VERSION}-rc")],propagate: false
+                }
+            }
+            stage('agent slim') {
+                steps {
+                    build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"sysdig/agent-slim:${params.RELEASE_VERSION}-rc")],propagate: false
+                }
+            }
+            stage('agent slim v1') {
+                steps {
+                    build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"sysdig/agent-slim:${params.RELEASE_VERSION}-rc-v1")],propagate: false
+                }
+            }
+            stage('agent kmod thin') {
+                steps {
+                    build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"sysdig/agent-kmodule-thin:${params.RELEASE_VERSION}-rc")],propagate: false
+                }
+            }
+        }
+    }
 
     // github has a weird behavior where if you move tags, it auto moves a release from publish
     // to draft. Once it's there, we can't find it by tags anymore, and finding it by name
@@ -271,67 +288,67 @@ pipeline {
         }
     }
 
-	// kick off the probe builder with the correct version. This does not update
-	// the default of that job, so we will keep building current GA release until
-	// this one is promoted
-	stage('Build Probes') {
-		steps {
-			build job: 'sysdig-probe-builder', parameters: [string(name: 'RELEASE_NUMBER', value: "${params.RELEASE_VERSION}"), string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')]
-		}
-		post {
-			success {
-				slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Probes successfully built for RC. Note: Probes for this release will not be rebuilt, even if probe job is rerun.", tokenCredentialId: 'slack'
-			}
-			failure {
-				slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release failed to build probes. Aborting release. Please contact dev agent team, as this is currently an unhandled exception.", tokenCredentialId: 'slack'
-			}
-		}
-	}
+    // kick off the probe builder with the correct version. This does not update
+    // the default of that job, so we will keep building current GA release until
+    // this one is promoted
+    stage('Build Probes') {
+        steps {
+            build job: 'sysdig-probe-builder', parameters: [string(name: 'RELEASE_NUMBER', value: "${params.RELEASE_VERSION}"), string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')]
+        }
+        post {
+            success {
+                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Probes successfully built for RC. Note: Probes for this release will not be rebuilt, even if probe job is rerun.", tokenCredentialId: 'slack'
+            }
+            failure {
+                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release failed to build probes. Aborting release. Please contact dev agent team, as this is currently an unhandled exception.", tokenCredentialId: 'slack'
+            }
+        }
+    }
 
-	stage('Build Sonar') {
-		steps {
-			build job:'agent-run-builder',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION"), string(name:'TARGET', value:'sonar')]
-		}
-	}
+    stage('Build Sonar') {
+        steps {
+            build job:'agent-run-builder',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION"), string(name:'TARGET', value:'sonar')]
+        }
+    }
 
 
-	// Runs QA level tests
-	/* SMAGENt-2057
-	stage('Release Test') {
-	    agent {
-			docker {
-				image 'agent-qa-tools:0.1'
-				alwaysPull true
-				registryUrl 'https://docker.internal.sysdig.com'
-				registryCredentialsId 'jenkins-artifactory'
-				args '--shm-size="8G" -e TF_IN_AUTOMATION="true" -e AWS_DEFAULT_REGION=us-east-1'
-				label 'builder-backend-j8'
-			}
-	    }
-	    steps {
-			checkout([$class: 'GitSCM', branches: [[name: 'agent_docker_maniacal_longevity']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/automation']]])
-			withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'qa-draios-dev-account', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
-				sh "cd agent-automation; ./jenkins-runner.sh --tests-to-run test/container_runtimes/docker/test_docker_longevity.py --log-dir . --agent-image sysdig/agent --agent-version '${params.RELEASE_VERSION}-rc' --collector-url ${params.COLLECTOR_URL} --frontend-url ${params.FRONTEND_URL} --access-key ${params.AGENT_ACCESS_KEY}"
-			}
-	    }
-	}
+    // Runs QA level tests
+    /* SMAGENt-2057
+    stage('Release Test') {
+        agent {
+            docker {
+                image 'agent-qa-tools:0.1'
+                alwaysPull true
+                registryUrl 'https://docker.internal.sysdig.com'
+                registryCredentialsId 'jenkins-artifactory'
+                args '--shm-size="8G" -e TF_IN_AUTOMATION="true" -e AWS_DEFAULT_REGION=us-east-1'
+                label 'builder-backend-j8'
+            }
+        }
+        steps {
+            checkout([$class: 'GitSCM', branches: [[name: 'agent_docker_maniacal_longevity']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/automation']]])
+            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'qa-draios-dev-account', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+                sh "cd agent-automation; ./jenkins-runner.sh --tests-to-run test/container_runtimes/docker/test_docker_longevity.py --log-dir . --agent-image sysdig/agent --agent-version '${params.RELEASE_VERSION}-rc' --collector-url ${params.COLLECTOR_URL} --frontend-url ${params.FRONTEND_URL} --access-key ${params.AGENT_ACCESS_KEY}"
+            }
+        }
+    }
 */
     stage('Wait for Commit') {
         stages {
-			stage('Wait for QA') {
-				steps {
-					// Adam Roberts, Bala Kanaraj
-					slackSend channel: '@UEJ2F1PCJ,@UAR86L8BU', message: "Agent release ${params.RELEASE_VERSION} is ready for testing. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
-					input message: 'QA Complete', ok: 'Approve Release'
-				}
-			}
+            stage('Wait for QA') {
+                steps {
+                    // Adam Roberts, Bala Kanaraj
+                    slackSend channel: '@UEJ2F1PCJ,@UAR86L8BU', message: "Agent release ${params.RELEASE_VERSION} is ready for testing. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
+                    input message: 'QA Complete', ok: 'Approve Release'
+                }
+            }
 
-			stage('Wait for Docs') {
-				steps {
-					slackSend channel: '#docs', message: "Agent release ${params.RELEASE_VERSION} is awaiting docs approval. When docs are ready for release, go to ${env.BUILD_URL}input and confirm. NOTE: The release does not become public at this point. Another notification will be made when the release has promoted and release notes should be posted.", tokenCredentialId: 'slack'
-					input message: 'Docs Ready', ok: 'Confirm'
-				}
-			}
+            stage('Wait for Docs') {
+                steps {
+                    slackSend channel: '#docs', message: "Agent release ${params.RELEASE_VERSION} is awaiting docs approval. When docs are ready for release, go to ${env.BUILD_URL}input and confirm. NOTE: The release does not become public at this point. Another notification will be made when the release has promoted and release notes should be posted.", tokenCredentialId: 'slack'
+                    input message: 'Docs Ready', ok: 'Confirm'
+                }
+            }
 
             stage ('Wait for Final Go') {
                  parallel {
@@ -354,24 +371,24 @@ pipeline {
     }
 
 
-	stage('Promote') {
-		steps {
-			build job:'agent-promote',parameters:[string(name:'RELEASE_VERSION', value:"${params.RELEASE_VERSION}")]
-		}
-	}
+    stage('Promote') {
+        steps {
+            build job:'agent-promote',parameters:[string(name:'RELEASE_VERSION', value:"${params.RELEASE_VERSION}")]
+        }
+    }
 
-	}
+    }
 
-	post {
-		always {
-			cleanWs deleteDirs: true, notFailBuild: true
-		}
-		success {
-			slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job success!", tokenCredentialId: 'slack'
-		}
-		failure {
-			slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job failure.", tokenCredentialId: 'slack'
-		}
-	}
+    post {
+        always {
+            cleanWs deleteDirs: true, notFailBuild: true
+        }
+        success {
+            slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job success!", tokenCredentialId: 'slack'
+        }
+        failure {
+            slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job failure.", tokenCredentialId: 'slack'
+        }
+    }
 }
 

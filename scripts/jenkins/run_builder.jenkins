@@ -28,7 +28,7 @@ pipeline {
 						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
 						CONTAINER_NAME=$(echo "$TARGET" | tr -dc 'a-z0-9')-$BUILD_NUMBER
 						docker rm -f "$CONTAINER_NAME" || true
-						timeout 3600 docker run -i --rm --name "$CONTAINER_NAME" -e MAKE_JOBS=$(nproc) -v $PWD:/draios:ro quay.io/sysdig/agent-builder:$BUILDER_VERSION $TARGET
+						timeout 18000 docker run -i --rm --name "$CONTAINER_NAME" -e MAKE_JOBS=$(nproc) -v $PWD:/draios:ro quay.io/sysdig/agent-builder:$BUILDER_VERSION $TARGET
 						docker rm -f "$CONTAINER_NAME" || true
 					'''
 				}

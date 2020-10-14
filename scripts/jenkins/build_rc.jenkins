@@ -1,7 +1,7 @@
 pipeline {
-	agent { label 'agent-docker-builder' }
-	stages {
-		stage('Check out dependencies') {
+    agent { label 'agent-docker-builder' }
+    stages {
+        stage('Check out dependencies') {
            steps {
                 dir('agent') {
                     checkout scm
@@ -20,44 +20,47 @@ pipeline {
                     sh "git checkout ${params.PROTOREPO_BRANCH}"
                 }
             }
-		}
-		stage('Build Release') {
-			steps {
-				withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME'), usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
-					sh label: '', script: '''
-						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
-						AGENT_BUILD_COMMIT="`git -C agent rev-parse --short HEAD`"
-						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
-						sudo rm -rf $PWD/out
-						docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_VERSION=$RELEASE_VERSION -e AGENT_BUILD_COMMIT -e AGENT_BUILD_DATE="`date`" -v $PWD:/draios:ro -v $PWD/out:/out -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/pipcache:/root/.cache quay.io/sysdig/agent-builder:$BUILDER_VERSION release
-					'''
-				}
-			}
-		}
-		stage('Upload') {
-			when {
+        }
+        stage('Build Release') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME'), usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+                    sh label: '', script: '''
+                        docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+                        AGENT_BUILD_COMMIT="`git -C agent rev-parse --short HEAD`"
+                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
+                        sudo rm -rf $PWD/out
+                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_VERSION=$RELEASE_VERSION -e AGENT_BUILD_COMMIT -e AGENT_BUILD_DATE="`date`" -v $PWD:/draios:ro -v $PWD/out:/out -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/pipcache:/root/.cache quay.io/sysdig/agent-builder:$BUILDER_VERSION release
+                    '''
+                }
+            }
+        }
+        stage('Upload') {
+            when {
                 expression { params.UPLOAD == true }
             }
-			steps {
-				withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
-					sh label: '', script: '''
-						docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-						TARGET=dev
-						if [ $PUBLIC_RELEASE = true ]
-						then
-							TARGET=rc
-						fi
-						sudo rm -rf $PWD/repo
-						sudo agent/scripts/jenkins/upload-agent-release $TARGET $PWD/out $PWD/repo "s3://download.draios.com" $RELEASE_VERSION
-					'''
-				}
-			}
-		}
-	}
-	post {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                    sh label: '', script: '''
+                        docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+                        TARGET=dev
+                        if [ $PUBLIC_RELEASE = true ]
+                        then
+                            TARGET=rc
+                        fi
+                        sudo rm -rf $PWD/repo
+                        sudo agent/scripts/jenkins/upload-agent-release $TARGET $PWD/out $PWD/repo "s3://download.draios.com" $RELEASE_VERSION
+                    '''
+                }
+            }
+        }
+    }
+    post {
         always {
-			sudo rm -rf ./build
-			docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+            sh label: '', script: '''
+                sudo rm -rf ./build
+                docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+                docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+            '''
             cleanWs deleteDirs: true, notFailBuild: true
         }
     }
