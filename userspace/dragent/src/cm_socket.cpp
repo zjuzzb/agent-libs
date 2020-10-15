@@ -740,6 +740,7 @@ int64_t cm_poco_secure_socket::send(const uint8_t* buf, uint32_t len)
 		}
 		catch (const Poco::IOException& e)
 		{
+			LOG_DEBUG("Got IOException %s", e.displayText().c_str());
 			// When the underlying socket times out without sending data, this
 			// results in a TimeoutException for SSL connections and EWOULDBLOCK
 			// for non-SSL connections, so we'll treat them the same.
@@ -753,12 +754,17 @@ int64_t cm_poco_secure_socket::send(const uint8_t* buf, uint32_t len)
 					          len,
 					          c_transmitbuffer_size->get_value(),
 					          e.displayText().c_str());
-					return -e.code();
+					return -EINVAL;
 				}
 				else
 				{
-					throw;
+					return -ETIMEDOUT;
 				}
+			}
+			else
+			{
+				LOG_DEBUG("Rethrowing IOException to be handled by connection manager");
+				throw;
 			}
 		}
 

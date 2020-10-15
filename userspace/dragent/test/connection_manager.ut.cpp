@@ -1943,6 +1943,11 @@ TEST_F(connection_manager_fixture, string_append_test)
 	}
 }
 
+//
+// End HTTP proxy tests
+//
+
+
 // I wrote this test to make sure the index value gets propagated through
 TEST_F(connection_manager_fixture, aggregator_integration_test)
 {

@@ -1176,6 +1176,7 @@ int32_t connection_manager::send_bytes(uint8_t* buf, uint32_t len)
 	if (res == -ETIMEDOUT && heartbeat()) // Handle timeout
 	{
 		// Try again
+		LOG_WARNING("Send operation timed out. Retrying...");
 		res = m_socket->send(buf, len);
 		if (res == -ETIMEDOUT)
 		{
@@ -1303,6 +1304,21 @@ bool connection_manager::transmit_buffer(uint64_t now,
 			LOG_WARNING("Sending data took %ld ms", elapsed.count());
 		}
 
+		if (res == -ETIMEDOUT)
+		{
+			LOG_WARNING("Transmission timed out (took longer than %u ms). If this "
+			            "occurs frequently, increase socket_timeout setting in "
+			            "the agent configuration. Attempting reconnect.",
+			            (uint32_t)m_socket->get_send_recv_timeout().count());
+			// This code used to fall out of this function and retry the send later.
+			// However, this will not work anymore as messages are transmitted across
+			// two send operations and if the second one timed out, retrying would
+			// erroneously send the header twice. Since we've already retried once in
+			// send_bytes(), at this point we'll just drop the connection and hope
+			// it works better on reconnect.
+			disconnect();
+		}
+
 		if (res < 0)
 		{
 			return false;
@@ -1336,17 +1352,8 @@ bool connection_manager::transmit_buffer(uint64_t now,
 	}
 	catch (const Poco::TimeoutException& e)
 	{
-		// If we get here, we've already retried the send once.
-		LOG_WARNING("Transmission timed out (took longer than %u ms). If this "
-		            "occurs frequently, increase socket_timeout setting in "
-		            "the agent configuration. Attempting reconnect.",
-		            (uint32_t)m_socket->get_send_recv_timeout().count());
-		// This code used to fall out of this function and retry the send later.
-		// However, this will not work anymore as messages are transmitted across
-		// two send operations and if the second one timed out, retrying would
-		// erroneously send the header twice. Since we've already retried once in
-		// send_bytes(), at this point we'll just drop the connection and hope
-		// it works better on reconnect.
+		// We should have handled this further up the chain...
+		LOG_ERROR("transmit: Internal error: received unexpected Poco timeout");
 		disconnect();
 	}
 
@@ -1680,7 +1687,19 @@ void connection_manager::on_metrics_send(dragent_protocol_header_v5& header,
 	while(m_messages_awaiting_ack.size() >= c_unacked_message_slots.get_value())
 	{
 		// The unacked list is full. Drop the oldest message from the list.
+		unacked_message& msg = m_messages_awaiting_ack.front();
+		LOG_WARNING("Did not receive ACK for message %llu, %llu",
+		            (long long unsigned)msg.header.generation,
+		            (long long unsigned)msg.header.sequence);
 		m_messages_awaiting_ack.pop_front();
+	}
+
+	if (m_messages_awaiting_ack.size() > 0)
+	{
+		unacked_message& msg = m_messages_awaiting_ack.front();
+		LOG_INFO("Message %llu, %llu has not seen an ACK yet",
+		         (long long unsigned)msg.header.generation,
+	             (long long unsigned)msg.header.sequence);
 	}
 
 	// Store it
