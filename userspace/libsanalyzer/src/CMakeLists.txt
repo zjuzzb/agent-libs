@@ -165,6 +165,7 @@ set(SANALYZER_SOURCES
     connectinfo.cpp
     config.cpp
     container_config.cpp
+    container_start_count.cpp
     container_events/docker.cpp
     cpu_profiler.cpp
     custom_container.cpp

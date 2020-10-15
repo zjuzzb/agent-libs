@@ -98,6 +98,7 @@ class sinsp_ipv4_connection_manager;
 class sinsp_connection_aggregator;
 class sinsp_container_manager;
 class promscrape;
+class container_start_count;
 
 //
 // Aggregated connection table: entry and hashing infrastructure
@@ -1445,6 +1446,8 @@ public:
 	flush_queue* m_flush_queue;
 
 	std::shared_ptr<promscrape> m_promscrape;
+
+	std::unique_ptr<container_start_count> m_container_count;
 
 	//
 	// Please do not add any friends.

@@ -78,6 +78,7 @@
 
 #include "container_events/containerd.h"
 #include "container_events/docker.h"
+#include "container_start_count.h"
 #else  // CYGWING_AGENT
 #include "dragent_win_hal_public.h"
 #include "proc_filter.h"
@@ -376,6 +377,19 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	//
 	m_fd_listener = new sinsp_analyzer_fd_listener(inspector, this, m_falco_baseliner);
 	inspector->m_parser->m_fd_listener = m_fd_listener;
+
+	//
+	// container start count
+	//
+	if(container_start_count::c_enable_container_start_count.get_value()) {
+		m_container_count = make_unique<container_start_count>(std::bind(&sinsp_configuration::get_machine_id,
+										 m_configuration));
+		inspector->m_container_manager.subscribe_on_new_container(
+			[this](const sinsp_container_info& container_info, sinsp_threadinfo* tinfo) {
+				this->m_container_count->on_new_container(container_info, tinfo);
+			});
+	}
+
 #ifndef _WIN32
 	m_jmx_sampling = 1;
 #endif

@@ -77,6 +77,7 @@ list(
     internal_metrics.ut.cpp
     k8s_pod_store.ut.cpp
     k8s_hpa_store.ut.cpp
+    container_start_count.ut.cpp
 )
 
 # We test both the libanalyzer itself and its test helpers in this library
