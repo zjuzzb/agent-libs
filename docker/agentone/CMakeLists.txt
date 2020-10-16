@@ -1,12 +1,11 @@
 foreach(repo dev stable rc)
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${repo})
 
-    add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${repo}/Dockerfile
-        COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile
-                ${CMAKE_CURRENT_BINARY_DIR}/${repo}/Dockerfile
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile
-    )
+	add_custom_command(
+		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${repo}/Dockerfile
+		COMMAND sed 's/SYSDIG_REPOSITORY PLACEHOLDER_SEE_CMAKE_FILE/SYSDIG_REPOSITORY ${repo}/g' ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile > ${CMAKE_CURRENT_BINARY_DIR}/${repo}/Dockerfile
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile
+	)
 
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${repo}/agentone-entrypoint.sh
