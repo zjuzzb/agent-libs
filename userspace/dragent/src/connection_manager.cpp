@@ -1689,8 +1689,8 @@ void connection_manager::on_metrics_send(dragent_protocol_header_v5& header,
 		// The unacked list is full. Drop the oldest message from the list.
 		unacked_message& msg = m_messages_awaiting_ack.front();
 		LOG_WARNING("Did not receive ACK for message %llu, %llu",
-		            (long long unsigned)msg.header.generation,
-		            (long long unsigned)msg.header.sequence);
+		            (long long unsigned)ntohll(msg.header.generation),
+		            (long long unsigned)ntohll(msg.header.sequence));
 		m_messages_awaiting_ack.pop_front();
 	}
 
@@ -1698,8 +1698,8 @@ void connection_manager::on_metrics_send(dragent_protocol_header_v5& header,
 	{
 		unacked_message& msg = m_messages_awaiting_ack.front();
 		LOG_INFO("Message %llu, %llu has not seen an ACK yet",
-		         (long long unsigned)msg.header.generation,
-	             (long long unsigned)msg.header.sequence);
+		         (long long unsigned)ntohll(msg.header.generation),
+	             (long long unsigned)ntohll(msg.header.sequence));
 	}
 
 	// Store it
