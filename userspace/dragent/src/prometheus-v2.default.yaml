@@ -8,11 +8,11 @@ scrape_configs:
   - role: pod
   relabel_configs:
     # Trying to ensure we only scrape local targets
-    # We need the wildcard at the end because in AWS the node name is the FQDN,
-    # whereas in Azure the node name is the base host name
+    # __HOSTIPS__ is replaced by promscrape with a regex list of the IP addresses
+    # of all the active network interfaces on the host
   - action: keep
-    source_labels: [__meta_kubernetes_pod_node_name]
-    regex: __HOSTNAME__.*
+    source_labels: [__meta_kubernetes_pod_host_ip]
+    regex: __HOSTIPS__
   - action: keep
     source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
     regex: true
