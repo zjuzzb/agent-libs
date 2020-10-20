@@ -96,15 +96,17 @@ void k8s_hpa_store::connect_hpa_to_target(const state_key_t& key, state_t& state
 			ASSERT(pos != state.end());
 			if(pos != state.end())
 			{
-				draiosproto::congroup_uid* child =  cg.mutable_children()->Add();
-				child->set_kind(pos->first.first);
-				child->set_id(pos->first.second);
-				LOG_DEBUG("connected hpa <%s,%s> with child <%s,%s>"
-					  , cg.uid().kind().c_str()
-					  , cg.uid().id().c_str()
-					  , child->kind().c_str()
-					  , child->id().c_str());
-
+				if(!cg_has_child(cg, k8s_hpa_store::kind_and_name_t(pos->first.first, pos->first.second)))
+				{
+					draiosproto::congroup_uid* child = cg.mutable_children()->Add();
+					child->set_kind(pos->first.first);
+					child->set_id(pos->first.second);
+					LOG_DEBUG("connected hpa <%s,%s> with child <%s,%s>",
+					          cg.uid().kind().c_str(),
+					          cg.uid().id().c_str(),
+					          child->kind().c_str(),
+					          child->id().c_str());
+				}
 			}
 			else
 			{
@@ -154,6 +156,18 @@ k8s_hpa_store::uid_t k8s_hpa_store::lookup_for_waiting_hpa(const draiosproto::co
 			  , cg.uid().id().c_str());
 	}
 	return res;
+}
+
+bool k8s_hpa_store::cg_has_child(const draiosproto::container_group& cg, const k8s_hpa_store::kind_and_name_t& uid) const
+{
+	for(const auto& child : cg.children())
+	{
+		if(k8s_hpa_store::kind_and_name_t(child.kind(), child.id()) == uid)
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 void k8s_hpa_store::insert_object_if_eligible(const draiosproto::container_group& cg)

@@ -361,19 +361,14 @@ void k8s_pod_store::handle_add_pod(draiosproto::container_group& cg, state_t& st
 	std::string srv_id = search_for_pod_parent_service(id);
 	if(!srv_id.empty())
 	{
-		// That's a match
 		LOG_DEBUG("Found service %s for pod %s", srv_id.c_str(), id.c_str());
-		draiosproto::congroup_uid* parent = cg.mutable_parents()->Add();
-		parent->set_kind(SERVICE_KIND);
-		parent->set_id(srv_id);
+		set_link_or_warn(*cg.mutable_parents(), {SERVICE_KIND, srv_id});
 
 		auto srv_it = state.find(std::make_pair(SERVICE_KIND, srv_id));
 		if(srv_it != state.end())
 		{
 			draiosproto::container_group& srv_cg = *srv_it->second.get();
-			auto child = srv_cg.mutable_children()->Add();
-			child->set_kind(POD_KIND);
-			child->set_id(id);
+			set_link_or_warn(*srv_cg.mutable_children(), {POD_KIND, id});
 		}
 
 	}
@@ -386,9 +381,7 @@ void k8s_pod_store::handle_add_pod(draiosproto::container_group& cg, state_t& st
 	if(pos != m_nodes.end())
 	{
 		LOG_DEBUG("Adding node parent %s to pod %s", pod_node_name.c_str(), id.c_str());
-		auto parent = cg.mutable_parents()->Add();
-		parent->set_id(pos->second);
-		parent->set_kind(NODE_KIND);
+		set_link_or_warn(*cg.mutable_parents(), {NODE_KIND, pos->second});
 	}
 	else
 	{
@@ -423,15 +416,12 @@ void k8s_pod_store::handle_add_service(draiosproto::container_group& cg, state_t
 			else
 			{
 				draiosproto::container_group& srv_pod = *it->second.get();
-				auto parent = srv_pod.mutable_parents()->Add();
-				parent->set_id(id);
-				parent->set_kind(SERVICE_KIND);
-				LOG_DEBUG("Add service parent %s to child pod %s", id.c_str(), pod_id.c_str());
+				LOG_DEBUG("Adding service parent %s to child pod %s", id.c_str(), pod_id.c_str());
+				set_link_or_warn(*srv_pod.mutable_parents(), {SERVICE_KIND, id});
 
-				draiosproto::congroup_uid* child = cg.mutable_children()->Add();
-				child->set_kind(POD_KIND);
-				child->set_id(pod_id);
-				LOG_DEBUG("Add pod child %s to service %s", pod_id.c_str(), id.c_str());
+				LOG_DEBUG("Adding pod child %s to service %s", pod_id.c_str(), id.c_str());
+				set_link_or_warn(*cg.mutable_children(), {POD_KIND, pod_id});
+
 			}
 		}
 	}
@@ -454,10 +444,11 @@ void k8s_pod_store::handle_add_node(draiosproto::container_group& cg, state_t& s
 			else
 			{
 				draiosproto::container_group& pod_cg = *it->second.get();
-				auto parent = pod_cg.mutable_parents()->Add();
-				parent->set_id(cg.uid().id());
-				parent->set_kind(NODE_KIND);
-				LOG_DEBUG("Add node %s to pod %s", cg.uid().id().c_str(), pod_cg.uid().id().c_str());
+				LOG_DEBUG("Added node %s to pod %s", cg.uid().id().c_str(), pod_cg.uid().id().c_str());
+				set_link_or_warn(*pod_cg.mutable_parents(), {NODE_KIND, cg.uid().id()});
+
+				LOG_DEBUG("Adding pod %s to node %s", pod_cg.uid().id().c_str(), cg.uid().id().c_str());
+				set_link_or_warn(*cg.mutable_children(), {k8s_pod_store::POD_KIND, pod_cg.uid().id()});
 			}
 		}
 	}

@@ -70,6 +70,7 @@ private:
 	void set_hpa_waiting_for_target(const uid_t& hpa_uid, kind_and_name_t&& target);
 	bool has_hpa_waiting_for_target() const;
 	uid_t lookup_for_waiting_hpa(const draiosproto::container_group& cg);
+	bool cg_has_child(const draiosproto::container_group& cg, const kind_and_name_t& uid) const;
 
 	static std::pair<std::string, std::string> get_hpa_target_kind_and_name(const draiosproto::container_group& cg);
 

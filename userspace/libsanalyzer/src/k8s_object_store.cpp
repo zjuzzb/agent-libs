@@ -52,6 +52,39 @@ k8s_object_store::kind_and_name_t k8s_object_store::get_cg_kind_and_name(const d
 	return ret;
 }
 
+bool k8s_object_store::repeated_field_has_link(const google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& rf, const state_key_t& new_link) const
+{
+	for(const auto& el : rf)
+	{
+		if(std::make_pair(el.kind(), el.id()) == new_link)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void k8s_object_store::set_link_or_warn(
+	google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& rf
+	, const k8s_object_store::state_key_t& new_link) const
+{
+	bool already_set = repeated_field_has_link(rf, new_link);
+	ASSERT(!already_set);
+
+	if(!already_set)
+	{
+		auto* nl = rf.Add();
+		nl->set_kind(new_link.first);
+		nl->set_id(new_link.second);
+	}
+	else
+	{
+		LOG_WARNING("link to <%s,%s> already set",
+			    new_link.first.c_str(),
+			    new_link.second.c_str());
+	}
+}
+
 const std::string k8s_object_store::DEPLOYMENT_NAME_TAG = "kubernetes.deployment.name";
 const std::string k8s_object_store::REPLICASET_NAME_TAG = "kubernetes.replicaSet.name";
 const std::string k8s_object_store::REPLICATION_CONTROLLER_NAME_TAG = "kubernetes.replicationController.name";

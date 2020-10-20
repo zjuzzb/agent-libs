@@ -1470,6 +1470,10 @@ void infrastructure_state::remove(infrastructure_state::uid_t& key, bool update)
 	// Remove the group itself
 	m_state.erase(key);
 
+	// Remove the objects from m_parents. This is
+	// the only place where elements are taken off from this structure.
+	m_parents.erase(key);
+
 	// Keep rate metric history if this object is just getting updated
 	if (!update)
 	{

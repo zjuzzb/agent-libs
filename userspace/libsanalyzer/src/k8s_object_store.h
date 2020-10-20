@@ -77,4 +77,12 @@ protected:
 
 	static std::pair<bool, state_t::iterator> has_key(const state_key_t& key, state_t& state);
 	static kind_and_name_t get_cg_kind_and_name(const draiosproto::container_group& cg);
+
+	// This function is ment to be used for setting parents or children.
+	// It checks if the links is already in place and in this case emit a warning message
+	// avoiding to set duplicated elements in the repeated field
+	void set_link_or_warn(google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& rf, const state_key_t& new_link) const;
+
+private:
+	bool repeated_field_has_link(const google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& rf, const state_key_t& new_link) const;
 };
