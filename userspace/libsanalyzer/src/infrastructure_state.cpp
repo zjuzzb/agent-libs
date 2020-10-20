@@ -455,6 +455,12 @@ void infrastructure_state::init(const std::string& machine_id, const std::string
 	(*obj->mutable_tags())[string("host.hostName")] = sinsp_gethostname();
 	(*obj->mutable_tags())[string("host.mac")] = machine_id;
 
+	const string &k8s_cluster_name = get_k8s_cluster_name();
+	if (!k8s_cluster_name.empty())
+	{
+		(*obj->mutable_tags())[string("kubernetes.cluster.name")] = k8s_cluster_name;
+	}
+
 	std::vector<std::string> tags = sinsp_split(host_tags, ',');
 
 	std::string tag_prefix = "agent.tag.";

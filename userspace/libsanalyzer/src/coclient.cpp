@@ -337,6 +337,9 @@ void coclient::perform_docker_cmd(sdc_internal::container_cmd_type cmd,
 	docker_cmd.set_cmd(cmd);
 	docker_cmd.set_container_id(container_id);
 
+	LOG_DEBUG("Performing docker command %s",
+		  docker_cmd.DebugString().c_str());
+
 	prepare(&docker_cmd, sdc_internal::DOCKER_COMMAND, response_cb);
 }
 
@@ -350,6 +353,9 @@ void coclient::perform_cri_cmd(const string& cri_socket_path,
 	cri_cmd.set_cmd(cmd);
 	cri_cmd.set_container_id(container_id);
 	cri_cmd.set_cri_socket_path(cri_socket_path);
+
+	LOG_DEBUG("Performing cri command %s",
+		  cri_cmd.DebugString().c_str());
 
 	prepare(&cri_cmd, sdc_internal::CRI_COMMAND, response_cb);
 }

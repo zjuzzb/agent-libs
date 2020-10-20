@@ -402,6 +402,17 @@ policy_list {
     op: EQ
   }
 }
+policy_list {
+  id: 60
+  name: "Scoped to cluster name=my-cluster"
+  rule_names: "read sample-sensitive-file-5.txt"
+  enabled: 1
+  scope_predicates {
+    key: "kubernetes.cluster.name"
+    values: "my-cluster"
+    op: EQ
+  }
+}
 falco_group {
   default_files {
     tag: "0.1.1test"

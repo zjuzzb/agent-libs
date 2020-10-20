@@ -245,21 +245,22 @@ protected:
 		// dragent_configuration::init() takes an app, but I
 		// don't see it used anywhere.
 		m_configuration.init(NULL, false);
-		if (!fake_cri_socket.empty())
-		{
-			// This simulates setting a custom CRI socket path into the dragent.yaml file
-			// It needs to be performed after the init call since the init resets all settings from
-			// the actual file on disk
-			const_cast<type_config<std::string>*>(c_cri_socket_path.get())->set(fake_cri_socket);
-		}
-
 		m_configuration.m_capture_dragent_events = true;
 
-		// so long as this is in scope when we initialize the feature manager, we're
-		// good. It's annoying that we can't easily keep it in scope for the whole test,
-		// but such is life.
-		test_helpers::scoped_config<bool> memdump("memdump.enabled", false);
-		test_helpers::scoped_config<bool> secure("security.enabled", true);
+		std::ostringstream os;
+		os << "security:" << std::endl <<
+			"  enabled: true" << std::endl <<
+			"memdump:" << std::endl <<
+			"  enabled: true" << std::endl;
+
+		if (!fake_cri_socket.empty())
+		{
+			os << "cri:" << std::endl <<
+				"  socket_path: " << fake_cri_socket << std::endl;
+		}
+
+		configuration_manager::instance().init_config(os.str());
+		feature_manager::instance().initialize();
 
 		m_configuration.m_max_sysdig_captures = 10;
 		security_config::instance().set_policies_file(
@@ -313,6 +314,12 @@ protected:
 		m_inspector->register_external_event_processor(*m_analyzer);
 
 		m_analyzer->get_configuration()->set_machine_id(m_configuration.machine_id());
+
+		if (m_k8s_cluster_name != "")
+		{
+			m_analyzer->get_configuration()->set_k8s_cluster_name(m_k8s_cluster_name);
+		}
+
 		m_analyzer->set_containers_labels_max_len(m_configuration.m_containers_labels_max_len);
 
 		m_inspector->set_debug_mode(true);
@@ -360,6 +367,7 @@ protected:
 		createFile("/tmp/sample-sensitive-file-2.txt");
 		createFile("/tmp/sample-sensitive-file-3.txt");
 		createFile("/tmp/sample-sensitive-file-4.txt");
+		createFile("/tmp/sample-sensitive-file-5.txt");
 		createFile("/tmp/matchlist-order.txt");
 		createFile("/tmp/matchlist-order-2.txt");
 		createFile("/tmp/overall-order-1.txt");
@@ -407,6 +415,7 @@ protected:
 		remove("/tmp/sample-sensitive-file-2.txt");
 		remove("/tmp/sample-sensitive-file-3.txt");
 		remove("/tmp/sample-sensitive-file-4.txt");
+		remove("/tmp/sample-sensitive-file-5.txt");
 		remove("/tmp/matchlist-order.txt");
 		remove("/tmp/matchlist-order-2.txt");
 		remove("/tmp/overall-order-1.txt");
@@ -872,6 +881,7 @@ protected:
 		check_expected_internal_metrics(metrics);
 	}
 
+	string m_k8s_cluster_name;
 	sinsp_analyzer::flush_queue m_flush_queue;
 	protocol_queue m_transmit_queue;
 	bool m_load_v1_policies = true;
@@ -965,6 +975,24 @@ protected:
 		    "./resources/fake_cri",
 		    {"unix://" + fake_cri_socket, "resources/fake_cri_crio", "cri-o"}));
 
+		// Wait for up to 30 seconds for the cri socket to exist
+		bool sock_exists = false;
+		for (int i = 0; i < 30; i++)
+		{
+			g_log->debug("Waiting for cri socket to appear " + std::to_string(i));
+			sleep(1);
+			std::string actual_path = scap_get_host_root() + fake_cri_socket;
+			struct stat s = {};
+			if (stat(actual_path.c_str(), &s) == 0 &&
+			    (s.st_mode & S_IFMT) == S_IFSOCK)
+			{
+				sock_exists = true;
+				break;
+			}
+		}
+
+		ASSERT_TRUE(sock_exists);
+
 		m_enable_k8s_audit_server = true;
 		SetUpTest(false, fake_cri_socket);
 		WaitForK8sAuditServer();
@@ -1030,6 +1058,20 @@ public:
 		initFiles();
 
 		m_load_v1_policies = false;
+
+		SetUpTest();
+	}
+};
+
+class security_policies_v2_test_cluster_name : public security_policies_test
+{
+public:
+	virtual void SetUp()
+	{
+		initFiles();
+
+		m_load_v1_policies = false;
+		m_k8s_cluster_name = "my-cluster";
 
 		SetUpTest();
 	}
@@ -3305,3 +3347,98 @@ TEST_F(security_policies_v2_test, policy_with_unknown_action)
 
 	check_expected_internal_metrics(metrics);
 }
+
+// This will not find any events as the cluster name has not been set
+TEST_F(security_policies_v2_test, policy_scoped_k8s_cluster_name_host_nomatch)
+{
+	int fd = open("/tmp/sample-sensitive-file-5.txt", O_RDWR);
+	close(fd);
+
+	unique_ptr<::google::protobuf::Message> msg = NULL;
+	draiosproto::message_type mtype;
+	get_next_msg(5000, mtype, msg);
+	ASSERT_TRUE((msg == NULL));
+}
+
+
+TEST_F(security_policies_v2_test_cluster_name, policy_scoped_k8s_cluster_name_host_match)
+{
+	int fd = open("/tmp/sample-sensitive-file-5.txt", O_RDWR);
+	close(fd);
+
+	std::vector<security_policies_test::expected_policy_event> expected = {
+	    {60,
+	     draiosproto::policy_type::PTYPE_FILESYSTEM,
+	     {{"fd.name", "/tmp/sample-sensitive-file-5.txt"},
+	      {"evt.type", "open"},
+	      {"proc.name", "tests"}}}};
+
+	check_policy_events(expected);
+
+	std::map<string, security_policies_test::expected_internal_metric> metrics = {
+		{"security.files-readwrite.match.match_items",
+		 {security_policies_test::expected_internal_metric::CMP_EQ, 1}},
+		{"security.files-readwrite.match.not_match_items",
+		 {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+
+	check_expected_internal_metrics(metrics);
+}
+
+static void open_file_5_in_container()
+{
+	dutils_kill_container("sec_ut");
+
+	ASSERT_EQ(
+	    system("docker run -d --name sec_ut --rm busybox:latest sh -c 'while true; do echo '' > "
+	           "/tmp/sample-sensitive-file-5.txt || true; sleep 1; done' > /dev/null 2>&1"),
+	    0);
+
+	sleep(5);
+
+	dutils_kill_container("sec_ut");
+}
+
+// This will not find any events as the cluster name has not been set
+TEST_F(security_policies_v2_test, policy_scoped_k8s_cluster_name_container_nomatch)
+{
+	if (!dutils_check_docker())
+	{
+		return;
+	}
+
+	open_file_5_in_container();
+
+	unique_ptr<::google::protobuf::Message> msg = NULL;
+	draiosproto::message_type mtype;
+	get_next_msg(5000, mtype, msg);
+	ASSERT_TRUE((msg == NULL));
+}
+
+
+TEST_F(security_policies_v2_test_cluster_name, policy_scoped_k8s_cluster_name_container_match)
+{
+	if (!dutils_check_docker())
+	{
+		return;
+	}
+
+	open_file_5_in_container();
+
+	std::vector<security_policies_test::expected_policy_event> expected = {
+	    {60,
+	     draiosproto::policy_type::PTYPE_FILESYSTEM,
+	     {{"fd.name", "/tmp/sample-sensitive-file-5.txt"},
+	      {"evt.type", "open"},
+	      {"proc.name", "sh"}}}};
+
+	check_policy_events(expected);
+
+	std::map<string, security_policies_test::expected_internal_metric> metrics = {
+		{"security.files-readwrite.match.match_items",
+		 {security_policies_test::expected_internal_metric::CMP_GE, 1}},
+		{"security.files-readwrite.match.not_match_items",
+		 {security_policies_test::expected_internal_metric::CMP_EQ, 0}}};
+
+	check_expected_internal_metrics(metrics);
+}
+
