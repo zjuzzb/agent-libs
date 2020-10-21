@@ -110,7 +110,6 @@ func newServiceCongroup(service CoService, setLinks bool) (*draiosproto.Containe
 	addServicePorts(&ret.Ports, service)
 
 	if setLinks {
-		addServicePorts(&ret.Ports, service)
 		AddIngressParents(&ret.Parents, service)
 		AddStatefulSetChildrenFromService(&ret.Children, service)
 		// ref: https://kubernetes.io/docs/concepts/services-networking/service/#services-without-selectors

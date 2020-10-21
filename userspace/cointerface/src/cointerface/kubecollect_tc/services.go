@@ -44,7 +44,6 @@ func newServiceCongroup(service kubecollect.CoService, setLinks bool) (*draiospr
 	addServicePorts(&ret.Ports, service)
 
 	if setLinks {
-		addServicePorts(&ret.Ports, service)
 		kubecollect.AddIngressParents(&ret.Parents, kubecollect.CoService(service))
 		AddStatefulSetChildrenFromService(&ret.Children, service)
 	}
