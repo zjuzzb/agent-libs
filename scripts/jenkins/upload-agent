@@ -199,7 +199,7 @@ function trigger_docker_builds {
 	mkdir -p "${DOCKERFILES_ROOT_DIR}"
 	tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "${BINARIES_DIR}"/release/draios-*-dockerfiles.tar.gz
 
-	for IMAGE_NAME in agent-kmodule agent-kmodule-thin agent-slim agent agent-slim-v2 agentone; do
+	for IMAGE_NAME in agent-kmodule agent-kmodule-thin agent-slim agent agent-slim-v2; do
 
 		pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${IMAGE_NAME}/${REPOSITORY_BASENAME}"
 
