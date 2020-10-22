@@ -86,7 +86,7 @@ public:
 	// the current state
 	virtual bool check_registered_scope(reg_id_t &reg) const = 0;
 
-	virtual std::string get_machine_id() = 0;
+	virtual std::string get_machine_id() const = 0;
 
 	virtual sinsp_container_info::ptr_t get_container_info(const std::string& container_id) = 0;
 };
@@ -128,7 +128,7 @@ public:
 	// the current state
 	bool check_registered_scope(reg_id_t &reg) const override;
 
-	std::string get_machine_id() override;
+	std::string get_machine_id() const override;
 
 	sinsp_container_info::ptr_t get_container_info(const std::string& container_id) override;
 
@@ -159,13 +159,23 @@ public:
 	bool match_name(const std::string &name, std::string *shortname = nullptr) const;
 
 	typedef std::function<int(const draiosproto::container_group *cg, bool &stop)> cg_cb_t;
-	int iterate_parents(const uid_t &uid, cg_cb_t cg_cb) const
+	int iterate_tree(bool scan_up, const uid_t &uid, cg_cb_t cg_cb) const
 	{
 		std::unordered_set<uid_t> visited;
 		bool stop = false;
-		return iterate_parents(uid, cg_cb, stop, visited);
+		return iterate_tree(scan_up, uid, cg_cb, stop, visited);
 	}
-	int iterate_parents(const uid_t &uid, cg_cb_t cg_cb, bool &stop, std::unordered_set<uid_t> &visited) const;
+	int iterate_tree(bool scan_up, const uid_t &uid, cg_cb_t cg_cb, bool &stop, std::unordered_set<uid_t> &visited) const;
+
+	int iterate_parents(const uid_t &uid, cg_cb_t cg_cb) const
+	{
+		return iterate_tree(true, uid, cg_cb);
+	}
+
+	int iterate_children(const uid_t &uid, cg_cb_t cg_cb) const
+	{
+		return iterate_tree(false, uid, cg_cb);
+	}
 
 	typedef std::function<int(const std::pair<std::string, std::string> &tag, bool &stop)> tag_cb_t;
 	int iterate_parent_tags(const uid_t &uid, tag_cb_t tag_cb) const;
@@ -214,6 +224,8 @@ public:
 	const std::string& get_k8s_ssl_certificate();
 	const std::string& get_k8s_ssl_key();
 	std::unordered_set<std::string> test_only_get_container_ids() const;
+
+	bool find_local_ip(const std::string &ip, uid_t *uid) const;
 
 private:
 	FRIEND_TEST(infrastructure_state_test, connect_to_namespace);

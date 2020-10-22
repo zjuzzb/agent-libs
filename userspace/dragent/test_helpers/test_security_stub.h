@@ -33,7 +33,7 @@ public:
 
 	bool check_registered_scope(reg_id_t &reg) const;
 
-	std::string get_machine_id();
+	std::string get_machine_id() const;
 
 	sinsp_container_info::ptr_t get_container_info(const std::string& container_id);
 };

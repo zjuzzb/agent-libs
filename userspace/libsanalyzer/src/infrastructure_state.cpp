@@ -1684,7 +1684,7 @@ bool infrastructure_state::check_registered_scope(reg_id_t& reg) const
 	return it->second.m_scope_match;
 }
 
-std::string infrastructure_state::get_machine_id()
+std::string infrastructure_state::get_machine_id() const
 {
 	return m_machine_id;
 }
@@ -3100,10 +3100,11 @@ void infrastructure_state::add_annotation_filter(const string& ann)
 	m_annotation_filter.emplace(ann);
 }
 
-int infrastructure_state::iterate_parents(const uid_t& uid,
-                                          cg_cb_t cg_cb,
-                                          bool& stop,
-                                          std::unordered_set<uid_t>& visited) const
+int infrastructure_state::iterate_tree(bool scan_up,
+                                       const uid_t& uid,
+                                       cg_cb_t cg_cb,
+                                       bool& stop,
+                                       std::unordered_set<uid_t>& visited) const
 {
 	if (visited.find(uid) != visited.end())
 	{
@@ -3126,7 +3127,7 @@ int infrastructure_state::iterate_parents(const uid_t& uid,
 	int sum = 0;
 	sum = cg_cb(cg, stop);
 
-	for (const auto& p_uid : cg->parents())
+	for (const auto& p_uid : (scan_up ? cg->parents() : cg->children()))
 	{
 		if (stop)
 		{
@@ -3134,7 +3135,7 @@ int infrastructure_state::iterate_parents(const uid_t& uid,
 		}
 		auto pkey = make_pair(p_uid.kind(), p_uid.id());
 
-		sum += iterate_parents(pkey, cg_cb, stop, visited);
+		sum += iterate_tree(scan_up, pkey, cg_cb, stop, visited);
 	}
 	return sum;
 }
@@ -3664,6 +3665,52 @@ std::string infrastructure_state::get_parent_ip_address(const uid_t& uid) const
 
 	iterate_parents(uid, cg_cb);
 	return parent_ip;
+}
+
+bool infrastructure_state::find_local_ip(const std::string &src_ip, uid_t *uid) const
+{
+	if (m_k8s_node_uid.empty())
+	{
+		LOG_DEBUG("Don't have node. Can't determine if IP is local");
+		return false;
+	}
+	auto node_key = make_pair("k8s_node", m_k8s_node_uid);
+	bool found = false;
+	uid_t ip_uid;
+
+	// Lambda to iterate over all node children
+	infrastructure_state::cg_cb_t cg_cb = [&found, &ip_uid, &src_ip](const draiosproto::container_group* cg,
+	                                                   bool& stop) -> int {
+		if ((cg->uid().kind() != "k8s_pod") && (cg->uid().kind() != "k8s_node"))
+			return 0;
+		for (const auto &ip : cg->ip_addresses())
+		{
+			if (!ip.compare(src_ip))
+			{
+				found = true;
+				ip_uid = make_pair(cg->uid().kind(), cg->uid().id());
+				stop = true;
+				return 1;
+			}
+		}
+		return 0;
+	};
+
+	iterate_children(node_key, cg_cb);
+	if (found)
+	{
+		if (uid)
+		{
+			*uid = ip_uid;
+		}
+		LOG_DEBUG("Found ip %s in %s:%s", src_ip.c_str(), ip_uid.first.c_str(),
+			ip_uid.second.c_str());
+	}
+	else
+	{
+		LOG_DEBUG("Didn't find ip %s in node %s", src_ip.c_str(), m_k8s_node_uid.c_str());
+	}
+	return found;
 }
 
 const string infrastructure_state::POD_STATUS_PHASE_LABEL = "kubernetes.pod.label.status.phase";

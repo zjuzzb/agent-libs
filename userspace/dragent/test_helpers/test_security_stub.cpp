@@ -63,7 +63,7 @@ bool test_infrastructure_state::check_registered_scope(reg_id_t &reg) const
 	return true;
 }
 
-std::string test_infrastructure_state::get_machine_id()
+std::string test_infrastructure_state::get_machine_id() const
 {
 	return string("fake-machine-id");
 }

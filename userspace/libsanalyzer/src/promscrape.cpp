@@ -537,6 +537,22 @@ void promscrape::next_th()
 	}
 }
 
+static void set_label_value(google::protobuf::RepeatedPtrField<agent_promscrape::Label> *labels,
+	const string &name, const string &value)
+{
+	for (auto &label : *labels)
+	{
+		if (!label.name().compare(name))
+		{
+			label.set_value(value);
+			return;
+		}
+	}
+	auto new_label = labels->Add();
+	new_label->set_name(name);
+	new_label->set_value(value);
+}
+
 void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 {
 #ifdef DEBUG_PROMSCRAPE
@@ -702,9 +718,71 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 			pod_id.c_str(), container_name.c_str());
 		if (!container_id.empty())
 		{
-			auto new_source_label = result_ptr->add_source_labels();
-			new_source_label->set_name("container_id");
-			new_source_label->set_value(container_id);
+			set_label_value(result_ptr->mutable_source_labels(), "container_id", container_id);
+		}
+	}
+	// If no pod or container were given, we want to know if the source was running on this
+	// host or not
+	if (pod_id.empty() && container_id.empty() && m_infra_state)
+	{
+		string instance;
+		if (!result_ptr->meta_samples().empty())
+		{
+			// Look for instance label only in first meta sample
+			const auto &meta_sample = result_ptr->meta_samples()[0];
+			for (const auto &label : meta_sample.labels())
+			{
+				if (!label.name().compare("instance"))
+				{
+					instance = label.value();
+					break;
+				}
+			}
+		}
+		if (instance.empty() && !result_ptr->samples().empty())
+		{
+			// Now look for instance label only in first sample
+			const auto &sample = result_ptr->samples()[0];
+			for (const auto &label : sample.labels())
+			{
+				if (!label.name().compare("instance"))
+				{
+					instance = label.value();
+					break;
+				}
+			}
+		}
+		if (!instance.empty())
+		{
+			bool local = false;
+			infrastructure_state::uid_t uid;
+			string host = instance.substr(0, instance.find(':'));
+
+			if (!host.compare("localhost") || !host.compare("127.0.0.1"))
+			{
+				local = true;
+			}
+			else if (!host.empty())
+			{
+				local = m_infra_state->find_local_ip(host, &uid);
+			}
+			LOG_DEBUG("job %" PRId64": instance %s is %s", job_id, instance.c_str(), local ? "local" : "not local");
+			if (local)
+			{
+				auto new_source_label = result_ptr->add_source_labels();
+				new_source_label->set_name("host_mac");
+				new_source_label->set_value(m_infra_state->get_machine_id());
+				if (!uid.first.compare("k8s_pod"))
+				{
+					LOG_DEBUG("job %" PRId64": instance %s, set pod_id to %s", job_id,
+						instance.c_str(), uid.second.c_str());
+					set_label_value(result_ptr->mutable_source_labels(), "pod_id", uid.second);
+				}
+			}
+		}
+		else
+		{
+			LOG_DEBUG("job %" PRId64": couldn't find instance label", job_id);
 		}
 	}
 
