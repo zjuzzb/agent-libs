@@ -230,7 +230,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 
 	var pkg kubecollect_common.KubecollectInterface
 
-	if *cmd.ThinCointerface == true {
+	if cmd.GetThinCointerface() == true {
 		pkg = kubecollect_tc.KubecollectClientTc{}
 	} else {
 		pkg = kubecollect.KubecollectClient{}

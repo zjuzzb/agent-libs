@@ -127,6 +127,7 @@ message orchestrator_events_stream_command {
     repeated string pod_status_allowlist = 24;
     required bool thin_cointerface = 25;
     repeated string pod_prefix_for_cidr_retrieval = 26;
+    required bool terminated_pods_enabled = 27;
 }
 
 message orchestrator_attach_user_events_stream_command {

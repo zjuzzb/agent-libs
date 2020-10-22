@@ -4,6 +4,7 @@ import (
 	"cointerface/kubecollect_common"
 	"context"
 	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -301,6 +302,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	// This gets specially added as a tag since we don't have a
 	// better way to report values that can be one of many strings
 	tags["kubernetes.pod.label.status.phase"] = string(pod.Status.Phase)
+	tags["kubernetes.pod.label.status.reason"] = string(pod.Status.Reason)
 	annotations := kubecollect_common.GetAnnotations(pod.ObjectMeta, "kubernetes.pod.")
 	probes := kubecollect_common.GetProbes(pod)
 	inttags := kubecollect_common.MergeInternalTags(annotations, probes)
@@ -529,9 +531,15 @@ func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1m
 	}
 }
 
-func startPodsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
+func startPodsSInformer(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.CoreV1().RESTClient()
-	fSelector, _ := fields.ParseSelector("status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded") // they don't support or operator...
+	var selector string
+	if opts.GetTerminatedPodsEnabled()  {
+		selector = ""
+	} else {
+		selector = "status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded"
+	}
+	fSelector, _ := fields.ParseSelector(selector) // they don't support or operator...
 	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, fSelector)
 	podInf = cache.NewSharedInformer(lw, &v1.Pod{}, kubecollect_common.RsyncInterval)
 

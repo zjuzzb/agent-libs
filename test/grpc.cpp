@@ -70,6 +70,7 @@ sdc_internal::orchestrator_events_stream_command stream_request()
 	req.set_batch_msgs_tick_interval_ms(0);
 	req.set_max_rnd_conn_delay(0);
 	req.set_thin_cointerface(false);
+	req.set_terminated_pods_enabled(false);
 
 	return req;
 }

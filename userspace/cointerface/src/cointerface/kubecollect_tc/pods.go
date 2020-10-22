@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -199,6 +200,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks
 	// This gets specially added as a tag since we don't have a
 	// better way to report values that can be one of many strings
 	tags["kubernetes.pod.label.status.phase"] = string(pod.Status.Phase)
+	tags["kubernetes.pod.label.status.reason"] = string(pod.Status.Reason)
 	annotations := kubecollect_common.GetAnnotations(pod.ObjectMeta, "kubernetes.pod.")
 	probes := kubecollect_common.GetProbes(pod)
 	inttags := kubecollect_common.MergeInternalTags(annotations, probes)
@@ -368,9 +370,16 @@ func resourceVal(rList v1.ResourceList, rName v1.ResourceName) float64 {
 	return v
 }
 
-func startPodWatcher(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
+func startPodWatcher(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	podEvtcHandle = evtc
-	fselector, _ := fields.ParseSelector("status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded")
+
+	var selector string
+	if opts.GetTerminatedPodsEnabled()  {
+		selector = ""
+	} else {
+		selector = "status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded"
+	}
+	fselector, _ := fields.ParseSelector(selector)
 	kubecollect_common.StartWatcher(ctx, kubeClient.CoreV1().RESTClient(), "pods", wg, evtc, fselector, handlePodEvent)
 }
 

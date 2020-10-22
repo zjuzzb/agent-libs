@@ -61,7 +61,7 @@ func startInformers(
 		case "nodes":
 			startNodesSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "pods":
-			startPodsSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			startPodsSInformer(ctx, opts, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "replicasets":
 			startReplicaSetsSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel, filterEmpty)
 		case "replicationcontrollers":

@@ -62,7 +62,7 @@ func startWatcherAndInformers(
 		case "nodes":
 			startNodesSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "pods":
-			startPodWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+			startPodWatcher(ctx, opts, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "replicasets":
 			startReplicaSetWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel, filterEmpty)
 		case "replicationcontrollers":

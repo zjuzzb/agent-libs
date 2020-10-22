@@ -74,6 +74,10 @@ type_config<std::vector<std::string>> infrastructure_state::c_k8s_pod_status_wl(
     {"Evicted", "DeadlineExceeded", "Error", "ContainerCreating", "CrashLoopBackOff", "Pending"},
     "list of aggregate pod status that can be sent to BE",
     "k8s_pod_status_reason_strings");
+type_config<bool> infrastructure_state::c_k8s_terminated_pods_enabled(
+    false,
+    "Enable terminated pods handling",
+    "k8s_terminated_pod_enabled");
 type_config<uint32_t>
     infrastructure_state::c_k8s_event_counts_log_time(0, "", "k8s_event_counts_log_time");
 type_config<std::string> infrastructure_state::c_k8s_url("", "URL of k8s api server", "k8s_uri");
@@ -570,7 +574,7 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 		    cmd.set_max_rnd_conn_delay(c_k8s_max_rnd_conn_delay->get_value());
 		    *cmd.mutable_pod_status_allowlist() = {c_k8s_pod_status_wl.get_value().begin(),
 		                                           c_k8s_pod_status_wl.get_value().end()};
-
+		    cmd.set_terminated_pods_enabled(c_k8s_terminated_pods_enabled.get_value());
 		    cmd.set_thin_cointerface(c_thin_cointerface_enabled->get_value());
 
 		    for (const auto& prefix : c_pod_prefix_for_cidr_retrieval.get_value())
