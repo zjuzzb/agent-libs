@@ -34,6 +34,7 @@ func newDeploymentCongroup(deployment kubecollect.CoDeployment, setLinks bool) (
 	if setLinks {
 		kubecollect_common.OwnerReferencesToParents(deployment.GetOwnerReferences(), &ret.Parents, nil)
 	}
+	ret.LabelSelector = kubecollect_common.GetLabelSelector(*deployment.Spec.Selector)
 	return ret
 }
 

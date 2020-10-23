@@ -1358,6 +1358,13 @@ secure_audit_streams:
   debug: false # print protobuf sent
 
 
+# network topology is managed by the "feature: mode" config. It can be overridden by uncommenting
+# the "enabled" key in this block.
+network_topology:
+  # enabled: false
+  debug: false # print protobuf sent
+
+
 # baseliner is managed by the "feature: mode" config. It can be overridden by uncommenting
 # the "enabled" key in this block
 falcobaseline:

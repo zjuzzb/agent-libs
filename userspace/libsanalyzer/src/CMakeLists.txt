@@ -153,6 +153,10 @@ set(SANALYZER_SOURCES
     audit_tap_connection_info.cpp
     audit_tap_network_connection.cpp
     secure_audit.cpp
+    secure_helper.cpp
+    secure_netsec.cpp
+    secure_netsec_obj.cpp
+    secure_netsec_cidr.cpp
     baseliner.cpp
     blake2/blake2b.c
     coclient.cpp

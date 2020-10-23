@@ -50,6 +50,9 @@
 #include "secure_audit_data_ready_handler.h"
 #include "secure_audit_handler.h"
 #include "secure_audit_internal_metrics.h"
+#include "secure_netsec_handler.h"
+#include "secure_netsec_data_ready_handler.h"
+#include "secure_netsec_internal_metrics.h"
 #include "secure_profiling_internal_metrics.h"
 #include "statsd_emitter.h"
 #include "userdb.h"
@@ -66,6 +69,7 @@ class metric_serializer;
 
 class audit_tap;
 class secure_audit;
+class secure_netsec;
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
 
@@ -257,6 +261,8 @@ class SINSP_PUBLIC sinsp_analyzer : public secure_profiling_internal_metrics,
                                     public secure_profiling_data_ready_handler,
                                     public secure_audit_internal_metrics,
                                     public secure_audit_data_ready_handler,
+                                    public secure_netsec_internal_metrics,
+                                    public secure_netsec_data_ready_handler,
                                     public libsinsp::event_processor,
                                     public secure_k8s_audit_event_sink_iface
 {
@@ -278,6 +284,7 @@ public:
 	               audit_tap_handler& tap_handler,
 	               secure_audit_handler& secure_audit_handler,
 	               secure_profiling_handler& secure_profiling_handler,
+	               secure_netsec_handler& secure_netsec_handler,
 	               flush_queue* flush_queue,
 	               std::function<bool()> check_disable_dropping,
 	               const metric_limits::sptr_t& the_metric_limits = nullptr,
@@ -514,16 +521,16 @@ public:
 #ifndef CYGWING_AGENT
 
 	/**
-	 * Access to the infrastructure_state class which manages 
-	 * kubernetes state. 
+	 * Access to the infrastructure_state class which manages
+	 * kubernetes state.
 	 */
 	const infrastructure_state* infra_state() const;
 
 	/**
-	 * Writable access to the infrastructure_state class which 
-	 * manages kubernetes state. This is purposely named different 
-	 * than the const access so that mutable acess can be audited 
-	 * more easily. 
+	 * Writable access to the infrastructure_state class which
+	 * manages kubernetes state. This is purposely named different
+	 * than the const access so that mutable acess can be audited
+	 * more easily.
 	 */
 	infrastructure_state* mutable_infra_state();
 
@@ -628,10 +635,12 @@ public:
 		m_env_hash_config.m_send_audit_tap = audit_tap;
 	}
 
+	/* Audit Tap */
 	void enable_audit_tap();
 	bool audit_tap_enabled() const { return m_tap != nullptr; }
 	bool audit_tap_track_pending() const { return m_tap_track_pending; }
 
+	/* Secure Audit */
 	void enable_secure_audit();
 	bool secure_audit_enabled() const { return m_secure_audit != nullptr; }
 
@@ -649,6 +658,25 @@ public:
 	                                    int n_connections_not_interactive_dropped,
 	                                    int n_file_accesses_not_interactive_dropped,
 	                                    int n_k8s_enrich_errors) override;
+
+	/* Secure Netsec */
+	void enable_network_topology();
+	bool network_topology_enabled() const { return m_secure_netsec != nullptr; }
+
+	void add_cg_to_network_topology(std::shared_ptr<draiosproto::container_group> cg);
+
+	void secure_netsec_data_ready(uint64_t ts, const secure::K8SCommunicationSummary* netsec_summary) override;
+
+	void set_secure_netsec_internal_metrics(int n_sent_protobufs, uint64_t flush_time_ms) override;
+
+	void set_secure_netsec_sent_counters(int n_communication_dropped_count,
+					     int n_communication_count,
+					     int n_communication_invalid,
+					     int n_communication_cidr_out,
+					     int n_communication_cidr_in,
+					     int n_communication_ingress_count,
+					     int n_communication_egress_count,
+					     int n_resolved_owner) override;
 
 	// Just calls next function
 	void receive_k8s_audit_event(
@@ -929,10 +957,10 @@ public:
 	                    const tracer_emitter& f_trc);
 
 	/**
-	 * Iterate through the process list and generate the programs, 
-	 * java processes and other lists for which we want to emit 
-	 * data. 
-	 */  
+	 * Iterate through the process list and generate the programs,
+	 * java processes and other lists for which we want to emit
+	 * data.
+	 */
 	bool aggregate_processes_into_programs(sinsp_threadinfo& sinsp_tinfo,
 					       const sinsp_evt* evt,
 					       const uint64_t sample_duration,
@@ -1126,7 +1154,7 @@ public:
 	//
 #ifndef CYGWING_AGENT
 	run_on_interval m_swarmstate_interval = {SWARM_POLL_INTERVAL};
-	coclient m_coclient;
+	std::unique_ptr<coclient> m_coclient;
 #endif
 
 	//
@@ -1413,6 +1441,7 @@ public:
 	std::shared_ptr<audit_tap> m_tap;
 	bool m_tap_track_pending = false;
 	std::shared_ptr<secure_audit> m_secure_audit;
+	std::shared_ptr<secure_netsec> m_secure_netsec;
 
 	/**
 	 * Kill flag.  If this is set to true, the agent will restart.
@@ -1432,6 +1461,7 @@ public:
 	audit_tap_handler& m_audit_tap_handler;
 	secure_audit_handler& m_secure_audit_handler;
 	secure_profiling_handler& m_secure_profiling_handler;
+	secure_netsec_handler& m_secure_netsec_handler;
 
 	std::function<bool()> m_check_disable_dropping;
 

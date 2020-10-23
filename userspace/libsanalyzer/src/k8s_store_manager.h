@@ -27,7 +27,7 @@ public:
 	}
 
 	using state_key_t = std::pair<std::string, std::string>;
-	using state_t = std::map<std::pair<std::string, std::string>, std::unique_ptr<draiosproto::container_group>>;
+	using state_t = std::map<std::pair<std::string, std::string>, std::shared_ptr<draiosproto::container_group>>;
 
 	/*!
 	  Handle an add event from cointerface.

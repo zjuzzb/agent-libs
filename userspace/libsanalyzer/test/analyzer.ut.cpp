@@ -17,6 +17,7 @@ sinsp_analyzer::flush_queue g_queue(1000);
 audit_tap_handler_dummy g_audit_handler;
 null_secure_audit_handler g_secure_audit_handler;
 null_secure_profiling_handler g_secure_profiling_handler;
+null_secure_netsec_handler g_secure_netsec_handler;
 }  // namespace
 
 TEST(analyzer_test, end_to_end_basic)
@@ -32,6 +33,7 @@ TEST(analyzer_test, end_to_end_basic)
 	                        g_audit_handler,
 	                        g_secure_audit_handler,
 	                        g_secure_profiling_handler,
+	                        g_secure_netsec_handler,
 	                        &g_queue,
 	                        []() -> bool { return true; });
 
@@ -138,6 +140,7 @@ TEST(analyzer_test, coalesce_containers_null)
 	                        g_audit_handler,
 	                        g_secure_audit_handler,
 	                        g_secure_profiling_handler,
+	                        g_secure_netsec_handler,
 	                        &g_queue,
 	                        []() -> bool { return true; });
 	std::vector<std::string> emitted_containers;
@@ -162,6 +165,7 @@ TEST(analyzer_test, coalesce_containers_test)
 	                        g_audit_handler,
 	                        g_secure_audit_handler,
 	                        g_secure_profiling_handler,
+	                        g_secure_netsec_handler,
 	                        &g_queue,
 	                        []() -> bool { return true; });
 
@@ -340,6 +344,7 @@ TEST(analyzer_test, print_profiling_error)
 	                        g_audit_handler,
 	                        g_secure_audit_handler,
 	                        g_secure_profiling_handler,
+	                        g_secure_netsec_handler,
 	                        &g_queue,
 	                        []() -> bool { return true; });
 

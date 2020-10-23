@@ -7,6 +7,8 @@
 
 #include <gtest.h>
 
+#define ONE_SECOND_IN_NS 1000000000LL
+
 class test_helper
 {
 public:
@@ -119,12 +121,14 @@ k8s_ssl_key: key_path
 	audit_tap_handler_dummy athd;
 	null_secure_audit_handler sahd;
 	null_secure_profiling_handler sphd;
+	null_secure_netsec_handler snhd;
 	sinsp_analyzer analyzer(&inspector,
 	                        "",
 	                        std::make_shared<internal_metrics>(),
 	                        athd,
 	                        sahd,
 	                        sphd,
+	                        snhd,
 	                        nullptr,
 	                        []() -> bool { return true; });
 	infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
@@ -177,12 +181,14 @@ TEST(infrastructure_state_test, connect_to_namespace)
 	audit_tap_handler_dummy athd;
 	null_secure_audit_handler sahd;
 	null_secure_profiling_handler sphd;
+	null_secure_netsec_handler snhd;
 	sinsp_analyzer analyzer(&inspector,
 	                        "",
 	                        std::make_shared<internal_metrics>(),
 	                        athd,
 	                        sahd,
 	                        sphd,
+	                        snhd,
 	                        nullptr,
 	                        []() -> bool { return true; });
 	infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
@@ -294,6 +300,10 @@ TEST(infrastructure_state_test, connect_to_namespace)
 		fill_congroup(*delete_congroup, deployment_uid.first, deployment_uid.second, DEFAULT_NAMESPACE_NAME);
 		is.handle_event(&delete_deployment_event);
 
+		// Let's refresh the infrastructure state, in order to
+		// let the congroup ttl expire
+		is.refresh(120 * ONE_SECOND_IN_NS);
+
 		// We expect namespace default has one children now
 		EXPECT_EQ(namespace_from_state.children_size(), 1);
 		// Namespace default in the store should not have orphans
@@ -350,12 +360,14 @@ TEST(infrastructure_state_test, allowed_kinds_test)
 	audit_tap_handler_dummy athd;
 	null_secure_audit_handler sahd;
 	null_secure_profiling_handler sphd;
+	null_secure_netsec_handler snhd;
 	sinsp_analyzer analyzer(&inspector,
 	                        "",
 	                        std::make_shared<internal_metrics>(),
 	                        athd,
 	                        sahd,
 	                        sphd,
+	                        snhd,
 	                        nullptr,
 	                        []() -> bool { return true; });
 	infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);

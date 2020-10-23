@@ -31,6 +31,7 @@ func newDaemonSetCongroup(daemonSet kubecollect.CoDaemonSet) (*draiosproto.Conta
 	ret.Tags = kubecollect_common.GetTags(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
 	ret.InternalTags = kubecollect_common.GetAnnotations(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
 	kubecollect.AddDaemonSetMetrics(&ret.Metrics, daemonSet)
+	ret.LabelSelector = kubecollect_common.GetLabelSelector(*daemonSet.Spec.Selector)
 	return ret
 }
 

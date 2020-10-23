@@ -442,6 +442,7 @@ sinsp_connection* sinsp_connection_manager<TKey, THash, TCompare>::add_connectio
 			}
 		}
 	}
+
 	return &conn;
 };
 

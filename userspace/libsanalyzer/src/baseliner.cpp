@@ -6,6 +6,9 @@
 #include "analyzer_int.h"
 #include "analyzer.h"
 #include "baseliner.h"
+#include "infrastructure_state.h"
+
+#include "config.h"
 
 #undef AVOID_FDS_FROM_THREAD_TABLE
 
@@ -75,7 +78,8 @@ sinsp_baseliner::sinsp_baseliner(sinsp_analyzer& analyzer,
 	m_do_baseline_calculation(false),
 	m_baseline_runtime_enable_start_time(0),
 	m_baseline_runtime_start_init(false)
-{ }
+{
+}
 
 void sinsp_baseliner::init()
 {
@@ -836,6 +840,7 @@ void sinsp_baseliner::emit_as_protobuf(uint64_t ts)
 	g_logger.format(sinsp_logger::SEV_INFO, "secure_profiling (baseline) emitting host fingerprint");
 
 	serialize_protobuf();
+
 }
 
 void sinsp_baseliner::flush(uint64_t ts)
@@ -1574,3 +1579,4 @@ void sinsp_baseliner::process_event(sinsp_evt *evt)
 	// from consideration when actually enforcing the baseline.
 	pinfo->m_syscalls.add(evid, 0);
 }
+

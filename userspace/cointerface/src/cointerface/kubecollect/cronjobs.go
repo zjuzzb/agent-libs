@@ -14,7 +14,7 @@ import (
 	draiosproto "protorepo/agent-be/proto"
 
 	log "github.com/cihub/seelog"
-    "github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 // make this a library function?

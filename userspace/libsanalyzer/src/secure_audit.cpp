@@ -1,6 +1,7 @@
 #include "common_logger.h"
 #include "feature_manager.h"
 #include "secure_audit.h"
+#include "secure_helper.h"
 
 #include <tuples.h>
 
@@ -529,35 +530,6 @@ secure::ConnectionStatus connection_status(int errorcode)
 	                      : secure::ConnectionStatus::CONNECTION_STATUS_FAILED;
 }
 
-enum ip_proto_l4
-{
-	IP_PROTO_INVALID = 0,
-	IP_PROTO_ICMP = 1,
-	IP_PROTO_TCP = 6,
-	IP_PROTO_UDP = 17
-};
-
-static const std::unordered_map<uint8_t, uint8_t> l4_proto_scap_to_ip_map = {
-    {SCAP_L4_UNKNOWN, IP_PROTO_INVALID},
-    {SCAP_L4_NA, IP_PROTO_INVALID},
-    {SCAP_L4_TCP, IP_PROTO_TCP},
-    {SCAP_L4_UDP, IP_PROTO_UDP},
-    {SCAP_L4_ICMP, IP_PROTO_ICMP},
-    {SCAP_L4_RAW, IP_PROTO_INVALID}};
-
-static uint8_t scap_l4_to_ip_l4(const uint8_t scap_l4)
-{
-	auto it = l4_proto_scap_to_ip_map.find(scap_l4);
-	if (it != l4_proto_scap_to_ip_map.end())
-	{
-		return it->second;
-	}
-	else
-	{
-		return IP_PROTO_INVALID;
-	}
-}
-
 void secure_audit::append_connection(connection_type type,
                                      const sinsp_connection::state_transition transition,
                                      const _ipv4tuple& tuple,
@@ -597,11 +569,7 @@ void secure_audit::append_connection(connection_type type,
 
 	secure::ConnectionStatus conn_status = connection_status(transition.error_code);
 
-	// check if connection is not 0.0.0.0:0 -> 0.0.0.0:0
-	// this could be caused by agent in subsampling mode
-	// if so we simply discard this
-	if (tuple.m_fields.m_sip == 0 && tuple.m_fields.m_dip == 0 && tuple.m_fields.m_sport == 0 &&
-	    tuple.m_fields.m_dport == 0)
+	if (!secure_helper::is_valid_tuple(tuple))
 	{
 		return;
 	}
@@ -613,7 +581,7 @@ void secure_audit::append_connection(connection_type type,
 	pb_conn->set_client_ipv4(ntohl(tuple.m_fields.m_sip));
 	pb_conn->set_client_port(tuple.m_fields.m_sport);
 
-	pb_conn->set_l4_protocol(scap_l4_to_ip_l4(tuple.m_fields.m_l4proto));
+	pb_conn->set_l4_protocol(secure_helper::scap_l4_to_ip_l4(tuple.m_fields.m_l4proto));
 
 	pb_conn->set_server_ipv4(ntohl(tuple.m_fields.m_dip));
 	pb_conn->set_server_port(tuple.m_fields.m_dport);

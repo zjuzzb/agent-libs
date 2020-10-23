@@ -4,6 +4,7 @@
 #include "audit_tap_handler.h"
 #include "secure_audit_handler.h"
 #include "secure_profiling_handler.h"
+#include "secure_netsec_handler.h"
 #include "security_result_handler.h"
 #include "log_report_handler.h"
 #include "dragent_message_queues.h"
@@ -18,6 +19,7 @@ class protocol_handler : public uncompressed_sample_handler,
                          public audit_tap_handler,
                          public secure_audit_handler,
                          public secure_profiling_handler,
+                         public secure_netsec_handler,
                          public security_result_handler,
                          public log_report_handler
 {
@@ -64,11 +66,15 @@ public: // functions from log_report_handler
 public: // functions from profiling
 	void secure_profiling_data_ready(uint64_t ts_ns, const secure::profiling::fingerprint *fingerprint) override;
 
+public: // functions from network
+	void secure_netsec_data_ready(uint64_t ts_ns, const secure::K8SCommunicationSummary *k8s_communication_summary) override;
+
 public: // configs
 	static type_config<bool> c_print_protobuf;
 	static type_config<bool> c_compression_enabled;
 	static type_config<bool> c_audit_tap_debug_only;
 	static type_config<bool> c_secure_audit_debug_enabled;
+	static type_config<bool> c_secure_netsec_debug_enabled;
 	static type_config<bool> c_secure_profiling_debug_enabled;
 
 private:

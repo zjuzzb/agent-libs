@@ -103,6 +103,7 @@ func newDeploymentCongroup(deployment CoDeployment, setLinks bool) (*draiosproto
 		AddReplicaSetChildren(&ret.Children, selector, deployment.GetNamespace(), deployment.ObjectMeta)
 		AddHorizontalPodAutoscalerParents(&ret.Parents, deployment.GetNamespace(), deployment.APIVersion, deployment.Kind, deployment.GetName() )
 	}
+	ret.LabelSelector = kubecollect_common.GetLabelSelector(*deployment.Spec.Selector)
 	return ret
 }
 

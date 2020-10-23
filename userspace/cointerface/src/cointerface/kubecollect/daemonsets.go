@@ -97,6 +97,7 @@ func newDaemonSetCongroup(daemonSet CoDaemonSet, setLinks bool) (*draiosproto.Co
 	if setLinks {
 		AddPodChildrenFromOwnerRef(&ret.Children, daemonSet.ObjectMeta)
 	}
+	ret.LabelSelector = kubecollect_common.GetLabelSelector(*daemonSet.Spec.Selector)
 	return ret
 }
 

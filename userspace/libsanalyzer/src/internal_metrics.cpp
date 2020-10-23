@@ -371,6 +371,7 @@ bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info, uint64_t 
 			     1);
 
 		send_secure_audit_metrics(statsd_info);
+		send_secure_netsec_metrics(statsd_info);
 
 		// external sources
 		for (auto& src : m_ext_sources)
@@ -452,6 +453,7 @@ bool internal_metrics::send_some(draiosproto::statsd_info* statsd_info, uint64_t
 			     1);
 
 		send_secure_audit_metrics(statsd_info);
+		send_secure_netsec_metrics(statsd_info);
 
 		// external sources
 		for (auto& src : m_ext_sources)
@@ -549,6 +551,63 @@ void internal_metrics::send_secure_audit_metrics(draiosproto::statsd_info* stats
 		             "dragent.secure_profiling.emit.ms",
 		             draiosproto::STATSD_GAUGE,
 		             get_secure_profiling_emit_ms());
+	}
+}
+
+void internal_metrics::send_secure_netsec_metrics(draiosproto::statsd_info* statsd_info)
+{
+	// secure_netsec metrics
+	if (get_secure_netsec_n_sent_protobufs() != -1)
+	{
+		write_metric(statsd_info,
+		             "dragent.secure_netsec.n_sent_protobufs",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_netsec_n_sent_protobufs());
+		write_metric(statsd_info,
+		             "dragent.secure_netsec.fl.ms",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_netsec_fl_ms());
+		write_metric(statsd_info,
+		             "dragent.secure_netsec.emit.ms",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_netsec_emit_ms());
+
+		write_metric(statsd_info,
+		             "dragent.secure_netsec.connection_count",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_netsec_connection_count());
+		write_metric(statsd_info,
+		             "dragent.secure_netsec.connection_dropped_count",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_netsec_connection_dropped_count());
+		write_metric(statsd_info,
+		             "dragent.secure_netsec.communication_invalid",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_netsec_communication_invalid());
+		write_metric(statsd_info,
+		             "dragent.secure_netsec.communication_cidr_out",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_netsec_communication_cidr_out());
+		write_metric(statsd_info,
+		             "dragent.secure_netsec.communication_cidr_in",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_netsec_communication_cidr_in());
+		write_metric(statsd_info,
+		             "dragent.secure_netsec.communication_ingress_count",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_netsec_communication_ingress_count());
+		write_metric(statsd_info,
+		             "dragent.secure_netsec.communication_egress_count",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_netsec_communication_egress_count());
+		write_metric(statsd_info,
+		             "dragent.secure_netsec.resolved_client",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_netsec_resolved_client());
+		write_metric(statsd_info,
+		             "dragent.secure_netsec.resolved_server",
+		             draiosproto::STATSD_GAUGE,
+		             get_secure_netsec_resolved_server());
 	}
 }
 

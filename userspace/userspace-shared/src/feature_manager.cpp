@@ -145,8 +145,11 @@ const feature_manager::agent_feature_container feature_manager::feature_configs[
 	{MONITOR,              "monitor",              feature_config(true,
                                                                   "enable metrics",
                                                                   "feature",
-                                                                  "monitor")}
-
+								  "monitor")},
+	{NETWORK_TOPOLOGY,     "network topology",     feature_config(false,
+	                                                              "enable network topology",
+	                                                              "network_topology",
+	                                                              "enabled")}
 };
 // clang-format on
 
@@ -859,6 +862,10 @@ feature_base baseliner_feature(BASELINER,
 feature_base memdump_feature(MEMDUMP, &draiosproto::feature_status::set_memdump_enabled, {});
 feature_base secure_audit_feature(SECURE_AUDIT,
                                   &draiosproto::feature_status::set_secure_audit_enabled,
+                                  {SECURE});
+
+feature_base network_topology_feature(NETWORK_TOPOLOGY,
+                                  &draiosproto::feature_status::set_network_topology_enabled,
                                   {SECURE});
 
 feature_base network_breakdown_feature(NETWORK_BREAKDOWN,

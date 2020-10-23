@@ -60,6 +60,9 @@ list(
     security_config.ut.cpp
     scoped_sinsp_logger_capture.ut.cpp
     secure_audit.ut.cpp
+    secure_netsec.ut.cpp
+    secure_netsec_cidr.ut.cpp
+    secure_netsec_helper.ut.cpp
     statsd_emitter.ut.cpp
     statsd_emitter_factory.ut.cpp
     statsd_metric.ut.cpp

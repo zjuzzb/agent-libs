@@ -95,6 +95,7 @@ func newJobConGroup(job CoJob, setLinks bool) (*draiosproto.ContainerGroup) {
 		AddPodChildrenFromOwnerRef(&ret.Children, job.ObjectMeta)
 		AddCronJobParent(&ret.Parents, job)
 	}
+	ret.LabelSelector = kubecollect_common.GetLabelSelector(*job.Spec.Selector)
 	return ret
 }
 

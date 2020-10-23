@@ -24,6 +24,7 @@ const std::vector<std::string> exe = {"cat", "ls", "ps", "df", "ll"};
 audit_tap_handler_dummy g_audit_handler;
 null_secure_audit_handler g_secure_audit_handler;
 null_secure_profiling_handler g_secure_profiling_handler;
+null_secure_netsec_handler g_secure_netsec_handler;
 sinsp_analyzer::flush_queue g_queue(1000);
 
 // dummy implementation used for testing
@@ -2037,6 +2038,7 @@ TEST(secure_audit_test, k8s_audit_base)
 	                        g_audit_handler,
 	                        g_secure_audit_handler,
 	                        g_secure_profiling_handler,
+	                        g_secure_netsec_handler,
 	                        &g_queue,
 	                        []() -> bool { return true; });
 	unique_ptr_resetter<sinsp_mock> resetter(inspector);

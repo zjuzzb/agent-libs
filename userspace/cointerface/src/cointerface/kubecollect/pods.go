@@ -33,6 +33,9 @@ var podEvtcHandle chan<- draiosproto.CongroupUpdateEvent
 // pods get their own special version because they send events for containers too
 func sendPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool)  {
 	updates := newPodEvents(pod, eventType, oldPod, setLinks)
+
+	kubecollect_common.SendClusterCidrEvent(pod, eventType, podEvtcHandle)
+
 	for _, evt := range updates {
 		podEvtcHandle <- *evt
 	}

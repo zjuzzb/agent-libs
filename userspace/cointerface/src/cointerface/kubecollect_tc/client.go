@@ -49,6 +49,8 @@ func startWatcherAndInformers(
 			startDaemonSetsWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "deployments":
 			startDeploymentsWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+		case "endpoints":
+			kubecollect_common.StartEndpointsWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "horizontalpodautoscalers":
 			startHPAWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "ingress":

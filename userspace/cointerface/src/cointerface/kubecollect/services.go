@@ -89,6 +89,11 @@ func newServiceCongroup(service CoService, setLinks bool) (*draiosproto.Containe
 	tags := kubecollect_common.GetTags(service.ObjectMeta, "kubernetes.service.")
 	inttags := kubecollect_common.GetAnnotations(service.ObjectMeta, "kubernetes.service.")
 
+	if inttags == nil {
+		inttags = make(map[string]string, 1)
+	}
+	inttags["kubernetes.service.type"] = string(service.Spec.Type)
+
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_service"),
@@ -112,6 +117,11 @@ func newServiceCongroup(service CoService, setLinks bool) (*draiosproto.Containe
 		selector, ok := SvcSelectorCache.Get(service)
 		if ok {
 			AddPodChildrenFromSelectors(&ret.Children, selector, service.GetNamespace())
+		}
+	}
+	if service.ActiveChildren() > 0 {
+		ret.LabelSelector = &draiosproto.K8SLabelSelector{
+			MatchLabels: service.Spec.Selector,
 		}
 	}
 	return ret

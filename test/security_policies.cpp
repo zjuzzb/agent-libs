@@ -74,6 +74,7 @@ uncompressed_sample_handler_dummy g_sample_handler;
 audit_tap_handler_dummy g_audit_handler;
 null_secure_audit_handler g_secure_audit_handler;
 null_secure_profiling_handler g_secure_profiling_handler;
+null_secure_netsec_handler g_secure_netsec_handler;
 
 class test_sinsp_worker : public Runnable
 {
@@ -309,6 +310,7 @@ protected:
 		                                g_audit_handler,
 		                                g_secure_audit_handler,
 		                                g_secure_profiling_handler,
+		                                g_secure_netsec_handler,
 		                                &m_flush_queue,
 		                                []() -> bool { return true; });
 		m_inspector->register_external_event_processor(*m_analyzer);

@@ -55,6 +55,7 @@ namespace
 audit_tap_handler_dummy g_audit_handler;
 null_secure_audit_handler g_secure_audit_handler;
 null_secure_profiling_handler g_secure_profiling_handler;
+null_secure_netsec_handler g_secure_netsec_handler;
 sinsp_analyzer::flush_queue g_queue(1000);
 }
 
@@ -393,6 +394,7 @@ int main(int argc, char** argv)
 						g_audit_handler,
 						g_secure_audit_handler,
 						g_secure_profiling_handler,
+						g_secure_netsec_handler,
 						&g_queue,
 						[]()->bool{return true;});
 

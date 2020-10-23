@@ -125,6 +125,20 @@ public:
 	void set_secure_audit_file_accesses_not_interactive_dropped(int64_t val);
 	void set_secure_audit_k8s_enrich_errors(int64_t val);
 
+	void set_secure_netsec_n_sent_protobufs(int64_t val);
+	void set_secure_netsec_fl_ms(int64_t val);
+	void set_secure_netsec_emit_ms(int64_t val);
+
+	void set_secure_netsec_connection_count(int64_t val);
+	void set_secure_netsec_connection_dropped_count(int64_t val);
+	void set_secure_netsec_communication_invalid(int64_t val);
+	void set_secure_netsec_communication_cidr_out(int64_t val);
+	void set_secure_netsec_communication_cidr_in(int64_t val);
+	void set_secure_netsec_communication_ingress_count(int64_t val);
+	void set_secure_netsec_communication_egress_count(int64_t val);
+	void set_secure_netsec_resolved_client(int64_t val);
+	void set_secure_netsec_resolved_server(int64_t val);
+
 	void set_secure_profiling_enabled(bool val);
 	void set_secure_profiling_n_sent_protobufs(int64_t val);
 	void set_secure_profiling_fl_ms(int64_t val);
@@ -163,6 +177,20 @@ public:
 	int64_t get_secure_audit_connections_not_interactive_dropped() const;
 	int64_t get_secure_audit_file_accesses_not_interactive_dropped_count() const;
 	int64_t get_secure_audit_k8s_enrich_errors() const;
+
+	int64_t get_secure_netsec_n_sent_protobufs() const;
+	int64_t get_secure_netsec_fl_ms() const;
+	int64_t get_secure_netsec_emit_ms() const;
+
+	int64_t get_secure_netsec_connection_count() const;
+	int64_t get_secure_netsec_connection_dropped_count() const;
+	int64_t get_secure_netsec_communication_invalid() const;
+	int64_t get_secure_netsec_communication_cidr_out() const;
+	int64_t get_secure_netsec_communication_cidr_in() const;
+	int64_t get_secure_netsec_communication_ingress_count() const;
+	int64_t get_secure_netsec_communication_egress_count() const;
+	int64_t get_secure_netsec_resolved_client() const;
+	int64_t get_secure_netsec_resolved_server() const;
 
 	bool get_secure_profiling_enabled() const;
 	int64_t get_secure_profiling_n_sent_protobufs() const;
@@ -331,6 +359,20 @@ private:
 		int64_t secure_audit_file_accesses_not_interactive_dropped_count = -1;
 		int64_t secure_audit_k8s_enrich_errors = -1;
 
+		int64_t secure_netsec_n_sent_protobufs = -1;
+		int64_t secure_netsec_fl_ms = -1;
+		int64_t secure_netsec_emit_ms = -1;
+
+		int64_t secure_netsec_connection_count = -1;
+		int64_t secure_netsec_connection_dropped_count = -1;
+		int64_t secure_netsec_communication_invalid = -1;
+		int64_t secure_netsec_communication_cidr_out = -1;
+		int64_t secure_netsec_communication_cidr_in = -1;
+		int64_t secure_netsec_communication_ingress_count = -1;
+		int64_t secure_netsec_communication_egress_count = -1;
+		int64_t secure_netsec_resolved_client = -1;
+		int64_t secure_netsec_resolved_server = -1;
+
 		bool secure_profiling_enabled = false;
 		int64_t secure_profiling_n_sent_protobufs = -1;
 		int64_t secure_profiling_fl_ms = -1;
@@ -359,6 +401,7 @@ private:
 
 	void send_command_categories(draiosproto::statsd_info* statsd_info);
 	void send_secure_audit_metrics(draiosproto::statsd_info* statsd_info);
+	void send_secure_netsec_metrics(draiosproto::statsd_info* statsd_info);
 
 	analyzer m_analyzer;
 	std::list<ext_source *> m_ext_sources;
@@ -675,6 +718,7 @@ inline int64_t internal_metrics::get_cointerface_memory() const
 	return m_analyzer.cointerface_memory;
 }
 
+/* Secure Audit */
 inline int64_t internal_metrics::get_secure_audit_n_sent_protobufs() const
 {
 	return m_analyzer.secure_audit_n_sent_protobufs;
@@ -815,6 +859,128 @@ inline int64_t internal_metrics::get_secure_audit_k8s_enrich_errors() const
 	return m_analyzer.secure_audit_k8s_enrich_errors;
 }
 
+/* Secure Netsec */
+inline int64_t internal_metrics::get_secure_netsec_n_sent_protobufs() const
+{
+	return m_analyzer.secure_netsec_n_sent_protobufs;
+}
+
+inline void internal_metrics::set_secure_netsec_n_sent_protobufs(int64_t val)
+{
+	m_analyzer.secure_netsec_n_sent_protobufs = val;
+}
+
+inline int64_t internal_metrics::get_secure_netsec_fl_ms() const
+{
+	return m_analyzer.secure_netsec_fl_ms;
+}
+
+inline void internal_metrics::set_secure_netsec_fl_ms(int64_t val)
+{
+	m_analyzer.secure_netsec_fl_ms = val;
+}
+
+inline int64_t internal_metrics::get_secure_netsec_emit_ms() const
+{
+	return m_analyzer.secure_netsec_emit_ms;
+}
+
+inline void internal_metrics::set_secure_netsec_emit_ms(int64_t val)
+{
+	m_analyzer.secure_netsec_emit_ms = val;
+}
+
+inline int64_t internal_metrics::get_secure_netsec_connection_count() const
+{
+	return m_analyzer.secure_netsec_connection_count;
+}
+
+inline void internal_metrics::set_secure_netsec_connection_count(int64_t val)
+{
+	m_analyzer.secure_netsec_connection_count = val;
+}
+
+inline int64_t internal_metrics::get_secure_netsec_connection_dropped_count() const
+{
+	return m_analyzer.secure_netsec_connection_dropped_count;
+}
+
+inline void internal_metrics::set_secure_netsec_connection_dropped_count(int64_t val)
+{
+	m_analyzer.secure_netsec_connection_dropped_count = val;
+}
+
+inline int64_t internal_metrics::get_secure_netsec_communication_invalid() const
+{
+	return m_analyzer.secure_netsec_communication_invalid;
+}
+
+inline void internal_metrics::set_secure_netsec_communication_invalid(int64_t val)
+{
+	m_analyzer.secure_netsec_communication_invalid = val;
+}
+
+inline int64_t internal_metrics::get_secure_netsec_communication_cidr_out() const
+{
+	return m_analyzer.secure_netsec_communication_cidr_out;
+}
+
+inline void internal_metrics::set_secure_netsec_communication_cidr_out(int64_t val)
+{
+	m_analyzer.secure_netsec_communication_cidr_out = val;
+}
+
+inline int64_t internal_metrics::get_secure_netsec_communication_cidr_in() const
+{
+	return m_analyzer.secure_netsec_communication_cidr_in;
+}
+
+inline void internal_metrics::set_secure_netsec_communication_cidr_in(int64_t val)
+{
+	m_analyzer.secure_netsec_communication_cidr_in = val;
+}
+
+inline int64_t internal_metrics::get_secure_netsec_communication_ingress_count() const
+{
+	return m_analyzer.secure_netsec_communication_ingress_count;
+}
+
+inline void internal_metrics::set_secure_netsec_communication_ingress_count(int64_t val)
+{
+	m_analyzer.secure_netsec_communication_ingress_count = val;
+}
+
+inline int64_t internal_metrics::get_secure_netsec_communication_egress_count() const
+{
+	return m_analyzer.secure_netsec_communication_egress_count;
+}
+
+inline void internal_metrics::set_secure_netsec_communication_egress_count(int64_t val)
+{
+	m_analyzer.secure_netsec_communication_egress_count = val;
+}
+
+inline int64_t internal_metrics::get_secure_netsec_resolved_client() const
+{
+	return m_analyzer.secure_netsec_resolved_client;
+}
+
+inline void internal_metrics::set_secure_netsec_resolved_client(int64_t val)
+{
+	m_analyzer.secure_netsec_resolved_client = val;
+}
+
+inline int64_t internal_metrics::get_secure_netsec_resolved_server() const
+{
+	return m_analyzer.secure_netsec_resolved_server;
+}
+
+inline void internal_metrics::set_secure_netsec_resolved_server(int64_t val)
+{
+	m_analyzer.secure_netsec_resolved_server = val;
+}
+
+/* Secure Profiling */
 inline bool internal_metrics::get_secure_profiling_enabled() const
 {
 	return m_analyzer.secure_profiling_enabled;

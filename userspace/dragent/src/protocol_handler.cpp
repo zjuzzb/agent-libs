@@ -30,6 +30,12 @@ type_config<bool> protocol_handler::c_secure_audit_debug_enabled(
 	"secure_audit_streams",
 	"debug");
 
+type_config<bool> protocol_handler::c_secure_netsec_debug_enabled(
+	false,
+	"set to true to log secure netsec protobufs",
+	"network_topology",
+	"debug");
+
 type_config<bool> protocol_handler::c_secure_profiling_debug_enabled(
 	false,
 	"set to true to log secure profiling protobufs",
@@ -321,5 +327,34 @@ void protocol_handler::secure_profiling_data_ready(uint64_t ts_ns, const secure:
 	if(!m_queue.put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
 		LOG_INFO("Queue full, discarding secure profiling fingerprint sample");
+	}
+}
+
+void protocol_handler::secure_netsec_data_ready(uint64_t ts_ns, const secure::K8SCommunicationSummary *k8s_communication_summary)
+{
+	if(c_secure_netsec_debug_enabled.get_value())
+	{
+		LOG_INFO("Secure Network Communication data:" + k8s_communication_summary->DebugString());
+	}
+
+	std::shared_ptr<protobuf_compressor> compressor = gzip_protobuf_compressor::get(-1);
+
+	std::shared_ptr<serialized_buffer> buffer = dragent_protocol::message_to_buffer(
+		ts_ns,
+		draiosproto::message_type::SECURE_NETSEC_SUMMARY,
+		*k8s_communication_summary,
+		compressor /* compression always enabled */);
+
+	if(!buffer)
+	{
+		LOG_ERROR("NULL converting secure_netsec_communication message to buffer");
+		return;
+	}
+
+	LOG_INFO("secure_netsec_communication len=" + NumberFormatter::format(buffer->buffer.size()));
+
+	if(!m_queue.put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
+	{
+		LOG_INFO("Queue full, discarding secure network communication sample");
 	}
 }

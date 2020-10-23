@@ -48,6 +48,8 @@ func startInformers(
 			startDaemonSetsSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "deployments":
 			startDeploymentsSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+		case "endpoints":
+			kubecollect_common.StartEndpointsWatcher(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "horizontalpodautoscalers":
 			startHorizontalPodAutoscalersSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "ingress":

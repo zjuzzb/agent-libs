@@ -12,7 +12,7 @@ class k8s_object_store
 {
 public:
 	using state_key_t = std::pair<std::string, std::string>;
-	using state_t = std::map<state_key_t, std::unique_ptr<draiosproto::container_group>>;
+	using state_t = std::map<std::pair<std::string, std::string>, std::shared_ptr<draiosproto::container_group>>;
 	using kind_and_name_t = std::pair<std::string, std::string>;
 	using uid_t = std::string;
 	using label_set_t = std::map<std::string, std::string>;

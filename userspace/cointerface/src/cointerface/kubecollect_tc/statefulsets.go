@@ -35,6 +35,7 @@ func newStatefulSetCongroup(statefulSet *appsv1.StatefulSet) (*draiosproto.Conta
 	kubecollect.AddStatefulSetMetrics(&ret.Metrics, statefulSet)
 	AddServiceParentsFromServiceName(&ret.Parents, statefulSet.GetNamespace(), statefulSet.Spec.ServiceName)
 
+	ret.LabelSelector = kubecollect_common.GetLabelSelector(*statefulSet.Spec.Selector)
 	return ret
 }
 

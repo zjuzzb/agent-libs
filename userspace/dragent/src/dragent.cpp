@@ -1506,6 +1506,7 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	    m_protocol_handler,
 	    m_protocol_handler,
 	    m_protocol_handler,
+	    m_protocol_handler,
 	    &flush_queue,
 	    [this]() -> bool { return m_capture_job_handler.get_job_in_progress(); },
 	    the_metric_limits,
@@ -1691,6 +1692,11 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	if (feature_manager::instance().get_enabled(SECURE_AUDIT))
 	{
 		analyzer->enable_secure_audit();
+	}
+
+	if (feature_manager::instance().get_enabled(NETWORK_TOPOLOGY))
+	{
+		analyzer->enable_network_topology();
 	}
 
 	analyzer->set_remotefs_enabled(m_configuration.m_remotefs_enabled);

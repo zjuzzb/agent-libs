@@ -33,6 +33,7 @@ func newJobConGroup(job kubecollect.CoJob, setLinks bool) (*draiosproto.Containe
 	if setLinks {
 		kubecollect_common.OwnerReferencesToParents(job.GetOwnerReferences(), &ret.Parents, &map[string]bool{"CronJob" : true})
 	}
+	ret.LabelSelector = kubecollect_common.GetLabelSelector(*job.Spec.Selector)
 	return ret
 }
 

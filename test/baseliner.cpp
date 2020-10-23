@@ -117,6 +117,7 @@ sinsp_analyzer::flush_queue g_queue(1000);
 audit_tap_handler_dummy g_audit_handler;
 null_secure_audit_handler g_secure_audit_handler;
 null_secure_profiling_handler g_secure_profiling_handler;
+null_secure_netsec_handler g_secure_netsec_handler;
 }  // namespace
 
 class baseliner_test : public testing::Test
@@ -151,6 +152,7 @@ protected:
 		                                g_audit_handler,
 		                                g_secure_audit_handler,
 		                                g_secure_profiling_handler,
+		                                g_secure_netsec_handler,
 		                                &g_queue,
 		                                []() -> bool { return true; });
 		m_inspector->register_external_event_processor(*m_analyzer);

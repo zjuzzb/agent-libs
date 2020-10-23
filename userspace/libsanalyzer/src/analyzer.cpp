@@ -30,6 +30,7 @@
 #include "sched_analyzer.h"
 #include "scores.h"
 #include "secure_audit.h"
+#include "secure_netsec.h"
 #include "sinsp.h"
 #include "sinsp_errno.h"
 #include "sinsp_int.h"
@@ -234,6 +235,7 @@ type_config<uint64_t> c_falco_baselining_report_interval_ns(15 * 60LL * ONE_SECO
                                                             "falco baseline emit interval",
                                                             "falcobaseline",
                                                             "report_interval");
+
 type_config<uint64_t> c_falco_baselining_autodisable_interval_ns(
     30 * 60LL * ONE_SECOND_IN_NS,
     "time after which we should try to re-enable the falco baseliner that has been previously "
@@ -264,6 +266,7 @@ type_config<uint32_t> c_falco_baselining_max_sampling_ratio(
     "max_sampling_ratio");
 
 type_config<bool> c_falco_baselining_randomize_start(true, "", "falcobaseline", "randomize_start");
+
 type_config<bool> c_emit_full_connections(
     false,
     "incoming connections are aggregated in protobuf samples",
@@ -286,6 +289,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
                                audit_tap_handler& tap_handler,
                                secure_audit_handler& secure_audit_handler,
                                secure_profiling_handler& secure_profiling_handler,
+                               secure_netsec_handler& secure_netsec_handler,
                                sinsp_analyzer::flush_queue* flush_queue,
                                std::function<bool()> check_disable_dropping,
                                const metric_limits::sptr_t& the_metric_limits,
@@ -297,9 +301,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
       m_cpu_profiler(nullptr),
       m_inspector(inspector),
       m_metrics(make_unique<draiosproto::metrics>()),
-#ifndef CYGWING_AGENT
-      m_coclient(root_dir),
-#endif
       m_root_dir(root_dir),
       m_requested_sampling_ratio(1),
       m_acked_sampling_ratio(1),
@@ -314,6 +315,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
       m_audit_tap_handler(tap_handler),
       m_secure_audit_handler(secure_audit_handler),
       m_secure_profiling_handler(secure_profiling_handler),
+      m_secure_netsec_handler(secure_netsec_handler),
       m_check_disable_dropping(check_disable_dropping),
       m_metrics_dir_mutex(),
       m_metrics_dir(""),
@@ -364,6 +366,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 
 	m_tap = nullptr;
 	m_secure_audit = nullptr;
+	m_secure_netsec = nullptr;
+
 #ifndef CYGWING_AGENT
 	m_infrastructure_state = new infrastructure_state(*this, inspector, root_dir, the_k8s_limits);
 	if (m_promscrape)
@@ -698,6 +702,11 @@ void sinsp_analyzer::on_capture_start()
 	if (m_secure_audit != nullptr)
 	{
 		m_secure_audit->init(m_ipv4_connections, m_fd_listener);
+	}
+
+	if (m_secure_netsec != nullptr)
+	{
+		m_secure_netsec->init(m_ipv4_connections, m_infrastructure_state);
 	}
 
 	const std::set<double>& pctls = m_configuration->get_percentiles();
@@ -1116,6 +1125,38 @@ void sinsp_analyzer::set_secure_audit_sent_counters(int n_executed_commands,
 	m_internal_metrics->set_secure_audit_file_accesses_not_interactive_dropped(
 	    n_file_accesses_not_interactive_dropped);
 	m_internal_metrics->set_secure_audit_k8s_enrich_errors(n_k8s_enrich_errors);
+}
+
+void sinsp_analyzer::secure_netsec_data_ready(const uint64_t ts,
+					      const secure::K8SCommunicationSummary* const netsec_summary)
+{
+	m_secure_netsec_handler.secure_netsec_data_ready(ts, netsec_summary);
+}
+
+void sinsp_analyzer::set_secure_netsec_internal_metrics(const int n_sent_protobufs,
+							const uint64_t flush_time_ms)
+{
+	m_internal_metrics->set_secure_netsec_n_sent_protobufs(n_sent_protobufs);
+	m_internal_metrics->set_secure_netsec_fl_ms(flush_time_ms);
+}
+
+void sinsp_analyzer::set_secure_netsec_sent_counters(int n_connection_count,
+						     int n_connection_dropped_count,
+						     int n_communication_invalid,
+						     int n_communication_cidr_out,
+						     int n_communication_cidr_in,
+						     int n_communication_ingress_count,
+						     int n_communication_egress_count,
+						     int n_resolved_owner)
+{
+	m_internal_metrics->set_secure_netsec_connection_count(n_connection_count);
+	m_internal_metrics->set_secure_netsec_connection_count(n_connection_dropped_count);
+	m_internal_metrics->set_secure_netsec_communication_invalid(n_communication_invalid);
+	m_internal_metrics->set_secure_netsec_communication_cidr_out(n_communication_cidr_out);
+	m_internal_metrics->set_secure_netsec_communication_cidr_in(n_communication_cidr_in);
+	m_internal_metrics->set_secure_netsec_communication_ingress_count(n_communication_ingress_count);
+	m_internal_metrics->set_secure_netsec_communication_egress_count(n_communication_egress_count);
+	m_internal_metrics->set_secure_netsec_resolved_client(n_resolved_owner);
 }
 
 template<class Iterator>
@@ -2152,18 +2193,18 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	// and aggregate them into processes
 	///////////////////////////////////////////////////////////////////////////
 	tracer_emitter am_trc("aggregate_metrics", proc_trc);
-	m_inspector->m_thread_manager->m_threadtable.loop(std::bind(&sinsp_analyzer::aggregate_processes_into_programs, 
-								    this, 
+	m_inspector->m_thread_manager->m_threadtable.loop(std::bind(&sinsp_analyzer::aggregate_processes_into_programs,
+								    this,
 								    std::placeholders::_1 /*sinsp_threadinfo*/,
 								    evt,
-								    sample_duration, 
-								    flushflags, 
+								    sample_duration,
+								    flushflags,
 								    std::ref(progtable),
 								    std::ref(progtable_by_container),
 								    std::ref(java_process_requests),
 								    std::ref(app_checks_processes),
 								    std::ref(prom_procs),
-								    std::ref(process_count), 
+								    std::ref(process_count),
 								    std::ref(can_disable_nodriver)));
 	am_trc.stop();
 
@@ -4465,6 +4506,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 				if (feature_manager::instance().get_enabled(COINTERFACE) &&
 				    c_swarm_enabled.get_value())
 				{
+					if(!m_coclient)
+					{
+						m_coclient.reset(new coclient(m_root_dir));
+					}
 					tracer_emitter ss_trc("get_swarm_state", f_trc);
 					m_swarmstate_interval.run(
 					    [this]() {
@@ -4508,11 +4553,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 								        m_swarmstate_interval.interval(SWARM_POLL_FAIL_INTERVAL);
 							        }
 						        };
-						    m_coclient.get_swarm_state(callback);
+						    if(m_coclient)
+						    {
+							    m_coclient->get_swarm_state(callback);
+						    }
 					    },
 					    sinsp_utils::get_current_time_ns());
 					// Read available responses
-					m_coclient.process_queue();
+					if(m_coclient)
+					{
+						m_coclient->process_queue();
+					}
 					ss_trc.stop();
 					tracer_emitter copy_trc("copy_swarm_state", f_trc);
 					// Copy from cached swarm state
@@ -5126,13 +5177,23 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 				m_secure_audit->flush(ts);
 			}
 
+			// Secure Netsec - Emit and Flush
+			tracer_emitter netsec_trc("netsec", f_trc);
+			if (m_secure_netsec &&
+			    flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			{
+				m_secure_netsec->set_cluster_id(m_infrastructure_state->get_k8s_cluster_id());
+				m_secure_netsec->set_cluster_name(m_infrastructure_state->get_k8s_cluster_name());
+
+				m_secure_netsec->flush(ts);
+			}
+			netsec_trc.stop();
+
 			// Secure Profiling - Emit and Flush
 			if (feature_manager::instance().get_enabled(BASELINER))
 			{
 				emit_baseline(evt, is_eof, f_trc);
 			}
-
-			feature_manager::instance().to_protobuf(*m_metrics->mutable_features());
 
 			feature_manager::instance().to_protobuf(*m_metrics->mutable_features());
 
@@ -7921,6 +7982,22 @@ void sinsp_analyzer::enable_secure_audit()
 	m_secure_audit = std::make_shared<secure_audit>();
 	m_secure_audit->set_data_handler(this);
 	m_secure_audit->set_internal_metrics(this);
+}
+
+void sinsp_analyzer::enable_network_topology()
+{
+	m_secure_netsec = std::make_shared<secure_netsec>();
+	m_secure_netsec->set_data_handler(this);
+	m_secure_netsec->set_internal_metrics(this);
+
+}
+
+void sinsp_analyzer::add_cg_to_network_topology(std::shared_ptr<draiosproto::container_group> cg)
+{
+	if (m_secure_netsec != nullptr)
+	{
+		m_secure_netsec->add_cg(cg);
+	}
 }
 
 void sinsp_analyzer::enable_secure_profiling()

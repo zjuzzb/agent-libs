@@ -33,6 +33,9 @@ var containerIDRegex = regexp.MustCompile("^([a-z0-9-]+)://([0-9a-fA-F]{12})[0-9
 // pods get their own special version because they send events for containers too
 func sendPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks bool)  {
 	updates := newPodEvents(pod, eventType, setLinks)
+
+	kubecollect_common.SendClusterCidrEvent(pod, eventType, podEvtcHandle)
+
 	for _, evt := range updates {
 		podEvtcHandle <- *evt
 	}

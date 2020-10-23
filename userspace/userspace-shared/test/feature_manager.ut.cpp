@@ -72,7 +72,8 @@ public:
 	      fb16(MYSQL_STATS, &draiosproto::feature_status::set_mysql_stats_enabled, {}, fm),
 	      fb17(POSTGRES_STATS, &draiosproto::feature_status::set_postgres_stats_enabled, {}, fm),
 	      fb18(MONGODB_STATS, &draiosproto::feature_status::set_mongodb_stats_enabled, {}, fm),
-	      fb19(MONITOR, &draiosproto::feature_status::set_monitor_enabled, {}, fm)
+	      fb19(MONITOR, &draiosproto::feature_status::set_monitor_enabled, {}, fm),
+	      fb20(NETWORK_TOPOLOGY, &draiosproto::feature_status::set_network_topology_enabled, {}, fm)
 	{
 	}
 
@@ -106,7 +107,8 @@ public:
 	      fb16(MYSQL_STATS, &draiosproto::feature_status::set_mysql_stats_enabled, {}, fm),
 	      fb17(POSTGRES_STATS, &draiosproto::feature_status::set_postgres_stats_enabled, {}, fm),
 	      fb18(MONGODB_STATS, &draiosproto::feature_status::set_mongodb_stats_enabled, {}, fm),
-	      fb19(MONITOR, &draiosproto::feature_status::set_monitor_enabled, {}, fm)
+	      fb19(MONITOR, &draiosproto::feature_status::set_monitor_enabled, {}, fm),
+	      fb20(NETWORK_TOPOLOGY, &draiosproto::feature_status::set_network_topology_enabled, {}, fm)
 	{
 	}
 
@@ -130,6 +132,7 @@ public:
 	feature_base fb17;
 	feature_base fb18;
 	feature_base fb19;
+	feature_base fb20;
 };
 
 }  // namespace
@@ -1936,6 +1939,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.mongodb_stats_enabled());
 		EXPECT_FALSE(proto.custom_config());
 		EXPECT_TRUE(proto.monitor_enabled());
+		EXPECT_FALSE(proto.network_topology_enabled());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "none");
@@ -1971,6 +1975,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.mongodb_stats_enabled());
 		EXPECT_FALSE(proto.custom_config());
 		EXPECT_TRUE(proto.monitor_enabled());
+		EXPECT_FALSE(proto.network_topology_enabled());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "essentials");
@@ -1999,6 +2004,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.mongodb_stats_enabled());
 		EXPECT_FALSE(proto.custom_config());
 		EXPECT_TRUE(proto.monitor_enabled());
+		EXPECT_FALSE(proto.network_topology_enabled());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "troubleshooting");
@@ -2027,6 +2033,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_TRUE(proto.mongodb_stats_enabled());
 		EXPECT_FALSE(proto.custom_config());
 		EXPECT_TRUE(proto.monitor_enabled());
+		EXPECT_FALSE(proto.network_topology_enabled());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "secure");
@@ -2055,6 +2062,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.mongodb_stats_enabled());
 		EXPECT_FALSE(proto.custom_config());
 		EXPECT_FALSE(proto.monitor_enabled());
+		EXPECT_FALSE(proto.network_topology_enabled());
 	}
 
 }

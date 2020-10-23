@@ -6,8 +6,11 @@ namespace {
 	audit_tap_handler_dummy athd;
 	null_secure_audit_handler sahd;
 	null_secure_profiling_handler sphd;
+	null_secure_netsec_handler snhd;
 	sinsp_analyzer::flush_queue flush_queue(100);
 }
+
+#define ONE_SECOND_IN_NS 1000000000LL
 
 class inf_state_test : public testing::Test
 {
@@ -25,6 +28,7 @@ public:
 				athd,
 				sahd,
 				sphd,
+				snhd,
 				&flush_queue,
 				[]()->bool{return true;}));
 		m_infra_state.reset(new infrastructure_state(*m_analyzer, m_sinsp.get(), "/opt/draios", nullptr, true));
@@ -84,6 +88,10 @@ protected:
 	void remove_congroup(cue_t& cue) {
 		cue.set_type(draiosproto::REMOVED);
 		m_infra_state->load_single_event(cue);
+
+		// Let's refresh the infrastructure state, in order to
+		// let the congroup ttl expire
+		m_infra_state->refresh(120 * ONE_SECOND_IN_NS);
 
 		if(cue.object().uid().kind() == "container") {
 			for(auto it = m_containers.begin(); it != m_containers.end(); it++)

@@ -120,6 +120,32 @@ public:
 
 	bool match_scope(const uid_t &uid, const scope_predicates &predicates) override;
 
+	std::shared_ptr<draiosproto::container_group> get_pod_owner(std::shared_ptr<draiosproto::container_group> const& cg);
+	std::shared_ptr<draiosproto::container_group> match_from_addr(const std::string &addr,
+								      bool *found);
+
+	bool is_k8s_cidr_discovered()
+	{
+		return !m_command_k8s_cluster_cidr.empty() &&
+			!m_command_k8s_service_cidr.empty();
+	}
+
+	std::string get_command_k8s_cluster_cidr() const
+	{
+		return m_command_k8s_cluster_cidr;
+	}
+
+	std::string get_command_k8s_service_cidr() const
+	{
+		return m_command_k8s_service_cidr;
+	}
+
+	// Register a set of scope predicates with this object and
+	// keep track of whether the predicates match the current
+	// state. This is most interesting for container-level scope,
+	// where the predicates are re-tested as containers come and go.
+	//
+	// Returns true if the scope could be registered, false otherwise.
 	bool register_scope(reg_id_t &reg,
 			    bool host_scope, bool container_scope,
 			    const scope_predicates &predicates) override;
@@ -137,6 +163,14 @@ public:
 
 	void state_of(const std::vector<std::string> &container_ids, container_groups* state, const uint64_t ts);
 	void state_of(const std::vector<std::string> &container_ids, draiosproto::k8s_state* state, const uint64_t ts);
+
+	/** Returns all the discovered kubernetes congroups matching a given kind
+	 *
+	 * \param cgs  Populated container_groups retrieved
+	 * \param kind Kubernetes Kind in the form of k8s_*
+	 *             (e.g. k8s_endpoints, k8s_service, etc.)
+	 */
+	void get_congroups_by_kind(std::vector<std::shared_ptr<draiosproto::container_group>> *cgs, const string &kind) const;
 
 	void get_state(container_groups* state, const uint64_t ts);
 	void get_state(draiosproto::k8s_state* state, uint64_t ts);
@@ -258,7 +292,12 @@ private:
 
 	void handle_event(const draiosproto::congroup_update_event *evt, bool overwrite = false);
 
+	void handle_cluster_cidr(const draiosproto::container_group& congroup);
+
 	void refresh_hosts_metadata();
+
+	void add(uid_t &key, const draiosproto::container_group &cg);
+	void update_metadata(uid_t &key, const draiosproto::container_group &cg);
 
 	void connect_to_namespace(const infrastructure_state::uid_t& key);
 	void connect_orphans();
@@ -272,6 +311,9 @@ private:
 	bool get_cached_result(const std::string &entity_id, size_t h, bool *res);
 	void insert_cached_result(const std::string &entity_id, size_t h, bool res);
 	void clear_cached_result(const std::string &entity_id);
+
+	void add_ip_mappings(std::shared_ptr<draiosproto::container_group> cg);
+	void remove_ip_mappings(std::shared_ptr<draiosproto::container_group> cg);
 
 	void reset();
 
@@ -292,7 +334,12 @@ private:
 	void handle_update_event_no_thin_cointerface(const draiosproto::congroup_update_event *evt);
 	bool kind_is_allowed(const std::string& kind) const;
 
-	std::map<uid_t, std::unique_ptr<draiosproto::container_group>> m_state;
+	std::map<uid_t, std::shared_ptr<draiosproto::container_group>> m_state;
+
+	std::unordered_map<std::string, std::unordered_set<std::shared_ptr<draiosproto::container_group>>> m_cg_by_addr;
+	std::unordered_map<uid_t, uint64_t> m_cg_ttl;
+	std::string m_command_k8s_cluster_cidr;
+	std::string m_command_k8s_service_cidr;
 
 	using pod_status_set_t = std::set<draiosproto::pod_status_count, std::less<draiosproto::pod_status_count>>;
 	std::map<std::string, pod_status_set_t> m_pod_status;
@@ -318,10 +365,11 @@ private:
 	sinsp_analyzer& m_analyzer;
 	sinsp *m_inspector;
 	std::string m_machine_id;
+	uint64_t m_ts;
 
 	std::hash<std::string> m_str_hash_f;
 
-	coclient m_k8s_coclient;
+	std::unique_ptr<coclient> m_k8s_coclient;
 	coclient::response_cb_t m_k8s_callback;
 	bool m_k8s_subscribed;   // True if we're supposed to connect to k8s
 	bool m_k8s_connected;    // True if we have an active RPC connection
@@ -329,6 +377,8 @@ private:
 	mutable std::string m_k8s_cached_cluster_id;
 	run_on_interval m_k8s_refresh_interval;
 	run_on_interval m_k8s_connect_interval;
+	run_on_interval m_delayed_removal_interval;
+
 	int m_k8s_prev_connect_state;
 	std::string m_k8s_node;
 	std::string m_k8s_node_uid;
@@ -407,6 +457,8 @@ public: // configs
 	static type_config<uint64_t> c_k8s_refresh_interval;
 	static type_config<uint32_t>::ptr c_k8s_max_rnd_conn_delay;
 	static type_config<bool>::ptr c_thin_cointerface_enabled;
+	static type_config<uint64_t> c_congroup_ttl_s;
+	static type_config<std::vector<std::string>> c_pod_prefix_for_cidr_retrieval;
 	static type_config<std::vector<std::string>>::ptr c_k8s_allow_list_kinds;
 
 private: // configs which have non-static fields that we actually use. You probably don't
@@ -417,7 +469,6 @@ private: // configs which have non-static fields that we actually use. You proba
 	static type_config<std::string> c_k8s_ca_certificate;
 	static type_config<std::string> c_k8s_ssl_certificate;
 	static type_config<std::string> c_k8s_ssl_key;
-
 
 	static const string POD_STATUS_PHASE_LABEL;
 	friend class new_k8s_delegator;

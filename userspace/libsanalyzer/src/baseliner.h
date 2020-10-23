@@ -1318,7 +1318,7 @@ public:
 
 	void init();
 	void set_data_handler(secure_profiling_data_ready_handler* handler);
-	const secure::profiling::fingerprint* get_fingerprint(uint64_t timestamp);	
+	const secure::profiling::fingerprint* get_fingerprint(uint64_t timestamp);
 	void set_internal_metrics(secure_profiling_internal_metrics* internal_metrics);
 	void set_baseline_runtime_enable_start_time(uint64_t ts);
 	void load_tables(uint64_t time);
@@ -1395,3 +1395,4 @@ private:
 	// from the relevant scap_stats counters.
 	baseliner_stats m_baseliner_stats;
 };
+

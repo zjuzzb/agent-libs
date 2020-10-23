@@ -236,6 +236,11 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		pkg = kubecollect.KubecollectClient{}
 	}
 
+	// In order to discover kubernetes cidrs, we need to configure
+	// the pod prefix names. See dragent.yaml config
+	// `network_topology.pod_prefix_for_cidr_retrieval'
+	kubecollect_common.SetPodPrefixForCidrRetrieval(cmd.PodPrefixForCidrRetrieval)
+
 	evtArrayChan, fetchDone, err := kubecollect_common.WatchCluster(ctx, cmd, pkg)
 	if err != nil {
 		log.Errorf("[PerformOrchestratorEventsStream] Error: failure to start informers. Cleaning up")

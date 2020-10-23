@@ -732,6 +732,21 @@ func GetTags(obj v1meta.ObjectMeta, prefix string) map[string]string {
 	return tags
 }
 
+func GetLabelSelector(labelSelector v1meta.LabelSelector) *draiosproto.K8SLabelSelector {
+	matchExpressions := make([]*draiosproto.K8SLabelSelectorRequirement, len(labelSelector.MatchExpressions))
+	for _, e := range labelSelector.MatchExpressions {
+		matchExpressions = append(matchExpressions, &draiosproto.K8SLabelSelectorRequirement{
+			Key: proto.String(e.Key),
+			MatchOperator: proto.String(string(e.Operator)),
+			Values: e.Values,
+		})
+	}
+	return &draiosproto.K8SLabelSelector{
+		MatchLabels: labelSelector.MatchLabels,
+		MatchExpressions: matchExpressions,
+	}
+}
+
 // This needs to be called before any informers are started as the map is
 // not thread-safe for mixing reads & writes.
 func SetAnnotFilt(annots []string) {
@@ -1029,7 +1044,7 @@ func StartWatcher(ctx context.Context,
 		_, err := tw.ListWatchUntil(ctx, lw,
 			func(event watch.Event) (bool, error) {
 				if event.Type == watch.Error {
-					log.Debugf("startWatcher[%s] got event type Error", resource)
+					log.Warnf("startWatcher[%s] got event type Error", resource)
 				} else {
 					handler(event, evtc)
 				}
@@ -1038,7 +1053,7 @@ func StartWatcher(ctx context.Context,
 			})
 
 		if err != nil {
-			log.Debugf("startWatcher[%s] Could not start retryWatcher: %s", resource, err.Error())
+			log.Warnf("startWatcher[%s] Could not start retryWatcher: %s", resource, err.Error())
 		}
 	}()
 }
