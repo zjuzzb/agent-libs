@@ -2060,9 +2060,21 @@ bool infrastructure_state::is_valid_for_export(const draiosproto::container_grou
 		}
 	}
 
+	auto is_unschedulable = [](const draiosproto::container_group& cg) {
+		for (const auto& l : cg.tags())
+		{
+			if (std::make_pair(l.first, l.second) ==
+			    std::make_pair(UNSCHEDULABLE_TAG, std::string("true")))
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+
 	if (grp->uid().kind() == "k8s_pod")
 	{
-		return (has_k8s_node && has_k8s_namespace);
+		return (has_k8s_node && has_k8s_namespace) || is_unschedulable(*grp);
 	}
 
 	return has_k8s_namespace;
@@ -4138,5 +4150,6 @@ void infrastructure_state::dump_memory_info() const
 }
 
 const string infrastructure_state::POD_STATUS_PHASE_LABEL = "kubernetes.pod.label.status.phase";
+const string infrastructure_state::UNSCHEDULABLE_TAG = "kubernetes.pod.label.status.unschedulable";
 
 #endif  // CYGWING_AGENT

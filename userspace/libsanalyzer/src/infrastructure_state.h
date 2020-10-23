@@ -479,6 +479,7 @@ private: // configs which have non-static fields that we actually use. You proba
 	static type_config<std::string> c_k8s_ssl_key;
 
 	static const string POD_STATUS_PHASE_LABEL;
+	static const string UNSCHEDULABLE_TAG;
 	friend class new_k8s_delegator;
 	friend class test_helper;
 };
