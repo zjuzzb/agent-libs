@@ -148,7 +148,8 @@ type_config<std::vector<std::string>>::ptr infrastructure_state::c_k8s_allow_lis
 		 "k8s_replicationcontroller",
 		 "k8s_resourcequota",
 		 "k8s_service",
-		 "k8s_statefulset"},
+		 "k8s_statefulset",
+		 "container"},
 		"List of k8s types that the agent will handle",
 		"k8s_allow_list_kinds"
 		).hidden()
