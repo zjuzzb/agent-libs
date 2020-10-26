@@ -396,6 +396,13 @@ void async_aggregator::do_run()
 					relocate_moved_fields(*m_aggregated_data->m_metrics);
 				}
 
+				if (m_count_since_flush < aggr_interval_cache && m_metrics_index > 1)
+				{
+					LOG_WARNING("Aggregated data contains only %d samples, expected %d",
+					            m_count_since_flush,
+					            aggr_interval_cache);
+				}
+
 				// Set the index number for the metrics message
 				m_aggregated_data->m_metrics->set_index(get_metrics_index());
 				// Now increment the stored index

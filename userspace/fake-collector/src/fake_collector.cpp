@@ -106,7 +106,6 @@ bool fake_collector::process_auto_response(buf& b)
 		{
 			return true;
 		}
-		ASSERT(msg.index() == m_last_index + 1 || msg.index() == 1);
 		if (!m_silent) {
 			std::cout << "FC> " << "Received metrics message with index "
 			          << msg.index() << std::endl;
