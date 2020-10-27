@@ -739,6 +739,27 @@ void sinsp_analyzer_fd_listener::on_socket_status_changed(sinsp_evt* evt)
 		{
 			connection->set_state(-evt->m_errorcode);
 		}
+
+        uint8_t flags = sinsp_connection::AF_NONE;
+        if (evt->m_fdinfo->is_socket_failed())
+        {
+            flags = sinsp_connection::AF_FAILED;
+        }
+        else if (evt->m_fdinfo->is_socket_pending())
+        {
+            flags = sinsp_connection::AF_PENDING;
+        }
+
+        std::string scomm = evt->m_tinfo->get_comm();
+        m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
+                                           &scomm,
+                                           evt->m_tinfo->m_pid,
+                                           evt->get_tid(),
+                                           evt->m_tinfo->m_lastevent_fd,
+                                           true,
+                                           evt->get_ts(),
+                                           flags,
+                                           evt->m_errorcode);
 	}
 }
 
