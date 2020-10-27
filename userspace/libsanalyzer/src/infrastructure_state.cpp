@@ -721,25 +721,35 @@ void infrastructure_state::refresh(uint64_t ts)
 
 	// Check if it's time to handle delayed removals
 	m_delayed_removal_interval.run(
-		[this]() {
-		if (!m_cg_ttl.empty()) {
-			for (auto i = m_cg_ttl.begin(); i != m_cg_ttl.end(); )
-			{
-				uid_t key = i->first;
-				uint64_t ttl = i->second;
-				if (m_ts > ttl) {
-					LOG_DEBUG("infra_state: Delayed removal of container_group <%s,%s>",
-						  key.first.c_str(), key.second.c_str());
-					remove(key);
-					i = m_cg_ttl.erase(i);
-				} else {
-					LOG_DEBUG("infra_state: Delayed removal of container_group <%s,%s> will happen in %.3f secs",
-						  key.first.c_str(), key.second.c_str(), (float)(ttl-m_ts)/ONE_SECOND_IN_NS);
-					++i;
-				}
-			}
-		}
-	}, ts);
+	    [this]() {
+		    if (!m_cg_ttl.empty())
+		    {
+			    for (auto i = m_cg_ttl.begin(); i != m_cg_ttl.end();)
+			    {
+				    uid_t key = i->first;
+				    uint64_t ttl = i->second;
+				    if (m_ts > ttl)
+				    {
+					    LOG_DEBUG("infra_state: Delayed removal of container_group <%s,%s>",
+					              key.first.c_str(),
+					              key.second.c_str());
+					    remove(key);
+					    i = m_cg_ttl.erase(i);
+				    }
+				    else
+				    {
+					    LOG_DEBUG(
+					        "infra_state: Delayed removal of container_group <%s,%s> will happen "
+					        "in %.3f secs",
+					        key.first.c_str(),
+					        key.second.c_str(),
+					        (float)(ttl - m_ts) / ONE_SECOND_IN_NS);
+					    ++i;
+				    }
+			    }
+		    }
+	    },
+	    ts);
 
 	//
 	// Calling empty before locking to avoid useless overhead
