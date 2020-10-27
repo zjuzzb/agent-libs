@@ -60,6 +60,11 @@ public class Application {
             } else {
                 app.mainLoop();
             }
+        } catch (NoClassDefFoundError ex) {
+            LOGGER.info("NoClassDefFoundError on main thread. This is usually because a Java 11+ "+
+                        "process was not started with -Dcom.sun.management.jmxremote. Detail: " + 
+                        ex.getMessage());
+            System.exit(1);
         } catch (IOException ex) {
             LOGGER.severe("IOException on main thread: " + ex.getMessage());
             System.exit(1);
