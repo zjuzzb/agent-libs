@@ -25,6 +25,11 @@ func newServiceCongroup(service kubecollect.CoService, setLinks bool) (*draiospr
 	tags := kubecollect_common.GetTags(service.ObjectMeta, "kubernetes.service.")
 	inttags := kubecollect_common.GetAnnotations(service.ObjectMeta, "kubernetes.service.")
 
+	if inttags == nil {
+		inttags = make(map[string]string, 1)
+	}
+	inttags["kubernetes.service.type"] = string(service.Spec.Type)
+
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_service"),
