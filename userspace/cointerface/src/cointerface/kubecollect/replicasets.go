@@ -150,7 +150,7 @@ func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, selector labels
 		}
 	}
 
-	if childUid == "" {
+	if childUid == "" && selector != nil {
 		for _, obj := range replicaSetInf.GetStore().List() {
 			replicaSet := obj.(*appsv1.ReplicaSet)
 			if replicaSet.GetNamespace() != ns {
