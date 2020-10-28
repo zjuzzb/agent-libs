@@ -483,8 +483,9 @@ uint64_t k8s_pod_store::size() const
 
 void k8s_pod_store::print_store_status() const
 {
-	LOG_DEBUG("pods: %ld - services: %ld - nodes: %ld"
+	LOG_DEBUG("STORE STAT pods: %ld - services: %ld - nodes: %ld"
 		  , m_pods.size()
 		  , m_services.size()
 		  , m_nodes.size());
 }
+

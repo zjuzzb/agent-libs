@@ -264,6 +264,9 @@ public:
 private:
 	FRIEND_TEST(infrastructure_state_test, connect_to_namespace);
 	FRIEND_TEST(infrastructure_state_test, allowed_kinds_test);
+	FRIEND_TEST(infrastructure_state_test, events_test);
+	FRIEND_TEST(infrastructure_state_test, events_test_2);
+	FRIEND_TEST(infrastructure_state_test, single_update);
 
 	void configure_k8s_environment();
 
@@ -306,6 +309,8 @@ private:
 
 	// Remove given key. Set update to true if the key will be reinstantiated as part of an update
 	void remove(infrastructure_state::uid_t& key, bool update = false);
+	// Discend into a cg children list recursively for removeing the cg as a parent.
+	void remove_parent_recursively(const uid_t& what_uid, const uid_t& from_uid);
 	bool has_link(const google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& links, const uid_t& uid);
 
 	bool get_cached_result(const std::string &entity_id, size_t h, bool *res);
@@ -333,6 +338,8 @@ private:
 	void handle_update_event_thin_cointerface(const draiosproto::congroup_update_event *evt);
 	void handle_update_event_no_thin_cointerface(const draiosproto::congroup_update_event *evt);
 	bool kind_is_allowed(const std::string& kind) const;
+	void dump_memory_info() const;
+	std::map<uid_t, uint32_t> get_duplicated_link(const google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& links) const;
 
 	std::map<uid_t, std::shared_ptr<draiosproto::container_group>> m_state;
 

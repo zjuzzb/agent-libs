@@ -1,11 +1,55 @@
+#include "infrastructure_state.h"
+
 #include "analyzer.h"
 #include "audit_tap_handler.h"
 #include "configuration_manager.h"
-#include "infrastructure_state.h"
+#include "infrastate_util.h"
 #include "secure_audit_handler.h"
 #include "sinsp_mock.h"
+#include "test_logger.h"
 
+#include <google/protobuf/util/json_util.h>
+
+#include <deque>
 #include <gtest.h>
+#include <map>
+#include <vector>
+
+class infrastructure_state_test : public test_logger, public ::testing::Test
+{
+public:
+	class congroup_uid_comparer
+	{
+	public:
+		bool operator()(const draiosproto::congroup_uid& uid1,
+		                const draiosproto::congroup_uid& uid2)
+		{
+			return (uid1.kind() < uid2.kind()) ||
+			       ((uid1.kind() == uid2.kind()) && uid1.id() < uid2.id());
+		}
+	};
+
+	bool cg_has_duplicated_parents_or_children(
+	    const google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& field)
+	{
+		std::set<draiosproto::congroup_uid, congroup_uid_comparer> elems;
+		for (const auto& elem : field)
+		{
+			elems.insert(elem);
+		}
+		return elems.size() != field.size();
+	}
+
+	bool cg_has_duplicated_parents(const draiosproto::container_group& cg)
+	{
+		return cg_has_duplicated_parents_or_children(cg.parents());
+	}
+
+	bool cg_has_duplicated_children(const draiosproto::container_group& cg)
+	{
+		return cg_has_duplicated_parents_or_children(cg.children());
+	}
+};
 
 #define ONE_SECOND_IN_NS 1000000000LL
 
@@ -43,7 +87,7 @@ public:
 // checks that values set in the yaml
 // are reflected in in memory constructs. mostly just checks nobody fat fingered a config
 // name
-TEST(infrastructure_state_test, configs)
+TEST_F(infrastructure_state_test, configs)
 {
 	// use some values. just important that they are unlikely to be the defaults for
 	// any of the actual configs
@@ -102,7 +146,7 @@ k8s_event_counts_log_time: 162
 
 // infrastructure state does a ton of post processing on configs generating
 // derivative members. check that that stuff works right
-TEST(infrastructure_state_test, config_post_processing)
+TEST_F(infrastructure_state_test, config_post_processing)
 {
 	std::string yaml_string = R"(
 k8s_uri: https://yaml_host:54321
@@ -160,10 +204,10 @@ k8s_ssl_key: key_path
 	EXPECT_EQ(is.get_k8s_url(), "https://some_host:12346");
 }
 
-void fill_congroup(draiosproto::container_group& to_be_filled
-		   , const std::string& kind
-		   , const std::string& id
-		   , const std::string& namespace_name)
+void fill_congroup(draiosproto::container_group& to_be_filled,
+                   const std::string& kind,
+                   const std::string& id,
+                   const std::string& namespace_name)
 {
 	draiosproto::congroup_uid* uid = to_be_filled.mutable_uid();
 	uid->set_kind(kind);
@@ -171,8 +215,7 @@ void fill_congroup(draiosproto::container_group& to_be_filled
 	to_be_filled.set_namespace_(namespace_name);
 }
 
-
-TEST(infrastructure_state_test, connect_to_namespace)
+TEST_F(infrastructure_state_test, connect_to_namespace)
 {
 	static const std::string DEFAULT_NAMESPACE_NAME = "default";
 
@@ -193,13 +236,16 @@ TEST(infrastructure_state_test, connect_to_namespace)
 	                        []() -> bool { return true; });
 	infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
 
-    	infrastructure_state::uid_t deployment_uid(std::make_pair("k8s_deployment", "spacchitempu"));
+	infrastructure_state::uid_t deployment_uid(std::make_pair("k8s_deployment", "spacchitempu"));
 
 	// A deployment ADD event arrives. No namespaces yet.
 	draiosproto::congroup_update_event deployment_add_event;
 	deployment_add_event.set_type(draiosproto::congroup_event_type::ADDED);
 	draiosproto::container_group* deployment_congroup = deployment_add_event.mutable_object();
-	fill_congroup(*deployment_congroup, deployment_uid.first, deployment_uid.second, DEFAULT_NAMESPACE_NAME);
+	fill_congroup(*deployment_congroup,
+	              deployment_uid.first,
+	              deployment_uid.second,
+	              DEFAULT_NAMESPACE_NAME);
 	is.handle_event(&deployment_add_event);
 
 	// We expect that the incomplete default namespace has been created
@@ -216,7 +262,10 @@ TEST(infrastructure_state_test, connect_to_namespace)
 	draiosproto::congroup_update_event namespace_add_event;
 	namespace_add_event.set_type(draiosproto::congroup_event_type::ADDED);
 	draiosproto::container_group* namespace_congroup = namespace_add_event.mutable_object();
-	fill_congroup(*namespace_congroup, default_namespace_uid.first, default_namespace_uid.second, DEFAULT_NAMESPACE_NAME);
+	fill_congroup(*namespace_congroup,
+	              default_namespace_uid.first,
+	              default_namespace_uid.second,
+	              DEFAULT_NAMESPACE_NAME);
 	is.handle_event(&namespace_add_event);
 
 	// We expect to have 1 namespace
@@ -235,7 +284,8 @@ TEST(infrastructure_state_test, connect_to_namespace)
 	EXPECT_EQ(deployement_from_state->parents(0).kind(), default_namespace_uid.first);
 	EXPECT_EQ(deployement_from_state->parents(0).id(), default_namespace_uid.second);
 
-	const draiosproto::container_group& namespace_from_state = *is.m_state[default_namespace_uid].get();
+	const draiosproto::container_group& namespace_from_state =
+	    *is.m_state[default_namespace_uid].get();
 	EXPECT_EQ(namespace_from_state.children_size(), 1);
 	EXPECT_EQ(namespace_from_state.children(0).kind(), deployment_uid.first);
 	EXPECT_EQ(namespace_from_state.children(0).id(), deployment_uid.second);
@@ -245,7 +295,10 @@ TEST(infrastructure_state_test, connect_to_namespace)
 	update_deployment_event.set_type(draiosproto::congroup_event_type::UPDATED);
 	draiosproto::container_group* update_congroup = update_deployment_event.mutable_object();
 	// For the sake of this test this congroup can be
-	fill_congroup(*update_congroup, deployment_uid.first, deployment_uid.second, DEFAULT_NAMESPACE_NAME);
+	fill_congroup(*update_congroup,
+	              deployment_uid.first,
+	              deployment_uid.second,
+	              DEFAULT_NAMESPACE_NAME);
 
 	is.handle_event(&update_deployment_event);
 
@@ -258,7 +311,6 @@ TEST(infrastructure_state_test, connect_to_namespace)
 	EXPECT_EQ(namespace_from_state.children_size(), 1);
 	EXPECT_EQ(namespace_from_state.children(0).kind(), deployment_uid.first);
 	EXPECT_EQ(namespace_from_state.children(0).id(), deployment_uid.second);
-
 
 	{
 		// Add a replicaset under the deployement
@@ -282,7 +334,8 @@ TEST(infrastructure_state_test, connect_to_namespace)
 		rs_updated_cg.mutable_parents()->Add()->CopyFrom(parent);
 		is.handle_event(&rs_update);
 
-		draiosproto::container_group& rs_from_state = *is.m_state[std::make_pair(rs_uid.kind(), rs_uid.id())].get();
+		draiosproto::container_group& rs_from_state =
+		    *is.m_state[std::make_pair(rs_uid.kind(), rs_uid.id())].get();
 
 		EXPECT_EQ(rs_from_state.parents_size(), 2);
 		EXPECT_EQ(rs_from_state.parents(0).kind(), deployment_uid.first);
@@ -291,13 +344,15 @@ TEST(infrastructure_state_test, connect_to_namespace)
 		EXPECT_EQ(rs_from_state.parents(1).id(), default_namespace_uid.second);
 	}
 
-
 	{
 		// Delete the deployment
 		draiosproto::congroup_update_event delete_deployment_event;
 		delete_deployment_event.set_type(draiosproto::congroup_event_type::REMOVED);
 		draiosproto::container_group* delete_congroup = delete_deployment_event.mutable_object();
-		fill_congroup(*delete_congroup, deployment_uid.first, deployment_uid.second, DEFAULT_NAMESPACE_NAME);
+		fill_congroup(*delete_congroup,
+		              deployment_uid.first,
+		              deployment_uid.second,
+		              DEFAULT_NAMESPACE_NAME);
 		is.handle_event(&delete_deployment_event);
 
 		// Let's refresh the infrastructure state, in order to
@@ -311,7 +366,7 @@ TEST(infrastructure_state_test, connect_to_namespace)
 	}
 }
 
-TEST(infrastructure_state_test, k8s_namespace_store_test)
+TEST_F(infrastructure_state_test, k8s_namespace_store_test)
 {
 	k8s_namespace_store namespace_store;
 
@@ -353,7 +408,7 @@ TEST(infrastructure_state_test, k8s_namespace_store_test)
 	}
 }
 
-TEST(infrastructure_state_test, allowed_kinds_test)
+TEST_F(infrastructure_state_test, allowed_kinds_test)
 {
 	// check that we properly normalize path
 	test_helpers::sinsp_mock inspector;
@@ -396,4 +451,806 @@ TEST(infrastructure_state_test, allowed_kinds_test)
 	is.handle_event(&update_event);
 
 	ASSERT_EQ(is.m_orphans.size(), 1);
+}
+
+// Simulate the following hierarchy.
+//
+//             -----
+//            (  ns )
+//             --+--
+//               |
+//               |
+//               |
+//             --+--
+//            ( depl)
+//             --+--
+//               |
+//               |
+//               |
+//               |
+//             --+--
+//            ( rs  )
+//             -----
+//           --/    \--
+//         -/          \--
+//      --/               \--
+//    -/                     \-
+//  -----                   -----
+// ( pod1)                 ( pod2)
+//  -----                   -----
+
+TEST_F(infrastructure_state_test, events_test)
+{
+	// Uncomment below if you want full dragent log
+	// setup_logger();
+
+	// cgroup_ttl is the lapse of time that will pass from marking a cgroup for deletion and
+	// the actual deletion.
+	configuration_manager::instance().get_mutable_config<uint64_t>("congroup_ttl_s")->set(0);
+
+	const std::string NAMESPACE_NAME = "ns_name";
+	const std::string DEPLOYMENT_ID = "dep_id";
+	const std::string RS_ID = "dep_id";
+	const std::string POD1_ID = "pod1_id";
+	const std::string POD2_ID = "pod2_id";
+	const std::string NODE_ID = "node_id";
+
+	test_helpers::sinsp_mock inspector;
+	audit_tap_handler_dummy athd;
+	null_secure_audit_handler sahd;
+	null_secure_profiling_handler sphd;
+	null_secure_netsec_handler snhd;
+	sinsp_analyzer analyzer(&inspector,
+	                        "",
+	                        std::make_shared<internal_metrics>(),
+	                        athd,
+	                        sahd,
+	                        sphd,
+	                        snhd,
+	                        nullptr,
+	                        []() -> bool { return true; });
+
+	using event_t = test::infra_util::event_tuple_t;
+
+	auto make_test_events = [&]() {
+		auto events = test::infra_util::create_many_events(
+		    event_t("k8s_node", NODE_ID, "", draiosproto::congroup_event_type::ADDED, {}, {}),
+		    event_t(k8s_pod_store::POD_KIND,
+		            POD1_ID,
+		            NAMESPACE_NAME,
+		            draiosproto::congroup_event_type::ADDED,
+		            {{k8s_pod_store::REPLICASET_KIND, RS_ID}, {"k8s_node", NODE_ID}},
+		            {}),
+		    event_t(k8s_pod_store::POD_KIND,
+		            POD2_ID,
+		            NAMESPACE_NAME,
+		            draiosproto::congroup_event_type::ADDED,
+		            {{k8s_pod_store::REPLICASET_KIND, RS_ID}, {"k8s_node", NODE_ID}},
+		            {}),
+		    event_t(k8s_pod_store::REPLICASET_KIND,
+		            RS_ID,
+		            NAMESPACE_NAME,
+		            draiosproto::congroup_event_type::ADDED,
+		            {{k8s_pod_store::DEPLOYMENT_KIND, DEPLOYMENT_ID}},
+		            {{k8s_pod_store::POD_KIND, POD1_ID}, {k8s_pod_store::POD_KIND, POD2_ID}}),
+		    event_t(k8s_pod_store::DEPLOYMENT_KIND,
+		            DEPLOYMENT_ID,
+		            NAMESPACE_NAME,
+		            draiosproto::congroup_event_type::ADDED,
+		            {},
+		            {{k8s_pod_store::REPLICASET_KIND, RS_ID}}),
+		    event_t("k8s_namespace",
+		            NAMESPACE_NAME,
+		            NAMESPACE_NAME,
+		            draiosproto::congroup_event_type::ADDED,
+		            {},
+		            {}));
+		events[5].mutable_object()->set_namespace_(NAMESPACE_NAME);
+		return events;
+	};
+
+	const decltype(make_test_events()) EVENTS(make_test_events());
+
+	const auto k8s_state_expected = test::infra_util::create_expected(
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_namespace(),
+	                                          NAMESPACE_NAME,
+	                                          NAMESPACE_NAME,
+	                                          NODE_ID,
+	                                          {}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_pod(),
+	                                          POD1_ID,
+	                                          NAMESPACE_NAME,
+	                                          NODE_ID,
+	                                          {{k8s_pod_store::NODE_KIND, NODE_ID},
+	                                           {k8s_pod_store::REPLICASET_KIND, RS_ID},
+	                                           {k8s_pod_store::DEPLOYMENT_KIND, DEPLOYMENT_ID}}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_pod(),
+	                                          POD2_ID,
+	                                          NAMESPACE_NAME,
+	                                          NODE_ID,
+	                                          {{k8s_pod_store::NODE_KIND, NODE_ID},
+	                                           {k8s_pod_store::REPLICASET_KIND, RS_ID},
+	                                           {k8s_pod_store::DEPLOYMENT_KIND, DEPLOYMENT_ID}}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_replica_set(),
+	                                          RS_ID,
+	                                          NAMESPACE_NAME,
+	                                          NODE_ID,
+	                                          {{k8s_pod_store::DEPLOYMENT_KIND, DEPLOYMENT_ID}}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_deployment(),
+	                                          DEPLOYMENT_ID,
+	                                          NAMESPACE_NAME,
+	                                          NODE_ID,
+	                                          {}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_node(), NODE_ID, "", NODE_ID, {}));
+
+	auto test = [&](const decltype(make_test_events())& test_events) {
+		infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
+
+		draiosproto::k8s_state state;
+		auto handle_event_and_emit = [&](decltype(test_events)& events,
+		                                 draiosproto::k8s_state& state) {
+			static uint16_t i = 0;
+			state.Clear();
+			for (const auto& evt : events)
+			{
+				is.handle_event(&evt);
+			}
+
+			// Refresh force infrastructure state to delete immediately
+			// cgroup marked for deletion
+			is.refresh(i++ * 1000);
+
+			for (const auto& m_state_entry : is.m_state)
+			{
+				const draiosproto::container_group& m_state_cg = *m_state_entry.second.get();
+				is.emit(&m_state_cg, &state, 10000000);
+			}
+		};
+
+		handle_event_and_emit(test_events, state);
+
+		EXPECT_EQ(test::infra_util::check_equality(k8s_state_expected, state), true)
+		    << "\n\nEXPECTED\n"
+		    << k8s_state_expected.DebugString() << "\n\nACTUAL\n"
+		    << state.DebugString();
+
+		std::size_t objects_number = test_events.size();
+		EXPECT_EQ(is.m_state.size(), objects_number);
+		EXPECT_EQ(is.m_orphans.size(), 0);
+		EXPECT_LE(is.m_parents.size(), test_events.size());
+
+		// Repeat the test inverting the order of the incoming events
+		is.m_state.clear();
+		is.m_parents.clear();
+		state.Clear();
+		is.reset();
+
+		for (auto it = test_events.rbegin(); it != test_events.rend(); it++)
+		{
+			is.handle_event(&(*it));
+		}
+
+		for (const auto& m_state_entry : is.m_state)
+		{
+			const draiosproto::container_group& m_state_cg = *m_state_entry.second.get();
+			is.emit(&m_state_cg, &state, 10000000);
+		}
+
+		// Expected is the same
+		EXPECT_EQ(test::infra_util::check_equality(k8s_state_expected, state), true)
+		    << "\n\nEXPECTED\n"
+		    << k8s_state_expected.DebugString() << "\n\nACTUAL\n"
+		    << state.DebugString();
+
+		EXPECT_EQ(is.m_state.size(), test_events.size());
+		EXPECT_EQ(is.m_orphans.size(), 0);
+		EXPECT_LE(is.m_parents.size(), test_events.size());
+
+		// Send update events
+		auto update_events = test_events;
+
+		// Update pods, replicasets and deployement
+		for (auto pos = update_events.begin(); pos != update_events.end();)
+		{
+			if (pos->object().uid().kind() != k8s_pod_store::POD_KIND ||
+			    pos->object().uid().kind() != k8s_pod_store::REPLICASET_KIND ||
+			    pos->object().uid().kind() != k8s_pod_store::DEPLOYMENT_KIND)
+			{
+				pos = update_events.erase(pos);
+			}
+			else
+			{
+				pos->set_type(draiosproto::congroup_event_type::UPDATED);
+				pos++;
+			}
+		}
+
+		handle_event_and_emit(update_events, state);
+
+		EXPECT_EQ(test::infra_util::check_equality(k8s_state_expected, state), true)
+		    << "\n\nEXPECTED\n"
+		    << k8s_state_expected.DebugString() << "\n\nACTUAL\n"
+		    << state.DebugString();
+
+		EXPECT_EQ(is.m_state.size(), objects_number);
+		EXPECT_EQ(is.m_orphans.size(), 0);
+		EXPECT_LE(is.m_parents.size(), objects_number);
+
+		// Check that in m_state no element has duplicated children or prents
+		for (const auto& cg : is.m_state)
+		{
+			EXPECT_EQ(cg_has_duplicated_parents(*cg.second.get()), false)
+			    << cg.second->DebugString();
+			EXPECT_EQ(cg_has_duplicated_children(*cg.second.get()), false)
+			    << cg.second->DebugString();
+		}
+
+		// Delete POD1
+		// We expect that state does no longer have POD1. So remove it from expected
+		draiosproto::k8s_state expected_after_deletion;
+		expected_after_deletion.CopyFrom(k8s_state_expected);
+		for (auto pos = expected_after_deletion.mutable_pods()->begin();
+		     pos != expected_after_deletion.mutable_pods()->end();)
+		{
+			if (pos->common().uid() == POD1_ID)
+			{
+				expected_after_deletion.mutable_pods()->erase(pos);
+				break;
+			}
+			pos++;
+		}
+		objects_number -= 1;
+
+		decltype(test_events) remove_event =
+		    test::infra_util::create_many_events(event_t(k8s_pod_store::POD_KIND,
+		                                                 POD1_ID,
+		                                                 NAMESPACE_NAME,
+		                                                 draiosproto::congroup_event_type::REMOVED,
+		                                                 {},
+		                                                 {}));
+		handle_event_and_emit(remove_event, state);
+
+		EXPECT_EQ(test::infra_util::check_equality(expected_after_deletion, state), true)
+		    << "\n\nEXPECTED\n"
+		    << expected_after_deletion.DebugString() << "\n\nACTUAL\n"
+		    << state.DebugString();
+
+		EXPECT_EQ(is.m_state.size(), objects_number);
+		EXPECT_EQ(is.m_orphans.size(), 0);
+		EXPECT_LE(is.m_parents.size(), objects_number);
+	};
+
+	test(EVENTS);
+
+	configuration_manager::instance().get_mutable_config<bool>("thin_cointerface_enabled")->set(true);
+
+	// Repeat the previus test enabling thing cointerface
+	// Notice that events are slightly different as this time cointerface
+	// does not fill children in container_groups
+	// Another difference is that the object node is not sent as a parent
+	// But in the node field Node
+
+	// Remove children from events
+	std::remove_const<decltype(EVENTS)>::type tc_events(EVENTS);
+	for (auto& event : tc_events)
+	{
+		event.mutable_object()->mutable_children()->Clear();
+
+		// Erase node parent
+		for (auto pos = event.mutable_object()->mutable_parents()->begin();
+		     pos != event.mutable_object()->mutable_parents()->end();)
+		{
+			if (pos->kind() == k8s_pod_store::NODE_KIND)
+			{
+				event.mutable_object()->mutable_parents()->erase(pos);
+				break;
+			}
+			pos++;
+		}
+	}
+
+	// Run again the tests
+	std::cout << "THIN COINTERFACE" << std::endl;
+	test(tc_events);
+
+	// configuration will survive between tests. So restore the old config
+	configuration_manager::instance().get_mutable_config<bool>("thin_cointerface_enabled")->set(false);
+
+}
+
+// A bit more complicated cluster topology
+//
+//       	       	  -----
+//			 (NS   )
+//			  --|--
+//			    |		                   --------
+//      ----- 		  --|--	       	               	  ( Service)
+//     ( Node)   	 ( DEP )      	   -----       	   --+-----
+//      ----- 		  --+--	       	  (HPA  )            |
+//	  \-		    |	           ----- 	     |
+//	    \-		    |	             | 		     |
+//	      \-	  --+--	             | 		     |
+//	        \-	 ( RS  )             | 		     |
+//		  \-	  --+--	             | 		     |
+//		    \-	    |	      	     | 		     |
+//		      \-    |	          ---+  	     |
+//		        \ --+--	   ------/      	     |
+//			 ( POD )--/--------------------------+
+//			  -----
+//
+
+TEST_F(infrastructure_state_test, events_test_2)
+{
+	// Uncomment below if you want full dragent log
+	// setup_logger();
+
+	configuration_manager::instance().get_mutable_config<uint64_t>("congroup_ttl_s")->set(0);
+	const std::string NAMESPACE_NAME = "ns_name";
+	const std::string DEPLOYMENT_ID = "dep_id";
+	const std::string RS_ID = "rs_id";
+	const std::string POD_ID = "pod_id";
+	const std::string NODE_ID = "node_id";
+	const std::string SERVICE_ID = "service_id";
+	const std::string HPA_ID = "hpa_id";
+
+	test_helpers::sinsp_mock inspector;
+	audit_tap_handler_dummy athd;
+	null_secure_audit_handler sahd;
+	null_secure_profiling_handler sphd;
+	null_secure_netsec_handler snhd;
+	sinsp_analyzer analyzer(&inspector,
+	                        "",
+	                        std::make_shared<internal_metrics>(),
+	                        athd,
+	                        sahd,
+	                        sphd,
+	                        snhd,
+	                        nullptr,
+	                        []() -> bool { return true; });
+
+	using event_t = test::infra_util::event_tuple_t;
+
+	auto make_test_events = [&]() {
+		auto events = test::infra_util::create_many_events(
+		    event_t("k8s_node", NODE_ID, "", draiosproto::congroup_event_type::ADDED, {}, {}),
+		    event_t(k8s_pod_store::POD_KIND,
+		            POD_ID,
+		            NAMESPACE_NAME,
+		            draiosproto::congroup_event_type::ADDED,
+		            {{k8s_pod_store::REPLICASET_KIND, RS_ID},
+		             {"k8s_node", NODE_ID},
+		             {k8s_pod_store::SERVICE_KIND, SERVICE_ID}},
+		            {}),
+		    event_t(k8s_pod_store::REPLICASET_KIND,
+		            RS_ID,
+		            NAMESPACE_NAME,
+		            draiosproto::congroup_event_type::ADDED,
+		            {{k8s_pod_store::DEPLOYMENT_KIND, DEPLOYMENT_ID}},
+		            {{k8s_pod_store::POD_KIND, POD_ID}}),
+		    event_t(k8s_pod_store::DEPLOYMENT_KIND,
+		            DEPLOYMENT_ID,
+		            NAMESPACE_NAME,
+		            draiosproto::congroup_event_type::ADDED,
+		            {{k8s_pod_store::HPA_KIND, HPA_ID}},
+		            {{k8s_pod_store::REPLICASET_KIND, RS_ID}}),
+		    event_t("k8s_namespace",
+		            NAMESPACE_NAME,
+		            NAMESPACE_NAME,
+		            draiosproto::congroup_event_type::ADDED,
+		            {},
+		            {}),
+		    event_t(k8s_pod_store::HPA_KIND,
+		            HPA_ID,
+		            NAMESPACE_NAME,
+		            draiosproto::congroup_event_type::ADDED,
+		            {},
+		            {{k8s_pod_store::DEPLOYMENT_KIND, DEPLOYMENT_ID},
+		             {k8s_pod_store::REPLICASET_KIND, RS_ID}}),
+		    event_t(k8s_pod_store::SERVICE_KIND,
+		            SERVICE_ID,
+		            NAMESPACE_NAME,
+		            draiosproto::congroup_event_type::ADDED,
+		            {},
+		            {{k8s_pod_store::POD_KIND, POD_ID}}));
+
+		events[4].mutable_object()->set_namespace_(NAMESPACE_NAME);
+		return events;
+	};
+
+	const decltype(make_test_events()) EVENTS(make_test_events());
+
+	const auto k8s_state_expected = test::infra_util::create_expected(
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_namespace(),
+	                                          NAMESPACE_NAME,
+	                                          NAMESPACE_NAME,
+	                                          "",
+	                                          {}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_pod(),
+	                                          POD_ID,
+	                                          NAMESPACE_NAME,
+	                                          NODE_ID,
+	                                          {{k8s_pod_store::NODE_KIND, NODE_ID},
+	                                           {k8s_pod_store::REPLICASET_KIND, RS_ID},
+	                                           {k8s_pod_store::DEPLOYMENT_KIND, DEPLOYMENT_ID},
+	                                           {k8s_pod_store::SERVICE_KIND, SERVICE_ID},
+	                                           {k8s_pod_store::HPA_KIND, HPA_ID}}),
+	    test::infra_util::make_expected_tuple(
+	        draiosproto::k8s_replica_set(),
+	        RS_ID,
+	        NAMESPACE_NAME,
+	        "",
+	        {{k8s_pod_store::DEPLOYMENT_KIND, DEPLOYMENT_ID}, {k8s_pod_store::HPA_KIND, HPA_ID}}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_deployment(),
+	                                          DEPLOYMENT_ID,
+	                                          NAMESPACE_NAME,
+	                                          "",
+	                                          {{k8s_pod_store::HPA_KIND, HPA_ID}}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_node(), NODE_ID, "", NODE_ID, {}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_service(),
+	                                          SERVICE_ID,
+	                                          NAMESPACE_NAME,
+	                                          "",
+	                                          {}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_hpa(),
+	                                          HPA_ID,
+	                                          NAMESPACE_NAME,
+	                                          "",
+	                                          {}));
+
+	auto test = [&](const decltype(make_test_events())& test_events) {
+		infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
+
+		draiosproto::k8s_state state;
+		auto handle_event_and_emit = [&](decltype(test_events)& events,
+		                                 draiosproto::k8s_state& state) {
+			static uint16_t i = 0;
+			state.Clear();
+			for (const auto& evt : events)
+			{
+				is.handle_event(&evt);
+			}
+
+			is.refresh(i++ * 1000);
+
+			for (const auto& m_state_entry : is.m_state)
+			{
+				const draiosproto::container_group& m_state_cg = *m_state_entry.second.get();
+				is.emit(&m_state_cg, &state, 10000000);
+			}
+		};
+
+		handle_event_and_emit(test_events, state);
+
+		EXPECT_EQ(test::infra_util::check_equality(k8s_state_expected, state), true)
+		    << "\n\nEXPECTED\n"
+		    << k8s_state_expected.DebugString() << "\n\nACTUAL\n"
+		    << state.DebugString();
+
+		std::size_t objects_number = test_events.size();
+		EXPECT_EQ(is.m_state.size(), objects_number);
+		EXPECT_EQ(is.m_orphans.size(), 0);
+		EXPECT_LE(is.m_parents.size(), test_events.size());
+
+		// Repeat the test inverting the order of the incoming events
+		is.m_state.clear();
+		is.m_parents.clear();
+		state.Clear();
+		is.reset();
+
+		for (auto it = test_events.rbegin(); it != test_events.rend(); it++)
+		{
+			is.handle_event(&(*it));
+		}
+
+		for (const auto& m_state_entry : is.m_state)
+		{
+			const draiosproto::container_group& m_state_cg = *m_state_entry.second.get();
+			is.emit(&m_state_cg, &state, 10000000);
+		}
+
+		// Expected is the same
+		EXPECT_EQ(test::infra_util::check_equality(k8s_state_expected, state), true)
+		    << "\n\nEXPECTED\n"
+		    << k8s_state_expected.DebugString() << "\n\nACTUAL\n"
+		    << state.DebugString();
+
+		EXPECT_EQ(is.m_state.size(), test_events.size());
+		EXPECT_EQ(is.m_orphans.size(), 0);
+		EXPECT_LE(is.m_parents.size(), test_events.size());
+
+		// Send update events
+		auto update_events = test_events;
+
+		// Update pods, replicasets deployement hpa and services
+		for (auto pos = update_events.begin(); pos != update_events.end();)
+		{
+			if (pos->object().uid().kind() != k8s_pod_store::POD_KIND ||
+			    pos->object().uid().kind() != k8s_pod_store::REPLICASET_KIND ||
+			    pos->object().uid().kind() != k8s_pod_store::DEPLOYMENT_KIND ||
+			    pos->object().uid().kind() != k8s_pod_store::SERVICE_KIND ||
+			    pos->object().uid().kind() != k8s_pod_store::HPA_KIND)
+			{
+				pos = update_events.erase(pos);
+			}
+			else
+			{
+				pos->set_type(draiosproto::congroup_event_type::UPDATED);
+				pos++;
+			}
+		}
+
+		handle_event_and_emit(update_events, state);
+
+		EXPECT_EQ(test::infra_util::check_equality(k8s_state_expected, state), true)
+		    << "\n\nEXPECTED\n"
+		    << k8s_state_expected.DebugString() << "\n\nACTUAL\n"
+		    << state.DebugString();
+
+		EXPECT_EQ(is.m_state.size(), objects_number);
+		EXPECT_EQ(is.m_orphans.size(), 0);
+		EXPECT_LE(is.m_parents.size(), objects_number);
+
+		// Check that in m_state no element has duplicated children or prents
+		for (const auto& cg : is.m_state)
+		{
+			EXPECT_EQ(cg_has_duplicated_parents(*cg.second.get()), false)
+			    << cg.second->DebugString();
+			EXPECT_EQ(cg_has_duplicated_children(*cg.second.get()), false)
+			    << cg.second->DebugString();
+		}
+
+		// Delete HPA and Service and remove them from the pod parents
+		draiosproto::k8s_state expected_after_deletion;
+		expected_after_deletion.CopyFrom(k8s_state_expected);
+		expected_after_deletion.mutable_hpas()->Clear();
+		expected_after_deletion.mutable_hpas()->ReleaseCleared();
+		expected_after_deletion.mutable_services()->Clear();
+		expected_after_deletion.mutable_services()->ReleaseCleared();
+		// Remove them from the pod parents
+		test::infra_util::remove_parent(expected_after_deletion,
+						std::make_pair(k8s_pod_store::HPA_KIND, HPA_ID),
+						std::make_pair(k8s_pod_store::SERVICE_KIND, SERVICE_ID));
+
+		decltype(test_events) remove_event =
+		    test::infra_util::create_many_events(event_t(k8s_pod_store::HPA_KIND,
+		                                                 HPA_ID,
+		                                                 NAMESPACE_NAME,
+		                                                 draiosproto::congroup_event_type::REMOVED,
+		                                                 {},
+		                                                 {}),
+		                                         event_t(k8s_pod_store::SERVICE_KIND,
+		                                                 SERVICE_ID,
+		                                                 NAMESPACE_NAME,
+		                                                 draiosproto::congroup_event_type::REMOVED,
+		                                                 {},
+		                                                 {}));
+		objects_number -= 2;
+
+		handle_event_and_emit(remove_event, state);
+
+		EXPECT_EQ(test::infra_util::check_equality(expected_after_deletion, state), true)
+		    << "\n\nEXPECTED\n"
+		    << expected_after_deletion.DebugString() << "\n\nACTUAL\n"
+		    << state.DebugString();
+
+		EXPECT_EQ(is.m_state.size(), objects_number);
+		EXPECT_EQ(is.m_orphans.size(), 0);
+		EXPECT_LE(is.m_parents.size(), objects_number);
+	};
+
+	test(EVENTS);
+
+	configuration_manager::instance().get_mutable_config<bool>("thin_cointerface_enabled")->set(true);
+	// Repeat the previus test enabling thing cointerface
+	// Notice that events are slightly different as this time cointerface
+	// does not fill children in container_groups
+	// Another difference is that the object node is not sent as a parent
+	// But in the node field Node
+
+	// Remove children from events
+	std::remove_const<decltype(EVENTS)>::type tc_events(EVENTS);
+	for (auto& event : tc_events)
+	{
+		event.mutable_object()->mutable_children()->Clear();
+
+		// Erase node parent
+		for (auto pos = event.mutable_object()->mutable_parents()->begin();
+		     pos != event.mutable_object()->mutable_parents()->end();)
+		{
+			if (pos->kind() == k8s_pod_store::NODE_KIND)
+			{
+				event.mutable_object()->mutable_parents()->erase(pos);
+				break;
+			}
+			pos++;
+		}
+	}
+
+	// Run again the tests
+	std::cout << "THIN COINTERFACE" << std::endl;
+	test(tc_events);
+
+	configuration_manager::instance().get_mutable_config<bool>("thin_cointerface_enabled")->set(false);
+}
+
+TEST_F(infrastructure_state_test, single_update)
+{
+	// Uncomment below if you want full dragent log
+	// setup_logger();
+	const std::string NAMESPACE_NAME = "ns_name";
+	const std::string RS_ID = "rs_id";
+	const std::string POD_ID = "pod_id";
+	const std::string NODE_ID = "node_id";
+
+	test_helpers::sinsp_mock inspector;
+	audit_tap_handler_dummy athd;
+	null_secure_audit_handler sahd;
+	null_secure_profiling_handler sphd;
+	null_secure_netsec_handler snhd;
+	sinsp_analyzer analyzer(&inspector,
+	                        "",
+	                        std::make_shared<internal_metrics>(),
+	                        athd,
+	                        sahd,
+	                        sphd,
+	                        snhd,
+	                        nullptr,
+	                        []() -> bool { return true; });
+
+	using event_t = test::infra_util::event_tuple_t;
+
+	auto make_test_events = [&]() {
+		auto events = test::infra_util::create_many_events(
+		    event_t("k8s_node", NODE_ID, "", draiosproto::congroup_event_type::ADDED, {}, {}),
+		    event_t(k8s_pod_store::POD_KIND,
+		            POD_ID,
+		            NAMESPACE_NAME,
+		            draiosproto::congroup_event_type::ADDED,
+		            {{k8s_pod_store::REPLICASET_KIND, RS_ID},
+		             {"k8s_node", NODE_ID}},
+		            {}),
+		    event_t(k8s_pod_store::REPLICASET_KIND,
+		            RS_ID,
+		            NAMESPACE_NAME,
+		            draiosproto::congroup_event_type::ADDED,
+		            {},
+		            {{k8s_pod_store::POD_KIND, POD_ID}}),
+		    event_t("k8s_namespace",
+		            NAMESPACE_NAME,
+		            NAMESPACE_NAME,
+		            draiosproto::congroup_event_type::ADDED,
+		            {},
+		            {}));
+
+		events[3].mutable_object()->set_namespace_(NAMESPACE_NAME);
+		return events;
+	};
+
+	const decltype(make_test_events()) EVENTS(make_test_events());
+
+	const auto k8s_state_expected = test::infra_util::create_expected(
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_namespace(),
+	                                          NAMESPACE_NAME,
+	                                          NAMESPACE_NAME,
+	                                          "",
+	                                          {}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_pod(),
+	                                          POD_ID,
+	                                          NAMESPACE_NAME,
+	                                          NODE_ID,
+	                                          {{k8s_pod_store::NODE_KIND, NODE_ID},
+	                                           {k8s_pod_store::REPLICASET_KIND, RS_ID}}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_replica_set(),
+						  RS_ID,
+						  NAMESPACE_NAME,
+						  "",
+						  {}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_node(), NODE_ID, "", NODE_ID, {}));
+
+	auto test = [&](const decltype(make_test_events())& test_events) {
+		infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
+
+		draiosproto::k8s_state state;
+		auto handle_event_and_emit = [&](decltype(test_events)& events,
+		                                 draiosproto::k8s_state& state) {
+			static uint16_t i = 0;
+			state.Clear();
+			for (const auto& evt : events)
+			{
+				is.handle_event(&evt);
+			}
+
+			is.refresh(i++ * 1000);
+
+			for (const auto& m_state_entry : is.m_state)
+			{
+				const draiosproto::container_group& m_state_cg = *m_state_entry.second.get();
+				is.emit(&m_state_cg, &state, 10000000);
+			}
+		};
+
+		handle_event_and_emit(test_events, state);
+
+		EXPECT_EQ(test::infra_util::check_equality(k8s_state_expected, state), true)
+		    << "\n\nEXPECTED\n"
+		    << k8s_state_expected.DebugString() << "\n\nACTUAL\n"
+		    << state.DebugString();
+
+		std::size_t objects_number = test_events.size();
+		EXPECT_EQ(is.m_state.size(), objects_number);
+		EXPECT_EQ(is.m_orphans.size(), 0);
+		EXPECT_LE(is.m_parents.size(), test_events.size());
+
+		// Send update events
+		auto update_events = test_events;
+
+		// Update pods, replicasets deployement hpa and services
+		for (auto pos = update_events.begin(); pos != update_events.end();)
+		{
+			if (pos->object().uid().kind() != k8s_pod_store::REPLICASET_KIND)
+			{
+				pos = update_events.erase(pos);
+			}
+			else
+			{
+				pos->set_type(draiosproto::congroup_event_type::UPDATED);
+				pos++;
+			}
+		}
+
+		handle_event_and_emit(update_events, state);
+
+		EXPECT_EQ(test::infra_util::check_equality(k8s_state_expected, state), true)
+		    << "\n\nEXPECTED\n"
+		    << k8s_state_expected.DebugString() << "\n\nACTUAL\n"
+		    << state.DebugString();
+
+		EXPECT_EQ(is.m_state.size(), objects_number);
+		EXPECT_EQ(is.m_orphans.size(), 0);
+		EXPECT_LE(is.m_parents.size(), objects_number);
+
+		// Check that in m_state no element has duplicated children or prents
+		for (const auto& cg : is.m_state)
+		{
+			EXPECT_EQ(cg_has_duplicated_parents(*cg.second.get()), false)
+			    << cg.second->DebugString();
+			EXPECT_EQ(cg_has_duplicated_children(*cg.second.get()), false)
+			    << cg.second->DebugString();
+		}
+
+	};
+
+	test(EVENTS);
+
+	configuration_manager::instance().get_mutable_config<bool>("thin_cointerface_enabled")->set(true);
+	// Repeat the previus test enabling thing cointerface
+	// Notice that events are slightly different as this time cointerface
+	// does not fill children in container_groups
+	// Another difference is that the object node is not sent as a parent
+	// But in the node field Node
+
+	// Remove children from events
+	std::remove_const<decltype(EVENTS)>::type tc_events(EVENTS);
+	for (auto& event : tc_events)
+	{
+		event.mutable_object()->mutable_children()->Clear();
+
+		// Erase node parent
+		for (auto pos = event.mutable_object()->mutable_parents()->begin();
+		     pos != event.mutable_object()->mutable_parents()->end();)
+		{
+			if (pos->kind() == k8s_pod_store::NODE_KIND)
+			{
+				event.mutable_object()->mutable_parents()->erase(pos);
+				break;
+			}
+			pos++;
+		}
+	}
+
+	// Run again the tests
+	std::cout << "THIN COINTERFACE" << std::endl;
+	test(tc_events);
+
+	configuration_manager::instance().get_mutable_config<bool>("thin_cointerface_enabled")->set(false);
 }

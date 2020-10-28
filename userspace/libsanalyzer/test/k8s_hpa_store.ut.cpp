@@ -159,23 +159,6 @@ TEST_F(k8s_hpa_store_test, handle_add_and_update)
 
 }
 
-TEST_F(k8s_hpa_store_test, handle_delete)
-{
-	add_container_groups_to_state(m_deployment, m_hpa);
-
-	// Simulate deployment arriving before hpa
-	m_hpa_store.handle_add({m_deployment.uid().kind(), m_deployment.uid().id()}, m_state);
-	m_hpa_store.handle_add({m_hpa.uid().kind(), m_hpa.uid().id()}, m_state);
-
-	// Delete the hpa. We expect the hpa object in m_state has no children
-	// and that the deployment has no parent
-	m_hpa_store.handle_delete(get_uid_from_cg(m_hpa), m_state);
-
-	std::size_t hpa_chd_size = get_from_state(m_hpa).children().size();
-	EXPECT_EQ(hpa_chd_size, 0) << get_from_state(m_hpa).DebugString() + "\n" + get_from_state(m_deployment).DebugString();
-
-}
-
 TEST_F(k8s_hpa_store_test, connect_hpa_to_target)
 {
 	clear_state();
