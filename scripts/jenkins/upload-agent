@@ -25,6 +25,7 @@ JOBS=${JOBS:-$(nproc)}
 BASEARCH=$(uname -m)
 AGENT_VERSION=${AGENT_VERSION:-}
 DOCKER_HUB_ROOT=${DOCKER_HUB_ROOT:-}
+ARTIFACTORY_ROOT=${ARTIFACTORY_ROOT:-"docker.internal.sysdig.com"}
 
 export AWS_DEFAULT_REGION="us-east-1"
 
@@ -199,7 +200,7 @@ function trigger_docker_builds {
 	mkdir -p "${DOCKERFILES_ROOT_DIR}"
 	tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "${BINARIES_DIR}"/release/draios-*-dockerfiles.tar.gz
 
-	for IMAGE_NAME in agent-kmodule agent-kmodule-thin agent-slim agent agent-slim-v2; do
+	for IMAGE_NAME in agent-kmodule agent-kmodule-thin agent-slim agent agent-slim-v2 agentone; do
 
 		pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${IMAGE_NAME}/${REPOSITORY_BASENAME}"
 
@@ -235,6 +236,13 @@ function trigger_docker_builds {
 		if [[ "${IMAGE_NAME}" == "agent-slim" ]]; then
 			VERSIONED_IMAGE="${VERSIONED_IMAGE}-v1"
 			DEV_IMAGE="${DEV_IMAGE}-v1"
+		fi
+
+		if [[ "${IMAGE_NAME}" == "agentone" ]]; then
+		  DEV_IMAGE="${ARTIFACTORY_ROOT}/agentone:dev"
+		  if [[ "${REPOSITORY_BASENAME}" == "dev" ]]; then
+		    VERSIONED_IMAGE="${ARTIFACTORY_ROOT}/agentone:${AGENT_VERSION}${VERSION_SUFFIX}"
+		  fi
 		fi
 		
 		docker build -t "${VERSIONED_IMAGE}" --pull .
