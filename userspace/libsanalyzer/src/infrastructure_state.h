@@ -96,6 +96,7 @@ class event_scope;
 class infrastructure_state : public infrastructure_state_iface
 {
 public:
+	static const std::string UNSCHEDULABLE_TAG;
 	static const std::string POD_STATUS_REASON_TAG;
 	static const std::string POD_STATUS_PHASE_TAG;
 	static const std::string CONTAINER_WAITING_METRIC_NAME;
@@ -485,8 +486,6 @@ private: // configs which have non-static fields that we actually use. You proba
 	static type_config<std::string> c_k8s_ssl_certificate;
 	static type_config<std::string> c_k8s_ssl_key;
 
-	static const string POD_STATUS_PHASE_LABEL;
-	static const string UNSCHEDULABLE_TAG;
 	friend class new_k8s_delegator;
 	friend class test_helper;
 };

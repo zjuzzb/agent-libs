@@ -409,5 +409,14 @@ void enrich_k8s_object<draiosproto::k8s_pod>(const draiosproto::container_group*
 	{
 		obj->mutable_pod_status()->set_phase(it->second);
 	}
+
+	it = src->internal_tags().find(infrastructure_state::UNSCHEDULABLE_TAG);
+	if (it != src->internal_tags().end())
+	{
+		if (it->second == "true")
+		{
+			obj->mutable_pod_status()->set_unschedulable(true);
+		}
+	}
 }
 }  // namespace legacy_k8s

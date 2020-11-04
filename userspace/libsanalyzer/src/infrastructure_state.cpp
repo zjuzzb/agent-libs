@@ -2036,7 +2036,7 @@ bool infrastructure_state::is_valid_for_export(const draiosproto::container_grou
 		return true;
 	}
 
-	// Always return node and namespace
+	// Always return node and namespace and persistentvolume
 	if (grp->uid().kind() == "k8s_namespace" || grp->uid().kind() == "k8s_node" ||
 	    grp->uid().kind() == "k8s_persistentvolume")
 	{
@@ -2060,14 +2060,12 @@ bool infrastructure_state::is_valid_for_export(const draiosproto::container_grou
 		}
 	}
 
+	// unschedulable is an info we want to report
 	auto is_unschedulable = [](const draiosproto::container_group& cg) {
-		for (const auto& l : cg.tags())
+		auto it = cg.internal_tags().find(UNSCHEDULABLE_TAG);
+		if (it != cg.internal_tags().end() && it->second == "true")
 		{
-			if (std::make_pair(l.first, l.second) ==
-			    std::make_pair(UNSCHEDULABLE_TAG, std::string("true")))
-			{
-				return true;
-			}
+			return true;
 		}
 		return false;
 	};
@@ -2714,7 +2712,7 @@ void infrastructure_state::emit(const draiosproto::container_group* cg,
 		// Set explicitly the status phase here because it is stored in a map.
 		// We than will spare to do a linear search later in resolve names
 		// where we would iterate over the labels
-		auto status_phase = cg->tags().find(infrastructure_state::POD_STATUS_PHASE_LABEL);
+		auto status_phase = cg->tags().find(infrastructure_state::POD_STATUS_PHASE_TAG);
 		if (status_phase != std::end(cg->tags()))
 		{
 			pod->set_status_phase(status_phase->second);
@@ -4151,8 +4149,7 @@ void infrastructure_state::dump_memory_info() const
 
 const std::string infrastructure_state::POD_STATUS_REASON_TAG = "status.reason";
 const std::string infrastructure_state::POD_STATUS_PHASE_TAG = "kubernetes.pod.label.status.phase";
-const std::string infrastructure_state::POD_STATUS_PHASE_LABEL = "kubernetes.pod.label.status.phase";
-const std::string infrastructure_state::UNSCHEDULABLE_TAG = "kubernetes.pod.label.status.unschedulable";
+const std::string infrastructure_state::UNSCHEDULABLE_TAG = "status.unschedulable";
 const std::string infrastructure_state::CONTAINER_WAITING_METRIC_NAME = "kubernetes.pod.container.waiting";
 const std::string infrastructure_state::CONTAINER_TERMINATED_METRIC_NAME = "kubernetes.pod.container.terminated";
 const std::string infrastructure_state::CONTAINER_ID_TAG = "containerId";

@@ -91,17 +91,17 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks
 	// better way to report values that can be one of many strings
 	tags["kubernetes.pod.label.status.phase"] = string(pod.Status.Phase)
 
-	for _, c := range pod.Status.Conditions {
-		if c.Type == v1.PodScheduled && c.Status == v1.ConditionFalse {
-			tags["kubernetes.pod.label.status.unschedulable"] = string("true")
-			break
-		}
-	}
-
 	annotations := kubecollect_common.GetAnnotations(pod.ObjectMeta, "kubernetes.pod.")
 	probes := kubecollect_common.GetProbes(pod)
 	inttags := kubecollect_common.MergeInternalTags(annotations, probes)
 	inttags = kubecollect_common.MergeInternalTags(inttags, map[string]string{"status.reason": string(pod.Status.Reason)})
+
+	for _, c := range pod.Status.Conditions {
+		if c.Type == v1.PodScheduled && c.Status == v1.ConditionFalse {
+			inttags["status.unschedulable"] = string("true")
+			break
+		}
+	}
 
 	var ips []string
 	if pod.Status.PodIP != "" {
