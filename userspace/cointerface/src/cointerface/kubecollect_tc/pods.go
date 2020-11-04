@@ -90,7 +90,6 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks
 	// This gets specially added as a tag since we don't have a
 	// better way to report values that can be one of many strings
 	tags["kubernetes.pod.label.status.phase"] = string(pod.Status.Phase)
-	tags["kubernetes.pod.label.status.reason"] = string(pod.Status.Reason)
 
 	for _, c := range pod.Status.Conditions {
 		if c.Type == v1.PodScheduled && c.Status == v1.ConditionFalse {
@@ -102,6 +101,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks
 	annotations := kubecollect_common.GetAnnotations(pod.ObjectMeta, "kubernetes.pod.")
 	probes := kubecollect_common.GetProbes(pod)
 	inttags := kubecollect_common.MergeInternalTags(annotations, probes)
+	inttags = kubecollect_common.MergeInternalTags(inttags, map[string]string{"status.reason": string(pod.Status.Reason)})
 
 	var ips []string
 	if pod.Status.PodIP != "" {

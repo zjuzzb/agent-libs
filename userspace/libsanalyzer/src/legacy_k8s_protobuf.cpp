@@ -395,5 +395,19 @@ void enrich_k8s_object<draiosproto::k8s_pod>(const draiosproto::container_group*
 			}
 		}
 	}
+
+	auto it = src->internal_tags().find(infrastructure_state::POD_STATUS_REASON_TAG);
+	if (it != src->internal_tags().end())
+	{
+		obj->mutable_pod_status()->set_reason(it->second);
+	}
+
+	// SMAGENT-2756
+	// this info should be moved in internal tags
+	it = src->tags().find(infrastructure_state::POD_STATUS_PHASE_TAG);
+	if (it != src->tags().end())
+	{
+		obj->mutable_pod_status()->set_phase(it->second);
+	}
 }
 }  // namespace legacy_k8s

@@ -96,6 +96,8 @@ class event_scope;
 class infrastructure_state : public infrastructure_state_iface
 {
 public:
+	static const std::string POD_STATUS_REASON_TAG;
+	static const std::string POD_STATUS_PHASE_TAG;
 	static const std::string CONTAINER_WAITING_METRIC_NAME;
 	static const std::string CONTAINER_TERMINATED_METRIC_NAME;
 	static const std::string CONTAINER_ID_TAG;
