@@ -1,0 +1,60 @@
+pipeline {
+    agent { label 'agent-docker-builder' }
+    stages {
+        stage('Check out dependencies') {
+           steps {
+                dir('agent') {
+                    checkout scm
+                    sh "git checkout ${params.AGENT_BRANCH}"
+                }
+                dir('oss-falco') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
+                    sh "git checkout ${params.FALCO_BRANCH}"
+                }
+                dir('sysdig') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/sysdig']]])
+                    sh "git checkout ${params.SYSDIG_BRANCH}"
+                }
+                dir('protorepo') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
+                    sh "git checkout ${params.PROTOREPO_BRANCH}"
+                }
+            }
+        }
+        stage('Build Release') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+                    sh label: '', script: '''
+                        docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+                        AGENT_BUILD_COMMIT="`git -C agent rev-parse --short HEAD`"
+                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
+                        sudo rm -rf $PWD/out
+                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e CMAKE_INSTALL_PREFIX=/local/opt/draios -e AGENT_VERSION=$GS_RELEASE_VERSION -e PROMSCRAPE_VERSION=$BASE_RELEASE_VERSION -e AGENT_BUILD_COMMIT -e AGENT_BUILD_DATE="`date`" -v $PWD:/draios:ro -v $PWD/out:/out -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/pipcache:/root/.cache quay.io/sysdig/agent-builder:$BUILDER_VERSION package
+                    '''
+                }
+            }
+        }
+        stage('Upload') {
+            when {
+                expression { params.UPLOAD == true }
+            }
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'jenkins-artifactory', passwordVariable: 'ARTIFACTORY_PASSWORD', usernameVariable: 'ARTIFACTORY_USERNAME')]) {
+                    sh label: '', script: '''
+                        curl -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" -T out/draios-${GS_RELEASE_VERSION}-x86_64-agent.rpm -X PUT "https://artifactory.internal.sysdig.com/artifactory/agent-gs/draios-${GS_RELEASE_VERSION}-x86_64-agent.rpm"
+                    '''
+                }
+            }
+        }
+    }
+    post {
+        always {
+            sh label: '', script: '''
+                sudo rm -rf ./build
+                docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+                docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+            '''
+            cleanWs deleteDirs: true, notFailBuild: true
+        }
+    }
+}
