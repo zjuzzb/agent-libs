@@ -85,8 +85,12 @@ void k8s_cluster_communication::serialize_map_to_protobuf(
 void k8s_cluster_communication::serialize_protobuf(
 	secure::K8SClusterCommunication*& cluster)
 {
-	serialize_communications(m_ingresses, cluster->mutable_ingresses());
+	// It's important that egresses are serialized first, so they
+	// can get the is_self_local label assigned. That allows
+	// matching ingresses to get the label when they are
+	// serialized in the second pass.
 	serialize_communications(m_egresses, cluster->mutable_egresses());
+	serialize_communications(m_ingresses, cluster->mutable_ingresses());
 
 	serialize_map_to_protobuf<k8s_pod_owner_map, k8s_pod_owner>
 		(m_owners, cluster->mutable_pod_owners());
@@ -99,43 +103,15 @@ void k8s_cluster_communication::serialize_protobuf(
 		(m_services, cluster->mutable_services());
 }
 
-bool k8s_cluster_communication::validate_self_local_egresses(ipv4tuple tuple,
-							     const std::set<uint16_t>& sport_set_ingress) const
+bool k8s_cluster_communication::validate_self_local_egresses(ipv4tuple tuple) const
 {
-	std::set<uint16_t> sport_set_tcp, sport_set_ukn;
-	bool is_self_local = true;
-
-	// TCP Source Port set
 	const auto &it_tcp = m_egresses.find(tuple);
 	if (it_tcp != m_egresses.end())
 	{
-		sport_set_tcp = it_tcp->second->m_sport_set;
+		return it_tcp->second->is_self_local();
 	}
 
-	// Unknown Source Port set
-	tuple.m_fields.m_l4proto = SCAP_L4_UNKNOWN;
-	const auto &it_ukn = m_egresses.find(tuple);
-	if (it_ukn != m_egresses.end())
-	{
-		sport_set_ukn = it_ukn->second->m_sport_set;
-	}
-
-	// In order for a connection to be marked as self_local every
-	// entry in the evaluated Ingress Source Port set has to have
-	// a corresponding Egress Port set (tcp + ukn)
-	for (auto sport : sport_set_ingress)
-	{
-		if (sport_set_tcp.find(sport) == sport_set_tcp.end() &&
-		    sport_set_ukn.find(sport) == sport_set_ukn.end())
-		{
-			// if there's even one entry not present in our egress
-			// port set, then we won't mark it as self_local
-			is_self_local = false;
-			break;
-		}
-	}
-
-	return is_self_local;
+	return false;
 }
 
 // Mark self-local connections (self pod-to-pod only), esclude
@@ -164,7 +140,7 @@ bool k8s_cluster_communication::validate_self_local(k8s_communication *k8s_comm)
 		// client only side connection
 		else if (k8s_comm->is_server_only())
 		{
-			if (validate_self_local_egresses(tuple, k8s_comm->m_sport_set))
+			if (validate_self_local_egresses(tuple))
 			{
 				is_self_local = true;
 			}

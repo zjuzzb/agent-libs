@@ -427,8 +427,7 @@ private:
 		return is_new_entry;
 	}
 
-	bool validate_self_local_egresses(ipv4tuple tuple,
-					  const std::set<uint16_t>& sport_set_ingress) const;
+	bool validate_self_local_egresses(ipv4tuple tuple) const;
 	bool validate_self_local(k8s_communication *k8s_comm) const;
 
 	void serialize_communications(const k8s_communication_map& cmap,
