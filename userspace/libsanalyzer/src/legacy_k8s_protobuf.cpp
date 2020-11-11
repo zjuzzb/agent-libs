@@ -1,6 +1,7 @@
 #include "common_logger.h"
 #include "draios.pb.h"
 #include "legacy_k8s_protobuf.h"
+#include "infrastructure_state.h"
 
 #include <unordered_map>
 
@@ -361,4 +362,38 @@ void export_k8s_object<draiosproto::pod_status_count>(const uid_set_t& parents,
 	}
 }
 
+template<>
+void enrich_k8s_object<draiosproto::k8s_pod>(const draiosproto::container_group* src,
+                                             draiosproto::k8s_pod* obj)
+{
+	for (const auto& metric : src->metrics())
+	{
+		draiosproto::k8s_container_status_details* container = nullptr;
+		if (metric.name() == infrastructure_state::CONTAINER_WAITING_METRIC_NAME)
+		{
+			container = obj->mutable_pod_status()->mutable_containers()->Add();
+			container->set_status("waiting");
+		}
+		else if (metric.name() == infrastructure_state::CONTAINER_TERMINATED_METRIC_NAME)
+		{
+			container = obj->mutable_pod_status()->mutable_containers()->Add();
+			container->set_status("terminated");
+		}
+
+		if (container != nullptr)
+		{
+			for (const auto& tag : metric.tags())
+			{
+				if (tag.key() == infrastructure_state::CONTAINER_ID_TAG)
+				{
+					container->set_id(tag.value());
+				}
+				else if (tag.key() == infrastructure_state::CONTAINER_STATUS_REASON_TAG)
+				{
+					container->set_status_reason(tag.value());
+				}
+			}
+		}
+	}
+}
 }  // namespace legacy_k8s

@@ -70,6 +70,39 @@ func GetContainerState(cs v1.ContainerState) CState {
 	return Waiting
 }
 
+func AppendMetricContainerStatus(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		state := GetContainerState(containerStatus.State)
+		if state == Waiting {
+			var newMetric draiosproto.AppMetric
+			newMetric.Name = proto.String("kubernetes.pod.container.waiting")
+			newMetric.Value = proto.Float64(1)
+			newMetric.Tags = append(newMetric.Tags, &draiosproto.AppTag{
+				Key:                  proto.String("reason"),
+				Value:                &containerStatus.State.Waiting.Reason,
+			})
+			*metrics = append(*metrics, &newMetric)
+		} else if state == Terminated {
+			containerId, _ := ParseContainerID(containerStatus.ContainerID)
+			var newMetric draiosproto.AppMetric
+			newMetric.Name = proto.String("kubernetes.pod.container.terminated")
+			newMetric.Value = proto.Float64(1)
+
+			newMetric.Tags = append(newMetric.Tags, &draiosproto.AppTag{
+				Key:                  proto.String("reason"),
+				Value:                &containerStatus.State.Terminated.Reason,
+			})
+
+			newMetric.Tags = append(newMetric.Tags, &draiosproto.AppTag{
+				Key:                  proto.String("containerId"),
+				Value:                proto.String(containerId),
+			})
+
+			*metrics = append(*metrics, &newMetric)
+		}
+	}
+}
+
 func AddPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 	prefix := "kubernetes.pod."
 
@@ -85,6 +118,7 @@ func AddPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 	AppendMetricInt32(metrics, prefix+"container.status.waiting", waitingCount)
 	appendMetricPodCondition(metrics, prefix+"status.ready", pod.Status.Conditions, v1.PodReady)
 	appendMetricContainerResources(metrics, prefix, pod)
+	AppendMetricContainerStatus(metrics, pod)
 }
 
 func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, conditions []v1.PodCondition, ctype v1.PodConditionType) {

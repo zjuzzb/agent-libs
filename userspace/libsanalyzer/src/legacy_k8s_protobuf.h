@@ -1,12 +1,13 @@
 #pragma once
 
+#include "analyzer_utils.h"
+#include "draios.pb.h"
+
 #include <functional>
+#include <logger.h>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <logger.h>
-#include "analyzer_utils.h"
-#include "draios.pb.h"
 
 namespace legacy_k8s
 {
@@ -29,6 +30,11 @@ public:
 	static const std::unordered_map<std::string, setter_t<Protobuf>> metrics;
 	static const std::string tag_prefix;
 };
+
+template<class Protobuf>
+void enrich_k8s_object(const draiosproto::container_group* src, Protobuf* obj)
+{
+}
 
 template<class Protobuf>
 void export_k8s_object(const uid_set_t& parents,
@@ -64,11 +70,16 @@ void export_k8s_object(const uid_set_t& parents,
 			});
 		}
 	}
+	enrich_k8s_object(src, obj);
 }
 
 template<>
 void export_k8s_object<draiosproto::pod_status_count>(const uid_set_t& parents,
                                                       const draiosproto::container_group* src,
                                                       draiosproto::pod_status_count* obj);
+
+template<>
+void enrich_k8s_object<draiosproto::k8s_pod>(const draiosproto::container_group* src,
+                                             draiosproto::k8s_pod* obj);
 
 }  // namespace legacy_k8s

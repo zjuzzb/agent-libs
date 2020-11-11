@@ -4151,4 +4151,8 @@ void infrastructure_state::dump_memory_info() const
 
 const std::string infrastructure_state::POD_STATUS_PHASE_LABEL = "kubernetes.pod.label.status.phase";
 const std::string infrastructure_state::UNSCHEDULABLE_TAG = "kubernetes.pod.label.status.unschedulable";
+const std::string infrastructure_state::CONTAINER_WAITING_METRIC_NAME = "kubernetes.pod.container.waiting";
+const std::string infrastructure_state::CONTAINER_TERMINATED_METRIC_NAME = "kubernetes.pod.container.terminated";
+const std::string infrastructure_state::CONTAINER_ID_TAG = "containerId";
+const std::string infrastructure_state::CONTAINER_STATUS_REASON_TAG = "reason";
 #endif  // CYGWING_AGENT
