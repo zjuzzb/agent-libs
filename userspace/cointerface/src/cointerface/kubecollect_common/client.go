@@ -1058,6 +1058,13 @@ func StartWatcher(ctx context.Context,
 	}()
 }
 
+func MapInsert(m *map[string]string, key string, value string) {
+	if *m == nil {
+		*m = make(map[string]string)
+	}
+	(*m)[key] = value
+}
+
 func GetPkg(kubecollectInterface KubecollectInterface) string {
 	return reflect.TypeOf(kubecollectInterface).Name()
 }

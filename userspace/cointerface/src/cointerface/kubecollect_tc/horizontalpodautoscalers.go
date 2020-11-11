@@ -32,11 +32,8 @@ func newHorizontalPodAutoscalerCongroup(hpa *v1as.HorizontalPodAutoscaler) (*dra
 	ret.InternalTags = kubecollect_common.GetAnnotations(hpa.ObjectMeta, "kubernetes.hpa.")
 	kubecollect.AddHorizontalPodAutoscalerMetrics(&ret.Metrics, hpa)
 
-	if ret.InternalTags == nil {
-		ret.InternalTags = make(map[string]string)
-	}
-	ret.InternalTags["hpa.scale.target.ref.kind"] = hpa.Spec.ScaleTargetRef.Kind
-	ret.InternalTags["hpa.scale.target.ref.name"] = hpa.Spec.ScaleTargetRef.Name
+	kubecollect_common.MapInsert(&ret.InternalTags, "hpa.scale.target.ref.kind", hpa.Spec.ScaleTargetRef.Kind)
+	kubecollect_common.MapInsert(&ret.InternalTags, "hpa.scale.target.ref.name", hpa.Spec.ScaleTargetRef.Name)
 
 	return ret
 }
