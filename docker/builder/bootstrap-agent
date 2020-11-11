@@ -609,11 +609,11 @@ if [ ! -f "${KUBECTL_BINARY}" ]; then
 	wget https://storage.googleapis.com/kubernetes-release/release/v1.11.10/bin/linux/amd64/kubectl -O $KUBECTL_BINARY
 fi
 
-KUBE_BENCH_DIR=$DEPENDENCIES/kube-bench-0.2.7
+KUBE_BENCH_DIR=$DEPENDENCIES/kube-bench-0.2.8
 if [ ! -d "${KUBE_BENCH_DIR}" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/kube-bench-0.2.7.tar.gz
-	tar -xzf kube-bench-0.2.7.tar.gz
+	wget https://nkraemer.s3.amazonaws.com/kube-bench-0.2.8.tar.gz
+	tar -xzf kube-bench-0.2.8.tar.gz
 fi
 
 LINUX_BENCH_DIR=$DEPENDENCIES/linux-bench-0.2.0.4
