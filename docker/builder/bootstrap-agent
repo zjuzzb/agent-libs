@@ -612,7 +612,7 @@ fi
 KUBE_BENCH_DIR=$DEPENDENCIES/kube-bench-0.2.8
 if [ ! -d "${KUBE_BENCH_DIR}" ]; then
 	cd $DEPENDENCIES
-	wget https://nkraemer.s3.amazonaws.com/kube-bench-0.2.8.tar.gz
+	wget $DEPENDENCIES_URL/kube-bench-0.2.8.tar.gz
 	tar -xzf kube-bench-0.2.8.tar.gz
 fi
 
