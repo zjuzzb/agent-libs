@@ -56,18 +56,18 @@ public:
 	/**
 	 * Return the number of containers started on this host
 	 *
-	 * @return int - Number of containers started on this host
+	 * @return uint32_t - Number of containers started on this host
 	 */
-	int get_host_container_counts() const;
+	uint32_t get_host_container_counts() const;
 
 	/**
 	 * Return the number of containers started in a particular namespace
 	 *
 	 * @param ns [std::string] - The name of the namespace
 	 *
-	 * @return [int] - Number of containers started that belong to this namespace
+	 * @return [uint32_t] - Number of containers started that belong to this namespace
 	 */
-	int get_container_counts_for_k8s_namespace(const std::string& ns) const;
+	uint32_t get_container_counts_for_k8s_namespace(const std::string& ns) const;
 
 	/**
 	 * Feature flag that controls the enabled/disabled status of this feature
@@ -79,7 +79,7 @@ private:
 	std::string m_machine_id;
 	const int64_t m_start_time;
 	std::mutex m_mutex;
-	std::unordered_map<std::string, int> m_container_counts;
+	std::unordered_map<std::string, uint32_t> m_container_counts;
 };
 
 #endif // CONTAINER_COUNT_H

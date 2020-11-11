@@ -386,11 +386,11 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	// container start count
 	//
 	if(container_start_count::c_enable_container_start_count.get_value()) {
-		m_container_count = make_unique<container_start_count>(std::bind(&sinsp_configuration::get_machine_id,
+		m_container_start_count = make_unique<container_start_count>(std::bind(&sinsp_configuration::get_machine_id,
 										 m_configuration));
 		inspector->m_container_manager.subscribe_on_new_container(
 			[this](const sinsp_container_info& container_info, sinsp_threadinfo* tinfo) {
-				this->m_container_count->on_new_container(container_info, tinfo);
+				this->m_container_start_count->on_new_container(container_info, tinfo);
 			});
 	}
 
@@ -4648,6 +4648,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			m_metrics->mutable_hostinfo()->set_num_cpus(num_cpus);
 			m_metrics->mutable_hostinfo()->set_physical_memory_size_bytes(
 			    m_inspector->m_machine_info->memory_size_bytes);
+			// container start count
+			if(nullptr != m_container_start_count) {
+				m_metrics->mutable_hostinfo()->set_container_start_count(this->m_container_start_count->get_host_container_counts());
+			}
 
 			//
 			// Map customizations coming from the analyzer.

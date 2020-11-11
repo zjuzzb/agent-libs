@@ -8,7 +8,7 @@
 COMMON_LOGGER();
 
 type_config<bool> container_start_count::c_enable_container_start_count(
-	false,
+	true,
 	"Enable or disable the container start count feature",
 	"container_start_count",
 	"enable");
@@ -66,13 +66,13 @@ void container_start_count::on_new_container(const sinsp_container_info& contain
 	}
 }
 
-int container_start_count::get_host_container_counts() const
+uint32_t container_start_count::get_host_container_counts() const
 {
 	auto map_iter = m_container_counts.find(m_machine_id);
 	return (map_iter == m_container_counts.end() ? 0 : map_iter->second);
 }
 
-int container_start_count::get_container_counts_for_k8s_namespace(const std::string& namespc) const
+uint32_t container_start_count::get_container_counts_for_k8s_namespace(const std::string& namespc) const
 {
 	auto map_iter = m_container_counts.find(namespc);
 	return (map_iter == m_container_counts.end() ? 0 : map_iter->second);

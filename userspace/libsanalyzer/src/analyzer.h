@@ -1477,7 +1477,7 @@ public:
 
 	std::shared_ptr<promscrape> m_promscrape;
 
-	std::unique_ptr<container_start_count> m_container_count;
+	std::unique_ptr<container_start_count> m_container_start_count;
 
 	//
 	// Please do not add any friends.

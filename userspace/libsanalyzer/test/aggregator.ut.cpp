@@ -435,6 +435,7 @@ TEST(aggregator, host)
 	in_hostinfo->set_transaction_processing_delay(5);
 	in_hostinfo->add_cpu_steal(6);
 	in_hostinfo->set_next_tiers_delay(7);
+	in_hostinfo->set_container_start_count(5);
 
 	auto nbp = in_hostinfo->add_network_by_serverports();
 	nbp->set_port(0);
@@ -477,6 +478,7 @@ TEST(aggregator, host)
 	EXPECT_EQ(out_hostinfo->aggr_system_load_1().sum(), 15);
 	EXPECT_EQ(out_hostinfo->aggr_system_load_5().sum(), 16);
 	EXPECT_EQ(out_hostinfo->aggr_system_load_15().sum(), 17);
+	EXPECT_EQ(out_hostinfo->aggr_container_start_count().sum(),5);
 
 	in_hostinfo->set_hostname("100");
 	in_hostinfo->set_num_cpus(100);
@@ -497,6 +499,7 @@ TEST(aggregator, host)
 	in_hostinfo->set_system_load_1(100);
 	in_hostinfo->set_system_load_5(100);
 	in_hostinfo->set_system_load_15(100);
+	in_hostinfo->set_container_start_count(10);
 
 	aggregator->aggregate(input, output, false);
 
@@ -522,6 +525,7 @@ TEST(aggregator, host)
 	EXPECT_EQ(out_hostinfo->aggr_system_load_1().sum(), 115);
 	EXPECT_EQ(out_hostinfo->aggr_system_load_5().sum(), 116);
 	EXPECT_EQ(out_hostinfo->aggr_system_load_15().sum(), 117);
+	EXPECT_EQ(out_hostinfo->aggr_container_start_count().sum(),15);
 }
 
 TEST(aggregator, time_categories)
