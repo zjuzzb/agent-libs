@@ -95,8 +95,8 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks
 	for _, c := range pod.Status.Conditions {
 		if c.Type == v1.PodScheduled && c.Status == v1.ConditionFalse {
 			tags["kubernetes.pod.label.status.unschedulable"] = string("true")
+			break
 		}
-		break
 	}
 
 	annotations := kubecollect_common.GetAnnotations(pod.ObjectMeta, "kubernetes.pod.")
