@@ -4149,7 +4149,6 @@ void infrastructure_state::dump_memory_info() const
 	r.run(dump_log);
 }
 
-const string infrastructure_state::POD_STATUS_PHASE_LABEL = "kubernetes.pod.label.status.phase";
-const string infrastructure_state::UNSCHEDULABLE_TAG = "kubernetes.pod.label.status.unschedulable";
-
+const std::string infrastructure_state::POD_STATUS_PHASE_LABEL = "kubernetes.pod.label.status.phase";
+const std::string infrastructure_state::UNSCHEDULABLE_TAG = "kubernetes.pod.label.status.unschedulable";
 #endif  // CYGWING_AGENT
