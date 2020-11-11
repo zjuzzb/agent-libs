@@ -418,10 +418,6 @@ private:
 			{
 				c->add_owner_server(k8s_comm.get_uid_server());
 			}
-
-			// if in the summary there's any self_local
-			// set to false, report it as false
-			c->set_is_self_local(c->is_self_local() & k8s_comm.is_self_local());
 		}
 
 		return is_new_entry;
