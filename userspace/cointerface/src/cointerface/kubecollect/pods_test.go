@@ -352,7 +352,7 @@ func TestGetPodContainerResources(t *testing.T) {
 	expectedLimitsMemory := float64(pod.Spec.Containers[0].Resources.Limits.Memory().MilliValue())/1000 +
 		float64(pod.Spec.Containers[1].Resources.Limits.Memory().MilliValue())/1000
 
-	rc, lc, rm, lm := getPodContainerResources(pod)
+	rc, lc, rm, lm := kubecollect_common.GetPodContainerResources(pod)
 
 	testResourceHelper(t, rc, expectedRequestsCpu, "Cpu Request calculation is wrong")
 	testResourceHelper(t, lc, expectedLimitsCpu, "Cpu Limits calculation is wrong")
@@ -369,7 +369,7 @@ func TestGetPodContainerResources(t *testing.T) {
 	pod.Spec.InitContainers[0].Resources.Limits[v1.ResourceMemory] = resource.MustParse("100G")
 
 	// recall again getPodContainersResources
-	rc, lc, rm, lm = getPodContainerResources(pod)
+	rc, lc, rm, lm = kubecollect_common.GetPodContainerResources(pod)
 
 	testResourceHelper(t, rc, 1000, "Cpu Request calculation with huge init container is wrong")
 	testResourceHelper(t, lc, 1000, "Cpu Limits calculation huge init container is wrong")

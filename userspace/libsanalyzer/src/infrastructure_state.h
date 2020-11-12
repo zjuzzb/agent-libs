@@ -96,6 +96,11 @@ class event_scope;
 class infrastructure_state : public infrastructure_state_iface
 {
 public:
+	static const std::string CONTAINER_WAITING_METRIC_NAME;
+	static const std::string CONTAINER_TERMINATED_METRIC_NAME;
+	static const std::string CONTAINER_ID_TAG;
+	static const std::string CONTAINER_STATUS_REASON_TAG;
+
 	// { host/container id : {scope hash : scope match result} }
 	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<size_t, bool>>;
 

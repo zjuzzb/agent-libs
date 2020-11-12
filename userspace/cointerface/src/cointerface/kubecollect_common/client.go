@@ -1,7 +1,6 @@
 package kubecollect_common
 
 import (
-	"errors"
 	"golang.org/x/net/context"
 	"io/ioutil"
 	tw "k8s.io/client-go/tools/watch"
@@ -66,8 +65,6 @@ const (
 	ChannelTypeInformer = iota
 	ChannelTypeUserEvent = iota
 )
-
-var containerIDRegex = regexp.MustCompile("^([a-z0-9-]+)://([0-9a-fA-F]{12})[0-9a-fA-F]*$")
 
 // Given that we depend on global contexts, we need a hard guarantee that we won't have
 // two users trying to attach to channels at the same time.
@@ -954,37 +951,6 @@ func AppendMetricResource(metrics *[]*draiosproto.AppMetric, name string, rList 
 		v = float64(qty.MilliValue())/1000
 	}
 	AppendMetric(metrics, name, v)
-}
-
-func ParseContainerID(containerID string) (string, error) {
-	var err error = nil
-
-	// Kubernetes reports containers in this format:
-	// docker://<fulldockercontainerid>
-	// rkt://<rktpodid>:<rktappname>
-	// We instead use
-	// <dockershortcontainerid>
-	// <rktpodid>:<rktappname>
-	// so here we are doing this conversion
-	matches := containerIDRegex.FindStringSubmatch(containerID);
-	if matches != nil {
-		// matches[0] is the whole ID,
-		// matches[1] is the scheme (e.g. "docker")
-		// matches[2] is the first 12 hex digits of the ID
-		return matches[2], nil
-	} else if strings.HasPrefix(containerID, "rkt://") {
-		// XXX Will the parsed rkt id always
-		// be 12 char like for docker?
-		if len(containerID) >= 7 {
-			containerID = containerID[6:]
-		} else {
-			err = errors.New("ID too short for rkt format")
-		}
-	} else {
-		err = errors.New("Unknown containerID format")
-	}
-
-	return containerID, err
 }
 
 var OwnerRefKindToCongroupKind = map[string]string{

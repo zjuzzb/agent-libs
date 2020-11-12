@@ -14,22 +14,11 @@ import (
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	draiosproto "protorepo/agent-be/proto"
-	"strings"
 	"sync"
 )
 
 var podInf cache.SharedInformer
 var podEvtcHandle chan<- draiosproto.CongroupUpdateEvent
-
-// container IDs from k8s are of the form <scheme>://<container_id>
-// runc-based runtimes (Docker, containerd, CRI-o) use 64 hex digits as the ID
-// but we truncate them to 12 characters for readability reasons
-// known schemes (corresponding to k8s runtimes):
-// - docker
-// - rkt
-// - containerd
-// - cri-o
-// rkt uses a different container ID format: rkt://<pod_id>:<app_id>
 
 // pods get their own special version because they send events for containers too
 func sendPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool)  {
@@ -42,48 +31,6 @@ func sendPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod 
 	}
 }
 
-// Append ADDED/REMOVED events both containerEvents
-func newContainerEvent(containerEvents *[]*draiosproto.CongroupUpdateEvent,
-	cstat *v1.ContainerStatus,
-	podUID types.UID,
-	eventType draiosproto.CongroupEventType,
-) {
-	containerID, err := kubecollect_common.ParseContainerID(cstat.ContainerID)
-	if err != nil {
-		log.Debugf("Unable to parse ContainerID %v: %v", containerID, err)
-		return
-	}
-
-	imageId := cstat.ImageID[strings.LastIndex(cstat.ImageID, ":")+1:]
-	imageId = imageId[:12]
-
-	*containerEvents = append(*containerEvents, &draiosproto.CongroupUpdateEvent {
-		Type: eventType.Enum(),
-		Object: &draiosproto.ContainerGroup {
-			Uid: &draiosproto.CongroupUid {
-				Kind:proto.String("container"),
-				Id:proto.String(containerID),
-			},
-			Tags: map[string]string{
-				"container.name"    : cstat.Name,
-				"container.image"   : cstat.Image,
-				"container.image.id": imageId,
-			},
-			Parents: []*draiosproto.CongroupUid{&draiosproto.CongroupUid{
-				Kind:proto.String("k8s_pod"),
-				Id:proto.String(string(podUID))},
-			},
-		},
-	})
-	if eventType == draiosproto.CongroupEventType_ADDED {
-		kubecollect_common.AddEvent("Container", kubecollect_common.EVENT_ADD)
-	} else if eventType == draiosproto.CongroupEventType_REMOVED {
-		kubecollect_common.AddEvent("Container", kubecollect_common.EVENT_DELETE)
-	} else {
-		kubecollect_common.AddEvent("Container", kubecollect_common.EVENT_UPDATE)
-	}
-}
-
 // Append ADDED/REMOVED container events to contEvents and add
 // child links for all running containers to podChildren
 func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
@@ -93,27 +40,12 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 	podUID types.UID,
 	evtType draiosproto.CongroupEventType,
 ) {
-	type cState int
-	const (
-		waiting cState = iota
-		running
-		terminated
-	)
-	getState := func(cs v1.ContainerState) cState {
-		if cs.Terminated != nil {
-			return terminated
-		} else if cs.Running != nil {
-			return running
-		}
-		// Waiting is the default if all three are nil
-		return waiting
-	}
 
 	for _, c := range containers {
-		state := getState(c.State)
-		if (state < running) {
+		state := kubecollect_common.GetContainerState(c.State)
+		if (state < kubecollect_common.Running) {
 			continue
-		} else if (state == running) {
+		} else if (state == kubecollect_common.Running) {
 			containerID, err := kubecollect_common.ParseContainerID(c.ContainerID)
 			if err != nil {
 				log.Debugf("Unable to parse ContainerID %v: %v", containerID, err)
@@ -128,10 +60,10 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 			)
 		}
 
-		var oldState cState = waiting
+		var oldState kubecollect_common.CState = kubecollect_common.Waiting
 		for _, oldC := range oldContainers {
 			if oldC.Name == c.Name {
-				oldState = getState(oldC.State)
+				oldState = kubecollect_common.GetContainerState(oldC.State)
 				break;
 			}
 		}
@@ -139,20 +71,20 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 		newEvent := false
 		var newType draiosproto.CongroupEventType
 		switch state {
-		case running:
-			if oldState < running &&
+		case kubecollect_common.Running:
+			if oldState < kubecollect_common.Running &&
 				(evtType == draiosproto.CongroupEventType_ADDED ||
 				evtType == draiosproto.CongroupEventType_UPDATED) {
 				newEvent, newType = true, draiosproto.CongroupEventType_ADDED
 			}
-		case terminated:
+		case kubecollect_common.Terminated:
 			// Always send for REMOVED, and send on UPDATED if we
 			// notice a state transition. This results in sending
 			// two delete events if we catch the UPDATED transition,
 			// but the infra state code can handle double deletes
 			if evtType == draiosproto.CongroupEventType_REMOVED ||
 				(evtType == draiosproto.CongroupEventType_UPDATED &&
-				oldState == running) {
+				oldState == kubecollect_common.Running) {
 				newEvent, newType = true, draiosproto.CongroupEventType_REMOVED
 			}
 		default:
@@ -160,9 +92,31 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 		}
 
 		if newEvent {
-			newContainerEvent(contEvents, &c, podUID, newType)
+			kubecollect_common.NewContainerEvent(contEvents, &c, podUID, newType)
 		}
 	}
+}
+
+func resolveTargetPort(name string, selector labels.Selector, namespace string) uint32 {
+	if !kubecollect_common.ResourceReady("pods") {
+		return 0
+	}
+
+	for _, obj := range podInf.GetStore().List() {
+		pod := obj.(*v1.Pod)
+		if !(pod.GetNamespace() == namespace && selector.Matches(labels.Set(pod.GetLabels()))) {
+			continue
+		}
+
+		for _, c := range pod.Spec.Containers {
+			for _, p := range c.Ports {
+				if p.Name == name {
+					return uint32(p.ContainerPort)
+				}
+			}
+		}
+	}
+	return 0
 }
 
 func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
@@ -180,32 +134,32 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 	}
 
 	if in {
-		lRestarts, lWaiting := statusCounts(lhs.Status.ContainerStatuses)
-		rRestarts, rWaiting := statusCounts(rhs.Status.ContainerStatuses)
+		lRestarts, lWaiting := kubecollect_common.StatusCounts(lhs.Status.ContainerStatuses)
+		rRestarts, rWaiting := kubecollect_common.StatusCounts(rhs.Status.ContainerStatuses)
 		if (lRestarts != rRestarts) || (lWaiting != rWaiting) {
 			in = false
 		}
 	}
 
 	if in {
-		lInitRestarts, lInitWaiting := statusCounts(lhs.Status.InitContainerStatuses)
-		rInitRestarts, rInitWaiting := statusCounts(rhs.Status.InitContainerStatuses)
+		lInitRestarts, lInitWaiting := kubecollect_common.StatusCounts(lhs.Status.InitContainerStatuses)
+		rInitRestarts, rInitWaiting := kubecollect_common.StatusCounts(rhs.Status.InitContainerStatuses)
 		if (lInitRestarts != rInitRestarts) || (lInitWaiting != rInitWaiting) {
 			in = false
 		}
 	}
 
 	if in {
-		lVal, lFound := getPodConditionMetric(lhs.Status.Conditions, v1.PodReady)
-		rVal, rFound := getPodConditionMetric(rhs.Status.Conditions, v1.PodReady)
+		lVal, lFound := kubecollect_common.GetPodConditionMetric(lhs.Status.Conditions, v1.PodReady)
+		rVal, rFound := kubecollect_common.GetPodConditionMetric(rhs.Status.Conditions, v1.PodReady)
 		if lFound != rFound || lVal != rVal {
 			in = false
 		}
 	}
 
 	if in {
-		lRequestsCpu, lLimitsCpu, lRequestsMem, lLimitsMem := getPodContainerResources(lhs)
-		rRequestsCpu, rLimitsCpu, rRequestsMem, rLimitsMem := getPodContainerResources(rhs)
+		lRequestsCpu, lLimitsCpu, lRequestsMem, lLimitsMem := kubecollect_common.GetPodContainerResources(lhs)
+		rRequestsCpu, rLimitsCpu, rRequestsMem, rLimitsMem := kubecollect_common.GetPodContainerResources(rhs)
 		if lRequestsCpu != rRequestsCpu || lLimitsCpu != rLimitsCpu ||
 			lRequestsMem != rRequestsMem || lLimitsMem != rLimitsMem {
 			in = false
@@ -266,37 +220,6 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 	return in, out
 }
 
-func statusCounts(containers []v1.ContainerStatus) (restarts, waiting int32) {
-	for _, c := range containers {
-		restarts += c.RestartCount
-		if c.State.Waiting != nil {
-			waiting += 1
-		}
-	}
-	return
-}
-
-var ownerRefKindToCongroupKind = map[string]string {
-	"ReplicaSet": "k8s_replicaset",
-	"ReplicationController": "k8s_replicationcontroller",
-	"StatefulSet": "k8s_statefulset",
-	"DaemonSet": "k8s_daemonset",
-	"Job": "k8s_job",
-}
-
-func AddParentsToPodViaOwnerRef(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	for _, ref := range pod.GetOwnerReferences() {
-		congroupKind := ownerRefKindToCongroupKind[ref.Kind]
-		if congroupKind != "" {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind: proto.String(congroupKind),
-				Id: proto.String(string(ref.UID))})
-		} else {
-			log.Debugf("Unexpected k8s kind %v", ref.Kind)
-		}
-	}
-}
-
 func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool) ([]*draiosproto.CongroupUpdateEvent) {
 	tags := kubecollect_common.GetTags(pod.ObjectMeta, "kubernetes.pod.")
 	// This gets specially added as a tag since we don't have a
@@ -321,13 +244,13 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	}
 
 	var metrics []*draiosproto.AppMetric
-	addPodMetrics(&metrics, pod)
+	kubecollect_common.AddPodMetrics(&metrics, pod)
 
 	var parents []*draiosproto.CongroupUid
 	if setLinks {
 		AddNodeParents(&parents, pod.Spec.NodeName)
 
-		AddParentsToPodViaOwnerRef(&parents, pod);
+		kubecollect_common.AddParentsToPodViaOwnerRef(&parents, pod);
 		// services don't have owner references and always use selectors
 		AddServiceParents(&parents, pod)
 	}
@@ -370,127 +293,6 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	return cg
 }
 
-func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
-	prefix := "kubernetes.pod."
-
-	// Restart count is a legacy metric attributed to pods
-	// instead of the individual containers, so report it here
-	restartCount, waitingCount := statusCounts(pod.Status.ContainerStatuses)
-	initRestarts, initWaiting := statusCounts(pod.Status.InitContainerStatuses)
-	restartCount += initRestarts
-	waitingCount += initWaiting
-
-	kubecollect_common.AppendMetricInt32(metrics, prefix+"container.status.restarts", restartCount)
-	kubecollect_common.AppendRateMetric(metrics, prefix+"container.status.restart_rate", float64(restartCount))
-	kubecollect_common.AppendMetricInt32(metrics, prefix+"container.status.waiting", waitingCount)
-	appendMetricPodCondition(metrics, prefix+"status.ready", pod.Status.Conditions, v1.PodReady)
-	appendMetricContainerResources(metrics, prefix, pod)
-}
-
-func getPodConditionMetric(conditions []v1.PodCondition, ctype v1.PodConditionType) (float64, bool) {
-	val := float64(0)
-	found := false
-	for _, cond := range conditions {
-		if cond.Type != ctype {
-			continue
-		}
-		switch cond.Status {
-		case v1.ConditionTrue:
-			val, found = 1, true
-		case v1.ConditionFalse:
-			fallthrough
-		case v1.ConditionUnknown:
-			val, found = 0, true
-		}
-		break
-	}
-	return val, found
-}
-
-func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, conditions []v1.PodCondition, ctype v1.PodConditionType) {
-	val, found := getPodConditionMetric(conditions, ctype)
-
-	if found {
-		kubecollect_common.AppendMetric(metrics, name, val)
-	}
-}
-
-func getPodContainerResources(pod *v1.Pod) (requestsCpu float64, limitsCpu float64, requestsMem float64, limitsMem float64) {
-	requestsCpu, limitsCpu, requestsMem, limitsMem = 0, 0, 0, 0
-
-	// https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources
-	// Pod effective resources are the higher of the sum of all app containers
-	// or the highest init container value for that resource
-	for _, c := range pod.Spec.Containers {
-		requestsCpu += resourceVal(c.Resources.Requests, v1.ResourceCPU)
-		limitsCpu += resourceVal(c.Resources.Limits, v1.ResourceCPU)
-		requestsMem += resourceVal(c.Resources.Requests, v1.ResourceMemory)
-		limitsMem += resourceVal(c.Resources.Limits, v1.ResourceMemory)
-	}
-
-	for _, c := range pod.Spec.InitContainers {
-		initRequestsCpu := resourceVal(c.Resources.Requests, v1.ResourceCPU)
-		if initRequestsCpu > requestsCpu {
-			requestsCpu = initRequestsCpu
-		}
-		initLimitsCpu := resourceVal(c.Resources.Limits, v1.ResourceCPU)
-		if initLimitsCpu > limitsCpu {
-			limitsCpu = initLimitsCpu
-		}
-		initRequestsMem := resourceVal(c.Resources.Requests, v1.ResourceMemory)
-		if initRequestsMem > requestsMem {
-			requestsMem = initRequestsMem
-		}
-		initLimitsMem := resourceVal(c.Resources.Limits, v1.ResourceMemory)
-		if initLimitsMem > limitsMem {
-			limitsMem = initLimitsMem
-		}
-	}
-
-	return
-}
-
-func appendMetricContainerResources(metrics *[]*draiosproto.AppMetric, prefix string, pod *v1.Pod) {
-	requestsCpu, limitsCpu, requestsMem, limitsMem := getPodContainerResources(pod)
-
-	kubecollect_common.AppendMetric(metrics, prefix+"resourceRequests.cpuCores", requestsCpu)
-	kubecollect_common.AppendMetric(metrics, prefix+"resourceLimits.cpuCores", limitsCpu)
-	kubecollect_common.AppendMetric(metrics, prefix+"resourceRequests.memoryBytes", requestsMem)
-	kubecollect_common.AppendMetric(metrics, prefix+"resourceLimits.memoryBytes", limitsMem)
-}
-
-func resourceVal(rList v1.ResourceList, rName v1.ResourceName) float64 {
-	v := float64(0)
-	qty, ok := rList[rName]
-	if ok {
-		// Take MilliValue() and divide because
-		// we could lose precision with Value()
-		v = float64(qty.MilliValue())/1000
-	}
-	return v
-}
-
-func resolveTargetPort(name string, selector labels.Selector, namespace string) uint32 {
-	if !kubecollect_common.ResourceReady("pods") {
-		return 0
-	}
-
-	for _, obj := range podInf.GetStore().List() {
-		pod := obj.(*v1.Pod)
-		if !(pod.GetNamespace() == namespace && selector.Matches(labels.Set(pod.GetLabels()))) {
-			continue
-		}
-
-		for _, c := range pod.Spec.Containers {
-			for _, p := range c.Ports {
-				if p.Name == name {
-					return uint32(p.ContainerPort)
-				}
-			}
-		}
-	}
-	return 0
-}
 
 func AddPodChildrenFromSelectors(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
 	if !kubecollect_common.ResourceReady("pods") {
