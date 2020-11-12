@@ -59,8 +59,11 @@ private:
 		}
 
 		Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, Message::Priority::PRIO_DEBUG);
-
-		g_log = std::unique_ptr<common_logger>(new common_logger(&loggerf, loggerc));
+		std::vector<std::string> dummy_config;
+		g_log = std::unique_ptr<common_logger>(new common_logger(&loggerf,
+									 Message::Priority::PRIO_DEBUG,
+									 dummy_config,
+									 loggerc));
 	}
 
 	void SetUp() override

@@ -1579,12 +1579,12 @@ void dragent_configuration::print_configuration() const
 		LOG_INFO("Additional Docker image info fetching enabled.");
 	}
 
-	g_log->information("Incomplete TCP connection reporting: " +
-	                   string(m_track_connection_status ? "enabled" : "disabled"));
+	LOG_INFO("Incomplete TCP connection reporting: " +
+		 string(m_track_connection_status ? "enabled" : "disabled"));
 
 	if (m_username_lookups)
 	{
-		g_log->information("Username lookups enabled.");
+		LOG_INFO("Username lookups enabled.");
 	}
 
 	if (m_track_environment)

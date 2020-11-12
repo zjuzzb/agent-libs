@@ -258,7 +258,7 @@ std::shared_ptr<serialized_buffer> protocol_handler::handle_log_report(uint64_t 
 
 	if(!report_serialized)
 	{
-		g_log->error("NULL converting message to buffer");
+		LOG_ERROR("NULL converting message to buffer");
 		return nullptr;
 	}
 	return report_serialized;

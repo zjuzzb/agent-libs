@@ -5,6 +5,8 @@
 
 #include <arpa/inet.h>  // htonl
 
+COMMON_LOGGER();
+
 bool dragent_protocol::version_is_valid(protocol_version ver)
 {
 	return ver == PROTOCOL_VERSION_NUMBER ||
@@ -18,7 +20,7 @@ std::shared_ptr<serialized_buffer> dragent_protocol::message_to_buffer(uint64_t 
 {
 	if (!compressor)
 	{
-		g_log->error("Cannot compress buffer due to null compressor");
+		LOG_ERROR("Cannot compress buffer due to null compressor");
 		return nullptr;
 	}
 
@@ -27,7 +29,7 @@ std::shared_ptr<serialized_buffer> dragent_protocol::message_to_buffer(uint64_t 
 	//
 	if (message.ByteSize() >= MAX_SERIALIZATION_BUF_SIZE_BYTES)
 	{
-		g_log->error("Message too big. Dropping it.");
+		LOG_ERROR("Message too big. Dropping it.");
 		return NULL;
 	}
 
@@ -52,7 +54,7 @@ void dragent_protocol::populate_ids(std::shared_ptr<serialized_buffer>& buf,
 	dragent_protocol_header_v5* hdr = (dragent_protocol_header_v5*)buf->buffer.data();
 	if (hdr->hdr.version < PROTOCOL_VERSION_NUMBER_10S_FLUSH)
 	{
-		g_log->error("Error sending message: Attempting to populate IDs for down-rev message");
+		LOG_ERROR("Error sending message: Attempting to populate IDs for down-rev message");
 		return;
 	}
 	hdr->generation = htonll(generation);

@@ -20,6 +20,11 @@ using namespace std;
 using nlohmann::json;
 using namespace libsanalyzer;
 
+namespace
+{
+COMMON_LOGGER();
+}
+
 type_config<bool> security_mgr::c_event_labels_enabled(
         true,
         "Policy Events Labels enabled",
@@ -244,7 +249,7 @@ void security_mgr::load_policy(const security_policy &spolicy, std::list<std::st
 
 void security_mgr::load_policy_v2(std::shared_ptr<security_policy_v2> spolicy_v2, std::list<std::string> &ids)
 {
-	g_log->debug("Loading v2 policy " + spolicy_v2->DebugString() +
+	LOG_DEBUG("Loading v2 policy " + spolicy_v2->DebugString() +
 		     ", testing against set of " + to_string(ids.size()) +
 		     " container ids");
 
@@ -252,7 +257,7 @@ void security_mgr::load_policy_v2(std::shared_ptr<security_policy_v2> spolicy_v2
 	{
 		if(spolicy_v2->match_scope(id, m_infra_state))
 		{
-			g_log->debug("Policy " + spolicy_v2->name() + " matched scope for container " + id);
+			LOG_DEBUG("Policy " + spolicy_v2->name() + " matched scope for container " + id);
 
 			// get/create the policies group and add the policy
 			std::shared_ptr<security_rules_group> grp;
@@ -263,11 +268,11 @@ void security_mgr::load_policy_v2(std::shared_ptr<security_policy_v2> spolicy_v2
 		}
 		else
 		{
-			g_log->debug("Policy " + spolicy_v2->name() + " did not match scope for container " + id);
+			LOG_DEBUG("Policy " + spolicy_v2->name() + " did not match scope for container " + id);
 		}
 	}
 
-	g_log->debug("Loading v2 policy " + spolicy_v2->DebugString() +
+	LOG_DEBUG("Loading v2 policy " + spolicy_v2->DebugString() +
 		     ", adding to k8s rules group");
 
 	// Also, always add to the k8s rules group
@@ -302,14 +307,14 @@ bool security_mgr::load_falco_rules_files(const draiosproto::falco_rules_files &
 
 		if(best_variant == -1)
 		{
-			g_log->information("Could not find any compatible variant for falco rules file " + file.filename() + ", skipping");
+			LOG_INFO("Could not find any compatible variant for falco rules file " + file.filename() + ", skipping");
 		}
 		else
 		{
 			try {
-				g_log->information("Loading falco rules content tag=" + files.tag() +
-					     " filename=" + file.filename() +
-					     " required_engine_version=" + to_string(best_engine_version));
+				LOG_INFO("Loading falco rules content tag=" + files.tag() +
+				         " filename=" + file.filename() +
+					 " required_engine_version=" + to_string(best_engine_version));
 				m_falco_engine->load_rules(file.variants(best_variant).content(),
 							   verbose, all_events);
 			}
@@ -346,7 +351,7 @@ bool security_mgr::load_v1(const draiosproto::policies &policies, const draiospr
 	print.SetSingleLineMode(true);
 	print.PrintToString(baselines, &tmp);
 
-	g_log->debug("Loading baselines message: " + tmp);
+	LOG_DEBUG("Loading baselines message: " + tmp);
 
 	if(m_infra_state)
 	{
@@ -357,7 +362,7 @@ bool security_mgr::load_v1(const draiosproto::policies &policies, const draiospr
 
 	print.PrintToString(policies, &tmp);
 
-	g_log->debug("Loading policies message: " + tmp);
+	LOG_DEBUG("Loading policies message: " + tmp);
 
 	for(auto &policy : policies.policy_list())
 	{
@@ -396,7 +401,7 @@ bool security_mgr::load_v1(const draiosproto::policies &policies, const draiospr
 		{
 			const std::string &system_rules = policies.falco_rules().contents(0);
 			try {
-				g_log->debug("Loading System Falco Rules Content: " + system_rules);
+				LOG_DEBUG("Loading System Falco Rules Content: " + system_rules);
 				m_falco_engine->load_rules(system_rules, verbose, all_events);
 			}
 			catch (falco_exception &e)
@@ -414,7 +419,7 @@ bool security_mgr::load_v1(const draiosproto::policies &policies, const draiospr
 		{
 			const std::string &user_rules = policies.falco_rules().contents(1);
 			try {
-				g_log->debug("Loading User Falco Rules Content: " + user_rules);
+				LOG_DEBUG("Loading User Falco Rules Content: " + user_rules);
 				m_falco_engine->load_rules(user_rules, verbose, all_events);
 			}
 			catch (falco_exception &e)
@@ -500,14 +505,14 @@ bool security_mgr::load_v1(const draiosproto::policies &policies, const draiospr
 
 	if(!m_policies_groups.empty())
 	{
-		g_log->information(to_string(m_policies_groups.size()) + " policies groups loaded");
+		LOG_INFO(to_string(m_policies_groups.size()) + " policies groups loaded");
 		if(g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
 		{
 			for (const auto &group : m_policies_groups)
 			{
-				g_log->debug(group->to_string());
+				LOG_DEBUG(group->to_string());
 			}
-			g_log->debug("splitted between " + to_string(m_scoped_security_policies.size()) + " entities as follows:");
+			LOG_DEBUG("splitted between " + to_string(m_scoped_security_policies.size()) + " entities as follows:");
 			for (const auto &it : m_scoped_security_policies)
 			{
 				string str = "  " + (it.first.empty() ? "host" : it.first) + ": { ";
@@ -516,7 +521,7 @@ bool security_mgr::load_v1(const draiosproto::policies &policies, const draiospr
 					str += group->to_string() + ", ";
 				}
 				str = str.substr(0, str.size() - 2) + " }";
-				g_log->debug(str);
+				LOG_DEBUG(str);
 			}
 		}
 	}
@@ -531,7 +536,7 @@ bool security_mgr::load_v2(const draiosproto::policies_v2 &policies_v2, std::str
 		m_infra_state->clear_scope_cache();
 	}
 
-	g_log->debug("Loading policies_v2 message: " + policies_v2.DebugString());
+	LOG_DEBUG("Loading policies_v2 message: " + policies_v2.DebugString());
 
 	m_fastengine_rules_library->reset();
 
@@ -634,14 +639,14 @@ void security_mgr::log_rules_group_info()
 {
 	if(!m_rules_groups.empty())
 	{
-		g_log->information(to_string(m_rules_groups.size()) + " rules groups loaded");
+		LOG_INFO(to_string(m_rules_groups.size()) + " rules groups loaded");
 		if(g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
 		{
 			for (const auto &group : m_rules_groups)
 			{
-				g_log->debug(group->to_string());
+				LOG_DEBUG(group->to_string());
 			}
-			g_log->debug("splitted between " + to_string(m_scoped_security_rules.size()) + " entities as follows:");
+			LOG_DEBUG("splitted between " + to_string(m_scoped_security_rules.size()) + " entities as follows:");
 			for (const auto &it : m_scoped_security_rules)
 			{
 				string str = "  " + (it.first.empty() ? "host" : it.first) + ": { ";
@@ -650,7 +655,7 @@ void security_mgr::log_rules_group_info()
 					str += group->to_string() + ", ";
 				}
 				str = str.substr(0, str.size() - 2) + " }";
-				g_log->debug(str);
+				LOG_DEBUG(str);
 			}
 		}
 	}
@@ -813,7 +818,7 @@ bool security_mgr::should_evaluate_event(gen_event *evt,
 		evaluate_event = true;
 		break;
 	default:
-		g_log->error("Invalid event source" + std::to_string(evt->get_source()));
+		LOG_ERROR("Invalid event source" + std::to_string(evt->get_source()));
 		break;
 	}
 
@@ -874,7 +879,7 @@ void security_mgr::process_event_v1(gen_event *evt)
 			{
 				if(match->effect() != draiosproto::EFFECT_ACCEPT)
 				{
-					g_log->debug("Event matched policy #" + to_string(match->policy()->id()) + " \"" + match->policy()->name() + "\"" +
+					LOG_DEBUG("Event matched policy #" + to_string(match->policy()->id()) + " \"" + match->policy()->name() + "\"" +
 						     " details:\n" + match->detail()->DebugString() +
 						     "effect: " + draiosproto::match_effect_Name(match->effect()));
 				}
@@ -890,12 +895,12 @@ void security_mgr::process_event_v1(gen_event *evt)
 		{
 			if(match->effect() == draiosproto::EFFECT_ACCEPT)
 			{
-				g_log->trace("Taking ACCEPT action via policy: " + match->policy()->name());
+				LOG_TRACE("Taking ACCEPT action via policy: " + match->policy()->name());
 				break;
 			}
 			else if (match->effect() == draiosproto::EFFECT_DENY)
 			{
-				g_log->debug("Taking DENY action via policy: " + match->policy()->name());
+				LOG_DEBUG("Taking DENY action via policy: " + match->policy()->name());
 
 				if(throttle_policy_event(ts_ns, (*container_id_ptr), match->policy()->id(), match->policy()->name()))
 				{
@@ -949,7 +954,7 @@ void security_mgr::process_event_v2(gen_event *evt)
 		std::string errstr;
 		if (!load_v2(*(policies_v2_msg.get()), errstr))
 		{
-			g_log->warning("Could not load policies_v2 message: " + errstr);
+			LOG_WARNING("Could not load policies_v2 message: " + errstr);
 			return;
 		}
 	}
@@ -997,7 +1002,7 @@ void security_mgr::process_event_v2(gen_event *evt)
 		}
 		else
 		{
-			g_log->debug("Found unexpected event type " + to_string(evt->get_source()) + ", not matching against any security rules groups");
+			LOG_DEBUG("Found unexpected event type " + to_string(evt->get_source()) + ", not matching against any security rules groups");
 		}
 
 		if(!results)
@@ -1008,7 +1013,7 @@ void security_mgr::process_event_v2(gen_event *evt)
 		// Take all actions for all results
 		for(auto &result : *results)
 		{
-			g_log->debug("Taking action via policy: " + result.m_policy->name() + ". detail=" + result.m_detail.DebugString());
+			LOG_DEBUG("Taking action via policy: " + result.m_policy->name() + ". detail=" + result.m_detail.DebugString());
 
 			if(throttle_policy_event(ts_ns, (*container_id_ptr), result.m_policy->id(), result.m_policy->name()))
 			{
@@ -1091,7 +1096,7 @@ void security_mgr::start_sending_capture(const string &token)
 
 	if (!m_capture_job_queue_handler->queue_job_request(m_inspector, job_request, errstr))
 	{
-		g_log->error("security_mgr::start_sending_capture could not start sending capture token=" + token + "(" + errstr + "). Trying to stop capture.");
+		LOG_ERROR("security_mgr::start_sending_capture could not start sending capture token=" + token + "(" + errstr + "). Trying to stop capture.");
 		stop_capture(token);
 	}
 }
@@ -1114,7 +1119,7 @@ void security_mgr::stop_capture(const string &token)
 
 	if (!m_capture_job_queue_handler->queue_job_request(m_inspector, stop_request, errstr))
 	{
-		g_log->critical("security_mgr::start_sending_capture could not stop capture token=" + token + "(" + errstr + ")");
+		LOG_CRITICAL("security_mgr::start_sending_capture could not stop capture token=" + token + "(" + errstr + ")");
 
 		// This will result in a capture that runs to
 		// completion but is never sent, and a file on
@@ -1167,13 +1172,13 @@ bool security_mgr::throttle_policy_event(uint64_t ts_ns,
 		                security_config::instance().get_policy_events_max_burst(),
 		                ts_ns);
 
-		g_log->debug("security_mgr::accept_policy_event creating new token bucket for policy=" + policy_name
+		LOG_DEBUG("security_mgr::accept_policy_event creating new token bucket for policy=" + policy_name
 			     + ", container=" + container_id);
 	}
 
 	if(it->second.claim(1, ts_ns))
 	{
-		g_log->debug("security_mgr::accept_policy_event allowing policy=" + policy_name
+		LOG_DEBUG("security_mgr::accept_policy_event allowing policy=" + policy_name
 			     + ", container=" + container_id
 			     + ", tokens=" + NumberFormatter::format(it->second.get_tokens()));
 	}
@@ -1193,7 +1198,7 @@ bool security_mgr::throttle_policy_event(uint64_t ts_ns,
 
 		it2->second = it2->second + 1;
 
-		g_log->debug("security_mgr::accept_policy_event throttling policy=" + policy_name
+		LOG_DEBUG("security_mgr::accept_policy_event throttling policy=" + policy_name
 			     + ", container=" + container_id
 			     + ", tcount=" + NumberFormatter::format(it2->second));
 	}
@@ -1225,7 +1230,7 @@ void security_mgr::add_policy_event_metrics(const security_policies::match_resul
 		m_metrics.incr(metrics::MET_POLICY_EVTS_FALCO);
 		break;
 	default:
-		g_log->error("Unknown policy type " + to_string(res.policies_type()));
+		LOG_ERROR("Unknown policy type " + to_string(res.policies_type()));
 		break;
 	}
 
@@ -1274,7 +1279,7 @@ void security_mgr::add_policy_event_metrics(const security_rules::match_result &
 		m_metrics.incr(metrics::MET_POLICY_EVTS_FALCO);
 		break;
 	default:
-		g_log->error("Unknown policy type " + to_string(res.m_rule_type));
+		LOG_ERROR("Unknown policy type " + to_string(res.m_rule_type));
 		break;
 	}
 
@@ -1538,7 +1543,7 @@ void security_mgr::set_event_labels_k8s_audit(draiosproto::event_detail *details
 	}
 	catch (nlohmann::json::out_of_range&)
 	{
-		g_log->debug("security_mgr::set_event_labels_k8s_audit: catch exception");
+		LOG_DEBUG("security_mgr::set_event_labels_k8s_audit: catch exception");
 	}
 	return;
 }
@@ -1547,7 +1552,7 @@ void security_mgr::report_events(uint64_t ts_ns)
 {
 	if(m_events.events_size() == 0)
 	{
-		g_log->debug("security_mgr::report_events: no events");
+		LOG_DEBUG("security_mgr::report_events: no events");
 		return;
 	}
 
@@ -1559,10 +1564,10 @@ void security_mgr::report_events_now(uint64_t ts_ns, draiosproto::policy_events 
 {
 	if(events.events_size() == 0)
 	{
-		g_log->error("security_mgr::report_events_now: empty set of events ?");
+		LOG_ERROR("security_mgr::report_events_now: empty set of events ?");
 		return;
 	} else {
-		g_log->information("security_mgr::report_events_now: " + to_string(events.events_size()) + " events");
+		LOG_INFO("security_mgr::report_events_now: " + to_string(events.events_size()) + " events");
 	}
 
 	events.set_machine_id(m_configuration->machine_id());
@@ -1603,7 +1608,7 @@ void security_mgr::report_throttled_events(uint64_t ts_ns)
 		   (1000000000UL *
 			(1 / security_config::instance().get_policy_events_rate()) * security_config::instance().get_policy_events_max_burst()))
 		{
-			g_log->debug("Removing token bucket for container=" + bucket->first.first
+			LOG_DEBUG("Removing token bucket for container=" + bucket->first.first
 				     + ", policy_id=" + to_string(bucket->first.second));
 			m_policy_rates.erase(bucket++);
 		}
@@ -1709,7 +1714,7 @@ std::shared_ptr<security_mgr::security_rules_group> security_mgr::get_rules_grou
 	std::shared_ptr<security_rules_group> grp = make_shared<security_rules_group>(preds, m_inspector, m_configuration);
 	grp->init(m_falco_engine, m_fastengine_rules_library, m_security_evt_metrics);
 
-	g_log->debug("Creating Rules Group: " + grp->to_string());
+	LOG_DEBUG("Creating Rules Group: " + grp->to_string());
 	m_rules_groups.emplace_back(grp);
 
 	return grp;
@@ -1760,7 +1765,7 @@ void security_mgr::start_k8s_audit_server()
 		x509->set_x509_key_file(security_config::instance().get_k8s_audit_server_x509_key_file());
 	}
 
-	g_log->debug(string("Sending start message to K8s Audit Server: ") + start.DebugString());
+	LOG_DEBUG(string("Sending start message to K8s Audit Server: ") + start.DebugString());
 	m_k8s_audit_server_start_future = std::async(std::launch::async, work, m_grpc_channel, m_k8s_audit_events_queue, start);
 	m_k8s_audit_server_started = true;
 }
@@ -1781,11 +1786,11 @@ void security_mgr::check_pending_k8s_audit_events()
 			   << NumberFormatter::format(security_config::instance().get_k8s_audit_server_refresh_interval() / 1000000000)
 			   << "seconds";
 
-			g_log->error(os.str());
+			LOG_ERROR(os.str());
 		}
 		else
 		{
-			g_log->debug("K8s Audit Server GRPC completed");
+			LOG_DEBUG("K8s Audit Server GRPC completed");
 		}
 
 		m_k8s_audit_server_started = false;
@@ -1799,17 +1804,17 @@ void security_mgr::check_pending_k8s_audit_events()
 		std::list<json_event> jevts;
 		nlohmann::json j;
 
-		g_log->debug("Response from K8s Audit Server start: jevt=" +
+		LOG_DEBUG("Response from K8s Audit Server start: jevt=" +
 			     jevt.DebugString());
 		try {
 			j = json::parse( jevt.evt_json() );
 		} catch  (json::parse_error& e) {
-			g_log->error(string("Could not parse data: ") + e.what());
+			LOG_ERROR(string("Could not parse data: ") + e.what());
 			continue;
 		}
 		if(!m_falco_engine->parse_k8s_audit_json(j, jevts))
 		{
-			g_log->error(string("Data not recognized as a K8s Audit Event"));
+			LOG_ERROR(string("Data not recognized as a K8s Audit Event"));
 			continue;
 		}
 		for(auto jev : jevts)
@@ -1853,7 +1858,7 @@ void security_mgr::stop_k8s_audit_server()
 	// Wait up to 10 seconds for the stop to complete.
 	if(stop_future.wait_for(std::chrono::seconds(10)) != std::future_status::ready)
 	{
-		g_log->error("Did not receive response to K8s Audit Server Stop() call within 10 seconds");
+		LOG_ERROR("Did not receive response to K8s Audit Server Stop() call within 10 seconds");
 		return;
 	}
 	else
@@ -1861,7 +1866,7 @@ void security_mgr::stop_k8s_audit_server()
 		sdc_internal::k8s_audit_server_stop_result res = stop_future.get();
 		if(!res.successful())
 		{
-			g_log->error(string("K8s Audit Server Stop() call returned error ") +
+			LOG_ERROR(string("K8s Audit Server Stop() call returned error ") +
 				     res.errstr());
 		}
 	}

@@ -13,6 +13,7 @@
 #include <atomic>
 
 using namespace std;
+COMMON_LOGGER();
 
 type_config<uint64_t> c_memdump_size(300 * 1024 * 1024, "", "memdump", "size");
 
@@ -464,17 +465,17 @@ uint64_t capture_job::start_ns()
 
 void capture_job::log_information(const string& msg)
 {
-	g_log->information("job " + m_token + ": " + msg);
+	LOG_INFO("job " + m_token + ": " + msg);
 }
 
 void capture_job::log_debug(const string& msg)
 {
-	g_log->debug("job " + m_token + ": " + msg);
+	LOG_DEBUG("job " + m_token + ": " + msg);
 }
 
 void capture_job::log_error(const string& msg)
 {
-	g_log->error("job " + m_token + ": " + msg);
+	LOG_ERROR("job " + m_token + ": " + msg);
 }
 
 bool capture_job::send_dump_chunks(uint64_t ts_ns)
@@ -641,8 +642,8 @@ void capture_job_handler::init(const sinsp* inspector)
 
 	if (feature_manager::instance().get_enabled(MEMDUMP))
 	{
-		g_log->information(m_name +
-		                   ": enabling memdump, size=" + to_string(c_memdump_size.get_value()));
+		LOG_INFO(m_name +
+		         ": enabling memdump, size=" + to_string(c_memdump_size.get_value()));
 		m_memdumper = make_unique<sinsp_memory_dumper>((sinsp*)inspector);
 		m_memdumper->init(c_memdump_size.get_value(),
 		                  c_memdump_size.get_value(),
@@ -687,7 +688,7 @@ void capture_job_handler::do_run()
 			    }
 			    if (num_jobs > 0)
 			    {
-				    g_log->information(
+				    LOG_INFO(
 				        "capture_jobs: nj=" + to_string(num_jobs) +
 				        " oldest_delta_ms=" + to_string((m_last_job_check_ns - oldest) / 1000000));
 			    }
@@ -761,7 +762,7 @@ bool capture_job_handler::queue_job_request(sinsp* inspector,
 		return false;
 	}
 
-	g_log->information(m_name + ": scheduling job request type=" +
+	LOG_INFO(m_name + ": scheduling job request type=" +
 	                   dump_job_request::request_type_str(job_request->m_request_type) +
 	                   ", token= " + job_request->m_token);
 
@@ -803,7 +804,7 @@ bool capture_job_handler::queue_job_request(sinsp* inspector,
 
 void capture_job_handler::cleanup()
 {
-	g_log->information(m_name + ": cleaning up, force=" + string(m_force_cleanup ? "yes" : "no"));
+	LOG_INFO(m_name + ": cleaning up, force=" + string(m_force_cleanup ? "yes" : "no"));
 
 	// Stop all jobs
 	{
@@ -835,7 +836,7 @@ void capture_job_handler::cleanup()
 	if (m_jobs.size() > 0)
 	{
 		Poco::ScopedWriteRWLock jobs_lck(m_jobs_lock);
-		g_log->warning(m_name + ": " + to_string(m_jobs.size()) +
+		LOG_WARNING(m_name + ": " + to_string(m_jobs.size()) +
 		               " jobs remaining, deleting anyway");
 
 		m_jobs.clear();
@@ -847,7 +848,7 @@ void capture_job_handler::process_job_requests()
 	std::shared_ptr<dump_job_request> request;
 	while (m_dump_job_requests.get(&request, 0))
 	{
-		g_log->debug(m_name + ": dequeued dump request type=" +
+		LOG_DEBUG(m_name + ": dequeued dump request type=" +
 		             dump_job_request::request_type_str(request->m_request_type) +
 		             " token=" + request->m_token);
 		switch (request->m_request_type)
@@ -899,7 +900,7 @@ void capture_job_handler::process_job_requests()
 
 			if (!found)
 			{
-				g_log->error(m_name + ": can't find job " + request->m_token);
+				LOG_ERROR(m_name + ": can't find job " + request->m_token);
 			}
 
 			break;
@@ -922,7 +923,7 @@ void capture_job_handler::process_job_requests()
 
 			if (!found)
 			{
-				g_log->error(m_name + ": can't find job " + request->m_token);
+				LOG_ERROR(m_name + ": can't find job " + request->m_token);
 			}
 
 			break;
@@ -977,7 +978,7 @@ void capture_job_handler::start_job(string& token, const start_job_details& deta
 
 	if (!job_state->start(m_inspector, token, details, errstr, job_state))
 	{
-		g_log->error(m_name + ": could not start capture job " + token + ": " + errstr);
+		LOG_ERROR(m_name + ": could not start capture job " + token + ": " + errstr);
 		send_error(token, errstr);
 
 		if (m_jobs.size() == 0)
@@ -1027,7 +1028,7 @@ void capture_job_handler::cleanup_jobs(uint64_t ts)
 	{
 		if (it->get()->is_complete())
 		{
-			g_log->information("job " + it->get()->token() + ": removing state");
+			LOG_INFO("job " + it->get()->token() + ": removing state");
 			it = m_jobs.erase(it);
 		}
 		else
@@ -1089,13 +1090,13 @@ bool capture_job_handler::queue_item(std::shared_ptr<serialized_buffer>& item,
 {
 	if (!item)
 	{
-		g_log->error(m_name + ": NULL converting message to item");
+		LOG_ERROR(m_name + ": NULL converting message to item");
 		return true;
 	}
 
 	while (!m_queue->put(item, priority))
 	{
-		g_log->information(m_name + ": queue full");
+		LOG_INFO(m_name + ": queue full");
 		return false;
 	}
 
@@ -1112,7 +1113,7 @@ bool capture_job_handler::queue_response(const draiosproto::dump_response& respo
 
 void capture_job_handler::send_error(const string& token, const string& error)
 {
-	g_log->error(m_name + ": error from capture job: " + error);
+	LOG_ERROR(m_name + ": error from capture job: " + error);
 	draiosproto::dump_response response;
 	prepare_response(token, &response);
 	response.set_error(error);

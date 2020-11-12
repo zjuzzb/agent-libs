@@ -18,6 +18,7 @@
 #include <stdarg.h>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace Poco
 {
@@ -40,14 +41,34 @@ public:
 		virtual void notify(Poco::Message::Priority priority) = 0;
 	};
 
+	/**
+	 * Use this constructor if you don't care about file logger and are
+	 * passing in a null channel. Mostly used by unit tests.
+	 */
 	common_logger(Poco::Logger* file_log, Poco::Logger* console_log);
-
+	/**
+	 * Use this constructor if you care about file logging. Applications like
+	 * dragent and agentone do.
+	 */
+	common_logger(Poco::Logger* file_log, Poco::Message::Priority file_sev,
+		      const std::vector<std::string>& config_vector,
+		      Poco::Logger* console_log);
 	/**
 	 * Set the observer that will get notified of logs that get written.
 	 */
 	void set_observer(log_observer::ptr observer);
 
+	/**
+	 * Log method with default file level check
+	 */
 	void log(const std::string& str, Poco::Message::Priority sev);
+	/**
+	 * Log method that checks file level (used for implementing component
+	 * level overrides).
+	 */
+	void log_check_component_priority(const std::string& str,
+					  const Poco::Message::Priority sev,
+					  const Poco::Message::Priority file_sev);
 	void trace(const std::string& str);
 	void debug(const std::string& str);
 	void information(const std::string& str);
@@ -60,9 +81,31 @@ public:
 	static void sinsp_logger_callback(std::string&& str, sinsp_logger::severity sev);
 
 	bool is_enabled(Poco::Message::Priority severity) const;
+	bool is_enabled(const Poco::Message::Priority severity,
+			const Poco::Message::Priority component_file_priority) const;
+	void init_file_log_component_priorities(const std::vector<std::string>& config_vector);
+	Poco::Message::Priority get_component_file_priority(const std::string& component) const;
+#ifdef SYSDIG_TEST
+	void set_file_log_priority(const Poco::Message::Priority severity)
+	{
+		m_file_log_priority = severity;
+	}
+#endif
 
 private:
 	Poco::Logger* const m_file_log;
+#ifdef SYSDIG_TEST
+	Poco::Message::Priority mutable m_file_log_priority;
+#else
+	Poco::Message::Priority const m_file_log_priority;
+#endif
+	// m_file_log_component_priorities is mutable because it is populated after parsing
+	// a std::vector<std::string> that is sent to the constructor from the config
+	// If the conversion is done outside the constructor and the fully built unordered_map
+	// is passed into the constructor, we can make it const
+	// Probably not worth the trouble since each application calls the constructor separately
+	// and unit test code also modifies it
+	std::unordered_map<std::string, Poco::Message::Priority> mutable m_file_log_component_priorities;
 	Poco::Logger* const m_console_log;
 	std::shared_ptr<log_observer> m_observer;
 };
@@ -84,6 +127,7 @@ public:
 	void log(Poco::Message::Priority severity, int line, const std::string& str) const;
 	std::string build(const char* fmt, ...) const;
 	const std::string& tag() const { return m_tag; };
+	bool is_enabled(Poco::Message::Priority severity) const;
 
 private:
 	std::string::size_type generate_log(std::vector<char>& log_buffer,
@@ -92,8 +136,11 @@ private:
 	                                    va_list& args) const;
 	std::string build(int line, const char* fmt, va_list& args) const;
 
-	// [<optional component>:]<filname without extension>
+	// [<optional component>:]<filename without extension>
 	const std::string m_tag;
+	// file log level override associated with component, extracted from g_log
+	// and cached here for performance optimization
+	mutable Poco::Message::Priority m_component_file_priority;
 };
 
 extern std::unique_ptr<common_logger> g_log;
@@ -104,16 +151,13 @@ extern std::unique_ptr<common_logger> g_log;
 #define COMMON_LOGGER(__optional_prefix) \
 	static const log_sink s_log_sink(__FILE__, "" __optional_prefix)
 
-#define LOG_AT_PRIO_(priority, ...)                            \
-	do                                                         \
-	{                                                          \
-		if (g_log && g_log->is_enabled(priority))              \
-		{                                                      \
-			s_log_sink.log((priority), __LINE__, __VA_ARGS__); \
-		}                                                      \
+#define LOG_AT_PRIO_(priority, ...)                                                              \
+	do                                                                                       \
+	{                                                                                        \
+		s_log_sink.log((priority), __LINE__, __VA_ARGS__);                               \
 	} while (false)
 
-#define LOG_WILL_EMIT(priority) (g_log && g_log->is_enabled(priority))
+#define LOG_WILL_EMIT(priority) (s_log_sink.is_enabled(priority))
 
 // clang-format off
 // Macros to use in the cpp file to interface with the component logger.

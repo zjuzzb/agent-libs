@@ -143,6 +143,12 @@ type_config<uint64_t> c_watchdog_warn_memory_usage_mb(256,
                                                       "watchdog",
                                                       "warn_memory_usage_mb");
 
+type_config<std::vector<std::string>> c_log_file_component_overrides(
+					{},
+					"Component level overrides to global log level",
+					"log",
+					"file_priority_by_component");
+
 string compute_sha1_digest(SHA1Engine& engine, const string& path)
 {
 	engine.reset();
@@ -1045,7 +1051,7 @@ void dragent_app::log_sysinfo()
 	}
 	else
 	{
-		g_log->warning("Cannot get system uptime");
+		LOG_WARNING("Cannot get system uptime");
 	}
 	struct utsname osname;
 	if (uname(&osname) == 0)
@@ -1054,7 +1060,7 @@ void dragent_app::log_sysinfo()
 	}
 	else
 	{
-		g_log->warning("Cannot get kernel version");
+		LOG_WARNING("Cannot get kernel version");
 	}
 }
 
@@ -1469,8 +1475,8 @@ void dragent_app::init_inspector(sinsp::ptr inspector)
 
 	if (m_configuration.m_max_thread_table_size > 0)
 	{
-		g_log->information("Overriding sinsp thread table size to " +
-		                   to_string(m_configuration.m_max_thread_table_size));
+		LOG_INFO("Overriding sinsp thread table size to " +
+			 to_string(m_configuration.m_max_thread_table_size));
 		inspector->set_max_thread_table_size(m_configuration.m_max_thread_table_size);
 	}
 
@@ -1621,14 +1627,14 @@ sinsp_analyzer* dragent_app::build_analyzer(
 
 	if (feature_manager::instance().get_enabled(BASELINER))
 	{
-		g_log->information("Setting secure profiling (baselining)");
+		LOG_INFO("Setting secure profiling (baselining)");
 		analyzer->enable_secure_profiling();
 	}
 
 	if (feature_manager::instance().get_enabled(COMMAND_LINE_CAPTURE) ||
 	    feature_manager::instance().get_enabled(SECURE_AUDIT))
 	{
-		g_log->information("Setting command lines capture");
+		LOG_INFO("Setting command lines capture");
 		sconfig->set_executed_commands_capture_enabled(true);
 		sconfig->set_command_lines_capture_mode(m_configuration.m_command_lines_capture_mode);
 		sconfig->set_command_lines_include_container_healthchecks(
@@ -1638,7 +1644,7 @@ sinsp_analyzer* dragent_app::build_analyzer(
 
 	if (m_configuration.m_capture_dragent_events)
 	{
-		g_log->information("Setting capture dragent events");
+		LOG_INFO("Setting capture dragent events");
 		sconfig->set_capture_dragent_events(m_configuration.m_capture_dragent_events);
 	}
 
@@ -1671,7 +1677,7 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	//
 	for (auto chinfo : m_configuration.m_chisel_details)
 	{
-		g_log->information("Loading chisel " + chinfo.m_name);
+		LOG_INFO("Loading chisel " + chinfo.m_name);
 		analyzer->add_chisel(&chinfo);
 	}
 
@@ -2020,8 +2026,8 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			    state.memory_used() / 1024 >
 			        m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.at(proc.first))
 			{
-				g_log->critical("watchdog: " + proc.first + " using " +
-				                to_string(state.memory_used() / 1024) + "MiB of memory, killing");
+				LOG_CRITICAL("watchdog: " + proc.first + " using " +
+					     to_string(state.memory_used() / 1024) + "MiB of memory, killing");
 				subprocess_to_kill = true;
 			}
 			uint64_t last_loop_s = state.last_loop_s();
@@ -2039,8 +2045,8 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			        m_configuration.m_watchdog_subprocesses_timeout_s.end() &&
 			    diff > m_configuration.m_watchdog_subprocesses_timeout_s.at(proc.first))
 			{
-				g_log->critical("watchdog: " + proc.first + " last activity " +
-				                NumberFormatter::format(diff) + " s ago");
+				LOG_CRITICAL("watchdog: " + proc.first + " last activity " +
+					     NumberFormatter::format(diff) + " s ago");
 				// sdchecks implements the SIGHUP handler for handling stalls
 				if (proc.first == "sdchecks")
 				{
@@ -2255,8 +2261,11 @@ void dragent_app::initialize_logging()
 	    new avoid_block_channel(file_channel, m_configuration.machine_id()));
 	AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, avoid_block));
 
+	// Create file logger at most permissive level (trace). This allows all messages to flow.
+	// Log severity of messages actually emitted through the channel will be managed by
+	// the consumers of the channel
 	Logger& loggerf =
-	    Logger::create("DraiosLogF", formatting_channel_file, m_configuration.m_min_file_priority);
+	    Logger::create("DraiosLogF", formatting_channel_file, Message::PRIO_TRACE);
 
 	// Note: We are not responsible for managing the memory to which
 	//       event_logger points; no free()/delete needed
@@ -2269,7 +2278,10 @@ void dragent_app::initialize_logging()
 		                                                  m_configuration.m_user_max_burst_events));
 	}
 
-	g_log = unique_ptr<common_logger>(new common_logger(&loggerf, make_console_channel(formatter)));
+	g_log = unique_ptr<common_logger>(new common_logger(&loggerf,
+							    m_configuration.m_min_file_priority,
+							    c_log_file_component_overrides.get_value(),
+							    make_console_channel(formatter)));
 
 	g_log->set_observer(m_internal_metrics);
 }
@@ -2327,7 +2339,7 @@ void dragent_app::monitor_files(uint64_t uptime_s)
 			}
 			else if (!file_exists && (state.m_mod_time != 0))
 			{
-				g_log->warning("Detected removal of file: " + state.m_path);
+				LOG_WARNING("Detected removal of file: " + state.m_path);
 				detected_change = true;
 			}
 		}

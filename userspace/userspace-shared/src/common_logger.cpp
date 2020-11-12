@@ -12,6 +12,8 @@
 
 /* global */ std::unique_ptr<common_logger> g_log;
 
+COMMON_LOGGER();
+
 namespace
 {
 
@@ -27,20 +29,83 @@ public:
 
 } // end namespace
 
+using priority_map_t = std::map<std::string, Poco::Message::Priority>;
+static priority_map_t s_priority_map = {
+	{ "fatal",      Poco::Message::Priority::PRIO_FATAL},
+	{ "critical",   Poco::Message::Priority::PRIO_CRITICAL},
+	{ "error",      Poco::Message::Priority::PRIO_ERROR},
+	{ "warning",    Poco::Message::Priority::PRIO_WARNING},
+	{ "notice",     Poco::Message::Priority::PRIO_NOTICE},
+	{ "info",       Poco::Message::Priority::PRIO_INFORMATION},
+	{ "debug",      Poco::Message::Priority::PRIO_DEBUG},
+	{ "trace",      Poco::Message::Priority::PRIO_TRACE},
+};
+
 common_logger::common_logger(Poco::Logger* const file_log,
-                             Poco::Logger* const console_log):
+			     Poco::Logger* const console_log):
 	m_file_log(file_log),
+	m_file_log_priority((Poco::Message::Priority)-1),
 	m_console_log(console_log),
 	m_observer(std::make_shared<null_log_observer>())
 { }
 
-void common_logger::log(const std::string& str, const Poco::Message::Priority sev)
+common_logger::common_logger(Poco::Logger* const file_log,
+			     Poco::Message::Priority const file_sev,
+			     const std::vector<std::string>& config_vector,
+			     Poco::Logger* const console_log):
+	m_file_log(file_log),
+	m_file_log_priority(file_sev),
+	m_console_log(console_log),
+	m_observer(std::make_shared<null_log_observer>())
+{
+	init_file_log_component_priorities(config_vector);
+}
+
+void common_logger::init_file_log_component_priorities(const std::vector<std::string>& config_vector)
+{
+	const std::string delimiter = ": ";
+	for (auto component_level : config_vector)
+	{
+		std::string component;
+		std::string sev_string;
+		size_t pos = component_level.find(delimiter);
+		if (pos != std::string::npos)
+		{
+			component = component_level.substr(0, pos);
+			sev_string = component_level.substr(pos + delimiter.length(),
+							component_level.length());
+			if (s_priority_map.count(sev_string) > 0)
+			{
+				m_file_log_component_priorities[component] = s_priority_map[sev_string];
+			}
+			else
+			{
+				// Ironically, can't use LOG_ macro here since g_log isn't constructed yet
+				log("common_logger: Unknown priority=" + sev_string + " in config=" +
+				    component_level, Poco::Message::Priority::PRIO_NOTICE);
+			}
+		}
+		else
+		{
+			// can't use LOG_ macro here since g_log isn't constructed yet
+			log("common_logger: Unparseable string=" + component_level,
+			    Poco::Message::Priority::PRIO_NOTICE);
+		}
+	}
+}
+
+void common_logger::log_check_component_priority(const std::string& str,
+						 const Poco::Message::Priority sev,
+						 const Poco::Message::Priority file_sev)
 {
 	Poco::Message m("common_logger", str, sev);
 
 	m.setTid(thread_utils::get_tid());
 
-	m_file_log->log(m);
+	if (file_sev >= sev)
+	{
+		m_file_log->log(m);
+	}
 
 	if(m_console_log != NULL)
 	{
@@ -48,6 +113,14 @@ void common_logger::log(const std::string& str, const Poco::Message::Priority se
 	}
 
 	m_observer->notify(sev);
+}
+
+void common_logger::log(const std::string& str, const Poco::Message::Priority sev)
+{
+	if (is_enabled(sev))
+	{
+		log_check_component_priority(str, sev, m_file_log_priority);
+	}
 }
 
 void common_logger::set_observer(log_observer::ptr observer)
@@ -148,16 +221,55 @@ void common_logger::sinsp_logger_callback(std::string&& str,
 
 bool common_logger::is_enabled(const Poco::Message::Priority severity) const
 {
-	return (((m_file_log != nullptr) && (m_file_log->getLevel() >= severity)) ||
-	        ((m_console_log != nullptr) && (m_console_log->getLevel() >= severity)));
+	return (((m_file_log != nullptr) && (m_file_log_priority >= severity)) ||
+		((m_console_log != nullptr) && (m_console_log->getLevel() >= severity)));
+}
+
+bool common_logger::is_enabled(const Poco::Message::Priority severity,
+			       const Poco::Message::Priority component_file_priority) const
+{
+	return (((m_file_log != nullptr) && (component_file_priority >= severity)) ||
+		((m_console_log != nullptr) && (m_console_log->getLevel() >= severity)));
+}
+
+Poco::Message::Priority common_logger::get_component_file_priority(const std::string& component) const
+{
+	std::unordered_map<std::string, Poco::Message::Priority>::const_iterator it =
+		m_file_log_component_priorities.find(component);
+	if (it != m_file_log_component_priorities.end())
+	{
+		return it->second;
+	}
+	else
+	{
+		return m_file_log_priority;
+	}
 }
 
 log_sink::log_sink(const std::string& file,
                    const std::string& component) :
 	m_tag(component +
 	      (component.empty() ? "" : ":") +
-	      Poco::Path(file).getBaseName())
+	      Poco::Path(file).getBaseName()),
+	m_component_file_priority(static_cast<Poco::Message::Priority>(-1))
 {
+}
+
+/**
+ * Checks if log message should be emitted at input severity level.
+ * Component level overrides are enforced.
+ */
+bool log_sink::is_enabled(const Poco::Message::Priority severity) const
+{
+	if (g_log)
+	{
+		if (m_component_file_priority == static_cast<Poco::Message::Priority>(-1))
+		{
+			m_component_file_priority = g_log->get_component_file_priority(tag());
+		}
+		return g_log->is_enabled(severity, m_component_file_priority);
+	}
+	return false;
 }
 
 /**
@@ -252,14 +364,12 @@ void log_sink::log(const Poco::Message::Priority severity,
                    const char* const fmt,
                    ...) const
 {
-	va_list args;
-
-	va_start(args, fmt);
-	std::string message = build(line, fmt, args);
-	va_end(args);
-
-	if (nullptr != g_log) {
-		g_log->log(message, severity);
+	if (nullptr != g_log && is_enabled(severity)) {
+		va_list args;
+		va_start(args, fmt);
+		std::string message = build(line, fmt, args);
+		va_end(args);
+		g_log->log_check_component_priority(message, severity, m_component_file_priority);
 	}
 }
 

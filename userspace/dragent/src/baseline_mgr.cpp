@@ -2,6 +2,8 @@
 #include "infrastructure_state.h"
 #include "common_logger.h"
 
+COMMON_LOGGER();
+
 #ifndef CYGWING_AGENT
 security_baseline::security_baseline(const draiosproto::baseline &baseline)
 	: draiosproto::baseline(baseline)
@@ -47,7 +49,7 @@ bool baseline_mgr::load(const draiosproto::baselines &baselines, std::string &er
 		m_baselines[key] = make_unique<security_baseline>(baseline);
 	}
 
-	g_log->debug(std::to_string(baselines.baseline_list().size()) + " baselines loaded");
+	LOG_DEBUG(std::to_string(baselines.baseline_list().size()) + " baselines loaded");
 
 	return true;
 }
@@ -59,7 +61,7 @@ std::shared_ptr<security_baseline> baseline_mgr::lookup(const std::string &conta
 		return NULL;
 	}
 
-	g_log->debug("Lookup baseline for container " + container_id + ", policy " + std::to_string(spolicy.id()));
+	LOG_DEBUG("Lookup baseline for container " + container_id + ", policy " + std::to_string(spolicy.id()));
 
 	auto cache_key = make_pair(container_id, spolicy.id());
 	if(m_cache.find(cache_key) != m_cache.end())

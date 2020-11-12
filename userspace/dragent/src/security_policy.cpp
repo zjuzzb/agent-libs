@@ -14,6 +14,8 @@ extern sinsp_filter_check_list g_filterlist;
 using namespace std;
 using namespace path_prefix_map_ut;
 
+COMMON_LOGGER();
+
 uint64_t security_policy::m_next_order = 0;
 
 security_policy::security_policy(const draiosproto::policy &policy)
@@ -48,7 +50,7 @@ bool security_policy::match_scope(std::string container_id, infrastructure_state
 
 	if(!container_scope() && !host_scope()) {
 		// This should never occur. Err on the side of allowing the policy to run.
-		g_log->error("Impossible scope with host/container_scope == false. Allowing policy anyway.");
+		LOG_ERROR("Impossible scope with host/container_scope == false. Allowing policy anyway.");
 		return true;
 	}
 
@@ -430,7 +432,7 @@ security_policies::match_result *falco_security_policies::match_event(sinsp_evt 
 			}
 			else
 			{
-				g_log->debug("Event matched falco policy: rule=" + res->rule);
+				LOG_DEBUG("Event matched falco policy: rule=" + res->rule);
 
 				// This ruleset had a match. We keep
 				// it only if its order is less than
@@ -464,7 +466,7 @@ security_policies::match_result *falco_security_policies::match_event(sinsp_evt 
 		}
 		catch (falco_exception& e)
 		{
-			g_log->error("Error processing sinsp event against falco engine: " + string(e.what()));
+			LOG_ERROR("Error processing sinsp event against falco engine: " + string(e.what()));
 		}
 	}
 
@@ -490,7 +492,7 @@ security_policies::match_result *falco_security_policies::match_event(json_event
 			}
 			else
 			{
-				g_log->debug("Event matched falco policy: rule=" + res->rule);
+				LOG_DEBUG("Event matched falco policy: rule=" + res->rule);
 
 				// This ruleset had a match. We keep
 				// it only if its order is less than
@@ -526,7 +528,7 @@ security_policies::match_result *falco_security_policies::match_event(json_event
 		}
 		catch (falco_exception& e)
 		{
-			g_log->error("Error processing k8s audit event against falco engine: " + string(e.what()));
+			LOG_ERROR("Error processing k8s audit event against falco engine: " + string(e.what()));
 		}
 	}
 
@@ -609,7 +611,7 @@ security_policies::match_result * matchlist_security_policies::min_default_match
 
 		if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 		{
-			g_log->trace("Event matched default effect of " + name() +
+			LOG_TRACE("Event matched default effect of " + name() +
 				     " policy: " + match->policy()->name() +
 				     " details: " + match->detail()->DebugString() +
 				     " effect: " + draiosproto::match_effect_Name(match->effect()));

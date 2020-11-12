@@ -18,6 +18,11 @@ const std::string FILENAME = "test_filename.cpp";
 const std::string STRIPPED_FILENAME = "test_filename";
 const std::string DEFAULT_COMPONENT = "test:dragent";
 const std::string DEFAULT_MESSAGE = "This is a typical log message.";
+const std::string TEST_COMPONENT_A = "test_componentA";
+const std::string TEST_COMPONENT_B = "test_componentB";
+const std::string COMPONENTA_OVERRIDE_CONFIG_DEBUG = "test_componentA: debug";
+const std::string COMPONENTA_FILE_OVERRIDE_CONFIG_DEBUG = "test_componentA:test_filename: debug";
+const std::string MESSAGE_A = "Message from Component A";
 
 #if _DEBUG
 const bool EMIT_DEBUG_LOG = true;
@@ -121,9 +126,12 @@ public:
 		                                         Poco::Message::Priority::PRIO_TRACE);
 
 		m_old_log = std::move(g_log);
+		std::vector<std::string> dummy_config;
 		g_log = std::unique_ptr<common_logger>(
 				new common_logger(m_file_logger,
-				                   m_console_logger));
+						  Poco::Message::Priority::PRIO_TRACE,
+						  dummy_config,
+				                  m_console_logger));
 	}
 
 	void TearDown() override
@@ -153,11 +161,11 @@ public:
 	// here with the expected name.
 	log_sink s_log_sink;
 
-	void set_log_level(const int level)
+	void set_log_level(const Poco::Message::Priority level)
 	{
 		if(m_file_logger != nullptr)
 		{
-			m_file_logger->setLevel(level);
+			g_log->set_file_log_priority(level);
 		}
 
 		if(m_console_logger != nullptr)
@@ -797,4 +805,90 @@ TEST_F(common_logger_test, is_enabled_fatal)
 	ASSERT_FALSE(g_log->is_enabled(Poco::Message::Priority::PRIO_ERROR));
 	ASSERT_FALSE(g_log->is_enabled(Poco::Message::Priority::PRIO_CRITICAL));
 	ASSERT_TRUE(g_log->is_enabled(Poco::Message::Priority::PRIO_FATAL));
+}
+
+TEST_F(common_logger_test, component_overrides_none)
+{
+	// set default log level to info
+	set_log_level(Poco::Message::Priority::PRIO_INFORMATION);
+
+	// no component override, component priority should match default
+	ASSERT_EQ(g_log->get_component_file_priority(TEST_COMPONENT_A),
+			Poco::Message::Priority::PRIO_INFORMATION);
+	// Should see file log at whatever level (including highest possible = trace)
+	// that is input via g_log->log_checkcomponent_priority(), but should not see a message
+	// in log file above the default level via g_log->log(). Console log is not affected by
+	// override, so no message should be seen above the default console level
+	const std::string expected_message =
+		generateMessage(Poco::Message::Priority::PRIO_TRACE, DEFAULT_MESSAGE);
+	g_log->log_check_component_priority(DEFAULT_MESSAGE, Poco::Message::Priority::PRIO_TRACE,
+			 		    Poco::Message::Priority::PRIO_TRACE);
+	g_log->log(MESSAGE_A, Poco::Message::Priority::PRIO_DEBUG);
+        ASSERT_EQ(expected_message, m_file_out.str());
+	ASSERT_EQ("", m_console_out.str());
+}
+
+TEST_F(common_logger_test, component_overrides_g_log)
+{
+	// set default log level to info
+	set_log_level(Poco::Message::Priority::PRIO_INFORMATION);
+
+	// set a component override to debug
+	std::vector<std::string> config_vector;
+	config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_DEBUG);
+	g_log->init_file_log_component_priorities(config_vector);
+
+	// component priority should match override value
+	ASSERT_EQ(g_log->get_component_file_priority(TEST_COMPONENT_A),
+			Poco::Message::Priority::PRIO_DEBUG);
+
+	// component priority of component that has no override should have default level
+	ASSERT_EQ(g_log->get_component_file_priority(TEST_COMPONENT_B),
+			Poco::Message::Priority::PRIO_INFORMATION);
+
+	// messages above default level should not be visible via g_log->log(),
+	// but should be visible via g_log->log_check_component_priority()
+	const std::string expected_message =
+		generateMessage(Poco::Message::Priority::PRIO_DEBUG, DEFAULT_MESSAGE);
+	g_log->log_check_component_priority(DEFAULT_MESSAGE, Poco::Message::Priority::PRIO_DEBUG,
+			 Poco::Message::Priority::PRIO_DEBUG);
+	g_log->log(MESSAGE_A, Poco::Message::Priority::PRIO_DEBUG);
+	ASSERT_EQ(expected_message, m_file_out.str());
+	ASSERT_EQ("", m_console_out.str());
+}
+
+TEST_F(common_logger_test, component_overrides_log_sink)
+{
+	log_sink local_log_sink(FILENAME, TEST_COMPONENT_A);
+
+        // set default log level to info and component override to debug
+	set_log_level(Poco::Message::Priority::PRIO_INFORMATION);
+	std::vector<std::string> config_vector;
+	config_vector.push_back(COMPONENTA_FILE_OVERRIDE_CONFIG_DEBUG);
+	g_log->init_file_log_component_priorities(config_vector);
+	ASSERT_EQ(Poco::Message::Priority::PRIO_DEBUG,
+		  g_log->get_component_file_priority(local_log_sink.tag()));
+
+	// log_sink's log level should match override value
+	ASSERT_TRUE(local_log_sink.is_enabled(Poco::Message::Priority::PRIO_DEBUG));
+	ASSERT_TRUE(local_log_sink.is_enabled(Poco::Message::Priority::PRIO_INFORMATION));
+	ASSERT_TRUE(local_log_sink.is_enabled(Poco::Message::Priority::PRIO_NOTICE));
+	ASSERT_TRUE(local_log_sink.is_enabled(Poco::Message::Priority::PRIO_WARNING));
+	ASSERT_TRUE(local_log_sink.is_enabled(Poco::Message::Priority::PRIO_ERROR));
+	ASSERT_TRUE(local_log_sink.is_enabled(Poco::Message::Priority::PRIO_CRITICAL));
+	ASSERT_TRUE(local_log_sink.is_enabled(Poco::Message::Priority::PRIO_FATAL));
+	ASSERT_FALSE(local_log_sink.is_enabled(Poco::Message::Priority::PRIO_TRACE));
+
+	// Message should be emitted at override level, but not above that level
+	// Call the API directly instead of via the macro since this
+	// test uses a non-standard logger
+	const std::string expected_message =
+		generateMessage(Poco::Message::Priority::PRIO_DEBUG, 42,
+				 DEFAULT_MESSAGE.c_str(), true, TEST_COMPONENT_A);
+	local_log_sink.log(Poco::Message::Priority::PRIO_DEBUG, 42, "%s",
+				DEFAULT_MESSAGE.c_str());
+	local_log_sink.log(Poco::Message::Priority::PRIO_TRACE, 42, "%s",
+				DEFAULT_MESSAGE.c_str());
+	ASSERT_EQ(expected_message, m_file_out.str());
+	ASSERT_EQ("", m_console_out.str());
 }

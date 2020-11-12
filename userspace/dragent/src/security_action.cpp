@@ -11,6 +11,8 @@
 
 using namespace std;
 
+COMMON_LOGGER();
+
 security_actions::actions_result::actions_result()
 	: m_result(NULL), m_v2result(NULL)
 {
@@ -128,7 +130,7 @@ void security_actions::perform_container_action(uint64_t ts_ns,
 				action +
 				" for container " + container_id;
 
-			g_log->debug(msg);
+			LOG_DEBUG(msg);
 
 			result->set_successful(false);
 			result->set_errmsg("RPC Not successful");
@@ -160,7 +162,7 @@ void security_actions::perform_container_action(uint64_t ts_ns,
 
 						note_action_complete(astate);
 
-						g_log->debug(string("Docker cmd action result: ") + result->to_string());
+						LOG_DEBUG(string("Docker cmd action result: ") + result->to_string());
 					});
 					break;
 				case sinsp_container_type::CT_CRI:
@@ -186,7 +188,7 @@ void security_actions::perform_container_action(uint64_t ts_ns,
 
 						note_action_complete(astate);
 
-						g_log->debug(string("Cri-o cmd action result: ") + result->to_string());
+						LOG_DEBUG(string("Cri-o cmd action result: ") + result->to_string());
 					});
 					break;
 				default:
@@ -239,7 +241,7 @@ void security_actions::perform_capture_action(uint64_t ts_ns,
 
 	note_action_complete(astate);
 
-	g_log->debug(string("Capture action result: ") + result->to_string());
+	LOG_DEBUG(string("Capture action result: ") + result->to_string());
 }
 
 void security_actions::perform_actions(uint64_t ts_ns,
@@ -291,7 +293,7 @@ void security_actions::perform_actions(uint64_t ts_ns,
 			result->set_successful(false);
 			result->set_errmsg(errstr);
 			note_action_complete(astate);
-			g_log->debug(errstr);
+			LOG_DEBUG(errstr);
 		}
 	}
 
@@ -325,7 +327,7 @@ void security_actions::perform_actions(uint64_t ts_ns,
 			result->set_successful(false);
 			result->set_errmsg(errstr);
 			note_action_complete(astate);
-			g_log->debug(errstr);
+			LOG_DEBUG(errstr);
 		}
 	}
 
@@ -381,7 +383,7 @@ void security_actions::check_outstanding_actions(uint64_t ts_ns)
 
 				if(token.empty())
 				{
-					g_log->error("Could not find capture token for policy event that had capture action?");
+					LOG_ERROR("Could not find capture token for policy event that had capture action?");
 				}
 				else
 				{
@@ -416,7 +418,7 @@ void security_actions::periodic_cleanup(uint64_t ts_ns)
 	{
 		if(ts_ns > it->second && (ts_ns-it->second) > 30 * ONE_SECOND_IN_NS)
 		{
-			g_log->debug("Removing container action for " + it->first);
+			LOG_DEBUG("Removing container action for " + it->first);
 			m_active_container_actions.erase(it++);
 		}
 		else

@@ -326,7 +326,7 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 	//
 	// Start the capture with sinsp
 	//
-	g_log->information("Opening the capture source");
+	LOG_INFO("Opening the capture source");
 	if (!m_configuration->m_input_filename.empty())
 	{
 		m_inspector->open(m_configuration->m_input_filename);
@@ -373,7 +373,7 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 				// If (for some reason) sysdig doesn't have the corresponding changes
 				// then it will throw a sinsp_exception when setting the fullcapture
 				// range. Just log an error and continue.
-				g_log->error(
+				LOG_ERROR(
 				    "Could not set increased snaplen size (are you running with updated "
 				    "sysdig?): " +
 				    string(e.what()));
@@ -392,7 +392,7 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 			{
 				// The version of sysdig we're working with doesn't
 				// support this operation.
-				g_log->error(
+				LOG_ERROR(
 				    "Could not set statsd port in driver (are "
 				    "you running with updated sysdig?): " +
 				    string(e.what()));
@@ -498,7 +498,7 @@ void sinsp_worker::run()
 
 	m_pthread_id = pthread_self();
 
-	g_log->information("sinsp_worker: Starting");
+	LOG_INFO("sinsp_worker: Starting");
 
 	if (!m_initialized)
 	{
@@ -626,7 +626,7 @@ void sinsp_worker::run()
 			}
 			if (m_aws_metadata_refresher.done())
 			{
-				g_log->information("Refresh network interfaces list");
+				LOG_INFO("Refresh network interfaces list");
 				m_inspector->refresh_ifaddr_list();
 				if (m_configuration->m_aws_metadata.m_public_ipv4)
 				{
@@ -672,7 +672,7 @@ void sinsp_worker::run()
 		++nevts;
 	}
 
-	g_log->information("sinsp_worker: Terminating");
+	LOG_INFO("sinsp_worker: Terminating");
 }
 
 bool sinsp_worker::handle_signal_dump()
@@ -692,7 +692,7 @@ bool sinsp_worker::handle_signal_dump()
 void sinsp_worker::queue_job_request(
     std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request)
 {
-	g_log->information(
+	LOG_INFO(
 	    m_name + ": scheduling job request type=" +
 	    capture_job_queue_handler::dump_job_request::request_type_str(job_request->m_request_type) +
 	    ", token= " + job_request->m_token);
@@ -828,7 +828,7 @@ void sinsp_worker::do_grpc_tracing()
 		m_grpc_trace_enabled = false;
 		m_configuration->m_dirty_shutdown_report_log_size_b =
 		    m_configuration->m_dirty_shutdown_default_report_log_size_b;
-		g_log->information("Received SIGSTKFLT, disabling gRPC tracing");
+		LOG_INFO("Received SIGSTKFLT, disabling gRPC tracing");
 		grpc_tracer_set_enabled("all", 0);
 		gpr_set_log_verbosity(GPR_LOG_SEVERITY_ERROR);
 	}
@@ -837,7 +837,7 @@ void sinsp_worker::do_grpc_tracing()
 		m_grpc_trace_enabled = true;
 		m_configuration->m_dirty_shutdown_report_log_size_b =
 		    m_configuration->m_dirty_shutdown_trace_report_log_size_b;
-		g_log->information("Received SIGSTKFLT, enabling gRPC tracing");
+		LOG_INFO("Received SIGSTKFLT, enabling gRPC tracing");
 		grpc_tracer_set_enabled("all", 1);
 		gpr_set_log_verbosity(GPR_LOG_SEVERITY_DEBUG);
 	}
@@ -853,7 +853,7 @@ void sinsp_worker::process_job_requests(bool should_dump)
 
 	if (should_dump)
 	{
-		g_log->information("Received SIGUSR1, starting dump");
+		LOG_INFO("Received SIGUSR1, starting dump");
 
 		std::shared_ptr<capture_job_queue_handler::dump_job_request> job_request =
 		    make_shared<capture_job_queue_handler::dump_job_request>();
@@ -868,7 +868,7 @@ void sinsp_worker::process_job_requests(bool should_dump)
 
 		if (!m_capture_job_handler->queue_job_request(m_inspector.get(), job_request, errstr))
 		{
-			g_log->error("sinsp_worker: could not start capture: " + errstr);
+			LOG_ERROR("sinsp_worker: could not start capture: " + errstr);
 		}
 	}
 
@@ -887,7 +887,7 @@ void sinsp_worker::process_job_requests(bool should_dump)
 	{
 		string errstr;
 
-		g_log->debug("sinsp_worker: dequeued dump request token=" + request->m_token);
+		LOG_DEBUG("sinsp_worker: dequeued dump request token=" + request->m_token);
 
 		if (!m_capture_job_handler->queue_job_request(m_inspector.get(), request, errstr))
 		{

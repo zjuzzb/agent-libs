@@ -13,6 +13,8 @@ extern sinsp_filter_check_list g_filterlist;
 using namespace std;
 using namespace path_prefix_map_ut;
 
+COMMON_LOGGER();
+
 security_policy_v2::security_policy_v2(const draiosproto::policy_v2 &policy_v2)
 	: draiosproto::policy_v2(policy_v2)
 {
@@ -341,7 +343,7 @@ bool security_rule_library::rule::parse_network_details(const Json::Value &val)
 
 bool security_rule_library::parse(const Json::Value &val, rule_sptr &rule)
 {
-	g_log->debug("parsing Fastengine Rule " + Json::FastWriter().write(val));
+	LOG_DEBUG("parsing Fastengine Rule " + Json::FastWriter().write(val));
 
 	if(!val.isObject() ||
 	   !val.isMember("name") ||
@@ -384,7 +386,7 @@ bool security_rule_library::parse(const Json::Value &val, rule_sptr &rule)
 	}
 	else
 	{
-		g_log->debug("security_rule: Unknown rule type " + rule_type_str);
+		LOG_DEBUG("security_rule: Unknown rule type " + rule_type_str);
 
 		return false;
 	}
@@ -435,7 +437,7 @@ bool security_rule_library::parse(const Json::Value &val, rule_sptr &rule)
 		return false;
 	}
 
-	g_log->debug("Parsed fastengine rule: " + rule->as_string());
+	LOG_DEBUG("Parsed fastengine rule: " + rule->as_string());
 
 	return true;
 }
@@ -471,7 +473,7 @@ bool security_rule_library::parse(const std::string &rule_defs_str)
 
 			if(!parse(rule_defs[i], rule))
 			{
-				g_log->error("Could not parse rule " +
+				LOG_ERROR("Could not parse rule " +
 					     to_string(i) +
 					     " from rules json array");
 				return false;
@@ -479,7 +481,7 @@ bool security_rule_library::parse(const std::string &rule_defs_str)
 
 			if(m_rules.find(rule->name()) != m_rules.end())
 			{
-				g_log->error("Could not add rule " +
+				LOG_ERROR("Could not add rule " +
 					     rule->name() +
 					     " from rules json array--entry with name already exists");
 				return false;
@@ -490,7 +492,7 @@ bool security_rule_library::parse(const std::string &rule_defs_str)
 	}
 	catch (Json::Exception &e)
 	{
-		g_log->error("Could not parse rules object: \"" + rule_defs_str + "\": " + e.what());
+		LOG_ERROR("Could not parse rules object: \"" + rule_defs_str + "\": " + e.what());
 		return false;
 	}
 
@@ -697,7 +699,7 @@ void falco_security_rules::add_policy(policy_v2_sptr policy)
 
 		if(m_falco_engine->num_rules_for_ruleset(ruleset) > 0)
 		{
-			g_log->debug("Number of falco rules for policy " + policy->name() + " : " + std::to_string(m_falco_engine->num_rules_for_ruleset(ruleset)));
+			LOG_DEBUG("Number of falco rules for policy " + policy->name() + " : " + std::to_string(m_falco_engine->num_rules_for_ruleset(ruleset)));
 		}
 
 		m_num_loaded_rules += m_falco_engine->num_rules_for_ruleset(ruleset);
@@ -802,7 +804,7 @@ std::list<security_rules::match_result> *falco_security_rules::match_event(sinsp
 			}
 			else
 			{
-				g_log->debug("Event matched falco rules: rule=" + res->rule);
+				LOG_DEBUG("Event matched falco rules: rule=" + res->rule);
 
 				// We don't need to worry about which rule matched in a given ruleset--falco handles that internally.
 				match_result result;
@@ -828,7 +830,7 @@ std::list<security_rules::match_result> *falco_security_rules::match_event(sinsp
 		}
 		catch (falco_exception& e)
 		{
-			g_log->error("Error processing sinsp event against falco engine: " + string(e.what()));
+			LOG_ERROR("Error processing sinsp event against falco engine: " + string(e.what()));
 		}
 	}
 
@@ -855,7 +857,7 @@ std::list<security_rules::match_result> *falco_security_rules::match_event(json_
 			}
 			else
 			{
-				g_log->debug("Event matched falco rules: rule=" + res->rule);
+				LOG_DEBUG("Event matched falco rules: rule=" + res->rule);
 
 				// XXX/mstemm the match_infos could really be created once.
 				match_result result;
@@ -885,7 +887,7 @@ std::list<security_rules::match_result> *falco_security_rules::match_event(json_
 		}
 		catch (falco_exception& e)
 		{
-			g_log->error("Error processing k8s audit event against falco engine: " + string(e.what()));
+			LOG_ERROR("Error processing k8s audit event against falco engine: " + string(e.what()));
 		}
 	}
 
@@ -947,7 +949,7 @@ void matchlist_security_rules::add_policy(policy_v2_sptr policy)
 
 		if(rule && rule->rule_type() == rules_type())
 		{
-			g_log->debug("matchlist_security_rules: loading rules from policy " + to_string(policy->id()));
+			LOG_DEBUG("matchlist_security_rules: loading rules from policy " + to_string(policy->id()));
 
 			if(add_rule(policy, rule))
 			{
@@ -1149,7 +1151,7 @@ std::string net_inbound_rules::qualifies()
 bool net_inbound_rules::add_rule(policy_v2_sptr policy,
 				 rule_sptr rule)
 {
-	g_log->debug("net_inbound_rules: loading rule " + rule->name() + " from policy " + to_string(policy->id()));
+	LOG_DEBUG("net_inbound_rules: loading rule " + rule->name() + " from policy " + to_string(policy->id()));
 	const security_rule_library::rule::network_details *details = rule->get_network_details();
 
 	if(!details)
@@ -1287,7 +1289,7 @@ void tcp_listenport_rules::add_ports(const security_rule_library::rule::match_li
 bool tcp_listenport_rules::add_rule(policy_v2_sptr policy,
 				    rule_sptr rule)
 {
-	g_log->debug("tcp_listenport_rules: loading rule " + rule->name() + " from policy " + to_string(policy->id()));
+	LOG_DEBUG("tcp_listenport_rules: loading rule " + rule->name() + " from policy " + to_string(policy->id()));
 
 	const security_rule_library::rule::network_details *details = rule->get_network_details();
 
@@ -1326,7 +1328,7 @@ std::string udp_listenport_rules::qualifies()
 bool udp_listenport_rules::add_rule(policy_v2_sptr policy,
 				    rule_sptr rule)
 {
-	g_log->debug("udp_listenport_rules: loading rule " + rule->name() + " from policy " + to_string(policy->id()));
+	LOG_DEBUG("udp_listenport_rules: loading rule " + rule->name() + " from policy " + to_string(policy->id()));
 
 	const security_rule_library::rule::network_details *details = rule->get_network_details();
 
@@ -1406,7 +1408,7 @@ void syscall_rules::reset()
 {
 	matchlist_security_rules::reset();
 
-	g_log->debug("in syscall_rules::reset()");
+	LOG_DEBUG("in syscall_rules::reset()");
 	m_event_index.clear();
 	m_event_index.resize(PPM_EVENT_MAX+1);
 
@@ -1443,13 +1445,13 @@ bool syscall_rules::add_rule(policy_v2_sptr policy,
 {
 	bool added = false;
 
-	g_log->debug("syscall_rules: loading rule " + rule->name() + " from policy " + to_string(policy->id()));
+	LOG_DEBUG("syscall_rules: loading rule " + rule->name() + " from policy " + to_string(policy->id()));
 
 	const security_rule_library::rule::syscall_details *details = rule->get_syscall_details();
 
 	if(!details)
 	{
-		g_log->debug("syscall_rules: " + rule->name() + " had no syscall_details section? skipping");
+		LOG_DEBUG("syscall_rules: " + rule->name() + " had no syscall_details section? skipping");
 		return added;
 	}
 
@@ -1472,7 +1474,7 @@ bool syscall_rules::add_rule(policy_v2_sptr policy,
 				minfo.m_rule = rule;
 				minfo.m_match_items = details->m_syscalls.m_match_items;
 
-				g_log->debug("syscall_rules: Adding event " + to_string(evtnum) + "/" + evtstr + " to rule " + rule->name() + " match " + to_string(minfo.m_match_items));
+				LOG_DEBUG("syscall_rules: Adding event " + to_string(evtnum) + "/" + evtstr + " to rule " + rule->name() + " match " + to_string(minfo.m_match_items));
 				m_event_index[evtnum].push_back(minfo);
 			}
 		}
@@ -1491,7 +1493,7 @@ bool syscall_rules::add_rule(policy_v2_sptr policy,
 				minfo.m_rule = rule;
 				minfo.m_match_items = details->m_syscalls.m_match_items;
 
-				g_log->debug("syscall_rules: Adding syscall " + to_string(it2->second) + "/" + evtstr + " to rule " + rule->name() + " match " + to_string(details->m_syscalls.m_match_items));
+				LOG_DEBUG("syscall_rules: Adding syscall " + to_string(it2->second) + "/" + evtstr + " to rule " + rule->name() + " match " + to_string(details->m_syscalls.m_match_items));
 				m_syscall_index[it2->second].push_back(minfo);
 			}
 
@@ -1669,7 +1671,7 @@ bool matchlist_map_security_rules::add_rule(policy_v2_sptr policy,
 {
 	bool added = false;
 
-	g_log->debug("matchlist_map_security_rules (" + to_string(rules_type()) + "): loading rule " + rule->as_string() + " from policy " + to_string(policy->id()));
+	LOG_DEBUG("matchlist_map_security_rules (" + to_string(rules_type()) + "): loading rule " + rule->as_string() + " from policy " + to_string(policy->id()));
 
 	const security_rule_library::rule::match_list *list = get_match_list(rule);
 
@@ -1700,7 +1702,7 @@ bool matchlist_map_security_rules::add_rule(policy_v2_sptr policy,
 
 			if(cur == NULL)
 			{
-				g_log->error("matchlist_map_security_rules::add_rule: Could not find list we just added?");
+				LOG_ERROR("matchlist_map_security_rules::add_rule: Could not find list we just added?");
 				return added;
 			}
 		}
@@ -2030,7 +2032,7 @@ bool process_rules::add_rule(policy_v2_sptr policy,
 {
 	bool added = false;
 
-	g_log->debug("process_rules: loading rule " + rule->name() + " from policy " + to_string(policy->id()));
+	LOG_DEBUG("process_rules: loading rule " + rule->name() + " from policy " + to_string(policy->id()));
 
 	const security_rule_library::rule::process_details *details = rule->get_process_details();
 
