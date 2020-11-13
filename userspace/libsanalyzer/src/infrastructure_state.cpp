@@ -2722,7 +2722,11 @@ void infrastructure_state::emit(const draiosproto::container_group* cg,
 		// optional string host_ip = 4;
 
 		double rate = calculate_rate(m_pod_restart_rate[cg->uid().id()], pod->restart_rate(), ts);
-		pod->set_restart_rate(rate);
+
+		// We expect restart rate to be always positive.
+		// The only exception can happen if the restart counter is reset to 0.
+		// Let's cover this corner case passing to set_restart_rate the max between 0 and the calculated rate.
+		pod->set_restart_rate(rate > 0 ? rate : 0);
 	}
 	else if (kind == "k8s_replicaset")
 	{
