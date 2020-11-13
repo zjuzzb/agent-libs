@@ -51,7 +51,7 @@ func parseCidr(pod *v1.Pod) (map[string]string, bool) {
 				// registry information (e.g.
 				// `k8s.gcr.io/').
 				if strings.Contains(c.Image, prefix) {
-					for _, line := range c.Command {
+					for _, line := range append(c.Command, c.Args...) {
 						for _, w := range strings.Fields(line) {
 							if strings.HasPrefix(w, "--cluster-cidr") {
 								cls := strings.Split(w, "=")
