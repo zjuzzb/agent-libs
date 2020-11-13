@@ -16,19 +16,21 @@ public:
 	test_runnable(const watchdog_runnable::is_terminated_delgate& terminated_delegate = nullptr) :
 		   watchdog_runnable("test_runnable", terminated_delegate),
 	   m_continue(true),
-	   m_hijinks(false)
+	   m_throw_fatal(false),
+	   m_inform_fatal(false)
 	{
 	}
 
 	std::atomic<bool> m_continue;
-	std::atomic<bool> m_hijinks;
+	std::atomic<bool> m_throw_fatal;
+	std::atomic<bool> m_inform_fatal;
 
 private:
 	void do_run() override
 	{
 		while (heartbeat() && m_continue)
 		{
-			if(m_hijinks)
+			if(m_throw_fatal)
 			{
 				THROW_WATCHDOG_RUNNABLE_FATAL_ERROR("hijinks %d!", 123);
 			}
@@ -36,11 +38,19 @@ private:
 			Poco::Thread::sleep(1);
 		}
 	}
+
+	bool is_component_healthy() const override
+	{
+		return !m_inform_fatal;
+	}
 };
 
 class test_running_state
 {
 public:
+	test_running_state() : m_terminated(false)
+	{}
+
 	bool m_terminated = false;
 
 	bool is_terminated() { return m_terminated; }
@@ -140,7 +150,7 @@ TEST(watchdog_runnable, global_terminate)
 	Poco::ThreadPool::defaultPool().joinAll();
 }
 
-TEST(watchdog_runnable, fatal)
+TEST(watchdog_runnable, throw_fatal)
 {
 	test_runnable action1;
 
@@ -156,7 +166,7 @@ TEST(watchdog_runnable, fatal)
 	ASSERT_TRUE(unhealthy.empty());
 
 	// This will cause the task to throw a fatal error
-	action1.m_hijinks = true;
+	action1.m_throw_fatal = true;
 
 	// Call join all to wait until thread dies
 	Poco::ThreadPool::defaultPool().joinAll();
@@ -171,10 +181,44 @@ TEST(watchdog_runnable, fatal)
 		ASSERT_EQ(&dead_thread.runnable, static_cast<watchdog_runnable *>(&action1));
 		ASSERT_EQ(dead_thread.health, watchdog_runnable::health::FATAL_ERROR);
 	}
-
 }
 
-TEST(watchdog_runnable, throw_fatal)
+TEST(watchdog_runnable, inform_fatal)
+{
+	test_runnable action1;
+
+	watchdog_runnable_pool pool;
+	pool.start(action1, 1 /*timeout*/);
+
+	while (!action1.is_started())
+	{
+		Poco::Thread::sleep(10);
+	}
+
+	auto unhealthy = pool.unhealthy_list();
+	ASSERT_TRUE(unhealthy.empty());
+
+	// This will cause the task to report that it is unhealthy
+	action1.m_inform_fatal = true;
+
+	// Validate that the task is unhealthy due to a fatal error
+	unhealthy = pool.unhealthy_list();
+	ASSERT_TRUE(!unhealthy.empty());
+
+	if(!unhealthy.empty())
+	{
+		const watchdog_runnable_pool::unhealthy_runnable& dead_thread = unhealthy[0];
+		ASSERT_EQ(&dead_thread.runnable, static_cast<watchdog_runnable *>(&action1));
+		ASSERT_EQ(dead_thread.health, watchdog_runnable::health::FATAL_ERROR);
+	}
+
+	action1.m_continue = false;
+
+	// Call join all to wait until thread dies
+	Poco::ThreadPool::defaultPool().joinAll();
+}
+
+TEST(watchdog_runnable, catch_fatal)
 {
 	try
 	{

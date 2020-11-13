@@ -6,9 +6,14 @@
 namespace uptime
 {
 	/**
-	 * @return application uptime in ms
+	 * @return application uptime in milliseconds
 	 */
 	uint64_t milliseconds();
+
+	/**
+	 * @return application uptime in seconds
+	 */
+	uint64_t seconds();
 
 } // namespace uptime
 

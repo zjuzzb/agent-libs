@@ -113,6 +113,16 @@ protected:
 
 private:
 
+	/**
+	 * Can optionally be overriden by the derived class to 
+	 * explicitly indicate that the derived class isn't healthy for 
+	 * whatever reason. This is expected to be called by a different
+	 * process so thread safety is important when implementing. 
+	 *  
+	 * If this returns false then the application will be stopped.
+	 */
+	virtual bool is_component_healthy() const { return true; }
+
 	void run() override;
 
 	std::atomic<bool> m_terminated_with_error;

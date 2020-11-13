@@ -34,8 +34,7 @@ void watchdog_runnable::timeout_ms(uint64_t value_ms)
 
 bool watchdog_runnable::heartbeat()
 {
-	if(nullptr != is_terminated && is_terminated())
-	{
+	if(nullptr != is_terminated && is_terminated()) {
 		return false;
 	}
 
@@ -45,12 +44,19 @@ bool watchdog_runnable::heartbeat()
 
 watchdog_runnable::health watchdog_runnable::is_healthy(int64_t& age_ms) const
 {
+	// Purposely doing this first so that age_ms is recorded
 	bool timed_out = is_timed_out(m_name,
 				      m_last_heartbeat_ms,
 				      m_timeout_ms,
 				      age_ms);
 
-	// Purposely doing this check after age_ms is recorded
+	if (!is_component_healthy()) 
+	{
+		LOG_FATAL("Fatal error occurred in %s. Terminating immediately and restarting.",
+			  m_name.c_str());
+		return health::FATAL_ERROR;
+	}
+
 	if(m_terminated_with_error)
 	{
 		return health::FATAL_ERROR;

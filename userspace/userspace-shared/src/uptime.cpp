@@ -31,4 +31,10 @@ uint64_t milliseconds()
 	return std::chrono::duration_cast<std::chrono::milliseconds>(diff).count();
 }
 
+uint64_t seconds()
+{
+	auto diff = std::chrono::steady_clock::now() - getStart();
+	return std::chrono::duration_cast<std::chrono::seconds>(diff).count();
+}
+
 } // namespace uptime

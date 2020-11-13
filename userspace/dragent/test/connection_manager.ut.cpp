@@ -2325,6 +2325,11 @@ TEST_F(connection_manager_fixture, unacked_metrics)
 		usleep(1000);
 	}
 	ASSERT_EQ(3, cm.num_unacked_messages());
+
+	// Even though we have missed some acks, we are still healthy
+	int64_t age_ms;
+	ASSERT_EQ(watchdog_runnable::health::HEALTHY, cm.is_healthy(age_ms));
+
 	dragent_protocol_header_v5 hdr = cm.first_unacked_header();
 	ASSERT_EQ(draiosproto::message_type::METRICS, hdr.hdr.messagetype);
 	uint64_t gen = ntohll(hdr.generation);
@@ -2341,6 +2346,113 @@ TEST_F(connection_manager_fixture, unacked_metrics)
 
 	ASSERT_EQ(0, cm.num_unacked_messages());
 	ASSERT_EQ(0, fc.get_num_disconnects());
+
+	// Shut down all the things
+	running_state::instance().shut_down();
+	fc.stop();
+
+	t.join();
+	serializer.stop();
+	st.join();
+}
+
+TEST_F(connection_manager_fixture, unacked_metrics_timeout)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration config;
+	config.init();
+
+	// After initing the config, swap the value
+	test_helpers::scoped_config<uint64_t> timeout_conf("watchdog.connection_manager_unacked_timeout_s", 2);
+
+	std::atomic<bool> metrics_sent(false);
+
+	// Create and spin up the fake collector (get an ephemeral port)
+	fake_collector fc(true);
+	fc.start(0);
+	ASSERT_NE(0, fc.get_port());
+
+	// Set the config for the CM
+	config.m_server_addr = "127.0.0.1";
+	config.m_server_port = fc.get_port();
+	config.m_ssl_enabled = false;
+
+	// Create the shared blocking queues
+	flush_queue fqueue(MAX_QUEUE_LEN);
+	protocol_queue pqueue(MAX_QUEUE_LEN);
+
+	// All the stuff to build a serializer
+	std::shared_ptr<const capture_stats_source> stats_source =
+	    std::make_shared<bogus_capture_stats_source>();
+	protocol_handler ph(pqueue);
+	auto compressor = gzip_protobuf_compressor::get(-1);
+
+	// Create and spin up the connection manager
+	connection_manager cm(&config, &pqueue, {5});
+	protobuf_metric_serializer serializer(stats_source,
+	                                      "",
+	                                      ph,
+	                                      &fqueue,
+	                                      &pqueue,
+	                                      compressor,
+	                                      &cm);
+
+	std::thread t([&cm]()
+	{
+		cm.test_run();
+	});
+
+	std::thread st([&serializer]()
+	{
+		serializer.test_run();
+	});
+
+	for(uint32_t loops = 0; !cm.is_connected() && loops < 10000; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_TRUE(cm.is_connected());
+
+	// Build the test data
+	for (uint32_t i = 0; i < 8; ++i)
+	{
+		draiosproto::metrics* m = build_test_metrics(i + 1);
+		m->set_timestamp_ns(sinsp_utils::get_current_time_ns());
+		fqueue.put(std::make_shared<flush_data_message>(
+		                         sinsp_utils::get_current_time_ns(),
+		                         &metrics_sent,
+		                         std::unique_ptr<draiosproto::metrics>(m),
+		                         MAX_QUEUE_LEN,
+		                         0,
+		                         1.0,
+		                         1,
+		                         0));
+		msleep(50);
+
+		// After running normally, make the backend stop acking messages
+		if (i == 2) 
+		{
+			fc.delay_acks(true);
+		}
+	}
+
+	// Wait for all messages to hit the CM
+	for(uint32_t loops = 0; cm.num_unacked_messages() < 3 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(3, cm.num_unacked_messages());
+
+	int64_t age_ms;
+	for (uint32_t loops = 0; cm.is_healthy(age_ms) != watchdog_runnable::health::FATAL_ERROR && loops < 5000; ++loops)
+	{
+	    usleep(1000);
+	}
+
+	// Timeout should have elapsed and the connection manager should 
+	// be unhealthy
+	ASSERT_EQ(watchdog_runnable::health::FATAL_ERROR, cm.is_healthy(age_ms));
 
 	// Shut down all the things
 	running_state::instance().shut_down();

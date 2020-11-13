@@ -8,6 +8,7 @@
 #include "protobuf_compression.h"
 #include "running_state.h"
 #include "spinlock.h"
+#include "uptime.h"
 #include "utils.h"
 #include "watchdog_runnable_fatal_error.h"
 #include "async_aggregator.h" // For aggregator limits
@@ -69,6 +70,14 @@ type_config<bool> c_proxy_ssl(
         "Use SSL to connect to proxy.",
         "http_proxy",
         "ssl");
+
+type_config<uint64_t>::ptr c_unacked_message_timeout = type_config_builder<uint64_t>(
+        8*60 /*8 minute default*/,
+        "Timeout for unacked metrics messages.",
+        "watchdog",
+        "connection_manager_unacked_timeout_s")
+	.min(60 /*1 minute min*/)
+	.build();
 
 using namespace std;
 using std::chrono::microseconds;
@@ -246,7 +255,8 @@ connection_manager::connection_manager(dragent_configuration* configuration,
       m_negotiated_compression_method(nullptr),
       m_negotiated_protocol_version(0),
       m_reconnect_interval(0),
-      m_working_interval(DEFAULT_WORKING_INTERVAL)
+      m_working_interval(DEFAULT_WORKING_INTERVAL),
+      m_last_metrics_ack_uptime_s(0)
 {
 	Poco::Net::initializeSSL();
 
@@ -498,6 +508,7 @@ void connection_manager::disconnect()
 	m_prom_channel = nullptr;
 	m_prom_conn = nullptr;
 #endif
+	m_last_metrics_ack_uptime_s = 0;
 }
 
 void connection_manager::disconnect_and_backoff()
@@ -1718,6 +1729,8 @@ bool connection_manager::on_ack_received(const dragent_protocol_header_v5& heade
 		// Check if the header on the stored metrics is covered by the received ACK
 		if (sequence_less_or_equal(&it->header, &header))
 		{
+
+			m_last_metrics_ack_uptime_s = uptime::seconds();
 			removed = true;
 			m_messages_awaiting_ack.erase(it++);
 		}
@@ -1849,4 +1862,33 @@ void connection_manager::handle_collector_error(draiosproto::error_message& msg)
 		// Make the agent backoff in this case.
 		disconnect_and_backoff();
 	}
+}
+
+bool connection_manager::is_component_healthy() const 
+{
+	// If we've never received an ack then report healthy
+	if (0 == m_last_metrics_ack_uptime_s) {
+		return true;
+	}
+
+	const uint64_t now = uptime::seconds();
+	const uint64_t seconds_since_last_ack = now - m_last_metrics_ack_uptime_s;
+
+	if (seconds_since_last_ack > c_unacked_message_timeout->get_value()) 
+	{
+		LOG_FATAL("A metrics ACK has not been received for %lu seconds "
+			  "which is greater than the timeout of %lu seconds. "
+			  "This can happen if networking issues cause the agent "
+			  "to believe it has an active connection when the "
+			  "backend has closed the connection. The agent will be "
+			  "restarted to fix the issue. If this continues to "
+			  "occur, contact Sysdig support for assistance.",
+			  seconds_since_last_ack,
+			  c_unacked_message_timeout->get_value());
+
+		return false;
+	}
+
+	return true;
+
 }

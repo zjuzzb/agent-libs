@@ -587,6 +587,13 @@ public:
 	static const std::chrono::seconds RECONNECT_MIN_INTERVAL;
 
 private:
+
+	/**
+	 * Validate that the internals of the connection manager appear 
+	 * to be healthy. 
+	 */
+	bool is_component_healthy() const override;
+
 	message_handler_map m_handler_map;
 	std::vector<dragent_protocol::protocol_version> m_supported_protocol_versions;
 	std::vector<protocol_compression_method> m_supported_compression_methods;
@@ -615,6 +622,12 @@ private:
 
 	std::list<unacked_message> m_messages_awaiting_ack;
 	std::chrono::milliseconds m_send_recv_timeout;
+
+	// Used for last line of defense watchdog. If there is an active
+	// connection but an ACK hasn't been received for a very long time then
+	// we force the entire application to exit and restart. This must be
+	// atomic because it is read from a remote thread.
+	std::atomic<uint64_t> m_last_metrics_ack_uptime_s;
 
 #ifndef CYGWING_AGENT
 	// communication with Prometheus exporter
