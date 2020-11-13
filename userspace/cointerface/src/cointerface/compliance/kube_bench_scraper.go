@@ -97,8 +97,8 @@ func (impl *KubeBenchImpl) Variant(stask *ScheduledTask) string {
 	return impl.variant
 }
 
-func (impl *KubeBenchImpl) getBenchmark(stask *ScheduledTask) string {
-	for _, param := range stask.task.TaskParams {
+func (impl *KubeBenchImpl) getBenchmark(task *draiosproto.CompTask) string {
+	for _, param := range task.TaskParams {
 		if *param.Key == "benchmark" {
 			return *param.Val
 		}
@@ -132,8 +132,8 @@ func (impl *KubeBenchImpl) genTargets(benchmark, variant string) string {
 }
 
 func (impl *KubeBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
-	args := []string{"--json"} //, impl.Variant(stask)}
-	benchmark := impl.getBenchmark(stask)
+	args := []string{"--json"}
+	benchmark := impl.getBenchmark(stask.task)
 	if benchmark != "none" {
 		args = append(args, "--benchmark", benchmark)
 	}
@@ -307,7 +307,16 @@ func (impl *KubeBenchImpl) Scrape(
 
 	for _, nodeResult := range targets {
 
-		result.ResultSchema = nodeResult.Version
+		// The Monitor API is expecting openshift benchmarks to have a Version of "rh-0.7", but the results contain
+		// "3.10". Doing the transformation here to avoid forcing customers to upgrade their BE.
+		if nodeResult.Version == "3.10" {
+			result.ResultSchema = "rh-0.7"
+		} else if nodeResult.Version != "" {
+			result.ResultSchema = nodeResult.Version
+		} else {
+			result.ResultSchema = impl.getBenchmark(task)
+		}
+
 		result.TestsRun += nodeResult.TotalPass + nodeResult.TotalFail + nodeResult.TotalWarn + nodeResult.TotalInfo
 		result.PassCount += nodeResult.TotalPass + nodeResult.TotalInfo
 		result.FailCount += nodeResult.TotalFail
