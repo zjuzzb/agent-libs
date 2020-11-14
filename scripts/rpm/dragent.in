@@ -39,6 +39,40 @@ start() {
     fi
     [ -x $exec ] || exit 5
     # [ -f $config ] || exit 6
+
+    # Before we start the prog, we need to check
+    # if it is already running. Do this by checking the pidfile
+    # First check if program in pidfile is still running.
+    # This has been seen to happen on RHEL6 especially if the system is
+    # full. OR you started dragent as root(superuser) and now trying to
+    # start it again as a non-root
+    if [ -s $pidfile ] && [ -e /proc/$(< $pidfile) ]; then
+	    echo "Process $prog is already running" && return 1
+    elif [ -f $pidfile ]; then
+	    echo "The pidfile $pidfile exists, but is likely empty. Check if $prog is running manually and retry after deleting $pidfile and killing the running instance" && return 2
+    fi
+
+    # Next check for lockfile also before proceeding.Sometimes in RHEL6 we see this can happen.
+    # A previous run leaves a spurious lockfile behind because either it was killed or crashed
+    # before it could remove the lockfile (see line `rm -f $lockfile` in the stop() function)
+    # We don't want to keep creating processes that are started, but cannot create either the
+    # pidfile or the lockfile due to lack of permissions. Error out and let user handle it.
+    # So if a rogue lockfile is running, handle that here.
+    if [ -f $lockfile ]; then
+	    # try to touch it and move on. If it fails, throw error message and return
+	    fail=0
+	    result=$(touch $lockfile 2>&1) || { fail=1 && echo "Failed to touch $lockfile"; }
+	    if [ $fail -eq 1 ]; then
+		    echo "$result"
+		    if [[ "$result" =~ "Permission denied" ]]; then
+			    echo "Cannot touch $lockfile as current user. Retry running as superuser [or] rerun after deleting the lock file: $lockfile"
+			    return 2
+		    fi
+		    # some other error. just quit
+		    return 2
+	    fi
+    fi
+
     echo -n $"Starting $prog: "
     if [ ! -d /sys/module/sysdigcloud_probe ]; then
         /sbin/modprobe sysdigcloud-probe || return $?
