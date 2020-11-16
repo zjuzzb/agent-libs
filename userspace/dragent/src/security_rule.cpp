@@ -532,7 +532,6 @@ security_rules::security_rules()
 	: m_num_loaded_rules(0)
 {
 	m_evttypes.assign(PPM_EVENT_MAX+1, false);
-	m_evtsources.assign(ESRC_MAX+1, false);
 }
 
 security_rules::~security_rules()
@@ -651,8 +650,6 @@ bool security_rules::event_qualifies(sinsp_evt *evt)
 falco_security_rules::falco_security_rules()
 {
 	m_name = "falco";
-	m_evtsources[ESRC_SINSP] = true;
-	m_evtsources[ESRC_K8S_AUDIT] = true;
 	// All k8s audit events have the single tag "1". - see falco_engine::process_k8s_audit_event
 	m_evttypes[1] = true;
 }
@@ -714,21 +711,12 @@ void falco_security_rules::add_policy(policy_v2_sptr policy)
 		{
 			m_evttypes[evttype] = m_evttypes[evttype] | evttypes[evttype];
 		}
-
-		// TODO falco might implement a evtsources_for_ruleset to optimize this out
-		vector<bool> evtsources = {false, true, true};
-
-		for(uint32_t evtsource = 0; evtsource < ESRC_MAX; evtsource++)
-		{
-			m_evtsources[evtsource] = m_evtsources[evtsource] | evtsources[evtsource];
-		}
 	}
 }
 
 void falco_security_rules::reset()
 {
 	m_evttypes.clear();
-	m_evtsources.clear();
 	m_rulesets.clear();
 
 	m_num_loaded_rules = 0;
@@ -906,7 +894,6 @@ bool matchlist_security_rules::match_info_set::contains(const matchlist_security
 
 matchlist_security_rules::matchlist_security_rules()
 {
-	m_evtsources[ESRC_SINSP] = true;
 }
 
 matchlist_security_rules::~matchlist_security_rules()

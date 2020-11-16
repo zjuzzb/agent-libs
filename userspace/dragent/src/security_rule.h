@@ -231,9 +231,8 @@ public:
 	void set_match_details(draiosproto::event_detail &details, bool match_items, sinsp_evt *evt);
 	void set_match_details(draiosproto::event_detail &details, bool match_items, json_event *evt);
 
-	// The event types and source for which this set of rules must run.
+	// The event types for which this set of rules must run.
 	std::vector<bool> m_evttypes;
-	std::vector<bool> m_evtsources;
 
 protected:
 

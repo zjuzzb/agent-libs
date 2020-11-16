@@ -126,6 +126,8 @@ public:
 				std::string errstr;
 				ASSERT_TRUE(m_mgr->request_load_policies_v2_file(m_policies_file.c_str(), errstr))
 					<< "Could not load v2 security policies file: " + errstr;
+
+				ASSERT_TRUE(m_mgr->wait_load_policies_v2(30));
 				m_policies_loaded = true;
 			}
 

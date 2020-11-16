@@ -48,7 +48,7 @@ public:
 		  const internal_metrics::sptr_t& metrics);
 
 	//
-	// All of the below request_load_* and queue_reload_* methods
+	// All of the below request_load_* and request_reload_* methods
 	// can be called from a separate thread than the event
 	// processing thread.
 	//
@@ -61,6 +61,11 @@ public:
 	// Reload the most recently provided policies_v2 message by
 	// calling request_load_policies_v2_file.
 	void request_reload_policies_v2();
+
+	// Only used in tests--wait a configurable time for rules to
+	// be loaded in the background. Returns true if rules were
+	// loaded, false if the elapsed time passed
+	bool wait_load_policies_v2(uint32_t secs);
 
 	// Attempt to match the event agains the set of policies. If
 	// the event matches one or more policies, will perform the
@@ -119,6 +124,10 @@ public:
 	static std::string m_empty_container_id;
 
 private:
+
+	// Helper used by
+	// request_load_policies_v2/request_reload_policies_v2
+	void load_policies_v2_async();
 
 	class metrics : public internal_metrics::ext_source
         {
@@ -319,16 +328,6 @@ private:
 							draiosproto::event_detail &details,
 							uint64_t policy_version);
 
-	void load_policy_v2(std::shared_ptr<security_policy_v2> spolicy_v2, std::list<std::string> &ids);
-
-	bool load_falco_rules_files(const draiosproto::falco_rules_files &files, std::string &errstr);
-
-	bool load(std::string &errstr);
-
-	bool load_v2(const draiosproto::policies_v2 &policies_v2, std::string &errstr);
-
-	void log_rules_group_info();
-
 	bool event_qualifies(sinsp_evt *evt);
 	bool event_qualifies(json_event *evt);
 
@@ -359,16 +358,9 @@ private:
 	void on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo);
 	void on_remove_container(const sinsp_container_info& container_info);
 
-	// The last policies/baselines we loaded
-	std::unique_ptr<draiosproto::policies> m_policies_msg;
-
 	// The last policies_v2 message passed to
 	// request_load_policies. Used for reload.
 	std::shared_ptr<draiosproto::policies_v2> m_policies_v2_msg;
-
-	// When new policies messages are available, they are pushed
-	// onto this queue. They are dequeued in process_event().
-	tbb::concurrent_queue<std::shared_ptr<draiosproto::policies_v2>> m_policies_v2_load_queue;
 
 	// Holds the token buckets that enforce rate limiting for
 	// policy events for a given policy + container.
@@ -395,57 +387,6 @@ private:
 	std::string m_cointerface_sock_path;
 
 	security_actions m_actions;
-
-	std::shared_ptr<falco_engine> m_falco_engine;
-
-	struct scope_info
-	{
-	public:
-		scope_predicates preds;
-		bool container_scope;
-		bool host_scope;
-
-		bool operator==(scope_info &sinfo)
-		{
-			if (container_scope != sinfo.container_scope ||
-			    host_scope != sinfo.host_scope ||
-			    preds.size() != sinfo.preds.size())
-			{
-				return false;
-			}
-
-			for(int i=0; i < preds.size(); i++)
-			{
-				if(preds[i].SerializeAsString() != sinfo.preds[i].SerializeAsString())
-				{
-					return false;
-				}
-			}
-			return true;
-		}
-
-		std::string to_string()
-		{
-			std::string str = "";
-			if(preds.size())
-			{
-				for(const auto &p : preds)
-				{
-					str += p.key() + " " +
-					       draiosproto::scope_operator_Name(p.op()) + " " +
-					       p.values(0) + std::string((p.op() == draiosproto::IN_SET || p.op() == draiosproto::NOT_IN_SET)?"...":"") +
-					       " and ";
-				}
-				str = str.substr(0, str.size() - 5);
-			}
-			else
-			{
-				str = "Entire infrastructure";
-			}
-
-			return std::string(host_scope && container_scope?"h&c":(host_scope?"hosts":"containers")) + " matching \"" + str + "\"";
-		}
-	};
 
 	// A security rules group holds a
 	// set of *security_rules objects
@@ -603,23 +544,90 @@ private:
 
 	typedef std::set<std::shared_ptr<security_rules_group>> security_rules_group_set;
 
+	// Holds a policies_v2 message and anything required to match
+	// against events and scopes.
+	class loaded_v2_policies {
+	public:
+		loaded_v2_policies(sinsp *inspector,
+				   dragent_configuration *configuration,
+				   std::shared_ptr<draiosproto::policies_v2> policies_v2_msg,
+				   metrics &security_mgr_metrics,
+				   std::list<std::shared_ptr<security_evt_metrics>> &security_evt_metrics);
+
+		virtual ~loaded_v2_policies();
+
+		// This happens in the async thread that loads rules
+		bool load(std::string &errstr);
+
+		// This *must* be called after the async thread has
+		// loaded rules, in the inspector thread.
+		void match_policy_scopes(infrastructure_state_iface *infra_state,
+					 std::list<std::string> &container_ids);
+
+		security_rules_group_set &get_rules_group_for_container(std::string &container_id);
+
+		std::shared_ptr<security_rules_group> get_k8s_audit_security_rules();
+
+		bool match_evttype(int etype);
+
+	private:
+		void log_rules_group_info();
+
+		void load_policy_v2(infrastructure_state_iface *infra_state,
+				    std::shared_ptr<security_policy_v2> spolicy_v2,
+				    std::list<std::string> &ids);
+
+		bool load_falco_rules_files(const draiosproto::falco_rules_files &files, std::string &errstr);
+
+		sinsp *m_inspector;
+		dragent_configuration *m_configuration;
+
+		std::shared_ptr<draiosproto::policies_v2> m_policies_v2_msg;
+
+		std::unordered_map<std::string, security_rules_group_set> m_scoped_security_rules;
+		std::list<std::shared_ptr<security_rules_group>> m_rules_groups;
+
+		// Maintained as a separate set as they don't honor scopes.
+		std::shared_ptr<security_rules_group> m_k8s_audit_security_rules;
+
+		std::shared_ptr<security_rules_group> get_rules_group_of(const scope_predicates &preds);
+
+		std::map<uint64_t,std::shared_ptr<security_policy_v2>> m_policies_v2;
+
+		// The event types that are relevant. It's the union
+		// of all event types for all policies.
+		std::vector<bool> m_evttypes;
+
+		metrics &m_metrics;
+		std::list<std::shared_ptr<security_evt_metrics>> &m_security_evt_metrics;
+
+		std::shared_ptr<security_rule_library> m_fastengine_rules_library;
+
+		std::shared_ptr<falco_engine> m_falco_engine;
+	};
+
+	// Contains the actually loaded policies + rules from m_policies_v2_msg;
+	std::shared_ptr<loaded_v2_policies> m_loaded_policies;
+
+	// When a new loaded_v2_policies object is available, is is
+	// available in this future.
+	struct load_policies_result {
+		bool successful;
+		std::shared_ptr<loaded_v2_policies> loaded_policies;
+	};
+
+	std::future<load_policies_result> m_loaded_v2_policies_future;
+
 	// The "empty" set of security rules (ones related to pid 0, which never exists).
 	security_rules_group_set m_null_security_rules;
-
-	std::unordered_map<std::string, security_rules_group_set> m_scoped_security_rules;
-	std::list<std::shared_ptr<security_rules_group>> m_rules_groups;
 
 	// To avoid the overhead of hashing, save the last threadinfo
 	// pid and the security rules group it hashed to.
 	int64_t m_last_pid;
 	std::reference_wrapper<security_rules_group_set> m_last_security_rules_group;
 
-	// Maintained as a separate set as they don't honor scopes.
-	std::shared_ptr<security_rules_group> m_k8s_audit_security_rules;
-
-	std::shared_ptr<security_rules_group> get_rules_group_of(const scope_predicates &preds);
-
-	std::map<uint64_t,std::shared_ptr<security_policy_v2>> m_policies_v2;
+	// Only used to call parse_k8s_audit_json()
+	std::shared_ptr<falco_engine> m_parse_evts_falco_engine;
 
 	std::shared_ptr<coclient> m_coclient;
 
@@ -634,16 +642,8 @@ private:
 	// it calls flush() to send these events to the collector.
 	draiosproto::policy_events m_events;
 
-	// The event types and source that are relevant. It's the
-	// union of all event types for all policies.
-	// Examples of even sources are sinsp_evt and json_events.
-	std::vector<bool> m_evttypes;
-	std::vector<bool> m_evtsources;
-
 	// must be initialized in the same order of m_possible_security_rules
 	std::list<std::shared_ptr<security_evt_metrics>> m_security_evt_metrics;
-
-	std::shared_ptr<security_rule_library> m_fastengine_rules_library;
 
 	security_evt_metrics m_falco_metrics;
 	security_evt_metrics m_readonly_fs_metrics;

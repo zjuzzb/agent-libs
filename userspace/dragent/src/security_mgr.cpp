@@ -88,6 +88,8 @@ security_mgr::security_mgr(const string& install_root,
 	security_rules_group dummy(preds, m_inspector, m_configuration);
 	dummy.init_metrics(m_security_evt_metrics);
 	configure_event_labels_set();
+
+	m_parse_evts_falco_engine = make_shared<falco_engine>(true, m_configuration->c_root_dir.get_value() + "/share/lua/");
 }
 
 security_mgr::~security_mgr()
@@ -112,17 +114,12 @@ void security_mgr::init(sinsp *inspector,
 	m_capture_job_queue_handler = capture_job_queue_handler;
 	m_configuration = configuration;
 
-	m_fastengine_rules_library = make_shared<security_rule_library>();
-
 	m_inspector->m_container_manager.subscribe_on_new_container([this](const sinsp_container_info &container_info, sinsp_threadinfo *tinfo) {
 		on_new_container(container_info, tinfo);
 	});
 	m_inspector->m_container_manager.subscribe_on_remove_container([this](const sinsp_container_info &container_info) {
 		on_remove_container(container_info);
 	});
-
-	m_evttypes.assign(PPM_EVENT_MAX+1, false);
-	m_evtsources.assign(ESRC_MAX+1, false);
 
 	m_report_events_interval = make_unique<run_on_interval>(security_config::instance().get_report_interval_ns());
 	m_report_throttled_events_interval = make_unique<run_on_interval>(security_config::instance().get_throttled_report_interval_ns());
@@ -177,7 +174,29 @@ bool security_mgr::request_load_policies_v2_file(const char *filename, std::stri
 	return true;
 }
 
-void security_mgr::load_policy_v2(std::shared_ptr<security_policy_v2> spolicy_v2, std::list<std::string> &ids)
+security_mgr::loaded_v2_policies::loaded_v2_policies(sinsp *inspector,
+						     dragent_configuration *configuration,
+						     std::shared_ptr<draiosproto::policies_v2> policies_v2_msg,
+						     metrics &security_mgr_metrics,
+						     std::list<std::shared_ptr<security_evt_metrics>> &security_evt_metrics)
+	: m_inspector(inspector),
+	  m_configuration(configuration),
+	  m_policies_v2_msg(policies_v2_msg),
+	  m_metrics(security_mgr_metrics),
+	  m_security_evt_metrics(security_evt_metrics)
+{
+	m_fastengine_rules_library = make_shared<security_rule_library>();
+
+	m_evttypes.assign(PPM_EVENT_MAX+1, false);
+}
+
+security_mgr::loaded_v2_policies::~loaded_v2_policies()
+{
+}
+
+void security_mgr::loaded_v2_policies::load_policy_v2(infrastructure_state_iface *infra_state,
+						     std::shared_ptr<security_policy_v2> spolicy_v2,
+						     std::list<std::string> &ids)
 {
 	LOG_DEBUG("Loading v2 policy " + spolicy_v2->DebugString() +
 		     ", testing against set of " + to_string(ids.size()) +
@@ -185,7 +204,7 @@ void security_mgr::load_policy_v2(std::shared_ptr<security_policy_v2> spolicy_v2
 
 	for (const auto &id : ids)
 	{
-		if(spolicy_v2->match_scope(id, m_infra_state))
+		if(spolicy_v2->match_scope(id, infra_state))
 		{
 			LOG_DEBUG("Policy " + spolicy_v2->name() + " matched scope for container " + id);
 
@@ -209,7 +228,7 @@ void security_mgr::load_policy_v2(std::shared_ptr<security_policy_v2> spolicy_v2
 	m_k8s_audit_security_rules->add_policy(spolicy_v2);
 }
 
-bool security_mgr::load_falco_rules_files(const draiosproto::falco_rules_files &files, std::string &errstr)
+bool security_mgr::loaded_v2_policies::load_falco_rules_files(const draiosproto::falco_rules_files &files, std::string &errstr)
 {
 	bool verbose = false;
 	bool all_events = false;
@@ -259,79 +278,17 @@ bool security_mgr::load_falco_rules_files(const draiosproto::falco_rules_files &
 	return true;
 }
 
-bool security_mgr::load_v2(const draiosproto::policies_v2 &policies_v2, std::string &errstr)
+void security_mgr::loaded_v2_policies::match_policy_scopes(infrastructure_state_iface *infra_state,
+							   std::list<std::string> &container_ids)
 {
-	if(m_infra_state)
+	if(infra_state)
 	{
-		m_infra_state->clear_scope_cache();
+		infra_state->clear_scope_cache();
 	}
 
-	LOG_DEBUG("Loading policies_v2 message: " + policies_v2.DebugString());
-
-	m_fastengine_rules_library->reset();
-
-	m_falco_engine = make_shared<falco_engine>(true, m_configuration->c_root_dir.get_value() + "/share/lua/");
-	m_falco_engine->set_inspector(m_inspector);
-	m_falco_engine->set_sampling_multiplier(m_configuration->m_falco_engine_sampling_multiplier);
-
-	// Load all falco rules files into the engine. We'll selectively
-	// enable them based on the contents of the policies.
-
-	if(policies_v2.has_falco_group())
-	{
-		if(policies_v2.falco_group().has_default_files())
-		{
-			if(!load_falco_rules_files(policies_v2.falco_group().default_files(), errstr))
-			{
-				return false;
-			}
-		}
-
-		if(policies_v2.falco_group().has_custom_files())
-		{
-			if (!load_falco_rules_files(policies_v2.falco_group().custom_files(), errstr))
-			{
-				return false;
-			}
-		}
-	}
-
-	if(policies_v2.has_fastengine_files())
-	{
-		for(auto &rules_file : policies_v2.fastengine_files().files())
-		{
-			if(rules_file.has_json_content())
-			{
-				m_fastengine_rules_library->parse(rules_file.json_content());
-			}
-		}
-	}
-
-	m_policies_v2.clear();
-	m_evttypes.assign(PPM_EVENT_MAX+1, false);
-	m_evtsources.assign(ESRC_MAX+1, false);
-	if(m_infra_state)
-	{
-		m_infra_state->clear_scope_cache();
-	}
-
-	m_scoped_security_rules.clear();
-	m_rules_groups.clear();
-	m_last_pid = 0;
-	::scope_predicates empty_preds;
-	m_k8s_audit_security_rules = make_shared<security_rules_group>(empty_preds, m_inspector, m_configuration);
-	m_k8s_audit_security_rules->init(m_falco_engine, m_fastengine_rules_library, m_security_evt_metrics);
-
-	std::list<std::string> ids{
-		"" // tinfo.m_container_id is empty for host events
-	};
-	const auto &containers = *m_inspector->m_container_manager.get_containers();
-	for (const auto &c : containers)
-	{
-		ids.push_back(c.first);
-	}
 	uint64_t num_enabled = 0;
-	for(auto &policy : policies_v2.policy_list())
+
+	for(auto &policy : m_policies_v2_msg->policy_list())
 	{
 		if(policy.enabled())
 		{
@@ -344,10 +301,8 @@ bool security_mgr::load_v2(const draiosproto::policies_v2 &policies_v2, std::str
 		std::shared_ptr<security_policy_v2> spolicy = std::make_shared<security_policy_v2>(policy);
 		m_policies_v2.insert(make_pair(policy.id(), spolicy));
 
-		load_policy_v2(spolicy, ids);
+		load_policy_v2(infra_state, spolicy, container_ids);
 	}
-
-	m_metrics.set_policies_count(policies_v2.policy_list().size(), num_enabled);
 
 	for(uint32_t evttype = 0; evttype < PPM_EVENT_MAX; evttype++)
 	{
@@ -357,15 +312,62 @@ bool security_mgr::load_v2(const draiosproto::policies_v2 &policies_v2, std::str
 		}
 	}
 
-	// There's no need to set m_evtsources here. It's handled at
-	// the group level now.
-
 	log_rules_group_info();
+
+	m_metrics.set_policies_count(m_policies_v2_msg->policy_list().size(), num_enabled);
+}
+
+bool security_mgr::loaded_v2_policies::load(std::string &errstr)
+{
+	LOG_DEBUG("Loading policies_v2 message: " + m_policies_v2_msg->DebugString());
+
+	m_fastengine_rules_library->reset();
+
+	m_falco_engine = make_shared<falco_engine>(true, m_configuration->c_root_dir.get_value() + "/share/lua/");
+	m_falco_engine->set_inspector(m_inspector);
+	m_falco_engine->set_sampling_multiplier(m_configuration->m_falco_engine_sampling_multiplier);
+
+	// Load all falco rules files into the engine. We'll selectively
+	// enable them based on the contents of the policies.
+
+	if(m_policies_v2_msg->has_falco_group())
+	{
+		if(m_policies_v2_msg->falco_group().has_default_files())
+		{
+			if(!load_falco_rules_files(m_policies_v2_msg->falco_group().default_files(), errstr))
+			{
+				return false;
+			}
+		}
+
+		if(m_policies_v2_msg->falco_group().has_custom_files())
+		{
+			if (!load_falco_rules_files(m_policies_v2_msg->falco_group().custom_files(), errstr))
+			{
+				return false;
+			}
+		}
+	}
+
+	if(m_policies_v2_msg->has_fastengine_files())
+	{
+		for(auto &rules_file : m_policies_v2_msg->fastengine_files().files())
+		{
+			if(rules_file.has_json_content())
+			{
+				m_fastengine_rules_library->parse(rules_file.json_content());
+			}
+		}
+	}
+
+	::scope_predicates empty_preds;
+	m_k8s_audit_security_rules = make_shared<security_rules_group>(empty_preds, m_inspector, m_configuration);
+	m_k8s_audit_security_rules->init(m_falco_engine, m_fastengine_rules_library, m_security_evt_metrics);
 
 	return true;
 }
 
-void security_mgr::log_rules_group_info()
+void security_mgr::loaded_v2_policies::log_rules_group_info()
 {
 	if(!m_rules_groups.empty())
 	{
@@ -391,18 +393,66 @@ void security_mgr::log_rules_group_info()
 	}
 }
 
+security_mgr::security_rules_group_set &security_mgr::loaded_v2_policies::get_rules_group_for_container(std::string &container_id)
+{
+	return m_scoped_security_rules[container_id];
+}
+
+std::shared_ptr<security_mgr::security_rules_group> security_mgr::loaded_v2_policies::get_k8s_audit_security_rules()
+{
+	return m_k8s_audit_security_rules;
+}
+
+bool security_mgr::loaded_v2_policies::match_evttype(int etype)
+{
+	return m_evttypes[etype];
+}
+
 // This is expected to be called from a different thread than the one
 // calling security_mgr::process_event().
 void security_mgr::request_load_policies_v2(const draiosproto::policies_v2 &policies_v2)
 {
 	m_policies_v2_msg.reset(new draiosproto::policies_v2(policies_v2));
 
-	m_policies_v2_load_queue.push(m_policies_v2_msg);
+	load_policies_v2_async();
 }
 
 void security_mgr::request_reload_policies_v2()
 {
-	m_policies_v2_load_queue.push(m_policies_v2_msg);
+	load_policies_v2_async();
+}
+
+bool security_mgr::wait_load_policies_v2(uint32_t secs)
+{
+	return (m_loaded_v2_policies_future.valid() &&
+		m_loaded_v2_policies_future.wait_for(std::chrono::seconds(secs)) == std::future_status::ready);
+}
+
+void security_mgr::load_policies_v2_async()
+{
+	auto loader = [this](std::shared_ptr<draiosproto::policies_v2> policies_v2_msg)
+        {
+		load_policies_result ret;
+
+		ret.loaded_policies = std::make_shared<loaded_v2_policies>(m_inspector,
+									   m_configuration,
+									   policies_v2_msg,
+									   m_metrics,
+									   m_security_evt_metrics);
+
+		std::string errstr;
+		if (!ret.loaded_policies->load(errstr))
+		{
+			LOG_ERROR("Could not load policies_v2 message: " + errstr);
+			ret.successful = false;
+		} else {
+			ret.successful = true;
+		}
+
+		return ret;
+	};
+
+	m_loaded_v2_policies_future = std::async(std::launch::async, loader, m_policies_v2_msg);
 }
 
 bool security_mgr::event_qualifies(sinsp_evt *evt)
@@ -511,7 +561,7 @@ bool security_mgr::should_evaluate_event(gen_event *evt,
 
 		*tinfo = sevt->get_thread_info();
 
-		if(!m_evttypes[sevt->get_type()])
+		if(!m_loaded_policies->match_evttype(sevt->get_type()))
 		{
 			m_metrics.incr(metrics::MET_MISS_EVTTYPE);
 		}
@@ -552,16 +602,39 @@ void security_mgr::process_event(gen_event *evt)
 
 void security_mgr::process_event_v2(gen_event *evt)
 {
-	std::shared_ptr<draiosproto::policies_v2> policies_v2_msg;
-
-	if(m_policies_v2_load_queue.try_pop(policies_v2_msg))
+	if(m_loaded_v2_policies_future.valid() &&
+	   m_loaded_v2_policies_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
 	{
-		std::string errstr;
-		if (!load_v2(*(policies_v2_msg.get()), errstr))
+		load_policies_result ret = m_loaded_v2_policies_future.get();
+
+		if (ret.successful)
 		{
-			LOG_WARNING("Could not load policies_v2 message: " + errstr);
-			return;
+			m_loaded_policies = ret.loaded_policies;
+
+			// The rules/policies have been loaded in the
+			// background. In this thread, we need to
+			// iterate over all existing containers and
+			// identify which containers match the scope
+			// of each policy. That can't be done in the
+			// background as infra_state/get_containers()
+			// aren't thread safe.
+			std::list<std::string> ids{
+				"" // tinfo.m_container_id is empty for host events
+			};
+			const auto &containers = *m_inspector->m_container_manager.get_containers();
+			for (const auto &c : containers)
+			{
+				ids.push_back(c.first);
+			}
+
+			m_loaded_policies->match_policy_scopes(m_infra_state, ids);
+			m_last_pid = 0;
 		}
+	}
+
+	if (!m_loaded_policies)
+	{
+		return;
 	}
 
 	uint64_t ts_ns = evt->get_ts();
@@ -577,7 +650,8 @@ void security_mgr::process_event_v2(gen_event *evt)
 		{
 			if(tinfo->m_pid != m_last_pid)
 			{
-				m_last_security_rules_group = m_scoped_security_rules[(*container_id_ptr)];
+				m_last_security_rules_group =
+					m_loaded_policies->get_rules_group_for_container(*container_id_ptr);
 			}
 			m_last_pid = tinfo->m_pid;
 
@@ -601,9 +675,14 @@ void security_mgr::process_event_v2(gen_event *evt)
 				}
 			}
 		}
-		else if (evt->get_source() == ESRC_K8S_AUDIT && m_k8s_audit_security_rules)
+		else if (evt->get_source() == ESRC_K8S_AUDIT)
 		{
-			results = m_k8s_audit_security_rules->match_event(evt);
+			std::shared_ptr<security_rules_group> k8s_audit_rules =
+				m_loaded_policies->get_k8s_audit_security_rules();
+			if (k8s_audit_rules)
+			{
+				results = k8s_audit_rules->match_event(evt);
+			}
 		}
 		else
 		{
@@ -1175,24 +1254,11 @@ void security_mgr::report_throttled_events(uint64_t ts_ns)
 
 void security_mgr::on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo)
 {
-	string errstr;
-
-	std::list<std::string> ids{container_info.m_id};
-
-	for(const auto &it : m_policies_v2)
+	if (m_loaded_policies)
 	{
-		load_policy_v2(it.second, ids);
+		std::list<std::string> ids{container_info.m_id};
+		m_loaded_policies->match_policy_scopes(m_infra_state, ids);
 	}
-
-	for(uint32_t evttype = 0; evttype < PPM_EVENT_MAX; evttype++)
-	{
-		for(const auto &group: m_rules_groups)
-		{
-			m_evttypes[evttype] = m_evttypes[evttype] | group->m_evttypes[evttype];
-		}
-	}
-
-	log_rules_group_info();
 }
 
 void security_mgr::on_remove_container(const sinsp_container_info& container_info)
@@ -1201,7 +1267,7 @@ void security_mgr::on_remove_container(const sinsp_container_info& container_inf
 	// since we are resetting everything every time we load the policies
 }
 
-std::shared_ptr<security_mgr::security_rules_group> security_mgr::get_rules_group_of(const scope_predicates &preds)
+std::shared_ptr<security_mgr::security_rules_group> security_mgr::loaded_v2_policies::get_rules_group_of(const scope_predicates &preds)
 {
 	for(const auto &group : m_rules_groups)
 	{
@@ -1328,7 +1394,7 @@ void security_mgr::check_pending_k8s_audit_events()
 			LOG_ERROR(string("Could not parse data: ") + e.what());
 			continue;
 		}
-		if(!m_falco_engine->parse_k8s_audit_json(j, jevts))
+		if(!m_parse_evts_falco_engine->parse_k8s_audit_json(j, jevts))
 		{
 			LOG_ERROR(string("Data not recognized as a K8s Audit Event"));
 			continue;
