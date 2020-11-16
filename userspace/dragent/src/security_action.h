@@ -5,7 +5,6 @@
 
 #include <infrastructure_state.h>
 
-#include "security_policy.h"
 class security_mgr;
 
 class SINSP_PUBLIC security_actions

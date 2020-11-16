@@ -1,19 +1,10 @@
 foreach(
     messagefile
-    all_policy_types.txt
-    baseline.txt
-    multiple_falco_variants.txt
     multiple_falco_variants_v2.txt
-    multiple_falco_files_override.txt
     multiple_falco_files_override_v2.txt
-    multiple_falco_files.txt
     multiple_falco_files_v2.txt
-    custom_falco_files_override.txt
     custom_falco_files_override_v2.txt
-    custom_falco_files.txt
     custom_falco_files_v2.txt
-    falco_old_rules_message.txt
-    falco_old_new_rules_message.txt
 )
 
     configure_file(

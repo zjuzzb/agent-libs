@@ -11,7 +11,6 @@
 #include "security_compliance_calender_receiver.h"
 #include "security_compliance_task_runner.h"
 #include "security_host_metadata_receiver.h"
-#include "security_policy_loader.h"
 #include "security_policy_v2_loader.h"
 #include "subprocesses_logger.h"
 #include "thread_safe_container/blocking_queue.h"
@@ -38,7 +37,6 @@ class sinsp_worker : public Poco::Runnable,
                      public dragent::security_compliance_calender_receiver,
                      public dragent::security_compliance_task_runner,
                      public dragent::security_host_metadata_receiver,
-                     public dragent::security_policy_loader,
                      public dragent::security_policy_v2_loader
 {
 public:
@@ -113,8 +111,6 @@ public:
 	}
 
 #ifndef CYGWING_AGENT
-	bool load_policies(const draiosproto::policies &policies,
-	                   std::string &errstr) override;
 	void request_load_policies_v2(const draiosproto::policies_v2 &policies_v2) override;
 	bool set_compliance_calendar(const draiosproto::comp_calendar &calendar,
 				     bool send_results,
@@ -181,7 +177,6 @@ private:
 	class compliance_calendar_backup;
 
 	std::mutex m_security_mgr_creation_mutex;
-	std::unique_ptr<draiosproto::policies> m_security_policies_backup;
 	std::unique_ptr<draiosproto::policies_v2> m_security_policies_v2_backup;
 	std::unique_ptr<compliance_calendar_backup> m_security_compliance_calendar_backup;
 

@@ -1,7 +1,6 @@
 #include <gtest.h>
 
 #include <prefix_search.h>
-#include <security_policy.h>
 
 using namespace std;
 

@@ -172,33 +172,6 @@ void sinsp_worker::init_security()
 				             errstr.c_str());
 			}
 		}
-		else if (security_config::instance().get_policies_file() != "")
-		{
-			std::string errstr;
-
-			if (!m_security_mgr->load_policies_file(
-			        security_config::instance().get_policies_file().c_str(),
-			        errstr))
-			{
-				LOGGED_THROW(sinsp_exception,
-				             "Could not load policies from file: %s",
-				             errstr.c_str());
-			}
-		}
-
-		if (security_config::instance().get_baselines_file() != "")
-		{
-			std::string errstr;
-
-			if (!m_security_mgr->load_baselines_file(
-			        security_config::instance().get_baselines_file().c_str(),
-			        errstr))
-			{
-				LOGGED_THROW(sinsp_exception,
-				             "Could not load baselines from file: %s",
-				             errstr.c_str());
-			}
-		}
 	}
 
 	if (feature_manager::instance().get_enabled(COINTERFACE))
@@ -252,19 +225,6 @@ void sinsp_worker::init_security()
 	// the backend while it was waiting for CONFIG_DATA, then load that
 	// backup version now.
 	//
-
-	if (m_security_mgr && m_security_policies_backup)
-	{
-		std::string errstr;
-
-		LOG_INFO("Loading backup security policies");
-		if (!m_security_mgr->load_policies(*m_security_policies_backup, errstr))
-		{
-			LOG_ERROR("Failed to load backup policies, err: %s", errstr.c_str());
-		}
-
-		m_security_policies_backup.reset();
-	}
 
 	if (m_security_mgr && m_security_policies_v2_backup)
 	{
@@ -711,29 +671,6 @@ void sinsp_worker::queue_job_request(
 }
 
 #ifndef CYGWING_AGENT
-bool sinsp_worker::load_policies(const draiosproto::policies& policies, std::string& errstr)
-{
-	std::lock_guard<std::mutex> lock(m_security_mgr_creation_mutex);
-
-	if (m_security_mgr)
-	{
-		return m_security_mgr->load_policies(policies, errstr);
-	}
-
-	LOG_INFO("Saving policies");
-	if (m_security_policies_backup)
-	{
-		*m_security_policies_backup = policies;
-	}
-	else
-	{
-		m_security_policies_backup = make_unique<draiosproto::policies>(policies);
-	}
-
-	errstr = "No Security Manager object created";
-	return false;
-}
-
 void sinsp_worker::request_load_policies_v2(const draiosproto::policies_v2 &policies_v2)
 {
 	std::lock_guard<std::mutex> lock(m_security_mgr_creation_mutex);

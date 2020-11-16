@@ -35,7 +35,6 @@
 #include "security_compliance_calendar_message_handler.h"
 #include "security_compliance_run_message_handler.h"
 #include "security_orchestrator_events_message_handler.h"
-#include "security_policies_message_handler.h"
 #include "security_policies_v2_message_handler.h"
 #include "type_config.h"
 #include "user_event_channel.h"

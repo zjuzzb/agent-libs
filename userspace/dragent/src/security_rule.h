@@ -17,6 +17,8 @@
 
 #include <falco_engine.h>
 
+#include "security_metrics.h"
+
 typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
 
 // Simple wrapper around draiosproto::policy_v2 that adds a few

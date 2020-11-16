@@ -33,7 +33,6 @@ list(
     app_checks_proxy.cpp
     async_aggregator.cpp
     avoid_block_channel.cpp
-    baseline_mgr.cpp
     capture_job_handler.cpp
     cm_proxy_tunnel.cpp
     cm_socket.cpp
@@ -73,10 +72,8 @@ list(
     security_compliance_run_message_handler.cpp
     security_mgr.cpp
     security_orchestrator_events_message_handler.cpp
-    security_policy.cpp
     protobuf_metric_serializer.cpp
     protocol_handler.cpp
-    security_policies_message_handler.cpp
     security_policies_v2_message_handler.cpp
     security_rule.cpp
     sinsp_factory.cpp
