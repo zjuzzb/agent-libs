@@ -1228,6 +1228,8 @@ int dragent_app::sdagent_main()
 		         std::make_shared<dump_request_stop_message_handler>(m_sinsp_worker)},
 		        {draiosproto::message_type::CONFIG_DATA,
 		         std::make_shared<config_data_message_handler>(m_configuration)},
+		        {draiosproto::message_type::POLICIES,  // Legacy -- no longer used
+		         std::make_shared<null_message_handler>()},
 		        {draiosproto::message_type::POLICIES_V2,
 		         std::make_shared<security_policies_v2_message_handler>(m_sinsp_worker)},
 		        {draiosproto::message_type::COMP_CALENDAR,
