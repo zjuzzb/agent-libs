@@ -207,12 +207,46 @@ void cointerface_parser::operator()(const string& data)
 
 sdchecks_parser::sdchecks_parser()
 	: m_last_pid_str("0")
+	, m_file_priority(static_cast<Poco::Message::Priority>(-1))
 	, m_last_sev(Poco::Message::Priority::PRIO_ERROR)
 {
 }
 
+void sdchecks_parser::init_file_priority()
+{
+	// Map Poco log levels to Python logger levels
+	// Note: this map should be kept in sync with the mapping done in
+	// log_level() method in sdchecks.py
+	switch(g_log->get_component_file_priority("sdchecks"))
+	{
+	case Poco::Message::PRIO_FATAL:
+	case Poco::Message::PRIO_CRITICAL:
+	case Poco::Message::PRIO_ERROR:
+		m_file_priority = Poco::Message::PRIO_ERROR;
+		break;
+	case Poco::Message::PRIO_WARNING:
+	case Poco::Message::PRIO_NOTICE:
+		m_file_priority = Poco::Message::PRIO_WARNING;
+		break;
+	case Poco::Message::PRIO_INFORMATION:
+		m_file_priority = Poco::Message::PRIO_INFORMATION;
+		break;
+	case Poco::Message::PRIO_DEBUG:
+	case Poco::Message::PRIO_TRACE:
+		m_file_priority = Poco::Message::PRIO_DEBUG;
+		break;
+	default:
+		m_file_priority = Poco::Message::PRIO_INFORMATION;
+		break;
+	}
+}
+
 void sdchecks_parser::operator()(const string& line)
 {
+	if (m_file_priority == static_cast<Poco::Message::Priority>(-1))
+	{
+		init_file_priority();
+	}
 	auto parsed_log = sinsp_split(line, ':');
 	// TODO: switch to json logging to avoid parsing issues
 	// using this project for example: https://github.com/madzak/python-json-logger
@@ -244,12 +278,13 @@ void sdchecks_parser::operator()(const string& line)
 		{
 			m_last_sev = Poco::Message::Priority::PRIO_ERROR;
 		}
-		g_log->log(message, m_last_sev);
+		g_log->log_check_component_priority(message, m_last_sev, m_file_priority);
 	}
 	else
 	{
 		// Assuming continuation from previous log
-		g_log->log("sdchecks[" + m_last_pid_str + "] " + line, m_last_sev);
+		g_log->log_check_component_priority("sdchecks[" + m_last_pid_str + "] " + line,
+						    m_last_sev, m_file_priority);
 	}
 }
 

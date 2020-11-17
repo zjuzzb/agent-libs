@@ -135,6 +135,22 @@ class YamlConfig(object):
             except Exception as ex:
                 sys.stderr.write("%d:ERROR:Cannot parse config file %s: %s\n" % (os.getpid(), path, ex))
 
+    def get_submerged_sequence(self, key, subkey, default=None):
+        ret = default
+        if ret is None:
+            ret = []
+        for root in self._roots:
+            if key in root:
+                rootval = root[key]
+                for subroot in rootval:
+                    if subkey in subroot:
+                        try:
+                            ret += rootval[subkey]
+                        except TypeError as ex:
+                            logging.error("Cannot parse config correctly, \"%s\" is not a list, exception=%s" % (subkey, str(ex)))
+        return ret
+
+
     def get_merged_sequence(self, key, default=None):
         ret = default
         if ret is None:
@@ -497,15 +513,42 @@ class Config(object):
                                         os.path.join(etcdir, "dragent.auto.yaml"),
                                         os.path.join(etcdir, "dragent.default.yaml")])
 
+    # sdchecks_parser in subprocesses_logger controls how the messages generated
+    # by sdchecks are eventually routed to draios.log file. subprocesses_logger uses
+    # a Poco::Logger with Poco:Message::Priority levels. Python doesn't understand Poco,
+    # so in sdchecks we use Python logger module which has a different set of log levels.
+    # Since the log levels are eventually controlled in sdchecks_parser, we really
+    # don't need to read the config here and try to control the log level in Python.
+    # Instead, we could just set the Python logger to the most permissive level (DEBUG) and
+    # let sdchecks_parser deal with what gets logged. But that would cause a flood of IPC messages
+    # between sdchecks and subprocesses_logger, plus generate unnecessary CPU load in sdchecks_parser.
+    # So, as a performance optimization, we read the log level specified in the yaml config
+    # and set the appropriate log level in the Python logger module in order to generate messages
+    # at the correct level inside sdchecks.
     def log_level(self):
         level = self._yaml_config.get_single("log", "file_priority", None, "info")
-        if level == "error":
+        component_levels = self._yaml_config.get_submerged_sequence("log", "file_priority_by_component")
+        for component_level in component_levels:
+            component_level_split = component_level.split(": ")
+            if component_level_split[0] == "sdchecks":
+                level = component_level_split[1]
+        # Map the log level specified in yaml config to Python logger levels
+        # Note: this map should be kept in sync with the mapping done in sdchecks_parser
+        if level == "fatal":
+            return logging.ERROR
+        elif level == "critical":
+            return logging.ERROR
+        elif level == "error":
             return logging.ERROR
         elif level == "warning":
+            return logging.WARNING
+        elif level == "notice":
             return logging.WARNING
         elif level == "info":
             return logging.INFO
         elif level == "debug":
+            return logging.DEBUG
+        elif level == "trace":
             return logging.DEBUG
         else:
             return logging.INFO

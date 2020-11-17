@@ -127,8 +127,10 @@ class sdchecks_parser
 public:
 	sdchecks_parser();
 	void operator()(const std::string&);
+	void init_file_priority();
 private:
 	std::string m_last_pid_str;
+	Poco::Message::Priority m_file_priority;
 	Poco::Message::Priority m_last_sev;
 };
 
