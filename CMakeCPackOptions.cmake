@@ -1,4 +1,4 @@
-set(INITSCRIPT_PACKAGES "agent;agent-slim;agentone")
+set(INITSCRIPT_PACKAGES "agent;agent-slim;agentone;agentino")
 
 foreach(INITSCRIPT_PACKAGE ${INITSCRIPT_PACKAGES})
 	set(PACKAGE_ROOT "_CPack_Packages/${CPACK_TOPLEVEL_TAG}/${CPACK_GENERATOR}/${CPACK_PACKAGE_FILE_NAME}/${INITSCRIPT_PACKAGE}")

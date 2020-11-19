@@ -89,6 +89,8 @@ list(APPEND dragentfiles dragent.cpp)
 
 list(APPEND agentonefiles agentone.cpp)
 
+list(APPEND agentinofiles agentino.cpp)
+
 if(CYGWIN)
     # windows specific implementation
     list(APPEND targetfiles windows_helpers.cpp windows/process_helpers.cpp)
@@ -140,12 +142,16 @@ target_link_libraries(dragentl falco_engine ${dragent_link_libraries})
 add_library(agentonel STATIC ${targetfiles} ${agentonefiles})
 target_link_libraries(agentonel falco_engine ${dragent_link_libraries})
 
+add_library(agentinol STATIC ${targetfiles} ${agentinofiles})
+target_link_libraries(agentinol falco_engine ${dragent_link_libraries})
+
 if(INCLUDE_INTERNAL_TEST_CODE)
     target_compile_definitions(dragentl PUBLIC SYSDIG_TEST)
 endif()
 
 add_executable(dragent agent_main.cpp)
 add_executable(agentone agentone_main.cpp)
+add_executable(agentino agentino_main.cpp)
 
 target_link_libraries(
     dragent
@@ -165,7 +171,15 @@ target_link_libraries(
     librestl
     ${dragent_application_link_libraries}
 )
-
+target_link_libraries(
+    agentino
+    pthread
+    sanalyzer
+    agentinol
+    draiosproto
+    librestl
+    ${dragent_application_link_libraries}
+)
 file(COPY ${PROJECT_SOURCE_DIR}/scripts/rpm/dragent.in
      DESTINATION ${PROJECT_BINARY_DIR}/scripts/rpm
 )
@@ -206,6 +220,12 @@ install(
 )
 
 install(
+    TARGETS agentino
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+    COMPONENT agentino
+)
+
+install(
     FILES root.cert
     DESTINATION ${CMAKE_INSTALL_PREFIX}
     COMPONENT agent-slim
@@ -233,6 +253,12 @@ install(
     FILES dragent.default.yaml
     DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
     COMPONENT agentone
+)
+
+install(
+    FILES dragent.default.yaml
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
+    COMPONENT agentino
 )
 
 install(

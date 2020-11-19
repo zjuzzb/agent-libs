@@ -303,12 +303,21 @@ set(CPACK_RPM_agent_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm
 set(CPACK_RPM_agent_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")
 
 set(CPACK_RPM_agentone_POST_INSTALL_SCRIPT_FILE
-    "${PROJECT_SOURCE_DIR}/scripts/rpc/postinstall.slim"
+    "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall.slim"
 )
-set(CPACK_RPM_agentone_PRE_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpc/preinstall.slim")
+set(CPACK_RPM_agentone_PRE_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preinstall.slim")
 
 set(CPACK_RPM_agentone_PRE_UNINSTALL_SCRIPT_FILE
-    "${PROJECT_SOURCE_DIR}/scripts/rpc/preuninstall.slim"
+    "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall.slim"
+)
+
+set(CPACK_RPM_agentino_POST_INSTALL_SCRIPT_FILE
+    "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall.slim"
+)
+set(CPACK_RPM_agentino_PRE_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preinstall.slim")
+
+set(CPACK_RPM_agentino_PRE_UNINSTALL_SCRIPT_FILE
+    "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall.slim"
 )
 
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION /etc/rc.d /etc/rc.d/init.d

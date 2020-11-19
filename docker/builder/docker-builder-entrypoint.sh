@@ -111,10 +111,28 @@ build_agentone()
 	# copy the agent package to a temporary directory so that we don't send
 	# the whole /out directory as the Docker build context
 	cp draios-0.1.1dev-x86_64-agentone.deb "$DOCKER_CONTEXT"
-	cp docker/agentone/local/Dockerfile $DOCKER_CONTEXT
-	cp docker/agentone/local/agentone-entrypoint.sh $DOCKER_CONTEXT
+	cp docker/agentone/local/Dockerfile "$DOCKER_CONTEXT"
+	cp docker/agentone/local/agentone-entrypoint.sh "$DOCKER_CONTEXT"
 
-	cd $DOCKER_CONTEXT;
+	cd "$DOCKER_CONTEXT"
+	docker build -t $AGENT_IMAGE --pull .
+	cd -
+
+	rm -rf "$DOCKER_CONTEXT"
+}
+
+build_agentino()
+{
+	DOCKER_CONTEXT=$(mktemp -d /out/agent-container.XXXXXX)
+	make -j$MAKE_JOBS package
+
+	# copy the agent package to a temporary directory so that we don't send
+	# the whole /out directory as the Docker build context
+	cp draios-0.1.1dev-x86_64-agentino.deb "$DOCKER_CONTEXT"
+	cp docker/agentino/local/Dockerfile "$DOCKER_CONTEXT"
+	cp docker/agentino/local/agentino-entrypoint.sh "$DOCKER_CONTEXT"
+
+	cd "$DOCKER_CONTEXT"
 	docker build -t $AGENT_IMAGE --pull .
 	cd -
 
@@ -302,6 +320,11 @@ case "$1" in
 		export BUILD_DEB_ONLY=ON
 		bootstrap_agent "${2:-"release-internal"}"
 		build_agentone
+		;;
+	agentino)
+		export BUILD_DEB_ONLY=ON
+		bootstrap_agent "${2:-"release-internal"}"
+		build_agentino
 		;;
 	install-test)
 		;& # deprecated; just fall through

@@ -52,5 +52,6 @@ private:
     // Dragent calls set_name just after construction
     friend class dragent_app;
     friend class agentone_app;
+    friend class agentino_app;
 };
 
