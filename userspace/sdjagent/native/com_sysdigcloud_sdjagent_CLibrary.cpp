@@ -243,6 +243,10 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 			exit(1);
 		}
 	}
+	else if(child < 0)
+	{
+		log("SEVERE", "Cannot fork (tried to join namespace of pid %d): %s", pid, strerror(errno));
+	}
 	else
 	{
 		auto wait_res = wait_pid.wait(child);
@@ -471,6 +475,10 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		free(container_environ_ptr);
 		exit(1);
 	}
+	else if(child < 0)
+	{
+		log("SEVERE", "Cannot fork (tried to join namespace of pid %d): %s", pid, strerror(errno));
+	}
 	else
 	{
 		close(child_pipe[1]);
@@ -539,6 +547,10 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRmFromContaine
 		{
 			exit(1);
 		}
+	}
+	else if(child < 0)
+	{
+		log("SEVERE", "Cannot fork (tried to join namespace of pid %d): %s", pid, strerror(errno));
 	}
 	else
 	{
@@ -650,7 +662,11 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_getJmxInfo
 		close(pipefd[1]);
 		exit(EXIT_SUCCESS);
 	}
-	else if (child > 0)
+	else if(child < 0)
+	{
+		log("SEVERE", "Cannot fork (tried to join namespace of pid %d): %s", pid, strerror(errno));
+	}
+	else
 	{
 		close(pipefd[1]);
 		auto wait_res = wait_pid.wait(child);
