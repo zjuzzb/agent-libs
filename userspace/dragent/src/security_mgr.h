@@ -26,6 +26,7 @@
 
 #include "capture_job_handler.h"
 #include "configuration.h"
+#include "event_source.h"
 #include "infrastructure_state.h"
 #include "security_result_handler.h"
 #include "security_rule.h"
@@ -33,7 +34,7 @@
 #include "security_metrics.h"
 #include "internal_metrics.h"
 
-class SINSP_PUBLIC security_mgr
+class SINSP_PUBLIC security_mgr : public event_listener
 {
 public:
 	security_mgr(const std::string& install_root,
@@ -76,6 +77,14 @@ public:
 	// events, etc. The (protected) method process_event_only()
 	// only does the rule matching.
 	void process_event(gen_event *evt);
+
+	// this only required because c++ can't figure out that agent_event is a gen_event,
+	// and therefore the above function should work
+	void process_event(agent_event* evt) override
+	{
+		gen_event* evt_cast = evt;
+		process_event(evt_cast);
+	}
 
 	// Send the provided policy event, either adding the event to
 	// the pending events list or reporting it immediately,

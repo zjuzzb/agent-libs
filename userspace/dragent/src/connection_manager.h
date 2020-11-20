@@ -396,10 +396,7 @@ public:
 		return m_negotiated_compression_method;
 	}
 
-	void set_message_handler(draiosproto::message_type type, message_handler::ptr handler)
-	{
-		m_handler_map[type] = handler;
-	}
+	void set_message_handler(draiosproto::message_type type, message_handler::ptr handler);
 
 private:
 	struct unacked_message
@@ -594,6 +591,7 @@ private:
 	 */
 	bool is_component_healthy() const override;
 
+	std::mutex m_handler_map_lock;
 	message_handler_map m_handler_map;
 	std::vector<dragent_protocol::protocol_version> m_supported_protocol_versions;
 	std::vector<protocol_compression_method> m_supported_compression_methods;

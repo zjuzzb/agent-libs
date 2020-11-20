@@ -8,7 +8,9 @@
 #include "error_handler.h"
 #include "exit_code.h"
 #include "globally_readable_file_channel.h"
+#include "security_mgr.h"
 #include "security_policies_v2_message_handler.h"
+#include "sinsp_event_source.h"
 #include "type_config.h"
 #include "utils.h"
 
@@ -262,6 +264,25 @@ int agentino_app::sdagent_main()
 		LOG_ERROR("Failed to setup internal components. Exception message: %s", e.what());
 		running_state::instance().restart();
 	}
+
+	sinsp_event_source* es = new sinsp_event_source();
+
+	std::shared_ptr<security_mgr> sm =
+	    std::make_shared<security_mgr>(m_configuration.c_root_dir.get_value(), m_protocol_handler);
+	sm->init(es->get_sinsp(),
+	         nullptr,           // infrastructure_state_iface*
+	         nullptr,           // secure_k8s_audit_event_sink_iface*
+	         nullptr,           // capture_job_queue_handler*
+	         &m_configuration,  //  dragent_configuration*
+	         nullptr);          // const internal_metrics::sptr_t&
+	es->register_event_listener(sm);
+
+	// TODO extract this handler from sinsp_worker. ideall have it go directly to
+	// security_mgr. SMAGENT-2736
+	//cm->set_message_handler(draiosproto::message_type::POLICIES_V2, sm);
+
+	es->start();
+	m_pool.start(*es, watchdog_runnable::NO_TIMEOUT);
 
 	auto& state = running_state::instance();
 

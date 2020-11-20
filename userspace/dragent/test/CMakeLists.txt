@@ -45,6 +45,7 @@ add_executable(
     crash_handler.ut.cpp
     dragent_memdump_logger.ut.cpp
     dragent_user_event_callback.ut.cpp
+    event_source.ut.cpp
     faultlist_rest_request_handler.ut.cpp
     fault_rest_request_handler.ut.cpp
     file_rest_registry.ut.cpp
@@ -65,6 +66,8 @@ target_link_libraries(
     unit-test-dragent
     sanalyzer
     dragentl
+    agentinol
+    agentonel
     draiosproto
     fake-collector-core
     librestl

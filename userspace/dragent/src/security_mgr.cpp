@@ -135,13 +135,16 @@ void security_mgr::init(sinsp *inspector,
 
 	m_actions.init(this, m_coclient, m_infra_state);
 
-	for(auto &metric : m_security_evt_metrics)
+	if (metrics != nullptr)
 	{
-		metric->reset();
-		metrics->add_ext_source(metric.get());
+		for(auto &metric : m_security_evt_metrics)
+		{
+			metric->reset();
+			metrics->add_ext_source(metric.get());
+		}
+		m_metrics.reset();
+		metrics->add_ext_source(&m_metrics);
 	}
-	m_metrics.reset();
-	metrics->add_ext_source(&m_metrics);
 
 	m_k8s_audit_events_queue = make_shared<tbb::concurrent_queue<sdc_internal::k8s_audit_event>>();
 

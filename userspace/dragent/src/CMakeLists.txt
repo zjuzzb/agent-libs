@@ -89,7 +89,7 @@ list(APPEND dragentfiles dragent.cpp)
 
 list(APPEND agentonefiles agentone.cpp)
 
-list(APPEND agentinofiles agentino.cpp)
+list(APPEND agentinofiles agentino.cpp sinsp_event_source.cpp event_source.cpp)
 
 if(CYGWIN)
     # windows specific implementation

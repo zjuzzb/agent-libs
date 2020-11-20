@@ -1587,25 +1587,40 @@ bool connection_manager::handle_message()
 	         "    version field: " +
 	         NumberFormatter::format(m_pending_message.get_version())
 	         );
-
-	message_handler_map::const_iterator itr = m_handler_map.find(type);
-	if (itr != m_handler_map.end())
 	{
-		uint32_t payload_len = m_pending_message.get_total_length() - header_len;
-		uint8_t* payload = m_pending_message.payload();
+		std::lock_guard<std::mutex> lock(m_handler_map_lock);
 
-		ASSERT(m_pending_message.m_buffer_used == header_len + payload_len);
-		if (payload_len > 0 && payload)
+		message_handler_map::const_iterator itr = m_handler_map.find(type);
+		if (itr != m_handler_map.end())
 		{
-			itr->second->handle_message(type, payload, payload_len);
+			uint32_t payload_len = m_pending_message.get_total_length() - header_len;
+			uint8_t* payload = m_pending_message.payload();
+
+			ASSERT(m_pending_message.m_buffer_used == header_len + payload_len);
+			if (payload_len > 0 && payload)
+			{
+				itr->second->handle_message(type, payload, payload_len);
+			}
 		}
+		else
+		{
+			LOG_ERROR("Unknown message type: %d", m_pending_message.get_type());
+			return false;
+		}
+		return true;
 	}
-	else
+}
+
+void connection_manager::set_message_handler(draiosproto::message_type type, message_handler::ptr handler)
+{
+	std::lock_guard<std::mutex> lock(m_handler_map_lock);
+
+	if (m_handler_map.find(type) != m_handler_map.end())
 	{
-		LOG_ERROR("Unknown message type: %d", m_pending_message.get_type());
-		return false;
+		LOG_WARNING("multiple handlers attempting registration for type %d", type);
 	}
-	return true;
+
+	m_handler_map[type] = handler;
 }
 
 bool connection_manager::handle_invalid_version()
