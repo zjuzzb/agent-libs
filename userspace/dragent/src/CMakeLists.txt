@@ -188,11 +188,6 @@ file(COPY root.cert DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 file(COPY chisels DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-file(COPY ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/common.lua
-          ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/dkjson.lua
-     DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/chisels
-)
-
 if(DEFINED AGENT_BUILD_COMMIT OR DEFINED AGENT_BUILD_DATE)
     if(DEFINED AGENT_BUILD_COMMIT)
         file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/.agent_build "commit: ${AGENT_BUILD_COMMIT}\n")
@@ -274,8 +269,8 @@ install(
 )
 
 install(
-    FILES ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/common.lua
-          ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/dkjson.lua
+    FILES ${CMAKE_CURRENT_SOURCE_DIR}/chisels/common.lua
+          ${CMAKE_CURRENT_SOURCE_DIR}/chisels/dkjson.lua
     DESTINATION ${CMAKE_INSTALL_PREFIX}/share/chisels
     COMPONENT agent-slim
 )

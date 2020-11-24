@@ -2458,6 +2458,7 @@ TEST_F(sys_call_test, clone_tid_vtid)
 	}
 }
 
+#ifndef LIBSCAP_HAYABUSA
 TEST_F(sys_call_test, thread_lookup_static)
 {
 	struct stat s = {};
@@ -2583,3 +2584,4 @@ TEST_F(sys_call_test, thread_lookup_live)
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, event_capture::do_nothing, before_close);});
 }
+#endif

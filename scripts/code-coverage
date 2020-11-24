@@ -80,6 +80,7 @@ function run_lcov()
         '/usr/include/*' \
         '/build/*' \
         '/code/sysdig/userspace/libsinsp/third-party/*' \
+        '/code/libsinsp/userspace/libsinsp/third-party/*' \
         '/code/agent/userspace/libsanalyzer/src/blake2/*' \
         '/code/agent/userspace/libsanalyzer/src/tdigest/*' \
         '/code/oss-falco/*' \

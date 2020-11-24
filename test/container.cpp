@@ -30,6 +30,7 @@
 
 using namespace std;
 
+#ifndef LIBSCAP_HAYABUSA
 TEST_F(sys_call_test, container_cgroups)
 {
 	int ctid;
@@ -126,6 +127,7 @@ TEST_F(sys_call_test, container_cgroups)
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
 	ASSERT_TRUE(done);
 }
+#endif
 
 static int clone_callback_3(void* arg)
 {
