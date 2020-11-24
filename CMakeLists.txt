@@ -6,7 +6,7 @@ option(BUILD_WARNINGS_AS_ERRORS "Enable building with -Wextra -Werror flags")
 
 # Versions of all third-party libraries used. These may be referred to in lower CMakeLists.txt
 # files.
-set(DRAIOS_OPENSSL_VERSION "1.0.2n")
+set(DRAIOS_OPENSSL_VERSION "1.1.1h")
 set(DRAIOS_PROTOBUF_VERSION "3.9.2")
 if(NOT CYGWIN)
     set(DRAIOS_ZLIB_VERSION "1.2.11")

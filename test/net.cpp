@@ -193,8 +193,6 @@ public:
 			return;
 		}
 
-		SSL_CTX_set_ecdh_auto(ctx, 1);
-
 		load_certs(ctx, "certificate.pem", "key.pem");
 	}
 
@@ -225,83 +223,81 @@ public:
 
 		thread t(
 		    [this, &server_started, &mtx, &cv](uint16_t port) {
-			    // Create the socket and begin listening
+				// Create the socket and begin listening
 
-			    struct sockaddr_in addr;
-			    addr.sin_family = AF_INET;
-			    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-			    addr.sin_port = htons(port);
+				struct sockaddr_in addr;
+				addr.sin_family = AF_INET;
+				addr.sin_addr.s_addr = htonl(INADDR_ANY);
+				addr.sin_port = htons(port);
 
-			    int s = socket(addr.sin_family, SOCK_STREAM, 0);
-			    if (s < 0)
-			    {
-				    cerr << "Unable to create socket: " << s << endl;
-				    sock_err = s;
-				    return;
-			    }
+				int s = socket(addr.sin_family, SOCK_STREAM, 0);
+				if (s < 0)
+				{
+					cerr << "Unable to create socket: " << s << endl;
+					sock_err = s;
+					return;
+				}
 
-			    if (bind(s, (struct sockaddr*)&addr, sizeof(addr)) < 0)
-			    {
-				    cerr << "Unable to bind to address: " << s << endl;
-				    sock_err = s;
-				    close(s);
-				    return;
-			    }
+				if (bind(s, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+				{
+					cerr << "Unable to bind to address: " << s << endl;
+					sock_err = s;
+					close(s);
+					return;
+				}
 
-			    int ret = listen(s, 1);
-			    if (ret < 0)
-			    {
-				    cerr << "Unable to listen on socket: " << ret << endl;
-				    sock_err = ret;
-				    close(s);
-				    return;
-			    }
+				int ret = listen(s, 1);
+				if (ret < 0)
+				{
+					cerr << "Unable to listen on socket: " << ret << endl;
+					sock_err = ret;
+					close(s);
+					return;
+				}
 
-			    sock_fd = s;
-			    std::unique_lock<std::mutex> lck(mtx);
-			    server_started = true;
-			    cv.notify_one();  // Let the parent function know the server is ready to roll
-			    lck.unlock();
+				sock_fd = s;
+				std::unique_lock<std::mutex> lck(mtx);
+				server_started = true;
+				cv.notify_one();  // Let the parent function know the server is ready to roll
+				lck.unlock();
 
-			    while (run_server)
-			    {
-				    struct sockaddr_in addr;
-				    uint32_t len = sizeof(addr);
-				    SSL* ssl = nullptr;
+				while (run_server)
+				{
+					struct sockaddr_in addr;
+					uint32_t len = sizeof(addr);
+					SSL* ssl = nullptr;
 
-				    int conn_fd = accept(sock_fd, (struct sockaddr*)&addr, &len);
-				    if (conn_fd < 0)
-				    {
-					    cerr << "Error while accepting incoming connection: " << conn_fd << endl;
-					    sock_err = conn_fd;
-					    run_server = false;
-					    continue;
-				    }
+					int conn_fd = accept(sock_fd, (struct sockaddr*)&addr, &len);
+					if (conn_fd < 0)
+					{
+						cerr << "Error while accepting incoming connection: " << conn_fd << endl;
+						sock_err = conn_fd;
+						run_server = false;
+						continue;
+					}
 
-				    ssl = SSL_new(ctx);
-				    SSL_set_fd(ssl, conn_fd);
-				    int ret = SSL_accept(ssl);
+					ssl = SSL_new(ctx);
+					SSL_set_fd(ssl, conn_fd);
+					int ret = SSL_accept(ssl);
 
-				    if (ret <= 0)
-				    {
-					    cerr << "SSL error accepting incoming connection: " << ret << endl;
-					    ERR_print_errors_fp(stderr);
-					    run_server = false;
-					    continue;
-				    }
-				    else
-				    {
-					    char buf[128] = {};
-					    string response = "Goodbye from Sysdig test SSL server, signing off!";
-					    SSL_read(ssl, buf, sizeof(buf));
-					    SSL_write(ssl, buf, strlen(buf));
-					    SSL_write(ssl, response.c_str(), response.length());
-					    sleep(1);
-				    }
+					if (ret <= 0)
+					{
+						cerr << "SSL error accepting incoming connection: " << ret << endl;
+						ERR_print_errors_fp(stderr);
+						run_server = false;
+						continue;
+					}
+					else
+					{
+						char buf[128] = {};
+						SSL_read(ssl, buf, sizeof(buf));
+						SSL_write(ssl, buf, strlen(buf));
+						sleep(1);
+					}
 
-				    SSL_free(ssl);
-				    close(conn_fd);
-			    }
+					close(conn_fd);
+					SSL_free(ssl);
+				}
 		    },
 		    port);
 		t.detach();
@@ -424,7 +420,6 @@ bool localhost_ssl_request(uint16_t port)
 	while (true)
 	{
 		len = BIO_read(server, buf, sizeof(buf));
-
 		if (len <= 0)
 		{
 			break;
@@ -585,6 +580,16 @@ known_ports:
 	ASSERT_EQ(N_CONNECTIONS, nconns);
 }
 
+/**
+ * This test is a bit fragile, unfortunately. OpenSSL does not provide any
+ * guarantees about how many syscalls (and in what direction) a given call
+ * to SSL_read or SSL_write will produce. In addition, changing the version
+ * of OpenSSL can change the results of this test.
+ *
+ * So long as the results we get are consistent across runs and look
+ * "reasonable" (where reasonableness is in the eye of the beholder), I call
+ * it a pass and move on.
+ */
 TEST_F(sys_call_test, net_ssl_requests)
 {
 	//
@@ -636,7 +641,7 @@ TEST_F(sys_call_test, net_ssl_requests)
 				return true;
 			});
 
-			EXPECT_EQ((uint64_t)1, transaction_metrics.get_counter()->m_count_in);
+			EXPECT_EQ((uint64_t)2, transaction_metrics.get_counter()->m_count_in);
 			EXPECT_LT((uint64_t)0, transaction_metrics.get_counter()->m_time_ns_in);
 			EXPECT_EQ((uint64_t)1, transaction_metrics.get_max_counter()->m_count_in);
 			EXPECT_LT((uint64_t)0, transaction_metrics.get_max_counter()->m_time_ns_in);

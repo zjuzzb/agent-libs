@@ -180,7 +180,7 @@ if [ ! -d "$GOPATH" ]; then
 	mkdir $GOPATH
 fi
 
-OPENSSL_VER=1.0.2n
+OPENSSL_VER=1.1.1h
 OPENSSL_EXT=tar.gz
 OPENSSL_DIR=$DEPENDENCIES/openssl-$OPENSSL_VER
 if [ ! -d "$OPENSSL_DIR" ]; then
@@ -509,24 +509,6 @@ if [ $OS != "Windows_NT" ]; then
 		./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON_DIR/target --with-ensurepip=install --enable-unicode=ucs4
 		make -j $MAKE_JOBS
 		make -j $MAKE_JOBS install
-	fi
-
-	PYTHON26_VER=2.6.9
-	PYTHON26_EXT=tgz
-	PYTHON26_DIR=$DEPENDENCIES/Python-$PYTHON26_VER
-	if [ ! -d "${PYTHON26_DIR}" ]; then
-		cd $DEPENDENCIES
-		wget $DEPENDENCIES_URL/Python-$PYTHON26_VER.$PYTHON26_EXT
-		tar xfz Python-$PYTHON26_VER.$PYTHON26_EXT
-		cd $PYTHON26_DIR
-		echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist
-		./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON26_DIR/target --enable-unicode=ucs4
-		make -j $MAKE_JOBS
-		make -j $MAKE_JOBS install
-		wget $DEPENDENCIES_URL/get-pip.py
-		echo "setuptools==36.8.0" > pip-reqs.txt
-		echo "wheel==0.29.0" >> pip-reqs.txt
-		./target/bin/python get-pip.py --no-setuptools --no-wheel -r pip-reqs.txt
 	fi
 
 	if [ -z $STATSITE_VERSION ]; then

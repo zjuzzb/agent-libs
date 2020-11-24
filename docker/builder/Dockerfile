@@ -26,7 +26,7 @@ RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devto
         automake \
         libtool \
         valgrind \
-	centos-release-scl \
+        centos-release-scl \
         lcov \
         libffi-devel \
         zlib-devel \

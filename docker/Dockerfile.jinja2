@@ -168,7 +168,6 @@ RUN curl -s https://download.sysdig.com/DRAIOS-GPG-KEY.public | apt-key add - \
  && apt-get install -y --no-install-recommends draios-agent-slim \
 {% endif %}
  && apt-get clean \
- && rm -rf /opt/draios/lib/python-deps2.6 \
  && rm -rf /opt/draios/lib/python-deps2.7 \
  && rm -rf /opt/draios/lib/python-deps3.5 \
  && rm -rf /opt/draios/lib/python-deps3.6 \
@@ -197,7 +196,6 @@ RUN rm -df /lib/modules \
 {% if p.include_agent_package == "local" %}
 ADD draios-${AGENT_VERSION}-x86_64-agent.deb /
 RUN dpkg -i /draios-${AGENT_VERSION}-x86_64-agent.deb \
- && rm -rf /opt/draios/lib/python-deps2.6 \
  && rm -rf /opt/draios/lib/python-deps2.7 \
  && rm -rf /opt/draios/lib/python-deps3.5 \
  && rm -rf /opt/draios/lib/python-deps3.6 \
@@ -230,7 +228,6 @@ py-pip \
 && mkdir -p /opt/draios/run \
 && cp /usr/lib/python3*/site-packages/certifi/cacert.pem /opt/draios/lib/python-deps/certifi/ \
 && rm -rf /tmp/*.apk /var/cache/apk/* \
-&& rm -rf /opt/draios/lib/python-deps2.6 \
 && rm -rf /opt/draios/lib/python-deps2.7 \
 && rm -rf /opt/draios/lib/python-deps3.5 \
 && rm -rf /opt/draios/lib/python-deps3.6 \
