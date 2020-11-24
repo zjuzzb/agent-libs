@@ -643,6 +643,7 @@ public:
 	/* Secure Audit */
 	void enable_secure_audit();
 	bool secure_audit_enabled() const { return m_secure_audit != nullptr; }
+	bool secure_netsec_enabled() const { return m_secure_netsec != nullptr; }
 
 	void secure_audit_data_ready(uint64_t ts, const secure::Audit* secure_audits) override;
 	void set_secure_audit_internal_metrics(int n_sent_protobufs, uint64_t flush_time_ms) override;

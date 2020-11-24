@@ -288,7 +288,9 @@ sinsp_connection* sinsp_connection_manager<TKey, THash, TCompare>::add_connectio
 	conn.m_record_state_history = m_analyzer.audit_tap_enabled();
 
 	std::shared_ptr<sinsp_threadinfo> proc = nullptr;
-	if (conn.m_record_state_history || m_analyzer.secure_audit_enabled())
+	if (conn.m_record_state_history ||
+	    m_analyzer.secure_audit_enabled() ||
+	    m_analyzer.secure_netsec_enabled())
 	{
 		proc = m_inspector->get_thread_ref(pid,
 		                                   false /*don't query the os if not found*/,
