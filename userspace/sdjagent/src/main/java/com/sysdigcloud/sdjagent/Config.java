@@ -43,15 +43,41 @@ public class Config {
         processes = yamlConfig.getMergedMap("jmx.per_process_beans", Process.class);
     }
 
+    /** sdjagent_parser in subprocesses_logger controls how the messages generated
+     *  by sdjagent are eventually routed to draios.log file. subprocesses_logger uses
+     *  a Poco::Logger with Poco:Message::Priority levels. Java doesn't understand Poco,
+     *  so in sdjagent we use Java logging which has a different set of levels.
+     *  Since the log levels are eventually controlled in sdjagent_parser, we really
+     *  don't need to read the config here and try to control the log level in Java.
+     *  Instead, we could just set Java logging to the most permissive level (FINE) and
+     *  let sdjagent_parser deal with what gets logged. But that would cause a flood of IPC messages
+     *  between sdjagent and subprocesses_logger, plus generate unnecessary CPU load in sdjagent_parser.
+     *  So, as a performance optimization, we read the log level specified in the yaml config
+     *  and set the appropriate log level in Java logging in order to generate messages at the
+     *  correct level inside sdjagent.
+     */
     public Level getLogLevel() {
         String stringLevel = yamlConfig.getSingle("log.file_priority", "info");
-        if ( stringLevel.equals("error")) {
+        List<String> componentStringLevels = yamlConfig.getMergedSequence("log.file_priority_by_component", String.class);
+        for (String str : componentStringLevels)
+        {
+            String[] strArr = str.split(": ", 2);
+            if ((strArr.length == 2) && (strArr[0].equals("sdjagent")))
+            {
+                stringLevel = strArr[1];
+                break;
+            }
+        }
+        /** Map the log level specified in yaml config to Java logging levels
+         *  Note: this map should be kept in sync with the mapping done in sdjagent_parser
+         */
+        if (stringLevel.equals("fatal") || stringLevel.equals("critical") || stringLevel.equals("error")) {
             return Level.SEVERE;
-        } else if (stringLevel.equals("warning")) {
+        } else if (stringLevel.equals("warning") || stringLevel.equals("notice")) {
             return Level.WARNING;
         } else if (stringLevel.equals("info")) {
             return Level.INFO;
-        } else if (stringLevel.equals("debug")) {
+        } else if (stringLevel.equals("debug") || stringLevel.equals("trace")) {
             return Level.FINE;
         }
         return Level.INFO;

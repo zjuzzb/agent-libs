@@ -89,8 +89,14 @@ private:
 class sdjagent_parser
 {
 public:
+	sdjagent_parser()
+	{
+		m_file_priority = static_cast<Poco::Message::Priority>(-1);
+	}
 	void operator()(const std::string&);
+	void init_file_priority();
 private:
+	Poco::Message::Priority m_file_priority;
 	Json::Reader m_json_reader;
 };
 

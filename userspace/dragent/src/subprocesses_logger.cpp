@@ -119,8 +119,41 @@ void errpipe_manager::enable_nonblocking(int fd)
 	fcntl(fd, F_SETFL, flags);
 }
 
+void sdjagent_parser::init_file_priority()
+{
+	// Map Poco log levels to Java logging levels
+	// Note: this map should be kept in sync with the mapping done in
+	// getLogLevel() method in sdjagent's Config class
+	switch(g_log->get_component_file_priority("sdjagent"))
+	{
+	case Poco::Message::PRIO_FATAL:
+	case Poco::Message::PRIO_CRITICAL:
+	case Poco::Message::PRIO_ERROR:
+		m_file_priority = Poco::Message::PRIO_ERROR;
+		break;
+	case Poco::Message::PRIO_WARNING:
+	case Poco::Message::PRIO_NOTICE:
+		m_file_priority = Poco::Message::PRIO_WARNING;
+		break;
+	case Poco::Message::PRIO_INFORMATION:
+		m_file_priority = Poco::Message::PRIO_INFORMATION;
+		break;
+	case Poco::Message::PRIO_DEBUG:
+	case Poco::Message::PRIO_TRACE:
+		m_file_priority = Poco::Message::PRIO_DEBUG;
+		break;
+	default:
+		m_file_priority = Poco::Message::PRIO_INFORMATION;
+		break;
+	}
+}
+
 void sdjagent_parser::operator()(const string& data)
 {
+	if(m_file_priority == static_cast<Poco::Message::Priority>(-1))
+	{
+		init_file_priority();
+	}
 	// Parse log level and use it
 	Json::Value sdjagent_log;
 	bool parsing_ok = m_json_reader.parse(data, sdjagent_log, false);
@@ -129,33 +162,37 @@ void sdjagent_parser::operator()(const string& data)
 		unsigned pid = sdjagent_log["pid"].asUInt();
 		string log_level = sdjagent_log["level"].asString();
 		string log_message = "sdjagent[" + to_string(pid) + "]: " + sdjagent_log["message"].asString();
+		Poco::Message::Priority prio = m_file_priority;
 		if(log_level == "SEVERE")
 		{
-			g_log->error(log_message);
+			prio = Poco::Message::PRIO_ERROR;
 		}
 		else if(log_level == "WARNING")
 		{
-			g_log->warning(log_message);
+			prio = Poco::Message::PRIO_WARNING;
 		}
 		else if(log_level == "INFO")
 		{
-			g_log->information(log_message);
+			prio = Poco::Message::PRIO_INFORMATION;
 		}
 		else
 		{
-			g_log->debug(log_message);
+			prio = Poco::Message::PRIO_DEBUG;
 		}
+		g_log->log_check_component_priority(log_message, prio, m_file_priority);
 	}
 	else
 	{
 		if (data.length() == subprocesses_logger::READ_BUFFER_SIZE)
 		{
 			// Likely, the message is longer than the read buffer and got chopped off
-			g_log->debug("sdjagent, " + data);
+			g_log->log_check_component_priority("sdjagent, " + data,
+							Poco::Message::PRIO_DEBUG, m_file_priority);
 		}
 		else
 		{
-			g_log->error("sdjagent, " + data);
+			g_log->log_check_component_priority("sdjagent, " + data,
+							Poco::Message::PRIO_ERROR, m_file_priority);
 		}
 	}
 }
