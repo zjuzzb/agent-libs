@@ -40,7 +40,63 @@ public class MonitoredVM {
     private final List<BeanInstance> matchingBeans;
     private long lastDisconnectionTimestamp;
     private final boolean isOnAnotherContainer;
-    
+    private CheckForAvailabilityTimer checkForAvailabilityTimer;
+
+    private class CheckForAvailabilityTimer {
+        private long nextCheckMs;
+        private long checkCounter;
+        private static final int MS = 1000;
+        private long maxAvailabilityCheckIntervalMs;
+        private boolean maxReached;
+        private static final int RANDOM_INTERVAL_SEC = 30;
+        int initialRandomDelayMs;
+
+        CheckForAvailabilityTimer() {
+            reset();
+        }
+
+        void setMaxCheckForAvailabilityIntervalSec(int d) {
+            maxAvailabilityCheckIntervalMs = d * MS;
+        }
+
+        boolean isTimeForCheck() {
+            boolean ret = false;
+            long now = System.currentTimeMillis();
+
+            if(nextCheckMs == 0 || now > nextCheckMs){
+                ret = true;
+
+                if (nextCheckMs == 0) {
+                    // if this is the very first check, schedule the next one on a random point in time
+                    // This will avoid to check many VMs in the same time
+                    Random rand = new Random();
+
+                    // initialRandomDelay is a random value between 5 secs and RANDOM_INTERNAL_SEC secs
+                    initialRandomDelayMs = (5 + rand.nextInt(RANDOM_INTERVAL_SEC - 5)) * MS;
+                    nextCheckMs = now + initialRandomDelayMs;
+                } else if (!maxReached) {
+                    // double the interval for retrying every cycle. Till the maximum interval is reached
+                    nextCheckMs = (long) (now + Math.pow(2, checkCounter++)*MS + initialRandomDelayMs);
+                    // do not overcome max interval time
+                    if ((nextCheckMs - now) >= maxAvailabilityCheckIntervalMs) {
+                        maxReached = true;
+                        nextCheckMs = now + maxAvailabilityCheckIntervalMs;
+                    }
+                } else {
+                    // already reached the maximum interval
+                    nextCheckMs = now + maxAvailabilityCheckIntervalMs;
+                }
+            }
+
+            return ret;
+        }
+
+        private void reset() {
+            this.nextCheckMs = 0;
+            this.checkCounter = 0;
+            this.maxReached = false;
+        }
+    }
     public MonitoredVM(VMRequest request)
     {
         this.pid = request.getPid();
@@ -51,6 +107,7 @@ public class MonitoredVM {
         //this.agentActive = false;
         this.name = "";
         this.lastDisconnectionTimestamp = 0;
+        this.checkForAvailabilityTimer = new CheckForAvailabilityTimer();
 
         if (request.getPid() == CLibrary.getPid()) {
             this.name = "sdjagent";
@@ -60,16 +117,29 @@ public class MonitoredVM {
         }
 
         isOnAnotherContainer = CLibrary.isOnAnotherContainer(request.getPid());
-        if (isOnAnotherContainer) {
-            retrieveVmInfoFromContainer(request);
-        } else {
-            retrieveVMInfoFromHost(request);
+        checkForAvailability(request);
+    }
+
+    public void setMaxavailabilityCheckIntervalSec(int d) {
+        checkForAvailabilityTimer.setMaxCheckForAvailabilityIntervalSec(d);
+    }
+
+    public boolean checkForAvailability(VMRequest request) {
+        if (available == false) {
+            if (checkForAvailabilityTimer.isTimeForCheck()) {
+                if (isOnAnotherContainer) {
+                    retrieveVmInfoFromContainer(request);
+                } else {
+                    retrieveVMInfoFromHost(request);
+                }
+                if (!this.available && (request.getArgs().length > 0)) {
+                    // This way is faster but it's more error prone
+                    // so keep it as last chance
+                    retrieveVMInfoFromArgs(request);
+                }
+            }
         }
-        if(!this.available && (request.getArgs().length > 0)) {
-            // This way is faster but it's more error prone
-            // so keep it as last chance
-            retrieveVMInfoFromArgs(request);
-        }
+        return available;
     }
 
     private void retrieveVmInfoFromContainer(VMRequest request) {

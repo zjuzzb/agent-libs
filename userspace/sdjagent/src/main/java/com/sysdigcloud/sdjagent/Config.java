@@ -26,6 +26,7 @@ public class Config {
 
     private List<BeanQuery> defaultBeanQueries;
     private Map<String, Process> processes;
+    private int maxAvailabilityCheckIntervalSec;
 
     public Config() throws FileNotFoundException {
         List<String> configFiles = new ArrayList<String>();
@@ -41,6 +42,8 @@ public class Config {
             LOGGER.fine("jmx.default_beans is empty, probably a configuration error");
         }
         processes = yamlConfig.getMergedMap("jmx.per_process_beans", Process.class);
+
+        maxAvailabilityCheckIntervalSec = yamlConfig.getSingle("jmx.max_availability_check_interval_sec", 600);
     }
 
     /** sdjagent_parser in subprocesses_logger controls how the messages generated
@@ -81,6 +84,10 @@ public class Config {
             return Level.FINE;
         }
         return Level.INFO;
+    }
+
+    public int getMaxAvailabilityCheckIntervalSec() {
+        return maxAvailabilityCheckIntervalSec;
     }
 
     public int getSamplingRateInSeconds()

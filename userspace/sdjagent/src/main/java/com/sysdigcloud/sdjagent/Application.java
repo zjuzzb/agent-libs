@@ -246,11 +246,12 @@ public class Application {
             trcVm.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("pid", Integer.toString(request.getPid())))));
             if (vm == null) {
                 vm = buildMonitoredVM(request);
+                vm.setMaxavailabilityCheckIntervalSec(config.getMaxAvailabilityCheckIntervalSec());
+                // Add it to known VMs
+                vms.put(request.getPid(), vm);
             }
 
             if (vm.isAvailable()) {
-                // Add it to known VMs
-                vms.put(request.getPid(), vm);
                 vmObject.put("pid", request.getPid());
                 vmObject.put("name", vm.getName());
 
@@ -263,7 +264,7 @@ public class Application {
                 trcVm.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("name", vm.getName()))));
             }
             else {
-                vm.cleanUp();
+                vm.checkForAvailability(request);
                 trcVm.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("name", "n/a"))));
             }
 
