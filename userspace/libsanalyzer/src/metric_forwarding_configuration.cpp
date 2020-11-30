@@ -57,16 +57,6 @@ type_config<int>::ptr c_metric_forwarding_sum =
 	.hidden()
 	.build();
 
-type_config<bool>::ptr c_fill_metric_headroom =
-   type_config_builder<bool>(true /*default*/,
-			     "Whether to automatically raise metric limits "
-			     "proportionally to send the maximum allowed number "
-			     "of metrics",
-			     "flexible_metric_limits",
-			     "fill_headroom")
-	.hidden()
-	.build();
-
 int configured_limit_sum()
 {
 	return metric_forwarding_configuration::c_prometheus_max->configured() +
@@ -78,7 +68,6 @@ int configured_limit_sum()
 /**
  * The sum of all of the metrics must be below the c_metric_forwarding_sum.
  * If they are not, then the max values are dropped proportionally.
- * Optionally, the limits can be raised to fill up any available headroom.
  *
  * Returns the value which is used to change the given config to the allowed
  * config.
@@ -94,7 +83,8 @@ float metric_divisor()
 	float divisor = static_cast<float>(configured_limit_sum()) /
 			static_cast<float>(c_metric_forwarding_sum->configured());
 
-	if((!c_fill_metric_headroom->get_value()) && divisor < 1.0)
+	// Only let metric limits decrease. Not increase.
+	if(divisor < 1.0)
 	{
 		return 1.0;
 	}

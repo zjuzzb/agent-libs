@@ -15,11 +15,6 @@ bool is_enabled()
 	return configuration_manager::instance().get_config<bool>("flexible_metric_limits.enabled")->get_value();
 }
 
-bool is_fill_headroom()
-{
-	return configuration_manager::instance().get_config<bool>("flexible_metric_limits.fill_headroom")->get_value();
-}
-
 int get_limit()
 {
 	return configuration_manager::instance().get_config<int>("metric_forwarding_limit")->get_value();
@@ -39,39 +34,12 @@ TEST(metric_forwarding_configuration_test, defaults)
 	ASSERT_EQ(500, metric_forwarding_configuration::c_app_checks_max->get_value());
 }
 
-TEST(metric_forwarding_configuration_test, override_under_default_max_fill_headroom)
+TEST(metric_forwarding_configuration_test, override_under_default_max)
 {
 	// Default max is 10,000. We want the total to be lower than that
 	scoped_configuration config(R"(
 flexible_metric_limits:
   enabled: true
-prometheus:
-  max_metrics: 100
-jmx:
-  limit: 101
-statsd:
-  limit: 102
-app_checks_limit: 103
-)");
-
-	// since we are filling the headroom, all values will go up
-	ASSERT_TRUE(config.loaded());
-	ASSERT_TRUE(is_enabled());
-	ASSERT_TRUE(is_fill_headroom());
-	ASSERT_EQ(10000, get_limit());
-	ASSERT_EQ(2463, metric_forwarding_configuration::c_prometheus_max->get_value() );
-	ASSERT_EQ(2487, metric_forwarding_configuration::c_jmx_max->get_value());
-	ASSERT_EQ(2512, metric_forwarding_configuration::c_statsd_max->get_value());
-	ASSERT_EQ(2536, metric_forwarding_configuration::c_app_checks_max->get_value());
-}
-
-TEST(metric_forwarding_configuration_test, override_under_default_max_dont_fill_headroom)
-{
-	// Default max is 10,000. We want the total to be lower than that
-	scoped_configuration config(R"(
-flexible_metric_limits:
-  enabled: true
-  fill_headroom: false
 prometheus:
   max_metrics: 100
 jmx:
@@ -84,7 +52,6 @@ app_checks_limit: 103
 	// since we are not filling the headroom, all values will stay the same
 	ASSERT_TRUE(config.loaded());
 	ASSERT_TRUE(is_enabled());
-	ASSERT_FALSE(is_fill_headroom());
 	ASSERT_EQ(10000, get_limit());
 	ASSERT_EQ(100, metric_forwarding_configuration::c_prometheus_max->get_value());
 	ASSERT_EQ(101, metric_forwarding_configuration::c_jmx_max->get_value());
@@ -134,7 +101,6 @@ TEST(metric_forwarding_configuration_test, sum_hard_limit_100k_test_20k)
 flexible_metric_limits:
   enabled: true
   sysdig_test_100k_prom: true
-  fill_headroom: false
 metric_forwarding_limit: 20000
 prometheus:
   max_metrics: 18000
@@ -151,7 +117,6 @@ TEST(metric_forwarding_configuration_test, sum_hard_limit_100k_test_100k)
 flexible_metric_limits:
   enabled: true
   sysdig_test_100k_prom: true
-  fill_headroom: false
 sysdig_test_100k_prom: true
 metric_forwarding_limit: 100000
 prometheus:
@@ -169,7 +134,6 @@ TEST(metric_forwarding_configuration_test, sum_hard_limit_100k_test_110k)
 flexible_metric_limits:
   enabled: true
   sysdig_test_100k_prom: true
-  fill_headroom: false
 metric_forwarding_limit: 110000
 )");
 
