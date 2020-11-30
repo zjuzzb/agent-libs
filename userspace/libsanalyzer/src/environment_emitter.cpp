@@ -20,6 +20,12 @@ void environment_emitter::emit_environment(thread_analyzer_info& tinfo, draiospr
 	}
 
 	auto mt_ainfo = tinfo.main_thread_ainfo();
+
+	if (m_env_hash_config.m_track_environment)
+	{
+		mt_ainfo->hash_environment(&tinfo, *m_env_hash_config.m_env_blacklist);
+	}
+
 	auto env_hash = mt_ainfo->m_env_hash.get_hash();
 	prog.set_environment_hash(env_hash.data(), env_hash.size());
 

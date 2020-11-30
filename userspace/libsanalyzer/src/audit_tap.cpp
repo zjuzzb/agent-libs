@@ -367,6 +367,12 @@ void audit_tap::emit_process(thread_analyzer_info* tinfo,
 bool audit_tap::emit_environment(tap::NewProcess* proc, thread_analyzer_info* tinfo)
 {
 	auto mt_ainfo = tinfo->main_thread_ainfo();
+
+	if (m_config->m_track_environment)
+	{
+		mt_ainfo->hash_environment(tinfo, *m_config->m_env_blacklist);
+	}
+
 	auto env_hash = mt_ainfo->m_env_hash.get_hash();
 	if (proc)
 	{

@@ -3,6 +3,16 @@
 
 #include <Poco/RegularExpression.h>
 
+env_hash::env_hash()
+	: m_env_hash_is_valid(false)
+{
+}
+
+bool env_hash::is_valid()
+{
+	return m_env_hash_is_valid;
+}
+
 void env_hash::update(sinsp_threadinfo* tinfo, const env_hash::regex_list_t & blacklist)
 {
 	blake2b_state S[1];
@@ -23,4 +33,5 @@ void env_hash::update(sinsp_threadinfo* tinfo, const env_hash::regex_list_t & bl
 		}
 	}
 	blake2b_final(S, m_env_hash.data(), m_env_hash.size());
+	m_env_hash_is_valid = true;
 }

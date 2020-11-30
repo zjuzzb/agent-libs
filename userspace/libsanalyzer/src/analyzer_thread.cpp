@@ -100,7 +100,10 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 void main_thread_analyzer_info::hash_environment(thread_analyzer_info* tinfo,
                                                  const env_hash::regex_list_t& blacklist)
 {
-	m_env_hash.update(tinfo, blacklist);
+	if (!m_env_hash.is_valid())
+	{
+		m_env_hash.update(tinfo, blacklist);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -167,15 +170,6 @@ void thread_analyzer_info::init()
 	m_syscall_errors.clear();
 	m_called_execve = false;
 	m_last_cmdline_sync_ns = 0;
-
-	if (m_analyzer != nullptr && m_analyzer->is_tracking_environment())
-	{
-		if (is_main_thread())
-		{
-			auto mt_ainfo = main_thread_ainfo();
-			mt_ainfo->hash_environment(this, m_analyzer->get_environment_blacklist());
-		}
-	}
 }
 
 const std::set<double>& thread_analyzer_info::get_percentiles()

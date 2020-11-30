@@ -49,6 +49,7 @@ env_hash_config* default_hash_config()
 		config->m_env_blacklist.reset(new env_hash::regex_list_t());
 		config->m_send_metrics = true;
 		config->m_send_audit_tap = true;
+		config->m_track_environment = false;
 	}
 
 	return config.get();

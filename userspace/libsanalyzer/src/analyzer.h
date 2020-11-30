@@ -633,6 +633,7 @@ public:
 	{
 		m_env_hash_config.m_send_metrics = metrics;
 		m_env_hash_config.m_send_audit_tap = audit_tap;
+		m_env_hash_config.m_track_environment = is_tracking_environment();
 	}
 
 	/* Audit Tap */

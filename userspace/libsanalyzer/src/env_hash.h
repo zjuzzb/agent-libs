@@ -11,9 +11,12 @@ class RegularExpression;
 
 class env_hash {
 public:
+	env_hash();
+
 	using hash_buf_t = std::array<char, ENV_HASH_SIZE>;
 	using regex_list_t = std::list<Poco::RegularExpression>;
 
+	bool is_valid();
 	void update(sinsp_threadinfo* tinfo, const regex_list_t& blacklist);
 	const hash_buf_t& get_hash() const {
 		return m_env_hash;
@@ -25,6 +28,7 @@ public:
 
 private:
 	hash_buf_t m_env_hash;
+	bool m_env_hash_is_valid;
 };
 
 namespace std {
@@ -45,4 +49,5 @@ struct env_hash_config {
 	uint64_t m_env_hash_ttl = 86400ULL * ONE_SECOND_IN_NS;
 	bool m_send_metrics;
 	bool m_send_audit_tap;
+	bool m_track_environment;
 };
