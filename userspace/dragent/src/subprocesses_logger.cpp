@@ -13,6 +13,12 @@ using namespace std;
 #define F_SETPIPE_SZ 1031
 #endif
 
+std::atomic<Poco::Message::Priority> cointerface_parser::m_file_priority
+					{ static_cast<Poco::Message::Priority>(-1) };
+std::atomic<Poco::Message::Priority> sdjagent_parser::m_file_priority
+					{ static_cast<Poco::Message::Priority>(-1) };
+std::atomic<Poco::Message::Priority> sdchecks_parser::m_file_priority
+					{ static_cast<Poco::Message::Priority>(-1) };
 pipe_manager::pipe_manager()
 {
 	// Create pipes
@@ -197,8 +203,44 @@ void sdjagent_parser::operator()(const string& data)
 	}
 }
 
+void cointerface_parser::init_file_priority()
+{
+	// Map Poco log levels to seelog levels that cointerface uses
+	// Ref: https://github.com/cihub/seelog/blob/master/common_loglevel.go
+	switch(g_log->get_component_file_priority("cointerface"))
+	{
+	case Poco::Message::PRIO_FATAL:
+	case Poco::Message::PRIO_CRITICAL:
+		m_file_priority = Poco::Message::PRIO_CRITICAL;
+		break;
+	case Poco::Message::PRIO_ERROR:
+		m_file_priority = Poco::Message::PRIO_ERROR;
+		break;
+	case Poco::Message::PRIO_WARNING:
+	case Poco::Message::PRIO_NOTICE:
+		m_file_priority = Poco::Message::PRIO_WARNING;
+		break;
+	case Poco::Message::PRIO_INFORMATION:
+		m_file_priority = Poco::Message::PRIO_INFORMATION;
+		break;
+	case Poco::Message::PRIO_DEBUG:
+		m_file_priority = Poco::Message::PRIO_DEBUG;
+		break;
+	case Poco::Message::PRIO_TRACE:
+		m_file_priority = Poco::Message::PRIO_TRACE;
+		break;
+	default:
+		m_file_priority = Poco::Message::PRIO_INFORMATION;
+		break;
+	}
+}
+
 void cointerface_parser::operator()(const string& data)
 {
+	if(m_file_priority == static_cast<Poco::Message::Priority>(-1))
+	{
+		init_file_priority();
+	}
 	// Parse log level and use it
 	Json::Value cointerface_log;
 	bool parsing_ok = m_json_reader.parse(data, cointerface_log, false);
@@ -211,40 +253,43 @@ void cointerface_parser::operator()(const string& data)
 		unsigned pid = cointerface_log["pid"].asUInt();
 		string log_level = cointerface_log["level"].asString();
 		string log_message = "cointerface[" + to_string(pid) + "]: " + cointerface_log["message"].asString();
+		Poco::Message::Priority prio = m_file_priority;
 		if(log_level == "trace")
 		{
-			g_log->trace(log_message);
+			prio = Poco::Message::PRIO_TRACE;
 		} else if(log_level == "debug")
 		{
-			g_log->debug(log_message);
+			prio = Poco::Message::PRIO_DEBUG;
 		} else if(log_level == "info")
 		{
-			g_log->information(log_message);
+			prio = Poco::Message::PRIO_INFORMATION;
 		} else if(log_level == "warn")
 		{
-			g_log->warning(log_message);
+			prio = Poco::Message::PRIO_WARNING;
 		} else if(log_level == "error")
 		{
-			g_log->error(log_message);
+			prio = Poco::Message::PRIO_ERROR;
 		} else if(log_level == "critical")
 		{
-			g_log->critical(log_message);
+			prio = Poco::Message::PRIO_CRITICAL;
 		} else {
 			// Shouldn't happen, but just in case
 			assert(false);
-			g_log->critical("Unparsable log level: " + data);
+			log_message = "Unparsable log level: " + data;
+			prio = Poco::Message::PRIO_CRITICAL;
 		}
+		g_log->log_check_component_priority(log_message, prio, m_file_priority);
 	}
 	else
 	{
 		assert(false);
-		g_log->critical("Cointerface, unparsable log message: " + data);
+		g_log->log_check_component_priority("Cointerface, unparsable log message: " + data,
+						Poco::Message::PRIO_CRITICAL, m_file_priority);
 	}
 }
 
 sdchecks_parser::sdchecks_parser()
 	: m_last_pid_str("0")
-	, m_file_priority(static_cast<Poco::Message::Priority>(-1))
 	, m_last_sev(Poco::Message::Priority::PRIO_ERROR)
 {
 }
