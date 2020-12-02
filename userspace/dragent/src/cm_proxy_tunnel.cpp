@@ -131,7 +131,7 @@ cm_socket::ptr http_tunnel::openssl_connect(const std::string& proxy_host,
                                             const std::string& http_connect_message)
 {
 	Poco::Net::SocketAddress sa(proxy_host, proxy_port); // Cheat and use poco for DNS lookup
-	int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	int sock = socket(sa.af(), SOCK_STREAM, IPPROTO_TCP);
 	int res;
 
 	if (sock < 0)

@@ -123,3 +123,10 @@ install(
     DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
     COMPONENT tests
 )
+
+install(
+    FILES ${PROJECT_SOURCE_DIR}/test/test_certs/certificate.pem ${PROJECT_SOURCE_DIR}/test/test_certs/key.pem
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
+    PERMISSIONS OWNER_WRITE OWNER_READ WORLD_READ
+    COMPONENT tests
+)

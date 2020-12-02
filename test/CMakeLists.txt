@@ -181,7 +181,7 @@ configure_file(
 install(
     FILES test_certs/certificate.pem test_certs/key.pem
     DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-    PERMISSIONS OWNER_WRITE OWNER_READ
+    PERMISSIONS OWNER_WRITE OWNER_READ WORLD_READ
     COMPONENT tests
 )
 

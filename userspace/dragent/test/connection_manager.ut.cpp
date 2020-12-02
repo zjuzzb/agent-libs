@@ -8,12 +8,19 @@ using namespace std;
 #include <unistd.h>
 #include <ctime>
 
+#include <netdb.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
 #include "configuration.h"
 #include "exit_code.h"
 #include "sinsp_mock.h"
 #include "watchdog_runnable.h"
 #include "connection_manager.h"
 #include "cm_proxy_tunnel.h"
+#include "cm_socket.h"
 #include "fake_collector.h"
 #include "handshake.pb.h"
 #include "draios.pb.h"
@@ -42,7 +49,13 @@ namespace
 class connection_manager_fixture : public running_state_fixture 
 {
 public:
-	connection_manager_fixture() {}
+	connection_manager_fixture()
+	{
+		SSL_load_error_strings();
+		OPENSSL_init_ssl(0, NULL);
+		OpenSSL_add_ssl_algorithms();
+		OpenSSL_add_all_ciphers();
+	}
 };
 
 /**
@@ -1947,7 +1960,6 @@ TEST_F(connection_manager_fixture, string_append_test)
 // End HTTP proxy tests
 //
 
-
 // I wrote this test to make sure the index value gets propagated through
 TEST_F(connection_manager_fixture, aggregator_integration_test)
 {
@@ -2356,6 +2368,557 @@ TEST_F(connection_manager_fixture, unacked_metrics)
 	st.join();
 }
 
+std::atomic<bool> done(false);
+
+void socket_callback(cm_socket* sock, void* cb_ctx)
+{
+	std::thread t([](cm_socket* sock, void* cb_ctx)
+	{
+		int32_t* ctx = (int32_t*)cb_ctx;
+		int32_t payload;
+		int64_t ret;
+
+		// Do an initial "handshake" to make sure the connection
+		// is fully established
+		do
+		{
+			ret = sock->receive((uint8_t*)&payload, sizeof(payload));
+			usleep(10);
+		} while (ret == EWOULDBLOCK || ret == EAGAIN);
+
+		if (ret <= 0)
+		{
+			std::cerr << "Unexpected status on receive: " << ret << std::endl;
+			*ctx = (int32_t)ret;
+		}
+
+		sock->send((uint8_t*)&payload, sizeof(payload));
+
+		// Now run a second receive / send cycle
+		do
+		{
+			ret = sock->receive((uint8_t*)&payload, sizeof(payload));
+			usleep(10);
+		} while (ret == EWOULDBLOCK || ret == EAGAIN);
+
+		if (ret <= 0)
+		{
+			std::cerr << "Unexpected status on receive: " << ret << std::endl;
+			*ctx = (int32_t)ret;
+		}
+		else
+		{
+			++(*ctx);
+		}
+
+		payload += 42;
+		sock->send((uint8_t*)&payload, sizeof(payload));
+
+		while (!done)
+		{
+			msleep(50);
+		}
+		delete sock;
+	},
+	              sock,
+				  cb_ctx);
+	t.detach();
+}
+
+void socket_error_callback(cm_socket::error_type type, int val, void* cb_ctx)
+{
+	int32_t* ctx = (int32_t*)cb_ctx;
+	int32_t et = (int32_t)type;
+
+	*ctx = et;
+}
+
+TEST_F(connection_manager_fixture, socket_listen)
+{
+	uint16_t port = 7357;
+	int32_t ctx = 0;
+	struct sockaddr_in addr;
+	bool r = cm_socket::listen({port, false},
+	                           socket_callback,
+	                           socket_error_callback,
+	                           &ctx);
+	int res;
+
+	ASSERT_TRUE(r);
+
+	// Connect a socket to the test port
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	addr.sin_port = htons(port);
+	int sock = ::socket(addr.sin_family, SOCK_STREAM, IPPROTO_TCP);
+	ASSERT_GT(sock, 0);
+
+	res = ::connect(sock, (struct sockaddr *)&addr, sizeof(addr));
+	ASSERT_EQ(0, res);
+
+	// First handshake
+	int val = 0xDEADBEEF;
+	res = ::write(sock, &val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+
+	val = 0;
+	res = ::read(sock, (uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+	ASSERT_EQ(0xDEADBEEF, val);
+	ASSERT_EQ(0, ctx);
+
+	// Send a value
+	val = 1024;
+	res = ::write(sock, &val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+
+	// Once the value has been read, the context will be updated
+	for (uint32_t loops = 0; ctx == 0 && loops < 2000; ++loops)
+	{
+		usleep(500);
+	}
+
+	// Read a value
+	res = ::read(sock, (uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+	ASSERT_EQ(1024 + 42, val);
+
+	// Clean up the socket
+	cm_socket::stop_listening(true);
+	::close(sock);
+}
+
+TEST_F(connection_manager_fixture, socket_listen_faults)
+{
+	uint16_t port = 7357;
+	int32_t ctx = 0;
+	struct sockaddr_in addr;
+	bool r = cm_socket::listen({port, false},
+	                           socket_callback,
+	                           socket_error_callback,
+	                           &ctx);
+	int res;
+
+	ASSERT_TRUE(r);
+
+	cm_socket::set_fault(cm_socket::FP_BAD_POLL_RETURN);
+
+	// Wait for the error to propagate
+	for (uint32_t loops = 0; ctx == 0 && loops < 1100; ++loops)
+	{
+		msleep(10);
+	}
+
+	ASSERT_EQ((int32_t)cm_socket::ERR_POLL_RETURN, ctx);
+	ctx = 0;
+
+	r = cm_socket::listen({port, false},
+	                      socket_callback,
+	                      socket_error_callback,
+	                      &ctx);
+	ASSERT_TRUE(r);
+
+	cm_socket::set_fault(cm_socket::FP_POLLERR);
+
+	// Wait for the error to propagate
+	for (uint32_t loops = 0; ctx == 0 && loops < 1100; ++loops)
+	{
+		msleep(10);
+	}
+
+	ASSERT_EQ((int32_t)cm_socket::ERR_POLL_EVENT, ctx);
+	ctx = 0;
+
+	r = cm_socket::listen({port, false},
+	                      socket_callback,
+	                      socket_error_callback,
+	                      &ctx);
+	ASSERT_TRUE(r);
+
+	// Connect a socket to the test port
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	addr.sin_port = htons(port);
+	int sock = ::socket(addr.sin_family, SOCK_STREAM, IPPROTO_TCP);
+	ASSERT_GT(sock, 0);
+
+	res = ::connect(sock, (struct sockaddr *)&addr, sizeof(addr));
+	ASSERT_EQ(0, res);
+
+	// First handshake
+	int val = 0xDEADBEEF;
+	res = ::write(sock, &val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+
+	val = 0;
+	res = ::read(sock, (uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+	ASSERT_EQ(0xDEADBEEF, val);
+	ASSERT_EQ(0, ctx);
+
+	// Send a value
+	val = 1024;
+	res = ::write(sock, &val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+
+	// Once the value has been read, the context will be updated
+	for (uint32_t loops = 0; ctx == 0 && loops < 2000; ++loops)
+	{
+		usleep(500);
+	}
+
+	// Read a value
+	res = ::read(sock, (uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+	ASSERT_EQ(1024 + 42, val);
+
+	// Clean up the socket
+	cm_socket::stop_listening(true);
+	::close(sock);
+}
+
+TEST_F(connection_manager_fixture, socket_poll_plaintext)
+{
+	const uint16_t num_socks = 4;
+	const uint16_t plaintext_port = 7357;
+	int32_t ctx = 0;
+	int64_t res = 0;
+	done = false;
+
+	// Listen
+	bool r = cm_socket::listen({plaintext_port, false},
+	                           socket_callback,
+	                           socket_error_callback,
+	                           &ctx);
+	ASSERT_TRUE(r);
+
+	// Build a list of sockets
+	std::list<cm_socket::poll_sock> sock_list;
+	cm_socket* last_sock = nullptr;
+
+	// Populate the socket list
+	for (uint16_t i = 0; i < num_socks; ++i)
+	{
+		cm_poco_socket* poco_sock = new cm_poco_socket;
+		r = poco_sock->connect("127.0.0.1", plaintext_port);
+		ASSERT_TRUE(r);
+		// Do the handshake
+		int val = 0xDEADBEEF;
+		res = poco_sock->send((uint8_t*)&val, sizeof(val));
+		ASSERT_EQ(sizeof(val), res);
+
+		val = 0;
+		res = poco_sock->receive((uint8_t*)&val, sizeof(val));
+		ASSERT_EQ(sizeof(val), res);
+		ASSERT_EQ(0xDEADBEEF, val);
+
+		// Send the second value for every socket but the last
+		if (i != num_socks - 1)
+		{
+			val = 1024;
+			res = poco_sock->send((uint8_t*)&val, sizeof(val));
+			ASSERT_EQ(sizeof(val), res);
+			// Now poco_sock should have a pending response from the server
+		}
+		sock_list.emplace_back(poco_sock, nullptr);
+		last_sock = poco_sock;
+	}
+
+	// There's a lot of buffers and threads here. Wait until ready
+	for (uint32_t loops = 0; ctx < 3 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(3, ctx);
+
+	// Call poll
+	std::list<cm_socket::poll_sock> outlist;
+	r = cm_socket::poll(sock_list, outlist, std::chrono::milliseconds(3000));
+
+	ASSERT_TRUE(r);
+	ASSERT_EQ(3, outlist.size());
+
+	for (auto s : outlist)
+	{
+		int val;
+		s.sock->receive((uint8_t*)&val, sizeof(val));
+		ASSERT_EQ(1024 + 42, val);
+	}
+
+	// Now send a value on the last socket
+	int val = 2048;
+	last_sock->send((uint8_t*)&val, sizeof(val));
+
+	// Poll again
+	r = cm_socket::poll(sock_list, outlist, std::chrono::milliseconds(3000));
+	ASSERT_TRUE(r);
+	ASSERT_EQ(1, outlist.size());
+
+	auto s3 = outlist.front();
+	s3.sock->receive((uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(2048 + 42, val);
+
+	// Clean up all the things
+	done = true;
+	cm_socket::stop_listening(true);
+	for (auto s : sock_list)
+	{
+		s.sock->close();
+		delete s.sock;
+	}
+}
+
+TEST_F(connection_manager_fixture, socket_poll_encrypted)
+{
+	test_helpers::scoped_config<bool> verify("ssl_verify_certificate", false);
+	const uint16_t encrypted_port = 7538;
+	std::vector<std::string> cert_paths = {"."};
+	std::string ca_cert = "certificate.pem";
+	int32_t ctx = 0;
+	int res;
+	int val;
+	bool r;
+	done = false;
+
+	// Listen encrypted
+	r = cm_socket::listen({encrypted_port, true},
+	                      socket_callback,
+	                      socket_error_callback,
+	                      &ctx);
+	ASSERT_TRUE(r);
+
+	// Now we build a list of different socket types
+	std::list<cm_socket::poll_sock> sock_list;
+
+	//
+	// Build an encrypted poco socket
+	//
+	cm_poco_secure_socket ps_sock(cert_paths, ca_cert);
+	r = ps_sock.connect("127.0.0.1", encrypted_port);
+	ASSERT_TRUE(r);
+	// Handshake
+	val = 0xDEADBEEF;
+	res = ps_sock.send((uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+	val = 0;
+	res = ps_sock.receive((uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+	ASSERT_EQ(0xDEADBEEF, val);
+	// Send a value on this socket as well
+	val = 1024;
+	ps_sock.send((uint8_t*)&val, sizeof(val));
+
+	//
+	// Building an openssl socket is a little harder
+	//
+	struct sockaddr_in addr;
+	std::string hostname = "127.0.0.1";
+	cm_openssl_socket ossl_sock(cert_paths, ca_cert);
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(hostname.c_str());
+	addr.sin_port = htons(encrypted_port);
+	int sock = ::socket(addr.sin_family, SOCK_STREAM, IPPROTO_TCP);
+	ASSERT_GT(sock, 0);
+
+	res = ::connect(sock, (struct sockaddr *)&addr, sizeof(addr));
+	ASSERT_EQ(0, res);
+	r = ossl_sock.connect(sock, hostname);
+	ASSERT_TRUE(r);
+	// Handshake
+	val = 0xDEADBEEF;
+	res = ossl_sock.send((uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+	val = 0;
+	res = ossl_sock.receive((uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+	ASSERT_EQ(0xDEADBEEF, val);
+	// Don't send a value on the openssl socket yet
+
+	// Populate the list
+	sock_list.emplace_back(&ps_sock, nullptr);
+	sock_list.emplace_back(&ossl_sock, nullptr);
+
+	// Call poll
+	std::list<cm_socket::poll_sock> outlist;
+	r = cm_socket::poll(sock_list, outlist, std::chrono::milliseconds(3000));
+
+	ASSERT_TRUE(r);
+	ASSERT_EQ(1, outlist.size());
+
+	for (auto s : outlist)
+	{
+		s.sock->receive((uint8_t*)&val, sizeof(val));
+		ASSERT_EQ(1024 + 42, val);
+		ASSERT_EQ(nullptr, s.ctx);
+	}
+
+	// Now send a value on the openssl socket
+	val = 2048;
+	ossl_sock.send((uint8_t*)&val, sizeof(val));
+
+	// Poll again
+	r = cm_socket::poll(sock_list, outlist, std::chrono::milliseconds(3000));
+
+	ASSERT_TRUE(r);
+	ASSERT_EQ(1, outlist.size());
+
+	auto s3 = outlist.front();
+	s3.sock->receive((uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(2048 + 42, val);
+
+	// Clean up all the things
+	done = true;
+	cm_socket::stop_listening(true);
+	for (auto s : sock_list)
+	{
+		s.sock->close();
+	}
+	::close(sock);
+}
+
+TEST_F(connection_manager_fixture, socket_poll)
+{
+	test_helpers::scoped_config<bool> verify("ssl_verify_certificate", false);
+	const uint16_t plaintext_port = 7357;
+	const uint16_t encrypted_port = 7358;
+	std::vector<std::string> cert_paths;
+	std::string ca_cert = "certificate.pem";
+	int32_t ctx1 = 0, ctx2 = 0;
+	int res;
+	int val;
+	done = false;
+
+	// Listen unencrypted
+	bool r = cm_socket::listen({plaintext_port, false},
+	                           socket_callback,
+	                           socket_error_callback,
+	                           &ctx1);
+	ASSERT_TRUE(r);
+	// Listen encrypted
+	r = cm_socket::listen({encrypted_port, true},
+	                      socket_callback,
+	                      socket_error_callback,
+	                      &ctx2);
+	ASSERT_TRUE(r);
+
+	// Now we build a list of different socket types
+	std::list<cm_socket::poll_sock> sock_list;
+
+	//
+	// First build a standard, unencrypted poco socket
+	//
+	cm_poco_socket poco_sock;
+	r = poco_sock.connect("127.0.0.1", plaintext_port);
+	ASSERT_TRUE(r);
+	// Do the handshake
+	val = 0xDEADBEEF;
+	res = poco_sock.send((uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+	val = 0;
+	res = poco_sock.receive((uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+	ASSERT_EQ(0xDEADBEEF, val);
+	// Send the second value
+	val = 1024;
+	poco_sock.send((uint8_t*)&val, sizeof(val));
+	// Now poco_sock should have a pending response from the server
+
+	//
+	// Now an encrypted poco socket
+	//
+	cm_poco_secure_socket ps_sock(cert_paths, ca_cert);
+	r = ps_sock.connect("127.0.0.1", encrypted_port);
+	ASSERT_TRUE(r);
+	// Handshake
+	val = 0xDEADBEEF;
+	res = ps_sock.send((uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+	val = 0;
+	res = ps_sock.receive((uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+	ASSERT_EQ(0xDEADBEEF, val);
+	// Send a value on this socket as well
+	val = 1024;
+	ps_sock.send((uint8_t*)&val, sizeof(val));
+
+	// Building an openssl socket is a little harder, but we can do it!
+	struct sockaddr_in addr;
+	std::string hostname = "127.0.0.1";
+	cm_openssl_socket ossl_sock(cert_paths, ca_cert);
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(hostname.c_str());
+	addr.sin_port = htons(encrypted_port);
+	int sock = ::socket(addr.sin_family, SOCK_STREAM, IPPROTO_TCP);
+	ASSERT_GT(sock, 0);
+
+	res = ::connect(sock, (struct sockaddr *)&addr, sizeof(addr));
+	ASSERT_EQ(0, res);
+	r = ossl_sock.connect(sock, hostname);
+	ASSERT_TRUE(r);
+	//Handshake
+	val = 0xDEADBEEF;
+	res = ossl_sock.send((uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+	val = 0;
+	res = ossl_sock.receive((uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(sizeof(val), res);
+	ASSERT_EQ(0xDEADBEEF, val);
+	// Don't send a value on the openssl socket yet
+
+	// Populate the list
+	int one = 1, two = 2, three = 3;
+	sock_list.emplace_back(&poco_sock, &one);
+	sock_list.emplace_back(&ossl_sock, &two);
+	sock_list.emplace_back(&ps_sock, &three);
+
+	// Call poll
+	std::list<cm_socket::poll_sock> outlist;
+	r = cm_socket::poll(sock_list, outlist, std::chrono::milliseconds(3000));
+
+	ASSERT_TRUE(r);
+	ASSERT_EQ(2, outlist.size());
+
+	for (auto s : outlist)
+	{
+		s.sock->receive((uint8_t*)&val, sizeof(val));
+		ASSERT_EQ(1024 + 42, val);
+	}
+
+	// Now send a value on the openssl socket
+	val = 2048;
+	ossl_sock.send((uint8_t*)&val, sizeof(val));
+
+	// Poll again
+	r = cm_socket::poll(sock_list, outlist, std::chrono::milliseconds(3000));
+
+	ASSERT_TRUE(r);
+	ASSERT_EQ(1, outlist.size());
+
+	auto s3 = outlist.front();
+	s3.sock->receive((uint8_t*)&val, sizeof(val));
+	ASSERT_EQ(2048 + 42, val);
+	ASSERT_EQ(2, *((int*)s3.ctx));
+
+	// Clean up all the things
+	done = true;
+	cm_socket::stop_listening(true);
+	for (auto s : outlist)
+	{
+		s.sock->close();
+	}
+	::close(sock);
+}
+
+TEST_F(connection_manager_fixture, socket_fault_inject)
+{
+	ASSERT_FALSE(cm_socket::check_fault(cm_socket::FP_TEST));
+	cm_socket::set_fault(cm_socket::FP_TEST);
+
+	ASSERT_FALSE(cm_socket::check_fault(cm_socket::FP_POLLERR));
+	ASSERT_TRUE(cm_socket::check_fault(cm_socket::FP_TEST));
+	ASSERT_FALSE(cm_socket::check_fault(cm_socket::FP_TEST));
+}
+
 TEST_F(connection_manager_fixture, unacked_metrics_timeout)
 {
 	const size_t MAX_QUEUE_LEN = 64;
@@ -2462,3 +3025,4 @@ TEST_F(connection_manager_fixture, unacked_metrics_timeout)
 	serializer.stop();
 	st.join();
 }
+
