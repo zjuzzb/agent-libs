@@ -16,7 +16,13 @@ command_line::cmd_line_log::cmd_line_log()
 	cmd_info.type = command_line_manager::content_type::TEXT;
 	cmd_info.handler = [this](const command_line_manager::argument_list& args)
 			   {
-				   return get_last_log();
+				   int count = 0;
+				   if (args.size() == 1 && args[0].first == "count")
+				   {
+					   count = std::atoi(args[0].second.c_str());
+				   }
+
+				   return get_last_lines(count == 0 ? LINE_COUNT : count);
 			   };
 
 	command_line_manager::instance().register_command("log dump", cmd_info);
