@@ -93,6 +93,7 @@ list(
     user_event_channel.cpp
     webpage.cpp
     webpage_rest_request_handler.cpp
+    cmd_line_log.cpp
     Poco/SysdigModifiedFileChannel.cpp
 )
 
