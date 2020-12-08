@@ -1480,6 +1480,7 @@ public:
 	std::shared_ptr<promscrape> m_promscrape;
 
 	std::unique_ptr<container_start_count> m_container_start_count;
+	uint32_t m_prev_container_start_count = 0;
 
 	//
 	// Please do not add any friends.
