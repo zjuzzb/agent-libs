@@ -4653,7 +4653,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 				uint32_t num_container_starts = this->m_container_start_count->get_host_container_counts();
 				// Fill the delta of previous value and current value in the metrics protobuf.
 				// Ensure special handling to prevent negative values from being sent.
-				m_metrics->mutable_hostinfo()->set_container_start_count(std::max((uint32_t)0, (num_container_starts - m_prev_container_start_count)));
+				auto delta_val = (num_container_starts > m_prev_container_start_count ? (num_container_starts - m_prev_container_start_count) : (uint32_t)0 );
+				m_metrics->mutable_hostinfo()->set_container_start_count(delta_val);
 				m_prev_container_start_count = num_container_starts;
 			}
 
