@@ -100,13 +100,21 @@ private:
 	 */
 	bool remove_file_if_exists(const std::string& dir, const std::string& f);
 
-	/*
+	/**
 	 * Create a sentinel file as soon as the agent had initialized and connected to the
 	 * backend. The file is used as a k8s probe and for auto detecting
 	 * unclean shutdown as well
 	 * @param cm Connection manager. It holds the BE <--> agent connection status
 	 */
 	void setup_startup_probe(const connection_manager& cm);
+
+	/**
+	 * The agent has feature negotiation with the backend. This is 
+	 * the response to that negotiation with the metric limit that 
+	 * the backend has selected. 
+	 * This will be running on the connection manager thread. 
+	 */
+	void handle_metric_limit(bool has_limit, draiosproto::custom_metric_limit_value value);
 
 	bool m_help_requested;
 	bool m_version_requested;

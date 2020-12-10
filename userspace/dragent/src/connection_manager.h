@@ -5,6 +5,7 @@
 #include "running_state_runnable.h"
 #include "dragent_message_queues.h"
 #include "dragent_settings_interface.h"
+#include "handshake.pb.h"
 #include "protobuf_file_emitter.h"
 
 #ifndef CYGWING_AGENT
@@ -135,7 +136,8 @@ private:
 
 class connection_manager : public dragent::running_state_runnable,
                            public aggregation_interval_source,
-                           public compression_method_source
+                           public compression_method_source,
+                           public metric_limit_source
 {
 
 public:
@@ -596,6 +598,7 @@ private:
 	std::vector<dragent_protocol::protocol_version> m_supported_protocol_versions;
 	std::vector<protocol_compression_method> m_supported_compression_methods;
 	std::vector<uint32_t> m_supported_aggregation_intervals;
+	std::vector<draiosproto::custom_metric_limit_value> m_supported_custom_metric_limits;
 	cm_socket::ptr m_socket;
 	uint64_t m_generation;
 	uint64_t m_sequence;

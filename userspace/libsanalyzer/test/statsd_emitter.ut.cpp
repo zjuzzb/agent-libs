@@ -20,7 +20,7 @@ using libsanalyzer::statsd_emitter;
 TEST(statsd_emitter_test, get_limit_security_disabled)
 {
 	const unsigned expected_limit =
-		metric_forwarding_configuration::c_statsd_max->get_value();
+		metric_forwarding_configuration::instance().statsd_limit();
 	
 	ASSERT_EQ(expected_limit, statsd_emitter::get_limit());
 }
@@ -35,7 +35,7 @@ TEST(statsd_emitter_test, get_limit_security_enabled)
 	feature_manager::instance().initialize();
 
 	const unsigned expected_limit =
-		metric_forwarding_configuration::c_statsd_max->get_value() +
+		metric_forwarding_configuration::instance().statsd_limit() +
 		statsd_emitter::MAX_SECURITY_METRICS;
 	
 	ASSERT_EQ(expected_limit, statsd_emitter::get_limit());

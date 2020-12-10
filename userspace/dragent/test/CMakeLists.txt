@@ -50,6 +50,7 @@ add_executable(
     fault_rest_request_handler.ut.cpp
     file_rest_registry.ut.cpp
     file_rest_request_handler.ut.cpp
+    handshake_helpers.ut.cpp
     metric_serializer.ut.cpp
     pre_aggregated_metrics_rest_request_handler.ut.cpp
     post_aggregated_metrics_rest_request_handler.ut.cpp

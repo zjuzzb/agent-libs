@@ -246,6 +246,11 @@ connection_manager::connection_manager(dragent_configuration* configuration,
       m_supported_compression_methods({protocol_compression_method::NONE,
                                        protocol_compression_method::GZIP}),
       m_supported_aggregation_intervals({10}),
+      m_supported_custom_metric_limits({draiosproto::custom_metric_limit_value::CUSTOM_METRIC_DEFAULT, 
+                                        draiosproto::custom_metric_limit_value::CUSTOM_METRIC_10k, 
+                                        draiosproto::custom_metric_limit_value::CUSTOM_METRIC_20k,
+                                        draiosproto::custom_metric_limit_value::CUSTOM_METRIC_50k,
+                                        draiosproto::custom_metric_limit_value::CUSTOM_METRIC_100k}),
       m_socket(nullptr),
       m_generation(1),
       m_sequence(1),
@@ -869,6 +874,12 @@ bool connection_manager::send_handshake_negotiation()
 		msg_hs.add_supported_agg_intervals(i);
 	}
 
+	// Add supported custom metric limits
+	for (auto l: m_supported_custom_metric_limits)
+	{
+		msg_hs.add_supported_custom_metric_limits(l);
+	}
+
 	// Get the default compressor
 	auto compressor =
 	        protobuf_compressor_factory::get(protobuf_compressor_factory::get_default());
@@ -1168,6 +1179,8 @@ bool connection_manager::perform_handshake()
 	// Process unacked messages
 	process_ack_queue_on_reconnect(hs_resp.last_acked_gen_num(),
 	                               hs_resp.last_acked_seq_num());
+
+	set_metric_limit(hs_resp);
 
 	// Reset the exponential backoff
 	reset_backoff();

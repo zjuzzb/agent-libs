@@ -2554,7 +2554,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	std::set<uint64_t> all_uids;
 	jmx_emitter jmx_emitter_instance(m_jmx_metrics,
 	                                 m_jmx_sampling,
-	                                 metric_forwarding_configuration::c_jmx_max->get_value(),
+	                                 metric_forwarding_configuration::instance().jmx_limit(),
 	                                 m_jmx_metrics_by_containers);
 	std::unique_ptr<app_check_emitter> app_check_emitter_instance = nullptr;
 
@@ -2563,7 +2563,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 	{
 		app_check_emitter_instance = make_unique<app_check_emitter>(
 		    m_app_checks_proxy->get_all_metrics(),
-		    metric_forwarding_configuration::c_app_checks_max->get_value(),
+		    metric_forwarding_configuration::instance().app_checks_limit(),
 		    m_prom_conf,
 		    m_promscrape,
 		    m_app_checks_by_containers,

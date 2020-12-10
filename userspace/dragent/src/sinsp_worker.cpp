@@ -445,8 +445,6 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 	m_analyzer->set_top_devices(m_configuration->m_top_file_devices_per_prog,
 	                            m_configuration->m_top_file_devices_per_container,
 	                            m_configuration->m_top_file_devices_per_host);
-
-	metric_forwarding_configuration::print();
 }
 
 void sinsp_worker::run()

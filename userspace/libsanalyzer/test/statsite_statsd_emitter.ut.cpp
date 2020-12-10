@@ -8,6 +8,7 @@
 #include "draios.pb.h"
 #include "dummy_statsd_stats_source.h"
 #include "metric_limits.h"
+#include "metric_forwarding_configuration.h"
 #include "scoped_config.h"
 #include "statsite_statsd_emitter.h"
 #include <google/protobuf/util/message_differencer.h>
@@ -445,36 +446,43 @@ TEST(statsite_statsd_emitter_test, emit_container_histogram_metric)
  */
 TEST(statsite_statsd_emitter_test, emit_host_cannot_exceed_limit)
 {
-	scoped_config<int> statd_limit("statsd.limit", 0);
+	using nr = metric_forwarding_configuration::negotiation_result;
+	{
+		// Change the limit and kick the instance to update
+		scoped_config<int> statd_limit("statsd.limit", 0);
+		metric_forwarding_configuration().instance().set_negotiated_value(nr::USE_LEGACY_LIMITS);
 
-	const std::string name = "some_metric";
-	const double value = 42.7;
-	const uint64_t ts = 8123456789LL;
-	const std::string container_id = "";
-	const metric_limits::sptr_t limits;
+		const std::string name = "some_metric";
+		const double value = 42.7;
+		const uint64_t ts = 8123456789LL;
+		const std::string container_id = "";
+		const metric_limits::sptr_t limits;
 
-	std::shared_ptr<dummy_statsd_stats_source> source =
-		std::make_shared<dummy_statsd_stats_source>();
-	::draiosproto::host host;
-	::draiosproto::statsd_info metrics;
-	const ::draiosproto::statsd_info expected_metrics;
+		std::shared_ptr<dummy_statsd_stats_source> source =
+			std::make_shared<dummy_statsd_stats_source>();
+		::draiosproto::host host;
+		::draiosproto::statsd_info metrics;
+		const ::draiosproto::statsd_info expected_metrics;
 
-	source->add_counter(name, value, ts, container_id, {"a:b", "c:d"});
+		source->add_counter(name, value, ts, container_id, {"a:b", "c:d"});
 
-	statsite_statsd_emitter emitter(source, limits);
+		statsite_statsd_emitter emitter(source, limits);
 
-	emitter.fetch_metrics(ts);
-	emitter.emit(&host, &metrics);
+		emitter.fetch_metrics(ts);
+		emitter.emit(&host, &metrics);
 
-	ASSERT_TRUE(host.mutable_resource_counters()->has_statsd_total());
-	ASSERT_EQ(1, host.mutable_resource_counters()->statsd_total());
+		ASSERT_TRUE(host.mutable_resource_counters()->has_statsd_total());
+		ASSERT_EQ(1, host.mutable_resource_counters()->statsd_total());
 
-	ASSERT_TRUE(host.mutable_resource_counters()->has_statsd_sent());
-	ASSERT_EQ(0, host.mutable_resource_counters()->statsd_sent());
+		ASSERT_TRUE(host.mutable_resource_counters()->has_statsd_sent());
+		ASSERT_EQ(0, host.mutable_resource_counters()->statsd_sent());
 
-	ASSERT_TRUE(::google::protobuf::util::MessageDifferencer::Equals(
-			expected_metrics,
-			metrics));
+		ASSERT_TRUE(::google::protobuf::util::MessageDifferencer::Equals(
+				expected_metrics,
+				metrics));
+	}
+
+	metric_forwarding_configuration().instance().set_negotiated_value(nr::USE_LEGACY_LIMITS);
 }
 
 /**

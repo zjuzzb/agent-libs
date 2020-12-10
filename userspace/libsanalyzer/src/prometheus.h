@@ -86,7 +86,7 @@ public:
 	unsigned max_metrics() const
 	{
 		return static_cast<unsigned>(
-		    metric_forwarding_configuration::c_prometheus_max->get_value());
+		    metric_forwarding_configuration::instance().prometheus_limit());
 	}
 
 	int max_metrics_per_proc() const { return m_max_metrics_per_proc; }

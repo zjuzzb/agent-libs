@@ -23,6 +23,7 @@
 #include "faultlist_rest_request_handler.h"
 #include "file_rest_request_handler.h"
 #include "globally_readable_file_channel.h"
+#include "handshake_helpers.h"
 #include "memdump_logger.h"
 #include "metric_serializer.h"
 #include "monitor.h"
@@ -1243,6 +1244,15 @@ int dragent_app::sdagent_main()
 		        {draiosproto::message_type::BASELINES,  // Legacy -- no longer used
 		         std::make_shared<null_message_handler>()},
 		    });
+
+
+		metric_limit_source::callback cb =
+		    std::bind(&dragent_app::handle_metric_limit, 
+		              this, 
+		              std::placeholders::_1,
+		              std::placeholders::_2);
+		cm->register_metric_limit_destination(cb);
+
 		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
 
 		// Must create inspector, then create analyzer, then setup inspector
@@ -2360,6 +2370,31 @@ void dragent_app::setup_startup_probe(const connection_manager& cm)
 		{
 			m_startup_probe_set = create_file(m_configuration.m_log_dir, K8S_PROBE_FILE);
 		}
+	}
+}
+
+// This is running on the connection manager thread
+void dragent_app::handle_metric_limit(bool has_limit, draiosproto::custom_metric_limit_value value)
+{
+	LOG_DEBUG("Metric limit callback");
+
+	using nr = metric_forwarding_configuration::negotiation_result;
+	metric_forwarding_configuration &mfc = metric_forwarding_configuration::instance();
+	if (has_limit) 
+	{
+		if (draiosproto::custom_metric_limit_value::CUSTOM_METRIC_DEFAULT == value) 
+		{
+			mfc.set_negotiated_value(nr::USE_LEGACY_LIMITS);
+		}
+		else
+		{
+			mfc.set_negotiated_value(nr::USE_NEGOTIATED_VALUE, 
+						 handshake_helpers::metric_limit_to_uint32(value));
+		}
+	}
+	else
+	{
+		mfc.set_negotiated_value(nr::NEGOTIATION_NOT_SUPPORTED);
 	}
 }
 

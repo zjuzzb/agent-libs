@@ -212,19 +212,19 @@ bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info, uint64_t 
 		// metrics limits
 		write_metric(statsd_info, "dragent.metricCount.limit.appCheck",
 			     draiosproto::STATSD_GAUGE,
-			     metric_forwarding_configuration::c_app_checks_max->get_value());
+			     metric_forwarding_configuration::instance().app_checks_limit());
 
 		write_metric(statsd_info, "dragent.metricCount.limit.statsd",
 			     draiosproto::STATSD_GAUGE,
-			     metric_forwarding_configuration::c_statsd_max->get_value());
+			     metric_forwarding_configuration::instance().statsd_limit());
 
 		write_metric(statsd_info, "dragent.metricCount.limit.jmx",
 			     draiosproto::STATSD_GAUGE,
-			     metric_forwarding_configuration::c_jmx_max->get_value());
+			     metric_forwarding_configuration::instance().jmx_limit());
 
 		write_metric(statsd_info, "dragent.metricCount.limit.prometheus",
 			     draiosproto::STATSD_GAUGE,
-			     metric_forwarding_configuration::c_prometheus_max->get_value());
+			     metric_forwarding_configuration::instance().prometheus_limit());
 		// log
 		write_metric(statsd_info, "dragent.log.err", draiosproto::STATSD_COUNT, m_log.err);
 		write_metric(statsd_info, "dragent.log.warn", draiosproto::STATSD_COUNT, m_log.warn);
@@ -393,19 +393,19 @@ bool internal_metrics::send_some(draiosproto::statsd_info* statsd_info, uint64_t
 		// metrics limits
 		write_metric(statsd_info, "dragent.metricCount.limit.appCheck",
 			     draiosproto::STATSD_GAUGE,
-			     metric_forwarding_configuration::c_app_checks_max->get_value());
+			     metric_forwarding_configuration::instance().app_checks_limit());
 
 		write_metric(statsd_info, "dragent.metricCount.limit.statsd",
 			     draiosproto::STATSD_GAUGE,
-			     metric_forwarding_configuration::c_statsd_max->get_value());
+			     metric_forwarding_configuration::instance().statsd_limit());
 
 		write_metric(statsd_info, "dragent.metricCount.limit.jmx",
 			     draiosproto::STATSD_GAUGE,
-			     metric_forwarding_configuration::c_jmx_max->get_value());
+			     metric_forwarding_configuration::instance().jmx_limit());
 
 		write_metric(statsd_info, "dragent.metricCount.limit.prometheus",
 			     draiosproto::STATSD_GAUGE,
-			     metric_forwarding_configuration::c_prometheus_max->get_value());
+			     metric_forwarding_configuration::instance().prometheus_limit());
 
 		write_metric(statsd_info,
 		             "dragent.analyzer.max_sinsp_buf_used",
