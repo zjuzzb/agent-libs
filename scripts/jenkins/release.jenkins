@@ -47,10 +47,9 @@ pipeline {
             expression { params.CREATE_RELEASE_BRANCH == true }
         }
         steps {
-            slackSend channel: '#docs,#support', message: "Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
+            slackSend channel: '#support', message: "Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
             slackSend channel: '#ws-agent-core', message: "@here Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
-            slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
-
+			slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "@here Release in progress", tokenCredentialId: 'slack'
             withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
                 dir('agent') {
                     sh label: '', script: """
@@ -172,7 +171,7 @@ pipeline {
         }
         post {
             success {
-                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "RC successfully built.", tokenCredentialId: 'slack'
+                slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "RC successfully built.", tokenCredentialId: 'slack'
                 // Adam Roberts, Bala Kanaraj
                 slackSend channel: '@UEJ2F1PCJ,@UAR86L8BU', message: "RC successfully built. Testing can begin which does not depend on probes.", tokenCredentialId: 'slack'
             }
@@ -309,32 +308,27 @@ pipeline {
         steps {
             build job:'agent-run-builder',parameters:[string(name:'AGENT_BRANCH', value:"release-${params.RELEASE_VERSION}"),string(name:'SYSDIG_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"agent-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION"), string(name:'TARGET', value:'sonar')]
         }
-    }
-
-
-    // Runs QA level tests
-    /* SMAGENt-2057
-    stage('Release Test') {
-        agent {
-            docker {
-                image 'agent-qa-tools:0.1'
-                alwaysPull true
-                registryUrl 'https://docker.internal.sysdig.com'
-                registryCredentialsId 'jenkins-artifactory'
-                args '--shm-size="8G" -e TF_IN_AUTOMATION="true" -e AWS_DEFAULT_REGION=us-east-1'
-                label 'builder-backend-j8'
-            }
-        }
-        steps {
-            checkout([$class: 'GitSCM', branches: [[name: 'agent_docker_maniacal_longevity']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/automation']]])
-            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'qa-draios-dev-account', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
-                sh "cd agent-automation; ./jenkins-runner.sh --tests-to-run test/container_runtimes/docker/test_docker_longevity.py --log-dir . --agent-image sysdig/agent --agent-version '${params.RELEASE_VERSION}-rc' --collector-url ${params.COLLECTOR_URL} --frontend-url ${params.FRONTEND_URL} --access-key ${params.AGENT_ACCESS_KEY}"
+        post {
+            success {
+                slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Sonar scan done. Check results at https://sonarcloud.io/dashboard?id=draios_agent", tokenCredentialId: 'slack'
             }
         }
     }
-*/
+
+	stage('Build GS') {
+		steps {
+			build job:'agent-build-gs',parameters:[string(name:'BASE_RELEASE_VERSION',value:"${params.RELEASE_VERSION}",booleanParam(name:'UPLOAD', value:true)]
+		}
+	}
+
     stage('Wait for Commit') {
         stages {
+			stage('Notify') {
+				steps {
+					slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Release is awaiting approvals", tokenCredentialId: 'slack'
+				}
+			}
+
             stage('Wait for QA') {
                 steps {
                     // Adam Roberts, Bala Kanaraj
@@ -373,6 +367,7 @@ pipeline {
 
     stage('Promote') {
         steps {
+			slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Promote is in progress.", tokenCredentialId: 'slack'
             build job:'agent-promote',parameters:[string(name:'RELEASE_VERSION', value:"${params.RELEASE_VERSION}")]
         }
     }
@@ -385,9 +380,11 @@ pipeline {
         }
         success {
             slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job success!", tokenCredentialId: 'slack'
+			slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Release job success!", tokenCredentialId: 'slack'
         }
         failure {
             slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job failure.", tokenCredentialId: 'slack'
+			slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Release job failure!", tokenCredentialId: 'slack'
         }
     }
 }

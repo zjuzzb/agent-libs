@@ -1,0 +1,20 @@
+pipeline {
+    agent { label 'agent-docker-builder' }
+
+    stages {
+		    // build the promscraper releases. Currently they are hard coded to release branch
+    // names, so must be built before anything else will work
+    stage('Build Promscrape') {
+		 steps {
+			 slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "just doing testing...ignore.", tokenCredentialId: 'slack'
+        }
+    }
+
+	}
+   post {
+        always {
+            cleanWs deleteDirs: true, notFailBuild: true
+        }
+    }
+
+}
