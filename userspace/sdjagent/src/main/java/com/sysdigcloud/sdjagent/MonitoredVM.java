@@ -150,11 +150,13 @@ public class MonitoredVM {
 
         // backup to copy into container
         if(data == null) {
-            LOGGER.info(String.format("Unable to get jmx address from JNI. Trying to copy and run sdjagent on the app container"));
+            LOGGER.info(String.format("Unable to get jmx address (%d,%d) from JNI. Trying to copy and run sdjagent on the app container",
+                    request.getPid(), request.getVpid()));
             final String sdjagentPath = String.format("%s/tmp/sdjagent.jar", request.getRoot());
             LOGGER.fine(String.format("Copying sdjagent jar to %s", sdjagentPath));
             if (CLibrary.copyToContainer(Prefix.getInstallPrefix() + "/share/sdjagent.jar", request.getPid(), sdjagentPath)) {
-                final String[] command = {"java", "-Dsdjagent.loadjnilibrary=false", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
+                final String[] command = {"java", "-Dsdjagent.loadjnilibrary=false", "-jar", "/tmp/sdjagent.jar", "reenter",
+                                                    String.valueOf(request.getVpid()), String.valueOf(request.getPid())};
                 // Using /proc/<pid>/exe because sometimes java command is not on PATH
                 final String javaExe = String.format("/proc/%d/exe", request.getVpid());
                 data = CLibrary.runOnContainer(request.getPid(), request.getVpid(), javaExe, command, request.getRoot());
@@ -221,7 +223,9 @@ public class MonitoredVM {
             // Try to get local address from jvmstat
             this.address = jvmstat.getJMXAddress();
             jvmstat.detach();
-            available = true;
+	    if (this.address != null) {
+                available = true;
+	    }
         } catch (MonitorException e) {
             LOGGER.warning(String.format("JvmstatVM cannot attach to process %d: %s (vpid=%d root=%s args=%s)",
                            this.pid, e.getMessage(), request.getVpid(), request.getRoot(), Arrays.toString(request.getArgs())));

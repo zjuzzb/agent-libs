@@ -51,19 +51,19 @@ public class Application {
         try {
             Application app = new Application();
             // The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-            LOGGER.info(String.format("Starting sdjagent with pid: %d", CLibrary.getPid()));
-            LOGGER.info(String.format("Java vendor: %s", System.getProperty("java.vendor")));
-            LOGGER.info(String.format("Java version: %s", System.getProperty("java.version")));
-            LOGGER.info(String.format("Java classpath: %s", System.getProperty("java.class.path")));
+            LOGGER.info(String.format("Starting sdjagent with pid: %d%s", CLibrary.getPid(), reentrantExtraLog(args)));
+            LOGGER.info(String.format("Java vendor: %s%s", System.getProperty("java.vendor"), reentrantExtraLog(args)));
+            LOGGER.info(String.format("Java version: %s%s", System.getProperty("java.version"), reentrantExtraLog(args)));
+            LOGGER.info(String.format("Java classpath: %s%s", System.getProperty("java.class.path"), reentrantExtraLog(args)));
             if(args.length > 0) {
                 app.runWithArgs(args);
             } else {
                 app.mainLoop();
             }
         } catch (NoClassDefFoundError ex) {
-            LOGGER.info("NoClassDefFoundError on main thread. This is usually because a Java 11+ "+
-                        "process was not started with -Dcom.sun.management.jmxremote. Detail: " + 
-                        ex.getMessage());
+            LOGGER.info(String.format("NoClassDefFoundError on main thread. This is usually because a Java 11+ " +
+                                        "process was not started with -Dcom.sun.management.jmxremote. Detail: %s%s",
+                                        ex.getMessage(), reentrantExtraLog(args)));
             System.exit(1);
         } catch (IOException ex) {
             LOGGER.severe("IOException on main thread: " + ex.getMessage());
@@ -75,6 +75,23 @@ public class Application {
     private Config config;
     private long lastVmsCleanup;
     private long rxSuccessTime_ms;
+
+    private static String reentrantExtraLog(String[] args) {
+        String pid = "";
+        String vpid = "";
+        String ret = "";
+        if (args.length > 0 && args[0].equals("reenter")) {
+            if (args.length > 1) {
+                vpid = args[1];
+            }
+            if (args.length > 2) {
+                pid = args[2];
+            }
+            ret = String.format(" [%s,%s]", pid, vpid);
+        }
+
+        return ret;
+    }
 
     private Application() throws FileNotFoundException {
         LogManager.getLogManager().reset();
@@ -96,8 +113,22 @@ public class Application {
 
     private void runWithArgs(String[] args) throws IOException {
         final String command = args[0];
-        if(command.equals("getVMHandle") && args.length > 1) {
-            final VMRequest request = new VMRequest(args);
+        if((command.equals("reenter") || command.equals("getVMHandle")) && args.length > 1)
+        {
+            String[] reqArgs;
+            if(command.equals("reenter")) {
+                // The third arg is the process pid outside the container
+                // used only for logging reasons. We are not going to pass it
+                // to the VMRequest
+                reqArgs = new String[args.length - 1];
+                for (int i = 0; i < args.length - 2; i++) {
+                    reqArgs[i] = args[i];
+                }
+            } else {
+                reqArgs = args;
+            }
+
+            final VMRequest request = new VMRequest(reqArgs);
             request.setSkipUidAndGid(true);
             final MonitoredVM vm = new MonitoredVM(request);
             final Map<String, Object> vmInfo = new HashMap<String, Object>();

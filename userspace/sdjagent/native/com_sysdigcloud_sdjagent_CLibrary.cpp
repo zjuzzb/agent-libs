@@ -639,7 +639,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_getJmxInfo
 			}
 			else
 			{
-				log("DEBUG", "Did not found any hsperfdata file for vpid %ld", vpid);
+				log("DEBUG", "Did not find any hsperfdata file for pid %ld, vpid %ld", pid, vpid);
 				exit(EXIT_FAILURE);
 			}
 		}
