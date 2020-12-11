@@ -1361,6 +1361,7 @@ void dragent_configuration::print_configuration() const
 	         NumberFormatter::format(m_sysdig_capture_compression_level));
 #ifndef CYGWING_AGENT
 	LOG_INFO("prometheus autodetection enabled: " + bool_as_text(m_prom_conf.enabled()));
+	LOG_INFO("prometheus service discovery enabled: " + bool_as_text(m_prom_conf.prom_sd()));
 	if (m_prom_conf.enabled())
 	{
 		LOG_INFO("prometheus histograms enabled: " + bool_as_text(m_prom_conf.histograms()));

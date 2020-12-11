@@ -950,6 +950,15 @@ int dragent_app::main(const std::vector<std::string>& args)
 			int i = 0;
 			argv[i++] = promscrape.c_str();
 			argv[i++] = address.c_str();
+			string web_addr;	// Keep scope until execv since we're putting the c_str() in argv
+			// Web interface is currently only supported in promscrape v2
+			if (m_configuration.m_prom_conf.prom_sd() &&
+				promscrape::c_promscrape_web_enable.get_value())
+			{
+				argv[i++] = "--web.enable";
+				web_addr = "--web.listen-address=" + promscrape::c_promscrape_web_sock.get_value();
+				argv[i++] = web_addr.c_str();
+			}
 			argv[i++] = "--log.format=json";
 			argv[i++] = log_level.c_str();
 			if (!prom_conf_arg.empty())

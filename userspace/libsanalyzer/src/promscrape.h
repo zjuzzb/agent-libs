@@ -93,6 +93,8 @@ public:
 
 	static type_config<bool>c_use_promscrape;
 	static type_config<std::string>c_promscrape_sock;
+	static type_config<std::string>c_promscrape_web_sock;
+	static type_config<bool>c_promscrape_web_enable;
 	static type_config<bool>::mutable_ptr c_export_fastproto;
 
 	explicit promscrape(metric_limits::sptr_t ml, const prometheus_conf &prom_conf, bool threaded, interval_cb_t interval_cb);

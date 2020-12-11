@@ -30,6 +30,16 @@ type_config<string> promscrape::c_promscrape_sock(
     "Socket address URL for promscrape server",
     "promscrape_address");
 
+type_config<string> promscrape::c_promscrape_web_sock(
+    "127.0.0.1:9990",
+    "Socket address URL for promscrape web server",
+    "promscrape_web_address");
+
+type_config<bool> promscrape::c_promscrape_web_enable(
+    false,
+    "Enable promscrape web server with target status",
+    "promscrape_web_enable");
+
 type_config<int> c_promscrape_connect_interval(
     10,
     "Interval for attempting to connect to promscrape",
