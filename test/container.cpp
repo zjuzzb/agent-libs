@@ -1909,6 +1909,9 @@ TEST_F(sys_call_test, docker_container_large_json)
 	};
 
 	run_callback_t test = [&](sinsp* inspector) {
+
+		// set container label max to huge value
+		inspector->set_container_labels_max_len(60000);
 		// --network=none speeds up the container setup a bit.
 		int rc = system(
 		    "docker run --rm --network=none --name large_container_ut large_container_ut_img "
@@ -1925,6 +1928,7 @@ TEST_F(sys_call_test, docker_container_large_json)
 
 		const auto container_info =
 		    param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+
 		ASSERT_NE(nullptr, container_info);
 		ASSERT_EQ(container_info->m_type, CT_DOCKER);
 
@@ -1950,6 +1954,9 @@ TEST_F(sys_call_test, docker_container_large_json)
 		}
 
 		EXPECT_TRUE(labels.empty());
+
+		// reset the value
+		param.m_inspector->set_container_labels_max_len(100);
 	};
 
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter); });
