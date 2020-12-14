@@ -25,4 +25,8 @@ unsigned null_statsd_emitter::emit(const std::string& container_id,
 	return limit;
 }
 
+void null_statsd_emitter::clear()
+{
+}
+
 } // namespace libsanalyzer

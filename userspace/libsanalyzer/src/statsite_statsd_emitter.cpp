@@ -88,6 +88,7 @@ void statsite_statsd_emitter::fetch_metrics(const uint64_t prev_flush_time_ns)
 		m_statsd_metrics = m_statsd_stats_source->read_metrics(m_metric_limits);
 	}
 
+	// Continue to read metrics until we get recent ones
 	while(!m_statsd_metrics.empty())
 	{
 		auto metrics = std::get<0>(m_statsd_metrics.begin()->second);
@@ -160,5 +161,11 @@ unsigned statsite_statsd_emitter::emit(const std::string& container_id,
 
 	return new_limit;
 }
+
+void statsite_statsd_emitter::clear()
+{
+	m_statsd_metrics.clear();
+}
+
 
 } // namespace libsanalyzer

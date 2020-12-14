@@ -30,6 +30,9 @@ public:
 	              const std::string& container_name,
 	              ::draiosproto::container* container,
 	              unsigned limit) override;
+
+	/** Does nothing. */
+	void clear();
 };
 
 } // namespace libsanalyzer

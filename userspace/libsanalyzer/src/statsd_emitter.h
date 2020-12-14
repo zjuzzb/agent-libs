@@ -62,6 +62,11 @@ public:
 	                      unsigned limit) = 0;
 
 	/**
+	 * Clear all saved metrics
+	 */
+	virtual void clear() = 0;
+
+	/**
 	 * Get the configured limit for statsd messages.
 	 */
 	static unsigned get_limit();

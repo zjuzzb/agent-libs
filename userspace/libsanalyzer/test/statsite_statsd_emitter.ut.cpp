@@ -517,3 +517,35 @@ TEST(statsite_statsd_emitter_test, emit_container_cannot_exceed_limit)
 	ASSERT_TRUE(container.mutable_resource_counters()->has_statsd_sent());
 	ASSERT_EQ(0, container.mutable_resource_counters()->statsd_sent());
 }
+
+/**
+ * Ensure that clearing the class will get rid of any fetched 
+ * metrics 
+ */
+TEST(statsite_statsd_emitter_test, clear)
+{
+	const std::string name = "some_metric";
+	const double value = 42.7;
+	const uint64_t ts = 8123456789LL;
+	const std::string container_id = "";
+	const metric_limits::sptr_t limits;
+
+	std::shared_ptr<dummy_statsd_stats_source> source =
+		std::make_shared<dummy_statsd_stats_source>();
+	::draiosproto::host host;
+	::draiosproto::statsd_info metrics;
+
+	source->add_counter(name, value, ts, container_id, {"a:b", "c:d"});
+	statsite_statsd_emitter emitter(source, limits);
+	emitter.fetch_metrics(ts);
+
+	// Clear before calling emit
+	emitter.clear();
+	emitter.emit(&host, &metrics);
+
+	ASSERT_TRUE(host.mutable_resource_counters()->has_statsd_total());
+	ASSERT_EQ(0, host.mutable_resource_counters()->statsd_total());
+
+	ASSERT_TRUE(host.mutable_resource_counters()->has_statsd_sent());
+	ASSERT_EQ(0, host.mutable_resource_counters()->statsd_sent());
+}

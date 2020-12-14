@@ -57,6 +57,12 @@ public:
 	              ::draiosproto::container* container,
 	              unsigned limit) override;
 
+	/**
+	 * Clear all fetched metrics. This resets the class so that the
+	 * metrics can be re-fetched in the next flush. 
+	 */
+	void clear();
+
 private:
 	statsd_stats_source::container_statsd_map m_statsd_metrics;
 	statsd_stats_source::ptr m_statsd_stats_source;

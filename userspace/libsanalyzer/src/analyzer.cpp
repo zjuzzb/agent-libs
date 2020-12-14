@@ -5235,9 +5235,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 				flush_done_handler(evt);
 			}
 
-			//
+			// Reset statsd
+			m_statsd_emitter->clear();
+			
 			// Reset the aggregated host metrics
-			//
 			m_host_metrics.clear();
 			m_host_req_metrics.clear();
 		}
