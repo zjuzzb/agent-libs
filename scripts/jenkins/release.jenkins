@@ -317,7 +317,7 @@ pipeline {
 
 	stage('Build GS') {
 		steps {
-			build job:'agent-build-gs',parameters:[string(name:'BASE_RELEASE_VERSION',value:"${params.RELEASE_VERSION}",booleanParam(name:'UPLOAD', value:true)]
+			build job:'agent-build-gs',parameters:[string(name:'BASE_RELEASE_VERSION',value:"${params.RELEASE_VERSION}"),booleanParam(name:'UPLOAD', value:true)]
 		}
 	}
 

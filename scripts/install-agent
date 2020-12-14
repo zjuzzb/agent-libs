@@ -21,7 +21,7 @@ function install_rpm {
 		elif [ $VERSION -eq 7 ]; then
 			rpm --quiet -i https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 		else
-			rpm --quiet -i http://mirrors.kernel.org/fedora-epel/6/i386/epel-release-6-8.noarch.rpm
+			rpm --quiet -i https://archives.fedoraproject.org/pub/archive/epel/6/i386/epel-release-6-8.noarch.rpm
 		fi
 	fi
 
