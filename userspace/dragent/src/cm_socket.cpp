@@ -1077,7 +1077,7 @@ bool cm_poco_socket::has_pending() const
 	{
 		return false;
 	}
-	return m_sockptr->poll(Poco::Timespan(), Poco::Net::Socket::SELECT_READ ||
+	return m_sockptr->poll(Poco::Timespan(), Poco::Net::Socket::SELECT_READ |
 	                                         Poco::Net::Socket::SELECT_ERROR);
 }
 
@@ -1358,7 +1358,7 @@ bool cm_poco_secure_socket::has_pending() const
 	{
 		return false;
 	}
-	return m_sockptr->poll(Poco::Timespan(), Poco::Net::Socket::SELECT_READ ||
+	return m_sockptr->poll(Poco::Timespan(), Poco::Net::Socket::SELECT_READ |
 	                                         Poco::Net::Socket::SELECT_ERROR);
 }
 
