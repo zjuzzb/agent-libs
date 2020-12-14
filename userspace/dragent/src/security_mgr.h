@@ -30,11 +30,13 @@
 #include "infrastructure_state.h"
 #include "security_result_handler.h"
 #include "security_rule.h"
+#include "security_policy_v2_loader.h"
 #include "security_action.h"
 #include "security_metrics.h"
 #include "internal_metrics.h"
 
-class SINSP_PUBLIC security_mgr : public event_listener
+class SINSP_PUBLIC security_mgr : public event_listener,
+                                  public dragent::security_policy_v2_loader
 {
 public:
 	security_mgr(const std::string& install_root,
@@ -57,7 +59,7 @@ public:
 	// Request that the security_mgr load the provided policies_v2
 	// file on the next call to process_event.
 	bool request_load_policies_v2_file(const char *filename, std::string &errstr);
-	void request_load_policies_v2(const draiosproto::policies_v2 &policies_v2);
+	void request_load_policies_v2(const draiosproto::policies_v2 &policies_v2) override;
 
 	// Reload the most recently provided policies_v2 message by
 	// calling request_load_policies_v2_file.

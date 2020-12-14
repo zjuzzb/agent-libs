@@ -249,24 +249,7 @@ int agentino_app::sdagent_main()
 	// Here is where the top-level objects are created.
 	////////////////
 	connection_manager* cm = nullptr;
-	try
-	{
-		cm = new connection_manager(&m_configuration,
-		                            &m_transmit_queue,
-		                            std::initializer_list<dragent_protocol::protocol_version>{4, 5},
-		                            {
-		                                // TODO add policies v2 handler
-		                            });
-		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
-	}
-	catch (const sinsp_exception& e)
-	{
-		LOG_ERROR("Failed to setup internal components. Exception message: %s", e.what());
-		running_state::instance().restart();
-	}
-
 	sinsp_event_source* es = new sinsp_event_source();
-
 	std::shared_ptr<security_mgr> sm =
 	    std::make_shared<security_mgr>(m_configuration.c_root_dir.get_value(), m_protocol_handler);
 	sm->init(es->get_sinsp(),
@@ -277,9 +260,23 @@ int agentino_app::sdagent_main()
 	         nullptr);          // const internal_metrics::sptr_t&
 	es->register_event_listener(sm);
 
-	// TODO extract this handler from sinsp_worker. ideall have it go directly to
-	// security_mgr. SMAGENT-2736
-	//cm->set_message_handler(draiosproto::message_type::POLICIES_V2, sm);
+	try
+	{
+		cm = new connection_manager(&m_configuration,
+		                            &m_transmit_queue,
+		                            std::initializer_list<dragent_protocol::protocol_version>{4, 5},
+		                            {
+		                                {draiosproto::message_type::POLICIES_V2,
+		         							std::make_shared<security_policies_v2_message_handler>(*sm)}
+		                            });
+		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
+		
+	}
+	catch (const sinsp_exception& e)
+	{
+		LOG_ERROR("Failed to setup internal components. Exception message: %s", e.what());
+		running_state::instance().restart();
+	}
 
 	es->start();
 	m_pool.start(*es, watchdog_runnable::NO_TIMEOUT);
