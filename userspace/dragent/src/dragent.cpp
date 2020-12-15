@@ -1350,9 +1350,7 @@ int dragent_app::sdagent_main()
 		{
 			// Set metric request callback for async aggregator
 			async_aggregator::metrics_request_cb metrics_request_cb =
-			    [&the_promscrape]() -> std::shared_ptr<draiosproto::metrics> {
-				return the_promscrape->metrics_request_callback();
-			};
+				std::bind(&promscrape::metrics_request_callback, the_promscrape.get());
 
 			aggregator->register_metrics_request_callback(metrics_request_cb);
 			LOG_INFO("Registered promscrape metrics callback with aggregator");
