@@ -2,6 +2,7 @@
 #include "async_aggregator.h"
 #include "avoid_block_channel.h"
 #include "capture_job_handler.h"
+#include "command_line_manager.h"
 #include "common_logger.h"
 #include "config_data_message_handler.h"
 #include "config_data_rest_request_handler.h"
@@ -476,6 +477,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 		printf(AGENT_VERSION "\n");
 		return Application::EXIT_OK;
 	}
+
+	command_line_manager::command_info cmd;
+	cmd.description = "The version of the Sysdig Agent.";
+	cmd.handler = [](const command_line_manager::argument_list &args) { return AGENT_VERSION;};
+	command_line_manager::instance().register_command("version", cmd);
 
 //
 // Set up logging with grpc.

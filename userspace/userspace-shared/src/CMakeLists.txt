@@ -9,11 +9,13 @@ add_library(
     userspace-shared STATIC
     configuration_manager.cpp
     configuration_unit.cpp
+    command_line_manager.cpp
     common_logger.cpp
     fault_handler.cpp
     fault_handler_registry.cpp
     feature_manager.cpp
     posix_queue.cpp
+    string_utils.cpp
     thread_utils.cpp
     uptime.cpp
     wall_time.cpp

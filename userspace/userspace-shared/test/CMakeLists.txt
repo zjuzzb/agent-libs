@@ -14,6 +14,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSIO
 add_executable(
     unit-test-userspace-shared
     main.cpp
+    command_line_manager.ut.cpp
     common_logger.ut.cpp
     configuration_manager.ut.cpp
     fault_handler_registry.ut.cpp

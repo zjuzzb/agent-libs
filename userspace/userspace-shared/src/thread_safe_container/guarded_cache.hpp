@@ -1,6 +1,3 @@
-#pragma once
-
-#include "thread_safe_container/guarded_cache.h"
 
 namespace thread_safe_container
 {
