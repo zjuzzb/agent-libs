@@ -77,10 +77,16 @@ func AppendMetricContainerStatus(metrics *[]*draiosproto.AppMetric, pod *v1.Pod)
 			var newMetric draiosproto.AppMetric
 			newMetric.Name = proto.String("kubernetes.pod.container.waiting")
 			newMetric.Value = proto.Float64(1)
-			newMetric.Tags = append(newMetric.Tags, &draiosproto.AppTag{
-				Key:                  proto.String("reason"),
-				Value:                &containerStatus.State.Waiting.Reason,
-			})
+			// Note that GetContainerState returns Waiting as default
+			// if the status is not Terminated or Running. So being here
+			// does not guarantee that containerStatus.State.Waiting is not nil
+			// We need an extra check
+			if containerStatus.State.Waiting != nil {
+				newMetric.Tags = append(newMetric.Tags, &draiosproto.AppTag{
+					Key:   proto.String("reason"),
+					Value: &containerStatus.State.Waiting.Reason,
+				})
+			}
 			*metrics = append(*metrics, &newMetric)
 		} else if state == Terminated {
 			containerId, _ := ParseContainerID(containerStatus.ContainerID)
