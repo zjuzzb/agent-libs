@@ -120,8 +120,8 @@ public class Application {
                 // The third arg is the process pid outside the container
                 // used only for logging reasons. We are not going to pass it
                 // to the VMRequest
-                reqArgs = new String[args.length - 1];
-                for (int i = 0; i < args.length - 2; i++) {
+                reqArgs = new String[2];
+                for (int i = 0; i < 2; i++) {
                     reqArgs[i] = args[i];
                 }
             } else {
