@@ -433,6 +433,13 @@ bool security_mgr::wait_load_policies_v2(uint32_t secs)
 
 void security_mgr::load_policies_v2_async()
 {
+	// If a load is already in progress, no need to do anything
+	if(m_loaded_v2_policies_future.valid())
+	{
+		LOG_DEBUG("Policies v2 load already in progress, not doing anything");
+		return;
+	}
+
 	auto loader = [this](std::shared_ptr<draiosproto::policies_v2> policies_v2_msg)
         {
 		load_policies_result ret;

@@ -2476,3 +2476,18 @@ TEST_F(security_policies_v2_test_cluster_name, policy_scoped_k8s_cluster_name_co
 	check_expected_internal_metrics(metrics);
 }
 
+// Ensures that load/reload don't cause race conditions (e.g. SSPROD-5727)
+TEST_F(security_policies_v2_test, load_policies_repeatedly)
+{
+	for(int i = 0; i < 1000; i ++)
+	{
+		std::string errstr;
+		ASSERT_TRUE(m_mgr.request_load_policies_v2_file(security_config::instance().get_policies_v2_file().c_str(), errstr))
+			<< "Could not load v2 security policies file after " + std::to_string(i) + " iterations: " + errstr;
+
+		m_mgr.request_reload_policies_v2();
+
+		std::this_thread::sleep_for (std::chrono::milliseconds(5));
+	}
+}
+
