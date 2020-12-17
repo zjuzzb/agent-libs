@@ -237,6 +237,7 @@ set(SANALYZER_SOURCES
     ${LIBSINSP_SOURCE_DIR}/container.cpp
     ${LIBSINSP_SOURCE_DIR}/container_engine/container_engine_base.cpp
     ${LIBSINSP_SOURCE_DIR}/container_engine/docker_common.cpp
+    ${LIBSINSP_SOURCE_DIR}/container_engine/static_container.cpp
     ${LIBSINSP_SOURCE_DIR}/container_info.cpp
     ${LIBSINSP_SOURCE_DIR}/dns_manager.cpp
     ${LIBSINSP_SOURCE_DIR}/dumper.cpp

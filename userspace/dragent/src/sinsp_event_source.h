@@ -9,7 +9,10 @@ class sinsp_event_source : public event_source,
                            public dragent::running_state_runnable
 {
 public:  // ctor/dtor
-	sinsp_event_source();
+	sinsp_event_source(bool static_container = false,
+	                   const std::string static_id = "",
+	                   const std::string static_name = "",
+	                   const std::string static_image = "");
 	~sinsp_event_source() {}
 
 public:  // functions from event_source
@@ -20,7 +23,7 @@ public:  // functions from libsinsp::event_processor
 	void process_event(sinsp_evt* evt, libsinsp::event_return rc) override;
 	void add_chisel_metric(statsd_metric* metric) override {}
 
-public: // functions from dragent::running_state_runnable
+public:  // functions from dragent::running_state_runnable
 	void do_run() override;
 
 public:  // other functions

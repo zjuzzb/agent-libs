@@ -249,7 +249,27 @@ int agentino_app::sdagent_main()
 	// Here is where the top-level objects are created.
 	////////////////
 	connection_manager* cm = nullptr;
-	sinsp_event_source* es = new sinsp_event_source();
+
+	try
+	{
+		cm =
+		    new connection_manager(&m_configuration,
+		                           &m_transmit_queue,
+		                           std::initializer_list<dragent_protocol::protocol_version>{4, 5},
+		                           {});
+		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
+	}
+	catch (const sinsp_exception& e)
+	{
+		LOG_ERROR("Failed to setup internal components. Exception message: %s", e.what());
+		running_state::instance().restart();
+	}
+
+	sinsp_event_source* es = new sinsp_event_source(true,
+	                                                "static container id",
+	                                                "static container name",
+	                                                "static container image");
+
 	std::shared_ptr<security_mgr> sm =
 	    std::make_shared<security_mgr>(m_configuration.c_root_dir.get_value(), m_protocol_handler);
 	sm->init(es->get_sinsp(),
@@ -260,23 +280,8 @@ int agentino_app::sdagent_main()
 	         nullptr);          // const internal_metrics::sptr_t&
 	es->register_event_listener(sm);
 
-	try
-	{
-		cm = new connection_manager(&m_configuration,
-		                            &m_transmit_queue,
-		                            std::initializer_list<dragent_protocol::protocol_version>{4, 5},
-		                            {
-		                                {draiosproto::message_type::POLICIES_V2,
-		         							std::make_shared<security_policies_v2_message_handler>(*sm)}
-		                            });
-		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
-		
-	}
-	catch (const sinsp_exception& e)
-	{
-		LOG_ERROR("Failed to setup internal components. Exception message: %s", e.what());
-		running_state::instance().restart();
-	}
+	cm->set_message_handler(draiosproto::message_type::POLICIES_V2,
+	                        std::make_shared<security_policies_v2_message_handler>(*sm));
 
 	es->start();
 	m_pool.start(*es, watchdog_runnable::NO_TIMEOUT);
