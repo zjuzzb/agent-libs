@@ -174,8 +174,8 @@ func TestCronjobExistsInResourceOrder(t *testing.T) {
 	checkNoCronjobsExistHelper(t, resourceOrderWithOutCronjobs, true)
 
 	// Now modify groupversion to the supported value and check cronjobs exist
-	resourceList[0].GroupVersion = "batch/v2alpha1"
 	
+	resourceList[0].GroupVersion = "batch/v1beta1"
 	resourceOrderWithCronjobs := kubecollect_common.GetResourceTypes(resourceList, nil)
 	checkNoCronjobsExistHelper(t,resourceOrderWithCronjobs, false)
 }

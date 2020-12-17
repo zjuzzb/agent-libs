@@ -201,7 +201,7 @@ func GetResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 				resourceList.GroupVersion, resource.Name, verbStr)
 
 			if resource.Name == "cronjobs" &&
-				resourceList.GroupVersion != "batch/v2alpha1" {
+				resourceList.GroupVersion != "batch/v1beta1" {
 				continue
 			}
 			// Exclude services, rqs, hpas, pvs and pvcs unless explicitly requested

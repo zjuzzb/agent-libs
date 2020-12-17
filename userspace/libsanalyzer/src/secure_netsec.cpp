@@ -139,6 +139,7 @@ void secure_netsec::clear_after_flush(uint64_t ts)
 	fetch_cgs("k8s_endpoints");
 	fetch_cgs("k8s_namespace");
 	fetch_cgs("k8s_service");
+	fetch_cgs("k8s_cronjob");
 }
 
 // Fetching cgs from infrastructure_state and adding them to the
@@ -345,6 +346,19 @@ bool secure_netsec::congroup_to_pod_owner(std::shared_ptr<draiosproto::container
 		meta->set_kind(cg->uid().kind());
 
 		convert_label_selector(k8s_pod_owner->mutable_label_selector(), cg->label_selector());
+
+		// Additional step for jobs--find the parent cronjob and add info about it
+		if (cg->uid().kind() == "k8s_job")
+		{
+			for (const auto &p_uid : cg->parents())
+			{
+				if(p_uid.kind() == "k8s_cronjob")
+				{
+					m_k8s_cluster_communication.add_job_to_cronjob(p_uid.id(), cg->uid().id());
+				}
+			}
+		}
+
 		return true;
 	}
 	return false;
@@ -669,6 +683,13 @@ bool secure_netsec::add_cg(std::shared_ptr<draiosproto::container_group> cg)
 
 		is_new_entry = m_k8s_cluster_communication.add_service(uid, s);
 	}
+	else if (cg->uid().kind() == "k8s_cronjob")
+	{
+		k8s_cronjob cj;
+		congroup_to_cronjob(cg, &cj);
+
+		is_new_entry = m_k8s_cluster_communication.add_cronjob(uid, cj);
+	}
 
 	// TODO as a future optimization, a new entry could already be
 	// emitted into the protobuf
@@ -798,6 +819,26 @@ void secure_netsec::congroup_to_service(
 		if (service_type != cg->internal_tags().end())
 		{
 			k8s_service->set_type(service_type->second.c_str());
+		}
+	}
+}
+
+void secure_netsec::congroup_to_cronjob(
+	std::shared_ptr<draiosproto::container_group> cg,
+	k8s_cronjob* k8s_cronjob)
+{
+	auto tag = cg->tags().find("kubernetes.cronJob.name");
+
+	if (tag != cg->tags().end())
+	{
+		auto meta = k8s_cronjob->mutable_metadata();
+		congroup_to_metadata(cg, meta);
+		meta->set_name(tag->second.c_str());
+		meta->set_kind("k8s_cronjob");
+
+		for (const auto &it : cg->cronjob_template_labels())
+		{
+			(*k8s_cronjob->mutable_template_labels())[it.first] = it.second;
 		}
 	}
 }

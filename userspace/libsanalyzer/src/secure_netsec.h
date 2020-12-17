@@ -132,8 +132,12 @@ private:
 	void congroup_to_service(std::shared_ptr<draiosproto::container_group> cg,
 				 k8s_service* k8s_service);
 
+	void congroup_to_cronjob(std::shared_ptr<draiosproto::container_group> cg,
+				 k8s_cronjob* k8s_cronjob);
+
 	bool insert_or_update_communication(ipv4tuple tuple, const k8s_communication& k8s_comm);
 	bool insert_or_update_pod_owner(const k8s_pod_owner& pod_owner);
+	bool insert_or_update_cronjob(const string &cronjob_uid, const string &job_uid);
 
 	const secure::K8SCommunicationSummary* get_netsec_summary(uint64_t timestamp);
 

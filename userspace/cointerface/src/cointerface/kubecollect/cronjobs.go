@@ -5,7 +5,7 @@ import (
 	"context"
 	"sync"
 
-	"k8s.io/api/batch/v2alpha1"
+	"k8s.io/api/batch/v1beta1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/tools/cache"
@@ -18,14 +18,14 @@ import (
 )
 
 // make this a library function?
-func cronJobEvent(cronjob *v2alpha1.CronJob, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
+func cronJobEvent(cronjob *v1beta1.CronJob, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
 		Object: newCronJobConGroup(cronjob),
 	}
 }
 
-func newCronJobConGroup(cronjob *v2alpha1.CronJob) (*draiosproto.ContainerGroup) {
+func newCronJobConGroup(cronjob *v1beta1.CronJob) (*draiosproto.ContainerGroup) {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
 	//     should work on all v1.Object types
@@ -41,6 +41,14 @@ func newCronJobConGroup(cronjob *v2alpha1.CronJob) (*draiosproto.ContainerGroup)
 			Id:proto.String(string(cronjob.GetUID()))},
 		Tags: tags,
 		Namespace: proto.String(cronjob.GetNamespace()),
+	}
+	if cronjob.Spec.JobTemplate.Spec.Template.Labels != nil {
+		if ret.CronjobTemplateLabels == nil {
+			ret.CronjobTemplateLabels = make(map[string]string)
+		}
+		for key, val := range cronjob.Spec.JobTemplate.Spec.Template.Labels {
+			ret.CronjobTemplateLabels[key] = val
+		}
 	}
 
 	for _, job := range cronjob.Status.Active {
@@ -59,7 +67,7 @@ func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job CoJob) {
 	}
 
 	for _, item := range cronJobInf.GetStore().List() {
-		cronJob := item.(*v2alpha1.CronJob)
+		cronJob := item.(*v1beta1.CronJob)
 		for _, activeJob := range cronJob.Status.Active {
 			if activeJob.UID == job.GetUID() {
 				*parents = append(*parents, &draiosproto.CongroupUid{
@@ -71,9 +79,9 @@ func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job CoJob) {
 }
 
 func StartCronJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
-	client := kubeClient.BatchV2alpha1().RESTClient()
+	client := kubeClient.BatchV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "cronjobs", v1meta.NamespaceAll, fields.Everything())
-	cronJobInf = cache.NewSharedInformer(lw, &v2alpha1.CronJob{}, kubecollect_common.RsyncInterval)
+	cronJobInf = cache.NewSharedInformer(lw, &v1beta1.CronJob{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -92,13 +100,13 @@ func watchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				kubecollect_common.EventReceived("cronjobs")
-				evtc <- cronJobEvent(obj.(*v2alpha1.CronJob),
+				evtc <- cronJobEvent(obj.(*v1beta1.CronJob),
 					draiosproto.CongroupEventType_ADDED.Enum())
 				kubecollect_common.AddEvent("Cronjob", kubecollect_common.EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				oldJob := oldObj.(*v2alpha1.CronJob)
-				newJob := newObj.(*v2alpha1.CronJob)
+				oldJob := oldObj.(*v1beta1.CronJob)
+				newJob := newObj.(*v1beta1.CronJob)
 				if oldJob.GetResourceVersion() != newJob.GetResourceVersion() {
 					//log.Debugf("UpdateFunc dumping ReplicaSet oldJob %v", oldJob)
 					//log.Debugf("UpdateFunc dumping ReplicaSet newJob %v", newJob)
@@ -115,13 +123,13 @@ func watchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				kubecollect_common.AddEvent("Cronjob", kubecollect_common.EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
-				oldCronJob := (*v2alpha1.CronJob)(nil)
+				oldCronJob := (*v1beta1.CronJob)(nil)
 				switch obj.(type) {
-				case *v2alpha1.CronJob:
-					oldCronJob = obj.(*v2alpha1.CronJob)
+				case *v1beta1.CronJob:
+					oldCronJob = obj.(*v1beta1.CronJob)
 				case cache.DeletedFinalStateUnknown:
 					d := obj.(cache.DeletedFinalStateUnknown)
-					o, ok := (d.Obj).(*v2alpha1.CronJob)
+					o, ok := (d.Obj).(*v1beta1.CronJob)
 					if ok {
 						oldCronJob = o
 					} else {

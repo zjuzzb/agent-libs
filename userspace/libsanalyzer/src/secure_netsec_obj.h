@@ -2,6 +2,7 @@
 
 #include "analyzer_utils.h"
 #include "connectinfo.h"
+#include "infrastructure_state.h"
 #include "type_config.h"
 
 #include <draios.pb.h>
@@ -17,6 +18,12 @@ typedef struct k8s_communication k8s_communication;
 // Pod Owner
 typedef secure::K8SPodOwner k8s_pod_owner;
 typedef std::unordered_map<std::string, unique_ptr<k8s_pod_owner>> k8s_pod_owner_map;
+
+// Cron Jobs
+typedef secure::K8SCronJob k8s_cronjob;
+typedef std::unordered_map<std::string, unique_ptr<k8s_cronjob>> k8s_cronjob_map;
+
+typedef std::unordered_map<std::string, std::unique_ptr<std::set<std::string>>> k8s_cronjob_jobs_map;
 
 // Metadata
 typedef secure::K8SObjectMeta k8s_object_meta;
@@ -257,6 +264,8 @@ struct k8s_cluster_communication
 		m_ingresses.clear();
 		m_egresses.clear();
 		m_owners.clear();
+		m_cronjobs.clear();
+		m_cronjobs_jobs.clear();
 
 		m_endpoints.clear();
 		m_services.clear();
@@ -321,9 +330,13 @@ struct k8s_cluster_communication
 		return is_new_entry;
 	}
 
+        void add_job_to_cronjob(const string &cronjob_uid,
+				const string &job_uid);
+
 	bool add_endpoint(std::string &key, k8s_endpoint& e);
 	bool add_service(std::string &key, k8s_service& s);
 	bool add_namespace(std::string &key, k8s_namespace& n);
+	bool add_cronjob(std::string &key, k8s_cronjob& cj);
 
 	void serialize_protobuf(secure::K8SClusterCommunication*& cluster);
 
@@ -331,6 +344,8 @@ private:
 	k8s_communication_map m_ingresses;
 	k8s_communication_map m_egresses;
 	k8s_pod_owner_map     m_owners;
+	k8s_cronjob_map       m_cronjobs;
+	k8s_cronjob_jobs_map  m_cronjobs_jobs;
 	k8s_endpoint_map      m_endpoints;
 	k8s_service_map       m_services;
 	k8s_namespace_map     m_namespaces;
@@ -431,6 +446,8 @@ private:
 
 	void serialize_pod_owners(const k8s_pod_owner_map& k8s_owners,
 				  ::google::protobuf::RepeatedPtrField<secure::K8SPodOwner> *p);
+
+	void serialize_cronjob_jobs();
 
 
 	template<typename M, typename T>

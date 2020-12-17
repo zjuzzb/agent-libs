@@ -22,6 +22,24 @@ bool k8s_cluster_communication::add_namespace(std::string& key, k8s_namespace& n
 	return add_map_entry_unique<k8s_namespace_map, k8s_namespace>(m_namespaces, key, n);
 }
 
+bool k8s_cluster_communication::add_cronjob(std::string& key, k8s_cronjob& cj)
+{
+	return add_map_entry_unique<k8s_cronjob_map, k8s_cronjob>(m_cronjobs, key, cj);
+}
+
+void k8s_cluster_communication::add_job_to_cronjob(const string &cronjob_uid,
+			const string &job_uid)
+{
+	auto it = m_cronjobs_jobs.find(cronjob_uid);
+	if (it == m_cronjobs_jobs.end())
+	{
+		m_cronjobs_jobs[cronjob_uid] = make_unique<std::set<std::string>>();
+	}
+
+	m_cronjobs_jobs[cronjob_uid]->insert(job_uid);
+}
+
+
 void k8s_cluster_communication::serialize_communications(
 	const k8s_communication_map& cmap,
 	::google::protobuf::RepeatedPtrField<secure::K8SCommunication> *p)
@@ -82,6 +100,40 @@ void k8s_cluster_communication::serialize_map_to_protobuf(
 	}
 }
 
+void k8s_cluster_communication::serialize_cronjob_jobs()
+{
+	for (const auto &it : m_cronjobs_jobs)
+	{
+		auto cjit = m_cronjobs.find(it.first);
+
+		if(cjit != m_cronjobs.end())
+		{
+			cjit->second->mutable_job_uids()->Clear();
+
+			for (const auto &jit : *(it.second))
+			{
+				cjit->second->add_job_uids(jit);
+			}
+		}
+	}
+
+	// Now that we've added any jobs to the set of cronjobs,
+	// remove any cronjobs that have no job uids.
+	auto it = m_cronjobs.begin();
+
+	while (it != m_cronjobs.end())
+	{
+		if(it->second->job_uids().size() == 0)
+		{
+			it = m_cronjobs.erase(it);
+		}
+		else
+		{
+			it++;
+		}
+	}
+}
+
 void k8s_cluster_communication::serialize_protobuf(
 	secure::K8SClusterCommunication*& cluster)
 {
@@ -101,6 +153,10 @@ void k8s_cluster_communication::serialize_protobuf(
 		(m_namespaces, cluster->mutable_namespaces());
 	serialize_map_to_protobuf<k8s_service_map, k8s_service>
 		(m_services, cluster->mutable_services());
+
+	serialize_cronjob_jobs();
+	serialize_map_to_protobuf<k8s_cronjob_map, k8s_cronjob>
+		(m_cronjobs, cluster->mutable_cronjobs());
 }
 
 bool k8s_cluster_communication::validate_self_local_egresses(ipv4tuple tuple) const
