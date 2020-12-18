@@ -2,9 +2,11 @@ FROM centos:6
 
 ARG max_parallelism=1
 
+ADD *.repo /etc/yum.repos.d/
+
 # copied from builder script
 RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devtools-2/devtools-2.repo && \
-    rpm -i https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm && \
+    rpm -i https://archives.fedoraproject.org/pub/archive/epel/6/i386/epel-release-6-8.noarch.rpm && \
     sed -e 's,$basearch,i386,' -e 's,$releasever\],$releasever-i686\],' /etc/yum.repos.d/devtools-2.repo > /etc/yum.repos.d/devtools-2-i686.repo && \
     yum -y install \
         createrepo \
