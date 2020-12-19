@@ -172,8 +172,11 @@ pipeline {
         post {
             success {
                 slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "RC successfully built.", tokenCredentialId: 'slack'
-                // Adam Roberts, Bala Kanaraj
-                slackSend channel: '@UEJ2F1PCJ,@UAR86L8BU', message: "RC successfully built. Testing can begin which does not depend on probes.", tokenCredentialId: 'slack'
+                // The following QA folks are sent the notice and approval link explicitly.
+                // Kelly Tucker (U01F2TW4V4Z)
+                // Angel Conde (U01FD7J2ZMJ)
+                // Javi Celaya-Alastrue (UQ50RNTRB)
+                slackSend channel: '@U01F2TW4V4Z,@U01FD7J2ZMJ,@UQ50RNTRB', message: "RC successfully built. Testing can begin which does not depend on probes.", tokenCredentialId: 'slack'
             }
             failure {
                 slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release failed to build RC. Aborting release. Please fix in the new release branch and rerun with CREATE_RELEASE_BRANCH unchecked.", tokenCredentialId: 'slack'
@@ -331,8 +334,11 @@ pipeline {
 
             stage('Wait for QA') {
                 steps {
-                    // Adam Roberts, Bala Kanaraj
-                    slackSend channel: '@UEJ2F1PCJ,@UAR86L8BU', message: "Agent release ${params.RELEASE_VERSION} is ready for testing. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
+                    // The following QA folks are sent the notice and approval link explicitly.
+                    // Kelly Tucker (U01F2TW4V4Z)
+                    // Angel Conde (U01FD7J2ZMJ)
+                    // Javi Celaya-Alastrue (UQ50RNTRB)
+                    slackSend channel: '@U01F2TW4V4Z,@U01FD7J2ZMJ,@UQ50RNTRB', message: "Agent release ${params.RELEASE_VERSION} is ready for testing. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
                     input message: 'QA Complete', ok: 'Approve Release'
                 }
             }
