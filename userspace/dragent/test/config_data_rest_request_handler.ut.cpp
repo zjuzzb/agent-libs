@@ -33,7 +33,7 @@ public:
 	{ }
 
 	bool handle_message(const draiosproto::message_type,
-	                    uint8_t* const,
+	                    const uint8_t* const,
 	                    const size_t) override
 	{
 		return m_success;

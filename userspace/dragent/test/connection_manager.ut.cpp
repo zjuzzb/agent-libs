@@ -484,7 +484,7 @@ public:
 	{}
 
 	bool handle_message(const draiosproto::message_type type,
-	                    uint8_t* buffer,
+	                    const uint8_t* buffer,
 	                    size_t buffer_size) override
 	{
 		if (type == draiosproto::message_type::DUMP_REQUEST_START)

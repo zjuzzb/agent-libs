@@ -122,7 +122,7 @@ void aggregator_limits::cache_limits(const draiosproto::aggregation_context& con
 }
 
 bool aggregator_limits::handle_message(const draiosproto::message_type type,
-                                       uint8_t* buffer,
+                                       const uint8_t* buffer,
                                        size_t buffer_size)
 {
 	if (type != draiosproto::message_type::AGGREGATION_CONTEXT)

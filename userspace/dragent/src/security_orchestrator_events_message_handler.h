@@ -26,7 +26,7 @@ public:
 			security_host_metadata_receiver& receiver);
 
 	bool handle_message(const draiosproto::message_type,
-	                    uint8_t* buffer,
+	                    const uint8_t* buffer,
 	                    size_t buffer_size) override;
 
 private:

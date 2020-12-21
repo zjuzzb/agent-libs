@@ -29,7 +29,7 @@ security_compliance_calendar_message_handler::security_compliance_calendar_messa
 
 bool security_compliance_calendar_message_handler::handle_message(
 		const draiosproto::message_type,
-		uint8_t* const buffer,
+		const uint8_t* const buffer,
 		const size_t buffer_size)
 {
 #if !defined(CYGWING_AGENT)

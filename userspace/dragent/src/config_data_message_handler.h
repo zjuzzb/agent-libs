@@ -25,7 +25,7 @@ public:
 	config_data_message_handler(dragent_configuration& configuration);
 
 	bool handle_message(const draiosproto::message_type,
-	                    uint8_t* buffer,
+	                    const uint8_t* buffer,
 	                    size_t buffer_size) override;
 
 private:

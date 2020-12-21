@@ -28,7 +28,7 @@ dump_request_stop_message_handler::dump_request_stop_message_handler(
 
 bool dump_request_stop_message_handler::handle_message(
 		const draiosproto::message_type,
-		uint8_t* const buffer,
+		const uint8_t* const buffer,
 		const size_t buffer_size)
 {
 	draiosproto::dump_request_stop request;

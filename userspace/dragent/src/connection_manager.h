@@ -158,7 +158,7 @@ public:
 		 * @return bool this value is ignored
 		 */
 		virtual bool handle_message(draiosproto::message_type type,
-		                            uint8_t* buffer,
+		                            const uint8_t* buffer,
 		                            size_t buffer_size) = 0;
 	};
 
@@ -294,7 +294,7 @@ private:
 		}
 
 		bool handle_message(const draiosproto::message_type,
-		                    uint8_t* buffer,
+		                    const uint8_t* buffer,
 		                    size_t buffer_size) override
 		{
 			draiosproto::error_message err_msg;

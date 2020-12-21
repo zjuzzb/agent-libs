@@ -30,7 +30,7 @@ public:
 
 	void cache_limits(const draiosproto::aggregation_context& context);
 	bool handle_message(const draiosproto::message_type type,
-	                    uint8_t* buffer,
+	                    const uint8_t* buffer,
 	                    size_t buffer_size) override;
 
 	void set_builder_limits(message_aggregator_builder_impl& builder);

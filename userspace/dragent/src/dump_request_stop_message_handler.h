@@ -25,7 +25,7 @@ public:
 	dump_request_stop_message_handler(dump_job_request_queue& queue);
 
 	bool handle_message(const draiosproto::message_type,
-	                    uint8_t* buffer,
+	                    const uint8_t* buffer,
 	                    size_t buffer_size) override;
 
 private:

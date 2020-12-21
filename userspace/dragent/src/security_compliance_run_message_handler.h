@@ -25,7 +25,7 @@ public:
 	security_compliance_run_message_handler(security_compliance_task_runner& runner);
 
 	bool handle_message(const draiosproto::message_type,
-	                    uint8_t* buffer,
+	                    const uint8_t* buffer,
 	                    size_t buffer_size) override;
 
 private:

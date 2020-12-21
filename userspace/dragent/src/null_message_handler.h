@@ -23,7 +23,7 @@ public:
 	 * Does nothing. All parameters are ignored. Returns true.
 	 */
 	bool handle_message(const draiosproto::message_type,
-	                    uint8_t* buffer,
+	                    const uint8_t* buffer,
 	                    size_t buffer_size) override;
 };
 

@@ -26,7 +26,7 @@ public:
 			security_policy_v2_loader& policy_loader);
 
 	bool handle_message(const draiosproto::message_type,
-	                    uint8_t* const buffer,
+	                    const uint8_t* const buffer,
 	                    const size_t buffer_size) override;
 
 private:

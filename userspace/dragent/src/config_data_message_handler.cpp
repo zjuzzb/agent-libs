@@ -28,7 +28,7 @@ config_data_message_handler::config_data_message_handler(
 { }
 
 bool config_data_message_handler::handle_message(const draiosproto::message_type,
-		                                 uint8_t* const buffer,
+		                                 const uint8_t* const buffer,
 		                                 const size_t buffer_size)
 {
 	if(m_configuration.m_auto_config)
