@@ -11,8 +11,7 @@ add_custom_command(
            ${CMAKE_CURRENT_BINARY_DIR}/cri.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/cri.pb.h
     COMMENT "Generate CRI grpc code"
     DEPENDS ${LIBSINSP_SOURCE_DIR}/cri.proto
-    COMMAND ${PROTOC} -I ${LIBSINSP_SOURCE_DIR} --cpp_out=.
-            ${LIBSINSP_SOURCE_DIR}/cri.proto
+    COMMAND ${PROTOC} -I ${LIBSINSP_SOURCE_DIR} --cpp_out=. ${LIBSINSP_SOURCE_DIR}/cri.proto
     COMMAND
         ${PROTOC} -I ${LIBSINSP_SOURCE_DIR} --grpc_out=.
         --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin

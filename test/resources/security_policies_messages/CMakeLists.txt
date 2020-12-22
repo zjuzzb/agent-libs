@@ -1,10 +1,6 @@
-foreach(
-    messagefile
-    multiple_falco_variants_v2.txt
-    multiple_falco_files_override_v2.txt
-    multiple_falco_files_v2.txt
-    custom_falco_files_override_v2.txt
-    custom_falco_files_v2.txt
+foreach(messagefile
+        multiple_falco_variants_v2.txt multiple_falco_files_override_v2.txt
+        multiple_falco_files_v2.txt custom_falco_files_override_v2.txt custom_falco_files_v2.txt
 )
 
     configure_file(

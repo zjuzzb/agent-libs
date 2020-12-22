@@ -182,21 +182,46 @@ install(
     COMPONENT tests
 )
 
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios.proto_builder.cpp
-           ${CMAKE_CURRENT_BINARY_DIR}/draios.proto_builder.h
-           ${CMAKE_CURRENT_BINARY_DIR}/draios.proto.h
-    COMMENT "Building aggregator sources from .proto files"
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/common.proto
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios-aggregator-plugin.py
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios_proto_extension.py
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/protoc_plugin.sh
-    COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/draios_proto_extension.py ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND
-        scl enable python27
-        "${CMAKE_CURRENT_SOURCE_DIR}/protoc_plugin.sh ${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/bin/ ${PROJECT_BINARY_DIR}/userspace/draiosproto ${CMAKE_CURRENT_SOURCE_DIR}/draios-aggregator-plugin.py ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/draios.proto"
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
+# Alpine builder has python3. Legacy Centos builder only has python 2.6, so we need to jank to get
+# python 2.7 so protoc can run properly
+if(NOT ALPINE_BUILDER)
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios.proto_builder.cpp
+               ${CMAKE_CURRENT_BINARY_DIR}/draios.proto_builder.h
+               ${CMAKE_CURRENT_BINARY_DIR}/draios.proto.h
+        COMMENT "Building aggregator sources from .proto files"
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/common.proto
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios-aggregator-plugin.py
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios_proto_extension.py
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/protoc_plugin.sh
+        COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/draios_proto_extension.py ${CMAKE_CURRENT_BINARY_DIR}
+        COMMAND
+            scl enable python27
+            "${CMAKE_CURRENT_SOURCE_DIR}/protoc_plugin.sh ${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/bin/ ${PROJECT_BINARY_DIR}/userspace/draiosproto ${CMAKE_CURRENT_SOURCE_DIR}/draios-aggregator-plugin.py ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/draios.proto"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+else()
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios.proto_builder.cpp
+               ${CMAKE_CURRENT_BINARY_DIR}/draios.proto_builder.h
+               ${CMAKE_CURRENT_BINARY_DIR}/draios.proto.h
+        COMMENT "Building aggregator sources from .proto files"
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/common.proto
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios-aggregator-plugin.py
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios_proto_extension.py
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/protoc_plugin.sh
+        COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/draios_proto_extension.py ${CMAKE_CURRENT_BINARY_DIR}
+        COMMAND
+            ${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/bin/protoc -I
+            ${PROJECT_BINARY_DIR}/userspace/draiosproto
+            --plugin=protoc-gen-custom=${CMAKE_CURRENT_SOURCE_DIR}/draios-aggregator-plugin.py
+            --custom_out=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+endif()

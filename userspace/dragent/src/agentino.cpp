@@ -14,7 +14,6 @@
 #include "type_config.h"
 #include "utils.h"
 
-#include <gperftools/malloc_extension.h>
 #include <grpc/support/log.h>
 #include <sched.h>
 #include <sys/resource.h>

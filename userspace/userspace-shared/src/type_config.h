@@ -543,7 +543,6 @@ public:
 	                   const std::string& subsubkey = std::string())
 	{
 		m_type_config->alternate_key(key, subkey, subsubkey);
-		return *this;
 	}
 
 	/**

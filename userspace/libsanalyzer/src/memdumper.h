@@ -73,7 +73,7 @@ public:
 			// system call every time you check the offsets.
 			m_dumper->fdopen(m_shm_fd, false, true);
 		}
-		catch(sinsp_exception e)
+		catch(const sinsp_exception& e)
 		{
 			errstr = "capture memory buffer too small to store process information. Current size: " +
 				std::to_string(m_bufsize);
@@ -309,7 +309,7 @@ public:
 				}
 			}
 		}
-		catch(sinsp_exception e)
+		catch(const sinsp_exception& e)
 		{
 			ASSERT(evt != NULL);
 			switch_states(evt->get_ts());

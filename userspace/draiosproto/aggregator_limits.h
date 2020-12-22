@@ -1,5 +1,7 @@
 #pragma once
 #include "draios.proto.h"
+
+#include <functional>
 #include <list>
 
 namespace aggregator_limits_comparators
@@ -13,22 +15,24 @@ bool container_priority_comparator(const draiosproto::container& lhs,
                                    const draiosproto::container& rhs);
 bool program_priority_comparator(const draiosproto::program& lhs, const draiosproto::program& rhs);
 
-template <typename message>
-void file_stat_limiter(message& output,
-                       uint32_t limit,
-                       std::function<google::protobuf::RepeatedPtrField<draiosproto::file_stat>*(
-                           message&)> field_extractor);
+template<typename message>
+void file_stat_limiter(
+    message& output,
+    uint32_t limit,
+    std::function<google::protobuf::RepeatedPtrField<draiosproto::file_stat>*(message&)>
+        field_extractor);
 
-template <typename message, typename field>
+template<typename message, typename field>
 void app_metric_limiter(message& output, uint32_t limit);
 
-template <typename proto, typename tiebreak = const std::string&>
+template<typename proto, typename tiebreak = const std::string&>
 class message_comparator
 {
-   public:
+public:
 	message_comparator(std::function<uint64_t(const proto&)> value_extractor,
 	                   std::function<tiebreak(const proto&)> tiebreaker_extractor)
-	    : m_value_extractor(value_extractor), m_tiebreaker_extractor(tiebreaker_extractor)
+	    : m_value_extractor(value_extractor),
+	      m_tiebreaker_extractor(tiebreaker_extractor)
 	{
 	}
 
@@ -46,7 +50,7 @@ class message_comparator
 	std::function<tiebreak(const proto&)> m_tiebreaker_extractor;
 };
 
-template <typename message, typename field, typename tiebreak = const std::string&>
+template<typename message, typename field, typename tiebreak = const std::string&>
 void multi_compare_limiter(
     message& output,
     uint32_t limit,
@@ -75,6 +79,7 @@ void multi_compare_limiter(
 		index++;
 	}
 	field_extractor(output)->DeleteSubrange(
-	    start_index + limit, field_extractor(output)->size() - (start_index + limit));
+	    start_index + limit,
+	    field_extractor(output)->size() - (start_index + limit));
 }
-}
+}  // namespace aggregator_limits_comparators

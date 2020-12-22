@@ -184,7 +184,7 @@ cm_socket::ptr http_tunnel::openssl_connect(const std::string& proxy_host,
 		else if (res < 0)
 		{
 			LOG_ERROR("Error when reading proxy response: %d", (int)res);
-			return false;
+			return nullptr;
 		}
 
 		proxy_resp.append(buf, res);
@@ -328,7 +328,7 @@ cm_socket::ptr http_tunnel::doublessl_connect(const std::string& proxy_host,
 		else if (res < 0)
 		{
 			LOG_ERROR("Error when reading proxy response: %d", (int)res);
-			return false;
+			return nullptr;
 		}
 
 		proxy_resp.append(buf, res);

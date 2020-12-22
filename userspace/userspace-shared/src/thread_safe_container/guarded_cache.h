@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <functional>
 #include "mutex.h"
 
 namespace thread_safe_container

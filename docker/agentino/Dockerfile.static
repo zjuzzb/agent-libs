@@ -1,0 +1,12 @@
+FROM busybox
+
+MAINTAINER Sysdig <support@sysdig.com>
+
+RUN mkdir -p /opt/draios/bin
+ADD agentino /opt/draios/bin/
+
+RUN mkdir -p /opt/draios/etc
+ADD dragent.default.yaml /opt/draios/etc/
+
+COPY ./agentino-entrypoint.sh /
+ENTRYPOINT ["/agentino-entrypoint.sh"]

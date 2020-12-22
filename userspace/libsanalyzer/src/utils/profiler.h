@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef SYSDIG_TEST
+#ifdef GPERFTOOLS_AVAILABLE
 #include <gperftools/profiler.h>
 #endif
 #include "logger.h"
@@ -18,7 +18,7 @@ namespace profiler {
  */
 static inline void start(const std::string &filename)
 {
-#ifndef SYSDIG_TEST
+#ifdef GPERFTOOLS_AVAILABLE
 	ProfilerStart(filename.c_str());
 #else
 	SINSP_ERROR("Profiling is not supported in this build variant.");
@@ -30,7 +30,7 @@ static inline void start(const std::string &filename)
  */
 static inline void stop()
 {
-#ifndef SYSDIG_TEST
+#ifdef GPERFTOOLS_AVAILABLE
 	ProfilerStop();
 #endif
 }

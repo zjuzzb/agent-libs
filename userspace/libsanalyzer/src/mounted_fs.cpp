@@ -9,6 +9,7 @@
 #include <mntent.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/sysmacros.h>
 #include <unistd.h>
 #include <unordered_set>
 

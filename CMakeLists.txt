@@ -38,21 +38,26 @@ endif()
 set(DRAIOS_NJSON_VERSION "3.3.0")
 set(DRAIOS_BENCHMARK_VERSION "1.5.0")
 
-if(EXISTS "${PROJECT_SOURCE_DIR}/../libsinsp" AND EXISTS "${PROJECT_SOURCE_DIR}/../libscap")
-	# split repo
-	set(SPLIT_REPO TRUE)
-	set(LIBSINSP_DIR "${PROJECT_SOURCE_DIR}/../libsinsp/")
-	set(LIBSCAP_DIR "${PROJECT_SOURCE_DIR}/../libscap/")
+if(EXISTS "${PROJECT_SOURCE_DIR}/../libscap-hayabusa")
+    # assume it's a hayabusa based build
+    set(SPLIT_REPO TRUE)
+    set(LIBSINSP_DIR "${PROJECT_SOURCE_DIR}/../libsinsp/")
+    set(LIBSCAP_DIR "${PROJECT_SOURCE_DIR}/../libscap-hayabusa/")
+elseif(EXISTS "${PROJECT_SOURCE_DIR}/../libsinsp" AND EXISTS "${PROJECT_SOURCE_DIR}/../libscap")
+    # split repo
+    set(SPLIT_REPO TRUE)
+    set(LIBSINSP_DIR "${PROJECT_SOURCE_DIR}/../libsinsp/")
+    set(LIBSCAP_DIR "${PROJECT_SOURCE_DIR}/../libscap/")
 else()
-	# monolithic repo
-	set(SPLIT_REPO FALSE)
-	set(LIBSINSP_DIR "${PROJECT_SOURCE_DIR}/../sysdig/")
-	set(LIBSCAP_DIR "${PROJECT_SOURCE_DIR}/../sysdig/")
-	set(LIBSCAP_INCLUDE_DIR ${LIBSCAP_DIR}/userspace/libscap)
-	# required for falco build
-	set(SYSDIG_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../sysdig")
-	# required for test code which directly interfaces with driver
-	set(DRIVER_INCLUDE_DIR "${SYSDIG_SOURCE_DIR}/driver")
+    # monolithic repo
+    set(SPLIT_REPO FALSE)
+    set(LIBSINSP_DIR "${PROJECT_SOURCE_DIR}/../sysdig/")
+    set(LIBSCAP_DIR "${PROJECT_SOURCE_DIR}/../sysdig/")
+    set(LIBSCAP_INCLUDE_DIR ${LIBSCAP_DIR}/userspace/libscap)
+    # required for falco build
+    set(SYSDIG_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../sysdig")
+    # required for test code which directly interfaces with driver
+    set(DRIVER_INCLUDE_DIR "${SYSDIG_SOURCE_DIR}/driver")
 endif()
 
 # Add path for custom CMake modules used to build dependencies from sysdig (libscap, libsinsp)
@@ -149,15 +154,19 @@ set(FALCO_ABSOLUTE_SHARE_DIR "${FALCO_SHARE_DIR}")
 set(FALCO_COMPONENT agent-slim)
 
 if(SPLIT_REPO)
-	include(libscap)
+    include(libscap)
 else()
-	include_directories(${ZLIB_INCLUDE})
-	add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/driver ${PROJECT_BINARY_DIR}/driver)
-	add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap)
+    include_directories(${ZLIB_INCLUDE})
+    add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/driver ${PROJECT_BINARY_DIR}/driver)
+    add_subdirectory(
+        ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap
+    )
 endif()
 
 set(LIBSINSP_SOURCE_DIR ${LIBSINSP_DIR}/userspace/libsinsp)
-set(LIBSINSP_INCLUDE_DIRS ${LIBSINSP_SOURCE_DIR} ${LIBSINSP_SOURCE_DIR}/../async ${LIBSINSP_SOURCE_DIR}/third-party/jsoncpp)
+set(LIBSINSP_INCLUDE_DIRS ${LIBSINSP_SOURCE_DIR} ${LIBSINSP_SOURCE_DIR}/../async
+                          ${LIBSINSP_SOURCE_DIR}/third-party/jsoncpp
+)
 
 # This suppresses warnings where a project in add_dependencies() is missing. This happens for
 # dependencies of falco engine, where the agent cmakefiles create the dependencies but don't create

@@ -29,9 +29,9 @@ message TaskDelete {
 }
 
 message TaskIO {
-	string stdin = 1;
-	string stdout = 2;
-	string stderr = 3;
+	string f_stdin = 1;
+	string f_stdout = 2;
+	string f_stderr = 3;
 	bool terminal = 4;
 }
 

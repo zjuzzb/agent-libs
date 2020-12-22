@@ -1,5 +1,11 @@
 #include <fnmatch.h>
 
+//certain libs (cough-cough musl) don't support EXTMATCH. So we map it to something
+//those patterns will unfortunately not work on binaries
+#ifndef FNM_EXTMATCH
+#define FNM_EXTMATCH 0
+#endif
+
 template<typename filter_param>
 bool all_filter<filter_param>::matches(const filter_param& arg,
 				       bool& exclude,

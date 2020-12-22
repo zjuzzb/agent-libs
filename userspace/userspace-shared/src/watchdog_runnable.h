@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <Poco/Thread.h>
+#include <functional>
 
 /**
  * Implements the POCO Runnable class and provides a simple

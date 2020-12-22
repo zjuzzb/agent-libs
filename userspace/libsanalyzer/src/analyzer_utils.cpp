@@ -420,6 +420,8 @@ void threshold_filter<long>::log(long value)
 #ifndef CYGWING_AGENT
 thread_local void* exception_backtrace[1024];
 thread_local int exception_backtrace_size;
+// musl provides its own definition of __cxa_throw
+#ifndef STATIC_LINK
 extern "C"
 {
 	void __cxa_throw(void* ex, void* info, void (*dest)(void*))
@@ -437,5 +439,6 @@ extern "C"
 		__throw_exc(ex, info, dest);
 	}
 }
+#endif
 #endif
 #endif

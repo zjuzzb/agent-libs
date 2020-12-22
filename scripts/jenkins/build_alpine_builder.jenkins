@@ -1,0 +1,84 @@
+pipeline {
+	agent { label 'agent-docker-builder' }
+	stages {
+		stage('Check out dependencies') {
+			steps {
+				dir('agent') {
+					checkout scm
+				}
+			}
+		}
+
+		stage('Tag Prev') {
+			when {
+				expression { params.TAG_LATEST == true }
+			}
+			steps {
+				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+					sh label: '', script: '''
+						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+						docker pull quay.io/sysdig/agent-builder:latest-alpine
+						docker tag quay.io/sysdig/agent-builder:latest-alpine quay.io/sysdig/agent-builder:prev_latest-alpine
+					'''
+				}
+			}
+		}
+
+		stage('Build') {
+			steps {
+				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+					sh label: '', script: '''
+						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+						docker pull quay.io/sysdig/agent-builder:latest-alpine
+						docker pull quay.io/sysdig/agent-builder:${AGENT_BRANCH}-alpine || echo "agent-builder:${AGENT_BRANCH}-alpine not found"
+						docker build --build-arg max_parallelism=$(nproc) -t quay.io/sysdig/agent-builder:$AGENT_BRANCH-alpine -f agent/docker/alpine-builder/Dockerfile --pull agent/docker/alpine-builder
+					'''
+				}
+			}
+		}
+
+		stage('Upload') {
+			steps {
+				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+					sh label: '', script: '''
+						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+						docker push quay.io/sysdig/agent-builder:$AGENT_BRANCH-alpine
+						docker tag quay.io/sysdig/agent-builder:$AGENT_BRANCH-alpine quay.io/sysdig/agent-builder:$CONTAINER_NAME-alpine
+						docker push quay.io/sysdig/agent-builder:$CONTAINER_NAME-alpine
+					'''
+				}
+			}
+		}
+
+		stage('Upload Latest') {
+			when {
+				expression { params.TAG_LATEST == true }
+			}
+			steps {
+				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+					sh label: '', script: '''
+						docker tag quay.io/sysdig/agent-builder:$AGENT_BRANCH-alpine quay.io/sysdig/agent-builder:latest-alpine
+						LATEST_ID=`docker images --format '{{.ID}}' quay.io/sysdig/agent-builder:latest-alpine`
+						PREV_ID=`docker images --format '{{.ID}}' quay.io/sysdig/agent-builder:prev_latest-alpine`
+						if [ -n "$LATEST_ID" -a "$LATEST_ID" != "$PREV_ID" ]; then
+							docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+							docker push quay.io/sysdig/agent-builder:prev_latest-alpine
+							docker push quay.io/sysdig/agent-builder:latest-alpine
+						fi
+					'''
+				}
+			}
+		}
+	}
+
+	post {
+		always {
+			sh label: '', script: '''
+				docker rmi -f quay.io/sysdig/agent-builder:$AGENT_BRANCH-alpine
+				docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+				docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+			'''
+			cleanWs deleteDirs: true, notFailBuild: true
+		}
+	}
+}

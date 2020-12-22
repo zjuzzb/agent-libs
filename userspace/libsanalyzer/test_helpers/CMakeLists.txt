@@ -27,8 +27,12 @@ add_definitions(-DHAS_ANALYZER)
 
 add_library(
     test-helpers-libsanalyzer STATIC
-    dummy_statsd_stats_source.cpp run.cpp scoped_sinsp_logger_capture.cpp scoped_metric_store.cpp
-    sinsp_evt_wrapper.cpp sinsp_mock.cpp
+    dummy_statsd_stats_source.cpp
+    run.cpp
+    scoped_sinsp_logger_capture.cpp
+    scoped_metric_store.cpp
+    sinsp_evt_wrapper.cpp
+    sinsp_mock.cpp
     infrastate_util.cpp
     infra_utils_details.cpp
     test_logger.cpp

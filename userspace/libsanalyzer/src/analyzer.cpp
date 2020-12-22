@@ -54,7 +54,9 @@
 
 #include <algorithm>
 #include <fcntl.h>
+#ifdef GPERFTOOLS_AVAILABLE
 #include <gperftools/profiler.h>
+#endif
 #include <iostream>
 #include <math.h>
 #include <memory>
@@ -860,7 +862,7 @@ void sinsp_analyzer::initialize_chisels()
 			(*it)->on_init();
 			++it;
 		}
-		catch (sinsp_exception e)
+		catch (const sinsp_exception& e)
 		{
 			LOG_WARNING("unable to start chisel " + (*it)->get_name() + ": " + e.what());
 
@@ -891,7 +893,7 @@ void sinsp_analyzer::add_chisel(sinsp_chisel_details* cd)
 		ch->set_args(cd->m_args);
 		add_chisel(ch);
 	}
-	catch (sinsp_exception e)
+	catch (const sinsp_exception& e)
 	{
 		LOG_WARNING("unable to start chisel " + cd->m_name + ": " + e.what());
 	}
@@ -910,7 +912,7 @@ void sinsp_analyzer::chisels_on_capture_start()
 			(*it)->on_capture_start();
 			++it;
 		}
-		catch (sinsp_exception e)
+		catch (const sinsp_exception& e)
 		{
 			LOG_WARNING("unable to start chisel " + (*it)->get_name() + ": " + e.what());
 			delete (*it);
@@ -3820,7 +3822,7 @@ vector<long> sinsp_analyzer::get_n_tracepoint_diff()
 	{
 		n_evts_by_cpu = m_inspector->get_n_tracepoint_hit();
 	}
-	catch (sinsp_exception e)
+	catch (const sinsp_exception& e)
 	{
 		log_interval.run([&e]() { LOG_ERROR("Event count query failed: %s", e.what()); },
 		                 sinsp_utils::get_current_time_ns());

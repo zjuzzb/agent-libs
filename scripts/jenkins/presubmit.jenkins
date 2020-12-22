@@ -26,7 +26,7 @@ void setBuildStatus(String context, String message, String state) {
 pipeline {
 	agent { label 'agent-builder-parallel' }
 	options {
-		timeout(time: 60, unit: 'MINUTES')
+		timeout(time: 180, unit: 'MINUTES')
 	}
 	parameters {
 		booleanParam(name: 'BUILD_BUILDER', defaultValue: false, description: "set to true to build the builder for this branch. name will be same as agent branch")
@@ -35,14 +35,28 @@ pipeline {
 		string(name: 'FALCO_BRANCH', defaultValue: "master")
 		string(name: 'PROTOREPO_BRANCH', defaultValue: "master")
 		string(name: 'PROMETHEUS_BRANCH', defaultValue: "master")
+		string(name: 'LIBSCAP_HAYABUSA_BRANCH', defaultValue: "dev")
+		string(name: 'LIBSINSP_BRANCH', defaultValue: "dev")
 	}
 	stages {
 		stage('Build Builder') {
-			when {   
-				expression { params.BUILD_BUILDER == true }
-			}
-			steps {
-				build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),string(name:'SYSDIG_BRANCH', value:"${params.SYSDIG_BRANCH}"),string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),string(name:'PROMETHEUS_BRANCH', value:"${params.PROMETHEUS_BRANCH}")]
+			parallel {
+				stage('Regular Builder') {
+					when {   
+						expression { params.BUILD_BUILDER == true }
+					}
+					steps {
+						build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),string(name:'SYSDIG_BRANCH', value:"${params.SYSDIG_BRANCH}"),string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),string(name:'PROMETHEUS_BRANCH', value:"${params.PROMETHEUS_BRANCH}")]
+					}
+				}
+				stage('Alpine Builder') {
+					when {   
+						expression { params.BUILD_BUILDER == true }
+					}
+					steps {
+						build job:'agent-build-alpine-builder',parameters:[string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}")]
+					}
+				}
 			}
 		}
 
@@ -107,6 +121,20 @@ pipeline {
 						}
 						failure {
 							setBuildStatus('QA Test', 'FAILED! see Jenkins console output for more info.', 'FAILURE')
+						}
+					}
+				}
+				stage('Agentino Build') {
+					steps {
+						setBuildStatus('Agentino Build', 'Building Container', 'PENDING')
+							build job:'agent-build-agentino',parameters:[string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"), string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"), string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"), string(name:'LIBSCAP_HAYABUSA_BRANCH', value:"${params.LIBSCAP_HAYABUSA_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'PROMETHEUS_BRANCH', value:"${params.PROMETHEUS_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
+					}
+					post {
+						success {
+							setBuildStatus('Agentino Build', 'Zero problems found', 'SUCCESS')
+						}
+						failure {
+							setBuildStatus('Agentino Build', 'FAILED! see Jenkins console output for more info.', 'FAILURE')
 						}
 					}
 				}

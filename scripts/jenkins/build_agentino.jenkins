@@ -1,0 +1,62 @@
+pipeline {
+	agent { label 'agent-docker-builder' }
+	stages {
+		stage('Check out dependencies') {
+			steps {
+				dir('agent') {
+					checkout scm
+				}
+				dir('oss-falco') {
+					checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
+					sh "git checkout ${params.FALCO_BRANCH}"
+				}
+				dir('libsinsp') {
+					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libsinsp']]])
+					sh "git checkout ${params.LIBSINSP_BRANCH}"
+				}
+				dir('libscap-hayabusa') {
+					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap-hayabusa']]])
+					sh "git checkout ${params.LIBSCAP_HAYABUSA_BRANCH}"
+				}
+				dir('protorepo') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
+					sh "git checkout ${params.PROTOREPO_BRANCH}"
+				}
+			}
+		}
+		stage('Build') {
+			steps {
+				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+					sh label: '', script: '''
+						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION-alpine
+						docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agentino-internal:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION-alpine agentino
+					'''
+				}
+			}
+		}
+		stage('Upload') {
+			steps {
+				script {
+					docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
+						sh label: '', script: '''
+							docker tag agentino-internal:$AGENT_BRANCH  docker.internal.sysdig.com/agentino-internal:$AGENT_BRANCH
+							docker push docker.internal.sysdig.com/agentino-internal:$AGENT_BRANCH
+						'''
+					}
+				}
+			}
+		}
+	}
+	post {
+		always {
+			sh label: '', script: '''
+				sudo rm -rf ./build
+				docker rmi -f agentino-internal:$AGENT_BRANCH
+				docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+				docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+			'''
+			cleanWs deleteDirs: true, notFailBuild: true
+		}
+	}
+}

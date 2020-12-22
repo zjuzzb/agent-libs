@@ -43,8 +43,7 @@ if(NOT CYGWIN)
                ${CMAKE_CURRENT_BINARY_DIR}/cri.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/cri.pb.h
         COMMENT "Generate CRI grpc code"
         DEPENDS ${LIBSINSP_SOURCE_DIR}/cri.proto
-        COMMAND ${PROTOC} -I ${LIBSINSP_SOURCE_DIR} --cpp_out=.
-                ${LIBSINSP_SOURCE_DIR}/cri.proto
+        COMMAND ${PROTOC} -I ${LIBSINSP_SOURCE_DIR} --cpp_out=. ${LIBSINSP_SOURCE_DIR}/cri.proto
         COMMAND
             ${PROTOC} -I ${LIBSINSP_SOURCE_DIR} --grpc_out=.
             --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
@@ -337,9 +336,7 @@ if(NOT CYGWIN)
         ${CMAKE_CURRENT_BINARY_DIR}/cri.pb.cc
     )
 else()
-    list(APPEND SANALYZER_SOURCES
-         ${LIBSINSP_SOURCE_DIR}/container_engine/docker_win.cpp
-    )
+    list(APPEND SANALYZER_SOURCES ${LIBSINSP_SOURCE_DIR}/container_engine/docker_win.cpp)
 endif()
 
 if(CYGWIN)
@@ -370,10 +367,15 @@ list(
     dl
     ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
     ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
-	pthread
+    pthread
     ${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
-    anl
 )
+
+if(ALPINE_BUILDER)
+    list(APPEND sanalyzer_common_link_libraries execinfo)
+else()
+    list(APPEND sanalyzer_common_link_libraries anl)
+endif()
 
 list(APPEND sanalyzer_linux_link_libraries
      ${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/build/lib_release/libtbb.a
@@ -384,7 +386,9 @@ add_dependencies(sanalyzer draiosproto)
 
 if(INCLUDE_INTERNAL_TEST_CODE)
     target_compile_definitions(sanalyzer PUBLIC SYSDIG_TEST)
-else()
+endif()
+
+if(GPERFTOOLS_AVAILABLE)
     # tcmalloc doesn't play well with valgrind/helgrind so we keep it out of the internal builds.
     list(
         APPEND

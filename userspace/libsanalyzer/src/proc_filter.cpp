@@ -10,6 +10,12 @@
 #include <sstream>
 #include <utils.h>
 
+//certain libs (cough-cough musl) don't support EXTMATCH. So we map it to something
+//those patterns will unfortunately not work on binaries
+#ifndef FNM_EXTMATCH
+#define FNM_EXTMATCH 0
+#endif
+
 namespace
 {
 COMMON_LOGGER();

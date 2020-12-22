@@ -179,7 +179,8 @@ target_link_libraries(
     agentinol
     draiosproto
     librestl
-    ${dragent_application_link_libraries}
+    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
+    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
 )
 file(COPY ${PROJECT_SOURCE_DIR}/scripts/rpm/dragent.in
      DESTINATION ${PROJECT_BINARY_DIR}/scripts/rpm

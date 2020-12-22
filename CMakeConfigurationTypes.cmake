@@ -16,9 +16,10 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;Release;DebugInternal;ReleaseInternal;Debug
 #set(DRAIOS_FEATURE_FLAGS "-DPPM_ENABLE_SENTINEL")
 set(CMAKE_COMMON_FLAGS "-Wall -ggdb ${DRAIOS_FEATURE_FLAGS}")
 if(BUILD_WARNINGS_AS_ERRORS)
-	set(CMAKE_SUPPRESSED_WARNINGS "-Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare -Wno-type-limits")
+	set(CMAKE_SUPPRESSED_WARNINGS "-Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare -Wno-type-limits -Wno-parentheses -Wno-array-bounds -Wno-deprecated-declarations -Wno-stringop-truncation -Wno-stringop-overflow -Wno-deprecated-copy -Wno-restrict")
 	set(CMAKE_COMMON_FLAGS "${CMAKE_COMMON_FLAGS} -Wextra -Werror ${CMAKE_SUPPRESSED_WARNINGS}")
 endif()
+
 set(DRAIOS_DEBUG_FLAGS "-D_DEBUG")
 set(CMAKE_C_FLAGS "-std=gnu11 ${CMAKE_COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "--std=c++0x ${CMAKE_COMMON_FLAGS}")
@@ -62,3 +63,21 @@ if(CMAKE_BUILD_TYPE STREQUAL "DebugInternalCodeCoverage")
 	set(INCLUDE_INTERNAL_TEST_CODE 1)
 	set(ADD_INTERNAL_TEST_TARGETS 1)
 endif()
+
+# There are two situations where we can't include gperftools:
+# 1) on alpine. musl does not support switching out the allocator
+# 2) in test code. I think tcmalloc doesn't play nice with valgrind and produces false positives
+if(STATIC_LINK OR INCLUDE_INTERNAL_TEST_CODE)
+	set(GPERFTOOLS_AVAILABLE 0)
+else()
+	set(GPERFTOOLS_AVAILABLE 1)
+endif()
+
+
+if(STATIC_LINK)
+	add_definitions(-DSTATIC_LINK)
+	SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+	SET(BUILD_SHARED_LIBS OFF)
+	SET(CMAKE_EXE_LINKER_FLAGS "-static")
+endif()
+

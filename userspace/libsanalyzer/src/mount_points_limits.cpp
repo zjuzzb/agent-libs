@@ -1,5 +1,12 @@
 #include "mount_points_limits.h"
 
+//certain libs (cough-cough musl) don't support EXTMATCH. So we map it to something
+//those patterns will unfortunately not work on binaries
+#ifndef FNM_EXTMATCH
+#define FNM_EXTMATCH 0
+#endif
+
+
 mount_points_limits::mount_points_limits(const mount_points_filter_vec& filters,
 					 unsigned limit_size)
 	: m_limit_size(limit_size), m_current_size(0)

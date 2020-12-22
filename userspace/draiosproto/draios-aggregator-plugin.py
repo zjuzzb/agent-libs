@@ -119,12 +119,12 @@ def generate_tags_list(message):
         return limited, unique, aggregation_targets, aggregation_map
 
     for key, value in field_extension[message.name].items():
-        if type(value) is set:
+        if type(value) == set:
             if LIMITED in value:
                 limited.add(index_dict[message.name][key].name)
             if UNIQUE in value:
                 unique.add(index_dict[message.name][key].name)
-        elif value is OR:
+        elif value == OR:
             continue
         else:
             aggregation_map[index_dict[message.name][key].name] = index_dict[message.name][value].name
@@ -155,13 +155,13 @@ AGG_TYPE_REPEATED_STRING = 9
 
 def get_field_type(field, sub_aggregator_list):
     if field.name in sub_aggregator_list:
-        if field.label is FieldDescriptor.LABEL_REPEATED:
+        if field.label == FieldDescriptor.LABEL_REPEATED:
             return AGG_TYPE_REPEATED_NUMERIC_AGGREGATED
         else:
            return AGG_TYPE_SINGLE_NUMERIC_AGGREGATED
 
-    if field.type is FieldDescriptor.TYPE_MESSAGE:
-        if field.label is FieldDescriptor.LABEL_REPEATED:
+    if field.type == FieldDescriptor.TYPE_MESSAGE:
+        if field.label == FieldDescriptor.LABEL_REPEATED:
             # this is a map. map types are .draiosproto.<message_type>.<mangledfieldname>Entry
             # we'll just check for the dot in the type_name
             if "." in type_name(field):
@@ -169,12 +169,12 @@ def get_field_type(field, sub_aggregator_list):
             return AGG_TYPE_REPEATED_MESSAGE
         return AGG_TYPE_SINGLE_MESSAGE
 
-    if field.label is FieldDescriptor.LABEL_REPEATED:
-        if field.type is FieldDescriptor.TYPE_STRING:
+    if field.label == FieldDescriptor.LABEL_REPEATED:
+        if field.type == FieldDescriptor.TYPE_STRING:
             return AGG_TYPE_REPEATED_STRING
         return AGG_TYPE_REPEATED_NUMERIC
 
-    if field.type is FieldDescriptor.TYPE_STRING:
+    if field.type == FieldDescriptor.TYPE_STRING:
         return AGG_TYPE_SINGLE_STRING
 
     return AGG_TYPE_SINGLE_NUMERIC
@@ -207,7 +207,7 @@ def generate_field_aggregator_function(message_name, field, type_map, aggregatio
     {
 """ % string_map
 
-    if type_map[field.name] is AGG_TYPE_SINGLE_NUMERIC_AGGREGATED:
+    if type_map[field.name] == AGG_TYPE_SINGLE_NUMERIC_AGGREGATED:
         out += """        if (input.has_%(field_name)s())
         {
             if (m_builder.should_aggregate_metrics())
@@ -221,7 +221,7 @@ def generate_field_aggregator_function(message_name, field, type_map, aggregatio
         }
 """ % string_map
 
-    if type_map[field.name] is AGG_TYPE_REPEATED_NUMERIC_AGGREGATED:
+    if type_map[field.name] == AGG_TYPE_REPEATED_NUMERIC_AGGREGATED:
         out += """        if (m_builder.should_aggregate_metrics())
         {
             default_aggregate_list<decltype(input.%(field_name)s()),
@@ -232,7 +232,7 @@ def generate_field_aggregator_function(message_name, field, type_map, aggregatio
         }
 """ % string_map
 
-    if type_map[field.name] is AGG_TYPE_SINGLE_MESSAGE:
+    if type_map[field.name] == AGG_TYPE_SINGLE_MESSAGE:
         out += """        if (input.has_%(field_name)s())
         {
             if (!m_%(field_name)s_field_aggregator)
@@ -254,7 +254,7 @@ def generate_field_aggregator_function(message_name, field, type_map, aggregatio
         }
 """ % string_map
 
-    if type_map[field.name] is AGG_TYPE_REPEATED_NUMERIC:
+    if type_map[field.name] == AGG_TYPE_REPEATED_NUMERIC:
         if field.name in unique:
             # this is not implemented as there are no users, but the rough outline
             # is if in place, nothing
@@ -301,7 +301,7 @@ def generate_field_aggregator_function(message_name, field, type_map, aggregatio
     # we add the key to the map, and values that compromise the primary key should
     # never be changed after the initial set, otherwise you'll end up with duplicate
     # entries (and effectively a corrupt hashmap)
-    if type_map[field.name] is AGG_TYPE_REPEATED_MESSAGE:
+    if type_map[field.name] == AGG_TYPE_REPEATED_MESSAGE:
         if field.name in unique:
             out += """        if (in_place) {
             // create aggregators, recursively invoke
@@ -375,10 +375,10 @@ def generate_field_aggregator_function(message_name, field, type_map, aggregatio
         }
 """  % string_map
 
-    if type_map[field.name] is AGG_TYPE_SINGLE_NUMERIC:
+    if type_map[field.name] == AGG_TYPE_SINGLE_NUMERIC:
         if message_name in field_extension and \
            field.number in field_extension[message_name] and \
-           field_extension[message_name][field.number] is OR:
+           field_extension[message_name][field.number] == OR:
             out+= """        if (input.has_%(field_name)s())
         {
             output.set_%(field_name)s(output.%(field_name)s() | input.%(field_name)s());
@@ -391,17 +391,17 @@ def generate_field_aggregator_function(message_name, field, type_map, aggregatio
         }
 """ % string_map
 
-    if type_map[field.name] is AGG_TYPE_MAP:
+    if type_map[field.name] == AGG_TYPE_MAP:
         pass
 
-    if type_map[field.name] is AGG_TYPE_SINGLE_STRING:
+    if type_map[field.name] == AGG_TYPE_SINGLE_STRING:
         out+= """        if (!output.has_%(pb_field_name)s() && input.has_%(pb_field_name)s())
         {
             output.set_allocated_%(pb_field_name)s(input.release_%(pb_field_name)s());
         }
 """ % string_map
 
-    if type_map[field.name] is AGG_TYPE_REPEATED_STRING:
+    if type_map[field.name] == AGG_TYPE_REPEATED_STRING:
         if field.name in unique:
             # implementation would be similar to AGG_TYPE_REPEATED_NUMERIC
             out += """ NOT IMPLEMENTED """
@@ -456,7 +456,7 @@ def generate_message_aggregator_function(message, type_map, aggregation_targets)
     for field in message.field:
         if field.name in aggregation_targets or \
            type_name(field) in skip or \
-           type_map[field.name] is AGG_TYPE_MAP:
+           type_map[field.name] == AGG_TYPE_MAP:
             continue
         out += """        aggregate_%s(input, output, in_place);
 """ % (field.name)
@@ -497,10 +497,10 @@ def generate_limiters(message, type_map, limited):
     # loop through fields, and invoke limiter on sub-messages
     for field in message.field:
         if type_name(field) not in skip:
-            if type_map[field.name] is AGG_TYPE_SINGLE_MESSAGE:
+            if type_map[field.name] == AGG_TYPE_SINGLE_MESSAGE:
                 out += """        %s_message_aggregator::limit(builder, *output.mutable_%s());
 """ % (type_name(field), field.name)
-            if type_map[field.name] is AGG_TYPE_REPEATED_MESSAGE:
+            if type_map[field.name] == AGG_TYPE_REPEATED_MESSAGE:
                 out += """        for (auto& i : *output.mutable_%s()) {
             %s_message_aggregator::limit(builder, i);
         }
@@ -528,9 +528,9 @@ def generate_constructor_function(message, type_map, aggregation_targets):
     for field in message.field:
         if field.name in aggregation_targets or \
            type_name(field) in skip or \
-           type_map[field.name] is AGG_TYPE_MAP:
+           type_map[field.name] == AGG_TYPE_MAP:
             continue
-        if type_map[field.name] is AGG_TYPE_SINGLE_MESSAGE:
+        if type_map[field.name] == AGG_TYPE_SINGLE_MESSAGE:
             out += """         ,m_%s_field_aggregator(nullptr)
 """ % (field.name)
 
@@ -552,19 +552,19 @@ def generate_destructor_function(message):
     return out
 
 def get_cpp_type(field):
-    if field.type is FieldDescriptor.TYPE_DOUBLE:
+    if field.type == FieldDescriptor.TYPE_DOUBLE:
         cpp_type = "double"
-    elif field.type is FieldDescriptor.TYPE_FLOAT:
+    elif field.type == FieldDescriptor.TYPE_FLOAT:
         cpp_type = "double"
-    elif field.type is FieldDescriptor.TYPE_UINT64:
+    elif field.type == FieldDescriptor.TYPE_UINT64:
         cpp_type = "uint64_t"
-    elif field.type is FieldDescriptor.TYPE_UINT32:
+    elif field.type == FieldDescriptor.TYPE_UINT32:
         cpp_type = "uint32_t"
-    elif field.type is FieldDescriptor.TYPE_STRING:
+    elif field.type == FieldDescriptor.TYPE_STRING:
         cpp_type = "std::string"
-    elif field.type is FieldDescriptor.TYPE_BYTES:
+    elif field.type == FieldDescriptor.TYPE_BYTES:
         cpp_type = "std::string"
-    elif field.type is FieldDescriptor.TYPE_ENUM:
+    elif field.type == FieldDescriptor.TYPE_ENUM:
         cpp_type = "uint32_t"
     else:
         cpp_type = "uh oh! Unsupported field type"
@@ -578,22 +578,22 @@ def generate_field_aggregations(message, type_map, aggregation_map, aggregation_
     for field in message.field:
         if field.name in aggregation_targets or \
            type_name(field) in skip or \
-           type_map[field.name] is AGG_TYPE_MAP:
+           type_map[field.name] == AGG_TYPE_MAP:
             continue
 
         # Single message just gets the aggregator for the field
-        if type_map[field.name] is AGG_TYPE_SINGLE_MESSAGE:
+        if type_map[field.name] == AGG_TYPE_SINGLE_MESSAGE:
             out += """    agent_message_aggregator<draiosproto::%s>* m_%s_field_aggregator;
 """ % (type_name(field), field.name)
 
         # Repeated non-message gets a set to know if entry exists
-        if type_map[field.name] is AGG_TYPE_REPEATED_NUMERIC:
+        if type_map[field.name] == AGG_TYPE_REPEATED_NUMERIC:
             out += """    std::set<%s> %s_cache;
 """ % (get_cpp_type(field), field.name)
-        if type_map[field.name] is AGG_TYPE_REPEATED_STRING:
+        if type_map[field.name] == AGG_TYPE_REPEATED_STRING:
             out += """    std::set<const std::string*, agent_message_aggregator::string_pointer_comparer> %s_cache;
 """ % field.name
-        if type_map[field.name] is AGG_TYPE_REPEATED_MESSAGE:
+        if type_map[field.name] == AGG_TYPE_REPEATED_MESSAGE:
             if type_name(field) == message.name:
                 function_namespace = ""
             else:
@@ -624,10 +624,10 @@ def generate_reset_function(message, type_map, aggregation_targets):
     for field in message.field:
         if field.name in aggregation_targets or \
            type_name(field) in skip or \
-           type_map[field.name] is AGG_TYPE_MAP:
+           type_map[field.name] == AGG_TYPE_MAP:
             continue
 
-        if type_map[field.name] is AGG_TYPE_SINGLE_MESSAGE:
+        if type_map[field.name] == AGG_TYPE_SINGLE_MESSAGE:
             out += """        if (m_%s_field_aggregator)
         {
             delete m_%s_field_aggregator;
@@ -639,7 +639,7 @@ def generate_reset_function(message, type_map, aggregation_targets):
             out += """        %s_cache.clear();
 """ % field.name
 
-        if type_map[field.name] is AGG_TYPE_REPEATED_MESSAGE:
+        if type_map[field.name] == AGG_TYPE_REPEATED_MESSAGE:
             out += """        %s_map.clear();
         %s_vector.clear();
 """ % (field.name, field.name)
@@ -672,7 +672,7 @@ def generate_key_functions(message, type_map):
     for field in message.field:
         if message.name in field_extension and \
            field.number in field_extension[message.name] and \
-           type(field_extension[message.name][field.number]) is set and \
+           type(field_extension[message.name][field.number]) == set and \
            PRIMARY_KEY in field_extension[message.name][field.number]:
             if type_map[field.name] in {AGG_TYPE_SINGLE_NUMERIC, AGG_TYPE_SINGLE_STRING}:
                 hasher += """            hash = (hash * 7) ^ std::hash<%s>()(input->%s());
@@ -680,7 +680,7 @@ def generate_key_functions(message, type_map):
                 comparer += """            result &= lhs->%s() == rhs->%s();
 """ % (get_adjusted_field_name(field.name), get_adjusted_field_name(field.name))
 
-            elif type_map[field.name] is AGG_TYPE_SINGLE_MESSAGE:
+            elif type_map[field.name] == AGG_TYPE_SINGLE_MESSAGE:
                 hasher += """            hash = (hash * 9) ^ %s_message_aggregator::hasher()(&input->%s());
 """ % (type_name(field), get_adjusted_field_name(field.name))
                 comparer += """            result &= %s_message_aggregator::comparer()(&lhs->%s(), &rhs->%s());
@@ -702,7 +702,7 @@ def generate_key_functions(message, type_map):
             }
 """ % (field.name, field.name, field.name, field.name, field.name)
 
-            elif type_map[field.name] is AGG_TYPE_REPEATED_MESSAGE:
+            elif type_map[field.name] == AGG_TYPE_REPEATED_MESSAGE:
                 hasher += """            for (auto i : input->%s())
             {
                 hash = (hash * 9) ^ %s_message_aggregator::hasher()(&i);
@@ -790,7 +790,7 @@ def find_primary_keys(message):
     for field in message.field:
         if message.name in field_extension and \
            field.number in field_extension[message.name] and \
-           type(field_extension[message.name][field.number]) is set and \
+           type(field_extension[message.name][field.number]) == set and \
            PRIMARY_KEY in field_extension[message.name][field.number] and \
            get_field_type(field, {}) in {AGG_TYPE_SINGLE_MESSAGE, AGG_TYPE_REPEATED_MESSAGE}:
                find_primary_keys(index_dict[type_name(field)][0])
@@ -852,7 +852,7 @@ public:
         for message, package in traverse(proto_file):
             if isinstance(message, DescriptorProto):
                 for field in message.field:
-                    if get_field_type(field, {}) is AGG_TYPE_REPEATED_MESSAGE:
+                    if get_field_type(field, {}) == AGG_TYPE_REPEATED_MESSAGE:
                         find_primary_keys(index_dict[type_name(field)][0])
 
     # pass 3 of the protobuf: generate the actual code
@@ -909,7 +909,7 @@ public:
 """
     
     for i, limit in enumerate(limited_messages):
-        if i is  not 0:
+        if i != 0:
             builder_header.content += """,
 """
         builder_header.content += """        m_%s_%s_limit(UINT32_MAX)""" % (limit[0], limit[1])
@@ -926,8 +926,11 @@ public:
 
 
 if __name__ == '__main__':
-    # Read request message from stdin
-    data = sys.stdin.read()
+    # Read request message from stdin. Python3 and 2 are not compatible here. Lame.
+    if sys.version[0] == '3':
+        data = sys.stdin.buffer.read()
+    else:
+        data = sys.stdin.read()
 
     # Parse request
     request = plugin.CodeGeneratorRequest()
@@ -943,4 +946,7 @@ if __name__ == '__main__':
     output = response.SerializeToString()
 
     # Write to stdout
-    sys.stdout.write(output)
+    if sys.version[0] == '3':
+        sys.stdout.buffer.write(output)
+    else:
+        sys.stdout.write(output)
