@@ -180,6 +180,7 @@ add_subdirectory(
 if(NOT CYGWIN)
     add_subdirectory(userspace/cointerface)
 endif()
+add_subdirectory(userspace/command-line/src)
 add_subdirectory(userspace/comp_modules)
 add_subdirectory(userspace/dragent/src)
 add_subdirectory(userspace/dragent/test_helpers)

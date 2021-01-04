@@ -78,11 +78,6 @@ type_config<uint64_t> c_serializer_timeout_s(10,
 
 type_config<bool> c_10s_flush_enabled(true, "Enable agent-side aggregation", "10s_flush_enable");
 
-type_config<bool> c_compression_enabled(true,
-                                        "set to true to compress protobufs sent to the collector",
-                                        "compression",
-                                        "enabled");
-
 type_config<uint64_t> c_watchdog_max_memory_usage_mb(512,
                                                      "maximum memory usage for watchdog",
                                                      "watchdog",
@@ -535,7 +530,7 @@ int agentone_app::sdagent_main()
 	}
 
 	// Set the configured default compression method
-	protobuf_compressor_factory::set_default(c_compression_enabled.get_value()
+	protobuf_compressor_factory::set_default(protocol_handler::c_compression_enabled.get_value()
 	                                             ? protocol_compression_method::GZIP
 	                                             : protocol_compression_method::NONE);
 

@@ -32,15 +32,17 @@ public:
 	{
 		TEXT,
 		JSON,
-		YAML
+		YAML,
+		ERROR
 	};
 
+	using response = std::pair<content_type, std::string>;
 	/**
 	 * Parse the given command, call the appropriate delegate and 
 	 * return the response. 
 	 * @return A string and the content_type of that string 
 	 */
-	std::pair<command_line_manager::content_type, std::string> handle(const std::string& command) const;
+	response handle(const std::string& command) const;
 
 	using argument_list = std::vector<std::pair<std::string, std::string>>;
 	using cli_command = std::function<std::string(const argument_list& args)>;
@@ -75,6 +77,11 @@ public:
 	 * The instance of the command_line_manager.
 	 */
 	static command_line_manager& instance();
+
+	/**
+	 * Clear the registered commands
+	 */
+	void clear();
 
 private:
 

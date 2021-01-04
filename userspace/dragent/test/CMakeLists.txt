@@ -5,6 +5,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
 include_directories(${LIBSCAP_INCLUDE_DIR})
 include_directories(${LIBSINSP_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/userspace)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/command-line/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/src)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/test_helpers)
@@ -37,6 +38,7 @@ add_executable(
     unit-test-dragent
     main.cpp
     async_aggregator.ut.cpp
+    command_line_request_message_handler.ut.cpp
     configlist_rest_request_handler.ut.cpp
     config_data_rest_request_handler.ut.cpp
     config_rest_request_handler.ut.cpp

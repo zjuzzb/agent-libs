@@ -13,6 +13,12 @@
 
 COMMON_LOGGER();
 
+type_config<bool> protocol_handler::c_compression_enabled(
+	true,
+	"set to true to compress protobufs sent to the collector",
+	"compression",
+	"enabled");
+
 type_config<bool> protocol_handler::c_print_protobuf(
 	false,
 	"set to true to print the protobuf with each flush",
@@ -97,8 +103,7 @@ void protocol_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draiospr
 	// It would be better to plumb through the negotiated value, but this is
 	// what we get for now
 	protocol_compression_method compression =
-	        configuration_manager::instance().
-	            get_config<bool>("compression.enabled")->get_value() ?
+	        c_compression_enabled.get_value() ?
 	                protocol_compression_method::GZIP :
 	                protocol_compression_method::NONE;
 	std::shared_ptr<protobuf_compressor> compressor =
@@ -135,8 +140,7 @@ void protocol_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
 	}
 
 	protocol_compression_method compression =
-	        configuration_manager::instance().
-	            get_config<bool>("compression.enabled")->get_value() ?
+	        c_compression_enabled.get_value() ?
 	                protocol_compression_method::GZIP :
 	                protocol_compression_method::NONE;
 	std::shared_ptr<protobuf_compressor> compressor =
@@ -172,8 +176,7 @@ void protocol_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const dra
 	}
 
 	protocol_compression_method compression =
-	        configuration_manager::instance().
-	            get_config<bool>("compression.enabled")->get_value() ?
+	        c_compression_enabled.get_value() ?
 	                protocol_compression_method::GZIP :
 	                protocol_compression_method::NONE;
 	std::shared_ptr<protobuf_compressor> compressor =
@@ -206,7 +209,7 @@ void protocol_handler::audit_tap_data_ready(uint64_t ts_ns, const tap::AuditLog 
 	{
 		LOG_INFO(std::string("Audit tap data:") + audit_log->DebugString());
 	}
-	std::shared_ptr<protobuf_compressor> compressor = gzip_protobuf_compressor::get(-1);
+	std::shared_ptr<protobuf_compressor> compressor = gzip_protobuf_compressor::get(Z_DEFAULT_COMPRESSION);
 
 	std::shared_ptr<serialized_buffer> buffer = dragent_protocol::message_to_buffer(
 		ts_ns,
@@ -243,8 +246,7 @@ std::shared_ptr<serialized_buffer> protocol_handler::handle_log_report(uint64_t 
 {
 
 	protocol_compression_method compression =
-	        configuration_manager::instance().
-	            get_config<bool>("compression.enabled")->get_value() ?
+	        c_compression_enabled.get_value() ?
 	                protocol_compression_method::GZIP :
 	                protocol_compression_method::NONE;
 	std::shared_ptr<protobuf_compressor> compressor =
@@ -271,7 +273,7 @@ void protocol_handler::secure_audit_data_ready(uint64_t ts_ns, const secure::Aud
 		LOG_INFO(std::string("Secure Audit data:") + secure_audit->DebugString());
 	}
 
-	std::shared_ptr<protobuf_compressor> compressor = gzip_protobuf_compressor::get(-1);
+	std::shared_ptr<protobuf_compressor> compressor = gzip_protobuf_compressor::get(Z_DEFAULT_COMPRESSION);
 
 	std::shared_ptr<serialized_buffer> buffer = dragent_protocol::message_to_buffer(
 		ts_ns,
@@ -305,7 +307,7 @@ void protocol_handler::secure_profiling_data_ready(uint64_t ts_ns, const secure:
 		LOG_INFO(std::string("Secure Profiling Fingerprint data:") + secure_profiling_fingerprint->DebugString());
 	}
 
-	std::shared_ptr<protobuf_compressor> compressor = gzip_protobuf_compressor::get(-1);
+	std::shared_ptr<protobuf_compressor> compressor = gzip_protobuf_compressor::get(Z_DEFAULT_COMPRESSION);
 
 	std::shared_ptr<serialized_buffer> buffer = dragent_protocol::message_to_buffer(
 		ts_ns,
@@ -337,7 +339,7 @@ void protocol_handler::secure_netsec_data_ready(uint64_t ts_ns, const secure::K8
 		LOG_INFO("Secure Network Communication data:" + k8s_communication_summary->DebugString());
 	}
 
-	std::shared_ptr<protobuf_compressor> compressor = gzip_protobuf_compressor::get(-1);
+	std::shared_ptr<protobuf_compressor> compressor = gzip_protobuf_compressor::get(Z_DEFAULT_COMPRESSION);
 
 	std::shared_ptr<serialized_buffer> buffer = dragent_protocol::message_to_buffer(
 		ts_ns,
@@ -356,5 +358,43 @@ void protocol_handler::secure_netsec_data_ready(uint64_t ts_ns, const secure::K8
 	if(!m_queue.put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
 		LOG_INFO("Queue full, discarding secure network communication sample");
+	}
+}
+
+void protocol_handler::transmit(draiosproto::message_type type, 
+                                const google::protobuf::MessageLite& message,
+                                protocol_queue::item_priority priority)
+{
+	const bool compression_enabled = c_compression_enabled.get_value();
+	protocol_compression_method compression = compression_enabled
+	        ? protocol_compression_method::GZIP
+	        : protocol_compression_method::NONE;
+
+	std::shared_ptr<protobuf_compressor> compressor;
+	if (compression == protocol_compression_method::NONE)
+	{
+		compressor = null_protobuf_compressor::get();
+	}
+	else
+	{
+		compressor = gzip_protobuf_compressor::get(Z_DEFAULT_COMPRESSION);
+	}
+
+	std::shared_ptr<serialized_buffer> item = 
+	        dragent_protocol::message_to_buffer(sinsp_utils::get_current_time_ns(),
+	                                            type,
+	                                            message,
+	                                            compressor);
+
+	if (!item)
+	{
+		LOG_ERROR("NULL converting message to item");
+		return;
+	}
+
+	if (!m_queue.put(item, priority))
+	{
+		LOG_ERROR("Queue is full, discarding message %d", type);
+		return;
 	}
 }

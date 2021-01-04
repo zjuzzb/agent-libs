@@ -33,6 +33,7 @@ using namespace std;
 #include "running_state_fixture.h"
 #include "async_aggregator.h"
 #include "watchdog_runnable_pool.h"
+#include "scoped_config.h"
 #include "utils.h"
 
 #include <Poco/Net/SSLManager.h>
@@ -848,6 +849,92 @@ TEST_F(connection_manager_fixture, metrics_ack)
 	t.join();
 	serializer.stop();
 	st.join();
+}
+
+TEST_F(connection_manager_fixture, protocol_handler_transmit)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration config;
+	config.init();
+	std::atomic<bool> metrics_sent(false);
+
+	// Create and spin up the fake collector (get an ephemeral port)
+	fake_collector fc(true);
+	fc.delay_acks(true);
+	fc.start(0);
+	ASSERT_NE(0, fc.get_port());
+
+	// Set the config for the CM
+	config.m_server_addr = "127.0.0.1";
+	config.m_server_port = fc.get_port();
+	config.m_ssl_enabled = false;
+
+	// Create the shared blocking queues
+	flush_queue fqueue(MAX_QUEUE_LEN);
+	protocol_queue pqueue(MAX_QUEUE_LEN);
+
+	// All the stuff to build a serializer
+	std::shared_ptr<const capture_stats_source> stats_source =
+	    std::make_shared<bogus_capture_stats_source>();
+	protocol_handler ph(pqueue);
+	auto compressor = gzip_protobuf_compressor::get(-1);
+
+	// Create and spin up the connection manager
+	connection_manager cm(&config, &pqueue, {5});
+
+	std::thread t([&cm]()
+	{
+		cm.test_run();
+	});
+
+	for(uint32_t loops = 0; !cm.is_connected() && loops < 10000; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_TRUE(cm.is_connected());
+
+	// Use the transmit function to send a message to the fake collector
+	draiosproto::command_line_response response;
+	response.set_key("key");
+	response.set_content_type(draiosproto::command_line_content_type::CLI_YAML);
+	response.set_response("abc:\n  def: ghi");
+	response.set_machine_id("00112233445566");
+	response.set_customer_id("XXYYZZ");
+
+	// Transmit a message using the protocol handler
+	ph.transmit(draiosproto::message_type::COMMAND_LINE_RESPONSE, 
+	            response,
+	            protocol_queue::item_priority::BQ_PRIORITY_LOW);
+
+	// wait for all the data to be received
+	const uint32_t total_messages = 3; // Two HS + 1 metrics
+	for (uint32_t i = 0; fc.has_data() < total_messages && i < 5000; ++i)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(0, pqueue.size());
+	ASSERT_EQ(fc.has_data(), total_messages);
+
+	// Check each of the received messages
+	fake_collector::buf b = fc.pop_data();
+	ASSERT_EQ(draiosproto::message_type::PROTOCOL_INIT, b.hdr.v4.messagetype);
+
+	b = fc.pop_data();
+	uint64_t hs_gen = ntohll(b.hdr.v5.generation);
+	uint64_t hs_seq = ntohll(b.hdr.v5.sequence);
+	ASSERT_EQ(draiosproto::message_type::PROTOCOL_HANDSHAKE_V1, b.hdr.v4.messagetype);
+	ASSERT_EQ(1, hs_gen);
+	ASSERT_EQ(1, hs_seq);
+
+	b = fc.pop_data();
+	ASSERT_EQ(draiosproto::message_type::COMMAND_LINE_RESPONSE, b.hdr.v4.messagetype);
+
+	// Shut down all the things
+	running_state::instance().shut_down();
+	fc.stop();
+
+	t.join();
 }
 
 TEST_F(connection_manager_fixture, change_aggregation_interval)

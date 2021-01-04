@@ -60,6 +60,11 @@ public:
 	 */
 	void visit(const std::function<void(element_pair&)>& visitor);
 
+	/**
+	 * Clear the map
+	 */
+	void clear();
+
 	guarded_cache(guarded_cache& rhs) = delete;
 	guarded_cache& operator=(guarded_cache& rhs) = delete;
 

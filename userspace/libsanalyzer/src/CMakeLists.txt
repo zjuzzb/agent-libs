@@ -350,6 +350,7 @@ endif()
 list(
     APPEND
     sanalyzer_common_link_libraries
+    command-line
     userspace-shared
     scap
     draiosproto

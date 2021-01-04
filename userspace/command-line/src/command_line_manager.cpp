@@ -68,7 +68,7 @@ std::pair<command_line_manager::content_type, std::string> command_line_manager:
 	catch (command_line_error &ex)
 	{
 		auto err = std::string("Error: ") + ex.what();
-		return std::make_pair(command_line_manager::content_type::TEXT, err);
+		return std::make_pair(command_line_manager::content_type::ERROR, err);
 	}	
 }
 
@@ -223,6 +223,11 @@ std::pair<command_line_manager::content_type, std::string> command_line_manager:
 
 	auto str = handle->handler(args);
 	return std::pair<command_line_manager::content_type, std::string>(handle->type, str); 
+}
+
+void command_line_manager::clear()
+{
+	m_commands.clear();
 }
 
 // generate template functions

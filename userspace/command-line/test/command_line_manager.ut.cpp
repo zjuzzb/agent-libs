@@ -287,7 +287,7 @@ TEST(command_line_manager_test, throw_error)
 
 	auto result = mgr.handle("greeting");
 
-	ASSERT_EQ(command_line_manager::content_type::TEXT, result.first);
+	ASSERT_EQ(command_line_manager::content_type::ERROR, result.first);
 	ASSERT_EQ("Error: there is a problem", result.second);
 }
 

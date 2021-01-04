@@ -7,6 +7,7 @@
 #include "secure_netsec_handler.h"
 #include "security_result_handler.h"
 #include "log_report_handler.h"
+#include "message_transmitter.h"
 #include "dragent_message_queues.h"
 #include "protocol.h"
 #include "type_config.h"
@@ -21,7 +22,8 @@ class protocol_handler : public uncompressed_sample_handler,
                          public secure_profiling_handler,
                          public secure_netsec_handler,
                          public security_result_handler,
-                         public log_report_handler
+                         public log_report_handler,
+                         public dragent::message_transmitter
 {
 public: // constructor/destructor
 
@@ -68,6 +70,9 @@ public: // functions from profiling
 
 public: // functions from network
 	void secure_netsec_data_ready(uint64_t ts_ns, const secure::K8SCommunicationSummary *k8s_communication_summary) override;
+
+	// Generic message transmit
+	void transmit(draiosproto::message_type type, const google::protobuf::MessageLite& message, protocol_queue::item_priority priority) override;
 
 public: // configs
 	static type_config<bool> c_print_protobuf;

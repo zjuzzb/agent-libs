@@ -3,6 +3,8 @@
 #include "avoid_block_channel.h"
 #include "capture_job_handler.h"
 #include "command_line_manager.h"
+#include "command_line_request_message_handler.h"
+#include "command_line_runnable.h"
 #include "common_logger.h"
 #include "config_data_message_handler.h"
 #include "config_data_rest_request_handler.h"
@@ -128,11 +130,6 @@ type_config<bool> c_10s_flush_enabled(false,
 type_config<std::string> c_promscrape_labels("--source.label=pod_id,sysdig_k8s_pod_uid,remove --source.label=container_name,sysdig_k8s_pod_container_name,remove",
                                              "source labels for promscrape to attach to results",
                                              "promscrape_labels");
-
-type_config<bool> c_compression_enabled(true,
-                                        "set to true to compress protobufs sent to the collector",
-                                        "compression",
-                                        "enabled");
 
 type_config<uint64_t> c_watchdog_max_memory_usage_mb(512,
                                                      "maximum memory usage for watchdog",
@@ -1134,7 +1131,7 @@ int dragent_app::sdagent_main()
 	}
 
 	// Set the configured default compression method
-	protobuf_compressor_factory::set_default(c_compression_enabled.get_value()
+	protobuf_compressor_factory::set_default(protocol_handler::c_compression_enabled.get_value()
 	                                             ? protocol_compression_method::GZIP
 	                                             : protocol_compression_method::NONE);
 
@@ -1257,8 +1254,9 @@ int dragent_app::sdagent_main()
 		        {draiosproto::message_type::AGGREGATION_CONTEXT,
 		         dragent::aggregator_limits::global_limits},
 		        {draiosproto::message_type::BASELINES,  // Legacy -- no longer used
-		         std::make_shared<null_message_handler>()},
+		         std::make_shared<null_message_handler>()}
 		    });
+
 
 
 		metric_limit_source::callback cb =
@@ -1403,6 +1401,21 @@ int dragent_app::sdagent_main()
 		}
 
 		enable_rest_server(m_configuration);
+
+		// Setup the command line thread and message handler. If it isn't
+		// enabled, create the message handler with a null thread so that
+		// it can return the appropriate error.
+		std::shared_ptr<command_line_runnable> cmdline;
+		if (command_line_runnable::enabled())
+		{
+			cmdline = std::make_shared<command_line_runnable>(std::bind(&running_state::is_terminated, 
+			                                                            &state));
+			m_pool.start(cmdline, 300 /*timeout*/);
+		}
+		cm->set_message_handler(draiosproto::message_type::COMMAND_LINE_REQUEST,
+		                        std::make_shared<command_line_request_message_handler>(cmdline, 
+		                                                                               m_protocol_handler, 
+		                                                                               m_configuration));
 	}
 
 	uint64_t uptime_s = 0;

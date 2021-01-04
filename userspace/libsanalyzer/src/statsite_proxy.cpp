@@ -133,7 +133,7 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 			// point. -zipper 1/7/19
 			char* buffer = &dyn_buffer[0];
 
-			LOG_TRACE("Received from statsite: %s", buffer);
+			LOG_INFO("Received from statsite: %s", buffer);
 			try
 			{
 				bool parsed = m_metric.parse_line(buffer);

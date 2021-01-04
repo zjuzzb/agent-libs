@@ -65,7 +65,6 @@ void guarded_cache<TKey, TValue>::visit(const std::function<void(const element_p
 {
 	guard_t guard(m_lock);
 
-
 	for(const auto& element : m_data)
 	{
 		visitor(element);
@@ -77,11 +76,18 @@ void guarded_cache<TKey, TValue>::visit(const std::function<void(element_pair&)>
 {
 	guard_t guard(m_lock);
 
-
 	for(auto& element : m_data)
 	{
 		visitor(element);
 	}
+}
+
+template<class TKey, class TValue>
+void guarded_cache<TKey, TValue>::clear()
+{
+	guard_t guard(m_lock);
+
+	m_data.clear();
 }
 
 }

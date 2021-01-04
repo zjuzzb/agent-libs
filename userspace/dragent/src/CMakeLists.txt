@@ -4,6 +4,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSIO
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
 include_directories(${LIBSCAP_INCLUDE_DIR})
 include_directories(${LIBSINSP_INCLUDE_DIRS})
+include_directories(${PROJECT_SOURCE_DIR}/userspace/command-line/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/draiosproto)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/librest/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
@@ -36,6 +37,7 @@ list(
     capture_job_handler.cpp
     cm_proxy_tunnel.cpp
     cm_socket.cpp
+    command_line_request_message_handler.cpp
     compliance_mgr.cpp
     configlist_rest_request_handler.cpp
     configuration.cpp
