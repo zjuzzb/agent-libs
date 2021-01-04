@@ -223,6 +223,9 @@ func watchUserEvents(watcher watch.Interface,
 				return false
 			}
 			switch event.Type {
+				case watch.Modified:
+					log.Debugf("Event: Creating event from modification: %+v", event.Object)
+					fallthrough
 				case watch.Added:
 					evt, ok := event.Object.(*v1.Event)
 					if !ok {
@@ -243,8 +246,6 @@ func watchUserEvents(watcher watch.Interface,
 						log.Debugf("Event: Event add: %+v", evt)
 						userEventChannel <- newUserEvent(evt)
 					}
-				case watch.Modified:
-					log.Debugf("Event: Ignoring event update: %+v", event.Object)
 				case watch.Deleted:
 					log.Debugf("Event: Ignoring event deletion: %+v", event.Object)
 				case watch.Error:
