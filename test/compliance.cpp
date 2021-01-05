@@ -19,8 +19,10 @@
 #include <protocol.h>
 #include <protocol_handler.h>
 #include <compliance_mgr.h>
+#include <compliance_statsd_destination.h>
 #include <running_state.h>
 #include <statsite_config.h>
+#include <string_utils.h>
 #include <configuration_manager.h>
 
 using namespace std;
@@ -106,12 +108,12 @@ struct task_defs_t {
 		{};
 };
 
-class compliance_test : public testing::Test
+class compliance_test : public testing::Test,
+                        public dragent::compliance_statsd_destination
 {
 public:
-	compliance_test(const uint16_t statsd_port = 8125, bool statsd_enabled = true)
-		: m_statsd_port(statsd_port),
-		  m_statsd_enabled(statsd_enabled)
+	compliance_test(bool statsd_enabled = true) :
+	  m_statsd_enabled(statsd_enabled)
 	{
 	}
 
@@ -181,12 +183,11 @@ protected:
 		m_queue = new protocol_queue(100);
 
 		m_configuration.init(NULL, false);
-
 		std::ostringstream os;
 		os << "statsd:" << std::endl <<
-			"  enabled: " << (m_statsd_enabled ? "true" : "false") << std::endl <<
-			"  udp_port: " << m_statsd_port << std::endl;
-		configuration_manager::instance().init_config(os.str());
+		      "  enabled: " << (m_statsd_enabled ? "true" : "false");
+                configuration_manager::instance().init_config(os.str());
+
 		feature_manager::instance().initialize();
 
 		m_data_handler = new protocol_handler(*m_queue);
@@ -195,61 +196,9 @@ protected:
 
 		// These tests don't check scope of compliance tasks so analyzer is set to NULL
 		bool save_errors = true;
-		m_compliance_mgr->init(NULL, &m_configuration, save_errors);
-
-		// Also create a server listening on the statsd port
-		// (Note we do this regardless of whether statsd is enabled in the comp manager)
-		if ((m_statsd_sock = socket(PF_INET, SOCK_DGRAM, 0)) < 0)
-		{
-			FAIL() << "Could not create socket for fake statsd server: " << strerror(errno);
-		}
-
-		struct sockaddr_in saddr;
-		memset(&saddr, 0, sizeof(saddr));
-		saddr.sin_family = AF_INET;
-		saddr.sin_addr.s_addr = htonl(INADDR_ANY);
-		saddr.sin_port = htons(libsanalyzer::statsite_config::instance().get_udp_port());
-
-		if(bind(m_statsd_sock, (struct sockaddr *) &saddr, sizeof(saddr)) < 0)
-		{
-			FAIL() << "Can't bind() to port for fake statsd server: " << strerror(errno);
-		}
-
-		// Set a default timeout of 100ms, so we can signal the thread
-
-		struct timeval ts;
-		ts.tv_sec = 0;
-		ts.tv_usec = 100000;
-		if (setsockopt(m_statsd_sock, SOL_SOCKET, SO_RCVTIMEO, &ts, sizeof(ts)) < 0)
-		{
-			FAIL() << "Can't set timeout of 5 seconds for fake statsd server: " << strerror(errno);
-		}
+		m_compliance_mgr->init(NULL, &m_configuration, this /*statsd dest*/, save_errors);
 
 		m_done = false;
-
-		// In a thread, receive statsd metrics and update m_metrics
-		m_statsd_server = thread([this] ()
-                {
-			while (!m_done)
-			{
-				char buf[1024];
-				ssize_t recv_len;
-
-				if((recv_len = recv(m_statsd_sock, buf, sizeof(buf), 0)) < 0)
-				{
-					if(errno != EAGAIN)
-					{
-						fprintf(stderr, "Could not receive statsd metric: %s\n", strerror(errno));
-					}
-				}
-				else
-				{
-					std::lock_guard<std::mutex> lock(m_metrics_mutex);
-
-					m_metrics.insert(string(buf, recv_len));
-				}
-			}
-		});
 
 		// Start a thread that reads from the queue, appending results to m_results
 		m_result_reader = thread([this]()
@@ -289,6 +238,17 @@ protected:
 		});
 	}
 
+	// This is called by the compliance_mgr when metrics arrive
+	void send_compliance_statsd(const google::protobuf::RepeatedPtrField<std::string> &collection) override
+	{
+		std::lock_guard<std::mutex> lock(m_metrics_mutex);
+
+		for (auto metric : collection)
+		{
+			m_metrics.insert(metric);
+		}
+	}
+
 	virtual void TearDown()
 	{
 		if(m_cointerface)
@@ -297,13 +257,7 @@ protected:
 		}
 
 		m_done = true;
-	        m_statsd_server.join();
 	        m_result_reader.join();
-
-		if(close(m_statsd_sock) < 0)
-		{
-			FAIL() << "Can't close statsd socket: " << strerror(errno);
-		}
 
 		delete m_compliance_mgr;
 		delete m_data_handler;
@@ -437,7 +391,9 @@ protected:
 
 	void verify_metric(task_defs_t &def)
 	{
-		std::string expected = string("compliance.") + def.name + ":tests_pass:" + def.scraper_id + "|g\n";
+		std::string expected = string("compliance.") + def.name + ":tests_pass:" + def.scraper_id + "|g";
+
+		cerr << "Looking for \"" << expected << "\"\n";
 
 		// Wait up to 10 seconds
 		for(uint32_t i=0; i < 1000; i++)
@@ -448,6 +404,7 @@ protected:
 
 			{
 				std::lock_guard<std::mutex> lock(m_metrics_mutex);
+
 				if(m_metrics.find(expected) != m_metrics.end())
 				{
 					return;
@@ -520,29 +477,17 @@ protected:
 	std::set<std::string> m_metrics;
 	std::mutex m_metrics_mutex;
 
-	std::thread m_statsd_server, m_result_reader;
-	int m_statsd_sock;
+	std::thread m_result_reader;
 	atomic<bool> m_done;
-
-private:
-	uint16_t m_statsd_port;
 	bool m_statsd_enabled;
 };
 
-class compliance_test_alternate_statsd_port : public compliance_test
-{
-protected:
-	compliance_test_alternate_statsd_port()
-		: compliance_test(8188)
-	{
-	}
-};
 
 class compliance_test_statsd_disabled : public compliance_test
 {
 protected:
 	compliance_test_statsd_disabled()
-		: compliance_test(8125, false)
+		: compliance_test(false)
 	{
 	}
 };
@@ -596,15 +541,6 @@ static std::vector<task_defs_t> future_runs_once_monthly_14th_6pm = {{"2018-11-1
 //   - Add some endpoint/method that returns a list of the next 10 or so times each task will run, and use that in tests.
 
 TEST_F(compliance_test, start)
-{
-	start_tasks(one_task);
-	verify_task_result(one_task[0]);
-	verify_metric(one_task[0]);
-
-	stop_tasks();
-}
-
-TEST_F(compliance_test_alternate_statsd_port, start)
 {
 	start_tasks(one_task);
 	verify_task_result(one_task[0]);

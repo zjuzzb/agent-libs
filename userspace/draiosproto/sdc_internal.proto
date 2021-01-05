@@ -220,6 +220,7 @@ message comp_task_event {
     optional string errstr = 3;
     optional draiosproto.comp_events events = 4;
     optional draiosproto.comp_results results = 5;
+    repeated string metrics = 6;
 }
 
 message comp_get_future_runs {

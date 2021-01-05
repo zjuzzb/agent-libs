@@ -246,7 +246,6 @@ func (impl *KubeBenchImpl) Scrape(
 	task *draiosproto.CompTask,
 	includeDesc bool,
 	evtsChannel chan *sdc_internal.CompTaskEvent,
-	metricsChannel chan string,
 ) error {
 
 	evt := &sdc_internal.CompTaskEvent{
@@ -425,22 +424,18 @@ func (impl *KubeBenchImpl) Scrape(
 
 	results.Results = append(results.Results, comp_result)
 
-	evt.Events = cevts
-	evt.Results = results
-
-	log.Debugf("Sending kube-bench comp_evt: %v", evt)
-	evtsChannel <- evt
-
 	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.tests_pass:%d|g", result.PassCount))
 	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.tests_fail:%d|g", result.FailCount))
 	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.tests_warn:%d|g", result.WarnCount))
 	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.tests_total:%d|g", result.TestsRun))
 	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.pass_pct:%f|g", (100.0*float64(result.PassCount))/float64(result.TestsRun)))
 
-	for _, metric := range metrics {
-		log.Debugf("Sending kube-bench metric: %v", metric)
-		metricsChannel <- metric
-	}
+	evt.Events = cevts
+	evt.Results = results
+	evt.Metrics = metrics
+
+	log.Infof("Sending kube-bench comp_evt: %v", evt)
+	evtsChannel <- evt
 
 	return nil
 }

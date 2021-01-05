@@ -39,8 +39,7 @@ type TestModuleImpl struct {
 func (impl *TestModuleImpl) Scrape(rootPath string, moduleName string,
 	task *draiosproto.CompTask,
 	includeDesc bool,	
-	evtsChannel chan *sdc_internal.CompTaskEvent,
-	metricsChannel chan string) error {
+	evtsChannel chan *sdc_internal.CompTaskEvent) error {
 
 	// Look for a parameter named "iter". This is used to change
 	// the output slightly from one task to another.
@@ -139,12 +138,6 @@ func (impl *TestModuleImpl) Scrape(rootPath string, moduleName string,
 
 	results.Results = append(results.Results, comp_result)
 
-	evt.Results = results
-
-	log.Debugf("Sending test-module comp_evt: %v", evt)
-
-	evtsChannel <- evt
-
 	metrics := []string{}
 
 	// This is a bit unlike the docker/k8s scrapers where the
@@ -152,10 +145,12 @@ func (impl *TestModuleImpl) Scrape(rootPath string, moduleName string,
 	// name here to make tests easier
 	metrics = append(metrics, fmt.Sprintf("compliance.%s:tests_pass:%s|g", *task.Name, curIter))
 
-	for _, metric := range metrics {
-		log.Debugf("Sending test-module metric: %v", metric)
-		metricsChannel <- metric
-	}
+	evt.Results = results
+	evt.Metrics = metrics
+
+	log.Debugf("Sending test-module comp_evt: %v", evt)
+
+	evtsChannel <- evt
 
 	return nil
 }

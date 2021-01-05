@@ -153,8 +153,7 @@ func (impl *LinuxBenchImpl) isHighRiskTest(id string) bool {
 func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 	task *draiosproto.CompTask,
 	includeDesc bool,
-	evtsChannel chan *sdc_internal.CompTaskEvent,
-	metricsChannel chan string) error {
+	evtsChannel chan *sdc_internal.CompTaskEvent) error {
 
 	evt := &sdc_internal.CompTaskEvent{
 		TaskName:       proto.String(moduleName),
@@ -314,11 +313,6 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 
 	results.Results = append(results.Results, compResult)
 
-	evt.Events = cevts
-	evt.Results = results
-
-	log.Debugf("Sending linux-bench comp_evt: %v", evt)
-	evtsChannel <- evt
 
 	metricsPrefix := fmt.Sprintf("compliance.linux-bench.%v", strings.Replace(impl.variant, ".", "-", -1))
 	metrics = append(metrics, fmt.Sprintf("%v.tests_pass:%d|g", metricsPrefix, result.PassCount))
@@ -331,10 +325,12 @@ func (impl *LinuxBenchImpl) Scrape(rootPath string, moduleName string,
 		metrics = append(metrics, fmt.Sprintf("%v.pass_pct:%f|g", metricsPrefix, (100.0*float64(result.PassCount))/float64(result.TestsRun)))
 	}
 
-	for _, metric := range metrics {
-		log.Debugf("Sending linux-bench metric: %v", metric)
-		metricsChannel <- metric
-	}
+	evt.Events = cevts
+	evt.Results = results
+	evt.Metrics = metrics
+
+	log.Infof("Sending linux-bench comp_evt: %v", evt)
+	evtsChannel <- evt
 
 	return nil
 }

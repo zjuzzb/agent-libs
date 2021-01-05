@@ -8,12 +8,10 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"net"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"time"
 )
 
@@ -30,7 +28,6 @@ type ModuleMgr struct {
 	SaveTempFiles bool
 	availModules map[string]*Module
 	evtsChannel chan *sdc_internal.CompTaskEvent
-	metricsChannel chan string
 	metricsResetChannel chan bool
 
 	// A cancel function used to cancel background operations
@@ -41,61 +38,6 @@ type ModuleMgr struct {
 	scheduleRegexpNames []string
 
 	scheduleListRegexp *regexp.Regexp
-}
-
-func emitStatsdForever(mgr *ModuleMgr) {
-
-	var conn net.Conn
-	var err error
-
-	if mgr.metricsStatsdPort != 0 {
-		statsdEndpoint := fmt.Sprintf("127.0.0.1:%d", mgr.metricsStatsdPort)
-		conn, err = net.Dial("udp", statsdEndpoint)
-		if err != nil {
-			log.Errorf("Could not connect to %s (%v)", statsdEndpoint, err.Error());
-		}
-	} else {
-		log.Infof("Not sending benchmarks metrics (statsd disabled)")
-	}
-
-	// Maps from metric name to complete statsd line
-	cur_metrics := make(map[string]string)
-
-	for {
-		// Every second, wake up and send new
-		// metrics. Otherwise, accept new metrics from
-		// metricsChannel as they become available.
-		ticker := time.NewTicker(1 * time.Second)
-		for {
-			select {
-			case metric := <- mgr.metricsChannel:
-				parts := strings.Split(metric, ":")
-				cur_metrics[parts[0]] = metric
-
-				if conn != nil {
-					// Also send the metric immediately
-					log.Debugf("Writing to statsd: %v", string(metric))
-					_, err := conn.Write([]byte(metric + "\n"))
-					if err != nil {
-						log.Errorf("Could not send metrics to 127.0.0.1:8125 (%v)", err.Error())
-					}
-				}
-			case <- mgr.metricsResetChannel:
-				cur_metrics = make(map[string]string)
-			case <-ticker.C:
-				// Send the current set of metrics, if a statsd server is configured
-				if conn != nil {
-					for _, metric := range cur_metrics {
-						log.Debugf("Writing to statsd: %v", string(metric))
-						_, err := conn.Write([]byte(metric + "\n"))
-						if err != nil {
-							log.Errorf("Could not send metrics to 127.0.0.1:8125 (%v)", err.Error())
-						}
-					}
-				}
-			}
-		}
-	}
 }
 
 func (mgr *ModuleMgr) FailResult(stask *ScheduledTask, err error) {
@@ -138,8 +80,6 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 	mgr.Tasks = make(map[uint64]*draiosproto.CompTask)
 	mgr.availModules = make(map[string]*Module)
 	mgr.evtsChannel = make(chan *sdc_internal.CompTaskEvent, 1000)
-	mgr.metricsChannel = make(chan string, 1000)
-	mgr.metricsResetChannel = make(chan bool)
 	mgr.machineId = machineId
 	mgr.customerId = customerId
 	mgr.metricsStatsdPort = metricsStatsdPort
@@ -188,10 +128,6 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 			machineId: machineId,
 		},
 	}
-
-	// Start a goroutine that reads from the metrics channel and
-	// forwards to statsd
-	go emitStatsdForever(mgr)
 
 	mgr.initialized = true
 

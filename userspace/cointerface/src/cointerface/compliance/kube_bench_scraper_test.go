@@ -77,11 +77,10 @@ func TestKubeBenchImpl_GenArgs(t *testing.T) {
 
 	_, err = os.Stat("../stdout.txt")
 	if !os.IsNotExist(err) {
-		metrics := make(chan string)
 		events := make(chan *sdc_internal.CompTaskEvent)
 
 		testF := func() {
-			err1 := kbImpl.Scrape("../", "", &task, true, events, metrics)
+			err1 := kbImpl.Scrape("../", "", &task, true, events)
 			if err1 != nil {
 				t.Fatal(err1)
 			}

@@ -39,10 +39,12 @@ compliance_mgr::~compliance_mgr()
 
 void compliance_mgr::init(sinsp_analyzer *analyzer,
 			  dragent_configuration *configuration,
+			  dragent::compliance_statsd_destination *statsd_dest,
 			  bool save_errors)
 {
 	m_analyzer = analyzer;
 	m_configuration = configuration;
+	m_statsd_dest = statsd_dest;
 	m_save_errors = save_errors;
 
 	m_check_periodic_tasks_interval = make_unique<run_on_interval>(1000000000);
@@ -383,6 +385,11 @@ void compliance_mgr::check_pending_task_results()
 				m_result_handler.security_mgr_comp_results_ready(sinsp_utils::get_current_time_ns(),
 				                                                 &(cevent.results()));
 			}
+		}
+
+		if (cevent.metrics_size() > 0)
+		{
+			m_statsd_dest->send_compliance_statsd(cevent.metrics());
 		}
 	}
 }

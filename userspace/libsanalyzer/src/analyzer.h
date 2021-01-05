@@ -59,6 +59,7 @@
 
 #include "include/sinsp_external_processor.h"
 #include "thread_safe_container/blocking_queue.h"
+#include "thread_safe_container/guarded_cache.h"
 
 #include <nlohmann/json.hpp>
 
@@ -779,6 +780,17 @@ public:
 	uint32_t get_num_dropped_ipv4_connections() const;
 
 	/**
+	 * Return the container id of the agent
+	 */
+	const std::string& get_agent_container_id();
+
+	/**
+	 * Add the stats metric to the agent cache that will get sent 
+	 * every flush 
+	 */
+	void add_to_agent_statsd_cache(const std::string &metric);
+
+	/**
 	 * Inject a statsd metric into statsite.  If the given tinfo is non-
 	 * nullptr, and if it has a container id associated with it, then
 	 * inject both a container metric and a host metric; otherwise
@@ -1487,4 +1499,8 @@ public:
 	//
 	void mounted_fs_request(const tracer_emitter& proc_trc,
 				const analyzer_emitter::progtable_by_container_t& progtable_by_container) const;
+
+	void inject_cached_agent_statsd_metrics();
+	using statsd_cache = thread_safe_container::guarded_cache<std::string, std::string>;
+	statsd_cache m_agent_statsd_cache;
 };

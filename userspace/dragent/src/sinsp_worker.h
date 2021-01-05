@@ -3,6 +3,7 @@
 #include "main.h"
 #include "capture_job_handler.h"
 #include "compliance_mgr.h"
+#include "compliance_statsd_destination.h"
 #include "configuration.h"
 #include "dump_job_request_queue.h"
 #include "internal_metrics.h"
@@ -37,7 +38,8 @@ class sinsp_worker : public Poco::Runnable,
                      public dragent::security_compliance_calender_receiver,
                      public dragent::security_compliance_task_runner,
                      public dragent::security_host_metadata_receiver,
-                     public dragent::security_policy_v2_loader
+                     public dragent::security_policy_v2_loader,
+                     public dragent::compliance_statsd_destination
 {
 public:
 	sinsp_worker(dragent_configuration* configuration,
@@ -109,6 +111,12 @@ public:
 	{
 		m_user_event_queue = user_event_queue;
 	}
+
+	/**
+	 * Take the compliance statsd metrics from the buffer and inject
+	 * them into the analyzer. 
+	 */
+	void send_compliance_statsd(const google::protobuf::RepeatedPtrField<std::string>&) override;
 
 #ifndef CYGWING_AGENT
 	void request_load_policies_v2(const draiosproto::policies_v2 &policies_v2) override;

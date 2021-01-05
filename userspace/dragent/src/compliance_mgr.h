@@ -13,6 +13,7 @@
 #include <draios.pb.h>
 
 #include "configuration.h"
+#include "compliance_statsd_destination.h"
 #include "security_result_handler.h"
 
 class SINSP_PUBLIC compliance_mgr
@@ -24,6 +25,7 @@ public:
 
 	void init(sinsp_analyzer *analyzer,
 		  dragent_configuration *configuration,
+		  dragent::compliance_statsd_destination *statsd_dest,
 		  bool save_errors=false);
 
 	void process_event(sinsp_evt *evt);
@@ -61,6 +63,7 @@ private:
 	bool m_initialized;
 	security_result_handler& m_result_handler;
 	sinsp_analyzer *m_analyzer;
+	dragent::compliance_statsd_destination *m_statsd_dest;
 	dragent_configuration *m_configuration;
 	bool m_save_errors;
 	std::string m_cointerface_sock_path;

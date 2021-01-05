@@ -22,8 +22,7 @@ type Scraper interface {
 	Scrape(rootPath string, moduleName string,
 		task *draiosproto.CompTask,
 		includeDesc bool,
-		evtsChannel chan *sdc_internal.CompTaskEvent,
-		metricsChannel chan string) error
+		evtsChannel chan *sdc_internal.CompTaskEvent) error
 }
 
 type TaskArgsGenerator interface {
@@ -734,7 +733,7 @@ func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask)
 		err = module.Impl.Scrape(outputDir, module.Name,
 			stask.task,
 			stask.mgr.IncludeDesc,
-			stask.mgr.evtsChannel, stask.mgr.metricsChannel); if err != nil {
+			stask.mgr.evtsChannel); if err != nil {
 				err = fmt.Errorf("Could not scrape module %s output (%s)",
 					module.Name, err);
 			}

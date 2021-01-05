@@ -4579,6 +4579,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 #endif
 
 				tracer_emitter gs_trc("get_statsd", f_trc);
+				inject_cached_agent_statsd_metrics();
 				m_statsd_emitter->fetch_metrics(m_prev_flush_time_ns);
 
 				if (m_mounted_fs_proxy)
@@ -8129,6 +8130,43 @@ uint32_t sinsp_analyzer::get_num_dropped_ipv4_connections() const
 	return m_ipv4_connections->get_n_drops();
 }
 
+const std::string& sinsp_analyzer::get_agent_container_id()
+{
+	static string agent_container_id;
+
+	if (agent_container_id.empty()) 
+	{
+		auto agent_thread = get_agent_thread();
+		if (nullptr != agent_thread) 
+		{
+			agent_container_id = agent_thread->m_container_id;
+		}
+	}
+
+	return agent_container_id;
+}
+
+void sinsp_analyzer::add_to_agent_statsd_cache(const std::string &metric)
+{
+	const std::size_t pos = metric.find(':');
+	const std::string left = metric.substr(0, pos);
+
+	m_agent_statsd_cache.insert(left, metric);
+}
+
+void sinsp_analyzer::inject_cached_agent_statsd_metrics()
+{
+	const std::string &agent_container_id = get_agent_container_id();
+
+	m_agent_statsd_cache.visit([this, &agent_container_id](const statsd_cache::element_pair& metric) 
+	{
+		inject_statsd_metric(agent_container_id,
+		                     true /*dest is localhost*/,
+		                     metric.second.c_str(),
+		                     metric.second.size());
+	});
+}
+
 void sinsp_analyzer::inject_statsd_metric(const std::string& container_id,
                                           const bool dest_is_ipv4_localhost,
                                           const char* const data,
@@ -8385,3 +8423,7 @@ bool analyzer_container_state::should_report_container(const sinsp_configuration
 	          (m_filter_state == FILT_INCL) ? "include" : "exclude");
 	return m_filter_state == FILT_INCL;
 }
+
+// generate template functions
+#include "thread_safe_container/guarded_cache.hpp"
+template class thread_safe_container::guarded_cache<std::string, std::string>;

@@ -111,8 +111,7 @@ func (impl *DockerBenchImpl) AssignRisk(id string, result string, curRisk Result
 func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 	task *draiosproto.CompTask,
 	includeDesc bool,
-	evtsChannel chan *sdc_internal.CompTaskEvent,
-	metricsChannel chan string) error {
+	evtsChannel chan *sdc_internal.CompTaskEvent) error {
 
 	evt := &sdc_internal.CompTaskEvent{
 		TaskName: proto.String(moduleName),
@@ -348,12 +347,6 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 
 	results.Results = append(results.Results, comp_result)
 
-	evt.Events = cevts
-	evt.Results = results
-
-	log.Debugf("Sending docker-bench comp_evt: %v", evt)
-	evtsChannel <- evt
-
 	// Metrics we emit:
 	//  Overall, and for each section: Tests Ran/Tests Passed/% of Tests Passing
 
@@ -369,10 +362,12 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 		                                      (100.0 * float64(result.PassCount)) / float64(result.TestsRun)))
 	}
 
-	for _, metric := range metrics {
-		log.Debugf("Sending docker-bench metric: %v", metric)
-		metricsChannel <- metric
-	}
+	evt.Events = cevts
+	evt.Results = results
+	evt.Metrics = metrics
+
+	log.Infof("Sending docker-bench comp_evt: %v", evt)
+	evtsChannel <- evt
 
 	return nil
 }

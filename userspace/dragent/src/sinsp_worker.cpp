@@ -179,7 +179,7 @@ void sinsp_worker::init_security()
 		const std::string run_dir = m_configuration->c_root_dir.get_value() + "/run";
 
 		m_compliance_mgr = new compliance_mgr(run_dir, m_protocol_handler);
-		m_compliance_mgr->init(m_analyzer, m_configuration);
+		m_compliance_mgr->init(m_analyzer, m_configuration, this /*statsd dest*/);
 
 		if (security_config::instance().get_default_compliance_schedule() != "")
 		{
@@ -696,6 +696,19 @@ bool sinsp_worker::is_stall_fatal() const
 	// If the input filename is not empty then we are reading an scap file
 	// that has old timestamps so tell the caller to not check for stalls
 	return m_configuration->m_input_filename.empty();
+}
+
+void sinsp_worker::send_compliance_statsd(const google::protobuf::RepeatedPtrField<std::string>& collection)
+{
+	if (nullptr == m_analyzer) 
+	{
+		LOG_ERROR("Analyzer not initialized. Cannot send statsd metrics for compliance.");
+	}
+
+	for (const auto &metric : collection)
+	{
+		m_analyzer->add_to_agent_statsd_cache(metric);
+	}
 }
 
 bool sinsp_worker::set_compliance_calendar(const draiosproto::comp_calendar& calendar,
