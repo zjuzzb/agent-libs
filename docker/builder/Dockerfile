@@ -4,6 +4,11 @@ ARG max_parallelism=1
 
 ADD *.repo /etc/yum.repos.d/
 
+RUN yum install -y ca-certificates && \
+    update-ca-trust force-enable && \
+    curl -o /etc/pki/ca-trust/source/anchors/lets-encrypt-r3-cross-signed.pem https://letsencrypt.org/certs/lets-encrypt-r3-cross-signed.pem && \
+    update-ca-trust extract
+
 # copied from builder script
 RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devtools-2/devtools-2.repo && \
     rpm -i https://archives.fedoraproject.org/pub/archive/epel/6/i386/epel-release-6-8.noarch.rpm && \
