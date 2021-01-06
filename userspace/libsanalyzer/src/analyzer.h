@@ -481,11 +481,6 @@ public:
 		return m_inspector->m_container_manager.get_container(container_id);
 	}
 
-	void set_containers_limit(const uint32_t value)
-	{
-		m_containers_limit = std::min(value, CONTAINERS_HARD_LIMIT);
-	}
-
 	void set_container_patterns(const std::vector<std::string>& patterns)
 	{
 		m_container_patterns = patterns;
@@ -1362,7 +1357,6 @@ public:
 #endif  // CYGWING_AGENT
 
 	std::vector<std::string> m_container_patterns;
-	uint32_t m_containers_limit;
 	uint32_t m_containers_labels_max_len;
 #ifndef _WIN32
 	self_cputime_analyzer m_cputime_analyzer;

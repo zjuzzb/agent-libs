@@ -929,7 +929,6 @@ void dragent_configuration::init()
 		}
 	}
 
-	m_containers_limit = m_config->get_scalar<uint32_t>("containers", "limit", 200);
 	m_containers_labels_max_len =
 	    m_config->get_scalar<uint32_t>("containers", "labels_max_len", 100);
 	m_container_patterns = m_config->get_scalar<vector<string>>("containers", "include", {});
@@ -1289,7 +1288,6 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
 	LOG_INFO("User events rate: " + NumberFormatter::format(m_user_events_rate));
 	LOG_INFO("User events max burst: " + NumberFormatter::format(m_user_max_burst_events));
-	LOG_INFO("containers: max limit: " + NumberFormatter::format(m_containers_limit));
 	LOG_INFO("containers: labels max len: " + NumberFormatter::format(m_containers_labels_max_len) +
 	         " characters");
 	if (m_percentiles.size())

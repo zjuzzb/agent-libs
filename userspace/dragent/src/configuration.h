@@ -232,7 +232,6 @@ public:
 
 	std::vector<app_check> m_app_checks;
 	std::string m_python_binary;
-	uint32_t m_containers_limit;
 	uint32_t m_containers_labels_max_len;
 	std::vector<std::string> m_container_patterns;
 	std::vector<sinsp_chisel_details> m_chisel_details;

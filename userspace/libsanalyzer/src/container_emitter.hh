@@ -232,7 +232,7 @@ void container_emitter<callback_type, callback_arg_type>::emit_containers()
 
 	g_logger.format(sinsp_logger::SEV_DEBUG, "total_cpu_shares=%lu", total_cpu_shares);
 	containers_protostate_marker.mark_top(CONTAINERS_PROTOS_TOP_LIMIT);
-	// Emit m_containers_limit sorted by the following priority:
+	// Emit <container limit> containers sorted by the following priority:
 	// Take containers which match the reporting filters first
 	// Take containers which have been previously reported next
 	// Take containers which are top in the cpu/mem/file IO
