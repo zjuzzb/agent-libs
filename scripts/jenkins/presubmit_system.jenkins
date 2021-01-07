@@ -58,12 +58,9 @@ pipeline {
 	}
 	post {
 		always {
-			// Sometimes for some reason the tests don't stop. This blocks the kmod
+			// sometimes for some reason the tests don't stop. this blocks the kmod
 			// from being unloaded while also not relinquishing control, so
-			// ensure everything is nuked.
-			// Also make sure all container images are gone to save
-			// disk space. Also reset docker to avoid crashes due to 
-			// out-of-memory.
+			// ensure everything is nuked
 			sh label: '', script: '''
 			    sudo pkill -9 run-tests || echo "no tests to kill"
 
@@ -72,7 +69,6 @@ pipeline {
 				sudo rmmod sysdigcloud-probe || echo "not currently loaded"
 				sudo rm -rf ./install ./build
 				docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
-				sudo systemctl restart docker
 			'''
 			cleanWs deleteDirs: true, notFailBuild: true
 		}

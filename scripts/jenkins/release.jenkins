@@ -47,9 +47,9 @@ pipeline {
             expression { params.CREATE_RELEASE_BRANCH == true }
         }
         steps {
-            slackSend channel: '#docs,#support', message: "Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
+            slackSend channel: '#support', message: "Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
             slackSend channel: '#ws-agent-core', message: "@here Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
-            slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "@here Release in progress", tokenCredentialId: 'slack'
+			slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "@here Release in progress", tokenCredentialId: 'slack'
             withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
                 dir('agent') {
                     sh label: '', script: """
