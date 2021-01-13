@@ -107,8 +107,6 @@ typedef sinsp_fdinfo<sinsp_partial_transaction> sinsp_fdinfo_t;
 
 #undef SIMULATE_DROP_MODE
 
-static const uint32_t CONTAINERS_HARD_LIMIT = 200;
-
 static const size_t CONTAINERS_PROTOS_TOP_LIMIT = 15;
 static const size_t HOST_PROTOS_LIMIT = 15;
 static const auto ASSUME_LONG_LIVING_PROCESS_UPTIME_S = 10;

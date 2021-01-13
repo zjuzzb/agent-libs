@@ -206,6 +206,15 @@ type_config<uint64_t>::ptr c_flush_interval =
         .hidden()
         .build();
 
+type_config<uint32_t>::ptr c_container_limit =
+    type_config_builder<uint32_t>(
+        200,
+        "The maximum number of containers allowed per sample.",
+        "containers",
+        "limit")
+        .max(400)
+        .build();
+
 type_config<std::string> c_host_tags("", "Set of key-value tags assigned to this agent", "tags");
 
 type_config<bool> c_smart_container_reporting(
@@ -406,7 +415,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector,
 	m_procfs_scan_thread = false;
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
-	m_containers_limit = CONTAINERS_HARD_LIMIT;
 
 	//
 	// Docker
@@ -2526,7 +2534,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		                                   progtable_by_container,
 		                                   m_container_patterns,
 		                                   flushflags,
-		                                   m_containers_limit,
+		                                   c_container_limit->get_value(),
 		                                   m_inspector->is_nodriver(),
 		                                   emitted_containers);
 		emitter.emit_containers();
@@ -6772,8 +6780,8 @@ vector<string> sinsp_analyzer::emit_containers_deprecated(
 	// Pick top N from top_by_file_io which are not already taken by top_cpu and top_mem
 	// Etc ...
 
-	const auto containers_limit_by_type = m_containers_limit / 4;
-	const auto containers_limit_by_type_remainder = m_containers_limit % 4;
+	const auto containers_limit_by_type = c_container_limit->get_value() / 4;
+	const auto containers_limit_by_type_remainder = c_container_limit->get_value() % 4;
 	unsigned statsd_limit = statsd_emitter::get_limit();
 	auto check_and_emit_containers = [&containers_ids,
 	                                  this,
