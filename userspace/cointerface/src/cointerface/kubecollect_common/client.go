@@ -1002,24 +1002,38 @@ func StartWatcher(ctx context.Context,
 	wg.Add(1)
 
 	go func() {
-		log.Debugf("Starting retryWatcher %s", resource)
 		defer func() {
 			wg.Done()
 		}()
+		for {
+			terminated := false
+			select {
+			case <- ctx.Done():
+				terminated = true
+			default:
+			}
 
-		_, err := tw.ListWatchUntil(ctx, lw,
-			func(event watch.Event) (bool, error) {
-				if event.Type == watch.Error {
-					log.Warnf("startWatcher[%s] got event type Error", resource)
-				} else {
-					handler(event, evtc)
-				}
+			log.Debugf("Starting retryWatcher %s", resource)
+			_, err := tw.ListWatchUntil(ctx, lw,
+				func(event watch.Event) (bool, error) {
+					if event.Type == watch.Error {
+						log.Warnf("startWatcher[%s] got event type Error", resource)
+					} else {
+						handler(event, evtc)
+					}
 
-				return false, nil
-			})
+					// Condition false means continue
+					return false, nil
+				})
 
-		if err != nil {
-			log.Warnf("startWatcher[%s] Could not start retryWatcher: %s", resource, err.Error())
+			if err != nil {
+				log.Warnf("startWatcher[%s] ListWatchUntil exits: %s", resource, err.Error())
+			}
+
+			time.Sleep(5 * time.Second)
+			if terminated == true {
+				break
+			}
 		}
 	}()
 }

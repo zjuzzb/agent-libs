@@ -3,6 +3,7 @@ package main
 import (
 	"cointerface/kubecollect_common"
 	"cointerface/kubecollect_tc"
+	"errors"
 	"fmt"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -12,7 +13,6 @@ import (
 	"runtime/debug"
 	"sync"
 	"time"
-	"errors"
 
 	"cointerface/compliance"
 	"cointerface/k8s_audit"
