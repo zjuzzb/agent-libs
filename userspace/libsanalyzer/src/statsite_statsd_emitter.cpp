@@ -53,7 +53,7 @@ unsigned emit_metrics(const std::vector<statsd_metric>& metric_list,
 
 	if(num_metrics > 0)
 	{
-		SINSP_INFO("Added %d statsd metrics for %s",
+		SINSP_DEBUG("Added %d statsd metrics for %s",
 		           num_metrics,
 		           context.c_str());
 	}
