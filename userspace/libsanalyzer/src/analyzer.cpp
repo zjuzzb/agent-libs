@@ -4319,8 +4319,6 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 	secure_profiling_trc.stop();
 }
 
-#define HIGH_EVT_THRESHOLD 300 * 1000
-#define HIGH_SINGLE_EVT_THRESHOLD 100 * 1000
 
 // Get the number of CPUs. Check for correctness.
 // Throw an exception if cannot get a correct value and let dragent
@@ -4727,10 +4725,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			m_metrics->mutable_hostinfo()->set_uptime(m_proc_stat.m_uptime);
 
 			// Log host syscall count
-			// Keyword auto will deduce the type of the variable from the assign.
 			auto top_calls = m_host_metrics.m_syscall_count.top_calls(5);
-			auto sev = Poco::Message::Priority::PRIO_DEBUG;
-
 			std::ostringstream call_log;
 			call_log << "Top calls";
 			if (flushflags == analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -4740,10 +4735,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 			call_log << " (" << m_host_metrics.m_syscall_count.total_calls() << " total)";
 			for (auto iter = top_calls.crbegin(); iter != top_calls.crend(); iter++)
 			{
+			
 				call_log << ", " << sinsp_utils::event_name_by_id(iter->second) << "("
 				         << iter->second << "):" << iter->first;
 			}
-			LOG_AT_PRIO_(sev, call_log.str());
+			LOG_DEBUG(call_log.str());
 
 			if (!m_inspector->is_capture())
 			{
