@@ -219,7 +219,7 @@ security_config* security_config::c_security_config = new security_config();
 security_config::security_config()
     : feature_base(SECURE,
                    &draiosproto::feature_status::set_secure_enabled,
-                   {COINTERFACE, DRIVER, FULL_SYSCALLS})
+                   {DRIVER, FULL_SYSCALLS})
 {
 }
 

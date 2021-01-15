@@ -231,7 +231,8 @@ std::unique_ptr<cm_state_machine> build_fsm(connection_manager* cm,
  *       handled appropriately.
  */
 
-connection_manager::connection_manager(dragent_configuration* configuration,
+connection_manager::connection_manager(
+    dragent_configuration* configuration,
     protocol_queue* queue,
     std::initializer_list<dragent_protocol::protocol_version> supported_protocol_versions,
     std::initializer_list<message_handler_map::value_type> message_handlers)

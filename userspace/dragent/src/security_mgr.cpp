@@ -1095,23 +1095,26 @@ void security_mgr::set_event_labels(std::string &container_id,
 	uid = std::make_pair("container", container_id);
 
 	std::unordered_map<std::string, std::string>event_labels;
-	m_infra_state->find_tag_list(uid, m_event_labels, event_labels);
-
-	for (auto& it: event_labels)
+	if (m_infra_state != nullptr)
 	{
-		(*event->mutable_event_labels())[it.first] = std::move(it.second);
-	}
+		m_infra_state->find_tag_list(uid, m_event_labels, event_labels);
 
-	// Kubernetes Cluster Name
-	if (m_event_labels.find("kubernetes.cluster.name") != m_event_labels.end())
-	{
-		// kubernetes.cluster.name should be pushed only if the event is related to k8s
-		// Use Pod Name label to check it
-		if (event_labels.find("kubernetes.pod.name") != event_labels.end())
+		for (auto& it: event_labels)
 		{
-			if (!m_infra_state->get_k8s_cluster_name().empty())
+			(*event->mutable_event_labels())[it.first] = std::move(it.second);
+		}
+
+		// Kubernetes Cluster Name
+		if (m_event_labels.find("kubernetes.cluster.name") != m_event_labels.end())
+		{
+			// kubernetes.cluster.name should be pushed only if the event is related to k8s
+			// Use Pod Name label to check it
+			if (event_labels.find("kubernetes.pod.name") != event_labels.end())
 			{
-				(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_infra_state->get_k8s_cluster_name();
+				if (!m_infra_state->get_k8s_cluster_name().empty())
+				{
+					(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_infra_state->get_k8s_cluster_name();
+				}
 			}
 		}
 	}

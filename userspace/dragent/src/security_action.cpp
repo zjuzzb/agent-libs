@@ -11,7 +11,15 @@
 
 using namespace std;
 
+namespace
+{
 COMMON_LOGGER();
+
+type_config<bool> c_support_actions(true,
+                                    "indicates whether taking actions based on policies is supported",
+                                    "security",
+                                    "actions_enabled");
+}
 
 security_actions::actions_result::actions_result()
 	: m_result(NULL), m_v2result(NULL)
@@ -276,19 +284,28 @@ void security_actions::perform_actions(uint64_t ts_ns,
 
 		string errstr;
 
-
-		switch(action.type())
+		bool action_handled = true;
+		if (c_support_actions.get_value())
 		{
-		case draiosproto::ACTION_CAPTURE:
-			perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
-			break;
-		case draiosproto::ACTION_PAUSE:
-			perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
-			break;
-		case draiosproto::ACTION_STOP:
-			perform_container_action(ts_ns, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
-			break;
-		default:
+			switch(action.type())
+			{
+			case draiosproto::ACTION_CAPTURE:
+				perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
+				break;
+			case draiosproto::ACTION_PAUSE:
+				perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
+				break;
+			case draiosproto::ACTION_STOP:
+				perform_container_action(ts_ns, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
+				break;
+			default:
+				action_handled = false;
+			}
+		} else {
+			action_handled = false;
+		}
+
+		if (!action_handled) {
 			string errstr = string("Policy Action ") + std::to_string(action.type()) + string(" not implemented yet");
 			result->set_successful(false);
 			result->set_errmsg(errstr);
@@ -308,21 +325,31 @@ void security_actions::perform_actions(uint64_t ts_ns,
 
 		string errstr;
 
-		switch(action.type())
+		bool action_handled = true;
+		if (c_support_actions.get_value())
 		{
-		case draiosproto::V2ACTION_CAPTURE:
-			perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
-			break;
-		case draiosproto::V2ACTION_PAUSE:
-			perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
-			break;
-		case draiosproto::V2ACTION_STOP:
-			perform_container_action(ts_ns, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
-			break;
-		case draiosproto::V2ACTION_KILL:
-			perform_container_action(ts_ns, sdc_internal::KILL, container_id, std::to_string(action.type()), sresult, astate);
-			break;
-		default:
+			switch(action.type())
+			{
+			case draiosproto::V2ACTION_CAPTURE:
+				perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
+				break;
+			case draiosproto::V2ACTION_PAUSE:
+				perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
+				break;
+			case draiosproto::V2ACTION_STOP:
+				perform_container_action(ts_ns, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
+				break;
+			case draiosproto::V2ACTION_KILL:
+				perform_container_action(ts_ns, sdc_internal::KILL, container_id, std::to_string(action.type()), sresult, astate);
+				break;
+			default:
+				action_handled = false;
+			}
+		} else {
+			action_handled = false;
+		}
+
+		if (!action_handled) {
 			string errstr = string("Policy Action ") + std::to_string(action.type()) + string(" not implemented yet");
 			result->set_successful(false);
 			result->set_errmsg(errstr);

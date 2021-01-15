@@ -246,6 +246,7 @@ public:
 		AGENT_MODE_ESSENTIALS = 3,
 		AGENT_MODE_TROUBLESHOOTING = 4,
 		AGENT_MODE_SECURE = 5,
+		AGENT_MODE_AGENTINO = 6,
 
 		AGENT_MODE_COUNT
 	};
@@ -326,8 +327,12 @@ public:
 	 * feature has the proper "enabled" value from the registered configs as
 	 * well as validate the enabled featureset is valid. In the future, this
 	 * may also manage the actual initialization of the features.
+	 *
+	 * There are two apis that function equivalently, but one allows the specification
+	 * of the mode to use, while the other uses the configured default
 	 */
 	bool initialize();
+	bool initialize(agent_mode mode);
 
 private:
 	bool enable(feature_name feature, bool force);

@@ -40,5 +40,5 @@ ARG PROMSCRAPE_VERSION
 RUN /code/agent/dependency_install_scripts/install-deps.sh /code/agent/dependencies ${max_parallelism}
 
 ADD entrypoint.sh /
-VOLUME [ "/code/agent/build", "/code/sysdig/build", "/out", "/root/.cache" ]
+VOLUME [ "/code/agent/build", "/code/sysdig/build", "/code/libscap-hayabusa/producer_build", "/out", "/root/.cache" ]
 ENTRYPOINT [ "/entrypoint.sh" ]

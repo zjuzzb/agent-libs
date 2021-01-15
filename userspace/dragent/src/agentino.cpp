@@ -8,6 +8,7 @@
 #include "error_handler.h"
 #include "exit_code.h"
 #include "globally_readable_file_channel.h"
+#include "protobuf_metric_serializer.h"
 #include "security_mgr.h"
 #include "security_policies_v2_message_handler.h"
 #include "sinsp_event_source.h"
@@ -16,6 +17,7 @@
 
 #include <grpc/support/log.h>
 #include <sched.h>
+#include <stdlib.h>
 #include <sys/resource.h>
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
@@ -57,10 +59,12 @@ static void g_trace_signal_callback(int sig)
 }  // end namespace
 
 agentino_app::agentino_app()
-    : m_transmit_queue(MAX_SAMPLE_STORE_SIZE),
+    : m_serializer_queue(MAX_SAMPLE_STORE_SIZE),
+      m_transmit_queue(MAX_SAMPLE_STORE_SIZE),
       m_protocol_handler(m_transmit_queue),
       m_log_reporter(m_protocol_handler, &m_configuration),
-      m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue)
+      m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),
+      m_direct(false)
 {
 }
 
@@ -72,6 +76,40 @@ agentino_app::~agentino_app()
 void agentino_app::initialize(Application& self)
 {
 	ServerApplication::initialize(self);
+
+	// Poco's argument processing library doesn't seem to actually work, nor is it easily
+	// debuggable. So we'll just roll our own. Yes this code is super raw, no I'm not concerned, as
+	// this application will in effect never be manually executed by a customer
+	for (auto i = argv().begin() + 1; i != argv().end(); ++i)
+	{
+		if (*i == "--name")
+		{
+			m_hostname = *(++i);
+		}
+		else if (*i == "--container_name")
+		{
+			m_container_name = *(++i);
+		}
+		else if (*i == "--container_image")
+		{
+			m_container_image = *(++i);
+		}
+		else if (*i == "--container_id")
+		{
+			m_container_id = *(++i);
+		}
+		else if (*i == "--direct")
+		{
+			m_direct = true;
+		}
+		else
+		{
+			std::cerr << "Unrecognized Argument: " << *i << "\n";
+			// Poco seems to provide no way to indicate a failure in initialization, so we'll just
+			// roll our own.
+			exit(EXIT_FAILURE);
+		}
+	}
 }
 
 void agentino_app::uninitialize()
@@ -82,14 +120,34 @@ void agentino_app::uninitialize()
 void agentino_app::defineOptions(OptionSet& options)
 {
 	ServerApplication::defineOptions(options);
+
+	// Even though we roll our own argument parser, the failure mode of Poco parser is that it gets
+	// the "key" for the argument, but not the value, so we can still use the otions here to
+	// validate that the proper options are provide
+	options.addOption(Option("name", "", "the name used to identify this agentone to the backend")
+	                      .required(true)
+	                      .repeatable(false));
+	options.addOption(
+	    Option("container_name", "", "the name used to identify this agentone to the backend")
+	        .required(true)
+	        .repeatable(false));
+	options.addOption(
+	    Option("container_image", "", "the name used to identify this agentone to the backend")
+	        .required(true)
+	        .repeatable(false));
+	options.addOption(
+	    Option("container_id", "", "the name used to identify this agentone to the backend")
+	        .required(true)
+	        .repeatable(false));
+	options.addOption(
+	    Option("direct", "", "used to indicate the agentino should talk directly to the backend")
+	        .repeatable(false));
 }
 
 void agentino_app::handleOption(const std::string& name, const std::string& value)
 {
 	ServerApplication::handleOption(name, value);
 }
-
-void agentino_app::displayHelp() {}
 
 static void dragent_gpr_log(gpr_log_func_args* args)
 {
@@ -141,6 +199,16 @@ int agentino_app::main(const std::vector<std::string>& args)
 	catch (const yaml_configuration_exception& ex)
 	{
 		std::cerr << "Failed to init sinsp_worker. Exception message: " << ex.what() << '\n';
+		running_state::instance().shut_down();
+	}
+
+	// Normally we have to do some translation of features from the config for
+	// the feature manager, but none of that is supported in agentino, so
+	// we pretty much just have to ensure that features are "marked" as enabled or
+	// disabled properly
+	if (!feature_manager::instance().initialize(feature_manager::agent_mode::AGENT_MODE_AGENTINO))
+	{
+		std::cerr << "Failed to init features." << '\n';
 		running_state::instance().shut_down();
 	}
 
@@ -251,11 +319,10 @@ int agentino_app::sdagent_main()
 
 	try
 	{
-		cm =
-		    new connection_manager(&m_configuration,
-		                           &m_transmit_queue,
-		                           std::initializer_list<dragent_protocol::protocol_version>{4, 5},
-		                           {});
+		cm = new connection_manager(&m_configuration,
+		                            &m_transmit_queue,
+		                            std::initializer_list<dragent_protocol::protocol_version>{4},
+		                            {});
 		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
 	}
 	catch (const sinsp_exception& e)
@@ -264,10 +331,26 @@ int agentino_app::sdagent_main()
 		running_state::instance().restart();
 	}
 
-	sinsp_event_source* es = new sinsp_event_source(true,
-	                                                "static container id",
-	                                                "static container name",
-	                                                "static container image");
+	// In cases where we are talking directly to the backend, we need to spin up
+	// the proper infrastructure. This should probably be owned by some abstract metrics
+	// source, but given it's not doing much, that would likely be overengineered for now
+	if (m_direct)
+	{
+		std::shared_ptr<protobuf_compressor> compressor =
+		    protobuf_compressor_factory::get(protocol_compression_method::GZIP);
+
+		auto serializer = new protobuf_metric_serializer(nullptr,
+		                                                 m_configuration.c_root_dir.get_value(),
+		                                                 m_protocol_handler,
+		                                                 &m_serializer_queue,
+		                                                 &m_transmit_queue,
+		                                                 compressor,
+		                                                 cm);
+		m_pool.start(*serializer, 10);
+	}
+
+	sinsp_event_source* es =
+	    new sinsp_event_source(true, m_container_id, m_container_name, m_container_image);
 
 	std::shared_ptr<security_mgr> sm =
 	    std::make_shared<security_mgr>(m_configuration.c_root_dir.get_value(), m_protocol_handler);
@@ -275,7 +358,7 @@ int agentino_app::sdagent_main()
 	         nullptr,           // infrastructure_state_iface*
 	         nullptr,           // secure_k8s_audit_event_sink_iface*
 	         nullptr,           // capture_job_queue_handler*
-	         &m_configuration,  //  dragent_configuration*
+	         &m_configuration,  // dragent_configuration*
 	         nullptr);          // const internal_metrics::sptr_t&
 	es->register_event_listener(sm);
 
@@ -296,9 +379,30 @@ int agentino_app::sdagent_main()
 	// the watch dog and monitoring config files until someone decides it's
 	// time to terminate.
 	//////////////////////////////
+	int index = 0;
 	while (!state.is_terminated())
 	{
 		watchdog_check(uptime_s);
+
+		if (m_direct)
+		{
+			auto metrics = make_unique<draiosproto::metrics>();
+			metrics->set_timestamp_ns(time(nullptr) * ONE_SECOND_IN_NS);
+			metrics->set_index(++index);
+			metrics->set_machine_id(m_configuration.machine_id());
+			metrics->set_customer_id(m_configuration.m_customer_id);
+			metrics->mutable_hostinfo()->set_hostname(m_hostname);
+
+			m_serializer_queue.put(
+			    std::make_shared<flush_data_message>(time(nullptr) * ONE_SECOND_IN_NS,
+			                                         nullptr,
+			                                         std::move(metrics),
+			                                         0,
+			                                         0,
+			                                         0,
+			                                         1,
+			                                         0));
+		}
 
 		Thread::sleep(1000);
 		++uptime_s;

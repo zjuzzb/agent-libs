@@ -5,6 +5,7 @@
 #include <sys/resource.h>
 #include <limits.h>
 #include <string.h>
+#include <stdexcept>
 
 COMMON_LOGGER();
 

@@ -1311,6 +1311,7 @@ cri:
 ca_cert_paths:
   - /etc/pki/tls/certs/ca-bundle.crt # RHEL/CentOS
   - /usr/lib/ssl/certs # Debian/Ubuntu
+  - /etc/ssl/certs # Alpine
   - $OPENSSLDIR/certs/ca-bundle.crt # in case RHEL ever moves from /etc/pki/tls
   - $OPENSSLDIR/certs # others: try to autodetect from `openssl version -d`
 
