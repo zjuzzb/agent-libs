@@ -18,7 +18,7 @@ class echo_async_command_handler : public async_command_handler
 public:
 	using async_callback = std::function<void(const command_line_manager::response&)>;
 
-	void async_handle_command(const std::string &command, const async_callback& cb) override
+	void async_handle_command(const command_line_permissions &permissions, const std::string &command, const async_callback& cb) override
 	{
 		command_line_manager::response resp;
 		resp.first = command_line_manager::content_type::TEXT;
@@ -61,6 +61,8 @@ TEST(command_line_request_message_handler_test, echo)
 	draiosproto::command_line_request proto;
 	proto.set_key(key);
 	proto.set_command(command);
+	proto.mutable_permissions()->set_agent_status(true);
+	proto.mutable_permissions()->set_network_calls_to_remote_pods(false);
 
 	// Serialize the data into what the message handler expects
 	std::string data;
@@ -78,8 +80,8 @@ TEST(command_line_request_message_handler_test, echo)
 	ASSERT_TRUE(result);
 	ASSERT_EQ(draiosproto::message_type::COMMAND_LINE_RESPONSE, last_message.m_type);
 	ASSERT_EQ(key, last_message.m_message.key());
-	ASSERT_EQ(draiosproto::command_line_content_type::CLI_HTML_TEXT, last_message.m_message.content_type());
 	ASSERT_EQ(command, last_message.m_message.response());
+	ASSERT_EQ(draiosproto::command_line_content_type::CLI_HTML_TEXT, last_message.m_message.content_type());
 	ASSERT_EQ(customer_id, last_message.m_message.customer_id());
 	ASSERT_TRUE(last_message.m_message.has_machine_id());
 }

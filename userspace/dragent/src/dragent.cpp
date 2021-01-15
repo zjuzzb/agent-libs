@@ -476,7 +476,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 	}
 
 	command_line_manager::command_info cmd;
-	cmd.description = "The version of the Sysdig Agent.";
+	cmd.permissions = {CLI_AGENT_STATUS};
+	cmd.short_description = "The version of the Sysdig Agent.";
 	cmd.handler = [](const command_line_manager::argument_list &args) { return AGENT_VERSION;};
 	command_line_manager::instance().register_command("version", cmd);
 

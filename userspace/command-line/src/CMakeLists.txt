@@ -5,6 +5,8 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/targe
 
 set(COMMAND_LINE_SOURCES
     command_line_manager.cpp
+    command_line_permission.cpp
+    command_line_permissions.cpp
     command_line_runnable.cpp
 )
 

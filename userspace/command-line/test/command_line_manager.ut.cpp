@@ -7,33 +7,38 @@ TEST(command_line_manager_test, get_commands_json)
 	command_line_manager mgr;
 	{
 		command_line_manager::command_info cmd;
-		cmd.description = "milk the cow";
+		cmd.permissions = {CLI_AGENT_STATUS};
+		cmd.short_description = "milk the cow";
 		cmd.handler = [](const command_line_manager::argument_list &args) { return "moo";};
 		mgr.register_command("barn cow milk", cmd);
 	}
 	{	
 		command_line_manager::command_info cmd;
-		cmd.description = "pet the dog";
+		cmd.permissions = {CLI_AGENT_STATUS};
+		cmd.short_description = "pet the dog";
 		cmd.handler = [](const command_line_manager::argument_list &args) { return "woof";};
 		mgr.register_command("barn dog pet", cmd);
 	}
 	mgr.register_folder("goat", "goats are mostly nice but they do have horns");
 	{
 		command_line_manager::command_info cmd;
-		cmd.description = "throw the dog's stick";
+		cmd.permissions = {CLI_AGENT_STATUS};
+		cmd.short_description = "throw the dog's stick";
 		cmd.long_description = "Stick throwing is an ancient custom passed down from olden times where wolves would return bones to enhance the soup of early humans.";
 		cmd.handler = [](const command_line_manager::argument_list &args) { return "bark bark bark";};
 		mgr.register_command("barn dog throw-stick", cmd);
 	}
 	{
 		command_line_manager::command_info cmd;
-		cmd.description = "milk the goat";
+		cmd.permissions = command_line_permissions({ CLI_VIEW_CONFIGURATION, CLI_NETWORK_CALLS_TO_REMOTE_PODS});
+		cmd.short_description = "milk the goat";
 		cmd.handler = [](const command_line_manager::argument_list &args) { return "<goat noise>";};
 		mgr.register_command("goat milk", cmd);
 	}
 	{
 		command_line_manager::command_info cmd;
-		cmd.description = "red rum";
+		cmd.permissions = {CLI_AGENT_STATUS};
+		cmd.short_description = "red rum";
 		cmd.handler = [](const command_line_manager::argument_list &args) { return "eww";};
 		mgr.register_command("slaughter", cmd);
 	}
@@ -45,38 +50,38 @@ TEST(command_line_manager_test, get_commands_json)
 R"({
    "commands" : {
       "barn" : {
-         "description" : "red building where some animals are kept",
+         "short_description" : "red building where some animals are kept",
          "subs" : {
             "cow" : {
                "subs" : {
                   "milk" : {
-                     "description" : "milk the cow"
+                     "short_description" : "milk the cow"
                   }
                }
             },
             "dog" : {
                "subs" : {
                   "pet" : {
-                     "description" : "pet the dog"
+                     "short_description" : "pet the dog"
                   },
                   "throw-stick" : {
-                     "description" : "throw the dog's stick",
-                     "long_description" : "Stick throwing is an ancient custom passed down from olden times where wolves would return bones to enhance the soup of early humans."
+                     "long_description" : "Stick throwing is an ancient custom passed down from olden times where wolves would return bones to enhance the soup of early humans.",
+                     "short_description" : "throw the dog's stick"
                   }
                }
             }
          }
       },
       "goat" : {
-         "description" : "goats are mostly nice but they do have horns",
+         "short_description" : "goats are mostly nice but they do have horns",
          "subs" : {
             "milk" : {
-               "description" : "milk the goat"
+               "short_description" : "milk the goat"
             }
          }
       },
       "slaughter" : {
-         "description" : "red rum"
+         "short_description" : "red rum"
       }
    }
 }
@@ -88,13 +93,14 @@ R"({
 TEST(command_line_manager_test, simple_command)
 {
 	command_line_manager::command_info cmd1;
-	cmd1.description = "tell me hello";
+	cmd1.permissions = {CLI_AGENT_STATUS};
+	cmd1.short_description = "tell me hello";
 	cmd1.handler = [](const command_line_manager::argument_list &args) { return "hello";};
 
 	command_line_manager mgr;
 	mgr.register_command("greeting", cmd1);
 
-	ASSERT_EQ("hello", mgr.handle("greeting").second);
+	ASSERT_EQ("hello", mgr.handle({CLI_AGENT_STATUS}, "greeting").second);
 }
 
 TEST(command_line_manager_test, single_arg_with_value)
@@ -109,6 +115,7 @@ TEST(command_line_manager_test, single_arg_with_value)
 	};
 
 	command_line_manager::command_info cmd1;
+	cmd1.permissions = {CLI_AGENT_STATUS};
 	cmd1.handler = [&check_args](const command_line_manager::argument_list &args)  -> std::string
 	{
 		check_args(args);
@@ -118,8 +125,8 @@ TEST(command_line_manager_test, single_arg_with_value)
 	command_line_manager mgr;
 	mgr.register_command("command", cmd1);
 
-	ASSERT_EQ("response", mgr.handle("command -color red").second);
-	ASSERT_EQ("response", mgr.handle("command   -color   red  ").second);
+	ASSERT_EQ("response", mgr.handle({CLI_AGENT_STATUS}, "command -color red").second);
+	ASSERT_EQ("response", mgr.handle({CLI_AGENT_STATUS}, "command   -color   red  ").second);
 }
 
 TEST(command_line_manager_test, single_arg_without_value)
@@ -134,6 +141,7 @@ TEST(command_line_manager_test, single_arg_without_value)
 	};
 
 	command_line_manager::command_info cmd1;
+	cmd1.permissions = {CLI_AGENT_STATUS};
 	cmd1.handler = [&check_args](const command_line_manager::argument_list &args)  -> std::string
 	{
 		check_args(args);
@@ -143,8 +151,8 @@ TEST(command_line_manager_test, single_arg_without_value)
 	command_line_manager mgr;
 	mgr.register_command("command", cmd1);
 
-	ASSERT_EQ("response", mgr.handle("command -on").second);
-	ASSERT_EQ("response", mgr.handle("  command   -on  ").second);
+	ASSERT_EQ("response", mgr.handle({CLI_AGENT_STATUS}, "command -on").second);
+	ASSERT_EQ("response", mgr.handle({CLI_AGENT_STATUS}, "  command   -on  ").second);
 }
 
 TEST(command_line_manager_test, multiple_args)
@@ -163,6 +171,7 @@ TEST(command_line_manager_test, multiple_args)
 	};
 
 	command_line_manager::command_info cmd1;
+	cmd1.permissions = {CLI_AGENT_STATUS};
 	cmd1.handler = [&check_args](const command_line_manager::argument_list &args)  -> std::string
 	{
 		check_args(args);
@@ -172,12 +181,13 @@ TEST(command_line_manager_test, multiple_args)
 	command_line_manager mgr;
 	mgr.register_command("command", cmd1);
 
-	ASSERT_EQ("response", mgr.handle("command -now -item steak -done-ness medium-well").second);
+	ASSERT_EQ("response", mgr.handle({CLI_AGENT_STATUS}, "command -now -item steak -done-ness medium-well").second);
 }
 
 TEST(command_line_manager_test, double_dash)
 {
 	command_line_manager::command_info cmd1;
+	cmd1.permissions = {CLI_AGENT_STATUS};
 	cmd1.handler = [](const command_line_manager::argument_list &args)
 	{
 		return "response";
@@ -187,12 +197,13 @@ TEST(command_line_manager_test, double_dash)
 	mgr.register_command("command", cmd1);
 
 	ASSERT_EQ("Error: There should not be a double dash at position 9.", 
-		  mgr.handle("command --").second);
+		  mgr.handle({CLI_AGENT_STATUS}, "command --").second);
 }
 
 TEST(command_line_manager_test, space_before_argument_name)
 {
 	command_line_manager::command_info cmd1;
+	cmd1.permissions = {CLI_AGENT_STATUS};
 	cmd1.handler = [](const command_line_manager::argument_list &args)
 	{
 		return "response";
@@ -202,12 +213,13 @@ TEST(command_line_manager_test, space_before_argument_name)
 	mgr.register_command("command", cmd1);
 
 	ASSERT_EQ("Error: There should not be a space between the dash and argument name at position 11.", 
-		  mgr.handle("command   - woot").second);
+		  mgr.handle({CLI_AGENT_STATUS}, "command   - woot").second);
 }
 
 TEST(command_line_manager_test, end_with_dash)
 {
 	command_line_manager::command_info cmd1;
+	cmd1.permissions = {CLI_AGENT_STATUS};
 	cmd1.handler = [](const command_line_manager::argument_list &args)
 	{
 		return "response";
@@ -217,12 +229,13 @@ TEST(command_line_manager_test, end_with_dash)
 	mgr.register_command("command", cmd1);
 
 	ASSERT_EQ("Error: Argument list should not end with a dash.", 
-		  mgr.handle("command -woot -").second);
+		  mgr.handle({CLI_AGENT_STATUS}, "command -woot -").second);
 }
 
 TEST(command_line_manager_test, space_in_value)
 {
 	command_line_manager::command_info cmd1;
+	cmd1.permissions = {CLI_AGENT_STATUS};
 	cmd1.handler = [](const command_line_manager::argument_list &args)
 	{
 		return "response";
@@ -232,12 +245,13 @@ TEST(command_line_manager_test, space_in_value)
 	mgr.register_command("command", cmd1);
 
 	ASSERT_EQ("Error: Expected dash in argument list at position 17.", 
-		  mgr.handle("command -foo bar bar").second);
+		  mgr.handle({CLI_AGENT_STATUS}, "command -foo bar bar").second);
 }
 
 TEST(command_line_manager_test, quotes_for_spaces)
 {
 	command_line_manager::command_info cmd1;
+	cmd1.permissions = {CLI_AGENT_STATUS};
 	cmd1.handler = [](const command_line_manager::argument_list &args)
 	{
 		return "response";
@@ -247,28 +261,28 @@ TEST(command_line_manager_test, quotes_for_spaces)
 	mgr.register_command("command", cmd1);
 
 	ASSERT_EQ("Error: Quotes aren't supported in argument values at position 13.", 
-		  mgr.handle("command -foo \"bar bar\"").second);
+		  mgr.handle({CLI_AGENT_STATUS}, "command -foo \"bar bar\"").second);
 }
 
 TEST(command_line_manager_test, unrecognized_command)
 {
 	command_line_manager mgr;
 	ASSERT_EQ("Error: Unrecognized command.", 
-		  mgr.handle("command").second);
+		  mgr.handle({CLI_AGENT_STATUS}, "command").second);
 }
 
 TEST(command_line_manager_test, content_type)
 {
-
 	command_line_manager::command_info cmd1;
-	cmd1.description = "tell me hello";
+	cmd1.permissions = {CLI_AGENT_STATUS};
+	cmd1.short_description = "tell me hello";
 	cmd1.type = command_line_manager::content_type::JSON;
 	cmd1.handler = [](const command_line_manager::argument_list &args) { return "hello";};
 
 	command_line_manager mgr;
 	mgr.register_command("greeting", cmd1);
 
-	auto result = mgr.handle("greeting");
+	auto result = mgr.handle({CLI_AGENT_STATUS}, "greeting");
 
 	ASSERT_EQ(command_line_manager::content_type::JSON, result.first);
 	ASSERT_EQ("hello", result.second);
@@ -278,17 +292,38 @@ TEST(command_line_manager_test, throw_error)
 {
 
 	command_line_manager::command_info cmd1;
-	cmd1.description = "tell me hello";
+	cmd1.permissions = {CLI_AGENT_STATUS};
+	cmd1.short_description = "tell me hello";
 	cmd1.type = command_line_manager::content_type::JSON;
 	cmd1.handler = [](const command_line_manager::argument_list &args) { throw command_line_error("there is a problem"); return "";};
 
 	command_line_manager mgr;
 	mgr.register_command("greeting", cmd1);
 
-	auto result = mgr.handle("greeting");
+	auto result = mgr.handle({CLI_AGENT_STATUS}, "greeting");
 
 	ASSERT_EQ(command_line_manager::content_type::ERROR, result.first);
 	ASSERT_EQ("Error: there is a problem", result.second);
+}
+
+TEST(command_line_manager_test, rbac)
+{
+	command_line_manager::command_info cmd1;
+	cmd1.permissions = {CLI_NETWORK_CALLS_TO_REMOTE_PODS};
+	cmd1.short_description = "tell me hello";
+	cmd1.type = command_line_manager::content_type::JSON;
+	cmd1.handler = [](const command_line_manager::argument_list &args) { return "hello";};
+
+	command_line_manager mgr;
+	mgr.register_command("greeting", cmd1);
+
+	auto result = mgr.handle({CLI_AGENT_STATUS}, "greeting");
+	ASSERT_EQ(command_line_manager::content_type::ERROR, result.first);
+	ASSERT_EQ("Error: Inaccessable command. Check with your admin to get NETWORK_CALLS_TO_REMOTE_PODS permissions.", result.second);
+
+	result = mgr.handle({CLI_AGENT_STATUS, CLI_NETWORK_CALLS_TO_REMOTE_PODS}, "greeting");
+	ASSERT_EQ(command_line_manager::content_type::JSON, result.first);
+	ASSERT_EQ("hello", result.second);
 }
 
 
