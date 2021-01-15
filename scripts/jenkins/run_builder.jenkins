@@ -24,7 +24,7 @@ pipeline {
 			steps {
 				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
 					sh label: '', script: '''
-						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+						echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
 						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
 						CONTAINER_NAME=$(echo "$TARGET" | tr -dc 'a-z0-9')-$BUILD_NUMBER
 						docker rm -f "$CONTAINER_NAME" || true

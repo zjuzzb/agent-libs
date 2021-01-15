@@ -28,7 +28,7 @@ pipeline {
 			steps {
 				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
 					sh label: '', script: '''
-						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+						echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
 						docker pull quay.io/sysdig/agent-builder:latest
 						docker tag quay.io/sysdig/agent-builder:latest quay.io/sysdig/agent-builder:prev_latest
 					'''
@@ -40,7 +40,7 @@ pipeline {
 			steps {
 				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
 					sh label: '', script: '''
-						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+						echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
 						docker pull quay.io/sysdig/agent-builder:latest
 						docker pull quay.io/sysdig/agent-builder:${AGENT_BRANCH} || echo "agent-builder:${AGENT_BRANCH} not found"
 						docker build --build-arg max_parallelism=$(nproc) -t quay.io/sysdig/agent-builder:$AGENT_BRANCH -f agent/docker/builder/Dockerfile --pull agent/docker/builder
@@ -53,7 +53,7 @@ pipeline {
 			steps {
 				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
 					sh label: '', script: '''
-						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+						echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
 						docker push quay.io/sysdig/agent-builder:$AGENT_BRANCH
 						docker tag quay.io/sysdig/agent-builder:$AGENT_BRANCH quay.io/sysdig/agent-builder:$CONTAINER_NAME
 						docker push quay.io/sysdig/agent-builder:$CONTAINER_NAME
@@ -73,7 +73,7 @@ pipeline {
 						LATEST_ID=`docker images --format '{{.ID}}' quay.io/sysdig/agent-builder:latest`
 						PREV_ID=`docker images --format '{{.ID}}' quay.io/sysdig/agent-builder:prev_latest`
 						if [ -n "$LATEST_ID" -a "$LATEST_ID" != "$PREV_ID" ]; then
-							docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+							echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
 							docker push quay.io/sysdig/agent-builder:prev_latest
 							docker push quay.io/sysdig/agent-builder:latest
 						fi
