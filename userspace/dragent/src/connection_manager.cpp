@@ -1356,7 +1356,7 @@ bool connection_manager::transmit_buffer(uint64_t now,
 		{
 			uint64_t gen = ntohll(header->generation);
 			uint64_t seq = ntohll(header->sequence);
-			LOG_INFO("\tGeneration: " + Poco::NumberFormatter::format(gen) +
+			LOG_DEBUG("\tGeneration: " + Poco::NumberFormatter::format(gen) +
 			         "  Sequence: " + Poco::NumberFormatter::format(seq));
 		}
 
