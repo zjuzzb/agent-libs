@@ -9,6 +9,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/targe
 add_executable(
     unit-test-command-line
     main.cpp
+    command_line_permissions.ut.cpp
     command_line_manager.ut.cpp
     command_line_runnable.ut.cpp
 )

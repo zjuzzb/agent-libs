@@ -25,7 +25,7 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME'), usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
                     sh label: '', script: '''
-                        docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+                        echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
                         AGENT_BUILD_COMMIT="`git -C agent rev-parse --short HEAD`"
                         docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
                         sudo rm -rf $PWD/out
@@ -41,7 +41,7 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
                     sh label: '', script: '''
-                        docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+                        echo "$DOCKER_PASSWORD" | docker login docker.io -u="$DOCKER_USERNAME" --password-stdin
                         TARGET=dev
                         if [ $PUBLIC_RELEASE = true ]
                         then

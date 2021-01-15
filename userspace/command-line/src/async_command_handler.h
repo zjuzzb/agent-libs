@@ -16,5 +16,7 @@ public:
 	 * Run the given command asynchronously and then call the given 
 	 * callback. 
 	 */
-	virtual void async_handle_command(const std::string &command, const async_callback& cb) = 0;
+	virtual void async_handle_command(const command_line_permissions &permissions, 
+                                          const std::string &command, 
+	                                  const async_callback& cb) = 0;
 };

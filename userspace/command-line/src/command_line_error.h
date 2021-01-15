@@ -13,7 +13,7 @@ do {                                                                           \
 
 /**
  * Error that is caught by the command_line_manager. Any handler 
- * can call throw this to return an error back to the client.
+ * can throw this to return an error back to the client.
  */  
 class command_line_error : public std::runtime_error
 {

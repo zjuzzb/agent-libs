@@ -57,13 +57,51 @@ bool command_line_request_message_handler::handle_message(const draiosproto::mes
 		return true;
 	}
 
+	if(!request.has_permissions())
+	{
+		LOG_INFO("Permissions not set.");
+		command_line_manager::response resp;
+		resp.first = command_line_manager::content_type::ERROR;
+		resp.second = "Permissions must be set.";
+		send_response(request.key(), resp);
+		return true;
+	}
+
 	auto cb = std::bind(&command_line_request_message_handler::send_response,
 			    this,
 			    request.key(),
 			    std::placeholders::_1);
-	m_handler->async_handle_command(request.command(), cb);
+	auto permissions = to_permissions(request.permissions());
+	m_handler->async_handle_command(permissions, request.command(), cb);
 
 	return true;
+}
+
+command_line_permissions command_line_request_message_handler::to_permissions(const draiosproto::command_line_permissions& msg)
+{
+	command_line_permissions permissions;
+	if (msg.has_agent_status() && msg.agent_status()) 
+	{
+		permissions.push_back(CLI_AGENT_STATUS);
+	}
+	if (msg.has_agent_internal_diagnostics() && msg.agent_internal_diagnostics()) 
+	{
+		permissions.push_back(CLI_AGENT_INTERNAL_DIAGNOSTICS);
+	}
+	if (msg.has_network_calls_to_remote_pods() && msg.network_calls_to_remote_pods()) 
+	{
+		permissions.push_back(CLI_NETWORK_CALLS_TO_REMOTE_PODS);
+	}
+	if (msg.has_view_configuration() && msg.view_configuration()) 
+	{
+		permissions.push_back(CLI_VIEW_CONFIGURATION);
+	}
+	if (msg.has_view_sensitive_configuration() && msg.view_sensitive_configuration()) 
+	{
+		permissions.push_back(CLI_VIEW_SENSITIVE_CONFIGURATION);
+	}
+
+	return permissions;
 }
 
 void command_line_request_message_handler::send_response(

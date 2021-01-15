@@ -27,7 +27,9 @@ public:
 	 * Pass the command to the this runnable to run asynchronously 
 	 * and then run the callback. 
 	 */
-	void async_handle_command(const std::string &command, const async_callback& cb) override;
+	void async_handle_command(const command_line_permissions &permissions, 
+				  const std::string &command, 
+				  const async_callback& cb) override;
 
 private:
 	/**
@@ -44,6 +46,7 @@ private:
 
 	struct async_command
 	{
+		command_line_permissions permissions;
 		std::string command;
 		async_callback callback;
 	};
