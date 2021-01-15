@@ -15,9 +15,9 @@ pipeline {
         steps {
             withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME'), usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
                 sh label: '', script: '''
-                    docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-                    docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
-                    sudo agent/scripts/jenkins/release-agent-rc "s3://download.draios.com" $RELEASE_VERSION
+			echo "$DOCKER_PASSWORD" | docker login docker.io -u="$DOCKER_USERNAME" --password-stdin
+			echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
+			sudo agent/scripts/jenkins/release-agent-rc "s3://download.draios.com" $RELEASE_VERSION
                 '''
             }
         }
@@ -51,7 +51,7 @@ pipeline {
 				
 				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
 					sh label: '', script: '''
-						docker login -u="$QUAY_USERNAME" -p="$QUAY_PASSWORD"  quay.io
+						echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
 						docker push quay.io/sysdig/agent
 						docker push quay.io/sysdig/agent-slim
 						docker push quay.io/sysdig/agent-kmodule

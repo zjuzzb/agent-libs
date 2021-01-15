@@ -13,13 +13,15 @@ std::string command_line_manager::commands_json() const
 	Json::Value root;
 	auto &commands = root["commands"];
 
+	// Visit each command. Split the command by spaces and organize into
+	// a tree.
 	m_commands.visit([&commands](const command_map::element_pair& cmd) 
 	{
 		size_t delimiter_pos;
 		std::string right = cmd.first;
 		auto *current = &commands;
 
-		// Iterate through the commands to get to the right folder
+		// Go lower into the tree until we run out of spaces
 		while ((delimiter_pos = right.find(' ')) != std::string::npos) 
 		{
 			std::string left = right.substr(0, delimiter_pos);
@@ -31,9 +33,9 @@ std::string command_line_manager::commands_json() const
 		// Add the description for this element
 		current = &(*current)[right];
 
-		if (!cmd.second.description.empty())
+		if (!cmd.second.short_description.empty())
 		{
-			(*current)["description"] = cmd.second.description;
+			(*current)["short_description"] = cmd.second.short_description;
 		}
 		if (!cmd.second.long_description.empty())
 		{
@@ -45,7 +47,7 @@ std::string command_line_manager::commands_json() const
 	return root.toStyledString();
 }
 
-std::pair<command_line_manager::content_type, std::string> command_line_manager::handle(const std::string& command) const
+std::pair<command_line_manager::content_type, std::string> command_line_manager::handle(const command_line_permissions &user_permissions, const std::string& command) const
 {
 	try
 	{
@@ -56,13 +58,13 @@ std::pair<command_line_manager::content_type, std::string> command_line_manager:
 		{
 			std::string command_copy = command;
 			string_utils::trim(command_copy);
-			return lookup_and_run_command(command_copy, argument_list());
+			return lookup_and_run_command(user_permissions, command_copy, argument_list());
 		}
 		std::string left = command.substr(0, found);
 		std::string right = command.substr(found);
 		auto args = parse_arguments(right, left.size());
 		string_utils::trim(left);
-		return lookup_and_run_command(left, args);
+		return lookup_and_run_command(user_permissions, left, args);
 		
 	}
 	catch (command_line_error &ex)
@@ -82,7 +84,7 @@ void command_line_manager::register_folder(const std::string &folder,
 					   const std::string &description)
 {
 	command_info info;
-	info.description = description;
+	info.short_description = description;
 	m_commands.insert(folder, info);
 }
 
@@ -98,8 +100,7 @@ command_line_manager::argument_list command_line_manager::parse_arguments(const 
 	/** 
 	 * Ok: 
 	 * -on -color red 
-	 * -item steak   -done-ness "medium well" 
-	 * -on -color red 
+	 * -item steak   -done-ness medium-well 
 	 *  
 	 * Bad: 
 	 * - color red blue
@@ -204,25 +205,33 @@ command_line_manager::argument_list command_line_manager::parse_arguments(const 
 	return arg_list;
 }
 
-std::pair<command_line_manager::content_type, std::string> command_line_manager::lookup_and_run_command(const std::string& command, const argument_list& args) const
+std::pair<command_line_manager::content_type, std::string> command_line_manager::lookup_and_run_command(const command_line_permissions &user_permissions, 
+													const std::string& command, 
+													const argument_list& args) const
 {
-	auto handle = m_commands.read_handle(command);
+	auto cmd = m_commands.read_handle(command);
 
-	if (!handle.valid()) {
+	if (!cmd.valid())
+	{
 		THROW_CLI_ERROR("Unrecognized command.");
 	}
 
-	if (!handle->handler) 
+	if(!cmd->permissions.is_accessable(user_permissions))
+	{
+		THROW_CLI_ERROR("Inaccessable command. Check with your admin to get %s permissions.", cmd->permissions.to_string().c_str());
+	}
+
+	if (!cmd->handler) 
 	{
 		// This is a folder. Just return the description.
-		auto desc = handle->long_description.empty() ?
-			handle->description : handle->long_description;
+		auto desc = cmd->long_description.empty() ?
+			cmd->short_description : cmd->long_description;
 		return std::make_pair(command_line_manager::content_type::TEXT, desc);
 
 	}
 
-	auto str = handle->handler(args);
-	return std::pair<command_line_manager::content_type, std::string>(handle->type, str); 
+	auto str = cmd->handler(args);
+	return std::pair<command_line_manager::content_type, std::string>(cmd->type, str); 
 }
 
 void command_line_manager::clear()

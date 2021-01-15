@@ -30,12 +30,14 @@ command_line_runnable::command_line_runnable(const is_terminated_delgate& termin
 {
 }
 
-void command_line_runnable::async_handle_command(const std::string &command, const async_callback& cb)
+void command_line_runnable::async_handle_command(const command_line_permissions &permissions,
+						 const std::string &command, 
+						 const async_callback& cb)
 {
 	std::unique_lock<std::mutex> guard(m_mtx);
 
-	async_command cmd{command, cb};
-	m_queue.emplace_back(cmd);
+	async_command cmd{permissions, command, cb};
+	m_synchronized_queue.emplace_back(cmd);
 
 	m_cv.notify_one();
 }
@@ -75,7 +77,7 @@ void command_line_runnable::process_commands()
 	// Process everything in the queue.
 	for (auto& cmd : m_queue) 
 	{
-		auto response = command_line_manager().instance().handle(cmd.command);
+		auto response = command_line_manager().instance().handle(cmd.permissions, cmd.command);
 		cmd.callback(response);
 
 		heartbeat();

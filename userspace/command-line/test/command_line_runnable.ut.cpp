@@ -73,11 +73,13 @@ TEST_F(command_line_runnable_test, basic)
 
 	{
 		command_line_manager::command_info cmd;
+		cmd.permissions = {CLI_AGENT_STATUS};
 		cmd.handler = [](const command_line_manager::argument_list &args) { return "hi";};
 		command_line_manager::instance().register_command("hello", cmd);
 	}
 	{
 		command_line_manager::command_info cmd;
+		cmd.permissions = {CLI_AGENT_STATUS};
 		cmd.handler = [](const command_line_manager::argument_list &args) { return "later";};
 		command_line_manager::instance().register_command("goodbye", cmd);
 	}
@@ -98,8 +100,8 @@ TEST_F(command_line_runnable_test, basic)
 		++count;
 	};
 
-	cmdline.async_handle_command("hello", validate_hi);
-	cmdline.async_handle_command("goodbye", validate_bye);
+	cmdline.async_handle_command({CLI_AGENT_STATUS}, "hello", validate_hi);
+	cmdline.async_handle_command({CLI_AGENT_STATUS}, "goodbye", validate_bye);
 
 	// Wait for both validate functions to get called
 	while (count < 2)
