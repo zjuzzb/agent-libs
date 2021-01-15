@@ -151,7 +151,7 @@ final public class CLibrary {
                 int nsret = setns(netnsfd, 0);
                 close_fd(netnsfd);
                 if (nsret != 0) {
-                    LOGGER.warning(String.format("setNamespace(%d): setns call failed"));
+                    LOGGER.warning(String.format("setNamespace: setns call failed"));
                     return false;
                 } else {
                     return true;
