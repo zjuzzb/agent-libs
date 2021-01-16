@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <functional>
+#include <stdexcept>
 
 namespace userspace_shared
 {

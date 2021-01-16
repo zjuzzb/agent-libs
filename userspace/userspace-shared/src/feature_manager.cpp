@@ -58,7 +58,13 @@ const feature_manager::agent_mode_container feature_manager::mode_definitions[] 
     {feature_manager::AGENT_MODE_SECURE,
      "secure",
      {COINTERFACE, DRIVER, FULL_SYSCALLS},
-     {{"10s_flush_enable", config_placeholder_impl<bool>::build(true)}}}};
+     {{"10s_flush_enable", config_placeholder_impl<bool>::build(true)}}},
+	// Note that "DRIVER" feature is really misnamed....it really just means event source
+    {feature_manager::AGENT_MODE_AGENTINO,
+     "agentino",
+     {SECURE, DRIVER, FULL_SYSCALLS},
+     {{"security.actions_enabled", config_placeholder_impl<bool>::build(false)}}}
+};
 
 static_assert(feature_manager::agent_mode::AGENT_MODE_COUNT ==
                   sizeof(feature_manager::mode_definitions) /
@@ -547,6 +553,21 @@ bool feature_manager::verify_dependencies()
 
 bool feature_manager::initialize()
 {
+	for (const agent_mode_container& mode : mode_definitions)
+	{
+		if (c_agent_mode.get_value() == mode.m_name)
+		{
+			return initialize(mode.m_mode);
+		}
+	}
+
+	// for backwards compatibility with "how we used to do things," if
+	// a un-found mode is found, we initialize in legacy mode
+	return initialize(AGENT_MODE_NONE);
+}
+
+bool feature_manager::initialize(agent_mode mode)
+{
 #ifdef _DEBUG
 	for (uint32_t i = 0; i < AGENT_MODE_COUNT; i++)
 	{
@@ -558,14 +579,7 @@ bool feature_manager::initialize()
 	}
 #endif
 
-	for (const agent_mode_container& mode : mode_definitions)
-	{
-		if (c_agent_mode.get_value() == mode.m_name)
-		{
-			m_agent_mode = mode.m_mode;
-			break;
-		}
-	}
+	m_agent_mode = mode;
 
 	std::cerr << "Agent set in " << mode_definitions[m_agent_mode].m_name << " mode.\n";
 

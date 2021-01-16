@@ -5,6 +5,7 @@ set -exo pipefail
 CODE_DIR=/draios #location where input code is
 WORK_DIR=/code #location where code is copied to prevent edits conflicting with ongonig build
 BUILD_DIR=$WORK_DIR/agent/build
+HAYABUSA_PRODUCER_DIR=$WORK_DIR/libscap-hayabusa/producer_build
 VARIANT=${2:-ReleaseInternal}
 
 if [[ -z $MAKE_JOBS ]]; then
@@ -27,7 +28,7 @@ fi
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=dependency_install_scripts --exclude=build $CODE_DIR/agent/ $WORK_DIR/agent/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' $CODE_DIR/oss-falco/ $WORK_DIR/oss-falco/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/protorepo/ $WORK_DIR/protorepo/
-rsync --delete -t -r --exclude=.git $CODE_DIR/libscap-hayabusa/ $WORK_DIR/libscap-hayabusa
+rsync --delete -t -r --exclude=.git --exclude=producer_build $CODE_DIR/libscap-hayabusa/ $WORK_DIR/libscap-hayabusa
 rsync --delete -t -r --exclude=.git $CODE_DIR/libsinsp/ $WORK_DIR/libsinsp
 #note: don't support regular libscap or sysdig repo here, so they aren't synced
 
@@ -54,15 +55,29 @@ create_makefiles()
 	popd
 }
 
+build_hayabusa_producers()
+{	
+	pushd $HAYABUSA_PRODUCER_DIR
+	cmake ../
+	make -j$MAKE_JOBS pdig-bin udigembed
+	popd
+}
+
 build_agentino()
 {
 	create_makefiles
 	cd $BUILD_DIR
 	make -j$MAKE_JOBS agentino
+	build_hayabusa_producers
+
 
 	DOCKER_CONTEXT=$(mktemp -d /out/agent-container.XXXXXX)
 	cp userspace/dragent/src/agentino $DOCKER_CONTEXT
 	cp $WORK_DIR/agent/userspace/dragent/src/dragent.default.yaml $DOCKER_CONTEXT
+	cp $WORK_DIR/agent/userspace/dragent/src/root.cert $DOCKER_CONTEXT
+	cp -r $WORK_DIR/oss-falco/userspace/engine/lua/* $DOCKER_CONTEXT
+	cp $HAYABUSA_PRODUCER_DIR/libscap/producer/pdig/pdig $DOCKER_CONTEXT
+	cp $HAYABUSA_PRODUCER_DIR/libscap/producer/udigembed/libudigembed.so $DOCKER_CONTEXT
 
 	make -j$MAKE_JOBS agentino-dockerfiles
 	cp docker/agentino/static/* $DOCKER_CONTEXT

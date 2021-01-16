@@ -3104,7 +3104,7 @@ void infrastructure_state::refresh_hosts_metadata()
 			{
 				// this could also happen if the node has been removed but the backend didn't
 				// realized it yet
-				LOG_INFO("infra_state: Cannot match host %s, no suitable orchestrator nodes found.",
+				LOG_DEBUG("infra_state: Cannot match host %s, no suitable orchestrator nodes found.",
 				         host->uid().id().c_str());
 				has_child = false;
 			}
@@ -3902,7 +3902,7 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state* state, int num_de
 
 		if (found_our_node)
 		{
-			LOG_INFO("k8s_deleg: found our node: %s", name.c_str());
+			LOG_DEBUG("k8s_deleg: found our node: %s", name.c_str());
 		}
 		if (found_our_node || has_agent(state, i.first))
 		{
@@ -3926,7 +3926,7 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state* state, int num_de
 	{
 		if (it->second.m_uuid == state->m_k8s_node_uid)
 			delegated = true;
-		LOG_INFO("k8s_deleg: delegated node %s ips: %s id: %s%s",
+		LOG_DEBUG("k8s_deleg: delegated node %s ips: %s id: %s%s",
 		         it->first.c_str(),
 		         it->second.m_ips.c_str(),
 		         it->second.m_uuid.c_str(),
@@ -3943,7 +3943,7 @@ bool new_k8s_delegator::is_delegated(infrastructure_state* state, int num_delega
 	    [this, &state, &num_delegated]() {
 		    bool deleg = is_delegated_now(state, num_delegated);
 		    // Only report as delegated if we're found to be delegated twice in a row.
-		    LOG_INFO("k8s_deleg: This node %s delegated",
+		    LOG_DEBUG("k8s_deleg: This node %s delegated",
 		             (deleg ? (m_prev_deleg ? "is" : "is not yet") : "is not"));
 
 		    m_cached_deleg = m_prev_deleg && deleg;

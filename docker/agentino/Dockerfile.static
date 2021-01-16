@@ -1,12 +1,24 @@
-FROM busybox
+FROM alpine:latest
 
 MAINTAINER Sysdig <support@sysdig.com>
+
+RUN apk add ca-certificates
 
 RUN mkdir -p /opt/draios/bin
 ADD agentino /opt/draios/bin/
 
 RUN mkdir -p /opt/draios/etc
 ADD dragent.default.yaml /opt/draios/etc/
+
+ADD root.cert /opt/draios/
+
+RUN mkdir -p /opt/draios/share
+ADD *.lua /opt/draios/share/lua/
+RUN mkdir -p /opt/draios/share/lyaml
+ADD lyaml/* /opt/draios/share/lua/lyaml/
+
+ADD pdig /opt/draios/bin
+ADD libudigembed.so /opt/draios/bin
 
 COPY ./agentino-entrypoint.sh /
 ENTRYPOINT ["/agentino-entrypoint.sh"]
