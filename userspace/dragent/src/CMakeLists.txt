@@ -25,12 +25,15 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/c-ares-${DRAIOS_CARES_VERSION}/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/json-3.3.0/single_include)
+include_directories(${LUAJIT_INCLUDE})
+
 
 add_definitions(-DHAS_ANALYZER)
 
 list(
     APPEND
-    targetfiles
+    appcommonfiles
     app_checks_proxy.cpp
     async_aggregator.cpp
     avoid_block_channel.cpp
@@ -88,18 +91,12 @@ list(
     Poco/SysdigModifiedFileChannel.cpp
 )
 
-list(APPEND dragentfiles dragent.cpp)
-
-list(APPEND agentonefiles agentone.cpp)
-
-list(APPEND agentinofiles agentino.cpp sinsp_event_source.cpp event_source.cpp)
-
 if(CYGWIN)
     # windows specific implementation
-    list(APPEND targetfiles windows_helpers.cpp windows/process_helpers.cpp)
+    list(APPEND appcommonfiles windows_helpers.cpp windows/process_helpers.cpp)
 else()
     # linux specific implementation
-    list(APPEND targetfiles linux/process_helpers.cpp)
+    list(APPEND appcommonfiles linux/process_helpers.cpp)
 endif()
 
 if(CYGWIN)
@@ -109,6 +106,10 @@ else()
     set(POCO_LIB_DIR "lib")
     set(POCO_LIB_PREFIX "lib")
 endif()
+
+# We compile all these files into their own object (i.e. non-linked) library otherwise
+# cmake will compile them for each library that includes them
+add_library(appcommonl OBJECT ${appcommonfiles})
 
 list(
     APPEND
@@ -139,17 +140,18 @@ else()
     )
 endif()
 
-add_library(dragentl STATIC ${targetfiles} ${dragentfiles})
+add_library(dragentl STATIC dragent.cpp $<TARGET_OBJECTS:appcommonl>)
 target_link_libraries(dragentl falco_engine ${dragent_link_libraries})
 
-add_library(agentonel STATIC ${targetfiles} ${agentonefiles})
+add_library(agentonel STATIC agentone.cpp $<TARGET_OBJECTS:appcommonl>)
 target_link_libraries(agentonel falco_engine ${dragent_link_libraries})
 
-add_library(agentinol STATIC ${targetfiles} ${agentinofiles})
+add_library(agentinol STATIC agentino.cpp sinsp_event_source.cpp event_source.cpp $<TARGET_OBJECTS:appcommonl>)
 target_link_libraries(agentinol falco_engine ${dragent_link_libraries})
 
 if(INCLUDE_INTERNAL_TEST_CODE)
     target_compile_definitions(dragentl PUBLIC SYSDIG_TEST)
+    target_compile_definitions(appcommonl PUBLIC SYSDIG_TEST)
 endif()
 
 add_executable(dragent agent_main.cpp)

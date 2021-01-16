@@ -176,10 +176,12 @@ TEST_F(connection_manager_fixture, connection_timeout)
 	std::thread t([&queue, &config, &cm]()
 	{ ASSERT_NO_FATAL_FAILURE(cm.test_run()); });
 
-	while (!cm.m_timed_out)
+	for (uint32_t i = 0; i < 100 && !cm.m_timed_out; i++)
 	{
 		msleep(100);
 	}
+
+	EXPECT_TRUE(cm.m_timed_out);
 
 	// Shut down all the things
 	running_state::instance().shut_down();

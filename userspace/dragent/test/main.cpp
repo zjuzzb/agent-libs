@@ -40,7 +40,7 @@ private:
 		p.setFileName("draios_test.log");
 		std::string logsdir = p.toString();
 
-		AutoPtr<globally_readable_file_channel> file_channel(new globally_readable_file_channel(logsdir, true));
+		AutoPtr<globally_readable_file_channel> file_channel(new globally_readable_file_channel(logsdir, false));
 
 		file_channel->setProperty("purgeCount", std::to_string(10));
 		file_channel->setProperty("rotation", "10M");
