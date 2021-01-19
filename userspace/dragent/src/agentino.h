@@ -10,6 +10,11 @@
 #include "watchdog.h"
 #include "watchdog_runnable_pool.h"
 
+namespace draiosproto
+{
+class agentino_metadata;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // The main application class
 ///////////////////////////////////////////////////////////////////////////////
@@ -38,6 +43,8 @@ private:
 	Logger* make_console_channel(AutoPtr<Formatter> formatter);
 	void setup_coredumps();
 
+	void build_metadata_message(draiosproto::agentino_metadata& msg);
+
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
 	flush_queue m_serializer_queue;
@@ -58,4 +65,5 @@ private:
 	std::string m_container_name;
 	std::string m_container_image;
 	std::string m_container_id;
+	std::map<std::string, std::string> m_metadata;
 };

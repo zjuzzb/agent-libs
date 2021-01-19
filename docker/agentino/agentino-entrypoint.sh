@@ -76,8 +76,8 @@ fi
 
 if [ $# -eq 0 ]
 then
-	echo "/opt/draios/bin/agentino --name $HOSTNAME --container_name $CONTAINER_NAME --container_id $CONTAINER_ID --container_image $CONTAINER_IMAGE $ADDITIONAL_ARGS"
-	/opt/draios/bin/agentino --name $HOSTNAME --container_name $CONTAINER_NAME --container_id $CONTAINER_ID --container_image $CONTAINER_IMAGE $ADDITIONAL_ARGS
+	echo "/opt/draios/bin/agentino --name $HOSTNAME --container-name $CONTAINER_NAME --container-id $CONTAINER_ID --image $CONTAINER_IMAGE $ADDITIONAL_ARGS"
+	/opt/draios/bin/agentino --name $HOSTNAME --container-name $CONTAINER_NAME --container-id $CONTAINER_ID --image $CONTAINER_IMAGE $ADDITIONAL_ARGS
 else
 	exec "$@"
 fi

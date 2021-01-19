@@ -1,4 +1,5 @@
 #include "agentino.h"
+#include "agentino.pb.h"
 #include "avoid_block_channel.h"
 #include "common_logger.h"
 #include "configuration.h"
@@ -84,30 +85,39 @@ void agentino_app::initialize(Application& self)
 	{
 		if (*i == "--name")
 		{
-			m_hostname = *(++i);
+			std::string value = *(++i);
+			std::cerr << "Hostname = " << value << "\n";
+			m_hostname = value;
 		}
-		else if (*i == "--container_name")
+		else if (*i == "--container-name")
 		{
-			m_container_name = *(++i);
+			std::string value = *(++i);
+			std::cerr << "Container name = " << value << "\n";
+			m_container_name = value;
 		}
-		else if (*i == "--container_image")
+		else if (*i == "--image")
 		{
-			m_container_image = *(++i);
+			std::string value = *(++i);
+			std::cerr << "Container Image = " << value << "\n";
+			m_container_image = value;
 		}
-		else if (*i == "--container_id")
+		else if (*i == "--container-id")
 		{
-			m_container_id = *(++i);
+			std::string value = *(++i);
+			std::cerr << "Container Id = " << value << "\n";
+			m_container_id = value;
 		}
 		else if (*i == "--direct")
 		{
+			std::cerr << "Communicating directly with backend\n";
 			m_direct = true;
 		}
 		else
 		{
-			std::cerr << "Unrecognized Argument: " << *i << "\n";
-			// Poco seems to provide no way to indicate a failure in initialization, so we'll just
-			// roll our own.
-			exit(EXIT_FAILURE);
+			std::string key = (i++)->substr(2);
+			std::string value = *i;
+			std::cerr << "Metadata key " << key << " = " << value << "\n";
+			m_metadata.insert(std::pair<std::string, std::string>(key, value));
 		}
 	}
 }
@@ -127,16 +137,21 @@ void agentino_app::defineOptions(OptionSet& options)
 	options.addOption(Option("name", "", "the name used to identify this agentone to the backend")
 	                      .required(true)
 	                      .repeatable(false));
+	options.addOption(Option("aws-account-id", "", "").repeatable(false));
+	options.addOption(Option("aws-region", "", "").repeatable(false));
+	options.addOption(Option("aws-az", "", "").repeatable(false));
+	options.addOption(Option("aws-fargate-cluster-arn", "", "").repeatable(false));
+	options.addOption(Option("aws-fargate-task-arn", "", "").repeatable(false));
+	options.addOption(Option("image-id", "", "").repeatable(false));
 	options.addOption(
-	    Option("container_name", "", "the name used to identify this agentone to the backend")
+	    Option("container-name", "", "the name used to identify this agentone to the backend")
 	        .required(true)
 	        .repeatable(false));
+	options.addOption(Option("image", "", "the name used to identify this agentone to the backend")
+	                      .required(true)
+	                      .repeatable(false));
 	options.addOption(
-	    Option("container_image", "", "the name used to identify this agentone to the backend")
-	        .required(true)
-	        .repeatable(false));
-	options.addOption(
-	    Option("container_id", "", "the name used to identify this agentone to the backend")
+	    Option("container-id", "", "the name used to identify this agentone to the backend")
 	        .required(true)
 	        .repeatable(false));
 	options.addOption(
@@ -303,6 +318,32 @@ int agentino_app::sdagent_main()
 
 	ExitCode exit_code;
 
+	// Add the configured stuff to the agent tags so secure events pick it up
+	// In secure's own words: "Should probably have some sort of tag manager, but this
+	// will have to do"
+	std::string tags =
+	    configuration_manager::instance().get_config<std::string>("tags")->get_value();
+	for (auto i : m_metadata)
+	{
+		if (tags != "")
+		{
+			tags += ",";
+		}
+		tags += i.first;
+		tags += ":";
+		tags += i.second;
+	}
+	configuration_manager::instance().get_mutable_config<std::string>("tags")->set(tags);
+
+	std::vector<std::string> include_labels =
+	    configuration_manager::instance()
+	        .get_config<std::vector<std::string>>("event_labels.include")
+	        ->get_value();
+	include_labels.push_back("agent.tag");
+	configuration_manager::instance()
+	    .get_mutable_config<std::vector<std::string>>("event_labels.include")
+	    ->set(include_labels);
+
 	//
 	// Start threads
 	//
@@ -426,6 +467,17 @@ int agentino_app::sdagent_main()
 
 	LOG_INFO("Terminating");
 	return exit_code;
+}
+
+void agentino_app::build_metadata_message(draiosproto::agentino_metadata& msg)
+{
+	msg.set_container_id(m_container_id);
+	msg.set_container_image(m_container_image);
+	msg.set_container_name(m_container_name);
+	for (auto& i : m_metadata)
+	{
+		(*msg.mutable_other_metadata())[i.first] = i.second;
+	}
 }
 
 bool agentino_app::timeout_expired(int64_t last_activity_age_ns,

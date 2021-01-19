@@ -17,6 +17,7 @@ add_custom_command(
            ${CMAKE_CURRENT_BINARY_DIR}/common.proto
            ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
            ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
+           ${CMAKE_CURRENT_BINARY_DIR}/agentino.proto
            ${CMAKE_CURRENT_BINARY_DIR}/metadata.proto
            ${CMAKE_CURRENT_BINARY_DIR}/profiling.proto
            ${CMAKE_CURRENT_BINARY_DIR}/secure.proto
@@ -25,6 +26,7 @@ add_custom_command(
             ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/common.proto
             ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/draios.proto
             ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/handshake.proto
+            ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/agentino.proto
             ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/metadata.proto
             ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/profiling.proto
             ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/secure.proto
@@ -41,6 +43,7 @@ if(NOT CYGWIN)
         ${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/handshake.pb.cc
+        ${CMAKE_CURRENT_BINARY_DIR}/agentino.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/tap.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/secure.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/profiling.pb.cc
@@ -59,6 +62,7 @@ else()
         ${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/handshake.pb.cc
+        ${CMAKE_CURRENT_BINARY_DIR}/agentino.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/agent-prom.pb.cc
@@ -141,6 +145,7 @@ endfunction()
 
 generate_proto(${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto)
 generate_proto(${CMAKE_CURRENT_BINARY_DIR}/common.proto)
+generate_proto(${CMAKE_CURRENT_BINARY_DIR}/agentino.proto ${CMAKE_CURRENT_BINARY_DIR}/draios.proto)
 generate_proto(${CMAKE_CURRENT_BINARY_DIR}/draios.proto ${CMAKE_CURRENT_BINARY_DIR}/common.proto)
 generate_proto(
     ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
@@ -194,6 +199,7 @@ if(NOT ALPINE_BUILDER)
         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/common.proto
         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/agentino.proto
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios-aggregator-plugin.py
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios_proto_extension.py
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/protoc_plugin.sh
@@ -213,6 +219,7 @@ else()
         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/common.proto
         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/agentino.proto
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios-aggregator-plugin.py
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios_proto_extension.py
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/protoc_plugin.sh
