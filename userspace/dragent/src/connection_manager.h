@@ -26,7 +26,6 @@
 
 #include "cm_proxy_tunnel.h"
 
-class dragent_configuration;
 class connection_manager;
 
 namespace Poco {
@@ -38,6 +37,23 @@ class StreamSocket;
 namespace grpc {
 	class ChannelInterface;
 }
+
+/**
+ * Configuration options for the connection manager
+ */
+struct cm_config
+{
+	std::string m_root_dir;
+	std::string m_server_addr;
+	uint16_t m_server_port;
+	bool m_ssl_enabled;
+	std::vector<std::string> m_ssl_ca_cert_paths;
+	std::string m_ssl_ca_certificate;
+	bool m_promex_enabled;
+	std::string m_promex_connect_url;
+	std::string m_customer_id;
+	std::string m_machine_id;
+};
 
 /**
  * Base class implementing state machine behavior for the connection manager.
@@ -315,7 +331,7 @@ private:
 
 public:
 
-	connection_manager(dragent_configuration* configuration,
+	connection_manager(cm_config configuration,
 	       protocol_queue* queue,
 	       std::initializer_list<dragent_protocol::protocol_version> supported_protocol_versions,
 	       std::initializer_list<message_handler_map::value_type> message_handlers = {});
@@ -603,7 +619,7 @@ private:
 	cm_socket::ptr m_socket;
 	uint64_t m_generation;
 	uint64_t m_sequence;
-	dragent_configuration* m_configuration;
+	cm_config m_configuration;
 	protocol_queue* m_queue;
 	std::unique_ptr<dragent::protobuf_file_emitter> m_protobuf_file_emitter;
 	pending_message m_pending_message;

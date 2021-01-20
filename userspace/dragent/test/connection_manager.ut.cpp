@@ -14,7 +14,6 @@ using namespace std;
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#include "configuration.h"
 #include "exit_code.h"
 #include "sinsp_mock.h"
 #include "watchdog_runnable.h"
@@ -43,6 +42,19 @@ using namespace test_helpers;
 
 namespace
 {
+
+cm_config base_config =
+{
+    ".",
+    "",
+    6443,
+    true,
+    {},
+    "",
+    false,
+    "sysdig-agent-bozos",
+    "nathanb-dev"
+};
 
 /**
  * Reset the running_state after each test
@@ -109,8 +121,7 @@ TEST_F(connection_manager_fixture, failure_to_connect)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 
 	// Set the config for the CM
 	config.m_server_addr = "127.0.0.1";
@@ -123,7 +134,7 @@ TEST_F(connection_manager_fixture, failure_to_connect)
 	// Create and spin up the connection manager
 	thread t([&queue, &config]()
 	{
-		connection_manager cm(&config, &queue, {4});
+		connection_manager cm(config, &queue, {4});
 		ASSERT_NO_THROW(cm.test_run());
 	});
 
@@ -155,8 +166,7 @@ TEST_F(connection_manager_fixture, connection_timeout)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 
 	// Set the config for the CM
 	// Note that by connecting to sysdig.com on a weird port, the firewall
@@ -170,7 +180,7 @@ TEST_F(connection_manager_fixture, connection_timeout)
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
 
-	connection_manager cm(&config, &queue, {4});
+	connection_manager cm(config, &queue, {4});
 
 	// Create and spin up the connection manager
 	std::thread t([&queue, &config, &cm]()
@@ -193,8 +203,7 @@ TEST_F(connection_manager_fixture, connect_transmit)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 
 	// Create and spin up the fake collector (get an ephemeral port)
 	fake_collector fc(false);
@@ -213,7 +222,7 @@ TEST_F(connection_manager_fixture, connect_transmit)
 	// Create and spin up the connection manager
 	std::thread t([&queue, &config]()
 	{
-		connection_manager cm(&config, &queue, {4});
+		connection_manager cm(config, &queue, {4});
 		cm.test_run();
 	});
 
@@ -267,8 +276,7 @@ TEST_F(connection_manager_fixture, generation)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 
 	// Create and spin up the fake collector (get an ephemeral port)
 	fake_collector fc(true);
@@ -284,7 +292,7 @@ TEST_F(connection_manager_fixture, generation)
 	protocol_queue queue(MAX_QUEUE_LEN);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &queue, {5});
+	connection_manager cm(config, &queue, {5});
 
 	std::thread t([&cm]()
 	{
@@ -357,8 +365,7 @@ TEST_F(connection_manager_fixture, v5_end_to_end)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 	std::atomic<bool> metrics_sent(false);
 
 	// Create the shared blocking queues
@@ -383,7 +390,7 @@ TEST_F(connection_manager_fixture, v5_end_to_end)
 	config.m_ssl_enabled = false;
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &pqueue, {5});
+	connection_manager cm(config, &pqueue, {5});
 	protobuf_metric_serializer serializer(stats_source,
 	                                      "",
 	                                      ph,
@@ -518,8 +525,8 @@ bool test_collector_sends_message(dragent_protocol::protocol_version ver)
 	const size_t MAX_QUEUE_LEN = 64;
 	const std::string token = "DEADBEEF";
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
+
 	auto mh = std::make_shared<counting_message_handler>(token);
 
 	// Create and spin up the fake collector (get an ephemeral port)
@@ -539,7 +546,7 @@ bool test_collector_sends_message(dragent_protocol::protocol_version ver)
 	protocol_queue queue(MAX_QUEUE_LEN);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &queue, {ver},
+	connection_manager cm(config, &queue, {ver},
 	    {{draiosproto::message_type::DUMP_REQUEST_START, mh}});
 
 	std::thread t([&cm]()
@@ -619,8 +626,7 @@ TEST_F(connection_manager_fixture, basic_connect_with_handshake)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 
 	// Create and spin up the fake collector (get an ephemeral port)
 	fake_collector fc(true);
@@ -636,7 +642,7 @@ TEST_F(connection_manager_fixture, basic_connect_with_handshake)
 	protocol_queue queue(MAX_QUEUE_LEN);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &queue, {5});
+	connection_manager cm(config, &queue, {5});
 
 	std::thread t([&cm]()
 	{
@@ -733,9 +739,8 @@ TEST_F(connection_manager_fixture, metrics_ack)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
+	cm_config config = base_config;
 	uint64_t index = 1;
-	config.init();
 	std::atomic<bool> metrics_sent(false);
 
 	// Create and spin up the fake collector (get an ephemeral port)
@@ -760,7 +765,7 @@ TEST_F(connection_manager_fixture, metrics_ack)
 	auto compressor = gzip_protobuf_compressor::get(-1);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &pqueue, {5});
+	connection_manager cm(config, &pqueue, {5});
 	protobuf_metric_serializer serializer(stats_source,
 	                                      "",
 	                                      ph,
@@ -857,8 +862,7 @@ TEST_F(connection_manager_fixture, protocol_handler_transmit)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 	std::atomic<bool> metrics_sent(false);
 
 	// Create and spin up the fake collector (get an ephemeral port)
@@ -883,7 +887,7 @@ TEST_F(connection_manager_fixture, protocol_handler_transmit)
 	auto compressor = gzip_protobuf_compressor::get(-1);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &pqueue, {5});
+	connection_manager cm(config, &pqueue, {5});
 
 	std::thread t([&cm]()
 	{
@@ -943,8 +947,7 @@ TEST_F(connection_manager_fixture, change_aggregation_interval)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 
 	// Set the config for the CM
 	config.m_server_addr = "127.0.0.1";
@@ -954,7 +957,7 @@ TEST_F(connection_manager_fixture, change_aggregation_interval)
 	protocol_queue queue(MAX_QUEUE_LEN);
 
 	// Create a connection manager (don't need to start it for this test)
-	connection_manager cm(&config, &queue, {5});
+	connection_manager cm(config, &queue, {5});
 	aggregation_interval_source* src = &cm;
 
 	ASSERT_EQ(chrono::seconds::max(), cm.get_negotiated_aggregation_interval());
@@ -970,8 +973,7 @@ TEST_F(connection_manager_fixture, handshake_version_negotiation_failure)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 
 	// Create and spin up the fake collector (get an ephemeral port)
 	fake_collector fc(false); // Don't auto respond
@@ -987,7 +989,7 @@ TEST_F(connection_manager_fixture, handshake_version_negotiation_failure)
 	protocol_queue queue(MAX_QUEUE_LEN);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &queue, {5});
+	connection_manager cm(config, &queue, {5});
 
 	std::thread t([&cm]()
 	{
@@ -1055,14 +1057,13 @@ TEST_F(connection_manager_fixture, gen_seq_ordering)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 
 	// Create the shared blocking queue
 	protocol_queue queue(MAX_QUEUE_LEN);
 
 	// Create a connection manager (no need to start it up)
-	connection_manager cm(&config, &queue, {5});
+	connection_manager cm(config, &queue, {5});
 
 	dragent_protocol_header_v5 ack_header;
 	dragent_protocol_header_v5 metrics_header;
@@ -1127,9 +1128,8 @@ TEST_F(connection_manager_fixture, legacy_fallback)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
+	cm_config config = base_config;
 	uint64_t index = 1;
-	config.init();
 	std::atomic<bool> metrics_sent(false);
 
 	// Create and spin up the fake collector (get an ephemeral port)
@@ -1153,7 +1153,7 @@ TEST_F(connection_manager_fixture, legacy_fallback)
 	auto compressor = gzip_protobuf_compressor::get(-1);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &pqueue, {5});
+	connection_manager cm(config, &pqueue, {5});
 	protobuf_metric_serializer serializer(stats_source,
 	                                      "",
 	                                      ph,
@@ -1273,8 +1273,7 @@ TEST_F(connection_manager_fixture, test_error_message_handler)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 
 	// Create and spin up the fake collector (get an ephemeral port)
 	fake_collector fc(true);
@@ -1290,7 +1289,7 @@ TEST_F(connection_manager_fixture, test_error_message_handler)
 	protocol_queue queue(MAX_QUEUE_LEN);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &queue, {5});
+	connection_manager cm(config, &queue, {5});
 
 	std::thread t([&cm]()
 	{
@@ -1339,8 +1338,7 @@ TEST_F(connection_manager_fixture, backoff)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 
 	// Create and spin up the fake collector (get an ephemeral port)
 	fake_collector fc(false); // Don't auto respond
@@ -1363,7 +1361,7 @@ TEST_F(connection_manager_fixture, backoff)
 	auto compressor = gzip_protobuf_compressor::get(-1);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &pqueue, {5});
+	connection_manager cm(config, &pqueue, {5});
 	protobuf_metric_serializer serializer(stats_source,
 	                                      "",
 	                                      ph,
@@ -1466,9 +1464,8 @@ TEST_F(connection_manager_fixture, backoff_recovery_v4)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
+	cm_config config = base_config;
 	std::atomic<bool> metrics_sent(false);
-	config.init();
 
 	// Create and spin up the fake collector (get an ephemeral port)
 	fake_collector fc(false); // Don't auto respond
@@ -1491,7 +1488,7 @@ TEST_F(connection_manager_fixture, backoff_recovery_v4)
 	auto compressor = gzip_protobuf_compressor::get(-1);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &pqueue, {4});
+	connection_manager cm(config, &pqueue, {4});
 	cm.set_working_interval(1); // Don't want to wait for 10 seconds
 	protobuf_metric_serializer serializer(stats_source,
 	                                      "",
@@ -2054,8 +2051,7 @@ TEST_F(connection_manager_fixture, aggregator_integration_test)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 	std::atomic<bool> metrics_sent(false);
 
 	// Create the shared blocking queues
@@ -2081,7 +2077,7 @@ TEST_F(connection_manager_fixture, aggregator_integration_test)
 	config.m_ssl_enabled = false;
 
 	// Create and spin up the bits
-	connection_manager cm(&config, &pqueue, {5});
+	connection_manager cm(config, &pqueue, {5});
 	protobuf_metric_serializer serializer(stats_source,
 	                                      "",
 	                                      ph,
@@ -2188,8 +2184,7 @@ TEST_F(connection_manager_fixture, test_error_message_invalid_version)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 
 	// Create and spin up the fake collector (get an ephemeral port)
 	fake_collector fc(true);
@@ -2207,7 +2202,7 @@ TEST_F(connection_manager_fixture, test_error_message_invalid_version)
 	// Create and spin up the connection manager
 	const std::string token = "B17EFACE";
 	auto mh = std::make_shared<counting_message_handler>(token);
-	connection_manager cm(&config,
+	connection_manager cm(config,
 	                      &queue,
 	                      {5},
 	                      {{draiosproto::message_type::DUMP_REQUEST_START, mh}});
@@ -2286,8 +2281,7 @@ TEST_F(connection_manager_fixture, handshake_timeout)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 	test_helpers::scoped_config<uint32_t> conn_timeout("connect_timeout", 1500);
 
 	// Create and spin up the fake collector
@@ -2304,7 +2298,7 @@ TEST_F(connection_manager_fixture, handshake_timeout)
 	protocol_queue queue(MAX_QUEUE_LEN);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &queue, {5});
+	connection_manager cm(config, &queue, {5});
 
 	std::thread t([&cm]()
 	{
@@ -2352,8 +2346,7 @@ TEST_F(connection_manager_fixture, unacked_metrics)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 	std::atomic<bool> metrics_sent(false);
 
 	// Create and spin up the fake collector (get an ephemeral port)
@@ -2378,7 +2371,7 @@ TEST_F(connection_manager_fixture, unacked_metrics)
 	auto compressor = gzip_protobuf_compressor::get(-1);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &pqueue, {5});
+	connection_manager cm(config, &pqueue, {5});
 	protobuf_metric_serializer serializer(stats_source,
 	                                      "",
 	                                      ph,
@@ -3012,8 +3005,7 @@ TEST_F(connection_manager_fixture, unacked_metrics_timeout)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
-	dragent_configuration config;
-	config.init();
+	cm_config config = base_config;
 
 	// After initing the config, swap the value
 	test_helpers::scoped_config<uint64_t> timeout_conf("watchdog.connection_manager_unacked_timeout_s", 2);
@@ -3041,7 +3033,7 @@ TEST_F(connection_manager_fixture, unacked_metrics_timeout)
 	auto compressor = gzip_protobuf_compressor::get(-1);
 
 	// Create and spin up the connection manager
-	connection_manager cm(&config, &pqueue, {5});
+	connection_manager cm(config, &pqueue, {5});
 	protobuf_metric_serializer serializer(stats_source,
 	                                      "",
 	                                      ph,

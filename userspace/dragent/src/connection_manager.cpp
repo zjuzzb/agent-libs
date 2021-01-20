@@ -231,8 +231,7 @@ std::unique_ptr<cm_state_machine> build_fsm(connection_manager* cm,
  *       handled appropriately.
  */
 
-connection_manager::connection_manager(
-    dragent_configuration* configuration,
+connection_manager::connection_manager(cm_config configuration,
     protocol_queue* queue,
     std::initializer_list<dragent_protocol::protocol_version> supported_protocol_versions,
     std::initializer_list<message_handler_map::value_type> message_handlers)
@@ -288,9 +287,9 @@ connection_manager::~connection_manager()
 bool connection_manager::init()
 {
 
-	m_protobuf_file_emitter.reset(new dragent::protobuf_file_emitter(m_configuration->c_root_dir.get_value()));
+	m_protobuf_file_emitter.reset(new dragent::protobuf_file_emitter(m_configuration.m_root_dir));
 
-	if (m_configuration->m_server_addr == "" || m_configuration->m_server_port == 0)
+	if (m_configuration.m_server_addr == "" || m_configuration.m_server_port == 0)
 	{
 		LOG_WARNING("Server address has not been specified");
 		return false;
@@ -424,12 +423,12 @@ bool connection_manager::connect()
 			// We can't touch sock_promise any more in this state
 		}
 	},
-	                           std::ref(m_configuration->m_server_addr),
-	                           m_configuration->m_server_port,
-	                           m_configuration->m_ssl_enabled,
+	                           std::ref(m_configuration.m_server_addr),
+	                           m_configuration.m_server_port,
+	                           m_configuration.m_ssl_enabled,
 	                           m_reconnect_interval,
-	                           std::ref(m_configuration->m_ssl_ca_cert_paths),
-	                           std::ref(m_configuration->m_ssl_ca_certificate));
+	                           std::ref(m_configuration.m_ssl_ca_cert_paths),
+	                           std::ref(m_configuration.m_ssl_ca_certificate));
 	//
 	// End thread
 	//
@@ -600,12 +599,12 @@ void connection_manager::do_run()
 			}
 
 #ifndef CYGWING_AGENT
-			if (m_configuration->m_promex_enabled)
+			if (m_configuration.m_promex_enabled)
 			{
 				const string& url =
-				    m_configuration->m_promex_connect_url.empty()
-				        ? "unix:" + m_configuration->c_root_dir.get_value() + "/run/promex.sock"
-				        : m_configuration->m_promex_connect_url;
+				    m_configuration.m_promex_connect_url.empty()
+				        ? "unix:" + m_configuration.m_root_dir + "/run/promex.sock"
+				        : m_configuration.m_promex_connect_url;
 				m_prom_channel = libsinsp::grpc_channel_registry::get_channel(url);
 				m_prom_conn = make_shared<promex_pb::PrometheusExporter::Stub>(m_prom_channel);
 			}
@@ -799,8 +798,8 @@ dragent_protocol::protocol_version connection_manager::get_max_supported_protoco
 bool connection_manager::send_proto_init()
 {
 	uint64_t now = sinsp_utils::get_current_time_ns();
-	const string& customer_id = m_configuration->m_customer_id;
-	const string& machine_id = m_configuration->machine_id();
+	const string& customer_id = m_configuration.m_customer_id;
+	const string& machine_id = m_configuration.m_machine_id;
 
 	draiosproto::protocol_init msg_pi;
 
@@ -846,8 +845,8 @@ bool connection_manager::send_proto_init()
 bool connection_manager::send_handshake_negotiation()
 {
 	uint64_t now = sinsp_utils::get_current_time_ns();
-	const string& customer_id = m_configuration->m_customer_id;
-	const string& machine_id = m_configuration->machine_id();
+	const string& customer_id = m_configuration.m_customer_id;
+	const string& machine_id = m_configuration.m_machine_id;
 
 	draiosproto::handshake_v1 msg_hs;
 

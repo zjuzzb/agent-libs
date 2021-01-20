@@ -613,17 +613,28 @@ int agentone_app::sdagent_main()
 	try
 	{
 		cm = new connection_manager(
-		    &m_configuration,
-		    &m_transmit_queue,
-		    c_10s_flush_enabled.get_value()
-		        ? std::initializer_list<dragent_protocol::protocol_version>{4, 5}
-		        : std::initializer_list<dragent_protocol::protocol_version>{4},
-		    {
-		        {draiosproto::message_type::CONFIG_DATA,
-		         std::make_shared<config_data_message_handler>(m_configuration)},
-		        {draiosproto::message_type::AGGREGATION_CONTEXT,
-		         dragent::aggregator_limits::global_limits},
-		    });
+			{
+				m_configuration.c_root_dir.get_value(),
+				m_configuration.m_server_addr,
+				m_configuration.m_server_port,
+				m_configuration.m_ssl_enabled,
+				m_configuration.m_ssl_ca_cert_paths,
+				m_configuration.m_ssl_ca_certificate,
+				m_configuration.m_promex_enabled,
+				m_configuration.m_promex_connect_url,
+				m_configuration.m_customer_id,
+				m_configuration.machine_id()
+			},
+			&m_transmit_queue,
+			c_10s_flush_enabled.get_value()
+				? std::initializer_list<dragent_protocol::protocol_version>{4, 5}
+				: std::initializer_list<dragent_protocol::protocol_version>{4},
+			{
+				{draiosproto::message_type::CONFIG_DATA,
+				 std::make_shared<config_data_message_handler>(m_configuration)},
+				{draiosproto::message_type::AGGREGATION_CONTEXT,
+				 dragent::aggregator_limits::global_limits},
+			});
 		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
 
 		k8s_limits::sptr_t the_k8s_limits = k8s_limits::build(m_configuration.m_k8s_filter,

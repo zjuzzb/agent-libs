@@ -360,7 +360,18 @@ int agentino_app::sdagent_main()
 
 	try
 	{
-		cm = new connection_manager(&m_configuration,
+		cm = new connection_manager({
+		                                m_configuration.c_root_dir.get_value(),
+		                                m_configuration.m_server_addr,
+		                                m_configuration.m_server_port,
+		                                m_configuration.m_ssl_enabled,
+		                                m_configuration.m_ssl_ca_cert_paths,
+		                                m_configuration.m_ssl_ca_certificate,
+		                                m_configuration.m_promex_enabled,
+		                                m_configuration.m_promex_connect_url,
+		                                m_configuration.m_customer_id,
+		                                m_configuration.machine_id()
+		                            },
 		                            &m_transmit_queue,
 		                            std::initializer_list<dragent_protocol::protocol_version>{4},
 		                            {});
