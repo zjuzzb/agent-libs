@@ -583,6 +583,7 @@ void connection_manager::do_run()
 	ASSERT(m_fsm->get_state() == cm_state_machine::state::INIT);
 
 	std::shared_ptr<serialized_buffer> item;
+	milliseconds transmit_delay = milliseconds(c_transmit_delay_ms.get_value());
 
 	while (heartbeat())
 	{
@@ -618,112 +619,109 @@ void connection_manager::do_run()
 			{
 				continue;
 			}
-		}
 
-		//
-		// Send the handshake in the case of >= v5 protocol
-		//
-		if (m_fsm->get_state() == cm_state_machine::state::HANDSHAKE)
-		{
-			LOG_INFO("Performing protocol handshake");
-			// Handshake logic for handshake-enabled protocol
-			if (m_sequence > 1)
+			//
+			// Send the handshake in the case of >= v5 protocol
+			//
+			if (m_fsm->get_state() == cm_state_machine::state::HANDSHAKE)
 			{
-				// Generation number is only increased if the agent has sent
-				// a single non-protocol message
-				m_generation++;
-			}
-			m_sequence = 1;
-
-			if (!perform_handshake())
-			{
-				// Handshake failed. Try again.
-				// NOTE: It's very possible that the connect() succeeds due to
-				//       elastic load balancers but then the handshake fails.
-				continue;
-			}
-		}
-
-		ASSERT(m_fsm->get_state() == cm_state_machine::state::STEADY_STATE);
-		LOG_INFO("Processing messages");
-
-		//
-		// The main loop while the connection is established
-		//
-		m_last_connect = steady_clock::now();
-		milliseconds transmit_delay = milliseconds(c_transmit_delay_ms.get_value());
-		while (heartbeat() && is_connected())
-		{
-			// Check if we received a message
-			if (!receive_message())
-			{
-				LOG_WARNING("Receive failed. Looping back to reconnect.");
-				break;
-			}
-
-			if (m_pending_message.is_complete())
-			{
-				// Now the message is complete. Process it and reset the buffer.
-				(void)handle_message();
-				m_pending_message.reset();
-			}
-
-			if (!item)
-			{
-				//
-				// Try for 300ms to get a message from the queue
-				//
-				m_queue->get(&item, 300);
-			}
-
-			if (item)
-			{
-				//
-				// Got a message, transmit it
-				//
-
-				// SMAGENT-2427
-				// Don't overwhelm OpenSSL and the network stack when we have
-				// a lot of messages to send at once.
-				std::this_thread::sleep_for(milliseconds(transmit_delay));
-
-				// Build the header
-				// Note that we use the v5 header here, but if the protocol
-				// version is v4 then we just use the legacy fields of the
-				// header.
-				dragent_protocol_header_v5 header;
-				if (!build_protocol_header(item,
-				                           get_current_protocol_version(),
-				                           header,
-				                           m_generation,
-				                           m_sequence))
+				LOG_INFO("Performing protocol handshake");
+				// Handshake logic for handshake-enabled protocol
+				if (m_sequence > 1)
 				{
-					LOG_ERROR("Error building protocol header. Reconnecting");
-					disconnect();
+					// Generation number is only increased if the agent has sent
+					// a single non-protocol message
+					m_generation++;
+				}
+				m_sequence = 1;
+
+				if (!perform_handshake())
+				{
+					// Handshake failed. Try again.
+					// NOTE: It's very possible that the connect() succeeds due to
+					//       elastic load balancers but then the handshake fails.
 					continue;
 				}
-				if (transmit_buffer(sinsp_utils::get_current_time_ns(),
-				                    &header,
-				                    item))
-				{
-					if (item->message_type == draiosproto::message_type::METRICS)
-					{
-						on_metrics_send(header, item);
-					}
-
-					// Possibly write to local files
-					if(!m_protobuf_file_emitter->emit(item))
-					{
-						LOG_DEBUG("Protobuf file not written");
-					}
-
-					item = nullptr;
-				}
-				// If the transmit is unsuccessful, we fall out of the loop
-				// (due to no longer being connected) and hold on to the
-				// item we popped so we can send it once we've reconnected.
 			}
-		}  // End while (main loop)
+
+			ASSERT(m_fsm->get_state() == cm_state_machine::state::STEADY_STATE);
+			LOG_INFO("Processing messages");
+
+			//
+			// The main loop while the connection is established
+			//
+			m_last_connect = steady_clock::now();
+		}
+
+		// Check if we received a message
+		if (!receive_message())
+		{
+			LOG_WARNING("Receive failed. Looping back to reconnect.");
+			continue;
+		}
+
+		if (m_pending_message.is_complete())
+		{
+			// Now the message is complete. Process it and reset the buffer.
+			(void)handle_message();
+			m_pending_message.reset();
+		}
+
+		if (!item)
+		{
+			//
+			// Try for 300ms to get a message from the queue
+			//
+			m_queue->get(&item, 300);
+		}
+
+		if (item)
+		{
+			//
+			// Got a message, transmit it
+			//
+
+			// SMAGENT-2427
+			// Don't overwhelm OpenSSL and the network stack when we have
+			// a lot of messages to send at once.
+			std::this_thread::sleep_for(milliseconds(transmit_delay));
+
+			// Build the header
+			// Note that we use the v5 header here, but if the protocol
+			// version is v4 then we just use the legacy fields of the
+			// header.
+			dragent_protocol_header_v5 header;
+			if (!build_protocol_header(item,
+						   get_current_protocol_version(),
+						   header,
+						   m_generation,
+						   m_sequence))
+			{
+				LOG_ERROR("Error building protocol header. Reconnecting");
+				disconnect();
+				continue;
+			}
+			if (transmit_buffer(sinsp_utils::get_current_time_ns(),
+					    &header,
+					    item))
+			{
+				if (item->message_type == draiosproto::message_type::METRICS)
+				{
+					on_metrics_send(header, item);
+				}
+
+				// Possibly write to local files
+				if(!m_protobuf_file_emitter->emit(item))
+				{
+					LOG_DEBUG("Protobuf file not written");
+				}
+
+				item = nullptr;
+			}
+			// If the transmit is unsuccessful, we fall out of the loop
+			// (due to no longer being connected) and hold on to the
+			// item we popped so we can send it once we've reconnected.
+		}
 	}      // End while (heartbeat)
 	disconnect();
 	m_fsm->send_event(cm_state_machine::event::SHUTDOWN);
