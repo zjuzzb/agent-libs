@@ -283,14 +283,16 @@ public class MonitoredVM {
         boolean authenticate = false;
         String name = null;
         for(String arg : request.getArgs()) {
-            if (arg.startsWith("-Dcom.sun.management.jmxremote.port=")) { // NOI18N
+            if (arg.startsWith("-Dcom.sun.management.jmxremote.port=") ||
+                arg.startsWith("-Dcom.sun.management.jmxremote.rmi.port")) { // NOI18N
                 port = Integer.parseInt(arg.substring(arg.indexOf("=") + 1)); // NOI18N
             } else if (arg.equals("-Dcom.sun.management.jmxremote.authenticate=true")) { // NOI18N
                 LOGGER.warning(String.format("%s Process with pid %d has JMX active but requires authorization, please disable it", logPrefix, monitoredVMpid));
                 authenticate = true;
             } else if (arg.startsWith("-Dcom.sun.management.jmxremote.host=")) {
                 hostname = arg.substring(arg.indexOf("=") + 1);
-            } else if (arg.startsWith("-Dcassandra.jmx.local.port=")) { // Hack to autodetect cassandra
+            } else if (arg.startsWith("-Dcassandra.jmx.local.port=") ||
+                arg.startsWith("-Dcassandra.jmx.remote.port")) { // Hack to autodetect cassandra
                 port = Integer.parseInt(arg.substring(arg.indexOf("=") + 1));
                 name = "org.apache.cassandra.service.CassandraDaemon"; // To avoid false negatives force cassandra here
             } else if (arg.startsWith("-jar:")){
