@@ -353,10 +353,7 @@ public:
 	       std::function<void(void*)> decorate_handshake_data = nullptr);
 	~connection_manager();
 
-	bool is_connected() const
-	{
-		return (m_fsm->get_state() == cm_state_machine::state::STEADY_STATE) && m_socket;
-	}
+	bool is_connected() const;
 
 #ifdef SYSDIG_TEST
 	void test_run() { do_run(); }
@@ -445,6 +442,13 @@ private:
 	                cm_state_machine::state state = cm_state_machine::state::INIT);
 	void do_run() override;
 	bool connect();
+	bool connect_to_collector();
+
+	bool is_connected_to_collector() const
+	{
+		return (m_fsm->get_state() == cm_state_machine::state::STEADY_STATE) && m_socket;
+	}
+
 	/**
 	 * Send a byte buffer out on the wire.
 	 */
@@ -628,6 +632,7 @@ private:
 
 #ifndef CYGWING_AGENT
 	bool prometheus_connected() const;
+	bool prometheus_send(std::shared_ptr<serialized_buffer> &item);
 #endif
 public:
 	static const uint32_t MAX_RECEIVER_BUFSIZE = 1 * 1024 * 1024; // 1MiB

@@ -80,6 +80,13 @@ type_config<uint64_t>::ptr c_unacked_message_timeout = type_config_builder<uint6
 	.min(60 /*1 minute min*/)
 	.build();
 
+type_config<bool>::ptr c_headless_mode = type_config_builder<bool>(
+	false,
+	"Headless mode",
+	"headless_mode")
+	.hidden()
+	.build();
+
 using namespace std;
 using std::chrono::microseconds;
 using std::chrono::milliseconds;
@@ -303,6 +310,15 @@ bool connection_manager::init()
 	return true;
 }
 
+bool connection_manager::is_connected() const
+{
+	if(is_connected_to_collector())
+	{
+		return true;
+	}
+	return c_headless_mode->get_value() && prometheus_connected();
+}
+
 bool connection_manager::connect()
 {
 	LOG_INFO("Initiating connection to collector");
@@ -513,11 +529,6 @@ void connection_manager::disconnect()
 	}
 
 	m_pending_message.reset();
-
-#ifndef CYGWING_AGENT
-	m_prom_channel = nullptr;
-	m_prom_conn = nullptr;
-#endif
 	m_last_metrics_ack_uptime_s = 0;
 }
 
@@ -560,6 +571,41 @@ bool connection_manager::prometheus_connected() const
 			return false;
 	}
 }
+
+bool connection_manager::prometheus_send(std::shared_ptr<serialized_buffer> &item)
+{
+	if(item->message_type != draiosproto::message_type::METRICS)
+	{
+		// successfully did nothing
+		return true;
+	}
+
+	if(!prometheus_connected())
+	{
+		return false;
+	}
+
+	grpc::ClientContext context;
+	auto deadline = std::chrono::system_clock::now() + milliseconds(20);
+	context.set_deadline(deadline);
+
+	draiosproto::metrics msg;
+	promex_pb::PrometheusExporterResponse response;
+
+	try
+	{
+		// Deserialize the just-serialized buffer
+		parse_protocol_queue_item(*item, &msg);
+		// XXX: this is blocking
+		m_prom_conn->EmitMetrics(&context, msg, &response);
+		return true;
+	}
+	catch(const dragent_protocol::protocol_error& ex)
+	{
+		LOG_WARNING("%s", ex.what());
+		return false;
+	}
+}
 #endif
 
 void connection_manager::fsm_reinit(dragent_protocol::protocol_version working_protocol_version,
@@ -572,6 +618,65 @@ void connection_manager::fsm_reinit(dragent_protocol::protocol_version working_p
 	}
 
 	m_fsm = build_fsm(this, v5, state);
+}
+
+bool connection_manager::connect_to_collector()
+{
+	if (is_connected_to_collector())
+	{
+		return true;
+	}
+
+	if (!m_fsm->send_event(cm_state_machine::event::CONNECT))
+	{
+		LOG_WARNING("Attempting to connect in bogus state " +
+			    to_string((int)m_fsm->get_state()));
+		fsm_reinit(get_max_supported_protocol_version());
+		return false;
+	}
+
+	if (!heartbeat())
+	{
+		return false;
+	}
+
+	if (!connect())
+	{
+		return false;
+	}
+
+	//
+	// Send the handshake in the case of >= v5 protocol
+	//
+	if (m_fsm->get_state() == cm_state_machine::state::HANDSHAKE)
+	{
+		LOG_INFO("Performing protocol handshake");
+		// Handshake logic for handshake-enabled protocol
+		if (m_sequence > 1)
+		{
+			// Generation number is only increased if the agent has sent
+			// a single non-protocol message
+			m_generation++;
+		}
+		m_sequence = 1;
+
+		if (!perform_handshake())
+		{
+			// Handshake failed. Try again.
+			// NOTE: It's very possible that the connect() succeeds due to
+			//       elastic load balancers but then the handshake fails.
+			return false;
+		}
+	}
+
+	ASSERT(m_fsm->get_state() == cm_state_machine::state::STEADY_STATE);
+	LOG_INFO("Processing messages");
+
+	//
+	// The connection is now established
+	//
+	m_last_connect = steady_clock::now();
+	return true;
 }
 
 void connection_manager::do_run()
@@ -590,81 +695,35 @@ void connection_manager::do_run()
 		//
 		// Make sure we have a valid connection
 		//
-		if (!is_connected())
-		{
-			if (!m_fsm->send_event(cm_state_machine::event::CONNECT))
-			{
-				LOG_WARNING("Attempting to connect in bogus state " +
-				             to_string((int)m_fsm->get_state()));
-				fsm_reinit(get_max_supported_protocol_version());
-				continue;
-			}
-			if (!heartbeat())
-			{
-				break;
-			}
-
 #ifndef CYGWING_AGENT
-			if (m_configuration.m_promex_enabled)
-			{
-				const string& url =
-				    m_configuration.m_promex_connect_url.empty()
-				        ? "unix:" + m_configuration.m_root_dir + "/run/promex.sock"
-				        : m_configuration.m_promex_connect_url;
-				m_prom_channel = libsinsp::grpc_channel_registry::get_channel(url);
-				m_prom_conn = make_shared<promex_pb::PrometheusExporter::Stub>(m_prom_channel);
-			}
-#endif
-			if (!connect())
-			{
-				continue;
-			}
-
-			//
-			// Send the handshake in the case of >= v5 protocol
-			//
-			if (m_fsm->get_state() == cm_state_machine::state::HANDSHAKE)
-			{
-				LOG_INFO("Performing protocol handshake");
-				// Handshake logic for handshake-enabled protocol
-				if (m_sequence > 1)
-				{
-					// Generation number is only increased if the agent has sent
-					// a single non-protocol message
-					m_generation++;
-				}
-				m_sequence = 1;
-
-				if (!perform_handshake())
-				{
-					// Handshake failed. Try again.
-					// NOTE: It's very possible that the connect() succeeds due to
-					//       elastic load balancers but then the handshake fails.
-					continue;
-				}
-			}
-
-			ASSERT(m_fsm->get_state() == cm_state_machine::state::STEADY_STATE);
-			LOG_INFO("Processing messages");
-
-			//
-			// The main loop while the connection is established
-			//
-			m_last_connect = steady_clock::now();
+		if (m_configuration.m_promex_enabled && !m_prom_conn)
+		{
+			const string& url =
+				m_configuration.m_promex_connect_url.empty()
+				? "unix:" + m_configuration.m_root_dir + "/run/promex.sock"
+				: m_configuration.m_promex_connect_url;
+			m_prom_channel = libsinsp::grpc_channel_registry::get_channel(url);
+			m_prom_conn = make_shared<promex_pb::PrometheusExporter::Stub>(m_prom_channel);
 		}
+#endif
+
+		connect_to_collector();
 
 		// Check if we received a message
-		if (!receive_message())
+		if (is_connected_to_collector())
 		{
-			LOG_WARNING("Receive failed. Looping back to reconnect.");
-			continue;
-		}
+			if (!receive_message())
+			{
+				LOG_WARNING("Receive failed. Looping back to reconnect.");
+				continue;
+			}
 
-		if (m_pending_message.is_complete())
-		{
-			// Now the message is complete. Process it and reset the buffer.
-			(void)handle_message();
-			m_pending_message.reset();
+			if (m_pending_message.is_complete())
+			{
+				// Now the message is complete. Process it and reset the buffer.
+				(void)handle_message();
+				m_pending_message.reset();
+			}
 		}
 
 		if (!item)
@@ -675,7 +734,14 @@ void connection_manager::do_run()
 			m_queue->get(&item, 300);
 		}
 
-		if (item)
+		if (!item)
+		{
+			// queue is empty
+			continue;
+		}
+
+		bool send_success = false;
+		if (is_connected_to_collector())
 		{
 			//
 			// Got a message, transmit it
@@ -699,7 +765,6 @@ void connection_manager::do_run()
 			{
 				LOG_ERROR("Error building protocol header. Reconnecting");
 				disconnect();
-				continue;
 			}
 			if (transmit_buffer(sinsp_utils::get_current_time_ns(),
 					    &header,
@@ -716,11 +781,24 @@ void connection_manager::do_run()
 					LOG_DEBUG("Protobuf file not written");
 				}
 
-				item = nullptr;
+				send_success = true;
 			}
-			// If the transmit is unsuccessful, we fall out of the loop
-			// (due to no longer being connected) and hold on to the
-			// item we popped so we can send it once we've reconnected.
+		}
+
+#ifndef CYGWING_AGENT
+		if(prometheus_send(item) && c_headless_mode->get_value())
+		{
+			send_success = true;
+		}
+#endif
+
+		// If the transmit is unsuccessful, we hold on to the item
+		// we popped so we can send it once we've reconnected,
+		// in the next iteration of the loop.
+
+		if(send_success)
+		{
+			item = nullptr;
 		}
 	}      // End while (heartbeat)
 	disconnect();
@@ -1414,31 +1492,6 @@ bool connection_manager::transmit_buffer(uint64_t now,
 		            to_string((now - item->ts_ns) / 1000000.0));
 	}
 
-
-#ifndef CYGWING_AGENT
-	if (item->message_type == draiosproto::message_type::METRICS && prometheus_connected())
-	{
-		grpc::ClientContext context;
-		auto deadline = std::chrono::system_clock::now() + milliseconds(20);
-		context.set_deadline(deadline);
-
-		draiosproto::metrics msg;
-		promex_pb::PrometheusExporterResponse response;
-
-		try
-		{
-			// Deserialize the just-serialized buffer
-			parse_protocol_queue_item(*item,
-			                          &msg);
-			// XXX: this is blocking
-			m_prom_conn->EmitMetrics(&context, msg, &response);
-		}
-		catch (const dragent_protocol::protocol_error& ex)
-		{
-			LOG_WARNING("%s", ex.what());
-		}
-	}
-#endif
 
 	try
 	{
