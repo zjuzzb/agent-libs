@@ -707,7 +707,13 @@ void connection_manager::do_run()
 		}
 #endif
 
-		connect_to_collector();
+		if(!c_headless_mode->get_value())
+		{
+			if (!connect_to_collector())
+			{
+				continue;
+			}
+		}
 
 		// Check if we received a message
 		if (is_connected_to_collector())
