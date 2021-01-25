@@ -45,15 +45,15 @@ namespace
 
 cm_config base_config =
 {
-    ".",
-    "",
-    6443,
-    true,
-    {},
-    "",
-    false,
-    "sysdig-agent-bozos",
-    "nathanb-dev"
+    ".",  // Root dir
+    "",   // Server addr (we'll fill this one in manually)
+    6443, // Port (likewise)
+    true, // SSL enabled (likewise)
+    {},   // CA cert paths
+    "",   // CA cert
+    false,// Validate cert
+    "sysdig-agent-bozos", // Cust ID
+    "nathanb-dev"         // Machine ID
 };
 
 /**

@@ -1,10 +1,8 @@
-#include "avoid_block_channel.h"
-#include "common_logger.h"
-#include "globally_readable_file_channel.h"
-#include <cstdlib>
-#include <memory>
 #include <gtest.h>
-#include <SimpleOpt.h>
+#include <string>
+#include "common_logger.h"
+#include "avoid_block_channel.h"
+#include "globally_readable_file_channel.h"
 #include <Poco/AutoPtr.h>
 #include <Poco/Channel.h>
 #include <Poco/ConsoleChannel.h>
@@ -19,12 +17,12 @@
 using namespace Poco;
 using namespace dragent;
 
-namespace {
-
-class dragent_environment : public ::testing::Environment {
+namespace
+{
+class agentone_environment : public ::testing::Environment {
 
 public:
-	dragent_environment(bool log_to_console) :
+	agentone_environment(bool log_to_console) :
 	   m_log_to_console(log_to_console)
 	{}
 
@@ -75,7 +73,6 @@ private:
 
 };
 
-
 class EventListener : public ::testing::EmptyTestEventListener
 {
 public:
@@ -107,60 +104,23 @@ public:
 private:
 	bool m_keep_capture_files;
 };
-
-// define the ID values to indentify the option
-enum { OPT_KEEP_CAPTURE_FILES, OPT_LOG_TO_CONSOLE };
-
-// declare a table of CSimpleOpt::SOption structures. See the SimpleOpt.h header
-// for details of each entry in this structure. In summary they are:
-//  1. ID for this option. This will be returned from OptionId() during processing.
-//     It may be anything >= 0 and may contain duplicates.
-//  2. Option as it should be written on the command line
-//  3. Type of the option. See the header file for details of all possible types.
-//     The SO_REQ_SEP type means an argument is required and must be supplied
-//     separately, e.g. "-f FILE"
-//  4. The last entry must be SO_END_OF_OPTIONS.
-//
-CSimpleOpt::SOption g_rgOptions[] =
-{
-	{ OPT_KEEP_CAPTURE_FILES, "--keep_capture_files", SO_NONE    }, // "--help"
-	{ OPT_LOG_TO_CONSOLE, "-v",  SO_NONE },
-	{ OPT_LOG_TO_CONSOLE, "--verbose",  SO_NONE },
-	SO_END_OF_OPTIONS                       // END
-};
-
-} // anonymous namespace
+}
 
 int main(int argc, char **argv)
 {
-	testing::InitGoogleTest(&argc, argv);
-	bool keep_capture_files = false;
-	bool log_to_console = false;
-	CSimpleOpt args(argc, argv, g_rgOptions);
+    testing::InitGoogleTest(&argc, argv);
+	bool log = false;
 
-	//
-	// process arguments ignoring all but the arguments we care about
-	//
-	while(args.Next())
+	for (int i = 1; i < argc; ++i)
 	{
-		if(args.LastError() == SO_SUCCESS)
+		std::string opt = argv[i];
+		if (opt == "-v" || opt == "--verbose")
 		{
-			if(args.OptionId() == OPT_KEEP_CAPTURE_FILES)
-			{
-				keep_capture_files = true;
-			}
-			else if(args.OptionId() == OPT_LOG_TO_CONSOLE)
-			{
-				log_to_console = true;
-			}
+			log = true;
 		}
 	}
 
-	::testing::TestEventListeners &listeners = ::testing::UnitTest::GetInstance()->listeners();
-	listeners.Append(new EventListener(keep_capture_files));
-
-	::testing::AddGlobalTestEnvironment(new dragent_environment(log_to_console));
-
-	return RUN_ALL_TESTS();
+	::testing::AddGlobalTestEnvironment(new agentone_environment(log));
+    return RUN_ALL_TESTS();
 }
 

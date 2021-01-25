@@ -13,20 +13,20 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}) # generated files
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}) # generated files refer to shipped ones
 
 add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/agentino.proto
+           ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
            ${CMAKE_CURRENT_BINARY_DIR}/common.proto
            ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
            ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
-           ${CMAKE_CURRENT_BINARY_DIR}/agentino.proto
            ${CMAKE_CURRENT_BINARY_DIR}/metadata.proto
            ${CMAKE_CURRENT_BINARY_DIR}/profiling.proto
            ${CMAKE_CURRENT_BINARY_DIR}/secure.proto
     COMMENT "Fetching proto files from proto repo"
-    DEPENDS ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/aggregation_context.proto
+    DEPENDS ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/agentino.proto
+            ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/aggregation_context.proto
             ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/common.proto
             ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/draios.proto
             ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/handshake.proto
-            ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/agentino.proto
             ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/metadata.proto
             ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/profiling.proto
             ${PROJECT_SOURCE_DIR}/../protorepo/agent-be/proto/secure.proto
@@ -41,9 +41,9 @@ if(NOT CYGWIN)
         aggregator_limits.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
+        ${CMAKE_CURRENT_BINARY_DIR}/agentino.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/handshake.pb.cc
-        ${CMAKE_CURRENT_BINARY_DIR}/agentino.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/tap.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/secure.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/profiling.pb.cc
@@ -60,9 +60,9 @@ else()
         draiosproto STATIC
         ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/common.pb.cc
+        ${CMAKE_CURRENT_BINARY_DIR}/agentino.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/handshake.pb.cc
-        ${CMAKE_CURRENT_BINARY_DIR}/agentino.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc
         ${CMAKE_CURRENT_BINARY_DIR}/agent-prom.pb.cc
@@ -143,9 +143,9 @@ function(generate_grpc proto)
     )
 endfunction()
 
+generate_proto(${CMAKE_CURRENT_BINARY_DIR}/agentino.proto ${CMAKE_CURRENT_BINARY_DIR}/draios.proto)
 generate_proto(${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto)
 generate_proto(${CMAKE_CURRENT_BINARY_DIR}/common.proto)
-generate_proto(${CMAKE_CURRENT_BINARY_DIR}/agentino.proto ${CMAKE_CURRENT_BINARY_DIR}/draios.proto)
 generate_proto(${CMAKE_CURRENT_BINARY_DIR}/draios.proto ${CMAKE_CURRENT_BINARY_DIR}/common.proto)
 generate_proto(
     ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto

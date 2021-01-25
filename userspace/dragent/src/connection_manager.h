@@ -1,6 +1,5 @@
 #pragma once
 
-#include "message_transmitter.h"
 #include "protocol.h"
 #include "spinlock.h"
 #include "running_state_runnable.h"
@@ -331,10 +330,27 @@ private:
 
 public:
 
+	/**
+	 * @param configuration  The config params for the CM
+	 * @param queue  The input queue for the CM
+	 * @param supported_protocol_versions  The versions the CM should report.
+	 *        This parameter cam be used to force the CM to use a subset of 
+	 *        protocol version. If the server supports none of these, no 
+	 *        connection can be formed.
+	 * @param message_handlers  Callbacks for given message types. These may 
+	 *                          also be registered later dynamically
+	 * @param use_agentino_handshake  Indicates to use the 1-phase handshake generally
+	 *        used for agentinos instead of the regular one
+	 * @param decorate_handshake_data  A callback to allow the client to populate the hand-
+	 *        shake data with additional data. the type varies on the type of handshake used,
+	 *        and will always be the "most" relevant message type for that handshake
+	 */
 	connection_manager(cm_config configuration,
 	       protocol_queue* queue,
 	       std::initializer_list<dragent_protocol::protocol_version> supported_protocol_versions,
-	       std::initializer_list<message_handler_map::value_type> message_handlers = {});
+	       std::initializer_list<message_handler_map::value_type> message_handlers = {},
+	       bool use_agentino_handshake = false,
+	       std::function<void(void*)> decorate_handshake_data = nullptr);
 	~connection_manager();
 
 	bool is_connected() const
@@ -484,12 +500,28 @@ private:
 	bool perform_handshake();
 
 	/**
+	 * Executes an agentino protocol handshake.
+	 *
+	 * @retval  true   Handshake completed successfully
+	 * @retval  false  Handshake error
+	 */
+	bool perform_agentino_handshake();
+
+	/**
 	 * Sends the proto_init phase of the handshake (phase 1).
 	 *
 	 * @retval  true   Message sent successfully
 	 * @retval  false  Message send failed (socket error)
 	 */
 	bool send_proto_init();
+
+	/**
+	 * Sends the agentino specific handshake request
+	 *
+	 * @retval  true   Message sent successfully
+	 * @retval  false  Message send failed (socket error)
+	 */
+	bool send_agentino_handshake_request();
 
 	/**
 	 * Builds a header for a protocol message.
@@ -646,6 +678,16 @@ private:
 	// we force the entire application to exit and restart. This must be
 	// atomic because it is read from a remote thread.
 	std::atomic<uint64_t> m_last_metrics_ack_uptime_s;
+
+	// Agentino communication uses a different handshake. This indicates which to use
+	bool m_use_agentino_handshake;
+
+	// During handshake, the client may request to decorate the message with some additional
+	// information. This allows us that opportunity. Due to having a few different
+	// handshakes, we pass a void* and it's expected the caller will RTTI cast to the 
+	// type for the specified handshake. In a perfect world, the handshake is
+	// managed by a helper class that can deal with the type situation.
+	std::function<void(void*)> m_decorate_handshake_data;
 
 #ifndef CYGWING_AGENT
 	// communication with Prometheus exporter

@@ -1,3 +1,4 @@
+#include "agentino_manager.h"
 #include "agentone.h"
 #include "async_aggregator.h"
 #include "avoid_block_channel.h"
@@ -9,6 +10,7 @@
 #include "configuration.h"
 #include "configuration_manager.h"
 #include "connection_manager.h"
+#include "container_manager.h"
 #include "crash_handler.h"
 #include "dragent_memdump_logger.h"
 #include "dragent_user_event_callback.h"
@@ -43,14 +45,12 @@
 
 #include <gperftools/malloc_extension.h>
 #include <grpc/support/log.h>
+#include <memory>
 #include <sched.h>
 #include <sys/resource.h>
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
 #include <time.h>
-
-using namespace std;
-using namespace dragent;
 
 // local helper functions
 namespace
@@ -89,10 +89,10 @@ type_config<uint64_t> c_watchdog_warn_memory_usage_mb(256,
                                                       "warn_memory_usage_mb");
 
 type_config<std::vector<std::string>> c_log_file_component_overrides(
-					{},
-					"Component level overrides to global log level",
-					"log",
-					"file_priority_by_component");
+    {},
+    "Component level overrides to global log level",
+    "log",
+    "file_priority_by_component");
 
 string compute_sha1_digest(SHA1Engine& engine, const string& path)
 {
@@ -116,7 +116,7 @@ const uint32_t TIME_TO_UPDATE_PROCESS_PRIORITY = 5;
 
 static void g_signal_callback(int sig)
 {
-	running_state::instance().shut_down();
+	dragent::running_state::instance().shut_down();
 }
 
 static void g_usr_signal_callback(int sig)
@@ -155,20 +155,20 @@ void enable_rest_server(dragent_configuration& configuration)
 	    new librest::rest_request_handler_factory());
 
 	// Register path handlers with the factory...
-	factory->register_path_handler<configlist_rest_request_handler>();
-	factory->register_path_handler<config_rest_request_handler>();
-	factory->register_path_handler<post_aggregated_metrics_rest_request_handler>();
-	factory->register_path_handler<pre_aggregated_metrics_rest_request_handler>();
-	factory->register_path_handler<config_data_rest_request_handler>();
-	factory->register_path_handler<webpage_rest_request_handler>();
-	factory->register_path_handler<file_rest_request_handler>();
+	factory->register_path_handler<dragent::configlist_rest_request_handler>();
+	factory->register_path_handler<dragent::config_rest_request_handler>();
+	factory->register_path_handler<dragent::post_aggregated_metrics_rest_request_handler>();
+	factory->register_path_handler<dragent::pre_aggregated_metrics_rest_request_handler>();
+	factory->register_path_handler<dragent::config_data_rest_request_handler>();
+	factory->register_path_handler<dragent::webpage_rest_request_handler>();
+	factory->register_path_handler<dragent::file_rest_request_handler>();
 #if defined(FAULT_INJECTION_ENABLED)
-	factory->register_path_handler<faultlist_rest_request_handler>();
-	factory->register_path_handler<fault_rest_request_handler>();
+	factory->register_path_handler<dragent::faultlist_rest_request_handler>();
+	factory->register_path_handler<dragent::fault_rest_request_handler>();
 #endif  // defined(FAULT_INJECTION_ENABLED)
 
-	config_data_rest_request_handler::set_config_data_message_handler(
-	    std::make_shared<config_data_message_handler>(configuration));
+	dragent::config_data_rest_request_handler::set_config_data_message_handler(
+	    std::make_shared<dragent::config_data_message_handler>(configuration));
 
 	s_rest_server = make_unique<librest::rest_server>(factory, c_rest_port->get_value());
 	s_rest_server->start();
@@ -204,15 +204,39 @@ agentone_app::agentone_app()
 
 agentone_app::~agentone_app()
 {
-	std::shared_ptr<config_data_message_handler> ptr;
+	std::shared_ptr<dragent::config_data_message_handler> ptr;
 
-	config_data_rest_request_handler::set_config_data_message_handler(ptr);
+	dragent::config_data_rest_request_handler::set_config_data_message_handler(ptr);
 	google::protobuf::ShutdownProtobufLibrary();
 }
 
 void agentone_app::initialize(Application& self)
 {
 	ServerApplication::initialize(self);
+
+	// Poco's argument processing library doesn't seem to actually work, nor is it easily
+	// debuggable. So we'll just roll our own. Yes this code is super raw, no I'm not concerned, as
+	// this application will in effect never be manually executed by a customer
+	for (auto i = argv().begin() + 1; i != argv().end(); ++i)
+	{
+		if (*i == "--noipcns")
+		{
+			std::cerr << "Setting no-icpns flag\n";
+			m_unshare_ipcns = false;
+		}
+		else if (*i == "--name")
+		{
+			i++;
+			if (i == argv().end())
+			{
+				std::cerr << "Invalid arguments. No argument provided to \"--name\"\n";
+				exit(EXIT_FAILURE);
+			}
+			std::string value = *i;
+			std::cerr << "Hostname = " << value << "\n";
+			m_hostname = value;
+		}
+	}
 }
 
 void agentone_app::uninitialize()
@@ -232,21 +256,11 @@ void agentone_app::defineOptions(OptionSet& options)
 	options.addOption(Option("name", "", "the name used to identify this agentone to the backend")
 	                      .required(true)
 	                      .repeatable(false));
-
 }
 
 void agentone_app::handleOption(const std::string& name, const std::string& value)
 {
 	ServerApplication::handleOption(name, value);
-
-	if (name == "noipcns")
-	{
-		m_unshare_ipcns = false;
-	}
-	if (name == "name")
-	{
-		m_hostname = value;
-	}
 }
 
 void agentone_app::displayHelp() {}
@@ -308,7 +322,7 @@ int agentone_app::main(const std::vector<std::string>& args)
 	catch (const yaml_configuration_exception& ex)
 	{
 		std::cerr << "Failed to init sinsp_worker. Exception message: " << ex.what() << '\n';
-		running_state::instance().shut_down();
+		dragent::running_state::instance().shut_down();
 	}
 
 	m_had_unclean_shutdown = remove_file_if_exists(m_configuration.m_log_dir, K8S_PROBE_FILE);
@@ -317,7 +331,7 @@ int agentone_app::main(const std::vector<std::string>& args)
 	if (!feature_manager::instance().initialize())
 	{
 		std::cerr << "Failed to init features." << '\n';
-		running_state::instance().shut_down();
+		dragent::running_state::instance().shut_down();
 	}
 
 	//
@@ -526,7 +540,7 @@ int agentone_app::sdagent_main()
 	if (m_configuration.load_error())
 	{
 		LOG_ERROR("Unable to load configuration file");
-		return exit_code::SHUT_DOWN;
+		return dragent::exit_code::SHUT_DOWN;
 	}
 
 	// Set the configured default compression method
@@ -540,13 +554,13 @@ int agentone_app::sdagent_main()
 	if (m_configuration.m_customer_id.empty())
 	{
 		LOG_ERROR("customerid not specified");
-		return exit_code::RESTART;
+		return dragent::exit_code::RESTART;
 	}
 
 	if (m_configuration.machine_id() == "00:00:00:00:00:00")
 	{
 		LOG_ERROR("Invalid machine_id detected");
-		return exit_code::RESTART;
+		return dragent::exit_code::RESTART;
 	}
 
 	//
@@ -564,7 +578,8 @@ int agentone_app::sdagent_main()
 			void** unused_ret = MallocExtension::instance()->ReadStackTraces(&sample_period);
 			delete[] unused_ret;
 
-			// If the env var isn't set, disable the dumping interval because it'll be garbage data
+			// If the env var isn't set, disable the dumping interval because it'll be garbage
+			// data
 			if (sample_period <= 0)
 			{
 				LOG_ERROR(
@@ -608,8 +623,10 @@ int agentone_app::sdagent_main()
 	////////////////
 
 	connection_manager* cm = nullptr;
-	metric_serializer* serializer = nullptr;
-	async_aggregator* aggregator = nullptr;
+	dragent::metric_serializer* serializer = nullptr;
+	dragent::async_aggregator* aggregator = nullptr;
+	agentone::container_manager* container_manager_instance = nullptr;
+	std::shared_ptr<agentone::agentino_manager> agentino_manager_instance = nullptr;
 	try
 	{
 		cm = new connection_manager(
@@ -625,16 +642,16 @@ int agentone_app::sdagent_main()
 				m_configuration.m_customer_id,
 				m_configuration.machine_id()
 			},
-			&m_transmit_queue,
-			c_10s_flush_enabled.get_value()
-				? std::initializer_list<dragent_protocol::protocol_version>{4, 5}
-				: std::initializer_list<dragent_protocol::protocol_version>{4},
-			{
-				{draiosproto::message_type::CONFIG_DATA,
-				 std::make_shared<config_data_message_handler>(m_configuration)},
-				{draiosproto::message_type::AGGREGATION_CONTEXT,
-				 dragent::aggregator_limits::global_limits},
-			});
+		    &m_transmit_queue,
+		    c_10s_flush_enabled.get_value()
+		        ? std::initializer_list<dragent_protocol::protocol_version>{4, 5}
+		        : std::initializer_list<dragent_protocol::protocol_version>{4},
+		    {
+		        {draiosproto::message_type::CONFIG_DATA,
+		         std::make_shared<dragent::config_data_message_handler>(m_configuration)},
+		        {draiosproto::message_type::AGGREGATION_CONTEXT,
+		         dragent::aggregator_limits::global_limits},
+		    });
 		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
 
 		k8s_limits::sptr_t the_k8s_limits = k8s_limits::build(m_configuration.m_k8s_filter,
@@ -642,35 +659,44 @@ int agentone_app::sdagent_main()
 		                                                      m_configuration.m_k8s_cache_size);
 
 		// Create and set up the aggregator
-		aggregator = new async_aggregator(m_aggregator_queue,
-		                                  m_serializer_queue,
-		                                  300,
-		                                  c_10s_flush_enabled.get_value() ? 10 : 0,
-		                                  m_configuration.c_root_dir.get_value());
+		aggregator = new dragent::async_aggregator(m_aggregator_queue,
+		                                           m_serializer_queue,
+		                                           300,
+		                                           c_10s_flush_enabled.get_value() ? 10 : 0,
+		                                           m_configuration.c_root_dir.get_value());
 		aggregator->set_aggregation_interval_source(cm);
 
 		m_pool.start(*aggregator, c_serializer_timeout_s.get_value());
 		LOG_INFO("Created and started aggregator");
 
 		// Create and set up the serializer
-		auto s = new protobuf_metric_serializer(nullptr,
-		                                        m_configuration.c_root_dir.get_value(),
-		                                        m_protocol_handler,
-		                                        &m_serializer_queue,
-		                                        &m_transmit_queue,
-		                                        compressor,
-		                                        cm);
+		auto s = new dragent::protobuf_metric_serializer(nullptr,
+		                                                 m_configuration.c_root_dir.get_value(),
+		                                                 m_protocol_handler,
+		                                                 &m_serializer_queue,
+		                                                 &m_transmit_queue,
+		                                                 compressor,
+		                                                 cm);
 		m_pool.start(*s, c_serializer_timeout_s.get_value());
 		serializer = s;
 		LOG_INFO("Created and started serializer");
+
+		// Create and set up the container manager and agentino manager
+		container_manager_instance = new agentone::container_manager();
+		agentino_manager_instance =
+		    std::make_shared<agentone::agentino_manager>(m_protocol_handler,
+		                                                 *container_manager_instance);
+		cm->set_message_handler(draiosproto::message_type::POLICIES_V2, agentino_manager_instance);
+
+		LOG_INFO("Created and started Container and Agentino Managers.");
 	}
 	catch (const sinsp_exception& e)
 	{
 		LOG_ERROR("Failed to setup internal components. Exception message: %s", e.what());
-		running_state::instance().restart();
+		dragent::running_state::instance().restart();
 	}
 
-	auto& state = running_state::instance();
+	auto& state = dragent::running_state::instance();
 
 	uint64_t uptime_s = 0;
 
@@ -704,14 +730,18 @@ int agentone_app::sdagent_main()
 		metrics->set_customer_id(m_configuration.m_customer_id);
 		metrics->mutable_hostinfo()->set_hostname(m_hostname);
 
-		m_aggregator_queue.put(std::make_shared<flush_data_message>(time(nullptr) * ONE_SECOND_IN_NS,
-		                                                            nullptr,
-		                                                            std::move(metrics),
-		                                                            0,
-		                                                            0,
-		                                                            0,
-		                                                            1,
-		                                                            0));
+		agentone::container_serializer<draiosproto::metrics> cs;
+		cs.serialize(*container_manager_instance, *metrics);
+
+		m_aggregator_queue.put(
+		    std::make_shared<flush_data_message>(time(nullptr) * ONE_SECOND_IN_NS,
+		                                         nullptr,
+		                                         std::move(metrics),
+		                                         0,
+		                                         0,
+		                                         0,
+		                                         1,
+		                                         0));
 
 		Thread::sleep(1000);
 		++uptime_s;
@@ -736,8 +766,14 @@ int agentone_app::sdagent_main()
 	//
 	// Shut. Down. Everything.
 	//
+	
+	// Must be destructed first to stop the thread pool in roughly LIFO order. Ideally
+	// this would all be in a single thread pool organizing it all, but such is life.
+	agentino_manager_instance = nullptr;
+
 	// This will stop everything in the default pool
 	m_pool.stop_all();
+
 	if (serializer)
 	{
 		serializer->stop();
@@ -758,9 +794,9 @@ int agentone_app::sdagent_main()
 }
 
 bool agentone_app::timeout_expired(int64_t last_activity_age_ns,
-                                  uint64_t timeout_s,
-                                  const char* label,
-                                  const char* tail)
+                                   uint64_t timeout_s,
+                                   const char* label,
+                                   const char* tail)
 {
 	if (timeout_s == 0 || last_activity_age_ns <= static_cast<int64_t>(timeout_s) * 1000000000LL)
 	{
@@ -907,7 +943,8 @@ void agentone_app::watchdog_check(uint64_t uptime_s)
 		if (watchdog_warn > watchdog_max)
 		{
 			LOG_WARNING(
-			    "watchdog:warn_memory_usage_mb cannot be higher than watchdog:max_memory_usage_mb. "
+			    "watchdog:warn_memory_usage_mb cannot be higher than "
+			    "watchdog:max_memory_usage_mb. "
 			    "Lowering Warn.");
 			watchdog_warn = watchdog_max;
 		}
@@ -984,7 +1021,7 @@ void agentone_app::watchdog_check(uint64_t uptime_s)
 			        m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.at(proc.first))
 			{
 				LOG_CRITICAL("watchdog: " + proc.first + " using " +
-					     to_string(state.memory_used() / 1024) + "MiB of memory, killing");
+				             to_string(state.memory_used() / 1024) + "MiB of memory, killing");
 				subprocess_to_kill = true;
 			}
 			uint64_t last_loop_s = state.last_loop_s();
@@ -1200,8 +1237,9 @@ void agentone_app::initialize_logging()
 	// Setup the logging
 	//
 
-	AutoPtr<globally_readable_file_channel> file_channel(
-	    new globally_readable_file_channel(logsdir, m_configuration.m_globally_readable_log_files));
+	AutoPtr<dragent::globally_readable_file_channel> file_channel(
+	    new dragent::globally_readable_file_channel(logsdir,
+	                                                m_configuration.m_globally_readable_log_files));
 
 	file_channel->setProperty("purgeCount", std::to_string(m_configuration.m_log_rotate));
 	file_channel->setProperty("rotation", std::to_string(m_configuration.m_max_log_size) + "M");
@@ -1215,8 +1253,7 @@ void agentone_app::initialize_logging()
 	// Create file logger at most permissive level (trace). This allows all messages to flow.
 	// Log severity of messages actually emitted through the channel will be managed by
 	// the consumers of the channel
-	Logger& loggerf =
-	    Logger::create("DraiosLogF", formatting_channel_file, Message::PRIO_TRACE);
+	Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, Message::PRIO_TRACE);
 
 	// Note: We are not responsible for managing the memory to which
 	//       event_logger points; no free()/delete needed
@@ -1230,9 +1267,9 @@ void agentone_app::initialize_logging()
 	}
 
 	g_log = unique_ptr<common_logger>(new common_logger(&loggerf,
-							    m_configuration.m_min_file_priority,
-							    c_log_file_component_overrides.get_value(),
-							    make_console_channel(formatter)));
+	                                                    m_configuration.m_min_file_priority,
+	                                                    c_log_file_component_overrides.get_value(),
+	                                                    make_console_channel(formatter)));
 }
 
 void agentone_app::monitor_files(uint64_t uptime_s)
@@ -1298,7 +1335,7 @@ void agentone_app::monitor_files(uint64_t uptime_s)
 	// trigger restart of all related processes
 	if (detected_change)
 	{
-		running_state::instance().restart_for_config_update();
+		dragent::running_state::instance().restart_for_config_update();
 	}
 }
 

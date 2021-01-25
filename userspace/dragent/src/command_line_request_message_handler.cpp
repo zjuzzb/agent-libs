@@ -1,6 +1,7 @@
 #include "command_line_request_message_handler.h"
 #include "common_logger.h"
 #include "protocol.h"
+#include "message_transmitter.h"
 #include <string>
 
 COMMON_LOGGER();

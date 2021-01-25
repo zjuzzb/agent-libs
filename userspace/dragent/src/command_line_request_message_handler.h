@@ -1,5 +1,6 @@
 #pragma once
 
+#include "message_transmitter.h"
 #include "configuration.h"
 #include "connection_manager.h"
 #include "command_line_manager.h"

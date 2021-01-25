@@ -54,6 +54,7 @@ struct dragent_protocol_header_v5
 
 namespace dragent_protocol
 {
+
 class protocol_error : public std::runtime_error
 {
 public:

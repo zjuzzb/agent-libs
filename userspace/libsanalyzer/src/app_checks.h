@@ -23,6 +23,8 @@ Json::Value yaml_to_json(const YAML::Node& node);
 class prometheus_conf;
 class prom_process;
 
+class thread_analyzer_info;
+
 class app_check
 {
 public:

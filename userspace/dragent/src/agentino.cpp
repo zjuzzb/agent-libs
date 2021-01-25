@@ -1,4 +1,5 @@
 #include "agentino.h"
+
 #include "agentino.pb.h"
 #include "avoid_block_channel.h"
 #include "common_logger.h"
@@ -8,13 +9,14 @@
 #include "crash_handler.h"
 #include "error_handler.h"
 #include "exit_code.h"
-#include "globally_readable_file_channel.h"
 #include "protobuf_metric_serializer.h"
 #include "security_mgr.h"
 #include "security_policies_v2_message_handler.h"
 #include "sinsp_event_source.h"
 #include "type_config.h"
 #include "utils.h"
+
+#include <Poco/NullChannel.h>
 
 #include <grpc/support/log.h>
 #include <sched.h>
@@ -57,6 +59,8 @@ static void g_trace_signal_callback(int sig)
 	dragent_configuration::m_enable_trace = true;
 }
 
+agentino_app* s_instance = nullptr;
+
 }  // end namespace
 
 agentino_app::agentino_app()
@@ -65,13 +69,21 @@ agentino_app::agentino_app()
       m_protocol_handler(m_transmit_queue),
       m_log_reporter(m_protocol_handler, &m_configuration),
       m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),
-      m_direct(false)
+      m_direct(false),
+      m_enable_logging(false)
 {
+	s_instance = this;
 }
 
 agentino_app::~agentino_app()
 {
 	google::protobuf::ShutdownProtobufLibrary();
+	s_instance = nullptr;
+}
+
+agentino_app* agentino_app::instance()
+{
+	return s_instance;
 }
 
 void agentino_app::initialize(Application& self)
@@ -111,6 +123,11 @@ void agentino_app::initialize(Application& self)
 		{
 			std::cerr << "Communicating directly with backend\n";
 			m_direct = true;
+		}
+		else if (*i == "--debug-logging")
+		{
+			std::cerr << "Enabling debug logging\n";
+			m_enable_logging = true;
 		}
 		else
 		{
@@ -157,6 +174,8 @@ void agentino_app::defineOptions(OptionSet& options)
 	options.addOption(
 	    Option("direct", "", "used to indicate the agentino should talk directly to the backend")
 	        .repeatable(false));
+	options.addOption(
+	    Option("debug-logging", "", "used to enable logging for the agentino").repeatable(false));
 }
 
 void agentino_app::handleOption(const std::string& name, const std::string& value)
@@ -360,21 +379,22 @@ int agentino_app::sdagent_main()
 
 	try
 	{
-		cm = new connection_manager({
-		                                m_configuration.c_root_dir.get_value(),
-		                                m_configuration.m_server_addr,
-		                                m_configuration.m_server_port,
-		                                m_configuration.m_ssl_enabled,
-		                                m_configuration.m_ssl_ca_cert_paths,
-		                                m_configuration.m_ssl_ca_certificate,
-		                                m_configuration.m_promex_enabled,
-		                                m_configuration.m_promex_connect_url,
-		                                m_configuration.m_customer_id,
-		                                m_configuration.machine_id()
-		                            },
-		                            &m_transmit_queue,
-		                            std::initializer_list<dragent_protocol::protocol_version>{4},
-		                            {});
+		cm = new connection_manager(
+		    {m_configuration.c_root_dir.get_value(),
+		     m_configuration.m_server_addr,
+		     m_configuration.m_server_port,
+		     m_configuration.m_ssl_enabled,
+		     m_configuration.m_ssl_ca_cert_paths,
+		     m_configuration.m_ssl_ca_certificate,
+		     m_configuration.m_promex_enabled,
+		     m_configuration.m_promex_connect_url,
+		     m_configuration.m_customer_id,
+		     m_configuration.machine_id()},
+		    &m_transmit_queue,
+		    std::initializer_list<dragent_protocol::protocol_version>{5},
+		    {},
+		    m_direct ? false : true /* use agentino handshake instead of regular */,
+		    m_direct ? nullptr : &handshake_prepare_callback);
 		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
 	}
 	catch (const sinsp_exception& e)
@@ -480,7 +500,7 @@ int agentino_app::sdagent_main()
 	return exit_code;
 }
 
-void agentino_app::build_metadata_message(draiosproto::agentino_metadata& msg)
+void agentino_app::build_metadata_message(draiosproto::agentino_metadata& msg) const
 {
 	msg.set_container_id(m_container_id);
 	msg.set_container_image(m_container_image);
@@ -545,7 +565,7 @@ void agentino_app::watchdog_check(uint64_t uptime_s)
 
 Logger* agentino_app::make_console_channel(AutoPtr<Formatter> formatter)
 {
-	if (m_configuration.m_min_console_priority != -1)
+	if (m_enable_logging)
 	{
 		AutoPtr<Channel> console_channel(new ConsoleChannel());
 		AutoPtr<Channel> formatting_channel_console(
@@ -560,36 +580,22 @@ Logger* agentino_app::make_console_channel(AutoPtr<Formatter> formatter)
 
 void agentino_app::initialize_logging()
 {
-	//
-	// Create the logs directory if it doesn't exist
-	//
-	File d(m_configuration.m_log_dir);
-	d.createDirectories();
-	Path p;
-	p.parseDirectory(m_configuration.m_log_dir);
-	p.setFileName("draios.log");
-	string logsdir = p.toString();
-
-	crash_handler::set_crashdump_file(p.toString());
-
-	//
-	// Setup the logging
-	//
-
-	AutoPtr<globally_readable_file_channel> file_channel(
-	    new globally_readable_file_channel(logsdir, m_configuration.m_globally_readable_log_files));
-
-	file_channel->setProperty("purgeCount", std::to_string(m_configuration.m_log_rotate));
-	file_channel->setProperty("rotation", std::to_string(m_configuration.m_max_log_size) + "M");
-	file_channel->setProperty("archive", "timestamp");
-
+	AutoPtr<Poco::Channel> null_channel(new Poco::NullChannel());
+	Logger& loggerf = Logger::create("DraiosLogF", null_channel, -1);
 	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P.%I, %p, %t"));
-	AutoPtr<Channel> avoid_block(
-	    new avoid_block_channel(file_channel, m_configuration.machine_id()));
-	AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, avoid_block));
-
-	Logger& loggerf =
-	    Logger::create("DraiosLogF", formatting_channel_file, m_configuration.m_min_file_priority);
-
 	g_log = unique_ptr<common_logger>(new common_logger(&loggerf, make_console_channel(formatter)));
+}
+
+void agentino_app::handshake_prepare_callback(void* handshake_data)
+{
+	draiosproto::agentino_handshake* agentino_handshake_data =
+	    static_cast<draiosproto::agentino_handshake*>(handshake_data);
+
+	if (!agentino_handshake_data)
+	{
+		LOG_ERROR("Invalid handshake data type. Handshake data may be invalid.");
+		return;
+	}
+
+	s_instance->build_metadata_message(*agentino_handshake_data->mutable_metadata());
 }

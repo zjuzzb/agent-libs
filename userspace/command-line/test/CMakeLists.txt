@@ -7,11 +7,8 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 
 add_executable(
-    unit-test-command-line
-    main.cpp
-    command_line_permissions.ut.cpp
-    command_line_manager.ut.cpp
-    command_line_runnable.ut.cpp
+    unit-test-command-line main.cpp command_line_permissions.ut.cpp command_line_manager.ut.cpp
+                           command_line_runnable.ut.cpp
 )
 
 target_link_libraries(

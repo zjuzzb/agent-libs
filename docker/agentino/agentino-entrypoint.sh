@@ -74,6 +74,10 @@ then
 	return 0
 fi
 
+if ! grep ^ssl $CONFIG_FILE > /dev/null 2>&1; then
+	echo "ssl: false" >> $CONFIG_FILE
+fi
+
 if [ $# -eq 0 ]
 then
 	echo "/opt/draios/bin/agentino --name $HOSTNAME --container-name $CONTAINER_NAME --container-id $CONTAINER_ID --image $CONTAINER_IMAGE $ADDITIONAL_ARGS"

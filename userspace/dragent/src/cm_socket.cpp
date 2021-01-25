@@ -607,7 +607,9 @@ bool cm_socket::poll(const std::list<poll_sock>& sock_list,
 	// Pass 2: Build the return list
 	for (uint32_t i = 0; i < nfds; ++i, ++itr)
 	{
-		if (fds[i].revents == POLLIN)
+		if (fds[i].revents == POLLIN ||
+		    fds[i].revents == POLLERR ||
+		    fds[i].revents == POLLHUP)
 		{
 			out_list.emplace_back(itr->sock, itr->ctx);
 		}
@@ -1068,7 +1070,23 @@ int64_t cm_poco_socket::receive(uint8_t* buf, uint32_t len)
 		return 0;
 	}
 
-	return m_sockptr->receiveBytes(buf, len, MSG_WAITALL);
+	try
+	{
+		return m_sockptr->receiveBytes(buf, len, MSG_WAITALL);
+	}
+	catch (const Poco::Net::ConnectionResetException& ex)
+	{
+		LOG_INFO("Connection reset on receive");
+		return -ECONNRESET;
+	}
+	catch (const Poco::TimeoutException& ex)
+	{
+		return -ETIMEDOUT;
+	}
+	catch (const Poco::IOException& ex)
+	{
+		return -ex.code();
+	}
 }
 
 bool cm_poco_socket::has_pending() const

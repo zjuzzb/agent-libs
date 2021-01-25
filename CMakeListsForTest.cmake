@@ -11,6 +11,8 @@ add_subdirectory(userspace/userspace-shared/test)
 add_subdirectory(userspace/librest/test)
 add_subdirectory(userspace/librest/test_helpers)
 add_subdirectory(userspace/sdjagent/test)
+add_subdirectory(userspace/agentone/test)
+add_subdirectory(userspace/agentone/test/fake_agentino)
 
 # Run all unit tests
 add_custom_target(run-unit-tests
@@ -20,6 +22,7 @@ add_custom_target(run-unit-tests
 	COMMAND $(MAKE) run-unit-test-libsanalyzer
 	COMMAND $(MAKE) run-unit-test-librest
 	COMMAND $(MAKE) run-unit-test-userspace-shared
+	COMMAND $(MAKE) run-unit-test-agentone
 )
 
 add_custom_target(valgrind-unit-tests
@@ -29,6 +32,7 @@ add_custom_target(valgrind-unit-tests
 	COMMAND $(MAKE) valgrind-unit-test-libsanalyzer
 	COMMAND $(MAKE) valgrind-unit-test-librest
 	COMMAND $(MAKE) valgrind-unit-test-userspace-shared
+	COMMAND $(MAKE) valgrind-unit-test-agentone
 )
 
 if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)

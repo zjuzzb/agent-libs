@@ -27,6 +27,7 @@ pipeline {
 						echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
 						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
 						docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agent-internal:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION container
+						docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agentone:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION agentone
 					'''
 				}
 			}
@@ -38,6 +39,8 @@ pipeline {
 						sh label: '', script: '''
 							docker tag agent-internal:$AGENT_BRANCH  docker.internal.sysdig.com/agent-internal:$AGENT_BRANCH
 							docker push docker.internal.sysdig.com/agent-internal:$AGENT_BRANCH
+							docker tag agentone:$AGENT_BRANCH  docker.internal.sysdig.com/agentone:$AGENT_BRANCH
+							docker push docker.internal.sysdig.com/agentone:$AGENT_BRANCH
 						'''
 					}
 				}

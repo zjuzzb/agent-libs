@@ -28,7 +28,6 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/c-ares-${DRAIOS_CARES_VERSION}/ta
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/json-3.3.0/single_include)
 include_directories(${LUAJIT_INCLUDE})
 
-
 add_definitions(-DHAS_ANALYZER)
 
 list(
@@ -107,8 +106,8 @@ else()
     set(POCO_LIB_PREFIX "lib")
 endif()
 
-# We compile all these files into their own object (i.e. non-linked) library otherwise
-# cmake will compile them for each library that includes them
+# We compile all these files into their own object (i.e. non-linked) library otherwise cmake will
+# compile them for each library that includes them
 add_library(appcommonl OBJECT ${appcommonfiles})
 
 list(
@@ -143,10 +142,10 @@ endif()
 add_library(dragentl STATIC dragent.cpp $<TARGET_OBJECTS:appcommonl>)
 target_link_libraries(dragentl falco_engine ${dragent_link_libraries})
 
-add_library(agentonel STATIC agentone.cpp $<TARGET_OBJECTS:appcommonl>)
-target_link_libraries(agentonel falco_engine ${dragent_link_libraries})
-
-add_library(agentinol STATIC agentino.cpp sinsp_event_source.cpp event_source.cpp $<TARGET_OBJECTS:appcommonl>)
+add_library(
+    agentinol STATIC agentino.cpp sinsp_event_source.cpp event_source.cpp
+                     $<TARGET_OBJECTS:appcommonl>
+)
 target_link_libraries(agentinol falco_engine ${dragent_link_libraries})
 
 if(INCLUDE_INTERNAL_TEST_CODE)
@@ -155,7 +154,6 @@ if(INCLUDE_INTERNAL_TEST_CODE)
 endif()
 
 add_executable(dragent agent_main.cpp)
-add_executable(agentone agentone_main.cpp)
 add_executable(agentino agentino_main.cpp)
 
 target_link_libraries(
@@ -167,15 +165,7 @@ target_link_libraries(
     librestl
     ${dragent_application_link_libraries}
 )
-target_link_libraries(
-    agentone
-    pthread
-    sanalyzer
-    agentonel
-    draiosproto
-    librestl
-    ${dragent_application_link_libraries}
-)
+
 target_link_libraries(
     agentino
     pthread
@@ -212,12 +202,6 @@ install(
     TARGETS dragent
     DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
     COMPONENT agent-slim
-)
-
-install(
-    TARGETS agentone
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-    COMPONENT agentone
 )
 
 install(

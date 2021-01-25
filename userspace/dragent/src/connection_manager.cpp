@@ -3,6 +3,7 @@
 #include "common_logger.h"
 #include "handshake.pb.h"
 #include "draios.pb.h"
+#include "agentino.pb.h"
 #include "feature_manager.h"
 #include "protocol.h"
 #include "protobuf_compression.h"
@@ -234,7 +235,9 @@ std::unique_ptr<cm_state_machine> build_fsm(connection_manager* cm,
 connection_manager::connection_manager(cm_config configuration,
     protocol_queue* queue,
     std::initializer_list<dragent_protocol::protocol_version> supported_protocol_versions,
-    std::initializer_list<message_handler_map::value_type> message_handlers)
+    std::initializer_list<message_handler_map::value_type> message_handlers,
+    bool use_agentino_handshake,
+    std::function<void(void*)> decorate_handshake_data)
     : dragent::running_state_runnable("connection_manager"),
       m_handler_map(message_handlers),
       m_supported_protocol_versions(supported_protocol_versions),
@@ -261,7 +264,9 @@ connection_manager::connection_manager(cm_config configuration,
       m_negotiated_protocol_version(0),
       m_reconnect_interval(0),
       m_working_interval(DEFAULT_WORKING_INTERVAL),
-      m_last_metrics_ack_uptime_s(0)
+      m_last_metrics_ack_uptime_s(0),
+      m_use_agentino_handshake(use_agentino_handshake),
+      m_decorate_handshake_data(decorate_handshake_data)
 {
 	Poco::Net::initializeSSL();
 
@@ -795,6 +800,46 @@ dragent_protocol::protocol_version connection_manager::get_max_supported_protoco
 	return max_ver;
 }
 
+bool connection_manager::send_agentino_handshake_request()
+{
+	uint64_t now = sinsp_utils::get_current_time_ns();
+
+	draiosproto::agentino_handshake request;
+
+	request.set_timestamp_ns(now);
+	if (m_decorate_handshake_data)
+	{
+		m_decorate_handshake_data((void*)&request);
+	}
+
+	std::shared_ptr<protobuf_compressor> compressor;
+	compressor = gzip_protobuf_compressor::get(-1);
+
+	// Serialize the message
+	std::shared_ptr<serialized_buffer>
+	        msg_buf = dragent_protocol::message_to_buffer(now,
+                                                        draiosproto::message_type::AGENTINO_HANDSHAKE,
+                                                        request,
+                                                        compressor);
+	if (!msg_buf)
+	{
+		LOG_ERROR("Fatal error serializing first handshake message");
+		return false;
+	}
+
+	dragent_protocol_header_v5 header;
+	bool ret = build_protocol_header(msg_buf,
+	                                 5,
+	                                 header);
+
+	if (!ret)
+	{
+		LOG_ERROR("Fatal error building first handshake message header");
+		return false;
+	}
+
+	return transmit_buffer(now, &header, msg_buf);
+}
 bool connection_manager::send_proto_init()
 {
 	uint64_t now = sinsp_utils::get_current_time_ns();
@@ -886,6 +931,11 @@ bool connection_manager::send_handshake_negotiation()
 
 	feature_manager::instance().to_protobuf(*msg_hs.mutable_features());
 
+	if (m_decorate_handshake_data)
+	{
+		m_decorate_handshake_data((void*)&msg_hs);
+	}
+
 	// Serialize the message
 	std::shared_ptr<serialized_buffer>
 	msg_buf = dragent_protocol::message_to_buffer(now,
@@ -918,8 +968,104 @@ bool connection_manager::send_handshake_negotiation()
 	                       msg_buf);
 }
 
+bool connection_manager::perform_agentino_handshake()
+{
+	// Send the first handshake message
+	if (!send_agentino_handshake_request())
+	{
+		LOG_ERROR("Could not send initial handshake message. Disconnecting");
+		disconnect();
+		return false;
+	}
+
+	// Receive and process response
+	time_point<steady_clock> start = steady_clock::now();
+	const seconds timeout = duration_cast<seconds>(m_socket->get_connect_timeout());
+	LOG_INFO("Waiting for %d seconds for agentino handshake to complete", (int)timeout.count());
+	do {
+		bool ret = receive_message();
+		if (!ret)
+		{
+			LOG_ERROR("Receive failed on handshake. Looping back to reconnect.");
+			disconnect();
+			return false;
+		}
+		if (!m_pending_message.is_complete())
+		{
+			std::this_thread::sleep_for(milliseconds(5));
+		}
+		// Check for timeout
+		milliseconds elapsed = duration_cast<milliseconds>(steady_clock::now() - start);
+		if (elapsed > m_socket->get_connect_timeout())
+		{
+			LOG_ERROR("Handshake timed out after %d seconds. Reconnecting.",
+			          (int)timeout.count());
+			disconnect();
+			return false;
+		}
+	} while (!m_pending_message.is_complete() && heartbeat());
+
+	if (!heartbeat())
+	{
+		// We connected successfully but the agent is terminating
+		return false;
+	}
+
+	const dragent_protocol_header_v4* header = m_pending_message.v4_header();
+
+	if (header->messagetype != draiosproto::message_type::AGENTINO_HANDSHAKE_RESPONSE)
+	{
+		LOG_ERROR("Protocol error: unexpected handshake response (%d)",
+				  (int)header->messagetype);
+		disconnect();
+		return false;
+	}
+	if (!m_fsm->send_event(cm_state_machine::event::HANDSHAKE_PROTO_RESP) ||
+	    m_fsm->get_state() != cm_state_machine::state::HANDSHAKE)
+	{
+		LOG_ERROR("Protocol error: Handshake interrupted");
+		disconnect();
+		return false;
+	}
+
+	// Handle response
+	LOG_INFO("Received response of type %d (ver: %d len: %u)",
+	         (int)m_pending_message.get_type(),
+	         (int)header->version,
+	          m_pending_message.m_buffer_used);
+	draiosproto::agentino_handshake_response resp;
+	uint32_t payload_len = m_pending_message.get_total_length() -
+	                       dragent_protocol::header_len(*header);
+	dragent_protocol::buffer_to_protobuf(m_pending_message.payload(),
+	                                     payload_len,
+	                                     &resp,
+	                                     protocol_compression_method::GZIP);
+
+	if (!m_fsm->send_event(cm_state_machine::event::HANDSHAKE_NEGOTIATION_RESP))
+	{
+		LOG_ERROR("Protocol error: Handshake failed");
+		disconnect();
+		return false;
+	}
+
+	m_pending_message.reset();
+
+	// Set the protocol version
+	m_negotiated_protocol_version = 5;
+
+
+	// Reset the exponential backoff
+	reset_backoff();
+
+	return true;
+
+}
 bool connection_manager::perform_handshake()
 {
+	if (m_use_agentino_handshake)
+	{
+		return perform_agentino_handshake();
+	}
 	//
 	// Phase 1
 	//
@@ -1820,8 +1966,6 @@ bool connection_manager::build_protocol_header(std::shared_ptr<serialized_buffer
 	// Now the v5 fields
 	if (version > dragent_protocol::PROTOCOL_VERSION_NUMBER)
 	{
-		ASSERT(generation > 0);
-		ASSERT(sequence > 0);
 		header.generation = htonll(generation);
 		header.sequence = htonll(sequence);
 	}

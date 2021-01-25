@@ -24,6 +24,9 @@ public:
 	agentino_app();
 	~agentino_app();
 
+public:
+	static agentino_app* instance();
+
 protected:
 	void initialize(Application& self) override;
 	void uninitialize() override;
@@ -43,7 +46,8 @@ private:
 	Logger* make_console_channel(AutoPtr<Formatter> formatter);
 	void setup_coredumps();
 
-	void build_metadata_message(draiosproto::agentino_metadata& msg);
+	static void handshake_prepare_callback(void* handshake_data);
+	void build_metadata_message(draiosproto::agentino_metadata& msg) const;
 
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
@@ -60,6 +64,8 @@ private:
 
 	// indicates whether we're talking directly to the BE, bypassing agentone
 	bool m_direct;
+	// enables logging on console - this pollutes instrumented app logs
+	bool m_enable_logging;
 
 	std::string m_hostname;
 	std::string m_container_name;
