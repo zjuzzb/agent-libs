@@ -131,7 +131,7 @@ type_config<std::string> c_promscrape_labels("--source.label=pod_id,sysdig_k8s_p
                                              "source labels for promscrape to attach to results",
                                              "promscrape_labels");
 
-type_config<uint64_t> c_watchdog_max_memory_usage_mb(512,
+type_config<uint64_t> c_watchdog_max_memory_usage_mb(1024,
                                                      "maximum memory usage for watchdog",
                                                      "watchdog",
                                                      "max_memory_usage_mb");
