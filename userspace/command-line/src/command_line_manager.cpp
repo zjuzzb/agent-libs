@@ -8,15 +8,20 @@
 
 COMMON_LOGGER();
 
-std::string command_line_manager::commands_json() const
+std::string command_line_manager::commands_json(const command_line_permissions &user_permissions) const
 {
 	Json::Value root;
 	auto &commands = root["commands"];
 
 	// Visit each command. Split the command by spaces and organize into
 	// a tree.
-	m_commands.visit([&commands](const command_map::element_pair& cmd) 
+	m_commands.visit([&commands, &user_permissions](const command_map::element_pair& cmd) 
 	{
+		if(!cmd.second.permissions.is_accessable(user_permissions))
+		{
+			return;
+		}
+
 		size_t delimiter_pos;
 		std::string right = cmd.first;
 		auto *current = &commands;
@@ -51,6 +56,12 @@ std::pair<command_line_manager::content_type, std::string> command_line_manager:
 {
 	try
 	{
+		if ("cli show-json" == command) 
+		{
+			auto value = commands_json(user_permissions);
+			return std::make_pair(command_line_manager::content_type::JSON, value);
+		}
+
 		// if we have args then it will always start with a space and a dash 
 		auto found = command.find(" -");
 

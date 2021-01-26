@@ -27,7 +27,7 @@ public:
 	 * This is meant to be used by a command line client to provide 
 	 * nicities like tab-complete. 
 	 */
-	std::string commands_json() const;
+	std::string commands_json(const command_line_permissions &user_permissions) const;
 
 	enum class content_type
 	{

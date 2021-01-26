@@ -30,6 +30,14 @@ TEST(command_line_manager_test, get_commands_json)
 	}
 	{
 		command_line_manager::command_info cmd;
+		cmd.permissions = {CLI_AGENT_STATUS, CLI_VIEW_SENSITIVE_CONFIGURATION};
+		cmd.short_description = "The safe in the back.";
+		cmd.long_description = "You shouldn't touch the safe unless you're allowed to.";
+		cmd.handler = [](const command_line_manager::argument_list &args) { return "bark bark bark";};
+		mgr.register_command("barn safe", cmd);
+	}
+	{
+		command_line_manager::command_info cmd;
 		cmd.permissions = command_line_permissions({ CLI_VIEW_CONFIGURATION, CLI_NETWORK_CALLS_TO_REMOTE_PODS});
 		cmd.short_description = "milk the goat";
 		cmd.handler = [](const command_line_manager::argument_list &args) { return "<goat noise>";};
@@ -87,7 +95,7 @@ R"({
 }
 )";
 
-	ASSERT_EQ(expected, mgr.commands_json());
+	ASSERT_EQ(expected, mgr.commands_json({CLI_AGENT_STATUS, CLI_VIEW_CONFIGURATION, CLI_NETWORK_CALLS_TO_REMOTE_PODS}));
 }
 
 TEST(command_line_manager_test, simple_command)
