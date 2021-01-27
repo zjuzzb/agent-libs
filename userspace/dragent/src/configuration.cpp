@@ -1413,6 +1413,14 @@ void dragent_configuration::print_configuration() const
 	{
 		LOG_INFO("AWS public-ipv4: " + NumberFormatter::format(m_aws_metadata.m_public_ipv4));
 	}
+	if (!m_aws_metadata.m_account_id.empty())
+	{
+		LOG_INFO("AWS account-id: " + m_aws_metadata.m_account_id);
+	}
+	if (!m_aws_metadata.m_region.empty())
+	{
+		LOG_INFO("AWS region: " + m_aws_metadata.m_region);
+	}
 	if (!m_mesos_state_uri.empty())
 	{
 		LOG_INFO("Mesos state API server: " + m_mesos_state_uri);
@@ -1651,13 +1659,21 @@ void dragent_configuration::print_configuration() const
 
 void dragent_configuration::refresh_aws_metadata()
 {
+	//
+	// AWS EC2 Metadata URL
+	//
+	const std::string EC2_METADATA_HOST = "169.254.169.254";
+	const std::string METADATA_URL_BASE = EC2_METADATA_HOST + "/latest/meta-data";
+	const std::string INSTANCE_IDENTITY_URL = EC2_METADATA_HOST + "/latest/dynamic/instance-identity/document";
+
 	try
 	{
-		HTTPClientSession client("169.254.169.254", 80);
+		HTTPClientSession client(EC2_METADATA_HOST, 80);
 		client.setTimeout(1000000);
+		Json::Reader reader;
 
 		{
-			HTTPRequest request(HTTPRequest::HTTP_GET, "/latest/meta-data/public-ipv4");
+			HTTPRequest request(HTTPRequest::HTTP_GET, METADATA_URL_BASE + "/public-ipv4");
 			client.sendRequest(request);
 
 			HTTPResponse response;
@@ -1681,7 +1697,7 @@ void dragent_configuration::refresh_aws_metadata()
 		}
 
 		{
-			HTTPRequest request(HTTPRequest::HTTP_GET, "/latest/meta-data/instance-id");
+			HTTPRequest request(HTTPRequest::HTTP_GET, METADATA_URL_BASE + "/instance-id");
 			client.sendRequest(request);
 
 			HTTPResponse response;
@@ -1693,11 +1709,28 @@ void dragent_configuration::refresh_aws_metadata()
 				m_aws_metadata.m_instance_id.clear();
 			}
 		}
+
+		{
+			HTTPRequest request(HTTPRequest::HTTP_GET, INSTANCE_IDENTITY_URL);
+			client.sendRequest(request);
+
+			HTTPResponse response;
+			std::istream& rs = client.receiveResponse(response);
+
+			Json::Value root;
+			if (reader.parse(rs, root))
+			{
+				m_aws_metadata.m_account_id = root["accountId"].toStyledString();
+				m_aws_metadata.m_region = root["region"].toStyledString();
+			}
+		}
 	}
 	catch (Poco::Exception& e)
 	{
 		m_aws_metadata.m_public_ipv4 = 0;
 		m_aws_metadata.m_instance_id.clear();
+		m_aws_metadata.m_account_id.clear();
+		m_aws_metadata.m_region.clear();
 	}
 }
 
@@ -1833,4 +1866,19 @@ void dragent_configuration::set_auto_config_directory(const string& config_direc
 	{
 		it.second->set_config_directory(config_directory);
 	}
+}
+
+std::string dragent_configuration::get_aws_instance_id()
+{
+	return m_aws_metadata.m_instance_id;
+}
+
+std::string dragent_configuration::get_aws_account_id()
+{
+	return m_aws_metadata.m_account_id;
+}
+
+std::string dragent_configuration::get_aws_region()
+{
+	return m_aws_metadata.m_region;
 }

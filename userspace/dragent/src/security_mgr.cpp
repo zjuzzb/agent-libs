@@ -1065,6 +1065,36 @@ void security_mgr::set_event_labels(std::string &container_id,
 		}
 	}
 
+	if (m_configuration != nullptr)
+	{
+        // AWS Instance ID
+        if (m_event_labels.find("aws.instance_id") != m_event_labels.end())
+        {
+            string aws_instance_id = m_configuration->get_aws_instance_id();
+            if (!aws_instance_id.empty()) {
+                (*event->mutable_event_labels())["aws.instance_id"] = std::move(aws_instance_id);
+            }
+        }
+
+        // AWS Account ID
+        if (m_event_labels.find("aws.account_id") != m_event_labels.end())
+        {
+            string aws_account_id = m_configuration->get_aws_account_id();
+            if (!aws_account_id.empty()) {
+                (*event->mutable_event_labels())["aws.account_id"] = std::move(aws_account_id);
+            }
+        }
+
+        // AWS Region
+        if (m_event_labels.find("aws.account_region") != m_event_labels.end())
+        {
+            string aws_region = m_configuration->get_aws_region();
+            if (!aws_region.empty()) {
+                (*event->mutable_event_labels())["aws.region"] = std::move(aws_region);
+            }
+        }
+	}
+
 	// Agent Tags
 	if (m_event_labels.find("agent.tag") != m_event_labels.end()) {
 		std::vector<std::string> tags = sinsp_split(configuration_manager::instance().get_config<std::string>("tags")->get_value(), ',');

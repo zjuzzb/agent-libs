@@ -38,6 +38,7 @@
 static const int PIPE_BUFFER_SIZE = 1048576;
 #define SDJAGENT_JMX_TIMEOUT "2000"
 
+
 class aws_metadata
 {
 public:
@@ -47,6 +48,8 @@ public:
 
 	uint32_t m_public_ipv4; // http://169.254.169.254/latest/meta-data/public-ipv4
 	std::string m_instance_id; // http://169.254.169.254/latest/meta-data/public-ipv4
+	std::string m_account_id;
+	std::string m_region;
 };
 
 class dragent_configuration;
@@ -454,6 +457,11 @@ public:
 	void set_auto_config_directory(const std::string &config_directory);
 
 	static type_config<bool> c_enable_aws_metadata;
+
+    // AWS metadata
+	std::string get_aws_instance_id();
+	std::string get_aws_account_id();
+	std::string get_aws_region();
 
 private:
 	inline static bool is_executable(const std::string& path);

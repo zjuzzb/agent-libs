@@ -122,6 +122,9 @@ public:
 	std::unordered_set<std::string> m_event_labels = std::unordered_set<std::string>({
 		"process.name",
 		"host.hostName",
+		"aws.instance_id",
+		"aws.account_id",
+		"aws.region",
 		"agent.tag",
 		"container.name",
 		"kubernetes.cluster.name",
