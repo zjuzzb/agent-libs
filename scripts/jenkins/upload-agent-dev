@@ -1,0 +1,264 @@
+#!/bin/bash
+set -exuo pipefail
+
+if [ $# -ne 5 ]
+then
+    echo "Usage: $0 repo-name bin-dir repo-dir s3-bucket agent_version" >&2
+    exit 1
+fi
+
+REPOSITORY_BASENAME=$1
+BINARIES_DIR=$2
+REPOSITORY_DIR=$3
+S3_BUCKET=$4
+AGENT_VERSION=$5
+
+SCRIPT=$(readlink -f $0)
+SCRIPTS_DIR=$(dirname $(dirname $SCRIPT))
+JOBS=${JOBS:-$(nproc)}
+BASEARCH=$(uname -m)
+DOCKER_HUB_ROOT="sysdig"
+ARTIFACTORY_ROOT="docker.internal.sysdig.com"
+
+export AWS_DEFAULT_REGION="us-east-1"
+
+cd $SCRIPTS_DIR/../..
+
+
+function configure_rpm_repo {
+	RPM_BASEARCH=$(python -c 'import rpmUtils.arch; print rpmUtils.arch.getBaseArch()')
+
+	mkdir -p $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+	
+	aws s3 sync $S3_BUCKET/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/draios*dockerfiles* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/draios*tests* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent-kmodule-thin* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agentone* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agentino* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$BASEARCH/*Unspecified* | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$BASEARCH/*fake-collector* | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$BASEARCH/*unit-test* | xargs -d '\n' rm -f || true
+
+	if test -n "$(find $PACKAGES_DIR -maxdepth 1 -name '*.rpm' -print -quit)"
+	then
+		$SCRIPTS_DIR/rpm-sign.exp $PACKAGES_DIR/*rpm
+		cp $PACKAGES_DIR/*rpm $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+	fi
+	createrepo $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+	gpg --local-user EC51E8C4 --batch --no-tty --yes --detach-sign --armor $REPOSITORY_DIR/rpm/$RPM_BASEARCH/repodata/repomd.xml
+
+	cp $SCRIPTS_DIR/draios.repo $REPOSITORY_DIR/rpm
+	sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/rpm/draios.repo
+
+	aws s3 cp $REPOSITORY_DIR/rpm/draios.repo $S3_BUCKET/$REPOSITORY_NAME/rpm/ --acl public-read
+	aws s3 sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ $S3_BUCKET/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
+}
+
+function checksum {
+	LABEL=$1
+	CMD=$2
+
+	cat <<EOF
+$LABEL:
+ $($CMD Packages | cut -d" " -f1) $(du -b Packages | tr \\t " ")
+ $($CMD Packages.gz | cut -d" " -f1) $(du -b Packages.gz | tr \\t " ")
+EOF
+
+}
+
+function configure_debian_repo {
+	DEB_BASEARCH=$(dpkg --print-architecture)
+
+	mkdir -p $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
+	pushd $REPOSITORY_DIR/deb
+	
+	aws s3 sync $S3_BUCKET/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
+	ls -1tdr stable-$DEB_BASEARCH/draios*dockerfiles* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/draios*tests* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*agent-kmodule-thin* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*agentone* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*agentino* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*Unspecified* | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*fake-collector* | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*unit-test* | xargs -d '\n' rm -f || true
+
+	if test -n "$(find $PACKAGES_DIR -maxdepth 1 -name '*.deb' -print -quit)"
+	then
+		$SCRIPTS_DIR/dpkg-sig -k EC51E8C4 -s builder $PACKAGES_DIR/*deb
+		cp $PACKAGES_DIR/*deb stable-$DEB_BASEARCH
+	fi
+	dpkg-scanpackages --multiversion stable-$DEB_BASEARCH > stable-$DEB_BASEARCH/Packages
+
+	gzip -c stable-$DEB_BASEARCH/Packages > stable-$DEB_BASEARCH/Packages.gz
+	pushd stable-$DEB_BASEARCH
+	(cat <<EOF
+Date: $(date -R)
+Suite: stable-$DEB_BASEARCH
+EOF
+	checksum MD5Sum md5sum
+	checksum SHA1 sha1sum
+	checksum SHA256 sha256sum
+	checksum SHA512 sha512sum
+	) > Release
+	gpg --local-user EC51E8C4 --batch --no-tty --yes --digest-algo SHA256 -abs -o Release.gpg Release
+	gpg --local-user EC51E8C4 --batch --no-tty --yes -a -s --clearsign --digest-algo SHA256 --output  InRelease Release
+	popd
+
+	sed s/_REPOSITORY_/$REPOSITORY_NAME/g < $SCRIPTS_DIR/draios.list > draios.list
+
+	aws s3 cp draios.list $S3_BUCKET/$REPOSITORY_NAME/deb/ --acl public-read
+	aws s3 sync stable-$DEB_BASEARCH/ $S3_BUCKET/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
+
+	popd
+}
+
+function configure_tgz_repo {
+	if test -n "$(find $PACKAGES_DIR -maxdepth 1 -name '*.tar.gz' -print -quit)"
+	then
+		mkdir -p $REPOSITORY_DIR/tgz/$BASEARCH
+
+		aws s3 sync $S3_BUCKET/$REPOSITORY_NAME/tgz/$BASEARCH/ $REPOSITORY_DIR/tgz/$BASEARCH/ --acl public-read --delete --exact-timestamps
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/draios*dockerfiles* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/draios*tests* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent-kmodule-thin* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agentone* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agentino* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*Unspecified* | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*fake-collector* | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*unit-test* | xargs -d '\n' rm -f || true
+
+		cp $PACKAGES_DIR/*tar.gz $REPOSITORY_DIR/tgz/$BASEARCH
+		aws s3 sync $REPOSITORY_DIR/tgz/$BASEARCH/ $S3_BUCKET/$REPOSITORY_NAME/tgz/$BASEARCH --acl public-read --delete --exact-timestamps
+	fi
+}
+
+function configure_installers {
+
+	# Some jenkins jobs don't have permission to overwrite the
+	# install-script. Allow for them to skip this without failing
+	if [[ ! ( ${SKIP_OVERWRITE_SCRIPTS-} == 'yes' ) ]]
+	then
+		for FILE_NAME in install-agent install-agent-kubernetes; do
+
+			TEMPLATE_FILE="${SCRIPTS_DIR}/${FILE_NAME}"
+			cp ${TEMPLATE_FILE} ${REPOSITORY_DIR}/${FILE_NAME}
+
+			sed -i s/_REPOSITORY_NAME_/${REPOSITORY_NAME}/g ${REPOSITORY_DIR}/${FILE_NAME}
+			aws s3 cp $REPOSITORY_DIR/${FILE_NAME} $S3_BUCKET/$REPOSITORY_NAME/ --acl public-read
+		done
+
+		aws s3 cp $SCRIPTS_DIR/smoke-tests $S3_BUCKET/ --acl public-read
+	fi
+}
+
+function upload_binaries {
+	rm -rf $REPOSITORY_DIR
+	configure_rpm_repo
+	configure_debian_repo
+	configure_tgz_repo
+	configure_installers
+}
+
+function trigger_docker_builds {
+
+	if [[ "${DOCKER_HUB_ROOT}" == "" ]]; then
+		DOCKER_HUB_ROOT="sysdig"
+	fi
+
+	# Blow away all existing docker images for sysdig/agent*
+	docker images -q 'sysdig/agent*' | uniq | xargs --no-run-if-empty docker rmi -f
+	# Then remove all dangling images
+	docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+
+	# This assumes that a prior "make package" has run to put a
+	# tarball containing dockerfiles in
+	# BINARIES_DIR/release/draios-*-dockerfiles.tar.gz. That
+	# happens as a part of the build-agent script.
+	DOCKERFILES_ROOT_DIR="${BINARIES_DIR}/tmp/dockerfiles"
+
+	rm -rf "${DOCKERFILES_ROOT_DIR}"
+	mkdir -p "${DOCKERFILES_ROOT_DIR}"
+	tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "${BINARIES_DIR}"/release/draios-*-dockerfiles.tar.gz
+
+	for IMAGE_NAME in agent-kmodule agent-kmodule-thin agent-slim agent agent-slim-v2 agentone; do
+
+		pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${IMAGE_NAME}/${REPOSITORY_BASENAME}"
+
+		VERSION_SUFFIX=""
+		if [[ "${REPOSITORY_BASENAME}" == "rc" ]]; then
+			VERSION_SUFFIX="-rc"
+		fi
+
+		VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}${VERSION_SUFFIX}"
+		DEV_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:dev"
+
+		# We have some pre-work for agent-slim-v2
+		# 1. Copy the agent-slim.tar.gz that was generated to the local docker directory
+		# 2. Extract the tar ball and strip the agent binaries of debug symbols
+		# 3. Manipulate the image tags to read as "agent-slim" instead of agent-slim-v2
+		if [[ "${IMAGE_NAME}" == "agent-slim-v2" ]]; then
+			echo "Extracting agent-slim.tar.gz for 'agent-slim-v2'"
+			cp "${BINARIES_DIR}"/release/*agent-slim.tar.gz .
+			rm -rf ./opt/draios
+			tar -xzf *agent-slim.tar.gz
+			find ./opt/draios/bin -type f | xargs file | awk '/ELF/ { sub(/:$/, "", $1); print $1 }' | xargs strip -g
+			rm -rf ./opt/draios/lib/python-deps2.6/
+			# Blow away some python related unnecessary files
+			find ./opt/draios/lib -name '*psycopg2*' -exec rm -rf {} + 2>/dev/null
+			find ./opt/draios/lib -type d -name "enum*" -exec rm -r {} + 2>/dev/null
+
+			VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/agent-slim:${AGENT_VERSION}${VERSION_SUFFIX}"
+			DEV_IMAGE="${DOCKER_HUB_ROOT}/agent-slim:dev"
+		fi
+
+		# For the legacy "agent-slim" image, we have to now label it v1.
+		# Manipulate the image tags to do just that.
+		if [[ "${IMAGE_NAME}" == "agent-slim" ]]; then
+			VERSIONED_IMAGE="${VERSIONED_IMAGE}-v1"
+			DEV_IMAGE="${DEV_IMAGE}-v1"
+		fi
+
+		if [[ "${IMAGE_NAME}" == "agentone" ]]; then
+		  DEV_IMAGE="${ARTIFACTORY_ROOT}/agentone:dev"
+		  if [[ "${REPOSITORY_BASENAME}" == "dev" ]]; then
+		    VERSIONED_IMAGE="${ARTIFACTORY_ROOT}/agentone:${AGENT_VERSION}${VERSION_SUFFIX}"
+		  fi
+		fi
+		
+		docker build -t "${VERSIONED_IMAGE}" --pull .
+		docker push "${VERSIONED_IMAGE}"
+
+		if [[ "${REPOSITORY_BASENAME}" == "dev" ]]; then
+			docker tag "${VERSIONED_IMAGE}" "${DEV_IMAGE}"
+			docker push "${DEV_IMAGE}"
+		fi
+
+		popd
+	done
+}
+
+REPOSITORY_NAME=$REPOSITORY_BASENAME
+PACKAGES_DIR=$BINARIES_DIR/release
+upload_binaries
+
+REPOSITORY_NAME=$REPOSITORY_BASENAME-debug
+PACKAGES_DIR=$BINARIES_DIR/debug
+upload_binaries
+
+trigger_docker_builds

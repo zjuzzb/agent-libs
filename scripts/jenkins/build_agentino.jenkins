@@ -42,6 +42,11 @@ pipeline {
 						sh label: '', script: '''
 							docker tag agentino-internal:$AGENT_BRANCH  docker.internal.sysdig.com/agentino-internal:$AGENT_BRANCH
 							docker push docker.internal.sysdig.com/agentino-internal:$AGENT_BRANCH
+							if [ ! -z $VERSION_TAG ]
+							then
+								docker tag agentino-internal:$AGENT_BRANCH  docker.internal.sysdig.com/agentino-internal:$VERSION_TAG
+								docker push docker.internal.sysdig.com/agentino-internal:$VERSION_TAG
+							fi
 						'''
 					}
 				}
