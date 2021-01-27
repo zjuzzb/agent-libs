@@ -25,6 +25,9 @@
 #include "sched_analyzer.h"
 #include "scores.h"
 #include "sinsp_errno.h"
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 namespace
 {
@@ -482,13 +485,11 @@ void thread_analyzer_info::scan_listening_ports(bool scan_procfs) const
 
 			if (m_procfs_found_ports.size() != prev_size)
 			{
-				g_logger.format(sinsp_logger::SEV_INFO,
-				                "Updated list of listening ports for pid %" PRIi64
-				                ", %s. Found %d new ports: %s",
-				                m_pid,
-				                m_comm.c_str(),
-				                m_procfs_found_ports.size() - prev_size,
-				                ports_to_string(m_procfs_found_ports).c_str());
+				LOG_INFO("Updated list of listening ports for pid %lu %s. Found %lu new ports: %s",
+				         m_pid,
+				         m_comm.c_str(),
+				         m_procfs_found_ports.size() - prev_size,
+				         ports_to_string(m_procfs_found_ports).c_str());
 			}
 		}
 	}
@@ -637,10 +638,9 @@ const proc_config& thread_analyzer_info::get_proc_config()
 
 		if (!conf.empty())
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-			                "Found process %ld with custom conf, SYSDIG_AGENT_CONF=%s",
-			                m_pid,
-			                conf.c_str());
+			LOG_DEBUG("Found process %ld with custom conf, SYSDIG_AGENT_CONF=%s",
+			          m_pid,
+			          conf.c_str());
 		}
 		m_proc_config = make_unique<proc_config>(conf);
 	}

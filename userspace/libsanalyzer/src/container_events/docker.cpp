@@ -26,6 +26,9 @@ limitations under the License.
 #include "memdump_logger.h"
 #include "user_event.h"
 #include "infrastructure_state.h"
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 const std::string docker::DOCKER_SOCKET_FILE = "/var/run/docker.sock";
 #ifdef HAS_CAPTURE

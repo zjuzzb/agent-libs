@@ -7,6 +7,9 @@
 #include <container_events/containerd_container.pb.h>
 #include <container_events/containerd_image.pb.h>
 #include <container_events/containerd_task.pb.h>
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 using namespace containerd::services::events::v1;
 using namespace containerd::events;

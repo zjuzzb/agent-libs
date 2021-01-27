@@ -2,6 +2,9 @@
 #include "analyzer_thread.h"
 #include "configuration_manager.h"
 #include "promscrape.h"
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 app_check_emitter::app_check_emitter(const app_checks_proxy_interface::metric_map_t& app_metrics,
 				     const unsigned int app_metrics_limit,
@@ -108,15 +111,13 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 		{
 			if(sent)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-						"Skipping duplicate app metrics for %d(%d),%s:exp in %d",
-						tinfo.m_pid, app_data.second->pid(),
-						app_age_map.first.c_str(), -app_data.first);
+				LOG_DEBUG("Skipping duplicate app metrics for %lu(%d),%s:exp in %d",
+						  tinfo.m_pid, app_data.second->pid(),
+						  app_age_map.first.c_str(), -app_data.first);
 				continue;
 			}
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-					"Found app metrics for %d(%d),%s, exp in %d", tinfo.m_pid, app_data.second->pid(),
-					app_age_map.first.c_str(), -app_data.first);
+			LOG_DEBUG("Found app metrics for %lu(%d),%s, exp in %d", tinfo.m_pid, app_data.second->pid(),
+					  app_age_map.first.c_str(), -app_data.first);
 			sent = true;
 
 #ifndef CYGWING_AGENT
@@ -143,12 +144,10 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 					// We May want to add some logging of service checks in case we don't have metrics
 					if(!metrics.empty())
 					{
-						g_logger.log("Starting export of Prometheus metrics",
-							     sinsp_logger::SEV_INFO);
+						LOG_INFO("Starting export of Prometheus metrics");
 						const std::string &metricname = metrics[0].name();
-						g_logger.format(sinsp_logger::SEV_DEBUG,
-								"First prometheus metrics since agent start: pid %d: %d metrics including: %s",
-								app_data.second->pid(), metric_count, metricname.c_str());
+						LOG_DEBUG("First prometheus metrics since agent start: pid %d: %d metrics including: %s",
+								  app_data.second->pid(), metric_count, metricname.c_str());
 						logged_metric = true;
 					}
 				}
@@ -210,7 +209,7 @@ void app_check_emitter::log_result()
 	}
 	if(m_app_metrics_remaining == 0)
         {
-                g_logger.format(sinsp_logger::SEV_WARNING,
+                LOG_WARNING(
 				"App checks metrics limit (%u) reached, %u %s of %u filtered, %u total",
 				m_app_metrics_limit,
 				m_num_app_check_metrics_sent,
@@ -218,7 +217,7 @@ void app_check_emitter::log_result()
 				m_num_app_check_metrics_filtered,
 				m_num_app_check_metrics_total);
         } else {
-                g_logger.format(sinsp_logger::SEV_DEBUG,
+                LOG_DEBUG(
 				"%s %u Appcheck metrics of %u filtered, %u total",
 				Sent_or_Aggr.c_str(),
 				m_num_app_check_metrics_sent,
@@ -229,7 +228,7 @@ void app_check_emitter::log_result()
 #ifndef CYGWING_AGENT
         if(m_prom_metrics_remaining == 0)
         {
-                g_logger.format(sinsp_logger::SEV_WARNING,
+                LOG_WARNING(
 				"Prometheus metrics limit (%u) reached, %u %s of %u filtered, %u total",
 				m_prom_conf.max_metrics(),
 				m_num_prometheus_metrics_sent,
@@ -237,7 +236,7 @@ void app_check_emitter::log_result()
 				m_num_prometheus_metrics_filtered,
 				m_num_prometheus_metrics_total);
         } else {
-                g_logger.format(sinsp_logger::SEV_DEBUG,
+                LOG_DEBUG(
 				"%s %u Prometheus metrics of %u filtered, %u total",
 				Sent_or_Aggr.c_str(),
 				m_num_prometheus_metrics_sent,

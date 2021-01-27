@@ -9,6 +9,9 @@
 #include "infrastructure_state.h"
 
 #include "config.h"
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 #undef AVOID_FDS_FROM_THREAD_TABLE
 
@@ -30,8 +33,7 @@ void proc_parser(proc_parser_state* state)
 	state->m_inspector = new sinsp();
 	state->m_inspector->set_hostname_and_port_resolution_mode(false);
 
-	g_logger.format(sinsp_logger::SEV_INFO,
-		"secure_profiling (baselining) /proc scanner thread started");
+	LOG_INFO("secure_profiling (baselining) /proc scanner thread started");
 
 	try
 	{
@@ -46,7 +48,7 @@ void proc_parser(proc_parser_state* state)
 	}
 	catch(...)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR,
+		LOG_ERROR(
 			"secure_profiling (baselining) proc parser failure: can't open inspector %s",
 			state->m_inspector->getlasterr().c_str());
 		return;
@@ -146,7 +148,7 @@ const secure::profiling::fingerprint* sinsp_baseliner::get_fingerprint(uint64_t 
 	if (m_secure_profiling_fingerprint_batch->container_size() == 0 &&
 	    m_secure_profiling_fingerprint_batch->progs_size() == 0)
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "No secure profiling fingerprint generated");
+		LOG_DEBUG("No secure profiling fingerprint generated");
 		return nullptr;
 	}
 
@@ -796,7 +798,7 @@ void sinsp_baseliner::merge_proc_data()
 	//
 	if(m_procparser_state->m_inspector != NULL)
 	{
-		g_logger.format(sinsp_logger::SEV_INFO,
+		LOG_INFO(
 			"merging secure_profiling (baselining) /proc data during interval switch");
 
 		//
@@ -804,7 +806,7 @@ void sinsp_baseliner::merge_proc_data()
 		//
 		if(!m_procparser_state->m_done)
 		{
-			g_logger.format(sinsp_logger::SEV_ERROR,
+			LOG_ERROR(
 				"secure_profiling (baselining) proc parser thread not done after a full interval. Skipping baseline emission.");
 			return;
 		}
@@ -837,7 +839,7 @@ void sinsp_baseliner::emit_as_protobuf(uint64_t ts)
 #ifdef ASYNC_PROC_PARSING
 	merge_proc_data();
 #endif
-	g_logger.format(sinsp_logger::SEV_INFO, "secure_profiling (baseline) emitting host fingerprint");
+	LOG_INFO("secure_profiling (baseline) emitting host fingerprint");
 
 	serialize_protobuf();
 
@@ -852,7 +854,7 @@ void sinsp_baseliner::flush(uint64_t ts)
 	uint64_t flush_time_ms = (sinsp_utils::get_current_time_ns() - flush_start_time) / 1000000;
 
 	m_profiling_internal_metrics->set_secure_profiling_internal_metrics(1, flush_time_ms);
-	g_logger.format(sinsp_logger::SEV_INFO, "secure_profiling (baseliner): flushing fl.ms=%d ", flush_time_ms);
+	LOG_INFO("secure_profiling (baseliner): flushing fl.ms=%lu ", flush_time_ms);
 
 	if(m_inspector->is_live())
 	{
@@ -1383,7 +1385,7 @@ bool sinsp_baseliner::is_drops_buffer_rate_critical(float max_drops_buffer_rate_
 
 	if(drop_rate > max_drops_buffer_rate_percentage)
 	{
-		g_logger.format(sinsp_logger::SEV_WARNING,
+		LOG_WARNING(
 				"secure_profiling critical drop buffer rate %f (upper threshold %f)",
 				drop_rate, max_drops_buffer_rate_percentage);
 		return true;
@@ -1514,7 +1516,7 @@ void sinsp_baseliner::process_event(sinsp_evt *evt)
 	//
 	if(m_procparser_state->m_inspector != NULL && m_procparser_state->m_done)
 	{
-		g_logger.format(sinsp_logger::SEV_INFO,
+		LOG_INFO(
 			"merging secure_profiling (baselining) /proc data during syscall parsing");
 
 		//

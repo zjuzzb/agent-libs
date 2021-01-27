@@ -1,6 +1,9 @@
 #include "k8s_namespace_store.h"
 #include "libsanalyzer_exceptions.h"
 #include "logger.h"
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 k8s_namespace_store::k8s_namespace::k8s_namespace(const std::string& name)
 	: m_name(name)
@@ -52,7 +55,7 @@ bool k8s_namespace_store::k8s_namespace::has_uid() const
 
 void k8s_namespace_store::k8s_namespace::clear_orphans()
 {
-	g_logger.format(sinsp_logger::SEV_DEBUG, "k8s_namespace_store namespace %s clearing orphans", m_name.c_str());
+	LOG_DEBUG("k8s_namespace_store namespace %s clearing orphans", m_name.c_str());
 	m_orphans.clear();
 }
 
@@ -67,9 +70,9 @@ void k8s_namespace_store::k8s_namespace::add_orphan(const std::string& kind, con
 
 	if(ret.second == false)
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "k8s_namespace_store could not add orphan <%s,%s>"
-				, kind.c_str()
-				, id.c_str());
+		LOG_DEBUG("k8s_namespace_store could not add orphan <%s,%s>",
+				  kind.c_str(),
+				  id.c_str());
 	}
 }
 
@@ -90,9 +93,9 @@ void k8s_namespace_store::add_namespace(const std::string& ns_name, const std::s
 {
 	if(!has_namespace(ns_name))
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "k8s_namespace_store adding %s namespace %s"
-				, ns_id.empty() ? "incomplete" : "complete"
-				, ns_name.c_str());
+		LOG_DEBUG("k8s_namespace_store adding %s namespace %s",
+				  ns_id.empty() ? "incomplete" : "complete",
+				  ns_name.c_str());
 
 		if(ns_id.empty())
 		{
@@ -105,7 +108,8 @@ void k8s_namespace_store::add_namespace(const std::string& ns_name, const std::s
 	}
 	else
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "k8s_namespace_store trying to re-add namespace %s which is already in the store");
+		LOG_DEBUG("k8s_namespace_store trying to re-add namespace %s which is already in the store", 
+				  ns_name.c_str());
 	}
 }
 
@@ -121,11 +125,11 @@ void k8s_namespace_store::add_child_to_namespace(const std::string &ns_name, con
 
 	if(pos == m_namespaces.end())
 	{
-		g_logger.format(sinsp_logger::SEV_WARNING, "k8s_namespace_store could not add %s to ns %s because ns is not in the store", child_id.c_str(), ns_name.c_str());
+		LOG_WARNING("k8s_namespace_store could not add %s to ns %s because ns is not in the store", child_id.c_str(), ns_name.c_str());
 	}
 	else
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "k8s_namespace_store add child %s to ns %s", child_id.c_str(), ns_name.c_str());
+		LOG_DEBUG("k8s_namespace_store add child %s to ns %s", child_id.c_str(), ns_name.c_str());
 		m_child_to_namespace_uid[child_id] = pos->second.uid();
 	}
 }
@@ -186,10 +190,10 @@ void k8s_namespace_store::handle_add(const draiosproto::container_group& cg)
 			ASSERT(seen_namespace_object(ns_name) == false);
 			ASSERT(pos->second.uid() == "");
 			pos->second.set_uid(id);
-			g_logger.format(sinsp_logger::SEV_DEBUG, "k8s_namespace_store namespace <%s,%s> is now complete. It has  %d orphans"
-					, kind.c_str()
-					, id.c_str()
-					, pos->second.get_orphans().size());
+			LOG_DEBUG("k8s_namespace_store namespace <%s,%s> is now complete. It has  %lu orphans",
+					  kind.c_str(),
+					  id.c_str(),
+					  pos->second.get_orphans().size());
 		}
 		else
 		{
@@ -216,18 +220,18 @@ void k8s_namespace_store::handle_add(const draiosproto::container_group& cg)
 				}
 				catch(const k8s_namespace_store_error& e)
 				{
-					g_logger.format(sinsp_logger::SEV_WARNING, "k8s_namespace_store Cannot add orphan <%s,%s> to namespace %s "
-							"because the namespace is complete"
-							, kind.c_str()
-							, id.c_str()
-							, ns_name.c_str());
+					LOG_WARNING("k8s_namespace_store Cannot add orphan <%s,%s> to namespace %s "
+					            "because the namespace is complete",
+							    kind.c_str(),
+							    id.c_str(),
+							    ns_name.c_str());
 				}
 			}
 		}
 		else
 		{
-			g_logger.format(sinsp_logger::SEV_WARNING, "k8s_namespace_store Container group <%s,%s> does not contain any \"namespace\" internal tag"
-					, cg.uid().kind().c_str(), cg.uid().id().c_str());
+			LOG_WARNING("k8s_namespace_store Container group <%s,%s> does not contain any \"namespace\" internal tag",
+					    cg.uid().kind().c_str(), cg.uid().id().c_str());
 		}
 	}
 
@@ -247,7 +251,7 @@ void k8s_namespace_store::handle_rm(const draiosproto::container_group& cg)
 
 		if(pos == m_namespaces.end())
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "k8s_namespace_store request to remove an unknown namespace: %s", ns_name.c_str());
+			LOG_DEBUG("k8s_namespace_store request to remove an unknown namespace: %s", ns_name.c_str());
 		}
 		else
 		{
@@ -266,7 +270,7 @@ bool k8s_namespace_store::namespace_has_orphans(const std::string& ns_name) cons
 	auto pos = m_namespaces.find(ns_name);
 	if(pos == m_namespaces.end())
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "k8s_namespace_manager request for namespace %s orphans but ns is not in the store");
+		LOG_DEBUG("k8s_namespace_manager request for namespace %s orphans but ns is not in the store", ns_name.c_str());
 	}
 	else
 	{
@@ -312,7 +316,7 @@ void k8s_namespace_store::add_orphan_to_namespace(const std::string& ns_name, co
 	auto pos = m_namespaces.find(ns_name);
 	if(pos == m_namespaces.end())
 	{
-		g_logger.format(sinsp_logger::SEV_WARNING, "k8s_namespace_store request to add an orphan to a non stored namespace %s", ns_name.c_str());
+		LOG_WARNING("k8s_namespace_store request to add an orphan to a non stored namespace %s", ns_name.c_str());
 	}
 	else
 	{
@@ -321,13 +325,12 @@ void k8s_namespace_store::add_orphan_to_namespace(const std::string& ns_name, co
 			throw k8s_namespace_store_error("cannot add orphans to a complete namespace");
 		}
 
-		g_logger.format(sinsp_logger::SEV_DEBUG, "k8s_namespace_store adding orphan <%s,%s> to namespace %s"
-				, kind.c_str()
-				, id.c_str()
-				, pos->first.c_str()
-				, &pos->second);
+		LOG_DEBUG("k8s_namespace_store adding orphan <%s,%s> to namespace %s",
+				  kind.c_str(),
+				  id.c_str(),
+				  pos->first.c_str());
 		pos->second.add_orphan(kind, id);
-		g_logger.format(sinsp_logger::SEV_DEBUG, "k8s_namespace_store namespace %s has %d orphans", ns_name.c_str(), pos->second.get_orphans().size());
+		LOG_DEBUG("k8s_namespace_store namespace %s has %lu orphans", ns_name.c_str(), pos->second.get_orphans().size());
 	}
 }
 
@@ -341,7 +344,7 @@ void k8s_namespace_store::clear_namespace_orphans(const std::string& ns_name)
 	auto pos = m_namespaces.find(ns_name);
 	if(pos == m_namespaces.end())
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "k8s_namespace_store request to delete orphan for non stored namespace %s", ns_name.c_str());
+		LOG_DEBUG("k8s_namespace_store request to delete orphan for non stored namespace %s", ns_name.c_str());
 	}
 	else
 	{
