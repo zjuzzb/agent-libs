@@ -251,11 +251,15 @@ ecs_agentino::~ecs_agentino()
 }
 
 agentino_manager::agentino_manager(security_result_handler& events_handler,
-                                   container_manager& container_manager_in)
-    : m_shutdown(false),
-      m_container_manager(container_manager_in),
+                                   container_manager& container_manager_in,
+                                   const std::string& machine_id,
+                                   const std::string& customer_id)
+    : m_container_manager(container_manager_in),
+      m_shutdown(false),
       m_events_handler(events_handler),
       m_policies_updated(false),
+      m_machine_id(machine_id),
+      m_customer_id(customer_id),
       m_pool(c_tp_size->get_value()),
       m_thread(&agentino_manager::run, this)
 {
@@ -577,6 +581,10 @@ bool agentino_manager::handle_message(draiosproto::message_type type,
 		}
 
 		uint64_t time_ns = get_current_ts_ns();
+		// Need to set machine ID / customer ID to match agentone, as that's
+		// what backend expects
+		events.set_machine_id(m_machine_id);
+		events.set_customer_id(m_customer_id);
 		m_events_handler.security_mgr_policy_events_ready(time_ns, &events);
 		return true;
 	}

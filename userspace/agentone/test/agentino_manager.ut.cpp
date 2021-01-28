@@ -101,7 +101,7 @@ public:
 TEST(agentino, get_add_metadata)
 {
 	container_manager c_m;
-	agentino_manager m(dummy_handler, c_m);
+	agentino_manager m(dummy_handler, c_m, "machineid", "de:ad:be:ef");
 	agentino a(&m);
 
 	EXPECT_EQ(a.get_metadata_property(CONTAINER_ID), "");
@@ -116,7 +116,7 @@ TEST(agentino, get_add_metadata)
 TEST(agentino, get_add_remove_connection)
 {
 	container_manager c_m;
-	agentino_manager m(dummy_handler, c_m);
+	agentino_manager m(dummy_handler, c_m, "machineid", "de:ad:be:ef");
 	agentino a(&m);
 
 	EXPECT_EQ(a.get_connection_info(), nullptr);
@@ -133,7 +133,7 @@ TEST(agentino, get_add_remove_connection)
 TEST(agentino, allocator_with_metadata)
 {
 	container_manager c_m;
-	agentino_manager m(dummy_handler, c_m);
+	agentino_manager m(dummy_handler, c_m, "machineid", "de:ad:be:ef");
 	auto connection_in = get_bogus_connection();
 	std::map<agentino_metadata_property, std::string> metadata_in;
 	metadata_in[CONTAINER_ID] = "id";
@@ -147,7 +147,7 @@ TEST(agentino, allocator_with_metadata)
 TEST(agentino, build_agentino)
 {
 	container_manager c_m;
-	agentino_manager m(dummy_handler, c_m);
+	agentino_manager m(dummy_handler, c_m, "machineid", "de:ad:be:ef");
 	auto connection_in = get_bogus_connection();
 	std::map<agentino_metadata_property, std::string> metadata_in;
 	auto a = agentino::build_agentino(&m, connection_in, metadata_in, {});
@@ -157,7 +157,7 @@ TEST(agentino, build_agentino)
 TEST(agentino, build_ecs_agentino)
 {
 	container_manager c_m;
-	agentino_manager m(dummy_handler, c_m);
+	agentino_manager m(dummy_handler, c_m, "machineid", "de:ad:be:ef");
 	auto connection_in = get_bogus_connection();
 	std::map<agentino_metadata_property, std::string> metadata_in;
 	metadata_in[CONTAINER_ID] = "id";
@@ -181,7 +181,7 @@ TEST(agentino, build_ecs_agentino)
 TEST(agentino, build_ecs_agentino_missing_data)
 {
 	container_manager c_m;
-	agentino_manager m(dummy_handler, c_m);
+	agentino_manager m(dummy_handler, c_m, "machineid", "de:ad:be:ef");
 	auto connection_in = get_bogus_connection();
 	std::map<agentino_metadata_property, std::string> metadata_in;
 	metadata_in[CONTAINER_ID] = "id";
@@ -199,7 +199,7 @@ TEST(agentino, build_ecs_agentino_missing_data)
 TEST(agentino, delete_ecs_agentino)
 {
 	container_manager c_m;
-	agentino_manager m(dummy_handler, c_m);
+	agentino_manager m(dummy_handler, c_m, "machineid", "de:ad:be:ef");
 	EXPECT_EQ(c_m.get_container_list().size(), 0);
 
 	auto connection_in = get_bogus_connection();
@@ -458,7 +458,7 @@ TEST(agentino, handshake_disconnect)
 TEST(agentino_manager, basic)
 {
 	container_manager c_m;
-	agentino_manager am(dummy_handler, c_m);
+	agentino_manager am(dummy_handler, c_m, "machineid", "de:ad:be:ef");
 	EXPECT_EQ(am.get_agentino_list().size(), 0);
 	std::shared_ptr<connection> c = get_bogus_connection();
 	EXPECT_EQ(am.get_agentino(c), nullptr);
@@ -485,7 +485,7 @@ TEST(agentino_manager, build_metadata)
 TEST(agentino_manager, add_delete_connection)
 {
 	container_manager c_m;
-	agentino_manager am(dummy_handler, c_m);
+	agentino_manager am(dummy_handler, c_m, "machineid", "de:ad:be:ef");
 	std::shared_ptr<connection> c = get_bogus_connection();
 	draiosproto::agentino_handshake data;
 	data.mutable_metadata()->set_container_id("id");
@@ -511,7 +511,7 @@ TEST(agentino_manager, add_delete_connection)
 TEST(agentino_manager, ecs_agentino_overlap)
 {
 	container_manager c_m;
-	agentino_manager m(dummy_handler, c_m);
+	agentino_manager m(dummy_handler, c_m, "machineid", "de:ad:be:ef");
 	EXPECT_EQ(c_m.get_container_list().size(), 0);
 
 	auto connection_in = get_bogus_connection();
@@ -565,7 +565,7 @@ TEST(agentino_manager, basic_connection)
 	scoped_config<uint16_t> agentino_port("agentino_port", 6767);
 	scoped_config<bool> agentino_ssl("agentino_ssl", false);
 	container_manager c_m;
-	agentino_manager am(dummy_handler, c_m);
+	agentino_manager am(dummy_handler, c_m, "machineid", "de:ad:be:ef");
 	fake_agentino fa(true, false, true);
 
 	// Now fire up the fake agentino
@@ -602,7 +602,7 @@ TEST(agentino_manager, agentino_message)
 	scoped_config<bool> agentino_ssl("agentino_ssl", false);
 	test_handler th;
 	container_manager c_m;
-	agentino_manager am(th, c_m);
+	agentino_manager am(th, c_m, "machineid", "de:ad:be:ef");
 	fake_agentino fa(true, false, true);
 
 	// Now fire up the fake agentino
@@ -675,7 +675,7 @@ TEST(agentino_manager, handle_events_message)
 {
 	container_manager c_m;
 	tracking_security_result_handler tsrh;
-	agentino_manager am(tsrh, c_m);
+	agentino_manager am(tsrh, c_m, "machineid", "de:ad:be:ef");
 
 	draiosproto::policy_events pe;
 	pe.set_machine_id("toby-box");
@@ -692,15 +692,15 @@ TEST(agentino_manager, handle_events_message)
 	am.handle_message(draiosproto::message_type::POLICY_EVENTS,
 	                  (const uint8_t*)buffer->buffer.c_str(),
 	                  buffer->buffer.size());
-	EXPECT_EQ(tsrh.m_events.machine_id(), "toby-box");
-	EXPECT_EQ(tsrh.m_events.customer_id(), "toby");
+	EXPECT_EQ(tsrh.m_events.machine_id(), "machineid");
+	EXPECT_EQ(tsrh.m_events.customer_id(), "de:ad:be:ef");
 }
 
 TEST(agentino_manager, handle_policies_message)
 {
 	container_manager c_m;
 	tracking_security_result_handler tsrh;
-	agentino_manager am(tsrh, c_m);
+	agentino_manager am(tsrh, c_m, "machineid", "de:ad:be:ef");
 
 	draiosproto::policies_v2 p;
 	p.mutable_fastengine_files()->set_tag("some tag");
@@ -742,7 +742,7 @@ TEST_F(am_cm_integration_fixture, end_to_end_connection)
 	scoped_config<bool> agentino_ssl("agentino_ssl", false);
 	test_handler th;
 	container_manager c_m;
-	agentino_manager am(th, c_m);  // This starts the AM
+	agentino_manager am(th, c_m, "machineid", "de:ad:be:ef");  // This starts the AM
 
 	// Set the config for the CM
 	config.m_server_addr = "127.0.0.1";
@@ -787,7 +787,7 @@ TEST_F(am_cm_integration_fixture, end_to_end_ssl_connection)
 	scoped_config<bool> agentino_ssl("agentino_ssl", true);
 	test_handler th;
 	container_manager c_m;
-	agentino_manager am(th, c_m);  // This starts the AM
+	agentino_manager am(th, c_m, "machineid", "de:ad:be:ef");  // This starts the AM
 
 	// Set the config for the CM
 	scoped_config<bool> ssl_verify("ssl_verify_certificate", false);

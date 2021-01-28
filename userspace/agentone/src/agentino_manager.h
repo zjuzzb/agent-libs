@@ -202,7 +202,9 @@ public:
 
 public:
 	agentino_manager(security_result_handler& events_handler,
-	                 container_manager& container_manager_in);
+	                 container_manager& container_manager_in,
+	                 const std::string& machine_id,
+	                 const std::string& customer_id);
 	~agentino_manager();
 
 	// Make sure we don't accidentally copy the AM
@@ -298,7 +300,6 @@ private:  // functions
 
 	// the run function for our thread
 	void run();
-	volatile bool m_shutdown;
 
 	// sends our cached policies to all the agentinos. NOT guaranteed thread safe and therefore
 	// should ONLY ever be invoked from the agentino_manager thread, otherwise there is
@@ -322,6 +323,7 @@ public:
 	container_manager& m_container_manager;
 
 private:
+	volatile bool m_shutdown;
 	security_result_handler& m_events_handler;
 	mutable std::mutex m_agentino_list_lock;  // Lock protects the agentinos by connection queue
 
@@ -343,6 +345,10 @@ private:
 	draiosproto::policies_v2 m_cached_policies;
 	bool m_policies_updated;  // indicates that the policies have been updated, but not yet
 	                          // propagated to the agentinos
+
+	// Cached IDs for populating protobufs
+	const std::string m_machine_id;
+	const std::string m_customer_id;
 
 	// The pool is used to manage per-agentino socket events. The thread is
 	// for the server socket and other one-off stuff the manager needs to do
