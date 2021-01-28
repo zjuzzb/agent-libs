@@ -87,6 +87,7 @@ connection::result connection::read_message(raw_message& msg)
 
 	if (res < 0 || res < sizeof(msg.hdr))
 	{
+		LOG_ERROR("Unexpected result reading bytes from agentino: %lld", (long long)res);
 		return FATAL_ERROR;
 	}
 
@@ -110,11 +111,12 @@ connection::result connection::read_message(raw_message& msg)
 
 		if (res < 0)
 		{
+			LOG_ERROR("Error reading bytes from agentino: %lld", (long long)res);
 			ret = FATAL_ERROR;
 			goto error;
 		}
 
-		// Check that the arithmetic immedialtey succeeding won't over/underflow
+		// Check that the arithmetic immediately succeeding won't over/underflow
 		if (res + bytes_read > UINT32_MAX || res > bytes_to_read)
 		{
 			// Should never happen, but don't want to infinite loop
