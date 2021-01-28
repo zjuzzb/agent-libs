@@ -627,31 +627,57 @@ int agentone_app::sdagent_main()
 	dragent::async_aggregator* aggregator = nullptr;
 	agentone::container_manager* container_manager_instance = nullptr;
 	std::shared_ptr<agentone::agentino_manager> agentino_manager_instance = nullptr;
+	auto null_handler = std::make_shared<dragent::null_message_handler>();
 	try
 	{
+		// Create and set up the container manager and agentino manager.
+		// Creating them here first so that they can register their message
+		// handlers on CM startup, ensuring that the agentino manager doesn't
+		// miss any policy messages coming from the collector.
+		// SMAGENT-2871: Initializing these two objects first means they can't
+		//               negotiate any parameters on connection. A callback
+		//               will help.
+		container_manager_instance = new agentone::container_manager();
+		agentino_manager_instance =
+		    std::make_shared<agentone::agentino_manager>(m_protocol_handler,
+		                                                 *container_manager_instance);
+		LOG_INFO("Created and started Container and Agentino Managers.");
+
 		cm = new connection_manager(
-			{
-				m_configuration.c_root_dir.get_value(),
-				m_configuration.m_server_addr,
-				m_configuration.m_server_port,
-				m_configuration.m_ssl_enabled,
-				m_configuration.m_ssl_ca_cert_paths,
-				m_configuration.m_ssl_ca_certificate,
-				m_configuration.m_promex_enabled,
-				m_configuration.m_promex_connect_url,
-				m_configuration.m_customer_id,
-				m_configuration.machine_id()
-			},
-		    &m_transmit_queue,
-		    c_10s_flush_enabled.get_value()
-		        ? std::initializer_list<dragent_protocol::protocol_version>{4, 5}
-		        : std::initializer_list<dragent_protocol::protocol_version>{4},
-		    {
-		        {draiosproto::message_type::CONFIG_DATA,
-		         std::make_shared<dragent::config_data_message_handler>(m_configuration)},
-		        {draiosproto::message_type::AGGREGATION_CONTEXT,
-		         dragent::aggregator_limits::global_limits},
-		    });
+		{
+			m_configuration.c_root_dir.get_value(),
+			m_configuration.m_server_addr,
+			m_configuration.m_server_port,
+			m_configuration.m_ssl_enabled,
+			m_configuration.m_ssl_ca_cert_paths,
+			m_configuration.m_ssl_ca_certificate,
+			m_configuration.m_promex_enabled,
+			m_configuration.m_promex_connect_url,
+			m_configuration.m_customer_id,
+			m_configuration.machine_id()
+		},
+		&m_transmit_queue,
+		c_10s_flush_enabled.get_value()
+			? std::initializer_list<dragent_protocol::protocol_version>{4, 5}
+			: std::initializer_list<dragent_protocol::protocol_version>{4},
+		{
+			{draiosproto::message_type::CONFIG_DATA,
+			   std::make_shared<dragent::config_data_message_handler>(m_configuration)},
+			{draiosproto::message_type::AGGREGATION_CONTEXT,
+			   dragent::aggregator_limits::global_limits},
+			{draiosproto::message_type::POLICIES_V2, agentino_manager_instance},
+			// These message types are not supported, but the backend
+			// might still send them. They're not an error condition, so
+			// just send them into the void
+			{draiosproto::message_type::DUMP_REQUEST_START, null_handler},
+			{draiosproto::message_type::DUMP_REQUEST_STOP, null_handler},
+			{draiosproto::message_type::CONFIG_DATA, null_handler},
+			{draiosproto::message_type::POLICIES, null_handler},
+			{draiosproto::message_type::COMP_CALENDAR, null_handler},
+			{draiosproto::message_type::COMP_RUN, null_handler},
+			{draiosproto::message_type::ORCHESTRATOR_EVENTS, null_handler},
+			{draiosproto::message_type::BASELINES, null_handler}
+		});
 		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
 
 		k8s_limits::sptr_t the_k8s_limits = k8s_limits::build(m_configuration.m_k8s_filter,
@@ -680,15 +706,6 @@ int agentone_app::sdagent_main()
 		m_pool.start(*s, c_serializer_timeout_s.get_value());
 		serializer = s;
 		LOG_INFO("Created and started serializer");
-
-		// Create and set up the container manager and agentino manager
-		container_manager_instance = new agentone::container_manager();
-		agentino_manager_instance =
-		    std::make_shared<agentone::agentino_manager>(m_protocol_handler,
-		                                                 *container_manager_instance);
-		cm->set_message_handler(draiosproto::message_type::POLICIES_V2, agentino_manager_instance);
-
-		LOG_INFO("Created and started Container and Agentino Managers.");
 	}
 	catch (const sinsp_exception& e)
 	{

@@ -1813,7 +1813,12 @@ bool connection_manager::handle_message()
 			uint8_t* payload = m_pending_message.payload();
 
 			ASSERT(m_pending_message.m_buffer_used == header_len + payload_len);
-			if (payload_len > 0 && payload)
+			ASSERT(itr->second);
+
+			// The following checks are defensive only; shouldn't happen.
+			// This code will need to change if any message other than ACK
+			// is defined with a zero-length payload.
+			if (payload_len > 0 && payload && itr->second)
 			{
 				itr->second->handle_message(type, payload, payload_len);
 			}

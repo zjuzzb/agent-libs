@@ -428,6 +428,14 @@ public:
 		return m_negotiated_compression_method;
 	}
 
+	/**
+	 * Changes or adds a message handler for the given message type.
+	 *
+	 * Changing this function will only apply to messages received after the
+	 * change takes effect. If it is important for your component to receive
+	 * all messages of the given type, register your message handler in the
+	 * constructor.
+	 */
 	void set_message_handler(draiosproto::message_type type, message_handler::ptr handler);
 
 private:
