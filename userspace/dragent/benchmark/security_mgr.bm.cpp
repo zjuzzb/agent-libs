@@ -131,7 +131,7 @@ protected:
 				m_inspector->open(filename);
 				open_end = std::clock();
 
-				LOG_INFOLOG_INFO("Done opening: %f ms", 1000.0 * (open_end-open_start) / CLOCKS_PER_SEC);
+				LOG_INFO("Done opening: %f ms", 1000.0 * (open_end-open_start) / CLOCKS_PER_SEC);
 
 				LOG_DEBUG("Reading events from file: " + filename);
 			}
