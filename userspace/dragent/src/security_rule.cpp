@@ -801,6 +801,9 @@ std::list<security_rules::match_result> *falco_security_rules::match_event(sinsp
 				result.m_rule_type = draiosproto::PTYPE_FALCO;
 				result.m_policy = ruleset.second;
 
+				// The output is returned both as a human-readable string with values embedded, as well
+				// as a list of field + value tuplies. The tuples are the union of the fields seen in
+				// the output string and all exception fields.
 				string output;
 				m_formatters->tostring(evt, res->format, &output);
 				result.m_detail.mutable_output_details()->set_output(output);
@@ -811,6 +814,22 @@ std::list<security_rules::match_result> *falco_security_rules::match_event(sinsp
 				{
 					(*result.m_detail.mutable_output_details()->mutable_output_fields())[rof.first] = rof.second;
 				}
+
+				// Preceding * makes the formatting permissive (not ending at first empty value)
+				std::string exformat = "*";
+				for(const auto &exfield : res->exception_fields)
+				{
+					exformat += " %" + exfield;
+				}
+
+				map<string,string> exception_output_fields;
+				m_formatters->resolve_tokens(evt, exformat, exception_output_fields);
+				for(const auto &rof : exception_output_fields)
+				{
+					(*result.m_detail.mutable_output_details()->mutable_output_fields())[rof.first] = rof.second;
+				}
+
+
 				bool match_items = true;
 				set_match_details(result.m_detail, match_items, evt);
 				results = add_result(results, result);
