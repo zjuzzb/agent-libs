@@ -173,7 +173,6 @@ bool user_configured_limits::allow(const std::string& target, std::string& filte
 		    true,
 		    m_log_flags_ref.m_log,
 		    wrap_filter(" ", true));
-			
 	}
 	return true;
 }
