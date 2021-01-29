@@ -30,7 +30,12 @@ pipeline {
 					sh label: '', script: '''
 						echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
 						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION-alpine
-						docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agentino-internal:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION-alpine agentino
+						if [ ! -z $VERSION_TAG ]
+						then
+							docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agentino-internal:$AGENT_BRANCH -e AGENT_VERSION=$VERSION_TAG -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION-alpine agentino
+						else
+							docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agentino-internal:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION-alpine agentino
+						fi
 					'''
 				}
 			}
