@@ -58,6 +58,8 @@ pipeline {
         always {
             sh label: '', script: '''
                 sudo rm -rf ./build
+                sudo rm -rf ./out
+                sudo rm -rf ./repo
                 docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
                 docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
             '''
