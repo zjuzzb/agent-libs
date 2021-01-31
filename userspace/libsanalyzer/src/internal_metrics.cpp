@@ -22,7 +22,7 @@ internal_metrics::internal_metrics()
 
 	if(0 != c_ret)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR, "Could not determine uname");
+		LOG_ERROR("Could not determine uname");
 	}
 	else
 	{
