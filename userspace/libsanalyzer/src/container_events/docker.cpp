@@ -26,9 +26,6 @@ limitations under the License.
 #include "memdump_logger.h"
 #include "user_event.h"
 #include "infrastructure_state.h"
-#include "common_logger.h"
-
-COMMON_LOGGER();
 
 const std::string docker::DOCKER_SOCKET_FILE = "/var/run/docker.sock";
 #ifdef HAS_CAPTURE
@@ -143,8 +140,9 @@ docker::docker(infrastructure_state *infra_state,
 		m_infrastructure_state(infra_state)
 {
 	m_connection_id++;
-	LOG_DEBUG(std::string("Creating Docker object for " +
-							(url.empty() ? std::string("capture replay") : url)));
+	g_logger.log(std::string("Creating Docker object for " +
+							(url.empty() ? std::string("capture replay") : url)),
+				 sinsp_logger::SEV_DEBUG);
 #ifdef HAS_CAPTURE
 	if(url.empty())
 	{
@@ -192,7 +190,7 @@ bool docker::is_alive() const
 #ifdef HAS_CAPTURE
 	if(m_event_http && !m_event_http->is_connected())
 	{
-		LOG_WARNING("Docker state connection loss.");
+		g_logger.log("Docker state connection loss.", sinsp_logger::SEV_WARNING);
 		return false;
 	}
 #endif // HAS_CAPTURE
@@ -215,7 +213,7 @@ void docker::send_data_request(bool collect)
 	if(m_events.size()) { return; }
 	connect();
 	send_event_data_request();
-	LOG_DEBUG("Docker event request sent.");
+	g_logger.log("Docker event request sent.", sinsp_logger::SEV_DEBUG);
 	if(collect) { collect_data(); }
 }
 
@@ -238,8 +236,9 @@ void docker::collect_data()
 				}
 				else
 				{
-					LOG_ERROR(std::string("Docker event error: ") +
-					    (!evt ? "event is null." : (evt->isNull() ? "JSON is null." : "Unknown")));
+					g_logger.log(std::string("Docker event error: ") +
+								(!evt ? "event is null." : (evt->isNull() ? "JSON is null." : "Unknown")),
+								sinsp_logger::SEV_ERROR);
 				}
 			}
 			m_events.clear();
@@ -268,7 +267,7 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 	{
 		status = status.substr(0, delim_pos);
 	}
-	LOG_DEBUG("Docker EVENT: handling " + status + " of " + type);
+	g_logger.log("Docker EVENT: handling " + status + " of " + type, sinsp_logger::SEV_DEBUG);
 	severity_map_t::const_iterator it = m_severity_map.find(status);
 
 	severity_t severity;
@@ -280,22 +279,23 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 	}
 	if(it == m_severity_map.end())
 	{
-		LOG_DEBUG("No configured severity for docker event \"" + status + "\". Assuming SEV_EVT_INFORMATION");
+		g_logger.log("No configured severity for docker event \"" + status + "\". Assuming SEV_EVT_INFORMATION", sinsp_logger::SEV_DEBUG);
 		severity = user_event_logger::SEV_EVT_INFORMATION;
 	}
 	else
 	{
 		severity = it->second;
 	}
-	LOG_DEBUG("Docker EVENT: severity for " + status + '=' + std::to_string(severity));
+	g_logger.log("Docker EVENT: severity for " + status + '=' + std::to_string(severity), sinsp_logger::SEV_DEBUG);
 	uint64_t epoch_time_s = static_cast<uint64_t>(~0);
 	Json::Value t = root["time"];
 	if(!t.isNull() && t.isConvertibleTo(Json::uintValue))
 	{
 		epoch_time_s = t.asUInt64();
 	}
-	LOG_DEBUG("Docker EVENT: name=" + event_name + ", id=" + id +
-			  ", status=" + status + ", time=" + std::to_string(epoch_time_s));
+	g_logger.log("Docker EVENT: name=" + event_name + ", id=" + id +
+				", status=" + status + ", time=" + std::to_string(epoch_time_s),
+				sinsp_logger::SEV_DEBUG);
 	if(m_verbose)
 	{
 		std::cout << Json::FastWriter().write(root) << std::endl;
@@ -333,7 +333,7 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 		}
 		else
 		{
-			LOG_WARNING("Cannot determine container image for Docker event.");
+			g_logger.log("Cannot determine container image for Docker event.", sinsp_logger::SEV_WARNING);
 		}
 		if(id_was_empty) { id.clear(); }
 	}
@@ -418,15 +418,15 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 
 			if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 			{
-				LOG_TRACE("Docker EVENT: scheduled for sending\n" + evt.to_string());
+				g_logger.log("Docker EVENT: scheduled for sending\n" + evt.to_string(), sinsp_logger::SEV_TRACE);
 			}
 		}
 		else
 		{
-			LOG_ERROR("Docker EVENT: status not supported: " + status);
+			g_logger.log("Docker EVENT: status not supported: " + status, sinsp_logger::SEV_ERROR);
 			if(g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
 			{
-				LOG_DEBUG(Json::FastWriter().write(root));
+				g_logger.log(Json::FastWriter().write(root), sinsp_logger::SEV_DEBUG);
 			}
 		}
 	}
@@ -447,8 +447,8 @@ void docker::handle_event(Json::Value&& root)
 		{
 			status = get_json_string(root, "status");
 		}
-		LOG_DEBUG("Docker EVENT: type=" + type + ", status=" + status + ", "
-				  "queued events count=" + std::to_string(m_event_counter));
+		g_logger.log("Docker EVENT: type=" + type + ", status=" + status + ", "
+					 "queued events count=" + std::to_string(m_event_counter), sinsp_logger::SEV_DEBUG);
 		bool is_allowed = m_event_filter->allows_all();
 		if(!is_allowed)
 		{
@@ -469,7 +469,7 @@ void docker::handle_event(Json::Value&& root)
 					if(pos != std::string::npos)
 					{
 						status = exec_create;
-						LOG_TRACE("Docker EVENT: found exec_create status=" + status);
+						g_logger.log("Docker EVENT: found exec_create status=" + status, sinsp_logger::SEV_TRACE);
 					}
 					else
 					{
@@ -477,13 +477,14 @@ void docker::handle_event(Json::Value&& root)
 						if(pos != std::string::npos)
 						{
 							status = exec_start;
-							LOG_TRACE("Docker EVENT: found exec_start status=" + status);
+							g_logger.log("Docker EVENT: found exec_start status=" + status, sinsp_logger::SEV_TRACE);
 						}
 					}
 					if(pos != std::string::npos)
 					{
 						is_allowed = m_event_filter->has(type, status);
-						LOG_TRACE("Docker EVENT: status=" + status + (is_allowed ? " is " : " is not ") + "allowed");
+						g_logger.log("Docker EVENT: status=" + status + (is_allowed ? " is " : " is not ") + "allowed",
+									 sinsp_logger::SEV_TRACE);
 					}
 				}
 			}
@@ -517,7 +518,7 @@ void docker::handle_event(Json::Value&& root)
 			{
 				if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 				{
-					LOG_TRACE("Filtering Docker Event of podsandbox container: " + Json::FastWriter().write(root));
+					g_logger.log("Filtering Docker Event of podsandbox container: " + Json::FastWriter().write(root), sinsp_logger::SEV_TRACE);
 				}
 				is_allowed = false;
 			}
@@ -533,8 +534,8 @@ void docker::handle_event(Json::Value&& root)
 
 			if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 			{
-				LOG_TRACE("Docker EVENT: status not permitted by filter: " + type +':' + status);
-				LOG_TRACE(Json::FastWriter().write(root));
+				g_logger.log("Docker EVENT: status not permitted by filter: " + type +':' + status, sinsp_logger::SEV_TRACE);
+				g_logger.log(Json::FastWriter().write(root), sinsp_logger::SEV_TRACE);
 			}
 		}
 		m_event_limit_exceeded = false;
