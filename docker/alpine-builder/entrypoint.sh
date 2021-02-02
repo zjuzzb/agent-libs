@@ -25,7 +25,7 @@ if [ -z $STATSITE_VERSION ]; then
   STATSITE_VERSION=0.7.0-sysdig7
 fi
 
-rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=dependency_install_scripts --exclude=build $CODE_DIR/agent/ $WORK_DIR/agent/
+rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=dependency_install_scripts --exclude='userspace/dragent/src/agent-config.h' --exclude=build $CODE_DIR/agent/ $WORK_DIR/agent/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' $CODE_DIR/oss-falco/ $WORK_DIR/oss-falco/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/protorepo/ $WORK_DIR/protorepo/
 rsync --delete -t -r --exclude=.git --exclude=producer_build $CODE_DIR/libscap-hayabusa/ $WORK_DIR/libscap-hayabusa

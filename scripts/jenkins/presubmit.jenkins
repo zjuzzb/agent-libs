@@ -62,13 +62,13 @@ pipeline {
 
 		stage('Check out dependencies') {
 			steps {
-				// First set the statuses on github
-				setBuildStatus('Unit Test', 'Waiting for resources', 'PENDING')
-				setBuildStatus('System Test', 'Waiting for resources', 'PENDING')
-
 				dir('agent') {
 					checkout scm
 				}
+
+				// First set the statuses on github
+				setBuildStatus('Unit Test', 'Waiting for resources', 'PENDING')
+				setBuildStatus('System Test', 'Waiting for resources', 'PENDING')
 			}
 		}
 		stage('Run Tests') {

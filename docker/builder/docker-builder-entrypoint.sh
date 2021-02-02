@@ -14,7 +14,7 @@ if [[ -z $SYSDIG_IMAGE ]]; then
   SYSDIG_IMAGE="sysdig:latest"
 fi
 
-rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build /draios/agent/ /code/agent/
+rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/dragent/src/agent-config.h' /draios/agent/ /code/agent/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' /draios/oss-falco/ /code/oss-falco/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build /draios/protorepo/ /code/protorepo/
 if [ -d /draios/libscap ]
