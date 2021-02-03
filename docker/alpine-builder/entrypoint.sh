@@ -58,8 +58,16 @@ create_makefiles()
 build_hayabusa_producers()
 {	
 	pushd $HAYABUSA_PRODUCER_DIR
-	cmake ../
+	mkdir -p release
+	pushd release
+	cmake ../../
 	make -j$MAKE_JOBS pdig-bin udigembed
+	popd
+	mkdir -p debug
+	pushd debug
+	cmake -DCMAKE_BUILD_TYPE=Debug ../../
+	make -j$MAKE_JOBS pdig-bin udigembed
+	popd
 	popd
 }
 
@@ -76,8 +84,10 @@ build_agentino()
 	cp $WORK_DIR/agent/userspace/dragent/src/dragent.default.yaml $DOCKER_CONTEXT
 	cp $WORK_DIR/agent/userspace/dragent/src/root.cert $DOCKER_CONTEXT
 	cp -r $WORK_DIR/oss-falco/userspace/engine/lua/* $DOCKER_CONTEXT
-	cp $HAYABUSA_PRODUCER_DIR/libscap/producer/pdig/pdig $DOCKER_CONTEXT
-	cp $HAYABUSA_PRODUCER_DIR/libscap/producer/udigembed/libudigembed.so $DOCKER_CONTEXT
+	cp $HAYABUSA_PRODUCER_DIR/release/libscap/producer/pdig/pdig $DOCKER_CONTEXT
+	cp $HAYABUSA_PRODUCER_DIR/release/libscap/producer/udigembed/libudigembed.so $DOCKER_CONTEXT
+	cp $HAYABUSA_PRODUCER_DIR/debug/libscap/producer/pdig/pdig $DOCKER_CONTEXT/pdig-debug
+	cp $HAYABUSA_PRODUCER_DIR/debug/libscap/producer/udigembed/libudigembed.so $DOCKER_CONTEXT/libudigembed-debug.so
 
 	make -j$MAKE_JOBS agentino-dockerfiles
 	cp docker/agentino/static/* $DOCKER_CONTEXT
