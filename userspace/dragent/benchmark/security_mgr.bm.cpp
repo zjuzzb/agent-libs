@@ -19,6 +19,9 @@
 #include <test_security_stub.h>
 #include <protocol_handler.h>
 #include <security_mgr.h>
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 using namespace std;
 using namespace libsanalyzer;
@@ -128,9 +131,9 @@ protected:
 				m_inspector->open(filename);
 				open_end = std::clock();
 
-				g_log->information("Done opening: " + std::to_string(1000.0 * (open_end-open_start) / CLOCKS_PER_SEC) + " ms");
+				LOG_INFO("Done opening: %f ms", 1000.0 * (open_end-open_start) / CLOCKS_PER_SEC);
 
-				g_log->debug("Reading events from file: " + filename);
+				LOG_DEBUG("Reading events from file: " + filename);
 			}
 			catch(sinsp_exception &e)
 			{
@@ -173,7 +176,7 @@ protected:
 		std::string msg = string("Done. ") + std::to_string(nevts) + " events read in " + std::to_string(elapsed_ms) + " ms. (" + std::to_string(nevts*1000.0/elapsed_ms) + " evts/sec)\n";
 		std::cerr << "[          ] [ INFO ] " << msg;
 
-		g_log->debug(msg);
+		LOG_DEBUG(msg);
 	}
 
 	protocol_queue m_transmit_queue;

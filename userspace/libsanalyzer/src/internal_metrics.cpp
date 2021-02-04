@@ -4,6 +4,9 @@
 
 #include <algorithm>
 #include <sys/utsname.h>
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 type_config<bool> internal_metrics::c_extra_internal_metrics(
     false,
@@ -19,7 +22,7 @@ internal_metrics::internal_metrics()
 
 	if(0 != c_ret)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR, "Could not determine uname");
+		LOG_ERROR("Could not determine uname");
 	}
 	else
 	{
@@ -113,10 +116,9 @@ void internal_metrics::update_subprocess_metrics(sinsp_procfs_parser* procfs_par
 		}
 		else
 		{
-			g_logger.format(sinsp_logger::SEV_WARNING,
-			                "watchdog: invalid pid %lu for subprocess %s",
-			                pid,
-			                name.c_str());
+			LOG_WARNING("watchdog: invalid pid %lu for subprocess %s",
+			             pid,
+			             name.c_str());
 		}
 	}
 }
@@ -195,12 +197,12 @@ void internal_metrics::emit(draiosproto::statsd_info* statsd_info,
 	{
 		if (g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 		{
-			g_logger.log(statsd_info->DebugString(), sinsp_logger::SEV_TRACE);
+			LOG_TRACE(statsd_info->DebugString());
 		}
 	}
 	else
 	{
-		g_logger.log("Error processing agent internal metrics.", sinsp_logger::SEV_WARNING);
+		LOG_WARNING("Error processing agent internal metrics.");
 	}
 }
 

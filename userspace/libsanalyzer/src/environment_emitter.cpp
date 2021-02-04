@@ -1,6 +1,9 @@
 #include "analyzer_thread.h"
 #include "environment_emitter.h"
 #include "threadinfo.h"
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 environment_emitter::environment_emitter(const uint64_t prev_flush_time_ns,
                                          const env_hash_config& the_env_hash_config,
@@ -48,7 +51,7 @@ void environment_emitter::emit_environment(thread_analyzer_info& tinfo, draiospr
 
 	if (++m_num_envs_sent > m_env_hash_config.m_envs_per_flush)
 	{
-		g_logger.format(sinsp_logger::SEV_INFO, "Environment flush limit reached, throttling");
+		LOG_INFO("Environment flush limit reached, throttling");
 		if (new_env.second)
 		{
 			m_sent_envs.erase(new_env.first);
@@ -93,17 +96,15 @@ void environment_emitter::emit_environment(thread_analyzer_info& tinfo, draiospr
 
 		if (env_bytes_sent > m_env_hash_config.m_max_env_size)
 		{
-			g_logger.format(sinsp_logger::SEV_INFO,
-			                "Environment of process %lu (%s) too large, truncating",
-			                tinfo.m_pid,
-			                tinfo.m_comm.c_str());
+			LOG_INFO("Environment of process %lu (%s) too large, truncating",
+			         tinfo.m_pid,
+			         tinfo.m_comm.c_str());
 			for (const auto& entry : tinfo.m_env)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-				                "Environment of process %lu (%s): %s",
-				                tinfo.m_pid,
-				                tinfo.m_comm.c_str(),
-				                entry.c_str());
+				LOG_DEBUG("Environment of process %lu (%s): %s",
+				          tinfo.m_pid,
+				          tinfo.m_comm.c_str(),
+				          entry.c_str());
 			}
 		}
 

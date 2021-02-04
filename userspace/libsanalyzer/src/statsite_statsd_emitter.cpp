@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+COMMON_LOGGER();
+
 namespace
 {
 
@@ -30,15 +32,15 @@ unsigned emit_metrics(const std::vector<statsd_metric>& metric_list,
 		{
 			if(metric_limits::log_enabled())
 			{
-				SINSP_INFO("[statsd] metric over limit "
-				           "(total, %u max): %s",
-				           max_limit,
-				           metric.name().c_str());
+				LOG_INFO("[statsd] metric over limit "
+				         "(total, %u max): %s",
+				         max_limit,
+				         metric.name().c_str());
 			}
 			else
 			{
-				SINSP_WARNING("statsd metrics over limit, "
-				              "giving up");
+				LOG_WARNING("statsd metrics over limit, "
+				            "giving up");
 				break;
 			}
 		}
@@ -53,7 +55,7 @@ unsigned emit_metrics(const std::vector<statsd_metric>& metric_list,
 
 	if(num_metrics > 0)
 	{
-		SINSP_DEBUG("Added %d statsd metrics for %s",
+		LOG_DEBUG("Added %d statsd metrics for %s",
 		           num_metrics,
 		           context.c_str());
 	}

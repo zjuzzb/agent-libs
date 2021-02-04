@@ -6,6 +6,8 @@
 #include "running_state.h"
 #include "utils.h"
 
+COMMON_LOGGER();
+
 volatile bool dragent_error_handler::m_exception = false;
 
 #ifndef _WIN32
@@ -37,23 +39,23 @@ void dragent_error_handler::exception(const std::exception& exc)
 	static const char e[] = "------------------------------------------";
 
 	char **bt_syms = backtrace_symbols(exception_backtrace, exception_backtrace_size);
-	g_log->error(s);
+	LOG_ERROR(s);
 	for (int i = 2; i < exception_backtrace_size; i++)
 	{
-		g_log->error(bt_syms[i]);
+		LOG_ERROR(bt_syms[i]);
 	}
-	g_log->error(e);
+	LOG_ERROR(e);
 	free(bt_syms);
 #endif
 #endif
-	g_log->error(exc.what());
+	LOG_ERROR(exc.what());
 
 	dragent::running_state::instance().restart();
 }
 
 void dragent_error_handler::exception()
 {
-	g_log->error("Unknown exception");
+	LOG_ERROR("Unknown exception");
 	dragent::running_state::instance().restart();
 }
 
@@ -68,7 +70,7 @@ void log_reporter::send_report(protocol_queue& transmit_queue, uint64_t ts_ns)
 	Path p;
 	p.parseDirectory(m_configuration->m_log_dir);
 
-	g_log->error("agent didn't terminate cleanly, sending the last "
+	LOG_ERROR("agent didn't terminate cleanly, sending the last "
 				 + NumberFormatter::format(m_configuration->m_dirty_shutdown_report_log_size_b)
 				 + "B to collector");
 
@@ -77,20 +79,20 @@ void log_reporter::send_report(protocol_queue& transmit_queue, uint64_t ts_ns)
 	std::ifstream fp(p.toString());
 	if (!fp)
 	{
-		g_log->error(std::string("fopen: ") + strerror(errno));
+		LOG_ERROR(std::string("fopen: ") + strerror(errno));
 		return;
 	}
 
 	if (!fp.seekg(0, std::ios_base::end))
 	{
-		g_log->error(std::string("fseek (1): ") + strerror(errno));
+		LOG_ERROR(std::string("fseek (1): ") + strerror(errno));
 		return;
 	}
 
 	long offset = fp.tellg();
 	if(offset == -1)
 	{
-		g_log->error(std::string("ftell: ") + strerror(errno));
+		LOG_ERROR(std::string("ftell: ") + strerror(errno));
 		return;
 	}
 
@@ -101,14 +103,14 @@ void log_reporter::send_report(protocol_queue& transmit_queue, uint64_t ts_ns)
 
 	if (!fp.seekg(-offset, std::ios_base::end))
 	{
-		g_log->error(std::string("fseek (2): ") + strerror(errno));
+		LOG_ERROR(std::string("fseek (2): ") + strerror(errno));
 		return;
 	}
 
 	Buffer<char> buf(offset);
 	if (!fp.read(buf.begin(), offset))
 	{
-		g_log->error("fread error");
+		LOG_ERROR("fread error");
 		return;
 	}
 
@@ -123,7 +125,7 @@ void log_reporter::send_report(protocol_queue& transmit_queue, uint64_t ts_ns)
 
 	if(!transmit_queue.put(serialized_report, protocol_queue::BQ_PRIORITY_LOW))
 	{
-		g_log->information("Could not log shutdown report: queue full.");
+		LOG_INFO("Could not log shutdown report: queue full.");
 		return;
 	}
 }

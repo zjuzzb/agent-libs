@@ -2,6 +2,9 @@
 #include "draios.pb.h"
 #include "analyzer_thread.h"
 #include "metric_forwarding_configuration.h"
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 jmx_emitter::jmx_emitter(const std::unordered_map<int, java_process>& jmx_metrics,
 			 const uint32_t jmx_sampling,
@@ -33,7 +36,7 @@ void jmx_emitter::emit_jmx(sinsp_procinfo& procinfo,
 		{
 			if(m_jmx_limit_remaining > 0)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo.m_pid);
+				LOG_DEBUG("Found JMX metrics for pid %lu", tinfo.m_pid);
 				auto java_proto = proc.mutable_protos()->mutable_java();
 				unsigned jmx_total = jmx_metrics_it->second.total_metrics();
 				unsigned jmx_sent = jmx_metrics_it->second.to_protobuf(java_proto,
@@ -45,9 +48,8 @@ void jmx_emitter::emit_jmx(sinsp_procinfo& procinfo,
 				m_jmx_limit_remaining -= jmx_sent;
 				if(m_jmx_limit_remaining == 0)
 				{
-					g_logger.format(sinsp_logger::SEV_WARNING,
-							"JMX metrics limit (%u) reached",
-							m_jmx_limit);
+					LOG_WARNING("JMX metrics limit (%u) reached",
+							    m_jmx_limit);
 				}
 
 				proc.mutable_resource_counters()->set_jmx_sent(jmx_sent);
@@ -62,8 +64,7 @@ void jmx_emitter::emit_jmx(sinsp_procinfo& procinfo,
 			}
 			else if(metric_limits::log_enabled())
 			{
-				g_logger.format(sinsp_logger::SEV_WARNING,
-						"All JMX metrics for pid %d exceed limit, will not be emitted.", tinfo.m_pid);
+				LOG_WARNING("All JMX metrics for pid %lu exceed limit, will not be emitted.", tinfo.m_pid);
 				// dummy call, only to print excessive metrics
 				jmx_metrics_it->second.to_protobuf(nullptr,
 								   0,
