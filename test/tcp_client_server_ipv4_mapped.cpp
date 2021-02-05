@@ -659,7 +659,7 @@ void runtest_ipv4m(iotype iot,
 				if (NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 				{
 					thread_analyzer_info* ti = dynamic_cast<thread_analyzer_info*>(
-					    param.m_inspector->get_thread(server.get_tid(), false, true));
+					    &*param.m_inspector->get_thread_ref(server.get_tid(), false, true));
 					ASSERT_EQ(
 					    (uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2,
 					    (ti->m_metrics.m_io_net.m_bytes_in + ti->m_metrics.m_io_net.m_bytes_out));
@@ -668,7 +668,7 @@ void runtest_ipv4m(iotype iot,
 					    (ti->m_metrics.m_io_net.m_count_in + ti->m_metrics.m_io_net.m_count_out +
 					     ti->m_metrics.m_io_net.m_count_other));
 					ti = dynamic_cast<thread_analyzer_info*>(
-					    param.m_inspector->get_thread(ctid, false, true));
+					    &*param.m_inspector->get_thread_ref(ctid, false, true));
 					ASSERT_EQ(
 					    (uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2,
 					    (ti->m_metrics.m_io_net.m_bytes_in + ti->m_metrics.m_io_net.m_bytes_out));

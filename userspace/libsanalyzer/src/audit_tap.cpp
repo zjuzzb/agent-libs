@@ -279,7 +279,7 @@ void audit_tap::emit_pending_envs(sinsp* inspector)
 			continue;
 		}
 
-		auto tinfo = dynamic_cast<thread_analyzer_info*>(inspector->get_thread(pid));
+		auto tinfo = dynamic_cast<thread_analyzer_info*>(&*inspector->get_thread_ref(pid));
 		if (!tinfo)
 		{
 			continue;

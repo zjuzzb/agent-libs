@@ -276,7 +276,7 @@ TEST_F(sys_call_test, forking_process_expired)
 				//
 				// The child should exist
 				//
-				sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false, true);
+				sinsp_threadinfo* ti = &*param.m_inspector->get_thread_ref(ctid, false, true);
 				EXPECT_NE((sinsp_threadinfo*)NULL, ti);
 			}
 			else if(e->get_type() == PPME_SYSCALL_NANOSLEEP_X && !sleep_caught)
@@ -284,10 +284,8 @@ TEST_F(sys_call_test, forking_process_expired)
 				//
 				// The child should exist
 				//
-				sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false, true);
+				sinsp_threadinfo* ti = &*param.m_inspector->get_thread_ref(ctid, false, true);
 				EXPECT_NE((sinsp_threadinfo*)NULL, ti);
-				//sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false, true);
-				//EXPECT_EQ(NULL, ti);
 				sleep_caught = true;
 			}
 		}
@@ -379,7 +377,7 @@ TEST_F(sys_call_test, DISABLED_forking_execve)
 			//
 			// The child should exist
 			//
-			sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false, true);
+			sinsp_threadinfo* ti = &*param.m_inspector->get_thread_ref(ctid, false, true);
 			EXPECT_EQ("tests", ti->get_comm());
 			EXPECT_NE((uint64_t) 0, ti->m_vmsize_kb);
 			EXPECT_NE((uint64_t) 0, ti->m_vmrss_kb);
@@ -389,7 +387,7 @@ TEST_F(sys_call_test, DISABLED_forking_execve)
 		{
 			if(callnum == 1)
 			{
-				sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false, true);
+				sinsp_threadinfo* ti = &*param.m_inspector->get_thread_ref(ctid, false, true);
 				EXPECT_EQ("tests", ti->get_comm());
 				EXPECT_GE(0, NumberParser::parse(e->get_param_value_str("res", false)));
 				EXPECT_EQ("/bin/echo", e->get_param_value_str("exe"));
@@ -397,7 +395,7 @@ TEST_F(sys_call_test, DISABLED_forking_execve)
 			}
 			else
 			{
-				sinsp_threadinfo* ti = param.m_inspector->get_thread(ctid, false, true);
+				sinsp_threadinfo* ti = &*param.m_inspector->get_thread_ref(ctid, false, true);
 				EXPECT_EQ("echo", ti->get_comm());
 				EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("res", false)));
 				EXPECT_EQ("/bin/echo", e->get_param_value_str("exe"));

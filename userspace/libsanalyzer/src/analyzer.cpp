@@ -5221,8 +5221,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 				                         m_prev_flush_cpu_pct,
 				                         m_acked_sampling_ratio,
 				                         m_prev_flushes_duration_ns,
-				                         m_inspector->m_n_proc_lookups,
-				                         m_inspector->m_n_main_thread_lookups,
+				                         m_inspector->m_thread_manager->get_m_n_proc_lookups(),
+				                         m_inspector->m_thread_manager->get_m_n_main_thread_lookups(),
 				                         m_inspector->max_buf_used(),
 				                         static_cast<uint64_t>(m_my_cpuload + 0.500001));
 			}
@@ -5276,22 +5276,20 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 		m_host_client_transactions[j].clear();
 	}
 
-	if (m_inspector->m_n_main_thread_lookups)
+	if (m_inspector->m_thread_manager->get_m_n_main_thread_lookups())
 	{
-		LOG_INFO("Looked up %d main thread(s) in /proc", m_inspector->m_n_main_thread_lookups);
+		LOG_INFO("Looked up %d main thread(s) in /proc", m_inspector->m_thread_manager->get_m_n_main_thread_lookups());
 	}
-	if (m_inspector->m_n_proc_lookups)
+	if (m_inspector->m_thread_manager->get_m_n_proc_lookups())
 	{
 		LOG_DEBUG("Looked up %d thread(s) in /proc (total time %lu ns)",
-		          m_inspector->m_n_proc_lookups,
-		          m_inspector->m_n_proc_lookups_duration_ns);
+		          m_inspector->m_thread_manager->get_m_n_proc_lookups(),
+		          m_inspector->m_thread_manager->get_m_n_proc_lookups_duration_ns());
 	}
 	//
 	// Reset the proc lookup counter
 	//
-	m_inspector->m_n_proc_lookups = 0;
-	m_inspector->m_n_proc_lookups_duration_ns = 0;
-	m_inspector->m_n_main_thread_lookups = 0;
+	m_inspector->m_thread_manager->reset_thread_counters();
 
 	//
 	// Clear the network I/O counter
@@ -8292,7 +8290,7 @@ std::string sinsp_analyzer::get_metrics_dir()
 
 sinsp_threadinfo* sinsp_analyzer::build_threadinfo(sinsp* inspector)
 {
-	auto tinfo = new thread_analyzer_info(inspector, this, m_tap);
+	auto tinfo = new thread_analyzer_info(inspector, this, m_tap, inspector->get_machine_info()->num_cpus);
 	tinfo->init();
 	return tinfo;
 }

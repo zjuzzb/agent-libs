@@ -1529,8 +1529,8 @@ void dragent_app::init_inspector(sinsp::ptr inspector)
 		inspector->set_max_thread_table_size(m_configuration.m_max_thread_table_size);
 	}
 
-	inspector->m_max_n_proc_lookups = m_configuration.m_max_n_proc_lookups;
-	inspector->m_max_n_proc_socket_lookups = m_configuration.m_max_n_proc_socket_lookups;
+	inspector->m_thread_manager->set_m_max_n_proc_lookups(m_configuration.m_max_n_proc_lookups);
+	inspector->m_thread_manager->set_m_max_n_proc_socket_lookups(m_configuration.m_max_n_proc_socket_lookups);
 
 	//
 	// Plug the sinsp logger into our one

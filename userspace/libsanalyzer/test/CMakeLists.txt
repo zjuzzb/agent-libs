@@ -11,6 +11,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/test-helper
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/test_helpers)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/draiosproto)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/test_helpers/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})

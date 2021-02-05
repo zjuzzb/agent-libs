@@ -15,7 +15,7 @@ TEST(sinsp_mock_test, build_thread)
 	mock.open();
 
 	// Pull the thread out of sinsp
-	auto tinfo = mock.get_thread(tid);
+	auto tinfo = &*mock.get_thread_ref(tid);
 	ASSERT_EQ(exe, tinfo->m_exe);
 }
 
@@ -53,7 +53,7 @@ TEST(sinsp_mock_test, build_container_with_thread)
 	// Pull the container out of the container manager
 	auto cinfo = mock.m_container_manager.get_container(container_id);
 	ASSERT_EQ(container_name, cinfo->m_name);
-	sinsp_threadinfo* tinfo = mock.get_thread(thread_pid);
+	sinsp_threadinfo* tinfo = &*mock.get_thread_ref(thread_pid);
 	ASSERT_EQ(container_id, tinfo->m_container_id);
 }
 

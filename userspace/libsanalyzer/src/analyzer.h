@@ -435,7 +435,7 @@ public:
 	                                            bool lookup_only)
 	{
 		sinsp_threadinfo* sinsp_thread =
-		    m_inspector->get_thread(tid, query_os_if_not_found, lookup_only);
+		    &*m_inspector->get_thread_ref(tid, query_os_if_not_found, lookup_only);
 		thread_analyzer_info* analyzer_thread = dynamic_cast<thread_analyzer_info*>(sinsp_thread);
 		ASSERT(sinsp_thread == analyzer_thread);
 		return analyzer_thread;
@@ -446,7 +446,7 @@ public:
 	                                              bool lookup_only)
 	{
 		sinsp_threadinfo* sinsp_thread =
-		    m_inspector->get_thread(tid, query_os_if_not_found, lookup_only);
+		    &*m_inspector->get_thread_ref(tid, query_os_if_not_found, lookup_only);
 		thread_analyzer_info* analyzer_thread = dynamic_cast<thread_analyzer_info*>(sinsp_thread);
 		ASSERT(sinsp_thread == analyzer_thread);
 		return analyzer_thread;

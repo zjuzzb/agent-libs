@@ -996,7 +996,7 @@ void sinsp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 
 		m_progtable[phash] = np;
 
-		sinsp_threadinfo* ptinfo = m_inspector->get_thread(tinfo->m_ptid);
+		sinsp_threadinfo* ptinfo = &*m_inspector->get_thread_ref(tinfo->m_ptid);
 
 		if(ptinfo != NULL)
 		{

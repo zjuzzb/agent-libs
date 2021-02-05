@@ -34,7 +34,7 @@ public:
 
 TEST(object_filter_test, port_filter_single_against_range)
 {
-	thread_analyzer_info tinfo(nullptr, nullptr);
+	thread_analyzer_info tinfo(nullptr, nullptr, 0);
 	std::set<uint16_t> ports = {12};
 	test_helper::set_listening_ports(&tinfo, ports);
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
@@ -72,7 +72,7 @@ TEST(object_filter_test, port_filter_single_against_range)
 
 TEST(object_filter_test, port_filter_single_against_set)
 {
-	thread_analyzer_info tinfo(nullptr, nullptr);
+	thread_analyzer_info tinfo(nullptr, nullptr, 0);
 
 	std::set<uint16_t> ports = {12};
 	test_helper::set_listening_ports(&tinfo, ports);
@@ -104,7 +104,7 @@ TEST(object_filter_test, port_filter_single_against_set)
 
 TEST(object_filter_test, port_filter_multiple_against_range)
 {
-	thread_analyzer_info tinfo(nullptr, nullptr);
+	thread_analyzer_info tinfo(nullptr, nullptr, 0);
 	std::set<uint16_t> ports = {12, 20};
 	test_helper::set_listening_ports(&tinfo, ports);
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
@@ -151,7 +151,7 @@ TEST(object_filter_test, port_filter_multiple_against_range)
 
 TEST(object_filter_test, port_filter_multiple_against_set)
 {
-	thread_analyzer_info tinfo(nullptr, nullptr);
+	thread_analyzer_info tinfo(nullptr, nullptr, 0);
 	std::set<uint16_t> ports = {12, 20};
 	test_helper::set_listening_ports(&tinfo, ports);
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
@@ -178,7 +178,7 @@ TEST(object_filter_test, port_filter_multiple_against_set)
 
 TEST(object_filter_test, port_filter_include_exclude)
 {
-	thread_analyzer_info tinfo(nullptr, nullptr);
+	thread_analyzer_info tinfo(nullptr, nullptr, 0);
 
 	std::set<uint16_t> ports = {25, 75, 76, 81, 82};
 	test_helper::set_listening_ports(&tinfo, ports);
@@ -227,7 +227,7 @@ TEST(object_filter_test, process_name_filter)
 	bool exclude = true;
 	bool high_priority = false;
 	std::string reason = "";
-	thread_analyzer_info tinfo(nullptr, nullptr);
+	thread_analyzer_info tinfo(nullptr, nullptr, 0);
 	tinfo.m_comm = "process_name";
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
 	matches = my_filter.matches(args, exclude, high_priority, &reason);
@@ -253,7 +253,7 @@ TEST(object_filter_test, process_cmd_line_filter)
 	bool exclude = true;
 	bool high_priority = false;
 	std::string reason = "";
-	thread_analyzer_info tinfo(nullptr, nullptr);
+	thread_analyzer_info tinfo(nullptr, nullptr, 0);
 	tinfo.m_exe = "barfo?baz";
 	process_filter_args args(&tinfo, NULL, NULL, NULL);
 	matches = my_filter.matches(args, exclude, high_priority, &reason);
@@ -375,7 +375,7 @@ TEST(object_filter_test, app_check_filter)
 	bool exclude = true;
 	bool high_priority = false;
 	std::string reason = "";
-	thread_analyzer_info tinfo(nullptr, nullptr);
+	thread_analyzer_info tinfo(nullptr, nullptr, 0);
 
 	test_helper::insert_app_check(&tinfo, "some app check");
 	process_filter_args args(NULL, &tinfo, NULL, NULL);
@@ -520,7 +520,7 @@ TEST(object_filter_test, object_filter)
 	my_filter.set_rules(rules);
 
 	// now go through and check that each rule matches
-	thread_analyzer_info tinfo(nullptr, nullptr);
+	thread_analyzer_info tinfo(nullptr, nullptr, 0);
 	test_helper::set_listening_ports(&tinfo, ports);
 
 	bool matches = false;

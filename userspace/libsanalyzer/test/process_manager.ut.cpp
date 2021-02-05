@@ -29,7 +29,7 @@ app_checks_always_send: true
 
 	process_manager my_manager;
 
-	thread_analyzer_info tinfo(nullptr, nullptr);
+	thread_analyzer_info tinfo(nullptr, nullptr, 0);
 	bool matches = false;
 	bool generic_match = false;
 	matches =

@@ -1,6 +1,7 @@
 #include "analyzer_thread.h"
 #include "process_emitter.h"
 #include "tracer_emitter.h"
+#include "draios.helpers.h"
 #include "feature_manager.h"
 
 namespace
@@ -437,7 +438,11 @@ void process_emitter::emit_process(
 
 	for (const auto pid : procinfo.m_program_pids)
 	{
+		// The aggregator (either BE or agent) will replace the "pids" list
+		// with the tiuid. so we maintain a second list of the actual pids that.
+		// In the future, we should avoid duplicating this list.
 		prog.add_pids(pid);
+		prog.add_real_pids(pid);
 	}
 
 	if (m_track_environment)
@@ -483,10 +488,23 @@ void process_emitter::emit_process(
 		}
 	}
 
+
 	if (!main_thread->m_container_id.empty())
 	{
 		proc->mutable_details()->set_container_id(main_thread->m_container_id);
 	}
+
+	// This MUST come after environment hash, exe, container id, and args are set
+	// It's a bit jank that we use the protobuf as the fields to compute this instead
+	// of the values directly, but that's something that can be improved later.
+	//
+	// We should compute this once directly the first time its used and not have
+	// to wait for the protobuf
+	if (tinfo.get_guid() == 0)
+	{
+		tinfo.set_guid(draiosproto::program_java_hasher(prog));
+	}
+	prog.set_tiuid(tinfo.get_guid());
 
 	tinfo.m_flags &= ~PPM_CL_NAME_CHANGED;
 

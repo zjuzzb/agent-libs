@@ -7,6 +7,7 @@
 #include "aggregator_overrides.h"
 #include "draios.pb.h"
 #include "draios.proto.h"
+#include "draios.helpers.h"
 #include "scoped_config.h"
 
 TEST(aggregator_overrides, process_details_args)
@@ -226,13 +227,16 @@ TEST(aggregator_overrides, metrics_programs)
 	in->mutable_procinfo()->mutable_details()->set_exe("asdlkfj");
 	in->add_pids(1);
 	in->add_pids(2);
+	in->set_tiuid(draiosproto::program_java_hasher(*in));
 
 	in = input->add_programs();
 	in->mutable_procinfo()->mutable_details()->set_exe("u890s");
 	in->add_pids(3);
+	in->set_tiuid(draiosproto::program_java_hasher(*in));
 
-	size_t hash0 = metrics_message_aggregator_impl::program_java_hasher(input->programs()[0]);
-	size_t hash1 = metrics_message_aggregator_impl::program_java_hasher(input->programs()[1]);
+	size_t hash0 = input->programs()[0].tiuid();
+	size_t hash1 = input->programs()[1].tiuid();
+
 	aggregator.aggregate(*input, *output, false);
 	delete input;
 	ASSERT_EQ(output->programs().size(), 2);
@@ -244,14 +248,18 @@ TEST(aggregator_overrides, metrics_programs)
 	in->mutable_procinfo()->mutable_details()->set_exe("asdlkfj");
 	in->add_pids(1);
 	in->add_pids(2);
+	in->set_tiuid(draiosproto::program_java_hasher(*in));
 
 	in = input->add_programs();
 	in->mutable_procinfo()->mutable_details()->set_exe("u890s");
 	in->add_pids(3);
+	in->set_tiuid(draiosproto::program_java_hasher(*in));
 
-	input->add_programs()->mutable_procinfo()->mutable_details()->set_exe("different!");
+	in = input->add_programs();
+	in->mutable_procinfo()->mutable_details()->set_exe("different!");
+	in->set_tiuid(draiosproto::program_java_hasher(*in));
 
-	size_t hash2 = metrics_message_aggregator_impl::program_java_hasher(input->programs()[2]);
+	size_t hash2 = input->programs()[2].tiuid();
 
 	aggregator.aggregate(*input, *output, false);
 	ASSERT_EQ(output->programs().size(), 3);
@@ -278,16 +286,20 @@ TEST(aggregator_overrides, metrics_programs_in_place)
 	in->mutable_procinfo()->mutable_details()->set_exe("asdlkfj");
 	in->add_pids(1);
 	in->add_pids(2);
+	in->set_tiuid(draiosproto::program_java_hasher(*in));
 
 	in = output->add_programs();
 	in->mutable_procinfo()->mutable_details()->set_exe("u890s");
 	in->add_pids(3);
+	in->set_tiuid(draiosproto::program_java_hasher(*in));
+
 	in = output->add_programs();
 	in->mutable_procinfo()->mutable_details()->set_exe("u890s");
 	in->add_pids(3);
+	in->set_tiuid(draiosproto::program_java_hasher(*in));
 
-	size_t hash0 = metrics_message_aggregator_impl::program_java_hasher(output->programs()[0]);
-	size_t hash1 = metrics_message_aggregator_impl::program_java_hasher(output->programs()[1]);
+	size_t hash0 = output->programs()[0].tiuid();
+	size_t hash1 = output->programs()[1].tiuid();
 	aggregator.aggregate(*output, *output, true);
 	ASSERT_EQ(output->programs().size(), 2);
 	EXPECT_EQ(output->programs()[0].pids()[0], hash0);
@@ -298,14 +310,18 @@ TEST(aggregator_overrides, metrics_programs_in_place)
 	in->mutable_procinfo()->mutable_details()->set_exe("asdlkfj");
 	in->add_pids(1);
 	in->add_pids(2);
+	in->set_tiuid(draiosproto::program_java_hasher(*in));
 
 	in = input->add_programs();
 	in->mutable_procinfo()->mutable_details()->set_exe("u890s");
 	in->add_pids(3);
+	in->set_tiuid(draiosproto::program_java_hasher(*in));
 
-	input->add_programs()->mutable_procinfo()->mutable_details()->set_exe("different!");
+	in = input->add_programs();
+	in->mutable_procinfo()->mutable_details()->set_exe("different!");
+	in->set_tiuid(draiosproto::program_java_hasher(*in));
 
-	size_t hash2 = metrics_message_aggregator_impl::program_java_hasher(input->programs()[2]);
+	size_t hash2 = input->programs()[2].tiuid();
 
 	aggregator.aggregate(*input, *output, false);
 	ASSERT_EQ(output->programs().size(), 3);
@@ -563,6 +579,7 @@ TEST(aggregator_overrides, metrics_ipv4_incomplete_connections_v2)
 	delete output;
 }
 
+
 // ensure that upon aggregating programs and connections, pids are properly substituted
 // for the pid-invariant identifier
 TEST(aggregator_overrides, pid_substitution)
@@ -577,10 +594,12 @@ TEST(aggregator_overrides, pid_substitution)
 	in->mutable_procinfo()->mutable_details()->set_exe("asdlkfj");
 	in->add_pids(1);
 	in->add_pids(2);
+	in->set_tiuid(draiosproto::program_java_hasher(*in));
 
 	in = input.add_programs();
 	in->mutable_procinfo()->mutable_details()->set_exe("u890s");
 	in->add_pids(3);
+	in->set_tiuid(draiosproto::program_java_hasher(*in));
 
 	input.add_ipv4_connections()->set_spid(1);
 	(*input.mutable_ipv4_connections())[0].set_dpid(2);
@@ -592,13 +611,14 @@ TEST(aggregator_overrides, pid_substitution)
 	aggregator.aggregate(input2, output, false);
 	aggregator.override_primary_keys(output);
 
-	EXPECT_EQ(output.programs()[0].pids()[0], metrics_message_aggregator_impl::program_java_hasher(input.programs()[0]));
-	EXPECT_EQ(output.programs()[1].pids()[0], metrics_message_aggregator_impl::program_java_hasher(input.programs()[1]));
+	EXPECT_EQ(output.programs()[0].pids()[0], input.programs()[0].tiuid());
+	EXPECT_EQ(output.programs()[1].pids()[0], input.programs()[1].tiuid());
 	EXPECT_EQ(output.ipv4_connections()[0].spid(), output.programs()[0].pids()[0]);
 	EXPECT_EQ(output.ipv4_connections()[0].dpid(), output.programs()[0].pids()[0]);
 	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].spid(), output.programs()[1].pids()[0]);
 	EXPECT_EQ(output.ipv4_incomplete_connections_v2()[0].dpid(), 4);
 }
+
 
 TEST(aggregator_overrides, prom_canonical_name)
 {

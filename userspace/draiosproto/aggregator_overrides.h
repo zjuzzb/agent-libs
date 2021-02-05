@@ -1,6 +1,7 @@
 #pragma once
 
 #include "draios.proto.h"
+
 #include "tdigest/tdigest.h"
 
 // in order to override any of the generated function,
@@ -32,7 +33,8 @@ class process_message_aggregator_impl : public process_message_aggregator
 {
 public:
 	process_message_aggregator_impl(const message_aggregator_builder& builder)
-	    : process_message_aggregator(builder), m_netrole(0)
+	    : process_message_aggregator(builder),
+	      m_netrole(0)
 	{
 	}
 
@@ -65,50 +67,6 @@ public:
 	}
 
 public:
-	// we have an awkward dependency that the BE depends on a hash of the program. This
-	// computes that hash, which is effectively the java hash of the equivalent objects
-	static int32_t java_string_hash(const std::string& input, uint32_t end_pos = UINT32_MAX)
-	{
-		int32_t hash = 0;
-
-		if (end_pos > input.size())
-		{
-			end_pos = input.size();
-		}
-
-		for (uint32_t i = 0; i < end_pos; ++i)
-		{
-			hash = 31 * hash + input[i];
-		}
-		return hash;
-	}
-	static int32_t java_list_hash(const google::protobuf::RepeatedPtrField<std::string>& input)
-	{
-		int32_t hash = 1;
-		for (auto& i : input)
-		{
-			hash = 31 * hash + java_string_hash(i);
-		}
-		return hash;
-	}
-	static size_t program_java_hasher(const draiosproto::program& input)
-	{
-		const draiosproto::process& proc = input.procinfo();
-		const draiosproto::process_details& details = proc.details();
-
-		int32_t hash = 0;
-
-		auto separator_loc = details.exe().find(": ");
-		hash += java_string_hash(
-		    details.exe(),
-		    separator_loc == std::string::npos ? details.exe().size() : separator_loc);
-		hash = 31 * hash + java_list_hash(details.args());
-		hash += java_string_hash(details.container_id());
-		hash += java_string_hash(input.environment_hash());
-
-		return hash;
-	}
-
 	// Warning: hack here. The BE changes certain values which are also primary keys,
 	// so must we also. Therefore the only time we can reasonably
 	// change it is just before we emit. Since we don't have a framework for "things to do
@@ -128,8 +86,8 @@ private:
 	// whether we've aggregated programs yet. Reset with each call to aggregate()
 	bool aggregated_programs;
 
-	// twiddles pid_map appropriately and fetches/computes pid
-	size_t process_pids(const draiosproto::program& input);
+	// twiddles pid_map appropriately
+	void process_pids(const draiosproto::program& input);
 
 	// Overrides for program which ensures pid_map is populated
 	virtual void aggregate_programs(draiosproto::metrics& input,
@@ -419,7 +377,8 @@ private:
 	virtual void aggregate_pids(draiosproto::program& input,
 	                            draiosproto::program& output,
 	                            bool in_place)
-	{}
+	{
+	}
 };
 
 class environment_message_aggregator_impl : public environment_message_aggregator
@@ -494,8 +453,10 @@ public:
 	virtual agent_message_aggregator<draiosproto::process>& build_process() const;
 	virtual agent_message_aggregator<draiosproto::metrics>& build_metrics() const;
 	virtual agent_message_aggregator<draiosproto::prometheus_info>& build_prometheus_info() const;
+
 	virtual agent_message_aggregator<draiosproto::counter_percentile_data>&
-	    build_counter_percentile_data() const;
+	build_counter_percentile_data() const;
+
 	virtual agent_message_aggregator<draiosproto::container>& build_container() const;
 	virtual agent_message_aggregator<draiosproto::agent_event>& build_agent_event() const;
 	virtual agent_message_aggregator<draiosproto::resource_categories>& build_resource_categories()

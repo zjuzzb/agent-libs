@@ -28,7 +28,7 @@ protected:
 			thr->m_ptid = ppid;
 
 			m_inspector.add_thread(thr);
-			sinsp_threadinfo* tinfo = m_inspector.get_thread(pid);
+			sinsp_threadinfo* tinfo = &*m_inspector.get_thread_ref(pid);
 
 			m_threads.push_back(tinfo);
 		}
