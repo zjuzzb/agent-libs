@@ -12,6 +12,7 @@
 #include <dirent.h>
 #include <mntent.h>
 #include <sys/resource.h>
+#include <sys/statfs.h>
 #include <sys/statvfs.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -89,6 +90,32 @@ std::string slurp_file(const std::string& filename)
 	sstream << infile.rdbuf();
 	return sstream.str();
 }
+
+/**
+ * We're consistent with the opencontainers implementation 
+ * https://github.com/opencontainers/runc/blob/master/libcontainer/cgroups/utils.go#L35 
+ */
+bool is_cgroup2_unified_mode_impl()
+{
+
+	struct statfs value;
+	if (statfs("/sys/fs/cgroup", &value) < 0)
+	{
+		LOG_ERROR("Unable to get details for/sys/fs/cgroup, assuming "
+			  "cgroup v1: %s", strerror(errno));
+		return false;
+	}
+
+	const long CGROUP2_SUPER_MAGIC = 0x63677270;
+	return value.f_type == CGROUP2_SUPER_MAGIC;
+}
+
+bool is_cgroup2_unified_mode()
+{
+	static bool value = is_cgroup2_unified_mode_impl();
+	return value;
+}
+
 }  // namespace
 
 #ifndef CYGWING_AGENT
@@ -901,12 +928,13 @@ string sinsp_procfs_parser::read_process_name(uint64_t pid)
  * value as per kernel-src/Documentation. An accurate value is a combination of
  * rss+cache from the memory.stat entry of the cgroup.
  */
-int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string& container_memory_cgroup)
+bool sinsp_procfs_parser::read_cgroup_used_memory(const string& container_memory_cgroup,
+						  memory_stats &stats)
 {
 #ifndef CYGWING_AGENT
 	if (!m_is_live_capture)
 	{
-		return -1;
+		return false;
 	}
 
 	if (!m_memory_cgroup_dir)
@@ -916,10 +944,12 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string& container_mem
 
 	if (!m_memory_cgroup_dir || m_memory_cgroup_dir->empty())
 	{
-		return -1;
+		return false;
 	}
 
-	return read_cgroup_used_memory_vmrss(container_memory_cgroup);
+	return read_cgroup_used_memory(*m_memory_cgroup_dir,
+				       container_memory_cgroup,
+				       stats);
 #else   // CYGWING_AGENT
 	//
 	// This is not required on windows
@@ -930,97 +960,125 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string& container_mem
 #endif  // CYGWING_AGENT
 }
 
-/*
- * This function calculates VmRss which is what we use to determine mem usage
- * of a process.
- *
- * This function must only be called from read_cgroup_used_memory().
- *
- * In proc(5), VmRss is defined as the following:
- *              * VmRSS: Resident set size.  Note that the value here is the sum
- *                of RssAnon, RssFile, and RssShmem.
- *
- *              * RssAnon:  Size  of  resident  anonymous  memory.  (since Linux
- *                4.5).
- *
- *              * RssFile: Size of resident file mappings.  (since Linux 4.5).
- *
- *              * RssShmem: Size of resident shared memory  (includes  System  V
- *                shared  memory,  mappings  from tmpfs(5), and shared anonymous
- *                mappings).  (since Linux 4.5).
- *
- * For a cgroup, this translates to the following formula:
- *      memory_stat.rss + memory_stat.cache - memory_stat.inactive_file
- *
- * NOTE: This function MUST only be called from read_cgroup_used_memory().
- */
-int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(const string& container_memory_cgroup)
+bool sinsp_procfs_parser::read_cgroup_used_memory(
+    const std::string &memory_cgroup_dir,
+    const std::string &container_memory_cgroup,
+    memory_stats &stats)
 {
-	int64_t stat_val_cache = -1, stat_val_rss = -1, stat_val_inactive_file = -1;
-	unsigned stat_find_count = 0;
-	const unsigned num_stats = 3;
-
-	// Using scap_get_host_root() is not necessary here because
-	// m_memory_cgroup_dir is taken from /etc/mtab
-	char mem_stat_filename[SCAP_MAX_PATH_SIZE];
-	snprintf(mem_stat_filename,
-	         sizeof(mem_stat_filename),
-	         "%s/%s/memory.stat",
-	         m_memory_cgroup_dir->c_str(),
-	         container_memory_cgroup.c_str());
-
-	FILE* fp = fopen(mem_stat_filename, "r");
-	if (fp == NULL)
+	int64_t usage_in_bytes = 0;
 	{
-		LOG_DEBUG(string(__func__) + ": Unable to open file " + mem_stat_filename +
-		          ": errno: " + strerror(errno));
-		return -1;
-	}
+		char filename[SCAP_MAX_PATH_SIZE];
+		snprintf(filename,
+			 sizeof(filename),
+			 "%s/%s/memory.usage_in_bytes",
+			 memory_cgroup_dir.c_str(),
+			 container_memory_cgroup.c_str());
 
-	char fp_line[128] = {0};
-	while (fgets(fp_line, sizeof(fp_line), fp) != NULL)
-	{
-		char stat_val_str[64] = {0};
-		int64_t stat_val = -1;
-		if (sscanf(fp_line, "%63s %" PRId64, stat_val_str, &stat_val) != 2)
+		FILE* fp = fopen(filename, "r");
+		if (fp == NULL)
+		{
+			LOG_DEBUG(string(__func__) + ": Unable to open file " + filename +
+				  ": errno: " + strerror(errno));
+			return false;
+		}
+
+		// Single line with a number
+		char fp_line[128] = {0};
+		if (fgets(fp_line, sizeof(fp_line), fp) == NULL)
+		{
+			return false;
+		}
+
+		if (sscanf(fp_line, "%" PRId64 "\n", &usage_in_bytes) != 1)
 		{
 			LOG_ERROR(string(__func__) + ": Unable to parse line '" + fp_line + "'" +
-			          " from file " + mem_stat_filename);
+			          " from file " + filename);
 			fclose(fp);
-			return -1;
+			return false;
 		}
 
-		if (stat_val_cache == -1 && strcmp(stat_val_str, "cache") == 0)
-		{
-			stat_val_cache = stat_val;
-			++stat_find_count;
-		}
-		else if (stat_val_rss == -1 && strcmp(stat_val_str, "rss") == 0)
-		{
-			stat_val_rss = stat_val;
-			++stat_find_count;
-		}
-		else if (stat_val_inactive_file == -1 && strcmp(stat_val_str, "inactive_file") == 0)
-		{
-			stat_val_inactive_file = stat_val;
-			++stat_find_count;
-		}
+		fclose(fp);
 
-		if (num_stats == stat_find_count)
-		{
-			break;
-		}
 	}
 
-	fclose(fp);
-
-	if (num_stats != stat_find_count)
+	int64_t stat_val_cache = -1;
+	int64_t stat_val_rss = -1;
+	int64_t stat_val_inactive_file = -1;
+	int64_t stat_val_total_inactive_file = -1;
+	char mem_stat_filename[SCAP_MAX_PATH_SIZE];
 	{
-		return -1;
+		unsigned stat_find_count = 0;
+		const unsigned num_stats = 4;
+
+		// Using scap_get_host_root() is not necessary here because
+		// memory_cgroup_dir is taken from /etc/mtab
+		snprintf(mem_stat_filename,
+			 sizeof(mem_stat_filename),
+			 "%s/%s/memory.stat",
+			 memory_cgroup_dir.c_str(),
+			 container_memory_cgroup.c_str());
+
+		FILE* fp = fopen(mem_stat_filename, "r");
+		if (fp == NULL)
+		{
+			LOG_DEBUG(string(__func__) + ": Unable to open file " + mem_stat_filename +
+				  ": errno: " + strerror(errno));
+			return false;
+		}
+
+		char fp_line[128] = {0};
+		while (fgets(fp_line, sizeof(fp_line), fp) != NULL)
+		{
+			char stat_val_str[64] = {0};
+			int64_t stat_val = -1;
+			if (sscanf(fp_line, "%63s %" PRId64, stat_val_str, &stat_val) != 2)
+			{
+				LOG_ERROR(string(__func__) + ": Unable to parse line '" + fp_line + "'" +
+					  " from file " + mem_stat_filename);
+				fclose(fp);
+				return false;
+			}
+
+			if (stat_val_cache == -1 && strcmp(stat_val_str, "cache") == 0)
+			{
+				stat_val_cache = stat_val;
+				++stat_find_count;
+			}
+			else if (stat_val_rss == -1 && strcmp(stat_val_str, "rss") == 0)
+			{
+				stat_val_rss = stat_val;
+				++stat_find_count;
+			}
+			else if (stat_val_inactive_file == -1 && strcmp(stat_val_str, "inactive_file") == 0)
+			{
+				stat_val_inactive_file = stat_val;
+				++stat_find_count;
+			}
+			else if (stat_val_total_inactive_file == -1 && strcmp(stat_val_str, "total_inactive_file") == 0)
+			{
+				stat_val_total_inactive_file = stat_val;
+				++stat_find_count;
+			}
+
+			if (num_stats == stat_find_count)
+			{
+				break;
+			}
+		}
+
+		fclose(fp);
+
+		if (num_stats != stat_find_count)
+		{
+			LOG_DEBUG("Found only %u of %u memory statistics",
+				  stat_find_count,
+				  num_stats);
+			return false;
+		}
 	}
 
-	int64_t ret_val = stat_val_rss + stat_val_cache - stat_val_inactive_file;
-	if (ret_val < 0)
+	stats.vm_rss_bytes = stat_val_rss + stat_val_cache - stat_val_inactive_file;
+	if (stats.vm_rss_bytes < 0)
 	{
 		LOG_INFO(
 		    "%s: Calculation failed with values "
@@ -1031,10 +1089,22 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(const string& contain
 		    stat_val_inactive_file,
 		    mem_stat_filename);
 		LOG_DEBUG("memory.stat contents:\n%s\n", ::slurp_file(mem_stat_filename).c_str());
-		return -1;
+		return false;
 	}
 
-	return ret_val;
+	// Same calculation as container_memory_working_set_bytes which is used 
+	// by kubernetes top
+	// https://github.com/google/cadvisor/blob/50b23f4ed9bc53cf068316b67bee04c4145f1e73/container/libcontainer/handler.go#L862
+	if (is_cgroup2_unified_mode()) 
+	{
+		stats.working_set_bytes = usage_in_bytes - stat_val_inactive_file;
+	}
+	else
+	{
+		stats.working_set_bytes = usage_in_bytes - stat_val_total_inactive_file;
+	}
+
+	return true;
 }
 
 /*

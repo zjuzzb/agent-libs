@@ -101,7 +101,14 @@ public:
 
 	std::vector<std::string> read_process_cmdline(uint64_t pid);
 	std::string read_process_name(uint64_t pid);
-	int64_t read_cgroup_used_memory(const std::string& container_memory_cgroup);
+
+	struct memory_stats
+	{
+		int64_t vm_rss_bytes;
+		int64_t working_set_bytes;
+	};
+
+	bool read_cgroup_used_memory(const std::string& container_memory_cgroup, memory_stats &stats);
 	double read_cgroup_used_cpu(const std::string& container_cpuacct_cgroup, std::string& last_cpuacct_cgroup, int64_t *last_cpu_time);
 	std::pair<uint32_t, uint32_t> read_network_interfaces_stats();
 	std::pair<uint32_t, uint32_t> read_proc_network_stats(int64_t pid, uint64_t *old_last_in_bytes,
@@ -121,9 +128,40 @@ private:
 #endif
 	std::pair<uint32_t, uint32_t> read_net_dev(const std::string& path, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes, const std::vector<const char*>& bad_interface_names = {});
 
-    // Current implementation for read_cgroup_used_memory()
-    int64_t read_cgroup_used_memory_vmrss(const std::string &container_memory_cgroup);
-    double read_cgroup_used_cpuacct_cpu_time(const std::string &container_memory_cgroup, std::string& last_cpuacct_cgroup, int64_t *last_cpu_time);
+	/*
+	 * This function calculates VmRss which is what we use to determine mem usage
+	 * of a process.
+	 *
+	 * This function must only be called from read_cgroup_used_memory().
+	 *
+	 * In proc(5), VmRss is defined as the following:
+	 *              * VmRSS: Resident set size.  Note that the value here is the sum
+	 *                of RssAnon, RssFile, and RssShmem.
+	 *
+	 *              * RssAnon:  Size  of  resident  anonymous  memory.  (since Linux
+	 *                4.5).
+	 *
+	 *              * RssFile: Size of resident file mappings.  (since Linux 4.5).
+	 *
+	 *              * RssShmem: Size of resident shared memory  (includes  System  V
+	 *                shared  memory,  mappings  from tmpfs(5), and shared anonymous
+	 *                mappings).  (since Linux 4.5).
+	 *
+	 * For a cgroup, this translates to the following formula:
+	 *      memory_stat.rss + memory_stat.cache - memory_stat.inactive_file
+	 * 
+	 * WorkingSet matches how kubernetes detects memory usage (via cadvisor's
+	 * container_memory_working_set_bytes) and is provided for capacity planning.
+	 * This is calculated as: memory.usage_in_bytes - total_inactive_file
+	 * 
+	 * NOTE: This function MUST only be called from read_cgroup_used_memory().
+	 */
+	static bool read_cgroup_used_memory(
+	    const std::string &memory_cgroup_dir,
+	    const std::string &container_memory_cgroup,
+	    memory_stats &stats);
+
+	double read_cgroup_used_cpuacct_cpu_time(const std::string &container_memory_cgroup, std::string& last_cpuacct_cgroup, int64_t *last_cpu_time);
 
 	uint32_t m_ncpus = 0;
 	int64_t m_physical_memory_kb = 0;
