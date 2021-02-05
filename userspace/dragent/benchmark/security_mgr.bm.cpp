@@ -91,7 +91,16 @@ protected:
 		m_infra_state = new test_infrastructure_state();
 		m_internal_metrics = std::make_shared<internal_metrics>();
 
-		m_mgr.init(m_inspector, m_infra_state, m_k8s_audit_event_sink, m_capture_job_queue_handler, &m_configuration, m_internal_metrics);
+		// Container id doesn't really matter for the benchmark.
+		m_agent_container_id = "";
+
+		m_mgr.init(m_inspector,
+			   m_agent_container_id,
+			   m_infra_state,
+			   m_k8s_audit_event_sink,
+			   m_capture_job_queue_handler,
+			   &m_configuration,
+			   m_internal_metrics);
 	}
 
 	void TearDown()
@@ -181,6 +190,7 @@ protected:
 
 	protocol_queue m_transmit_queue;
 	sinsp* m_inspector;
+	std::string m_agent_container_id;
 	test_infrastructure_state *m_infra_state;
 	test_secure_k8s_audit_event_sink *m_k8s_audit_event_sink;
 	internal_metrics::sptr_t m_internal_metrics;

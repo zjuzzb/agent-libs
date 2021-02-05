@@ -311,7 +311,13 @@ protected:
 
 		m_k8s_audit_event_sink = new test_secure_k8s_audit_event_sink();
 
-		m_mgr.init(m_inspector, m_analyzer->mutable_infra_state(), m_k8s_audit_event_sink, m_capture_job_queue_handler, &m_configuration, m_internal_metrics);
+		m_mgr.init(m_inspector,
+			   m_analyzer->get_agent_container_id(),
+			   m_analyzer->mutable_infra_state(),
+			   m_k8s_audit_event_sink,
+			   m_capture_job_queue_handler,
+			   &m_configuration,
+			   m_internal_metrics);
 
 		m_sinsp_worker = new test_sinsp_worker(m_inspector,
 		                                       &m_mgr,

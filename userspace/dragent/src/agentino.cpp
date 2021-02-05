@@ -427,6 +427,7 @@ int agentino_app::sdagent_main()
 	std::shared_ptr<security_mgr> sm =
 	    std::make_shared<security_mgr>(m_configuration.c_root_dir.get_value(), m_protocol_handler);
 	sm->init(es->get_sinsp(),
+		 m_container_id,
 	         nullptr,           // infrastructure_state_iface*
 	         nullptr,           // secure_k8s_audit_event_sink_iface*
 	         nullptr,           // capture_job_queue_handler*

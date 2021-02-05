@@ -103,10 +103,12 @@ security_actions::~security_actions()
 }
 
 void security_actions::init(security_mgr *mgr,
+			    const std::string &agent_container_id,
 			    std::shared_ptr<coclient> &coclient,
 			    infrastructure_state_iface *infra_state)
 {
 	m_mgr = mgr;
+	m_agent_container_id = agent_container_id;
 	m_coclient = coclient;
 	m_infra_state = infra_state;
 }
@@ -122,6 +124,13 @@ void security_actions::perform_container_action(uint64_t ts_ns,
 	{
 		// Docker actions against empty containers trivially succeed
 		result->set_successful(true);
+		note_action_complete(astate);
+	}
+	else if(container_id == m_agent_container_id)
+	{
+		// The agent can't perform container actions on itself
+		result->set_successful(false);
+		result->set_errmsg("Container id is agent container");
 		note_action_complete(astate);
 	}
 	else

@@ -101,6 +101,7 @@ security_mgr::~security_mgr()
 }
 
 void security_mgr::init(sinsp *inspector,
+			const std::string &agent_container_id,
 			infrastructure_state_iface *infra_state,
 			secure_k8s_audit_event_sink_iface *k8s_audit_evt_sink,
 			capture_job_queue_handler *capture_job_queue_handler,
@@ -133,7 +134,10 @@ void security_mgr::init(sinsp *inspector,
 
 	m_coclient = make_shared<coclient>(m_install_root);
 
-	m_actions.init(this, m_coclient, m_infra_state);
+	m_actions.init(this,
+		       agent_container_id,
+		       m_coclient,
+		       m_infra_state);
 
 	if (metrics != nullptr)
 	{

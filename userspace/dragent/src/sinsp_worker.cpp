@@ -153,6 +153,7 @@ void sinsp_worker::init_security()
 		m_security_mgr =
 		    new security_mgr(m_configuration->c_root_dir.get_value(), m_protocol_handler);
 		m_security_mgr->init(m_inspector.get(),
+				     m_analyzer->get_agent_container_id(),
 				     m_analyzer->mutable_infra_state(),
 				     m_analyzer,
 				     m_capture_job_handler,

@@ -44,6 +44,7 @@ public:
 	virtual ~security_mgr();
 
 	void init(sinsp *inspector,
+		  const std::string &agent_container_id,
 		  infrastructure_state_iface *infra_state,
 		  secure_k8s_audit_event_sink_iface *k8s_audit_evt_sink,
 		  capture_job_queue_handler *capture_job_queue_handler,
