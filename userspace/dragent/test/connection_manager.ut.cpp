@@ -911,7 +911,8 @@ TEST_F(connection_manager_fixture, protocol_handler_transmit)
 	// Transmit a message using the protocol handler
 	ph.transmit(draiosproto::message_type::COMMAND_LINE_RESPONSE, 
 	            response,
-	            protocol_queue::item_priority::BQ_PRIORITY_LOW);
+	            protocol_queue::item_priority::BQ_PRIORITY_LOW,
+	            0);
 
 	// wait for all the data to be received
 	const uint32_t total_messages = 3; // Two HS + 1 metrics

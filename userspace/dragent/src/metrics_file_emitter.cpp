@@ -8,6 +8,16 @@ metrics_file_emitter::metrics_file_emitter()
 {
 }
 
+bool metrics_file_emitter::emit_message_to_file(const google::protobuf::Message& msg)
+{
+	if (!should_dump())
+	{
+		return false;
+	}
+
+	return emit_message(msg);
+}
+
 bool metrics_file_emitter::emit_metrics_to_file(const std::shared_ptr<flush_data_message>& data)
 {
 	if (!should_dump())

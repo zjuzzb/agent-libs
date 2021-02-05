@@ -2,6 +2,7 @@
 #include "common_logger.h"
 #include "draios.pb.h"
 #include "file_emitter.h"
+#include "utils.h"
 
 #include "Poco/File.h"
 #include "Poco/Path.h"
@@ -98,9 +99,44 @@ std::string file_emitter::generate_dam_filename(const std::string& directory,
 {
 	std::stringstream out;
 
-	out << directory << (timestamp / 1000000000) << "-" << std::to_string(message_type) << ".dam";
+	out << directory << (timestamp / 1000000000) << "-" << std::to_string(message_type) << ".dams";
 
 	return out.str();
+}
+
+bool file_emitter::emit_message(const google::protobuf::Message& msg)
+{
+	if (!create_output_directory())
+	{
+		return false;
+	}
+
+	auto ts = sinsp_utils::get_current_time_ns();
+
+	std::string filename = generate_dam_filename(m_output_dir, ts, 132);
+
+	std::ofstream ofile(filename);
+
+	if (!ofile)
+	{
+		LOG_ERROR("Could not open output file %s (%s)", filename.c_str(), strerror(errno));
+		return false;
+	}
+
+	LOG_DEBUG("writing message to output file %s", filename.c_str());
+
+	const std::string pbstr = msg.DebugString();
+
+	ofile << pbstr << std::flush;
+	ofile.close();
+
+	if (!ofile)
+	{
+		LOG_ERROR("Could not write to output file %s (%s)", filename.c_str(), strerror(errno));
+		return false;
+	}
+
+	return true;
 }
 
 bool file_emitter::emit_flush_data_message(const std::shared_ptr<flush_data_message>& data,

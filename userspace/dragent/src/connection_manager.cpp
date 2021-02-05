@@ -21,6 +21,7 @@
 #include <Poco/Net/SSLException.h>
 #include <functional>
 #include <chrono>
+#include "promscrape.h"
 
 #include <grpc_channel_registry.h>
 
@@ -776,7 +777,8 @@ void connection_manager::do_run()
 					    &header,
 					    item))
 			{
-				if (item->message_type == draiosproto::message_type::METRICS)
+				if ((item->message_type == draiosproto::message_type::METRICS) ||
+					(item->message_type == draiosproto::message_type::RAW_PROMETHEUS_METRICS))
 				{
 					on_metrics_send(header, item);
 				}
@@ -1012,6 +1014,12 @@ bool connection_manager::send_handshake_negotiation()
 	        protobuf_compressor_factory::get(protobuf_compressor_factory::get_default());
 
 	feature_manager::instance().to_protobuf(*msg_hs.mutable_features());
+
+	if (promscrape::c_use_promscrape.get_value() && promscrape::c_allow_bypass.get_value())
+	{
+		msg_hs.add_supported_raw_prometheus(draiosproto::raw_prometheus_support::PROMSCRAPE_V2_SUPPORT);
+	}
+	msg_hs.add_supported_raw_prometheus(draiosproto::raw_prometheus_support::PROMSCRAPE_NO_SUPPORT);
 
 	if (m_decorate_handshake_data)
 	{
@@ -1399,6 +1407,8 @@ bool connection_manager::perform_handshake()
 		scoped_spinlock lock(m_parameter_update_lock);
 		m_negotiated_compression_method = protobuf_compressor_factory::get(method);
 		m_negotiated_aggregation_interval = hs_resp.agg_interval();
+		m_negotiated_raw_prometheus_support = (hs_resp.raw_prometheus() ==
+			draiosproto::raw_prometheus_support::PROMSCRAPE_V2_SUPPORT);
 	}
 
 	// Update the limits

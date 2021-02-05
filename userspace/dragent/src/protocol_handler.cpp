@@ -10,6 +10,7 @@
 #include "tap.pb.h"
 #include "secure.pb.h"
 #include "profiling.pb.h"
+#include "metric_serializer.h"
 
 COMMON_LOGGER();
 
@@ -56,6 +57,16 @@ protocol_handler::protocol_handler(protocol_queue& queue) :
 
 protocol_handler::~protocol_handler()
 {
+}
+
+void protocol_handler::set_root_dir(const std::string &root_dir)
+{
+    if (!dragent::metric_serializer::c_metrics_dir.get_value().empty())
+    {
+        std::string dir = Poco::Path(root_dir).append(
+			dragent::metric_serializer::c_metrics_dir.get_value()).toString();
+		m_file_emitter.set_metrics_directory(dir);
+    }
 }
 
 std::shared_ptr<serialized_buffer> protocol_handler::handle_uncompressed_sample(uint64_t ts_ns,
@@ -362,8 +373,9 @@ void protocol_handler::secure_netsec_data_ready(uint64_t ts_ns, const secure::K8
 }
 
 void protocol_handler::transmit(draiosproto::message_type type, 
-                                const google::protobuf::MessageLite& message,
-                                protocol_queue::item_priority priority)
+                                const google::protobuf::Message& message,
+                                protocol_queue::item_priority priority,
+                                uint64_t ts_ns)
 {
 	const bool compression_enabled = c_compression_enabled.get_value();
 	protocol_compression_method compression = compression_enabled
@@ -379,12 +391,13 @@ void protocol_handler::transmit(draiosproto::message_type type,
 	{
 		compressor = gzip_protobuf_compressor::get(Z_DEFAULT_COMPRESSION);
 	}
+	if (ts_ns == 0)
+	{
+		ts_ns = sinsp_utils::get_current_time_ns();
+	}
 
 	std::shared_ptr<serialized_buffer> item = 
-	        dragent_protocol::message_to_buffer(sinsp_utils::get_current_time_ns(),
-	                                            type,
-	                                            message,
-	                                            compressor);
+	        dragent_protocol::message_to_buffer(ts_ns, type, message, compressor);
 
 	if (!item)
 	{
@@ -396,5 +409,10 @@ void protocol_handler::transmit(draiosproto::message_type type,
 	{
 		LOG_ERROR("Queue is full, discarding message %d", type);
 		return;
+	}
+
+    if (!dragent::metric_serializer::c_metrics_dir.get_value().empty())
+	{
+		m_file_emitter.emit_message_to_file(message);
 	}
 }

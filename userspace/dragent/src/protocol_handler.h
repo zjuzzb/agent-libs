@@ -11,6 +11,7 @@
 #include "dragent_message_queues.h"
 #include "protocol.h"
 #include "type_config.h"
+#include "metrics_file_emitter.h"
 
 /**
  * implementation of various handlers which serialize the input data to the provided
@@ -33,6 +34,11 @@ public: // constructor/destructor
 	protocol_handler(protocol_queue& queue);
 
 	virtual ~protocol_handler();
+
+	// Pass in root_dir to set correct metrics directory for metrics file output.
+	// (dragent_configuration::c_root_dir() may not by final yet during our construction)
+	// Metrics file output is currently only supported by transmit()
+	void set_root_dir(const std::string &root_dir);
 
 public: // functions from uncompressed_sample_handler
 	std::shared_ptr<serialized_buffer> handle_uncompressed_sample(
@@ -72,7 +78,7 @@ public: // functions from network
 	void secure_netsec_data_ready(uint64_t ts_ns, const secure::K8SCommunicationSummary *k8s_communication_summary) override;
 
 	// Generic message transmit
-	void transmit(draiosproto::message_type type, const google::protobuf::MessageLite& message, protocol_queue::item_priority priority) override;
+	void transmit(draiosproto::message_type type, const google::protobuf::Message& message, protocol_queue::item_priority priority, uint64_t ts_ns) override;
 
 public: // configs
 	static type_config<bool> c_print_protobuf;
@@ -84,4 +90,5 @@ public: // configs
 
 private:
 	protocol_queue& m_queue;
+	dragent::metrics_file_emitter m_file_emitter;
 };

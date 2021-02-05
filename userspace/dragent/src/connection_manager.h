@@ -428,6 +428,11 @@ public:
 		return m_negotiated_compression_method;
 	}
 
+	bool get_negotiated_raw_prometheus_support() const
+	{
+		return m_negotiated_raw_prometheus_support;
+	}
+
 	/**
 	 * Changes or adds a message handler for the given message type.
 	 *
@@ -676,6 +681,8 @@ private:
 	// they're being updated concurrently.
 	mutable spinlock m_parameter_update_lock;
 	dragent_protocol::protocol_version m_negotiated_protocol_version;
+
+	std::atomic<bool> m_negotiated_raw_prometheus_support;
 
 	std::chrono::seconds m_reconnect_interval;
 	std::chrono::time_point<std::chrono::steady_clock> m_last_connect;

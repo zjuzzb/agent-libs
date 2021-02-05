@@ -17,7 +17,7 @@
 // This imposes a limit to the number of bytes that can be sent out by
 // the agent.
 //
-#define MAX_SERIALIZATION_BUF_SIZE_BYTES 32000000
+#define MAX_SERIALIZATION_BUF_SIZE_BYTES 96000000
 
 //
 // Max number of executed commands that can be included in the protocol
