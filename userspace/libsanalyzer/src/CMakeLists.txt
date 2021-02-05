@@ -212,6 +212,7 @@ set(SANALYZER_SOURCES
     protostate.cpp
     security_config.cpp
     sched_analyzer.cpp
+    scope_resolver_iface.cpp
     scores.cpp
     sqlparser.cpp
     statsd_emitter.cpp

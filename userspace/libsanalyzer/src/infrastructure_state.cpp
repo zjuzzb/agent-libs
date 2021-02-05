@@ -274,69 +274,11 @@ void infrastructure_state::clear_cached_result(const std::string& entity_id)
 
 bool evaluate_on(draiosproto::container_group* congroup, scope_predicates& preds)
 {
-	auto evaluate = [](const draiosproto::scope_predicate& p, const std::string& value) {
-		// KISS for now
-		LOG_DEBUG(
-		    "infra_state: Evaluating %s %s %s%s with value %s",
-		    p.key().c_str(),
-		    draiosproto::scope_operator_Name(p.op()).c_str(),
-		    p.values(0).c_str(),
-		    ((p.op() == draiosproto::IN_SET || p.op() == draiosproto::NOT_IN_SET) ? "..." : ""),
-		    value.c_str());
-		bool ret;
-		switch (p.op())
-		{
-		case draiosproto::EQ:
-			ret = p.values(0) == value;
-			break;
-		case draiosproto::NOT_EQ:
-			ret = p.values(0) != value;
-			break;
-		case draiosproto::CONTAINS:
-			ret = value.find(p.values(0)) != std::string::npos;
-			break;
-		case draiosproto::NOT_CONTAINS:
-			ret = value.find(p.values(0)) == std::string::npos;
-			break;
-		case draiosproto::STARTS_WITH:
-			ret = value.substr(0, p.values(0).size()) == p.values(0);
-			break;
-		case draiosproto::IN_SET:
-			ret = false;
-			for (auto v : p.values())
-			{
-				if (v == value)
-				{
-					ret = true;
-					break;
-				}
-			}
-			break;
-		case draiosproto::NOT_IN_SET:
-			ret = true;
-			for (auto v : p.values())
-			{
-				if (v == value)
-				{
-					ret = false;
-					break;
-				}
-			}
-			break;
-		default:
-			LOG_WARNING("infra_state: Cannot evaluate scope_predicate %s",
-			            p.DebugString().c_str());
-			ret = true;
-		}
-
-		return ret;
-	};
-
 	for (auto i = preds.begin(); i != preds.end();)
 	{
 		if (congroup->tags().find(i->key()) != congroup->tags().end())
 		{
-			if (!evaluate(*i, congroup->tags().at(i->key())))
+			if (!infrastructure_state::match_predicate(*i, congroup->tags().at(i->key())))
 			{
 				preds.erase(i);
 				return false;
@@ -348,7 +290,7 @@ bool evaluate_on(draiosproto::container_group* congroup, scope_predicates& preds
 		}
 		else if (congroup->internal_tags().find(i->key()) != congroup->internal_tags().end())
 		{
-			if (!evaluate(*i, congroup->internal_tags().at(i->key())))
+			if (!infrastructure_state::match_predicate(*i, congroup->internal_tags().at(i->key())))
 			{
 				preds.erase(i);
 				return false;

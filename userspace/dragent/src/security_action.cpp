@@ -264,6 +264,7 @@ void security_actions::perform_capture_action(uint64_t ts_ns,
 void security_actions::perform_actions(uint64_t ts_ns,
 				       sinsp_threadinfo *tinfo,
 				       const std::string &policy_name,
+				       const std::string &policy_type,
 				       const actions &actions,
 				       const v2actions &v2actions,
 				       draiosproto::policy_event *event)
@@ -296,19 +297,39 @@ void security_actions::perform_actions(uint64_t ts_ns,
 		bool action_handled = true;
 		if (c_support_actions.get_value())
 		{
-			switch(action.type())
+			// Although the messaging for actions is
+			// general purpose, allowing any action to be
+			// a part of a policy, regardless of type,
+			// only captures are supported for k8s audit
+			// policy types.
+			if(policy_type == "syscall" ||
+			   policy_type == "") {
+
+				switch(action.type())
+				{
+				case draiosproto::ACTION_CAPTURE:
+					perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
+					break;
+				case draiosproto::ACTION_PAUSE:
+					perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
+					break;
+				case draiosproto::ACTION_STOP:
+					perform_container_action(ts_ns, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
+					break;
+				default:
+					action_handled = false;
+				}
+			}
+			else if (policy_type == "k8s_audit")
 			{
-			case draiosproto::ACTION_CAPTURE:
-				perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
-				break;
-			case draiosproto::ACTION_PAUSE:
-				perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
-				break;
-			case draiosproto::ACTION_STOP:
-				perform_container_action(ts_ns, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
-				break;
-			default:
-				action_handled = false;
+				switch(action.type())
+				{
+				case draiosproto::ACTION_CAPTURE:
+					perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
+					break;
+				default:
+					action_handled = false;
+				}
 			}
 		} else {
 			action_handled = false;
@@ -337,22 +358,36 @@ void security_actions::perform_actions(uint64_t ts_ns,
 		bool action_handled = true;
 		if (c_support_actions.get_value())
 		{
-			switch(action.type())
+			if(policy_type == "syscall" ||
+			   policy_type == "") {
+				switch(action.type())
+				{
+				case draiosproto::V2ACTION_CAPTURE:
+					perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
+					break;
+				case draiosproto::V2ACTION_PAUSE:
+					perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
+					break;
+				case draiosproto::V2ACTION_STOP:
+					perform_container_action(ts_ns, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
+					break;
+				case draiosproto::V2ACTION_KILL:
+					perform_container_action(ts_ns, sdc_internal::KILL, container_id, std::to_string(action.type()), sresult, astate);
+					break;
+				default:
+					action_handled = false;
+				}
+			}
+			else if (policy_type == "k8s_audit")
 			{
-			case draiosproto::V2ACTION_CAPTURE:
-				perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
-				break;
-			case draiosproto::V2ACTION_PAUSE:
-				perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
-				break;
-			case draiosproto::V2ACTION_STOP:
-				perform_container_action(ts_ns, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
-				break;
-			case draiosproto::V2ACTION_KILL:
-				perform_container_action(ts_ns, sdc_internal::KILL, container_id, std::to_string(action.type()), sresult, astate);
-				break;
-			default:
-				action_handled = false;
+				switch(action.type())
+				{
+				case draiosproto::V2ACTION_CAPTURE:
+					perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
+					break;
+				default:
+					action_handled = false;
+				}
 			}
 		} else {
 			action_handled = false;

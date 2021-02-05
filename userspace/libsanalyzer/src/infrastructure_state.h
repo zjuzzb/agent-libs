@@ -13,6 +13,7 @@
 #include "analyzer_settings.h"
 #include "coclient.h"
 #include "k8s_limits.h"
+#include "scope_resolver_iface.h"
 #include "sdc_internal.pb.h"
 #include "type_config.h"
 #include "k8s_namespace_store.h"
@@ -34,17 +35,14 @@ namespace std
 	};
 }
 
-typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
 typedef google::protobuf::RepeatedPtrField<draiosproto::container_group> container_groups;
 
 // An abstract-only class representing the interface used by clients
 // of infrastructure_state
 
-class infrastructure_state_iface
+class infrastructure_state_iface : public scope_resolver_iface
 {
 public:
-	// <kind, UID> strings
-	using uid_t = std::pair<std::string, std::string>;
 	using reg_id_t = std::string;
 
 	virtual void clear_scope_cache() = 0;
@@ -68,9 +66,10 @@ public:
 
 	virtual int get_tags(uid_t uid, std::unordered_map<string, string>& tags_map) const = 0;
 
-	// Check the uid against the scope predicates in predicates
-	// and return whether or not the uid matches the predicates.
-	virtual bool match_scope(const uid_t &uid, const scope_predicates &predicates) = 0;
+	// match_scope is general-purpose enough to be put in
+	// scope_resolver_iface. The notions of registering scopes and
+	// checking registered scopes are somewhat specific to
+	// syscall/infra_state and remain here.
 
 	// Register a set of scope predicates with this object and
 	// keep track of whether the predicates match the current
