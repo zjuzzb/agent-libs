@@ -71,6 +71,7 @@ public:
 		m_port(0),
 		m_delayed_connection(0),
 	    m_drop_connection(false),
+	    m_reset_connection(false),
 	    m_auto_respond(auto_respond),
 	    m_last_gen_num(0),
 	    m_last_seq_num(0),
@@ -164,6 +165,14 @@ public:
 	}
 
 	/**
+	 * The fake collector should send a TCP RST to the agent.
+	 */
+	void reset_connection()
+	{
+		m_reset_connection = true;
+	}
+
+	/**
 	 * Takes a message protobuf and serializes it into a message, then enqueues
 	 * the message on the send queue.
 	 */
@@ -248,6 +257,7 @@ private:
 
 	std::chrono::milliseconds m_delayed_connection; // Length of time to delay the connection
 	bool m_drop_connection;
+	bool m_reset_connection;
 	bool m_auto_respond;
 	std::unordered_map<int, std::chrono::system_clock::time_point> wait_list; // Internal tracking of connect delays
 	spinlock m_send_queue_lock;

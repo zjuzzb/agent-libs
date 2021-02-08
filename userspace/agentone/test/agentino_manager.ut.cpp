@@ -250,8 +250,6 @@ TEST(agentino, handshake_success)
 			handshake_valid = true;
 		}
 
-		// TODO insert the rest of handshake validation logic in here
-
 		// Build handshake response
 		hr.set_timestamp_ns(1002);
 
