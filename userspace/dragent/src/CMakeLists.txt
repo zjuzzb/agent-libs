@@ -224,7 +224,7 @@ install(
 )
 
 install(
-    FILES prometheus-v2.default.yaml
+    FILES prometheus-v2.default.yaml prometheus-v1.default.yaml
     DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
     COMPONENT agent-slim
 )
