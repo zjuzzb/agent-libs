@@ -114,13 +114,11 @@ type_config<uint32_t>::ptr infrastructure_state::c_k8s_max_rnd_conn_delay =
         .min(0)
         .max(900)
         .build();
-type_config<bool>::ptr infrastructure_state::c_thin_cointerface_enabled =
-	type_config_builder<bool>(
+type_config<bool> infrastructure_state::c_thin_cointerface_enabled(
 		false,
 		"Enable the Thin Cointerface feature (i.e. retryWatchers)",
 		"thin_cointerface_enabled"
-		).hidden()
-	         .build();
+		);
 type_config<uint64_t> infrastructure_state::c_congroup_ttl_s(60,
 							     "Congroup TTL [sec]",
 							     "congroup_ttl_s");
@@ -314,7 +312,7 @@ infrastructure_state::infrastructure_state(sinsp_analyzer& analyzer,
                                            const std::string& rootdir,
                                            const k8s_limits::sptr_t& the_k8s_limits,
                                            bool force_k8s_subscribed):
-      m_k8s_store_manager(std::move(k8s_store_manager_builder<k8s_pod_store, k8s_hpa_store>(c_thin_cointerface_enabled->get_value()).build())),
+      m_k8s_store_manager(std::move(k8s_store_manager_builder<k8s_pod_store, k8s_hpa_store>(c_thin_cointerface_enabled.get_value()).build())),
       m_analyzer(analyzer),
       m_inspector(inspector),
       m_ts(0),
@@ -372,7 +370,7 @@ infrastructure_state::infrastructure_state(sinsp_analyzer& analyzer,
 		    on_remove_container(container_info);
 	    });
 
-	if(c_thin_cointerface_enabled->get_value() == true)
+	if(c_thin_cointerface_enabled.get_value() == true)
 	{
 		m_handle_update_event = [this](const draiosproto::congroup_update_event* evt)
 				      {
@@ -517,7 +515,7 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 		    *cmd.mutable_pod_status_allowlist() = {c_k8s_pod_status_wl.get_value().begin(),
 		                                           c_k8s_pod_status_wl.get_value().end()};
 		    cmd.set_terminated_pods_enabled(c_k8s_terminated_pods_enabled.get_value());
-		    cmd.set_thin_cointerface(c_thin_cointerface_enabled->get_value());
+		    cmd.set_thin_cointerface(c_thin_cointerface_enabled.get_value());
 
 		    for (const auto& prefix : c_pod_prefix_for_cidr_retrieval.get_value())
 		    {
