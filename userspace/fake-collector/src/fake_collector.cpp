@@ -263,21 +263,6 @@ void fake_collector::thread_loop(int listen_sock_fd, sockaddr_in addr, fake_coll
 			continue;
 		}
 
-		// Check if we need to reset the connection
-		if (fc.m_reset_connection)
-		{
-			// I found this technique on, of course, Stack Overflow:
-			// https://stackoverflow.com/questions/38507586/reset-a-tcp-socket-connection-from-application
-			struct sockaddr_in6 sockaddr;
-			sockaddr.sin6_family = AF_UNSPEC;
-			sockaddr.sin6_port = htons(fc.get_port());
-			sockaddr.sin6_flowinfo = 0;
-			sockaddr.sin6_scope_id = 0;
-			connect(agent_fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr));
-			fc.m_reset_connection = false;
-			continue;
-		}
-
 		// Check to see if we have data to send
 		buf b;
 		bool send = false;

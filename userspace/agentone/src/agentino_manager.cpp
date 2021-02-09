@@ -77,9 +77,6 @@ private:
 	connection::ptr m_conn_ctx;
 };
 
-/**
- * Thread pool work item for handling agentino message.
- */
 class agentino_message_work_item : public tp_work_item
 {
 public:
@@ -483,7 +480,8 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 		connection::result res = (*cptr)->read_message(msg);
 		if (res == connection::SUCCESS)
 		{
-			auto type = static_cast<draiosproto::message_type>(msg.hdr.hdr.messagetype);
+			draiosproto::message_type type =
+			    static_cast<draiosproto::message_type>(msg.hdr.hdr.messagetype);
 			LOG_INFO("Read message of type %d and length %u from agentino",
 			         (int)type,
 			         msg.payload_length());
