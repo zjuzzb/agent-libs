@@ -39,6 +39,12 @@ connection::~connection()
 	delete m_socket;
 }
 
+void connection::clear_connected_ref()
+{
+	LOG_DEBUG("Clearing ref with refcount %ld", m_connected_ref.use_count());
+	m_connected_ref = nullptr;
+}
+
 bool connection::start(void* ctx)
 {
 	m_ctx = ctx;
@@ -260,7 +266,9 @@ bool connection::handle_disconnect(connection::fsm_event& chain_evt)
 	chain_evt = NONE;
 	if (m_state == DISCONNECTED)
 	{
-		// We're already disconnected
+		LOG_DEBUG("Disconnect received on disconnected socket");
+		// We're already disconnected (we do a just-in-case disconnect in the
+		// destructor, so this is a normal path to walk down)
 		return true;
 	}
 
@@ -277,9 +285,9 @@ bool connection::handle_disconnect(connection::fsm_event& chain_evt)
 		m_on_disconnect(m_manager, m_connected_ref, m_ctx);
 	}
 
-	// This can lead to destruction of this object, but this should only ever be called
-	// once
+	// This call can lead to the destruction of the object.
 	clear_connected_ref();
+
 	return true;
 }
 
@@ -299,6 +307,7 @@ bool connection::handle_handshake_complete(connection::fsm_event& chain_evt)
 			{
 				m_on_connect(m_manager, m_connected_ref, m_ctx);
 			}
+
 			chain_evt = NONE;
 			return true;
 		}

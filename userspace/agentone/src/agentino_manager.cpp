@@ -492,9 +492,8 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 		else
 		{
 			LOG_WARNING("Error reading message from agentino (probably agentino disconnected)");
-			// This works because the == operator for std::shared_ptr compares
-			// the content pointer, not the shared_ptr objects themselves.
-			delete_agentino_connection(*cptr);
+			// Propagate the disconnect to the connection object
+			(*cptr)->disconnect();
 		}
 	}
 
