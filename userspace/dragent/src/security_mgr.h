@@ -115,6 +115,8 @@ public:
 	void stop_k8s_audit_server();
 	void check_pending_k8s_audit_events();
 
+	bool has_received_policies();
+
 	// configs
 	static type_config<bool> c_event_labels_enabled;
 	static type_config<int> c_event_labels_max_agent_tags;
@@ -687,5 +689,7 @@ private:
 	typedef std::shared_ptr<tbb::concurrent_queue<sdc_internal::k8s_audit_event>> shared_k8s_audit_event_queue;
 	shared_k8s_audit_event_queue m_k8s_audit_events_queue;
 	bool m_k8s_audit_server_started;
+
+	volatile bool m_received_policies = false;
 };
 #endif // CYGWING_AGENT

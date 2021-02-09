@@ -482,6 +482,7 @@ void security_mgr::load_policies_v2_async()
 			ret.successful = false;
 		} else {
 			ret.successful = true;
+			m_received_policies = true;
 		}
 
 		return ret;
@@ -1554,4 +1555,8 @@ void security_mgr::configure_event_labels_set(){
 	}
 }
 
+bool security_mgr::has_received_policies()
+{
+	return m_received_policies;
+}
 #endif // CYGWING_AGENT
