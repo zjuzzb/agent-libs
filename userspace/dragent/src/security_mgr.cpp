@@ -160,6 +160,20 @@ void security_mgr::init(sinsp *inspector,
 		start_k8s_audit_server();
 	}
 
+	if (security_config::instance().get_policies_v2_file() != "")
+	{
+		 std::string errstr;
+
+            if (!request_load_policies_v2_file(
+                    security_config::instance().get_policies_v2_file().c_str(),
+                    errstr))
+            {
+                LOGGED_THROW(sinsp_exception,
+                             "Could not load policies_v2 from file: %s",
+                             errstr.c_str());
+            }
+	}
+
 	m_initialized = true;
 }
 

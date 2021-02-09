@@ -159,20 +159,6 @@ void sinsp_worker::init_security()
 				     m_capture_job_handler,
 				     m_configuration,
 				     m_internal_metrics);
-
-		if (security_config::instance().get_policies_v2_file() != "")
-		{
-			std::string errstr;
-
-			if (!m_security_mgr->request_load_policies_v2_file(
-			        security_config::instance().get_policies_v2_file().c_str(),
-			        errstr))
-			{
-				LOGGED_THROW(sinsp_exception,
-				             "Could not load policies_v2 from file: %s",
-				             errstr.c_str());
-			}
-		}
 	}
 
 	if (feature_manager::instance().get_enabled(COINTERFACE))
