@@ -107,12 +107,14 @@ void agentino_app::initialize(Application& self)
 			std::string value = *(++i);
 			std::cerr << "Container name = " << value << "\n";
 			m_container_name = value;
+			m_metadata.insert(std::pair<std::string, std::string>("aws-container-name", value));
 		}
 		else if (*i == "--image")
 		{
 			std::string value = *(++i);
 			std::cerr << "Container Image = " << value << "\n";
 			m_container_image = value;
+			m_metadata.insert(std::pair<std::string, std::string>("aws-container-image", value));
 		}
 		else if (*i == "--container-id")
 		{

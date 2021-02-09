@@ -1,6 +1,7 @@
 #ifndef CYGWING_AGENT
 
 #include <sstream>
+#include <string>
 
 #include <google/protobuf/text_format.h>
 
@@ -1153,13 +1154,17 @@ void security_mgr::set_event_labels(std::string &container_id,
 			{
 				break;
 			}
+			// tags are available in pair in the format key:value
+			// in case of multiple ":" are found the first one will be considered the separator
+			// between key and value
+			auto found = pair.find(":");
 
-			std::vector<std::string> parts = sinsp_split(pair, ':');
-
-			if (parts.size() == 2) {
+			if (found != std::string::npos){
+				auto tag_key = pair.substr(0, found);
 				// Do not include hardcoded "sysdig_secure.enabled" tag
-				if (parts[0] != "sysdig_secure.enabled") {
-					(*event->mutable_event_labels())[tag_prefix + parts[0]] = parts[1];
+				if (tag_key != "sysdig_secure.enabled") {
+					auto tag_value = pair.substr(found + 1, std::string::npos);
+					(*event->mutable_event_labels())[tag_prefix + tag_key] = tag_value;
 					count_tags++;
 				}
 			}
