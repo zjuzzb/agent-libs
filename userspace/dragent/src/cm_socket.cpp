@@ -402,6 +402,7 @@ void cm_socket::listen_thread_loop(int listen_fd,
 				ERR_print_errors_fp(stderr);
 				int err = SSL_get_error(ssl, ret);
 				LOG_ERROR("SSL error on incoming connection: %d : %d", ret, err);
+				::close(conn_fd);
 				continue;
 			}
 
@@ -417,6 +418,8 @@ void cm_socket::listen_thread_loop(int listen_fd,
 				}
 				ERR_print_errors_fp(stderr);
 				LOG_ERROR("SSL error accepting incoming connection: %d : %d", ret, err);
+				SSL_free(ssl);
+				::close(conn_fd);
 				continue;
 			}
 
