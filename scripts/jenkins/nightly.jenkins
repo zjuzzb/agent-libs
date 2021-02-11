@@ -5,7 +5,7 @@ pipeline {
 			parallel {
 				stage('Build Latest Builder') {
 					steps {
-						build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"dev"),string(name:'SYSDIG_BRANCH', value:"dev"),string(name:'FALCO_BRANCH', value:"master"),string(name:'PROTOREPO_BRANCH', value:"master"),booleanParam(name:'TAG_LATEST', value:true)]
+						build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"dev"),booleanParam(name:'TAG_LATEST', value:true)]
 					}
 				}
 				stage('Build Alpine Builder') {

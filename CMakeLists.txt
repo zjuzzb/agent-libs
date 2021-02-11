@@ -38,26 +38,13 @@ endif()
 set(DRAIOS_NJSON_VERSION "3.3.0")
 set(DRAIOS_BENCHMARK_VERSION "1.5.0")
 
+set(SPLIT_REPO TRUE)
+set(LIBSINSP_DIR "${PROJECT_SOURCE_DIR}/../libsinsp/")
 if(EXISTS "${PROJECT_SOURCE_DIR}/../libscap-hayabusa")
     # assume it's a hayabusa based build
-    set(SPLIT_REPO TRUE)
-    set(LIBSINSP_DIR "${PROJECT_SOURCE_DIR}/../libsinsp/")
     set(LIBSCAP_DIR "${PROJECT_SOURCE_DIR}/../libscap-hayabusa/")
-elseif(EXISTS "${PROJECT_SOURCE_DIR}/../libsinsp" AND EXISTS "${PROJECT_SOURCE_DIR}/../libscap")
-    # split repo
-    set(SPLIT_REPO TRUE)
-    set(LIBSINSP_DIR "${PROJECT_SOURCE_DIR}/../libsinsp/")
-    set(LIBSCAP_DIR "${PROJECT_SOURCE_DIR}/../libscap/")
 else()
-    # monolithic repo
-    set(SPLIT_REPO FALSE)
-    set(LIBSINSP_DIR "${PROJECT_SOURCE_DIR}/../sysdig/")
-    set(LIBSCAP_DIR "${PROJECT_SOURCE_DIR}/../sysdig/")
-    set(LIBSCAP_INCLUDE_DIR ${LIBSCAP_DIR}/userspace/libscap)
-    # required for falco build
-    set(SYSDIG_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../sysdig")
-    # required for test code which directly interfaces with driver
-    set(DRIVER_INCLUDE_DIR "${SYSDIG_SOURCE_DIR}/driver")
+    set(LIBSCAP_DIR "${PROJECT_SOURCE_DIR}/../libscap/")
 endif()
 
 # Add path for custom CMake modules used to build dependencies from sysdig (libscap, libsinsp)
@@ -216,7 +203,7 @@ install(
 )
 
 install(
-    PROGRAMS ${PROJECT_SOURCE_DIR}/../sysdig/scripts/sysdig-probe-loader
+	PROGRAMS ${LIBSCAP_DIR}/scripts/sysdig-probe-loader
     DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
     RENAME sysdigcloud-probe-loader
     COMPONENT agent-slim
