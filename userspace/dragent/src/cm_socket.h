@@ -285,7 +285,8 @@ class cm_openssl_socket : public cm_socket
 {
 public:
 	cm_openssl_socket(const std::vector<std::string>& ca_cert_paths,
-	                  const std::string& ssl_ca_certificate);
+	                  const std::string& ssl_ca_certificate,
+	                  bool verify_certificate);
 	cm_openssl_socket(SSL_CTX* ctx);
 	~cm_openssl_socket();
 
@@ -347,7 +348,9 @@ private:
 class cm_poco_secure_socket : public cm_socket
 {
 public:
-	cm_poco_secure_socket(const std::vector<std::string>& cert_paths, const std::string& cert_authority);
+	cm_poco_secure_socket(const std::vector<std::string>& cert_paths,
+	                      const std::string& cert_authority,
+	                      bool verify_certificate);
 	~cm_poco_secure_socket();
 
 	virtual bool connect(const std::string& hostname, uint16_t port) override;

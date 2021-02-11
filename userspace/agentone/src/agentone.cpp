@@ -328,7 +328,7 @@ int agentone_app::main(const std::vector<std::string>& args)
 	m_had_unclean_shutdown = remove_file_if_exists(m_configuration.m_log_dir, K8S_PROBE_FILE);
 
 	// Ensure the feature manager has validatead the config
-	if (!feature_manager::instance().initialize())
+	if (!feature_manager::instance().initialize(feature_manager::agent_mode::AGENT_MODE_AGENTONE))
 	{
 		std::cerr << "Failed to init features." << '\n';
 		dragent::running_state::instance().shut_down();

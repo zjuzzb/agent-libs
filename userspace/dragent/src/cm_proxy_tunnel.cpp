@@ -128,6 +128,7 @@ cm_socket::ptr http_tunnel::openssl_connect(const std::string& proxy_host,
                                             uint16_t proxy_port,
                                             const std::vector<std::string>& ca_cert_paths,
                                             const std::string& ssl_ca_certificate,
+                                            bool verify_certificate,
                                             const std::string& http_connect_message)
 {
 	Poco::Net::SocketAddress sa(proxy_host, proxy_port); // Cheat and use poco for DNS lookup
@@ -216,7 +217,9 @@ cm_socket::ptr http_tunnel::openssl_connect(const std::string& proxy_host,
 	// to the remote endpoint. Wrap the socket in a cm_socket to keep it warm and cozy
 	// and send it on its way.
 	LOG_INFO("Setting up SSL connection");
-	auto oss = std::make_shared<cm_openssl_socket>(ca_cert_paths, ssl_ca_certificate);
+	auto oss = std::make_shared<cm_openssl_socket>(ca_cert_paths,
+	                                               ssl_ca_certificate,
+	                                               verify_certificate);
 	if (oss->connect(sock, proxy_host) && oss->is_valid())
 	{
 		LOG_INFO("Connected through HTTP proxy");
@@ -229,6 +232,7 @@ cm_socket::ptr http_tunnel::doublessl_connect(const std::string& proxy_host,
                                               uint16_t proxy_port,
                                               const std::vector<std::string>& ca_cert_paths,
                                               const std::string& ssl_ca_certificate,
+                                              bool verify_certificate,
                                               const std::string& http_connect_message)
 {
 	//
@@ -363,7 +367,9 @@ cm_socket::ptr http_tunnel::doublessl_connect(const std::string& proxy_host,
 	// to the remote endpoint. Now we need to create a second SSL connection to the
 	// remote server, which is handled by the openssl_socket.
 	LOG_INFO("Setting up SSL connection to collector");
-	auto oss = std::make_shared<cm_openssl_socket>(ca_cert_paths, ssl_ca_certificate);
+	auto oss = std::make_shared<cm_openssl_socket>(ca_cert_paths,
+	                                               ssl_ca_certificate,
+	                                               verify_certificate);
 	if (oss->connect(proxy) && oss->is_valid())
 	{
 		LOG_INFO("Connected through HTTP proxy");
@@ -398,6 +404,7 @@ cm_socket::ptr http_tunnel::establish_tunnel(const proxy_connection conn)
 			                         conn.proxy_port,
 			                         conn.ca_cert_paths,
 			                         conn.ssl_ca_certificate,
+			                         conn.verify_certificate,
 			                         connect_string);
 		}
 		LOG_ERROR("Invalid configuration: SSL enabled to proxy but not to collector");
@@ -411,6 +418,7 @@ cm_socket::ptr http_tunnel::establish_tunnel(const proxy_connection conn)
 			                       conn.proxy_port,
 			                       conn.ca_cert_paths,
 			                       conn.ssl_ca_certificate,
+			                       conn.verify_certificate,
 			                       connect_string);
 		}
 	}

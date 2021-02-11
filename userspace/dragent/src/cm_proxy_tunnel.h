@@ -41,6 +41,7 @@ public:
 		bool ssl_to_proxy;
 		std::vector<std::string> ca_cert_paths;
 		std::string ssl_ca_certificate;
+		bool verify_certificate;
 	};
 
 	http_tunnel() {}
@@ -95,6 +96,7 @@ private:
 	                                      uint16_t proxy_port,
 	                                      const std::vector<std::string>& ca_cert_paths,
 	                                      const std::string& ssl_ca_certificate,
+	                                      bool verify_certificate,
 	                                      const std::string& http_connect_message);
 
 	/**
@@ -118,6 +120,7 @@ private:
 	                                        uint16_t proxy_port,
 	                                        const std::vector<std::string>& ca_cert_paths,
 	                                        const std::string& ssl_ca_certificate,
+	                                        bool verify_certificate,
 	                                        const std::string& http_connect_message);
 
 };

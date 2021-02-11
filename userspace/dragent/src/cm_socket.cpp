@@ -286,12 +286,6 @@ type_config<uint32_t>::ptr c_transmitbuffer_size =
         .hidden()
         .build();
 
-
-type_config<bool> c_ssl_verify_certificate(true,
-                                           "Should the agent verify the SSL certificate "
-                                           "sent by the collector?",
-                                           "ssl_verify_certificate");
-
 // Statics
 std::atomic<bool> cm_socket::m_listen(false);
 std::atomic<uint32_t> cm_socket::m_num_listen_threads(0);
@@ -693,7 +687,8 @@ std::string cm_socket::find_ca_cert_path(const std::vector<std::string>& search_
  * OpenSSL socket
  **************************************************************************/
 cm_openssl_socket::cm_openssl_socket(const std::vector<std::string>& ca_cert_paths,
-                                     const std::string& ssl_ca_certificate)
+                                     const std::string& ssl_ca_certificate,
+                                     bool verify_certificate)
 {
 	int res = -1;
 	m_ssl = nullptr;
@@ -712,7 +707,7 @@ cm_openssl_socket::cm_openssl_socket(const std::vector<std::string>& ca_cert_pat
 	m_ssl_ctx_owned = true;
 
 	// Set options on SSL context
-	if (c_ssl_verify_certificate.get_value())
+	if (verify_certificate)
 	{
 		SSL_CTX_set_verify(m_ctx, SSL_VERIFY_PEER, nullptr);
 		SSL_CTX_set_verify_depth(m_ctx, 9);
@@ -1136,13 +1131,14 @@ public:
 };
 
 cm_poco_secure_socket::cm_poco_secure_socket(const std::vector<std::string>& cert_paths,
-                                             const std::string& cert_authority)
+                                             const std::string& cert_authority,
+                                             bool verify_certificate)
 {
 	Poco::Net::Context::VerificationMode verification_mode;
 	Poco::SharedPtr<LoggingCertificateHandler> invalid_cert_handler = nullptr;
 	std::string cert_path;
 
-	if (c_ssl_verify_certificate.get_value())
+	if (verify_certificate)
 	{
 		verification_mode = Poco::Net::Context::VERIFY_STRICT;
 		invalid_cert_handler = new LoggingCertificateHandler(false);

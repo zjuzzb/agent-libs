@@ -63,7 +63,12 @@ const feature_manager::agent_mode_container feature_manager::mode_definitions[] 
     {feature_manager::AGENT_MODE_AGENTINO,
      "agentino",
      {SECURE, DRIVER, FULL_SYSCALLS},
-     {{"security.actions_enabled", config_placeholder_impl<bool>::build(false)}}}
+     {{"security.actions_enabled", config_placeholder_impl<bool>::build(false)},
+      {"ssl_verify_certificate", config_placeholder_impl<bool>::build(false)}}},
+    {feature_manager::AGENT_MODE_AGENTONE,
+     "agentone",
+     {SECURE, DRIVER, FULL_SYSCALLS},
+     {}}
 };
 
 static_assert(feature_manager::agent_mode::AGENT_MODE_COUNT ==

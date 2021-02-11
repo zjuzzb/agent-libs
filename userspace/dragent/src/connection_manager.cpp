@@ -73,6 +73,11 @@ type_config<bool> c_proxy_ssl(
         "http_proxy",
         "ssl");
 
+type_config<bool> c_ssl_verify_certificate(true,
+                                           "Should the agent verify the SSL certificate "
+                                           "sent by the collector?",
+                                           "ssl_verify_certificate");
+
 type_config<uint64_t>::ptr c_unacked_message_timeout = type_config_builder<uint64_t>(
         8*60 /*8 minute default*/,
         "Timeout for unacked metrics messages.",
@@ -387,13 +392,15 @@ bool connection_manager::connect()
 				                                         ssl_enabled,
 				                                         c_proxy_ssl.get_value(),
 				                                         ca_cert_paths,
-				                                         ssl_ca_certificate});
+				                                         ssl_ca_certificate,
+				                                         c_ssl_verify_certificate.get_value()});
 			}
 			else if (ssl_enabled)
 			{
 				// Connect through encrypted socket
 				sockptr = std::make_shared<cm_poco_secure_socket>(ca_cert_paths,
-				                                                  ssl_ca_certificate);
+				                                                  ssl_ca_certificate,
+				                                                  c_ssl_verify_certificate.get_value());
 				if (sockptr && !sockptr->connect(hostname, port))
 				{
 					sockptr = nullptr;
