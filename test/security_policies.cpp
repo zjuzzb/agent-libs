@@ -1903,6 +1903,45 @@ TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_scope)
 	check_expected_internal_metrics(metrics);
 };
 
+TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_wo_policy_type)
+{
+	// send a single event (the first line of the file)
+	ASSERT_EQ(system("timeout 2 curl -X POST localhost:7765/k8s_audit -d $(head -1 "
+	                 "./resources/k8s_audit_events/create_service.txt) > /dev/null 2>&1"),
+	          0);
+
+	// This verifies that policies without any policy type still
+	// run on k8s audit events. (scope matching and actions
+	// probably won't work, though).
+	unique_ptr<draiosproto::policy_events> pe;
+	get_policy_evts_msg(pe);
+	ASSERT_TRUE(pe->events_size() == 1);
+	ASSERT_EQ(pe->events(0).policy_id(), 64u);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"),
+	          "k8s_service_created");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.auth.decision"),
+	          "allow");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.response.code"),
+	          "201");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.target.name"),
+	          "some-service");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.target.namespace"),
+	          "default");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.user.name"),
+	          "minikube-user");
+
+	std::map<string, security_policies_v2_test::expected_internal_metric> metrics;
+
+	metrics = {
+	    {"security.falco.match.match_items",
+	     {security_policies_v2_test::expected_internal_metric::CMP_EQ, 1}},
+	    {"security.falco.match.not_match_items",
+	     {security_policies_v2_test::expected_internal_metric::CMP_EQ, 0}}};
+
+	check_expected_internal_metrics(metrics);
+};
+
 TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_multi_events)
 {
 	// send a bunch of events (one per line of the file)

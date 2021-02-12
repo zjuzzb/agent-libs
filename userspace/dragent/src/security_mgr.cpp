@@ -328,13 +328,22 @@ void security_mgr::loaded_v2_policies::match_policy_scopes(infrastructure_state_
 
 		if(policy.enabled())
 		{
-			if (policy.policy_type() == "" ||
-			    policy.policy_type() == "falco")
+			if (policy.policy_type() == "")
+			{
+				// We don't know the policy type, so add it to both the syscall policy
+				// set and the k8s audit policy set.
+				//
+				// When processing events later, the event source will dictate which
+				// rules apply for the event.
+				load_syscall_policy_v2(infra_state, spolicy, container_ids);
+				load_k8s_audit_policy_v2(spolicy);
+				num_enabled++;
+			}
+			else if (policy.policy_type() == "falco")
 			{
 				// Policy type falco really means policies that work
 				// on syscalls, whether they use falco rules or fast
-				// engine rules. Blank is for backwards compatibility,
-				// where policies did not have a policy_type.
+				// engine rules.
 
 				load_syscall_policy_v2(infra_state, spolicy, container_ids);
 				num_enabled++;
@@ -346,6 +355,8 @@ void security_mgr::loaded_v2_policies::match_policy_scopes(infrastructure_state_
 			}
 			else
 			{
+				// This isn't an error--there can be other policy types handled by other
+				// things like cloud agents. That's why the log level is debug.
 				LOG_DEBUG("Unknown policy type \"%s\", skipping", policy.policy_type().c_str());
 			}
 		}
