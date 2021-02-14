@@ -730,7 +730,8 @@ func GetTags(obj v1meta.ObjectMeta, prefix string) map[string]string {
 }
 
 func GetLabelSelector(labelSelector v1meta.LabelSelector) *draiosproto.K8SLabelSelector {
-	matchExpressions := make([]*draiosproto.K8SLabelSelectorRequirement, len(labelSelector.MatchExpressions))
+	matchExpressions := make([]*draiosproto.K8SLabelSelectorRequirement, 0, len(labelSelector.MatchExpressions))
+
 	for _, e := range labelSelector.MatchExpressions {
 		matchExpressions = append(matchExpressions, &draiosproto.K8SLabelSelectorRequirement{
 			Key: proto.String(e.Key),
