@@ -20,6 +20,7 @@
 
 #include <sys/resource.h>
 #include <sys/time.h>
+#include <curl/curl.h>
 
 using namespace std;
 using namespace Poco;
@@ -1657,6 +1658,57 @@ void dragent_configuration::print_configuration() const
 	}
 }
 
+size_t dragent_configuration::curl_write_callback(const char* ptr, size_t size, size_t nmemb, string* json)
+{
+	const std::size_t total = size * nmemb;
+	json->append(ptr, total);
+	return total;
+}
+
+std::string dragent_configuration::curl_get(const std::string& uri, const std::string& buffer)
+{
+	CURL* curl = curl_easy_init();
+	CURLcode res;
+
+	if (curl)
+	{
+		if ((res = curl_easy_setopt(curl, CURLOPT_URL, uri.c_str())) != CURLE_OK)
+		{
+			goto read_error;
+		}
+		if ((res = curl_easy_setopt(curl, CURLOPT_HTTPGET, 1)) != CURLE_OK)
+		{
+			goto read_error;
+		}
+		if ((res = curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1)) != CURLE_OK)
+		{
+			goto read_error;
+ 		}
+		if ((res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_callback)) != CURLE_OK)
+		{
+			goto read_error;
+		}
+		if ((res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer)) != CURLE_OK)
+		{
+			goto read_error;
+		}
+		if ((res = curl_easy_perform(curl)) != CURLE_OK)
+		{
+			goto read_error;
+		}
+
+		curl_easy_cleanup(curl);
+		return std::string();
+read_error:
+		curl_easy_cleanup(curl);
+		return std::string(curl_easy_strerror(res));
+	}
+	else
+	{
+		return std::string("Unable to initialize curl");
+	}
+}
+
 void dragent_configuration::refresh_aws_metadata()
 {
 	//
@@ -1665,72 +1717,76 @@ void dragent_configuration::refresh_aws_metadata()
 	const std::string EC2_METADATA_HOST = "169.254.169.254";
 	const std::string METADATA_URL_BASE = EC2_METADATA_HOST + "/latest/meta-data";
 	const std::string INSTANCE_IDENTITY_URL = EC2_METADATA_HOST + "/latest/dynamic/instance-identity/document";
+	std::string err;
+	std::string response_buffer;
 
-	try
-	{
-		HTTPClientSession client(EC2_METADATA_HOST, 80);
-		client.setTimeout(1000000);
-		Json::Reader reader;
-
-		{
-			HTTPRequest request(HTTPRequest::HTTP_GET, METADATA_URL_BASE + "/public-ipv4");
-			client.sendRequest(request);
-
-			HTTPResponse response;
-			std::istream& rs = client.receiveResponse(response);
-
-			string s;
-			StreamCopier::copyToString(rs, s);
-
-#ifndef _WIN32
-			struct in_addr addr;
-
-			if (inet_aton(s.c_str(), &addr) == 0)
-			{
-				m_aws_metadata.m_public_ipv4 = 0;
-			}
-			else
-			{
-				m_aws_metadata.m_public_ipv4 = addr.s_addr;
-			}
-#endif
-		}
-
-		{
-			HTTPRequest request(HTTPRequest::HTTP_GET, METADATA_URL_BASE + "/instance-id");
-			client.sendRequest(request);
-
-			HTTPResponse response;
-			std::istream& rs = client.receiveResponse(response);
-
-			StreamCopier::copyToString(rs, m_aws_metadata.m_instance_id);
-			if (m_aws_metadata.m_instance_id.find("i-") != 0)
-			{
-				m_aws_metadata.m_instance_id.clear();
-			}
-		}
-
-		{
-			HTTPRequest request(HTTPRequest::HTTP_GET, INSTANCE_IDENTITY_URL);
-			client.sendRequest(request);
-
-			HTTPResponse response;
-			std::istream& rs = client.receiveResponse(response);
-
-			Json::Value root;
-			if (reader.parse(rs, root))
-			{
-				m_aws_metadata.m_account_id = root["accountId"].toStyledString();
-				m_aws_metadata.m_region = root["region"].toStyledString();
-			}
-		}
-	}
-	catch (Poco::Exception& e)
+	err = curl_get(METADATA_URL_BASE + "/public-ipv4", response_buffer);
+	if (!err.empty())
 	{
 		m_aws_metadata.m_public_ipv4 = 0;
+		LOG_ERROR("Unable to fetch AWS metadata. Error while fetching. " + err);
+	}
+	else
+	{
+#ifndef _WIN32
+		struct in_addr addr;
+
+		if (inet_aton(response_buffer.c_str(), &addr) == 0)
+		{
+			m_aws_metadata.m_public_ipv4 = 0;
+		}
+		else
+		{
+			m_aws_metadata.m_public_ipv4 = addr.s_addr;
+		}
+#endif
+	}
+
+	response_buffer.clear();
+	err = curl_get(METADATA_URL_BASE + "/instance-id", response_buffer);
+	if (!err.empty())
+	{
 		m_aws_metadata.m_instance_id.clear();
+		LOG_ERROR("Unable to fetch AWS metadata. Error while fetching. " + err);
+	}
+	else
+	{
+		m_aws_metadata.m_instance_id = response_buffer;
+		if (m_aws_metadata.m_instance_id.find("i-") != 0)
+		{
+			m_aws_metadata.m_instance_id.clear();
+		}
+	}
+
+	response_buffer.clear();
+	err = curl_get(INSTANCE_IDENTITY_URL, response_buffer);
+	if (!err.empty())
+	{
 		m_aws_metadata.m_account_id.clear();
 		m_aws_metadata.m_region.clear();
+		LOG_ERROR("Unable to fetch AWS metadata. Error while fetching. " + err);
+	}
+	else
+	{
+		Json::Reader reader;
+		Json::Value root;
+		if (reader.parse(response_buffer, root))
+		{
+			if (!root["accountId"].empty())
+			{
+				m_aws_metadata.m_account_id = root["accountId"].asString();
+			}
+			if (!root["region"].empty())
+			{
+				m_aws_metadata.m_region = root["region"].asString();
+			}
+		}
+		else
+		{
+			m_aws_metadata.m_account_id.clear();
+			m_aws_metadata.m_region.clear();
+			LOG_ERROR("Unable to parse response: " + response_buffer);
+		}
 	}
 }
 

@@ -128,7 +128,7 @@ public:
 		"host.hostName",
 		"aws.instance_id",
 		"aws.account_id",
-		"aws.region",
+		"aws.account_region",
 		"agent.tag",
 		"container.name",
 		"kubernetes.cluster.name",

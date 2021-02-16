@@ -1144,7 +1144,7 @@ void security_mgr::set_event_labels(std::string &container_id,
         {
             string aws_instance_id = m_configuration->get_aws_instance_id();
             if (!aws_instance_id.empty()) {
-                (*event->mutable_event_labels())["aws.instance_id"] = std::move(aws_instance_id);
+                (*event->mutable_event_labels())["aws.instanceId"] = std::move(aws_instance_id);
             }
         }
 
@@ -1153,7 +1153,7 @@ void security_mgr::set_event_labels(std::string &container_id,
         {
             string aws_account_id = m_configuration->get_aws_account_id();
             if (!aws_account_id.empty()) {
-                (*event->mutable_event_labels())["aws.account_id"] = std::move(aws_account_id);
+                (*event->mutable_event_labels())["aws.accountId"] = std::move(aws_account_id);
             }
         }
 
