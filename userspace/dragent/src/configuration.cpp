@@ -1724,7 +1724,7 @@ void dragent_configuration::refresh_aws_metadata()
 	if (!err.empty())
 	{
 		m_aws_metadata.m_public_ipv4 = 0;
-		LOG_ERROR("Unable to fetch AWS metadata. Error while fetching. " + err);
+		LOG_DEBUG("Unable to fetch AWS metadata. Error while fetching. " + err);
 	}
 	else
 	{
@@ -1747,7 +1747,7 @@ void dragent_configuration::refresh_aws_metadata()
 	if (!err.empty())
 	{
 		m_aws_metadata.m_instance_id.clear();
-		LOG_ERROR("Unable to fetch AWS metadata. Error while fetching. " + err);
+		LOG_DEBUG("Unable to fetch AWS metadata. Error while fetching. " + err);
 	}
 	else
 	{
@@ -1764,7 +1764,7 @@ void dragent_configuration::refresh_aws_metadata()
 	{
 		m_aws_metadata.m_account_id.clear();
 		m_aws_metadata.m_region.clear();
-		LOG_ERROR("Unable to fetch AWS metadata. Error while fetching. " + err);
+		LOG_DEBUG("Unable to fetch AWS metadata. Error while fetching. " + err);
 	}
 	else
 	{
@@ -1785,7 +1785,7 @@ void dragent_configuration::refresh_aws_metadata()
 		{
 			m_aws_metadata.m_account_id.clear();
 			m_aws_metadata.m_region.clear();
-			LOG_ERROR("Unable to parse response: " + response_buffer);
+			LOG_DEBUG("Unable to parse response: " + response_buffer);
 		}
 	}
 }
