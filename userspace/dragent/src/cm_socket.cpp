@@ -604,11 +604,15 @@ bool cm_socket::poll(const std::list<poll_sock>& sock_list,
 	// Pass 2: Build the return list
 	for (uint32_t i = 0; i < nfds; ++i, ++itr)
 	{
-		if (fds[i].revents == POLLIN ||
-		    fds[i].revents == POLLERR ||
-		    fds[i].revents == POLLHUP)
+		if ((fds[i].revents & POLLIN == POLLIN) ||
+		    (fds[i].revents & POLLERR == POLLERR) ||
+		    (fds[i].revents & POLLHUP == POLLHUP))
 		{
 			out_list.emplace_back(itr->sock, itr->ctx);
+		}
+		else
+		{
+			LOG_WARNING("Unexpected poll event type %d", fds[i].revents);
 		}
 	}
 
