@@ -563,6 +563,10 @@ int agentone_app::sdagent_main()
 		return dragent::exit_code::RESTART;
 	}
 
+	// MAC addresses are not suitable for uniqueness in virtualized environments (and
+	// certainly not in fargate), so add hostname, which we ask customers to make unique
+	m_configuration.set_machine_id_prefix(m_hostname);
+
 	//
 	// Set up the memory watchdog
 	//

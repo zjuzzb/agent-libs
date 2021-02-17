@@ -465,6 +465,8 @@ public:
 	std::string get_aws_account_id();
 	std::string get_aws_region();
 
+	void set_machine_id_prefix(std::string prefix) { m_machine_id_prefix = prefix; }
+
 private:
 	inline static bool is_executable(const std::string& path);
 	void write_statsite_configuration();

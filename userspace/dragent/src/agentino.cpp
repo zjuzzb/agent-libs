@@ -338,6 +338,10 @@ int agentino_app::sdagent_main()
 		return exit_code::SHUT_DOWN;
 	}
 
+	// MAC addresses are not suitable for uniqueness in virtualized environments (and
+	// certainly not in fargate), so add hostname, which we ask customers to make unique
+	m_configuration.set_machine_id_prefix(m_hostname);
+
 	ExitCode exit_code;
 
 	// Add the configured stuff to the agent tags so secure events pick it up
