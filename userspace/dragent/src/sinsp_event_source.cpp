@@ -40,7 +40,7 @@ void sinsp_event_source::process_event(sinsp_evt* evt, libsinsp::event_return rc
 {
 	if (rc == libsinsp::EVENT_RETURN_NONE)
 	{
-		LOG_INFO("processing event");
+		LOG_DEBUG("processing event");
 		event_source::process_event(evt);
 	}
 }
