@@ -8,11 +8,6 @@
 #include <Poco/Exception.h>
 
 #include <sys/utsname.h>
-#include "common_logger.h"
-
-COMMON_LOGGER();
-
-COMMON_LOGGER();
 
 using namespace std;
 using namespace libsinsp::cgroup_limits;
@@ -108,7 +103,7 @@ custom_container::resolver::resolver()
 	}
 	else
 	{
-		LOG_WARNING("Cannot get hostname: %s", strerror(errno));
+		g_logger.format(sinsp_logger::SEV_WARNING, "Cannot get hostname: %s", strerror(errno));
 		hostname = "localhost";
 	}
 	const char *dot = strchr(hostname, '.');
@@ -237,7 +232,7 @@ void custom_container::resolver::clean_label(std::string& val, clean_action chec
 				}
 				else
 				{
-					LOG_WARNING("Invalid substitution character for custom container label value");
+					g_logger.format(sinsp_logger::SEV_WARNING,"Invalid substitution character for custom container label value");
 					*c = '_';  // apply the original default substitution character
 				}
 		    }	
@@ -277,13 +272,13 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	try {
 		m_id_pattern.render(container_info.m_id, render_ctx, env);
 	} catch (const Poco::RuntimeException& e) {
-		LOG_WARNING("Disabling custom container support due to error in configuration: %s", e.message().c_str());
+		g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container support due to error in configuration: %s", e.message().c_str());
 		set_enabled(false);
 		return false;
 	}
 	if (container_info.m_id.empty())
 	{
-		LOG_WARNING("Got empty container id for process %lu, possibly a configuration error", tinfo->m_tid);
+		g_logger.format(sinsp_logger::SEV_WARNING, "Got empty container id for process %lu, possibly a configuration error", tinfo->m_tid);
 		return false;
 	}
 	container_info.m_id = container_info.m_id.substr(0, m_max_id_length);
@@ -310,7 +305,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	{
 		if (!m_limit_logged)
 		{
-			LOG_WARNING("Custom container limit exceeded, ignoring new container %s of pid %lu", tinfo->m_container_id.c_str(), tinfo->m_tid);
+			g_logger.format(sinsp_logger::SEV_WARNING, "Custom container limit exceeded, ignoring new container %s of pid %lu", tinfo->m_container_id.c_str(), tinfo->m_tid);
 			m_limit_logged = true;
 		}
 		return false;
@@ -343,7 +338,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 				clean_label(container_info.m_name, CHECK_NAME);
 			}
 		} catch (const Poco::RuntimeException& e) {
-			LOG_WARNING("Disabling custom container name due to error in configuration: %s", e.message().c_str());
+			g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container name due to error in configuration: %s", e.message().c_str());
 			m_name_pattern = custom_container::subst_template();
 			container_info.m_name = container_info.m_id;
 		}
@@ -363,7 +358,8 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 				clean_label(container_info.m_image, CHECK_NAME);
 			}
 		} catch (const Poco::RuntimeException &e) {
-			LOG_WARNING("Disabling custom container image due to error in configuration: %s", e.message().c_str());
+			g_logger.format(sinsp_logger::SEV_WARNING,
+							"Disabling custom container image due to error in configuration: %s", e.message().c_str());
 			m_image_pattern = custom_container::subst_template();
 			container_info.m_image = "";
 		}
@@ -389,7 +385,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 					container_info.m_labels.emplace(it->first, move(s));
 				}
 			} catch (const Poco::RuntimeException& e) {
-				LOG_WARNING("Disabling custom container label %s due to error in configuration: %s", it->first.c_str(), e.message().c_str());
+				g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container label %s due to error in configuration: %s", it->first.c_str(), e.message().c_str());
 				it = m_label_patterns.erase(it);
 				continue;
 			}
@@ -462,7 +458,7 @@ void custom_container::resolver::dump_container_table()
 
 	if (m_dump.size() > (size_t)m_max)
 	{
-		LOG_WARNING("%lu custom containers present, while the limit is %d. Only a subset will be reported",
+		g_logger.format(sinsp_logger::SEV_WARNING, "%d custom containers present, while the limit is %d. Only a subset will be reported",
 			m_dump.size(), m_max);
 	}
 
