@@ -8,6 +8,7 @@ policy_list {
     values: ""
     op: EQ
   }
+  policy_type: "falco"
 }
 policy_list {
   id: 2
@@ -19,6 +20,7 @@ policy_list {
     values: ""
     op: EQ
   }
+  policy_type: "list_matching"
 }
 policy_list {
   id: 3

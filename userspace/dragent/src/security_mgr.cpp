@@ -339,7 +339,7 @@ void security_mgr::loaded_v2_policies::match_policy_scopes(infrastructure_state_
 				load_k8s_audit_policy_v2(spolicy);
 				num_enabled++;
 			}
-			else if (policy.policy_type() == "falco")
+			else if (policy.policy_type() == "falco" || policy.policy_type() == "list_matching")
 			{
 				// Policy type falco really means policies that work
 				// on syscalls, whether they use falco rules or fast
