@@ -1672,6 +1672,10 @@ std::string dragent_configuration::curl_get(const std::string& uri, const std::s
 
 	if (curl)
 	{
+		if ((res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 1L)) != CURLE_OK)
+		{
+			goto read_error;
+		}
 		if ((res = curl_easy_setopt(curl, CURLOPT_URL, uri.c_str())) != CURLE_OK)
 		{
 			goto read_error;
@@ -1725,22 +1729,20 @@ void dragent_configuration::refresh_aws_metadata()
 	{
 		m_aws_metadata.m_public_ipv4 = 0;
 		LOG_DEBUG("Unable to fetch AWS metadata. Error while fetching. " + err);
+		return;
+	}
+#ifndef _WIN32
+	struct in_addr addr;
+
+	if (inet_aton(response_buffer.c_str(), &addr) == 0)
+	{
+		m_aws_metadata.m_public_ipv4 = 0;
 	}
 	else
 	{
-#ifndef _WIN32
-		struct in_addr addr;
-
-		if (inet_aton(response_buffer.c_str(), &addr) == 0)
-		{
-			m_aws_metadata.m_public_ipv4 = 0;
-		}
-		else
-		{
-			m_aws_metadata.m_public_ipv4 = addr.s_addr;
-		}
-#endif
+		m_aws_metadata.m_public_ipv4 = addr.s_addr;
 	}
+#endif
 
 	response_buffer.clear();
 	err = curl_get(METADATA_URL_BASE + "/instance-id", response_buffer);
@@ -1748,14 +1750,13 @@ void dragent_configuration::refresh_aws_metadata()
 	{
 		m_aws_metadata.m_instance_id.clear();
 		LOG_DEBUG("Unable to fetch AWS metadata. Error while fetching. " + err);
+		return;
 	}
-	else
+
+	m_aws_metadata.m_instance_id = response_buffer;
+	if (m_aws_metadata.m_instance_id.find("i-") != 0)
 	{
-		m_aws_metadata.m_instance_id = response_buffer;
-		if (m_aws_metadata.m_instance_id.find("i-") != 0)
-		{
-			m_aws_metadata.m_instance_id.clear();
-		}
+		m_aws_metadata.m_instance_id.clear();
 	}
 
 	response_buffer.clear();
@@ -1765,28 +1766,27 @@ void dragent_configuration::refresh_aws_metadata()
 		m_aws_metadata.m_account_id.clear();
 		m_aws_metadata.m_region.clear();
 		LOG_DEBUG("Unable to fetch AWS metadata. Error while fetching. " + err);
+		return;
+	}
+
+	Json::Reader reader;
+	Json::Value root;
+	if (reader.parse(response_buffer, root))
+	{
+		if (!root["accountId"].empty())
+		{
+			m_aws_metadata.m_account_id = root["accountId"].asString();
+		}
+		if (!root["region"].empty())
+		{
+			m_aws_metadata.m_region = root["region"].asString();
+		}
 	}
 	else
 	{
-		Json::Reader reader;
-		Json::Value root;
-		if (reader.parse(response_buffer, root))
-		{
-			if (!root["accountId"].empty())
-			{
-				m_aws_metadata.m_account_id = root["accountId"].asString();
-			}
-			if (!root["region"].empty())
-			{
-				m_aws_metadata.m_region = root["region"].asString();
-			}
-		}
-		else
-		{
-			m_aws_metadata.m_account_id.clear();
-			m_aws_metadata.m_region.clear();
-			LOG_DEBUG("Unable to parse response: " + response_buffer);
-		}
+		m_aws_metadata.m_account_id.clear();
+		m_aws_metadata.m_region.clear();
+		LOG_DEBUG("Unable to parse response: " + response_buffer);
 	}
 }
 
