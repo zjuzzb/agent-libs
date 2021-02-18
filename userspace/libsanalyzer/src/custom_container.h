@@ -47,6 +47,10 @@ struct match {
 
 typedef std::unordered_map<std::string, match> render_context;
 
+enum clean_action {
+		CHECK_NAME = 0,
+		CHECK_VALUE = 1
+};
 
 class subst_token {
 public:
@@ -249,7 +253,7 @@ protected:
 	bool match_cgroup(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	bool match_environ(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	sinsp_threadinfo* match_environ_tree(sinsp_threadinfo *tinfo, render_context &render_ctx);
-	void clean_label(std::string& val);
+	void clean_label(std::string& val, clean_action check);
 
 	match m_hostname;
 
