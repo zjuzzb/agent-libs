@@ -311,7 +311,13 @@ protected:
 
 		m_k8s_audit_event_sink = new test_secure_k8s_audit_event_sink();
 
-		m_mgr.init(m_inspector, m_analyzer->mutable_infra_state(), m_k8s_audit_event_sink, m_capture_job_queue_handler, &m_configuration, m_internal_metrics);
+		m_mgr.init(m_inspector,
+			   m_analyzer->get_agent_container_id(),
+			   m_analyzer->mutable_infra_state(),
+			   m_k8s_audit_event_sink,
+			   m_capture_job_queue_handler,
+			   &m_configuration,
+			   m_internal_metrics);
 
 		m_sinsp_worker = new test_sinsp_worker(m_inspector,
 		                                       &m_mgr,
@@ -790,7 +796,7 @@ protected:
 class security_policies_v2_test_cointerface : public security_policies_v2_test
 {
 protected:
-	virtual void SetUp()
+	virtual void SetUpCointerface()
 	{
 		string cointerface_sock = "./resources/run/cointerface.sock";
 
@@ -887,6 +893,13 @@ protected:
 		}
 	}
 
+	virtual void SetUp()
+	{
+		initFiles();
+
+		SetUpCointerface();
+	}
+
 	virtual void TearDown()
 	{
 		if (m_cointerface)
@@ -907,6 +920,19 @@ private:
 	shared_ptr<Pipe> m_colog;
 	shared_ptr<ProcessHandle> m_cointerface;
 	shared_ptr<ProcessHandle> m_fake_cri;
+};
+
+class security_policies_v2_test_cointerface_cluster_name : public security_policies_v2_test_cointerface
+{
+public:
+	virtual void SetUp()
+	{
+		initFiles();
+
+		m_k8s_cluster_name = "my-cluster";
+
+		SetUpCointerface();
+	}
 };
 
 class security_policies_v2_test_cluster_name : public security_policies_v2_test
@@ -1793,7 +1819,7 @@ static void falco_k8s_audit(security_policies_v2_test_cointerface* ptest)
 {
 	// send a single event (the first line of the file)
 	ASSERT_EQ(system("timeout 2 curl -X POST localhost:7765/k8s_audit -d $(head -1 "
-	                 "./resources/k8s_audit_events.txt) > /dev/null 2>&1"),
+	                 "./resources/k8s_audit_events/all_events.txt) > /dev/null 2>&1"),
 	          0);
 
 	unique_ptr<draiosproto::policy_events> pe;
@@ -1847,7 +1873,7 @@ TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_scope)
 {
 	// send a single event (the first line of the file)
 	ASSERT_EQ(system("timeout 2 curl -X POST localhost:7765/k8s_audit -d $(head -1 "
-	                 "./resources/k8s_audit_create_namespace.txt) > /dev/null 2>&1"),
+	                 "./resources/k8s_audit_events/create_namespace.txt) > /dev/null 2>&1"),
 	          0);
 
 	unique_ptr<draiosproto::policy_events> pe;
@@ -1877,11 +1903,50 @@ TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_scope)
 	check_expected_internal_metrics(metrics);
 };
 
+TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_wo_policy_type)
+{
+	// send a single event (the first line of the file)
+	ASSERT_EQ(system("timeout 2 curl -X POST localhost:7765/k8s_audit -d $(head -1 "
+	                 "./resources/k8s_audit_events/create_service.txt) > /dev/null 2>&1"),
+	          0);
+
+	// This verifies that policies without any policy type still
+	// run on k8s audit events. (scope matching and actions
+	// probably won't work, though).
+	unique_ptr<draiosproto::policy_events> pe;
+	get_policy_evts_msg(pe);
+	ASSERT_TRUE(pe->events_size() == 1);
+	ASSERT_EQ(pe->events(0).policy_id(), 64u);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"),
+	          "k8s_service_created");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.auth.decision"),
+	          "allow");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.response.code"),
+	          "201");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.target.name"),
+	          "some-service");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.target.namespace"),
+	          "default");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.user.name"),
+	          "minikube-user");
+
+	std::map<string, security_policies_v2_test::expected_internal_metric> metrics;
+
+	metrics = {
+	    {"security.falco.match.match_items",
+	     {security_policies_v2_test::expected_internal_metric::CMP_EQ, 1}},
+	    {"security.falco.match.not_match_items",
+	     {security_policies_v2_test::expected_internal_metric::CMP_EQ, 0}}};
+
+	check_expected_internal_metrics(metrics);
+};
+
 TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_multi_events)
 {
 	// send a bunch of events (one per line of the file)
 	ASSERT_EQ(system("timeout 2 xargs -0 -d '\n' -I{} curl -X POST localhost:7765/k8s_audit -d {} "
-	                 "< ./resources/k8s_audit_events.txt > /dev/null 2>&1"),
+	                 "< ./resources/k8s_audit_events/all_events.txt > /dev/null 2>&1"),
 	          0);
 
 	unique_ptr<draiosproto::policy_events> pe;
@@ -1943,11 +2008,11 @@ TEST_F(security_policies_v2_test_cointerface, falco_k8s_audit_messy_client)
 	          0);
 
 	// Hit wrong URIs
-	ASSERT_EQ(system("curl -sX POST localhost:7765 -d @./resources/k8s_audit_events.txt | grep -qx "
+	ASSERT_EQ(system("curl -sX POST localhost:7765 -d @./resources/k8s_audit_events/all_events.txt | grep -qx "
 	                 "'404 page not found' || false"),
 	          0);
 	ASSERT_EQ(system("curl -sX POST localhost:7765/this-is-not-the-good-door -d "
-	                 "@./resources/k8s_audit_events.txt | grep -qx '404 page not found' || false"),
+	                 "@./resources/k8s_audit_events/all_events.txt | grep -qx '404 page not found' || false"),
 	          0);
 }
 
@@ -2491,3 +2556,139 @@ TEST_F(security_policies_v2_test, load_policies_repeatedly)
 	}
 }
 
+TEST_F(security_policies_v2_test_cointerface, k8s_audit_policy_scope_create_ns)
+{
+	ASSERT_EQ(system("timeout 2 xargs -0 -d '\n' -I{} curl -X POST localhost:7765/k8s_audit -d {} "
+	                 "< ./resources/k8s_audit_events/create_namespace_foo.txt > /dev/null 2>&1"),
+	          0);
+
+	// We should get an event for policy 61 (which is scoped to
+	// the namespace foo) but not policy 35 (which is scoped to
+	// another namespace some-namespace).
+	std::vector<security_policies_v2_test::expected_policy_event> expected = {
+	    {61,
+	     draiosproto::policy_type::PTYPE_FALCO,
+	     {{"falco.rule", "k8s_namespace_created"},
+	      {"ka.auth.decision", "allow"},
+	      {"ka.response.code", "201"},
+	      {"ka.target.name", "foo"},
+	      {"ka.user.name", "system:anonymous"}}}};
+
+	check_policy_events(expected);
+}
+
+TEST_F(security_policies_v2_test_cointerface, k8s_audit_policy_scope_create_deployment_ns_my_namespace)
+{
+	ASSERT_EQ(system("timeout 2 xargs -0 -d '\n' -I{} curl -X POST localhost:7765/k8s_audit -d {} "
+	                 "< ./resources/k8s_audit_events/create_deployment_in_namespace_my_namespace.txt > /dev/null 2>&1"),
+	          0);
+
+	// We should get an event for policy 28 (which has no scope)
+	// but not policy 61 (which is scoped to the namespace foo).
+	std::vector<security_policies_v2_test::expected_policy_event> expected = {
+	    {28,
+	     draiosproto::policy_type::PTYPE_FALCO,
+	     {{"falco.rule", "k8s_deployment_created"},
+	      {"ka.auth.decision", "allow"},
+	      {"ka.response.code", "201"},
+	      {"ka.target.name", "nginx-deployment"},
+	      {"ka.target.namespace", "my-namespace"},
+	      {"ka.user.name", "minikube-user"}}}};
+
+	check_policy_events(expected);
+}
+
+TEST_F(security_policies_v2_test_cointerface, k8s_audit_policy_scope_create_deployment_ns_foo)
+{
+	ASSERT_EQ(system("timeout 2 xargs -0 -d '\n' -I{} curl -X POST localhost:7765/k8s_audit -d {} "
+	                 "< ./resources/k8s_audit_events/create_deployment_in_namespace_foo.txt > /dev/null 2>&1"),
+	          0);
+
+	// We should get an event for both policy 28 (which has no scope)
+	// and policy 61 (which is scoped to the namespace foo).
+	std::vector<security_policies_v2_test::expected_policy_event> expected = {
+	    {28,
+	     draiosproto::policy_type::PTYPE_FALCO,
+	     {{"falco.rule", "k8s_deployment_created"},
+	      {"ka.auth.decision", "allow"},
+	      {"ka.response.code", "201"},
+	      {"ka.target.name", "nginx-deployment"},
+	      {"ka.target.namespace", "foo"},
+	      {"ka.user.name", "minikube-user"}}},
+	    {61,
+	     draiosproto::policy_type::PTYPE_FALCO,
+	     {{"falco.rule", "k8s_deployment_created"},
+	      {"ka.auth.decision", "allow"},
+	      {"ka.response.code", "201"},
+	      {"ka.target.name", "nginx-deployment"},
+	      {"ka.target.namespace", "foo"},
+	      {"ka.user.name", "minikube-user"}}}};
+
+	check_policy_events(expected);
+}
+
+TEST_F(security_policies_v2_test_cointerface_cluster_name, k8s_audit_policy_scope_create_ns)
+{
+	ASSERT_EQ(system("timeout 2 xargs -0 -d '\n' -I{} curl -X POST localhost:7765/k8s_audit -d {} "
+	                 "< ./resources/k8s_audit_events/create_namespace_foo.txt > /dev/null 2>&1"),
+	          0);
+
+	// This results in the events from the test
+	// security_policies_v2_test_cointerface.k8s_audit_policy_scope_create_ns,
+	// plus policy 62, which is scoped to the specific cluster my-cluster.
+	std::vector<security_policies_v2_test::expected_policy_event> expected = {
+	    {61,
+	     draiosproto::policy_type::PTYPE_FALCO,
+	     {{"falco.rule", "k8s_namespace_created"},
+	      {"ka.auth.decision", "allow"},
+	      {"ka.response.code", "201"},
+	      {"ka.target.name", "foo"},
+	      {"ka.user.name", "system:anonymous"}}},
+	    {62,
+	     draiosproto::policy_type::PTYPE_FALCO,
+	     {{"falco.rule", "k8s_namespace_created"},
+	      {"ka.auth.decision", "allow"},
+	      {"ka.response.code", "201"},
+	      {"ka.target.name", "foo"},
+	      {"ka.user.name", "system:anonymous"}}}};
+
+	check_policy_events(expected);
+}
+
+TEST_F(security_policies_v2_test_cointerface_cluster_name, k8s_audit_policy_scope_create_deployment_ns_foo)
+{
+	ASSERT_EQ(system("timeout 2 xargs -0 -d '\n' -I{} curl -X POST localhost:7765/k8s_audit -d {} "
+	                 "< ./resources/k8s_audit_events/create_deployment_in_namespace_foo.txt > /dev/null 2>&1"),
+	          0);
+
+	// We should get events for
+	// security_policies_v2_test_cointerface.k8s_audit_policy_scope_create_deployment_ns_foo,
+	// plus policy 62, which is scoped to the specific cluster my-cluster.
+	std::vector<security_policies_v2_test::expected_policy_event> expected = {
+	    {28,
+	     draiosproto::policy_type::PTYPE_FALCO,
+	     {{"falco.rule", "k8s_deployment_created"},
+	      {"ka.auth.decision", "allow"},
+	      {"ka.response.code", "201"},
+	      {"ka.target.name", "nginx-deployment"},
+	      {"ka.target.namespace", "foo"},
+	      {"ka.user.name", "minikube-user"}}},
+	    {61,
+	     draiosproto::policy_type::PTYPE_FALCO,
+	     {{"falco.rule", "k8s_deployment_created"},
+	      {"ka.auth.decision", "allow"},
+	      {"ka.response.code", "201"},
+	      {"ka.target.name", "nginx-deployment"},
+	      {"ka.target.namespace", "foo"},
+	      {"ka.user.name", "minikube-user"}}},
+	    {62,
+	     draiosproto::policy_type::PTYPE_FALCO,
+	     {{"falco.rule", "k8s_deployment_created"},
+	      {"ka.auth.decision", "allow"},
+	      {"ka.response.code", "201"},
+	      {"ka.target.name", "nginx-deployment"},
+	      {"ka.target.namespace", "foo"},
+	      {"ka.user.name", "minikube-user"}}}};
+
+	check_policy_events(expected);
+}

@@ -30,6 +30,11 @@ type_config<string> promscrape::c_promscrape_sock(
     "Socket address URL for promscrape server",
     "promscrape_address");
 
+type_config<bool> promscrape::c_allow_bypass(
+	true,
+    "Allow a metric endpoint to bypass limits and filters",
+    "promscrape_allow_bypass");
+
 type_config<string> promscrape::c_promscrape_web_sock(
     "127.0.0.1:9990",
     "Socket address URL for promscrape web server",
@@ -282,7 +287,8 @@ int64_t promscrape::job_url_to_job_id(const std::string &url)
 		m_next_ts,  // config_ts
 		0,	// data_ts
 		0,	// last_total_samples
-		{}	// add_tags
+		{},	// add_tags
+		false	// bypass_limits
 	};
 
 	job_id = ++g_prom_job_id;
@@ -524,6 +530,8 @@ void promscrape::next_th()
 	if (m_threaded)
 	{
 		vector<prom_process> procs;
+		// Look for new configs with 100 ms timeout.
+		// This also ensures we don't spin idle when threaded
 		if (m_config_queue.get(&procs, 100))
 		{
 			sendconfig_th(procs);
@@ -570,6 +578,7 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 #endif
 	int64_t job_id;
 	string url;
+	bool bypass_limits = false;
 
 	if (is_promscrape_v2())
 	{
@@ -617,8 +626,34 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 	int calc_total_samples = 0;
 	int calc_num_samples = 0;
 
+	// Attempt to find and fill in the container_id if it isn't available yet
+	string container_id;
+	string container_name;
+	string pod_id;
+
+	for (const auto &source_label : result.source_labels())
+	{
+		if (source_label.name() == "container_id")
+		{
+			container_id = source_label.value();
+		}
+		else if (source_label.name() == "pod_id")
+		{
+			pod_id = source_label.value();
+		}
+		else if (source_label.name() == "container_name")
+		{
+			container_name = source_label.value();
+		}
+		else if (allow_bypass() && (source_label.name() == "sysdig_bypass") &&
+			(source_label.value() == "true"))
+		{
+			bypass_limits = true;
+		}
+	}
+
 	// Do we need to filter incoming metrics?
-	if (m_metric_limits)
+	if (m_metric_limits && !bypass_limits)
 	{
 		result_ptr = make_shared<agent_promscrape::ScrapeResult>();
 		result_ptr->set_job_id(job_id);
@@ -699,27 +734,6 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 	}
 	m_stats.set_stats(url, scraped, scraped - post_relabel, post_relabel - added, raw_total_samples - raw_num_samples, calc_total_samples, 0, 0, calc_total_samples - calc_num_samples);
 
-	// Attempt to find and fill in the container_id if it isn't available yet
-	string container_id;
-	string container_name;
-	string pod_id;
-
-	for (const auto &source_label : result_ptr->source_labels())
-	{
-		if (source_label.name() == "container_id")
-		{
-			container_id = source_label.value();
-			break;
-		}
-		else if (source_label.name() == "pod_id")
-		{
-			pod_id = source_label.value();
-		}
-		else if (source_label.name() == "container_name")
-		{
-			container_name = source_label.value();
-		}
-	}
 	if (container_id.empty() && !pod_id.empty() && !container_name.empty() && m_infra_state)
 	{
 		infrastructure_state::uid_t uid = make_pair("k8s_pod", pod_id);
@@ -811,10 +825,24 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 
 		job_it->second.data_ts = m_last_ts; // Updating data timestamp
 		job_it->second.last_total_samples = raw_total_samples + calc_total_samples;
+		job_it->second.bypass_limits = bypass_limits;
 	}
 
 	LOG_DEBUG("got %d of %d raw and %d of %d calculated samples for job %" PRId64,
 		raw_num_samples, raw_total_samples, calc_num_samples, calc_total_samples, job_id);
+	if (bypass_limits && (m_bypass_cb != nullptr))
+	{
+		auto msg = create_bypass_protobuf(job_id);
+		if (msg == nullptr)
+		{
+			LOG_WARNING("Failed to create standalone protobuf message for job %" PRId64, job_id);
+		}
+		else
+		{
+			LOG_DEBUG("Sending limit-bypassed samples through standalone protobuf message");
+			m_bypass_cb(msg);
+		}
+	}
 }
 
 void promscrape::prune_jobs(uint64_t ts)
@@ -1102,6 +1130,11 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 	{
 		return 0;
 	}
+	if (job_config.bypass_limits && (m_bypass_cb != nullptr))
+	{
+		LOG_DEBUG("Metrics for bypass job %" PRId64 " were already sent previously, skipping", job_id);
+		return 0;
+	}
 
 	LOG_DEBUG("have metrics for job %" PRId64, job_id);
 
@@ -1227,9 +1260,6 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 	unsigned int &limit, unsigned int max_limit,
 	unsigned int *filtered, unsigned int *total)
 {
-	unsigned int raw_num_samples = 0;
-	unsigned int calc_num_samples = 0;
-	unsigned int over_limit = 0;
 	prom_job_config job_config;
 
 	// We're going to use the results without a lock as it shouldn't get changed anywhere and
@@ -1240,27 +1270,52 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 	{
 		return 0;
 	}
+	if (job_config.bypass_limits && (m_bypass_cb != nullptr))
+	{
+		LOG_DEBUG("Metrics for bypass job %" PRId64 " were already sent previously, skipping", job_id);
+		return 0;
+	}
+
+	auto prom = proto->add_prometheus();
+
+	return result_to_protobuf(job_id, result_ptr, &job_config, prom, true,
+		limit, max_limit, filtered, total);
+}
+
+unsigned int promscrape::result_to_protobuf(int64_t job_id,
+	std::shared_ptr<agent_promscrape::ScrapeResult> result_ptr,
+	prom_job_config *job_config, draiosproto::prom_metrics *prom, bool enforce_limits,
+	unsigned int &limit, unsigned int max_limit,
+	unsigned int *filtered, unsigned int *total)
+{
+	unsigned int raw_num_samples = 0;
+	unsigned int calc_num_samples = 0;
+	unsigned int over_limit = 0;
+
+	if ((result_ptr == nullptr) || (prom == nullptr))
+	{
+		return 0;
+	}
 
 	LOG_DEBUG("have metrics for job %" PRId64, job_id);
 
-	bool ml_log = metric_limits::log_enabled();
+	bool ml_log = enforce_limits && metric_limits::log_enabled();
 
-	auto prom = proto->add_prometheus();
 	// Add pid in source_metadata, if we have a pid
-	if (job_config.pid)
+	if (job_config->pid)
 	{
 		auto meta = prom->add_source_metadata();
 		meta->set_name("pid");
-		meta->set_value(to_string(job_config.pid));
+		meta->set_value(to_string(job_config->pid));
 	}
-	if (!job_config.container_id.empty())
+	if (!job_config->container_id.empty())
 	{
 		auto meta = prom->add_source_metadata();
 		meta->set_name("container_id");
-		meta->set_value(job_config.container_id);
+		meta->set_value(job_config->container_id);
 	}
 	prom->set_timestamp(result_ptr->timestamp());
-	for (const auto &tag : job_config.add_tags)
+	for (const auto &tag : job_config->add_tags)
 	{
 		auto newtag = prom->add_common_labels();
 		newtag->set_name(tag.first);
@@ -1268,9 +1323,20 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 	}
 	for (const auto &source_label : result_ptr->source_labels())
 	{
+		// Only copy source labels with non-empty label and value
+		if (source_label.name().empty() || source_label.value().empty())
+		{
+			continue;
+		}
 		auto meta = prom->add_source_metadata();
 		meta->set_name(source_label.name());
 		meta->set_value(source_label.value());
+	}
+	if (m_infra_state && !m_infra_state->get_k8s_cluster_id().empty())
+	{
+		auto meta = prom->add_source_metadata();
+		meta->set_name("cluster_id");
+		meta->set_value(m_infra_state->get_k8s_cluster_id());
 	}
 	LOG_DEBUG("job %" PRId64 ": Copied %d source labels: %d", job_id, result_ptr->source_labels().size(), prom->source_metadata().size());
 
@@ -1297,7 +1363,7 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 	//    for the endpoint exceeds the metric limit, all the timeseries for that
 	//    endpoint will be dropped.
 
-	if (result_ptr->samples().size() > limit)
+	if (enforce_limits &&  (result_ptr->samples().size() > limit))
 	{
 		over_limit = result_ptr->samples().size() - limit;
 	}
@@ -1319,7 +1385,10 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 		{
 			// Fastproto only supports raw metrics
 			add_sample(sample);
-			--limit;
+			if (enforce_limits)
+			{
+				--limit;
+			}
 			++raw_num_samples;
 		}
 		else
@@ -1356,13 +1425,75 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, draiosproto::metrics *p
 	}
 	if (total)
 	{
-		*total += job_config.last_total_samples;
+		*total += job_config->last_total_samples;
 	}
 
 	// Update metric stats
-	m_stats.add_stats(job_config.url, over_limit, raw_num_samples, calc_num_samples);
+	m_stats.add_stats(job_config->url, over_limit, raw_num_samples, calc_num_samples);
 
 	return raw_num_samples + calc_num_samples;
+}
+
+std::shared_ptr<draiosproto::raw_prometheus_metrics> promscrape::create_bypass_protobuf(int64_t job_id)
+{
+	static uint64_t msg_idx = 1;
+	std::list<int64_t> jobs;
+
+	if (job_id >= 0)
+	{
+		std::lock_guard<std::mutex> lock(m_map_mutex); // scoped lock
+		if (m_jobs.find(job_id) == m_jobs.end())
+		{
+			LOG_WARNING("Tried to create raw prometheus protobuf for non-existing job %" PRId64, job_id);
+			return nullptr;
+		}
+		jobs.push_back(job_id);
+	}
+	else
+	{
+		std::lock_guard<std::mutex> lock(m_map_mutex); // scoped lock
+		for(auto it = m_jobs.begin(); it != m_jobs.end(); it++)
+		{
+			if (it->second.bypass_limits)
+			{
+				jobs.push_back(it->first);
+			}
+		}
+	}
+
+	if (jobs.empty())
+	{
+		return nullptr;
+	}
+
+	shared_ptr<draiosproto::raw_prometheus_metrics> metrics =
+		make_shared<draiosproto::raw_prometheus_metrics>();
+
+	metrics->set_timestamp_ns(m_next_ts);
+	metrics->set_index(msg_idx++);
+
+	for (auto job_id : jobs) {
+		LOG_DEBUG("Creating bypass message for job %" PRId64, job_id);
+
+		prom_job_config job_config;
+
+		// We're going to use the results without a lock as it shouldn't get changed anywhere and
+		// handle_result() always puts incoming data into a new shared_ptr
+		std::shared_ptr<agent_promscrape::ScrapeResult> result_ptr =
+			get_job_result_ptr(job_id, &job_config);
+		if (result_ptr == nullptr)
+		{
+			LOG_DEBUG("Couldn't find scrape results for job %" PRId64, job_id);
+			continue;
+		}
+		auto prom = metrics->add_prometheus();
+
+		unsigned int limit = 10000000;
+		result_to_protobuf(job_id, result_ptr, &job_config, prom, false,
+			limit, limit, nullptr, nullptr);
+	}
+
+	return metrics;
 }
 
 promscrape_stats::promscrape_stats(const prometheus_conf &prom_conf) :

@@ -1,5 +1,4 @@
 #include "agentino.h"
-
 #include "agentino.pb.h"
 #include "avoid_block_channel.h"
 #include "common_logger.h"
@@ -34,10 +33,12 @@ namespace
 {
 COMMON_LOGGER();
 
-// Number of seconds (of uptime) after which to update the priority of the
-// processes. This was chosen arbitrarily to be after the processes had time
-// to start.
-const uint32_t TIME_TO_UPDATE_PROCESS_PRIORITY = 5;
+type_config<bool> c_wait_until_policies(
+    false,
+    "should we stall application startup until policies have been acquired? If set to true, "
+    "application may not start if no connectivity",
+    "agentino",
+    "delay_startup_until_policies");
 
 static void g_signal_callback(int sig)
 {
@@ -106,12 +107,14 @@ void agentino_app::initialize(Application& self)
 			std::string value = *(++i);
 			std::cerr << "Container name = " << value << "\n";
 			m_container_name = value;
+			m_metadata.insert(std::pair<std::string, std::string>("aws-container-name", value));
 		}
 		else if (*i == "--image")
 		{
 			std::string value = *(++i);
 			std::cerr << "Container Image = " << value << "\n";
 			m_container_image = value;
+			m_metadata.insert(std::pair<std::string, std::string>("aws-container-image", value));
 		}
 		else if (*i == "--container-id")
 		{
@@ -335,6 +338,10 @@ int agentino_app::sdagent_main()
 		return exit_code::SHUT_DOWN;
 	}
 
+	// MAC addresses are not suitable for uniqueness in virtualized environments (and
+	// certainly not in fargate), so add hostname, which we ask customers to make unique
+	m_configuration.set_machine_id_prefix(m_hostname);
+
 	ExitCode exit_code;
 
 	// Add the configured stuff to the agent tags so secure events pick it up
@@ -375,6 +382,26 @@ int agentino_app::sdagent_main()
 	////////////////
 	// Here is where the top-level objects are created.
 	////////////////
+
+	// The connection manager doesn't provide a way to guarantee all messages
+	// of a given type reach all components, so we have to unfortunately
+	// build this stuff first instead of using the dynamic registration
+	sinsp_event_source* es =
+	    new sinsp_event_source(true, m_container_id, m_container_name, m_container_image);
+
+	std::shared_ptr<security_mgr> sm =
+	    std::make_shared<security_mgr>(m_configuration.c_root_dir.get_value(), m_protocol_handler);
+	sm->init(es->get_sinsp(),
+	         m_container_id,    // This doesn't really make sense as the security manager
+	                            // is hard coded to expect an agent container id, which this
+	                            // isn't, really.
+	         nullptr,           // infrastructure_state_iface*
+	         nullptr,           // secure_k8s_audit_event_sink_iface*
+	         nullptr,           // capture_job_queue_handler*
+	         &m_configuration,  // dragent_configuration*
+	         nullptr);          // const internal_metrics::sptr_t&
+	es->register_event_listener(sm);
+
 	connection_manager* cm = nullptr;
 
 	try
@@ -392,7 +419,8 @@ int agentino_app::sdagent_main()
 		     m_configuration.machine_id()},
 		    &m_transmit_queue,
 		    std::initializer_list<dragent_protocol::protocol_version>{5},
-		    {},
+		    {{draiosproto::message_type::POLICIES_V2,
+		      std::make_shared<security_policies_v2_message_handler>(*sm)}},
 		    m_direct ? false : true /* use agentino handshake instead of regular */,
 		    m_direct ? nullptr : &handshake_prepare_callback);
 		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
@@ -421,24 +449,26 @@ int agentino_app::sdagent_main()
 		m_pool.start(*serializer, 10);
 	}
 
-	sinsp_event_source* es =
-	    new sinsp_event_source(true, m_container_id, m_container_name, m_container_image);
-
-	std::shared_ptr<security_mgr> sm =
-	    std::make_shared<security_mgr>(m_configuration.c_root_dir.get_value(), m_protocol_handler);
-	sm->init(es->get_sinsp(),
-	         nullptr,           // infrastructure_state_iface*
-	         nullptr,           // secure_k8s_audit_event_sink_iface*
-	         nullptr,           // capture_job_queue_handler*
-	         &m_configuration,  // dragent_configuration*
-	         nullptr);          // const internal_metrics::sptr_t&
-	es->register_event_listener(sm);
-
-	cm->set_message_handler(draiosproto::message_type::POLICIES_V2,
-	                        std::make_shared<security_policies_v2_message_handler>(*sm));
-
-	es->start();
-	m_pool.start(*es, watchdog_runnable::NO_TIMEOUT);
+	// This is jank. There is a BE bug where it doesn't send policies until
+	// it gets metrics messages. So we need to allow the thread to continue to the metrics
+	// message loop, while waiting asynchronously for policies to get here
+	// and then starting the event source. One might argue maybe the metrics loop
+	// should be the async part. Oh well.
+	auto event_starter = [es, sm, this]() {
+		if (c_wait_until_policies.get_value())
+		{
+			while (!sm->has_received_policies() && !running_state::instance().is_terminated())
+			{
+				usleep(100 * 1000);
+			}
+		}
+		// We can't actually start the event source until now, since we have to
+		// guarantee the policies have been loaded by the security manager
+		LOG_INFO("Starting event source");
+		es->start();
+		m_pool.start(*es, watchdog_runnable::NO_TIMEOUT);
+	};
+	auto throwaway = std::async(std::launch::async, event_starter);
 
 	auto& state = running_state::instance();
 

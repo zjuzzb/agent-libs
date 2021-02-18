@@ -6,6 +6,9 @@
 #include "k8s_delegator.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 // filters normalize state and event JSONs, so they can be processed generically:
 // event is turned into a single-node array, state is turned into ADDED event
@@ -91,29 +94,25 @@ k8s_delegator::node_ip_addr_list_t k8s_delegator::get_node_addresses(const Json:
 				{
 					if(address != "127.0.0.1")
 					{
-						g_logger.log("K8s delegator: node address [" + address + "] "
-									 "is not an IP address, ignoring.",
-									 sinsp_logger::SEV_DEBUG);
+						LOG_DEBUG("K8s delegator: node address [" + address + "] "
+								  "is not an IP address, ignoring.");
 					}
 					else
 					{
-						g_logger.log("K8s delegator: ignored local node address [" + address + "] ",
-									 sinsp_logger::SEV_INFO);
+						LOG_INFO("K8s delegator: ignored local node address [" + address + "] ");
 					}
 				}
 			}
 			else
 			{
-				g_logger.log("K8s delegator: address not convertible to string.",
-							 sinsp_logger::SEV_ERROR);
+				LOG_ERROR("K8s delegator: address not convertible to string.");
 			}
 		}
 	}
 
 	if (!has_valid_ip)
 	{
-		g_logger.log("K8s delegator: no valid node IP addresses found",
-			     sinsp_logger::SEV_WARNING);
+		LOG_WARNING("K8s delegator: no valid node IP addresses found");
 	}
 
 	return node_addrs;
@@ -126,8 +125,7 @@ k8s_delegator::k8s_taint k8s_delegator::get_max_taint(const Json::Value& taints)
 	// Older k8s versions won't return
 	if(taints.isNull() && !taints.isArray())
 	{
-		g_logger.log("K8s delegator: empty or invalid taint format",
-			     sinsp_logger::SEV_DEBUG);
+		LOG_DEBUG("K8s delegator: empty or invalid taint format");
 		return max_taint;
 	}
 
@@ -158,8 +156,7 @@ k8s_delegator::k8s_taint k8s_delegator::get_max_taint(const Json::Value& taints)
 		}
 		else
 		{
-			g_logger.log("K8s delegator: taint not convertible to string.",
-				     sinsp_logger::SEV_ERROR);
+			LOG_ERROR("K8s delegator: taint not convertible to string.");
 		}
 	}
 	return max_taint;
@@ -242,13 +239,13 @@ bool k8s_delegator::is_delegated(bool trace, bool log_delegated)
 
 	if(trace && g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 	{
-		g_logger.log("This node has " + std::to_string(m_local_ip_addrs.size()) + " IP addresses", sinsp_logger::SEV_TRACE);
+		LOG_TRACE("This node has " + std::to_string(m_local_ip_addrs.size()) + " IP addresses");
 		std::ostringstream os;
 		for(const auto& addr : m_local_ip_addrs)
 		{
 			os << addr << ", ";
 		}
-		g_logger.log(os.str(), sinsp_logger::SEV_TRACE);
+		LOG_TRACE(os.str());
 	}
 
 	auto it = m_nodes.cbegin();
@@ -268,19 +265,24 @@ bool k8s_delegator::is_delegated(bool trace, bool log_delegated)
 			os << " " << addr;
 			if(m_local_ip_addrs.find(addr) != m_local_ip_addrs.end())
 			{
-				g_logger.log("This node (" + std::to_string(ii) +
-					     ") is delegated", sinsp_logger::SEV_DEBUG);
+				LOG_DEBUG("This node (" + std::to_string(ii) + ") is delegated");
 				delegated = true;
 			}
 		}
-		g_logger.log(os.str(), log_delegated ? sinsp_logger::SEV_INFO : sinsp_logger::SEV_DEBUG);
+		if (log_delegated)
+		{
+		    LOG_INFO(os.str());
+		}
+		else
+		{
+		    LOG_DEBUG(os.str());
+		}
 
 		++it;
 	}
 
 	if (!delegated) {
-		g_logger.log("This node is NOT delegated",
-			     sinsp_logger::SEV_DEBUG);
+		LOG_DEBUG("This node is NOT delegated");
 	}
 	return delegated;
 }
@@ -310,7 +312,7 @@ bool k8s_delegator::handle_component(const Json::Value& json, const msg_data*)
 				}
 				else
 				{
-					g_logger.log("K8s delegator: Couldn't determine node name (null or not a string).", sinsp_logger::SEV_WARNING);
+					LOG_WARNING("K8s delegator: Couldn't determine node name (null or not a string).");
 				}
 				std::string type = get_json_string(json, "type");
 				added = (type == "ADDED");
@@ -319,11 +321,11 @@ bool k8s_delegator::handle_component(const Json::Value& json, const msg_data*)
 				{
 					if(add_node(tm, node["addresses"], node["taints"]))
 					{
-						g_logger.log("K8s delegator: Added node to list: " + nname, sinsp_logger::SEV_DEBUG);
+						LOG_DEBUG("K8s delegator: Added node to list: " + nname);
 					}
 					else
 					{
-						g_logger.log("K8s delegator: Node not added to list: " + nname, sinsp_logger::SEV_TRACE);
+						LOG_TRACE("K8s delegator: Node not added to list: " + nname);
 						ret = false;
 					}
 				}
@@ -331,11 +333,11 @@ bool k8s_delegator::handle_component(const Json::Value& json, const msg_data*)
 				{
 					if(remove_node(tm, node["addresses"]))
 					{
-						g_logger.log("K8s delegator: Removed node from the list: " + nname, sinsp_logger::SEV_DEBUG);
+						LOG_DEBUG("K8s delegator: Removed node from the list: " + nname);
 					}
 					else
 					{
-						g_logger.log("K8s delegator: Removed node event for non-existent node: " + nname, sinsp_logger::SEV_WARNING);
+						LOG_WARNING("K8s delegator: Removed node event for non-existent node: " + nname);
 						ret = false;
 					}
 				}
@@ -344,21 +346,20 @@ bool k8s_delegator::handle_component(const Json::Value& json, const msg_data*)
 					if (maybe_modify_node(tm, node["addresses"], node["taints"]))
 					{
 						taint_modified = true;
-						g_logger.log("K8s delegator: Modified taint value for node: " + nname,
-							     sinsp_logger::SEV_DEBUG);
+						LOG_DEBUG("K8s delegator: Modified taint value for node: " + nname);
 					}
 				}
 			}
 			else
 			{
-				g_logger.log("K8s delegator: timestamp is null or not string.", sinsp_logger::SEV_WARNING);
+				LOG_WARNING("K8s delegator: timestamp is null or not string.");
 				ret = false;
 			}
 		} // end for nodes
 	}
 	else
 	{
-		g_logger.log("K8s delegator: nodes are empty or not an array.", sinsp_logger::SEV_WARNING);
+		LOG_WARNING("K8s delegator: nodes are empty or not an array.");
 		ret = false;
 	}
 
@@ -366,17 +367,17 @@ bool k8s_delegator::handle_component(const Json::Value& json, const msg_data*)
 	{
 		std::string d;
 		if(!is_delegated(true, true)) { d = "NOT "; }
-		g_logger.log("This node is " + d + "delegated", sinsp_logger::SEV_INFO);
+		LOG_INFO("This node is " + d + "delegated");
 	}
 
 	if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 	{
-		g_logger.log("NODES=" + std::to_string(m_nodes.size()), sinsp_logger::SEV_TRACE);
+		LOG_TRACE("NODES=" + std::to_string(m_nodes.size()));
 		for(const auto& node : m_nodes)
 		{
 			std::ostringstream os;
 			for(const auto& n : node.second) { os << n << ", "; }
-			g_logger.log(std::to_string(node.first.get_ts()) + ':' + os.str(), sinsp_logger::SEV_TRACE);
+			LOG_TRACE(std::to_string(node.first.get_ts()) + ':' + os.str());
 		}
 	}
 	return ret;
@@ -386,7 +387,7 @@ void k8s_delegator::handle_json(Json::Value&& root)
 {
 	if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 	{
-		g_logger.log(json_as_string(root), sinsp_logger::SEV_TRACE);
+		LOG_TRACE(json_as_string(root));
 	}
 
 	handle_component(root);

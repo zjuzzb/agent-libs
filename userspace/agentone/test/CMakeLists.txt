@@ -17,11 +17,6 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 
-configure_file(
-    ${PROJECT_SOURCE_DIR}/userspace/dragent/src/agent-config.h.in
-    ${PROJECT_SOURCE_DIR}/userspace/dragent/src/agent-config.h
-)
-
 add_executable(unit-test-agentone main.cpp container_manager.ut.cpp agentino_manager.ut.cpp)
 
 target_link_libraries(

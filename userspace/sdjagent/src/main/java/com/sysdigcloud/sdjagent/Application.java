@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.ser.FilterProvider;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
+import com.sysdigcloud.sdjagent.exception.SetNsException;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
@@ -68,6 +69,8 @@ public class Application {
         } catch (IOException ex) {
             LOGGER.severe("IOException on main thread: " + ex.getMessage());
             System.exit(1);
+        } catch (SetNsException ex) {
+            LOGGER.severe("SetNsException on main thread: " + ex.getMessage());
         }
     }
 
@@ -111,7 +114,7 @@ public class Application {
         appLogger.setLevel(level);
     }
 
-    private void runWithArgs(String[] args) throws IOException {
+    private void runWithArgs(String[] args) throws IOException, SetNsException {
         final String command = args[0];
         if((command.equals("reenter") || command.equals("getVMHandle")) && args.length > 1)
         {

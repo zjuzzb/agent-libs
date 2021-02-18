@@ -74,8 +74,12 @@ then
 	return 0
 fi
 
+if [ -z "$COLLECTOR_SSL" ]
+then
+	COLLECTOR_SSL=true
+fi
 if ! grep ^ssl $CONFIG_FILE > /dev/null 2>&1; then
-	echo "ssl: false" >> $CONFIG_FILE
+	echo "ssl: $COLLECTOR_SSL" >> $CONFIG_FILE
 fi
 
 if [ $# -eq 0 ]

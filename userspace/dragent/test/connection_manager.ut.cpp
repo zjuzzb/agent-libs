@@ -911,7 +911,8 @@ TEST_F(connection_manager_fixture, protocol_handler_transmit)
 	// Transmit a message using the protocol handler
 	ph.transmit(draiosproto::message_type::COMMAND_LINE_RESPONSE, 
 	            response,
-	            protocol_queue::item_priority::BQ_PRIORITY_LOW);
+	            protocol_queue::item_priority::BQ_PRIORITY_LOW,
+	            0);
 
 	// wait for all the data to be received
 	const uint32_t total_messages = 3; // Two HS + 1 metrics
@@ -2752,7 +2753,6 @@ TEST_F(connection_manager_fixture, socket_poll_plaintext)
 
 TEST_F(connection_manager_fixture, socket_poll_encrypted)
 {
-	test_helpers::scoped_config<bool> verify("ssl_verify_certificate", false);
 	const uint16_t encrypted_port = 7538;
 	std::vector<std::string> cert_paths = {"."};
 	std::string ca_cert = "certificate.pem";
@@ -2775,7 +2775,7 @@ TEST_F(connection_manager_fixture, socket_poll_encrypted)
 	//
 	// Build an encrypted poco socket
 	//
-	cm_poco_secure_socket ps_sock(cert_paths, ca_cert);
+	cm_poco_secure_socket ps_sock(cert_paths, ca_cert, false);
 	r = ps_sock.connect("127.0.0.1", encrypted_port);
 	ASSERT_TRUE(r);
 	// Handshake
@@ -2795,7 +2795,7 @@ TEST_F(connection_manager_fixture, socket_poll_encrypted)
 	//
 	struct sockaddr_in addr;
 	std::string hostname = "127.0.0.1";
-	cm_openssl_socket ossl_sock(cert_paths, ca_cert);
+	cm_openssl_socket ossl_sock(cert_paths, ca_cert, false);
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = inet_addr(hostname.c_str());
 	addr.sin_port = htons(encrypted_port);
@@ -2860,7 +2860,6 @@ TEST_F(connection_manager_fixture, socket_poll_encrypted)
 
 TEST_F(connection_manager_fixture, socket_poll)
 {
-	test_helpers::scoped_config<bool> verify("ssl_verify_certificate", false);
 	const uint16_t plaintext_port = 7357;
 	const uint16_t encrypted_port = 7358;
 	std::vector<std::string> cert_paths;
@@ -2908,7 +2907,7 @@ TEST_F(connection_manager_fixture, socket_poll)
 	//
 	// Now an encrypted poco socket
 	//
-	cm_poco_secure_socket ps_sock(cert_paths, ca_cert);
+	cm_poco_secure_socket ps_sock(cert_paths, ca_cert, false);
 	r = ps_sock.connect("127.0.0.1", encrypted_port);
 	ASSERT_TRUE(r);
 	// Handshake
@@ -2926,7 +2925,7 @@ TEST_F(connection_manager_fixture, socket_poll)
 	// Building an openssl socket is a little harder, but we can do it!
 	struct sockaddr_in addr;
 	std::string hostname = "127.0.0.1";
-	cm_openssl_socket ossl_sock(cert_paths, ca_cert);
+	cm_openssl_socket ossl_sock(cert_paths, ca_cert, false);
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = inet_addr(hostname.c_str());
 	addr.sin_port = htons(encrypted_port);

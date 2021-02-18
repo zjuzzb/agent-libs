@@ -16,6 +16,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../draiosproto)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../draiosproto)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../userspace-shared/src)
 include_directories(${PROJECT_BINARY_DIR}/driver/src)
@@ -211,6 +212,7 @@ set(SANALYZER_SOURCES
     protostate.cpp
     security_config.cpp
     sched_analyzer.cpp
+    scope_resolver_iface.cpp
     scores.cpp
     sqlparser.cpp
     statsd_emitter.cpp

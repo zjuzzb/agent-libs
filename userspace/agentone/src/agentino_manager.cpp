@@ -456,7 +456,14 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 
 	if (sock_list.empty())
 	{
-		// Nothing to see here. Move along.
+		// The run loop is relying on this function to sleep in order to not
+		// busy wait. In the case where there are no agentinos connected, we
+		// will sleep for the entire timeout value.
+		// Note that this will not impact our ability to receive new agentino
+		// connections, as that occurs on the listen thread. So by sleeping
+		// in the zero-connected-agentinos case we are not jeopardizing our
+		// ability to respond to an incoming connection.
+		std::this_thread::sleep_for(timeout);
 		return;
 	}
 
@@ -468,7 +475,10 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 		goto cleanup;
 	}
 
-	LOG_DEBUG("Poll returned a list of length %d", (int)ready_list.size());
+	if (ready_list.size() > 0)
+	{
+		LOG_DEBUG("Poll returned a list of length %d", (int)ready_list.size());
+	}
 
 	for (auto& psock : ready_list)
 	{
@@ -492,9 +502,8 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 		else
 		{
 			LOG_WARNING("Error reading message from agentino (probably agentino disconnected)");
-			// This works because the == operator for std::shared_ptr compares
-			// the content pointer, not the shared_ptr objects themselves.
-			delete_agentino_connection(*cptr);
+			// Propagate the disconnect to the connection object
+			(*cptr)->disconnect();
 		}
 	}
 

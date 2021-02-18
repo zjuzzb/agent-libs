@@ -1,4 +1,7 @@
 #include "mount_points_limits.h"
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 //certain libs (cough-cough musl) don't support EXTMATCH. So we map it to something
 //those patterns will unfortunately not work on binaries
@@ -16,7 +19,7 @@ mount_points_limits::mount_points_limits(const mount_points_filter_vec& filters,
 		std::vector<std::string> patterns = sinsp_split(flt.to_string(), '|');
 		if (patterns.size() != 3)
 		{
-			g_logger.log("Mount points limits: exactly three patterns are required.", sinsp_logger::SEV_WARNING);
+			LOG_WARNING("Mount points limits: exactly three patterns are required.");
 			continue;
 		}
 		m_filters.push_back(flt);
@@ -49,7 +52,7 @@ bool mount_points_limits::allow(const std::string& device,
 void mount_points_limits::log_if_max_mount_limit_reached()
 {
 	if (limit_is_reached()){
-		g_logger.log("Max mount points limit reached.", sinsp_logger::SEV_DEBUG);
+		LOG_DEBUG("Max mount points limit reached.");
 	}
 }
 

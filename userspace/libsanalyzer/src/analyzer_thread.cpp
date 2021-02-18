@@ -25,6 +25,9 @@
 #include "sched_analyzer.h"
 #include "scores.h"
 #include "sinsp_errno.h"
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 namespace
 {
@@ -110,9 +113,10 @@ void main_thread_analyzer_info::hash_environment(thread_analyzer_info* tinfo,
 // thread_analyzer_info implementation
 ///////////////////////////////////////////////////////////////////////////////
 
-thread_analyzer_info::thread_analyzer_info(sinsp* inspector, sinsp_analyzer* analyzer)
+thread_analyzer_info::thread_analyzer_info(sinsp* inspector, sinsp_analyzer* analyzer, uint32_t num_cpus)
     : sinsp_threadinfo(inspector),
       m_inspector(inspector),
+      m_num_cpus(num_cpus),
       m_analyzer(analyzer),
       m_tap(nullptr),
       m_procinfo(nullptr),
@@ -125,9 +129,11 @@ thread_analyzer_info::thread_analyzer_info(sinsp* inspector, sinsp_analyzer* ana
 
 thread_analyzer_info::thread_analyzer_info(sinsp* inspector,
                                            sinsp_analyzer* analyzer,
-                                           std::shared_ptr<audit_tap>& audit_tap)
+                                           std::shared_ptr<audit_tap>& audit_tap,
+                                           uint32_t num_cpus)
     : sinsp_threadinfo(inspector),
       m_inspector(inspector),
+      m_num_cpus(num_cpus),
       m_analyzer(analyzer),
       m_tap(audit_tap),
       m_procinfo(nullptr),
@@ -166,16 +172,15 @@ void thread_analyzer_info::init()
 	m_old_pfminor = 0;
 	m_last_wait_duration_ns = 0;
 	m_last_wait_end_time_ns = 0;
-	ASSERT(m_inspector->get_machine_info() != NULL);
 	m_syscall_errors.clear();
 	m_called_execve = false;
 	m_last_cmdline_sync_ns = 0;
 }
 
-const std::set<double>& thread_analyzer_info::get_percentiles()
+const std::set<double>& thread_analyzer_info::get_percentiles() const
 {
 	// This works because we're single threaded
-	if (!m_percentiles_initialized)
+	if (!m_percentiles_initialized && m_analyzer)
 	{
 		m_percentiles = m_analyzer->get_configuration_read_only()->get_percentiles();
 		// all the threads that belong to a process will share the
@@ -208,8 +213,8 @@ void thread_analyzer_info::allocate_procinfo_if_not_present()
 	{
 		m_procinfo = new sinsp_procinfo();
 
-		m_procinfo->m_server_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
-		m_procinfo->m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
+		m_procinfo->m_server_transactions_per_cpu.resize(m_num_cpus);
+		m_procinfo->m_client_transactions_per_cpu.resize(m_num_cpus);
 
 		m_procinfo->clear();
 		if (get_percentiles().size())
@@ -482,13 +487,11 @@ void thread_analyzer_info::scan_listening_ports(bool scan_procfs) const
 
 			if (m_procfs_found_ports.size() != prev_size)
 			{
-				g_logger.format(sinsp_logger::SEV_INFO,
-				                "Updated list of listening ports for pid %" PRIi64
-				                ", %s. Found %d new ports: %s",
-				                m_pid,
-				                m_comm.c_str(),
-				                m_procfs_found_ports.size() - prev_size,
-				                ports_to_string(m_procfs_found_ports).c_str());
+				LOG_INFO("Updated list of listening ports for pid %lu %s. Found %lu new ports: %s",
+				         m_pid,
+				         m_comm.c_str(),
+				         m_procfs_found_ports.size() - prev_size,
+				         ports_to_string(m_procfs_found_ports).c_str());
 			}
 		}
 	}
@@ -637,10 +640,9 @@ const proc_config& thread_analyzer_info::get_proc_config()
 
 		if (!conf.empty())
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-			                "Found process %ld with custom conf, SYSDIG_AGENT_CONF=%s",
-			                m_pid,
-			                conf.c_str());
+			LOG_DEBUG("Found process %ld with custom conf, SYSDIG_AGENT_CONF=%s",
+			          m_pid,
+			          conf.c_str());
 		}
 		m_proc_config = make_unique<proc_config>(conf);
 	}

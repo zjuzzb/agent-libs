@@ -286,11 +286,12 @@ type_config<uint32_t>::ptr c_transmitbuffer_size =
         .hidden()
         .build();
 
+static int print_ssl_error(const char *str, size_t len, void *fp)
+{
+	LOG_ERROR("SSL error %s", str);
 
-type_config<bool> c_ssl_verify_certificate(true,
-                                           "Should the agent verify the SSL certificate "
-                                           "sent by the collector?",
-                                           "ssl_verify_certificate");
+	return 1;
+}
 
 // Statics
 std::atomic<bool> cm_socket::m_listen(false);
@@ -399,15 +400,25 @@ void cm_socket::listen_thread_loop(int listen_fd,
 			ret = SSL_set_fd(ssl, conn_fd);
 			if (ret != 1)
 			{
-				ERR_print_errors_fp(stderr);
+				ERR_print_errors_cb(print_ssl_error, nullptr);
 				int err = SSL_get_error(ssl, ret);
-				LOG_ERROR("SSL error on incoming connection: %d : %d", ret, err);
+				int syscall_err = 0;
+				if (err == SSL_ERROR_SYSCALL)
+				{
+					syscall_err = errno;
+				}
+				LOG_ERROR("SSL error on incoming connection: %d : %d : %d",
+				          ret,
+				          err,
+				          syscall_err);
+				::close(conn_fd);
 				continue;
 			}
 
 			ret = SSL_accept(ssl);
 			if (ret <= 0)
 			{
+				int syscall_err = 0;
 				int err = SSL_get_error(ssl, ret);
 				if (err == SSL_ERROR_WANT_READ ||
 				    err == SSL_ERROR_WANT_WRITE)
@@ -415,8 +426,36 @@ void cm_socket::listen_thread_loop(int listen_fd,
 					LOG_ERROR("SSL_ERROR_WANT_READ/WRITE not handled yet");
 					// Add socket to the list of FDs for polling?
 				}
-				ERR_print_errors_fp(stderr);
-				LOG_ERROR("SSL error accepting incoming connection: %d : %d", ret, err);
+				else if (err == SSL_ERROR_SYSCALL)
+				{
+					syscall_err = errno;
+				}
+
+				// SSPROD-6261: The load balancer between the agentino and the
+				// agentone will make periodic connections just to ensure the
+				// endpoint is still alive and healthy. These connections will
+				// drop right after they succeed, so this is an expected
+				// condition. Otherwise, print an error.
+				if (err != SSL_ERROR_SYSCALL || syscall_err != 0)
+				{
+					// OpenSSL normally has two layers of error indirection:
+					// - Layer 1: The error returned from the call itself (which
+					//            is often just -1)
+					// - Layer 2: The result of SSL_get_error()
+					// When Layer 2 is SSL_ERROR_SYSCALL, there's a third layer
+					// of indirection, which is the errno of the syscall error.
+					// This code is juggling all those layers of indirection
+					// and trying its hardest to get an actual useful error to
+					// the customer.
+
+					ERR_print_errors_cb(print_ssl_error, nullptr);
+					LOG_ERROR("SSL error accepting incoming connection: %d : %d : %d",
+					          ret,
+					          err,
+					          syscall_err);
+				}
+				SSL_free(ssl);
+				::close(conn_fd);
 				continue;
 			}
 
@@ -607,11 +646,15 @@ bool cm_socket::poll(const std::list<poll_sock>& sock_list,
 	// Pass 2: Build the return list
 	for (uint32_t i = 0; i < nfds; ++i, ++itr)
 	{
-		if (fds[i].revents == POLLIN ||
-		    fds[i].revents == POLLERR ||
-		    fds[i].revents == POLLHUP)
+		if ((fds[i].revents & POLLIN == POLLIN) ||
+		    (fds[i].revents & POLLERR == POLLERR) ||
+		    (fds[i].revents & POLLHUP == POLLHUP))
 		{
 			out_list.emplace_back(itr->sock, itr->ctx);
+		}
+		else
+		{
+			LOG_WARNING("Unexpected poll event type %d", fds[i].revents);
 		}
 	}
 
@@ -690,7 +733,8 @@ std::string cm_socket::find_ca_cert_path(const std::vector<std::string>& search_
  * OpenSSL socket
  **************************************************************************/
 cm_openssl_socket::cm_openssl_socket(const std::vector<std::string>& ca_cert_paths,
-                                     const std::string& ssl_ca_certificate)
+                                     const std::string& ssl_ca_certificate,
+                                     bool verify_certificate)
 {
 	int res = -1;
 	m_ssl = nullptr;
@@ -709,7 +753,7 @@ cm_openssl_socket::cm_openssl_socket(const std::vector<std::string>& ca_cert_pat
 	m_ssl_ctx_owned = true;
 
 	// Set options on SSL context
-	if (c_ssl_verify_certificate.get_value())
+	if (verify_certificate)
 	{
 		SSL_CTX_set_verify(m_ctx, SSL_VERIFY_PEER, nullptr);
 		SSL_CTX_set_verify_depth(m_ctx, 9);
@@ -1133,13 +1177,14 @@ public:
 };
 
 cm_poco_secure_socket::cm_poco_secure_socket(const std::vector<std::string>& cert_paths,
-                                             const std::string& cert_authority)
+                                             const std::string& cert_authority,
+                                             bool verify_certificate)
 {
 	Poco::Net::Context::VerificationMode verification_mode;
 	Poco::SharedPtr<LoggingCertificateHandler> invalid_cert_handler = nullptr;
 	std::string cert_path;
 
-	if (c_ssl_verify_certificate.get_value())
+	if (verify_certificate)
 	{
 		verification_mode = Poco::Net::Context::VERIFY_STRICT;
 		invalid_cert_handler = new LoggingCertificateHandler(false);

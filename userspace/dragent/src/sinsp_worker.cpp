@@ -153,25 +153,12 @@ void sinsp_worker::init_security()
 		m_security_mgr =
 		    new security_mgr(m_configuration->c_root_dir.get_value(), m_protocol_handler);
 		m_security_mgr->init(m_inspector.get(),
+				     m_analyzer->get_agent_container_id(),
 				     m_analyzer->mutable_infra_state(),
 				     m_analyzer,
 				     m_capture_job_handler,
 				     m_configuration,
 				     m_internal_metrics);
-
-		if (security_config::instance().get_policies_v2_file() != "")
-		{
-			std::string errstr;
-
-			if (!m_security_mgr->request_load_policies_v2_file(
-			        security_config::instance().get_policies_v2_file().c_str(),
-			        errstr))
-			{
-				LOGGED_THROW(sinsp_exception,
-				             "Could not load policies_v2 from file: %s",
-				             errstr.c_str());
-			}
-		}
 	}
 
 	if (feature_manager::instance().get_enabled(COINTERFACE))

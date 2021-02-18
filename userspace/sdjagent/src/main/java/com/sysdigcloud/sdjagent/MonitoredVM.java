@@ -6,6 +6,8 @@
 package com.sysdigcloud.sdjagent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sysdigcloud.sdjagent.exception.CheckContainerException;
+import com.sysdigcloud.sdjagent.exception.SetNsException;
 import sun.jvmstat.monitor.MonitorException;
 
 import javax.management.*;
@@ -29,8 +31,11 @@ public class MonitoredVM {
     private static final String DEFAULT_LOCALHOST = "127.0.0.1";
     private String address;
     private Connection connection;
-    private final int pid;
+    private final int monitoredVMpid;
+    private final int monitoredVMvpid;
+    private final int sdjagentPid;
     private String name;
+    private final String logPrefix;
     /**
      * Available means that we can get at least the mainClass from target JVM
      */
@@ -39,7 +44,7 @@ public class MonitoredVM {
     private final List<Config.BeanQuery> queryList;
     private final List<BeanInstance> matchingBeans;
     private long lastDisconnectionTimestamp;
-    private final boolean isOnAnotherContainer;
+    private Tribool isOnAnotherContainer = Tribool.UNSET;
     private CheckForAvailabilityTimer checkForAvailabilityTimer;
 
     private class CheckForAvailabilityTimer {
@@ -97,9 +102,16 @@ public class MonitoredVM {
             this.maxReached = false;
         }
     }
-    public MonitoredVM(VMRequest request)
-    {
-        this.pid = request.getPid();
+
+    private enum Tribool {
+        TRUE,
+        FALSE,
+        UNSET
+    }
+    public MonitoredVM(VMRequest request){
+        this.monitoredVMpid = request.getPid();
+        this.monitoredVMvpid = request.getVpid();
+        this.sdjagentPid = CLibrary.getPid();
         this.queryList = new ArrayList<Config.BeanQuery>();
         this.lastBeanRefresh = 0;
         this.matchingBeans = new ArrayList<BeanInstance>();
@@ -108,16 +120,21 @@ public class MonitoredVM {
         this.name = "";
         this.lastDisconnectionTimestamp = 0;
         this.checkForAvailabilityTimer = new CheckForAvailabilityTimer();
+        this.logPrefix = String.format("[%d,%d]", monitoredVMpid, monitoredVMvpid);
 
-        if (request.getPid() == CLibrary.getPid()) {
+        if (monitoredVMpid == sdjagentPid) {
             this.name = "sdjagent";
             available = true;
-            isOnAnotherContainer = false;
+            isOnAnotherContainer = Tribool.FALSE;
             return;
         }
 
-        isOnAnotherContainer = CLibrary.isOnAnotherContainer(request.getPid());
-        checkForAvailability(request);
+        try {
+            isOnAnotherContainer = CLibrary.isOnAnotherContainer(monitoredVMpid) ? Tribool.TRUE : Tribool.FALSE;
+            checkForAvailability(request);
+        } catch (CheckContainerException e) {
+            LOGGER.warning(String.format("Could not determine if %d is on another container", monitoredVMpid));
+        }
     }
 
     public void setMaxavailabilityCheckIntervalSec(int d) {
@@ -127,16 +144,19 @@ public class MonitoredVM {
     public boolean checkForAvailability(VMRequest request) {
         if (available == false) {
             if (checkForAvailabilityTimer.isTimeForCheck()) {
-                if (isOnAnotherContainer) {
-                    retrieveVmInfoFromContainer(request);
-                } else {
-                    retrieveVMInfoFromHost(request);
+                if (isOnAnotherContainer != Tribool.UNSET) {
+                    if (isOnAnotherContainer == Tribool.TRUE) {
+                        retrieveVmInfoFromContainer(request);
+                    } else {
+                        retrieveVMInfoFromHost(request);
+                    }
                 }
                 if (!this.available && (request.getArgs().length > 0)) {
                     // This way is faster but it's more error prone
                     // so keep it as last chance
                     retrieveVMInfoFromArgs(request);
                 }
+                LOGGER.fine(String.format("%s Checked availability: %s", logPrefix, available));
             }
         }
         return available;
@@ -146,26 +166,25 @@ public class MonitoredVM {
         String data = null;
 
         // Try to get jvm data from jni without running sdjagent in the container
-        data = CLibrary.getJMXAddressFromContainer(request.getPid(), request.getVpid());
+        data = CLibrary.getJMXAddressFromContainer(monitoredVMpid, monitoredVMvpid);
 
         // backup to copy into container
         if(data == null) {
-            LOGGER.info(String.format("Unable to get jmx address (%d,%d) from JNI. Trying to copy and run sdjagent on the app container",
-                    request.getPid(), request.getVpid()));
+            LOGGER.info(String.format("%s Unable to get jmx address from JNI. Trying to copy and run sdjagent on the app container",
+                    logPrefix));
             final String sdjagentPath = String.format("%s/tmp/sdjagent.jar", request.getRoot());
-            LOGGER.fine(String.format("Copying sdjagent jar to %s", sdjagentPath));
-            if (CLibrary.copyToContainer(Prefix.getInstallPrefix() + "/share/sdjagent.jar", request.getPid(), sdjagentPath)) {
+            LOGGER.fine(String.format("%s Copying sdjagent jar to %s", logPrefix, sdjagentPath));
+            if (CLibrary.copyToContainer(Prefix.getInstallPrefix() + "/share/sdjagent.jar", monitoredVMpid, sdjagentPath)) {
                 final String[] command = {"java", "-Dsdjagent.loadjnilibrary=false", "-jar", "/tmp/sdjagent.jar", "reenter",
-                                                    String.valueOf(request.getVpid()), String.valueOf(request.getPid())};
+                                                    String.valueOf(monitoredVMvpid), String.valueOf(monitoredVMpid)};
                 // Using /proc/<pid>/exe because sometimes java command is not on PATH
-                final String javaExe = String.format("/proc/%d/exe", request.getVpid());
-                data = CLibrary.runOnContainer(request.getPid(), request.getVpid(), javaExe, command, request.getRoot());
+                final String javaExe = String.format("/proc/%d/exe", monitoredVMvpid);
+                data = CLibrary.runOnContainer(monitoredVMpid, monitoredVMvpid, javaExe, command, request.getRoot());
             } else {
                 // These logs are with debug priority because may happen for every short lived java process
-                LOGGER.fine(String.format("Cannot copy sdjagent files on container for pid (%d:%d)", request.getPid(),
-                        request.getVpid()));
+                LOGGER.fine(String.format("%s Cannot copy sdjagent files on container for pid", logPrefix));
             }
-            CLibrary.rmFromContainer(request.getPid(), sdjagentPath);
+            CLibrary.rmFromContainer(monitoredVMpid, sdjagentPath);
         }
 
         if (data != null && !data.isEmpty())
@@ -182,14 +201,13 @@ public class MonitoredVM {
                     }
                 }
             } catch (IOException ex) {
-                LOGGER.severe(String.format("Wrong data from getVMHandle for process (%d:%d): %s, exception: %s",
-                        request.getPid(), request.getVpid(), data, ex.getMessage()));
+                LOGGER.severe(String.format("%s Wrong data from getVMHandle for process: %s, exception: %s",
+                        logPrefix, data, ex.getMessage()));
             }
         }
         else
         {
-            LOGGER.fine(String.format("No data from getVMHandle for process (%d:%d)", request.getPid(), request
-                    .getVpid()));
+            LOGGER.fine(String.format("%s No data from getVMHandle for process", logPrefix));
         }
     }
 
@@ -199,36 +217,36 @@ public class MonitoredVM {
         boolean uidChanged = false;
         if(!request.skipUidAndGid()) {
             try {
-                long[] idInfo = CLibrary.getUidAndGid(request.getPid());
+                long[] idInfo = CLibrary.getUidAndGid(monitoredVMpid);
                 int gid_error = CLibrary.setegid(idInfo[1]);
                 int uid_error = CLibrary.seteuid(idInfo[0]);
                 if (uid_error == 0 && gid_error == 0) {
-                    LOGGER.fine(String.format("Change uid and gid to %d:%d", idInfo[0], idInfo[1]));
+                    LOGGER.fine(String.format("%s Change uid and gid to %d:%d", logPrefix, idInfo[0], idInfo[1]));
                 } else {
-                    LOGGER.warning(String.format("Cannot change uid and gid to %d:%d, errors: %d:%d (pid=%d vpid=%d root=%s args=%s)",
-                                   idInfo[0], idInfo[1], uid_error, gid_error, request.getPid(), request.getVpid(), request.getRoot(), Arrays.toString(request.getArgs())));
+                    LOGGER.warning(String.format("%s Cannot change uid and gid to %d:%d, errors: %d:%d (pid=%d vpid=%d root=%s args=%s)",
+                                   logPrefix, idInfo[0], idInfo[1], uid_error, gid_error, monitoredVMpid, monitoredVMvpid, request.getRoot(), Arrays.toString(request.getArgs())));
                 }
                 uidChanged = true;
             } catch (IOException ex)
             {
-                LOGGER.warning(String.format("Cannot read uid:gid data from process %d: %s (vpid=%d root=%s args=%s)",
-                               pid, ex.getMessage(), request.getVpid(), request.getRoot(), Arrays.toString(request.getArgs())));
+                LOGGER.warning(String.format("%s Cannot read uid:gid data from process: %s (vpid=%d root=%s args=%s)",
+                        logPrefix, ex.getMessage(), monitoredVMvpid, request.getRoot(), Arrays.toString(request.getArgs())));
             }
         }
 
         try {
             JvmstatVM jvmstat;
-            jvmstat = new JvmstatVM(request.getPid());
+            jvmstat = new JvmstatVM(monitoredVMpid);
             this.name = jvmstat.getMainClass();
             // Try to get local address from jvmstat
             this.address = jvmstat.getJMXAddress();
             jvmstat.detach();
-	    if (this.address != null) {
+            if (this.address != null) {
                 available = true;
-	    }
+            }
         } catch (MonitorException e) {
-            LOGGER.warning(String.format("JvmstatVM cannot attach to process %d: %s (vpid=%d root=%s args=%s)",
-                           this.pid, e.getMessage(), request.getVpid(), request.getRoot(), Arrays.toString(request.getArgs())));
+            LOGGER.warning(String.format("%s JvmstatVM cannot attach to process' hsperfdata: %s (vpid=%d root=%s args=%s)",
+                           logPrefix, e.getMessage(), monitoredVMvpid, request.getRoot(), Arrays.toString(request.getArgs())));
             return;
         }
 
@@ -237,11 +255,11 @@ public class MonitoredVM {
         {
             try
             {
-                this.address = AttachAPI.loadManagementAgent(request.getPid());
+                this.address = AttachAPI.loadManagementAgent(monitoredVMpid);
             } catch (IOException e)
             {
-                LOGGER.warning(String.format("Cannot load agent on process %d: %s (vpid=%d root=%s args=%s)",
-                               this.pid, e.getMessage(), request.getVpid(), request.getRoot(), Arrays.toString(request.getArgs())));
+                LOGGER.warning(String.format("%s Cannot load agent on process: %s (vpid=%d root=%s args=%s)",
+                               logPrefix, e.getMessage(), monitoredVMvpid, request.getRoot(), Arrays.toString(request.getArgs())));
             }
         }
 
@@ -251,10 +269,10 @@ public class MonitoredVM {
             int uid_error = CLibrary.seteuid(0);
             int gid_error = CLibrary.setegid(0);
             if (uid_error == 0 && gid_error == 0) {
-                LOGGER.fine("Restore uid and gid");
+                LOGGER.fine(String.format("%s Restore uid and gid", logPrefix));
             } else {
-                LOGGER.severe(String.format("Cannot restore uid and gid, errors: %d:%d (pid=%d vpid=%d root=%s args=%s)",
-                              uid_error, gid_error, request.getPid(), request.getVpid(), request.getRoot(), Arrays.toString(request.getArgs())));
+                LOGGER.severe(String.format("%s Cannot restore uid and gid, errors: %d:%d (pid=%d vpid=%d root=%s args=%s)",
+                              logPrefix, uid_error, gid_error, monitoredVMpid, monitoredVMvpid, request.getRoot(), Arrays.toString(request.getArgs())));
             }
         }
     }
@@ -265,14 +283,16 @@ public class MonitoredVM {
         boolean authenticate = false;
         String name = null;
         for(String arg : request.getArgs()) {
-            if (arg.startsWith("-Dcom.sun.management.jmxremote.port=")) { // NOI18N
+            if (arg.startsWith("-Dcom.sun.management.jmxremote.port=") ||
+                arg.startsWith("-Dcom.sun.management.jmxremote.rmi.port")) { // NOI18N
                 port = Integer.parseInt(arg.substring(arg.indexOf("=") + 1)); // NOI18N
             } else if (arg.equals("-Dcom.sun.management.jmxremote.authenticate=true")) { // NOI18N
-                LOGGER.warning(String.format("Process with pid %d has JMX active but requires authorization, please disable it", request.getPid()));
+                LOGGER.warning(String.format("%s Process with pid %d has JMX active but requires authorization, please disable it", logPrefix, monitoredVMpid));
                 authenticate = true;
             } else if (arg.startsWith("-Dcom.sun.management.jmxremote.host=")) {
                 hostname = arg.substring(arg.indexOf("=") + 1);
-            } else if (arg.startsWith("-Dcassandra.jmx.local.port=")) { // Hack to autodetect cassandra
+            } else if (arg.startsWith("-Dcassandra.jmx.local.port=") ||
+                arg.startsWith("-Dcassandra.jmx.remote.port")) { // Hack to autodetect cassandra
                 port = Integer.parseInt(arg.substring(arg.indexOf("=") + 1));
                 name = "org.apache.cassandra.service.CassandraDaemon"; // To avoid false negatives force cassandra here
             } else if (arg.startsWith("-jar:")){
@@ -291,10 +311,10 @@ public class MonitoredVM {
             }
             this.address = String.format("service:jmx:rmi:///jndi/rmi://%s:%d/jmxrmi", hostname, port);
             this.available = true;
-        }
 
-        LOGGER.info(String.format("JVM pid=%d vpid=%d info from args: hostname=%s port=%d authenticate=%s name=%s (args=%s)",
-                                  request.getPid(), request.getVpid(), hostname, port, authenticate, this.name, Arrays.toString(request.getArgs())));
+            LOGGER.info(String.format("%s retrieveVMInfoFromArgs Got infos from args: hostname=%s port=%d authenticate=%s name=%s (args=%s)",
+                    logPrefix, hostname, port, authenticate, this.name, Arrays.toString(request.getArgs())));
+        }
     }
 
     public boolean isAvailable() {
@@ -333,14 +353,14 @@ public class MonitoredVM {
                 }
             }
             if (matchingBeans.size() >= beansLimit) {
-                LOGGER.warning(String.format("Hit bean limit (%d) for process %d (%s), ignoring further beans", beansLimit, pid, name));
+                LOGGER.warning(String.format("%s Hit bean limit (%d) for process %d (%s), ignoring further beans", logPrefix, beansLimit, monitoredVMpid, name));
                 break;
             }
         }
-        LOGGER.fine(String.format("Got %d/%d beans for process %d (%s)", matchingBeans.size(), beansLimit, pid, name));
+        LOGGER.fine(String.format("%s Got %d/%d beans for process %s", logPrefix, matchingBeans.size(), beansLimit, name));
     }
 
-    public List<Map<String, Object>> availableMetrics(boolean all) throws IOException {
+    public List<Map<String, Object>> availableMetrics(boolean all) throws IOException, SetNsException {
         setNetworkNamespaceIfNeeded();
         if (connection == null) {
             Tracer trc = new Tracer("createConnection");
@@ -433,23 +453,23 @@ public class MonitoredVM {
                                 metrics.add(beanMetrics);
                             }
                         } catch (InstanceNotFoundException e) {
-                            LOGGER.warning(String.format("Bean %s not found on process %d, forcing refresh", bean.getName().getCanonicalName(), pid));
+                            LOGGER.warning(String.format("Bean %s not found on process %d, forcing refresh", bean.getName().getCanonicalName(), monitoredVMpid));
                             lastBeanRefresh = 0;
                         } catch (ReflectionException e) {
-                            LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d: %s", bean.getName().getCanonicalName(), pid, e.getMessage()));
+                            LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d: %s", bean.getName().getCanonicalName(), monitoredVMpid, e.getMessage()));
                             lastBeanRefresh = 0;
                         }
                     }
                 } catch (IOException ex) {
-                    LOGGER.warning(String.format("Process %d agent is not responding reason=%s, declaring it down", pid, ex.getMessage().replaceAll("\n","")));
+                    LOGGER.warning(String.format("%s Process' jmx server is not responding reason=%s, declaring it down", logPrefix, ex.getMessage().replaceAll("\n","")));
                     disconnect();
                 } catch (SecurityException e) {
-                    LOGGER.warning(String.format("Not enough permission to get attributes on process %d, disabling connection", pid));
+                    LOGGER.warning(String.format("%s Not enough permission to get attributes on process, disabling connection", logPrefix));
                     disconnect();
                 }
                 setInitialNamespaceIfNeeded();
-            } catch (final IOException ex) {
-                LOGGER.warning(String.format("Cannot join namespace of pid=%d reason=%s, declaring it down", pid, ex.getMessage().replaceAll("\n","")));
+            } catch (final SetNsException ex) {
+                LOGGER.warning(String.format("%s Error changing namespace:%s. restarting sdjagent", logPrefix, ex.getMessage().replaceAll("\n","")));
                 disconnect();
             }
         }
@@ -457,21 +477,26 @@ public class MonitoredVM {
         return metrics;
     }
 
-    private void setInitialNamespaceIfNeeded() {
-        if (isOnAnotherContainer) {
+    private void setInitialNamespaceIfNeeded() throws SetNsException{
+        if (isOnAnotherContainer == Tribool.TRUE) {
             boolean namespaceSet = CLibrary.setInitialNamespace();
             if(!namespaceSet) {
-                LOGGER.severe("Cannot set initial namespace");
+                throw new SetNsException(String.format("%s Could not come back in my namespace", logPrefix));
+            }
+            else {
+                LOGGER.fine(String.format("%s Moved back in my namespace", logPrefix));
             }
         }
     }
 
-    private void setNetworkNamespaceIfNeeded() throws IOException {
-        if (isOnAnotherContainer) {
-            boolean namespaceChanged = CLibrary.setNamespace(pid);
+    private void setNetworkNamespaceIfNeeded() throws SetNsException {
+        if (isOnAnotherContainer == Tribool.TRUE) {
+            boolean namespaceChanged = CLibrary.setNamespace(monitoredVMpid);
 
             if(!namespaceChanged) {
-                throw new IOException(String.format("Cannot set namespace"));
+                throw new SetNsException(String.format("%s Could not set namespace", logPrefix));
+            } else {
+                LOGGER.fine(String.format("%s Moved to network namespace", logPrefix));
             }
         }
     }

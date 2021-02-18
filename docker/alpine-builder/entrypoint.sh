@@ -25,7 +25,7 @@ if [ -z $STATSITE_VERSION ]; then
   STATSITE_VERSION=0.7.0-sysdig7
 fi
 
-rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=dependency_install_scripts --exclude='userspace/dragent/src/agent-config.h' --exclude=build $CODE_DIR/agent/ $WORK_DIR/agent/
+rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=dependency_install_scripts --exclude=build $CODE_DIR/agent/ $WORK_DIR/agent/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' $CODE_DIR/oss-falco/ $WORK_DIR/oss-falco/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/protorepo/ $WORK_DIR/protorepo/
 rsync --delete -t -r --exclude=.git --exclude=producer_build $CODE_DIR/libscap-hayabusa/ $WORK_DIR/libscap-hayabusa
@@ -58,8 +58,16 @@ create_makefiles()
 build_hayabusa_producers()
 {	
 	pushd $HAYABUSA_PRODUCER_DIR
-	cmake ../
+	mkdir -p release
+	pushd release
+	cmake ../../
 	make -j$MAKE_JOBS pdig-bin udigembed
+	popd
+	mkdir -p debug
+	pushd debug
+	cmake -DCMAKE_BUILD_TYPE=Debug ../../
+	make -j$MAKE_JOBS pdig-bin udigembed
+	popd
 	popd
 }
 
@@ -76,8 +84,10 @@ build_agentino()
 	cp $WORK_DIR/agent/userspace/dragent/src/dragent.default.yaml $DOCKER_CONTEXT
 	cp $WORK_DIR/agent/userspace/dragent/src/root.cert $DOCKER_CONTEXT
 	cp -r $WORK_DIR/oss-falco/userspace/engine/lua/* $DOCKER_CONTEXT
-	cp $HAYABUSA_PRODUCER_DIR/libscap/producer/pdig/pdig $DOCKER_CONTEXT
-	cp $HAYABUSA_PRODUCER_DIR/libscap/producer/udigembed/libudigembed.so $DOCKER_CONTEXT
+	cp $HAYABUSA_PRODUCER_DIR/release/libscap/producer/pdig/pdig $DOCKER_CONTEXT
+	cp $HAYABUSA_PRODUCER_DIR/release/libscap/producer/udigembed/libudigembed.so $DOCKER_CONTEXT
+	cp $HAYABUSA_PRODUCER_DIR/debug/libscap/producer/pdig/pdig $DOCKER_CONTEXT/pdig-debug
+	cp $HAYABUSA_PRODUCER_DIR/debug/libscap/producer/udigembed/libudigembed.so $DOCKER_CONTEXT/libudigembed-debug.so
 
 	make -j$MAKE_JOBS agentino-dockerfiles
 	cp docker/agentino/static/* $DOCKER_CONTEXT

@@ -81,7 +81,7 @@ public:
 	 * subsequent call might be null!)
 	 */
 	static void set_connected_ref(std::shared_ptr<connection>& conn) { conn->m_connected_ref = conn; }
-	void clear_connected_ref() { m_connected_ref = nullptr; }
+	void clear_connected_ref();
 
 	/**
 	 * Bring up the connection on the agentone side.

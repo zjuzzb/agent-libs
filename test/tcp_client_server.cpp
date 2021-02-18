@@ -333,7 +333,7 @@ void runtest(iotype iot,
 				if (NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 				{
 					thread_analyzer_info* ti = dynamic_cast<thread_analyzer_info*>(
-					    param.m_inspector->get_thread(server_pid, false, true));
+					    &*param.m_inspector->get_thread_ref(server_pid, false, true));
 					ASSERT_EQ(
 					    (uint32_t)payload.length() * ntransactions * 2,
 					    (ti->m_metrics.m_io_net.m_bytes_in + ti->m_metrics.m_io_net.m_bytes_out));
@@ -343,7 +343,7 @@ void runtest(iotype iot,
 					     ti->m_metrics.m_io_net.m_count_other));
 
 					ti = dynamic_cast<thread_analyzer_info*>(
-					    param.m_inspector->get_thread(ctid, false, true));
+					    &*param.m_inspector->get_thread_ref(ctid, false, true));
 					ASSERT_EQ(
 					    (uint32_t)payload.length() * ntransactions * 2,
 					    (ti->m_metrics.m_io_net.m_bytes_in + ti->m_metrics.m_io_net.m_bytes_out));

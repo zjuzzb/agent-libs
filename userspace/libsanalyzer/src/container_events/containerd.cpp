@@ -7,6 +7,9 @@
 #include <container_events/containerd_container.pb.h>
 #include <container_events/containerd_image.pb.h>
 #include <container_events/containerd_task.pb.h>
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 using namespace containerd::services::events::v1;
 using namespace containerd::events;
@@ -70,7 +73,7 @@ void containerd_events::subscribe()
 	SubscribeRequest req;
 	for (const auto& filter : m_filters)
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "containerd event filter: %s", filter.c_str());
+		LOG_DEBUG("containerd event filter: %s", filter.c_str());
 		req.add_filters(filter);
 	}
 
@@ -79,11 +82,11 @@ void containerd_events::subscribe()
 		{
 			if(status == streaming_grpc::ERROR)
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR, "Could not connect to containerd grpc");
+				LOG_ERROR("Could not connect to containerd grpc");
 			}
 			else if(status == streaming_grpc::SHUTDOWN)
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR, "containerd grpc shut down");
+				LOG_ERROR("containerd grpc shut down");
 			}
 			else
 			{
@@ -112,7 +115,7 @@ void containerd_events::handle_event(Envelope &event)
 	auto it = s_event_emitters.find(event.topic());
 	if(it == s_event_emitters.end())
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Got unknown containerd event: %s", event.DebugString().c_str());
+		LOG_DEBUG("Got unknown containerd event: %s", event.DebugString().c_str());
 		return;
 	}
 
@@ -130,7 +133,7 @@ void containerd_events::emit_containers_create(Envelope& event, event_scope& sco
 	ContainerCreate details;
 	bool ret = details.ParseFromString(event.event().value());
 	if (!ret) {
-		g_logger.format(sinsp_logger::SEV_ERROR, "Failed to parse event");
+		LOG_ERROR("Failed to parse event");
 		return;
 	}
 
@@ -154,7 +157,7 @@ void containerd_events::emit_images_create(Envelope& event, event_scope& scope)
 	ImageCreate details;
 	bool ret = details.ParseFromString(event.event().value());
 	if (!ret) {
-		g_logger.format(sinsp_logger::SEV_ERROR, "Failed to parse event");
+		LOG_ERROR("Failed to parse event");
 		return;
 	}
 
@@ -171,7 +174,7 @@ void containerd_events::emit_images_update(Envelope& event, event_scope& scope)
 	ImageUpdate details;
 	bool ret = details.ParseFromString(event.event().value());
 	if (!ret) {
-		g_logger.format(sinsp_logger::SEV_ERROR, "Failed to parse event");
+		LOG_ERROR("Failed to parse event");
 		return;
 	}
 
@@ -188,7 +191,7 @@ void containerd_events::emit_images_delete(Envelope& event, event_scope& scope)
 	ImageDelete details;
 	bool ret = details.ParseFromString(event.event().value());
 	if (!ret) {
-		g_logger.format(sinsp_logger::SEV_ERROR, "Failed to parse event");
+		LOG_ERROR("Failed to parse event");
 		return;
 	}
 
@@ -205,7 +208,7 @@ void containerd_events::emit_tasks_oom(Envelope& event, event_scope& scope)
 	TaskOOM details;
 	bool ret = details.ParseFromString(event.event().value());
 	if (!ret) {
-		g_logger.format(sinsp_logger::SEV_ERROR, "Failed to parse event");
+		LOG_ERROR("Failed to parse event");
 		return;
 	}
 
@@ -227,7 +230,7 @@ void containerd_events::emit_tasks_exit(Envelope& event, event_scope& scope)
 	TaskExit details;
 	bool ret = details.ParseFromString(event.event().value());
 	if (!ret) {
-		g_logger.format(sinsp_logger::SEV_ERROR, "Failed to parse event");
+		LOG_ERROR("Failed to parse event");
 		return;
 	}
 
@@ -288,8 +291,10 @@ void containerd_events::emit_event(user_event_logger::severity severity, uint64_
 
 	if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 	{
-		g_logger.log("CRI EVENT: scheduled for sending\n" + evt.to_string(), sinsp_logger::SEV_TRACE);
+		LOG_TRACE("CRI EVENT: scheduled for sending\n" + evt.to_string());
 	}
+	
+	
 }
 
 // This function does 3 things:

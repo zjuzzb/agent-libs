@@ -17,8 +17,9 @@ public:
 	 * priority. 
 	 */
 	virtual void transmit(draiosproto::message_type type, 
-	                      const google::protobuf::MessageLite& message,
-	                      protocol_queue::item_priority priority = protocol_queue::item_priority::BQ_PRIORITY_MEDIUM) = 0;
+	                      const google::protobuf::Message& message,
+	                      protocol_queue::item_priority priority = protocol_queue::item_priority::BQ_PRIORITY_MEDIUM,
+	                      uint64_t ts_ns = 0) = 0;
 };
 
 }

@@ -448,6 +448,8 @@ public:
 	void refresh_aws_metadata();
 	void refresh_machine_id();
 	bool check_python_version26();
+	static size_t curl_write_callback(const char* ptr, size_t size, size_t nmemb, string* json);
+	static std::string curl_get(const std::string& uri, const std::string& buffer);
 
 	// Returns 0 if already up-to-date, 1 if updated, -1 if
 	// error. On error, &errstr is updated with the source of the
@@ -462,6 +464,8 @@ public:
 	std::string get_aws_instance_id();
 	std::string get_aws_account_id();
 	std::string get_aws_region();
+
+	void set_machine_id_prefix(std::string prefix) { m_machine_id_prefix = prefix; }
 
 private:
 	inline static bool is_executable(const std::string& path);

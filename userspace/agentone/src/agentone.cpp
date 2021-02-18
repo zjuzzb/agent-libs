@@ -328,7 +328,7 @@ int agentone_app::main(const std::vector<std::string>& args)
 	m_had_unclean_shutdown = remove_file_if_exists(m_configuration.m_log_dir, K8S_PROBE_FILE);
 
 	// Ensure the feature manager has validatead the config
-	if (!feature_manager::instance().initialize())
+	if (!feature_manager::instance().initialize(feature_manager::agent_mode::AGENT_MODE_AGENTONE))
 	{
 		std::cerr << "Failed to init features." << '\n';
 		dragent::running_state::instance().shut_down();
@@ -562,6 +562,10 @@ int agentone_app::sdagent_main()
 		LOG_ERROR("Invalid machine_id detected");
 		return dragent::exit_code::RESTART;
 	}
+
+	// MAC addresses are not suitable for uniqueness in virtualized environments (and
+	// certainly not in fargate), so add hostname, which we ask customers to make unique
+	m_configuration.set_machine_id_prefix(m_hostname);
 
 	//
 	// Set up the memory watchdog

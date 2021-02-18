@@ -37,7 +37,7 @@ bool security_policy_v2::has_action(const draiosproto::action_type &atype)
 	return false;
 }
 
-bool security_policy_v2::match_scope(std::string container_id, infrastructure_state_iface *infra_state) const
+bool security_policy_v2::match_syscall_scope(std::string container_id, infrastructure_state_iface *infra_state) const
 {
 	::scope_predicates empty_preds;
 

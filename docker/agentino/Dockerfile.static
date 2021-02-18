@@ -19,6 +19,8 @@ ADD lyaml/* /opt/draios/share/lua/lyaml/
 
 ADD pdig /opt/draios/bin
 ADD libudigembed.so /opt/draios/bin
+ADD pdig-debug /opt/draios/bin
+ADD libudigembed-debug.so /opt/draios/bin
 
 COPY ./agentino-entrypoint.sh /
 ENTRYPOINT ["/agentino-entrypoint.sh"]

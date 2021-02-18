@@ -938,10 +938,10 @@ TEST_F(sys_call_test, procname_refresh_lt_1s)
 		sleep(2);
 	};
 	captured_event_callback_t callback = [&](const callback_param& param) {
-		auto parent = param.m_inspector->get_thread(getpid());
+		auto parent = &*param.m_inspector->get_thread_ref(getpid());
 		ASSERT_NE(nullptr, parent);
 		EXPECT_EQ(string("tests"), parent->m_comm) << "parent";
-		auto childt = param.m_inspector->get_thread(child);
+		auto childt = &*param.m_inspector->get_thread_ref(child);
 		ASSERT_NE(nullptr, childt);
 		EXPECT_EQ(string("tests"), childt->m_comm) << "child";
 		++callnum;
@@ -976,10 +976,10 @@ TEST_F(sys_call_test, procname_refresh_gt_1s)
 		}
 	};
 	captured_event_callback_t callback = [&](const callback_param& param) {
-		auto parent = param.m_inspector->get_thread(getpid());
+		auto parent = &*param.m_inspector->get_thread_ref(getpid());
 		ASSERT_NE(nullptr, parent);
 		EXPECT_EQ(string("tests"), parent->m_comm) << "parent";
-		auto childt = param.m_inspector->get_thread(child);
+		auto childt = &*param.m_inspector->get_thread_ref(child);
 		ASSERT_NE(nullptr, childt);
 		EXPECT_EQ(string("changed"), childt->m_comm) << "child";
 		++callnum;

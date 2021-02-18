@@ -13,12 +13,12 @@ pipeline {
 			parallel {
 				stage('UTs') {
 					steps {
-						build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"), string(name:'SYSDIG_BRANCH', value:"${params.SYSDIG_BRANCH}"), string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
+						build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"), string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"), string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
 					}
 				}
 				stage('System Tests') {
 					steps {
-						build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"), string(name:'SYSDIG_BRANCH', value:"${params.SYSDIG_BRANCH}"), string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
+						build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"), string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"), string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
 					}
 				}
 			}
@@ -32,7 +32,7 @@ pipeline {
 				}
 				stage('Build Everything Else') {
 					steps {
-						 build job:'agent-build-dev',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"),string(name:'SYSDIG_BRANCH', value:"${params.SYSDIG_BRANCH}"),string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),string(name:'RELEASE_VERSION', value:"${getBuildNumber()}"),booleanParam(name:'UPLOAD', value:true),booleanParam(name:'PUBLIC_RELEASE', value:false)]
+						 build job:'agent-build-dev',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"),string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"),string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),string(name:'RELEASE_VERSION', value:"${getBuildNumber()}"),booleanParam(name:'UPLOAD', value:true),booleanParam(name:'PUBLIC_RELEASE', value:false)]
 					}
 				}
 			}

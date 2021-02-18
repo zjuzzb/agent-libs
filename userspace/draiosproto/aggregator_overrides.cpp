@@ -145,31 +145,15 @@ void metrics_message_aggregator_impl::aggregate_sampling_ratio(draiosproto::metr
 	}
 }
 
-size_t metrics_message_aggregator_impl::process_pids(const draiosproto::program& input)
+void metrics_message_aggregator_impl::process_pids(const draiosproto::program& input)
 {
-	uint64_t be_hash = 0;
-	for (auto j : input.pids())
-	{
-		if (pid_map.find(j) != pid_map.end())
-		{
-			be_hash = pid_map[j];
-		}
-	}
-
-	if (be_hash == 0)
-	{
-		be_hash = program_java_hasher(input);
-	}
-
 	// regardless of whether we had previously calculated the hash,
 	// we have to add everything to the pid map, since there might
 	// be new pids
 	for (auto j : input.pids())
 	{
-		pid_map[j] = be_hash;
+		pid_map[j] = input.tiuid();
 	}
-
-	return be_hash;
 }
 
 void metrics_message_aggregator_impl::aggregate_programs(draiosproto::metrics& input,
@@ -182,86 +166,14 @@ void metrics_message_aggregator_impl::aggregate_programs(draiosproto::metrics& i
 		return;
 	}
 	aggregated_programs = true;
-
-	if (in_place)
+	for (uint32_t i = 0; i < input.programs().size(); i++)
 	{
-		int32_t leader = 0;
-		for (int32_t trailer = input.programs().size() - 1; leader <= trailer; leader++)
-		{
-			// thing is duplicate. swap it with trailer, which is guaranteed to not be
-			auto entry = &(*input.mutable_programs())[leader];
-			if (programs_map.find(entry) != programs_map.end())
-			{
-				// We could in theory perform the duplicate aggregation while doing this (or the
-				// trailer decrement below)
-				// but this code is difficult to reason about as is, so we'll just do them all
-				// in one pass at the end
-				input.mutable_programs()->SwapElements(leader, trailer);
-				entry = &(*input.mutable_programs())[leader];
-			}
-			// now thing is guaranteed to not be in cache, so add it
-			programs_vector.push_back(
-			    std::unique_ptr<agent_message_aggregator<draiosproto::program>>(
-			        &m_builder.build_program()));
-			programs_vector[programs_vector.size() - 1]->aggregate(*entry, *entry, true);
-			size_t be_hash = process_pids(*entry);
-			// put the pids in
-			entry->clear_pids();
-			entry->add_pids(be_hash);
-			programs_map.insert(std::pair<const draiosproto::program*, uint32_t>(entry, leader));
-			// move the trailer to point to a new valid input
-			while (trailer >= leader &&
-			       programs_map.find(&input.programs()[trailer]) != programs_map.end())
-			{
-				trailer--;
-			}
-		}
-		// aggregate the duplicates
-		for (uint32_t i = programs_map.size(); i < output.programs().size(); i++)
-		{
-			process_pids(output.programs()[i]);
-			uint32_t target_index = programs_map[&output.programs()[i]];
-			programs_vector[target_index]->aggregate((*output.mutable_programs())[i],
-			                                         (*output.mutable_programs())[target_index],
-			                                         false);
-		}
-		// delete the duplicate subrange
-		output.mutable_programs()->DeleteSubrange(programs_map.size(),
-		                                          output.programs().size() - programs_map.size());
+		draiosproto::program* prog = &(*input.mutable_programs())[i];
+		process_pids(*prog);
+		prog->clear_pids();
+		prog->add_pids(prog->tiuid());
 	}
-	else
-	{
-		for (uint32_t i = 0; i < input.programs().size(); i++)
-		{
-			auto entry = &(*input.mutable_programs())[i];
-			if (programs_map.find(entry) == programs_map.end())
-			{
-				programs_vector.push_back(
-				    std::unique_ptr<agent_message_aggregator<draiosproto::program>>(
-				        &m_builder.build_program()));
-				auto new_entry = new draiosproto::program(std::move(*entry));
-				programs_vector[programs_vector.size() - 1]->aggregate(*new_entry,
-				                                                       *new_entry,
-				                                                       true);
-				// put the pids in
-				size_t be_hash = process_pids(*new_entry);
-				new_entry->clear_pids();
-				new_entry->add_pids(be_hash);
-				output.mutable_programs()->UnsafeArenaAddAllocated(new_entry);
-				programs_map.insert(std::pair<const draiosproto::program*, uint32_t>(
-				    &output.programs()[output.programs().size() - 1],
-				    output.programs().size() - 1));
-			}
-			else
-			{
-				process_pids(*entry);
-				programs_vector[programs_map[entry]]->aggregate(
-				    *entry,
-				    (*output.mutable_programs())[programs_map[entry]],
-				    false);
-			}
-		}
-	}
+	metrics_message_aggregator::aggregate_programs(input, output, in_place);
 }
 
 void metrics_message_aggregator_impl::aggregate_config_percentiles(draiosproto::metrics& input,

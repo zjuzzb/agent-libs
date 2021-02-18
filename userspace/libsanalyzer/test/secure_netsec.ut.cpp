@@ -42,7 +42,7 @@ class external_processor_dummy : public libsinsp::event_processor
 	void add_chisel_metric(statsd_metric* metric) override {}
 	sinsp_threadinfo* build_threadinfo(sinsp* inspector) override
 	{
-		auto tinfo = new thread_analyzer_info(inspector, nullptr);
+		auto tinfo = new thread_analyzer_info(inspector, nullptr, 0);
 		tinfo->init();
 		return tinfo;
 	}

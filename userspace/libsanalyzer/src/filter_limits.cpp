@@ -1,6 +1,9 @@
 #include "filter_limits.h"
 
 #include <utility>
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 user_configured_limits::user_configured_limits(filter_vec_t&& filters,
 					       std::string target_name,
@@ -33,8 +36,8 @@ void user_configured_limits::insert(const std::string& target, const user_config
 		}
 		else
 		{
-			g_logger.format(sinsp_logger::SEV_WARNING, "Metric limit cache full, metric [%s] "
-					  "will not be cached.", target.c_str());
+			LOG_WARNING("Metric limit cache full, metric [%s] "
+					    "will not be cached.", target.c_str());
 		}
 	}
 }
@@ -73,13 +76,13 @@ void user_configured_limits::log( const std::string& target,
 {
 	if(log_enabled)
 	{
-		g_logger.format(sinsp_logger::SEV_INFO, "%c[%s] %s %s: %s (%s)",
-				(inc ? '+' : '-'),
-				type.c_str(),
-				target_type_name.c_str(),
-				(inc ? "included" : "excluded"),
-				target.c_str(),
-				filter.c_str());
+		LOG_INFO("%c[%s] %s %s: %s (%s)",
+				 (inc ? '+' : '-'),
+				 type.c_str(),
+				 target_type_name.c_str(),
+				 (inc ? "included" : "excluded"),
+				 target.c_str(),
+				 filter.c_str());
 	}
 }
 
@@ -152,11 +155,10 @@ bool user_configured_limits::allow(const std::string& target, std::string& filte
 		}
 		else if(FNM_NOMATCH != m)
 		{
-			g_logger.format(sinsp_logger::SEV_WARNING,
-					"%s limits: error glob matching [%s] with pattern [%s]",
-					m_target_type_name.c_str(),
-					target.c_str(),
-					f.to_string().c_str());
+			LOG_WARNING("%s limits: error glob matching [%s] with pattern [%s]",
+					    m_target_type_name.c_str(),
+					    target.c_str(),
+					    f.to_string().c_str());
 		}
 	}
 

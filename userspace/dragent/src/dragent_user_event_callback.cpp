@@ -11,6 +11,8 @@
 #include <Poco/Logger.h>
 #include <yaml-cpp/yaml.h>
 
+COMMON_LOGGER();
+
 dragent_user_event_callback::dragent_user_event_callback(
 		Poco::Logger& event_logger,
 	        const double rate,
@@ -31,7 +33,7 @@ void dragent_user_event_callback::log(
 	// the token bucket.
 	if(!m_token_bucket.claim())
 	{
-		g_log->warning("User event throttled: msg=" + str);
+		LOG_WARNING("User event throttled: msg=" + str);
 		return;
 	}
 

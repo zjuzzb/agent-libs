@@ -17,6 +17,7 @@ public:
 	virtual ~security_actions();
 
 	void init(security_mgr *mgr,
+		  const std::string &agent_container_id,
 		  std::shared_ptr<coclient> &coclient,
 		  infrastructure_state_iface *infra_state);
 
@@ -30,6 +31,7 @@ public:
 	void perform_actions(uint64_t ts_ns,
 			     sinsp_threadinfo *tinfo,
 			     const std::string &policy_name,
+			     const std::string &policy_type,
 			     const actions &actions,
 			     const v2actions &v2actions,
 			     draiosproto::policy_event *event);
@@ -120,6 +122,7 @@ protected:
 	std::map<std::string,uint64_t> m_active_container_actions;
 
 	security_mgr *m_mgr;
+	std::string m_agent_container_id;
 	bool m_has_outstanding_actions;
 	std::shared_ptr<coclient> m_coclient;
 	infrastructure_state_iface *m_infra_state;

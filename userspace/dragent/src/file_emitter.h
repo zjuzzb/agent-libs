@@ -37,6 +37,7 @@ public:
 	bool emit_text(const std::shared_ptr<flush_data_message>& data);
 	bool emit_json(const std::shared_ptr<flush_data_message>& data);
 	bool emit_raw(const std::shared_ptr<serialized_buffer>& data);
+	bool emit_message(const google::protobuf::Message& msg);
 
 	// Convienence messages to generate filenames given a timestamp and/or a message type.
 	static std::string generate_dam_filename(const std::string &directory, const uint64_t timestamp);

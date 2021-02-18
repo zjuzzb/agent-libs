@@ -1,5 +1,7 @@
 package com.sysdigcloud.sdjagent;
 
+import com.sysdigcloud.sdjagent.exception.CheckContainerException;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Scanner;
@@ -151,7 +153,7 @@ final public class CLibrary {
                 int nsret = setns(netnsfd, 0);
                 close_fd(netnsfd);
                 if (nsret != 0) {
-                    LOGGER.warning(String.format("setNamespace: setns call failed"));
+                    LOGGER.warning(String.format("setNamespace: setns (%d) call failed", pid));
                     return false;
                 } else {
                     return true;
@@ -161,6 +163,8 @@ final public class CLibrary {
                 return false;
             }
         } else {
+            // Emit a warning because we should never be here
+            LOGGER.warning(String.format("Cannot set %d namespace because C library is not loaded", pid));
             return false;
         }
     }
@@ -169,7 +173,9 @@ final public class CLibrary {
         if (libraryLoaded) {
             return setns(initialNamespace, 0) == 0;
         } else {
-            return true;
+            // Emit a warning because we should never be here
+            LOGGER.warning("Cannot set initial namespace because C library is not loaded");
+            return false;
         }
     }
 
@@ -197,16 +203,17 @@ final public class CLibrary {
         }
     }
 
-    public static boolean isOnAnotherContainer(int pid) {
+    public static boolean isOnAnotherContainer(int pid) throws CheckContainerException {
         if (libraryLoaded) {
             final String pidMntNamespacePath = String.format("%s/proc/%d/ns/mnt", hostRoot, pid);
             final long pidMntNamespaceInode = getInodeOfFile(pidMntNamespacePath);
             if (pidMntNamespaceInode > 0) {
                 return pidMntNamespaceInode != mntNamespaceInode;
             } else {
-                return false;
+                throw new CheckContainerException(String.format("Couldn't get mount namespace inode for pid %d", pid));
             }
         } else {
+            // If library is not loaded, sdjagent had been copied on the app container. So return false
             return false;
         }
     }

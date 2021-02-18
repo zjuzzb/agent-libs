@@ -1,6 +1,7 @@
 #ifndef CYGWING_AGENT
 
 #include <sstream>
+#include <string>
 
 #include <google/protobuf/text_format.h>
 
@@ -101,6 +102,7 @@ security_mgr::~security_mgr()
 }
 
 void security_mgr::init(sinsp *inspector,
+			const std::string &agent_container_id,
 			infrastructure_state_iface *infra_state,
 			secure_k8s_audit_event_sink_iface *k8s_audit_evt_sink,
 			capture_job_queue_handler *capture_job_queue_handler,
@@ -133,7 +135,10 @@ void security_mgr::init(sinsp *inspector,
 
 	m_coclient = make_shared<coclient>(m_install_root);
 
-	m_actions.init(this, m_coclient, m_infra_state);
+	m_actions.init(this,
+		       agent_container_id,
+		       m_coclient,
+		       m_infra_state);
 
 	if (metrics != nullptr)
 	{
@@ -153,6 +158,20 @@ void security_mgr::init(sinsp *inspector,
 	if (security_config::instance().get_k8s_audit_server_enabled())
 	{
 		start_k8s_audit_server();
+	}
+
+	if (security_config::instance().get_policies_v2_file() != "")
+	{
+		 std::string errstr;
+
+            if (!request_load_policies_v2_file(
+                    security_config::instance().get_policies_v2_file().c_str(),
+                    errstr))
+            {
+                LOGGED_THROW(sinsp_exception,
+                             "Could not load policies_v2 from file: %s",
+                             errstr.c_str());
+            }
 	}
 
 	m_initialized = true;
@@ -197,17 +216,17 @@ security_mgr::loaded_v2_policies::~loaded_v2_policies()
 {
 }
 
-void security_mgr::loaded_v2_policies::load_policy_v2(infrastructure_state_iface *infra_state,
-						     std::shared_ptr<security_policy_v2> spolicy_v2,
-						     std::list<std::string> &ids)
+void security_mgr::loaded_v2_policies::load_syscall_policy_v2(infrastructure_state_iface *infra_state,
+							      std::shared_ptr<security_policy_v2> spolicy_v2,
+							      std::list<std::string> &ids)
 {
-	LOG_DEBUG("Loading v2 policy " + spolicy_v2->DebugString() +
+	LOG_DEBUG("Loading syscall v2 policy " + spolicy_v2->DebugString() +
 		     ", testing against set of " + to_string(ids.size()) +
 		     " container ids");
 
 	for (const auto &id : ids)
 	{
-		if(spolicy_v2->match_scope(id, infra_state))
+		if(spolicy_v2->match_syscall_scope(id, infra_state))
 		{
 			LOG_DEBUG("Policy " + spolicy_v2->name() + " matched scope for container " + id);
 
@@ -223,12 +242,23 @@ void security_mgr::loaded_v2_policies::load_policy_v2(infrastructure_state_iface
 			LOG_DEBUG("Policy " + spolicy_v2->name() + " did not match scope for container " + id);
 		}
 	}
+}
 
+void security_mgr::loaded_v2_policies::load_k8s_audit_policy_v2(std::shared_ptr<security_policy_v2> spolicy_v2)
+{
 	LOG_DEBUG("Loading v2 policy " + spolicy_v2->DebugString() +
 		     ", adding to k8s rules group");
 
-	// Also, always add to the k8s rules group
-	m_k8s_audit_security_rules->add_policy(spolicy_v2);
+	// Also, always add to the k8s rules group without checking
+	// scopes. We'll check the scopes as the events arrive.
+	std::shared_ptr<security_rules_group> grp = make_shared<security_rules_group>(
+		spolicy_v2->scope_predicates(), m_inspector, m_configuration);
+	grp->init(m_falco_engine, m_fastengine_rules_library, m_security_evt_metrics);
+
+	grp->add_policy(spolicy_v2);
+
+	LOG_DEBUG("Creating K8s Audit Rules Group: " + grp->to_string());
+	m_k8s_audit_security_rules.emplace_back(grp);
 }
 
 bool security_mgr::loaded_v2_policies::load_falco_rules_files(const draiosproto::falco_rules_files &files, std::string &errstr)
@@ -293,18 +323,43 @@ void security_mgr::loaded_v2_policies::match_policy_scopes(infrastructure_state_
 
 	for(auto &policy : m_policies_v2_msg->policy_list())
 	{
-		if(policy.enabled())
-		{
-			num_enabled++;
-		}
-		else
-		{
-			continue;
-		}
 		std::shared_ptr<security_policy_v2> spolicy = std::make_shared<security_policy_v2>(policy);
 		m_policies_v2.insert(make_pair(policy.id(), spolicy));
 
-		load_policy_v2(infra_state, spolicy, container_ids);
+		if(policy.enabled())
+		{
+			if (policy.policy_type() == "")
+			{
+				// We don't know the policy type, so add it to both the syscall policy
+				// set and the k8s audit policy set.
+				//
+				// When processing events later, the event source will dictate which
+				// rules apply for the event.
+				load_syscall_policy_v2(infra_state, spolicy, container_ids);
+				load_k8s_audit_policy_v2(spolicy);
+				num_enabled++;
+			}
+			else if (policy.policy_type() == "falco" || policy.policy_type() == "list_matching")
+			{
+				// Policy type falco really means policies that work
+				// on syscalls, whether they use falco rules or fast
+				// engine rules.
+
+				load_syscall_policy_v2(infra_state, spolicy, container_ids);
+				num_enabled++;
+			}
+			else if (policy.policy_type() == "k8s_audit")
+			{
+				load_k8s_audit_policy_v2(spolicy);
+				num_enabled++;
+			}
+			else
+			{
+				// This isn't an error--there can be other policy types handled by other
+				// things like cloud agents. That's why the log level is debug.
+				LOG_DEBUG("Unknown policy type \"%s\", skipping", policy.policy_type().c_str());
+			}
+		}
 	}
 
 	for(uint32_t evttype = 0; evttype < PPM_EVENT_MAX; evttype++)
@@ -363,10 +418,6 @@ bool security_mgr::loaded_v2_policies::load(std::string &errstr)
 		}
 	}
 
-	::scope_predicates empty_preds;
-	m_k8s_audit_security_rules = make_shared<security_rules_group>(empty_preds, m_inspector, m_configuration);
-	m_k8s_audit_security_rules->init(m_falco_engine, m_fastengine_rules_library, m_security_evt_metrics);
-
 	return true;
 }
 
@@ -401,7 +452,7 @@ security_mgr::security_rules_group_set &security_mgr::loaded_v2_policies::get_ru
 	return m_scoped_security_rules[container_id];
 }
 
-std::shared_ptr<security_mgr::security_rules_group> security_mgr::loaded_v2_policies::get_k8s_audit_security_rules()
+std::list<std::shared_ptr<security_mgr::security_rules_group>> security_mgr::loaded_v2_policies::get_k8s_audit_security_rules()
 {
 	return m_k8s_audit_security_rules;
 }
@@ -457,6 +508,7 @@ void security_mgr::load_policies_v2_async()
 			ret.successful = false;
 		} else {
 			ret.successful = true;
+			m_received_policies = true;
 		}
 
 		return ret;
@@ -687,11 +739,30 @@ void security_mgr::process_event_v2(gen_event *evt)
 		}
 		else if (evt->get_source() == ESRC_K8S_AUDIT)
 		{
-			std::shared_ptr<security_rules_group> k8s_audit_rules =
-				m_loaded_policies->get_k8s_audit_security_rules();
-			if (k8s_audit_rules)
+			json_event *j_evt = static_cast<json_event *>(evt);
+
+			for (const auto &group : m_loaded_policies->get_k8s_audit_security_rules())
 			{
-				results = k8s_audit_rules->match_event(evt);
+				// The scope must match the event
+				if(m_k8s_audit_infra_state.match_scope(j_evt, m_infra_state->get_k8s_cluster_name(), group->m_scope_predicates))
+				{
+					std::list<security_rules::match_result> *gresults;
+
+					gresults = group->match_event(evt);
+
+					if(gresults)
+					{
+						if(!results)
+						{
+							results = gresults;
+						}
+						else
+						{
+							results->splice(results->end(), *gresults);
+							delete gresults;
+						}
+					}
+				}
 			}
 		}
 		else
@@ -728,6 +799,7 @@ void security_mgr::process_event_v2(gen_event *evt)
 				m_actions.perform_actions(ts_ns,
 							  tinfo,
 							  result.m_policy->name(),
+							  result.m_policy->policy_type(),
 							  result.m_policy->actions(),
 							  result.m_policy->v2actions(),
 							  event);
@@ -1072,7 +1144,7 @@ void security_mgr::set_event_labels(std::string &container_id,
         {
             string aws_instance_id = m_configuration->get_aws_instance_id();
             if (!aws_instance_id.empty()) {
-                (*event->mutable_event_labels())["aws.instance_id"] = std::move(aws_instance_id);
+                (*event->mutable_event_labels())["aws.instanceId"] = std::move(aws_instance_id);
             }
         }
 
@@ -1081,7 +1153,7 @@ void security_mgr::set_event_labels(std::string &container_id,
         {
             string aws_account_id = m_configuration->get_aws_account_id();
             if (!aws_account_id.empty()) {
-                (*event->mutable_event_labels())["aws.account_id"] = std::move(aws_account_id);
+                (*event->mutable_event_labels())["aws.accountId"] = std::move(aws_account_id);
             }
         }
 
@@ -1107,13 +1179,17 @@ void security_mgr::set_event_labels(std::string &container_id,
 			{
 				break;
 			}
+			// tags are available in pair in the format key:value
+			// in case of multiple ":" are found the first one will be considered the separator
+			// between key and value
+			auto found = pair.find(":");
 
-			std::vector<std::string> parts = sinsp_split(pair, ':');
-
-			if (parts.size() == 2) {
+			if (found != std::string::npos){
+				auto tag_key = pair.substr(0, found);
 				// Do not include hardcoded "sysdig_secure.enabled" tag
-				if (parts[0] != "sysdig_secure.enabled") {
-					(*event->mutable_event_labels())[tag_prefix + parts[0]] = parts[1];
+				if (tag_key != "sysdig_secure.enabled") {
+					auto tag_value = pair.substr(found + 1, std::string::npos);
+					(*event->mutable_event_labels())[tag_prefix + tag_key] = tag_value;
 					count_tags++;
 				}
 			}
@@ -1339,7 +1415,7 @@ std::shared_ptr<security_mgr::security_rules_group> security_mgr::loaded_v2_poli
 	std::shared_ptr<security_rules_group> grp = make_shared<security_rules_group>(preds, m_inspector, m_configuration);
 	grp->init(m_falco_engine, m_fastengine_rules_library, m_security_evt_metrics);
 
-	LOG_DEBUG("Creating Rules Group: " + grp->to_string());
+	LOG_DEBUG("Creating Syscall Rules Group: " + grp->to_string());
 	m_rules_groups.emplace_back(grp);
 
 	return grp;
@@ -1509,4 +1585,8 @@ void security_mgr::configure_event_labels_set(){
 	}
 }
 
+bool security_mgr::has_received_policies()
+{
+	return m_received_policies;
+}
 #endif // CYGWING_AGENT

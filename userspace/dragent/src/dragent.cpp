@@ -127,7 +127,7 @@ type_config<bool> c_10s_flush_enabled(false,
                                       "Enable agent-side aggregation",
                                       "10s_flush_enable");
 
-type_config<std::string> c_promscrape_labels("--source.label=pod_id,sysdig_k8s_pod_uid,remove --source.label=container_name,sysdig_k8s_pod_container_name,remove",
+type_config<std::string> c_promscrape_labels("--source.label=pod_id,sysdig_k8s_pod_uid,remove --source.label=container_name,sysdig_k8s_pod_container_name,remove --source.label=sysdig_bypass,sysdig_bypass,remove",
                                              "source labels for promscrape to attach to results",
                                              "promscrape_labels");
 
@@ -1131,6 +1131,8 @@ int dragent_app::sdagent_main()
 		return exit_code::SHUT_DOWN;
 	}
 
+	m_protocol_handler.set_root_dir(m_configuration.c_root_dir.get_value());
+
 	// Set the configured default compression method
 	protobuf_compressor_factory::set_default(protocol_handler::c_compression_enabled.get_value()
 	                                             ? protocol_compression_method::GZIP
@@ -1325,7 +1327,7 @@ int dragent_app::sdagent_main()
 			                                              interval_cb);
 			if (c_promscrape_thread.get_value())
 			{
-				m_promscrape_proxy = std::make_shared<promscrape_proxy>(the_promscrape);
+				m_promscrape_proxy = std::make_shared<promscrape_proxy>(the_promscrape, &m_protocol_handler, cm);
 				m_pool.start(*m_promscrape_proxy.get(), c_promscrape_timeout_s.get_value());
 			}
 		}
@@ -1527,8 +1529,8 @@ void dragent_app::init_inspector(sinsp::ptr inspector)
 		inspector->set_max_thread_table_size(m_configuration.m_max_thread_table_size);
 	}
 
-	inspector->m_max_n_proc_lookups = m_configuration.m_max_n_proc_lookups;
-	inspector->m_max_n_proc_socket_lookups = m_configuration.m_max_n_proc_socket_lookups;
+	inspector->m_thread_manager->set_m_max_n_proc_lookups(m_configuration.m_max_n_proc_lookups);
+	inspector->m_thread_manager->set_m_max_n_proc_socket_lookups(m_configuration.m_max_n_proc_socket_lookups);
 
 	//
 	// Plug the sinsp logger into our one

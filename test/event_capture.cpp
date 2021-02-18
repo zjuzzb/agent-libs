@@ -43,7 +43,7 @@ void event_capture::capture()
 
 	if (m_max_thread_table_size != 0)
 	{
-		m_inspector->m_max_thread_table_size = m_max_thread_table_size;
+		m_inspector->m_thread_manager->set_max_thread_table_size(m_max_thread_table_size);
 	}
 
 	if (m_thread_timeout_ns != 0)

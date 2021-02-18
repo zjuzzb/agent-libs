@@ -103,10 +103,12 @@ security_actions::~security_actions()
 }
 
 void security_actions::init(security_mgr *mgr,
+			    const std::string &agent_container_id,
 			    std::shared_ptr<coclient> &coclient,
 			    infrastructure_state_iface *infra_state)
 {
 	m_mgr = mgr;
+	m_agent_container_id = agent_container_id;
 	m_coclient = coclient;
 	m_infra_state = infra_state;
 }
@@ -122,6 +124,13 @@ void security_actions::perform_container_action(uint64_t ts_ns,
 	{
 		// Docker actions against empty containers trivially succeed
 		result->set_successful(true);
+		note_action_complete(astate);
+	}
+	else if(container_id == m_agent_container_id)
+	{
+		// The agent can't perform container actions on itself
+		result->set_successful(false);
+		result->set_errmsg("Container id is agent container");
 		note_action_complete(astate);
 	}
 	else
@@ -255,6 +264,7 @@ void security_actions::perform_capture_action(uint64_t ts_ns,
 void security_actions::perform_actions(uint64_t ts_ns,
 				       sinsp_threadinfo *tinfo,
 				       const std::string &policy_name,
+				       const std::string &policy_type,
 				       const actions &actions,
 				       const v2actions &v2actions,
 				       draiosproto::policy_event *event)
@@ -287,19 +297,39 @@ void security_actions::perform_actions(uint64_t ts_ns,
 		bool action_handled = true;
 		if (c_support_actions.get_value())
 		{
-			switch(action.type())
+			// Although the messaging for actions is
+			// general purpose, allowing any action to be
+			// a part of a policy, regardless of type,
+			// only captures are supported for k8s audit
+			// policy types.
+			if(policy_type == "syscall" ||
+			   policy_type == "") {
+
+				switch(action.type())
+				{
+				case draiosproto::ACTION_CAPTURE:
+					perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
+					break;
+				case draiosproto::ACTION_PAUSE:
+					perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
+					break;
+				case draiosproto::ACTION_STOP:
+					perform_container_action(ts_ns, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
+					break;
+				default:
+					action_handled = false;
+				}
+			}
+			else if (policy_type == "k8s_audit")
 			{
-			case draiosproto::ACTION_CAPTURE:
-				perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
-				break;
-			case draiosproto::ACTION_PAUSE:
-				perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
-				break;
-			case draiosproto::ACTION_STOP:
-				perform_container_action(ts_ns, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
-				break;
-			default:
-				action_handled = false;
+				switch(action.type())
+				{
+				case draiosproto::ACTION_CAPTURE:
+					perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
+					break;
+				default:
+					action_handled = false;
+				}
 			}
 		} else {
 			action_handled = false;
@@ -328,22 +358,36 @@ void security_actions::perform_actions(uint64_t ts_ns,
 		bool action_handled = true;
 		if (c_support_actions.get_value())
 		{
-			switch(action.type())
+			if(policy_type == "syscall" ||
+			   policy_type == "") {
+				switch(action.type())
+				{
+				case draiosproto::V2ACTION_CAPTURE:
+					perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
+					break;
+				case draiosproto::V2ACTION_PAUSE:
+					perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
+					break;
+				case draiosproto::V2ACTION_STOP:
+					perform_container_action(ts_ns, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
+					break;
+				case draiosproto::V2ACTION_KILL:
+					perform_container_action(ts_ns, sdc_internal::KILL, container_id, std::to_string(action.type()), sresult, astate);
+					break;
+				default:
+					action_handled = false;
+				}
+			}
+			else if (policy_type == "k8s_audit")
 			{
-			case draiosproto::V2ACTION_CAPTURE:
-				perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
-				break;
-			case draiosproto::V2ACTION_PAUSE:
-				perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
-				break;
-			case draiosproto::V2ACTION_STOP:
-				perform_container_action(ts_ns, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
-				break;
-			case draiosproto::V2ACTION_KILL:
-				perform_container_action(ts_ns, sdc_internal::KILL, container_id, std::to_string(action.type()), sresult, astate);
-				break;
-			default:
-				action_handled = false;
+				switch(action.type())
+				{
+				case draiosproto::V2ACTION_CAPTURE:
+					perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
+					break;
+				default:
+					action_handled = false;
+				}
 			}
 		} else {
 			action_handled = false;

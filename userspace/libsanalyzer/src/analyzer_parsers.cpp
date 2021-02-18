@@ -25,6 +25,9 @@
 #include "sinsp_errno.h"
 
 #include <Poco/Path.h>
+#include "common_logger.h"
+
+COMMON_LOGGER();
 
 namespace
 {
@@ -600,10 +603,9 @@ void sinsp_analyzer_parsers::parse_drop(sinsp_evt* evt)
 
 	if (*(uint32_t*)parinfo->m_val != m_analyzer->get_acked_sampling_ratio())
 	{
-		g_logger.format(sinsp_logger::SEV_INFO,
-		                "sinsp Switching sampling ratio from % " PRIu32 " to %" PRIu32,
-		                m_analyzer->get_acked_sampling_ratio(),
-		                *(uint32_t*)parinfo->m_val);
+		LOG_INFO("sinsp Switching sampling ratio from %lu " PRIu64 " to %" PRIu32,
+		         m_analyzer->get_acked_sampling_ratio(),
+		         *(uint32_t*)parinfo->m_val);
 	}
 
 	m_analyzer->ack_sampling_ratio(*(uint32_t*)parinfo->m_val);
@@ -633,9 +635,8 @@ draiosproto::command_category sinsp_analyzer_parsers::convert_category(
 		cat = draiosproto::CAT_READINESS_PROBE;
 		break;
 	default:
-		g_logger.format(sinsp_logger::SEV_ERROR,
-		                "Unknown command category %d, using CAT_NONE",
-		                tcat);
+		LOG_ERROR("Unknown command category %d, using CAT_NONE",
+		          tcat);
 		cat = draiosproto::CAT_NONE;
 	}
 

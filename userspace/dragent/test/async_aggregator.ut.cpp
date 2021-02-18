@@ -3,6 +3,7 @@
 #include "configuration_manager.h"
 #include "draios.pb.h"
 #include "watchdog_runnable_pool.h"
+#include "draios.helpers.h"
 #include "feature_manager.h"
 #include "scoped_config.h"
 
@@ -468,6 +469,7 @@ TEST(async_aggregator, substitutions)
 	uint64_t spid = 8675309;
 	proc->add_pids(spid);
 	uint64_t dpid = 1337;
+	proc->set_tiuid(draiosproto::program_java_hasher(*proc));
 	input.add_programs()->add_pids(dpid);
 	auto conn = input.add_ipv4_connections();
 	conn->set_spid(spid);
@@ -501,10 +503,10 @@ TEST(async_aggregator, substitutions)
 	EXPECT_EQ(output->m_metrics->programs()[0].pids().size(), 1);
 	EXPECT_EQ(
 	    output->m_metrics->programs()[0].pids()[0],
-	    metrics_message_aggregator_impl::program_java_hasher(output->m_metrics->programs()[0]));
+		output->m_metrics->programs()[0].tiuid());
 	EXPECT_EQ(
 	    output->m_metrics->programs()[1].pids()[0],
-	    metrics_message_aggregator_impl::program_java_hasher(output->m_metrics->programs()[1]));
+		output->m_metrics->programs()[1].tiuid());
 	EXPECT_EQ(output->m_metrics->ipv4_connections().size(), 1);
 	EXPECT_EQ(output->m_metrics->ipv4_connections()[0].spid(),
 	          output->m_metrics->programs()[0].pids()[0]);

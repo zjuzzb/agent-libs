@@ -27,6 +27,7 @@
 #include "capture_job_handler.h"
 #include "configuration.h"
 #include "event_source.h"
+#include "k8s_audit_infra_state.h"
 #include "infrastructure_state.h"
 #include "security_result_handler.h"
 #include "security_rule.h"
@@ -44,6 +45,7 @@ public:
 	virtual ~security_mgr();
 
 	void init(sinsp *inspector,
+		  const std::string &agent_container_id,
 		  infrastructure_state_iface *infra_state,
 		  secure_k8s_audit_event_sink_iface *k8s_audit_evt_sink,
 		  capture_job_queue_handler *capture_job_queue_handler,
@@ -113,6 +115,8 @@ public:
 	void stop_k8s_audit_server();
 	void check_pending_k8s_audit_events();
 
+	bool has_received_policies();
+
 	// configs
 	static type_config<bool> c_event_labels_enabled;
 	static type_config<int> c_event_labels_max_agent_tags;
@@ -124,7 +128,7 @@ public:
 		"host.hostName",
 		"aws.instance_id",
 		"aws.account_id",
-		"aws.region",
+		"aws.account_region",
 		"agent.tag",
 		"container.name",
 		"kubernetes.cluster.name",
@@ -372,6 +376,9 @@ private:
 	void on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo);
 	void on_remove_container(const sinsp_container_info& container_info);
 
+	// To resolve k8s audit scopes
+	k8s_audit_infra_state m_k8s_audit_infra_state;
+
 	// The last policies_v2 message passed to
 	// request_load_policies. Used for reload.
 	std::shared_ptr<draiosproto::policies_v2> m_policies_v2_msg;
@@ -580,16 +587,18 @@ private:
 
 		security_rules_group_set &get_rules_group_for_container(std::string &container_id);
 
-		std::shared_ptr<security_rules_group> get_k8s_audit_security_rules();
+		std::list<std::shared_ptr<security_rules_group>> get_k8s_audit_security_rules();
 
 		bool match_evttype(int etype);
 
 	private:
 		void log_rules_group_info();
 
-		void load_policy_v2(infrastructure_state_iface *infra_state,
-				    std::shared_ptr<security_policy_v2> spolicy_v2,
-				    std::list<std::string> &ids);
+		void load_syscall_policy_v2(infrastructure_state_iface *infra_state,
+					    std::shared_ptr<security_policy_v2> spolicy_v2,
+					    std::list<std::string> &ids);
+
+		void load_k8s_audit_policy_v2(std::shared_ptr<security_policy_v2> spolicy_v2);
 
 		bool load_falco_rules_files(const draiosproto::falco_rules_files &files, std::string &errstr);
 
@@ -601,8 +610,8 @@ private:
 		std::unordered_map<std::string, security_rules_group_set> m_scoped_security_rules;
 		std::list<std::shared_ptr<security_rules_group>> m_rules_groups;
 
-		// Maintained as a separate set as they don't honor scopes.
-		std::shared_ptr<security_rules_group> m_k8s_audit_security_rules;
+		// Maintained as a separate set as you can't match scopes ahead of time.
+		std::list<std::shared_ptr<security_rules_group>> m_k8s_audit_security_rules;
 
 		std::shared_ptr<security_rules_group> get_rules_group_of(const scope_predicates &preds);
 
@@ -680,5 +689,7 @@ private:
 	typedef std::shared_ptr<tbb::concurrent_queue<sdc_internal::k8s_audit_event>> shared_k8s_audit_event_queue;
 	shared_k8s_audit_event_queue m_k8s_audit_events_queue;
 	bool m_k8s_audit_server_started;
+
+	volatile bool m_received_policies = false;
 };
 #endif // CYGWING_AGENT

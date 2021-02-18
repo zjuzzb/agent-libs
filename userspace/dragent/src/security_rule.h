@@ -31,7 +31,7 @@ public:
 
 	bool has_action(const draiosproto::action_type &atype);
 
-	bool match_scope(std::string container_id, infrastructure_state_iface *infra_state) const;
+	bool match_syscall_scope(std::string container_id, infrastructure_state_iface *infra_state) const;
 };
 
 typedef std::shared_ptr<security_policy_v2> policy_v2_sptr;

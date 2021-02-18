@@ -10,6 +10,7 @@
 #include "feature_manager.h"
 #include "process_emitter.h"
 #include "sinsp_mock.h"
+#include "draios.helpers.h"
 
 #include <gtest.h>
 #include <scoped_config.h>
@@ -54,12 +55,22 @@ public:
 	static void set_config(type_config<uint32_t>& config, uint32_t val) { config.m_data = val; }
 
 	static void set_inspector_mode(sinsp& inspector, scap_mode_t mode) { inspector.m_mode = mode; }
+
+	static void add_main_thread_ainfo(thread_analyzer_info& tinfo)
+	{
+		tinfo.m_main_thread_ainfo = std::unique_ptr<main_thread_analyzer_info>();
+	}
+
+	static void* get_main_thread_ainfo(thread_analyzer_info& tinfo)
+	{
+		return &*tinfo.m_main_thread_ainfo;
+	}
 };
 
 class fake_thread : public thread_analyzer_info
 {
 public:
-	fake_thread() : thread_analyzer_info(nullptr, nullptr)
+	fake_thread() : thread_analyzer_info(nullptr, nullptr, 0)
 	{
 		HASH++;
 		m_program_hash = HASH;
@@ -67,6 +78,7 @@ public:
 		m_tid = HASH;
 		m_procinfo = new sinsp_procinfo();
 		m_th_analysis_flags = 0;
+		test_helper::add_main_thread_ainfo(*this);
 	}
 
 	~fake_thread()
@@ -154,9 +166,11 @@ TEST(process_emitter_test, emit_process)
 	easy_process_emitter emitter(false, false);
 
 	fake_thread hi_stats1;
+	EXPECT_EQ(hi_stats1.get_guid(), 0);
 	hi_stats1.m_cpuload = 100;
 	hi_stats1.m_comm = "my_process_name";
 	hi_stats1.m_procinfo->m_cpuload = 100;
+	hi_stats1.m_exe="my exe";
 
 	analyzer_emitter::progtable_by_container_t progtable_by_container;
 	std::vector<std::string> emitted_containers;
@@ -181,6 +195,9 @@ TEST(process_emitter_test, emit_process)
 	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().comm(), "my_process_name");
 	// low priority process doesn't get a group
 	EXPECT_EQ(emitter.m_metrics.programs()[0].program_reporting_group_id().size(), 0);
+
+	EXPECT_NE(hi_stats1.get_guid(), 0);
+	EXPECT_EQ(hi_stats1.get_guid(), draiosproto::program_java_hasher(emitter.m_metrics.programs()[0]));
 }
 
 TEST(process_emitter_test, max_command_arg_config_default)

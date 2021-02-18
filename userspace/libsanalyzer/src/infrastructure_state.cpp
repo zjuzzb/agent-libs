@@ -114,13 +114,11 @@ type_config<uint32_t>::ptr infrastructure_state::c_k8s_max_rnd_conn_delay =
         .min(0)
         .max(900)
         .build();
-type_config<bool>::ptr infrastructure_state::c_thin_cointerface_enabled =
-	type_config_builder<bool>(
+type_config<bool> infrastructure_state::c_thin_cointerface_enabled(
 		false,
 		"Enable the Thin Cointerface feature (i.e. retryWatchers)",
 		"thin_cointerface_enabled"
-		).hidden()
-	         .build();
+		);
 type_config<uint64_t> infrastructure_state::c_congroup_ttl_s(60,
 							     "Congroup TTL [sec]",
 							     "congroup_ttl_s");
@@ -274,69 +272,11 @@ void infrastructure_state::clear_cached_result(const std::string& entity_id)
 
 bool evaluate_on(draiosproto::container_group* congroup, scope_predicates& preds)
 {
-	auto evaluate = [](const draiosproto::scope_predicate& p, const std::string& value) {
-		// KISS for now
-		LOG_DEBUG(
-		    "infra_state: Evaluating %s %s %s%s with value %s",
-		    p.key().c_str(),
-		    draiosproto::scope_operator_Name(p.op()).c_str(),
-		    p.values(0).c_str(),
-		    ((p.op() == draiosproto::IN_SET || p.op() == draiosproto::NOT_IN_SET) ? "..." : ""),
-		    value.c_str());
-		bool ret;
-		switch (p.op())
-		{
-		case draiosproto::EQ:
-			ret = p.values(0) == value;
-			break;
-		case draiosproto::NOT_EQ:
-			ret = p.values(0) != value;
-			break;
-		case draiosproto::CONTAINS:
-			ret = value.find(p.values(0)) != std::string::npos;
-			break;
-		case draiosproto::NOT_CONTAINS:
-			ret = value.find(p.values(0)) == std::string::npos;
-			break;
-		case draiosproto::STARTS_WITH:
-			ret = value.substr(0, p.values(0).size()) == p.values(0);
-			break;
-		case draiosproto::IN_SET:
-			ret = false;
-			for (auto v : p.values())
-			{
-				if (v == value)
-				{
-					ret = true;
-					break;
-				}
-			}
-			break;
-		case draiosproto::NOT_IN_SET:
-			ret = true;
-			for (auto v : p.values())
-			{
-				if (v == value)
-				{
-					ret = false;
-					break;
-				}
-			}
-			break;
-		default:
-			LOG_WARNING("infra_state: Cannot evaluate scope_predicate %s",
-			            p.DebugString().c_str());
-			ret = true;
-		}
-
-		return ret;
-	};
-
 	for (auto i = preds.begin(); i != preds.end();)
 	{
 		if (congroup->tags().find(i->key()) != congroup->tags().end())
 		{
-			if (!evaluate(*i, congroup->tags().at(i->key())))
+			if (!infrastructure_state::match_predicate(*i, congroup->tags().at(i->key())))
 			{
 				preds.erase(i);
 				return false;
@@ -348,7 +288,7 @@ bool evaluate_on(draiosproto::container_group* congroup, scope_predicates& preds
 		}
 		else if (congroup->internal_tags().find(i->key()) != congroup->internal_tags().end())
 		{
-			if (!evaluate(*i, congroup->internal_tags().at(i->key())))
+			if (!infrastructure_state::match_predicate(*i, congroup->internal_tags().at(i->key())))
 			{
 				preds.erase(i);
 				return false;
@@ -372,7 +312,7 @@ infrastructure_state::infrastructure_state(sinsp_analyzer& analyzer,
                                            const std::string& rootdir,
                                            const k8s_limits::sptr_t& the_k8s_limits,
                                            bool force_k8s_subscribed):
-      m_k8s_store_manager(std::move(k8s_store_manager_builder<k8s_pod_store, k8s_hpa_store>(c_thin_cointerface_enabled->get_value()).build())),
+      m_k8s_store_manager(std::move(k8s_store_manager_builder<k8s_pod_store, k8s_hpa_store>(c_thin_cointerface_enabled.get_value()).build())),
       m_analyzer(analyzer),
       m_inspector(inspector),
       m_ts(0),
@@ -430,7 +370,7 @@ infrastructure_state::infrastructure_state(sinsp_analyzer& analyzer,
 		    on_remove_container(container_info);
 	    });
 
-	if(c_thin_cointerface_enabled->get_value() == true)
+	if(c_thin_cointerface_enabled.get_value() == true)
 	{
 		m_handle_update_event = [this](const draiosproto::congroup_update_event* evt)
 				      {
@@ -575,7 +515,7 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 		    *cmd.mutable_pod_status_allowlist() = {c_k8s_pod_status_wl.get_value().begin(),
 		                                           c_k8s_pod_status_wl.get_value().end()};
 		    cmd.set_terminated_pods_enabled(c_k8s_terminated_pods_enabled.get_value());
-		    cmd.set_thin_cointerface(c_thin_cointerface_enabled->get_value());
+		    cmd.set_thin_cointerface(c_thin_cointerface_enabled.get_value());
 
 		    for (const auto& prefix : c_pod_prefix_for_cidr_retrieval.get_value())
 		    {

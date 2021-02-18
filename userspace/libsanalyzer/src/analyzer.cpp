@@ -289,6 +289,9 @@ type_config<std::string> c_hidden_processes("", "", "ui", "hidden_processes");
 
 type_config<bool> c_audit_tap_emit_local_connections(false, "Track local connections", "audit_tap", "emit_local_connections");
 type_config<bool> c_audit_tap_emit_pending_connections(false, "Track pending connections", "audit_tap", "emit_pending_connections");
+type_config<bool> c_use_working_set(false, 
+				    "For containers, use working set instead of rss memory. This can be useful for capacity planning since it matches kubectl top.", 
+				    "container_memory_as_working_set");
 
 }  // end namespace
 
@@ -5221,8 +5224,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 				                         m_prev_flush_cpu_pct,
 				                         m_acked_sampling_ratio,
 				                         m_prev_flushes_duration_ns,
-				                         m_inspector->m_n_proc_lookups,
-				                         m_inspector->m_n_main_thread_lookups,
+				                         m_inspector->m_thread_manager->get_m_n_proc_lookups(),
+				                         m_inspector->m_thread_manager->get_m_n_main_thread_lookups(),
 				                         m_inspector->max_buf_used(),
 				                         static_cast<uint64_t>(m_my_cpuload + 0.500001));
 			}
@@ -5276,22 +5279,20 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 		m_host_client_transactions[j].clear();
 	}
 
-	if (m_inspector->m_n_main_thread_lookups)
+	if (m_inspector->m_thread_manager->get_m_n_main_thread_lookups())
 	{
-		LOG_INFO("Looked up %d main thread(s) in /proc", m_inspector->m_n_main_thread_lookups);
+		LOG_INFO("Looked up %d main thread(s) in /proc", m_inspector->m_thread_manager->get_m_n_main_thread_lookups());
 	}
-	if (m_inspector->m_n_proc_lookups)
+	if (m_inspector->m_thread_manager->get_m_n_proc_lookups())
 	{
 		LOG_DEBUG("Looked up %d thread(s) in /proc (total time %lu ns)",
-		          m_inspector->m_n_proc_lookups,
-		          m_inspector->m_n_proc_lookups_duration_ns);
+		          m_inspector->m_thread_manager->get_m_n_proc_lookups(),
+		          m_inspector->m_thread_manager->get_m_n_proc_lookups_duration_ns());
 	}
 	//
 	// Reset the proc lookup counter
 	//
-	m_inspector->m_n_proc_lookups = 0;
-	m_inspector->m_n_proc_lookups_duration_ns = 0;
-	m_inspector->m_n_main_thread_lookups = 0;
+	m_inspector->m_thread_manager->reset_thread_counters();
 
 	//
 	// Clear the network I/O counter
@@ -7074,6 +7075,7 @@ void sinsp_analyzer::emit_container(const string& container_id,
 	    it_analyzer->second.m_metrics.m_connection_queue_usage_pct);
 #endif
 	uint32_t res_memory_kb = it_analyzer->second.m_metrics.m_res_memory_used_kb;
+	uint32_t working_set_memory_kb = 0;
 
 #ifndef CYGWING_AGENT
 	auto memory_cgroup_it =
@@ -7084,17 +7086,28 @@ void sinsp_analyzer::emit_container(const string& container_id,
 	// to wrong metrics reported, rely on our processes memory sum in that case
 	// it happens when there are race conditions during the creating phase of a container
 	// and lasts very little
+
+	sinsp_procfs_parser::memory_stats memory_stats;
 	if (memory_cgroup_it != tinfo->m_cgroups.cend() && memory_cgroup_it->second != "/")
 	{
-		const auto cgroup_memory =
-		    m_procfs_parser->read_cgroup_used_memory(memory_cgroup_it->second);
-		if (cgroup_memory > 0)
+		const bool result = m_procfs_parser->read_cgroup_used_memory(memory_cgroup_it->second, memory_stats);
+		if (result)
 		{
-			res_memory_kb = cgroup_memory / 1024;
+			if(c_use_working_set.get_value())
+			{
+				res_memory_kb = memory_stats.working_set_bytes;
+			}
+			else
+			{
+				res_memory_kb = memory_stats.vm_rss_bytes;
+			}
+			res_memory_kb = res_memory_kb / 1024;
+			working_set_memory_kb = memory_stats.working_set_bytes / 1024;
 		}
 	}
 #endif
 	container->mutable_resource_counters()->set_resident_memory_usage_kb(res_memory_kb);
+	container->mutable_resource_counters()->set_working_set_memory_usage_kb(working_set_memory_kb);
 	container->mutable_resource_counters()->set_swap_memory_usage_kb(
 	    it_analyzer->second.m_metrics.m_swap_memory_used_kb);
 	container->mutable_resource_counters()->set_minor_pagefaults(
@@ -8292,7 +8305,7 @@ std::string sinsp_analyzer::get_metrics_dir()
 
 sinsp_threadinfo* sinsp_analyzer::build_threadinfo(sinsp* inspector)
 {
-	auto tinfo = new thread_analyzer_info(inspector, this, m_tap);
+	auto tinfo = new thread_analyzer_info(inspector, this, m_tap, inspector->get_machine_info()->num_cpus);
 	tinfo->init();
 	return tinfo;
 }

@@ -24,6 +24,11 @@ public:
 	/**
 	 * @return whether the data was written or not
 	 */
+	bool emit_message_to_file(const google::protobuf::Message& msg);
+
+	/**
+	 * @return whether the data was written or not
+	 */
 	bool emit_metrics_to_file(const std::shared_ptr<flush_data_message>& data);
 
 	/**

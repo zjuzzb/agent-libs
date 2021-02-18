@@ -94,6 +94,9 @@ struct main_thread_analyzer_info
 	// hash of all environment variables
 	env_hash m_env_hash;
 
+	// a guid for this process. computed only when a thread is emitted
+	size_t m_guid = 0;
+
 	// per-file and per-device I/O stats for this process
 	analyzer_top_file_stat_map m_files_stat;
 	analyzer_top_device_stat_map m_devs_stat;
@@ -134,10 +137,10 @@ public:
 	};
 	// clang-format on
 
-	thread_analyzer_info(sinsp* inspector, sinsp_analyzer* analyzer);
+	thread_analyzer_info(sinsp* inspector, sinsp_analyzer* analyzer, uint32_t num_cpus);
 	thread_analyzer_info(sinsp* inspector,
 	                     sinsp_analyzer* analyzer,
-	                     std::shared_ptr<audit_tap>& audit_tap);
+	                     std::shared_ptr<audit_tap>& audit_tap, uint32_t num_cpus);
 	~thread_analyzer_info();
 
 	thread_analyzer_info(const thread_analyzer_info&) = delete;
@@ -215,6 +218,7 @@ public:
 
 	// Global state
 	sinsp* m_inspector;
+	uint32_t m_num_cpus;
 	sinsp_analyzer* m_analyzer;
 	std::shared_ptr<audit_tap> m_tap;
 	int64_t m_main_thread_pid;
@@ -222,11 +226,11 @@ public:
 	// Flags word used by the analysis engine.
 	uint16_t m_th_analysis_flags;
 	// The analyzer metrics
-	sinsp_counters m_metrics;
+	mutable sinsp_counters m_metrics;
 	// The transaction metrics
-	sinsp_transaction_counters m_transaction_metrics;
+	mutable sinsp_transaction_counters m_transaction_metrics;
 	// The metrics for transaction coming from the external world
-	sinsp_transaction_counters m_external_transaction_metrics;
+	mutable sinsp_transaction_counters m_external_transaction_metrics;
 	// Process-specific information
 	sinsp_procinfo* m_procinfo = nullptr;
 	// The ratio between the number of connections waiting to be served and
@@ -261,17 +265,19 @@ private:
 	// there are issues with the way that sinsp constructs the threadinfo that prevent
 	// us from initializing this during construction, where it ought be. So instead
 	// we'll add a flag and initialize it lazily the first time it's requested.
-	bool m_percentiles_initialized = false;
-	std::set<double> m_percentiles;
+	mutable bool m_percentiles_initialized = false;
+	mutable std::set<double> m_percentiles;
 
 public:
-	const std::set<double>& get_percentiles();
+	const std::set<double>& get_percentiles() const;
 
-	main_thread_analyzer_info* main_thread_ainfo()
+	main_thread_analyzer_info* main_thread_ainfo() const
 	{
-		thread_analyzer_info* main_thread = get_main_thread_info();
+		const thread_analyzer_info* main_thread = get_main_thread_info();
 		if (main_thread != nullptr && this != main_thread)
 		{
+			// This recursion allows the main thread to allocate the ainfo
+			// if it doesn't exist yet
 			return main_thread->main_thread_ainfo();
 		}
 		else
@@ -279,11 +285,9 @@ public:
 			if (!m_main_thread_ainfo)
 			{
 				m_main_thread_ainfo = make_unique<main_thread_analyzer_info>();
-				m_main_thread_ainfo->m_server_transactions_per_cpu.resize(
-				    m_inspector->get_machine_info()->num_cpus);
-				m_main_thread_ainfo->m_client_transactions_per_cpu.resize(
-				    m_inspector->get_machine_info()->num_cpus);
-				if (!get_percentiles().empty())
+				m_main_thread_ainfo->m_server_transactions_per_cpu.resize(m_num_cpus);
+				m_main_thread_ainfo->m_client_transactions_per_cpu.resize(m_num_cpus);
+				if (m_analyzer && !get_percentiles().empty())
 				{
 					m_main_thread_ainfo->m_protostate.set_percentiles(get_percentiles());
 				}
@@ -298,7 +302,7 @@ public:
 
 	inline bool get_exclude_from_sample() const { return m_procinfo->m_exclude_from_sample; }
 
-	inline thread_analyzer_info* get_main_thread_info()
+	inline thread_analyzer_info* get_main_thread_info() const
 	{
 		sinsp_threadinfo* sinsp_main_thread = get_main_thread();
 		thread_analyzer_info* analyzer_main_thread =
@@ -315,6 +319,16 @@ public:
 		return analyzer_thread;
 	}
 
+	inline size_t get_guid() const
+	{
+		return main_thread_ainfo()->m_guid;
+	}
+
+	inline void set_guid(size_t guid)
+	{
+		main_thread_ainfo()->m_guid = guid;
+	}
+
 	static inline thread_analyzer_info* get_thread_from_event(sinsp_evt* evt)
 	{
 		thread_analyzer_info* analyzer_thread =
@@ -326,7 +340,7 @@ public:
 private:
 	static const uint32_t RESCAN_PORT_INTERVAL_SECS = 20;
 	using time_point_t = std::chrono::time_point<std::chrono::steady_clock>;
-	std::unique_ptr<main_thread_analyzer_info> m_main_thread_ainfo;
+	mutable std::unique_ptr<main_thread_analyzer_info> m_main_thread_ainfo;
 	mutable std::unique_ptr<std::set<uint16_t>> m_listening_ports;
 	mutable std::set<uint16_t> m_procfs_found_ports;
 	std::set<std::string> m_app_checks_found;

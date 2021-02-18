@@ -68,6 +68,7 @@ public:
 		uint64_t data_ts;
 		uint64_t last_total_samples;
 		tag_map_t add_tags;
+		bool bypass_limits;
 	} prom_job_config;
 
 	// Map from process-id to job-ids
@@ -96,6 +97,7 @@ public:
 	static type_config<std::string>c_promscrape_web_sock;
 	static type_config<bool>c_promscrape_web_enable;
 	static type_config<bool>::mutable_ptr c_export_fastproto;
+	static type_config<bool>c_allow_bypass;
 
 	explicit promscrape(metric_limits::sptr_t ml, const prometheus_conf &prom_conf, bool threaded, interval_cb_t interval_cb);
 
@@ -128,10 +130,37 @@ public:
 	unsigned int pid_to_protobuf(int pid, metric *proto,
 		unsigned int &limit, unsigned int max_limit,
 		unsigned int *filtered, unsigned int *total, bool callback = false);
+
 	template<typename metric>
 	unsigned int job_to_protobuf(int64_t job_id, metric *proto,
 		unsigned int &limit, unsigned int max_limit,
 		unsigned int *filtered, unsigned int *total);
+
+private:
+	unsigned int result_to_protobuf(int64_t job_id,
+		std::shared_ptr<agent_promscrape::ScrapeResult> res,
+		prom_job_config *job_config, draiosproto::prom_metrics *pb, bool enforce_limits,
+		unsigned int &limit, unsigned int max_limit,
+		unsigned int *filtered, unsigned int *total);
+
+public:
+	// Some scrape jobs can be set up to bypass limits and filters and will export their
+	// metrics through a separate standalone protobuf message (raw_prometheus_metrics)
+	// set_raw_bypass_callback() can be used to specify a callback that will be called whenever
+	// scrape results for one such job are received.
+	// The callback will be called on the promscrape thread
+	//
+	// Instead of sending results whenever they are received from promscrape the collector
+	// may actually prefer to receive all bypass results once per interval. TBD
+	typedef std::function<void(std::shared_ptr<draiosproto::raw_prometheus_metrics> msg)> raw_bypass_cb_t;
+	void set_raw_bypass_callback(raw_bypass_cb_t cb) { m_bypass_cb = cb; }
+
+	// create_bypass_protobuf() will create a raw_prometheus_metrics message containing
+	// the results from either the given job_id or all bypass jobs if (job_id < 0).
+	std::shared_ptr<draiosproto::raw_prometheus_metrics> create_bypass_protobuf(int64_t job_id);
+
+	void set_allow_bypass(bool allow) { m_allow_bypass = allow; }
+	bool allow_bypass() { return c_allow_bypass.get_value() && m_allow_bypass; }
 
 	// Returns whether or not the metrics_request_callback can be used by
 	// the aggregator to populate the metrics protobuf
@@ -175,7 +204,7 @@ private:
 	std::shared_ptr<agent_promscrape::ScrapeResult> get_job_result_ptr(uint64_t job_id,
 		prom_job_config *config_copy);
 
-	// Mutex to protect all 4 maps, might want finer granularity some day
+	// Mutex to protect all 5 maps, might want finer granularity some day
 	std::mutex m_map_mutex;
 	prom_metric_map_t m_metrics;
 	prom_jobid_map_t m_jobs;
@@ -216,6 +245,9 @@ private:
 
 	promscrape_stats m_stats;
 	const infrastructure_state *m_infra_state = nullptr;
+
+	raw_bypass_cb_t m_bypass_cb;
+	bool m_allow_bypass = false;
 
 	friend class test_helper;
 };

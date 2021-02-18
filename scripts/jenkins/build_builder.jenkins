@@ -6,18 +6,6 @@ pipeline {
 				dir('agent') {
 					checkout scm
 				}
-				dir('oss-falco') {
-					checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
-					sh "git checkout ${params.FALCO_BRANCH}"
-				}
-				dir('sysdig') {
-					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/sysdig']]])
-					sh "git checkout ${params.SYSDIG_BRANCH}"
-				}
-				dir('protorepo') {
-					checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
-					sh "git checkout ${params.PROTOREPO_BRANCH}"
-				}
 			}
 		}
 
