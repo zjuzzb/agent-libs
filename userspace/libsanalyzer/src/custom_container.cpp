@@ -9,6 +9,8 @@
 
 #include <sys/utsname.h>
 
+COMMON_LOGGER();
+
 using namespace std;
 using namespace libsinsp::cgroup_limits;
 
@@ -103,7 +105,7 @@ custom_container::resolver::resolver()
 	}
 	else
 	{
-		g_logger.format(sinsp_logger::SEV_WARNING, "Cannot get hostname: %s", strerror(errno));
+		LOG_WARNING("Cannot get hostname: %s", strerror(errno));
 		hostname = "localhost";
 	}
 	const char *dot = strchr(hostname, '.');
@@ -198,7 +200,7 @@ sinsp_threadinfo* custom_container::resolver::match_environ_tree(sinsp_threadinf
 	return found_tinfo;
 }
 
-void custom_container::resolver::clean_label(std::string& val, clean_action check)
+void custom_container::resolver::clean_label(std::string& val, string_type_differentiator check)
 {
 	/*
 	* Based on parameter "check" each character of val is checked to be in either the whitelist_name 
@@ -209,34 +211,35 @@ void custom_container::resolver::clean_label(std::string& val, clean_action chec
 	*/
 	if (check == CHECK_NAME)
 	{
-		const std::string whitelist_name  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._";
+	    const std::string whitelist_name  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._";
 	    for (auto c = val.begin(); c != val.end(); ++c)
 	    {
-		    if (whitelist_name.find(*c) == std::string::npos)  // this indicates no matches.
+		    // determine if the character of val pointed to *c is a whitelist_name member:
+		    if (whitelist_name.find(*c) == std::string::npos)
 		    {
 			    *c = '_';
 		    }
-		}
-	} else  /* check is CHECK_VALUE */
+	    }
+	} 
+	else  /* check is CHECK_VALUE */
 	{
-		const std::string whitelist_value = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._/";
-		for (auto c = val.begin(); c != val.end(); ++c)
+	    const std::string whitelist_value = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._/";
+	    char16_t substitution_char = c_substitute_container_label_char.get_value()[0];
+	    // validate the type_config substitution character is a whitelist_value member
+	    if(whitelist_value.find(substitution_char)==std::string::npos)
 	    {
-			// determine if the character of val pointed to *c is a whitelist_value member:
+		    LOG_DEBUG("Invalid substitution character for custom container label value");
+		    substitution_char = '_';  // use the original default substitution character
+	    }
+		
+	    for (auto c = val.begin(); c != val.end(); ++c)
+	    {
+		    // determine if the character of val pointed to *c is a whitelist_value member:
 		    if (whitelist_value.find(*c) == std::string::npos)
 		    {
-				// also validate the type_config substitution character is a whitelist_value member:
-				if(whitelist_value.find(c_substitute_container_label_char.get_value()[0])!=std::string::npos)
-				{
-			        *c = c_substitute_container_label_char.get_value()[0];
-				}
-				else
-				{
-					g_logger.format(sinsp_logger::SEV_WARNING,"Invalid substitution character for custom container label value");
-					*c = '_';  // apply the original default substitution character
-				}
+			    *c = substitution_char;
 		    }	
-		}
+	    }
 	}
 }
 
@@ -272,13 +275,13 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	try {
 		m_id_pattern.render(container_info.m_id, render_ctx, env);
 	} catch (const Poco::RuntimeException& e) {
-		g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container support due to error in configuration: %s", e.message().c_str());
+		LOG_WARNING("Disabling custom container support due to error in configuration: %s", e.message().c_str());
 		set_enabled(false);
 		return false;
 	}
 	if (container_info.m_id.empty())
 	{
-		g_logger.format(sinsp_logger::SEV_WARNING, "Got empty container id for process %lu, possibly a configuration error", tinfo->m_tid);
+		LOG_WARNING("Got empty container id for process %lu, possibly a configuration error", tinfo->m_tid);
 		return false;
 	}
 	container_info.m_id = container_info.m_id.substr(0, m_max_id_length);
@@ -305,7 +308,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	{
 		if (!m_limit_logged)
 		{
-			g_logger.format(sinsp_logger::SEV_WARNING, "Custom container limit exceeded, ignoring new container %s of pid %lu", tinfo->m_container_id.c_str(), tinfo->m_tid);
+			LOG_WARNING("Custom container limit exceeded, ignoring new container %s of pid %lu", tinfo->m_container_id.c_str(), tinfo->m_tid);
 			m_limit_logged = true;
 		}
 		return false;
@@ -338,7 +341,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 				clean_label(container_info.m_name, CHECK_NAME);
 			}
 		} catch (const Poco::RuntimeException& e) {
-			g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container name due to error in configuration: %s", e.message().c_str());
+			LOG_WARNING("Disabling custom container name due to error in configuration: %s", e.message().c_str());
 			m_name_pattern = custom_container::subst_template();
 			container_info.m_name = container_info.m_id;
 		}
@@ -358,8 +361,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 				clean_label(container_info.m_image, CHECK_NAME);
 			}
 		} catch (const Poco::RuntimeException &e) {
-			g_logger.format(sinsp_logger::SEV_WARNING,
-							"Disabling custom container image due to error in configuration: %s", e.message().c_str());
+			LOG_WARNING("Disabling custom container image due to error in configuration: %s", e.message().c_str());
 			m_image_pattern = custom_container::subst_template();
 			container_info.m_image = "";
 		}
@@ -385,7 +387,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 					container_info.m_labels.emplace(it->first, move(s));
 				}
 			} catch (const Poco::RuntimeException& e) {
-				g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container label %s due to error in configuration: %s", it->first.c_str(), e.message().c_str());
+				LOG_WARNING("Disabling custom container label %s due to error in configuration: %s", it->first.c_str(), e.message().c_str());
 				it = m_label_patterns.erase(it);
 				continue;
 			}
@@ -457,8 +459,8 @@ void custom_container::resolver::dump_container_table()
 	out << YAML::Value << YAML::BeginMap;
 
 	if (m_dump.size() > (size_t)m_max)
-	{
-		g_logger.format(sinsp_logger::SEV_WARNING, "%d custom containers present, while the limit is %d. Only a subset will be reported",
+	{		
+		LOG_WARNING("%lu custom containers present, while the limit is %d. Only a subset will be reported",
 			m_dump.size(), m_max);
 	}
 

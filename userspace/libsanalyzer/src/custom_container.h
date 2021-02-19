@@ -47,7 +47,7 @@ struct match {
 
 typedef std::unordered_map<std::string, match> render_context;
 
-enum clean_action {
+enum string_type_differentiator {
 		CHECK_NAME = 0,
 		CHECK_VALUE = 1
 };
@@ -253,7 +253,7 @@ protected:
 	bool match_cgroup(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	bool match_environ(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	sinsp_threadinfo* match_environ_tree(sinsp_threadinfo *tinfo, render_context &render_ctx);
-	void clean_label(std::string& val, clean_action check);
+	void clean_label(std::string& val, string_type_differentiator check);
 
 	match m_hostname;
 
