@@ -109,7 +109,7 @@ class Prometheus(AgentCheck):
                             break
 
                         # No check here for NaN values, as we do allow them for raw prometheus metrics.
-                        self.prometheus_raw(family.type, sname, value, rawtags)
+                        self.prometheus_raw(family.type, sname, value, rawtags + conf_tags)
                         num += 1
                         if self.__check_metric_limits(max_metrics, num, pid, query_url):
                             break
