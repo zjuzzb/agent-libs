@@ -652,7 +652,7 @@ bool cm_socket::poll(const std::list<poll_sock>& sock_list,
 		{
 			out_list.emplace_back(itr->sock, itr->ctx);
 		}
-		else
+		else if (fds[i].revents != 0)
 		{
 			LOG_WARNING("Unexpected poll event type %d", fds[i].revents);
 		}
