@@ -247,7 +247,6 @@ public class MonitoredVM {
         } catch (MonitorException e) {
             LOGGER.warning(String.format("%s JvmstatVM cannot attach to process' hsperfdata: %s (vpid=%d root=%s args=%s)",
                            logPrefix, e.getMessage(), monitoredVMvpid, request.getRoot(), Arrays.toString(request.getArgs())));
-            return;
         }
 
         // Try to load agent and get address from there
