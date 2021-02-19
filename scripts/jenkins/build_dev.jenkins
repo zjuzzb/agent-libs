@@ -44,16 +44,21 @@ pipeline {
             }
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
-                    sh label: '', script: '''
-                        echo "$DOCKER_PASSWORD" | docker login docker.io -u="$DOCKER_USERNAME" --password-stdin
-                        TARGET=dev
-                        if [ $PUBLIC_RELEASE = true ]
-                        then
-                            TARGET=rc
-                        fi
-                        sudo rm -rf $PWD/repo
-                        sudo agent/scripts/jenkins/upload-agent-dev $TARGET $PWD/out $PWD/repo "s3://download.draios.com" $RELEASE_VERSION
-                    '''
+					script {
+						docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
+
+							sh label: '', script: '''
+								echo "$DOCKER_PASSWORD" | docker login docker.io -u="$DOCKER_USERNAME" --password-stdin
+								TARGET=dev
+								if [ $PUBLIC_RELEASE = true ]
+								then
+									TARGET=rc
+								fi
+								sudo rm -rf $PWD/repo
+								sudo agent/scripts/jenkins/upload-agent-dev $TARGET $PWD/out $PWD/repo "s3://download.draios.com" $RELEASE_VERSION
+							'''
+						}
+					}
                 }
             }
         }

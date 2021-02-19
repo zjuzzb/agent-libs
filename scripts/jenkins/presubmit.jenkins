@@ -1,9 +1,7 @@
 
 def getAgentCommitSha() {
-  dir('agent') {
-    sh "git rev-parse HEAD > current-commit"
-    return readFile("current-commit").trim()
-  }
+	sh "git rev-parse HEAD > current-commit"
+	return readFile("current-commit").trim()
 }
 
 void setBuildStatus(String context, String message, String state) {
@@ -59,12 +57,8 @@ pipeline {
 			}
 		}
 
-		stage('Check out dependencies') {
+		stage('Update PR') {
 			steps {
-				dir('agent') {
-					checkout scm
-				}
-
 				// First set the statuses on github
 				setBuildStatus('Unit Test', 'Waiting for resources', 'PENDING')
 				setBuildStatus('System Test', 'Waiting for resources', 'PENDING')
