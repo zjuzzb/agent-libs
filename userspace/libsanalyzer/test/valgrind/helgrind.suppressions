@@ -77,3 +77,12 @@
    fun:start_thread
    fun:clone
 }
+
+{
+   pthread_rwlock_destroy_maybe_from_static_init
+   Helgrind:Misc
+   fun:pthread_rwlock_destroy_WRK
+   fun:pthread_rwlock_destroy
+   fun:CRYPTO_THREAD_lock_free
+   ...
+}
