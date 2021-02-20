@@ -15,12 +15,11 @@ using namespace std;
 using namespace libsinsp::cgroup_limits;
 
 type_config<std::string> c_substitute_container_label_char(
-    "_", 
+        "_", 
 	"Substitution character for custom container label value",
 	"substitute_container_label_char");
 
 static const std::string whitelist_name  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._";
-
 static const std::string whitelist_value = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._/";
 
 
@@ -208,8 +207,7 @@ sinsp_threadinfo* custom_container::resolver::match_environ_tree(sinsp_threadinf
 class substitution_character
 {
     private:
-	
-		const char16_t substitution_char = (c_substitute_container_label_char.get_value().length() == 1 && 
+	const char16_t substitution_char = (c_substitute_container_label_char.get_value().length() == 1 && 
 			                   whitelist_value.find(c_substitute_container_label_char.get_value()[0] != 
 			                   std::string::npos) ? 
 			                   c_substitute_container_label_char.get_value()[0] : '_');
@@ -218,8 +216,6 @@ class substitution_character
 	{
 	    return substitution_char;	
 	}
-
-	
 };
 
 void custom_container::resolver::clean_label(std::string& val, string_type_differentiator check)
