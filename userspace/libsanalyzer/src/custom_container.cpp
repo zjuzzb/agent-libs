@@ -19,6 +19,11 @@ type_config<std::string> c_substitute_container_label_char(
 	"Substitution character for custom container label value",
 	"substitute_container_label_char");
 
+static const std::string whitelist_name  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._";
+
+static const std::string whitelist_value = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._/";
+
+
 void custom_container::subst_token::render(std::string& out, const render_context& ctx, const std::vector<std::string>& env) const
 {
 	if (m_capture_id < 0)
@@ -200,6 +205,23 @@ sinsp_threadinfo* custom_container::resolver::match_environ_tree(sinsp_threadinf
 	return found_tinfo;
 }
 
+class substitution_character
+{
+    private:
+	
+		const char16_t substitution_char = (c_substitute_container_label_char.get_value().length() == 1 && 
+			                   whitelist_value.find(c_substitute_container_label_char.get_value()[0] != 
+			                   std::string::npos) ? 
+			                   c_substitute_container_label_char.get_value()[0] : '_');
+    public:
+	char16_t get_substitution_char()
+	{
+	    return substitution_char;	
+	}
+
+	
+};
+
 void custom_container::resolver::clean_label(std::string& val, string_type_differentiator check)
 {
 	/*
@@ -209,35 +231,27 @@ void custom_container::resolver::clean_label(std::string& val, string_type_diffe
 	* dragent.yaml config "substitute_container_label_char" is used to establish the substitution 
 	* character.  Note the substitution character must also be a valid member of the whitelist_value.
 	*/
+	substitution_character sub_char;
 	if (check == CHECK_NAME)
 	{
-	    const std::string whitelist_name  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._";
 	    for (auto c = val.begin(); c != val.end(); ++c)
 	    {
 		    // determine if the character of val pointed to *c is a whitelist_name member:
 		    if (whitelist_name.find(*c) == std::string::npos)
 		    {
-			    *c = '_';
+			    *c = sub_char.get_substitution_char();
 		    }
 	    }
 	} 
 	else  /* check is CHECK_VALUE */
 	{
-	    const std::string whitelist_value = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._/";
-	    char16_t substitution_char = c_substitute_container_label_char.get_value()[0];
-	    // validate the type_config substitution character is a whitelist_value member
-	    if(whitelist_value.find(substitution_char)==std::string::npos)
-	    {
-		    LOG_DEBUG("Invalid substitution character for custom container label value");
-		    substitution_char = '_';  // use the original default substitution character
-	    }
-		
+	
 	    for (auto c = val.begin(); c != val.end(); ++c)
 	    {
 		    // determine if the character of val pointed to *c is a whitelist_value member:
 		    if (whitelist_value.find(*c) == std::string::npos)
 		    {
-			    *c = substitution_char;
+			    *c = sub_char.get_substitution_char();
 		    }	
 	    }
 	}
