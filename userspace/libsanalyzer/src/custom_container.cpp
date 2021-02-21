@@ -15,16 +15,18 @@ using namespace std;
 using namespace libsinsp::cgroup_limits;
 
 type_config<std::string> c_substitute_container_label_char(
-        "_", 
+    "_", 
 	"Substitution character for custom container label value",
 	"substitute_container_label_char");
 
 static const std::string whitelist_name  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._";
+
 static const std::string whitelist_value = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._/";
 
 
 void custom_container::subst_token::render(std::string& out, const render_context& ctx, const std::vector<std::string>& env) const
 {
+	
 	if (m_capture_id < 0)
 	{
 		out.append(m_var_name);
@@ -207,7 +209,7 @@ sinsp_threadinfo* custom_container::resolver::match_environ_tree(sinsp_threadinf
 class substitution_character
 {
     private:
-	const char16_t substitution_char = (c_substitute_container_label_char.get_value().length() == 1 && 
+		const char16_t substitution_char = (c_substitute_container_label_char.get_value().length() == 1 && 
 			                   whitelist_value.find(c_substitute_container_label_char.get_value()[0] != 
 			                   std::string::npos) ? 
 			                   c_substitute_container_label_char.get_value()[0] : '_');
@@ -218,37 +220,22 @@ class substitution_character
 	}
 };
 
-void custom_container::resolver::clean_label(std::string& val, string_type_differentiator check)
+void custom_container::resolver::clean_label(std::string& val, std::string const& whitelist, char16_t substitution_char)
 {
 	/*
-	* Based on parameter "check" each character of val is checked to be in either the whitelist_name 
-	* or the whitelist_value list.  If parameter val contains a character not in the appropriate 
-	* whitelist_xxxx replace it with the sustitution character.  For action CHECK_VALUE, the
-	* dragent.yaml config "substitute_container_label_char" is used to establish the substitution 
-	* character.  Note the substitution character must also be a valid member of the whitelist_value.
+	* Check each character of val to determine if it is in the whitelist.
+	* If parameter val contains a character not in the whitelist replace
+	* it with the sustitution character.  The dragent.yaml config named
+	* "substitute_container_label_char" is used to establish the substitution 
+	* character.  Note the substitution character must be a valid member
+	* of whitelist_value.
 	*/
-	substitution_character sub_char;
-	if (check == CHECK_NAME)
+	for (auto c = val.begin(); c != val.end(); ++c)
 	{
-	    for (auto c = val.begin(); c != val.end(); ++c)
+	    // determine if the character of val pointed to *c is a whitelist member:
+	    if (whitelist.find(*c) == std::string::npos)
 	    {
-		    // determine if the character of val pointed to *c is a whitelist_name member:
-		    if (whitelist_name.find(*c) == std::string::npos)
-		    {
-			    *c = sub_char.get_substitution_char();
-		    }
-	    }
-	} 
-	else  /* check is CHECK_VALUE */
-	{
-	
-	    for (auto c = val.begin(); c != val.end(); ++c)
-	    {
-		    // determine if the character of val pointed to *c is a whitelist_value member:
-		    if (whitelist_value.find(*c) == std::string::npos)
-		    {
-			    *c = sub_char.get_substitution_char();
-		    }	
+		    *c = substitution_char;
 	    }
 	}
 }
@@ -261,6 +248,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	container_info.m_type = CT_CUSTOM;
 	bool metadata_complete = true;
 	bool new_container = false;
+	substitution_character sub_char;
 
 	if (!m_enabled)
 	{
@@ -296,7 +284,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	}
 	container_info.m_id = container_info.m_id.substr(0, m_max_id_length);
 	
-	clean_label(container_info.m_id, CHECK_NAME);
+	clean_label(container_info.m_id, whitelist_name, '_');
 
 	if (m_config_test && tinfo->is_main_thread())
 	{
@@ -346,9 +334,11 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 			if (container_info.m_name.empty())
 			{
 				metadata_complete = false;
-			} else {
+			}
+			else
+			{
 
-				clean_label(container_info.m_name, CHECK_NAME);
+				clean_label(container_info.m_name, whitelist_name, '_');
 			}
 		} catch (const Poco::RuntimeException& e) {
 			LOG_WARNING("Disabling custom container name due to error in configuration: %s", e.message().c_str());
@@ -366,9 +356,10 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 				{
 					metadata_complete = false;
 				}
-			} else {				
-
-				clean_label(container_info.m_image, CHECK_NAME);
+			}
+			else
+			{				
+				clean_label(container_info.m_image, whitelist_name, '_');
 			}
 		} catch (const Poco::RuntimeException &e) {
 			LOG_WARNING("Disabling custom container image due to error in configuration: %s", e.message().c_str());
@@ -391,9 +382,11 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 					{
 						metadata_complete = false;
 					}
-				} else {
-					// this is the only call to clean_label() for action CHECK_VALUE
-					clean_label(s, CHECK_VALUE);
+				}
+				else
+				{
+					// this is the only call to clean_label() where we use whitelist_value
+					clean_label(s, whitelist_value, sub_char.get_substitution_char());
 					container_info.m_labels.emplace(it->first, move(s));
 				}
 			} catch (const Poco::RuntimeException& e) {
