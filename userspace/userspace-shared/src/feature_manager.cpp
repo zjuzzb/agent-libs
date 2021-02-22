@@ -59,17 +59,16 @@ const feature_manager::agent_mode_container feature_manager::mode_definitions[] 
      "secure",
      {COINTERFACE, DRIVER, FULL_SYSCALLS},
      {{"10s_flush_enable", config_placeholder_impl<bool>::build(true)}}},
-	// Note that "DRIVER" feature is really misnamed....it really just means event source
+    // Note that "DRIVER" feature is really misnamed....it really just means event source
     {feature_manager::AGENT_MODE_AGENTINO,
      "agentino",
      {SECURE, DRIVER, FULL_SYSCALLS},
-     {{"security.actions_enabled", config_placeholder_impl<bool>::build(false)},
-      {"ssl_verify_certificate", config_placeholder_impl<bool>::build(false)}}},
-    {feature_manager::AGENT_MODE_AGENTONE,
-     "agentone",
-     {SECURE, DRIVER, FULL_SYSCALLS},
-     {}}
-};
+     {
+         {"security.actions_enabled", config_placeholder_impl<bool>::build(false)},
+         {"ssl_verify_certificate", config_placeholder_impl<bool>::build(false)},
+         {"security.k8s_audit_server_enabled", config_placeholder_impl<bool>::build(false)},
+     }},
+    {feature_manager::AGENT_MODE_AGENTONE, "agentone", {SECURE, DRIVER, FULL_SYSCALLS}, {}}};
 
 static_assert(feature_manager::agent_mode::AGENT_MODE_COUNT ==
                   sizeof(feature_manager::mode_definitions) /
@@ -884,8 +883,8 @@ feature_base secure_audit_feature(SECURE_AUDIT,
                                   {SECURE});
 
 feature_base network_topology_feature(NETWORK_TOPOLOGY,
-                                  &draiosproto::feature_status::set_network_topology_enabled,
-                                  {SECURE});
+                                      &draiosproto::feature_status::set_network_topology_enabled,
+                                      {SECURE});
 
 feature_base network_breakdown_feature(NETWORK_BREAKDOWN,
                                        &draiosproto::feature_status::set_network_breakdown_enabled,
