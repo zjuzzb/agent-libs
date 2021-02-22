@@ -414,6 +414,7 @@ void infrastructure_state::init(const std::string& machine_id, const std::string
 	const string &k8s_cluster_name = get_k8s_cluster_name();
 	if (!k8s_cluster_name.empty())
 	{
+		LOG_DEBUG("Setting kubernetes.cluster.name: %s", k8s_cluster_name.c_str());
 		(*obj->mutable_tags())[string("kubernetes.cluster.name")] = k8s_cluster_name;
 	}
 
@@ -3115,6 +3116,24 @@ void infrastructure_state::refresh_hosts_metadata()
 
 		if (host->uid().id() == m_machine_id)
 		{
+			// in init() we may have set
+			// kubernetes.cluster.name to the configured
+			// k8s_cluster_name. However, when the host
+			// information comes back from
+			// ORCHESTRATOR_STATE, the
+			// kubernetes.cluster.name tag probably isn't
+			// present.  Add it back again if missing.
+			std::string cluster_name;
+			if(host->tags().find("kubernetes.cluster.name") == host->tags().end())
+			{
+				const string &k8s_cluster_name = get_k8s_cluster_name();
+				if (!k8s_cluster_name.empty())
+				{
+					LOG_DEBUG("Adding kubernetes.cluster.name=%s back to own host", k8s_cluster_name.c_str());
+					(*host->mutable_tags())[string("kubernetes.cluster.name")] = k8s_cluster_name;
+				}
+			}
+
 			//
 			// connect the local host to all the local containers
 			//
