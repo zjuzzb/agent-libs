@@ -155,10 +155,6 @@ connection::result connection::process_handshake_in()
 		{
 			LOG_ERROR("Fatal error reading handshake message from agentino.");
 		}
-		else
-		{
-			LOG_ERROR("Agentino disconnected during handshake.");
-		}
 		return res;
 	}
 
