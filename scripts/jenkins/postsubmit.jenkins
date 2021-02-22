@@ -37,14 +37,6 @@ pipeline {
 				}
 			}
 		}
-		stage ('Build Fargate Artifacts'){
-			steps {
-				build job: '/Secure/Fargate-Artifacts/main', parameters: [
-					string(name: "AGENTINO_IMAGE", value: "docker.internal.sysdig.com/agentino-internal:${getBuildNumber()}"),
-					string(name: "AGENTONE_IMAGE", value: "docker.internal.sysdig.com/agentone:${getBuildNumber()}")
-				], wait: false
-			}
-		}
 		stage ('Secure Scans') {
 			parallel {
 				stage('agent') {
