@@ -71,8 +71,10 @@ pipeline {
 				sudo pkill -9 tests || echo "no tests to kill"
 
 				sudo rmmod sysdigcloud-probe || echo "not currently loaded"
-				sudo rm -rf ./install ./build
 				docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+
+				sudo rm -rf ./install ./build ./agent ./oss-falco ./libsinsp ./libscap ./protorepo ./userspace ./test
+				sudo rm -rf ./.git
 			'''
 			cleanWs deleteDirs: true, notFailBuild: true
 		}

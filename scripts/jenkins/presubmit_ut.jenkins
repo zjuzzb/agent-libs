@@ -42,9 +42,11 @@ pipeline {
 	post {
 		always {
 			sh label: '', script: '''
-				sudo rm -rf ./build
 				docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
 				docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+				sudo rm -rf ./build ./agent ./oss-falco ./libsinsp ./libscap ./protorepo ./userspace ./test
+                sudo rm -rf ./.git
+
 			'''
 			cleanWs deleteDirs: true, notFailBuild: true
 		}
