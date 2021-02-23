@@ -277,7 +277,6 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 		return false;
 	}
 	container_info.m_id = container_info.m_id.substr(0, m_max_id_length);
-	
 	clean_label(container_info.m_id, whitelist_name, CHECK_NAME);
 
 	if (m_config_test && tinfo->is_main_thread())
@@ -331,7 +330,6 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 			}
 			else
 			{
-
 				clean_label(container_info.m_name, whitelist_name, CHECK_NAME);
 			}
 		} catch (const Poco::RuntimeException& e) {
@@ -363,11 +361,10 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	}
 
 	auto it = m_label_patterns.begin(); // this is of type std::unordered_map<std::string, subst_template>
-
 	while (it != m_label_patterns.end())
 	{
 		if (container_info.m_labels.find(it->first) == container_info.m_labels.end())
-		{				
+		{
 			try {
 				string s;
 				it->second.render(s, render_ctx, env);
@@ -455,7 +452,7 @@ void custom_container::resolver::dump_container_table()
 	out << YAML::Value << YAML::BeginMap;
 
 	if (m_dump.size() > (size_t)m_max)
-	{		
+	{
 		LOG_WARNING("%lu custom containers present, while the limit is %d. Only a subset will be reported",
 			m_dump.size(), m_max);
 	}
