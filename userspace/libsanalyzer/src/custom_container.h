@@ -242,7 +242,7 @@ protected:
 	bool m_config_test = false;
 	int m_max = 0;
 	int m_max_id_length = 0;
-	char m_label_substitution_char;
+	char m_label_value_substitution_char;
 	std::string whitelist_name  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._";
 	std::string whitelist_value = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._/";
 

@@ -14,9 +14,9 @@ COMMON_LOGGER();
 using namespace std;
 using namespace libsinsp::cgroup_limits;
 
-type_config<std::string> c_substitute_container_label_char( "_", 
+type_config<std::string> c_substitute_container_label_value_char( "_", 
 	"Substitution character for custom container label value",
-	"substitute_container_label_char");
+	"substitute_container_label_value_char");
 
 void custom_container::subst_token::render(std::string& out, const render_context& ctx, const std::vector<std::string>& env) const
 {
@@ -119,7 +119,7 @@ custom_container::resolver::resolver()
 		}
 	};
 	
-	m_label_substitution_char = '\0';
+	m_label_value_substitution_char = '\0';
 	
 }
 
@@ -205,33 +205,30 @@ sinsp_threadinfo* custom_container::resolver::match_environ_tree(sinsp_threadinf
 void custom_container::resolver::clean_label(std::string& val, std::string const& whitelist, enum string_type_differentiator check)
 {
 	/*
-	* Check each character of val to determine if it is in the whitelist.
-	* If parameter val contains a character not in the whitelist replace
-	* it with the substitution character.  The dragent.yaml config named
-	* "substitute_container_label_char" is used to establish the substitution 
-	* character.  Note the substitution character must be a valid member
-	* of whitelist_value.
+	* Check each character of val to determine if it is in the parameter 
+	* referenced whitelist.  If parameter val contains a character not in 
+	* the whitelist replace it with the appropriate substitution character.
+	* 
+	* The dragent.yaml config named "substitute_container_label_value_char" 
+	* is used to establish the substitution character used when this function
+	* is called for whitelist_value.  Note the substitution character must
+	* be a valid member of whitelist_value.  When this function is called
+	* for whitelist_name, the substitution charcter is an underscore '_'.
 	*/
-	if (m_label_substitution_char == '\0') // we will only do this once to initialize
+	if (m_label_value_substitution_char == '\0') // we will only do this once to initialize
 	{
-	    m_label_substitution_char = (c_substitute_container_label_char.get_value().length() == 1 && 
-			                 whitelist_value.find(c_substitute_container_label_char.get_value()[0] != 
+	    m_label_value_substitution_char = (c_substitute_container_label_value_char.get_value().length() == 1 && 
+			                 whitelist_value.find(c_substitute_container_label_value_char.get_value()[0] != 
 			                 std::string::npos) ? 
-			                 c_substitute_container_label_char.get_value()[0] : '_');
+			                 c_substitute_container_label_value_char.get_value()[0] : '_');
 	}
+	char sub_char = (check == CHECK_NAME) ? '_' : m_label_value_substitution_char;
 	for (auto c = val.begin(); c != val.end(); ++c)
 	{
 		// determine if the character of val pointed to *c is a whitelist member:
 		if (whitelist.find(*c) == std::string::npos)
 		{
-			if (check == CHECK_NAME)
-			{
-				*c = '_';
-			}
-			else
-			{
-				*c = m_label_substitution_char;
-			}
+				*c = sub_char;
 		}
 	}
 }
