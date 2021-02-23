@@ -47,6 +47,11 @@ struct match {
 
 typedef std::unordered_map<std::string, match> render_context;
 
+enum string_type_differentiator {
+		CHECK_NAME = 0,
+		CHECK_VALUE = 1
+};
+
 class subst_token {
 public:
 	subst_token(std::string var_name, int capture_id=-1):
@@ -237,6 +242,10 @@ protected:
 	bool m_config_test = false;
 	int m_max = 0;
 	int m_max_id_length = 0;
+	char m_label_substitution_char;
+	std::string whitelist_name  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._";
+	std::string whitelist_value = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._/";
+
 	std::unique_ptr<Poco::RegularExpression> m_cgroup_match;
 	std::unordered_map<std::string, std::unique_ptr<Poco::RegularExpression>> m_environ_match;
 
@@ -248,7 +257,7 @@ protected:
 	bool match_cgroup(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	bool match_environ(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	sinsp_threadinfo* match_environ_tree(sinsp_threadinfo *tinfo, render_context &render_ctx);
-	void clean_label(std::string& val, std::string const& whitelist, char16_t substitution_char);
+	void clean_label(std::string& val, std::string const& whitelist, enum string_type_differentiator check);
 
 	match m_hostname;
 
