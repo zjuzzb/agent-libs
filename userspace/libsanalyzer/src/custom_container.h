@@ -257,7 +257,7 @@ protected:
 	bool match_cgroup(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	bool match_environ(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	sinsp_threadinfo* match_environ_tree(sinsp_threadinfo *tinfo, render_context &render_ctx);
-	void clean_label(std::string& val, std::string const& whitelist, enum string_type_differentiator check);
+	void clean_label(std::string& val, enum string_type_differentiator check);
 
 	match m_hostname;
 
