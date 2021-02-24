@@ -37,6 +37,13 @@ pipeline {
 				}
 			}
 		}
+		stage ('Fargate Artifacts') {
+			steps {
+				 build job: '/Fargate-Artifacts/main', parameters: [
+					string(name: "AGENT_BUILD", value: "${getBuildNumber()}"),
+				], propagate: false
+			}
+		}
 		stage ('Secure Scans') {
 			parallel {
 				stage('agent') {
