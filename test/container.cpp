@@ -30,6 +30,13 @@
 
 using namespace std;
 
+
+// Note: to run these tests stand-alone with a local build, use commands:
+//
+//     cd /opt/draios/test
+//     sudo ./tests --gtest_filter='container*'
+//
+
 #ifndef LIBSCAP_HAYABUSA
 TEST_F(sys_call_test, container_cgroups)
 {
@@ -732,6 +739,9 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 		res.set_max(50);
 		res.set_max_id_length(50);
 		res.set_enabled(true);
+		// exercise custom_container::resolver::clean_label() whitelist_value substitution:
+		res.set_label_pattern("custom_container_1", "label*babel"); // will change
+		res.set_label_pattern("custom_container_2", "mabel/label"); // will not change
 		analyzer->set_custom_container_conf(move(res));
 	};
 
