@@ -134,6 +134,22 @@ agentino::agentino(agentone::agentino_manager* manager,
 {
 }
 
+std::string agentino::get_id() const
+{
+	if (m_fixed_metadata.find(CONTAINER_ID) != m_fixed_metadata.end())
+	{
+		return m_fixed_metadata.at(CONTAINER_ID);
+	}
+
+	// Container name is not guaranteed to be unique, but maybe good as a fallback?
+	if (m_fixed_metadata.find(CONTAINER_NAME) != m_fixed_metadata.end())
+	{
+		return "(non_unique) " + m_fixed_metadata.at(CONTAINER_NAME);
+	}
+
+	return "<unknown>";
+}
+
 void agentino::add_metadata_property(agentino_metadata_property property, const std::string& value)
 {
 	std::lock_guard<std::mutex> lock(m_metadata_lock);
@@ -330,6 +346,7 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 		m_agentinos_by_connection.emplace(connection_in, extant_agentino);
 	}
 
+	connection_in->set_id(extant_agentino->get_id());
 	// to be picked up by the agentino_manager thread to ensure we have most recent policies
 	m_new_agentinos.push_back(extant_agentino);
 }
@@ -492,16 +509,19 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 		{
 			draiosproto::message_type type =
 			    static_cast<draiosproto::message_type>(msg.hdr.hdr.messagetype);
-			LOG_INFO("Read message of type %d and length %u from agentino",
+			LOG_INFO("Read message of type %d and length %u from agentino %s",
 			         (int)type,
-			         msg.payload_length());
+			         msg.payload_length(),
+			         (*cptr)->get_id().c_str());
 
 			// Submit work queue item to deserialize and dispatch
 			m_pool.submit_work(new agentino_message_work_item(*this, msg));
 		}
 		else
 		{
-			LOG_WARNING("Error reading message from agentino (probably agentino disconnected)");
+			LOG_WARNING("Error reading message from agentino %s "
+                        "(probably agentino disconnected)",
+			            (*cptr)->get_id().c_str());
 			// Propagate the disconnect to the connection object
 			(*cptr)->disconnect();
 		}

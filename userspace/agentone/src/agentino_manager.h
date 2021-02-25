@@ -13,6 +13,7 @@
 #include <mutex>
 #include <set>
 #include <thread>
+#include <string>
 
 /**
  * Agentino management infrastructure
@@ -73,6 +74,12 @@ public:  // ctor/dtor
 	         std::map<std::string, std::string> arbitrary_metadata);
 
 public:
+
+	/**
+	 * Get a unique identifier for this agentino.
+	 */
+	virtual std::string get_id() const;
+
 	/**
 	 * stores the metadata value for the given property. If that property had been
 	 * previously written, it is overwritten

@@ -84,6 +84,16 @@ public:
 	void clear_connected_ref();
 
 	/**
+	 * Set a unique identifier for this connection (to be used in logging, when needed).
+	 */
+	void set_id(const std::string& id) { m_id = id; }
+
+	/**
+	 * Get the previously-set identifier for this connection.
+	 */
+	const std::string& get_id() const { return m_id; }
+
+	/**
 	 * Bring up the connection on the agentone side.
 	 *
 	 * @param[in] ctx  Context object passed back into the various callbacks.
@@ -163,6 +173,7 @@ private:
 	handshake_cb m_on_handshake;
 	draiosproto::agentino_handshake m_hs_data;
 	void* m_ctx;
+	std::string m_id;
 
 	// This is effectively just a ref between connect and disconnect to ensure
 	// we don't go away
