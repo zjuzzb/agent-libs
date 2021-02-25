@@ -62,6 +62,8 @@ static void g_trace_signal_callback(int sig)
 
 agentino_app* s_instance = nullptr;
 
+static const std::string task_arn_arg = "aws-fargate-task-arn";
+
 }  // end namespace
 
 agentino_app::agentino_app()
@@ -161,7 +163,7 @@ void agentino_app::defineOptions(OptionSet& options)
 	options.addOption(Option("aws-region", "", "").repeatable(false));
 	options.addOption(Option("aws-az", "", "").repeatable(false));
 	options.addOption(Option("aws-fargate-cluster-arn", "", "").repeatable(false));
-	options.addOption(Option("aws-fargate-task-arn", "", "").repeatable(false));
+	options.addOption(Option(task_arn_arg, "", "").repeatable(false));
 	options.addOption(Option("image-id", "", "").repeatable(false));
 	options.addOption(
 	    Option("container-name", "", "the name used to identify this agentone to the backend")
@@ -340,7 +342,13 @@ int agentino_app::sdagent_main()
 
 	// MAC addresses are not suitable for uniqueness in virtualized environments (and
 	// certainly not in fargate), so add hostname, which we ask customers to make unique
-	m_configuration.set_machine_id_prefix(m_hostname);
+	std::string prefix = m_container_id;
+	if (m_metadata.find(task_arn_arg) != m_metadata.end())
+	{
+		prefix += "." + m_metadata.find(task_arn_arg)->second;
+	}
+	m_configuration.set_machine_id_prefix(prefix);
+	LOG_INFO("Using machine prefix %s", prefix.c_str());
 
 	ExitCode exit_code;
 
