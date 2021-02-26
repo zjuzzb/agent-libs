@@ -16,7 +16,7 @@ docker-py==1.10.6
 sysdig-tracers==0.1.2
 
 # checks.d/network.py
-psutil==5.6.2
+psutil==5.6.7
 
 netifaces==0.10.9
 
