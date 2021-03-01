@@ -337,7 +337,7 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 	agentino::ptr extant_agentino = nullptr;
 	if (extant_agentino == nullptr)
 	{
-		LOG_INFO("Building new agentino from container %s", fixed_metadata[CONTAINER_NAME].c_str());
+		LOG_INFO("Building new agentino from container %s %s", fixed_metadata[CONTAINER_NAME].c_str(), connection_in->get_id().c_str());
 		extant_agentino = agentino::build_agentino(this,
 		                                           connection_in,
 		                                           std::move(fixed_metadata),
@@ -371,11 +371,11 @@ void agentino_manager::delete_agentino_connection(connection::ptr connection_in)
 		// 2. We get a disconnect callback from the connection object
 		// It's very possible for us to get a remove from both these paths,
 		// which is not an error. It's just life with networking code.
-		LOG_DEBUG("Attempting to remove unknown agentino connection");
+		LOG_DEBUG("Attempting to remove unknown agentino connection from container %s", connection_in->get_id().c_str());
 		return;
 	}
-	LOG_INFO("Removing agentino from container %s",
-	         extant_agentino->get_metadata_property(CONTAINER_NAME).c_str());
+	LOG_INFO("Removing agentino from container %s %s",
+	         extant_agentino->get_metadata_property(CONTAINER_NAME).c_str(), connection_in->get_id().c_str());
 	extant_agentino->remove_connection_info();
 
 	// We do not support leaving agentinos around after the connection died yet
@@ -505,23 +505,23 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 
 		// Read the message
 		connection::result res = (*cptr)->read_message(msg);
+		agentino::ptr extant_agentino = find_extant_agentino_not_threadsafe(*cptr);
 		if (res == connection::SUCCESS)
 		{
 			draiosproto::message_type type =
 			    static_cast<draiosproto::message_type>(msg.hdr.hdr.messagetype);
-			LOG_INFO("Read message of type %d and length %u from agentino %s",
-			         (int)type,
-			         msg.payload_length(),
-			         (*cptr)->get_id().c_str());
+			LOG_INFO("Read message of type %d and length %u from agentino container %s %s",
+			         (int)type, msg.payload_length(),
+			         extant_agentino->get_metadata_property(CONTAINER_NAME).c_str(), (*cptr)->get_id().c_str());
 
 			// Submit work queue item to deserialize and dispatch
 			m_pool.submit_work(new agentino_message_work_item(*this, msg));
 		}
 		else
 		{
-			LOG_WARNING("Error reading message from agentino %s "
+			LOG_WARNING("Error reading message from agentino %s %s"
                         "(probably agentino disconnected)",
-			            (*cptr)->get_id().c_str());
+			            extant_agentino->get_metadata_property(CONTAINER_NAME).c_str(), (*cptr)->get_id().c_str());
 			// Propagate the disconnect to the connection object
 			(*cptr)->disconnect();
 		}
