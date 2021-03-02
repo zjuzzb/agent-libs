@@ -7,6 +7,7 @@
  */
 #include "common_logger.h"
 #include "thread_utils.h"
+#include "thread_safe_container/blocking_queue.h"
 #include <Poco/Logger.h>
 #include <Poco/Path.h>
 
@@ -364,7 +365,19 @@ void log_sink::log(const Poco::Message::Priority severity,
                    const char* const fmt,
                    ...) const
 {
-	if (nullptr != g_log && is_enabled(severity)) {
+	if (nullptr == g_log)
+	{	
+		// Logger isn't initialized. Build the message and save it
+		// so we can log it later.
+		va_list args;
+		va_start(args, fmt);
+		std::string message = build(line, fmt, args);
+		va_end(args);
+		common_logger_cache::save(m_tag, message, severity);
+
+	}
+	else if (is_enabled(severity)) 
+	{
 		va_list args;
 		va_start(args, fmt);
 		std::string message = build(line, fmt, args);
@@ -379,3 +392,60 @@ void log_sink::log(const Poco::Message::Priority severity,
 {
 	log(severity, line, "%s", str.c_str());
 }
+
+namespace common_logger_cache
+{
+
+namespace {
+
+struct cached_message {
+	const std::string *component_tag;
+	std::string message;
+	Poco::Message::Priority sev;
+}; 
+
+using cache_t = thread_safe_container::blocking_queue<cached_message>;
+const unsigned MAX_MESSAGES = 1000; 
+
+cache_t& get_cache() {
+	// This is kept inside a function so that clients don't need
+	// to worry about static initialization order. This will get
+	// initialized on first call.
+	static cache_t cache(MAX_MESSAGES);
+	return cache;
+}
+
+} // namespace
+
+void save(const std::string &component_tag,
+	  const std::string &str,
+	  Poco::Message::Priority sev)
+{
+	cached_message message = { &component_tag, str, sev };
+	get_cache().put(message);
+}
+
+void log_and_purge()
+{
+	if (nullptr == g_log) 
+	{
+		return;
+	}
+
+	if (get_cache().size() >= MAX_MESSAGES)
+	{
+		g_log->warning("The common logger cache reached max capacity.");
+	}
+
+	cached_message data;
+
+	while (get_cache().get(&data, 1000 /*one second timeout*/))
+	{
+		auto component_priority = g_log->get_component_file_priority(*data.component_tag);
+		g_log->log_check_component_priority(data.message, data.sev, component_priority);
+	}
+}
+
+}
+
+

@@ -1109,9 +1109,6 @@ int dragent_app::sdagent_main()
 
 	initialize_logging();
 
-	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-	LOG_INFO("Agent starting (version " + string(AGENT_VERSION) + ")");
-
 	setup_coredumps();
 
 	log_sysinfo();
@@ -2333,6 +2330,10 @@ void dragent_app::initialize_logging()
 							    make_console_channel(formatter)));
 
 	g_log->set_observer(m_internal_metrics);
+
+	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
+	LOG_INFO("Agent starting (version " + string(AGENT_VERSION) + ")");
+	common_logger_cache::log_and_purge();
 }
 
 void dragent_app::monitor_files(uint64_t uptime_s)

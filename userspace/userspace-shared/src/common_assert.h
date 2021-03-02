@@ -19,6 +19,9 @@
 
 // Only assert on DEBUG builds
 #ifdef _DEBUG
+
+extern std::unique_ptr<common_logger> g_log;
+
 #define ASSERT(X) \
 	if(!(X)) \
 	{ \

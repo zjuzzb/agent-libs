@@ -522,9 +522,6 @@ int agentone_app::sdagent_main()
 
 	initialize_logging();
 
-	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-	LOG_INFO("Agentone starting (version " + string(AGENT_VERSION) + ")");
-
 	setup_coredumps();
 
 	//
@@ -1292,7 +1289,10 @@ void agentone_app::initialize_logging()
 	g_log = unique_ptr<common_logger>(new common_logger(&loggerf,
 	                                                    m_configuration.m_min_file_priority,
 	                                                    c_log_file_component_overrides.get_value(),
-	                                                    make_console_channel(formatter)));
+							    make_console_channel(formatter)));
+
+	LOG_INFO("Agentone starting (version " + string(AGENT_VERSION) + ")");
+	common_logger_cache::log_and_purge();
 }
 
 void agentone_app::monitor_files(uint64_t uptime_s)

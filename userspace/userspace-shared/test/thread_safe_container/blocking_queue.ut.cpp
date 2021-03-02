@@ -5,9 +5,10 @@
 #include <Poco/Runnable.h>
 #include <Poco/ThreadPool.h>
 #include "Poco/Thread.h"
+#include <memory> // for common_assert.h using it blocking_queue.h
+#include <common_logger.h> // for common_assert.h using it blocking_queue.h
 #include "thread_safe_container/blocking_queue.h"
 
-#include <common_assert.h>
 
 using Poco::ThreadPool;
 using namespace thread_safe_container;

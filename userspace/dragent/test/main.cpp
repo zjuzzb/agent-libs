@@ -64,6 +64,7 @@ private:
 									 Message::Priority::PRIO_DEBUG,
 									 dummy_config,
 									 loggerc));
+		common_logger_cache::log_and_purge();
 	}
 
 	void SetUp() override
