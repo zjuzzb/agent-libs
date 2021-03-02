@@ -657,7 +657,8 @@ int agentone_app::sdagent_main()
 			m_configuration.m_promex_enabled,
 			m_configuration.m_promex_connect_url,
 			m_configuration.m_customer_id,
-			m_configuration.machine_id()
+			m_configuration.machine_id(),
+			m_configuration.c_root_dir.get_value()
 		},
 		&m_transmit_queue,
 		c_10s_flush_enabled.get_value()

@@ -345,7 +345,8 @@ bool connection_manager::connect()
 	                                                       bool ssl_enabled,
 	                                                       const seconds reconnect_interval,
 	                                                       std::vector<std::string>& ca_cert_paths,
-	                                                       std::string& ssl_ca_certificate)
+	                                                       std::string& ssl_ca_certificate,
+	                                                       const std::string& root_dir)
 	{
 		cm_socket::ptr sockptr = nullptr;
 
@@ -393,6 +394,7 @@ bool connection_manager::connect()
 				                                         c_proxy_ssl.get_value(),
 				                                         ca_cert_paths,
 				                                         ssl_ca_certificate,
+				                                         root_dir,
 				                                         c_ssl_verify_certificate.get_value()});
 			}
 			else if (ssl_enabled)
@@ -457,7 +459,8 @@ bool connection_manager::connect()
 	                           m_configuration.m_ssl_enabled,
 	                           m_reconnect_interval,
 	                           std::ref(m_configuration.m_ssl_ca_cert_paths),
-	                           std::ref(m_configuration.m_ssl_ca_certificate));
+	                           std::ref(m_configuration.m_ssl_ca_certificate),
+	                           std::ref(m_configuration.m_root_dir));
 	//
 	// End thread
 	//

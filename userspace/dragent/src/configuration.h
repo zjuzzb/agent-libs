@@ -467,6 +467,11 @@ public:
 
 	void set_machine_id_prefix(std::string prefix) { m_machine_id_prefix = prefix; }
 
+	std::string relpath_to_absolute(const std::string& relpath)
+	{
+		return Path(c_root_dir.get_value()).append(relpath).toString();
+	}
+
 private:
 	inline static bool is_executable(const std::string& path);
 	void write_statsite_configuration();
