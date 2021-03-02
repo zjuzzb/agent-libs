@@ -138,7 +138,7 @@ std::string agentino::get_id() const
 {
 	if (m_fixed_metadata.find(CONTAINER_ID) != m_fixed_metadata.end())
 	{
-		return m_fixed_metadata.at(CONTAINER_ID);
+		return m_fixed_metadata.at(CONTAINER_ID); // this text string is a hashtag value
 	}
 
 	// Container name is not guaranteed to be unique, but maybe good as a fallback?
@@ -321,7 +321,8 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 	bool ret = connection_in->get_handshake_data(handshake_data);
 	if (!ret)
 	{
-		LOG_WARNING("Attempting to process new connection with no handshake data, bailing");
+		LOG_WARNING("Attempting to process new connection with no handshake data, bailing for container id=%s", 
+	         connection_in->get_id().c_str());
 		return;
 	}
 
@@ -337,7 +338,9 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 	agentino::ptr extant_agentino = nullptr;
 	if (extant_agentino == nullptr)
 	{
-		LOG_INFO("Building new agentino from container %s %s", fixed_metadata[CONTAINER_NAME].c_str(), connection_in->get_id().c_str());
+		LOG_INFO("Building new agentino from container name=%s id=%s", 
+	         fixed_metadata[CONTAINER_NAME].c_str(), 
+	         connection_in->get_id().c_str());
 		extant_agentino = agentino::build_agentino(this,
 		                                           connection_in,
 		                                           std::move(fixed_metadata),
@@ -374,8 +377,9 @@ void agentino_manager::delete_agentino_connection(connection::ptr connection_in)
 		LOG_DEBUG("Attempting to remove unknown agentino connection from container %s", connection_in->get_id().c_str());
 		return;
 	}
-	LOG_INFO("Removing agentino from container %s %s",
-	         extant_agentino->get_metadata_property(CONTAINER_NAME).c_str(), connection_in->get_id().c_str());
+	LOG_INFO("Removing agentino from container name=%s id=%s",
+	         extant_agentino->get_metadata_property(CONTAINER_NAME).c_str(),
+	         connection_in->get_id().c_str());
 	extant_agentino->remove_connection_info();
 
 	// We do not support leaving agentinos around after the connection died yet
@@ -510,18 +514,19 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 		{
 			draiosproto::message_type type =
 			    static_cast<draiosproto::message_type>(msg.hdr.hdr.messagetype);
-			LOG_INFO("Read message of type %d and length %u from agentino container %s %s",
+			LOG_INFO("Read message of type %d and length %u from agentino container name=%s id=%s",
 			         (int)type, msg.payload_length(),
-			         extant_agentino->get_metadata_property(CONTAINER_NAME).c_str(), (*cptr)->get_id().c_str());
+			         extant_agentino->get_metadata_property(CONTAINER_NAME).c_str(), 
+			         (*cptr)->get_id().c_str());
 
 			// Submit work queue item to deserialize and dispatch
 			m_pool.submit_work(new agentino_message_work_item(*this, msg));
 		}
 		else
 		{
-			LOG_WARNING("Error reading message from agentino %s %s"
-                        "(probably agentino disconnected)",
-			            extant_agentino->get_metadata_property(CONTAINER_NAME).c_str(), (*cptr)->get_id().c_str());
+			LOG_WARNING("Error reading message from agentino (probably agentino disconnected) container name=%s id=%s",
+                        extant_agentino->get_metadata_property(CONTAINER_NAME).c_str(), 
+                        (*cptr)->get_id().c_str());
 			// Propagate the disconnect to the connection object
 			(*cptr)->disconnect();
 		}
