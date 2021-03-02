@@ -322,7 +322,7 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 	if (!ret)
 	{
 		LOG_WARNING("Attempting to process new connection with no handshake data, bailing for container id=%s", 
-	         connection_in->get_id().c_str());
+					connection_in->get_id().c_str());
 		return;
 	}
 
@@ -339,8 +339,8 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 	if (extant_agentino == nullptr)
 	{
 		LOG_INFO("Building new agentino from container name=%s id=%s", 
-	         fixed_metadata[CONTAINER_NAME].c_str(), 
-	         connection_in->get_id().c_str());
+				fixed_metadata[CONTAINER_NAME].c_str(), 
+				connection_in->get_id().c_str());
 		extant_agentino = agentino::build_agentino(this,
 		                                           connection_in,
 		                                           std::move(fixed_metadata),
@@ -374,7 +374,8 @@ void agentino_manager::delete_agentino_connection(connection::ptr connection_in)
 		// 2. We get a disconnect callback from the connection object
 		// It's very possible for us to get a remove from both these paths,
 		// which is not an error. It's just life with networking code.
-		LOG_DEBUG("Attempting to remove unknown agentino connection from container %s", connection_in->get_id().c_str());
+		LOG_DEBUG("Attempting to remove unknown agentino connection from container %s", 
+				connection_in->get_id().c_str());
 		return;
 	}
 	LOG_INFO("Removing agentino from container name=%s id=%s",
@@ -524,7 +525,8 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 		}
 		else
 		{
-			LOG_WARNING("Error reading message from agentino (probably agentino disconnected) container name=%s id=%s",
+			LOG_WARNING("Error reading message from agentino"
+                        "(probably agentino disconnected) container name=%s id=%s",
                         extant_agentino->get_metadata_property(CONTAINER_NAME).c_str(), 
                         (*cptr)->get_id().c_str());
 			// Propagate the disconnect to the connection object
