@@ -89,10 +89,20 @@ public:
 	void set_id(const std::string& id) { m_id = id; }
 
 	/**
+	 * Set a name for this connection (to be used in logging, when needed).
+	 */
+	void set_name(const std::string& name) { m_name = name; }
+	
+	/**
 	 * Get the previously-set identifier for this connection.
 	 */
 	const std::string& get_id() const { return m_id; }
 
+	/**
+	 * Get the previously-set name for this connection.
+	 */
+	const std::string& get_name() const { return m_name; }
+	
 	/**
 	 * Bring up the connection on the agentone side.
 	 *
@@ -174,6 +184,7 @@ private:
 	draiosproto::agentino_handshake m_hs_data;
 	void* m_ctx;
 	std::string m_id;
+	std::string m_name;
 
 	// This is effectively just a ref between connect and disconnect to ensure
 	// we don't go away

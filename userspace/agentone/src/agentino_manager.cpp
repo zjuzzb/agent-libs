@@ -138,7 +138,7 @@ std::string agentino::get_id() const
 {
 	if (m_fixed_metadata.find(CONTAINER_ID) != m_fixed_metadata.end())
 	{
-		return m_fixed_metadata.at(CONTAINER_ID); // this text string is a hashtag value
+		return m_fixed_metadata.at(CONTAINER_ID); // Container ID is a globally unique identifier for the container
 	}
 
 	// Container name is not guaranteed to be unique, but maybe good as a fallback?
@@ -146,6 +146,16 @@ std::string agentino::get_id() const
 	{
 		return "(non_unique) " + m_fixed_metadata.at(CONTAINER_NAME);
 	}
+
+	return "<unknown>";
+}
+
+std::string agentino::get_name() const
+{
+        if (m_fixed_metadata.find(CONTAINER_NAME) != m_fixed_metadata.end())
+        {
+                return m_fixed_metadata.at(CONTAINER_NAME); // Container NAME is not gauranteed to be unique
+        }
 
 	return "<unknown>";
 }
@@ -316,17 +326,18 @@ void agentino_manager::build_metadata(
 void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 {
 	std::lock_guard<std::mutex> lock(m_agentino_list_lock);
+	std::map<agentino_metadata_property, std::string> fixed_metadata;
 
 	draiosproto::agentino_handshake handshake_data;
 	bool ret = connection_in->get_handshake_data(handshake_data);
 	if (!ret)
 	{
-		LOG_WARNING("Attempting to process new connection with no handshake data, bailing for container id=%s", 
+		LOG_WARNING("Attempting to process new connection with no handshake data, bailing for container name=%s id=%s", 
+					fixed_metadata[CONTAINER_NAME].c_str(),
 					connection_in->get_id().c_str());
 		return;
 	}
 
-	std::map<agentino_metadata_property, std::string> fixed_metadata;
 	std::map<std::string, std::string> arbitrary_metadata;
 	agentino_manager::build_metadata(handshake_data, fixed_metadata, arbitrary_metadata);
 
@@ -338,8 +349,8 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 	agentino::ptr extant_agentino = nullptr;
 	if (extant_agentino == nullptr)
 	{
-		LOG_INFO("Building new agentino from container name=%s id=%s", 
-				fixed_metadata[CONTAINER_NAME].c_str(), 
+		LOG_INFO("Building new agentino from container name=%s id=%s",
+				fixed_metadata[CONTAINER_NAME].c_str(),
 				connection_in->get_id().c_str());
 		extant_agentino = agentino::build_agentino(this,
 		                                           connection_in,
@@ -350,6 +361,7 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 	}
 
 	connection_in->set_id(extant_agentino->get_id());
+	connection_in->set_name(extant_agentino->get_name());
 	// to be picked up by the agentino_manager thread to ensure we have most recent policies
 	m_new_agentinos.push_back(extant_agentino);
 }
@@ -379,7 +391,7 @@ void agentino_manager::delete_agentino_connection(connection::ptr connection_in)
 		return;
 	}
 	LOG_INFO("Removing agentino from container name=%s id=%s",
-	         extant_agentino->get_metadata_property(CONTAINER_NAME).c_str(),
+	         connection_in->get_name().c_str(),
 	         connection_in->get_id().c_str());
 	extant_agentino->remove_connection_info();
 
@@ -517,7 +529,7 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 			    static_cast<draiosproto::message_type>(msg.hdr.hdr.messagetype);
 			LOG_INFO("Read message of type %d and length %u from agentino container name=%s id=%s",
 			         (int)type, msg.payload_length(),
-			         extant_agentino->get_metadata_property(CONTAINER_NAME).c_str(), 
+			         (*cptr)->get_name().c_str(),
 			         (*cptr)->get_id().c_str());
 
 			// Submit work queue item to deserialize and dispatch
@@ -527,7 +539,7 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 		{
 			LOG_WARNING("Error reading message from agentino"
                         "(probably agentino disconnected) container name=%s id=%s",
-                        extant_agentino->get_metadata_property(CONTAINER_NAME).c_str(), 
+                        (*cptr)->get_name().c_str(),
                         (*cptr)->get_id().c_str());
 			// Propagate the disconnect to the connection object
 			(*cptr)->disconnect();
