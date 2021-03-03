@@ -2,6 +2,7 @@
 #include "running_state.h"
 #include "sinsp_event_source.h"
 #include "type_config.h"
+#include "library_configs.h"
 
 #include <unistd.h>
 
@@ -24,6 +25,7 @@ sinsp_event_source::sinsp_event_source(bool static_container,
       m_shutdown(false)
 {
 	m_inspector.register_external_event_processor(*this);
+	sinsp_library_config::init_library_configs(m_inspector);
 }
 
 sinsp* sinsp_event_source::get_sinsp()

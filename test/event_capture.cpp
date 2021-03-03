@@ -40,21 +40,10 @@ void event_capture::capture()
 	m_inspector->register_external_event_processor(*m_analyzer);
 
 	m_analyzer->set_configuration(m_configuration);
-
-	if (m_max_thread_table_size != 0)
-	{
-		m_inspector->m_thread_manager->set_max_thread_table_size(m_max_thread_table_size);
-	}
-
-	if (m_thread_timeout_ns != 0)
-	{
-		m_inspector->m_thread_timeout_ns = m_thread_timeout_ns;
-	}
-
-	if (m_inactive_thread_scan_time_ns != 0)
-	{
-		m_inspector->m_inactive_thread_scan_time_ns = m_inactive_thread_scan_time_ns;
-	}
+	m_inspector->m_thread_manager->set_max_thread_table_size(m_max_thread_table_size);
+	m_inspector->m_thread_timeout_ns = m_thread_timeout_ns;
+	m_inspector->m_inactive_thread_scan_time_ns = m_inactive_thread_scan_time_ns;
+	m_inspector->disable_automatic_threadtable_purging();
 
 	m_inspector->set_get_procs_cpu_from_driver(true);
 
