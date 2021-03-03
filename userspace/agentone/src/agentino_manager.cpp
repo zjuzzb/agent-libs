@@ -528,7 +528,8 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 			draiosproto::message_type type =
 			    static_cast<draiosproto::message_type>(msg.hdr.hdr.messagetype);
 			LOG_INFO("Read message of type %d and length %u from agentino container name=%s id=%s",
-			         (int)type, msg.payload_length(),
+			         (int)type,
+			         msg.payload_length(),
 			         (*cptr)->get_name().c_str(),
 			         (*cptr)->get_id().c_str());
 
