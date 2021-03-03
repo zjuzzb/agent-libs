@@ -240,11 +240,20 @@ cm_socket::ptr http_tunnel::openssl_connect(const std::string& proxy_host,
 	auto oss = std::make_shared<cm_openssl_socket>(ca_cert_paths,
 	                                               ssl_ca_certificate,
 	                                               verify_certificate);
-	if (oss->connect(sock, proxy_host) && oss->is_valid())
+	BIO* conn = BIO_new_fd(sock, BIO_NOCLOSE);
+	if (conn == nullptr)
+	{
+		LOG_ERROR("Could not create I/O object for server connection");
+		::close(sock);
+		return nullptr;
+	}
+	else if (oss->connect(conn) && oss->is_valid())
 	{
 		LOG_INFO("Connected through HTTP proxy");
 		return oss;
 	}
+	BIO_free_all(conn);
+	::close(sock);
 	return nullptr;
 }
 
@@ -396,7 +405,7 @@ cm_socket::ptr http_tunnel::doublessl_connect(const std::string& proxy_host,
 	// Once we've fully read the HTTP response, the socket magically becomes a tunnel
 	// to the remote endpoint. Now we need to create a second SSL connection to the
 	// remote server, which is handled by the openssl_socket.
-	LOG_INFO("Setting up SSL connection to collector");
+	LOG_INFO("Setting up SSL connection to remote server");
 	auto oss = std::make_shared<cm_openssl_socket>(ca_cert_paths,
 	                                               ssl_ca_certificate,
 	                                               verify_certificate);

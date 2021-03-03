@@ -120,7 +120,8 @@ private:
 	static cm_socket::ptr doublessl_connect(const std::string& proxy_host,
 	                                        uint16_t proxy_port,
 	                                        const std::vector<std::string>& ca_cert_paths,
-	                                        const std::string& ssl_ca_certificate, const std::string& root_dir,
+	                                        const std::string& ssl_ca_certificate,
+	                                        const std::string& root_dir,
 	                                        bool verify_certificate,
 	                                        const std::string& http_connect_message);
 
