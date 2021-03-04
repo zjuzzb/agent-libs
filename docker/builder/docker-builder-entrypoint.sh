@@ -283,7 +283,7 @@ build_and_run_sonar_tools()
 	    -Dsonar.sources=/code/agent \
 	    -Dsonar.host.url=https://sonarcloud.io \
 	    -Dsonar.cfamily.build-wrapper-output=$BW_OUTPUT \
-	    -Dsonar.login=6474d8d1de0191e510bdf77bef760973061ed26a \
+	    -Dsonar.login=d8ce213c92157d883015102baabb7193f5153b78 \
 	    -Dsonar.inclusions=userspace/**/*.cpp
 }
 

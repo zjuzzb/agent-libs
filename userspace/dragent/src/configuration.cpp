@@ -1664,6 +1664,10 @@ std::string dragent_configuration::curl_get(const std::string& uri, const std::s
 
 	if (curl)
 	{
+		if ((res = curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2)) != CURLE_OK)
+		{
+			goto read_error;
+		}
 		if ((res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 1L)) != CURLE_OK)
 		{
 			goto read_error;
