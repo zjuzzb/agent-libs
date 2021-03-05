@@ -71,9 +71,9 @@ public:
 		    captured_event_callback,
 		    filter,
 		    configuration,
-		    0,
-		    0,
-		    0,
+		    131072,
+		     (uint64_t)60 * 1000 * 1000 * 1000,
+		     (uint64_t)60 * 1000 * 1000 * 1000,
 		    SCAP_MODE_LIVE,
 		    before_open);
 	}
@@ -89,9 +89,9 @@ public:
 		    captured_event_callback,
 		    filter,
 		    configuration,
-		    0,
-		    0,
-		    0,
+		    131072,
+		     (uint64_t)60 * 1000 * 1000 * 1000,
+		     (uint64_t)60 * 1000 * 1000 * 1000,
 		    SCAP_MODE_LIVE,
 		    before_open,
 		    before_close);
@@ -129,9 +129,9 @@ public:
 		    captured_event_callback,
 		    no_filter,
 		    configuration,
-		    0,
-		    0,
-		    0,
+		    131072,
+		     (uint64_t)60 * 1000 * 1000 * 1000,
+		     (uint64_t)60 * 1000 * 1000 * 1000,
 		    SCAP_MODE_NODRIVER);
 	}
 
@@ -140,9 +140,9 @@ public:
 		captured_event_callback_t captured_event_callback,
 		event_filter_t filter,
 		const sinsp_configuration& configuration,
-		uint32_t max_thread_table_size = 0,
-		uint64_t thread_timeout_ns = 0,
-		uint64_t inactive_thread_scan_time_ns = 0,
+		uint32_t max_thread_table_size = 131072,
+		uint64_t thread_timeout_ns =  (uint64_t)60 * 1000 * 1000 * 1000,
+		uint64_t inactive_thread_scan_time_ns =  (uint64_t)60 * 1000 * 1000 * 1000,
 		scap_mode_t mode = SCAP_MODE_LIVE,
 		before_open_t before_open = event_capture::do_nothing,
 		before_close_t before_close = event_capture::do_nothing,

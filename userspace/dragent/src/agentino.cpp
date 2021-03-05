@@ -320,8 +320,6 @@ int agentino_app::sdagent_main()
 
 	initialize_logging();
 
-	LOG_INFO("agentino starting (version " + string(AGENT_VERSION) + ")");
-
 	setup_coredumps();
 
 	//
@@ -424,7 +422,8 @@ int agentino_app::sdagent_main()
 		     m_configuration.m_promex_enabled,
 		     m_configuration.m_promex_connect_url,
 		     m_configuration.m_customer_id,
-		     m_configuration.machine_id()},
+		     m_configuration.machine_id(),
+		     m_configuration.c_root_dir.get_value()},
 		    &m_transmit_queue,
 		    std::initializer_list<dragent_protocol::protocol_version>{5},
 		    {{draiosproto::message_type::POLICIES_V2,
@@ -622,6 +621,10 @@ void agentino_app::initialize_logging()
 	Logger& loggerf = Logger::create("DraiosLogF", null_channel, -1);
 	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P.%I, %p, %t"));
 	g_log = unique_ptr<common_logger>(new common_logger(&loggerf, make_console_channel(formatter)));
+
+	LOG_INFO("agentino starting (version " + string(AGENT_VERSION) + ")");
+	common_logger_cache::log_and_purge();
+
 }
 
 void agentino_app::handshake_prepare_callback(void* handshake_data)

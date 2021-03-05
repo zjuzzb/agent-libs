@@ -111,6 +111,27 @@ private:
 };
 
 /**
+ * Functions used to manipulate cache that saves message before 
+ * the common logger is initialized. 
+ */
+namespace common_logger_cache
+{
+/**
+ * Save a message into a static buffer. This is meant to be used
+ * by the log_sink if something attempt to log a message before 
+ * the logger is initialized. 
+ */
+void save(const std::string &component_tag, 
+	  const std::string &str, 
+	  Poco::Message::Priority sev);
+
+/**
+ * Log all of the messages that are saved in the cache.
+ */
+void log_and_purge();
+};
+
+/**
  * Meant to be used inside a cpp file to provide logs targeted
  * to that compilation unit. Do not use this class. Use the
  * COMMON_LOGGER and LOG_XYZ macros.

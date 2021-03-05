@@ -774,7 +774,6 @@ void dragent_configuration::init()
 	                                                                 {"cointerface", 0},
 	                                                                 {"promex", 0}});
 
-	m_max_thread_table_size = m_config->get_scalar<unsigned>("max_thread_table_size", 0);
 	m_dirty_shutdown_report_log_size_b =
 	    m_config->get_scalar<decltype(m_dirty_shutdown_report_log_size_b)>("dirty_shutdown",
 	                                                                       "report_log_size_b",
@@ -1114,10 +1113,6 @@ void dragent_configuration::init()
 	}
 
 	// options related to batching of cointerface msgs
-
-	m_max_n_proc_lookups = m_config->get_scalar<int32_t>("max_n_proc_lookups", 1);
-	m_max_n_proc_socket_lookups = m_config->get_scalar<int32_t>("max_n_proc_socket_lookups", 1);
-
 	m_query_docker_image_info = m_config->get_scalar<bool>("query_docker_image_info", true);
 
 	m_flush_log_time =
@@ -1579,9 +1574,6 @@ void dragent_configuration::print_configuration() const
 		LOG_INFO("   " + path);
 	}
 
-	LOG_INFO("Process lookups config: " + std::to_string(m_max_n_proc_lookups) +
-	         ", sockets: " + to_string(m_max_n_proc_socket_lookups));
-
 	if (m_query_docker_image_info)
 	{
 		LOG_INFO("Additional Docker image info fetching enabled.");
@@ -1672,6 +1664,10 @@ std::string dragent_configuration::curl_get(const std::string& uri, const std::s
 
 	if (curl)
 	{
+		if ((res = curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2)) != CURLE_OK)
+		{
+			goto read_error;
+		}
 		if ((res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 1L)) != CURLE_OK)
 		{
 			goto read_error;

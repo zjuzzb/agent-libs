@@ -286,7 +286,7 @@ type_config<uint32_t>::ptr c_transmitbuffer_size =
         .hidden()
         .build();
 
-static int print_ssl_error(const char *str, size_t len, void *fp)
+static int print_ssl_error_cb(const char *str, size_t len, void *fp)
 {
 	LOG_ERROR("SSL error %s", str);
 
@@ -400,17 +400,7 @@ void cm_socket::listen_thread_loop(int listen_fd,
 			ret = SSL_set_fd(ssl, conn_fd);
 			if (ret != 1)
 			{
-				ERR_print_errors_cb(print_ssl_error, nullptr);
-				int err = SSL_get_error(ssl, ret);
-				int syscall_err = 0;
-				if (err == SSL_ERROR_SYSCALL)
-				{
-					syscall_err = errno;
-				}
-				LOG_ERROR("SSL error on incoming connection: %d : %d : %d",
-				          ret,
-				          err,
-				          syscall_err);
+				cm_socket::print_ssl_error("SSL error on incoming connection", ssl, ret);
 				::close(conn_fd);
 				continue;
 			}
@@ -418,7 +408,6 @@ void cm_socket::listen_thread_loop(int listen_fd,
 			ret = SSL_accept(ssl);
 			if (ret <= 0)
 			{
-				int syscall_err = 0;
 				int err = SSL_get_error(ssl, ret);
 				if (err == SSL_ERROR_WANT_READ ||
 				    err == SSL_ERROR_WANT_WRITE)
@@ -426,34 +415,15 @@ void cm_socket::listen_thread_loop(int listen_fd,
 					LOG_ERROR("SSL_ERROR_WANT_READ/WRITE not handled yet");
 					// Add socket to the list of FDs for polling?
 				}
-				else if (err == SSL_ERROR_SYSCALL)
-				{
-					syscall_err = errno;
-				}
 
 				// SSPROD-6261: The load balancer between the agentino and the
 				// agentone will make periodic connections just to ensure the
 				// endpoint is still alive and healthy. These connections will
 				// drop right after they succeed, so this is an expected
-				// condition. Otherwise, print an error.
-				if (err != SSL_ERROR_SYSCALL || syscall_err != 0)
-				{
-					// OpenSSL normally has two layers of error indirection:
-					// - Layer 1: The error returned from the call itself (which
-					//            is often just -1)
-					// - Layer 2: The result of SSL_get_error()
-					// When Layer 2 is SSL_ERROR_SYSCALL, there's a third layer
-					// of indirection, which is the errno of the syscall error.
-					// This code is juggling all those layers of indirection
-					// and trying its hardest to get an actual useful error to
-					// the customer.
-
-					ERR_print_errors_cb(print_ssl_error, nullptr);
-					LOG_ERROR("SSL error accepting incoming connection: %d : %d : %d",
-					          ret,
-					          err,
-					          syscall_err);
-				}
+				// condition. This function will handle that case.
+				cm_socket::print_ssl_error("SSL error accepting incoming connection",
+				                           ssl,
+				                           ret);
 				SSL_free(ssl);
 				::close(conn_fd);
 				continue;
@@ -728,6 +698,41 @@ std::string cm_socket::find_ca_cert_path(const std::vector<std::string>& search_
 	return "";
 }
 
+void cm_socket::print_ssl_error(const std::string error, SSL* ssl, int retval)
+{
+	int ssl_err = SSL_get_error(ssl, retval);
+	int syscall_err = 0;
+
+	if (ssl_err == SSL_ERROR_SYSCALL)
+	{
+		syscall_err = errno;
+	}
+
+	// SSL_ERROR_SYSCALL plus a syscall_err of 0 means that the connection
+	// was closed remotely, which is not inherently an error. Print nothing
+	// in that case; otherwise, print strerror.
+	if (ssl_err != SSL_ERROR_SYSCALL || syscall_err != 0)
+	{
+		ERR_print_errors_cb(print_ssl_error_cb, nullptr);
+		if (ssl_err == SSL_ERROR_SYSCALL)
+		{
+			LOG_ERROR("%s: %d : %d : %d (%s)",
+					  error.c_str(),
+					  retval,
+					  ssl_err,
+					  syscall_err,
+					  strerror(syscall_err));
+		}
+		else
+		{
+			LOG_ERROR("%s: %d : %d",
+					  error.c_str(),
+					  retval,
+					  ssl_err);
+		}
+	}
+}
+
 
 /**************************************************************************
  * OpenSSL socket
@@ -766,6 +771,7 @@ cm_openssl_socket::cm_openssl_socket(const std::vector<std::string>& ca_cert_pat
 	SSL_CTX_set_options(m_ctx, flags);
 	SSL_CTX_set_min_proto_version(m_ctx, TLS1_2_VERSION);
 	SSL_CTX_set_mode(m_ctx, SSL_MODE_AUTO_RETRY);
+	SSL_CTX_set_cipher_list(m_ctx, PREFERRED_CIPHERS);
 
 	// Tell SSL where the certificates are
 	std::string ca_cert_path(find_ca_cert_path(ca_cert_paths));
@@ -841,14 +847,9 @@ bool cm_openssl_socket::connect(int sock_fd, const std::string& hostname)
 	res = SSL_connect(ssl);
 	if (res != 1)
 	{
-		// This could be due to cert validation. Annoyingly, OpenSSL does not
-		// give us a specific useful error code to determine if this is the
-		// case (at least that I can find)
-		int err = SSL_get_error(ssl, res);
-		LOG_ERROR("Could not establish SSL connection to server: %d (%d). "
-		          "Perhaps certificate validation failed?",
-		          res,
-		          err);
+		// This could be due to cert validation.
+		cm_socket::print_ssl_error("Could not establish SSL connection to server. "
+		                           "Perhaps certificate validation failed?", ssl, res);
 		SSL_free(ssl);
 		return false;
 	}
@@ -862,6 +863,7 @@ bool cm_openssl_socket::connect(int sock_fd, const std::string& hostname)
 
 bool cm_openssl_socket::connect(BIO* proxy)
 {
+	int res;
 	// We receive a BIO object for the proxy, and link one for
 	// the remote server
 	if (m_ctx == nullptr)
@@ -884,19 +886,25 @@ bool cm_openssl_socket::connect(BIO* proxy)
 	if (server_ssl == nullptr)
 	{
 		LOG_ERROR("Couldn't create SSL object for server connection");
+		BIO_free(server);
 		return false;
-	}
-
-	int res = SSL_set_cipher_list(server_ssl, PREFERRED_CIPHERS);
-	if (res != 1)
-	{
-		LOG_ERROR("Error setting cipher list: %d", res);
 	}
 
 	res = BIO_get_fd(proxy, &m_socket);
 	if (res <= 0)
 	{
-		LOG_ERROR("BIO_get_fd failed: %d", res);
+		cm_socket::print_ssl_error("BIO_get_fd failed", server_ssl, res);
+		BIO_free(server);
+		return false;
+	}
+
+	res = BIO_do_handshake(server);
+	if (res <= 0)
+	{
+		cm_socket::print_ssl_error("Could not establish SSL connection to server.",
+		                           server_ssl,
+		                           res);
+		BIO_free(server);
 		return false;
 	}
 

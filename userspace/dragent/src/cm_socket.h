@@ -128,6 +128,23 @@ public:
 	 */
 	static std::string find_ca_cert_path(const std::vector<std::string>& search_paths);
 
+	/**
+	 *  OpenSSL errors can have up to three layers of indirection:
+	 *   1. The function return value.
+	 *   2. SSL_get_error.
+	 *   3. Syscall errno.
+	 *
+	 *  There's also an internal error stack maintained by OpenSSL that can
+	 *  be printed out on demand.
+	 *
+	 *  This function provides a centralized place to unwrap as many of these
+	 *  layers as required to print a useful error to the log.
+	 *
+	 *  The error message will be printed using the format:
+	 *  LOG_ERROR(caller error string: error codes (system error string))
+	 */
+	static void print_ssl_error(const std::string error, SSL* ssl, int retval);
+
 
 	////// Instance methods
 	cm_socket();

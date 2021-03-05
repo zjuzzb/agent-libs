@@ -203,7 +203,7 @@ install(
 )
 
 install(
-	PROGRAMS ${LIBSCAP_DIR}/scripts/sysdig-probe-loader
+    PROGRAMS ${LIBSCAP_DIR}/scripts/sysdig-probe-loader
     DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
     RENAME sysdigcloud-probe-loader
     COMPONENT agent-slim

@@ -10,6 +10,7 @@
 #include <Poco/NumberFormatter.h>
 #include <Poco/Buffer.h>
 #include <Poco/Base64Encoder.h>
+#include <Poco/Path.h>
 
 #include <netdb.h>
 #include <unistd.h>
@@ -44,6 +45,19 @@ type_config<std::string> c_proxy_ca_certificate("root.cert",
                                                 "Path to the CA cert for the proxy",
                                                 "http_proxy",
                                                 "ca_certificate");
+
+namespace
+{
+	std::string append_to_path(const std::string& path, const std::string& child)
+	{
+		Poco::Path childpath(child);
+		if (childpath.isAbsolute())
+		{
+			return childpath.toString();
+		}
+		return Poco::Path(path).append(child).toString();
+	}
+}
 
 cm_socket::ptr http_tunnel::connect(const std::string& proxy_host,
                                     uint16_t proxy_port,
@@ -165,7 +179,10 @@ cm_socket::ptr http_tunnel::openssl_connect(const std::string& proxy_host,
 		}
 		if (res < 0)
 		{
-			LOG_ERROR("Error when connecting to proxy: %d", res);
+			LOG_ERROR("Error when connecting to proxy: %d -> %d (%s)",
+			          res,
+			          errno,
+			          strerror(errno));
 			return nullptr;
 		}
 		sent += res;
@@ -184,7 +201,10 @@ cm_socket::ptr http_tunnel::openssl_connect(const std::string& proxy_host,
 		}
 		else if (res < 0)
 		{
-			LOG_ERROR("Error when reading proxy response: %d", (int)res);
+			LOG_ERROR("Error when reading proxy response: %d -> %d (%s)",
+			          res,
+			          errno,
+			          strerror(errno));
 			return nullptr;
 		}
 
@@ -216,15 +236,24 @@ cm_socket::ptr http_tunnel::openssl_connect(const std::string& proxy_host,
 	// Once we've fully read the HTTP response, the socket magically becomes a tunnel
 	// to the remote endpoint. Wrap the socket in a cm_socket to keep it warm and cozy
 	// and send it on its way.
-	LOG_INFO("Setting up SSL connection");
+	LOG_INFO("Setting up SSL connection to remote server");
 	auto oss = std::make_shared<cm_openssl_socket>(ca_cert_paths,
 	                                               ssl_ca_certificate,
 	                                               verify_certificate);
-	if (oss->connect(sock, proxy_host) && oss->is_valid())
+	BIO* conn = BIO_new_fd(sock, BIO_NOCLOSE);
+	if (conn == nullptr)
+	{
+		LOG_ERROR("Could not create I/O object for server connection");
+		::close(sock);
+		return nullptr;
+	}
+	else if (oss->connect(conn) && oss->is_valid())
 	{
 		LOG_INFO("Connected through HTTP proxy");
 		return oss;
 	}
+	BIO_free_all(conn);
+	::close(sock);
 	return nullptr;
 }
 
@@ -232,6 +261,7 @@ cm_socket::ptr http_tunnel::doublessl_connect(const std::string& proxy_host,
                                               uint16_t proxy_port,
                                               const std::vector<std::string>& ca_cert_paths,
                                               const std::string& ssl_ca_certificate,
+                                              const std::string& root_dir,
                                               bool verify_certificate,
                                               const std::string& http_connect_message)
 {
@@ -264,15 +294,23 @@ cm_socket::ptr http_tunnel::doublessl_connect(const std::string& proxy_host,
 	SSL_CTX_set_options(proxy_ctx, flags);
 	SSL_CTX_set_mode(proxy_ctx, SSL_MODE_AUTO_RETRY);
 
-	std::string ca_cert_path(cm_socket::find_ca_cert_path(ca_cert_paths));
+
+	std::string ca_cert_path(append_to_path(root_dir,
+	                                        cm_socket::find_ca_cert_path(ca_cert_paths)));
+	std::string ca_cert(append_to_path(root_dir, c_proxy_ca_certificate.get_value().c_str()));
 	int res = SSL_CTX_load_verify_locations(proxy_ctx,
-	                                        c_proxy_ca_certificate.get_value().c_str(),
+	                                        ca_cert.c_str(),
 	                                        ca_cert_path.c_str());
 
-	if (res != 1)
+	if (res != 1 && c_ssl_verify_proxy_certificate.get_value())
 	{
-		LOG_ERROR("Couldn't load certificate for proxy: %d", res);
-		return nullptr;
+		LOG_WARNING("Couldn't load certificate for proxy: %d, %d (%s)",
+		            res,
+		            errno,
+		            strerror(errno));
+		// This error isn't fatal, but if certificate verification is on then
+		// the verification step will fail later and this error will help us
+		// understand why.
 	}
 
 	proxy = BIO_new_ssl_connect(proxy_ctx);
@@ -296,8 +334,9 @@ cm_socket::ptr http_tunnel::doublessl_connect(const std::string& proxy_host,
 	res = SSL_connect(proxy_ssl);
 	if (res != 1)
 	{
-		ERR_print_errors_fp(stderr);
-		LOG_ERROR("Establishing SSL connection to proxy failed: %d", res);
+		cm_socket::print_ssl_error("Establishing SSL connection to proxy failed",
+		                           proxy_ssl,
+		                           res);
 		return nullptr;
 	}
 
@@ -314,7 +353,7 @@ cm_socket::ptr http_tunnel::doublessl_connect(const std::string& proxy_host,
 	}
 	else // (res < 0)
 	{
-		LOG_ERROR("Error when connecting to proxy: %d", res);
+		cm_socket::print_ssl_error("Error when connecting to proxy", proxy_ssl, res);
 		return nullptr;
 	}
 
@@ -331,7 +370,7 @@ cm_socket::ptr http_tunnel::doublessl_connect(const std::string& proxy_host,
 		}
 		else if (res < 0)
 		{
-			LOG_ERROR("Error when reading proxy response: %d", (int)res);
+			cm_socket::print_ssl_error("Error reading response from proxy", proxy_ssl, res);
 			return nullptr;
 		}
 
@@ -366,7 +405,7 @@ cm_socket::ptr http_tunnel::doublessl_connect(const std::string& proxy_host,
 	// Once we've fully read the HTTP response, the socket magically becomes a tunnel
 	// to the remote endpoint. Now we need to create a second SSL connection to the
 	// remote server, which is handled by the openssl_socket.
-	LOG_INFO("Setting up SSL connection to collector");
+	LOG_INFO("Setting up SSL connection to remote server");
 	auto oss = std::make_shared<cm_openssl_socket>(ca_cert_paths,
 	                                               ssl_ca_certificate,
 	                                               verify_certificate);
@@ -404,6 +443,7 @@ cm_socket::ptr http_tunnel::establish_tunnel(const proxy_connection conn)
 			                         conn.proxy_port,
 			                         conn.ca_cert_paths,
 			                         conn.ssl_ca_certificate,
+			                         conn.root_dir,
 			                         conn.verify_certificate,
 			                         connect_string);
 		}

@@ -301,7 +301,6 @@ public:
 	bool m_excess_labels_log = false;
 	mount_points_filter_vec m_mounts_filter;
 	unsigned m_mounts_limit_size;
-	unsigned m_max_thread_table_size;
 	bool m_enable_coredump;
 	bool m_auto_config;
 	bool m_emit_tracers = false;
@@ -363,24 +362,6 @@ public:
 
 	uint16_t m_monitor_files_freq_sec = 0;
 	std::set<std::string> m_monitor_files;
-
-	/**
-	 * When a tid is looked up in the thread table and not found we
-	 * will explicitly search '/proc' to try to find it.  This value
-	 * determines the number of times that we will search '/proc'
-	 * before logging a message.
-	 */
-	int32_t m_max_n_proc_lookups;
-
-
-	/**
-	 * When a tid is looked up in the thread table and not found we
-	 * will explicitly search '/proc' to try to find it (and
-	 * sometimes that lookup involves reading sockets). This value
-	 * determines the number of times that we will search '/proc'
-	 * (involving sockets) before logging a message.
-	 */
-	int32_t m_max_n_proc_socket_lookups;
 
 	bool m_query_docker_image_info;
 
@@ -466,6 +447,11 @@ public:
 	std::string get_aws_region();
 
 	void set_machine_id_prefix(std::string prefix) { m_machine_id_prefix = prefix; }
+
+	std::string relpath_to_absolute(const std::string& relpath)
+	{
+		return Path(c_root_dir.get_value()).append(relpath).toString();
+	}
 
 private:
 	inline static bool is_executable(const std::string& path);

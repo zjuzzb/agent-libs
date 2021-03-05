@@ -63,6 +63,7 @@ list(
     globally_readable_file_channel.cpp
     handshake_helpers.cpp
     k8s_audit_infra_state.cpp
+    library_configs.cpp
     metric_serializer.cpp
     metrics_file_emitter.cpp
     pre_aggregated_metrics_rest_request_handler.cpp

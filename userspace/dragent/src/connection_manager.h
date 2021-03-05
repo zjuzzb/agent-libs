@@ -52,6 +52,7 @@ struct cm_config
 	std::string m_promex_connect_url;
 	std::string m_customer_id;
 	std::string m_machine_id;
+	const std::string root_dir;
 };
 
 /**

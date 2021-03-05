@@ -416,7 +416,7 @@ int main(int argc, char** argv)
 				}
 				break;
 				case 't':
-					g_inspector->set_max_thread_table_size(atoi(optarg));
+					g_inspector->m_thread_manager->set_max_thread_table_size(atoi(optarg));
 					break;
 				case 'C':
 					g_analyzer->get_configuration()->set_customer_id(optarg);

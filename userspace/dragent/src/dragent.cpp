@@ -55,6 +55,7 @@
 #include "user_event_channel.h"
 #include "utils.h"
 #include "webpage_rest_request_handler.h"
+#include "library_configs.h"
 
 #include <sys/resource.h>
 #include <sys/sysinfo.h>
@@ -1109,9 +1110,6 @@ int dragent_app::sdagent_main()
 
 	initialize_logging();
 
-	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-	LOG_INFO("Agent starting (version " + string(AGENT_VERSION) + ")");
-
 	setup_coredumps();
 
 	log_sysinfo();
@@ -1232,18 +1230,19 @@ int dragent_app::sdagent_main()
 	try
 	{
 		cm = new connection_manager(
-			 {
-				 m_configuration.c_root_dir.get_value(),
-				 m_configuration.m_server_addr,
-				 m_configuration.m_server_port,
-				 m_configuration.m_ssl_enabled,
-				 m_configuration.m_ssl_ca_cert_paths,
-				 m_configuration.m_ssl_ca_certificate,
-				 m_configuration.m_promex_enabled,
-				 m_configuration.m_promex_connect_url,
-				 m_configuration.m_customer_id,
-				 m_configuration.machine_id()
-			 },
+		    {
+			    m_configuration.c_root_dir.get_value(),
+			    m_configuration.m_server_addr,
+			    m_configuration.m_server_port,
+			    m_configuration.m_ssl_enabled,
+			    m_configuration.m_ssl_ca_cert_paths,
+			    m_configuration.m_ssl_ca_certificate,
+			    m_configuration.m_promex_enabled,
+			    m_configuration.m_promex_connect_url,
+			    m_configuration.m_customer_id,
+			    m_configuration.machine_id(),
+			    m_configuration.c_root_dir.get_value()
+		    },
 		    &m_transmit_queue,
 		    c_10s_flush_enabled.get_value()
 		        ? std::initializer_list<dragent_protocol::protocol_version>{4, 5}
@@ -1521,16 +1520,8 @@ void dragent_app::init_inspector(sinsp::ptr inspector)
 	inspector->set_internal_events_mode(true);
 	inspector->set_hostname_and_port_resolution_mode(false);
 	inspector->set_large_envs(m_configuration.m_large_envs);
-
-	if (m_configuration.m_max_thread_table_size > 0)
-	{
-		LOG_INFO("Overriding sinsp thread table size to " +
-			 to_string(m_configuration.m_max_thread_table_size));
-		inspector->set_max_thread_table_size(m_configuration.m_max_thread_table_size);
-	}
-
-	inspector->m_thread_manager->set_m_max_n_proc_lookups(m_configuration.m_max_n_proc_lookups);
-	inspector->m_thread_manager->set_m_max_n_proc_socket_lookups(m_configuration.m_max_n_proc_socket_lookups);
+	inspector->disable_automatic_threadtable_purging();
+	sinsp_library_config::init_library_configs(*inspector);
 
 	//
 	// Plug the sinsp logger into our one
@@ -2333,6 +2324,10 @@ void dragent_app::initialize_logging()
 							    make_console_channel(formatter)));
 
 	g_log->set_observer(m_internal_metrics);
+
+	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
+	LOG_INFO("Agent starting (version " + string(AGENT_VERSION) + ")");
+	common_logger_cache::log_and_purge();
 }
 
 void dragent_app::monitor_files(uint64_t uptime_s)
