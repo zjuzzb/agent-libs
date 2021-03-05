@@ -595,6 +595,101 @@ TEST(agentino_manager, basic_connection)
 	ASSERT_EQ(0, am.get_num_connections());
 }
 
+TEST(agentino_manager, multi_connection)
+{
+	const uint32_t num_fas = 3;
+	const uint16_t port = 6767;
+	scoped_config<uint16_t> agentino_port("agentino_port", port);
+	scoped_config<bool> agentino_ssl("agentino_ssl", false);
+	container_manager c_m;
+	agentino_manager am(dummy_handler, c_m, "machineid", "de:ad:be:ef");
+	std::list<fake_agentino*> fas;
+
+	// Build and start the fake agentinos
+	for (uint32_t i = 0; i < num_fas; ++i)
+	{
+		std::stringstream ss;
+		ss << i << i << i << "-" << num_fas - i;
+		auto* fa = new fake_agentino(true, false, false, ss.str());
+		fas.push_back(fa);
+
+		fa->start(port);
+
+		for (uint32_t loops = 0;
+		     fa->get_status() != fake_agentino::server_status::RUNNING && loops < 5000;
+		     ++loops)
+		{
+			usleep(1000);
+		}
+		ASSERT_EQ(fake_agentino::server_status::RUNNING, fa->get_status());
+	}
+
+
+	for (uint32_t loops = 0; am.get_num_connections() < num_fas && loops < 10000; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(num_fas, am.get_num_connections());
+
+	for (auto* fa : fas)
+	{
+		fa->pause(false);
+		fa->stop();
+		delete fa;
+	}
+	fas.clear();
+
+	// Make sure disconnect is detected
+	for (uint32_t loops = 0; am.get_num_connections() > 0 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(0, am.get_num_connections());
+}
+
+TEST(agentino_manager, agentino_heartbeat)
+{
+	const uint16_t port = 6768;
+	scoped_config<uint16_t> agentino_port("agentino_port", port);
+	scoped_config<bool> agentino_ssl("agentino_ssl", false);
+	container_manager c_m;
+	agentino_manager am(dummy_handler, c_m, "machineid", "de:ad:be:ef");
+	fake_agentino fa(true, false, true);
+	fa.turn_on_heartbeats();
+
+	// Now fire up the fake agentino
+	fa.start(port);
+
+	for (uint32_t loops = 0;
+	     fa.get_status() != fake_agentino::server_status::RUNNING && loops < 5000;
+	     ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(fake_agentino::server_status::RUNNING, fa.get_status());
+
+	for (uint32_t loops = 0; am.get_num_connections() == 0 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(1, am.get_num_connections());
+
+	for (uint32_t loops = 0; fa.get_num_sent_heartbeats() < 2 && loops < 2000; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_LE(2, fa.get_num_sent_heartbeats());
+
+	fa.stop();
+
+	// Make sure disconnect is detected
+	for (uint32_t loops = 0; am.get_num_connections() > 0 && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_EQ(0, am.get_num_connections());
+}
+
 TEST(agentino_manager, agentino_message)
 {
 	uint16_t port = 7237;

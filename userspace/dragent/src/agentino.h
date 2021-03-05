@@ -48,6 +48,7 @@ private:
 
 	static void handshake_prepare_callback(void* handshake_data);
 	void build_metadata_message(draiosproto::agentino_metadata& msg) const;
+	void send_heartbeat();
 
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
