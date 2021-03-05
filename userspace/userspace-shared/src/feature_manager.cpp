@@ -68,8 +68,8 @@ const feature_manager::agent_mode_container feature_manager::mode_definitions[] 
          {"ssl_verify_certificate", config_placeholder_impl<bool>::build(false)},
          {"security.k8s_audit_server_enabled", config_placeholder_impl<bool>::build(false)},
          {"sinsp.thread_purge_interval_s", config_placeholder_impl<uint32_t>::build(2 * 60)},
-         {"sinsp.thread_simeout_s", config_placeholder_impl<uint32_t>::build(5 * 60)},
-         {"max_thread_table_size", config_placeholder_impl<bool>::build(20000)},
+         {"sinsp.thread_timeout_s", config_placeholder_impl<uint32_t>::build(5 * 60)},
+         {"max_thread_table_size", config_placeholder_impl<uint32_t>::build(20000)},
      }},
     {feature_manager::AGENT_MODE_AGENTONE, "agentone", {SECURE, DRIVER, FULL_SYSCALLS}, {}}};
 
