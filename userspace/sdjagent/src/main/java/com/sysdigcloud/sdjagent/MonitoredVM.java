@@ -133,7 +133,7 @@ public class MonitoredVM {
             isOnAnotherContainer = CLibrary.isOnAnotherContainer(monitoredVMpid) ? Tribool.TRUE : Tribool.FALSE;
             checkForAvailability(request);
         } catch (CheckContainerException e) {
-            LOGGER.warning(String.format("Could not determine if %d is on another container", monitoredVMpid));
+            LOGGER.warning(String.format("Could not determine if %d is on another container. This can happen if the process no longer exists", monitoredVMpid));
         }
     }
 
@@ -247,7 +247,6 @@ public class MonitoredVM {
         } catch (MonitorException e) {
             LOGGER.warning(String.format("%s JvmstatVM cannot attach to process' hsperfdata: %s (vpid=%d root=%s args=%s)",
                            logPrefix, e.getMessage(), monitoredVMvpid, request.getRoot(), Arrays.toString(request.getArgs())));
-            return;
         }
 
         // Try to load agent and get address from there
@@ -469,7 +468,7 @@ public class MonitoredVM {
                 }
                 setInitialNamespaceIfNeeded();
             } catch (final SetNsException ex) {
-                LOGGER.warning(String.format("%s Error changing namespace:%s. restarting sdjagent", logPrefix, ex.getMessage().replaceAll("\n","")));
+                LOGGER.warning(String.format("%s Error changing namespace:%s", logPrefix, ex.getMessage().replaceAll("\n","")));
                 disconnect();
             }
         }
