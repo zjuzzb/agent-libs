@@ -523,6 +523,7 @@ void dragent_configuration::init()
 
 	// init the configurations
 	configuration_manager::instance().init_config(*m_config);
+	metric_forwarding_configuration::instance().init();
 
 	m_log_dir = Path(c_root_dir.get_value())
 	                .append(m_config->get_scalar<string>("log", "location", "logs"))

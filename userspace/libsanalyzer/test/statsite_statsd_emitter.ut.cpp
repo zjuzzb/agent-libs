@@ -446,11 +446,10 @@ TEST(statsite_statsd_emitter_test, emit_container_histogram_metric)
  */
 TEST(statsite_statsd_emitter_test, emit_host_cannot_exceed_limit)
 {
-	using nr = metric_forwarding_configuration::negotiation_result;
 	{
 		// Change the limit and kick the instance to update
 		scoped_config<int> statd_limit("statsd.limit", 0);
-		metric_forwarding_configuration().instance().set_negotiated_value(nr::USE_LEGACY_LIMITS);
+		metric_forwarding_configuration().instance().init();
 
 		const std::string name = "some_metric";
 		const double value = 42.7;
@@ -482,7 +481,7 @@ TEST(statsite_statsd_emitter_test, emit_host_cannot_exceed_limit)
 				metrics));
 	}
 
-	metric_forwarding_configuration().instance().set_negotiated_value(nr::USE_LEGACY_LIMITS);
+	metric_forwarding_configuration().instance().init();
 }
 
 /**

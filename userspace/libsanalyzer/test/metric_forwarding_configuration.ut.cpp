@@ -22,6 +22,7 @@ bool is_enabled()
 TEST(metric_forwarding_configuration_test, defaults)
 {
 	metric_forwarding_configuration mfc;
+	mfc.init();
 	ASSERT_EQ(3000, mfc.prometheus_limit());
 	ASSERT_EQ(500, mfc.jmx_limit());
 	ASSERT_EQ(100, mfc.statsd_limit());
@@ -43,6 +44,7 @@ app_checks_limit: 2500
 	ASSERT_TRUE(config.loaded());
 
 	metric_forwarding_configuration mfc;
+	mfc.init();
 
 	ASSERT_EQ(3000, mfc.prometheus_limit());
 	ASSERT_EQ(2500, mfc.jmx_limit());
@@ -68,6 +70,7 @@ app_checks_limit: 2000
 	ASSERT_TRUE(config.loaded());
 
 	metric_forwarding_configuration mfc;
+	mfc.init();
 
 	ASSERT_EQ(5714, mfc.prometheus_limit());
 	ASSERT_EQ(1428, mfc.jmx_limit());
@@ -93,6 +96,7 @@ app_checks_limit: 2500
 )");
 
 	metric_forwarding_configuration mfc;
+	mfc.init();
 	mfc.set_negotiated_value(nr::USE_NEGOTIATED_VALUE, 10000);
 
 	ASSERT_TRUE(config.loaded());
@@ -116,6 +120,7 @@ app_checks_limit: 2500
 )");
 
 	metric_forwarding_configuration mfc;
+	mfc.init();
 	mfc.set_negotiated_value(nr::USE_NEGOTIATED_VALUE, 50000);
 
 	ASSERT_TRUE(config.loaded());
@@ -139,6 +144,7 @@ app_checks_limit: 5000
 )");
 
 	metric_forwarding_configuration mfc;
+	mfc.init();
 	mfc.set_negotiated_value(nr::USE_NEGOTIATED_VALUE, 100000);
 
 	ASSERT_TRUE(config.loaded());
@@ -162,6 +168,7 @@ app_checks_limit: 2500
 )");
 
 	metric_forwarding_configuration mfc;
+	mfc.init();
 	mfc.set_negotiated_value(nr::USE_LEGACY_LIMITS);
 
 	ASSERT_TRUE(config.loaded());
@@ -189,6 +196,7 @@ app_checks_limit: 2500
 )");
 
 	metric_forwarding_configuration mfc;
+	mfc.init();
 	mfc.set_negotiated_value(nr::USE_LEGACY_LIMITS);
 
 	ASSERT_TRUE(config.loaded());
@@ -217,6 +225,7 @@ app_checks_limit: 2500
 )");
 
 	metric_forwarding_configuration mfc;
+	mfc.init();
 	mfc.set_negotiated_value(nr::NEGOTIATION_NOT_SUPPORTED);
 
 	ASSERT_TRUE(config.loaded());
@@ -245,6 +254,7 @@ app_checks_limit: 0
 )");
 
 	metric_forwarding_configuration mfc;
+	mfc.init();
 	mfc.set_negotiated_value(nr::NEGOTIATION_NOT_SUPPORTED);
 
 	ASSERT_TRUE(config.loaded());

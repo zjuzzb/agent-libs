@@ -77,10 +77,22 @@ metric_forwarding_configuration metric_forwarding_configuration::s_instance;
 
 metric_forwarding_configuration::metric_forwarding_configuration()
 {
+	m_prometheus_limit = legacy_limiter(c_prometheus_max->get_value());
+	m_statsd_limit = legacy_limiter(c_statsd_max->get_value());
+	m_jmx_limit = legacy_limiter(c_jmx_max->get_value());
+	m_app_checks_limit = legacy_limiter(c_app_checks_max->get_value());
+}
+
+void metric_forwarding_configuration::init()
+{
 	// Boot with negotiation not supported to use previous scheme. This
 	// is mostly for customers who have figured out (or were given) the
 	// recipe of configs to force 10k mode without 10sFlush turned on.
-	set_negotiated_value(negotiation_result::NEGOTIATION_NOT_SUPPORTED);
+	//
+	// If 10sFlush is enabled then this will be renegotiated later. 
+	negotiation_not_supported("At boot");
+	print("At boot");
+
 }
 
 int metric_forwarding_configuration::configured_limit_sum()
@@ -173,43 +185,48 @@ void metric_forwarding_configuration::set_negotiated_value(negotiation_result re
 	}
 	else // NEGOTIATION_NOT_SUPPORTED
 	{
-		// Prior to negotiation, going above legacy limits was controlled
-		// by a config value and the only higher limit was 10k
-		if(!c_deprecated_enablement->get_value())
-		{
-			LOG_INFO("Setting metric limit to 3k per metric type.");
-			m_prometheus_limit = legacy_limiter(c_prometheus_max->get_value());
-			m_statsd_limit = legacy_limiter(c_statsd_max->get_value());
-			m_jmx_limit = legacy_limiter(c_jmx_max->get_value());
-			m_app_checks_limit = legacy_limiter(c_app_checks_max->get_value());
-		}
-		else
-		{
-			LOG_INFO("Setting metric limit to a sum of 10k");
-			const int pre_negotiation_sum = 10000;
-			m_prometheus_limit = calculate_limit(c_prometheus_max->get_value(), pre_negotiation_sum);
-			m_statsd_limit = calculate_limit(c_statsd_max->get_value(), pre_negotiation_sum);
-			m_jmx_limit = calculate_limit(c_jmx_max->get_value(), pre_negotiation_sum);
-			m_app_checks_limit = calculate_limit(c_app_checks_max->get_value(), pre_negotiation_sum);
-		}
+		negotiation_not_supported("After backend negotiation");
 	}
 
-	print();
+	print("After backend negotiation");
 }
 
-void metric_forwarding_configuration::print()
+void metric_forwarding_configuration::negotiation_not_supported(const char *timing)
+{
+	// Prior to negotiation, going above legacy limits was controlled
+	// by a config value and the only higher limit was 10k
+	if (!c_deprecated_enablement->get_value()) {
+		LOG_INFO("%s, setting metric limit to 3k per metric type.", timing);
+		m_prometheus_limit = legacy_limiter(c_prometheus_max->get_value());
+		m_statsd_limit = legacy_limiter(c_statsd_max->get_value());
+		m_jmx_limit = legacy_limiter(c_jmx_max->get_value());
+		m_app_checks_limit = legacy_limiter(c_app_checks_max->get_value());
+	} else {
+		LOG_INFO("%s, setting metric limit to a sum of 10k", timing);
+		const int pre_negotiation_sum = 10000;
+		m_prometheus_limit = calculate_limit(c_prometheus_max->get_value(), pre_negotiation_sum);
+		m_statsd_limit = calculate_limit(c_statsd_max->get_value(), pre_negotiation_sum);
+		m_jmx_limit = calculate_limit(c_jmx_max->get_value(), pre_negotiation_sum);
+		m_app_checks_limit = calculate_limit(c_app_checks_max->get_value(), pre_negotiation_sum);
+	}
+}
+
+
+
+void metric_forwarding_configuration::print(const char *timing)
 {
 	if (m_prometheus_limit != c_prometheus_max->get_value() ||
 	    m_statsd_limit != c_statsd_max->get_value() ||
 	    m_app_checks_limit != c_app_checks_max->get_value() ||
 	    m_jmx_limit != c_jmx_max->get_value())
 	{
-		LOG_WARNING("Limits have been adjusted from the configured values.\n"
+		LOG_WARNING("%s, limits have been adjusted from the configured values.\n"
 		            "Prometheus (%s): %d -> %d\n"
 		            "StatsD (%s): %d -> %d\n"
 		            "AppChecks (%s): %d -> %d\n"
-		            "JMX (%s): %d -> %d",
-		            c_prometheus_max->get_key_string().c_str(), c_prometheus_max->get_value(), m_prometheus_limit.load(),
+			    "JMX (%s): %d -> %d",
+			    timing,
+			    c_prometheus_max->get_key_string().c_str(), c_prometheus_max->get_value(), m_prometheus_limit.load(),
 		            c_statsd_max->get_key_string().c_str(), c_statsd_max->get_value(), m_statsd_limit.load(),
 		            c_app_checks_max->get_key_string().c_str(), c_app_checks_max->get_value(), m_app_checks_limit.load(),
 		            c_jmx_max->get_key_string().c_str(), c_jmx_max->get_value(), m_jmx_limit.load());
@@ -218,11 +235,12 @@ void metric_forwarding_configuration::print()
 	{
 		// These values already exist in the log, but print them out as a group
 		// for supportability.
-		LOG_INFO("Custom metric limits set to the following: "
+		LOG_INFO("%s, custom metric limits set to the following: \n"
 		         "Prometheus (%s): %d\n"
 		         "StatsD (%s): %d\n"
 		         "AppChecks (%s): %d\n"
 		         "JMX (%s): %d",
+			 timing,
 		         c_prometheus_max->get_key_string().c_str(), m_prometheus_limit.load(),
 		         c_statsd_max->get_key_string().c_str(), m_statsd_limit.load(),
 		         c_app_checks_max->get_key_string().c_str(), m_app_checks_limit.load(),
