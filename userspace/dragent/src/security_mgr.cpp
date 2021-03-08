@@ -116,6 +116,27 @@ void security_mgr::init(sinsp *inspector,
 	m_capture_job_queue_handler = capture_job_queue_handler;
 	m_configuration = configuration;
 
+	// Fetch agent tags and save as a map
+	m_agent_tags.clear();
+
+	std::vector<std::string> tags = sinsp_split(configuration_manager::instance().get_config<std::string>("tags")->get_value(), ',');
+	std::string tag_prefix = "agent.tag.";
+
+	for (auto &pair : tags)
+	{
+		// tags are available in pair in the format key:value
+		// in case of multiple ":" are found the first one will be considered the separator
+		// between key and value
+		auto found = pair.find(":");
+
+		if (found != std::string::npos){
+			auto tag_key = tag_prefix + pair.substr(0, found);
+			auto tag_value = pair.substr(found + 1, std::string::npos);
+			m_agent_tags[tag_key] = tag_value;
+			LOG_DEBUG("Saving agent tag " + tag_key + " -> " + tag_value);
+		}
+	}
+
 	m_inspector->m_container_manager.subscribe_on_new_container([this](const sinsp_container_info &container_info, sinsp_threadinfo *tinfo) {
 		on_new_container(container_info, tinfo);
 	});
@@ -198,11 +219,13 @@ bool security_mgr::request_load_policies_v2_file(const char *filename, std::stri
 
 security_mgr::loaded_v2_policies::loaded_v2_policies(sinsp *inspector,
 						     dragent_configuration *configuration,
+						     scope_resolver_iface::tags_map &agent_tags,
 						     std::shared_ptr<draiosproto::policies_v2> policies_v2_msg,
 						     metrics &security_mgr_metrics,
 						     std::list<std::shared_ptr<security_evt_metrics>> &security_evt_metrics)
 	: m_inspector(inspector),
 	  m_configuration(configuration),
+	  m_agent_tags(agent_tags),
 	  m_policies_v2_msg(policies_v2_msg),
 	  m_metrics(security_mgr_metrics),
 	  m_security_evt_metrics(security_evt_metrics)
@@ -226,7 +249,7 @@ void security_mgr::loaded_v2_policies::load_syscall_policy_v2(infrastructure_sta
 
 	for (const auto &id : ids)
 	{
-		if(spolicy_v2->match_syscall_scope(id, infra_state))
+		if(spolicy_v2->match_syscall_scope(id, infra_state, m_agent_tags))
 		{
 			LOG_DEBUG("Policy " + spolicy_v2->name() + " matched scope for container " + id);
 
@@ -497,6 +520,7 @@ void security_mgr::load_policies_v2_async()
 
 		ret.loaded_policies = std::make_shared<loaded_v2_policies>(m_inspector,
 									   m_configuration,
+									   m_agent_tags,
 									   policies_v2_msg,
 									   m_metrics,
 									   m_security_evt_metrics);
@@ -744,7 +768,10 @@ void security_mgr::process_event_v2(gen_event *evt)
 			for (const auto &group : m_loaded_policies->get_k8s_audit_security_rules())
 			{
 				// The scope must match the event
-				if(m_k8s_audit_infra_state.match_scope(j_evt, m_infra_state->get_k8s_cluster_name(), group->m_scope_predicates))
+				if(m_k8s_audit_infra_state.match_scope(j_evt,
+								       m_infra_state->get_k8s_cluster_name(),
+								       m_agent_tags,
+								       group->m_scope_predicates))
 				{
 					std::list<security_rules::match_result> *gresults;
 

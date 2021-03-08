@@ -20,14 +20,28 @@ k8s_audit_infra_state::~k8s_audit_infra_state()
 {
 }
 
-bool k8s_audit_infra_state::match_scope(json_event *evt, const std::string k8s_cluster_name, const scope_predicates &predicates)
+bool k8s_audit_infra_state::match_scope(json_event *evt,
+					const std::string &k8s_cluster_name,
+					const std::map<std::string, std::string> &agent_tags,
+					const scope_predicates &predicates)
 {
+
+	// First see if the agent tags match scope
+	::scope_predicates remaining_predicates;
+
+	if(!match_agent_tag_predicates(predicates,
+				      agent_tags,
+				      remaining_predicates))
+	{
+		return false;
+	}
+
 	scope_resolver_iface::uid_t uid;
 
 	uid.first = "kubernetes.cluster.name";
 	uid.second = k8s_cluster_name;
 
-	if(!match_scope(uid, predicates)) {
+	if(!match_scope(uid, remaining_predicates)) {
 		return false;
 	}
 
@@ -73,7 +87,7 @@ bool k8s_audit_infra_state::match_scope(json_event *evt, const std::string k8s_c
 	uid.first = "kubernetes.namespace.name";
 	uid.second = ns_name;
 
-	return match_scope(uid, predicates);
+	return match_scope(uid, remaining_predicates);
 }
 
 bool k8s_audit_infra_state::match_scope(const uid_t &uid, const scope_predicates &predicates)

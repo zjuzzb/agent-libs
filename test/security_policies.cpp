@@ -255,6 +255,19 @@ protected:
 		m_configuration.m_falco_engine_sampling_multiplier = 0;
 		m_configuration.m_containers_labels_max_len = 100;
 
+		std::string tags =
+			configuration_manager::instance().get_config<std::string>("tags")->get_value();
+
+		if (tags != "")
+		{
+			tags += ",";
+		}
+		tags += "environment:production";
+
+		// This only needs to be valid while the security_mgr
+		// initializes, as it copies the tags.
+		test_helpers::scoped_config<string> config("tags", tags);
+
 		// The (global) logger only needs to be set up once
 		if (!g_log)
 		{
@@ -349,6 +362,7 @@ protected:
 		createFile("/tmp/sample-sensitive-file-3.txt");
 		createFile("/tmp/sample-sensitive-file-4.txt");
 		createFile("/tmp/sample-sensitive-file-5.txt");
+		createFile("/tmp/sample-sensitive-file-6.txt");
 		createFile("/tmp/matchlist-order.txt");
 		createFile("/tmp/matchlist-order-2.txt");
 		createFile("/tmp/overall-order-1.txt");
@@ -395,6 +409,7 @@ protected:
 		remove("/tmp/sample-sensitive-file-3.txt");
 		remove("/tmp/sample-sensitive-file-4.txt");
 		remove("/tmp/sample-sensitive-file-5.txt");
+		remove("/tmp/sample-sensitive-file-6.txt");
 		remove("/tmp/matchlist-order.txt");
 		remove("/tmp/matchlist-order-2.txt");
 		remove("/tmp/overall-order-1.txt");
@@ -2688,6 +2703,42 @@ TEST_F(security_policies_v2_test_cointerface_cluster_name, k8s_audit_policy_scop
 	      {"ka.response.code", "201"},
 	      {"ka.target.name", "nginx-deployment"},
 	      {"ka.target.namespace", "foo"},
+	      {"ka.user.name", "minikube-user"}}}};
+
+	check_policy_events(expected);
+}
+
+TEST_F(security_policies_v2_test, policy_scoped_agent_tag_syscall)
+{
+	int fd = open("/tmp/sample-sensitive-file-6.txt", O_RDONLY);
+	close(fd);
+
+	// Should only see event for policy 65, where the agent tags match
+	std::vector<security_policies_v2_test::expected_policy_event> expected = {
+	    {65,
+	     draiosproto::policy_type::PTYPE_FILESYSTEM,
+	     {{"fd.name", "/tmp/sample-sensitive-file-6.txt"},
+	      {"evt.type", "open"},
+	      {"proc.name", "tests"}}}};
+
+	check_policy_events(expected);
+}
+
+TEST_F(security_policies_v2_test_cointerface, policy_scoped_agent_tag_k8s_audit)
+{
+	ASSERT_EQ(system("timeout 2 xargs -0 -d '\n' -I{} curl -X POST localhost:7765/k8s_audit -d {} "
+	                 "< ./resources/k8s_audit_events/create_secret.txt > /dev/null 2>&1"),
+	          0);
+
+	// Should only see event for policy 67, where the agent tags match
+	std::vector<security_policies_v2_test::expected_policy_event> expected = {
+	    {67,
+	     draiosproto::policy_type::PTYPE_FALCO,
+	     {{"falco.rule", "k8s_secret_created"},
+	      {"ka.auth.decision", "allow"},
+	      {"ka.response.code", "201"},
+	      {"ka.target.name", "example-secret"},
+	      {"ka.target.namespace", "default"},
 	      {"ka.user.name", "minikube-user"}}}};
 
 	check_policy_events(expected);

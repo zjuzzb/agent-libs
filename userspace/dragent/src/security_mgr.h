@@ -571,6 +571,7 @@ private:
 	public:
 		loaded_v2_policies(sinsp *inspector,
 				   dragent_configuration *configuration,
+				   scope_resolver_iface::tags_map &agent_tags,
 				   std::shared_ptr<draiosproto::policies_v2> policies_v2_msg,
 				   metrics &security_mgr_metrics,
 				   std::list<std::shared_ptr<security_evt_metrics>> &security_evt_metrics);
@@ -604,6 +605,7 @@ private:
 
 		sinsp *m_inspector;
 		dragent_configuration *m_configuration;
+		scope_resolver_iface::tags_map m_agent_tags;
 
 		std::shared_ptr<draiosproto::policies_v2> m_policies_v2_msg;
 
@@ -691,5 +693,8 @@ private:
 	bool m_k8s_audit_server_started;
 
 	volatile bool m_received_policies = false;
+
+	// Agent tags as a map "agent.tag.xx" -> value
+	scope_resolver_iface::tags_map m_agent_tags;
 };
 #endif // CYGWING_AGENT
