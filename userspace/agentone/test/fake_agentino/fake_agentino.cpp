@@ -100,6 +100,8 @@ void fake_agentino::thread_loop(uint16_t port, fake_agentino& fa)
 	int res;
 	bool ret;
 	const int timeout_ms = 100;
+	auto last_hb = std::chrono::steady_clock::now();
+	const msecs hb_interval(100);
 
 	assert(fa.m_status == server_status::NOT_STARTED);
 
@@ -167,6 +169,31 @@ void fake_agentino::thread_loop(uint16_t port, fake_agentino& fa)
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 				continue;
+			}
+
+			// Send periodit heartbeats if enabled
+			msecs diff = std::chrono::duration_cast<msecs>(std::chrono::steady_clock::now() - last_hb);
+			if (fa.m_heartbeat && diff > hb_interval)
+			{
+				buf b = fa.build_buf(draiosproto::message_type::AGENTINO_HEARTBEAT,
+				                     5,
+				                     nullptr,
+				                     0);
+				bool ret = fa.transmit_buf(b, sockfd);
+				if (!ret)
+				{
+					if (!fa.m_silent)
+					{
+						std::cerr << "FA> Error sending heartbeat to agentone: "
+						          << strerror(errno)
+						          << std::endl;
+					}
+					fa.m_status = server_status::ERRORED;
+					connected = false;
+					continue;
+				}
+				last_hb = std::chrono::steady_clock::now();
+				++fa.m_num_sent_heartbeats;
 			}
 
 			// Start with a poll for socket readiness
@@ -270,7 +297,8 @@ void fake_agentino::thread_loop(uint16_t port, fake_agentino& fa)
 			fa.m_run_loop = false;
 		}
 	} // End outer loop
-	if (fa.m_status != server_status::ERRORED && fa.m_status != server_status::DISCONNECTED)
+	if (fa.m_status != server_status::ERRORED &&
+	    fa.m_status != server_status::DISCONNECTED)
 	{
 		fa.m_status = server_status::SHUTDOWN;
 	}
@@ -471,6 +499,11 @@ bool fake_agentino::transmit_buf(fake_agentino::buf& b, int sockfd)
 	{
 		return false;
 	}
+	if (b.payload_len == 0)
+	{
+		// Zero-length payload is acceptable
+		return true;
+	}
 	write_ret = write(sockfd, b.ptr, b.payload_len);
 	if (write_ret < 0)
 	{
@@ -488,12 +521,15 @@ bool fake_agentino::transmit_buf(fake_agentino::buf& b, int sockfd)
 bool fake_agentino::send_handshake_message(int sockfd)
 {
 	static uint64_t ts_ns = 1000;
+	std::string id = std::string("FA id=") + m_id;
+	std::string image = std::string("FA image");
+	std::string name = std::string("FA name=") + m_id;
 
 	draiosproto::agentino_handshake hs;
 	hs.set_timestamp_ns(++ts_ns);
-	hs.mutable_metadata()->set_container_id("FA id");
-	hs.mutable_metadata()->set_container_image("FA image");
-	hs.mutable_metadata()->set_container_name("FA");
+	hs.mutable_metadata()->set_container_id(id);
+	hs.mutable_metadata()->set_container_image(image);
+	hs.mutable_metadata()->set_container_name(name);
 
 	// Use the send_message function to build a buf
 	buf b = build_buf(draiosproto::message_type::AGENTINO_HANDSHAKE,

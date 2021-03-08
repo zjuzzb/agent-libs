@@ -1536,6 +1536,12 @@ bool connection_manager::transmit_buffer(uint64_t now,
 			return false;
 		}
 
+		// Zero-length messages are legal
+		if (item->buffer.empty())
+		{
+			return true;
+		}
+
 		// Send the payload
 		ASSERT(item->buffer.size() <= INT32_MAX);
 		LOG_DEBUG("Sending buffer length %u", (uint32_t)item->buffer.size());

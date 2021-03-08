@@ -40,6 +40,10 @@ type_config<bool> c_wait_until_policies(
     "agentino",
     "delay_startup_until_policies");
 
+type_config<uint32_t> c_heartbeat_interval_s(2,
+                                             "Agentino / agentone heartbeat in seconds",
+                                             "agentone_heartbeat");
+
 static void g_signal_callback(int sig)
 {
 	running_state::instance().shut_down();
@@ -489,6 +493,7 @@ int agentino_app::sdagent_main()
 	// time to terminate.
 	//////////////////////////////
 	int index = 0;
+	uint64_t last_heartbeat = 0;
 	while (!state.is_terminated())
 	{
 		watchdog_check(uptime_s);
@@ -511,6 +516,14 @@ int agentino_app::sdagent_main()
 			                                         0,
 			                                         1,
 			                                         0));
+		}
+		else
+		{
+			if (uptime_s - last_heartbeat >= c_heartbeat_interval_s.get_value())
+			{
+				send_heartbeat();
+				last_heartbeat = uptime_s;
+			}
 		}
 
 		Thread::sleep(1000);
@@ -546,6 +559,15 @@ void agentino_app::build_metadata_message(draiosproto::agentino_metadata& msg) c
 	{
 		(*msg.mutable_other_metadata())[i.first] = i.second;
 	}
+}
+
+void agentino_app::send_heartbeat()
+{
+	// A heartbeat is just a header
+	auto hb_buf = std::make_shared<serialized_buffer>();
+	hb_buf->message_type = draiosproto::message_type::AGENTINO_HEARTBEAT;
+	hb_buf->ts_ns = time(nullptr) * ONE_SECOND_IN_NS;
+	m_transmit_queue.put(hb_buf, protocol_queue::BQ_PRIORITY_LOW);
 }
 
 bool agentino_app::timeout_expired(int64_t last_activity_age_ns,

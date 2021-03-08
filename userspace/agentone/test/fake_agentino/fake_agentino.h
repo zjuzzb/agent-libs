@@ -64,14 +64,18 @@ public:
 	 *            respond to handshake messages and ack. If false, client is
 	 *            responsible for responding to those messages as appropriate
 	 */
-	fake_agentino(bool auto_respond, bool auto_reconnect, bool silent=true):
-		m_received_data(),
-		m_status(server_status::NOT_STARTED),
-		m_error_code(0),
-		m_error_msg(""),
-		m_run_loop(false),
-		m_port(0),
-		m_drop_connection(false),
+	fake_agentino(bool auto_respond,
+	              bool auto_reconnect,
+	              bool silent=true,
+	              std::string id=""):
+	    m_received_data(),
+	    m_status(server_status::NOT_STARTED),
+	    m_error_code(0),
+	    m_error_msg(""),
+	    m_id(id),
+	    m_run_loop(false),
+	    m_port(0),
+	    m_drop_connection(false),
 	    m_auto_respond(auto_respond),
 	    m_auto_reconnect(auto_reconnect),
 	    m_last_gen_num(0),
@@ -82,8 +86,10 @@ public:
 	    m_num_disconnects(0),
 	    m_num_connects(0),
 	    m_num_sent_msgs(0),
-		m_silent(silent),
-	    m_pause(false)
+	    m_num_sent_heartbeats(0),
+	    m_silent(silent),
+	    m_pause(false),
+	    m_heartbeat(false)
 	{}
 
 	~fake_agentino();
@@ -229,12 +235,26 @@ public:
 	{
 		return m_num_connects;
 	}
+
 	/**
 	 * Get the number of messages sent from this fake agentino.
 	 */
 	uint32_t get_num_sent_messages() const
 	{
 		return m_num_sent_msgs;
+	}
+
+	/**
+	 * Get the number of heartbeats sent from this fake agentino.
+	 */
+	uint32_t get_num_sent_heartbeats() const
+	{
+		return m_num_sent_heartbeats;
+	}
+
+	void turn_on_heartbeats()
+	{
+		m_heartbeat = true;
 	}
 
 	/**
@@ -250,6 +270,7 @@ private:
 	server_status m_status;
 	int m_error_code;        // Currently internal-only for debugging
 	std::string m_error_msg; // Currently internal-only for debugging
+	std::string m_id;
 
 	bool m_run_loop; // Control variable
 
@@ -269,8 +290,10 @@ private:
 	uint32_t m_num_disconnects;
 	uint32_t m_num_connects;
 	uint32_t m_num_sent_msgs;
+	uint32_t m_num_sent_heartbeats;
 	bool m_silent;
 	bool m_pause;
+	bool m_heartbeat;
 
 public:
 	draiosproto::policies_v2 m_most_recent_received_policies;

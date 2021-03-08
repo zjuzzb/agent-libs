@@ -167,7 +167,12 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_real_1unsetenv
 JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_setns
 		(JNIEnv *, jclass, jint fd, jint type)
 {
-	return setns(fd, type);
+	int ret = setns(fd, type);
+	if(ret)
+	{
+		log("SEVERE", "setns fs: %d type:%d failed with error %s", fd, type, strerror(errno));
+	}
+	return ret;
 }
 
 JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_open_1fd
@@ -381,6 +386,13 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		// readlink the exe before switching uid & gid in case its required later
 		vector<char> proc_exe_link(PATH_MAX, 0);
 		auto proc_exe_link_len = readlink(exe.c_str(), proc_exe_link.data(), proc_exe_link.size() - 1);
+
+		if(proc_exe_link_len == 0)
+		{
+			log("DEBUG",  "readlink(%s) returned an empty string. This can happen with short leaving processes, vpid=%d", exe.c_str(), vpid);
+			exit(EXIT_FAILURE);
+		}
+
 		log("FINE", "readlink(%s) returned %s, vpid=%d, errno=%s", exe.c_str(), proc_exe_link.data(), vpid, strerror(errno));
 
 		// ensure proc_exe_link ends with java
@@ -597,7 +609,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_getJmxInfo
 	file_descriptor ns_fd(mntnspath, O_RDONLY);
 	if(!ns_fd.is_valid())
 	{
-		log("SEVERE", "Process %d: could not switch mount namespace", pid);
+		log("DEBUG", "nativeGetJmxInfo [%d]: unable to open mntnsfd %s (this can happen with short leaving processes)", pid, mntnspath);
 		return res;
 	}
 

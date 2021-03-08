@@ -527,14 +527,24 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 		{
 			draiosproto::message_type type =
 			    static_cast<draiosproto::message_type>(msg.hdr.hdr.messagetype);
-			LOG_INFO("Read message of type %d and length %u from agentino container name=%s id=%s",
-			         (int)type,
-			         msg.payload_length(),
-			         (*cptr)->get_name().c_str(),
-			         (*cptr)->get_id().c_str());
+			if (type == draiosproto::message_type::AGENTINO_HEARTBEAT)
+			{
+				// Heartbeat message, nothing to do here
+				LOG_DEBUG("Received heartbeat from agentino container name=%s id=%s",
+						 (*cptr)->get_name().c_str(),
+						 (*cptr)->get_id().c_str());
+			}
+			else
+			{
+				LOG_INFO("Read message of type %d and length %u from agentino container name=%s id=%s",
+						 (int)type,
+						 msg.payload_length(),
+						 (*cptr)->get_name().c_str(),
+						 (*cptr)->get_id().c_str());
 
-			// Submit work queue item to deserialize and dispatch
-			m_pool.submit_work(new agentino_message_work_item(*this, msg));
+				// Submit work queue item to deserialize and dispatch
+				m_pool.submit_work(new agentino_message_work_item(*this, msg));
+			}
 		}
 		else
 		{

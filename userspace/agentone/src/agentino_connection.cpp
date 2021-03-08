@@ -91,6 +91,7 @@ connection::result connection::read_message(raw_message& msg)
 
 	if (res == 0)
 	{
+		LOG_DEBUG("Connection closed on receive for agentino %s", m_id.c_str());
 		return CONNECTION_CLOSED;
 	}
 
@@ -103,8 +104,11 @@ connection::result connection::read_message(raw_message& msg)
 		return FATAL_ERROR;
 	}
 
-	msg.bytes = new uint8_t[msg.payload_length()];
-	msg.buffer_owned = true;
+	if (msg.payload_length() > 0)
+	{
+		msg.bytes = new uint8_t[msg.payload_length()];
+		msg.buffer_owned = true;
+	}
 
 	// Now, read body
 	uint32_t bytes_read = 0;
@@ -117,6 +121,7 @@ connection::result connection::read_message(raw_message& msg)
 
 		if (res == 0)
 		{
+			LOG_DEBUG("Connection closed on receive for agentino %s", m_id.c_str());
 			ret = CONNECTION_CLOSED;
 			goto error;
 		}
