@@ -79,6 +79,11 @@ public:
 	 * Get a unique identifier for this agentino.
 	 */
 	virtual std::string get_id() const;
+	
+	/**
+	 * Get name for this agentino.
+	 */
+	virtual std::string get_name() const;
 
 	/**
 	 * stores the metadata value for the given property. If that property had been
