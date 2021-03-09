@@ -332,6 +332,8 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 	bool ret = connection_in->get_handshake_data(handshake_data);
 	if (!ret)
 	{
+		// This message will always print name=<unknown> id=<unknown>, because it
+		// is the handshake data that populates the metadata for the agentinos.
 		LOG_WARNING("Attempting to process new connection with no handshake data, bailing for container name=%s id=%s", 
 			    fixed_metadata[CONTAINER_NAME].c_str(),
 			    connection_in->get_id().c_str());
@@ -351,7 +353,7 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 	{
 		LOG_INFO("Building new agentino from container name=%s id=%s",
 			 fixed_metadata[CONTAINER_NAME].c_str(),
-			 connection_in->get_id().c_str());
+			 fixed_metadata[CONTAINER_ID].c_str());
 		extant_agentino = agentino::build_agentino(this,
 		                                           connection_in,
 		                                           std::move(fixed_metadata),
