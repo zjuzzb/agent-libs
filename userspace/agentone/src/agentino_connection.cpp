@@ -91,13 +91,14 @@ connection::result connection::read_message(raw_message& msg)
 
 	if (res == 0)
 	{
-		LOG_DEBUG("Connection closed on receive for agentino %s", m_id.c_str());
+		LOG_DEBUG("Connection closed on receive for agentino name=%s id=%s", m_name.c_str(), m_id.c_str());
 		return CONNECTION_CLOSED;
 	}
 
 	if (res < 0 || res < sizeof(msg.hdr))
 	{
-		LOG_ERROR("Unexpected result reading bytes from agentino %s: %lld (%s)",
+		LOG_ERROR("Unexpected result reading bytes from agentino name=%s id=%s: %lld (%s)",
+		          m_name.c_str(),
 		          m_id.c_str(),
 		          (long long)res,
 		          strerror(errno));
@@ -121,14 +122,15 @@ connection::result connection::read_message(raw_message& msg)
 
 		if (res == 0)
 		{
-			LOG_DEBUG("Connection closed on receive for agentino %s", m_id.c_str());
+			LOG_DEBUG("Connection closed on receive for agentino name=%s id=%s", m_name.c_str(), m_id.c_str());
 			ret = CONNECTION_CLOSED;
 			goto error;
 		}
 
 		if (res < 0)
 		{
-			LOG_ERROR("Error reading bytes from agentino %s: %lld (%s)",
+			LOG_ERROR("Error reading bytes from agentino name=%s id=%s: %lld (%s)",
+			          m_name.c_str(),
 			          m_id.c_str(),
 			          (long long)res,
 			          strerror(errno));
@@ -140,7 +142,8 @@ connection::result connection::read_message(raw_message& msg)
 		if (res + bytes_read > UINT32_MAX || res > bytes_to_read)
 		{
 			// Should never happen, but don't want to infinite loop
-			LOG_ERROR("Receive returned invalid size for agentino %s %lld",
+			LOG_ERROR("Receive returned invalid size for agentino name=%s id=%s size=%lld",
+			          m_name.c_str(),
 			          m_id.c_str(),
 			          (long long)res);
 			ret = FATAL_ERROR;
@@ -169,7 +172,8 @@ connection::result connection::process_handshake_in()
 	{
 		if (res == FATAL_ERROR)
 		{
-			LOG_ERROR("Fatal error reading handshake message from agentino %s.",
+			LOG_ERROR("Fatal error reading handshake message from agentino name=%s id=%s",
+			          m_name.c_str(),
 			          m_id.c_str());
 		}
 		return res;
@@ -184,7 +188,8 @@ connection::result connection::process_handshake_in()
 	}
 	catch (const dragent_protocol::protocol_error& e)
 	{
-		LOG_ERROR("Protocol error: could not parse handshake message from agentino %s.",
+		LOG_ERROR("Protocol error: could not parse handshake message from agentino name=%s id=%s",
+		          m_name.c_str(),
 		          m_id.c_str());
 		return FATAL_ERROR;
 	}
@@ -195,14 +200,15 @@ connection::result connection::process_handshake_in()
 	draiosproto::agentino_handshake_response resp;
 	if (!m_on_handshake)
 	{
-		LOG_ERROR("Code error: Missing callback for handshake response for agentino %s.",
+		LOG_ERROR("Code error: Missing callback for handshake response for agentino name=%s id=%s",
+		          m_name.c_str(),
 		          m_id.c_str());
 		return FATAL_ERROR;
 	}
 	bool ret = m_on_handshake(m_manager, m_ctx, m_hs_data, resp);
 	if (!ret)
 	{
-		LOG_ERROR("Fatal error: Handshake callback failed for agentino %s", m_id.c_str());
+		LOG_ERROR("Fatal error: Handshake callback failed for agentino name=%s id=%s", m_name.c_str(), m_id.c_str());
 		// Handshake rejected. Fail the connection.
 		return FATAL_ERROR;
 	}
@@ -214,12 +220,14 @@ connection::result connection::process_handshake_in()
 	{
 		if (res == FATAL_ERROR)
 		{
-			LOG_ERROR("Fatal error sending handshake response to agentino %s.",
+			LOG_ERROR("Fatal error sending handshake response to agentino name=%s id=%s",
+			          m_name.c_str(),
 			          m_id.c_str());
 		}
 		else
 		{
-			LOG_ERROR("Agentino %s disconnected during handshake reponse phase.",
+			LOG_ERROR("Agentino name=%s id=%s disconnected during handshake reponse phase",
+			          m_name.c_str(),
 			          m_id.c_str());
 		}
 		return res;
@@ -345,7 +353,7 @@ bool connection::handle_handshake_complete(connection::fsm_event& chain_evt)
 		LOG_ERROR("Expected state %d, got state %d", (int)HANDSHAKING, (int)m_state);
 		return false;
 	case DISCONNECTED:
-		LOG_WARNING("Agentino %s disconnected after handshake completed", m_id.c_str());
+		LOG_WARNING("Agentino name=%s id=%s disconnected after handshake completed", m_name.c_str(), m_id.c_str());
 		return false;
 	}
 	LOG_ERROR("Code error: Handshake completed in unexpected state %d", (int)m_state);
@@ -369,7 +377,7 @@ bool connection::handle_get_handshake_data(connection::fsm_event& chain_evt)
 
 bool connection::handle_event(connection::fsm_event evt)
 {
-	LOG_DEBUG("Agentino %s connection FSM event %d", m_id.c_str(), (int)evt);
+	LOG_DEBUG("Agentino name=%s id=%s connection FSM event %d", m_name.c_str(), m_id.c_str(), (int)evt);
 	fsm_event chain_evt = fsm_event::NONE;
 	bool ret = false;
 	switch (evt)
@@ -387,7 +395,7 @@ bool connection::handle_event(connection::fsm_event evt)
 		ret = handle_get_handshake_data(chain_evt);
 		break;
 	case NONE:
-		LOG_ERROR("Received invalid FSM event for agentino %s (code error)", m_id.c_str());
+		LOG_ERROR("Received invalid FSM event for agentino name=%s id=%s (code error)", m_name.c_str(), m_id.c_str());
 		assert("Invalid FSM event" == 0);
 		return false;
 	}
