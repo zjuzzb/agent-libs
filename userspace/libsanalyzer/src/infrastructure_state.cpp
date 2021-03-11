@@ -1155,15 +1155,31 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			print_obj(key);
 			break;
 		case draiosproto::REMOVED:
-			print_obj(key);
-			m_k8s_store_manager.handle_delete(key, m_state);
+			if(m_cg_ttl.find(key) != m_cg_ttl.end())
+			{
+				LOG_DEBUG(
+					"infra_state: Ignoring request to delete an already marked for deletion container group <%s,%s>",
+					kind.c_str(),
+					id.c_str());
+			}
+			else
+			{
+				print_obj(key);
+				m_k8s_store_manager.handle_delete(key, m_state);
 
-			m_cg_ttl[key] = m_ts + (c_congroup_ttl_s.get_value() * ONE_SECOND_IN_NS);
-			LOG_DEBUG("infra_state: container_group <%s,%s> marked for removal.", kind.c_str(), id.c_str());
+				m_cg_ttl[key] = m_ts + (c_congroup_ttl_s.get_value() * ONE_SECOND_IN_NS);
+				LOG_DEBUG("infra_state: container_group <%s,%s> marked for removal.",
+				          kind.c_str(),
+				          id.c_str());
+			}
 
 			// Key removal is done only after the TTL has expired.
 			break;
 		case draiosproto::UPDATED:
+			// be sure that the object we want to update is not going to be removed.
+			// This (weird) case can happen with replicasets, because we removes
+			// 0 replicas replicasets.
+			m_cg_ttl.erase(key);
 			m_handle_update_event(evt);
 			print_obj(key);
 			break;
