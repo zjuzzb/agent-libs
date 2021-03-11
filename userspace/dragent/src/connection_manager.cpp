@@ -2113,11 +2113,13 @@ void connection_manager::handle_collector_error(draiosproto::error_message& msg)
 		return;
 	}
 
-	if(err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY)
+	if(err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY ||
+	   err_type == draiosproto::error_type::ERR_CONN_LIMIT)
 	{
-		// Exponential backoff on INVALID_CUSTOMER_KEY
+		// Exponential backoff on certain errors.
 		// Sometimes customers will decide to no longer be customers
-		// but will leave an agent running for some reason. The agent
+		// but will leave an agent running for some reason. Also, sometimes
+		// customers will launch more agents than they've paid for. The agent
 		// will just pound away trying to connect to the collector.
 		// Make the agent backoff in this case.
 		disconnect_and_backoff();
