@@ -1,35 +1,26 @@
 #!/bin/bash
 set -exuo pipefail
 
-if [ $# -ne 4 ]
+if [ $# -ne 6 ]
 then
-    echo "Usage: $0 repo-name bin-dir repo-dir s3-bucket" >&2
+    echo "Usage: $0 repo-name bin-dir repo-dir s3-bucket agent_version build-variant" >&2
     exit 1
 fi
 
-REPOSITORY_BASENAME=$1
+REPOSITORY_NAME=$1
 BINARIES_DIR=$2
 REPOSITORY_DIR=$3
 S3_BUCKET=$4
-
-TRIGGER_DOCKER_BUILDS=no
-if [ "$S3_BUCKET" = "s3://download.draios.com" ]
-then
-	# production run, trigger the docker builds
-	TRIGGER_DOCKER_BUILDS=yes
-fi
+AGENT_VERSION=$5
+BUILD_VARIANT=$6
 
 SCRIPT=$(readlink -f $0)
 SCRIPTS_DIR=$(dirname $(dirname $SCRIPT))
-JOBS=${JOBS:-$(nproc)}
 BASEARCH=$(uname -m)
-AGENT_VERSION=${AGENT_VERSION:-}
-DOCKER_HUB_ROOT=${DOCKER_HUB_ROOT:-}
-ARTIFACTORY_ROOT=${ARTIFACTORY_ROOT:-"docker.internal.sysdig.com"}
+PACKAGES_DIR=$BINARIES_DIR/$BUILD_VARIANT
 
 export AWS_DEFAULT_REGION="us-east-1"
 
-cd $SCRIPTS_DIR/../..
 
 
 function configure_rpm_repo {
@@ -182,98 +173,6 @@ function upload_binaries {
 	configure_installers
 }
 
-function trigger_docker_builds {
-
-	if [[ "${DOCKER_HUB_ROOT}" == "" ]]; then
-		DOCKER_HUB_ROOT="sysdig"
-	fi
-
-	# Blow away all existing docker images for sysdig/agent*
-	docker images -q 'sysdig/agent*' | uniq | xargs --no-run-if-empty docker rmi -f
-	# Then remove all dangling images
-	docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
-
-	# This assumes that a prior "make package" has run to put a
-	# tarball containing dockerfiles in
-	# BINARIES_DIR/release/draios-*-dockerfiles.tar.gz. That
-	# happens as a part of the build-agent script.
-	DOCKERFILES_ROOT_DIR="${BINARIES_DIR}/tmp/dockerfiles"
-
-	rm -rf "${DOCKERFILES_ROOT_DIR}"
-	mkdir -p "${DOCKERFILES_ROOT_DIR}"
-	tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "${BINARIES_DIR}"/release/draios-*-dockerfiles.tar.gz
-
-	for IMAGE_NAME in agent-kmodule agent-kmodule-thin agent-slim agent agent-slim-v2 agentone; do
-
-		pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${IMAGE_NAME}/${REPOSITORY_BASENAME}"
-
-		VERSION_SUFFIX=""
-		if [[ "${REPOSITORY_BASENAME}" == "rc" ]]; then
-			VERSION_SUFFIX="-rc"
-		fi
-
-		VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}${VERSION_SUFFIX}"
-		DEV_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:dev"
-
-		# We have some pre-work for agent-slim-v2
-		# 1. Copy the agent-slim.tar.gz that was generated to the local docker directory
-		# 2. Extract the tar ball and strip the agent binaries of debug symbols
-		# 3. Manipulate the image tags to read as "agent-slim" instead of agent-slim-v2
-		if [[ "${IMAGE_NAME}" == "agent-slim-v2" ]]; then
-			echo "Extracting agent-slim.tar.gz for 'agent-slim-v2'"
-			cp "${BINARIES_DIR}"/release/*agent-slim.tar.gz .
-			rm -rf ./opt/draios
-			tar -xzf *agent-slim.tar.gz
-			find ./opt/draios/bin -type f | xargs file | awk '/ELF/ { sub(/:$/, "", $1); print $1 }' | xargs strip -g
-			rm -rf ./opt/draios/lib/python-deps2.6/
-			# Blow away some python related unnecessary files
-			find ./opt/draios/lib -name '*psycopg2*' -exec rm -rf {} + 2>/dev/null
-			find ./opt/draios/lib -type d -name "enum*" -exec rm -r {} + 2>/dev/null
-
-			VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/agent-slim:${AGENT_VERSION}${VERSION_SUFFIX}"
-			DEV_IMAGE="${DOCKER_HUB_ROOT}/agent-slim:dev"
-		fi
-
-		# For the legacy "agent-slim" image, we have to now label it v1.
-		# Manipulate the image tags to do just that.
-		if [[ "${IMAGE_NAME}" == "agent-slim" ]]; then
-			VERSIONED_IMAGE="${VERSIONED_IMAGE}-v1"
-			DEV_IMAGE="${DEV_IMAGE}-v1"
-		fi
-
-		if [[ "${IMAGE_NAME}" == "agentone" ]]; then
-		  DEV_IMAGE="${ARTIFACTORY_ROOT}/agentone:dev"
-		  if [[ "${REPOSITORY_BASENAME}" == "dev" ]]; then
-		    VERSIONED_IMAGE="${ARTIFACTORY_ROOT}/agentone:${AGENT_VERSION}${VERSION_SUFFIX}"
-		  fi
-		fi
-		
-		docker build -t "${VERSIONED_IMAGE}" --pull .
-		docker push "${VERSIONED_IMAGE}"
-
-		if [[ "${REPOSITORY_BASENAME}" == "dev" ]]; then
-			docker tag "${VERSIONED_IMAGE}" "${DEV_IMAGE}"
-			docker push "${DEV_IMAGE}"
-		fi
-
-		popd
-	done
-}
-
-REPOSITORY_NAME=$REPOSITORY_BASENAME
-PACKAGES_DIR=$BINARIES_DIR/release
+pushd $SCRIPTS_DIR/../..
 upload_binaries
-
-REPOSITORY_NAME=$REPOSITORY_BASENAME-debug
-PACKAGES_DIR=$BINARIES_DIR/debug
-upload_binaries
-
-#the build is executed on i686 and x86_64 server
-#the docker hub trigger has to be executed only at the end of x86_64 build
-if [[ ${TRIGGER_DOCKER_BUILDS} == 'yes' && ${BASEARCH} == 'x86_64' && ${AGENT_VERSION} != '' ]]; then
-	trigger_docker_builds
-fi
-
-#keep /tmp clean
-rm -rf ${REPOSITORY_DIR}
-
+popd

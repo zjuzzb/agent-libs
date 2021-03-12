@@ -1,0 +1,23 @@
+#!/bin/bash
+set -exuo pipefail
+
+if [ $# -ne 2 ]
+then
+    echo "Usage: $0 bin-dir image_name" >&2
+    exit 1
+fi
+
+BINARIES_DIR=$1
+IMAGE_NAME=$2
+DOCKERFILES_ROOT_DIR="${BINARIES_DIR}/tmp/dockerfiles"
+
+rm -rf "${DOCKERFILES_ROOT_DIR}"
+mkdir -p "${DOCKERFILES_ROOT_DIR}"
+tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "${BINARIES_DIR}"/release/draios-*-dockerfiles.tar.gz
+
+pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/agentone/rc"
+
+docker build -t "${IMAGE_NAME}" .
+
+popd
+
