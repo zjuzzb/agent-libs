@@ -1101,6 +1101,13 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 	{
 		switch (evt->type())
 		{
+		case draiosproto::UPDATED:
+			LOG_WARNING(
+				"infra_state: Got request to update container_group <%s,%s> which does not exist."
+				" Handle as a ADD event",
+				kind.c_str(),
+				id.c_str());
+			// Fall through the ADDED case
 		case draiosproto::ADDED:
 			add(key, evt->object());
 
@@ -1120,13 +1127,6 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			// allow double delete (example: remove a container for an already terminated k8s_job)
 			LOG_DEBUG(
 			    "infra_state: Ignoring request to delete non-existent container group <%s,%s>",
-			    kind.c_str(),
-			    id.c_str());
-			break;
-		case draiosproto::UPDATED:
-			LOG_WARNING(
-			    "infra_state: Ignoring request to update container_group <%s,%s> because it does "
-			    "not exists.",
 			    kind.c_str(),
 			    id.c_str());
 			break;
