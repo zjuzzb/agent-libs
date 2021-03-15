@@ -330,6 +330,8 @@ func CloseKubeClient() {
 func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubecollectInterface KubecollectInterface) (<-chan sdc_internal.ArrayCongroupUpdateEvent, <-chan struct{}, error) {
 	setErrorLogHandler()
 
+	uptimeInit()
+
 	// TODO: refactor error messages
 	var kubeClient kubeclient.Interface
 
@@ -989,6 +991,25 @@ func OwnerReferencesToParents(owners []v1meta.OwnerReference,
 	}
 }
 
+var startTime time.Time
+
+func uptimeInit() {
+    startTime = time.Now()
+}
+
+func uptime() time.Duration {
+    return time.Since(startTime)
+}
+
+func shouldStartWatcherRetry (retryAtBoot bool, uptimeDuration time.Duration) bool {
+
+	if uptimeDuration < (time.Hour*1) && !retryAtBoot {
+		return false;
+	}
+
+	time.Sleep(60 * time.Second)
+	return true
+}
 
 func StartWatcher(ctx context.Context,
 	restClient rest.Interface,
@@ -996,6 +1017,7 @@ func StartWatcher(ctx context.Context,
 	wg *sync.WaitGroup,
 	evtc chan<- draiosproto.CongroupUpdateEvent,
 	fieldSelector fields.Selector,
+	retryAtBoot bool,
 	handler func(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEvent) ()) {
 
 	lw := cache.NewListWatchFromClient(restClient, resource, v1meta.NamespaceAll, fieldSelector)
@@ -1031,7 +1053,11 @@ func StartWatcher(ctx context.Context,
 				log.Warnf("startWatcher[%s] ListWatchUntil exits: %s", resource, err.Error())
 			}
 
-			time.Sleep(5 * time.Second)
+			if !shouldStartWatcherRetry(retryAtBoot, uptime()) {
+				log.Warnf("startWatcher[%s] will not retry", resource)
+				terminated = true;
+			}
+
 			if terminated == true {
 				break
 			}

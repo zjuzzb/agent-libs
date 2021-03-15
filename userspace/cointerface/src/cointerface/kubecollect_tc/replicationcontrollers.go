@@ -38,7 +38,7 @@ func newReplicationControllerCongroup(replicationController kubecollect.CoReplic
 func startReplicationControllerWatcher(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty bool) {
 	kubecollect.FilterEmptyRs = filterEmpty
 
-	kubecollect_common.StartWatcher(ctx, kubeClient.CoreV1().RESTClient(), "ReplicationControllers", wg, evtc, fields.Everything(), handleReplicationControllerEvent)
+	kubecollect_common.StartWatcher(ctx, kubeClient.CoreV1().RESTClient(), "ReplicationControllers", wg, evtc, fields.Everything(), true /*retryAtBoot*/, handleReplicationControllerEvent)
 }
 
 func handleReplicationControllerEvent(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEvent) {

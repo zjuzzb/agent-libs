@@ -39,7 +39,7 @@ func newDeploymentCongroup(deployment kubecollect.CoDeployment, setLinks bool) (
 }
 
 func startDeploymentsWatcher(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
-	kubecollect_common.StartWatcher(ctx, kubeClient.AppsV1().RESTClient(), "Deployments", wg, evtc, fields.Everything(), handleDeploymentEvent)
+	kubecollect_common.StartWatcher(ctx, kubeClient.AppsV1().RESTClient(), "Deployments", wg, evtc, fields.Everything(), true /*retryAtBoot*/, handleDeploymentEvent)
 }
 
 func handleDeploymentEvent(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEvent) {

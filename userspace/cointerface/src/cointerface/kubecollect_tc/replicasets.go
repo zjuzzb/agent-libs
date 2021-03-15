@@ -40,7 +40,7 @@ func newReplicaSetCongroup(replicaSet kubecollect.CoReplicaSet, setLinks bool) (
 func startReplicaSetWatcher(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty bool) {
 	kubecollect.FilterEmptyRs = filterEmpty
 
-	kubecollect_common.StartWatcher(ctx, kubeClient.AppsV1().RESTClient(), "ReplicaSets", wg, evtc, fields.Everything(), handleReplicaSetEvent)
+	kubecollect_common.StartWatcher(ctx, kubeClient.AppsV1().RESTClient(), "ReplicaSets", wg, evtc, fields.Everything(), true /*retryAtBoot*/, handleReplicaSetEvent)
 }
 
 // We usually want to avoid replicasets with spec.Replicas = 0.

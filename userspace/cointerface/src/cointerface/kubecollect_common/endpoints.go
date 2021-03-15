@@ -74,7 +74,10 @@ func newEndpointsCongroup(endpoints CoEndpoints, setLinks bool) (*draiosproto.Co
 }
 
 func StartEndpointsWatcher(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
-	StartWatcher(ctx, kubeClient.CoreV1().RESTClient(), "Endpoints", wg, evtc, fields.Everything(), handleEndpointsEvent)
+	// The Endpoints watcher is new and some agents don't have the right config
+	// to access it. If we're not able to connect to it at boot, don't retry.
+	retryAtBoot := false
+	StartWatcher(ctx, kubeClient.CoreV1().RESTClient(), "Endpoints", wg, evtc, fields.Everything(), retryAtBoot, handleEndpointsEvent)
 }
 
 func handleEndpointsEvent(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEvent) {
