@@ -320,7 +320,11 @@ pipeline {
     // this one is promoted
     stage('Build Probes') {
         steps {
-            build job: 'sysdig-probe-builder', parameters: [string(name: 'RELEASE_NUMBER', value: "${params.RELEASE_VERSION}"), string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')]
+            build job: 'sysdig-probe-builder', parameters: [
+                string(name: 'RELEASE_NUMBER', value: "${params.RELEASE_VERSION}"),
+                string(name: 'DRIVER_REPO_COMMIT', value: "agent/${params.RELEASE_VERSION}"),
+                string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')
+            ]
         }
         post {
             success {

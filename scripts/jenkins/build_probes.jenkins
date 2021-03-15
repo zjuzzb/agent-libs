@@ -29,10 +29,18 @@ pipeline {
                 def latest_release = true
                 for (release in releases) {
                     if (latest_release) {
-                        build job: 'sysdig-probe-builder', parameters: [string(name: 'RELEASE_NUMBER', value: release), string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')]
+                        build job: 'sysdig-probe-builder', parameters: [
+                            string(name: 'RELEASE_NUMBER', value: release),
+                            string(name: 'DRIVER_REPO_COMMIT', value: "agent/$release"),
+                            string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')
+                        ]
                         latest_release = false
                     } else {
-                        build job: 'sysdig-probe-builder', parameters: [string(name: 'RELEASE_NUMBER', value: release), string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')],propagate: false
+                        build job: 'sysdig-probe-builder', parameters: [
+                            string(name: 'RELEASE_NUMBER', value: release),
+                            string(name: 'DRIVER_REPO_COMMIT', value: "agent/$release"),
+                            string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')
+                        ],propagate: false
                     }
                 }
             }
