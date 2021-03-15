@@ -1797,33 +1797,33 @@ TEST_F(security_policies_v2_test, DISABLED_falco_fqdn)
 	check_expected_internal_metrics(metrics);
 }
 
-TEST_F(security_policies_v2_test, multiple_falco_variants)
+TEST_F(security_policies_v2_test, DISABLED_multiple_falco_variants)
 {
 	multiple_falco_files_test(
 	    "./resources/security_policies_messages/multiple_falco_variants_v2.txt",
 	    "v2 output");
 }
 
-TEST_F(security_policies_v2_test, multiple_falco_files)
+TEST_F(security_policies_v2_test, DISABLED_multiple_falco_files)
 {
 	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_files_v2.txt",
 	                          "some output");
 }
 
-TEST_F(security_policies_v2_test, multiple_falco_files_override)
+TEST_F(security_policies_v2_test, DISABLED_multiple_falco_files_override)
 {
 	multiple_falco_files_test(
 	    "./resources/security_policies_messages/multiple_falco_files_override_v2.txt",
 	    "some output");
 }
 
-TEST_F(security_policies_v2_test, custom_falco_files)
+TEST_F(security_policies_v2_test, DISABLED_custom_falco_files)
 {
 	multiple_falco_files_test("./resources/security_policies_messages/custom_falco_files_v2.txt",
 	                          "some output");
 }
 
-TEST_F(security_policies_v2_test, custom_falco_files_override)
+TEST_F(security_policies_v2_test, DISABLED_custom_falco_files_override)
 {
 	multiple_falco_files_test(
 	    "./resources/security_policies_messages/custom_falco_files_override_v2.txt",
