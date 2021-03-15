@@ -1,3 +1,31 @@
+int initialDigits(num) {
+	def match = (num =~ /^([0-9]+)/)
+	if (match.find()) {
+		return match.group(1).toInteger()
+	} else {
+		return -1
+	}
+}
+
+int compareVersions(a, b) {
+	List verA = a.tokenize('.')
+	List verB = b.tokenize('.')
+
+	def commonIndices = Math.min(verA.size(), verB.size())
+
+	for (int i = 0; i < commonIndices; ++i) {
+		def numA = initialDigits(verA[i])
+		def numB = initialDigits(verB[i])
+
+		if (numA != numB) {
+			return numA <=> numB
+		}
+	}
+
+	// If we got this far then all the common indices are identical, so whichever version is longer must be more recent
+	verA.size() <=> verB.size()
+}
+
 pipeline {
     agent { label 'agent-builder-parallel' }
 
@@ -28,8 +56,15 @@ pipeline {
                 def releases = readFile(file:'releases').split()
                 def latest_release = true
                 for (release in releases) {
+                    if (compareVersions(release, "11.1.0") >= 0) {
+                        driver_repo = "ssh://git@github.com/draios/libscap.git"
+                    } else {
+                        driver_repo = "ssh://git@github.com/draios/sysdig.git"
+                    }
+
                     build job: 'sysdig-probe-builder', parameters: [
                         string(name: 'RELEASE_NUMBER', value: release),
+                        string(name: 'DRIVER_REPO', value: driver_repo),
                         string(name: 'DRIVER_REPO_COMMIT', value: "agent/$release"),
                         string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')
                     ], propagate: latest_release
