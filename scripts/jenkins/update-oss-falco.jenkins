@@ -50,7 +50,7 @@ pipeline {
 				}
 				stage('System Test') {
 					steps {
-						build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"oss-falco-master-candidate"), string(name:'LIBSINP_BRANCH', value:"${params.LIBSINSP_BRANCH}"), string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
+						build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"oss-falco-master-candidate"), string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"), string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
 					}
 				}
 			}
