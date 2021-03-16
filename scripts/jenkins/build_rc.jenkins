@@ -11,7 +11,7 @@ pipeline {
                     checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
                     sh "git checkout ${params.FALCO_BRANCH}"
                 }
-                dir('libsinp') {
+                dir('libsinsp') {
                     checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libsinsp']]])
                     sh "git checkout ${params.LIBSINSP_BRANCH}"
                 }
