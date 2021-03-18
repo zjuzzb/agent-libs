@@ -9,7 +9,15 @@ or GPL2.txt for full copies of the license.
 #ifndef __MAPS_H
 #define __MAPS_H
 
-#include "types.h"
+struct bpf_map_def {
+	unsigned int type;
+	unsigned int key_size;
+	unsigned int value_size;
+	unsigned int max_entries;
+	unsigned int map_flags;
+	unsigned int inner_map_idx;
+	unsigned int numa_node;
+};
 
 struct bpf_map_def __bpf_section("maps") perf_map = {
 	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
