@@ -362,6 +362,13 @@ pipeline {
 				}
 			}
 
+            stage('Launch QA tests pipeline') {
+                steps {
+                    script {
+                            build job: "QA-agent-release-validation", parameters: [string(name: 'AGENT_VERSION', value: "${params.RELEASE_VERSION}-rc")], wait: false
+                    }
+                }
+            }
             stage('Wait for QA') {
                 steps {
                     // The following QA folks are sent the notice and approval link explicitly.
