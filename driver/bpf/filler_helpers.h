@@ -215,9 +215,9 @@ static __always_inline bool bpf_getsockname(struct socket *sock,
 static __always_inline int bpf_addr_to_kernel(void *uaddr, int ulen,
 					      struct sockaddr *kaddr)
 {
+	ulen &= 0xff;
 	if (ulen < 0 || ulen > sizeof(struct sockaddr_storage))
 		return -EINVAL;
-
 	if (ulen == 0)
 		return 0;
 
@@ -719,6 +719,8 @@ static __always_inline int __bpf_val_to_ring(struct filler_data *data,
 	unsigned int len_dyn = 0;
 	unsigned int len;
 
+	data->state->tail_ctx.curoff &= SCRATCH_SIZE_HALF;
+
 	if (data->state->tail_ctx.curoff > SCRATCH_SIZE_HALF)
 		return PPM_FAILURE_BUFFER_FULL;
 
@@ -778,7 +780,6 @@ static __always_inline int __bpf_val_to_ring(struct filler_data *data,
 				}
 
 				sl = bpf_compute_snaplen(data, dpi_lookahead_size);
-
 				if (len > sl)
 					len = sl;
 			}

@@ -435,6 +435,7 @@ static __always_inline int bpf_parse_readv_writev_bufs(struct filler_data *data,
 
 	if (flags & PRB_FLAG_PUSH_DATA) {
 		if (size > 0) {
+			data->state->tail_ctx.curoff &= SCRATCH_SIZE_HALF;
 			unsigned long off = data->state->tail_ctx.curoff;
 			unsigned long remaining = size;
 			int j;
