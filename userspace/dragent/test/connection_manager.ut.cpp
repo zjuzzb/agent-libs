@@ -1335,7 +1335,7 @@ TEST_F(connection_manager_fixture, test_error_message_handler)
 	t.join();
 }
 
-TEST_F(connection_manager_fixture, backoff)
+TEST_F(connection_manager_fixture, handshake_backoff)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
@@ -1435,8 +1435,8 @@ TEST_F(connection_manager_fixture, backoff)
 
 	ASSERT_EQ(fc.has_data(), 1);
 
-	// Now send the INVALID CUSTOMER KEY error again
-	err.set_type(draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY);
+	// Now send the ERR_CONN_LIMIT should also back off error again
+	err.set_type(draiosproto::error_type::ERR_CONN_LIMIT);
 	err.set_description("CM UNIT TEST");
 	ret = fc.send_collector_message(draiosproto::message_type::ERROR_MESSAGE,
 	                                dragent_protocol::PROTOCOL_VERSION_NUMBER,

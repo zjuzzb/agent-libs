@@ -558,7 +558,20 @@ void connection_manager::disconnect_and_backoff()
 		m_reconnect_interval = std::min(seconds(c_reconnect_max_backoff_s.get_value()),
 		                                m_reconnect_interval);
 	}
+	LOG_DEBUG("Backoff is now %u", (unsigned int)m_reconnect_interval.count());
 	disconnect();
+}
+
+bool connection_manager::should_backoff(draiosproto::error_type err)
+{
+	switch (err)
+	{
+	case draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY:
+	case draiosproto::error_type::ERR_CONN_LIMIT:
+		return true;
+	default:
+		return false;
+	}
 }
 
 #ifndef CYGWING_AGENT
@@ -1082,7 +1095,8 @@ bool connection_manager::perform_agentino_handshake()
 	time_point<steady_clock> start = steady_clock::now();
 	const seconds timeout = duration_cast<seconds>(m_socket->get_connect_timeout());
 	LOG_INFO("Waiting for %d seconds for agentino handshake to complete", (int)timeout.count());
-	do {
+	do
+	{
 		bool ret = receive_message();
 		if (!ret)
 		{
@@ -1112,6 +1126,18 @@ bool connection_manager::perform_agentino_handshake()
 	}
 
 	const dragent_protocol_header_v4* header = m_pending_message.v4_header();
+	uint32_t header_len = dragent_protocol::header_len(*header);
+	uint32_t payload_len = m_pending_message.get_total_length() - header_len;
+
+	if (header->messagetype == draiosproto::message_type::ERROR_MESSAGE)
+	{
+		draiosproto::error_message err_msg;
+		dragent_protocol::buffer_to_protobuf(m_pending_message.payload(),
+		                                     payload_len,
+		                                     &err_msg);
+		handle_collector_error(err_msg);
+		return false;
+	}
 
 	if (header->messagetype != draiosproto::message_type::AGENTINO_HANDSHAKE_RESPONSE)
 	{
@@ -1134,8 +1160,6 @@ bool connection_manager::perform_agentino_handshake()
 	         (int)header->version,
 	          m_pending_message.m_buffer_used);
 	draiosproto::agentino_handshake_response resp;
-	uint32_t payload_len = m_pending_message.get_total_length() -
-	                       dragent_protocol::header_len(*header);
 	dragent_protocol::buffer_to_protobuf(m_pending_message.payload(),
 	                                     payload_len,
 	                                     &resp,
@@ -1215,6 +1239,8 @@ bool connection_manager::perform_handshake()
 	}
 
 	const dragent_protocol_header_v4* header = m_pending_message.v4_header();
+	uint32_t payload_len = m_pending_message.get_total_length() -
+	                       dragent_protocol::header_len(*header);
 
 	if (header->messagetype != draiosproto::message_type::PROTOCOL_INIT_RESP)
 	{
@@ -1222,22 +1248,19 @@ bool connection_manager::perform_handshake()
 		{
 			// Parse the error message to see what it is
 			draiosproto::error_message err_msg;
-			uint32_t payload_len = m_pending_message.get_total_length() -
-			                       dragent_protocol::header_len(*header);
 			dragent_protocol::buffer_to_protobuf(m_pending_message.payload(),
 			                                     payload_len,
 			                                     &err_msg);
 			m_pending_message.reset();
 
 			draiosproto::error_type err_type = err_msg.type();
-			switch (err_type)
+			if (err_type == draiosproto::error_type::ERR_PROTO_MISMATCH)
 			{
-			// PROTO_MISMATCH is sent by the backend when it doesn't understand
-			// a message it's received. Seeing it here either means that the
-			// collector does not speak proto v5 or that the collector saw
-			// something in the proto_init that it didn't like and wants to
-			// fallback to legacy.
-			case draiosproto::error_type::ERR_PROTO_MISMATCH:
+				// PROTO_MISMATCH is sent by the backend when it doesn't understand
+				// a message it's received. Seeing it here either means that the
+				// collector does not speak proto v5 or that the collector saw
+				// something in the proto_init that it didn't like and wants to
+				// fallback to legacy.
 				LOG_WARNING("Protocol mismatch: Received error attempting handshake. "
 				            "Falling back to legacy mode.");
 
@@ -1251,21 +1274,11 @@ bool connection_manager::perform_handshake()
 				fsm_reinit(m_negotiated_protocol_version,
 				           cm_state_machine::state::STEADY_STATE);
 				return true;
-
-			case draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY:
-				// Perform exponential backoff
-				LOG_ERROR("Received error message: INVALID_CUSTOMER_KEY");
-				disconnect_and_backoff();
-				return false;
-
-			default:
-				// This is a different error
-				std::string err_string = draiosproto::error_type_Name(err_type);
-				LOG_ERROR("Protocol error: received error message from collector: " +
-				          err_string + ": " + err_msg.description());
-				disconnect();
-				return false;
 			}
+
+			// Otherwise just use the standard error handler
+			handle_collector_error(err_msg);
+			return false;
 		}
 		else
 		{
@@ -1289,8 +1302,6 @@ bool connection_manager::perform_handshake()
 	         (int)header->version,
 	          m_pending_message.m_buffer_used);
 	draiosproto::protocol_init_response resp;
-	uint32_t payload_len = m_pending_message.get_total_length() -
-	                       dragent_protocol::header_len(*header);
 	dragent_protocol::buffer_to_protobuf(m_pending_message.payload(),
 	                                     payload_len,
 	                                     &resp,
@@ -2106,15 +2117,14 @@ void connection_manager::handle_collector_error(draiosproto::error_message& msg)
 	if(err_type == draiosproto::error_type::ERR_PROTO_MISMATCH)
 	{
 		LOG_ERROR("Received a PROTO_MISMATCH error from the backend. This is "
-			  "unexpected behavior and the agent will restart to get back "
-			  "into a stable state. Contact Sysdig Support for additional "
-			  "help.");
+		          "unexpected behavior and the agent will restart to get back "
+		          "into a stable state. Contact Sysdig Support for additional "
+		          "help.");
 		dragent::running_state::instance().restart();
 		return;
 	}
 
-	if(err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY ||
-	   err_type == draiosproto::error_type::ERR_CONN_LIMIT)
+	if(should_backoff(err_type))
 	{
 		// Exponential backoff on certain errors.
 		// Sometimes customers will decide to no longer be customers
