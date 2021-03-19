@@ -133,6 +133,12 @@ void agentino_app::initialize(Application& self)
 			std::cerr << "Communicating directly with backend\n";
 			m_direct = true;
 		}
+		else if (*i == "--conf-file")
+		{
+			std::string value = *(++i);
+			std::cerr << "Config file = " << value << "\n";
+			m_conf_file_override_path = value;
+		}
 		else if (*i == "--debug-logging")
 		{
 			std::cerr << "Enabling debug logging\n";
@@ -183,6 +189,9 @@ void agentino_app::defineOptions(OptionSet& options)
 	options.addOption(
 	    Option("direct", "", "used to indicate the agentino should talk directly to the backend")
 	        .repeatable(false));
+	options.addOption(
+	    Option("conf-file", "", "used to specify path to config file")
+                .repeatable(false));
 	options.addOption(
 	    Option("debug-logging", "", "used to enable logging for the agentino").repeatable(false));
 }
@@ -237,7 +246,7 @@ int agentino_app::main(const std::vector<std::string>& args)
 
 	try
 	{
-		m_configuration.init(this, true);
+		m_configuration.init(this, true, &m_conf_file_override_path);
 	}
 	catch (const yaml_configuration_exception& ex)
 	{

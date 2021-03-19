@@ -72,5 +72,6 @@ private:
 	std::string m_container_name;
 	std::string m_container_image;
 	std::string m_container_id;
+	std::string m_conf_file_override_path;
 	std::map<std::string, std::string> m_metadata;
 };
