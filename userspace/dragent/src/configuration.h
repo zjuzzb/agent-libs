@@ -117,7 +117,8 @@ public:
 	/**
 	 * Initialize the configuration with a yaml file
 	 */
-	void init(Application* app, bool use_installed_dragent_yaml,
+	void init(Application* app,
+                  bool use_installed_dragent_yaml,
                   const std::string* conf_file_override_path = nullptr);
 
 	/**

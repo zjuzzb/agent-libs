@@ -191,7 +191,7 @@ void agentino_app::defineOptions(OptionSet& options)
 	        .repeatable(false));
 	options.addOption(
 	    Option("conf-file", "", "used to specify path to config file")
-                .repeatable(false));
+	        .repeatable(false));
 	options.addOption(
 	    Option("debug-logging", "", "used to enable logging for the agentino").repeatable(false));
 }

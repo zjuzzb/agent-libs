@@ -452,7 +452,8 @@ string dragent_configuration::get_install_prefix(const Application* app)
 #endif
 }
 
-void dragent_configuration::init(Application* app, bool use_installed_dragent_yaml,
+void dragent_configuration::init(Application* app,
+                                 bool use_installed_dragent_yaml,
                                  const std::string* conf_file_override_path)
 {
 	refresh_machine_id();
@@ -481,7 +482,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	}
 
 	// Override m_conf_file to specified path if provided
-	if ((conf_file_override_path != nullptr) && (!conf_file_override_path->empty())) {
+	if ((conf_file_override_path != nullptr) && (!conf_file_override_path->empty()))
+	{
 		m_conf_file = *conf_file_override_path;
 	}
 	init();
