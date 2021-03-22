@@ -719,8 +719,6 @@ static __always_inline int __bpf_val_to_ring(struct filler_data *data,
 	unsigned int len_dyn = 0;
 	unsigned int len;
 
-	data->state->tail_ctx.curoff &= SCRATCH_SIZE_HALF;
-
 	if (data->state->tail_ctx.curoff > SCRATCH_SIZE_HALF)
 		return PPM_FAILURE_BUFFER_FULL;
 
