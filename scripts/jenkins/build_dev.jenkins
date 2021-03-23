@@ -68,6 +68,7 @@ pipeline {
                     script {
                         docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
                             sh label: '', script: '''
+                                echo "$DOCKER_PASSWORD" | docker login docker.io -u="$DOCKER_USERNAME" --password-stdin
                                 docker tag agent sysdig/agent:dev
                                 docker tag agent sysdig/agent:$RELEASE_VERSION
                                 docker push sysdig/agent
