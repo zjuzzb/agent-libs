@@ -38,27 +38,56 @@ pipeline {
                 }
             }
         }
-        stage('Upload') {
+        stage('Upload Packages') {
+            when {
+                expression { params.UPLOAD == true }
+            }
+            steps {
+                sh label: '', script: '''
+                    sudo agent/scripts/jenkins/upload-agent dev $PWD/out $PWD/repo "s3://download.draios.com" $RELEASE_VERSION release
+                    sudo agent/scripts/jenkins/upload-agent dev-debug $PWD/out $PWD/repo "s3://download.draios.com" $RELEASE_VERSION debug
+                '''
+            }
+        }
+        stage('Build Prod Containers') {
+            when {
+                expression { params.UPLOAD == true }
+            }
+            steps {
+                sh label: '', script: '''
+                    sudo agent/scripts/jenkins/build-prod-container dev $PWD/out
+                '''
+            }
+        }
+        stage('Upload Prod Containers'){
             when {
                 expression { params.UPLOAD == true }
             }
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
-					script {
-						docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
-
-							sh label: '', script: '''
-								echo "$DOCKER_PASSWORD" | docker login docker.io -u="$DOCKER_USERNAME" --password-stdin
-								TARGET=dev
-								if [ $PUBLIC_RELEASE = true ]
-								then
-									TARGET=rc
-								fi
-								sudo rm -rf $PWD/repo
-								sudo agent/scripts/jenkins/upload-agent-dev $TARGET $PWD/out $PWD/repo "s3://download.draios.com" $RELEASE_VERSION
-							'''
-						}
-					}
+                    script {
+                        docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
+                            sh label: '', script: '''
+                                docker tag agent sysdig/agent:dev
+                                docker tag agent sysdig/agent:$RELEASE_VERSION
+                                docker push sysdig/agent
+                                docker tag agent-slim sysdig/agent-slim:dev-v1
+                                docker tag agent-slim sysdig/agent-slim:$RELEASE_VERSION-v1
+                                docker tag agent-slim-v2 sysdig/agent-slim:dev
+                                docker tag agent-slim-v2 sysdig/agent-slim:$RELEASE_VERSION
+                                docker push sysdig/agent-slim
+                                docker tag agentone docker.internal.sysdig.com/agentone:dev
+                                docker tag agentone docker.internal.sysdig.com/agentone:$RELEASE_VERSION
+                                docker push docker.internal.sysdig.com/agentone
+                                docker tag agent-kmodule sysdig/agent-kmodule:dev
+                                docker tag agent-kmodule sysdig/agent-kmodule:$RELEASE_VERSION
+                                docker push sysdig/agent-kmodule
+                                docker tag agent-kmodule-thin sysdig/agent-kmodule-thin:dev
+                                docker tag agent-kmodule-thin sysdig/agent-kmodule-thin:$RELEASE_VERSION
+                                docker push sysdig/agent-kmodule-thin
+                            '''
+                        }
+                    }
                 }
             }
         }
@@ -69,6 +98,7 @@ pipeline {
                 sudo rm -rf ./build
                 sudo rm -rf ./out
                 sudo rm -rf ./repo
+                docker rmi agent agent-slim agent-slim-v2 agentone agent-kmodule agent-kmodule-thin || echo "no containers to remove"
                 docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
                 docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
             '''

@@ -1,6 +1,12 @@
 #!/bin/bash
 set -exuo pipefail
 
+# repo-name should be rc, dev, or stable
+# bin-dir should be what was mapped to /out when invoking the release build target container
+# repo-dir is just some place to use as a working dir. this can probably be removed
+# s3 bucket is the url for the s3 bucket
+# agent_version is something like 11.0.0
+# build-variant is release or debug
 if [ $# -ne 6 ]
 then
     echo "Usage: $0 repo-name bin-dir repo-dir s3-bucket agent_version build-variant" >&2

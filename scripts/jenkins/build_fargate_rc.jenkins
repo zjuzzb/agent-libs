@@ -91,7 +91,7 @@ pipeline {
             }
 			steps {
 				sh label: '', script: '''
-					sudo agent/scripts/jenkins/build-prod-container $PWD/out docker.internal.sysdig.com/agentone:$RELEASE_VERSION-rc$BUILD_NUMBER
+					sudo agent/scripts/jenkins/build-prod-container $PWD/out fargate-rc agentone
 				'''
 			}
 		}
@@ -103,6 +103,7 @@ pipeline {
 				script {
 					docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
 						sh label: '', script: '''
+							docker tag agentone  docker.internal.sysdig.com/agentone:$RELEASE_VERSION-rc$BUILD_NUMBER
 							docker push docker.internal.sysdig.com/agentone:$RELEASE_VERSION-rc$BUILD_NUMBER
 						'''
 					}

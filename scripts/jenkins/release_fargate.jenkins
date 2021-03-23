@@ -156,13 +156,18 @@ pipeline {
         }
     }
 
-    // builds the RC, runs integration tests, and uploads to docker/quay
+    // builds the RC, runs integration tests, and uploads to artifactory
     // Uploaded image should be sysdig/agent:${params.RELEASE_VERSION}-rc
     stage('Build RC') {
         steps {
             build job:'fargate-build-rc',parameters:[string(name:'AGENT_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),string(name:'LIBSINSP_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),string(name:'LIBSCAP_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),string(name:'LIBSCAP_HAYABUSA_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"release-$RELEASE_VERSION"),string(name:'RELEASE_VERSION', value:"$RELEASE_VERSION"),booleanParam(name:'UPLOAD', value:true),booleanParam(name:'PUBLIC_RELEASE', value:true)]
         }
     }
+
+	stage('Build Fargate Artifacts") {
+		// ????
+	}
+		
 
     // github has a weird behavior where if you move tags, it auto moves a release from publish
     // to draft. Once it's there, we can't find it by tags anymore, and finding it by name
@@ -264,6 +269,50 @@ pipeline {
             }
         }
     }
+	 stage('Wait for Commit') {
+        stages {
+            stage('Notify') {
+                steps {
+                    slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Release is awaiting approvals", tokenCredentialId: 'slack'
+                }
+            }
+
+            stage('Wait for QA') {
+                steps {
+                    input message: 'QA Complete', ok: 'Approve Release'
+                }
+            }
+
+            stage('Wait for Docs') {
+                steps {
+                    input message: 'Docs Ready', ok: 'Confirm'
+                }
+            }
+
+            stage ('Wait for Final Go') {
+                 parallel {
+                    stage('Wait for Manager') {
+                        steps {
+                            // Naveen Bali
+                            slackSend channel: '@UBYCWGBG9', message: "Agent release ${params.RELEASE_VERSION} is awaiting managerial approval. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
+                            input message: 'Manager Complete', ok: 'Approve Release'
+                        }
+                    }
+                    stage('Wait for Releaser') {
+                        steps {
+                            slackSend channel: "@${params.RELEASER_SLACK_ID},#ws-agent-core", message: "Agent release ${params.RELEASE_VERSION} is awaiting releaser approval. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
+                            input message: 'Releaser Complete', ok: 'Approve Release'
+                        }
+                    }
+                }
+            }
+        }
+    }
+	stage('Promote') {
+		steps {
+			build job:'Fargate Artifact Promote',parameters:[string(name:'VERSION',value:"${params.RELEASE_VERSION}-rc"),sring(name:'PROMOTE',value:"${params.RELEASE_VERSION}")]
+		}
+	}
 
     post {
         always {
