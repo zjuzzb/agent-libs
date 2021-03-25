@@ -2449,7 +2449,7 @@ TEST_F(security_policies_v2_test, policy_with_unknown_action)
 	     true,
 	     draiosproto::V2ACTION_UNKNOWN,
 	     false,
-	     "Policy Action 0 not implemented yet"}};
+	     "Policy Action 0 not implemented yet for policy type "}};
 
 	check_policy_events(expected);
 

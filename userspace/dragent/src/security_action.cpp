@@ -302,7 +302,8 @@ void security_actions::perform_actions(uint64_t ts_ns,
 			// a part of a policy, regardless of type,
 			// only captures are supported for k8s audit
 			// policy types.
-			if(policy_type == "syscall" ||
+			if(policy_type == "falco" ||
+			   policy_type == "list_matching" ||
 			   policy_type == "") {
 
 				switch(action.type())
@@ -330,13 +331,15 @@ void security_actions::perform_actions(uint64_t ts_ns,
 				default:
 					action_handled = false;
 				}
+			} else {
+				action_handled = false;
 			}
 		} else {
 			action_handled = false;
 		}
 
 		if (!action_handled) {
-			string errstr = string("Policy Action ") + std::to_string(action.type()) + string(" not implemented yet");
+			string errstr = string("Policy Action ") + std::to_string(action.type()) + string(" not implemented yet for policy type ") + policy_type;
 			result->set_successful(false);
 			result->set_errmsg(errstr);
 			note_action_complete(astate);
@@ -358,7 +361,8 @@ void security_actions::perform_actions(uint64_t ts_ns,
 		bool action_handled = true;
 		if (c_support_actions.get_value())
 		{
-			if(policy_type == "syscall" ||
+			if(policy_type == "falco" ||
+			   policy_type == "list_matching" ||
 			   policy_type == "") {
 				switch(action.type())
 				{
@@ -388,13 +392,15 @@ void security_actions::perform_actions(uint64_t ts_ns,
 				default:
 					action_handled = false;
 				}
+			} else {
+				action_handled = false;
 			}
 		} else {
 			action_handled = false;
 		}
 
 		if (!action_handled) {
-			string errstr = string("Policy Action ") + std::to_string(action.type()) + string(" not implemented yet");
+			string errstr = string("Policy Action ") + std::to_string(action.type()) + string(" not implemented yet for policy type ") + policy_type;
 			result->set_successful(false);
 			result->set_errmsg(errstr);
 			note_action_complete(astate);
