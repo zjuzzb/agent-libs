@@ -148,6 +148,13 @@ type_config<std::vector<std::string>> c_log_file_component_overrides(
 					"log",
 					"file_priority_by_component");
 
+type_config<uint64_t>::ptr c_wait_before_ready_sec =
+	type_config_builder<uint64_t>(
+		30,
+		"after cointerface is ready, wait this amount of seconds before k8s readiness probe switches to ready",
+		"k8s_wait_before_ready"
+		).build();
+
 string compute_sha1_digest(SHA1Engine& engine, const string& path)
 {
 	engine.reset();
@@ -265,6 +272,7 @@ dragent_app::dragent_app()
                      &m_capture_job_handler),
       m_log_reporter(m_protocol_handler, &m_configuration),
       m_subprocesses_logger(&m_configuration, &m_log_reporter, m_transmit_queue),
+      m_cointerface_ready(false),
       m_last_dump_s(0)
 {
 }
@@ -1923,6 +1931,8 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 					    m_subprocesses_state["cointerface"].reset(pong->pid(),
 					                                              pong->memory_used(),
 					                                              pong->token());
+
+					    m_cointerface_ready = pong->ready();
 				    }
 			    };
 
@@ -2399,11 +2409,27 @@ void dragent_app::monitor_files(uint64_t uptime_s)
 	}
 }
 
+bool dragent_app::cointerface_ready() const
+{
+	bool ret = false;
+	if(m_cointerface_ready)
+	{
+		static const std::chrono::time_point<std::chrono::steady_clock> start_wait = std::chrono::steady_clock::now();
+		auto now = std::chrono::steady_clock::now();
+
+		if(std::chrono::duration_cast<std::chrono::seconds>(now - start_wait).count() > c_wait_before_ready_sec->get_value())
+		{
+			ret = true;
+		}
+	}
+	return ret;
+}
+
 void dragent_app::setup_startup_probe(const connection_manager& cm)
 {
 	if(!m_startup_probe_set)
 	{
-		if(cm.is_connected())
+		if(cm.is_connected() && cointerface_ready())
 		{
 			m_startup_probe_set = create_file(m_configuration.m_log_dir, K8S_PROBE_FILE);
 		}

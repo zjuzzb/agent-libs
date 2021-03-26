@@ -32,6 +32,8 @@ import (
 var dockerClientMapMutex = &sync.Mutex{}
 var dockerClientMap = make(map[string]*client.Client)
 
+var informersStarted = false
+
 func getSysdigRoot() string {
     sysdigRoot := os.Getenv("SYSDIG_HOST_ROOT")
     if sysdigRoot != "" {
@@ -152,6 +154,10 @@ func (c *coInterfaceServer) PerformPing(ctx context.Context, cmd *sdc_internal.P
 	res.Pid = proto.Int32(pid)
 	res.MemoryUsed = proto.Uint64(0)
 
+	if informersStarted == true {
+		res.Ready = proto.Bool(true)
+	}
+
 	// Try to get our own process's memory usage. If this results
 	// in an error, we still let the ping succeed but use a memory
 	// usage of 0.
@@ -259,6 +265,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		select {
 		case <-fetchDone:
 			log.Info("Orch events initial fetch complete")
+			informersStarted = true
 		case <-rpcDone:
 			log.Debug("Orch events RPC exiting")
 		}

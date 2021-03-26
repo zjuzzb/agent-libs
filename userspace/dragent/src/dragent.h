@@ -116,6 +116,15 @@ private:
 	 */
 	void handle_metric_limit(bool has_limit, draiosproto::custom_metric_limit_value value);
 
+
+	/**
+	 * Cointerface notifies its readiness with a flag in the pong message.
+	 * Some time after having received this flag, the dragent considers cointerface ready.
+	 * This function is useful for the kubernetes readiness probe implementation
+	 * @return true if cointerface is ready, false otherwise
+	 **/
+	bool cointerface_ready() const;
+
 	bool m_help_requested;
 	bool m_version_requested;
 #ifdef CYGWING_AGENT
@@ -156,6 +165,7 @@ private:
 	subprocesses_logger m_subprocesses_logger;
 	typedef std::unordered_map<std::string, watchdog_state> ProcessStateMap;
 	ProcessStateMap m_subprocesses_state;
+	bool m_cointerface_ready;
 	uint64_t m_last_dump_s;
 #ifndef CYGWING_AGENT
 	std::unique_ptr<coclient> m_coclient;
