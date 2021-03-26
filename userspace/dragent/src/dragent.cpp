@@ -1691,6 +1691,8 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	sconfig->set_version(AGENT_VERSION);
 	if(dragent_configuration::c_enable_aws_metadata.get_value()) {
 		sconfig->set_instance_id(m_configuration.m_aws_metadata.m_instance_id);
+		sconfig->set_account_id(m_configuration.m_aws_metadata.m_account_id);
+		sconfig->set_region(m_configuration.m_aws_metadata.m_region);
 	}
 	sconfig->set_protocols_truncation_size(m_configuration.m_protocols_truncation_size);
 	analyzer->set_fs_usage_from_external_proc(m_configuration.m_system_supports_containers);

@@ -714,7 +714,7 @@ void sinsp_analyzer::on_capture_start()
 
 	if (m_secure_audit != nullptr)
 	{
-		m_secure_audit->init(m_ipv4_connections, m_fd_listener);
+		m_secure_audit->init(m_ipv4_connections, m_fd_listener, mutable_infra_state(), m_configuration);
 	}
 
 	if (m_secure_netsec != nullptr)

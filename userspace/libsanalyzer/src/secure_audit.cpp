@@ -1,6 +1,7 @@
+#include "secure_audit.h"
+
 #include "common_logger.h"
 #include "feature_manager.h"
-#include "secure_audit.h"
 #include "secure_helper.h"
 
 #include <tuples.h>
@@ -130,6 +131,27 @@ type_config<int> secure_audit::c_secure_audit_k8s_limit(
     "secure_audit_streams",
     "k8s_limit");
 
+type_config<bool> secure_audit::c_audit_labels_enabled(true,
+                                                       "Activity Audit Labels enabled",
+                                                       "audit_labels",
+                                                       "enabled");
+
+type_config<int> secure_audit::c_audit_labels_max_agent_tags(
+    30,
+    "Audit Labels - Max agent tags to be considered",
+    "audit_labels",
+    "max_agent_tags");
+
+type_config<std::vector<std::string>> secure_audit::c_audit_labels_include({},
+                                                                           "Audit Labels included",
+                                                                           "audit_labels",
+                                                                           "include");
+
+type_config<std::vector<std::string>> secure_audit::c_audit_labels_exclude({},
+                                                                           "Audit Labels excluded",
+                                                                           "audit_labels",
+                                                                           "exclude");
+
 const std::vector<std::string> secure_audit::BLACKLISTED_FILES({"/dev/null", "/dev/tty"});
 
 secure_audit::secure_audit()
@@ -149,16 +171,22 @@ secure_audit::secure_audit()
       m_k8s_audit_enrich_errors_count(0)
 {
 	clear();
+	configure_audit_labels_set();
 }
 
 void secure_audit::init(sinsp_ipv4_connection_manager* conn,
-                        sinsp_analyzer_fd_listener* analyzer_fd_listener)
+                        sinsp_analyzer_fd_listener* analyzer_fd_listener,
+                        infrastructure_state* infra_state,
+                        sinsp_configuration* configuration)
 {
 	m_connection_manager = conn;
 	m_analyzer_fd_listener = analyzer_fd_listener;
 
 	m_get_events_interval->interval(seconds_to_ns(c_secure_audit_frequency->get_value()));
 	m_get_events_interval->threshold(FREQUENCY_THRESHOLD_NS);
+
+	m_infra_state = infra_state;
+	m_sinsp_configuration = configuration;
 
 	if (c_secure_audit_connections_enabled.get_value())
 	{
@@ -494,7 +522,6 @@ void secure_audit::emit_commands_audit_item(vector<sinsp_executed_command>* comm
 
 				m_executed_commands_count++;
 				cmdcnt++;
-
 				pb_command_audit->set_timestamp(it->m_ts);
 				pb_command_audit->set_count(it->m_count);
 				pb_command_audit->set_login_shell_id(it->m_shell_id);
@@ -518,6 +545,12 @@ void secure_audit::emit_commands_audit_item(vector<sinsp_executed_command>* comm
 				else
 				{
 					pb_command_audit->set_cmdline(it->m_cmdline);
+				}
+
+				if (c_audit_labels_enabled.get_value())
+				{
+					set_audit_labels(pb_command_audit->container_id(),
+					                 pb_command_audit->mutable_audit_labels());
 				}
 			}
 		}
@@ -629,6 +662,11 @@ void secure_audit::append_connection(connection_type type,
 			cmdline.resize(c_secure_audit_connections_cmdline_maxlen.get_value());
 		}
 		pb_conn->set_cmdline(cmdline);
+	}
+
+	if (c_audit_labels_enabled.get_value())
+	{
+		set_audit_labels(pb_conn->container_id(), pb_conn->mutable_audit_labels());
 	}
 }
 
@@ -760,6 +798,11 @@ void secure_audit::emit_file_access_async(thread_analyzer_info* tinfo,
 		}
 	}
 
+	if (c_audit_labels_enabled.get_value())
+	{
+		set_audit_labels(pb_file->container_id(), pb_file->mutable_audit_labels());
+	}
+
 	m_file_accesses_count++;
 }
 
@@ -833,6 +876,11 @@ void secure_audit::filter_and_append_k8s_audit(
 						        pod_container_name);
 						pb_k8s_audit->set_container_id(container_id);
 						ok &= !container_id.empty();
+						if (ok && c_audit_labels_enabled.get_value())
+						{
+							set_audit_labels(pb_k8s_audit->container_id(),
+							                 pb_k8s_audit->mutable_audit_labels());
+						}
 					}
 				}
 			}
@@ -895,4 +943,115 @@ bool secure_audit::filter_k8s_audit(
 	}
 
 	return false;
+}
+
+void secure_audit::set_audit_labels(const std::string& container_id,
+                                    google::protobuf::Map<std::string, std::string>* audit_labels)
+{
+	// Host Name
+	set_audit_label(audit_labels, "host.hostName", sinsp_gethostname());
+
+	if (m_sinsp_configuration != nullptr)
+	{
+		// AWS Instance ID
+		set_audit_label(audit_labels, "aws.instanceId", m_sinsp_configuration->get_instance_id());
+
+		// AWS Account ID
+		set_audit_label(audit_labels, "aws.accountId", m_sinsp_configuration->get_account_id());
+
+		// AWS Region
+		set_audit_label(audit_labels, "aws.region", m_sinsp_configuration->get_region());
+	}
+
+	// Agent Tags
+	if (m_audit_labels.find("agent.tag") != m_audit_labels.end())
+	{
+		std::vector<std::string> tags = sinsp_split(
+		    configuration_manager::instance().get_config<std::string>("tags")->get_value(),
+		    ',');
+
+		std::string tag_prefix = "agent.tag.";
+
+		int count_tags = 0;
+		for (auto& pair : tags)
+		{
+			if (count_tags >= c_audit_labels_max_agent_tags.get_value())
+			{
+				break;
+			}
+			// tags are available in pair in the format key:value
+			// in case of multiple ":" are found the first one will be considered the separator
+			// between key and value
+			auto found = pair.find(":");
+
+			if (found != std::string::npos)
+			{
+				auto tag_key = pair.substr(0, found);
+				// Do not include hardcoded "sysdig_secure.enabled" tag
+				if (tag_key != "sysdig_secure.enabled")
+				{
+					auto tag_value = pair.substr(found + 1, std::string::npos);
+					set_audit_label(audit_labels, tag_prefix + tag_key, tag_value);
+					count_tags++;
+				}
+			}
+		}
+	}
+
+	// Infrastructure Lookup for Kubernetes Labels
+	infrastructure_state::uid_t uid;
+	uid = std::make_pair("container", container_id);
+
+	std::unordered_map<std::string, std::string> event_labels;
+	if (m_infra_state != nullptr)
+	{
+		m_infra_state->find_tag_list(uid, m_audit_labels, event_labels);
+
+		for (auto& it : event_labels)
+		{
+			(*audit_labels)[it.first] = std::move(it.second);
+		}
+
+		// Kubernetes Cluster Name
+		if (m_audit_labels.find("kubernetes.cluster.name") != m_audit_labels.end())
+		{
+			// kubernetes.cluster.name should be pushed only if the event is related to k8s
+			// Use Pod Name label to check it
+			if (event_labels.find("kubernetes.pod.name") != event_labels.end())
+			{
+				set_audit_label(audit_labels,
+				                "kubernetes.cluster.name",
+				                m_infra_state->get_k8s_cluster_name());
+			}
+		}
+	}
+}
+
+void secure_audit::set_audit_label(google::protobuf::Map<std::string, std::string>* audit_labels,
+                                   std::string key,
+                                   std::string value)
+{
+	if (m_audit_labels.find(key) != m_audit_labels.end())
+	{
+		if (!value.empty())
+		{
+			(*audit_labels)[key] = value;
+		}
+	}
+}
+
+// the list of audit labels comes pre-populated with a default set of labels.
+// it's possible to add additional labels to the list through the include list.
+// it's also possible to remove some of the pre-configured labels with the exclude list.
+// if a key is present in both include and exclude lists, exclude it
+void secure_audit::configure_audit_labels_set()
+{
+	for (const auto& s : c_audit_labels_include.get_value())
+	{
+		m_audit_labels.insert(s);
+	}
+	for (const auto& s : c_audit_labels_exclude.get_value())
+	{
+		m_audit_labels.erase(s);
+	}
 }

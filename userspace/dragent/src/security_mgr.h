@@ -126,9 +126,9 @@ public:
 	std::unordered_set<std::string> m_event_labels = std::unordered_set<std::string>({
 		"process.name",
 		"host.hostName",
-		"aws.instance_id",
-		"aws.account_id",
-		"aws.account_region",
+		"aws.instanceId",
+		"aws.accountId",
+		"aws.region",
 		"agent.tag",
 		"container.name",
 		"kubernetes.cluster.name",
@@ -369,6 +369,9 @@ private:
 
 	void set_event_labels(std::string &container_id, sinsp_threadinfo *tinfo, draiosproto::policy_event *event);
 	void set_event_labels_k8s_audit(draiosproto::event_detail *details, draiosproto::policy_event *event, json_event *j_evt);
+	void set_event_label(google::protobuf::Map<std::string, std::string>* audit_labels,
+			     std::string key,
+			     std::string value);
 
 	// Send counts of throttled policy events to the backend
 	void report_throttled_events(uint64_t ts_ns);

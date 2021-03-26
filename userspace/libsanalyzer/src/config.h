@@ -50,6 +50,10 @@ public:
 	void set_version(const std::string& version);
 	const std::string& get_instance_id() const;
 	void set_instance_id(const std::string& instance_id);
+	const std::string& get_account_id() const;
+	void set_account_id(const std::string& account_id);
+	const std::string& get_region() const;
+	void set_region(const std::string& region);
 #ifndef CYGWING_AGENT
 	void set_k8s_delegated_nodes(int k8s_delegated_nodes);
 	int get_k8s_delegated_nodes() const;
@@ -140,6 +144,8 @@ private:
 	std::string m_customer_id;
 	std::string m_version;
 	std::string m_instance_id;
+	std::string m_account_id;
+	std::string m_region;
 
 	std::set<double> m_percentiles;
 	std::shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;

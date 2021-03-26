@@ -1138,6 +1138,19 @@ draiosproto::policy_event * security_mgr::create_policy_event(gen_event *evt,
 	return event;
 }
 
+void security_mgr::set_event_label(google::protobuf::Map<std::string, std::string>* event_labels,
+				   std::string key,
+				   std::string value)
+{
+	if (m_event_labels.find(key) != m_event_labels.end())
+	{
+		if (!value.empty())
+		{
+			(*event_labels)[key] = value;
+		}
+	}
+}
+
 void security_mgr::set_event_labels(std::string &container_id,
 									sinsp_threadinfo *tinfo,
 									draiosproto::policy_event *event)
@@ -1156,42 +1169,18 @@ void security_mgr::set_event_labels(std::string &container_id,
 	}
 
 	// Host Name
-	if (m_event_labels.find("host.hostName") != m_event_labels.end())
-	{
-		string host_name = sinsp_gethostname();
-		if (!host_name.empty()) {
-			(*event->mutable_event_labels())["host.hostName"] = std::move(host_name);
-		}
-	}
+	set_event_label(event->mutable_event_labels(), "host.hostName", sinsp_gethostname());
 
 	if (m_configuration != nullptr)
 	{
-        // AWS Instance ID
-        if (m_event_labels.find("aws.instance_id") != m_event_labels.end())
-        {
-            string aws_instance_id = m_configuration->get_aws_instance_id();
-            if (!aws_instance_id.empty()) {
-                (*event->mutable_event_labels())["aws.instanceId"] = std::move(aws_instance_id);
-            }
-        }
+		// AWS Instance ID
+		set_event_label(event->mutable_event_labels(), "aws.instanceId", m_configuration->get_aws_instance_id());
 
-        // AWS Account ID
-        if (m_event_labels.find("aws.account_id") != m_event_labels.end())
-        {
-            string aws_account_id = m_configuration->get_aws_account_id();
-            if (!aws_account_id.empty()) {
-                (*event->mutable_event_labels())["aws.accountId"] = std::move(aws_account_id);
-            }
-        }
+		// AWS Account ID
+		set_event_label(event->mutable_event_labels(), "aws.accountId", m_configuration->get_aws_account_id());
 
-        // AWS Region
-        if (m_event_labels.find("aws.account_region") != m_event_labels.end())
-        {
-            string aws_region = m_configuration->get_aws_region();
-            if (!aws_region.empty()) {
-                (*event->mutable_event_labels())["aws.region"] = std::move(aws_region);
-            }
-        }
+		// AWS Region
+		set_event_label(event->mutable_event_labels(), "aws.region", m_configuration->get_aws_region());
 	}
 
 	// Agent Tags
@@ -1216,7 +1205,7 @@ void security_mgr::set_event_labels(std::string &container_id,
 				// Do not include hardcoded "sysdig_secure.enabled" tag
 				if (tag_key != "sysdig_secure.enabled") {
 					auto tag_value = pair.substr(found + 1, std::string::npos);
-					(*event->mutable_event_labels())[tag_prefix + tag_key] = tag_value;
+					set_event_label(event->mutable_event_labels(), tag_prefix + tag_key, tag_value);
 					count_tags++;
 				}
 			}
@@ -1244,10 +1233,9 @@ void security_mgr::set_event_labels(std::string &container_id,
 			// Use Pod Name label to check it
 			if (event_labels.find("kubernetes.pod.name") != event_labels.end())
 			{
-				if (!m_infra_state->get_k8s_cluster_name().empty())
-				{
-					(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_infra_state->get_k8s_cluster_name();
-				}
+				set_event_label(event->mutable_event_labels(),
+						"kubernetes.cluster.name",
+						m_infra_state->get_k8s_cluster_name());
 			}
 		}
 	}
