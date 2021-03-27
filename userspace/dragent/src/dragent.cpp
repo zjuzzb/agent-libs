@@ -2242,21 +2242,6 @@ void dragent_app::mark_clean_shutdown()
 	remove_file_if_exists(m_configuration.m_log_dir, K8S_PROBE_FILE);
 }
 
-Logger* dragent_app::make_console_channel(AutoPtr<Formatter> formatter)
-{
-	if (m_configuration.m_min_console_priority != -1)
-	{
-		AutoPtr<Channel> console_channel(new ConsoleChannel());
-		AutoPtr<Channel> formatting_channel_console(
-		    new FormattingChannel(formatter, console_channel));
-		Logger& loggerc = Logger::create("DraiosLogC",
-		                                 formatting_channel_console,
-		                                 m_configuration.m_min_console_priority);
-		return &loggerc;
-	}
-	return NULL;
-}
-
 Logger* dragent_app::make_event_channel()
 {
 	if (m_configuration.m_min_event_priority != -1)
@@ -2318,15 +2303,122 @@ void dragent_app::initialize_logging()
 		                                                  m_configuration.m_user_max_burst_events));
 	}
 
+	AutoPtr<Channel> console_channel(new ConsoleChannel());
+	AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
+		// Create console logger at most permissive level (trace). This allows all messages to flow.
+		// Log severity of messages actually emitted through the channel will be managed by
+		// the consumers of the channel
+	Logger& loggerc =
+	    Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_TRACE);
+
 	g_log = unique_ptr<common_logger>(new common_logger(&loggerf,
 							    m_configuration.m_min_file_priority,
 							    c_log_file_component_overrides.get_value(),
-							    make_console_channel(formatter)));
+							    &loggerc,
+							    m_configuration.m_min_console_priority));
 
 	g_log->set_observer(m_internal_metrics);
 
 	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 	LOG_INFO("Agent starting (version " + string(AGENT_VERSION) + ")");
+////// begin_debug
+	LOG_INFO("Agent (m_min_file_priority: " + NumberFormatter::format(m_configuration.m_min_file_priority) + ")");
+	if (&loggerf != nullptr)
+	{
+	    LOG_INFO("Agent (loggerf != nullptr)");
+	}
+	else
+	{
+		LOG_INFO("Agent (loggerf is NULL)");
+	}
+	LOG_INFO("Agent (m_min_console_priority: " + NumberFormatter::format(m_configuration.m_min_console_priority) + ")");
+	if (&loggerc != nullptr)
+	{
+	    LOG_INFO("Agent (loggerf != nullptr)");
+	}
+	else
+	{
+		LOG_INFO("Agent (loggerf is NULL)");
+	}
+	
+	// Test single parameter call to is_enabled (message sev)
+	if (g_log->is_enabled(Message::PRIO_TRACE))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_TRACE))");	
+	}
+	else if  (g_log->is_enabled(Message::PRIO_DEBUG))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_DEBUG))");	
+	}
+	else if  (g_log->is_enabled(Message::PRIO_INFORMATION))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_INFORMATION))");	
+	}
+	else if  (g_log->is_enabled(Message::PRIO_NOTICE))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_NOTICE))");	
+	}
+	else if  (g_log->is_enabled(Message::PRIO_WARNING))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_WARNING))");	
+	}
+	else if  (g_log->is_enabled(Message::PRIO_ERROR))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_ERROR))");	
+	}
+	else if  (g_log->is_enabled(Message::PRIO_CRITICAL))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_CRITICAL))");	
+	}
+	else if  (g_log->is_enabled(Message::PRIO_FATAL))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_FATAL))");	
+	}
+	else
+	{
+		LOG_INFO("Agent (g_log.is_enabled NO MATCH with single parameter)");	
+	}
+	
+	
+	// Test two parameter call to is_enabled (message sev, component sev)
+	if (g_log->is_enabled(Message::PRIO_TRACE, Message::PRIO_DEBUG))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_TRACE, Message::PRIO_DEBUG))");	
+	}
+	else if  (g_log->is_enabled(Message::PRIO_DEBUG, Message::PRIO_DEBUG))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_DEBUG, Message::PRIO_DEBUG))");	
+	}
+	else if  (g_log->is_enabled(Message::PRIO_INFORMATION, Message::PRIO_DEBUG))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_INFORMATION, Message::PRIO_DEBUG))");	
+	}
+	else if  (g_log->is_enabled(Message::PRIO_NOTICE, Message::PRIO_DEBUG))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_NOTICE, Message::PRIO_DEBUG))");	
+	}
+	else if  (g_log->is_enabled(Message::PRIO_WARNING, Message::PRIO_DEBUG))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_WARNING, Message::PRIO_DEBUG))");	
+	}
+	else if  (g_log->is_enabled(Message::PRIO_ERROR, Message::PRIO_DEBUG))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_ERROR, Message::PRIO_DEBUG))");	
+	}
+	else if  (g_log->is_enabled(Message::PRIO_CRITICAL, Message::PRIO_DEBUG))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_CRITICAL, Message::PRIO_DEBUG))");	
+	}
+	else if  (g_log->is_enabled(Message::PRIO_FATAL, Message::PRIO_DEBUG))
+	{
+		LOG_INFO("Agent (g_log.is_enabled(Message::PRIO_FATAL, Message::PRIO_DEBUG))");	
+	}
+	else
+	{
+		LOG_INFO("Agent (g_log.is_enabled NO MATCH with two parameters)");	
+	}
+	
+////// end_debug
 	common_logger_cache::log_and_purge();
 }
 

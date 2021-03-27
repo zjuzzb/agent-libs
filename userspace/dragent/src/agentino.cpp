@@ -44,6 +44,12 @@ type_config<uint32_t> c_heartbeat_interval_s(2,
                                              "Agentino / agentone heartbeat in seconds",
                                              "agentone_heartbeat");
 
+type_config<std::vector<std::string>> c_log_file_component_overrides(
+					{},
+					"Component level overrides to global log level",
+					"log",
+					"file_priority_by_component");
+
 static void g_signal_callback(int sig)
 {
 	running_state::instance().shut_down();
@@ -622,27 +628,25 @@ void agentino_app::watchdog_check(uint64_t uptime_s)
 	}
 }
 
-Logger* agentino_app::make_console_channel(AutoPtr<Formatter> formatter)
-{
-	if (m_enable_logging)
-	{
-		AutoPtr<Channel> console_channel(new ConsoleChannel());
-		AutoPtr<Channel> formatting_channel_console(
-		    new FormattingChannel(formatter, console_channel));
-		Logger& loggerc = Logger::create("DraiosLogC",
-		                                 formatting_channel_console,
-		                                 m_configuration.m_min_console_priority);
-		return &loggerc;
-	}
-	return NULL;
-}
-
 void agentino_app::initialize_logging()
 {
 	AutoPtr<Poco::Channel> null_channel(new Poco::NullChannel());
 	Logger& loggerf = Logger::create("DraiosLogF", null_channel, -1);
 	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P.%I, %p, %t"));
-	g_log = unique_ptr<common_logger>(new common_logger(&loggerf, make_console_channel(formatter)));
+
+	AutoPtr<Channel> console_channel(new ConsoleChannel());
+	AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
+		// Create console logger at most permissive level (trace). This allows all messages to flow.
+		// Log severity of messages actually emitted through the channel will be managed by
+		// the consumers of the channel
+	Logger& loggerc =
+	    Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_TRACE);
+
+	g_log = unique_ptr<common_logger>(new common_logger(&loggerf,
+	                                                    m_configuration.m_min_file_priority,
+	                                                    c_log_file_component_overrides.get_value(),
+	                                                    &loggerc,
+	                                                    m_configuration.m_min_console_priority));
 
 	LOG_INFO("agentino starting (version " + string(AGENT_VERSION) + ")");
 	common_logger_cache::log_and_purge();

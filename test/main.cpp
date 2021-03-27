@@ -62,7 +62,8 @@ private:
 		g_log = unique_ptr<common_logger>(new common_logger(&loggerf,
 								    Message::Priority::PRIO_DEBUG,
 								    dummy_config,
-								    loggerc));
+								    loggerc,
+								    Message::Priority::PRIO_DEBUG));
 	}
 
 	void SetUp() override

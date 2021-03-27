@@ -11,6 +11,8 @@
 #include <Poco/Logger.h>
 #include <Poco/Path.h>
 
+#include <iostream>   // debug for std::cout
+
 /* global */ std::unique_ptr<common_logger> g_log;
 
 COMMON_LOGGER();
@@ -52,20 +54,22 @@ common_logger::common_logger(Poco::Logger* const file_log,
 
 common_logger::common_logger(Poco::Logger* const file_log,
 			     Poco::Message::Priority const file_sev,
-			     const std::vector<std::string>& config_vector,
-			     Poco::Logger* const console_log):
+			     const std::vector<std::string>& file_config_vector,
+			     Poco::Logger* const console_log,
+			     Poco::Message::Priority const console_sev):
 	m_file_log(file_log),
 	m_file_log_priority(file_sev),
 	m_console_log(console_log),
+	m_console_log_priority(console_sev),
 	m_observer(std::make_shared<null_log_observer>())
 {
-	init_file_log_component_priorities(config_vector);
+	init_file_log_component_priorities(file_config_vector);
 }
 
-void common_logger::init_file_log_component_priorities(const std::vector<std::string>& config_vector)
+void common_logger::init_file_log_component_priorities(const std::vector<std::string>& file_config_vector)
 {
 	const std::string delimiter = ": ";
-	for (auto component_level : config_vector)
+	for (auto component_level : file_config_vector)
 	{
 		std::string component;
 		std::string sev_string;
@@ -95,6 +99,11 @@ void common_logger::init_file_log_component_priorities(const std::vector<std::st
 	}
 }
 
+/**
+ * The log_check_component_priority 3 parameter version is used by subprocesses_logger.cpp,
+ * cointerface for sdjagent_parser, cointerface_parser, and sdchecks_parser.
+ * They are written in Java, Python and Go, and need special handling.
+ */
 void common_logger::log_check_component_priority(const std::string& str,
 						 const Poco::Message::Priority sev,
 						 const Poco::Message::Priority file_sev)
@@ -116,11 +125,36 @@ void common_logger::log_check_component_priority(const std::string& str,
 	m_observer->notify(sev);
 }
 
+/**
+ * The log_check_component_priority 4 parameter version is used for C++ components.
+ */
+void common_logger::log_check_component_priority(const std::string& str,
+						 const Poco::Message::Priority sev,
+						 const Poco::Message::Priority file_sev,
+						 const Poco::Message::Priority console_sev)
+{
+	Poco::Message m("common_logger", str, sev);
+
+	m.setTid(thread_utils::get_tid());
+
+	if (file_sev >= sev)
+	{
+		m_file_log->log(m);
+	}
+
+	if(console_sev >= sev)
+	{
+		m_console_log->log(m);
+	}
+
+	m_observer->notify(sev);
+}
+
 void common_logger::log(const std::string& str, const Poco::Message::Priority sev)
 {
 	if (is_enabled(sev))
 	{
-		log_check_component_priority(str, sev, m_file_log_priority);
+		log_check_component_priority(str, sev, m_file_log_priority, m_console_log_priority);
 	}
 }
 
@@ -220,29 +254,56 @@ void common_logger::sinsp_logger_callback(std::string&& str,
 	}
 }
 
+// This common_logger::is_enabled single parameter version is used internally by common_logger::log
+// here severity represents the priority of the log message.
 bool common_logger::is_enabled(const Poco::Message::Priority severity) const
 {
+//// debug
+	std::cout << "common_logger::is_enabled(severity)=" << severity << std::endl;
+    std::cout << "                          m_file_log_priority=" << m_file_log_priority << std::endl;
+    std::cout << "                          m_console_log_priority=" << m_console_log_priority << std::endl;
+//// end debug
 	return (((m_file_log != nullptr) && (m_file_log_priority >= severity)) ||
-		((m_console_log != nullptr) && (m_console_log->getLevel() >= severity)));
+		((m_console_log != nullptr) && (m_console_log_priority >= severity)));
 }
 
+// Here severity represents the priority of the log message, 
+// and component_file_priority is the value specified in the dragent.yaml config.
 bool common_logger::is_enabled(const Poco::Message::Priority severity,
 			       const Poco::Message::Priority component_file_priority) const
 {
+//// debug
+	std::cout << "common_logger::is_enabled(severity, component_file_priority)" << std::endl;
+	std::cout << "                          severity=" << severity << std::endl;
+	std::cout << "                          component_file_priority=" << component_file_priority << std::endl;
+	std::cout << "                          m_console_log_priority=" << m_console_log_priority << std::endl;
+//// end debug
 	return (((m_file_log != nullptr) && (component_file_priority >= severity)) ||
-		((m_console_log != nullptr) && (m_console_log->getLevel() >= severity)));
+		((m_console_log != nullptr) && (m_console_log_priority >= severity)));
 }
 
+// Search for parameter component in m_file_log_component_priorities list (that was constructed 
+// using file_config_vector).  If the component is found, return that priority value; otherwise
+// return the m_file_log_priority (that was constructed using file_sev).
 Poco::Message::Priority common_logger::get_component_file_priority(const std::string& component) const
 {
 	std::unordered_map<std::string, Poco::Message::Priority>::const_iterator it =
 		m_file_log_component_priorities.find(component);
+////    debug
+	    std::cout << "common_logger::get_component_file_priority component= " << component << std::endl;
+////    end debug
 	if (it != m_file_log_component_priorities.end())
 	{
+////    debug
+        std::cout << "                          it->second=" << it->second << std::endl;
+////    end debug
 		return it->second;
 	}
 	else
 	{
+////    debug
+        std::cout << "                          m_file_log_priority=" << m_file_log_priority << std::endl;
+////    end debug
 		return m_file_log_priority;
 	}
 }
@@ -266,8 +327,15 @@ bool log_sink::is_enabled(const Poco::Message::Priority severity) const
 	{
 		if (m_component_file_priority == static_cast<Poco::Message::Priority>(-1))
 		{
+			// search the m_file_log_component_priorities list
 			m_component_file_priority = g_log->get_component_file_priority(tag());
 		}
+////    debug
+//		std::cout << "log_sink::is_enabled(severity)" << std::endl;
+//		std::cout << "                     severity=" << severity << std::endl;
+//		std::cout << "                     m_component_file_priority=" << m_component_file_priority << std::endl;
+////    end debug
+		// now use the common_logger::is_enabled
 		return g_log->is_enabled(severity, m_component_file_priority);
 	}
 	return false;
@@ -323,7 +391,10 @@ std::string::size_type log_sink::generate_log(std::vector<char>& log_buffer,
 
 	// One extra byte needed for the NUL terminator
 	const std::string::size_type total_length = prefix_length + suffix_length + 1;
-
+	
+////    debug
+//	std::cout << "log_sink::generate_log, total_length= " << total_length << std::endl;
+////    end debug
 	return total_length;
 }
 
@@ -346,7 +417,9 @@ std::string log_sink::build(const int line, const char* const fmt, va_list& args
 		log_buffer.resize(log_length);
 		static_cast<void>(generate_log(log_buffer, line, fmt, args));
 	}
-
+////    debug
+//	std::cout << "log_sink::build" << std::endl;
+////    end debug
 	return std::string(&log_buffer[0]);
 }
 
@@ -382,6 +455,10 @@ void log_sink::log(const Poco::Message::Priority severity,
 		va_start(args, fmt);
 		std::string message = build(line, fmt, args);
 		va_end(args);
+////    debug
+//	    std::cout << "log_sink::log(3 parameters ...)" << std::endl;
+//	    std::cout << "                          calling g_log->log_check_component_priority(message, severity, m_component_file_priority)" << std::endl;
+////    end debug
 		g_log->log_check_component_priority(message, severity, m_component_file_priority);
 	}
 }
@@ -390,6 +467,10 @@ void log_sink::log(const Poco::Message::Priority severity,
                    const int line,
                    const std::string& str) const
 {
+////    debug
+//	std::cout << "log_sink::log(3 parameters)" << std::endl;
+//	std::cout << "                          calling log(severity, line, pct-s, str.c_str())" << std::endl;
+////    end debug
 	log(severity, line, "%s", str.c_str());
 }
 
@@ -441,8 +522,8 @@ void log_and_purge()
 
 	while (get_cache().get(&data, 1000 /*one second timeout*/))
 	{
-		auto component_priority = g_log->get_component_file_priority(*data.component_tag);
-		g_log->log_check_component_priority(data.message, data.sev, component_priority);
+		auto file_component_priority = g_log->get_component_file_priority(*data.component_tag);
+		g_log->log_check_component_priority(data.message, data.sev, file_component_priority);
 	}
 }
 

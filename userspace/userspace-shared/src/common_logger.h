@@ -50,9 +50,11 @@ public:
 	 * Use this constructor if you care about file logging. Applications like
 	 * dragent and agentone do.
 	 */
-	common_logger(Poco::Logger* file_log, Poco::Message::Priority file_sev,
-		      const std::vector<std::string>& config_vector,
-		      Poco::Logger* console_log);
+	common_logger(Poco::Logger* file_log,
+		      Poco::Message::Priority file_sev,
+		      const std::vector<std::string>& file_config_vector,
+		      Poco::Logger* console_log,
+		      Poco::Message::Priority console_sev);
 	/**
 	 * Set the observer that will get notified of logs that get written.
 	 */
@@ -65,10 +67,17 @@ public:
 	/**
 	 * Log method that checks file level (used for implementing component
 	 * level overrides).
+	 * The 3 parameter version is used by subprocesses_logger.cpp,
+	 * and handles the API for Java, Python and Go language components.
+	 * The 4 parameter version is used by common_logger.cpp for C++ components.
 	 */
 	void log_check_component_priority(const std::string& str,
 					  const Poco::Message::Priority sev,
 					  const Poco::Message::Priority file_sev);
+	void log_check_component_priority(const std::string& str,
+					  const Poco::Message::Priority sev,
+					  const Poco::Message::Priority file_sev,
+					  const Poco::Message::Priority console_sev);
 	void trace(const std::string& str);
 	void debug(const std::string& str);
 	void information(const std::string& str);
@@ -83,12 +92,16 @@ public:
 	bool is_enabled(Poco::Message::Priority severity) const;
 	bool is_enabled(const Poco::Message::Priority severity,
 			const Poco::Message::Priority component_file_priority) const;
-	void init_file_log_component_priorities(const std::vector<std::string>& config_vector);
+	void init_file_log_component_priorities(const std::vector<std::string>& file_config_vector);
 	Poco::Message::Priority get_component_file_priority(const std::string& component) const;
 #ifdef SYSDIG_TEST
 	void set_file_log_priority(const Poco::Message::Priority severity)
 	{
 		m_file_log_priority = severity;
+	}
+	void set_console_log_priority(const Poco::Message::Priority severity)
+	{
+		m_console_log_priority = severity;
 	}
 #endif
 
@@ -99,6 +112,12 @@ private:
 #else
 	Poco::Message::Priority const m_file_log_priority;
 #endif
+	Poco::Logger* const m_console_log;
+#ifdef SYSDIG_TEST
+	Poco::Message::Priority mutable m_console_log_priority;
+#else
+	Poco::Message::Priority const m_console_log_priority;
+#endif
 	// m_file_log_component_priorities is mutable because it is populated after parsing
 	// a std::vector<std::string> that is sent to the constructor from the config
 	// If the conversion is done outside the constructor and the fully built unordered_map
@@ -106,7 +125,6 @@ private:
 	// Probably not worth the trouble since each application calls the constructor separately
 	// and unit test code also modifies it
 	std::unordered_map<std::string, Poco::Message::Priority> mutable m_file_log_component_priorities;
-	Poco::Logger* const m_console_log;
 	std::shared_ptr<log_observer> m_observer;
 };
 
