@@ -69,7 +69,7 @@ func addServicePorts(ports *[]*draiosproto.CongroupNetPort, service kubecollect.
 }
 
 func startServicesWatcher(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
-	kubecollect_common.StartWatcher(ctx, kubeClient.CoreV1().RESTClient(), "Services", wg, evtc, fields.Everything(), true /*retryAtBoot*/, handleServiceEvent)
+	kubecollect_common.StartWatcher(ctx, kubeClient.CoreV1().RESTClient(), "Services", wg, evtc, fields.Everything(), handleServiceEvent)
 }
 
 func handleServiceEvent(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEvent) {

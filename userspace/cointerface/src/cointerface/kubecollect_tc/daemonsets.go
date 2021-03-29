@@ -36,7 +36,7 @@ func newDaemonSetCongroup(daemonSet kubecollect.CoDaemonSet) (*draiosproto.Conta
 }
 
 func startDaemonSetsWatcher(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
-	kubecollect_common.StartWatcher(ctx, kubeClient.AppsV1().RESTClient(), "DaemonSets", wg, evtc, fields.Everything(), true /*retryAtBoot*/, handleDaemonsetEvent)
+	kubecollect_common.StartWatcher(ctx, kubeClient.AppsV1().RESTClient(), "DaemonSets", wg, evtc, fields.Everything(), handleDaemonsetEvent)
 }
 
 func handleDaemonsetEvent(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEvent) {

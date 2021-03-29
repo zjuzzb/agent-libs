@@ -42,7 +42,7 @@ func startJobsWatcher(ctx context.Context,
 			wg *sync.WaitGroup,
 			evtc chan<- draiosproto.CongroupUpdateEvent) {
 
-	kubecollect_common.StartWatcher(ctx, kubeClient.BatchV1().RESTClient(), "Jobs", wg, evtc, fields.Everything(), true /*retryAtBoot*/, handleJobEvent)
+	kubecollect_common.StartWatcher(ctx, kubeClient.BatchV1().RESTClient(), "Jobs", wg, evtc, fields.Everything(), handleJobEvent)
 }
 
 func handleJobEvent(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEvent) {

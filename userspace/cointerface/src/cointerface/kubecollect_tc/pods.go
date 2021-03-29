@@ -178,7 +178,7 @@ func startPodWatcher(ctx context.Context, opts *sdc_internal.OrchestratorEventsS
 		selector = "status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded"
 	}
 	fselector, _ := fields.ParseSelector(selector)
-	kubecollect_common.StartWatcher(ctx, kubeClient.CoreV1().RESTClient(), "pods", wg, evtc, fselector, true /*retryAtBoot*/, handlePodEvent)
+	kubecollect_common.StartWatcher(ctx, kubeClient.CoreV1().RESTClient(), "pods", wg, evtc, fselector, handlePodEvent)
 }
 
 func handlePodEvent(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEvent) {

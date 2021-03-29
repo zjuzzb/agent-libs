@@ -39,7 +39,7 @@ func newHorizontalPodAutoscalerCongroup(hpa *v1as.HorizontalPodAutoscaler) (*dra
 }
 
 func startHPAWatcher(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
-	kubecollect_common.StartWatcher(ctx, kubeClient.AutoscalingV1().RESTClient(), "HorizontalPodAutoscalers", wg, evtc, fields.Everything(), true /*retryAtBoot*/, handleHPAEvent)
+	kubecollect_common.StartWatcher(ctx, kubeClient.AutoscalingV1().RESTClient(), "HorizontalPodAutoscalers", wg, evtc, fields.Everything(), handleHPAEvent)
 }
 
 func handleHPAEvent(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEvent) {
