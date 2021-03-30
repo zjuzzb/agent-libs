@@ -94,6 +94,7 @@ public:
 			const Poco::Message::Priority component_file_priority) const;
 	void init_file_log_component_priorities(const std::vector<std::string>& file_config_vector);
 	Poco::Message::Priority get_component_file_priority(const std::string& component) const;
+	Poco::Message::Priority get_component_console_priority(const std::string& component) const;
 #ifdef SYSDIG_TEST
 	void set_file_log_priority(const Poco::Message::Priority severity)
 	{
@@ -177,9 +178,10 @@ private:
 
 	// [<optional component>:]<filename without extension>
 	const std::string m_tag;
-	// file log level override associated with component, extracted from g_log
+	// file log level and console leve overrides associated with component, extracted from g_log
 	// and cached here for performance optimization
 	mutable Poco::Message::Priority m_component_file_priority;
+	mutable Poco::Message::Priority m_component_console_priority;
 };
 
 extern std::unique_ptr<common_logger> g_log;

@@ -859,7 +859,7 @@ TEST_F(common_logger_test, component_overrides_g_log)
 			 		    Poco::Message::Priority::PRIO_INFORMATION); // parameter console_sev
 	g_log->log(MESSAGE_A, Poco::Message::Priority::PRIO_DEBUG);
 	ASSERT_EQ(expected_message, m_file_out.str());
-    // Supressed because console_sev of PRIO_INFORMATION overrides generateMessage of PRIO_DEBUG
+	// Suppressed because console_sev of PRIO_INFORMATION overrides generateMessage of PRIO_DEBUG
 	ASSERT_EQ("", m_console_out.str());
 }
 
@@ -897,5 +897,5 @@ TEST_F(common_logger_test, component_overrides_log_sink)
 	local_log_sink.log(Poco::Message::Priority::PRIO_TRACE, 42, "%s",
 				DEFAULT_MESSAGE.c_str());
 	ASSERT_EQ(expected_message, m_file_out.str());
-	ASSERT_EQ(expected_message, m_console_out.str());
+	ASSERT_EQ("", m_console_out.str());
 }
