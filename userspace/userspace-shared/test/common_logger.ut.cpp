@@ -133,7 +133,6 @@ public:
 						  dummy_config,
 						  m_console_logger,
 						  Poco::Message::Priority::PRIO_TRACE));
-
 	}
 
 	void TearDown() override
@@ -822,10 +821,11 @@ TEST_F(common_logger_test, component_overrides_none)
 	// a message in log file or console above the default level via g_log->log().
 	const std::string expected_message =
 		generateMessage(Poco::Message::Priority::PRIO_TRACE, DEFAULT_MESSAGE);
+	// 
 	g_log->log_check_component_priority(DEFAULT_MESSAGE,
-			 		    Poco::Message::Priority::PRIO_TRACE,  // parameter sev 
-			 		    Poco::Message::Priority::PRIO_TRACE,  // parameter file_sev
-			 		    Poco::Message::Priority::PRIO_TRACE); // parameter console_sev
+			 		    Poco::Message::Priority::PRIO_TRACE,
+			 		    Poco::Message::Priority::PRIO_TRACE,
+			 		    Poco::Message::Priority::PRIO_TRACE);
 	g_log->log(MESSAGE_A, Poco::Message::Priority::PRIO_DEBUG);
 	ASSERT_EQ(expected_message, m_file_out.str());
 	ASSERT_EQ(expected_message, m_console_out.str());
@@ -854,9 +854,9 @@ TEST_F(common_logger_test, component_overrides_g_log)
 	const std::string expected_message =
 		generateMessage(Poco::Message::Priority::PRIO_DEBUG, DEFAULT_MESSAGE);
 	g_log->log_check_component_priority(DEFAULT_MESSAGE,
-			 		    Poco::Message::Priority::PRIO_DEBUG,        // parameter sev 
-			 		    Poco::Message::Priority::PRIO_DEBUG,        // parameter file_sev
-			 		    Poco::Message::Priority::PRIO_INFORMATION); // parameter console_sev
+			 		    Poco::Message::Priority::PRIO_DEBUG,
+			 		    Poco::Message::Priority::PRIO_DEBUG,
+			 		    Poco::Message::Priority::PRIO_INFORMATION);
 	g_log->log(MESSAGE_A, Poco::Message::Priority::PRIO_DEBUG);
 	ASSERT_EQ(expected_message, m_file_out.str());
 	// Suppressed because console_sev of PRIO_INFORMATION overrides generateMessage of PRIO_DEBUG

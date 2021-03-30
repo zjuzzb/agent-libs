@@ -636,9 +636,9 @@ void agentino_app::initialize_logging()
 
 	AutoPtr<Channel> console_channel(new ConsoleChannel());
 	AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
-		// Create console logger at most permissive level (trace). This allows all messages to flow.
-		// Log severity of messages actually emitted through the channel will be managed by
-		// the consumers of the channel
+	// Create console logger at most permissive level (trace). This allows all messages to flow.
+	// Log severity of messages actually emitted through the channel will be managed by
+	// the consumers of the channel.
 	Logger& loggerc =
 	    Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_TRACE);
 
