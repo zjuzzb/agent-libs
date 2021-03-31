@@ -643,6 +643,7 @@ private:
 
 	void disconnect();
 	void disconnect_and_backoff();
+	bool should_backoff(draiosproto::error_type err);
 
 #ifndef CYGWING_AGENT
 	bool prometheus_connected() const;

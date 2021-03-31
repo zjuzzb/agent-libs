@@ -989,6 +989,50 @@ func OwnerReferencesToParents(owners []v1meta.OwnerReference,
 	}
 }
 
+var startTime time.Time
+
+const WATCHER_REQUIRED_RUNTIME = 1 * time.Hour
+const WATCHER_MINIMUM_BACKOFF = 1 * time.Minute
+const WATCHER_MAXIMUM_BACKOFF = 1 * time.Hour 
+
+func getBackoffValue(runtime time.Duration, previousBackoff time.Duration) time.Duration {
+
+	if runtime > WATCHER_REQUIRED_RUNTIME {
+		return WATCHER_MINIMUM_BACKOFF
+	}
+
+	if previousBackoff < WATCHER_MINIMUM_BACKOFF {
+		return WATCHER_MINIMUM_BACKOFF
+	}
+
+	if previousBackoff > WATCHER_MAXIMUM_BACKOFF {
+		return WATCHER_MAXIMUM_BACKOFF
+	}
+
+	backoff := previousBackoff * 2
+	
+	if backoff > WATCHER_MAXIMUM_BACKOFF {
+		return WATCHER_MAXIMUM_BACKOFF
+	}
+
+	return backoff
+}
+
+func getBackoff(runtime time.Duration, previousBackoff time.Duration) time.Duration {
+
+	backoff := getBackoffValue(runtime, previousBackoff)
+
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
+
+	// We don't want all agents to disconnect and reconnect all at the same
+	// time.  Return the backoff plus a random number that can be up to half of
+	// the backoff.
+	backoffSeconds := backoff.Seconds()
+	backoffAddOn := time.Duration((backoffSeconds/2) * r1.Float64()) * time.Second
+
+	return backoff + backoffAddOn
+}
 
 func StartWatcher(ctx context.Context,
 	restClient rest.Interface,
@@ -1002,11 +1046,16 @@ func StartWatcher(ctx context.Context,
 
 	wg.Add(1)
 
+	backoff := WATCHER_MINIMUM_BACKOFF
+
 	go func() {
 		defer func() {
 			wg.Done()
 		}()
 		for {
+
+			loopStartTime := time.Now()
+
 			terminated := false
 			select {
 			case <- ctx.Done():
@@ -1031,7 +1080,11 @@ func StartWatcher(ctx context.Context,
 				log.Warnf("startWatcher[%s] ListWatchUntil exits: %s", resource, err.Error())
 			}
 
-			time.Sleep(5 * time.Second)
+			runtime := time.Since(loopStartTime)
+			backoff = getBackoff(runtime, backoff)
+			log.Infof("startWatcher[%s] Waiting %s before reconnecting watcher", resource, backoff.String())
+			time.Sleep(backoff)
+
 			if terminated == true {
 				break
 			}

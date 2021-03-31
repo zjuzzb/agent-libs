@@ -37,7 +37,9 @@ bool security_policy_v2::has_action(const draiosproto::action_type &atype)
 	return false;
 }
 
-bool security_policy_v2::match_syscall_scope(std::string container_id, infrastructure_state_iface *infra_state) const
+bool security_policy_v2::match_syscall_scope(std::string container_id,
+					     infrastructure_state_iface *infra_state,
+					     std::map<std::string,std::string> &agent_tags) const
 {
 	::scope_predicates empty_preds;
 
@@ -45,6 +47,16 @@ bool security_policy_v2::match_syscall_scope(std::string container_id, infrastru
 	{
 		return true;
 	}
+
+	::scope_predicates remaining_predicates;
+
+	if(! scope_resolver_iface::match_agent_tag_predicates(scope_predicates(),
+							      agent_tags,
+							      remaining_predicates))
+	{
+		return false;
+	}
+
 
 	infrastructure_state::uid_t uid;
 	if (!container_id.empty())
@@ -76,9 +88,9 @@ bool security_policy_v2::match_syscall_scope(std::string container_id, infrastru
 	// code.
 	bool use_empty_preds = false;
 
-	if(scope_predicates().size() == 1)
+	if(remaining_predicates.size() == 1)
 	{
-		const draiosproto::scope_predicate &pred = scope_predicates()[0];
+		const draiosproto::scope_predicate &pred = remaining_predicates[0];
 
 		if (pred.key() == "container.id" &&
 		    pred.op() == draiosproto::EQ &&
@@ -105,8 +117,8 @@ bool security_policy_v2::match_syscall_scope(std::string container_id, infrastru
 		}
 	}
 
-	return scope_predicates().empty() ||
-		infra_state->match_scope(uid, (use_empty_preds ? empty_preds : scope_predicates()));
+	return remaining_predicates.empty() ||
+		infra_state->match_scope(uid, (use_empty_preds ? empty_preds : remaining_predicates));
 }
 
 security_rule_library::rule::rule(const std::string &name, draiosproto::policy_type rule_type)

@@ -59,6 +59,7 @@ list(
     promscrape.ut.cpp
     protocol_manager.ut.cpp
     security_config.ut.cpp
+    scope_resolver_iface.ut.cpp
     scoped_sinsp_logger_capture.ut.cpp
     secure_audit.ut.cpp
     secure_netsec.ut.cpp

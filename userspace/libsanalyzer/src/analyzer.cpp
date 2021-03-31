@@ -714,7 +714,7 @@ void sinsp_analyzer::on_capture_start()
 
 	if (m_secure_audit != nullptr)
 	{
-		m_secure_audit->init(m_ipv4_connections, m_fd_listener);
+		m_secure_audit->init(m_ipv4_connections, m_fd_listener, mutable_infra_state(), m_configuration);
 	}
 
 	if (m_secure_netsec != nullptr)
@@ -7093,15 +7093,16 @@ void sinsp_analyzer::emit_container(const string& container_id,
 		const bool result = m_procfs_parser->read_cgroup_used_memory(memory_cgroup_it->second, memory_stats);
 		if (result)
 		{
+			int64_t res_memory_bytes; 
 			if(c_use_working_set.get_value())
 			{
-				res_memory_kb = memory_stats.working_set_bytes;
+				res_memory_bytes = memory_stats.working_set_bytes;
 			}
 			else
 			{
-				res_memory_kb = memory_stats.vm_rss_bytes;
+				res_memory_bytes = memory_stats.vm_rss_bytes;
 			}
-			res_memory_kb = res_memory_kb / 1024;
+			res_memory_kb = res_memory_bytes / 1024;
 			working_set_memory_kb = memory_stats.working_set_bytes / 1024;
 		}
 	}

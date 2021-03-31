@@ -19,7 +19,7 @@
 
 #include "security_metrics.h"
 
-typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
+#include "scope_resolver_iface.h"
 
 // Simple wrapper around draiosproto::policy_v2 that adds a few
 // convienence methods.
@@ -31,7 +31,9 @@ public:
 
 	bool has_action(const draiosproto::action_type &atype);
 
-	bool match_syscall_scope(std::string container_id, infrastructure_state_iface *infra_state) const;
+	bool match_syscall_scope(std::string container_id,
+				 infrastructure_state_iface *infra_state,
+				 std::map<std::string,std::string> &agent_tags) const;
 };
 
 typedef std::shared_ptr<security_policy_v2> policy_v2_sptr;

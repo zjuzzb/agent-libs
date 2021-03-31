@@ -126,6 +126,26 @@ void sinsp_configuration::set_instance_id(const string& instance_id)
 	m_instance_id = instance_id;
 }
 
+const string& sinsp_configuration::get_account_id() const
+{
+	return m_account_id;
+}
+
+void sinsp_configuration::set_account_id(const string& account_id)
+{
+	m_account_id = account_id;
+}
+
+const string& sinsp_configuration::get_region() const
+{
+	return m_region;
+}
+
+void sinsp_configuration::set_region(const string& region)
+{
+	m_region = region;
+}
+
 #ifndef CYGWING_AGENT
 void sinsp_configuration::set_k8s_delegated_nodes(int k8s_delegated_nodes)
 {

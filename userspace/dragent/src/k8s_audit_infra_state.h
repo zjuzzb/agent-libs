@@ -18,7 +18,10 @@ public:
 	virtual ~k8s_audit_infra_state();
 
 	// Main entrypoint, using an event.
-	bool match_scope(json_event *evt, const std::string k8s_cluster_name, const scope_predicates &predicates);
+	bool match_scope(json_event *evt,
+			 const std::string &k8s_cluster_name,
+			 const std::map<std::string, std::string> &agent_tags,
+			 const scope_predicates &predicates);
 
 	// This should be called twice--once where uid is
 	// (kubernetes.cluster.name, <cluster name>) and once where

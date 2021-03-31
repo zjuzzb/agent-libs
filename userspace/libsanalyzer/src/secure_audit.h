@@ -49,7 +49,9 @@ public:
 	void set_internal_metrics(secure_audit_internal_metrics* internal_metrics);
 
 	void init(sinsp_ipv4_connection_manager* conn,
-	          sinsp_analyzer_fd_listener* analyzer_fd_listener);
+	          sinsp_analyzer_fd_listener* analyzer_fd_listener,
+	          infrastructure_state* infra_state,
+	          sinsp_configuration* configuration);
 
 	void emit_commands_audit(
 	    std::unordered_map<std::string, std::vector<sinsp_executed_command>>* executed_commands);
@@ -85,6 +87,34 @@ public:
 	static type_config<int> c_secure_audit_k8s_limit;
 	static type_config<int>::mutable_ptr c_secure_audit_frequency;
 
+	// audit labels
+	static type_config<bool> c_audit_labels_enabled;
+	static type_config<int> c_audit_labels_max_agent_tags;
+	static type_config<std::vector<std::string>> c_audit_labels_include;
+	static type_config<std::vector<std::string>> c_audit_labels_exclude;
+
+	sinsp_configuration* m_sinsp_configuration;
+
+	std::unordered_set<std::string> m_audit_labels =
+	    std::unordered_set<std::string>({"host.hostName",
+	                                     "aws.instanceId",
+	                                     "aws.accountId",
+	                                     "aws.region",
+	                                     "agent.tag",
+	                                     "container.name",
+	                                     "kubernetes.cluster.name",
+	                                     "kubernetes.namespace.name",
+	                                     "kubernetes.deployment.name",
+	                                     "kubernetes.pod.name",
+	                                     "kubernetes.node.name"});
+
+	void configure_audit_labels_set();
+	void set_audit_labels(const std::string& container_id,
+	                      google::protobuf::Map<string, string>* audit_labels);
+	void set_audit_label(google::protobuf::Map<std::string, std::string>* audit_labels,
+	                     std::string key,
+	                     std::string value);
+
 private:
 	void emit_commands_audit_item(std::vector<sinsp_executed_command>* commands,
 	                              const std::string& container_id);
@@ -105,6 +135,7 @@ private:
 	std::vector<wildcard_filter<std::string>> m_file_writes_exclude_filters;
 
 	secure_audit_data_ready_handler* m_audit_data_handler;
+	infrastructure_state* m_infra_state;
 	secure_audit_internal_metrics* m_audit_internal_metrics;
 	secure::Audit* m_secure_audit_batch;
 	sinsp_ipv4_connection_manager* m_connection_manager;

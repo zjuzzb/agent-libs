@@ -452,7 +452,9 @@ string dragent_configuration::get_install_prefix(const Application* app)
 #endif
 }
 
-void dragent_configuration::init(Application* app, bool use_installed_dragent_yaml)
+void dragent_configuration::init(Application* app,
+                                 bool use_installed_dragent_yaml,
+                                 const std::string* conf_file_override_path)
 {
 	refresh_machine_id();
 	std::string install_prefix = get_install_prefix(app);
@@ -479,6 +481,11 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 #endif
 	}
 
+	// Override m_conf_file to specified path if provided
+	if ((conf_file_override_path != nullptr) && (!conf_file_override_path->empty()))
+	{
+		m_conf_file = *conf_file_override_path;
+	}
 	init();
 }
 
@@ -523,6 +530,7 @@ void dragent_configuration::init()
 
 	// init the configurations
 	configuration_manager::instance().init_config(*m_config);
+	metric_forwarding_configuration::instance().init();
 
 	m_log_dir = Path(c_root_dir.get_value())
 	                .append(m_config->get_scalar<string>("log", "location", "logs"))

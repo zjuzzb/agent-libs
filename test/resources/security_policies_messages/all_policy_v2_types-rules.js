@@ -469,5 +469,20 @@
 	     "matchItems": true
 	 }
      }
+    },
+    {"id": 1029,
+     "name": "read sample-sensitive-file-6.txt",
+     "origin": "secure UI",
+     "versionId": 1,
+     "filename": "fastengine_rules.yaml",
+     "tags": [],
+     "description": "",
+     "details": {
+	 "ruleType": "FILESYSTEM",
+	 "readPaths": {
+	     "items": ["/tmp/sample-sensitive-file-6.txt"],
+	     "matchItems": true
+	 }
+     }
     }
 ]

@@ -21,6 +21,13 @@ public:
 		return s_instance;
 	}
 
+	/**
+	 * Initialize the class. This is needed in addition to the ctor 
+	 * because we must wait until after the config system is 
+	 * initialized to init this class. 
+	 */
+	void init();
+
 	enum class negotiation_result
 	{
 		NEGOTIATION_NOT_SUPPORTED,
@@ -79,9 +86,11 @@ public:
 	/**
 	 * Print helpful information about the config.
 	 */
-	void print();
+	void print(const char *timing);
 
 private:
+
+	void negotiation_not_supported(const char *timing);
 
 	float metric_divisor(int allowed_metric_sum);
 	int calculate_limit(int configured_limit, int allowed_metric_sum);

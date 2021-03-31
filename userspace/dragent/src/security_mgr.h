@@ -126,9 +126,9 @@ public:
 	std::unordered_set<std::string> m_event_labels = std::unordered_set<std::string>({
 		"process.name",
 		"host.hostName",
-		"aws.instance_id",
-		"aws.account_id",
-		"aws.account_region",
+		"aws.instanceId",
+		"aws.accountId",
+		"aws.region",
 		"agent.tag",
 		"container.name",
 		"kubernetes.cluster.name",
@@ -369,6 +369,9 @@ private:
 
 	void set_event_labels(std::string &container_id, sinsp_threadinfo *tinfo, draiosproto::policy_event *event);
 	void set_event_labels_k8s_audit(draiosproto::event_detail *details, draiosproto::policy_event *event, json_event *j_evt);
+	void set_event_label(google::protobuf::Map<std::string, std::string>* audit_labels,
+			     std::string key,
+			     std::string value);
 
 	// Send counts of throttled policy events to the backend
 	void report_throttled_events(uint64_t ts_ns);
@@ -571,6 +574,7 @@ private:
 	public:
 		loaded_v2_policies(sinsp *inspector,
 				   dragent_configuration *configuration,
+				   scope_resolver_iface::tags_map &agent_tags,
 				   std::shared_ptr<draiosproto::policies_v2> policies_v2_msg,
 				   metrics &security_mgr_metrics,
 				   std::list<std::shared_ptr<security_evt_metrics>> &security_evt_metrics);
@@ -604,6 +608,7 @@ private:
 
 		sinsp *m_inspector;
 		dragent_configuration *m_configuration;
+		scope_resolver_iface::tags_map m_agent_tags;
 
 		std::shared_ptr<draiosproto::policies_v2> m_policies_v2_msg;
 
@@ -691,5 +696,8 @@ private:
 	bool m_k8s_audit_server_started;
 
 	volatile bool m_received_policies = false;
+
+	// Agent tags as a map "agent.tag.xx" -> value
+	scope_resolver_iface::tags_map m_agent_tags;
 };
 #endif // CYGWING_AGENT

@@ -320,7 +320,12 @@ pipeline {
     // this one is promoted
     stage('Build Probes') {
         steps {
-            build job: 'sysdig-probe-builder', parameters: [string(name: 'RELEASE_NUMBER', value: "${params.RELEASE_VERSION}"), string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')]
+            build job: 'sysdig-probe-builder', parameters: [
+                string(name: 'RELEASE_NUMBER', value: "${params.RELEASE_VERSION}"),
+                string(name: 'DRIVER_REPO', value: "ssh://git@github.com/draios/libscap.git"),
+                string(name: 'DRIVER_REPO_COMMIT', value: "agent/${params.RELEASE_VERSION}"),
+                string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')
+            ]
         }
         post {
             success {
@@ -356,6 +361,14 @@ pipeline {
 					slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Release is awaiting approvals", tokenCredentialId: 'slack'
 				}
 			}
+
+            stage('Launch QA tests pipeline') {
+                steps {
+                    script {
+                        build job: "QA-agent-release-validation", parameters: [string(name: 'AGENT_VERSION', value: "${params.RELEASE_VERSION}-rc")], wait: false
+                    }
+                }
+            }
 
             stage('Wait for QA') {
                 steps {

@@ -1,7 +1,7 @@
+#include "feature_manager.h"
 #include "scoped_configuration.h"
 #include "secure_audit_data_ready_handler.h"
 #include "unique_ptr_resetter.h"
-#include "feature_manager.h"
 
 #include <analyzer.h>
 #include <connectinfo.h>
@@ -427,6 +427,7 @@ TEST(secure_audit_test, executed_commands_per_container_limit_default)
 	test_helpers::scoped_config<bool> enable_executed_commands(
 	    "secure_audit_streams.executed_commands",
 	    true);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	// c_secure_audit_executed_commands_per_container_limit is 30 by default
@@ -454,6 +455,7 @@ TEST(secure_audit_test, executed_commands_per_container_limit_unlimited)
 	    0);
 	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
 	                                                0);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	executed_commands_build_and_test_generic(0, 0, 0);
@@ -478,6 +480,8 @@ TEST(secure_audit_test, executed_commands_per_container_limit_2)
 	    "secure_audit_streams.executed_commands_per_container_limit",
 	    2);
 
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
+
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
 	executed_commands_build_and_test_generic(1, 2, 2);
@@ -501,6 +505,9 @@ TEST(secure_audit_test, executed_commands_per_container_limit_5)
 	test_helpers::scoped_config<int> commands_limit(
 	    "secure_audit_streams.executed_commands_per_container_limit",
 	    5);
+
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
+
 	feature_manager::instance().initialize();
 
 	executed_commands_build_and_test_generic(0, 0, 0);
@@ -525,6 +532,9 @@ TEST(secure_audit_test, executed_commands_per_container_limit_7)
 	test_helpers::scoped_config<int> commands_limit(
 	    "secure_audit_streams.executed_commands_per_container_limit",
 	    7);
+
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
+
 	feature_manager::instance().initialize();
 
 	executed_commands_build_and_test_generic(0, 0, 0);
@@ -549,6 +559,7 @@ TEST(secure_audit_test, executed_commands_per_container_limit_50)
 	test_helpers::scoped_config<int> commands_limit(
 	    "secure_audit_streams.executed_commands_per_container_limit",
 	    50);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	executed_commands_build_and_test_generic(0, 0, 0);
@@ -575,6 +586,7 @@ TEST(secure_audit_test, executed_commands_per_container_limit_70)
 	test_helpers::scoped_config<int> commands_limit(
 	    "secure_audit_streams.executed_commands_per_container_limit",
 	    70);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	executed_commands_build_and_test_generic(0, 0, 0);
@@ -597,6 +609,7 @@ TEST(secure_audit_test, executed_commands_disabled)
 	test_helpers::scoped_config<bool> enable_executed_commands(
 	    "secure_audit_streams.executed_commands",
 	    false);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	executed_commands_build_and_test_generic(0, 0, 0);
@@ -611,6 +624,7 @@ TEST(secure_audit_test, audit_disabled)
 	test_helpers::scoped_config<bool> enable_executed_commands(
 	    "secure_audit_streams.executed_commands",
 	    true);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	executed_commands_build_and_test_generic(0, 0, 0);
@@ -628,6 +642,7 @@ TEST(secure_audit_test, executed_commands_limit_2)
 
 	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
 	                                                2);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	executed_commands_build_and_test_generic(0, 0, 0);
@@ -651,6 +666,7 @@ TEST(secure_audit_test, executed_commands_limit_20)
 
 	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
 	                                                20);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	executed_commands_build_and_test_generic(0, 0, 0);
@@ -674,6 +690,7 @@ TEST(secure_audit_test, executed_commands_limit_1000)
 
 	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
 	                                                1000);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	executed_commands_build_and_test_generic(0, 0, 0);
@@ -700,6 +717,7 @@ TEST(secure_audit_test, executed_commands_limit_2_no_per_container_bound)
 	test_helpers::scoped_config<int> commands_per_container_limit(
 	    "secure_audit_streams.executed_commands_per_container_limit",
 	    0);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	executed_commands_build_and_test_generic(0, 0, 0);
@@ -726,6 +744,7 @@ TEST(secure_audit_test, executed_commands_limit_10_no_per_container_bound)
 	test_helpers::scoped_config<int> commands_per_container_limit(
 	    "secure_audit_streams.executed_commands_per_container_limit",
 	    0);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	executed_commands_build_and_test_generic(0, 0, 0);
@@ -752,6 +771,7 @@ TEST(secure_audit_test, executed_commands_limit_100_no_per_container_bound)
 	test_helpers::scoped_config<int> commands_per_container_limit(
 	    "secure_audit_streams.executed_commands_per_container_limit",
 	    0);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	executed_commands_build_and_test_generic(0, 0, 0);
@@ -1290,6 +1310,7 @@ TEST(secure_audit_test, file_writes_disabled)
 	test_helpers::scoped_config<bool> enable_interactive_file_writes(
 	    "secure_audit_streams.file_writes_only_interactive",
 	    false);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1318,6 +1339,7 @@ TEST(secure_audit_test, file_writes_interactive)
 	test_helpers::scoped_config<bool> enable_interactive_file_writes(
 	    "secure_audit_streams.file_writes_only_interactive",
 	    true);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1346,6 +1368,7 @@ TEST(secure_audit_test, file_writes_not_interactive_filtered)
 	test_helpers::scoped_config<bool> enable_interactive_file_writes(
 	    "secure_audit_streams.file_writes_only_interactive",
 	    true);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1374,6 +1397,7 @@ TEST(secure_audit_test, file_writes_blacklisted)
 	test_helpers::scoped_config<bool> enable_interactive_file_writes(
 	    "secure_audit_streams.file_writes_only_interactive",
 	    true);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1414,6 +1438,7 @@ TEST(secure_audit_test, file_writes_excluded)
 	test_helpers::scoped_config<std::vector<std::string>> file_writes_exclude(
 	    "secure_audit_streams.file_writes_exclude",
 	    {"/home/excluded_file", "/home/excluded_directory/*"});
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1429,7 +1454,7 @@ TEST(secure_audit_test, file_writes_excluded)
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.init(nullptr, nullptr);
+	audit.init(nullptr, nullptr, nullptr, nullptr);
 
 	add_file_access_helper(&audit,
 	                       {{ts + 0, "/home/test/test_file", PPM_O_WRONLY},
@@ -1453,6 +1478,7 @@ TEST(secure_audit_test, file_writes_flags)
 	test_helpers::scoped_config<bool> enable_interactive_file_writes(
 	    "secure_audit_streams.file_writes_only_interactive",
 	    true);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1491,6 +1517,7 @@ TEST(secure_audit_test, connections_base_client)
 	test_helpers::scoped_config<bool> enable_interactive_connections(
 	    "secure_audit_streams.connections_only_interactive",
 	    false);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1520,6 +1547,7 @@ TEST(secure_audit_test, connections_limit)
 	    "secure_audit_streams.connections_only_interactive",
 	    false);
 	test_helpers::scoped_config<int> max_connections("secure_audit_streams.connections_limit", 2);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1548,6 +1576,7 @@ TEST(secure_audit_test, connections_base_server)
 	test_helpers::scoped_config<bool> enable_interactive_connections(
 	    "secure_audit_streams.connections_only_interactive",
 	    false);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1577,6 +1606,7 @@ TEST(secure_audit_test, connections_base_client_server)
 	test_helpers::scoped_config<bool> enable_interactive_connections(
 	    "secure_audit_streams.connections_only_interactive",
 	    false);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1605,6 +1635,7 @@ TEST(secure_audit_test, connections_enabled_disabled_01)
 	test_helpers::scoped_config<bool> enable_interactive_connections(
 	    "secure_audit_streams.connections_only_interactive",
 	    false);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1633,6 +1664,7 @@ TEST(secure_audit_test, connections_enabled_disabled_10)
 	test_helpers::scoped_config<bool> enable_interactive_connections(
 	    "secure_audit_streams.connections_only_interactive",
 	    false);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1664,6 +1696,7 @@ TEST(secure_audit_test, connections_local_enabled)
 	test_helpers::scoped_config<bool> enable_local_connections(
 	    "secure_audit_streams.connections_local",
 	    true);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1695,6 +1728,7 @@ TEST(secure_audit_test, connections_local_disabled)
 	test_helpers::scoped_config<bool> enable_local_connections(
 	    "secure_audit_streams.connections_local",
 	    false);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1723,6 +1757,7 @@ TEST(secure_audit_test, connections_base_server_only_interactive_1)
 	test_helpers::scoped_config<bool> only_interactive(
 	    "secure_audit_streams.connections_only_interactive",
 	    true);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1751,6 +1786,7 @@ TEST(secure_audit_test, connections_base_server_only_interactive_2)
 	test_helpers::scoped_config<bool> only_interactive(
 	    "secure_audit_streams.connections_only_interactive",
 	    true);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1786,6 +1822,7 @@ TEST(secure_audit_test, connections_cmdline_maxlen_20)
 	test_helpers::scoped_config<int> enable_connections_cmdline_maxlen(
 	    "secure_audit_streams.connections_cmdline_maxlen",
 	    20);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -1821,6 +1858,7 @@ TEST(secure_audit_test, connections_cmdline_maxlen_150)
 	test_helpers::scoped_config<int> enable_connections_cmdline_maxlen(
 	    "secure_audit_streams.connections_cmdline_maxlen",
 	    150);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -2007,6 +2045,7 @@ TEST(secure_audit_test, k8s_audit_base)
 	// Enable k8s_audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_k8s("secure_audit_streams.k8s_audit", true);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	// Create configuration with exec filter
@@ -2085,7 +2124,7 @@ TEST(secure_audit_test, k8s_audit_base)
 	evt.set_type(draiosproto::ADDED);
 	evt.mutable_object()->mutable_uid()->set_kind("k8s_namespace");
 	evt.mutable_object()->mutable_uid()->set_id("namespaceUID");
-        evt.mutable_object()->set_namespace_("sysdigcloud");
+	evt.mutable_object()->set_namespace_("sysdigcloud");
 
 	(*evt.mutable_object()->mutable_tags())["kubernetes.namespace.name"] =
 	    "sysdigcloud";  // as in json_exec_{1,2}
@@ -2250,6 +2289,7 @@ void k8s_audit_disabled(bool a, bool b)
 	// Disable k8s_audit
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", a);
 	test_helpers::scoped_config<bool> enable_k8s("secure_audit_streams.k8s_audit", b);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -2293,6 +2333,7 @@ secure_audit_streams:
 )EOF";
 
 	test_helpers::scoped_configuration deployed_config(config);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -2335,6 +2376,7 @@ secure_audit_streams:
 )EOF";
 
 	test_helpers::scoped_configuration deployed_config(config);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -2350,7 +2392,7 @@ secure_audit_streams:
 	audit.flush(ts);
 	ASSERT_EQ(data_ready_handler.get_secure_audits_once(), nullptr);
 
-	audit.init(nullptr, nullptr);
+	audit.init(nullptr, nullptr, nullptr, nullptr);
 
 	// Flush with no data -> no protobuf emitted
 	audit.flush(ts);
@@ -2389,6 +2431,7 @@ secure_audit_streams:
 )EOF";
 
 	test_helpers::scoped_configuration deployed_config(config);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -2433,6 +2476,7 @@ TEST(secure_audit_test, connections_limit_metrics)
 	    "secure_audit_streams.connections_only_interactive",
 	    false);
 	test_helpers::scoped_config<int> max_connections("secure_audit_streams.connections_limit", 2);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
@@ -2465,6 +2509,7 @@ TEST(secure_audit_test, file_accesses_limit_metrics)
 	test_helpers::scoped_config<int> enable_file_accesses_limit(
 	    "secure_audit_streams.file_accesses_limit",
 	    2);
+	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	feature_manager::instance().initialize();
 
 	secure_audit audit;
