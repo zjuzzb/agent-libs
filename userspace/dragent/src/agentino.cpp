@@ -516,6 +516,12 @@ int agentino_app::sdagent_main()
 			metrics->set_customer_id(m_configuration.m_customer_id);
 			metrics->mutable_hostinfo()->set_hostname(m_hostname);
 
+			// Report this single instance of the agentino
+			internal_metrics::write_metric(metrics->mutable_protos()->mutable_statsd(),
+			                               "serverlessdragent.workload_agent.count",
+			                               draiosproto::STATSD_GAUGE,
+			                               1);
+
 			m_serializer_queue.put(
 			    std::make_shared<flush_data_message>(time(nullptr) * ONE_SECOND_IN_NS,
 			                                         nullptr,

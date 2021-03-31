@@ -17,7 +17,6 @@
 #include <atomic>
 #include <memory>
 #include "metric_serializer.h"
-#include "async_aggregator.h"
 #include "dragent_message_queues.h"
 #include "protobuf_compression.h"
 #include "watchdog_runnable_pool.h"
@@ -92,8 +91,7 @@ private:
 
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
-	/// Queue for input to the aggregator
-	flush_queue m_aggregator_queue;
+
 	/// Queue for input to the serializer
 	flush_queue m_serializer_queue;
 	/// Queue consumed by connection_manager for transmission to backend
