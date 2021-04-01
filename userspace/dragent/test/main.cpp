@@ -50,20 +50,17 @@ private:
 		AutoPtr<Channel> avoid_block(new avoid_block_channel(file_channel, "machine_test"));
 		AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, avoid_block));
 
-		Logger *loggerc = nullptr;
-		if(m_log_to_console)
-		{
-			AutoPtr<Channel> console_channel(new ConsoleChannel());
-			AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
-			loggerc = &Logger::create("DraiosLogC", formatting_channel_console, Message::Priority::PRIO_DEBUG);
-		}
+		AutoPtr<Channel> console_channel(new ConsoleChannel());
+		AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
+		Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_DEBUG);
 
 		Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, Message::Priority::PRIO_DEBUG);
 		std::vector<std::string> dummy_config;
+
 		g_log = std::unique_ptr<common_logger>(new common_logger(&loggerf,
 									 Message::Priority::PRIO_DEBUG,
 									 dummy_config,
-									 loggerc,
+									 &loggerc,
 									 Message::Priority::PRIO_DEBUG));
 		common_logger_cache::log_and_purge();
 	}
