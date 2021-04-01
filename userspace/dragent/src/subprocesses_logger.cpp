@@ -13,18 +13,17 @@ using namespace std;
 #define F_SETPIPE_SZ 1031
 #endif
 
-std::atomic<Poco::Message::Priority> cointerface_parser::m_file_priority
+std::atomic<Poco::Message::Priority> k8s_parser::m_file_priority
 					{ static_cast<Poco::Message::Priority>(-1) };
 std::atomic<Poco::Message::Priority> sdjagent_parser::m_file_priority
 					{ static_cast<Poco::Message::Priority>(-1) };
 std::atomic<Poco::Message::Priority> sdchecks_parser::m_file_priority
 					{ static_cast<Poco::Message::Priority>(-1) };
-
-std::atomic<Poco::Message::Priority> cointerface_parser::m_console_priority
-					{ static_cast<Poco::Message::Priority>(-1) };
 std::atomic<Poco::Message::Priority> sdjagent_parser::m_console_priority
 					{ static_cast<Poco::Message::Priority>(-1) };
 std::atomic<Poco::Message::Priority> sdchecks_parser::m_console_priority
+					{ static_cast<Poco::Message::Priority>(-1) };
+std::atomic<Poco::Message::Priority> k8s_parser::m_console_priority
 					{ static_cast<Poco::Message::Priority>(-1) };
 
 pipe_manager::pipe_manager()
@@ -250,7 +249,12 @@ void sdjagent_parser::operator()(const string& data)
 	}
 }
 
-void cointerface_parser::init_priority(const log_destination log_dest)
+k8s_parser::k8s_parser(const std::string& process_name) :
+	m_process_name(process_name)
+{
+}
+
+void k8s_parser::init_priority(const log_destination log_dest)
 {
 	// Map Poco log levels to seelog levels that cointerface uses
 	// Ref: https://github.com/cihub/seelog/blob/master/common_loglevel.go
@@ -331,7 +335,7 @@ void cointerface_parser::init_priority(const log_destination log_dest)
 	}
 }
 
-void cointerface_parser::operator()(const string& data)
+void k8s_parser::operator()(const string& data)
 {
 	if(m_file_priority == static_cast<Poco::Message::Priority>(-1))
 	{
@@ -352,7 +356,7 @@ void cointerface_parser::operator()(const string& data)
 	{
 		unsigned pid = cointerface_log["pid"].asUInt();
 		string log_level = cointerface_log["level"].asString();
-		string log_message = "cointerface[" + to_string(pid) + "]: " + cointerface_log["message"].asString();
+		string log_message = m_process_name + "[" + to_string(pid) + "]: " + cointerface_log["message"].asString();
 		Poco::Message::Priority prio = m_file_priority;
 		if(log_level == "trace")
 		{

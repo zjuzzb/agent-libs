@@ -7,6 +7,8 @@ extern type_config<int64_t> c_default_cpu_shares;
 extern type_config<int64_t> c_default_cpu_quota;
 extern type_config<int64_t> c_cointerface_cpu_shares;
 extern type_config<int64_t> c_cointerface_cpu_quota;
+extern type_config<int64_t> c_coldstart_manager_cpu_quota;
+extern type_config<int64_t> c_coldstart_manager_cpu_shares;
 extern type_config<int64_t> c_cgroup_cleanup_timeout_ms;
 
 namespace process_helpers

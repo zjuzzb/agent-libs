@@ -151,6 +151,7 @@ private:
 	std::unique_ptr<errpipe_manager> m_mounted_fs_reader_pipe;
 	std::unique_ptr<errpipe_manager> m_statsite_forwarder_pipe;
 	std::unique_ptr<pipe_manager> m_cointerface_pipes;
+	std::unique_ptr<pipe_manager> m_coldstart_manager_pipes;
 	std::unique_ptr<pipe_manager> m_promex_pipes;
 	std::unique_ptr<pipe_manager> m_promscrape_pipes;
 

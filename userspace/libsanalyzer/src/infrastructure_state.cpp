@@ -119,6 +119,70 @@ type_config<bool> infrastructure_state::c_thin_cointerface_enabled(
 		"Enable the Thin Cointerface feature (i.e. retryWatchers)",
 		"thin_cointerface_enabled"
 		);
+type_config<uint32_t>::ptr infrastructure_state::c_k8s_max_wait_for_lock_sec =
+	type_config_builder<uint32_t>(
+		0,
+		"Maximum period cointerface will wait for acquiring a lock. After that "
+		"period, it will keep on with the cold start. 0 means wait forever",
+		"k8s_coldstart",
+		"max_wait_for_lock_sec"
+		).build();
+type_config<uint16_t>::ptr infrastructure_state::c_k8s_max_parallel_cold_starts =
+	type_config_builder<uint16_t>(
+		10,
+		"Maximum number of agents that can perform a cold start at the same time. "
+		"0 means all the agents can. This value disables the distributed lock mechanism",
+		"k8s_coldstart",
+		"max_parallel_cold_start"
+		).build();
+type_config<uint32_t>::ptr infrastructure_state::c_k8s_max_cold_start_duration =
+	type_config_builder<uint32_t>(
+		60,
+		"Release acquired cold start lock after this period",
+		"k8s_coldstart",
+		"max_cold_start_duration"
+		).build();
+type_config<uint32_t>::ptr infrastructure_state::c_k8s_leader_election_lease_duration =
+	type_config_builder<uint32_t>(
+		60,
+		"leader election algorithm lease duration",
+		"k8s_coldstart",
+		"lease_duration"
+		).min(1).build();
+type_config<uint32_t>::ptr infrastructure_state::c_k8s_leader_election_renew_deadline =
+	type_config_builder<uint32_t>(
+		30,
+		"leader election algorithm renew deadline",
+		"k8s_coldstart",
+		"renew_deadline"
+		).min(1).build();
+type_config<uint32_t>::ptr infrastructure_state::c_k8s_leader_election_retry_period =
+	type_config_builder<uint32_t>(
+		15,
+		"leader election algorithm retry period",
+		"k8s_coldstart",
+		"retry_period"
+		).min(1).build();
+type_config<std::string>::ptr infrastructure_state::c_k8s_leader_election_namespace =
+	type_config_builder<std::string>(
+		"sysdig-agent",
+		"namespace where leases objects will be created",
+		"k8s_coldstart",
+		"namespace"
+		).build();
+type_config<bool>::ptr infrastructure_state::c_k8s_enforce_leader_election =
+	type_config_builder<bool>(
+		false,
+		"do not start cointerface if the leader election is not used",
+		"k8s_coldstart",
+		"enforce_leader_election"
+		).hidden().build();
+type_config<uint32_t>::ptr infrastructure_state::c_k8s_delegated_nodes =
+	type_config_builder<uint32_t>(
+		2,
+		"Number of delegated nodes",
+		"k8s_delegated_nodes"
+		).build();
 type_config<uint64_t> infrastructure_state::c_congroup_ttl_s(60,
 							     "Congroup TTL [sec]",
 							     "congroup_ttl_s");
@@ -522,6 +586,18 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 		    {
 			    cmd.add_pod_prefix_for_cidr_retrieval(prefix);
 		    }
+
+		    cmd.set_max_wait_for_lock(c_k8s_max_wait_for_lock_sec->get_value());
+
+		    cmd.set_cold_start_num(c_k8s_max_parallel_cold_starts->get_value() ? c_k8s_max_parallel_cold_starts->get_value() : 0);
+		    cmd.set_max_cold_start_duration(c_k8s_max_cold_start_duration->get_value());
+		    cmd.set_delegated_num(c_k8s_delegated_nodes->get_value());
+		    cmd.set_enforce_leader_election(c_k8s_enforce_leader_election->get_value());
+		    sdc_internal::leader_election_conf leader_election;
+		    cmd.mutable_leader_election()->set_lease_duration(c_k8s_leader_election_lease_duration->get_value());
+		    cmd.mutable_leader_election()->set_renew_deadline(c_k8s_leader_election_renew_deadline->get_value());
+		    cmd.mutable_leader_election()->set_retry_period(c_k8s_leader_election_retry_period->get_value());
+		    cmd.mutable_leader_election()->set_namespace_(c_k8s_leader_election_namespace->get_value());
 
 		    m_k8s_subscribed = true;
 		    m_k8s_connected = true;

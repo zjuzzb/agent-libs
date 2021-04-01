@@ -1,0 +1,7 @@
+FROM golang:latest
+
+COPY lease_pool_manager /
+
+WORKDIR /
+
+ENTRYPOINT ["./lease_pool_manager"]

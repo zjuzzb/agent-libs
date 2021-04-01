@@ -38,6 +38,22 @@ type_config<int64_t> c_cointerface_cpu_quota(
 	"cpu_quota"
 );
 
+type_config<int64_t> c_coldstart_manager_cpu_shares(
+	-1,
+	"CPU shares for the coldstart_manager cgroup (-1 to disable)",
+	"subprocess_resource_limits",
+	"coldstart",
+	"cpu_shares"
+);
+
+type_config<int64_t> c_coldstart_manager_cpu_quota(
+	-1,
+	"CPU quota for the coldstart_manager cgroup (-1 to disable, 100 = 1 full core)",
+	"subprocess_resource_limits",
+	"coldstart",
+	"cpu_quota"
+);
+
 type_config<int64_t> c_cgroup_cleanup_timeout_ms(
 	10000,
 	"Timeout for cleaning up subprocess cgroups (in ms)",

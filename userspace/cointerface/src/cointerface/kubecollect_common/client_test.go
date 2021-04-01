@@ -1,6 +1,10 @@
 package kubecollect_common
 
 import (
+	"context"
+	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
+	"github.com/gogo/protobuf/proto"
 	"testing"
 	"time"
 )
@@ -210,3 +214,63 @@ func TestGetBackoffValue_random(t *testing.T) {
 	}
 }
 
+func TestColdStartClient(t *testing.T) {
+	cmd :=                  &sdc_internal.OrchestratorEventsStreamCommand{
+		Url:                      proto.String("http://localhost:8081"),
+		CaCert:                    proto.String(""),
+		ClientCert:                proto.String(""),
+		ClientKey:                 proto.String(""),
+		QueueLen:                  proto.Uint32(0),
+		StartupGc:                 proto.Int32(0),
+		StartupInfWaitTimeS:       proto.Uint32(0),
+		StartupTickIntervalMs:     proto.Uint32(0),
+		StartupLowTicksNeeded:     proto.Uint32(0),
+		StartupLowEvtThreshold:    proto.Uint32(0),
+		FilterEmpty:               proto.Bool(false),
+		SslVerifyCertificate:      proto.Bool(false),
+		AuthToken:                 proto.String(""),
+		AnnotationFilter:          make([]string, 0),
+		IncludeTypes:              make([]string, 0),
+		EventCountsLogTime:        proto.Uint32(0),
+		BatchMsgsQueueLen:         proto.Uint32(0),
+		BatchMsgsTickIntervalMs:   proto.Uint32(0),
+		MaxRndConnDelay:           proto.Uint32(0),
+		PodStatusAllowlist:        make([]string, 0),
+		ThinCointerface:           proto.Bool(false),
+		PodPrefixForCidrRetrieval: make([]string, 0),
+		TerminatedPodsEnabled:     proto.Bool(false),
+		ColdStartNum:              proto.Uint32(4),
+		MaxWaitForLock:            proto.Uint32(0),
+		MaxColdStartDuration:      proto.Uint32(0),
+		EnforceLeaderElection:     proto.Bool(false),
+	}
+
+	ctx, _ := context.WithCancel(context.Background())
+	client, _, err := createLeasePoolClient(context.Background(),"/tmp/goodDayTest.sock", "goodDayTest", *cmd.ColdStartNum, cmd)
+
+	if err != nil {
+		t.Logf("Failed Creating cold start client: %s", err.Error())
+		return
+	}
+
+	wait, err := (*client).WaitLease(ctx, &sdc_internal.LeasePoolNull{})
+
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	res , err := wait.Recv()
+	 if err != nil {
+		 t.Logf(err.Error())
+		 log.Flush()
+		 return
+	 }
+
+	 if *res.Successful {
+	 	t.Log("Hooray!!!")
+	 	log.Flush()
+	 } else {
+	 	t.Log("Could not get the lock :-(")
+	 }
+}

@@ -71,7 +71,16 @@ sdc_internal::orchestrator_events_stream_command stream_request()
 	req.set_max_rnd_conn_delay(0);
 	req.set_thin_cointerface(false);
 	req.set_terminated_pods_enabled(false);
-
+	req.set_cold_start_num(0);
+	req.set_max_wait_for_lock(0);
+	req.set_max_cold_start_duration(0);
+	req.set_delegated_num(0);
+	req.set_enforce_leader_election(false);
+	req.mutable_leader_election()->set_lease_duration(0);
+	req.mutable_leader_election()->set_renew_deadline(0);
+	req.mutable_leader_election()->set_retry_period(0);
+	req.mutable_leader_election()->set_namespace_("");
+	
 	return req;
 }
 

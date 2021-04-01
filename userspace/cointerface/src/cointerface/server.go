@@ -247,7 +247,28 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	// `network_topology.pod_prefix_for_cidr_retrieval'
 	kubecollect_common.SetPodPrefixForCidrRetrieval(cmd.PodPrefixForCidrRetrieval)
 
-	evtArrayChan, fetchDone, err := kubecollect_common.WatchCluster(ctx, cmd, pkg)
+	fetchDone := make(chan struct{})
+	rpcDone := make(chan struct{})
+
+	// Reset the GC settings after the initial fetch
+	// completes or the RPC exits
+	go func() {
+		select {
+		case _, more := <-fetchDone:
+			if more == false {
+				log.Debugf("fetchDone channel has been closed")
+			} else {
+				log.Info("Orch events initial fetch complete")
+				informersStarted = true
+			}
+		case <-rpcDone:
+			log.Debug("Orch events RPC exiting")
+		}
+
+		cleanupGC(origGC, initGC)
+	}()
+
+	evtArrayChan, err := kubecollect_common.WatchCluster(ctx, cmd, pkg, fetchDone)
 	if err != nil {
 		log.Errorf("[PerformOrchestratorEventsStream] Error: failure to start informers. Cleaning up")
 
@@ -257,21 +278,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		return err
 	}
 
-	rpcDone := make(chan struct{})
 
-	// Reset the GC settings after the initial fetch
-	// completes or the RPC exits
-	go func() {
-		select {
-		case <-fetchDone:
-			log.Info("Orch events initial fetch complete")
-			informersStarted = true
-		case <-rpcDone:
-			log.Debug("Orch events RPC exiting")
-		}
-
-		cleanupGC(origGC, initGC)
-	}()
 
 	defer func() {
 		log.Infof("[PerformOrchestratorEventsStream] Stream Closing")
@@ -285,7 +292,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		kubecollect_common.CloseKubeClient()
 
 		// drain all messages from every queue
-		// do event channel too, just in case 
+		// do event channel too, just in case
 		kubecollect_common.DrainChan(evtArrayChan)
 
 		// notify the GC function so it resets the GC back to normal

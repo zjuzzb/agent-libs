@@ -162,6 +162,14 @@ type_config<uint64_t>::ptr c_wait_before_ready_sec =
 		"k8s_wait_before_ready"
 		).build();
 
+type_config<bool>::ptr c_k8s_coldstart_manager_enabled =
+	type_config_builder<bool>(
+		true,
+		"Enable cointerface cold start with semaphore mechanism",
+		"k8s_coldstart",
+		"enabled"
+		).build();
+
 string compute_sha1_digest(SHA1Engine& engine, const string& path)
 {
 	engine.reset();
@@ -620,6 +628,12 @@ int dragent_app::main(const std::vector<std::string>& args)
 	    c_cointerface_cpu_quota.get_value());
 	cointerface_cpu_cgroup.create();
 
+	process_helpers::subprocess_cpu_cgroup coldstart_manager_cpu_cgroup(
+	    "/lease_pool_manager",
+	    c_coldstart_manager_cpu_shares.get_value(),
+	    c_coldstart_manager_cpu_quota.get_value());
+	coldstart_manager_cpu_cgroup.create();
+
 	// Sanity check some prometheus and promscrape configs. May change some configs.
 	// Making sure to do it before sdagent_main() which prints the configuration
 	m_configuration.m_prom_conf.validate_config(m_configuration.c_root_dir.get_value());
@@ -866,10 +880,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 		auto* state = &m_subprocesses_state["cointerface"];
 		state->set_name("cointerface");
 		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_err_fd(),
-		                                cointerface_parser(),
+		                                k8s_parser("cointerface"),
 		                                state);
 		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_out_fd(),
-		                                cointerface_parser(),
+		                                k8s_parser("cointerface"),
 		                                state);
 		monitor_process.emplace_process("cointerface", [=]() {
 			cointerface_cpu_cgroup.enter();
@@ -899,6 +913,30 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 			return (EXIT_FAILURE);
 		});
+
+		// should this go in feature_manager?
+		if (c_k8s_coldstart_manager_enabled->get_value() == true)
+		{
+			m_coldstart_manager_pipes = make_unique<pipe_manager>();
+			auto* state = &m_subprocesses_state["lease_pool_manager"];
+			state->set_name("lease_pool_manager");
+			m_subprocesses_logger.add_logfd(m_coldstart_manager_pipes->get_err_fd(),
+							k8s_parser("lease_pool_manager"),
+							state);
+			m_subprocesses_logger.add_logfd(m_coldstart_manager_pipes->get_out_fd(),
+							k8s_parser("lease_pool_manager"),
+							state);
+			monitor_process.emplace_process("lease_pool_manager", [=]()
+									     {
+										     coldstart_manager_cpu_cgroup.enter();
+										     m_coldstart_manager_pipes->attach_child_stdio();
+
+										     execl((m_configuration.c_root_dir.get_value() + "/bin/lease_pool_manager").c_str(),
+											   "lease_pool_manager",
+											  (char*)NULL);
+										     return (EXIT_FAILURE);
+									     });
+		}
 	}
 #ifndef CYGWING_AGENT
 	if (m_configuration.m_promex_enabled && m_configuration.m_promex_connect_url.empty())
@@ -1017,6 +1055,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		this->m_statsite_pipes.reset();
 		m_statsite_forwarder_pipe.reset();
 		this->m_cointerface_pipes.reset();
+		this->m_coldstart_manager_pipes.reset();
 #ifndef CYGWING_AGENT
 		for (const auto& queue : {"/sdc_app_checks_in",
 		                          "/sdc_app_checks_out",
@@ -1032,6 +1071,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		coclient::cleanup();
 		default_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get_value());
 		cointerface_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get_value());
+		coldstart_manager_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get_value());
 #endif
 	});
 

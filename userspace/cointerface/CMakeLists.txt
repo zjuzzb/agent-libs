@@ -180,6 +180,28 @@ gobuild(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/promex/server/server.go
 )
 
+gobuild(
+    lease_pool_manager
+    ${draiosproto_deps}
+    ${sdc_internal_deps}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lease_pool_manager/leader_lib/lease_pool_manager.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lease_pool_manager/leader_lib/lease.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lease_pool_manager/main.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lease_pool_manager/server/server.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lease_pool_manager/go.mod
+)
+
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cs_client_test
+    COMMAND ${GOENV} GOPROXY=direct go build -o ${CMAKE_CURRENT_BINARY_DIR}/cs_client_test
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/lease_pool_manager/test
+    DEPENDS ${draiosproto_deps} ${sdc_internal_deps} ${CMAKE_CURRENT_SOURCE_DIR}/src/lease_pool_manager/go.mod ${CMAKE_CURRENT_SOURCE_DIR}/src/lease_pool_manager/test/test_client.go
+)
+
+add_custom_target(cs_test_client ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cs_client_test
+)
+
 # Note that we don't package the client. That's only for testing purposes.
 install(
     DIRECTORY
@@ -188,7 +210,7 @@ install(
 )
 
 install(
-    PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cointerface ${CMAKE_CURRENT_BINARY_DIR}/promex
+    PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cointerface ${CMAKE_CURRENT_BINARY_DIR}/promex ${CMAKE_CURRENT_BINARY_DIR}/lease_pool_manager
     DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
     COMPONENT agent-slim
 )
@@ -222,3 +244,11 @@ install(
     DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
     COMPONENT tests
 )
+
+install(
+    PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cs_client_test
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+    COMPONENT tests
+)
+
+

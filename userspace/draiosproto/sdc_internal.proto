@@ -70,6 +70,7 @@ message pong {
     required int32 pid = 2;
     required uint64 memory_used = 3;
     optional bool ready = 4;
+    optional bool is_delegated = 5;
 }
 
 message docker_command {
@@ -105,6 +106,13 @@ message swarm_state_result {
     optional draiosproto.swarm_state state = 3;
 }
 
+message leader_election_conf {
+	optional uint32 lease_duration = 1;
+	optional uint32 renew_deadline = 2;
+	optional uint32 retry_period = 3;
+	optional string namespace = 4;
+}
+
 message orchestrator_events_stream_command {
     required string url = 1;
     required string ca_cert = 2;
@@ -129,6 +137,12 @@ message orchestrator_events_stream_command {
     required bool thin_cointerface = 25;
     repeated string pod_prefix_for_cidr_retrieval = 26;
     required bool terminated_pods_enabled = 27;
+    required uint32 cold_start_num = 28;
+    required uint32 max_wait_for_lock = 29;
+    required uint32 max_cold_start_duration = 30;
+    required bool enforce_leader_election = 31;
+    required int32 delegated_num = 32;
+    required leader_election_conf leader_election = 33;
 }
 
 message orchestrator_attach_user_events_stream_command {
@@ -281,4 +295,32 @@ message k8s_audit_server_stop_result {
 service K8sAudit {
     rpc Start(k8s_audit_server_start) returns (stream k8s_audit_event) {}
     rpc Stop(k8s_audit_server_stop) returns (k8s_audit_server_stop_result) {}
+}
+
+message lease_pool_init {
+	required string id = 1; // A unique identifier for the node (i.e. hostname)
+	required string lease_name = 2;
+	required uint32 lease_num = 3;
+	required orchestrator_events_stream_command cmd = 4;
+}
+
+message lease_pool_wait_result {
+	required bool successful = 1;
+	optional string reason = 2;
+}
+
+message lease_pool_null {
+}
+
+// represent the list of nodes holding a lease
+message lease_nodes {
+	repeated string node = 1;
+}
+
+
+service LeasePoolManager {
+	rpc Init(lease_pool_init) returns (lease_pool_null) {}
+	rpc WaitLease(lease_pool_null) returns (stream lease_pool_wait_result) {}
+	rpc Release(lease_pool_null) returns (lease_pool_null) {}
+	rpc GetNodesWithLease(lease_pool_null) returns (stream lease_nodes) {}
 }

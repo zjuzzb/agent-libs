@@ -12,13 +12,13 @@ require (
 	github.com/docker/docker v1.14.0-0.20190319215453-e7b5f7dbe98c
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/draios/install_prefix v0.0.0-00010101000000-000000000000
-	protorepo/agent-be/proto v0.0.0-00010101000000-000000000000
 	github.com/draios/protorepo/sdc_internal v0.0.0-00010101000000-000000000000
 	github.com/draios/test_helpers v0.0.0
 	github.com/go-ole/go-ole v1.2.2 // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.2
 	github.com/google/go-cmp v0.3.1 // indirect
+	github.com/google/uuid v1.1.1
 	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/gorilla/mux v1.7.3 // indirect
 	github.com/imdario/mergo v0.3.6 // indirect
@@ -35,6 +35,7 @@ require (
 	k8s.io/apimachinery v0.0.0-20190913080033-27d36303b655
 	k8s.io/client-go v0.0.0-20191003000419-f68efa97b39e
 	k8s.io/cri-api v0.0.0-20191107035106-03d130a7dc28
+	protorepo/agent-be/proto v0.0.0-00010101000000-000000000000
 )
 
 replace github.com/docker/docker v1.14.0-0.20190319215453-e7b5f7dbe98c => github.com/docker/docker v0.7.3-0.20190319215453-e7b5f7dbe98c

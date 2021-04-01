@@ -427,10 +427,10 @@ int agentone_app::main(const std::vector<std::string>& args)
 		auto* state = &m_subprocesses_state["cointerface"];
 		state->set_name("cointerface");
 		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_err_fd(),
-		                                cointerface_parser(),
+		                                k8s_parser("cointerface"),
 		                                state);
 		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_out_fd(),
-		                                cointerface_parser(),
+		                                k8s_parser("cointerface"),
 		                                state);
 		monitor_process.emplace_process("cointerface", [=]() {
 			cointerface_cpu_cgroup.enter();

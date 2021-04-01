@@ -97,15 +97,17 @@ private:
 	Json::Reader m_json_reader;
 };
 
-class cointerface_parser
+class k8s_parser
 {
 public:
+	k8s_parser(const std::string& process_name);
 	void operator()(const std::string&);
 	void init_priority(const log_destination log_dest);
 private:
 	static std::atomic<Poco::Message::Priority> m_file_priority;
 	static std::atomic<Poco::Message::Priority> m_console_priority;
 	Json::Reader m_json_reader;
+	std::string m_process_name;
 };
 
 class sinsp_logger_parser

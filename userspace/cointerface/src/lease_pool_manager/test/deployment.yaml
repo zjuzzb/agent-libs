@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coldstart-deployment
+  labels:
+    app: coldstart-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coldstart-deployment
+  template:
+    metadata:
+      labels:
+        app: coldstart-deployment
+    spec:
+      serviceAccount: sysdig-agent
+      containers:
+      - name: cs-client
+        image: fremmi/cs_client_test
+        args: ["-num-leases", "1"]
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+      - name: cs-server
+        image: fremmi/lease_pool_manager
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+
+
+
+

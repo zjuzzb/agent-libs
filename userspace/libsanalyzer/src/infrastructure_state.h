@@ -472,6 +472,15 @@ public: // configs
 	static type_config<uint64_t> c_k8s_refresh_interval;
 	static type_config<uint32_t>::ptr c_k8s_max_rnd_conn_delay;
 	static type_config<bool> c_thin_cointerface_enabled;
+	static type_config<uint32_t>::ptr c_k8s_max_wait_for_lock_sec;
+	static type_config<uint16_t>::ptr c_k8s_max_parallel_cold_starts;
+	static type_config<uint32_t>::ptr c_k8s_max_cold_start_duration;
+	static type_config<uint32_t>::ptr c_k8s_leader_election_lease_duration;
+	static type_config<uint32_t>::ptr c_k8s_leader_election_renew_deadline;
+	static type_config<uint32_t>::ptr c_k8s_leader_election_retry_period;
+	static type_config<std::string>::ptr c_k8s_leader_election_namespace;
+	static type_config<bool>::ptr c_k8s_enforce_leader_election;
+	static type_config<uint32_t>::ptr c_k8s_delegated_nodes;
 	static type_config<uint64_t> c_congroup_ttl_s;
 	static type_config<std::vector<std::string>> c_pod_prefix_for_cidr_retrieval;
 	static type_config<std::vector<std::string>>::ptr c_k8s_allow_list_kinds;

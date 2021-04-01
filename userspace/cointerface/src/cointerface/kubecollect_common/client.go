@@ -1,10 +1,16 @@
 package kubecollect_common
 
 import (
+	"fmt"
+	"github.com/draios/install_prefix"
+	"github.com/google/uuid"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 	"io/ioutil"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	tw "k8s.io/client-go/tools/watch"
 	"math/rand"
+	"os"
 	"reflect"
 	"regexp"
 	"sort"
@@ -21,7 +27,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	discovery "k8s.io/client-go/discovery"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -41,6 +46,8 @@ const (
 	EVENT_UPDATE_AND_SEND = iota
 	EVENT_DELETE = iota
 )
+// client side of LeasePoolManager service.
+var delegationClient *sdc_internal.LeasePoolManagerClient
 
 // stores which informers have been allocated, so at least we don't segfault
 // does not imply we've successfully registered with the API server
@@ -60,6 +67,11 @@ var eventMapUpds map[string]int
 var emUpdsMutex sync.RWMutex
 var eventMapDel map[string]int
 var emDelMutex sync.RWMutex
+
+var COLDSTART_LEASENAME = "cold-start"
+var DELEGATION_LEASENAME = "delegation"
+var COLDSTART_SOCK = "/run/coldstart.sock"
+var DELEGATION_SOCK = "/run/delegation.sock"
 
 const (
 	ChannelTypeInformer = iota
@@ -322,12 +334,141 @@ func CloseKubeClient() {
 	setKubeClient(nil, nil)
 }
 
+func createLeasePoolClient(parentCtx context.Context, sock string, leaseName string, leaseNum uint32, cmd *sdc_internal.OrchestratorEventsStreamCommand) (*sdc_internal.LeasePoolManagerClient, *grpc.ClientConn, error) {
+	var opts []grpc.DialOption
+	opts = append(opts, grpc.EmptyDialOption{})
+
+	conn, err := grpc.Dial(sock, grpc.WithInsecure())
+
+	if err != nil {
+		log.Error("Error starting the client: %s", err.Error())
+		return nil, nil, err
+	}
+
+	client := sdc_internal.NewLeasePoolManagerClient(conn)
+
+	ctx, _ := context.WithCancel(parentCtx)
+
+	hostName, err := os.Hostname()
+	var coldStartClientId string
+
+	if err != nil {
+		coldStartClientId = uuid.New().String()
+	} else {
+		coldStartClientId = hostName
+	}
+	_, err = client.Init(ctx, &sdc_internal.LeasePoolInit{
+		Id:                   &coldStartClientId,
+		LeaseName:            &leaseName,
+		LeaseNum:             &leaseNum,
+		Cmd:                  cmd,
+	})
+
+	if err != nil {
+		log.Errorf("Could not create cold start client: %s", err.Error())
+		return nil, nil, err
+	}
+
+	return &client, conn, nil
+}
+
+func waitLease(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand) {
+	var coldStartClient *sdc_internal.LeasePoolManagerClient
+	var conn *grpc.ClientConn
+	if *opts.ColdStartNum == 0 {
+		log.Debugf("Cold Start lock disabled")
+		return
+	}
+
+	prefix, err := install_prefix.GetInstallPrefix()
+	if err != nil {
+		log.Warnf("Could not get installation directory. Skipping wait lease")
+		return
+	}
+
+	coldStartClient, conn, err = createLeasePoolClient(ctx, fmt.Sprintf("unix:%s/%s", prefix, COLDSTART_SOCK), COLDSTART_LEASENAME, *opts.ColdStartNum, opts)
+
+	if coldStartClient == nil || err != nil {
+		log.Warn("Could not create a cold start client. Skipping")
+		return
+	}
+
+	log.Debugf("Waiting to acquire the lock")
+	wait, err := (*coldStartClient).WaitLease(ctx, &sdc_internal.LeasePoolNull{})
+
+	if err != nil {
+		log.Errorf("Error while waiting for lease: %s", err.Error())
+		return
+	}
+
+	for {
+		res, err := wait.Recv()
+		if err != nil {
+			log.Error("Coldstart stream closed. Continuing without waiting the lease")
+			return
+		}
+
+		if *res.Successful == true {
+			log.Debugf("Got the lease. Keep on starting Informers")
+			break
+		} else if opts.GetEnforceLeaderElection() == false {
+			log.Warnf("Got an unsuccessful response: \"%s\". Continuing without waiting the lease", *res.Reason)
+			return
+		} else {
+			log.Warnf("Got an unsuccessful response: \"%s\". Hang on until receiving a successful response", *res.Reason)
+		}
+	}
+
+	go func() {
+		time.Sleep(time.Second * time.Duration(*opts.MaxColdStartDuration))
+		(*coldStartClient).Release(ctx, &sdc_internal.LeasePoolNull{})
+		conn.Close()
+	}()
+}
+
+func runDelegation (ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand) {
+	// Create a delegation client
+	var delegationClient *sdc_internal.LeasePoolManagerClient
+	var err error
+	if *opts.DelegatedNum < 0 {
+		// I am delegated
+		return
+	}
+
+	prefix, err := install_prefix.GetInstallPrefix()
+	if err != nil {
+		log.Warnf("Could not get installation directory. Skipping wait lease")
+		return
+	}
+
+	delegationClient, _, err = createLeasePoolClient(ctx, fmt.Sprintf("unix:%s/%s", prefix, DELEGATION_SOCK), DELEGATION_LEASENAME, uint32(*opts.DelegatedNum), opts)
+
+	if delegationClient == nil || err != nil{
+		// ??????
+		return
+	}
+
+	wait, err := (*delegationClient).WaitLease(ctx, &sdc_internal.LeasePoolNull{})
+
+	for {
+		res, err := wait.Recv()
+		if err != nil {
+			log.Error("delegation stream closed. Continuing without waiting the lease")
+			return
+		}
+
+		if *res.Successful == true {
+			log.Debugf("Got the lease. I am delegated!")
+		}
+	}
+}
+
 // The input context is passed to all goroutines created by this function.
 // The caller is responsible for draining messages from the returned channel
 // until the channel is closed, otherwise the component goroutines may block.
 // The empty struct chan notifies the caller that the initial event fetch
 // is complete by closing the chan.
-func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubecollectInterface KubecollectInterface) (<-chan sdc_internal.ArrayCongroupUpdateEvent, <-chan struct{}, error) {
+func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubecollectInterface KubecollectInterface, fetchDone chan <- struct{}) (<-chan sdc_internal.ArrayCongroupUpdateEvent, error) {
 	setErrorLogHandler()
 
 	// TODO: refactor error messages
@@ -352,7 +493,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 		if err != nil {
 			InformerChannelInUse = false
 			log.Errorf("Cannot create k8s client: %s", err)
-			return nil, nil, err
+			return nil, err
 		}
 	} else {
 		log.Infof("Connecting to k8s server using inCluster config")
@@ -361,7 +502,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 		if err != nil {
 			InformerChannelInUse = false
 			log.Errorf("Cannot create k8s client: %s", err)
-			return nil, nil, err
+			return nil, err
 		}
 	}
 	log.Infof("Testing communication with server")
@@ -369,7 +510,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	if err != nil {
 		InformerChannelInUse = false
 		log.Errorf("K8s server not responding: %s", err)
-		return nil, nil, err
+		return nil, err
 	}
 	log.Infof("Communication with server successful: %v", srvVersion)
 
@@ -378,7 +519,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	if err != nil {
 		log.Errorf("K8s resource discovery returned an error: %s", err)
 		InformerChannelInUse = false
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Set global kubeClient for use by events stream
@@ -434,13 +575,12 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 		InformerChannelInUse = false
 		// startWatchdog() may later hit an async error,
 		// so it's responsible for all error logging
-		return nil, nil, err
+		return nil, err
 	}
 
 	InformerChannel = make(chan draiosproto.CongroupUpdateEvent,
 			       opts.GetQueueLen())
 
-	fetchDone := make(chan struct{})
 	var wg sync.WaitGroup
 
 	// A var that will be accessed atomically in both
@@ -448,9 +588,15 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	// the length of the sdcEvtArray at any given time.
 	queueLength := uint32(0)
 
-	// Start informers in a separate routine so we can return the
-	// evt chan and let the below goroutine start reading/draining events
-	go kubecollectInterface.StartInformers(ctx, kubeClient, &wg, fetchDone, opts, resourceTypes, &queueLength)
+	leaseCtx, _ := context.WithCancel(ctx)
+	waitLease(leaseCtx, opts)
+
+	delegationCtx, _ := context.WithCancel(ctx)
+	go runDelegation(delegationCtx, opts)
+
+	kubecollectInterface.StartInformers(ctx, kubeClient, &wg, fetchDone, opts, resourceTypes, &queueLength)
+
+
 
 	// as soon as we start the go routine to start informers;
 	// we need to kick off the routine to start reading events
@@ -467,7 +613,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 		}()
 	}
 
-	return evtArrayChan, fetchDone, nil
+	return evtArrayChan, nil
 }
 
 func startWatchdog(parentCtx context.Context, cancel context.CancelFunc, kubeClient kubeclient.Interface) error {

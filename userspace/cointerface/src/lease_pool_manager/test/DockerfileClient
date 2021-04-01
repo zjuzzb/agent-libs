@@ -1,0 +1,7 @@
+FROM golang:latest
+
+COPY cs_client_test /
+
+WORKDIR /
+
+ENTRYPOINT ["./cs_client_test"]

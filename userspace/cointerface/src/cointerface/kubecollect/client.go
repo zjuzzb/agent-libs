@@ -24,9 +24,8 @@ func startInformers(
 
 	filterEmpty := opts.GetFilterEmpty()
 
+	interrupted := false
 	for _, resource := range resourceTypes {
-
-		interrupted := false
 		select {
 		case <-ctx.Done():
 			interrupted = true
@@ -139,7 +138,13 @@ func startInformers(
 		}
 	}
 
-	close(fetchDone)
+	if ! interrupted {
+		fetchDone <- struct{}{}
+	} else {
+		// Inititial fetch has been aborted.
+		// Notify it by closing the channel
+		close(fetchDone)
+	}
 
 	// In a separate goroutine, wait for the informers and
 	// close Informer channel once they're done to notify the caller
