@@ -36,6 +36,7 @@ sinsp* sinsp_event_source::get_sinsp()
 void sinsp_event_source::start()
 {
 	m_inspector.open("");
+	m_inspector.start_dropping_mode(1);
 }
 
 void sinsp_event_source::process_event(sinsp_evt* evt, libsinsp::event_return rc)
