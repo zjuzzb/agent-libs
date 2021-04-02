@@ -1,5 +1,5 @@
 #pragma once
-#include <exception>
+#include <stdexcept>
 
 #define THROW_CLI_ERROR(__fmt, ...)                                            \
 do {                                                                           \

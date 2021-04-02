@@ -11,4 +11,4 @@ list(APPEND command_line_libraries pthread)
 
 # Production library
 add_library(command-line STATIC ${COMMAND_LINE_SOURCES})
-target_link_libraries(command-line ${command_line_link_libraries})
+target_link_libraries(command-line userspace-shared)

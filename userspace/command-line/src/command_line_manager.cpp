@@ -88,6 +88,7 @@ std::pair<command_line_manager::content_type, std::string> command_line_manager:
 void command_line_manager::register_command(const std::string &command, 
 					    const command_info &info)
 {
+	LOG_INFO("Register command %s", command.c_str());
 	m_commands.insert(command, info);
 }
 
