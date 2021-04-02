@@ -1,4 +1,5 @@
 include_directories(${LIBSINSP_INCLUDE_DIRS})
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
@@ -13,6 +14,7 @@ add_library(
     fault_handler.cpp
     fault_handler_registry.cpp
     feature_manager.cpp
+    network_utils.cpp
     posix_queue.cpp
     string_utils.cpp
     thread_utils.cpp
