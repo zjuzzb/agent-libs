@@ -821,7 +821,6 @@ TEST_F(common_logger_test, component_overrides_none)
 	// a message in log file or console above the default level via g_log->log().
 	const std::string expected_message =
 		generateMessage(Poco::Message::Priority::PRIO_TRACE, DEFAULT_MESSAGE);
-	// 
 	g_log->log_check_component_priority(DEFAULT_MESSAGE,
 			 		    Poco::Message::Priority::PRIO_TRACE,
 			 		    Poco::Message::Priority::PRIO_TRACE,
@@ -899,3 +898,4 @@ TEST_F(common_logger_test, component_overrides_log_sink)
 	ASSERT_EQ(expected_message, m_file_out.str());
 	ASSERT_EQ("", m_console_out.str());
 }
+

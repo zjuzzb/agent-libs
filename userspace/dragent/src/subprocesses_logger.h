@@ -91,8 +91,10 @@ class sdjagent_parser
 public:
 	void operator()(const std::string&);
 	void init_file_priority();
+	void init_console_priority();
 private:
 	static std::atomic<Poco::Message::Priority> m_file_priority;
+	static std::atomic<Poco::Message::Priority> m_console_priority;
 	Json::Reader m_json_reader;
 };
 
@@ -101,8 +103,10 @@ class cointerface_parser
 public:
 	void operator()(const std::string&);
 	void init_file_priority();
+	void init_console_priority();
 private:
 	static std::atomic<Poco::Message::Priority> m_file_priority;
+	static std::atomic<Poco::Message::Priority> m_console_priority;
 	Json::Reader m_json_reader;
 };
 
@@ -132,9 +136,11 @@ public:
 	sdchecks_parser();
 	void operator()(const std::string&);
 	void init_file_priority();
+	void init_console_priority();
 private:
 	std::string m_last_pid_str;
 	static std::atomic<Poco::Message::Priority> m_file_priority;
+	static std::atomic<Poco::Message::Priority> m_console_priority;
 	Poco::Message::Priority m_last_sev;
 };
 

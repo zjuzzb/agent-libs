@@ -98,34 +98,8 @@ void common_logger::init_file_log_component_priorities(const std::vector<std::st
 }
 
 /**
- * The log_check_component_priority 3 parameter version is used by subprocesses_logger.cpp,
- * cointerface for sdjagent_parser, cointerface_parser, and sdchecks_parser.
- * They are written in Java, Python and Go, and need special handling.
- */
-void common_logger::log_check_component_priority(const std::string& str,
-						 const Poco::Message::Priority sev,
-						 const Poco::Message::Priority file_sev)
-{
-	Poco::Message m("common_logger", str, sev);
-
-	m.setTid(thread_utils::get_tid());
-
-	if (file_sev >= sev)
-	{
-		m_file_log->log(m);
-	}
-
-	if(m_console_log != NULL)
-	{
-		m_console_log->log(m);
-	}
-
-	m_observer->notify(sev);
-}
-
-/**
- * The log_check_component_priority 4 parameter version is used for C++ components.
- * This is where the decision is made to log or not to log the message to the destination output device
+ * log_check_component_priority is where the decision is made to log or not to log
+ * the message to the destination output device.
  */
 void common_logger::log_check_component_priority(const std::string& str,
 						 const Poco::Message::Priority sev,
@@ -499,7 +473,8 @@ void log_and_purge()
 	while (get_cache().get(&data, 1000 /*one second timeout*/))
 	{
 		auto file_component_priority = g_log->get_component_file_priority(*data.component_tag);
-		g_log->log_check_component_priority(data.message, data.sev, file_component_priority);
+		auto console_component_priority = g_log->get_component_console_priority(*data.component_tag);
+		g_log->log_check_component_priority(data.message, data.sev, file_component_priority, console_component_priority);
 	}
 }
 

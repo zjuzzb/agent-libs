@@ -19,6 +19,14 @@ std::atomic<Poco::Message::Priority> sdjagent_parser::m_file_priority
 					{ static_cast<Poco::Message::Priority>(-1) };
 std::atomic<Poco::Message::Priority> sdchecks_parser::m_file_priority
 					{ static_cast<Poco::Message::Priority>(-1) };
+
+std::atomic<Poco::Message::Priority> cointerface_parser::m_console_priority
+					{ static_cast<Poco::Message::Priority>(-1) };
+std::atomic<Poco::Message::Priority> sdjagent_parser::m_console_priority
+					{ static_cast<Poco::Message::Priority>(-1) };
+std::atomic<Poco::Message::Priority> sdchecks_parser::m_console_priority
+					{ static_cast<Poco::Message::Priority>(-1) };
+
 pipe_manager::pipe_manager()
 {
 	// Create pipes
@@ -154,11 +162,44 @@ void sdjagent_parser::init_file_priority()
 	}
 }
 
+void sdjagent_parser::init_console_priority()
+{
+	// Map Poco log levels to Java logging levels
+	// Note: this map should be kept in sync with the mapping done in
+	// getLogLevel() method in sdjagent's Config class
+	switch(g_log->get_component_console_priority("sdjagent"))
+	{
+	case Poco::Message::PRIO_FATAL:
+	case Poco::Message::PRIO_CRITICAL:
+	case Poco::Message::PRIO_ERROR:
+		m_console_priority = Poco::Message::PRIO_ERROR;
+		break;
+	case Poco::Message::PRIO_WARNING:
+	case Poco::Message::PRIO_NOTICE:
+		m_console_priority = Poco::Message::PRIO_WARNING;
+		break;
+	case Poco::Message::PRIO_INFORMATION:
+		m_console_priority = Poco::Message::PRIO_INFORMATION;
+		break;
+	case Poco::Message::PRIO_DEBUG:
+	case Poco::Message::PRIO_TRACE:
+		m_console_priority = Poco::Message::PRIO_DEBUG;
+		break;
+	default:
+		m_console_priority = Poco::Message::PRIO_INFORMATION;
+		break;
+	}
+}
+
 void sdjagent_parser::operator()(const string& data)
 {
 	if(m_file_priority == static_cast<Poco::Message::Priority>(-1))
 	{
 		init_file_priority();
+	}
+	if(m_console_priority == static_cast<Poco::Message::Priority>(-1))
+	{
+		init_console_priority();
 	}
 	// Parse log level and use it
 	Json::Value sdjagent_log;
@@ -185,7 +226,7 @@ void sdjagent_parser::operator()(const string& data)
 		{
 			prio = Poco::Message::PRIO_DEBUG;
 		}
-		g_log->log_check_component_priority(log_message, prio, m_file_priority);
+		g_log->log_check_component_priority(log_message, prio, m_file_priority, m_console_priority);
 	}
 	else
 	{
@@ -193,12 +234,12 @@ void sdjagent_parser::operator()(const string& data)
 		{
 			// Likely, the message is longer than the read buffer and got chopped off
 			g_log->log_check_component_priority("sdjagent, " + data,
-							Poco::Message::PRIO_DEBUG, m_file_priority);
+							Poco::Message::PRIO_DEBUG, m_file_priority, m_console_priority);
 		}
 		else
 		{
 			g_log->log_check_component_priority("sdjagent, " + data,
-							Poco::Message::PRIO_ERROR, m_file_priority);
+							Poco::Message::PRIO_ERROR, m_file_priority, m_console_priority);
 		}
 	}
 }
@@ -235,11 +276,47 @@ void cointerface_parser::init_file_priority()
 	}
 }
 
+void cointerface_parser::init_console_priority()
+{
+	// Map Poco log levels to seelog levels that cointerface uses
+	// Ref: https://github.com/cihub/seelog/blob/master/common_loglevel.go
+	switch(g_log->get_component_console_priority("cointerface"))
+	{
+	case Poco::Message::PRIO_FATAL:
+	case Poco::Message::PRIO_CRITICAL:
+		m_console_priority = Poco::Message::PRIO_CRITICAL;
+		break;
+	case Poco::Message::PRIO_ERROR:
+		m_console_priority = Poco::Message::PRIO_ERROR;
+		break;
+	case Poco::Message::PRIO_WARNING:
+	case Poco::Message::PRIO_NOTICE:
+		m_console_priority = Poco::Message::PRIO_WARNING;
+		break;
+	case Poco::Message::PRIO_INFORMATION:
+		m_console_priority = Poco::Message::PRIO_INFORMATION;
+		break;
+	case Poco::Message::PRIO_DEBUG:
+		m_console_priority = Poco::Message::PRIO_DEBUG;
+		break;
+	case Poco::Message::PRIO_TRACE:
+		m_console_priority = Poco::Message::PRIO_TRACE;
+		break;
+	default:
+		m_console_priority = Poco::Message::PRIO_INFORMATION;
+		break;
+	}
+}
+
 void cointerface_parser::operator()(const string& data)
 {
 	if(m_file_priority == static_cast<Poco::Message::Priority>(-1))
 	{
 		init_file_priority();
+	}
+	if(m_console_priority == static_cast<Poco::Message::Priority>(-1))
+	{
+		init_console_priority();
 	}
 	// Parse log level and use it
 	Json::Value cointerface_log;
@@ -278,13 +355,13 @@ void cointerface_parser::operator()(const string& data)
 			log_message = "Unparsable log level: " + data;
 			prio = Poco::Message::PRIO_CRITICAL;
 		}
-		g_log->log_check_component_priority(log_message, prio, m_file_priority);
+		g_log->log_check_component_priority(log_message, prio, m_file_priority, m_console_priority);
 	}
 	else
 	{
 		assert(false);
 		g_log->log_check_component_priority("Cointerface, unparsable log message: " + data,
-						Poco::Message::PRIO_CRITICAL, m_file_priority);
+						Poco::Message::PRIO_CRITICAL, m_file_priority, m_console_priority);
 	}
 }
 
@@ -321,6 +398,35 @@ void sdchecks_parser::init_file_priority()
 		m_file_priority = Poco::Message::PRIO_INFORMATION;
 		break;
 	}
+}      
+
+void sdchecks_parser::init_console_priority()
+{
+	// Map Poco log levels to Python logger levels
+	// Note: this map should be kept in sync with the mapping done in
+	// log_level() method in sdchecks.py
+	switch(g_log->get_component_file_priority("sdchecks"))
+	{
+	case Poco::Message::PRIO_FATAL:
+	case Poco::Message::PRIO_CRITICAL:
+	case Poco::Message::PRIO_ERROR:
+		m_console_priority = Poco::Message::PRIO_ERROR;
+		break;
+	case Poco::Message::PRIO_WARNING:
+	case Poco::Message::PRIO_NOTICE:
+		m_console_priority = Poco::Message::PRIO_WARNING;
+		break;
+	case Poco::Message::PRIO_INFORMATION:
+		m_console_priority = Poco::Message::PRIO_INFORMATION;
+		break;
+	case Poco::Message::PRIO_DEBUG:
+	case Poco::Message::PRIO_TRACE:
+		m_console_priority = Poco::Message::PRIO_DEBUG;
+		break;
+	default:
+		m_console_priority = Poco::Message::PRIO_INFORMATION;
+		break;
+	}
 }
 
 void sdchecks_parser::operator()(const string& line)
@@ -328,6 +434,10 @@ void sdchecks_parser::operator()(const string& line)
 	if (m_file_priority == static_cast<Poco::Message::Priority>(-1))
 	{
 		init_file_priority();
+	}
+	if (m_console_priority == static_cast<Poco::Message::Priority>(-1))
+	{
+		init_console_priority();
 	}
 	auto parsed_log = sinsp_split(line, ':');
 	// TODO: switch to json logging to avoid parsing issues
@@ -360,13 +470,13 @@ void sdchecks_parser::operator()(const string& line)
 		{
 			m_last_sev = Poco::Message::Priority::PRIO_ERROR;
 		}
-		g_log->log_check_component_priority(message, m_last_sev, m_file_priority);
+		g_log->log_check_component_priority(message, m_last_sev, m_file_priority, m_console_priority);
 	}
 	else
 	{
 		// Assuming continuation from previous log
 		g_log->log_check_component_priority("sdchecks[" + m_last_pid_str + "] " + line,
-						    m_last_sev, m_file_priority);
+						    m_last_sev, m_file_priority, m_console_priority);
 	}
 }
 

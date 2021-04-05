@@ -67,13 +67,7 @@ public:
 	/**
 	 * Log method that checks file level (used for implementing component
 	 * level overrides).
-	 * The 3 parameter version is used by subprocesses_logger.cpp,
-	 * and handles the API for Java, Python and Go language components.
-	 * The 4 parameter version is used by common_logger.cpp for C++ components.
 	 */
-	void log_check_component_priority(const std::string& str,
-					  const Poco::Message::Priority sev,
-					  const Poco::Message::Priority file_sev);
 	void log_check_component_priority(const std::string& str,
 					  const Poco::Message::Priority sev,
 					  const Poco::Message::Priority file_sev,
@@ -107,12 +101,14 @@ public:
 #endif
 
 private:
+	// The order of declaration and initialization here must match the common_logger constructor
 	Poco::Logger* const m_file_log;
 #ifdef SYSDIG_TEST
 	Poco::Message::Priority mutable m_file_log_priority;
 #else
 	Poco::Message::Priority const m_file_log_priority;
 #endif
+
 	Poco::Logger* const m_console_log;
 #ifdef SYSDIG_TEST
 	Poco::Message::Priority mutable m_console_log_priority;
@@ -124,7 +120,7 @@ private:
 	// If the conversion is done outside the constructor and the fully built unordered_map
 	// is passed into the constructor, we can make it const
 	// Probably not worth the trouble since each application calls the constructor separately
-	// and unit test code also modifies it
+	// and unit test code also modifies it.
 	std::unordered_map<std::string, Poco::Message::Priority> mutable m_file_log_component_priorities;
 	std::shared_ptr<log_observer> m_observer;
 };
