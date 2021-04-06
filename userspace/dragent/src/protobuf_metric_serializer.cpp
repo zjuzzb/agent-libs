@@ -88,7 +88,17 @@ protobuf_metric_serializer::protobuf_metric_serializer(
 	}
 	if (!c_metrics_dir.get_value().empty())
 	{
-		std::string dir = Poco::Path(root_dir).append(c_metrics_dir.get_value()).toString();
+		std::string dir;
+		if (root_dir.empty())
+		{
+			// Just used the configured value
+			dir = Poco::Path(c_metrics_dir.get_value()).toString();
+		}
+		else
+		{
+			// Use the provided root dir as the base
+			dir = Poco::Path(root_dir).append(c_metrics_dir.get_value()).toString();
+		}
 		set_metrics_directory(dir);
 	}
 }
