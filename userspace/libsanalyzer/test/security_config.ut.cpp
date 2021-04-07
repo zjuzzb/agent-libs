@@ -337,7 +337,7 @@ security:
 
 TEST(security_config_test, default_audit_server_url)
 {
-	ASSERT_EQ("localhost", security_config::instance().get_k8s_audit_server_url());
+	ASSERT_EQ("0.0.0.0", security_config::instance().get_k8s_audit_server_url());
 }
 
 TEST(security_config_test, configured_audit_server_url)
