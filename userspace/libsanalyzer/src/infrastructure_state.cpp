@@ -75,7 +75,7 @@ type_config<std::vector<std::string>> infrastructure_state::c_k8s_pod_status_wl(
     "list of aggregate pod status that can be sent to BE",
     "k8s_pod_status_reason_strings");
 type_config<bool> infrastructure_state::c_k8s_terminated_pods_enabled(
-    true,
+    false,
     "Enable terminated pods handling",
     "k8s_terminated_pod_enabled");
 type_config<uint32_t>
