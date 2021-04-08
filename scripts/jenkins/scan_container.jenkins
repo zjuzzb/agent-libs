@@ -22,7 +22,7 @@ pipeline {
     }
     stage('Scan Container') {
         steps {
-            sysdig engineCredentialsId: 'prodmon-sdc-admin', engineRetries: '10000', name: 'file_with_name_of_container'
+            sysdig engineRetries: '10000', name: 'file_with_name_of_container'
         }
     }
 
