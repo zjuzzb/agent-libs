@@ -50,6 +50,12 @@ type_config<std::vector<std::string>> c_log_file_component_overrides(
 					"log",
 					"file_priority_by_component");
 
+type_config<std::vector<std::string>> c_log_console_component_overrides(
+					{},
+					"Component level overrides to global console log level",
+					"log",
+					"console_priority_by_component");
+
 static void g_signal_callback(int sig)
 {
 	running_state::instance().shut_down();
@@ -652,10 +658,11 @@ void agentino_app::initialize_logging()
 	    Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_TRACE);
 
 	g_log = unique_ptr<common_logger>(new common_logger(&loggerf,
-	                                                    m_configuration.m_min_file_priority,
-	                                                    c_log_file_component_overrides.get_value(),
 	                                                    &loggerc,
-	                                                    m_configuration.m_min_console_priority));
+	                                                    m_configuration.m_min_file_priority,
+	                                                    m_configuration.m_min_console_priority,
+	                                                    c_log_file_component_overrides.get_value(),
+	                                                    c_log_console_component_overrides.get_value()));
 
 	LOG_INFO("agentino starting (version " + string(AGENT_VERSION) + ")");
 	common_logger_cache::log_and_purge();

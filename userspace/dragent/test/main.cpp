@@ -55,13 +55,15 @@ private:
 		Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_DEBUG);
 
 		Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, Message::Priority::PRIO_DEBUG);
-		std::vector<std::string> dummy_config;
+		std::vector<std::string> dummy_file_config;
+		std::vector<std::string> dummy_console_config;
 
 		g_log = std::unique_ptr<common_logger>(new common_logger(&loggerf,
-									 Message::Priority::PRIO_DEBUG,
-									 dummy_config,
 									 &loggerc,
-									 Message::Priority::PRIO_DEBUG));
+									 Message::Priority::PRIO_DEBUG,
+									 Message::Priority::PRIO_DEBUG,
+									 dummy_file_config,
+									 dummy_console_config));
 		common_logger_cache::log_and_purge();
 	}
 

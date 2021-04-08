@@ -20,6 +20,8 @@
 #include <vector>
 #include <unordered_map>
 
+// define the logger destinations
+enum  log_destination { LOG_FILE, LOG_CONSOLE };
 namespace Poco
 {
 class Logger;
@@ -51,10 +53,11 @@ public:
 	 * dragent and agentone do.
 	 */
 	common_logger(Poco::Logger* file_log,
-		      Poco::Message::Priority file_sev,
-		      const std::vector<std::string>& file_config_vector,
 		      Poco::Logger* console_log,
-		      Poco::Message::Priority console_sev);
+		      Poco::Message::Priority file_sev,
+		      Poco::Message::Priority console_sev,
+		      const std::vector<std::string>& file_config_vector,
+		      const std::vector<std::string>& console_config_vector);
 	/**
 	 * Set the observer that will get notified of logs that get written.
 	 */
@@ -85,8 +88,9 @@ public:
 
 	bool is_enabled(Poco::Message::Priority severity) const;
 	bool is_enabled(const Poco::Message::Priority severity,
-			const Poco::Message::Priority component_file_priority) const;
-	void init_file_log_component_priorities(const std::vector<std::string>& file_config_vector);
+			const Poco::Message::Priority component_file_priority,
+			const Poco::Message::Priority component_console_priority) const;
+	void init_log_component_priorities(const std::vector<std::string>& config_vector, const log_destination log_dest);
 	Poco::Message::Priority get_component_file_priority(const std::string& component) const;
 	Poco::Message::Priority get_component_console_priority(const std::string& component) const;
 #ifdef SYSDIG_TEST
@@ -103,25 +107,27 @@ public:
 private:
 	// The order of declaration and initialization here must match the common_logger constructor
 	Poco::Logger* const m_file_log;
+	Poco::Logger* const m_console_log;
 #ifdef SYSDIG_TEST
 	Poco::Message::Priority mutable m_file_log_priority;
 #else
 	Poco::Message::Priority const m_file_log_priority;
 #endif
 
-	Poco::Logger* const m_console_log;
 #ifdef SYSDIG_TEST
 	Poco::Message::Priority mutable m_console_log_priority;
 #else
 	Poco::Message::Priority const m_console_log_priority;
 #endif
-	// m_file_log_component_priorities is mutable because it is populated after parsing
-	// a std::vector<std::string> that is sent to the constructor from the config
+	// m_file_log_component_priorities (and m_file_log_component_priorities) are mutable because
+	// they are populated after parsing a std::vector<std::string> that is sent to the constructor
+	// from the config.
 	// If the conversion is done outside the constructor and the fully built unordered_map
 	// is passed into the constructor, we can make it const
 	// Probably not worth the trouble since each application calls the constructor separately
 	// and unit test code also modifies it.
 	std::unordered_map<std::string, Poco::Message::Priority> mutable m_file_log_component_priorities;
+	std::unordered_map<std::string, Poco::Message::Priority> mutable m_console_log_component_priorities;
 	std::shared_ptr<log_observer> m_observer;
 };
 

@@ -126,13 +126,15 @@ public:
 		                                         Poco::Message::Priority::PRIO_TRACE);
 
 		m_old_log = std::move(g_log);
-		std::vector<std::string> dummy_config;
+		std::vector<std::string> dummy_file_config;
+		std::vector<std::string> dummy_console_config;
 		g_log = std::unique_ptr<common_logger>(
 				new common_logger(m_file_logger,
-						  Poco::Message::Priority::PRIO_TRACE,
-						  dummy_config,
-						  m_console_logger,
-						  Poco::Message::Priority::PRIO_TRACE));
+				                  m_console_logger,
+				                  Poco::Message::Priority::PRIO_TRACE,
+				                  Poco::Message::Priority::PRIO_TRACE,
+				                  dummy_file_config,
+				                  dummy_console_config));
 	}
 
 	void TearDown() override
@@ -838,7 +840,7 @@ TEST_F(common_logger_test, component_overrides_g_log)
 	// set a component override to debug
 	std::vector<std::string> config_vector;
 	config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_DEBUG);
-	g_log->init_file_log_component_priorities(config_vector);
+	g_log->init_log_component_priorities(config_vector, LOG_FILE);
 
 	// component priority should match override value
 	ASSERT_EQ(g_log->get_component_file_priority(TEST_COMPONENT_A),
@@ -871,7 +873,7 @@ TEST_F(common_logger_test, component_overrides_log_sink)
 	std::vector<std::string> config_vector;
 	// set component override to debug in the config_vector list
 	config_vector.push_back(COMPONENTA_FILE_OVERRIDE_CONFIG_DEBUG);
-	g_log->init_file_log_component_priorities(config_vector);
+	g_log->init_log_component_priorities(config_vector, LOG_FILE);
 	ASSERT_EQ(Poco::Message::Priority::PRIO_DEBUG,
 		  g_log->get_component_file_priority(local_log_sink.tag()));
 
