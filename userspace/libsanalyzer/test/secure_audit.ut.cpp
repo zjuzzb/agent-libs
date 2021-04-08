@@ -9,6 +9,7 @@
 #include <memory>
 #include <scoped_config.h>
 #include <secure_audit.h>
+#include <secure_audit_filter.h>
 #include <sinsp_mock.h>
 
 using namespace test_helpers;
@@ -456,6 +457,7 @@ TEST(secure_audit_test, executed_commands_per_container_limit_unlimited)
 	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
 	                                                0);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
+	test_helpers::scoped_config<bool> enable_secure_audit_filter("secure_audit_filter.enabled", false);
 	feature_manager::instance().initialize();
 
 	executed_commands_build_and_test_generic(0, 0, 0);

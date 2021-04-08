@@ -1,5 +1,6 @@
 #pragma once
 
+#include "secure_audit_filter.h"
 #include "analyzer.h"
 #include "analyzer_fd.h"
 #include "analyzer_thread.h"
@@ -141,6 +142,7 @@ private:
 	sinsp_ipv4_connection_manager* m_connection_manager;
 	sinsp_analyzer_fd_listener* m_analyzer_fd_listener;
 	std::unique_ptr<run_on_interval> m_get_events_interval;
+	std::shared_ptr<secure_audit_filter> m_secure_audit_filter;
 	bool secure_audit_sent;
 	bool secure_audit_run;
 

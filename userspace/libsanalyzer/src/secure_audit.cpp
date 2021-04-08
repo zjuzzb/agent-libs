@@ -158,6 +158,7 @@ secure_audit::secure_audit()
     : m_secure_audit_batch(new secure::Audit),
       m_get_events_interval(make_unique<run_on_interval>(seconds_to_ns(DEFAULT_AUDIT_FREQUENCY_S),
                                                          FREQUENCY_THRESHOLD_NS)),
+      m_secure_audit_filter(std::make_shared<secure_audit_filter>()),
       m_executed_commands_count(0),
       m_connections_count(0),
       m_k8s_audit_count(0),
@@ -508,14 +509,32 @@ void secure_audit::emit_commands_audit_item(vector<sinsp_executed_command>* comm
 				     c_secure_audit_executed_commands_limit.get_value()))
 				{
 					m_executed_commands_dropped_count++;
-					break;
+					continue;
 				}
 
 				if (c_secure_audit_executed_commands_per_container_limit.get_value() != 0 &&
 				    cmdcnt >= c_secure_audit_executed_commands_per_container_limit.get_value())
 				{
 					m_executed_commands_dropped_count++;
-					break;
+					continue;
+				}
+
+				if (m_secure_audit_filter->discard_activity_audit_command(container_id,
+				                                                          it->m_cwd,
+				                                                          it->m_cmdline,
+				                                                          it->m_comm,
+				                                                          it->m_pid,
+				                                                          it->m_ts))
+				{
+					LOG_TRACE(
+					    "secure audit filter - discarding command - cid(%s) cwd(%s) cmdline(%s) "
+					    "comm(%s) pid(%ld)",
+					    container_id.c_str(),
+					    it->m_cwd.c_str(),
+					    it->m_cmdline.c_str(),
+					    it->m_comm.c_str(),
+					    (long)it->m_pid);
+					continue;
 				}
 
 				auto pb_command_audit = m_secure_audit_batch->add_executed_commands();
@@ -605,6 +624,41 @@ void secure_audit::append_connection(connection_type type,
 	if (!secure_helper::is_valid_tuple(tuple))
 	{
 		return;
+	}
+
+	if (type == connection_type::SRC)
+	{
+		if (m_secure_audit_filter->discard_activity_audit_connection(
+		        conn.m_sproc.get()->m_container_id,
+		        conn.m_sproc->get_comm(),
+		        conn.m_spid,
+		        transition.timestamp))
+		{
+			LOG_TRACE(
+			    "secure audit filter - discarding connection - cid(%s) proc(%s) pid(%ld) ts(%ld)",
+			    conn.m_sproc.get()->m_container_id.c_str(),
+			    conn.m_sproc->get_comm().c_str(),
+			    (long)conn.m_spid,
+			    (long)transition.timestamp);
+			return;
+		}
+	}
+	if (type == connection_type::DST)
+	{
+		if (m_secure_audit_filter->discard_activity_audit_connection(
+		        conn.m_dproc.get()->m_container_id,
+		        conn.m_dproc->get_comm(),
+		        conn.m_dpid,
+		        transition.timestamp))
+		{
+			LOG_TRACE(
+			    "secure audit filter - discarding connection - cid(%s) proc(%s) pid(%ld) ts(%ld)",
+			    conn.m_dproc.get()->m_container_id.c_str(),
+			    conn.m_dproc->get_comm().c_str(),
+			    (long)conn.m_dpid,
+			    (long)transition.timestamp);
+			return;
+		}
 	}
 
 	auto pb_conn = m_secure_audit_batch->add_connections();
@@ -776,6 +830,19 @@ void secure_audit::emit_file_access_async(thread_analyzer_info* tinfo,
 	if (flags & PPM_O_WRONLY)
 	{
 		permissions = permissions + "w";
+	}
+
+	if (m_secure_audit_filter->discard_activity_audit_file(tinfo->m_container_id,
+	                                                       tinfo->get_comm(),
+	                                                       tinfo->m_pid,
+	                                                       ts))
+	{
+		LOG_TRACE("secure audit filter - discarding file - cid(%s) proc(%s) pid(%ld) ts(%ld)",
+		          tinfo->m_container_id.c_str(),
+		          tinfo->get_comm().c_str(),
+		          (long)tinfo->m_pid,
+		          (long)ts);
+		return;
 	}
 
 	auto pb_file = m_secure_audit_batch->add_file_accesses();

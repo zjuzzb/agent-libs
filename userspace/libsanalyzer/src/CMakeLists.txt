@@ -153,6 +153,7 @@ set(SANALYZER_SOURCES
     audit_tap_connection_info.cpp
     audit_tap_network_connection.cpp
     secure_audit.cpp
+    secure_audit_filter.cpp
     secure_helper.cpp
     secure_netsec.cpp
     secure_netsec_obj.cpp

@@ -62,6 +62,7 @@ list(
     scope_resolver_iface.ut.cpp
     scoped_sinsp_logger_capture.ut.cpp
     secure_audit.ut.cpp
+    secure_audit_filter.ut.cpp
     secure_netsec.ut.cpp
     secure_netsec_cidr.ut.cpp
     secure_netsec_helper.ut.cpp
