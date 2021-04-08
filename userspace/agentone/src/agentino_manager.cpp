@@ -39,12 +39,16 @@ bool handshake_callback_helper(agentone::agentino_manager* am,
 	return am->handle_agentino_handshake(hs, hs_resp);
 }
 
-void connect_callback_helper(agentone::agentino_manager* am, std::shared_ptr<connection> conn, void* ctx)
+void connect_callback_helper(agentone::agentino_manager* am,
+                             std::shared_ptr<connection> conn,
+                             void* ctx)
 {
 	am->new_agentino_connection(conn);
 }
 
-void disconnect_callback_helper(agentone::agentino_manager* am, std::shared_ptr<connection> conn, void* ctx)
+void disconnect_callback_helper(agentone::agentino_manager* am,
+                                std::shared_ptr<connection> conn,
+                                void* ctx)
 {
 	am->delete_agentino_connection(conn);
 }
@@ -138,7 +142,8 @@ std::string agentino::get_id() const
 {
 	if (m_fixed_metadata.find(CONTAINER_ID) != m_fixed_metadata.end())
 	{
-		return m_fixed_metadata.at(CONTAINER_ID); // Container ID is a globally unique identifier for the container
+		return m_fixed_metadata.at(
+		    CONTAINER_ID);  // Container ID is a globally unique identifier for the container
 	}
 
 	// Container name is not guaranteed to be unique, but maybe good as a fallback?
@@ -152,10 +157,11 @@ std::string agentino::get_id() const
 
 std::string agentino::get_name() const
 {
-        if (m_fixed_metadata.find(CONTAINER_NAME) != m_fixed_metadata.end())
-        {
-                return m_fixed_metadata.at(CONTAINER_NAME); // Container NAME is not guaranteed to be unique
-        }
+	if (m_fixed_metadata.find(CONTAINER_NAME) != m_fixed_metadata.end())
+	{
+		return m_fixed_metadata.at(
+		    CONTAINER_NAME);  // Container NAME is not guaranteed to be unique
+	}
 
 	return "<unknown>";
 }
@@ -334,9 +340,11 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 	{
 		// This message will always print name=<unknown> id=<unknown>, because it
 		// is the handshake data that populates the metadata for the agentinos.
-		LOG_WARNING("Attempting to process new connection with no handshake data, bailing for container name=%s id=%s", 
-			    fixed_metadata[CONTAINER_NAME].c_str(),
-			    connection_in->get_id().c_str());
+		LOG_WARNING(
+		    "Attempting to process new connection with no handshake data, bailing for container "
+		    "name=%s id=%s",
+		    fixed_metadata[CONTAINER_NAME].c_str(),
+		    connection_in->get_id().c_str());
 		return;
 	}
 
@@ -352,12 +360,11 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 	if (extant_agentino == nullptr)
 	{
 		LOG_INFO("Building new agentino from container name=%s id=%s",
-			 fixed_metadata[CONTAINER_NAME].c_str(),
-			 fixed_metadata[CONTAINER_ID].c_str());
-		extant_agentino = agentino::build_agentino(this,
-		                                           connection_in,
-		                                           std::move(fixed_metadata),
-		                                           std::move(arbitrary_metadata));
+		         fixed_metadata[CONTAINER_NAME].c_str(),
+		         fixed_metadata[CONTAINER_ID].c_str());
+		extant_agentino = build_agentino(connection_in,
+		                                 std::move(fixed_metadata),
+		                                 std::move(arbitrary_metadata));
 		m_agentinos.insert(extant_agentino);
 		m_agentinos_by_connection.emplace(connection_in, extant_agentino);
 	}
@@ -388,8 +395,8 @@ void agentino_manager::delete_agentino_connection(connection::ptr connection_in)
 		// 2. We get a disconnect callback from the connection object
 		// It's very possible for us to get a remove from both these paths,
 		// which is not an error. It's just life with networking code.
-		LOG_DEBUG("Attempting to remove unknown agentino connection from container %s", 
-			  connection_in->get_id().c_str());
+		LOG_DEBUG("Attempting to remove unknown agentino connection from container %s",
+		          connection_in->get_id().c_str());
 		return;
 	}
 	LOG_INFO("Removing agentino from container name=%s id=%s",
@@ -410,7 +417,8 @@ agentino::ptr agentino_manager::find_extant_agentino_not_threadsafe(
 	return nullptr;
 }
 
-agentino::ptr agentino_manager::find_extant_agentino_not_threadsafe(connection::ptr connection_in) const
+agentino::ptr agentino_manager::find_extant_agentino_not_threadsafe(
+    connection::ptr connection_in) const
 {
 	auto extant_agentino = m_agentinos_by_connection.find(connection_in);
 	if (extant_agentino == m_agentinos_by_connection.end())
@@ -473,12 +481,16 @@ void agentino_manager::build_agentino_poll_list(std::list<cm_socket::poll_sock>&
 	{
 		// We have to bump the refcount on the shared pointer to make sure the
 		// connection object doesn't vanish out from under us.
-		auto socket = agentino->get_connection_info()->get_socket();
-		// Skip if this is a nullptr
-		if (socket)
+		auto connection = agentino->get_connection_info();
+		if (connection)
 		{
-			connection::ptr* cpp = new connection::ptr(agentino->get_connection_info());
-			out.emplace_back(socket, cpp);
+			auto socket = connection->get_socket();
+			// Skip if this is a nullptr
+			if (socket)
+			{
+				connection::ptr* cpp = new connection::ptr(agentino->get_connection_info());
+				out.emplace_back(socket, cpp);
+			}
 		}
 	}
 }
@@ -532,16 +544,17 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 			{
 				// Heartbeat message, nothing to do here
 				LOG_DEBUG("Received heartbeat from agentino container name=%s id=%s",
-					  (*cptr)->get_name().c_str(),
-					  (*cptr)->get_id().c_str());
+				          (*cptr)->get_name().c_str(),
+				          (*cptr)->get_id().c_str());
 			}
 			else
 			{
-				LOG_INFO("Read message of type %d and length %u from agentino container name=%s id=%s",
-					 (int)type,
-					 msg.payload_length(),
-					 (*cptr)->get_name().c_str(),
-					 (*cptr)->get_id().c_str());
+				LOG_INFO(
+				    "Read message of type %d and length %u from agentino container name=%s id=%s",
+				    (int)type,
+				    msg.payload_length(),
+				    (*cptr)->get_name().c_str(),
+				    (*cptr)->get_id().c_str());
 
 				// Submit work queue item to deserialize and dispatch
 				m_pool.submit_work(new agentino_message_work_item(*this, msg));
@@ -549,10 +562,11 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 		}
 		else
 		{
-			LOG_WARNING("Error reading message from agentino"
-                        	    "(probably agentino disconnected) container name=%s id=%s",
-                        	    (*cptr)->get_name().c_str(),
-                        	    (*cptr)->get_id().c_str());
+			LOG_WARNING(
+			    "Error reading message from agentino"
+			    "(probably agentino disconnected) container name=%s id=%s",
+			    (*cptr)->get_name().c_str(),
+			    (*cptr)->get_id().c_str());
 			// Propagate the disconnect to the connection object
 			(*cptr)->disconnect();
 		}
@@ -604,6 +618,12 @@ uint32_t agentino_manager::get_num_connections() const
 {
 	std::lock_guard<std::mutex> lock(m_agentino_list_lock);
 	return m_agentinos_by_connection.size();
+}
+
+draiosproto::policies_v2 agentino_manager::get_cached_policies() const
+{
+	std::lock_guard<std::mutex> lock(m_policies_lock);
+	return m_cached_policies;
 }
 
 bool agentino_manager::handle_message(draiosproto::message_type type,
@@ -690,7 +710,7 @@ void agentino_manager::propagate_policies()
 		std::lock_guard<std::mutex> lock(m_agentino_list_lock);
 		for (auto& i : m_agentinos)
 		{
-			i->send(draiosproto::message_type::POLICIES_V2, policies);
+			i->send_policies(policies);
 		}
 	}
 	else
@@ -702,7 +722,7 @@ void agentino_manager::propagate_policies()
 				LOG_ERROR("Sending bogus policies");
 				assert(made_policy_copy);
 			}
-			i->send(draiosproto::message_type::POLICIES_V2, policies);
+			i->send_policies(policies);
 		}
 	}
 }
@@ -746,4 +766,21 @@ void agentino_manager::run()
 		poll_and_dispatch(
 		    std::chrono::milliseconds(c_agentino_manager_socket_poll_timeout_ms.get_value()));
 	}
+}
+
+agentino::ptr agentino_manager::build_agentino(
+    connection::ptr connection_in,
+    std::map<agentino_metadata_property, std::string> fixed_metadata,
+    std::map<std::string, std::string> arbitrary_metadata)
+{
+	// I'm pretty sure I could use some forwarding magic here
+	return agentino::build_agentino(this,
+	                                connection_in,
+	                                std::move(fixed_metadata),
+	                                std::move(arbitrary_metadata));
+}
+
+void agentino::send_policies(draiosproto::policies_v2 policies)
+{
+	return send(draiosproto::message_type::POLICIES_V2, std::move(policies));
 }

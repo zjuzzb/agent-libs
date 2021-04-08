@@ -277,6 +277,10 @@ type_config<uint32_t> c_socket_timeout_ms(1000,
                                           "Timeout for send and receive operations to the "
                                           "collector, in milliseconds.",
                                           "socket_timeout");
+type_config<uint32_t> c_listen_timeout_ms(1000,
+										"Timeout for listen operations on the server socket.",
+										"socket",
+										"poll_timeout");
 
 type_config<uint32_t>::ptr c_transmitbuffer_size =
     type_config_builder<uint32_t>(256 * 1024,
@@ -307,7 +311,7 @@ void cm_socket::listen_thread_loop(int listen_fd,
 	++m_num_listen_threads;
 
 	const bool resolve_incoming = false;
-	const std::chrono::milliseconds timeout(1000);
+	const std::chrono::milliseconds timeout(c_listen_timeout_ms.get_value());
 	// Structures needed for poll()
 	struct pollfd fds[1] = {listen_fd, POLLIN};
 	error_type errdesc = ERR_NONE;
