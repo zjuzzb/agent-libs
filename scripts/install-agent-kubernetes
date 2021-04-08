@@ -54,7 +54,7 @@ function help {
 	echo "                [-cp | --collector_port <value>] [-s | --secure <value>] [-cc | --check_certificate <value>] \ "
 	echo "                [-ns | --namespace | --project <value>] [-ac | --additional_conf <value>] \ "
 	echo "                [-op | --openshift] [-as | --agent_slim] [-av | --agent_version <value>] \ "
-	echo "                [-ia | --imageanalyzer ] [-am | --analysismanager <value>] [-ds | --dockersocket <value>] [-cs | --crisocket <value>] [-cv | --customvolume <value>] \ "
+	echo "                [-na | --nodeanalyzer ] [-am | --analysismanager <value>] [-ds | --dockersocket <value>] [-cs | --crisocket <value>] [-cv | --customvolume <value>] \ "
 	echo "                [-cn | --cluster_name <value>] [-r | --remove ] [-h | --help]"
 	echo ""
 	echo " -a  : secret access key, as shown in Sysdig Monitor"
