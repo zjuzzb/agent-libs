@@ -54,3 +54,23 @@ private:
 	protocol_handler *m_protocol_handler;
 	connection_manager *m_connection_manager;
 };
+
+class promscrape_stats_proxy : public dragent::running_state_runnable {
+public:
+	explicit promscrape_stats_proxy(std::shared_ptr<promscrape> ps) :
+		dragent::running_state_runnable("promscrape_stats"),
+		m_promscrape(ps)
+	{
+	}
+
+	void do_run() override
+	{
+		while (heartbeat() && m_promscrape)
+		{
+			m_promscrape->periodic_gather_stats();
+			sleep(1);
+		}
+	}
+private:
+	std::shared_ptr<promscrape> m_promscrape;
+};

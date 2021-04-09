@@ -10,6 +10,7 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "configuration_manager.h"
+#include "command_line_manager.h"
 
 #include <utils.h>
 #include <arpa/inet.h>
@@ -429,6 +430,41 @@ void prometheus_conf::validate_config(const std::string &root_dir)
 	}
 
 	promscrape::validate_config(*this, root_dir);
+}
+
+void prometheus_conf::show_config(string &output)
+{
+	bool promscrape = promscrape::c_use_promscrape.get_value();
+	output.append(string("Enabled:           ") + (enabled() ? "True" : "False") + "\n");
+	output.append(string("Target discovery:  ") + (prom_sd() ? "Prometheus service discovery" :
+		"Agent process_filter and remote_services") + "\n");
+	output.append(string("Scraper:           ") + (promscrape ? (prom_sd() ? "Promscrape v2" : "Promscrape v1") : "Legacy Python scraper") + "\n");
+	output.append(string("Ingest raw:        ") + (ingest_raw() ? "True" : "False") + "\n");
+	output.append(string("Ingest calculated: ") + (ingest_calculated() ? "True" : "False") + "\n");
+	output.append(string("Metric limit:      ") + to_string(max_metrics()) + "\n");
+	if (!prom_sd())
+	{
+	output.append(string("Scrape interval:   ") + to_string(interval()) + "\n");
+	output.append(string("Per process limit: ") + to_string(max_metrics_per_proc()) + "\n");
+	output.append(string("Process filter rules: ") + to_string(m_rules.size()) + "\n");
+	output.append(string("Remote service rules: ") + to_string(m_host_rules.size()) + "\n");
+	}
+}
+
+void prometheus_conf::init_command_line()
+{
+	command_line_manager &cli = command_line_manager::instance();
+
+	command_line_manager::command_info cmd;
+	cmd.permissions = {CLI_AGENT_STATUS};
+	cmd.short_description = "Shows Agent Prometheus configuration information";
+	cmd.type = command_line_manager::content_type::TEXT;
+	cmd.handler = [this](const command_line_manager::argument_list &args) {
+		string output;
+		show_config(output);
+		return output;
+	};
+	cli.register_command("prometheus agent config show", cmd);
 }
 
 Json::Value prom_process::to_json(const prometheus_conf& conf) const

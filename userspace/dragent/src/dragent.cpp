@@ -1338,6 +1338,8 @@ int dragent_app::sdagent_main()
 				m_promscrape_proxy = std::make_shared<promscrape_proxy>(the_promscrape, &m_protocol_handler, cm);
 				m_pool.start(*m_promscrape_proxy.get(), c_promscrape_timeout_s.get_value());
 			}
+			m_promscrape_stats_proxy = std::make_shared<promscrape_stats_proxy>(the_promscrape);
+			m_pool.start(*m_promscrape_stats_proxy.get(), c_promscrape_timeout_s.get_value());
 		}
 
 		analyzer = build_analyzer(inspector,
