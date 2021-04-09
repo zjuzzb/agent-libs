@@ -213,6 +213,10 @@ public:
 	static bool can_use_metrics_request_callback();
 	std::shared_ptr<draiosproto::metrics> metrics_request_callback();
 
+	// Fastproto has been supported for a while, this is here in case we don't want
+	// the backend to try enabling it.
+	static bool support_fastproto() { return true; }
+
 	// Called by prometheus::validate_config() right after prometheus configuration
 	// has been read from config file. Ensures that configuration is consistent
 	static void validate_config(prometheus_conf &conf, const std::string &root_dir);

@@ -1067,6 +1067,12 @@ bool connection_manager::send_handshake_negotiation()
 	}
 	msg_hs.add_supported_raw_prometheus(draiosproto::raw_prometheus_support::PROMSCRAPE_NO_SUPPORT);
 
+	if (promscrape::support_fastproto())
+	{
+		msg_hs.add_prom_fastproto(draiosproto::fastproto_support::FASTPROTO_SUPPORT);
+	}
+	msg_hs.add_prom_fastproto(draiosproto::fastproto_support::FASTPROTO_NO_SUPPORT);
+
 	if (m_decorate_handshake_data)
 	{
 		m_decorate_handshake_data((void*)&msg_hs);
