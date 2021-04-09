@@ -288,7 +288,8 @@ int64_t promscrape::job_url_to_job_id(const std::string &url)
 		0,	// data_ts
 		0,	// last_total_samples
 		{},	// add_tags
-		false	// bypass_limits
+		false,	// bypass_limits
+		false
 	};
 
 	job_id = ++g_prom_job_id;
@@ -332,7 +333,7 @@ int64_t promscrape::assign_job_id(int pid, const string &url, const string &cont
 			}
 		}
 	}
-	prom_job_config conf = {pid, url, container_id, ts, 0, 0, tags};
+	prom_job_config conf = {pid, url, container_id, ts, 0, 0, tags, false, false};
 
 	job_id = ++g_prom_job_id;
 	LOG_DEBUG("creating job %" PRId64 " for %d.%s", job_id, pid, url.c_str());
@@ -579,6 +580,7 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 	int64_t job_id;
 	string url;
 	bool bypass_limits = false;
+	bool omit_source = false;
 
 	if (is_promscrape_v2())
 	{
@@ -649,6 +651,10 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 			(source_label.value() == "true"))
 		{
 			bypass_limits = true;
+		}
+		else if ((source_label.name() == "sysdig_omit_source") && !source_label.value().empty())
+		{
+			omit_source = true;
 		}
 	}
 
@@ -826,6 +832,7 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 		job_it->second.data_ts = m_last_ts; // Updating data timestamp
 		job_it->second.last_total_samples = raw_total_samples + calc_total_samples;
 		job_it->second.bypass_limits = bypass_limits;
+		job_it->second.omit_source = omit_source;
 	}
 
 	LOG_DEBUG("got %d of %d raw and %d of %d calculated samples for job %" PRId64,
@@ -1301,19 +1308,6 @@ unsigned int promscrape::result_to_protobuf(int64_t job_id,
 
 	bool ml_log = enforce_limits && metric_limits::log_enabled();
 
-	// Add pid in source_metadata, if we have a pid
-	if (job_config->pid)
-	{
-		auto meta = prom->add_source_metadata();
-		meta->set_name("pid");
-		meta->set_value(to_string(job_config->pid));
-	}
-	if (!job_config->container_id.empty())
-	{
-		auto meta = prom->add_source_metadata();
-		meta->set_name("container_id");
-		meta->set_value(job_config->container_id);
-	}
 	prom->set_timestamp(result_ptr->timestamp());
 	for (const auto &tag : job_config->add_tags)
 	{
@@ -1321,24 +1315,41 @@ unsigned int promscrape::result_to_protobuf(int64_t job_id,
 		newtag->set_name(tag.first);
 		newtag->set_value(tag.second);
 	}
-	for (const auto &source_label : result_ptr->source_labels())
+
+	if (!job_config->omit_source)
 	{
-		// Only copy source labels with non-empty label and value
-		if (source_label.name().empty() || source_label.value().empty())
+		// Add pid in source_metadata, if we have a pid
+		if (job_config->pid)
 		{
-			continue;
+			auto meta = prom->add_source_metadata();
+			meta->set_name("pid");
+			meta->set_value(to_string(job_config->pid));
 		}
-		auto meta = prom->add_source_metadata();
-		meta->set_name(source_label.name());
-		meta->set_value(source_label.value());
+		if (!job_config->container_id.empty())
+		{
+			auto meta = prom->add_source_metadata();
+			meta->set_name("container_id");
+			meta->set_value(job_config->container_id);
+		}
+		for (const auto &source_label : result_ptr->source_labels())
+		{
+			// Only copy source labels with non-empty label and value
+			if (source_label.name().empty() || source_label.value().empty())
+			{
+				continue;
+			}
+			auto meta = prom->add_source_metadata();
+			meta->set_name(source_label.name());
+			meta->set_value(source_label.value());
+		}
+		if (m_infra_state && !m_infra_state->get_k8s_cluster_id().empty())
+		{
+			auto meta = prom->add_source_metadata();
+			meta->set_name("cluster_id");
+			meta->set_value(m_infra_state->get_k8s_cluster_id());
+		}
+		LOG_DEBUG("job %" PRId64 ": Copied %d source labels: %d", job_id, result_ptr->source_labels().size(), prom->source_metadata().size());
 	}
-	if (m_infra_state && !m_infra_state->get_k8s_cluster_id().empty())
-	{
-		auto meta = prom->add_source_metadata();
-		meta->set_name("cluster_id");
-		meta->set_value(m_infra_state->get_k8s_cluster_id());
-	}
-	LOG_DEBUG("job %" PRId64 ": Copied %d source labels: %d", job_id, result_ptr->source_labels().size(), prom->source_metadata().size());
 
 	// Lambda for adding samples from samples or metasamples
 	auto add_sample = [&prom](const agent_promscrape::Sample& sample)

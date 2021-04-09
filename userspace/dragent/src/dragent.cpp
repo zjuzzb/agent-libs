@@ -128,7 +128,7 @@ type_config<bool> c_10s_flush_enabled(false,
                                       "Enable agent-side aggregation",
                                       "10s_flush_enable");
 
-type_config<std::string> c_promscrape_labels("--source.label=pod_id,sysdig_k8s_pod_uid,remove --source.label=container_name,sysdig_k8s_pod_container_name,remove --source.label=sysdig_bypass,sysdig_bypass,remove",
+type_config<std::string> c_promscrape_labels("--source.label=pod_id,sysdig_k8s_pod_uid,remove --source.label=container_name,sysdig_k8s_pod_container_name,remove --source.label=sysdig_bypass,sysdig_bypass,remove --source.label=sysdig_omit_source,sysdig_omit_source,remove",
                                              "source labels for promscrape to attach to results",
                                              "promscrape_labels");
 

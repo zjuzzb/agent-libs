@@ -69,6 +69,7 @@ public:
 		uint64_t last_total_samples;
 		tag_map_t add_tags;
 		bool bypass_limits;
+		bool omit_source;		// Don't send source_metadata
 	} prom_job_config;
 
 	// Map from process-id to job-ids
