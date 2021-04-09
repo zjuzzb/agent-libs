@@ -45,12 +45,12 @@ public:
 
 	/**
 	 * Use this constructor if you don't care about file logger and are
-	 * passing in a null channel. Mostly used by unit tests.
+	 * passing in a null channel. It is mostly used by unit tests.
 	 */
 	common_logger(Poco::Logger* file_log, Poco::Logger* console_log);
 	/**
-	 * Use this constructor if you care about file logging. Applications like
-	 * dragent and agentone do.
+	 * Use this constructor if you care about file and console logging.
+	 * Applications like dragent and agentone do.
 	 */
 	common_logger(Poco::Logger* file_log,
 		      Poco::Logger* console_log,
@@ -91,8 +91,7 @@ public:
 			const Poco::Message::Priority component_file_priority,
 			const Poco::Message::Priority component_console_priority) const;
 	void init_log_component_priorities(const std::vector<std::string>& config_vector, const log_destination log_dest);
-	Poco::Message::Priority get_component_file_priority(const std::string& component) const;
-	Poco::Message::Priority get_component_console_priority(const std::string& component) const;
+	Poco::Message::Priority get_component_priority(const std::string& component, const log_destination log_dest) const;
 #ifdef SYSDIG_TEST
 	void set_file_log_priority(const Poco::Message::Priority severity)
 	{
@@ -180,8 +179,8 @@ private:
 
 	// [<optional component>:]<filename without extension>
 	const std::string m_tag;
-	// file log level and console leve overrides associated with component, extracted from g_log
-	// and cached here for performance optimization
+	// File log level and console level overrides associated with component,
+	// extracted from g_log and cached here for performance optimization.
 	mutable Poco::Message::Priority m_component_file_priority;
 	mutable Poco::Message::Priority m_component_console_priority;
 };

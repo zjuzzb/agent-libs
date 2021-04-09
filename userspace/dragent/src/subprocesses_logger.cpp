@@ -138,7 +138,7 @@ void sdjagent_parser::init_priority(const log_destination log_dest)
 	// Map Poco log levels to Java logging levels
 	// Note: this map should be kept in sync with the mapping done in
 	// getLogLevel() method in sdjagent's Config class
-	switch(g_log->get_component_file_priority("sdjagent"))
+	switch(g_log->get_component_priority("sdjagent", log_dest))
 	{
 	case Poco::Message::PRIO_FATAL:
 	case Poco::Message::PRIO_CRITICAL:
@@ -254,7 +254,7 @@ void cointerface_parser::init_priority(const log_destination log_dest)
 {
 	// Map Poco log levels to seelog levels that cointerface uses
 	// Ref: https://github.com/cihub/seelog/blob/master/common_loglevel.go
-	switch(g_log->get_component_file_priority("cointerface"))
+	switch(g_log->get_component_priority("cointerface", log_dest))
 	{
 	case Poco::Message::PRIO_FATAL:
 	case Poco::Message::PRIO_CRITICAL:
@@ -399,7 +399,7 @@ void sdchecks_parser::init_priority(const log_destination log_dest)
 	// Map Poco log levels to Python logger levels
 	// Note: this map should be kept in sync with the mapping done in
 	// log_level() method in sdchecks.py
-	switch(g_log->get_component_file_priority("sdchecks"))
+	switch(g_log->get_component_priority("sdchecks", log_dest))
 	{
 	case Poco::Message::PRIO_FATAL:
 	case Poco::Message::PRIO_CRITICAL:
