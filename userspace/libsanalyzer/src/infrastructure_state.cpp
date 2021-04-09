@@ -1139,10 +1139,19 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 		case draiosproto::ADDED:
 			if (!overwrite)
 			{
-				if (kind != "container")
+				// Don't warn for duplicate hosts because old backends tend to send us dupes (ESC-757)
+				if (kind != "container" && kind != "host")
 				{
 					LOG_WARNING(
 					    "infra_state: Cannot add container_group <%s,%s> because it's already "
+					    "present.",
+					    kind.c_str(),
+					    id.c_str());
+				}
+				else
+				{
+					LOG_DEBUG(
+					    "infra_state: Not adding container_group <%s,%s> because it's already "
 					    "present.",
 					    kind.c_str(),
 					    id.c_str());
