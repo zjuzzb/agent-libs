@@ -150,8 +150,9 @@ type_config<std::vector<std::string>> c_log_file_component_overrides(
 
 type_config<uint64_t>::ptr c_wait_before_ready_sec =
 	type_config_builder<uint64_t>(
-		30,
-		"after cointerface is ready, wait this amount of seconds before k8s readiness probe switches to ready",
+		0,
+		"after cointerface is ready, wait this amount of seconds before k8s readiness probe switches to ready."
+		"If set to zero, cointerface is not taken into account for readiness",
 		"k8s_wait_before_ready"
 		).build();
 
@@ -2429,7 +2430,7 @@ void dragent_app::setup_startup_probe(const connection_manager& cm)
 {
 	if(!m_startup_probe_set)
 	{
-		if(cm.is_connected() && cointerface_ready())
+		if(cm.is_connected() && (c_wait_before_ready_sec->get_value() == 0 || cointerface_ready()))
 		{
 			m_startup_probe_set = create_file(m_configuration.m_log_dir, K8S_PROBE_FILE);
 		}
