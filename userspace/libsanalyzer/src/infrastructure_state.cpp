@@ -3910,11 +3910,23 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state* state, int num_de
 	{
 		if (it->second.m_uuid == state->m_k8s_node_uid)
 			delegated = true;
-		LOG_DEBUG("k8s_deleg: delegated node %s ips: %s id: %s%s",
-		         it->first.c_str(),
-		         it->second.m_ips.c_str(),
-		         it->second.m_uuid.c_str(),
-		         (it->second.m_uuid == state->m_k8s_node_uid) ? " (this node)" : "");
+		// Log at INFO level once every 10 times, DEBUG otherwise
+		if (m_counter++ % 10)
+		{
+			LOG_DEBUG("k8s_deleg: delegated node %s ips: %s id: %s%s",
+					it->first.c_str(),
+					it->second.m_ips.c_str(),
+					it->second.m_uuid.c_str(),
+					(it->second.m_uuid == state->m_k8s_node_uid) ? " (this node)" : "");
+		}
+		else
+		{
+			LOG_INFO("k8s_deleg: delegated node %s ips: %s id: %s%s",
+					it->first.c_str(),
+					it->second.m_ips.c_str(),
+					it->second.m_uuid.c_str(),
+					(it->second.m_uuid == state->m_k8s_node_uid) ? " (this node)" : "");
+		}
 	}
 
 	return delegated;
