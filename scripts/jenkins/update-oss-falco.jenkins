@@ -74,7 +74,23 @@ pipeline {
 	}
     post {
 		always {
-			cleanWs()
-		}
+			cleanWs deleteDirs: true, notFailBuild: true
+        }
+		success {
+            script {
+                if (currentBuild.getPreviousBuild().result == "FAILURE") {
+                    slackSend channel: '#dev-agent-ci', message: "falco-sync-and-test-upstream - #<${currentBuild.absoluteUrl}|${currentBuild.number}> Back to normal", tokenCredentialId: 'slack'
+                }
+            }
+        }
+        failure {
+            script {
+                if (currentBuild.getPreviousBuild().result == "FAILURE") {
+                    slackSend channel: '#dev-agent-ci', message: "falco-sync-and-test-upstream - # <${currentBuild.absoluteUrl}|${currentBuild.number}> Still failing", tokenCredentialId: 'slack'
+                } else {
+                    slackSend channel: '#dev-agent-ci', message: "falco-sync-and-test-upstream - # <${currentBuild.absoluteUrl}|${currentBuild.number}> Failure", tokenCredentialId: 'slack'
+                }
+            }
+        }
     }
 }
