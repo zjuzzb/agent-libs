@@ -287,79 +287,103 @@ bool prometheus_conf::match_and_fill(const thread_analyzer_info* tinfo,
 			if (matched.second)
 			{
 				std::unordered_map<std::string, std::string> infra_tags;
-				// Look for infrastructure state name tags
-				// Currently only used for promscrape to select relabeling rules,
-				// so don't waste time if promscrape is not enabled
-				if (promscrape::c_use_promscrape.get_value())
+				if (promscrape::c_use_promscrape.get_value() && container)
 				{
-					if (container)
-					{
-						infrastructure_state::uid_t c_uid;
-						c_uid = make_pair("container", container->m_id);
-						infrastructure_state::tag_cb_t infra_tag_cb =
-						    [&infra_tags, &infra_state](
-						        const std::pair<std::string, std::string>& tag,
-						        bool& stop) -> int {
-							std::string shortname;
-							if (infra_state.match_name(tag.first, &shortname))
-							{
-								infra_tags[shortname] = tag.second;
-								return 1;
-							}
-							return 0;
-						};
-						infra_state.iterate_parent_tags(c_uid, infra_tag_cb);
-
-						// Promscrape can't enter the target namespace and in kubernetes
-						// it probably won't be able to reach the target port through localhost.
-						// Even with plain docker containers we may not be able to access
-						// ports through localhost if a specific IP address has been set
-						// in the container port mappings, which appears to be the default
-						// behavior in Nomad.
-						// If a host or url haven't been explicitly configured,
-						// we look up either the pod IP or docker Host-IP and use that.
-						if ((params.options.find("host") == params.options.end()) &&
-						    (params.options.find("url") == params.options.end()))
+					// Look for infrastructure state name tags
+					// used for promscrape to select relabeling rules,
+					infrastructure_state::uid_t c_uid;
+					c_uid = make_pair("container", container->m_id);
+					infrastructure_state::tag_cb_t infra_tag_cb =
+					    [&infra_tags, &infra_state](
+					        const std::pair<std::string, std::string>& tag,
+					        bool& stop) -> int {
+						std::string shortname;
+						if (infra_state.match_name(tag.first, &shortname))
 						{
-							std::string podip = infra_state.get_parent_ip_address(c_uid);
-							if (!podip.empty())
+							infra_tags[shortname] = tag.second;
+							return 1;
+						}
+						return 0;
+					};
+					infra_state.iterate_parent_tags(c_uid, infra_tag_cb);
+
+					// Promscrape can't enter the target namespace and in kubernetes
+					// it probably won't be able to reach the target port through localhost.
+					// Even with plain docker containers we may not be able to access
+					// ports through localhost if a specific IP address has been set
+					// in the container port mappings, which appears to be the default
+					// behavior in Nomad.
+					// If a host or url haven't been explicitly configured,
+					// we look up either the pod IP or docker Host-IP and use that.
+					if ((params.options.find("host") == params.options.end()) &&
+					    (params.options.find("url") == params.options.end()))
+					{
+						std::string podip = infra_state.get_parent_ip_address(c_uid);
+						if (!podip.empty())
+						{
+							LOG_DEBUG("Prometheus: Found IP address %s for pid %ld",
+							          podip.c_str(), tinfo->m_pid);
+							params.options["host"] = std::move(podip);
+						}
+						else
+						{
+							for (const auto& portmap : container->m_port_mappings)
 							{
-								LOG_DEBUG("Prometheus: Found IP address %s for pid %ld",
-								          podip.c_str(), tinfo->m_pid);
-								params.options["host"] = std::move(podip);
-							}
-							else
-							{
-								for (const auto& portmap : container->m_port_mappings)
+								if (portmap.m_host_ip == 0)
 								{
-									if (portmap.m_host_ip == 0)
+									continue;
+								}
+								// If no ports are configured pick the first host ip
+								// otherwise pick the one with a matching port
+								if (params.ports.empty() ||
+									(params.ports.find(portmap.m_host_port) !=
+									params.ports.end()))
+								{
+									char addr[32];
+									uint32_t ip = htonl(portmap.m_host_ip);
+									const char *ptr = inet_ntop(AF_INET, &ip, addr, sizeof(addr));
+									if (ptr)
 									{
-										continue;
+										LOG_DEBUG("Found host IP address %s for pid %ld in container portmap",
+											ptr, tinfo->m_pid);
+										params.options["host"] = std::string(ptr);
 									}
-									// If no ports are configured pick the first host ip
-									// otherwise pick the one with a matching port
-									if (params.ports.empty() ||
-										(params.ports.find(portmap.m_host_port) !=
-										params.ports.end()))
+									else
 									{
-										char addr[32];
-										uint32_t ip = htonl(portmap.m_host_ip);
-										inet_ntop(AF_INET, &ip, addr, sizeof(addr));
-										LOG_DEBUG("Prometheus: Found container IP address %s for pid %ld",
-											addr, tinfo->m_pid);
-										params.options["host"] = std::string(addr);
-										break;
+										LOG_INFO("Failed to convert host IP address %08x", ip);
 									}
+									break;
 								}
 							}
 						}
+						// If we still haven't found a target IP by this point, just
+						// use the container IP (if available)
+						// This will also take care of scenarios where the configured port
+						// refers to the container port instead of the host port
+						if ((params.options.find("host") == params.options.end()) &&
+							container->m_container_ip)
+						{
+							char addr[32];
+							uint32_t ip = htonl(container->m_container_ip);
+							const char *ptr = inet_ntop(AF_INET, &ip, addr, sizeof(addr));
+							if (ptr)
+							{
+								LOG_DEBUG("Using container IP address %s for pid %ld (no host IP found in portmap)",
+									ptr, tinfo->m_pid);
+								params.options["host"] = std::string(ptr);
+							}
+							else
+							{
+								LOG_INFO("Failed to convert container IP address %08x", ip);
+							}
+						}
 					}
-					if (tinfo)
-					{
-						infra_tags["process"] = tinfo->m_comm;
-					}
-					infra_tags["host"] = sinsp_gethostname();
 				}
+				if (tinfo)
+				{
+					infra_tags["process"] = tinfo->m_comm;
+				}
+				infra_tags["host"] = sinsp_gethostname();
 
 				prom_process pp(tinfo->m_comm,
 				                tinfo->m_pid,
