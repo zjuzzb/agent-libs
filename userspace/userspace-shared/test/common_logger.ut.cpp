@@ -876,63 +876,60 @@ TEST_F(common_logger_test, component_overrides_none_console)
 	ASSERT_EQ(expected_message, m_console_out.str());
 }
 
-
-TEST_F(common_logger_test, component_none_file_trace_console_fatal)
+TEST_F(common_logger_test, component_none_file_debug_console_fatal)
 {
-	// set default log level for file to trace, console to fatal
-	set_log_level(Poco::Message::Priority::PRIO_TRACE, Poco::Message::Priority::PRIO_FATAL);
-	
+	// set default log level for file to debug, console to fatal
+	set_log_level(Poco::Message::Priority::PRIO_DEBUG, Poco::Message::Priority::PRIO_FATAL);
+
 	// no component override, component priority should match default
 	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, LOG_FILE),
-			Poco::Message::Priority::PRIO_TRACE);
+			Poco::Message::Priority::PRIO_DEBUG);
 	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, LOG_CONSOLE),
 			Poco::Message::Priority::PRIO_FATAL);
 
 	const std::string expected_message =
-		generateMessage(Poco::Message::Priority::PRIO_TRACE, DEFAULT_MESSAGE);
+		generateMessage(Poco::Message::Priority::PRIO_DEBUG, DEFAULT_MESSAGE);
 	// These are the common_logger::log_check_component_priority() Parameters:
 	g_log->log_check_component_priority(DEFAULT_MESSAGE,           // str: "This is a typical log message."
-			 		    Poco::Message::Priority::PRIO_TRACE,       // sev
-			 		    Poco::Message::Priority::PRIO_TRACE,       // file_sev
+			 		    Poco::Message::Priority::PRIO_DEBUG,       // sev
+			 		    Poco::Message::Priority::PRIO_DEBUG,       // file_sev
 			 		    Poco::Message::Priority::PRIO_FATAL);      // console_sev
 
  	ASSERT_EQ(expected_message, m_file_out.str());
   	ASSERT_EQ("", m_console_out.str());
-	// generate a different PRIO_DEBUG message through the g_log->log() interface:
-	g_log->log(MESSAGE_A, Poco::Message::Priority::PRIO_DEBUG);
-	// Because it is a sev Debug level message, and the file log is set to PRIO_TRACE,
-	// "Debug: Message from Component A" is appended to the file log:
-	ASSERT_EQ((expected_message+DEBUG_MESSAGE_A), m_file_out.str());
+	// generate a PRIO_TRACE message through the g_log->log() interface:
+	g_log->log(MESSAGE_A, Poco::Message::Priority::PRIO_TRACE);
+	// We do not expect to see the new message in either the file log or the console log:
+	ASSERT_EQ((expected_message), m_file_out.str());
 	ASSERT_EQ("", m_console_out.str());
 }
 
-TEST_F(common_logger_test, component_none_file_fatal_console_trace)
+TEST_F(common_logger_test, component_none_file_fatal_console_debug)
 {
-	// set default log level for file to fatal, console to trace
-	set_log_level(Poco::Message::Priority::PRIO_FATAL, Poco::Message::Priority::PRIO_TRACE);
-	
+	// set default log level for file to fatal, console to debug
+	set_log_level(Poco::Message::Priority::PRIO_FATAL, Poco::Message::Priority::PRIO_DEBUG);
+
 	// no component override, component priority should match default
 	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, LOG_FILE),
 			Poco::Message::Priority::PRIO_FATAL);
 	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, LOG_CONSOLE),
-			Poco::Message::Priority::PRIO_TRACE);
+			Poco::Message::Priority::PRIO_DEBUG);
 
 	const std::string expected_message =
-		generateMessage(Poco::Message::Priority::PRIO_TRACE, DEFAULT_MESSAGE);
+		generateMessage(Poco::Message::Priority::PRIO_DEBUG, DEFAULT_MESSAGE);
 	// These are the common_logger::log_check_component_priority() Parameters:
 	g_log->log_check_component_priority(DEFAULT_MESSAGE,           // str: "This is a typical log message."
-			 		    Poco::Message::Priority::PRIO_TRACE,       // sev
+			 		    Poco::Message::Priority::PRIO_DEBUG,       // sev
 			 		    Poco::Message::Priority::PRIO_FATAL,       // file_sev
-			 		    Poco::Message::Priority::PRIO_TRACE);      // console_sev
+			 		    Poco::Message::Priority::PRIO_DEBUG);      // console_sev
 
 	ASSERT_EQ("", m_file_out.str());
 	ASSERT_EQ(expected_message, m_console_out.str());
-	// generate a different PRIO_DEBUG message through the g_log->log() interface:
-	g_log->log(MESSAGE_A, Poco::Message::Priority::PRIO_DEBUG);
-	// Because it is a sev Debug level message, and the console log is set to PRIO_TRACE,
-	// "Debug: Message from Component A" is appended to the console log:
+	// generate a PRIO_TRACE message through the g_log->log() interface:
+	g_log->log(MESSAGE_A, Poco::Message::Priority::PRIO_TRACE);
+	// We do not expect see to the new message in either the file log or the console log:
 	ASSERT_EQ("", m_file_out.str());
-	ASSERT_EQ((expected_message+DEBUG_MESSAGE_A), m_console_out.str());
+	ASSERT_EQ((expected_message), m_console_out.str());
 }
 
 TEST_F(common_logger_test, component_none_file_fatal_console_fatal)
@@ -1032,6 +1029,10 @@ TEST_F(common_logger_test, component_overrides_g_log_console)
 TEST_F(common_logger_test, component_overrides_g_log_case_0)
 {   
 	// This is the first test in a group of component_overrides_g_log_case tests: 0 through 9 and f.
+	// The truth table used for the four Precondition state variables as they toggle between critical
+	// and debug has 16 total combinations.  We have implemented cases 0 through 8, and skipped 9
+	// through E (hexadecimal), but implemented case F. It is redundant to implement 9 through E,
+	// after covering cases 0 through 8.
 	//
 	// Preconditions:
 	// file_priority:                 critical
