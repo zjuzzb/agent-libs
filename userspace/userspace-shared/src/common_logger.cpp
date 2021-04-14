@@ -315,11 +315,12 @@ bool log_sink::is_enabled(const Poco::Message::Priority severity) const
 	{
 		if (m_component_file_priority == static_cast<Poco::Message::Priority>(-1))
 		{
-			// search the m_file_log_component_priorities list
+			// Use get_component_priority to search the m_file_log_component_priorities list.
 			m_component_file_priority = g_log->get_component_priority(tag(), LOG_FILE);
 		}
 		if (m_component_console_priority == static_cast<Poco::Message::Priority>(-1))
 		{
+			// Use get_component_priority to search the m_console_log_component_priorities list.
 			m_component_console_priority = g_log->get_component_priority(tag(), LOG_CONSOLE);
 		}
 		// now use the common_logger::is_enabled

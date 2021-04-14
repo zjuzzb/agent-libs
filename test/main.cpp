@@ -23,9 +23,6 @@ namespace {
 class dragent_environment : public ::testing::Environment {
 
 public:
-	dragent_environment(bool log_to_console) :
-	   m_log_to_console(log_to_console)
-	{}
 
 private:
 
@@ -72,8 +69,6 @@ private:
 	void TearDown() override
 	{
 	}
-
-	bool m_log_to_console;
 
 };
 
@@ -138,7 +133,6 @@ int main(int argc, char **argv)
 {
 	testing::InitGoogleTest(&argc, argv);
 	bool keep_capture_files = false;
-	bool log_to_console = false;
 	CSimpleOpt args(argc, argv, g_rgOptions);
 
 	//
@@ -152,17 +146,13 @@ int main(int argc, char **argv)
 			{
 				keep_capture_files = true;
 			}
-			else if(args.OptionId() == OPT_LOG_TO_CONSOLE)
-			{
-				log_to_console = true;
-			}
 		}
 	}
 
 	::testing::TestEventListeners &listeners = ::testing::UnitTest::GetInstance()->listeners();
 	listeners.Append(new EventListener(keep_capture_files));
 
-	::testing::AddGlobalTestEnvironment(new dragent_environment(log_to_console));
+	::testing::AddGlobalTestEnvironment(new dragent_environment());
 
 	return RUN_ALL_TESTS();
 }

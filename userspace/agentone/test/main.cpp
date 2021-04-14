@@ -22,9 +22,6 @@ namespace
 class agentone_environment : public ::testing::Environment {
 
 public:
-	agentone_environment(bool log_to_console) :
-	   m_log_to_console(log_to_console)
-	{}
 
 private:
 
@@ -69,8 +66,6 @@ private:
 		setup_common_logger();
 	}
 
-	bool m_log_to_console;
-
 };
 
 class EventListener : public ::testing::EmptyTestEventListener
@@ -109,18 +104,8 @@ private:
 int main(int argc, char **argv)
 {
     testing::InitGoogleTest(&argc, argv);
-	bool log = false;
 
-	for (int i = 1; i < argc; ++i)
-	{
-		std::string opt = argv[i];
-		if (opt == "-v" || opt == "--verbose")
-		{
-			log = true;
-		}
-	}
-
-	::testing::AddGlobalTestEnvironment(new agentone_environment(log));
+	::testing::AddGlobalTestEnvironment(new agentone_environment());
     return RUN_ALL_TESTS();
 }
 
