@@ -6,31 +6,33 @@
  * @copyright Copyright (c) 2015-2019 Sysdig Inc., All Rights Reserved
  */
 #include "statsite_forwarder.h"
+
 #include "analyzer_utils.h"
 #include "common_logger.h"
 #include "posix_queue.h"
-#include "statsite_proxy.h"
 #include "statsd_server.h"
 #include "statsd_stats_destination.h"
+#include "statsite_proxy.h"
 #include "subprocess.h"
 #include "type_config.h"
+
+#include <Poco/Thread.h>
+
 #include <json/json.h>
 #include <unordered_set>
-#include <Poco/Thread.h>
 
 namespace
 {
-
 COMMON_LOGGER();
 
 type_config<uint32_t> c_statsd_start_delay_sec(
-		10,
-		"The number of seconds the agent will wait between identifying"
-		" a new container and creating a statsd server within the"
-		" context of that container.  This applies only when the"
-		" use_forward option is true",
-		"statsd",
-		"container_server_creation_delay_s");
+    10,
+    "The number of seconds the agent will wait between identifying"
+    " a new container and creating a statsd server within the"
+    " context of that container.  This applies only when the"
+    " use_forward option is true",
+    "statsd",
+    "container_server_creation_delay_s");
 
 /**
  * Returns the current time, in seconds, from a monotonic clock (i.e.,
@@ -43,7 +45,7 @@ uint64_t get_monotonic_time_seconds()
 	return duration_cast<seconds>(steady_clock::now().time_since_epoch()).count();
 }
 
-} // end namespace
+}  // end namespace
 
 /**
  * Wrapper over a statsd_server.  Instances of statsd_server_wrapper record
@@ -54,10 +56,7 @@ uint64_t get_monotonic_time_seconds()
 class statsite_forwarder::statsd_server_wrapper
 {
 public:
-	statsd_server_wrapper():
-		m_creation_time_sec(get_monotonic_time_seconds()),
-		m_server()
-	{ }
+	statsd_server_wrapper() : m_creation_time_sec(get_monotonic_time_seconds()), m_server() {}
 
 	/**
 	 * Returns true if (1) this statsd_server_wrapper has no server and
@@ -66,8 +65,7 @@ public:
 	 */
 	bool needs_starting() const
 	{
-		const uint64_t time_since_creation = get_monotonic_time_seconds() -
-		                                     m_creation_time_sec;
+		const uint64_t time_since_creation = get_monotonic_time_seconds() - m_creation_time_sec;
 		return (m_server == nullptr) &&
 		       (time_since_creation >= c_statsd_start_delay_sec.get_value());
 	}
@@ -100,19 +98,16 @@ public:
 			// we can switch back to the previous network namespace.
 			nsenter enter(container_pid, "net");
 
-			g_logger.log("Starting statsd server on container=" + containerid
-					+ " pid=" + std::to_string(container_pid));
+			g_logger.log("Starting statsd server on container=" + containerid +
+			             " pid=" + std::to_string(container_pid));
 
-			m_server = make_unique<statsd_server>(containerid,
-			                                      proxy,
-			                                      reactor,
-			                                      port);
+			m_server = make_unique<statsd_server>(containerid, proxy, reactor, port);
 		}
-		catch(const sinsp_exception& ex)
+		catch (const sinsp_exception& ex)
 		{
 			m_server.reset();
-			g_logger.log("Warning Cannot init statsd server on container=" + containerid
-					+ " pid=" + std::to_string(container_pid));
+			g_logger.log("Warning Cannot init statsd server on container=" + containerid +
+			             " pid=" + std::to_string(container_pid) + ": " + ex.what());
 		}
 	}
 
@@ -121,16 +116,14 @@ private:
 	std::unique_ptr<statsd_server> m_server;
 };
 
-statsite_forwarder::statsite_forwarder(const std::pair<FILE*, FILE*>& pipes,
-				       const uint16_t port)
-	: m_proxy(make_unique<statsite_proxy>(pipes)),
-	m_inqueue(make_unique<posix_queue>("/sdc_statsite_forwarder_in",
-					posix_queue::RECEIVE, 1)),
-	m_servers(),
-	m_reactor(),
-	m_exitcode(0),
-	m_port(port),
-	m_terminate(false)
+statsite_forwarder::statsite_forwarder(const std::pair<FILE*, FILE*>& pipes, const uint16_t port)
+    : m_proxy(make_unique<statsite_proxy>(pipes)),
+      m_inqueue(make_unique<posix_queue>("/sdc_statsite_forwarder_in", posix_queue::RECEIVE, 1)),
+      m_servers(),
+      m_reactor(),
+      m_exitcode(0),
+      m_port(port),
+      m_terminate(false)
 {
 }
 
@@ -158,9 +151,9 @@ int statsite_forwarder::run()
 	Poco::Thread reactor_thread;
 	reactor_thread.start(m_reactor);
 
-	while(!m_terminate)
+	while (!m_terminate)
 	{
-		if(!reactor_thread.isRunning())
+		if (!reactor_thread.isRunning())
 		{
 			terminate(1, "unexpected reactor shutdown");
 		}
@@ -168,7 +161,7 @@ int statsite_forwarder::run()
 		auto msg = m_inqueue->receive(1);
 		std::string msg_str(msg.begin(), msg.end());
 
-		if(msg.empty())
+		if (msg.empty())
 		{
 			continue;
 		}
@@ -177,7 +170,7 @@ int statsite_forwarder::run()
 
 		Json::Reader json_reader;
 		Json::Value root;
-		if(!json_reader.parse(&msg[0], &msg[msg.size()], root))
+		if (!json_reader.parse(&msg[0], &msg[msg.size()], root))
 		{
 			g_logger.log("Error parsing msg=" + msg_str);
 			continue;
@@ -187,14 +180,14 @@ int statsite_forwarder::run()
 
 		// Add any new containers and start any servers that need to
 		// be started
-		for(const auto& container : root["containers"])
+		for (const auto& container : root["containers"])
 		{
 			const std::string containerid = container["id"].asString();
 
 			containers_in_msg.emplace(containerid);
 
 			auto server_itr = m_servers.find(containerid);
-			if(server_itr == m_servers.end())
+			if (server_itr == m_servers.end())
 			{
 				// This is the first time we've seen this
 				// container, create the wrapper
@@ -202,7 +195,7 @@ int statsite_forwarder::run()
 				server_itr = m_servers.find(containerid);
 			}
 
-			if(server_itr->second->needs_starting())
+			if (server_itr->second->needs_starting())
 			{
 				// The wrapper was created more than
 				// c_statsd_start_delay_sec ago, and still has
@@ -217,15 +210,14 @@ int statsite_forwarder::run()
 
 		// Remove servers for any containers that no longer exist
 		// in the container list provided by the agent
-		for (auto it = m_servers.begin(); it != m_servers.end(); )
+		for (auto it = m_servers.begin(); it != m_servers.end();)
 		{
-			if(containers_in_msg.find(it->first) == containers_in_msg.end())
+			if (containers_in_msg.find(it->first) == containers_in_msg.end())
 			{
 				// This container does not exists anymore,
 				// turning off statsd server so we can release
 				// resources
-				LOG_DEBUG("Stopping statsd server on container=%s",
-				          it->first.c_str());
+				LOG_DEBUG("Stopping statsd server on container=%s", it->first.c_str());
 				it = m_servers.erase(it);
 			}
 			else
@@ -239,11 +231,11 @@ int statsite_forwarder::run()
 
 	return m_exitcode;
 
-#else // CYGWING_AGENT
+#else   // CYGWING_AGENT
 	ASSERT(false);
 
 	throw sinsp_exception("statsite_forwarder::run not implemented on Windows");
-#endif // CYGWING_AGENT
+#endif  // CYGWING_AGENT
 }
 
 void statsite_forwarder::exception(const Poco::Exception& ex)

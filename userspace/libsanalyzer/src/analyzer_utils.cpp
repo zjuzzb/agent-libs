@@ -19,12 +19,12 @@
 
 #include <math.h>
 
+COMMON_LOGGER();
+
 #ifdef SIMULATE_DROP_MODE
 
 #define FD_SAMPLING_RATIO 4
 #define DROP_ID_NEVTS 10000
-
-COMMON_LOGGER();
 
 const uint16_t g_events_to_keep[] = {
     PPME_SYSCALL_OPEN_E,
@@ -349,7 +349,7 @@ nsenter::nsenter(int pid, const std::string& type) : m_type(type)
 		auto fd = open_ns_fd(getpid(), m_type);
 		if (fd <= 0)
 		{
-			throw sinsp_exception("Cannot open home namespace fd");
+			LOGGED_THROW(sinsp_exception, "Cannot open home namespace fd: errno=%d", errno);
 		}
 		auto emplaced = m_home_ns.emplace(m_type, fd);
 		home_ns_it = emplaced.first;
@@ -359,13 +359,13 @@ nsenter::nsenter(int pid, const std::string& type) : m_type(type)
 	auto fd = open_ns_fd(pid, m_type);
 	if (fd <= 0)
 	{
-		throw sinsp_exception("Cannot open namespace fd for pid=" + std::to_string(pid));
+		LOGGED_THROW(sinsp_exception, "Cannot open namespace fd for pid=%d: errno=%d", pid, errno);
 	}
 	auto ret = setns(fd, 0);
 	close(fd);
 	if (ret != 0)
 	{
-		throw sinsp_exception("Cannot setns to pid=" + std::to_string(pid));
+		LOGGED_THROW(sinsp_exception, "Cannot setns to pid=%d: errno=%d", pid, errno);
 	}
 }
 
