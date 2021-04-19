@@ -1,4 +1,4 @@
-foreach(repo dev fargate-rc)
+foreach(repo dev fargate-rc rc stable)
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${repo})
 
     add_custom_command(
