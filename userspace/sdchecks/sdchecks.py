@@ -13,7 +13,11 @@ from past.utils import old_div
 import os.path
 import traceback
 import inspect
-import imp
+if PY3:
+    import importlib
+else:
+    # Note: Python3 gives a DeprecationWarning: the imp module is deprecated in favor of importlib
+    import imp
 import os
 import re
 import resource
@@ -505,6 +509,7 @@ class AppCheckInstance(object):
 
 
 class Config(object):
+
     def __init__(self, install_prefix):
         self.install_prefix = install_prefix
         etcdir = install_prefix + "/etc"
@@ -526,32 +531,80 @@ class Config(object):
     # and set the appropriate log level in the Python logger module in order to generate messages
     # at the correct level inside sdchecks.
     def log_level(self):
-        level = self._yaml_config.get_single("log", "file_priority", None, "info")
+
+        def get_level(level, component_levels):
+            # Function get_level looks in the component_levels list we got from the dragent.yaml
+            # config for log, for "sdchecks" and if the component name exists, change level to be
+            # its value.
+            for component_level in component_levels:
+                component_level_split = component_level.split(": ")
+                if component_level_split[0] == "sdchecks":
+                    level = component_level_split[1]
+            return level
+
+        # Function log_level gets the dragent.yaml config for the file log file_priority and
+        # file_priority_by_component for the component sdchecks to determine the specified
+        # file_level.  It performs a similar action for the console_priority and
+        # console_priority_by_component.
+        #
+        # The file_level and console_level are then mapped to an ordinal sev value.  The most
+        # permissive sev value is used to determine the return Python logger level.
+        #
+        # The mappings are defined as follows:
+        #
+        #               |       |  Python logger level
+        # yaml config   |  sev  |  return
+        # ==============|=======|=====================
+        # 'fatal'       |   8   |  logging.ERROR
+        # 'critical'    |   7   |  logging.ERROR
+        # 'error'       |   6   |  logging.ERROR
+        # 'warning'     |   5   |  logging.WARNING
+        # 'notice'      |   4   |  logging.WARNING
+        # 'info'        |   3   |  logging.INFO
+        # 'debug'       |   2   |  logging.DEBUG
+        # 'trace'       |   1   |  logging.DEBUG
+        # default       |   3   |  logging.INFO
+        #
+        # Note: this dictionary must be kept in sync with the mapping done in sdchecks_parser.
+        #
+        config_to_sev_dict = {'fatal': 8, 'critical': 7, 'error': 6, 'warning': 5, 'notice': 4, 'info': 3, 'debug': 2, 'trace': 1}
+        file_level = self._yaml_config.get_single("log", "file_priority", None, "info")
         component_levels = self._yaml_config.get_submerged_sequence("log", "file_priority_by_component")
-        for component_level in component_levels:
-            component_level_split = component_level.split(": ")
-            if component_level_split[0] == "sdchecks":
-                level = component_level_split[1]
-        # Map the log level specified in yaml config to Python logger levels
-        # Note: this map should be kept in sync with the mapping done in sdchecks_parser
-        if level == "fatal":
+        file_level = get_level(file_level, component_levels)
+        #
+        # Use the Python dictionary facility to look in the config_to_sev_dict dictionary
+        # for the entry matching parameter level and get the corresponding sev
+        #
+        file_sev = config_to_sev_dict[file_level]
+		#
+        # Perform similar operations to determine the console_sev
+        #
+        console_level = self._yaml_config.get_single("log", "console_priority", None, "info")
+        component_levels = self._yaml_config.get_submerged_sequence("log", "console_priority_by_component")
+        console_level = get_level(console_level, component_levels)
+        console_sev = config_to_sev_dict[console_level]
+        #
+        # Set the sev level to the lower, more permissive value of either the file_sev or the console_sev
+        #
+        if file_sev < console_sev:
+            sev = file_sev
+        else:
+            sev = console_sev
+        #
+        # Now return the appropriate Python logging level.
+        #
+        if sev >= 6:
             return logging.ERROR
-        elif level == "critical":
-            return logging.ERROR
-        elif level == "error":
-            return logging.ERROR
-        elif level == "warning":
+        elif sev >= 4:
             return logging.WARNING
-        elif level == "notice":
-            return logging.WARNING
-        elif level == "info":
+        elif sev == 3:
             return logging.INFO
-        elif level == "debug":
-            return logging.DEBUG
-        elif level == "trace":
+        elif sev >= 1:
             return logging.DEBUG
         else:
             return logging.INFO
+
+
 
     def check_conf_by_name(self, name):
         checks = self._yaml_config.get_merged_sequence("app_checks")

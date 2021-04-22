@@ -59,28 +59,93 @@ public class Config {
      *  and set the appropriate log level in Java logging in order to generate messages at the
      *  correct level inside sdjagent.
      */
-    public Level getLogLevel() {
-        String stringLevel = yamlConfig.getSingle("log.file_priority", "info");
-        List<String> componentStringLevels = yamlConfig.getMergedSequence("log.file_priority_by_component", String.class);
-        for (String str : componentStringLevels)
-        {
+
+    public String getLevel(String level, List<String> componentStringLevels) {
+        for (String str : componentStringLevels) {
             String[] strArr = str.split(": ", 2);
-            if ((strArr.length == 2) && (strArr[0].equals("sdjagent")))
-            {
-                stringLevel = strArr[1];
+            if ((strArr.length == 2) && (strArr[0].equals("sdjagent"))) {
+                level = strArr[1];
                 break;
             }
         }
-        /** Map the log level specified in yaml config to Java logging levels
+        return level;
+	}
+
+    public Level getLogLevel() {
+        /** This function gets the dragent.yaml config for the file log file_priority
+		 *  and file_priority_by_component for the component sdjagent to determine the
+		 *  specified stringFileLevel.  It performs a similar action for the console_priority
+		 *  and console_priority_by_component
+		 *
+		 *  The stringFileLevel and stringConsoleLevel are mapped to an ordinal sev value.
+		 *  The most permissive sev value is used to determine the return Java logging level.
+		 *
+         *  Because only a single IPC channel is used for the transfer of log messages
+         *  from the sdjagent to the dragent subprocess logger, we take the most permissive
+         *  value of either the log file or console as the priority level we return.
+         *
+		 *  The mappings are defined as follows:
+		 *
+		 *                |       |  Java logger level
+		 *  yaml config   |  sev  |  return
+		 *  ==============|=======|=====================
+		 *  'fatal'       |   8   |  Level.SEVERE
+		 *  'critical'    |   7   |  Level.SEVERE
+		 *  'error'       |   6   |  Level.SEVERE
+		 *  'warning'     |   5   |  Level.WARNING
+		 *  'notice'      |   4   |  Level.WARNING
+		 *  'info'        |   3   |  Level.INFO
+		 *  'debug'       |   2   |  Level.FINE
+		 *  'trace'       |   1   |  Level.FINE
+		 *  default       |   3   |  Level.INFO
+		 *
+		 *  Note: This map must be kept in sync with the mapping done in sdjagent_parser.
+		 *
+		 *  Define dictionary dict, using the Java HashMap class, and initialize it using put
+		 *  for each key, value pair.
+		 */
+		Map<String, Integer> dict = new HashMap<String, Integer>();
+            dict.put("fatal", 8);
+            dict.put("critical", 7);
+            dict.put("error", 6);
+            dict.put("warning", 5);
+            dict.put("notice", 4);
+            dict.put("info", 3);
+            dict.put("debug", 2);
+            dict.put("trace", 1);
+
+        String stringFileLevel = yamlConfig.getSingle("log.file_priority", "info");
+        String stringConsoleLevel = yamlConfig.getSingle("log.console_priority", "info");
+        List<String> componentFileStringLevels = yamlConfig.getMergedSequence("log.file_priority_by_component", String.class);
+        List<String> componentConsoleStringLevels = yamlConfig.getMergedSequence("log.console_priority_by_component", String.class);
+		int sev = 0;
+		int fileSev = 0;
+		int consoleSev = 0;
+		stringFileLevel = getLevel(stringFileLevel, componentFileStringLevels);
+		fileSev = dict.get(stringFileLevel);
+        /** Perform similar operations to determine the consoleSev
+         */
+		stringConsoleLevel = getLevel(stringConsoleLevel, componentConsoleStringLevels);
+		consoleSev = dict.get(stringConsoleLevel);
+        /** Set the sev level to the lower, more permissive value of either the consoleSev or the fileSev
+        */
+		if (fileSev < consoleSev) {
+            sev = fileSev;
+		}
+		else {
+            sev = consoleSev;
+		}
+
+        /** Map the sev level we derived from the yaml config to Java logging levels
          *  Note: this map should be kept in sync with the mapping done in sdjagent_parser
          */
-        if (stringLevel.equals("fatal") || stringLevel.equals("critical") || stringLevel.equals("error")) {
+        if (sev >= 6) {
             return Level.SEVERE;
-        } else if (stringLevel.equals("warning") || stringLevel.equals("notice")) {
+        } else if (sev >= 4) {
             return Level.WARNING;
-        } else if (stringLevel.equals("info")) {
+        } else if (sev == 3) {
             return Level.INFO;
-        } else if (stringLevel.equals("debug") || stringLevel.equals("trace")) {
+        } else if (sev >= 1) {
             return Level.FINE;
         }
         return Level.INFO;
