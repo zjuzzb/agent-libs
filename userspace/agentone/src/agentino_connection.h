@@ -5,6 +5,7 @@
 #include "cm_socket.h"
 #include "draios.pb.h"
 #include "protocol.h"
+#include "thread_pool.h"
 
 #include <arpa/inet.h>
 #include <cassert>
@@ -59,6 +60,7 @@ public:
 	 */
 	connection(cm_socket* sock,
 	           agentone::agentino_manager* manager,
+	           tp_work_item::client_id client_id,
 	           handshake_cb on_handshake,
 	           connection_cb on_connect = empty_callback,
 	           connection_cb on_disconnect = empty_callback);
@@ -102,6 +104,11 @@ public:
 	 * Get the previously-set name for this connection.
 	 */
 	const std::string& get_name() const { return m_name; }
+
+	/**
+	 * Get the thread pool client id for this connection.
+	 */
+	tp_work_item::client_id get_tp_client_id() const { return m_client_id; }
 	
 	/**
 	 * Bring up the connection on the agentone side.
@@ -223,6 +230,9 @@ private:  // State machine stuff
 	 */
 
 	std::atomic<fsm_state> m_state;  // Should only be accessed from inside an FSM function
+
+	/** Identifies this connection as a distinct thread pool client */
+	tp_work_item::client_id m_client_id;
 
 	/**
 	 * Because the agentino sends a handshake message immediately upon connect,

@@ -84,8 +84,9 @@ private:
 class agentino_message_work_item : public tp_work_item
 {
 public:
-	agentino_message_work_item(agentino_manager& am, raw_message& msg)
-	    : m_agentino_ctx(am),
+	agentino_message_work_item(agentino_manager& am, raw_message& msg, client_id id)
+	    : tp_work_item(id),
+	      m_agentino_ctx(am),
 	      m_msg(msg)
 	{
 	}
@@ -438,6 +439,7 @@ void agentino_manager::listen(uint16_t port)
 		// Translate the socket into a connection object
 		connection::ptr connp = std::make_shared<connection>(sock,
 		                                                     am,
+		                                                     m_pool.build_new_client_id(),
 		                                                     handshake_callback_helper,
 		                                                     connect_callback_helper,
 		                                                     disconnect_callback_helper);
@@ -557,7 +559,9 @@ void agentino_manager::poll_and_dispatch(std::chrono::milliseconds timeout)
 				    (*cptr)->get_id().c_str());
 
 				// Submit work queue item to deserialize and dispatch
-				m_pool.submit_work(new agentino_message_work_item(*this, msg));
+				m_pool.submit_work(new agentino_message_work_item(*this,
+				                                                  msg,
+				                                                  (*cptr)->get_tp_client_id()));
 			}
 		}
 		else

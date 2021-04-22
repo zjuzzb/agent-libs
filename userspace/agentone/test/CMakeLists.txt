@@ -17,7 +17,11 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 
-add_executable(unit-test-agentone main.cpp container_manager.ut.cpp agentino_manager.ut.cpp)
+add_executable(unit-test-agentone
+               main.cpp
+               container_manager.ut.cpp
+               agentino_manager.ut.cpp
+               thread_pool.ut.cpp)
 
 target_link_libraries(
     unit-test-agentone

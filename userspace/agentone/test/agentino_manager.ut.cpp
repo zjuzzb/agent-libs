@@ -73,7 +73,7 @@ bool null_handshake_callback(agentino_manager* am,
 
 connection::ptr get_bogus_connection()
 {
-	return std::make_shared<connection>(nullptr, nullptr, null_handshake_callback);
+	return std::make_shared<connection>(nullptr, nullptr, 0, null_handshake_callback);
 }
 
 // a dummy agentino that overrides the send method so we can ensure things
@@ -323,7 +323,7 @@ TEST(agentino, handshake_success)
 	auto new_conn_cb = [&ccb, &hcb, &dcb, &got_handshake](cm_socket* sock, void* ctx) {
 		auto* pfa = (fake_agentino*)ctx;
 
-		connection::ptr connp = std::make_shared<connection>(sock, nullptr, hcb, ccb, dcb);
+		connection::ptr connp = std::make_shared<connection>(sock, nullptr, 0, hcb, ccb, dcb);
 		connp->start(&connp);
 		for (uint32_t loops = 0;
 		     pfa->get_status() != fake_agentino::server_status::RUNNING && loops < 5000;
@@ -397,7 +397,7 @@ TEST(agentino, handshake_fail)
 		// auto* fa = (fake_agentino*)ctx;
 
 		connection::ptr connp =
-		    std::make_shared<connection>(sock, nullptr, hcb, connection::empty_callback, dcb);
+		    std::make_shared<connection>(sock, nullptr, 0, hcb, connection::empty_callback, dcb);
 		connp->start(ctx);
 		for (uint32_t loops = 0; !got_handshake && loops < 5000; ++loops)
 		{
@@ -486,7 +486,7 @@ TEST(agentino, handshake_disconnect)
 	// Normally we would connect through an agentino_manager's listen loop,
 	// but this unit test is JUST testing the connection and handshake.
 	auto new_conn_cb = [&ccb, &dcb, &hcb, &connp, &disconnected](cm_socket* sock, void* ctx) {
-		connp = std::make_shared<connection>(sock, nullptr, hcb, ccb, dcb);
+		connp = std::make_shared<connection>(sock, nullptr, 0, hcb, ccb, dcb);
 		connp->start(ctx);
 
 		for (uint32_t loops = 0; !disconnected && loops < 3000; ++loops)
