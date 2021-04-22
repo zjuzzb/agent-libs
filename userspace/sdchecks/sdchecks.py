@@ -563,7 +563,7 @@ class Config(object):
         # 'info'        |   3   |  logging.INFO
         # 'debug'       |   2   |  logging.DEBUG
         # 'trace'       |   1   |  logging.DEBUG
-        # default       |   3   |  logging.INFO
+        #  default      |   3   |  logging.INFO
         #
         # Note: this dictionary must be kept in sync with the mapping done in sdchecks_parser.
         #
@@ -576,7 +576,7 @@ class Config(object):
         # for the entry matching parameter level and get the corresponding sev
         #
         file_sev = config_to_sev_dict[file_level]
-		#
+        #
         # Perform similar operations to determine the console_sev
         #
         console_level = self._yaml_config.get_single("log", "console_priority", None, "info")

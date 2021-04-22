@@ -80,10 +80,10 @@ public class Config {
 		 *  The stringFileLevel and stringConsoleLevel are mapped to an ordinal sev value.
 		 *  The most permissive sev value is used to determine the return Java logging level.
 		 *
-         *  Because only a single IPC channel is used for the transfer of log messages
-         *  from the sdjagent to the dragent subprocess logger, we take the most permissive
-         *  value of either the log file or console as the priority level we return.
-         *
+		 *  Because only a single IPC channel is used for the transfer of log messages
+		 *  from the sdjagent to the dragent subprocess logger, we take the most permissive
+		 *  value of either the log file or console as the priority level we return.
+		 *
 		 *  The mappings are defined as follows:
 		 *
 		 *                |       |  Java logger level
@@ -97,14 +97,14 @@ public class Config {
 		 *  'info'        |   3   |  Level.INFO
 		 *  'debug'       |   2   |  Level.FINE
 		 *  'trace'       |   1   |  Level.FINE
-		 *  default       |   3   |  Level.INFO
+		 *  vdefault      |   3   |  Level.INFO
 		 *
 		 *  Note: This map must be kept in sync with the mapping done in sdjagent_parser.
 		 *
 		 *  Define dictionary dict, using the Java HashMap class, and initialize it using put
 		 *  for each key, value pair.
 		 */
-		Map<String, Integer> dict = new HashMap<String, Integer>();
+        Map<String, Integer> dict = new HashMap<String, Integer>();
             dict.put("fatal", 8);
             dict.put("critical", 7);
             dict.put("error", 6);
@@ -123,12 +123,12 @@ public class Config {
 		int consoleSev = 0;
 		stringFileLevel = getLevel(stringFileLevel, componentFileStringLevels);
 		fileSev = dict.get(stringFileLevel);
-        /** Perform similar operations to determine the consoleSev
-         */
+		/** Perform similar operations to determine the consoleSev
+		 */
 		stringConsoleLevel = getLevel(stringConsoleLevel, componentConsoleStringLevels);
 		consoleSev = dict.get(stringConsoleLevel);
-        /** Set the sev level to the lower, more permissive value of either the consoleSev or the fileSev
-        */
+		/** Set the sev level to the lower, more permissive value of either the consoleSev or the fileSev
+		 */
 		if (fileSev < consoleSev) {
             sev = fileSev;
 		}
@@ -136,9 +136,9 @@ public class Config {
             sev = consoleSev;
 		}
 
-        /** Map the sev level we derived from the yaml config to Java logging levels
-         *  Note: this map should be kept in sync with the mapping done in sdjagent_parser
-         */
+		/** Map the sev level we derived from the yaml config to Java logging levels
+		 *  Note: this map should be kept in sync with the mapping done in sdjagent_parser
+		 */
         if (sev >= 6) {
             return Level.SEVERE;
         } else if (sev >= 4) {
