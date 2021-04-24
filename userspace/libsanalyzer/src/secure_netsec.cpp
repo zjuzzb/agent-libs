@@ -1,8 +1,11 @@
 #include "secure_netsec.h"
-#include "secure_netsec_obj.h"
+
 #include "analyzer.h"
 #include "common_logger.h"
 #include "infrastructure_state.h"
+#include "secure_netsec_obj.h"
+
+#include <random>
 
 COMMON_LOGGER();
 
@@ -31,6 +34,11 @@ type_config<std::vector<std::string>> secure_netsec::c_secure_netsec_filtered_pr
     "List of process names that will be filtered out",
     "network_topology",
     "filtered_process_names");
+
+type_config<bool> secure_netsec::c_secure_netsec_randomize_start(true,
+     "Use randomized delay before first reporting",
+     "network_topology", "randomize_start");
+
 
 secure_netsec::secure_netsec()
 	: m_k8s_cidrs_configured(false),
@@ -169,9 +177,14 @@ void secure_netsec::flush(uint64_t ts)
 		return;
 	}
 
+	uint64_t flush_start_time = sinsp_utils::get_current_time_ns();
+	if (flush_start_time < m_randomized_flush_start)
+	{
+		return;
+	}
+
 	m_get_events_interval->run(
-		[this, ts]() {
-			uint64_t flush_start_time = sinsp_utils::get_current_time_ns();
+		[this, ts, flush_start_time]() {
 			m_netsec_run = true;
 
 			serialize_protobuf();
@@ -215,7 +228,6 @@ void secure_netsec::flush(uint64_t ts)
 	{
 		m_netsec_internal_metrics->set_secure_netsec_sent_counters(0, 0, 0, 0, 0, 0, 0, 0);
 	}
-	return;
 }
 
 bool secure_netsec::is_tuple_in_k8s_cidr(const ipv4tuple &tuple) const
@@ -271,6 +283,19 @@ void secure_netsec::init(sinsp_ipv4_connection_manager* conn,
 	{
 		c_secure_netsec_report_interval.set(NETWORK_TOPOLOGY_DEFAULT_REPORT_INTERVAL);
 		LOG_ERROR("Invalid secure netsec report interval (resetting it to default %ld ns)", NETWORK_TOPOLOGY_DEFAULT_REPORT_INTERVAL);
+	}
+
+	if (c_secure_netsec_randomize_start.get_value())
+	{
+		// set randomized flush start time to random in [now, now + c_secure_netsec_report_interval)
+		std::random_device rd;
+		std::uniform_int_distribution<uint64_t> dist(0,
+		                                             c_secure_netsec_report_interval.get_value());
+		m_randomized_flush_start = dist(rd) + sinsp_utils::get_current_time_ns();
+
+		std::string first_flush_date_time;
+		sinsp_utils::ts_to_string(m_randomized_flush_start, &first_flush_date_time, true, false);
+		LOG_INFO("First flush at: %s", first_flush_date_time.c_str());
 	}
 
 	m_get_events_interval = make_unique<run_on_interval>(c_secure_netsec_report_interval.get_value(),
