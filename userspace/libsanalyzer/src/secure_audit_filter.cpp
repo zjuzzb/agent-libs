@@ -187,7 +187,6 @@ bool secure_audit_filter::discard_activity_audit_command(const std::string& cont
 	return false;
 }
 
-// if we have more than 20 similar connections, then start discarding them.
 // if a command with the same pid is discarded, discard also the related connections.
 // (when a command is discarded, the discard_activity_audit_command increase the
 // connection count by connections_threshold for the same process and pid.
@@ -215,8 +214,6 @@ bool secure_audit_filter::discard_activity_audit_connection(const std::string& c
 	m_connections_processed++;
 	int count = m_lru_connections->Get(key);
 
-	m_lru_connections->Put(key, ++count);
-
 	if (count > c_secure_audit_filter_connections_threshold.get_value())
 	{
 		m_connections_discarded++;
@@ -225,7 +222,6 @@ bool secure_audit_filter::discard_activity_audit_connection(const std::string& c
 	return false;
 }
 
-// if we have more than 20 similar files, then start discarding them.
 // if a command with the same pid is discarded, discard also the related files.
 // (when a command is discarded, the discard_activity_audit_command increase the
 // file count by files_threshold for the same process and pid.
@@ -252,8 +248,6 @@ bool secure_audit_filter::discard_activity_audit_file(const std::string& contain
 	std::string key = file_to_key(container_id, process, pid);
 	m_files_processed++;
 	int count = m_lru_files->Get(key);
-
-	m_lru_files->Put(key, ++count);
 
 	if (count > c_secure_audit_filter_files_threshold.get_value())
 	{

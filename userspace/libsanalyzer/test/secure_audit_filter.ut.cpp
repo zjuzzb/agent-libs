@@ -56,8 +56,8 @@ TEST(secure_audit_filter_test, basic_cmd_conn_file_filter)
 	ASSERT_FALSE(saf->discard_activity_audit_command(std::string("cid"), std::string("cwd"), std::string("ps -el"), std::string("ps"), 1, 0));
 	ASSERT_TRUE(saf->discard_activity_audit_command(std::string("cid"), std::string("cwd"), std::string("ps -el"), std::string("ps"), 1, 0));
 
-	ASSERT_TRUE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, 0));
-	ASSERT_TRUE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, 0));
+	ASSERT_FALSE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, 0));
+	ASSERT_FALSE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, 0));
 
 	delete saf;
 }
@@ -72,11 +72,11 @@ TEST(secure_audit_filter_test, basic_conn_file_only)
 
 	ASSERT_FALSE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, 0));
 	ASSERT_FALSE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, 0));
-	ASSERT_TRUE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, 0));
+	ASSERT_FALSE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, 0));
 
 	ASSERT_FALSE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, 0));
 	ASSERT_FALSE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, 0));
-	ASSERT_TRUE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, 0));
+	ASSERT_FALSE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, 0));
 
 	delete saf;
 }
@@ -116,8 +116,8 @@ TEST(secure_audit_filter_test, basic_cmd_conn_file_filter_window)
 	ASSERT_FALSE(saf->discard_activity_audit_command(std::string("cid"), std::string("cwd"), std::string("ps -el"), std::string("ps"), 1, seconds_to_ns(0)));
 	ASSERT_TRUE(saf->discard_activity_audit_command(std::string("cid"), std::string("cwd"), std::string("ps -el"), std::string("ps"), 1, seconds_to_ns(0)));
 
-	ASSERT_TRUE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, seconds_to_ns(0)));
-	ASSERT_TRUE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, seconds_to_ns(0)));
+	ASSERT_FALSE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, seconds_to_ns(0)));
+	ASSERT_FALSE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, seconds_to_ns(0)));
 
 	// next slide window
 	ASSERT_FALSE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, seconds_to_ns(11)));
@@ -127,8 +127,8 @@ TEST(secure_audit_filter_test, basic_cmd_conn_file_filter_window)
 	ASSERT_FALSE(saf->discard_activity_audit_command(std::string("cid"), std::string("cwd"), std::string("ps -el"), std::string("ps"), 1, seconds_to_ns(11)));
 	ASSERT_TRUE(saf->discard_activity_audit_command(std::string("cid"), std::string("cwd"), std::string("ps -el"), std::string("ps"), 1, seconds_to_ns(11)));
 
-	ASSERT_TRUE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, seconds_to_ns(11)));
-	ASSERT_TRUE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, seconds_to_ns(11)));
+	ASSERT_FALSE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, seconds_to_ns(11)));
+	ASSERT_FALSE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, seconds_to_ns(11)));
 
 	delete saf;
 }
@@ -144,20 +144,20 @@ TEST(secure_audit_filter_test, basic_conn_file_only_window)
 
 	ASSERT_FALSE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, seconds_to_ns(0)));
 	ASSERT_FALSE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, seconds_to_ns(0)));
-	ASSERT_TRUE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, seconds_to_ns(0)));
+	ASSERT_FALSE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, seconds_to_ns(0)));
 
 	ASSERT_FALSE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, seconds_to_ns(0)));
 	ASSERT_FALSE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, seconds_to_ns(0)));
-	ASSERT_TRUE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, seconds_to_ns(0)));
+	ASSERT_FALSE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, seconds_to_ns(0)));
 
 	//next slide window
 	ASSERT_FALSE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, seconds_to_ns(11)));
 	ASSERT_FALSE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, seconds_to_ns(11)));
-	ASSERT_TRUE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, seconds_to_ns(11)));
+	ASSERT_FALSE(saf->discard_activity_audit_connection(std::string("cid"), std::string("ps"), 1, seconds_to_ns(11)));
 
 	ASSERT_FALSE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, seconds_to_ns(11)));
 	ASSERT_FALSE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, seconds_to_ns(11)));
-	ASSERT_TRUE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, seconds_to_ns(11)));
+	ASSERT_FALSE(saf->discard_activity_audit_file(std::string("cid"), std::string("ps"), 1, seconds_to_ns(11)));
 
 	delete saf;
 }
