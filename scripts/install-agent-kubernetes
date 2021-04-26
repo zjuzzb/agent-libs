@@ -34,7 +34,12 @@ function download_yamls {
 	curl -s -o $WORKDIR/sysdig-agent-daemonset-v2.yaml https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-agent-daemonset-v2.yaml
 	echo "* Downloading Sysdig daemonset slim v2 yaml"
 	curl -s -o $WORKDIR/sysdig-agent-slim-daemonset-v2.yaml https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-agent-slim-daemonset-v2.yaml
-	if [ $INSTALL_ANALYZER -eq 1 ]; then
+	if [ $INSTALL_IMAGE_ANALYZER -eq 1 ]; then
+		echo "* Downloading Sysdig Image Analyzer config map yaml"
+		curl -H 'Cache-Control: no-cache' -s -o $WORKDIR/sysdig-image-analyzer-configmap.yaml https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-image-analyzer-configmap.yaml
+		echo "* Downloading Sysdig Image Analyzer daemonset v1 yaml"
+		curl -H 'Cache-Control: no-cache' -s -o $WORKDIR/sysdig-image-analyzer-daemonset.yaml https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-image-analyzer-daemonset.yaml
+	elif [ $INSTALL_NODE_ANALYZER -eq 1 ]; then
 		echo "* Downloading Sysdig Image Analyzer config map yaml"
 		curl -H 'Cache-Control: no-cache' -s -o $WORKDIR/sysdig-image-analyzer-configmap.yaml https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-image-analyzer-configmap.yaml
 		echo "* Downloading Sysdig Benchmark Runner config map yaml"
@@ -149,7 +154,7 @@ function install_k8s_agent {
 		fi
 	fi
 	if [ $fail -eq 1 ]; then
-		if [[ "$out" =~ "AlreadyExists" || "$out" =~ "already exists" ]]; then
+		if [[ "$outbinding" =~ "AlreadyExists" || "$outbinding" =~ "already exists" ]]; then
 			echo "$outbinding. Continuing..."
 		else
 			echo "$outbinding"
