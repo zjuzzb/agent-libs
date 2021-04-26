@@ -547,27 +547,20 @@ class Config(object):
         # file_level.  It performs a similar action for the console_priority and
         # console_priority_by_component.
         #
-        # The file_level and console_level are then mapped to an ordinal sev value.  The most
+        # The file_level and console_level are then mapped to a sev value.  The most
         # permissive sev value is used to determine the return Python logger level.
-        #
-        # The mappings are defined as follows:
-        #
-        #               |       |  Python logger level
-        # yaml config   |  sev  |  return
-        # ==============|=======|=====================
-        # 'fatal'       |   8   |  logging.ERROR
-        # 'critical'    |   7   |  logging.ERROR
-        # 'error'       |   6   |  logging.ERROR
-        # 'warning'     |   5   |  logging.WARNING
-        # 'notice'      |   4   |  logging.WARNING
-        # 'info'        |   3   |  logging.INFO
-        # 'debug'       |   2   |  logging.DEBUG
-        # 'trace'       |   1   |  logging.DEBUG
-        #  default      |   3   |  logging.INFO
         #
         # Note: this dictionary must be kept in sync with the mapping done in sdchecks_parser.
         #
-        config_to_sev_dict = {'fatal': 8, 'critical': 7, 'error': 6, 'warning': 5, 'notice': 4, 'info': 3, 'debug': 2, 'trace': 1}
+        config_to_sev_dict = {
+            'fatal': logging.ERROR,
+            'critical': logging.ERROR,
+            'error': logging.ERROR,
+            'warning': logging.WARNING,
+            'notice': logging.WARNING,
+            'info': logging.INFO,
+            'debug': logging.DEBUG,
+            'trace': logging.DEBUG}
         file_level = self._yaml_config.get_single("log", "file_priority", None, "info")
         component_levels = self._yaml_config.get_submerged_sequence("log", "file_priority_by_component")
         file_level = get_level(file_level, component_levels)
@@ -587,24 +580,9 @@ class Config(object):
         # Set the sev level to the lower, more permissive value of either the file_sev or the console_sev
         #
         if file_sev < console_sev:
-            sev = file_sev
+            return file_sev
         else:
-            sev = console_sev
-        #
-        # Now return the appropriate Python logging level.
-        #
-        if sev >= 6:
-            return logging.ERROR
-        elif sev >= 4:
-            return logging.WARNING
-        elif sev == 3:
-            return logging.INFO
-        elif sev >= 1:
-            return logging.DEBUG
-        else:
-            return logging.INFO
-
-
+            return console_sev
 
     def check_conf_by_name(self, name):
         checks = self._yaml_config.get_merged_sequence("app_checks")
