@@ -1,20 +1,216 @@
 pipeline {
-    agent { label 'agent-docker-builder' }
+    agent { label 'agent-builder-parallel' }
 
     stages {
-		    // build the promscraper releases. Currently they are hard coded to release branch
-    // names, so must be built before anything else will work
-    stage('Build Promscrape') {
-		 steps {
-			 slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "just doing testing...ignore.", tokenCredentialId: 'slack'
+
+    // grab the repos we need
+    stage('Check out dependencies') {
+        steps {
+            dir('kilt-definitions') {
+                checkout([$class: 'GitSCM', branches: [[name: 'main']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/kilt-definitions']]])
+            }
+            dir('libsinsp') {
+                checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libsinsp']]])
+            }
+            dir('libscap') {
+                checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap']]])
+            }
+            dir('libscap-hayabusa') {
+                checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap-hayabusa']]])
+            }
+            dir('protorepo') {
+                checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
+            }
         }
     }
 
-	}
-   post {
+        // if we need to push the release branch, do so
+    stage('Push Release Branch') {
+        steps {
+            withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
+                dir('kilt-definitions') {
+                    sh label: '', script: """
+                        git checkout -b test-release-${params.RELEASE_VERSION}
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git push -u origin fargate-release-${params.RELEASE_VERSION}
+                    """
+                }
+            }
+        }
+    }
+
+    // builds the RC, runs integration tests, and uploads to artifactory
+    // Uploaded image should be sysdig/agent:${params.RELEASE_VERSION}-rc
+    stage('Build the thing') {
+        steps {
+            build job:'agent-build-fargate-rc',parameters:[string(name:'AGENT_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),string(name:'LIBSINSP_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),string(name:'LIBSCAP_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),string(name:'LIBSCAP_HAYABUSA_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),string(name:'FALCO_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),string(name:'PROTOREPO_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),string(name:'BUILDER_VERSION', value:"fargate-release-$RELEASE_VERSION"),string(name:'RELEASE_VERSION', value:"$RELEASE_VERSION"),booleanParam(name:'UPLOAD', value:true),booleanParam(name:'PUBLIC_RELEASE', value:true)]
+        }
+    }
+   stage('Build Fargate Artifacts') {
+      steps {
+         sh "echo TODO"
+      }
+   }
+      
+
+    // github has a weird behavior where if you move tags, it auto moves a release from publish
+    // to draft. Once it's there, we can't find it by tags anymore, and finding it by name
+    // is a bit more of a pain. So to solve that, we do this in 3 stages:
+    // 1: delete an old github release, which we can find by tag
+    // 2: move/create the new tag
+    // 3: create the new release, which should be publishable
+    stage('delete duplicate github release') {
+        steps {
+            withCredentials([usernamePassword(credentialsId: 'github-jenkins-user-token', passwordVariable: 'GITHUB_PASSWORD', usernameVariable: 'GITHUB_USERNAME')]) {
+                sh label: '', script: """
+                    curl -sH "Authorization: token $GITHUB_PASSWORD" https://api.github.com/repos/draios/agent/releases/tags/$RELEASE_VERSION
+                    RELEASE_ID=`curl -sH "Authorization: token $GITHUB_PASSWORD" https://api.github.com/repos/draios/agent/releases/tags/fargate-$RELEASE_VERSION | grep \"id\" | head -n 1 | awk '{print \$2}' | sed 's/.\$//'`
+                    if [ -z \$RELEASE_ID ];
+                    then
+                        echo "No prior release found, nothing to delete"
+                    else
+                        echo "Deleting release id \$RELEASE_ID"
+                        curl -sH "Authorization: token $GITHUB_PASSWORD" -X DELETE https://api.github.com/repos/draios/agent/releases/\$RELEASE_ID
+                    fi
+                """
+            }
+        }
+    }
+
+    // push the release tags to git.
+    stage('Push Tags') {
+        steps {
+            withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
+                dir('agent') {
+                    sh label: '', script: """
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git tag -d fargate/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
+                        git push origin :refs/tags/fargate/${params.RELEASE_VERSION}
+                        git tag fargate/${params.RELEASE_VERSION}
+                        git push origin fargate/${params.RELEASE_VERSION}
+                    """
+                }
+                dir('libsinsp') {
+                    sh label: '', script: """
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git remote add origin2 ssh://git@github.com/draios/libsinsp.git || echo "remote already exists"
+                        git tag -d fargate/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
+                        git push origin2 :refs/tags/fargate/${params.RELEASE_VERSION}
+                        git tag fargate/${params.RELEASE_VERSION}
+                        git push origin2 fargate/${params.RELEASE_VERSION}
+                    """
+                }
+                dir('libscap') {
+                    sh label: '', script: """
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git remote add origin2 ssh://git@github.com/draios/libscap.git || echo "remote already exists"
+                        git tag -d fargate/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
+                        git push origin2 :refs/tags/fargate/${params.RELEASE_VERSION}
+                        git tag fargate/${params.RELEASE_VERSION}
+                        git push origin2 fargate/${params.RELEASE_VERSION}
+                    """
+                }
+                dir('libscap-hayabusa') {
+                    sh label: '', script: """
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git remote add origin2 ssh://git@github.com/draios/libscap-hayabusa.git || echo "remote already exists"
+                        git tag -d fargate/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
+                        git push origin2 :refs/tags/fargate/${params.RELEASE_VERSION}
+                        git tag fargate/${params.RELEASE_VERSION}
+                        git push origin2 fargate/${params.RELEASE_VERSION}
+                    """
+                }
+                dir('oss-falco') {
+                    sh label: '', script: """
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git remote add origin2 ssh://git@github.com/draios/oss-falco.git || echo "remote already exists"
+                        git tag -d fargate/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
+                        git push origin2 :refs/tags/fargate/${params.RELEASE_VERSION}
+                        git tag fargate/${params.RELEASE_VERSION}
+                        git push origin2 fargate/${params.RELEASE_VERSION}
+                    """
+                }
+                dir('protorepo') {
+                    sh label: '', script: """
+                        export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                        git remote add origin2 ssh://git@github.com/draios/protorepo.git || echo "remote already exists"
+                        git tag -d fargate/${params.RELEASE_VERSION} || echo "Tag not found. No problem."
+                        git push origin2 :refs/tags/fargate/${params.RELEASE_VERSION}
+                        git tag fargate/${params.RELEASE_VERSION}
+                        git push origin2 fargate/${params.RELEASE_VERSION}
+                    """
+                }
+            }
+        }
+    }
+
+    stage('create github release') {
+        steps {
+            withCredentials([usernamePassword(credentialsId: 'github-jenkins-user-token', passwordVariable: 'GITHUB_PASSWORD', usernameVariable: 'GITHUB_USERNAME')]) {
+                sh label: '', script: """
+                    curl -H "Authorization: token $GITHUB_PASSWORD" --data '{"tag_name":"fargate/${params.RELEASE_VERSION}","name":"fargate-${params.RELEASE_VERSION}","body":"body","target_commitish":"fargate-release-${params.RELEASE_VERSION}","draft":false}' https://api.github.com/repos/draios/agent/releases
+                """
+            }
+        }
+    }
+    stage('Wait for Commit') {
+        stages {
+            stage('Notify') {
+                steps {
+                    slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Release is awaiting approvals", tokenCredentialId: 'slack'
+                }
+            }
+
+            stage('Wait for QA') {
+                steps {
+                    input message: 'QA Complete', ok: 'Approve Release'
+                }
+            }
+
+            stage('Wait for Docs') {
+                steps {
+                    input message: 'Docs Ready', ok: 'Confirm'
+                }
+            }
+
+            stage ('Wait for Final Go') {
+                 parallel {
+                    stage('Wait for Manager') {
+                        steps {
+                            // Naveen Bali
+                            slackSend channel: '@UBYCWGBG9', message: "Agent release ${params.RELEASE_VERSION} is awaiting managerial approval. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
+                            input message: 'Manager Complete', ok: 'Approve Release'
+                        }
+                    }
+                    stage('Wait for Releaser') {
+                        steps {
+                            slackSend channel: "@${params.RELEASER_SLACK_ID},#ws-agent-core", message: "Agent release ${params.RELEASE_VERSION} is awaiting releaser approval. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
+                            input message: 'Releaser Complete', ok: 'Approve Release'
+                        }
+                    }
+                }
+            }
+        }
+    }
+   stage('Promote') {
+      steps {
+         build job:'Fargate Artifact Promote',parameters:[string(name:'VERSION',value:"${params.RELEASE_VERSION}-rc"),sring(name:'PROMOTE',value:"${params.RELEASE_VERSION}")]
+      }
+   }
+   }
+
+    post {
         always {
             cleanWs deleteDirs: true, notFailBuild: true
         }
+        success {
+            slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job success!", tokenCredentialId: 'slack'
+         slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Release job success!", tokenCredentialId: 'slack'
+        }
+        failure {
+            slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job failure.", tokenCredentialId: 'slack'
+         slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Release job failure!", tokenCredentialId: 'slack'
+        }
     }
-
 }
+
