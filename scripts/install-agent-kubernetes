@@ -231,7 +231,7 @@ function install_k8s_agent {
 		# If the collector was changed but the analysis manager was not this was
 		# most likely an onprem install, add the default analysis manager for that onprem
 		if [ ! -z "$API_ENDPOINT" ] && [ -z "$ANALYSIS_MANAGER" ]; then
-		  ANALYSIS_MANAGER="https://${API_ENDPOINT}/internal/scanning/scanning-analysis-collector"
+			ANALYSIS_MANAGER="https://${API_ENDPOINT}/internal/scanning/scanning-analysis-collector"
 			echo "* Configuring Analysis Manager endpoint to ${ANALYSIS_MANAGER}. You can also use the -am option to explicitly specify it."
 		elif [ ! -z "$COLLECTOR" ] && [ -z "$ANALYSIS_MANAGER" ]; then
 			ANALYSIS_MANAGER="https://${COLLECTOR}/internal/scanning/scanning-analysis-collector"
@@ -264,7 +264,7 @@ function install_k8s_agent {
 		kubectl apply -f $IA_CONFIG_FILE --namespace=$NAMESPACE
 	fi
 
-  if [ $INSTALL_NODE_ANALYZER -eq 1 ]; then
+	if [ $INSTALL_NODE_ANALYZER -eq 1 ]; then
 		# Benchmark Runner config map
 		BR_CONFIG_FILE=$WORKDIR/sysdig-benchmark-runner-configmap.yaml
 
@@ -384,7 +384,7 @@ function remove_agent {
 
 
 	if [ "$(kubectl get pods -n $NAMESPACE | grep -c "image-analyzer")" -ge 1 ]; then
-	  echo "* Deleting the sysdig-image-analyzer daemonset"
+		echo "* Deleting the sysdig-image-analyzer daemonset"
 		kubectl delete daemonset sysdig-image-analyzer --namespace=$NAMESPACE
 
 		echo "* Deleting the sysdig-image-analyzer configmap"
@@ -630,8 +630,8 @@ if [ -z $COLLECTOR ]; then
 fi
 
 if [ $INSTALL_IMAGE_ANALYZER -eq 1 ] && [ $INSTALL_NODE_ANALYZER -eq 1 ]; then
-  echo "ERROR: The Node Analyzer and Node Image Analyzer cannot both be installed. use -h | --help for $(basename ${0}) Usage"
-  exit 1
+	echo "ERROR: The Node Analyzer and Node Image Analyzer cannot both be installed. use -h | --help for $(basename ${0}) Usage"
+	exit 1
 fi
 
 echo "* Detecting operating system"
