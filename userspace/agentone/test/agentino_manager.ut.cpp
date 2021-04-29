@@ -838,13 +838,28 @@ public:
 	                                      draiosproto::policy_events* events) override
 	{
 		m_events = *events;
+		++m_num_events;
+	}
+
+	void security_mgr_throttled_events_ready(uint64_t ts_ns,
+	                                         draiosproto::throttled_policy_events *events,
+	                                         uint32_t total_throttled_count) override
+	{
+		m_tevents = *events;
+		++m_num_throttled;
 	}
 
 	draiosproto::policy_events m_events;
+	draiosproto::throttled_policy_events m_tevents;
+
+	uint32_t m_num_events = 0;
+	uint32_t m_num_throttled = 0;
 };
 
 TEST(agentino_manager, handle_events_message)
 {
+	// Save a little bit of time per test by not setting up ssl
+	scoped_config<bool> agentino_ssl("agentino_ssl", false);
 	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
 	container_manager c_m;
@@ -868,10 +883,44 @@ TEST(agentino_manager, handle_events_message)
 	                  buffer->buffer.size());
 	EXPECT_EQ(tsrh.m_events.machine_id(), "machineid");
 	EXPECT_EQ(tsrh.m_events.customer_id(), "de:ad:be:ef");
+	EXPECT_EQ(1, tsrh.m_num_events);
+	EXPECT_EQ(0, tsrh.m_num_throttled);
+}
+
+TEST(agentino_manager, handle_throttled_events_message)
+{
+	// Save a little bit of time per test by not setting up ssl
+	scoped_config<bool> agentino_ssl("agentino_ssl", false);
+	container_manager c_m;
+	tracking_security_result_handler tsrh;
+	agentino_manager am(tsrh, c_m, "machineid", "b1:7e:fa:ce");
+
+	auto type = draiosproto::message_type::THROTTLED_POLICY_EVENTS;
+	draiosproto::throttled_policy_events tpe;
+	tpe.set_machine_id("kiwi-box");
+	tpe.set_customer_id("kiwi");
+
+	std::shared_ptr<protobuf_compressor> compressor =
+	    protobuf_compressor_factory::get(protocol_compression_method::GZIP);
+	std::shared_ptr<serialized_buffer> buffer =
+	    dragent_protocol::message_to_buffer(0,
+	                                        type,
+	                                        tpe,
+	                                        compressor);
+
+	am.handle_message(type,
+	                  (const uint8_t*)buffer->buffer.c_str(),
+	                  buffer->buffer.size());
+	EXPECT_EQ("machineid", tsrh.m_tevents.machine_id());
+	EXPECT_EQ("b1:7e:fa:ce", tsrh.m_tevents.customer_id());
+	EXPECT_EQ(0, tsrh.m_num_events);
+	EXPECT_EQ(1, tsrh.m_num_throttled);
 }
 
 TEST(agentino_manager, handle_policies_message)
 {
+	// Save a little bit of time per test by not setting up ssl
+	scoped_config<bool> agentino_ssl("agentino_ssl", false);
 	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
 	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
 	container_manager c_m;

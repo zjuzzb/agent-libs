@@ -672,6 +672,35 @@ bool agentino_manager::handle_message(draiosproto::message_type type,
 		m_events_handler.security_mgr_policy_events_ready(time_ns, &events);
 		return true;
 	}
+	else if (type == draiosproto::message_type::THROTTLED_POLICY_EVENTS)
+	{
+		uint32_t num_throttled_events = 0;
+		draiosproto::throttled_policy_events tevents;
+		try
+		{
+			dragent_protocol::buffer_to_protobuf(buffer, buffer_size, &tevents);
+		}
+		catch (dragent_protocol::protocol_error& ex)
+		{
+			LOG_ERROR("Protocol error while parsing events message: %s", ex.what());
+			return false;
+		}
+
+		uint64_t time_ns = get_current_ts_ns();
+		// Need to set machine ID / customer ID to match agentone, as that's
+		// what backend expects
+		tevents.set_machine_id(m_machine_id);
+		tevents.set_customer_id(m_customer_id);
+
+		// The correct way to implement this is to walk through every event in
+		// the list of throttled events, add up the counts, and that's the total.
+		// However, this number is only cosmetic, and it's not really worth the
+		// CPU cycles to do so.
+		m_events_handler.security_mgr_throttled_events_ready(time_ns,
+		                                                     &tevents,
+		                                                     num_throttled_events);
+		return true;
+	}
 	else
 	{
 		LOG_ERROR("Agentino manager received unexpected message of type %d. Ignoring", type);
