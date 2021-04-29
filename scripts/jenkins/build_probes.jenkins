@@ -45,7 +45,7 @@ pipeline {
         steps {
             withCredentials([usernamePassword(credentialsId: 'github-jenkins-user-token', passwordVariable: 'GITHUB_PASSWORD', usernameVariable: 'GITHUB_USERNAME')]) {
                 sh label: '', script: """
-                    curl -sH "Authorization: token $GITHUB_PASSWORD" https://api.github.com/repos/draios/agent/releases | grep tag_name | head -n 5 | awk '{ print \$2 }' | cut -c2- | rev | cut -c3- | rev > releases
+                    curl -sH "Authorization: token $GITHUB_PASSWORD" https://api.github.com/repos/draios/agent/releases | grep tag_name | grep -v fargate | head -n 5 | awk '{ print \$2 }' | cut -c2- | rev | cut -c3- | rev > releases
                     cat releases
                 """
             }
