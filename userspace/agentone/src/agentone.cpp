@@ -89,10 +89,16 @@ type_config<uint64_t> c_watchdog_warn_memory_usage_mb(256,
                                                       "warn_memory_usage_mb");
 
 type_config<std::vector<std::string>> c_log_file_component_overrides(
-    {},
-    "Component level overrides to global log level",
-    "log",
-    "file_priority_by_component");
+					{},
+					"Component level overrides to global log level",
+					"log",
+					"file_priority_by_component");
+
+type_config<std::vector<std::string>> c_log_console_component_overrides(
+					{},
+					"Component level overrides to global console log level",
+					"log",
+					"console_priority_by_component");
 
 string compute_sha1_digest(SHA1Engine& engine, const string& path)
 {
@@ -1210,21 +1216,6 @@ void agentone_app::mark_clean_shutdown()
 	remove_file_if_exists(m_configuration.m_log_dir, K8S_PROBE_FILE);
 }
 
-Logger* agentone_app::make_console_channel(AutoPtr<Formatter> formatter)
-{
-	if (m_configuration.m_min_console_priority != -1)
-	{
-		AutoPtr<Channel> console_channel(new ConsoleChannel());
-		AutoPtr<Channel> formatting_channel_console(
-		    new FormattingChannel(formatter, console_channel));
-		Logger& loggerc = Logger::create("DraiosLogC",
-		                                 formatting_channel_console,
-		                                 m_configuration.m_min_console_priority);
-		return &loggerc;
-	}
-	return NULL;
-}
-
 Logger* agentone_app::make_event_channel()
 {
 	if (m_configuration.m_min_event_priority != -1)
@@ -1275,7 +1266,7 @@ void agentone_app::initialize_logging()
 	// the consumers of the channel
 	Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, Message::PRIO_TRACE);
 
-	// Note: We are not responsible for managing the memory to which
+	// Note: We are not responsible for managing the memory where
 	//       event_logger points; no free()/delete needed
 	Logger* const event_logger = make_event_channel();
 	if (event_logger != nullptr)
@@ -1286,10 +1277,20 @@ void agentone_app::initialize_logging()
 		                                                  m_configuration.m_user_max_burst_events));
 	}
 
+	AutoPtr<Channel> console_channel(new ConsoleChannel());
+	AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
+	// Create console logger at most permissive level (trace). This allows all messages to flow.
+	// Log severity of messages actually emitted through the channel will be managed by
+	// the consumers of the channel
+	Logger& loggerc =
+	    Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_TRACE);
+
 	g_log = unique_ptr<common_logger>(new common_logger(&loggerf,
+	                                                    &loggerc,
 	                                                    m_configuration.m_min_file_priority,
+	                                                    m_configuration.m_min_console_priority,
 	                                                    c_log_file_component_overrides.get_value(),
-							    make_console_channel(formatter)));
+	                                                    c_log_console_component_overrides.get_value()));
 
 	LOG_INFO("Agentone starting (version " + string(AGENT_VERSION) + ")");
 	common_logger_cache::log_and_purge();

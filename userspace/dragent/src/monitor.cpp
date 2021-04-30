@@ -194,7 +194,7 @@ int monitor::run()
 					    (WEXITSTATUS(status) != dragent::exit_code::DONT_SEND_LOG_REPORT))
 					{
 						std::cerr << "Process " << process.m_name
-						          << "exited. Notifying sdagent process.\n";
+						          << " exited. Notifying sdagent process.\n";
 						// Notify main process to send log report
 						for (const auto& process : m_processes)
 						{

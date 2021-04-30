@@ -59,31 +59,66 @@ public class Config {
      *  and set the appropriate log level in Java logging in order to generate messages at the
      *  correct level inside sdjagent.
      */
-    public Level getLogLevel() {
-        String stringLevel = yamlConfig.getSingle("log.file_priority", "info");
-        List<String> componentStringLevels = yamlConfig.getMergedSequence("log.file_priority_by_component", String.class);
-        for (String str : componentStringLevels)
-        {
+
+    public String getLevel(String level, List<String> componentStringLevels) {
+        for (String str : componentStringLevels) {
             String[] strArr = str.split(": ", 2);
-            if ((strArr.length == 2) && (strArr[0].equals("sdjagent")))
-            {
-                stringLevel = strArr[1];
+            if ((strArr.length == 2) && (strArr[0].equals("sdjagent"))) {
+                level = strArr[1];
                 break;
             }
         }
-        /** Map the log level specified in yaml config to Java logging levels
-         *  Note: this map should be kept in sync with the mapping done in sdjagent_parser
-         */
-        if (stringLevel.equals("fatal") || stringLevel.equals("critical") || stringLevel.equals("error")) {
-            return Level.SEVERE;
-        } else if (stringLevel.equals("warning") || stringLevel.equals("notice")) {
-            return Level.WARNING;
-        } else if (stringLevel.equals("info")) {
-            return Level.INFO;
-        } else if (stringLevel.equals("debug") || stringLevel.equals("trace")) {
-            return Level.FINE;
-        }
-        return Level.INFO;
+        return level;
+	}
+
+    public Level getLogLevel() {
+        /** This function gets the dragent.yaml config for the file log file_priority
+		 *  and file_priority_by_component for the component sdjagent to determine the
+		 *  specified stringFileLevel.  It performs a similar action for the console_priority
+		 *  and console_priority_by_component
+		 *
+		 *  The stringFileLevel and stringConsoleLevel are mapped to a sev value.
+		 *  The most permissive sev value is used to determine the return Java logging level.
+		 *
+		 *  Because only a single IPC channel is used for the transfer of log messages
+		 *  from the sdjagent to the dragent subprocess logger, we take the most permissive
+		 *  value of either the log file or console as the priority level we return.
+		 *
+		 *  Note: This map must be kept in sync with the mapping done in sdjagent_parser.
+		 *
+		 *  Define dictionary dict, using the Java HashMap class, and initialize it using put
+		 *  for each key, value pair.
+		 */
+        Map<String, java.util.logging.Level> dict = new HashMap<String, java.util.logging.Level>();
+            dict.put("fatal", Level.SEVERE);
+            dict.put("critical", Level.SEVERE);
+            dict.put("error", Level.SEVERE);
+            dict.put("warning", Level.WARNING);
+            dict.put("notice", Level.WARNING);
+            dict.put("info", Level.INFO);
+            dict.put("debug", Level.FINE);
+            dict.put("trace", Level.FINE);
+
+        String stringFileLevel = yamlConfig.getSingle("log.file_priority", "info");
+        String stringConsoleLevel = yamlConfig.getSingle("log.console_priority", "info");
+        List<String> componentFileStringLevels = yamlConfig.getMergedSequence("log.file_priority_by_component", String.class);
+        List<String> componentConsoleStringLevels = yamlConfig.getMergedSequence("log.console_priority_by_component", String.class);
+		java.util.logging.Level fileSev =  Level.INFO;
+		java.util.logging.Level consoleSev =  Level.INFO;
+		stringFileLevel = getLevel(stringFileLevel, componentFileStringLevels);
+		fileSev = dict.get(stringFileLevel);
+		/** Perform similar operations to determine the consoleSev
+		 */
+		stringConsoleLevel = getLevel(stringConsoleLevel, componentConsoleStringLevels);
+		consoleSev = dict.get(stringConsoleLevel);
+		/** Set the sev level to the lower, more permissive value of either the consoleSev or the fileSev
+		 */
+		if (fileSev.intValue() < consoleSev.intValue()) {
+                        return fileSev;
+		}
+		else {
+                        return consoleSev;
+		}
     }
 
     public int getMaxAvailabilityCheckIntervalSec() {

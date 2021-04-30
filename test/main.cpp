@@ -23,9 +23,6 @@ namespace {
 class dragent_environment : public ::testing::Environment {
 
 public:
-	dragent_environment(bool log_to_console) :
-	   m_log_to_console(log_to_console)
-	{}
 
 private:
 
@@ -49,20 +46,19 @@ private:
 		AutoPtr<Channel> avoid_block(new avoid_block_channel(file_channel, "machine_test"));
 		AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, avoid_block));
 
-		Logger *loggerc = 0;
-		if(m_log_to_console)
-		{
-			AutoPtr<Channel> console_channel(new ConsoleChannel());
-			AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
-			loggerc = &Logger::create("DraiosLogC", formatting_channel_console, Message::Priority::PRIO_DEBUG);
-		}
+		AutoPtr<Channel> console_channel(new ConsoleChannel());
+		AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
+		Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_DEBUG);
 
 		Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, Message::Priority::PRIO_DEBUG);
-		std::vector<std::string> dummy_config;
+		std::vector<std::string> dummy_file_config;
+		std::vector<std::string> dummy_console_config;
 		g_log = unique_ptr<common_logger>(new common_logger(&loggerf,
+								    &loggerc,
 								    Message::Priority::PRIO_DEBUG,
-								    dummy_config,
-								    loggerc));
+								    Message::Priority::PRIO_DEBUG,
+								    dummy_file_config,
+								    dummy_console_config));
 	}
 
 	void SetUp() override
@@ -73,8 +69,6 @@ private:
 	void TearDown() override
 	{
 	}
-
-	bool m_log_to_console;
 
 };
 
@@ -139,7 +133,6 @@ int main(int argc, char **argv)
 {
 	testing::InitGoogleTest(&argc, argv);
 	bool keep_capture_files = false;
-	bool log_to_console = false;
 	CSimpleOpt args(argc, argv, g_rgOptions);
 
 	//
@@ -153,17 +146,13 @@ int main(int argc, char **argv)
 			{
 				keep_capture_files = true;
 			}
-			else if(args.OptionId() == OPT_LOG_TO_CONSOLE)
-			{
-				log_to_console = true;
-			}
 		}
 	}
 
 	::testing::TestEventListeners &listeners = ::testing::UnitTest::GetInstance()->listeners();
 	listeners.Append(new EventListener(keep_capture_files));
 
-	::testing::AddGlobalTestEnvironment(new dragent_environment(log_to_console));
+	::testing::AddGlobalTestEnvironment(new dragent_environment());
 
 	return RUN_ALL_TESTS();
 }

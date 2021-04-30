@@ -22,9 +22,6 @@ namespace
 class agentone_environment : public ::testing::Environment {
 
 public:
-	agentone_environment(bool log_to_console) :
-	   m_log_to_console(log_to_console)
-	{}
 
 private:
 
@@ -48,28 +45,26 @@ private:
 		AutoPtr<Channel> avoid_block(new avoid_block_channel(file_channel, "machine_test"));
 		AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, avoid_block));
 
-		Logger *loggerc = nullptr;
-		if(m_log_to_console)
-		{
-			AutoPtr<Channel> console_channel(new ConsoleChannel());
-			AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
-			loggerc = &Logger::create("DraiosLogC", formatting_channel_console, Message::Priority::PRIO_DEBUG);
-		}
+		AutoPtr<Channel> console_channel(new ConsoleChannel());
+		AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
+		Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_DEBUG);
 
 		Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, Message::Priority::PRIO_DEBUG);
-		std::vector<std::string> dummy_config;
+		std::vector<std::string> dummy_file_config;
+		std::vector<std::string> dummy_console_config;
+
 		g_log = std::unique_ptr<common_logger>(new common_logger(&loggerf,
+									 &loggerc,
 									 Message::Priority::PRIO_DEBUG,
-									 dummy_config,
-									 loggerc));
+									 Message::Priority::PRIO_DEBUG,
+									 dummy_file_config,
+									 dummy_console_config));
 	}
 
 	void SetUp() override
 	{
 		setup_common_logger();
 	}
-
-	bool m_log_to_console;
 
 };
 
@@ -109,18 +104,8 @@ private:
 int main(int argc, char **argv)
 {
     testing::InitGoogleTest(&argc, argv);
-	bool log = false;
 
-	for (int i = 1; i < argc; ++i)
-	{
-		std::string opt = argv[i];
-		if (opt == "-v" || opt == "--verbose")
-		{
-			log = true;
-		}
-	}
-
-	::testing::AddGlobalTestEnvironment(new agentone_environment(log));
+	::testing::AddGlobalTestEnvironment(new agentone_environment());
     return RUN_ALL_TESTS();
 }
 

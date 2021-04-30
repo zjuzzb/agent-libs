@@ -43,7 +43,6 @@ private:
 	void watchdog_check(uint64_t uptime_s);
 	void dump_heap_profile(uint64_t uptime_s, bool throttle = true);
 	void initialize_logging();
-	Logger* make_console_channel(AutoPtr<Formatter> formatter);
 	void setup_coredumps();
 
 	static void handshake_prepare_callback(void* handshake_data);

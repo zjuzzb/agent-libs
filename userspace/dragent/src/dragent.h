@@ -66,7 +66,6 @@ private:
 	void initialize_logging();
 	void check_for_clean_shutdown();
 	void mark_clean_shutdown();
-	Logger* make_console_channel(AutoPtr<Formatter> formatter);
 	Logger* make_event_channel();
 	void send_internal_metrics(pid_t pid, const std::string& name);
 	void log_watchdog_report() const;
