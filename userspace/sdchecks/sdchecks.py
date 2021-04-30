@@ -13,11 +13,7 @@ from past.utils import old_div
 import os.path
 import traceback
 import inspect
-if PY3:
-    import importlib
-else:
-    # Note: Python3 gives a DeprecationWarning: the imp module is deprecated in favor of importlib
-    import imp
+import imp
 import os
 import re
 import resource
