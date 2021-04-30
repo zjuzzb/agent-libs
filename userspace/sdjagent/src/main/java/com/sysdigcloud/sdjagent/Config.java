@@ -114,10 +114,10 @@ public class Config {
 		/** Set the sev level to the lower, more permissive value of either the consoleSev or the fileSev
 		 */
 		if (fileSev.intValue() < consoleSev.intValue()) {
-            return fileSev;
+                        return fileSev;
 		}
 		else {
-            return consoleSev;
+                        return consoleSev;
 		}
     }
 

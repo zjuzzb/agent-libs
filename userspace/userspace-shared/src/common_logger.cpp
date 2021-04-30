@@ -63,8 +63,8 @@ common_logger::common_logger(Poco::Logger* const file_log,
 	m_console_log_priority(console_sev),
 	m_observer(std::make_shared<null_log_observer>())
 {
-	init_log_component_priorities(file_config_vector, LOG_FILE);
-	init_log_component_priorities(console_config_vector, LOG_CONSOLE);
+	init_log_component_priorities(file_config_vector, log_destination::LOG_FILE);
+	init_log_component_priorities(console_config_vector, log_destination::LOG_CONSOLE);
 }
 
 void common_logger::init_log_component_priorities(const std::vector<std::string>& config_vector, const log_destination log_dest)
@@ -82,11 +82,11 @@ void common_logger::init_log_component_priorities(const std::vector<std::string>
 							component_level.length());
 			if (s_priority_map.count(sev_string) > 0)
 			{
-				if (log_dest == LOG_FILE)
+				if (log_dest == log_destination::LOG_FILE)
 				{
 				    m_file_log_component_priorities[component] = s_priority_map[sev_string];
 				}
-				else if (log_dest == LOG_CONSOLE)
+				else if (log_dest == log_destination::LOG_CONSOLE)
 				{
 				    m_console_log_component_priorities[component] = s_priority_map[sev_string];
 				}
@@ -267,7 +267,7 @@ bool common_logger::is_enabled(const Poco::Message::Priority severity,
 Poco::Message::Priority common_logger::get_component_priority(const std::string& component,
                                                               const log_destination log_dest) const
 {
-	if (log_dest == LOG_FILE)
+	if (log_dest == log_destination::LOG_FILE)
 	{
 		std::unordered_map<std::string, Poco::Message::Priority>::const_iterator it =
 			m_file_log_component_priorities.find(component);
@@ -316,12 +316,12 @@ bool log_sink::is_enabled(const Poco::Message::Priority severity) const
 		if (m_component_file_priority == static_cast<Poco::Message::Priority>(-1))
 		{
 			// Use get_component_priority to search the m_file_log_component_priorities list.
-			m_component_file_priority = g_log->get_component_priority(tag(), LOG_FILE);
+			m_component_file_priority = g_log->get_component_priority(tag(), log_destination::LOG_FILE);
 		}
 		if (m_component_console_priority == static_cast<Poco::Message::Priority>(-1))
 		{
 			// Use get_component_priority to search the m_console_log_component_priorities list.
-			m_component_console_priority = g_log->get_component_priority(tag(), LOG_CONSOLE);
+			m_component_console_priority = g_log->get_component_priority(tag(), log_destination::LOG_CONSOLE);
 		}
 		// now use the common_logger::is_enabled
 		return g_log->is_enabled(severity, m_component_file_priority, m_component_console_priority);
@@ -497,8 +497,8 @@ void log_and_purge()
 
 	while (get_cache().get(&data, 1000 /*one second timeout*/))
 	{
-		auto file_component_priority = g_log->get_component_priority(*data.component_tag, LOG_FILE);
-		auto console_component_priority = g_log->get_component_priority(*data.component_tag, LOG_CONSOLE);
+		auto file_component_priority = g_log->get_component_priority(*data.component_tag, log_destination::LOG_FILE);
+		auto console_component_priority = g_log->get_component_priority(*data.component_tag, log_destination::LOG_CONSOLE);
 		g_log->log_check_component_priority(data.message, data.sev, file_component_priority, console_component_priority);
 	}
 }

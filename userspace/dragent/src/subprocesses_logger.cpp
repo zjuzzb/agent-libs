@@ -143,7 +143,7 @@ void sdjagent_parser::init_priority(const log_destination log_dest)
 	case Poco::Message::PRIO_FATAL:
 	case Poco::Message::PRIO_CRITICAL:
 	case Poco::Message::PRIO_ERROR:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_ERROR;
 		}
@@ -154,7 +154,7 @@ void sdjagent_parser::init_priority(const log_destination log_dest)
 		break;
 	case Poco::Message::PRIO_WARNING:
 	case Poco::Message::PRIO_NOTICE:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_WARNING;
 		}
@@ -164,7 +164,7 @@ void sdjagent_parser::init_priority(const log_destination log_dest)
 		}
 		break;
 	case Poco::Message::PRIO_INFORMATION:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_INFORMATION;
 		}
@@ -175,7 +175,7 @@ void sdjagent_parser::init_priority(const log_destination log_dest)
 		break;
 	case Poco::Message::PRIO_DEBUG:
 	case Poco::Message::PRIO_TRACE:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_DEBUG;
 		}
@@ -185,7 +185,7 @@ void sdjagent_parser::init_priority(const log_destination log_dest)
 		}
 		break;
 	default:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_INFORMATION;
 		}
@@ -201,11 +201,11 @@ void sdjagent_parser::operator()(const string& data)
 {
 	if(m_file_priority == static_cast<Poco::Message::Priority>(-1))
 	{
-		init_priority(LOG_FILE);
+		init_priority(log_destination::LOG_FILE);
 	}
 	if(m_console_priority == static_cast<Poco::Message::Priority>(-1))
 	{
-		init_priority(LOG_CONSOLE);
+		init_priority(log_destination::LOG_CONSOLE);
 	}
 	// Parse log level and use it
 	Json::Value sdjagent_log;
@@ -258,7 +258,7 @@ void cointerface_parser::init_priority(const log_destination log_dest)
 	{
 	case Poco::Message::PRIO_FATAL:
 	case Poco::Message::PRIO_CRITICAL:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_CRITICAL;
 		}
@@ -268,7 +268,7 @@ void cointerface_parser::init_priority(const log_destination log_dest)
 		}
 		break;
 	case Poco::Message::PRIO_ERROR:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_ERROR;
 		}
@@ -279,7 +279,7 @@ void cointerface_parser::init_priority(const log_destination log_dest)
 		break;
 	case Poco::Message::PRIO_WARNING:
 	case Poco::Message::PRIO_NOTICE:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_WARNING;
 		}
@@ -289,7 +289,7 @@ void cointerface_parser::init_priority(const log_destination log_dest)
 		}
 		break;
 	case Poco::Message::PRIO_INFORMATION:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_INFORMATION;
 		}
@@ -299,7 +299,7 @@ void cointerface_parser::init_priority(const log_destination log_dest)
 		}
 		break;
 	case Poco::Message::PRIO_DEBUG:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_DEBUG;
 		}
@@ -309,7 +309,7 @@ void cointerface_parser::init_priority(const log_destination log_dest)
 		}
 		break;
 	case Poco::Message::PRIO_TRACE:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_TRACE;
 		}
@@ -319,7 +319,7 @@ void cointerface_parser::init_priority(const log_destination log_dest)
 		}
 		break;
 	default:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_INFORMATION;
 		}
@@ -335,11 +335,11 @@ void cointerface_parser::operator()(const string& data)
 {
 	if(m_file_priority == static_cast<Poco::Message::Priority>(-1))
 	{
-		init_priority(LOG_FILE);
+		init_priority(log_destination::LOG_FILE);
 	}
 	if(m_console_priority == static_cast<Poco::Message::Priority>(-1))
 	{
-		init_priority(LOG_CONSOLE);
+		init_priority(log_destination::LOG_CONSOLE);
 	}
 	// Parse log level and use it
 	Json::Value cointerface_log;
@@ -404,7 +404,7 @@ void sdchecks_parser::init_priority(const log_destination log_dest)
 	case Poco::Message::PRIO_FATAL:
 	case Poco::Message::PRIO_CRITICAL:
 	case Poco::Message::PRIO_ERROR:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_ERROR;
 		}
@@ -415,7 +415,7 @@ void sdchecks_parser::init_priority(const log_destination log_dest)
 		break;
 	case Poco::Message::PRIO_WARNING:
 	case Poco::Message::PRIO_NOTICE:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_WARNING;
 		}
@@ -425,7 +425,7 @@ void sdchecks_parser::init_priority(const log_destination log_dest)
 		}
 		break;
 	case Poco::Message::PRIO_INFORMATION:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_INFORMATION;
 		}
@@ -436,7 +436,7 @@ void sdchecks_parser::init_priority(const log_destination log_dest)
 		break;
 	case Poco::Message::PRIO_DEBUG:
 	case Poco::Message::PRIO_TRACE:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_DEBUG;
 		}
@@ -446,7 +446,7 @@ void sdchecks_parser::init_priority(const log_destination log_dest)
 		}
 		break;
 	default:
-		if (log_dest == LOG_FILE)
+		if (log_dest == log_destination::LOG_FILE)
 		{
 			m_file_priority = Poco::Message::PRIO_INFORMATION;
 		}
@@ -462,11 +462,11 @@ void sdchecks_parser::operator()(const string& line)
 {
 	if (m_file_priority == static_cast<Poco::Message::Priority>(-1))
 	{
-		init_priority(LOG_FILE);
+		init_priority(log_destination::LOG_FILE);
 	}
 	if (m_console_priority == static_cast<Poco::Message::Priority>(-1))
 	{
-		init_priority(LOG_CONSOLE);
+		init_priority(log_destination::LOG_CONSOLE);
 	}
 	auto parsed_log = sinsp_split(line, ':');
 	// TODO: switch to json logging to avoid parsing issues

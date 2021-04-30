@@ -834,7 +834,7 @@ TEST_F(common_logger_test, component_overrides_none_file)
 	set_log_level(Poco::Message::Priority::PRIO_INFORMATION);
 
 	// no component override, component priority should match default
-	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, LOG_FILE),
+	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, log_destination::LOG_FILE),
 			Poco::Message::Priority::PRIO_INFORMATION);
 
 	const std::string expected_message =
@@ -858,7 +858,7 @@ TEST_F(common_logger_test, component_overrides_none_console)
 	set_log_level(Poco::Message::Priority::PRIO_INFORMATION);
 
 	// no component override, component priority should match default
-	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, LOG_CONSOLE),
+	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, log_destination::LOG_CONSOLE),
 			Poco::Message::Priority::PRIO_INFORMATION);
 
 	const std::string expected_message =
@@ -882,9 +882,9 @@ TEST_F(common_logger_test, component_none_file_debug_console_fatal)
 	set_log_level(Poco::Message::Priority::PRIO_DEBUG, Poco::Message::Priority::PRIO_FATAL);
 
 	// no component override, component priority should match default
-	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, LOG_FILE),
+	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, log_destination::LOG_FILE),
 			Poco::Message::Priority::PRIO_DEBUG);
-	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, LOG_CONSOLE),
+	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, log_destination::LOG_CONSOLE),
 			Poco::Message::Priority::PRIO_FATAL);
 
 	const std::string expected_message =
@@ -910,9 +910,9 @@ TEST_F(common_logger_test, component_none_file_fatal_console_debug)
 	set_log_level(Poco::Message::Priority::PRIO_FATAL, Poco::Message::Priority::PRIO_DEBUG);
 
 	// no component override, component priority should match default
-	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, LOG_FILE),
+	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, log_destination::LOG_FILE),
 			Poco::Message::Priority::PRIO_FATAL);
-	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, LOG_CONSOLE),
+	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, log_destination::LOG_CONSOLE),
 			Poco::Message::Priority::PRIO_DEBUG);
 
 	const std::string expected_message =
@@ -938,9 +938,9 @@ TEST_F(common_logger_test, component_none_file_fatal_console_fatal)
 	set_log_level(Poco::Message::Priority::PRIO_FATAL);
 
 	// no component override, component priority should match default
-	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, LOG_FILE),
+	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, log_destination::LOG_FILE),
 			Poco::Message::Priority::PRIO_FATAL);
-	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, LOG_CONSOLE),
+	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, log_destination::LOG_CONSOLE),
 			Poco::Message::Priority::PRIO_FATAL);
 
 	const std::string expected_message =
@@ -968,14 +968,14 @@ TEST_F(common_logger_test, component_overrides_g_log_file)
 	// set a component override to debug
 	std::vector<std::string> config_vector;
 	config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_DEBUG);
-	g_log->init_log_component_priorities(config_vector, LOG_FILE);
+	g_log->init_log_component_priorities(config_vector, log_destination::LOG_FILE);
 
 	// component priority should match override value
-	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, LOG_FILE),
+	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, log_destination::LOG_FILE),
 			Poco::Message::Priority::PRIO_DEBUG);
 
 	// component priority of component that has no override should have default level
-	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_B, LOG_FILE),
+	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_B, log_destination::LOG_FILE),
 			Poco::Message::Priority::PRIO_INFORMATION);
 
 	// messages above default level should not be visible via g_log->log(),
@@ -1001,14 +1001,14 @@ TEST_F(common_logger_test, component_overrides_g_log_console)
 	// set a component override to debug
 	std::vector<std::string> config_vector;
 	config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_DEBUG); // "test_componentA: debug"
-	g_log->init_log_component_priorities(config_vector, LOG_CONSOLE);
+	g_log->init_log_component_priorities(config_vector, log_destination::LOG_CONSOLE);
 
 	// component priority should match override value
-	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, LOG_CONSOLE),
+	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_A, log_destination::LOG_CONSOLE),
 			Poco::Message::Priority::PRIO_DEBUG);
 
 	// component priority of component that has no override should have default level
-	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_B, LOG_CONSOLE),
+	ASSERT_EQ(g_log->get_component_priority(TEST_COMPONENT_B, log_destination::LOG_CONSOLE),
 			Poco::Message::Priority::PRIO_INFORMATION);
 
 	// messages above default level should not be visible via g_log->log(),
@@ -1056,8 +1056,8 @@ TEST_F(common_logger_test, component_overrides_g_log_case_0)
 	std::vector<std::string> console_config_vector;
 	file_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_CRITICAL);    // "test_componentA: critical"
 	console_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_CRITICAL); // "test_componentA: critical"
-	g_log->init_log_component_priorities(file_config_vector, LOG_FILE);
-	g_log->init_log_component_priorities(console_config_vector, LOG_CONSOLE);
+	g_log->init_log_component_priorities(file_config_vector, log_destination::LOG_FILE);
+	g_log->init_log_component_priorities(console_config_vector, log_destination::LOG_CONSOLE);
 
     // Simulate a LOG_DEBUG message coming from test_componentA
 	const std::string expected_message =
@@ -1091,8 +1091,8 @@ TEST_F(common_logger_test, component_overrides_g_log_case_1)
 	std::vector<std::string> console_config_vector;
 	file_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_CRITICAL); // "test_componentA: critical"
 	console_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_DEBUG); // "test_componentA: debug"
-	g_log->init_log_component_priorities(file_config_vector, LOG_FILE);
-	g_log->init_log_component_priorities(console_config_vector, LOG_CONSOLE);
+	g_log->init_log_component_priorities(file_config_vector, log_destination::LOG_FILE);
+	g_log->init_log_component_priorities(console_config_vector, log_destination::LOG_CONSOLE);
 
     // Simulate a LOG_DEBUG message coming from test_componentA
 	const std::string expected_message =
@@ -1126,8 +1126,8 @@ TEST_F(common_logger_test, component_overrides_g_log_case_2)
 	std::vector<std::string> console_config_vector;
 	file_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_CRITICAL);    // "test_componentA: critical"
 	console_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_CRITICAL); // "test_componentA: critical"
-	g_log->init_log_component_priorities(file_config_vector, LOG_FILE);
-	g_log->init_log_component_priorities(console_config_vector, LOG_CONSOLE);
+	g_log->init_log_component_priorities(file_config_vector, log_destination::LOG_FILE);
+	g_log->init_log_component_priorities(console_config_vector, log_destination::LOG_CONSOLE);
 
     // Simulate a LOG_DEBUG message coming from test_componentA
 	const std::string expected_message =
@@ -1161,8 +1161,8 @@ TEST_F(common_logger_test, component_overrides_g_log_case_3)
 	std::vector<std::string> console_config_vector;
 	file_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_CRITICAL);    // "test_componentA: critical"
 	console_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_DEBUG);    // "test_componentA: debug"
-	g_log->init_log_component_priorities(file_config_vector, LOG_FILE);
-	g_log->init_log_component_priorities(console_config_vector, LOG_CONSOLE);
+	g_log->init_log_component_priorities(file_config_vector, log_destination::LOG_FILE);
+	g_log->init_log_component_priorities(console_config_vector, log_destination::LOG_CONSOLE);
 
     // Simulate a LOG_DEBUG message coming from test_componentA
 	const std::string expected_message =
@@ -1196,8 +1196,8 @@ TEST_F(common_logger_test, component_overrides_g_log_case_4)
 	std::vector<std::string> console_config_vector;
 	file_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_DEBUG);       // "test_componentA: debug"
 	console_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_CRITICAL); // "test_componentA: critical"
-	g_log->init_log_component_priorities(file_config_vector, LOG_FILE);
-	g_log->init_log_component_priorities(console_config_vector, LOG_CONSOLE);
+	g_log->init_log_component_priorities(file_config_vector, log_destination::LOG_FILE);
+	g_log->init_log_component_priorities(console_config_vector, log_destination::LOG_CONSOLE);
 
     // Simulate a LOG_DEBUG message coming from test_componentA
 	const std::string expected_message =
@@ -1231,8 +1231,8 @@ TEST_F(common_logger_test, component_overrides_g_log_case_5)
 	std::vector<std::string> console_config_vector;
 	file_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_DEBUG);       // "test_componentA: debug"
 	console_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_DEBUG);    // "test_componentA: debug"
-	g_log->init_log_component_priorities(file_config_vector, LOG_FILE);
-	g_log->init_log_component_priorities(console_config_vector, LOG_CONSOLE);
+	g_log->init_log_component_priorities(file_config_vector, log_destination::LOG_FILE);
+	g_log->init_log_component_priorities(console_config_vector, log_destination::LOG_CONSOLE);
 
     // Simulate a LOG_DEBUG message coming from test_componentA
 	const std::string expected_message =
@@ -1266,8 +1266,8 @@ TEST_F(common_logger_test, component_overrides_g_log_case_6)
 	std::vector<std::string> console_config_vector;
 	file_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_DEBUG);       // "test_componentA: debug"
 	console_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_CRITICAL); // "test_componentA: critical"
-	g_log->init_log_component_priorities(file_config_vector, LOG_FILE);
-	g_log->init_log_component_priorities(console_config_vector, LOG_CONSOLE);
+	g_log->init_log_component_priorities(file_config_vector, log_destination::LOG_FILE);
+	g_log->init_log_component_priorities(console_config_vector, log_destination::LOG_CONSOLE);
 
     // Simulate a LOG_DEBUG message coming from test_componentA
 	const std::string expected_message =
@@ -1301,8 +1301,8 @@ TEST_F(common_logger_test, component_overrides_g_log_case_7)
 	std::vector<std::string> console_config_vector;
 	file_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_DEBUG);       // "test_componentA: debug"
 	console_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_DEBUG);    // "test_componentA: debug"
-	g_log->init_log_component_priorities(file_config_vector, LOG_FILE);
-	g_log->init_log_component_priorities(console_config_vector, LOG_CONSOLE);
+	g_log->init_log_component_priorities(file_config_vector, log_destination::LOG_FILE);
+	g_log->init_log_component_priorities(console_config_vector, log_destination::LOG_CONSOLE);
 
     // Simulate a LOG_DEBUG message coming from test_componentA
 	const std::string expected_message =
@@ -1336,8 +1336,8 @@ TEST_F(common_logger_test, component_overrides_g_log_case_8)
 	std::vector<std::string> console_config_vector;
 	file_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_CRITICAL);    // "test_componentA: critical"
 	console_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_CRITICAL); // "test_componentA: critical"
-	g_log->init_log_component_priorities(file_config_vector, LOG_FILE);
-	g_log->init_log_component_priorities(console_config_vector, LOG_CONSOLE);
+	g_log->init_log_component_priorities(file_config_vector, log_destination::LOG_FILE);
+	g_log->init_log_component_priorities(console_config_vector, log_destination::LOG_CONSOLE);
 
     // Simulate a LOG_DEBUG message coming from test_componentA
 	const std::string expected_message =
@@ -1372,8 +1372,8 @@ TEST_F(common_logger_test, component_overrides_g_log_case_f)
 	std::vector<std::string> console_config_vector;
 	file_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_DEBUG);       // "test_componentA: debug"
 	console_config_vector.push_back(COMPONENTA_OVERRIDE_CONFIG_DEBUG);    // "test_componentA: debug"
-	g_log->init_log_component_priorities(file_config_vector, LOG_FILE);
-	g_log->init_log_component_priorities(console_config_vector, LOG_CONSOLE);
+	g_log->init_log_component_priorities(file_config_vector, log_destination::LOG_FILE);
+	g_log->init_log_component_priorities(console_config_vector, log_destination::LOG_CONSOLE);
 
     // Simulate a LOG_DEBUG message coming from test_componentA
 	const std::string expected_message =
@@ -1397,9 +1397,9 @@ TEST_F(common_logger_test, component_overrides_log_sink_file)
 	std::vector<std::string> config_vector;
 	// set component override to debug in the config_vector list
 	config_vector.push_back(COMPONENTA_FILE_OVERRIDE_CONFIG_DEBUG);
-	g_log->init_log_component_priorities(config_vector, LOG_FILE);
+	g_log->init_log_component_priorities(config_vector, log_destination::LOG_FILE);
 	ASSERT_EQ(Poco::Message::Priority::PRIO_DEBUG,
-		  g_log->get_component_priority(local_log_sink.tag(), LOG_FILE));
+		  g_log->get_component_priority(local_log_sink.tag(), log_destination::LOG_FILE));
 
 	// log_sink's log level should match override value
 	ASSERT_TRUE(local_log_sink.is_enabled(Poco::Message::Priority::PRIO_DEBUG));
@@ -1434,9 +1434,9 @@ TEST_F(common_logger_test, component_overrides_log_sink_console)
 	std::vector<std::string> config_vector;
 	// set component override to debug in the config_vector list
 	config_vector.push_back(COMPONENTA_FILE_OVERRIDE_CONFIG_DEBUG);
-	g_log->init_log_component_priorities(config_vector, LOG_CONSOLE);
+	g_log->init_log_component_priorities(config_vector, log_destination::LOG_CONSOLE);
 	ASSERT_EQ(Poco::Message::Priority::PRIO_DEBUG,
-		  g_log->get_component_priority(local_log_sink.tag(), LOG_CONSOLE));
+		  g_log->get_component_priority(local_log_sink.tag(), log_destination::LOG_CONSOLE));
 
 	// log_sink's log level should match override value
 	ASSERT_TRUE(local_log_sink.is_enabled(Poco::Message::Priority::PRIO_DEBUG));

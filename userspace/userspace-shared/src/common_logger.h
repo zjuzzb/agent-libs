@@ -20,8 +20,13 @@
 #include <vector>
 #include <unordered_map>
 
-// define the logger destinations
-enum  log_destination { LOG_FILE, LOG_CONSOLE };
+// define the logger destinations class
+enum  class log_destination
+{
+	LOG_FILE,
+	LOG_CONSOLE
+};
+
 namespace Poco
 {
 class Logger;
