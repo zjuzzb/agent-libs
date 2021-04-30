@@ -652,6 +652,7 @@ private:
 	// To avoid the overhead of hashing, save the last threadinfo
 	// pid and the security rules group it hashed to.
 	int64_t m_last_pid;
+	std::string m_last_container_id;
 	std::reference_wrapper<security_rules_group_set> m_last_security_rules_group;
 
 	// Only used to call parse_k8s_audit_json()

@@ -102,6 +102,9 @@ protected:
 											   K8S_CLUSTER_CIDR);
 		test_helpers::scoped_config<std::string> enable_network_topology_service_cidr("network_topology.service_cidr",
 											   K8S_SERVICE_CIDR);
+		test_helpers::scoped_config<bool> enable_network_topology_randomize_start("network_topology.randomize_start",
+		                                      false);
+
 
 		feature_manager::instance().initialize();
 
@@ -652,6 +655,8 @@ TEST_F(secure_netsec_test, not_configured_cidr_out)
 										   "");
 	test_helpers::scoped_config<std::string> enable_network_topology_service_cidr("network_topology.service_cidr",
 										   "");
+	test_helpers::scoped_config<bool> enable_network_topology_randomize_start("network_topology.randomize_start",
+	                                 false);
 
 	// let's re-init secure_netsec, and double-check we *DON'T*
 	// have the cidr configured

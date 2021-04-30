@@ -43,6 +43,7 @@ list(
     compliance_mgr.cpp
     configlist_rest_request_handler.cpp
     configuration.cpp
+    configuration_cli.cpp
     config_data_message_handler.cpp
     config_data_rest_request_handler.cpp
     config_rest_request_handler.cpp

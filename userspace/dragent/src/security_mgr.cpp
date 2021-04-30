@@ -75,6 +75,7 @@ security_mgr::security_mgr(const string& install_root,
 	  m_install_root(install_root),
 	  m_cointerface_sock_path("unix:" + install_root + "/run/cointerface.sock"),
 	  m_last_pid(0),
+	  m_last_container_id(""),
 	  m_last_security_rules_group(m_null_security_rules),
 	  m_k8s_audit_server_started(false)
 {
@@ -715,6 +716,7 @@ void security_mgr::process_event_v2(gen_event *evt)
 
 			m_loaded_policies->match_policy_scopes(m_infra_state, ids);
 			m_last_pid = 0;
+			m_last_container_id = "";
 		}
 	}
 
@@ -734,12 +736,14 @@ void security_mgr::process_event_v2(gen_event *evt)
 
 		if(evt->get_source() == ESRC_SINSP)
 		{
-			if(tinfo->m_pid != m_last_pid)
+			if(tinfo->m_pid != m_last_pid ||
+			   *container_id_ptr != m_last_container_id)
 			{
 				m_last_security_rules_group =
 					m_loaded_policies->get_rules_group_for_container(*container_id_ptr);
 			}
 			m_last_pid = tinfo->m_pid;
+			m_last_container_id = *container_id_ptr;
 
 			for (const auto &group : m_last_security_rules_group.get())
 			{

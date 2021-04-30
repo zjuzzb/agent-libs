@@ -35,6 +35,11 @@ type_config<uint32_t> c_reconnect_max_backoff_s(
         "The ceiling for the exponential backoff on error, in seconds.",
         "reconnect_max_backoff");
 
+type_config<bool> c_backoff_on_proxy_error(
+        false,
+        "Should the agent perform an exponential backoff on proxy error?",
+        "backoff_on_proxy_error");
+
 type_config<uint32_t> c_transmit_delay_ms(
         1,
         "Timeout for send and receive operations to the collector, in milliseconds.",
@@ -343,6 +348,7 @@ bool connection_manager::connect()
 	std::thread connect_thread([&sock_promise, &terminate](const string& hostname,
 	                                                       const uint16_t port,
 	                                                       bool ssl_enabled,
+	                                                       bool use_proxy,
 	                                                       const seconds reconnect_interval,
 	                                                       std::vector<std::string>& ca_cert_paths,
 	                                                       std::string& ssl_ca_certificate,
@@ -381,7 +387,7 @@ bool connection_manager::connect()
 
 			// Choose which type of socket we're using
 
-			if (!c_proxy_host.get_value().empty() && c_proxy_port.get_value() != 0)
+			if (use_proxy)
 			{
 				// Connect through proxy
 				sockptr = http_tunnel::establish_tunnel({c_proxy_host.get_value(),
@@ -457,6 +463,7 @@ bool connection_manager::connect()
 	                           std::ref(m_configuration.m_server_addr),
 	                           m_configuration.m_server_port,
 	                           m_configuration.m_ssl_enabled,
+	                           use_proxy(),
 	                           m_reconnect_interval,
 	                           std::ref(m_configuration.m_ssl_ca_cert_paths),
 	                           std::ref(m_configuration.m_ssl_ca_certificate),
@@ -515,7 +522,18 @@ bool connection_manager::connect()
 	if (!m_socket)
 	{
 		LOG_WARNING("Connection attempt failed. Retrying...");
-		disconnect();
+		if (use_proxy() && c_backoff_on_proxy_error.get_value())
+		{
+			// If the customer is using a proxy server, having an entire
+			// cluster's worth of agents attempting to reconnect every
+			// second could DDoS their proxy, bringing their whole network
+			// down (SMPROD-4840). Let's...not do this.
+			disconnect_and_backoff();
+		}
+		else
+		{
+			disconnect();
+		}
 		return false;
 	}
 	return m_fsm->send_event(cm_state_machine::event::CONNECTION_COMPLETE);
@@ -572,6 +590,11 @@ bool connection_manager::should_backoff(draiosproto::error_type err)
 	default:
 		return false;
 	}
+}
+
+bool connection_manager::use_proxy()
+{
+	return !c_proxy_host.get_value().empty() && c_proxy_port.get_value() != 0;
 }
 
 #ifndef CYGWING_AGENT
@@ -1043,6 +1066,12 @@ bool connection_manager::send_handshake_negotiation()
 		msg_hs.add_supported_raw_prometheus(draiosproto::raw_prometheus_support::PROMSCRAPE_V2_SUPPORT);
 	}
 	msg_hs.add_supported_raw_prometheus(draiosproto::raw_prometheus_support::PROMSCRAPE_NO_SUPPORT);
+
+	if (promscrape::support_fastproto())
+	{
+		msg_hs.add_prom_fastproto(draiosproto::fastproto_support::FASTPROTO_SUPPORT);
+	}
+	msg_hs.add_prom_fastproto(draiosproto::fastproto_support::FASTPROTO_NO_SUPPORT);
 
 	if (m_decorate_handshake_data)
 	{

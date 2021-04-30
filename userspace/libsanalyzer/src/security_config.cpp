@@ -163,7 +163,7 @@ type_config<uint64_t>::ptr c_k8s_audit_server_refresh_interval =
         .build();
 
 type_config<std::string>::ptr c_k8s_audit_server_url =
-    type_config_builder<std::string>("localhost",
+    type_config_builder<std::string>("0.0.0.0",
                                      "Kubernetes audit server url",
                                      "security",
                                      "k8s_audit_server_url")

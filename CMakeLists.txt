@@ -49,6 +49,7 @@ endif()
 
 # Add path for custom CMake modules used to build dependencies from sysdig (libscap, libsinsp)
 list(APPEND CMAKE_MODULE_PATH "${LIBSCAP_DIR}/cmake/modules")
+list(APPEND CMAKE_MODULE_PATH "${LIBSINSP_DIR}/cmake/modules")
 
 # Set up the different flavors of agent binaries
 include(CMakeConfigurationTypes.cmake)

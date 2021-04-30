@@ -75,7 +75,7 @@ type_config<std::vector<std::string>> infrastructure_state::c_k8s_pod_status_wl(
     "list of aggregate pod status that can be sent to BE",
     "k8s_pod_status_reason_strings");
 type_config<bool> infrastructure_state::c_k8s_terminated_pods_enabled(
-    true,
+    false,
     "Enable terminated pods handling",
     "k8s_terminated_pod_enabled");
 type_config<uint32_t>
@@ -1139,10 +1139,19 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 		case draiosproto::ADDED:
 			if (!overwrite)
 			{
-				if (kind != "container")
+				// Don't warn for duplicate hosts because old backends tend to send us dupes (ESC-757)
+				if (kind != "container" && kind != "host")
 				{
 					LOG_WARNING(
 					    "infra_state: Cannot add container_group <%s,%s> because it's already "
+					    "present.",
+					    kind.c_str(),
+					    id.c_str());
+				}
+				else
+				{
+					LOG_DEBUG(
+					    "infra_state: Not adding container_group <%s,%s> because it's already "
 					    "present.",
 					    kind.c_str(),
 					    id.c_str());
@@ -3901,11 +3910,23 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state* state, int num_de
 	{
 		if (it->second.m_uuid == state->m_k8s_node_uid)
 			delegated = true;
-		LOG_DEBUG("k8s_deleg: delegated node %s ips: %s id: %s%s",
-		         it->first.c_str(),
-		         it->second.m_ips.c_str(),
-		         it->second.m_uuid.c_str(),
-		         (it->second.m_uuid == state->m_k8s_node_uid) ? " (this node)" : "");
+		// Log at INFO level once every 10 times, DEBUG otherwise
+		if (m_counter++ % 10)
+		{
+			LOG_DEBUG("k8s_deleg: delegated node %s ips: %s id: %s%s",
+					it->first.c_str(),
+					it->second.m_ips.c_str(),
+					it->second.m_uuid.c_str(),
+					(it->second.m_uuid == state->m_k8s_node_uid) ? " (this node)" : "");
+		}
+		else
+		{
+			LOG_INFO("k8s_deleg: delegated node %s ips: %s id: %s%s",
+					it->first.c_str(),
+					it->second.m_ips.c_str(),
+					it->second.m_uuid.c_str(),
+					(it->second.m_uuid == state->m_k8s_node_uid) ? " (this node)" : "");
+		}
 	}
 
 	return delegated;

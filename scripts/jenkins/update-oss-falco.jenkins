@@ -9,7 +9,7 @@ pipeline {
 		string(name: 'BUILDER_VERSION', defaultValue: "latest")
 		string(name: 'AGENT_BRANCH', defaultValue: "dev")
 		string(name: 'PROTOREPO_BRANCH', defaultValue: "master")
-		string(name: 'FALCO_SYNC_BRANCH', defaultValue: "master")
+		string(name: 'FALCO_SYNC_BRANCH', defaultValue: "master-sync")
 	}
 	stages {
 		stage('Check out dependencies') {
@@ -20,21 +20,40 @@ pipeline {
 			}
 		}
 
-	    stage('Pull falcosecurity/falco master to temporary branch') {
+	    stage('Sync falcosecurity/falco master to oss-master') {
 			steps {
 				withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
 					dir('oss-falco') {
 						sh label: '', script: """
 							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-							# Check out the sync branch now so it tracks from from origin,
-							# before we add the upstream remote.
-							git checkout ${params.FALCO_SYNC_BRANCH}
 							git remote add upstream git@github.com:falcosecurity/falco.git || true
 							git fetch upstream
-							(git show-ref --verify --quiet refs/heads/oss-falco-master-candidate && git branch -D oss-falco-master-candidate) || true
-							git checkout -b oss-falco-master-candidate upstream/master
-					   		git push --set-upstream origin oss-falco-master-candidate
-							git checkout oss-falco-master-candidate
+							git push -f origin upstream/master:refs/heads/oss-master
+						"""
+					}
+				}
+			}
+		}
+	    stage('Rebase sync branch against oss-master') {
+			steps {
+				withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
+					dir('oss-falco') {
+						sh label: '', script: """
+							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+							git checkout ${params.FALCO_SYNC_BRANCH}
+							git rebase origin/oss-master
+						"""
+					}
+				}
+			}
+		}
+		stage('Merge rebased sync branch to temporary branch') {
+			steps {
+				withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
+					dir('oss-falco') {
+						sh label: '', script: """
+							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+							git push -f origin HEAD:refs/heads/oss-falco-master-candidate
 						"""
 					}
 				}
@@ -56,16 +75,14 @@ pipeline {
 			}
 		}
 
-		stage('Merge changes from temporary branch to main falco branch') {
+		stage('Push rebased sync branch') {
 			steps {
 				withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
 					dir('oss-falco') {
 						sh label: '', script: """
 							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-							# Check out the sync branch again to do the merge
-							git checkout ${params.FALCO_SYNC_BRANCH}
-							git merge oss-falco-master-candidate
-					   		git push
+							git push -f origin ${params.FALCO_SYNC_BRANCH}
+							git push origin ${params.FALCO_SYNC_BRANCH}:refs/tags/${BUILD_NUMBER}-`date "+%Y%m%dT%H%M%S"`
 						"""
 					}
 				}
@@ -74,7 +91,23 @@ pipeline {
 	}
     post {
 		always {
-			cleanWs()
-		}
+			cleanWs deleteDirs: true, notFailBuild: true
+        }
+		success {
+            script {
+                if (currentBuild.getPreviousBuild().result == "FAILURE") {
+                    slackSend channel: '#dev-agent-ci', message: "falco-sync-and-test-upstream - #<${currentBuild.absoluteUrl}|${currentBuild.number}> Back to normal", tokenCredentialId: 'slack'
+                }
+            }
+        }
+        failure {
+            script {
+                if (currentBuild.getPreviousBuild().result == "FAILURE") {
+                    slackSend channel: '#dev-agent-ci', message: "falco-sync-and-test-upstream - # <${currentBuild.absoluteUrl}|${currentBuild.number}> Still failing", tokenCredentialId: 'slack'
+                } else {
+                    slackSend channel: '#dev-agent-ci', message: "falco-sync-and-test-upstream - # <${currentBuild.absoluteUrl}|${currentBuild.number}> Failure", tokenCredentialId: 'slack'
+                }
+            }
+        }
     }
 }

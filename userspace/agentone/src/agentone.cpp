@@ -198,7 +198,6 @@ void disable_rest_server()
 
 agentone_app::agentone_app()
     : m_unshare_ipcns(true),
-      m_aggregator_queue(MAX_SAMPLE_STORE_SIZE),
       m_serializer_queue(MAX_SAMPLE_STORE_SIZE),
       m_transmit_queue(MAX_SAMPLE_STORE_SIZE),
       m_protocol_handler(m_transmit_queue),
@@ -631,7 +630,6 @@ int agentone_app::sdagent_main()
 
 	connection_manager* cm = nullptr;
 	dragent::metric_serializer* serializer = nullptr;
-	dragent::async_aggregator* aggregator = nullptr;
 	agentone::container_manager* container_manager_instance = nullptr;
 	std::shared_ptr<agentone::agentino_manager> agentino_manager_instance = nullptr;
 	auto null_handler = std::make_shared<dragent::null_message_handler>();
@@ -694,17 +692,6 @@ int agentone_app::sdagent_main()
 		                                                      m_configuration.m_excess_k8s_log,
 		                                                      m_configuration.m_k8s_cache_size);
 
-		// Create and set up the aggregator
-		aggregator = new dragent::async_aggregator(m_aggregator_queue,
-		                                           m_serializer_queue,
-		                                           300,
-		                                           c_10s_flush_enabled.get_value() ? 10 : 0,
-		                                           m_configuration.c_root_dir.get_value());
-		aggregator->set_aggregation_interval_source(cm);
-
-		m_pool.start(*aggregator, c_serializer_timeout_s.get_value());
-		LOG_INFO("Created and started aggregator");
-
 		// Create and set up the serializer
 		auto s = new dragent::protobuf_metric_serializer(nullptr,
 		                                                 m_configuration.c_root_dir.get_value(),
@@ -735,6 +722,9 @@ int agentone_app::sdagent_main()
 	// time to terminate.
 	//////////////////////////////
 	int index = 0;
+
+	uint64_t last_flush_time_ns = sinsp_utils::get_current_time_ns();
+	uint64_t flush_time_interval_ns = (c_10s_flush_enabled.get_value() ? 10 : 1) * ONE_SECOND_IN_NS;
 	while (!state.is_terminated())
 	{
 		if (m_configuration.m_watchdog_enabled)
@@ -750,26 +740,39 @@ int agentone_app::sdagent_main()
 
 		setup_startup_probe(*cm);
 
-		auto metrics = make_unique<draiosproto::metrics>();
-		metrics->set_timestamp_ns(time(nullptr) * ONE_SECOND_IN_NS);
-		metrics->set_index(++index);
-		metrics->set_machine_id(m_configuration.machine_id());
-		metrics->set_customer_id(m_configuration.m_customer_id);
-		metrics->mutable_hostinfo()->set_hostname(m_hostname);
+		uint64_t cur_time_ns = sinsp_utils::get_current_time_ns();
+		if ((cur_time_ns > last_flush_time_ns) &&
+		    ((cur_time_ns - last_flush_time_ns) >= flush_time_interval_ns))
+		{
+			last_flush_time_ns = cur_time_ns;
 
-		agentone::container_serializer<draiosproto::metrics> cs;
-		cs.serialize(*container_manager_instance, *metrics);
+			auto metrics = make_unique<draiosproto::metrics>();
+			metrics->set_timestamp_ns(time(nullptr) * ONE_SECOND_IN_NS);
+			metrics->set_index(++index);
+			metrics->set_machine_id(m_configuration.machine_id());
+			metrics->set_customer_id(m_configuration.m_customer_id);
+			metrics->mutable_hostinfo()->set_hostname(m_hostname);
 
-		m_aggregator_queue.put(
-		    std::make_shared<flush_data_message>(time(nullptr) * ONE_SECOND_IN_NS,
-		                                         nullptr,
-		                                         std::move(metrics),
-		                                         0,
-		                                         0,
-		                                         0,
-		                                         1,
-		                                         0));
+			// Report number of agentinos attached
+			uint32_t num_agentino_connections = agentino_manager_instance->get_num_connections();
+			internal_metrics::write_metric(metrics->mutable_protos()->mutable_statsd(),
+			                               "serverlessdragent.workload_agent.count",
+			                               draiosproto::STATSD_GAUGE,
+			                               num_agentino_connections);
 
+			agentone::container_serializer<draiosproto::metrics> cs;
+			cs.serialize(*container_manager_instance, *metrics);
+
+			m_serializer_queue.put(
+			    std::make_shared<flush_data_message>(time(nullptr) * ONE_SECOND_IN_NS,
+			                                         nullptr,
+			                                         std::move(metrics),
+			                                         0,
+			                                         0,
+			                                         0,
+			                                         1,
+			                                         0));
+		}
 		Thread::sleep(1000);
 		++uptime_s;
 	}
@@ -804,10 +807,6 @@ int agentone_app::sdagent_main()
 	if (serializer)
 	{
 		serializer->stop();
-	}
-	if (aggregator)
-	{
-		aggregator->stop();
 	}
 
 	if (m_configuration.m_watchdog_enabled)

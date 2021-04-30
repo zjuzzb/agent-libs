@@ -3,17 +3,17 @@
 #include "agentino_connection.h"
 #include "connection_manager.h"
 #include "container_manager.h"
+#include "running_state_runnable.h"
 #include "security_result_handler.h"
 #include "thread_pool.h"
-#include "running_state_runnable.h"
 
 #include <condition_variable>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <set>
-#include <thread>
 #include <string>
+#include <thread>
 
 /**
  * Agentino management infrastructure
@@ -74,12 +74,11 @@ public:  // ctor/dtor
 	         std::map<std::string, std::string> arbitrary_metadata);
 
 public:
-
 	/**
 	 * Get a unique identifier for this agentino.
 	 */
 	virtual std::string get_id() const;
-	
+
 	/**
 	 * Get name for this agentino.
 	 */
@@ -131,7 +130,7 @@ public:
 	/**
 	 * sends a protobuf to this agentino
 	 *
-	 * Fire-and-forget. No return value. Best of luck.
+	 * Fire-and-forget. No return value. Best of luck. Copies buffer.
 	 */
 	template<typename PROTOBUF>
 	void send(draiosproto::message_type type, PROTOBUF buffer)
@@ -141,6 +140,13 @@ public:
 			(void)m_connection->send_message(type, buffer);
 		}
 	}
+
+	/**
+	 * We can't make the send function virtual to allow it to be nicely mocked for testing,
+	 * not easily virtualize the connection (for the same reason), so we just wrap
+	 * this one so we can make it virtual.
+	 */
+	virtual void send_policies(draiosproto::policies_v2 policies);
 
 protected:
 	// The following lock protects BOTH the container and metadata structures.
@@ -280,6 +286,12 @@ public:
 	 */
 	uint32_t get_num_connections() const;
 
+	/**
+	 * Returns a copy of the current policies the manager believes each agentino
+	 * should have
+	 */
+	draiosproto::policies_v2 get_cached_policies() const;
+
 public:  // message_handler
 	bool handle_message(draiosproto::message_type type,
 	                    const uint8_t* buffer,
@@ -319,6 +331,13 @@ private:  // functions
 	// could be out of order (thus pushing an older policies message)
 	void propagate_policies();
 
+	// wrapper for the agentino builder existing for the sole purpose of giving
+	// us a way to create test agentinos easily
+	virtual agentino::ptr build_agentino(
+	    connection::ptr connection_in,
+	    std::map<agentino_metadata_property, std::string> fixed_metadata,
+	    std::map<std::string, std::string> arbitrary_metadata);
+
 public:
 	/**
 	 * Parses the handshake protobuf into our usable in-memory structs
@@ -353,7 +372,7 @@ private:
 	// a policy, but that is live-with-able.
 	std::list<std::shared_ptr<agentino>> m_new_agentinos;
 
-	std::mutex m_policies_lock;  // lock protects the cached policies and updated flag
+	mutable std::mutex m_policies_lock;  // lock protects the cached policies and updated flag
 	draiosproto::policies_v2 m_cached_policies;
 	bool m_policies_updated;  // indicates that the policies have been updated, but not yet
 	                          // propagated to the agentinos

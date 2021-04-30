@@ -1,6 +1,9 @@
 #include "common_logger.h"
+#include "command_line_manager.h"
 #include "configuration.h"
+#include "configuration_cli.h"
 #include "json_error_log.h"
+#include "network_utils.h"
 #include "running_state.h"
 #include "uri.h"
 #include "windows_helpers.h"
@@ -20,11 +23,11 @@
 
 #include <sys/resource.h>
 #include <sys/time.h>
-#include <curl/curl.h>
 
 using namespace std;
 using namespace Poco;
 using namespace Poco::Net;
+using namespace network_utils;
 
 COMMON_LOGGER("dragent");
 
@@ -513,6 +516,12 @@ void dragent_configuration::init()
 		m_config.reset(
 		    new yaml_configuration({m_conf_file, kubernetes_dragent_yaml, m_defaults_conf_file}));
 	}
+
+	configuration_cli::add("dragent", m_conf_file, {CLI_VIEW_CONFIGURATION});
+	configuration_cli::add("configmap", kubernetes_dragent_yaml, {CLI_VIEW_CONFIGURATION});
+	configuration_cli::add("backend", autocfg->config_path(), {CLI_VIEW_CONFIGURATION});
+	configuration_cli::add("default", m_defaults_conf_file, {CLI_VIEW_CONFIGURATION});
+
 	// The yaml_configuration catches exceptions so m_config will always be
 	// a valid pointer, but set m_load_error so dragent will see the error
 	if (!m_config->errors().empty())
@@ -1655,65 +1664,6 @@ void dragent_configuration::print_configuration() const
 	for (const auto& item : m_config->errors())
 	{
 		LOG_CRITICAL(item);
-	}
-}
-
-size_t dragent_configuration::curl_write_callback(const char* ptr, size_t size, size_t nmemb, string* json)
-{
-	const std::size_t total = size * nmemb;
-	json->append(ptr, total);
-	return total;
-}
-
-std::string dragent_configuration::curl_get(const std::string& uri, const std::string& buffer)
-{
-	CURL* curl = curl_easy_init();
-	CURLcode res;
-
-	if (curl)
-	{
-		if ((res = curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2)) != CURLE_OK)
-		{
-			goto read_error;
-		}
-		if ((res = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 1L)) != CURLE_OK)
-		{
-			goto read_error;
-		}
-		if ((res = curl_easy_setopt(curl, CURLOPT_URL, uri.c_str())) != CURLE_OK)
-		{
-			goto read_error;
-		}
-		if ((res = curl_easy_setopt(curl, CURLOPT_HTTPGET, 1)) != CURLE_OK)
-		{
-			goto read_error;
-		}
-		if ((res = curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1)) != CURLE_OK)
-		{
-			goto read_error;
- 		}
-		if ((res = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_callback)) != CURLE_OK)
-		{
-			goto read_error;
-		}
-		if ((res = curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer)) != CURLE_OK)
-		{
-			goto read_error;
-		}
-		if ((res = curl_easy_perform(curl)) != CURLE_OK)
-		{
-			goto read_error;
-		}
-
-		curl_easy_cleanup(curl);
-		return std::string();
-read_error:
-		curl_easy_cleanup(curl);
-		return std::string(curl_easy_strerror(res));
-	}
-	else
-	{
-		return std::string("Unable to initialize curl");
 	}
 }
 

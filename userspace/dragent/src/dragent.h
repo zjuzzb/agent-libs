@@ -38,6 +38,7 @@
 
 class promscrape;
 class promscrape_proxy;
+class promscrape_stats_proxy;
 class user_event_channel;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -154,6 +155,7 @@ private:
 	std::unique_ptr<pipe_manager> m_promscrape_pipes;
 
 	std::shared_ptr<promscrape_proxy> m_promscrape_proxy;
+	std::shared_ptr<promscrape_stats_proxy> m_promscrape_stats_proxy;
 
 	internal_metrics::sptr_t m_internal_metrics;
 	protocol_handler m_protocol_handler;

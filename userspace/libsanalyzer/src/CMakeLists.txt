@@ -11,6 +11,7 @@ include_directories(${LIBSCAP_INCLUDE_DIR})
 include_directories(${LIBSINSP_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/command-line/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
@@ -153,6 +154,7 @@ set(SANALYZER_SOURCES
     audit_tap_connection_info.cpp
     audit_tap_network_connection.cpp
     secure_audit.cpp
+    secure_audit_filter.cpp
     secure_helper.cpp
     secure_netsec.cpp
     secure_netsec_obj.cpp

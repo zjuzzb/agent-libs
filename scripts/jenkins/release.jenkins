@@ -365,7 +365,7 @@ pipeline {
             stage('Launch QA tests pipeline') {
                 steps {
                     script {
-                        build job: "QA-agent-release-validation", parameters: [string(name: 'AGENT_VERSION', value: "${params.RELEASE_VERSION}-rc")], wait: false
+                        build job: "QA-agent/release-validation", parameters: [string(name: 'AGENT_VERSION', value: "${params.RELEASE_VERSION}-rc")], wait: false
                     }
                 }
             }

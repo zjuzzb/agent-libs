@@ -60,6 +60,7 @@ public:
 	static type_config<std::string> c_secure_netsec_service_cidr;
 	static type_config<int> c_secure_netsec_connections_limit;
 	static type_config<std::vector<std::string>> c_secure_netsec_filtered_process_names;
+	static type_config<bool> c_secure_netsec_randomize_start;
 
 	bool is_k8s_cidr_configured() const
 	{
@@ -179,4 +180,6 @@ private:
 	uint m_resolved_client = 0;
 	uint m_resolved_server = 0;
 	uint m_resolved_owner = 0;
+
+	uint64_t m_randomized_flush_start = 0;
 };

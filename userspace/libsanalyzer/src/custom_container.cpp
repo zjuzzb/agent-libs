@@ -218,7 +218,7 @@ void custom_container::resolver::clean_label(std::string& val, enum string_type_
 	if (m_label_value_substitution_char == '\0') // we will only do this once to initialize
 	{
 	    m_label_value_substitution_char = (c_substitute_container_label_value_char.get_value().length() == 1 && 
-			whitelist_value.find(c_substitute_container_label_value_char.get_value()[0] != 
+			(whitelist_value.find(c_substitute_container_label_value_char.get_value()[0]) != 
 			std::string::npos) ? 
 			c_substitute_container_label_value_char.get_value()[0] : '_');
 	}

@@ -128,7 +128,7 @@ type_config<bool> c_10s_flush_enabled(false,
                                       "Enable agent-side aggregation",
                                       "10s_flush_enable");
 
-type_config<std::string> c_promscrape_labels("--source.label=pod_id,sysdig_k8s_pod_uid,remove --source.label=container_name,sysdig_k8s_pod_container_name,remove --source.label=sysdig_bypass,sysdig_bypass,remove",
+type_config<std::string> c_promscrape_labels("--source.label=pod_id,sysdig_k8s_pod_uid,remove --source.label=container_name,sysdig_k8s_pod_container_name,remove --source.label=sysdig_bypass,sysdig_bypass,remove --source.label=sysdig_omit_source,sysdig_omit_source,remove",
                                              "source labels for promscrape to attach to results",
                                              "promscrape_labels");
 
@@ -156,8 +156,9 @@ type_config<std::vector<std::string>> c_log_console_component_overrides(
 
 type_config<uint64_t>::ptr c_wait_before_ready_sec =
 	type_config_builder<uint64_t>(
-		30,
-		"after cointerface is ready, wait this amount of seconds before k8s readiness probe switches to ready",
+		0,
+		"after cointerface is ready, wait this amount of seconds before k8s readiness probe switches to ready."
+		"If set to zero, cointerface is not taken into account for readiness",
 		"k8s_wait_before_ready"
 		).build();
 
@@ -1343,6 +1344,8 @@ int dragent_app::sdagent_main()
 				m_promscrape_proxy = std::make_shared<promscrape_proxy>(the_promscrape, &m_protocol_handler, cm);
 				m_pool.start(*m_promscrape_proxy.get(), c_promscrape_timeout_s.get_value());
 			}
+			m_promscrape_stats_proxy = std::make_shared<promscrape_stats_proxy>(the_promscrape);
+			m_pool.start(*m_promscrape_stats_proxy.get(), c_promscrape_timeout_s.get_value());
 		}
 
 		analyzer = build_analyzer(inspector,
@@ -2430,7 +2433,7 @@ void dragent_app::setup_startup_probe(const connection_manager& cm)
 {
 	if(!m_startup_probe_set)
 	{
-		if(cm.is_connected() && cointerface_ready())
+		if(cm.is_connected() && (c_wait_before_ready_sec->get_value() == 0 || cointerface_ready()))
 		{
 			m_startup_probe_set = create_file(m_configuration.m_log_dir, K8S_PROBE_FILE);
 		}

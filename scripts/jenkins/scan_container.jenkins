@@ -22,7 +22,7 @@ pipeline {
     }
     stage('Scan Container') {
         steps {
-            sysdig engineRetries: '10000', name: 'file_with_name_of_container'
+            sysdig engineurl: 'https://prodmon.app.sysdig.com/api/scanning/v1/anchore', engineCredentialsId: 'prodmon-secure-scanning', engineRetries: '10000', name: 'file_with_name_of_container'
         }
     }
 

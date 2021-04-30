@@ -23,6 +23,7 @@ const connection::connection_cb connection::empty_callback;
 
 connection::connection(cm_socket* sock,
                        agentone::agentino_manager* manager,
+                       tp_work_item::client_id client_id,
                        handshake_cb on_handshake,
                        connection_cb on_connect,
 			           connection_cb on_disconnect)
@@ -32,7 +33,8 @@ connection::connection(cm_socket* sock,
       m_on_disconnect(on_disconnect),
       m_on_handshake(on_handshake),
       m_id("<unknown>"),
-      m_state(INIT)
+      m_state(INIT),
+      m_client_id(client_id)
 {
 }
 

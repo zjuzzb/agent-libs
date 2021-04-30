@@ -15,12 +15,16 @@
 #include "metric_limits.h"
 #include <thread_safe_container/blocking_queue.h>
 #include <mutex>
+#include <json/json.h>
 
 class infrastructure_state;
+class promscrape;
 
 class promscrape_stats {
 public:
-	promscrape_stats(const prometheus_conf &prom_conf);
+	promscrape_stats(const prometheus_conf &prom_conf, promscrape *ps);
+
+	static type_config<bool>c_always_gather_stats;
 
 	void set_stats(std::string url,
 		int raw_scraped, int raw_job_filter_dropped,
@@ -31,9 +35,24 @@ public:
 		int raw_sent, int calc_sent);
 	void periodic_log_summary();
 
+	// Hackathon
+	void get_target_stats(std::string &output);
+	void get_target_metadata(std::string &output, const std::string &url);
+	void get_scrape(std::string &output, const std::string &url);
+	void get_stats(std::string &output);
+	void process_metadata();
+	void process_scrape(string instance, std::shared_ptr<agent_promscrape::ScrapeResult> scrape);
+
+	bool gather_stats_enabled();
+	void enable_gather_stats(bool enable = true);
+	void gather_target_stats();
+	void periodic_gather_stats();
+
 private:
 	void log_summary();
 	void clear();
+	void init_command_line();
+	void remove_command_line();
 
 	typedef struct {
 		int raw_scraped;
@@ -49,11 +68,35 @@ private:
 		int over_global_limit;
 	} metric_stats;
 
+	typedef struct {
+		string type;
+		string help;
+		string unit;
+		int timeseries;
+	} metric_metadata;
+
 	std::mutex m_mutex;
+	// Map from URL to stats
 	std::map<std::string, metric_stats> m_stats_map;
+	// Map from instance to map from metric name to metadata
+	std::map<std::string, std::map<std::string, metric_metadata>> m_metadata_map;
 
 	run_on_interval m_log_interval;
 	prometheus_conf m_prom_conf;
+
+	run_on_interval m_gather_interval;
+	bool m_gather_stats = false;
+	int m_gather_stats_count = 0;
+
+	std::mutex m_json_mutex;
+	Json::Value m_local_targets;
+	Json::Value m_local_targets_metadata;
+	Json::Value m_cluster_targets;
+	Json::Value m_cluster_targets_metadata;
+
+	Json::Reader m_json_reader;
+
+	promscrape *m_promscrape;
 };
 
 class promscrape {
@@ -69,6 +112,7 @@ public:
 		uint64_t last_total_samples;
 		tag_map_t add_tags;
 		bool bypass_limits;
+		bool omit_source;		// Don't send source_metadata
 	} prom_job_config;
 
 	// Map from process-id to job-ids
@@ -98,6 +142,8 @@ public:
 	static type_config<bool>c_promscrape_web_enable;
 	static type_config<bool>::mutable_ptr c_export_fastproto;
 	static type_config<bool>c_allow_bypass;
+
+	const prom_jobid_map_t& job_map() { return m_jobs; }
 
 	explicit promscrape(metric_limits::sptr_t ml, const prometheus_conf &prom_conf, bool threaded, interval_cb_t interval_cb);
 
@@ -167,11 +213,16 @@ public:
 	static bool can_use_metrics_request_callback();
 	std::shared_ptr<draiosproto::metrics> metrics_request_callback();
 
+	// Fastproto has been supported for a while, this is here in case we don't want
+	// the backend to try enabling it.
+	static bool support_fastproto() { return true; }
+
 	// Called by prometheus::validate_config() right after prometheus configuration
 	// has been read from config file. Ensures that configuration is consistent
 	static void validate_config(prometheus_conf &conf, const std::string &root_dir);
 
 	void periodic_log_summary() { m_stats.periodic_log_summary(); }
+	void periodic_gather_stats() { m_stats.periodic_gather_stats(); }
 
 	// With Promscrape V2 the agent will no longer find endpoints through the
 	// process_filter or remote_services rules.

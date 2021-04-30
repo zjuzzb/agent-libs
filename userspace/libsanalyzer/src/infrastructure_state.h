@@ -492,7 +492,7 @@ private: // configs which have non-static fields that we actually use. You proba
 class new_k8s_delegator
 {
 public:
-	new_k8s_delegator() : m_prev_deleg(false), m_cached_deleg(false) { }
+	new_k8s_delegator() : m_prev_deleg(false), m_cached_deleg(false), m_counter(0) { }
 
 	bool has_agent(infrastructure_state *, const infrastructure_state::uid_t uid, std::unordered_set<infrastructure_state::uid_t> *visited = nullptr);
 	bool is_delegated_now(infrastructure_state *, int num_delegated);
@@ -501,6 +501,7 @@ public:
 private:
 	bool m_prev_deleg;
 	bool m_cached_deleg;
+	uint32_t m_counter;
 
 	run_on_interval m_delegation_interval = { K8S_DELEGATION_INTERVAL };
 };

@@ -38,6 +38,7 @@ public:
 	      m_ingest_calculated(false),
 	      m_prom_sd(false)
 	{
+		init_command_line();
 	}
 
 	typedef struct
@@ -124,6 +125,9 @@ public:
 
 	// Validate config. Log and correct inconsistencies as needed
 	void validate_config(const std::string &root_dir);
+
+	void show_config(std::string &output);
+	void init_command_line();
 
 private:
 	bool m_log_errors;
