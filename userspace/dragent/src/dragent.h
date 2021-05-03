@@ -136,7 +136,7 @@ private:
 	bool m_unshare_ipcns;
 #endif
 	dragent_configuration m_configuration;
-	dragent_error_handler m_error_handler;
+	watchdog_error_handler m_error_handler;
 	/// Queue for input to the aggregator
 	flush_queue m_aggregator_queue;
 	/// Queue for input to the serializer

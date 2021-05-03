@@ -50,7 +50,7 @@ private:
 	void send_heartbeat();
 
 	dragent_configuration m_configuration;
-	dragent_error_handler m_error_handler;
+	watchdog_error_handler m_error_handler;
 	flush_queue m_serializer_queue;
 	/// Queue consumed by connection_manager for transmission to backend
 	protocol_queue m_transmit_queue;

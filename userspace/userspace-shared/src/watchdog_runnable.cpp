@@ -4,6 +4,7 @@
 #include "uptime.h"
 #include "watchdog_runnable_fatal_error.h"
 #include <cinttypes>
+#include <Poco/ErrorHandler.h>
 
 COMMON_LOGGER();
 
@@ -127,6 +128,7 @@ void watchdog_runnable::run()
 
 		}
 		m_terminated_with_error = true;
+		Poco::ErrorHandler::handle(ex);
 	}
 	catch (const std::exception& ex)
 	{
@@ -134,12 +136,14 @@ void watchdog_runnable::run()
 			  m_name.c_str(),
 			  ex.what());
 		m_terminated_with_error = true;
+		Poco::ErrorHandler::handle(ex);
 	}
 	catch (...)
 	{
 		LOG_FATAL("Unknown fatal error occurred on %s. Terminating gracefully.",
 			  m_name.c_str());
 		m_terminated_with_error = true;
+		Poco::ErrorHandler::handle();
 	}
 
 	LOG_INFO("%s terminating", m_name.c_str());

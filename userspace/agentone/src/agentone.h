@@ -89,7 +89,7 @@ private:
 	bool m_unshare_ipcns;
 
 	dragent_configuration m_configuration;
-	dragent_error_handler m_error_handler;
+	watchdog_error_handler m_error_handler;
 
 	/// Queue for input to the serializer
 	flush_queue m_serializer_queue;

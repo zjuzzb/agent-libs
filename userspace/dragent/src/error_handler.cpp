@@ -24,15 +24,9 @@ dragent_error_handler::dragent_error_handler()
 {
 }
 
-void dragent_error_handler::exception(const Poco::Exception& exc)
+void dragent_error_handler::handle_std_exception(const std::exception& exc)
 {
-	g_log->error(exc.displayText());
-	dragent::running_state::instance().restart();
-}
-	
-void dragent_error_handler::exception(const std::exception& exc)
-{
-#ifndef CYGWING_AGENT
+    #ifndef CYGWING_AGENT
 #ifndef _WIN32
 	glogf(sinsp_logger::SEV_DEBUG, "error_handler: Catching exception %p. Printing backtrace...", &exc);
 	static const char s[] = "EXCEPTION BACKTRACE ----------------------";
@@ -48,8 +42,18 @@ void dragent_error_handler::exception(const std::exception& exc)
 	free(bt_syms);
 #endif
 #endif
-	LOG_ERROR(exc.what());
+}
 
+void dragent_error_handler::exception(const Poco::Exception& exc)
+{
+	g_log->error(exc.displayText());
+	dragent::running_state::instance().restart();
+}
+	
+void dragent_error_handler::exception(const std::exception& exc)
+{
+    handle_std_exception(exc);
+	LOG_ERROR(exc.what());
 	dragent::running_state::instance().restart();
 }
 
@@ -57,6 +61,26 @@ void dragent_error_handler::exception()
 {
 	LOG_ERROR("Unknown exception");
 	dragent::running_state::instance().restart();
+}
+
+watchdog_error_handler::watchdog_error_handler()
+{
+}
+
+void watchdog_error_handler::exception(const Poco::Exception& exc)
+{
+	LOG_ERROR(exc.displayText());
+}
+	
+void watchdog_error_handler::exception(const std::exception& exc)
+{
+    LOG_ERROR("Hit a std exception %s", exc.what());
+    dragent_error_handler::handle_std_exception(exc);
+}
+
+void watchdog_error_handler::exception()
+{
+	LOG_ERROR("Unknown exception");
 }
 
 log_reporter::log_reporter(log_report_handler& handler, dragent_configuration * configuration):

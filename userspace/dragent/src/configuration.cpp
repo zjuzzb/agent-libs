@@ -1723,25 +1723,35 @@ void dragent_configuration::refresh_aws_metadata()
 		return;
 	}
 
-	Json::Reader reader;
-	Json::Value root;
-	if (reader.parse(response_buffer, root))
-	{
-		if (!root["accountId"].empty())
-		{
-			m_aws_metadata.m_account_id = root["accountId"].asString();
-		}
-		if (!root["region"].empty())
-		{
-			m_aws_metadata.m_region = root["region"].asString();
-		}
-	}
-	else
-	{
-		m_aws_metadata.m_account_id.clear();
-		m_aws_metadata.m_region.clear();
-		LOG_DEBUG("Unable to parse response: " + response_buffer);
-	}
+    try 
+    {
+        Json::Reader reader;
+        Json::Value root;
+        if (reader.parse(response_buffer, root))
+        {
+            if (!root["accountId"].empty())
+            {
+                m_aws_metadata.m_account_id = root["accountId"].asString();
+            }
+            if (!root["region"].empty())
+            {
+                m_aws_metadata.m_region = root["region"].asString();
+            }
+        }
+        else
+        {
+            m_aws_metadata.m_account_id.clear();
+            m_aws_metadata.m_region.clear();
+            LOG_DEBUG("Unable to parse response received from AWS Metdata endpoint: " + response_buffer);
+        }
+    } catch (Json::Exception& ex) 
+    {
+        LOG_ERROR("Failed to get account info(accountId/region) from AWS Metadata %s", ex.what());
+    }
+    catch (...)
+    {
+        LOG_DEBUG("Unknown exception in getting AWS Metadata");
+    }
 }
 
 bool dragent_configuration::check_python_version26()

@@ -16,7 +16,25 @@ public:
 	void exception();
 
 	static volatile bool m_exception;
+protected:
+    void handle_std_exception(const std::exception& exc);
 };
+
+/**
+ * A basic derivation of dragent_error_handler to be
+ * used by the watchdog_runnable - basically to avoid 
+ * restarting the agent within this error handler. 
+ */
+class watchdog_error_handler : public dragent_error_handler
+{
+public:
+	watchdog_error_handler();
+
+	void exception(const Poco::Exception& exc);
+	void exception(const std::exception& exc);
+	void exception();
+};
+
 
 class log_reporter
 {
