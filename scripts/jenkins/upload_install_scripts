@@ -35,7 +35,7 @@ cd $WORKSPACE
 
 function upload_installers {
 
-        for FILE_NAME in install-agent install-agent-kubernetes; do
+        for FILE_NAME in install-agent install-agent-kubernetes install-node-analyzer; do
 
 	        TEMPLATE_FILE="${SCRIPTS_DIR}/${FILE_NAME}"
 		sed s/_REPOSITORY_NAME_/${REPO_NAME}/g < ${TEMPLATE_FILE} > ${REPO_DIR}/$REPO_NAME/${FILE_NAME}

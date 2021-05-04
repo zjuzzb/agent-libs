@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Installer to upgrade/install the sysdig-node-analyzer on a kubernetes setup with the agent already installed.
+
 set -e
 
 function help {
