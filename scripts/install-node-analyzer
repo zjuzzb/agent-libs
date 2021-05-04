@@ -2,6 +2,39 @@
 
 set -e
 
+function help {
+	echo "Usage: $(basename ${0}) [-cc | --check_certificate <value>] \ "
+	echo "                [-ns | --namespace | --project <value>] \ "
+	echo "                [-op | --openshift] \ "
+	echo "                [-ae | --api_endpoint <value> ] \ "
+	echo "                [-am | --analysismanager <value>] \ "
+	echo "                [-ds | --dockersocket <value>] \ "
+	echo "                [-cs | --crisocket <value>] \ "
+	echo "                [-cv | --customvolume <value>] \ "
+	echo "                [-h | --help]"
+	echo ""
+	echo " -cc : enable strong SSL certificate check (default: true)"
+	echo " -ns : if provided, will be the namespace/project used to deploy the agent. (default: sysdig-agent)"
+	echo " -op : if provided, perform the installation using the OpenShift command line"
+	echo " -ae : if provided, will be used as the base (host) for the Node Analyzer endpoints."
+	echo " -am : Analysis Manager endpoint for Sysdig Secure"
+	echo " -ds : docker socket for Image Analyzer"
+	echo " -cs : CRI socket for Image Analyzer"
+	echo " -cd : CRI-containerd socket for Image Analyzer"
+	echo " -cv : custom volume for Image Analyzer"
+	echo " -h  : print this usage and exit"
+	echo
+	exit 1
+}
+
+function is_valid_value {
+	if [[ ${1} == -* ]] || [[ ${1} == --* ]] || [[ -z ${1} ]]; then
+		return 1
+	else
+		return 0
+	fi
+}
+
 function check_commands_installed {
 	if ! hash curl > /dev/null 2>&1; then
 		echo "* curl is not installed on this host. Install curl and retry."
@@ -21,24 +54,55 @@ function check_commands_installed {
 	fi
 }
 
+function check_agent_installed {
+  fail=0
+	if [ $OPENSHIFT -eq 0 ]; then
+		echo "* Checking if sysdig-agent configmap is installed in namespace: $NAMESPACE"
+		out=$(kubectl get cm sysdig-agent --namespace=$NAMESPACE 2>&1) || { fail=1; }
+	else
+		echo "* Checking if sysdig-agent configmap is installed in project: $NAMESPACE"
+		out=$(oc get cm sysdig-agent -n $NAMESPACE 2>&1) || { fail=1; }
+	fi
+	if [ $fail -eq 1 ]; then
+    echo "ERROR: sysdig-agent configmap not found."
+    exit 1
+  fi
+
+  fail=0
+	if [ $OPENSHIFT -eq 0 ]; then
+		echo "* Checking if sysdig-agent secret is installed in namespace: $NAMESPACE"
+		out=$(kubectl get secret sysdig-agent --namespace=$NAMESPACE 2>&1) || { fail=1; }
+	else
+		echo "* Checking if sysdig-agent secret is installed in project: $NAMESPACE"
+		out=$(oc get secret sysdig-agent -n $NAMESPACE 2>&1) || { fail=1; }
+	fi
+	if [ $fail -eq 1 ]; then
+    echo "ERROR: sysdig-agent secret not found."
+    exit 1
+  fi
+}
+
 function check_for_image_analyzer {
   fail=0
 	if [ $OPENSHIFT -eq 0 ]; then
 		echo "* Checking if sysdig-image-analyzer daemonset is installed in namespace: $NAMESPACE"
-		out=$(kubectl get daemonset sysdig-image-analyzer --namespace=$NAMESPACE 2>&1) || { fail=1 && echo "kubectl get daemonset failed!"; }
+		out=$(kubectl get daemonset sysdig-image-analyzer --namespace=$NAMESPACE 2>&1) || { fail=1; }
 	else
 		echo "* Checking if sysdig-image-analyzer daemonset is installed in project: $NAMESPACE"
-		out=$(oc get daemonset sysdig-image-analyzer -n $NAMESPACE 2>&1) || { fail=1 && echo "oc get daemonset failed!"; }
+		out=$(oc get daemonset sysdig-image-analyzer -n $NAMESPACE 2>&1) || { fail=1; }
 	fi
 	if [ $fail -eq 1 ]; then
 		if [[ "$out" =~ "NotFound" || "$out" =~ "not found" ]]; then
-			echo "sysdig-image-analyer found. This will be removed and replaced by the sysdig-node-analyzer."
-			IMAGE_ANALYZER_INSTALLED=1
-		else
 			echo "sysdig-image-analyer not found. sysdig-node-analyzer will be installed."
       IMAGE_ANALYZER_INSTALLED=0
+		else
+      echo "$out"
+			exit 1
 		fi
-	fi
+	else
+    echo "sysdig-image-analyer found. This will be removed and replaced by the sysdig-node-analyzer."
+    IMAGE_ANALYZER_INSTALLED=1
+  fi
 }
 
 function download_yamls {
@@ -79,8 +143,6 @@ function apply_image_analyzer_configmap {
   # Image Analyzer config map
   IA_CONFIG_FILE=$WORKDIR/sysdig-image-analyzer-configmap.yaml
 
-  # If the collector was changed but the analysis manager was not this was
-  # most likely an onprem install, add the default analysis manager for that onprem
   if [ ! -z "$API_ENDPOINT" ] && [ -z "$ANALYSIS_MANAGER" ]; then
     ANALYSIS_MANAGER="https://${API_ENDPOINT}/internal/scanning/scanning-analysis-collector"
     echo "* Configuring Analysis Manager endpoint to ${ANALYSIS_MANAGER}. You can also use the -am option to explicitly specify it."
@@ -135,8 +197,15 @@ function apply_host_scanner_configmap {
   # Host Analyzer config map
   HA_CONFIG_FILE=$WORKDIR/sysdig-host-analyzer-configmap.yaml
 
-  echo "* Using Analysis Manager endpoint for Host Analyzer: ${ANALYSIS_MANAGER}"
-  echo "  collector_endpoint: $ANALYSIS_MANAGER" >> $HA_CONFIG_FILE
+  if [ ! -z "$API_ENDPOINT" ] && [ -z "$ANALYSIS_MANAGER" ]; then
+    ANALYSIS_MANAGER="https://${API_ENDPOINT}/internal/scanning/scanning-analysis-collector"
+    echo "* Configuring Analysis Manager endpoint to ${ANALYSIS_MANAGER}. You can also use the -am option to explicitly specify it."
+  fi
+
+  if [ ! -z "$ANALYSIS_MANAGER" ]; then
+    echo "* Setting Analysis Manager endpoint for Image Analyzer"
+    echo "  collector_endpoint: $ANALYSIS_MANAGER" >> $HA_CONFIG_FILE
+  fi
 
   if [ ! -z "$CHECK_CERT" ]; then
     echo "* Setting SSL certificate check level"
@@ -182,6 +251,7 @@ function apply_node_analyzer_daemonset {
 
 NAMESPACE="sysdig-agent"
 IMAGE_ANALYZER_INSTALLED=0
+OPENSHIFT=0
 
 # Get and validate all arguments
 while [[ ${#} > 0 ]]
@@ -276,32 +346,13 @@ do
 	shift
 done
 
-function help {
-	echo "Usage: $(basename ${0}) [-cc | --check_certificate <value>] \ "
-	echo "                [-ns | --namespace | --project <value>] \ "
-	echo "                [-op | --openshift] \ "
-	echo "                [-ae | --api_endpoint <value> ] \ "
-	echo "                [-am | --analysismanager <value>] \ "
-	echo "                [-ds | --dockersocket <value>] \ "
-	echo "                [-cs | --crisocket <value>] \ "
-	echo "                [-cv | --customvolume <value>] \ "
-	echo "                [-h | --help]"
-	echo ""
-	echo " -cc : enable strong SSL certificate check (default: true)"
-	echo " -ns : if provided, will be the namespace/project used to deploy the agent. (default: sysdig-agent)"
-	echo " -op : if provided, perform the installation using the OpenShift command line"
-	echo " -ae : if provided, will be used as the base (host) for the Node Analyzer endpoints."
-	echo " -am : Analysis Manager endpoint for Sysdig Secure"
-	echo " -ds : docker socket for Image Analyzer"
-	echo " -cs : CRI socket for Image Analyzer"
-	echo " -cd : CRI-containerd socket for Image Analyzer"
-	echo " -cv : custom volume for Image Analyzer"
-	echo " -h  : print this usage and exit"
-	echo
+if [ -z $API_ENDPOINT ]; then
+	echo "ERROR API Endpoint is mandatory, use -h | --help for $(basename ${0}) Usage"
 	exit 1
-}
+fi
 
 check_commands_installed
+check_agent_installed
 check_for_image_analyzer
 download_yamls
 install_node_analyzer
