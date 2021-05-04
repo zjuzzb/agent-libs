@@ -44,6 +44,8 @@ function download_yamls {
 		curl -H 'Cache-Control: no-cache' -s -o $WORKDIR/sysdig-image-analyzer-configmap.yaml https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-image-analyzer-configmap.yaml
 		echo "* Downloading Sysdig Benchmark Runner config map yaml"
 		curl -H 'Cache-Control: no-cache' -s -o $WORKDIR/sysdig-benchmark-runner-configmap.yaml https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-benchmark-runner-configmap.yaml
+		echo "* Downloading Sysdig Host Analyzer config map yaml"
+		curl -H 'Cache-Control: no-cache' -s -o $WORKDIR/sysdig-host-analyzer-configmap.yaml https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-host-analyzer-configmap.yaml
 		echo "* Downloading Sysdig Node Analyzer daemonset v1 yaml"
 		curl -H 'Cache-Control: no-cache' -s -o $WORKDIR/sysdig-node-analyzer-daemonset.yaml https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-node-analyzer-daemonset.yaml
 	fi
@@ -284,6 +286,21 @@ function install_k8s_agent {
 		fi
 
 		kubectl apply -f $BR_CONFIG_FILE --namespace=$NAMESPACE
+
+		# Host Analyzer config map
+		HA_CONFIG_FILE=$WORKDIR/sysdig-host-analyzer-configmap.yaml
+
+		echo "* Using Analysis Manager endpoint for Host Analyzer: ${ANALYSIS_MANAGER}"
+		echo "  collector_endpoint: $ANALYSIS_MANAGER" >> $HA_CONFIG_FILE
+
+		if [ ! -z "$CHECK_CERT" ]; then
+			echo "* Setting SSL certificate check level"
+			echo "  ssl_verify_certificate: \"$CHECK_CERT\"" >> $HA_CONFIG_FILE
+		else
+			echo "  ssl_verify_certificate: \"true\"" >> $HA_CONFIG_FILE
+		fi
+
+		kubectl apply -f $HA_CONFIG_FILE --namespace=$NAMESPACE
 	fi
 
 	AGENT_STRING="agent"
