@@ -101,6 +101,7 @@ protected:
 	void note_action_complete(const std::shared_ptr<actions_state> &astate);
 
 	void perform_container_action(uint64_t ts_ns,
+				      const std::string &policy_name,
 				      sdc_internal::container_cmd_type cmd,
 				      std::string &container_id,
 				      const std::string &action,

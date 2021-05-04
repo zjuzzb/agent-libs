@@ -809,7 +809,10 @@ void security_mgr::process_event_v2(gen_event *evt)
 		// Take all actions for all results
 		for(auto &result : *results)
 		{
-			LOG_DEBUG("Taking action via policy: " + result.m_policy->name() + ". detail=" + result.m_detail.DebugString());
+			LOG_DEBUG("Taking action via policy: " + result.m_policy->name() +
+				  " with " + std::to_string(result.m_policy->actions().size()) +
+				  " actions, " + std::to_string(result.m_policy->v2actions().size()) +
+				  " v2actions. detail=" + result.m_detail.DebugString());
 
 			if(throttle_policy_event(ts_ns, (*container_id_ptr), result.m_policy->id(), result.m_policy->name()))
 			{

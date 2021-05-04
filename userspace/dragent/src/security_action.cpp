@@ -114,12 +114,20 @@ void security_actions::init(security_mgr *mgr,
 }
 
 void security_actions::perform_container_action(uint64_t ts_ns,
+						const std::string &policy_name,
 						sdc_internal::container_cmd_type cmd,
 						std::string &container_id,
 						const std::string &action,
 						shared_ptr<actions_result> result,
 						shared_ptr<actions_state> astate)
 {
+	const google::protobuf::EnumDescriptor* descriptor = sdc_internal::container_cmd_type_descriptor();
+
+	LOG_DEBUG("Performing Policy Event Action Container policy="
+		  + policy_name +
+		  " container_id=" + container_id +
+		  " action=" + descriptor->FindValueByNumber(cmd)->name());
+
 	if(container_id == "")
 	{
 		// Docker actions against empty containers trivially succeed
@@ -228,6 +236,10 @@ void security_actions::perform_capture_action(uint64_t ts_ns,
 	std::string token = Poco::UUIDGenerator().createRandom().toString();
 	std::string errstr;
 
+	LOG_DEBUG("Performing Policy Event Action Capture policy= "
+		  + policy_name +
+		  " " + capture.DebugString());
+
 	result->set_token(token);
 	if (capture.has_is_limited_to_container())
 	{
@@ -312,10 +324,10 @@ void security_actions::perform_actions(uint64_t ts_ns,
 					perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
 					break;
 				case draiosproto::ACTION_PAUSE:
-					perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
+					perform_container_action(ts_ns, policy_name, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
 					break;
 				case draiosproto::ACTION_STOP:
-					perform_container_action(ts_ns, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
+					perform_container_action(ts_ns, policy_name, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
 					break;
 				default:
 					action_handled = false;
@@ -370,13 +382,13 @@ void security_actions::perform_actions(uint64_t ts_ns,
 					perform_capture_action(ts_ns, policy_name, container_id, pid, action.capture(), sresult, astate);
 					break;
 				case draiosproto::V2ACTION_PAUSE:
-					perform_container_action(ts_ns, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
+					perform_container_action(ts_ns, policy_name, sdc_internal::PAUSE, container_id, std::to_string(action.type()), sresult, astate);
 					break;
 				case draiosproto::V2ACTION_STOP:
-					perform_container_action(ts_ns, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
+					perform_container_action(ts_ns, policy_name, sdc_internal::STOP, container_id, std::to_string(action.type()), sresult, astate);
 					break;
 				case draiosproto::V2ACTION_KILL:
-					perform_container_action(ts_ns, sdc_internal::KILL, container_id, std::to_string(action.type()), sresult, astate);
+					perform_container_action(ts_ns, policy_name, sdc_internal::KILL, container_id, std::to_string(action.type()), sresult, astate);
 					break;
 				default:
 					action_handled = false;
