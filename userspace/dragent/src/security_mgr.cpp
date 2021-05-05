@@ -1212,7 +1212,7 @@ void security_mgr::set_event_labels(std::string &container_id,
 				// Do not include hardcoded "sysdig_secure.enabled" tag
 				if (tag_key != "sysdig_secure.enabled") {
 					auto tag_value = pair.substr(found + 1, std::string::npos);
-					set_event_label(event->mutable_event_labels(), tag_prefix + tag_key, tag_value);
+					(*event->mutable_event_labels())[tag_prefix + tag_key] = tag_value;
 					count_tags++;
 				}
 			}
