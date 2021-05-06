@@ -82,7 +82,7 @@ pipeline {
 						sh label: '', script: """
 							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
 							git push -f origin ${params.FALCO_SYNC_BRANCH}
-							git push origin ${params.FALCO_SYNC_BRANCH}:refs/tags/${BUILD_NUMBER}-`date "+%Y%m%dT%H%M%S"`
+							git push origin ${params.FALCO_SYNC_BRANCH}:refs/tags/99.0.${BUILD_NUMBER}
 						"""
 					}
 				}

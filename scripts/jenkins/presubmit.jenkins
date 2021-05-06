@@ -30,7 +30,7 @@ pipeline {
 		booleanParam(name: 'BUILD_BUILDER', defaultValue: false, description: "set to true to build the builder for this branch. name will be same as agent branch")
 		string(name: 'BUILDER_VERSION', defaultValue: "latest", description: "build container to use for building the agent")
 		string(name: 'LIBSCAP_BRANCH', defaultValue: "dev")
-		string(name: 'FALCO_BRANCH', defaultValue: "master")
+		string(name: 'FALCO_BRANCH', defaultValue: "master-sync")
 		string(name: 'PROTOREPO_BRANCH', defaultValue: "master")
 		string(name: 'LIBSCAP_HAYABUSA_BRANCH', defaultValue: "dev")
 		string(name: 'LIBSINSP_BRANCH', defaultValue: "dev")
