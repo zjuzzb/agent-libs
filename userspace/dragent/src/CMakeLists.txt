@@ -4,6 +4,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSIO
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
 include_directories(${LIBSCAP_INCLUDE_DIR})
 include_directories(${LIBSINSP_INCLUDE_DIRS})
+include_directories(${CHISEL_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/userspace/command-line/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/draiosproto)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/librest/src)

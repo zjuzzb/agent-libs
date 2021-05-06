@@ -293,6 +293,10 @@ type_config<bool> c_use_working_set(false,
 				    "For containers, use working set instead of rss memory. This can be useful for capacity planning since it matches kubectl top.", 
 				    "container_memory_as_working_set");
 
+type_config<std::string> c_chisel_install_dir("/usr/share/sysdig/chisels",
+											  "default install directory for chisels",
+											  "chisel",
+											  "install_dir");
 }  // end namespace
 
 const uint64_t flush_data_message::NO_EVENT_NUMBER = std::numeric_limits<uint64_t>::max();
@@ -841,12 +845,12 @@ void sinsp_analyzer::init_k8s_user_event_handler()
 
 void sinsp_analyzer::add_chisel_dirs()
 {
-	m_inspector->add_chisel_dir((m_root_dir + "/share/chisels").c_str(), false);
+	chisel_add_dir((m_root_dir + "/share/chisels").c_str(), false);
 
 	//
 	// sysdig that comes with dragent is always installed in /usr
 	//
-	m_inspector->add_chisel_dir("/usr" CHISELS_INSTALLATION_DIR, false);
+	chisel_add_dir(c_chisel_install_dir.get_value().c_str(), false);
 
 	//
 	// Add the directories configured in the SYSDIG_CHISEL_DIR environment variable
@@ -859,7 +863,7 @@ void sinsp_analyzer::add_chisel_dirs()
 
 		for (uint32_t j = 0; j < user_cdirs.size(); j++)
 		{
-			m_inspector->add_chisel_dir(user_cdirs[j], true);
+			chisel_add_dir(user_cdirs[j], true);
 		}
 	}
 }
@@ -898,21 +902,22 @@ void sinsp_analyzer::add_chisel(sinsp_chisel* ch)
 
 void sinsp_analyzer::add_chisel(sinsp_chisel_details* cd)
 {
-	try
-	{
-		sinsp_chisel* ch = new sinsp_chisel(m_inspector, cd->m_name);
-		ch->set_args(cd->m_args);
-		add_chisel(ch);
-	}
-	catch (const sinsp_exception& e)
-	{
-		LOG_WARNING("unable to start chisel " + cd->m_name + ": " + e.what());
-	}
-	catch (...)
-	{
-		LOG_WARNING("unable to start chisel " + cd->m_name + ": unknown error");
-	}
+       try
+       {
+               sinsp_chisel* ch = new sinsp_chisel(m_inspector, cd->m_name);
+               ch->set_args(cd->m_args);
+               add_chisel(ch);
+       }
+       catch (const sinsp_exception& e)
+       {
+               LOG_WARNING("unable to start chisel " + cd->m_name + ": " + e.what());
+       }
+       catch (...)
+       {
+               LOG_WARNING("unable to start chisel " + cd->m_name + ": unknown error");
+       }
 }
+
 
 void sinsp_analyzer::chisels_on_capture_start()
 {

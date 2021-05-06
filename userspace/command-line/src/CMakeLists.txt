@@ -9,11 +9,7 @@ set(COMMAND_LINE_SOURCES command_line_manager.cpp command_line_permission.cpp
 
 list(APPEND command_line_libraries pthread)
 
-list(
-    APPEND
-    command_line_link_libraries
-    userspace-shared
-)
+list(APPEND command_line_link_libraries userspace-shared)
 
 # Production library
 add_library(command-line STATIC ${COMMAND_LINE_SOURCES})

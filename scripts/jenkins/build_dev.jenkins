@@ -23,6 +23,10 @@ pipeline {
                     checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
                     sh "git checkout ${params.PROTOREPO_BRANCH}"
                 }
+                dir('agent-libs') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/agent-libs']]])
+                    sh "git checkout ${params.LIBS_BRANCH}"
+                }
             }
         }
         stage('Build Release') {
@@ -33,7 +37,7 @@ pipeline {
                         AGENT_BUILD_COMMIT="`git -C agent rev-parse --short HEAD`"
                         docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
                         sudo rm -rf $PWD/out
-                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_VERSION=$RELEASE_VERSION -e AGENT_BUILD_COMMIT -e AGENT_BUILD_DATE="`date`" -v $PWD:/draios:ro -v $PWD/out:/out -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/pipcache:/root/.cache quay.io/sysdig/agent-builder:$BUILDER_VERSION release
+                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_VERSION=$RELEASE_VERSION -e AGENT_BUILD_COMMIT -e AGENT_BUILD_DATE="`date`" -v $PWD:/draios:ro -v $PWD/out:/out -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/pipcache:/root/.cache -e USE_OLD_DIRS=$USE_LEGACY_LIBS quay.io/sysdig/agent-builder:$BUILDER_VERSION release
                     '''
                 }
             }

@@ -151,6 +151,18 @@ struct process_tuple_cmp
 	}
 };
 
+#ifdef RELOCATED_CHISELS
+// Information about a chisel.
+class sinsp_chisel_details
+{
+public:
+	std::string m_name;
+	std::vector<pair<std::string, std::string>> m_args;
+};
+#else
+#define chisel_add_dir m_inspector->add_chisel_dir
+#endif
+
 //
 // Description of an executed command
 //

@@ -38,13 +38,32 @@ endif()
 set(DRAIOS_NJSON_VERSION "3.3.0")
 set(DRAIOS_BENCHMARK_VERSION "1.5.0")
 
-set(SPLIT_REPO TRUE)
-set(LIBSINSP_DIR "${PROJECT_SOURCE_DIR}/../libsinsp/")
-if(EXISTS "${PROJECT_SOURCE_DIR}/../libscap-hayabusa")
-    # assume it's a hayabusa based build
-    set(LIBSCAP_DIR "${PROJECT_SOURCE_DIR}/../libscap-hayabusa/")
+if(NOT DEFINED LIBSCAP_DIR)
+    set(LIBSCAP_DIR "${PROJECT_SOURCE_DIR}/../agent-libs")
+endif()
+if(NOT DEFINED LIBSINSP_DIR)
+    set(LIBSINSP_DIR "${PROJECT_SOURCE_DIR}/../agent-libs")
+endif()
+
+# OSS moved these around....so set the dir depending on where it happens to exist
+if(EXISTS ${LIBSINSP_DIR}/userspace/chisel)
+    set(CHISEL_DIR "${LIBSINSP_DIR}/userspace/chisel")
 else()
-    set(LIBSCAP_DIR "${PROJECT_SOURCE_DIR}/../libscap/")
+    set(CHISEL_DIR "${LIBSINSP_DIR}/userspace/libsinsp")
+endif()
+
+# oss-falco engine needs this define
+if(NOT DEFINED SYSDIG_SOURCE_DIR)
+    set(SYSDIG_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../agent-libs")
+endif()
+
+# there are some random scripts laying around. set their path
+if(NOT DEFINED PROBE_LOADER_DIR)
+    set(PROBE_LOADER_DIR "${PROJECT_SOURCE_DIR}/../libscap/scripts")
+endif()
+
+if(RELOCATED_CHISELS STREQUAL "ON")
+    add_definitions(-DRELOCATED_CHISELS)
 endif()
 
 # Add path for custom CMake modules used to build dependencies from sysdig (libscap, libsinsp)
@@ -141,15 +160,7 @@ set(FALCO_SHARE_DIR "${CMAKE_INSTALL_PREFIX}/share")
 set(FALCO_ABSOLUTE_SHARE_DIR "${FALCO_SHARE_DIR}")
 set(FALCO_COMPONENT agent-slim)
 
-if(SPLIT_REPO)
-    include(libscap)
-else()
-    include_directories(${ZLIB_INCLUDE})
-    add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/driver ${PROJECT_BINARY_DIR}/driver)
-    add_subdirectory(
-        ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap
-    )
-endif()
+include(libscap)
 
 set(LIBSINSP_SOURCE_DIR ${LIBSINSP_DIR}/userspace/libsinsp)
 set(LIBSINSP_INCLUDE_DIRS ${LIBSINSP_SOURCE_DIR} ${LIBSINSP_SOURCE_DIR}/../async
@@ -204,7 +215,7 @@ install(
 )
 
 install(
-    PROGRAMS ${LIBSCAP_DIR}/scripts/sysdig-probe-loader
+    PROGRAMS ${PROBE_LOADER_DIR}/sysdig-probe-loader
     DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
     RENAME sysdigcloud-probe-loader
     COMPONENT agent-slim

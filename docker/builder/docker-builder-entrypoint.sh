@@ -14,11 +14,21 @@ if [[ -z $SYSDIG_IMAGE ]]; then
   SYSDIG_IMAGE="sysdig:latest"
 fi
 
+if [[ -z $USE_OLD_DIRS ]]; then
+  export USE_OLD_DIRS="true"
+fi
+
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build /draios/agent/ /code/agent/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' /draios/oss-falco/ /code/oss-falco/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build /draios/protorepo/ /code/protorepo/
-rsync --delete -t -r --exclude=.git /draios/libscap/ /code/libscap
-rsync --delete -t -r --exclude=.git /draios/libsinsp/ /code/libsinsp
+# still need this for a few things (namely sysdig-probe-loader)
+rsync --delete -t -r --exclude=.git /draios/libscap/ /code/libscap/
+if [ "$USE_OLD_DIRS" = true ]
+then
+	rsync --delete -t -r --exclude=.git /draios/libsinsp/ /code/libsinsp/
+else
+	rsync --delete -t -r --exclude=.git /draios/agent-libs/ /code/agent-libs/
+fi
 
 if [[ "`uname -m`" == "s390x" ]]; then
 	DOCKERFILE=Dockerfile.s390x

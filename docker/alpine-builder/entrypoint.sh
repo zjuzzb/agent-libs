@@ -25,11 +25,26 @@ if [ -z $STATSITE_VERSION ]; then
   STATSITE_VERSION=0.7.0-sysdig7
 fi
 
+if [[ -z $USE_OLD_DIRS ]]; then
+    USE_OLD_DIRS="true"
+fi
+
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=dependency_install_scripts --exclude=build $CODE_DIR/agent/ $WORK_DIR/agent/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' $CODE_DIR/oss-falco/ $WORK_DIR/oss-falco/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/protorepo/ $WORK_DIR/protorepo/
 rsync --delete -t -r --exclude=.git --exclude=producer_build $CODE_DIR/libscap-hayabusa/ $WORK_DIR/libscap-hayabusa
-rsync --delete -t -r --exclude=.git $CODE_DIR/libsinsp/ $WORK_DIR/libsinsp
+if [ "$USE_OLD_DIRS" = true ]
+then
+    rsync --delete -t -r --exclude=.git /draios/libsinsp/ /code/libsinsp/
+    LIBSINSP_DIR=$WORK_DIR/libsinsp
+    RELOCATED_CHISELS=OFF
+
+else
+    rsync --delete -t -r --exclude=.git /draios/agent-libs/ /code/agent-libs/
+    LIBSINSP_DIR=$WORK_DIR/agent-libs
+    RELOCATED_CHISELS=ON
+
+fi
 #note: don't support regular libscap or sysdig repo here, so they aren't synced
 
 create_makefiles()
@@ -51,6 +66,9 @@ create_makefiles()
 		-DBUILD_WARNINGS_AS_ERRORS=${BUILD_WARNINGS_AS_ERRORS:-ON} \
 		-DSTATIC_LINK=${STATIC_LINK:-ON} \
 		-DALPINE_BUILDER=ON \
+		-DRELOCATED_CHISELS=$RELOCATED_CHISELS \
+		-DLIBSINSP_DIR=$LIBSINSP_DIR \
+		-DLIBSCAP_DIR=$WORK_DIR/libscap-hayabusa \
 		$WORK_DIR/agent
 	popd
 }

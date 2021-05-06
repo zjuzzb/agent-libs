@@ -1,5 +1,6 @@
 include_directories(${LIBSCAP_INCLUDE_DIR})
 include_directories(${LIBSINSP_INCLUDE_DIRS})
+include_directories(${CHISEL_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})

@@ -25,14 +25,25 @@ pipeline {
 		}
 		stage ('Builds') {
 			parallel {
-				stage('Build Agentino') {
+				stage('Build Agentino Legacy Libs') {
 					steps {
-						build job:'agent-build-agentino',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"), string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"), string(name:'LIBSCAP_HAYABUSA_BRANCH', value:"${params.LIBSCAP_HAYABUSA_BRANCH}"), string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"), string(name:'VERSION_TAG', value:"${getBuildNumber()}")]
+						build job:'agent-build-agentino',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"), string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"), string(name:'LIBSCAP_HAYABUSA_BRANCH', value:"${params.LIBSCAP_HAYABUSA_BRANCH}"), string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"), string(name:'VERSION_TAG', value:"${getBuildNumber()}"),booleanParam(name:'USE_LEGACY_LIBS', value:true)]
 					}
 				}
-				stage('Build Everything Else') {
+				stage('Build Agentino Oss Libs') {
 					steps {
-						 build job:'agent-build-dev',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"),string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"),string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),string(name:'RELEASE_VERSION', value:"${getBuildNumber()}"),booleanParam(name:'UPLOAD', value:true),booleanParam(name:'PUBLIC_RELEASE', value:false)]
+						build job:'agent-build-agentino',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"), string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"), string(name:'LIBSCAP_HAYABUSA_BRANCH', value:"${params.LIBSCAP_HAYABUSA_BRANCH}"), string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"), string(name:'VERSION_TAG', value:"${getBuildNumber()}"),booleanParam(name:'USE_LEGACY_LIBS', value:true)]
+					}
+				}
+
+				stage('Build from Legacy Libs') {
+					steps {
+						 build job:'agent-build-dev',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"),string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"),string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),string(name:'RELEASE_VERSION', value:"${getBuildNumber()}"),booleanParam(name:'UPLOAD', value:true),booleanParam(name:'PUBLIC_RELEASE', value:false),booleanParam(name:'USE_LEGACY_LIBS', value:true)]
+					}
+				}
+				stage('Build from Oss Libs') {
+					steps {
+						 build job:'agent-build-dev',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"),string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),string(name:'RELEASE_VERSION', value:"${getBuildNumber()}"),booleanParam(name:'UPLOAD', value:true),booleanParam(name:'PUBLIC_RELEASE', value:false),booleanParam(name:'USE_LEGACY_LIBS', value:false)]
 					}
 				}
 			}

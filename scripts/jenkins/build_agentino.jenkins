@@ -22,6 +22,10 @@ pipeline {
                     checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
 					sh "git checkout ${params.PROTOREPO_BRANCH}"
 				}
+				dir('agent-libs') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/agent-libs']]])
+                    sh "git checkout ${params.LIBS_BRANCH}"
+                }
 			}
 		}
 		stage('Build') {
@@ -34,7 +38,7 @@ pipeline {
 						then
 							docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agentino-internal:$AGENT_BRANCH -e AGENT_VERSION=$VERSION_TAG -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION-alpine agentino
 						else
-							docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agentino-internal:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION-alpine agentino
+							docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agentino-internal:$AGENT_BRANCH -e USE_OLD_DIRS=$USE_LEGACY_LIBS -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION-alpine agentino
 						fi
 					'''
 				}

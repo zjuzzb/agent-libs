@@ -9,6 +9,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${LIBSCAP_INCLUDE_DIR})
 include_directories(${LIBSINSP_INCLUDE_DIRS})
+include_directories(${CHISEL_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/command-line/src)
@@ -234,8 +235,8 @@ set(SANALYZER_SOURCES
     k8s_store_manager.cpp
     ${LIBSINSP_SOURCE_DIR}/addrinfo.cpp
     ${LIBSINSP_SOURCE_DIR}/cgroup_limits.cpp
-    ${LIBSINSP_SOURCE_DIR}/chisel.cpp
-    ${LIBSINSP_SOURCE_DIR}/chisel_api.cpp
+    ${CHISEL_DIR}/chisel.cpp
+    ${CHISEL_DIR}/chisel_api.cpp
     ${LIBSINSP_SOURCE_DIR}/cyclewriter.cpp
     ${LIBSINSP_SOURCE_DIR}/container.cpp
     ${LIBSINSP_SOURCE_DIR}/container_engine/container_engine_base.cpp
@@ -255,12 +256,11 @@ set(SANALYZER_SOURCES
     ${LIBSINSP_SOURCE_DIR}/http_reason.cpp
     ${LIBSINSP_SOURCE_DIR}/ifinfo.cpp
     ${LIBSINSP_SOURCE_DIR}/internal_metrics.cpp
-    # ${LIBSINSP_SOURCE_DIR}/third-party/jsoncpp/jsoncpp.cpp
     k8s_config.cpp
     legacy_k8s_protobuf.cpp
     ${LIBSINSP_SOURCE_DIR}/logger.cpp
-    ${LIBSINSP_SOURCE_DIR}/lua_parser.cpp
-    ${LIBSINSP_SOURCE_DIR}/lua_parser_api.cpp
+    ${CHISEL_DIR}/lua_parser.cpp
+    ${CHISEL_DIR}/lua_parser_api.cpp
     ${LIBSINSP_SOURCE_DIR}/prefix_search.cpp
     ${LIBSINSP_SOURCE_DIR}/tracers.cpp
     ${LIBSINSP_SOURCE_DIR}/sinsp_auth.cpp
@@ -311,6 +311,10 @@ set(SANALYZER_SOURCES
     ${LIBSINSP_SOURCE_DIR}/value_parser.cpp
     ${LIBSINSP_SOURCE_DIR}/viewinfo.cpp
 )
+
+if(RELOCATED_CHISELS STREQUAL "ON")
+    list(APPEND SANALYZER_SOURCES ${CHISEL_DIR}/chisel_utils.cpp)
+endif()
 
 if(NOT CYGWIN)
     list(
