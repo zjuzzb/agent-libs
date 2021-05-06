@@ -51,13 +51,13 @@ RUN apt-get update -o Acquire::Check-Valid-Until=false \
         python3-psycopg2 \
     {% endif %}
     {% if p.build_kernel_module %}
-        {% if not p.thin %}
             clang-7 \
+            llvm-7 \
+        {% if not p.thin %}
             dkms \
             gcc-8 \
             libelf-dev \
             libelf1 \
-            llvm-7 \
             xz-utils \
         {% endif %}
         bc \
@@ -150,12 +150,10 @@ RUN rm -rf /usr/bin/gcc && ln -s /usr/bin/gcc-5 /usr/bin/gcc \
  && ln -s /usr/bin/gcc /usr/bin/gcc-4.9 \
  && ln -s /usr/bin/gcc /usr/bin/gcc-4.8
 
-    {% if not p.thin %}
         RUN rm -rf /usr/bin/clang \
          && rm -rf /usr/bin/llc \
          && ln -s /usr/bin/clang-7 /usr/bin/clang \
          && ln -s /usr/bin/llc-7 /usr/bin/llc
-    {% endif %}
 
 {% endif %}
 {% if p.include_agent_package == "apt" %}
@@ -252,9 +250,7 @@ postgresql-dev \
 COPY ./docker-entrypoint.sh /
 
 {% if p.thin %}
-# remove python binaries and java packages to prevent CVE/VULNs
-RUN apt-get remove -y --purge python3 linux-libc-dev && \
-apt-get autoremove -y --purge && \
+# remove python libraries and java packages to prevent CVE/VULNs
 rm -rf /opt/draios/lib/python* && \
 # remove jackson-databind
 rm /opt/draios/share/sdjagent.jar
