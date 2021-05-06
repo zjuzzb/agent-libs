@@ -62,9 +62,9 @@ const feature_manager::agent_mode_container feature_manager::mode_definitions[] 
     // Note that "DRIVER" feature is really misnamed....it really just means event source
     {feature_manager::AGENT_MODE_AGENTINO,
      "agentino",
-     {SECURE, DRIVER, FULL_SYSCALLS},
+     {SECURE, MEMDUMP, DRIVER, FULL_SYSCALLS},
      {
-         {"security.actions_enabled", config_placeholder_impl<bool>::build(false)},
+         {"security.actions_enabled", config_placeholder_impl<bool>::build(true)},
          {"ssl_verify_certificate", config_placeholder_impl<bool>::build(false)},
          {"security.k8s_audit_server_enabled", config_placeholder_impl<bool>::build(false)},
          {"sinsp.thread_purge_interval_s", config_placeholder_impl<uint32_t>::build(2 * 60)},
@@ -158,7 +158,7 @@ const feature_manager::agent_feature_container feature_manager::feature_configs[
 	{MONITOR,              "monitor",              feature_config(true,
                                                                   "enable metrics",
                                                                   "feature",
-								  "monitor")},
+                                                                  "monitor")},
 	{NETWORK_TOPOLOGY,     "network topology",     feature_config(false,
 	                                                              "enable network topology",
 	                                                              "network_topology",

@@ -22,6 +22,7 @@
 #include "memdumper.h"
 
 #include "configuration.h"
+#include "event_source.h"
 #include "infra_event_sink.h"
 #include "protocol.h"
 #include "running_state_runnable.h"
@@ -125,13 +126,16 @@ public:
 		std::unique_ptr<stop_job_details> m_stop_details;
 	};
 
-	virtual bool queue_job_request(sinsp *inspector, std::shared_ptr<dump_job_request> job_request, std::string &errstr) = 0;
+	virtual bool queue_job_request(sinsp *inspector,
+	                               std::shared_ptr<dump_job_request> job_request,
+	                               std::string &errstr) = 0;
 };
 
 class capture_job;
 class capture_job_handler : public dragent::running_state_runnable,
-	                    public dragent::infra_event_sink,
-			    public capture_job_queue_handler
+                            public dragent::infra_event_sink,
+                            public capture_job_queue_handler,
+                            public event_listener
 {
 public:
 	friend class capture_job;
@@ -151,7 +155,7 @@ public:
 	// Incorporate this event into any relevant dump files. This
 	// is called from a separate thread from the thread that
 	// called run().
-	void process_event(sinsp_evt *evt);
+	void process_event(sinsp_evt *evt) override;
 
 	// Schedule a new capture job. This is called from a separate
 	// thread that called run(). Returns true if the request was
@@ -159,7 +163,9 @@ public:
 	// otherwise. Even when returning true, the capture job might
 	// return an error later. In that case, an error message will
 	// be sent to the connection manager's queue.
-	bool queue_job_request(sinsp *inspector, std::shared_ptr<dump_job_request> job_request, std::string &errstr) final;
+	bool queue_job_request(sinsp *inspector,
+	                       std::shared_ptr<dump_job_request> job_request,
+	                       std::string &errstr) final;
 
 	// Change the chunk size used for event captures. This is only
 	// used for testing.

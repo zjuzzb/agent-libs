@@ -645,6 +645,7 @@ int agentone_app::sdagent_main()
 		container_manager_instance = new agentone::container_manager();
 		agentino_manager_instance =
 		    std::make_shared<agentone::agentino_manager>(m_protocol_handler,
+		                                                 &m_transmit_queue,
 		                                                 *container_manager_instance,
 		                                                 m_configuration.machine_id(),
 		                                                 m_configuration.m_customer_id);

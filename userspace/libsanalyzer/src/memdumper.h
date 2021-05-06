@@ -75,6 +75,11 @@ public:
 		}
 		catch(const sinsp_exception& e)
 		{
+			int en = errno;
+			glogf(sinsp_logger::SEV_ERROR,
+			      "Exception when attempting to open shared memory segment: %s : %s",
+			      e.what(),
+			      strerror(en));
 			errstr = "capture memory buffer too small to store process information. Current size: " +
 				std::to_string(m_bufsize);
 			return false;

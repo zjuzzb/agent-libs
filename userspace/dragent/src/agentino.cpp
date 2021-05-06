@@ -1,11 +1,13 @@
 #include "agentino.h"
 #include "agentino.pb.h"
 #include "avoid_block_channel.h"
+#include "capture_job_handler.h"
 #include "common_logger.h"
 #include "configuration.h"
 #include "configuration_manager.h"
 #include "connection_manager.h"
 #include "crash_handler.h"
+#include "dragent_memdump_logger.h"
 #include "error_handler.h"
 #include "exit_code.h"
 #include "protobuf_metric_serializer.h"
@@ -420,15 +422,26 @@ int agentino_app::sdagent_main()
 	sinsp_event_source* es =
 	    new sinsp_event_source(true, m_container_id, m_container_name, m_container_image);
 
-	std::shared_ptr<security_mgr> sm =
-	    std::make_shared<security_mgr>(m_configuration.c_root_dir.get_value(), m_protocol_handler);
+	// Capture job handler
+	// OK, so we need a shared pointer because that's what the event_listener takes,
+	// but we need a bare pointer because that's what everything else takes. Just...don't
+	// ever delete the shared pointer and we'll be fine.
+	auto capture_handler = std::make_shared<capture_job_handler>(&m_configuration,
+	                                                             &m_transmit_queue);
+	es->register_event_listener(capture_handler);
+	memdump_logger::register_callback(
+	    std::make_shared<dragent_memdump_logger>(capture_handler.get()));
+
+	// Security manager
+	auto sm = std::make_shared<security_mgr>(m_configuration.c_root_dir.get_value(),
+	                                         m_protocol_handler);
 	sm->init(es->get_sinsp(),
 	         m_container_id,    // This doesn't really make sense as the security manager
 	                            // is hard coded to expect an agent container id, which this
 	                            // isn't, really.
 	         nullptr,           // infrastructure_state_iface*
 	         nullptr,           // secure_k8s_audit_event_sink_iface*
-	         nullptr,           // capture_job_queue_handler*
+	         capture_handler.get(), // capture_job_queue_handler*
 	         &m_configuration,  // dragent_configuration*
 	         nullptr);          // const internal_metrics::sptr_t&
 	es->register_event_listener(sm);
@@ -486,7 +499,7 @@ int agentino_app::sdagent_main()
 	// message loop, while waiting asynchronously for policies to get here
 	// and then starting the event source. One might argue maybe the metrics loop
 	// should be the async part. Oh well.
-	auto event_starter = [es, sm, this]() {
+	auto event_starter = [es, sm, &capture_handler, this]() {
 		if (c_wait_until_policies.get_value())
 		{
 			while (!sm->has_received_policies() && !running_state::instance().is_terminated())
@@ -499,6 +512,10 @@ int agentino_app::sdagent_main()
 		LOG_INFO("Starting event source");
 		es->start();
 		m_pool.start(*es, watchdog_runnable::NO_TIMEOUT);
+
+		// We can't init the capture job handler until the event source has been started
+		capture_handler->init(es->get_sinsp());
+		m_pool.start(*capture_handler, watchdog_runnable::NO_TIMEOUT);
 	};
 	auto throwaway = std::async(std::launch::async, event_starter);
 

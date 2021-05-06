@@ -11,6 +11,7 @@
 #include "Poco/Thread.h"
 
 #include <atomic>
+#include <sstream>
 
 using namespace std;
 COMMON_LOGGER();
@@ -407,6 +408,7 @@ void capture_job::process_event(sinsp_evt* ev)
 
 	if (m_max_size && m_file_size > m_max_size)
 	{
+		log_debug("Max capture size reached.");
 		stop();
 		return;
 	}
@@ -421,6 +423,7 @@ void capture_job::process_event(sinsp_evt* ev)
 
 	if (ev->get_ts() - m_start_ns > m_duration_ns)
 	{
+		log_debug("Capture duration reached.");
 		stop();
 		return;
 	}
@@ -486,8 +489,16 @@ bool capture_job::send_dump_chunks(uint64_t ts_ns)
 	// chunk remaining. Otherwise, we continue until we've sent
 	// everything.
 
-	log_debug(string("in send_dump_chunks ") + to_string(m_file_size - m_last_chunk_offset) +
-	          " bytes avail");
+	stringstream ss;
+	ss << "In send_dump_chunks\n"
+	   << "\tFile size: " << m_file_size << "\n"
+	   << "\tLast chunk offset: " << m_last_chunk_offset << "\n"
+	   << "\tBytes available: " << (m_file_size - m_last_chunk_offset) << "\n"
+	   << "\tMax chunk size: " << m_max_chunk_size << "\n"
+	   << "\tState: " << (int)m_state;
+	log_debug(ss.str());
+	ss.str("");
+	ss.clear();
 
 	while (m_last_chunk_offset < m_file_size &&
 	       (m_state == ST_DONE_OK || m_file_size - m_last_chunk_offset > m_max_chunk_size))

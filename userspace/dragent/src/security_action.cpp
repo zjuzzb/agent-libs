@@ -246,6 +246,7 @@ void security_actions::perform_capture_action(uint64_t ts_ns,
 		apply_scope = capture.is_limited_to_container();
 	}
 
+	LOG_DEBUG("Starting capture action");
 	if(!m_mgr->start_capture(ts_ns,
 				 policy_name,
 				 token,

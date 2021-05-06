@@ -35,6 +35,7 @@ namespace draiosproto
 {
 class policies_v2;
 class policy_events;
+class dump_response;
 }  // namespace draiosproto
 
 // actual code
@@ -220,6 +221,7 @@ public:
 
 public:
 	agentino_manager(security_result_handler& events_handler,
+	                 protocol_queue* transmit_queue,
 	                 container_manager& container_manager_in,
 	                 const std::string& machine_id,
 	                 const std::string& customer_id);
@@ -338,6 +340,9 @@ private:  // functions
 	    std::map<agentino_metadata_property, std::string> fixed_metadata,
 	    std::map<std::string, std::string> arbitrary_metadata);
 
+	// Re-serializes and enqueues the dump response for transmission to the collector.
+	bool forward_dump_response(draiosproto::dump_response& dresp);
+
 public:
 	/**
 	 * Parses the handshake protobuf into our usable in-memory structs
@@ -356,6 +361,7 @@ public:
 private:
 	volatile bool m_shutdown;
 	security_result_handler& m_events_handler;
+	protocol_queue* m_transmit_queue;
 	mutable std::mutex m_agentino_list_lock;  // Lock protects the agentinos by connection queue
 
 	// It is guaranteed by the list lock that iff an agentino is in this list,

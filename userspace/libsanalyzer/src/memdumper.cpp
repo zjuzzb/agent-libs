@@ -91,11 +91,12 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 		{
 			string retstr = string(" after ") + to_string(attempts) + " attempts";
 			string err = "Could not allocate %" PRIu64
-			             " bytes of shared memory for memdump%s: %s. Disabling memdump";
+			             " bytes of shared memory for memdump%s: %s (%d). Disabling memdump";
 			LOG_ERROR(err.c_str(),
 			          bufsize,
 			          (rc == EINTR ? retstr.c_str() : ""),
-			          strerror_r(rc, m_errbuf, sizeof(m_errbuf)));
+			          strerror_r(rc, m_errbuf, sizeof(m_errbuf)),
+			          rc);
 			m_disabled = true;
 		}
 		::close(shm_fd);

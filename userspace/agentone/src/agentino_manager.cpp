@@ -284,12 +284,14 @@ ecs_agentino::~ecs_agentino()
 }
 
 agentino_manager::agentino_manager(security_result_handler& events_handler,
+                                   protocol_queue* transmit_queue,
                                    container_manager& container_manager_in,
                                    const std::string& machine_id,
                                    const std::string& customer_id)
     : m_container_manager(container_manager_in),
       m_shutdown(false),
       m_events_handler(events_handler),
+      m_transmit_queue(transmit_queue),
       m_policies_updated(false),
       m_machine_id(machine_id),
       m_customer_id(customer_id),
@@ -701,11 +703,71 @@ bool agentino_manager::handle_message(draiosproto::message_type type,
 		                                                     num_throttled_events);
 		return true;
 	}
+	else if (type == draiosproto::message_type::DUMP_RESPONSE)
+	{
+		draiosproto::dump_response dump_resp;
+		try
+		{
+			dragent_protocol::buffer_to_protobuf(buffer, buffer_size, &dump_resp);
+		}
+		catch (dragent_protocol::protocol_error& ex)
+		{
+			LOG_ERROR("Protocol error while parsing dump response message: %s", ex.what());
+			return false;
+		}
+
+		// Need to set machine ID / customer ID to match agentone, as that's
+		// what backend expects
+		dump_resp.set_machine_id(m_machine_id);
+		dump_resp.set_customer_id(m_customer_id);
+
+		if (forward_dump_response(dump_resp))
+		{
+			LOG_DEBUG("Sent dump response chunk to connection manager");
+		}
+		else
+		{
+			LOG_WARNING("Queue full attempting to forward dump response to collector; discarding.");
+			return false;
+		}
+
+		return true;
+	}
 	else
 	{
 		LOG_ERROR("Agentino manager received unexpected message of type %d. Ignoring", type);
 		return false;
 	}
+}
+
+bool agentino_manager::forward_dump_response(draiosproto::dump_response& dresp)
+{
+	std::shared_ptr<protobuf_compressor> compressor;
+	compressor = gzip_protobuf_compressor::get(-1);
+
+	// Serialize
+	std::shared_ptr<serialized_buffer> buf;
+	try
+	{
+		 buf = dragent_protocol::message_to_buffer(get_current_ts_ns(),
+		                                           draiosproto::message_type::DUMP_RESPONSE,
+		                                           dresp,
+		                                           compressor);
+	}
+	catch (dragent_protocol::protocol_error& ex)
+	{
+		LOG_ERROR("Could not serialize dump response: %s", ex.what());
+		return false;
+	}
+
+	if (!buf)
+	{
+		LOG_ERROR("Could not serialize dump response.");
+		return false;
+	}
+
+	// Send
+	return m_transmit_queue->put(buf, protocol_queue::BQ_PRIORITY_LOW);
 }
 
 void agentino_manager::propagate_policies()
