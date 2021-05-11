@@ -36,7 +36,7 @@ namespace
 COMMON_LOGGER();
 
 type_config<bool> c_wait_until_policies(
-    false,
+    true,
     "should we stall application startup until policies have been acquired? If set to true, "
     "application may not start if no connectivity",
     "agentino",
