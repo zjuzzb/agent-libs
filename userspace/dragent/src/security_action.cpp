@@ -220,6 +220,7 @@ void security_actions::perform_container_action(uint64_t ts_ns,
 				default:
 					result->set_successful(false);
 					result->set_errmsg(string("Unsupported container type ") + to_string(container->m_type));
+					note_action_complete(astate);
 			}
 		}
 	}
