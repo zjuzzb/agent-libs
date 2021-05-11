@@ -190,6 +190,7 @@ void security_actions::perform_container_action(uint64_t ts_ns,
 						LOG_DEBUG(string("Docker cmd action result: ") + result->to_string());
 					});
 					break;
+				case sinsp_container_type::CT_CONTAINERD:
 				case sinsp_container_type::CT_CRI:
 				case sinsp_container_type::CT_CRIO:
 					m_active_container_actions.insert(pair<string, uint64_t>(container_id, ts_ns));
