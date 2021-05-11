@@ -335,6 +335,11 @@ void security_actions::perform_actions(uint64_t ts_ns,
 				default:
 					action_handled = false;
 				}
+				if (!result->successful())
+				{
+					LOG_WARNING("Policy Action " + std::to_string(action.type()) + " failed: " +
+						    result->errmsg());
+				}
 			}
 			else if (policy_type == "k8s_audit")
 			{
@@ -395,6 +400,11 @@ void security_actions::perform_actions(uint64_t ts_ns,
 					break;
 				default:
 					action_handled = false;
+				}
+				if (!result->successful())
+				{
+					LOG_WARNING("Policy Action " + std::to_string(action.type()) + " failed: " +
+						    result->errmsg());
 				}
 			}
 			else if (policy_type == "k8s_audit")
