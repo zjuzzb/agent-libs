@@ -111,6 +111,7 @@ build_agentino()
 	cp docker/agentino/static/* $DOCKER_CONTEXT
 
 	pushd $DOCKER_CONTEXT
+	cp agentino agentino.debug
 	strip agentino
 
 	docker build -t ${AGENT_IMAGE:-agentino:latest} .

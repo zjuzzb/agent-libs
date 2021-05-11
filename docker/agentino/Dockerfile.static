@@ -6,6 +6,7 @@ RUN apk add ca-certificates
 
 RUN mkdir -p /opt/draios/bin
 ADD agentino /opt/draios/bin/
+ADD agentino.debug /debug/agentino.debug
 
 RUN mkdir -p /opt/draios/etc
 ADD dragent.default.yaml /opt/draios/etc/
