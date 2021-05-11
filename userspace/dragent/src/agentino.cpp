@@ -47,16 +47,16 @@ type_config<uint32_t> c_heartbeat_interval_s(2,
                                              "agentone_heartbeat");
 
 type_config<std::vector<std::string>> c_log_file_component_overrides(
-					{},
-					"Component level overrides to global log level",
-					"log",
-					"file_priority_by_component");
+    {},
+    "Component level overrides to global log level",
+    "log",
+    "file_priority_by_component");
 
 type_config<std::vector<std::string>> c_log_console_component_overrides(
-					{},
-					"Component level overrides to global console log level",
-					"log",
-					"console_priority_by_component");
+    {},
+    "Component level overrides to global console log level",
+    "log",
+    "console_priority_by_component");
 
 static void g_signal_callback(int sig)
 {
@@ -204,8 +204,7 @@ void agentino_app::defineOptions(OptionSet& options)
 	    Option("direct", "", "used to indicate the agentino should talk directly to the backend")
 	        .repeatable(false));
 	options.addOption(
-	    Option("conf-file", "", "used to specify path to config file")
-	        .repeatable(false));
+	    Option("conf-file", "", "used to specify path to config file").repeatable(false));
 	options.addOption(
 	    Option("debug-logging", "", "used to enable logging for the agentino").repeatable(false));
 }
@@ -426,24 +425,24 @@ int agentino_app::sdagent_main()
 	// OK, so we need a shared pointer because that's what the event_listener takes,
 	// but we need a bare pointer because that's what everything else takes. Just...don't
 	// ever delete the shared pointer and we'll be fine.
-	auto capture_handler = std::make_shared<capture_job_handler>(&m_configuration,
-	                                                             &m_transmit_queue);
+	auto capture_handler =
+	    std::make_shared<capture_job_handler>(&m_configuration, &m_transmit_queue);
 	es->register_event_listener(capture_handler);
 	memdump_logger::register_callback(
 	    std::make_shared<dragent_memdump_logger>(capture_handler.get()));
 
 	// Security manager
-	auto sm = std::make_shared<security_mgr>(m_configuration.c_root_dir.get_value(),
-	                                         m_protocol_handler);
+	auto sm =
+	    std::make_shared<security_mgr>(m_configuration.c_root_dir.get_value(), m_protocol_handler);
 	sm->init(es->get_sinsp(),
-	         m_container_id,    // This doesn't really make sense as the security manager
-	                            // is hard coded to expect an agent container id, which this
-	                            // isn't, really.
-	         nullptr,           // infrastructure_state_iface*
-	         nullptr,           // secure_k8s_audit_event_sink_iface*
-	         capture_handler.get(), // capture_job_queue_handler*
-	         &m_configuration,  // dragent_configuration*
-	         nullptr);          // const internal_metrics::sptr_t&
+	         m_container_id,         // This doesn't really make sense as the security manager
+	                                 // is hard coded to expect an agent container id, which this
+	                                 // isn't, really.
+	         nullptr,                // infrastructure_state_iface*
+	         nullptr,                // secure_k8s_audit_event_sink_iface*
+	         capture_handler.get(),  // capture_job_queue_handler*
+	         &m_configuration,       // dragent_configuration*
+	         nullptr);               // const internal_metrics::sptr_t&
 	es->register_event_listener(sm);
 
 	connection_manager* cm = nullptr;
@@ -532,34 +531,43 @@ int agentino_app::sdagent_main()
 	//////////////////////////////
 	int index = 0;
 	uint64_t last_heartbeat = 0;
+	uint64_t last_flush_time_ns = sinsp_utils::get_current_time_ns();
+	uint64_t flush_time_interval_ns = 10 * ONE_SECOND_IN_NS;
 	while (!state.is_terminated())
 	{
 		watchdog_check(uptime_s);
 
 		if (m_direct)
 		{
-			auto metrics = make_unique<draiosproto::metrics>();
-			metrics->set_timestamp_ns(time(nullptr) * ONE_SECOND_IN_NS);
-			metrics->set_index(++index);
-			metrics->set_machine_id(m_configuration.machine_id());
-			metrics->set_customer_id(m_configuration.m_customer_id);
-			metrics->mutable_hostinfo()->set_hostname(m_hostname);
+			uint64_t cur_time_ns = sinsp_utils::get_current_time_ns();
+			if ((cur_time_ns > last_flush_time_ns) &&
+			    ((cur_time_ns - last_flush_time_ns) >= flush_time_interval_ns))
+			{
+				last_flush_time_ns = cur_time_ns;
 
-			// Report this single instance of the agentino
-			internal_metrics::write_metric(metrics->mutable_protos()->mutable_statsd(),
-			                               "serverlessdragent.workload_agent.count",
-			                               draiosproto::STATSD_GAUGE,
-			                               1);
+				auto metrics = make_unique<draiosproto::metrics>();
+				metrics->set_timestamp_ns(cur_time_ns);
+				metrics->set_index(++index);
+				metrics->set_machine_id(m_configuration.machine_id());
+				metrics->set_customer_id(m_configuration.m_customer_id);
+				metrics->mutable_hostinfo()->set_hostname(m_hostname);
 
-			m_serializer_queue.put(
-			    std::make_shared<flush_data_message>(time(nullptr) * ONE_SECOND_IN_NS,
-			                                         nullptr,
-			                                         std::move(metrics),
-			                                         0,
-			                                         0,
-			                                         0,
-			                                         1,
-			                                         0));
+				// Report this single instance of the agentino
+				internal_metrics::write_metric(metrics->mutable_protos()->mutable_statsd(),
+				                               "serverlessdragent.workload_agent.count",
+				                               draiosproto::STATSD_GAUGE,
+				                               1);
+
+				m_serializer_queue.put(
+				    std::make_shared<flush_data_message>(cur_time_ns,
+				                                         nullptr,
+				                                         std::move(metrics),
+				                                         0,
+				                                         0,
+				                                         0,
+				                                         1,
+				                                         0));
+			}
 		}
 		else
 		{
@@ -677,19 +685,18 @@ void agentino_app::initialize_logging()
 	// Create console logger at most permissive level (trace). This allows all messages to flow.
 	// Log severity of messages actually emitted through the channel will be managed by
 	// the consumers of the channel.
-	Logger& loggerc =
-	    Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_TRACE);
+	Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_TRACE);
 
-	g_log = unique_ptr<common_logger>(new common_logger(&loggerf,
-	                                                    &loggerc,
-	                                                    m_configuration.m_min_file_priority,
-	                                                    m_configuration.m_min_console_priority,
-	                                                    c_log_file_component_overrides.get_value(),
-	                                                    c_log_console_component_overrides.get_value()));
+	g_log =
+	    unique_ptr<common_logger>(new common_logger(&loggerf,
+	                                                &loggerc,
+	                                                m_configuration.m_min_file_priority,
+	                                                m_configuration.m_min_console_priority,
+	                                                c_log_file_component_overrides.get_value(),
+	                                                c_log_console_component_overrides.get_value()));
 
 	LOG_INFO("agentino starting (version " + string(AGENT_VERSION) + ")");
 	common_logger_cache::log_and_purge();
-
 }
 
 void agentino_app::handshake_prepare_callback(void* handshake_data)

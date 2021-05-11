@@ -69,6 +69,7 @@ list(
     metric_serializer.cpp
     metrics_file_emitter.cpp
     pre_aggregated_metrics_rest_request_handler.cpp
+    protobuf_compression.cpp
     protobuf_file_emitter.cpp
     post_aggregated_metrics_rest_request_handler.cpp
     metrics_rest_request_helper.cpp

@@ -124,6 +124,3 @@ bool dragent_protocol::parse_header(const uint8_t* buf,
 
 	return true;
 }
-
-protocol_compression_method protobuf_compressor_factory::s_default_compression =
-        protocol_compression_method::NONE;

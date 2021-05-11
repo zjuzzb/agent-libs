@@ -987,9 +987,10 @@ bool connection_manager::send_proto_init()
 		msg_pi.add_supported_protocol_versions(v);
 	}
 
-	// Get the default compressor
+	// The protocol is defined as always sending this message gzipped, therefore
+	// we hard code it here, as sending anything else would not work.
 	auto compressor =
-	        protobuf_compressor_factory::get(protobuf_compressor_factory::get_default());
+	        protobuf_compressor_factory::get(protocol_compression_method::GZIP);
 
 	// Serialize the message
 	std::shared_ptr<serialized_buffer>
@@ -1055,9 +1056,10 @@ bool connection_manager::send_handshake_negotiation()
 		msg_hs.add_supported_custom_metric_limits(l);
 	}
 
-	// Get the default compressor
+	// The protocol is defined as always sending this message gzipped, therefore
+	// we hard code it here, as sending anything else would not work.
 	auto compressor =
-	        protobuf_compressor_factory::get(protobuf_compressor_factory::get_default());
+	        protobuf_compressor_factory::get(protocol_compression_method::GZIP);
 
 	feature_manager::instance().to_protobuf(*msg_hs.mutable_features());
 
@@ -1334,7 +1336,7 @@ bool connection_manager::perform_handshake()
 	dragent_protocol::buffer_to_protobuf(m_pending_message.payload(),
 	                                     payload_len,
 	                                     &resp,
-	                                     protobuf_compressor_factory::get_default());
+	                                     protocol_compression_method::GZIP);
 	m_pending_message.reset();
 
 	dragent_protocol::protocol_version version = resp.protocol_version();
@@ -1431,7 +1433,7 @@ bool connection_manager::perform_handshake()
 	dragent_protocol::buffer_to_protobuf(m_pending_message.payload(),
 	                                     payload_len,
 	                                     &hs_resp,
-	                                     protobuf_compressor_factory::get_default());
+	                                     protocol_compression_method::GZIP);
 	m_pending_message.reset();
 
 	// Update the negotiated parameters

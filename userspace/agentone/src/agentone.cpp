@@ -89,16 +89,16 @@ type_config<uint64_t> c_watchdog_warn_memory_usage_mb(256,
                                                       "warn_memory_usage_mb");
 
 type_config<std::vector<std::string>> c_log_file_component_overrides(
-					{},
-					"Component level overrides to global log level",
-					"log",
-					"file_priority_by_component");
+    {},
+    "Component level overrides to global log level",
+    "log",
+    "file_priority_by_component");
 
 type_config<std::vector<std::string>> c_log_console_component_overrides(
-					{},
-					"Component level overrides to global console log level",
-					"log",
-					"console_priority_by_component");
+    {},
+    "Component level overrides to global console log level",
+    "log",
+    "console_priority_by_component");
 
 string compute_sha1_digest(SHA1Engine& engine, const string& path)
 {
@@ -545,11 +545,6 @@ int agentone_app::sdagent_main()
 		return dragent::exit_code::SHUT_DOWN;
 	}
 
-	// Set the configured default compression method
-	protobuf_compressor_factory::set_default(protocol_handler::c_compression_enabled.get_value()
-	                                             ? protocol_compression_method::GZIP
-	                                             : protocol_compression_method::NONE);
-
 	//
 	// Gather identifying information about this agent instance
 	//
@@ -620,7 +615,7 @@ int agentone_app::sdagent_main()
 	// case.
 	//
 	std::shared_ptr<protobuf_compressor> compressor =
-	    protobuf_compressor_factory::get(protobuf_compressor_factory::get_default());
+	    protobuf_compressor_factory::get_default_compressor();
 
 	////////////////
 	// Here is where the top-level objects are created. These are the objects
@@ -651,42 +646,45 @@ int agentone_app::sdagent_main()
 		                                                 m_configuration.m_customer_id);
 		LOG_INFO("Created and started Container and Agentino Managers.");
 
+		// clang-format off
 		cm = new connection_manager(
-		{
-			m_configuration.c_root_dir.get_value(),
-			m_configuration.m_server_addr,
-			m_configuration.m_server_port,
-			m_configuration.m_ssl_enabled,
-			m_configuration.m_ssl_ca_cert_paths,
-			m_configuration.m_ssl_ca_certificate,
-			m_configuration.m_promex_enabled,
-			m_configuration.m_promex_connect_url,
-			m_configuration.m_customer_id,
-			m_configuration.machine_id(),
-			m_configuration.c_root_dir.get_value()
-		},
-		&m_transmit_queue,
-		c_10s_flush_enabled.get_value()
-			? std::initializer_list<dragent_protocol::protocol_version>{4, 5}
-			: std::initializer_list<dragent_protocol::protocol_version>{4},
-		{
-			{draiosproto::message_type::CONFIG_DATA,
-			   std::make_shared<dragent::config_data_message_handler>(m_configuration)},
-			{draiosproto::message_type::AGGREGATION_CONTEXT,
-			   dragent::aggregator_limits::global_limits},
-			{draiosproto::message_type::POLICIES_V2, agentino_manager_instance},
-			// These message types are not supported, but the backend
-			// might still send them. They're not an error condition, so
-			// just send them into the void
-			{draiosproto::message_type::DUMP_REQUEST_START, null_handler},
-			{draiosproto::message_type::DUMP_REQUEST_STOP, null_handler},
-			{draiosproto::message_type::CONFIG_DATA, null_handler},
-			{draiosproto::message_type::POLICIES, null_handler},
-			{draiosproto::message_type::COMP_CALENDAR, null_handler},
-			{draiosproto::message_type::COMP_RUN, null_handler},
-			{draiosproto::message_type::ORCHESTRATOR_EVENTS, null_handler},
-			{draiosproto::message_type::BASELINES, null_handler}
-		});
+			{
+				m_configuration.c_root_dir.get_value(),
+				m_configuration.m_server_addr,
+				m_configuration.m_server_port,
+				m_configuration.m_ssl_enabled,
+				m_configuration.m_ssl_ca_cert_paths,
+				m_configuration.m_ssl_ca_certificate,
+				m_configuration.m_promex_enabled,
+				m_configuration.m_promex_connect_url,
+				m_configuration.m_customer_id,
+				m_configuration.machine_id(),
+				m_configuration.c_root_dir.get_value()
+			},
+			&m_transmit_queue,
+			c_10s_flush_enabled.get_value()
+			    ? std::initializer_list<dragent_protocol::protocol_version>{4, 5}
+			    : std::initializer_list<dragent_protocol::protocol_version>{4},
+			{
+				{draiosproto::message_type::CONFIG_DATA,
+		      	 std::make_shared<dragent::config_data_message_handler>(m_configuration)},
+				{draiosproto::message_type::AGGREGATION_CONTEXT,
+				 dragent::aggregator_limits::global_limits},
+				{draiosproto::message_type::POLICIES_V2, agentino_manager_instance},
+				// These message types are not supported, but the backend
+				// might still send them. They're not an error condition, so
+				// just send them into the void
+				{draiosproto::message_type::DUMP_REQUEST_START, null_handler},
+				{draiosproto::message_type::DUMP_REQUEST_STOP, null_handler},
+				{draiosproto::message_type::CONFIG_DATA, null_handler},
+				{draiosproto::message_type::POLICIES, null_handler},
+				{draiosproto::message_type::COMP_CALENDAR, null_handler},
+				{draiosproto::message_type::COMP_RUN, null_handler},
+				{draiosproto::message_type::ORCHESTRATOR_EVENTS, null_handler},
+				{draiosproto::message_type::BASELINES, null_handler}
+			}
+		);
+		// clang-format on
 		m_pool.start(*cm, m_configuration.m_watchdog_connection_manager_timeout_s);
 
 		k8s_limits::sptr_t the_k8s_limits = k8s_limits::build(m_configuration.m_k8s_filter,
@@ -797,7 +795,7 @@ int agentone_app::sdagent_main()
 	//
 	// Shut. Down. Everything.
 	//
-	
+
 	// Must be destructed first to stop the thread pool in roughly LIFO order. Ideally
 	// this would all be in a single thread pool organizing it all, but such is life.
 	agentino_manager_instance = nullptr;
@@ -1283,15 +1281,15 @@ void agentone_app::initialize_logging()
 	// Create console logger at most permissive level (trace). This allows all messages to flow.
 	// Log severity of messages actually emitted through the channel will be managed by
 	// the consumers of the channel
-	Logger& loggerc =
-	    Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_TRACE);
+	Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_TRACE);
 
-	g_log = unique_ptr<common_logger>(new common_logger(&loggerf,
-	                                                    &loggerc,
-	                                                    m_configuration.m_min_file_priority,
-	                                                    m_configuration.m_min_console_priority,
-	                                                    c_log_file_component_overrides.get_value(),
-	                                                    c_log_console_component_overrides.get_value()));
+	g_log =
+	    unique_ptr<common_logger>(new common_logger(&loggerf,
+	                                                &loggerc,
+	                                                m_configuration.m_min_file_priority,
+	                                                m_configuration.m_min_console_priority,
+	                                                c_log_file_component_overrides.get_value(),
+	                                                c_log_console_component_overrides.get_value()));
 
 	LOG_INFO("Agentone starting (version " + string(AGENT_VERSION) + ")");
 	common_logger_cache::log_and_purge();

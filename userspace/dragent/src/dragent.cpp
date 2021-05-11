@@ -1146,11 +1146,6 @@ int dragent_app::sdagent_main()
 
 	m_protocol_handler.set_root_dir(m_configuration.c_root_dir.get_value());
 
-	// Set the configured default compression method
-	protobuf_compressor_factory::set_default(protocol_handler::c_compression_enabled.get_value()
-	                                             ? protocol_compression_method::GZIP
-	                                             : protocol_compression_method::NONE);
-
 	//
 	// Set up bidirectional communication with statsite
 	//
