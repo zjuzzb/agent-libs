@@ -1058,7 +1058,7 @@ void secure_audit::set_audit_labels(const std::string& container_id,
 				if (tag_key != "sysdig_secure.enabled")
 				{
 					auto tag_value = pair.substr(found + 1, std::string::npos);
-					set_audit_label(audit_labels, tag_prefix + tag_key, tag_value);
+					(*audit_labels)[tag_prefix + tag_key] = tag_value;
 					count_tags++;
 				}
 			}
