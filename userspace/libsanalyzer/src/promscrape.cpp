@@ -288,11 +288,12 @@ void promscrape::applyconfig()
 
 static int64_t g_prom_job_id = 0;
 
-int64_t promscrape::job_url_to_job_id(const std::string &url)
+int64_t promscrape::job_url_to_job_id(const std::string &url, const std::string &jobname)
 {
 	std::lock_guard<std::mutex> lock(m_map_mutex);
 
-	auto url_it = m_joburls.find(url);
+	auto key = make_pair(url, jobname);
+	auto url_it = m_joburls.find(key);
 	if (url_it != m_joburls.end())
 	{
 		return url_it->second;
@@ -312,9 +313,9 @@ int64_t promscrape::job_url_to_job_id(const std::string &url)
 	};
 
 	job_id = ++g_prom_job_id;
-	LOG_DEBUG("creating job %" PRId64 " for %s", job_id, url.c_str());
+	LOG_DEBUG("creating job %" PRId64 " for %s,%s", job_id, url.c_str(), jobname.c_str());
 	m_jobs.emplace(job_id, std::move(conf));
-	m_joburls.emplace(url, job_id);
+	m_joburls.emplace(key, job_id);
 	m_pids[0].emplace_back(job_id);
 	return job_id;
 }
@@ -603,15 +604,25 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 
 	if (is_promscrape_v2())
 	{
-		// For promscrape_v2 we associate job_ids with urls
+		// For promscrape_v2 we associate job_ids with url-jobname combination
 		if (result.url().size() < 1)
 		{
 			LOG_INFO("Missing url from promscrape v2 result, dropping scrape results");
 			return;
 		}
+		string jobname;
 		url = result.url();
+		if (!result.meta_samples().empty())
+		{
+			jobname = get_label_value(result.meta_samples()[0], "job");
+		}
+		if (jobname.empty() && !result.samples().empty())
+		{
+			jobname = get_label_value(result.samples()[0], "job");
+		}
+
 		// job_url_to_job_id will create the job as needed
-		job_id = job_url_to_job_id(url);
+		job_id = job_url_to_job_id(url, jobname);
 	}
 	else
 	{
@@ -775,28 +786,12 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 	if (!result_ptr->meta_samples().empty())
 	{
 		// Look for instance label only in first meta sample
-		const auto &meta_sample = result_ptr->meta_samples()[0];
-		for (const auto &label : meta_sample.labels())
-		{
-			if (!label.name().compare("instance"))
-			{
-				instance = label.value();
-				break;
-			}
-		}
+		instance = get_label_value(result_ptr->meta_samples()[0], "instance");
 	}
 	if (instance.empty() && !result_ptr->samples().empty())
 	{
 		// Now look for instance label only in first sample
-		const auto &sample = result_ptr->samples()[0];
-		for (const auto &label : sample.labels())
-		{
-			if (!label.name().compare("instance"))
-			{
-				instance = label.value();
-				break;
-			}
-		}
+		instance = get_label_value(result_ptr->samples()[0], "instance");
 	}
 	// If no pod or container were given, we want to know if the source was running on this
 	// host or not
@@ -915,12 +910,17 @@ void promscrape::prune_jobs(uint64_t ts)
 		}
 		if (it->second.pid == 0)
 		{
-			auto joburl_it = m_joburls.find(it->second.url);
-			if (joburl_it != m_joburls.end())
+			// Just walking through the map till we find the job_id
+			// (since we don't have the jobname)
+			for (auto joburl_it = m_joburls.begin(); joburl_it != m_joburls.end(); joburl_it++)
 			{
-				// Removing entry joburls map
-				LOG_DEBUG("Removing job for %s", it->second.url.c_str());
-				m_joburls.erase(joburl_it);
+				if (joburl_it->second == it->first)
+				{
+					LOG_DEBUG("Removing job %" PRId64 " for %s,%s", it->first,
+						joburl_it->first.first.c_str(), joburl_it->first.second.c_str());
+					m_joburls.erase(joburl_it);
+					break;
+				}
 			}
 		}
 		// Remove job from scrape results
@@ -1046,6 +1046,18 @@ std::shared_ptr<agent_promscrape::ScrapeResult> promscrape::get_job_result_ptr(
 	}
 
 	return result_ptr;
+}
+
+std::string promscrape::get_label_value(const agent_promscrape::Sample &sample, const std::string &labelname)
+{
+	for (const auto &label : sample.labels())
+	{
+		if (label.name() == labelname)
+		{
+			return label.value();
+		}
+	}
+	return "";
 }
 
 // Called by analyzer flush loop to ask if it should emit counters itself

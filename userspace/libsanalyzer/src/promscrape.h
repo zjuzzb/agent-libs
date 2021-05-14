@@ -121,8 +121,8 @@ public:
 	typedef std::map<int64_t, prom_job_config> prom_jobid_map_t;
 	// Map from job_id to scrape results
 	typedef std::map<int64_t, std::shared_ptr<agent_promscrape::ScrapeResult>> prom_metric_map_t;
-	// Map from job_url to job_id for Promscrape V2
-	typedef std::map<std::string, int64_t> prom_joburl_map_t;
+	// Map from url+job_name to job_id for Promscrape V2
+	typedef std::map<std::pair<std::string, std::string>, int64_t> prom_joburl_map_t;
 
 	// There are a few hacks in here related to 10s flush. Hopefully those can go away if/when
 	// we get support for a callback that lets promscrape override the outgoing protobuf
@@ -239,7 +239,7 @@ private:
 	void try_start();
 	void reset();
 	void start();
-	int64_t job_url_to_job_id(const std::string &url);
+	int64_t job_url_to_job_id(const std::string &url, const std::string &jobname);
 	int64_t assign_job_id(int pid, const std::string &url,
 		const std::string &container_id, const tag_map_t &tags, uint64_t ts);
 	void addscrapeconfig(int pid, const std::string &url,
@@ -254,6 +254,8 @@ private:
 
 	std::shared_ptr<agent_promscrape::ScrapeResult> get_job_result_ptr(uint64_t job_id,
 		prom_job_config *config_copy);
+
+	std::string get_label_value(const agent_promscrape::Sample &sample, const std::string &label);
 
 	// Mutex to protect all 5 maps, might want finer granularity some day
 	std::mutex m_map_mutex;
