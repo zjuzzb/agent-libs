@@ -686,6 +686,7 @@ void secure_audit::append_connection(connection_type type,
 		if (conn.m_sproc != nullptr)
 		{
 			pb_conn->set_comm(conn.m_sproc->get_comm());
+			pb_conn->set_tty(conn.m_sproc->m_tty);
 			pb_conn->set_container_id(conn.m_sproc.get()->m_container_id);
 			if (c_secure_audit_connections_cmdline.get_value())
 			{
@@ -700,6 +701,7 @@ void secure_audit::append_connection(connection_type type,
 		if (conn.m_dproc != nullptr)
 		{
 			pb_conn->set_comm(conn.m_dproc->get_comm());
+			pb_conn->set_tty(conn.m_dproc->m_tty);
 			pb_conn->set_container_id(conn.m_dproc.get()->m_container_id);
 			if (c_secure_audit_connections_cmdline.get_value())
 			{
@@ -854,6 +856,7 @@ void secure_audit::emit_file_access_async(thread_analyzer_info* tinfo,
 	pb_file->set_timestamp(ts);
 	pb_file->set_comm(tinfo->get_comm());
 	pb_file->set_container_id(tinfo->m_container_id);
+	pb_file->set_tty(tinfo->m_tty);
 
 	if (c_secure_audit_file_writes_cmdline.get_value())
 	{
