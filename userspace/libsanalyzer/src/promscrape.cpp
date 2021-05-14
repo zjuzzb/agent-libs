@@ -234,6 +234,12 @@ void promscrape::reset()
 
 void promscrape::applyconfig()
 {
+	// We don't send scrape configs for v2
+	if (is_promscrape_v2())
+	{
+		m_resend_config = false;
+		return;
+	}
 	if (!started())
 	{
 		m_resend_config = true;
