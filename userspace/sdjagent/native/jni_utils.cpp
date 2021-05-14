@@ -23,6 +23,11 @@ std::string hsperfdata_utils::find_hsperfdata_by_pid(uint32_t pid)
 	const std::string pid_str = std::to_string(pid);
 	int hsfiles_count = scandir("/tmp", &hsperf_list, scandir_selector, nullptr);
 
+	if (hsfiles_count == -1)
+	{
+		return "";
+	}
+
 	struct stat hsperf_stat;
 	for(int i=0; i<hsfiles_count; i++)
 	{
