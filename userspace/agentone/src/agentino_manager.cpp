@@ -338,7 +338,7 @@ void agentino_manager::new_agentino_connection(connection::ptr connection_in)
 	std::map<agentino_metadata_property, std::string> fixed_metadata;
 
 	draiosproto::agentino_handshake handshake_data;
-	bool ret = connection_in->get_handshake_data(handshake_data);
+	bool ret = connection_in->get_handshake_data(&handshake_data);
 	if (!ret)
 	{
 		// This message will always print name=<unknown> id=<unknown>, because it

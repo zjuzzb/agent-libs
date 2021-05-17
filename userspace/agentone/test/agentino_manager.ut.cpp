@@ -366,6 +366,124 @@ TEST(agentino, handshake_success)
 	ASSERT_TRUE(disconnected);
 }
 
+TEST(agentino, get_handshake_data)
+{
+	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);
+	scoped_config<uint32_t> sleepytime2("socket.poll_timeout", 5);
+	// Create (but don't start) fake agentino
+	uint16_t port = 7359;
+	fake_agentino fa(true, false, true);
+	bool got_handshake = false;
+	bool handshake_valid = false;
+	bool connected = false;
+	bool disconnected = false;
+	struct
+	{
+		std::string id;
+		std::string image;
+		std::string name;
+	} cb_data;
+
+	// Simple connect handler
+	connection::connection_cb ccb = [&connected](agentino_manager* am,
+	                                             std::shared_ptr<connection> conn,
+	                                             void* ctx) { connected = true; };
+
+	// Simple disconnect handler
+	connection::connection_cb dcb = [&disconnected](agentino_manager* am,
+	                                                std::shared_ptr<connection> conn,
+	                                                void* ctx) { disconnected = true; };
+
+	// Simple handshake handler
+	connection::handshake_cb hcb = [&](agentino_manager* am,
+	                                   void* ctx,
+	                                   const draiosproto::agentino_handshake& hs,
+	                                   draiosproto::agentino_handshake_response& hr) -> bool {
+		got_handshake = true;
+
+		// Validate handshake (note that gtest limitations do not allow
+		// ASSERT_whatever statements in a function with a return type, so
+		// use EXPECT statements and then ASSERT after the fact.
+		EXPECT_EQ(1002, hs.timestamp_ns());
+		if (hs.timestamp_ns() == 1002)
+		{
+			handshake_valid = true;
+		}
+
+		cb_data.id = hs.metadata().container_id();
+		cb_data.image = hs.metadata().container_image();
+		cb_data.name = hs.metadata().container_name();
+
+		// Build handshake response
+		hr.set_timestamp_ns(1002);
+
+		return true;
+	};
+
+	// Normally we would connect through an agentino_manager's listen loop,
+	// but this unit test is JUST testing the connection and handshake.
+	auto new_conn_cb = [&](cm_socket* sock, void* ctx) {
+		auto* pfa = (fake_agentino*)ctx;
+
+		connection::ptr connp = std::make_shared<connection>(sock, nullptr, 0, hcb, ccb, dcb);
+		connp->start(&connp);
+		for (uint32_t loops = 0;
+		     pfa->get_status() != fake_agentino::server_status::RUNNING && loops < 5000;
+		     ++loops)
+		{
+			usleep(1000);
+		}
+		ASSERT_EQ(fake_agentino::server_status::RUNNING, pfa->get_status());
+
+		for (uint32_t loops = 0; !connected && loops < 5000; ++loops)
+		{
+			usleep(1000);
+		}
+		ASSERT_TRUE(got_handshake);
+		ASSERT_TRUE(handshake_valid);
+		ASSERT_TRUE(connected);
+
+		// OK, now that we're connected...
+		draiosproto::agentino_handshake hs;
+		bool ret = connp->get_handshake_data(&hs);
+		ASSERT_TRUE(ret);
+		ASSERT_EQ(cb_data.id, hs.metadata().container_id());
+		ASSERT_EQ(cb_data.image, hs.metadata().container_image());
+		ASSERT_EQ(cb_data.name, hs.metadata().container_name());
+
+		// Once this lambda terminates the FA will report conn drop and
+		// everything will go sideways, so don't depend on FA state after
+		// this point
+	};
+
+	auto conn_error_cb = [](cm_socket::error_type et, int error, void* ctx) {
+		ASSERT_EQ(cm_socket::error_type::ERR_NONE, et);
+	};
+
+	// Use a CM socket to listen for the agentino connection
+	bool r = cm_socket::listen({port, false}, new_conn_cb, conn_error_cb, &fa);
+	ASSERT_TRUE(r);
+
+	// Now actually fire up the fake agentino
+	fa.start(port);
+
+	for (uint32_t loops = 0; !connected && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_TRUE(got_handshake);
+	ASSERT_TRUE(handshake_valid);
+	ASSERT_TRUE(connected);
+
+	cm_socket::stop_listening(true);
+	fa.stop();
+	for (uint32_t loops = 0; !disconnected && loops < 5000; ++loops)
+	{
+		usleep(1000);
+	}
+	ASSERT_TRUE(disconnected);
+}
+
 TEST(agentino, handshake_fail)
 {
 	scoped_config<uint64_t> sleepytime("agentino_manager.socket_poll_timeout_ms", 5);

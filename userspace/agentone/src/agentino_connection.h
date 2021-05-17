@@ -153,13 +153,11 @@ public:
 	/**
 	 * Provide the handshake data, if a handshake has been completed.
 	 *
-	 * This event does need a bit more work because it is vulnerable in the
-	 * future to a use-after-free bug. We are not currently vulnerable to this
-	 * bug because the agentino_manager is holding the map lock while it calls
-	 * the get_handshake_data function, so there's no possibility of the
-	 * handshake data disappearing out from under the caller.
+	 * If this function returns true, the protobuf pointed to by the hs_data
+	 * parameter contains a deep copy of the handshake data stored by this
+	 * connection object.
 	 */
-	bool get_handshake_data(draiosproto::agentino_handshake& hs_data);
+	bool get_handshake_data(draiosproto::agentino_handshake* hs_data);
 
 	/**
 	 * Disconnect the connection from the agentino.

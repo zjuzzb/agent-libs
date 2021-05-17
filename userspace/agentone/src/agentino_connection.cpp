@@ -67,11 +67,12 @@ cm_socket* connection::get_socket()
 	return m_socket;
 }
 
-bool connection::get_handshake_data(draiosproto::agentino_handshake& hs_data)
+bool connection::get_handshake_data(draiosproto::agentino_handshake* hs_data)
 {
 	if (handle_event(GET_HANDSHAKE_DATA))
 	{
-		hs_data = m_hs_data;
+		// Protobuf assignment operator makes a copy
+		*hs_data = m_hs_data;
 		return true;
 	}
 	return false;
