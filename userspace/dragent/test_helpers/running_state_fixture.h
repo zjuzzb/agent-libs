@@ -12,6 +12,7 @@ class running_state_fixture : public testing::Test
 public: 
 	running_state_fixture() 
 	{
+		dragent::running_state::instance().reset_for_test();
 	} 
 
 	void SetUp() override

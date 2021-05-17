@@ -1,6 +1,8 @@
 #pragma once
 
 #include <atomic>
+#include <unistd.h>
+#include <pthread.h>
 
 namespace dragent {
 
@@ -50,16 +52,26 @@ public:
 	 */
 	void reset_for_test();
 
+	/**
+	 * used to register the tid of the "main" thread of the process, or one
+	 * to which we should send thread-specific signals, if necessary. Should
+	 * only ever be called once, around startup time
+	 */
+	void register_main_thread_tid(pthread_t tid);
+
 private:
 
 	running_state();
 	void terminate(uint8_t exit_code, const char * msg);
+	static void run_shutdown_deadman(pthread_t main_thread_tid);
 
 	static running_state m_instance;
 
 	std::atomic<bool> m_terminated;
 	std::atomic<uint8_t> m_exit_code;
 
+	bool m_deadman_enabled;
+	pthread_t m_main_thread_tid;
 
 	// Deleted to prevent accidental usage
 	running_state(const running_state&) = delete;

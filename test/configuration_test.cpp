@@ -1,3 +1,4 @@
+#include "running_state.h"
 #include <fstream>
 #include <streambuf>
 
@@ -14,6 +15,7 @@ protected:
 
 	virtual void SetUp()
 	{
+		dragent::running_state::instance().reset_for_test();
 		// Create a temporary directory where all the files
 		// related to this test will reside.
 		char pat[28];

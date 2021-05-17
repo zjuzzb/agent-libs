@@ -126,6 +126,7 @@ protected:
 	virtual void SetUp()
 	{
 		m_configuration.init(NULL, false);
+		dragent::running_state::instance().reset_for_test();
 
 		if (!g_log)
 		{

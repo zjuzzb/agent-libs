@@ -1125,6 +1125,7 @@ int dragent_app::sdagent_main()
 
 	initialize_logging();
 
+	running_state::instance().register_main_thread_tid(pthread_self());
 	setup_coredumps();
 
 	log_sysinfo();
