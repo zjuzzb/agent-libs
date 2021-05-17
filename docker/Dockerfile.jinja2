@@ -251,7 +251,7 @@ COPY ./docker-entrypoint.sh /
 
 {% if p.thin %}
 # remove python libraries and java packages to prevent CVE/VULNs
-rm -rf /opt/draios/lib/python* && \
+RUN rm -rf /opt/draios/lib/python* && \
 # remove jackson-databind
 rm /opt/draios/share/sdjagent.jar
 {% endif %}
