@@ -751,6 +751,7 @@ int agentone_app::sdagent_main()
 			metrics->set_machine_id(m_configuration.machine_id());
 			metrics->set_customer_id(m_configuration.m_customer_id);
 			metrics->mutable_hostinfo()->set_hostname(m_hostname);
+			metrics->set_version(AGENT_VERSION);
 
 			// Report number of agentinos attached
 			uint32_t num_agentino_connections = agentino_manager_instance->get_num_connections();
