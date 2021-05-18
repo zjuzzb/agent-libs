@@ -3383,17 +3383,29 @@ TEST(aggregator, k8s_replication_controller)
 	auto i = input.mutable_kubernetes()->add_controllers();
 	i->set_replicas_desired(7);
 	i->set_replicas_running(8);
+	i->set_replicas_fully_labeled(9);
+	i->set_replicas_ready(10);
+	i->set_replicas_available(11);
 
 	auto input2 = input;
 	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_desired().sum(), 7);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_running().sum(), 8);
+	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_fully_labeled().sum(), 9);
+	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_ready().sum(), 10);
+	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_available().sum(), 11);
 
 	i->set_replicas_desired(100);
 	i->set_replicas_running(100);
+	i->set_replicas_fully_labeled(100);
+	i->set_replicas_ready(100);
+	i->set_replicas_available(100);
 	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_desired().sum(), 107);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_running().sum(), 108);
+	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_fully_labeled().sum(), 109);
+	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_ready().sum(), 110);
+	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_available().sum(), 111);
 
 	// validate primary key
 	draiosproto::k8s_replication_controller lhs;
@@ -5163,9 +5175,12 @@ void ignore_raw_k8s(google::protobuf::util::MessageDifferencer& md,
 	md.IgnoreField(field->SUB("pods")->SUB("restart_rate"));
 	md.IgnoreField(field->SUB("controllers")->SUB("replicas_desired"));
 	md.IgnoreField(field->SUB("controllers")->SUB("replicas_running"));
+	md.IgnoreField(field->SUB("controllers")->SUB("replicas_fully_labeled"));
+	md.IgnoreField(field->SUB("controllers")->SUB("replicas_ready"));
+	md.IgnoreField(field->SUB("controllers")->SUB("replicas_available"));
 	md.IgnoreField(field->SUB("replica_sets")->SUB("replicas_desired"));
 	md.IgnoreField(field->SUB("replica_sets")->SUB("replicas_running"));
-	md.IgnoreField(field->SUB("replica_sets")->SUB("replicas_fully_loaded"));
+	md.IgnoreField(field->SUB("replica_sets")->SUB("replicas_fully_labeled"));
 	md.IgnoreField(field->SUB("replica_sets")->SUB("replicas_ready"));
 	md.IgnoreField(field->SUB("deployments")->SUB("replicas_desired"));
 	md.IgnoreField(field->SUB("deployments")->SUB("replicas_running"));
@@ -5954,6 +5969,9 @@ void generate_k8s(draiosproto::k8s_state* input)
 		generate_k8s_common(j->mutable_common());
 		j->set_replicas_desired(rand() % 100);
 		j->set_replicas_running(rand() % 100);
+		j->set_replicas_fully_labeled(rand() % 100);
+		j->set_replicas_ready(rand() % 100);
+		j->set_replicas_available(rand() % 100);
 	}
 	for (auto i = 0; i < 10; i++)
 	{
