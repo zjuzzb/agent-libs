@@ -81,15 +81,30 @@ pipeline {
                                 docker tag agent-slim sysdig/agent-slim:dev
                                 docker tag agent-slim sysdig/agent-slim:$RELEASE_VERSION
                                 docker push sysdig/agent-slim
+
                                 docker tag agentone docker.internal.sysdig.com/agentone:dev
                                 docker tag agentone docker.internal.sysdig.com/agentone:$RELEASE_VERSION
                                 docker push docker.internal.sysdig.com/agentone
+
                                 docker tag agent-kmodule sysdig/agent-kmodule:dev
                                 docker tag agent-kmodule sysdig/agent-kmodule:$RELEASE_VERSION
                                 docker push sysdig/agent-kmodule
+
                                 docker tag agent-kmodule-thin sysdig/agent-kmodule-thin:dev
                                 docker tag agent-kmodule-thin sysdig/agent-kmodule-thin:$RELEASE_VERSION
                                 docker push sysdig/agent-kmodule-thin
+
+                                docker tag agent-ubi docker.internal.sysdig.com/agent-ubi:dev
+                                docker tag agent-ubi docker.internal.sysdig.com/agent-ubi:$RELEASE_VERSION
+                                docker push docker.internal.sysdig.com/agent-ubi
+
+                                docker tag agent-kmodule-ubi docker.internal.sysdig.com/agent-kmodule-ubi:dev
+                                docker tag agent-kmodule-ubi docker.internal.sysdig.com/agent-kmodule-ubi:$RELEASE_VERSION
+                                docker push docker.internal.sysdig.com/agent-kmodule-ubi
+
+                                docker tag agent-slim-ubi docker.internal.sysdig.com/agent-slim-ubi:dev
+                                docker tag agent-slim-ubi docker.internal.sysdig.com/agent-slim-ubi:$RELEASE_VERSION
+                                docker push docker.internal.sysdig.com/agent-slim-ubi
                             '''
                         }
                     }

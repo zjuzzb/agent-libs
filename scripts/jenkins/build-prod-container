@@ -17,12 +17,23 @@ else
 fi
 
 DOCKERFILES_ROOT_DIR="${BINARIES_DIR}/tmp/dockerfiles"
-IMAGES=("agent" "agent-slim" "agentone" "agent-kmodule" "agent-kmodule-thin")
+IMAGES=("agent" "agent-slim" "agentone" "agent-kmodule" "agent-kmodule-thin" "agent-ubi" "agent-slim-ubi" "agent-kmodule-ubi")
 mkdir -p ${DOCKERFILES_ROOT_DIR}
 tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "${BINARIES_DIR}"/release/draios-*-dockerfiles.tar.gz
 
 function build_image {
-	pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${IMAGE}/${REPOSITORY_BASENAME}"
+	case "${IMAGE}" in
+		*-ubi)
+			DOCKERFILE_DIR=${DOCKERFILES_ROOT_DIR}/opt/draios/docker/ubi
+			DOCKERFILE_NAME=Dockerfile.${IMAGE%%-ubi}-${REPOSITORY_BASENAME}
+			;;
+		*)
+			DOCKERFILE_DIR=${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${IMAGE}/${REPOSITORY_BASENAME}
+			DOCKERFILE_NAME=Dockerfile
+			;;
+	esac
+
+	pushd "${DOCKERFILE_DIR}"
 
 	# We have some pre-work for agent-slim
 	# 1. Copy the agent-slim.tar.gz that was generated to the local docker directory
@@ -38,7 +49,7 @@ function build_image {
 		find ./opt/draios/lib -type d -name "enum*" -exec rm -r {} + 2>/dev/null
 	fi
 
-	docker build -t "${IMAGE}" .
+	docker build -t "${IMAGE}" -f "${DOCKERFILE_NAME}" .
 
 	popd
 }
