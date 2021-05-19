@@ -685,8 +685,7 @@ void agentino_app::initialize_logging()
 	// unless --debug_logging command line parameter is specified.
 	Logger& loggerc = Logger::create("DraiosLogC",
 		                         formatting_channel_console,
-					 ((m_enable_logging) ?
-		                             m_configuration.m_min_console_priority : -1));
+					 ((m_enable_logging) ? Message::PRIO_TRACE : -1));
 
 	g_log =
 	    unique_ptr<common_logger>(new common_logger(&loggerf,
