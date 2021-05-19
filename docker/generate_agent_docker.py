@@ -7,22 +7,19 @@ import getopt
 import jinja2
 
 def usage():
-    print('usage: %s [-i|--image <image>] [-r|--repo <repo>] [-t|--template <template>] [-a|--agent-version <version>]' % sys.argv[0])
+    print('usage: %s [-i|--image <image>] [-r|--repo <repo>] [-t|--template <template>]' % sys.argv[0])
     print('     --image: Can be one of "agent", "agent-kmodule", "agent-slim", "agent-kmodule-thin", or "local" (agent, but using local debian package) ')
     print('     --repo: Can be one of "dev", "stable", "rc" ')
     print('     --template: defaults to Dockerfile.jinja2 ')
-    print('     --agent-version: set the agent version directly in the image instead ')
-    print('                      of extracting from dragent binary')
     sys.exit(1)
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:],"i:r:t:a:",["image=", "repo=", "template=", "agent-version="])
+    opts, args = getopt.getopt(sys.argv[1:],"i:r:t:",["image=", "repo=", "template="])
 except getopt.GetoptError:
     usage()
 
 image = ""
 repo = ""
-agent_version = ""
 template = 'Dockerfile.jinja2'
 
 for opt, arg in opts:
@@ -32,8 +29,6 @@ for opt, arg in opts:
         repo = arg
     if opt in ("-t", "--template"):
         template = arg
-    if opt in ("-a", "--agent-version"):
-        agent_version = arg
 #
 # Parse arguments
 #
@@ -76,9 +71,6 @@ elif image == "agent-kmodule-thin":
     p['build_kernel_module'] = 1
     p['launch_dragent'] = 0
     p['thin'] = 1
-
-if agent_version != "":
-    p['agent_version'] = agent_version
 
 template_str = ""
 
