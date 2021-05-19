@@ -681,8 +681,12 @@ void agentino_app::initialize_logging()
 	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P.%I, %p, %t"));
 	AutoPtr<Channel> console_channel(new ConsoleChannel());
 	AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
-	// For console logger, set console priority to -1 to disable logging,
-	// unless --debug_logging command line parameter is specified.
+	// Create console logger, choosing logger level as follows:
+	// - If console logging is enabled via --debug_logging command line parameter,
+	//   specify most permissive logger level (PRIO_TRACE).  This allows all
+	//   messages to flow.  Log severity of messages actually emitted through the
+	//   channel will be managed by the consumers of the channel.
+	// - Otherwise, choose logger level -1 to disable console logging.
 	Logger& loggerc = Logger::create("DraiosLogC",
 		                         formatting_channel_console,
 					 ((m_enable_logging) ? Message::PRIO_TRACE : -1));
