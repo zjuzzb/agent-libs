@@ -679,13 +679,14 @@ void agentino_app::initialize_logging()
 	AutoPtr<Poco::Channel> null_channel(new Poco::NullChannel());
 	Logger& loggerf = Logger::create("DraiosLogF", null_channel, -1);
 	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P.%I, %p, %t"));
-
 	AutoPtr<Channel> console_channel(new ConsoleChannel());
 	AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
-	// Create console logger at most permissive level (trace). This allows all messages to flow.
-	// Log severity of messages actually emitted through the channel will be managed by
-	// the consumers of the channel.
-	Logger& loggerc = Logger::create("DraiosLogC", formatting_channel_console, Message::PRIO_TRACE);
+	// For console logger, set console priority to -1 to disable logging,
+	// unless --debug_logging command line parameter is specified.
+	Logger& loggerc = Logger::create("DraiosLogC",
+		                         formatting_channel_console,
+					 ((m_enable_logging) ?
+		                             m_configuration.m_min_console_priority : -1));
 
 	g_log =
 	    unique_ptr<common_logger>(new common_logger(&loggerf,
