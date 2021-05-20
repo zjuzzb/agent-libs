@@ -1035,6 +1035,14 @@ int dragent_app::main(const std::vector<std::string>& args)
 #endif
 	});
 
+	if (m_configuration.m_enable_coredump)
+	{
+		// Set the envvar that will allow Go programs to generate cores.
+		// We need to set it in our local environment before
+		// doing the fork, exec in monitor_process.run().
+		setenv("GOTRACEBACK", "crash", 1);
+	}
+	
 	return monitor_process.run();
 #else   // _WIN32
 	return sdagent_main();
