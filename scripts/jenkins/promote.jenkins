@@ -1,119 +1,119 @@
 pipeline {
-	agent { label 'agent-docker-builder' }
-	stages {
+    agent { label 'agent-docker-builder' }
+    stages {
 
-	stage('Check out dependencies') {
-	   steps {
-			dir('agent') {
-				checkout scm
-			}
-	    }
-	}
+    stage('Check out dependencies') {
+       steps {
+            dir('agent') {
+                checkout scm
+            }
+        }
+    }
 
-	// Promotes the RC to release
+    // Promotes the RC to release
     stage('Promote RC') {
         steps {
             withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME'), usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
                 sh label: '', script: '''
-			echo "$DOCKER_PASSWORD" | docker login docker.io -u="$DOCKER_USERNAME" --password-stdin
-			echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
-			sudo agent/scripts/jenkins/release-agent-rc "s3://download.draios.com" $RELEASE_VERSION
+            echo "$DOCKER_PASSWORD" | docker login docker.io -u="$DOCKER_USERNAME" --password-stdin
+            echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
+            sudo agent/scripts/jenkins/release-agent-rc "s3://download.draios.com" $RELEASE_VERSION
                 '''
             }
         }
     }
 
-	stage('Smoke RC') {
-		steps {
-			sh label: '', script: '''
-				docker pull sysdig/agent:$RELEASE_VERSION
-			'''
-		}
-	}
+    stage('Smoke RC') {
+        steps {
+            sh label: '', script: '''
+                docker pull sysdig/agent:$RELEASE_VERSION
+            '''
+        }
+    }
 
-	stage('Sync to Quay') {
-		steps {
-			retry(5) {
-				sh label: '', script: '''
-					docker pull sysdig/agent:$RELEASE_VERSION
-					docker tag sysdig/agent:$RELEASE_VERSION quay.io/sysdig/agent:$RELEASE_VERSION
-					docker tag sysdig/agent:$RELEASE_VERSION quay.io/sysdig/agent:latest
-					docker pull sysdig/agent-slim:$RELEASE_VERSION
-					docker tag sysdig/agent-slim:$RELEASE_VERSION quay.io/sysdig/agent-slim:$RELEASE_VERSION
-					docker tag sysdig/agent-slim:$RELEASE_VERSION quay.io/sysdig/agent-slim:latest
-					docker pull sysdig/agent-kmodule:$RELEASE_VERSION
-					docker tag sysdig/agent-kmodule:$RELEASE_VERSION quay.io/sysdig/agent-kmodule:$RELEASE_VERSION
-					docker tag sysdig/agent-kmodule:$RELEASE_VERSION quay.io/sysdig/agent-kmodule:latest
-					docker pull sysdig/agent-kmodule-thin:$RELEASE_VERSION
-					docker tag sysdig/agent-kmodule-thin:$RELEASE_VERSION quay.io/sysdig/agent-kmodule-thin:$RELEASE_VERSION
-					docker tag sysdig/agent-kmodule-thin:$RELEASE_VERSION quay.io/sysdig/agent-kmodule-thin:latest
-				'''
-				
-				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
-					sh label: '', script: '''
-						echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
-						docker push quay.io/sysdig/agent
-						docker push quay.io/sysdig/agent-slim
-						docker push quay.io/sysdig/agent-kmodule
-						docker push quay.io/sysdig/agent-kmodule-thin
-					'''
-				}
-			}
-		}
-	}
+    stage('Sync to Quay') {
+        steps {
+            retry(5) {
+                sh label: '', script: '''
+                    docker pull sysdig/agent:$RELEASE_VERSION
+                    docker tag sysdig/agent:$RELEASE_VERSION quay.io/sysdig/agent:$RELEASE_VERSION
+                    docker tag sysdig/agent:$RELEASE_VERSION quay.io/sysdig/agent:latest
+                    docker pull sysdig/agent-slim:$RELEASE_VERSION
+                    docker tag sysdig/agent-slim:$RELEASE_VERSION quay.io/sysdig/agent-slim:$RELEASE_VERSION
+                    docker tag sysdig/agent-slim:$RELEASE_VERSION quay.io/sysdig/agent-slim:latest
+                    docker pull sysdig/agent-kmodule:$RELEASE_VERSION
+                    docker tag sysdig/agent-kmodule:$RELEASE_VERSION quay.io/sysdig/agent-kmodule:$RELEASE_VERSION
+                    docker tag sysdig/agent-kmodule:$RELEASE_VERSION quay.io/sysdig/agent-kmodule:latest
+                    docker pull sysdig/agent-kmodule-thin:$RELEASE_VERSION
+                    docker tag sysdig/agent-kmodule-thin:$RELEASE_VERSION quay.io/sysdig/agent-kmodule-thin:$RELEASE_VERSION
+                    docker tag sysdig/agent-kmodule-thin:$RELEASE_VERSION quay.io/sysdig/agent-kmodule-thin:latest
+                '''
 
-	stage('Upload to IBM') {
-		parallel {
-			stage('Agent') {
-				steps {
-					retry(5) {
-						build job:'IBM-agent-push-to-registry',parameters:[string(name:'AGENT_IMAGE', value:"sysdig/agent:${params.RELEASE_VERSION}"),booleanParam(name:'PUSH_ALSO_AS_LATEST_TAG', value:true)]
-					}
-				}
-			}
-			stage('Agent Slim') {
-				steps {
-					retry(5) {
-						build job:'IBM-agent-push-to-registry',parameters:[string(name:'AGENT_IMAGE', value:"sysdig/agent-slim:${params.RELEASE_VERSION}"),booleanParam(name:'PUSH_ALSO_AS_LATEST_TAG', value:true)]
-					}
-				}
-			}
-			stage('Agent Kmodule') {
-				steps {
-					retry(5) {
-						build job:'IBM-agent-push-to-registry',parameters:[string(name:'AGENT_IMAGE', value:"sysdig/agent-kmodule:${params.RELEASE_VERSION}"),booleanParam(name:'PUSH_ALSO_AS_LATEST_TAG', value:true)]
-					}
-				}
-			}
-			stage('Agent Kmodule Thin') {
-				steps {
-					retry(5) {
-						build job:'IBM-agent-push-to-registry',parameters:[string(name:'AGENT_IMAGE', value:"sysdig/agent-kmodule-thin:${params.RELEASE_VERSION}"),booleanParam(name:'PUSH_ALSO_AS_LATEST_TAG', value:true)]
-					}
-				}
-			}
-		}
-	}
+                withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+                    sh label: '', script: '''
+                        echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
+                        docker push quay.io/sysdig/agent
+                        docker push quay.io/sysdig/agent-slim
+                        docker push quay.io/sysdig/agent-kmodule
+                        docker push quay.io/sysdig/agent-kmodule-thin
+                    '''
+                }
+            }
+        }
+    }
 
-	stage('Notify People') {
-		steps {
-			// Naveen Bali
-			slackSend channel: '@UBYCWGBG9', message: "Agent has been promoted. Please release in jira.", tokenCredentialId: 'slack'
-			 slackSend channel: '#ws-agent-core', message: "@here new agent release ${params.RELEASE_VERSION} has been promoted", tokenCredentialId: 'slack'
-			 slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "@here Promote Success!", tokenCredentialId: 'slack'
-			 slackSend channel: '#support', message: "new agent release ${params.RELEASE_VERSION} has been promoted", tokenCredentialId: 'slack'
-			 slackSend channel: '#docs', message: "new agent release ${params.RELEASE_VERSION} has been promoted. Please publish the release notes at this time.", tokenCredentialId: 'slack'
-		}
-	}
+    stage('Upload to IBM') {
+        parallel {
+            stage('Agent') {
+                steps {
+                    retry(5) {
+                        build job:'IBM-agent-push-to-registry',parameters:[string(name:'AGENT_IMAGE', value:"sysdig/agent:${params.RELEASE_VERSION}"),booleanParam(name:'PUSH_ALSO_AS_LATEST_TAG', value:true)]
+                    }
+                }
+            }
+            stage('Agent Slim') {
+                steps {
+                    retry(5) {
+                        build job:'IBM-agent-push-to-registry',parameters:[string(name:'AGENT_IMAGE', value:"sysdig/agent-slim:${params.RELEASE_VERSION}"),booleanParam(name:'PUSH_ALSO_AS_LATEST_TAG', value:true)]
+                    }
+                }
+            }
+            stage('Agent Kmodule') {
+                steps {
+                    retry(5) {
+                        build job:'IBM-agent-push-to-registry',parameters:[string(name:'AGENT_IMAGE', value:"sysdig/agent-kmodule:${params.RELEASE_VERSION}"),booleanParam(name:'PUSH_ALSO_AS_LATEST_TAG', value:true)]
+                    }
+                }
+            }
+            stage('Agent Kmodule Thin') {
+                steps {
+                    retry(5) {
+                        build job:'IBM-agent-push-to-registry',parameters:[string(name:'AGENT_IMAGE', value:"sysdig/agent-kmodule-thin:${params.RELEASE_VERSION}"),booleanParam(name:'PUSH_ALSO_AS_LATEST_TAG', value:true)]
+                    }
+                }
+            }
+        }
+    }
 
-	}
-	post {
+    stage('Notify People') {
+        steps {
+            // Naveen Bali
+            slackSend channel: '@UBYCWGBG9', message: "Agent has been promoted. Please release in jira.", tokenCredentialId: 'slack'
+             slackSend channel: '#ws-agent-core', message: "@here new agent release ${params.RELEASE_VERSION} has been promoted", tokenCredentialId: 'slack'
+             slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "@here Promote Success!", tokenCredentialId: 'slack'
+             slackSend channel: '#support', message: "new agent release ${params.RELEASE_VERSION} has been promoted", tokenCredentialId: 'slack'
+             slackSend channel: '#docs', message: "new agent release ${params.RELEASE_VERSION} has been promoted. Please publish the release notes at this time.", tokenCredentialId: 'slack'
+        }
+    }
+
+    }
+    post {
         always {
-            cleanWs deleteDirs: true, notFailBuild: true
-			// Courtesy cleanup of the containers we pulled
-			sh label: '', script: '''
-				docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
-			'''
+            sh label: '', script: '''
+                docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+                sudo rm -rf * .[!.]*
+            '''
+            cleanWs()
         }
     }
 }

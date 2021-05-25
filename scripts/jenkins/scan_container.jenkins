@@ -32,8 +32,9 @@ pipeline {
         always {
             sh label: '', script: """
                 docker rmi ${params.CONTAINER_NAME}
+                sudo rm -rf * .[!.]*
             """
-            cleanWs deleteDirs: true, notFailBuild: true
+            cleanWs()
         }
     }
 }

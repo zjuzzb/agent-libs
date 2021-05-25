@@ -1,66 +1,65 @@
 pipeline {
-	agent { label 'agent-docker-builder' }
-	stages {
-		stage('Check out dependencies') {
-			steps {
-				dir('agent') {
-					checkout scm
-				}
-				dir('oss-falco') {
-					checkout([$class: 'GitSCM', branches: [[name: 'master-sync']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
-					sh "git checkout ${params.FALCO_BRANCH}"
-				}
-				dir('libsinsp') {
-					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libsinsp']]])
-					sh "git checkout ${params.LIBSINSP_BRANCH}"
-				}
-				dir('libscap') {
-					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap']]])
-					sh "git checkout ${params.LIBSCAP_BRANCH}"
-				}
-				dir('protorepo') {
+    agent { label 'agent-docker-builder' }
+    stages {
+        stage('Check out dependencies') {
+            steps {
+                dir('agent') {
+                    checkout scm
+                }
+                dir('oss-falco') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'master-sync']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
+                    sh "git checkout ${params.FALCO_BRANCH}"
+                }
+                dir('libsinsp') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libsinsp']]])
+                    sh "git checkout ${params.LIBSINSP_BRANCH}"
+                }
+                dir('libscap') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap']]])
+                    sh "git checkout ${params.LIBSCAP_BRANCH}"
+                }
+                dir('protorepo') {
                     checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
-					sh "git checkout ${params.PROTOREPO_BRANCH}"
-				}
-			}
-		}
-		stage('Build') {
-			steps {
-				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
-					sh label: '', script: '''
-						echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
-						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
-						docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agent-internal:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION container
-						docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agentone:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION agentone
-					'''
-				}
-			}
-		}
-		stage('Upload') {
-			steps {
-				script {
-					docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
-						sh label: '', script: '''
-							docker tag agent-internal:$AGENT_BRANCH  docker.internal.sysdig.com/agent-internal:$AGENT_BRANCH
-							docker push docker.internal.sysdig.com/agent-internal:$AGENT_BRANCH
-							docker tag agentone:$AGENT_BRANCH  docker.internal.sysdig.com/agentone:$AGENT_BRANCH
-							docker push docker.internal.sysdig.com/agentone:$AGENT_BRANCH
-						'''
-					}
-				}
-			}
-		}
-	}
-	post {
-		always {
-			sh label: '', script: '''
-				docker rmi -f agent-internal:$AGENT_BRANCH
-				docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
-				docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
-				sudo rm -rf ./build ./agent ./oss-falco ./libsinsp ./libscap ./protorepo ./userspace ./test
-                sudo rm -rf ./.git
-			'''
-			cleanWs deleteDirs: true, notFailBuild: true
-		}
-	}
+                    sh "git checkout ${params.PROTOREPO_BRANCH}"
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+                    sh label: '', script: '''
+                        echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
+                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
+                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agent-internal:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION container
+                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agentone:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION agentone
+                    '''
+                }
+            }
+        }
+        stage('Upload') {
+            steps {
+                script {
+                    docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
+                        sh label: '', script: '''
+                            docker tag agent-internal:$AGENT_BRANCH  docker.internal.sysdig.com/agent-internal:$AGENT_BRANCH
+                            docker push docker.internal.sysdig.com/agent-internal:$AGENT_BRANCH
+                            docker tag agentone:$AGENT_BRANCH  docker.internal.sysdig.com/agentone:$AGENT_BRANCH
+                            docker push docker.internal.sysdig.com/agentone:$AGENT_BRANCH
+                        '''
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            sh label: '', script: '''
+                docker rmi -f agent-internal:$AGENT_BRANCH
+                docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+                docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+                sudo rm -rf * .[!.]*
+            '''
+            cleanWs()
+        }
+    }
 }

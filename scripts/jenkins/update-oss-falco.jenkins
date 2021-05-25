@@ -1,99 +1,102 @@
 pipeline {
-	agent { label 'agent-builder-parallel' }
-	options {
-		timeout(time: 60, unit: 'MINUTES')
-	}
-	parameters {
-		string(name: 'LIBSINSP_BRANCH', defaultValue: "dev")
-		string(name: 'LIBSCAP_BRANCH', defaultValue: "dev")
-		string(name: 'BUILDER_VERSION', defaultValue: "latest")
-		string(name: 'AGENT_BRANCH', defaultValue: "dev")
-		string(name: 'PROTOREPO_BRANCH', defaultValue: "master")
-		string(name: 'FALCO_SYNC_BRANCH', defaultValue: "master-sync")
-	}
-	stages {
-		stage('Check out dependencies') {
-			steps {
-				dir('oss-falco') {
-					checkout([$class: 'GitSCM', branches: [[name: "${params.FALCO_SYNC_BRANCH}"]], extensions: scm.extensions + [[$class: 'LocalBranch']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', url: 'git@github.com:draios/oss-falco.git']]])
-				}
-			}
-		}
-
-	    stage('Sync falcosecurity/falco master to oss-master') {
-			steps {
-				withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
-					dir('oss-falco') {
-						sh label: '', script: """
-							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-							git remote add upstream git@github.com:falcosecurity/falco.git || true
-							git fetch upstream
-							git push -f origin upstream/master:refs/heads/oss-master
-						"""
-					}
-				}
-			}
-		}
-	    stage('Rebase sync branch against oss-master') {
-			steps {
-				withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
-					dir('oss-falco') {
-						sh label: '', script: """
-							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-							git checkout ${params.FALCO_SYNC_BRANCH}
-							git rebase origin/oss-master
-						"""
-					}
-				}
-			}
-		}
-		stage('Merge rebased sync branch to temporary branch') {
-			steps {
-				withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
-					dir('oss-falco') {
-						sh label: '', script: """
-							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-							git push -f origin HEAD:refs/heads/oss-falco-master-candidate
-						"""
-					}
-				}
-			}
-		}
-
-		stage('Run Tests') {
-			parallel {
-				stage('Unit Test') {
-					steps {
-						build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"oss-falco-master-candidate"), string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"), string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
-					}
-				}
-				stage('System Test') {
-					steps {
-						build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"oss-falco-master-candidate"), string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"), string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
-					}
-				}
-			}
-		}
-
-		stage('Push rebased sync branch') {
-			steps {
-				withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
-					dir('oss-falco') {
-						sh label: '', script: """
-							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-							git push -f origin ${params.FALCO_SYNC_BRANCH}
-							git push origin ${params.FALCO_SYNC_BRANCH}:refs/tags/99.0.${BUILD_NUMBER}
-						"""
-					}
-				}
-			}
-		}
-	}
-    post {
-		always {
-			cleanWs deleteDirs: true, notFailBuild: true
+    agent { label 'agent-builder-parallel' }
+    options {
+        timeout(time: 60, unit: 'MINUTES')
+    }
+    parameters {
+        string(name: 'LIBSINSP_BRANCH', defaultValue: "dev")
+        string(name: 'LIBSCAP_BRANCH', defaultValue: "dev")
+        string(name: 'BUILDER_VERSION', defaultValue: "latest")
+        string(name: 'AGENT_BRANCH', defaultValue: "dev")
+        string(name: 'PROTOREPO_BRANCH', defaultValue: "master")
+        string(name: 'FALCO_SYNC_BRANCH', defaultValue: "master-sync")
+    }
+    stages {
+        stage('Check out dependencies') {
+            steps {
+                dir('oss-falco') {
+                    checkout([$class: 'GitSCM', branches: [[name: "${params.FALCO_SYNC_BRANCH}"]], extensions: scm.extensions + [[$class: 'LocalBranch']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', url: 'git@github.com:draios/oss-falco.git']]])
+                }
+            }
         }
-		success {
+
+        stage('Sync falcosecurity/falco master to oss-master') {
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
+                    dir('oss-falco') {
+                        sh label: '', script: """
+                            export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                            git remote add upstream git@github.com:falcosecurity/falco.git || true
+                            git fetch upstream
+                            git push -f origin upstream/master:refs/heads/oss-master
+                        """
+                    }
+                }
+            }
+        }
+        stage('Rebase sync branch against oss-master') {
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
+                    dir('oss-falco') {
+                        sh label: '', script: """
+                            export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                            git checkout ${params.FALCO_SYNC_BRANCH}
+                            git rebase origin/oss-master
+                        """
+                    }
+                }
+            }
+        }
+        stage('Merge rebased sync branch to temporary branch') {
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
+                    dir('oss-falco') {
+                        sh label: '', script: """
+                            export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                            git push -f origin HEAD:refs/heads/oss-falco-master-candidate
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            parallel {
+                stage('Unit Test') {
+                    steps {
+                        build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"oss-falco-master-candidate"), string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"), string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
+                    }
+                }
+                stage('System Test') {
+                    steps {
+                        build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"oss-falco-master-candidate"), string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"), string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
+                    }
+                }
+            }
+        }
+
+        stage('Push rebased sync branch') {
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
+                    dir('oss-falco') {
+                        sh label: '', script: """
+                            export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                            git push -f origin ${params.FALCO_SYNC_BRANCH}
+                            git push origin ${params.FALCO_SYNC_BRANCH}:refs/tags/99.0.${BUILD_NUMBER}
+                        """
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            sh label:'',script:'''
+                sudo rm -rf * .[!.]*
+            '''
+            cleanWs()
+        }
+        success {
             script {
                 if (currentBuild.getPreviousBuild().result == "FAILURE") {
                     slackSend channel: '#dev-agent-ci', message: "falco-sync-and-test-upstream - #<${currentBuild.absoluteUrl}|${currentBuild.number}> Back to normal", tokenCredentialId: 'slack'

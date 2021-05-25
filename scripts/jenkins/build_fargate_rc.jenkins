@@ -29,32 +29,32 @@ pipeline {
                 }
             }
         }
-		stage('Build Agentino'){
-			steps {
-				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
-					sh label: '', script: '''
-						echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
-						AGENT_BUILD_COMMIT="`git -C agent rev-parse --short HEAD`"
-						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION-alpine
-						docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_VERSION=$RELEASE_VERSION -e AGENT_BUILD_COMMIT -e AGENT_BUILD_DATE="`date`" -e AGENT_IMAGE=docker.internal.sysdig.com/agentino-internal:$RELEASE_VERSION-rc$RC_NUMBER -v $PWD:/draios:ro -v $PWD/out:/out -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/pipcache:/root/.cache quay.io/sysdig/agent-builder:$BUILDER_VERSION-alpine agentino
-					'''
-				}
-			}
-		}
-		stage('Upload Agentino'){
+        stage('Build Agentino'){
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+                    sh label: '', script: '''
+                        echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
+                        AGENT_BUILD_COMMIT="`git -C agent rev-parse --short HEAD`"
+                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION-alpine
+                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_VERSION=$RELEASE_VERSION -e AGENT_BUILD_COMMIT -e AGENT_BUILD_DATE="`date`" -e AGENT_IMAGE=docker.internal.sysdig.com/agentino-internal:$RELEASE_VERSION-rc$RC_NUMBER -v $PWD:/draios:ro -v $PWD/out:/out -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/pipcache:/root/.cache quay.io/sysdig/agent-builder:$BUILDER_VERSION-alpine agentino
+                    '''
+                }
+            }
+        }
+        stage('Upload Agentino'){
             when {
                 expression { params.UPLOAD == true }
             }
             steps {
-				script {
-					docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
-						sh label: '', script: '''
-							docker push docker.internal.sysdig.com/agentino-internal:$RELEASE_VERSION-rc$RC_NUMBER
-						'''
-					}
-				}
-			}
-		}
+                script {
+                    docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
+                        sh label: '', script: '''
+                            docker push docker.internal.sysdig.com/agentino-internal:$RELEASE_VERSION-rc$RC_NUMBER
+                        '''
+                    }
+                }
+            }
+        }
         stage('Build Agentone') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME'), usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
@@ -63,9 +63,9 @@ pipeline {
                         AGENT_BUILD_COMMIT="`git -C agent rev-parse --short HEAD`"
                         docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
                         sudo rm -rf $PWD/out
-						# we don't care about promscrape in fargate. It will always download
-						# which is a bit jank, so at least set it to something guaranteed
-						# to be there
+                        # we don't care about promscrape in fargate. It will always download
+                        # which is a bit jank, so at least set it to something guaranteed
+                        # to be there
                         docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_VERSION=$RELEASE_VERSION -e AGENT_BUILD_COMMIT -e AGENT_BUILD_DATE="`date`" -e PROMSCRAPE_VERSION=dev -v $PWD:/draios:ro -v $PWD/out:/out -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/pipcache:/root/.cache quay.io/sysdig/agent-builder:$BUILDER_VERSION release
                     '''
                 }
@@ -85,42 +85,41 @@ pipeline {
                 }
             }
         }
-		stage('Build Agentone Container') {
-            when {
-                expression { params.UPLOAD == true }
-            }
-			steps {
-				sh label: '', script: '''
-					sudo agent/scripts/jenkins/build-prod-container $PWD/out fargate-rc agentone
-				'''
-			}
-		}
-		stage('Upload Agentone Container'){
+        stage('Build Agentone Container') {
             when {
                 expression { params.UPLOAD == true }
             }
             steps {
-				script {
-					docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
-						sh label: '', script: '''
-							docker tag agentone  docker.internal.sysdig.com/agentone:$RELEASE_VERSION-rc$RC_NUMBER
-							docker push docker.internal.sysdig.com/agentone:$RELEASE_VERSION-rc$RC_NUMBER
-						'''
-					}
-				}
-			}
-		}
+                sh label: '', script: '''
+                    sudo agent/scripts/jenkins/build-prod-container $PWD/out fargate-rc agentone
+                '''
+            }
+        }
+        stage('Upload Agentone Container'){
+            when {
+                expression { params.UPLOAD == true }
+            }
+            steps {
+                script {
+                    docker.withRegistry("https://docker.internal.sysdig.com", 'jenkins-artifactory') {
+                        sh label: '', script: '''
+                            docker tag agentone  docker.internal.sysdig.com/agentone:$RELEASE_VERSION-rc$RC_NUMBER
+                            docker push docker.internal.sysdig.com/agentone:$RELEASE_VERSION-rc$RC_NUMBER
+                        '''
+                    }
+                }
+            }
+        }
 
     }
     post {
         always {
             sh label: '', script: '''
-                sudo rm -rf ./build
-                sudo rm -rf ./out
                 docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
                 docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+                sudo rm -rf * .[!.]*
             '''
-            cleanWs deleteDirs: true, notFailBuild: true
+            cleanWs()
         }
     }
 }

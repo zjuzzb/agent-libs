@@ -371,11 +371,10 @@ pipeline {
 
     post {
         always {
-			sh label: '', script: '''
-				rm -rf dist
-				rm fargate-agent-bundle-2.tar.gz
-			'''
-            cleanWs deleteDirs: true, notFailBuild: true
+            sh label: '', script: '''
+                sudo rm -rf * .[!.]*
+            '''
+            cleanWs()
         }
         success {
             slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job success!", tokenCredentialId: 'slack'

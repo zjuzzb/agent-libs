@@ -1,25 +1,25 @@
 pipeline {
-	agent { label 'agent-builder-parallel' }
-	stages {
-		stage('Spawn Jobs') {
-			parallel {
-				stage('Build Latest Builder') {
-					steps {
-						build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"dev"),booleanParam(name:'TAG_LATEST', value:true)]
-					}
-				}
-				stage('Build Alpine Builder') {
-					steps {
-						build job:'agent-build-alpine-builder',parameters:[string(name:'AGENT_BRANCH', value:"dev"),booleanParam(name:'TAG_LATEST', value:true)]
-					}
-				}
-				stage('Build Probes') {
-					steps {
-						build job:'agent-build-probes'
-					}
-				}
+    agent { label 'agent-builder-parallel' }
+    stages {
+        stage('Spawn Jobs') {
+            parallel {
+                stage('Build Latest Builder') {
+                    steps {
+                        build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"dev"),booleanParam(name:'TAG_LATEST', value:true)]
+                    }
+                }
+                stage('Build Alpine Builder') {
+                    steps {
+                        build job:'agent-build-alpine-builder',parameters:[string(name:'AGENT_BRANCH', value:"dev"),booleanParam(name:'TAG_LATEST', value:true)]
+                    }
+                }
+                stage('Build Probes') {
+                    steps {
+                        build job:'agent-build-probes'
+                    }
+                }
 
-			}
-		}
-	}
+            }
+        }
+    }
 }

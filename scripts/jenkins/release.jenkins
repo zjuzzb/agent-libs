@@ -348,19 +348,19 @@ pipeline {
         }
     }
 
-	stage('Build GS') {
-		steps {
-			build job:'agent-build-gs',parameters:[string(name:'BASE_RELEASE_VERSION',value:"${params.RELEASE_VERSION}"),booleanParam(name:'UPLOAD', value:true)]
-		}
-	}
+    stage('Build GS') {
+        steps {
+            build job:'agent-build-gs',parameters:[string(name:'BASE_RELEASE_VERSION',value:"${params.RELEASE_VERSION}"),booleanParam(name:'UPLOAD', value:true)]
+        }
+    }
 
     stage('Wait for Commit') {
         stages {
-			stage('Notify') {
-				steps {
-					slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Release is awaiting approvals", tokenCredentialId: 'slack'
-				}
-			}
+            stage('Notify') {
+                steps {
+                    slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Release is awaiting approvals", tokenCredentialId: 'slack'
+                }
+            }
 
             stage('Launch QA tests pipeline') {
                 steps {
@@ -409,7 +409,7 @@ pipeline {
 
     stage('Promote') {
         steps {
-			slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Promote is in progress.", tokenCredentialId: 'slack'
+            slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Promote is in progress.", tokenCredentialId: 'slack'
             build job:'agent-promote',parameters:[string(name:'RELEASE_VERSION', value:"${params.RELEASE_VERSION}")]
         }
     }
@@ -418,15 +418,18 @@ pipeline {
 
     post {
         always {
-            cleanWs deleteDirs: true, notFailBuild: true
+            sh label:'',script:'''
+                sudo rm -rf * .[!.]*
+            '''
+            cleanWs()
         }
         success {
             slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job success!", tokenCredentialId: 'slack'
-			slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Release job success!", tokenCredentialId: 'slack'
+            slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Release job success!", tokenCredentialId: 'slack'
         }
         failure {
             slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release job failure.", tokenCredentialId: 'slack'
-			slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Release job failure!", tokenCredentialId: 'slack'
+            slackSend channel: "${params.RELEASE_VERSION}_agent_release_prep", message: "Release job failure!", tokenCredentialId: 'slack'
         }
     }
 }

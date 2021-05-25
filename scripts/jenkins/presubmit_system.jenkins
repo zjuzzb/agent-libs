@@ -1,82 +1,85 @@
 pipeline {
-	agent { label 'agent-docker-builder' }
-	stages {
-		stage('Check out dependencies') {
-			steps {
-				dir('agent') {
-					checkout scm
-				}
-				dir('oss-falco') {
-					checkout([$class: 'GitSCM', branches: [[name: 'master-sync']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
-					sh "git checkout ${params.FALCO_BRANCH}"
-				}
-				dir('libsinsp') {
-					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libsinsp']]])
-					sh "git checkout ${params.LIBSINSP_BRANCH}"
-				}
-				dir('libscap') {
-					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap']]])
-					sh "git checkout ${params.LIBSCAP_BRANCH}"
-				}
-				dir('protorepo') {
-					checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
-					sh "git checkout ${params.PROTOREPO_BRANCH}"
-				}
-			}
-		}
-		stage('Build') {
-			steps {
-				withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
-					sh label: '', script: '''
-						echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
-						docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
-						mkdir install || echo "installdir already exists"
-						docker run -i --rm -e MAKE_JOBS=$(nproc) -v $PWD/install:/opt/draios -v $PWD:/draios:ro quay.io/sysdig/agent-builder:$BUILDER_VERSION install-test
-					'''
-				}
-			}
-		}
-		stage('Insert Module') {
-			steps {
-				sh label: '', script: '''
-					sudo pkill -9 run-tests || echo "no tests to kill"
-					sudo pkill -9 tests || echo "no tests to kill"
+    agent { label 'agent-docker-builder' }
+    stages {
+        stage('Check out dependencies') {
+            steps {
+                dir('agent') {
+                    checkout scm
+                }
+                dir('oss-falco') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'master-sync']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
+                    sh "git checkout ${params.FALCO_BRANCH}"
+                }
+                dir('libsinsp') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libsinsp']]])
+                    sh "git checkout ${params.LIBSINSP_BRANCH}"
+                }
+                dir('libscap') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap']]])
+                    sh "git checkout ${params.LIBSCAP_BRANCH}"
+                }
+                dir('protorepo') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/protorepo']]])
+                    sh "git checkout ${params.PROTOREPO_BRANCH}"
+                }
+                dir('agent-libs') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/agent-libs']]])
+                    sh "git checkout ${params.LIBS_BRANCH}"
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
+                    sh label: '', script: '''
+                        echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
+                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
+                        mkdir install || echo "installdir already exists"
+                        docker run -i --rm -e MAKE_JOBS=$(nproc) -v $PWD/install:/opt/draios -v $PWD:/draios:ro -e USE_OLD_DIRS=$USE_LEGACY_LIBS quay.io/sysdig/agent-builder:$BUILDER_VERSION install-test
+                    '''
+                }
+            }
+        }
+        stage('Insert Module') {
+            steps {
+                sh label: '', script: '''
+                    sudo pkill -9 run-tests || echo "no tests to kill"
+                    sudo pkill -9 tests || echo "no tests to kill"
 
-				    COUNT=$(lsmod | grep sysdigcloud-probe | wc -l)
-					if [ $COUNT != 0 ]
-					then
-						sudo rmmod sysdigcloud-probe
-					fi
-					docker pull sysdig/agent-kmodule:dev
-					docker run -i --privileged --rm --name sysdig-agent-kmodule -v /usr:/host/usr:ro -v /boot:/host/boot:ro -v /lib/modules:/host/lib/modules:ro sysdig/agent-kmodule:dev
-				'''
-			}
-		}
-		stage('Run tests') {
-			steps {
-				sh label: '', script: '''
-					sudo ./agent/scripts/jenkins/run-tests ./install
-				'''
-			}
-		}
-	}
-	post {
-		always {
-			// sometimes for some reason the tests don't stop. this blocks the kmod
-			// from being unloaded while also not relinquishing control, so
-			// ensure everything is nuked
-			sh label: '', script: '''
-			    sudo pkill -9 run-tests || echo "no tests to kill"
+                    COUNT=$(lsmod | grep sysdigcloud-probe | wc -l)
+                    if [ $COUNT != 0 ]
+                    then
+                        sudo rmmod sysdigcloud-probe
+                    fi
+                    docker pull sysdig/agent-kmodule:dev
+                    docker run -i --privileged --rm --name sysdig-agent-kmodule -v /usr:/host/usr:ro -v /boot:/host/boot:ro -v /lib/modules:/host/lib/modules:ro sysdig/agent-kmodule:dev
+                '''
+            }
+        }
+        stage('Run tests') {
+            steps {
+                sh label: '', script: '''
+                    sudo ./agent/scripts/jenkins/run-tests ./install
+                '''
+            }
+        }
+    }
+    post {
+        always {
+            // sometimes for some reason the tests don't stop. this blocks the kmod
+            // from being unloaded while also not relinquishing control, so
+            // ensure everything is nuked
+            sh label: '', script: '''
+                sudo pkill -9 run-tests || echo "no tests to kill"
 
-				sudo pkill -9 tests || echo "no tests to kill"
+                sudo pkill -9 tests || echo "no tests to kill"
 
-				sudo rmmod sysdigcloud-probe || echo "not currently loaded"
-				docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
+                sudo rmmod sysdigcloud-probe || echo "not currently loaded"
+                docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
 
-				sudo rm -rf ./install ./build ./agent ./oss-falco ./libsinsp ./libscap ./protorepo ./userspace ./test
-				sudo rm -rf ./.git
-			'''
-			cleanWs deleteDirs: true, notFailBuild: true
-		}
-	}
+                sudo rm -rf * .[!.]*
+            '''
+            cleanWs()
+        }
+    }
 }

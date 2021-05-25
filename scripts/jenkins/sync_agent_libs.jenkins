@@ -1,95 +1,102 @@
 pipeline {
-	agent { label 'agent-builder-parallel' }
-	stages {
-		stage('Check out dependencies') {
-			steps {
-				dir('agent-libs') {
-					checkout([$class: 'GitSCM', branches: [[name: "dev"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', url: 'git@github.com:draios/agent-libs.git']]])
-				}
-			}
-		}
-	    stage('Create Temp Branch') {
-			steps {
-				withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
-					dir('agent-libs') {
-						sh label: '', script: """
-							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-							git remote add upstream git@github.com:falcosecurity/libs.git || true
-							git fetch upstream
+    agent { label 'agent-builder-parallel' }
+    stages {
+        stage('Check out dependencies') {
+            steps {
+                dir('agent-libs') {
+                    checkout([$class: 'GitSCM', branches: [[name: "dev"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', url: 'git@github.com:draios/agent-libs.git']]])
+                }
+            }
+        }
+        stage('Create Temp Branch') {
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
+                    dir('agent-libs') {
+                        sh label: '', script: """
+                            export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                            git remote add upstream git@github.com:falcosecurity/libs.git || true
+                            git fetch upstream
 
-							# first thing: sync our direct mirror
-							git checkout oss-master
-							git merge --ff-only upstream/master
-							# This may ultimately need to be -f if, for instance,
-							# upstream rebases master...but we'll be safer for now
-							git push -u origin oss-master
+                            # first thing: sync our direct mirror
+                            git checkout oss-master
+                            git merge --ff-only upstream/master
+                            # This may ultimately need to be -f if, for instance,
+                            # upstream rebases master...but we'll be safer for now
+                            git push -u origin oss-master
 
-							#next we rebase dev
-							git checkout --track origin/dev
-							git rebase oss-master
-							
-							# next create a candidate to validate before pushing 
-							# to master
-							git branch -D merge-from-falco-candidate || true
-							git push --set-upstream origin --delete merge-from-falco-candidate || true
-							git checkout -b merge-from-falco-candidate
-							git push --set-upstream origin merge-from-falco-candidate
-						"""
-					}
-				}
-			}
-		}
+                            #next we rebase dev
+                            git checkout --track origin/dev
+                            git rebase oss-master
 
-		stage('Run Tests') {
-			parallel {
-				stage('UTs'){
-					steps{
-						build job:'agent-presubmit-ut',parameters:[
-							string(name:'AGENT_LIBS_BRANCH',value:"merge-from-falco-candidate")
-						]
-					}
-				}
-				stage('system tests'){
-					steps{
-						build job:'agent-presubmit-system',parameters:[
-							string(name:'AGENT_LIBS_BRANCH',value:"merge-from-falco-candidate")
-						]
-					}
-				}
-				stage('agentino'){
-					steps{
-						build job:'agent-build-agentino',parameters:[
-							string(name:'AGENT_LIBS_BRANCH',value:"merge-from-falco-candidate")
-						]
-					}
-				}
-				stage('dev'){
-					steps{
-						build job:'agent-build-dev',parameters:[
-							string(name:'AGENT_LIBS_BRANCH',value:"merge-from-falco-candidate"),
-							booleanParam(name:'UPLOAD', value:false)
-						]
-					}
-				}
-			}
-		}
+                            # next create a candidate to validate before pushing 
+                            # to master
+                            git branch -D merge-from-falco-candidate || true
+                            git push --set-upstream origin --delete merge-from-falco-candidate || true
+                            git checkout -b merge-from-falco-candidate
+                            git push --set-upstream origin merge-from-falco-candidate
+                        """
+                    }
+                }
+            }
+        }
 
-		stage('push dev') {
-			steps {
-				withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
-					dir('agent-libs') {
-						sh label: '', script: """
-							export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-					   		git push --set-upstream origin dev
-						"""
-					}
-				}
-			}
-		}
-	}
+        stage('Run Tests') {
+            parallel {
+                stage('UTs'){
+                    steps{
+                        build job:'agent-presubmit-ut',parameters:[
+                            string(name:'AGENT_LIBS_BRANCH',value:"merge-from-falco-candidate"),
+                            booleanParam(name:'USE_LEGACY_LIBS', value:false)
+                        ]
+                    }
+                }
+                stage('system tests'){
+                    steps{
+                        build job:'agent-presubmit-system',parameters:[
+                            string(name:'AGENT_LIBS_BRANCH',value:"merge-from-falco-candidate"),
+                            booleanParam(name:'USE_LEGACY_LIBS', value:false)
+                        ]
+                    }
+                }
+                stage('agentino'){
+                    steps{
+                        build job:'agent-build-agentino',parameters:[
+                            string(name:'AGENT_LIBS_BRANCH',value:"merge-from-falco-candidate"),
+                            booleanParam(name:'USE_LEGACY_LIBS', value:false)
+                        ]
+                    }
+                }
+                stage('dev'){
+                    steps{
+                        build job:'agent-build-dev',parameters:[
+                            string(name:'AGENT_LIBS_BRANCH',value:"merge-from-falco-candidate"),
+                            booleanParam(name:'USE_LEGACY_LIBS', value:false),
+                            booleanParam(name:'UPLOAD', value:false)
+                        ]
+                    }
+                }
+            }
+        }
+
+        stage('push dev') {
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
+                    dir('agent-libs') {
+                        sh label: '', script: """
+                            export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
+                               git push --set-upstream origin dev
+                        """
+                    }
+                }
+            }
+        }
+    }
     post {
-		always {
-			cleanWs()
-		}
+        always {
+            sh label:'',script:'''
+                sudo rm -rf * .[!.]*
+            '''
+            cleanWs()
+        }
     }
 }
