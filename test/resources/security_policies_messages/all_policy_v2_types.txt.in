@@ -135,7 +135,7 @@ policy_list {
 policy_list {
   id: 17
   name: "Test container prefixes (4)"
-  rule_names: "match my.third.domain.name/tutum/curl:alpine"
+  rule_names: "match my.third.domain.name/ubuntu"
   enabled: 1
   scope_predicates {
     key: "container.id"

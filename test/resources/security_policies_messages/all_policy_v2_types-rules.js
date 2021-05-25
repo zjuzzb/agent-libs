@@ -199,7 +199,7 @@
      }
     },
     {"id": 1011,
-     "name": "match my.third.domain.name/tutum/curl:alpine",
+     "name": "match my.third.domain.name/ubuntu",
      "origin": "secure UI",
      "versionId": "0.1.1",
      "filename": "fastengine_rules.yaml",
@@ -208,7 +208,7 @@
      "details": {
 	 "ruleType": "CONTAINER",
 	 "containers": {
-	     "items": ["my.third.domain.name/tutum/curl:alpine"],
+	     "items": ["my.third.domain.name/ubuntu"],
 	     "matchItems": true
 	 }
      }

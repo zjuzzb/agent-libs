@@ -2041,11 +2041,11 @@ TEST_F(security_policies_v2_test, container_prefixes)
 	dutils_kill_container("denyme");
 	dutils_kill_image("my.domain.name/busybox:1.27.2");
 	dutils_kill_image("my.other.domain.name:12345/cirros:0.3.3");
-	dutils_kill_image("my.third.domain.name/tutum/curl:alpine");
+	dutils_kill_image("my.third.domain.name/ubuntu");
 
 	ASSERT_EQ(system("docker pull busybox:1.27.2 > /dev/null 2>&1"), 0);
 	ASSERT_EQ(system("docker pull cirros:0.3.3 > /dev/null 2>&1"), 0);
-	ASSERT_EQ(system("docker pull tutum/curl:alpine > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker pull ubuntu:14.04.1 > /dev/null 2>&1"), 0);
 
 	dutils_create_tag("blacklist-image-name:0.0.1", "busybox:1.27.2");
 
@@ -2077,13 +2077,13 @@ TEST_F(security_policies_v2_test, container_prefixes)
 	          0);
 
 	dutils_kill_image("my.third.domain.name/cirros:0.3.3");
-	dutils_create_tag("my.third.domain.name/tutum/curl:alpine", "tutum/curl:alpine");
+	dutils_create_tag("my.third.domain.name/ubuntu", "ubuntu:14.04.1");
 
-	ASSERT_EQ(system("docker run --rm --name denyme my.third.domain.name/tutum/curl:alpine sleep 5 "
+	ASSERT_EQ(system("docker run --rm --name denyme my.third.domain.name/ubuntu sleep 5 "
 	                 "> /dev/null 2>&1"),
 	          0);
 
-	dutils_kill_image("my.third.domain.name/tutum/curl:alpine");
+	dutils_kill_image("my.third.domain.name/ubuntu");
 
 	std::vector<security_policies_v2_test::expected_policy_event> expected = {
 	    {07,
@@ -2112,9 +2112,9 @@ TEST_F(security_policies_v2_test, container_prefixes)
 	      {"container.name", "denyme"}}},
 	    {17,
 	     draiosproto::policy_type::PTYPE_CONTAINER,
-	     {{"container.image", "my.third.domain.name/tutum/curl:alpine"},
+	     {{"container.image", "my.third.domain.name/ubuntu"},
 	      {"container.image.id",
-	       "b91cd13456bbd3d65f00d0a0be24c95b802ad1f9cd0dc2b8889c4c7fbb599fef"},
+	       "ab1bd63e0321df14231826341ea4153cd1fb55e7f9a86e1382d01325762eab3a"},
 	      {"container.name", "denyme"}}}};
 	check_policy_events(expected);
 }
@@ -2126,10 +2126,10 @@ TEST_F(security_policies_v2_test, net_inbound_outbound_tcp)
 		return;
 	}
 
-	ASSERT_EQ(system("docker pull tutum/curl > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker pull ubuntu:14.04.1 > /dev/null 2>&1"), 0);
 
 	dutils_kill_container("inout_test");
-	dutils_create_tag("curl:inout_test", "tutum/curl");
+	dutils_create_tag("curl:inout_test", "ubuntu:14.04.1");
 	ASSERT_EQ(system("docker run -d --name inout_test --rm curl:inout_test bash -c 'while true; do "
 	                 "(timeout 5 nc -l -p 22222 -q0 &) && sleep 2 && (timeout 5 nc $(hostname -I | "
 	                 "cut -f 1 -d \" \") 22222); sleep 1; done' > /dev/null 2>&1"),
@@ -2164,10 +2164,10 @@ TEST_F(security_policies_v2_test, net_inbound_outbound_udp)
 		return;
 	}
 
-	ASSERT_EQ(system("docker pull tutum/curl > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker pull ubuntu:14.04.1 > /dev/null 2>&1"), 0);
 
 	dutils_kill_container("inout_test");
-	dutils_create_tag("curl:inout_test", "tutum/curl");
+	dutils_create_tag("curl:inout_test", "ubuntu:14.04.1");
 	ASSERT_EQ(system("docker run -d --name inout_test --rm curl:inout_test bash -c 'ln -s `which "
 	                 "nc` /bin/ncserver; while true; do (timeout 5 ncserver -ul -p 22222 -q0 &) && "
 	                 "sleep 2 && (echo ping | timeout 5 nc -u $(hostname -I | cut -f 1 -d \" \") "
