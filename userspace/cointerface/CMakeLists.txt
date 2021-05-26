@@ -118,6 +118,7 @@ gobuild(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/services.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/statefulsets.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_common/client.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_common/delegate.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_common/kubecollect_interface.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_tc/client.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect_tc/daemonsets.go

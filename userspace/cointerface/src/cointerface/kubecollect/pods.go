@@ -344,24 +344,85 @@ func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1m
 }
 
 func startPodsSInformer(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
-	client := kubeClient.CoreV1().RESTClient()
-	var selector string
+	var getTerm bool = false
 	if opts.GetTerminatedPodsEnabled()  {
-		selector = ""
-	} else {
-		selector = "status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded"
+		getTerm = true
 	}
-	fSelector, _ := fields.ParseSelector(selector) // they don't support or operator...
-	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, fSelector)
-	podInf = cache.NewSharedInformer(lw, &v1.Pod{}, kubecollect_common.RsyncInterval)
 
 	wg.Add(1)
 	go func() {
 		podEvtcHandle = evtc
-		watchPods()
-		podInf.Run(ctx.Done())
+		podInfManagerLoop(ctx, getTerm, kubeClient)
 		wg.Done()
 	}()
+}
+
+func podInfManagerLoop(ctx context.Context, getTerm bool, kubeClient kubeclient.Interface) {
+	deleg := kubecollect_common.IsDelegated()
+	delegChan := kubecollect_common.GetDelegateChan()
+
+	for {
+		log.Debugf("Start new Pods Informer, delegated:%v", deleg)
+		// May want to get the kubeClient from global store and monitor for closure
+		podInf = startPodsInfReally(ctx, getTerm, deleg, kubeClient)
+		watchPods()
+		infCtx, cancelInf := context.WithCancel(ctx)
+
+		infWg := &sync.WaitGroup{}
+		infWg.Add(1)
+		go func() {
+			podInf.Run(infCtx.Done())
+			infWg.Done()
+		}()
+
+		var restart bool = false
+		for ; !restart; {
+			select {
+			case <- ctx.Done():
+				log.Debug("PodInfManager: context cancelled, waiting for informer wg")
+				infWg.Wait()
+				log.Debug("PodInfManager: informer done, closing")
+				return
+			case d, ok := <-delegChan:
+				if !ok {
+					log.Warn("PodInfManager: delegation channel closed")
+					return
+				}
+				log.Debugf("PodInfManager: delegation channel sent deleg=%v", d)
+				if d != deleg {
+					log.Debug("PodInfManager: cancelling informer and waiting")
+					deleg = d
+					cancelInf()
+					// Instead of waiting, we may want to use a channel to signal informer exit
+					infWg.Wait()
+					log.Debug("PodInfManager: restarting informer")
+					restart = true
+					break
+				}
+			}
+		}
+	}
+}
+
+func startPodsInfReally(ctx context.Context, getTerm bool, deleg bool, kubeClient kubeclient.Interface) cache.SharedInformer {
+	client := kubeClient.CoreV1().RESTClient()
+	var selector string = ""
+	if !getTerm {
+		selector = "status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded"
+	}
+
+	node := kubecollect_common.GetNode()
+	if node != "" && !deleg {
+		log.Info("Only getting pods for node " + node)
+		selector = selector + ",spec.nodeName=" + node
+	} else {
+		log.Info("Getting pods for all nodes ")
+	}
+	fSelector, _ := fields.ParseSelector(selector) // they don't support or operator...
+	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, fSelector)
+	inf := cache.NewSharedInformer(lw, &v1.Pod{}, kubecollect_common.RsyncInterval)
+
+	return inf
 }
 
 // XXX For pods, this is broken out as a separate function as an example of how

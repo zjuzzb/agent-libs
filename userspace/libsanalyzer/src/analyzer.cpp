@@ -6374,9 +6374,50 @@ void sinsp_analyzer::log_timed_error(time_t& last_attempt, const std::string& er
 	}
 }
 
+void sinsp_analyzer::set_delegation(bool deleg,
+	const google::protobuf::RepeatedPtrField<std::string> & deleg_nodes,
+	bool deleg_fail)
+{
+	// Only allow setting delegation from cointerface pong message if this
+	// method is enabled
+	if (!infrastructure_state::c_k8s_delegation_election.get_value())
+	{
+		LOG_DEBUG("Trying to set delegation to %s, but not allowed", deleg ? "true" : "false");
+		return;
+	}
+	if (deleg_fail)
+	{
+		if (!m_deleg_election_failed)
+		{
+			LOG_INFO("k8s_deleg: Delegation election failed. Falling back to node-name based delegation");
+		}
+		m_deleg_election_failed = true;
+		return;
+	}
+	LOG_DEBUG("k8s_deleg: This node %s delegated", deleg ? "is" : "is not");
+	m_is_k8s_delegated = deleg;
+	m_deleg_nodes.clear();
+	for (const auto &node : deleg_nodes)
+	{
+		m_deleg_nodes.push_back(node);
+		if (m_deleg_msg_counter % 10)
+		{
+			LOG_DEBUG("k8s_deleg: delegated node %s", node.c_str());
+		}
+		else
+		{
+			LOG_INFO("k8s_deleg: delegated node %s", node.c_str());
+		}
+	}
+	m_deleg_msg_counter++;
+}
+
 bool sinsp_analyzer::check_k8s_delegation()
 {
-	m_is_k8s_delegated = check_k8s_delegation_impl();
+	if (!infrastructure_state::c_k8s_delegation_election.get_value() || m_deleg_election_failed)
+	{
+		m_is_k8s_delegated = check_k8s_delegation_impl();
+	}
 	return m_is_k8s_delegated;
 }
 

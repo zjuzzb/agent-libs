@@ -1986,6 +1986,13 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 					                                              pong->token());
 
 					    m_cointerface_ready = pong->ready();
+						if (pong->has_delegation())
+						{
+							m_sinsp_worker.m_analyzer->set_delegation(
+								pong->delegation().status() == sdc_internal::DELEGATED,
+								pong->delegation().delegated_nodes(),
+								pong->delegation().delegation_failure());
+						}
 				    }
 			    };
 

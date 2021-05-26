@@ -177,12 +177,6 @@ type_config<bool>::ptr infrastructure_state::c_k8s_enforce_leader_election =
 		"k8s_coldstart",
 		"enforce_leader_election"
 		).hidden().build();
-type_config<uint32_t>::ptr infrastructure_state::c_k8s_delegated_nodes =
-	type_config_builder<uint32_t>(
-		2,
-		"Number of delegated nodes",
-		"k8s_delegated_nodes"
-		).build();
 type_config<uint64_t> infrastructure_state::c_congroup_ttl_s(60,
 							     "Congroup TTL [sec]",
 							     "congroup_ttl_s");
@@ -221,6 +215,10 @@ type_config<std::vector<std::string>>::ptr infrastructure_state::c_k8s_allow_lis
 		).hidden()
 	         .build();
 
+type_config<bool> infrastructure_state::c_k8s_delegation_election(
+    false,
+    "Determine k8s delegation through leader election in k8s cluster",
+    "k8s_delegation_election");
 
 namespace
 {
@@ -581,6 +579,8 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 		                                           c_k8s_pod_status_wl.get_value().end()};
 		    cmd.set_terminated_pods_enabled(c_k8s_terminated_pods_enabled.get_value());
 		    cmd.set_thin_cointerface(c_thin_cointerface_enabled.get_value());
+		    cmd.set_cointerface_delegation(c_k8s_delegation_election.get_value());
+		    cmd.set_delegated_num(m_analyzer.m_configuration->get_k8s_delegated_nodes());
 
 		    for (const auto& prefix : c_pod_prefix_for_cidr_retrieval.get_value())
 		    {
@@ -591,7 +591,6 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 
 		    cmd.set_cold_start_num(c_k8s_max_parallel_cold_starts->get_value() ? c_k8s_max_parallel_cold_starts->get_value() : 0);
 		    cmd.set_max_cold_start_duration(c_k8s_max_cold_start_duration->get_value());
-		    cmd.set_delegated_num(c_k8s_delegated_nodes->get_value());
 		    cmd.set_enforce_leader_election(c_k8s_enforce_leader_election->get_value());
 		    sdc_internal::leader_election_conf leader_election;
 		    cmd.mutable_leader_election()->set_lease_duration(c_k8s_leader_election_lease_duration->get_value());
@@ -1216,7 +1215,9 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			if (!overwrite)
 			{
 				// Don't warn for duplicate hosts because old backends tend to send us dupes (ESC-757)
-				if (kind != "container" && kind != "host")
+				// Don't warn for pods because cointerface delegation switches will result in
+				// pods getting resent.
+				if (kind != "container" && kind != "host" && kind != "k8s_pod")
 				{
 					LOG_WARNING(
 					    "infra_state: Cannot add container_group <%s,%s> because it's already "
@@ -3987,7 +3988,7 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state* state, int num_de
 		if (it->second.m_uuid == state->m_k8s_node_uid)
 			delegated = true;
 		// Log at INFO level once every 10 times, DEBUG otherwise
-		if (m_counter++ % 10)
+		if (m_counter % 10)
 		{
 			LOG_DEBUG("k8s_deleg: delegated node %s ips: %s id: %s%s",
 					it->first.c_str(),
@@ -4004,6 +4005,7 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state* state, int num_de
 					(it->second.m_uuid == state->m_k8s_node_uid) ? " (this node)" : "");
 		}
 	}
+	m_counter++;
 
 	return delegated;
 }

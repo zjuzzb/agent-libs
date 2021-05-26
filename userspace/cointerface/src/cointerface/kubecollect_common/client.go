@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/watch"
+    "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
@@ -426,43 +427,6 @@ func waitLease(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamC
 	}()
 }
 
-func runDelegation (ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand) {
-	// Create a delegation client
-	var delegationClient *sdc_internal.LeasePoolManagerClient
-	var err error
-	if *opts.DelegatedNum < 0 {
-		// I am delegated
-		return
-	}
-
-	prefix, err := install_prefix.GetInstallPrefix()
-	if err != nil {
-		log.Warnf("Could not get installation directory. Skipping wait lease")
-		return
-	}
-
-	delegationClient, _, err = createLeasePoolClient(ctx, fmt.Sprintf("unix:%s/%s", prefix, DELEGATION_SOCK), DELEGATION_LEASENAME, uint32(*opts.DelegatedNum), opts)
-
-	if delegationClient == nil || err != nil{
-		// ??????
-		return
-	}
-
-	wait, err := (*delegationClient).WaitLease(ctx, &sdc_internal.LeasePoolNull{})
-
-	for {
-		res, err := wait.Recv()
-		if err != nil {
-			log.Error("delegation stream closed. Continuing without waiting the lease")
-			return
-		}
-
-		if *res.Successful == true {
-			log.Debugf("Got the lease. I am delegated!")
-		}
-	}
-}
-
 // The input context is passed to all goroutines created by this function.
 // The caller is responsible for draining messages from the returned channel
 // until the channel is closed, otherwise the component goroutines may block.
@@ -537,6 +501,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	eventCountsLogTime = opts.GetEventCountsLogTime()
 	log.Infof("Event Counts log time: %d s", eventCountsLogTime)
 
+	SetCointDelegation(opts.GetCointerfaceDelegation(), opts.GetDelegatedNum())
 
 	// Get a vector of all resource types
 	// from the resourceList in resources.
@@ -592,11 +557,9 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	waitLease(leaseCtx, opts)
 
 	delegationCtx, _ := context.WithCancel(ctx)
-	go runDelegation(delegationCtx, opts)
+	go RunDelegation(delegationCtx, opts)
 
 	kubecollectInterface.StartInformers(ctx, kubeClient, &wg, fetchDone, opts, resourceTypes, &queueLength)
-
-
 
 	// as soon as we start the go routine to start informers;
 	// we need to kick off the routine to start reading events
@@ -1198,41 +1161,57 @@ func StartWatcher(ctx context.Context,
 		defer func() {
 			wg.Done()
 		}()
-		for {
-
+		var terminated bool = false
+		for ; !terminated; {
 			loopStartTime := time.Now()
+			watchCtx, watchCancel := context.WithCancel(context.Background())
+			watchDone := make(chan struct {})
 
-			terminated := false
+			go func() {
+				defer close(watchDone)
+				log.Debugf("Starting retryWatcher %s", resource)
+				_, err := tw.ListWatchUntil(watchCtx, lw,
+					func(event watch.Event) (bool, error) {
+						if event.Type == watch.Error {
+							log.Warnf("startWatcher[%s] got event type Error", resource)
+						} else {
+							handler(event, evtc)
+						}
+
+						// Condition false means continue
+						return false, nil
+					})
+				// termination by cancelling the context results in ErrWaitTimeout
+				if err != nil && err != wait.ErrWaitTimeout {
+					log.Warnf("startWatcher[%s] ListWatchUntil exits: %s", resource, err.Error())
+				}
+			}()
+
+			// Wait either the watcher to fail or us to get terminated
 			select {
 			case <- ctx.Done():
 				terminated = true
-			default:
+				watchCancel()
+				// wait for the watcher to close after getting terminated to ensure we
+				// don't start a new one before the old one is closed
+				log.Debugf("Watcher[%s] terminated, waiting for closure", resource)
+				select {
+				case <- watchDone:
+				}
+			case <- watchDone:
 			}
-
-			log.Debugf("Starting retryWatcher %s", resource)
-			_, err := tw.ListWatchUntil(ctx, lw,
-				func(event watch.Event) (bool, error) {
-					if event.Type == watch.Error {
-						log.Warnf("startWatcher[%s] got event type Error", resource)
-					} else {
-						handler(event, evtc)
-					}
-
-					// Condition false means continue
-					return false, nil
-				})
-
-			if err != nil {
-				log.Warnf("startWatcher[%s] ListWatchUntil exits: %s", resource, err.Error())
+			if terminated == true {
+				break
 			}
 
 			runtime := time.Since(loopStartTime)
 			backoff = getBackoff(runtime, backoff)
 			log.Infof("startWatcher[%s] Waiting %s before reconnecting watcher", resource, backoff.String())
-			time.Sleep(backoff)
 
-			if terminated == true {
-				break
+			select {
+			case <- ctx.Done():
+				terminated = true
+			case <- time.After(backoff):
 			}
 		}
 	}()

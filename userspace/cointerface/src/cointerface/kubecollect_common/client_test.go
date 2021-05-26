@@ -243,6 +243,7 @@ func TestColdStartClient(t *testing.T) {
 		MaxWaitForLock:            proto.Uint32(0),
 		MaxColdStartDuration:      proto.Uint32(0),
 		EnforceLeaderElection:     proto.Bool(false),
+		CointerfaceDelegation:     proto.Bool(false),
 	}
 
 	ctx, _ := context.WithCancel(context.Background())

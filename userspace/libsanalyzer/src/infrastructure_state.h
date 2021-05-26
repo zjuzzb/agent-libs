@@ -480,10 +480,10 @@ public: // configs
 	static type_config<uint32_t>::ptr c_k8s_leader_election_retry_period;
 	static type_config<std::string>::ptr c_k8s_leader_election_namespace;
 	static type_config<bool>::ptr c_k8s_enforce_leader_election;
-	static type_config<uint32_t>::ptr c_k8s_delegated_nodes;
 	static type_config<uint64_t> c_congroup_ttl_s;
 	static type_config<std::vector<std::string>> c_pod_prefix_for_cidr_retrieval;
 	static type_config<std::vector<std::string>>::ptr c_k8s_allow_list_kinds;
+	static type_config<bool> c_k8s_delegation_election;
 
 private: // configs which have non-static fields that we actually use. You probably don't
 	 // want these. In almost all cases, you'll probably want to use the normalized

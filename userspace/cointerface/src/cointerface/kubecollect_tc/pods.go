@@ -169,16 +169,75 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks
 }
 
 func startPodWatcher(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
-	podEvtcHandle = evtc
-
-	var selector string
+	var getTerm bool = false
 	if opts.GetTerminatedPodsEnabled()  {
-		selector = ""
-	} else {
+		getTerm = true
+	}
+
+	wg.Add(1)
+	go func() {
+		podEvtcHandle = evtc
+		podWatcherLoop(ctx, getTerm, kubeClient)
+		wg.Done()
+	}()
+}
+
+func podWatcherLoop(ctx context.Context, getTerm bool, kubeClient kubeclient.Interface) {
+	deleg := kubecollect_common.IsDelegated()
+	delegChan := kubecollect_common.GetDelegateChan()
+
+	for {
+		log.Debugf("Start new Pod Watcher, delegated:%v", deleg)
+
+		watcherWg := &sync.WaitGroup{}
+		watcherCtx, cancelWatcher := context.WithCancel(ctx)
+		startPodWatcherReally(watcherCtx, getTerm, deleg, kubeClient, watcherWg)
+
+		var restart bool = false
+		for ; !restart; {
+			select {
+			case <- ctx.Done():
+				log.Debug("PodWatcherLoop: context cancelled, waiting for watcher wg")
+				watcherWg.Wait()
+				log.Debug("PodWatcherLoop: watcher done, closing")
+				return
+			case d, ok := <-delegChan:
+				if !ok {
+					log.Warn("PodWatcherLoop: delegation channel closed")
+					return
+				}
+				log.Debugf("PodWatcherLoop: delegation channel sent deleg=%v", d)
+				if d != deleg {
+					log.Debug("PodWatcherLoop: cancelling watcher and waiting")
+					deleg = d
+					cancelWatcher()
+					watcherWg.Wait()
+					log.Debug("PodWatcherLoop: restarting watcher")
+					restart = true
+					break
+				}
+			}
+		}
+	}
+}
+
+func startPodWatcherReally(ctx context.Context, getTerm bool, deleg bool, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
+
+	var selector string = ""
+	if !getTerm  {
 		selector = "status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded"
 	}
+
+	node := kubecollect_common.GetNode()
+	if node != "" && !deleg {
+		log.Info("Only getting pods for node " + node)
+		selector = selector + ",spec.nodeName=" + node
+	} else {
+		log.Info("Getting pods for all nodes ")
+	}
+
 	fselector, _ := fields.ParseSelector(selector)
-	kubecollect_common.StartWatcher(ctx, kubeClient.CoreV1().RESTClient(), "pods", wg, evtc, fselector, handlePodEvent)
+	kubecollect_common.StartWatcher(ctx, kubeClient.CoreV1().RESTClient(), "pods", wg, podEvtcHandle, fselector, handlePodEvent)
 }
 
 func handlePodEvent(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEvent) {

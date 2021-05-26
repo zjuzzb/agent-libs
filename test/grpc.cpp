@@ -80,6 +80,7 @@ sdc_internal::orchestrator_events_stream_command stream_request()
 	req.mutable_leader_election()->set_renew_deadline(0);
 	req.mutable_leader_election()->set_retry_period(0);
 	req.mutable_leader_election()->set_namespace_("");
+	req.set_cointerface_delegation(false);
 	
 	return req;
 }

@@ -157,6 +157,22 @@ func (c *coInterfaceServer) PerformPing(ctx context.Context, cmd *sdc_internal.P
 	if informersStarted == true {
 		res.Ready = proto.Bool(true)
 	}
+	if kubecollect_common.GetCointDelegation() {
+		res.Delegation = &sdc_internal.Delegation {
+			Status: sdc_internal.DelegationStatus_NOT_DELEGATED.Enum(),
+		}
+		if kubecollect_common.GetDelegationFailure() {
+			res.Delegation.DelegationFailure = proto.Bool(true)
+			res.Delegation.Status = sdc_internal.DelegationStatus_NOT_DELEGATED.Enum()
+		} else if kubecollect_common.IsDelegated() {
+			res.Delegation.Status = sdc_internal.DelegationStatus_DELEGATED.Enum()
+		}
+		nodes := kubecollect_common.GetDelegatedNodes()
+		if nodes != nil && len(nodes) > 0 {
+			log.Debugf("Sending delegated nodes: %v", nodes)
+			res.Delegation.DelegatedNodes = nodes
+		}
+	}
 
 	// Try to get our own process's memory usage. If this results
 	// in an error, we still let the ping succeed but use a memory

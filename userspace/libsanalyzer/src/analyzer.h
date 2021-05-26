@@ -56,6 +56,7 @@
 #include "secure_profiling_internal_metrics.h"
 #include "statsd_emitter.h"
 #include "userdb.h"
+#include "sdc_internal.pb.h"
 
 #include "include/sinsp_external_processor.h"
 #include "thread_safe_container/blocking_queue.h"
@@ -939,6 +940,8 @@ public:
 	 */
 	void init_cpu_profiler();
 
+	void set_delegation(bool deleg, const google::protobuf::RepeatedPtrField<std::string> &nodes, bool deleg_fail);
+
 	VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(std::string&);
 
@@ -1026,8 +1029,10 @@ public:
 #ifndef CYGWING_AGENT
 	typedef sinsp_configuration::k8s_ext_list_t k8s_ext_list_t;
 	typedef sinsp_configuration::k8s_ext_list_ptr_t k8s_ext_list_ptr_t;
+
 	bool check_k8s_delegation();
 	bool check_k8s_delegation_impl();
+
 	k8s_ext_list_ptr_t k8s_discover_ext(const std::string& addr);
 	void init_k8s_ssl(const uri& url);
 	k8s* get_k8s(const uri& k8s_api, const std::string& msg);
@@ -1365,7 +1370,10 @@ public:
 	int m_detect_retry_seconds = 60;  // TODO move to config?
 	std::unique_ptr<new_k8s_delegator> m_new_k8s_delegator;
 
+	std::vector<std::string> m_deleg_nodes;
 	bool m_is_k8s_delegated = false;
+	bool m_deleg_election_failed = false;
+	uint32_t m_deleg_msg_counter = 0;
 #endif  // CYGWING_AGENT
 
 	std::vector<std::string> m_container_patterns;
