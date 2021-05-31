@@ -236,6 +236,14 @@ if(NOT DEFINED COMBINED_PACKAGE)
     set(COMBINED_PACKAGE ON)
 endif()
 
+if(DEFINED DEB_EXTRA_FILES)
+	set(CPACK_DEB_EXTRA_FILES "${DEB_EXTRA_FILES}")
+endif()
+
+if(DEFINED RPM_EXTRA_FILES)
+	set(CPACK_RPM_EXTRA_FILES "${RPM_EXTRA_FILES}")
+endif()
+
 # So some quick notes on how everything happens at the interaction of CPack and CMake. From a 10k'
 # level, each install command takes a component. CPack creates a package for each component. It also
 # allows you to package multiple components together in the form of a group. The agent-slim is the
