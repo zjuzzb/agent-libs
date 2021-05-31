@@ -3,7 +3,10 @@
 USR_PREFIX=$RPM_INSTALL_PREFIX0
 INSTALL_PREFIX=$RPM_INSTALL_PREFIX1
 
-/sbin/chkconfig --add dragent
+for SERVICE in $(rpm -ql draios-agent | sed '-nes@^/etc/rc\.d/init\.d/@@p')
+do
+	/sbin/chkconfig --add $SERVICE
+done
 
 dkms add -m draios-agent -v %{version} --rpm_safe_upgrade
 if [ `uname -r | grep -c "BOOT"` -eq 0 ] && [ -e /lib/modules/`uname -r`/build/include ]; then

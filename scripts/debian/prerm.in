@@ -1,13 +1,16 @@
 #!/bin/sh
 set -e
 
-if [ -x "/etc/init.d/dragent" ]; then
+for SERVICE in $(dpkg -L draios-agent | sed '-nes@^/etc/init\.d/@@p')
+do
+	if [ -x "/etc/init.d/$SERVICE" ]; then
 		if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
-				invoke-rc.d dragent stop || exit $?
+				invoke-rc.d $SERVICE stop || exit $?
 		else
-				/etc/init.d/dragent stop || exit $?
+				/etc/init.d/$SERVICE stop || exit $?
 		fi
-fi
+	fi
+done
 
 DKMS_PACKAGE_NAME="@PACKAGE_NAME@"
 DKMS_VERSION="@PROBE_VERSION@"
