@@ -89,6 +89,7 @@ list(
     sinsp_factory.cpp
     sinsp_worker.cpp
     subprocesses_logger.cpp
+    timer_thread.cpp
     user_event_channel.cpp
     webpage.cpp
     webpage_rest_request_handler.cpp

@@ -34,6 +34,7 @@
 #endif
 #include "draios.pb.h"
 #include "analyzer_utils.h"
+#include "timer_thread.h"
 #include "watchdog.h"
 
 class promscrape;
@@ -157,6 +158,8 @@ private:
 
 	std::shared_ptr<promscrape_proxy> m_promscrape_proxy;
 	std::shared_ptr<promscrape_stats_proxy> m_promscrape_stats_proxy;
+
+	std::shared_ptr<timer_thread> m_timer_thread;
 
 	internal_metrics::sptr_t m_internal_metrics;
 	protocol_handler m_protocol_handler;

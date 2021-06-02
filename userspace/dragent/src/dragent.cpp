@@ -278,9 +278,10 @@ dragent_app::dragent_app()
       m_aggregator_queue(MAX_SAMPLE_STORE_SIZE),
       m_serializer_queue(MAX_SAMPLE_STORE_SIZE),
       m_transmit_queue(MAX_SAMPLE_STORE_SIZE),
+      m_timer_thread(std::make_shared<timer_thread>()),
       m_internal_metrics(std::make_shared<internal_metrics>()),
       m_protocol_handler(m_transmit_queue),
-      m_capture_job_handler(&m_configuration, &m_transmit_queue),
+      m_capture_job_handler(&m_configuration, &m_transmit_queue, m_timer_thread),
       m_sinsp_worker(&m_configuration,
                      m_internal_metrics,
                      m_protocol_handler,
@@ -1259,6 +1260,8 @@ int dragent_app::sdagent_main()
 	{
 		m_pool.start(m_subprocesses_logger,
 		             m_configuration.m_watchdog_subprocesses_logger_timeout_s);
+		m_pool.start(m_timer_thread,
+			     m_configuration.m_watchdog_timer_thread_timeout_s);
 	}
 
 	//

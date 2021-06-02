@@ -28,6 +28,7 @@
 #include "running_state_runnable.h"
 #include "dragent_message_queues.h"
 #include "thread_safe_container/blocking_queue.h"
+#include "timer_thread.h"
 
 // Generic interface to allow queuing of capture job requests
 class capture_job_queue_handler
@@ -141,7 +142,8 @@ public:
 	friend class capture_job;
 
 	capture_job_handler(dragent_configuration *configuration,
-			    protocol_queue *queue);
+			    protocol_queue *queue,
+			    std::shared_ptr<timer_thread> timer_thread);
 
 	virtual ~capture_job_handler();
 
@@ -264,5 +266,7 @@ private:
 	scap_evt* m_notification_scap_evt;
 
 	std::atomic<bool> m_job_in_progress;
+
+	std::shared_ptr<timer_thread> m_timer_thread;
 };
 

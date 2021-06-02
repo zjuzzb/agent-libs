@@ -64,6 +64,7 @@ add_executable(
     running_state.ut.cpp
     sinsp_worker.ut.cpp
     spinlock.ut.cpp
+    timer_thread.ut.cpp
     webpage_rest_request_handler.ut.cpp
     ../src/sinsp_factory.cpp
 )

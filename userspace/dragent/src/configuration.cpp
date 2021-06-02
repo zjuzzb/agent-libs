@@ -742,9 +742,14 @@ void dragent_configuration::init()
 	        "connection_manager_timeout_s",
 	        100);
 	m_watchdog_subprocesses_logger_timeout_s =
-	    m_config->get_scalar<decltype(m_watchdog_subprocesses_logger_timeout_s)>(
+		m_config->get_scalar<decltype(m_watchdog_subprocesses_logger_timeout_s)>(
+			"watchdog",
+			"subprocesses_logger_timeout_s",
+			60);
+	m_watchdog_timer_thread_timeout_s =
+	    m_config->get_scalar<decltype(m_watchdog_timer_thread_timeout_s)>(
 	        "watchdog",
-	        "subprocesses_logger_timeout_s",
+	        "timer_thread_timeout_s",
 	        60);
 	m_watchdog_analyzer_tid_collision_check_interval_s =
 	    m_config->get_scalar<decltype(m_watchdog_analyzer_tid_collision_check_interval_s)>(

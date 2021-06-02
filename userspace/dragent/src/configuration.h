@@ -187,6 +187,7 @@ public:
 	uint64_t m_watchdog_sinsp_worker_debug_timeout_s;
 	uint64_t m_watchdog_connection_manager_timeout_s;
 	uint64_t m_watchdog_subprocesses_logger_timeout_s;
+	uint64_t m_watchdog_timer_thread_timeout_s;
 	uint64_t m_watchdog_analyzer_tid_collision_check_interval_s;
 	uint64_t m_watchdog_sinsp_data_handler_timeout_s;
 #ifndef CYGWING_AGENT

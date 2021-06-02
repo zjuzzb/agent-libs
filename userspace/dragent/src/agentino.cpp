@@ -421,12 +421,15 @@ int agentino_app::sdagent_main()
 	sinsp_event_source* es =
 	    new sinsp_event_source(true, m_container_id, m_container_name, m_container_image);
 
+	std::shared_ptr<timer_thread> the_timer_thread = std::make_shared<timer_thread>();
+	m_pool.start(the_timer_thread, m_configuration.m_watchdog_timer_thread_timeout_s);
+
 	// Capture job handler
 	// OK, so we need a shared pointer because that's what the event_listener takes,
 	// but we need a bare pointer because that's what everything else takes. Just...don't
 	// ever delete the shared pointer and we'll be fine.
 	auto capture_handler =
-	    std::make_shared<capture_job_handler>(&m_configuration, &m_transmit_queue);
+	    std::make_shared<capture_job_handler>(&m_configuration, &m_transmit_queue, the_timer_thread);
 	es->register_event_listener(capture_handler);
 	memdump_logger::register_callback(
 	    std::make_shared<dragent_memdump_logger>(capture_handler.get()));

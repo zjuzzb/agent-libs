@@ -50,6 +50,7 @@ public:
 	capture_job(capture_job_handler* handler,
 	            dragent_configuration* configuration,
 	            sinsp_memory_dumper* memdumper,
+	            std::shared_ptr<timer_thread> timer_thread,
 	            uint64_t keepalive_interval_ns,
 	            uint64_t max_chunk_size);
 
@@ -122,11 +123,15 @@ private:
 	// Prevents stop() and process_event() from being called
 	// simultaneously from different threads.
 	Poco::Mutex m_mtx;
+
+	std::shared_ptr<timer_thread> m_timer_thread;
+	std::unique_ptr<TimerEvent<Callback>> m_deadline_timer;
 };
 
 capture_job::capture_job(capture_job_handler* handler,
                          dragent_configuration* configuration,
                          sinsp_memory_dumper* memdumper,
+                         std::shared_ptr<timer_thread> timer_thread,
                          uint64_t keepalive_interval_ns,
                          uint64_t max_chunk_size)
     : m_handler(handler),
@@ -149,7 +154,9 @@ capture_job::capture_job(capture_job_handler* handler,
       m_state(ST_INPROGRESS),
       m_keepalive_interval(keepalive_interval_ns),
       m_last_chunk_offset(0),
-      m_last_chunk_idx(0)
+      m_last_chunk_idx(0),
+      m_timer_thread(timer_thread),
+      m_deadline_timer(nullptr)
 {
 }
 
@@ -225,6 +232,16 @@ bool capture_job::start(sinsp* inspector,
 	                (details.m_past_duration_ns == 0 ? "standard" : "memdump") + " file=" + m_file +
 	                ", filter='" + details.m_filter + "'" +
 	                ", defer_send=" + (m_defer_send ? "true" : "false"));
+
+	if(m_timer_thread != nullptr)
+	{
+		m_deadline_timer = make_unique<TimerEvent<Callback>>([this]() {
+			log_debug("Capture duration reached.");
+			stop();
+			m_deadline_timer = nullptr;
+		});
+		m_timer_thread->schedule(m_deadline_timer.get(), m_duration_ns);
+	}
 
 	if (details.m_past_duration_ns == 0)
 	{
@@ -620,7 +637,8 @@ const uint64_t capture_job_handler::default_max_chunk_size = 100 * 1024;
 const uint64_t capture_job_handler::m_keepalive_interval_ns = 30 * 1000000000LL;
 
 capture_job_handler::capture_job_handler(dragent_configuration* configuration,
-                                         protocol_queue* queue)
+                                         protocol_queue* queue,
+                                         std::shared_ptr<timer_thread> timer_thread)
     : running_state_runnable("capture_job_manager"),
       m_sysdig_pid(getpid()),
       m_sysdig_sid(0),
@@ -632,7 +650,8 @@ capture_job_handler::capture_job_handler(dragent_configuration* configuration,
       m_dump_job_requests(10),
       m_last_job_check_ns(0),
       m_last_event_ns(0),
-      m_job_in_progress(false)
+      m_job_in_progress(false),
+      m_timer_thread(timer_thread)
 {
 }
 
@@ -950,6 +969,7 @@ void capture_job_handler::start_job(string& token, const start_job_details& deta
 	std::shared_ptr<capture_job> job_state = make_shared<capture_job>(this,
 	                                                                  m_configuration,
 	                                                                  m_memdumper.get(),
+	                                                                  m_timer_thread,
 	                                                                  m_keepalive_interval_ns,
 	                                                                  m_max_chunk_size);
 	string errstr;
