@@ -164,7 +164,7 @@ type_config<uint64_t>::ptr c_wait_before_ready_sec =
 
 type_config<bool>::ptr c_k8s_coldstart_manager_enabled =
 	type_config_builder<bool>(
-		true,
+		false,
 		"Enable cointerface cold start with semaphore mechanism",
 		"k8s_coldstart",
 		"enabled"
