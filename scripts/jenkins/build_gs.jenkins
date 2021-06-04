@@ -25,6 +25,17 @@ pipeline {
                 }
             }
         }
+	stage('Download Host Analyzer') {
+	    steps {
+		withCredentials([usernamePassword(credentialsId: 'jenkins-artifactory', passwordVariable: 'ARTIFACTORY_PASSWORD', usernameVariable: 'ARTIFACTORY_USERNAME')]) {
+		    sh label: '', script: '''
+                        mkdir -p extras
+                        curl -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" https://artifactory.internal.sysdig.com/artifactory/secure-hostanalyzer/host-analyzer-gs.tar.gz --output host-analyzer-gs.tar.gz
+                        tar xvf host-analyzer-gs.tar.gz -C ./extras
+                    '''
+		}
+	    }
+	}
         stage('Build Release') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
@@ -33,7 +44,7 @@ pipeline {
                         AGENT_BUILD_COMMIT="`git -C agent rev-parse --short HEAD`"
                         docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
                         sudo rm -rf $PWD/out
-                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e CMAKE_INSTALL_PREFIX=/local/opt/draios -e AGENT_VERSION=$GS_RELEASE_VERSION -e PROMSCRAPE_VERSION=$BASE_RELEASE_VERSION -e AGENT_BUILD_COMMIT -e AGENT_BUILD_DATE="`date`" -v $PWD:/draios:ro -v $PWD/out:/out -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/pipcache:/root/.cache quay.io/sysdig/agent-builder:$BUILDER_VERSION package
+                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e CMAKE_INSTALL_PREFIX=/local/opt/draios -e AGENT_VERSION=$GS_RELEASE_VERSION -e PROMSCRAPE_VERSION=$BASE_RELEASE_VERSION -e AGENT_BUILD_COMMIT -e AGENT_BUILD_DATE="`date`" -e RPM_EXTRA_FILES=/draios/extras/ -v $PWD:/draios:ro -v $PWD/out:/out -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/pipcache:/root/.cache quay.io/sysdig/agent-builder:$BUILDER_VERSION package
                     '''
                 }
             }
