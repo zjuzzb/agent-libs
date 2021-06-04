@@ -98,6 +98,11 @@ type_config<bool>::ptr c_headless_mode = type_config_builder<bool>(
 	.hidden()
 	.build();
 
+type_config<bool> c_60s_flush_enabled(
+    false,
+    "Enable 60s as a flush interval. Only applicable if 10s_flush_enable = true.",
+    "60s_flush_enable");
+
 using namespace std;
 using std::chrono::microseconds;
 using std::chrono::milliseconds;
@@ -299,6 +304,11 @@ connection_manager::connection_manager(cm_config configuration,
 	{
 		// If forced into legacy mode, there is no negotiation.
 		m_negotiated_protocol_version = dragent_protocol::PROTOCOL_VERSION_NUMBER;
+	}
+
+	if (c_60s_flush_enabled.get_value())
+	{
+		m_supported_aggregation_intervals.push_back(60);
 	}
 }
 
