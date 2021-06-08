@@ -300,6 +300,7 @@ void check_executed_commands_helper(const secure::Audit* audit_pb,
 			uint64_t delta_seconds = 100000000000;  // 100 s
 			ASSERT_TRUE(c.timestamp() > (sinsp_utils::get_current_time_ns() - delta_seconds));
 			ASSERT_TRUE(c.timestamp() < (sinsp_utils::get_current_time_ns() + delta_seconds));
+			ASSERT_TRUE(c.pcomm() == "sshd");
 
 			ASSERT_TRUE(std::find(exe.begin(), exe.end(), c.comm()) != exe.end());
 		}
@@ -358,6 +359,7 @@ void executed_commands_build_and_test_generic(int n_commands_per_container,
 		c.m_tty = 12;
 		// N_DIFFERENT_CMDLINES = 50
 		c.m_cmdline = exe[i % 5] + " compile | tail -n " + std::to_string(((i % 50) * 5) + 1);
+		c.m_pcomm = "sshd";
 
 		c.m_category = draiosproto::CAT_NONE;
 

@@ -551,6 +551,7 @@ void secure_audit::emit_commands_audit_item(vector<sinsp_executed_command>* comm
 				pb_command_audit->set_uid(it->m_uid);
 				pb_command_audit->set_cwd(it->m_cwd);
 				pb_command_audit->set_tty(it->m_tty);
+				pb_command_audit->set_pcomm(it->m_pcomm);
 
 				pb_command_audit->set_category(
 				    command_category_to_secure_audit_enum(it->m_category));

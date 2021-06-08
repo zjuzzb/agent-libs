@@ -200,6 +200,7 @@ public:
 	std::string m_cwd;   // process' current working directory
 	uint32_t m_tty;      // tty
 	draiosproto::command_category m_category;
+	std::string m_pcomm; // parent comm
 };
 
 #ifndef _WIN32

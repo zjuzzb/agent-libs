@@ -552,6 +552,11 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	cmdinfo.m_cwd = tinfo->m_cwd;
 	cmdinfo.m_tty = tinfo->m_tty;
 	cmdinfo.m_category = convert_category(tinfo->m_category);
+	sinsp_threadinfo* pthread = tinfo->get_parent_thread();
+	if (pthread != nullptr)
+	{
+		cmdinfo.m_pcomm = pthread->m_comm;
+	}
 
 	//
 	// Build the arguments string
