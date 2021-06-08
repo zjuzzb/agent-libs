@@ -26,7 +26,7 @@ void run_sinsp_worker(const sinsp::ptr& inspector,
 
 	internal_metrics::sptr_t im = std::make_shared<internal_metrics>();
 
-	capture_job_handler job_handler(&config, &queue, nullptr);
+	capture_job_handler job_handler(&config, &queue, nullptr, 10 * 1024 * 1024);
 	sinsp_worker worker(&config, im, handler, &job_handler);
 	worker.run();
 }

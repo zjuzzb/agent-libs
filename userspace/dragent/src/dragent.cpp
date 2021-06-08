@@ -170,6 +170,8 @@ type_config<bool>::ptr c_k8s_coldstart_manager_enabled =
 		"enabled"
 		).build();
 
+type_config<uint64_t> c_memdump_size(300 * 1024 * 1024, "", "memdump", "size");
+
 string compute_sha1_digest(SHA1Engine& engine, const string& path)
 {
 	engine.reset();
@@ -281,7 +283,10 @@ dragent_app::dragent_app()
       m_timer_thread(std::make_shared<timer_thread>()),
       m_internal_metrics(std::make_shared<internal_metrics>()),
       m_protocol_handler(m_transmit_queue),
-      m_capture_job_handler(&m_configuration, &m_transmit_queue, m_timer_thread),
+      m_capture_job_handler(&m_configuration,
+                            &m_transmit_queue,
+                            m_timer_thread,
+                            c_memdump_size.get_value()),
       m_sinsp_worker(&m_configuration,
                      m_internal_metrics,
                      m_protocol_handler,
@@ -2042,8 +2047,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		uint64_t watchdog_warn = c_watchdog_warn_memory_usage_mb.get_value();
 		if (feature_manager::instance().get_enabled(MEMDUMP))
 		{
-			uint64_t configured_memdump_size =
-			    configuration_manager::instance().get_config<uint64_t>("memdump.size")->get_value();
+			uint64_t configured_memdump_size = c_memdump_size.get_value();
 
 			if (!c_watchdog_max_memory_usage_mb.is_set_in_config())
 			{

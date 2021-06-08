@@ -143,7 +143,8 @@ public:
 
 	capture_job_handler(dragent_configuration *configuration,
 			    protocol_queue *queue,
-			    std::shared_ptr<timer_thread> timer_thread);
+			    std::shared_ptr<timer_thread> timer_thread,
+			    uint64_t memdump_size);
 
 	virtual ~capture_job_handler();
 
@@ -250,6 +251,7 @@ private:
 	sinsp *m_inspector;
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
+	uint64_t m_memdump_size;
 	uint64_t m_max_chunk_size;
 	thread_safe_container::blocking_queue<std::shared_ptr<dump_job_request>> m_dump_job_requests;
 

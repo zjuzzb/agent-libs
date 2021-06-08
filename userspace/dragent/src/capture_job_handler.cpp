@@ -16,8 +16,6 @@
 using namespace std;
 COMMON_LOGGER();
 
-type_config<uint64_t> c_memdump_size(300 * 1024 * 1024, "", "memdump", "size");
-
 type_config<uint32_t> c_memdump_max_init_attempts(10, "", "memdump", "max_init_attempts");
 type_config<bool> c_memdump_autodisable(true, "", "memdump", "autodisable", "enabled");
 type_config<uint32_t> c_memdump_capture_headers_percentage_threshold(
@@ -638,7 +636,8 @@ const uint64_t capture_job_handler::m_keepalive_interval_ns = 30 * 1000000000LL;
 
 capture_job_handler::capture_job_handler(dragent_configuration* configuration,
                                          protocol_queue* queue,
-                                         std::shared_ptr<timer_thread> timer_thread)
+                                         std::shared_ptr<timer_thread> timer_thread,
+                                         uint64_t memdump_size)
     : running_state_runnable("capture_job_manager"),
       m_sysdig_pid(getpid()),
       m_sysdig_sid(0),
@@ -646,6 +645,7 @@ capture_job_handler::capture_job_handler(dragent_configuration* configuration,
       m_inspector(NULL),
       m_configuration(configuration),
       m_queue(queue),
+      m_memdump_size(memdump_size),
       m_max_chunk_size(default_max_chunk_size),
       m_dump_job_requests(10),
       m_last_job_check_ns(0),
@@ -673,10 +673,10 @@ void capture_job_handler::init(const sinsp* inspector)
 	if (feature_manager::instance().get_enabled(MEMDUMP))
 	{
 		LOG_INFO(m_name +
-		         ": enabling memdump, size=" + to_string(c_memdump_size.get_value()));
+		         ": enabling memdump, size=" + to_string(m_memdump_size));
 		m_memdumper = make_unique<sinsp_memory_dumper>((sinsp*)inspector);
-		m_memdumper->init(c_memdump_size.get_value(),
-		                  c_memdump_size.get_value(),
+		m_memdumper->init(m_memdump_size,
+		                  m_memdump_size,
 		                  c_memdump_max_init_attempts.get_value(),
 		                  c_memdump_autodisable.get_value(),
 		                  c_memdump_capture_headers_percentage_threshold.get_value(),
