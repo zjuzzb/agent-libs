@@ -227,7 +227,10 @@ protected:
 			g_log = std::unique_ptr<common_logger>(new common_logger(&nullc, &loggerc));
 		}
 
-		m_capture_job_handler = new capture_job_handler(&m_configuration, m_queue, nullptr);
+		m_capture_job_handler = new capture_job_handler(&m_configuration,
+		                                                m_queue,
+		                                                nullptr,
+		                                                10 * 1024 * 1024);
 		m_dump_job_requests = make_shared<blocking_queue<shared_ptr<capture_job_handler::dump_job_request>>>(1);
 		m_dump_job_responses = make_shared<blocking_queue<test_sinsp_worker::dump_response_t>>(1);
 		m_sinsp_worker = new test_sinsp_worker(m_dump_job_requests, m_dump_job_responses, m_capture_job_handler);

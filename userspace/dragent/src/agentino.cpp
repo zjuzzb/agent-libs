@@ -58,6 +58,8 @@ type_config<std::vector<std::string>> c_log_console_component_overrides(
     "log",
     "console_priority_by_component");
 
+type_config<uint64_t> c_memdump_size(60 * 1024 * 1024, "", "memdump", "size");
+
 static void g_signal_callback(int sig)
 {
 	running_state::instance().shut_down();
@@ -429,7 +431,10 @@ int agentino_app::sdagent_main()
 	// but we need a bare pointer because that's what everything else takes. Just...don't
 	// ever delete the shared pointer and we'll be fine.
 	auto capture_handler =
-	    std::make_shared<capture_job_handler>(&m_configuration, &m_transmit_queue, the_timer_thread);
+	    std::make_shared<capture_job_handler>(&m_configuration,
+	                                          &m_transmit_queue,
+	                                          the_timer_thread,
+	                                          c_memdump_size.get_value());
 	es->register_event_listener(capture_handler);
 	memdump_logger::register_callback(
 	    std::make_shared<dragent_memdump_logger>(capture_handler.get()));
