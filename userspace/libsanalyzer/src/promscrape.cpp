@@ -1386,6 +1386,12 @@ unsigned int promscrape::result_to_protobuf(int64_t job_id,
 		}
 		LOG_DEBUG("job %" PRId64 ": Copied %d source labels: %d", job_id, result_ptr->source_labels().size(), prom->source_metadata().size());
 	}
+	else if (!m_infra_state->get_k8s_cluster_name().empty())
+	{
+		auto newlabel = prom->add_common_labels();
+		newlabel->set_name("kube_cluster_name");
+		newlabel->set_value(m_infra_state->get_k8s_cluster_name());
+	}
 
 	// Lambda for adding samples from samples or metasamples
 	auto add_sample = [&prom](const agent_promscrape::Sample& sample)

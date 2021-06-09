@@ -231,7 +231,7 @@ public:
 
 	static bool metric_type_is_raw(agent_promscrape::Sample::LegacyMetricType mt);
 
-	void set_infra_state(const infrastructure_state *is) { m_infra_state = is; }
+	void set_infra_state(infrastructure_state *is) { m_infra_state = is; }
 private:
 	void sendconfig_th(const vector<prom_process> &prom_procs);
 
@@ -297,7 +297,7 @@ private:
 	bool m_emit_counters = true;
 
 	promscrape_stats m_stats;
-	const infrastructure_state *m_infra_state = nullptr;
+	infrastructure_state *m_infra_state = nullptr;
 
 	raw_bypass_cb_t m_bypass_cb;
 	bool m_allow_bypass = false;
