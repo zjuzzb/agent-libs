@@ -377,6 +377,8 @@ std::string::size_type log_sink::generate_log(std::vector<char>& log_buffer,
 		               fmt,
 		               mutable_args);
 
+	va_end(mutable_args);
+
 	// One extra byte needed for the NUL terminator
 	const std::string::size_type total_length = prefix_length + suffix_length + 1;
 	return total_length;
