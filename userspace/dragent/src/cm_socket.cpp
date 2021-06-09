@@ -116,22 +116,24 @@ const std::string& get_openssldir()
 
 bool load_certs(SSL_CTX* ctx, std::string cert_fn, std::string key_fn)
 {
-	int ret;
+	int ret = 0;
 
 	FILE* certf = fopen(cert_fn.c_str(), "r");
 	FILE* keyf = fopen(key_fn.c_str(), "r");
+
+	EVP_PKEY* pkey = nullptr;
 	X509* cert_x509 = PEM_read_X509(certf, NULL, NULL, NULL);
 	if (cert_x509 == nullptr)
 	{
 		LOG_WARNING("Error reading certificate " + cert_fn);
-		return false;
+		goto cleanup;
 	}
 
-	EVP_PKEY* pkey = PEM_read_PrivateKey(keyf, NULL, NULL, NULL);
+	pkey = PEM_read_PrivateKey(keyf, NULL, NULL, NULL);
 	if (pkey == nullptr)
 	{
 		LOG_WARNING("Error reading private key " + key_fn);
-		return false;
+		goto cleanup;
 	}
 
 	ret = SSL_CTX_use_certificate(ctx, cert_x509);
@@ -139,15 +141,25 @@ bool load_certs(SSL_CTX* ctx, std::string cert_fn, std::string key_fn)
 	{
 		LOG_WARNING("Error using certificate: %d", ret);
 		ERR_print_errors_fp(stderr);
-		return false;
+		goto cleanup;
 	}
 	ret = SSL_CTX_use_PrivateKey(ctx, pkey);
 	if (ret <= 0)
 	{
 		LOG_WARNING("Error using private key: %d", ret);
 		ERR_print_errors_fp(stderr);
+		goto cleanup;
+	}
+
+cleanup:
+	fclose(certf);
+	fclose(keyf);
+
+	if (ret <= 0)
+	{
 		return false;
 	}
+
 	LOG_INFO("Loaded cert %s and key %s", cert_fn.c_str(), key_fn.c_str());
 	return true;
 }
