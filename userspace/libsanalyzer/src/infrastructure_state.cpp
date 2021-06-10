@@ -1020,7 +1020,7 @@ void infrastructure_state::get_orch_labels(
 	}
 }
 
-static std::string pathtotaskname(const std::string path)
+static std::string pathtotaskname(const std::string& path)
 {
 	std::string ret;
 

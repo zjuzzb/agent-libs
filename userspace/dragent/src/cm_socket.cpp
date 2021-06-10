@@ -714,7 +714,7 @@ std::string cm_socket::find_ca_cert_path(const std::vector<std::string>& search_
 	return "";
 }
 
-void cm_socket::print_ssl_error(const std::string error, SSL* ssl, int retval)
+void cm_socket::print_ssl_error(const std::string& error, SSL* ssl, int retval)
 {
 	int ssl_err = SSL_get_error(ssl, retval);
 	int syscall_err = 0;

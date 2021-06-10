@@ -43,9 +43,9 @@ public:
 	sinsp_configuration(const sinsp_configuration& configuration) = delete;
 
 	const std::string& get_machine_id() const;
-	void set_machine_id(std::string machine_id);
+	void set_machine_id(const std::string& machine_id);
 	const std::string& get_customer_id() const;
-	void set_customer_id(std::string customer_id);
+	void set_customer_id(const std::string& customer_id);
 	const std::string& get_version() const;
 	void set_version(const std::string& version);
 	const std::string& get_instance_id() const;

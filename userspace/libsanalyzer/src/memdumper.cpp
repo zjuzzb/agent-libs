@@ -344,8 +344,8 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 }
 
 sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts,
-                                                      string filename,
-                                                      string filter,
+                                                      const string& filename,
+                                                      const string& filter,
                                                       uint64_t delta_time_past_ns,
                                                       uint64_t delta_time_future_ns,
                                                       Poco::Mutex* membuf_mtx)

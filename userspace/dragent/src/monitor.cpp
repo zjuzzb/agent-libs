@@ -64,7 +64,7 @@ int monitored_process::exec()
 }
 
 #ifndef CYGWING_AGENT
-monitor::monitor(string pidfile, string self, std::list<std::string> restart_args)
+monitor::monitor(string pidfile, string self, const std::list<std::string>& restart_args)
     : m_pidfile(move(pidfile)),
       m_self_binary(move(self)),
       m_restart_args(restart_args)

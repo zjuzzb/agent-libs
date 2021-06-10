@@ -10,9 +10,9 @@ class sinsp_event_source : public event_source,
 {
 public:  // ctor/dtor
 	sinsp_event_source(bool static_container = false,
-	                   const std::string static_id = "",
-	                   const std::string static_name = "",
-	                   const std::string static_image = "");
+	                   const std::string& static_id = "",
+	                   const std::string& static_name = "",
+	                   const std::string& static_image = "");
 	~sinsp_event_source() {}
 
 public:  // functions from event_source

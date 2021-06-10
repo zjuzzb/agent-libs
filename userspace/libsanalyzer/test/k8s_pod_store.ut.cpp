@@ -107,7 +107,7 @@ protected:
 		m_pod_store.handle_add({cg.uid().kind(), cg.uid().id()}, m_state);
 	}
 
-	std::string get_pod_parent_by_kind(const draiosproto::container_group& cg, std::string kind) const
+	std::string get_pod_parent_by_kind(const draiosproto::container_group& cg, const std::string& kind) const
 	{
 		std::string ret;
 

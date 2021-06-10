@@ -417,7 +417,7 @@ cm_socket::ptr http_tunnel::doublessl_connect(const std::string& proxy_host,
 	return nullptr;
 }
 
-cm_socket::ptr http_tunnel::establish_tunnel(const proxy_connection conn)
+cm_socket::ptr http_tunnel::establish_tunnel(const proxy_connection& conn)
 {
 	std::string connect_string = build_proxy_connect_string(conn);
 	LOG_INFO("Attempting to connect to proxy server %s:%u",

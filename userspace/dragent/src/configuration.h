@@ -447,7 +447,7 @@ public:
 	std::string get_aws_account_id();
 	std::string get_aws_region();
 
-	void set_machine_id_prefix(std::string prefix) { m_machine_id_prefix = prefix; }
+	void set_machine_id_prefix(const std::string& prefix) { m_machine_id_prefix = prefix; }
 
 	std::string relpath_to_absolute(const std::string& relpath)
 	{

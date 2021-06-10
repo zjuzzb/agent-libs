@@ -35,7 +35,7 @@ const string& sinsp_configuration::get_machine_id() const
 	return m_machine_id;
 }
 
-void sinsp_configuration::set_machine_id(string machine_id)
+void sinsp_configuration::set_machine_id(const string& machine_id)
 {
 	m_machine_id = machine_id;
 }
@@ -45,7 +45,7 @@ const string& sinsp_configuration::get_customer_id() const
 	return m_customer_id;
 }
 
-void sinsp_configuration::set_customer_id(string customer_id)
+void sinsp_configuration::set_customer_id(const string& customer_id)
 {
 	m_customer_id = customer_id;
 }

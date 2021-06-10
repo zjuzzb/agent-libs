@@ -10,7 +10,7 @@
 
 class filter_args {
 public:
-	filter_args(std::string foo,
+	filter_args(const std::string& foo,
 		    uint64_t bar)
 		: m_foo(foo),
 		  m_bar(bar)
