@@ -51,13 +51,23 @@ bool config_data_message_handler::handle_message(const draiosproto::message_type
 			if(rc > 0)
 			{
 				config_updated = true;
+				// Temporary log message
+				LOG_INFO("Write to config file %s done",
+				         config_file_proto.name().c_str());
 			}
 			else if(rc < 0)
 			{
-				LOG_ERROR("%s", errstr.c_str());
+				LOG_ERROR("Write to config file %s failed: %s",
+				          config_file_proto.name().c_str(),
+				          errstr.c_str());
 				all_files_handled = false;
 			}
-
+			else
+			{
+				// Temporary log message
+				LOG_INFO("No write needed for config file %s",
+				         config_file_proto.name().c_str());
+			}
 		}
 
 		config_update::set_updated(config_updated);
