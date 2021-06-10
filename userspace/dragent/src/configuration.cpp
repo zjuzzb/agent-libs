@@ -47,6 +47,11 @@ type_config<bool> dragent_configuration::c_enable_aws_metadata(
 	"Enables metadata collection from aws local endpoint",
 	"collect_aws_metadata");
 
+type_config<bool> c_restart_on_failed_config_update(
+	true,
+	"Restart on failed config update",
+	"restart_on_failed_config_update");
+
 namespace
 {
 std::string bool_as_text(bool b)
@@ -61,6 +66,53 @@ std::string bool_as_text(bool b)
 void log_config(const ::std::string& value)
 {
 	LOG_INFO(value);
+}
+
+/**
+ * Helper used by dragent_auto_configuration::save(), to parse the ofstream
+ * error state into an errstr, and log a warning message
+ */
+void process_ofstream_error(ofstream& auto_config_f,
+                            const string& config_filename,
+                            const string& op_string,
+                            int saved_errno,
+                            string& errstr)
+{
+	std::ios::iostate iost = auto_config_f.rdstate();
+	if (auto_config_f.bad())
+	{
+		errstr = string("Stream ") +
+		         op_string +
+		         string(" failed, bad_bit=1, iostate=") +
+		         to_string(iost);
+	}
+	else if (auto_config_f.fail())
+	{
+		errstr = string("Stream ") +
+		         op_string +
+		         string(" failed, fail_bit=1, iostate=") +
+		         to_string(iost);
+	}
+	else if (auto_config_f.eof())
+	{
+		errstr = string("Stream ") +
+		         op_string +
+		         string(" failed, eof_bit=1, iostate=") +
+		         to_string(iost);
+	}
+	else
+	{
+		errstr = string("Stream ") +
+		         op_string +
+		         string(" failed, iostate=") +
+		         to_string(iost);
+	}
+
+	// Log warning message for failed config file update
+	LOG_WARNING("Config file %s: %s, errno=%d",
+	            config_filename.c_str(),
+	            errstr.c_str(),
+	            saved_errno);
 }
 
 }  // namespace
@@ -107,9 +159,101 @@ int dragent_auto_configuration::save(dragent_configuration& config,
 		}
 		else
 		{
+			bool error_detected = false;
+			int saved_errno;
 			ofstream auto_config_f(path);
+
 			auto_config_f << m_config_header << config_data;
+			saved_errno = errno;
+
+			if (!auto_config_f.good())
+			{
+				error_detected = true;
+
+				process_ofstream_error(auto_config_f,
+				                       m_config_filename.c_str(),
+				                       "write",
+				                       saved_errno,
+				                       errstr);
+
+				// If restart_on_failed_config_update == false, finish
+				// cleanup and return error, skipping the call to
+				// apply() below, which performs the process restart.
+				if (c_restart_on_failed_config_update.get_value() == false)
+				{
+					LOG_INFO("Skipping restart after failed update of config file %s",
+					         m_config_filename.c_str());
+					auto_config_f.close();
+					return -1;
+				}
+
+				// restart_on_failed_config_update == true, so we WILL
+				// call apply() which performs a process restart.
+				// Clear errstr for benefit of caller.
+				errstr.clear();
+			}
+
+			if (!error_detected) {
+				auto_config_f.flush();
+				saved_errno = errno;
+
+				if (!auto_config_f.good())
+				{
+					error_detected = true;
+
+					process_ofstream_error(auto_config_f,
+					                       m_config_filename.c_str(),
+					                       "flush",
+					                       saved_errno,
+					                       errstr);
+
+					// If restart_on_failed_config_update == false, finish
+					// cleanup and return error, skipping the call to
+					// apply() below, which performs the process restart.
+					if (c_restart_on_failed_config_update.get_value() == false)
+					{
+						LOG_INFO("Skipping restart after failed update of config file %s",
+						         m_config_filename.c_str());
+						auto_config_f.close();
+						return -1;
+					}
+
+					// restart_on_failed_config_update == true, so we WILL
+					// call apply() which performs a process restart.
+					// Clear errstr for benefit of caller.
+					errstr.clear();
+				}
+			}
+
 			auto_config_f.close();
+			saved_errno = errno;
+
+			if (!error_detected)
+			{
+				if (!auto_config_f.good())
+				{
+					process_ofstream_error(auto_config_f,
+					                       m_config_filename.c_str(),
+					                       "close",
+					                       saved_errno,
+					                       errstr);
+
+					// If restart_on_failed_config_update == false, finish
+					// cleanup and return error, skipping the call to
+					// apply() below, which performs the process restart.
+					if (c_restart_on_failed_config_update.get_value() == false)
+					{
+						LOG_INFO("Skipping restart after failed update of config file %s",
+						         m_config_filename.c_str());
+						return -1;
+					}
+
+					// skip_restart = false, so we WILL call apply()
+					// which performs a process restart.
+					// Clear errstr for benefit of caller.
+					errstr.clear();
+				}
+			}
 		}
 
 		apply(config);
