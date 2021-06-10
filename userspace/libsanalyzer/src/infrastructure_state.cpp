@@ -119,6 +119,13 @@ type_config<bool> infrastructure_state::c_thin_cointerface_enabled(
 		"Enable the Thin Cointerface feature (i.e. retryWatchers)",
 		"thin_cointerface_enabled"
 		);
+type_config<bool>::ptr infrastructure_state::c_k8s_coldstart_manager_enabled =
+	type_config_builder<bool>(
+		false,
+		"Enable cointerface cold start with semaphore mechanism",
+		"k8s_coldstart",
+		"enabled"
+		).build();
 type_config<uint32_t>::ptr infrastructure_state::c_k8s_max_wait_for_lock_sec =
 	type_config_builder<uint32_t>(
 		0,
@@ -589,7 +596,8 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 
 		    cmd.set_max_wait_for_lock(c_k8s_max_wait_for_lock_sec->get_value());
 
-		    cmd.set_cold_start_num(c_k8s_max_parallel_cold_starts->get_value() ? c_k8s_max_parallel_cold_starts->get_value() : 0);
+		    // If we pass 0 then cointerface will not attempt to use the coldstart
+		    cmd.set_cold_start_num(c_k8s_coldstart_manager_enabled->get_value() ? c_k8s_max_parallel_cold_starts->get_value() : 0);
 		    cmd.set_max_cold_start_duration(c_k8s_max_cold_start_duration->get_value());
 		    cmd.set_enforce_leader_election(c_k8s_enforce_leader_election->get_value());
 		    sdc_internal::leader_election_conf leader_election;

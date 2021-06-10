@@ -162,14 +162,6 @@ type_config<uint64_t>::ptr c_wait_before_ready_sec =
 		"k8s_wait_before_ready"
 		).build();
 
-type_config<bool>::ptr c_k8s_coldstart_manager_enabled =
-	type_config_builder<bool>(
-		false,
-		"Enable cointerface cold start with semaphore mechanism",
-		"k8s_coldstart",
-		"enabled"
-		).build();
-
 type_config<uint64_t> c_memdump_size(300 * 1024 * 1024, "", "memdump", "size");
 
 string compute_sha1_digest(SHA1Engine& engine, const string& path)
@@ -921,7 +913,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		});
 
 		// should this go in feature_manager?
-		if (c_k8s_coldstart_manager_enabled->get_value() == true)
+		if (infrastructure_state::c_k8s_coldstart_manager_enabled->get_value() == true)
 		{
 			m_coldstart_manager_pipes = make_unique<pipe_manager>();
 			auto* state = &m_subprocesses_state["lease_pool_manager"];

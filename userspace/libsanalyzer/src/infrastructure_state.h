@@ -472,6 +472,7 @@ public: // configs
 	static type_config<uint64_t> c_k8s_refresh_interval;
 	static type_config<uint32_t>::ptr c_k8s_max_rnd_conn_delay;
 	static type_config<bool> c_thin_cointerface_enabled;
+	static type_config<bool>::ptr c_k8s_coldstart_manager_enabled;
 	static type_config<uint32_t>::ptr c_k8s_max_wait_for_lock_sec;
 	static type_config<uint16_t>::ptr c_k8s_max_parallel_cold_starts;
 	static type_config<uint32_t>::ptr c_k8s_max_cold_start_duration;

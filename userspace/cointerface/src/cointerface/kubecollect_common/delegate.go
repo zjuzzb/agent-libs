@@ -27,6 +27,12 @@ var delegationFailure int32 = 0
 func SetCointDelegation(enable bool, num int32) {
 	cointdeleg = enable
 	numdeleg = num
+
+	if !cointdeleg {
+		// Make sure these defaults are set appropriately if not enabled
+		atomic.StoreInt32(&delegated, 1)
+		atomic.StoreInt32(&delegationFailure, 1)
+	}
 }
 
 func GetCointDelegation() (bool) {
@@ -134,6 +140,9 @@ func StartDelegatedNodes(ctx context.Context, cmd *sdc_internal.OrchestratorEven
 
 // Currently blocking
 func RunDelegation (ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand) {
+	if !GetCointDelegation() {
+		return
+	}
 	// Create a delegation client
 	var delegationClient *sdc_internal.LeasePoolManagerClient
 	var conn *grpc.ClientConn
