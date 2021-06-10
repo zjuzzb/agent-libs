@@ -8,8 +8,8 @@ import (
 	"k8s.io/api/batch/v1beta1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/client-go/tools/cache"
 	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 
 	draiosproto "protorepo/agent-be/proto"
 
@@ -18,43 +18,43 @@ import (
 )
 
 // make this a library function?
-func cronJobEvent(cronjob *v1beta1.CronJob, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func cronJobEvent(cronjob *v1beta1.CronJob, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newCronJobConGroup(cronjob),
 	}
 }
 
-func newCronJobConGroup(cronjob *v1beta1.CronJob) (*draiosproto.ContainerGroup) {
+func newCronJobConGroup(cronjob *v1beta1.CronJob) *draiosproto.ContainerGroup {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
 	//     should work on all v1.Object types
 	tags := make(map[string]string)
 	for k, v := range cronjob.GetLabels() {
-		tags["kubernetes.cronJob.label." + k] = v
+		tags["kubernetes.cronJob.label."+k] = v
 	}
 	tags["kubernetes.cronJob.name"] = cronjob.GetName()
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_cronjob"),
-			Id:proto.String(string(cronjob.GetUID()))},
-		Tags: tags,
+			Kind: proto.String("k8s_cronjob"),
+			Id:   proto.String(string(cronjob.GetUID()))},
+		Tags:      tags,
 		Namespace: proto.String(cronjob.GetNamespace()),
 	}
 	if cronjob.Spec.JobTemplate.Spec.Template.Labels != nil {
-		if ret.CronjobTemplateLabels == nil {
-			ret.CronjobTemplateLabels = make(map[string]string)
+		if ret.PodTemplateLabels == nil {
+			ret.PodTemplateLabels = make(map[string]string)
 		}
 		for key, val := range cronjob.Spec.JobTemplate.Spec.Template.Labels {
-			ret.CronjobTemplateLabels[key] = val
+			ret.PodTemplateLabels[key] = val
 		}
 	}
 
 	for _, job := range cronjob.Status.Active {
 		ret.Children = append(ret.Children, &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_job"),
-			Id:proto.String(string(job.UID))})
+			Kind: proto.String("k8s_job"),
+			Id:   proto.String(string(job.UID))})
 	}
 	return ret
 }
@@ -71,8 +71,8 @@ func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job CoJob) {
 		for _, activeJob := range cronJob.Status.Active {
 			if activeJob.UID == job.GetUID() {
 				*parents = append(*parents, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_cronjob"),
-					Id:proto.String(string(cronJob.UID))})
+					Kind: proto.String("k8s_cronjob"),
+					Id:   proto.String(string(cronJob.UID))})
 			}
 		}
 	}

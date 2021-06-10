@@ -2,19 +2,20 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"context"
-	"k8s.io/apimachinery/pkg/types"
-	"sync"
-	"github.com/gogo/protobuf/proto"
+	draiosproto "protorepo/agent-be/proto"
 	"reflect"
+	"sync"
+
 	log "github.com/cihub/seelog"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
+	"github.com/gogo/protobuf/proto"
+	appsv1 "k8s.io/api/apps/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 )
 
 // Globals are reset in startDeploymentsSInformer
@@ -38,9 +39,9 @@ func (deploy CoDeployment) ActiveChildren() int32 {
 	return deploy.Status.Replicas
 }
 
-func deploymentEvent(dep CoDeployment, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func deploymentEvent(dep CoDeployment, eventType *draiosproto.CongroupEventType, setLinks bool) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newDeploymentCongroup(dep, setLinks),
 	}
 }
@@ -87,12 +88,12 @@ func deploymentEquals(lhs CoDeployment, rhs CoDeployment) (sameEntity bool, same
 	return true, true
 }
 
-func newDeploymentCongroup(deployment CoDeployment, setLinks bool) (*draiosproto.ContainerGroup) {
+func newDeploymentCongroup(deployment CoDeployment, setLinks bool) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_deployment"),
-			Id:proto.String(string(deployment.GetUID()))},
-		Namespace:proto.String(deployment.GetNamespace()),
+			Kind: proto.String("k8s_deployment"),
+			Id:   proto.String(string(deployment.GetUID()))},
+		Namespace: proto.String(deployment.GetNamespace()),
 	}
 
 	ret.Tags = kubecollect_common.GetTags(deployment.ObjectMeta, "kubernetes.deployment.")
@@ -101,9 +102,19 @@ func newDeploymentCongroup(deployment CoDeployment, setLinks bool) (*draiosproto
 	if setLinks {
 		selector, _ := deploySelectorCache.Get(deployment)
 		AddReplicaSetChildren(&ret.Children, selector, deployment.GetNamespace(), deployment.ObjectMeta)
-		AddHorizontalPodAutoscalerParents(&ret.Parents, deployment.GetNamespace(), deployment.APIVersion, deployment.Kind, deployment.GetName() )
+		AddHorizontalPodAutoscalerParents(&ret.Parents, deployment.GetNamespace(), deployment.APIVersion, deployment.Kind, deployment.GetName())
 	}
 	ret.LabelSelector = kubecollect_common.GetLabelSelector(*deployment.Spec.Selector)
+
+	if deployment.Spec.Template.Labels != nil {
+		if ret.PodTemplateLabels == nil {
+			ret.PodTemplateLabels = make(map[string]string)
+		}
+		for key, val := range deployment.Spec.Template.Labels {
+			ret.PodTemplateLabels[key] = val
+		}
+	}
+
 	return ret
 }
 
@@ -172,8 +183,8 @@ func AddDeploymentChildrenFromNamespace(children *[]*draiosproto.CongroupUid, na
 		deployment := obj.(*appsv1.Deployment)
 		if deployment.GetNamespace() == namespaceName {
 			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_deployment"),
-				Id:proto.String(string(deployment.GetUID()))})
+				Kind: proto.String("k8s_deployment"),
+				Id:   proto.String(string(deployment.GetUID()))})
 		}
 	}
 }
@@ -188,8 +199,8 @@ func AddDeploymentChildrenByName(children *[]*draiosproto.CongroupUid, namespace
 		if (deployment.GetNamespace() == namespace) &&
 			(deployment.GetName() == name) {
 			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_deployment"),
-				Id:proto.String(string(deployment.GetUID()))})
+				Kind: proto.String("k8s_deployment"),
+				Id:   proto.String(string(deployment.GetUID()))})
 		}
 	}
 }
@@ -257,12 +268,12 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					return
 				}
 				deploySelectorCache.Remove(oldDeployment)
-				evtc <- draiosproto.CongroupUpdateEvent {
+				evtc <- draiosproto.CongroupUpdateEvent{
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{
 						Uid: &draiosproto.CongroupUid{
-							Kind:proto.String("k8s_deployment"),
-							Id:proto.String(string(oldDeployment.GetUID()))},
+							Kind: proto.String("k8s_deployment"),
+							Id:   proto.String(string(oldDeployment.GetUID()))},
 					},
 				}
 				kubecollect_common.AddEvent("Deployment", kubecollect_common.EVENT_DELETE)

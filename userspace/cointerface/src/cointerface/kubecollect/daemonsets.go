@@ -2,18 +2,19 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
 	"reflect"
 	"sync"
-	"github.com/gogo/protobuf/proto"
+
 	log "github.com/cihub/seelog"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
-	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/gogo/protobuf/proto"
 	appsv1 "k8s.io/api/apps/v1"
+	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 )
 
 // Globals are reset in startDaemonSetsSInformer
@@ -36,9 +37,9 @@ func (ds CoDaemonSet) ActiveChildren() int32 {
 	return ds.Status.CurrentNumberScheduled + ds.Status.NumberMisscheduled
 }
 
-func daemonSetEvent(ds CoDaemonSet, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func daemonSetEvent(ds CoDaemonSet, eventType *draiosproto.CongroupEventType, setLinks bool) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newDaemonSetCongroup(ds, setLinks),
 	}
 }
@@ -68,7 +69,7 @@ func dsEquals(lhs CoDaemonSet, rhs CoDaemonSet) (bool, bool) {
 			(lhs.Status.NumberMisscheduled != rhs.Status.NumberMisscheduled) ||
 			(lhs.Status.DesiredNumberScheduled != rhs.Status.DesiredNumberScheduled) ||
 			(lhs.Status.NumberReady != rhs.Status.NumberReady) {
-		sameEntity = false
+			sameEntity = false
 		}
 	}
 
@@ -83,12 +84,12 @@ func dsEquals(lhs CoDaemonSet, rhs CoDaemonSet) (bool, bool) {
 	return sameEntity, sameLinks
 }
 
-func newDaemonSetCongroup(daemonSet CoDaemonSet, setLinks bool) (*draiosproto.ContainerGroup) {
+func newDaemonSetCongroup(daemonSet CoDaemonSet, setLinks bool) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_daemonset"),
-			Id:proto.String(string(daemonSet.GetUID()))},
-		Namespace:proto.String(daemonSet.GetNamespace()),
+			Kind: proto.String("k8s_daemonset"),
+			Id:   proto.String(string(daemonSet.GetUID()))},
+		Namespace: proto.String(daemonSet.GetNamespace()),
 	}
 
 	ret.Tags = kubecollect_common.GetTags(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
@@ -98,6 +99,16 @@ func newDaemonSetCongroup(daemonSet CoDaemonSet, setLinks bool) (*draiosproto.Co
 		AddPodChildrenFromOwnerRef(&ret.Children, daemonSet.ObjectMeta)
 	}
 	ret.LabelSelector = kubecollect_common.GetLabelSelector(*daemonSet.Spec.Selector)
+
+	if daemonSet.Spec.Template.Labels != nil {
+		if ret.PodTemplateLabels == nil {
+			ret.PodTemplateLabels = make(map[string]string)
+		}
+		for key, val := range daemonSet.Spec.Template.Labels {
+			ret.PodTemplateLabels[key] = val
+		}
+	}
+
 	return ret
 }
 

@@ -384,6 +384,11 @@ bool secure_netsec::congroup_to_pod_owner(std::shared_ptr<draiosproto::container
 			}
 		}
 
+		for (const auto &it : cg->pod_template_labels())
+		{
+			(*k8s_pod_owner->mutable_template_labels())[it.first] = it.second;
+		}
+
 		return true;
 	}
 	return false;
@@ -861,7 +866,7 @@ void secure_netsec::congroup_to_cronjob(
 		meta->set_name(tag->second.c_str());
 		meta->set_kind("k8s_cronjob");
 
-		for (const auto &it : cg->cronjob_template_labels())
+		for (const auto &it : cg->pod_template_labels())
 		{
 			(*k8s_cronjob->mutable_template_labels())[it.first] = it.second;
 		}

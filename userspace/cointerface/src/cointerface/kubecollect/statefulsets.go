@@ -2,33 +2,34 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
 	"sync"
-	"github.com/gogo/protobuf/proto"
+
 	log "github.com/cihub/seelog"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
+	"github.com/gogo/protobuf/proto"
+	appsv1 "k8s.io/api/apps/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	appsv1 "k8s.io/api/apps/v1"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 )
 
 var StatefulSetInf cache.SharedInformer
 
-func statefulSetEvent(ss *appsv1.StatefulSet, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func statefulSetEvent(ss *appsv1.StatefulSet, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newStatefulSetCongroup(ss),
 	}
 }
 
-func newStatefulSetCongroup(statefulSet *appsv1.StatefulSet) (*draiosproto.ContainerGroup) {
+func newStatefulSetCongroup(statefulSet *appsv1.StatefulSet) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_statefulset"),
-			Id:proto.String(string(statefulSet.GetUID()))},
-		Namespace:proto.String(statefulSet.GetNamespace()),
+			Kind: proto.String("k8s_statefulset"),
+			Id:   proto.String(string(statefulSet.GetUID()))},
+		Namespace: proto.String(statefulSet.GetNamespace()),
 	}
 
 	ret.Tags = kubecollect_common.GetTags(statefulSet.ObjectMeta, "kubernetes.statefulset.")
@@ -38,6 +39,16 @@ func newStatefulSetCongroup(statefulSet *appsv1.StatefulSet) (*draiosproto.Conta
 	AddServiceParentsFromServiceName(&ret.Parents, statefulSet.GetNamespace(), statefulSet.Spec.ServiceName)
 
 	ret.LabelSelector = kubecollect_common.GetLabelSelector(*statefulSet.Spec.Selector)
+
+	if statefulSet.Spec.Template.Labels != nil {
+		if ret.PodTemplateLabels == nil {
+			ret.PodTemplateLabels = make(map[string]string)
+		}
+		for key, val := range statefulSet.Spec.Template.Labels {
+			ret.PodTemplateLabels[key] = val
+		}
+	}
+
 	return ret
 }
 
@@ -59,8 +70,8 @@ func AddStatefulSetChildrenFromService(children *[]*draiosproto.CongroupUid, ser
 		statefulSet := obj.(*appsv1.StatefulSet)
 		if service.GetNamespace() == statefulSet.GetNamespace() && service.GetName() == statefulSet.Spec.ServiceName {
 			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_statefulset"),
-				Id:proto.String(string(statefulSet.GetUID()))})
+				Kind: proto.String("k8s_statefulset"),
+				Id:   proto.String(string(statefulSet.GetUID()))})
 		}
 	}
 }
