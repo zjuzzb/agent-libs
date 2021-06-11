@@ -72,8 +72,7 @@ pipeline {
                                 echo "$DOCKER_PASSWORD" | docker login docker.io -u="$DOCKER_USERNAME" --password-stdin
                                 docker tag agent sysdig/agent:$RELEASE_VERSION-rc
                                 docker push sysdig/agent
-                                docker tag agent-slim sysdig/agent-slim:$RELEASE_VERSION-rc-v1
-                                docker tag agent-slim-v2 sysdig/agent-slim:$RELEASE_VERSION-rc
+                                docker tag agent-slim sysdig/agent-slim:$RELEASE_VERSION-rc
                                 docker push sysdig/agent-slim
                                 docker tag agent-kmodule sysdig/agent-kmodule:$RELEASE_VERSION-rc
                                 docker push sysdig/agent-kmodule
@@ -89,7 +88,7 @@ pipeline {
     post {
         always {
             sh label: '', script: '''
-                docker rmi agent agent-slim agent-slim-v2 agentone agent-kmodule agent-kmodule-thin || echo "no containers to remove"
+                docker rmi agent agent-slim agentone agent-kmodule agent-kmodule-thin || echo "no containers to remove"
                 docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
                 docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
                 sudo rm -rf * .[!.]*

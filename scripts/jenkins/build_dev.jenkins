@@ -76,10 +76,8 @@ pipeline {
                                 docker tag agent sysdig/agent:dev
                                 docker tag agent sysdig/agent:$RELEASE_VERSION
                                 docker push sysdig/agent
-                                docker tag agent-slim sysdig/agent-slim:dev-v1
-                                docker tag agent-slim sysdig/agent-slim:$RELEASE_VERSION-v1
-                                docker tag agent-slim-v2 sysdig/agent-slim:dev
-                                docker tag agent-slim-v2 sysdig/agent-slim:$RELEASE_VERSION
+                                docker tag agent-slim sysdig/agent-slim:dev
+                                docker tag agent-slim sysdig/agent-slim:$RELEASE_VERSION
                                 docker push sysdig/agent-slim
                                 docker tag agentone docker.internal.sysdig.com/agentone:dev
                                 docker tag agentone docker.internal.sysdig.com/agentone:$RELEASE_VERSION
@@ -100,7 +98,7 @@ pipeline {
     post {
         always {
             sh label: '', script: '''
-                docker rmi agent agent-slim agent-slim-v2 agentone agent-kmodule agent-kmodule-thin || echo "no containers to remove"
+                docker rmi agent agent-slim agentone agent-kmodule agent-kmodule-thin || echo "no containers to remove"
                 docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
                 docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
                 sudo rm -rf * .[!.]*
