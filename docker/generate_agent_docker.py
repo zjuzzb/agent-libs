@@ -52,13 +52,6 @@ elif image == "local":
     p['build_kernel_module'] = 1
     p['launch_dragent'] = 1
     p['thin'] = 0
-elif image == "agent-slim":
-    p['base_docker_image'] = "bitnami/minideb:latest"
-    p['sysdig_repository'] = repo
-    p['include_agent_package'] = "apt"
-    p['build_kernel_module'] = 0
-    p['launch_dragent'] = 1
-    p['thin'] = 0
 elif image == "agent-kmodule":
     p['base_docker_image'] = "debian:stable"
     p['sysdig_repository'] = repo
@@ -66,7 +59,7 @@ elif image == "agent-kmodule":
     p['build_kernel_module'] = 1
     p['launch_dragent'] = 0
     p['thin'] = 0
-elif image == "agent-slim-v2":
+elif image == "agent-slim":
     p['base_docker_image'] = "adoptopenjdk/openjdk8:alpine-slim"
     p['build_kernel_module'] = 0
     p['launch_dragent'] = 1

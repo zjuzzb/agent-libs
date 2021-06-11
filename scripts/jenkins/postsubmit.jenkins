@@ -67,11 +67,6 @@ pipeline {
                         build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"docker.io/sysdig/agent-slim:dev")],propagate: false
                     }
                 }
-                stage('agent slim v1') {
-                    steps {
-                        build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"docker.io/sysdig/agent-slim:dev-v1")],propagate: false
-                    }
-                }
                 stage('agent kmod thin') {
                     steps {
                         build job:'agent-scan-container',parameters:[string(name:'CONTAINER_NAME', value:"docker.io/sysdig/agent-kmodule-thin:dev")],propagate: false
