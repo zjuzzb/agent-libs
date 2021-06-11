@@ -17,7 +17,7 @@ else
 fi
 
 DOCKERFILES_ROOT_DIR="${BINARIES_DIR}/tmp/dockerfiles"
-IMAGES=("agent" "agent-slim""agentone" "agent-kmodule" "agent-kmodule-thin")
+IMAGES=("agent" "agent-slim" "agentone" "agent-kmodule" "agent-kmodule-thin")
 mkdir -p ${DOCKERFILES_ROOT_DIR}
 tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "${BINARIES_DIR}"/release/draios-*-dockerfiles.tar.gz
 
