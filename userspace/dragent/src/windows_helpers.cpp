@@ -7,6 +7,7 @@
 #include <string>
 using namespace std;
 #include "Poco/File.h"
+#include "Poco/Format.h"
 #include "Poco/Path.h"
 #include "windows_helpers.h"
 
@@ -16,12 +17,12 @@ string windows_helpers::get_machine_first_mac_address()
 {
     PIP_ADAPTER_INFO AdapterInfo;
     DWORD dwBufLen = sizeof(AdapterInfo);
-    char *mac_addr = (char*)malloc(17);
+    string mac_addr("00:00:00:00:00:00");
 
     AdapterInfo = (IP_ADAPTER_INFO *) malloc(sizeof(IP_ADAPTER_INFO));
     if(AdapterInfo == NULL) 
     {
-        return "00:00:00:00:00:00";
+        return mac_addr;
     }
 
     // Make an initial call to GetAdaptersInfo to get the necessary size into the dwBufLen variable
@@ -32,26 +33,23 @@ string windows_helpers::get_machine_first_mac_address()
         AdapterInfo = (IP_ADAPTER_INFO *) malloc(dwBufLen);
         if(AdapterInfo == NULL) 
         {
-            return "00:00:00:00:00:00";
+            return mac_addr;
         }
     }
 
     if(GetAdaptersInfo(AdapterInfo, &dwBufLen) == NO_ERROR) 
     {
         PIP_ADAPTER_INFO pAdapterInfo = AdapterInfo;// Contains pointer to current adapter info
-        do {
-            sprintf(mac_addr, "%02X:%02X:%02X:%02X:%02X:%02X",
-                pAdapterInfo->Address[0], pAdapterInfo->Address[1],
-                pAdapterInfo->Address[2], pAdapterInfo->Address[3],
-                pAdapterInfo->Address[4], pAdapterInfo->Address[5]);
-        
-            free(AdapterInfo);
-            return mac_addr;
-        }while(pAdapterInfo);
+
+        Poco::format(mac_addr,
+            "%02X:%02X:%02X:%02X:%02X:%02X",
+            pAdapterInfo->Address[0], pAdapterInfo->Address[1],
+            pAdapterInfo->Address[2], pAdapterInfo->Address[3],
+            pAdapterInfo->Address[4], pAdapterInfo->Address[5]);
     }
 
     free(AdapterInfo);
-    return "00:00:00:00:00:00";
+    return mac_addr;
 }
 
 string windows_helpers::get_executable_parent_dir()
