@@ -33,7 +33,8 @@ public:
 
 	bool match_syscall_scope(std::string container_id,
 				 infrastructure_state_iface *infra_state,
-				 std::map<std::string,std::string> &agent_tags) const;
+				 std::map<std::string,std::string> &agent_tags,
+				 sinsp_container_manager& container_manager) const;
 };
 
 typedef std::shared_ptr<security_policy_v2> policy_v2_sptr;

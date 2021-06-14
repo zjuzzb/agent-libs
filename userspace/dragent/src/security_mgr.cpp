@@ -250,7 +250,7 @@ void security_mgr::loaded_v2_policies::load_syscall_policy_v2(infrastructure_sta
 
 	for (const auto &id : ids)
 	{
-		if(spolicy_v2->match_syscall_scope(id, infra_state, m_agent_tags))
+		if(spolicy_v2->match_syscall_scope(id, infra_state, m_agent_tags, m_inspector->m_container_manager))
 		{
 			LOG_DEBUG("Policy " + spolicy_v2->name() + " matched scope for container " + id);
 
