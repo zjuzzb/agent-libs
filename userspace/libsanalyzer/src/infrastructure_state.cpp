@@ -326,12 +326,13 @@ bool infrastructure_state::get_cached_result(const std::string& entity_id, size_
 
 void infrastructure_state::insert_cached_result(const std::string& entity_id, size_t h, bool res)
 {
-	if (m_policy_cache.find(entity_id) == m_policy_cache.end())
+	auto it = m_policy_cache.find(entity_id);
+	if (it == m_policy_cache.end())
 	{
-		m_policy_cache.emplace(entity_id, std::unordered_map<size_t, bool>());
+		std::tie(it, std::ignore) = m_policy_cache.emplace(entity_id, std::unordered_map<size_t, bool>());
 	}
 
-	m_policy_cache[entity_id].emplace(h, res);
+	it->second.emplace(h, res);
 }
 
 void infrastructure_state::clear_cached_result(const std::string& entity_id)
@@ -1465,9 +1466,15 @@ void infrastructure_state::add_ip_mappings(std::shared_ptr<draiosproto::containe
 				}
 			}
 
-			if (m_cg_by_addr.find(*i) == m_cg_by_addr.end())
-				m_cg_by_addr[*i] = std::unordered_set<std::shared_ptr<draiosproto::container_group>>();
-			m_cg_by_addr[*i].emplace(cg);
+			auto cg_it = m_cg_by_addr.find(*i);
+			if (cg_it == m_cg_by_addr.end())
+			{
+				std::tie(cg_it, std::ignore) = m_cg_by_addr.emplace(
+					*i,
+					std::unordered_set<std::shared_ptr<draiosproto::container_group>>()
+				);
+			}
+			cg_it->second.emplace(cg);
 		}
 	}
 }
