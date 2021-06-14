@@ -387,7 +387,7 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts,
 		apply_job_filter(*m_reader_state, job, membuf_mtx);
 		{
 			Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
-			m_reader_state++;
+			++m_reader_state;
 		}
 	}
 
