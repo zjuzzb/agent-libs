@@ -20,10 +20,10 @@ class java_string
 {
 public:
 	explicit java_string(JNIEnv* env, jstring java_s)
+		: m_env(env)
+		, m_java_ptr(java_s)
+		, m_c_str(m_env->GetStringUTFChars(m_java_ptr, NULL))
 	{
-		m_java_ptr = java_s;
-		m_env = env;
-		m_c_str = m_env->GetStringUTFChars(m_java_ptr, NULL);
 	}
 
 	~java_string()
@@ -44,14 +44,10 @@ public:
 
 	// Allow moving
 	java_string(java_string&& other)
+		: m_env(std::move(other.m_env))
+		, m_java_ptr(std::move(other.m_java_ptr))
+		, m_c_str(std::move(other.m_c_str))
 	{
-		m_c_str = other.m_c_str;
-		m_env = other.m_env;
-		m_java_ptr = other.m_java_ptr;
-
-		other.m_c_str = NULL;
-		other.m_env = NULL;
-		other.m_java_ptr = NULL;
 	}
 
 	java_string& operator=(java_string&& other)
@@ -72,9 +68,9 @@ public:
 	}
 
 private:
-	const char* m_c_str;
 	JNIEnv* m_env;
 	jstring m_java_ptr;
+	const char* m_c_str;
 };
 
 template<typename... Args>

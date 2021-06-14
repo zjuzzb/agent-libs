@@ -5,11 +5,12 @@
 class container_start_count_test : public testing::Test
 {
 public:
-	container_start_count_test(){
-		machine_id = std::string("test_machine_id");
-		m_container_start_count = make_unique<container_start_count>(
-			std::bind(&container_start_count_test::get_machine_id,
-				  this));
+	container_start_count_test()
+		: machine_id("test_machine_id")
+		, m_container_start_count(make_unique<container_start_count>(
+			std::bind(&container_start_count_test::get_machine_id, this)
+		))
+	{
 	}
 
 	void add_container(const sinsp_container_info& container_info) {
@@ -20,9 +21,8 @@ public:
 		return machine_id;
 	}
 protected:
-	std::unique_ptr<container_start_count> m_container_start_count;
 	std::string machine_id;
-       
+	std::unique_ptr<container_start_count> m_container_start_count;
 };
 
 TEST_F(container_start_count_test, test_all_scenarios)

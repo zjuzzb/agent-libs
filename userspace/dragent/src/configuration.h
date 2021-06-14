@@ -165,7 +165,6 @@ public:
 	bool m_ssl_enabled;
 	std::string m_ssl_ca_certificate;
 	std::vector<std::string> m_ssl_ca_cert_paths;
-	bool m_compression_enabled;
 	std::string m_dump_dir;
 	std::string m_input_filename;
 	uint64_t m_evtcnt;

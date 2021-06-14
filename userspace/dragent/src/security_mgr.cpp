@@ -229,10 +229,9 @@ security_mgr::loaded_v2_policies::loaded_v2_policies(sinsp *inspector,
 	  m_agent_tags(agent_tags),
 	  m_policies_v2_msg(policies_v2_msg),
 	  m_metrics(security_mgr_metrics),
-	  m_security_evt_metrics(security_evt_metrics)
+	  m_security_evt_metrics(security_evt_metrics),
+	  m_fastengine_rules_library(make_shared<security_rule_library>())
 {
-	m_fastengine_rules_library = make_shared<security_rule_library>();
-
 	m_evttypes.assign(PPM_EVENT_MAX+1, false);
 }
 

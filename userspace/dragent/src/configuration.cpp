@@ -371,52 +371,52 @@ private:
 	const vector<string> m_forbidden_keys;
 };
 
-dragent_configuration::dragent_configuration() :
-   m_globally_readable_log_files(false)
-{
-	m_server_port = 0;
-	m_ssl_enabled = false;
-	m_min_file_priority = (Message::Priority)-1;
-	m_min_console_priority = (Message::Priority)-1;
-	m_min_event_priority = (Message::Priority)-1;
-	m_evtcnt = 0;
-	m_config_test = false;
-	m_command_lines_capture_mode = sinsp_configuration::CM_TTY;
-	m_command_lines_include_container_healthchecks = false;
-	m_tracepoint_hits_threshold = 0;
-	m_cpu_usage_max_sr_threshold = 0.0;
-	m_autoupdate_enabled = true;
-	m_json_parse_errors_logfile = "";
-	m_json_parse_errors_events_rate = 0.00333;  // One event per 5 minutes
-	m_json_parse_errors_events_max_burst = 10;
-	m_watchdog_enabled = true;
-	m_watchdog_sinsp_worker_timeout_s = 0;
-	m_watchdog_sinsp_worker_debug_timeout_s = 0;
-	m_watchdog_connection_manager_timeout_s = 0;
-	m_watchdog_analyzer_tid_collision_check_interval_s = 0;
-	m_watchdog_sinsp_data_handler_timeout_s = 0;
+dragent_configuration::dragent_configuration()
+	: m_min_console_priority((Message::Priority)-1)
+	, m_min_file_priority((Message::Priority)-1)
+	, m_min_event_priority((Message::Priority)-1)
+	, m_globally_readable_log_files(false)
+	, m_server_port(0)
+	, m_ssl_enabled(false)
+	, m_evtcnt(0)
+	, m_config_test(false)
+	, m_tracepoint_hits_threshold(0)
+	, m_cpu_usage_max_sr_threshold(0.0)
+	, m_autoupdate_enabled(true)
+	, m_json_parse_errors_logfile("")
+	, m_json_parse_errors_events_rate(0.00333)  // One event per 5 minutes
+	, m_json_parse_errors_events_max_burst(10)
+	, m_watchdog_enabled(true)
+	, m_watchdog_sinsp_worker_timeout_s(0)
+	, m_watchdog_sinsp_worker_debug_timeout_s(0)
+	, m_watchdog_connection_manager_timeout_s(0)
+	, m_watchdog_analyzer_tid_collision_check_interval_s(0)
+	, m_watchdog_sinsp_data_handler_timeout_s(0)
 #ifndef CYGWING_AGENT
-	m_watchdog_heap_profiling_interval_s = 0;
+	, m_watchdog_heap_profiling_interval_s(0)
 #endif
-	m_dirty_shutdown_report_log_size_b = 0;
-	m_capture_dragent_events = false;
-	m_jmx_sampling = 1;
-	m_protocols_enabled = true;
-	m_protocols_truncation_size = 0;
-	m_remotefs_enabled = false;
-	m_sysdig_capture_enabled = true;
-	m_max_sysdig_captures = 1;
-	m_sysdig_capture_transmit_rate = 1024 * 1024;
-	m_sysdig_capture_compression_level = Z_DEFAULT_COMPRESSION;
-	m_enable_coredump = false;
-	m_rlimit_msgqueue = posix_queue::min_msgqueue_limit();
-	m_auto_config = true;
-	m_user_events_rate = 1;
-	m_user_max_burst_events = 1000;
-	m_load_error = false;
-	m_mode = dragent_mode_t::STANDARD;
-	m_snaplen = 0;
-	m_query_docker_image_info = true;
+	, m_dirty_shutdown_report_log_size_b(0)
+	, m_capture_dragent_events(false)
+	, m_jmx_sampling(1)
+	, m_protocols_enabled(true)
+	, m_protocols_truncation_size(0)
+	, m_remotefs_enabled(false)
+	, m_sysdig_capture_enabled(true)
+	, m_max_sysdig_captures(1)
+	, m_sysdig_capture_transmit_rate(1024 * 1024)
+	, m_sysdig_capture_compression_level(Z_DEFAULT_COMPRESSION)
+	, m_command_lines_capture_mode(sinsp_configuration::CM_TTY)
+	, m_command_lines_include_container_healthchecks(false)
+	, m_enable_coredump(false)
+	, m_auto_config(true)
+	, m_rlimit_msgqueue(posix_queue::min_msgqueue_limit())
+	, m_user_events_rate(1)
+	, m_user_max_burst_events(1000)
+	, m_mode(dragent_mode_t::STANDARD)
+	, m_snaplen(0)
+	, m_query_docker_image_info(true)
+	, m_load_error(false)
+{
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)

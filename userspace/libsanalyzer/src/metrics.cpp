@@ -34,9 +34,9 @@ std::shared_ptr<percentile> init_percentile(
 sinsp_counter_percentile::sinsp_counter_percentile(
 	const std::set<double>* percentiles,
 	const sinsp_counter_percentile *shared)
-	: m_serialize_pctl_data(false)
+	: m_percentile(init_percentile(percentiles, shared ? shared->m_percentile : nullptr))
+	, m_serialize_pctl_data(false)
 {
-	m_percentile = init_percentile(percentiles, shared ? shared->m_percentile : nullptr);
 }
 
 void sinsp_counter_percentile::set_percentiles(
@@ -54,10 +54,10 @@ void sinsp_counter_percentile::set_serialize_pctl_data(bool val)
 sinsp_counter_percentile_in_out::sinsp_counter_percentile_in_out(
 	const std::set<double>* percentiles,
 	const sinsp_counter_percentile_in_out *shared)
-	: m_serialize_pctl_data(false)
+	: m_percentile_in(init_percentile(percentiles, shared ? shared->m_percentile_in  : nullptr))
+	, m_percentile_out(init_percentile(percentiles, shared ? shared->m_percentile_out : nullptr))
+	, m_serialize_pctl_data(false)
 {
-	m_percentile_in  = init_percentile(percentiles, shared ? shared->m_percentile_in  : nullptr);
-	m_percentile_out = init_percentile(percentiles, shared ? shared->m_percentile_out : nullptr);
 }
 
 void sinsp_counter_percentile_in_out::set_percentiles(

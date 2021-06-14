@@ -8412,14 +8412,12 @@ double self_cputime_analyzer::calc_flush_percent()
 // This method is here because analyzer_container_state has not a .cpp file and
 // adding it just for this constructor seemed an overkill
 analyzer_container_state::analyzer_container_state()
+	: m_connections_by_serverport(make_unique<decltype(m_connections_by_serverport)::element_type>())
+	, m_last_bytes_in(0)
+	, m_last_bytes_out(0)
+	, m_last_cpu_time(0)
+	, m_filter_state(FILT_NONE)
 {
-	m_connections_by_serverport =
-	    make_unique<decltype(m_connections_by_serverport)::element_type>();
-	m_last_bytes_in = 0;
-	m_last_bytes_out = 0;
-	m_last_cpu_time = 0;
-	m_last_cpuacct_cgroup.clear();
-	m_filter_state = FILT_NONE;
 }
 
 void analyzer_container_state::clear()
