@@ -171,7 +171,7 @@ int dragent_auto_configuration::save(dragent_configuration& config,
 				error_detected = true;
 
 				process_ofstream_error(auto_config_f,
-				                       m_config_filename.c_str(),
+				                       m_config_filename,
 				                       "write",
 				                       saved_errno,
 				                       errstr);
@@ -202,7 +202,7 @@ int dragent_auto_configuration::save(dragent_configuration& config,
 					error_detected = true;
 
 					process_ofstream_error(auto_config_f,
-					                       m_config_filename.c_str(),
+					                       m_config_filename,
 					                       "flush",
 					                       saved_errno,
 					                       errstr);
@@ -233,7 +233,7 @@ int dragent_auto_configuration::save(dragent_configuration& config,
 				if (!auto_config_f.good())
 				{
 					process_ofstream_error(auto_config_f,
-					                       m_config_filename.c_str(),
+					                       m_config_filename,
 					                       "close",
 					                       saved_errno,
 					                       errstr);

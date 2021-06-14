@@ -213,7 +213,7 @@ java_bean::java_bean(const Json::Value& json, const metric_limits::sptr_t& ml)
 			   << "], "
 			      "criteria: ("
 			   << n << '[' << name_flag << "], " << a << '[' << alias_flag << ']' << ')';
-			metric_limits::log(n.c_str(), "jmx", metric_included, true, os.str());
+			metric_limits::log(n, "jmx", metric_included, true, os.str());
 		}
 		if (metric_included)
 		{
