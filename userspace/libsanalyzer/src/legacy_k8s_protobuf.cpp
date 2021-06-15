@@ -132,6 +132,7 @@ const unordered_map<string, setter_t<k8s_statefulset>> K8sResource<k8s_statefuls
      SETTER(k8s_statefulset, set_status_replicas_updated)},
 });
 
+// Note: We send readyReplicas for replicas_running due to SMAGENT-2558
 template<>
 const string K8sResource<k8s_replication_controller>::tag_prefix =
     "kubernetes.replicationController.";
@@ -140,7 +141,7 @@ const unordered_map<string, setter_t<k8s_replication_controller>>
     K8sResource<k8s_replication_controller>::metrics({
         {"kubernetes.replicationController.spec.replicas",
          SETTER(k8s_replication_controller, set_replicas_desired)},
-        {"kubernetes.replicationController.status.replicas",
+        {"kubernetes.replicationController.status.readyReplicas",
          SETTER(k8s_replication_controller, set_replicas_running)},
         {"kubernetes.replicationController.status.availableReplicas",
          SETTER(k8s_replication_controller, set_replicas_available)},
@@ -148,6 +149,8 @@ const unordered_map<string, setter_t<k8s_replication_controller>>
          SETTER(k8s_replication_controller, set_replicas_fully_labeled)},
         {"kubernetes.replicationController.status.readyReplicas",
          SETTER(k8s_replication_controller, set_replicas_ready)},
+        {"kubernetes.replicationController.status.replicas",
+         SETTER(k8s_replication_controller, set_status_replicas)},
     });
 
 template<>
@@ -160,18 +163,20 @@ const unordered_map<string, setter_t<k8s_hpa>> K8sResource<k8s_hpa>::metrics({
     {"kubernetes.hpa.replicas.desired", SETTER(k8s_hpa, set_replicas_desired)},
 });
 
+// Note: We send readyReplicas for replicas_running due to SMAGENT-2558
 template<>
 const string K8sResource<k8s_deployment>::tag_prefix = "kubernetes.deployment.";
 template<>
 const unordered_map<string, setter_t<k8s_deployment>> K8sResource<k8s_deployment>::metrics({
     {"kubernetes.deployment.spec.replicas", SETTER(k8s_deployment, set_replicas_desired)},
-    {"kubernetes.deployment.status.replicas", SETTER(k8s_deployment, set_replicas_running)},
+    {"kubernetes.deployment.status.readyReplicas", SETTER(k8s_deployment, set_replicas_running)},
     {"kubernetes.deployment.status.availableReplicas",
      SETTER(k8s_deployment, set_replicas_available)},
     {"kubernetes.deployment.status.unavailableReplicas",
      SETTER(k8s_deployment, set_replicas_unavailable)},
     {"kubernetes.deployment.status.updatedReplicas", SETTER(k8s_deployment, set_replicas_updated)},
     {"kubernetes.deployment.spec.paused", SETTER(k8s_deployment, set_replicas_paused)},  // ???
+    {"kubernetes.deployment.status.replicas", SETTER(k8s_deployment, set_status_replicas)},
 });
 
 template<>
@@ -185,6 +190,10 @@ const unordered_map<string, setter_t<k8s_daemonset>> K8sResource<k8s_daemonset>:
     {"kubernetes.daemonSet.status.numberMisscheduled",
      SETTER(k8s_daemonset, set_pods_misscheduled)},
     {"kubernetes.daemonSet.status.numberReady", SETTER(k8s_daemonset, set_pods_ready)},
+    {"kubernetes.daemonSet.status.numberAvailable", SETTER(k8s_daemonset, set_pods_available)},
+    {"kubernetes.daemonSet.status.numberUnavailable", SETTER(k8s_daemonset, set_pods_unavailable)},
+    {"kubernetes.daemonSet.status.updatedNumberScheduled",
+     SETTER(k8s_daemonset, set_updated_scheduled)},
 });
 
 template<>
@@ -236,15 +245,18 @@ const unordered_map<string, setter_t<k8s_pod>> K8sResource<k8s_pod>::metrics({
 });
 
 // yes, the capitalization is inconsistent
+// Note: We send readyReplicas for replicas_running due to SMAGENT-2558
 template<>
 const string K8sResource<k8s_replica_set>::tag_prefix = "kubernetes.replicaSet.";
 template<>
 const unordered_map<string, setter_t<k8s_replica_set>> K8sResource<k8s_replica_set>::metrics({
     {"kubernetes.replicaset.spec.replicas", SETTER(k8s_replica_set, set_replicas_desired)},
-    {"kubernetes.replicaset.status.replicas", SETTER(k8s_replica_set, set_replicas_running)},
+    {"kubernetes.replicaset.status.readyReplicas", SETTER(k8s_replica_set, set_replicas_running)},
     {"kubernetes.replicaset.status.fullyLabeledReplicas",
      SETTER(k8s_replica_set, set_replicas_fully_labeled)},
     {"kubernetes.replicaset.status.readyReplicas", SETTER(k8s_replica_set, set_replicas_ready)},
+    {"kubernetes.replicaset.status.availableReplicas", SETTER(k8s_replica_set, set_replicas_available)},
+    {"kubernetes.replicaset.status.replicas", SETTER(k8s_replica_set, set_status_replicas)},
 });
 
 template<>

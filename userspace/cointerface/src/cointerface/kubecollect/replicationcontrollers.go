@@ -123,7 +123,7 @@ func newReplicationControllerCongroup(replicationController CoReplicationControl
 
 func AddReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicationController CoReplicationController) {
 	prefix := "kubernetes.replicationController."
-	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.replicas", replicationController.Status.ReadyReplicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.replicas", replicationController.Status.Replicas)
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicationController.Status.FullyLabeledReplicas)
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicationController.Status.ReadyReplicas)
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.availableReplicas", replicationController.Status.AvailableReplicas)

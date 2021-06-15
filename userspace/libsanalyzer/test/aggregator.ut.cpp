@@ -3386,6 +3386,7 @@ TEST(aggregator, k8s_replication_controller)
 	i->set_replicas_fully_labeled(9);
 	i->set_replicas_ready(10);
 	i->set_replicas_available(11);
+	i->set_status_replicas(12);
 
 	auto input2 = input;
 	aggregator->aggregate(input2, output, false);
@@ -3394,18 +3395,21 @@ TEST(aggregator, k8s_replication_controller)
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_fully_labeled().sum(), 9);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_ready().sum(), 10);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_available().sum(), 11);
+	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_status_replicas().sum(), 12);
 
 	i->set_replicas_desired(100);
 	i->set_replicas_running(100);
 	i->set_replicas_fully_labeled(100);
 	i->set_replicas_ready(100);
 	i->set_replicas_available(100);
+	i->set_status_replicas(100);
 	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_desired().sum(), 107);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_running().sum(), 108);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_fully_labeled().sum(), 109);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_ready().sum(), 110);
 	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_replicas_available().sum(), 111);
+	EXPECT_EQ(output.kubernetes().controllers()[0].aggr_status_replicas().sum(), 112);
 
 	// validate primary key
 	draiosproto::k8s_replication_controller lhs;
@@ -3474,6 +3478,8 @@ TEST(aggregator, k8s_replica_set)
 	i->set_replicas_running(8);
 	i->set_replicas_fully_labeled(9);
 	i->set_replicas_ready(10);
+	i->set_replicas_available(11);
+	i->set_status_replicas(12);
 
 	auto input2 = input;
 	aggregator->aggregate(input2, output, false);
@@ -3481,16 +3487,22 @@ TEST(aggregator, k8s_replica_set)
 	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_running().sum(), 8);
 	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_fully_labeled().sum(), 9);
 	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_ready().sum(), 10);
+	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_available().sum(), 11);
+	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_status_replicas().sum(), 12);
 
 	i->set_replicas_desired(100);
 	i->set_replicas_running(100);
 	i->set_replicas_fully_labeled(100);
 	i->set_replicas_ready(100);
+	i->set_replicas_available(100);
+	i->set_status_replicas(100);
 	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_desired().sum(), 107);
 	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_running().sum(), 108);
 	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_fully_labeled().sum(), 109);
 	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_ready().sum(), 110);
+	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_replicas_available().sum(), 111);
+	EXPECT_EQ(output.kubernetes().replica_sets()[0].aggr_status_replicas().sum(), 112);
 
 	// validate primary key
 	draiosproto::k8s_replica_set lhs;
@@ -3520,6 +3532,7 @@ TEST(aggregator, k8s_deployment)
 	i->set_replicas_unavailable(10);
 	i->set_replicas_updated(11);
 	i->set_replicas_paused(12);
+	i->set_status_replicas(13);
 
 	auto input2 = input;
 	aggregator->aggregate(input2, output, false);
@@ -3529,6 +3542,7 @@ TEST(aggregator, k8s_deployment)
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_unavailable().sum(), 10);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_updated().sum(), 11);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_paused().sum(), 12);
+	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_status_replicas().sum(), 13);
 
 	i->set_replicas_desired(100);
 	i->set_replicas_running(100);
@@ -3536,6 +3550,7 @@ TEST(aggregator, k8s_deployment)
 	i->set_replicas_unavailable(100);
 	i->set_replicas_updated(100);
 	i->set_replicas_paused(100);
+	i->set_status_replicas(100);
 	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_desired().sum(), 107);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_running().sum(), 108);
@@ -3543,6 +3558,7 @@ TEST(aggregator, k8s_deployment)
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_unavailable().sum(), 110);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_updated().sum(), 111);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_paused().sum(), 112);
+	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_status_replicas().sum(), 113);
 
 	// validate primary key
 	draiosproto::k8s_deployment lhs;
@@ -3570,6 +3586,9 @@ TEST(aggregator, k8s_daemonset)
 	i->set_desired_scheduled(8);
 	i->set_pods_misscheduled(9);
 	i->set_pods_ready(10);
+	i->set_pods_available(11);
+	i->set_pods_unavailable(12);
+	i->set_updated_scheduled(13);
 
 	auto input2 = input;
 	aggregator->aggregate(input2, output, false);
@@ -3577,16 +3596,25 @@ TEST(aggregator, k8s_daemonset)
 	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_desired().sum(), 8);
 	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_misscheduled().sum(), 9);
 	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_ready().sum(), 10);
+	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_available().sum(), 11);
+	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_unavailable().sum(), 12);
+	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_updated().sum(), 13);
 
 	i->set_current_scheduled(100);
 	i->set_desired_scheduled(100);
 	i->set_pods_misscheduled(100);
 	i->set_pods_ready(100);
+	i->set_pods_available(100);
+	i->set_pods_unavailable(100);
+	i->set_updated_scheduled(100);
 	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_scheduled().sum(), 107);
 	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_desired().sum(), 108);
 	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_misscheduled().sum(), 109);
 	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_ready().sum(), 110);
+	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_available().sum(), 111);
+	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_unavailable().sum(), 112);
+	EXPECT_EQ(output.kubernetes().daemonsets()[0].aggr_pods_updated().sum(), 113);
 
 	// validate primary key
 	draiosproto::k8s_daemonset lhs;
@@ -3982,6 +4010,7 @@ TEST(aggregator, k8s_state)
 	i->set_replicas_unavailable(10);
 	i->set_replicas_updated(11);
 	i->set_replicas_paused(12);
+	i->set_status_replicas(13);
 
 	auto input2 = input;
 	aggregator->aggregate(input2, output, false);
@@ -3991,6 +4020,7 @@ TEST(aggregator, k8s_state)
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_unavailable().sum(), 10);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_updated().sum(), 11);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_paused().sum(), 12);
+	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_status_replicas().sum(), 13);
 
 	i->set_replicas_desired(100);
 	i->set_replicas_running(100);
@@ -3998,6 +4028,7 @@ TEST(aggregator, k8s_state)
 	i->set_replicas_unavailable(100);
 	i->set_replicas_updated(100);
 	i->set_replicas_paused(100);
+	i->set_status_replicas(100);
 	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_desired().sum(), 107);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_running().sum(), 108);
@@ -4005,6 +4036,7 @@ TEST(aggregator, k8s_state)
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_unavailable().sum(), 110);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_updated().sum(), 111);
 	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_replicas_paused().sum(), 112);
+	EXPECT_EQ(output.kubernetes().deployments()[0].aggr_status_replicas().sum(), 113);
 
 	// validate primary key
 	draiosproto::k8s_deployment lhs;
@@ -5972,6 +6004,7 @@ void generate_k8s(draiosproto::k8s_state* input)
 		j->set_replicas_fully_labeled(rand() % 100);
 		j->set_replicas_ready(rand() % 100);
 		j->set_replicas_available(rand() % 100);
+		j->set_status_replicas(rand() % 100);
 	}
 	for (auto i = 0; i < 10; i++)
 	{
@@ -5997,6 +6030,8 @@ void generate_k8s(draiosproto::k8s_state* input)
 		j->set_replicas_running(rand() % 100);
 		j->set_replicas_fully_labeled(rand() % 100);
 		j->set_replicas_ready(rand() % 100);
+		j->set_replicas_available(rand() % 100);
+		j->set_status_replicas(rand() % 100);
 	}
 	for (auto i = 0; i < 10; i++)
 	{
@@ -6008,6 +6043,7 @@ void generate_k8s(draiosproto::k8s_state* input)
 		j->set_replicas_unavailable(rand() % 100);
 		j->set_replicas_updated(rand() % 100);
 		j->set_replicas_paused(rand() % 100);
+		j->set_status_replicas(rand() % 100);
 	}
 	for (auto i = 0; i < 10; i++)
 	{
@@ -6017,6 +6053,9 @@ void generate_k8s(draiosproto::k8s_state* input)
 		j->set_desired_scheduled(rand() % 100);
 		j->set_pods_misscheduled(rand() % 100);
 		j->set_pods_ready(rand() % 100);
+		j->set_pods_available(rand() % 100);
+		j->set_pods_unavailable(rand() % 100);
+		j->set_updated_scheduled(rand() % 100);
 	}
 	for (auto i = 0; i < 10; i++)
 	{

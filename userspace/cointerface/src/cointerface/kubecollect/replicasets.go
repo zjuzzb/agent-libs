@@ -125,10 +125,11 @@ func newReplicaSetCongroup(replicaSet CoReplicaSet, setLinks bool) (*draiosproto
 
 func AddReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet CoReplicaSet) {
 	prefix := "kubernetes.replicaset."
-	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.replicas", replicaSet.Status.ReadyReplicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.replicas", replicaSet.Status.Replicas)
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicaSet.Status.FullyLabeledReplicas)
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicaSet.Status.ReadyReplicas)
 	kubecollect_common.AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicaSet.Spec.Replicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.availableReplicas", replicaSet.Status.AvailableReplicas)
 }
 
 func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, ns string, parentDeployment v1meta.ObjectMeta) {
