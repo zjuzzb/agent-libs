@@ -1100,6 +1100,7 @@ int32_t sinsp::next(OUT sinsp_evt **puevt)
 	sinsp_evt* evt;
 	int32_t res;
 
+	std::cerr << "\tfd_instrument: Starting next() processing" << std::endl;
 	//
 	// Check if there are fake cpu events to  events
 	//
@@ -1142,21 +1143,25 @@ int32_t sinsp::next(OUT sinsp_evt **puevt)
 		//
 		// Get the event from libscap
 		//
+		std::cerr << "\tfd_instrument: Getting scap event" << std::endl;
 		res = scap_next(m_h, &(evt->m_pevt), &(evt->m_cpuid));
 
 		if(res != SCAP_SUCCESS)
 		{
 			if(res == SCAP_TIMEOUT)
 			{
+				std::cerr << "\tfd_instrument: Received timeout from scap_next" << std::endl;
 				if (m_external_event_processor)
 				{
 					m_external_event_processor->process_event(NULL, libsinsp::EVENT_RETURN_TIMEOUT);
+					std::cerr << "\tfd_instrument: Finished processing timeout event" << std::endl;
 				}
 				*puevt = NULL;
 				return res;
 			}
 			else if(res == SCAP_EOF)
 			{
+				std::cerr << "\tfd_instrument: Received EOF from scap_next" << std::endl;
 				if (m_external_event_processor)
 				{
 					m_external_event_processor->process_event(NULL, libsinsp::EVENT_RETURN_EOF);
@@ -1164,6 +1169,7 @@ int32_t sinsp::next(OUT sinsp_evt **puevt)
 			}
 			else if(res == SCAP_UNEXPECTED_BLOCK)
 			{
+				std::cerr << "\tfd_instrument: Received UNEXPECTED_BLOCK from scap_next" << std::endl;
 				uint64_t filepos = scap_ftell(m_h) - scap_get_unexpected_block_readsize(m_h);
 				restart_capture_at_filepos(filepos);
 				return SCAP_TIMEOUT;
@@ -1171,11 +1177,13 @@ int32_t sinsp::next(OUT sinsp_evt **puevt)
 			}
 			else
 			{
+				std::cerr << "\tfd_instrument: Received error from scap_next" << std::endl;
 				m_lasterr = scap_getlasterr(m_h);
 			}
 
 			return res;
 		}
+		std::cerr << "\tfd_instrument: scap_next returned success" << std::endl;
 	}
 
 	uint64_t ts = evt->get_ts();
@@ -1314,6 +1322,7 @@ int32_t sinsp::next(OUT sinsp_evt **puevt)
 		return SCAP_TIMEOUT;
 	}
 #else
+	std::cerr << "\tfd_instrument: Sending event to parser" << std::endl;
 	m_parser->process_event(evt);
 #endif
 
@@ -1322,7 +1331,7 @@ int32_t sinsp::next(OUT sinsp_evt **puevt)
 	//
 	if(NULL != m_dumper)
 	{
-
+		std::cerr << "\tfd_instrument: Sending event to dumper" << std::endl;
 #if defined(HAS_FILTERING) && defined(HAS_CAPTURE_FILTERING)
 		scap_dump_flags dflags;
 
@@ -1360,6 +1369,7 @@ int32_t sinsp::next(OUT sinsp_evt **puevt)
 
 		if(SCAP_SUCCESS != res)
 		{
+			std::cerr << "\tfd_instrument: scap_dump returned error. Throwing..." << std::endl;
 			throw sinsp_exception(scap_getlasterr(m_h));
 		}
 	}
@@ -1373,6 +1383,7 @@ int32_t sinsp::next(OUT sinsp_evt **puevt)
 		// mode and the category of this event is internal.
 		if(!(m_isinternal_events_enabled && (cat & EC_INTERNAL)))
 		{
+			std::cerr << "\tfd_instrument: Skipping event due to filtering" << std::endl;
 			*puevt = evt;
 			return SCAP_TIMEOUT;
 		}
@@ -1384,7 +1395,9 @@ int32_t sinsp::next(OUT sinsp_evt **puevt)
 	//
 	if (m_external_event_processor)
 	{
+		std::cerr << "\tfd_instrument: Sending event to external processor" << std::endl;
 		m_external_event_processor->process_event(evt, libsinsp::EVENT_RETURN_NONE);
+		std::cerr << "\tfd_instrument: Returned from external processor" << std::endl;
 	}
 
 	// Clean parse related event data after analyzer did its parsing too
@@ -1401,6 +1414,8 @@ int32_t sinsp::next(OUT sinsp_evt **puevt)
 		evt->m_tinfo->m_lastevent_ts = m_lastevent_ts;
 	}
 
+	std::cerr << "\tfd_instrument: Finished cleanup. Returning." << std::endl;
+	
 	//
 	// Done
 	//
