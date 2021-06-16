@@ -120,7 +120,10 @@ scap_t* scap_open_live_int(char *error, int32_t *rc,
 			   bool import_users,
 			   const char *bpf_probe,
 			   const char **suppressed_comms,
-			   interesting_ppm_sc_set *ppm_sc_of_interest)
+			   interesting_ppm_sc_set *ppm_sc_of_interest,
+			   void(*debug_log_fn)(const char* msg),
+			   uint64_t proc_scan_timeout_ms,
+			   uint64_t proc_scan_log_interval_ms)
 {
 	snprintf(error, SCAP_LASTERR_SIZE, "live capture not supported on %s", PLATFORM_NAME);
 	*rc = SCAP_NOT_SUPPORTED;
@@ -133,7 +136,10 @@ scap_t* scap_open_udig_int(char *error, int32_t *rc,
 			   proc_entry_callback proc_callback,
 			   void* proc_callback_context,
 			   bool import_users,
-			   const char **suppressed_comms)
+			   const char **suppressed_comms,
+			   void(*debug_log_fn)(const char* msg),
+			   uint64_t proc_scan_timeout_ms,
+			   uint64_t proc_scan_log_interval_ms)
 {
 	snprintf(error, SCAP_LASTERR_SIZE, "udig capture not supported on %s", PLATFORM_NAME);
 	*rc = SCAP_NOT_SUPPORTED;
@@ -169,7 +175,10 @@ scap_t* scap_open_live_int(char *error, int32_t *rc,
 			   bool import_users,
 			   const char *bpf_probe,
 			   const char **suppressed_comms,
-			   interesting_ppm_sc_set *ppm_sc_of_interest)
+			   interesting_ppm_sc_set *ppm_sc_of_interest,
+			   void(*debug_log_fn)(const char* msg),
+			   uint64_t proc_scan_timeout_ms,
+			   uint64_t proc_scan_log_interval_ms)
 {
 	uint32_t j;
 	char filename[SCAP_MAX_PATH_SIZE];
@@ -192,6 +201,9 @@ scap_t* scap_open_live_int(char *error, int32_t *rc,
 	//
 	handle->m_mode = SCAP_MODE_LIVE;
 	handle->m_udig = false;
+	handle->m_debug_log_fn = debug_log_fn;
+	handle->m_proc_scan_timeout_ms = proc_scan_timeout_ms;
+	handle->m_proc_scan_log_interval_ms = proc_scan_log_interval_ms;
 
 	//
 	// While in theory we could always rely on the scap caller to properly
@@ -559,7 +571,10 @@ scap_t* scap_open_udig_int(char *error, int32_t *rc,
 			   proc_entry_callback proc_callback,
 			   void* proc_callback_context,
 			   bool import_users,
-			   const char **suppressed_comms)
+			   const char **suppressed_comms,
+			   void(*debug_log_fn)(const char* msg),
+			   uint64_t proc_scan_timeout_ms,
+			   uint64_t proc_scan_log_interval_ms)
 {
 	char filename[SCAP_MAX_PATH_SIZE];
 	scap_t* handle = NULL;
@@ -580,6 +595,9 @@ scap_t* scap_open_udig_int(char *error, int32_t *rc,
 	//
 	handle->m_mode = SCAP_MODE_LIVE;
 	handle->m_udig = true;
+	handle->m_debug_log_fn = debug_log_fn;
+	handle->m_proc_scan_timeout_ms = proc_scan_timeout_ms;
+	handle->m_proc_scan_log_interval_ms = proc_scan_log_interval_ms;
 	handle->m_bpf = false;
 	handle->m_udig_capturing = false;
 	handle->m_ncpus = 1;
@@ -773,7 +791,7 @@ scap_t* scap_open_offline_int(scap_reader_t* reader,
 	//
 	// Allocate the handle
 	//
-	handle = (scap_t*)malloc(sizeof(scap_t));
+	handle = (scap_t*)calloc(sizeof(scap_t), 1);
 	if(!handle)
 	{
 		snprintf(error, SCAP_LASTERR_SIZE, "error allocating the scap_t structure");
@@ -902,13 +920,16 @@ scap_t* scap_open_offline_fd(int fd, char *error, int32_t *rc)
 
 scap_t* scap_open_live(char *error, int32_t *rc)
 {
-	return scap_open_live_int(error, rc, NULL, NULL, true, NULL, NULL, NULL);
+	return scap_open_live_int(error, rc, NULL, NULL, true, NULL, NULL, NULL, NULL, SCAP_PROC_SCAN_TIMEOUT_NONE, SCAP_PROC_SCAN_LOG_NONE);
 }
 
 scap_t* scap_open_nodriver_int(char *error, int32_t *rc,
 			       proc_entry_callback proc_callback,
 			       void* proc_callback_context,
-			       bool import_users)
+			       bool import_users,
+			       void(*debug_log_fn)(const char* msg),
+			       uint64_t proc_scan_timeout_ms,
+			       uint64_t proc_scan_log_interval_ms)
 {
 #if !defined(HAS_CAPTURE)
 	snprintf(error, SCAP_LASTERR_SIZE, "live capture not supported on %s", PLATFORM_NAME);
@@ -921,7 +942,7 @@ scap_t* scap_open_nodriver_int(char *error, int32_t *rc,
 	//
 	// Allocate the handle
 	//
-	handle = (scap_t*)malloc(sizeof(scap_t));
+	handle = (scap_t*)calloc(sizeof(scap_t), 1);
 	if(!handle)
 	{
 		snprintf(error, SCAP_LASTERR_SIZE, "error allocating the scap_t structure");
@@ -934,6 +955,9 @@ scap_t* scap_open_nodriver_int(char *error, int32_t *rc,
 	//
 	memset(handle, 0, sizeof(scap_t));
 	handle->m_mode = SCAP_MODE_NODRIVER;
+	handle->m_debug_log_fn = debug_log_fn;
+	handle->m_proc_scan_timeout_ms = proc_scan_timeout_ms;
+	handle->m_proc_scan_log_interval_ms = proc_scan_log_interval_ms;
 
 	//
 	// Extract machine information
@@ -1144,7 +1168,10 @@ scap_t* scap_open(scap_open_args args, char *error, int32_t *rc)
 			return scap_open_udig_int(error, rc, args.proc_callback,
 						args.proc_callback_context,
 						args.import_users,
-						args.suppressed_comms);
+						args.suppressed_comms,
+						args.debug_log_fn,
+						args.proc_scan_timeout_ms,
+						args.proc_scan_log_interval_ms);
 		}
 		else
 		{
@@ -1153,7 +1180,10 @@ scap_t* scap_open(scap_open_args args, char *error, int32_t *rc)
 						args.import_users,
 						args.bpf_probe,
 						args.suppressed_comms,
-						&args.ppm_sc_of_interest);
+						&args.ppm_sc_of_interest,
+						args.debug_log_fn,
+						args.proc_scan_timeout_ms,
+						args.proc_scan_log_interval_ms);
 		}
 #else
 		snprintf(error,	SCAP_LASTERR_SIZE, "scap_open: live mode currently not supported on Windows.");
@@ -1163,7 +1193,10 @@ scap_t* scap_open(scap_open_args args, char *error, int32_t *rc)
 	case SCAP_MODE_NODRIVER:
 		return scap_open_nodriver_int(error, rc, args.proc_callback,
 					      args.proc_callback_context,
-					      args.import_users);
+					      args.import_users,
+					      args.debug_log_fn,
+					      args.proc_scan_timeout_ms,
+					      args.proc_scan_log_interval_ms);
 	case SCAP_MODE_PLUGIN:
 		return scap_open_plugin_int(error, rc, args.input_plugin, args.input_plugin_params);
 	case SCAP_MODE_NONE:
