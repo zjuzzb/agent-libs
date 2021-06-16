@@ -121,9 +121,18 @@ int monitor::run()
 			}
 			else if (waited_pid > 0)
 			{
-				if (process.is_main() && WIFEXITED(status))
+				if (process.is_main())  // sdagent
 				{
-					if (WEXITSTATUS(status) == dragent::exit_code::SHUT_DOWN)
+					// Three cases:
+					// 1) clean shutdown
+					// 2) shutdown for config update
+					// 3) crash
+					//
+					// for 2 and 3, we MUST execute the mjolnir cleanup and restart the
+					// entire process, since the config might have changed. Ultimately,
+					// if the process which is managing the config stuff cannot be
+					// reliable (i.e. it can crash), we MUST reload config when it does
+					if (WIFEXITED(status) && WEXITSTATUS(status) ==  dragent::exit_code::SHUT_DOWN)
 					{
 						//
 						// Process terminated cleanly
@@ -131,8 +140,8 @@ int monitor::run()
 						delete_pid_file(m_pidfile);
 						exit(EXIT_SUCCESS);
 					}
-					else if (WEXITSTATUS(status) == dragent::exit_code::CONFIG_UPDATE)
-					{
+					else if ((WIFEXITED(status) && WEXITSTATUS(status) == dragent::exit_code::CONFIG_UPDATE) || !WIFEXITED(status))
+					{  // We either crashed or shutdown for config update
 						for (const auto& process : m_processes)
 						{
 							//
@@ -177,8 +186,7 @@ int monitor::run()
 						exit(EXIT_FAILURE);
 					}
 				}
-
-				if (!process.is_main())
+				else  // Not sdagent
 				{
 					if (WIFEXITED(status) &&
 					    WEXITSTATUS(status) == dragent::exit_code::DONT_RESTART)
