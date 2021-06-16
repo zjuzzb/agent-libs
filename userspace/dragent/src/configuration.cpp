@@ -72,7 +72,7 @@ void log_config(const ::std::string& value)
  * Helper used by dragent_auto_configuration::save(), to parse the ofstream
  * error state into an errstr, and log a warning message
  */
-void process_ofstream_error(ofstream& auto_config_f,
+void process_iostream_error(ios& auto_config_f,
                             const string& config_filename,
                             const string& op_string,
                             int saved_errno,
@@ -170,7 +170,7 @@ int dragent_auto_configuration::save(dragent_configuration& config,
 			{
 				error_detected = true;
 
-				process_ofstream_error(auto_config_f,
+				process_iostream_error(auto_config_f,
 				                       m_config_filename.c_str(),
 				                       "write",
 				                       saved_errno,
@@ -201,7 +201,7 @@ int dragent_auto_configuration::save(dragent_configuration& config,
 				{
 					error_detected = true;
 
-					process_ofstream_error(auto_config_f,
+					process_iostream_error(auto_config_f,
 					                       m_config_filename.c_str(),
 					                       "flush",
 					                       saved_errno,
@@ -232,7 +232,7 @@ int dragent_auto_configuration::save(dragent_configuration& config,
 			{
 				if (!auto_config_f.good())
 				{
-					process_ofstream_error(auto_config_f,
+					process_iostream_error(auto_config_f,
 					                       m_config_filename.c_str(),
 					                       "close",
 					                       saved_errno,
@@ -272,6 +272,8 @@ int dragent_auto_configuration::save(dragent_configuration& config,
 void dragent_auto_configuration::init_digest()
 {
 	string path = config_path();
+	bool new_digest_calculated = false;
+	streamsize total_nbytes_read = 0;
 
 	m_sha1_engine.reset();
 
@@ -283,15 +285,67 @@ void dragent_auto_configuration::init_digest()
 		{
 			ifstream auto_config_f(auto_config_file.path());
 			char readbuf[4096];
+			int saved_errno = 0;
+
 			while (auto_config_f.good())
 			{
 				auto_config_f.read(readbuf, sizeof(readbuf));
-				m_sha1_engine.update(readbuf, auto_config_f.gcount());
+				saved_errno = errno;
+				streamsize nbytes_read = auto_config_f.gcount();
+				if (nbytes_read == 0)
+				{
+					LOG_DEBUG("Config file %s: read returned 0 after %ld bytes",
+					          path.c_str(),
+					          total_nbytes_read);
+					if (!auto_config_f.eof())
+					{
+						LOG_WARNING("Config file %s: read returned 0 WITHOUT EOF",
+						            path.c_str());
+					}
+				}
+				else
+				{
+					total_nbytes_read += nbytes_read;
+					m_sha1_engine.update(readbuf, nbytes_read);
+				}
 			}
+
+			if (auto_config_f.eof())
+			{
+				ios::iostate iost = auto_config_f.rdstate();
+				LOG_DEBUG("Config file %s: EOF after %ld bytes, iost=%d",
+				          path.c_str(),
+				          total_nbytes_read,
+				          iost);
+			}
+			else
+			{
+				string errstr;
+				process_iostream_error(auto_config_f,
+				                       path.c_str(),
+				                       "read",
+				                       saved_errno,
+				                       errstr);
+			}
+			new_digest_calculated = true;
 		}
 	}
 	m_digest = m_sha1_engine.digest();
-};
+
+	if (new_digest_calculated)
+	{
+		LOG_DEBUG("Config file %s: total read %ld, calculated digest %s",
+		          m_config_filename.c_str(),
+		          total_nbytes_read,
+		          DigestEngine::digestToHex(m_digest).c_str());
+	}
+	else
+	{
+		LOG_DEBUG("Config file %s: not found, using default digest %s",
+		          m_config_filename.c_str(),
+		          DigestEngine::digestToHex(m_digest).c_str());
+	}
+}
 
 std::string dragent_auto_configuration::digest()
 {

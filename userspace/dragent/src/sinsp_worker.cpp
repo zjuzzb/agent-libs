@@ -40,6 +40,16 @@ type_config<bool> c_procfs_scan_thread(false,
                                        "procfs_scanner",
                                        "enabled");
 
+type_config<uint64_t> config_proc_scan_timeout_ms(
+    0,
+    "Timeout in msecs for /proc scan",
+    "proc_scan_timeout_ms");
+
+type_config<uint64_t> config_proc_scan_log_interval_ms(
+    0,
+    "Interval in msecs for logging /proc scan progress",
+    "proc_scan_log_interval_ms");
+
 }  // namespace
 
 class sinsp_worker::compliance_calendar_backup
@@ -269,6 +279,16 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 	else
 	{
 		LOG_INFO("CRI support enabled, socket: %s", c_cri_socket_path->get_value().c_str());
+	}
+
+	uint64_t proc_scan_timeout_ms = config_proc_scan_timeout_ms.get_value();
+	uint64_t proc_scan_log_interval_ms = config_proc_scan_log_interval_ms.get_value();
+	if ((proc_scan_timeout_ms != 0) || (proc_scan_log_interval_ms != 0))
+	{
+		LOG_INFO("Establishing timing parameters for /proc scan: timeout %ld msec, log_interval %ld msec",
+		         proc_scan_timeout_ms, proc_scan_log_interval_ms);
+		m_inspector->set_scan_proc_dir_params(proc_scan_timeout_ms,
+		                                      proc_scan_log_interval_ms);
 	}
 
 	//
