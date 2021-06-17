@@ -865,8 +865,8 @@ void agentino_manager::run()
 
 agentino::ptr agentino_manager::build_agentino(
     connection::ptr connection_in,
-    std::map<agentino_metadata_property, std::string> fixed_metadata,
-    std::map<std::string, std::string> arbitrary_metadata)
+    const std::map<agentino_metadata_property, std::string>& fixed_metadata,
+    const std::map<std::string, std::string>& arbitrary_metadata)
 {
 	// I'm pretty sure I could use some forwarding magic here
 	return agentino::build_agentino(this,

@@ -67,12 +67,12 @@ void secure_netsec::set_internal_metrics(secure_netsec_internal_metrics* interna
 	m_netsec_internal_metrics = internal_metrics;
 }
 
-void secure_netsec::set_cluster_id(std::string cluster_id)
+void secure_netsec::set_cluster_id(const std::string& cluster_id)
 {
 	m_cluster_id = cluster_id;
 }
 
-void secure_netsec::set_cluster_name(std::string cluster_name)
+void secure_netsec::set_cluster_name(const std::string& cluster_name)
 {
 	m_cluster_name = cluster_name;
 }

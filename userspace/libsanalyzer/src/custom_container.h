@@ -54,7 +54,7 @@ enum string_type_differentiator {
 
 class subst_token {
 public:
-	subst_token(std::string var_name, int capture_id=-1):
+	subst_token(const std::string& var_name, int capture_id=-1):
 		m_var_name(var_name),
 		m_capture_id(capture_id)
 	{

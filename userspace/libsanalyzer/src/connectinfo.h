@@ -525,7 +525,7 @@ void sinsp_connection_manager<TKey, THash, TCompare>::remove_expired_connections
 		}
 		else
 		{
-			cit++;
+			++cit;
 		}
 	}
 

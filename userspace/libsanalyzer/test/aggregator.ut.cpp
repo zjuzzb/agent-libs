@@ -5607,7 +5607,7 @@ void map_containers(google::protobuf::util::MessageDifferencer& md,
 	map_protos(md, field->SUB("protos"));
 }
 
-void validate_protobuf(std::string& diff, std::string name, bool should_ignore_raw_fields)
+void validate_protobuf(std::string& diff, const std::string& name, bool should_ignore_raw_fields)
 {
 	// first generate the aggregated protobuf
 	message_aggregator_builder_impl builder;

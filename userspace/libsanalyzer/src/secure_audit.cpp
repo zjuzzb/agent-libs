@@ -389,13 +389,9 @@ void secure_audit::emit_commands_audit(
 
 	int executed_commands_size_initial = m_secure_audit_batch->executed_commands_size();
 
-	std::unordered_map<std::string, std::vector<sinsp_executed_command>>::iterator it =
-	    executed_commands->begin();
-
-	while (it != executed_commands->end())
+	for (auto& i : *executed_commands)
 	{
-		emit_commands_audit_item(&(it->second), it->first);
-		it++;
+		emit_commands_audit_item(&(i.second), i.first);
 	}
 
 	int executed_commands_size_final = m_secure_audit_batch->executed_commands_size();

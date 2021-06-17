@@ -337,8 +337,8 @@ private:  // functions
 	// us a way to create test agentinos easily
 	virtual agentino::ptr build_agentino(
 	    connection::ptr connection_in,
-	    std::map<agentino_metadata_property, std::string> fixed_metadata,
-	    std::map<std::string, std::string> arbitrary_metadata);
+	    const std::map<agentino_metadata_property, std::string>& fixed_metadata,
+	    const std::map<std::string, std::string>& arbitrary_metadata);
 
 	// Re-serializes and enqueues the dump response for transmission to the collector.
 	bool forward_dump_response(draiosproto::dump_response& dresp);

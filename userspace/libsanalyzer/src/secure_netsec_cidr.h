@@ -12,7 +12,7 @@
  * @return true if parse was successful, false otherwise
  */
 
-bool parse_k8s_cidr(const std::string cidr, uint32_t *netip, uint32_t *netmask);
+bool parse_k8s_cidr(const std::string& cidr, uint32_t *netip, uint32_t *netmask);
 
 /**
  * Evaluates if and address is in IP CIDR range

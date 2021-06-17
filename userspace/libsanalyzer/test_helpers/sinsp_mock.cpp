@@ -20,10 +20,8 @@ void msleep(uint32_t milliseconds)
 
 namespace test_helpers
 {
-sinsp_mock::sinsp_mock() : sinsp(), m_network_interfaces(this)
+sinsp_mock::sinsp_mock() : sinsp(), m_network_interfaces(this), m_scap_stats({})
 {
-	m_scap_stats = {};
-
 	m_mock_machine_info.num_cpus = 4;
 	m_mock_machine_info.memory_size_bytes = 64ULL * 1024ULL * 1024ULL * 1024ULL; /*64GB*/
 	m_mock_machine_info.max_pid = 0x1FFFFFFFFFFFFFFF;

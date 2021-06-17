@@ -410,7 +410,7 @@ uint32_t ip_string_to_be(std::string ip_str)
 	return sa.sin_addr.s_addr;
 }
 
-uint32_t ip_string_to_le(std::string ip_str)
+uint32_t ip_string_to_le(const std::string& ip_str)
 {
 	return ntohl(ip_string_to_be(ip_str));
 }

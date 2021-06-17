@@ -20,7 +20,7 @@ using namespace std;
 namespace
 {
 COMMON_LOGGER();
-string replace_tokens(const string src,
+string replace_tokens(const string& src,
                       const sinsp_container_info* container,
                       const infrastructure_state& infra_state,
                       infrastructure_state::uid_t c_uid)
@@ -703,8 +703,7 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 		}
 	}
 	// Now remove any processes that don't have ports left.
-	vector<prom_process>::iterator it;
-	for (it = procs.begin(); it != procs.end();)
+	for (auto it = procs.begin(); it != procs.end();)
 	{
 		if (it->m_ports.empty())
 		{
@@ -713,7 +712,7 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 		}
 		else
 		{
-			it++;
+			++it;
 		}
 	}
 }

@@ -36,7 +36,7 @@ type_config<bool> s_emit_protobuf_json(false,
 class scoped_duration_logger
 {
 public:
-	scoped_duration_logger(const std::string label,
+	scoped_duration_logger(const std::string& label,
 	                       const Poco::Message::Priority severity = Poco::Message::Priority::PRIO_INFORMATION)
 	    : m_start_time(std::chrono::steady_clock::now()),
 	      m_label(label),

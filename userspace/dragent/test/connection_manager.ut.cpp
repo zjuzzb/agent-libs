@@ -487,7 +487,7 @@ public:
 	    dump_token("")
 	{}
 
-	counting_message_handler(std::string token) :
+	counting_message_handler(const std::string& token) :
 	    messages_received(0),
 	    token_mismatch(false),
 	    dump_token(token)

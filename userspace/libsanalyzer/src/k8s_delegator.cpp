@@ -170,7 +170,9 @@ bool k8s_delegator::add_node(time_t timestamp, const Json::Value& addrs,
 	{
 		k8s_taint max_taint = get_max_taint(taints);
 		k8s_node_key node_key(timestamp, max_taint);
-		for(auto it= m_nodes.begin(), end = m_nodes.end(); it != end; ++it)
+
+		auto it = m_nodes.begin(), end = m_nodes.end();
+		while(it != end)
 		{
 			if(it->second == node_addrs)
 			{
@@ -180,9 +182,10 @@ bool k8s_delegator::add_node(time_t timestamp, const Json::Value& addrs,
 				}
 				else
 				{
-					m_nodes.erase(it);
+					it = m_nodes.erase(it);
 				}
 			}
+			++it;
 		}
 
 		m_nodes.insert({{timestamp, max_taint}, node_addrs});

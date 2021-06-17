@@ -35,11 +35,11 @@ class proc_parser_state
 {
 public:
 	proc_parser_state(sinsp_baseliner* bl, uint64_t time)
+		: m_bl(bl)
+		, m_time(time)
+		, m_inspector(NULL)
+		, m_done(false)
 	{
-		m_bl = bl;
-		m_time = time;
-		m_done = false;
-		m_inspector = NULL;
 	}
 
 	~proc_parser_state()
@@ -1274,7 +1274,7 @@ public:
 		m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 	}
 
-	blprogram(std::string& comm) { m_comm = comm; }
+	blprogram(std::string& comm) : m_comm(comm) {}
 
 	std::string m_comm;  // Command name (e.g. "top")
 	std::string m_exe;   // argv[0] (e.g. "sshd: user@pts/4")

@@ -111,9 +111,9 @@ public:
 		m_nprocs(sysconf(_SC_NPROCESSORS_ONLN)),
 		m_proc_root(host_root + "/proc/"),
 		m_ttl_s(ttl_s),
+		m_prev_data(std::make_shared<mem_map_t>()),
 		m_last_fetch_time(0)
 	{
-		m_prev_data = std::make_shared<mem_map_t>();
 	}
 	
 

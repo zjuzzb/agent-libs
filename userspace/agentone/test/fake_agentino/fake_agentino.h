@@ -67,7 +67,7 @@ public:
 	fake_agentino(bool auto_respond,
 	              bool auto_reconnect,
 	              bool silent=true,
-	              std::string id=""):
+	              const std::string& id=""):
 	    m_received_data(),
 	    m_status(server_status::NOT_STARTED),
 	    m_error_code(0),

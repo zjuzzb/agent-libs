@@ -241,7 +241,7 @@ public:
 		//
 	}
 
-	bool match(std::string comm)
+	bool match(const std::string& comm)
 	{
 		for (auto it = m_comm_list.begin(); it != m_comm_list.end(); ++it)
 		{

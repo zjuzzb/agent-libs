@@ -346,7 +346,7 @@ public:
 	 *        shake data with additional data. the type varies on the type of handshake used,
 	 *        and will always be the "most" relevant message type for that handshake
 	 */
-	connection_manager(cm_config configuration,
+	connection_manager(const cm_config& configuration,
 	       protocol_queue* queue,
 	       std::initializer_list<dragent_protocol::protocol_version> supported_protocol_versions,
 	       std::initializer_list<message_handler_map::value_type> message_handlers = {},

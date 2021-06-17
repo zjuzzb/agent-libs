@@ -53,10 +53,9 @@ void sinsp_procinfo::clear()
 	m_pfminor = 0;
 	m_n_transaction_threads = 0;
 
-	std::vector<uint64_t>::iterator it;
-	for (it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); it++)
+	for (auto& i : m_cpu_time_ns)
 	{
-		*it = 0;
+		i = 0;
 	}
 
 	m_program_pids.clear();
@@ -65,17 +64,14 @@ void sinsp_procinfo::clear()
 
 	m_syscall_errors.clear();
 
-	std::vector<std::vector<sinsp_trlist_entry>>::iterator sts;
-	for (sts = m_server_transactions_per_cpu.begin(); sts != m_server_transactions_per_cpu.end();
-	     sts++)
+	for (auto& sts : m_server_transactions_per_cpu)
 	{
-		sts->clear();
+		sts.clear();
 	}
 
-	for (sts = m_client_transactions_per_cpu.begin(); sts != m_client_transactions_per_cpu.end();
-	     sts++)
+	for (auto& cts : m_client_transactions_per_cpu)
 	{
-		sts->clear();
+		cts.clear();
 	}
 
 	m_protostate.clear();
@@ -91,10 +87,9 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 {
 	uint64_t res = 0;
 
-	std::vector<uint64_t>::iterator it;
-	for (it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); it++)
+	for (auto& i : m_cpu_time_ns)
 	{
-		res += *it;
+		res += i;
 	}
 
 	return res;
@@ -400,20 +395,14 @@ void thread_analyzer_info::clear_all_metrics()
 
 	if (m_main_thread_ainfo)
 	{
-		std::vector<std::vector<sinsp_trlist_entry>>::iterator sts;
-		for (sts = m_main_thread_ainfo->m_server_transactions_per_cpu.begin();
-		     sts != m_main_thread_ainfo->m_server_transactions_per_cpu.end();
-		     sts++)
+		for (auto& sts : m_main_thread_ainfo->m_server_transactions_per_cpu)
 		{
-			sts->clear();
+			sts.clear();
 		}
 
-		std::vector<std::vector<sinsp_trlist_entry>>::iterator cts;
-		for (cts = m_main_thread_ainfo->m_client_transactions_per_cpu.begin();
-		     cts != m_main_thread_ainfo->m_client_transactions_per_cpu.end();
-		     cts++)
+		for (auto& cts : m_main_thread_ainfo->m_client_transactions_per_cpu)
 		{
-			cts->clear();
+			cts.clear();
 		}
 
 		m_main_thread_ainfo->m_protostate.clear();

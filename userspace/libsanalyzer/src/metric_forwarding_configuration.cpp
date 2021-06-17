@@ -76,11 +76,11 @@ type_config<int>::ptr c_app_checks_max =
 metric_forwarding_configuration metric_forwarding_configuration::s_instance;
 
 metric_forwarding_configuration::metric_forwarding_configuration()
+	: m_prometheus_limit(legacy_limiter(c_prometheus_max->get_value()))
+	, m_statsd_limit(legacy_limiter(c_statsd_max->get_value()))
+	, m_jmx_limit(legacy_limiter(c_jmx_max->get_value()))
+	, m_app_checks_limit(legacy_limiter(c_app_checks_max->get_value()))
 {
-	m_prometheus_limit = legacy_limiter(c_prometheus_max->get_value());
-	m_statsd_limit = legacy_limiter(c_statsd_max->get_value());
-	m_jmx_limit = legacy_limiter(c_jmx_max->get_value());
-	m_app_checks_limit = legacy_limiter(c_app_checks_max->get_value());
 }
 
 void metric_forwarding_configuration::init()

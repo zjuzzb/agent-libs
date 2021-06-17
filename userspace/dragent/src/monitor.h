@@ -45,7 +45,7 @@ class monitor
 {
 public:
 #ifndef CYGWING_AGENT
-	monitor(std::string pidfile, std::string self, std::list<std::string> restart_args);
+	monitor(std::string pidfile, std::string self, const std::list<std::string>& restart_args);
 #else
 	monitor(std::string pidfile, bool windows_service_parent);
 #endif
