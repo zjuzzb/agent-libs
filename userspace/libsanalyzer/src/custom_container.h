@@ -47,11 +47,6 @@ struct match {
 
 typedef std::unordered_map<std::string, match> render_context;
 
-enum string_type_differentiator {
-		CHECK_NAME = 0,
-		CHECK_VALUE = 1
-};
-
 class subst_token {
 public:
 	subst_token(const std::string& var_name, int capture_id=-1):
@@ -242,9 +237,9 @@ protected:
 	bool m_config_test = false;
 	int m_max = 0;
 	int m_max_id_length = 0;
-	char m_label_value_substitution_char;
-	std::string whitelist_name  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._";
-	std::string whitelist_value = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._/";
+	char m_label_value_substitution_char = '\0';
+	static const std::string s_label_name_whitelist;
+	static const std::string s_label_value_whitelist;
 
 	std::unique_ptr<Poco::RegularExpression> m_cgroup_match;
 	std::unordered_map<std::string, std::unique_ptr<Poco::RegularExpression>> m_environ_match;
@@ -257,7 +252,10 @@ protected:
 	bool match_cgroup(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	bool match_environ(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	sinsp_threadinfo* match_environ_tree(sinsp_threadinfo *tinfo, render_context &render_ctx);
-	void clean_label(std::string& val, enum string_type_differentiator check);
+
+	void init_label_value_substitution_char();
+	void sanitize_label_name(std::string& val) const;
+	void sanitize_label_value(std::string& val) const;
 
 	match m_hostname;
 
