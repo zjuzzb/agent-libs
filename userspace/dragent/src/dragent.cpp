@@ -128,6 +128,10 @@ type_config<bool> c_10s_flush_enabled(false,
                                       "Enable agent-side aggregation",
                                       "10s_flush_enable");
 
+type_config<uint64_t> c_heartbeat_interval_s(0,
+                                      "Send heartbeat messages at this interval in seconds, 0 to disable",
+                                      "heartbeat_interval_s");
+
 type_config<std::string> c_promscrape_labels("--source.label=pod_id,sysdig_k8s_pod_uid,remove --source.label=container_name,sysdig_k8s_pod_container_name,remove --source.label=sysdig_bypass,sysdig_bypass,remove --source.label=sysdig_omit_source,sysdig_omit_source,remove",
                                              "source labels for promscrape to attach to results",
                                              "promscrape_labels");
@@ -1494,6 +1498,10 @@ int dragent_app::sdagent_main()
 
 	uint64_t uptime_s = 0;
 
+	const std::chrono::seconds heartbeat_interval(c_heartbeat_interval_s.get_value());
+	auto next_heartbeat = std::chrono::steady_clock::now() + heartbeat_interval;
+	draiosproto::protocol_heartbeat heartbeat;
+
 	///////////////////////////////
 	// Main exec loop
 	// This is where the dragent thread sits while the other threads do the
@@ -1526,6 +1534,17 @@ int dragent_app::sdagent_main()
 		}
 
 		setup_startup_probe(*cm);
+
+		auto now = std::chrono::steady_clock::now();
+		if(heartbeat_interval.count() > 0 && cm->is_connected() && now >= next_heartbeat){
+			shared_ptr<serialized_buffer> buf = dragent_protocol::message_to_buffer(
+				sinsp_utils::get_current_time_ns(),
+				draiosproto::message_type::PROTOCOL_HEARTBEAT,
+				heartbeat,
+				compressor);
+			m_transmit_queue.put(buf, protocol_queue::BQ_PRIORITY_LOW);
+			next_heartbeat = now + heartbeat_interval;
+		}
 
 		Thread::sleep(1000);
 		++uptime_s;
