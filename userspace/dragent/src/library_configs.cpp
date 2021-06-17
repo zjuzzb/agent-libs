@@ -1,5 +1,6 @@
 #include "library_configs.h"
 #include "sinsp.h"
+#include "scap.h"
 
 // This file exists exclusively to hold configuration objects that are passed to
 // third party libraries
@@ -13,10 +14,22 @@ type_config<uint32_t> sinsp_library_config::c_thread_timeout_s(1800,
                                                                "argument to set_thread_timeout_s",
                                                                "sinsp",
                                                                "thread_timeout_s");
+type_config<uint64_t> c_config_proc_scan_timeout_ms(
+    SCAP_PROC_SCAN_TIMEOUT_NONE,
+    "Timeout in msecs for /proc scan",
+    "proc_scan_timeout_ms");
+
+type_config<uint64_t> c_config_proc_scan_log_interval_ms(
+    SCAP_PROC_SCAN_LOG_NONE,
+    "Interval in msecs for logging /proc scan progress",
+    "proc_scan_log_interval_ms");
+
 void sinsp_library_config::init_library_configs(sinsp& lib)
 {
 	lib.set_thread_purge_interval_s(c_thread_purge_interval_s.get_value());
 	lib.set_thread_timeout_s(c_thread_timeout_s.get_value());
+	lib.set_proc_scan_timeout_ms(c_config_proc_scan_timeout_ms.get_value());
+	lib.set_proc_scan_log_interval_ms(c_config_proc_scan_log_interval_ms.get_value());
 	sinsp_thread_manager_library_config::init_library_configs(*lib.m_thread_manager);
 }
 
