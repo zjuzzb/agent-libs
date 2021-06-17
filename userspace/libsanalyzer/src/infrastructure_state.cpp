@@ -173,8 +173,8 @@ type_config<uint32_t>::ptr infrastructure_state::c_k8s_leader_election_retry_per
 		).min(1).build();
 type_config<std::string>::ptr infrastructure_state::c_k8s_leader_election_namespace =
 	type_config_builder<std::string>(
-		"sysdig-agent",
-		"namespace where leases objects will be created",
+		"",
+		"namespace where leases objects will be created. If not set, the agent will try to get and use it's own namespace. Fallback to sysdig-agent",
 		"k8s_coldstart",
 		"namespace"
 		).build();

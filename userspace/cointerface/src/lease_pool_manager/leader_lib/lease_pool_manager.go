@@ -5,10 +5,16 @@ import (
 	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/draios/protorepo/sdc_internal"
+	"io/ioutil"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"sync"
 	"time"
 )
+
+const PODINFO_DIR = "/etc/podinfo"
+const NAMESPACE_FILE = "namespace"
+const DEFAULT_LEASE_NAMESPACE = "sysdig-agent"
 
 type LeasePoolManager struct {
 	id            string
@@ -52,6 +58,33 @@ func (lpm *LeasePoolManager) haveLeasePermission(p kubeclient.Interface, leaderE
 	}
 
 	return err
+}
+
+// This function choose and set in leaderElectionConf, the namespace where leases objects are going to be created
+// If the customer set k8s_coldstart.namespace config paramenter, that value will be used. Otherwise,
+// we try to grab the namespace from /etc/podinfo/namespace. This requires the daemonset to use the downwardAPI.
+// Eventually we fallback to sysdig-agent
+func (lpm LeasePoolManager) setLeaseNamespace(leaderElectionConf *sdc_internal.LeaderElectionConf, nsPath *string) {
+	if *leaderElectionConf.Namespace != "" {
+		return
+	}
+
+	var _nsPath string
+	if nsPath != nil {
+		_nsPath = *nsPath
+	} else {
+		_nsPath = fmt.Sprintf("%s/%s", PODINFO_DIR, NAMESPACE_FILE)
+	}
+
+	// Try to grab the namespace leveraging downwardAPI
+	ret, err := ioutil.ReadFile(_nsPath)
+
+	if err != nil {
+		log.Warnf("unable to get my pod namespace: %s. Try using k8s_coldstart.namespace configuration parameter", err.Error())
+		*leaderElectionConf.Namespace = DEFAULT_LEASE_NAMESPACE
+	} else {
+		*leaderElectionConf.Namespace = string(ret)
+	}
 }
 
 func (lpm *LeasePoolManager) Init(id string, leasePoolName string, numLeases uint32, leaderElectionConfig sdc_internal.LeaderElectionConf,p kubeclient.Interface) {
