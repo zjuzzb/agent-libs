@@ -21,7 +21,8 @@ type_config<std::string> c_substitute_container_label_value_char( "_",
 const std::string custom_container::resolver::s_label_name_whitelist =
 	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._";
 const std::string custom_container::resolver::s_label_value_whitelist =
-	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._/";
+	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	"!#$%&()*+,./:;<=>?@[]^`{}~-_";
 
 
 namespace
