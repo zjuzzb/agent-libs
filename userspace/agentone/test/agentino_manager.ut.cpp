@@ -114,8 +114,8 @@ public:
 	}
 
 	agentino::ptr build_agentino(connection::ptr connection_in,
-	                             std::map<agentino_metadata_property, std::string> fixed_metadata,
-	                             std::map<std::string, std::string> arbitrary_metadata) override
+	                             const std::map<agentino_metadata_property, std::string>& fixed_metadata,
+	                             const std::map<std::string, std::string>& arbitrary_metadata) override
 	{
 		return std::make_shared<AGENTINO>(this);
 	}

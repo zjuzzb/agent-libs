@@ -16,7 +16,7 @@
 class sinsp_memory_dumper_state
 {
 public:
-	sinsp_memory_dumper_state(sinsp* inspector, uint64_t bufsize, std::string shm_name)
+	sinsp_memory_dumper_state(sinsp* inspector, uint64_t bufsize, const std::string& shm_name)
 		: m_inspector(inspector),
 		m_shm_name(shm_name),
 		m_shm_fd(0),
@@ -236,7 +236,7 @@ public:
 	// buffer. The caller will unlock the mutex when the job has
 	// been added to the list of jobs.
 
-	sinsp_memory_dumper_job* add_job(uint64_t ts, std::string filename, std::string filter,
+	sinsp_memory_dumper_job* add_job(uint64_t ts, const std::string& filename, const std::string& filter,
 					 uint64_t delta_time_past_ns, uint64_t delta_time_future_ns,
 					 Poco::Mutex *membuf_mtx);
 

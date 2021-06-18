@@ -52,7 +52,7 @@ public:
 	 *
 	 * @return A pointer to a cm_socket for the tunnel, or nullptr on error.
 	 */
-	static cm_socket::ptr establish_tunnel(const proxy_connection conn);
+	static cm_socket::ptr establish_tunnel(const proxy_connection& conn);
 
 	/**
 	 * Determine if we have fully received an HTTP response header.

@@ -136,9 +136,9 @@ void container_size_requestor::send_requests(const uint64_t uptime_ms)
 }
 
 container_size_requestor::container_info_subset::container_info_subset(const sinsp_container_info& info)
+	: id(info.m_id)
+	, type(info.m_type)
 {
-	id = info.m_id;
-	type = info.m_type;
 }
 
 container_size_requestor_runnable::container_size_requestor_runnable(sinsp_container_manager& mgr) :

@@ -12,22 +12,22 @@ COMMON_LOGGER();
 using namespace std;
 
 sinsp_configuration::sinsp_configuration()
-    : m_tracepoint_hits_threshold(N_TRACEPOINT_HITS_THRESHOLD, SWITCHER_NSECONDS),
-      m_cpu_max_sr_threshold(CPU_MAX_SR_THRESHOLD, SWITCHER_NSECONDS)
-{
-	m_machine_id = "<NA>";
-	m_customer_id = "<NA>";
-	m_protocols_truncation_size = 512;
-	m_mounts_limit_size = 15u;
+	: m_machine_id("<NA>")
+	, m_customer_id("<NA>")
 #ifndef CYGWING_AGENT
-	m_mesos_autodetect = true;
+	, m_mesos_autodetect(true)
 #endif
-	m_jmx_limit = 500;
-	m_executed_commands_capture_enabled = false;
-	m_command_lines_capture_mode = command_capture_mode_t::CM_TTY;
-	m_command_lines_include_container_healthchecks = false;
-	m_capture_dragent_events = false;
-	m_detect_stress_tools = false;
+	, m_executed_commands_capture_enabled(false)
+	, m_command_lines_capture_mode(command_capture_mode_t::CM_TTY)
+	, m_command_lines_include_container_healthchecks(false)
+	, m_capture_dragent_events(false)
+	, m_protocols_truncation_size(512)
+	, m_mounts_limit_size(15u)
+	, m_jmx_limit(500)
+	, m_detect_stress_tools(false)
+	, m_tracepoint_hits_threshold(N_TRACEPOINT_HITS_THRESHOLD, SWITCHER_NSECONDS)
+	, m_cpu_max_sr_threshold(CPU_MAX_SR_THRESHOLD, SWITCHER_NSECONDS)
+{
 }
 
 const string& sinsp_configuration::get_machine_id() const
@@ -35,7 +35,7 @@ const string& sinsp_configuration::get_machine_id() const
 	return m_machine_id;
 }
 
-void sinsp_configuration::set_machine_id(string machine_id)
+void sinsp_configuration::set_machine_id(const string& machine_id)
 {
 	m_machine_id = machine_id;
 }
@@ -45,7 +45,7 @@ const string& sinsp_configuration::get_customer_id() const
 	return m_customer_id;
 }
 
-void sinsp_configuration::set_customer_id(string customer_id)
+void sinsp_configuration::set_customer_id(const string& customer_id)
 {
 	m_customer_id = customer_id;
 }

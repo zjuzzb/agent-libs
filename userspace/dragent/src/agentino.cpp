@@ -561,6 +561,13 @@ int agentino_app::sdagent_main()
 				metrics->mutable_hostinfo()->set_hostname(m_hostname);
 				metrics->set_version(AGENT_VERSION);
 
+				// This makes the agentino direct show up as a container
+				// so we can scope policies to it
+				auto container = metrics->add_containers();
+				container->set_id(m_container_id);
+				container->set_image(m_container_image);
+				container->set_name(m_container_name);
+
 				// Report this single instance of the agentino
 				internal_metrics::write_metric(metrics->mutable_protos()->mutable_statsd(),
 				                               "serverlessdragent.workload_agent.count",

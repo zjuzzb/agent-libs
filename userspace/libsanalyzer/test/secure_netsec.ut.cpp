@@ -133,8 +133,8 @@ protected:
 	//                              sts           pod-from-statefulset,
 	//                              ds            pod-from-daemonset]
 	//
-	void load_host_and_k8s_node(const std::string host_id,
-				    std::string k8s_node_id)
+	void load_host_and_k8s_node(const std::string& host_id,
+				    const std::string& k8s_node_id)
 	{
 		draiosproto::congroup_update_event evt;
 
@@ -155,7 +155,7 @@ protected:
 		evt.mutable_object()->mutable_uid()->set_id(k8s_node_id);
 	}
 
-	void load_namespace(const std::string k8s_node_id, const std::string ns_name)
+	void load_namespace(const std::string& k8s_node_id, const std::string& ns_name)
 	{
 		draiosproto::congroup_update_event evt;
 		draiosproto::congroup_uid* parent;
@@ -177,9 +177,9 @@ protected:
 		evt.Clear();
 	}
 
-	void load_service(const std::string service_id,
-			  const std::string service_ip,
-			  const std::string ns_name)
+	void load_service(const std::string& service_id,
+			  const std::string& service_ip,
+			  const std::string& ns_name)
 	{
 		draiosproto::congroup_update_event evt;
 		draiosproto::congroup_uid* parent;
@@ -205,13 +205,13 @@ protected:
 		evt.Clear();
 	}
 
-	void load_pod(const std::string k8s_node_id,
+	void load_pod(const std::string& k8s_node_id,
 		      const bool has_pod_owner,
-		      const std::string pod_owner_kind,
-		      const std::string pod_owner_id,
-		      const std::string pod_id,
-		      const std::string pod_ip,
-		      const std::string ns_name
+		      const std::string& pod_owner_kind,
+		      const std::string& pod_owner_id,
+		      const std::string& pod_id,
+		      const std::string& pod_ip,
+		      const std::string& ns_name
 		)
 	{
 		draiosproto::congroup_update_event evt;
@@ -315,17 +315,17 @@ protected:
 		return sa.sin_addr.s_addr;
 	}
 
-	uint32_t ip_string_to_le(std::string ip_str)
+	uint32_t ip_string_to_le(const std::string& ip_str)
 	{
 		return ntohl(ip_string_to_be(ip_str));
 	}
 
 	std::shared_ptr<thread_analyzer_info> get_proc(int64_t pid,
-						       const std::string name,
-						       const std::string comm,
-						       const std::string arg1,
-						       const std::string arg2,
-						       const std::string arg3)
+						       const std::string& name,
+						       const std::string& comm,
+						       const std::string& arg1,
+						       const std::string& arg2,
+						       const std::string& arg3)
 	{
 		const int64_t expected_pid = pid;
 		const std::string expected_name = name;
@@ -366,10 +366,10 @@ protected:
 
 	void add_connections_helper(uint64_t ts,
 				    std::shared_ptr<thread_analyzer_info> proc_cli,
-				    const std::string sip,
+				    const std::string& sip,
 				    uint16_t sport,
 				    std::shared_ptr<thread_analyzer_info> proc_srv,
-				    const std::string dip,
+				    const std::string& dip,
 				    uint16_t dport)
 	{
 		const std::string expected_sip = sip;

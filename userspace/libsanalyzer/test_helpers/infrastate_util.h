@@ -124,8 +124,8 @@ private:
 	    const std::string& id,
 	    const std::string& ns_name,
 	    draiosproto::congroup_event_type type,
-	    std::vector<std::pair<std::string, std::string>> parents,
-	    std::vector<std::pair<std::string, std::string>> children);
+	    std::vector<std::pair<std::string, std::string>>& parents,
+	    std::vector<std::pair<std::string, std::string>>& children);
 };
 
 template<typename PROTO>

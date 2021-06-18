@@ -120,7 +120,8 @@ func newDeploymentCongroup(deployment CoDeployment, setLinks bool) *draiosproto.
 
 func AddDeploymentMetrics(metrics *[]*draiosproto.AppMetric, deployment CoDeployment) {
 	prefix := "kubernetes.deployment."
-	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.replicas", deployment.Status.ReadyReplicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.replicas", deployment.Status.Replicas)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.readyReplicas", deployment.Status.ReadyReplicas)
 	// kube-state-metrics uses "kube_deployment_status_replicas_available" but
 	// we use availableReplicas instead of replicasAvailable because it matches
 	// the name in DeploymentStatus and other resources like ReplicationControllers

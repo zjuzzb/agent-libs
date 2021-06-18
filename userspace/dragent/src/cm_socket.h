@@ -143,7 +143,7 @@ public:
 	 *  The error message will be printed using the format:
 	 *  LOG_ERROR(caller error string: error codes (system error string))
 	 */
-	static void print_ssl_error(const std::string error, SSL* ssl, int retval);
+	static void print_ssl_error(const std::string& error, SSL* ssl, int retval);
 
 
 	////// Instance methods

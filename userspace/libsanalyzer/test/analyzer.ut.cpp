@@ -116,7 +116,7 @@ public:
 class container_stuff
 {
 public:
-	container_stuff(sinsp& inspector, sinsp_analyzer& analyzer, std::string name) : m_name(name)
+	container_stuff(sinsp& inspector, sinsp_analyzer& analyzer, const std::string& name) : m_name(name)
 	{
 		// stuff stuff in the right container maps for the analyzer and
 		// inspector

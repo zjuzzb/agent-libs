@@ -135,7 +135,7 @@ std::vector<std::string> get_str_tokens(const std::string& str)
 	return ret;
 }
 
-const string* get_cont_label(const sinsp_container_info* container, const string label)
+const string* get_cont_label(const sinsp_container_info* container, const string& label)
 {
 	if (!container)
 		return nullptr;

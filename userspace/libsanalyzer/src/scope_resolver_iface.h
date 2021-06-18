@@ -31,6 +31,12 @@ public:
 	// the provided set of predicates against a map of
 	// agent.tag.xx -> value. all predicates that are not
 	// agent.tag.xxx are copied to a new set of scope predicates and returned.
+	//
+	// @return bool - false if these predicates DO NOT match, otherwise return true, which
+	//                indicates no predicate has failed. Predicates, however, may fail
+	//                on future checks not performed in this function (see remaining_predicates)
+	// @param[in|out] remaining_predicates - If some predicates were unverifiable in this
+	//                function, they will be copied here, and "true" will be returned
 	static bool match_agent_tag_predicates(const scope_predicates &predicates,
 					       const tags_map &agent_tags,
 					       scope_predicates &remaining_predicates);

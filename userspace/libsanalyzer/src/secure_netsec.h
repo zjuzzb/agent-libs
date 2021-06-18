@@ -50,9 +50,8 @@ public:
 	void set_data_handler(secure_netsec_data_ready_handler* handler);
 	void set_internal_metrics(secure_netsec_internal_metrics* internal_metrics);
 
-	void set_cluster_id(std::string cluster_id);
-	void set_cluster_name(std::string cluster_name);
-	void set_command_k8s_cidr(std::string k8s_cluster_cidr, std::string k8s_service_cidr);
+	void set_cluster_id(const std::string& cluster_id);
+	void set_cluster_name(const std::string& cluster_name);
 
 	static type_config<bool> c_secure_netsec_enabled;
 	static type_config<uint64_t> c_secure_netsec_report_interval;

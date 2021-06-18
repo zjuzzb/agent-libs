@@ -132,7 +132,7 @@ uint64_t sinsp_delays::prune_client_transactions(
 		//
 		// cycle through the client transactions
 		//
-		for (client_iter = client_trs->begin(); client_iter != client_trs->end(); client_iter++)
+		for (auto& client : *client_trs)
 		{
 			bool filter_out = true;
 
@@ -148,9 +148,9 @@ uint64_t sinsp_delays::prune_client_transactions(
 						break;
 					}
 
-					if (client_iter->m_stime > server_iters[k]->m_stime)
+					if (client.m_stime > server_iters[k]->m_stime)
 					{
-						if (client_iter->m_etime < server_iters[k]->m_etime)
+						if (client.m_etime < server_iters[k]->m_etime)
 						{
 							filter_out = false;
 							break;
@@ -167,7 +167,7 @@ uint64_t sinsp_delays::prune_client_transactions(
 
 			if (filter_out == true)
 			{
-				client_iter->m_flags |= sinsp_trlist_entry::FL_FILTERED_OUT;
+				client.m_flags |= sinsp_trlist_entry::FL_FILTERED_OUT;
 			}
 		}
 	}
@@ -213,40 +213,34 @@ void sinsp_delays::compute_program_percpu_delays(
 	//
 	// Copy the external transactions to the host list
 	//
-	vector<sinsp_trlist_entry>::iterator it;
-
-	for (it = program_info->m_procinfo->m_server_transactions_per_cpu[cpuid].begin();
-	     it != program_info->m_procinfo->m_server_transactions_per_cpu[cpuid].end();
-	     it++)
+	for (auto& sts : program_info->m_procinfo->m_server_transactions_per_cpu[cpuid])
 	{
-		if (!(it->m_flags & sinsp_trlist_entry::FL_FILTERED_OUT))
+		if (!(sts.m_flags & sinsp_trlist_entry::FL_FILTERED_OUT))
 		{
-			if (it->m_flags & sinsp_trlist_entry::FL_EXTERNAL)
+			if (sts.m_flags & sinsp_trlist_entry::FL_EXTERNAL)
 			{
-				host_server_transactions->at(cpuid).push_back(*it);
+				host_server_transactions->at(cpuid).push_back(sts);
 			}
 
 			if (container_server_transactions)
 			{
-				container_server_transactions->at(cpuid).push_back(*it);
+				container_server_transactions->at(cpuid).push_back(sts);
 			}
 		}
 	}
 
-	for (it = program_info->m_procinfo->m_client_transactions_per_cpu[cpuid].begin();
-	     it != program_info->m_procinfo->m_client_transactions_per_cpu[cpuid].end();
-	     it++)
+	for (auto& cts : program_info->m_procinfo->m_client_transactions_per_cpu[cpuid])
 	{
-		if (!(it->m_flags & sinsp_trlist_entry::FL_FILTERED_OUT))
+		if (!(cts.m_flags & sinsp_trlist_entry::FL_FILTERED_OUT))
 		{
-			if (it->m_flags & sinsp_trlist_entry::FL_EXTERNAL)
+			if (cts.m_flags & sinsp_trlist_entry::FL_EXTERNAL)
 			{
-				host_client_transactions->at(cpuid).push_back(*it);
+				host_client_transactions->at(cpuid).push_back(cts);
 			}
 
 			if (container_client_transactions)
 			{
-				container_client_transactions->at(cpuid).push_back(*it);
+				container_client_transactions->at(cpuid).push_back(cts);
 			}
 		}
 	}

@@ -25,19 +25,19 @@ using namespace std;
 extern sinsp_evttables g_infotables;
 
 sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector)
+	: m_inspector(inspector)
+	, m_file_id(0)
+	, m_f(NULL)
+	, m_cf(NULL)
+	, m_disabled(false)
+	, m_disabled_by_autodisable(false)
+	, m_last_autodisable_ns(0)
+	, m_switches_to_go(0)
+	, m_delayed_switch_states_needed(false)
+	, m_delayed_switch_states_ready(false)
+	, m_processed_events_between_switch_states(0)
+	, m_autodisable_threshold_reached_count(0)
 {
-	m_inspector = inspector;
-	m_file_id = 0;
-	m_f = NULL;
-	m_cf = NULL;
-	m_disabled = false;
-	m_disabled_by_autodisable = false;
-	m_last_autodisable_ns = 0;
-	m_switches_to_go = 0;
-	m_delayed_switch_states_needed = false;
-	m_delayed_switch_states_ready = false;
-	m_processed_events_between_switch_states = 0;
-	m_autodisable_threshold_reached_count = 0;
 }
 
 void sinsp_memory_dumper::init(uint64_t bufsize,
@@ -344,8 +344,8 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 }
 
 sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts,
-                                                      string filename,
-                                                      string filter,
+                                                      const string& filename,
+                                                      const string& filter,
                                                       uint64_t delta_time_past_ns,
                                                       uint64_t delta_time_future_ns,
                                                       Poco::Mutex* membuf_mtx)
@@ -387,7 +387,7 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts,
 		apply_job_filter(*m_reader_state, job, membuf_mtx);
 		{
 			Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
-			m_reader_state++;
+			++m_reader_state;
 		}
 	}
 

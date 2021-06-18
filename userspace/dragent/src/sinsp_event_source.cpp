@@ -17,9 +17,9 @@ type_config<uint64_t> c_sinsp_poll_delay_us(
 }  // namespace
 
 sinsp_event_source::sinsp_event_source(bool static_container,
-                                       const std::string static_id,
-                                       const std::string static_name,
-                                       const std::string static_image)
+                                       const std::string& static_id,
+                                       const std::string& static_name,
+                                       const std::string& static_image)
     : dragent::running_state_runnable("sinsp_event_source"),
       m_inspector(static_container, static_id, static_name, static_image),
       m_shutdown(false)

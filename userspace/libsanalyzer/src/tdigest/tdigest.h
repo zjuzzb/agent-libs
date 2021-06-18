@@ -319,7 +319,7 @@ class TDigest {
     if (iter != end) {
       const size_t size = std::distance(iter, end);
       TDigestQueue pq(TDigestComparator{});
-      for (; iter != end; iter++) {
+      for (; iter != end; ++iter) {
         pq.push((*iter));
       }
       std::vector<const TDigest*> batch;

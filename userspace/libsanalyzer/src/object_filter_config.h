@@ -19,7 +19,7 @@ namespace object_filter_config
 const std::string CONTAINER_LABEL = "container.label";
 const std::string K8S_ANNOTATION = "kubernetes.pod.annotation";
 
-const std::string* get_cont_label(const sinsp_container_info* container, const std::string label);
+const std::string* get_cont_label(const sinsp_container_info* container, const std::string& label);
 
 std::vector<std::string> get_str_tokens(const std::string& str);
 
@@ -135,7 +135,7 @@ struct filter_rule
 	explicit filter_rule() : m_include(false)
 	{
 	}
-	filter_rule(std::string name,
+	filter_rule(const std::string& name,
 	            bool include,
 	            const std::vector<filter_condition>& cond,
 	            const rule_config& config)

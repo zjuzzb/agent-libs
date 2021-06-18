@@ -118,6 +118,9 @@ func AddDaemonSetMetrics(metrics *[]*draiosproto.AppMetric, daemonSet CoDaemonSe
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.numberMisscheduled", daemonSet.Status.NumberMisscheduled)
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.desiredNumberScheduled", daemonSet.Status.DesiredNumberScheduled)
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.numberReady", daemonSet.Status.NumberReady)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.numberAvailable", daemonSet.Status.NumberAvailable)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.numberUnavailable", daemonSet.Status.NumberUnavailable)
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.updatedNumberScheduled", daemonSet.Status.UpdatedNumberScheduled)
 }
 
 func startDaemonSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {

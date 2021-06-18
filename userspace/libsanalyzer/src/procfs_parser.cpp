@@ -986,6 +986,7 @@ bool sinsp_procfs_parser::read_cgroup_used_memory(
 		char fp_line[128] = {0};
 		if (fgets(fp_line, sizeof(fp_line), fp) == NULL)
 		{
+			fclose(fp);
 			return false;
 		}
 
