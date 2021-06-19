@@ -15,12 +15,12 @@ type_config<uint32_t> sinsp_library_config::c_thread_timeout_s(1800,
                                                                "sinsp",
                                                                "thread_timeout_s");
 type_config<uint64_t> c_config_proc_scan_timeout_ms(
-    SCAP_PROC_SCAN_TIMEOUT_NONE,
+    0,
     "Timeout in msecs for /proc scan",
     "proc_scan_timeout_ms");
 
 type_config<uint64_t> c_config_proc_scan_log_interval_ms(
-    SCAP_PROC_SCAN_LOG_NONE,
+    0,
     "Interval in msecs for logging /proc scan progress",
     "proc_scan_log_interval_ms");
 
