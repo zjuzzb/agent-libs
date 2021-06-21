@@ -295,7 +295,7 @@ progress "done"
 verify_dirs
 
 progress "Searching for machine ID"
-if [[ `grep -i "machine id" -m 1 $LOG_DIR/*.log*` =~ .*machine\ id\:\ *(.*) ]]; then
+if [[ `grep -i -E "machine[_ ]id" -m 1 $LOG_DIR/*.log*` =~ .*machine[_\ ]id\:\ *(.*) ]]; then
     MACHINE_ID=${BASH_REMATCH[1]//\:/}
 else
     progress "failed"
