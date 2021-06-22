@@ -238,7 +238,6 @@ protected:
 	int m_max = 0;
 	int m_max_id_length = 0;
 	char m_label_value_substitution_char = '\0';
-	static const std::string s_label_name_whitelist;
 	static const std::string s_label_value_whitelist;
 
 	std::unique_ptr<Poco::RegularExpression> m_cgroup_match;
@@ -254,8 +253,7 @@ protected:
 	sinsp_threadinfo* match_environ_tree(sinsp_threadinfo *tinfo, render_context &render_ctx);
 
 	void init_label_value_substitution_char();
-	void sanitize_label_name(std::string& val) const;
-	void sanitize_label_value(std::string& val) const;
+	void sanitize_label(std::string& val) const;
 
 	match m_hostname;
 

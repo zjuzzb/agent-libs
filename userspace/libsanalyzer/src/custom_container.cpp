@@ -18,33 +18,10 @@ type_config<std::string> c_substitute_container_label_value_char( "_",
 	"Substitution character for custom container label value",
 	"substitute_container_label_value_char");
 
-const std::string custom_container::resolver::s_label_name_whitelist =
-	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._";
 const std::string custom_container::resolver::s_label_value_whitelist =
 	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	"!#$%&()*+,./:;<=>?@[]^`{}~-_";
 
-
-namespace
-{
-
-/**
- * Check each character of val to determine if it is in the appropriate whitelist.
- * If parameter val contains a character not in the whitelist replace it with
- * the appropriate substitution character.
- */
-void sanitize_label(std::string& val, const char sub_char, const std::string& whitelist)
-{
-	for (auto& c : val)
-	{
-		if (whitelist.find(c) == std::string::npos)
-		{
-			c = sub_char;
-		}
-	}
-}
-
-}
 
 void custom_container::subst_token::render(std::string& out, const render_context& ctx, const std::vector<std::string>& env) const
 {
@@ -257,23 +234,15 @@ void custom_container::resolver::init_label_value_substitution_char()
 	m_label_value_substitution_char = value[0];
 }
 
-void custom_container::resolver::sanitize_label_name(std::string& val) const
+void custom_container::resolver::sanitize_label(std::string& val) const
 {
-	// substitution character for the label name is not configurable
-	sanitize_label(
-		val,
-		'_',
-		s_label_name_whitelist
-	);
-}
-
-void custom_container::resolver::sanitize_label_value(std::string& val) const
-{
-	sanitize_label(
-		val,
-		m_label_value_substitution_char,
-		s_label_value_whitelist
-	);
+	for (auto& c : val)
+	{
+		if (s_label_value_whitelist.find(c) == std::string::npos)
+		{
+			c = m_label_value_substitution_char;
+		}
+	}
 }
 
 bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp_threadinfo* tinfo, bool query_os_for_missing_info)
@@ -317,7 +286,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 		return false;
 	}
 	container_info.m_id = container_info.m_id.substr(0, m_max_id_length);
-	sanitize_label_name(container_info.m_id);
+	sanitize_label(container_info.m_id);
 
 	if (m_config_test && tinfo->is_main_thread())
 	{
@@ -370,7 +339,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 			}
 			else
 			{
-				sanitize_label_name(container_info.m_name);
+				sanitize_label(container_info.m_name);
 			}
 		} catch (const Poco::RuntimeException& e) {
 			LOG_WARNING("Disabling custom container name due to error in configuration: %s", e.message().c_str());
@@ -391,7 +360,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 			}
 			else
 			{
-				sanitize_label_name(container_info.m_image);
+				sanitize_label(container_info.m_image);
 			}
 		} catch (const Poco::RuntimeException &e) {
 			LOG_WARNING("Disabling custom container image due to error in configuration: %s", e.message().c_str());
@@ -416,7 +385,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 				}
 				else
 				{
-					sanitize_label_value(s);
+					sanitize_label(s);
 					container_info.m_labels.emplace(it->first, move(s));
 				}
 			} catch (const Poco::RuntimeException& e) {
