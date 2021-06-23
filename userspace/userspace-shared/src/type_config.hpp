@@ -142,6 +142,12 @@ bool type_config<data_type>::string_to_value(const std::string& value)
 }
 
 template<typename data_type>
+const data_type& type_config<data_type>::get_default() const
+{
+	return m_default;
+}
+
+template<typename data_type>
 void type_config<data_type>::set_default(const data_type& value)
 {
 	m_default = value;

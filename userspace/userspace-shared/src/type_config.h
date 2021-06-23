@@ -420,6 +420,13 @@ public:  // other stuff
 	const data_type& configured() const;
 
 	/**
+	 * Returns a const reference to the default value of this type_config.
+	 *
+	 * @return the default value of this config
+	 */
+	const data_type& get_default() const;
+
+	/**
 	 * Sets a new default value. While it shouldn't be common, is required for a
 	 * very small number of configs that have their default value determined
 	 * dynamically.

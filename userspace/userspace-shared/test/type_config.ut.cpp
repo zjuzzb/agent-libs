@@ -353,6 +353,7 @@ TEST_F(type_config_test, config_string)
 
 	some_config.init(config_yaml);
 
+	ASSERT_EQ(default_value, some_config.get_default());
 	ASSERT_EQ(expected_value, some_config.get_value());
 }
 
