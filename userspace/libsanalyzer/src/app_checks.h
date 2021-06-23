@@ -103,7 +103,7 @@ private:
 	int m_pid;
 	int m_vpid;
 	std::set<uint16_t> m_ports;
-	const app_check& m_check;
+	app_check m_check;
 	std::shared_ptr<app_process_conf_vals> m_conf_vals;
 
 	// Solr temporary patch
