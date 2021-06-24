@@ -147,7 +147,7 @@ pipeline {
                 sh "git checkout fargate-release-${params.RELEASE_VERSION}"
             }
             dir('kilt-definitions') {
-                sh "git checkout fargate-release-${params.RELEASE_BASE}"
+                sh "git checkout fargate-release-${params.RELEASE_VERSION}"
             }
         }
     }
