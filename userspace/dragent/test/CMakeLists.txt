@@ -43,7 +43,7 @@ add_executable(
     configlist_rest_request_handler.ut.cpp
     config_data_rest_request_handler.ut.cpp
     config_rest_request_handler.ut.cpp
-    configuration_cli.ut.cpp
+    configuration_console.ut.cpp
     connection_manager.ut.cpp
     container_size_requestor.ut.cpp
     crash_handler.ut.cpp

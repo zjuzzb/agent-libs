@@ -27,6 +27,7 @@
 #include "file_rest_request_handler.h"
 #include "globally_readable_file_channel.h"
 #include "handshake_helpers.h"
+#include "log_console.h"
 #include "memdump_logger.h"
 #include "metric_serializer.h"
 #include "monitor.h"
@@ -2413,6 +2414,8 @@ void dragent_app::initialize_logging()
 	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 	LOG_INFO("Agent starting (version " + string(AGENT_VERSION) + ")");
 	common_logger_cache::log_and_purge();
+
+	log_console::init(logsdir);
 }
 
 void dragent_app::monitor_files(uint64_t uptime_s)

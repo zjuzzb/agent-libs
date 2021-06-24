@@ -36,7 +36,6 @@
 #include "analyzer_utils.h"
 #include "timer_thread.h"
 #include "watchdog.h"
-#include "cmd_line_log.h"
 
 
 class promscrape;
@@ -193,6 +192,5 @@ private:
 	watchdog_runnable_pool m_pool;
 	bool m_had_unclean_shutdown = false;
 	bool m_startup_probe_set = false;
-	command_line::cmd_line_log m_command_line_log;
 	static const std::string K8S_PROBE_FILE;
 };

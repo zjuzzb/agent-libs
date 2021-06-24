@@ -111,8 +111,10 @@ public:
 
 private:
 
+	response handle_registered_command(const command_line_permissions &user_permissions, const std::string &command) const;
 
-	argument_list parse_arguments(const std::string& args, size_t offset) const;
+
+	argument_list parse_arguments(const std::string &args, size_t offset) const;
 	std::pair<command_line_manager::content_type, std::string> lookup_and_run_command(const command_line_permissions &user_permissions, const std::string& command, const argument_list& args) const;
 
 

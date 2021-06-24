@@ -77,7 +77,8 @@ void command_line_runnable::process_commands()
 	// Process everything in the queue.
 	for (auto& cmd : m_queue) 
 	{
-		auto response = command_line_manager().instance().handle(cmd.permissions, cmd.command);
+		auto response = command_line_manager::instance().handle(cmd.permissions, cmd.command);
+
 		cmd.callback(response);
 
 		heartbeat();

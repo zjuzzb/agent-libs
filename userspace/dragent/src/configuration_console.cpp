@@ -1,4 +1,4 @@
-#include "configuration_cli.h"
+#include "configuration_console.h"
 #include "command_line_error.h"
 #include "command_line_manager.h"
 #include "common_logger.h"
@@ -136,7 +136,7 @@ std::string config_file_to_string(const std::string &file)
 	try
 	{
 		std::string file_contents = file_contents_to_string(file);
-		return configuration_cli::remove_sensitive_configuration(file_contents);
+		return configuration_console::remove_sensitive_configuration(file_contents);
 	}
 	catch(YAML::Exception& e) 
 	{
@@ -148,7 +148,7 @@ std::string config_file_to_string(const std::string &file)
 
 } // namespace
 
-namespace configuration_cli
+namespace configuration_console
 {
 
 std::string remove_sensitive_configuration(const std::string &yaml)
