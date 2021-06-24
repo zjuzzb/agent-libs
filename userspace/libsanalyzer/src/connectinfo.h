@@ -4,6 +4,8 @@
 #include "metrics.h"
 #include "type_config.h"
 
+#include <ostream>
+
 class sinsp_analyzer;
 
 //
@@ -12,6 +14,11 @@ class sinsp_analyzer;
 class SINSP_PUBLIC sinsp_connection
 {
 public:
+	sinsp_connection(const sinsp_connection&) = delete;
+	sinsp_connection(sinsp_connection&&) = delete;
+	sinsp_connection& operator =(sinsp_connection&) = default;
+	sinsp_connection& operator =(const sinsp_connection&) = delete;
+
 	enum analysis_flags
 	{
 		AF_NONE = 0,
@@ -42,14 +49,14 @@ public:
 		      error_code(error_code_)
 		{
 		}
-
 		uint64_t timestamp;
 		uint8_t state;
 		int error_code;
 	};
 
 	sinsp_connection();
-	sinsp_connection(uint64_t timestamp);
+	explicit sinsp_connection(uint64_t timestamp);
+
 	void reset();
 	void reset_server();
 	void reset_client();
@@ -67,6 +74,11 @@ public:
 		if (m_record_state_history)
 		{
 			m_state_history.emplace_back(timestamp, m_analysis_flags, m_error_code);
+		}
+
+		if (m_state_handler != nullptr)
+		{
+			(m_state_handler)(this, false);
 		}
 	}
 
@@ -95,8 +107,80 @@ public:
 	std::shared_ptr<sinsp_threadinfo> m_sproc;
 	std::shared_ptr<sinsp_threadinfo> m_dproc;
 
+	using sinsp_conn_state_handler = std::function<void(const sinsp_connection*, bool deleted)>;
+	sinsp_conn_state_handler m_state_handler = nullptr;
+	uint64_t conn_id = 0;
 private:
 	std::vector<state_transition> m_state_history;
+};
+
+struct sinsp_conn_message
+{
+public:
+	enum type
+	{
+		client_info,
+		server_info,
+		state_info,
+		closed,
+		failed,
+		deleted
+	};
+
+	sinsp_conn_message(type message,
+	                   bool is_new,
+	                   const ipv4tuple& key,
+	                   const sinsp_connection* const conn)
+	    : message(message),
+	      key(key),
+	      conn(conn),
+	      is_new(is_new)
+	{
+	}
+
+	bool is_pending() const
+	{
+		return (conn != nullptr && conn->m_analysis_flags & sinsp_connection::AF_PENDING);
+	}
+
+	type flags_to_type() const
+	{
+		if (conn->m_analysis_flags & sinsp_connection::AF_FAILED)
+		{
+			return failed;
+		}
+		else if (conn->m_analysis_flags & sinsp_connection::AF_CLOSED)
+		{
+			return closed;
+		}
+		return message;
+	}
+
+	const type message;
+	const ipv4tuple key;
+	const sinsp_connection* const conn;
+	const bool is_new;
+
+	friend ostream& operator<<(ostream& os, const sinsp_conn_message& msg)
+	{
+		os << "[conn_id=" << msg.conn->conn_id << " message=" << type_str(msg.message)
+		   << " is_new=" << msg.is_new << "]";
+		return os;
+	}
+
+	std::string to_string() const
+	{
+		std::stringstream ss;
+		ss << *this;
+		return ss.str();
+	}
+
+	static const std::string& type_str(type t)
+	{
+		static const std::string names[] =
+		    {"client_info ", "server_info ", "state_info ", "closed ", "failed ", "deleted"};
+		return names[t];
+	}
 };
 
 class sinsp_connection_aggregator
@@ -210,6 +294,13 @@ public:
 	                                 uint64_t timestamp,
 	                                 uint8_t flags,
 	                                 int32_t error_code);
+
+	void notify_message_handlers(sinsp_connection& conn,
+	                             const TKey& key,
+	                             int prev_refcount,
+	                             bool isclient,
+	                             bool new_tuple);
+
 	sinsp_connection* remove_connection(const TKey& key);
 	sinsp_connection* get_connection(const TKey& key, uint64_t timestamp);
 	void remove_expired_connections(uint64_t current_ts);
@@ -234,11 +325,68 @@ public:
 	using on_new_tcp_connection_cb = std::function<
 	    void(const _ipv4tuple&, sinsp_connection&, sinsp_connection::state_transition)>;
 	std::list<on_new_tcp_connection_cb> m_on_new_tcp_connection_callbacks;
-	void subscribe_on_new_tcp_connection(on_new_tcp_connection_cb callback)
+	void subscribe_on_new_tcp_connection(const on_new_tcp_connection_cb& callback)
 	{
 		m_on_new_tcp_connection_callbacks.emplace_back(callback);
 	}
+
+	using conn_message_handler = std::function<void(const sinsp_conn_message&)>;
+
+	void add_conn_message_handler(conn_message_handler&& hdl)
+	{
+		conn_message_handlers.template emplace_back(hdl);
+	}
+
+	void on_conn_message(const sinsp_conn_message& msg)
+	{
+		for (const auto& hdl : conn_message_handlers)
+		{
+			hdl(msg);
+		}
+	}
+
+private:
+	std::list<conn_message_handler> conn_message_handlers;
 };
+
+template<class TKey, class THash, class TCompare>
+void sinsp_connection_manager<TKey, THash, TCompare>::notify_message_handlers(
+	sinsp_connection& conn,
+    const TKey& key,
+    int prev_refcount,
+    bool isclient,
+    bool new_tuple)
+{
+	auto message = sinsp_conn_message::state_info;
+
+	if (conn.m_analysis_flags & sinsp_connection::AF_FAILED)
+	{
+		message = sinsp_conn_message::failed;
+	}
+	else if (conn.m_analysis_flags & sinsp_connection::AF_CLOSED)
+	{
+		message = sinsp_conn_message::closed;
+	}
+	else if ((conn.m_refcount - prev_refcount == 1) && isclient)
+	{
+		message = sinsp_conn_message::client_info;
+	}
+	else if ((conn.m_refcount - prev_refcount == 1) && !isclient)
+	{
+		message = sinsp_conn_message::server_info;
+	}
+
+	on_conn_message(sinsp_conn_message(message, new_tuple, key, &conn));
+
+	conn.m_state_handler = [this, &key](const sinsp_connection* conn, bool deleted)
+	{
+		this->on_conn_message(sinsp_conn_message(
+		    deleted ? sinsp_conn_message::deleted : sinsp_conn_message::state_info,
+		    false,
+		    key,
+		    conn));
+	};
+}
 
 template<class TKey, class THash, class TCompare>
 sinsp_connection* sinsp_connection_manager<TKey, THash, TCompare>::add_connection(
@@ -266,7 +414,7 @@ sinsp_connection* sinsp_connection_manager<TKey, THash, TCompare>::add_connectio
 
 	ASSERT((flags & ~(sinsp_connection::AF_PENDING | sinsp_connection::AF_FAILED)) == 0);
 
-	// Check if the tuple is already present into m_connections map
+	// Check if the ip_tuple is already present into m_connections map
 	bool new_tuple = m_connections.find(key) == m_connections.end();
 
 	//
@@ -281,7 +429,7 @@ sinsp_connection* sinsp_connection_manager<TKey, THash, TCompare>::add_connectio
 	uint8_t l4proto = 0;
 	if (std::is_same<TKey, _ipv4tuple>::value)
 	{
-		const _ipv4tuple& tuple = (const _ipv4tuple&)key;
+		const auto& tuple = (const _ipv4tuple&)key;
 		l4proto = tuple.m_fields.m_l4proto;
 	}
 
@@ -418,6 +566,8 @@ sinsp_connection* sinsp_connection_manager<TKey, THash, TCompare>::add_connectio
 	{
 		conn.record_state_transition(timestamp);
 
+		notify_message_handlers(conn, key, prev_refcount, isclient, new_tuple);
+
 		// Only if it is TCP and not CLOSED or PENDING
 		// Discard multiple state transitions
 		// Consider only new_tuple inserted
@@ -427,7 +577,7 @@ sinsp_connection* sinsp_connection_manager<TKey, THash, TCompare>::add_connectio
 		if (l4proto == SCAP_L4_TCP &&                                  // TCP
 			!(conn.m_analysis_flags & sinsp_connection::AF_CLOSED) &&  // !CLOSED connection
 			!(conn.m_analysis_flags & sinsp_connection::AF_PENDING)  &&// !PENDING connection
-		    (new_tuple ||  // New tuple inserted into m_connections map
+		    (new_tuple ||  // New ip_tuple inserted into m_connections map
 		     (conn.m_refcount - prev_refcount ==
 		      1) ||  // 0->1 new connection; 1->2 client_only/server_only -> client_and_server
 		     (conn.m_analysis_flags & sinsp_connection::AF_REUSED)  // REUSED connection
@@ -483,8 +633,8 @@ sinsp_connection* sinsp_connection_manager<TKey, THash, TCompare>::get_connectio
     const TKey& key,
     uint64_t timestamp)
 {
-	typename std::unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
-	cit = m_connections.find(key);
+
+	auto cit = m_connections.find(key);
 	if (cit != m_connections.end())
 	{
 		cit->second.m_timestamp = timestamp;

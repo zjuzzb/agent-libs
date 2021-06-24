@@ -25,14 +25,20 @@ type_config_builder<uint64_t>(
 		.hidden()
 		.build();
 
+
+static uint64_t next_conn_id = 0;
+
 sinsp_connection::sinsp_connection()
 {
-	m_timestamp = 0;
+	reset();
+	conn_id = ++next_conn_id;
 }
 
 sinsp_connection::sinsp_connection(uint64_t timestamp)
 {
+	reset();
 	m_timestamp = timestamp;
+	conn_id = ++next_conn_id;
 }
 
 void sinsp_connection::reset()

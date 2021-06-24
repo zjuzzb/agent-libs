@@ -17,14 +17,15 @@
 #include "secure_netsec_data_ready_handler.h"
 #include "secure_netsec_internal_metrics.h"
 
-
+#include <tuples.h>
 class sinsp_analyzer;
+class secure_netsec_conn;
+class secure_netsec_v2;
 
 #define NETWORK_TOPOLOGY_DEFAULT_REPORT_INTERVAL_MIN    60000000000  //  1 min
 #define NETWORK_TOPOLOGY_DEFAULT_REPORT_INTERVAL       180000000000  //  3 min
 #define NETWORK_TOPOLOGY_DEFAULT_REPORT_INTERVAL_MAX  1800000000000  // 30 min
 #define NETWORK_TOPOLOGY_FREQUENCY_THRESHOLD_NS           100000000  // 100 ms
-
 
 //
 // This class keeps track of the kubernetes connection for network
@@ -33,7 +34,7 @@ class sinsp_analyzer;
 class secure_netsec
 {
 public:
-	secure_netsec(infrastructure_state* infrastructure_state);
+	explicit secure_netsec(infrastructure_state* infrastructure_state);
 	secure_netsec();
 	~secure_netsec();
 
@@ -60,6 +61,7 @@ public:
 	static type_config<int> c_secure_netsec_connections_limit;
 	static type_config<std::vector<std::string>> c_secure_netsec_filtered_process_names;
 	static type_config<bool> c_secure_netsec_randomize_start;
+        static type_config<bool> c_secure_netsec_v2;
 
 	bool is_k8s_cidr_configured() const
 	{
@@ -77,6 +79,8 @@ public:
 	void add_connection_async(const _ipv4tuple& tuple,
 				  sinsp_connection& conn,
 				  sinsp_connection::state_transition transition);
+
+	void on_conn_message(const sinsp_conn_message& msg);
 
 	bool is_tuple_in_k8s_cidr(const ipv4tuple &tuple) const;
 
@@ -137,7 +141,6 @@ private:
 
 	bool insert_or_update_communication(ipv4tuple tuple, const k8s_communication& k8s_comm);
 	bool insert_or_update_pod_owner(const k8s_pod_owner& pod_owner);
-	bool insert_or_update_cronjob(const string &cronjob_uid, const string &job_uid);
 
 	const secure::K8SCommunicationSummary* get_netsec_summary(uint64_t timestamp);
 
@@ -162,6 +165,8 @@ private:
 	bool m_netsec_sent;
 	bool m_netsec_run;
 
+	friend class secure_netsec_v2;
+
 	// key metrics, and relative pseudo-formulas
 	uint m_connection_count = 0;
 	uint m_connection_dropped_count = 0;
@@ -181,4 +186,6 @@ private:
 	uint m_resolved_owner = 0;
 
 	uint64_t m_randomized_flush_start = 0;
+
+	std::unique_ptr<secure_netsec_v2> m_netsec_v2;
 };

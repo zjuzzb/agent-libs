@@ -105,6 +105,8 @@ protected:
 		test_helpers::scoped_config<bool> enable_network_topology_randomize_start("network_topology.randomize_start",
 		                                      false);
 
+        test_helpers::scoped_config<bool> enable_network_topology_v2("network_topology.netsec_v2",
+                                                                                  false);
 
 		feature_manager::instance().initialize();
 

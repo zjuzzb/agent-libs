@@ -14,7 +14,9 @@ import (
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	draiosproto "protorepo/agent-be/proto"
+	"strconv"
 	"sync"
+	"time"
 )
 
 var podInf cache.SharedInformer
@@ -227,6 +229,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 
 	// See https://sysdig.atlassian.net/browse/SMAGENT-2765
 	// This has to be moved in inttags
+	// required by netsec either in tags or in inttags
 	tags["kubernetes.pod.label.status.phase"] = string(pod.Status.Phase)
 
 	annotations := kubecollect_common.GetAnnotations(pod.ObjectMeta, "kubernetes.pod.")
@@ -238,6 +241,16 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 			inttags["status.unschedulable"] = string("true")
 			break
 		}
+	}
+
+	// the following tags are required by netsec to correctly match connection IP and
+	// the pod: https://sysdig.atlassian.net/browse/SSPROD-5633
+	inttags["kubernetes.pod.meta.creationTimestamp"] = strconv.FormatInt(
+		pod.ObjectMeta.GetCreationTimestamp().UnixNano() / int64(time.Millisecond), 10)
+
+	if pod.ObjectMeta.GetDeletionTimestamp() != nil {
+		inttags["kubernetes.pod.meta.deletionTimestamp"] = strconv.FormatInt(
+			pod.ObjectMeta.GetDeletionTimestamp().UnixNano()/int64(time.Millisecond), 10)
 	}
 
 	var ips []string

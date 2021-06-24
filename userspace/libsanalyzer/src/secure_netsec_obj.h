@@ -339,6 +339,7 @@ struct k8s_cluster_communication
 	bool add_cronjob(std::string &key, k8s_cronjob& cj);
 
 	void serialize_protobuf(secure::K8SClusterCommunication*& cluster);
+    void serialize_protobuf_v2(secure::K8SClusterCommunication*& cluster);
 
 private:
 	k8s_communication_map m_ingresses;

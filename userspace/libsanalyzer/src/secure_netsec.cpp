@@ -4,27 +4,35 @@
 #include "common_logger.h"
 #include "infrastructure_state.h"
 #include "secure_netsec_obj.h"
+#include "secure_netsec_v2.h"
 
 #include <random>
 
-COMMON_LOGGER();
+COMMON_LOGGER("netsec");
 
-type_config<uint64_t> secure_netsec::c_secure_netsec_report_interval(NETWORK_TOPOLOGY_DEFAULT_REPORT_INTERVAL,
+type_config<uint64_t> secure_netsec::c_secure_netsec_report_interval(
+    NETWORK_TOPOLOGY_DEFAULT_REPORT_INTERVAL,
     "Network Security report interval",
-    "network_topology", "report_interval");
+    "network_topology",
+    "report_interval");
 
-type_config<std::string> secure_netsec::c_secure_netsec_cluster_cidr("",
+type_config<std::string> secure_netsec::c_secure_netsec_cluster_cidr(
+    "",
     "Network Security Cluster CIDR",
-    "network_topology", "cluster_cidr");
+    "network_topology",
+    "cluster_cidr");
 
-type_config<std::string> secure_netsec::c_secure_netsec_service_cidr("",
+type_config<std::string> secure_netsec::c_secure_netsec_service_cidr(
+    "",
     "Network Security Service CIDR",
-    "network_topology", "service_cidr");
+    "network_topology",
+    "service_cidr");
 
 /* As secure_netsec relies on the sinsp_connection class to keep state
    of active connection, this value shouldn't be greater then
    connectinfo.cpp:L7 connection.max_count. */
-type_config<int> secure_netsec::c_secure_netsec_connections_limit(65536,
+type_config<int> secure_netsec::c_secure_netsec_connections_limit(
+    65536,
     "limit on numbers of connections in every message sent - 0 means no limit",
     "network_topology",
     "connections_limit");
@@ -35,10 +43,16 @@ type_config<std::vector<std::string>> secure_netsec::c_secure_netsec_filtered_pr
     "network_topology",
     "filtered_process_names");
 
-type_config<bool> secure_netsec::c_secure_netsec_randomize_start(true,
-     "Use randomized delay before first reporting",
-     "network_topology", "randomize_start");
+type_config<bool> secure_netsec::c_secure_netsec_randomize_start(
+    true,
+    "Use randomized delay before first reporting",
+    "network_topology",
+    "randomize_start");
 
+type_config<bool> secure_netsec::c_secure_netsec_v2(true,
+                                                    "Use v2 netsec v2",
+                                                    "network_topology",
+                                                    "netsec_v2");
 
 secure_netsec::secure_netsec()
 	: m_k8s_cidrs_configured(false),
@@ -106,14 +120,17 @@ void secure_netsec::clear_after_flush(uint64_t ts)
 	// If not set in the config, and not already discovered, try
 	// and update Cluster/Service CIDR with what's in the
 	// infrastructure_state
-	if (!c_secure_netsec_cluster_cidr.is_set_in_config() &&
-	    !m_k8s_cidrs_configured &&
+	if (!c_secure_netsec_cluster_cidr.is_set_in_config() && !m_k8s_cidrs_configured &&
 	    m_infrastructure_state->is_k8s_cidr_discovered())
 	{
-		auto k8s_cluster_cidr_configured = parse_k8s_cidr(m_infrastructure_state->get_command_k8s_cluster_cidr(),
-								  &m_cluster_cidr_netip, &m_cluster_cidr_netmask);
-		auto k8s_service_cidr_configured = parse_k8s_cidr(m_infrastructure_state->get_command_k8s_service_cidr(),
-								  &m_service_cidr_netip, &m_service_cidr_netmask);
+		auto k8s_cluster_cidr_configured =
+		    parse_k8s_cidr(m_infrastructure_state->get_command_k8s_cluster_cidr(),
+		                   &m_cluster_cidr_netip,
+		                   &m_cluster_cidr_netmask);
+		auto k8s_service_cidr_configured =
+		    parse_k8s_cidr(m_infrastructure_state->get_command_k8s_service_cidr(),
+		                   &m_service_cidr_netip,
+		                   &m_service_cidr_netmask);
 
 		m_k8s_cidrs_configured = k8s_cluster_cidr_configured && k8s_service_cidr_configured;
 
@@ -121,10 +138,10 @@ void secure_netsec::clear_after_flush(uint64_t ts)
 		{
 			LOG_INFO("Kubernetes Cluster/Service CIDR has been discovered");
 		}
-	} // else  if we have already attempted X flush, we may want
-	  //       to develop a fallback on a heuristic to discover
-	  //       the Cluster/Service CIDR to improve performance by
-	  //       reducing lookups
+	}  // else  if we have already attempted X flush, we may want
+	   //       to develop a fallback on a heuristic to discover
+	   //       the Cluster/Service CIDR to improve performance by
+	   //       reducing lookups
 
 	// Loop over every connection in the connection table, and
 	// insert them back. We start the new interval with all the
@@ -181,6 +198,11 @@ void secure_netsec::flush(uint64_t ts)
 	if (flush_start_time < m_randomized_flush_start)
 	{
 		return;
+	}
+
+	if (m_netsec_v2 != nullptr)
+	{
+		m_netsec_v2->flush();
 	}
 
 	m_get_events_interval->run(
@@ -308,12 +330,29 @@ void secure_netsec::init(sinsp_ipv4_connection_manager* conn,
 		return;
 	}
 
-	m_connection_manager->subscribe_on_new_tcp_connection(
-		[this](const _ipv4tuple& tuple,
-		       sinsp_connection& conn,
-		       sinsp_connection::state_transition transition) {
-			add_connection_async(tuple, conn, transition);
-		});
+    if (infrastructure_state != nullptr && c_secure_netsec_v2.get_value())
+    {
+        m_netsec_v2 = make_unique<secure_netsec_v2>(m_connection_manager, infrastructure_state, *this);
+        m_connection_manager->add_conn_message_handler([this](const sinsp_conn_message& msg)
+                                                       { on_conn_message(msg); });
+    }
+
+	if (m_netsec_v2 == nullptr)
+	{
+		m_connection_manager->subscribe_on_new_tcp_connection(
+		    [this](const _ipv4tuple& tuple,
+		           sinsp_connection& conn,
+		           sinsp_connection::state_transition transition)
+		    { add_connection_async(tuple, conn, transition); });
+	}
+}
+
+void secure_netsec::on_conn_message(const sinsp_conn_message& msg)
+{
+	if (feature_manager::instance().get_enabled(NETWORK_TOPOLOGY) && m_netsec_v2 != nullptr)
+	{
+        m_netsec_v2->on_conn_event(msg);
+	}
 }
 
 void secure_netsec::add_connection_async(const _ipv4tuple& tuple,
@@ -328,12 +367,12 @@ void secure_netsec::add_connection_async(const _ipv4tuple& tuple,
 	if (c_secure_netsec_connections_limit.get_value() == 0 ||
 	    (m_connection_count <= c_secure_netsec_connections_limit.get_value()))
 	{
-		add_connection(conn, tuple);
-		return;
+        add_connection(conn, tuple);
 	}
-
-	m_connection_dropped_count++;
-	return;
+	else
+	{
+		m_connection_dropped_count++;
+	}
 }
 
 void convert_label_selector(secure::K8SLabelSelector *secure_label_selector,
@@ -353,8 +392,6 @@ void convert_label_selector(secure::K8SLabelSelector *secure_label_selector,
 		p->set_match_operator(me.match_operator());
 		p->mutable_values()->CopyFrom(me.values());
 	}
-
-	return;
 }
 
 bool secure_netsec::congroup_to_pod_owner(std::shared_ptr<draiosproto::container_group> cg,
@@ -471,12 +508,12 @@ bool secure_netsec::enrich_endpoint(k8s_communication* k8s_comm,
 
 // Resolve an ip endpoint to corresponding congroup
 std::shared_ptr<draiosproto::container_group>
-secure_netsec::resolve_ip_to_cg(const uint32_t &ip,
-				bool *found)
+secure_netsec::resolve_ip_to_cg(const uint32_t &ip, bool *found)
 {
+	*found = false;
+
 	std::shared_ptr<draiosproto::container_group> cg = nullptr;
 	char addrbuff[32];
-	*found = false;
 
 	const auto addr = inet_ntop(AF_INET, &ip, addrbuff, sizeof(addrbuff));
 
@@ -545,14 +582,19 @@ bool secure_netsec::validate_comm(sinsp_connection& conn,
 				  k8s_communication* k8s_comm)
 {
 	std::string comm_cli, comm_srv;
+	std::vector<std::string> vargs;
 
 	if (conn.m_sproc != nullptr)
 	{
 		auto t = conn.m_sproc->get_main_thread();
 		if (t != nullptr &&
-		    !t->get_comm().empty())
+			!t->get_comm().empty())
 		{
 			comm_cli = t->get_comm();
+			if (!t->m_args.empty())
+			{
+				vargs = t->m_args;
+			}
 		}
 		else
 		{
@@ -573,9 +615,9 @@ bool secure_netsec::validate_comm(sinsp_connection& conn,
 	{
 		auto t = conn.m_dproc->get_main_thread();
 		if (t != nullptr &&
-		    !t->get_comm().empty())
+			!t->get_comm().empty())
 		{
-			comm_srv = conn.m_dproc->get_main_thread()->get_comm();
+			comm_srv = t->get_comm();
 		}
 		else
 		{
@@ -595,7 +637,7 @@ bool secure_netsec::validate_comm(sinsp_connection& conn,
 	// Filter out blacklisted process activity
 	auto bl = c_secure_netsec_filtered_process_names.get_value();
 	if (std::find(bl.begin(), bl.end(), comm_cli) != bl.end() ||
-	    std::find(bl.begin(), bl.end(), comm_srv) != bl.end())
+		std::find(bl.begin(), bl.end(), comm_srv) != bl.end())
 	{
 		return false;
 	}
@@ -618,14 +660,15 @@ bool secure_netsec::validate_comm(sinsp_connection& conn,
 bool secure_netsec::add_connection(sinsp_connection& conn,
 				   ipv4tuple tuple)
 {
-	k8s_communication k8s_comm(tuple,
-				   conn.is_client_only() || conn.is_client_and_server(),
-				   conn.is_server_only() || conn.is_client_and_server());
 
 	if (!feature_manager::instance().get_enabled(NETWORK_TOPOLOGY))
 	{
 		return false;
 	}
+
+	k8s_communication k8s_comm(tuple,
+							   conn.is_client_only() || conn.is_client_and_server(),
+							   conn.is_server_only() || conn.is_client_and_server());
 
 	m_connection_count += 1;
 
@@ -638,27 +681,27 @@ bool secure_netsec::add_connection(sinsp_connection& conn,
 
 	// Validation to remove invalid tuples and commands
 	if (!secure_helper::is_valid_tuple(tuple) ||
-	    !validate_container(conn) ||
-	    !validate_comm(conn, &k8s_comm))
+		!validate_container(conn) ||
+		!validate_comm(conn, &k8s_comm))
 	{
 		m_communication_invalid += 1;
 		return false;
 	}
 
 	if (k8s_comm.is_server() && !k8s_comm.is_client() &&
-	    m_k8s_cluster_communication.has_communication_resolved_ingress(tuple))
+		m_k8s_cluster_communication.has_communication_resolved_ingress(tuple))
 	{
 		return false;
 	}
 	if (k8s_comm.is_client() && !k8s_comm.is_server() &&
-	    m_k8s_cluster_communication.has_communication_resolved_egress(tuple))
+		m_k8s_cluster_communication.has_communication_resolved_egress(tuple))
 	{
 		return false;
 	}
 
 	if (k8s_comm.is_client() && k8s_comm.is_server() &&
-	    m_k8s_cluster_communication.has_communication_resolved_egress(tuple) &&
-	    m_k8s_cluster_communication.has_communication_resolved_ingress(tuple))
+		m_k8s_cluster_communication.has_communication_resolved_egress(tuple) &&
+		m_k8s_cluster_communication.has_communication_resolved_ingress(tuple))
 	{
 		return false;
 	}
@@ -672,7 +715,8 @@ bool secure_netsec::add_connection(sinsp_connection& conn,
 		{
 			m_communication_cidr_out += 1;
 			return false;
-		} else
+		}
+		else
 		{
 			m_communication_cidr_in += 1;
 		}
@@ -680,7 +724,6 @@ bool secure_netsec::add_connection(sinsp_connection& conn,
 
 	// Enrichment of process command information and pod owner
 	enrich_connection(&k8s_comm);
-
 	return insert_or_update_communication(tuple, k8s_comm);
 }
 
@@ -720,6 +763,14 @@ bool secure_netsec::add_cg(std::shared_ptr<draiosproto::container_group> cg)
 
 		is_new_entry = m_k8s_cluster_communication.add_cronjob(uid, cj);
 	}
+	else if(cg->uid().kind() == "container")
+	{
+		LOG_DEBUG(" got container: %s", cg->ShortDebugString().c_str());
+		if (m_netsec_v2 != nullptr)
+		{
+			m_netsec_v2->on_container(cg);
+		}
+	}
 
 	// TODO as a future optimization, a new entry could already be
 	// emitted into the protobuf
@@ -752,6 +803,7 @@ void secure_netsec::congroup_to_metadata(
 		meta->set_namespace_(cg->namespace_().c_str());
 	}
 }
+
 void secure_netsec::congroup_to_endpoint(std::shared_ptr<draiosproto::container_group> cg,
 					 k8s_endpoint* k8s_endpoint)
 {
@@ -945,7 +997,24 @@ void secure_netsec::serialize_protobuf()
 	m_k8s_communication_summary->set_hostname(sinsp_gethostname());
 
 	auto cluster = serialize_cluster_information();
-	m_k8s_cluster_communication.serialize_protobuf(cluster);
+
+	if (m_netsec_v2 != nullptr)
+	{
+		m_netsec_v2->serialize(cluster);
+		m_k8s_cluster_communication.serialize_protobuf_v2(cluster);
+		if (LOG_WILL_EMIT(Poco::Message::Priority::PRIO_DEBUG))
+		{
+			LOG_DEBUG("\n\ncluster v1=%s\n", cluster->ShortDebugString().c_str());
+		}
+	}
+	else
+	{
+		m_k8s_cluster_communication.serialize_protobuf(cluster);
+		if (LOG_WILL_EMIT(Poco::Message::Priority::PRIO_DEBUG))
+		{
+			LOG_DEBUG("\n\ncluster v1=%s\n", cluster->ShortDebugString().c_str());
+		}
+	}
 }
 
 void secure_netsec::reset_counters()
@@ -970,11 +1039,17 @@ const secure::K8SCommunicationSummary* secure_netsec::get_netsec_summary(uint64_
 		return nullptr;
 	}
 
+    if (m_k8s_communication_summary->clusters_size() > 0 &&
+        (m_k8s_communication_summary->clusters(0).egresses_size() > 0 ||
+         m_k8s_communication_summary->clusters(0).ingresses_size() > 0))
+    {
+        return m_k8s_communication_summary;
+    }
+
 	if (!m_k8s_cluster_communication.has_data())
 	{
 		LOG_DEBUG("secure_netsec: no secure netsec messages generated");
 		return nullptr;
 	}
-
 	return m_k8s_communication_summary;
 }

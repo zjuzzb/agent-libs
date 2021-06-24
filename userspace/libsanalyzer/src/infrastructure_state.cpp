@@ -10,6 +10,7 @@
 #include "configuration_manager.h"
 #include "infrastructure_state.h"
 #include "legacy_k8s_protobuf.h"
+#include "secure_netsec_util.h"
 #include "user_event.h"
 #include "utils.h"
 
@@ -1420,13 +1421,16 @@ void infrastructure_state::connect_orphans()
 	}
 }
 
-void infrastructure_state::add_ip_mappings(std::shared_ptr<draiosproto::container_group> cg)
+void infrastructure_state::add_ip_mappings(cg_ptr_t cg)
 {
+	auto cg_kind = cg->uid().kind();
 	if (feature_manager::instance().get_enabled(NETWORK_TOPOLOGY))
 	{
-		if (cg->uid().kind() == "k8s_endpoints" ||
-		    cg->uid().kind() == "k8s_namespace" ||
-		    cg->uid().kind() == "k8s_service")
+		if (
+			cg_kind == "k8s_endpoints" ||
+				cg_kind == "k8s_namespace" ||
+				cg_kind == "k8s_service" ||
+				cg_kind == "container")
 		{
 			m_analyzer.add_cg_to_network_topology(cg);
 		}
@@ -1434,25 +1438,31 @@ void infrastructure_state::add_ip_mappings(std::shared_ptr<draiosproto::containe
 
 	// Only handle ip mappings for nodes, pods, services and
 	// endpoints
-	if (cg->uid().kind() == "k8s_pod" ||
-	    cg->uid().kind() == "k8s_service" ||
-	    cg->uid().kind() == "k8s_endpoints" ||
-	    cg->uid().kind() == "k8s_node" ||
-	    cg->uid().kind() == "node")
+	if (cg_kind == "k8s_pod" ||
+		cg_kind == "k8s_service" ||
+		cg_kind == "k8s_endpoints" ||
+		cg_kind == "k8s_node" ||
+		cg_kind == "node")
 	{
 		for (auto i = cg->ip_addresses().begin(), i_end = cg->ip_addresses().end(); i != i_end; ++i)
 		{
-			if (cg->uid().kind() != "host" && cg->uid().kind() != "k8s_node")
+			if (cg_kind != "node" && cg_kind != "k8s_node")
 			{
 				// check if one of the cgs removed by the orchestrator was the previous owner of this address
 				for (auto &r_cg_info : m_cg_ttl)
 				{
 					uid_t key = r_cg_info.first;
 					bool removed = false;
-					for (auto j = m_state[key]->ip_addresses().begin(), j_end = m_state[key]->ip_addresses().end(); j != j_end; ++j) {
-						if (*i == *j) {
-							LOG_DEBUG("infra_state: Remove container_group <%s,%s> before TTL expiration since one of its IP addresses (%s) have been reassigned",
-								  key.first.c_str(), key.second.c_str(), i->c_str());
+					for (auto j = m_state[key]->ip_addresses().begin(), j_end = m_state[key]->ip_addresses().end();
+						 j != j_end; ++j)
+					{
+						if (*i == *j)
+						{
+							LOG_DEBUG(
+								"infra_state: Remove container_group <%s,%s> before TTL expiration since one of its IP addresses (%s) have been reassigned",
+								key.first.c_str(),
+								key.second.c_str(),
+								i->c_str());
 							remove(key);
 							m_cg_ttl.erase(key);
 							removed = true;
@@ -1466,20 +1476,18 @@ void infrastructure_state::add_ip_mappings(std::shared_ptr<draiosproto::containe
 				}
 			}
 
-			auto cg_it = m_cg_by_addr.find(*i);
-			if (cg_it == m_cg_by_addr.end())
+			auto tp = infra_clock::now();
+			m_cg_by_addr[*i].insert(std::make_pair(cg, tp));
+
+			for (const auto &clbk : m_cg_ip_observers)
 			{
-				std::tie(cg_it, std::ignore) = m_cg_by_addr.emplace(
-					*i,
-					std::unordered_set<std::shared_ptr<draiosproto::container_group>>()
-				);
+				clbk(cg, *i, tp);
 			}
-			cg_it->second.emplace(cg);
 		}
 	}
 }
 
-void infrastructure_state::remove_ip_mappings(std::shared_ptr<draiosproto::container_group> cg)
+void infrastructure_state::remove_ip_mappings(cg_ptr_t cg)
 {
 	// Only handle ip mappings for nodes, pods, services and
 	// endpoints
@@ -1494,14 +1502,18 @@ void infrastructure_state::remove_ip_mappings(std::shared_ptr<draiosproto::conta
 
 	for (auto i = cg->ip_addresses().begin(), i_end = cg->ip_addresses().end(); i != i_end; ++i)
 	{
-		if (m_cg_by_addr.find(*i) == m_cg_by_addr.end())
+		auto ip_map_iter = m_cg_by_addr.find(*i);
+		if (ip_map_iter != m_cg_by_addr.end())
 		{
-			continue;
-		}
-	        auto j = m_cg_by_addr[*i].find(cg);
-		if (j != m_cg_by_addr[*i].end())
-		{
-			m_cg_by_addr[*i].erase(j);
+			auto j = ip_map_iter->second.find(cg);
+			if (j != ip_map_iter->second.end())
+			{
+				ip_map_iter->second.erase(j);
+				if (ip_map_iter->second.empty())
+				{
+					m_cg_by_addr.erase(ip_map_iter);
+				}
+			}
 		}
 	}
 }
@@ -1916,62 +1928,108 @@ bool infrastructure_state::match_scope(const uid_t& uid, const scope_predicates&
 	return result;
 }
 
-std::shared_ptr<draiosproto::container_group> infrastructure_state::get_pod_owner(
-	std::shared_ptr<draiosproto::container_group> const& cg)
+void infrastructure_state::find_clbk_cg(const std::string& kind,
+                                   const std::string& uid,
+                                   std::function<void(const cg_ptr_t& cg)> clbk) const
+{
+	const auto& iter = m_state.find({kind, uid});
+	if (iter != m_state.end())
+	{
+		clbk(iter->second);
+	}
+}
+
+void infrastructure_state::find_clbk_container_pod(const std::string& uid,
+                                             std::function<void(const cg_ptr_t& cg)> clbk) const
+{
+	auto cont_iter = m_state.find({"container", uid});
+	if (cont_iter != m_state.end())
+	{
+		find_clbk_container_pod(cont_iter->second, clbk);
+	}
+}
+
+void infrastructure_state::find_clbk_container_pod(const cg_ptr_t& cg,
+                                             std::function<void(const cg_ptr_t& cg)> clbk) const
 {
 	for (const auto& parent : cg->parents())
 	{
-		auto ckey = make_pair(parent.kind(), parent.id());
-		auto kind = parent.kind();
+		if (parent.kind() == "k8s_pod")
+		{
+			const auto& parent_iter = m_state.find({parent.kind(), parent.id()});
+			if (parent_iter != m_state.end())
+			{
+				clbk(parent_iter->second);
+			}
+		}
+	}
+}
+
+cg_ptr_t infrastructure_state::get_pod_owner(const cg_ptr_t& cg) const
+{
+	for (const auto& parent : cg->parents())
+	{
+		const auto& kind = parent.kind();
+		const auto& owner_iter = m_state.find(std::make_pair(kind, parent.id()));
+
+		if (owner_iter == m_state.end())
+		{
+			continue;
+		}
+		const auto& owner = owner_iter->second;
 
 		if (kind == "k8s_replicaset")
 		{
 			// let's always skip replicaset, and try to
 			// fetch the replicaset's owner
-			const auto& rs = m_state[ckey];
-			if (rs)
-			{
-				return get_pod_owner(rs);
-			}
-		} else if (kind == "k8s_deployment" ||
-			   kind == "k8s_daemonset" ||
-			   kind == "k8s_statefulset" ||
+			return get_pod_owner(owner);
+		}
+		else if (kind == "k8s_deployment" ||
+			   kind == "k8s_daemonset"    ||
+			   kind == "k8s_statefulset"  ||
 			   kind == "k8s_job")
 		{
-			auto owner = m_state[ckey];
-			if (owner)
-			{
-				return owner;
-			}
+			return owner;
 		}
 	}
 
 	return nullptr;
 }
 
+void infrastructure_state::find_clbk_cgs_by_ip(const std::string& addr, cg_ip_clbk_t clbk) const
+{
+	const auto& iter = m_cg_by_addr.find(addr);
+
+	if (m_cg_by_addr.find(addr) != m_cg_by_addr.end())
+	{
+		for (const auto& p : iter->second)
+		{
+			clbk(p.first, addr, p.second);
+		}
+	}
+}
 
 // Given an address, if a matching pod owner is found returns true and
 // set the pod owner in the entity, false otherwise.
-std::shared_ptr<draiosproto::container_group> infrastructure_state::match_from_addr(
-	const std::string &addr, bool *found)
+cg_ptr_t infrastructure_state::match_from_addr(const std::string &addr, bool *found)
 {
 	*found = false;
-	if (m_cg_by_addr.find(addr) == m_cg_by_addr.end())
+	const auto& iter = m_cg_by_addr.find(addr);
+	if (iter == m_cg_by_addr.end())
 	{
-		LOG_DEBUG("infra_state: Cannot find IP address %s",
-			  addr.c_str());
+		LOG_DEBUG("infra_state: Cannot find IP address %s", addr.c_str());
 		return nullptr;
 	}
 
-	auto cgs = m_cg_by_addr[addr];
-	std::shared_ptr<draiosproto::container_group> owner = nullptr;
+	const auto& cgs = iter->second;
+	cg_ptr_t owner = nullptr;
 
-	for (const auto& cg : cgs)
+	for (const auto& cg_p : cgs)
 	{
+		const auto& cg = cg_p.first;
 		// skip all host activity, this will also exclude all
 		// pods configured using hostNetwork
-		if (cg->uid().kind() == "node" ||
-		    cg->uid().kind() == "k8s_node")
+		if (cg->uid().kind() == "node" || cg->uid().kind() == "k8s_node")
 		{
 			*found = true;
 			owner = cg;
@@ -2446,7 +2504,7 @@ void infrastructure_state::delete_rate_metrics(const uid_t& key)
 	}
 }
 
-void infrastructure_state::get_congroups_by_kind(std::vector<std::shared_ptr<draiosproto::container_group>> *cgs, const string &kind) const
+void infrastructure_state::get_congroups_by_kind(std::vector<cg_ptr_t> *cgs, const string &kind) const
 {
 	// Skip ahead to kind then walk them sequentially
 	uid_t lb_key(kind, "");
@@ -4247,4 +4305,12 @@ const std::string infrastructure_state::CONTAINER_WAITING_METRIC_NAME = "kuberne
 const std::string infrastructure_state::CONTAINER_TERMINATED_METRIC_NAME = "kubernetes.pod.container.terminated";
 const std::string infrastructure_state::CONTAINER_ID_TAG = "containerId";
 const std::string infrastructure_state::CONTAINER_STATUS_REASON_TAG = "reason";
+const std::string infrastructure_state::POD_META_DELETION_TS_TAG = "kubernetes.pod.meta.deletionTimestamp";
+const std::string infrastructure_state::POD_META_CREATION_TS_TAG = "kubernetes.pod.meta.creationTimestamp";
+
+void infrastructure_state::add_cg_ip_observer(const infrastructure_state::cg_ip_clbk_t& clbk)
+{
+    m_cg_ip_observers.push_back(clbk);
+}
+
 #endif  // CYGWING_AGENT

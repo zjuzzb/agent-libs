@@ -160,6 +160,10 @@ set(SANALYZER_SOURCES
     secure_netsec.cpp
     secure_netsec_obj.cpp
     secure_netsec_cidr.cpp
+    secure_netsec_conn.cpp
+    secure_netsec_v2.cpp
+    secure_netsec_util.cpp
+    secure_netsec_cg.cpp
     baseliner.cpp
     blake2/blake2b.c
     coclient.cpp
@@ -309,8 +313,7 @@ set(SANALYZER_SOURCES
     ${LIBSINSP_SOURCE_DIR}/user_event_logger.cpp
     ${LIBSINSP_SOURCE_DIR}/utils.cpp
     ${LIBSINSP_SOURCE_DIR}/value_parser.cpp
-    ${LIBSINSP_SOURCE_DIR}/viewinfo.cpp
-)
+    ${LIBSINSP_SOURCE_DIR}/viewinfo.cpp)
 
 if(RELOCATED_CHISELS STREQUAL "ON")
     list(APPEND SANALYZER_SOURCES ${CHISEL_DIR}/chisel_utils.cpp)

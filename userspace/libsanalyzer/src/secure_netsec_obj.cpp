@@ -39,7 +39,6 @@ void k8s_cluster_communication::add_job_to_cronjob(const string &cronjob_uid,
 	m_cronjobs_jobs[cronjob_uid]->insert(job_uid);
 }
 
-
 void k8s_cluster_communication::serialize_communications(
 	const k8s_communication_map& cmap,
 	::google::protobuf::RepeatedPtrField<secure::K8SCommunication> *p)
@@ -157,6 +156,8 @@ void k8s_cluster_communication::serialize_protobuf(
 	serialize_cronjob_jobs();
 	serialize_map_to_protobuf<k8s_cronjob_map, k8s_cronjob>
 		(m_cronjobs, cluster->mutable_cronjobs());
+
+
 }
 
 bool k8s_cluster_communication::validate_self_local_egresses(ipv4tuple tuple) const
@@ -205,6 +206,19 @@ bool k8s_cluster_communication::validate_self_local(k8s_communication *k8s_comm)
 
 	return is_self_local;
 }
+
+
+void k8s_cluster_communication::serialize_protobuf_v2(secure::K8SClusterCommunication*& cluster)
+{
+    serialize_map_to_protobuf<k8s_endpoint_map, k8s_endpoint>
+        (m_endpoints, cluster->mutable_endpoints());
+    serialize_map_to_protobuf<k8s_namespace_map, k8s_namespace>
+        (m_namespaces, cluster->mutable_namespaces());
+    serialize_map_to_protobuf<k8s_service_map, k8s_service>
+        (m_services, cluster->mutable_services());
+}
+
+
 
 void k8s_communication::serialize_protobuf(secure::K8SCommunication *c)
 {

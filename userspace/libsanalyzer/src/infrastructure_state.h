@@ -35,7 +35,26 @@ namespace std
 	};
 }
 
-typedef google::protobuf::RepeatedPtrField<draiosproto::container_group> container_groups;
+typedef ::google::protobuf::RepeatedPtrField<draiosproto::container_group> container_groups;
+
+typedef typename std::shared_ptr<draiosproto::container_group> cg_ptr_t;
+
+struct infra_clock
+{
+	typedef chrono::nanoseconds duration;
+	typedef duration::rep rep;
+	typedef duration::period period;
+	typedef chrono::time_point<infra_clock, duration> time_point;
+
+	static time_point now() noexcept {
+		return time_point(
+		    std::chrono::nanoseconds (sinsp_utils::get_current_time_ns()));
+	}
+
+	static constexpr bool is_steady = true;
+};
+
+typedef  std::chrono::time_point<infra_clock> infra_time_point_t;
 
 // An abstract-only class representing the interface used by clients
 // of infrastructure_state
@@ -102,6 +121,8 @@ public:
 	static const std::string CONTAINER_TERMINATED_METRIC_NAME;
 	static const std::string CONTAINER_ID_TAG;
 	static const std::string CONTAINER_STATUS_REASON_TAG;
+	static const std::string POD_META_DELETION_TS_TAG;
+	static const std::string POD_META_CREATION_TS_TAG;
 
 	// { host/container id : {scope hash : scope match result} }
 	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<size_t, bool>>;
@@ -127,14 +148,26 @@ public:
 
 	bool match_scope(const uid_t &uid, const scope_predicates &predicates) override;
 
-	std::shared_ptr<draiosproto::container_group> get_pod_owner(std::shared_ptr<draiosproto::container_group> const& cg);
-	std::shared_ptr<draiosproto::container_group> match_from_addr(const std::string &addr,
-								      bool *found);
+	cg_ptr_t get_pod_owner(const cg_ptr_t& cg) const;
 
-	bool is_k8s_cidr_discovered()
+	void find_clbk_container_pod(const cg_ptr_t& cg, std::function<void(const cg_ptr_t& cg)> clbk) const;
+
+	void find_clbk_container_pod(const std::string& uid,
+	                       std::function<void(const cg_ptr_t& cg)> clbk) const;
+
+	void find_clbk_cg(const std::string& kind,
+	             const std::string& uid,
+	             std::function<void(const cg_ptr_t& cg)> clbk) const;
+
+	cg_ptr_t match_from_addr(const std::string& addr, bool* found);
+
+	using cg_ip_clbk_t =
+	    std::function<void(const cg_ptr_t&, const std::string& ip, infra_time_point_t insert_ts)>;
+	void find_clbk_cgs_by_ip(const std::string& addr, cg_ip_clbk_t clbk) const;
+
+	bool is_k8s_cidr_discovered() const
 	{
-		return !m_command_k8s_cluster_cidr.empty() &&
-			!m_command_k8s_service_cidr.empty();
+		return !m_command_k8s_cluster_cidr.empty() && !m_command_k8s_service_cidr.empty();
 	}
 
 	std::string get_command_k8s_cluster_cidr() const
@@ -177,7 +210,7 @@ public:
 	 * \param kind Kubernetes Kind in the form of k8s_*
 	 *             (e.g. k8s_endpoints, k8s_service, etc.)
 	 */
-	void get_congroups_by_kind(std::vector<std::shared_ptr<draiosproto::container_group>> *cgs, const string &kind) const;
+	void get_congroups_by_kind(std::vector<cg_ptr_t> *cgs, const string &kind) const;
 
 	void get_state(container_groups* state, const uint64_t ts);
 	void get_state(draiosproto::k8s_state* state, uint64_t ts);
@@ -268,6 +301,8 @@ public:
 
 	bool find_local_ip(const std::string &ip, uid_t *uid) const;
 
+	void add_cg_ip_observer (const cg_ip_clbk_t& clbk);
+
 private:
 	FRIEND_TEST(infrastructure_state_test, connect_to_namespace);
 	FRIEND_TEST(infrastructure_state_test, allowed_kinds_test);
@@ -324,8 +359,8 @@ private:
 	void insert_cached_result(const std::string &entity_id, size_t h, bool res);
 	void clear_cached_result(const std::string &entity_id);
 
-	void add_ip_mappings(std::shared_ptr<draiosproto::container_group> cg);
-	void remove_ip_mappings(std::shared_ptr<draiosproto::container_group> cg);
+	void add_ip_mappings(cg_ptr_t cg);
+	void remove_ip_mappings(cg_ptr_t cg);
 
 	void reset();
 
@@ -348,9 +383,9 @@ private:
 	void dump_memory_info() const;
 	std::map<uid_t, uint32_t> get_duplicated_link(const google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& links) const;
 
-	std::map<uid_t, std::shared_ptr<draiosproto::container_group>> m_state;
+	std::map<uid_t, cg_ptr_t> m_state;
 
-	std::unordered_map<std::string, std::unordered_set<std::shared_ptr<draiosproto::container_group>>> m_cg_by_addr;
+	std::unordered_map<std::string, std::unordered_map<cg_ptr_t, infra_time_point_t>> m_cg_by_addr;
 	std::unordered_map<uid_t, uint64_t> m_cg_ttl;
 	std::string m_command_k8s_cluster_cidr;
 	std::string m_command_k8s_service_cidr;
@@ -424,6 +459,8 @@ private:
 	// Local cache for k8s_cluster_name
 	std::string m_k8s_cluster_name;
 	std::set<std::string> m_allow_list_kinds;
+
+	std::vector <cg_ip_clbk_t> m_cg_ip_observers;
 
 private:
 	/**
