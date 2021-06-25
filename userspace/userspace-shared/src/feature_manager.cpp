@@ -242,8 +242,8 @@ bool feature_manager::enable(feature_name feature, bool force)
 	{
 		if (!input.get_enabled())
 		{
-			std::cerr << "Attempt to enable feature " << feature_configs[feature].n
-			          << " but previous dependency or config has locked it off.\n";
+			LOG_DEBUG("Attempt to enable feature %s, but was previously forced off",
+			          feature_configs[feature].n.c_str());
 			return false;
 		}
 		else
@@ -274,10 +274,13 @@ bool feature_manager::enable(feature_name feature, bool force)
 			else if (next.locked() && !next.get_enabled())
 			{
 				// case 2: already processed, but wrong. bail
-				std::cerr << "Dependency " << feature_configs[next.m_name].n << " of feature "
-				          << feature_configs[on.m_name].n
-				          << " has been disabled by another feature and therefore could not be "
-				             "enabled. Fix the configuration which is disabling the dependency.\n";
+				LOG_ERROR(
+				    "Dependency %s of feature %s has been disabled either explicitly or as a "
+				    "dependency of a different feature. Fix the configuration which is disabling "
+				    "%s.",
+				    feature_configs[next.m_name].n.c_str(),
+				    feature_configs[on.m_name].n.c_str(),
+				    feature_configs[next.m_name].n.c_str());
 				return false;
 			}
 			else if (force || next.get_enabled() ||
@@ -292,18 +295,20 @@ bool feature_manager::enable(feature_name feature, bool force)
 				// In all three cases, we can set it to enabled, and we must lock. Then recurse
 				next.set_enabled(true);
 				next.set_locked();
-				std::cerr << "Feature " << feature_configs[on.m_name].n
-				          << " has enabled dependency " << feature_configs[next.m_name].n << ".\n";
+				LOG_DEBUG("Feature %s has ensured that %s is enabled",
+				          feature_configs[on.m_name].n.c_str(),
+				          feature_configs[next.m_name].n.c_str());
 				q.push_back(next.m_name);
 			}
 			else
 			{
 				// case 4: can't enable. bail
-				std::cerr << "Feature " << feature_configs[on.m_name].n
-				          << " cannot enable dependency " << feature_configs[next.m_name].n
-				          << " because it is not on by default or disabled by config. Either use "
-				             "the .force option, use a profile with the dependency enabled, or "
-				             "enable the dependency in the config.\n";
+				LOG_ERROR(
+				    "Feature %s cannot enable dependency %s. Identify what is enabling this "
+				    "(potentially dragent.auto.yaml)"
+				    "feature, and disabling the dependency to resolve the conflict",
+				    feature_configs[on.m_name].n.c_str(),
+				    feature_configs[next.m_name].n.c_str());
 				return false;
 			}
 		}
@@ -324,8 +329,8 @@ bool feature_manager::disable(feature_name feature, bool force)
 	{
 		if (input.get_enabled())
 		{
-			std::cerr << "Attempt to disable feature " << feature_configs[feature].n
-			          << " but previous dependency or config has locked it on.\n";
+			LOG_DEBUG("Attempt to disable feature %s, but was previously forced on",
+			          feature_configs[feature].n.c_str());
 			return false;
 		}
 		else
@@ -362,12 +367,13 @@ bool feature_manager::disable(feature_name feature, bool force)
 					else if (next.locked() && next.get_enabled())
 					{
 						// case 2: already processed, but wrong. bail
-						std::cerr
-						    << "Dependency " << feature_configs[next.m_name].n << " of feature "
-						    << feature_configs[on.m_name].n
-						    << " has been enabled by another feature and therefore could not be "
-						       "disabled. Fix the configuration which is disabling the "
-						       "dependency.\n";
+						LOG_ERROR(
+						    "Feature %s which depends on %s has been enabled either explicitly or "
+						    "as a dependency of a different feature. Fix the configuration which "
+						    "is enabling %s.",
+						    feature_configs[next.m_name].n.c_str(),
+						    feature_configs[on.m_name].n.c_str(),
+						    feature_configs[next.m_name].n.c_str());
 						return false;
 					}
 					else if (force || !next.get_enabled() ||
@@ -383,20 +389,22 @@ bool feature_manager::disable(feature_name feature, bool force)
 						// recurse
 						next.set_enabled(false);
 						next.set_locked();
-						std::cerr << "Feature " << feature_configs[on.m_name].n
-						          << " has disabled dependency " << feature_configs[next.m_name].n
-						          << ".\n";
+						LOG_DEBUG("Feature %s has ensured that %s is disabled",
+						          feature_configs[on.m_name].n.c_str(),
+						          feature_configs[next.m_name].n.c_str());
 						q.push_back(next.m_name);
 					}
 					else
 					{
 						// case 4: can't disable. bail
-						std::cerr
-						    << "Feature " << feature_configs[on.m_name].n
-						    << " cannot disable dependency " << feature_configs[next.m_name].n
-						    << " because it is on by default or enabled by config. Either use "
-						       "the .force option, use a profile with the dependency disabled, or "
-						       "disable the dependency in the config.\n";
+						LOG_ERROR(
+						    "Feature %s depends on %s but cannot be disabled, as another feature "
+						    "depends on it. Identify what is enabling "
+						    "this dependency"
+						    "(potentially dragent.auto.yaml),"
+						    "and disabling this feature to resolve the conflict",
+						    feature_configs[next.m_name].n.c_str(),
+						    feature_configs[on.m_name].n.c_str());
 						return false;
 					}
 				}
@@ -541,15 +549,16 @@ bool feature_manager::verify_dependencies()
 	// Walk through all the enabled features and ensure their dependencies are enabled
 	for (auto& i : m_feature_map)
 	{
-		LOG_INFO("Feature %s is tentatively %s",
-		         feature_configs[i.first].n.c_str(),
-		         i.second->get_enabled() ? "enabled" : "disabled");
+		LOG_DEBUG("\tFeature %s is %s %s",
+		          feature_configs[i.first].n.c_str(),
+		          i.second->locked() ? "" : "tentatively",
+		          i.second->get_enabled() ? "enabled" : "disabled");
 		if (i.second->get_enabled())
 		{
 			if (!i.second->verify_dependencies())
 			{
-				std::cerr << "Dependency verification for feature " << feature_configs[i.first].n
-				          << " failed.\n";
+				LOG_ERROR("Dependency verification for feature %s failed",
+				          feature_configs[i.first].n.c_str());
 				return false;
 			}
 		}
@@ -588,7 +597,7 @@ bool feature_manager::initialize(agent_mode mode)
 
 	m_agent_mode = mode;
 
-	std::cerr << "Agent set in " << mode_definitions[m_agent_mode].m_name << " mode.\n";
+	LOG_INFO("Initializing Agent in %s mode", mode_definitions[m_agent_mode].m_name.c_str());
 
 	if (m_agent_mode == AGENT_MODE_NONE)
 	{
@@ -606,9 +615,10 @@ bool feature_manager::initialize(agent_mode mode)
 			i.second->set_unlocked();  // only really necessary for tests, which might reinit
 			i.second->set_enabled(false);
 		}
+		LOG_DEBUG("Setting default features for mode");
 		for (const auto& i : mode_definitions[m_agent_mode].m_enabled_features)
 		{
-			std::cerr << "Profile enabling feature " << feature_configs[i].n << "\n";
+			LOG_DEBUG("Tentatively Enabling %s", feature_configs[i].n.c_str());
 			m_feature_map[i]->set_enabled(true);
 		}
 
@@ -619,11 +629,15 @@ bool feature_manager::initialize(agent_mode mode)
 
 		// Pass 2: look for "force" features explicitly specified in the config.
 		// Set them and their dependencies appropriately
+		LOG_DEBUG("Setting forced features. All necessary dependencies will be enabled or disabled as appropriate.");
 		for (auto& i : m_feature_map)
 		{
 			const auto& config = feature_configs[i.first].c;
 			if (config.m_feature_enabled.is_set_in_config() && config.m_feature_force.get_value())
 			{
+				LOG_DEBUG("%s %s and all necessary dependencies",
+				          config.m_feature_enabled.get_value() ? "Enabling" : "Disabling",
+				          feature_configs[i.first].n.c_str());
 				if (!(config.m_feature_enabled.get_value() ? enable(i.first, true)
 				                                           : disable(i.first, true)))
 				{
@@ -638,12 +652,16 @@ bool feature_manager::initialize(agent_mode mode)
 		}
 
 		// Pass 3: look for "regular" features specified in the config. Set them.
+		LOG_DEBUG("Setting configured features. Operation will fail if dependencies are not met");
 		for (auto& i : m_feature_map)
 		{
 			const auto& config = feature_configs[i.first].c;
 			if (config.m_feature_enabled.is_set_in_config() &&
 			    !config.m_feature_force.get_value() && !config.m_feature_weak.get_value())
 			{
+				LOG_DEBUG("%s %s",
+				          config.m_feature_enabled.get_value() ? "Enabling" : "Disabling",
+				          feature_configs[i.first].n.c_str());
 				if (!(config.m_feature_enabled.get_value() ? enable(i.first, false)
 				                                           : disable(i.first, false)))
 				{
@@ -659,12 +677,16 @@ bool feature_manager::initialize(agent_mode mode)
 
 		// Pass 4: look for "weak" features specified in the config. Set them only
 		// if able
+		LOG_DEBUG("Setting weakly configured features. Feature only set IF dependencies are met");
 		for (auto& i : m_feature_map)
 		{
 			const auto& config = feature_configs[i.first].c;
 			if (config.m_feature_enabled.is_set_in_config() &&
 			    !config.m_feature_force.get_value() && config.m_feature_weak.get_value())
 			{
+				LOG_DEBUG("Conditionally %s %s",
+				          config.m_feature_enabled.get_value() ? "enabling" : "disabling",
+				          feature_configs[i.first].n.c_str());
 				if (config.m_feature_enabled.get_value())
 				{
 					try_enable(i.first);
@@ -683,19 +705,21 @@ bool feature_manager::initialize(agent_mode mode)
 	}
 
 	// Enable any one-off configs
+	LOG_DEBUG("Enforcing one-off configuration settings for specified mode");
 	for (const auto& i : mode_definitions[m_agent_mode].m_extra_configs)
 	{
 		bool rc = i.second->enforce(i.first);
 		if (!rc)
 		{
-			std::cerr << "Unable to enforce config " << i.first
-			          << " as it is explicitly overriden in the configuration. "
-			             "Custom-configuration will be indicated.\n";
+			LOG_INFO(
+			    "Unable to enforce config %s as it is explicitly overridden in the configuration. "
+			    "Custom-configuration will be indicated.",
+			    i.first.c_str());
 			m_custom_config = true;
 		}
 		else
 		{
-			std::cerr << "Config " << i.first << " updated by feature manager.\n";
+			LOG_INFO("Config %s updated by feature manager", i.first.c_str());
 		}
 	}
 
@@ -712,6 +736,14 @@ bool feature_manager::initialize(agent_mode mode)
 				return false;
 			}
 		}
+	}
+
+	LOG_INFO("Feature manager initialization completed");
+	for (const auto& i : m_feature_map)
+	{
+		LOG_INFO("\t%s: %s",
+		         feature_configs[i.first].n.c_str(),
+		         i.second->get_enabled() ? "Enabled" : "Disabled");
 	}
 
 	return true;
