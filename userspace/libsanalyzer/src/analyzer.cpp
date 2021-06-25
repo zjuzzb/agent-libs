@@ -7014,6 +7014,9 @@ void sinsp_analyzer::emit_container(const string& container_id,
 	case CT_BPM:
 		container->set_type(draiosproto::CUSTOM);
 		break;
+	case CT_PODMAN:
+		container->set_type(draiosproto::PODMAN);
+		break;
 	default:
 		ASSERT(false);
 	}
