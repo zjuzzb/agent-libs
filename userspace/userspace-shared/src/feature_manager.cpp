@@ -15,6 +15,17 @@ type_config<std::string> c_agent_mode("monitor",
 
 }  // namespace
 
+const feature_manager::agent_variant_container feature_manager::variant_definitions[] = {
+    {feature_manager::AGENT_VARIANT_TRADITIONAL, "traditional"},
+    {feature_manager::AGENT_VARIANT_AGENTONE, "agentone"},
+    {feature_manager::AGENT_VARIANT_AGENTINO, "agentino"}};
+
+static_assert(feature_manager::agent_variant::AGENT_VARIANT_COUNT ==
+                  sizeof(feature_manager::variant_definitions) /
+                      sizeof(feature_manager::variant_definitions[0]),
+              "not all agent variants definined");
+
+
 const feature_manager::agent_mode_container feature_manager::mode_definitions[] = {
     {feature_manager::AGENT_MODE_NONE, "none", {}, {}},
     {feature_manager::AGENT_MODE_MONITOR,
@@ -199,7 +210,8 @@ feature_manager& feature_manager::instance()
 }
 
 feature_manager::feature_manager()
-    : m_agent_mode(AGENT_MODE_NONE),
+    : m_agent_variant(AGENT_VARIANT_TRADITIONAL),
+      m_agent_mode(AGENT_MODE_NONE),
       m_feature_map(),
       m_custom_config(false)
 {
@@ -218,6 +230,16 @@ feature_manager::~feature_manager()
 	config->set_set_in_config(false);
 	config->set(1024);
 }
+
+static_assert(feature_manager::agent_variant::AGENT_VARIANT_TRADITIONAL ==
+                  (feature_manager::agent_variant)draiosproto::agent_variant::variant_traditional,
+              "agent variants must match");
+static_assert(feature_manager::agent_variant::AGENT_VARIANT_AGENTONE ==
+                  (feature_manager::agent_variant)draiosproto::agent_variant::variant_agentone,
+              "agent variants must match");
+static_assert(feature_manager::agent_variant::AGENT_VARIANT_AGENTINO ==
+                  (feature_manager::agent_variant)draiosproto::agent_variant::variant_agentino,
+              "agent variants must match");
 
 static_assert(feature_manager::agent_mode::AGENT_MODE_MONITOR ==
                   (feature_manager::agent_mode)draiosproto::agent_mode::normal,
@@ -573,18 +595,22 @@ bool feature_manager::initialize()
 	{
 		if (c_agent_mode.get_value() == mode.m_name)
 		{
-			return initialize(mode.m_mode);
+			return initialize(AGENT_VARIANT_TRADITIONAL, mode.m_mode);
 		}
 	}
 
 	// for backwards compatibility with "how we used to do things," if
 	// a un-found mode is found, we initialize in legacy mode
-	return initialize(AGENT_MODE_NONE);
+	return initialize(AGENT_VARIANT_TRADITIONAL, AGENT_MODE_NONE);
 }
 
-bool feature_manager::initialize(agent_mode mode)
+bool feature_manager::initialize(agent_variant variant, agent_mode mode)
 {
 #ifdef _DEBUG
+	for (uint32_t i = 0; i < AGENT_VARIANT_COUNT; i++)
+	{
+		assert(mode_definitions[i].m_variant == (agent_variant)i);
+	}
 	for (uint32_t i = 0; i < AGENT_MODE_COUNT; i++)
 	{
 		assert(mode_definitions[i].m_mode == (agent_mode)i);
@@ -595,8 +621,10 @@ bool feature_manager::initialize(agent_mode mode)
 	}
 #endif
 
+	m_agent_variant = variant;
 	m_agent_mode = mode;
 
+	LOG_INFO("Initializing Agent as %s variant", variant_definitions[m_agent_variant].m_name.c_str());
 	LOG_INFO("Initializing Agent in %s mode", mode_definitions[m_agent_mode].m_name.c_str());
 
 	if (m_agent_mode == AGENT_MODE_NONE)
@@ -751,6 +779,7 @@ bool feature_manager::initialize(agent_mode mode)
 
 void feature_manager::to_protobuf(draiosproto::feature_status& feature_pb) const
 {
+	feature_pb.set_variant((draiosproto::agent_variant)m_agent_variant);
 	feature_pb.set_mode((draiosproto::agent_mode)m_agent_mode);
 	for (const auto& feature : m_feature_map)
 	{
