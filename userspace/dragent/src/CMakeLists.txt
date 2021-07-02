@@ -44,11 +44,11 @@ list(
     compliance_mgr.cpp
     configlist_rest_request_handler.cpp
     configuration.cpp
-    configuration_cli.cpp
     config_data_message_handler.cpp
     config_data_rest_request_handler.cpp
     config_rest_request_handler.cpp
     config_update.cpp
+    configuration_console.cpp
     container_size_requestor.cpp
     connection_manager.cpp
     crash_handler.cpp
@@ -66,6 +66,7 @@ list(
     handshake_helpers.cpp
     k8s_audit_infra_state.cpp
     library_configs.cpp
+    log_console.cpp
     metric_serializer.cpp
     metrics_file_emitter.cpp
     pre_aggregated_metrics_rest_request_handler.cpp

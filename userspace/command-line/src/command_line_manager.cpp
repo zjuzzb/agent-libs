@@ -54,14 +54,23 @@ std::string command_line_manager::commands_json(const command_line_permissions &
 
 std::pair<command_line_manager::content_type, std::string> command_line_manager::handle(const command_line_permissions &user_permissions, const std::string& command) const
 {
+	if ("cli show-json" == command)
+	{
+		auto value = commands_json(user_permissions);
+		return std::make_pair(command_line_manager::content_type::JSON, value);
+	}
+
+	auto result = handle_registered_command(user_permissions, command);
+	const int MAX_RESPONSE_SIZE = 20;
+	std::string response = result.second.size() > MAX_RESPONSE_SIZE ? result.second.substr(0, MAX_RESPONSE_SIZE) + "..." : result.second;
+	LOG_INFO("\"%s\" : \"%s\"", command.c_str(), response.c_str());
+	return result;
+}
+
+std::pair<command_line_manager::content_type, std::string> command_line_manager::handle_registered_command(const command_line_permissions &user_permissions, const std::string &command) const
+{
 	try
 	{
-		if ("cli show-json" == command) 
-		{
-			auto value = commands_json(user_permissions);
-			return std::make_pair(command_line_manager::content_type::JSON, value);
-		}
-
 		// if we have args then it will always start with a space and a dash 
 		auto found = command.find(" -");
 
@@ -71,6 +80,7 @@ std::pair<command_line_manager::content_type, std::string> command_line_manager:
 			string_utils::trim(command_copy);
 			return lookup_and_run_command(user_permissions, command_copy, argument_list());
 		}
+
 		std::string left = command.substr(0, found);
 		std::string right = command.substr(found);
 		auto args = parse_arguments(right, left.size());
@@ -82,7 +92,7 @@ std::pair<command_line_manager::content_type, std::string> command_line_manager:
 	{
 		auto err = std::string("Error: ") + ex.what();
 		return std::make_pair(command_line_manager::content_type::ERROR, err);
-	}	
+	}
 }
 
 void command_line_manager::register_command(const std::string &command, 

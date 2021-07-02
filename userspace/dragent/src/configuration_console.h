@@ -4,7 +4,7 @@
 /**
  * Helpers to create commands for the agent cli.
  */
-namespace configuration_cli
+namespace configuration_console
 {
 
 /**

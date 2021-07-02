@@ -37,6 +37,7 @@
 #include "timer_thread.h"
 #include "watchdog.h"
 
+
 class promscrape;
 class promscrape_proxy;
 class promscrape_stats_proxy;
