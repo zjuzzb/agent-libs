@@ -18,6 +18,7 @@
 using namespace std;
 
 static int g_signal_received = 0;
+static bool g_sighup_received = false;
 
 static void g_monitor_signal_callback(int sig)
 {
@@ -25,6 +26,11 @@ static void g_monitor_signal_callback(int sig)
 	{
 		g_signal_received = sig;
 	}
+}
+
+static void g_monitor_sighup_callback(int)
+{
+	g_sighup_received = true;
 }
 
 static void create_pid_file(const string& pidfile)
@@ -82,6 +88,7 @@ int monitor::run()
 	signal(SIGINT, g_monitor_signal_callback);
 	signal(SIGQUIT, g_monitor_signal_callback);
 	signal(SIGTERM, g_monitor_signal_callback);
+	signal(SIGHUP, g_monitor_sighup_callback);
 	signal(SIGUSR1, SIG_IGN);
 	signal(SIGUSR2, SIG_IGN);
 
@@ -106,6 +113,19 @@ int monitor::run()
 	while (g_signal_received == 0)
 	{
 		int status = 0;
+		if (g_sighup_received)
+		{
+			// Propagate SIGHUP to processes selectively
+			for (auto& process : m_processes)
+			{
+				if (process.m_send_sighup)
+				{
+					kill(process.pid(), SIGHUP);
+				}
+			}
+			g_sighup_received = false;
+		}
+
 		for (auto& process : m_processes)
 		{
 			if (!process.is_enabled())

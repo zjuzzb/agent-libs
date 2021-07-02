@@ -382,7 +382,7 @@ app_checks:
     log_errors: false
     name: nginx
     pattern:
-      exe: !<!> "nginx: worker process"
+      exe: "nginx: worker process"
   - check_module: apache
     conf:
       apache_status_url: "********"
@@ -498,7 +498,7 @@ app_checks:
   - check_module: php_fpm
     name: php-fpm
     pattern:
-      exe: !<!> "php-fpm: master process"
+      exe: "php-fpm: master process"
     retry: false
   - conf:
       varnishstat: "********"

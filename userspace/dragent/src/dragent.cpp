@@ -540,6 +540,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 		std::cerr << "Failed to init sinsp_worker. Exception message: " << ex.what() << '\n';
 		running_state::instance().shut_down();
 	}
+	catch (const std::exception &e)
+	{
+		std::cerr << "Failed to init configuration. Exception Message: " << e.what() << '\n';
+		running_state::instance().shut_down();
+	}
 
 	m_had_unclean_shutdown = remove_file_if_exists(m_configuration.m_log_dir, K8S_PROBE_FILE);
 
@@ -969,6 +974,17 @@ int dragent_app::main(const std::vector<std::string>& args)
 		});
 	}
 
+	// Prom configuration manager (allowing config from backend) is only supported with Promscrape v2
+	prom_config_file_manager *prom_config_mgr = prom_config_file_manager::instance();
+	prom_config_mgr->set_v2(m_configuration.m_prom_conf.enabled() &&
+		promscrape::c_use_promscrape.get_value() && m_configuration.m_prom_conf.prom_sd());
+	if (prom_config_mgr->enabled())
+	{
+		prom_config_mgr->set_root_dir(m_configuration.c_root_dir.get_value());
+		prom_config_mgr->load_local_configs();
+		prom_config_mgr->merge_and_save_configs();
+	}
+
 	if (promscrape::c_use_promscrape.get_value())
 	{
 		m_promscrape_pipes = make_unique<pipe_manager>();
@@ -981,21 +997,33 @@ int dragent_app::main(const std::vector<std::string>& args)
 		                                promscrape_parser(),
 		                                state);
 
-		// Try to find prometheus.yaml
-		std::string prom_conf_arg;
-		std::vector<std::string> prompaths = {
-		    m_configuration.m_default_root_dir + "/etc/prometheus.yaml",
-		    m_configuration.m_default_root_dir + "/prometheus.yaml",
-		    m_configuration.m_default_root_dir + "/etc/kubernetes/config/prometheus.yaml",
-		    m_configuration.m_default_root_dir + (m_configuration.m_prom_conf.prom_sd() ? "/etc/prometheus-v2.default.yaml" : "/etc/prometheus-v1.default.yaml") };
-		for (const auto& p : prompaths)
+		// If Prom config manager is enabled it will have written to promscrape.yaml already.
+		std::string promscrape_yaml_path = m_configuration.c_root_dir.get_value() + "/etc/promscrape.yaml";
+		std::string prom_conf_arg = "--config.file=" + promscrape_yaml_path;
+
+		if (!prom_config_mgr->enabled())
 		{
-			if (Poco::File(p).exists())
+			// If Prom config manager is not enabled we'll copy the first available
+			// configuration to promscrape.yaml instead.
+			std::string prom_path;
+			std::vector<std::string> prompaths = {
+				m_configuration.c_root_dir.get_value() + "/etc/prometheus.yaml",
+				m_configuration.c_root_dir.get_value() + "/etc/kubernetes/config/prometheus.yaml",
+				m_configuration.c_root_dir.get_value() + (m_configuration.m_prom_conf.prom_sd() ? "/etc/prometheus-v2.default.yaml" : "/etc/prometheus-v1.default.yaml") };
+			for (const auto& p : prompaths)
 			{
-				prom_conf_arg = "--config.file=" + p;
-				break;
+				if (Poco::File(p).exists())
+				{
+					prom_path = p;
+					break;
+				}
+			}
+			if (!prom_path.empty())
+			{
+				prom_config_file_manager::copy_file(prom_path, promscrape_yaml_path); 
 			}
 		}
+
 		monitor_process.emplace_process("promscrape", [=]() {
 			string log_level = (g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
 			                       ? "--log.level=debug"
@@ -1047,7 +1075,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			delete[] argv;
 
 			return (EXIT_FAILURE);
-		});
+		}, false, true);
 	}
 #endif
 
@@ -2459,6 +2487,13 @@ void dragent_app::monitor_files(uint64_t uptime_s)
 		// values in the state.
 		for (auto& state : m_monitored_files)
 		{
+			// Kinda hacky: If enabled, let prom_config manager deal with prometheus
+			// file changes, so we don't unnecessarily restart the agent.
+			if (prom_config_file_manager::instance()->enabled() &&
+				(state.m_path.find("prom") != string::npos))
+			{
+				continue;
+			}
 			struct stat f_stat;
 			bool file_exists = stat(state.m_path.c_str(), &f_stat) == 0;
 			if (file_exists && (f_stat.st_mtime != state.m_mod_time))

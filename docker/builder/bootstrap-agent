@@ -428,18 +428,22 @@ if [ ! -d "$BOOST_DIR" ]; then
 	tar xfj boost_1_57_0.tar.bz2
 fi
 
-YAMLCPP_DIR=$DEPENDENCIES/yaml-cpp-0.5.1
+YAMLCPP_DIR=$DEPENDENCIES/yaml-cpp-0.6.3
 if [ ! -d "$YAMLCPP_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/yaml-cpp-0.5.1.tar.gz
-	tar xfz yaml-cpp-0.5.1.tar.gz
+	wget $DEPENDENCIES_URL/yaml-cpp-yaml-cpp-0.6.3.tar.gz
+	wget $DEPENDENCIES_URL/yaml-cpp-0.6.3-fix.patch
+	rm -rf yaml-cpp-yaml-cpp-0.6.3
+	tar xfz yaml-cpp-yaml-cpp-0.6.3.tar.gz
+	mv yaml-cpp-yaml-cpp-0.6.3 yaml-cpp-0.6.3
 	cd $YAMLCPP_DIR
+	patch -p1 < ../yaml-cpp-0.6.3-fix.patch
 	mkdir build
 	cd build
 	if [ $OS != "Windows_NT" ]; then
-		BOOST_ROOT=$BOOST_DIR $CMAKE_DIR/bin/cmake -DCMAKE_INSTALL_PREFIX=$YAMLCPP_DIR/target -DYAML_CPP_BUILD_CONTRIB=OFF ..
+		$CMAKE_DIR/bin/cmake -DCMAKE_INSTALL_PREFIX=$YAMLCPP_DIR/target -DYAML_CPP_BUILD_CONTRIB=OFF ..
 	else
-		BOOST_ROOT=$BOOST_DIR /usr/bin/cmake -G"Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$YAMLCPP_DIR/target -DYAML_CPP_BUILD_CONTRIB=OFF ..
+		/usr/bin/cmake -G"Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$YAMLCPP_DIR/target -DYAML_CPP_BUILD_CONTRIB=OFF ..
 	fi
 	make -j $MAKE_JOBS install
 fi

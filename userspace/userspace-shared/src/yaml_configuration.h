@@ -2,6 +2,8 @@
 #include "Poco/File.h"
 #include "Poco/Exception.h"
 #pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <yaml-cpp/yaml.h>
 #pragma GCC diagnostic pop
@@ -117,6 +119,10 @@ public:
 		{
 			m_errors.emplace_back(std::string("Config file error."));
 		}
+		catch (const std::exception & ex)
+		{
+			m_errors.emplace_back(std::string("Config file exception:") + ex.what());
+		}
 		return ret;
 	}
 
@@ -197,15 +203,22 @@ public:
 
 			try
 			{
-				auto node = (*itr)[key];
-				if (node.IsDefined())
+				if (!(*itr).IsDefined() || !(*itr).IsMap() ||
+					!(*itr)[key].IsDefined())
 				{
-					value = node.as<T>();
-					return std::distance(m_roots.begin(), itr);
+					continue;
 				}
-			} catch (const YAML::BadConversion& ex)
+				auto node = (*itr)[key];
+				value = node.as<T>();
+				return std::distance(m_roots.begin(), itr);
+			}
+			catch (const YAML::BadConversion& ex)
 			{
 				m_errors.emplace_back(std::string("Config file error at key: ") + key);
+			}
+			catch (const std::exception & ex)
+			{
+				m_errors.emplace_back(std::string("Config file exception at key: ") + key + ", message: " + ex.what());
 			}
 		}
 
@@ -240,16 +253,23 @@ public:
 		{
 			try
 			{
-				auto node = (*itr)[key][subkey];
-				if (node.IsDefined())
+				if (!(*itr).IsDefined() || !(*itr).IsMap() ||
+					!(*itr)[key].IsDefined() || !(*itr)[key].IsMap() ||
+					!(*itr)[key][subkey].IsDefined())
 				{
-					value = node.as<T>();
-					return std::distance(m_roots.begin(), itr);
+					continue;
 				}
+				auto node = (*itr)[key][subkey];
+				value = node.as<T>();
+				return std::distance(m_roots.begin(), itr);
 			}
 			catch (const YAML::BadConversion& ex)
 			{
 				m_errors.emplace_back(std::string("Config file error at key: ") + key + "." + subkey);
+			}
+			catch (const std::exception & ex)
+			{
+				m_errors.emplace_back(std::string("Config file exception at key: ") + key + "." + subkey + ", message: " + ex.what());
 			}
 		}
 
@@ -288,16 +308,24 @@ public:
 		{
 			try
 			{
-				auto node = (*itr)[key][subkey][subsubkey];
-				if (node.IsDefined())
+				if (!(*itr).IsDefined() || !(*itr).IsMap() ||
+					!(*itr)[key].IsDefined() || !(*itr)[key].IsMap() ||
+					!(*itr)[key][subkey].IsDefined() || !(*itr)[key][subkey].IsMap() ||
+					!(*itr)[key][subkey][subsubkey].IsDefined())
 				{
-					value = node.as<T>();
-					return std::distance(m_roots.begin(), itr);
+					continue;
 				}
+				auto node = (*itr)[key][subkey][subsubkey];
+				value = node.as<T>();
+				return std::distance(m_roots.begin(), itr);
 			}
 			catch (const YAML::BadConversion& ex)
 			{
-				m_errors.emplace_back(std::string("Config file error at key: ") + key + "." + subkey);
+				m_errors.emplace_back(std::string("Config file error at key: ") + key + "." + subkey + "." + subsubkey);
+			}
+			catch (const std::exception & ex)
+			{
+				m_errors.emplace_back(std::string("Config file exception at key: ") + key + "." + subkey + "." + subsubkey + ", message: " + ex.what());
 			}
 		}
 
@@ -508,6 +536,10 @@ private:
 	template <typename T>
 	static void get_sequence(T& ret, const YAML::Node& node, const std::string& name)
 	{
+		if (!node.IsDefined() || !node.IsMap())
+		{
+			return;
+		}
 		YAML::Node child_node = node[name];
 		if(child_node.IsDefined())
 		{
@@ -528,8 +560,10 @@ private:
 	template<typename T, typename... Args>
 	static void get_sequence(T& ret, const YAML::Node& node, const std::string& arg1, Args... args)
 	{
-		YAML::Node child_node = node[arg1];
-		get_sequence(ret, child_node, args...);
+		if (node.IsDefined() && node.IsMap())
+		{
+			get_sequence(ret, node[arg1], args...);
+		}
 	}
 
 	bool add_root(YAML::Node&& root)
@@ -550,4 +584,4 @@ private:
 	mutable std::vector<std::string> m_warnings;
 	mutable std::vector<std::string> m_debugs;
 };
-
+#pragma GCC diagnostic pop

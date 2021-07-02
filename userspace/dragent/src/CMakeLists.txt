@@ -76,6 +76,7 @@ list(
     metrics_rest_request_helper.cpp
     monitor.cpp
     null_message_handler.cpp
+    prom_config_file_manager.cpp
     protocol.cpp
     running_state.cpp
     security_action.cpp
@@ -230,7 +231,7 @@ install(
 )
 
 install(
-    FILES prometheus-v2.default.yaml prometheus-v1.default.yaml
+    FILES prometheus-v2.default.yaml prometheus-v1.default.yaml promscrape.yaml
     DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
     COMPONENT agent-slim
 )
@@ -254,7 +255,7 @@ install(
 )
 
 install(
-    FILES prometheus-v2.default.yaml
+    FILES prometheus-v2.default.yaml prometheus-v1.default.yaml promscrape.yaml
     DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
     COMPONENT agentone
 )

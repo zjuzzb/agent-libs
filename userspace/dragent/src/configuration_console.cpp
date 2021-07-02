@@ -5,6 +5,7 @@
 #include <fstream>
 #include <yaml-cpp/yaml.h>
 #include <vector>
+#include <algorithm>
 
 namespace
 {

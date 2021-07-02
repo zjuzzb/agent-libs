@@ -9,12 +9,14 @@ class monitored_process
 public:
 	monitored_process(std::string name,
 	                  std::function<int(void)>&& exec,
-	                  bool is_main = false)
+	                  bool is_main = false,
+	                  bool send_sighup = false)
 	    : m_name(std::move(name)),
 	      m_main(is_main),
 	      m_exec(exec),
 	      m_pid(0),
-	      m_enabled(true)
+	      m_enabled(true),
+	      m_send_sighup(send_sighup)
 	{
 	}
 
@@ -39,6 +41,7 @@ public:
 	std::function<int(void)> m_exec;
 	pid_t m_pid;
 	bool m_enabled;
+	bool m_send_sighup;
 };
 
 class monitor
@@ -58,7 +61,6 @@ public:
 	}
 
 	void set_cleanup_function(std::function<void(void)>&& f) { m_cleanup_function = f; }
-
 private:
 	std::function<void(void)> m_cleanup_function;
 	std::string m_pidfile;
