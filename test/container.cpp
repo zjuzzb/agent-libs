@@ -1,6 +1,7 @@
 #define VISIBILITY_PRIVATE
 
 #include "common_logger.h"
+#include "configuration_manager.h"
 #include "docker_utils.h"
 #include "event_capture.h"
 #include "scap-int.h"
@@ -690,6 +691,14 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 	volatile bool done = false;
 	proc test_proc = proc("./test_helper", {"custom_container"});
 
+	configuration_manager::instance()
+	    .get_mutable_config<std::string>("substitute_container_label_value_char")
+	    ->set("/");
+
+	const std::string labels[] = {"label'babel", "mabel/label", "làbel"};
+	//accented character is wide and get replaced by substitution char two times
+	const std::string expected_labels[] = {"label/babel", "mabel/label", "l//bel"};
+
 	event_filter_t filter = [&](sinsp_evt* evt) {
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
 		if (tinfo)
@@ -723,6 +732,9 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
 		EXPECT_EQ("custom_name", container_info->m_name);
 		EXPECT_EQ("custom_image", container_info->m_image);
+		EXPECT_EQ(expected_labels[0], container_info->m_labels.at("custom_container_1"));
+		EXPECT_EQ(expected_labels[1], container_info->m_labels.at("custom_container_2"));
+		EXPECT_EQ(expected_labels[2], container_info->m_labels.at("custom_container_3"));
 
 		done = true;
 	};
@@ -739,8 +751,9 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 		res.set_max_id_length(50);
 		res.set_enabled(true);
 		// exercise label sanitizing:
-		res.set_label_pattern("custom_container_1", "label'babel"); // will change
-		res.set_label_pattern("custom_container_2", "mabel/label"); // will not change
+		res.set_label_pattern("custom_container_1", labels[0]);
+		res.set_label_pattern("custom_container_2", labels[1]);
+		res.set_label_pattern("custom_container_3", labels[2]);
 		analyzer->set_custom_container_conf(move(res));
 	};
 
