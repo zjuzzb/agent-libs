@@ -201,6 +201,11 @@ public:
 	bool percentile(int pct, double& val);
 
 	/**
+	 * Returns whether its a duplicated host metric or not.
+     */
+	bool is_duplicate_host_metric() const;
+
+	/**
 	 * Returns the tags associated with this statsd_metric.
 	 */
 	const std::map<std::string, std::string>& tags() const;

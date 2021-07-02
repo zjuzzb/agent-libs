@@ -38,6 +38,16 @@ counts.totam.sunt.consequatur.numquam.aperiam1|85.000000|1432288305
 counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam3|86.000000|1432288305
 counts.totam.sunt.consequatur.numquam.aperiam2|85.000000|1432288305)EOF";
 
+const std::string STATSITE_DUP_OUTPUT =
+    R"EOF(gauges.3d8ff2b01716$tests.bia.failed#tests.name=watson-discovery.available,tests.area_negocio=agencias,tests.instance_id=us-south|0.000000|1624727085
+gauges.3d8ff2b01716$tests.bia.failed#tests.name=postgre.available,tests.area_negocio=agencias|0.000000|1624727085
+gauges.3d8ff2b01716$tests.bia.failed#tests.name=watson-assistant.available,tests.area_negocio=agencias,tests.instance_id=us-south|0.000000|1624727085
+gauges.$tests.bia.failed#tests.name=watson-assistant.available,tests.area_negocio=agencias,tests.instance_id=us-south|0.000000|1624727085
+gauges.$tests.bia.failed#tests.name=postgre.available,tests.area_negocio=agencias|0.000000|1624727085
+gauges.$tests.bia.failed#tests.name=watson-assistant.logsworking,tests.area_negocio=agencias,tests.instance_id=us-south|0.000000|1624727085
+gauges.3d8ff2b01716$tests.bia.failed#tests.name=watson-assistant.logsworking,tests.area_negocio=agencias,tests.instance_id=us-south|0.000000|1624727085
+gauges.$tests.bia.failed#tests.name=watson-discovery.available,tests.area_negocio=agencias,tests.instance_id=us-south|0.000000|1624727085)EOF";
+
 const std::string STATSITE_OUTPUT_LONG =
     ""
     "counts.totam.sunt.consequatur.numquam.aperiamRRRRRRRRRRRRRRRRR"
@@ -196,6 +206,34 @@ TEST(statsite_proxy_test, parser)
 		{
 			EXPECT_TRUE(found_set.find(ref) != found_set.end())
 			    << ref << " not found for " << item.first;
+		}
+	}
+}
+
+// same as parser test but we are handling host metric duplicates
+// to see if we are getting the correct count and
+// if the duplicate flag is set correctly.
+TEST(statsite_proxy_test, dup_parser)
+{
+	scoped_fmemopen output_file(STATSITE_DUP_OUTPUT.size(), "r", STATSITE_DUP_OUTPUT);
+	scoped_fmemopen input_file(2, "w");
+
+	statsite_proxy proxy(std::make_pair(input_file.get_file(), output_file.get_file()));
+
+	const auto ret = proxy.read_metrics();
+	EXPECT_EQ(2U, ret.size());
+	EXPECT_EQ(4U, std::get<0>(ret.at("")).size());
+	EXPECT_EQ(4U, std::get<0>(ret.at("3d8ff2b01716")).size());
+
+	for (const auto& item : ret)
+	{
+		for (const auto& m : std::get<0>(item.second))
+		{
+			if (m.container_id().empty()) {
+				EXPECT_TRUE(m.is_duplicate_host_metric());
+			} else {
+				EXPECT_FALSE(m.is_duplicate_host_metric());
+			}
 		}
 	}
 }

@@ -98,47 +98,6 @@ bool statsd_metric::parse_line(const std::string& line)
 		const auto name_and_container_id_split = sinsp_split(name_and_container_id,
 		                                                     CONTAINER_ID_SEPARATOR);
 
-		if(name_and_container_id_split.size() > 1)
-		{
-			const auto& name = name_and_container_id_split.at(1);
-			if(m_full_identifier_parsed && m_name != name)
-			{
-				return false;
-			}
-			m_name = name;
-
-			if (name_and_container_id_split.at(0).empty()) 
-			{
-				// If the container id is empty then this is a
-				// container metric that we're duplicating to
-				// the host
-				m_container_metric_duplicated_to_host = true;
-			}
-			else 
-			{
-				auto container_id = desanitize_container_id(name_and_container_id_split.at(0));
-				if(m_full_identifier_parsed && m_container_id != container_id)
-				{
-					return false;
-				}
-				m_container_id = std::move(container_id);
-			}
-		}
-		else
-		{
-			const auto& name = name_and_container_id;
-			if(m_full_identifier_parsed && m_name != name)
-			{
-				return false;
-			}
-			m_name = name;
-
-			if(m_full_identifier_parsed && !m_container_id.empty())
-			{
-				return false;
-			}
-		}
-
 		if(name_and_tags_tokens.size() > 1)
 		{
 			decltype(m_tags) new_tags;
@@ -169,6 +128,51 @@ bool statsd_metric::parse_line(const std::string& line)
 			}
 			m_tags = move(new_tags);
 		}
+
+		if(name_and_container_id_split.size() > 1)
+		{
+			const auto& name = name_and_container_id_split.at(1);
+			if(m_full_identifier_parsed && m_name != name)
+			{
+				return false;
+			}
+			m_name = name;
+
+			auto container_id = desanitize_container_id(name_and_container_id_split.at(0));
+			if(m_full_identifier_parsed && m_container_id != container_id)
+			{
+				return false;
+			}
+			m_container_id = std::move(container_id);
+			
+			if (m_container_id.empty()) 
+			{
+				// If the container id is empty then this is a
+				// container metric that we're duplicating to
+				// the host
+				// This should always be the last parsed variable
+				// set for the following reason:
+				// We need to handle the special case of container and duplicate
+				// host metric being emitted next to each other in the buffer.
+				m_container_metric_duplicated_to_host = true;
+			}
+		}
+		else
+		{
+			const auto& name = name_and_container_id;
+			if(m_full_identifier_parsed && m_name != name)
+			{
+				return false;
+			}
+			m_name = name;
+
+			if(m_full_identifier_parsed && !m_container_id.empty())
+			{
+				return false;
+			}
+		}
+
+
 
 		m_full_identifier_parsed = true;
 
@@ -390,6 +394,12 @@ bool statsd_metric::percentile(const int pct, double& val)
 	}
 	return false;
 }
+
+bool statsd_metric::is_duplicate_host_metric() const
+{
+	return m_container_metric_duplicated_to_host;
+}
+
 const std::map<std::string, std::string>& statsd_metric::tags() const
 {
 	return m_tags;
@@ -412,6 +422,7 @@ std::string statsd_metric::to_debug_string() const
 	out << "max:            " << m_max                  << std::endl;
 	out << "count:          " << m_count                << std::endl;
 	out << "stdev:          " << m_stdev                << std::endl;
+	out << "duplicate:      " << (m_container_metric_duplicated_to_host ? "true" : "false") << std::endl;
 	out << "tags: {" << std::endl;
 	for(const auto& i : m_tags)
 	{

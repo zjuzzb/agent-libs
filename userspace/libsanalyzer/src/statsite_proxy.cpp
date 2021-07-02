@@ -134,6 +134,7 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 			char* buffer = &dyn_buffer[0];
 
 			LOG_TRACE("Received from statsite: %s", buffer);
+			LOG_TRACE("Previous metric parsed: %s", m_metric.to_debug_string().c_str());
 			try
 			{
 				bool parsed = m_metric.parse_line(buffer);
@@ -172,6 +173,7 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 					m_metric = statsd_metric();
 
 					parsed = m_metric.parse_line(buffer);
+					LOG_DEBUG("Current metric parsed: %s", m_metric.to_debug_string().c_str());
 					ASSERT(parsed == true);
 					if (timestamp < m_metric.timestamp())
 					{
