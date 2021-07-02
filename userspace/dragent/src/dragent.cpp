@@ -1128,6 +1128,10 @@ void dragent_app::log_sysinfo()
 	if (error == 0)
 	{
 		LOG_INFO("System uptime: " + NumberFormatter::format(info.uptime) + "s");
+		LOG_INFO(
+		    "Total physical memory: " +
+		    Poco::NumberFormatter::format(info.totalram * info.mem_unit / 1024.0 / 1024 / 1024, 2) +
+		    " GiB");
 	}
 	else
 	{
@@ -1142,6 +1146,8 @@ void dragent_app::log_sysinfo()
 	{
 		LOG_WARNING("Cannot get kernel version");
 	}
+
+	LOG_INFO("Number of processors: " + NumberFormatter::format(sysconf(_SC_NPROCESSORS_ONLN)));
 }
 
 
