@@ -17,9 +17,8 @@ const std::uint32_t MAX_LINE_COUNT = 5000;
 
 std::string get_last_lines(const std::string&file, int line_count)
 {
-	static const std::string filename = "/opt/draios/logs/draios.log";
 	size_t const granularity = 100 * line_count;
-	std::ifstream source(filename.c_str(), std::ios_base::in);
+	std::ifstream source(file.c_str(), std::ios_base::in);
 	source.seekg(0, std::ios_base::end);
 	size_t size = static_cast<size_t>(source.tellg());
 	std::vector<char> buffer(0);
@@ -63,7 +62,6 @@ void init( const std::string &file)
 
 				   for (const auto &arg : args)
 				   {
-					   // On linux the command is 
 					   if (arg.first != "lines" && arg.first != "n")
 					   {
 						   THROW_CLI_ERROR("tail-log command does not support the following argument: %s", arg.first.c_str());
