@@ -112,6 +112,7 @@ public:
 		uint64_t last_total_samples;
 		tag_map_t add_tags;
 		bool bypass_limits;
+		bool stale;
 		bool omit_source;		// Don't send source_metadata
 	} prom_job_config;
 
@@ -251,6 +252,7 @@ private:
 	void applyconfig();
 	void handle_result(agent_promscrape::ScrapeResult &result);
 	void prune_jobs(uint64_t ts);
+	void delete_job(int64_t job_id);
 
 	std::shared_ptr<agent_promscrape::ScrapeResult> get_job_result_ptr(uint64_t job_id,
 		prom_job_config *config_copy);
@@ -289,6 +291,7 @@ private:
 	bool m_resend_config;
 	interval_cb_t m_interval_cb;
 	uint64_t m_last_proto_ts = 0;
+	uint64_t m_last_prune_ts = 0;
 
 	// Mutex to protect m_export_pids
 	std::mutex m_export_pids_mutex;
