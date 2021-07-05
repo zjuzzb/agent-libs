@@ -19,7 +19,12 @@ if [ -z "$AGENT_VERSION" ]; then
     AGENT_VERSION="0.1.1dev"
 fi
 if [ -z "$AGENT_BUILD_DATE" ]; then
-    AGENT_BUILD_DATE="`date`"
+    AGENT_BUILD_DATE="`date -u -Iseconds`"
+fi
+if [ -z "$AGENT_BUILD_COMMIT" ]; then
+    pushd $CODE_DIR/agent/
+        AGENT_BUILD_COMMIT="`git rev-parse --short HEAD`"
+    popd
 fi
 if [ -z $STATSITE_VERSION ]; then
   STATSITE_VERSION=0.7.0-sysdig7
