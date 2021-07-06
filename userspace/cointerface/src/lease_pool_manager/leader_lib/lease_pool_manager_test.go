@@ -1,47 +1,46 @@
 package leader_lib
 
 import (
-	"context"
-	"fmt"
-	log "github.com/cihub/seelog"
-	"sync"
+	"github.com/draios/protorepo/sdc_internal"
+	"github.com/gogo/protobuf/proto"
+	"io/ioutil"
+	"os"
 	"testing"
-	"time"
 )
 
-func TestHugeCluster(t *testing.T) {
-
-	hostNum:= 10
-	leaseNum:= 4
-	// This test requires Kubernetes. Skipping
-	// t.Skip()
-	// Let simulate some nodes. We want to do "N" (leaseNum) coldstarts at the same time
-	client := createClientSet()
-	var wg sync.WaitGroup
-
-	hostSimulator := func(i int) {
-		defer wg.Done()
-		coldstartManager := LeasePoolManager{}
-		coldstartManager.Init(fmt.Sprintf("host-%d", i), "coldstart", uint32(leaseNum), client)
-		log.Debugf("Host %s starts waiting for the lock at %d", coldstartManager.GetId(), time.Now().Unix())
-		coldstartManager.WaitLock(0, context.TODO())
-		log.Debugf("Host %s starts the coldstart at %d", coldstartManager.GetId(), time.Now().Unix())
-		// Keep the lock for same time
-		time.Sleep(time.Second * 60)
-		coldstartManager.Release()
-		log.Debugf("Host %s ends the coldstart at %d", coldstartManager.GetId(), time.Now().Unix())
+func TestGetLeaseNamespace(t *testing.T) {
+	conf := sdc_internal.LeaderElectionConf{
+		LeaseDuration:        nil,
+		RenewDeadline:        nil,
+		RetryPeriod:          nil,
+		Namespace:            proto.String("marIonio"),
 	}
 
-	start := time.Now().Unix()
+	lpm := LeasePoolManager{}
+	var nsPath = "/tmp/ns"
+	defer os.Remove(nsPath)
+	lpm.setLeaseNamespace(&conf, &nsPath)
 
-	for i := 0; i< hostNum; i++ {
-		wg.Add(1)
-		go hostSimulator(i)
+	if *conf.Namespace != "marIonio" {
+		t.Fail()
 	}
 
-	wg.Wait()
+	*conf.Namespace = ""
 
-	end := time.Now().Unix()
+	lpm.setLeaseNamespace(&conf, &nsPath)
 
-	log.Debugf("Coldstarts completed in %d secs", end - start)
+	if *conf.Namespace != "sysdig-agent" {
+		t.Fail()
+	}
+
+	*conf.Namespace = ""
+
+	ioutil.WriteFile(nsPath, []byte("marTirreno"), 0644)
+
+	lpm.setLeaseNamespace(&conf, &nsPath)
+
+	if *conf.Namespace != "marTirreno" {
+		t.Fail()
+	}
 }
+

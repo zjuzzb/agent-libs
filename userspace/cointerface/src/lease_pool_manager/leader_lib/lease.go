@@ -36,22 +36,7 @@ type (
 	}
 )
 
-func (s *Lease) haveLeasePermission(p kubeclient.Interface, leaderElectionConfig *sdc_internal.LeaderElectionConf) error {
-	_, err := p.CoordinationV1().Leases(leaderElectionConfig.GetNamespace()).List(context.TODO(), metav1.ListOptions{})
-
-	if err != nil {
-		log.Errorf("Cannot access leases objects: %s", err.Error())
-	}
-
-	return err
-}
-
 func (s *Lease) init(p kubeclient.Interface, id string, leaseName string, leaderElectionConfig sdc_internal.LeaderElectionConf, callback func(theLeader *Lease)) error {
-	// Check for Coordination/Leases permission
-	if err := s.haveLeasePermission(p, &leaderElectionConfig); err != nil {
-		return err
-	}
-
 	s.id = id
 	s.leaseName = leaseName
 	s.lock = resourcelock.LeaseLock{

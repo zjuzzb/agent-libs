@@ -3,6 +3,7 @@ package leader_lib
 import (
 	"fmt"
 	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"testing"
@@ -39,7 +40,7 @@ func TestBasic(t *testing.T) {
 	//client := fake.NewSimpleClientset()
 	client := createClientSet()
 
-	s := NewLease(client, "host-1", "coldstart", mycallback)
+	s, _ := NewLease(client, "host-1", "coldstart", sdc_internal.LeaderElectionConf{}, mycallback)
 
 	s.Run()
 
@@ -64,7 +65,7 @@ func TestManyHosts(t *testing.T) {
 
 	// Create the hosts
 	for i := 0; i<10; i++ {
-		host := NewLease(clientset, fmt.Sprintf("host-%d", i), "coldstart", callback)
+		host, _ := NewLease(clientset, fmt.Sprintf("host-%d", i), "coldstart", sdc_internal.LeaderElectionConf{}, callback)
 		hosts = append(hosts, host)
 	}
 
