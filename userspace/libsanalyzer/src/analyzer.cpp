@@ -5794,14 +5794,14 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, libsinsp::event_return rc)
 		//
 		tainfo->m_th_analysis_flags &= ~(thread_analyzer_info::AF_PARTIAL_METRIC);
 
-		delta = ts - m_prev_flush_time_ns;
+		delta = (ts > m_prev_flush_time_ns) ? ts - m_prev_flush_time_ns : 0;
 	}
 	else
 	{
 		//
 		// Normal event that falls completely inside this sample
 		//
-		delta = ts - evt->m_tinfo->m_lastevent_ts;
+		delta = (ts > evt->m_tinfo->m_lastevent_ts) ? ts - evt->m_tinfo->m_lastevent_ts : 0;
 	}
 
 	//
