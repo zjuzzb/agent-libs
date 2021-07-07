@@ -165,6 +165,7 @@ set(SANALYZER_SOURCES
     secure_netsec_util.cpp
     secure_netsec_cg.cpp
     baseliner.cpp
+    capture.cpp
     coclient.cpp
     cm_quantile.c
     connectinfo.cpp

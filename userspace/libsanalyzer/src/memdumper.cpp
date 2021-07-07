@@ -205,7 +205,7 @@ bool sinsp_memory_dumper::read_membuf_using_inspector(
 		{
 			continue;
 		}
-		else if (res != SCAP_SUCCESS && res != SCAP_TIMEOUT)
+		else if (res != SCAP_SUCCESS)
 		{
 			LOG_DEBUG("reading from %s failed: %s", state->m_shm_name.c_str(), inspector.getlasterr().c_str());
 			uint64_t prev_bytes_written = dumper_bytes_written;
@@ -237,8 +237,7 @@ bool sinsp_memory_dumper::read_membuf_using_inspector(
 		// range, have given the inspector a filter, and the
 		// inspector has determined whether or not the event
 		// qualifies.
-		job->m_n_events++;
-		job->m_dumper->dump(ev);
+		job->m_capture->dump(ev);
 	}
 
 	return true;
@@ -298,12 +297,11 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 		inspector.set_filter(job->m_filterstr);
 	}
 
-	if (job->m_dumper == NULL)
+	if (job->m_capture == NULL)
 	{
-		job->m_dumper = new sinsp_dumper(&inspector);
 		try
 		{
-			job->m_dumper->open(job->m_filename, false, true);
+			job->m_capture = capture::start(&inspector, job->m_filename);
 		}
 		catch (exception& e)
 		{
@@ -311,7 +309,6 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 			                 ". inspector_err=" + inspector.getlasterr() + " e=" + e.what();
 			job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
 			inspector.close();
-			::close(fd);
 			return;
 		}
 	}

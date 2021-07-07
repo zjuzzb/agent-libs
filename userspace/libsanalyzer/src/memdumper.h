@@ -11,6 +11,7 @@
 #include "Poco/ScopedLock.h"
 
 #include "analyzer_utils.h"
+#include "capture.h"
 #include "sinsp_int.h"
 
 /**
@@ -188,18 +189,11 @@ public:
 		m_start_time = 0;
 		m_end_time = 0;
 		m_state = ST_INPROGRESS;
-		m_dumper = NULL;
 		m_filter = NULL;
-		m_n_events = 0;
 	}
 
 	~sinsp_memory_dumper_job()
 	{
-		if(m_dumper)
-		{
-			delete m_dumper;
-		}
-
 		if(m_filter)
 		{
 			delete m_filter;
@@ -222,9 +216,8 @@ public:
 	std::string m_filename;
 	state m_state;
 	std::string m_lasterr;
-	sinsp_dumper* m_dumper;
+	std::unique_ptr<capture> m_capture;
 	sinsp_filter* m_filter;
-	uint64_t m_n_events;
 };
 
 class sinsp_memory_dumper

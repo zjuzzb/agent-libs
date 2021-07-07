@@ -50,8 +50,7 @@ public:
 			m_start_ns(0),
 			m_send_initial_keepalive(true),
 			m_delete_file_when_done(true),
-			m_send_file(true),
-			m_dumper(NULL)
+			m_send_file(true)
 		{
 		}
 
@@ -78,7 +77,7 @@ public:
 		bool m_delete_file_when_done;
 		bool m_send_file;
 		std::string m_file;
-		sinsp_dumper *m_dumper;
+		std::unique_ptr<capture> m_capture;
 	};
 
 	class stop_job_details
@@ -226,7 +225,7 @@ private:
 
 	void process_job_requests();
 	void start_job(std::string &token,
-		       const start_job_details& request);
+		       start_job_details& request);
 
 	void add_job(std::shared_ptr<capture_job> &job);
 

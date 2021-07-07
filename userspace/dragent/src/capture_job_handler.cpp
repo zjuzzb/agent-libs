@@ -1,4 +1,5 @@
 #include "capture_job_handler.h"
+#include "capture.h"
 #include "configuration_manager.h"
 #include "dragent_message_queues.h"
 #include "feature_manager.h"
@@ -59,7 +60,7 @@ public:
 	// objects intact.
 	bool start(sinsp* inspector,
 	           string& token,
-	           const capture_job_queue_handler::start_job_details& details,
+	           capture_job_queue_handler::start_job_details& details,
 	           string& errstr,
 	           std::shared_ptr<capture_job>& job_state);
 	void stop(bool remove_unsent_job = false);
@@ -88,7 +89,7 @@ private:
 	sinsp_memory_dumper* m_memdumper;
 	uint64_t m_max_chunk_size;
 	string m_token;
-	sinsp_dumper* m_dumper;
+	std::unique_ptr<capture> m_capture;
 	sinsp_filter* m_filter;
 	uint64_t m_start_ns;
 	uint64_t m_duration_ns;
@@ -108,7 +109,6 @@ private:
 	// This can be read in process_event and written in flush(),
 	// which are in different threads.
 	atomic<uint64_t> m_file_size;
-	atomic<uint64_t> m_n_events;
 	atomic<state> m_state;
 
 	// These are only read/written from flush()/cleanup_jobs()
@@ -136,7 +136,6 @@ capture_job::capture_job(capture_job_handler* handler,
       m_configuration(configuration),
       m_memdumper(memdumper),
       m_max_chunk_size(max_chunk_size),
-      m_dumper(NULL),
       m_filter(NULL),
       m_start_ns(0),
       m_duration_ns(0),
@@ -148,7 +147,6 @@ capture_job::capture_job(capture_job_handler* handler,
       m_defer_send(false),
       m_fp(NULL),
       m_file_size(0),
-      m_n_events(0),
       m_state(ST_INPROGRESS),
       m_keepalive_interval(keepalive_interval_ns),
       m_last_chunk_offset(0),
@@ -160,7 +158,6 @@ capture_job::capture_job(capture_job_handler* handler,
 
 capture_job::~capture_job()
 {
-	delete m_dumper;
 	delete m_filter;
 
 	if (m_fp)
@@ -180,7 +177,7 @@ capture_job::~capture_job()
 
 bool capture_job::start(sinsp* inspector,
                         string& token,
-                        const capture_job_queue_handler::start_job_details& details,
+                        capture_job_queue_handler::start_job_details& details,
                         string& errstr,
                         std::shared_ptr<capture_job>& job_state)
 {
@@ -243,7 +240,7 @@ bool capture_job::start(sinsp* inspector,
 
 	if (details.m_past_duration_ns == 0)
 	{
-		m_dumper = details.m_dumper;
+		m_capture = std::move(details.m_capture);
 		m_handler->add_job(job_state);
 	}
 	else
@@ -286,16 +283,14 @@ bool capture_job::start(sinsp* inspector,
 			return false;
 		}
 
-		// We want the sinsp_dumper from memjob, but otherwise
+		// We want the capture from memjob, but otherwise
 		// we can immediately delete it.
-		m_n_events = memjob->m_n_events;
-		m_dumper = memjob->m_dumper;
-		memjob->m_dumper = NULL;
+		m_capture = std::move(memjob->m_capture);
 
-		// Set the inspector of the dumper to the live
+		// Set the inspector of the capture to the live
 		// inspector. This inspector is only used to hold
 		// things like error messages, but should be valid.
-		m_dumper->set_inspector(m_handler->m_inspector);
+		m_capture->set_inspector(m_handler->m_inspector);
 
 		// Before releasing the memdumper lock, lock the list
 		// of jobs and add this job to the list. Otherwise
@@ -311,6 +306,7 @@ bool capture_job::start(sinsp* inspector,
 	if (m_fp == NULL)
 	{
 		errstr = strerror(errno);
+		m_capture = nullptr;
 		return false;
 	}
 
@@ -336,7 +332,7 @@ void capture_job::stop(bool remove_unsent_job)
 		return;
 	}
 
-	log_information("stopped. captured events: " + NumberFormatter::format(m_n_events));
+	log_information("stopped. captured events: " + NumberFormatter::format(m_capture->get_num_events()));
 
 	if (m_past_duration_ns != 0 && m_memdumper == NULL)
 	{
@@ -361,8 +357,7 @@ void capture_job::stop(bool remove_unsent_job)
 	}
 
 	// Delete the dumper so any pending data is written to the file.
-	delete m_dumper;
-	m_dumper = NULL;
+	m_capture = nullptr;
 }
 
 void capture_job::send_start()
@@ -469,8 +464,7 @@ void capture_job::process_event(sinsp_evt* ev)
 		return;
 	}
 
-	m_dumper->dump(ev);
-	++m_n_events;
+	m_capture->dump(ev);
 }
 
 bool capture_job::is_complete()
@@ -820,18 +814,17 @@ bool capture_job_handler::queue_job_request(sinsp* inspector,
 
 		if (job_request->m_start_details->m_past_duration_ns == 0)
 		{
-			sinsp_dumper* dumper = new sinsp_dumper(inspector);
-			dumper->open(job_request->m_start_details->m_file, true, true);
-			job_request->m_start_details->m_dumper = dumper;
+			job_request->m_start_details->m_capture =
+			    capture::start(inspector,
+			                   job_request->m_start_details->m_file);
 		}
 	}
 
 	if (!m_dump_job_requests.put(job_request))
 	{
-		if (job_request->m_start_details && job_request->m_start_details->m_dumper)
+		if (job_request->m_start_details)
 		{
-			delete job_request->m_start_details->m_dumper;
-			job_request->m_start_details->m_dumper = NULL;
+			job_request->m_start_details->m_capture = nullptr;
 		}
 		errstr = "Capture job handler queue full";
 		return false;
@@ -972,7 +965,7 @@ void capture_job_handler::process_job_requests()
 	}
 }
 
-void capture_job_handler::start_job(string& token, const start_job_details& details)
+void capture_job_handler::start_job(string& token, start_job_details& details)
 {
 	std::shared_ptr<capture_job> job_state = make_shared<capture_job>(this,
 	                                                                  m_configuration,
