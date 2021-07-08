@@ -431,7 +431,7 @@ TEST(secure_audit_test, executed_commands_per_container_limit_default)
 	    "secure_audit_streams.executed_commands",
 	    true);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	// c_secure_audit_executed_commands_per_container_limit is 30 by default
 
@@ -460,7 +460,7 @@ TEST(secure_audit_test, executed_commands_per_container_limit_unlimited)
 	                                                0);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 	test_helpers::scoped_config<bool> enable_secure_audit_filter("secure_audit_filter.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -477,7 +477,7 @@ TEST(secure_audit_test, executed_commands_per_container_limit_2)
 	test_helpers::scoped_config<bool> enable_executed_commands(
 	    "secure_audit_streams.executed_commands",
 	    true);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	// 2 < 5 (# different commands)
 	test_helpers::scoped_config<int> commands_limit(
@@ -512,7 +512,7 @@ TEST(secure_audit_test, executed_commands_per_container_limit_5)
 
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -539,7 +539,7 @@ TEST(secure_audit_test, executed_commands_per_container_limit_7)
 
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
 
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -564,7 +564,7 @@ TEST(secure_audit_test, executed_commands_per_container_limit_50)
 	    "secure_audit_streams.executed_commands_per_container_limit",
 	    50);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -591,7 +591,7 @@ TEST(secure_audit_test, executed_commands_per_container_limit_70)
 	    "secure_audit_streams.executed_commands_per_container_limit",
 	    70);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -614,7 +614,7 @@ TEST(secure_audit_test, executed_commands_disabled)
 	    "secure_audit_streams.executed_commands",
 	    false);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -629,7 +629,7 @@ TEST(secure_audit_test, audit_disabled)
 	    "secure_audit_streams.executed_commands",
 	    true);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -647,7 +647,7 @@ TEST(secure_audit_test, executed_commands_limit_2)
 	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
 	                                                2);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -671,7 +671,7 @@ TEST(secure_audit_test, executed_commands_limit_20)
 	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
 	                                                20);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -695,7 +695,7 @@ TEST(secure_audit_test, executed_commands_limit_1000)
 	test_helpers::scoped_config<int> commands_limit("secure_audit_streams.executed_commands_limit",
 	                                                1000);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -722,7 +722,7 @@ TEST(secure_audit_test, executed_commands_limit_2_no_per_container_bound)
 	    "secure_audit_streams.executed_commands_per_container_limit",
 	    0);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -749,7 +749,7 @@ TEST(secure_audit_test, executed_commands_limit_10_no_per_container_bound)
 	    "secure_audit_streams.executed_commands_per_container_limit",
 	    0);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -776,7 +776,7 @@ TEST(secure_audit_test, executed_commands_limit_100_no_per_container_bound)
 	    "secure_audit_streams.executed_commands_per_container_limit",
 	    0);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	executed_commands_build_and_test_generic(0, 0, 0);
 	executed_commands_build_and_test_generic(1, 1, 1);
@@ -1315,7 +1315,7 @@ TEST(secure_audit_test, file_writes_disabled)
 	    "secure_audit_streams.file_writes_only_interactive",
 	    false);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1344,7 +1344,7 @@ TEST(secure_audit_test, file_writes_interactive)
 	    "secure_audit_streams.file_writes_only_interactive",
 	    true);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1373,7 +1373,7 @@ TEST(secure_audit_test, file_writes_not_interactive_filtered)
 	    "secure_audit_streams.file_writes_only_interactive",
 	    true);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1402,7 +1402,7 @@ TEST(secure_audit_test, file_writes_blacklisted)
 	    "secure_audit_streams.file_writes_only_interactive",
 	    true);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1443,7 +1443,7 @@ TEST(secure_audit_test, file_writes_excluded)
 	    "secure_audit_streams.file_writes_exclude",
 	    {"/home/excluded_file", "/home/excluded_directory/*"});
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1483,7 +1483,7 @@ TEST(secure_audit_test, file_writes_flags)
 	    "secure_audit_streams.file_writes_only_interactive",
 	    true);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1522,7 +1522,7 @@ TEST(secure_audit_test, connections_base_client)
 	    "secure_audit_streams.connections_only_interactive",
 	    false);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1552,7 +1552,7 @@ TEST(secure_audit_test, connections_limit)
 	    false);
 	test_helpers::scoped_config<int> max_connections("secure_audit_streams.connections_limit", 2);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1581,7 +1581,7 @@ TEST(secure_audit_test, connections_base_server)
 	    "secure_audit_streams.connections_only_interactive",
 	    false);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1611,7 +1611,7 @@ TEST(secure_audit_test, connections_base_client_server)
 	    "secure_audit_streams.connections_only_interactive",
 	    false);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1640,7 +1640,7 @@ TEST(secure_audit_test, connections_enabled_disabled_01)
 	    "secure_audit_streams.connections_only_interactive",
 	    false);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1669,7 +1669,7 @@ TEST(secure_audit_test, connections_enabled_disabled_10)
 	    "secure_audit_streams.connections_only_interactive",
 	    false);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1701,7 +1701,7 @@ TEST(secure_audit_test, connections_local_enabled)
 	    "secure_audit_streams.connections_local",
 	    true);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1733,7 +1733,7 @@ TEST(secure_audit_test, connections_local_disabled)
 	    "secure_audit_streams.connections_local",
 	    false);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1762,7 +1762,7 @@ TEST(secure_audit_test, connections_base_server_only_interactive_1)
 	    "secure_audit_streams.connections_only_interactive",
 	    true);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1791,7 +1791,7 @@ TEST(secure_audit_test, connections_base_server_only_interactive_2)
 	    "secure_audit_streams.connections_only_interactive",
 	    true);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1827,7 +1827,7 @@ TEST(secure_audit_test, connections_cmdline_maxlen_20)
 	    "secure_audit_streams.connections_cmdline_maxlen",
 	    20);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -1863,7 +1863,7 @@ TEST(secure_audit_test, connections_cmdline_maxlen_150)
 	    "secure_audit_streams.connections_cmdline_maxlen",
 	    150);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -2050,7 +2050,7 @@ TEST(secure_audit_test, k8s_audit_base)
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", true);
 	test_helpers::scoped_config<bool> enable_k8s("secure_audit_streams.k8s_audit", true);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	// Create configuration with exec filter
 	std::vector<std::string> m_secure_audit_k8s_active_filters;
@@ -2294,7 +2294,7 @@ void k8s_audit_disabled(bool a, bool b)
 	test_helpers::scoped_config<bool> enable_secure_audit("secure_audit_streams.enabled", a);
 	test_helpers::scoped_config<bool> enable_k8s("secure_audit_streams.k8s_audit", b);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -2338,7 +2338,7 @@ secure_audit_streams:
 
 	test_helpers::scoped_configuration deployed_config(config);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -2381,7 +2381,7 @@ secure_audit_streams:
 
 	test_helpers::scoped_configuration deployed_config(config);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -2436,7 +2436,7 @@ secure_audit_streams:
 
 	test_helpers::scoped_configuration deployed_config(config);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -2481,7 +2481,7 @@ TEST(secure_audit_test, connections_limit_metrics)
 	    false);
 	test_helpers::scoped_config<int> max_connections("secure_audit_streams.connections_limit", 2);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;
@@ -2514,7 +2514,7 @@ TEST(secure_audit_test, file_accesses_limit_metrics)
 	    "secure_audit_streams.file_accesses_limit",
 	    2);
 	test_helpers::scoped_config<bool> enable_audit_labels("audit_labels.enabled", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	secure_audit audit;
 	secure_audit_data_ready_dummy data_ready_handler;

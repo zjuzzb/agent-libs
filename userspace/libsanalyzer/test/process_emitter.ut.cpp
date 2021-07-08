@@ -938,7 +938,7 @@ TEST(process_emitter_test, files_and_devs)
 	std::set<uint64_t> all_uids;
 	std::set<thread_analyzer_info*> emitted_processes;
 	scoped_config<bool> config("feature.file_breakdown", true);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
 	                          progtable,
 	                          progtable_by_container,
@@ -985,7 +985,7 @@ TEST(process_emitter_test, disable_files_and_devs)
 	std::set<uint64_t> all_uids;
 	std::set<thread_analyzer_info*> emitted_processes;
 	scoped_config<bool> config("feature.file_breakdown", false);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
 	                          progtable,
 	                          progtable_by_container,

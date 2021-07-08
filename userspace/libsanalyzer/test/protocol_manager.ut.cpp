@@ -40,7 +40,7 @@ TEST(protocol_manager, disabled)
 {
 	scoped_config<bool> config("feature.protocol_stats", false);
 	scoped_config<bool> config2("feature.protocol_stats_opt.force", true);
-	ASSERT_TRUE(feature_manager::instance().initialize());
+	ASSERT_TRUE(feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 	sinsp_partial_transaction trinfo;
 	auto type = protocol_manager::instance().detect_proto(nullptr,
@@ -54,7 +54,7 @@ TEST(protocol_manager, disabled)
 TEST(protocol_manager, http_enabled)
 {
 	scoped_config<bool> config("feature.http_stats", true);
-	ASSERT_TRUE(feature_manager::instance().initialize());
+	ASSERT_TRUE(feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 	sinsp_partial_transaction trinfo;
 	const uint8_t* buf = (const uint8_t*)"GET ";
@@ -65,7 +65,7 @@ TEST(protocol_manager, http_enabled)
 TEST(protocol_manager, http_disabled)
 {
 	scoped_config<bool> config("feature.http_stats", false);
-	ASSERT_TRUE(feature_manager::instance().initialize());
+	ASSERT_TRUE(feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 	sinsp_partial_transaction trinfo;
 	const uint8_t* buf = (const uint8_t*)"GET ";
@@ -76,7 +76,7 @@ TEST(protocol_manager, http_disabled)
 TEST(protocol_manager, mysql_enabled)
 {
 	scoped_config<bool> config("feature.mysql_stats", true);
-	ASSERT_TRUE(feature_manager::instance().initialize());
+	ASSERT_TRUE(feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 	sinsp_partial_transaction trinfo;
 	const uint8_t buf[6] = {0};
@@ -92,7 +92,7 @@ TEST(protocol_manager, mysql_enabled)
 TEST(protocol_manager, mysql_disabled)
 {
 	scoped_config<bool> config("feature.mysql_stats", false);
-	ASSERT_TRUE(feature_manager::instance().initialize());
+	ASSERT_TRUE(feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 	sinsp_partial_transaction trinfo;
 	const uint8_t buf[6] = {0};
@@ -108,7 +108,7 @@ TEST(protocol_manager, mysql_disabled)
 TEST(protocol_manager, postgres_enabled)
 {
 	scoped_config<bool> config("feature.postgres_stats", true);
-	ASSERT_TRUE(feature_manager::instance().initialize());
+	ASSERT_TRUE(feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 	sinsp_partial_transaction trinfo;
 	const uint8_t buf[8] = {0};
@@ -124,7 +124,7 @@ TEST(protocol_manager, postgres_enabled)
 TEST(protocol_manager, postgres_disabled)
 {
 	scoped_config<bool> config("feature.postgres_stats", false);
-	ASSERT_TRUE(feature_manager::instance().initialize());
+	ASSERT_TRUE(feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 	sinsp_partial_transaction trinfo;
 	const uint8_t buf[8] = {0};
@@ -140,7 +140,7 @@ TEST(protocol_manager, postgres_disabled)
 TEST(protocol_manager, mongodb_enabled)
 {
 	scoped_config<bool> config("feature.mongodb_stats", true);
-	ASSERT_TRUE(feature_manager::instance().initialize());
+	ASSERT_TRUE(feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 	sinsp_partial_transaction trinfo;
 	const uint8_t buf[16] = {0};
@@ -152,7 +152,7 @@ TEST(protocol_manager, mongodb_enabled)
 TEST(protocol_manager, mongodb_disabled)
 {
 	scoped_config<bool> config("feature.mongodb_stats", false);
-	ASSERT_TRUE(feature_manager::instance().initialize());
+	ASSERT_TRUE(feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 	sinsp_partial_transaction trinfo;
 	const uint8_t buf[16] = {0};

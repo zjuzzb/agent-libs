@@ -30,7 +30,7 @@ TEST(secure_netsec_cidr_test, valid_config)
 	test_helpers::scoped_config<std::string> enable_network_topology_cluster_cidr("network_topology.cluster_cidr", "98.0.0.0/10");
 	test_helpers::scoped_config<std::string> enable_network_topology_service_cidr("network_topology.service_cidr", "99.0.0.0/12");
 
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 	secure_netsec netsec;
 
 	netsec.init(nullptr, nullptr);
@@ -42,7 +42,7 @@ TEST(secure_netsec_cidr_test, cidr_config_invalid) // and valid service cidr
 	test_helpers::scoped_config<std::string> enable_network_topology_cluster_cidr("network_topology.cluster_cidr", "1.1.1.1-32");
 	test_helpers::scoped_config<std::string> enable_network_topology_service_cidr("network_topology.service_cidr", "100.0.0.0/10");
 
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 	secure_netsec netsec;
 
 	netsec.init(nullptr, nullptr);

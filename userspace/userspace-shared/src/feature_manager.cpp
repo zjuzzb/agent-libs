@@ -589,19 +589,19 @@ bool feature_manager::verify_dependencies()
 	return true;
 }
 
-bool feature_manager::initialize()
+bool feature_manager::initialize(agent_variant variant)
 {
 	for (const agent_mode_container& mode : mode_definitions)
 	{
 		if (c_agent_mode.get_value() == mode.m_name)
 		{
-			return initialize(AGENT_VARIANT_TRADITIONAL, mode.m_mode);
+			return initialize(variant, mode.m_mode);
 		}
 	}
 
 	// for backwards compatibility with "how we used to do things," if
 	// a un-found mode is found, we initialize in legacy mode
-	return initialize(AGENT_VARIANT_TRADITIONAL, AGENT_MODE_NONE);
+	return initialize(variant, AGENT_MODE_NONE);
 }
 
 bool feature_manager::initialize(agent_variant variant, agent_mode mode)
@@ -624,8 +624,9 @@ bool feature_manager::initialize(agent_variant variant, agent_mode mode)
 	m_agent_variant = variant;
 	m_agent_mode = mode;
 
-	LOG_INFO("Initializing Agent as %s variant", variant_definitions[m_agent_variant].m_name.c_str());
-	LOG_INFO("Initializing Agent in %s mode", mode_definitions[m_agent_mode].m_name.c_str());
+	LOG_INFO("Initializing Agent in %s variant and %s mode",
+	         variant_definitions[m_agent_variant].m_name.c_str(),
+	         mode_definitions[m_agent_mode].m_name.c_str());
 
 	if (m_agent_mode == AGENT_MODE_NONE)
 	{

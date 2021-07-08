@@ -208,7 +208,7 @@ protected:
 		test_helpers::scoped_config<bool> memdump("memdump.enabled", true);
 		test_helpers::scoped_config<bool> secure("security.enabled", false);
 
-		feature_manager::instance().initialize();
+		feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 		// The (global) logger only needs to be set up once
 		if(!g_log)

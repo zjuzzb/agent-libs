@@ -361,7 +361,7 @@ public:
 	 * There are two apis that function equivalently, but one allows the specification
 	 * of the mode to use, while the other uses the configured default
 	 */
-	bool initialize();
+	bool initialize(agent_variant variant);
 	bool initialize(agent_variant variant, agent_mode mode);
 
 private:

@@ -108,7 +108,7 @@ protected:
         test_helpers::scoped_config<bool> enable_network_topology_v2("network_topology.netsec_v2",
                                                                                   false);
 
-		feature_manager::instance().initialize();
+		feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 		m_netsec.init(nullptr,
 			      m_infrastructure_state);
@@ -499,7 +499,7 @@ TEST_P(secure_netsec_test_report_config, check_report_config)
 	test_helpers::scoped_config<uint64_t> enable_network_topology_report_interval("network_topology.report_interval",
 										   std::get<0>(GetParam()));
 
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 	secure_netsec netsec;
 
 	netsec.init(nullptr, nullptr);

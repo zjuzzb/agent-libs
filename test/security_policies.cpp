@@ -247,7 +247,7 @@ protected:
 		}
 
 		configuration_manager::instance().init_config(os.str());
-		feature_manager::instance().initialize();
+		feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 		m_configuration.m_max_sysdig_captures = 10;
 		security_config::instance().set_policies_v2_file(policies_file());

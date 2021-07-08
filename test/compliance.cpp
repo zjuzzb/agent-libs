@@ -188,7 +188,7 @@ protected:
 		      "  enabled: " << (m_statsd_enabled ? "true" : "false");
                 configuration_manager::instance().init_config(os.str());
 
-		feature_manager::instance().initialize();
+		feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 		m_data_handler = new protocol_handler(*m_queue);
 
