@@ -10,6 +10,7 @@
 #include "common_logger.h"
 #include "configuration.h"
 #include "protocol.h"
+#include "prom_config_file_manager.h"
 #include <string>
 
 namespace
@@ -43,6 +44,18 @@ bool config_data_message_handler::handle_message(const draiosproto::message_type
 		{
 			std::string errstr;
 
+			LOG_INFO("Received config file: %s", config_file_proto.name().c_str());
+
+			if ((config_file_proto.type() == draiosproto::config_file_type::PROM_LOCAL_CONFIG) ||
+				(config_file_proto.type() == draiosproto::config_file_type::PROM_CLUSTER_CONFIG) ||
+				(config_file_proto.type() == draiosproto::config_file_type::PROM_CLUSTER_RULES))
+			{
+				LOG_DEBUG("prom config proto: %s", config_file_proto.DebugString().c_str());
+				prom_config_file_manager::instance()->save_config(config_file_proto, errstr);
+				LOG_DEBUG("called save_prom_config, errstr: %s", errstr.c_str());
+				continue;
+			}
+
 			const int rc = m_configuration.save_auto_config(
 					config_file_proto.name(),
 					config_file_proto.content(),
@@ -69,6 +82,7 @@ bool config_data_message_handler::handle_message(const draiosproto::message_type
 				         config_file_proto.name().c_str());
 			}
 		}
+		prom_config_file_manager::instance()->update_files();
 
 		config_update::set_updated(config_updated);
 

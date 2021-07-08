@@ -1,10 +1,10 @@
 #include <gtest.h>
 #include <common_logger.h>
-#include <configuration_cli.h>
+#include <configuration_console.h>
 
 COMMON_LOGGER();
 
-TEST(configuration_cli_test, remove_sensitive_configuration)
+TEST(configuration_console_test, remove_sensitive_configuration)
 {
 
 std::string json = 
@@ -382,7 +382,7 @@ app_checks:
     log_errors: false
     name: nginx
     pattern:
-      exe: !<!> "nginx: worker process"
+      exe: "nginx: worker process"
   - check_module: apache
     conf:
       apache_status_url: "********"
@@ -498,7 +498,7 @@ app_checks:
   - check_module: php_fpm
     name: php-fpm
     pattern:
-      exe: !<!> "php-fpm: master process"
+      exe: "php-fpm: master process"
     retry: false
   - conf:
       varnishstat: "********"
@@ -539,7 +539,7 @@ watchdog:
   sinsp_worker_timeout_s: 300)";
 
 
-	auto result = configuration_cli::remove_sensitive_configuration(json);
+	auto result = configuration_console::remove_sensitive_configuration(json);
 	LOG_INFO(result);
 	ASSERT_EQ(expected, result);	
 

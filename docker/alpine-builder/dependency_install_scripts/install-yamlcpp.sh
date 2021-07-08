@@ -1,20 +1,24 @@
 #!/bin/bash
-#usage install-yamlcpp.sh <directory> <version> <url> <parallelism> <boost dir> <cmake dir>
+#usage install-yamlcpp.sh <deps-directory> <version> <yaml-dir> <url> <parallelism> <cmake dir>
 
 set -exo pipefail
 
 DEPENDENCIES_DIR=$1
 VERSION=$2
-DEPENDENCIES_URL=$3
-MAKE_JOBS=$4
-BOOST_DIRECTORY=$5
+YAML_DIR=$3
+DEPENDENCIES_URL=$4
+MAKE_JOBS=$5
 CMAKE_DIRECTORY=$6
 
 cd $DEPENDENCIES_DIR
-wget $DEPENDENCIES_URL/yaml-cpp-$VERSION.tar.gz
-tar xfz yaml-cpp-$VERSION.tar.gz
-cd yaml-cpp-$VERSION
+wget $DEPENDENCIES_URL/yaml-cpp-yaml-cpp-${VERSION}.tar.gz
+wget $DEPENDENCIES_URL/yaml-cpp-${VERSION}-fix.patch
+rm -rf yaml-cpp-yaml-cpp-${VERSION}
+tar xfz yaml-cpp-yaml-cpp-${VERSION}.tar.gz
+mv yaml-cpp-yaml-cpp-${VERSION} $YAML_DIR
+cd $YAML_DIR
+patch -p1 < $DEPENDENCIES_DIR/yaml-cpp-${VERSION}-fix.patch
 mkdir build
 cd build
-BOOST_ROOT=$BOOST_DIRECTORY $CMAKE_DIRECTORY/bin/cmake -DCMAKE_INSTALL_PREFIX=$DEPENDENCIES_DIR/yaml-cpp-$VERSION/target -DYAML_CPP_BUILD_CONTRIB=OFF ..
+$CMAKE_DIRECTORY/bin/cmake -DCMAKE_INSTALL_PREFIX=$YAML_DIR/target -DYAML_CPP_BUILD_CONTRIB=OFF ..
 make -j $MAKE_JOBS install

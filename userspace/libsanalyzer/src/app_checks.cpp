@@ -23,6 +23,11 @@ using namespace std;
 Json::Value yaml_to_json(const YAML::Node& yaml)
 {
 	Json::Value ret;
+
+	if (!yaml.IsDefined())
+	{
+		return ret;
+	}
 	switch (yaml.Type())
 	{
 	case YAML::NodeType::Scalar:
@@ -118,6 +123,7 @@ Json::Value app_check::to_json() const
 	ret["retry"] = m_retry;
 	return ret;
 }
+
 bool YAML::convert<app_check>::decode(const YAML::Node& node, app_check& rhs)
 {
 	/*
@@ -131,6 +137,10 @@ bool YAML::convert<app_check>::decode(const YAML::Node& node, app_check& rhs)
 	 *
 	 *	The conf part is not used by dragent
 	 */
+	if (!node.IsDefined() || !node.IsMap() || !node["name"].IsDefined() || !node["name"].IsScalar())
+	{
+		return false;
+	}
 	rhs.m_name = node["name"].as<string>();
 	auto check_module_node = node["check_module"];
 	if (check_module_node.IsScalar())

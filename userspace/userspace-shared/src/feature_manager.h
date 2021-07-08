@@ -1,6 +1,7 @@
 #pragma once
 #include "type_config.h"
 #include "configuration_manager.h"
+#include "assert.h"
 
 #include <functional>
 #include <list>

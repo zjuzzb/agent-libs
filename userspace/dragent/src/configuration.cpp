@@ -1,7 +1,7 @@
 #include "common_logger.h"
 #include "command_line_manager.h"
 #include "configuration.h"
-#include "configuration_cli.h"
+#include "configuration_console.h"
 #include "json_error_log.h"
 #include "network_utils.h"
 #include "running_state.h"
@@ -715,10 +715,10 @@ void dragent_configuration::init()
 		    new yaml_configuration({m_conf_file, kubernetes_dragent_yaml, m_defaults_conf_file}));
 	}
 
-	configuration_cli::add("dragent", m_conf_file, {CLI_VIEW_CONFIGURATION});
-	configuration_cli::add("configmap", kubernetes_dragent_yaml, {CLI_VIEW_CONFIGURATION});
-	configuration_cli::add("backend", autocfg->config_path(), {CLI_VIEW_CONFIGURATION});
-	configuration_cli::add("default", m_defaults_conf_file, {CLI_VIEW_CONFIGURATION});
+	configuration_console::add("dragent", m_conf_file, {CLI_VIEW_CONFIGURATION});
+	configuration_console::add("configmap", kubernetes_dragent_yaml, {CLI_VIEW_CONFIGURATION});
+	configuration_console::add("backend", autocfg->config_path(), {CLI_VIEW_CONFIGURATION});
+	configuration_console::add("default", m_defaults_conf_file, {CLI_VIEW_CONFIGURATION});
 
 	// The yaml_configuration catches exceptions so m_config will always be
 	// a valid pointer, but set m_load_error so dragent will see the error

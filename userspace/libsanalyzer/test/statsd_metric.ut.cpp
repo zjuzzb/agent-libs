@@ -2355,6 +2355,7 @@ TEST(statsd_metric_test, to_debug_string)
 		"max:            5\n"
 		"count:          6\n"
 		"stdev:          7\n"
+		"duplicate:      false\n"
 		"tags: {\n"
 		"  [tag_name1, ]\n"
 		"  [tag_name2, ]\n"
@@ -2368,3 +2369,4 @@ TEST(statsd_metric_test, to_debug_string)
 
 	ASSERT_EQ(expected, metric.to_debug_string());
 }
+

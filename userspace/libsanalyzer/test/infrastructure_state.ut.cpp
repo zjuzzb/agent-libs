@@ -1254,3 +1254,91 @@ TEST_F(infrastructure_state_test, single_update)
 
 	configuration_manager::instance().get_mutable_config<bool>("thin_cointerface_enabled")->set(false);
 }
+
+TEST_F(infrastructure_state_test, local_remote_pod)
+{
+	static const std::string DEFAULT_NAMESPACE_NAME = "default";
+
+	test_helpers::sinsp_mock inspector;
+	audit_tap_handler_dummy athd;
+	null_secure_audit_handler sahd;
+	null_secure_profiling_handler sphd;
+	null_secure_netsec_handler snhd;
+	sinsp_analyzer analyzer(&inspector,
+	                        "",
+	                        std::make_shared<internal_metrics>(),
+	                        athd,
+	                        sahd,
+	                        sphd,
+	                        snhd,
+	                        nullptr,
+	                        []() -> bool { return true; });
+	infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
+	
+	is.m_k8s_node_uid = "local_node";
+	
+	// Add a container
+	infrastructure_state::uid_t container_uid(std::make_pair("container", "spacchitempu"));
+
+	draiosproto::congroup_update_event container_add_event;
+	container_add_event.set_type(draiosproto::congroup_event_type::ADDED);
+	draiosproto::container_group* container_congroup = container_add_event.mutable_object();
+	fill_congroup(*container_congroup,
+	              container_uid.first,
+	              container_uid.second,
+	              DEFAULT_NAMESPACE_NAME);
+
+	is.handle_event(&container_add_event);
+
+	// Add a local pod with the container as the child
+	infrastructure_state::uid_t local_pod_uid(std::make_pair("k8s_pod", "local_pod"));
+	draiosproto::congroup_update_event local_pod_add_event;
+	local_pod_add_event.set_type(draiosproto::congroup_event_type::ADDED);
+	draiosproto::container_group* local_pod_congroup = local_pod_add_event.mutable_object();
+	fill_congroup(*local_pod_congroup,
+	              local_pod_uid.first,
+	              local_pod_uid.second,
+	              DEFAULT_NAMESPACE_NAME);
+	
+	// Add a node parent
+	draiosproto::congroup_uid* parent_uid = local_pod_congroup->mutable_parents()->Add();
+	parent_uid->set_kind("k8s_node");
+	parent_uid->set_id("local_node");
+
+	// Add a container child
+	draiosproto::congroup_uid* child_uid = local_pod_congroup->mutable_children()->Add();
+	child_uid->set_kind(container_uid.first);
+	child_uid->set_id(container_uid.second);
+
+	is.handle_event(&local_pod_add_event);
+
+	// Verify that the container now has a parent
+	draiosproto::container_group* container_state = is.m_state[container_uid].get();
+	EXPECT_EQ(container_state->parents_size(), 1);
+
+	// Add a remote pod with the container as the child
+	infrastructure_state::uid_t remote_pod_uid(std::make_pair("k8s_pod", "remote_pod"));
+	draiosproto::congroup_update_event remote_pod_add_event;
+	remote_pod_add_event.set_type(draiosproto::congroup_event_type::ADDED);
+	draiosproto::container_group* remote_pod_congroup = remote_pod_add_event.mutable_object();
+	fill_congroup(*remote_pod_congroup,
+	              remote_pod_uid.first,
+	              remote_pod_uid.second,
+	              DEFAULT_NAMESPACE_NAME);
+	
+	// Add a node parent
+	parent_uid = remote_pod_congroup->mutable_parents()->Add();
+	parent_uid->set_kind("k8s_node");
+	parent_uid->set_id("remote_node");
+
+	// Add a container child
+	child_uid = remote_pod_congroup->mutable_children()->Add();
+	child_uid->set_kind(container_uid.first);
+	child_uid->set_id(container_uid.second);
+
+	is.handle_event(&remote_pod_add_event);
+
+	// Verify that the container still only has one parent
+	container_state = is.m_state[container_uid].get();
+	EXPECT_EQ(container_state->parents_size(), 1);
+}

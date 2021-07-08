@@ -309,6 +309,7 @@ private:
 	FRIEND_TEST(infrastructure_state_test, events_test);
 	FRIEND_TEST(infrastructure_state_test, events_test_2);
 	FRIEND_TEST(infrastructure_state_test, single_update);
+	FRIEND_TEST(infrastructure_state_test, local_remote_pod);
 
 	void configure_k8s_environment();
 

@@ -173,8 +173,8 @@ type_config<uint32_t>::ptr infrastructure_state::c_k8s_leader_election_retry_per
 		).min(1).build();
 type_config<std::string>::ptr infrastructure_state::c_k8s_leader_election_namespace =
 	type_config_builder<std::string>(
-		"sysdig-agent",
-		"namespace where leases objects will be created",
+		"",
+		"namespace where leases objects will be created. If not set, the agent will try to get and use it's own namespace. Fallback to sysdig-agent",
 		"k8s_coldstart",
 		"namespace"
 		).build();
@@ -1531,12 +1531,40 @@ void infrastructure_state::add(uid_t &key, const draiosproto::container_group &c
 
 void infrastructure_state::connect(const infrastructure_state::uid_t& key)
 {
+	bool is_pod = (key.first == "k8s_pod");
+	bool is_pod_and_not_on_this_node = false;
+
 	//
 	// Connect the new group to his parents
 	//
 	for (const auto& x : m_state[key]->parents())
 	{
 		auto pkey = make_pair(x.kind(), x.id());
+		
+		// Check to see if this pod is not on this node which we need to know later
+		if (is_pod)
+		{
+			if (m_k8s_node_uid.empty())
+			{
+				// Haven't initialized the node UID yet so try to do it now.
+				// Check again below to make sure it got initialized.
+				//
+				// If we can't initialize it, default to adding the 
+				// pod as a parent to container since defaulting all containers
+				// to not add pod parents would lead to not reporting the k8s'
+				// state at all.
+				find_our_k8s_node(NULL);
+			}
+
+			if (x.kind() == "k8s_node" && !m_k8s_node_uid.empty() && x.id() != m_k8s_node_uid)
+			{
+				LOG_DEBUG("infra_state: pod %s node %s is not local node %s", 
+						  key.second.c_str(), 
+						  x.id().c_str(), 
+						  m_k8s_node_uid.c_str());
+				is_pod_and_not_on_this_node = true;
+			}
+		}
 
 		// If the parent is not in the allowed list just skip all
 		if(!kind_is_allowed(pkey.first))
@@ -1582,47 +1610,54 @@ void infrastructure_state::connect(const infrastructure_state::uid_t& key)
 	}
 
 	//
-	// and connect his children to him
+	// and connect his children to him as long as he isn't a pod on a non-local node (SMPROD-5096)
 	//
-	for (const auto& x : m_state[key]->children())
+	if (!is_pod_and_not_on_this_node)
 	{
-		auto ckey = make_pair(x.kind(), x.id());
+		for (const auto& x : m_state[key]->children())
+		{
+			auto ckey = make_pair(x.kind(), x.id());
 
-		// If the child is not in the allowed list kind just skip all
-		if(!kind_is_allowed(ckey.first))
-		{
-			LOG_DEBUG("Skipping connection <%s,%s> with child <%s,%s> because its kind is not in the allowed list",
-				  key.first.c_str(),
-				  key.second.c_str(),
-				  ckey.first.c_str(),
-				  ckey.second.c_str());
-			continue;
-		}
+			// If the child is not in the allowed list kind just skip all
+			if(!kind_is_allowed(ckey.first))
+			{
+				LOG_DEBUG("Skipping connection <%s,%s> with child <%s,%s> because its kind is not in the allowed list",
+					key.first.c_str(),
+					key.second.c_str(),
+					ckey.first.c_str(),
+					ckey.second.c_str());
+				continue;
+			}
 
-		if (!has(ckey))
-		{
-			// the connection will be created when the child arrives
-			continue;
+			if (!has(ckey))
+			{
+				// the connection will be created when the child arrives
+				continue;
+			}
+			else if (!has_link(m_state[ckey]->parents(), key))
+			{
+				draiosproto::congroup_uid* parent = m_state[ckey]->mutable_parents()->Add();
+				parent->set_kind(key.first);
+				parent->set_id(key.second);
+				LOG_DEBUG("infra_state: parent <%s,%s> added to <%s,%s>",
+						key.first.c_str(),
+						key.second.c_str(),
+						ckey.first.c_str(),
+						ckey.second.c_str());
+			}
+			else
+			{
+				LOG_DEBUG("infra_state: <%s,%s> already connected to parent <%s,%s>",
+						ckey.first.c_str(),
+						ckey.second.c_str(),
+						key.first.c_str(),
+						key.second.c_str());
+			}
 		}
-		else if (!has_link(m_state[ckey]->parents(), key))
-		{
-			draiosproto::congroup_uid* parent = m_state[ckey]->mutable_parents()->Add();
-			parent->set_kind(key.first);
-			parent->set_id(key.second);
-			LOG_DEBUG("infra_state: parent <%s,%s> added to <%s,%s>",
-			          key.first.c_str(),
-			          key.second.c_str(),
-			          ckey.first.c_str(),
-			          ckey.second.c_str());
-		}
-		else
-		{
-			LOG_DEBUG("infra_state: <%s,%s> already connected to parent <%s,%s>",
-			          ckey.first.c_str(),
-			          ckey.second.c_str(),
-			          key.first.c_str(),
-			          key.second.c_str());
-		}
+	}
+	else
+	{
+		LOG_DEBUG("infra_state: not adding parents to pod's children as pod is not on this node");
 	}
 
 	// Fix any broken link involving this container group

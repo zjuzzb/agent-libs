@@ -126,6 +126,7 @@ promscrape::promscrape(metric_limits::sptr_t ml,
 	interval_cb_t interval_cb):
 		m_sock(c_promscrape_sock.get_value()),
 		m_start_interval(c_promscrape_connect_interval.get_value() * ONE_SECOND_IN_NS),
+		m_next_ts(0),
 		m_start_failed(false),
 		m_metric_limits(ml),
 		m_threaded(threaded),
@@ -134,6 +135,7 @@ promscrape::promscrape(metric_limits::sptr_t ml,
 		m_resend_config(false),
 		m_interval_cb(interval_cb),
 		m_last_proto_ts(0),
+		m_last_prune_ts(0),
 		m_stats(prom_conf, this),
 		m_infra_state(nullptr)
 {
@@ -309,7 +311,8 @@ int64_t promscrape::job_url_to_job_id(const std::string &url, const std::string 
 		0,	// last_total_samples
 		{},	// add_tags
 		false,	// bypass_limits
-		false
+		false,	// stale
+		false	// omit_source
 	};
 
 	job_id = ++g_prom_job_id;
@@ -346,6 +349,7 @@ int64_t promscrape::assign_job_id(int pid, const string &url, const string &cont
 					LOG_DEBUG("found existing job %" PRId64 " for %d.%s", job_id, pid, url.c_str());
 					// Update config timestamp
 					job_it->second.config_ts = ts;
+					job_it->second.stale = false;
 
 					// XXX: If tags changed we should update them
 					return job_id;
@@ -474,6 +478,7 @@ void promscrape::sendconfig(const vector<prom_process> &prom_procs)
 	if (!m_threaded)
 	{
 		sendconfig_th(prom_procs);
+		prune_jobs(m_next_ts);
 	}
 	else
 	{
@@ -527,7 +532,6 @@ void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 	}
 	LOG_DEBUG("sending config %s", m_config->DebugString().c_str());
 	applyconfig();
-	prune_jobs(m_next_ts);
 }
 
 void promscrape::next(uint64_t ts)
@@ -557,6 +561,7 @@ void promscrape::next_th()
 		{
 			sendconfig_th(procs);
 		}
+		prune_jobs(m_next_ts);
 	}
 	if (m_grpc_applyconfig)
 	{
@@ -874,60 +879,80 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 void promscrape::prune_jobs(uint64_t ts)
 {
 	std::lock_guard<std::mutex> lock(m_map_mutex);
-	for (auto it = m_jobs.begin(); it != m_jobs.end(); )
+
+	if (ts <= m_last_prune_ts)
 	{
-		int elapsed = elapsed_s(it->second.config_ts, ts);
-		int prune_time = job_prune_time_s;
-		if (is_promscrape_v2())
+		return;
+	}
+	m_last_prune_ts = ts;
+
+	for (auto it = m_jobs.begin(); it != m_jobs.end(); ++it)
+	{
+		// Promscrape V2 does service discovery itself, in which case we prune based on time
+		// since last reception of data.
+		// For Promscrape v1, we mark a job as stale if the agent omitted it in the
+		// last configuration cycle
+		if ((is_promscrape_v2() &&
+			(elapsed_s(it->second.data_ts, ts) < m_prom_conf.metric_expiration())) ||
+			(!is_promscrape_v2() && (it->second.config_ts >= m_last_config_ts)))
 		{
-			// Promscrape V2 does service discovery itself, so we can't prune
-			// based on configuration time. We prune based on expiration after
-			// reception of data instead.
-			elapsed = elapsed_s(it->second.data_ts, ts);
-			prune_time = m_prom_conf.metric_expiration();
-		}
-		if (elapsed < prune_time)
-		{
-			++it;
 			continue;
 		}
-		// Remove job from pid-jobs list
-		LOG_DEBUG("retiring scrape job %" PRId64 ", pid %d after %d seconds inactivity", it->first, it->second.pid, elapsed);
-		auto pidmap_it = m_pids.find(it->second.pid);
-		if (pidmap_it == m_pids.end())
-		{
-			LOG_WARNING("pid %d not found in pidmap for job %" PRId64, it->second.pid, it->first);
-		}
-		else
-		{
-			pidmap_it->second.remove(it->first);
-			if (pidmap_it->second.empty())
-			{
-				// No jobs left for pid
-				LOG_DEBUG("no scrape jobs left for pid %d, removing", it->second.pid);
-				m_pids.erase(pidmap_it);
-			}
-		}
-		if (it->second.pid == 0)
-		{
-			// Just walking through the map till we find the job_id
-			// (since we don't have the jobname)
-			for (auto joburl_it = m_joburls.begin(); joburl_it != m_joburls.end(); joburl_it++)
-			{
-				if (joburl_it->second == it->first)
-				{
-					LOG_DEBUG("Removing job %" PRId64 " for %s,%s", it->first,
-						joburl_it->first.first.c_str(), joburl_it->first.second.c_str());
-					m_joburls.erase(joburl_it);
-					break;
-				}
-			}
-		}
-		// Remove job from scrape results
-		m_metrics.erase(it->first);
-		// Remove job from jobs map
-		it = m_jobs.erase(it);
+
+		LOG_DEBUG("Marking scrape job %" PRId64 ", pid %d as stale", it->first, it->second.pid);
+
+		it->second.stale = true;
 	}
+}
+
+void promscrape::delete_job(int64_t job_id)
+{
+	std::lock_guard<std::mutex> lock(m_map_mutex);
+
+	auto it = m_jobs.find(job_id);
+	if (it == m_jobs.end())
+	{
+		LOG_WARNING("Tried deleting missing job %" PRId64, job_id);
+		return;
+	}
+
+	// Remove job from pid-jobs list
+	LOG_DEBUG("Deleting scrape job %" PRId64 ", pid %d", it->first, it->second.pid);
+
+	auto pidmap_it = m_pids.find(it->second.pid);
+	if (pidmap_it == m_pids.end())
+	{
+		LOG_WARNING("pid %d not found in pidmap for job %" PRId64, it->second.pid, it->first);
+	}
+	else
+	{
+		pidmap_it->second.remove(it->first);
+		if (pidmap_it->second.empty())
+		{
+			// No jobs left for pid
+			LOG_DEBUG("no scrape jobs left for pid %d, removing", it->second.pid);
+			m_pids.erase(pidmap_it);
+		}
+	}
+	if (it->second.pid == 0)
+	{
+		// Just walking through the map till we find the job_id
+		// (since we don't have the jobname)
+		for (auto joburl_it = m_joburls.begin(); joburl_it != m_joburls.end(); joburl_it++)
+		{
+			if (joburl_it->second == it->first)
+			{
+				LOG_DEBUG("Removing job %" PRId64 " for %s,%s", it->first,
+					joburl_it->first.first.c_str(), joburl_it->first.second.c_str());
+				m_joburls.erase(joburl_it);
+				break;
+			}
+		}
+	}
+	// Remove job from scrape results
+	m_metrics.erase(it->first);
+	// Remove job from jobs map
+	m_jobs.erase(it);
 }
 
 // Currently only supported for 10s flush when fastproto is enabled
@@ -948,27 +973,39 @@ std::shared_ptr<draiosproto::metrics> promscrape::metrics_request_callback()
 	unsigned int total = 0;
 	shared_ptr<draiosproto::metrics> metrics = make_shared<draiosproto::metrics>();
 
+	if (!promscrape::c_export_fastproto->get_value())
+	{
+		// Shouldn't get here yet
+		LOG_INFO("metrics callback not yet supported for per-process export");
+
+		metrics->mutable_hostinfo()->mutable_resource_counters()->set_prometheus_sent(0);
+		metrics->mutable_hostinfo()->mutable_resource_counters()->set_prometheus_total(0);
+		return metrics;
+	}
+
 	set<int> export_pids;
 	{
 		std::lock_guard<std::mutex> lock(m_export_pids_mutex);
 		export_pids = std::move(m_export_pids);
 		m_export_pids.clear();
+		// Add all stale pids
+		for (const auto &job : m_jobs)
+		{
+			if (job.second.stale)
+			{
+				LOG_DEBUG("Found stale job %" PRId64 " for pid %d", job.first, job.second.pid);
+				export_pids.insert(job.second.pid);
+			}
+		}
 	}
 
 	for (int pid : export_pids)
 	{
 		LOG_DEBUG("callback: exporting pid %d", pid);
-		if (promscrape::c_export_fastproto->get_value())
-		{
-			sent += pid_to_protobuf(pid, metrics.get(), remaining, m_prom_conf.max_metrics(),
-				&filtered, &total, true);
-		}
-		else
-		{
-			// Shouldn't get here yet
-			LOG_INFO("callback: export pid %d: not yet supported for per-process export", pid);
-		}
+		sent += pid_to_protobuf(pid, metrics.get(), remaining, m_prom_conf.max_metrics(),
+			&filtered, &total, true);
 	}
+
 	metrics->mutable_hostinfo()->mutable_resource_counters()->set_prometheus_sent(sent);
 	metrics->mutable_hostinfo()->mutable_resource_counters()->set_prometheus_total(total);
 	if (remaining == 0)
@@ -1019,15 +1056,6 @@ std::shared_ptr<agent_promscrape::ScrapeResult> promscrape::get_job_result_ptr(
 	if (jobit == m_jobs.end())
 	{
 		LOG_WARNING("missing config for job %" PRId64, job_id);
-		return nullptr;
-	}
-	// Promscrape v1 sends all currently active targets each cycle, so if a job
-	// was configured before the last cycle, it must have been dropped 
-	// Doesn't apply to v2 since Promscrape does all discovery by itself.
-	if (!is_promscrape_v2() && (jobit->second.config_ts < m_last_config_ts))
-	{
-		LOG_DEBUG("job %" PRId64 " was dropped %d seconds before latest config",
-			job_id, elapsed_s(jobit->second.config_ts, m_last_config_ts));
 		return nullptr;
 	}
 
@@ -1188,7 +1216,7 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 	{
 		auto newmet = proto->add_metrics();
 		newmet->set_name(sample.metric_name());
-		newmet->set_value(sample.value());
+		newmet->set_value(job_config.stale ? nan("") : sample.value());
 		if (sample.legacy_metric_type() == agent_promscrape::Sample::MT_INVALID)
 		{
 			newmet->set_type(draiosproto::app_metric_type::APP_METRIC_TYPE_PROMETHEUS_RAW);
@@ -1287,6 +1315,11 @@ unsigned int promscrape::job_to_protobuf(int64_t job_id, metric *proto,
 
 	// Update metric stats
 	m_stats.add_stats(job_config.url, over_limit, raw_num_samples, calc_num_samples);
+
+	if (job_config.stale)
+	{
+		delete_job(job_id);
+	}
 
 	return raw_num_samples + calc_num_samples;
 }
@@ -1394,12 +1427,12 @@ unsigned int promscrape::result_to_protobuf(int64_t job_id,
 	}
 
 	// Lambda for adding samples from samples or metasamples
-	auto add_sample = [&prom](const agent_promscrape::Sample& sample)
+	auto add_sample = [&prom, &job_config](const agent_promscrape::Sample& sample)
 	{
 		// Only supported for RAW prometheus metrics
 		auto newmet = prom->add_samples();
 		newmet->set_metric_name(sample.metric_name());
-		newmet->set_value(sample.value());
+		newmet->set_value(job_config->stale ? nan("") : sample.value());
 
 		newmet->set_type(static_cast<draiosproto::prometheus_type>(sample.raw_metric_type()));
 
@@ -1483,6 +1516,11 @@ unsigned int promscrape::result_to_protobuf(int64_t job_id,
 
 	// Update metric stats
 	m_stats.add_stats(job_config->url, over_limit, raw_num_samples, calc_num_samples);
+
+	if (job_config->stale)
+	{
+		delete_job(job_id);
+	}
 
 	return raw_num_samples + calc_num_samples;
 }
