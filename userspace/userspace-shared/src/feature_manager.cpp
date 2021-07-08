@@ -609,7 +609,7 @@ bool feature_manager::initialize(agent_variant variant, agent_mode mode)
 #ifdef _DEBUG
 	for (uint32_t i = 0; i < AGENT_VARIANT_COUNT; i++)
 	{
-		assert(mode_definitions[i].m_variant == (agent_variant)i);
+		assert(variant_definitions[i].m_variant == (agent_variant)i);
 	}
 	for (uint32_t i = 0; i < AGENT_MODE_COUNT; i++)
 	{
