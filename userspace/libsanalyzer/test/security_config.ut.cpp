@@ -25,7 +25,7 @@ security:
   enabled: true
 )EOF";
 	test_helpers::scoped_configuration enabled_config(config);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	ASSERT_TRUE(security_config::instance().get_enabled());
 }

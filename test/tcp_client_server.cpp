@@ -363,7 +363,7 @@ void runtest(iotype iot,
 	stringstream configss;
 	configss << "known_ports:\n  - " << SERVER_PORT_STR;
 	scoped_configuration config(configss.str());
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	ASSERT_NO_FATAL_FAILURE({ event_capture::run(test, callback, filter, configuration); });
 

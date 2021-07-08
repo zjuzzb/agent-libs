@@ -97,7 +97,7 @@ std::shared_ptr<draiosproto::metrics> cb_2()
 TEST(async_aggregator, callbacks)
 {
 	test_helpers::scoped_config<bool> enable_monitor("feature.monitor", true);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	dragent::async_aggregator::queue_t input_queue(10);
 	dragent::async_aggregator::queue_t output_queue(10);

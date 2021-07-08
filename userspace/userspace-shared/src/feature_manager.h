@@ -239,6 +239,34 @@ public:
 class feature_manager
 {
 public:
+	enum agent_variant
+	{
+		AGENT_VARIANT_TRADITIONAL = 0,
+		AGENT_VARIANT_AGENTONE = 1,
+		AGENT_VARIANT_AGENTINO = 2,
+
+		AGENT_VARIANT_COUNT
+	};
+
+	/**
+	 * structure for encoding the definitions of the feature variants.
+	 */
+	struct agent_variant_container
+	{
+		/**
+		 * the enum value of this variant
+		 */
+		const feature_manager::agent_variant m_variant;
+
+		/**
+		 * the string value for display
+		 */
+		const std::string m_name;
+	};
+
+	static const agent_variant_container variant_definitions[];
+
+
 	enum agent_mode
 	{
 		AGENT_MODE_NONE = 0,
@@ -252,6 +280,7 @@ public:
 
 		AGENT_MODE_COUNT
 	};
+
 	/**
 	 * structure for encoding the definitions of the feature modes.
 	 */
@@ -333,8 +362,8 @@ public:
 	 * There are two apis that function equivalently, but one allows the specification
 	 * of the mode to use, while the other uses the configured default
 	 */
-	bool initialize();
-	bool initialize(agent_mode mode);
+	bool initialize(agent_variant variant);
+	bool initialize(agent_variant variant, agent_mode mode);
 
 private:
 	bool enable(feature_name feature, bool force);
@@ -343,6 +372,7 @@ private:
 	bool try_disable(feature_name feature);
 	bool verify_dependencies();
 
+	agent_variant m_agent_variant;
 	agent_mode m_agent_mode;
 	std::map<feature_name, feature_base*> m_feature_map;
 

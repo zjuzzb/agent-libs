@@ -996,6 +996,7 @@ bool connection_manager::send_proto_init()
 	{
 		msg_pi.add_supported_protocol_versions(v);
 	}
+	feature_manager::instance().to_protobuf(*msg_pi.mutable_features());
 
 	// The protocol is defined as always sending this message gzipped, therefore
 	// we hard code it here, as sending anything else would not work.

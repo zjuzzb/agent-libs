@@ -32,7 +32,7 @@ TEST(statsd_emitter_test, get_limit_security_disabled)
 TEST(statsd_emitter_test, get_limit_security_enabled)
 {
 	test_helpers::scoped_config<bool> enable_security("security.enabled", true);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	const unsigned expected_limit =
 		metric_forwarding_configuration::instance().statsd_limit() +

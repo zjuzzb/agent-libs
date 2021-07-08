@@ -19,7 +19,7 @@ using namespace libsanalyzer;
  */
 TEST(statsite_config_test, default_enabled)
 {
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 	ASSERT_TRUE(statsite_config::instance().get_enabled());
 }
 
@@ -78,7 +78,7 @@ statsd:
   enabled: false
 )EOF";
 	test_helpers::scoped_configuration enabled_config(config);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 
 	ASSERT_TRUE(enabled_config.loaded());
 	ASSERT_FALSE(statsite_config::instance().get_enabled());
@@ -207,7 +207,7 @@ statsd:
   enabled: false
 )EOF";
 	test_helpers::scoped_configuration enabled_config(config);
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 	std::stringstream out;
 	const std::string loglevel = "trace";
 	const std::set<double> percentiles;
@@ -239,7 +239,7 @@ flush_interval = 1
 parse_stdin = 1
 )EOF";
 
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 	statsite_config::instance().write_statsite_configuration(out, loglevel, percentiles);
 	ASSERT_EQ(expected_config, out.str());
 }
@@ -266,7 +266,7 @@ flush_interval = 1
 parse_stdin = 1
 )EOF";
 
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 	statsite_config::instance().write_statsite_configuration(out, loglevel, percentiles);
 	ASSERT_EQ(expected_config, out.str());
 }
@@ -294,7 +294,7 @@ parse_stdin = 1
 quantiles = 0.99
 )EOF";
 
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 	statsite_config::instance().write_statsite_configuration(out, loglevel, percentiles);
 	ASSERT_EQ(expected_config, out.str());
 }
@@ -321,7 +321,7 @@ parse_stdin = 1
 quantiles = 0.44,0.55,0.66,0.77,0.88,0.99
 )EOF";
 
-	feature_manager::instance().initialize();
+	feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL);
 	statsite_config::instance().write_statsite_configuration(out, loglevel, percentiles);
 	ASSERT_EQ(expected_config, out.str());
 }

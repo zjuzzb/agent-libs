@@ -184,7 +184,7 @@ TEST(feature_manager, basic)
 	feature_manager fm;
 	dummy_features df(fm, true);
 
-	EXPECT_TRUE(fm.initialize());
+	EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 	df.fb0.set_enabled(false);
 	EXPECT_FALSE(fm.get_enabled((feature_name)0));
@@ -262,7 +262,7 @@ TEST(feature_manager, base_initialize_called)
 
 	test_helpers::scoped_config<bool> memdump("prometheus.enabled", true);
 	ASSERT_FALSE(fb.m_init_called);
-	EXPECT_TRUE(fm.initialize());
+	EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	ASSERT_TRUE(fb.m_init_called);
 }
 
@@ -1527,7 +1527,7 @@ TEST(feature_manager, force_override_profile)
 	test_helpers::scoped_config<std::string> mode("feature.mode", "monitor_light");
 	test_helpers::scoped_config<bool> c1("feature.protocol_stats", true);
 	test_helpers::scoped_config<bool> c2("feature.protocol_stats_opt.force", true);
-	ASSERT_TRUE(fm.initialize());
+	ASSERT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	// if you look in the dummy features, there are some
 	// dependencies specified. Make sure these all get enabled
 	// from 14->11. 10 is not a dependency and thus shouldn't be
@@ -1544,7 +1544,7 @@ TEST(feature_manager, regular_override_profile)
 	dummy_features df(fm);
 	test_helpers::scoped_config<std::string> mode("feature.mode", "monitor_light");
 	test_helpers::scoped_config<bool> c1("feature.full_syscalls", true);
-	ASSERT_TRUE(fm.initialize());
+	ASSERT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	EXPECT_FALSE(df.fb12.get_enabled());
 	EXPECT_TRUE(df.fb11.get_enabled());  // the syscall feature
 	EXPECT_FALSE(df.fb10.get_enabled());
@@ -1556,7 +1556,7 @@ TEST(feature_manager, regular_override_profile_fail)
 	dummy_features df(fm);
 	test_helpers::scoped_config<std::string> mode("feature.mode", "monitor_light");
 	test_helpers::scoped_config<bool> c1("feature.protocol_stats", true);
-	ASSERT_FALSE(fm.initialize());
+	ASSERT_FALSE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 }
 
 TEST(feature_manager, weak_override_profile)
@@ -1567,7 +1567,7 @@ TEST(feature_manager, weak_override_profile)
 	test_helpers::scoped_config<bool> c1("feature.full_syscalls", true);
 	test_helpers::scoped_config<bool> c2("feature.network_breakdown", true);
 	test_helpers::scoped_config<bool> c3("feature.network_breakdown_opt.weak", true);
-	ASSERT_TRUE(fm.initialize());
+	ASSERT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	EXPECT_FALSE(df.fb13.get_enabled());
 	EXPECT_TRUE(df.fb12.get_enabled());  // the network_breakdown feature
 	EXPECT_TRUE(df.fb11.get_enabled());  // the syscall feature
@@ -1581,7 +1581,7 @@ TEST(feature_manager, weak_override_profile_fail)
 	test_helpers::scoped_config<std::string> mode("feature.mode", "monitor_light");
 	test_helpers::scoped_config<bool> c2("feature.network_breakdown", true);
 	test_helpers::scoped_config<bool> c3("feature.network_breakdown_opt.weak", true);
-	ASSERT_TRUE(fm.initialize());
+	ASSERT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	EXPECT_FALSE(df.fb13.get_enabled());
 	EXPECT_FALSE(df.fb12.get_enabled());  // the network_breakdown feature
 	EXPECT_FALSE(df.fb11.get_enabled());  // the syscall feature
@@ -1597,7 +1597,7 @@ TEST(feature_manager, two_strong)
 	test_helpers::scoped_config<bool> c2("feature.protocol_stats_opt.force", true);
 	test_helpers::scoped_config<bool> c3("feature.network_breakdown", true);
 	test_helpers::scoped_config<bool> c4("feature.network_breakdown_opt.force", true);
-	ASSERT_TRUE(fm.initialize());
+	ASSERT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	// if you look in the dummy features, there are some
 	// dependencies specified. Make sure these all get enabled
 	// from 14->11. 10 is not a dependency and thus shouldn't be
@@ -1617,7 +1617,7 @@ TEST(feature_manager, strong_strong_conflict)
 	test_helpers::scoped_config<bool> c2("feature.protocol_stats_opt.force", true);
 	test_helpers::scoped_config<bool> c3("feature.network_breakdown", false);
 	test_helpers::scoped_config<bool> c4("feature.network_breakdown_opt.force", true);
-	ASSERT_FALSE(fm.initialize());
+	ASSERT_FALSE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 }
 
 TEST(feature_manager, two_regular)
@@ -1627,7 +1627,7 @@ TEST(feature_manager, two_regular)
 	test_helpers::scoped_config<std::string> mode("feature.mode", "monitor_light");
 	test_helpers::scoped_config<bool> c1("feature.full_syscalls", true);
 	test_helpers::scoped_config<bool> c3("feature.network_breakdown", true);
-	ASSERT_TRUE(fm.initialize());
+	ASSERT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	EXPECT_TRUE(df.fb12.get_enabled());
 	EXPECT_TRUE(df.fb11.get_enabled());  // the syscall feature
 	EXPECT_FALSE(df.fb10.get_enabled());
@@ -1640,7 +1640,7 @@ TEST(feature_manager, regular_regular_conflict)
 	test_helpers::scoped_config<std::string> mode("feature.mode", "monitor_light");
 	test_helpers::scoped_config<bool> c1("feature.full_syscalls", false);
 	test_helpers::scoped_config<bool> c3("feature.network_breakdown", true);
-	ASSERT_FALSE(fm.initialize());
+	ASSERT_FALSE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 }
 
 TEST(feature_manager, regular_on_strong_conflict)
@@ -1651,7 +1651,7 @@ TEST(feature_manager, regular_on_strong_conflict)
 	test_helpers::scoped_config<bool> c1("feature.full_syscalls", false);
 	test_helpers::scoped_config<bool> c3("feature.full_syscalls_opt.force", true);
 	test_helpers::scoped_config<bool> c2("feature.network_breakdown", true);
-	ASSERT_FALSE(fm.initialize());
+	ASSERT_FALSE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 }
 
 TEST(feature_manager, strong_on_regular_conflict)
@@ -1662,7 +1662,7 @@ TEST(feature_manager, strong_on_regular_conflict)
 	test_helpers::scoped_config<bool> c1("feature.full_syscalls", false);
 	test_helpers::scoped_config<bool> c2("feature.network_breakdown", true);
 	test_helpers::scoped_config<bool> c3("feature.network_breakdown_opt.force", true);
-	ASSERT_FALSE(fm.initialize());
+	ASSERT_FALSE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 }
 
 TEST(feature_manager, two_weak)
@@ -1674,7 +1674,7 @@ TEST(feature_manager, two_weak)
 	test_helpers::scoped_config<bool> c4("feature.full_syscalls_opt.weak", true);
 	test_helpers::scoped_config<bool> c2("feature.network_breakdown", true);
 	test_helpers::scoped_config<bool> c3("feature.network_breakdown_opt.weak", true);
-	ASSERT_TRUE(fm.initialize());
+	ASSERT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	EXPECT_TRUE(df.fb12.get_enabled());
 	EXPECT_TRUE(df.fb11.get_enabled());  // the syscall feature
 	EXPECT_FALSE(df.fb10.get_enabled());
@@ -1689,7 +1689,7 @@ TEST(feature_manager, weak_on_strong_conflict)
 	test_helpers::scoped_config<bool> c3("feature.full_syscalls_opt.force", true);
 	test_helpers::scoped_config<bool> c2("feature.network_breakdown", true);
 	test_helpers::scoped_config<bool> c4("feature.network_breakdown_opt.weak", true);
-	ASSERT_TRUE(fm.initialize());
+	ASSERT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	EXPECT_FALSE(df.fb12.get_enabled());
 	EXPECT_FALSE(df.fb11.get_enabled());  // the syscall feature
 	EXPECT_FALSE(df.fb10.get_enabled());
@@ -1704,7 +1704,7 @@ TEST(feature_manager, strong_on_weak_conflict)
 	test_helpers::scoped_config<bool> c4("feature.full_syscalls_opt.weak", true);
 	test_helpers::scoped_config<bool> c2("feature.network_breakdown", true);
 	test_helpers::scoped_config<bool> c3("feature.network_breakdown_opt.force", true);
-	ASSERT_TRUE(fm.initialize());
+	ASSERT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	EXPECT_TRUE(df.fb12.get_enabled());
 	EXPECT_TRUE(df.fb11.get_enabled());  // the syscall feature
 	EXPECT_FALSE(df.fb10.get_enabled());
@@ -1718,7 +1718,7 @@ TEST(feature_manager, weak_on_regular_conflict)
 	test_helpers::scoped_config<bool> c1("feature.full_syscalls", false);
 	test_helpers::scoped_config<bool> c2("feature.network_breakdown", true);
 	test_helpers::scoped_config<bool> c3("feature.network_breakdown_opt.weak", true);
-	ASSERT_TRUE(fm.initialize());
+	ASSERT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	EXPECT_FALSE(df.fb12.get_enabled());
 	EXPECT_FALSE(df.fb11.get_enabled());  // the syscall feature
 	EXPECT_FALSE(df.fb10.get_enabled());
@@ -1734,7 +1734,7 @@ TEST(feature_manager, regular_on_weak_conflict)
 	test_helpers::scoped_config<bool> c1("feature.full_syscalls", false);
 	test_helpers::scoped_config<bool> c3("feature.full_syscalls_opt.weak", true);
 	test_helpers::scoped_config<bool> c2("feature.network_breakdown", true);
-	ASSERT_TRUE(fm.initialize());
+	ASSERT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	EXPECT_TRUE(df.fb12.get_enabled());
 	EXPECT_TRUE(df.fb11.get_enabled());  // the syscall feature
 	EXPECT_FALSE(df.fb10.get_enabled());
@@ -1749,11 +1749,12 @@ TEST(feature_manager, weak_weak_conflict)
 	test_helpers::scoped_config<bool> c2("feature.full_syscalls_opt.weak", true);
 	test_helpers::scoped_config<bool> c3("feature.network_breakdown", true);
 	test_helpers::scoped_config<bool> c4("feature.network_breakdown_opt.weak", true);
-	ASSERT_TRUE(fm.initialize());  // The success of this will ultimately depend on the
-	                               // ordering of the features in the map. Making
-	                               // it transparently predictable would be a PITA
-	                               // Here, syscalls comes first, so it wins, and
-	                               // disables, and the network breakdown fails
+
+	// The success of this will ultimately depend on the ordering of the features
+	// in the map. Making it transparently predictable would be a PITA
+	// Here, syscalls comes first, so it wins, and disables, and the network
+	// breakdown fails
+	ASSERT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	EXPECT_FALSE(df.fb12.get_enabled());
 	EXPECT_FALSE(df.fb11.get_enabled());  // the syscall feature
 	EXPECT_FALSE(df.fb10.get_enabled());
@@ -1775,15 +1776,18 @@ TEST(feature_manager, reinitialize)
 	// 3) now the config is unable to enable, since it's locked and set false by profile
 	{
 		test_helpers::scoped_config<bool> c3("feature.network_breakdown", true);
-		ASSERT_TRUE(feature_manager::instance().initialize());
+		ASSERT_TRUE(feature_manager::instance().initialize(
+		                feature_manager::AGENT_VARIANT_TRADITIONAL));
 	}
 	{
 		test_helpers::scoped_config<bool> c3("feature.network_breakdown", false);
-		ASSERT_TRUE(feature_manager::instance().initialize());
+		ASSERT_TRUE(feature_manager::instance().initialize(
+		                feature_manager::AGENT_VARIANT_TRADITIONAL));
 	}
 	{
 		test_helpers::scoped_config<bool> c3("feature.network_breakdown", true);
-		ASSERT_TRUE(feature_manager::instance().initialize());
+		ASSERT_TRUE(feature_manager::instance().initialize(
+		                feature_manager::AGENT_VARIANT_TRADITIONAL));
 	}
 }
 
@@ -1822,7 +1826,7 @@ TEST(feature_manager, invalid_mode)
 	{
 		test_helpers::scoped_config<bool> pom("prometheus.enabled", true);
 		test_helpers::scoped_config<bool> sd("statsd.enabled", false);
-		EXPECT_TRUE(fm.initialize());
+		EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 		EXPECT_TRUE(fm.get_enabled(PROMETHEUS));
 		EXPECT_FALSE(fm.get_enabled(STATSD));
@@ -1830,7 +1834,7 @@ TEST(feature_manager, invalid_mode)
 	{
 		test_helpers::scoped_config<bool> pom("prometheus.enabled", false);
 		test_helpers::scoped_config<bool> sd("statsd.enabled", true);
-		EXPECT_TRUE(fm.initialize());
+		EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 		EXPECT_FALSE(fm.get_enabled(PROMETHEUS));
 		EXPECT_TRUE(fm.get_enabled(STATSD));
@@ -1842,7 +1846,7 @@ TEST(feature_manager, monitor_mode)
 	feature_manager fm;
 	dummy_features df(fm, true);
 	test_helpers::scoped_config<std::string> mode("feature.mode", "monitor");
-	EXPECT_TRUE(fm.initialize());
+	EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 	EXPECT_FALSE(fm.get_enabled(PROMETHEUS));
 	EXPECT_TRUE(fm.get_enabled(STATSD));
@@ -1856,7 +1860,7 @@ TEST(feature_manager, monitor_light_mode)
 	feature_manager fm;
 	dummy_features df(fm);
 	test_helpers::scoped_config<std::string> mode("feature.mode", "monitor_light");
-	EXPECT_TRUE(fm.initialize());
+	EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 	EXPECT_FALSE(fm.get_enabled(PROMETHEUS));
 	EXPECT_FALSE(fm.get_enabled(STATSD));
@@ -1870,7 +1874,7 @@ TEST(feature_manager, essentials_mode)
 	feature_manager fm;
 	dummy_features df(fm);
 	test_helpers::scoped_config<std::string> mode("feature.mode", "essentials");
-	EXPECT_TRUE(fm.initialize());
+	EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 
 	EXPECT_FALSE(fm.get_enabled(PROMETHEUS));
 	EXPECT_TRUE(fm.get_enabled(STATSD));
@@ -1899,7 +1903,7 @@ TEST(feature_manager, config_override)
 	dummy_features df(fm, true);
 	test_helpers::scoped_config<uint32_t> urls("http.url_table_size", 1);
 	test_helpers::scoped_config<std::string> mode("feature.mode", "monitor");
-	EXPECT_TRUE(fm.initialize());
+	EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	EXPECT_EQ(
 	    configuration_manager::instance().get_config<uint32_t>("http.url_table_size")->get_value(),
 	    1);
@@ -1914,9 +1918,10 @@ TEST(feature_manager, to_protobuf)
 	dummy_features df(fm, true);
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "monitor_light");
-		EXPECT_TRUE(fm.initialize());
+		EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
+		EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_traditional);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::light);
 		EXPECT_FALSE(proto.prometheus_enabled());
 		EXPECT_FALSE(proto.statsd_enabled());
@@ -1943,16 +1948,18 @@ TEST(feature_manager, to_protobuf)
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "none");
-		EXPECT_TRUE(fm.initialize());
+		EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
+		EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_traditional);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::legacy);
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "monitor");
-		EXPECT_TRUE(fm.initialize());
+		EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
+		EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_traditional);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::normal);
 		EXPECT_FALSE(proto.prometheus_enabled());
 		EXPECT_TRUE(proto.statsd_enabled());
@@ -1979,9 +1986,10 @@ TEST(feature_manager, to_protobuf)
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "essentials");
-		EXPECT_TRUE(fm.initialize());
+		EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
+		EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_traditional);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::essentials);
 		EXPECT_FALSE(proto.prometheus_enabled());
 		EXPECT_TRUE(proto.statsd_enabled());
@@ -2008,9 +2016,10 @@ TEST(feature_manager, to_protobuf)
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "troubleshooting");
-		EXPECT_TRUE(fm.initialize());
+		EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
+		EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_traditional);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::troubleshooting);
 		EXPECT_FALSE(proto.prometheus_enabled());
 		EXPECT_TRUE(proto.statsd_enabled());
@@ -2037,9 +2046,10 @@ TEST(feature_manager, to_protobuf)
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "secure");
-		EXPECT_TRUE(fm.initialize());
+		EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
+		EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_traditional);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::secure);
 		EXPECT_FALSE(proto.prometheus_enabled());
 		EXPECT_FALSE(proto.statsd_enabled());
@@ -2065,4 +2075,24 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.network_topology_enabled());
 	}
 
+}
+
+TEST(feature_manager, agentone_variant)
+{
+	feature_manager fm;
+	dummy_features df(fm, true);
+	EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_AGENTONE));
+	draiosproto::feature_status proto;
+	fm.to_protobuf(proto);
+	EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_agentone);
+}
+
+TEST(feature_manager, agentino_variant)
+{
+	feature_manager fm;
+	dummy_features df(fm, true);
+	EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_AGENTINO));
+	draiosproto::feature_status proto;
+	fm.to_protobuf(proto);
+	EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_agentino);
 }

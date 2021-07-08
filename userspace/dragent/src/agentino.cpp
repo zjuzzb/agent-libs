@@ -273,7 +273,8 @@ int agentino_app::main(const std::vector<std::string>& args)
 	// the feature manager, but none of that is supported in agentino, so
 	// we pretty much just have to ensure that features are "marked" as enabled or
 	// disabled properly
-	if (!feature_manager::instance().initialize(feature_manager::agent_mode::AGENT_MODE_AGENTINO))
+	if (!feature_manager::instance().initialize(feature_manager::agent_variant::AGENT_VARIANT_AGENTINO,
+	                                            feature_manager::agent_mode::AGENT_MODE_AGENTINO))
 	{
 		std::cerr << "Failed to init features." << '\n';
 		running_state::instance().shut_down();

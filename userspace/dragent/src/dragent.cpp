@@ -579,7 +579,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	}
 
 	// Ensure the feature manager has validatead the config
-	if (!feature_manager::instance().initialize())
+	if (!feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL))
 	{
 		std::cerr << "Failed to init features." << '\n';
 		running_state::instance().shut_down();
