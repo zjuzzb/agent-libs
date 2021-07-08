@@ -1921,6 +1921,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
+		EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_traditional);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::light);
 		EXPECT_FALSE(proto.prometheus_enabled());
 		EXPECT_FALSE(proto.statsd_enabled());
@@ -1950,6 +1951,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
+		EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_traditional);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::legacy);
 	}
 	{
@@ -1957,6 +1959,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
+		EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_traditional);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::normal);
 		EXPECT_FALSE(proto.prometheus_enabled());
 		EXPECT_TRUE(proto.statsd_enabled());
@@ -1986,6 +1989,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
+		EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_traditional);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::essentials);
 		EXPECT_FALSE(proto.prometheus_enabled());
 		EXPECT_TRUE(proto.statsd_enabled());
@@ -2015,6 +2019,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
+		EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_traditional);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::troubleshooting);
 		EXPECT_FALSE(proto.prometheus_enabled());
 		EXPECT_TRUE(proto.statsd_enabled());
@@ -2044,6 +2049,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 		draiosproto::feature_status proto;
 		fm.to_protobuf(proto);
+		EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_traditional);
 		EXPECT_EQ(proto.mode(), draiosproto::agent_mode::secure);
 		EXPECT_FALSE(proto.prometheus_enabled());
 		EXPECT_FALSE(proto.statsd_enabled());
@@ -2069,4 +2075,24 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.network_topology_enabled());
 	}
 
+}
+
+TEST(feature_manager, agentone_variant)
+{
+	feature_manager fm;
+	dummy_features df(fm, true);
+	EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_AGENTONE));
+	draiosproto::feature_status proto;
+	fm.to_protobuf(proto);
+	EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_agentone);
+}
+
+TEST(feature_manager, agentino_variant)
+{
+	feature_manager fm;
+	dummy_features df(fm, true);
+	EXPECT_TRUE(fm.initialize(feature_manager::AGENT_VARIANT_AGENTINO));
+	draiosproto::feature_status proto;
+	fm.to_protobuf(proto);
+	EXPECT_EQ(proto.variant(), draiosproto::agent_variant::variant_agentino);
 }
