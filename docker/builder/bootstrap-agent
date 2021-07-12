@@ -1,8 +1,6 @@
 #!/bin/bash
 set -exo pipefail
 
-CODE_DIR=/draios #location where input code is
-
 if [ -z "$OS" ]; then
 	OS="NA"
 fi
@@ -662,15 +660,6 @@ fi
 
 if [ -z "$BUILD_WARNINGS_AS_ERRORS" ]; then
 	BUILD_WARNINGS_AS_ERRORS=ON
-fi
-
-if [ -z "$AGENT_BUILD_DATE" ]; then
-	AGENT_BUILD_DATE="`date -u -Iseconds`"
-fi
-if [ -z "$AGENT_BUILD_COMMIT" ]; then
-	pushd $CODE_DIR/agent/
-		AGENT_BUILD_COMMIT="`git rev-parse --short HEAD`"
-	popd
 fi
 
 if [ -z "$ONLY_DEPS" -a $OS != "Windows_NT" ]; then

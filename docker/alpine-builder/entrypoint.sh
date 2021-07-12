@@ -19,11 +19,11 @@ if [ -z "$AGENT_VERSION" ]; then
     AGENT_VERSION="0.1.1dev"
 fi
 if [ -z "$AGENT_BUILD_DATE" ]; then
-    AGENT_BUILD_DATE="`date -u -Iseconds`"
+    export AGENT_BUILD_DATE="`date -u -Iseconds`"
 fi
-if [ -z "$AGENT_BUILD_COMMIT" ]; then
+if [ -z "$AGENT_BUILD_COMMIT" -a -d $CODE_DIR/agent/.git]; then
     pushd $CODE_DIR/agent/
-        AGENT_BUILD_COMMIT="`git rev-parse --short HEAD`"
+        export AGENT_BUILD_COMMIT="`git rev-parse --short HEAD`"
     popd
 fi
 if [ -z $STATSITE_VERSION ]; then
@@ -40,12 +40,12 @@ rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE
 rsync --delete -t -r --exclude=.git --exclude=producer_build $CODE_DIR/libscap-hayabusa/ $WORK_DIR/libscap-hayabusa
 if [ "$USE_OLD_DIRS" = true ]
 then
-    rsync --delete -t -r --exclude=.git /draios/libsinsp/ /code/libsinsp/
+    rsync --delete -t -r --exclude=.git $CODE_DIR/libsinsp/ $WORK_DIR/libsinsp/
     LIBSINSP_DIR=$WORK_DIR/libsinsp
     RELOCATED_CHISELS=OFF
 
 else
-    rsync --delete -t -r --exclude=.git /draios/agent-libs/ /code/agent-libs/
+    rsync --delete -t -r --exclude=.git $CODE_DIR/agent-libs/ $WORK_DIR/agent-libs/
     LIBSINSP_DIR=$WORK_DIR/agent-libs
     RELOCATED_CHISELS=ON
 
