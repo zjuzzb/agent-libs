@@ -64,6 +64,7 @@ endif()
 
 if(RELOCATED_CHISELS STREQUAL "ON")
     add_definitions(-DRELOCATED_CHISELS)
+
 endif()
 
 # Add path for custom CMake modules used to build dependencies from sysdig (libscap, libsinsp)
@@ -167,6 +168,10 @@ set(LIBSINSP_INCLUDE_DIRS ${LIBSINSP_SOURCE_DIR} ${LIBSINSP_SOURCE_DIR}/../async
                           ${LIBSINSP_SOURCE_DIR}/third-party/jsoncpp
 )
 
+if(RELOCATED_CHISELS STREQUAL "ON")
+    list(APPEND LIBSINSP_INCLUDE_DIRS "${CHISEL_DIR}")
+endif()
+
 # This suppresses warnings where a project in add_dependencies() is missing. This happens for
 # dependencies of falco engine, where the agent cmakefiles create the dependencies but don't create
 # ExternalProjects for them.
@@ -237,11 +242,11 @@ if(NOT DEFINED COMBINED_PACKAGE)
 endif()
 
 if(DEFINED DEB_EXTRA_FILES)
-	set(CPACK_DEB_EXTRA_FILES "${DEB_EXTRA_FILES}")
+    set(CPACK_DEB_EXTRA_FILES "${DEB_EXTRA_FILES}")
 endif()
 
 if(DEFINED RPM_EXTRA_FILES)
-	set(CPACK_RPM_EXTRA_FILES "${RPM_EXTRA_FILES}")
+    set(CPACK_RPM_EXTRA_FILES "${RPM_EXTRA_FILES}")
 endif()
 
 # So some quick notes on how everything happens at the interaction of CPack and CMake. From a 10k'

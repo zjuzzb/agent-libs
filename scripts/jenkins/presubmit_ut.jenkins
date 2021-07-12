@@ -36,6 +36,11 @@ pipeline {
                         docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
                         CONTAINER_NAME=presubmit-$BUILD_NUMBER
                         docker rm -f "$CONTAINER_NAME" || true
+                        cd agent; git rev-parse HEAD; cd ..;
+                        cd oss-falco; git rev-parse HEAD; cd ..;
+                        cd libscap; git rev-parse HEAD; cd ..;
+                        cd protorepo; git rev-parse HEAD; cd ..;
+                        cd agent-libs; git rev-parse HEAD; cd ..;
                         timeout 3600 docker run -i --rm --name "$CONTAINER_NAME" -e MAKE_JOBS=$(nproc) -v $PWD:/draios:ro -e USE_OLD_DIRS=$USE_LEGACY_LIBS quay.io/sysdig/agent-builder:$BUILDER_VERSION presubmit
                         docker rm -f "$CONTAINER_NAME" || true
                     '''

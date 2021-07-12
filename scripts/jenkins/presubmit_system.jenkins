@@ -49,6 +49,7 @@ pipeline {
                 sh label: '', script: '''
                     sudo pkill -9 run-tests || echo "no tests to kill"
                     sudo pkill -9 tests || echo "no tests to kill"
+                    sudo pkill -9 fake_cri || echo "no tests to kill"
 
                     COUNT=$(lsmod | grep sysdigcloud-probe | wc -l)
                     if [ $COUNT != 0 ]
@@ -77,6 +78,7 @@ pipeline {
                 sudo pkill -9 run-tests || echo "no tests to kill"
 
                 sudo pkill -9 tests || echo "no tests to kill"
+                sudo pkill -9 fake_cri || echo "no tests to kill"
 
                 sudo rmmod sysdigcloud-probe || echo "not currently loaded"
                 docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"

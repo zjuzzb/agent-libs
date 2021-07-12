@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -exuo pipefail
+
 INSTALL_DIR=$1
 
 if [ -n "$INSTALL_DIR" ]
@@ -17,10 +19,12 @@ fi
 
 shift
 
-TESTS_LOG=`mktemp /tmp/tests.log.XXXXXX`
+TESTS_LOG="$INSTALL_DIR/test/log"
 
 set +e
-unshare -m /bin/bash -c "$SETUP_CMD && cd /opt/draios/test && ./tests $@" 2>&1 | tee $TESTS_LOG
+# NOTE: the location of the output log here (tee log) MUST end up in the location specified
+# by $TESTS_LOG in the root namespace
+unshare -m /bin/bash -c "$SETUP_CMD && cd /opt/draios/test && ./tests 2>&1 | tee log"
 set -e
 
 # Check for the indication that all tests were successful. This helps if there

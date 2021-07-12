@@ -15,7 +15,7 @@ if [[ -z $SYSDIG_IMAGE ]]; then
 fi
 
 if [[ -z $USE_OLD_DIRS ]]; then
-  export USE_OLD_DIRS="true"
+  export USE_OLD_DIRS="false"
 fi
 
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build /draios/agent/ /code/agent/

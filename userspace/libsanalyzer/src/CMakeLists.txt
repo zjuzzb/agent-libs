@@ -313,7 +313,8 @@ set(SANALYZER_SOURCES
     ${LIBSINSP_SOURCE_DIR}/user_event_logger.cpp
     ${LIBSINSP_SOURCE_DIR}/utils.cpp
     ${LIBSINSP_SOURCE_DIR}/value_parser.cpp
-    ${LIBSINSP_SOURCE_DIR}/viewinfo.cpp)
+    ${LIBSINSP_SOURCE_DIR}/viewinfo.cpp
+)
 
 if(RELOCATED_CHISELS STREQUAL "ON")
     list(APPEND SANALYZER_SOURCES ${CHISEL_DIR}/chisel_utils.cpp)

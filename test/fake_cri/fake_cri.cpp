@@ -98,7 +98,8 @@ const std::set<std::string> FakeCRIServer::POD_SANDBOX_IDS {
 class FakeCRIImageServer final : public runtime::v1alpha2::ImageService::Service {
 public:
 	FakeCRIImageServer(ListImagesResponse&& is) :
-		m_list_images_response(is) {}
+		m_list_images_response(is) {
+		}
 
 	grpc::Status ListImages(grpc::ServerContext *context,
 				     const ListImagesRequest *req,
