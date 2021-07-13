@@ -173,7 +173,7 @@ statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
 					m_metric = statsd_metric();
 
 					parsed = m_metric.parse_line(buffer);
-					LOG_DEBUG("Current metric parsed: %s", m_metric.to_debug_string().c_str());
+					LOG_TRACE("Current metric parsed: %s", m_metric.to_debug_string().c_str());
 					ASSERT(parsed == true);
 					if (timestamp < m_metric.timestamp())
 					{
