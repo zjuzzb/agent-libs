@@ -225,7 +225,6 @@ py-pip \
 && sed -i -e 's/v[[:digit:]]\..*\//edge\//g' /etc/apk/repositories \
 && apk update \
 && mkdir -p /opt/draios/run \
-&& cp /usr/lib/python3*/site-packages/certifi/cacert.pem /opt/draios/lib/python-deps/certifi/ \
 && rm -rf /tmp/*.apk /var/cache/apk/* \
 && rm -rf /opt/draios/lib/python-deps2.7 \
 && rm -rf /opt/draios/lib/python-deps3.5 \
