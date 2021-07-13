@@ -248,6 +248,8 @@ bool capture_job::start(sinsp* inspector,
 	}
 	else
 	{
+		lazy_scoped_lock membuf_mtx(&m_handler->m_membuf_mtx);
+
 		// We inject a notification to make it easier to identify the starting point.
 		if (m_notification_desc.empty())
 		{
@@ -263,13 +265,19 @@ bool capture_job::start(sinsp* inspector,
 		// of the applying the filter against the events held
 		// in memory. Afterward, it can be treated like a
 		// normal capture job.
+		//
+		// `m_handler->m_membuf_mtx` *may* be locked by
+		// `sinsp_memory_dumper::apply_job_filter`, which is
+		// called from `add_job` below.
+		// If locked, the mutex is unlocked at the end
+		// of this scope
 		std::unique_ptr<sinsp_memory_dumper_job> memjob =
 		    m_memdumper->add_job(m_start_ns,
 		                         m_file,
 		                         details.m_filter,
 		                         m_past_duration_ns,
 		                         m_duration_ns,
-		                         &(m_handler->m_membuf_mtx));
+		                         &membuf_mtx);
 
 		if (memjob->m_state == sinsp_memory_dumper_job::ST_DONE_ERROR)
 		{
@@ -295,7 +303,8 @@ bool capture_job::start(sinsp* inspector,
 		// handled by process_event but *not* be handled by
 		// this job.
 		m_handler->add_job(job_state);
-		m_handler->m_membuf_mtx.unlock();
+
+		// membuf_mtx gets released here
 	}
 
 	m_fp = fopen(m_file.c_str(), "r");

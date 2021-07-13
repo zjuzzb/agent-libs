@@ -236,7 +236,7 @@ bool sinsp_memory_dumper::read_membuf_using_inspector(
 
 void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_state>& state,
                                            std::unique_ptr<sinsp_memory_dumper_job>& job,
-                                           Poco::Mutex* membuf_mtx)
+                                           lazy_scoped_lock* membuf_mtx)
 {
 	if (!state->is_open() || state->m_dumper->written_events() == 0)
 	{
@@ -348,7 +348,7 @@ std::unique_ptr<sinsp_memory_dumper_job> sinsp_memory_dumper::add_job(uint64_t t
                                                       const std::string& filter,
                                                       uint64_t delta_time_past_ns,
                                                       uint64_t delta_time_future_ns,
-                                                      Poco::Mutex* membuf_mtx)
+                                                      lazy_scoped_lock* membuf_mtx)
 {
 	struct timeval tm;
 	gettimeofday(&tm, NULL);

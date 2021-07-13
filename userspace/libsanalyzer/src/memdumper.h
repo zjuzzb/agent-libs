@@ -13,6 +13,54 @@
 #include "analyzer_utils.h"
 #include "sinsp_int.h"
 
+/**
+ * @brief A wrapper over Poco::Mutex with RAII unlocking
+ *
+ * Compared to Poco::ScopedLock, it offers manual locking together with
+ * unlocking on destruction (Poco::ScopedLock locks the mutex immediately
+ * when it's created)
+ */
+class lazy_scoped_lock
+{
+public:
+	lazy_scoped_lock(Poco::Mutex* mutex): m_mutex(mutex), m_locked(false) {}
+
+	/**
+	 * @brief lock the mutex
+	 *
+	 * It will be unlocked automatically when the `lazy_scoped_lock`
+	 * goes out of scope
+	 */
+	void lock()
+	{
+		ASSERT(!m_locked);
+		m_mutex->lock();
+		m_locked = true;
+	}
+
+	/**
+	 * @brief unlock the mutex
+	 */
+	void unlock()
+	{
+		ASSERT(m_locked);
+		m_mutex->unlock();
+		m_locked = false;
+	}
+
+	~lazy_scoped_lock()
+	{
+		if(m_locked)
+		{
+			unlock();
+		}
+	}
+
+private:
+	Poco::Mutex* m_mutex;
+	bool m_locked;
+};
+
 class sinsp_memory_dumper_state
 {
 public:
@@ -241,7 +289,7 @@ public:
 	                                 const std::string& filter,
 	                                 uint64_t delta_time_past_ns,
 	                                 uint64_t delta_time_future_ns,
-	                                 Poco::Mutex* membuf_mtx);
+	                                 lazy_scoped_lock* membuf_mtx);
 
 	inline void process_event(sinsp_evt *evt)
 	{
@@ -347,7 +395,8 @@ private:
 	bool read_membuf_using_inspector(sinsp &inspector, const std::shared_ptr<sinsp_memory_dumper_state> &state,
 	                                 unique_ptr<sinsp_memory_dumper_job>& job);
 	void apply_job_filter(const std::shared_ptr<sinsp_memory_dumper_state> &state,
-	                      unique_ptr<sinsp_memory_dumper_job>& job, Poco::Mutex *membuf_mtx);
+	                      unique_ptr<sinsp_memory_dumper_job>& job,
+	                      lazy_scoped_lock* membuf_mtx);
 
 	typedef std::list<std::shared_ptr<sinsp_memory_dumper_state>> memdump_state;
 
