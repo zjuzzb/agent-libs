@@ -156,6 +156,7 @@ private:
 	std::unique_ptr<pipe_manager> m_coldstart_manager_pipes;
 	std::unique_ptr<pipe_manager> m_promex_pipes;
 	std::unique_ptr<pipe_manager> m_promscrape_pipes;
+	Poco::NamedEvent	m_promscrape_coldstart_event;
 
 	std::shared_ptr<promscrape_proxy> m_promscrape_proxy;
 	std::shared_ptr<promscrape_stats_proxy> m_promscrape_stats_proxy;

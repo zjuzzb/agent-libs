@@ -125,6 +125,10 @@ type_config<uint64_t> c_promscrape_timeout_s(60,
                                              "Watchdog timeout for the promscrape thread",
                                              "promscrape_thread_timeout");
 
+type_config<bool> c_promscrape_coldstart_delay(false,
+                                             "Wait to start promscrape v2 until cointerface is ready",
+                                             "promscrape_coldstart_delay");
+
 type_config<bool> c_10s_flush_enabled(false,
                                       "Enable agent-side aggregation",
                                       "10s_flush_enable");
@@ -277,6 +281,7 @@ dragent_app::dragent_app()
       m_aggregator_queue(MAX_SAMPLE_STORE_SIZE),
       m_serializer_queue(MAX_SAMPLE_STORE_SIZE),
       m_transmit_queue(MAX_SAMPLE_STORE_SIZE),
+      m_promscrape_coldstart_event("promscrape_coldstart"),
       m_timer_thread(std::make_shared<timer_thread>()),
       m_internal_metrics(std::make_shared<internal_metrics>()),
       m_protocol_handler(m_transmit_queue),
@@ -1068,6 +1073,12 @@ int dragent_app::main(const std::vector<std::string>& args)
 				}
 			}
 			argv[i++] = (char *)NULL;
+
+			// Use coldstart delay if set and only for promscrape v2
+			if (c_promscrape_coldstart_delay.get_value() && m_configuration.m_prom_conf.prom_sd())
+			{
+				m_promscrape_coldstart_event.wait();
+			}
 
 			execv((m_configuration.c_root_dir.get_value() + "/bin/" + promscrape).c_str(), const_cast<char* const *>(argv));
 
@@ -2028,10 +2039,12 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		// behind by more than the timeout, it gets declared
 		// stuck.
 
+
 		m_cointerface_ping_interval.run(
 		    [this]() {
 			    coclient::response_cb_t callback = [this](bool successful,
 			                                              google::protobuf::Message* response_msg) {
+					static bool event_set = false;
 				    if (successful)
 				    {
 					    sdc_internal::pong* pong = (sdc_internal::pong*)response_msg;
@@ -2040,6 +2053,12 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 					                                              pong->token());
 
 					    m_cointerface_ready = pong->ready();
+						if (pong->ready() && !event_set)
+						{
+							LOG_INFO("Cointerface is ready, setting promscrape coldstart semaphore");
+							m_promscrape_coldstart_event.set();
+							event_set = true;
+						}
 						if (pong->has_delegation())
 						{
 							m_sinsp_worker.m_analyzer->set_delegation(

@@ -74,6 +74,7 @@
 #include "Poco/Random.h"
 #include "Poco/DigestEngine.h"
 #include "Poco/SHA1Engine.h"
+#include "Poco/NamedEvent.h"
 
 #include <sinsp.h>
 #include "agent-config.h"
