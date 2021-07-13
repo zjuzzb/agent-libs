@@ -236,9 +236,12 @@ public:
 	// buffer. The caller will unlock the mutex when the job has
 	// been added to the list of jobs.
 
-	sinsp_memory_dumper_job* add_job(uint64_t ts, const std::string& filename, const std::string& filter,
-					 uint64_t delta_time_past_ns, uint64_t delta_time_future_ns,
-					 Poco::Mutex *membuf_mtx);
+	std::unique_ptr<sinsp_memory_dumper_job> add_job(uint64_t ts,
+	                                 const std::string& filename,
+	                                 const std::string& filter,
+	                                 uint64_t delta_time_past_ns,
+	                                 uint64_t delta_time_future_ns,
+	                                 Poco::Mutex* membuf_mtx);
 
 	inline void process_event(sinsp_evt *evt)
 	{
@@ -341,8 +344,10 @@ public:
 private:
 	void check_autodisable(uint64_t evt_ts_ns, uint64_t sys_ts_ns);
 	void switch_states(uint64_t ts);
-	bool read_membuf_using_inspector(sinsp &inspector, const std::shared_ptr<sinsp_memory_dumper_state> &state, sinsp_memory_dumper_job* job);
-	void apply_job_filter(const std::shared_ptr<sinsp_memory_dumper_state> &state, sinsp_memory_dumper_job* job, Poco::Mutex *membuf_mtx);
+	bool read_membuf_using_inspector(sinsp &inspector, const std::shared_ptr<sinsp_memory_dumper_state> &state,
+	                                 unique_ptr<sinsp_memory_dumper_job>& job);
+	void apply_job_filter(const std::shared_ptr<sinsp_memory_dumper_state> &state,
+	                      unique_ptr<sinsp_memory_dumper_job>& job, Poco::Mutex *membuf_mtx);
 
 	typedef std::list<std::shared_ptr<sinsp_memory_dumper_state>> memdump_state;
 

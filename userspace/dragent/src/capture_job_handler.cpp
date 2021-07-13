@@ -263,18 +263,18 @@ bool capture_job::start(sinsp* inspector,
 		// of the applying the filter against the events held
 		// in memory. Afterward, it can be treated like a
 		// normal capture job.
-		sinsp_memory_dumper_job* memjob = m_memdumper->add_job(m_start_ns,
-		                                                       m_file,
-		                                                       details.m_filter,
-		                                                       m_past_duration_ns,
-		                                                       m_duration_ns,
-		                                                       &(m_handler->m_membuf_mtx));
+		std::unique_ptr<sinsp_memory_dumper_job> memjob =
+		    m_memdumper->add_job(m_start_ns,
+		                         m_file,
+		                         details.m_filter,
+		                         m_past_duration_ns,
+		                         m_duration_ns,
+		                         &(m_handler->m_membuf_mtx));
 
 		if (memjob->m_state == sinsp_memory_dumper_job::ST_DONE_ERROR)
 		{
 			m_state = ST_DONE_ERROR;
 			errstr = memjob->m_lasterr;
-			delete memjob;
 			return false;
 		}
 
@@ -283,7 +283,6 @@ bool capture_job::start(sinsp* inspector,
 		m_n_events = memjob->m_n_events;
 		m_dumper = memjob->m_dumper;
 		memjob->m_dumper = NULL;
-		delete memjob;
 
 		// Set the inspector of the dumper to the live
 		// inspector. This inspector is only used to hold
