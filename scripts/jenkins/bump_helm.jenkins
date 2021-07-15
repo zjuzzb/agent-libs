@@ -1,0 +1,55 @@
+/* vim:expandtab:sw=4:ts=4:sts=4
+*/
+
+pipeline {
+
+    parameters {
+        string(name: 'RELEASE_VERSION', defaultValue: "", description: "Agent version, comes from upstream job")
+    }
+
+    agent { label 'agent-docker-builder' }
+    stages {
+        stage('Bump Agent version in Helm Chart') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'github-jenkins-user-token', passwordVariable: 'GITHUB_PASSWORD', usernameVariable: 'GITHUB_USERNAME')]) {
+                    dir('charts') {
+                        checkout([$class: 'GitSCM', userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: "https://$GITHUB_PASSWORD@github.com/sysdiglabs/charts.git"]]])
+
+                        sh label: '', script: '''
+                            #!/usr/bin/bash -e
+                            git config user.name "$GITHUB_USERNAME"
+                            git config user.email "$GITHUB_USERNAME@sysdig.com"
+
+                            cd charts/sysdig
+                            bash ../../scripts/sysdig/image-version-bump.sh -v AGENT_VERSION=$RELEASE_VERSION
+                            bash ../../scripts/chart-version-bump.sh
+                            git add values.yaml Chart.yaml
+
+                            MSG="[sysdig] bump agent version to $RELEASE_VERSION"
+                            git commit -m "$MSG"
+
+                            BRANCH_NAME=sysdig-$RELEASE_VERSION
+                            git branch $BRANCH_NAME
+                            git push origin $BRANCH_NAME
+
+                            curl -s \
+                                -H "Accept: application/vnd.github.v3+json" \
+                                -H "Authorization: token $GITHUB_PASSWORD" \
+                                -X POST https://api.github.com/repos/sysdiglabs/charts/pulls \
+                                -d '{
+                                    "base": "master",
+                                    "head": "'"$BRANCH_NAME"'",
+                                    "title": "'"$MSG"'"
+                                }'
+                        '''
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            cleanWs deleteDirs: true, notFailBuild: true
+        }
+    }
+}
