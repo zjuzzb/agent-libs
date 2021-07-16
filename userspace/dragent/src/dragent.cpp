@@ -1962,6 +1962,11 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		}
 	}
 
+	// The protocol handler does not have its own thread, and is only invoked by the
+	// serializer, which already has a deadman....so all we're doing here is logging
+	// if we haven't emitted a sample for a while. We used to die here, but this is kind
+	// of silly as there is no guarantee that there will be any samples to serialize...
+	// so just logging for safety.
 	if (m_protocol_handler.get_last_loop_ns() != 0)
 	{
 		int64_t diff_ns =
@@ -1975,20 +1980,13 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 				            NumberFormatter::format(-diff_ns) + " ns in the future");
 			});
 		}
-		else
+		else if (diff_ns > m_configuration.m_watchdog_sinsp_data_handler_timeout_s * ONE_SECOND_IN_NS)
 		{
-#if _DEBUG
-			LOG_DEBUG("watchdog: sinsp_data_handler last activity " +
-			          NumberFormatter::format(diff_ns) + " ns ago");
-#endif
-		}
-
-		if (timeout_expired(diff_ns,
-		                    m_configuration.m_watchdog_sinsp_data_handler_timeout_s,
-		                    "sinsp_data_handler",
-		                    ""))
-		{
-			to_kill = true;
+			static ratelimit r;
+			r.run([&] {
+				LOG_WARNING("watchdog: sinsp_data_handler last activity " +
+				            NumberFormatter::format(diff_ns) + " ns ago");
+			});
 		}
 	}
 

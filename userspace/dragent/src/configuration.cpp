@@ -958,7 +958,7 @@ void dragent_configuration::init()
 	    m_config->get_scalar<decltype(m_watchdog_sinsp_data_handler_timeout_s)>(
 	        "watchdog",
 	        "sinsp_data_handler_timeout_s",
-	        60);
+	        65);
 
 #ifndef CYGWING_AGENT
 	m_watchdog_heap_profiling_interval_s =
