@@ -1,10 +1,13 @@
+/* vim:expandtab:sw=4:ts=4:sts=4
+*/
+
 pipeline {
     agent { label 'agent-builder-parallel' }
     options {
         timeout(time: 60, unit: 'MINUTES')
     }
     parameters {
-        string(name: 'LIBSINSP_BRANCH', defaultValue: "dev")
+        string(name: 'LIBS_BRANCH', defaultValue: "dev")
         string(name: 'LIBSCAP_BRANCH', defaultValue: "dev")
         string(name: 'BUILDER_VERSION', defaultValue: "latest")
         string(name: 'AGENT_BRANCH', defaultValue: "dev")
@@ -64,12 +67,26 @@ pipeline {
             parallel {
                 stage('Unit Test') {
                     steps {
-                        build job:'agent-presubmit-ut',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"oss-falco-master-candidate"), string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"), string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
+                        build job:'agent-presubmit-ut',parameters:[
+                            string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"),
+                            string(name:'FALCO_BRANCH', value:"oss-falco-master-candidate"),
+                            string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
+                            string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
+                            string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
+                            string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")
+                        ]
                     }
                 }
                 stage('System Test') {
                     steps {
-                        build job:'agent-presubmit-system',parameters:[string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"), string(name:'FALCO_BRANCH', value:"oss-falco-master-candidate"), string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"), string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"), string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")]
+                        build job:'agent-presubmit-system',parameters:[
+                            string(name:'AGENT_BRANCH', value:"${params.AGENT_BRANCH}"),
+                            string(name:'FALCO_BRANCH', value:"oss-falco-master-candidate"),
+                            string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
+                            string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
+                            string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
+                            string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}")
+                        ]
                     }
                 }
             }

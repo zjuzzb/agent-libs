@@ -1,3 +1,6 @@
+/* vim:expandtab:sw=4:ts=4:sts=4
+*/
+
 pipeline {
     agent { label 'agent-docker-builder' }
     stages {
@@ -11,9 +14,9 @@ pipeline {
                     checkout([$class: 'GitSCM', branches: [[name: 'master-sync']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
                     sh "git checkout ${params.FALCO_BRANCH}"
                 }
-                dir('libsinsp') {
-                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libsinsp']]])
-                    sh "git checkout ${params.LIBSINSP_BRANCH}"
+                dir('agent-libs') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/agent-libs']]])
+                    sh "git checkout ${params.LIBS_BRANCH}"
                 }
                 dir('libscap') {
                     checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap']]])
@@ -91,7 +94,7 @@ pipeline {
             }
             steps {
                 sh label: '', script: '''
-                    sudo agent/scripts/jenkins/build-prod-container $PWD/out fargate-rc agentone
+                    sudo agent/scripts/jenkins/build-prod-container fargate-rc $PWD/out agentone
                 '''
             }
         }

@@ -1,3 +1,6 @@
+/* vim:expandtab:sw=4:ts=4:sts=4
+*/
+
 
 def getAgentCommitSha() {
     sh "git rev-parse HEAD > current-commit"
@@ -71,15 +74,15 @@ pipeline {
                     steps {
                         setBuildStatus('Unit Test', 'In Progress', 'PENDING')
                         build job:'agent-presubmit-ut',parameters:[
-							string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),
-							string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
-							string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"),
-							string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
-							string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
-							string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),
-							string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
-							booleanParam(name:'USE_LEGACY_LIBS', value:"false")
-						]
+                            string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),
+                            string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
+                            string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"),
+                            string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
+                            string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
+                            string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),
+                            string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
+                            booleanParam(name:'USE_LEGACY_LIBS', value:"false")
+                        ]
                     }
                     post {
                         success {
@@ -94,15 +97,15 @@ pipeline {
                     steps {
                         setBuildStatus('System Test', 'In Progress', 'PENDING')
                         build job:'agent-presubmit-system',parameters:[
-							string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),
-							string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
-							string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"),
-							string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
-							string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
-							string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
-							string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),
-							booleanParam(name:'USE_LEGACY_LIBS', value:"false")
-						]
+                            string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),
+                            string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
+                            string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"),
+                            string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
+                            string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
+                            string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
+                            string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),
+                            booleanParam(name:'USE_LEGACY_LIBS', value:"false")
+                        ]
                     }
                     post {
                         success {
@@ -119,15 +122,15 @@ pipeline {
                             steps {
                                 setBuildStatus('QA Test', 'Building Container', 'PENDING')
                                 build job:'agent-build-container',parameters:[
-									string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"), 
-									string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
-									string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"),
-									string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
-									string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
-									string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
-									string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),
-									booleanParam(name:'USE_LEGACY_LIBS', value:"false")
-								]
+                                    string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"), 
+                                    string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
+                                    string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"),
+                                    string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
+                                    string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
+                                    string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
+                                    string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),
+                                    booleanParam(name:'USE_LEGACY_LIBS', value:"false")
+                                ]
                             }
                         }
                         stage('Run Test') {
@@ -148,17 +151,17 @@ pipeline {
                 stage('Agentino Build') {
                     steps {
                         setBuildStatus('Agentino Build', 'Building Container', 'PENDING')
-						build job:'agent-build-agentino',parameters:[
-							string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),
-							string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
-							string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"),
-							string(name:'LIBSCAP_HAYABUSA_BRANCH', value:"${params.LIBSCAP_HAYABUSA_BRANCH}"),
-							string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
-							string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
-							string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
-							string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),
-							booleanParam(name:'USE_LEGACY_LIBS', value:"false")
-						]
+                        build job:'agent-build-agentino',parameters:[
+                            string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),
+                            string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
+                            string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"),
+                            string(name:'LIBSCAP_HAYABUSA_BRANCH', value:"${params.LIBSCAP_HAYABUSA_BRANCH}"),
+                            string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
+                            string(name:'LIBSCAP_BRANCH', value:"${params.LIBSCAP_BRANCH}"),
+                            string(name:'LIBS_BRANCH', value:"${params.LIBS_BRANCH}"),
+                            string(name:'BUILDER_VERSION', value:"${params.BUILDER_VERSION}"),
+                            booleanParam(name:'USE_LEGACY_LIBS', value:"false")
+                        ]
                     }
                     post {
                         success {

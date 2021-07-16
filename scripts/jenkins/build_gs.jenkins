@@ -1,3 +1,6 @@
+/* vim:expandtab:sw=4:ts=4:sts=4
+*/
+
 pipeline {
     agent { label 'agent-docker-builder' }
     stages {
@@ -11,9 +14,9 @@ pipeline {
                     checkout([$class: 'GitSCM', branches: [[name: 'master-sync']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
                     sh "git checkout ${params.FALCO_BRANCH}"
                 }
-                dir('libsinsp') {
-                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libsinsp']]])
-                    sh "git checkout ${params.LIBSINSP_BRANCH}"
+                dir('agent-libs') {
+                    checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/agent-libs']]])
+                    sh "git checkout ${params.LIBS_BRANCH}"
                 }
                 dir('libscap') {
                     checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/libscap']]])
@@ -25,17 +28,17 @@ pipeline {
                 }
             }
         }
-	stage('Download Host Analyzer') {
-	    steps {
-		withCredentials([usernamePassword(credentialsId: 'jenkins-artifactory', passwordVariable: 'ARTIFACTORY_PASSWORD', usernameVariable: 'ARTIFACTORY_USERNAME')]) {
-		    sh label: '', script: '''
+    stage('Download Host Analyzer') {
+        steps {
+        withCredentials([usernamePassword(credentialsId: 'jenkins-artifactory', passwordVariable: 'ARTIFACTORY_PASSWORD', usernameVariable: 'ARTIFACTORY_USERNAME')]) {
+            sh label: '', script: '''
                         mkdir -p extras
                         curl -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" https://artifactory.internal.sysdig.com/artifactory/secure-hostanalyzer/host-analyzer-gs.tar.gz --output host-analyzer-gs.tar.gz
                         tar xvf host-analyzer-gs.tar.gz -C ./extras
                     '''
-		}
-	    }
-	}
+        }
+        }
+    }
         stage('Build Release') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
