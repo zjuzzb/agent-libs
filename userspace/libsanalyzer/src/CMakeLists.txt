@@ -244,7 +244,9 @@ set(SANALYZER_SOURCES
     ${LIBSINSP_SOURCE_DIR}/cyclewriter.cpp
     ${LIBSINSP_SOURCE_DIR}/container.cpp
     ${LIBSINSP_SOURCE_DIR}/container_engine/container_engine_base.cpp
-    ${LIBSINSP_SOURCE_DIR}/container_engine/docker_common.cpp
+    ${LIBSINSP_SOURCE_DIR}/container_engine/docker/async_source.cpp
+    ${LIBSINSP_SOURCE_DIR}/container_engine/docker/base.cpp
+    ${LIBSINSP_SOURCE_DIR}/container_engine/docker/podman.cpp
     ${LIBSINSP_SOURCE_DIR}/container_engine/static_container.cpp
     ${LIBSINSP_SOURCE_DIR}/container_info.cpp
     ${LIBSINSP_SOURCE_DIR}/dns_manager.cpp
@@ -266,6 +268,7 @@ set(SANALYZER_SOURCES
     ${CHISEL_DIR}/lua_parser.cpp
     ${CHISEL_DIR}/lua_parser_api.cpp
     ${LIBSINSP_SOURCE_DIR}/prefix_search.cpp
+    ${LIBSINSP_SOURCE_DIR}/procfs_utils.cpp
     ${LIBSINSP_SOURCE_DIR}/tracers.cpp
     ${LIBSINSP_SOURCE_DIR}/sinsp_auth.cpp
     ${LIBSINSP_SOURCE_DIR}/sinsp_curl.cpp
@@ -327,11 +330,12 @@ if(NOT CYGWIN)
         ${LIBSINSP_SOURCE_DIR}/cri.cpp
         ${LIBSINSP_SOURCE_DIR}/container_engine/bpm.cpp
         ${LIBSINSP_SOURCE_DIR}/container_engine/cri.cpp
-        ${LIBSINSP_SOURCE_DIR}/container_engine/docker_linux.cpp
         ${LIBSINSP_SOURCE_DIR}/container_engine/libvirt_lxc.cpp
         ${LIBSINSP_SOURCE_DIR}/container_engine/lxc.cpp
         ${LIBSINSP_SOURCE_DIR}/container_engine/mesos.cpp
         ${LIBSINSP_SOURCE_DIR}/container_engine/rkt.cpp
+        ${LIBSINSP_SOURCE_DIR}/container_engine/docker/connection_linux.cpp
+        ${LIBSINSP_SOURCE_DIR}/container_engine/docker/docker_linux.cpp
         ${LIBSINSP_SOURCE_DIR}/runc.cpp
         container_events/containerd_container.grpc.pb.cc
         container_events/containerd_container.pb.cc
@@ -348,7 +352,9 @@ if(NOT CYGWIN)
         ${CMAKE_CURRENT_BINARY_DIR}/cri.pb.cc
     )
 else()
-    list(APPEND SANALYZER_SOURCES ${LIBSINSP_SOURCE_DIR}/container_engine/docker_win.cpp)
+    list(APPEND SANALYZER_SOURCES ${LIBSINSP_SOURCE_DIR}/container_engine/docker/connection_win.cpp
+         ${LIBSINSP_SOURCE_DIR}/container_engine/docker/docker_win.cpp
+    )
 endif()
 
 if(CYGWIN)
