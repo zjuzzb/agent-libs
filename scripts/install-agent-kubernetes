@@ -323,7 +323,20 @@ function install_k8s_agent {
 		sed -i.bak -e "s|#env:|env:|" $DAEMONSET_FILE
 		sed -i.bak -e "s|#  - name: SYSDIG_BPF_PROBE|  - name: SYSDIG_BPF_PROBE|" $DAEMONSET_FILE
 		sed -i.bak -e "s|#    value: \"\"|    value: \"\"|" $DAEMONSET_FILE
-        fi
+		if [ ! -z "$AGENT_SLIM" ]; then
+			sed -i.bak -e "s|#- name: bpf-probes|- name: bpf-probes|" $DAEMONSET_FILE
+			sed -i.bak -e "s|#  emptyDir: {}|  emptyDir: {}|" $DAEMONSET_FILE
+			sed -i.bak -e "s|#- name: osrel|- name: osrel|" $DAEMONSET_FILE
+			sed -i.bak -e "s|#  hostPath:|  hostPath:|" $DAEMONSET_FILE
+			sed -i.bak -e "s|#    path: /etc/os-release|    path: /etc/os-release|" $DAEMONSET_FILE
+			sed -i.bak -e "s|#    type: FileOrCreate|    type: FileOrCreate|" $DAEMONSET_FILE
+			sed -i.bak -e "s|#- mountPath: /root/.sysdig|- mountPath: /root/.sysdig|" $DAEMONSET_FILE
+			sed -i.bak -e "s|#  name: bpf-probes|  name: bpf-probes|" $DAEMONSET_FILE
+			sed -i.bak -e "s|#- mountPath: /host/etc/os-release|- mountPath: /host/etc/os-release|" $DAEMONSET_FILE
+			sed -i.bak -e "s|#  name: osrel|  name: osrel|" $DAEMONSET_FILE
+			sed -i.bak -e "s|#  readOnly: true|  readOnly: true|" $DAEMONSET_FILE
+		fi
+	fi
 	
 	echo "* Deploying the sysdig agent"
 	kubectl apply -f $DAEMONSET_FILE --namespace=$NAMESPACE
