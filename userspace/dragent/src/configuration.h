@@ -247,7 +247,7 @@ public:
 	std::string m_promex_url;
 	std::string m_promex_connect_url;
 	std::string m_promex_container_labels;
-	custom_container::resolver m_custom_container;
+	std::unique_ptr<custom_container::resolver> m_custom_container;
 #endif
 
 	typedef std::set<std::string>      k8s_ext_list_t;

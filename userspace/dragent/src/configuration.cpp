@@ -1081,33 +1081,34 @@ void dragent_configuration::init()
 	    m_config->get_scalar<int>("prometheus", "metric_expiration", 300));
 
 	// custom container engines
+	m_custom_container = make_unique<custom_container::resolver>();
 	try
 	{
-		m_custom_container.set_cgroup_match(
+		m_custom_container->set_cgroup_match(
 		    m_config->get_scalar<string>("custom_container", "match", "cgroup", ""));
-		m_custom_container.set_environ_match(
+		m_custom_container->set_environ_match(
 		    m_config->get_first_deep_map<string>("custom_container", "match", "environ"));
-		m_custom_container.set_id_pattern(
+		m_custom_container->set_id_pattern(
 		    m_config->get_scalar<string>("custom_container", "id", ""));
-		m_custom_container.set_name_pattern(
+		m_custom_container->set_name_pattern(
 		    m_config->get_scalar<string>("custom_container", "name", ""));
-		m_custom_container.set_image_pattern(
+		m_custom_container->set_image_pattern(
 		    m_config->get_scalar<string>("custom_container", "image", ""));
-		m_custom_container.set_label_pattern(
+		m_custom_container->set_label_pattern(
 		    m_config->get_first_deep_map<string>("custom_container", "labels"));
-		m_custom_container.set_max(m_config->get_scalar<int>("custom_container", "limit", 50));
-		m_custom_container.set_max_id_length(
+		m_custom_container->set_max(m_config->get_scalar<int>("custom_container", "limit", 50));
+		m_custom_container->set_max_id_length(
 		    m_config->get_scalar<int>("custom_container", "max_id_length", 12));
-		m_custom_container.set_incremental_metadata(
+		m_custom_container->set_incremental_metadata(
 		    m_config->get_scalar<bool>("custom_container", "incremental_metadata", false));
-		m_custom_container.set_enabled(
+		m_custom_container->set_enabled(
 		    m_config->get_scalar<bool>("custom_container", "enabled", false));
 	}
 	catch (const Poco::RuntimeException& e)
 	{
 		m_config->add_error("config file error inside key custom_containers: " + e.message() +
 		                    ", disabling custom container support");
-		m_custom_container.set_enabled(false);
+		m_custom_container->set_enabled(false);
 	}
 
 	// Prometheus exporter
@@ -1117,7 +1118,7 @@ void dragent_configuration::init()
 	m_promex_connect_url = m_config->get_scalar<string>("prometheus_exporter", "connect_url", "");
 	m_promex_container_labels = m_config->get_scalar<string>("prometheus_exporter",
 	                                                         "container_labels",
-	                                                         m_custom_container.get_labels());
+	                                                         m_custom_container->get_labels());
 
 #endif  // CYGWING_AGENT
 

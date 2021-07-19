@@ -1832,7 +1832,7 @@ sinsp_analyzer* dragent_app::build_analyzer(
 	analyzer->set_prometheus_conf(m_configuration.m_prom_conf);
 	if (m_configuration.m_config_test)
 	{
-		m_configuration.m_custom_container.set_config_test(true);
+		m_configuration.m_custom_container->set_config_test(true);
 	}
 
 	analyzer->set_custom_container_conf(move(m_configuration.m_custom_container));

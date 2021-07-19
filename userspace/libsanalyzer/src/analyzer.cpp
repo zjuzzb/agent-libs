@@ -8269,7 +8269,7 @@ bool sinsp_analyzer::resolve_custom_container(sinsp_container_manager* const man
                                               thread_analyzer_info* const tinfo,
                                               const bool query_os_for_missing_info)
 {
-	return m_custom_container.resolve(manager, tinfo, query_os_for_missing_info);
+	return m_custom_container->resolve(manager, tinfo, query_os_for_missing_info);
 }
 
 void sinsp_analyzer::remove_ipv4_connection(const ipv4tuple& ipv4info)
