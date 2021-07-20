@@ -1,6 +1,11 @@
 #!/bin/bash
 set -exo pipefail
 
+#setup all the env vars
+CODE_DIR=/draios #location where input code is
+WORK_DIR=/code #location where code is copied to prevent edits conflicting with ongonig build
+BUILD_DIR=$WORK_DIR/agent/build
+
 if [[ -z $MAKE_JOBS ]]; then
   export MAKE_JOBS=1
 fi
@@ -14,20 +19,29 @@ if [[ -z $SYSDIG_IMAGE ]]; then
   SYSDIG_IMAGE="sysdig:latest"
 fi
 
+if [ -z "$AGENT_BUILD_DATE" ]; then
+    export AGENT_BUILD_DATE="`date -u -Iseconds`"
+fi
+if [ -z "$AGENT_BUILD_COMMIT" -a -d $CODE_DIR/agent/.git ]; then
+    pushd $CODE_DIR/agent/
+        export AGENT_BUILD_COMMIT="`git rev-parse --short HEAD`"
+    popd
+fi
+
 if [[ -z $USE_OLD_DIRS ]]; then
   export USE_OLD_DIRS="false"
 fi
 
-rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build /draios/agent/ /code/agent/
-rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' /draios/oss-falco/ /code/oss-falco/
-rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build /draios/protorepo/ /code/protorepo/
+rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/agent/ $WORK_DIR/agent/
+rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' $CODE_DIR/oss-falco/ $WORK_DIR/oss-falco/
+rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/protorepo/ $WORK_DIR/protorepo/
 # still need this for a few things (namely sysdig-probe-loader)
-rsync --delete -t -r --exclude=.git /draios/libscap/ /code/libscap/
+rsync --delete -t -r --exclude=.git $CODE_DIR/libscap/ $WORK_DIR/libscap/
 if [ "$USE_OLD_DIRS" = true ]
 then
-	rsync --delete -t -r --exclude=.git /draios/libsinsp/ /code/libsinsp/
+	rsync --delete -t -r --exclude=.git $CODE_DIR/libsinsp/ $WORK_DIR/libsinsp/
 else
-	rsync --delete -t -r --exclude=.git /draios/agent-libs/ /code/agent-libs/
+	rsync --delete -t -r --exclude=.git $CODE_DIR/agent-libs/ $WORK_DIR/agent-libs/
 fi
 
 if [[ "`uname -m`" == "s390x" ]]; then
@@ -35,22 +49,22 @@ if [[ "`uname -m`" == "s390x" ]]; then
 	bootstrap_agent() {
 		local build_target="${1:-"release"}"
 
-		cd /code/agent
+		cd $WORK_DIR/agent
 		./bootstrap-agent
 		# bootstrap-agent creates a folder for every build target, so
 		# we just switch into the appropriate folder
-		cd "/code/agent/build/${build_target}"
+		cd "$BUILD_DIR/${build_target}"
 	}
 else
 	DOCKERFILE=Dockerfile
 	bootstrap_agent() {
 		local build_target="${1:-"release"}"
 
-		cd /code/agent
+		cd $WORK_DIR/agent
 		scl enable devtoolset-2 ./bootstrap-agent
 		# bootstrap-agent creates a folder for every build target, so
 		# we just switch into the appropriate folder
-		cd "/code/agent/build/${build_target}"
+		cd "$BUILD_DIR/${build_target}"
 	}
 fi
 
@@ -75,7 +89,7 @@ build_benchmarks()
 	make -j$MAKE_JOBS benchmarks
 
 	# Copy all files that start with "benchmark-" to /out
-	for SRC in $(find "/code/agent/build/${build_target}" -name 'benchmark-*' -type f -print); do
+	for SRC in $(find "$BUILD_DIR/${build_target}" -name 'benchmark-*' -type f -print); do
 		echo "copy $SRC to /out"
 		cp $SRC /out
 	done
@@ -172,11 +186,11 @@ build_release()
 
 build_sysdig()
 {
-	cd /code/agent
+	cd $WORK_DIR/agent
 	scl enable devtoolset-2 ./bootstrap-sysdig
-	cd /code/sysdig/build/release
+	cd $WORK_DIR/sysdig/build/release
 	make -j$MAKE_JOBS package
-	cp /code/sysdig/docker/local/* /out
+	cp $WORK_DIR/sysdig/docker/local/* /out
 	cp *.deb /out
 	cp *.rpm /out
 	cd /out
@@ -185,19 +199,19 @@ build_sysdig()
 
 build_sysdig_release()
 {
-	cd /code/agent
+	cd $WORK_DIR/agent
 	mkdir -p /out/sysdig-{debug,release}
 	scl enable devtoolset-2 ./bootstrap-sysdig
 
-	cd /code/sysdig/build/release
+	cd $WORK_DIR/sysdig/build/release
 	make -j$MAKE_JOBS package
 	cp *.rpm *.deb *.tar.gz /out/sysdig-release
 
-	cp /code/sysdig/docker/local/* /out/sysdig-release
+	cp $WORK_DIR/sysdig/docker/local/* /out/sysdig-release
 	sed -i "-es@^ENV SYSDIG_VERSION .*@ENV SYSDIG_VERSION $SYSDIG_VERSION@" /out/sysdig-release/Dockerfile
 	docker build -t $SYSDIG_IMAGE -f /out/sysdig-release/$DOCKERFILE --pull /out/sysdig-release
 
-	cd /code/sysdig/build/debug
+	cd $WORK_DIR/sysdig/build/debug
 	make -j$MAKE_JOBS package
 	cp *.rpm *.deb *.tar.gz /out/sysdig-debug
 }
@@ -215,7 +229,7 @@ build_single_cpp()
 	# -r -- recurse down directories
 	# -l -- output file names only
 	# -w -- whole word matching
-	grep -Frlw --include Makefile "$2.o:" /code/agent/build/$1 | while read makefilePath
+	grep -Frlw --include Makefile "$2.o:" $BUILD_DIR/$1 | while read makefilePath
 	do
 		# Get the full text of the target, including any directories
 		target="$(grep -Fw $2.o: $makefilePath)"
@@ -266,31 +280,31 @@ build_and_run_sonar_tools()
 
 	# All artifacts need to be built with the build-wrapper so start with
 	# a clean.
-	cd /code/agent/build/debug-internal-code-coverage
+	cd $BUILD_DIR/debug-internal-code-coverage
 	make clean
 
 	# bootstrap-agent has to run after clean to generate some directories 
 	# under generated-go
 	bootstrap_agent debug-internal-code-coverage
 
-	local BW_OUTPUT="/code/agent/build/debug-internal-code-coverage/bw-output"
+	local BW_OUTPUT="$BUILD_DIR/debug-internal-code-coverage/bw-output"
 	rm -rf $BW_OUTPUT
 
 	# 1. Run the build using the build wrapper
 	# 2. Run the sonar scanner to generate results and push to the cloud
 
-	/code/agent/dependencies/sonarcloud/build-wrapper-linux-x86/build-wrapper-linux-x86-64 \
+	$WORK_DIR/agent/dependencies/sonarcloud/build-wrapper-linux-x86/build-wrapper-linux-x86-64 \
 	    --out-dir $BW_OUTPUT \
 	    make -j$MAKE_JOBS all
 
 	# Change into the directory to set the "project basedir". All files
 	# scanned must be in this directory.
-	cd /code/agent
+	cd $WORK_DIR/agent
 
-	/code/agent/dependencies/sonarcloud/sonar-scanner-4.3.0.2102-linux/bin/sonar-scanner \
+	$WORK_DIR/agent/dependencies/sonarcloud/sonar-scanner-4.3.0.2102-linux/bin/sonar-scanner \
 	    -Dsonar.organization=draios \
 	    -Dsonar.projectKey=draios_agent \
-	    -Dsonar.sources=/code/agent \
+	    -Dsonar.sources=$WORK_DIR/agent \
 	    -Dsonar.host.url=https://sonarcloud.io \
 	    -Dsonar.cfamily.build-wrapper-output=$BW_OUTPUT \
 	    -Dsonar.login=d8ce213c92157d883015102baabb7193f5153b78 \
