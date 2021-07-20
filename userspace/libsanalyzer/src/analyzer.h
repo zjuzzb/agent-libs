@@ -567,7 +567,7 @@ public:
 	void dump_config_test()
 	{
 #ifndef CYGWING_AGENT
-		if (m_custom_container)
+		if (m_custom_container != nullptr)
 			m_custom_container->dump_container_table();
 #endif
 	}

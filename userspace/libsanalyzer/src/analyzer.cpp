@@ -8269,7 +8269,7 @@ bool sinsp_analyzer::resolve_custom_container(sinsp_container_manager* const man
                                               thread_analyzer_info* const tinfo,
                                               const bool query_os_for_missing_info)
 {
-	if (!m_custom_container)
+	if (m_custom_container == nullptr)
 		return false;
 	return m_custom_container->resolve(manager, tinfo, query_os_for_missing_info);
 }
