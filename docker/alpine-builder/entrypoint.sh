@@ -31,7 +31,7 @@ if [ -z $STATSITE_VERSION ]; then
 fi
 
 if [[ -z $USE_OLD_DIRS ]]; then
-    USE_OLD_DIRS="true"
+    USE_OLD_DIRS="false"
 fi
 
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=dependency_install_scripts --exclude=build $CODE_DIR/agent/ $WORK_DIR/agent/
