@@ -128,6 +128,10 @@ func AddReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet CoReplic
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.replicas", replicaSet.Status.Replicas)
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicaSet.Status.FullyLabeledReplicas)
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicaSet.Status.ReadyReplicas)
+	// Need to have unique key for replicas_running since we only set one protobuf field per metric in 
+	// legacy_k8s_protobuf.c, and we want two protobuf fields with the ReadyReplicas value 
+	// (replicas_running and replicas_ready).
+	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.runningReplicas", replicaSet.Status.ReadyReplicas)
 	kubecollect_common.AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicaSet.Spec.Replicas)
 	kubecollect_common.AppendMetricInt32(metrics, prefix+"status.availableReplicas", replicaSet.Status.AvailableReplicas)
 }

@@ -141,7 +141,7 @@ const unordered_map<string, setter_t<k8s_replication_controller>>
     K8sResource<k8s_replication_controller>::metrics({
         {"kubernetes.replicationController.spec.replicas",
          SETTER(k8s_replication_controller, set_replicas_desired)},
-        {"kubernetes.replicationController.status.readyReplicas",
+        {"kubernetes.replicationController.status.runningReplicas",
          SETTER(k8s_replication_controller, set_replicas_running)},
         {"kubernetes.replicationController.status.availableReplicas",
          SETTER(k8s_replication_controller, set_replicas_available)},
@@ -251,7 +251,7 @@ const string K8sResource<k8s_replica_set>::tag_prefix = "kubernetes.replicaSet."
 template<>
 const unordered_map<string, setter_t<k8s_replica_set>> K8sResource<k8s_replica_set>::metrics({
     {"kubernetes.replicaset.spec.replicas", SETTER(k8s_replica_set, set_replicas_desired)},
-    {"kubernetes.replicaset.status.readyReplicas", SETTER(k8s_replica_set, set_replicas_running)},
+    {"kubernetes.replicaset.status.runningReplicas", SETTER(k8s_replica_set, set_replicas_running)},
     {"kubernetes.replicaset.status.fullyLabeledReplicas",
      SETTER(k8s_replica_set, set_replicas_fully_labeled)},
     {"kubernetes.replicaset.status.readyReplicas", SETTER(k8s_replica_set, set_replicas_ready)},
