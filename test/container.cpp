@@ -549,14 +549,14 @@ TEST_F(sys_call_test, container_custom)
 	};
 
 	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
-		custom_container::resolver res;
-		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_id_pattern("<cgroup:1>");
-		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
-		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
-		res.set_max(50);
-		res.set_max_id_length(50);
-		res.set_enabled(true);
+		auto res = make_unique<custom_container::resolver>();
+		res->set_cgroup_match("^/custom_container_(.*)");
+		res->set_id_pattern("<cgroup:1>");
+		res->set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res->set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res->set_max(50);
+		res->set_max_id_length(50);
+		res->set_enabled(true);
 		analyzer->set_custom_container_conf(move(res));
 	};
 
@@ -607,17 +607,17 @@ TEST_F(sys_call_test, container_custom_env_match)
 	};
 
 	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
-		custom_container::resolver res;
-		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_environ_match({
+		auto res = make_unique<custom_container::resolver>();
+		res->set_cgroup_match("^/custom_container_(.*)");
+		res->set_environ_match({
 		    {"CUSTOM_CONTAINER_NAME", "custom_(.*)"},
 		});
-		res.set_id_pattern("<cgroup:1>");
-		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
-		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
-		res.set_max(50);
-		res.set_max_id_length(50);
-		res.set_enabled(true);
+		res->set_id_pattern("<cgroup:1>");
+		res->set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res->set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res->set_max(50);
+		res->set_max_id_length(50);
+		res->set_enabled(true);
 		analyzer->set_custom_container_conf(move(res));
 	};
 
@@ -668,17 +668,17 @@ TEST_F(sys_call_test, container_custom_env_match_last)
 	};
 
 	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
-		custom_container::resolver res;
-		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_environ_match({
+		auto res = make_unique<custom_container::resolver>();
+		res->set_cgroup_match("^/custom_container_(.*)");
+		res->set_environ_match({
 		    {"CUSTOM_CONTAINER_IMAGE", "custom_(.*)"},
 		});
-		res.set_id_pattern("<cgroup:1>");
-		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
-		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
-		res.set_max(50);
-		res.set_max_id_length(50);
-		res.set_enabled(true);
+		res->set_id_pattern("<cgroup:1>");
+		res->set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res->set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res->set_max(50);
+		res->set_max_id_length(50);
+		res->set_enabled(true);
 		analyzer->set_custom_container_conf(move(res));
 	};
 
@@ -740,20 +740,20 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 	};
 
 	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
-		custom_container::resolver res;
-		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_environ_match(
+		auto res = make_unique<custom_container::resolver>();
+		res->set_cgroup_match("^/custom_container_(.*)");
+		res->set_environ_match(
 		    {{"CUSTOM_CONTAINER_NAME", "custom_(.*)"}, {"CUSTOM_CONTAINER_IMAGE", "custom_(.*)"}});
-		res.set_id_pattern("<cgroup:1>");
-		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
-		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
-		res.set_max(50);
-		res.set_max_id_length(50);
-		res.set_enabled(true);
+		res->set_id_pattern("<cgroup:1>");
+		res->set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res->set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res->set_max(50);
+		res->set_max_id_length(50);
+		res->set_enabled(true);
 		// exercise label sanitizing:
-		res.set_label_pattern("custom_container_1", labels[0]);
-		res.set_label_pattern("custom_container_2", labels[1]);
-		res.set_label_pattern("custom_container_3", labels[2]);
+		res->set_label_pattern("custom_container_1", labels[0]);
+		res->set_label_pattern("custom_container_2", labels[1]);
+		res->set_label_pattern("custom_container_3", labels[2]);
 		analyzer->set_custom_container_conf(move(res));
 	};
 
@@ -804,16 +804,16 @@ TEST_F(sys_call_test, container_custom_env_match_flipped)
 	};
 
 	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
-		custom_container::resolver res;
-		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_environ_match(
+		auto res = make_unique<custom_container::resolver>();
+		res->set_cgroup_match("^/custom_container_(.*)");
+		res->set_environ_match(
 		    {{"CUSTOM_CONTAINER_IMAGE", "custom_(.*)"}, {"CUSTOM_CONTAINER_NAME", "custom_(.*)"}});
-		res.set_id_pattern("<cgroup:1>");
-		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
-		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
-		res.set_max(50);
-		res.set_max_id_length(50);
-		res.set_enabled(true);
+		res->set_id_pattern("<cgroup:1>");
+		res->set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res->set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res->set_max(50);
+		res->set_max_id_length(50);
+		res->set_enabled(true);
 		analyzer->set_custom_container_conf(move(res));
 	};
 
@@ -865,15 +865,15 @@ TEST_F(sys_call_test, container_custom_halfnhalf)
 	};
 
 	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
-		custom_container::resolver res;
-		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_id_pattern("<cgroup:1>");
-		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
-		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
-		res.set_max(50);
-		res.set_max_id_length(50);
-		res.set_incremental_metadata(true);
-		res.set_enabled(true);
+		auto res = make_unique<custom_container::resolver>();
+		res->set_cgroup_match("^/custom_container_(.*)");
+		res->set_id_pattern("<cgroup:1>");
+		res->set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res->set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res->set_max(50);
+		res->set_max_id_length(50);
+		res->set_incremental_metadata(true);
+		res->set_enabled(true);
 		analyzer->set_custom_container_conf(move(res));
 	};
 
@@ -932,16 +932,16 @@ TEST_F(sys_call_test, container_custom_huge_env)
 	};
 
 	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
-		custom_container::resolver res;
-		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_environ_match(
+		auto res = make_unique<custom_container::resolver>();
+		res->set_cgroup_match("^/custom_container_(.*)");
+		res->set_environ_match(
 		    {{"CUSTOM_CONTAINER_IMAGE", "custom_(.*)"}, {"CUSTOM_CONTAINER_NAME", "custom_(.*)"}});
-		res.set_id_pattern("<cgroup:1>");
-		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
-		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
-		res.set_max(50);
-		res.set_max_id_length(50);
-		res.set_enabled(true);
+		res->set_id_pattern("<cgroup:1>");
+		res->set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res->set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res->set_max(50);
+		res->set_max_id_length(50);
+		res->set_enabled(true);
 		analyzer->set_custom_container_conf(move(res));
 
 		// enable reading environments from /proc
@@ -998,16 +998,16 @@ TEST_F(sys_call_test, container_custom_huge_env_echo)
 	};
 
 	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
-		custom_container::resolver res;
-		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_environ_match(
+		auto res = make_unique<custom_container::resolver>();
+		res->set_cgroup_match("^/custom_container_(.*)");
+		res->set_environ_match(
 		    {{"CUSTOM_CONTAINER_IMAGE", "custom_(.*)"}, {"CUSTOM_CONTAINER_NAME", "custom_(.*)"}});
-		res.set_id_pattern("<cgroup:1>");
-		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
-		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
-		res.set_max(50);
-		res.set_max_id_length(50);
-		res.set_enabled(true);
+		res->set_id_pattern("<cgroup:1>");
+		res->set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res->set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res->set_max(50);
+		res->set_max_id_length(50);
+		res->set_enabled(true);
 		analyzer->set_custom_container_conf(move(res));
 	};
 
@@ -1061,16 +1061,16 @@ TEST_F(sys_call_test, container_custom_huge_env_echo_proc)
 	};
 
 	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
-		custom_container::resolver res;
-		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_environ_match(
+		auto res = make_unique<custom_container::resolver>();
+		res->set_cgroup_match("^/custom_container_(.*)");
+		res->set_environ_match(
 		    {{"CUSTOM_CONTAINER_IMAGE", "custom_(.*)"}, {"CUSTOM_CONTAINER_NAME", "custom_(.*)"}});
-		res.set_id_pattern("<cgroup:1>");
-		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
-		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
-		res.set_max(50);
-		res.set_max_id_length(50);
-		res.set_enabled(true);
+		res->set_id_pattern("<cgroup:1>");
+		res->set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res->set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res->set_max(50);
+		res->set_max_id_length(50);
+		res->set_enabled(true);
 		analyzer->set_custom_container_conf(move(res));
 
 		// enable reading environments from /proc
@@ -1130,16 +1130,16 @@ TEST_F(sys_call_test, container_custom_huge_env_at_end)
 	};
 
 	before_open_t setup = [&](sinsp* inspector, sinsp_analyzer* analyzer) {
-		custom_container::resolver res;
-		res.set_cgroup_match("^/custom_container_(.*)");
-		res.set_environ_match(
+		auto res = make_unique<custom_container::resolver>();
+		res->set_cgroup_match("^/custom_container_(.*)");
+		res->set_environ_match(
 		    {{"CUSTOM_CONTAINER_IMAGE", "custom_(.*)"}, {"CUSTOM_CONTAINER_NAME", "custom_(.*)"}});
-		res.set_id_pattern("<cgroup:1>");
-		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
-		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
-		res.set_max(50);
-		res.set_max_id_length(50);
-		res.set_enabled(true);
+		res->set_id_pattern("<cgroup:1>");
+		res->set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res->set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res->set_max(50);
+		res->set_max_id_length(50);
+		res->set_enabled(true);
 		analyzer->set_custom_container_conf(move(res));
 
 		// enable reading environments from /proc

@@ -424,9 +424,9 @@ public:
 #ifndef CYGWING_AGENT
 	void set_prometheus_conf(const prometheus_conf& pconf) { m_prom_conf = pconf; }
 
-	void set_custom_container_conf(custom_container::resolver&& conf)
+	void set_custom_container_conf(std::unique_ptr<custom_container::resolver> conf)
 	{
-		std::swap(m_custom_container, conf);
+		m_custom_container.swap(conf);
 	}
 #endif
 #endif  // _WIN32
@@ -567,7 +567,8 @@ public:
 	void dump_config_test()
 	{
 #ifndef CYGWING_AGENT
-		m_custom_container.dump_container_table();
+		if (m_custom_container != nullptr)
+			m_custom_container->dump_container_table();
 #endif
 	}
 
@@ -1324,7 +1325,7 @@ public:
 
 #ifndef CYGWING_AGENT
 	prometheus_conf m_prom_conf;
-	custom_container::resolver m_custom_container;
+	std::unique_ptr<custom_container::resolver> m_custom_container;
 #endif
 #endif
 
