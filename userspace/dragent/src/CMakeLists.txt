@@ -117,6 +117,7 @@ endif()
 # We compile all these files into their own object (i.e. non-linked) library otherwise cmake will
 # compile them for each library that includes them
 add_library(appcommonl OBJECT ${appcommonfiles})
+add_dependencies(appcommonl draiosproto)
 
 list(
     APPEND
