@@ -48,6 +48,9 @@ public:
 		, m_java_ptr(std::move(other.m_java_ptr))
 		, m_c_str(std::move(other.m_c_str))
 	{
+		other.m_env = nullptr;
+		other.m_java_ptr = nullptr;
+		other.m_c_str = nullptr;
 	}
 
 	java_string& operator=(java_string&& other)
