@@ -59,7 +59,9 @@ pipeline {
                 def releases = readFile(file:'releases').split()
                 def latest_release = true
                 for (release in releases) {
-                    if (compareVersions(release, "11.1.0") >= 0) {
+                    if (compareVersions(release, "11.4.0") >= 0) {
+                        driver_repo = "ssh://git@github.com/draios/agent-libs.git"
+                    } else if (compareVersions(release, "11.1.0") >= 0) {
                         driver_repo = "ssh://git@github.com/draios/libscap.git"
                     } else {
                         driver_repo = "ssh://git@github.com/draios/sysdig.git"
