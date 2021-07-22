@@ -86,4 +86,8 @@ template<>
 void enrich_k8s_object<draiosproto::k8s_persistentvolumeclaim>(const draiosproto::container_group* src,
 							       draiosproto::k8s_persistentvolumeclaim * obj);
 
+template<>
+void enrich_k8s_object<draiosproto::k8s_persistentvolume>(const draiosproto::container_group* src,
+							  draiosproto::k8s_persistentvolume * obj);
+
 }  // namespace legacy_k8s

@@ -2,8 +2,8 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"context"
+	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
+	draiosproto "protorepo/agent-be/proto"
 	"sync"
 )
 
@@ -90,6 +91,47 @@ func getPersistentVolumeType(pv *v1.PersistentVolume) string {
 	return ret
 }
 
+func pvPhaseToDraiosEnum(phase v1.PersistentVolumePhase) (error, draiosproto.K8SPersistentvolumePhase) {
+	switch phase {
+	case v1.VolumePending:
+		return nil, draiosproto.K8SPersistentvolumePhase_PERSISTENT_VOLUME_PHASE_PENDING
+	case v1.VolumeAvailable:
+		return nil, draiosproto.K8SPersistentvolumePhase_PERSISTENT_VOLUME_PHASE_AVAILABLE
+	case v1.VolumeBound:
+		return nil, draiosproto.K8SPersistentvolumePhase_PERSISTENT_VOLUME_PHASE_BOUND
+	case v1.VolumeFailed:
+		return nil, draiosproto.K8SPersistentvolumePhase_PERSISTENT_VOLUME_PHASE_FAILED
+	case v1.VolumeReleased:
+		return nil, draiosproto.K8SPersistentvolumePhase_PERSISTENT_VOLUME_PHASE_RELEASED
+	}
+
+	return fmt.Errorf("unknown pv phase: %s", string(phase)), draiosproto.K8SPersistentvolumePhase_PERSISTENT_VOLUME_PHASE_RELEASED
+}
+
+func getPVMetaData(pv *v1.PersistentVolume) *draiosproto.K8SPersistentvolume {
+	if pv == nil {
+		return nil
+	}
+
+	ret := &draiosproto.K8SPersistentvolume{
+		Common: kubecollect_common.CreateCommon("", ""),
+	}
+
+	if cr := pv.Spec.ClaimRef; cr != nil {
+		ret.ClaimRef = &draiosproto.K8SCommon{
+			Name:                 &cr.Name,
+			Uid:                  proto.String(string(cr.UID)),
+			Namespace:            &cr.Namespace,
+		}
+	}
+
+	if err, enumPhase := pvPhaseToDraiosEnum(pv.Status.Phase); err == nil {
+		ret.Status = &draiosproto.K8SPersistentvolumeStatusDetails{Phase: &enumPhase}
+	}
+
+	return ret
+}
+
 func newPersistentVolumeCongroup(pv *v1.PersistentVolume) (*draiosproto.ContainerGroup) {
 	label_tag_name := metricPrefix + "label."
 	internal_tag_name := metricPrefix + "label."
@@ -124,6 +166,7 @@ func newPersistentVolumeCongroup(pv *v1.PersistentVolume) (*draiosproto.Containe
 			Id:proto.String(string(pv.GetUID()))},
 		Tags: tags,
 		InternalTags: inttags,
+		K8SObject: &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pv{Pv: getPVMetaData(pv)}},
 	}
 
 	addPersistentVolumeMetrics(&ret.Metrics, pv)

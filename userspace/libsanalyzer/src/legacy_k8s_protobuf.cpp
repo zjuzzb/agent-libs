@@ -450,4 +450,18 @@ void enrich_k8s_object<draiosproto::k8s_persistentvolumeclaim>(
 	obj->mutable_access_modes()->CopyFrom(src->k8s_object().pvc().access_modes());
 }
 
+template<>
+void enrich_k8s_object<draiosproto::k8s_persistentvolume>(const draiosproto::container_group* src,
+							  draiosproto::k8s_persistentvolume * obj)
+{
+	// Get claimRef
+	obj->mutable_claim_ref()->set_uid(src->k8s_object().pv().claim_ref().uid());
+	obj->mutable_claim_ref()->set_name(src->k8s_object().pv().claim_ref().name());
+	obj->mutable_claim_ref()->set_namespace_(src->k8s_object().pv().claim_ref().namespace_());
+
+
+	// Get the phase
+	obj->mutable_status()->set_phase(src->k8s_object().pv().status().phase());
+}
+
 }  // namespace legacy_k8s

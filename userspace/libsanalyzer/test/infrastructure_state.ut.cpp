@@ -10,6 +10,7 @@
 #include "legacy_k8s_protobuf.h"
 
 #include <google/protobuf/util/json_util.h>
+#include <google/protobuf/util/message_differencer.h>
 
 #include <deque>
 #include <gtest.h>
@@ -1379,4 +1380,21 @@ TEST_F(infrastructure_state_test, enrich_pvc)
 		}
 	}
 	
+}
+
+TEST_F(infrastructure_state_test, enrich_pv)
+{
+	draiosproto::k8s_persistentvolume pv;
+	draiosproto::container_group cg;
+
+	cg.mutable_k8s_object()->mutable_pv()->mutable_claim_ref()->set_name("sicilia");
+	cg.mutable_k8s_object()->mutable_pv()->mutable_claim_ref()->set_namespace_("california");
+	cg.mutable_k8s_object()->mutable_pv()->mutable_claim_ref()->set_uid("trepertre");
+
+	legacy_k8s::enrich_k8s_object(&cg, &pv);
+
+	if(!google::protobuf::util::MessageDifferencer::Equals(cg.k8s_object().pv().claim_ref(), pv.claim_ref()))
+	{
+		FAIL();
+	}
 }

@@ -2,12 +2,12 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"encoding/json"
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	draiosproto "protorepo/agent-be/proto"
 	"reflect"
 	"testing"
 )
@@ -76,6 +76,7 @@ func getExpected() *draiosproto.ContainerGroup {
 			Id:                   proto.String(""),
 		},
 		Tags:                 tags,
+		K8SObject:            &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pv{Pv: getPVMetaData(createV1PersistentVolume())}},
 	}
 
 	kubecollect_common.AppendMetricInt64(&ret.Metrics, "kubernetes.persistentvolume.storage", 500000000)
@@ -115,4 +116,66 @@ func TestClaimRefNil(t *testing.T) {
 	pv := createV1PersistentVolume()
 	pv.Spec.ClaimRef = nil
 	newPersistentVolumeCongroup(pv)
+}
+
+func getPVPhasePtr(phase draiosproto.K8SPersistentvolumePhase) *draiosproto.K8SPersistentvolumePhase {
+	return &phase
+}
+
+func TestGetPVMetaData(t *testing.T) {
+	cases := []struct{
+		claimRef *v1.ObjectReference
+		phase    v1.PersistentVolumePhase
+		expected draiosproto.K8SPersistentvolume
+	} {
+		{
+			claimRef: &v1.ObjectReference{
+				Kind:            "WindSurf",
+				Namespace:       "Portogallo",
+				Name:            "MeloDellaPlaia",
+				UID:             "IDU",
+			},
+			phase: v1.VolumePending,
+
+			expected: draiosproto.K8SPersistentvolume{
+				Common:               kubecollect_common.CreateCommon("",""),
+				ClaimRef:             &draiosproto.K8SCommon{
+					Name:                 proto.String("MeloDellaPlaia"),
+					Uid:                  proto.String("IDU"),
+					Namespace:            proto.String("Portogallo"),
+				},
+				Status:               &draiosproto.K8SPersistentvolumeStatusDetails{
+					Phase:                getPVPhasePtr(draiosproto.K8SPersistentvolumePhase_PERSISTENT_VOLUME_PHASE_PENDING),
+				},
+			},
+		},
+		{
+			claimRef: nil,
+			phase: "",
+
+			expected: draiosproto.K8SPersistentvolume{
+				Common:               kubecollect_common.CreateCommon("",""),
+			},
+		},
+	}
+	
+	for k, ut := range cases {
+		pv := v1.PersistentVolume{
+			Spec:       v1.PersistentVolumeSpec{
+				ClaimRef: ut.claimRef,
+			},
+			Status:     v1.PersistentVolumeStatus{
+				Phase:   ut.phase,
+			},
+		}
+
+		k8s_object := getPVMetaData(&pv)
+
+		if !proto.Equal(k8s_object, &ut.expected) {
+			actualJson, _  := json.Marshal(*k8s_object)
+			expectedJson, _ := json.Marshal(ut.expected)
+			t.Logf("Fail test number %d\nExpected %s\nActual %s", k, expectedJson, actualJson)
+			t.Fail()
+		}
+	}
 }
