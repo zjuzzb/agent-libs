@@ -316,7 +316,8 @@ field_extension = {
     "k8s_persistentvolume" : {1: {PRIMARY_KEY},
                               2:100},
     "k8s_persistentvolumeclaim" : {1: {PRIMARY_KEY},
-                                   2:100},
+                                   2:100,
+                                   3:101},
     "k8s_hpa" : {1: {PRIMARY_KEY},
                  2:102,
                  3:103,
@@ -373,6 +374,9 @@ skip = set([
     "aggregations64",
     "aggregations64_repeated",
     "aggregations_double",
-    "matchlist_detail"
+    "matchlist_detail",
+    "k8s_persistentvolumeclaim_status_details",
+    "k8s_volume_access_mode",
+    "k8s_type"
 ])
 

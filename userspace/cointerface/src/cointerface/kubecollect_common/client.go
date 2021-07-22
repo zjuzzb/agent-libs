@@ -22,8 +22,8 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
-    "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
@@ -1226,4 +1226,11 @@ func MapInsert(m *map[string]string, key string, value string) {
 
 func GetPkg(kubecollectInterface KubecollectInterface) string {
 	return reflect.TypeOf(kubecollectInterface).Name()
+}
+
+func CreateCommon(name string, uid string) *draiosproto.K8SCommon {
+	return &draiosproto.K8SCommon{
+		Name:                 proto.String(name),
+		Uid:                  proto.String(uid),
+	}
 }

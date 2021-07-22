@@ -3929,14 +3929,20 @@ TEST(aggregator, k8s_persistentvolumeclaim)
 
 	auto i = input.mutable_kubernetes()->add_persistentvolumeclaims();
 	i->set_storage(7);
+	i->mutable_access_modes()->Add(draiosproto::VOLUME_ACCESS_MODE_READ_WRITE_ONCE);
+
 
 	auto input2 = input;
 	aggregator->aggregate(input2, output, false);
 	EXPECT_EQ(output.kubernetes().persistentvolumeclaims()[0].aggr_storage().sum(), 7);
 
 	i->set_storage(100);
+	i->mutable_access_modes()->Clear();
+	i->mutable_access_modes()->Add(draiosproto::VOLUME_ACCESS_MODE_READ_ONLY_MANY);
 	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().persistentvolumeclaims()[0].aggr_storage().sum(), 107);
+	EXPECT_EQ(output.kubernetes().persistentvolumeclaims()[0].access_modes().size(), 1);
+	EXPECT_EQ(output.kubernetes().persistentvolumeclaims()[0].access_modes()[0], draiosproto::VOLUME_ACCESS_MODE_READ_WRITE_ONCE);
 
 	// validate primary key
 	draiosproto::k8s_persistentvolumeclaim lhs;
@@ -3948,6 +3954,9 @@ TEST(aggregator, k8s_persistentvolumeclaim)
 	EXPECT_TRUE(k8s_persistentvolumeclaim_message_aggregator::comparer()(&lhs, &rhs));
 	EXPECT_EQ(k8s_persistentvolumeclaim_message_aggregator::hasher()(&lhs),
 	          k8s_persistentvolumeclaim_message_aggregator::hasher()(&rhs));
+
+	i->mutable_access_modes()->Add(1);
+
 }
 
 TEST(aggregator, k8s_hpa)

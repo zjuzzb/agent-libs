@@ -430,5 +430,24 @@ void enrich_k8s_object<draiosproto::k8s_pod>(const draiosproto::container_group*
 			obj->mutable_pod_status()->set_unschedulable(true);
 		}
 	}
+
+	// Fill volumes
+	obj->mutable_volumes()->CopyFrom(src->k8s_object().pod().volumes());
 }
+
+template<>
+void enrich_k8s_object<draiosproto::k8s_persistentvolumeclaim>(
+    const draiosproto::container_group* src,
+    draiosproto::k8s_persistentvolumeclaim* obj)
+{
+	// Get the phase
+	obj->mutable_status()->set_phase(src->k8s_object().pvc().status().phase());
+
+	// Get conditions
+	obj->mutable_status()->mutable_conditions()->CopyFrom(src->k8s_object().pvc().status().conditions());
+
+	// Get access mode
+	obj->mutable_access_modes()->CopyFrom(src->k8s_object().pvc().access_modes());
+}
+
 }  // namespace legacy_k8s

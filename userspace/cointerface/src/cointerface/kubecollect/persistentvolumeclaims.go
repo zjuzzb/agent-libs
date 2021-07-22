@@ -2,8 +2,8 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"context"
+	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
+	draiosproto "protorepo/agent-be/proto"
 	"sync"
 )
 
@@ -36,6 +37,81 @@ func persistentVolumeClaimEvent(pv *v1.PersistentVolumeClaim, eventType *draiosp
 		Type: eventType,
 		Object: newPersistentVolumeClaimCongroup(pv),
 	}
+}
+
+func phaseToDraiosEnum(phase *v1.PersistentVolumeClaimPhase) (error, draiosproto.K8SPersistentvolumeclaimPhase) {
+	switch *phase {
+	case v1.ClaimPending:
+		return nil, draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_PENDING
+	case v1.ClaimBound:
+		return nil, draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_BOUND
+	case v1.ClaimLost:
+		return nil, draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_LOST
+	}
+
+	return fmt.Errorf("invalid pvc phase: %s", *phase), draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_LOST
+}
+
+func conditionStatusToDraiosEnum(status *v1.ConditionStatus) (error, draiosproto.K8SPersistentvolumeclaimConditionStatus) {
+	switch *status {
+	case v1.ConditionTrue:
+		return nil, draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_TRUE
+	case v1.ConditionFalse:
+		return nil, draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_FALSE
+	case v1.ConditionUnknown:
+		return nil, draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_UNKNOWN
+	}
+
+	return fmt.Errorf("invalid pvc condition status: %s", *status), draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_UNKNOWN
+}
+
+func accessModeToDraiosEnum(mode * v1.PersistentVolumeAccessMode) (error, draiosproto.K8SVolumeAccessMode) {
+	switch *mode {
+	case v1.ReadWriteOnce:
+		return nil, draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_WRITE_ONCE
+	case v1.ReadWriteMany:
+		return nil, draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_WRITE_MANY
+	case v1.ReadOnlyMany:
+		return nil, draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_ONLY_MANY
+	}
+	return fmt.Errorf("invalid pvc access mode: %s", *mode), draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_ONLY_MANY
+}
+
+func getMetaData(pvc *v1.PersistentVolumeClaim) *draiosproto.K8SPersistentvolumeclaim {
+	ret := &draiosproto.K8SPersistentvolumeclaim{Common: kubecollect_common.CreateCommon("", "")}
+	err, phase := phaseToDraiosEnum(&pvc.Status.Phase)
+	if err != nil {
+		log.Warnf(err.Error())
+	} else {
+		ret.Status = &draiosproto.K8SPersistentvolumeclaimStatusDetails{
+			Phase: 				  &phase,
+
+		}
+	}
+
+	for _, condition := range pvc.Status.Conditions {
+		err, status := conditionStatusToDraiosEnum(&condition.Status)
+		if err != nil {
+			log.Warnf(err.Error())
+		} else {
+			newCondition := &draiosproto.K8SPersistentvolumeclaimCondition{
+				Status:               &status,
+				Type:                 proto.String(string(condition.Type)),
+			}
+			ret.Status.Conditions = append(ret.Status.Conditions, newCondition)
+		}
+	}
+
+	for _, accessMode := range pvc.Status.AccessModes {
+		err, mode := accessModeToDraiosEnum(&accessMode)
+		if err != nil {
+			log.Warnf(err.Error())
+		} else {
+			ret.AccessModes = append(ret.AccessModes, mode)
+		}
+
+	}
+	return ret
 }
 
 func newPersistentVolumeClaimCongroup(pvc *v1.PersistentVolumeClaim) (*draiosproto.ContainerGroup) {
@@ -70,6 +146,9 @@ func newPersistentVolumeClaimCongroup(pvc *v1.PersistentVolumeClaim) (*draiospro
 			Kind:proto.String("k8s_persistentvolumeclaim"),
 			Id:proto.String(string(pvc.GetUID()))},
 		Tags: tags,
+		K8SObject: &draiosproto.K8SType{
+			TypeList: &draiosproto.K8SType_Pvc{Pvc: getMetaData(pvc)},
+		},
 		Namespace:proto.String(pvc.GetNamespace()),
 	}
 

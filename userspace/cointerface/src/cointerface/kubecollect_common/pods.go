@@ -283,4 +283,27 @@ func AddParentsToPodViaOwnerRef(parents *[]*draiosproto.CongroupUid, pod *v1.Pod
 	}
 }
 
+func GetVolumes(pod *v1.Pod) *draiosproto.K8SPod {
+	if pod == nil {
+		return nil
+	}
 
+	ret := &draiosproto.K8SPod{Common: CreateCommon("", "")}
+
+	for _, volume := range pod.Spec.Volumes {
+		newVolume := &draiosproto.K8SPodVolume{}
+		newVolume.Name = &volume.Name
+		if pvc := volume.PersistentVolumeClaim; pvc != nil {
+			newVolume.Volumesource = &draiosproto.K8SPodVolumeSource{
+				TypeList:             &draiosproto.K8SPodVolumeSource_Persistentvolumeclaim{Persistentvolumeclaim: &draiosproto.K8SPodVolumePersistentVolumeClaim{
+					Name:     &pvc.ClaimName,
+					Readonly: &pvc.ReadOnly,
+				}},
+
+			}
+			ret.Volumes = append(ret.Volumes, newVolume)
+		}
+	}
+
+	return ret
+}

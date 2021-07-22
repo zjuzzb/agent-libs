@@ -301,6 +301,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 			Parents: parents,
 			Children: children,
 			Namespace:proto.String(pod.GetNamespace()),
+			K8SObject: &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pod{Pod: kubecollect_common.GetVolumes(pod)}},
 		},
 	})
 	cg = append(cg, containerEvents...)

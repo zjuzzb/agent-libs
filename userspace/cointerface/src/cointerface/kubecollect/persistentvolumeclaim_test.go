@@ -2,7 +2,6 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"encoding/json"
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
@@ -11,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	informers2 "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
+	draiosproto "protorepo/agent-be/proto"
 	"testing"
 )
 
@@ -148,6 +148,21 @@ func getPVCExpected() *draiosproto.ContainerGroup {
 		},
 		Tags: tags,
 		Namespace:proto.String(namespaceName),
+		K8SObject: &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pvc{Pvc: &draiosproto.K8SPersistentvolumeclaim{
+			Common: kubecollect_common.CreateCommon("", ""),
+			Status:               &draiosproto.K8SPersistentvolumeclaimStatusDetails{
+				Phase:  	          getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_BOUND),
+				Conditions:           conditionsToArray(draiosproto.K8SPersistentvolumeclaimCondition{
+														Status:               getCondStatusPtr(draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_UNKNOWN),
+														Type:                 getClaimTypePtr(v1.PersistentVolumeClaimResizing),
+
+														}),
+
+			},
+			AccessModes:          []draiosproto.K8SVolumeAccessMode{
+				draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_ONLY_MANY,
+			},
+		}}},
 	}
 
 	kubecollect_common.AppendMetricInt64(&ret.Metrics, "kubernetes.persistentvolumeclaim.storage", 500000000)
@@ -177,4 +192,152 @@ func TestPVCCreation(t *testing.T) {
 	// nilPvcCongoup created with pointers false does not have StorageClassName
 	delete(expected.Tags, create_pvc_label_key("storageclassname"))
 	checkEquality(t, expected, nilPvcCongroup)
+}
+
+func getPhasePtr(phase draiosproto.K8SPersistentvolumeclaimPhase) *draiosproto.K8SPersistentvolumeclaimPhase {
+	return &phase
+}
+
+func getClaimTypePtr(t v1.PersistentVolumeClaimConditionType) *string {
+	ret := string(t)
+	return &ret
+}
+
+func getCondStatusPtr(cs draiosproto.K8SPersistentvolumeclaimConditionStatus) *draiosproto.K8SPersistentvolumeclaimConditionStatus {
+	return &cs
+}
+
+func conditionsToArray(conditions... draiosproto.K8SPersistentvolumeclaimCondition) []*draiosproto.K8SPersistentvolumeclaimCondition {
+	ret := []*draiosproto.K8SPersistentvolumeclaimCondition{}
+
+	for _, condition := range conditions {
+		condition := condition
+		ret = append(ret, &condition)
+	}
+	return ret
+}
+
+func TestGetMetaData(t *testing.T){
+	cases := []struct {
+		phase v1.PersistentVolumeClaimPhase
+		conditions []v1.PersistentVolumeClaimCondition
+		accessMode []v1.PersistentVolumeAccessMode
+
+		expected draiosproto.K8SPersistentvolumeclaim
+	}{
+		{
+			phase: v1.ClaimPending,
+			conditions: []v1.PersistentVolumeClaimCondition{
+				{
+					Type: v1.PersistentVolumeClaimResizing,
+					Status: v1.ConditionUnknown,
+				},
+			},
+			accessMode: []v1.PersistentVolumeAccessMode{
+				v1.ReadWriteOnce,
+			},
+			expected: draiosproto.K8SPersistentvolumeclaim{
+				Common: kubecollect_common.CreateCommon("",""),
+				Status:               &draiosproto.K8SPersistentvolumeclaimStatusDetails{
+					Phase:	              getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_PENDING),
+					Conditions:           conditionsToArray(draiosproto.K8SPersistentvolumeclaimCondition{
+																Status:               getCondStatusPtr(draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_UNKNOWN),
+																Type:                 getClaimTypePtr(v1.PersistentVolumeClaimResizing),
+
+																}),
+				},
+				AccessModes:          []draiosproto.K8SVolumeAccessMode{
+					draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_WRITE_ONCE,
+				},
+
+			},
+		},
+		{
+			phase: v1.ClaimBound,
+			conditions: []v1.PersistentVolumeClaimCondition{},
+			accessMode: []v1.PersistentVolumeAccessMode{},
+			expected: draiosproto.K8SPersistentvolumeclaim{
+				Common: kubecollect_common.CreateCommon("",""),
+				Status:               &draiosproto.K8SPersistentvolumeclaimStatusDetails{
+					Phase:	               getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_BOUND),
+					Conditions:            nil,
+				},
+				AccessModes:          nil,
+
+			},
+		},
+		{
+			phase: v1.ClaimPending,
+			conditions: []v1.PersistentVolumeClaimCondition{},
+			accessMode: []v1.PersistentVolumeAccessMode{},
+			expected: draiosproto.K8SPersistentvolumeclaim{
+				Common: kubecollect_common.CreateCommon("",""),
+				Status:               &draiosproto.K8SPersistentvolumeclaimStatusDetails{
+					Phase:	               getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_PENDING),
+					Conditions:            nil,
+				},
+				AccessModes:          nil,
+
+			},
+
+		},
+		{
+			phase: v1.ClaimPending,
+			conditions: []v1.PersistentVolumeClaimCondition{
+				{
+					Type: v1.PersistentVolumeClaimResizing,
+					Status: v1.ConditionTrue,
+				},
+				{
+					Type: v1.PersistentVolumeClaimFileSystemResizePending,
+					Status: v1.ConditionUnknown,
+				},
+			},
+			accessMode: []v1.PersistentVolumeAccessMode{
+				v1.ReadWriteOnce,
+				v1.ReadOnlyMany,
+				v1.ReadWriteMany,
+			},
+
+			expected: draiosproto.K8SPersistentvolumeclaim{
+				Common: kubecollect_common.CreateCommon("",""),
+				Status:               &draiosproto.K8SPersistentvolumeclaimStatusDetails{
+					Phase:	               getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_PENDING),
+					Conditions:            conditionsToArray(draiosproto.K8SPersistentvolumeclaimCondition{
+																Status:               getCondStatusPtr(draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_TRUE),
+																Type:                 getClaimTypePtr(v1.PersistentVolumeClaimResizing),
+
+															}, draiosproto.K8SPersistentvolumeclaimCondition{
+																Status:               getCondStatusPtr(draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_UNKNOWN),
+																Type:                 getClaimTypePtr(v1.PersistentVolumeClaimFileSystemResizePending),
+															}),
+				},
+				AccessModes:          []draiosproto.K8SVolumeAccessMode{
+					draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_WRITE_ONCE,
+					draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_ONLY_MANY,
+					draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_WRITE_MANY,
+				},
+
+			},
+		},
+	}
+	
+	for k, ut := range cases {
+		pvc := &v1.PersistentVolumeClaim{
+			Status:     v1.PersistentVolumeClaimStatus{
+				Phase:       ut.phase,
+				AccessModes: ut.accessMode,
+				Conditions:  ut.conditions,
+			},
+		}
+
+		k8s_object := getMetaData(pvc)
+
+		if !proto.Equal(k8s_object, &ut.expected) {
+			actualJson, _  := json.Marshal(*k8s_object)
+			expectedJson, _ := json.Marshal(ut.expected)
+			t.Logf("Fail test number %d\nExpected %s\nActual %s", k, expectedJson, actualJson)
+			t.Fail()
+		}
+	}
 }

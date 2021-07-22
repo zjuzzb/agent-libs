@@ -7,6 +7,7 @@
 #include "secure_audit_handler.h"
 #include "sinsp_mock.h"
 #include "test_logger.h"
+#include "legacy_k8s_protobuf.h"
 
 #include <google/protobuf/util/json_util.h>
 
@@ -1341,4 +1342,41 @@ TEST_F(infrastructure_state_test, local_remote_pod)
 	// Verify that the container still only has one parent
 	container_state = is.m_state[container_uid].get();
 	EXPECT_EQ(container_state->parents_size(), 1);
+}
+
+
+TEST_F(infrastructure_state_test, enrich_pvc)
+{
+	
+	draiosproto::k8s_persistentvolumeclaim pvc;
+	draiosproto::container_group cg;
+
+	cg.mutable_k8s_object()->mutable_pvc()->mutable_status()->set_phase(::draiosproto::PERSISTENT_VOLUME_CLAIM_PHASE_BOUND);
+
+	auto* c1 = cg.mutable_k8s_object()->mutable_pvc()->mutable_status()->mutable_conditions()->Add();
+	c1->set_status(draiosproto::PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_TRUE);
+	c1->set_type("Resizing");
+
+	auto* c2 = cg.mutable_k8s_object()->mutable_pvc()->mutable_status()->mutable_conditions()->Add();
+	c2->set_status(draiosproto::PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_FALSE);
+	c2->set_type("FileSystemResizePending");
+
+	cg.mutable_k8s_object()->mutable_pvc()->mutable_access_modes()->Add(draiosproto::VOLUME_ACCESS_MODE_READ_ONLY_MANY);
+
+
+	legacy_k8s::enrich_k8s_object(&cg, &pvc);
+
+	EXPECT_EQ(pvc.status().phase(), draiosproto::PERSISTENT_VOLUME_CLAIM_PHASE_BOUND);
+
+	EXPECT_EQ(pvc.status().conditions_size(), 2);
+
+	for(auto& condition :  pvc.status().conditions())
+	{
+		if(!((condition.type() == "Resizing" && condition.status() == draiosproto::PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_TRUE) ||
+		    (condition.type() == "FileSystemResizePending" && condition.status() == draiosproto::PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_FALSE)))
+		{
+			FAIL();
+		}
+	}
+	
 }
