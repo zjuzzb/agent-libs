@@ -14,7 +14,7 @@ pipeline {
                     checkout([$class: 'GitSCM', branches: [[name: 'master-sync']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
                     sh "git checkout ${params.FALCO_BRANCH}"
                 }
-                dir('agent_libs') {
+                dir('agent-libs') {
                     checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/agent-libs']]])
                     sh "git checkout ${params.LIBS_BRANCH}"
                 }

@@ -344,7 +344,7 @@ pipeline {
         steps {
             build job: 'sysdig-probe-builder', parameters: [
                 string(name: 'RELEASE_NUMBER', value: "${params.RELEASE_VERSION}"),
-                string(name: 'DRIVER_REPO', value: "ssh://git@github.com/draios/libscap.git"),
+                string(name: 'DRIVER_REPO', value: "ssh://git@github.com/draios/agent-libs.git"),
                 string(name: 'DRIVER_REPO_COMMIT', value: "agent/${params.RELEASE_VERSION}"),
                 string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')
             ]
