@@ -49,7 +49,7 @@ int main(int argc, char **argv)
 			}
 		}
 	}
-	catch(sinsp_exception e)
+	catch(sinsp_exception& e)
 	{
 		std::cerr << e.what();
 		return -1;

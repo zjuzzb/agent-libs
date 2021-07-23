@@ -560,7 +560,7 @@ protected:
 			string dump_file = string("/tmp/") + make_token(tag) + ".scap";
 			inspector->open(dump_file);
 		}
-		catch(sinsp_exception e)
+		catch(sinsp_exception& e)
 		{
 			FAIL() << "Could not open dump file: " << e.what();
 			return;
@@ -731,7 +731,7 @@ TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
 		string dump_file = string("/tmp/agent-dump-events:single.scap");
 		inspector->open(dump_file);
 	}
-	catch(sinsp_exception e)
+	catch(sinsp_exception& e)
 	{
 		FAIL() << "Could not open dump file: " << e.what();
 		return;

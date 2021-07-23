@@ -36,7 +36,7 @@ TEST_F(custom_container_f, match)
 	bool thrown = false;
 	try {
 		m.render(out, 3);
-	} catch (Poco::RuntimeException e) {
+	} catch (Poco::RuntimeException &e) {
 		thrown = true;
 	}
 	ASSERT_TRUE(thrown);

@@ -603,7 +603,7 @@ int main(int argc, char** argv)
 			g_analyzer->generate_memory_report(mrbuf, sizeof(mrbuf));
 			fprintf(stderr, "%s", mrbuf);
 		}
-		catch (sinsp_exception e)
+		catch (sinsp_exception& e)
 		{
 			if (emitjson)
 			{
