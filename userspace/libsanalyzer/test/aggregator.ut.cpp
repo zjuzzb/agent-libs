@@ -4977,7 +4977,7 @@ TEST(aggregator_extra, DISABLED_memory_perf)
 		filename << "goldman_" << i << ".dam";
 		std::ifstream input_file;
 		input_file.open(filename.str().c_str(), std::ifstream::in | std::ifstream::binary);
-		ASSERT_TRUE(input_file);
+		ASSERT_FALSE(input_file.fail());
 		input_file.seekg(2);
 
 		draiosproto::metrics* input = new draiosproto::metrics();
@@ -5005,7 +5005,7 @@ TEST(aggregator_extra, DISABLED_cpu_perf)
 		filename << "goldman_" << i << ".dam";
 		std::ifstream input_file;
 		input_file.open(filename.str().c_str(), std::ifstream::in | std::ifstream::binary);
-		ASSERT_TRUE(input_file);
+		ASSERT_FALSE(input_file.fail());
 		input_file.seekg(2);
 
 		draiosproto::metrics* input = new draiosproto::metrics();
@@ -5037,7 +5037,7 @@ TEST(aggregator_extra, DISABLED_aggregate)
 
 		std::ifstream input_file;
 		input_file.open(filename.str().c_str(), std::ifstream::in | std::ifstream::binary);
-		ASSERT_TRUE(input_file);
+		ASSERT_FALSE(input_file.fail());
 		input_file.seekg(2);
 
 		draiosproto::metrics* input = new draiosproto::metrics();
@@ -5059,7 +5059,7 @@ TEST(aggregator_extra, DISABLED_dump)
 
 	std::ifstream input_file;
 	input_file.open(filename.str().c_str(), std::ifstream::in | std::ifstream::binary);
-	ASSERT_TRUE(input_file);
+	ASSERT_FALSE(input_file.fail());
 	input_file.seekg(2);
 
 	draiosproto::metrics* input = new draiosproto::metrics();
@@ -5621,7 +5621,7 @@ void validate_protobuf(std::string& diff, const std::string& name, bool should_i
 		filename << "aggr_pbs/" << name << "/raw/input_" << i << ".dam";
 		std::ifstream input_file;
 		input_file.open(filename.str().c_str(), std::ifstream::in | std::ifstream::binary);
-		ASSERT_TRUE(input_file);
+		ASSERT_FALSE(input_file.fail());
 		input_file.seekg(2);
 
 		draiosproto::metrics input;
@@ -5647,7 +5647,7 @@ void validate_protobuf(std::string& diff, const std::string& name, bool should_i
 	draiosproto::metrics backend;
 	std::ifstream backend_stream;
 	backend_stream.open(backend_filename.str().c_str(), std::ifstream::in | std::ifstream::binary);
-	ASSERT_TRUE(backend_stream);
+	ASSERT_FALSE(backend_stream.fail());
 	backend_stream.seekg(2);
 	ASSERT_TRUE(backend.ParseFromIstream(&backend_stream));
 
@@ -7559,7 +7559,7 @@ TEST(aggregator_extra, DISABLED_generate)
 		filename << "random_" << loop_count << ".dam";
 		std::ofstream output_file;
 		output_file.open(filename.str().c_str(), std::ofstream::out | std::ofstream::binary);
-		ASSERT_TRUE(output_file);
+		ASSERT_FALSE(output_file.fail());
 		char temp2 = 2;
 		char temp1 = 1;
 		output_file.write(&temp2, 1);
@@ -7623,7 +7623,7 @@ TEST(aggregator_extra, DISABLED_generate_programs)
 	filename << "programs.dam";
 	std::ofstream output_file;
 	output_file.open(filename.str().c_str(), std::ofstream::out | std::ofstream::binary);
-	ASSERT_TRUE(output_file);
+	ASSERT_FALSE(output_file.fail());
 	char temp2 = 2;
 	char temp1 = 1;
 	output_file.write(&temp2, 1);
