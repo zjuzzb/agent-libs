@@ -61,7 +61,12 @@ void sinsp_event_source::do_run()
 		// it's the same.
 		sinsp_evt* ev;
 		int32_t res = m_inspector.next(&ev);
-		if (res != SCAP_SUCCESS)
+		if (res == SCAP_FAILURE)
+		{
+			LOG_DEBUG("Scap returned %d to next, last error: %s", res, m_inspector.getlasterr().c_str());
+			usleep(c_sinsp_poll_delay_us.get_value());
+		}
+		else if (res != SCAP_SUCCESS)
 		{
 			LOG_DEBUG("Scap returned %d to next", res);
 			usleep(c_sinsp_poll_delay_us.get_value());
