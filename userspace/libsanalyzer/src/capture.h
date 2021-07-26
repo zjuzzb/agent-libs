@@ -101,16 +101,18 @@ private:
  */
 class capture
 {
-	capture() : m_read_fd(-1), m_n_events(0) {}
+	capture() : m_read_fd(-1), m_write_fd(-1), m_n_events(0) {}
 public:
 	capture(const capture& rhs) = delete;
 
 	capture(capture&& rhs) noexcept
 	    : m_read_fd(rhs.m_read_fd),
+	      m_write_fd(rhs.m_write_fd),
 	      m_n_events(rhs.m_n_events.load()),
 	      m_dumper(std::move(rhs.m_dumper))
 	{
 		rhs.m_read_fd = -1;
+		rhs.m_write_fd = -1;
 		rhs.m_n_events = 0;
 	}
 
@@ -120,9 +122,13 @@ public:
 	 * @brief start a new capture write
 	 * @param inspector the inspector to use
 	 * @param filename the file to write to
+	 * @param auto_delete delete the file immediately after creating
 	 * @return a new `capture` instance
+	 *
+	 * When `auto_delete` is set, the file will be `unlink()`ed immediately
+	 * and so will only be available as the open file descriptor(s)
 	 */
-	static std::unique_ptr<capture> start(sinsp* inspector, const std::string& filename);
+	static std::unique_ptr<capture> start(sinsp* inspector, const std::string& filename, bool auto_delete);
 
 	/**
 	 * @brief get a `capture_reader` associated with this writer
@@ -169,10 +175,12 @@ public:
 	inline capture& operator=(capture&& rhs) noexcept
 	{
 		m_read_fd = rhs.m_read_fd;
+		m_write_fd = rhs.m_write_fd;
 		m_n_events.store(rhs.m_n_events);
 		m_dumper = std::move(rhs.m_dumper);
 
 		rhs.m_read_fd = -1;
+		rhs.m_write_fd = -1;
 		rhs.m_n_events = 0;
 
 		return *this;
@@ -180,6 +188,7 @@ public:
 
 private:
 	int m_read_fd;
+	int m_write_fd;
 	std::atomic<uint64_t> m_n_events;
 	std::unique_ptr<sinsp_dumper> m_dumper;
 };

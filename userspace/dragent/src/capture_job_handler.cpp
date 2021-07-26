@@ -155,14 +155,6 @@ capture_job::capture_job(capture_job_handler* handler,
 capture_job::~capture_job()
 {
 	delete m_filter;
-	if (m_delete_file_when_done && !m_file.empty())
-	{
-		File f(m_file);
-		if (f.exists())
-		{
-			f.remove();
-		}
-	}
 }
 
 bool capture_job::start(sinsp* inspector,
@@ -265,7 +257,8 @@ bool capture_job::start(sinsp* inspector,
 		                         details.m_filter,
 		                         m_past_duration_ns,
 		                         m_duration_ns,
-		                         &membuf_mtx);
+		                         &membuf_mtx,
+		                         m_delete_file_when_done);
 
 		if (memjob->m_state == sinsp_memory_dumper_job::ST_DONE_ERROR)
 		{
@@ -371,7 +364,7 @@ void capture_job::flush(uint64_t ts, bool& throttled)
 	    },
 	    ts);
 
-	if (m_state != ST_DONE_ERROR)
+	if (m_state == ST_INPROGRESS)
 	{
 		struct stat st;
 		if(m_capture_reader->stat(st) != 0)
@@ -789,7 +782,8 @@ bool capture_job_handler::queue_job_request(sinsp* inspector,
 		{
 			job_request->m_start_details->m_capture =
 			    capture::start(inspector,
-			                   job_request->m_start_details->m_file);
+			                   job_request->m_start_details->m_file,
+			                   job_request->m_start_details->m_delete_file_when_done);
 		}
 	}
 

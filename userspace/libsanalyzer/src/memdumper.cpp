@@ -301,7 +301,7 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 	{
 		try
 		{
-			job->m_capture = capture::start(&inspector, job->m_filename);
+			job->m_capture = capture::start(&inspector, job->m_filename, job->m_delete_file_when_done);
 		}
 		catch (exception& e)
 		{
@@ -350,7 +350,8 @@ std::unique_ptr<sinsp_memory_dumper_job> sinsp_memory_dumper::add_job(uint64_t t
                                                       const std::string& filter,
                                                       uint64_t delta_time_past_ns,
                                                       uint64_t delta_time_future_ns,
-                                                      lazy_scoped_lock* membuf_mtx)
+                                                      lazy_scoped_lock* membuf_mtx,
+                                                      bool delete_file_when_done)
 {
 	struct timeval tm;
 	gettimeofday(&tm, NULL);
@@ -360,6 +361,7 @@ std::unique_ptr<sinsp_memory_dumper_job> sinsp_memory_dumper::add_job(uint64_t t
 	job->m_start_time = delta_time_past_ns != 0 ? ts - delta_time_past_ns : 0;
 	job->m_end_time = ts + delta_time_future_ns;
 	job->m_filename = filename;
+	job->m_delete_file_when_done = delete_file_when_done;
 
 	if (filter != "")
 	{

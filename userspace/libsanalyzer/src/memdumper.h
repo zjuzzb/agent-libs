@@ -214,6 +214,7 @@ public:
 	uint64_t m_end_time;
 	std::string m_filterstr;
 	std::string m_filename;
+	bool m_delete_file_when_done;
 	state m_state;
 	std::string m_lasterr;
 	std::unique_ptr<capture> m_capture;
@@ -246,7 +247,8 @@ public:
 	                                 const std::string& filter,
 	                                 uint64_t delta_time_past_ns,
 	                                 uint64_t delta_time_future_ns,
-	                                 lazy_scoped_lock* membuf_mtx);
+	                                 lazy_scoped_lock* membuf_mtx,
+	                                 bool delete_file_when_done);
 
 	inline void process_event(sinsp_evt *evt)
 	{
