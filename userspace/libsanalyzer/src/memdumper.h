@@ -214,34 +214,6 @@ public:
 		}
 	}
 
-	inline void dump(sinsp_evt* evt)
-	{
-		if(m_state == ST_INPROGRESS)
-		{
-			if(evt->m_pevt->ts > m_end_time)
-			{
-				m_state = ST_DONE_OK;
-				return;
-			}
-
-			if(m_filter != NULL)
-			{
-				m_filter->run(evt);
-			}
-
-			bool do_drop;
-			(void) evt->get_dump_flags(&do_drop);
-			if(do_drop)
-			{
-				return;
-			}
-
-			m_n_events++;
-
-			m_dumper->dump(evt);
-		}
-	}
-
 	inline bool is_done()
 	{
 		return m_state != ST_INPROGRESS;
