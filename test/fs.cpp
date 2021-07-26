@@ -1764,7 +1764,11 @@ TEST_F(sys_call_test, large_open)
 
 	run_callback_t test = [&](sinsp* inspector)
 	{
+#ifdef SYS_open
 		int fd = syscall(SYS_open, buf.c_str(), O_RDONLY);
+#else
+		int fd = syscall(SYS_openat, AT_FDCWD, buf.c_str(), O_RDONLY);
+#endif
 		EXPECT_EQ(fd, -1);
 	};
 
