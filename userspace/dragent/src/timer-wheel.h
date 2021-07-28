@@ -400,6 +400,9 @@ bool TimerWheel::process_current_slot(Tick now, size_t max_events, int level) {
     }
     while (slot->events()) {
         auto event = slot->pop_event();
+        if(!event) {
+            continue;
+        }
         if (level > 0) {
             assert((now_[0] & MASK) == 0);
             if (now_[0] >= event->scheduled_at()) {
