@@ -58,6 +58,7 @@ list(
     prometheus.ut.cpp
     promscrape.ut.cpp
     protocol_manager.ut.cpp
+    protostate.ut.cpp
     security_config.ut.cpp
     scope_resolver_iface.ut.cpp
     scoped_sinsp_logger_capture.ut.cpp

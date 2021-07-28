@@ -12,10 +12,45 @@
 #undef max
 #include "draios.pb.h"
 #include "protostate.h"
+#include "type_config.h"
 
 using namespace std;
 
-sinsp_url_groups* sinsp_protostate::s_url_groups;
+type_config<bool> c_url_groups_enabled(false,
+                                       "Set to true to enable URL grouping",
+                                       "url_grouping_enabled");
+
+url_group_config_data c_url_groups("set for the matching groups for URLs", "url_groups");
+
+url_group_config_data::url_group_config_data(const std::string& description,
+                                             const std::string& key,
+                                             const std::string& subkey,
+                                             const std::string& subsubkey)
+    : configuration_unit(key, subkey, subsubkey, description),
+      m_matched_groups()
+{
+}
+
+void url_group_config_data::init(const yaml_configuration& raw_config)
+{
+	m_matched_groups.clear();
+
+	auto url_groups_v = raw_config.get_merged_sequence<std::string>("url_groups");
+	auto groups = std::set<std::string>(url_groups_v.begin(), url_groups_v.end());
+
+	// first find groups we don't know about yet
+	for (const auto& group : groups)
+	{
+		m_matched_groups.insert(
+		    std::pair<std::string, std::shared_ptr<sinsp_url_group>>(group, make_shared<sinsp_url_group>(group)));
+	}
+}
+
+const std::map<std::string, std::shared_ptr<sinsp_url_group>>& url_group_config_data::get_value()
+    const
+{
+	return m_matched_groups;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Transaction table update support
@@ -197,15 +232,6 @@ void sinsp_protostate::set_serialize_pctl_data(bool val)
 	m_mongodb.set_serialize_pctl_data(val);
 }
 
-void sinsp_protostate::set_url_groups(const std::set<string>& groups)
-{
-	if (!sinsp_protostate::s_url_groups)
-	{
-		sinsp_protostate::s_url_groups = new sinsp_url_groups();
-		sinsp_protostate::s_url_groups->update_group_set(groups);
-	}
-}
-
 void sinsp_protostate::add(sinsp_protostate* other)
 {
 	m_http.add(&(other->m_http));
@@ -260,9 +286,8 @@ void sql_state::query_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
 			ud->set_name(uit->first);
 			uit->second.to_protobuf(ud->mutable_counters(),
 			                        sampling_ratio,
-			                        [&](const sinsp_request_details::percentile_ptr_t pct) {
-				                        percentile_to_protobuf(ud->mutable_counters(), pct);
-			                        });
+			                        [&](const sinsp_request_details::percentile_ptr_t pct)
+			                        { percentile_to_protobuf(ud->mutable_counters(), pct); });
 		}
 	}
 }
@@ -295,9 +320,8 @@ void sql_state::query_type_table_to_protobuf(draiosproto::sql_info* protobuf_msg
 			ud->set_type((draiosproto::sql_statement_type)uit->first);
 			uit->second.to_protobuf(ud->mutable_counters(),
 			                        sampling_ratio,
-			                        [&](const sinsp_request_details::percentile_ptr_t pct) {
-				                        percentile_to_protobuf(ud->mutable_counters(), pct);
-			                        });
+			                        [&](const sinsp_request_details::percentile_ptr_t pct)
+			                        { percentile_to_protobuf(ud->mutable_counters(), pct); });
 		}
 	}
 }
@@ -400,9 +424,8 @@ void sql_state::to_protobuf(draiosproto::sql_info* protobuf_msg,
 		totals = protobuf_msg->mutable_server_totals();
 		m_server_totals.to_protobuf(totals,
 		                            sampling_ratio,
-		                            [&](const sinsp_request_details::percentile_ptr_t pct) {
-			                            percentile_to_protobuf(totals, pct);
-		                            });
+		                            [&](const sinsp_request_details::percentile_ptr_t pct)
+		                            { percentile_to_protobuf(totals, pct); });
 	}
 
 	if (m_client_totals.get_time_tot())
@@ -410,9 +433,8 @@ void sql_state::to_protobuf(draiosproto::sql_info* protobuf_msg,
 		totals = protobuf_msg->mutable_client_totals();
 		m_client_totals.to_protobuf(totals,
 		                            sampling_ratio,
-		                            [&](const sinsp_request_details::percentile_ptr_t pct) {
-			                            percentile_to_protobuf(totals, pct);
-		                            });
+		                            [&](const sinsp_request_details::percentile_ptr_t pct)
+		                            { percentile_to_protobuf(totals, pct); });
 	}
 }
 
@@ -537,9 +559,8 @@ void mongodb_state::collections_to_protobuf(
 			cd->set_name(it->first);
 			it->second.to_protobuf(cd->mutable_counters(),
 			                       sampling_ratio,
-			                       [&](const sinsp_request_details::percentile_ptr_t pct) {
-				                       percentile_to_protobuf(cd->mutable_counters(), pct);
-			                       });
+			                       [&](const sinsp_request_details::percentile_ptr_t pct)
+			                       { percentile_to_protobuf(cd->mutable_counters(), pct); });
 
 			j += 1;
 		}
@@ -561,9 +582,8 @@ void mongodb_state::to_protobuf(draiosproto::mongodb_info* protobuf_msg,
 			ud->set_op((draiosproto::mongodb_op_type)it->first);
 			it->second.to_protobuf(ud->mutable_counters(),
 			                       sampling_ratio,
-			                       [&](const sinsp_request_details::percentile_ptr_t pct) {
-				                       percentile_to_protobuf(ud->mutable_counters(), pct);
-			                       });
+			                       [&](const sinsp_request_details::percentile_ptr_t pct)
+			                       { percentile_to_protobuf(ud->mutable_counters(), pct); });
 		}
 	}
 
@@ -576,9 +596,8 @@ void mongodb_state::to_protobuf(draiosproto::mongodb_info* protobuf_msg,
 			ud->set_op((draiosproto::mongodb_op_type)it->first);
 			it->second.to_protobuf(ud->mutable_counters(),
 			                       sampling_ratio,
-			                       [&](const sinsp_request_details::percentile_ptr_t pct) {
-				                       percentile_to_protobuf(ud->mutable_counters(), pct);
-			                       });
+			                       [&](const sinsp_request_details::percentile_ptr_t pct)
+			                       { percentile_to_protobuf(ud->mutable_counters(), pct); });
 		}
 	}
 
@@ -600,9 +619,8 @@ void mongodb_state::to_protobuf(draiosproto::mongodb_info* protobuf_msg,
 		totals = protobuf_msg->mutable_server_totals();
 		m_server_totals.to_protobuf(totals,
 		                            sampling_ratio,
-		                            [&](const sinsp_request_details::percentile_ptr_t pct) {
-			                            percentile_to_protobuf(totals, pct);
-		                            });
+		                            [&](const sinsp_request_details::percentile_ptr_t pct)
+		                            { percentile_to_protobuf(totals, pct); });
 	}
 
 	if (m_client_totals.get_time_tot())
@@ -610,9 +628,8 @@ void mongodb_state::to_protobuf(draiosproto::mongodb_info* protobuf_msg,
 		totals = protobuf_msg->mutable_client_totals();
 		m_client_totals.to_protobuf(totals,
 		                            sampling_ratio,
-		                            [&](const sinsp_request_details::percentile_ptr_t pct) {
-			                            percentile_to_protobuf(totals, pct);
-		                            });
+		                            [&](const sinsp_request_details::percentile_ptr_t pct)
+		                            { percentile_to_protobuf(totals, pct); });
 	}
 }
 
@@ -634,32 +651,62 @@ void mongodb_state::coalesce_protobuf(draiosproto::mongodb_info* protobuf_msg,
 	}
 }
 
-void sinsp_url_groups::match_new_url(const string& url, sinsp_url_details& url_details) const
+void sinsp_http_marker::add(sinsp_http_state* state)
 {
-	for (auto group = m_matched_groups.begin(); group != m_matched_groups.end(); group++)
+	if (c_url_groups_enabled.get_value())
 	{
-		if ((*group).second->contains(url))
+		for (auto url = state->m_server_urls.begin(); url != state->m_server_urls.end(); ++url)
 		{
-			url_details.add_group((*group).second);
+			url->second.match_url_if_unmatched(c_url_groups.get_value(), url->first);
 		}
+		for (auto url = state->m_client_urls.begin(); url != state->m_client_urls.end(); ++url)
+		{
+			url->second.match_url_if_unmatched(c_url_groups.get_value(), url->first);
+		}
+	}
+
+	for (auto it = state->m_server_status_codes.begin(); it != state->m_server_status_codes.end();
+	     ++it)
+	{
+		m_server_status_codes.push_back(it);
+	}
+	for (auto it = state->m_client_status_codes.begin(); it != state->m_client_status_codes.end();
+	     ++it)
+	{
+		m_client_status_codes.push_back(it);
+	}
+	for (auto it = state->m_server_urls.begin(); it != state->m_server_urls.end(); ++it)
+	{
+		m_server_urls.push_back(it);
+	}
+	for (auto it = state->m_client_urls.begin(); it != state->m_client_urls.end(); ++it)
+	{
+		m_client_urls.push_back(it);
 	}
 }
 
-void sinsp_url_groups::update_group_set(const set<string>& groups)
+void sinsp_http_marker::mark_top(size_t limit)
 {
-	// currently only support being called once
-	ASSERT(m_matched_groups.size() == 0);
-
-	// this is very simplistic since we assume once set, groupset doesn't change
-	// there is code in the branch for the original bug (782) that accounts for that
-
-	// first find groups we don't know about yet
-	for (auto it = groups.begin(); it != groups.end(); ++it)
+	if (c_url_groups_enabled.get_value())
 	{
-		// this function only supports being called once. so we better
-		// only find a given group once
-		ASSERT(m_matched_groups.find(*it) == m_matched_groups.end());
-		m_matched_groups.insert(
-		    pair<string, shared_ptr<sinsp_url_group>>(*it, make_shared<sinsp_url_group>(*it)));
+		group_request_sorter<std::string, sinsp_url_details, sinsp_url_group>::mark_top(
+		    &m_server_urls,
+		    limit);
+		group_request_sorter<std::string, sinsp_url_details, sinsp_url_group>::mark_top(
+		    &m_client_urls,
+		    limit);
 	}
+	else
+	{
+		request_sorter<std::string, sinsp_url_details>::mark_top(&m_server_urls, limit);
+		request_sorter<std::string, sinsp_url_details>::mark_top(&m_client_urls, limit);
+	}
+	request_sorter<uint32_t, sinsp_request_details>::mark_top_by(
+	    &m_server_status_codes,
+	    request_sorter<uint32_t, sinsp_request_details>::cmp_ncalls,
+	    limit);
+	request_sorter<uint32_t, sinsp_request_details>::mark_top_by(
+	    &m_client_status_codes,
+	    request_sorter<uint32_t, sinsp_request_details>::cmp_ncalls,
+	    limit);
 }

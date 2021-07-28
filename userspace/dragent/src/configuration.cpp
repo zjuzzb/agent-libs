@@ -1353,11 +1353,6 @@ void dragent_configuration::init()
 	    m_config->get_scalar<int32_t>("top_processes_per_container", TOP_PROCESSES_PER_CONTAINER);
 	m_report_source_port = m_config->get_scalar<bool>("report_source_port", false);
 
-	// URL filter configs
-	auto url_groups_v = m_config->get_merged_sequence<std::string>("url_groups");
-	m_url_groups = std::set<std::string>(url_groups_v.begin(), url_groups_v.end());
-	m_url_groups_enabled = m_config->get_scalar<bool>("url_grouping_enabled", false);
-
 	m_track_connection_status = m_config->get_scalar<bool>("track_connection_status", false);
 	m_connection_truncate_report_interval =
 	    m_config->get_scalar<int>("connection_table", "truncation_report_interval", 0);

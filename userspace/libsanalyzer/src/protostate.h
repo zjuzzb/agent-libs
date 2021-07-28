@@ -21,6 +21,28 @@
 
 class sinsp_configuration;
 
+class url_group_config_data : public configuration_unit
+{
+public:
+	url_group_config_data(const std::string& description,
+	                      const std::string& key,
+	                      const std::string& subkey = "",
+	                      const std::string& subsubkey = "");
+
+public:  // stuff for configuration_unit
+	std::string value_to_string() const override {return "";}
+	std::string value_to_yaml() const override {return "";}
+	bool string_to_value(const std::string& value) override { return false;}
+	void init(const yaml_configuration& raw_config) override;
+	void post_init() override {}
+
+public:  // extracting useful data
+	const std::map<std::string, std::shared_ptr<sinsp_url_group>>& get_value() const;
+
+private:
+	std::map<std::string, shared_ptr<sinsp_url_group>> m_matched_groups;
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 // Table entries
 ///////////////////////////////////////////////////////////////////////////////
@@ -163,8 +185,9 @@ public:
 
 		for (j = 0; j < std::min(limit, sortable_list->size()); j++)
 		{
-			sortable_list->at(j)->second.m_flags = (sinsp_request_flags)(
-			    (uint32_t)sortable_list->at(j)->second.m_flags | SRF_INCLUDE_IN_SAMPLE);
+			sortable_list->at(j)->second.m_flags =
+			    (sinsp_request_flags)((uint32_t)sortable_list->at(j)->second.m_flags |
+			                          SRF_INCLUDE_IN_SAMPLE);
 		}
 	}
 
@@ -211,8 +234,9 @@ public:
 
 			if (entry->m_nerrors > 0)
 			{
-				entry->m_flags = (sinsp_request_flags)(
-				    (uint32_t)sortable_list->at(j)->second.m_flags | SRF_INCLUDE_IN_SAMPLE);
+				entry->m_flags =
+				    (sinsp_request_flags)((uint32_t)sortable_list->at(j)->second.m_flags |
+				                          SRF_INCLUDE_IN_SAMPLE);
 			}
 			else
 			{
@@ -433,11 +457,6 @@ public:
 	sql_state m_mysql;
 	sql_state m_postgres;
 	mongodb_state m_mongodb;
-
-	// static member to hold the URL groups. Ideally we'd pull this straight from
-	// dragent_config, but include issues make that difficult
-	static void set_url_groups(const std::set<std::string>& groups);
-	static sinsp_url_groups* s_url_groups;
 };
 
 class sinsp_http_marker
@@ -445,67 +464,9 @@ class sinsp_http_marker
 public:
 	// give pointers to all URLs to the marker. Also match URLs which haven't been, as the marker
 	// will need this info to properly sort and mark
-	void add(sinsp_http_state* state)
-	{
-		if (sinsp_protostate::s_url_groups)
-		{
-			for (auto url = state->m_server_urls.begin(); url != state->m_server_urls.end(); ++url)
-			{
-				url->second.match_url_if_unmatched(*sinsp_protostate::s_url_groups, url->first);
-			}
-			for (auto url = state->m_client_urls.begin(); url != state->m_client_urls.end(); ++url)
-			{
-				url->second.match_url_if_unmatched(*sinsp_protostate::s_url_groups, url->first);
-			}
-		}
+	void add(sinsp_http_state* state);
 
-		for (auto it = state->m_server_status_codes.begin();
-		     it != state->m_server_status_codes.end();
-		     ++it)
-		{
-			m_server_status_codes.push_back(it);
-		}
-		for (auto it = state->m_client_status_codes.begin();
-		     it != state->m_client_status_codes.end();
-		     ++it)
-		{
-			m_client_status_codes.push_back(it);
-		}
-		for (auto it = state->m_server_urls.begin(); it != state->m_server_urls.end(); ++it)
-		{
-			m_server_urls.push_back(it);
-		}
-		for (auto it = state->m_client_urls.begin(); it != state->m_client_urls.end(); ++it)
-		{
-			m_client_urls.push_back(it);
-		}
-	}
-
-	void mark_top(size_t limit)
-	{
-		if (sinsp_protostate::s_url_groups)
-		{
-			group_request_sorter<std::string, sinsp_url_details, sinsp_url_group>::mark_top(
-			    &m_server_urls,
-			    limit);
-			group_request_sorter<std::string, sinsp_url_details, sinsp_url_group>::mark_top(
-			    &m_client_urls,
-			    limit);
-		}
-		else
-		{
-			request_sorter<std::string, sinsp_url_details>::mark_top(&m_server_urls, limit);
-			request_sorter<std::string, sinsp_url_details>::mark_top(&m_client_urls, limit);
-		}
-		request_sorter<uint32_t, sinsp_request_details>::mark_top_by(
-		    &m_server_status_codes,
-		    request_sorter<uint32_t, sinsp_request_details>::cmp_ncalls,
-		    limit);
-		request_sorter<uint32_t, sinsp_request_details>::mark_top_by(
-		    &m_client_status_codes,
-		    request_sorter<uint32_t, sinsp_request_details>::cmp_ncalls,
-		    limit);
-	}
+	void mark_top(size_t limit);
 
 private:
 	std::vector<std::unordered_map<std::string, sinsp_url_details>::iterator> m_server_urls;

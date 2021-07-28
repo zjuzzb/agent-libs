@@ -620,10 +620,6 @@ public:
 	void set_top_processes_in_sample(uint32_t val) { m_top_processes_in_sample = val; }
 	void set_top_processes_per_container(uint32_t val) { m_top_processes_per_container = val; }
 	void set_report_source_port(bool val) { m_report_source_port = val; }
-	void set_url_groups(const std::set<std::string>& groups)
-	{
-		sinsp_protostate::set_url_groups(groups);
-	}
 	void set_connection_truncate_report_interval(int sec)
 	{
 		m_connection_truncate_report_interval = sec;

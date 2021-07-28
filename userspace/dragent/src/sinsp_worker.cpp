@@ -413,10 +413,6 @@ void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
 	m_analyzer->set_top_processes_per_container(m_configuration->m_top_processes_per_container);
 	m_analyzer->set_report_source_port(m_configuration->m_report_source_port);
 
-	if (m_configuration->m_url_groups_enabled)
-	{
-		m_analyzer->set_url_groups(m_configuration->m_url_groups);
-	}
 	m_analyzer->set_track_connection_status(m_configuration->m_track_connection_status);
 	m_analyzer->set_connection_truncate_report_interval(
 	    m_configuration->m_connection_truncate_report_interval);
