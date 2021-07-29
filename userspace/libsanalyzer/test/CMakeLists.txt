@@ -56,6 +56,7 @@ list(
     process_emitter.ut.cpp
     process_manager.ut.cpp
     prometheus.ut.cpp
+    promscrape_cli.ut.cpp
     promscrape.ut.cpp
     protocol_manager.ut.cpp
     protostate.ut.cpp

@@ -3,6 +3,7 @@
 #include "command_line_error.h"
 #include "common_logger.h"
 #include "string_utils.h"
+#include <ostream>
 #include <json/json.h>
 #include <stdexcept>
 
@@ -99,6 +100,28 @@ void command_line_manager::register_command(const std::string &command,
 					    const command_info &info)
 {
 	LOG_INFO("Register command %s", command.c_str());
+    
+	/* Let's make sure the directories are present 
+		before registering the command.
+	*/
+	std::stringstream ss(command);
+	std::string directory;
+	std::string word;
+
+	while (ss >> word) {
+		if (!directory.empty()) {
+            
+			auto cmd = m_commands.read_handle(directory);
+			if (!cmd.valid()) {
+				LOG_WARNING("Directory is not registered %s. All commands beloging to the directory are not registered.", directory.c_str());
+				return;
+			}
+			directory += " " + word;
+		} else {
+			directory += word;
+		}       
+	}
+    
 	m_commands.insert(command, info);
 }
 

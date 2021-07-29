@@ -215,6 +215,7 @@ set(SANALYZER_SOURCES
     procfs_parser.cpp
     procfs_scanner.cpp
     prometheus.cpp
+    promscrape_cli.cpp
     promscrape.cpp
     protostate.cpp
     security_config.cpp

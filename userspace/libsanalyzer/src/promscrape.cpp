@@ -1,20 +1,25 @@
-#include <memory>
-#include "common_logger.h"
 #include "promscrape.h"
-#include "prometheus.h"
+
 #include "analyzer_utils.h"
-#include "type_config.h"
-#include "uri.h"
+#include "command_line_manager.h"
+#include "common_logger.h"
 #include "configuration_manager.h"
 #include "infrastructure_state.h"
-#include "Poco/Exception.h"
-#include <Poco/Net/HTTPRequestHandler.h>
-#include <Poco/Net/HTTPRequest.h>
-#include <Poco/Net/HTTPResponse.h>
-#include <Poco/Net/HTTPClientSession.h>
-#include <json/json.h>
-#include "command_line_manager.h"
+#include "prometheus.h"
+#include "promscrape_cli.h"
 #include "tabulate.hpp"
+#include "type_config.h"
+#include "uri.h"
+
+#include "Poco/Exception.h"
+
+#include <Poco/Net/HTTPClientSession.h>
+#include <Poco/Net/HTTPRequest.h>
+#include <Poco/Net/HTTPRequestHandler.h>
+#include <Poco/Net/HTTPResponse.h>
+
+#include <json/json.h>
+#include <memory>
 
 // #define DEBUG_PROMSCRAPE	1
 
@@ -1463,7 +1468,7 @@ unsigned int promscrape::result_to_protobuf(int64_t job_id,
 				break;
 			}
 			LOG_INFO("[promscrape] metric over limit (total, %u max): %s",
-				max_limit, sample.metric_name().c_str());
+			        max_limit, sample.metric_name().c_str());
 			continue;
 		}
 
@@ -1587,230 +1592,6 @@ std::shared_ptr<draiosproto::raw_prometheus_metrics> promscrape::create_bypass_p
 	return metrics;
 }
 
-using namespace tabulate;
-
-void promscrape_stats::get_target_stats(std::string &output)
-{
-	output.clear();
-	std::lock_guard<std::mutex> lock_json(m_json_mutex);
-
-	if (!m_local_targets.isObject() || !m_local_targets.isMember("data"))
-		return;
-	auto data = m_local_targets["data"];
-	if (!data.isObject() || !data.isMember("activeTargets"))
-		return;
-
-	int row = 0;
-	string lastpool;
-	Table table;
-	table.format().corner("").border("").column_separator("");
-	table.add_row({"URL", "ST", "sent", "filt", "lim", "pod", "error"});
-	table[0].format().font_style({FontStyle::bold});
-	for (const auto& target : data["activeTargets"])
-	{
-		if (target.isMember("scrapePool"))
-		{
-			string pool = target["scrapePool"].asString();
-			if (pool != lastpool)
-			{
-				if (row)
-				{
-					output.append(table.str() + "\n");
-					// Didn't see an easy way to clear the table
-					Table newtable;
-					table = newtable;
-					table.format().corner("").border("").column_separator("");
-					table.add_row({"URL", "ST", "sent", "filt", "lim", "pod", "error"});
-					table[0].format().font_style({FontStyle::bold});
-					row = 0;
-				}
-				output.append("Pool: " + pool + "\n");
-				lastpool = pool;
-			}
-		}
-		if (!target.isMember("scrapeUrl"))
-		{
-			LOG_INFO("target data: no URL");
-			continue;
-		}
-		if (!target.isMember("health"))
-		{
-			LOG_INFO("target data: no health");
-			continue;
-		}
-
-		string url = target["scrapeUrl"].asString();
-		string health = target["health"].asString();
-		int sent = 0, total = 0;
-		int filt = 0, lim = 0;
-		string sent_str;
-		string pod;
-		string error;
-		if (target.isMember("lastError") && (health != "up"))
-		{
-			error = target["lastError"].asString();
-		}
-		if (target.isMember("discoveredLabels") && target["discoveredLabels"].isMember("__meta_kubernetes_pod_name"))
-		{
-			pod = target["discoveredLabels"]["__meta_kubernetes_pod_name"].asString();
-		}
-
-		{
-			// Watch out for deadlocks (m_json_mutex -> m_mutex)
-			std::lock_guard<std::mutex> lock(m_mutex);
-			auto stats = m_stats_map.find(url);
-			if (stats != m_stats_map.end())
-			{
-				total = stats->second.raw_scraped + stats->second.calc_scraped;
-				sent = stats->second.raw_sent + stats->second.calc_sent;
-				filt = stats->second.raw_job_filter_dropped +
-					stats->second.raw_global_filter_dropped +
-					stats->second.calc_job_filter_dropped +
-					stats->second.calc_global_filter_dropped;
-				lim = total - filt - sent;
-			}
-		}
-		sent_str = to_string(sent) + "/" + to_string(total);
-		table.add_row({url, health, sent_str, to_string(filt), to_string(lim), pod, error});
-
-		if (health == "up")
-		{
-			table[row+1][1].format().font_background_color(Color::green).font_color(Color::white);
-		}
-		else
-		{
-			table[row+1][1].format().font_background_color(Color::red).font_color(Color::white);
-		}
-		if (sent < 1)
-		{
-			table[row+1][2].format().font_background_color(Color::red).font_color(Color::white);
-		}
-		else if (sent<total)
-		{
-			table[row+1][2].format().font_background_color(Color::yellow).font_color(Color::grey);
-		}
-		row++;
-	}
-	if (row)
-	{
-		output.append(table.str() + "\n");
-	}
-}
-
-void promscrape_stats::get_target_metadata(std::string &output, const std::string &url)
-{
-	output.clear();
-	std::lock_guard<std::mutex> lock(m_mutex);
-
-	auto dump_data = [this, &output](const string &instance)
-	{
-		if (m_metadata_map.find(instance) == m_metadata_map.end())
-		{
-			output.append("No metadata for instance " + instance + "\n");
-			return;
-		}
-		Table table;
-		table.format().corner("").border("").column_separator("");
-		table.add_row({"name", "type", "#ts", "description"});
-		table[0].format().font_style({FontStyle::bold});
-		table.column(3).format().width(80);
-		output.append("Instance: " + instance + "\n");
-		std::set<std::pair<int,string>> sorted;
-		for (auto metric_it = m_metadata_map[instance].begin(); metric_it != m_metadata_map[instance].end(); metric_it++)
-		{
-			sorted.insert(make_pair(metric_it->second.timeseries,metric_it->first));
-		}
-		for (auto item_it = sorted.rbegin(); item_it != sorted.rend(); item_it++)
-		{
-			table.add_row({item_it->second,
-				m_metadata_map[instance][item_it->second].type, to_string(item_it->first),
-				m_metadata_map[instance][item_it->second].help});
-		}
-		output.append(table.str() + "\n");
-	};
-
-	// Metadata is mapped to instance, not url
-	// There's currently no way to keep metadata apart for multiple urls with
-	// the same host:port
-	if (!url.empty())
-	{
-		dump_data(url);
-		return;
-	}
-
-	for (auto inst : m_metadata_map)
-	{
-		dump_data(inst.first);
-	}
-}
-
-// Copied from log_summary()
-void promscrape_stats::get_stats(std::string &output)
-{
-	output.clear();
-	std::lock_guard<std::mutex> lock(m_mutex);
-	int unsent_global = 0;
-	int unsent_job = 0;
-	char buffer[1024];
-
-	snprintf(buffer, sizeof(buffer), "Prometheus timeseries statistics, %lu endpoints\n", m_stats_map.size());
-	output.append(buffer);
-	for (const auto &stat : m_stats_map) {
-		if (stat.second.over_global_limit || stat.second.raw_over_job_limit ||
-			stat.second.calc_over_job_limit)
-		{
-			int unsent = stat.second.raw_scraped - stat.second.raw_job_filter_dropped -
-				stat.second.raw_global_filter_dropped - stat.second.raw_sent;
-			unsent += stat.second.calc_scraped - stat.second.calc_job_filter_dropped -
-				stat.second.calc_global_filter_dropped - stat.second.calc_sent;
-			snprintf(buffer, sizeof(buffer), "%s: %d timeseries (after filter) not sent because of %s "
-				"limit (%d over limit)\n", stat.first.c_str(), unsent,
-				stat.second.over_global_limit ? "prometheus metric" : "job sample",
-				stat.second.over_global_limit ? stat.second.over_global_limit :
-				(stat.second.raw_over_job_limit + stat.second.calc_over_job_limit));
-			output.append(buffer);
-
-			if (stat.second.over_global_limit)
-			{
-				unsent_global += unsent;
-			}
-			else
-			{
-				unsent_job += unsent;
-			}
-		}
-		else
-		{
-			snprintf(buffer, sizeof(buffer), "%s: %d total timeseries sent\n", stat.first.c_str(), stat.second.raw_sent + stat.second.calc_sent);
-			output.append(buffer);
-		}
-		snprintf(buffer, sizeof(buffer), "    RAW: scraped %d, sent %d, dropped by: "
-			"job filter %d, global filter %d\n",
-			stat.second.raw_scraped, stat.second.raw_sent,
-			stat.second.raw_job_filter_dropped, stat.second.raw_global_filter_dropped);
-		output.append(buffer);
-		snprintf(buffer, sizeof(buffer), "    CALCULATED: scraped %d, sent %d, dropped by: "
-			"job filter %d, global filter %d\n",
-			stat.second.calc_scraped, stat.second.calc_sent,
-			stat.second.calc_job_filter_dropped, stat.second.calc_global_filter_dropped);
-		output.append(buffer);
-	}
-	if (unsent_global)
-	{
-		snprintf(buffer, sizeof(buffer), "Prometheus metrics limit (%u) reached. %d timeseries not sent"
-			" to avoid data inconsistencies\n",
-			m_prom_conf.max_metrics(), unsent_global);
-		output.append(buffer);
-	}
-	if (unsent_job)
-	{
-		snprintf(buffer, sizeof(buffer), "Prometheus job sample limit reached. %d timeseries not sent"
-			" to avoid data inconsistencies\n",
-			unsent_job);
-		output.append(buffer);
-	}
-}
-
 void promscrape_stats::process_metadata()
 {
 	// Watch out for deadlocks
@@ -1822,15 +1603,15 @@ void promscrape_stats::process_metadata()
 	for (const auto& metric : m_local_targets_metadata["data"])
 	{
 		if (!metric.isMember("metric") || !metric["metric"].isString() ||
-			metric["metric"].asString().empty())
+				metric["metric"].asString().empty())
 		{
 			LOG_INFO("metric metadata is missing metric name");
 			continue;
 		}
 		string name = metric["metric"].asString();
 		if (!metric.isMember("target") || !metric["target"].isMember("instance") ||
-			!metric["target"]["instance"].isString() ||
-			metric["target"]["instance"].asString().empty())
+				!metric["target"]["instance"].isString() ||
+				metric["target"]["instance"].asString().empty())
 		{
 			LOG_INFO("metric metadata is missing target or instance");
 			continue;
@@ -1903,56 +1684,6 @@ void promscrape_stats::process_scrape(string instance, std::shared_ptr<agent_pro
 	if (!lastname.empty())
 	{
 		m_metadata_map[instance][lastname].timeseries = lastcount;
-	}
-}
-
-void promscrape_stats::get_scrape(string &output, const std::string &arg)
-{
-	string url = arg;
-	output.clear();
-	if (url.empty())
-	{
-		for (const auto &job : m_promscrape->job_map())
-		{
-			if (job.second.last_total_samples > 0)
-			{
-				url = job.second.url;
-				break;
-			}
-		}
-	}
-
-	LOG_DEBUG("Command line: Trying to scrape %s", url.c_str());
-
-	try
-	{
-		uri uri(url);
-		string host = uri.get_host();
-		uint16_t port = uri.get_port();
-		string path = uri.get_path();
-
-		if (!uri.get_query().empty())
-		{
-			path += "?" + uri.get_query();
-		}
-		if (host.empty() || !port)
-		{
-			output.append("Invalid URL\n");
-			return;
-		}
-
-		Poco::Net::HTTPClientSession session(host, port);
-		string method("GET");
-		Poco::Net::HTTPRequest request(method, path);
-		Poco::Net::HTTPResponse response;
-		session.sendRequest(request);
-		std::istream &resp = session.receiveResponse(response);
-
-		output.append(std::istreambuf_iterator<char>(resp), {});
-	}
-	catch (const Poco::Exception& ex)
-	{
-		output.append("HTTP GET failed: " + ex.displayText());
 	}
 }
 
@@ -2031,49 +1762,141 @@ void promscrape_stats::periodic_gather_stats()
 
 void promscrape_stats::init_command_line()
 {
-	command_line_manager &cli = command_line_manager::instance();
+	command_line_manager& cli = command_line_manager::instance();
+
+	cli.register_folder("prometheus target", "Commands to manage Prometheus targets.");
+	cli.register_folder("prometheus metadata",
+	                    "Commands to manage metadata of Prometheus targets.");
+	cli.register_folder("prometheus stats",
+	                    "Commands to view the global and job specific Prometheus statistics.");
 
 	command_line_manager::command_info cmd_tgt;
-	cmd_tgt.permissions = {CLI_AGENT_INTERNAL_DIAGNOSTICS};
-	cmd_tgt.short_description = "Shows Active Prometheus targets";
+	cmd_tgt.permissions = {CLI_AGENT_STATUS};
+	cmd_tgt.short_description = "Shows active Prometheus targets";
 	cmd_tgt.type = command_line_manager::content_type::TEXT;
-	cmd_tgt.handler = [this](const command_line_manager::argument_list &args) {
+	cmd_tgt.handler = [this](const command_line_manager::argument_list& args) {
 		string output;
 		if (!m_promscrape->is_promscrape_v2())
 		{
-			return string("Target data is currently only supported with Prometheus service discovery enabled (Promscrape v2)\n");
+			return string(
+			    "Target data is currently only supported with Prometheus service discovery enabled "
+			    "(Promscrape v2)\n");
 		}
+		const string collection_msg =
+		    "Data collection in progress. Please try again in a few seconds\n";
 		if (!gather_stats_enabled())
 		{
 			enable_gather_stats();
-			return string("Starting target data collection now. Please try again in a few seconds\n");
+			return collection_msg;
 		}
-		get_target_stats(output);
+		string url;
+		bool instances = false;
+		if (!args.empty())
+		{
+			if (args[0].first == "url")
+			{
+				url = args[0].second;
+			}
+			else if (args[0].first == "details")
+			{
+				instances = true;
+			}
+			else
+			{
+				return string(
+				    "Valid options are : -url <url> : retrieve a specific target\n -details : show "
+				    "details\n");
+			}
+		}
+		Json::Value data;
+		metric_stats stats;
+		memset(&stats, 0, sizeof(stats));
+		{
+			std::lock_guard<std::mutex> lock_json(m_json_mutex);
+			if (!m_local_targets.isObject() || !m_local_targets.isMember("data"))
+			{
+				return collection_msg;
+			}
+			data = m_local_targets["data"];
+		}
+
+		std::lock_guard<std::mutex> lock(m_mutex);
+		if (!url.empty())
+		{
+			promscrape_cli::display_target(data, m_stats_map, url, output);
+		}
+		else if (instances)
+		{
+			promscrape_cli::display_target_instances(data, m_stats_map, output);
+		}
+		else
+		{
+			promscrape_cli::display_targets(data, m_stats_map, output);
+		}
 		return output;
 	};
 	cli.register_command("prometheus target show", cmd_tgt);
 
 	command_line_manager::command_info cmd_meta;
-	cmd_meta.permissions = {CLI_AGENT_INTERNAL_DIAGNOSTICS};
+	cmd_meta.permissions = {CLI_AGENT_STATUS};
 	cmd_meta.short_description = "Shows Prometheus target metadata";
 	cmd_meta.type = command_line_manager::content_type::TEXT;
-	cmd_meta.handler = [this](const command_line_manager::argument_list &args) {
+	cmd_meta.handler = [this](const command_line_manager::argument_list& args) {
 		if (!m_promscrape->is_promscrape_v2())
 		{
-			return string("Target data is currently only supported with Prometheus service discovery enabled (Promscrape v2)\n");
+			return string(
+			    "Target data is currently only supported with Prometheus service discovery enabled "
+			    "(Promscrape v2)\n");
 		}
 		if (!gather_stats_enabled())
 		{
 			enable_gather_stats();
-			return string("Starting target data collection now. Please try again in a few seconds\n");
+			return string(
+			    "Starting target data collection now. Please try again in a few seconds\n");
 		}
 		string output;
 		string url;
-		if (!args.empty() && (args[0].first == "url"))
+		bool do_limit = true;
+		if (!args.empty())
 		{
-			url = args[0].second;
+			if (args[0].first == "url")
+			{
+				url = args[0].second;
+			}
+			else if (args[0].first == "details")
+			{
+				do_limit = false;
+			}
+			else
+			{
+				return string(
+				    "Valid options are : -url <url> : retrieve a specific target\n -details : show "
+				    "details\n");
+			}
 		}
-		get_target_metadata(output, url);
+		std::lock_guard<std::mutex> lock(m_mutex);
+
+		if (!url.empty())
+		{
+			auto metadata_it = m_metadata_map.find(url);
+			if (metadata_it == m_metadata_map.end())
+			{
+				output.append("No metadata for instance " + url + "\n");
+				return output;
+			}
+			promscrape_cli::display_target_metadata(url, metadata_it->second, output, false);
+		}
+		else
+		{
+			for (auto inst : m_metadata_map)
+			{
+				promscrape_cli::display_target_metadata(inst.first, inst.second, output, do_limit);
+			}
+			if (do_limit)
+			{
+				output.append("Use \"prometheus metadata show -details\" for detailed output of individual targets\n");
+			}
+		}
 		return output;
 	};
 	cli.register_command("prometheus metadata show", cmd_meta);
@@ -2082,14 +1905,14 @@ void promscrape_stats::init_command_line()
 	cmd_scrape.permissions = {CLI_NETWORK_CALLS_TO_REMOTE_PODS};
 	cmd_scrape.short_description = "Scrapes Prometheus target";
 	cmd_scrape.type = command_line_manager::content_type::YAML;
-	cmd_scrape.handler = [this](const command_line_manager::argument_list &args) {
+	cmd_scrape.handler = [this](const command_line_manager::argument_list& args) {
 		string output;
 		string url;
 		if (!args.empty() && (args[0].first == "url"))
 		{
 			url = args[0].second;
 		}
-		get_scrape(output, url);
+		promscrape_cli::get_target_scrape(url, output);
 		return output;
 	};
 	cli.register_command("prometheus target scrape", cmd_scrape);
@@ -2098,30 +1921,36 @@ void promscrape_stats::init_command_line()
 	cmd_stats.permissions = {CLI_AGENT_STATUS};
 	cmd_stats.short_description = "Shows Prometheus scraping statistics";
 	cmd_stats.type = command_line_manager::content_type::TEXT;
-	cmd_stats.handler = [this](const command_line_manager::argument_list &args) {
+	cmd_stats.handler = [this](const command_line_manager::argument_list& args) {
 		string output;
-		get_stats(output);
+		// TODO: Not efficient - but will be moved to a better place
+		std::lock_guard<std::mutex> lock(m_mutex);
+		promscrape_cli::display_prometheus_stats(m_stats_map, output);
 		return output;
 	};
-	cli.register_command("prometheus target show-stats", cmd_stats);
+	cli.register_command("prometheus stats show", cmd_stats);
 }
 
-promscrape_stats::promscrape_stats(const prometheus_conf &prom_conf, promscrape *ps) :
-		m_log_interval(c_promscrape_stats_log_interval.get_value() * ONE_SECOND_IN_NS),
-		m_prom_conf(prom_conf),
-		m_gather_interval(10 * ONE_SECOND_IN_NS),
-		m_gather_stats(false),
-		m_gather_stats_count(0),
-		m_promscrape(ps)
+promscrape_stats::promscrape_stats(const prometheus_conf& prom_conf, promscrape* ps)
+    : m_log_interval(c_promscrape_stats_log_interval.get_value() * ONE_SECOND_IN_NS),
+      m_prom_conf(prom_conf),
+      m_gather_interval(10 * ONE_SECOND_IN_NS),
+      m_gather_stats(false),
+      m_gather_stats_count(0),
+      m_promscrape(ps)
 {
 	init_command_line();
 }
 
 void promscrape_stats::set_stats(std::string url,
-	int raw_scraped, int raw_job_filter_dropped,
-	int raw_over_job_limit, int raw_global_filter_dropped,
-	int calc_scraped, int calc_job_filter_dropped,
-	int calc_over_job_limit, int calc_global_filter_dropped)
+                                 int raw_scraped,
+                                 int raw_job_filter_dropped,
+                                 int raw_over_job_limit,
+                                 int raw_global_filter_dropped,
+                                 int calc_scraped,
+                                 int calc_job_filter_dropped,
+                                 int calc_over_job_limit,
+                                 int calc_global_filter_dropped)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -2142,7 +1971,10 @@ void promscrape_stats::set_stats(std::string url,
 	m_stats_map[url].calc_global_filter_dropped = calc_global_filter_dropped;
 }
 
-void promscrape_stats::add_stats(std::string url, int over_global_limit, int raw_sent, int calc_sent)
+void promscrape_stats::add_stats(std::string url,
+                                 int over_global_limit,
+                                 int raw_sent,
+                                 int calc_sent)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -2165,19 +1997,24 @@ void promscrape_stats::log_summary()
 	int unsent_job = 0;
 
 	LOG_INFO("Prometheus timeseries statistics, %lu endpoints", m_stats_map.size());
-	for (const auto &stat : m_stats_map) {
+	for (const auto& stat : m_stats_map)
+	{
 		if (stat.second.over_global_limit || stat.second.raw_over_job_limit ||
-			stat.second.calc_over_job_limit)
+		    stat.second.calc_over_job_limit)
 		{
 			int unsent = stat.second.raw_scraped - stat.second.raw_job_filter_dropped -
-				stat.second.raw_global_filter_dropped - stat.second.raw_sent;
+			             stat.second.raw_global_filter_dropped - stat.second.raw_sent;
 			unsent += stat.second.calc_scraped - stat.second.calc_job_filter_dropped -
-				stat.second.calc_global_filter_dropped - stat.second.calc_sent;
-			LOG_INFO("endpoint %s: %d timeseries (after filter) not sent because of %s "
-				"limit (%d over limit)", stat.first.c_str(), unsent,
-				stat.second.over_global_limit ? "prometheus metric" : "job sample",
-				stat.second.over_global_limit ? stat.second.over_global_limit :
-				(stat.second.raw_over_job_limit + stat.second.calc_over_job_limit));
+			          stat.second.calc_global_filter_dropped - stat.second.calc_sent;
+			LOG_INFO(
+			    "endpoint %s: %d timeseries (after filter) not sent because of %s "
+			    "limit (%d over limit)",
+			    stat.first.c_str(),
+			    unsent,
+			    stat.second.over_global_limit ? "prometheus metric" : "job sample",
+			    stat.second.over_global_limit
+			        ? stat.second.over_global_limit
+			        : (stat.second.raw_over_job_limit + stat.second.calc_over_job_limit));
 
 			if (stat.second.over_global_limit)
 			{
@@ -2190,22 +2027,34 @@ void promscrape_stats::log_summary()
 		}
 		else
 		{
-			LOG_INFO("endpoint %s: %d total timeseries sent", stat.first.c_str(), stat.second.raw_sent + stat.second.calc_sent);
+			LOG_INFO("endpoint %s: %d total timeseries sent",
+			         stat.first.c_str(),
+			         stat.second.raw_sent + stat.second.calc_sent);
 		}
-		LOG_INFO("endpoint %s: RAW: scraped %d, sent %d, dropped by: "
-			"job filter %d, global filter %d",
-			stat.first.c_str(), stat.second.raw_scraped, stat.second.raw_sent,
-			stat.second.raw_job_filter_dropped, stat.second.raw_global_filter_dropped);
-		LOG_INFO("endpoint %s: CALCULATED: scraped %d, sent %d, dropped by: "
-			"job filter %d, global filter %d",
-			stat.first.c_str(), stat.second.calc_scraped, stat.second.calc_sent,
-			stat.second.calc_job_filter_dropped, stat.second.calc_global_filter_dropped);
+		LOG_INFO(
+		    "endpoint %s: RAW: scraped %d, sent %d, dropped by: "
+		    "job filter %d, global filter %d",
+		    stat.first.c_str(),
+		    stat.second.raw_scraped,
+		    stat.second.raw_sent,
+		    stat.second.raw_job_filter_dropped,
+		    stat.second.raw_global_filter_dropped);
+		LOG_INFO(
+		    "endpoint %s: CALCULATED: scraped %d, sent %d, dropped by: "
+		    "job filter %d, global filter %d",
+		    stat.first.c_str(),
+		    stat.second.calc_scraped,
+		    stat.second.calc_sent,
+		    stat.second.calc_job_filter_dropped,
+		    stat.second.calc_global_filter_dropped);
 	}
 	if (unsent_global)
 	{
-		LOG_WARNING("Prometheus metrics limit (%u) reached. %d timeseries not sent"
-			" to avoid data inconsistencies, see preceding info logs for details",
-			m_prom_conf.max_metrics(), unsent_global);
+		LOG_WARNING(
+		    "Prometheus metrics limit (%u) reached. %d timeseries not sent"
+		    " to avoid data inconsistencies, see preceding info logs for details",
+		    m_prom_conf.max_metrics(),
+		    unsent_global);
 	}
 	if (unsent_job)
 	{

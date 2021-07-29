@@ -35,11 +35,6 @@ public:
 		int raw_sent, int calc_sent);
 	void periodic_log_summary();
 
-	// Hackathon
-	void get_target_stats(std::string &output);
-	void get_target_metadata(std::string &output, const std::string &url);
-	void get_scrape(std::string &output, const std::string &url);
-	void get_stats(std::string &output);
 	void process_metadata();
 	void process_scrape(string instance, std::shared_ptr<agent_promscrape::ScrapeResult> scrape);
 
@@ -47,12 +42,6 @@ public:
 	void enable_gather_stats(bool enable = true);
 	void gather_target_stats();
 	void periodic_gather_stats();
-
-private:
-	void log_summary();
-	void clear();
-	void init_command_line();
-	void remove_command_line();
 
 	typedef struct {
 		int raw_scraped;
@@ -74,6 +63,14 @@ private:
 		string unit;
 		int timeseries;
 	} metric_metadata;
+
+	typedef std::map<std::string, metric_metadata> metric_metadata_map_t;
+	typedef std::map<std::string, metric_stats> stats_map_t;
+
+private:
+	void log_summary();
+	void clear();
+	void init_command_line();
 
 	std::mutex m_mutex;
 	// Map from URL to stats

@@ -5,6 +5,9 @@
 TEST(command_line_manager_test, get_commands_json)
 {
 	command_line_manager mgr;
+	mgr.register_folder("barn", "barn");
+	mgr.register_folder("barn cow", "barn cow");
+	mgr.register_folder("barn dog", "barn dog");
 	{
 		command_line_manager::command_info cmd;
 		cmd.permissions = {CLI_AGENT_STATUS};
@@ -51,16 +54,14 @@ TEST(command_line_manager_test, get_commands_json)
 		mgr.register_command("slaughter", cmd);
 	}
 
-	mgr.register_folder("barn", "red building where some animals are kept");
-
-
 	std::string expected = 
 R"({
    "commands" : {
       "barn" : {
-         "short_description" : "red building where some animals are kept",
+         "short_description" : "barn",
          "subs" : {
             "cow" : {
+               "short_description" : "barn cow",
                "subs" : {
                   "milk" : {
                      "short_description" : "milk the cow"
@@ -68,6 +69,7 @@ R"({
                }
             },
             "dog" : {
+               "short_description" : "barn dog",
                "subs" : {
                   "pet" : {
                      "short_description" : "pet the dog"
@@ -334,4 +336,17 @@ TEST(command_line_manager_test, rbac)
 	ASSERT_EQ("hello", result.second);
 }
 
+TEST(command_line_manager_test,command_without_dir)
+{
+	command_line_manager::command_info cmd1;
+	cmd1.permissions = {CLI_AGENT_STATUS};
+	cmd1.short_description = "command example";
+	cmd1.handler = [](const command_line_manager::argument_list &args) { return "hello";};
+
+	command_line_manager mgr;
+	mgr.register_command("world greeting", cmd1);
+
+	ASSERT_EQ("Error: Unrecognized command.", 
+		  mgr.handle({CLI_AGENT_STATUS}, "world greeting").second);
+}
 
