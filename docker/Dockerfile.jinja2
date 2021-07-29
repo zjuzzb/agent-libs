@@ -222,9 +222,11 @@ python3-dev \
 postgresql-dev \
 py-pip \
 && pip install psycopg2-binary \
+&& pip install posix-ipc \
 && sed -i -e 's/v[[:digit:]]\..*\//edge\//g' /etc/apk/repositories \
 && apk update \
 && mkdir -p /opt/draios/run \
+&& cp /etc/ssl/certs/ca-certificates.crt /opt/draios/lib/python-deps/certifi/cacert.pem \
 && rm -rf /tmp/*.apk /var/cache/apk/* \
 && rm -rf /opt/draios/lib/python-deps2.7 \
 && rm -rf /opt/draios/lib/python-deps3.5 \
