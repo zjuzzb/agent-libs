@@ -311,7 +311,7 @@ function install_k8s_agent {
 		DAEMONSET_FILE="$WORKDIR/sysdig-agent-daemonset-v2.yaml"
 	fi
 
-	sed -i.bak -e "s|\( *image: \)sysdig/${AGENT_STRING}|\1sysdig/${AGENT_STRING}:${AGENT_VERSION}|g" $DAEMONSET_FILE
+	sed -i.bak -e "s| *image: .*/sysdig/${AGENT_STRING}$|&:${AGENT_VERSION}|" $DAEMONSET_FILE
 
 	# Test for COS (Container-Optimized OS from Google)
 	# Enable EBPF if so.
@@ -340,6 +340,7 @@ function install_k8s_agent {
 	
 	echo "* Deploying the sysdig agent"
 	kubectl apply -f $DAEMONSET_FILE --namespace=$NAMESPACE
+	sleep 5 # So we gave some time to create the pods and show something meaningful in the next command
 
 	echo -e "\nThe list of agent pods deployed in the namespace \"$NAMESPACE\" are:"
 	kubectl get pods -n $NAMESPACE | grep "sysdig-agent"
@@ -370,6 +371,7 @@ function install_k8s_agent {
 
 		echo "* Deploying the Image Analyzer"
 		kubectl apply -f $IA_FILE --namespace=$NAMESPACE
+		sleep 5 # So we gave some time to create the pods and show something meaningful in the next command
 
 		echo -e "\nThe list of Image Analyzers pods deployed in the namespace \"$NAMESPACE\" are:"
 		kubectl get pods -n $NAMESPACE | grep "image-analyzer"
