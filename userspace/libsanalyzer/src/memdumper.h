@@ -67,7 +67,6 @@ public:
 	sinsp_memory_dumper_state(sinsp* inspector, uint64_t bufsize, const std::string& shm_name)
 		: m_inspector(inspector),
 		m_shm_name(shm_name),
-		m_shm_fd(0),
 		m_bufsize(bufsize),
 		m_begin_ts(0),
 		m_end_ts(0)
@@ -77,11 +76,6 @@ public:
 	~sinsp_memory_dumper_state()
 	{
 		close();
-
-		if(m_shm_fd != 0)
-		{
-			::close(m_shm_fd);
-		}
 
 		if(shm_unlink(m_shm_name.c_str()) != 0)
 		{
@@ -94,15 +88,14 @@ public:
 	void close()
 	{
 		m_dumper = NULL;
-		m_shm_fd = 0;
 	}
 
 	bool open(std::string &errstr)
 	{
 		shm_unlink(m_shm_name.c_str());
 
-		m_shm_fd = shm_open(m_shm_name.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRWXU);
-		if(m_shm_fd == -1)
+		int shm_fd = shm_open(m_shm_name.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRWXU);
+		if(shm_fd == -1)
 		{
 			errstr = std::string("could not reset shared memory segment: ") + strerror(errno);
 			return false;
@@ -119,7 +112,7 @@ public:
 			// only match up when using pass-through uncompressed
 			// files. Otherwise, you have to perform an lseek
 			// system call every time you check the offsets.
-			m_dumper->fdopen(m_shm_fd, false, true);
+			m_dumper->fdopen(shm_fd, false, true);
 		}
 		catch(const sinsp_exception& e)
 		{
@@ -169,7 +162,6 @@ public:
 	sinsp *m_inspector;
         std::string m_shm_name;
 	std::unique_ptr<sinsp_dumper> m_dumper;
-	int m_shm_fd;
 	uint64_t m_bufsize;
 
 	// Reflects the timerange covered by events in this memory state.
