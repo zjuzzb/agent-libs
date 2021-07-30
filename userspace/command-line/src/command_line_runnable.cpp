@@ -9,7 +9,7 @@ COMMON_LOGGER();
 namespace
 {
 
-type_config<bool> c_enabled(false,
+type_config<bool> c_enabled(true,
                             "Enable the command line.",
                             "command_line",
                             "enabled");
