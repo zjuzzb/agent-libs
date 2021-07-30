@@ -98,6 +98,12 @@ pipeline {
         }
     }
 
+    stage('Bump Agent version in Helm Chart') {
+        steps {
+            build job:'agent-bump-helm', parameters:[string(name:'RELEASE_VERSION', value:"${params.RELEASE_VERSION}")]
+        }
+    }
+
     stage('Notify People') {
         steps {
             // Naveen Bali
