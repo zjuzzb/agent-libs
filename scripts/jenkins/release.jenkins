@@ -343,10 +343,14 @@ pipeline {
     stage('Build Probes') {
         steps {
             build job: 'sysdig-probe-builder', parameters: [
+                string(name: 'PROBE_NAME', value: 'sysdigcloud-probe'),
                 string(name: 'RELEASE_NUMBER', value: "${params.RELEASE_VERSION}"),
                 string(name: 'DRIVER_REPO', value: "ssh://git@github.com/draios/agent-libs.git"),
                 string(name: 'DRIVER_REPO_COMMIT', value: "agent/${params.RELEASE_VERSION}"),
-                string(name: 'PROBE_NAME', value: 'sysdigcloud-probe')
+                booleanParam(name: 'UPLOAD', value: "true"),
+                string(name: 'SCRIPT_VERSION', value: "dev"),
+                string(name: 'SCRIPT_REPO', value: "git@github.com:draios/probe-builder.git"),
+                string(name: 'SCRIPT_DIR', value: ".")
             ]
         }
         post {
