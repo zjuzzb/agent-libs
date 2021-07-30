@@ -98,7 +98,7 @@ pipeline {
                     dir('oss-falco') {
                         sh label: '', script: """
                             export GIT_SSH_COMMAND='ssh -i $GITHUB_KEYFILE -F /dev/null'
-                            git push -f origin ${params.FALCO_SYNC_BRANCH}
+                            git push --force-with-lease origin ${params.FALCO_SYNC_BRANCH}
                             git push origin ${params.FALCO_SYNC_BRANCH}:refs/tags/99.0.${BUILD_NUMBER}
                         """
                     }
