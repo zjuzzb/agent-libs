@@ -10,6 +10,7 @@ constexpr const cgroup_layout CRI_CGROUP_LAYOUT[] = {
 	{"/crio-", ""}, // non-systemd cri-o
 	{"/containerd-", ".scope"}, // systemd containerd (?)
 	{"/crio-", ".scope"}, // systemd cri-o
+	{":cri-containerd:", ""}, // unknown containerd seen in the wild
 	{nullptr, nullptr}
 };
 
@@ -70,3 +71,14 @@ TEST_F(container_cgroup, docker_systemd)
 	EXPECT_EQ(true, match_container_id(cgroup, DOCKER_CGROUP_LAYOUT, container_id));
 	EXPECT_EQ(expected_container_id, container_id);
 }
+
+TEST_F(container_cgroup, containerd_unknown)
+{
+	std::string container_id;
+	const std::string cgroup = "/kubepods-burstable-podbd12dd3393227d950605a2444b13c27a.slice:cri-containerd:d52db56a9c80d536a91354c0951c061187ca46249e64865a12703003d8f42366";
+	const std::string expected_container_id = "d52db56a9c80";
+
+	EXPECT_EQ(true, match_container_id(cgroup, CRI_CGROUP_LAYOUT, container_id));
+	EXPECT_EQ(expected_container_id, container_id);
+}
+
