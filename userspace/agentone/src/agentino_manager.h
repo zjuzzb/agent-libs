@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sys/time.h>
+
 #include "agentino_connection.h"
 #include "connection_manager.h"
 #include "container_manager.h"

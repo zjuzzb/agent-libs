@@ -1,3 +1,5 @@
+#include <sys/time.h>
+
 #include "agentino_manager.h"
 #include "common_logger.h"
 #include "connection_manager.h"
