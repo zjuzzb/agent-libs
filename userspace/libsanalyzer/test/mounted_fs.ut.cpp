@@ -1,3 +1,7 @@
+#ifdef __aarch64__
+#include <sys/sysmacros.h>  // Needed for makedev(); but breaks compile on s390x build
+#endif
+
 #include <gtest.h>
 
 #define EXPOSE_INTERNALS_MOUNTED_FS_H

@@ -3,6 +3,7 @@
 #include <string>
 #include <list>
 #include <memory>
+#include <functional>
 
 /**
  * allows filtering on an arbitrary set of types and rules.
