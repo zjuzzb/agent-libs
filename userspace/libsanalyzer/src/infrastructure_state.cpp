@@ -122,7 +122,7 @@ type_config<bool> infrastructure_state::c_thin_cointerface_enabled(
 		);
 type_config<bool>::ptr infrastructure_state::c_k8s_coldstart_manager_enabled =
 	type_config_builder<bool>(
-		false,
+		true,
 		"Enable cointerface cold start with semaphore mechanism",
 		"k8s_coldstart",
 		"enabled"
@@ -224,7 +224,7 @@ type_config<std::vector<std::string>>::ptr infrastructure_state::c_k8s_allow_lis
 	         .build();
 
 type_config<bool> infrastructure_state::c_k8s_delegation_election(
-    false,
+    true,
     "Determine k8s delegation through leader election in k8s cluster",
     "k8s_delegation_election");
 
