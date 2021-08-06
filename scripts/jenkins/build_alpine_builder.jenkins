@@ -34,7 +34,10 @@ pipeline {
                         echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
                         docker pull quay.io/sysdig/agent-builder:latest-alpine
                         docker pull quay.io/sysdig/agent-builder:${AGENT_BRANCH}-alpine || echo "agent-builder:${AGENT_BRANCH}-alpine not found"
-                        docker build --build-arg max_parallelism=$(nproc) -t quay.io/sysdig/agent-builder:$AGENT_BRANCH-alpine -f agent/docker/alpine-builder/Dockerfile --pull agent/docker/alpine-builder
+                        cd agent/docker/alpine-builder
+                        export MAKE_JOBS=$(nproc)
+                        export IMAGE_NAME=quay.io/sysdig/agent-builder:$AGENT_BRANCH-alpine
+                        ./build-container.sh
                     '''
                 }
             }
