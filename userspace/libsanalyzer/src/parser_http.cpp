@@ -50,11 +50,13 @@ bool protocol_http::is_protocol(sinsp_evt* evt,
 		return false;
 	}
 
-	if (*(uint32_t*)buf == s_http_get_intval || *(uint32_t*)buf == s_http_post_intval ||
-	    *(uint32_t*)buf == s_http_put_intval || *(uint32_t*)buf == s_http_delete_intval ||
-	    *(uint32_t*)buf == s_http_trace_intval || *(uint32_t*)buf == s_http_connect_intval ||
-	    *(uint32_t*)buf == s_http_options_intval ||
-	    (*(uint32_t*)buf == s_http_resp_intval && buf[4] == '/'))
+	uint32_t val32 = *(uint32_t*)buf;
+
+	if (val32 == s_http_get_intval || val32 == s_http_post_intval ||
+	    val32 == s_http_put_intval || val32 == s_http_delete_intval ||
+	    val32 == s_http_trace_intval || val32 == s_http_connect_intval ||
+	    val32 == s_http_options_intval ||
+	    (val32 == s_http_resp_intval && buf[4] == '/'))
 	{
 		return true;
 	}
@@ -419,54 +421,76 @@ sinsp_protocol_parser::msg_type sinsp_http_parser::should_parse(
     uint32_t buflen)
 {
 	// We want to quickly throw away anything that doesn't match our scheme
-	// so we cast the buffer to an integer and process it numerically.
-	const uint64_t MSG_STR_RESP = 0x002E002F50545448;  // "HTTP/X.X"
-	const uint64_t MSG_STR_RESP_MASK = 0x00FF00FFFFFFFFFF;
-	const uint32_t MSG_STR_OPTIONS = 0x4954504f;
-	const uint32_t MSG_STR_GET = 0x20544547;
-	const uint32_t MSG_STR_HEAD = 0x44414548;
-	const uint32_t MSG_STR_POST = 0x54534f50;
-	const uint32_t MSG_STR_PUT = 0x20545550;
-	const uint32_t MSG_STR_DELETE = 0x454c4544;
-	const uint32_t MSG_STR_TRACE = 0x43415254;
-	const uint32_t MSG_STR_CONNECT = 0x4e4e4f43;
-
+	// so we translate (as efficiently as possible) the first few bytes of the
+	// buffer to an integer and process it numerically.
+	//
 	// Going back to at least HTTP 1.0, a Full-Response will always
 	// start with a "Status-Line" which begins with "HTTP/".
 	// https://www.w3.org/Protocols/HTTP/1.0/spec.html#Response
-	if ((*reinterpret_cast<const uint64_t*>(buf) & MSG_STR_RESP_MASK) == MSG_STR_RESP)
+
+	const char* HTTP_RESP8_STR = "HTTP/""\x00"".""\x00";   // "HTTP/X.X", vers digits masked
+	uint64_t MSG_STR_RESP8 = (*(uint64_t*)HTTP_RESP8_STR);
+
+	const char* HTTP_RESP8_MASK_STR = "\xff""\xff""\xff""\xff""\xff""\x00""\xff""\x00";
+	uint64_t MSG_STR_RESP8_MASK = (*(uint64_t*)HTTP_RESP8_MASK_STR);
+
+	uint64_t val64 = *(reinterpret_cast<const uint64_t*>(buf));
+	if ((val64 & MSG_STR_RESP8_MASK) == MSG_STR_RESP8)
 	{
 		return sinsp_protocol_parser::MSG_RESPONSE;
 	}
 
-	switch (*reinterpret_cast<const uint32_t*>(buf))
+	// Look at the first 4 bytes for other recognized packets.
+	// start with a "Status-Line" which begins with "HTTP/".
+	// https://www.w3.org/Protocols/HTTP/1.0/spec.html#Response
+	uint32_t val32 = *(reinterpret_cast<const uint32_t*>(buf));
+
+	if (val32 == s_http_get_intval)
 	{
-	case MSG_STR_GET:
 		m_result.method = http_method::GET;
 		return sinsp_protocol_parser::MSG_REQUEST;
-	case MSG_STR_POST:
+	}
+
+	if (val32 == s_http_post_intval)
+	{
 		m_result.method = http_method::POST;
 		return sinsp_protocol_parser::MSG_REQUEST;
-	case MSG_STR_OPTIONS:
+	}
+
+	if (val32 == s_http_options_intval)
+	{
 		m_result.method = http_method::OPTIONS;
 		return sinsp_protocol_parser::MSG_REQUEST;
-	case MSG_STR_HEAD:
+	}
+
+	if (val32 == s_http_head_intval)
+	{
 		m_result.method = http_method::HEAD;
 		return sinsp_protocol_parser::MSG_REQUEST;
-	case MSG_STR_PUT:
+	}
+
+	if (val32 == s_http_put_intval)
+	{
 		m_result.method = http_method::PUT;
 		return sinsp_protocol_parser::MSG_REQUEST;
-	case MSG_STR_DELETE:
+	}
+
+	if (val32 == s_http_delete_intval)
+	{
 		m_result.method = http_method::DELETE;
 		return sinsp_protocol_parser::MSG_REQUEST;
-	case MSG_STR_TRACE:
+	}
+
+	if (val32 == s_http_trace_intval)
+	{
 		m_result.method = http_method::TRACE;
 		return sinsp_protocol_parser::MSG_REQUEST;
-	case MSG_STR_CONNECT:
+	}
+
+	if (val32 == s_http_connect_intval)
+	{
 		m_result.method = http_method::CONNECT;
 		return sinsp_protocol_parser::MSG_REQUEST;
-	default:
-		break;
 	}
 
 	return sinsp_protocol_parser::MSG_NONE;
