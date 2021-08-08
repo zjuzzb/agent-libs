@@ -1,9 +1,20 @@
 #include "env_hash.h"
+
+//
+// env_hash supports use of two different hash algorithms:
+// - BLAKE2 -- preferred for performance, but not available on all platforms
+// - SHA256 -- available on all platforms
+//
 #ifdef __x86_64__
+#define USE_HASH_ALGO_BLAKE2
+#endif
+
+#ifdef USE_HASH_ALGO_BLAKE2
 #include "blake2/blake2.h"
 #else
 #include "openssl/sha.h"
 #endif
+
 
 #include <Poco/RegularExpression.h>
 
@@ -19,7 +30,7 @@ bool env_hash::is_valid()
 
 void env_hash::update(sinsp_threadinfo* tinfo, const env_hash::regex_list_t & blacklist)
 {
-#ifdef __x86_64__
+#ifdef USE_HASH_ALGO_BLAKE2
 	blake2b_state S[1];
 	blake2b_init(S, m_env_hash.size());
 #else
@@ -39,17 +50,18 @@ void env_hash::update(sinsp_threadinfo* tinfo, const env_hash::regex_list_t & bl
 			}
 		}
 		if (!blacklisted) {
-#ifdef __x86_64__
+#ifdef USE_HASH_ALGO_BLAKE2
 			blake2b_update(S, var.c_str(), var.size() + 1);
 #else
 			SHA256_Update(S, var.c_str(), var.size() + 1);
 #endif
 		}
 	}
-#ifdef __x86_64__
+#ifdef USE_HASH_ALGO_BLAKE2
 	blake2b_final(S, m_env_hash.data(), m_env_hash.size());
 #else
 	SHA256_Final((unsigned char *)m_env_hash.data(), S);
 #endif
+
 	m_env_hash_is_valid = true;
 }

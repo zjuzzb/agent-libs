@@ -1,5 +1,3 @@
-#ifdef __x86_64__
-
 /*
    BLAKE2 reference source code package - optimized C implementations
 
@@ -373,5 +371,3 @@ fail:
   return -1;
 }
 #endif
-
-#endif /* __x86_64__ */

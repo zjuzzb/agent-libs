@@ -165,7 +165,6 @@ set(SANALYZER_SOURCES
     secure_netsec_util.cpp
     secure_netsec_cg.cpp
     baseliner.cpp
-    blake2/blake2b.c
     coclient.cpp
     cm_quantile.c
     connectinfo.cpp
@@ -319,6 +318,11 @@ set(SANALYZER_SOURCES
     ${LIBSINSP_SOURCE_DIR}/value_parser.cpp
     ${LIBSINSP_SOURCE_DIR}/viewinfo.cpp
 )
+
+# Blake2 cryptographic hash supported only on x86 architecture
+if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64") 
+    list(APPEND SANALYZER_SOURCES blake2/blake2b.c)
+endif()
 
 if(RELOCATED_CHISELS STREQUAL "ON")
     list(APPEND SANALYZER_SOURCES ${CHISEL_DIR}/chisel_utils.cpp)
