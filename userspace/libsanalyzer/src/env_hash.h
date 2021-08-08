@@ -6,7 +6,13 @@ namespace Poco {
 class RegularExpression;
 }
 
-/* size of the environment hash output, in bytes, must be <= 64 */
+/**
+ * Size of the environment hash output, in bytes.
+ * env_hash.cpp uses two different hash implementations:
+ * - Blake2b -- supports hash sizes up to 64
+ * - SHA256 -- suppores hash size exactly 32
+ * So, ENV_HASH_SIZE must be 32, to support both implementations.
+ */
 #define ENV_HASH_SIZE 32
 
 class env_hash {
