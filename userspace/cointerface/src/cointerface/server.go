@@ -5,6 +5,7 @@ import (
 	"cointerface/kubecollect_tc"
 	"errors"
 	"fmt"
+	"k8s.io/client-go/tools/cache"
 	"net"
 	"os"
 	"os/signal"
@@ -267,28 +268,16 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 
 	kubecollect_common.SendAllAnnotations = cmd.GetAnnotationConf().GetSendAllAnnotations()
 
-	fetchDone := make(chan struct{})
 	rpcDone := make(chan struct{})
 
 	// Reset the GC settings after the initial fetch
 	// completes or the RPC exits
 	go func() {
-		select {
-		case _, more := <-fetchDone:
-			if !more {
-				log.Debugf("fetchDone channel has been closed")
-			} else {
-				log.Info("Orch events initial fetch complete")
-				informersStarted = true
-			}
-		case <-rpcDone:
-			log.Debug("Orch events RPC exiting")
-		}
-
-		cleanupGC(origGC, initGC)
+		<-rpcDone
+		log.Debug("Orch events RPC exiting")
 	}()
 
-	evtArrayChan, err := kubecollect_common.WatchCluster(ctx, cmd, pkg, fetchDone)
+	evtArrayChan, err := kubecollect_common.WatchCluster(ctx, cmd, pkg)
 	if err != nil {
 		_ = log.Errorf("[PerformOrchestratorEventsStream] Error: failure to start informers. Cleaning up")
 
@@ -297,6 +286,18 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		cleanupGC(origGC, initGC)
 		return err
 	}
+
+	syncFuncs := pkg.CreateHasSyncedFuncs()
+
+	go func() {
+		log.Debug("waiting for first resources list to complete")
+		hasSynced := cache.WaitForCacheSync(ctx.Done(), syncFuncs...)
+
+		if hasSynced {
+			log.Debug("first resources list completed")
+			informersStarted = true
+		}
+	}()
 
 	defer func() {
 		log.Infof("[PerformOrchestratorEventsStream] Stream Closing")

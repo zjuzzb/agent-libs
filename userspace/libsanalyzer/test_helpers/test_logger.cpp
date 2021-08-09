@@ -24,7 +24,7 @@ void test_logger::setup_logger()
 
 	Poco::Logger& loggerc = Poco::Logger::create("DraiosLogC",
 						     formatting_channel_console,
-						     Poco::Message::PRIO_DEBUG);
+						     Poco::Message::Priority::PRIO_DEBUG);
 
 	// Not interested in file channel in tests
 	Poco::AutoPtr<Poco::Channel> null_channel(new Poco::NullChannel);

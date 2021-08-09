@@ -4413,6 +4413,16 @@ bool sinsp_analyzer::is_java_process(const std::string& comm) const
 		comm == "jsvc";
 }
 
+void sinsp_analyzer::cointerface_ready()
+{
+	static bool called = false;
+	if(!called)
+	{
+		m_infrastructure_state->set_cointerface_ready();
+		called = true;
+	}
+}
+
 void sinsp_analyzer::flush(sinsp_evt* evt,
                            uint64_t ts,
                            bool is_eof,

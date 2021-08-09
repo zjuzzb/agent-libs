@@ -28,3 +28,29 @@ public:
 };
 
 
+class persistent_state_error : public std::runtime_error
+{
+public:
+	explicit persistent_state_error(const std::string& msg)
+		: runtime_error(msg)
+		  {
+		  }
+
+	virtual ~persistent_state_error() noexcept
+	{
+	}
+};
+
+
+class persistent_state_error_too_old : public persistent_state_error
+{
+public:
+	explicit persistent_state_error_too_old(const std::string& msg)
+		: persistent_state_error(msg)
+	{
+	}
+
+	virtual ~persistent_state_error_too_old() noexcept
+	{
+	}
+};

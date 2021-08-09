@@ -13,6 +13,7 @@
 #include "secure_netsec_util.h"
 #include "user_event.h"
 #include "utils.h"
+#include "libsanalyzer_exceptions.h"
 
 #include "Poco/File.h"
 #include "Poco/Path.h"
@@ -272,6 +273,12 @@ type_config<bool> infrastructure_state::c_k8s_delegation_election(
     "Determine k8s delegation through leader election in k8s cluster",
     "k8s_delegation_election");
 
+type_config<bool> infrastructure_state::c_k8s_infrastate_backup_enabled(
+	false,
+	"Enable infrastructure_state backup",
+	"k8s_infrastate_backup_enabled"
+	);
+
 namespace
 {
 const std::unordered_map<std::string, std::string> host_children{
@@ -446,7 +453,9 @@ infrastructure_state::infrastructure_state(sinsp_analyzer& analyzer,
       m_k8s_ssl_certificate(normalize_path(c_k8s_ssl_certificate.get_value())),
       m_k8s_ssl_key(normalize_path(c_k8s_ssl_key.get_value())),
       m_k8s_cluster_name(std::string()),
-      m_our_k8s_limits()
+      m_our_k8s_limits(),
+      m_persistent_state(persistent_state_builder::build(m_root_dir)),
+      m_cointerface_ready(false)
 {
 	if (c_k8s_autodetect.get_value())
 	{
@@ -604,7 +613,7 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 	}
 
 	m_k8s_connect_interval.run(
-	    [this]() {
+		[this]() {
 		    LOG_INFO("infra_state: Connect to k8s orchestrator events.");
 		    sdc_internal::orchestrator_events_stream_command cmd;
 		    cmd.set_url(m_k8s_url);
@@ -661,7 +670,7 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 		    cmd.mutable_leader_election()->set_retry_period(c_k8s_leader_election_retry_period->get_value());
 		    cmd.mutable_leader_election()->set_namespace_(c_k8s_leader_election_namespace->get_value());
 		    cmd.mutable_annotation_conf()->set_send_all_annotations(feature_manager::instance().get_enabled(K8S_METADATA));
-
+		    
 		    m_k8s_subscribed = true;
 		    m_k8s_connected = true;
 		    m_k8s_coclient.reset(new coclient(m_root_dir));
@@ -2380,64 +2389,88 @@ void infrastructure_state::state_of(const std::vector<std::string>& container_id
                                     draiosproto::k8s_state* state,
                                     uint64_t ts)
 {
-	std::unordered_set<uid_t, std::hash<uid_t>> visited;
-
-	//
-	// Retrieve the state of every container
-	//
-	for (const auto& c_id : container_ids)
+	if(!m_cointerface_ready && c_k8s_infrastate_backup_enabled.get_value())
 	{
-		auto pos = m_state.find(make_pair("container", c_id));
-		if (pos == m_state.end())
+		auto backup_state = m_persistent_state.get_local(ts);
+		if (backup_state.first == true)
 		{
-			//
-			// This container is not in the orchestrator state
-			//
-			continue;
+			LOG_DEBUG("restoring local backup from backup");
+			state->CopyFrom(backup_state.second);
+		}
+	}
+	else
+	{
+	
+		std::unordered_set<uid_t, std::hash<uid_t>> visited;
+
+		//
+		// Retrieve the state of every container
+		//
+		for (const auto& c_id : container_ids)
+		{
+			auto pos = m_state.find(make_pair("container", c_id));
+			if (pos == m_state.end())
+			{
+				//
+				// This container is not in the orchestrator state
+				//
+				continue;
+			}
+
+			state_of(pos->second.get(), state, visited, ts);
 		}
 
-		state_of(pos->second.get(), state, visited, ts);
-	}
-
-	//
-	// Add everything running on this node that hasn't been added yet
-	// (like pods without containers)
-	//
-	if (!m_k8s_node_uid.empty())
-	{
-		auto node_key = make_pair("k8s_node", m_k8s_node_uid);
-		if (has(node_key))
+		//
+		// Add everything running on this node that hasn't been added yet
+		// (like pods without containers)
+		//
+		if (!m_k8s_node_uid.empty())
 		{
-			const auto* node = m_state[node_key].get();
-
-			for (const auto& c_uid : node->children())
+			auto node_key = make_pair("k8s_node", m_k8s_node_uid);
+			if (has(node_key))
 			{
-				LOG_DEBUG("infra_state: node %s has %s:%s",
-				          m_k8s_node_uid.c_str(),
-				          c_uid.kind().c_str(),
-				          c_uid.id().c_str());
-				auto ckey = make_pair(c_uid.kind(), c_uid.id());
+				const auto* node = m_state[node_key].get();
 
-				if (!has(ckey))
+				for (const auto& c_uid : node->children())
 				{
-					// We don't have this child (yet...)
-					continue;
-				}
+					LOG_DEBUG("infra_state: node %s has %s:%s",
+						  m_k8s_node_uid.c_str(),
+						  c_uid.kind().c_str(),
+						  c_uid.id().c_str());
+					auto ckey = make_pair(c_uid.kind(), c_uid.id());
 
-				if (visited.find(ckey) == visited.end())
-				{
-					// state_of() looks at visited too
-					// We just want to do it here for logging purposes
-					LOG_DEBUG("infra_state: adding state for (container-less) %s:%s",
-					          c_uid.kind().c_str(),
-					          c_uid.id().c_str());
-					state_of(m_state[ckey].get(), state, visited, ts);
+					if (!has(ckey))
+					{
+						// We don't have this child (yet...)
+						continue;
+					}
+
+					if (visited.find(ckey) == visited.end())
+					{
+						// state_of() looks at visited too
+						// We just want to do it here for logging purposes
+						LOG_DEBUG("infra_state: adding state for (container-less) %s:%s",
+							  c_uid.kind().c_str(),
+							  c_uid.id().c_str());
+						state_of(m_state[ckey].get(), state, visited, ts);
+					}
 				}
 			}
 		}
-	}
 
-	resolve_names(state);
+		resolve_names(state);
+		try
+		{
+			if(c_k8s_infrastate_backup_enabled.get_value())
+			{
+				m_persistent_state.store_local(ts, *state);
+			}
+		}
+		catch(const persistent_state_error& err)
+		{
+			LOG_WARNING("unable to store local orchestrator state: %s", err.what());
+		}
+	}
 }
 
 void infrastructure_state::state_of(const std::vector<std::string>& container_ids,
@@ -3026,12 +3059,35 @@ void infrastructure_state::emit(const draiosproto::container_group* cg,
 
 void infrastructure_state::get_state(draiosproto::k8s_state* state, uint64_t ts)
 {
-	for (const auto& it : m_state)
+	if(!m_cointerface_ready && c_k8s_infrastate_backup_enabled.get_value())
 	{
-		emit(it.second.get(), state, ts, true);
+		auto backup_state = m_persistent_state.get_global(ts);
+		if(backup_state.first == true)
+		{
+			LOG_DEBUG("Cointerface not ready yet. Returning backup file");
+			state->CopyFrom(backup_state.second);
+		}
 	}
-	resolve_names(state);
-	dump_memory_info();
+	else
+	{
+		for (const auto& it : m_state)
+		{
+			emit(it.second.get(), state, ts, true);
+		}
+		resolve_names(state);
+		dump_memory_info();
+		try
+		{
+			if(c_k8s_infrastate_backup_enabled.get_value())
+			{
+				m_persistent_state.store_global(ts, *state);
+			}
+		}
+		catch(const persistent_state_error& err)
+		{
+			LOG_WARNING("unable to store orchestrator state: %s", err.what());
+		}
+	}
 }
 
 void infrastructure_state::on_new_container(const sinsp_container_info& container_info,
@@ -4464,6 +4520,7 @@ const std::string infrastructure_state::CONTAINER_STATUS_REASON_TAG = "reason";
 const std::string infrastructure_state::POD_META_DELETION_TS_TAG = "kubernetes.pod.meta.deletionTimestamp";
 const std::string infrastructure_state::POD_META_CREATION_TS_TAG = "kubernetes.pod.meta.creationTimestamp";
 
+
 void infrastructure_state::add_cg_ip_observer(const infrastructure_state::cg_ip_clbk_t& clbk)
 {
     m_cg_ip_observers.push_back(clbk);
@@ -4631,6 +4688,12 @@ std::unique_ptr<draiosproto::k8s_metadata> infrastructure_state::make_metadata_m
 	}
 
 	return metadata;
+}
+
+void infrastructure_state::set_cointerface_ready()
+{
+	LOG_DEBUG("cointerface initial list completed");
+	m_cointerface_ready.store(true);
 }
 
 #endif  // CYGWING_AGENT

@@ -344,3 +344,8 @@ service LeasePoolManager {
 	rpc Release(lease_pool_null) returns (lease_pool_null) {}
 	rpc GetNodesWithLease(lease_pool_null) returns (stream lease_nodes) {}
 }
+
+message persistent_state {
+	required uint64 ts = 1;
+	optional draiosproto.k8s_state state = 2;
+}

@@ -8,6 +8,9 @@
 #include "secure_audit_handler.h"
 #include "sinsp_mock.h"
 #include "test_logger.h"
+#include "persistent_state.h"
+#include "libsanalyzer_exceptions.h"
+#include "sdc_internal.pb.h"
 
 #include <google/protobuf/util/json_util.h>
 #include <google/protobuf/util/message_differencer.h>
@@ -16,6 +19,8 @@
 #include <gtest.h>
 #include <map>
 #include <vector>
+#include <set>
+#include <chrono>
 
 class infrastructure_state_test : public test_logger, public ::testing::Test
 {
@@ -558,11 +563,13 @@ TEST_F(infrastructure_state_test, events_test)
 	                                          NAMESPACE_NAME,
 	                                          NAMESPACE_NAME,
 	                                          NODE_ID,
+						  "",
 	                                          {}),
 	    test::infra_util::make_expected_tuple(draiosproto::k8s_pod(),
 	                                          POD1_ID,
 	                                          NAMESPACE_NAME,
 	                                          NODE_ID,
+						  "",
 	                                          {{k8s_pod_store::NODE_KIND, NODE_ID},
 	                                           {k8s_pod_store::REPLICASET_KIND, RS_ID},
 	                                           {k8s_pod_store::DEPLOYMENT_KIND, DEPLOYMENT_ID}}),
@@ -570,6 +577,7 @@ TEST_F(infrastructure_state_test, events_test)
 	                                          POD2_ID,
 	                                          NAMESPACE_NAME,
 	                                          NODE_ID,
+						  "",
 	                                          {{k8s_pod_store::NODE_KIND, NODE_ID},
 	                                           {k8s_pod_store::REPLICASET_KIND, RS_ID},
 	                                           {k8s_pod_store::DEPLOYMENT_KIND, DEPLOYMENT_ID}}),
@@ -577,13 +585,15 @@ TEST_F(infrastructure_state_test, events_test)
 	                                          RS_ID,
 	                                          NAMESPACE_NAME,
 	                                          NODE_ID,
+						  "",
 	                                          {{k8s_pod_store::DEPLOYMENT_KIND, DEPLOYMENT_ID}}),
 	    test::infra_util::make_expected_tuple(draiosproto::k8s_deployment(),
 	                                          DEPLOYMENT_ID,
 	                                          NAMESPACE_NAME,
 	                                          NODE_ID,
+						  "",
 	                                          {}),
-	    test::infra_util::make_expected_tuple(draiosproto::k8s_node(), NODE_ID, "", NODE_ID, {}));
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_node(), NODE_ID, "", NODE_ID, "", {}));
 
 	auto test = [&](const decltype(make_test_events())& test_events) {
 		infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
@@ -869,11 +879,13 @@ TEST_F(infrastructure_state_test, events_test_2)
 	                                          NAMESPACE_NAME,
 	                                          NAMESPACE_NAME,
 	                                          "",
+						  "",
 	                                          {}),
 	    test::infra_util::make_expected_tuple(draiosproto::k8s_pod(),
 	                                          POD_ID,
 	                                          NAMESPACE_NAME,
 	                                          NODE_ID,
+						  "",
 	                                          {{k8s_pod_store::NODE_KIND, NODE_ID},
 	                                           {k8s_pod_store::REPLICASET_KIND, RS_ID},
 	                                           {k8s_pod_store::DEPLOYMENT_KIND, DEPLOYMENT_ID},
@@ -884,22 +896,26 @@ TEST_F(infrastructure_state_test, events_test_2)
 	        RS_ID,
 	        NAMESPACE_NAME,
 	        "",
+		"",
 	        {{k8s_pod_store::DEPLOYMENT_KIND, DEPLOYMENT_ID}, {k8s_pod_store::HPA_KIND, HPA_ID}}),
 	    test::infra_util::make_expected_tuple(draiosproto::k8s_deployment(),
 	                                          DEPLOYMENT_ID,
 	                                          NAMESPACE_NAME,
 	                                          "",
+						  "",
 	                                          {{k8s_pod_store::HPA_KIND, HPA_ID}}),
-	    test::infra_util::make_expected_tuple(draiosproto::k8s_node(), NODE_ID, "", NODE_ID, {}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_node(), NODE_ID, "", NODE_ID, "", {}),
 	    test::infra_util::make_expected_tuple(draiosproto::k8s_service(),
 	                                          SERVICE_ID,
 	                                          NAMESPACE_NAME,
 	                                          "",
+						  "",
 	                                          {}),
 	    test::infra_util::make_expected_tuple(draiosproto::k8s_hpa(),
 	                                          HPA_ID,
 	                                          NAMESPACE_NAME,
 	                                          "",
+						  "",
 	                                          {}));
 
 	auto test = [&](const decltype(make_test_events())& test_events) {
@@ -1141,19 +1157,22 @@ TEST_F(infrastructure_state_test, single_update)
 	                                          NAMESPACE_NAME,
 	                                          NAMESPACE_NAME,
 	                                          "",
+						  "",
 	                                          {}),
 	    test::infra_util::make_expected_tuple(
 	        draiosproto::k8s_pod(),
 	        POD_ID,
 	        NAMESPACE_NAME,
 	        NODE_ID,
+		"",
 	        {{k8s_pod_store::NODE_KIND, NODE_ID}, {k8s_pod_store::REPLICASET_KIND, RS_ID}}),
 	    test::infra_util::make_expected_tuple(draiosproto::k8s_replica_set(),
 	                                          RS_ID,
 	                                          NAMESPACE_NAME,
 	                                          "",
+						  "",
 	                                          {}),
-	    test::infra_util::make_expected_tuple(draiosproto::k8s_node(), NODE_ID, "", NODE_ID, {}));
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_node(), NODE_ID, "", NODE_ID, "", {}));
 
 	auto test = [&](const decltype(make_test_events())& test_events) {
 		infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
@@ -1672,3 +1691,83 @@ TEST_F(infrastructure_state_test, storageclass)
 		FAIL() << "Expectd " << expected_json << "\nActual: " << actual_json;
 	}
 }
+
+class next_event_epoch
+{
+public:
+	next_event_epoch() :
+		now(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
+	{
+	}
+
+	uint64_t next(uint64_t interval_secs)
+	{
+		return now = now + interval_secs * NSECS_PER_SEC;
+	}
+private:
+	uint64_t now;
+};
+
+TEST_F(infrastructure_state_test, persistent_state)
+{
+	
+	static const std::string DUMP_PATH = "/tmp";
+	static const uint16_t FREQUENCY = 2;
+	static const uint32_t MAX_AGE = 120;
+
+	next_event_epoch ts;
+
+	setup_logger();
+	g_log->set_console_log_priority(Poco::Message::Priority::PRIO_DEBUG);
+
+	auto remove_files =
+	    []() {
+		    try
+		    {
+			    Poco::File(DUMP_PATH).remove();
+		    }
+		    catch(const std::exception& ex)
+		    {
+		    }
+	    };
+
+	remove_files();
+
+	const auto k8s_state = test::infra_util::create_expected(
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_pod(),
+	                                          "pod_id_1",
+	                                          "default",
+	                                          "node",
+						  "pod1_name",
+	                                          {}),
+	    test::infra_util::make_expected_tuple(draiosproto::k8s_pod(),
+						  "pod_id_2",
+						  "default",
+						  "node",
+						  "pod2_name",
+						  {}));
+
+	{
+		persistent_state ps("/tmmmmp", FREQUENCY, MAX_AGE);
+		ps.store_global(ts.next(0), k8s_state);
+
+		auto ret = ps.get_local(ts.next(1));
+		EXPECT_EQ(ret.first, false);
+	}
+
+
+	{
+		persistent_state ps("/tmp/metrics", FREQUENCY, MAX_AGE);
+		ps.store_global(ts.next(0), k8s_state);
+		auto ret = ps.get_global(ts.next(1));
+		EXPECT_EQ(ret.first, true);
+
+		const draiosproto::k8s_state& backup  = ret.second;
+		EXPECT_EQ(test::infra_util::check_equality(backup, k8s_state), true);
+
+		ret = ps.get_local(ts.next(1));
+		EXPECT_EQ(ret.first, false);
+	}
+
+}
+

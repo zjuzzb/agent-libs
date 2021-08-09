@@ -2,6 +2,7 @@ package kubecollect_common
 
 import (
 	"context"
+	"k8s.io/client-go/tools/cache"
 	"sync"
 
 	"github.com/draios/protorepo/sdc_internal"
@@ -13,8 +14,8 @@ type KubecollectInterface interface {
 		ctx context.Context,
 		kubeClient kubeclient.Interface,
 		wg *sync.WaitGroup,
-		fetchDone chan<- struct{},
 		opts *sdc_internal.OrchestratorEventsStreamCommand,
 		resourceTypes []string,
 		queueLength *uint32)
+	CreateHasSyncedFuncs()[]cache.InformerSynced
 }

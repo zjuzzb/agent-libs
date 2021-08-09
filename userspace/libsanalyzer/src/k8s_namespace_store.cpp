@@ -191,9 +191,9 @@ void k8s_namespace_store::handle_add(const draiosproto::container_group& cg)
 			ASSERT(pos->second.uid() == "");
 			pos->second.set_uid(id);
 			LOG_DEBUG("k8s_namespace_store namespace <%s,%s> is now complete. It has  %lu orphans",
-					  kind.c_str(),
-					  id.c_str(),
-					  pos->second.get_orphans().size());
+				  kind.c_str(),
+				  id.c_str(),
+				  pos->second.get_orphans().size());
 		}
 		else
 		{

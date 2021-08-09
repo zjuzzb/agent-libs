@@ -38,6 +38,7 @@ public:
 	               std::string /* object id*/,
 	               std::string,                                     /* namespace */
 	               std::string,                                     /* node (where it applies */
+		       std::string,                                     /* object name */
 	               std::vector<std::pair<std::string, std::string>> /* parents */
 	               >;
 
@@ -49,6 +50,7 @@ public:
 	    const std::string& id,
 	    const std::string& namespace_,
 	    const std::string& node,
+	    const std::string& name,
 	    const std::vector<std::pair<std::string, std::string>>& parents);
 
 	// Create as many as you want cointerface events. Each event is represented by
@@ -134,9 +136,10 @@ infra_util::expected_tuple_t<PROTO> infra_util::make_expected_tuple(
     const std::string& id,
     const std::string& namespace_,
     const std::string& node,
+    const std::string& name,
     const std::vector<std::pair<std::string, std::string>>& parents)
 {
-	return expected_tuple_t<PROTO>(PROTO(), id, namespace_, node, parents);
+	return expected_tuple_t<PROTO>(PROTO(), id, namespace_, node, name, parents);
 }
 
 template<typename T>
@@ -206,11 +209,17 @@ draiosproto::k8s_state infra_util::create_expected(F&& first)
 	using PROTO = typename std::remove_reference<decltype(std::get<0>(first))>::type;
 	PROTO msg;
 	msg.mutable_common()->set_uid(std::get<1>(first));
+
+	if(std::get<4>(first) != "")
+	{
+		msg.mutable_common()->set_name(std::get<4>(first));
+	}
+	
 	infra_util::set_namespace(msg, std::get<2>(first));
 	infra_util::set_node(msg, std::get<3>(first));
 	infra_util::set_restart_rate(msg);
 
-	for (const auto& parent : std::get<4>(first))
+	for (const auto& parent : std::get<5>(first))
 	{
 		auto* p = msg.mutable_common()->mutable_parents()->Add();
 		p->set_key(parent.first);

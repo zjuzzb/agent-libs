@@ -221,6 +221,7 @@ class run_on_interval
 {
 public:
 	inline run_on_interval(uint64_t interval, uint64_t threshold = 0);
+	inline run_on_interval(run_on_interval&& other);
 
 	template<typename Callable>
 	inline void run(const Callable& c, uint64_t now);
@@ -237,6 +238,13 @@ run_on_interval::run_on_interval(uint64_t interval, uint64_t threshold):
 		m_last_run_ns(0),
 		m_interval(interval),
 		m_threshold(threshold)
+{
+}
+
+run_on_interval::run_on_interval(run_on_interval&& other) :
+	m_last_run_ns(std::move(other.m_last_run_ns)),
+	m_interval(std::move(other.m_interval)),
+	m_threshold(std::move(other.m_threshold))
 {
 }
 

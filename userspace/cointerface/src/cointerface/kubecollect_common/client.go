@@ -492,7 +492,7 @@ func runRandomDelay(opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClie
 // until the channel is closed, otherwise the component goroutines may block.
 // The empty struct chan notifies the caller that the initial event fetch
 // is complete by closing the chan.
-func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubecollectInterface KubecollectInterface, fetchDone chan<- struct{}) (<-chan sdc_internal.ArrayCongroupUpdateEvent, error) {
+func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubecollectInterface KubecollectInterface) (<-chan sdc_internal.ArrayCongroupUpdateEvent, error) {
 	setErrorLogHandler()
 
 	// TODO: refactor error messages
@@ -617,7 +617,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	delegationCtx, _ := context.WithCancel(ctx)
 	go RunDelegation(delegationCtx, opts)
 
-	kubecollectInterface.StartInformers(ctx, kubeClient, &wg, fetchDone, opts, resourceTypes, &queueLength)
+	kubecollectInterface.StartInformers(ctx, kubeClient, &wg, opts, resourceTypes, &queueLength)
 
 	// as soon as we start the go routine to start informers;
 	// we need to kick off the routine to start reading events

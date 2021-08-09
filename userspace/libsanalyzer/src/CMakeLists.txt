@@ -239,6 +239,7 @@ set(SANALYZER_SOURCES
     k8s_pod_store.cpp
     k8s_object_store.cpp
     k8s_store_manager.cpp
+    persistent_state.cpp
     ${LIBSINSP_SOURCE_DIR}/addrinfo.cpp
     ${LIBSINSP_SOURCE_DIR}/cgroup_limits.cpp
     ${CHISEL_DIR}/chisel.cpp

@@ -3,6 +3,7 @@ package kubecollect_tc
 import (
 	"cointerface/kubecollect"
 	"cointerface/kubecollect_common"
+	"k8s.io/client-go/tools/cache"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
@@ -19,7 +20,6 @@ func startWatcherAndInformers(
 	ctx context.Context,
 	kubeClient kubeclient.Interface,
 	wg *sync.WaitGroup,
-	fetchDone chan<- struct{},
 	opts *sdc_internal.OrchestratorEventsStreamCommand,
 	resourceTypes []string,
 	queueLength *uint32) {
@@ -140,14 +140,6 @@ func startWatcherAndInformers(
 		}
 	}
 
-	if !interrupted {
-		fetchDone <- struct{}{}
-	} else {
-		// Inititial fetch has been aborted.
-		// Notify it by closing the channel
-		close(fetchDone)
-	}
-
 	// In a separate goroutine, wait for the informers and
 	// close Informer channel once they're done to notify the caller
 	go func() {
@@ -168,9 +160,16 @@ func (c KubecollectClientTc) StartInformers(
 	ctx context.Context,
 	kubeClient kubeclient.Interface,
 	wg *sync.WaitGroup,
-	fetchDone chan<- struct{},
 	opts *sdc_internal.OrchestratorEventsStreamCommand,
 	resourceTypes []string,
 	queueLength *uint32) {
-	startWatcherAndInformers(ctx, kubeClient, wg, fetchDone, opts, resourceTypes, queueLength)
+	startWatcherAndInformers(ctx, kubeClient, wg, opts, resourceTypes, queueLength)
+}
+
+func (c KubecollectClientTc) CreateHasSyncedFuncs()[]cache.InformerSynced {
+	return []cache.InformerSynced {
+		func() bool {
+			return true
+		},
+	}
 }

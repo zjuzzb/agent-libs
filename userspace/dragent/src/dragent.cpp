@@ -1739,6 +1739,10 @@ int dragent_app::sdagent_main()
 			watchdog_check(uptime_s);
 		}
 
+		if(cointerface_ready())
+		{
+			analyzer->cointerface_ready();
+		}
 #ifdef CYGWING_AGENT
 		if (m_windows_service_parent)
 		{

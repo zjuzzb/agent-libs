@@ -24,6 +24,7 @@
 #include "our_k8s_limits.h"
 
 #include <Poco/RegularExpression.h>
+#include "persistent_state.h"
 
 #include <gtest/gtest_prod.h>
 
@@ -309,6 +310,7 @@ public:
 
 	void add_cg_ip_observer (const cg_ip_clbk_t& clbk);
 	std::unique_ptr<draiosproto::k8s_metadata> make_metadata_message(uint64_t ts_ns);
+	void set_cointerface_ready();
 
 private:
 	FRIEND_TEST(infrastructure_state_test, connect_to_namespace);
@@ -483,6 +485,8 @@ private:
 	void add_name_to_md(draiosproto::container_group* cg, draiosproto::k8s_metadatum& md);
 	void export_k8s_metadata(draiosproto::container_group* cg, draiosproto::k8s_metadatum& md);
 
+	persistent_state m_persistent_state;
+	std::atomic<bool> m_cointerface_ready;
 private:
 	/**
 	 * adjusts path for changes in configured root dir
@@ -546,6 +550,7 @@ public: // configs
 	static type_config<std::vector<std::string>> c_pod_prefix_for_cidr_retrieval;
 	static type_config<std::vector<std::string>>::ptr c_k8s_allow_list_kinds;
 	static type_config<bool> c_k8s_delegation_election;
+	static type_config<bool> c_k8s_infrastate_backup_enabled;
 
 private: // configs which have non-static fields that we actually use. You probably don't
 	 // want these. In almost all cases, you'll probably want to use the normalized

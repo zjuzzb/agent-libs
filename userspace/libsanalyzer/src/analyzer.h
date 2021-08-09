@@ -957,6 +957,7 @@ public:
 	                    bool deleg_fail);
 	bool check_k8s_delegation();
 
+	void cointerface_ready();
 	VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(std::string&);
 

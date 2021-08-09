@@ -2,6 +2,7 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
+	"k8s.io/client-go/tools/cache"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
@@ -18,7 +19,6 @@ func startInformers(
 	ctx context.Context,
 	kubeClient kubeclient.Interface,
 	wg *sync.WaitGroup,
-	fetchDone chan<- struct{},
 	opts *sdc_internal.OrchestratorEventsStreamCommand,
 	resourceTypes []string,
 	queueLength *uint32) {
@@ -141,14 +141,6 @@ func startInformers(
 		}
 	}
 
-	if !interrupted {
-		fetchDone <- struct{}{}
-	} else {
-		// Inititial fetch has been aborted.
-		// Notify it by closing the channel
-		close(fetchDone)
-	}
-
 	// In a separate goroutine, wait for the informers and
 	// close Informer channel once they're done to notify the caller
 	go func() {
@@ -169,9 +161,58 @@ func (c KubecollectClient) StartInformers(
 	ctx context.Context,
 	kubeClient kubeclient.Interface,
 	wg *sync.WaitGroup,
-	fetchDone chan<- struct{},
 	opts *sdc_internal.OrchestratorEventsStreamCommand,
 	resourceTypes []string,
 	queueLength *uint32) {
-	startInformers(ctx, kubeClient, wg, fetchDone, opts, resourceTypes, queueLength)
+	startInformers(ctx, kubeClient, wg, opts, resourceTypes, queueLength)
+}
+
+func (c KubecollectClient) CreateHasSyncedFuncs() []cache.InformerSynced {
+	var ret []cache.InformerSynced
+
+	type namedInformer struct {
+		cache.SharedInformer
+		name string
+	}
+
+	var informers []namedInformer
+
+	appendIf := func(resource string, informer cache.SharedInformer) {
+		if ok := kubecollect_common.StartedMap[resource]; ok {
+			informers = append(informers, namedInformer{informer, resource})
+		}
+	}
+	appendIf("nodes", NodeInf)
+	appendIf("services", ServiceInf)
+	appendIf("statefulsets", StatefulSetInf)
+	appendIf("cronjobs", cronJobInf)
+	appendIf("daemonSets", daemonSetInf)
+	appendIf("deployments", deploymentInf)
+	appendIf("horizontalpodautoscalers", horizontalPodAutoscalerInf)
+	appendIf("ingresses", ingressInf)
+	appendIf("jobs", jobInf)
+	appendIf("namespaces", namespaceInf)
+	appendIf("networkpolicies", networkPolicyInf)
+	appendIf("persistentvolumeclaims", persistentVolumeClaimsInf)
+	appendIf("persistentvolumes", persistentVolumesInf)
+	appendIf("pods", podInf)
+	appendIf("replicasets", replicaSetInf)
+	appendIf("replicationControllers", replicationControllerInf)
+	appendIf("resourcequotas", resourceQuotaInf)
+	appendIf("storageclasses", storageClassInf)
+
+	for _, informer := range informers {
+			informer := informer
+			ret = append(ret, func() bool {
+				ret := informer.SharedInformer != nil && informer.HasSynced()
+
+				if ret {
+					log.Debugf("resource %s is synced", informer.name)
+				}
+
+				return ret
+			})
+	}
+
+	return ret
 }
