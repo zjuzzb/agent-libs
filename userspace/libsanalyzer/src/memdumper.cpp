@@ -309,7 +309,6 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 	if (!read_membuf_using_inspector(inspector, state, job))
 	{
 		inspector.close();
-		::close(fd);
 		return;
 	}
 
@@ -335,12 +334,10 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 			membuf_mtx->unlock();
 		}
 		inspector.close();
-		::close(fd);
 		return;
 	}
 
 	inspector.close();
-	::close(fd);
 }
 
 std::unique_ptr<sinsp_memory_dumper_job> sinsp_memory_dumper::add_job(uint64_t ts,
