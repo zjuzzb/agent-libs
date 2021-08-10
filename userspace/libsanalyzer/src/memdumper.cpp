@@ -333,8 +333,6 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 		{
 			membuf_mtx->unlock();
 		}
-		inspector.close();
-		return;
 	}
 
 	inspector.close();
