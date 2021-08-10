@@ -428,10 +428,10 @@ sinsp_protocol_parser::msg_type sinsp_http_parser::should_parse(
 	// start with a "Status-Line" which begins with "HTTP/".
 	// https://www.w3.org/Protocols/HTTP/1.0/spec.html#Response
 
-	const char* HTTP_RESP8_STR = "HTTP/""\x00"".""\x00";   // "HTTP/X.X", vers digits masked
+	const char* HTTP_RESP8_STR = "HTTP/\x00.\x00";   // "HTTP/X.X", vers digits masked
 	uint64_t MSG_STR_RESP8 = (*(uint64_t*)HTTP_RESP8_STR);
 
-	const char* HTTP_RESP8_MASK_STR = "\xff""\xff""\xff""\xff""\xff""\x00""\xff""\x00";
+	const char* HTTP_RESP8_MASK_STR = "\xff\xff\xff\xff\xff\x00\xff\x00";
 	uint64_t MSG_STR_RESP8_MASK = (*(uint64_t*)HTTP_RESP8_MASK_STR);
 
 	uint64_t val64 = *(reinterpret_cast<const uint64_t*>(buf));
