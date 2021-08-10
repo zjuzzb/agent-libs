@@ -90,6 +90,7 @@ private:
 	uint64_t m_max_chunk_size;
 	string m_token;
 	std::unique_ptr<capture> m_capture;
+	std::unique_ptr<capture_reader> m_capture_reader;
 	sinsp_filter* m_filter;
 	uint64_t m_start_ns;
 	uint64_t m_duration_ns;
@@ -101,10 +102,6 @@ private:
 	bool m_defer_send;
 	string m_notification_desc;
 	string m_file;
-
-	// This is only modified in flush() or the destructor
-	// (i.e. the job handler thread).
-	FILE* m_fp;
 
 	// This can be read in process_event and written in flush(),
 	// which are in different threads.
@@ -145,7 +142,6 @@ capture_job::capture_job(capture_job_handler* handler,
       m_delete_file_when_done(true),
       m_send_file(true),
       m_defer_send(false),
-      m_fp(NULL),
       m_file_size(0),
       m_state(ST_INPROGRESS),
       m_keepalive_interval(keepalive_interval_ns),
@@ -159,12 +155,6 @@ capture_job::capture_job(capture_job_handler* handler,
 capture_job::~capture_job()
 {
 	delete m_filter;
-
-	if (m_fp)
-	{
-		fclose(m_fp);
-	}
-
 	if (m_delete_file_when_done && !m_file.empty())
 	{
 		File f(m_file);
@@ -241,6 +231,7 @@ bool capture_job::start(sinsp* inspector,
 	if (details.m_past_duration_ns == 0)
 	{
 		m_capture = std::move(details.m_capture);
+		m_capture_reader = m_capture->make_reader();
 		m_handler->add_job(job_state);
 	}
 	else
@@ -286,6 +277,7 @@ bool capture_job::start(sinsp* inspector,
 		// We want the capture from memjob, but otherwise
 		// we can immediately delete it.
 		m_capture = std::move(memjob->m_capture);
+		m_capture_reader = m_capture->make_reader();
 
 		// Set the inspector of the capture to the live
 		// inspector. This inspector is only used to hold
@@ -300,14 +292,6 @@ bool capture_job::start(sinsp* inspector,
 		m_handler->add_job(job_state);
 
 		// membuf_mtx gets released here
-	}
-
-	m_fp = fopen(m_file.c_str(), "r");
-	if (m_fp == NULL)
-	{
-		errstr = strerror(errno);
-		m_capture = nullptr;
-		return false;
 	}
 
 	// If configured, send a keepalive message now.
@@ -390,7 +374,7 @@ void capture_job::flush(uint64_t ts, bool& throttled)
 	if (m_state != ST_DONE_ERROR)
 	{
 		struct stat st;
-		if (stat(m_file.c_str(), &st) != 0)
+		if(m_capture_reader->stat(st) != 0)
 		{
 			log_error("error checking file size");
 			m_handler->send_error(m_token, "Error checking file size");
@@ -592,31 +576,20 @@ void capture_job::read_chunk()
 	while (!eof && chunk_size)
 	{
 		size_t to_read = min<u_int64_t>(buffer.size(), chunk_size);
-		ASSERT(m_fp);
-		size_t res = fread(buffer.begin(), 1, to_read, m_fp);
-		if (res != to_read)
+		ssize_t res = m_capture_reader->read_back(buffer.begin(), to_read);
+		if(res == 0)
 		{
-			if (feof(m_fp))
-			{
-				log_debug("EOF");
-				eof = true;
-			}
-			else if (ferror(m_fp))
-			{
-				log_error("ferror while reading " + m_file);
-				m_state = ST_DONE_ERROR;
-				m_handler->send_error(m_token, "ferror while reading " + m_file);
-				ASSERT(false);
-				return;
-			}
-			else
-			{
-				log_error("unknown error while reading " + m_file);
-				m_state = ST_DONE_ERROR;
-				m_handler->send_error(m_token, "unknown error while reading " + m_file);
-				ASSERT(false);
-				return;
-			}
+			log_debug("EOF");
+			eof = true;
+		}
+		else if(res < 0)
+		{
+			const std::string msg = "error while reading " + m_file + ": " + strerror(errno);
+			log_error(msg);
+			m_state = ST_DONE_ERROR;
+			m_handler->send_error(m_token, msg);
+			ASSERT(false);
+			return;
 		}
 
 		chunk_size -= res;
