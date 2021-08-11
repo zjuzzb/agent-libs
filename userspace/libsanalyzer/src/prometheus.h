@@ -35,8 +35,7 @@ public:
 	      m_max_tags_per_metric(-1),
 	      m_histograms(false),
 	      m_ingest_raw(false),
-	      m_ingest_calculated(false),
-	      m_prom_sd(false)
+	      m_ingest_calculated(false)
 	{
 		init_command_line();
 	}
@@ -105,9 +104,8 @@ public:
 	bool ingest_calculated() const { return m_ingest_calculated; }
 	void set_ingest_calculated(bool val) { m_ingest_calculated = val; }
 
-	// Set whether or not we do service discovery through prometheus (promscrape v2)
-	bool prom_sd() const { return m_prom_sd; }
-	void set_prom_sd(bool val) { m_prom_sd = val; }
+	// Whether or not we do service discovery through prometheus (promscrape v2)
+	bool prom_sd() const;
 	int metric_expiration() const { return m_metric_expiration; }
 	void set_metric_expiration(int sec) { m_metric_expiration = sec; }
 
@@ -138,7 +136,6 @@ private:
 	bool m_ingest_raw;
 	bool m_ingest_calculated;
 	std::vector<object_filter_config::filter_rule> m_host_rules;
-	bool m_prom_sd;
 	int m_metric_expiration;
 };
 

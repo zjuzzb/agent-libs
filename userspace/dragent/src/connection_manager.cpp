@@ -1086,6 +1086,30 @@ bool connection_manager::send_handshake_negotiation()
 	}
 	msg_hs.add_prom_fastproto(draiosproto::fastproto_support::FASTPROTO_NO_SUPPORT);
 
+	// Always add prom_config_support (as of agent 12.0.0)
+	msg_hs.add_prom_config(draiosproto::prom_config_support::PROM_CONFIG_SUPPORT);
+	msg_hs.add_prom_config(draiosproto::prom_config_support::PROM_CONFIG_NO_SUPPORT);
+
+	auto ps_ver = draiosproto::prom_scraper_version::PROMSCRAPE_V0;
+	if (promscrape::c_use_promscrape.get_value())
+	{
+		if (promscrape::c_prom_service_discovery.get_value())
+		{
+			ps_ver = draiosproto::prom_scraper_version::PROMSCRAPE_V2;
+			LOG_INFO("Sending scraper version promscrape_v2 to backend");
+		}
+		else
+		{
+			ps_ver = draiosproto::prom_scraper_version::PROMSCRAPE_V1;
+			LOG_INFO("Sending scraper version promscrape_v1 to backend");
+		}
+	}
+	else
+	{
+		LOG_INFO("Sending scraper version promscrape_v0 to backend");
+	}
+	msg_hs.add_prom_scraper_version(ps_ver);
+
 	if (m_decorate_handshake_data)
 	{
 		m_decorate_handshake_data((void*)&msg_hs);

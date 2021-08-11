@@ -411,6 +411,11 @@ bool prometheus_conf::match_and_fill(const thread_analyzer_info* tinfo,
 	return false;
 }
 
+bool prometheus_conf::prom_sd() const
+{
+	return promscrape::c_prom_service_discovery.get_value();
+}
+
 void prometheus_conf::register_annotations(std::function<void(const std::string& str)> reg)
 {
 	base::register_annotations(reg);

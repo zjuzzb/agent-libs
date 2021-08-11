@@ -140,6 +140,7 @@ public:
 	static type_config<bool>c_promscrape_web_enable;
 	static type_config<bool>::mutable_ptr c_export_fastproto;
 	static type_config<bool>c_allow_bypass;
+	static type_config<bool>c_prom_service_discovery;
 
 	const prom_jobid_map_t& job_map() { return m_jobs; }
 

@@ -1075,8 +1075,6 @@ void dragent_configuration::init()
 	m_prom_conf.set_ingest_raw(m_config->get_scalar<bool>("prometheus", "ingest_raw", false));
 	m_prom_conf.set_ingest_calculated(
 	    m_config->get_scalar<bool>("prometheus", "ingest_calculated", true));
-	m_prom_conf.set_prom_sd(
-	    m_config->get_scalar<bool>("prometheus", "prom_service_discovery", false));
 	m_prom_conf.set_metric_expiration(
 	    m_config->get_scalar<int>("prometheus", "metric_expiration", 300));
 

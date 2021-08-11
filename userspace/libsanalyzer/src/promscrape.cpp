@@ -36,6 +36,12 @@ type_config<bool> promscrape::c_use_promscrape(
     "Whether or not to use promscrape for prometheus metrics",
     "use_promscrape");
 
+type_config<bool> promscrape::c_prom_service_discovery(
+    false,
+    "Whether or not to enable Prometheus Service Discovery (aka promscrape_v2)",
+    "prometheus",
+	"prom_service_discovery");
+
 // Promscrape GRPC server address: At this point the default agent root-dir is not yet
 // known, so it will be inserted during config validation
 type_config<string> promscrape::c_promscrape_sock(
