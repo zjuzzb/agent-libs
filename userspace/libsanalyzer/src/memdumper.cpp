@@ -207,6 +207,16 @@ bool sinsp_memory_dumper::read_membuf_using_inspector(
 		}
 		else if (res != SCAP_SUCCESS && res != SCAP_TIMEOUT)
 		{
+			LOG_DEBUG("reading from %s failed: %s", state->m_shm_name.c_str(), inspector.getlasterr().c_str());
+			uint64_t prev_bytes_written = dumper_bytes_written;
+			dumper_bytes_written = state->flush();
+			LOG_DEBUG("after flush: bytes_written %lu -> %lu", prev_bytes_written, dumper_bytes_written);
+			if(prev_bytes_written != dumper_bytes_written)
+			{
+				LOG_DEBUG("retrying read");
+				continue;
+			}
+
 			//
 			// There was an error. Just stop here and log the error
 			//
