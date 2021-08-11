@@ -96,7 +96,7 @@ func newDeploymentCongroup(deployment CoDeployment, setLinks bool) *draiosproto.
 		Namespace: proto.String(deployment.GetNamespace()),
 	}
 
-	ret.Tags = kubecollect_common.GetTags(deployment.ObjectMeta, "kubernetes.deployment.")
+	ret.Tags = kubecollect_common.GetTags(deployment, "kubernetes.deployment.")
 	ret.InternalTags = kubecollect_common.GetAnnotations(deployment.ObjectMeta, "kubernetes.deployment.")
 	AddDeploymentMetrics(&ret.Metrics, deployment)
 	if setLinks {

@@ -89,7 +89,7 @@ func newJobConGroup(job CoJob, setLinks bool) (*draiosproto.ContainerGroup) {
 			Namespace:proto.String(job.GetNamespace()),
 	}
 
-	ret.Tags = kubecollect_common.GetTags(job.ObjectMeta, "kubernetes.job.")
+	ret.Tags = kubecollect_common.GetTags(job, "kubernetes.job.")
 	AddJobMetrics(&ret.Metrics, job)
 	if setLinks {
 		AddPodChildrenFromOwnerRef(&ret.Children, job.ObjectMeta)

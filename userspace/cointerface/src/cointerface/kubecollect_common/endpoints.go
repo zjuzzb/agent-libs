@@ -26,7 +26,7 @@ func newEndpointsCongroup(endpoints CoEndpoints, setLinks bool) (*draiosproto.Co
 	var ports []*draiosproto.CongroupNetPort
 	var ips []string
 
-	tags := GetTags(endpoints.ObjectMeta, "kubernetes.endpoints.")
+	tags := GetTags(endpoints, "kubernetes.endpoints.")
 	inttags := GetAnnotations(endpoints.ObjectMeta, "kubernetes.endpoints.")
 
 	for _, subset := range endpoints.Subsets {

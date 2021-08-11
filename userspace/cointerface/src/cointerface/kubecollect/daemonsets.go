@@ -92,7 +92,7 @@ func newDaemonSetCongroup(daemonSet CoDaemonSet, setLinks bool) *draiosproto.Con
 		Namespace: proto.String(daemonSet.GetNamespace()),
 	}
 
-	ret.Tags = kubecollect_common.GetTags(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
+	ret.Tags = kubecollect_common.GetTags(daemonSet, "kubernetes.daemonSet.")
 	ret.InternalTags = kubecollect_common.GetAnnotations(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
 	AddDaemonSetMetrics(&ret.Metrics, daemonSet)
 	if setLinks {

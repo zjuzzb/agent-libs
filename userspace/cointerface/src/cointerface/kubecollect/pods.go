@@ -223,7 +223,7 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 }
 
 func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool) ([]*draiosproto.CongroupUpdateEvent) {
-	tags := kubecollect_common.GetTags(pod.ObjectMeta, "kubernetes.pod.")
+	tags := kubecollect_common.GetTags(pod, "kubernetes.pod.")
 	// This gets specially added as a tag since we don't have a
 	// better way to report values that can be one of many strings
 

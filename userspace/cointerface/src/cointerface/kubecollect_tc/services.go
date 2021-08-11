@@ -22,7 +22,7 @@ func serviceEvent(svc kubecollect.CoService, eventType *draiosproto.CongroupEven
 }
 
 func newServiceCongroup(service kubecollect.CoService, setLinks bool) (*draiosproto.ContainerGroup) {
-	tags := kubecollect_common.GetTags(service.ObjectMeta, "kubernetes.service.")
+	tags := kubecollect_common.GetTags(service, "kubernetes.service.")
 	inttags := kubecollect_common.GetAnnotations(service.ObjectMeta, "kubernetes.service.")
 
 	kubecollect_common.MapInsert(&inttags, "kubernetes.service.type", string(service.Spec.Type))

@@ -79,6 +79,8 @@ func startWatcherAndInformers(
 			kubecollect.StartPersistentVolumeClaimsInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "podstatuscounter":
 			kubecollect.StartPodStatusWatcher(ctx, opts, kubeClient, wg, kubecollect_common.InformerChannel)
+		case "storageclasses":
+			kubecollect.StartStorageClassInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		default:
 			log.Debugf("No kubecollect support for %v", resource)
 			infStarted = false

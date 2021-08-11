@@ -28,7 +28,7 @@ func newJobConGroup(job kubecollect.CoJob, setLinks bool) (*draiosproto.Containe
 			Namespace:proto.String(job.GetNamespace()),
 	}
 
-	ret.Tags = kubecollect_common.GetTags(job.ObjectMeta, "kubernetes.job.")
+	ret.Tags = kubecollect_common.GetTags(job, "kubernetes.job.")
 	kubecollect.AddJobMetrics(&ret.Metrics, job)
 	if setLinks {
 		kubecollect_common.OwnerReferencesToParents(job.GetOwnerReferences(), &ret.Parents, &map[string]bool{"CronJob" : true})

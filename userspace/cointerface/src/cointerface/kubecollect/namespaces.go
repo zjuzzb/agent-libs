@@ -36,7 +36,7 @@ func nsEquals(lhs *v1.Namespace, rhs *v1.Namespace) bool {
 }
 
 func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (*draiosproto.ContainerGroup) {
-	tags:= kubecollect_common.GetTags(ns.ObjectMeta, "kubernetes.namespace.")
+	tags:= kubecollect_common.GetTags(ns, "kubernetes.namespace.")
 	inttags:= kubecollect_common.GetAnnotations(ns.ObjectMeta, "kubernetes.namespace.")
 
 	ret := &draiosproto.ContainerGroup{

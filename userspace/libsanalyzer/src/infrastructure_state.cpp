@@ -2205,9 +2205,9 @@ bool infrastructure_state::is_valid_for_export(const draiosproto::container_grou
 		return true;
 	}
 
-	// Always return node and namespace and persistentvolume
+	// Always return the following kinds
 	if (grp->uid().kind() == "k8s_namespace" || grp->uid().kind() == "k8s_node" ||
-	    grp->uid().kind() == "k8s_persistentvolume")
+	    grp->uid().kind() == "k8s_persistentvolume" || grp->uid().kind() == "k8s_storageclass")
 	{
 		return true;
 	}
@@ -2965,6 +2965,10 @@ void infrastructure_state::emit(const draiosproto::container_group* cg,
 			}
 			m_pod_status[ns].insert(std::move(pod_status));
 		}
+	}
+	else if (kind == "k8s_storageclass")
+	{
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_storage_classes());
 	}
 	else
 	{

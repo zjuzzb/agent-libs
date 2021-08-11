@@ -40,6 +40,7 @@ import (
 
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -196,6 +197,7 @@ func GetResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 		"horizontalpodautoscalers",
 		"persistentvolumes",
 		"persistentvolumeclaims",
+		"storageclasses",
 	}
 	for _, nsr := range customResources {
 		defaultDisabledResources = append(defaultDisabledResources, nsr)
@@ -868,7 +870,7 @@ func setErrorLogHandler() {
 	}
 }
 
-func GetTags(obj v1meta.ObjectMeta, prefix string) map[string]string {
+func GetTags(obj v1meta.Object, prefix string) map[string]string {
 	tags := make(map[string]string)
 	for k, v := range obj.GetLabels() {
 		tags[prefix+"label."+k] = v
@@ -1272,4 +1274,30 @@ func CreateCommon(name string, uid string) *draiosproto.K8SCommon {
 		Name: proto.String(name),
 		Uid:  proto.String(uid),
 	}
+}
+
+func K8sToDraiosCommon(itf interface{}) *draiosproto.K8SCommon {
+	obj := itf.(metav1.Object)
+
+	return &draiosproto.K8SCommon{
+		Name:                 proto.String(obj.GetName()),
+		Uid:                  proto.String(string(obj.GetUID())),
+		Namespace:            proto.String(obj.GetNamespace()),
+	}
+}
+
+func K8SObjectToCongroup(itf interface{}, draiosKind string, labelPrefix string) (*draiosproto.ContainerGroup, error) {
+	obj, ok := itf.(metav1.Object)
+	if !ok {
+		return nil, fmt.Errorf("Could not cast interface into metav1.Object")
+	}
+
+	return &draiosproto.ContainerGroup{
+		Uid:                  &draiosproto.CongroupUid{
+			Kind:                 proto.String(draiosKind),
+			Id:                   proto.String(string(obj.GetUID())),
+		},
+		Tags:                 GetTags(obj, labelPrefix),
+		Namespace:            proto.String(obj.GetNamespace()),
+	}, nil
 }

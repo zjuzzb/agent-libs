@@ -351,6 +351,11 @@ const unordered_map<string, setter_t<k8s_resourcequota>> K8sResource<k8s_resourc
 });
 
 template<>
+const string K8sResource<k8s_storage_class>::tag_prefix = "kubernetes.storageclass.";
+template<>
+const unordered_map<string, setter_t<k8s_storage_class>> K8sResource<k8s_storage_class>::metrics({});
+
+template<>
 void export_k8s_object<draiosproto::pod_status_count>(const uid_set_t& parents,
                                                       const draiosproto::container_group* src,
                                                       draiosproto::pod_status_count* obj)
@@ -462,6 +467,17 @@ void enrich_k8s_object<draiosproto::k8s_persistentvolume>(const draiosproto::con
 
 	// Get the phase
 	obj->mutable_status()->set_phase(src->k8s_object().pv().status().phase());
+}
+
+
+template<>
+void enrich_k8s_object<draiosproto::k8s_storage_class>(const draiosproto::container_group* src,
+							  draiosproto::k8s_storage_class * obj)
+{
+	obj->set_created(src->k8s_object().sc().created());
+	obj->set_provisioner(src->k8s_object().sc().provisioner());
+	obj->set_reclaim_policy(src->k8s_object().sc().reclaim_policy());
+	obj->set_volume_binding_mode(src->k8s_object().sc().volume_binding_mode());
 }
 
 }  // namespace legacy_k8s

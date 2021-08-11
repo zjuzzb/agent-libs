@@ -112,7 +112,7 @@ func newReplicaSetCongroup(replicaSet CoReplicaSet, setLinks bool) (*draiosproto
 		Namespace:proto.String(replicaSet.GetNamespace()),
 	}
 
-	ret.Tags = kubecollect_common.GetTags(replicaSet.ObjectMeta, "kubernetes.replicaSet.")
+	ret.Tags = kubecollect_common.GetTags(replicaSet, "kubernetes.replicaSet.")
 	ret.InternalTags = kubecollect_common.GetAnnotations(replicaSet.ObjectMeta, "kubernetes.replicaSet.")
 	AddReplicaSetMetrics(&ret.Metrics, replicaSet)
 	if setLinks {

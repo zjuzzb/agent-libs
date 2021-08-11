@@ -31,7 +31,7 @@ func newHorizontalPodAutoscalerCongroup(hpa *v1as.HorizontalPodAutoscaler) (*dra
 		Namespace:proto.String(hpa.GetNamespace()),
 	}
 
-	ret.Tags = kubecollect_common.GetTags(hpa.ObjectMeta, "kubernetes.hpa.")
+	ret.Tags = kubecollect_common.GetTags(hpa, "kubernetes.hpa.")
 	ret.InternalTags = kubecollect_common.GetAnnotations(hpa.ObjectMeta, "kubernetes.hpa.")
 	AddHorizontalPodAutoscalerMetrics(&ret.Metrics, hpa)
 	AddPodChildrenFromOwnerRef(&ret.Children, hpa.ObjectMeta)

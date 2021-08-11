@@ -1398,3 +1398,70 @@ TEST_F(infrastructure_state_test, enrich_pv)
 		FAIL();
 	}
 }
+
+
+TEST_F(infrastructure_state_test, storageclass)
+{
+	test_helpers::sinsp_mock inspector;
+	audit_tap_handler_dummy athd;
+	null_secure_audit_handler sahd;
+	null_secure_profiling_handler sphd;
+	null_secure_netsec_handler snhd;
+	sinsp_analyzer analyzer(&inspector,
+	                        "",
+	                        std::make_shared<internal_metrics>(),
+	                        athd,
+	                        sahd,
+	                        sphd,
+	                        snhd,
+	                        nullptr,
+	                        []() -> bool { return true; });
+	infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
+
+	draiosproto::congroup_update_event cue;
+	draiosproto::k8s_storage_class sc;
+
+	cue.set_type(draiosproto::ADDED);
+	auto* cg = cue.mutable_object();
+
+	cg->mutable_uid()->set_id("scuid");
+	cg->mutable_uid()->set_kind("k8s_storageclass");
+	cg->mutable_tags()->insert({"kubernetes.storageclass.label.key1", "value1"});
+	cg->mutable_tags()->insert({"kubernetes.storageclass.name", "scname"});
+	cg->set_namespace_("scnamespace");
+	auto *inner_sc = cg->mutable_k8s_object()->mutable_sc();
+	inner_sc->set_created(100);
+	inner_sc->set_provisioner("scprovisioner");
+	inner_sc->set_reclaim_policy(draiosproto::STORAGE_CLASS_RECLAIM_POLICY_DELETE);
+	inner_sc->set_volume_binding_mode(draiosproto::VOLUME_BINDING_MODE_WAIT_FOR_FIRST_CONSUMER);
+
+	is.handle_event(&cue);
+
+	legacy_k8s::export_k8s_object(is.m_parents[{"k8s_storageclass", "scuid"}], is.m_state[{"k8s_storageclass", "scuid"}].get(), &sc);
+
+	draiosproto::k8s_storage_class expected;
+	expected.CopyFrom(cg->k8s_object().sc());
+	auto* exp_common = expected.mutable_common();
+	exp_common->set_uid("scuid");
+	exp_common->set_name("scname");
+
+	// Notice we won't have the namespace set.
+	// For this to happen we should simulate the arrival
+	// of the namespace object. So we skip the following
+	// line
+	//
+	// exp_common->set_namespace_("scnamespace");
+	draiosproto::k8s_pair p;
+	p.set_key("key1");
+	p.set_value("value1");
+	exp_common->mutable_labels()->Add(std::move(p));
+
+	if(!google::protobuf::util::MessageDifferencer::Equals(sc, expected))
+	{
+		std::string expected_json;
+		std::string actual_json;
+		google::protobuf::util::MessageToJsonString(sc, &actual_json);
+		google::protobuf::util::MessageToJsonString(expected, &expected_json);
+		FAIL() << "Expectd " << expected_json << "\nActual: " << actual_json;
+	}
+}

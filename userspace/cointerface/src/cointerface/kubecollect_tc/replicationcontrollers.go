@@ -29,7 +29,7 @@ func newReplicationControllerCongroup(replicationController kubecollect.CoReplic
 		Namespace:proto.String(replicationController.GetNamespace()),
 	}
 
-	ret.Tags = kubecollect_common.GetTags(replicationController.ObjectMeta, "kubernetes.replicationController.")
+	ret.Tags = kubecollect_common.GetTags(replicationController, "kubernetes.replicationController.")
 	ret.InternalTags = kubecollect_common.GetAnnotations(replicationController.ObjectMeta, "kubernetes.replicationController.")
 	kubecollect.AddReplicationControllerMetrics(&ret.Metrics, replicationController)
 	return ret

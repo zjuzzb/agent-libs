@@ -30,7 +30,7 @@ func newStatefulSetCongroup(statefulSet *appsv1.StatefulSet) (*draiosproto.Conta
 		Namespace:proto.String(statefulSet.GetNamespace()),
 	}
 
-	ret.Tags = kubecollect_common.GetTags(statefulSet.ObjectMeta, "kubernetes.statefulset.")
+	ret.Tags = kubecollect_common.GetTags(statefulSet, "kubernetes.statefulset.")
 	ret.InternalTags = kubecollect_common.GetAnnotations(statefulSet.ObjectMeta, "kubernetes.statefulset.")
 	kubecollect_common.MapInsert(&ret.InternalTags, "kubernetes.statefulset.service.name", statefulSet.Spec.ServiceName)
 	kubecollect.AddStatefulSetMetrics(&ret.Metrics, statefulSet)

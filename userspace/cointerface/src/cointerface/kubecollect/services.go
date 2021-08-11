@@ -86,7 +86,7 @@ func lookupServiceByName(serviceName, namespace string) string {
 }
 
 func newServiceCongroup(service CoService, setLinks bool) (*draiosproto.ContainerGroup) {
-	tags := kubecollect_common.GetTags(service.ObjectMeta, "kubernetes.service.")
+	tags := kubecollect_common.GetTags(service, "kubernetes.service.")
 	inttags := kubecollect_common.GetAnnotations(service.ObjectMeta, "kubernetes.service.")
 
 	if inttags == nil {

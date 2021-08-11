@@ -28,7 +28,7 @@ func newDeploymentCongroup(deployment kubecollect.CoDeployment, setLinks bool) (
 		Namespace:proto.String(deployment.GetNamespace()),
 	}
 
-	ret.Tags = kubecollect_common.GetTags(deployment.ObjectMeta, "kubernetes.deployment.")
+	ret.Tags = kubecollect_common.GetTags(deployment, "kubernetes.deployment.")
 	ret.InternalTags = kubecollect_common.GetAnnotations(deployment.ObjectMeta, "kubernetes.deployment.")
 	kubecollect.AddDeploymentMetrics(&ret.Metrics, deployment)
 	if setLinks {
