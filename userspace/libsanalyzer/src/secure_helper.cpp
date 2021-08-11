@@ -39,7 +39,7 @@ bool secure_helper::is_valid_tuple(const ipv4tuple tuple)
 
 bool secure_helper::is_localhost(const ipv4tuple tuple)
 {
-	auto localhost = 0x0100007f; // host byte order
+	auto localhost = ntohl(INADDR_LOOPBACK); // 127.0.0.1 in host byte order
 	if (tuple.m_fields.m_sip == localhost || tuple.m_fields.m_dip == localhost)
 	{
 		return true;

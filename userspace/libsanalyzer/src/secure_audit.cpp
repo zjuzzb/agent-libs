@@ -9,7 +9,6 @@
 namespace
 {
 COMMON_LOGGER();
-const uint32_t LOCAL_IP_ADDRESS = 16777343;  // 127.0.0.1
 const int DEFAULT_AUDIT_FREQUENCY_S = 10;
 const uint64_t FREQUENCY_THRESHOLD_NS = 100000000;  // 100 ms
 
@@ -585,8 +584,9 @@ void secure_audit::append_connection(connection_type type,
                                      sinsp_connection& conn)
 {
 	// Avoid to emit local connections (src or dst 127.0.0.1)
+	uint32_t localhost = ntohl(INADDR_LOOPBACK);  // 127.0.0.1 in host byte order
 	if (!c_secure_audit_connections_local.get_value() &&
-	    (tuple.m_fields.m_sip == LOCAL_IP_ADDRESS || tuple.m_fields.m_dip == LOCAL_IP_ADDRESS))
+	    (tuple.m_fields.m_sip == localhost || tuple.m_fields.m_dip == localhost))
 	{
 		return;
 	}
