@@ -92,13 +92,18 @@ private:
 
 	/**
 	 * Connect to the proxy and encrypt the tunnel to the collector.
+	 *
+	 * The old_style_connect parameter determines how the cm_socket is
+	 * connected to the collector through the proxy. Some versions of OpenSSL
+	 * seem to like one style better, and some seem to like the other.
 	 */
 	static cm_socket::ptr openssl_connect(const std::string& proxy_host,
 	                                      uint16_t proxy_port,
 	                                      const std::vector<std::string>& ca_cert_paths,
 	                                      const std::string& ssl_ca_certificate,
 	                                      bool verify_certificate,
-	                                      const std::string& http_connect_message);
+	                                      const std::string& http_connect_message,
+	                                      bool old_style_connect);
 
 	/**
 	 * Establish an encrypted sonnection to the proxy and a separately-encrypted

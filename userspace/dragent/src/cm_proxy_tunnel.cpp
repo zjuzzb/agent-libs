@@ -46,6 +46,15 @@ type_config<std::string> c_proxy_ca_certificate("root.cert",
                                                 "http_proxy",
                                                 "ca_certificate");
 
+type_config<bool>::ptr
+c_use_old_style_connect = type_config_builder<bool>(false,
+                                                    "Use the old OpenSSL connection logic.",
+                                                    "http_proxy"
+                                                    "old_style_connect")
+	.hidden()
+	.build();
+
+
 namespace
 {
 	std::string append_to_path(const std::string& path, const std::string& child)
@@ -143,7 +152,8 @@ cm_socket::ptr http_tunnel::openssl_connect(const std::string& proxy_host,
                                             const std::vector<std::string>& ca_cert_paths,
                                             const std::string& ssl_ca_certificate,
                                             bool verify_certificate,
-                                            const std::string& http_connect_message)
+                                            const std::string& http_connect_message,
+                                            bool old_style_connect)
 {
 	Poco::Net::SocketAddress sa(proxy_host, proxy_port); // Cheat and use poco for DNS lookup
 	int sock = socket(sa.af(), SOCK_STREAM, IPPROTO_TCP);
@@ -240,21 +250,32 @@ cm_socket::ptr http_tunnel::openssl_connect(const std::string& proxy_host,
 	auto oss = std::make_shared<cm_openssl_socket>(ca_cert_paths,
 	                                               ssl_ca_certificate,
 	                                               verify_certificate);
-	BIO* conn = BIO_new_fd(sock, BIO_NOCLOSE);
-	if (conn == nullptr)
+	if (old_style_connect)
 	{
-		LOG_ERROR("Could not create I/O object for server connection");
-		::close(sock);
-		return nullptr;
+		if (!oss->connect(sock, proxy_host) || !oss->is_valid())
+		{
+			::close(sock);
+			return nullptr;
+		}
 	}
-	else if (oss->connect(conn) && oss->is_valid())
+	else
 	{
-		LOG_INFO("Connected through HTTP proxy");
-		return oss;
+		BIO* conn = BIO_new_fd(sock, BIO_NOCLOSE);
+		if (conn == nullptr)
+		{
+			LOG_ERROR("Could not create I/O object for server connection");
+			::close(sock);
+			return nullptr;
+		}
+		if (!oss->connect(conn) || !oss->is_valid())
+		{
+			BIO_free_all(conn);
+			::close(sock);
+			return nullptr;
+		}
 	}
-	BIO_free_all(conn);
-	::close(sock);
-	return nullptr;
+	LOG_INFO("Connected through HTTP proxy");
+	return oss;
 }
 
 cm_socket::ptr http_tunnel::doublessl_connect(const std::string& proxy_host,
@@ -459,7 +480,8 @@ cm_socket::ptr http_tunnel::establish_tunnel(const proxy_connection& conn)
 			                       conn.ca_cert_paths,
 			                       conn.ssl_ca_certificate,
 			                       conn.verify_certificate,
-			                       connect_string);
+			                       connect_string,
+			                       c_use_old_style_connect->get_value());
 		}
 	}
 	return connect(conn.proxy_host, conn.proxy_port, connect_string);
