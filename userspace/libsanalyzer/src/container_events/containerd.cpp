@@ -86,7 +86,7 @@ void containerd_events::subscribe()
 			}
 			else if(status == streaming_grpc::SHUTDOWN)
 			{
-				LOG_ERROR("containerd grpc shut down");
+				LOG_DEBUG("containerd grpc shut down");
 			}
 			else
 			{
