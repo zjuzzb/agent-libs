@@ -49,11 +49,10 @@ type_config<std::string> c_proxy_ca_certificate("root.cert",
 type_config<bool>::ptr
 c_use_old_style_connect = type_config_builder<bool>(false,
                                                     "Use the old OpenSSL connection logic.",
-                                                    "http_proxy"
+                                                    "http_proxy",
                                                     "old_style_connect")
 	.hidden()
 	.build();
-
 
 namespace
 {
@@ -252,6 +251,7 @@ cm_socket::ptr http_tunnel::openssl_connect(const std::string& proxy_host,
 	                                               verify_certificate);
 	if (old_style_connect)
 	{
+		LOG_INFO("Using legacy-style SSL connection");
 		if (!oss->connect(sock, proxy_host) || !oss->is_valid())
 		{
 			::close(sock);
@@ -260,6 +260,7 @@ cm_socket::ptr http_tunnel::openssl_connect(const std::string& proxy_host,
 	}
 	else
 	{
+		LOG_DEBUG("Using new-style SSL connection");
 		BIO* conn = BIO_new_fd(sock, BIO_NOCLOSE);
 		if (conn == nullptr)
 		{

@@ -749,7 +749,6 @@ void cm_socket::print_ssl_error(const std::string& error, SSL* ssl, int retval)
 	}
 }
 
-
 /**************************************************************************
  * OpenSSL socket
  **************************************************************************/
@@ -781,6 +780,7 @@ cm_openssl_socket::cm_openssl_socket(const std::vector<std::string>& ca_cert_pat
 	}
 	else
 	{
+		LOG_DEBUG("Not verifying certificate");
 		SSL_CTX_set_verify(m_ctx, SSL_VERIFY_NONE, nullptr);
 	}
 	const long flags = SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE;
