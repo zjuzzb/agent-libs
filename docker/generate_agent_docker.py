@@ -38,21 +38,21 @@ if (image == "" or repo == "") and len(args) < 1:
 p = {}
 
 if image == "agent":
-    p['base_docker_image'] = "debian:stable"
+    p['base_docker_image'] = "debian:buster"
     p['sysdig_repository'] = repo
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 1
     p['launch_dragent'] = 1
     p['thin'] = 0
 elif image == "local":
-    p['base_docker_image'] = "debian:stable"
+    p['base_docker_image'] = "debian:buster"
     p['sysdig_repository'] = repo
     p['include_agent_package'] = "local"
     p['build_kernel_module'] = 1
     p['launch_dragent'] = 1
     p['thin'] = 0
 elif image == "agent-kmodule":
-    p['base_docker_image'] = "debian:stable"
+    p['base_docker_image'] = "debian:buster"
     p['sysdig_repository'] = repo
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 1
@@ -65,7 +65,7 @@ elif image == "agent-slim":
     p['launch_dragent'] = 1
     p['thin'] = 0
 elif image == "agent-kmodule-thin":
-    p['base_docker_image'] = "debian:stable"
+    p['base_docker_image'] = "debian:buster"
     p['sysdig_repository'] = repo
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 1
