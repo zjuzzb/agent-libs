@@ -693,7 +693,8 @@ TEST_F(memdump_test, back_in_time_dump_only)
 	ASSERT_NO_FATAL_FAILURE(read_trace("single", set<string>{string("before")}));
 }
 
-TEST_F(memdump_test, overlapping_dumps)
+//FIXME: SMAGENT-3103 fix overlapping memdump test instability
+TEST_F(memdump_test, DISABLED_overlapping_dumps)
 {
 	ASSERT_NO_FATAL_FAILURE(perform_overlapping_dumps(10));
 
