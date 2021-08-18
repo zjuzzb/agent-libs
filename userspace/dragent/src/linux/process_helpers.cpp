@@ -80,6 +80,19 @@ subprocess_cgroup::subprocess_cgroup(const std::string &subsys, const std::strin
 	}
 
 	m_created = false;
+
+	// if the path already exists, set m_created to true
+	if(!m_full_path.empty())
+	{
+		struct stat sb;
+		if (stat(m_full_path.c_str(), &sb) == 0)
+		{
+			if ((sb.st_mode & S_IFMT) == S_IFDIR)
+			{
+				m_created = true;
+			}
+		}
+	}
 }
 
 void subprocess_cgroup::create()
