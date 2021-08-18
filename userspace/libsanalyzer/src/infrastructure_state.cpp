@@ -115,6 +115,22 @@ type_config<uint32_t>::ptr infrastructure_state::c_k8s_max_rnd_conn_delay =
         .min(0)
         .max(900)
         .build();
+type_config<uint32_t>::ptr infrastructure_state::c_k8s_min_rnd_conn_delay =
+    type_config_builder<uint32_t>(
+        0,
+        "minimum random delay (in seconds) before connecting to K8s API server",
+        "k8s_min_rnd_conn_delay")
+        .min(0)
+        .max(900)
+        .build();
+type_config<double>::ptr infrastructure_state::c_k8s_per_node_conn_delay =
+    type_config_builder<double>(
+        0.25,
+        "Delay (in seconds) per node before connecting to K8s API server",
+        "k8s_per_node_conn_delay")
+        .min(0)
+        .max(900)
+        .build();
 type_config<bool> infrastructure_state::c_thin_cointerface_enabled(
 		false,
 		"Enable the Thin Cointerface feature (i.e. retryWatchers)",
@@ -584,6 +600,8 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 		                                    c_k8s_include_types.get_value().end()};
 		    cmd.set_event_counts_log_time(c_k8s_event_counts_log_time.get_value());
 		    cmd.set_max_rnd_conn_delay(c_k8s_max_rnd_conn_delay->get_value());
+		    cmd.set_min_rnd_conn_delay(c_k8s_min_rnd_conn_delay->get_value());
+		    cmd.set_per_node_conn_delay(c_k8s_per_node_conn_delay->get_value());
 		    *cmd.mutable_pod_status_allowlist() = {c_k8s_pod_status_wl.get_value().begin(),
 		                                           c_k8s_pod_status_wl.get_value().end()};
 		    cmd.set_terminated_pods_enabled(c_k8s_terminated_pods_enabled.get_value());

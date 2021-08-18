@@ -1,6 +1,7 @@
 package kubecollect_common
 
 import (
+	"errors"
 	"fmt"
 	"github.com/draios/install_prefix"
 	"github.com/google/uuid"
@@ -42,11 +43,12 @@ import (
 )
 
 const (
-	EVENT_ADD = iota
-	EVENT_UPDATE = iota
+	EVENT_ADD             = iota
+	EVENT_UPDATE          = iota
 	EVENT_UPDATE_AND_SEND = iota
-	EVENT_DELETE = iota
+	EVENT_DELETE          = iota
 )
+
 // client side of LeasePoolManager service.
 var delegationClient *sdc_internal.LeasePoolManagerClient
 
@@ -75,7 +77,7 @@ var COLDSTART_SOCK = "/run/coldstart.sock"
 var DELEGATION_SOCK = "/run/delegation.sock"
 
 const (
-	ChannelTypeInformer = iota
+	ChannelTypeInformer  = iota
 	ChannelTypeUserEvent = iota
 )
 
@@ -88,22 +90,22 @@ var InformerChannel chan draiosproto.CongroupUpdateEvent
 
 func AddEvent(restype string, evtype int) {
 	profile.NewEvent()
-	if (eventCountsLogTime < 1) {
+	if eventCountsLogTime < 1 {
 		return
 	}
-	if (evtype == EVENT_ADD) {
+	if evtype == EVENT_ADD {
 		emAddMutex.Lock()
 		eventMapAdd[restype] = eventMapAdd[restype] + 1
 		emAddMutex.Unlock()
-	} else if (evtype == EVENT_UPDATE) {
+	} else if evtype == EVENT_UPDATE {
 		emUpdMutex.Lock()
 		eventMapUpd[restype] = eventMapUpd[restype] + 1
 		emUpdMutex.Unlock()
-	} else if (evtype == EVENT_UPDATE_AND_SEND) {
+	} else if evtype == EVENT_UPDATE_AND_SEND {
 		emUpdsMutex.Lock()
 		eventMapUpds[restype] = eventMapUpds[restype] + 1
 		emUpdsMutex.Unlock()
-	} else if (evtype == EVENT_DELETE) {
+	} else if evtype == EVENT_DELETE {
 		emDelMutex.Lock()
 		eventMapDel[restype] = eventMapDel[restype] + 1
 		emDelMutex.Unlock()
@@ -113,7 +115,7 @@ func AddEvent(restype string, evtype int) {
 }
 
 func logEvents() {
-	if (eventCountsLogTime < 1) {
+	if eventCountsLogTime < 1 {
 		return
 	}
 
@@ -124,11 +126,11 @@ func logEvents() {
 
 	for k := range eventMapAdd {
 		log.Infof("%s Events: %d adds, %d updates, %d updates sent, %d deletes",
-			  k,
-			  eventMapAdd[k],
-			  eventMapUpd[k],
-			  eventMapUpds[k],
-			  eventMapDel[k])
+			k,
+			eventMapAdd[k],
+			eventMapUpd[k],
+			eventMapUpds[k],
+			eventMapDel[k])
 	}
 
 	emDelMutex.RUnlock()
@@ -148,7 +150,7 @@ func InSortedArray(s string, arr []string) bool {
 	return false
 }
 
-func addCustomResources(resources []*v1meta.APIResourceList, customResources []string) ([]*v1meta.APIResourceList) {
+func addCustomResources(resources []*v1meta.APIResourceList, customResources []string) []*v1meta.APIResourceList {
 	if len(customResources) > 0 {
 
 		// Create a sysdig/v1alpha1 group version
@@ -162,7 +164,7 @@ func addCustomResources(resources []*v1meta.APIResourceList, customResources []s
 		}
 
 		// Add custom resources to sysdig new group version
-		for _,customResource := range customResources {
+		for _, customResource := range customResources {
 			sysdigResources.APIResources = append(sysdigResources.APIResources, v1meta.APIResource{Name: customResource})
 		}
 
@@ -172,7 +174,7 @@ func addCustomResources(resources []*v1meta.APIResourceList, customResources []s
 	return resources
 }
 
-func GetResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string, checkIncludeOptional ...bool) ([]string) {
+func GetResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string, checkIncludeOptional ...bool) []string {
 
 	checkInclude := true // True by default
 	if len(checkIncludeOptional) > 0 {
@@ -184,11 +186,11 @@ func GetResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 
 	havePods := false
 
-	customResources := []string {"podstatuscounter"}
+	customResources := []string{"podstatuscounter"}
 
 	resources = addCustomResources(resources, customResources)
 
-	defaultDisabledResources := []string {
+	defaultDisabledResources := []string{
 		"services",
 		"resourcequotas",
 		"horizontalpodautoscalers",
@@ -225,16 +227,16 @@ func GetResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 				continue
 			}
 
-			if(!resourceMap[resource.Name]) {
+			if !resourceMap[resource.Name] {
 				// This resource hasn't been added. Added it now
 				resourceMap[resource.Name] = true
 
 				// If the resource type is "nodes" or "namespaces" we
 				// PREPEND them. (we want to process those first). Else
 				// append the other resource types.
-				if(resource.Name == "nodes" || resource.Name == "namespaces") {
+				if resource.Name == "nodes" || resource.Name == "namespaces" {
 					resourceTypes = append([]string{resource.Name}, resourceTypes...)
-				} else if(resource.Name == "pods") {
+				} else if resource.Name == "pods" {
 					havePods = true
 				} else {
 					resourceTypes = append(resourceTypes, resource.Name)
@@ -250,7 +252,7 @@ func GetResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 	return resourceTypes
 }
 
-func getServerDiscoveryResources(dI discovery.DiscoveryInterface) ([]*v1meta.APIResourceList , error) {
+func getServerDiscoveryResources(dI discovery.DiscoveryInterface) ([]*v1meta.APIResourceList, error) {
 	resources, err := dI.ServerResources()
 
 	if err != nil {
@@ -288,7 +290,7 @@ func DrainChan(in interface{}) {
 		return
 	}
 	if (cin.Type()).ChanDir() != reflect.RecvDir {
-		log.Warnf("[DrainChan]: can't drain a chan other than RecvDir Chan: %v",(cin.Type()).ChanDir().String())
+		log.Warnf("[DrainChan]: can't drain a chan other than RecvDir Chan: %v", (cin.Type()).ChanDir().String())
 		return
 	}
 
@@ -303,9 +305,9 @@ func DrainChan(in interface{}) {
 }
 
 type gKubeClientStruct struct {
-	client kubeclient.Interface
-	mutex sync.Mutex
-	clientChan chan struct {}
+	client     kubeclient.Interface
+	mutex      sync.Mutex
+	clientChan chan struct{}
 }
 
 var gKubeClient gKubeClientStruct
@@ -320,7 +322,7 @@ func GetKubeClient() (kubeclient.Interface, chan struct{}) {
 
 func setKubeClient(kc kubeclient.Interface, kcc chan struct{}) {
 	gKubeClient.mutex.Lock()
-	if (gKubeClient.clientChan != nil) {
+	if gKubeClient.clientChan != nil {
 		log.Info("Closing k8s client channel")
 		// Close the existing client channel to notify readers
 		// Presuming GC will clean up the actual client when all refs are gone
@@ -359,10 +361,10 @@ func createLeasePoolClient(parentCtx context.Context, sock string, leaseName str
 		coldStartClientId = hostName
 	}
 	_, err = client.Init(ctx, &sdc_internal.LeasePoolInit{
-		Id:                   &coldStartClientId,
-		LeaseName:            &leaseName,
-		LeaseNum:             &leaseNum,
-		Cmd:                  cmd,
+		Id:        &coldStartClientId,
+		LeaseName: &leaseName,
+		LeaseNum:  &leaseNum,
+		Cmd:       cmd,
 	})
 
 	if err != nil {
@@ -373,48 +375,56 @@ func createLeasePoolClient(parentCtx context.Context, sock string, leaseName str
 	return &client, conn, nil
 }
 
-func waitLease(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand) {
+func waitLease(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand) error {
 	var coldStartClient *sdc_internal.LeasePoolManagerClient
 	var conn *grpc.ClientConn
+	var err error
+
 	if *opts.ColdStartNum == 0 {
-		log.Debugf("Cold Start lock disabled")
-		return
+		err = errors.New("Cold Start lock disabled")
+		log.Debug(err)
+		return err
 	}
 
 	prefix, err := install_prefix.GetInstallPrefix()
 	if err != nil {
-		log.Warnf("Could not get installation directory. Skipping wait lease")
-		return
+		err = errors.New("Could not get installation directory. Skipping wait lease")
+		log.Warn(err)
+		return err
 	}
 
 	coldStartClient, conn, err = createLeasePoolClient(ctx, fmt.Sprintf("unix:%s/%s", prefix, COLDSTART_SOCK), COLDSTART_LEASENAME, *opts.ColdStartNum, opts)
 
 	if coldStartClient == nil || err != nil {
-		log.Warn("Could not create a cold start client. Skipping")
-		return
+		err = errors.New("Could not create a cold start client. Skipping")
+		log.Warn(err)
+		return err
 	}
 
 	log.Debugf("Waiting to acquire the lock")
 	wait, err := (*coldStartClient).WaitLease(ctx, &sdc_internal.LeasePoolNull{})
 
 	if err != nil {
-		log.Errorf("Error while waiting for lease: %s", err.Error())
-		return
+		err = errors.New("Error while waiting for lease: " + err.Error())
+		log.Error(err)
+		return err
 	}
 
 	for {
 		res, err := wait.Recv()
 		if err != nil {
-			log.Error("Coldstart stream closed. Continuing without waiting the lease")
-			return
+			err = errors.New("Coldstart stream closed. Continuing without waiting the lease")
+			log.Error(err)
+			return err
 		}
 
 		if *res.Successful == true {
 			log.Debugf("Got the lease. Keep on starting Informers")
 			break
 		} else if opts.GetEnforceLeaderElection() == false {
-			log.Warnf("Got an unsuccessful response: \"%s\". Continuing without waiting the lease", *res.Reason)
-			return
+			err = errors.New("Got an unsuccessful response: \"" + *res.Reason + "\". Continuing without waiting the lease")
+			log.Warn(err)
+			return err
 		} else {
 			log.Warnf("Got an unsuccessful response: \"%s\". Hang on until receiving a successful response", *res.Reason)
 		}
@@ -425,6 +435,37 @@ func waitLease(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamC
 		(*coldStartClient).Release(ctx, &sdc_internal.LeasePoolNull{})
 		conn.Close()
 	}()
+
+	return nil
+}
+
+func getNodeCount(kubeClient kubeclient.Interface) uint32 {
+	nodes, err := kubeClient.CoreV1().Nodes().List(v1meta.ListOptions{})
+	if err != nil {
+		log.Warnf("Failed to get node list: %s", err)
+		return 0
+	} else {
+		return uint32(len(nodes.Items))
+	}
+}
+
+func runRandomDelay(opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClient kubeclient.Interface) {
+	var maxDelay uint32 = 0
+
+	nodes := getNodeCount(kubeClient)
+
+	maxDelay = uint32(float64(nodes) * opts.GetPerNodeConnDelay())
+
+	if opts.GetMinRndConnDelay() != 0 && maxDelay < opts.GetMinRndConnDelay() {
+		maxDelay = opts.GetMinRndConnDelay()
+	} else if opts.GetMaxRndConnDelay() != 0 && maxDelay > opts.GetMaxRndConnDelay() {
+		maxDelay = opts.GetMaxRndConnDelay()
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	delay := rand.Uint32() % maxDelay
+	log.Infof("Waiting to connect to k8s server for %d seconds of maxiumum %d", delay, maxDelay)
+	time.Sleep(time.Duration(delay) * time.Second)
 }
 
 // The input context is passed to all goroutines created by this function.
@@ -432,28 +473,21 @@ func waitLease(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamC
 // until the channel is closed, otherwise the component goroutines may block.
 // The empty struct chan notifies the caller that the initial event fetch
 // is complete by closing the chan.
-func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubecollectInterface KubecollectInterface, fetchDone chan <- struct{}) (<-chan sdc_internal.ArrayCongroupUpdateEvent, error) {
+func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubecollectInterface KubecollectInterface, fetchDone chan<- struct{}) (<-chan sdc_internal.ArrayCongroupUpdateEvent, error) {
 	setErrorLogHandler()
 
 	// TODO: refactor error messages
 	var kubeClient kubeclient.Interface
 
-	if opts.GetMaxRndConnDelay() != 0 {
-		rand.Seed(time.Now().UnixNano())
-		delay := rand.Uint32() % opts.GetMaxRndConnDelay()
-		log.Infof("Waiting to connect to k8s server for %d seconds", delay)
-		time.Sleep(time.Duration(delay) * time.Second)
-	}
-
 	if opts.GetUrl() != "" {
 		log.Infof("Connecting to k8s server at %s", opts.GetUrl())
 		var err error
 		kubeClient, err = createKubeClient(opts.GetUrl(),
-						   opts.GetCaCert(),
-						   opts.GetClientCert(),
-						   opts.GetClientKey(),
-						   opts.GetSslVerifyCertificate(),
-						   opts.GetAuthToken())
+			opts.GetCaCert(),
+			opts.GetClientCert(),
+			opts.GetClientKey(),
+			opts.GetSslVerifyCertificate(),
+			opts.GetAuthToken())
 		if err != nil {
 			InformerChannelInUse = false
 			log.Errorf("Cannot create k8s client: %s", err)
@@ -487,12 +521,12 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	}
 
 	// Set global kubeClient for use by events stream
-	setKubeClient(kubeClient, make(chan struct {}))
+	setKubeClient(kubeClient, make(chan struct{}))
 
 	// These get reset when either events or listeners channel is reset
 	StartedMap = make(map[string]bool)
 	receiveMap = make(map[string]bool)
-	SetAnnotFilt( opts.AnnotationFilter)
+	SetAnnotFilt(opts.AnnotationFilter)
 
 	eventMapAdd = make(map[string]int)
 	eventMapUpd = make(map[string]int)
@@ -512,18 +546,18 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	// only 1 event on it. This happens in batchEvents
 	// What this ensures is that the calculation for length of how
 	// many events in the queue becomes trivial in startInformers
-	// Else we will be forced to perform a deep len calculation. 
+	// Else we will be forced to perform a deep len calculation.
 	evtArrayChan := make(chan sdc_internal.ArrayCongroupUpdateEvent, 1)
 
 	// Batch cointerface messages options
 	// Get the config values for batching cointerface msgs and sanity check the values.
 	batchMsgsQueueLen := opts.GetBatchMsgsQueueLen()
-	if(batchMsgsQueueLen <= 0) {
+	if batchMsgsQueueLen <= 0 {
 		log.Warnf("A value less than 1 entered for the orch_batch_msgs_queue_len configuration property. Setting the value to 1.")
 		batchMsgsQueueLen = 1
 	}
 	batchMsgsTickMs := opts.GetBatchMsgsTickIntervalMs()
-	if(batchMsgsTickMs <= 0) {
+	if batchMsgsTickMs <= 0 {
 		log.Warnf("A value less than 1 entered for the orch_batch_msgs_tick_interval configuration property. Setting the value to 1.")
 		batchMsgsTickMs = 1
 	}
@@ -544,7 +578,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	}
 
 	InformerChannel = make(chan draiosproto.CongroupUpdateEvent,
-			       opts.GetQueueLen())
+		opts.GetQueueLen())
 
 	var wg sync.WaitGroup
 
@@ -554,7 +588,12 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	queueLength := uint32(0)
 
 	leaseCtx, _ := context.WithCancel(ctx)
-	waitLease(leaseCtx, opts)
+	err = waitLease(leaseCtx, opts)
+
+	if err != nil {
+		// waitLease() failed so we'll introduce a random delay rather than use the coldstart leaselocks.
+		runRandomDelay(opts, kubeClient)
+	}
 
 	delegationCtx, _ := context.WithCancel(ctx)
 	go RunDelegation(delegationCtx, opts)
@@ -567,7 +606,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	// that array on the evtArrayChan
 	go BatchEvents(ctx, evtArrayChan, batchMsgsQueueLen, batchMsgsTickMs, &queueLength)
 
-	if (eventCountsLogTime > 0) {
+	if eventCountsLogTime > 0 {
 		go func() {
 			for {
 				time.Sleep(time.Duration(eventCountsLogTime) * time.Second)
@@ -693,7 +732,7 @@ func BatchEvents(
 			// forever if we don't fill the event queue
 			// Here we just set a boolean flag to let the flush code (at the
 			// end of the select know that we are flushing due to timer)
-			// 
+			//
 			timerTick = true
 		case <-ctx.Done():
 			log.Debugf("[PerformOrchestratorEventsStream] context cancelled")
@@ -702,9 +741,9 @@ func BatchEvents(
 
 		// We need to flush in 1 of 2 cases:
 		// 1.) Either we reached full capacity of the queue
-		// 2.) Or timer tick went off 
-		if((len(sdcEvtArray.Events) >= int(batchMsgsQueueLen)) ||
-			(timerTick && (len(sdcEvtArray.Events) > 0))) {
+		// 2.) Or timer tick went off
+		if (len(sdcEvtArray.Events) >= int(batchMsgsQueueLen)) ||
+			(timerTick && (len(sdcEvtArray.Events) > 0)) {
 			evtArrayChan <- sdcEvtArray
 			// Now reset this sdcEvtArray before reuse
 			sdcEvtArray = sdc_internal.ArrayCongroupUpdateEvent{
@@ -761,14 +800,14 @@ func createKubeClient(apiServer string, caCert string, clientCert string, client
 	baseConfig := clientcmdapi.NewConfig()
 	configOverrides := &clientcmd.ConfigOverrides{
 		ClusterInfo: clientcmdapi.Cluster{
-			Server: apiServer,
+			Server:                apiServer,
 			InsecureSkipTLSVerify: skipVerify,
-			CertificateAuthority: caCert,
+			CertificateAuthority:  caCert,
 		},
 		AuthInfo: clientcmdapi.AuthInfo{
 			ClientCertificate: clientCert,
-			ClientKey: clientKey,
-			Token: tokenStr,
+			ClientKey:         clientKey,
+			Token:             tokenStr,
 		},
 	}
 	kubeConfig := clientcmd.NewDefaultClientConfig(*baseConfig, configOverrides)
@@ -793,12 +832,12 @@ func createInClusterKubeClient() (kubeClient kubeclient.Interface, err error) {
 		log.Errorf("Cannot create InCluster config: %s", err)
 		return nil, err
 	}
-	log.Debugf("InCluster k8s server: %s", config.Host);
+	log.Debugf("InCluster k8s server: %s", config.Host)
 	// creates the clientset
 	kubeClient, err = kubeclient.NewForConfig(config)
 	if err != nil {
 		log.Errorf("Cannot create client using cluster config, server %s: %s",
-				   config.Host, err)
+			config.Host, err)
 		return nil, err
 	}
 	return
@@ -817,7 +856,7 @@ func setErrorLogHandler() {
 
 	// We intentionally reassign ErrorHandlers so it both
 	// adds our handler and removes the existing handlers
-	runtime.ErrorHandlers = []func(error) {
+	runtime.ErrorHandlers = []func(error){
 		func(err error) {
 			startIdx := 0
 			loc := errRegex.FindStringIndex(err.Error())
@@ -832,7 +871,7 @@ func setErrorLogHandler() {
 func GetTags(obj v1meta.ObjectMeta, prefix string) map[string]string {
 	tags := make(map[string]string)
 	for k, v := range obj.GetLabels() {
-		tags[prefix+"label." + k] = v
+		tags[prefix+"label."+k] = v
 	}
 	tags[prefix+"name"] = obj.GetName()
 	return tags
@@ -843,13 +882,13 @@ func GetLabelSelector(labelSelector v1meta.LabelSelector) *draiosproto.K8SLabelS
 
 	for _, e := range labelSelector.MatchExpressions {
 		matchExpressions = append(matchExpressions, &draiosproto.K8SLabelSelectorRequirement{
-			Key: proto.String(e.Key),
+			Key:           proto.String(e.Key),
 			MatchOperator: proto.String(string(e.Operator)),
-			Values: e.Values,
+			Values:        e.Values,
 		})
 	}
 	return &draiosproto.K8SLabelSelector{
-		MatchLabels: labelSelector.MatchLabels,
+		MatchLabels:      labelSelector.MatchLabels,
 		MatchExpressions: matchExpressions,
 	}
 }
@@ -952,10 +991,10 @@ func MergeInternalTags(m1 map[string]string, m2 map[string]string) map[string]st
 func EqualLabels(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
 	left := lhs.GetLabels()
 	right := rhs.GetLabels()
-	if (len(left) != len(right)) {
+	if len(left) != len(right) {
 		return false
 	}
-	for k,v := range left {
+	for k, v := range left {
 		if right[k] != v {
 			return false
 		}
@@ -969,10 +1008,10 @@ func EqualAnnotations(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
 	}
 	left := lhs.GetAnnotations()
 	right := rhs.GetAnnotations()
-	if (len(left) != len(right)) {
+	if len(left) != len(right) {
 		return false
 	}
-	for k,v := range left {
+	for k, v := range left {
 		if right[k] != v {
 			return false
 		}
@@ -1014,17 +1053,17 @@ func EqualResourceList(lhs v1.ResourceList, rhs v1.ResourceList) bool {
 
 func AppendMetric(metrics *[]*draiosproto.AppMetric, name string, val float64) {
 	*metrics = append(*metrics, &draiosproto.AppMetric{
-		Name:proto.String(name),
-		Type:draiosproto.AppMetricType_APP_METRIC_TYPE_GAUGE.Enum(),
-		Value:proto.Float64(val),
+		Name:  proto.String(name),
+		Type:  draiosproto.AppMetricType_APP_METRIC_TYPE_GAUGE.Enum(),
+		Value: proto.Float64(val),
 	})
 }
 
 func AppendRateMetric(metrics *[]*draiosproto.AppMetric, name string, val float64) {
 	*metrics = append(*metrics, &draiosproto.AppMetric{
-		Name:proto.String(name),
-		Type:draiosproto.AppMetricType_APP_METRIC_TYPE_RATE.Enum(),
-		Value:proto.Float64(val),
+		Name:  proto.String(name),
+		Type:  draiosproto.AppMetricType_APP_METRIC_TYPE_RATE.Enum(),
+		Value: proto.Float64(val),
 	})
 }
 
@@ -1058,7 +1097,7 @@ func AppendMetricResource(metrics *[]*draiosproto.AppMetric, name string, rList 
 	if ok {
 		// Take MilliValue() and divide because
 		// we could lose precision with Value()
-		v = float64(qty.MilliValue())/1000
+		v = float64(qty.MilliValue()) / 1000
 	}
 	AppendMetric(metrics, name, v)
 }
@@ -1102,7 +1141,7 @@ var startTime time.Time
 
 const WATCHER_REQUIRED_RUNTIME = 1 * time.Hour
 const WATCHER_MINIMUM_BACKOFF = 1 * time.Minute
-const WATCHER_MAXIMUM_BACKOFF = 1 * time.Hour 
+const WATCHER_MAXIMUM_BACKOFF = 1 * time.Hour
 
 func getBackoffValue(runtime time.Duration, previousBackoff time.Duration) time.Duration {
 
@@ -1119,7 +1158,7 @@ func getBackoffValue(runtime time.Duration, previousBackoff time.Duration) time.
 	}
 
 	backoff := previousBackoff * 2
-	
+
 	if backoff > WATCHER_MAXIMUM_BACKOFF {
 		return WATCHER_MAXIMUM_BACKOFF
 	}
@@ -1138,7 +1177,7 @@ func getBackoff(runtime time.Duration, previousBackoff time.Duration) time.Durat
 	// time.  Return the backoff plus a random number that can be up to half of
 	// the backoff.
 	backoffSeconds := backoff.Seconds()
-	backoffAddOn := time.Duration((backoffSeconds/2) * r1.Float64()) * time.Second
+	backoffAddOn := time.Duration((backoffSeconds/2)*r1.Float64()) * time.Second
 
 	return backoff + backoffAddOn
 }
@@ -1149,7 +1188,7 @@ func StartWatcher(ctx context.Context,
 	wg *sync.WaitGroup,
 	evtc chan<- draiosproto.CongroupUpdateEvent,
 	fieldSelector fields.Selector,
-	handler func(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEvent) ()) {
+	handler func(event watch.Event, evtc chan<- draiosproto.CongroupUpdateEvent)) {
 
 	lw := cache.NewListWatchFromClient(restClient, resource, v1meta.NamespaceAll, fieldSelector)
 
@@ -1162,10 +1201,10 @@ func StartWatcher(ctx context.Context,
 			wg.Done()
 		}()
 		var terminated bool = false
-		for ; !terminated; {
+		for !terminated {
 			loopStartTime := time.Now()
 			watchCtx, watchCancel := context.WithCancel(context.Background())
-			watchDone := make(chan struct {})
+			watchDone := make(chan struct{})
 
 			go func() {
 				defer close(watchDone)
@@ -1189,16 +1228,16 @@ func StartWatcher(ctx context.Context,
 
 			// Wait either the watcher to fail or us to get terminated
 			select {
-			case <- ctx.Done():
+			case <-ctx.Done():
 				terminated = true
 				watchCancel()
 				// wait for the watcher to close after getting terminated to ensure we
 				// don't start a new one before the old one is closed
 				log.Debugf("Watcher[%s] terminated, waiting for closure", resource)
 				select {
-				case <- watchDone:
+				case <-watchDone:
 				}
-			case <- watchDone:
+			case <-watchDone:
 			}
 			if terminated == true {
 				break
@@ -1209,9 +1248,9 @@ func StartWatcher(ctx context.Context,
 			log.Infof("startWatcher[%s] Waiting %s before reconnecting watcher", resource, backoff.String())
 
 			select {
-			case <- ctx.Done():
+			case <-ctx.Done():
 				terminated = true
-			case <- time.After(backoff):
+			case <-time.After(backoff):
 			}
 		}
 	}()
@@ -1230,7 +1269,7 @@ func GetPkg(kubecollectInterface KubecollectInterface) string {
 
 func CreateCommon(name string, uid string) *draiosproto.K8SCommon {
 	return &draiosproto.K8SCommon{
-		Name:                 proto.String(name),
-		Uid:                  proto.String(uid),
+		Name: proto.String(name),
+		Uid:  proto.String(uid),
 	}
 }

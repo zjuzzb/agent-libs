@@ -155,6 +155,8 @@ message orchestrator_events_stream_command {
     required int32 delegated_num = 32;
     required leader_election_conf leader_election = 33;
     required bool cointerface_delegation = 34;
+    required uint32 min_rnd_conn_delay = 35;
+    required double per_node_conn_delay = 36;
 }
 
 message orchestrator_attach_user_events_stream_command {
