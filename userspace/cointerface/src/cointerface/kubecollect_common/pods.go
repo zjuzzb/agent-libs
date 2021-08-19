@@ -70,45 +70,6 @@ func GetContainerState(cs v1.ContainerState) CState {
 	return Waiting
 }
 
-func AppendMetricContainerStatus(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
-	for _, containerStatus := range pod.Status.ContainerStatuses {
-		state := GetContainerState(containerStatus.State)
-		if state == Waiting {
-			var newMetric draiosproto.AppMetric
-			newMetric.Name = proto.String("kubernetes.pod.container.waiting")
-			newMetric.Value = proto.Float64(1)
-			// Note that GetContainerState returns Waiting as default
-			// if the status is not Terminated or Running. So being here
-			// does not guarantee that containerStatus.State.Waiting is not nil
-			// We need an extra check
-			if containerStatus.State.Waiting != nil {
-				newMetric.Tags = append(newMetric.Tags, &draiosproto.AppTag{
-					Key:   proto.String("reason"),
-					Value: &containerStatus.State.Waiting.Reason,
-				})
-			}
-			*metrics = append(*metrics, &newMetric)
-		} else if state == Terminated {
-			containerId, _ := ParseContainerID(containerStatus.ContainerID)
-			var newMetric draiosproto.AppMetric
-			newMetric.Name = proto.String("kubernetes.pod.container.terminated")
-			newMetric.Value = proto.Float64(1)
-
-			newMetric.Tags = append(newMetric.Tags, &draiosproto.AppTag{
-				Key:                  proto.String("reason"),
-				Value:                &containerStatus.State.Terminated.Reason,
-			})
-
-			newMetric.Tags = append(newMetric.Tags, &draiosproto.AppTag{
-				Key:                  proto.String("containerId"),
-				Value:                proto.String(containerId),
-			})
-
-			*metrics = append(*metrics, &newMetric)
-		}
-	}
-}
-
 func AddPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 	prefix := "kubernetes.pod."
 
@@ -124,7 +85,6 @@ func AddPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 	AppendMetricInt32(metrics, prefix+"container.status.waiting", waitingCount)
 	appendMetricPodCondition(metrics, prefix+"status.ready", pod.Status.Conditions, v1.PodReady)
 	appendMetricContainerResources(metrics, prefix, pod)
-	AppendMetricContainerStatus(metrics, pod)
 }
 
 func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, conditions []v1.PodCondition, ctype v1.PodConditionType) {
@@ -162,26 +122,26 @@ func GetPodContainerResources(pod *v1.Pod) (requestsCpu float64, limitsCpu float
 	// Pod effective resources are the higher of the sum of all app containers
 	// or the highest init container value for that resource
 	for _, c := range pod.Spec.Containers {
-		requestsCpu += resourceVal(c.Resources.Requests, v1.ResourceCPU)
-		limitsCpu += resourceVal(c.Resources.Limits, v1.ResourceCPU)
-		requestsMem += resourceVal(c.Resources.Requests, v1.ResourceMemory)
-		limitsMem += resourceVal(c.Resources.Limits, v1.ResourceMemory)
+		requestsCpu += ResourceVal(c.Resources.Requests, v1.ResourceCPU)
+		limitsCpu += ResourceVal(c.Resources.Limits, v1.ResourceCPU)
+		requestsMem += ResourceVal(c.Resources.Requests, v1.ResourceMemory)
+		limitsMem += ResourceVal(c.Resources.Limits, v1.ResourceMemory)
 	}
 
 	for _, c := range pod.Spec.InitContainers {
-		initRequestsCpu := resourceVal(c.Resources.Requests, v1.ResourceCPU)
+		initRequestsCpu := ResourceVal(c.Resources.Requests, v1.ResourceCPU)
 		if initRequestsCpu > requestsCpu {
 			requestsCpu = initRequestsCpu
 		}
-		initLimitsCpu := resourceVal(c.Resources.Limits, v1.ResourceCPU)
+		initLimitsCpu := ResourceVal(c.Resources.Limits, v1.ResourceCPU)
 		if initLimitsCpu > limitsCpu {
 			limitsCpu = initLimitsCpu
 		}
-		initRequestsMem := resourceVal(c.Resources.Requests, v1.ResourceMemory)
+		initRequestsMem := ResourceVal(c.Resources.Requests, v1.ResourceMemory)
 		if initRequestsMem > requestsMem {
 			requestsMem = initRequestsMem
 		}
-		initLimitsMem := resourceVal(c.Resources.Limits, v1.ResourceMemory)
+		initLimitsMem := ResourceVal(c.Resources.Limits, v1.ResourceMemory)
 		if initLimitsMem > limitsMem {
 			limitsMem = initLimitsMem
 		}
@@ -199,7 +159,7 @@ func appendMetricContainerResources(metrics *[]*draiosproto.AppMetric, prefix st
 	AppendMetric(metrics, prefix+"resourceLimits.memoryBytes", limitsMem)
 }
 
-func resourceVal(rList v1.ResourceList, rName v1.ResourceName) float64 {
+func ResourceVal(rList v1.ResourceList, rName v1.ResourceName) float64 {
 	v := float64(0)
 	qty, ok := rList[rName]
 	if ok {
@@ -306,4 +266,78 @@ func GetVolumes(pod *v1.Pod) *draiosproto.K8SPod {
 	}
 
 	return ret
+}
+
+func ParseContainerState(cs CState) string {
+	if cs == Waiting {
+		return "waiting"
+	} else if cs == Terminated {
+		return "terminated"
+	} else {
+		return "running"
+	}
+}
+
+func FindContainerSpec(cName string, podSpec *v1.PodSpec) *v1.Container {
+	for _, container := range podSpec.Containers {
+		if cName == container.Name {
+			return &container
+		}
+	}
+
+	return nil
+}
+
+func CreateContainerStatus(containerStatus *v1.ContainerStatus, containerSpec *v1.Container) *draiosproto.K8SContainerStatusDetails {
+	cStatus := &draiosproto.K8SContainerStatusDetails{}
+	containerId, _ := ParseContainerID(containerStatus.ContainerID)
+
+	cStatus.Id = proto.String(containerId)
+	cStatus.Name = proto.String(containerStatus.Name)
+
+	cState := GetContainerState(containerStatus.State)
+	cStatus.Status = proto.String(ParseContainerState(cState))
+
+	if cState == Waiting {
+		cStatus.StatusReason = proto.String(containerStatus.State.Waiting.Reason)
+	} else if cState == Terminated {
+		cStatus.StatusReason = proto.String(containerStatus.State.Terminated.Reason)
+	}
+
+	if containerStatus.LastTerminationState.Terminated != nil {
+		cStatus.LastTerminatedReason = proto.String(containerStatus.LastTerminationState.Terminated.Reason)
+	}
+
+	if containerStatus.Ready {
+		cStatus.StatusReady = proto.Uint32(1)
+	} else {
+		cStatus.StatusReady = proto.Uint32(0)
+	}
+
+	cStatus.RestartCount = proto.Uint32(uint32(containerStatus.RestartCount))
+
+	if containerSpec != nil {
+		cStatus.RequestsCpuCores = proto.Float64(ResourceVal(containerSpec.Resources.Requests, v1.ResourceCPU))
+        cStatus.LimitsCpuCores = proto.Float64(ResourceVal(containerSpec.Resources.Limits, v1.ResourceCPU))
+        cStatus.RequestsMemBytes = proto.Uint64(uint64(ResourceVal(containerSpec.Resources.Requests, v1.ResourceMemory)))
+        cStatus.LimitsMemBytes = proto.Uint64(uint64(ResourceVal(containerSpec.Resources.Limits, v1.ResourceMemory)))
+	}
+
+	return cStatus
+}
+
+func AddContainerStatusesToPod(k8sPod *draiosproto.K8SPod, pod *v1.Pod) {
+	if k8sPod == nil || pod == nil {
+		return
+	}
+
+	if k8sPod.PodStatus == nil {
+		k8sPod.PodStatus = &draiosproto.K8SPodStatusDetails{}
+	}
+
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		containerSpec := FindContainerSpec(containerStatus.Name, &pod.Spec)
+		cStatus := CreateContainerStatus(&containerStatus, containerSpec)
+		k8sPod.PodStatus.Containers = append(k8sPod.PodStatus.Containers, cStatus)
+    }
 }

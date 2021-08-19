@@ -1,17 +1,23 @@
+#include "legacy_k8s_protobuf.h"
+
 #include "common_logger.h"
 #include "draios.pb.h"
-#include "legacy_k8s_protobuf.h"
 #include "infrastructure_state.h"
+#include "type_config.h"
 
 #include <unordered_map>
 
 using namespace draiosproto;
 using namespace std;
 
+type_config<bool> c_k8s_send_all_containers(false,
+                                            "Send all containers in k8s_pod",
+                                            "k8s_send_all_containers");
+
 namespace
 {
 COMMON_LOGGER();
-}
+}  // namespace
 
 namespace legacy_k8s
 {
@@ -49,18 +55,17 @@ void fill_common(const uid_set_t& parents,
 			{
 				static std::unordered_map<std::string, ratelimit> ignored_tags;
 				auto it = ignored_tags.find(tag_name);
-				if(it == ignored_tags.end())
+				if (it == ignored_tags.end())
 				{
 					ignored_tags[tag_name] = ratelimit(1, LOG_INTERVAL_NSEC);
 				}
-				ignored_tags[tag_name].run([&]
-							   {
-								   LOG_NOTICE("ignoring tag <%s> = <%s> for %s %s",
-									      tag_name.c_str(),
-									      tag_value.c_str(),
-									      kind.c_str(),
-									      id.c_str());
-							   });
+				ignored_tags[tag_name].run([&] {
+					LOG_NOTICE("ignoring tag <%s> = <%s> for %s %s",
+					           tag_name.c_str(),
+					           tag_value.c_str(),
+					           kind.c_str(),
+					           id.c_str());
+				});
 			}
 		}
 	}
@@ -255,7 +260,8 @@ const unordered_map<string, setter_t<k8s_replica_set>> K8sResource<k8s_replica_s
     {"kubernetes.replicaset.status.fullyLabeledReplicas",
      SETTER(k8s_replica_set, set_replicas_fully_labeled)},
     {"kubernetes.replicaset.status.readyReplicas", SETTER(k8s_replica_set, set_replicas_ready)},
-    {"kubernetes.replicaset.status.availableReplicas", SETTER(k8s_replica_set, set_replicas_available)},
+    {"kubernetes.replicaset.status.availableReplicas",
+     SETTER(k8s_replica_set, set_replicas_available)},
     {"kubernetes.replicaset.status.replicas", SETTER(k8s_replica_set, set_status_replicas)},
 });
 
@@ -299,24 +305,20 @@ const unordered_map<string, setter_t<k8s_resourcequota>> K8sResource<k8s_resourc
      SETTER(k8s_resourcequota, set_limits_memory_hard)},
     {"kubernetes.resourcequota.requests.memory.hard",
      SETTER(k8s_resourcequota, set_requests_memory_hard)},
-    {"kubernetes.resourcequota.memory.hard",
-     SETTER(k8s_resourcequota, set_requests_memory_hard)},
+    {"kubernetes.resourcequota.memory.hard", SETTER(k8s_resourcequota, set_requests_memory_hard)},
     {"kubernetes.resourcequota.limits.memory.used",
      SETTER(k8s_resourcequota, set_limits_memory_used)},
     {"kubernetes.resourcequota.requests.memory.used",
      SETTER(k8s_resourcequota, set_requests_memory_used)},
-    {"kubernetes.resourcequota.memory.used",
-     SETTER(k8s_resourcequota, set_requests_memory_used)},
+    {"kubernetes.resourcequota.memory.used", SETTER(k8s_resourcequota, set_requests_memory_used)},
 
     // storage
     {"kubernetes.resourcequota.requests.storage.hard",
      SETTER(k8s_resourcequota, set_requests_storage_hard)},
-    {"kubernetes.resourcequota.storage.hard",
-     SETTER(k8s_resourcequota, set_requests_storage_hard)},
+    {"kubernetes.resourcequota.storage.hard", SETTER(k8s_resourcequota, set_requests_storage_hard)},
     {"kubernetes.resourcequota.requests.storage.used",
      SETTER(k8s_resourcequota, set_requests_storage_used)},
-    {"kubernetes.resourcequota.storage.used",
-     SETTER(k8s_resourcequota, set_requests_storage_used)},
+    {"kubernetes.resourcequota.storage.used", SETTER(k8s_resourcequota, set_requests_storage_used)},
 
     // count
     {"kubernetes.resourcequota.configmaps.hard", SETTER(k8s_resourcequota, set_configmaps_hard)},
@@ -379,35 +381,37 @@ void export_k8s_object<draiosproto::pod_status_count>(const uid_set_t& parents,
 	}
 }
 
+static void erase_new_ksm_container_metrics(draiosproto::k8s_container_status_details* container)
+{
+	container->clear_last_terminated_reason();
+	container->clear_status_ready();
+	container->clear_restart_count();
+	container->clear_requests_cpu_cores();
+	container->clear_limits_cpu_cores();
+	container->clear_requests_mem_bytes();
+	container->clear_limits_mem_bytes();
+}
+
 template<>
 void enrich_k8s_object<draiosproto::k8s_pod>(const draiosproto::container_group* src,
                                              draiosproto::k8s_pod* obj)
 {
-	for (const auto& metric : src->metrics())
+	if (src->has_k8s_object())
 	{
-		draiosproto::k8s_container_status_details* container = nullptr;
-		if (metric.name() == infrastructure_state::CONTAINER_WAITING_METRIC_NAME)
+		auto src_pod = src->k8s_object().pod();
+		for (const auto& container : src_pod.pod_status().containers())
 		{
-			container = obj->mutable_pod_status()->mutable_containers()->Add();
-			container->set_status("waiting");
-		}
-		else if (metric.name() == infrastructure_state::CONTAINER_TERMINATED_METRIC_NAME)
-		{
-			container = obj->mutable_pod_status()->mutable_containers()->Add();
-			container->set_status("terminated");
-		}
-
-		if (container != nullptr)
-		{
-			for (const auto& tag : metric.tags())
+			if ((container.status() == "waiting" || container.status() == "terminated") ||
+			    c_k8s_send_all_containers.get_value())
 			{
-				if (tag.key() == infrastructure_state::CONTAINER_ID_TAG)
+				draiosproto::k8s_container_status_details* out_container =
+				    obj->mutable_pod_status()->mutable_containers()->Add();
+				out_container->CopyFrom(container);
+
+				if (!c_k8s_send_all_containers.get_value())
 				{
-					container->set_id(tag.value());
-				}
-				else if (tag.key() == infrastructure_state::CONTAINER_STATUS_REASON_TAG)
-				{
-					container->set_status_reason(tag.value());
+					// Erase the new ksm metrics to preserve the old behavior.
+					erase_new_ksm_container_metrics(out_container);
 				}
 			}
 		}
@@ -449,7 +453,8 @@ void enrich_k8s_object<draiosproto::k8s_persistentvolumeclaim>(
 	obj->mutable_status()->set_phase(src->k8s_object().pvc().status().phase());
 
 	// Get conditions
-	obj->mutable_status()->mutable_conditions()->CopyFrom(src->k8s_object().pvc().status().conditions());
+	obj->mutable_status()->mutable_conditions()->CopyFrom(
+	    src->k8s_object().pvc().status().conditions());
 
 	// Get access mode
 	obj->mutable_access_modes()->CopyFrom(src->k8s_object().pvc().access_modes());
@@ -457,13 +462,12 @@ void enrich_k8s_object<draiosproto::k8s_persistentvolumeclaim>(
 
 template<>
 void enrich_k8s_object<draiosproto::k8s_persistentvolume>(const draiosproto::container_group* src,
-							  draiosproto::k8s_persistentvolume * obj)
+                                                          draiosproto::k8s_persistentvolume* obj)
 {
 	// Get claimRef
 	obj->mutable_claim_ref()->set_uid(src->k8s_object().pv().claim_ref().uid());
 	obj->mutable_claim_ref()->set_name(src->k8s_object().pv().claim_ref().name());
 	obj->mutable_claim_ref()->set_namespace_(src->k8s_object().pv().claim_ref().namespace_());
-
 
 	// Get the phase
 	obj->mutable_status()->set_phase(src->k8s_object().pv().status().phase());

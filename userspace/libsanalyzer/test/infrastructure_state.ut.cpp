@@ -4,10 +4,10 @@
 #include "audit_tap_handler.h"
 #include "configuration_manager.h"
 #include "infrastate_util.h"
+#include "legacy_k8s_protobuf.h"
 #include "secure_audit_handler.h"
 #include "sinsp_mock.h"
 #include "test_logger.h"
-#include "legacy_k8s_protobuf.h"
 
 #include <google/protobuf/util/json_util.h>
 #include <google/protobuf/util/message_differencer.h>
@@ -724,7 +724,9 @@ TEST_F(infrastructure_state_test, events_test)
 
 	test(EVENTS);
 
-	configuration_manager::instance().get_mutable_config<bool>("thin_cointerface_enabled")->set(true);
+	configuration_manager::instance()
+	    .get_mutable_config<bool>("thin_cointerface_enabled")
+	    ->set(true);
 
 	// Repeat the previus test enabling thing cointerface
 	// Notice that events are slightly different as this time cointerface
@@ -756,8 +758,9 @@ TEST_F(infrastructure_state_test, events_test)
 	test(tc_events);
 
 	// configuration will survive between tests. So restore the old config
-	configuration_manager::instance().get_mutable_config<bool>("thin_cointerface_enabled")->set(false);
-
+	configuration_manager::instance()
+	    .get_mutable_config<bool>("thin_cointerface_enabled")
+	    ->set(false);
 }
 
 // A bit more complicated cluster topology
@@ -1010,8 +1013,8 @@ TEST_F(infrastructure_state_test, events_test_2)
 		expected_after_deletion.mutable_services()->ReleaseCleared();
 		// Remove them from the pod parents
 		test::infra_util::remove_parent(expected_after_deletion,
-						std::make_pair(k8s_pod_store::HPA_KIND, HPA_ID),
-						std::make_pair(k8s_pod_store::SERVICE_KIND, SERVICE_ID));
+		                                std::make_pair(k8s_pod_store::HPA_KIND, HPA_ID),
+		                                std::make_pair(k8s_pod_store::SERVICE_KIND, SERVICE_ID));
 
 		decltype(test_events) remove_event =
 		    test::infra_util::create_many_events(event_t(k8s_pod_store::HPA_KIND,
@@ -1042,7 +1045,9 @@ TEST_F(infrastructure_state_test, events_test_2)
 
 	test(EVENTS);
 
-	configuration_manager::instance().get_mutable_config<bool>("thin_cointerface_enabled")->set(true);
+	configuration_manager::instance()
+	    .get_mutable_config<bool>("thin_cointerface_enabled")
+	    ->set(true);
 	// Repeat the previus test enabling thing cointerface
 	// Notice that events are slightly different as this time cointerface
 	// does not fill children in container_groups
@@ -1072,7 +1077,9 @@ TEST_F(infrastructure_state_test, events_test_2)
 	std::cout << "THIN COINTERFACE" << std::endl;
 	test(tc_events);
 
-	configuration_manager::instance().get_mutable_config<bool>("thin_cointerface_enabled")->set(false);
+	configuration_manager::instance()
+	    .get_mutable_config<bool>("thin_cointerface_enabled")
+	    ->set(false);
 }
 
 TEST_F(infrastructure_state_test, single_update)
@@ -1108,8 +1115,7 @@ TEST_F(infrastructure_state_test, single_update)
 		            POD_ID,
 		            NAMESPACE_NAME,
 		            draiosproto::congroup_event_type::ADDED,
-		            {{k8s_pod_store::REPLICASET_KIND, RS_ID},
-		             {"k8s_node", NODE_ID}},
+		            {{k8s_pod_store::REPLICASET_KIND, RS_ID}, {"k8s_node", NODE_ID}},
 		            {}),
 		    event_t(k8s_pod_store::REPLICASET_KIND,
 		            RS_ID,
@@ -1136,17 +1142,17 @@ TEST_F(infrastructure_state_test, single_update)
 	                                          NAMESPACE_NAME,
 	                                          "",
 	                                          {}),
-	    test::infra_util::make_expected_tuple(draiosproto::k8s_pod(),
-	                                          POD_ID,
-	                                          NAMESPACE_NAME,
-	                                          NODE_ID,
-	                                          {{k8s_pod_store::NODE_KIND, NODE_ID},
-	                                           {k8s_pod_store::REPLICASET_KIND, RS_ID}}),
+	    test::infra_util::make_expected_tuple(
+	        draiosproto::k8s_pod(),
+	        POD_ID,
+	        NAMESPACE_NAME,
+	        NODE_ID,
+	        {{k8s_pod_store::NODE_KIND, NODE_ID}, {k8s_pod_store::REPLICASET_KIND, RS_ID}}),
 	    test::infra_util::make_expected_tuple(draiosproto::k8s_replica_set(),
-						  RS_ID,
-						  NAMESPACE_NAME,
-						  "",
-						  {}),
+	                                          RS_ID,
+	                                          NAMESPACE_NAME,
+	                                          "",
+	                                          {}),
 	    test::infra_util::make_expected_tuple(draiosproto::k8s_node(), NODE_ID, "", NODE_ID, {}));
 
 	auto test = [&](const decltype(make_test_events())& test_events) {
@@ -1219,12 +1225,13 @@ TEST_F(infrastructure_state_test, single_update)
 			EXPECT_EQ(cg_has_duplicated_children(*cg.second.get()), false)
 			    << cg.second->DebugString();
 		}
-
 	};
 
 	test(EVENTS);
 
-	configuration_manager::instance().get_mutable_config<bool>("thin_cointerface_enabled")->set(true);
+	configuration_manager::instance()
+	    .get_mutable_config<bool>("thin_cointerface_enabled")
+	    ->set(true);
 	// Repeat the previus test enabling thing cointerface
 	// Notice that events are slightly different as this time cointerface
 	// does not fill children in container_groups
@@ -1254,7 +1261,9 @@ TEST_F(infrastructure_state_test, single_update)
 	std::cout << "THIN COINTERFACE" << std::endl;
 	test(tc_events);
 
-	configuration_manager::instance().get_mutable_config<bool>("thin_cointerface_enabled")->set(false);
+	configuration_manager::instance()
+	    .get_mutable_config<bool>("thin_cointerface_enabled")
+	    ->set(false);
 }
 
 TEST_F(infrastructure_state_test, local_remote_pod)
@@ -1276,9 +1285,9 @@ TEST_F(infrastructure_state_test, local_remote_pod)
 	                        nullptr,
 	                        []() -> bool { return true; });
 	infrastructure_state is(analyzer, &inspector, "/foo/bar", nullptr);
-	
+
 	is.m_k8s_node_uid = "local_node";
-	
+
 	// Add a container
 	infrastructure_state::uid_t container_uid(std::make_pair("container", "spacchitempu"));
 
@@ -1301,7 +1310,7 @@ TEST_F(infrastructure_state_test, local_remote_pod)
 	              local_pod_uid.first,
 	              local_pod_uid.second,
 	              DEFAULT_NAMESPACE_NAME);
-	
+
 	// Add a node parent
 	draiosproto::congroup_uid* parent_uid = local_pod_congroup->mutable_parents()->Add();
 	parent_uid->set_kind("k8s_node");
@@ -1327,7 +1336,7 @@ TEST_F(infrastructure_state_test, local_remote_pod)
 	              remote_pod_uid.first,
 	              remote_pod_uid.second,
 	              DEFAULT_NAMESPACE_NAME);
-	
+
 	// Add a node parent
 	parent_uid = remote_pod_congroup->mutable_parents()->Add();
 	parent_uid->set_kind("k8s_node");
@@ -1345,25 +1354,26 @@ TEST_F(infrastructure_state_test, local_remote_pod)
 	EXPECT_EQ(container_state->parents_size(), 1);
 }
 
-
 TEST_F(infrastructure_state_test, enrich_pvc)
 {
-	
 	draiosproto::k8s_persistentvolumeclaim pvc;
 	draiosproto::container_group cg;
 
-	cg.mutable_k8s_object()->mutable_pvc()->mutable_status()->set_phase(::draiosproto::PERSISTENT_VOLUME_CLAIM_PHASE_BOUND);
+	cg.mutable_k8s_object()->mutable_pvc()->mutable_status()->set_phase(
+	    ::draiosproto::PERSISTENT_VOLUME_CLAIM_PHASE_BOUND);
 
-	auto* c1 = cg.mutable_k8s_object()->mutable_pvc()->mutable_status()->mutable_conditions()->Add();
+	auto* c1 =
+	    cg.mutable_k8s_object()->mutable_pvc()->mutable_status()->mutable_conditions()->Add();
 	c1->set_status(draiosproto::PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_TRUE);
 	c1->set_type("Resizing");
 
-	auto* c2 = cg.mutable_k8s_object()->mutable_pvc()->mutable_status()->mutable_conditions()->Add();
+	auto* c2 =
+	    cg.mutable_k8s_object()->mutable_pvc()->mutable_status()->mutable_conditions()->Add();
 	c2->set_status(draiosproto::PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_FALSE);
 	c2->set_type("FileSystemResizePending");
 
-	cg.mutable_k8s_object()->mutable_pvc()->mutable_access_modes()->Add(draiosproto::VOLUME_ACCESS_MODE_READ_ONLY_MANY);
-
+	cg.mutable_k8s_object()->mutable_pvc()->mutable_access_modes()->Add(
+	    draiosproto::VOLUME_ACCESS_MODE_READ_ONLY_MANY);
 
 	legacy_k8s::enrich_k8s_object(&cg, &pvc);
 
@@ -1371,15 +1381,16 @@ TEST_F(infrastructure_state_test, enrich_pvc)
 
 	EXPECT_EQ(pvc.status().conditions_size(), 2);
 
-	for(auto& condition :  pvc.status().conditions())
+	for (auto& condition : pvc.status().conditions())
 	{
-		if(!((condition.type() == "Resizing" && condition.status() == draiosproto::PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_TRUE) ||
-		    (condition.type() == "FileSystemResizePending" && condition.status() == draiosproto::PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_FALSE)))
+		if (!((condition.type() == "Resizing" &&
+		       condition.status() == draiosproto::PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_TRUE) ||
+		      (condition.type() == "FileSystemResizePending" &&
+		       condition.status() == draiosproto::PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_FALSE)))
 		{
 			FAIL();
 		}
 	}
-	
 }
 
 TEST_F(infrastructure_state_test, enrich_pv)
@@ -1393,12 +1404,84 @@ TEST_F(infrastructure_state_test, enrich_pv)
 
 	legacy_k8s::enrich_k8s_object(&cg, &pv);
 
-	if(!google::protobuf::util::MessageDifferencer::Equals(cg.k8s_object().pv().claim_ref(), pv.claim_ref()))
+	if (!google::protobuf::util::MessageDifferencer::Equals(cg.k8s_object().pv().claim_ref(),
+	                                                        pv.claim_ref()))
 	{
 		FAIL();
 	}
 }
 
+TEST_F(infrastructure_state_test, enrich_pod_containers)
+{
+	draiosproto::k8s_pod pod1;
+	draiosproto::k8s_pod pod2;
+	draiosproto::container_group cg;
+
+	draiosproto::k8s_container_status_details* container1 =
+	    cg.mutable_k8s_object()->mutable_pod()->mutable_pod_status()->mutable_containers()->Add();
+	draiosproto::k8s_container_status_details* container2 =
+	    cg.mutable_k8s_object()->mutable_pod()->mutable_pod_status()->mutable_containers()->Add();
+	draiosproto::k8s_container_status_details* container3 =
+	    cg.mutable_k8s_object()->mutable_pod()->mutable_pod_status()->mutable_containers()->Add();
+
+	container1->set_name("foo");
+	container1->set_id("bar");
+	container1->set_status("terminated");
+	container1->set_status_reason("Error");
+	container1->set_last_terminated_reason("Error");
+	container1->set_status_ready(1);
+	container1->set_restart_count(2);
+	container1->set_requests_cpu_cores(0.1);
+	container1->set_limits_cpu_cores(0.2);
+	container1->set_requests_mem_bytes(1024);
+	container1->set_limits_mem_bytes(2048);
+
+	container2->set_name("bar");
+	container2->set_id("baz");
+	container2->set_status("waiting");
+	container2->set_status_reason("Container deploying");
+	container2->set_last_terminated_reason("Config");
+	container2->set_status_ready(0);
+	container2->set_restart_count(5);
+	container2->set_requests_cpu_cores(0.2);
+	container2->set_limits_cpu_cores(0.3);
+	container2->set_requests_mem_bytes(4096);
+	container2->set_limits_mem_bytes(8192);
+
+	container3->set_name("baz");
+	container3->set_id("bop");
+	container3->set_status("running");
+	container3->set_status_ready(1);
+	container3->set_restart_count(0);
+	container3->set_requests_cpu_cores(0.9);
+	container3->set_limits_cpu_cores(1);
+	container3->set_requests_mem_bytes(4096);
+	container3->set_limits_mem_bytes(5194);
+
+	legacy_k8s::enrich_k8s_object(&cg, &pod1);
+
+	if (google::protobuf::util::MessageDifferencer::Equals(cg.k8s_object().pod().pod_status(),
+	                                                       pod1.pod_status()))
+	{
+		FAIL() << "Container group:" << std::endl
+		       << cg.k8s_object().pod().pod_status().DebugString() << std::endl
+		       << "k8s_pod:" << std::endl
+		       << pod1.pod_status().DebugString() << std::endl;
+	}
+
+	c_k8s_send_all_containers.set(true);
+
+	legacy_k8s::enrich_k8s_object(&cg, &pod2);
+
+	if (!google::protobuf::util::MessageDifferencer::Equals(cg.k8s_object().pod().pod_status(),
+	                                                        pod2.pod_status()))
+	{
+		FAIL() << "Container group:" << std::endl
+		       << cg.k8s_object().pod().pod_status().DebugString() << std::endl
+		       << "k8s_pod:" << std::endl
+		       << pod2.pod_status().DebugString() << std::endl;
+	}
+}
 
 TEST_F(infrastructure_state_test, storageclass)
 {

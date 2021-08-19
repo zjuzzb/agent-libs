@@ -145,6 +145,9 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks
 			eventType)
 	}
 
+	optPod := kubecollect_common.GetVolumes(pod)
+	kubecollect_common.AddContainerStatusesToPod(optPod, pod)
+
 	var cg []*draiosproto.CongroupUpdateEvent
 	cg = append(cg, &draiosproto.CongroupUpdateEvent {
 		Type: eventType.Enum(),
@@ -161,7 +164,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, setLinks
 			Ports:        ctrPorts,
 			Namespace:    proto.String(pod.GetNamespace()),
 			Node:         proto.String(pod.Spec.NodeName),
-			K8SObject: &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pod{Pod: kubecollect_common.GetVolumes(pod)}},
+			K8SObject: &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pod{Pod: optPod}},
 		},
 	})
 	cg = append(cg, containerEvents...)

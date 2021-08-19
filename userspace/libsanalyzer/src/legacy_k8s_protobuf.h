@@ -2,12 +2,15 @@
 
 #include "analyzer_utils.h"
 #include "draios.pb.h"
+#include "type_config.h"
 
 #include <functional>
 #include <logger.h>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+
+extern type_config<bool> c_k8s_send_all_containers;
 
 namespace legacy_k8s
 {
@@ -83,12 +86,13 @@ void enrich_k8s_object<draiosproto::k8s_pod>(const draiosproto::container_group*
                                              draiosproto::k8s_pod* obj);
 
 template<>
-void enrich_k8s_object<draiosproto::k8s_persistentvolumeclaim>(const draiosproto::container_group* src,
-							       draiosproto::k8s_persistentvolumeclaim * obj);
+void enrich_k8s_object<draiosproto::k8s_persistentvolumeclaim>(
+    const draiosproto::container_group* src,
+    draiosproto::k8s_persistentvolumeclaim* obj);
 
 template<>
 void enrich_k8s_object<draiosproto::k8s_persistentvolume>(const draiosproto::container_group* src,
-							  draiosproto::k8s_persistentvolume * obj);
+                                                          draiosproto::k8s_persistentvolume* obj);
 
 template<>
 void enrich_k8s_object<draiosproto::k8s_storage_class>(const draiosproto::container_group* src,

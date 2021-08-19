@@ -132,6 +132,14 @@ func createPodCopies() (*v1.Pod, *v1.Pod) {
 						Running: nil,
 						Terminated: nil,
 					},
+					LastTerminationState: v1.ContainerState{
+                        Waiting: nil,
+                        Running: nil,
+                        Terminated: &v1.ContainerStateTerminated{
+                            Reason: "foo",
+                            Message: "we need a terminated container for the ut",
+                        },
+                    },
 					RestartCount: 0,
 				},
 				v1.ContainerStatus{
@@ -144,6 +152,14 @@ func createPodCopies() (*v1.Pod, *v1.Pod) {
 						Running: nil,
 						Terminated: nil,
 					},
+					LastTerminationState: v1.ContainerState{
+                        Waiting: nil,
+                        Running: nil,
+                        Terminated: &v1.ContainerStateTerminated{
+                            Reason: "bar",
+                            Message: "we need a terminated container for the ut",
+                        },
+                    },
 					RestartCount: 1,
 				},
 			},
@@ -376,4 +392,36 @@ func TestGetPodContainerResources(t *testing.T) {
 	testResourceHelper(t, rm, 100E9, "Memory Request calculation huge init container is wrong")
 	testResourceHelper(t, lm, 100E9, "Memory Limits calculation huge init container is wrong")
 
+}
+
+func checkContainerResources(t *testing.T, k8sResource *v1.ResourceRequirements, container *draiosproto.K8SContainerStatusDetails) {
+	AssertEqual(t, kubecollect_common.ResourceVal(k8sResource.Requests, v1.ResourceCPU), *container.RequestsCpuCores)
+	AssertEqual(t, kubecollect_common.ResourceVal(k8sResource.Limits, v1.ResourceCPU), *container.LimitsCpuCores)
+	AssertEqual(t, uint64(kubecollect_common.ResourceVal(k8sResource.Requests, v1.ResourceMemory)), *container.RequestsMemBytes)
+	AssertEqual(t, uint64(kubecollect_common.ResourceVal(k8sResource.Limits, v1.ResourceMemory)), *container.LimitsMemBytes)
+}
+
+func TestAddContainerStatusesToPod(t *testing.T) {
+	// Create a pod object
+	pod, _ := createPodCopies()
+	var k8sPod draiosproto.K8SPod
+
+	kubecollect_common.AddContainerStatusesToPod(&k8sPod, pod)
+
+	AssertEqual(t, len(pod.Status.ContainerStatuses), len(k8sPod.PodStatus.Containers))
+
+	for i := range pod.Status.ContainerStatuses {
+		AssertEqual(t, pod.Status.ContainerStatuses[i].Name, *k8sPod.PodStatus.Containers[i].Name)
+		AssertEqual(t, "waiting", *k8sPod.PodStatus.Containers[i].Status)
+		AssertEqual(t, pod.Status.ContainerStatuses[i].State.Waiting.Reason, *k8sPod.PodStatus.Containers[i].StatusReason)
+		AssertEqual(t, pod.Status.ContainerStatuses[i].LastTerminationState.Terminated.Reason, *k8sPod.PodStatus.Containers[i].LastTerminatedReason)
+		AssertEqual(t, uint32(pod.Status.ContainerStatuses[i].RestartCount), *k8sPod.PodStatus.Containers[i].RestartCount)
+		if pod.Status.ContainerStatuses[i].Ready {
+			AssertEqual(t, uint32(1), *k8sPod.PodStatus.Containers[i].StatusReady)
+		} else {
+			AssertEqual(t, uint32(0), *k8sPod.PodStatus.Containers[i].StatusReady)
+		}
+
+		checkContainerResources(t, &pod.Spec.Containers[i].Resources, k8sPod.PodStatus.Containers[i])
+	}
 }

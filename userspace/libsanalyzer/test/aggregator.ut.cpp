@@ -3311,6 +3311,15 @@ TEST(aggregator, k8s_pod)
 	i->set_requests_mem_bytes(12);
 	i->set_limits_mem_bytes(13);
 	i->set_restart_rate(14);
+	
+	auto container = i->mutable_pod_status()->add_containers();
+	container->set_id("foo");
+	container->set_status_ready(1);
+	container->set_restart_count(2);
+	container->set_requests_cpu_cores(3);
+	container->set_limits_cpu_cores(4);
+	container->set_requests_mem_bytes(5);
+	container->set_limits_mem_bytes(6);
 
 	auto input2 = input;
 	aggregator->aggregate(input2, output, false);
@@ -3329,6 +3338,13 @@ TEST(aggregator, k8s_pod)
 	EXPECT_EQ(output.kubernetes().pods()[0].aggr_requests_mem_bytes().sum(), 12);
 	EXPECT_EQ(output.kubernetes().pods()[0].aggr_limits_mem_bytes().sum(), 13);
 	EXPECT_EQ(output.kubernetes().pods()[0].aggr_restart_rate().sum(), 14);
+	EXPECT_EQ(output.kubernetes().pods()[0].pod_status().containers()[0].id(), "foo");
+	EXPECT_EQ(output.kubernetes().pods()[0].pod_status().containers()[0].aggr_status_ready().sum(), 1);
+	EXPECT_EQ(output.kubernetes().pods()[0].pod_status().containers()[0].aggr_restart_count().sum(), 2);
+	EXPECT_EQ(output.kubernetes().pods()[0].pod_status().containers()[0].aggr_requests_cpu_cores().sum(), 3);
+	EXPECT_EQ(output.kubernetes().pods()[0].pod_status().containers()[0].aggr_limits_cpu_cores().sum(), 4);
+	EXPECT_EQ(output.kubernetes().pods()[0].pod_status().containers()[0].aggr_requests_mem_bytes().sum(), 5);
+	EXPECT_EQ(output.kubernetes().pods()[0].pod_status().containers()[0].aggr_limits_mem_bytes().sum(), 6);
 
 	i->add_container_ids("6");
 	i->set_restart_count(100);
@@ -3339,6 +3355,12 @@ TEST(aggregator, k8s_pod)
 	i->set_requests_mem_bytes(100);
 	i->set_limits_mem_bytes(100);
 	i->set_restart_rate(100);
+	container->set_status_ready(100);
+	container->set_restart_count(100);
+	container->set_requests_cpu_cores(100);
+	container->set_limits_cpu_cores(100);
+	container->set_requests_mem_bytes(100);
+	container->set_limits_mem_bytes(100);
 	aggregator->aggregate(input, output, false);
 	EXPECT_EQ(output.kubernetes().pods()[0].container_ids().size(), 3);
 	EXPECT_EQ(output.kubernetes().pods()[0].container_ids()[0], "4");
@@ -3352,6 +3374,12 @@ TEST(aggregator, k8s_pod)
 	EXPECT_EQ(output.kubernetes().pods()[0].aggr_requests_mem_bytes().sum(), 112);
 	EXPECT_EQ(output.kubernetes().pods()[0].aggr_limits_mem_bytes().sum(), 113);
 	EXPECT_EQ(output.kubernetes().pods()[0].aggr_restart_rate().sum(), 114);
+	EXPECT_EQ(output.kubernetes().pods()[0].pod_status().containers()[0].aggr_status_ready().sum(), 101);
+	EXPECT_EQ(output.kubernetes().pods()[0].pod_status().containers()[0].aggr_restart_count().sum(), 102);
+	EXPECT_EQ(output.kubernetes().pods()[0].pod_status().containers()[0].aggr_requests_cpu_cores().sum(), 103);
+	EXPECT_EQ(output.kubernetes().pods()[0].pod_status().containers()[0].aggr_limits_cpu_cores().sum(), 104);
+	EXPECT_EQ(output.kubernetes().pods()[0].pod_status().containers()[0].aggr_requests_mem_bytes().sum(), 105);
+	EXPECT_EQ(output.kubernetes().pods()[0].pod_status().containers()[0].aggr_limits_mem_bytes().sum(), 106);
 
 	// validate primary key
 	draiosproto::k8s_pod lhs;
