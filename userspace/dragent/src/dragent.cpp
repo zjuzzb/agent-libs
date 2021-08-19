@@ -630,6 +630,12 @@ int dragent_app::main(const std::vector<std::string>& args)
 		std::cerr << "Cannot set msgqueue limits: " << strerror(errno) << '\n';
 	}
 
+	// Get the existing cpu cgroup, so we can move it back, with a few hacks:
+	// - empty name, zero values
+	// - the constructor must check for the existence of the underlying cgroup
+	// - do not create() or remove() it
+	process_helpers::subprocess_cpu_cgroup original_cpu_cgroup("", 0, 0);
+
 	process_helpers::subprocess_cpu_cgroup default_cpu_cgroup("/default",
 	                                                          c_default_cpu_shares.get_value(),
 	                                                          c_default_cpu_quota.get_value());
@@ -646,6 +652,15 @@ int dragent_app::main(const std::vector<std::string>& args)
 	    c_coldstart_manager_cpu_shares.get_value(),
 	    c_coldstart_manager_cpu_quota.get_value());
 	coldstart_manager_cpu_cgroup.create();
+
+	// immediately move ourselves to the default cpu group
+	// (the same the *monitored* processes belong to)
+	// so that the monitor's cpu usage (and whatever code
+	// is run to set that up) is also accounted for
+	// WARNING: after we move ourselves to the default group,
+	// no subprocess_cpu_groups should be created, otherwise
+	// they'll become a subgroup of default
+	default_cpu_cgroup.enter();
 
 	// Sanity check some prometheus and promscrape configs. May change some configs.
 	// Making sure to do it before sdagent_main() which prints the configuration
@@ -1111,6 +1126,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 		}
 
 		coclient::cleanup();
+		// move thread back to its previous cgroup
+		// otherwise, after a restart we'll create new cgroups
+		// starting from the newly-created default_cpu_cgroup
+		original_cpu_cgroup.enter();
 		default_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get_value());
 		cointerface_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get_value());
 		coldstart_manager_cpu_cgroup.remove(c_cgroup_cleanup_timeout_ms.get_value());
