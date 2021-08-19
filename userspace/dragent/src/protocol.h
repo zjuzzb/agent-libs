@@ -28,8 +28,8 @@ struct serialized_buffer
 	uint32_t flush_interval; // special value only used for metrics messages. ugly.
 };
 
-#define htonll(x) ((((uint64_t)htonl(x)) << 32) + htonl((x) >> 32))
-#define ntohll(x) ((((uint64_t)ntohl(x)) << 32) + ntohl((x) >> 32))
+#define htonll(x) (htobe64(x))
+#define ntohll(x) (be64toh(x))
 
 #if defined _MSC_VER
 #pragma pack(push)
