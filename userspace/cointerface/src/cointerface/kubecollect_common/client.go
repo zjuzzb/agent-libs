@@ -451,22 +451,40 @@ func getNodeCount(kubeClient kubeclient.Interface) uint32 {
 	}
 }
 
-func runRandomDelay(opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClient kubeclient.Interface) {
-	var maxDelay uint32 = 0
+func calculateRandomDelay(perNodeConnDelay float64, nodes uint32, minRndConnDelay uint32, maxRndConnDelay uint32) float64 {
+	var maxDelay float64
 
-	nodes := getNodeCount(kubeClient)
-
-	maxDelay = uint32(float64(nodes) * opts.GetPerNodeConnDelay())
-
-	if opts.GetMinRndConnDelay() != 0 && maxDelay < opts.GetMinRndConnDelay() {
-		maxDelay = opts.GetMinRndConnDelay()
-	} else if opts.GetMaxRndConnDelay() != 0 && maxDelay > opts.GetMaxRndConnDelay() {
-		maxDelay = opts.GetMaxRndConnDelay()
+	if perNodeConnDelay == 0 {
+		return float64(minRndConnDelay)
 	}
 
+	maxDelay = float64(nodes) * perNodeConnDelay
+
 	rand.Seed(time.Now().UnixNano())
-	delay := rand.Uint32() % maxDelay
-	log.Infof("Waiting to connect to k8s server for %d seconds of maxiumum %d", delay, maxDelay)
+	intPart := uint64(maxDelay)
+	decimalPart := maxDelay - float64(intPart)
+	var delay float64
+	if intPart > 0 {
+		delay = float64(rand.Uint64()%intPart) + decimalPart
+	} else {
+		delay = decimalPart
+	}
+
+	if minRndConnDelay != 0 && delay < float64(minRndConnDelay) {
+		delay = float64(minRndConnDelay)
+	}
+
+	if maxRndConnDelay != 0 && delay > float64(maxRndConnDelay) {
+		delay = float64(maxRndConnDelay)
+	}
+
+	return delay
+}
+
+
+func runRandomDelay(opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClient kubeclient.Interface) {
+	delay := calculateRandomDelay(opts.GetPerNodeConnDelay(), getNodeCount(kubeClient), opts.GetMinRndConnDelay(), opts.GetMaxRndConnDelay())
+	log.Infof("Waiting to connect to k8s server for %d seconds", delay)
 	time.Sleep(time.Duration(delay) * time.Second)
 }
 
