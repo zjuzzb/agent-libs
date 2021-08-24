@@ -1558,7 +1558,7 @@ void infrastructure_state::connect(const infrastructure_state::uid_t& key)
 	for (const auto& x : m_state[key]->parents())
 	{
 		auto pkey = make_pair(x.kind(), x.id());
-		
+
 		// Check to see if this pod is not on this node which we need to know later
 		if (is_pod)
 		{
@@ -1567,7 +1567,7 @@ void infrastructure_state::connect(const infrastructure_state::uid_t& key)
 				// Haven't initialized the node UID yet so try to do it now.
 				// Check again below to make sure it got initialized.
 				//
-				// If we can't initialize it, default to adding the 
+				// If we can't initialize it, default to adding the
 				// pod as a parent to container since defaulting all containers
 				// to not add pod parents would lead to not reporting the k8s'
 				// state at all.
@@ -1576,9 +1576,9 @@ void infrastructure_state::connect(const infrastructure_state::uid_t& key)
 
 			if (x.kind() == "k8s_node" && !m_k8s_node_uid.empty() && x.id() != m_k8s_node_uid)
 			{
-				LOG_DEBUG("infra_state: pod %s node %s is not local node %s", 
-						  key.second.c_str(), 
-						  x.id().c_str(), 
+				LOG_DEBUG("infra_state: pod %s node %s is not local node %s",
+						  key.second.c_str(),
+						  x.id().c_str(),
 						  m_k8s_node_uid.c_str());
 				is_pod_and_not_on_this_node = true;
 			}
@@ -1983,27 +1983,27 @@ bool infrastructure_state::match_scope(const uid_t& uid, const scope_predicates&
 
 void infrastructure_state::find_clbk_cg(const std::string& kind,
                                    const std::string& uid,
-                                   std::function<void(const cg_ptr_t& cg)> clbk) const
+                                   cg_consumer_t consumer) const
 {
 	const auto& iter = m_state.find({kind, uid});
 	if (iter != m_state.end())
 	{
-		clbk(iter->second);
+		consumer(iter->second);
 	}
 }
 
 void infrastructure_state::find_clbk_container_pod(const std::string& uid,
-                                             std::function<void(const cg_ptr_t& cg)> clbk) const
+												   cg_consumer_t consumer) const
 {
 	auto cont_iter = m_state.find({"container", uid});
 	if (cont_iter != m_state.end())
 	{
-		find_clbk_container_pod(cont_iter->second, clbk);
+		find_clbk_container_pod(cont_iter->second, consumer);
 	}
 }
 
 void infrastructure_state::find_clbk_container_pod(const cg_ptr_t& cg,
-                                             std::function<void(const cg_ptr_t& cg)> clbk) const
+												   cg_consumer_t consumer) const
 {
 	for (const auto& parent : cg->parents())
 	{
@@ -2012,7 +2012,7 @@ void infrastructure_state::find_clbk_container_pod(const cg_ptr_t& cg,
 			const auto& parent_iter = m_state.find({parent.kind(), parent.id()});
 			if (parent_iter != m_state.end())
 			{
-				clbk(parent_iter->second);
+				consumer(parent_iter->second);
 			}
 		}
 	}
@@ -2064,7 +2064,7 @@ void infrastructure_state::find_clbk_cgs_by_ip(const std::string& addr, cg_ip_cl
 
 // Given an address, if a matching pod owner is found returns true and
 // set the pod owner in the entity, false otherwise.
-cg_ptr_t infrastructure_state::match_from_addr(const std::string &addr, bool *found)
+cg_ptr_t infrastructure_state::match_from_addr(const std::string &addr, bool *found) const
 {
 	*found = false;
 	const auto& iter = m_cg_by_addr.find(addr);
@@ -2557,7 +2557,7 @@ void infrastructure_state::delete_rate_metrics(const uid_t& key)
 	}
 }
 
-void infrastructure_state::get_congroups_by_kind(std::vector<cg_ptr_t> *cgs, const string &kind) const
+void infrastructure_state::get_congroups_by_kind(const string &kind, cg_consumer_t clbk) const
 {
 	// Skip ahead to kind then walk them sequentially
 	uid_t lb_key(kind, "");
@@ -2567,7 +2567,7 @@ void infrastructure_state::get_congroups_by_kind(std::vector<cg_ptr_t> *cgs, con
 		{
 			break;
 		}
-		cgs->push_back(it->second);
+		clbk(it->second);
 	}
 }
 

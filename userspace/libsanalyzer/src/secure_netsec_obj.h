@@ -333,10 +333,10 @@ struct k8s_cluster_communication
         void add_job_to_cronjob(const string &cronjob_uid,
 				const string &job_uid);
 
-	bool add_endpoint(std::string &key, k8s_endpoint& e);
-	bool add_service(std::string &key, k8s_service& s);
-	bool add_namespace(std::string &key, k8s_namespace& n);
-	bool add_cronjob(std::string &key, k8s_cronjob& cj);
+	bool add_endpoint(const std::string &key, k8s_endpoint& e);
+	bool add_service(const std::string &key, k8s_service& s);
+	bool add_namespace(const std::string &key, k8s_namespace& n);
+	bool add_cronjob(const std::string &key, k8s_cronjob& cj);
 
 	void serialize_protobuf(secure::K8SClusterCommunication*& cluster);
     void serialize_protobuf_v2(secure::K8SClusterCommunication*& cluster);

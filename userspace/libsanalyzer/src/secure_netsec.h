@@ -122,22 +122,23 @@ private:
 		resolve_ip_to_cg(const uint32_t &ip, bool *found);
 
 	bool congroup_to_pod_owner(std::shared_ptr<draiosproto::container_group> cg,
-				   const string &tag_name,
-				   secure::K8SPodOwner* k8s_pod_owner);
+							   const string &tag_name,
+							   secure::K8SPodOwner *k8s_pod_owner);
 
 	void congroup_to_metadata(std::shared_ptr<draiosproto::container_group> cg,
-				  k8s_metadata* k8s_metadata);
+							  k8s_metadata *k8s_metadata);
+
 	void congroup_to_endpoint(std::shared_ptr<draiosproto::container_group> cg,
-				  k8s_endpoint* k8s_endpoint);
+							  k8s_endpoint *k8s_endpoint);
 
 	void congroup_to_namespace(std::shared_ptr<draiosproto::container_group> cg,
-				   k8s_namespace* k8s_namespace);
+							   k8s_namespace *k8s_namespace);
 
 	void congroup_to_service(std::shared_ptr<draiosproto::container_group> cg,
-				 k8s_service* k8s_service);
+							 k8s_service *k8s_service);
 
 	void congroup_to_cronjob(std::shared_ptr<draiosproto::container_group> cg,
-				 k8s_cronjob* k8s_cronjob);
+							 k8s_cronjob *k8s_cronjob);
 
 	bool insert_or_update_communication(ipv4tuple tuple, const k8s_communication& k8s_comm);
 	bool insert_or_update_pod_owner(const k8s_pod_owner& pod_owner);
@@ -188,4 +189,6 @@ private:
 	uint64_t m_randomized_flush_start = 0;
 
 	std::unique_ptr<secure_netsec_v2> m_netsec_v2;
+	bool is_empty_flash = true;
+
 };

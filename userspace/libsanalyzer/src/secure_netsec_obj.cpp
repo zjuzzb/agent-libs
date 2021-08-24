@@ -7,22 +7,22 @@ type_config<bool> k8s_cluster_communication::c_network_topology_skip_host_activi
     "Skip network communication where at least one of the endpoint IP belongs to a host",
     "network_topology", "skip_host_activity");
 
-bool k8s_cluster_communication::add_endpoint(std::string& key, k8s_endpoint& e)
+bool k8s_cluster_communication::add_endpoint(const std::string &key, k8s_endpoint& e)
 {
 	return add_map_entry_unique<k8s_endpoint_map, k8s_endpoint>(m_endpoints, key, e);
 }
 
-bool k8s_cluster_communication::add_service(std::string& key, k8s_service& s)
+bool k8s_cluster_communication::add_service(const std::string &key, k8s_service& s)
 {
 	return add_map_entry_unique<k8s_service_map, k8s_service>(m_services, key, s);
 }
 
-bool k8s_cluster_communication::add_namespace(std::string& key, k8s_namespace& n)
+bool k8s_cluster_communication::add_namespace(const std::string &key, k8s_namespace& n)
 {
 	return add_map_entry_unique<k8s_namespace_map, k8s_namespace>(m_namespaces, key, n);
 }
 
-bool k8s_cluster_communication::add_cronjob(std::string& key, k8s_cronjob& cj)
+bool k8s_cluster_communication::add_cronjob(const std::string &key, k8s_cronjob& cj)
 {
 	return add_map_entry_unique<k8s_cronjob_map, k8s_cronjob>(m_cronjobs, key, cj);
 }
@@ -72,7 +72,7 @@ void k8s_cluster_communication::serialize_communications(
 template<typename M, typename T>
 bool k8s_cluster_communication::add_map_entry_unique(
 	M& cmap,
-	const std::string& key,
+	const std::string &key,
 	T& value)
 {
 	bool is_new_entry = false;
@@ -143,21 +143,13 @@ void k8s_cluster_communication::serialize_protobuf(
 	serialize_communications(m_egresses, cluster->mutable_egresses());
 	serialize_communications(m_ingresses, cluster->mutable_ingresses());
 
-	serialize_map_to_protobuf<k8s_pod_owner_map, k8s_pod_owner>
-		(m_owners, cluster->mutable_pod_owners());
-
-	serialize_map_to_protobuf<k8s_endpoint_map, k8s_endpoint>
-		(m_endpoints, cluster->mutable_endpoints());
-	serialize_map_to_protobuf<k8s_namespace_map, k8s_namespace>
-		(m_namespaces, cluster->mutable_namespaces());
-	serialize_map_to_protobuf<k8s_service_map, k8s_service>
-		(m_services, cluster->mutable_services());
+	serialize_map_to_protobuf(m_owners, cluster->mutable_pod_owners());
+	serialize_map_to_protobuf(m_endpoints, cluster->mutable_endpoints());
+	serialize_map_to_protobuf(m_namespaces, cluster->mutable_namespaces());
+	serialize_map_to_protobuf(m_services, cluster->mutable_services());
 
 	serialize_cronjob_jobs();
-	serialize_map_to_protobuf<k8s_cronjob_map, k8s_cronjob>
-		(m_cronjobs, cluster->mutable_cronjobs());
-
-
+	serialize_map_to_protobuf(m_cronjobs, cluster->mutable_cronjobs());
 }
 
 bool k8s_cluster_communication::validate_self_local_egresses(ipv4tuple tuple) const
@@ -210,12 +202,9 @@ bool k8s_cluster_communication::validate_self_local(k8s_communication *k8s_comm)
 
 void k8s_cluster_communication::serialize_protobuf_v2(secure::K8SClusterCommunication*& cluster)
 {
-    serialize_map_to_protobuf<k8s_endpoint_map, k8s_endpoint>
-        (m_endpoints, cluster->mutable_endpoints());
-    serialize_map_to_protobuf<k8s_namespace_map, k8s_namespace>
-        (m_namespaces, cluster->mutable_namespaces());
-    serialize_map_to_protobuf<k8s_service_map, k8s_service>
-        (m_services, cluster->mutable_services());
+    serialize_map_to_protobuf(m_endpoints, cluster->mutable_endpoints());
+    serialize_map_to_protobuf(m_namespaces, cluster->mutable_namespaces());
+    serialize_map_to_protobuf(m_services, cluster->mutable_services());
 }
 
 

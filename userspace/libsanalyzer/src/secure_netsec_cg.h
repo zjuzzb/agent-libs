@@ -67,6 +67,8 @@ public:
 	const cg_ptr_t& operator->() const { return m_cg; }
 	const cg_ptr_t& get() const { return m_cg; }
 
+	std::string name() const;
+
 private:
 	const cg_ptr_t& m_cg;
 	const infrastructure_state& m_infra_state;

@@ -227,6 +227,12 @@ std::unique_ptr<secure::K8SPodOwner> secure_netsec_cg::get_k8s_owner() const
 		p->mutable_values()->CopyFrom(me.values());
 	}
 
+	for (const auto &it : owner->pod_template_labels())
+	{
+		(*k8s_pod_owner->mutable_template_labels())[it.first] = it.second;
+	}
+
+
 	return k8s_pod_owner;
 }
 
@@ -291,4 +297,17 @@ bool secure_netsec_cg::is_terminating() const
 infra_time_point_t secure_netsec_cg::pod_creation_tp() const
 {
 	return tag_ts(infrastructure_state::POD_META_CREATION_TS_TAG);
+}
+
+std::string secure_netsec_cg::name() const
+{
+	for (const auto& l : m_cg->tags())
+	{
+		if (sinsp_utils::endswith(l.first, ".name") && l.first.find("kubernetes.") == 0 )
+		{
+			return l.second;
+		}
+	}
+
+	return {};
 }

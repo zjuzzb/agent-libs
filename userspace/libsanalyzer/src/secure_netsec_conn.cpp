@@ -10,6 +10,143 @@
 
 COMMON_LOGGER("netsec");
 
+const std::string COMMAND_NA("<NA>");
+
+
+struct secure_netsec_conn::owner_info
+{
+	owner_info(const infrastructure_state& infra_, const owner_clbk_t& clbk)
+	    : m_owner_clbk(clbk),
+	      m_infra_(infra_)
+	{
+	}
+
+	owner_clbk_t m_owner_clbk;
+	const infrastructure_state& m_infra_;
+
+	infra_time_point_t m_conn_ts{};
+	std::string m_command;
+
+	bool m_is_active_side = false;
+	bool m_is_node = false;
+
+	std::string m_ip_str;
+	std::string m_ip_masq;
+	std::string m_container_id;
+
+	pod_owner_ptr m_k8s_owner{};
+
+	void init(const conn_message_split& msg_split)
+	{
+		m_ip_str = msg_split.get_ip_str();
+		m_container_id = msg_split.get_container_id();
+		m_is_node = msg_split.is_node_ip(m_infra_);
+		m_conn_ts = infra_time_point_t(std::chrono::nanoseconds(msg_split.get_conn_ts()));
+		m_command = msg_split.get_command();
+		m_is_active_side = msg_split.is_active_side();
+
+		if (m_command.empty())
+		{
+			m_command = COMMAND_NA;
+		}
+
+		if (m_is_node)
+		{
+			return;
+		}
+		update_owner();
+	}
+
+	void update(const conn_message_split& msg_split)
+	{
+		if (m_command == COMMAND_NA && !msg_split.get_command().empty())
+		{
+			m_command = msg_split.get_command();
+		}
+
+		if (m_k8s_owner == nullptr)
+		{
+			update_owner();
+		}
+	}
+
+	void on_container_info(const std::string& new_cont_id, infra_time_point_t conn_created_at)
+	{
+		if (m_is_node)
+		{
+			return;
+		}
+
+		if (m_k8s_owner == nullptr)
+		{
+			update_owner();
+		}
+	}
+
+	void on_crop()
+	{
+		if (m_is_node)
+		{
+			return;
+		}
+
+		if (m_k8s_owner == nullptr)
+		{
+			update_owner();
+		}
+	}
+
+	void update_owner()
+	{
+		const auto cont_pod = secure_netsec_util::find_pod_by_container(m_infra_, m_container_id);
+
+		if (cont_pod != nullptr)
+		{
+			bool ip_match = false;
+			for (auto ip : cont_pod->get()->ip_addresses())
+			{
+				if ((ip_match = ip == m_ip_str))
+				{
+					m_k8s_owner = cont_pod->get_k8s_owner();
+					m_owner_clbk(m_k8s_owner->metadata().kind(), m_k8s_owner->metadata().uid());
+					break;
+				}
+			}
+			if (!ip_match)
+			{
+				for (auto ip : cont_pod->get()->ip_addresses())
+				{
+					bool dummy = true;
+					const auto cg_ptr = m_infra_.match_from_addr(ip, &dummy);
+					if (cg_ptr != nullptr && secure_netsec_cg(m_infra_, cg_ptr).is_node())
+					{
+						m_ip_masq = ip;
+						m_is_node = true;
+						LOG_DEBUG("possible ip masq detected for ip='%s' and container='%s'(%s)",
+						          m_ip_str.c_str(),
+						          m_container_id.c_str(),
+						          cont_pod->get()->uid().id().c_str());
+						return;
+					}
+				}
+			}
+		}
+
+		if (m_k8s_owner == nullptr)
+		{
+			const auto ip_pod = secure_netsec_util::find_pod_by_ip(m_infra_, m_ip_str);
+			if (ip_pod != nullptr)
+			{
+				// check pod creation time
+				if (ip_pod->pod_creation_tp() < m_conn_ts)
+				{
+					m_k8s_owner = ip_pod->get_k8s_owner();
+					m_owner_clbk(m_k8s_owner->metadata().kind(), m_k8s_owner->metadata().uid());
+				}
+			}
+		}
+	}
+};
 
 // protocol validator
 static bool validate_scap_l4_protocol(const uint8_t scap_l4)
@@ -29,14 +166,26 @@ secure_netsec_conn::netsec_conn_ptr_t secure_netsec_conn::create(
     const std::string& key,
     secure_netsec_metric_stats& metrics)
 {
-	if (msg.message == sinsp_conn_message::failed || msg.message == sinsp_conn_message::closed ||
+	// check cons state
+	if (msg.message == sinsp_conn_message::failed ||
+	    msg.message == sinsp_conn_message::closed ||
 	    msg.flags_to_type() == sinsp_conn_message::failed ||
-	    msg.flags_to_type() == sinsp_conn_message::closed || msg.is_pending())
+	    msg.flags_to_type() == sinsp_conn_message::closed ||
+	    msg.is_pending())
 	{
 		return nullptr;
 	}
 
-	if (secure_helper::is_localhost(msg.key) || !secure_helper::is_valid_tuple(msg.key) ||
+	// check client/server info
+	if (msg.conn->m_refcount == 0)
+	{
+		// no client or server info
+		return nullptr;
+	}
+
+	// check other things
+	if (secure_helper::is_localhost(msg.key) ||
+	    !secure_helper::is_valid_tuple(msg.key) ||
 	    !validate_scap_l4_protocol(msg.key.m_fields.m_l4proto))
 	{
 		metrics.comm_invalid();
@@ -45,7 +194,7 @@ secure_netsec_conn::netsec_conn_ptr_t secure_netsec_conn::create(
 
 	if (!cidr.is_configured())
 	{
-		LOG_DEBUG( "cidr is not configured");
+		return nullptr;
 	}
 	else if (!cidr.is_tuple_in_k8s_cidr(msg.key))
 	{
@@ -61,12 +210,19 @@ secure_netsec_conn::netsec_conn_ptr_t secure_netsec_conn::create(
 	conn_message_split_cli cli(msg);
 	conn_message_split_srv srv(msg);
 
+	// ignore port select
+	if (srv.get_port() == 0)
+	{
+		return nullptr;
+	}
+
+	// no containers on both sides
 	if (!cli.has_container() && !srv.has_container())
 	{
 		return nullptr;
 	}
 
-	if (cli.is_blacklisted() && srv.is_blacklisted())
+	if (cli.is_blacklisted() || srv.is_blacklisted())
 	{
 		return nullptr;
 	}
@@ -81,8 +237,7 @@ secure_netsec_conn::netsec_conn_ptr_t secure_netsec_conn::create(
 
 std::multimap<std::string, secure_netsec_conn*> conns_by_container_id;
 
-int
-secure_netsec_conn::erase_cont_id(const std::string &cont_id)
+int secure_netsec_conn::erase_cont_id(const std::string& cont_id)
 {
 	int n_erased = 0;
 
@@ -114,98 +269,15 @@ secure_netsec_conn::erase_cont_id(const std::string &cont_id)
 
 secure_netsec_conn::~secure_netsec_conn()
 {
-	int num_clear = erase_cont_id(cli_info.container_id);
-	num_clear += erase_cont_id(srv_info.container_id);
+	int num_clear = erase_cont_id(egress_owner->m_container_id);
+	num_clear += erase_cont_id(ingress_owner->m_container_id);
 
 	if (LOG_WILL_EMIT(Poco::Message::Priority::PRIO_DEBUG))
 	{
-		std::string out = ev_ss.str();
-		LOG_DEBUG("\n~secure_netsec_conn(%ld/%d): %s",
+		LOG_DEBUG("\n~secure_netsec_conn(%ld/%d)",
 		          conns_by_container_id.size(),
-		          num_clear,
-		          out.c_str());
+		          num_clear);
 	}
-}
-
-void secure_netsec_conn::gress_to_stream(conn_end_point& ci, const owner_info& oi_info, const std::string& cs)
-{
-	if (ci.cont_pod.empty() && !ci.container_id.empty())
-	{
-		auto cg_wrap = secure_netsec_util::find_pod_by_container(m_infra, ci.container_id);
-		if (cg_wrap != nullptr)
-		{
-			ev_ss << "\n\t\t" << cs << "_cont_pod=" << (*cg_wrap)->uid().id();
-			ci.cont_pod = (*cg_wrap)->uid().id();
-			bool is_node = false;
-			for (auto i = (*cg_wrap)->ip_addresses().begin(),
-				     i_end = (*cg_wrap)->ip_addresses().end();
-			     i != i_end;
-			     ++i)
-			{
-				if (cg_wrap->is_node(*i))
-				{
-					ev_ss << " is_node=true";
-					is_node = true;
-					break;
-				}
-			}
-			if (!is_node)
-			{
-				auto owner = m_infra.get_pod_owner(cg_wrap->get());
-				if (owner != nullptr)
-				{
-					ev_ss << " owner=" << owner->uid().kind() << "/" << owner->uid().id();
-					if (oi_info.is_container_owner && oi_info.k8s_owner != nullptr)
-					{
-						ev_ss << "\n\t\t\t" << oi_info.k8s_owner->ShortDebugString();
-					}
-				}
-			}
-		}
-	}
-
-	if (ci.ip_pod.empty())
-	{
-		auto cg_wrap = secure_netsec_util::find_pod_by_ip(m_infra, ci.ip_str);
-		bool is_node = false;
-		if (cg_wrap != nullptr)
-		{
-			ev_ss << "\n\t\t" << cs << "_ip_pod=" << (*cg_wrap)->uid().id();
-			ci.ip_pod = (*cg_wrap)->uid().id();
-			if (cg_wrap->is_node(ci.ip_str))
-			{
-				ev_ss << " is_node=true";
-			}
-			if (!is_node)
-			{
-				auto owner = m_infra.get_pod_owner(cg_wrap->get());
-				if (owner != nullptr)
-				{
-					ev_ss << " owner=" << owner->uid().kind() << "/" << owner->uid().id();
-					if (!oi_info.is_container_owner && oi_info.k8s_owner != nullptr)
-					{
-						ev_ss << "\n\t\t\t" << oi_info.k8s_owner->ShortDebugString();
-					}
-				}
-			}
-		}
-	}
-}
-
-void secure_netsec_conn::save_log_event(const std::string& e)
-{
-	if (!LOG_WILL_EMIT(Poco::Message::Priority::PRIO_DEBUG))
-	{
-		return;
-	}
-
-	auto d = std::chrono::duration_cast<std::chrono::milliseconds>(infra_clock::now() - m_created_at).count();
-
-	ev_ss << "\n\t" << double(d) / 1000. << " :" << e << ": " << get_key();
-
-	gress_to_stream(cli_info, egress_owner, "cli");
-	gress_to_stream(srv_info, ingress_owner, "srv");
-	ev_ss << "\n";
 }
 
 // ctor
@@ -215,56 +287,27 @@ secure_netsec_conn::secure_netsec_conn(const sinsp_conn_message& msg,
                                        owner_clbk_t on_owner_resolved,
                                        std::string key)
     : m_key(std::move(key)),
-      egress_owner(infra, on_owner_resolved),
-      ingress_owner(infra, on_owner_resolved),
+      egress_owner(make_unique<secure_netsec_conn::owner_info>(infra, on_owner_resolved)),
+      ingress_owner(make_unique<secure_netsec_conn::owner_info>(infra, on_owner_resolved)),
       m_conn_id(msg.conn->conn_id),
       m_tuple(msg.key),
       m_created_at(std::chrono::nanoseconds(msg.conn->m_timestamp)),
       m_infra(infra),
-      m_cidr(cidr),
       m_state(conn_state::active)
 {
 	conn_message_split_cli cli(msg);
 	conn_message_split_srv srv(msg);
 
-	cli_info.init(cli);
-	srv_info.init(srv);
-	egress_owner.init(cli, m_created_at);
-	ingress_owner.init(srv, m_created_at);
+	egress_owner->init(cli);
+	ingress_owner->init(srv);
 
 	parse_conn_state(msg);
-}
-
-void secure_netsec_conn::conn_end_point::init(const conn_message_split& msg_split)
-{
-	ip_str = msg_split.get_ip_str();
-	container_id = msg_split.get_container_id();
-	command = msg_split.get_command();
-	is_black_listed = msg_split.is_blacklisted();
-	is_active_side = msg_split.is_active_side();
-}
-
-void secure_netsec_conn::conn_end_point::update(const conn_message_split& msg_split)
-{
-	if (container_id.empty())
-	{
-		container_id = msg_split.get_container_id();
-	}
-	if (command.empty())
-	{
-		command = msg_split.get_command();
-		is_black_listed |= msg_split.is_blacklisted();
-	}
-	is_active_side |= msg_split.is_active_side();
 }
 
 void secure_netsec_conn::parse_conn_state(const sinsp_conn_message& msg)
 {
 	conn_message_split_cli cli(msg);
 	conn_message_split_srv srv(msg);
-
-	cli_info.update(cli);
-	srv_info.update(srv);
 
 	bool updated = false;
 	auto set_cont_id = [&](const std::string& src, std::string& dest)
@@ -278,21 +321,8 @@ void secure_netsec_conn::parse_conn_state(const sinsp_conn_message& msg)
 		}
 	};
 
-	set_cont_id(cli.get_container_id(), cli_info.container_id);
-	set_cont_id(srv.get_container_id(), srv_info.container_id);
-
-	if (LOG_WILL_EMIT(Poco::Message::Priority::PRIO_DEBUG))
-	{
-		if (updated)
-		{
-			save_log_event("conn_id=" + std::to_string(m_conn_id) +
-				": msg=" + sinsp_conn_message::type_str(msg.flags_to_type()));
-		}
-		else
-		{
-			save_log_event(sinsp_conn_message::type_str(msg.flags_to_type()));
-		}
-	}
+	set_cont_id(cli.get_container_id(), egress_owner->m_container_id);
+	set_cont_id(srv.get_container_id(), ingress_owner->m_container_id);
 }
 
 // conn status notifications
@@ -309,7 +339,7 @@ void secure_netsec_conn::accept_conn_msg(const sinsp_conn_message& msg)
 		return;
 	}
 
-    m_state = msg.is_pending() ? conn_state::pending : conn_state::active;
+	m_state = msg.is_pending() ? conn_state::pending : conn_state::active;
 
 	switch (msg.flags_to_type())
 	{
@@ -323,147 +353,67 @@ void secure_netsec_conn::accept_conn_msg(const sinsp_conn_message& msg)
 	case sinsp_conn_message::closed:
 		m_state = conn_state::closed;
 		parse_conn_state(msg);
-		save_log_event("closed");
 		break;
 
 	case sinsp_conn_message::failed:
 		m_state = conn_state::failed;
-		save_log_event("failed");
 		break;
 	}
 }
 
-void secure_netsec_conn::owner_info::init(const conn_message_split& msg_split,
-                                          infra_time_point_t conn_created_at)
+void secure_netsec_conn::on_container(const std::string& container_id)
 {
-	ip_str = msg_split.get_ip_str();
-	container_id = msg_split.get_container_id();
-
-	is_node = msg_split.is_node_ip(infra);
-
-	if (is_node)
-	{
-		return;
-	}
-
-	if (!container_id.empty())
-	{
-		const auto& cg_wrap = msg_split.find_pod_by_container(infra);
-		if (cg_wrap != nullptr)
-		{
-			k8s_owner = cg_wrap->get_k8s_owner();
-			is_container_owner = k8s_owner != nullptr;
-		}
-	}
-
-	if (!is_container_owner && !ip_str.empty())
-	{
-		const auto& cg_wrap = msg_split.find_pod_by_ip(infra);
-		if (cg_wrap != nullptr && cg_wrap->pod_creation_tp() < conn_created_at)
-		{
-			k8s_owner = cg_wrap->get_k8s_owner();
-		}
-	}
-
-	if (k8s_owner != nullptr)
-	{
-		owner_clbk(k8s_owner->metadata().kind(), k8s_owner->metadata().uid());
-	}
-}
-
-void secure_netsec_conn::owner_info::on_container_info(const std::string& new_cont_id,
-                                                       infra_time_point_t conn_created_at)
-{
-	if (is_node)
-	{
-		return;
-	}
-	bool new_owner = false;
-
-	if (!is_container_owner && !container_id.empty() && new_cont_id == container_id)
-	{
-		const auto& cg_wrap = secure_netsec_util::find_pod_by_container(infra, new_cont_id);
-		if (cg_wrap != nullptr)
-		{
-			auto k8s_test_owner = cg_wrap->get_k8s_owner();
-			if (k8s_test_owner != nullptr)
-			{
-				k8s_owner = std::move(k8s_test_owner);
-				is_container_owner = true;
-				new_owner = true;
-			}
-		}
-	}
-
-	if (!is_container_owner && !ip_str.empty() && k8s_owner == nullptr)
-	{
-		const auto& cg_wrap = secure_netsec_util::find_pod_by_ip(infra, ip_str);
-		if (cg_wrap != nullptr && cg_wrap->pod_creation_tp() < conn_created_at)
-		{
-			k8s_owner = cg_wrap->get_k8s_owner();
-			new_owner = true;
-		}
-	}
-
-	if (new_owner && k8s_owner != nullptr)
-	{
-		owner_clbk(k8s_owner->metadata().kind(), k8s_owner->metadata().uid());
-	}
-}
-
-void secure_netsec_conn::owner_info::on_crop(infra_time_point_t conn_created_at)
-{
-	// reevaluate container info;
-	on_container_info(container_id, conn_created_at);
+	egress_owner->on_container_info(container_id, m_created_at);
+	ingress_owner->on_container_info(container_id, m_created_at);
 }
 
 ostream& operator<<(ostream& os, const secure_netsec_conn::owner_info& info)
 {
-    if (LOG_WILL_EMIT(Poco::Message::Priority::PRIO_DEBUG))
-	{
-		os << "ip_str: " << info.ip_str << " container_id: " << info.container_id
-		   << " is_node: " << std::boolalpha << info.is_node
-		   << " is_container_owner: " << std::boolalpha << info.is_container_owner;
+	os << "\n\tip_str: " << info.m_ip_str << "\n\tis_node: " << std::boolalpha << info.m_is_node
+	   << "\n\tip_masq: " << info.m_ip_masq << "\n\tcontainer_id: " << info.m_container_id
+	   << "\n\tcommand: " << info.m_command;
 
-		if (info.k8s_owner != nullptr)
+	if (!info.m_ip_str.empty())
+	{
+		const auto& cg_wrap = secure_netsec_util::find_pod_by_ip(info.m_infra_, info.m_ip_str);
+		if (cg_wrap != nullptr)
 		{
-			os << " k8s_owner: (" << info.k8s_owner->metadata().name() << ":"
-			   << info.k8s_owner->metadata().kind() << ":" << info.k8s_owner->metadata().uid()
-			   << ")";
+			os << "\n\tIP_pod: [" << cg_wrap->name() << ", " << cg_wrap->get()->uid().kind() << ", "
+			   << cg_wrap->get()->uid().id() << "]";
 		}
 	}
+
+	if (!info.m_container_id.empty())
+	{
+		const auto& cg_wrap =
+		    secure_netsec_util::find_pod_by_container(info.m_infra_, info.m_container_id);
+
+		if (cg_wrap != nullptr)
+		{
+			os << "\n\tcontainer_pod: [" << cg_wrap->name() << ", " << cg_wrap->get()->uid().kind()
+			   << ", " << cg_wrap->get()->uid().id() << "]";
+		}
+	}
+
+	if (info.m_k8s_owner != nullptr)
+	{
+		os << "\n\tk8s_owner: [" << info.m_k8s_owner->metadata().name() << ", "
+		   << info.m_k8s_owner->metadata().kind() << ", " << info.m_k8s_owner->metadata().uid() << "]";
+	}
 	return os;
-}
-
-void secure_netsec_conn::on_container(const std::string& container_id)
-{
-	save_log_event("on_container_id=" + container_id);
-	egress_owner.on_container_info(container_id, m_created_at);
-	ingress_owner.on_container_info(container_id, m_created_at);
-}
-
-void secure_netsec_conn::on_crop()
-{
-	save_log_event("on_crop");
-	egress_owner.on_crop(m_created_at);
-	ingress_owner.on_crop(m_created_at);
-}
-
-// new cg notifications
-bool secure_netsec_conn::accept_cg(const cg_ptr_t& cg,
-                                   const std::string& ip,
-                                   infra_time_point_t insertion_ts)
-{
-	return false;
 }
 
 void secure_netsec_conn::serialize(secure::K8SClusterCommunication* cluster,
                                    secure_netsec_metric_stats& metrics,
                                    const std::function<void(const secure::K8SPodOwner&)>& on_owner)
 {
-	if (egress_owner.k8s_owner == nullptr && ingress_owner.k8s_owner == nullptr)
+	LOG_DEBUG("serializing communication: \nclient: %s \nserver: %s",
+	          to_string(*egress_owner).c_str(),
+	          to_string(*ingress_owner).c_str());
+
+	if (egress_owner->m_k8s_owner == nullptr && ingress_owner->m_k8s_owner == nullptr)
 	{
-		save_log_event("serialize skipped: owners not resolved");
+		LOG_DEBUG("%s","serialize skipped: owners not resolved");
 		return;
 	}
 
@@ -473,59 +423,64 @@ void secure_netsec_conn::serialize(secure::K8SClusterCommunication* cluster,
 
 	// client data
 	k8s_comm.set_client_ipv4(ntohl(m_tuple.m_fields.m_sip));
-	if (!cli_info.command.empty())
+	if (!egress_owner->m_command.empty())
 	{
-		k8s_comm.set_client_comm(cli_info.command);
+		k8s_comm.set_client_comm(egress_owner->m_command);
 	}
 
 	// server data
 	k8s_comm.set_server_ipv4(ntohl(m_tuple.m_fields.m_dip));
 	k8s_comm.set_server_port(m_tuple.m_fields.m_dport);
-	if (!srv_info.command.empty())
+	if (!ingress_owner->m_command.empty())
 	{
-		k8s_comm.set_server_comm(srv_info.command);
+		k8s_comm.set_server_comm(ingress_owner->m_command);
 	}
 
+	//
 	bool skip_host_activity =
-		k8s_cluster_communication::c_network_topology_skip_host_activity.get_value() &&
-			(egress_owner.is_node || ingress_owner.is_node);
+	    k8s_cluster_communication::c_network_topology_skip_host_activity.get_value() &&
+	    (egress_owner->m_is_node || ingress_owner->m_is_node);
 
-	if (cli_info.is_active_side && !skip_host_activity)
+	bool egress_added = false;
+	if (!skip_host_activity && egress_owner->m_is_active_side &&
+	    (egress_owner->m_command != COMMAND_NA || egress_owner->m_k8s_owner != nullptr))
 	{
-		if (egress_owner.k8s_owner != nullptr)
+		if (egress_owner->m_k8s_owner != nullptr)
 		{
-			k8s_comm.set_client_owner_uid(egress_owner.k8s_owner->metadata().uid());
-			on_owner(*egress_owner.k8s_owner);
+			k8s_comm.set_client_owner_uid(egress_owner->m_k8s_owner->metadata().uid());
+			on_owner(*egress_owner->m_k8s_owner);
 			metrics.owner_resolved();
 		}
 
 		cluster->add_egresses()->CopyFrom(k8s_comm);
+		egress_added = true;
 		metrics.egress_added();
 	}
 
-	if (srv_info.is_active_side && !skip_host_activity)
+	bool ingress_added = false;
+	if (!skip_host_activity  && ingress_owner->m_is_active_side && m_tuple.m_fields.m_dport != 0)
 	{
-		if (ingress_owner.k8s_owner != nullptr)
+		if (ingress_owner->m_k8s_owner != nullptr)
 		{
-			k8s_comm.set_server_owner_uid(ingress_owner.k8s_owner->metadata().uid());
-			on_owner(*ingress_owner.k8s_owner);
+			k8s_comm.set_server_owner_uid(ingress_owner->m_k8s_owner->metadata().uid());
+			on_owner(*ingress_owner->m_k8s_owner);
 			metrics.owner_resolved();
 		}
-
 		cluster->add_ingresses()->CopyFrom(k8s_comm);
+		ingress_added = true;
 		metrics.ingress_added();
 	}
 
 	if (LOG_WILL_EMIT(Poco::Message::Priority::PRIO_DEBUG))
 	{
 		std::stringstream ss;
-		ss << "serialize: (" << std::to_string(m_dup_count) << ")"
-		   << "skip hosts=" << std::boolalpha << skip_host_activity
-		   << "\n\t\t egress:" << egress_owner
-		   << "\n\t\t ingress:" << ingress_owner
-		   << "\n\t\t" << k8s_comm.ShortDebugString();
+		ss << "\nserialize done:"
+		   << " skip_hosts=" << std::boolalpha << skip_host_activity
+		   << ", server_port=" << m_tuple.m_fields.m_dport << ", egress=" << std::boolalpha
+		   << egress_added << ", ingress=" << std::boolalpha << ingress_added
+		   << "\n\tk8s_comm=" << k8s_comm.ShortDebugString();
 
-		save_log_event(ss.str());
+		LOG_DEBUG("%s\n", ss.str().c_str());
 	}
 }
 
@@ -538,21 +493,8 @@ std::string secure_netsec_conn::to_string() const
 
 ostream& operator<<(ostream& os, const secure_netsec_conn& conn)
 {
-	os << " conn_id=" << conn.m_conn_id
-	   << " age=" << conn.age().count()
+	os << " conn_id=" << conn.m_conn_id << " age=" << conn.age().count()
 	   << " state=" << conn.str_state();
 	return os;
 }
 
-void secure_netsec_conn::log_events(const std::string& header, std::stringstream& events) const
-{
-    if (LOG_WILL_EMIT(Poco::Message::Priority::PRIO_DEBUG))
-	{
-		std::stringstream ss;
-		ss << header << ":  conn_id=" << m_conn_id << ", age=" << age().count()
-		   << ", state=" << str_state() << ", key=" << get_key() << ", details=[" << events.str()
-		   << "]";
-		cout << ss.str() << "\n";
-		LOG_DEBUG("%s", ss.str().c_str());
-	}
-}

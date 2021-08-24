@@ -83,7 +83,6 @@ void secure_netsec_v2::flush()
 				++time_iter;
 				continue;
 			}
-			conn->on_crop();
 			const auto &key = conn->get_key();
 			if (m_cropped.find(key) == m_cropped.end())
 			{

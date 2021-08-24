@@ -126,6 +126,7 @@ public:
 
 	// { host/container id : {scope hash : scope match result} }
 	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<size_t, bool>>;
+	using cg_consumer_t = std::function<void(const cg_ptr_t& cg)>;
 
 	// Pass a 4th optional argument to turn on m_k8s_subscribed for unit tests. Need to refactor.
 	infrastructure_state(sinsp_analyzer& analyzer,
@@ -159,7 +160,7 @@ public:
 	             const std::string& uid,
 	             std::function<void(const cg_ptr_t& cg)> clbk) const;
 
-	cg_ptr_t match_from_addr(const std::string& addr, bool* found);
+	cg_ptr_t match_from_addr(const std::string& addr, bool* found) const;
 
 	using cg_ip_clbk_t =
 	    std::function<void(const cg_ptr_t&, const std::string& ip, infra_time_point_t insert_ts)>;
@@ -210,7 +211,7 @@ public:
 	 * \param kind Kubernetes Kind in the form of k8s_*
 	 *             (e.g. k8s_endpoints, k8s_service, etc.)
 	 */
-	void get_congroups_by_kind(std::vector<cg_ptr_t> *cgs, const string &kind) const;
+	void get_congroups_by_kind(const string &kind, cg_consumer_t clbk) const;
 
 	void get_state(container_groups* state, const uint64_t ts);
 	void get_state(draiosproto::k8s_state* state, uint64_t ts);

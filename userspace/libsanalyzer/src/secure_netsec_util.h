@@ -30,6 +30,8 @@ public:
 	virtual uint32_t get_ip_int() const = 0;
 	virtual infra_time_point_t get_msg_tp() const = 0;
 	virtual bool is_active_side() const = 0;
+	virtual uint32_t get_port() const = 0;
+	virtual uint64_t get_conn_ts()  const  = 0;
 
 	static std::string ip2str(uint32_t ip)
 	{
@@ -45,6 +47,12 @@ public:
 		return t_info == nullptr ? nullptr : t_info->get_main_thread();
 	}
 
+	sinsp_threadinfo* get_par_thread() const
+	{
+		auto t_info = get_t_info();
+		return t_info == nullptr ? nullptr : t_info->get_parent_thread();
+	}
+
 	bool has_container() const
 	{
 		auto t_info = get_main_thread();
@@ -54,6 +62,18 @@ public:
 	std::string get_container_id() const
 	{
 		auto t_info = get_main_thread();
+		return t_info == nullptr ? "" : t_info->m_container_id;
+	}
+
+	std::string get_ctifo_container_id() const
+	{
+		auto t_info = get_t_info();
+		return t_info == nullptr ? "" : t_info->m_container_id;
+	}
+
+	std::string get_ptifo_container_id() const
+	{
+		auto t_info = get_par_thread();
 		return t_info == nullptr ? "" : t_info->m_container_id;
 	}
 
@@ -77,7 +97,14 @@ public:
 
 	netsec_cg_ptr_t find_pod_by_container(const infrastructure_state& infra) const;
 
+	netsec_cg_ptr_t find_pod_by_ccontainer(const infrastructure_state& infra) const;
+
+	netsec_cg_ptr_t find_pod_by_pcontainer(const infrastructure_state& infra) const;
+
 	bool is_node_ip(const infrastructure_state& infra) const;
+
+	std::string to_string(const infrastructure_state& infra) const;
+
 };
 
 /*
@@ -102,9 +129,28 @@ public:
 		return infra_time_point_t(std::chrono::nanoseconds(msg.conn->m_timestamp));
 	}
 
+	uint64_t get_conn_ts() const override
+	{
+		return msg.conn->m_timestamp;
+	}
+
+	uint32_t get_port() const override;
+
 private:
 	const sinsp_conn_message& msg;
 };
+
+template<>
+inline uint32_t conn_message_split_side<conn_message_split::CLI>::get_port() const
+{
+	return msg.key.m_fields.m_sport;
+}
+
+template<>
+inline uint32_t conn_message_split_side<conn_message_split::SRV>::get_port() const
+{
+	return msg.key.m_fields.m_dport;
+}
 
 template<>
 inline uint32_t conn_message_split_side<conn_message_split::CLI>::get_ip_int() const

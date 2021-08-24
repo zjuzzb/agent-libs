@@ -53,7 +53,6 @@ type_config<bool> secure_netsec::c_secure_netsec_v2(true,
                                                     "Use v2 netsec v2",
                                                     "network_topology",
                                                     "netsec_v2");
-
 secure_netsec::secure_netsec()
 	: m_k8s_cidrs_configured(false),
 	  m_cluster_cidr_netip(0),
@@ -173,13 +172,7 @@ void secure_netsec::fetch_cgs(const std::string& kind)
 {
 	if (m_infrastructure_state)
 	{
-		std::vector<std::shared_ptr<draiosproto::container_group>> cgs;
-		m_infrastructure_state->get_congroups_by_kind(&cgs, kind);
-
-		for (const auto& cg : cgs)
-		{
-			add_cg(cg);
-		}
+		m_infrastructure_state->get_congroups_by_kind(kind, [this](const cg_ptr_t& cg){add_cg(cg);});
 	}
 }
 
@@ -208,6 +201,7 @@ void secure_netsec::flush(uint64_t ts)
 	m_get_events_interval->run(
 		[this, ts, flush_start_time]() {
 			m_netsec_run = true;
+			is_empty_flash = false;
 
 			serialize_protobuf();
 
@@ -270,7 +264,7 @@ secure_netsec::secure_netsec(infrastructure_state* infrastructure_state)
 }
 
 void secure_netsec::init(sinsp_ipv4_connection_manager* conn,
-			 infrastructure_state* infrastructure_state)
+						 infrastructure_state* infrastructure_state)
 {
 	bool k8s_cluster_cidr_configured = false;
 	bool k8s_service_cidr_configured = false;
@@ -351,7 +345,10 @@ void secure_netsec::on_conn_message(const sinsp_conn_message& msg)
 {
 	if (feature_manager::instance().get_enabled(NETWORK_TOPOLOGY) && m_netsec_v2 != nullptr)
 	{
-        m_netsec_v2->on_conn_event(msg);
+		if (!is_empty_flash)
+		{
+			m_netsec_v2->on_conn_event(msg);
+		}
 	}
 }
 
@@ -733,39 +730,39 @@ bool secure_netsec::add_cg(std::shared_ptr<draiosproto::container_group> cg)
 {
 	bool is_new_entry = false;
 
-	auto uid = cg->uid().id();
+	const auto& uid = cg->uid().id();
+	const auto& kind = cg->uid().kind();
 
-	if (cg->uid().kind() == "k8s_endpoints")
+	if (kind == "k8s_endpoints")
 	{
 		k8s_endpoint e;
 		congroup_to_endpoint(cg, &e);
 
 		is_new_entry = m_k8s_cluster_communication.add_endpoint(uid, e);
 	}
-	else if (cg->uid().kind() == "k8s_namespace")
+	else if (kind == "k8s_namespace")
 	{
 		k8s_namespace n;
 		congroup_to_namespace(cg, &n);
 
 		is_new_entry = m_k8s_cluster_communication.add_namespace(uid, n);
 	}
-	else if (cg->uid().kind() == "k8s_service")
+	else if (kind == "k8s_service")
 	{
 		k8s_service s;
 		congroup_to_service(cg, &s);
 
 		is_new_entry = m_k8s_cluster_communication.add_service(uid, s);
 	}
-	else if (cg->uid().kind() == "k8s_cronjob")
+	else if (kind == "k8s_cronjob")
 	{
 		k8s_cronjob cj;
 		congroup_to_cronjob(cg, &cj);
 
 		is_new_entry = m_k8s_cluster_communication.add_cronjob(uid, cj);
 	}
-	else if(cg->uid().kind() == "container")
+	else if(kind == "container")
 	{
-		LOG_DEBUG(" got container: %s", cg->ShortDebugString().c_str());
 		if (m_netsec_v2 != nullptr)
 		{
 			m_netsec_v2->on_container(cg);
@@ -783,7 +780,7 @@ void secure_netsec::congroup_to_metadata(
 	std::shared_ptr<draiosproto::container_group> cg,
 	k8s_metadata* meta)
 {
-	meta->set_uid(cg->uid().id().c_str());
+	meta->set_uid(cg->uid().id());
 
 	// Namespace: we may have congroups with empty namespace. This
 	// is may be due to purging done during
@@ -800,12 +797,12 @@ void secure_netsec::congroup_to_metadata(
 	}
 	else
 	{
-		meta->set_namespace_(cg->namespace_().c_str());
+		meta->set_namespace_(cg->namespace_());
 	}
 }
 
 void secure_netsec::congroup_to_endpoint(std::shared_ptr<draiosproto::container_group> cg,
-					 k8s_endpoint* k8s_endpoint)
+										 k8s_endpoint* k8s_endpoint)
 {
 	auto tag = cg->tags().find("kubernetes.endpoints.name");
 
