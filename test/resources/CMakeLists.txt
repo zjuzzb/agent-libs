@@ -90,18 +90,16 @@ if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
         COMPONENT tests
     )
 
-    add_executable(execve32 execve.c)
-    install(
-        TARGETS execve32
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/test/resources
-        COMPONENT tests
-    )
-    if("${ARCH}" STREQUAL "s390x")
-        set_target_properties(execve32 PROPERTIES COMPILE_FLAGS "-m31" LINK_FLAGS "-m31")
-    else("${ARCH}" STREQUAL "s390x")
+    # Build 32-bit tests only for architectures where that is supported
+    if(DEFINED DRAIOS_ARCH_BUILD_32_BIT_TESTS)
+        add_executable(execve32 execve.c)
+        install(
+            TARGETS execve32
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/test/resources
+            COMPONENT tests
+        )
         set_target_properties(execve32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
-    endif("${ARCH}" STREQUAL "s390x")
-
+    endif(DEFINED DRAIOS_ARCH_BUILD_32_BIT_TESTS)
 endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
 
 install(

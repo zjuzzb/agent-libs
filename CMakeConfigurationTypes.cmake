@@ -16,16 +16,21 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;Release;DebugInternal;ReleaseInternal;Debug
 #set(DRAIOS_FEATURE_FLAGS "-DPPM_ENABLE_SENTINEL")
 set(CMAKE_COMMON_FLAGS "-Wall -ggdb ${DRAIOS_FEATURE_FLAGS}")
 if(BUILD_WARNINGS_AS_ERRORS)
-	set(CMAKE_SUPPRESSED_WARNINGS "-Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare -Wno-type-limits -Wno-parentheses -Wno-array-bounds -Wno-deprecated-declarations -Wno-stringop-truncation -Wno-stringop-overflow -Wno-deprecated-copy -Wno-restrict -Wno-class-memaccess")
-	set(CMAKE_COMMON_FLAGS "${CMAKE_COMMON_FLAGS} -Wextra -Werror ${CMAKE_SUPPRESSED_WARNINGS}")
+	set(CMAKE_COMMON_WARNING_FLAGS "-Wextra -Werror -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare -Wno-type-limits -Wno-parentheses -Wno-array-bounds -Wno-deprecated-declarations -Wno-stringop-truncation -Wno-stringop-overflow -Wno-deprecated-copy -Wno-restrict -Wno-implicit-fallthrough -Wno-format-truncation -Wno-unused-function")
+	set(CMAKE_C_WARNING_FLAGS "${CMAKE_COMMON_WARNING_FLAGS}")
+	set(CMAKE_CXX_WARNING_FLAGS "${CMAKE_COMMON_WARNING_FLAGS} -Wno-class-memaccess")
+else()
+	set(CMAKE_C_WARNING_FLAGS "")
+	set(CMAKE_CXX_WARNING_FLAGS "")
 endif()
 
 set(DRAIOS_DEBUG_FLAGS "-D_DEBUG")
-set(CMAKE_C_FLAGS "-std=gnu11 ${CMAKE_COMMON_FLAGS}")
-set(CMAKE_CXX_FLAGS "--std=c++0x ${CMAKE_COMMON_FLAGS}")
+set(CMAKE_C_FLAGS "-std=gnu11 ${CMAKE_COMMON_FLAGS} ${CMAKE_C_WARNING_FLAGS}")
+set(CMAKE_CXX_FLAGS "--std=c++0x ${CMAKE_COMMON_FLAGS} ${CMAKE_CXX_WARNING_FLAGS}")
 
 # Setup release build
 # Add "-fno-inline -fno-omit-frame-pointer" for perf
+# Remove "-O3" for build on small VMs
 set(CMAKE_C_FLAGS_RELEASE "-O3 -fno-strict-aliasing -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fno-strict-aliasing -DNDEBUG")
 

@@ -2,18 +2,32 @@ set(PYTHON27 "Python-2.7.16")
 set(PYTHON38 "Python-3.8.3")
 set(PYTHON37 "Python-3.7.3")
 set(PYTHON36 "Python-3.6.9")
-set(PYTHON35 "Python-3.5.9")
 
-add_custom_target(
-    sdchecks-deps ALL
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/deps
-            ${CMAKE_CURRENT_BINARY_DIR}/deps2.7
-            ${CMAKE_CURRENT_BINARY_DIR}/deps3
-            ${CMAKE_CURRENT_BINARY_DIR}/deps3.5
-            ${CMAKE_CURRENT_BINARY_DIR}/deps3.6
-            ${CMAKE_CURRENT_BINARY_DIR}/deps3.7
-            ${CMAKE_CURRENT_BINARY_DIR}/deps3.8
-)
+# Skip support for Python3.5 on platforms that do not support it.
+if(DEFINED DRAIOS_ARCH_SUPPORTS_PYTHON_35)
+    set(PYTHON35 "Python-3.5.9")
+    add_custom_target(
+        sdchecks-deps ALL
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/deps
+                ${CMAKE_CURRENT_BINARY_DIR}/deps2.7
+                ${CMAKE_CURRENT_BINARY_DIR}/deps3
+                ${CMAKE_CURRENT_BINARY_DIR}/deps3.5
+                ${CMAKE_CURRENT_BINARY_DIR}/deps3.6
+                ${CMAKE_CURRENT_BINARY_DIR}/deps3.7
+                ${CMAKE_CURRENT_BINARY_DIR}/deps3.8
+    )
+else()
+    add_custom_target(
+        sdchecks-deps ALL
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/deps
+                ${CMAKE_CURRENT_BINARY_DIR}/deps2.7
+                ${CMAKE_CURRENT_BINARY_DIR}/deps3
+                ${CMAKE_CURRENT_BINARY_DIR}/deps3.6
+                ${CMAKE_CURRENT_BINARY_DIR}/deps3.7
+                ${CMAKE_CURRENT_BINARY_DIR}/deps3.8
+    )
+endif()
+
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/deps
     COMMAND
@@ -47,17 +61,22 @@ add_custom_command(
         ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-3.txt
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-3.txt
 )
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/deps3.5
-    COMMAND
-        ${CMAKE_COMMAND} -E env
-        PATH="${DRAIOS_DEPENDENCIES_DIR}/postgresql-9.4.15/target/bin:$ENV{PATH}"
-        ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON35}/target/bin/python3
-        ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON35}/target/bin/pip3 install -I
-        --target=${CMAKE_CURRENT_BINARY_DIR}/deps3.5 --upgrade -r
-        ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-3.5.txt
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-3.5.txt
-)
+
+# Skip support for Python3.5 on platforms that do not support it.
+if(DEFINED DRAIOS_ARCH_SUPPORTS_PYTHON_35)
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/deps3.5
+        COMMAND
+            ${CMAKE_COMMAND} -E env
+            PATH="${DRAIOS_DEPENDENCIES_DIR}/postgresql-9.4.15/target/bin:$ENV{PATH}"
+            ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON35}/target/bin/python3
+            ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON35}/target/bin/pip3 install -I
+            --target=${CMAKE_CURRENT_BINARY_DIR}/deps3.5 --upgrade -r
+            ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-3.5.txt
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-3.5.txt
+    )
+endif()
+
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/deps3.6
     COMMAND
@@ -177,35 +196,37 @@ install(
     PATTERN *.so
 )
 
-install(
-    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.5/
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.5
-    COMPONENT agent-slim
-    FILES_MATCHING
-    PATTERN *.py
-)
-install(
-    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.5/
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.5
-    COMPONENT agent-slim
-    FILES_MATCHING
-    PATTERN *.pth
-)
-install(
-    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.5/
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.5
-    COMPONENT agent-slim
-    FILES_MATCHING
-    PATTERN *.so
-)
-
-install(
-    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.5/psycopg2/
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.5/psycopg2/
-    COMPONENT agent-slim
-    FILES_MATCHING
-    PATTERN *.so*
-)
+# Skip support for Python3.5 on platforms that do not support it.
+if(DEFINED DRAIOS_ARCH_SUPPORTS_PYTHON_35)
+    install(
+        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.5/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.5
+        COMPONENT agent-slim
+        FILES_MATCHING
+        PATTERN *.py
+    )
+    install(
+        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.5/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.5
+        COMPONENT agent-slim
+        FILES_MATCHING
+        PATTERN *.pth
+    )
+    install(
+        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.5/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.5
+        COMPONENT agent-slim
+        FILES_MATCHING
+        PATTERN *.so
+    )
+    install(
+        DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.5/psycopg2/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps3.5/psycopg2/
+        COMPONENT agent-slim
+        FILES_MATCHING
+        PATTERN *.so*
+    )
+endif()
 
 install(
     DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps3.6/
