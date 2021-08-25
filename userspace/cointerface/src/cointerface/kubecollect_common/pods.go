@@ -278,8 +278,8 @@ func ParseContainerState(cs CState) string {
 	}
 }
 
-func FindContainerSpec(cName string, podSpec *v1.PodSpec) *v1.Container {
-	for _, container := range podSpec.Containers {
+func FindContainerSpec(cName string, containers *[]v1.Container) *v1.Container {
+	for _, container := range *containers {
 		if cName == container.Name {
 			return &container
 		}
@@ -336,8 +336,14 @@ func AddContainerStatusesToPod(k8sPod *draiosproto.K8SPod, pod *v1.Pod) {
 	}
 
 	for _, containerStatus := range pod.Status.ContainerStatuses {
-		containerSpec := FindContainerSpec(containerStatus.Name, &pod.Spec)
+		containerSpec := FindContainerSpec(containerStatus.Name, &pod.Spec.Containers)
 		cStatus := CreateContainerStatus(&containerStatus, containerSpec)
 		k8sPod.PodStatus.Containers = append(k8sPod.PodStatus.Containers, cStatus)
-    }
+	}
+
+	for _, containerStatus := range pod.Status.InitContainerStatuses {
+		containerSpec := FindContainerSpec(containerStatus.Name, &pod.Spec.InitContainers)
+		cStatus := CreateContainerStatus(&containerStatus, containerSpec)
+		k8sPod.PodStatus.InitContainers = append(k8sPod.PodStatus.InitContainers, cStatus)
+	}
 }

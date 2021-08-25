@@ -14,6 +14,7 @@ extern type_config<bool> c_k8s_send_all_containers;
 
 namespace legacy_k8s
 {
+
 static const uint64_t LOG_INTERVAL_NSEC = 10 * 60 * NSECS_PER_SEC;
 using uid_set_t = std::unordered_set<std::pair<std::string, std::string>>;
 void fill_common(const uid_set_t& parents,

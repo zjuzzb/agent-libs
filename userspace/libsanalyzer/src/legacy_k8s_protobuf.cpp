@@ -355,7 +355,8 @@ const unordered_map<string, setter_t<k8s_resourcequota>> K8sResource<k8s_resourc
 template<>
 const string K8sResource<k8s_storage_class>::tag_prefix = "kubernetes.storageclass.";
 template<>
-const unordered_map<string, setter_t<k8s_storage_class>> K8sResource<k8s_storage_class>::metrics({});
+const unordered_map<string, setter_t<k8s_storage_class>> K8sResource<k8s_storage_class>::metrics(
+    {});
 
 template<>
 void export_k8s_object<draiosproto::pod_status_count>(const uid_set_t& parents,
@@ -415,6 +416,16 @@ void enrich_k8s_object<draiosproto::k8s_pod>(const draiosproto::container_group*
 				}
 			}
 		}
+
+		if (c_k8s_send_all_containers.get_value())
+		{
+			for (const auto& init_container : src_pod.pod_status().init_containers())
+			{
+				draiosproto::k8s_container_status_details* out_container =
+				    obj->mutable_pod_status()->mutable_init_containers()->Add();
+				out_container->CopyFrom(init_container);
+			}
+		}
 	}
 
 	auto it = src->internal_tags().find(infrastructure_state::POD_STATUS_REASON_TAG);
@@ -442,7 +453,7 @@ void enrich_k8s_object<draiosproto::k8s_pod>(const draiosproto::container_group*
 
 	// Fill volumes
 	obj->mutable_volumes()->CopyFrom(src->k8s_object().pod().volumes());
-}
+}  // namespace legacy_k8s
 
 template<>
 void enrich_k8s_object<draiosproto::k8s_persistentvolumeclaim>(
@@ -473,10 +484,9 @@ void enrich_k8s_object<draiosproto::k8s_persistentvolume>(const draiosproto::con
 	obj->mutable_status()->set_phase(src->k8s_object().pv().status().phase());
 }
 
-
 template<>
 void enrich_k8s_object<draiosproto::k8s_storage_class>(const draiosproto::container_group* src,
-							  draiosproto::k8s_storage_class * obj)
+                                                       draiosproto::k8s_storage_class* obj)
 {
 	obj->set_created(src->k8s_object().sc().created());
 	obj->set_provisioner(src->k8s_object().sc().provisioner());

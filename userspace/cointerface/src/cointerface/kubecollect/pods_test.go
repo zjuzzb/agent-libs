@@ -106,6 +106,14 @@ func createPodCopies() (*v1.Pod, *v1.Pod) {
 						Running: nil,
 						Terminated: nil,
 					},
+					LastTerminationState: v1.ContainerState{
+                        Waiting: nil,
+                        Running: nil,
+                        Terminated: &v1.ContainerStateTerminated{
+                            Reason: "foo",
+                            Message: "we need a terminated container for the ut",
+                        },
+                    },
 					RestartCount: 0,
 				},
 				v1.ContainerStatus{
@@ -118,6 +126,14 @@ func createPodCopies() (*v1.Pod, *v1.Pod) {
 						Running: nil,
 						Terminated: nil,
 					},
+					LastTerminationState: v1.ContainerState{
+                        Waiting: nil,
+                        Running: nil,
+                        Terminated: &v1.ContainerStateTerminated{
+                            Reason: "foo",
+                            Message: "we need a terminated container for the ut",
+                        },
+                    },
 					RestartCount: 2,
 				},
 			},
@@ -423,5 +439,22 @@ func TestAddContainerStatusesToPod(t *testing.T) {
 		}
 
 		checkContainerResources(t, &pod.Spec.Containers[i].Resources, k8sPod.PodStatus.Containers[i])
+	}
+
+	AssertEqual(t, len(pod.Status.InitContainerStatuses), len(k8sPod.PodStatus.InitContainers))
+
+	for i := range pod.Status.InitContainerStatuses {
+		AssertEqual(t, pod.Status.InitContainerStatuses[i].Name, *k8sPod.PodStatus.InitContainers[i].Name)
+		AssertEqual(t, "waiting", *k8sPod.PodStatus.InitContainers[i].Status)
+		AssertEqual(t, pod.Status.InitContainerStatuses[i].State.Waiting.Reason, *k8sPod.PodStatus.InitContainers[i].StatusReason)
+		AssertEqual(t, pod.Status.InitContainerStatuses[i].LastTerminationState.Terminated.Reason, *k8sPod.PodStatus.InitContainers[i].LastTerminatedReason)
+		AssertEqual(t, uint32(pod.Status.InitContainerStatuses[i].RestartCount), *k8sPod.PodStatus.InitContainers[i].RestartCount)
+		if pod.Status.InitContainerStatuses[i].Ready {
+			AssertEqual(t, uint32(1), *k8sPod.PodStatus.InitContainers[i].StatusReady)
+		} else {
+			AssertEqual(t, uint32(0), *k8sPod.PodStatus.InitContainers[i].StatusReady)
+		}
+
+		checkContainerResources(t, &pod.Spec.InitContainers[i].Resources, k8sPod.PodStatus.InitContainers[i])
 	}
 }

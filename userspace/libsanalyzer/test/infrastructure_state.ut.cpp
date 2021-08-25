@@ -1424,6 +1424,17 @@ TEST_F(infrastructure_state_test, enrich_pod_containers)
 	draiosproto::k8s_container_status_details* container3 =
 	    cg.mutable_k8s_object()->mutable_pod()->mutable_pod_status()->mutable_containers()->Add();
 
+	draiosproto::k8s_container_status_details* init_container1 = cg.mutable_k8s_object()
+	                                                                 ->mutable_pod()
+	                                                                 ->mutable_pod_status()
+	                                                                 ->mutable_init_containers()
+	                                                                 ->Add();
+	draiosproto::k8s_container_status_details* init_container2 = cg.mutable_k8s_object()
+	                                                                 ->mutable_pod()
+	                                                                 ->mutable_pod_status()
+	                                                                 ->mutable_init_containers()
+	                                                                 ->Add();
+
 	container1->set_name("foo");
 	container1->set_id("bar");
 	container1->set_status("terminated");
@@ -1457,6 +1468,30 @@ TEST_F(infrastructure_state_test, enrich_pod_containers)
 	container3->set_limits_cpu_cores(1);
 	container3->set_requests_mem_bytes(4096);
 	container3->set_limits_mem_bytes(5194);
+
+	init_container1->set_name("boop");
+	init_container1->set_id("bao");
+	init_container1->set_status("terminated");
+	init_container1->set_status_reason("Error");
+	init_container1->set_last_terminated_reason("Error");
+	init_container1->set_status_ready(0);
+	init_container1->set_restart_count(4);
+	init_container1->set_requests_cpu_cores(0.3);
+	init_container1->set_limits_cpu_cores(0.4);
+	init_container1->set_requests_mem_bytes(1337);
+	init_container1->set_limits_mem_bytes(3096);
+
+	init_container2->set_name("boy");
+	init_container2->set_id("blu");
+	init_container2->set_status("waiting");
+	init_container2->set_status_reason("Deploying");
+	init_container2->set_last_terminated_reason("Config");
+	init_container2->set_status_ready(0);
+	init_container2->set_restart_count(7);
+	init_container2->set_requests_cpu_cores(0.4);
+	init_container2->set_limits_cpu_cores(0.8);
+	init_container2->set_requests_mem_bytes(8192);
+	init_container2->set_limits_mem_bytes(8192);
 
 	legacy_k8s::enrich_k8s_object(&cg, &pod1);
 
@@ -1512,7 +1547,7 @@ TEST_F(infrastructure_state_test, storageclass)
 	cg->mutable_tags()->insert({"kubernetes.storageclass.label.key1", "value1"});
 	cg->mutable_tags()->insert({"kubernetes.storageclass.name", "scname"});
 	cg->set_namespace_("scnamespace");
-	auto *inner_sc = cg->mutable_k8s_object()->mutable_sc();
+	auto* inner_sc = cg->mutable_k8s_object()->mutable_sc();
 	inner_sc->set_created(100);
 	inner_sc->set_provisioner("scprovisioner");
 	inner_sc->set_reclaim_policy(draiosproto::STORAGE_CLASS_RECLAIM_POLICY_DELETE);
@@ -1520,7 +1555,9 @@ TEST_F(infrastructure_state_test, storageclass)
 
 	is.handle_event(&cue);
 
-	legacy_k8s::export_k8s_object(is.m_parents[{"k8s_storageclass", "scuid"}], is.m_state[{"k8s_storageclass", "scuid"}].get(), &sc);
+	legacy_k8s::export_k8s_object(is.m_parents[{"k8s_storageclass", "scuid"}],
+	                              is.m_state[{"k8s_storageclass", "scuid"}].get(),
+	                              &sc);
 
 	draiosproto::k8s_storage_class expected;
 	expected.CopyFrom(cg->k8s_object().sc());
@@ -1539,7 +1576,7 @@ TEST_F(infrastructure_state_test, storageclass)
 	p.set_value("value1");
 	exp_common->mutable_labels()->Add(std::move(p));
 
-	if(!google::protobuf::util::MessageDifferencer::Equals(sc, expected))
+	if (!google::protobuf::util::MessageDifferencer::Equals(sc, expected))
 	{
 		std::string expected_json;
 		std::string actual_json;
