@@ -54,6 +54,28 @@ fi
 
 create_makefiles()
 {
+	# Determine architecture-specific CMAKE options
+	ARCH=$(uname -m)
+	if [[ "$ARCH" == "s390x" ]]; then
+		CMAKE_ARCH_SPECIFIC_OPTIONS=(
+			"-DDRAIOS_ARCH_YAML_VERSION="5.2"
+			"-DDRAIOS_ARCH_LUA_VERSION="5.2.4"
+		)
+	elif [[ "$ARCH" == "aarch64" ]]; then
+		CMAKE_ARCH_SPECIFIC_OPTIONS=(
+			"-DDRAIOS_ARCH_YAML_VERSION="5.2"
+			"-DDRAIOS_ARCH_LUA_VERSION="5.2.4"
+		)
+	else
+		CMAKE_ARCH_SPECIFIC_OPTIONS=(
+			"-DDRAIOS_ARCH_YAML_VERSION=5.1"
+			"-DDRAIOS_ARCH_LUA_VERSION=2.0.3"
+			"-DDRAIOS_ARCH_SUPPORTS_LUAJIT=TRUE"
+			"-DDRAIOS_ARCH_SUPPORTS_PYTHON_35=TRUE"
+			"-DDRAIOS_ARCH_BUILD_32_BIT_TESTS=TRUE"
+		)
+	fi
+
 	pushd $BUILD_DIR
 	cmake \
 		-DCMAKE_BUILD_TYPE=$VARIANT \
@@ -74,6 +96,7 @@ create_makefiles()
 		-DRELOCATED_CHISELS=$RELOCATED_CHISELS \
 		-DLIBSINSP_DIR=$LIBSINSP_DIR \
 		-DLIBSCAP_DIR=$WORK_DIR/libscap-hayabusa \
+		${CMAKE_ARCH_SPECIFIC_OPTIONS[@]} \
 		$WORK_DIR/agent
 	popd
 }
