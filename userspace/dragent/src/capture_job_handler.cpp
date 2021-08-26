@@ -212,10 +212,10 @@ bool capture_job::start(sinsp* inspector,
 
 	if(m_timer_thread != nullptr)
 	{
-		m_deadline_timer = make_unique<TimerEvent<Callback>>([this]() {
-			log_debug("Capture duration reached.");
-			stop();
-			m_deadline_timer = nullptr;
+		m_deadline_timer = make_unique<TimerEvent<Callback>>([job_state]() {
+			job_state->log_debug("Capture duration reached.");
+			job_state->stop();
+			job_state->m_deadline_timer = nullptr;
 		});
 		m_timer_thread->schedule(m_deadline_timer.get(), m_duration_ns);
 	}
