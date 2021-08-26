@@ -2,7 +2,7 @@ FROM centos:6
 
 ARG max_parallelism=1
 
-ADD *.repo /etc/yum.repos.d/
+ADD CentOS-Base.repo CentOS-fasttrack.repo /etc/yum.repos.d/
 
 RUN yum install -y ca-certificates && \
     update-ca-trust force-enable && \

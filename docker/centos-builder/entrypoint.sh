@@ -37,6 +37,28 @@ rsync --delete -t -r --exclude=.git $CODE_DIR/agent-libs/ $WORK_DIR/agent-libs/
 
 configure_build()
 {
+    # Determine architecture-specific CMAKE options
+    ARCH=$(uname -m)
+    if [[ "$ARCH" == "s390x" ]]; then
+    	CMAKE_ARCH_SPECIFIC_OPTIONS=(
+    		"-DDRAIOS_ARCH_YAML_VERSION="5.2"
+    		"-DDRAIOS_ARCH_LUA_VERSION="5.2.4"
+    	)
+    elif [[ "$ARCH" == "aarch64" ]]; then
+    	CMAKE_ARCH_SPECIFIC_OPTIONS=(
+    		"-DDRAIOS_ARCH_YAML_VERSION="5.2"
+    		"-DDRAIOS_ARCH_LUA_VERSION="5.2.4"
+    	)
+    else
+    	CMAKE_ARCH_SPECIFIC_OPTIONS=(
+    		"-DDRAIOS_ARCH_YAML_VERSION=5.1"
+    		"-DDRAIOS_ARCH_LUA_VERSION=2.0.3"
+    		"-DDRAIOS_ARCH_SUPPORTS_LUAJIT=TRUE"
+    		"-DDRAIOS_ARCH_SUPPORTS_PYTHON_35=TRUE"
+    		"-DDRAIOS_ARCH_BUILD_32_BIT_TESTS=TRUE"
+    	)
+    fi
+
     mkdir -p $BUILD_DIR/$VARIANT
     pushd $BUILD_DIR/$VARIANT
     scl enable devtoolset-2 "$DEPENDENCIES_DIR/cmake-3.5.2/bin/cmake \
@@ -56,6 +78,7 @@ configure_build()
 		-DRELOCATED_CHISELS="ON" \
 		-DLIBSINSP_DIR=$WORK_DIR/agent-libs \
 		-DLIBSCAP_DIR=$WORK_DIR/agent-libs \
+		${CMAKE_ARCH_SPECIFIC_OPTIONS[@]} \
 		$WORK_DIR/agent"
     popd
 }

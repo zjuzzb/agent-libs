@@ -140,18 +140,17 @@ execute_process(
 )
 
 if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-    add_executable(test_helper_32 test_helper.cpp)
-    if("${ARCH}" STREQUAL "s390x")
-        set_target_properties(test_helper_32 PROPERTIES COMPILE_FLAGS "-m31" LINK_FLAGS "-m31")
-    else("${ARCH}" STREQUAL "s390x")
+    # Build 32-bit tests only for architectures where that is supported
+    if(DEFINED DRAIOS_ARCH_BUILD_32_BIT_TESTS)
+        add_executable(test_helper_32 test_helper.cpp)
         set_target_properties(test_helper_32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
-    endif("${ARCH}" STREQUAL "s390x")
-    install(
-        TARGETS test_helper_32
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-        COMPONENT tests
-    )
-    target_link_libraries(test_helper_32 pthread)
+        install(
+            TARGETS test_helper_32
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
+            COMPONENT tests
+        )
+        target_link_libraries(test_helper_32 pthread)
+    endif(DEFINED DRAIOS_ARCH_BUILD_32_BIT_TESTS)
 endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/captures)

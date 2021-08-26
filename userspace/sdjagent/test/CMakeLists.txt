@@ -14,6 +14,7 @@ if(JNI_FOUND)
     target_link_libraries(
         unit-test-sdjagent-jni sdjagentjni_static ${JAVA_JVM_LIBRARY}
         ${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
+        pthread
     )
 
     install(
