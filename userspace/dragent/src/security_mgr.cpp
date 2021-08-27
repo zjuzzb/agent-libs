@@ -1,17 +1,18 @@
 #ifndef CYGWING_AGENT
 
-#include <sstream>
-#include <string>
+#include "security_mgr.h"
 
-#include <google/protobuf/text_format.h>
-
-#include "sinsp_worker.h"
-#include "infrastructure_state.h"
 #include "common_logger.h"
 #include "configuration_manager.h"
-
+#include "infrastructure_state.h"
 #include "security_config.h"
-#include "security_mgr.h"
+#include "sinsp_evt_clone.h"
+#include "sinsp_worker.h"
+#include "sinsp_evt_delay_filter.h"
+#include <google/protobuf/text_format.h>
+
+#include <sstream>
+#include <string>
 
 // we get nlohmann jsons from falco k8s audit, while dragent dragent
 // generally uses the `jsoncpp' library
@@ -195,6 +196,15 @@ void security_mgr::init(sinsp *inspector,
                              errstr.c_str());
             }
 	}
+
+	m_delayed_evt_registry.reset(
+	    new sinsp_evt_clone_registry([this](gen_event* evt) { process_event_v2(evt); },
+	                                 [this](const gen_event* evt,
+	                                        const match_results_t& results,
+	                                        const sinsp_threadinfo* tinfo,
+	                                        const std::string* container_id_ptr)
+	                                 { process_results(evt, results, tinfo, container_id_ptr); },
+	                                 *m_inspector));
 
 	m_initialized = true;
 }
@@ -587,7 +597,6 @@ bool security_mgr::event_qualifies(sinsp_evt *evt)
 
 bool security_mgr::event_qualifies(json_event *evt)
 {
-
 	return true;
 }
 
@@ -663,7 +672,6 @@ bool security_mgr::should_evaluate_event(gen_event *evt,
 		{
 			container_id_ptr = &((*tinfo)->m_container_id);
 			evaluate_event = true;
-
 		}
 		break;
 	case ESRC_K8S_AUDIT:
@@ -683,7 +691,11 @@ void security_mgr::process_event(gen_event *evt)
 	uint64_t ts_ns = evt->get_ts();
 	perform_periodic_tasks(ts_ns);
 
-	return process_event_v2(evt);
+	process_event_v2(evt);
+	if (m_delayed_evt_registry != nullptr)
+	{
+		m_delayed_evt_registry->check_expired();
+	}
 }
 
 void security_mgr::process_event_v2(gen_event *evt)
@@ -727,34 +739,33 @@ void security_mgr::process_event_v2(gen_event *evt)
 	uint64_t ts_ns = evt->get_ts();
 
 	std::string *container_id_ptr = &m_empty_container_id;
-	sinsp_threadinfo *tinfo = NULL;
+	sinsp_threadinfo *tinfo = nullptr;
 
 	if (should_evaluate_event(evt, ts_ns, container_id_ptr, &tinfo))
 	{
-		std::list<security_rules::match_result> *results = NULL;
+		std::shared_ptr<std::list<security_rules::match_result>> results;
 
-		if(evt->get_source() == ESRC_SINSP)
+		if (evt->get_source() == ESRC_SINSP)
 		{
-			if(tinfo->m_pid != m_last_pid ||
-			   *container_id_ptr != m_last_container_id)
+			if (tinfo->m_pid != m_last_pid || *container_id_ptr != m_last_container_id)
 			{
 				m_last_security_rules_group =
-					m_loaded_policies->get_rules_group_for_container(*container_id_ptr);
+				    m_loaded_policies->get_rules_group_for_container(*container_id_ptr);
 			}
 			m_last_pid = tinfo->m_pid;
 			m_last_container_id = *container_id_ptr;
 
-			for (const auto &group : m_last_security_rules_group.get())
+			for (const auto& group : m_last_security_rules_group.get())
 			{
-				std::list<security_rules::match_result> *gresults;
+				std::list<security_rules::match_result>* gresults;
 
 				gresults = group->match_event(evt);
 
-				if(gresults)
+				if (gresults)
 				{
-					if(!results)
+					if (results == nullptr)
 					{
-						results = gresults;
+						results.reset(gresults);
 					}
 					else
 					{
@@ -766,25 +777,25 @@ void security_mgr::process_event_v2(gen_event *evt)
 		}
 		else if (evt->get_source() == ESRC_K8S_AUDIT)
 		{
-			json_event *j_evt = static_cast<json_event *>(evt);
+			json_event* j_evt = static_cast<json_event*>(evt);
 
-			for (const auto &group : m_loaded_policies->get_k8s_audit_security_rules())
+			for (const auto& group : m_loaded_policies->get_k8s_audit_security_rules())
 			{
 				// The scope must match the event
-				if(m_k8s_audit_infra_state.match_scope(j_evt,
-								       m_infra_state->get_k8s_cluster_name(),
-								       m_agent_tags,
-								       group->m_scope_predicates))
+				if (m_k8s_audit_infra_state.match_scope(j_evt,
+				                                        m_infra_state->get_k8s_cluster_name(),
+				                                        m_agent_tags,
+				                                        group->m_scope_predicates))
 				{
-					std::list<security_rules::match_result> *gresults;
+					std::list<security_rules::match_result>* gresults;
 
 					gresults = group->match_event(evt);
 
-					if(gresults)
+					if (gresults)
 					{
-						if(!results)
+						if (results == nullptr)
 						{
-							results = gresults;
+							results.reset(gresults);
 						}
 						else
 						{
@@ -797,51 +808,85 @@ void security_mgr::process_event_v2(gen_event *evt)
 		}
 		else
 		{
-			LOG_DEBUG("Found unexpected event type " + to_string(evt->get_source()) + ", not matching against any security rules groups");
+			LOG_DEBUG("Found unexpected event type " + to_string(evt->get_source()) +
+			          ", not matching against any security rules groups");
 		}
 
-		if(!results)
+		if (!results)
 		{
 			return;
 		}
 
-		// Take all actions for all results
-		for(auto &result : *results)
+		if (m_delayed_evt_registry->can_register(evt, container_id_ptr))
 		{
-			LOG_DEBUG("Taking action via policy: " + result.m_policy->name() +
-				  " with " + std::to_string(result.m_policy->actions().size()) +
-				  " actions, " + std::to_string(result.m_policy->v2actions().size()) +
-				  " v2actions. detail=" + result.m_detail.DebugString());
-
-			if(throttle_policy_event(ts_ns, (*container_id_ptr), result.m_policy->id(), result.m_policy->name()))
+			if ((sinsp_evt_delay_filter())
+			        .should_delay(container_id_ptr, *results, m_inspector->m_container_manager))
 			{
-				uint64_t policy_version = 2;
-
-				add_policy_event_metrics(result);
-
-				draiosproto::policy_event *event = create_policy_event(evt,
-										       (*container_id_ptr),
-										       tinfo,
-										       result.m_policy->id(),
-										       result.m_detail,
-										       policy_version);
-
-				// Not throttled--perform the actions associated
-				// with the policy. The actions will add their action
-				// results to the policy event as they complete.
-				m_actions.perform_actions(ts_ns,
-							  tinfo,
-							  result.m_policy->name(),
-							  result.m_policy->policy_type(),
-							  result.m_policy->actions(),
-							  result.m_policy->v2actions(),
-							  event);
+				if (m_delayed_evt_registry->register_event(*container_id_ptr,
+				                                           dynamic_cast<sinsp_evt&>(*evt),
+				                                           results))
+				{
+					LOG_INFO("delaying event till container (%s) info  is available",
+					         container_id_ptr->c_str());
+					return;
+				}
+				else
+				{
+					LOG_WARNING("not able to delay event for container %s",
+					            container_id_ptr->c_str());
+				}
 			}
 		}
 
-		delete results;
+		process_results(evt, results, tinfo, container_id_ptr);
 	}
 }
+
+// Take all actions for all results
+void security_mgr::process_results(const gen_event* evt,
+                                   const match_results_t& results,
+                                   const sinsp_threadinfo* tinfo,
+                                   const std::string* container_id_ptr)
+{
+	uint64_t ts_ns = evt->get_ts();
+	for (auto& result : *results)
+	{
+		LOG_DEBUG("Taking action via policy: " + result.m_policy->name() + " with " +
+		          std::to_string(result.m_policy->actions().size()) + " actions, " +
+		          std::to_string(result.m_policy->v2actions().size()) +
+		          " v2actions. detail=" + result.m_detail.DebugString());
+
+		if (throttle_policy_event(ts_ns,
+		                          (*container_id_ptr),
+		                          result.m_policy->id(),
+		                          result.m_policy->name()))
+		{
+			uint64_t policy_version = 2;
+
+			add_policy_event_metrics(result);
+
+			draiosproto::policy_event* event = create_policy_event(evt,
+			                                                       (*container_id_ptr),
+			                                                       tinfo,
+			                                                       result.m_policy->id(),
+			                                                       result.m_detail,
+			                                                       policy_version);
+
+			// Not throttled--perform the actions associated
+			// with the policy. The actions will add their action
+			// results to the policy event as they complete.
+			m_actions.perform_actions(ts_ns,
+			                          tinfo,
+			                          result.m_policy->name(),
+			                          result.m_policy->policy_type(),
+			                          result.m_policy->actions(),
+			                          result.m_policy->v2actions(),
+			                          event);
+		}
+	}
+}
+
+
 
 bool security_mgr::start_capture(uint64_t ts_ns,
 				 const string &policy,
@@ -947,7 +992,7 @@ void security_mgr::send_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::pol
 }
 
 bool security_mgr::throttle_policy_event(uint64_t ts_ns,
-					 std::string &container_id,
+					 const std::string &container_id,
 					 uint64_t policy_id,
 					 const std::string &policy_name)
 {
@@ -1049,9 +1094,9 @@ void security_mgr::add_policy_event_metrics(const security_rules::match_result &
 	m_metrics.incr_policy(res.m_policy->name());
 }
 
-draiosproto::policy_event * security_mgr::create_policy_event(gen_event *evt,
-							      std::string &container_id,
-							      sinsp_threadinfo *tinfo,
+draiosproto::policy_event * security_mgr::create_policy_event(const gen_event *evt,
+							      const std::string &container_id,
+							      const sinsp_threadinfo *tinfo,
 							      uint64_t policy_id,
 							      draiosproto::event_detail *details,
 							      uint64_t policy_version)
@@ -1085,7 +1130,7 @@ draiosproto::policy_event * security_mgr::create_policy_event(gen_event *evt,
 	{
 		if (event_source == ESRC_K8S_AUDIT)
 		{
-			json_event *j_evt = static_cast<json_event *>(evt);
+			const json_event *j_evt = dynamic_cast<const json_event *>(evt);
 			set_event_labels_k8s_audit(details, event, j_evt);
 		}
 		else
@@ -1096,9 +1141,9 @@ draiosproto::policy_event * security_mgr::create_policy_event(gen_event *evt,
 	return event;
 }
 
-draiosproto::policy_event * security_mgr::create_policy_event(gen_event *evt,
-							      std::string &container_id,
-							      sinsp_threadinfo *tinfo,
+draiosproto::policy_event * security_mgr::create_policy_event(const gen_event *evt,
+							      const std::string &container_id,
+							      const sinsp_threadinfo *tinfo,
 							      uint64_t policy_id,
 							      draiosproto::event_detail &details,
 							      uint64_t policy_version)
@@ -1133,7 +1178,7 @@ draiosproto::policy_event * security_mgr::create_policy_event(gen_event *evt,
 	{
 		if (event_source == ESRC_K8S_AUDIT)
 		{
-			json_event *j_evt = static_cast<json_event *>(evt);
+			const json_event *j_evt = dynamic_cast<const json_event *>(evt);
 			set_event_labels_k8s_audit(mdetails, event, j_evt);
 		}
 		else
@@ -1157,8 +1202,8 @@ void security_mgr::set_event_label(google::protobuf::Map<std::string, std::strin
 	}
 }
 
-void security_mgr::set_event_labels(std::string &container_id,
-									sinsp_threadinfo *tinfo,
+void security_mgr::set_event_labels(const std::string &container_id,
+									const sinsp_threadinfo *tinfo,
 									draiosproto::policy_event *event)
 {
 	// Process Name
@@ -1247,14 +1292,14 @@ void security_mgr::set_event_labels(std::string &container_id,
 	}
 }
 
-void security_mgr::set_event_labels_k8s_audit(draiosproto::event_detail *details, draiosproto::policy_event *event, json_event *j_evt)
+void security_mgr::set_event_labels_k8s_audit(draiosproto::event_detail *details, draiosproto::policy_event *event, const json_event *j_evt)
 {
 	if (!m_infra_state->get_k8s_cluster_name().empty())
 	{
 		(*event->mutable_event_labels())["kubernetes.cluster.name"] = m_infra_state->get_k8s_cluster_name();
 	}
 
-	const nlohmann::json& j = j_evt->jevt();
+	const nlohmann::json& j = const_cast<json_event *>(j_evt)->jevt();
 
 	try
 	{
@@ -1398,6 +1443,10 @@ void security_mgr::on_new_container(const sinsp_container_info& container_info, 
 	{
 		std::list<std::string> ids{container_info.m_id};
 		m_loaded_policies->match_policy_scopes(m_infra_state, ids);
+	}
+	if (m_delayed_evt_registry != nullptr)
+	{
+		m_delayed_evt_registry->on_new_container(container_info);
 	}
 }
 

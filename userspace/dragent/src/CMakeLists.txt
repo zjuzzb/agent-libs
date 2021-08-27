@@ -84,6 +84,8 @@ list(
     security_compliance_run_message_handler.cpp
     security_mgr.cpp
     security_orchestrator_events_message_handler.cpp
+    sinsp_evt_clone.cpp
+    sinsp_evt_delay_filter.cpp
     protobuf_metric_serializer.cpp
     protocol_handler.cpp
     security_policies_v2_message_handler.cpp

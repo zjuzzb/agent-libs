@@ -128,7 +128,7 @@ private:
 		scap_evt& evt = *sevt.m_pevt;
 		// If ts isn't set by the client, then this will be set in generate
 		evt.ts = 0;
-		evt.len = 0;
+		evt.len = sizeof (scap_evt);
 		evt.type = PPME_SYSCALL_OPEN_E;
 	}
 

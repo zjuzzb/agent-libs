@@ -67,7 +67,7 @@ add_executable(
     timer_thread.ut.cpp
     webpage_rest_request_handler.ut.cpp
     ../src/sinsp_factory.cpp
-)
+    delayed_sinsp_evt.ut.cpp)
 
 target_link_libraries(
     unit-test-dragent
