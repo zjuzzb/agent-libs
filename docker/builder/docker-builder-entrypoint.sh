@@ -6,6 +6,22 @@ CODE_DIR=/draios #location where input code is
 WORK_DIR=/code #location where code is copied to prevent edits conflicting with ongonig build
 BUILD_DIR=$WORK_DIR/agent/build
 
+ARCH=`uname -m`
+
+if [[ "$ARCH" == "s390x" ]]; then
+	DOCKERFILE=Dockerfile.s390x
+	USE_LOCAL_DOCKERFILE=true
+	USE_SCL_FOR_BOOTSTRAP_AGENT=false
+elif [[ "$ARCH" == "aarch64" ]]; then
+	DOCKERFILE=Dockerfile.aarch64
+	USE_LOCAL_DOCKERFILE=true
+	USE_SCL_FOR_BOOTSTRAP=false
+else
+	DOCKERFILE=Dockerfile
+	USE_LOCAL_DOCKERFILE=false
+	USE_SCL_FOR_BOOTSTRAP=true
+fi
+
 if [[ -z $MAKE_JOBS ]]; then
   export MAKE_JOBS=1
 fi
@@ -32,50 +48,47 @@ if [[ -z $USE_OLD_DIRS ]]; then
   export USE_OLD_DIRS="false"
 fi
 
-rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/agent/ $WORK_DIR/agent/
+if [ "$USE_LOCAL_DOCKERFILE" = true ]; then
+    rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude $DOCKERFILE $CODE_DIR/agent/ $WORK_DIR/agent/
+else
+    rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/agent/ $WORK_DIR/agent/
+fi
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' $CODE_DIR/oss-falco/ $WORK_DIR/oss-falco/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/protorepo/ $WORK_DIR/protorepo/
 # still need this for a few things (namely sysdig-probe-loader)
-rsync --delete -t -r --exclude=.git $CODE_DIR/libscap/ $WORK_DIR/libscap/
-if [ "$USE_OLD_DIRS" = true ]
-then
-	rsync --delete -t -r --exclude=.git $CODE_DIR/libsinsp/ $WORK_DIR/libsinsp/
+rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/libscap/ $WORK_DIR/libscap/
+if [ "$USE_OLD_DIRS" = true ]; then
+	rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/libsinsp/ $WORK_DIR/libsinsp/
 else
-	rsync --delete -t -r --exclude=.git $CODE_DIR/agent-libs/ $WORK_DIR/agent-libs/
+	rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build $CODE_DIR/agent-libs/ $WORK_DIR/agent-libs/
 fi
 
-if [[ "`uname -m`" == "s390x" ]]; then
-	DOCKERFILE=Dockerfile.s390x
-	bootstrap_agent() {
-		local build_target="${1:-"release"}"
+bootstrap_agent() {
+	local build_target="${1:-"release"}"
 
-		cd $WORK_DIR/agent
-		./bootstrap-agent
-		# bootstrap-agent creates a folder for every build target, so
-		# we just switch into the appropriate folder
-		cd "$BUILD_DIR/${build_target}"
-	}
-else
-	DOCKERFILE=Dockerfile
-	bootstrap_agent() {
-		local build_target="${1:-"release"}"
-
-		cd $WORK_DIR/agent
+	cd $WORK_DIR/agent
+	if [ "$USE_SCL_FOR_BOOTSTRAP" = true ]; then
 		scl enable devtoolset-2 ./bootstrap-agent
-		# bootstrap-agent creates a folder for every build target, so
-		# we just switch into the appropriate folder
-		cd "$BUILD_DIR/${build_target}"
-	}
-fi
+	else
+		./bootstrap-agent
+	fi
+	# bootstrap-agent creates a folder for every build target, so
+	# we just switch into the appropriate folder
+	cd "$BUILD_DIR/${build_target}"
+}
 
 build_docker_image()
 {
 	cp docker/local/docker-entrypoint.sh "$1"
-	if [ -n "$AGENT_VERSION" ]
-	then
-		awk -v "new_ver=$AGENT_VERSION" '/^ENV AGENT_VERSION/ { $3 = new_ver } { print }' < docker/local/$DOCKERFILE > "$1/$DOCKERFILE"
+	if [ "$USE_LOCAL_DOCKERFILE" = true ]; then
+		DOCKERFILE_DIR=/code/agent/docker/local
 	else
-	        cp docker/local/$DOCKERFILE "$1/$DOCKERFILE"
+		DOCKERFILE_DIR=docker/local
+	fi
+	if [ -n "$AGENT_VERSION" ]; then
+		awk -v "new_ver=$AGENT_VERSION" '/^ENV AGENT_VERSION/ { $3 = new_ver } { print }' < $DOCKERFILE_DIR/$DOCKERFILE > "$1/$DOCKERFILE"
+	else
+	        cp $DOCKERFILE_DIR/$DOCKERFILE "$1/$DOCKERFILE"
 	fi
 	cd "$1"
 	docker build -t $AGENT_IMAGE -f $DOCKERFILE --pull .
@@ -187,7 +200,13 @@ build_release()
 build_sysdig()
 {
 	cd $WORK_DIR/agent
-	scl enable devtoolset-2 ./bootstrap-sysdig
+
+	if [ "$USE_SCL_FOR_BOOTSTRAP" = true ]; then
+		scl enable devtoolset-2 ./bootstrap-sysdig
+	else
+		./bootstrap-sysdig
+	fi
+
 	cd $WORK_DIR/sysdig/build/release
 	make -j$MAKE_JOBS package
 	cp $WORK_DIR/sysdig/docker/local/* /out
@@ -200,8 +219,13 @@ build_sysdig()
 build_sysdig_release()
 {
 	cd $WORK_DIR/agent
+
 	mkdir -p /out/sysdig-{debug,release}
-	scl enable devtoolset-2 ./bootstrap-sysdig
+	if [ "$USE_SCL_FOR_BOOTSTRAP" = true ]; then
+		scl enable devtoolset-2 ./bootstrap-sysdig
+	else
+		./bootstrap-sysdig
+	fi
 
 	cd $WORK_DIR/sysdig/build/release
 	make -j$MAKE_JOBS package

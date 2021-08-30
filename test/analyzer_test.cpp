@@ -75,8 +75,11 @@ TEST_F(sys_call_test, analyzer_errors)
 		close(3333);         // generates EBADF
 		close(3333);
 		close(3333);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnonnull"
 		execve(pnt2, pnt1, pnt1);  // generates EFAULT
 		execve(pnt2, pnt1, pnt1);
+#pragma GCC diagnostic pop
 		accept(3333, NULL, NULL);  // generates EBADF
 
 		// We use a random call to tee to signal that we're done
