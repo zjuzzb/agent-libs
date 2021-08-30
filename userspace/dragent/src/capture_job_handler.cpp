@@ -215,7 +215,6 @@ bool capture_job::start(sinsp* inspector,
 		m_deadline_timer = make_unique<TimerEvent<Callback>>([job_state]() {
 			job_state->log_debug("Capture duration reached.");
 			job_state->stop();
-			job_state->m_deadline_timer = nullptr;
 		});
 		m_timer_thread->schedule(m_deadline_timer.get(), m_duration_ns);
 	}
@@ -303,6 +302,9 @@ bool capture_job::start(sinsp* inspector,
 void capture_job::stop(bool remove_unsent_job)
 {
 	Poco::ScopedLock<Poco::Mutex> lck(m_mtx);
+
+	// cancel the deadline timer so we're not called again
+	m_deadline_timer = nullptr;
 
 	if (m_state != ST_INPROGRESS)
 	{
