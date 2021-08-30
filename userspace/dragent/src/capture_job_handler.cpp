@@ -309,7 +309,14 @@ void capture_job::stop(bool remove_unsent_job)
 		return;
 	}
 
-	log_information("stopped. captured events: " + NumberFormatter::format(m_capture->get_num_events()));
+	if(m_capture)
+	{
+		log_information("stopped. captured events: " + NumberFormatter::format(m_capture->get_num_events()));
+	}
+	else
+	{
+		log_information("capture already stopped");
+	}
 
 	if (m_past_duration_ns != 0 && m_memdumper == NULL)
 	{
