@@ -104,6 +104,7 @@ add_executable(
     sysdig/userspace/libsinsp/cgroup_list_counter.ut.cpp
     sysdig/userspace/libsinsp/logger.ut.cpp
     sysdig/userspace/libsinsp/user_event_logger.ut.cpp
+    timer_thread.cpp
 )
 
 target_link_libraries(
