@@ -12,6 +12,7 @@ COMMON_LOGGER();
 
 TEST(timer_thread, schedule)
 {
+	dragent::running_state::instance().reset_for_test();
 	Poco::Mutex mtx;
 	Poco::Condition cond;
 	mtx.lock();
