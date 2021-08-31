@@ -1,0 +1,113 @@
+FROM centos:8.2.2004
+
+ARG max_parallelism=1
+
+RUN dnf clean packages
+
+RUN dnf -y install ca-certificates && \
+    update-ca-trust force-enable && \
+    curl -o /etc/pki/ca-trust/source/anchors/lets-encrypt-r3-cross-signed.pem https://letsencrypt.org/certs/lets-encrypt-r3-cross-signed.pem && \
+    update-ca-trust extract
+
+RUN dnf --showduplicates list libstdc++-devel
+RUN dnf -y install \
+	libstdc++-devel
+
+RUN dnf -y install \
+	createrepo \
+	expect \
+	gcc \
+	gcc-c++ \
+	git \
+	make \
+	pkg-config \
+	rpm-build \
+	unzip \
+	wget \
+	tar \
+	autoconf \
+	automake \
+	libtool \
+	valgrind \
+	libffi-devel \
+	zlib-devel \
+	readline-devel \
+	rsync \
+	rsync-daemon \
+	openssl-devel
+
+RUN dnf -y groupinstall "Development Tools"
+
+RUN dnf -y install dnf-plugins-core
+RUN dnf config-manager --enable PowerTools
+
+RUN dnf --showduplicates list glibc-devel
+RUN dnf -y install \
+	glibc-devel
+
+RUN dnf -y install \
+	glibc \
+	glibc-common \
+	glibc-headers \
+	libstdc++-devel \
+	libstdc++
+
+RUN dnf -y install \
+	libstdc++-static
+
+RUN dnf -y install \
+	glibc-static
+
+RUN dnf -y install \
+	java-1.8.0-openjdk \
+	java-1.8.0-openjdk-devel
+
+RUN dnf -y install \
+	python2 \
+	python2-devel
+
+RUN dnf -y install \
+	python3 \
+	python3-devel
+
+RUN dnf -y install \
+	elfutils-libelf-devel
+
+RUN dnf -y install golang
+
+RUN pip2 install protobuf
+
+RUN pip3 install certifi
+
+RUN dnf config-manager \
+	--add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+
+RUN dnf -y install \
+	docker-ce --nobest
+
+RUN yum clean all
+
+RUN ln -s /bin/pip2 /bin/pip
+RUN ln -s /bin/python2 /bin/python
+
+# For sonar to work, set JAVA_HOME and add it to the PATH
+ENV JAVA_HOME=/usr/lib/jvm/jre-openjdk \
+    PATH="$JAVA_HOME/bin:${PATH}"
+
+RUN mkdir -p /boot
+
+RUN mkdir -p /code/agent
+ADD bootstrap-agent /code/agent/
+
+RUN mkdir -p /code/oss-falco/userspace/engine/lua
+# ADD https://raw.githubusercontent.com/draios/oss-falco/master/scripts/build-lpeg.sh /code/oss-falco/scripts/build-lpeg.sh
+ADD build-lpeg-with-so.sh /code/oss-falco/scripts/build-lpeg.sh
+RUN chmod +x /code/oss-falco/scripts/build-lpeg.sh
+
+RUN cd /code/agent && ONLY_DEPS=true MAKE_JOBS=${max_parallelism} ./bootstrap-agent && rm -fr dependencies/*.tar* dependencies/*.zip ./bootstrap-agent && ln -s docker/builder/bootstrap-agent
+
+ADD docker-builder-entrypoint.sh /
+
+VOLUME [ "/code/agent/build", "/code/sysdig/build", "/out", "/root/.cache" ]
+
+ENTRYPOINT [ "/docker-builder-entrypoint.sh" ]
