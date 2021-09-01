@@ -12,7 +12,7 @@ ENV HOME /root
 USER root
 HEALTHCHECK CMD /bin/true
 
-RUN microdnf update
+RUN microdnf update && microdnf clean all
 ADD get-rpm-url.py /bin
 
 {% macro install_nodeps() %}
