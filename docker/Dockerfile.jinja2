@@ -148,7 +148,8 @@ RUN JAVA_VERSION_MAJOR=8 \
 # 4.9 is required for Debian Jessie+backports and 4.8 is required for Debian Jessie.
 RUN rm -rf /usr/bin/gcc && ln -s /usr/bin/gcc-5 /usr/bin/gcc \
  && ln -s /usr/bin/gcc /usr/bin/gcc-4.9 \
- && ln -s /usr/bin/gcc /usr/bin/gcc-4.8
+ && ln -s /usr/bin/gcc /usr/bin/gcc-4.8 \
+ && (cd /usr/bin ; for i in *-8 ; do ln -s $i ${i%-8}-10 ; done)
 
         RUN rm -rf /usr/bin/clang \
          && rm -rf /usr/bin/llc \
