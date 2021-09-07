@@ -27,6 +27,7 @@ const (
 	Waiting CState = iota
 	Running
 	Terminated
+	Unknown
 )
 
 func ParseContainerID(containerID string) (string, error) {
@@ -65,9 +66,11 @@ func GetContainerState(cs v1.ContainerState) CState {
 		return Terminated
 	} else if cs.Running != nil {
 		return Running
+	} else if cs.Waiting != nil {
+		return Waiting
 	}
-	// Waiting is the default if all three are nil
-	return Waiting
+
+	return Unknown
 }
 
 func AddPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
@@ -269,7 +272,7 @@ func GetVolumes(pod *v1.Pod) *draiosproto.K8SPod {
 }
 
 func ParseContainerState(cs CState) string {
-	if cs == Waiting {
+	if cs == Waiting || cs == Unknown {
 		return "waiting"
 	} else if cs == Terminated {
 		return "terminated"
