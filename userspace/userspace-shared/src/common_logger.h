@@ -198,10 +198,13 @@ extern std::unique_ptr<common_logger> g_log;
 #define COMMON_LOGGER(__optional_prefix) \
 	static const log_sink s_log_sink(__FILE__, "" __optional_prefix)
 
-#define LOG_AT_PRIO_(priority, ...)                                                              \
-	do                                                                                       \
-	{                                                                                        \
-		s_log_sink.log((priority), __LINE__, __VA_ARGS__);                               \
+#define LOG_AT_PRIO_(priority, ...)                            \
+	do                                                         \
+	{                                                          \
+		if (s_log_sink.is_enabled(priority))                   \
+		{                                                      \
+			s_log_sink.log((priority), __LINE__, __VA_ARGS__); \
+		}                                                      \
 	} while (false)
 
 #define LOG_WILL_EMIT(priority) (s_log_sink.is_enabled(priority))
