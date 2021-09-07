@@ -2718,15 +2718,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				// With promscrape enabled we'll always select target processes
 				// Without promscrape we only select processes for which we don't have
 				// unexpired prometheus metrics yet.
-				if (promscrape::c_use_promscrape.get_value() ||
-				    (m_app_checks_proxy && (!m_app_checks_proxy->have_prometheus_metrics_for_pid(
-				                               our_tinfo->m_pid,
-				                               m_prev_flush_time_ns / ONE_SECOND_IN_NS))))
+				if (collect_prometheus_metrics_for_pid(our_tinfo->m_pid, m_prev_flush_time_ns / ONE_SECOND_IN_NS))
 				{
 					match_prom_checks(our_tinfo,
-					                  our_tinfo->get_main_thread_info(),
-					                  prom_procs,
-					                  true);
+							our_tinfo->get_main_thread_info(),
+							prom_procs,
+							true);
 				}
 			}
 
@@ -2809,6 +2806,20 @@ void sinsp_analyzer::mounted_fs_request(const tracer_emitter& proc_trc,
 	m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
 }
 
+bool sinsp_analyzer::collect_prometheus_metrics_for_pid(uint64_t pid, uint64_t flush_time_sec)
+{
+	if (!m_prom_conf.prom_sd())
+	{
+		if (promscrape::c_use_promscrape.get_value() ||
+			(m_app_checks_proxy &&
+			!m_app_checks_proxy->have_prometheus_metrics_for_pid(pid, flush_time_sec)))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 bool sinsp_analyzer::aggregate_processes_into_programs(sinsp_threadinfo& sinsp_tinfo,
 						       const sinsp_evt* evt,
 						       const uint64_t sample_duration,
@@ -2888,6 +2899,12 @@ bool sinsp_analyzer::aggregate_processes_into_programs(sinsp_threadinfo& sinsp_t
 		}
 		main_tinfo->compute_program_hash();
 		main_tinfo->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
+
+		//App check matches look for command arguments as well.
+		//So resetting the app_checks to be done again.
+		main_tinfo->set_init_app_check(false);
+		main_tinfo->app_check_procs().clear();
+		LOG_DEBUG("Reset app check procs for %ld, size %ld", main_tinfo->m_tid, main_tinfo->app_check_procs().size());
 	}
 
 #ifndef CYGWING_AGENT
@@ -3130,21 +3147,24 @@ bool sinsp_analyzer::aggregate_processes_into_programs(sinsp_threadinfo& sinsp_t
 			// Mark all processes that already have metrics so that they will be selected
 			// for emission if app_checks_always_send or a process_filter is enabled
 			if (m_app_checks_proxy->have_metrics_for_pid(tinfo.m_pid) ||
-				(promscrape::c_use_promscrape.get_value() &&
+				(!m_prom_conf.prom_sd() && promscrape::c_use_promscrape.get_value() &&
 				m_promscrape->pid_has_metrics(tinfo.m_pid)))
 			{
-				tinfo.set_has_metrics();
+				mtinfo->set_has_metrics();
 			}
 			const auto& custom_checks = mtinfo->get_proc_config().app_checks();
-			vector<app_process> app_checks;
-
-			match_checks_list(&tinfo, mtinfo, custom_checks, app_checks, "env");
-			// Ignore the global list if we found custom checks
-			if (app_checks.empty())
+			if (!tinfo.init_app_check())
 			{
-				match_checks_list(&tinfo, mtinfo, m_app_checks, app_checks, "global list");
+				match_checks_list(&tinfo, mtinfo, custom_checks, "env");
+				// Ignore the global list if we found custom checks
+				if (tinfo.app_check_procs().empty())
+				{
+					match_checks_list(&tinfo, mtinfo, m_app_checks, "global list");
+				}
+				tinfo.set_init_app_check(true);
+				LOG_DEBUG("Initialized app check procs for %ld, size %ld", tinfo.m_tid, tinfo.app_check_procs().size());
 			}
-			for (auto& appcheck : app_checks)
+			for (auto& appcheck : tinfo.app_check_procs())
 			{
 				if (m_app_checks_proxy->have_app_check_metrics_for_pid(tinfo.m_pid,
 																	   flush_time,
@@ -3159,7 +3179,7 @@ bool sinsp_analyzer::aggregate_processes_into_programs(sinsp_threadinfo& sinsp_t
 				}
 				else
 				{
-					app_checks_processes.push_back(move(appcheck));
+					app_checks_processes.push_back(appcheck);
 				}
 			}
 		}
@@ -3171,9 +3191,7 @@ bool sinsp_analyzer::aggregate_processes_into_programs(sinsp_threadinfo& sinsp_t
 		// With promscrape enabled we'll always select target processes
 		// Without promscrape we only select processes for which we don't have
 		// unexpired prometheus metrics yet.
-		if (promscrape::c_use_promscrape.get_value() ||
-			(m_app_checks_proxy &&
-			 !m_app_checks_proxy->have_prometheus_metrics_for_pid(tinfo.m_pid, flush_time)))
+		if (collect_prometheus_metrics_for_pid(tinfo.m_pid, flush_time))
 		{
 			match_prom_checks(&tinfo, mtinfo, prom_procs, false);
 		}
@@ -7638,7 +7656,6 @@ void sinsp_analyzer::match_prom_checks(const thread_analyzer_info* tinfo,
 void sinsp_analyzer::match_checks_list(thread_analyzer_info* tinfo,
                                        thread_analyzer_info* mtinfo,
                                        const vector<app_check>& checks,
-                                       vector<app_process>& app_checks_processes,
                                        const char* location)
 {
 	for (const auto& check : checks)
@@ -7736,14 +7753,14 @@ void sinsp_analyzer::match_checks_list(thread_analyzer_info* tinfo,
 			}
 #endif  // CYGWING_AGENT
 
-			app_checks_processes.emplace_back(check, tinfo);
+			tinfo->app_check_procs().emplace_back(check, tinfo);
 			mtinfo->set_found_app_check(check);
 
 			if (conf_vals)
 			{
 				LOG_DEBUG("Adding mesos/marathon specific info to app check %s",
 				          check.name().c_str());
-				app_checks_processes.back().set_conf_vals(conf_vals);
+				tinfo->app_check_procs().back().set_conf_vals(conf_vals);
 			}
 
 			// Keep looking for all other app-checks that might match

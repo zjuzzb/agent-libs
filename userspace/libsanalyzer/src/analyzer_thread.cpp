@@ -115,6 +115,7 @@ thread_analyzer_info::thread_analyzer_info(sinsp* inspector, sinsp_analyzer* ana
       m_analyzer(analyzer),
       m_tap(nullptr),
       m_procinfo(nullptr),
+      m_init_app_check(false),
       m_prom_check_found(false),
       m_has_metrics(false),
       m_last_port_scan(time_point_t::min()),

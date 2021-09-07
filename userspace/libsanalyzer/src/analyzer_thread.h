@@ -337,6 +337,32 @@ public:
 		return analyzer_thread;
 	}
 
+	/**
+	 * Return whether the process is already determined as
+	 * an app check process or not.
+	 */
+	bool init_app_check() const
+	{
+		return m_init_app_check;
+	}
+
+	/**
+	 * Set whether the process has been already determined as
+	 * an app check process or not.
+	 */
+	void set_init_app_check(bool do_init)
+	{
+		m_init_app_check = do_init;
+	}
+
+	/**
+	 * Return the list of app_checks identified for this process.
+	 */
+	std::vector<app_process>& app_check_procs()
+	{
+		return m_app_check_procs;
+	}
+
 private:
 	static const uint32_t RESCAN_PORT_INTERVAL_SECS = 20;
 	using time_point_t = std::chrono::time_point<std::chrono::steady_clock>;
@@ -344,6 +370,8 @@ private:
 	mutable std::unique_ptr<std::set<uint16_t>> m_listening_ports;
 	mutable std::set<uint16_t> m_procfs_found_ports;
 	std::set<std::string> m_app_checks_found;
+	std::vector<app_process> m_app_check_procs;
+	bool m_init_app_check;
 	bool m_prom_check_found;
 	bool m_has_metrics;
 	mutable time_point_t m_last_port_scan;

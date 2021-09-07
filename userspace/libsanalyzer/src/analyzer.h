@@ -938,6 +938,12 @@ public:
 	 */
 	void init_cpu_profiler();
 
+	/**
+	 * Check if prometheus metrics needs to be collected for a pid.
+	 * Supported only for promscrape_v1 and app_check based prometheus collection.
+	 */
+	bool collect_prometheus_metrics_for_pid(uint64_t pid, uint64_t flush_time_sec);
+
 	void set_delegation(bool deleg, const google::protobuf::RepeatedPtrField<std::string> &nodes, bool deleg_fail);
 
 	VISIBILITY_PRIVATE
@@ -1104,7 +1110,6 @@ public:
 	void match_checks_list(thread_analyzer_info* tinfo,
 	                       thread_analyzer_info* mtinfo,
 	                       const std::vector<app_check>& checks,
-	                       std::vector<app_process>& app_checks_processes,
 	                       const char* location);
 	std::vector<long> get_n_tracepoint_diff();
 
