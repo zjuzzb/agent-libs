@@ -506,7 +506,10 @@ void security_mgr::request_load_policies_v2(const draiosproto::policies_v2 &poli
 
 void security_mgr::request_reload_policies_v2()
 {
-	load_policies_v2_async();
+	if(m_policies_v2_msg != nullptr)
+	{
+		load_policies_v2_async();
+	}
 }
 
 bool security_mgr::wait_load_policies_v2(uint32_t secs)
