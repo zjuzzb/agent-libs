@@ -62,11 +62,11 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 			)
 		}
 
-		var oldState kubecollect_common.CState = kubecollect_common.Waiting
+		var oldState = kubecollect_common.Waiting
 		for _, oldC := range oldContainers {
 			if oldC.Name == c.Name {
 				oldState = kubecollect_common.GetContainerState(oldC.State)
-				break;
+				break
 			}
 		}
 

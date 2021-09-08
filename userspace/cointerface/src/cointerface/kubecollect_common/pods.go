@@ -24,10 +24,10 @@ var containerIDRegex = regexp.MustCompile("^([a-z0-9-]+)://([0-9a-fA-F]{12})[0-9
 
 type CState int
 const (
-	Waiting CState = iota
+	Unknown CState = iota
+	Waiting
 	Running
 	Terminated
-	Unknown
 )
 
 func ParseContainerID(containerID string) (string, error) {
@@ -40,7 +40,7 @@ func ParseContainerID(containerID string) (string, error) {
 	// <dockershortcontainerid>
 	// <rktpodid>:<rktappname>
 	// so here we are doing this conversion
-	matches := containerIDRegex.FindStringSubmatch(containerID);
+	matches := containerIDRegex.FindStringSubmatch(containerID)
 	if matches != nil {
 		// matches[0] is the whole ID,
 		// matches[1] is the scheme (e.g. "docker")
