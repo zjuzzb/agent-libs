@@ -233,7 +233,8 @@ type_config<std::vector<std::string>>::ptr infrastructure_state::c_k8s_allow_lis
 		 "k8s_resourcequota",
 		 "k8s_service",
 		 "k8s_statefulset",
-		 "container"},
+		 "container",
+		 "k8s_networkpolicy"},
 		"List of k8s types that the agent will handle",
 		"k8s_allow_list_kinds"
 		).hidden()
@@ -1444,11 +1445,11 @@ void infrastructure_state::add_ip_mappings(cg_ptr_t cg)
 	auto cg_kind = cg->uid().kind();
 	if (feature_manager::instance().get_enabled(NETWORK_TOPOLOGY))
 	{
-		if (
-			cg_kind == "k8s_endpoints" ||
-				cg_kind == "k8s_namespace" ||
-				cg_kind == "k8s_service" ||
-				cg_kind == "container")
+		if (cg_kind == "k8s_endpoints" ||
+		    cg_kind == "k8s_namespace" ||
+		    cg_kind == "k8s_service" ||
+		    cg_kind == "container" ||
+		    cg_kind == "k8s_networkpolicy")
 		{
 			m_analyzer.add_cg_to_network_topology(cg);
 		}
@@ -2969,6 +2970,10 @@ void infrastructure_state::emit(const draiosproto::container_group* cg,
 	else if (kind == "k8s_storageclass")
 	{
 		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_storage_classes());
+	}
+	else if(kind == "k8s_networkpolicy")
+	{
+		// skip
 	}
 	else
 	{

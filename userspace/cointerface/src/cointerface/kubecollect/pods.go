@@ -361,7 +361,8 @@ func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1m
 }
 
 func startPodsSInformer(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
-	var getTerm bool = false
+
+	var getTerm = false
 	if opts.GetTerminatedPodsEnabled()  {
 		getTerm = true
 	}
@@ -373,6 +374,10 @@ func startPodsSInformer(ctx context.Context, opts *sdc_internal.OrchestratorEven
 		wg.Done()
 	}()
 }
+
+type delegatedInformer func(stopCh <-chan struct{})
+
+var delegatedInformers []delegatedInformer
 
 func podInfManagerLoop(ctx context.Context, getTerm bool, kubeClient kubeclient.Interface) {
 	deleg := kubecollect_common.IsDelegated()
@@ -392,6 +397,15 @@ func podInfManagerLoop(ctx context.Context, getTerm bool, kubeClient kubeclient.
 			infWg.Done()
 		}()
 
+		for _, informer := range delegatedInformers {
+			infWg.Add(1)
+			inf := informer
+			go func() {
+				inf(infCtx.Done())
+				infWg.Done()
+			}()
+		}
+
 		var restart bool = false
 		for ; !restart; {
 			select {
@@ -403,6 +417,8 @@ func podInfManagerLoop(ctx context.Context, getTerm bool, kubeClient kubeclient.
 			case d, ok := <-delegChan:
 				if !ok {
 					log.Warn("PodInfManager: delegation channel closed")
+					cancelInf()
+					infWg.Wait()
 					return
 				}
 				log.Debugf("PodInfManager: delegation channel sent deleg=%v", d)

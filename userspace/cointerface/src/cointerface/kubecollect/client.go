@@ -59,6 +59,8 @@ func startInformers(
 			StartNamespacesSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "nodes":
 			startNodesSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
+		case "networkpolicies": // placed before pods to register as a delegate
+			StartNetworkPoliciesSInformer(ctx, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "pods":
 			startPodsSInformer(ctx, opts, kubeClient, wg, kubecollect_common.InformerChannel)
 		case "replicasets":

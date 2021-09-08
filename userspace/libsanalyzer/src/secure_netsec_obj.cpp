@@ -27,6 +27,10 @@ bool k8s_cluster_communication::add_cronjob(const std::string &key, k8s_cronjob&
 	return add_map_entry_unique<k8s_cronjob_map, k8s_cronjob>(m_cronjobs, key, cj);
 }
 
+bool k8s_cluster_communication::add_knp(const string &key, k8s_knp& knp) {
+	return add_map_entry_unique(m_knps, key, knp);
+}
+
 void k8s_cluster_communication::add_job_to_cronjob(const string &cronjob_uid,
 			const string &job_uid)
 {
@@ -147,6 +151,7 @@ void k8s_cluster_communication::serialize_protobuf(
 	serialize_map_to_protobuf(m_endpoints, cluster->mutable_endpoints());
 	serialize_map_to_protobuf(m_namespaces, cluster->mutable_namespaces());
 	serialize_map_to_protobuf(m_services, cluster->mutable_services());
+	serialize_map_to_protobuf(m_knps, cluster->mutable_knps());
 
 	serialize_cronjob_jobs();
 	serialize_map_to_protobuf(m_cronjobs, cluster->mutable_cronjobs());
@@ -205,9 +210,8 @@ void k8s_cluster_communication::serialize_protobuf_v2(secure::K8SClusterCommunic
     serialize_map_to_protobuf(m_endpoints, cluster->mutable_endpoints());
     serialize_map_to_protobuf(m_namespaces, cluster->mutable_namespaces());
     serialize_map_to_protobuf(m_services, cluster->mutable_services());
+	serialize_map_to_protobuf(m_knps, cluster->mutable_knps());
 }
-
-
 
 void k8s_communication::serialize_protobuf(secure::K8SCommunication *c)
 {

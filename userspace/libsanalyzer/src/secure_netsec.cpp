@@ -164,6 +164,7 @@ void secure_netsec::clear_after_flush(uint64_t ts)
 	fetch_cgs("k8s_namespace");
 	fetch_cgs("k8s_service");
 	fetch_cgs("k8s_cronjob");
+	fetch_cgs("k8s_networkpolicy");
 }
 
 // Fetching cgs from infrastructure_state and adding them to the
@@ -768,6 +769,12 @@ bool secure_netsec::add_cg(std::shared_ptr<draiosproto::container_group> cg)
 			m_netsec_v2->on_container(cg);
 		}
 	}
+	else if (kind == "k8s_networkpolicy")
+	{
+		secure::K8SNetworkPolicy knp;
+		congroup_to_networkpolicy(cg, &knp);
+		is_new_entry = m_k8s_cluster_communication.add_knp(uid, knp);
+	}
 
 	// TODO as a future optimization, a new entry could already be
 	// emitted into the protobuf
@@ -824,6 +831,30 @@ void secure_netsec::congroup_to_endpoint(std::shared_ptr<draiosproto::container_
 		for (const auto& cg_port : cg->ports())
 		{
 			subset->add_ports(cg_port.port());
+		}
+	}
+}
+
+void secure_netsec::congroup_to_networkpolicy(std::shared_ptr<draiosproto::container_group> cg,
+											  secure::K8SNetworkPolicy *k8s_networkpolicy)
+{
+	const auto& name_iter = cg->tags().find("kubernetes.networkpolicy.name");
+
+	if (name_iter != cg->tags().end())
+	{
+		auto meta = k8s_networkpolicy->mutable_metadata();
+		congroup_to_metadata(cg, meta);
+		meta->set_name(name_iter->second);
+		meta->set_kind("k8s_networkpolicy");
+
+		const auto& spec_iter = cg->internal_tags().find("kubernetes.networkpolicy.spec");
+		if (spec_iter != cg->internal_tags().end()) {
+			k8s_networkpolicy->set_spec(spec_iter->second);
+		}
+
+		const auto& ver_iter = cg->tags().find("kubernetes.networkpolicy.version");
+		if (ver_iter != cg->tags().end()) {
+			k8s_networkpolicy->set_version(ver_iter->second);
 		}
 	}
 }

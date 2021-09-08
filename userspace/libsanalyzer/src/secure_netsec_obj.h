@@ -247,6 +247,13 @@ typedef std::unordered_map<ipv4tuple, std::unique_ptr<k8s_communication>, ip4t_h
 //   3. Endpoints/Services/Namespaces
 struct k8s_cluster_communication
 {
+private:
+
+	using k8s_knp = secure::K8SNetworkPolicy;
+	using  k8s_knp_map= std::unordered_map<std::string, std::unique_ptr<secure::K8SNetworkPolicy>>;
+
+public:
+
 	static type_config<bool> c_network_topology_skip_host_activity;
 
 	k8s_communication_map* get_ingresses()
@@ -270,6 +277,7 @@ struct k8s_cluster_communication
 		m_endpoints.clear();
 		m_services.clear();
 		m_namespaces.clear();
+		m_knps.clear();
 	}
 
 	// returns if there's at least one connection
@@ -337,6 +345,7 @@ struct k8s_cluster_communication
 	bool add_service(const std::string &key, k8s_service& s);
 	bool add_namespace(const std::string &key, k8s_namespace& n);
 	bool add_cronjob(const std::string &key, k8s_cronjob& cj);
+	bool add_knp(const std::string &key, k8s_knp& knp);
 
 	void serialize_protobuf(secure::K8SClusterCommunication*& cluster);
     void serialize_protobuf_v2(secure::K8SClusterCommunication*& cluster);
@@ -350,6 +359,7 @@ private:
 	k8s_endpoint_map      m_endpoints;
 	k8s_service_map       m_services;
 	k8s_namespace_map     m_namespaces;
+	k8s_knp_map           m_knps;
 
 	bool has_communication_resolved(k8s_communication_map& cset,
 					ipv4tuple tuple)

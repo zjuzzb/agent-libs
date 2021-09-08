@@ -140,6 +140,9 @@ private:
 	void congroup_to_cronjob(std::shared_ptr<draiosproto::container_group> cg,
 							 k8s_cronjob *k8s_cronjob);
 
+	void congroup_to_networkpolicy(std::shared_ptr<draiosproto::container_group> cg,
+								   secure::K8SNetworkPolicy *k8s_networkpolicy);
+
 	bool insert_or_update_communication(ipv4tuple tuple, const k8s_communication& k8s_comm);
 	bool insert_or_update_pod_owner(const k8s_pod_owner& pod_owner);
 
