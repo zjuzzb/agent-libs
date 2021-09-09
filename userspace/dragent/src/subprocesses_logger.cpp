@@ -387,7 +387,7 @@ void k8s_parser::operator()(const string& data)
 	else
 	{
 		assert(false);
-		g_log->log_check_component_priority("Cointerface, unparsable log message: " + data,
+		g_log->log_check_component_priority(m_process_name + ", unparsable log message: " + data,
 						Poco::Message::PRIO_CRITICAL, m_file_priority, m_console_priority);
 	}
 }

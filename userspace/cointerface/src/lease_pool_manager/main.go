@@ -10,6 +10,7 @@ import (
 	"github.com/wojas/genericr"
 	"k8s.io/klog/v2"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -86,14 +87,11 @@ func createKlogLogger() genericr.Logger {
 		bytes, err := json.Marshal(LogMsg{
 			Pid:     os.Getpid(),
 			Level:   "debug", // Level is always 0 (maybe a bug?), therefore send DEBUG to dragent
-			Message: fmt.Sprintf("[leaderelection] %s", e.Message),
+			Message: fmt.Sprintf("[leaderelection] %s", strings.Trim(e.Message, "\n ")),
 		})
 
-		endl := "\n"
-		bytes = append(bytes, endl...)
-
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Could not format log message: %s\n", err)
+			fmt.Fprintln(os.Stderr, "Could not format log message: %s", err)
 		}
 
 		fmt.Fprintln(os.Stderr, string(bytes))
