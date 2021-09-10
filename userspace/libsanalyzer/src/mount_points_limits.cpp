@@ -1,5 +1,6 @@
 #include "mount_points_limits.h"
 #include "common_logger.h"
+#include "sinsp.h"
 
 COMMON_LOGGER();
 

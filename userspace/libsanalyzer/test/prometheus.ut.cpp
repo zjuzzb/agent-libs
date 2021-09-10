@@ -20,7 +20,7 @@ TEST(prometheus_conf_test, defaults)
 
 	// Test the different ways of accessing this param
 	ASSERT_EQ(1, get_prometheus_timeout_value());
-	ASSERT_EQ(1, prometheus_conf::c_prometheus_timeout->get_value());
+	ASSERT_EQ(1, promscrape_conf::c_promscrape_timeout->get_value());
 }
 
 TEST(prometheus_conf_test, override_defaults)
@@ -31,7 +31,7 @@ prometheus:
 )");
 
 	ASSERT_TRUE(config.loaded());
-	ASSERT_EQ(20, prometheus_conf::c_prometheus_timeout->get_value());
+	ASSERT_EQ(20, promscrape_conf::c_promscrape_timeout->get_value());
 }
 
 TEST(prometheus_conf_test, override_default_min)
@@ -42,7 +42,7 @@ prometheus:
   timeout: 0
 )");
 	ASSERT_TRUE(config.loaded());
-	ASSERT_EQ(1, prometheus_conf::c_prometheus_timeout->get_value());
+	ASSERT_EQ(1, promscrape_conf::c_promscrape_timeout->get_value());
 }
 
 TEST(prometheus_conf_test, override_default_max)
@@ -53,5 +53,5 @@ prometheus:
   timeout: 100
 )");
 	ASSERT_TRUE(config.loaded());
-	ASSERT_EQ(60, prometheus_conf::c_prometheus_timeout->get_value());
+	ASSERT_EQ(60, promscrape_conf::c_promscrape_timeout->get_value());
 }

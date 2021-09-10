@@ -38,6 +38,7 @@
 #include "procfs_parser.h"
 #include "promscrape.h"
 #include "promscrape_proxy.h"
+#include "prom_grpc.h"
 #include "protobuf_compression.h"
 #include "protobuf_metric_serializer.h"
 #include "rest_request_handler_factory.h"
@@ -1448,10 +1449,15 @@ int dragent_app::sdagent_main()
 				std::chrono::seconds s = cm->get_negotiated_aggregation_interval();
 				return (s != std::chrono::seconds::max()) ? s.count() : 10;
 			};
+
+			std::unique_ptr<prom_unarygrpc_iface> prom_unary_grpc(new prom_unarygrpc(promscrape::c_promscrape_sock.get_value()));
+			std::unique_ptr<prom_streamgrpc_iface> prom_stream_grpc(new prom_streamgrpc(promscrape::c_promscrape_sock.get_value()));
 			the_promscrape = std::make_shared<promscrape>(the_metric_limits,
-			                                              m_configuration.m_prom_conf,
+			                                              m_configuration.m_prom_conf.get_scrape_conf(),
 			                                              c_promscrape_thread.get_value(),
-			                                              interval_cb);
+			                                              interval_cb, 
+			                                              m_configuration.m_prom_conf.prom_sd() ? nullptr : std::move(prom_unary_grpc),
+			                                              std::move(prom_stream_grpc));
 			if (c_promscrape_thread.get_value())
 			{
 				m_promscrape_proxy = std::make_shared<promscrape_proxy>(the_promscrape, &m_protocol_handler, cm);

@@ -21,7 +21,7 @@
 #include "json_query.h"
 #include "label_limits.h"
 #include "libsanalyzer_exceptions.h"
-#include "metric_limits.h"
+#include "limits/metric_limits.h"
 #include "metrics.h"
 #include "null_statsd_emitter.h"
 #include "parsers.h"
@@ -76,7 +76,7 @@
 #include "mesos.h"
 #include "mesos_proto.h"
 #include "mesos_state.h"
-#include "metric_forwarding_configuration.h"
+#include "limits/metric_forwarding_configuration.h"
 #include "security_config.h"
 
 #include "container_events/containerd.h"
@@ -2694,7 +2694,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 			{
 				tracer_emitter prom_filter_procs_trc("prom_filter_procs", app_check_trc);
 				// Filter out duplicate prometheus scans
-				prom_process::filter_procs(prom_procs,
+				prometheus_conf::filter_prom_procs(prom_procs,
 				                           m_inspector->m_thread_manager->m_threadtable,
 				                           *(m_app_checks_proxy->get_all_metrics().lock()),
 				                           m_prev_flush_time_ns);

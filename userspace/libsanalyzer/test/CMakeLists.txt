@@ -7,6 +7,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/draiosproto)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/libpromscrape/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/test-helpers)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/test_helpers)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
@@ -56,12 +57,10 @@ list(
     process_emitter.ut.cpp
     process_manager.ut.cpp
     prometheus.ut.cpp
-    promscrape_cli.ut.cpp
-    promscrape.ut.cpp
     protocol_manager.ut.cpp
     protostate.ut.cpp
+	scope_resolver_iface.ut.cpp
     security_config.ut.cpp
-    scope_resolver_iface.ut.cpp
     scoped_sinsp_logger_capture.ut.cpp
     secure_audit.ut.cpp
     secure_audit_filter.ut.cpp

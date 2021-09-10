@@ -5,7 +5,7 @@
 #undef max
 #endif
 #include "label_limits.h"
-#include "metric_limits.h"
+#include "limits/metric_limits.h"
 #include "user_event.h"
 
 #include <limits>

@@ -30,6 +30,7 @@
 #include "thread_safe_container/blocking_queue.h"
 #include "timer_thread.h"
 
+
 // Generic interface to allow queuing of capture job requests
 class capture_job_queue_handler
 {

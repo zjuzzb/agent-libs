@@ -18,6 +18,7 @@
 #include "sinsp_int.h"
 #include "common_logger.h"
 #include "grpc_channel_registry.h"
+#include "stream_grpc_status.h"
 
 #include "sdc_internal.grpc.pb.h"
 #include "agent-prom.grpc.pb.h"
@@ -199,14 +200,6 @@ template <typename R, typename S, typename C, typename W, typename Q, typename V
 template <typename R, typename S, typename C, typename W, typename Q, typename V> W get_streaming_request_type(std::unique_ptr<grpc::ClientAsyncReader<R>> (S::*)(C, const W&, Q, V));
 template <typename R, typename S, typename C, typename W, typename Q, typename V> R get_streaming_response_type(std::unique_ptr<grpc::ClientAsyncReader<R>> (S::*)(C, const W&, Q, V));
 #define streaming_grpc_client(Method) streaming_grpc_client_<decltype(get_streaming_request_type(Method)), decltype(get_streaming_response_type(Method)), decltype(get_streaming_stub_type(Method)), Method>
-
-struct streaming_grpc {
-	enum Status {
-		OK = 0,
-		ERROR,
-		SHUTDOWN
-	};
-};
 
 template<class RequestMsg, class ResponseMsg, class Stub, std::unique_ptr<grpc::ClientAsyncReader<ResponseMsg>> (Stub::*Method)(grpc::ClientContext*, const RequestMsg&, grpc::CompletionQueue*, void *)>
 class streaming_grpc_client_

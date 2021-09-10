@@ -111,8 +111,6 @@ static const size_t CONTAINERS_PROTOS_TOP_LIMIT = 15;
 static const size_t HOST_PROTOS_LIMIT = 15;
 static const auto ASSUME_LONG_LIVING_PROCESS_UPTIME_S = 10;
 static const unsigned JMX_METRICS_HARD_LIMIT_PER_PROC = 1500;
-static const unsigned CUSTOM_METRICS_FILTERS_HARD_LIMIT = 100;
-static const unsigned CUSTOM_METRICS_CACHE_HARD_LIMIT = 100000;
 
 static const uint32_t DROP_SCHED_ANALYZER_THRESHOLD = 1000;
 

@@ -5,7 +5,7 @@
 #include "sys_call_test.h"
 #include "app_checks_proxy.h"
 #include "posix_queue.h"
-#include "metric_limits.h"
+#include "limits/metric_limits.h"
 #include "analyzer.h"
 #include "draios.pb.h"
 #include <fstream>

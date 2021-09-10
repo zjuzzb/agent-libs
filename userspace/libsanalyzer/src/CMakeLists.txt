@@ -11,6 +11,7 @@ include_directories(${LIBSCAP_INCLUDE_DIR})
 include_directories(${LIBSINSP_INCLUDE_DIRS})
 include_directories(${CHISEL_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/libpromscrape/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/command-line/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
@@ -178,8 +179,7 @@ set(SANALYZER_SOURCES
     delays.cpp
     environment_emitter.cpp
     env_hash.cpp
-    filter_limits.cpp
-    heap.c
+	  heap.c
     infrastructure_state.cpp
     internal_metrics.cpp
     jmx_emitter.cpp
@@ -192,9 +192,7 @@ set(SANALYZER_SOURCES
     memdumper.cpp
     memdump_logger.cpp
     mesos_proto.cpp
-    metric_forwarding_configuration.cpp
-    metric_limits.cpp
-    metric_store.cpp
+	  metric_store.cpp
     metrics.cpp
     mount_points_limits.cpp
     mounted_fs.cpp
@@ -214,13 +212,12 @@ set(SANALYZER_SOURCES
     process_manager.cpp
     procfs_parser.cpp
     procfs_scanner.cpp
+	  prom_grpc.cpp
     prometheus.cpp
-    promscrape_cli.cpp
-    promscrape.cpp
     protostate.cpp
+	  scope_resolver_iface.cpp
     security_config.cpp
     sched_analyzer.cpp
-    scope_resolver_iface.cpp
     scores.cpp
     sqlparser.cpp
     statsd_emitter.cpp
@@ -376,8 +373,8 @@ list(
     sanalyzer_common_link_libraries
     command-line
     userspace-shared
+		promscrape
     scap
-    draiosproto
     ${LUALIB}
     ${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/lib/.libs/libcurl.a
     ${DRAIOS_DEPENDENCIES_DIR}/c-ares-${DRAIOS_CARES_VERSION}/target/lib/libcares.a

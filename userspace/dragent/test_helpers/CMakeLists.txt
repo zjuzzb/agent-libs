@@ -1,4 +1,5 @@
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/libpromscrape/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/src)

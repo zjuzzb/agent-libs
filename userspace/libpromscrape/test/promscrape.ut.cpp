@@ -11,7 +11,7 @@ public:
 };
 
 static void set_sample_result(agent_promscrape::ScrapeResult *res,
-	int64_t job_id, int64_t timestamp, string sname, double value)
+	int64_t job_id, int64_t timestamp, std::string sname, double value)
 {
 	res->set_job_id(job_id);
 	res->set_timestamp(timestamp);
@@ -22,8 +22,8 @@ static void set_sample_result(agent_promscrape::ScrapeResult *res,
 
 TEST(promscrape_test, DISABLED_enter_and_output_result)
 {
-	prometheus_conf conf;
-	promscrape scrape(nullptr, conf, false, nullptr);
+	promscrape_conf conf;
+	promscrape scrape(nullptr, conf, false, nullptr, nullptr, nullptr);
 	agent_promscrape::ScrapeResult res1, res2;
 
 	set_sample_result(&res1, 101, 202, "test", 123.0);

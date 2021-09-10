@@ -1,5 +1,5 @@
 #include "internal_metrics.h"
-#include "metric_forwarding_configuration.h"
+#include "limits/metric_forwarding_configuration.h"
 
 
 #include <algorithm>

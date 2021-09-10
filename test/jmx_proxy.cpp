@@ -8,7 +8,7 @@
 #include "sys_call_test.h"
 #include "jmx_proxy.h"
 #include "posix_queue.h"
-#include "metric_limits.h"
+#include "limits/metric_limits.h"
 #include <fstream>
 #include "third-party/jsoncpp/json/json.h"
 #include <sched.h>

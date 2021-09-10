@@ -3,6 +3,7 @@ add_subdirectory(userspace/command-line/test)
 add_subdirectory(userspace/dragent/benchmark)
 add_subdirectory(userspace/dragent/test)
 add_subdirectory(userspace/fake-collector/src)
+add_subdirectory(userspace/libpromscrape/test)
 add_subdirectory(userspace/libsanalyzer/benchmark)
 add_subdirectory(userspace/libsanalyzer/test)
 add_subdirectory(userspace/libsanalyzer/tests)
@@ -19,6 +20,7 @@ add_custom_target(run-unit-tests
 	COMMAND $(MAKE) run-unit-test-testhelpers
 	COMMAND $(MAKE) run-unit-test-command-line
 	COMMAND $(MAKE) run-unit-test-dragent
+	COMMAND $(MAKE) run-unit-test-promscrape
 	COMMAND $(MAKE) run-unit-test-libsanalyzer
 	COMMAND $(MAKE) run-unit-test-librest
 	COMMAND $(MAKE) run-unit-test-userspace-shared
@@ -29,6 +31,7 @@ add_custom_target(valgrind-unit-tests
 	COMMAND $(MAKE) valgrind-unit-test-testhelpers
 	COMMAND $(MAKE) valgrind-unit-test-command-line
 	COMMAND $(MAKE) valgrind-unit-test-dragent
+	COMMAND $(MAKE) valgrind-unit-test-promscrape
 	COMMAND $(MAKE) valgrind-unit-test-libsanalyzer
 	COMMAND $(MAKE) valgrind-unit-test-librest
 	COMMAND $(MAKE) valgrind-unit-test-userspace-shared

@@ -15,6 +15,7 @@
 #include "statsite_proxy.h"
 #include "subprocess.h"
 #include "type_config.h"
+#include "sinsp_exception.h"
 
 #include <Poco/Thread.h>
 

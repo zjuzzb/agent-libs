@@ -44,7 +44,7 @@
 #include "k8s_limits.h"
 #include "k8s_user_event_message_handler.h"
 #include "label_limits.h"
-#include "metric_limits.h"
+#include "limits/metric_limits.h"
 #include "process_emitter.h"
 #include "procfs_scanner.h"
 #include "secure_audit_data_ready_handler.h"

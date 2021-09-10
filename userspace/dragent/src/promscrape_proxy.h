@@ -9,7 +9,7 @@
 #include <string>
 #include <time.h>
 #include <signal.h>
-#include <metric_limits.h>
+#include <limits/metric_limits.h>
 #include <prometheus.h>
 
 class promscrape_proxy : public dragent::running_state_runnable {

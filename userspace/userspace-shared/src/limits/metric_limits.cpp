@@ -1,8 +1,17 @@
 #include "metric_limits.h"
+#include "common_logger.h"
+#include "sinsp_exception.h"
+
 #include <fnmatch.h>
 #include <limits>
 #include <algorithm>
 
+namespace{
+COMMON_LOGGER();
+}
+
+const unsigned metric_limits::CUSTOM_METRICS_FILTERS_HARD_LIMIT = 100;
+const unsigned metric_limits::CUSTOM_METRICS_CACHE_HARD_LIMIT = 100000;
 
 metric_limits::metric_limits(filter_vec_t&& filters,
 			     uint32_t max_entries,
@@ -47,7 +56,7 @@ void metric_limits::sanitize_filters()
 		std::ostringstream os;
 		os << "Metric limits max cache size (" << cache_max_entries()
 			<< ") exceeded, reduced to " << CUSTOM_METRICS_CACHE_HARD_LIMIT;
-		g_logger.log(os.str(), sinsp_logger::SEV_WARNING);
+		LOG_WARNING("%s", os.str().c_str());
 	}
 }
 

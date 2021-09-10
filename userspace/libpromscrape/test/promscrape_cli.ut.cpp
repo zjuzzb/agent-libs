@@ -52,7 +52,7 @@ TEST(promscrape_cli_test, display_targets)
     promscrape_stats::stats_map_t stats_map;
     populate_stats_map("http://100.105.83.1:10055/metrics", stats_map);
 
-    string target = R"EOF(
+    std::string target = R"EOF(
         {
         "activeTargets": [
             {
@@ -76,7 +76,7 @@ TEST(promscrape_cli_test, display_targets)
     promscrape_cli::display_targets(data, stats_map, output);
 
     std::istringstream ss(output);
-    string exp_out;
+    std::string exp_out;
     std::getline(ss, exp_out, '\n');
     EXPECT_NE(exp_out.find("Pool: k8s-pods"), std::string::npos);
     std::getline(ss, exp_out, '\n');
@@ -95,7 +95,7 @@ TEST(promscrape_cli_test, display_target)
     const std::string url = "http://100.105.83.1:10055/metrics";
     populate_stats_map(url, stats_map);
 
-    string target = R"EOF(
+    std::string target = R"EOF(
         {
         "activeTargets": [
             {
@@ -162,7 +162,7 @@ TEST(promscrape_cli_test, display_brief_metadata)
     std::string output;
     promscrape_cli::display_target_metadata(url, mm_map, output, true);
     std::istringstream ss(output);
-    string exp_out;
+    std::string exp_out;
     std::getline(ss, exp_out, '\n');
     EXPECT_NE(exp_out.find("http://100.105.83.1:10055/metrics"), std::string::npos);
     std::getline(ss, exp_out, '\n');
@@ -215,7 +215,7 @@ TEST(promscrape_cli_test, display_full_metadata)
     std::string output;
     promscrape_cli::display_target_metadata(url, mm_map, output, false);
         std::istringstream ss(output);
-    string exp_out;
+    std::string exp_out;
     std::getline(ss, exp_out, '\n');
     EXPECT_NE(exp_out.find("http://100.105.83.1:10055/metrics"), std::string::npos);
     std::getline(ss, exp_out, '\n');

@@ -5,7 +5,7 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
-#include "metric_forwarding_configuration.h"
+#include "limits/metric_forwarding_configuration.h"
 #include "scoped_config.h"
 #include "statsd_emitter.h"
 #include "feature_manager.h"

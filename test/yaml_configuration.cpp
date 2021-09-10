@@ -3,7 +3,7 @@
 #include <configuration.h>
 #include "proc_config.h"
 #include "app_checks_proxy_interface.h"
-#include "metric_limits.h"
+#include "limits/metric_limits.h"
 
 using namespace std;
 

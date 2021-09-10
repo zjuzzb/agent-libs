@@ -5,10 +5,10 @@
 #include "analyzer_settings.h"
 #include "app_checks_proxy_interface.h"
 #include "draios.pb.h"
-#include "metric_forwarding_configuration.h"
-#include "metric_limits.h"
+#include "limits/metric_limits.h"
 #include "posix_queue.h"
 #include "proc_filter.h"
+#include "promscrape_conf.h"
 
 #include "third-party/jsoncpp/json/json.h"
 
@@ -30,12 +30,8 @@ public:
 	explicit prometheus_conf()
 	    : base("Prometheus autodetection"),
 	      m_log_errors(true),
-	      m_interval(-1),
 	      m_max_metrics_per_proc(-1),
-	      m_max_tags_per_metric(-1),
-	      m_histograms(false),
-	      m_ingest_raw(false),
-	      m_ingest_calculated(false)
+	      m_max_tags_per_metric(-1)
 	{
 		init_command_line();
 	}
@@ -59,6 +55,11 @@ public:
 	                    std::vector<prom_process>& prom_procs,
 	                    bool use_host_filter) const;
 
+	static void filter_prom_procs(std::vector<prom_process>& procs,
+	                         threadinfo_map_t& threadtable,
+	                         const app_checks_proxy_interface::raw_metric_map_t& app_metrics,
+	                         uint64_t now);
+
 private:
 	// Function to get called when a filtering rule matches in order to determine
 	// the configuration parameters for this process
@@ -70,24 +71,10 @@ private:
 	                     prom_params_t& out_params) const;
 
 public:
-	// Configuration parameter that controls prometheus timeout
-	static type_config<uint32_t>::ptr c_prometheus_timeout;
+	void to_json(Json::Value& ret) const;
 
 	bool log_errors() const { return m_log_errors; }
 	void set_log_errors(bool val) { m_log_errors = val; }
-
-	int interval() const { return m_interval; }
-	void set_interval(int val) { m_interval = val; }
-
-	/**
-	 * Returns the the maximum number of prometheus metrics to
-	 * forward.
-	 */
-	unsigned max_metrics() const
-	{
-		return static_cast<unsigned>(
-		    metric_forwarding_configuration::instance().prometheus_limit());
-	}
 
 	int max_metrics_per_proc() const { return m_max_metrics_per_proc; }
 	void set_max_metrics_per_proc(int val) { m_max_metrics_per_proc = val; }
@@ -95,19 +82,11 @@ public:
 	int max_tags_per_metric() const { return m_max_tags_per_metric; }
 	void set_max_tags_per_metric(int val) { m_max_tags_per_metric = val; }
 
-	bool histograms() const { return m_histograms; }
-	void set_histograms(bool val) { m_histograms = val; }
-
-	bool ingest_raw() const { return m_ingest_raw; }
-	void set_ingest_raw(bool val) { m_ingest_raw = val; }
-
-	bool ingest_calculated() const { return m_ingest_calculated; }
-	void set_ingest_calculated(bool val) { m_ingest_calculated = val; }
-
-	// Whether or not we do service discovery through prometheus (promscrape v2)
-	bool prom_sd() const;
-	int metric_expiration() const { return m_metric_expiration; }
-	void set_metric_expiration(int sec) { m_metric_expiration = sec; }
+	unsigned max_metrics() const { return m_scrape_conf.max_metrics(); }
+	
+	// Set whether or not we do service discovery through prometheus (promscrape v2)
+	bool prom_sd() const { return m_scrape_conf.prom_sd(); }
+	void set_prom_sd(bool val) { m_scrape_conf.set_prom_sd(val); }
 
 	void set_host_rules(std::vector<object_filter_config::filter_rule> rules)
 	{
@@ -127,77 +106,22 @@ public:
 	void show_config(std::string &output);
 	void init_command_line();
 
+	promscrape_conf get_scrape_conf() const
+	{ 
+		return m_scrape_conf;
+	}
+
+	void set_scrape_conf(const promscrape_conf&& conf)
+	{ 
+		m_scrape_conf = conf;
+	}
+
 private:
 	bool m_log_errors;
-	int m_interval;
 	int m_max_metrics_per_proc;
 	int m_max_tags_per_metric;
-	bool m_histograms;
-	bool m_ingest_raw;
-	bool m_ingest_calculated;
 	std::vector<object_filter_config::filter_rule> m_host_rules;
-	int m_metric_expiration;
-};
-
-class prom_process
-{
-public:
-	explicit prom_process(const std::string &name,
-	                      int pid,
-	                      int vpid,
-	                      const std::string &container_id,
-	                      const std::set<uint16_t>& ports,
-	                      const std::string &path,
-	                      const std::map<std::string, std::string>& options,
-	                      const std::map<std::string, std::string>& tags,
-	                      std::unordered_map<std::string, std::string>&& infra_tags)
-	    : m_name(name),
-	      m_pid(pid),
-	      m_vpid(vpid),
-	      m_container_id(container_id),
-	      m_ports(ports),
-	      m_path(path),
-	      m_options(options),
-	      m_tags(tags),
-	      m_infra_tags(std::move(infra_tags))
-	{
-	}
-
-	Json::Value to_json(const prometheus_conf& conf) const;
-
-	static void filter_procs(std::vector<prom_process>& procs,
-	                         threadinfo_map_t& threadtable,
-	                         const app_checks_proxy_interface::raw_metric_map_t& app_metrics,
-	                         uint64_t now);
-
-	inline bool operator==(const prom_process &rhs) const
-	{
-		return (m_pid == rhs.m_pid) && (m_vpid == rhs.m_vpid) &&
-			(m_ports == rhs.m_ports) && (m_name == rhs.m_name) &&
-			(m_container_id == rhs.m_container_id) &&
-			(m_path == rhs.m_path) && (m_options == rhs.m_options) &&
-			(m_tags == rhs.m_tags) && (m_infra_tags == rhs.m_infra_tags);
-	}
-
-	const std::string &name() const { return m_name; }
-	int pid() const { return m_pid; }
-	int vpid() const { return m_vpid; }
-	const std::string &container_id() const { return m_container_id; }
-	const std::set<uint16_t> &ports() const { return m_ports; }
-	const std::string &path() const { return m_path; }
-	const std::map<std::string, std::string> &options() const { return m_options; }
-	const std::map<std::string, std::string> &tags() const { return m_tags; }
-	const std::unordered_map<std::string, std::string> &infra_tags() const { return m_infra_tags; }
-private:
-	std::string m_name;  // Just for debugging
-	int m_pid;
-	int m_vpid;
-	std::string m_container_id;
-	std::set<uint16_t> m_ports;
-	std::string m_path;
-	std::map<std::string, std::string> m_options;
-	std::map<std::string, std::string> m_tags;
-	std::unordered_map<std::string, std::string> m_infra_tags;
+	promscrape_conf m_scrape_conf;
 };
 
 #endif  // _WIN32

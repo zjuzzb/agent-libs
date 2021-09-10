@@ -1,7 +1,7 @@
 #include "jmx_emitter.h"
 #include "draios.pb.h"
 #include "analyzer_thread.h"
-#include "metric_forwarding_configuration.h"
+#include "limits/metric_forwarding_configuration.h"
 #include "common_logger.h"
 
 COMMON_LOGGER();

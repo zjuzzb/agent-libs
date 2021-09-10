@@ -11,6 +11,7 @@
 
 #include <gtest.h>
 #include <string>
+#include <sstream>
 
 using test_helpers::scoped_fmemopen;
 
@@ -69,13 +70,13 @@ const std::string STATSITE_OUTPUT_DIFFERENT_TIMESTAMPS =
     R"EOF(counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam5|86.000000|1432288305
 counts.3ce9120d8307$totam.sunt.consequatur.numquam.aperiam8|86.000000|1432288306)EOF";
 
-std::vector<string> split_string(const std::string &s, char delim)
+std::vector<std::string> split_string(const std::string &s, char delim)
 {
-	vector<string> res;
-	istringstream f(s);
-	string ts;
+	std::vector<std::string> res;
+	std::istringstream f(s);
+	std::string ts;
 
-	while(getline(f, ts, delim))
+	while(std::getline(f, ts, delim))
 	{
 		res.push_back(ts);
 	}
@@ -141,7 +142,7 @@ void do_statsite_proxy_container_validation(const std::string& stats, const std:
 	// The first set will be the metrics with the container id attached
 	for (const auto &expected : expected_list)
 	{
-		ASSERT_NE(found_list_itr->find(CONTAINER_DELIMITER), string::npos);
+		ASSERT_NE(found_list_itr->find(CONTAINER_DELIMITER), std::string::npos);
 		const auto metric_pair = split_string(*found_list_itr, CONTAINER_DELIMITER);
 
 		ASSERT_EQ(2, metric_pair.size());
@@ -156,7 +157,7 @@ void do_statsite_proxy_container_validation(const std::string& stats, const std:
 	// of a container metric.
 	for (const auto &expected : expected_list)
 	{
-		ASSERT_NE(found_list_itr->find(CONTAINER_DELIMITER), string::npos);
+		ASSERT_NE(found_list_itr->find(CONTAINER_DELIMITER), std::string::npos);
 		const auto metric_pair = split_string(*found_list_itr, CONTAINER_DELIMITER);
 
 		ASSERT_EQ(2, metric_pair.size());

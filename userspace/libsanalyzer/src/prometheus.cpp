@@ -71,19 +71,7 @@ string replace_tokens(const string& src,
 
 }  // namespace
 
-// Statically initialize the prometheus timeout config
-// Min value : 01 sec
-// Max value : 60 sec
-// Default   : 01 sec
-type_config<uint32_t>::ptr prometheus_conf::c_prometheus_timeout =
-    type_config_builder<uint32_t>(
-        1 /*default value of 1 second*/,
-        "The value in seconds we wait to scrape prometheus endpoints before timing out.",
-        "prometheus",
-        "timeout")
-        .min(1)
-        .max(60)
-        .build();
+
 
 bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule& rule,
                                       const thread_analyzer_info* tinfo,
@@ -411,11 +399,6 @@ bool prometheus_conf::match_and_fill(const thread_analyzer_info* tinfo,
 	return false;
 }
 
-bool prometheus_conf::prom_sd() const
-{
-	return promscrape::c_prom_service_discovery.get_value();
-}
-
 void prometheus_conf::register_annotations(std::function<void(const std::string& str)> reg)
 {
 	base::register_annotations(reg);
@@ -433,24 +416,24 @@ void prometheus_conf::validate_config(const std::string &root_dir)
 			LOG_WARNING("Prometheus enabled, but no rules found for process_filter or remote_services, disabling");
 			set_enabled(false);
 		}
-		if (!ingest_raw() && !ingest_calculated())
+		if (!m_scrape_conf.ingest_raw() && !m_scrape_conf.ingest_calculated())
 		{
 			LOG_WARNING("Prometheus enabled, but neither ingest_raw or ingest_calculated are selected, disabling");
 			set_enabled(false);
 		}
-		if (ingest_raw() && ingest_calculated())
+		if (m_scrape_conf.ingest_raw() && m_scrape_conf.ingest_calculated())
 		{
 			LOG_INFO("Prometheus: both ingest_raw and ingest_calculated are enabled."
 				" Some timeseries will be reported twice");
 		}
 		if (configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value()
-			&& (interval() < 10))
+			&& (m_scrape_conf.interval() < 10))
 		{
-			if (ingest_calculated())
+			if (m_scrape_conf.ingest_calculated())
 			{
 				LOG_WARNING("Prometheus: ingest_calculated is enabled with 10s flush and scrape "
 					"interval is less than 10s which is not supported. Setting interval to 10s");
-				set_interval(10);
+				m_scrape_conf.set_interval(10);
 			}
 			else
 			{
@@ -460,7 +443,7 @@ void prometheus_conf::validate_config(const std::string &root_dir)
 		}
 	}
 
-	promscrape::validate_config(*this, root_dir);
+	promscrape::validate_config(enabled(), m_scrape_conf, root_dir);
 }
 
 void prometheus_conf::show_config(string &output)
@@ -473,12 +456,12 @@ void prometheus_conf::show_config(string &output)
 	tbl.add_row({"Enabled", (enabled() ? "True" : "False")});
 	tbl.add_row({"Target discovery", (prom_sd() ? "Prometheus service discovery" : "Agent process_filter and remote_services")});
 	tbl.add_row({"Scraper", (promscrape ? (prom_sd() ? "Promscrape v2" : "Promscrape v1") : "Legacy Python scraper")});
-	tbl.add_row({"Ingest raw", (ingest_raw() ? "True" : "False")});
-	tbl.add_row({"Ingest calculated", (ingest_calculated() ? "True" : "False")});
-	tbl.add_row({"Metric limit", to_string(max_metrics())});
+	tbl.add_row({"Ingest raw", (m_scrape_conf.ingest_raw() ? "True" : "False")});
+	tbl.add_row({"Ingest calculated", (m_scrape_conf.ingest_calculated() ? "True" : "False")});
+	tbl.add_row({"Metric limit", to_string(m_scrape_conf.max_metrics())});
 	if (!prom_sd())
 	{
-		tbl.add_row({"Scrape interval", to_string(interval())});
+		tbl.add_row({"Scrape interval", to_string(m_scrape_conf.interval())});
 		tbl.add_row({"Per process limit", to_string(max_metrics_per_proc())});
 		tbl.add_row({"Process filter rules", to_string(m_rules.size())});
 		tbl.add_row({"Remote service rules", to_string(m_host_rules.size())});
@@ -504,57 +487,27 @@ void prometheus_conf::init_command_line()
 	cli.register_command("prometheus config show", cmd);
 }
 
-Json::Value prom_process::to_json(const prometheus_conf& conf) const
+void prometheus_conf::to_json(Json::Value& ret) const
 {
-	Json::Value ret;
-	ret["name"] = m_name;
-	ret["pid"] = m_pid;
-	ret["vpid"] = m_vpid;
-	ret["ports"] = Json::Value(Json::arrayValue);
-
-	ret["log_errors"] = conf.log_errors();
-	if (conf.interval() > 0)
-		ret["interval"] = conf.interval();
-	if (conf.max_metrics_per_proc() > 0)
-		ret["max_metrics"] = conf.max_metrics_per_proc();
-	if (conf.max_tags_per_metric() > 0)
-		ret["max_tags"] = conf.max_tags_per_metric();
-	ret["histograms"] = conf.histograms();
-	ret["ingest_raw"] = conf.ingest_raw();
-	ret["ingest_calculated"] = conf.ingest_calculated();
-	ret["timeout"] = prometheus_conf::c_prometheus_timeout->get_value();
-	if (m_path.size() > 0)
-		ret["path"] = m_path;
-
-	for (auto port : m_ports)
+	if (m_scrape_conf.interval() > 0)
 	{
-		ret["ports"].append(Json::UInt(port));
+		ret["interval"] = m_scrape_conf.interval();
 	}
+	ret["histograms"] = m_scrape_conf.histograms();
+	ret["ingest_raw"] = m_scrape_conf.ingest_raw();
+	ret["ingest_calculated"] = m_scrape_conf.ingest_calculated();
 
-	Json::Value opts;
-	for (auto option : m_options)
-	{
-		opts[option.first] = option.second;
-	}
-	if (!opts.empty())
-		ret["options"] = opts;
-
-	Json::Value tags = Json::Value(Json::arrayValue);
-	for (auto tag : m_tags)
-	{
-		// Transfer tag list as array
-		tags.append(tag.first + ":" + tag.second);
-	}
-	if (!tags.empty())
-		ret["tags"] = tags;
-
-	return ret;
+	ret["log_errors"] = log_errors();
+	if (max_metrics_per_proc() > 0)
+		ret["max_metrics"] = max_metrics_per_proc();
+	if (max_tags_per_metric() > 0)
+		ret["max_tags"] = max_tags_per_metric();
 }
 
 // Make sure we only scan any port only once per container or on host
 // If multiple matching processes are listening to a port within the same
 // container, pick the oldest
-void prom_process::filter_procs(vector<prom_process>& procs,
+void prometheus_conf::filter_prom_procs(vector<prom_process> &procs,
                                 threadinfo_map_t& threadtable,
                                 const app_checks_proxy_interface::raw_metric_map_t& app_metrics,
                                 uint64_t now)
@@ -614,16 +567,16 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 
 	for (auto& proc : procs)
 	{
-		sinsp_threadinfo* tinfo = threadtable.get(proc.m_pid);
+		sinsp_threadinfo* tinfo = threadtable.get(proc.pid());
 		if (!tinfo)
 		{
 			LOG_INFO("Prometheus filter: Couldn't get thread info for pid %d, skipping port "
-			         "uniqueness filter", proc.m_pid);
+			         "uniqueness filter", proc.pid());
 			continue;
 		}
 
 		// Erase any ports for which unexpired metrics are known to exist
-		for (auto it = proc.m_ports.begin(); it != proc.m_ports.end();)
+		for (auto it = proc.ports().begin(); it != proc.ports().end();)
 		{
 			if (portmetricmap.find(make_pair(tinfo->m_container_id, *it)) != portmetricmap.end())
 			{
@@ -631,7 +584,7 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 				          "metrics already exist",
 				          *it,
 				          tinfo->m_pid);
-				it = proc.m_ports.erase(it);
+				it = proc.ports().erase(it);
 			}
 			else
 			{
@@ -643,7 +596,7 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 		{
 			// Not found: add our ports
 			portmap_t portmap;
-			for (auto port : proc.m_ports)
+			for (auto port : proc.ports())
 			{
 				portmap[port] = &proc;
 			}
@@ -654,7 +607,7 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 		}
 		else
 		{
-			for (auto it = proc.m_ports.begin(); it != proc.m_ports.end();)
+			for (auto it = proc.ports().begin(); it != proc.ports().end();)
 			{
 				uint16_t port = *it;
 				if (containermap[tinfo->m_container_id].find(port) ==
@@ -667,13 +620,13 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 				// We can probably rely on the clone timestamps
 				// proc_process *oproc = proc.m_ports[portproc.first];
 				prom_process* oproc = containermap[tinfo->m_container_id][port];
-				sinsp_threadinfo* otinfo = threadtable.get(oproc->m_pid);
+				sinsp_threadinfo* otinfo = threadtable.get(oproc->pid());
 				if (!otinfo)
 				{
 					LOG_WARNING(
 					    "Prometheus: Couldn't get thread info for pid %d, can't compare with %d",
-					    oproc->m_pid,
-					    proc.m_pid);
+					    oproc->pid(),
+					    proc.pid());
 					ASSERT(0);
 					it++;
 					continue;
@@ -683,33 +636,33 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 				{
 					LOG_DEBUG(
 					    "Prometheus: both pids %d and %d are listening to %d %s%s, %d is older",
-					    oproc->m_pid,
-					    proc.m_pid,
+					    oproc->pid(),
+					    proc.pid(),
 					    port,
 					    tinfo->m_container_id.empty() ? "on host" : "in container ",
 					    tinfo->m_container_id.c_str(),
-					    oproc->m_pid);
+					    oproc->pid());
 					// Other process is older, remove the port from our ports
-					it = proc.m_ports.erase(it);
+					it = proc.ports().erase(it);
 				}
 				else
 				{
 					LOG_DEBUG(
 					    "Prometheus: both pids %d and %d are listening to %d %s%s, %d is older",
-					    oproc->m_pid,
-					    proc.m_pid,
+					    oproc->pid(),
+					    proc.pid(),
 					    port,
 					    tinfo->m_container_id.empty() ? "on host" : "in container ",
 					    tinfo->m_container_id.c_str(),
-					    proc.m_pid);
+					    proc.pid());
 					// This process is older, remove port from the other process
 					// We'll replace it in the portmap after this loop
-					oproc->m_ports.erase(port);
+					oproc->ports().erase(port);
 					it++;
 				}
 			}
 			// Place any ports this process has left into the portmap
-			for (auto port : proc.m_ports)
+			for (auto port : proc.ports())
 			{
 				containermap[tinfo->m_container_id][port] = &proc;
 			}
@@ -718,9 +671,9 @@ void prom_process::filter_procs(vector<prom_process>& procs,
 	// Now remove any processes that don't have ports left.
 	for (auto it = procs.begin(); it != procs.end();)
 	{
-		if (it->m_ports.empty())
+		if (it->ports().empty())
 		{
-			LOG_DEBUG("Prometheus: no ports left to scan in pid %d", it->m_pid);
+			LOG_DEBUG("Prometheus: no ports left to scan in pid %d", it->pid());
 			it = procs.erase(it);
 		}
 		else

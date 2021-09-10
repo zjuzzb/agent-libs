@@ -7,9 +7,6 @@
 #include <fnmatch.h>
 #include <type_traits>
 
-#include "sinsp.h"
-#include "sinsp_int.h"
-
 // suppress deprecated warnings for auto_ptr in boost
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"

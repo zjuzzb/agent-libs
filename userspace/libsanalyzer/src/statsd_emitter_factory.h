@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include "metric_limits.h"
+#include "limits/metric_limits.h"
 #include "statsd_emitter.h"
 #include "statsite_proxy.h"
 

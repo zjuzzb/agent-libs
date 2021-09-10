@@ -5,24 +5,23 @@
 #include <vector>
 #include <map>
 
-#include "coclient.h"
 #include "agent-prom.grpc.pb.h"
 #include "agent-prom.pb.h"
 #include "draios.pb.h"
-#include "prometheus.h"
-#include "analyzer_settings.h"
-#include "analyzer_utils.h"
-#include "metric_limits.h"
+#include "promscrape_conf.h"
+#include "limits/metric_limits.h"
+#include "interval_runner.h"
+#include "prom_grpc_iface.h"
 #include <thread_safe_container/blocking_queue.h>
 #include <mutex>
 #include <json/json.h>
 
-class infrastructure_state;
+class prom_infra_iface;
 class promscrape;
 
 class promscrape_stats {
 public:
-	promscrape_stats(const prometheus_conf &prom_conf, promscrape *ps);
+	promscrape_stats(const promscrape_conf &prom_conf, promscrape *ps);
 
 	static type_config<bool>c_always_gather_stats;
 
@@ -36,7 +35,7 @@ public:
 	void periodic_log_summary();
 
 	void process_metadata();
-	void process_scrape(string instance, std::shared_ptr<agent_promscrape::ScrapeResult> scrape);
+	void process_scrape(std::string instance, std::shared_ptr<agent_promscrape::ScrapeResult> scrape);
 
 	bool gather_stats_enabled();
 	void enable_gather_stats(bool enable = true);
@@ -58,9 +57,9 @@ public:
 	} metric_stats;
 
 	typedef struct {
-		string type;
-		string help;
-		string unit;
+		std::string type;
+		std::string help;
+		std::string unit;
 		int timeseries;
 	} metric_metadata;
 
@@ -78,10 +77,10 @@ private:
 	// Map from instance to map from metric name to metadata
 	std::map<std::string, std::map<std::string, metric_metadata>> m_metadata_map;
 
-	run_on_interval m_log_interval;
-	prometheus_conf m_prom_conf;
+	interval_runner m_log_interval;
+	promscrape_conf m_scrape_conf;
 
-	run_on_interval m_gather_interval;
+	interval_runner m_gather_interval;
 	bool m_gather_stats = false;
 	int m_gather_stats_count = 0;
 
@@ -144,7 +143,8 @@ public:
 
 	const prom_jobid_map_t& job_map() { return m_jobs; }
 
-	explicit promscrape(metric_limits::sptr_t ml, const prometheus_conf &prom_conf, bool threaded, interval_cb_t interval_cb);
+	explicit promscrape(metric_limits::sptr_t ml, const promscrape_conf &prom_conf, bool threaded, interval_cb_t interval_cb,
+		std::unique_ptr<prom_unarygrpc_iface> grpc_applyconfig, std::unique_ptr<prom_streamgrpc_iface> grpc_start);
 
 	// next() needs to be called from the main thread on a regular basis.
 	// With threading enabled it just updates the current timestamp.
@@ -156,7 +156,7 @@ public:
 
 	// sendconfig() queues up scrape target configs. Without threadig the configs will get sent
 	// immediately. With threading they will get sent during a call to next_th()
-	void sendconfig(const vector<prom_process> &prom_procs);
+	void sendconfig(const std::vector<prom_process> &prom_procs);
 
 	// pid_has_jobs returns whether or not scrape jobs exist for the given pid.
 	bool pid_has_jobs(int pid);
@@ -218,7 +218,7 @@ public:
 
 	// Called by prometheus::validate_config() right after prometheus configuration
 	// has been read from config file. Ensures that configuration is consistent
-	static void validate_config(prometheus_conf &conf, const std::string &root_dir);
+	static void validate_config(bool prom_enabled, const promscrape_conf& scrape_conf, const std::string &root_dir);
 
 	void periodic_log_summary() { m_stats.periodic_log_summary(); }
 	void periodic_gather_stats() { m_stats.periodic_gather_stats(); }
@@ -226,13 +226,13 @@ public:
 	// With Promscrape V2 the agent will no longer find endpoints through the
 	// process_filter or remote_services rules.
 	// Promscrape will be doing service discovery instead
-	bool is_promscrape_v2() { return m_prom_conf.prom_sd(); }
+	bool is_promscrape_v2() { return m_scrape_conf.prom_sd(); }
 
 	static bool metric_type_is_raw(agent_promscrape::Sample::LegacyMetricType mt);
 
-	void set_infra_state(infrastructure_state *is) { m_infra_state = is; }
+	void set_infra_state(prom_infra_iface *is) { m_infra_state = is; }
 private:
-	void sendconfig_th(const vector<prom_process> &prom_procs);
+	void sendconfig_th(const std::vector<prom_process> &prom_procs);
 
 	bool started();
 	void try_start();
@@ -268,10 +268,10 @@ private:
 	std::shared_ptr<agent_promscrape::ScrapeService::Stub> m_start_conn;
 	std::shared_ptr<agent_promscrape::ScrapeService::Stub> m_config_conn;
 
-	std::unique_ptr<streaming_grpc_client(&agent_promscrape::ScrapeService::Stub::AsyncGetData)> m_grpc_start;
-	std::unique_ptr<unary_grpc_client(&agent_promscrape::ScrapeService::Stub::AsyncApplyConfig)> m_grpc_applyconfig;
+	std::unique_ptr<prom_streamgrpc_iface> m_grpc_start;
+	std::unique_ptr<prom_unarygrpc_iface> m_grpc_applyconfig;
 
-	run_on_interval m_start_interval;
+	interval_runner m_start_interval;
 	uint64_t m_boot_ts = 0;
 
 	std::atomic<uint64_t> m_next_ts;
@@ -281,10 +281,10 @@ private:
 
 	metric_limits::sptr_t m_metric_limits;
 	bool m_threaded;
-	prometheus_conf m_prom_conf;
+	promscrape_conf m_scrape_conf;
 
-	thread_safe_container::blocking_queue<vector<prom_process>> m_config_queue;
-	vector<prom_process> m_last_prom_procs;
+	thread_safe_container::blocking_queue<std::vector<prom_process>> m_config_queue;
+	std::vector<prom_process> m_last_prom_procs;
 	std::shared_ptr<agent_promscrape::Config> m_config;
 	bool m_resend_config;
 	interval_cb_t m_interval_cb;
@@ -298,7 +298,7 @@ private:
 	bool m_emit_counters = true;
 
 	promscrape_stats m_stats;
-	infrastructure_state *m_infra_state = nullptr;
+	prom_infra_iface *m_infra_state = nullptr;
 
 	raw_bypass_cb_t m_bypass_cb;
 	bool m_allow_bypass = false;

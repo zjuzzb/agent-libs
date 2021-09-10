@@ -3,6 +3,7 @@
 #include "tracer_emitter.h"
 #include "draios.helpers.h"
 #include "feature_manager.h"
+#include "common_logger.h"
 
 namespace
 {

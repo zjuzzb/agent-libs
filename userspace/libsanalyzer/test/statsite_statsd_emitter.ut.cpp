@@ -7,8 +7,8 @@
  */
 #include "draios.pb.h"
 #include "dummy_statsd_stats_source.h"
-#include "metric_limits.h"
-#include "metric_forwarding_configuration.h"
+#include "limits/metric_limits.h"
+#include "limits/metric_forwarding_configuration.h"
 #include "scoped_config.h"
 #include "statsite_statsd_emitter.h"
 #include <google/protobuf/util/message_differencer.h>

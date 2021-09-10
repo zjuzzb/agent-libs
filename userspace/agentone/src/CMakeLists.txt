@@ -17,6 +17,7 @@ include_directories(
 # The following includes are necessary because connection_manager pulls in the world just to get the
 # message_handler definition
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../userspace-shared/src)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../libpromscrape/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../libsanalyzer/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)

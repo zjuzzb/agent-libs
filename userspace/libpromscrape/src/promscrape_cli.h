@@ -7,16 +7,17 @@
 #include "promscrape.h"
 #include <json/json.h>
 
+
 namespace promscrape_cli 
 {
 
 typedef struct target_data {
     target_data();
-    string url;
-    string health;
-    string pool;
-    string pod;
-    string error;
+    std::string url;
+    std::string health;
+    std::string pool;
+    std::string pod;
+    std::string error;
     promscrape_stats::metric_stats stats;
     int get_total_filtered_metrics() const;
     int get_total_unsent_metrics() const;
@@ -90,5 +91,5 @@ void display_prometheus_stats(const promscrape_stats::stats_map_t &stats_map, st
  * @param url - The url to scrape.
  * @param output - Result.
  */
-void get_target_scrape(const std::string &url, string &output);
+void get_target_scrape(const std::string &url, std::string &output);
 };

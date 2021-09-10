@@ -1,8 +1,6 @@
-#include <memory>
 #include "common_logger.h"
 #include "promscrape.h"
 #include "promscrape_cli.h"
-#include "uri.h"
 #include "Poco/Exception.h"
 #include "tabulate.hpp"
 
@@ -10,9 +8,13 @@
 #include <Poco/Net/HTTPRequest.h>
 #include <Poco/Net/HTTPResponse.h>
 #include <Poco/Net/HTTPClientSession.h>
+#include <Poco/URI.h>
+#include <Poco/Exception.h>
 #include <json/json.h>
 
 #include <stdexcept>
+#include <string>
+#include <memory>
 
 COMMON_LOGGER();
 using namespace std;
@@ -325,14 +327,14 @@ void promscrape_cli::get_target_scrape(const std::string& url, string &output)
 
 	try
 	{
-		uri uri(url);
-		string host = uri.get_host();
-		uint16_t port = uri.get_port();
-		string path = uri.get_path();
+		Poco::URI uri(url);
+		string host = uri.getHost();
+		uint16_t port = uri.getPort();
+		string path = uri.getPath();
 
-		if (!uri.get_query().empty())
+		if (!uri.getQuery().empty())
 		{
-			path += "?" + uri.get_query();
+			path += "?" + uri.getQuery();
 		}
 		if (host.empty() || !port)
 		{

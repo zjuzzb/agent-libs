@@ -9,7 +9,7 @@
 
 #ifndef _WIN32
 #include "draios.pb.h"
-#include "metric_limits.h"
+#include "limits/metric_limits.h"
 #include "posix_queue.h"
 
 #include "third-party/jsoncpp/json/json.h"

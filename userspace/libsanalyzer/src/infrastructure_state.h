@@ -14,6 +14,7 @@
 #include "coclient.h"
 #include "k8s_limits.h"
 #include "scope_resolver_iface.h"
+#include "prom_infra_iface.h"
 #include "sdc_internal.pb.h"
 #include "type_config.h"
 #include "k8s_namespace_store.h"
@@ -111,7 +112,7 @@ public:
 
 class event_scope;
 
-class infrastructure_state : public infrastructure_state_iface
+class infrastructure_state : public infrastructure_state_iface, virtual public prom_infra_iface
 {
 public:
 	static const std::string UNSCHEDULABLE_TAG;
@@ -272,12 +273,12 @@ public:
 	bool has(uid_t uid) const;
 	unsigned int size();
 
-	std::string get_k8s_cluster_name() override;
+	std::string get_k8s_cluster_name() override final;
 	// If the agent tags contain a tag for:
 	// cluster:$NAME ; then extract $NAME and return it
 	std::string get_cluster_name_from_agent_tags() const;
 	// The UID of the default namespace is used as the cluster id
-	std::string get_k8s_cluster_id() const;
+	std::string get_k8s_cluster_id() const override final;
 
 	void add_annotation_filter(const std::string &ann);
 	bool find_parent_kind(const uid_t &uid, const std::string &kind, uid_t &found_id) const;
@@ -289,7 +290,7 @@ public:
 	std::string get_k8s_pod_uid(const std::string &namespace_name, const std::string &pod_name) const override;
 
 	// Return the container ID from the pod UID and the pod container name
-	std::string get_container_id_from_k8s_pod_and_k8s_pod_name(const uid_t& p_uid, const std::string &pod_container_name) const;
+	std::string get_container_id_from_k8s_pod_and_k8s_pod_name(const uid_t& p_uid, const std::string &pod_container_name) const override final;
 
 	std::string get_parent_ip_address(const uid_t &uid) const;
 
@@ -300,7 +301,7 @@ public:
 	const std::string& get_k8s_ssl_key();
 	std::unordered_set<std::string> test_only_get_container_ids() const;
 
-	bool find_local_ip(const std::string &ip, uid_t *uid) const;
+	bool find_local_ip(const std::string &ip, uid_t *uid) const override final;
 
 	void add_cg_ip_observer (const cg_ip_clbk_t& clbk);
 

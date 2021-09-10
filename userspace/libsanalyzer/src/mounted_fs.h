@@ -60,6 +60,8 @@ struct mounted_fs_list
 	}
 };
 
+class thread_analyzer_info;
+
 class mounted_fs_proxy
 {
 public:

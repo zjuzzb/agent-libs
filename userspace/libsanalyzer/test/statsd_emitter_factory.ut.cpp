@@ -5,7 +5,7 @@
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
-#include "metric_limits.h"
+#include "limits/metric_limits.h"
 #include "null_statsd_emitter.h"
 #include "statsd_emitter.h"
 #include "statsd_emitter_factory.h"

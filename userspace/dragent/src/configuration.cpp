@@ -552,9 +552,9 @@ void dragent_configuration::sanitize_limits(filter_vec_t& filters)
 	{
 		metric_limits::optimize_exclude_all(filters);
 	}
-	if (filters.size() > CUSTOM_METRICS_FILTERS_HARD_LIMIT)
+	if (filters.size() > metric_limits::CUSTOM_METRICS_FILTERS_HARD_LIMIT)
 	{
-		filters.erase(filters.begin() + CUSTOM_METRICS_FILTERS_HARD_LIMIT, filters.end());
+		filters.erase(filters.begin() + metric_limits::CUSTOM_METRICS_FILTERS_HARD_LIMIT, filters.end());
 	}
 }
 
@@ -1058,7 +1058,7 @@ void dragent_configuration::init()
 	// Prometheus
 	m_prom_conf.set_enabled(m_config->get_scalar<bool>("prometheus", "enabled", false));
 	m_prom_conf.set_log_errors(m_config->get_scalar<bool>("prometheus", "log_errors", false));
-	m_prom_conf.set_interval(m_config->get_scalar<int>("prometheus", "interval", -1));
+	
 	m_prom_conf.set_max_metrics_per_proc(
 	    m_config->get_scalar<int>("prometheus", "max_metrics_per_process", -1));
 	m_prom_conf.set_max_tags_per_metric(
@@ -1071,12 +1071,19 @@ void dragent_configuration::init()
 	    m_config->get_first_deep_sequence<vector<object_filter_config::filter_rule>>(
 	        "prometheus",
 	        "remote_services"));
-	m_prom_conf.set_histograms(m_config->get_scalar<bool>("prometheus", "histograms", false));
-	m_prom_conf.set_ingest_raw(m_config->get_scalar<bool>("prometheus", "ingest_raw", false));
-	m_prom_conf.set_ingest_calculated(
-	    m_config->get_scalar<bool>("prometheus", "ingest_calculated", true));
-	m_prom_conf.set_metric_expiration(
+
+	promscrape_conf scrape_conf;
+	scrape_conf.set_interval(m_config->get_scalar<int>("prometheus", "interval", -1));
+	scrape_conf.set_metric_expiration(
 	    m_config->get_scalar<int>("prometheus", "metric_expiration", 300));
+	scrape_conf.set_histograms(m_config->get_scalar<bool>("prometheus", "histograms", false));
+	scrape_conf.set_ingest_raw(m_config->get_scalar<bool>("prometheus", "ingest_raw", false));
+	scrape_conf.set_ingest_calculated(
+	    m_config->get_scalar<bool>("prometheus", "ingest_calculated", true));
+	scrape_conf.set_prom_sd(
+	    m_config->get_scalar<bool>("prometheus", "prom_service_discovery", false));
+
+	m_prom_conf.set_scrape_conf(std::move(scrape_conf));
 
 	// custom container engines
 	m_custom_container = make_unique<custom_container::resolver>();
@@ -1572,7 +1579,7 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("prometheus service discovery enabled: " + bool_as_text(m_prom_conf.prom_sd()));
 	if (m_prom_conf.enabled())
 	{
-		LOG_INFO("prometheus histograms enabled: " + bool_as_text(m_prom_conf.histograms()));
+		LOG_INFO("prometheus histograms enabled: " + bool_as_text(m_prom_conf.get_scrape_conf().histograms()));
 	}
 	LOG_INFO("prometheus exporter enabled: " + bool_as_text(m_promex_enabled));
 	if (m_promex_enabled)

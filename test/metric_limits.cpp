@@ -1,5 +1,5 @@
 #include <gtest.h>
-#include "metric_limits.h"
+#include "limits/metric_limits.h"
 #include "stopwatch.h"
 
 #define DEFAULT_CACHE_SIZE 10000
@@ -294,9 +294,9 @@ TEST(metric_limits, cache)
 
 	filter_vec_t filters3({{"haproxy.backend*", true}, {"test.*", true}, {"test2.*.?othin?", true},
 			       {"haproxy.*", false}, {"redis.*", false}, {"test.*", false}, {"test2.*.somethin?", false}});
-	metric_limits ml3(std::move(filters3), CUSTOM_METRICS_CACHE_HARD_LIMIT + 1);
+	metric_limits ml3(std::move(filters3), metric_limits::CUSTOM_METRICS_CACHE_HARD_LIMIT + 1);
 	EXPECT_EQ(0u, ml3.cached());
-	EXPECT_EQ(CUSTOM_METRICS_CACHE_HARD_LIMIT, ml3.cache_max_entries());
+	EXPECT_EQ(metric_limits::CUSTOM_METRICS_CACHE_HARD_LIMIT, ml3.cache_max_entries());
 }
 
 TEST(metric_limits, empty)

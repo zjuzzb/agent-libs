@@ -7,7 +7,7 @@
  */
 #include "statsd_emitter.h"
 #include "logger.h"
-#include "metric_forwarding_configuration.h"
+#include "limits/metric_forwarding_configuration.h"
 #include "security_config.h"
 
 namespace libsanalyzer {

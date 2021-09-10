@@ -1,5 +1,5 @@
 #include <gtest.h>
-#include <metric_forwarding_configuration.h>
+#include <limits/metric_forwarding_configuration.h>
 #include <configuration_manager.h>
 #include <scoped_config.h>
 #include <scoped_configuration.h>

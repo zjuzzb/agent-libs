@@ -1,30 +1,48 @@
 #include "promscrape.h"
 
-#include "analyzer_utils.h"
 #include "command_line_manager.h"
 #include "common_logger.h"
 #include "configuration_manager.h"
-#include "infrastructure_state.h"
-#include "prometheus.h"
+#include "prom_infra_iface.h"
 #include "promscrape_cli.h"
 #include "tabulate.hpp"
 #include "type_config.h"
-#include "uri.h"
+#include "utils.h"
+#include "stream_grpc_status.h"
 
-#include "Poco/Exception.h"
-
+#include <sys/time.h>
 #include <Poco/Net/HTTPClientSession.h>
 #include <Poco/Net/HTTPRequest.h>
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPResponse.h>
+#include <Poco/URI.h>
+#include <Poco/Exception.h>
 
 #include <json/json.h>
 #include <memory>
 
-// #define DEBUG_PROMSCRAPE	1
+//#define DEBUG_PROMSCRAPE	1
+#define ONE_SECOND_IN_NS 1000000000LL
+
+using namespace std;
+
+namespace {
 
 COMMON_LOGGER();
-using namespace std;
+
+#ifndef _WIN32
+
+uint64_t get_now_time_ns()
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    return tv.tv_sec * (uint64_t) 1000000000 + tv.tv_usec * 1000;
+}
+
+#endif // _WIN32
+
+} //anonymous namespace
 
 type_config<int> c_promscrape_stats_log_interval(
     60,
@@ -103,22 +121,23 @@ int elapsed_s(uint64_t old, uint64_t now)
 	return (now - old) / ONE_SECOND_IN_NS;
 }
 
-void promscrape::validate_config(prometheus_conf &prom_conf, const string &root_dir)
+void promscrape::validate_config(bool prom_enabled, const promscrape_conf& scrape_conf, const string &root_dir)
 {
 	bool &use_promscrape = c_use_promscrape.get_value();
-	if (use_promscrape && !prom_conf.enabled())
+	if (use_promscrape && !prom_enabled)
 	{
 		LOG_INFO("promscrape enabled without prometheus, disabling");
 		use_promscrape = false;
 	}
 	bool &fastproto = (*c_export_fastproto).get_value();
-	if (fastproto && !prom_conf.ingest_raw())
+	
+	if (fastproto && !scrape_conf.ingest_raw())
 	{
 		LOG_INFO("promscrape_fastproto is only supported for raw metrics, disabling."
 			" Enable prometheus.ingest_raw to enable fastproto");
 		fastproto = false;
 	}
-	if (fastproto && prom_conf.ingest_calculated())
+	if (fastproto && scrape_conf.ingest_calculated())
 	{
 		LOG_INFO("ingest_calculated is enabled but not supported with promscrape_fastproto."
 			"You will only get raw prometheus metrics");
@@ -132,29 +151,33 @@ void promscrape::validate_config(prometheus_conf &prom_conf, const string &root_
 }
 
 promscrape::promscrape(metric_limits::sptr_t ml,
-	const prometheus_conf &prom_conf,
+	const promscrape_conf &scrape_conf,
 	bool threaded,
-	interval_cb_t interval_cb):
+	interval_cb_t interval_cb,
+	std::unique_ptr<prom_unarygrpc_iface> grpc_applyconfig,
+	std::unique_ptr<prom_streamgrpc_iface> grpc_start):
 		m_sock(c_promscrape_sock.get_value()),
+		m_grpc_start(std::move(grpc_start)),
+		m_grpc_applyconfig(std::move(grpc_applyconfig)),
 		m_start_interval(c_promscrape_connect_interval.get_value() * ONE_SECOND_IN_NS),
 		m_next_ts(0),
 		m_start_failed(false),
 		m_metric_limits(ml),
 		m_threaded(threaded),
-		m_prom_conf(prom_conf),
+		m_scrape_conf(scrape_conf),
 		m_config_queue(3),
 		m_resend_config(false),
 		m_interval_cb(interval_cb),
 		m_last_proto_ts(0),
 		m_last_prune_ts(0),
-		m_stats(prom_conf, this),
+		m_stats(scrape_conf, this),
 		m_infra_state(nullptr)
 {
 }
 
 bool promscrape::started()
 {
-	return m_grpc_start != nullptr;
+	return m_grpc_start != nullptr && m_grpc_start->started();
 }
 
 void promscrape::start()
@@ -186,30 +209,12 @@ void promscrape::start()
 		m_start_failed = true;
 	};
 
-	if (!m_start_conn) {
-		LOG_INFO("opening GRPC connection to %s", m_sock.c_str());
-		grpc::ChannelArguments args;
-		// Set maximum receive message size to unlimited
-		args.SetMaxReceiveMessageSize(-1);
-
-		m_start_conn = grpc_connect<agent_promscrape::ScrapeService::Stub>(m_sock, 10, &args);
-		if (!m_start_conn) {
-			// Only log at error if we've been up for a while
-			if (elapsed_s(m_boot_ts, sinsp_utils::get_current_time_ns()) < 30)
-			{
-				LOG_INFO("failed to connect to %s, retrying in %ds", m_sock.c_str(),
-					c_promscrape_connect_interval.get_value());
-			}
-			else
-			{
-				LOG_ERROR("failed to connect to %s, retrying in %ds", m_sock.c_str(),
-					c_promscrape_connect_interval.get_value());
-			}
-			return;
-		}
+	if (m_grpc_start)
+	{ 
+        m_grpc_start->start_stream_connection(m_boot_ts, callback);
+	} else {
+        LOG_ERROR("No stream connection object provided to Promscrape \n");
 	}
-	m_grpc_start = make_unique<streaming_grpc_client(&agent_promscrape::ScrapeService::Stub::AsyncGetData)>(m_start_conn);
-	m_grpc_start->do_rpc(empty, callback);
 }
 
 void promscrape::try_start()
@@ -220,28 +225,31 @@ void promscrape::try_start()
 	}
 	if (!m_boot_ts)
 	{
-		m_boot_ts = sinsp_utils::get_current_time_ns();
+		m_boot_ts = get_now_time_ns();
 	}
-	if (elapsed_s(m_boot_ts, sinsp_utils::get_current_time_ns()) < c_promscrape_connect_delay.get_value())
+	if (elapsed_s(m_boot_ts, get_now_time_ns()) < c_promscrape_connect_delay.get_value())
 	{
 		return;
 	}
 	m_start_interval.run([this]()
 	{
 		start();
-	}, sinsp_utils::get_current_time_ns() );
+	}, get_now_time_ns() );
 }
 
 void promscrape::reset()
 {
 	LOG_INFO("resetting connection");
 	m_start_failed = false;
-	m_grpc_start = nullptr;
-	m_start_conn = nullptr;
-
+	if (m_grpc_start) {
+        m_grpc_start->reset();
+	}
+	
 	// Resetting config connection as well
-	m_config_conn = nullptr;
-	m_grpc_applyconfig = nullptr;
+	if (m_grpc_applyconfig)
+	{
+        m_grpc_applyconfig->reset();
+	}
 	m_resend_config = true;
 }
 
@@ -272,31 +280,20 @@ void promscrape::applyconfig()
 		}
 	};
 
-	if (!m_config_conn) {
-		LOG_INFO("opening GRPC connection to %s", m_sock.c_str());
-		grpc::ChannelArguments args;
-		// Set maximum receive message size to unlimited
-		args.SetMaxReceiveMessageSize(-1);
-
-		m_config_conn = grpc_connect<agent_promscrape::ScrapeService::Stub>(m_sock, 10, &args);
-		if (!m_config_conn) {
-			if (elapsed_s(m_boot_ts, sinsp_utils::get_current_time_ns()) < 30)
-			{
-				LOG_INFO("failed to connect to %s, retrying in %ds", m_sock.c_str(),
-					c_promscrape_connect_interval.get_value());
-			}
-			else
-			{
-				LOG_ERROR("failed to connect to %s, retrying in %ds", m_sock.c_str(),
-					c_promscrape_connect_interval.get_value());
-			}
+	if (m_grpc_applyconfig)
+	{
+		bool ret = m_grpc_applyconfig->start_unary_connection(m_boot_ts, m_config, callback);
+		if (ret)
+		{
+			m_resend_config = false;
+		} else
+		{
 			m_resend_config = true;
-			return;
 		}
+	} else
+	{
+		LOG_ERROR("No unary connection object provided to Promscrape \n");
 	}
-	m_grpc_applyconfig = make_unique<unary_grpc_client(&agent_promscrape::ScrapeService::Stub::AsyncApplyConfig)>(m_config_conn);
-	m_grpc_applyconfig->do_rpc(*m_config, callback);
-	m_resend_config = false;
 }
 
 static int64_t g_prom_job_id = 0;
@@ -387,21 +384,28 @@ void promscrape::addscrapeconfig(int pid, const string &url,
 	// Specified url overrides scheme, host, port, path
 	if (!url.empty()) {
 		joburl = url;
-		uri uri(url);
-		target->set_scheme(uri.get_scheme());
-		target->set_address(uri.get_host() + ":" + to_string(uri.get_port()));
-		if (uri.get_query().empty())
+		try
 		{
-			target->set_metrics_path(uri.get_path());
-		}
-		else
-		{
-			target->set_metrics_path(uri.get_path() + "?" + uri.get_query());
-		}
+			Poco::URI uri(url);
+			target->set_scheme(uri.getScheme());
+			target->set_address(uri.getHost() + ":" + to_string(uri.getPort()));
+			if (uri.getQuery().empty())
+			{
+				target->set_metrics_path(uri.getPath());
+			}
+			else
+			{
+				target->set_metrics_path(uri.getPath() + "?" + uri.getQuery());
+			}
 
-		auto tagp = target->add_tags();
-		tagp->set_name("port");
-		tagp->set_value(to_string(uri.get_port()));
+			auto tagp = target->add_tags();
+			tagp->set_name("port");
+			tagp->set_value(to_string(uri.getPort()));
+		} catch (Poco::Exception &ex )
+		{
+			LOG_ERROR("Could not parse the url %s (%s). Returning without adding scrape config.", url.c_str(), ex.what());
+		    return;
+		}
 	} else {
 		string scheme("http");
 		auto opt_it = options.find("use_https");
@@ -508,10 +512,10 @@ void promscrape::sendconfig_th(const vector<prom_process> &prom_procs)
 		return;
 	}
 	m_config = make_shared<agent_promscrape::Config>();
-	m_config->set_scrape_interval_sec(m_prom_conf.interval());
-	m_config->set_ingest_raw(m_prom_conf.ingest_raw());
-	m_config->set_ingest_legacy(m_prom_conf.ingest_calculated());
-	m_config->set_legacy_histograms(m_prom_conf.histograms());
+	m_config->set_scrape_interval_sec(m_scrape_conf.interval());
+	m_config->set_ingest_raw(m_scrape_conf.ingest_raw());
+	m_config->set_ingest_legacy(m_scrape_conf.ingest_calculated());
+	m_config->set_legacy_histograms(m_scrape_conf.histograms());
 
 	{	// Scoping lock here because applyconfig doesn't need it and prune_jobs takes its own lock
 		std::lock_guard<std::mutex> lock(m_map_mutex);
@@ -578,6 +582,7 @@ void promscrape::next_th()
 	{
 		m_grpc_applyconfig->process_queue();
 	}
+
 	if (m_grpc_start)
 	{
 		m_grpc_start->process_queue();
@@ -777,7 +782,7 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 	// Currently the metadata metrics sent by promscrape only apply to raw metrics
 	if ((scraped < 0) || (post_relabel < 0) || (added < 0))
 	{
-		if (m_prom_conf.ingest_raw())
+		if (m_scrape_conf.ingest_raw())
 		{
 			LOG_INFO("Missing metadata metrics for %s. Results may be incorrect in "
 				"subsequent metrics summary", url.c_str());
@@ -788,7 +793,7 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 
 	if (container_id.empty() && !pod_id.empty() && !container_name.empty() && m_infra_state)
 	{
-		infrastructure_state::uid_t uid = make_pair("k8s_pod", pod_id);
+		prom_infra_iface::kind_uid_t uid = make_pair("k8s_pod", pod_id);
 		container_id = m_infra_state->get_container_id_from_k8s_pod_and_k8s_pod_name(uid, container_name);
 		LOG_DEBUG("Correlated container id %s from %s:%s", container_id.c_str(),
 			pod_id.c_str(), container_name.c_str());
@@ -816,7 +821,7 @@ void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
 		if (!instance.empty())
 		{
 			bool local = false;
-			infrastructure_state::uid_t uid;
+			prom_infra_iface::kind_uid_t uid;
 			string host = instance.substr(0, instance.find(':'));
 
 			if (!host.compare("localhost") || !host.compare("127.0.0.1"))
@@ -904,7 +909,7 @@ void promscrape::prune_jobs(uint64_t ts)
 		// For Promscrape v1, we mark a job as stale if the agent omitted it in the
 		// last configuration cycle
 		if ((is_promscrape_v2() &&
-			(elapsed_s(it->second.data_ts, ts) < m_prom_conf.metric_expiration())) ||
+			(elapsed_s(it->second.data_ts, ts) < m_scrape_conf.metric_expiration())) ||
 			(!is_promscrape_v2() && (it->second.config_ts >= m_last_config_ts)))
 		{
 			continue;
@@ -979,7 +984,7 @@ bool promscrape::can_use_metrics_request_callback()
 std::shared_ptr<draiosproto::metrics> promscrape::metrics_request_callback()
 {
 	unsigned int sent = 0;
-	unsigned int remaining = m_prom_conf.max_metrics();
+	unsigned int remaining = m_scrape_conf.max_metrics();
 	unsigned int filtered = 0;
 	unsigned int total = 0;
 	shared_ptr<draiosproto::metrics> metrics = make_shared<draiosproto::metrics>();
@@ -1013,7 +1018,7 @@ std::shared_ptr<draiosproto::metrics> promscrape::metrics_request_callback()
 	for (int pid : export_pids)
 	{
 		LOG_DEBUG("callback: exporting pid %d", pid);
-		sent += pid_to_protobuf(pid, metrics.get(), remaining, m_prom_conf.max_metrics(),
+		sent += pid_to_protobuf(pid, metrics.get(), remaining, m_scrape_conf.max_metrics(),
 			&filtered, &total, true);
 	}
 
@@ -1022,7 +1027,7 @@ std::shared_ptr<draiosproto::metrics> promscrape::metrics_request_callback()
 	if (remaining == 0)
 	{
 		LOG_WARNING("Prometheus metrics limit (%u) reached, %u sent of %u filtered, %u total",
-			m_prom_conf.max_metrics(), sent, filtered, total);
+			m_scrape_conf.max_metrics(), sent, filtered, total);
 	}
 	else
 	{
@@ -1763,7 +1768,7 @@ void promscrape_stats::periodic_gather_stats()
 			gather_target_stats();
 		}
 		m_gather_stats_count++;
-	}, sinsp_utils::get_current_time_ns() );
+	}, get_now_time_ns() );
 }
 
 void promscrape_stats::init_command_line()
@@ -1937,9 +1942,9 @@ void promscrape_stats::init_command_line()
 	cli.register_command("prometheus stats show", cmd_stats);
 }
 
-promscrape_stats::promscrape_stats(const prometheus_conf& prom_conf, promscrape* ps)
+promscrape_stats::promscrape_stats(const promscrape_conf& scrape_conf, promscrape* ps)
     : m_log_interval(c_promscrape_stats_log_interval.get_value() * ONE_SECOND_IN_NS),
-      m_prom_conf(prom_conf),
+      m_scrape_conf(scrape_conf),
       m_gather_interval(10 * ONE_SECOND_IN_NS),
       m_gather_stats(false),
       m_gather_stats_count(0),
@@ -2059,7 +2064,7 @@ void promscrape_stats::log_summary()
 		LOG_WARNING(
 		    "Prometheus metrics limit (%u) reached. %d timeseries not sent"
 		    " to avoid data inconsistencies, see preceding info logs for details",
-		    m_prom_conf.max_metrics(),
+		    m_scrape_conf.max_metrics(),
 		    unsent_global);
 	}
 	if (unsent_job)
@@ -2083,5 +2088,5 @@ void promscrape_stats::periodic_log_summary()
 	{
 		log_summary();
 		clear();
-	}, sinsp_utils::get_current_time_ns() );
+	}, get_now_time_ns() );
 }

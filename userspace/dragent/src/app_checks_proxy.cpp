@@ -16,7 +16,9 @@ void app_checks_proxy::send_get_metrics_cmd_sync(const vector<app_process> &proc
 #ifndef CYGWING_AGENT
 	for(const auto& p : prom_procs)
 	{
-		promps.append(p.to_json(prom_conf));
+		Json::Value ret = p.to_json();
+		prom_conf.to_json(ret);
+		promps.append(ret);
 	}
 #endif
 
