@@ -29,7 +29,7 @@ public:
 	// for deleting it.
 	//
 	void perform_actions(uint64_t ts_ns,
-			     const sinsp_threadinfo *tinfo,
+			     sinsp_threadinfo *tinfo,
 			     const std::string &policy_name,
 			     const std::string &policy_type,
 			     const actions &actions,

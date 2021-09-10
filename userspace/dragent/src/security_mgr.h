@@ -36,8 +36,6 @@
 #include "security_metrics.h"
 #include "internal_metrics.h"
 
-class sinsp_evt_clone_registry;
-
 class SINSP_PUBLIC security_mgr : public event_listener,
                                   public dragent::security_policy_v2_loader
 {
@@ -328,26 +326,25 @@ private:
 	// Returns false if the policy event was throttled,
 	// meaning that it will be added to the periodic throttled
 	// events message. In this case, the event should be discarded.
-	bool throttle_policy_event(uint64_t ts_ns,
-	                           const std::string& container_id,
-	                           uint64_t policy_id,
-	                           const std::string& policy_name);
+        bool throttle_policy_event(uint64_t ts_ns,
+				   std::string &container_id,
+				   uint64_t policy_id, const std::string &policy_name);
 
 	void add_policy_event_metrics(const security_rules::match_result &res);
 
-	draiosproto::policy_event* create_policy_event(const gen_event* evt,
-	                                               const std::string& container_id,
-	                                               const sinsp_threadinfo* tinfo,
-	                                               uint64_t policy_id,
-	                                               draiosproto::event_detail* details,
-	                                               uint64_t policy_version);
+	draiosproto::policy_event * create_policy_event(gen_event *evt,
+							std::string &container_id,
+							sinsp_threadinfo *tinfo,
+							uint64_t policy_id,
+							draiosproto::event_detail *details,
+							uint64_t policy_version);
 
-	draiosproto::policy_event* create_policy_event(const gen_event* evt,
-	                                               const std::string& container_id,
-	                                               const sinsp_threadinfo* tinfo,
-	                                               uint64_t policy_id,
-	                                               draiosproto::event_detail& details,
-	                                               uint64_t policy_version);
+	draiosproto::policy_event * create_policy_event(gen_event *evt,
+							std::string &container_id,
+							sinsp_threadinfo *tinfo,
+							uint64_t policy_id,
+							draiosproto::event_detail &details,
+							uint64_t policy_version);
 
 	bool event_qualifies(sinsp_evt *evt);
 	bool event_qualifies(json_event *evt);
@@ -370,8 +367,8 @@ private:
 	// waiting for the next policy event flush.
 	void report_events_now(uint64_t ts_ns, draiosproto::policy_events &events);
 
-	void set_event_labels(const std::string &container_id, const sinsp_threadinfo *tinfo, draiosproto::policy_event *event);
-	void set_event_labels_k8s_audit(draiosproto::event_detail *details, draiosproto::policy_event *event, const json_event *j_evt);
+	void set_event_labels(std::string &container_id, sinsp_threadinfo *tinfo, draiosproto::policy_event *event);
+	void set_event_labels_k8s_audit(draiosproto::event_detail *details, draiosproto::policy_event *event, json_event *j_evt);
 	void set_event_label(google::protobuf::Map<std::string, std::string>* audit_labels,
 			     std::string key,
 			     std::string value);
@@ -703,13 +700,5 @@ private:
 
 	// Agent tags as a map "agent.tag.xx" -> value
 	scope_resolver_iface::tags_map m_agent_tags;
-
-	std::unique_ptr<sinsp_evt_clone_registry> m_delayed_evt_registry;
-	using match_results_t = std::shared_ptr<std::list<security_rules::match_result>>;
-
-	void process_results(const gen_event* evt,
-	                     const match_results_t& results,
-	                     const sinsp_threadinfo* tinfo,
-	                     const std::string* container_id_ptr);
 };
 #endif // CYGWING_AGENT

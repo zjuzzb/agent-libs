@@ -10,8 +10,6 @@ sinsp_evt_wrapper::sinsp_evt_wrapper(sinsp_threadinfo& tinfo) :
 	m_ppm_event_info(new ppm_event_info()),
 	m_sinsp_fdinfo(new sinsp_fdinfo_t())
 {
-	m_scap_event.get()->tid = tinfo.m_tid;
-
 	m_sinsp_event->init(m_scap_event.get(),
 			    m_ppm_event_info.get(),
 			    &m_sinsp_threadinfo,
