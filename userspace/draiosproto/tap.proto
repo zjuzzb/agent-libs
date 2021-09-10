@@ -42,6 +42,8 @@ message NewProcess {
     // Used to provide extra context to the event
     // adding a list of predefined labels
     map<string,string> event_labels = 10;
+
+    NewProcess parent = 11;
 }
 
 message ProcessExit {

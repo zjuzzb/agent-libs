@@ -37,14 +37,16 @@ type_config<std::string>::ptr c_protobuf_dir =
         "audit_tap",
         "metricsfile")
         .hidden()
-        .post_init([](type_config<std::string>& config) {
-	        // Create the directory if it doesn't exist
-	        if (config.get_value() != "")
-	        {
-		        Poco::File dir(config.get_value());
-		        dir.createDirectories();
-	        }
-        })
+        .post_init(
+            [](type_config<std::string>& config)
+            {
+	            // Create the directory if it doesn't exist
+	            if (config.get_value() != "")
+	            {
+		            Poco::File dir(config.get_value());
+		            dir.createDirectories();
+	            }
+            })
         .build();
 
 type_config<bool> c_labels_enabled(false,
@@ -63,6 +65,10 @@ type_config<std::vector<std::string>> c_exclude_labels({},
                                                        "Labels to exclude in audit tap",
                                                        "audit_tap",
                                                        "excluded_labels");
+type_config<int> c_max_parents(0,
+                               "Hierarchy of parent processes to climb",
+                               "audit_tap",
+                               "max_parents_hierarchy");
 
 void write_to_file(const tap::AuditLog& tap)
 {
@@ -321,46 +327,73 @@ void audit_tap::emit_process(thread_analyzer_info* tinfo,
 		return;
 	}
 
-	auto proc = m_event_batch->add_newprocessevents();
-	proc->set_pid(tinfo->m_pid);
-	// To get the parent, first go to the main thread (the first thread
-	// that was forked), then take the m_ptid which is the process from
-	// which this thread was forked.
-	proc->set_parentpid(tinfo->get_main_thread()->m_ptid);
-	proc->set_name(tinfo->m_exe);
-	for (const auto& arg : tinfo->m_args)
-	{
-		if (arg.empty())
-		{
-			continue;
-		}
+	int dump_hierarchy = c_max_parents.get_value();
 
-		if (arg.size() <= max_command_argument_length())
+	auto proc = m_event_batch->add_newprocessevents();
+
+	populate_process(proc, userdb, tinfo);
+	sinsp_threadinfo* current{tinfo};
+	tap::NewProcess* p = proc;
+	for (int i = 0; i <= dump_hierarchy; i++)
+	{
+		auto main = current->get_main_thread();
+		if (!main)
 		{
-			proc->add_commandline(arg);
+			break;
 		}
-		else
+		auto parent = main->get_parent_thread();
+		if (!parent)
 		{
-			auto arg_capped = arg.substr(0, max_command_argument_length());
-			proc->add_commandline(arg_capped);
+			break;
 		}
+		populate_process(p, userdb, parent);
+		p = p->mutable_parent();
+		current = parent;
 	}
 
-	proc->set_containerid(tinfo->m_container_id);
-	proc->set_userid(tinfo->m_uid);
-	if (userdb)
+	if (c_labels_enabled.get_value())
 	{
-		proc->set_username(userdb->lookup(tinfo->m_uid));
+		emit_labels(proc, infra_state);
 	}
 	if (m_config->m_send_audit_tap)
 	{
 		emit_environment(proc, tinfo);
 	}
+}
 
-	proc->set_timestamp(tinfo->m_clone_ts / 1000000);
-	if (c_labels_enabled.get_value())
+void audit_tap::populate_process(tap::NewProcess* proc, userdb* userdb, sinsp_threadinfo* tinfo)
+{
+	if (!tinfo)
 	{
-		emit_labels(proc, infra_state);
+		return;
+	}
+
+	proc->set_containerid(tinfo->m_container_id);
+	// To get the parent, first go to the main thread (the first thread
+	// that was forked), then take the m_ptid which is the process from
+	// which this thread was forked.
+	auto main_thread = tinfo->get_main_thread();
+	proc->set_parentpid(main_thread->m_ptid);
+	proc->set_pid(tinfo->m_pid);
+	proc->set_name(tinfo->m_exe);
+	auto max_arg_len = max_command_argument_length();
+	proc->set_timestamp(tinfo->m_clone_ts / 1000000);
+	for (const auto& arg : tinfo->m_args)
+	{
+		if (arg.size() <= max_arg_len)
+		{
+			proc->add_commandline(arg);
+		}
+		else
+		{
+			auto arg_capped = arg.substr(0, max_arg_len);
+			proc->add_commandline(arg_capped);
+		}
+	}
+	proc->set_userid(tinfo->m_uid);
+	if (userdb)
+	{
+		proc->set_username(userdb->lookup(tinfo->m_uid));
 	}
 }
 

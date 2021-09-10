@@ -76,6 +76,7 @@ private:
 	                        const sinsp_connection& connection);
 
 	void emit_labels(tap::NewProcess *process, infrastructure_state_iface* infra_state);
+	void populate_process(tap::NewProcess *process, userdb* userdb, sinsp_threadinfo *tinfo);
 	void configure_labels_set();
 
 
