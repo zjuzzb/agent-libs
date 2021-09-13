@@ -37,11 +37,37 @@ pipeline {
                                 -H "Accept: application/vnd.github.v3+json" \
                                 -H "Authorization: token $GITHUB_PASSWORD" \
                                 -X POST https://api.github.com/repos/sysdiglabs/charts/pulls \
+                                -o pull.json \
                                 -d '{
                                     "base": "master",
                                     "head": "'"$BRANCH_NAME"'",
                                     "title": "'"$MSG"'"
                                 }'
+
+                            PR_NO=$(grep -Po '(?<="number": )[^,]*' pull.json)
+                            for i in $(seq 1 15); do
+                                sleep 60;
+                                echo "Waiting for checks..."
+                                curl -s \
+                                    -H "Accept: application/vnd.github.v3+json" \
+                                    https://api.github.com/repos/sysdiglabs/charts/pulls/${PR_NO} \
+                                    -o pull.json
+                                grep -q '"state": "open"' pull.json && \
+                                grep -q '"mergeable": true' pull.json && \
+                                grep -q '"mergeable_state": "clean"' pull.json && \
+                                CAN_MERGE=true && break
+                            done
+                            if [ $CAN_MERGE ]; then
+                                curl -s \
+                                    -H "Accept: application/vnd.github.v3+json" \
+                                    -H "Authorization: token $GITHUB_PASSWORD" \
+                                    -X PUT https://api.github.com/repos/sysdiglabs/charts/pulls/${PR_NO}/merge
+                            else
+                                echo "Unable to merge automatically"
+                                echo
+                                cat pull.json
+                                exit 1
+                            fi
                         '''
                     }
                 }
