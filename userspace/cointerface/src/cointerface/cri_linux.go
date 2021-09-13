@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"strings"
+
 	"github.com/containerd/cgroups"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"io"
 	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
-	"os"
-	"strings"
 )
 
 type CriClient struct {
@@ -80,7 +81,7 @@ func (c *CriClient) UnpauseContainer(containerID string) error {
 // cgroupPathForContainer creates an object that conforms to the cgroups.Path interface
 // from a cri-o container ID. cgroups can deal with both systemd and non-systemd cgroups
 // but has issues locating the right path in the agent container env.
-func (c *CriClient) cgroupPathForContainer(containerID string) (cgroups.Path) {
+func (c *CriClient) cgroupPathForContainer(containerID string) cgroups.Path {
 	req := &pb.ContainerStatusRequest{
 		ContainerId: containerID,
 		Verbose:     true,
