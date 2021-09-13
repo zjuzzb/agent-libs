@@ -212,7 +212,7 @@ set(SANALYZER_SOURCES
     process_manager.cpp
     procfs_parser.cpp
     procfs_scanner.cpp
-	  prom_grpc.cpp
+    prom_grpc.cpp
     prometheus.cpp
     protostate.cpp
 	  scope_resolver_iface.cpp

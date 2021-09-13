@@ -11,6 +11,8 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/inclu
 add_executable(
     unit-test-promscrape
     main.cpp
+    prom_job_metadata.ut.cpp
+    prom_metadata_scraper.ut.cpp 
     promscrape.ut.cpp
     promscrape_cli.ut.cpp
 )
