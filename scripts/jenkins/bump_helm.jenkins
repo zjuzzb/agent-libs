@@ -21,9 +21,10 @@ pipeline {
                             git config user.email "$GITHUB_USERNAME@sysdig.com"
 
                             cd charts/sysdig
-                            bash ../../scripts/sysdig/image-version-bump.sh -v AGENT_VERSION=$RELEASE_VERSION
                             bash ../../scripts/chart-version-bump.sh
-                            git add values.yaml Chart.yaml
+                            bash ../../scripts/sysdig/image-version-bump.sh -v AGENT_VERSION=$RELEASE_VERSION
+                            sed -i '/| `image.tag`/{!b;s/`[0-9\\.]\\+`/`'$RELEASE_VERSION'`/}' README.md
+                            git add values.yaml Chart.yaml README.md
 
                             MSG="[sysdig] bump agent version to $RELEASE_VERSION"
                             git commit -m "$MSG"
