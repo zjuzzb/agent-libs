@@ -1,0 +1,44 @@
+{
+  "url": "https://10.37.132.2:63107",
+  "ca_cert": "",
+  "client_cert": "",
+  "client_key": "",
+  "queue_len": 10000,
+  "startup_gc": 10,
+  "startup_inf_wait_time_s": 5,
+  "startup_tick_interval_ms": 100,
+  "startup_low_ticks_needed": 10,
+  "startup_low_evt_threshold": 50,
+  "filter_empty": true,
+  "ssl_verify_certificate": false,
+  "auth_token": "/var/run/secrets/kubernetes.io/serviceaccount/token",
+  "include_types": [
+    "resourcequotas"
+  ],
+  "event_counts_log_time": 0,
+  "batch_msgs_queue_len": 100,
+  "batch_msgs_tick_interval_ms": 100,
+  "max_rnd_conn_delay": 0,
+  "pod_status_allowlist": [
+      "Pending"
+  ],
+  "thin_cointerface": false,
+  "pod_prefix_for_cidr_retrieval": [
+      "kube-controller-manager"
+  ],
+  "terminated_pods_enabled": false,
+  "cold_start_num": 10,
+  "max_wait_for_lock": 0,
+  "max_cold_start_duration": 60,
+  "enforce_leader_election": true,
+  "delegated_num": 2,
+  "leader_election": {
+    "lease_duration": 60,
+    "renew_deadline": 30,
+    "retry_period": 15,
+    "namespace": ""
+  },
+  "cointerface_delegation": true,
+  "min_rnd_conn_delay": 0,
+  "per_node_conn_delay": 0.25
+}

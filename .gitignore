@@ -66,6 +66,9 @@ driver/modules.order
 driver/ppm.mod.c
 /experiments/multithreaded_poll/build/
 /experiments/multithreaded_poll/dist/
+# binaries
+userspace/cointerface/src/coclient/coclient
+userspace/cointerface/src/cointerface/cointerface
 # astyle file backup
 *.orig
 .libs/
