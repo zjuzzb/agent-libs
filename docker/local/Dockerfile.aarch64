@@ -32,6 +32,7 @@ RUN apt list | grep gcc
 RUN apt-get install -y --no-install-recommends \
 	bash-completion \
 	bc \
+	clang \
 	curl \
 	ca-certificates \
 	gcc \
@@ -55,6 +56,10 @@ RUN apt-get install -y --no-install-recommends \
 	python3-distutils \
 	python3-pip \
 	python3-dev
+
+RUN apt-get install -y \
+	llvm-11
+RUN ln -s /usr/lib/llvm-11/bin/llc /usr/bin
 
 RUN pip install posix-ipc
 

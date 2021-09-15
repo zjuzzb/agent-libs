@@ -36,6 +36,8 @@ RUN dnf -y install \
 	rsync-daemon \
 	openssl-devel
 
+RUN dnf -y install which
+
 RUN dnf -y groupinstall "Development Tools"
 
 RUN dnf -y install dnf-plugins-core
