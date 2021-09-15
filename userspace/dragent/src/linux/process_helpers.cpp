@@ -95,17 +95,18 @@ subprocess_cgroup::subprocess_cgroup(const std::string &subsys, const std::strin
 	}
 }
 
-void subprocess_cgroup::create()
+bool subprocess_cgroup::create()
 {
 	if(m_full_path.empty() || m_created)
 	{
-		return;
+		return true;
 	}
 
 	if(mkdir(m_full_path.c_str(), 0700) == 0 || errno == EEXIST)
 	{
 		m_created = true;
 	}
+	return m_created;
 }
 
 bool subprocess_cgroup::remove(int timeout_ms) const
@@ -235,20 +236,27 @@ std::string subprocess_cgroup::get_current_cgroup(const std::string& subsys)
 }
 
 
-void subprocess_cpu_cgroup::create()
+bool subprocess_cpu_cgroup::create()
 {
 	if(m_shares > 0)
 	{
-		subprocess_cgroup::create();
+		if(!subprocess_cgroup::create())
+		{
+			return false;
+		}
 		set_value("cpu.shares", m_shares);
 	}
 	if(m_quota > 0)
 	{
-		subprocess_cgroup::create();
+		if(!subprocess_cgroup::create())
+		{
+			return false;
+		}
 		int64_t quota = m_quota * CPU_QUOTA_PERIOD / 100;
 		set_value("cpu.cfs_quota_us", quota);
 		set_value("cpu.cfs_period_us", CPU_QUOTA_PERIOD);
 	}
+	return true;
 }
 
 }
