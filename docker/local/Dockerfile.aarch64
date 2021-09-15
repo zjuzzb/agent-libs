@@ -58,8 +58,7 @@ RUN apt-get install -y --no-install-recommends \
 	python3-dev
 
 RUN apt-get install -y \
-	llvm-11
-RUN ln -s /usr/lib/llvm-11/bin/llc /usr/bin
+	llvm
 
 RUN pip install posix-ipc
 
