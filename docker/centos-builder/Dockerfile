@@ -9,6 +9,7 @@ RUN yum install -y ca-certificates && \
     curl -o /etc/pki/ca-trust/source/anchors/lets-encrypt-r3-cross-signed.pem https://letsencrypt.org/certs/lets-encrypt-r3-cross-signed.pem && \
     update-ca-trust extract
 
+# protobuf 3.18 doesn't support python 2. stick to 3.17
 RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devtools-2/devtools-2.repo && \
     rpm -i https://archives.fedoraproject.org/pub/archive/epel/6/i386/epel-release-6-8.noarch.rpm && \
     sed -e 's,$basearch,i386,' -e 's,$releasever\],$releasever-i686\],' /etc/yum.repos.d/devtools-2.repo > /etc/yum.repos.d/devtools-2-i686.repo && \
@@ -44,7 +45,7 @@ RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devto
         devtoolset-2-elfutils-libelf-devel \
         java-1.8.0-openjdk && \
     scl enable python27 "yum install -y python-pip" && \
-    scl enable python27 "pip install protobuf" && \
+    scl enable python27 "pip install 'protobuf<3.18'" && \
     yum clean all
 
 RUN curl -o docker.tgz https://get.docker.com/builds/Linux/x86_64/docker-1.11.0.tgz && \

@@ -30,7 +30,9 @@ RUN apk add \
         zlib-dev
 
 RUN ln -s  /usr/bin/python3 /usr/bin/python
-RUN pip install protobuf
+# protobuf 3.18 doesn't support python 2. we're using 3 here but keep the version
+# consistent with the original centos builder
+RUN pip install 'protobuf<3.18'
 
 RUN mkdir -p /code/agent/dependency_install_scripts
 ADD dependency_install_scripts/* /code/agent/dependency_install_scripts/

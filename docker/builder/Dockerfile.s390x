@@ -60,8 +60,9 @@ RUN yum -y install \
 RUN yum -y install \
     docker-ce
 
+# protobuf 3.18 doesn't support python 2. stick to 3.17
 RUN yum install -y python-pip
-RUN pip install protobuf
+RUN pip install 'protobuf<3.18'
 
 RUN yum clean all
 
