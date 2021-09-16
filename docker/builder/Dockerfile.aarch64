@@ -9,11 +9,8 @@ RUN dnf -y install ca-certificates && \
     curl -o /etc/pki/ca-trust/source/anchors/lets-encrypt-r3-cross-signed.pem https://letsencrypt.org/certs/lets-encrypt-r3-cross-signed.pem && \
     update-ca-trust extract
 
-RUN dnf --showduplicates list libstdc++-devel
 RUN dnf -y install \
-	libstdc++-devel
-
-RUN dnf -y install \
+	libstdc++-devel \
 	createrepo \
 	expect \
 	gcc \
@@ -34,9 +31,8 @@ RUN dnf -y install \
 	readline-devel \
 	rsync \
 	rsync-daemon \
-	openssl-devel
-
-RUN dnf -y install which
+	openssl-devel \
+	which
 
 RUN dnf -y groupinstall "Development Tools"
 
@@ -45,37 +41,22 @@ RUN dnf config-manager --enable PowerTools
 
 RUN dnf --showduplicates list glibc-devel
 RUN dnf -y install \
-	glibc-devel
-
-RUN dnf -y install \
+	glibc-devel \
 	glibc \
 	glibc-common \
 	glibc-headers \
 	libstdc++-devel \
-	libstdc++
-
-RUN dnf -y install \
-	libstdc++-static
-
-RUN dnf -y install \
-	glibc-static
-
-RUN dnf -y install \
+	libstdc++ \
+	libstdc++-static \
+	glibc-static \
 	java-1.8.0-openjdk \
-	java-1.8.0-openjdk-devel
-
-RUN dnf -y install \
+	java-1.8.0-openjdk-devel \
 	python2 \
-	python2-devel
-
-RUN dnf -y install \
+	python2-devel \
 	python3 \
-	python3-devel
-
-RUN dnf -y install \
-	elfutils-libelf-devel
-
-RUN dnf -y install golang
+	python3-devel \
+	elfutils-libelf-devel \
+	golang
 
 RUN pip2 install protobuf
 
