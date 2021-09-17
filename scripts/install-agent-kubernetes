@@ -73,8 +73,10 @@ function help {
 	echo " -cc : enable strong SSL certificate check (default: true)"
 	echo " -ns : if provided, will be the namespace/project used to deploy the agent. (default: sysdig-agent)"
 	echo " -op : if provided, perform the installation using the OpenShift command line"
+	echo " -as : if provided, use agent-slim as daemonset for the installation"
 	echo " -ac : if provided, the additional configuration will be appended to agent configuration file"
 	echo " -av : if provided, use the agent-version specified. (default: latest)"
+	echo " -cn : if provided, use the cluster_name specified."
 	echo " -r  : if provided, will remove the sysdig agent's daemonset, configmap, clusterrolebinding,"
 	echo "       serviceacccount and secret from the specified namespace"
 	echo " -ae : if provided, will be used as the base (host) for the Node Analyzer endpoints."
@@ -142,7 +144,6 @@ function create_sysdig_serviceaccount {
 }
 
 function install_k8s_agent {
-
 	fail=0
 	if [ $OPENSHIFT -eq 0 ]; then
 		echo "* Creating sysdig-agent clusterrole and binding"
@@ -222,7 +223,6 @@ function install_k8s_agent {
 		echo -e "    $ADDITIONAL_CONF" >> $CONFIG_FILE
 	fi
 
-	#
 	echo "    new_k8s: true" >> $CONFIG_FILE
 	kubectl apply -f $CONFIG_FILE --namespace=$NAMESPACE
 
@@ -418,7 +418,6 @@ function remove_agent {
 	echo "* Deleting the sysdig-agent configmap"
 	kubectl delete configmap sysdig-agent --namespace=$NAMESPACE
 
-
 	if [ "$(kubectl get pods -n $NAMESPACE | grep -c "image-analyzer")" -ge 1 ]; then
 		echo "* Deleting the sysdig-image-analyzer daemonset"
 		kubectl delete daemonset sysdig-image-analyzer --namespace=$NAMESPACE
@@ -436,9 +435,6 @@ function remove_agent {
 		kubectl delete configmap sysdig-benchmark-runner --namespace=$NAMESPACE
 	fi
 
-	echo "* Deleting the sysdig-agent secret"
-	kubectl delete secret sysdig-agent --namespace=$NAMESPACE
-
 	if [ $OPENSHIFT -eq 0 ]; then
 		echo "* Deleting the sysdig-agent clusterrolebinding"
 		kubectl delete clusterrolebinding sysdig-agent
@@ -446,12 +442,19 @@ function remove_agent {
 		echo "* Deleting the sysdig-agent clusterrole"
 		kubectl delete clusterrole sysdig-agent
 	else
+		echo "* Removing cluster role and security constraints"
+		oc adm policy remove-cluster-role-from-user cluster-reader -n $NAMESPACE -z sysdig-agent
+		oc adm policy remove-scc-from-user privileged -n $NAMESPACE -z sysdig-agent
+
 		echo "* Deleting labels from oc nodes"
 		oc label node --all app-
 	fi
 
 	echo "* Deleting the sysdig-agent serviceacccount"
-	kubectl delete serviceaccount -n default sysdig-agent --namespace=$NAMESPACE
+	kubectl delete serviceaccount sysdig-agent --namespace=$NAMESPACE
+
+	echo "* Deleting the sysdig-agent secret"
+	kubectl delete secret sysdig-agent --namespace=$NAMESPACE
 
 	echo "* Note, the namespace '$NAMESPACE' is not deleted. It could have other resources"
 
