@@ -36,9 +36,9 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'QUAY', passwordVariable: 'QUAY_PASSWORD', usernameVariable: 'QUAY_USERNAME')]) {
                     sh label: '', script: '''
                         echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
-                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION
-                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agent-internal:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION container
-                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agentone:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION agentone
+                        docker pull quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos
+                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agent-internal:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos container
+                        docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_IMAGE=agentone:$AGENT_BRANCH -v $PWD:/draios:ro -v /var/run/docker.sock:/var/run/docker.sock quay.io/sysdig/agent-builder:$BUILDER_VERSION-centos agentone
                     '''
                 }
             }
@@ -61,9 +61,9 @@ pipeline {
     post {
         always {
             sh label: '', script: '''
-                docker rmi -f agent-internal:$AGENT_BRANCH
+                docker rmi -f agent-internal:$AGENT_BRANCH || echo "no image to remove"
                 docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
-                docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+                docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f || echo "nothing to remove"
                 sudo rm -rf * .[!.]*
             '''
             cleanWs()

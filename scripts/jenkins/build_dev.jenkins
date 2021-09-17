@@ -121,7 +121,7 @@ pipeline {
             sh label: '', script: '''
                 docker rmi agent agent-slim agentone agent-kmodule agent-kmodule-thin || echo "no containers to remove"
                 docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
-                docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+                docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f || echo "something something failed"
                 sudo rm -rf * .[!.]*
             '''
             cleanWs()

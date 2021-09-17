@@ -22,6 +22,8 @@ pipeline {
                         echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
                         docker pull quay.io/sysdig/agent-builder:latest
                         docker tag quay.io/sysdig/agent-builder:latest quay.io/sysdig/agent-builder:prev_latest
+                        docker pull quay.io/sysdig/agent-builder:latest-centos
+                        docker tag quay.io/sysdig/agent-builder:latest-centos quay.io/sysdig/agent-builder:prev_latest-centos
                     '''
                 }
             }
@@ -35,6 +37,10 @@ pipeline {
                         docker pull quay.io/sysdig/agent-builder:latest
                         docker pull quay.io/sysdig/agent-builder:${AGENT_BRANCH} || echo "agent-builder:${AGENT_BRANCH} not found"
                         docker build --build-arg max_parallelism=$(nproc) -t quay.io/sysdig/agent-builder:$AGENT_BRANCH -f agent/docker/builder/Dockerfile --pull agent/docker/builder
+
+                        docker pull quay.io/sysdig/agent-builder:latest-centos
+                        docker pull quay.io/sysdig/agent-builder:${AGENT_BRANCH}-centos || echo "agent-builder:${AGENT_BRANCH}-centos not found"
+                        MAKE_JOBS=${nproc} IMAGE_NAME=quay.io/sysdig/agent-builder:$AGENT_BRANCH-centos agent/docker/centos-builder/build-container.sh
                     '''
                 }
             }
@@ -48,6 +54,10 @@ pipeline {
                         docker push quay.io/sysdig/agent-builder:$AGENT_BRANCH
                         docker tag quay.io/sysdig/agent-builder:$AGENT_BRANCH quay.io/sysdig/agent-builder:$CONTAINER_NAME
                         docker push quay.io/sysdig/agent-builder:$CONTAINER_NAME
+
+                        docker push quay.io/sysdig/agent-builder:$AGENT_BRANCH-centos
+                        docker tag quay.io/sysdig/agent-builder:$AGENT_BRANCH-centos quay.io/sysdig/agent-builder:$CONTAINER_NAME-centos
+                        docker push quay.io/sysdig/agent-builder:$CONTAINER_NAME-centos
                     '''
                 }
             }
@@ -68,6 +78,15 @@ pipeline {
                             docker push quay.io/sysdig/agent-builder:prev_latest
                             docker push quay.io/sysdig/agent-builder:latest
                         fi
+
+                        docker tag quay.io/sysdig/agent-builder:$AGENT_BRANCH-centos quay.io/sysdig/agent-builder:latest-centos
+                        LATEST_ID=`docker images --format '{{.ID}}' quay.io/sysdig/agent-builder:latest-centos`
+                        PREV_ID=`docker images --format '{{.ID}}' quay.io/sysdig/agent-builder:prev_latest-centos`
+                        if [ -n "$LATEST_ID" -a "$LATEST_ID" != "$PREV_ID" ]; then
+                            echo "$QUAY_PASSWORD" | docker login quay.io -u="$QUAY_USERNAME" --password-stdin
+                            docker push quay.io/sysdig/agent-builder:prev_latest-centos
+                            docker push quay.io/sysdig/agent-builder:latest-centos
+                        fi
                     '''
                 }
             }
@@ -77,10 +96,12 @@ pipeline {
     post {
         always {
             sh label: '', script: '''
-                docker rmi -f quay.io/sysdig/agent-builder:$AGENT_BRANCH
-                docker rmi -f quay.io/sysdig/agent-builder:prev-latest
+                docker rmi -f quay.io/sysdig/agent-builder:$AGENT_BRANCH || echo "no branch to delete"
+                docker rmi -f quay.io/sysdig/agent-builder:prev_latest || echo "no branch to delete"
+                docker rmi -f quay.io/sysdig/agent-builder:$AGENT_BRANCH-centos || echo "no branch to delete"
+                docker rmi -f quay.io/sysdig/agent-builder:prev_latest-centos || echo "no branch to delete"
                 docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
-                docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+                docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f || echo "something failed"
                 sudo rm -rf * .[!.]*
             '''
             cleanWs()

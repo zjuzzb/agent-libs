@@ -68,9 +68,9 @@ pipeline {
     post {
         always {
             sh label: '', script: '''
-                docker rmi -f agentino-internal:$AGENT_BRANCH
+                docker rmi -f agentino-internal:$AGENT_BRANCH || echo "no container to remove"
                 docker rmi -f $(docker images | grep -ve 'quay.io/sysdig/agent-builder.*latest'  | awk 'NR>1 {print $3}') || echo "no containers to remove"
-                docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+                docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f || echo "something went wrong"
                 sudo rm -rf * .[!.]*
             '''
             cleanWs()
