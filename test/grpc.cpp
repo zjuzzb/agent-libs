@@ -81,6 +81,7 @@ sdc_internal::orchestrator_events_stream_command stream_request()
 	req.mutable_leader_election()->set_retry_period(0);
 	req.mutable_leader_election()->set_namespace_("");
 	req.set_cointerface_delegation(false);
+	req.mutable_annotation_conf()->set_send_all_annotations(false);
 	req.set_min_rnd_conn_delay(0);
 	req.set_per_node_conn_delay(0);
 	

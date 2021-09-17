@@ -89,6 +89,8 @@ var ChannelMutex sync.Mutex
 var InformerChannelInUse = false
 var InformerChannel chan draiosproto.CongroupUpdateEvent
 
+var SendAllAnnotations = false
+
 func AddEvent(restype string, evtype int) {
 	profile.NewEvent()
 	if eventCountsLogTime < 1 {
@@ -974,7 +976,7 @@ func GetProbes(pod *v1.Pod) map[string]string {
 	return tags
 }
 
-func GetAnnotations(obj v1meta.ObjectMeta, prefix string) map[string]string {
+func GetAnnotationsFiltered(obj v1meta.ObjectMeta, prefix string) map[string]string {
 	if len(annotFilter) == 0 {
 		return nil
 	}
@@ -990,6 +992,26 @@ func GetAnnotations(obj v1meta.ObjectMeta, prefix string) map[string]string {
 		return nil
 	}
 	return tags
+}
+
+func GetAnnotationsUnfiltered(obj v1meta.ObjectMeta, prefix string) map[string]string {
+	tags := make(map[string]string)
+	for k, v := range obj.GetAnnotations() {
+		annot := prefix + "annotation." + k
+		tags[annot] = v
+	}
+	if len(tags) == 0 {
+		return nil
+	}
+	return tags
+}
+
+func GetAnnotations(obj v1meta.ObjectMeta, prefix string) map[string]string {
+	if SendAllAnnotations && prefix != "kubernetes.pod." {
+		return GetAnnotationsUnfiltered(obj, prefix)
+	} else {
+		return GetAnnotationsFiltered(obj, prefix)
+	}
 }
 
 func MergeInternalTags(m1 map[string]string, m2 map[string]string) map[string]string {

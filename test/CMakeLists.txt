@@ -106,6 +106,7 @@ add_executable(
     sysdig/userspace/libsinsp/logger.ut.cpp
     sysdig/userspace/libsinsp/user_event_logger.ut.cpp
     timer_thread.cpp
+    ${PROJECT_SOURCE_DIR}/userspace/dragent/src/k8s_metadata_sender.cpp
 )
 
 target_link_libraries(

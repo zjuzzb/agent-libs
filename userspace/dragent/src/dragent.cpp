@@ -27,6 +27,8 @@
 #include "file_rest_request_handler.h"
 #include "globally_readable_file_channel.h"
 #include "handshake_helpers.h"
+#include "k8s_metadata_sender.h"
+#include "library_configs.h"
 #include "log_console.h"
 #include "memdump_logger.h"
 #include "metric_serializer.h"
@@ -57,7 +59,6 @@
 #include "user_event_channel.h"
 #include "utils.h"
 #include "webpage_rest_request_handler.h"
-#include "library_configs.h"
 
 #include <sys/resource.h>
 #include <sys/sysinfo.h>
@@ -1221,7 +1222,6 @@ void dragent_app::log_sysinfo()
 	LOG_INFO("Number of processors: " + NumberFormatter::format(sysconf(_SC_NPROCESSORS_ONLN)));
 }
 
-
 bool dragent_app::create_file(const std::string& dir, const std::string& file_name)
 {
 	Path p;
@@ -1491,6 +1491,8 @@ int dragent_app::sdagent_main()
 		inspector->register_external_event_processor(*analyzer);
 		init_inspector(inspector);
 		LOG_INFO("Configured inspector");
+	
+		k8s_metadata_sender::instance().init(analyzer, &m_protocol_handler);
 
 		// There's an interesting dependency graph situation here. The
 		// sinsp_worker is a member variable of the dragent_app class, and as

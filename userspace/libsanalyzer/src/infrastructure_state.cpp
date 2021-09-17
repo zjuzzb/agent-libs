@@ -19,6 +19,28 @@
 
 COMMON_LOGGER();
 
+/* 
+ * This regex matches a string that 
+ * 1. begins with "kubernetes." (^kubernetes\\.)
+ * 2. followed by a series of non-'.' characters ([^\\.]+)
+ * 3. followed by ".annotation." (\\.annotation\\.)
+ * 4. ending with a submatch for any characters after that ((.+)$)
+ */
+const std::string infrastructure_state::M_ANNOTATION_REGEX_STRING =
+    "^kubernetes\\.[^\\.]+\\.annotation\\.(.+)$";
+const Poco::RegularExpression infrastructure_state::M_ANNOTATION_REGEX(
+    infrastructure_state::M_ANNOTATION_REGEX_STRING);
+
+/*
+ * This regex matches a string that
+ * 1. begins with "kubernetes." (^kubernetes\\.)
+ * 2. followed by a series of non-'.' characters ([^\\.]+)
+ * 3. ending with ".name" (\\.name$)
+ */
+const std::string infrastructure_state::M_NAME_REGEX_STRING = "^kubernetes\\.[^\\.]+\\.name$";
+const Poco::RegularExpression infrastructure_state::M_NAME_REGEX(
+    infrastructure_state::M_NAME_REGEX_STRING);
+
 using namespace std;
 
 #define DEFAULT_CONNECT_INTERVAL (60 * ONE_SECOND_IN_NS)
@@ -626,6 +648,7 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 		    cmd.mutable_leader_election()->set_renew_deadline(c_k8s_leader_election_renew_deadline->get_value());
 		    cmd.mutable_leader_election()->set_retry_period(c_k8s_leader_election_retry_period->get_value());
 		    cmd.mutable_leader_election()->set_namespace_(c_k8s_leader_election_namespace->get_value());
+		    cmd.mutable_annotation_conf()->set_send_all_annotations(feature_manager::instance().get_enabled(K8S_METADATA));
 
 		    m_k8s_subscribed = true;
 		    m_k8s_connected = true;
@@ -4373,6 +4396,170 @@ const std::string infrastructure_state::POD_META_CREATION_TS_TAG = "kubernetes.p
 void infrastructure_state::add_cg_ip_observer(const infrastructure_state::cg_ip_clbk_t& clbk)
 {
     m_cg_ip_observers.push_back(clbk);
+}
+
+void infrastructure_state::add_name_to_md(draiosproto::container_group* cg,
+                                          draiosproto::k8s_metadatum& md)
+{
+	for (const auto& it : cg->tags())
+	{
+		try
+		{
+			if (M_NAME_REGEX.match(it.first))
+			{
+				md.mutable_common()->set_name(it.second);
+			}
+		}
+		catch (Poco::RegularExpressionException& ex)
+		{
+			LOG_ERROR("Exception when checking tag %s: %s",
+			          it.first.c_str(),
+			          ex.displayText().c_str());
+			continue;
+		}
+	}
+}
+
+void infrastructure_state::export_k8s_metadata(draiosproto::container_group* cg,
+                                               draiosproto::k8s_metadatum& md)
+{
+	legacy_k8s::fill_common(legacy_k8s::uid_set_t(),  // Empty as we don't need parent info
+	                        cg,
+	                        md.mutable_common(),
+	                        "");  // Empty string as we don't need labels either
+	
+	add_name_to_md(cg, md);
+
+	for (const auto& it : cg->internal_tags())
+	{
+		std::vector<std::string> vec;
+
+		LOG_DEBUG("Checking internal tag for annotation %s", it.first.c_str());
+		
+		try
+		{
+			M_ANNOTATION_REGEX.split(it.first, vec);
+		}
+		catch (Poco::RegularExpressionException& ex)
+		{
+			LOG_ERROR("Exception when checking internal tag %s: %s", it.first.c_str(), ex.displayText().c_str());
+			continue;
+		}
+
+		if (vec.size() == 2)
+		{
+			LOG_DEBUG("Found annotation %s, %s", vec[1].c_str(), it.second.c_str());
+			auto pair = md.add_annotations();
+			pair->set_key(vec[1]);
+			pair->set_value(it.second);
+		}
+	}
+}
+
+std::unique_ptr<draiosproto::k8s_metadata> infrastructure_state::make_metadata_message(
+    uint64_t ts_ns)
+{
+	static uint64_t msg_idx = 1;
+	unique_ptr<draiosproto::k8s_metadata> metadata = make_unique<draiosproto::k8s_metadata>();
+	string k8s_cluster_id = get_k8s_cluster_id();
+
+	metadata->set_index(msg_idx++);
+	metadata->set_timestamp_ns(ts_ns);
+	metadata->set_customer_id(m_analyzer.m_configuration->get_customer_id());
+
+	if (!k8s_cluster_id.empty())
+	{
+		metadata->set_cluster_id(k8s_cluster_id);
+	}
+
+	for (const auto& el : m_state)
+	{
+		draiosproto::container_group *cg = el.second.get();
+		const std::string& kind = cg->uid().kind();
+
+		if (kind == "k8s_pod" || kind == "container")
+		{
+			// Not sending pod metadata for now due to space concerns
+			continue;
+		}
+
+		if (cg->internal_tags_size() == 0)
+		{
+			continue;
+		}
+
+		draiosproto::k8s_metadatum md;
+
+		export_k8s_metadata(cg, md);
+
+		if (md.annotations_size() == 0)
+		{
+			continue;
+		}
+
+		if (kind == "k8s_namespace")
+		{
+			*metadata->add_namespaces() = md;
+		}
+		else if (kind == "k8s_node")
+		{
+			*metadata->add_nodes() = md;
+		}
+		else if (kind == "k8s_controller")
+		{
+			*metadata->add_controllers() = md;
+		}
+		else if (kind == "k8s_service")
+		{
+			*metadata->add_services() = md;
+		}
+		else if (kind == "k8s_replicaset")
+		{
+			*metadata->add_replica_sets() = md;
+		}
+		else if (kind == "k8s_deployment")
+		{
+			*metadata->add_deployments() = md;
+		}
+		else if (kind == "k8s_daemonset")
+		{
+			*metadata->add_daemonsets() = md;
+		}
+		else if (kind == "k8s_job")
+		{
+			*metadata->add_jobs() = md;
+		}
+		else if (kind == "k8s_statefulset")
+		{
+			*metadata->add_statefulsets() = md;
+		}
+		else if (kind == "k8s_resourcequota")
+		{
+			*metadata->add_resourcequotas() = md;
+		}
+		else if (kind == "k8s_persistentvolume")
+		{
+			*metadata->add_persistentvolumes() = md;
+		}
+		else if (kind == "k8s_persistentvolumeclaim")
+		{
+			*metadata->add_persistentvolumeclaims() = md;
+		}
+		else if (kind == "k8s_hpa")
+		{
+			*metadata->add_hpas() = md;
+		}
+		else if (kind == "k8s_cronjob")
+		{
+			*metadata->add_cronjobs() = md;
+		}
+		else
+		{
+			LOG_DEBUG("Unsupported k8s resource type %s", kind.c_str());
+		}
+	}
+
+	return metadata;
 }
 
 #endif  // CYGWING_AGENT

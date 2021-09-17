@@ -1,7 +1,8 @@
+#include "feature_manager.h"
+
 #include "common.pb.h"
 #include "common_logger.h"
 #include "configuration_manager.h"
-#include "feature_manager.h"
 namespace
 {
 COMMON_LOGGER();
@@ -24,7 +25,6 @@ static_assert(feature_manager::agent_variant::AGENT_VARIANT_COUNT ==
                   sizeof(feature_manager::variant_definitions) /
                       sizeof(feature_manager::variant_definitions[0]),
               "not all agent variants definined");
-
 
 const feature_manager::agent_mode_container feature_manager::mode_definitions[] = {
     {feature_manager::AGENT_MODE_NONE, "none", {}, {}},
@@ -173,6 +173,10 @@ const feature_manager::agent_feature_container feature_manager::feature_configs[
 	{NETWORK_TOPOLOGY,     "network topology",     feature_config(false,
 	                                                              "enable network topology",
 	                                                              "network_topology",
+	                                                              "enabled")},
+	{K8S_METADATA,         "k8s metadata",         feature_config(false,
+	                                                              "enable Kubernetes metadata message",
+	                                                              "k8s_metadata",
 	                                                              "enabled")}
 };
 // clang-format on
@@ -658,7 +662,9 @@ bool feature_manager::initialize(agent_variant variant, agent_mode mode)
 
 		// Pass 2: look for "force" features explicitly specified in the config.
 		// Set them and their dependencies appropriately
-		LOG_DEBUG("Setting forced features. All necessary dependencies will be enabled or disabled as appropriate.");
+		LOG_DEBUG(
+		    "Setting forced features. All necessary dependencies will be enabled or disabled as "
+		    "appropriate.");
 		for (auto& i : m_feature_map)
 		{
 			const auto& config = feature_configs[i.first].c;

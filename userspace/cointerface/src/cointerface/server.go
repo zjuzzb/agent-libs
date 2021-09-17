@@ -263,6 +263,8 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	// `network_topology.pod_prefix_for_cidr_retrieval'
 	kubecollect_common.SetPodPrefixForCidrRetrieval(cmd.PodPrefixForCidrRetrieval)
 
+	kubecollect_common.SendAllAnnotations = cmd.GetAnnotationConf().GetSendAllAnnotations()
+
 	fetchDone := make(chan struct{})
 	rpcDone := make(chan struct{})
 

@@ -58,7 +58,9 @@ protected:
 		return m_infra_state->has(cg);
 	}
 
-	cue_t add_congroup(const std::string& kind) {
+	cue_t add_congroup(const std::string& kind, 
+	                   std::pair<std::string, std::string>* int_tag = NULL, 
+	                   std::pair<std::string, std::string>* tag = NULL) {
 		cue_t cue;
 
 		std::string id = kind + std::to_string(++m_map_of_counts[kind]);
@@ -66,6 +68,18 @@ protected:
 		cue.set_type(draiosproto::ADDED);
 		cue.mutable_object()->mutable_uid()->set_kind(kind);
 		cue.mutable_object()->mutable_uid()->set_id(id);
+
+		if (int_tag)
+		{
+			auto tag_map = cue.mutable_object()->mutable_internal_tags();
+			(*tag_map)[int_tag->first] = int_tag->second;
+		}
+		
+		if (tag)
+		{
+			auto tag_map = cue.mutable_object()->mutable_tags();
+			(*tag_map)[tag->first] = tag->second;
+		}
 		
 		m_infra_state->load_single_event(cue);
 
@@ -610,5 +624,65 @@ TEST_F(inf_state_test, UpdateVsDeleteAddTest)
 		}
 	}
 	result.Clear();
+}
+
+// Test that annotations are working properly
+TEST_F(inf_state_test, AnnotationsTest)
+{
+	std::pair<std::string, std::string> deployment_annotation("kubernetes.deployment.annotation.foo", "bar");
+	std::pair<std::string, std::string> deployment_name("kubernetes.deployment.name", "baz");
+	// Add a deployment with an annotation
+	auto deploy1 = add_congroup("k8s_deployment", &deployment_annotation, &deployment_name);
+	
+	// Add a replica set with a non-annotation internal tag
+	std::pair<std::string, std::string> rs_tag("kubernetes.replicaSet.tag.foo", "bar");
+	auto rs1 = add_congroup("k8s_replica_set", &rs_tag);
+
+	// Test that we can generate the k8s_metadata message correctly
+	std::shared_ptr<draiosproto::k8s_metadata> message;
+	message = m_infra_state->make_metadata_message(1000);
+	
+	// We should have one deployment and no replica set
+	ASSERT_EQ(message->deployments_size(), 1);
+	ASSERT_EQ(message->replica_sets_size(), 0);
+	ASSERT_EQ(message->timestamp_ns(), 1000);
+
+	// Verify that there's an annotation in the deployment as we expect.
+	auto deployment = message->deployments(0);
+	ASSERT_EQ(deployment.common().name(), "baz");
+	ASSERT_EQ(deployment.annotations_size(), 1);
+	auto annotation = deployment.annotations(0);
+	ASSERT_EQ(annotation.key(), "foo");
+	ASSERT_EQ(annotation.value(), "bar");
+	
+	std::pair<std::string, std::string> controller_annotation("kubernetes.replicationController.annotation.bar", "baz");
+	std::pair<std::string, std::string> controller_name("kubernetes.replicationController.name", "bix");
+	// Add a replication controller with an annotation
+	auto control1 = add_congroup("k8s_controller", &controller_annotation, &controller_name);
+	
+	// Generate the message again and re-verify
+	message = m_infra_state->make_metadata_message(1001);
+	
+	// We should have one deployment, one replica set, and one controller
+	ASSERT_EQ(message->deployments_size(), 1);
+	ASSERT_EQ(message->replica_sets_size(), 0);
+	ASSERT_EQ(message->controllers_size(), 1);
+	ASSERT_EQ(message->timestamp_ns(), 1001);
+
+	// Verify that there's an annotation in the deployment as we expect.
+	deployment = message->deployments(0);
+	ASSERT_EQ(deployment.common().name(), "baz");
+	ASSERT_EQ(deployment.annotations_size(), 1);
+	annotation = deployment.annotations(0);
+	ASSERT_EQ(annotation.key(), "foo");
+	ASSERT_EQ(annotation.value(), "bar");
+	
+	// Verify that there's an annotation in the controller as we expect.
+	auto controller = message->controllers(0);
+	ASSERT_EQ(controller.common().name(), "bix");
+	ASSERT_EQ(controller.annotations_size(), 1);
+	annotation = controller.annotations(0);
+	ASSERT_EQ(annotation.key(), "bar");
+	ASSERT_EQ(annotation.value(), "baz");
 }
 

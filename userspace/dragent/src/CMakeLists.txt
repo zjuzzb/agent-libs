@@ -66,6 +66,7 @@ list(
     globally_readable_file_channel.cpp
     handshake_helpers.cpp
     k8s_audit_infra_state.cpp
+    k8s_metadata_sender.cpp
     library_configs.cpp
     log_console.cpp
     metric_serializer.cpp

@@ -47,16 +47,16 @@
 #include "limits/metric_limits.h"
 #include "process_emitter.h"
 #include "procfs_scanner.h"
+#include "sdc_internal.pb.h"
 #include "secure_audit_data_ready_handler.h"
 #include "secure_audit_handler.h"
 #include "secure_audit_internal_metrics.h"
-#include "secure_netsec_handler.h"
 #include "secure_netsec_data_ready_handler.h"
+#include "secure_netsec_handler.h"
 #include "secure_netsec_internal_metrics.h"
 #include "secure_profiling_internal_metrics.h"
 #include "statsd_emitter.h"
 #include "userdb.h"
-#include "sdc_internal.pb.h"
 
 #include "include/sinsp_external_processor.h"
 #include "thread_safe_container/blocking_queue.h"
@@ -109,7 +109,8 @@ class container_start_count;
 //
 // Aggregated connection table: entry and hashing infrastructure
 //
-typedef union _process_tuple {
+typedef union _process_tuple
+{
 	struct
 	{
 		uint64_t m_spid;
@@ -200,7 +201,7 @@ public:
 	std::string m_cwd;   // process' current working directory
 	uint32_t m_tty;      // tty
 	draiosproto::command_category m_category;
-	std::string m_pcomm; // parent comm
+	std::string m_pcomm;  // parent comm
 };
 
 #ifndef _WIN32
@@ -945,6 +946,7 @@ public:
 	bool collect_prometheus_metrics_for_pid(uint64_t pid, uint64_t flush_time_sec);
 
 	void set_delegation(bool deleg, const google::protobuf::RepeatedPtrField<std::string> &nodes, bool deleg_fail);
+	bool check_k8s_delegation();
 
 	VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(std::string&);
@@ -1034,7 +1036,6 @@ public:
 	typedef sinsp_configuration::k8s_ext_list_t k8s_ext_list_t;
 	typedef sinsp_configuration::k8s_ext_list_ptr_t k8s_ext_list_ptr_t;
 
-	bool check_k8s_delegation();
 	bool check_k8s_delegation_impl();
 
 	k8s_ext_list_ptr_t k8s_discover_ext(const std::string& addr);

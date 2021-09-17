@@ -1,6 +1,7 @@
+#include "feature_manager.h"
+
 #include "common_logger.h"
 #include "draios.pb.h"
-#include "feature_manager.h"
 #include "scoped_config.h"
 #include "scoped_configuration.h"
 
@@ -73,7 +74,11 @@ public:
 	      fb17(POSTGRES_STATS, &draiosproto::feature_status::set_postgres_stats_enabled, {}, fm),
 	      fb18(MONGODB_STATS, &draiosproto::feature_status::set_mongodb_stats_enabled, {}, fm),
 	      fb19(MONITOR, &draiosproto::feature_status::set_monitor_enabled, {}, fm),
-	      fb20(NETWORK_TOPOLOGY, &draiosproto::feature_status::set_network_topology_enabled, {}, fm)
+	      fb20(NETWORK_TOPOLOGY,
+	           &draiosproto::feature_status::set_network_topology_enabled,
+	           {},
+	           fm),
+	      fb21(K8S_METADATA, &draiosproto::feature_status::set_k8s_metadata_enabled, {}, fm)
 	{
 	}
 
@@ -108,7 +113,11 @@ public:
 	      fb17(POSTGRES_STATS, &draiosproto::feature_status::set_postgres_stats_enabled, {}, fm),
 	      fb18(MONGODB_STATS, &draiosproto::feature_status::set_mongodb_stats_enabled, {}, fm),
 	      fb19(MONITOR, &draiosproto::feature_status::set_monitor_enabled, {}, fm),
-	      fb20(NETWORK_TOPOLOGY, &draiosproto::feature_status::set_network_topology_enabled, {}, fm)
+	      fb20(NETWORK_TOPOLOGY,
+	           &draiosproto::feature_status::set_network_topology_enabled,
+	           {},
+	           fm),
+	      fb21(K8S_METADATA, &draiosproto::feature_status::set_k8s_metadata_enabled, {}, fm)
 	{
 	}
 
@@ -133,6 +142,7 @@ public:
 	feature_base fb18;
 	feature_base fb19;
 	feature_base fb20;
+	feature_base fb21;
 };
 
 }  // namespace
@@ -255,10 +265,7 @@ TEST(feature_manager, base_initialize_called)
 	                  &draiosproto::feature_status::set_mongodb_stats_enabled,
 	                  {},
 	                  fm);
-	feature_base fb19(MONITOR,
-	                  &draiosproto::feature_status::set_mongodb_stats_enabled,
-	                  {},
-	                  fm);
+	feature_base fb19(MONITOR, &draiosproto::feature_status::set_mongodb_stats_enabled, {}, fm);
 
 	test_helpers::scoped_config<bool> memdump("prometheus.enabled", true);
 	ASSERT_FALSE(fb.m_init_called);
@@ -1776,18 +1783,18 @@ TEST(feature_manager, reinitialize)
 	// 3) now the config is unable to enable, since it's locked and set false by profile
 	{
 		test_helpers::scoped_config<bool> c3("feature.network_breakdown", true);
-		ASSERT_TRUE(feature_manager::instance().initialize(
-		                feature_manager::AGENT_VARIANT_TRADITIONAL));
+		ASSERT_TRUE(
+		    feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	}
 	{
 		test_helpers::scoped_config<bool> c3("feature.network_breakdown", false);
-		ASSERT_TRUE(feature_manager::instance().initialize(
-		                feature_manager::AGENT_VARIANT_TRADITIONAL));
+		ASSERT_TRUE(
+		    feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	}
 	{
 		test_helpers::scoped_config<bool> c3("feature.network_breakdown", true);
-		ASSERT_TRUE(feature_manager::instance().initialize(
-		                feature_manager::AGENT_VARIANT_TRADITIONAL));
+		ASSERT_TRUE(
+		    feature_manager::instance().initialize(feature_manager::AGENT_VARIANT_TRADITIONAL));
 	}
 }
 
@@ -1945,6 +1952,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.custom_config());
 		EXPECT_TRUE(proto.monitor_enabled());
 		EXPECT_FALSE(proto.network_topology_enabled());
+		EXPECT_FALSE(proto.k8s_metadata_enabled());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "none");
@@ -1983,6 +1991,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.custom_config());
 		EXPECT_TRUE(proto.monitor_enabled());
 		EXPECT_FALSE(proto.network_topology_enabled());
+		EXPECT_FALSE(proto.k8s_metadata_enabled());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "essentials");
@@ -2013,6 +2022,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.custom_config());
 		EXPECT_TRUE(proto.monitor_enabled());
 		EXPECT_FALSE(proto.network_topology_enabled());
+		EXPECT_FALSE(proto.k8s_metadata_enabled());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "troubleshooting");
@@ -2043,6 +2053,7 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.custom_config());
 		EXPECT_TRUE(proto.monitor_enabled());
 		EXPECT_FALSE(proto.network_topology_enabled());
+		EXPECT_FALSE(proto.k8s_metadata_enabled());
 	}
 	{
 		test_helpers::scoped_config<std::string> mode("feature.mode", "secure");
@@ -2073,8 +2084,8 @@ TEST(feature_manager, to_protobuf)
 		EXPECT_FALSE(proto.custom_config());
 		EXPECT_FALSE(proto.monitor_enabled());
 		EXPECT_FALSE(proto.network_topology_enabled());
+		EXPECT_FALSE(proto.k8s_metadata_enabled());
 	}
-
 }
 
 TEST(feature_manager, agentone_variant)

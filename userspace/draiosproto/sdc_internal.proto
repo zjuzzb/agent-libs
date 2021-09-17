@@ -124,6 +124,10 @@ message leader_election_conf {
 	optional string namespace = 4;
 }
 
+message annotation_conf {
+    optional bool send_all_annotations = 1;
+}
+
 message orchestrator_events_stream_command {
     required string url = 1;
     required string ca_cert = 2;
@@ -157,6 +161,7 @@ message orchestrator_events_stream_command {
     required bool cointerface_delegation = 34;
     required uint32 min_rnd_conn_delay = 35;
     required double per_node_conn_delay = 36;
+    required annotation_conf annotation_conf = 37;
 }
 
 message orchestrator_attach_user_events_stream_command {

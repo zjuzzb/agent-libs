@@ -235,7 +235,8 @@ void sinsp_worker::init_security()
 #endif  // CYGWING_AGENT
 }
 
-void sinsp_worker::init(sinsp::ptr& inspector, sinsp_analyzer* analyzer)
+void sinsp_worker::init(sinsp::ptr& inspector,
+                        sinsp_analyzer* analyzer)
 {
 	if (m_initialized)
 	{
@@ -580,6 +581,8 @@ void sinsp_worker::run()
 				m_aws_metadata_refresher.reset();
 			}
 		}
+	
+		k8s_metadata_sender::instance().send_k8s_metadata_message_on_interval(ts);
 
 #ifndef CYGWING_AGENT
 		bool update_hosts_metadata = !m_hosts_metadata_uptodate.test_and_set();

@@ -22,6 +22,8 @@
 #include "k8s_hpa_store.h"
 #include "k8s_pod_store.h"
 
+#include <Poco/RegularExpression.h>
+
 #include <gtest/gtest_prod.h>
 
 namespace std
@@ -304,6 +306,7 @@ public:
 	bool find_local_ip(const std::string &ip, uid_t *uid) const override final;
 
 	void add_cg_ip_observer (const cg_ip_clbk_t& clbk);
+	std::unique_ptr<draiosproto::k8s_metadata> make_metadata_message(uint64_t ts_ns);
 
 private:
 	FRIEND_TEST(infrastructure_state_test, connect_to_namespace);
@@ -465,6 +468,13 @@ private:
 	std::set<std::string> m_allow_list_kinds;
 
 	std::vector <cg_ip_clbk_t> m_cg_ip_observers;
+	
+	static const std::string M_ANNOTATION_REGEX_STRING;
+	static const Poco::RegularExpression M_ANNOTATION_REGEX;
+	static const std::string M_NAME_REGEX_STRING;
+	static const Poco::RegularExpression M_NAME_REGEX;
+	void add_name_to_md(draiosproto::container_group* cg, draiosproto::k8s_metadatum& md);
+	void export_k8s_metadata(draiosproto::container_group* cg, draiosproto::k8s_metadatum& md);
 
 private:
 	/**

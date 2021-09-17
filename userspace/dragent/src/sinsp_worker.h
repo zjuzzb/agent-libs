@@ -7,15 +7,18 @@
 #include "configuration.h"
 #include "dump_job_request_queue.h"
 #include "internal_metrics.h"
+#include "k8s_metadata_sender.h"
 #include "protocol_handler.h"
-#include "security_mgr.h"
 #include "security_compliance_calender_receiver.h"
 #include "security_compliance_task_runner.h"
 #include "security_host_metadata_receiver.h"
+#include "security_mgr.h"
 #include "security_policy_v2_loader.h"
 #include "subprocesses_logger.h"
-#include "thread_safe_container/blocking_queue.h"
 #include "token_bucket.h"
+
+#include "thread_safe_container/blocking_queue.h"
+
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -140,7 +143,8 @@ private:
 			std::string& errstr);
 
 	void init_security();
-	void init(sinsp::ptr& inspector, sinsp_analyzer* analyzer);
+	void init(sinsp::ptr& inspector,
+	          sinsp_analyzer* analyzer);
 	void do_grpc_tracing();
 	void process_job_requests(bool should_dump);
 	bool handle_signal_dump();
