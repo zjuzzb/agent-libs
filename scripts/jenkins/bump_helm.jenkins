@@ -61,7 +61,8 @@ pipeline {
                                 curl -s \
                                     -H "Accept: application/vnd.github.v3+json" \
                                     -H "Authorization: token $GITHUB_PASSWORD" \
-                                    -X PUT https://api.github.com/repos/sysdiglabs/charts/pulls/${PR_NO}/merge
+                                    -X PUT https://api.github.com/repos/sysdiglabs/charts/pulls/${PR_NO}/merge \
+                                    -d '{ "merge_method": "squash" }'
                             else
                                 echo "Unable to merge automatically"
                                 echo
