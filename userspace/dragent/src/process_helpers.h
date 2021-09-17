@@ -47,7 +47,7 @@ public:
 	 * Create the cgroup, setting m_created to true if it succeeds
 	 * or the cgroup has existed before
 	 */
-	virtual void create();
+	virtual bool create();
 
 	/**
 	 * Remove the cgroup, waiting up to the specified timeout for the removal
@@ -104,7 +104,7 @@ public:
 		m_quota(quota)
 	{}
 
-	void create() override;
+	bool create() override;
 
 private:
 	int64_t m_shares;
