@@ -311,22 +311,25 @@ log_sink::log_sink(const std::string& file,
  */
 bool log_sink::is_enabled(const Poco::Message::Priority severity) const
 {
-	if (g_log)
+	if (!g_log)
 	{
-		if (m_component_file_priority == static_cast<Poco::Message::Priority>(-1))
-		{
-			// Use get_component_priority to search the m_file_log_component_priorities list.
-			m_component_file_priority = g_log->get_component_priority(tag(), log_destination::LOG_FILE);
-		}
-		if (m_component_console_priority == static_cast<Poco::Message::Priority>(-1))
-		{
-			// Use get_component_priority to search the m_console_log_component_priorities list.
-			m_component_console_priority = g_log->get_component_priority(tag(), log_destination::LOG_CONSOLE);
-		}
-		// now use the common_logger::is_enabled
-		return g_log->is_enabled(severity, m_component_file_priority, m_component_console_priority);
+		// If we haven't initialized the global logger (yet),
+		// we want messages to make it all the way to the cache
+		return true;
 	}
-	return false;
+
+	if (m_component_file_priority == static_cast<Poco::Message::Priority>(-1))
+	{
+		// Use get_component_priority to search the m_file_log_component_priorities list.
+		m_component_file_priority = g_log->get_component_priority(tag(), log_destination::LOG_FILE);
+	}
+	if (m_component_console_priority == static_cast<Poco::Message::Priority>(-1))
+	{
+		// Use get_component_priority to search the m_console_log_component_priorities list.
+		m_component_console_priority = g_log->get_component_priority(tag(), log_destination::LOG_CONSOLE);
+	}
+	// now use the common_logger::is_enabled
+	return g_log->is_enabled(severity, m_component_file_priority, m_component_console_priority);
 }
 
 /**
