@@ -59,6 +59,7 @@ function(GoGenerate target folder pbgofile protofile)
     add_custom_target(generate_${target} ALL DEPENDS ${OUTFILES})
     add_custom_command(
         OUTPUT ${OUTFILES}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${OUT_DIR}
         COMMAND ${GOGENENV} PROTO_SRC_DIR="${PROTO_SRC_DIR}" PROTO_BIN_DIR="${PROTO_BIN_DIR}"
                 PROTO_OUT_DIR="${OUT_DIR}" ${GOROOT}/bin/go generate ${target}
         COMMAND ${CMAKE_COMMAND} -E copy ${GO_SRC_DIR}/go.mod ${GO_MOD_DST}
@@ -69,6 +70,7 @@ function(GoGenerate target folder pbgofile protofile)
                 ${PROTO_BIN_DIR}/common.proto
                 ${protofile}
                 ${GOGO_PROTOBUF_VER_FILE}
+                preproc_proto
                 install_go_generate_deps
     )
     set("${target}_deps"
@@ -192,6 +194,13 @@ gobuild(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lease_pool_manager/main.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lease_pool_manager/server/server.go
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lease_pool_manager/go.mod
+)
+
+gobuild(
+    coclient
+    ${draiosproto_deps}
+    ${sdc_internal_deps}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/coclient/coclient.go
 )
 
 add_custom_command(

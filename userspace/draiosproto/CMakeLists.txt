@@ -12,6 +12,18 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION}) # 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}) # generated files
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}) # generated files refer to shipped ones
 
+add_custom_target(
+    preproc_proto
+    ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
+            ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
+            ${CMAKE_CURRENT_BINARY_DIR}/common.proto
+            ${CMAKE_CURRENT_BINARY_DIR}/draios.proto
+            ${CMAKE_CURRENT_BINARY_DIR}/handshake.proto
+            ${CMAKE_CURRENT_BINARY_DIR}/metadata.proto
+            ${CMAKE_CURRENT_BINARY_DIR}/profiling.proto
+            ${CMAKE_CURRENT_BINARY_DIR}/secure.proto
+)
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/agentino.proto
            ${CMAKE_CURRENT_BINARY_DIR}/aggregation_context.proto
