@@ -1,15 +1,14 @@
-set(PROTOC_DIR "${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target")
-set(GOPATH "${DRAIOS_DEPENDENCIES_DIR}/go")
-set(GEN_GO_DIR "${CMAKE_SOURCE_DIR}/build/generated-go")
-# We should set GOPROXY=https://proxy.golang.org here but that breaks the docker/docker replace
-# directive. Add it back later after upgrading docker.
-# cmake-format: off
-if ((${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64") OR (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "s390x"))
-    set(GOENV env GOPATH=${GOPATH} GO111MODULE=on)
-else ()
-    set(GOENV scl enable sclo-git212 -- env GOPATH=${GOPATH} GO111MODULE=on)
+# When GOROOT is defined it takes precedence over the default version.
+if (NOT DEFINED GOROOT)
+    set(GOROOT "${DRAIOS_DEPENDENCIES_DIR}/go-${DRAIOS_GO_VERSION}")
 endif()
-# cmake-format: on
+if (NOT DEFINED GOPATH)
+    set(GOPATH "${DRAIOS_DEPENDENCIES_DIR}/go")
+endif()
+
+set(PROTOC_DIR "${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target")
+set(GEN_GO_DIR "${CMAKE_SOURCE_DIR}/build/generated-go")
+set(GOENV env GOPATH=${GOPATH})
 
 set(GOGENENV ${GOENV} PATH="${GOPATH}/bin:${PROTOC_DIR}/bin:$ENV{PATH}"
              LD_LIBRARY_PATH="${PROTOC_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
@@ -19,8 +18,7 @@ function(GoBuild target)
     add_custom_target(${target} ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${target})
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${target}
-        COMMAND for i in 1 2 3 \; do ${GOENV} go mod download && break || ( echo "ERROR go mod download try $$i" && sleep 5 ) \; done
-        COMMAND ${GOENV} GOPROXY=off go build -mod=readonly -o ${CMAKE_CURRENT_BINARY_DIR}/${target}
+        COMMAND ${GOENV} ${GOROOT}/bin/go build -mod=readonly -trimpath -o ${CMAKE_CURRENT_BINARY_DIR}/${target}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/go.mod ${ARGN}
     )
@@ -37,7 +35,7 @@ add_custom_target(install_go_generate_deps ALL DEPENDS ${GOGO_PROTOBUF_VER_FILE}
 add_custom_command(
     OUTPUT ${GOGO_PROTOBUF_VER_FILE}
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${GOGO_PROTOBUF_DIR}
-    COMMAND for i in 1 2 3 \; do ${GOENV} go get ${GOGO_PROTOBUF_PATH}@${GOGO_PROTOBUF_VER} && break || ( echo "ERROR go get try $$i" && sleep 5 ) \; done
+    COMMAND ${GOENV} ${GOROOT}/bin/go install ${GOGO_PROTOBUF_PATH}@${GOGO_PROTOBUF_VER}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${GOGO_PROTOBUF_DIR}
     COMMAND ${CMAKE_COMMAND} -E touch ${GOGO_PROTOBUF_VER_FILE}
 )
@@ -62,7 +60,7 @@ function(GoGenerate target folder pbgofile protofile)
     add_custom_command(
         OUTPUT ${OUTFILES}
         COMMAND ${GOGENENV} PROTO_SRC_DIR="${PROTO_SRC_DIR}" PROTO_BIN_DIR="${PROTO_BIN_DIR}"
-                PROTO_OUT_DIR="${OUT_DIR}" go generate ${target}
+                PROTO_OUT_DIR="${OUT_DIR}" ${GOROOT}/bin/go generate ${target}
         COMMAND ${CMAKE_COMMAND} -E copy ${GO_SRC_DIR}/go.mod ${GO_MOD_DST}
         WORKING_DIRECTORY ${GO_SRC_DIR}
         DEPENDS ${GO_SRC_DIR}/generate.go
@@ -146,7 +144,7 @@ add_custom_target(
 )
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface_test_success.txt
-    COMMAND ${GOENV} GOPROXY=off go test -mod=readonly ./...
+    COMMAND ${GOENV} ${GOROOT}/bin/go test -mod=readonly ./...
     COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/cointerface_test_success.txt
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface
     DEPENDS
@@ -198,7 +196,7 @@ gobuild(
 
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cs_client_test
-    COMMAND ${GOENV} GOPROXY=direct go build -o ${CMAKE_CURRENT_BINARY_DIR}/cs_client_test
+    COMMAND ${GOENV} ${GOROOT}/bin/go build -o ${CMAKE_CURRENT_BINARY_DIR}/cs_client_test
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/lease_pool_manager/test
     DEPENDS ${draiosproto_deps} ${sdc_internal_deps}
             ${CMAKE_CURRENT_SOURCE_DIR}/src/lease_pool_manager/go.mod

@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575
-	github.com/draios/install_prefix v0.0.0-00010101000000-000000000000 // indirect
+	github.com/draios/install_prefix v0.0.0-00010101000000-000000000000
 	github.com/draios/protorepo/sdc_internal v0.0.0-00010101000000-000000000000
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/uuid v1.1.2

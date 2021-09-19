@@ -32,6 +32,7 @@ if(NOT CYGWIN)
 endif()
 set(DRAIOS_NJSON_VERSION "3.3.0")
 set(DRAIOS_BENCHMARK_VERSION "1.5.0")
+set(DRAIOS_GO_VERSION "1.16.8")
 
 if(NOT DEFINED LIBSCAP_DIR)
     set(LIBSCAP_DIR "${PROJECT_SOURCE_DIR}/../agent-libs")
@@ -90,15 +91,7 @@ else()
 endif()
 
 set(GOPATH "${DRAIOS_DEPENDENCIES_DIR}/go")
-set(GOENV
-    scl
-    enable
-    sclo-git212
-    --
-    env
-    GOPATH=${GOPATH}
-    GO111MODULE=on
-)
+set(GOENV env GOPATH=${GOPATH} GO111MODULE=on)
 
 if(NOT CYGWIN)
     set(PROMSCRAPE_DIR "${DRAIOS_DEPENDENCIES_DIR}/promscrape")

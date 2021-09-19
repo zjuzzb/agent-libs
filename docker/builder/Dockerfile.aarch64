@@ -55,8 +55,7 @@ RUN dnf -y install \
 	python2-devel \
 	python3 \
 	python3-devel \
-	elfutils-libelf-devel \
-	golang
+	elfutils-libelf-devel
 
 # protobuf 3.18 doesn't support python 2. stick to 3.17
 RUN pip2 install 'protobuf<3.18'

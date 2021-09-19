@@ -54,10 +54,6 @@ RUN curl -o docker.tgz https://get.docker.com/builds/Linux/x86_64/docker-1.11.0.
     chmod +x /usr/local/bin/docker && \
     rm -fr docker.tgz docker/
 
-RUN rpm --import https://mirror.go-repo.io/centos/RPM-GPG-KEY-GO-REPO && \
-    curl -s https://mirror.go-repo.io/centos/go-repo.repo | tee /etc/yum.repos.d/go-repo.repo && \
-    yum -y install golang centos-release-scl && yum -y install sclo-git212
-
 # For sonar to work, set JAVA_HOME and add it to the PATH
 ENV JAVA_HOME=/usr/lib/jvm/jre-openjdk \
     PATH="$JAVA_HOME/bin:${PATH}"
