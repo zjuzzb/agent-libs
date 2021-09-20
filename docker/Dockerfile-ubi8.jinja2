@@ -1,0 +1,110 @@
+#FROM registry.access.redhat.com/ubi8/ubi-minimal
+FROM docker.internal.sysdig.com/sysdig-mini-ubi:1
+
+MAINTAINER Sysdig <support@sysdig.com>
+
+ENV SYSDIG_BUILD_KERNEL_MODULE={{ p.build_kernel_module }} \
+    SYSDIG_LAUNCH_DRAGENT={{ p.launch_dragent }} \
+    SYSDIG_HOST_ROOT=/host
+
+ENV HOME /root
+
+USER root
+HEALTHCHECK CMD /bin/true
+
+RUN microdnf update && microdnf clean all
+RUN microdnf install findutils && microdnf clean all
+ADD get-rpm-url.py /bin
+
+{% macro install_nodeps() %}
+RUN microdnf install python-lxml python-requests && \
+{% for pkg in varargs %}
+	rpm -ihv --nodeps $(/bin/get-rpm-url.py {{ pkg }}) && \
+{% endfor %}
+	microdnf remove \
+		gdbm \
+		python-libs \
+		python \
+		python-ipaddress \
+		python-six \
+		python-backports \
+		python-backports-ssl_match_hostname \
+		python-urllib3 \
+		python-chardet \
+		libxslt \
+		python-lxml \
+		python-requests
+{% endmacro %}
+
+{% if p.include_agent_package == "local" %}
+ADD draios-0.1.1dev-x86_64-agent.rpm /tmp/packages
+{{ install_nodeps('https://dl.fedoraproject.org/pub/epel/8/Everything/x86_64/ dkms') }}
+RUN rpm -ihv /tmp/packages/draios-0.1.1dev-x86_64-agent.rpm && rm -rf /tmp/packages
+
+{% else %}
+RUN rpm --import https://download.sysdig.com/DRAIOS-GPG-KEY.public && \
+	curl -s -o /etc/yum.repos.d/draios.repo http://download.sysdig.com/{{ p.sysdig_repository }}/rpm/draios.repo
+
+{% if p.build_kernel_module %}
+{{ install_nodeps('https://dl.fedoraproject.org/pub/epel/8/Everything/x86_64/ dkms', 'https://download.sysdig.com/' ~ p.sysdig_repository ~ '/rpm/x86_64/ draios-agent-kmodule') }}
+{% endif %}
+
+{% if p.launch_dragent %}
+RUN microdnf install draios-agent-slim
+{% endif %}
+
+{% endif %}
+
+
+{% if p.build_kernel_module %}
+# for historical reasons, /usr/bin/gcc-4.8 is ignored, so pretend the shipped gcc is 5.0
+# the gcc-8 symlink is needed for debian 10, which hardcodes `gcc-8` as the path
+# AmazonLinux2 uses `gcc10-gcc` for some kernels so link that too
+RUN rpm -ihv http://mirror.centos.org/centos/7/extras/x86_64/Packages/centos-release-scl-rh-2-3.el7.centos.noarch.rpm && \
+	microdnf clean all && \
+	microdnf install \
+		gcc \
+		make \
+		devtoolset-7-gcc \
+		devtoolset-8-gcc \
+		devtoolset-9-gcc \
+		devtoolset-10-gcc \
+		llvm-toolset-7.0-clang \
+		llvm-toolset-7.0-llvm && \
+	mv /usr/bin/gcc /usr/bin/gcc-5.0 && \
+	ln -s /opt/rh/devtoolset-7/root/usr/bin/gcc /usr/bin/gcc-7.3 && \
+	ln -s /opt/rh/devtoolset-8/root/usr/bin/gcc /usr/bin/gcc-8 && \
+	ln -s /opt/rh/devtoolset-8/root/usr/bin/gcc /usr/bin/gcc-8.3 && \
+	ln -s /opt/rh/devtoolset-9/root/usr/bin/gcc /usr/bin/gcc-9.3 && \
+	ln -s /opt/rh/devtoolset-10/root/usr/bin/gcc /usr/bin/gcc-10.2 && \
+	ln -s /opt/rh/devtoolset-10/root/usr/bin/gcc /usr/bin/gcc10-gcc && \
+	ln -s /opt/rh/devtoolset-10/root/usr/bin/gcc /usr/bin/gcc-10 && \
+	ln -s /usr/bin/gcc-8.3 /usr/bin/gcc
+{% endif %}
+
+{% if p.launch_dragent %}
+ENV LD_LIBRARY_PATH /opt/draios/lib
+RUN	curl -fsSL https://download.docker.com/linux/centos/docker-ce.repo > /etc/yum.repos.d/docker-ce.repo && \
+	microdnf clean all && \
+	microdnf install \
+		java-1.8.0-openjdk-headless \
+		docker-ce-cli \
+		iproute \
+		python38 \
+		util-linux && \
+	ln -s /etc/pki/tls/certs/ca-bundle.crt /opt/draios/lib/python-deps/certifi/cacert.pem
+{% endif %}
+
+RUN	(rpm -q kernel-headers && rpm -e --nodeps kernel-headers; true) && \
+	find / -xdev -perm /04000 -o -perm /02000 | xargs chmod -s && \
+	rm -df /lib/modules && \
+	rm -rf /usr/src/kernels && \
+	ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
+
+COPY ./docker-entrypoint.sh /
+
+{% if p.build_kernel_module %}
+ENTRYPOINT ["/usr/bin/scl", "enable", "llvm-toolset-7.0", "/docker-entrypoint.sh"]
+{% else %}
+ENTRYPOINT ["/docker-entrypoint.sh"]
+{% endif %}
