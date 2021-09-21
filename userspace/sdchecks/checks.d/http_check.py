@@ -140,7 +140,6 @@ def get_ca_certs_path(install_prefix):
     Get a path to the trusted certificates of the system
     """
     CA_CERTS = [
-        install_prefix + '/root.cert',
         '/etc/ssl/certs/ca-certificates.crt',
     ]
 

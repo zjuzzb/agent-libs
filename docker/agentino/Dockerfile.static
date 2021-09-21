@@ -11,8 +11,6 @@ ADD agentino.debug /debug/agentino.debug
 RUN mkdir -p /opt/draios/etc
 ADD dragent.default.yaml /opt/draios/etc/
 
-ADD root.cert /opt/draios/
-
 RUN mkdir -p /opt/draios/share
 ADD *.lua /opt/draios/share/lua/
 RUN mkdir -p /opt/draios/share/lyaml

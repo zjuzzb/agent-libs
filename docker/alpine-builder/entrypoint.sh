@@ -128,7 +128,6 @@ build_agentino()
 	DOCKER_CONTEXT=$(mktemp -d /out/agent-container.XXXXXX)
 	cp userspace/dragent/src/agentino $DOCKER_CONTEXT
 	cp $WORK_DIR/agent/userspace/dragent/src/dragent.default.yaml $DOCKER_CONTEXT
-	cp $WORK_DIR/agent/userspace/dragent/src/root.cert $DOCKER_CONTEXT
 	cp -r $WORK_DIR/oss-falco/userspace/engine/lua/* $DOCKER_CONTEXT
 	cp $HAYABUSA_PRODUCER_DIR/release/libscap/producer/pdig/pdig $DOCKER_CONTEXT
 	cp $HAYABUSA_PRODUCER_DIR/release/libscap/producer/udigembed/libudigembed.so $DOCKER_CONTEXT
