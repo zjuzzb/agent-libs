@@ -45,7 +45,7 @@ RUN rpm --import https://download.sysdig.com/DRAIOS-GPG-KEY.public && \
 	curl -s -o /etc/yum.repos.d/draios.repo http://download.sysdig.com/{{ p.sysdig_repository }}/rpm/draios.repo
 
 {% if p.build_kernel_module %}
-{{ install_nodeps('https://dl.fedoraproject.org/pub/epel/7/x86_64/ dkms', 'https://download.sysdig.com/stable/rpm/x86_64/ draios-agent-kmodule') }}
+{{ install_nodeps('https://dl.fedoraproject.org/pub/epel/7/x86_64/ dkms', 'https://download.sysdig.com/' ~ p.sysdig_repository ~ '/rpm/x86_64/ draios-agent-kmodule') }}
 {% endif %}
 
 {% if p.launch_dragent %}
