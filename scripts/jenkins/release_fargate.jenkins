@@ -68,7 +68,7 @@ pipeline {
             expression { params.CREATE_RELEASE_BRANCH == true }
         }
         steps {
-            slackSend channel: '#docs,#support,#sds-f-fargate', message: "Agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
+            slackSend channel: '#docs,#support,#sds-f-fargate', message: "Fargate agent release ${params.RELEASE_VERSION} has branched and is in progress.", tokenCredentialId: 'slack'
             slackSend channel: "#sds-f-fargate-dev", message: "@here Release in progress", tokenCredentialId: 'slack'
 
             withCredentials([sshUserPrivateKey(credentialsId: '4399087a-3e99-41e5-9dbe-a70a554672c8', keyFileVariable: 'GITHUB_KEYFILE', passphraseVariable: 'GITHUB_PASSPHRASE', usernameVariable: 'GITHUB_USERNAME')]) {
@@ -212,14 +212,14 @@ pipeline {
             success {
                 slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release branch passed presubmit tests.", tokenCredentialId: 'slack'
             }
-            failure 
+            failure {
                 slackSend channel: "@${params.RELEASER_SLACK_ID}", message: "Release failed presubmit tests. Aborting release. Please fix in the new release branch and rerun with CREATE_RELEASE_BRANCH unchecked.", tokenCredentialId: 'slack'
             }
         }
     }
 
     // builds the RC, runs integration tests, and uploads to artifactory
-    // Uploaded image should be sysdig/agent:${params.RELEASE_VERSION}-rc
+    // Uploaded image should be sysdig/agent:RELEASE_VERSION-rc
     stage('Build RC') {
         steps {
             build job:'agent-build-fargate-rc',parameters:[
@@ -229,11 +229,11 @@ pipeline {
                 string(name:'LIBSCAP_HAYABUSA_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                 string(name:'FALCO_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
                 string(name:'PROTOREPO_BRANCH', value:"fargate-release-${params.RELEASE_VERSION}"),
-                string(name:'BUILDER_VERSION', value:"fargate-release-$RELEASE_VERSION"),
-                string(name:'RELEASE_VERSION', value:"$RELEASE_VERSION"),
+                string(name:'BUILDER_VERSION', value:"fargate-release-${params.RELEASE_VERSION}"),
+                string(name:'RELEASE_VERSION', value:"${params.RELEASE_VERSION}"),
                 booleanParam(name:'UPLOAD', value:true),
                 booleanParam(name:'PUBLIC_RELEASE', value:true),
-                string(name:'RC_NUMBER', value:${env.BUILD_NUMBER})
+                string(name:'RC_NUMBER', value:"${env.BUILD_NUMBER}")
             ]
         }
         post {
@@ -408,13 +408,13 @@ pipeline {
                     stage('Wait for Manager') {
                         steps {
                             // Naveen Bali
-                            slackSend channel: '@UBYCWGBG9', message: "Agent release ${params.RELEASE_VERSION} is awaiting managerial approval. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
+                            slackSend channel: '@UBYCWGBG9', message: "Fargate agent release ${params.RELEASE_VERSION} is awaiting managerial approval. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
                             input message: 'Manager Complete', ok: 'Approve Release'
                         }
                     }
                     stage('Wait for Releaser') {
                         steps {
-                            slackSend channel: "@${params.RELEASER_SLACK_ID},#sds-f-fargate-dev", message: "Agent release ${params.RELEASE_VERSION} is awaiting releaser approval. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
+                            slackSend channel: "@${params.RELEASER_SLACK_ID},#sds-f-fargate-dev", message: "Fargate agent release ${params.RELEASE_VERSION} is awaiting releaser approval. When complete, go to ${env.BUILD_URL}input and approve the release.", tokenCredentialId: 'slack'
                             input message: 'Releaser Complete', ok: 'Approve Release'
                         }
                     }
