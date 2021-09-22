@@ -19,7 +19,7 @@ function(GoBuild target)
     add_custom_target(${target} ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${target})
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${target}
-        COMMAND ${GOENV} go mod download
+        COMMAND for i in 1 2 3 \; do ${GOENV} go mod download && break || ( echo "ERROR go mod download try $$i" && sleep 5 ) \; done
         COMMAND ${GOENV} GOPROXY=off go build -mod=readonly -o ${CMAKE_CURRENT_BINARY_DIR}/${target}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/go.mod ${ARGN}
@@ -37,7 +37,7 @@ add_custom_target(install_go_generate_deps ALL DEPENDS ${GOGO_PROTOBUF_VER_FILE}
 add_custom_command(
     OUTPUT ${GOGO_PROTOBUF_VER_FILE}
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${GOGO_PROTOBUF_DIR}
-    COMMAND ${GOENV} go get ${GOGO_PROTOBUF_PATH}@${GOGO_PROTOBUF_VER}
+    COMMAND for i in 1 2 3 \; do ${GOENV} go get ${GOGO_PROTOBUF_PATH}@${GOGO_PROTOBUF_VER} && break || ( echo "ERROR go get try $$i" && sleep 5 ) \; done
     COMMAND ${CMAKE_COMMAND} -E make_directory ${GOGO_PROTOBUF_DIR}
     COMMAND ${CMAKE_COMMAND} -E touch ${GOGO_PROTOBUF_VER_FILE}
 )
