@@ -2,12 +2,15 @@ package leader_lib
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/draios/protorepo/sdc_internal"
 	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeclient "k8s.io/client-go/kubernetes"
+	authorizationv1 "k8s.io/api/authorization/v1"
+	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	"sync"
 	"time"
 )
@@ -50,14 +53,46 @@ func (lpm *LeasePoolManager) GetId() string {
 	return lpm.id
 }
 
-func (lpm *LeasePoolManager) haveLeasePermission(p kubeclient.Interface, leaderElectionConfig *sdc_internal.LeaderElectionConf) error {
-	_, err := p.CoordinationV1().Leases(leaderElectionConfig.GetNamespace()).List(context.TODO(), metav1.ListOptions{})
+func (lpm *LeasePoolManager) haveLeasePermission(authClient authorizationv1client.AuthorizationV1Interface, verb string, leaderElectionConfig *sdc_internal.LeaderElectionConf) error {
+	sar := &authorizationv1.SelfSubjectAccessReview{
+			Spec: authorizationv1.SelfSubjectAccessReviewSpec{
+				ResourceAttributes: &authorizationv1.ResourceAttributes{
+					Namespace:   *leaderElectionConfig.Namespace,
+					Verb:        verb,
+					Group:       "coordination.k8s.io",
+					Resource:    "leases",
+				},
+			},
+		}
 
+	response, err := authClient.SelfSubjectAccessReviews().Create(context.TODO(), sar, metav1.CreateOptions{})
 	if err != nil {
-		log.Errorf("Cannot access leases objects: %s", err.Error())
+		log.Errorf("Cannot check authorization: %s", err.Error())
+		return err
 	}
 
-	return err
+	if !response.Status.Allowed {
+		log.Errorf("Cannot %s leases: %s, %s", verb, response.Status.Reason, response.Status.EvaluationError)
+
+		return errors.New("cannot access leases")
+	}
+
+	return nil
+}
+
+func (lpm *LeasePoolManager) haveLeasePermissions(p kubeclient.Interface, leaderElectionConfig *sdc_internal.LeaderElectionConf) error {
+	verbs := []string{"get", "list", "create", "update", "watch"}
+
+	authClient := p.AuthorizationV1()
+
+	for _, verb := range verbs {
+		err := lpm.haveLeasePermission(authClient, verb, leaderElectionConfig)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // This function choose and set in leaderElectionConf, the namespace where leases objects are going to be created
@@ -88,15 +123,13 @@ func (lpm LeasePoolManager) setLeaseNamespace(leaderElectionConf *sdc_internal.L
 }
 
 func (lpm *LeasePoolManager) Init(id string, leasePoolName string, numLeases uint32, leaderElectionConfig sdc_internal.LeaderElectionConf,p kubeclient.Interface) {
-	err := lpm.haveLeasePermission(p, &leaderElectionConfig)
+	// Get the namespace where creating leader election leases
+	lpm.setLeaseNamespace(&leaderElectionConfig, nil)
 
-	if err != nil {
+	if err := lpm.haveLeasePermissions(p, &leaderElectionConfig); err != nil {
 		log.Errorf("Unable to Init leasePoolManager")
 		return
 	}
-
-	// Get the namespace where creating leader election leases
-	lpm.setLeaseNamespace(&leaderElectionConfig, nil)
 
 	var once sync.Once
 	lpm.id = id
