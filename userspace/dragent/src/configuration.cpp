@@ -876,9 +876,15 @@ void dragent_configuration::init()
 	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
 
 	m_ssl_enabled = m_config->get_scalar<bool>("ssl", true);
-	m_ssl_ca_certificate = Path(c_root_dir.get_value())
-	                           .append(m_config->get_scalar<string>("ca_certificate", "root.cert"))
-	                           .toString();
+
+	// Only use a ca_certificate if explicitly provided by the user
+	std::string ca_certificate = m_config->get_scalar<string>("ca_certificate", "");
+	if (!ca_certificate.empty())
+	{
+		m_ssl_ca_certificate = Path(c_root_dir.get_value())
+		                           .append(ca_certificate)
+		                           .toString();
+	}
 
 	m_ssl_ca_cert_paths = m_config->get_first_deep_sequence<vector<string>>("ca_cert_paths");
 	std::string ssl_ca_cert_dir = m_config->get_scalar<string>("ca_cert_dir", "");

@@ -792,7 +792,7 @@ cm_openssl_socket::cm_openssl_socket(const std::vector<std::string>& ca_cert_pat
 	// Tell SSL where the certificates are
 	std::string ca_cert_path(find_ca_cert_path(ca_cert_paths));
 	res = SSL_CTX_load_verify_locations(m_ctx,
-	                                    ssl_ca_certificate.c_str(),
+	                                    ssl_ca_certificate.empty() ? NULL: ssl_ca_certificate.c_str(),
 	                                    ca_cert_path.c_str());
 	if (res != 1)
 	{
@@ -1230,25 +1230,28 @@ cm_poco_secure_socket::cm_poco_secure_socket(const std::vector<std::string>& cer
 	                           false,
 	                           PREFERRED_CIPHERS);
 
-	try
+	if (!cert_authority.empty())
 	{
-		LOG_INFO("openssl loading cert: %s", cert_authority.c_str());
-		Poco::Crypto::X509Certificate ca_cert(cert_authority);
-		ptrContext->addCertificateAuthority(ca_cert);
-	}
-	catch (const Poco::Net::SSLException& e)
-	{
-		// thrown by addCertificateAuthority()
-		LOG_ERROR("Unable to add ssl ca certificate: %s", e.message().c_str());
-	}
-	catch (const Poco::IOException& e)
-	{
-		// thrown by X509Certificate constructor
-		LOG_ERROR("Unable to read ssl ca certificate: %s", e.message().c_str());
-	}
-	catch (...)
-	{
-		LOG_ERROR("Unable to load ssl ca certificate: %s", cert_authority.c_str());
+		try
+		{
+			LOG_INFO("openssl loading cert: %s", cert_authority.c_str());
+			Poco::Crypto::X509Certificate ca_cert(cert_authority);
+			ptrContext->addCertificateAuthority(ca_cert);
+		}
+		catch (const Poco::Net::SSLException& e)
+		{
+			// thrown by addCertificateAuthority()
+			LOG_ERROR("Unable to add ssl ca certificate: %s", e.message().c_str());
+		}
+		catch (const Poco::IOException& e)
+		{
+			// thrown by X509Certificate constructor
+			LOG_ERROR("Unable to read ssl ca certificate: %s", e.message().c_str());
+		}
+		catch (...)
+		{
+			LOG_ERROR("Unable to load ssl ca certificate: %s", cert_authority.c_str());
+		}
 	}
 
 	// If the above fails, this call will still succeed but certificate validation

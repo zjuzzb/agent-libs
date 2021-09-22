@@ -54,9 +54,6 @@
 
 			<Directory Id="CommonAppDataFolder">
 				<Directory Id="DATAINSTALLDIR" Name="Sysdig Agent">				
-					<Component Id="CERTFILES" Guid="d57577fd-c9f8-4b09-9aab-ad0aa0a76de4">
-						<File Id="CERTILE1" Source="root.cert"/>
-					</Component>
 					<Directory Id="BINDIR" Name="bin">
 						<Component Id="BINFILES" Guid="59bda772-ca9c-481a-8089-a83412584a12">
 							<File Id="BINFILE1" Source="bin\\dragent.exe"/>

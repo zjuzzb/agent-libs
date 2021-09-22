@@ -128,6 +128,7 @@ list(
     ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoNetSSL.a
     ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoUtil.a
     ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoNet.a
+    ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoCrypto.a
     ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoFoundation.a
     rt
     ${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
@@ -191,8 +192,6 @@ file(COPY ${PROJECT_SOURCE_DIR}/scripts/rpm/dragent.in
      DESTINATION ${PROJECT_BINARY_DIR}/scripts/rpm
 )
 
-file(COPY root.cert DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-
 file(COPY chisels DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 if(DEFINED AGENT_BUILD_COMMIT OR DEFINED AGENT_BUILD_DATE)
@@ -222,12 +221,6 @@ install(
 )
 
 install(
-    FILES root.cert
-    DESTINATION ${CMAKE_INSTALL_PREFIX}
-    COMPONENT agent-slim
-)
-
-install(
     FILES dragent.default.yaml
     DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
     COMPONENT agent-slim
@@ -237,12 +230,6 @@ install(
     FILES prometheus-v2.default.yaml prometheus-v1.default.yaml promscrape.yaml
     DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
     COMPONENT agent-slim
-)
-
-install(
-    FILES root.cert
-    DESTINATION ${CMAKE_INSTALL_PREFIX}
-    COMPONENT agentone
 )
 
 install(
