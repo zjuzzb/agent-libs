@@ -848,7 +848,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 #ifndef CYGWING_AGENT
 	if (m_configuration.python_present() && (feature_manager::instance().get_enabled(APP_CHECKS) ||
-	                                         (m_configuration.m_prom_conf.enabled() && !promscrape::c_use_promscrape.get_value())))
+	                                         (m_configuration.m_prom_conf.enabled() && !prom_helper::c_use_promscrape.get_value())))
 	{
 		m_sdchecks_pipes = make_unique<errpipe_manager>();
 		auto state = &m_subprocesses_state["sdchecks"];
@@ -1444,7 +1444,7 @@ int dragent_app::sdagent_main()
 		std::shared_ptr<app_checks_proxy> the_app_checks_proxy = nullptr;
 		if ((feature_manager::instance().get_enabled(APP_CHECKS) &&
 		     !m_configuration.m_app_checks.empty()) ||
-		    (m_configuration.m_prom_conf.enabled() && !promscrape::c_use_promscrape.get_value()))
+		    (m_configuration.m_prom_conf.enabled() && !prom_helper::c_use_promscrape.get_value()))
 		{
 			bool app_check_thread = c_app_check_thread.get_value();
 			the_app_checks_proxy =
