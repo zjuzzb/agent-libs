@@ -4,26 +4,13 @@
 
 #include "analyzer_utils.h"
 #include "prom_grpc.h"
+#include "prom_helper.h"
 #include "common_logger.h"
 #include "type_config.h"
 #include "utils.h"
 #include "sinsp.h"
 
-namespace {
-
 COMMON_LOGGER();
-
-type_config<int> c_promscrape_connect_interval(
-    10,
-    "Interval for attempting to connect to promscrape",
-    "promscrape_connect_interval");
-
-int elapsed_s(uint64_t old, uint64_t now)
-{
-	return (now - old) / ONE_SECOND_IN_NS;
-}
-
-}
 
 /**
  * Uses the coclient interface to create a unary connection.
@@ -42,15 +29,15 @@ bool prom_unarygrpc::start_unary_connection(int64_t boot_ts, std::shared_ptr<age
 	{
 		m_config_conn = grpc_connect<agent_promscrape::ScrapeService::Stub>(m_sock, 10, &args);
 		if (!m_config_conn) {
-			if (elapsed_s(boot_ts, sinsp_utils::get_current_time_ns()) < 30)
+			if (prom_helper::elapsed_s(boot_ts, sinsp_utils::get_current_time_ns()) < 30)
 			{
 				LOG_INFO("failed to connect to %s, retrying in %ds", m_sock.c_str(),
-					c_promscrape_connect_interval.get_value());
+					prom_helper::c_promscrape_connect_interval.get_value());
 			}
 			else
 			{
 				LOG_ERROR("failed to connect to %s, retrying in %ds", m_sock.c_str(),
-					c_promscrape_connect_interval.get_value());
+					prom_helper::c_promscrape_connect_interval.get_value());
 			}
 			return false;
 		}
@@ -104,15 +91,15 @@ void prom_streamgrpc::start_stream_connection(int64_t boot_ts, resp_cb_t respons
 		m_start_conn = grpc_connect<agent_promscrape::ScrapeService::Stub>(m_sock, 10, &args);
 		if (!m_start_conn) {
 			// Only log at error if we've been up for a while
-			if (elapsed_s(boot_ts, sinsp_utils::get_current_time_ns()) < 30)
+			if (prom_helper::elapsed_s(boot_ts, sinsp_utils::get_current_time_ns()) < 30)
 			{
 				LOG_INFO("failed to connect to %s, retrying in %ds", m_sock.c_str(),
-					c_promscrape_connect_interval.get_value());
+					prom_helper::c_promscrape_connect_interval.get_value());
 			}
 			else
 			{
 				LOG_ERROR("failed to connect to %s, retrying in %ds", m_sock.c_str(),
-					c_promscrape_connect_interval.get_value());
+					prom_helper::c_promscrape_connect_interval.get_value());
 			}
 			return;
 		}

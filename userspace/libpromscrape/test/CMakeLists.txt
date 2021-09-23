@@ -1,6 +1,7 @@
 include_directories(${PROJECT_SOURCE_DIR}/userspace/command-line/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libpromscrape/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/libpromscrape/test_helpers)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fused-src/gtest)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
@@ -11,6 +12,9 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/inclu
 add_executable(
     unit-test-promscrape
     main.cpp
+    prom_job.ut.cpp
+    prom_v1.ut.cpp
+    prom_v2.ut.cpp
     prom_job_metadata.ut.cpp
     prom_metadata_scraper.ut.cpp 
     promscrape.ut.cpp
@@ -23,6 +27,7 @@ target_link_libraries(
     promscrape
     userspace-shared
     draiosproto
+    test-helpers-libpromscrape
     ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
     ${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
     ${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a

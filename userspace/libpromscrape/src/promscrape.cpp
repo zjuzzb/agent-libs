@@ -9,6 +9,8 @@
 #include "type_config.h"
 #include "utils.h"
 #include "stream_grpc_status.h"
+#include "wall_time.h"
+#include "prom_helper.h"
 
 #include <sys/time.h>
 #include <Poco/Net/HTTPClientSession.h>
@@ -22,133 +24,11 @@
 #include <memory>
 
 //#define DEBUG_PROMSCRAPE	1
-#define ONE_SECOND_IN_NS 1000000000LL
 
 using namespace std;
-
-namespace {
+using namespace prom_helper;
 
 COMMON_LOGGER();
-
-#ifndef _WIN32
-
-uint64_t get_now_time_ns()
-{
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-
-    return tv.tv_sec * (uint64_t) 1000000000 + tv.tv_usec * 1000;
-}
-
-#endif // _WIN32
-
-} //anonymous namespace
-
-type_config<int> c_promscrape_stats_log_interval(
-    60,
-    "Interval for logging promscrape timeseries statistics",
-    "promscrape_stats_log_interval");
-
-type_config<bool> promscrape::c_use_promscrape(
-    true,
-    "Whether or not to use promscrape for prometheus metrics",
-    "use_promscrape");
-
-type_config<bool> promscrape::c_prom_service_discovery(
-    false,
-    "Whether or not to enable Prometheus Service Discovery (aka promscrape_v2)",
-    "prometheus",
-	"prom_service_discovery");
-
-// Promscrape GRPC server address: At this point the default agent root-dir is not yet
-// known, so it will be inserted during config validation
-type_config<string> promscrape::c_promscrape_sock(
-    "unix:/run/promscrape.sock",
-    "Socket address URL for promscrape server",
-    "promscrape_address");
-
-type_config<bool> promscrape::c_allow_bypass(
-	true,
-    "Allow a metric endpoint to bypass limits and filters",
-    "promscrape_allow_bypass");
-
-type_config<string> promscrape::c_promscrape_web_sock(
-    "127.0.0.1:9990",
-    "Socket address URL for promscrape web server",
-    "promscrape_web_address");
-
-type_config<bool> promscrape::c_promscrape_web_enable(
-    true,
-    "Enable promscrape web server with target status",
-    "promscrape_web_enable");
-
-type_config<int> c_promscrape_connect_interval(
-    10,
-    "Interval for attempting to connect to promscrape",
-    "promscrape_connect_interval");
-
-type_config<int> c_promscrape_connect_delay(
-    10,
-    "Delay before attempting to connect to promscrape",
-    "promscrape_connect_delay");
-
-type_config<bool>::mutable_ptr promscrape::c_export_fastproto =
-	type_config_builder<bool>(false,
-		"Whether or not to export metrics using newer protocol",
-		"promscrape_fastproto")
-	.post_init([](type_config<bool>& config)
-	{
-		bool &value = config.get_value();
-		if (!value)
-		{
-			return;
-		}
-		if (!c_use_promscrape.get_value())
-		{
-			LOG_INFO("promscrape_fastproto enabled without promscrape, disabling");
-			value = false;
-		}
-	})
-	.build_mutable();
-
-type_config<bool> promscrape_stats::c_always_gather_stats(
-    false,
-    "Gather statistics and metadata in the background for all prometheus targets",
-    "promscrape_gather_stats");
-
-int elapsed_s(uint64_t old, uint64_t now)
-{
-	return (now - old) / ONE_SECOND_IN_NS;
-}
-
-void promscrape::validate_config(bool prom_enabled, const promscrape_conf& scrape_conf, const string &root_dir)
-{
-	bool &use_promscrape = c_use_promscrape.get_value();
-	if (use_promscrape && !prom_enabled)
-	{
-		LOG_INFO("promscrape enabled without prometheus, disabling");
-		use_promscrape = false;
-	}
-	bool &fastproto = (*c_export_fastproto).get_value();
-	
-	if (fastproto && !scrape_conf.ingest_raw())
-	{
-		LOG_INFO("promscrape_fastproto is only supported for raw metrics, disabling."
-			" Enable prometheus.ingest_raw to enable fastproto");
-		fastproto = false;
-	}
-	if (fastproto && scrape_conf.ingest_calculated())
-	{
-		LOG_INFO("ingest_calculated is enabled but not supported with promscrape_fastproto."
-			"You will only get raw prometheus metrics");
-	}
-	string &sock = c_promscrape_sock.get_value();
-	if (sock.compare(0,6,"unix:/") == 0)
-	{
-		// Insert root-dir for unix socket address
-		sock = "unix:" + root_dir + "/" + sock.substr(6);
-	}
-}
 
 promscrape::promscrape(metric_limits::sptr_t ml,
 	const promscrape_conf &scrape_conf,
@@ -159,7 +39,7 @@ promscrape::promscrape(metric_limits::sptr_t ml,
 		m_sock(c_promscrape_sock.get_value()),
 		m_grpc_start(std::move(grpc_start)),
 		m_grpc_applyconfig(std::move(grpc_applyconfig)),
-		m_start_interval(c_promscrape_connect_interval.get_value() * ONE_SECOND_IN_NS),
+		m_start_interval(c_promscrape_connect_interval.get_value() * get_one_second_in_ns()),
 		m_next_ts(0),
 		m_start_failed(false),
 		m_metric_limits(ml),
@@ -225,16 +105,16 @@ void promscrape::try_start()
 	}
 	if (!m_boot_ts)
 	{
-		m_boot_ts = get_now_time_ns();
+		m_boot_ts = wall_time::nanoseconds();
 	}
-	if (elapsed_s(m_boot_ts, get_now_time_ns()) < c_promscrape_connect_delay.get_value())
+	if (elapsed_s(m_boot_ts, wall_time::nanoseconds()) < c_promscrape_connect_delay.get_value())
 	{
 		return;
 	}
 	m_start_interval.run([this]()
 	{
 		start();
-	}, get_now_time_ns() );
+	}, wall_time::nanoseconds() );
 }
 
 void promscrape::reset()
@@ -597,20 +477,9 @@ void promscrape::next_th()
 	}
 }
 
-static void set_label_value(google::protobuf::RepeatedPtrField<agent_promscrape::Label> *labels,
-	const string &name, const string &value)
+bool promscrape::allow_bypass()
 {
-	for (auto &label : *labels)
-	{
-		if (!label.name().compare(name))
-		{
-			label.set_value(value);
-			return;
-		}
-	}
-	auto new_label = labels->Add();
-	new_label->set_name(name);
-	new_label->set_value(value);
+    return c_allow_bypass.get_value() && m_allow_bypass;
 }
 
 void promscrape::handle_result(agent_promscrape::ScrapeResult &result)
@@ -971,13 +840,6 @@ void promscrape::delete_job(int64_t job_id)
 	m_jobs.erase(it);
 }
 
-// Currently only supported for 10s flush when fastproto is enabled
-bool promscrape::can_use_metrics_request_callback()
-{
-	return promscrape::c_export_fastproto->get_value() &&
-		configuration_manager::instance().get_config<bool>("10s_flush_enable")->get_value();
-}
-
 // metrics request callback
 // Should only get called once per flush interval by the async aggregator
 // Only when 10s flush is enabled
@@ -989,7 +851,7 @@ std::shared_ptr<draiosproto::metrics> promscrape::metrics_request_callback()
 	unsigned int total = 0;
 	shared_ptr<draiosproto::metrics> metrics = make_shared<draiosproto::metrics>();
 
-	if (!promscrape::c_export_fastproto->get_value())
+	if (!c_export_fastproto->get_value())
 	{
 		// Shouldn't get here yet
 		LOG_INFO("metrics callback not yet supported for per-process export");
@@ -1092,18 +954,6 @@ std::shared_ptr<agent_promscrape::ScrapeResult> promscrape::get_job_result_ptr(
 	return result_ptr;
 }
 
-std::string promscrape::get_label_value(const agent_promscrape::Sample &sample, const std::string &labelname)
-{
-	for (const auto &label : sample.labels())
-	{
-		if (label.name() == labelname)
-		{
-			return label.value();
-		}
-	}
-	return "";
-}
-
 // Called by analyzer flush loop to ask if it should emit counters itself
 bool promscrape::emit_counters() const
 {
@@ -1147,8 +997,8 @@ unsigned int promscrape::pid_to_protobuf(int pid, metric *proto,
 			int interval = (m_interval_cb != nullptr) ? m_interval_cb() : 10;
 			// Timestamp will be the same for different pids in same flush cycle
 			if ((m_next_ts > m_last_proto_ts) &&
-				(m_next_ts < (m_last_proto_ts + (interval * ONE_SECOND_IN_NS) -
-				(ONE_SECOND_IN_NS / 2))))
+				(m_next_ts < (m_last_proto_ts + (interval * get_one_second_in_ns()) -
+				(get_one_second_in_ns() / 2))))
 			{
 				LOG_DEBUG("skipping protobuf");
 				m_emit_counters = false;
@@ -1174,16 +1024,6 @@ unsigned int promscrape::pid_to_protobuf(int pid, metric *proto,
 		num_metrics += job_to_protobuf(job, proto, limit, max_limit, filtered, total);
 	}
 	return num_metrics;
-}
-
-bool promscrape::metric_type_is_raw(agent_promscrape::Sample::LegacyMetricType mt)
-{
-	// Promscrape v2 doesn't populate the legacy_metric_type field
-	// For some reason the C++ protobuf API doesn't have a way to check
-	// field existence but instead the field is reported as 0 which
-	// in this case equals MT_INVALID
-	return (mt == agent_promscrape::Sample::MT_RAW) ||
-		(mt == agent_promscrape::Sample::MT_INVALID);
 }
 
 template unsigned int promscrape::pid_to_protobuf<draiosproto::app_info>(int pid, draiosproto::app_info *proto,
@@ -1768,7 +1608,7 @@ void promscrape_stats::periodic_gather_stats()
 			gather_target_stats();
 		}
 		m_gather_stats_count++;
-	}, get_now_time_ns() );
+	}, wall_time::nanoseconds() );
 }
 
 void promscrape_stats::init_command_line()
@@ -1943,9 +1783,9 @@ void promscrape_stats::init_command_line()
 }
 
 promscrape_stats::promscrape_stats(const promscrape_conf& scrape_conf, promscrape* ps)
-    : m_log_interval(c_promscrape_stats_log_interval.get_value() * ONE_SECOND_IN_NS),
+    : m_log_interval(c_promscrape_stats_log_interval.get_value() * get_one_second_in_ns()),
       m_scrape_conf(scrape_conf),
-      m_gather_interval(10 * ONE_SECOND_IN_NS),
+      m_gather_interval(10 * get_one_second_in_ns()),
       m_gather_stats(false),
       m_gather_stats_count(0),
       m_promscrape(ps)
@@ -2088,5 +1928,5 @@ void promscrape_stats::periodic_log_summary()
 	{
 		log_summary();
 		clear();
-	}, get_now_time_ns() );
+	}, wall_time::nanoseconds() );
 }

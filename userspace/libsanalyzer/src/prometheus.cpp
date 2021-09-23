@@ -6,6 +6,7 @@
 #include "common_logger.h"
 #include "infrastructure_state.h"
 #include "prometheus.h"
+#include "prom_helper.h"
 #include "promscrape.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -140,7 +141,7 @@ bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule& r
 				// Since the python scraper enters the target network namespace it
 				// should scrape the container port, whereas promscrape must scrape
 				// the (advertized) host port.
-				params.ports.emplace(promscrape::c_use_promscrape.get_value() ? port : cont_port);
+				params.ports.emplace(prom_helper::c_use_promscrape.get_value() ? port : cont_port);
 			}
 			else
 			{
@@ -277,7 +278,7 @@ bool prometheus_conf::match_and_fill(const thread_analyzer_info* tinfo,
 			if (matched.second)
 			{
 				std::unordered_map<std::string, std::string> infra_tags;
-				if (promscrape::c_use_promscrape.get_value() && container)
+				if (prom_helper::c_use_promscrape.get_value() && container)
 				{
 					// Look for infrastructure state name tags
 					// used for promscrape to select relabeling rules,
@@ -443,12 +444,12 @@ void prometheus_conf::validate_config(const std::string &root_dir)
 		}
 	}
 
-	promscrape::validate_config(enabled(), m_scrape_conf, root_dir);
+	prom_helper::validate_config(enabled(), m_scrape_conf, root_dir);
 }
 
 void prometheus_conf::show_config(string &output)
 {
-	bool promscrape = promscrape::c_use_promscrape.get_value();
+	bool promscrape = prom_helper::c_use_promscrape.get_value();
 	Table tbl;
 	tbl.format().corner("").border("").column_separator("");
 	

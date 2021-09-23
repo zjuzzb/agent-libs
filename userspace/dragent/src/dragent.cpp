@@ -40,6 +40,7 @@
 #include "procfs_parser.h"
 #include "promscrape.h"
 #include "promscrape_proxy.h"
+#include "prom_helper.h"
 #include "prom_grpc.h"
 #include "protobuf_compression.h"
 #include "protobuf_metric_serializer.h"
@@ -1011,7 +1012,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	// Prom configuration manager (allowing config from backend) is only supported with Promscrape v2
 	prom_config_file_manager *prom_config_mgr = prom_config_file_manager::instance();
 	prom_config_mgr->set_v2(m_configuration.m_prom_conf.enabled() &&
-		promscrape::c_use_promscrape.get_value() && m_configuration.m_prom_conf.prom_sd());
+		prom_helper::c_use_promscrape.get_value() && m_configuration.m_prom_conf.prom_sd());
 	if (prom_config_mgr->enabled())
 	{
 		prom_config_mgr->set_root_dir(m_configuration.c_root_dir.get_value());
@@ -1019,7 +1020,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		prom_config_mgr->merge_and_save_configs();
 	}
 
-	if (promscrape::c_use_promscrape.get_value())
+	if (prom_helper::c_use_promscrape.get_value())
 	{
 		m_promscrape_pipes = make_unique<pipe_manager>();
 		auto* state = &m_subprocesses_state["promscrape"];
@@ -1062,7 +1063,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			string log_level = (g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
 			                       ? "--log.level=debug"
 			                       : "--log.level=info";
-			string address = "--grpc.address=" + promscrape::c_promscrape_sock.get_value();
+			string address = "--grpc.address=" + prom_helper::c_promscrape_sock.get_value();
 			default_cpu_cgroup.enter();
 			m_promscrape_pipes->attach_child_stdio();
 			// Promscrape v2 does service discovery, v1 lets the agent find targets
@@ -1076,10 +1077,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 			string web_addr;	// Keep scope until execv since we're putting the c_str() in argv
 			// Web interface is currently only supported in promscrape v2
 			if (m_configuration.m_prom_conf.prom_sd() &&
-				promscrape::c_promscrape_web_enable.get_value())
+				prom_helper::c_promscrape_web_enable.get_value())
 			{
 				argv[i++] = "--web.enable";
-				web_addr = "--web.listen-address=" + promscrape::c_promscrape_web_sock.get_value();
+				web_addr = "--web.listen-address=" + prom_helper::c_promscrape_web_sock.get_value();
 				argv[i++] = web_addr.c_str();
 			}
 			argv[i++] = "--log.format=json";
@@ -1455,15 +1456,15 @@ int dragent_app::sdagent_main()
 		}
 
 		std::shared_ptr<promscrape> the_promscrape = nullptr;
-		if (m_configuration.m_prom_conf.enabled() && promscrape::c_use_promscrape.get_value())
+		if (m_configuration.m_prom_conf.enabled() && prom_helper::c_use_promscrape.get_value())
 		{
 			auto interval_cb = [cm]() -> int {
 				std::chrono::seconds s = cm->get_negotiated_aggregation_interval();
 				return (s != std::chrono::seconds::max()) ? s.count() : 10;
 			};
 
-			std::unique_ptr<prom_unarygrpc_iface> prom_unary_grpc(new prom_unarygrpc(promscrape::c_promscrape_sock.get_value()));
-			std::unique_ptr<prom_streamgrpc_iface> prom_stream_grpc(new prom_streamgrpc(promscrape::c_promscrape_sock.get_value()));
+			std::unique_ptr<prom_unarygrpc_iface> prom_unary_grpc(new prom_unarygrpc(prom_helper::c_promscrape_sock.get_value()));
+			std::unique_ptr<prom_streamgrpc_iface> prom_stream_grpc(new prom_streamgrpc(prom_helper::c_promscrape_sock.get_value()));
 			the_promscrape = std::make_shared<promscrape>(the_metric_limits,
 			                                              m_configuration.m_prom_conf.get_scrape_conf(),
 			                                              c_promscrape_thread.get_value(),
@@ -1513,7 +1514,7 @@ int dragent_app::sdagent_main()
 		m_pool.start(*aggregator, c_serializer_timeout_s.get_value());
 		LOG_INFO("Created and started aggregator");
 
-		if ((the_promscrape != nullptr) && promscrape::can_use_metrics_request_callback())
+		if ((the_promscrape != nullptr) && prom_helper::can_use_metrics_request_callback())
 		{
 			// Set metric request callback for async aggregator
 			async_aggregator::metrics_request_cb metrics_request_cb =
