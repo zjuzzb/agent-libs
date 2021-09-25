@@ -268,6 +268,7 @@ FILLER(sys_write_x, true)
 
 	return res;
 }
+
 #define POLL_MAXFDS 16
 
 static __always_inline int bpf_poll_parse_fds(struct filler_data *data,
@@ -279,7 +280,15 @@ static __always_inline int bpf_poll_parse_fds(struct filler_data *data,
 	unsigned long nfds;
 	struct pollfd *fds;
 	unsigned long val;
+#if 1
+/*
+ * SYSDIG -- generate code which satisfies kernel verifier on ARM
+ * - Declare parameter as volatile to force re-evaluation
+ */
 	volatile unsigned long off;
+#else /* SYSDIG */
+	unsigned long off;
+#endif /* SYSDIG */
 	int j;
 
 	nfds = bpf_syscall_get_argument(data, 1);
@@ -307,26 +316,21 @@ static __always_inline int bpf_poll_parse_fds(struct filler_data *data,
 
 	#pragma unroll
 	for (j = 0; j < POLL_MAXFDS; ++j) {
-		u16 flags;
+		if (off > SCRATCH_SIZE_HALF)
+			return PPM_FAILURE_BUFFER_FULL;
 
 		if (j == nfds)
 			break;
 
+		u16 flags;
 		if (enter_event) {
 			flags = poll_events_to_scap(fds[j].events);
 		} else {
-			if (!fds[j].revents)
-				continue;
-
 			flags = poll_events_to_scap(fds[j].revents);
 		}
 
-		if (off > SCRATCH_SIZE_HALF)
-			return PPM_FAILURE_BUFFER_FULL;
-
 		*(s64 *)&data->buf[off & SCRATCH_SIZE_HALF] = fds[j].fd;
 		off += sizeof(s64);
-
 		if (off > SCRATCH_SIZE_HALF)
 			return PPM_FAILURE_BUFFER_FULL;
 
@@ -337,7 +341,6 @@ static __always_inline int bpf_poll_parse_fds(struct filler_data *data,
 
 	*((u16 *)&data->buf[data->state->tail_ctx.curoff & SCRATCH_SIZE_HALF]) = fds_count;
 	data->curarg_already_on_frame = true;
-
 	return __bpf_val_to_ring(data, 0, off - data->state->tail_ctx.curoff, PT_FDLIST, -1, false);
 }
 
@@ -415,9 +418,13 @@ static __always_inline int bpf_parse_readv_writev_bufs(struct filler_data *data,
 #endif
 		return PPM_FAILURE_INVALID_USER_MEMORY;
 
+
 	#pragma unroll
 	for (j = 0; j < MAX_IOVCNT; ++j) {
 		if (j == iovcnt)
+			break;
+		// BPF seems to require a hard limit to avoid overflows
+		if (size == LONG_MAX)
 			break;
 
 		size += iov[j].iov_len;
@@ -435,7 +442,16 @@ static __always_inline int bpf_parse_readv_writev_bufs(struct filler_data *data,
 
 	if (flags & PRB_FLAG_PUSH_DATA) {
 		if (size > 0) {
-			volatile unsigned long off = _READ(data->state->tail_ctx.curoff);
+			unsigned long off = _READ(data->state->tail_ctx.curoff);
+#if 1
+/*
+ * SYSDIG -- generate code which satisfies kernel verifier on ARM
+ * - Declare parameter as volatile to force re-evaluation
+ */
+			volatile unsigned long off_bounded;
+#else /* SYSDIG */
+			unsigned long off_bounded;
+#endif /* SYSDIG */
 			unsigned long remaining = size;
 			int j;
 
@@ -446,6 +462,14 @@ static __always_inline int bpf_parse_readv_writev_bufs(struct filler_data *data,
 				if (j == iovcnt)
 					break;
 
+#if 1
+/*
+ * SYSDIG -- generate code which satisfies kernel verifier on ARM
+ * - Move assignment of curoff_bounded to near its usage
+ */
+#else /* SYSDIG */
+				off_bounded = off & SCRATCH_SIZE_HALF;
+#endif /* SYSDIG */
 				if (off > SCRATCH_SIZE_HALF)
 					break;
 
@@ -456,18 +480,51 @@ static __always_inline int bpf_parse_readv_writev_bufs(struct filler_data *data,
 
 				if (to_read > SCRATCH_SIZE_HALF)
 					to_read = SCRATCH_SIZE_HALF;
+
+#if 1
+/*
+ * SYSDIG -- generate code which satisfies kernel verifier on ARM
+ * - Use volatile local variable to gratuitously calculate bounded amount to read, near usage
+ * - Move assignment/check of off_bounded to near its usage
+ * - Add gratuitous mask to satisfy verifier
+ */
+				{
+					volatile unsigned int to_read_bounded;
+					to_read_bounded = to_read;
+#ifdef BPF_FORBIDS_ZERO_ACCESS
+					if (to_read_bounded) {
+						off_bounded = off;
+						if (bpf_probe_read(&data->buf[off_bounded & SCRATCH_SIZE_HALF],
+								   ((to_read_bounded - 1) & SCRATCH_SIZE_HALF) + 1,
+								   iov[j].iov_base))  {
+							return PPM_FAILURE_INVALID_USER_MEMORY;
+						}
+					}
+#else
+					off_bounded = off;
+					if (bpf_probe_read(&data->buf[off_bounded & SCRATCH_SIZE_HALF],
+							   to_read_bounded & SCRATCH_SIZE_HALF,
+							   iov[j].iov_base)) {
+						return PPM_FAILURE_INVALID_USER_MEMORY;
+					}
+#endif
+				}
+
+#else /* SYSDIG */
+
 #ifdef BPF_FORBIDS_ZERO_ACCESS
 				if (to_read)
-					to_read &= SCRATCH_SIZE_HALF;
-					if (bpf_probe_read(&data->buf[off & SCRATCH_SIZE_HALF],
+					if (bpf_probe_read(&data->buf[off_bounded],
 							   ((to_read - 1) & SCRATCH_SIZE_HALF) + 1,
 							   iov[j].iov_base))
 #else
-				if (bpf_probe_read(&data->buf[off & SCRATCH_SIZE_HALF],
+				if (bpf_probe_read(&data->buf[off_bounded],
 						   to_read & SCRATCH_SIZE_HALF,
 						   iov[j].iov_base))
 #endif
 					return PPM_FAILURE_INVALID_USER_MEMORY;
+
+#endif /* SYSDIG */
 
 				remaining -= to_read;
 				off += to_read;
@@ -1506,11 +1563,13 @@ static __always_inline int __bpf_append_cgroup(struct css_set *cgroups,
 	char *cgroup_path[MAX_CGROUP_PATHS];
 	bool prev_empty = false;
 	int off = *len;
+	unsigned int off_bounded;
 
+	off_bounded = off & SCRATCH_SIZE_HALF;
 	if (off > SCRATCH_SIZE_HALF)
 		return PPM_FAILURE_BUFFER_FULL;
 
-	int res = bpf_probe_read_str(&buf[off & SCRATCH_SIZE_HALF],
+	int res = bpf_probe_read_str(&buf[off_bounded],
 				     SCRATCH_SIZE_HALF,
 				     subsys_name);
 	if (res == -EFAULT)
@@ -1518,11 +1577,13 @@ static __always_inline int __bpf_append_cgroup(struct css_set *cgroups,
 
 	off += res - 1;
 
+	off_bounded = off & SCRATCH_SIZE_HALF;
 	if (off > SCRATCH_SIZE_HALF)
 		return PPM_FAILURE_BUFFER_FULL;
 
-	buf[off & SCRATCH_SIZE_HALF] = '=';
+	buf[off_bounded] = '=';
 	++off;
+	off_bounded = off & SCRATCH_SIZE_HALF;
 
 	#pragma unroll MAX_CGROUP_PATHS
 	for (int k = 0; k < MAX_CGROUP_PATHS; ++k) {
@@ -1541,8 +1602,9 @@ static __always_inline int __bpf_append_cgroup(struct css_set *cgroups,
 				if (off > SCRATCH_SIZE_HALF)
 					return PPM_FAILURE_BUFFER_FULL;
 
-				buf[off & SCRATCH_SIZE_HALF] = '/';
+				buf[off_bounded] = '/';
 				++off;
+				off_bounded = off & SCRATCH_SIZE_HALF;
 			}
 
 			prev_empty = false;
@@ -1550,11 +1612,14 @@ static __always_inline int __bpf_append_cgroup(struct css_set *cgroups,
 			if (off > SCRATCH_SIZE_HALF)
 				return PPM_FAILURE_BUFFER_FULL;
 
-			res = bpf_probe_read_str(&buf[off & SCRATCH_SIZE_HALF],
+			res = bpf_probe_read_str(&buf[off_bounded],
 						 SCRATCH_SIZE_HALF,
 						 cgroup_path[k]);
 			if (res > 1)
+			{
 				off += res - 1;
+				off_bounded = off & SCRATCH_SIZE_HALF;
+			}
 			else if (res == 1)
 				prev_empty = true;
 			else
@@ -1565,7 +1630,7 @@ static __always_inline int __bpf_append_cgroup(struct css_set *cgroups,
 	if (off > SCRATCH_SIZE_HALF)
 		return PPM_FAILURE_BUFFER_FULL;
 
-	buf[off & SCRATCH_SIZE_HALF] = 0;
+	buf[off_bounded] = 0;
 	++off;
 	*len = off;
 
@@ -4282,7 +4347,6 @@ FILLER(sys_autofill, true)
 
 	return res;
 }
-
 
 FILLER(sys_fchmodat_x, true)
 {
