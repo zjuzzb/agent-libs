@@ -5,6 +5,8 @@
 #include "promscrape.h"
 #include "prom_metadata_scraper.h"
 #include "type_config.h"
+#include "wall_time.h"
+#include "prom_helper.h"
 
 #include <sys/time.h>
 #include <Poco/Exception.h>
@@ -16,24 +18,10 @@
 #include <json/json.h>
 
 COMMON_LOGGER();
-
-#define ONE_SECOND_IN_NS 1000000000LL
-
-namespace
-{
-
-uint64_t get_now_time_ns()
-{
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-
-    return tv.tv_sec * (uint64_t) 1000000000 + tv.tv_usec * 1000;
-}
-
-} //anonymous
+using namespace prom_helper;
 
 prom_metadata_scraper::prom_metadata_scraper() :
-	m_gather_interval(10 * ONE_SECOND_IN_NS),
+	m_gather_interval(10 * get_one_second_in_ns()),
 	m_gather_stats(false),
 	m_gather_stats_count(0)
 {
@@ -127,7 +115,7 @@ void prom_metadata_scraper::process_metadata(const Json::Value &local_targets_me
 bool prom_metadata_scraper::gather_stats_enabled()
 {
 	// Currently only supported with promscrape v2
-	return promscrape_stats::c_always_gather_stats.get_value() || m_gather_stats;
+	return c_always_gather_stats.get_value() || m_gather_stats;
 }
 
 /**
@@ -208,7 +196,7 @@ void prom_metadata_scraper::periodic_gather_stats()
 				gather_target_stats();
 			}
 			m_gather_stats_count++;
-	}, get_now_time_ns());
+	}, wall_time::nanoseconds());
 }
 
 /**

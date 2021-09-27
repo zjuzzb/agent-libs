@@ -8,6 +8,11 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSIO
 
 add_library(
     promscrape STATIC
+    prom_base.cpp
+    prom_helper.cpp
+    prom_job.cpp
+    prom_v1.cpp
+    prom_v2.cpp
     prom_job_metadata.cpp
     prom_metadata_scraper.cpp
     promscrape.cpp

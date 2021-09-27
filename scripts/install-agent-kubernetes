@@ -24,7 +24,6 @@ function check_commands_installed {
 }
 
 function download_yamls {
-	WORKDIR=$(mktemp -d /tmp/sysdig-agent-k8s.XXXXXX)
 	echo "* Downloading yamls files to the temp directory: $WORKDIR"
 	echo "* Downloading Sysdig cluster role yaml"
 	curl -s -o $WORKDIR/sysdig-agent-clusterrole.yaml https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-agent-clusterrole.yaml
@@ -100,6 +99,15 @@ function is_valid_value {
 	fi
 }
 
+function already_exists {
+	if [[ ${1} =~ "AlreadyExists" || ${1} =~ "already exists" ]]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+
 function create_namespace {
 	fail=0
 	if [ $OPENSHIFT -eq 0 ]; then
@@ -109,13 +117,13 @@ function create_namespace {
 		echo "* Creating project: $NAMESPACE"
 		out=$(oc adm new-project $NAMESPACE --node-selector='app=sysdig-agent' 2>&1) || { fail=1 && echo "oc adm new-project failed!"; }
 		# label all nodes
-		oc label node --all "app=sysdig-agent"
+		oc label --overwrite node --all "app=sysdig-agent"
 
 		# Set the project to the namespace
 		switch=$(oc project $NAMESPACE 2>&1)
 	fi
 	if [ $fail -eq 1 ]; then
-		if [[ "$out" =~ "AlreadyExists" || "$out" =~ "already exists" ]]; then
+		if already_exists "$out"; then
 			echo "$out. Continuing..."
 		else
 			echo "$out"
@@ -134,7 +142,7 @@ function create_sysdig_serviceaccount {
 		out=$(oc create serviceaccount sysdig-agent -n $NAMESPACE 2>&1) || { fail=1 && echo "oc create serviceaccount failed!"; }
 	fi
 	if [ $fail -eq 1 ]; then
-		if [[ "$out" =~ "AlreadyExists" || "$out" =~ "already exists" ]]; then
+		if already_exists "$out"; then
 			echo "$out. Continuing..."
 		else
 			echo "$out"
@@ -150,14 +158,19 @@ function install_k8s_agent {
 		kubectl apply -f $WORKDIR/sysdig-agent-clusterrole.yaml
 		outbinding=$(kubectl create clusterrolebinding sysdig-agent --clusterrole=sysdig-agent --serviceaccount=$NAMESPACE:sysdig-agent --namespace=$NAMESPACE 2>&1) || { fail=1 && echo "kubectl create clusterrolebinding failed!"; }
 	else
+		echo "* Creating sysdig-agent clusterrole"
+		oc apply -f $WORKDIR/sysdig-agent-clusterrole.yaml
 		echo "* Creating sysdig-agent access policies"
 		outbinding=$(oc adm policy add-scc-to-user privileged -n $NAMESPACE -z sysdig-agent 2>&1) || { fail=1 && echo "oc adm policy add-scc-to-user failed!"; }
-		if [ $fail -eq 0 ]; then
-			outbinding=$(oc adm policy add-cluster-role-to-user cluster-reader -n $NAMESPACE -z sysdig-agent 2>&1) || { fail=1 && echo "oc adm policy add-cluster-role-to-user failed!"; }
+		if [[ $fail -eq 0 ]] || already_exists "$outbinding"; then
+			outbinding=$(oc adm policy add-cluster-role-to-user cluster-reader -n $NAMESPACE -z sysdig-agent 2>&1) || { fail=1 && echo "oc adm policy add-cluster-role-to-user cluster-reader failed!"; }
+		fi
+		if [[ $fail -eq 0 ]] || already_exists "$outbinding"; then
+			outbinding=$(oc adm policy add-cluster-role-to-user sysdig-agent -n $NAMESPACE -z sysdig-agent 2>&1) || { fail=1 && echo "oc adm policy add-cluster-role-to-user sysdig-agent failed!"; }
 		fi
 	fi
 	if [ $fail -eq 1 ]; then
-		if [[ "$outbinding" =~ "AlreadyExists" || "$outbinding" =~ "already exists" ]]; then
+		if already_exists "$outbinding"; then
 			echo "$outbinding. Continuing..."
 		else
 			echo "$outbinding"
@@ -169,7 +182,7 @@ function install_k8s_agent {
 	fail=0
 	outsecret=$(kubectl create secret generic sysdig-agent --from-literal=access-key=$ACCESS_KEY --namespace=$NAMESPACE 2>&1) || { fail=1 && echo "kubectl create secret failed!"; }
 	if [ $fail -eq 1 ]; then
-		if [[ "$outsecret" =~ "AlreadyExists" || "$outsecret" =~ "already exists" ]]; then
+		if already_exists "$outsecret"; then
 			echo "$outsecret. Re-creating secret..."
 			kubectl delete secrets sysdig-agent --namespace=$NAMESPACE 2>&1
 			kubectl create secret generic sysdig-agent --from-literal=access-key=$ACCESS_KEY --namespace=$NAMESPACE 2>&1
@@ -347,7 +360,7 @@ function install_k8s_agent {
 	sleep 5 # So we gave some time to create the pods and show something meaningful in the next command
 
 	echo -e "\nThe list of agent pods deployed in the namespace \"$NAMESPACE\" are:"
-	kubectl get pods -n $NAMESPACE | grep "sysdig-agent"
+	kubectl get pods -n $NAMESPACE | { grep "sysdig-agent" || true; }
 
 	echo -e "\nMake sure the above pods all turn to \"Running\" state before continuing"
 	echo "Should any pod not reach the \"Running\" state, further info can be obtained from logs as follows"
@@ -378,9 +391,10 @@ function install_k8s_agent {
 		sleep 5 # So we gave some time to create the pods and show something meaningful in the next command
 
 		echo -e "\nThe list of Image Analyzers pods deployed in the namespace \"$NAMESPACE\" are:"
-		kubectl get pods -n $NAMESPACE | grep "image-analyzer"
+		kubectl get pods -n $NAMESPACE | { grep "image-analyzer" || true; }
+
 	elif [ $INSTALL_NODE_ANALYZER -eq 1 ]; then
-		# Deploy Image Analyzer
+		# Deploy Node Analyzer
 		NA_FILE=$WORKDIR/sysdig-node-analyzer-daemonset.yaml
 		if [ ! -z "$NA_CUSTOM_PATH" ]; then
 			NL="\n"
@@ -401,9 +415,10 @@ function install_k8s_agent {
 
 		echo "* Deploying the Node Analyzer"
 		kubectl apply -f $NA_FILE --namespace=$NAMESPACE
+		sleep 5 # So we gave some time to create the pods and show something meaningful in the next command
 
 		echo -e "\nThe list of Node Analyzer pods deployed in the namespace \"$NAMESPACE\" are:"
-		kubectl get pods -n $NAMESPACE | grep "node-analyzer"
+		kubectl get pods -n $NAMESPACE | { grep "node-analyzer" || true; }
 	fi
 }
 
@@ -418,13 +433,13 @@ function remove_agent {
 	echo "* Deleting the sysdig-agent configmap"
 	kubectl delete configmap sysdig-agent --namespace=$NAMESPACE
 
-	if [ "$(kubectl get pods -n $NAMESPACE | grep -c "image-analyzer")" -ge 1 ]; then
+	if [ "$(kubectl get pods -n $NAMESPACE | grep -c image-analyzer)" -ge 1 ]; then
 		echo "* Deleting the sysdig-image-analyzer daemonset"
 		kubectl delete daemonset sysdig-image-analyzer --namespace=$NAMESPACE
 
 		echo "* Deleting the sysdig-image-analyzer configmap"
 		kubectl delete configmap sysdig-image-analyzer --namespace=$NAMESPACE
-	elif [ "$(kubectl get pods -n $NAMESPACE | grep -c "node-analyzer")" -ge 1 ]; then
+	elif [ "$(kubectl get pods -n $NAMESPACE | grep -c node-analyzer)" -ge 1 ]; then
 		echo "* Deleting the sysdig-node-analyzer daemonset"
 		kubectl delete daemonset sysdig-node-analyzer --namespace=$NAMESPACE
 
@@ -443,8 +458,12 @@ function remove_agent {
 		kubectl delete clusterrole sysdig-agent
 	else
 		echo "* Removing cluster role and security constraints"
+		oc adm policy remove-cluster-role-from-user sysdig-agent -n $NAMESPACE -z sysdig-agent
 		oc adm policy remove-cluster-role-from-user cluster-reader -n $NAMESPACE -z sysdig-agent
 		oc adm policy remove-scc-from-user privileged -n $NAMESPACE -z sysdig-agent
+		
+		echo "* Deleting the sysdig-agent clusterrole"
+		oc delete clusterrole sysdig-agent
 
 		echo "* Deleting labels from oc nodes"
 		oc label node --all app-
@@ -461,6 +480,9 @@ function remove_agent {
 	set -e
 }
 
+cleanup_workdir() {
+    rm -rf "$WORKDIR"
+}
 
 if [[ ${#} -eq 0 ]]; then
 	echo "ERROR: Sysdig Access Key argument is mandatory, use -h | --help for $(basename ${0}) Usage"
@@ -479,7 +501,8 @@ AGENT_REPOSITORY="sysdig/agent"
 AGENT_SLIM_REPOSITORY="sysdig/agent-slim"
 AGENT_KMOD_REPOSITORY="sysdig/agent-kmodule"
 AGENT_VERSION="latest"
-WORKDIR=""
+WORKDIR="$(mktemp -d /tmp/sysdig-agent-k8s.XXXXXX)"
+trap cleanup_workdir EXIT ERR
 
 # Get and validate all arguments
 while [[ ${#} > 0 ]]

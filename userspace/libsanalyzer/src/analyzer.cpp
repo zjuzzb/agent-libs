@@ -27,6 +27,7 @@
 #include "parsers.h"
 #include "proc_config.h"
 #include "procfs_parser.h"
+#include "prom_helper.h"
 #include "sched_analyzer.h"
 #include "scores.h"
 #include "secure_audit.h"
@@ -2661,7 +2662,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 		    std::get<0>(m_app_checks_by_containers[container_id]));
 		container->mutable_resource_counters()->set_app_checks_total(
 		    std::get<1>(m_app_checks_by_containers[container_id]));
-		if (!promscrape::c_use_promscrape.get_value() || (m_promscrape == nullptr) ||
+		if (!prom_helper::c_use_promscrape.get_value() || (m_promscrape == nullptr) ||
 		    m_promscrape->emit_counters())
 		{
 			container->mutable_resource_counters()->set_prometheus_sent(
@@ -2727,7 +2728,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt,
 				}
 			}
 
-			if (promscrape::c_use_promscrape.get_value() && m_promscrape != nullptr)
+			if (prom_helper::c_use_promscrape.get_value() && m_promscrape != nullptr)
 			{
 				// Always sendconfig, even if empty to make sure old jobs get stopped
 				m_promscrape->sendconfig(std::move(prom_procs));
@@ -2810,7 +2811,7 @@ bool sinsp_analyzer::collect_prometheus_metrics_for_pid(uint64_t pid, uint64_t f
 {
 	if (!m_prom_conf.prom_sd())
 	{
-		if (promscrape::c_use_promscrape.get_value() ||
+		if (prom_helper::c_use_promscrape.get_value() ||
 			(m_app_checks_proxy &&
 			!m_app_checks_proxy->have_prometheus_metrics_for_pid(pid, flush_time_sec)))
 		{
@@ -3147,7 +3148,7 @@ bool sinsp_analyzer::aggregate_processes_into_programs(sinsp_threadinfo& sinsp_t
 			// Mark all processes that already have metrics so that they will be selected
 			// for emission if app_checks_always_send or a process_filter is enabled
 			if (m_app_checks_proxy->have_metrics_for_pid(tinfo.m_pid) ||
-				(!m_prom_conf.prom_sd() && promscrape::c_use_promscrape.get_value() &&
+				(!m_prom_conf.prom_sd() && prom_helper::c_use_promscrape.get_value() &&
 				m_promscrape->pid_has_metrics(tinfo.m_pid)))
 			{
 				mtinfo->set_has_metrics();
@@ -4604,7 +4605,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 					m_metrics->mutable_swarm()->CopyFrom(*m_docker_swarm_state);
 				}
 
-				if (promscrape::c_use_promscrape.get_value() && m_promscrape != nullptr)
+				if (prom_helper::c_use_promscrape.get_value() && m_promscrape != nullptr)
 				{
 					m_promscrape->next(ts);
 				}
@@ -5009,7 +5010,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 
 			// Check if we should emit the prometheus counters here, otherwise
 			// promscrape will take care of it.
-			if (!promscrape::c_use_promscrape.get_value() || (m_promscrape == nullptr) ||
+			if (!prom_helper::c_use_promscrape.get_value() || (m_promscrape == nullptr) ||
 			    m_promscrape->emit_counters())
 			{
 				// prometheus for the host
@@ -5026,7 +5027,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt,
 					    ->set_prometheus_total(checks_total);
 				}
 			}
-			if (promscrape::c_use_promscrape.get_value() && m_promscrape)
+			if (prom_helper::c_use_promscrape.get_value() && m_promscrape)
 			{
 				m_promscrape->periodic_log_summary();
 			}

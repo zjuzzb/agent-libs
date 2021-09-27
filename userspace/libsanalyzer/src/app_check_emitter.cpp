@@ -2,6 +2,7 @@
 #include "analyzer_thread.h"
 #include "configuration_manager.h"
 #include "promscrape.h"
+#include "prom_helper.h"
 #include "common_logger.h"
 
 COMMON_LOGGER();
@@ -39,13 +40,13 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 	unsigned total_prometheus_metrics = 0;
 
 	// First check if promscrape has metrics for these pids, if enabled
-	if (promscrape::c_use_promscrape.get_value())
+	if (prom_helper::c_use_promscrape.get_value())
 	{
 		for(auto pid: procinfo.m_program_pids)
 		{
 			auto export_prom = [&](int64_t pid)
 			{
-				if (promscrape::c_export_fastproto->get_value())
+				if (prom_helper::c_export_fastproto->get_value())
 				{
 					sent_prometheus_metrics += m_promscrape->pid_to_protobuf((int)pid,
 						&metrics,
@@ -173,7 +174,7 @@ void app_check_emitter::emit_apps(sinsp_procinfo& procinfo,
 		std::get<1>(m_app_checks_by_container[tinfo.m_container_id]) += total_app_checks_metrics;
 	}
 
-	if (!promscrape::c_use_promscrape.get_value() || (m_promscrape == nullptr) ||
+	if (!prom_helper::c_use_promscrape.get_value() || (m_promscrape == nullptr) ||
 		m_promscrape->emit_counters())
 	{
 		proc.mutable_resource_counters()->set_prometheus_sent(sent_prometheus_metrics);

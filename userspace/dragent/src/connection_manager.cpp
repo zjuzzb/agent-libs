@@ -22,6 +22,7 @@
 #include <functional>
 #include <chrono>
 #include "promscrape.h"
+#include "prom_helper.h"
 
 #include <grpc_channel_registry.h>
 
@@ -1074,7 +1075,7 @@ bool connection_manager::send_handshake_negotiation()
 
 	feature_manager::instance().to_protobuf(*msg_hs.mutable_features());
 
-	if (promscrape::c_use_promscrape.get_value() && promscrape::c_allow_bypass.get_value())
+	if (prom_helper::c_use_promscrape.get_value() && prom_helper::c_allow_bypass.get_value())
 	{
 		msg_hs.add_supported_raw_prometheus(draiosproto::raw_prometheus_support::PROMSCRAPE_V2_SUPPORT);
 	}
@@ -1091,9 +1092,9 @@ bool connection_manager::send_handshake_negotiation()
 	msg_hs.add_prom_config(draiosproto::prom_config_support::PROM_CONFIG_NO_SUPPORT);
 
 	auto ps_ver = draiosproto::prom_scraper_version::PROMSCRAPE_V0;
-	if (promscrape::c_use_promscrape.get_value())
+	if (prom_helper::c_use_promscrape.get_value())
 	{
-		if (promscrape::c_prom_service_discovery.get_value())
+		if (prom_helper::c_prom_service_discovery.get_value())
 		{
 			ps_ver = draiosproto::prom_scraper_version::PROMSCRAPE_V2;
 			LOG_INFO("Sending scraper version promscrape_v2 to backend");

@@ -23,8 +23,6 @@ class promscrape_stats {
 public:
 	promscrape_stats(const promscrape_conf &prom_conf, promscrape *ps);
 
-	static type_config<bool>c_always_gather_stats;
-
 	void set_stats(std::string url,
 		int raw_scraped, int raw_job_filter_dropped,
 		int raw_over_job_limit, int raw_global_filter_dropped,
@@ -133,14 +131,6 @@ public:
 	// jobs that haven't been used for this long will be pruned.
 	const int job_prune_time_s = 15;
 
-	static type_config<bool>c_use_promscrape;
-	static type_config<std::string>c_promscrape_sock;
-	static type_config<std::string>c_promscrape_web_sock;
-	static type_config<bool>c_promscrape_web_enable;
-	static type_config<bool>::mutable_ptr c_export_fastproto;
-	static type_config<bool>c_allow_bypass;
-	static type_config<bool>c_prom_service_discovery;
-
 	const prom_jobid_map_t& job_map() { return m_jobs; }
 
 	explicit promscrape(metric_limits::sptr_t ml, const promscrape_conf &prom_conf, bool threaded, interval_cb_t interval_cb,
@@ -205,20 +195,13 @@ public:
 	std::shared_ptr<draiosproto::raw_prometheus_metrics> create_bypass_protobuf(int64_t job_id);
 
 	void set_allow_bypass(bool allow) { m_allow_bypass = allow; }
-	bool allow_bypass() { return c_allow_bypass.get_value() && m_allow_bypass; }
+	bool allow_bypass();
 
-	// Returns whether or not the metrics_request_callback can be used by
-	// the aggregator to populate the metrics protobuf
-	static bool can_use_metrics_request_callback();
 	std::shared_ptr<draiosproto::metrics> metrics_request_callback();
 
 	// Fastproto has been supported for a while, this is here in case we don't want
 	// the backend to try enabling it.
 	static bool support_fastproto() { return true; }
-
-	// Called by prometheus::validate_config() right after prometheus configuration
-	// has been read from config file. Ensures that configuration is consistent
-	static void validate_config(bool prom_enabled, const promscrape_conf& scrape_conf, const std::string &root_dir);
 
 	void periodic_log_summary() { m_stats.periodic_log_summary(); }
 	void periodic_gather_stats() { m_stats.periodic_gather_stats(); }
@@ -227,8 +210,6 @@ public:
 	// process_filter or remote_services rules.
 	// Promscrape will be doing service discovery instead
 	bool is_promscrape_v2() { return m_scrape_conf.prom_sd(); }
-
-	static bool metric_type_is_raw(agent_promscrape::Sample::LegacyMetricType mt);
 
 	void set_infra_state(prom_infra_iface *is) { m_infra_state = is; }
 private:
@@ -254,8 +235,6 @@ private:
 
 	std::shared_ptr<agent_promscrape::ScrapeResult> get_job_result_ptr(uint64_t job_id,
 		prom_job_config *config_copy);
-
-	std::string get_label_value(const agent_promscrape::Sample &sample, const std::string &label);
 
 	// Mutex to protect all 5 maps, might want finer granularity some day
 	std::mutex m_map_mutex;
