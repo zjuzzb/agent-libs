@@ -60,7 +60,7 @@ function help {
 	echo "                [-cp | --collector_port <value>] [-s | --secure <value>] [-cc | --check_certificate <value>] \ "
 	echo "                [-ns | --namespace | --project <value>] [-ac | --additional_conf <value>] \ "
 	echo "                [-op | --openshift] [-as | --agent_slim] [-av | --agent_version <value>] \ "
-        echo "                [-ar | --agent_registry] [-arr | --agent_repository] [-asr | --agent_slim_repository] [-akr | --agent_kmod_repository] \ "
+	echo "                [-ar | --agent_registry] [-arr | --agent_repository] [-asr | --agent_slim_repository] [-akr | --agent_kmod_repository] \ "
 	echo "                [-ae | --api_endpoint <value> ] [-na | --nodeanalyzer ] \ "
 	echo "                [-ia | --imageanalyzer ] [-am | --analysismanager <value>] [-ds | --dockersocket <value>] [-cs | --crisocket <value>] [-cv | --customvolume <value>] \ "
 	echo "                [-cn | --cluster_name <value>] [-r | --remove ] [-h | --help]"
@@ -75,8 +75,8 @@ function help {
 	echo " -op : if provided, perform the installation using the OpenShift command line"
 	echo " -as : if provided, use agent-slim as daemonset for the installation"
 	echo " -ac : if provided, the additional configuration will be appended to agent configuration file"
-        echo " -ar : if provided, the registry for the agent images (default: quay.io)"
-        echo " -arr : if provided, the repository for the agent image (default: sysdig/agent)"
+	echo " -ar : if provided, the registry for the agent images (default: quay.io)"
+	echo " -arr : if provided, the repository for the agent image (default: sysdig/agent)"
         echo " -asr : if provided, the repository for the agent-slim image (default: sysdig/agent-slim)"
         echo " -akr : if provided, the repository for the agent-kmodule image (default: sysdig/agent-kmodule)"
 	echo " -av : if provided, use the agent-version specified. (default: latest)"
@@ -323,11 +323,11 @@ function install_k8s_agent {
 
 	if [ ! -z "$AGENT_SLIM" ]; then
 		DAEMONSET_FILE="$WORKDIR/sysdig-agent-slim-daemonset-v2.yaml"
-                sed -i.bak -e "s|\( *image: \).*/sysdig/agent-slim$|\1${REGISTRY}/${AGENT_SLIM_REPOSITORY}:${AGENT_VERSION}|" $DAEMONSET_FILE
-                sed -i.bak -e "s|\( *image: \).*/sysdig/agent-kmodule$|\1${REGISTRY}/${AGENT_KMOD_REPOSITORY}:${AGENT_VERSION}|" $DAEMONSET_FILE
+		sed -i.bak -e "s|\( *image: \).*/sysdig/agent-slim$|\1${REGISTRY}/${AGENT_SLIM_REPOSITORY}:${AGENT_VERSION}|" $DAEMONSET_FILE
+		sed -i.bak -e "s|\( *image: \).*/sysdig/agent-kmodule$|\1${REGISTRY}/${AGENT_KMOD_REPOSITORY}:${AGENT_VERSION}|" $DAEMONSET_FILE
 	else
 		DAEMONSET_FILE="$WORKDIR/sysdig-agent-daemonset-v2.yaml"
-                sed -i.bak -e "s|\( *image: \).*/sysdig/agent$|\1${REGISTRY}/${AGENT_REPOSITORY}:${AGENT_VERSION}|" $DAEMONSET_FILE
+		sed -i.bak -e "s|\( *image: \).*/sysdig/agent$|\1${REGISTRY}/${AGENT_REPOSITORY}:${AGENT_VERSION}|" $DAEMONSET_FILE
 	fi
 
 
@@ -466,7 +466,7 @@ function remove_agent {
 		oc adm policy remove-cluster-role-from-user sysdig-agent -n $NAMESPACE -z sysdig-agent
 		oc adm policy remove-cluster-role-from-user cluster-reader -n $NAMESPACE -z sysdig-agent
 		oc adm policy remove-scc-from-user privileged -n $NAMESPACE -z sysdig-agent
-		
+
 		echo "* Deleting the sysdig-agent clusterrole"
 		oc delete clusterrole sysdig-agent
 
