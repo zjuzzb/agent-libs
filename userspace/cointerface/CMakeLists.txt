@@ -8,7 +8,7 @@ endif()
 
 set(PROTOC_DIR "${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target")
 set(GEN_GO_DIR "${CMAKE_SOURCE_DIR}/build/generated-go")
-set(GOENV env GOPATH=${GOPATH})
+set(GOENV env GOROOT=${GOROOT} GOPATH=${GOPATH})
 
 set(GOGENENV ${GOENV} PATH="${GOPATH}/bin:${PROTOC_DIR}/bin:$ENV{PATH}"
              LD_LIBRARY_PATH="${PROTOC_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
@@ -23,22 +23,6 @@ function(GoBuild target)
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}/go.mod ${ARGN}
     )
 endfunction()
-
-# Keep this version in sync with the various go.mod files This is super ugly, as dependencies should
-# be managed by the bootstrap-agent, but the coupling is tight enough that updating it on the fly is
-# worth it.
-set(GOGO_PROTOBUF_VER "v1.3.1")
-set(GOGO_PROTOBUF_PATH "github.com/gogo/protobuf/protoc-gen-gofast")
-set(GOGO_PROTOBUF_DIR "${CMAKE_CURRENT_BINARY_DIR}/gogo_protobuf")
-set(GOGO_PROTOBUF_VER_FILE "${GOPATH}/${GOGO_PROTOBUF_VER}.txt")
-add_custom_target(install_go_generate_deps ALL DEPENDS ${GOGO_PROTOBUF_VER_FILE})
-add_custom_command(
-    OUTPUT ${GOGO_PROTOBUF_VER_FILE}
-    COMMAND ${CMAKE_COMMAND} -E remove_directory ${GOGO_PROTOBUF_DIR}
-    COMMAND ${GOENV} ${GOROOT}/bin/go install ${GOGO_PROTOBUF_PATH}@${GOGO_PROTOBUF_VER}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${GOGO_PROTOBUF_DIR}
-    COMMAND ${CMAKE_COMMAND} -E touch ${GOGO_PROTOBUF_VER_FILE}
-)
 
 set(PROTO_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto")
 set(PROTO_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/../draiosproto")
@@ -71,7 +55,6 @@ function(GoGenerate target folder pbgofile protofile)
                 ${protofile}
                 ${GOGO_PROTOBUF_VER_FILE}
                 preproc_proto
-                install_go_generate_deps
     )
     set("${target}_deps"
         "generate_${target}" ${OUTFILES}
