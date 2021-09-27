@@ -194,7 +194,7 @@ secure_netsec_conn::netsec_conn_ptr_t secure_netsec_conn::create(
 
 	if (!cidr.is_configured())
 	{
-		return nullptr;
+		// do nothing it's a possible configuration
 	}
 	else if (!cidr.is_tuple_in_k8s_cidr(msg.key))
 	{
