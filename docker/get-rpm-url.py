@@ -21,6 +21,13 @@ import requests
 from lxml import etree
 import sys
 import zlib
+from distutils.version import LooseVersion
+
+NAMESPACES={
+	'common': 'http://linux.duke.edu/metadata/common',
+	'repo': 'http://linux.duke.edu/metadata/repo',
+	'rpm': 'http://linux.duke.edu/metadata/rpm'
+}
 
 def xpath(text, expr, namespaces):
 	e = etree.fromstring(text)
@@ -35,19 +42,38 @@ def get_url(url, decompress=False):
 		return resp.content
 
 def get_loc_by_xpath(text, expr):
-	loc = xpath(text, expr, namespaces={
-		'common': 'http://linux.duke.edu/metadata/common',
-		'repo': 'http://linux.duke.edu/metadata/repo',
-		'rpm': 'http://linux.duke.edu/metadata/rpm'
-	})
+	loc = xpath(text, expr, namespaces=NAMESPACES)
 	return loc[0].get('href')
+
+def get_by_xpath(text, expr):
+	loc = xpath(text, expr, namespaces=NAMESPACES)
+	return loc
 
 if __name__ == '__main__':
 	baseurl = sys.argv[1]
 	pkgname = sys.argv[2]
+	try:
+		requested_version = LooseVersion(sys.argv[3])
+	except IndexError:
+		requested_version = None
+
 	repomd = get_url(baseurl + 'repodata/repomd.xml')
 	pkglist_url = get_loc_by_xpath(repomd, '//repo:repomd/repo:data[@type="primary"]/repo:location')
 
 	pkglist = get_url(baseurl + pkglist_url, decompress=True)
-	pkg_url = get_loc_by_xpath(pkglist, '//common:metadata/common:package/common:name[text()="{}"]/parent::node()/common:location'.format(pkgname))
-	print baseurl + pkg_url
+	pkg_meta = get_by_xpath(pkglist, '//common:metadata/common:package/common:name[text()="{}"]/parent::node()'.format(pkgname))
+	pkg_versions = []
+	for pkg in pkg_meta:
+		version = pkg.find('{http://linux.duke.edu/metadata/common}version')
+		# version_str = version.get('epoch') + '.' + version.get('ver') + '.' + version.get('rel')
+		version_str = version.get('ver')
+		location = pkg.find('{http://linux.duke.edu/metadata/common}location')
+		url = location.get('href')
+		pkg_versions.append((LooseVersion(version_str), baseurl + url))
+
+	pkg_versions.sort(reverse=True)
+	for ver, url in pkg_versions:
+		if requested_version is None or requested_version == ver:
+			print url
+			break
+
