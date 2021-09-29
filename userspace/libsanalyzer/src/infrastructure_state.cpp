@@ -440,7 +440,8 @@ infrastructure_state::infrastructure_state(sinsp_analyzer& analyzer,
       m_k8s_ca_certificate(normalize_path(c_k8s_ca_certificate.get_value())),
       m_k8s_ssl_certificate(normalize_path(c_k8s_ssl_certificate.get_value())),
       m_k8s_ssl_key(normalize_path(c_k8s_ssl_key.get_value())),
-      m_k8s_cluster_name(std::string())
+      m_k8s_cluster_name(std::string()),
+      m_our_k8s_limits()
 {
 	if (c_k8s_autodetect.get_value())
 	{
@@ -549,6 +550,9 @@ void infrastructure_state::init(const std::string& machine_id, const std::string
 	LOG_DEBUG("Adding local host information: %s", evts.DebugString().c_str());
 
 	receive_hosts_metadata(evts.events());
+
+	// Gather information about our container ID
+	get_our_container_id();
 }
 
 bool infrastructure_state::inited()
@@ -836,6 +840,9 @@ void infrastructure_state::refresh(uint64_t ts)
 		m_host_events_queue_mutex.unlock();
 		LOG_DEBUG("infra_state: Refresh of hosts metadata completed and lock unlocked.");
 	}
+
+	// Periodically log our k8s requests+limits, when the time comes
+	m_our_k8s_limits.periodically_log_our_k8s_limits(ts);
 }
 
 void infrastructure_state::reset()
@@ -1569,6 +1576,8 @@ void infrastructure_state::add(uid_t &key, const draiosproto::container_group &c
 	purge_tags_and_copy(key, cg);
 
 	add_ip_mappings(m_state[key]);
+
+	catch_our_k8s_limits(key, cg);
 }
 
 void infrastructure_state::connect(const infrastructure_state::uid_t& key)
@@ -3799,6 +3808,58 @@ bool infrastructure_state::find_parent_kind(const uid_t& uid,
 	};
 
 	return iterate_parents(uid, cg_cb) > 0;
+}
+
+
+void infrastructure_state::catch_our_k8s_limits(uid_t &key, const draiosproto::container_group &cg)
+{
+	// to be called by add() so that in case the data we received
+	// is about our own pod, we can save it for later usage and periodic logging
+
+	// Only keep catching messages until we have imported limits
+	// Once we have imported them, we have no reason to exist
+	if (m_our_k8s_limits.imported())
+	{
+		return;
+	}
+
+	// Only interested in k8s_pod's data, as soon as we get it
+	if (!(key.first == "k8s_pod"))
+	{
+		return;
+	}
+
+	// OK we'got info about a pod. We need to find out whether it's the one
+	// holding the container we're running in.
+	auto cg_pod = cg.k8s_object().pod();
+
+	// Iterate through the containers inside the pod
+	for (const auto& container : cg_pod.pod_status().containers())
+	{
+		// Only interested if the container in question is indeed the one we're running in!
+		if (container.id() != m_container_id)
+		{
+			continue;
+		}
+		m_our_k8s_limits.import_k8s_limits(container);
+		m_our_k8s_limits.log_warnings();
+		m_our_k8s_limits.log_info();
+		break;
+	}
+}
+
+bool infrastructure_state::get_our_container_id()
+{
+	sinsp_threadinfo* tinfo = m_inspector->m_thread_manager->get_threads()->get(getpid());
+	if (!tinfo)
+	{
+		LOG_ERROR("could not get threadinfo");
+		return false;
+	}
+
+	// Save local container id
+	m_container_id = tinfo->m_container_id;
+	return true;
 }
 
 void infrastructure_state::find_our_k8s_node(const std::vector<string>* container_ids)
