@@ -29,7 +29,7 @@ NAMESPACES={
 	'rpm': 'http://linux.duke.edu/metadata/rpm'
 }
 
-def xpath(text, expr, namespaces):
+def xpath(text, expr, namespaces=NAMESPACES):
 	e = etree.fromstring(text)
 	return e.xpath(expr, namespaces=namespaces)
 
@@ -41,14 +41,6 @@ def get_url(url, decompress=False):
 	else:
 		return resp.content
 
-def get_loc_by_xpath(text, expr):
-	loc = xpath(text, expr, namespaces=NAMESPACES)
-	return loc[0].get('href')
-
-def get_by_xpath(text, expr):
-	loc = xpath(text, expr, namespaces=NAMESPACES)
-	return loc
-
 if __name__ == '__main__':
 	baseurl = sys.argv[1]
 	pkgname = sys.argv[2]
@@ -58,16 +50,15 @@ if __name__ == '__main__':
 		requested_version = None
 
 	repomd = get_url(baseurl + 'repodata/repomd.xml')
-	pkglist_url = get_loc_by_xpath(repomd, '//repo:repomd/repo:data[@type="primary"]/repo:location')
+	pkglist_url = xpath(repomd, '//repo:repomd/repo:data[@type="primary"]/repo:location/@href')[0]
 
 	pkglist = get_url(baseurl + pkglist_url, decompress=True)
-	pkg_meta = get_by_xpath(pkglist, '//common:metadata/common:package/common:name[text()="{}"]/parent::node()'.format(pkgname))
+	pkg_meta = xpath(pkglist, '//common:metadata/common:package/common:name[text()="{}"]/parent::node()'.format(pkgname))
 	pkg_versions = []
 	for pkg in pkg_meta:
-		version = pkg.find('{http://linux.duke.edu/metadata/common}version')
-		# version_str = version.get('epoch') + '.' + version.get('ver') + '.' + version.get('rel')
+		version = pkg.find('{%s}version' % NAMESPACES['common'])
 		version_str = version.get('ver')
-		location = pkg.find('{http://linux.duke.edu/metadata/common}location')
+		location = pkg.find('{%s}location' % NAMESPACES['common'])
 		url = location.get('href')
 		pkg_versions.append((LooseVersion(version_str), baseurl + url))
 
