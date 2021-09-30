@@ -108,7 +108,15 @@ struct secure_netsec_conn::owner_info
 				if ((ip_match = ip == m_ip_str))
 				{
 					m_k8s_owner = cont_pod->get_k8s_owner();
-					m_owner_clbk(m_k8s_owner->metadata().kind(), m_k8s_owner->metadata().uid());
+					if (m_k8s_owner != nullptr)
+					{
+						m_owner_clbk(m_k8s_owner->metadata().kind(), m_k8s_owner->metadata().uid());
+					}
+					else
+					{
+						LOG_DEBUG("could not resolve owner for cont_id=%s, IP=%s", m_container_id.c_str(), ip.c_str());
+						return;
+					}
 					break;
 				}
 			}
@@ -141,7 +149,10 @@ struct secure_netsec_conn::owner_info
 				if (ip_pod->pod_creation_tp() < m_conn_ts)
 				{
 					m_k8s_owner = ip_pod->get_k8s_owner();
-					m_owner_clbk(m_k8s_owner->metadata().kind(), m_k8s_owner->metadata().uid());
+					if (m_k8s_owner != nullptr)
+					{
+						m_owner_clbk(m_k8s_owner->metadata().kind(), m_k8s_owner->metadata().uid());
+					}
 				}
 			}
 		}

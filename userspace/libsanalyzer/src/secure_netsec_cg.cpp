@@ -185,6 +185,7 @@ std::unique_ptr<secure::K8SPodOwner> secure_netsec_cg::get_k8s_owner() const
 
 	if (owner == nullptr)
 	{
+		LOG_DEBUG("no owner found for pod: %s", m_cg->uid().id().c_str());
 		return nullptr;
 	}
 
