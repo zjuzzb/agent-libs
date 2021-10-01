@@ -43,15 +43,20 @@ pipeline {
         stage('Build Builder') {
             parallel {
                 stage('Regular Builder') {
-                    when {   
+                    when {
                         expression { params.BUILD_BUILDER == true }
                     }
                     steps {
-                        build job:'agent-build-builder',parameters:[string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),string(name:'PROMETHEUS_BRANCH', value:"${params.PROMETHEUS_BRANCH}")]
+                        build job:'agent-build-builder',parameters:[
+                            string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),
+                            string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
+                            string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
+                            string(name:'PROMETHEUS_BRANCH', value:"${params.PROMETHEUS_BRANCH}")
+                        ]
                     }
                 }
                 stage('Alpine Builder') {
-                    when {   
+                    when {
                         expression { params.BUILD_BUILDER == true }
                     }
                     steps {
@@ -122,7 +127,7 @@ pipeline {
                             steps {
                                 setBuildStatus('QA Test', 'Building Container', 'PENDING')
                                 build job:'agent-build-container',parameters:[
-                                    string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"), 
+                                    string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),
                                     string(name:'FALCO_BRANCH', value:"${params.FALCO_BRANCH}"),
                                     string(name:'LIBSINSP_BRANCH', value:"${params.LIBSINSP_BRANCH}"),
                                     string(name:'PROTOREPO_BRANCH', value:"${params.PROTOREPO_BRANCH}"),
@@ -133,9 +138,14 @@ pipeline {
                                 ]
                             }
                         }
-                        stage('Run Test') {
+                        stage('QA - Extended Label Set Test') {
                             steps {
-                                echo "Running QA test...someday."
+                                setBuildStatus('QA Test', 'In Progress', 'PENDING')
+                                build job:'QA-agent/extended-label-set',parameters:[
+                                    string(name:'REGISTRY', value:"docker.internal.sysdig.com"),
+                                    string(name:'AGENT_REPOSITORY', value:"agent-internal"),
+                                    string(name:'AGENT_VERSION', value:"${env.BRANCH_NAME}")
+                                ]
                             }
                         }
                     }
