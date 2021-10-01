@@ -6,7 +6,18 @@ pipeline {
     options {
         timeout(time: 180, unit: 'MINUTES')
     }
-
+    parameters {
+        string(name: 'AGENT_BRANCH', defaultValue: 'dev')
+        string(name: 'SYSDIG_BRANCH', defaultValue: 'dev')
+        string(name: 'FALCO_BRANCH', defaultValue: 'master-sync')
+        string(name: 'BUILDER_VERSION', defaultValue: 'latest', description: 'build container to use for building the agent')
+        string(name: 'PROTOREPO_BRANCH', defaultValue: 'master')
+        string(name: 'PROMETHEUS_BRANCH', defaultValue: 'master')
+        string(name: 'LIBSINSP_BRANCH', defaultValue: 'dev')
+        string(name: 'LIBSCAP_BRANCH', defaultValue: 'dev')
+        string(name: 'LIBS_BRANCH', defaultValue: 'dev')
+        booleanParam(name: 'USE_LEGACY_LIBS', defaultValue: false, description: 'Checkout and use libsinsp and libscap from their respective legacy repositories, as opposed to agent-libs')
+    }
     stages {
         stage('Check out dependencies') {
             steps {

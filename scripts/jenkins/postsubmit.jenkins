@@ -10,7 +10,18 @@ def getBuildNumber() {
 
 pipeline {
     agent { label 'agent-builder-parallel' }
-
+    parameters {
+        string(name: 'AGENT_BRANCH', defaultValue: 'dev', trim: true)
+        string(name: 'FALCO_BRANCH', defaultValue: 'master-sync', trim: true)
+        string(name: 'SYSDIG_BRANCH', defaultValue: 'dev', trim: true)
+        string(name: 'PROTOREPO_BRANCH', defaultValue: 'master', trim: true)
+        string(name: 'BUILDER_VERSION', defaultValue: 'latest', trim: true)
+        string(name: 'LIBSINSP_BRANCH', defaultValue: 'dev', trim: true)
+        string(name: 'LIBSCAP_HAYABUSA_BRANCH', defaultValue: 'dev', trim: true)
+        string(name: 'LIBSCAP_BRANCH', defaultValue: 'dev', trim: true)
+        string(name: 'LIBS_BRANCH', defaultValue: 'dev', trim: true)
+        booleanParam(name: 'USE_LEGACY_LIBS', defaultValue: false, description: 'Checkout and use libsinsp and libscap from their respective legacy repositories, as opposed to agent-libs')
+    }
     stages {
         stage ('Tests') {
             parallel {

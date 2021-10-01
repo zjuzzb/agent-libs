@@ -3,6 +3,11 @@
 
 pipeline {
     agent { label 'agent-docker-builder' }
+    parameters {
+        string(name: 'AGENT_BRANCH', defaultValue: 'dev', trim: true)
+        booleanParam(name: 'TAG_LATEST', defaultValue: false, description: 'set this to tag the build with latest instead of with the branch name')
+        string(name: 'CONTAINER_NAME', defaultValue: '${AGENT_BRANCH}')
+    }
     stages {
         stage('Check out dependencies') {
             steps {

@@ -3,6 +3,9 @@
 
 pipeline {
     agent { label 'agent-docker-builder' }
+    parameters {
+        string(name: 'RELEASE_VERSION', defaultValue: '0.DEV-TEST', trim: true, description: 'the release number. something like 0.92.2')
+    }
     stages {
 
     stage('Check out dependencies') {

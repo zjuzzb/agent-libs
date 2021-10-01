@@ -3,6 +3,18 @@
 
 pipeline {
     agent { label 'agent-docker-builder' }
+    parameters {
+        string(name: 'AGENT_BRANCH', defaultValue: 'dev', trim: true)
+        string(name: 'SYSDIG_BRANCH', defaultValue: 'dev', trim: true)
+        string(name: 'FALCO_BRANCH', defaultValue: 'master-sync', trim: true)
+        string(name: 'PROTOREPO_BRANCH', defaultValue: 'master', trim: true)
+        string(name: 'LIBSINSP_BRANCH', defaultValue: 'dev', trim: true)
+        string(name: 'BUILDER_VERSION', defaultValue: 'latest', trim: true)
+        string(name: 'LIBSCAP_HAYABUSA_BRANCH', defaultValue: 'dev', trim: true)
+        string(name: 'VERSION_TAG', defaultValue: '', trim: true, description: 'DO NOT SET! Only to be set by the postsubmit job when building the "official" dev version. This will upload the appropriately tagged (0.99.Xdev) build as well')
+        string(name: 'LIBS_BRANCH', defaultValue: 'dev', trim: true)
+        booleanParam(name: 'USE_LEGACY_LIBS', defaultValue: false, description: 'Checkout and use libsinsp and libscap from their respective legacy repositories, as opposed to agent-libs')
+    }
     stages {
         stage('Check out dependencies') {
             steps {

@@ -3,7 +3,14 @@
 
 pipeline {
     agent { label 'agent-builder-parallel' }
-
+    parameters {
+        booleanParam(name: 'CREATE_RELEASE_BRANCH', defaultValue: true, description: 'only check this the first time you run for a given release')
+        string(name: 'RELEASE_VERSION', defaultValue: '0.DEV-TEST', trim: true)
+        string(name: 'RELEASER_SLACK_ID', defaultValue: 'UCR1M702Y', trim: true,
+            description: 'The slack ID of the person running the job so they can be informed of current status. This can be found under "view full profile" and the 3-dots menu: "Copy member ID." Alternatively, it is the last characters after the slash in the URL when viewing your full profile. If you do not wish to be notified, leave blank.')
+        string(name: 'RELEASE_BASE', defaultValue: 'dev', trim: true,
+            description: 'if this is a dot release, and such should come off a release branch, put that here. example: 9.9.0. Leave as "dev" otherwise. Note this is the release number, NOT the branch name. We do not support releasing off arbitrary branches.')
+    }
     stages {
 
     // grab the repos we need

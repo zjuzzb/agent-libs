@@ -3,6 +3,17 @@
 
 pipeline {
     agent { label 'agent-docker-builder' }
+    parameters {
+        string(name: 'AGENT_BRANCH', defaultValue: 'dev', trim: true)
+        string(name: 'SYSDIG_BRANCH', defaultValue: 'dev', trim: true)
+        string(name: 'FALCO_BRANCH', defaultValue: 'master-sync', trim: true)
+        string(name: 'BUILDER_VERSION', defaultValue: 'latest', trim: true)
+        string(name: 'PROTOREPO_BRANCH', defaultValue: 'master', trim: true)
+        string(name: 'TARGET', defaultValue: 'install-test', trim: false)
+        string(name: 'LIBSINSP_BRANCH', defaultValue: 'dev', trim: true)
+        string(name: 'LIBSCAP_BRANCH', defaultValue: 'dev', trim: true)
+        string(name: 'LIBS_BRANCH', defaultValue: 'dev', trim: true)
+    }
     stages {
         stage('Check out dependencies') {
             steps {

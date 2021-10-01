@@ -3,6 +3,19 @@
 
 pipeline {
     agent { label 'agent-docker-builder' }
+    parameters {
+        string(name: 'AGENT_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
+        string(name: 'FALCO_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
+        string(name: 'PROTOREPO_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
+        booleanParam(name: 'UPLOAD', defaultValue: false, description: 'set to upload this to the s3 bucket. ONLY use during actual release')
+        string(name: 'RELEASE_VERSION', defaultValue: '0.DEV-TEST', trim: true)
+        string(name: 'BUILDER_VERSION', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true, description: 'version of the builder to use')
+        string(name: 'LIBSINSP_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
+        string(name: 'LIBSCAP_HAYABUSA_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
+        string(name: 'LIBSCAP_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
+        string(name: 'KILT_DEFINITIONS_BRANCH', defaultValue: 'fargate-release-${RELEASE_VERSION}', trim: true)
+        string(name: 'RC_NUMBER', defaultValue: '', description: 'a distinct number for this RC within this release', trim: true)
+    }
     stages {
         stage('Check out dependencies') {
            steps {

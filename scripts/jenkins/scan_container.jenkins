@@ -3,7 +3,9 @@
 
 pipeline {
     agent { label 'agent-docker-builder' }
-
+    parameters {
+        string(name: 'CONTAINER_NAME', defaultValue: '', trim: true, description: 'the container. can come from quay or docker.')
+    }
     stages {
 
     stage('Pull Container') {
