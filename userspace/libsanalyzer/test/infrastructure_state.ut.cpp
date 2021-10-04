@@ -605,7 +605,7 @@ TEST_F(infrastructure_state_test, events_test)
 			for (const auto& m_state_entry : is.m_state)
 			{
 				const draiosproto::container_group& m_state_cg = *m_state_entry.second.get();
-				is.emit(&m_state_cg, &state, 10000000);
+				is.emit(&m_state_cg, &state, 10000000, true);
 			}
 		};
 
@@ -635,7 +635,7 @@ TEST_F(infrastructure_state_test, events_test)
 		for (const auto& m_state_entry : is.m_state)
 		{
 			const draiosproto::container_group& m_state_cg = *m_state_entry.second.get();
-			is.emit(&m_state_cg, &state, 10000000);
+			is.emit(&m_state_cg, &state, 10000000, true);
 		}
 
 		// Expected is the same
@@ -920,7 +920,7 @@ TEST_F(infrastructure_state_test, events_test_2)
 			for (const auto& m_state_entry : is.m_state)
 			{
 				const draiosproto::container_group& m_state_cg = *m_state_entry.second.get();
-				is.emit(&m_state_cg, &state, 10000000);
+				is.emit(&m_state_cg, &state, 10000000, true);
 			}
 		};
 
@@ -950,7 +950,7 @@ TEST_F(infrastructure_state_test, events_test_2)
 		for (const auto& m_state_entry : is.m_state)
 		{
 			const draiosproto::container_group& m_state_cg = *m_state_entry.second.get();
-			is.emit(&m_state_cg, &state, 10000000);
+			is.emit(&m_state_cg, &state, 10000000, true);
 		}
 
 		// Expected is the same
@@ -1173,7 +1173,7 @@ TEST_F(infrastructure_state_test, single_update)
 			for (const auto& m_state_entry : is.m_state)
 			{
 				const draiosproto::container_group& m_state_cg = *m_state_entry.second.get();
-				is.emit(&m_state_cg, &state, 10000000);
+				is.emit(&m_state_cg, &state, 10000000, true);
 			}
 		};
 
@@ -1375,7 +1375,7 @@ TEST_F(infrastructure_state_test, enrich_pvc)
 	cg.mutable_k8s_object()->mutable_pvc()->mutable_access_modes()->Add(
 	    draiosproto::VOLUME_ACCESS_MODE_READ_ONLY_MANY);
 
-	legacy_k8s::enrich_k8s_object(&cg, &pvc);
+	legacy_k8s::enrich_k8s_common(&cg, &pvc);
 
 	EXPECT_EQ(pvc.status().phase(), draiosproto::PERSISTENT_VOLUME_CLAIM_PHASE_BOUND);
 
@@ -1402,7 +1402,7 @@ TEST_F(infrastructure_state_test, enrich_pv)
 	cg.mutable_k8s_object()->mutable_pv()->mutable_claim_ref()->set_namespace_("california");
 	cg.mutable_k8s_object()->mutable_pv()->mutable_claim_ref()->set_uid("trepertre");
 
-	legacy_k8s::enrich_k8s_object(&cg, &pv);
+	legacy_k8s::enrich_k8s_common(&cg, &pv);
 
 	if (!google::protobuf::util::MessageDifferencer::Equals(cg.k8s_object().pv().claim_ref(),
 	                                                        pv.claim_ref()))
@@ -1415,6 +1415,7 @@ TEST_F(infrastructure_state_test, enrich_pod_containers)
 {
 	draiosproto::k8s_pod pod1;
 	draiosproto::k8s_pod pod2;
+	draiosproto::k8s_pod pod3;
 	draiosproto::container_group cg;
 
 	draiosproto::k8s_container_status_details* container1 =
@@ -1493,7 +1494,8 @@ TEST_F(infrastructure_state_test, enrich_pod_containers)
 	init_container2->set_requests_mem_bytes(8192);
 	init_container2->set_limits_mem_bytes(8192);
 
-	legacy_k8s::enrich_k8s_object(&cg, &pod1);
+	legacy_k8s::enrich_k8s_common(&cg, &pod1);
+	legacy_k8s::enrich_k8s_global(&cg, &pod1);
 
 	if (google::protobuf::util::MessageDifferencer::Equals(cg.k8s_object().pod().pod_status(),
 	                                                       pod1.pod_status()))
@@ -1504,10 +1506,22 @@ TEST_F(infrastructure_state_test, enrich_pod_containers)
 		       << pod1.pod_status().DebugString() << std::endl;
 	}
 
+	EXPECT_EQ(pod1.pod_status().containers_size(), 2);
+	EXPECT_EQ(pod1.pod_status().init_containers_size(), 0);
+	
+	for (auto& container : pod1.pod_status().containers())
+	{
+		if (container.status() != "terminated" && container.status() != "waiting")
+		{
+			FAIL() << "Unexpected container status: " << container.status() << std::endl;
+		}
+	}
+
 	c_k8s_send_all_containers.set(true);
 
-	legacy_k8s::enrich_k8s_object(&cg, &pod2);
-
+	legacy_k8s::enrich_k8s_common(&cg, &pod2);
+	legacy_k8s::enrich_k8s_global(&cg, &pod2);
+	
 	if (!google::protobuf::util::MessageDifferencer::Equals(cg.k8s_object().pod().pod_status(),
 	                                                        pod2.pod_status()))
 	{
@@ -1515,6 +1529,20 @@ TEST_F(infrastructure_state_test, enrich_pod_containers)
 		       << cg.k8s_object().pod().pod_status().DebugString() << std::endl
 		       << "k8s_pod:" << std::endl
 		       << pod2.pod_status().DebugString() << std::endl;
+	}
+
+	legacy_k8s::enrich_k8s_common(&cg, &pod3);
+	legacy_k8s::enrich_k8s_local(&cg, &pod3);
+
+	EXPECT_EQ(pod3.pod_status().containers_size(), 2);
+	EXPECT_EQ(pod3.pod_status().init_containers_size(), 0);
+	
+	for (auto& container : pod3.pod_status().containers())
+	{
+		if (container.status() != "terminated" && container.status() != "waiting")
+		{
+			FAIL() << "Unexpected container status: " << container.status() << std::endl;
+		}
 	}
 }
 
@@ -1557,7 +1585,8 @@ TEST_F(infrastructure_state_test, storageclass)
 
 	legacy_k8s::export_k8s_object(is.m_parents[{"k8s_storageclass", "scuid"}],
 	                              is.m_state[{"k8s_storageclass", "scuid"}].get(),
-	                              &sc);
+	                              &sc,
+	                              true);
 
 	draiosproto::k8s_storage_class expected;
 	expected.CopyFrom(cg->k8s_object().sc());

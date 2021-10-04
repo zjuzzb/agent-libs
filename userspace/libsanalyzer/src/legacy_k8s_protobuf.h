@@ -36,14 +36,25 @@ public:
 };
 
 template<class Protobuf>
-void enrich_k8s_object(const draiosproto::container_group* src, Protobuf* obj)
+void enrich_k8s_common(const draiosproto::container_group* src, Protobuf* obj)
+{
+}
+
+template<class Protobuf>
+void enrich_k8s_global(const draiosproto::container_group* src, Protobuf* obj)
+{
+}
+
+template<class Protobuf>
+void enrich_k8s_local(const draiosproto::container_group* src, Protobuf* obj)
 {
 }
 
 template<class Protobuf>
 void export_k8s_object(const uid_set_t& parents,
                        const draiosproto::container_group* src,
-                       Protobuf* obj)
+                       Protobuf* obj,
+                       bool is_global_export)
 {
 	fill_common(parents, src, obj->mutable_common(), K8sResource<Protobuf>::tag_prefix);
 
@@ -74,29 +85,48 @@ void export_k8s_object(const uid_set_t& parents,
 			});
 		}
 	}
-	enrich_k8s_object(src, obj);
+	
+	enrich_k8s_common(src, obj);
+	
+	if (is_global_export)
+	{
+		enrich_k8s_global(src, obj);
+	}
+	else
+	{
+		enrich_k8s_local(src, obj);
+	}
 }
 
 template<>
 void export_k8s_object<draiosproto::pod_status_count>(const uid_set_t& parents,
                                                       const draiosproto::container_group* src,
-                                                      draiosproto::pod_status_count* obj);
+                                                      draiosproto::pod_status_count* obj,
+                                                      bool is_global_export);
 
 template<>
-void enrich_k8s_object<draiosproto::k8s_pod>(const draiosproto::container_group* src,
+void enrich_k8s_common<draiosproto::k8s_pod>(const draiosproto::container_group* src,
                                              draiosproto::k8s_pod* obj);
 
 template<>
-void enrich_k8s_object<draiosproto::k8s_persistentvolumeclaim>(
+void enrich_k8s_global<draiosproto::k8s_pod>(const draiosproto::container_group* src,
+                                             draiosproto::k8s_pod* obj);
+
+template<>
+void enrich_k8s_local<draiosproto::k8s_pod>(const draiosproto::container_group* src,
+                                             draiosproto::k8s_pod* obj);
+
+template<>
+void enrich_k8s_common<draiosproto::k8s_persistentvolumeclaim>(
     const draiosproto::container_group* src,
     draiosproto::k8s_persistentvolumeclaim* obj);
 
 template<>
-void enrich_k8s_object<draiosproto::k8s_persistentvolume>(const draiosproto::container_group* src,
+void enrich_k8s_common<draiosproto::k8s_persistentvolume>(const draiosproto::container_group* src,
                                                           draiosproto::k8s_persistentvolume* obj);
 
 template<>
-void enrich_k8s_object<draiosproto::k8s_storage_class>(const draiosproto::container_group* src,
+void enrich_k8s_common<draiosproto::k8s_storage_class>(const draiosproto::container_group* src,
 							  draiosproto::k8s_storage_class * obj);
 
 }  // namespace legacy_k8s
