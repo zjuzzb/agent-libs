@@ -51,6 +51,9 @@ RUN rpm --import https://download.sysdig.com/DRAIOS-GPG-KEY.public && \
 
 {% if p.launch_dragent %}
 RUN microdnf install draios-agent-slim
+{% else %}
+ADD get-version-and-exec.sh /
+ADD sysdigcloud-probe-loader /opt/draios/bin/
 {% endif %}
 
 {% endif %}
@@ -103,8 +106,10 @@ RUN	(rpm -q kernel-headers && rpm -e --nodeps kernel-headers; true) && \
 
 COPY ./docker-entrypoint.sh /
 
-{% if p.build_kernel_module %}
-ENTRYPOINT ["/usr/bin/scl", "enable", "llvm-toolset-7.0", "/docker-entrypoint.sh"]
+{% if p.build_kernel_module and not p.launch_dragent %}
+ENTRYPOINT ["/usr/bin/scl", "enable", "llvm-toolset-7.0", "--", "/get-version-and-exec.sh", "/docker-entrypoint.sh"]
+{% elif p.build_kernel_module %}
+ENTRYPOINT ["/usr/bin/scl", "enable", "llvm-toolset-7.0", "--", "/docker-entrypoint.sh"]
 {% else %}
 ENTRYPOINT ["/docker-entrypoint.sh"]
 {% endif %}
