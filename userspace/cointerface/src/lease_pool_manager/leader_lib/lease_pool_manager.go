@@ -72,7 +72,7 @@ func (lpm *LeasePoolManager) haveLeasePermission(authClient authorizationv1clien
 	}
 
 	if !response.Status.Allowed {
-		log.Errorf("Cannot %s leases: %s, %s", verb, response.Status.Reason, response.Status.EvaluationError)
+		log.Warnf("Cannot %s leases: %s, %s", verb, response.Status.Reason, response.Status.EvaluationError)
 
 		return errors.New("cannot access leases")
 	}
@@ -80,10 +80,10 @@ func (lpm *LeasePoolManager) haveLeasePermission(authClient authorizationv1clien
 	return nil
 }
 
-func (lpm *LeasePoolManager) haveLeasePermissions(p kubeclient.Interface, leaderElectionConfig *sdc_internal.LeaderElectionConf) error {
+func (lpm *LeasePoolManager) haveLeasePermissions(client kubeclient.Interface, leaderElectionConfig *sdc_internal.LeaderElectionConf) error {
 	verbs := []string{"get", "list", "create", "update", "watch"}
 
-	authClient := p.AuthorizationV1()
+	authClient := client.AuthorizationV1()
 
 	for _, verb := range verbs {
 		err := lpm.haveLeasePermission(authClient, verb, leaderElectionConfig)
@@ -93,6 +93,21 @@ func (lpm *LeasePoolManager) haveLeasePermissions(p kubeclient.Interface, leader
 	}
 
 	return nil
+}
+
+func (lpm *LeasePoolManager) supportLeaseResource(client kubeclient.Interface) error {
+	resourceList, err := client.Discovery().ServerResourcesForGroupVersion("coordination.k8s.io/v1")
+	if err != nil {
+		return err
+	}
+
+	for _, resource := range resourceList.APIResources {
+		if resource.Name == "leases" {
+			return nil
+		}
+	}
+
+	return errors.New("cluster doesn't support leases")
 }
 
 // This function choose and set in leaderElectionConf, the namespace where leases objects are going to be created
@@ -126,8 +141,13 @@ func (lpm *LeasePoolManager) Init(id string, leasePoolName string, numLeases uin
 	// Get the namespace where creating leader election leases
 	lpm.setLeaseNamespace(&leaderElectionConfig, nil)
 
+	if err := lpm.supportLeaseResource(p); err != nil {
+		log.Warnf("Unable to Init leasePoolManager as cluster doesn't support leases: %v", err)
+		return
+	}
+
 	if err := lpm.haveLeasePermissions(p, &leaderElectionConfig); err != nil {
-		log.Errorf("Unable to Init leasePoolManager")
+		log.Warn("Unable to Init leasePoolManager as agent doesn't have lease permissions")
 		return
 	}
 
