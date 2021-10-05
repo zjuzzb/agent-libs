@@ -150,7 +150,7 @@ pipeline {
                                     string(name:'REGISTRY', value:"docker.internal.sysdig.com"),
                                     string(name:'AGENT_REPOSITORY', value:"agent-internal"),
                                     string(name:'AGENT_VERSION', value:"${env.BRANCH_NAME}"),
-                                    string(name:'SEND_SLACK_NOTIFICATION', value:"false")
+                                    string(name:'SLACK_CHANNEL', value:"")
                                 ]
                             }
                         }
