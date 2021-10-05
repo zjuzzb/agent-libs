@@ -125,6 +125,11 @@ pipeline {
                     stages {
                         stage('Build Container') {
                             steps {
+                                script {
+                                    sh '''
+                                        echo "branch name: " ${BRANCH_NAME}
+                                    '''
+                                }
                                 setBuildStatus('QA Test', 'Building Container', 'PENDING')
                                 build job:'agent-build-container',parameters:[
                                     string(name:'AGENT_BRANCH', value:"${env.BRANCH_NAME}"),
