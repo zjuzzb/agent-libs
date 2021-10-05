@@ -100,13 +100,23 @@ void our_k8s_limits::log_info() const
 
 void our_k8s_limits::periodically_log_our_k8s_limits(uint64_t ts)
 {
+	// If we haven't imported our own limits yet,
+	// it doesn't make much sense to log incomplete data.
+	// So skip this stage entirely; notice how we won't even feed
+	// the two run_on_interval objects, so they will start their
+	// periods more or less sync'ed with the import event
+	if (!m_imported)
+	{
+		return;
+	}
+
 	m_k8s_limits_logging_info_interval.run([this]() {
 		log_info();
 	}, ts);
 
 	m_k8s_limits_logging_warning_interval.run([this]() {
 		if(log_warnings()) {
-			log_info();;
+			log_info();
 		}
 	}, ts);
 }

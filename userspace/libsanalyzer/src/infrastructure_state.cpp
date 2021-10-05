@@ -3842,8 +3842,6 @@ void infrastructure_state::catch_our_k8s_limits(uid_t &key, const draiosproto::c
 			continue;
 		}
 		m_our_k8s_limits.import_k8s_limits(container);
-		m_our_k8s_limits.log_warnings();
-		m_our_k8s_limits.log_info();
 		break;
 	}
 }
