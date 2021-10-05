@@ -21,6 +21,7 @@
 #include "k8s_store_manager.h"
 #include "k8s_hpa_store.h"
 #include "k8s_pod_store.h"
+#include "our_k8s_limits.h"
 
 #include <Poco/RegularExpression.h>
 
@@ -302,6 +303,7 @@ public:
 	const std::string& get_k8s_ssl_certificate();
 	const std::string& get_k8s_ssl_key();
 	std::unordered_set<std::string> test_only_get_container_ids() const;
+	bool get_our_container_id();
 
 	bool find_local_ip(const std::string &ip, uid_t *uid) const override final;
 
@@ -350,6 +352,7 @@ private:
 
 	void add(uid_t &key, const draiosproto::container_group &cg);
 	void update_metadata(uid_t &key, const draiosproto::container_group &cg);
+	void catch_our_k8s_limits(uid_t &key, const draiosproto::container_group &cg);
 
 	void connect_to_namespace(const infrastructure_state::uid_t& key);
 	void connect_orphans();
@@ -466,6 +469,9 @@ private:
 	// Local cache for k8s_cluster_name
 	std::string m_k8s_cluster_name;
 	std::set<std::string> m_allow_list_kinds;
+
+	std::string m_container_id;
+	our_k8s_limits m_our_k8s_limits;
 
 	std::vector <cg_ip_clbk_t> m_cg_ip_observers;
 	

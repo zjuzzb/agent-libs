@@ -199,6 +199,7 @@ set(SANALYZER_SOURCES
     null_statsd_emitter.cpp
     object_filter.cpp
     object_filter_config.cpp
+    our_k8s_limits.cpp
     parser_http.cpp
     parser_mysql.cpp
     parser_postgres.cpp
