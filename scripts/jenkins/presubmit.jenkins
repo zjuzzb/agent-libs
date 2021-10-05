@@ -141,10 +141,11 @@ pipeline {
                         stage('QA - Extended Label Set Test') {
                             steps {
                                 setBuildStatus('QA Test', 'In Progress', 'PENDING')
-                                build job:'QA-agent/extended-label-set',parameters:[
+                                build job:'QA-agent/extended-label-set-test',parameters:[
                                     string(name:'REGISTRY', value:"docker.internal.sysdig.com"),
                                     string(name:'AGENT_REPOSITORY', value:"agent-internal"),
-                                    string(name:'AGENT_VERSION', value:"${env.BRANCH_NAME}")
+                                    string(name:'AGENT_VERSION', value:"${env.BRANCH_NAME}"),
+                                    string(name:'SEND_SLACK_NOTIFICATION', value:"false")
                                 ]
                             }
                         }
