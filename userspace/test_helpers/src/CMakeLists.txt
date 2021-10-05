@@ -11,3 +11,10 @@ add_library(
     scoped_temp_directory.cpp
     scoped_temp_file.cpp
 )
+
+target_link_libraries(
+    test_helpers
+    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
+    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
+    pthread
+)

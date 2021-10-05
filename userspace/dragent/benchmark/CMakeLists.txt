@@ -1,8 +1,3 @@
-add_executable(benchmark-dragent protobuf.bm.cpp)
-
-add_dependencies(benchmark-dragent dragentl draiosproto)
-add_definitions(-DHAS_ANALYZER)
-
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/include)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -37,13 +32,23 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fus
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/c-ares-${DRAIOS_CARES_VERSION}/target/include)
 
+add_executable(benchmark-dragent protobuf.bm.cpp)
+
+add_dependencies(benchmark-dragent dragentl draiosproto)
+add_definitions(-DHAS_ANALYZER)
+
 target_link_libraries(
     benchmark-dragent
-    ${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/build/src/libbenchmark.a
-    ${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/build/src/libbenchmark_main.a
-    rt
+    sanalyzer
     dragentl
     draiosproto
+    falco_engine
+    test-helpers-dragent
+    ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
+    ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
+    ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
+    ${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/build/src/libbenchmark.a
+    ${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/build/src/libbenchmark_main.a
 )
 
 add_custom_target(run-benchmark-dragent COMMAND benchmark-dragent)
@@ -58,7 +63,6 @@ add_executable(benchmark-securitymgr security_mgr.bm.cpp)
 
 target_link_libraries(
     benchmark-securitymgr
-    pthread
     sanalyzer
     dragentl
     draiosproto
@@ -70,8 +74,6 @@ target_link_libraries(
     ${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
     ${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
     ${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a
-    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
-    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
     ${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/build/src/libbenchmark.a
     ${DRAIOS_DEPENDENCIES_DIR}/benchmark-${DRAIOS_BENCHMARK_VERSION}/build/src/libbenchmark_main.a
     ${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/lib/libtcmalloc_and_profiler.a

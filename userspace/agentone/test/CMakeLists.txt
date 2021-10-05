@@ -6,6 +6,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/test_helpers)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fused-src/gtest)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../draiosproto)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../dragent/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/agentone/test/fake_agentino)
 # The following includes are necessary because connection_manager pulls in the world just to get the
@@ -26,11 +27,7 @@ target_link_libraries(
     unit-test-agentone
     agentonel
     fake-agentino
-    userspace-shared
-    dragentl
     ${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
-    pthread
-    draiosproto
 )
 
 if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)

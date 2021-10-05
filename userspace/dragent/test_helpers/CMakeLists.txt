@@ -23,5 +23,10 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/c-ares-${DRAIOS_CARES_VERSION}/ta
 add_definitions(-DHAS_ANALYZER)
 
 add_library(test-helpers-dragent STATIC test_security_stub.cpp)
-
-add_dependencies(test-helpers-dragent draiosproto)
+target_link_libraries(
+    test-helpers-dragent
+    draiosproto
+    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
+    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
+    pthread
+)

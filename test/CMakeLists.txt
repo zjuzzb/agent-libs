@@ -106,15 +106,15 @@ add_executable(
     sysdig/userspace/libsinsp/logger.ut.cpp
     sysdig/userspace/libsinsp/user_event_logger.ut.cpp
     timer_thread.cpp
-    ${PROJECT_SOURCE_DIR}/userspace/dragent/src/k8s_metadata_sender.cpp
+    $<TARGET_OBJECTS:appcommonl>
 )
 
 target_link_libraries(
     tests
     pthread
     sanalyzer
-    dragentl
     draiosproto
+    librestl
     falco_engine
     test_helpers
     test-helpers-userspace-shared
@@ -126,8 +126,6 @@ target_link_libraries(
     ${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
     ${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
     ${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a
-    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
-    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
 )
 
 add_executable(test_helper test_helper.cpp)

@@ -36,6 +36,9 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/c-ares-${DRAIOS_CARES_VERSION}/ta
 
 add_definitions(-DHAS_ANALYZER)
 
+set(THREADS_PREFER_PTHREAD_FLAG true)
+find_package(Threads REQUIRED)
+
 add_executable(
     unit-test-dragent
     main.cpp
@@ -84,6 +87,7 @@ target_link_libraries(
     test-helpers-libsanalyzer
     test-helpers-userspace-shared
     userspace-shared
+    ${CMAKE_THREAD_LIBS_INIT}
     ${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 )
 

@@ -376,7 +376,6 @@ list(
     APPEND
     sanalyzer_common_link_libraries
     command-line
-    userspace-shared
 		promscrape
     scap
     ${LUALIB}
@@ -391,8 +390,6 @@ list(
     ${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a
     rt
     dl
-    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
-    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
     pthread
     ${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
 )

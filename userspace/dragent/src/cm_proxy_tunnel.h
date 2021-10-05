@@ -2,13 +2,9 @@
 
 #include "cm_socket.h"
 
-#include <openssl/ssl.h>
-
 #include <memory>
 #include <cstdint>
 #include <string>
-
-#include <Poco/Net/StreamSocket.h>
 
 /**
  * Class to help with establishing a tunnel through an HTTP proxy.

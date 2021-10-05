@@ -24,7 +24,7 @@ add_definitions(-DHAS_ANALYZER)
 
 add_executable(sinsp-open test.cpp)
 
-target_link_libraries(sinsp-open sanalyzer draiosproto pthread)
+target_link_libraries(sinsp-open sanalyzer draiosproto test-helpers-libsanalyzer)
 
 if(CYGWIN)
     target_link_libraries(sinsp-open /lib/w32api/libiphlpapi.a)

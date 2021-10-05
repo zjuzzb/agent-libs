@@ -142,13 +142,10 @@ if(NOT CYGWIN)
     list(
         APPEND
         dragent_application_link_libraries
-        ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
-        ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
         ${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/lib/libtcmalloc_and_profiler.a
     )
 else()
     list(APPEND dragent_application_link_libraries
-         ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
          /lib/w32api/libiphlpapi.a
     )
 endif()
@@ -160,14 +157,21 @@ add_library(
     agentinol STATIC agentino.cpp sinsp_event_source.cpp event_source.cpp
                      $<TARGET_OBJECTS:appcommonl>
 )
-target_link_libraries(agentinol falco_engine ${dragent_link_libraries})
+target_link_libraries(
+    agentinol
+    falco_engine
+    ${dragent_link_libraries}
+    # statically linking by requirement
+    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
+    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
+)
 
 if(INCLUDE_INTERNAL_TEST_CODE)
     target_compile_definitions(dragentl PUBLIC SYSDIG_TEST)
     target_compile_definitions(appcommonl PUBLIC SYSDIG_TEST)
 endif()
 
-add_executable(dragent agent_main.cpp)
+add_executable(dragent agent_main.cpp $<TARGET_OBJECTS:ssl_shim>)
 add_executable(agentino agentino_main.cpp)
 
 target_link_libraries(
@@ -187,8 +191,6 @@ target_link_libraries(
     agentinol
     draiosproto
     librestl
-    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
-    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
 )
 file(COPY ${PROJECT_SOURCE_DIR}/scripts/rpm/dragent.in
      DESTINATION ${PROJECT_BINARY_DIR}/scripts/rpm
@@ -313,6 +315,14 @@ if(CYGWIN)
         DESTINATION ${CMAKE_INSTALL_PREFIX}
         COMPONENT agent-slim
     )
+else()
+    foreach(component agent-slim agentone)
+        install(
+            DIRECTORY ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/ # Mind the trailing slash
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/openssl
+            COMPONENT ${component}
+        )
+    endforeach()
 endif()
 
 configure_file(agent-config.h.in agent-config.h)

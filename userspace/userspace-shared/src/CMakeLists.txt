@@ -1,4 +1,5 @@
 include_directories(${LIBSINSP_INCLUDE_DIRS})
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
@@ -36,3 +37,6 @@ target_link_libraries(userspace-shared draiosproto)
 if(INCLUDE_INTERNAL_TEST_CODE)
     target_compile_definitions(userspace-shared PUBLIC SYSDIG_TEST)
 endif()
+
+
+add_library(ssl_shim OBJECT ssl_shim.cpp)

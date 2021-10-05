@@ -12,7 +12,7 @@ add_definitions(-DHAS_ANALYZER)
 
 add_executable(sinsp-stopcapture test.cpp)
 
-target_link_libraries(sinsp-stopcapture sanalyzer draiosproto pthread)
+target_link_libraries(sinsp-stopcapture sanalyzer draiosproto test-helpers-libsanalyzer)
 
 install(
     TARGETS sinsp-stopcapture

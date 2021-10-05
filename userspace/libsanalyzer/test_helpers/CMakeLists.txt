@@ -41,5 +41,11 @@ add_library(
     test_logger.cpp
 )
 add_dependencies(test-helpers-libsanalyzer draiosproto)
+target_link_libraries(
+    test-helpers-libsanalyzer
+    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
+    ${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
+    pthread
+)
 
 target_compile_definitions(test-helpers-libsanalyzer PUBLIC SYSDIG_TEST)
