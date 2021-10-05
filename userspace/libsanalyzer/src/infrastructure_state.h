@@ -322,7 +322,7 @@ private:
 	// These return true if the new entry has been added, false if it already existed
 	bool add(uid_t key);
 
-	void emit(const draiosproto::container_group *grp, draiosproto::k8s_state *state, uint64_t ts);
+	void emit(const draiosproto::container_group *grp, draiosproto::k8s_state *state, uint64_t ts, bool is_global_export);
 
 	void resolve_names(draiosproto::k8s_state *state);
 

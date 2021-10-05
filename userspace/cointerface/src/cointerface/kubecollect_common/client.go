@@ -486,7 +486,7 @@ func calculateRandomDelay(perNodeConnDelay float64, nodes uint32, minRndConnDela
 
 func runRandomDelay(opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClient kubeclient.Interface) {
 	delay := calculateRandomDelay(opts.GetPerNodeConnDelay(), getNodeCount(kubeClient), opts.GetMinRndConnDelay(), opts.GetMaxRndConnDelay())
-	log.Infof("Waiting to connect to k8s server for %d seconds", delay)
+	log.Infof("Waiting to connect to k8s server for %v seconds", delay)
 	time.Sleep(time.Duration(delay) * time.Second)
 }
 

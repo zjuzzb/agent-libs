@@ -361,7 +361,8 @@ const unordered_map<string, setter_t<k8s_storage_class>> K8sResource<k8s_storage
 template<>
 void export_k8s_object<draiosproto::pod_status_count>(const uid_set_t& parents,
                                                       const draiosproto::container_group* src,
-                                                      draiosproto::pod_status_count* obj)
+                                                      draiosproto::pod_status_count* obj,
+                                                      bool is_global_export)
 {
 	for (const auto& tag : src->tags())
 	{
@@ -394,7 +395,38 @@ static void erase_new_ksm_container_metrics(draiosproto::k8s_container_status_de
 }
 
 template<>
-void enrich_k8s_object<draiosproto::k8s_pod>(const draiosproto::container_group* src,
+void enrich_k8s_common<draiosproto::k8s_pod>(const draiosproto::container_group* src,
+                                             draiosproto::k8s_pod* obj)
+{
+	auto it = src->internal_tags().find(infrastructure_state::POD_STATUS_REASON_TAG);
+	if (it != src->internal_tags().end())
+	{
+		obj->mutable_pod_status()->set_reason(it->second);
+	}
+
+	// SMAGENT-2756
+	// this info should be moved in internal tags
+	it = src->tags().find(infrastructure_state::POD_STATUS_PHASE_TAG);
+	if (it != src->tags().end())
+	{
+		obj->mutable_pod_status()->set_phase(it->second);
+	}
+
+	it = src->internal_tags().find(infrastructure_state::UNSCHEDULABLE_TAG);
+	if (it != src->internal_tags().end())
+	{
+		if (it->second == "true")
+		{
+			obj->mutable_pod_status()->set_unschedulable(true);
+		}
+	}
+
+	// Fill volumes
+	obj->mutable_volumes()->CopyFrom(src->k8s_object().pod().volumes());
+}  // namespace legacy_k8s
+
+template<>
+void enrich_k8s_global<draiosproto::k8s_pod>(const draiosproto::container_group* src,
                                              draiosproto::k8s_pod* obj)
 {
 	if (src->has_k8s_object())
@@ -427,36 +459,32 @@ void enrich_k8s_object<draiosproto::k8s_pod>(const draiosproto::container_group*
 			}
 		}
 	}
-
-	auto it = src->internal_tags().find(infrastructure_state::POD_STATUS_REASON_TAG);
-	if (it != src->internal_tags().end())
-	{
-		obj->mutable_pod_status()->set_reason(it->second);
-	}
-
-	// SMAGENT-2756
-	// this info should be moved in internal tags
-	it = src->tags().find(infrastructure_state::POD_STATUS_PHASE_TAG);
-	if (it != src->tags().end())
-	{
-		obj->mutable_pod_status()->set_phase(it->second);
-	}
-
-	it = src->internal_tags().find(infrastructure_state::UNSCHEDULABLE_TAG);
-	if (it != src->internal_tags().end())
-	{
-		if (it->second == "true")
-		{
-			obj->mutable_pod_status()->set_unschedulable(true);
-		}
-	}
-
-	// Fill volumes
-	obj->mutable_volumes()->CopyFrom(src->k8s_object().pod().volumes());
-}  // namespace legacy_k8s
+}
 
 template<>
-void enrich_k8s_object<draiosproto::k8s_persistentvolumeclaim>(
+void enrich_k8s_local<draiosproto::k8s_pod>(const draiosproto::container_group* src,
+                                            draiosproto::k8s_pod* obj)
+{
+	if (src->has_k8s_object())
+	{
+		auto src_pod = src->k8s_object().pod();
+		for (const auto& container : src_pod.pod_status().containers())
+		{
+			if ((container.status() == "waiting" || container.status() == "terminated"))
+			{
+				draiosproto::k8s_container_status_details* out_container =
+				    obj->mutable_pod_status()->mutable_containers()->Add();
+				out_container->CopyFrom(container);
+
+				// Erase the new ksm metrics to preserve the old behavior.
+				erase_new_ksm_container_metrics(out_container);
+			}
+		}
+	}
+}
+
+template<>
+void enrich_k8s_common<draiosproto::k8s_persistentvolumeclaim>(
     const draiosproto::container_group* src,
     draiosproto::k8s_persistentvolumeclaim* obj)
 {
@@ -472,7 +500,7 @@ void enrich_k8s_object<draiosproto::k8s_persistentvolumeclaim>(
 }
 
 template<>
-void enrich_k8s_object<draiosproto::k8s_persistentvolume>(const draiosproto::container_group* src,
+void enrich_k8s_common<draiosproto::k8s_persistentvolume>(const draiosproto::container_group* src,
                                                           draiosproto::k8s_persistentvolume* obj)
 {
 	// Get claimRef
@@ -485,7 +513,7 @@ void enrich_k8s_object<draiosproto::k8s_persistentvolume>(const draiosproto::con
 }
 
 template<>
-void enrich_k8s_object<draiosproto::k8s_storage_class>(const draiosproto::container_group* src,
+void enrich_k8s_common<draiosproto::k8s_storage_class>(const draiosproto::container_group* src,
                                                        draiosproto::k8s_storage_class* obj)
 {
 	obj->set_created(src->k8s_object().sc().created());

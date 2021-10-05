@@ -2306,7 +2306,7 @@ void infrastructure_state::state_of(const draiosproto::container_group* grp,
 	// of the valid for export method above
 	if (is_valid_for_export(grp))
 	{
-		emit(grp, state, ts);
+		emit(grp, state, ts, false);
 	}
 }
 
@@ -2812,7 +2812,8 @@ void infrastructure_state::resolve_names(draiosproto::k8s_state* state)
 
 void infrastructure_state::emit(const draiosproto::container_group* cg,
                                 draiosproto::k8s_state* state,
-                                uint64_t ts)
+                                uint64_t ts,
+                                bool is_global_export)
 {
 	if (!is_valid_for_export(cg))
 	{
@@ -2825,7 +2826,7 @@ void infrastructure_state::emit(const draiosproto::container_group* cg,
 	if (kind == "k8s_job")
 	{
 		auto job = state->add_jobs();
-		legacy_k8s::export_k8s_object(m_parents[key], cg, job);
+		legacy_k8s::export_k8s_object(m_parents[key], cg, job, is_global_export);
 	}
 	else if (kind == "k8s_cronjob")
 	{
@@ -2834,15 +2835,15 @@ void infrastructure_state::emit(const draiosproto::container_group* cg,
 	}
 	else if (kind == "k8s_daemonset")
 	{
-		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_daemonsets());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_daemonsets(), is_global_export);
 	}
 	else if (kind == "k8s_deployment")
 	{
-		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_deployments());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_deployments(), is_global_export);
 	}
 	else if (kind == "k8s_hpa")
 	{
-		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_hpas());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_hpas(), is_global_export);
 	}
 	else if (kind == "k8s_ingress")
 	{
@@ -2862,21 +2863,21 @@ void infrastructure_state::emit(const draiosproto::container_group* cg,
 	else if (kind == "k8s_node")
 	{
 		auto node = state->add_nodes();
-		legacy_k8s::export_k8s_object(m_parents[key], cg, node);
+		legacy_k8s::export_k8s_object(m_parents[key], cg, node, is_global_export);
 		node->mutable_host_ips()->CopyFrom(cg->ip_addresses());
 	}
 	else if (kind == "k8s_persistentvolumeclaim")
 	{
-		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_persistentvolumeclaims());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_persistentvolumeclaims(), is_global_export);
 	}
 	else if (kind == "k8s_persistentvolume")
 	{
-		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_persistentvolumes());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_persistentvolumes(), is_global_export);
 	}
 	else if (kind == "k8s_pod")
 	{
 		auto pod = state->add_pods();
-		legacy_k8s::export_k8s_object(m_parents[key], cg, pod);
+		legacy_k8s::export_k8s_object(m_parents[key], cg, pod, is_global_export);
 		for (const auto& parent : cg->parents())
 		{
 			if (parent.kind() == "k8s_node")
@@ -2923,15 +2924,15 @@ void infrastructure_state::emit(const draiosproto::container_group* cg,
 	}
 	else if (kind == "k8s_replicaset")
 	{
-		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_replica_sets());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_replica_sets(), is_global_export);
 	}
 	else if (kind == "k8s_replicationcontroller")
 	{
-		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_controllers());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_controllers(), is_global_export);
 	}
 	else if (kind == "k8s_resourcequota")
 	{
-		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_resourcequotas());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_resourcequotas(), is_global_export);
 	}
 	else if (kind == "k8s_service")
 	{
@@ -2960,7 +2961,7 @@ void infrastructure_state::emit(const draiosproto::container_group* cg,
 	}
 	else if (kind == "k8s_statefulset")
 	{
-		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_statefulsets());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_statefulsets(), is_global_export);
 	}
 	else if (kind == "podstatuscounter")
 	{
@@ -2981,7 +2982,8 @@ void infrastructure_state::emit(const draiosproto::container_group* cg,
 		{
 			legacy_k8s::export_k8s_object<draiosproto::pod_status_count>(m_parents[key],
 			                                                             cg,
-			                                                             &pod_status);
+			                                                             &pod_status,
+			                                                             is_global_export);
 			auto pos = m_pod_status[ns].find(pod_status);
 			if (pos != m_pod_status[ns].end())
 			{
@@ -2992,7 +2994,7 @@ void infrastructure_state::emit(const draiosproto::container_group* cg,
 	}
 	else if (kind == "k8s_storageclass")
 	{
-		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_storage_classes());
+		legacy_k8s::export_k8s_object(m_parents[key], cg, state->add_storage_classes(), is_global_export);
 	}
 	else if(kind == "k8s_networkpolicy")
 	{
@@ -3009,7 +3011,7 @@ void infrastructure_state::get_state(draiosproto::k8s_state* state, uint64_t ts)
 {
 	for (const auto& it : m_state)
 	{
-		emit(it.second.get(), state, ts);
+		emit(it.second.get(), state, ts, true);
 	}
 	resolve_names(state);
 	dump_memory_info();
