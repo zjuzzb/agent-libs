@@ -2,7 +2,7 @@ name: Sysdig Workflow Fossa
 on:
   push:
     branches:
-      - master
+      - dev
 jobs:
   build:
     name: Update Fossa Project
