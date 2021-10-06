@@ -430,7 +430,7 @@ func waitLease(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamC
 			log.Warn(err)
 			return err
 		} else {
-			log.Warnf("Got an unsuccessful response: \"%s\". Hang on until receiving a successful response", *res.Reason)
+			log.Errorf("Got an unsuccessful response: \"%s\". Hang on until receiving a successful response", *res.Reason)
 		}
 	}
 
