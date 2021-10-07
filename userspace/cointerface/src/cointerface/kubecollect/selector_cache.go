@@ -28,7 +28,6 @@ type cacheableSelector interface {
 	ActiveChildren() int32
 }
 
-
 // https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 //
 // One of the ways to do parent<->child matching is by comparing the
@@ -50,7 +49,7 @@ type cacheableSelector interface {
 // to avoid leaking. It's safe to call Remove() even if we don't have a
 // selector cached, so types should always call it in their DeleteFunc.
 type SelectorCache struct {
-	selectors map[types.UID]labels.Selector
+	selectors  map[types.UID]labels.Selector
 	cacheMutex sync.RWMutex
 }
 

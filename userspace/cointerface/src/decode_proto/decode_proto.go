@@ -45,14 +45,16 @@ func mymain() int {
 		line = bytes.TrimSuffix(line, []byte("\r\n"))
 		line = bytes.TrimSuffix(line, []byte("\n"))
 
-		if(*msgTypePtr == "falco_baseline") {
+		if *msgTypePtr == "falco_baseline" {
 			bin := make([]byte, hex.DecodedLen(len(line)))
-			len, err := hex.Decode(bin, line); if err != nil {
+			len, err := hex.Decode(bin, line)
+			if err != nil {
 				fmt.Fprintf(os.Stderr, "Can not hex decode line after %v bytes: %v\n", len, err)
 				return 1
 			}
 			bl := &draiosproto.FalcoBaseline{}
-			err = proto.Unmarshal(bin, bl); if err != nil {
+			err = proto.Unmarshal(bin, bl)
+			if err != nil {
 				fmt.Fprintf(os.Stderr, "Can not parse proto message from line: %v\n", err)
 				return 1
 			}

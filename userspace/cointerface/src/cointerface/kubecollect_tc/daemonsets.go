@@ -13,19 +13,19 @@ import (
 	"sync"
 )
 
-func daemonSetEvent(ds kubecollect.CoDaemonSet, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func daemonSetEvent(ds kubecollect.CoDaemonSet, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newDaemonSetCongroup(ds),
 	}
 }
 
-func newDaemonSetCongroup(daemonSet kubecollect.CoDaemonSet) (*draiosproto.ContainerGroup) {
+func newDaemonSetCongroup(daemonSet kubecollect.CoDaemonSet) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_daemonset"),
-			Id:proto.String(string(daemonSet.GetUID()))},
-		Namespace:proto.String(daemonSet.GetNamespace()),
+			Kind: proto.String("k8s_daemonset"),
+			Id:   proto.String(string(daemonSet.GetUID()))},
+		Namespace: proto.String(daemonSet.GetNamespace()),
 	}
 
 	ret.Tags = kubecollect_common.GetTags(daemonSet, "kubernetes.daemonSet.")

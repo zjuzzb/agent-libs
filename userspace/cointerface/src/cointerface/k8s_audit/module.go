@@ -3,8 +3,9 @@ package k8s_audit
 import (
 	"fmt"
 
-	"github.com/draios/protorepo/sdc_internal"
 	"crypto/tls"
+	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
 	"github.com/gogo/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -14,23 +15,22 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-	log "github.com/cihub/seelog"
 )
 
-var(
-	k8sEvtID  uint64 = 1   // each k8s event have an ID assigned by this module
+var (
+	k8sEvtID uint64 = 1 // each k8s event have an ID assigned by this module
 )
 
 type k8sAuditServer struct {
-	cancel           context.CancelFunc
+	cancel context.CancelFunc
 
 	// When cancel is non-nil, a Stop() will send a message on
 	// this channel when the Stop() is complete.
-	cancelDone       chan bool
+	cancelDone chan bool
 }
 
 type k8sAuditHttpHandler struct {
-	evtsChannel       chan<- *sdc_internal.K8SAuditEvent
+	evtsChannel chan<- *sdc_internal.K8SAuditEvent
 }
 
 func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream sdc_internal.K8SAudit_StartServer) error {
@@ -39,7 +39,8 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 
 	ctx := context.Background()
 
-	_, err := ks.Stop(ctx, &sdc_internal.K8SAuditServerStop{}); if err != nil {
+	_, err := ks.Stop(ctx, &sdc_internal.K8SAuditServerStop{})
+	if err != nil {
 		errmsg := fmt.Sprintf("Stop() returned error: %v", err)
 		log.Errorf("K8s Audit Start: %s", errmsg)
 		return status.Error(codes.FailedPrecondition, errmsg)
@@ -55,26 +56,26 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 	for _, path := range start.PathUris {
 		httpHandler.Handle(path, auditHttpHandler)
 	}
-	httpServer := &http.Server {
-		Addr: start.GetUrl() + ":" + strconv.Itoa(int(start.GetPort())),
-		Handler: httpHandler,
-		ReadTimeout: time.Second * 10,
-		WriteTimeout: time.Second * 10,
+	httpServer := &http.Server{
+		Addr:           start.GetUrl() + ":" + strconv.Itoa(int(start.GetPort())),
+		Handler:        httpHandler,
+		ReadTimeout:    time.Second * 10,
+		WriteTimeout:   time.Second * 10,
 		MaxHeaderBytes: 1 << 20,
 	}
 
 	/* HTTP only (TLS is disabled) */
-	if  start.GetTlsEnabled() == false {
+	if start.GetTlsEnabled() == false {
 		log.Infof("K8s Audit Server setting up endpoint over HTTP: %v", httpServer.Addr)
 
-		go func(){
+		go func() {
 			if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 				// This only returns when the server has an error or is cancelled
 				errmsg := fmt.Sprintf("ListenAndServe returned error: %v", err)
 				log.Errorf("K8s Audit Start: %s", errmsg)
 			}
 		}()
-	} else {  /* HTTPS */
+	} else { /* HTTPS */
 		log.Infof("K8s Audit Server listening for K8s Audit Events over HTTPS: %v", httpServer.Addr)
 
 		/* Validate X509 object is present */
@@ -96,7 +97,7 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 			MinVersion: tls.VersionTLS12,
 		}
 
-		for i := 0 ; i < len(x509) ; i++ {
+		for i := 0; i < len(x509); i++ {
 			log.Debugf("Loading X509 private key certificate: {cert file: %s, key file: %s}",
 				*x509[i].X509CertFile, *x509[i].X509KeyFile)
 			cert, err := tls.LoadX509KeyPair(
@@ -120,7 +121,7 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 		// specify the location of the certificate in the tls
 		// config, as reference please see:
 		// https://github.com/golang/go/commit/f81f6d6ee8a7f578ab19ccb8b7dbc3b6fff81aa0
-		go func(){
+		go func() {
 			if err := httpServer.ListenAndServeTLS("", ""); err != http.ErrServerClosed {
 				// This only returns when the server has an error or is cancelled
 				errmsg := fmt.Sprintf("ListenAndServeTLS returned error: %v", err)
@@ -136,18 +137,18 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 	ks.cancelDone = make(chan bool)
 	ks.cancel = cancel
 
-	RunTasks:
+RunTasks:
 	for {
 		select {
-		case evt := <- evtsChannel:
+		case evt := <-evtsChannel:
 			log.Debugf("Sending K8s Audit Event to agent %d", evt.GetEvtId())
 			if err := stream.Send(evt); err != nil {
 				log.Errorf("Could not send event %s: %v",
 					evt.GetEvtId(), err.Error())
 			}
-		case <- evtsCtx.Done():
+		case <-evtsCtx.Done():
 			log.Infof("Received K8S Audit Stop() notification, shutting down http server")
-			shutdownCtx, shutdownCancel := context.WithTimeout(ctx, 10 * time.Second)
+			shutdownCtx, shutdownCancel := context.WithTimeout(ctx, 10*time.Second)
 			defer shutdownCancel()
 			if err := httpServer.Shutdown(shutdownCtx); err != nil {
 				errmsg := fmt.Sprintf("Shutdown returned error: %v", err)
@@ -174,7 +175,7 @@ func (ks *k8sAuditServer) Stop(ctx context.Context, stop *sdc_internal.K8SAuditS
 	if ks.cancel != nil {
 		log.Infof("Cancelling prior K8s Audit Start()")
 		ks.cancel()
-		_ = <- ks.cancelDone
+		_ = <-ks.cancelDone
 		ks.cancel = nil
 		ks.cancelDone = nil
 	}
@@ -191,7 +192,7 @@ func (ks *k8sAuditHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	case http.MethodPost:
 		jsn, err := ioutil.ReadAll(r.Body)
 
-		if (err != nil) {
+		if err != nil {
 			log.Errorf("Invalid K8s audit event: error while reading")
 			w.WriteHeader(http.StatusInternalServerError)
 			message = "Invalid Body"
@@ -200,7 +201,7 @@ func (ks *k8sAuditHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 			// Create a new record.
 			evt := &sdc_internal.K8SAuditEvent{
-				EvtId: proto.Uint64(k8sEvtID),
+				EvtId:   proto.Uint64(k8sEvtID),
 				EvtJson: proto.String(string(jsn[:])),
 			}
 			k8sEvtID += 1 // it's ok if we overflow
@@ -227,4 +228,3 @@ func Register(grpcServer *grpc.Server) error {
 
 	return nil
 }
-

@@ -1,8 +1,8 @@
 package kubecollect
 
 import (
-	"time"
 	"testing"
+	"time"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,7 +47,7 @@ func TestNewUserEvent(t *testing.T) {
 	// Make a k8s user event object
 	v1evt := makeV1EventObject()
 	// Make eventTime a bogus value
-	v1evt.EventTime = metav1.NewMicroTime(time.Date(0001, time.January, 1, 0, 0 , 0, 0, time.UTC))
+	v1evt.EventTime = metav1.NewMicroTime(time.Date(0001, time.January, 1, 0, 0, 0, 0, time.UTC))
 	k8sUserEvt = newUserEvent(v1evt)
 
 	// Check to make sure a valid time stamp exists
@@ -57,7 +57,7 @@ func TestNewUserEvent(t *testing.T) {
 	}
 
 	// Now mangle values of LastTimestamp also
-	v1evt.LastTimestamp = metav1.NewTime(time.Date(0001, time.January, 1, 0, 0 , 0, 0, time.UTC))
+	v1evt.LastTimestamp = metav1.NewTime(time.Date(0001, time.January, 1, 0, 0, 0, 0, time.UTC))
 	k8sUserEvt = newUserEvent(v1evt)
 	if *(k8sUserEvt.LastTimestamp) < int64(0) {
 		t.Errorf("LastTimestamp is negative : %v", *(k8sUserEvt.LastTimestamp))

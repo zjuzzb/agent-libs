@@ -7,27 +7,25 @@ import (
 	"testing"
 )
 
-
-
 func createResourceQuotaCopies() (*v1.ResourceQuota, *v1.ResourceQuota) {
 	orig := &v1.ResourceQuota{
 		ObjectMeta: v1meta.ObjectMeta{
 			Name: "oldResourceQuota",
-			Labels: map[string]string {
-				"label_key0":"label_val0",
-				"label_key1":"label_val1",
-				"label_key2":"label_val2",
+			Labels: map[string]string{
+				"label_key0": "label_val0",
+				"label_key1": "label_val1",
+				"label_key2": "label_val2",
 			},
 			Annotations: map[string]string{
-				"annotation_key0":"annotation_val0",
-				"annotation_key1":"annotation_val1",
-				"annotation_key2":"annotation_val2",
+				"annotation_key0": "annotation_val0",
+				"annotation_key1": "annotation_val1",
+				"annotation_key2": "annotation_val2",
 			},
 		},
 		Spec: v1.ResourceQuotaSpec{
 			Hard: v1.ResourceList{
 				"limits.cpu": *resource.NewQuantity(100, resource.DecimalSI),
-				"configmap": *resource.NewMilliQuantity(10, resource.DecimalSI),
+				"configmap":  *resource.NewMilliQuantity(10, resource.DecimalSI),
 			},
 		},
 		Status: v1.ResourceQuotaStatus{

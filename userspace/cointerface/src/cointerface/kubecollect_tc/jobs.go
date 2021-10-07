@@ -13,34 +13,34 @@ import (
 	"sync"
 )
 
-func jobEvent(job kubecollect.CoJob, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func jobEvent(job kubecollect.CoJob, eventType *draiosproto.CongroupEventType, setLinks bool) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newJobConGroup(job, setLinks),
 	}
 }
 
-func newJobConGroup(job kubecollect.CoJob, setLinks bool) (*draiosproto.ContainerGroup) {
+func newJobConGroup(job kubecollect.CoJob, setLinks bool) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_job"),
-			Id:proto.String(string(job.GetUID()))},
-			Namespace:proto.String(job.GetNamespace()),
+			Kind: proto.String("k8s_job"),
+			Id:   proto.String(string(job.GetUID()))},
+		Namespace: proto.String(job.GetNamespace()),
 	}
 
 	ret.Tags = kubecollect_common.GetTags(job, "kubernetes.job.")
 	kubecollect.AddJobMetrics(&ret.Metrics, job)
 	if setLinks {
-		kubecollect_common.OwnerReferencesToParents(job.GetOwnerReferences(), &ret.Parents, &map[string]bool{"CronJob" : true})
+		kubecollect_common.OwnerReferencesToParents(job.GetOwnerReferences(), &ret.Parents, &map[string]bool{"CronJob": true})
 	}
 	ret.LabelSelector = kubecollect_common.GetLabelSelector(*job.Spec.Selector)
 	return ret
 }
 
 func startJobsWatcher(ctx context.Context,
-			kubeClient kubeclient.Interface,
-			wg *sync.WaitGroup,
-			evtc chan<- draiosproto.CongroupUpdateEvent) {
+	kubeClient kubeclient.Interface,
+	wg *sync.WaitGroup,
+	evtc chan<- draiosproto.CongroupUpdateEvent) {
 
 	kubecollect_common.StartWatcher(ctx, kubeClient.BatchV1().RESTClient(), "Jobs", wg, evtc, fields.Everything(), handleJobEvent)
 }

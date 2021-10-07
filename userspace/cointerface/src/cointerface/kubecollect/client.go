@@ -102,7 +102,7 @@ func startInformers(
 				evtcLen := 0
 				select {
 				case lastTick = <-ticker.C:
-					if (channelType == kubecollect_common.ChannelTypeInformer) {
+					if channelType == kubecollect_common.ChannelTypeInformer {
 						// Number of events is length of Informer channel
 						// plus length of events in SdcEvtArray
 						lenQueue := int(atomic.LoadUint32(queueLength))
@@ -142,7 +142,7 @@ func startInformers(
 		}
 	}
 
-	if ! interrupted {
+	if !interrupted {
 		fetchDone <- struct{}{}
 	} else {
 		// Inititial fetch has been aborted.
@@ -164,7 +164,7 @@ func startInformers(
 	}()
 }
 
-type KubecollectClient struct {}
+type KubecollectClient struct{}
 
 func (c KubecollectClient) StartInformers(
 	ctx context.Context,
@@ -176,4 +176,3 @@ func (c KubecollectClient) StartInformers(
 	queueLength *uint32) {
 	startInformers(ctx, kubeClient, wg, fetchDone, opts, resourceTypes, queueLength)
 }
-

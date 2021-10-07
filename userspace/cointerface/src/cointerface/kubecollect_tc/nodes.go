@@ -3,30 +3,30 @@ package kubecollect_tc
 import (
 	"cointerface/kubecollect"
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"context"
-	"sync"
-	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
+	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	draiosproto "protorepo/agent-be/proto"
+	"sync"
 )
 
-func nodeEvent(node *v1.Node, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func nodeEvent(node *v1.Node, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newNodeCongroup(node),
 	}
 }
 
-func newNodeCongroup(node *v1.Node) (*draiosproto.ContainerGroup) {
+func newNodeCongroup(node *v1.Node) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_node"),
-			Id:proto.String(string(node.GetUID()))},
+			Kind: proto.String("k8s_node"),
+			Id:   proto.String(string(node.GetUID()))},
 		Node: proto.String(node.Name),
 	}
 
@@ -102,12 +102,12 @@ func watchNodes(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					return
 				}
 
-				evtc <- draiosproto.CongroupUpdateEvent {
+				evtc <- draiosproto.CongroupUpdateEvent{
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{
 						Uid: &draiosproto.CongroupUid{
-							Kind:proto.String("k8s_node"),
-							Id:proto.String(string(oldNode.GetUID()))},
+							Kind: proto.String("k8s_node"),
+							Id:   proto.String(string(oldNode.GetUID()))},
 					},
 				}
 				kubecollect_common.AddEvent("Node", kubecollect_common.EVENT_DELETE)

@@ -36,7 +36,7 @@ func fixture() {
 		TypeMeta: v1meta.TypeMeta{},
 		ObjectMeta: v1meta.ObjectMeta{
 			Name: namespaceName,
-			UID: types.UID(namespaceUID),
+			UID:  types.UID(namespaceUID),
 		},
 		Spec:   v1.NamespaceSpec{},
 		Status: v1.NamespaceStatus{},
@@ -51,40 +51,39 @@ func fixture() {
 	namespaceInf.GetStore().Add(namespace)
 }
 
-
 // if pointers argmument is false, do not instantiate pointer type members.
 // This will help to test versus null pointer dereferencing
-func createV1PersistentVolumeClaim(pointers bool)(*v1.PersistentVolumeClaim) {
+func createV1PersistentVolumeClaim(pointers bool) *v1.PersistentVolumeClaim {
 	storageClassName := "StorageClassName"
 	ret := &v1.PersistentVolumeClaim{
-		ObjectMeta: v1meta.ObjectMeta {
-			Name: string("SamePVC"),
+		ObjectMeta: v1meta.ObjectMeta{
+			Name:            string("SamePVC"),
 			ResourceVersion: string("abcd"),
 			Labels: map[string]string{
-				"label_key1":"label_value1",
-				"label_key2":"label_value2",
+				"label_key1": "label_value1",
+				"label_key2": "label_value2",
 			},
 		},
 
 		Spec: v1.PersistentVolumeClaimSpec{
-			AccessModes:[]v1.PersistentVolumeAccessMode {
+			AccessModes: []v1.PersistentVolumeAccessMode{
 				v1.ReadWriteOnce,
 			},
 			VolumeName: "ATestVolume",
 		},
 		Status: v1.PersistentVolumeClaimStatus{
 			Phase: v1.ClaimBound,
-			AccessModes: [] v1.PersistentVolumeAccessMode {
-					v1.ReadOnlyMany,
+			AccessModes: []v1.PersistentVolumeAccessMode{
+				v1.ReadOnlyMany,
 			},
 			Capacity: v1.ResourceList{
 				"storage": resource.MustParse("500M"),
 			},
 			Conditions: []v1.PersistentVolumeClaimCondition{
 				{
-					Type: v1.PersistentVolumeClaimConditionType(v1.PersistentVolumeClaimResizing),
-					Status: v1.ConditionStatus(v1.ConditionUnknown),
-					Reason: "NoSacciu",
+					Type:    v1.PersistentVolumeClaimConditionType(v1.PersistentVolumeClaimResizing),
+					Status:  v1.ConditionStatus(v1.ConditionUnknown),
+					Reason:  "NoSacciu",
 					Message: "NoComment",
 				},
 			},
@@ -105,7 +104,7 @@ func createV1PersistentVolumeClaim(pointers bool)(*v1.PersistentVolumeClaim) {
 				{
 					Key:      "laChiave",
 					Operator: v1meta.LabelSelectorOpIn,
-					Values: []string {"maramao", "perche", "sei", "morto"},
+					Values:   []string{"maramao", "perche", "sei", "morto"},
 				},
 			},
 		}
@@ -124,7 +123,7 @@ func createV1PersistentVolumeClaim(pointers bool)(*v1.PersistentVolumeClaim) {
 	return ret
 }
 
-func create_pvc_label_key (name string) string {
+func create_pvc_label_key(name string) string {
 	return "kubernetes.persistentvolumeclaim.label." + name
 }
 
@@ -144,22 +143,20 @@ func getPVCExpected() *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind: &kind_pv,
-			Id: &id_pv,
+			Id:   &id_pv,
 		},
-		Tags: tags,
-		Namespace:proto.String(namespaceName),
+		Tags:      tags,
+		Namespace: proto.String(namespaceName),
 		K8SObject: &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pvc{Pvc: &draiosproto.K8SPersistentvolumeclaim{
 			Common: kubecollect_common.CreateCommon("", ""),
-			Status:               &draiosproto.K8SPersistentvolumeclaimStatusDetails{
-				Phase:  	          getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_BOUND),
-				Conditions:           conditionsToArray(draiosproto.K8SPersistentvolumeclaimCondition{
-														Status:               getCondStatusPtr(draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_UNKNOWN),
-														Type:                 getClaimTypePtr(v1.PersistentVolumeClaimResizing),
-
-														}),
-
+			Status: &draiosproto.K8SPersistentvolumeclaimStatusDetails{
+				Phase: getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_BOUND),
+				Conditions: conditionsToArray(draiosproto.K8SPersistentvolumeclaimCondition{
+					Status: getCondStatusPtr(draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_UNKNOWN),
+					Type:   getClaimTypePtr(v1.PersistentVolumeClaimResizing),
+				}),
 			},
-			AccessModes:          []draiosproto.K8SVolumeAccessMode{
+			AccessModes: []draiosproto.K8SVolumeAccessMode{
 				draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_ONLY_MANY,
 			},
 		}}},
@@ -207,7 +204,7 @@ func getCondStatusPtr(cs draiosproto.K8SPersistentvolumeclaimConditionStatus) *d
 	return &cs
 }
 
-func conditionsToArray(conditions... draiosproto.K8SPersistentvolumeclaimCondition) []*draiosproto.K8SPersistentvolumeclaimCondition {
+func conditionsToArray(conditions ...draiosproto.K8SPersistentvolumeclaimCondition) []*draiosproto.K8SPersistentvolumeclaimCondition {
 	ret := []*draiosproto.K8SPersistentvolumeclaimCondition{}
 
 	for _, condition := range conditions {
@@ -217,9 +214,9 @@ func conditionsToArray(conditions... draiosproto.K8SPersistentvolumeclaimConditi
 	return ret
 }
 
-func TestGetMetaData(t *testing.T){
+func TestGetMetaData(t *testing.T) {
 	cases := []struct {
-		phase v1.PersistentVolumeClaimPhase
+		phase      v1.PersistentVolumeClaimPhase
 		conditions []v1.PersistentVolumeClaimCondition
 		accessMode []v1.PersistentVolumeAccessMode
 
@@ -229,7 +226,7 @@ func TestGetMetaData(t *testing.T){
 			phase: v1.ClaimPending,
 			conditions: []v1.PersistentVolumeClaimCondition{
 				{
-					Type: v1.PersistentVolumeClaimResizing,
+					Type:   v1.PersistentVolumeClaimResizing,
 					Status: v1.ConditionUnknown,
 				},
 			},
@@ -237,59 +234,54 @@ func TestGetMetaData(t *testing.T){
 				v1.ReadWriteOnce,
 			},
 			expected: draiosproto.K8SPersistentvolumeclaim{
-				Common: kubecollect_common.CreateCommon("",""),
-				Status:               &draiosproto.K8SPersistentvolumeclaimStatusDetails{
-					Phase:	              getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_PENDING),
-					Conditions:           conditionsToArray(draiosproto.K8SPersistentvolumeclaimCondition{
-																Status:               getCondStatusPtr(draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_UNKNOWN),
-																Type:                 getClaimTypePtr(v1.PersistentVolumeClaimResizing),
-
-																}),
+				Common: kubecollect_common.CreateCommon("", ""),
+				Status: &draiosproto.K8SPersistentvolumeclaimStatusDetails{
+					Phase: getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_PENDING),
+					Conditions: conditionsToArray(draiosproto.K8SPersistentvolumeclaimCondition{
+						Status: getCondStatusPtr(draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_UNKNOWN),
+						Type:   getClaimTypePtr(v1.PersistentVolumeClaimResizing),
+					}),
 				},
-				AccessModes:          []draiosproto.K8SVolumeAccessMode{
+				AccessModes: []draiosproto.K8SVolumeAccessMode{
 					draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_WRITE_ONCE,
 				},
-
 			},
 		},
 		{
-			phase: v1.ClaimBound,
+			phase:      v1.ClaimBound,
 			conditions: []v1.PersistentVolumeClaimCondition{},
 			accessMode: []v1.PersistentVolumeAccessMode{},
 			expected: draiosproto.K8SPersistentvolumeclaim{
-				Common: kubecollect_common.CreateCommon("",""),
-				Status:               &draiosproto.K8SPersistentvolumeclaimStatusDetails{
-					Phase:	               getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_BOUND),
-					Conditions:            nil,
+				Common: kubecollect_common.CreateCommon("", ""),
+				Status: &draiosproto.K8SPersistentvolumeclaimStatusDetails{
+					Phase:      getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_BOUND),
+					Conditions: nil,
 				},
-				AccessModes:          nil,
-
+				AccessModes: nil,
 			},
 		},
 		{
-			phase: v1.ClaimPending,
+			phase:      v1.ClaimPending,
 			conditions: []v1.PersistentVolumeClaimCondition{},
 			accessMode: []v1.PersistentVolumeAccessMode{},
 			expected: draiosproto.K8SPersistentvolumeclaim{
-				Common: kubecollect_common.CreateCommon("",""),
-				Status:               &draiosproto.K8SPersistentvolumeclaimStatusDetails{
-					Phase:	               getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_PENDING),
-					Conditions:            nil,
+				Common: kubecollect_common.CreateCommon("", ""),
+				Status: &draiosproto.K8SPersistentvolumeclaimStatusDetails{
+					Phase:      getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_PENDING),
+					Conditions: nil,
 				},
-				AccessModes:          nil,
-
+				AccessModes: nil,
 			},
-
 		},
 		{
 			phase: v1.ClaimPending,
 			conditions: []v1.PersistentVolumeClaimCondition{
 				{
-					Type: v1.PersistentVolumeClaimResizing,
+					Type:   v1.PersistentVolumeClaimResizing,
 					Status: v1.ConditionTrue,
 				},
 				{
-					Type: v1.PersistentVolumeClaimFileSystemResizePending,
+					Type:   v1.PersistentVolumeClaimFileSystemResizePending,
 					Status: v1.ConditionUnknown,
 				},
 			},
@@ -300,31 +292,29 @@ func TestGetMetaData(t *testing.T){
 			},
 
 			expected: draiosproto.K8SPersistentvolumeclaim{
-				Common: kubecollect_common.CreateCommon("",""),
-				Status:               &draiosproto.K8SPersistentvolumeclaimStatusDetails{
-					Phase:	               getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_PENDING),
-					Conditions:            conditionsToArray(draiosproto.K8SPersistentvolumeclaimCondition{
-																Status:               getCondStatusPtr(draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_TRUE),
-																Type:                 getClaimTypePtr(v1.PersistentVolumeClaimResizing),
-
-															}, draiosproto.K8SPersistentvolumeclaimCondition{
-																Status:               getCondStatusPtr(draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_UNKNOWN),
-																Type:                 getClaimTypePtr(v1.PersistentVolumeClaimFileSystemResizePending),
-															}),
+				Common: kubecollect_common.CreateCommon("", ""),
+				Status: &draiosproto.K8SPersistentvolumeclaimStatusDetails{
+					Phase: getPhasePtr(draiosproto.K8SPersistentvolumeclaimPhase_PERSISTENT_VOLUME_CLAIM_PHASE_PENDING),
+					Conditions: conditionsToArray(draiosproto.K8SPersistentvolumeclaimCondition{
+						Status: getCondStatusPtr(draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_TRUE),
+						Type:   getClaimTypePtr(v1.PersistentVolumeClaimResizing),
+					}, draiosproto.K8SPersistentvolumeclaimCondition{
+						Status: getCondStatusPtr(draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_UNKNOWN),
+						Type:   getClaimTypePtr(v1.PersistentVolumeClaimFileSystemResizePending),
+					}),
 				},
-				AccessModes:          []draiosproto.K8SVolumeAccessMode{
+				AccessModes: []draiosproto.K8SVolumeAccessMode{
 					draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_WRITE_ONCE,
 					draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_ONLY_MANY,
 					draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_WRITE_MANY,
 				},
-
 			},
 		},
 	}
-	
+
 	for k, ut := range cases {
 		pvc := &v1.PersistentVolumeClaim{
-			Status:     v1.PersistentVolumeClaimStatus{
+			Status: v1.PersistentVolumeClaimStatus{
 				Phase:       ut.phase,
 				AccessModes: ut.accessMode,
 				Conditions:  ut.conditions,
@@ -334,7 +324,7 @@ func TestGetMetaData(t *testing.T){
 		k8s_object := getMetaData(pvc)
 
 		if !proto.Equal(k8s_object, &ut.expected) {
-			actualJson, _  := json.Marshal(*k8s_object)
+			actualJson, _ := json.Marshal(*k8s_object)
 			expectedJson, _ := json.Marshal(ut.expected)
 			t.Logf("Fail test number %d\nExpected %s\nActual %s", k, expectedJson, actualJson)
 			t.Fail()

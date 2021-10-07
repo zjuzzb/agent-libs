@@ -2,10 +2,10 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	"testing"
 	"k8s.io/api/core/v1"
-	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"testing"
 )
 
 // Creates two node objects that are DeepEqual
@@ -14,14 +14,14 @@ func createNodeCopies() (*v1.Node, *v1.Node) {
 		ObjectMeta: v1meta.ObjectMeta{
 			Name: "oldNode",
 			Labels: map[string]string{
-				"label_key0":"label_val0",
-				"label_key1":"label_val1",
-				"label_key2":"label_val2",
+				"label_key0": "label_val0",
+				"label_key1": "label_val1",
+				"label_key2": "label_val2",
 			},
 			Annotations: map[string]string{
-				"annotation_key0":"annotation_val0",
-				"annotation_key1":"annotation_val1",
-				"annotation_key2":"annotation_val2",
+				"annotation_key0": "annotation_val0",
+				"annotation_key1": "annotation_val1",
+				"annotation_key2": "annotation_val2",
 			},
 		},
 		Spec: v1.NodeSpec{
@@ -29,30 +29,30 @@ func createNodeCopies() (*v1.Node, *v1.Node) {
 		},
 		Status: v1.NodeStatus{
 			Capacity: map[v1.ResourceName]resource.Quantity{
-				v1.ResourceCPU:*resource.NewQuantity(1024, resource.DecimalSI),
-				v1.ResourceMemory:*resource.NewQuantity(1024*1024, resource.DecimalSI),
-				v1.ResourceStorage:*resource.NewQuantity(1024*1024*1024, resource.DecimalSI),
+				v1.ResourceCPU:     *resource.NewQuantity(1024, resource.DecimalSI),
+				v1.ResourceMemory:  *resource.NewQuantity(1024*1024, resource.DecimalSI),
+				v1.ResourceStorage: *resource.NewQuantity(1024*1024*1024, resource.DecimalSI),
 			},
 			Allocatable: map[v1.ResourceName]resource.Quantity{
-				v1.ResourceCPU:*resource.NewQuantity(1024, resource.DecimalSI),
-				v1.ResourceMemory:*resource.NewQuantity(1024*1024, resource.DecimalSI),
-				v1.ResourceStorage:*resource.NewQuantity(1024*1024*1024, resource.DecimalSI),
+				v1.ResourceCPU:     *resource.NewQuantity(1024, resource.DecimalSI),
+				v1.ResourceMemory:  *resource.NewQuantity(1024*1024, resource.DecimalSI),
+				v1.ResourceStorage: *resource.NewQuantity(1024*1024*1024, resource.DecimalSI),
 			},
 			Conditions: []v1.NodeCondition{
-				v1.NodeCondition{
-					Type: v1.NodeReady,
+				{
+					Type:   v1.NodeReady,
 					Status: v1.ConditionTrue,
 				},
-				v1.NodeCondition{
-					Type: v1.NodePIDPressure,
+				{
+					Type:   v1.NodePIDPressure,
 					Status: v1.ConditionTrue,
 				},
-				v1.NodeCondition{
-					Type: v1.NodeMemoryPressure,
+				{
+					Type:   v1.NodeMemoryPressure,
 					Status: v1.ConditionFalse,
 				},
-				v1.NodeCondition{
-					Type: v1.NodeDiskPressure,
+				{
+					Type:   v1.NodeDiskPressure,
 					Status: v1.ConditionUnknown,
 				},
 			},
@@ -64,7 +64,7 @@ func createNodeCopies() (*v1.Node, *v1.Node) {
 
 func nodeEqualsHelper(t *testing.T, oldNode *v1.Node, newNode *v1.Node, expected bool) {
 	res := NodeEquals(oldNode, newNode)
-	if res != expected  {
+	if res != expected {
 		t.Logf("nodeEquals expected %v, got %v", expected, res)
 		t.Logf("oldNode: %#v", oldNode)
 		t.Logf("newNode: %#v", newNode)
@@ -185,7 +185,7 @@ func helperNodeEqualsConditions(t *testing.T,
 	newStatus v1.ConditionStatus) {
 
 	oldNode, newNode := createNodeCopies()
-	for idx, _ := range newNode.Status.Conditions {
+	for idx := range newNode.Status.Conditions {
 		if newNode.Status.Conditions[idx].Type == expType {
 			if newNode.Status.Conditions[idx].Status != expStatus {
 				t.Errorf("Expected %v for %v, %v instead", expStatus,

@@ -65,22 +65,23 @@ func newStorageClassConGroup(sc *storagev1.StorageClass) (*draiosproto.Container
 	}
 
 	cg.K8SObject = &draiosproto.K8SType{
-		TypeList:             &draiosproto.K8SType_Sc{
+		TypeList: &draiosproto.K8SType_Sc{
 			Sc: &draiosproto.K8SStorageClass{
-				Common:               kubecollect_common.K8sToDraiosCommon(sc),
-				Created:              proto.Uint32(uint32(sc.CreationTimestamp.Unix())),
-				Provisioner:          proto.String(sc.Provisioner),
-				ReclaimPolicy:        getReclaimPolicy(sc),
-				VolumeBindingMode:    getVolumeBindingMode(sc),
+				Common:            kubecollect_common.K8sToDraiosCommon(sc),
+				Created:           proto.Uint32(uint32(sc.CreationTimestamp.Unix())),
+				Provisioner:       proto.String(sc.Provisioner),
+				ReclaimPolicy:     getReclaimPolicy(sc),
+				VolumeBindingMode: getVolumeBindingMode(sc),
 			},
 		},
 	}
 	return cg, nil
 }
+
 const (
-	RESOURCE = "storageclasses"
-	RESTYPE = "StorageClass"
-	DRAIOS_KIND = "k8s_storageclass"
+	RESOURCE      = "storageclasses"
+	RESTYPE       = "StorageClass"
+	DRAIOS_KIND   = "k8s_storageclass"
 	METRIC_PREFIX = "kubernetes.storageclass."
 )
 
@@ -93,12 +94,12 @@ func storageClassEvent(sc *storagev1.StorageClass, eventType *draiosproto.Congro
 	}
 
 	return draiosproto.CongroupUpdateEvent{
-		Type:                 eventType,
-		Object:               newSc,
+		Type:   eventType,
+		Object: newSc,
 	}
 }
 
-func watchStorageClasses(evtc chan <- draiosproto.CongroupUpdateEvent) {
+func watchStorageClasses(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	storageClassInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {

@@ -12,13 +12,13 @@ import (
 )
 
 type Lease struct {
-	id string // The group id this lease belongs to
-	leaseName string
-	lock resourcelock.LeaseLock
-	ctx context.Context
-	cancel context.CancelFunc
-	config leaderelection.LeaderElectionConfig
-	elector *leaderelection.LeaderElector
+	id         string // The group id this lease belongs to
+	leaseName  string
+	lock       resourcelock.LeaseLock
+	ctx        context.Context
+	cancel     context.CancelFunc
+	config     leaderelection.LeaderElectionConfig
+	elector    *leaderelection.LeaderElector
 	alreadyRun bool
 }
 
@@ -66,7 +66,6 @@ func (s *Lease) init(p kubeclient.Interface, id string, leaseName string, leader
 		},
 	}
 
-
 	if leaderElectionConfig.LeaseDuration != nil && *leaderElectionConfig.LeaseDuration > 0 {
 		s.config.LeaseDuration = time.Duration(*leaderElectionConfig.LeaseDuration) * time.Second
 	}
@@ -110,7 +109,7 @@ func (s *Lease) init(p kubeclient.Interface, id string, leaseName string, leader
 	return nil
 }
 
-func (s *Lease)Run() {
+func (s *Lease) Run() {
 	if s.alreadyRun {
 		log.Debugf("Lease %s has been already run. Skip running again", s.leaseName)
 		return
@@ -143,10 +142,10 @@ func (s *Lease) Release() {
 		} else {
 			log.Debugf("Trying to release leader %s from lease %s", s.id, s.leaseName)
 			select {
-			case <- maxWait.C:
+			case <-maxWait.C:
 				log.Debug("Could not release. Timer expired")
 				return
-			case <- time.After(time.Second * 1):
+			case <-time.After(time.Second * 1):
 				//Give another try
 			}
 		}

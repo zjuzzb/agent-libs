@@ -23,7 +23,7 @@ var podInf cache.SharedInformer
 var podEvtcHandle chan<- draiosproto.CongroupUpdateEvent
 
 // pods get their own special version because they send events for containers too
-func sendPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool)  {
+func sendPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool) {
 	updates := newPodEvents(pod, eventType, oldPod, setLinks)
 
 	kubecollect_common.SendClusterCidrEvent(pod, eventType, podEvtcHandle)
@@ -45,9 +45,9 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 
 	for _, c := range containers {
 		state := kubecollect_common.GetContainerState(c.State)
-		if (state < kubecollect_common.Running) {
+		if state < kubecollect_common.Running {
 			continue
-		} else if (state == kubecollect_common.Running) {
+		} else if state == kubecollect_common.Running {
 			containerID, err := kubecollect_common.ParseContainerID(c.ContainerID)
 			if err != nil {
 				log.Debugf("Unable to parse ContainerID %v: %v", containerID, err)
@@ -56,9 +56,9 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 
 			// All running containers need to be added to the child list
 			// even if they don't have an ADDED or REMOVED event this time
-			*podChildren = append(*podChildren, &draiosproto.CongroupUid {
-				Kind:proto.String("container"),
-				Id:proto.String(containerID)},
+			*podChildren = append(*podChildren, &draiosproto.CongroupUid{
+				Kind: proto.String("container"),
+				Id:   proto.String(containerID)},
 			)
 		}
 
@@ -76,7 +76,7 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 		case kubecollect_common.Running:
 			if oldState < kubecollect_common.Running &&
 				(evtType == draiosproto.CongroupEventType_ADDED ||
-				evtType == draiosproto.CongroupEventType_UPDATED) {
+					evtType == draiosproto.CongroupEventType_UPDATED) {
 				newEvent, newType = true, draiosproto.CongroupEventType_ADDED
 			}
 		case kubecollect_common.Terminated:
@@ -86,7 +86,7 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 			// but the infra state code can handle double deletes
 			if evtType == draiosproto.CongroupEventType_REMOVED ||
 				(evtType == draiosproto.CongroupEventType_UPDATED &&
-				oldState == kubecollect_common.Running) {
+					oldState == kubecollect_common.Running) {
 				newEvent, newType = true, draiosproto.CongroupEventType_REMOVED
 			}
 		default:
@@ -222,7 +222,7 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 	return in, out
 }
 
-func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool) ([]*draiosproto.CongroupUpdateEvent) {
+func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool) []*draiosproto.CongroupUpdateEvent {
 	tags := kubecollect_common.GetTags(pod, "kubernetes.pod.")
 	// This gets specially added as a tag since we don't have a
 	// better way to report values that can be one of many strings
@@ -246,7 +246,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	// the following tags are required by netsec to correctly match connection IP and
 	// the pod: https://sysdig.atlassian.net/browse/SSPROD-5633
 	inttags["kubernetes.pod.meta.creationTimestamp"] = strconv.FormatInt(
-		pod.ObjectMeta.GetCreationTimestamp().UnixNano() / int64(time.Millisecond), 10)
+		pod.ObjectMeta.GetCreationTimestamp().UnixNano()/int64(time.Millisecond), 10)
 
 	if pod.ObjectMeta.GetDeletionTimestamp() != nil {
 		inttags["kubernetes.pod.meta.deletionTimestamp"] = strconv.FormatInt(
@@ -265,7 +265,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	if setLinks {
 		AddNodeParents(&parents, pod.Spec.NodeName)
 
-		kubecollect_common.AddParentsToPodViaOwnerRef(&parents, pod);
+		kubecollect_common.AddParentsToPodViaOwnerRef(&parents, pod)
 		// services don't have owner references and always use selectors
 		AddServiceParents(&parents, pod)
 	}
@@ -291,27 +291,26 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	kubecollect_common.AddContainerStatusesToPod(optPod, pod)
 
 	var cg []*draiosproto.CongroupUpdateEvent
-	cg = append(cg, &draiosproto.CongroupUpdateEvent {
+	cg = append(cg, &draiosproto.CongroupUpdateEvent{
 		Type: eventType.Enum(),
 		Object: &draiosproto.ContainerGroup{
 			Uid: &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_pod"),
-				Id:proto.String(string(pod.GetUID()))},
-			Tags: tags,
+				Kind: proto.String("k8s_pod"),
+				Id:   proto.String(string(pod.GetUID()))},
+			Tags:         tags,
 			InternalTags: inttags,
-			IpAddresses: ips,
-			Metrics: metrics,
-			Parents: parents,
-			Children: children,
-			Namespace:proto.String(pod.GetNamespace()),
-			K8SObject: &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pod{Pod: optPod}},
+			IpAddresses:  ips,
+			Metrics:      metrics,
+			Parents:      parents,
+			Children:     children,
+			Namespace:    proto.String(pod.GetNamespace()),
+			K8SObject:    &draiosproto.K8SType{TypeList: &draiosproto.K8SType_Pod{Pod: optPod}},
 		},
 	})
 	cg = append(cg, containerEvents...)
 
 	return cg
 }
-
 
 func AddPodChildrenFromSelectors(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
 	if !kubecollect_common.ResourceReady("pods") {
@@ -322,8 +321,8 @@ func AddPodChildrenFromSelectors(children *[]*draiosproto.CongroupUid, selector 
 		pod := obj.(*v1.Pod)
 		if pod.GetNamespace() == namespace && selector.Matches(labels.Set(pod.GetLabels())) {
 			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_pod"),
-				Id:proto.String(string(pod.GetUID()))})
+				Kind: proto.String("k8s_pod"),
+				Id:   proto.String(string(pod.GetUID()))})
 		}
 	}
 }
@@ -337,8 +336,8 @@ func AddPodChildrenFromNodeName(children *[]*draiosproto.CongroupUid, nodeName s
 		pod := obj.(*v1.Pod)
 		if pod.Spec.NodeName == nodeName {
 			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_pod"),
-				Id:proto.String(string(pod.GetUID()))})
+				Kind: proto.String("k8s_pod"),
+				Id:   proto.String(string(pod.GetUID()))})
 		}
 	}
 }
@@ -353,8 +352,8 @@ func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1m
 		for _, owner := range pod.GetOwnerReferences() {
 			if owner.UID == parent.GetUID() {
 				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_pod"),
-					Id:proto.String(string(pod.GetUID()))})
+					Kind: proto.String("k8s_pod"),
+					Id:   proto.String(string(pod.GetUID()))})
 			}
 		}
 	}
@@ -363,7 +362,7 @@ func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1m
 func startPodsSInformer(ctx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 
 	var getTerm = false
-	if opts.GetTerminatedPodsEnabled()  {
+	if opts.GetTerminatedPodsEnabled() {
 		getTerm = true
 	}
 
@@ -407,9 +406,9 @@ func podInfManagerLoop(ctx context.Context, getTerm bool, kubeClient kubeclient.
 		}
 
 		var restart bool = false
-		for ; !restart; {
+		for !restart {
 			select {
-			case <- ctx.Done():
+			case <-ctx.Done():
 				log.Debug("PodInfManager: context cancelled, waiting for informer wg")
 				infWg.Wait()
 				log.Debug("PodInfManager: informer done, closing")

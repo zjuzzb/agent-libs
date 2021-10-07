@@ -1,6 +1,5 @@
 package kubecollect
 
-
 import (
 	"cointerface/kubecollect_common"
 	"context"
@@ -20,14 +19,14 @@ import (
 var networkPolicyInf cache.SharedInformer
 
 // make this a library function?
-func networkPolicyEvent(rq *v1.NetworkPolicy, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func networkPolicyEvent(rq *v1.NetworkPolicy, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newNetworkPolicyCongroup(rq),
 	}
 }
 
-func setScopev(tags map[string]string, networkpolicy *v1.NetworkPolicy) () {
+func setScopev(tags map[string]string, networkpolicy *v1.NetworkPolicy) {
 }
 
 func networkPolicyEquals(oldNetworkPolicy *v1.NetworkPolicy, newNetworkPolicy *v1.NetworkPolicy) bool {
@@ -40,20 +39,20 @@ func networkPolicyEquals(oldNetworkPolicy *v1.NetworkPolicy, newNetworkPolicy *v
 	return ret
 }
 
-func newNetworkPolicyCongroup(networkPolicy *v1.NetworkPolicy) (*draiosproto.ContainerGroup) {
+func newNetworkPolicyCongroup(networkPolicy *v1.NetworkPolicy) *draiosproto.ContainerGroup {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
 	//     should work on all v1.Object types
 	tags := make(map[string]string)
 	for k, v := range networkPolicy.GetLabels() {
-		tags["kubernetes.networkpolicy.label." + k] = v
+		tags["kubernetes.networkpolicy.label."+k] = v
 	}
 
 	setScopev(tags, networkPolicy)
 	tags["kubernetes.networkpolicy.name"] = networkPolicy.GetName()
 	tags["kubernetes.networkpolicy.version"] = "networking.k8s.io/v1"
 
-	bytes, err :=json.Marshal( networkPolicy.Spec)
+	bytes, err := json.Marshal(networkPolicy.Spec)
 	inttags := make(map[string]string)
 
 	if err == nil {
@@ -62,11 +61,11 @@ func newNetworkPolicyCongroup(networkPolicy *v1.NetworkPolicy) (*draiosproto.Con
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_networkpolicy"),
-			Id:proto.String(string(networkPolicy.GetUID()))},
-		Tags: tags,
+			Kind: proto.String("k8s_networkpolicy"),
+			Id:   proto.String(string(networkPolicy.GetUID()))},
+		Tags:         tags,
 		InternalTags: inttags,
-		Namespace:proto.String(networkPolicy.GetNamespace()),
+		Namespace:    proto.String(networkPolicy.GetNamespace()),
 	}
 
 	AddNetworkPolicyMetrics(&ret.Metrics, networkPolicy)
@@ -76,7 +75,6 @@ func newNetworkPolicyCongroup(networkPolicy *v1.NetworkPolicy) (*draiosproto.Con
 func AddNetworkPolicyMetrics(metrics *[]*draiosproto.AppMetric, networkPolicy *v1.NetworkPolicy) {
 
 }
-
 
 func StartNetworkPoliciesSInformer(ctx context.Context, kubeClient kubeclient.Interface,
 	wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {

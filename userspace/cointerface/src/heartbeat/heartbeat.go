@@ -1,11 +1,11 @@
 package heartbeat
 
 import (
-	"os"
-	"time"
-	"syscall"
 	"fmt"
+	"os"
 	"runtime"
+	"syscall"
+	"time"
 )
 
 func printHeartbeatMessage() {
@@ -18,7 +18,7 @@ func printHeartbeatMessage() {
 	fmt.Printf("HB,%d,%d,%d\n", os.Getpid(), rusage.Maxrss, time.Now().Unix())
 }
 
-func Heartbeat(preCall func()()) {
+func Heartbeat(preCall func()) {
 	for {
 		if preCall != nil {
 			preCall()

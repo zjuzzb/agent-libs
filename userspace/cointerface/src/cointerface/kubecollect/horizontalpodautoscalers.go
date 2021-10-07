@@ -2,44 +2,44 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"context"
-	"sync"
-	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
+	"github.com/gogo/protobuf/proto"
+	v1as "k8s.io/api/autoscaling/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	v1as "k8s.io/api/autoscaling/v1"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	draiosproto "protorepo/agent-be/proto"
+	"sync"
 )
 
 var horizontalPodAutoscalerInf cache.SharedInformer
 
-func horizontalPodAutoscalerEvent(ss *v1as.HorizontalPodAutoscaler, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func horizontalPodAutoscalerEvent(ss *v1as.HorizontalPodAutoscaler, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newHorizontalPodAutoscalerCongroup(ss),
 	}
 }
 
-func newHorizontalPodAutoscalerCongroup(hpa *v1as.HorizontalPodAutoscaler) (*draiosproto.ContainerGroup) {
+func newHorizontalPodAutoscalerCongroup(hpa *v1as.HorizontalPodAutoscaler) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_hpa"),
-			Id:proto.String(string(hpa.GetUID()))},
-		Namespace:proto.String(hpa.GetNamespace()),
+			Kind: proto.String("k8s_hpa"),
+			Id:   proto.String(string(hpa.GetUID()))},
+		Namespace: proto.String(hpa.GetNamespace()),
 	}
 
 	ret.Tags = kubecollect_common.GetTags(hpa, "kubernetes.hpa.")
 	ret.InternalTags = kubecollect_common.GetAnnotations(hpa.ObjectMeta, "kubernetes.hpa.")
 	AddHorizontalPodAutoscalerMetrics(&ret.Metrics, hpa)
 	AddPodChildrenFromOwnerRef(&ret.Children, hpa.ObjectMeta)
-	if (hpa.Spec.ScaleTargetRef.Kind == "Deployment") {
+	if hpa.Spec.ScaleTargetRef.Kind == "Deployment" {
 		AddDeploymentChildrenByName(&ret.Children, hpa.GetNamespace(), hpa.Spec.ScaleTargetRef.Name)
-	} else if (hpa.Spec.ScaleTargetRef.Kind == "ReplicationController") {
+	} else if hpa.Spec.ScaleTargetRef.Kind == "ReplicationController" {
 		AddReplicationControllerChildrenByName(&ret.Children, hpa.GetNamespace(), hpa.Spec.ScaleTargetRef.Name)
-	} else if (hpa.Spec.ScaleTargetRef.Kind == "ReplicaSet") {
+	} else if hpa.Spec.ScaleTargetRef.Kind == "ReplicaSet" {
 		AddReplicaSetChildrenByName(&ret.Children, hpa.GetNamespace(), hpa.Spec.ScaleTargetRef.Name)
 	}
 
@@ -68,8 +68,8 @@ func AddHorizontalPodAutoscalerParents(parents *[]*draiosproto.CongroupUid, name
 			// log.Debugf("Found HPA parents: hpa:%s -> %s:%s",
 			// 	hpa.GetName(), kind, name)
 			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_hpa"),
-				Id:proto.String(string(hpa.GetUID()))})
+				Kind: proto.String("k8s_hpa"),
+				Id:   proto.String(string(hpa.GetUID()))})
 		}
 	}
 }

@@ -1,17 +1,17 @@
 package profile
 
 import (
-	log "github.com/cihub/seelog"
 	"fmt"
+	log "github.com/cihub/seelog"
+	"os"
 	"runtime"
 	"runtime/pprof"
-	"os"
 )
 
 var eventCount = 0
 var traceCount = 0
 var eventsPerTrace = 10000 // how many events we process before rolling the logfile
-var tracesPerProfile = 30 // how many log files we write before overwriting the old ones
+var tracesPerProfile = 30  // how many log files we write before overwriting the old ones
 var logfileBase = ""
 var profilingEnabled = false
 var memProfileEnabled = false
@@ -73,4 +73,3 @@ func NewEvent() {
 		}
 	}
 }
-

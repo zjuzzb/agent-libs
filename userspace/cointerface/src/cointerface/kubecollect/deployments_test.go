@@ -55,40 +55,40 @@ func createDeploymentCopies() (CoDeployment, CoDeployment) {
 	var numReplicas int32 = 5
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			UID: types.UID("MaramaoPercheSeiMorto"),
+			UID:  types.UID("MaramaoPercheSeiMorto"),
 			Name: "oldDeployment",
 			Labels: map[string]string{
-				"label_key0":"label_val0",
-				"label_key1":"label_val1",
-				"label_key2":"label_val2",
+				"label_key0": "label_val0",
+				"label_key1": "label_val1",
+				"label_key2": "label_val2",
 			},
 			Annotations: map[string]string{
-				"annotation_key0":"annotation_val0",
-				"annotation_key1":"annotation_val1",
-				"annotation_key2":"annotation_val2",
+				"annotation_key0": "annotation_val0",
+				"annotation_key1": "annotation_val1",
+				"annotation_key2": "annotation_val2",
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &numReplicas,
-			Paused: true,
+			Paused:   true,
 		},
 		Status: appsv1.DeploymentStatus{
-			Replicas: numReplicas,
-			AvailableReplicas: numReplicas,
+			Replicas:            numReplicas,
+			AvailableReplicas:   numReplicas,
 			UnavailableReplicas: numReplicas,
-			UpdatedReplicas: numReplicas,
+			UpdatedReplicas:     numReplicas,
 		},
 	}
 
-	orig := CoDeployment{ Deployment: deploy }
-	copy := CoDeployment{ Deployment: deploy.DeepCopy() }
+	orig := CoDeployment{Deployment: deploy}
+	copy := CoDeployment{Deployment: deploy.DeepCopy()}
 	return orig, copy
 }
 
 func deploymentEqualsHelper(t *testing.T, old CoDeployment, new CoDeployment, expected bool) {
 	sameEntity, sameLinks := deploymentEquals(old, new)
 	res := sameEntity && sameLinks
-	if (!sameLinks && sameEntity) || (res != expected)  {
+	if (!sameLinks && sameEntity) || (res != expected) {
 		t.Logf("deploymentEquals expected %v, got %v", expected, res)
 		t.Logf("sameEntity is %v, sameLinks is %v", sameEntity, sameLinks)
 		t.Logf("oldDeployment: %#v", old)
@@ -175,7 +175,7 @@ func TestAddDeploymentParents(t *testing.T) {
 
 	// Add selector specs
 	deployment.Spec.Selector = &metav1.LabelSelector{
-		MatchLabels: map[string]string{"key1": "value1","key2": "value2"},
+		MatchLabels:      map[string]string{"key1": "value1", "key2": "value2"},
 		MatchExpressions: nil,
 	}
 

@@ -31,10 +31,9 @@ func StartPersistentVolumeClaimsInformer(ctx context.Context, kubeClient kubecli
 	}()
 }
 
-
-func persistentVolumeClaimEvent(pv *v1.PersistentVolumeClaim, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func persistentVolumeClaimEvent(pv *v1.PersistentVolumeClaim, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newPersistentVolumeClaimCongroup(pv),
 	}
 }
@@ -65,7 +64,7 @@ func conditionStatusToDraiosEnum(status *v1.ConditionStatus) (error, draiosproto
 	return fmt.Errorf("invalid pvc condition status: %s", *status), draiosproto.K8SPersistentvolumeclaimConditionStatus_PERSISTENT_VOLUME_CLAIM_CONDITION_STATUS_UNKNOWN
 }
 
-func accessModeToDraiosEnum(mode * v1.PersistentVolumeAccessMode) (error, draiosproto.K8SVolumeAccessMode) {
+func accessModeToDraiosEnum(mode *v1.PersistentVolumeAccessMode) (error, draiosproto.K8SVolumeAccessMode) {
 	switch *mode {
 	case v1.ReadWriteOnce:
 		return nil, draiosproto.K8SVolumeAccessMode_VOLUME_ACCESS_MODE_READ_WRITE_ONCE
@@ -84,8 +83,7 @@ func getMetaData(pvc *v1.PersistentVolumeClaim) *draiosproto.K8SPersistentvolume
 		log.Warnf(err.Error())
 	} else {
 		ret.Status = &draiosproto.K8SPersistentvolumeclaimStatusDetails{
-			Phase: 				  &phase,
-
+			Phase: &phase,
 		}
 	}
 
@@ -95,8 +93,8 @@ func getMetaData(pvc *v1.PersistentVolumeClaim) *draiosproto.K8SPersistentvolume
 			log.Warnf(err.Error())
 		} else {
 			newCondition := &draiosproto.K8SPersistentvolumeclaimCondition{
-				Status:               &status,
-				Type:                 proto.String(string(condition.Type)),
+				Status: &status,
+				Type:   proto.String(string(condition.Type)),
 			}
 			ret.Status.Conditions = append(ret.Status.Conditions, newCondition)
 		}
@@ -114,13 +112,13 @@ func getMetaData(pvc *v1.PersistentVolumeClaim) *draiosproto.K8SPersistentvolume
 	return ret
 }
 
-func newPersistentVolumeClaimCongroup(pvc *v1.PersistentVolumeClaim) (*draiosproto.ContainerGroup) {
+func newPersistentVolumeClaimCongroup(pvc *v1.PersistentVolumeClaim) *draiosproto.ContainerGroup {
 	label_tag_name := pvcMetricPrefix + "label."
 	internal_tag_name := pvcMetricPrefix + "label."
 
 	tags := make(map[string]string)
 	for k, v := range pvc.GetLabels() {
-		tags[label_tag_name+ k] = v
+		tags[label_tag_name+k] = v
 	}
 
 	var accessMode string
@@ -128,28 +126,28 @@ func newPersistentVolumeClaimCongroup(pvc *v1.PersistentVolumeClaim) (*draiospro
 		accessMode += string(v)
 	}
 
-	tags[internal_tag_name + "accessmode"] = string(accessMode)
+	tags[internal_tag_name+"accessmode"] = string(accessMode)
 
-	tags[internal_tag_name + "volumename"] = pvc.Spec.VolumeName
+	tags[internal_tag_name+"volumename"] = pvc.Spec.VolumeName
 
 	if pvc.Spec.StorageClassName != nil {
-		tags[internal_tag_name + "storageclassname"] = *pvc.Spec.StorageClassName
+		tags[internal_tag_name+"storageclassname"] = *pvc.Spec.StorageClassName
 	}
 
-	tags[internal_tag_name + "status.phase"] = string(pvc.Status.Phase)
+	tags[internal_tag_name+"status.phase"] = string(pvc.Status.Phase)
 	storage := pvc.Status.Capacity["storage"]
-	tags[internal_tag_name + "storage"] = storage.String()
-	tags[pvcMetricPrefix + "name"] = pvc.GetName()
+	tags[internal_tag_name+"storage"] = storage.String()
+	tags[pvcMetricPrefix+"name"] = pvc.GetName()
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_persistentvolumeclaim"),
-			Id:proto.String(string(pvc.GetUID()))},
+			Kind: proto.String("k8s_persistentvolumeclaim"),
+			Id:   proto.String(string(pvc.GetUID()))},
 		Tags: tags,
 		K8SObject: &draiosproto.K8SType{
 			TypeList: &draiosproto.K8SType_Pvc{Pvc: getMetaData(pvc)},
 		},
-		Namespace:proto.String(pvc.GetNamespace()),
+		Namespace: proto.String(pvc.GetNamespace()),
 	}
 
 	addPersistentVolumeClaimMetrics(&ret.Metrics, pvc)
@@ -161,13 +159,13 @@ func addPersistentVolumeClaimMetrics(metrics *[]*draiosproto.AppMetric, pvc *v1.
 	storage, _ := pvc.Status.Capacity["storage"]
 
 	if requestStorage, ok := pvc.Spec.Resources.Requests[v1.ResourceStorage]; ok {
-		kubecollect_common.AppendMetricInt64(metrics, pvcMetricPrefix + "requests.storage", requestStorage.Value())
+		kubecollect_common.AppendMetricInt64(metrics, pvcMetricPrefix+"requests.storage", requestStorage.Value())
 	}
 
-	kubecollect_common.AppendMetricInt64(metrics, pvcMetricPrefix + "storage", storage.Value())
+	kubecollect_common.AppendMetricInt64(metrics, pvcMetricPrefix+"storage", storage.Value())
 }
 
-func watchPersistentVolumeClaims(evtc chan <- draiosproto.CongroupUpdateEvent) {
+func watchPersistentVolumeClaims(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In Watchpersistentvolumeclaims()")
 
 	persistentVolumeClaimsInf.AddEventHandler(
@@ -215,4 +213,3 @@ func watchPersistentVolumeClaims(evtc chan <- draiosproto.CongroupUpdateEvent) {
 		},
 	)
 }
-

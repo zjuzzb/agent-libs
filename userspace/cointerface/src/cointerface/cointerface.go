@@ -8,13 +8,13 @@ package main
 */
 
 import (
+	"cointerface/profile"
 	"encoding/json"
 	"flag"
 	"fmt"
 	log "github.com/cihub/seelog"
+	"github.com/draios/install_prefix"
 	"os"
-    "github.com/draios/install_prefix"
-	"cointerface/profile"
 )
 
 func usage() {
@@ -104,14 +104,14 @@ func mymain() int {
 		log.Errorf("Could not determine installation directory: %s", err)
 		return 1
 	}
-	sockPtr := flag.String("sock", prefix + "/run/cointerface.sock", "domain socket for messages")
+	sockPtr := flag.String("sock", prefix+"/run/cointerface.sock", "domain socket for messages")
 	useJson := flag.Bool("use_json", true, "log using json")
-	modulesDir := flag.String("modules_dir", prefix + "/lib/comp_modules", "compliance modules directory")
+	modulesDir := flag.String("modules_dir", prefix+"/lib/comp_modules", "compliance modules directory")
 
 	flag.Parse()
 
 	if *cpuProfile != "" {
-		profile.ProgramStart(*cpuProfile, *eventsPerTrace, *keepTraces, *memProfile);
+		profile.ProgramStart(*cpuProfile, *eventsPerTrace, *keepTraces, *memProfile)
 	}
 
 	initLogging(*useJson)

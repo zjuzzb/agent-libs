@@ -19,6 +19,7 @@ type LogMsg struct {
 	Level   string `json:"level"`
 	Message string `json:"message"`
 }
+
 var COLDSTART_SOCK = "coldstart.sock"
 var DELEGATION_SOCK = "delegation.sock"
 
@@ -128,8 +129,8 @@ func mymain() int {
 
 	klog.SetLogger(createKlogLogger())
 
-	var coldstart_sock string;
-	var delegation_sock string;
+	var coldstart_sock string
+	var delegation_sock string
 
 	if *sock_dir != "" {
 		coldstart_sock = fmt.Sprintf("%s/%s", *sock_dir, COLDSTART_SOCK)

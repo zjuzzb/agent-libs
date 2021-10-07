@@ -3,31 +3,31 @@ package kubecollect_tc
 import (
 	"cointerface/kubecollect"
 	"cointerface/kubecollect_common"
-	draiosproto "protorepo/agent-be/proto"
 	"context"
-	"sync"
-	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
+	"github.com/gogo/protobuf/proto"
+	appsv1 "k8s.io/api/apps/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	appsv1 "k8s.io/api/apps/v1"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	draiosproto "protorepo/agent-be/proto"
+	"sync"
 )
 
-func statefulSetEvent(ss *appsv1.StatefulSet, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func statefulSetEvent(ss *appsv1.StatefulSet, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newStatefulSetCongroup(ss),
 	}
 }
 
-func newStatefulSetCongroup(statefulSet *appsv1.StatefulSet) (*draiosproto.ContainerGroup) {
+func newStatefulSetCongroup(statefulSet *appsv1.StatefulSet) *draiosproto.ContainerGroup {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_statefulset"),
-			Id:proto.String(string(statefulSet.GetUID()))},
-		Namespace:proto.String(statefulSet.GetNamespace()),
+			Kind: proto.String("k8s_statefulset"),
+			Id:   proto.String(string(statefulSet.GetUID()))},
+		Namespace: proto.String(statefulSet.GetNamespace()),
 	}
 
 	ret.Tags = kubecollect_common.GetTags(statefulSet, "kubernetes.statefulset.")

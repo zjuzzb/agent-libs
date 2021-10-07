@@ -20,14 +20,14 @@ import (
 	"syscall"
 )
 
-type leasePoolServer struct{
+type leasePoolServer struct {
 	name             string
 	coldStartManager leader_lib.LeasePoolManager
 	maxWaitForLock   uint32
 	terminateChan    chan struct{}
 }
 
-func(cs* leasePoolServer) Init(ctx context.Context, initCmd *sdc_internal.LeasePoolInit) (*sdc_internal.LeasePoolNull, error) {
+func (cs *leasePoolServer) Init(ctx context.Context, initCmd *sdc_internal.LeasePoolInit) (*sdc_internal.LeasePoolNull, error) {
 	var id string
 	if initCmd.Id != nil && *initCmd.Id != "" {
 		id = *initCmd.Id
@@ -66,8 +66,8 @@ func (cs *leasePoolServer) WaitLease(none *sdc_internal.LeasePoolNull, stream sd
 	if err != nil {
 		log.Debugf(err.Error())
 		stream.Send(&sdc_internal.LeasePoolWaitResult{
-			Successful:           proto.Bool(false),
-			Reason:               proto.String(err.Error()),
+			Successful: proto.Bool(false),
+			Reason:     proto.String(err.Error()),
 		})
 	} else {
 		stream.Send(&sdc_internal.LeasePoolWaitResult{
@@ -89,7 +89,7 @@ func (cs *leasePoolServer) Release(context.Context, *sdc_internal.LeasePoolNull)
 	return &sdc_internal.LeasePoolNull{}, nil
 }
 
-func (cs *leasePoolServer) GetNodesWithLease (none *sdc_internal.LeasePoolNull, stream sdc_internal.LeasePoolManager_GetNodesWithLeaseServer) error {
+func (cs *leasePoolServer) GetNodesWithLease(none *sdc_internal.LeasePoolNull, stream sdc_internal.LeasePoolManager_GetNodesWithLeaseServer) error {
 	leaders := cs.coldStartManager.GetHolderIdentities()
 
 	ret := sdc_internal.LeaseNodes{}
@@ -117,7 +117,7 @@ func StartServer(sock string, wg *sync.WaitGroup) int {
 
 	grpcServer := grpc.NewServer()
 	leaseServer := &leasePoolServer{
-		terminateChan:    make(chan struct{}),
+		terminateChan: make(chan struct{}),
 	}
 
 	defer leaseServer.Release(context.TODO(), &sdc_internal.LeasePoolNull{})
@@ -129,12 +129,12 @@ func StartServer(sock string, wg *sync.WaitGroup) int {
 
 	go func() {
 		select {
-			case sig := <-signals:
-				log.Debugf("[%s]. Received signal %s, closing listener", sock, sig)
-				listener.Close()
-			case <- leaseServer.terminateChan:
-				log.Debugf("[%s]. dragent terminated. Terminating", sock)
-				listener.Close()
+		case sig := <-signals:
+			log.Debugf("[%s]. Received signal %s, closing listener", sock, sig)
+			listener.Close()
+		case <-leaseServer.terminateChan:
+			log.Debugf("[%s]. dragent terminated. Terminating", sock)
+			listener.Close()
 		}
 	}()
 
@@ -143,8 +143,6 @@ func StartServer(sock string, wg *sync.WaitGroup) int {
 	log.Debugf("lease_pool_manager [%s] exiting", sock)
 	return 0
 }
-
-
 
 func createKubeClient(apiServer string, caCert string, clientCert string, clientKey string, sslVerify bool, authToken string) (kubeClient kubeclient.Interface, err error) {
 	skipVerify := !sslVerify
@@ -169,14 +167,14 @@ func createKubeClient(apiServer string, caCert string, clientCert string, client
 	baseConfig := clientcmdapi.NewConfig()
 	configOverrides := &clientcmd.ConfigOverrides{
 		ClusterInfo: clientcmdapi.Cluster{
-			Server: apiServer,
+			Server:                apiServer,
 			InsecureSkipTLSVerify: skipVerify,
-			CertificateAuthority: caCert,
+			CertificateAuthority:  caCert,
 		},
 		AuthInfo: clientcmdapi.AuthInfo{
 			ClientCertificate: clientCert,
-			ClientKey: clientKey,
-			Token: tokenStr,
+			ClientKey:         clientKey,
+			Token:             tokenStr,
 		},
 	}
 	kubeConfig := clientcmd.NewDefaultClientConfig(*baseConfig, configOverrides)

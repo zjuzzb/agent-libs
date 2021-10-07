@@ -483,7 +483,6 @@ func calculateRandomDelay(perNodeConnDelay float64, nodes uint32, minRndConnDela
 	return delay
 }
 
-
 func runRandomDelay(opts *sdc_internal.OrchestratorEventsStreamCommand, kubeClient kubeclient.Interface) {
 	delay := calculateRandomDelay(opts.GetPerNodeConnDelay(), getNodeCount(kubeClient), opts.GetMinRndConnDelay(), opts.GetMaxRndConnDelay())
 	log.Infof("Waiting to connect to k8s server for %v seconds", delay)
@@ -1320,9 +1319,9 @@ func K8sToDraiosCommon(itf interface{}) *draiosproto.K8SCommon {
 	obj := itf.(metav1.Object)
 
 	return &draiosproto.K8SCommon{
-		Name:                 proto.String(obj.GetName()),
-		Uid:                  proto.String(string(obj.GetUID())),
-		Namespace:            proto.String(obj.GetNamespace()),
+		Name:      proto.String(obj.GetName()),
+		Uid:       proto.String(string(obj.GetUID())),
+		Namespace: proto.String(obj.GetNamespace()),
 	}
 }
 
@@ -1333,11 +1332,11 @@ func K8SObjectToCongroup(itf interface{}, draiosKind string, labelPrefix string)
 	}
 
 	return &draiosproto.ContainerGroup{
-		Uid:                  &draiosproto.CongroupUid{
-			Kind:                 proto.String(draiosKind),
-			Id:                   proto.String(string(obj.GetUID())),
+		Uid: &draiosproto.CongroupUid{
+			Kind: proto.String(draiosKind),
+			Id:   proto.String(string(obj.GetUID())),
 		},
-		Tags:                 GetTags(obj, labelPrefix),
-		Namespace:            proto.String(obj.GetNamespace()),
+		Tags:      GetTags(obj, labelPrefix),
+		Namespace: proto.String(obj.GetNamespace()),
 	}, nil
 }

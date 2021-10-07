@@ -14,14 +14,14 @@ import (
 	"sync"
 )
 
-func serviceEvent(svc kubecollect.CoService, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
+func serviceEvent(svc kubecollect.CoService, eventType *draiosproto.CongroupEventType, setLinks bool) draiosproto.CongroupUpdateEvent {
+	return draiosproto.CongroupUpdateEvent{
+		Type:   eventType,
 		Object: newServiceCongroup(svc, setLinks),
 	}
 }
 
-func newServiceCongroup(service kubecollect.CoService, setLinks bool) (*draiosproto.ContainerGroup) {
+func newServiceCongroup(service kubecollect.CoService, setLinks bool) *draiosproto.ContainerGroup {
 	tags := kubecollect_common.GetTags(service, "kubernetes.service.")
 	inttags := kubecollect_common.GetAnnotations(service.ObjectMeta, "kubernetes.service.")
 
@@ -29,12 +29,12 @@ func newServiceCongroup(service kubecollect.CoService, setLinks bool) (*draiospr
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
-			Kind:proto.String("k8s_service"),
-			Id:proto.String(string(service.GetUID()))},
-		Tags: tags,
-		Selectors: service.Spec.Selector,
+			Kind: proto.String("k8s_service"),
+			Id:   proto.String(string(service.GetUID()))},
+		Tags:         tags,
+		Selectors:    service.Spec.Selector,
 		InternalTags: inttags,
-		Namespace:proto.String(service.GetNamespace()),
+		Namespace:    proto.String(service.GetNamespace()),
 	}
 
 	if service.Spec.ClusterIP != "None" {
@@ -52,7 +52,7 @@ func newServiceCongroup(service kubecollect.CoService, setLinks bool) (*draiospr
 func addServicePorts(ports *[]*draiosproto.CongroupNetPort, service kubecollect.CoService) {
 	for _, port := range service.Spec.Ports {
 		sPort := draiosproto.CongroupNetPort{
-			Port: proto.Uint32(uint32(port.Port)),
+			Port:     proto.Uint32(uint32(port.Port)),
 			Protocol: proto.String(string(port.Protocol)),
 		}
 

@@ -1,40 +1,40 @@
 package compliance
 
 import (
-	draiosproto "protorepo/agent-be/proto"
-	"github.com/draios/protorepo/sdc_internal"
 	"fmt"
 	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
 	"github.com/gogo/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"os"
 	"path"
 	"path/filepath"
+	draiosproto "protorepo/agent-be/proto"
 	"regexp"
 	"time"
 )
 
 type ModuleMgr struct {
-	ModulesDir string `json:"modules_dir"`
-	initialized bool
-	customerId string
-	machineId string
-	metricsStatsdPort uint32
-	Calendar *draiosproto.CompCalendar
-	Tasks map[uint64]*draiosproto.CompTask
-	IncludeDesc bool
-	SendFailedResults bool
-	SaveTempFiles bool
-	availModules map[string]*Module
-	evtsChannel chan *sdc_internal.CompTaskEvent
+	ModulesDir          string `json:"modules_dir"`
+	initialized         bool
+	customerId          string
+	machineId           string
+	metricsStatsdPort   uint32
+	Calendar            *draiosproto.CompCalendar
+	Tasks               map[uint64]*draiosproto.CompTask
+	IncludeDesc         bool
+	SendFailedResults   bool
+	SaveTempFiles       bool
+	availModules        map[string]*Module
+	evtsChannel         chan *sdc_internal.CompTaskEvent
 	metricsResetChannel chan bool
 
 	// A cancel function used to cancel background operations
 	// spawned in Start()
 	cancel context.CancelFunc
 
-	scheduleRegexp *regexp.Regexp
+	scheduleRegexp      *regexp.Regexp
 	scheduleRegexpNames []string
 
 	scheduleListRegexp *regexp.Regexp
@@ -52,23 +52,23 @@ func (mgr *ModuleMgr) FailResult(stask *ScheduledTask, err error) {
 	// of the task (e.g. parsing schedule, etc), not the execution
 	// of any task.
 	evt := &sdc_internal.CompTaskEvent{
-		TaskName: stask.task.Name,
+		TaskName:       stask.task.Name,
 		InitSuccessful: proto.Bool(true),
 	}
 
 	results := &draiosproto.CompResults{
-		MachineId: proto.String(mgr.machineId),
+		MachineId:  proto.String(mgr.machineId),
 		CustomerId: proto.String(mgr.customerId),
 	}
 
 	comp_result := &draiosproto.CompResult{
-		TimestampNs: proto.Uint64(timestamp_ns),
-		TaskName: stask.task.Name,
-		ModName: stask.task.ModName,
-		TaskId: stask.task.Id,
-		Successful: proto.Bool(false),
+		TimestampNs:    proto.Uint64(timestamp_ns),
+		TaskName:       stask.task.Name,
+		ModName:        stask.task.ModName,
+		TaskId:         stask.task.Id,
+		Successful:     proto.Bool(false),
 		FailureDetails: proto.String(err.Error()),
-	};
+	}
 
 	results.Results = append(results.Results, comp_result)
 	evt.Results = results
@@ -89,7 +89,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 		Prog: "bash",
 		Impl: &DockerBenchImpl{
 			customerId: customerId,
-			machineId: machineId,
+			machineId:  machineId,
 		},
 	}
 
@@ -98,7 +98,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 		Prog: "./kube-bench",
 		Impl: &KubeBenchImpl{
 			customerId: customerId,
-			machineId: machineId,
+			machineId:  machineId,
 		},
 	}
 
@@ -107,7 +107,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 		Prog: "./linux-bench",
 		Impl: &LinuxBenchImpl{
 			customerId: customerId,
-			machineId: machineId,
+			machineId:  machineId,
 		},
 	}
 
@@ -116,7 +116,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 		Prog: "bash",
 		Impl: &TestModuleImpl{
 			customerId: customerId,
-			machineId: machineId,
+			machineId:  machineId,
 		},
 	}
 
@@ -125,7 +125,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string, metricsStatsdPor
 		Prog: "not-runnable",
 		Impl: &TestModuleImpl{
 			customerId: customerId,
-			machineId: machineId,
+			machineId:  machineId,
 		},
 	}
 
@@ -148,7 +148,7 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 		port = *start.MetricsStatsdPort
 	}
 
-	if ! mgr.initialized {
+	if !mgr.initialized {
 		if err := mgr.Init(*start.CustomerId, *start.MachineId, port); err != nil {
 			return err
 		}
@@ -182,7 +182,7 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 		mgr.Tasks[*task.Id] = task
 
 		module, ok := mgr.availModules[*task.ModName]
-		if ! ok {
+		if !ok {
 			err = fmt.Errorf("Module %s does not exist",
 				*task.ModName)
 		} else if _, err = os.Stat(path.Join(mgr.ModulesDir, *task.ModName)); os.IsNotExist(err) {
@@ -196,9 +196,9 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 
 		if err != nil {
 			evt := &sdc_internal.CompTaskEvent{
-				TaskName: task.Name,
+				TaskName:       task.Name,
 				InitSuccessful: proto.Bool(false),
-				Errstr: proto.String(fmt.Sprintf("Could not schedule task %s: %s", *task.Name, err.Error())),
+				Errstr:         proto.String(fmt.Sprintf("Could not schedule task %s: %s", *task.Name, err.Error())),
 			}
 
 			log.Errorf("Could not schedule task %s: %s", *task.Name, err.Error())
@@ -221,17 +221,17 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 
 	// Now wait forever, reading events from the channel and
 	// passing them back to the stream
-	RunTasks:
+RunTasks:
 	for {
 		select {
-		case evt := <- mgr.evtsChannel:
+		case evt := <-mgr.evtsChannel:
 			if err := stream.Send(evt); err != nil {
 				log.Errorf("Could not send event %s: %v",
 					evt.String(), err.Error())
 				mgr.Calendar = nil
 				return err
 			}
-		case <- ctx.Done():
+		case <-ctx.Done():
 			break RunTasks
 
 		}
@@ -249,7 +249,7 @@ func (mgr *ModuleMgr) Stop(ctx context.Context, stop *sdc_internal.CompStop) (*s
 		Successful: proto.Bool(true),
 	}
 
-	if ! mgr.initialized {
+	if !mgr.initialized {
 		return result, nil
 	}
 
@@ -260,7 +260,8 @@ func (mgr *ModuleMgr) Stop(ctx context.Context, stop *sdc_internal.CompStop) (*s
 
 	for _, module := range mgr.availModules {
 		if module.LastOutputDir != "" {
-			err := os.RemoveAll(module.LastOutputDir); if err != nil {
+			err := os.RemoveAll(module.LastOutputDir)
+			if err != nil {
 				return nil, err
 			}
 		}
@@ -278,7 +279,8 @@ func (mgr *ModuleMgr) GetFutureRuns(ctx context.Context, req *sdc_internal.CompG
 		Successful: proto.Bool(true),
 	}
 
-	start, err := time.Parse(time.RFC3339, *req.Start); if err != nil {
+	start, err := time.Parse(time.RFC3339, *req.Start)
+	if err != nil {
 		ret.Successful = proto.Bool(false)
 		ret.Errstr = proto.String("Could not parse start time " + *req.Start)
 		log.Errorf("Returning from GetFutureRuns: %v", ret)
@@ -313,11 +315,11 @@ func (mgr *ModuleMgr) RunTasks(ctx context.Context, req *draiosproto.CompRun) (*
 		if task = mgr.Tasks[taskId]; task == nil {
 			ret.Successful = proto.Bool(false)
 			ret.Errstr = proto.String(fmt.Sprintf("No task matching task id %d", taskId))
-			return ret, nil;
+			return ret, nil
 		}
 
 		module, ok := mgr.availModules[*task.ModName]
-		if ! ok {
+		if !ok {
 			err = fmt.Errorf("Module %s does not exist",
 				*task.ModName)
 		} else if _, err = os.Stat(path.Join(mgr.ModulesDir, *task.ModName)); os.IsNotExist(err) {
@@ -364,14 +366,16 @@ func Register(grpcServer *grpc.Server, modulesDir string) error {
 	// The true spec doesn't allow mixing Week intervals and any other
 	// interval, but we just combine them in the regex and check for
 	// incompatible combinations elsewhere.
-	re, err := regexp.Compile(`^(?:R(?P<repeat>\d+)/)?(?:(?P<start>[^/]+)/)?P(?:(?P<year>\d+)Y)?(?:(?P<month>\d+)M)?(?:(?P<day>\d+)D)?(?:(?P<week>\d+)W)?(?:T(?:(?P<hour>\d+)H)?(?:(?P<minute>\d+)M)?(?:(?P<second>\d+)S)?)?$`); if err != nil {
+	re, err := regexp.Compile(`^(?:R(?P<repeat>\d+)/)?(?:(?P<start>[^/]+)/)?P(?:(?P<year>\d+)Y)?(?:(?P<month>\d+)M)?(?:(?P<day>\d+)D)?(?:(?P<week>\d+)W)?(?:T(?:(?P<hour>\d+)H)?(?:(?P<minute>\d+)M)?(?:(?P<second>\d+)S)?)?$`)
+	if err != nil {
 		return fmt.Errorf("Could not compile schedule regexp: %s", err.Error())
 	}
 
 	mgr.scheduleRegexp = re
 	mgr.scheduleRegexpNames = re.SubexpNames()
 
-	re, err = regexp.Compile(`\s*,\s*`); if err != nil {
+	re, err = regexp.Compile(`\s*,\s*`)
+	if err != nil {
 		return fmt.Errorf("Could not compile schedule regexp: %s", err.Error())
 	}
 
@@ -381,5 +385,3 @@ func Register(grpcServer *grpc.Server, modulesDir string) error {
 
 	return nil
 }
-
-

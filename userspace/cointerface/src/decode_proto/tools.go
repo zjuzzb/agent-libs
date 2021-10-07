@@ -1,3 +1,4 @@
+//go:build tools
 // +build tools
 
 // "go mod" is not correctly recording this indirect dependency for some reason,

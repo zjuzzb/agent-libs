@@ -10,9 +10,9 @@ import (
 
 // Go up a level in the stack frame so that we print the write file/line
 func up(t *testing.T, frame int, s string) string {
-    _, frameFile, frameLine, _ := runtime.Caller(frame + 1)
+	_, frameFile, frameLine, _ := runtime.Caller(frame + 1)
 	_, file := filepath.Split(frameFile)
-    return fmt.Sprintf("%s:%d %s", file, frameLine, s)
+	return fmt.Sprintf("%s:%d %s", file, frameLine, s)
 }
 
 // AssertEqual checks if values are equal

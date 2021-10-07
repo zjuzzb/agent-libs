@@ -1,24 +1,24 @@
 package kubecollect
 
 import (
+	. "github.com/draios/test_helpers"
 	"reflect"
 	"testing"
-	. "github.com/draios/test_helpers"
 
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 type coMockCacheable struct {
-	gen int
-	uid types.UID
+	gen    int
+	uid    types.UID
 	filter bool
 }
 
 func newCoMockCacheable(u types.UID) *coMockCacheable {
 	return &coMockCacheable{
-		gen: 0,
-		uid: u,
+		gen:    0,
+		uid:    u,
 		filter: false,
 	}
 }

@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-func setupLogger () (log.LoggerInterface, error){
+func setupLogger() (log.LoggerInterface, error) {
 	config := ` 
 <seelog>
 	<formats>
@@ -54,11 +54,11 @@ func main() {
 	ctx, _ := context.WithCancel(context.Background())
 
 	_, err = client.Init(ctx, &sdc_internal.LeasePoolInit{
-		Id:                   proto.String(""),
-		LeaseName:            proto.String("coldstart"),
-		LeaseNum:             proto.Uint32(uint32(*numLeases)),
-		Cmd:                  &sdc_internal.OrchestratorEventsStreamCommand{
-			Url:                      proto.String(*apiServerUrl),
+		Id:        proto.String(""),
+		LeaseName: proto.String("coldstart"),
+		LeaseNum:  proto.Uint32(uint32(*numLeases)),
+		Cmd: &sdc_internal.OrchestratorEventsStreamCommand{
+			Url:                       proto.String(*apiServerUrl),
 			CaCert:                    proto.String(""),
 			ClientCert:                proto.String(""),
 			ClientKey:                 proto.String(""),
@@ -85,14 +85,13 @@ func main() {
 			MaxWaitForLock:            proto.Uint32(0),
 			MaxColdStartDuration:      proto.Uint32(0),
 			DelegatedNum:              proto.Int32(0),
-			LeaderElection:			   &sdc_internal.LeaderElectionConf{
-				LeaseDuration:         proto.Uint32(15),
-				RenewDeadline:         proto.Uint32(10),
-				RetryPeriod:           proto.Uint32(2),
-				Namespace:             leaseNamespace,
+			LeaderElection: &sdc_internal.LeaderElectionConf{
+				LeaseDuration: proto.Uint32(15),
+				RenewDeadline: proto.Uint32(10),
+				RetryPeriod:   proto.Uint32(2),
+				Namespace:     leaseNamespace,
 			},
 		},
-
 	})
 
 	if err != nil {
@@ -126,7 +125,7 @@ func main() {
 			w.WriteHeader(500)
 			w.Write([]byte(fmt.Sprintf("Got error %s", err.Error())))
 		}
-		
+
 		msg, err := resp.Recv()
 
 		if err != nil {
@@ -147,7 +146,7 @@ func main() {
 			w.WriteHeader(404)
 		} else {
 			ret, err := wait.Recv()
-			if err != nil{
+			if err != nil {
 				fmt.Fprintf(w, "Error: %s", err.Error())
 				w.WriteHeader(404)
 			} else if *ret.Successful == false {
@@ -160,17 +159,17 @@ func main() {
 		}
 	})
 
-	go func () {
-		err := http.ListenAndServe(":" + strconv.Itoa(*heltzPort), nil)
+	go func() {
+		err := http.ListenAndServe(":"+strconv.Itoa(*heltzPort), nil)
 		if err != nil {
 			log.Errorf("Could not start http server on port %d: %s", *heltzPort, err.Error())
 		}
-	} ()
+	}()
 
 	wait, err := client.WaitLease(ctx, &sdc_internal.LeasePoolNull{})
 
 	stopCh := make(chan struct{})
-	waitLeader := func () {
+	waitLeader := func() {
 		for {
 			res, err := wait.Recv()
 
@@ -199,12 +198,12 @@ func main() {
 
 	for {
 		select {
-			case <- wait.Context().Done():
-				logger.Debugf("That's all falks")
-				return
-			case <-stopCh:
-				logger.Debugf("That's all falks")
-				return
+		case <-wait.Context().Done():
+			logger.Debugf("That's all falks")
+			return
+		case <-stopCh:
+			logger.Debugf("That's all falks")
+			return
 		}
 
 	}

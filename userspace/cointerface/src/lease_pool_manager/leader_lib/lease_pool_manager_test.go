@@ -10,10 +10,10 @@ import (
 
 func TestGetLeaseNamespace(t *testing.T) {
 	conf := sdc_internal.LeaderElectionConf{
-		LeaseDuration:        nil,
-		RenewDeadline:        nil,
-		RetryPeriod:          nil,
-		Namespace:            proto.String("marIonio"),
+		LeaseDuration: nil,
+		RenewDeadline: nil,
+		RetryPeriod:   nil,
+		Namespace:     proto.String("marIonio"),
 	}
 
 	lpm := LeasePoolManager{}
@@ -43,4 +43,3 @@ func TestGetLeaseNamespace(t *testing.T) {
 		t.Fail()
 	}
 }
-

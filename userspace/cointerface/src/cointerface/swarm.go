@@ -1,8 +1,6 @@
 package main
 
 import (
-	draiosproto "protorepo/agent-be/proto"
-	"github.com/draios/protorepo/sdc_internal"
 	"context"
 	"errors"
 	"fmt"
@@ -10,7 +8,9 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
+	"github.com/draios/protorepo/sdc_internal"
 	"github.com/gogo/protobuf/proto"
+	draiosproto "protorepo/agent-be/proto"
 	"strings"
 )
 

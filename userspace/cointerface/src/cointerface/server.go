@@ -35,11 +35,11 @@ var dockerClientMap = make(map[string]*client.Client)
 var informersStarted = false
 
 func getSysdigRoot() string {
-    sysdigRoot := os.Getenv("SYSDIG_HOST_ROOT")
-    if sysdigRoot != "" {
-        sysdigRoot = sysdigRoot + "/"
-    }
-    return sysdigRoot
+	sysdigRoot := os.Getenv("SYSDIG_HOST_ROOT")
+	if sysdigRoot != "" {
+		sysdigRoot = sysdigRoot + "/"
+	}
+	return sysdigRoot
 }
 
 func GetDockerClient(ver string) (*client.Client, error) {
@@ -66,44 +66,44 @@ type coInterfaceServer struct {
 }
 
 func (c *coInterfaceServer) PerformCriCommand(ctx context.Context, cmd *sdc_internal.CriCommand) (*sdc_internal.CriCommandResult, error) {
-    log.Debugf("Received cri-o command message: %s", cmd.String())
+	log.Debugf("Received cri-o command message: %s", cmd.String())
 
-    cri, err := NewCriClient(fmt.Sprintf("unix:///%s%s", getSysdigRoot(), cmd.GetCriSocketPath()))
-    if err != nil {
-        log.Errorf("Could not connect to cri-o: %s\n", err)
-        return nil, err
-    }
+	cri, err := NewCriClient(fmt.Sprintf("unix:///%s%s", getSysdigRoot(), cmd.GetCriSocketPath()))
+	if err != nil {
+		log.Errorf("Could not connect to cri-o: %s\n", err)
+		return nil, err
+	}
 	defer cri.Close()
 
-    switch cmd.GetCmd() {
-    case sdc_internal.ContainerCmdType_STOP:
-        err = cri.StopContainer(cmd.GetContainerId(), 30)
+	switch cmd.GetCmd() {
+	case sdc_internal.ContainerCmdType_STOP:
+		err = cri.StopContainer(cmd.GetContainerId(), 30)
 
-    case sdc_internal.ContainerCmdType_PAUSE:
-        err = cri.PauseContainer(cmd.GetContainerId())
+	case sdc_internal.ContainerCmdType_PAUSE:
+		err = cri.PauseContainer(cmd.GetContainerId())
 
-    case sdc_internal.ContainerCmdType_UNPAUSE:
-        err = cri.UnpauseContainer(cmd.GetContainerId())
+	case sdc_internal.ContainerCmdType_UNPAUSE:
+		err = cri.UnpauseContainer(cmd.GetContainerId())
 
-    case sdc_internal.ContainerCmdType_KILL:
-        err = cri.StopContainer(cmd.GetContainerId(), 0)
+	case sdc_internal.ContainerCmdType_KILL:
+		err = cri.StopContainer(cmd.GetContainerId(), 0)
 
-    default:
-        ferr := fmt.Errorf("Unknown cri-o command %d", int(cmd.GetCmd()))
-        log.Errorf(ferr.Error())
-        return nil, ferr
-    }
+	default:
+		ferr := fmt.Errorf("Unknown cri-o command %d", int(cmd.GetCmd()))
+		log.Errorf(ferr.Error())
+		return nil, ferr
+	}
 
-    res := &sdc_internal.CriCommandResult{}
+	res := &sdc_internal.CriCommandResult{}
 	res.Successful = proto.Bool(err == nil)
 	if err != nil {
-	    log.Errorf("Error while handling cri-o command %d: %s", cmd.GetCmd(), err)
+		log.Errorf("Error while handling cri-o command %d: %s", cmd.GetCmd(), err)
 		res.Errstr = proto.String(err.Error())
 	}
 
 	log.Debugf("Sending response: %s", res.String())
 
-    return res, nil
+	return res, nil
 }
 
 func (c *coInterfaceServer) PerformDockerCommand(ctx context.Context, cmd *sdc_internal.DockerCommand) (*sdc_internal.DockerCommandResult, error) {
@@ -158,7 +158,7 @@ func (c *coInterfaceServer) PerformPing(ctx context.Context, cmd *sdc_internal.P
 		res.Ready = proto.Bool(true)
 	}
 	if kubecollect_common.GetCointDelegation() {
-		res.Delegation = &sdc_internal.Delegation {
+		res.Delegation = &sdc_internal.Delegation{
 			Status: sdc_internal.DelegationStatus_NOT_DELEGATED.Enum(),
 		}
 		if kubecollect_common.GetDelegationFailure() {
@@ -209,7 +209,7 @@ func (c *coInterfaceServer) PerformSwarmState(ctx context.Context, cmd *sdc_inte
 // 4) when THIS stream closes, it must also close the user event channel and stream (if one
 //    is attached
 func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.OrchestratorEventsStreamCommand,
-							    stream sdc_internal.CoInterface_PerformOrchestratorEventsStreamServer) error {
+	stream sdc_internal.CoInterface_PerformOrchestratorEventsStreamServer) error {
 	log.Infof("[PerformOrchestratorEventsStream] Starting orchestrator events stream.")
 	log.Debugf("[PerformOrchestratorEventsStream] using options: %v", cmd)
 
@@ -217,7 +217,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 
 	// either another stream has attached to this, or a previous one hasn't finished
 	// cleaning up. Try again later.
-	if (kubecollect_common.InformerChannelInUse) {
+	if kubecollect_common.InformerChannelInUse {
 		kubecollect_common.ChannelMutex.Unlock()
 		log.Errorf("[PerformOrchestratorEventsStream] Error: informer channel in use")
 		return errors.New("informer channel in use")
@@ -246,7 +246,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 
 	// Don't defer ctxCancel() yet
 	// with this call, we officially pass the control of the InformerChannelInUse flag to client code.
-	// It must be cleared either when context is cancelled or cleaned up, or if, for instance, 
+	// It must be cleared either when context is cancelled or cleaned up, or if, for instance,
 	// the function returns with an error before starting informers
 	// Get the arrayChan for sending events to dragent
 
@@ -296,8 +296,6 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		return err
 	}
 
-
-
 	defer func() {
 		log.Infof("[PerformOrchestratorEventsStream] Stream Closing")
 
@@ -344,7 +342,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 var userEventStreamActive bool = false
 
 func (c *coInterfaceServer) PerformOrchestratorEventMessageStream(cmd *sdc_internal.OrchestratorAttachUserEventsStreamCommand,
-								  stream sdc_internal.CoInterface_PerformOrchestratorEventMessageStreamServer) error {
+	stream sdc_internal.CoInterface_PerformOrchestratorEventMessageStreamServer) error {
 	log.Info("[PerformOrchestratorEventMessageStream] Starting orchestrator events stream.")
 	log.Debugf("[PerformOrchestratorEventMessageStream] using options: %v", cmd)
 
@@ -419,11 +417,11 @@ func (c *coInterfaceServer) PerformSetK8SOption(ctx context.Context, cmd *sdc_in
 	var errstr string
 
 	log.Debugf("[PerformSetK8sOption] received option: %s: %s", cmd.GetKey(), cmd.GetValue())
-	if (cmd.GetKey() == "events") {
-		if (cmd.GetValue() == "start") {
+	if cmd.GetKey() == "events" {
+		if cmd.GetValue() == "start" {
 			log.Info("[PerformSetK8sOption] starting event export")
 			kubecollect.SetEventExport(true)
-		} else if (cmd.GetValue() == "stop") {
+		} else if cmd.GetValue() == "stop" {
 			log.Info("[PerformSetK8sOption] stopping event export")
 			kubecollect.SetEventExport(false)
 		} else {
@@ -437,7 +435,7 @@ func (c *coInterfaceServer) PerformSetK8SOption(ctx context.Context, cmd *sdc_in
 
 	res := &sdc_internal.K8SOptionResult{
 		Successful: proto.Bool(success),
-		Errstr: proto.String(errstr),
+		Errstr:     proto.String(errstr),
 	}
 	return res, nil
 }
@@ -528,4 +526,3 @@ func startServer(sock string, modulesDir string) int {
 
 	return 0
 }
-

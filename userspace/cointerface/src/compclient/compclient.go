@@ -8,9 +8,9 @@ import (
 	"os"
 	"time"
 
-	draiosproto "protorepo/agent-be/proto"
 	"github.com/draios/install_prefix"
 	"github.com/draios/protorepo/sdc_internal"
+	draiosproto "protorepo/agent-be/proto"
 
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"
@@ -54,24 +54,24 @@ func unixDialer(addr string, timeout time.Duration) (net.Conn, error) {
 
 func performStart(client sdc_internal.ComplianceModuleMgrClient) int {
 	start := &sdc_internal.CompStart{
-		MachineId:         proto.String("my-machine-id"),
-		CustomerId:        proto.String("my-customer-id"),
-		Calendar:          &draiosproto.CompCalendar{},
+		MachineId:  proto.String("my-machine-id"),
+		CustomerId: proto.String("my-customer-id"),
+		Calendar:   &draiosproto.CompCalendar{},
 	}
 	start.Calendar.Tasks = append(start.Calendar.Tasks, &draiosproto.CompTask{
-		Id:                proto.Uint64(1),
-		Name:              proto.String("Check Docker Environment"),
-		ModName:           proto.String("docker-bench-security"),
-		Enabled:           proto.Bool(true),
-		Schedule:          proto.String("PT1H"),
+		Id:       proto.Uint64(1),
+		Name:     proto.String("Check Docker Environment"),
+		ModName:  proto.String("docker-bench-security"),
+		Enabled:  proto.Bool(true),
+		Schedule: proto.String("PT1H"),
 	})
 
 	start.Calendar.Tasks = append(start.Calendar.Tasks, &draiosproto.CompTask{
-		Id:                proto.Uint64(2),
-		Name:              proto.String("Check K8s Environment"),
-		ModName:           proto.String("kube-bench"),
-		Enabled:           proto.Bool(true),
-		Schedule:          proto.String("PT1H"),
+		Id:       proto.Uint64(2),
+		Name:     proto.String("Check K8s Environment"),
+		ModName:  proto.String("kube-bench"),
+		Enabled:  proto.Bool(true),
+		Schedule: proto.String("PT1H"),
 	})
 
 	log.Debugf("Start=%s", start.String())
@@ -121,7 +121,7 @@ func mymain() int {
 		log.Errorf("Could not determine installation directory: %s", err)
 		return 1
 	}
-	sockPtr := flag.String("sock", prefix + "/run/cointerface.sock", "domain socket for messages")
+	sockPtr := flag.String("sock", prefix+"/run/cointerface.sock", "domain socket for messages")
 	msgPtr := flag.String("msg", "start", "Message to send to server. Can be one of \"start\", \"stop\".")
 
 	flag.Parse()
