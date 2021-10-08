@@ -48,7 +48,7 @@ pipeline {
                 stage('UTs'){
                     steps{
                         build job:'agent-presubmit-ut',parameters:[
-                            string(name:'AGENT_LIBS_BRANCH',value:"merge-from-falco-candidate"),
+                            string(name:'LIBS_BRANCH',value:"merge-from-falco-candidate"),
                             booleanParam(name:'USE_LEGACY_LIBS', value:false)
                         ]
                     }
@@ -56,7 +56,7 @@ pipeline {
                 stage('system tests'){
                     steps{
                         build job:'agent-presubmit-system',parameters:[
-                            string(name:'AGENT_LIBS_BRANCH',value:"merge-from-falco-candidate"),
+                            string(name:'LIBS_BRANCH',value:"merge-from-falco-candidate"),
                             booleanParam(name:'USE_LEGACY_LIBS', value:false)
                         ]
                     }
@@ -64,7 +64,7 @@ pipeline {
                 stage('agentino'){
                     steps{
                         build job:'agent-build-agentino',parameters:[
-                            string(name:'AGENT_LIBS_BRANCH',value:"merge-from-falco-candidate"),
+                            string(name:'LIBS_BRANCH',value:"merge-from-falco-candidate"),
                             booleanParam(name:'USE_LEGACY_LIBS', value:false)
                         ]
                     }
@@ -72,7 +72,7 @@ pipeline {
                 stage('dev'){
                     steps{
                         build job:'agent-build-dev',parameters:[
-                            string(name:'AGENT_LIBS_BRANCH',value:"merge-from-falco-candidate"),
+                            string(name:'LIBS_BRANCH',value:"merge-from-falco-candidate"),
                             booleanParam(name:'USE_LEGACY_LIBS', value:false),
                             booleanParam(name:'UPLOAD', value:false)
                         ]

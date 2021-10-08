@@ -2,7 +2,7 @@ FROM centos:6
 
 ARG max_parallelism=1
 
-ADD *.repo /etc/yum.repos.d/
+COPY *.repo /etc/yum.repos.d/
 
 RUN yum install -y ca-certificates && \
     update-ca-trust force-enable && \
@@ -59,12 +59,14 @@ ENV JAVA_HOME=/usr/lib/jvm/jre-openjdk \
     PATH="$JAVA_HOME/bin:${PATH}"
 
 RUN mkdir -p /code/agent/dependency_install_scripts
-ADD dependency_install_scripts/* /code/agent/dependency_install_scripts/
-RUN mkdir -p /code/agent/dependencies
+COPY dependency_install_scripts/* /code/agent/dependency_install_scripts/
+# Used to prefetch go modules in the builder
+COPY go_mods/ /code/agent/dependencies/go_mods/
 
 ARG PROMSCRAPE_VERSION
-RUN scl enable devtoolset-2 "/code/agent/dependency_install_scripts/install-deps.sh /code/agent/dependencies ${max_parallelism}"
+RUN scl enable devtoolset-2 "/code/agent/dependency_install_scripts/install-deps.sh /code/agent/dependencies ${max_parallelism}" && \
+    rm -rf /code/agent/dependencies/go_mods/
 
-ADD entrypoint.sh /
+COPY entrypoint.sh /
 VOLUME [ "/code/agent/build", "/code/sysdig/build", "/out", "/root/.cache" ]
 ENTRYPOINT [ "/entrypoint.sh" ]

@@ -1,0 +1,388 @@
+remote-dependencies:
+- name: core-os
+  version: 2345.0.0
+  url: http://alpha.release.core-os.net/amd64-usr/2345.0.0/coreos_developer_container.bin.bz2
+
+- name: protobuf-s390x
+  version: 3.5.0
+  url: http://download.sysdig.com/dependencies/protobuf-3.5.0-s390x.patch
+
+- name: go-amd64
+  version: 1.13.10
+  url: https://dl.google.com/go/go1.13.10.linux-amd64.tar.gz
+
+- name: docker
+  version: none
+  url: https://download.docker.com/linux/centos/docker-ce.repo
+
+- name: gpg
+  version: none
+  url: https://download.docker.com/linux/debian/gpg
+
+- name: apache-maven
+  version: 3.2.5
+  url: https://download.sysdig.com/dependencies/apache-maven-3.2.5-bin.tar.gz
+
+- name: benchmark
+  version: 1.5.0
+  url: https://download.sysdig.com/dependencies/benchmark-1.5.0.zip
+
+- name: binutils
+  version: 2.30-22
+  url: https://download.sysdig.com/dependencies/binutils_2.30-22_amd64.deb
+
+- name: binutils-common
+  version: 2.30.22
+  url: https://download.sysdig.com/dependencies/binutils-common_2.30-22_amd64.deb
+
+- name: binutils-x86-64-linux-gnu
+  version: 2.30.22
+  url: https://download.sysdig.com/dependencies/binutils-x86-64-linux-gnu_2.30-22_amd64.deb
+
+- name: boost
+  version: 1_57_0
+  url: https://download.sysdig.com/dependencies/boost_1_57_0.tar.bz2
+
+- name: build-wrapper-linux
+  version: none
+  url: https://download.sysdig.com/dependencies/build-wrapper-linux-x86.zip
+
+- name: c-ares
+  version: 1.13.0
+  url: https://download.sysdig.com/dependencies/c-ares-1.13.0.tar.gz
+
+- name: cmake
+  version: 3.3.2
+  url: https://download.sysdig.com/dependencies/cmake-3.3.2.tar.gz
+
+- name: cmake
+  version: 3.5.2
+  url: https://download.sysdig.com/dependencies/cmake-3.5.2.tar.gz
+
+- name: cpp-5
+  version: 5.5.0-12
+  url: https://download.sysdig.com/dependencies/cpp-5_5.5.0-12_amd64.deb
+
+- name: curl
+  version: 7.61.0
+  url: https://download.sysdig.com/dependencies/curl-7.61.0.tar.bz2
+
+- name: dragent-win-hal
+  version: 1.0
+  url: https://download.sysdig.com/dependencies/dragent-win-hal-1.0.zip
+
+- name: gcc-5
+  version: 5.5.0-12
+  url: https://download.sysdig.com/dependencies/gcc-5_5.5.0-12_amd64.deb
+
+- name: gcc-5-base
+  version: 5.5.0-12
+  url: https://download.sysdig.com/dependencies/gcc-5-base_5.5.0-12_amd64.deb
+
+- name: cpp-6
+  version: 6.3.0-18
+  url: https://download.sysdig.com/dependencies/gcc-6-debs/cpp-6_6.3.0-18_amd64.deb
+
+- name: gcc-6
+  version: 6.3.0-18
+  url: https://download.sysdig.com/dependencies/gcc-6-debs/gcc-6_6.3.0-18_amd64.deb
+
+- name: gcc-6-base
+  version: 6.3.0-18
+  url: https://download.sysdig.com/dependencies/gcc-6-debs/gcc-6-base_6.3.0-18_amd64.deb
+
+- name: libasan3
+  version: 6.3.0-18
+  url: https://download.sysdig.com/dependencies/gcc-6-debs/libasan3_6.3.0-18_amd64.deb
+
+- name: libcilkrts5
+  version: 6.3.0-18
+  url: https://download.sysdig.com/dependencies/gcc-6-debs/libcilkrts5_6.3.0-18_amd64.deb
+
+- name: libgcc-6-dev
+  version: 6.3.0-18
+  url: https://download.sysdig.com/dependencies/gcc-6-debs/libgcc-6-dev_6.3.0-18_amd64.deb
+
+- name: libisl15
+  version: 0.18-1
+  url: https://download.sysdig.com/dependencies/gcc-6-debs/libisl15_0.18-1_amd64.deb
+
+- name: libmpfr4_3
+  version: 3.1.3-2
+  url: https://download.sysdig.com/dependencies/gcc-6-debs/libmpfr4_3.1.3-2_amd64.deb
+
+- name: libubsan0
+  version: 6.3.0-18
+  url: https://download.sysdig.com/dependencies/gcc-6-debs/libubsan0_6.3.0-18_amd64.deb
+
+- name: google-benchmark-b8ca0c42179b7b5d656494e61dda8b861057122f
+  version: none
+  url: https://download.sysdig.com/dependencies/google-benchmark-b8ca0c42179b7b5d656494e61dda8b861057122f.zip
+
+- name: gperftools
+  version: 2.5
+  url: https://download.sysdig.com/dependencies/gperftools-2.5.tar.gz
+
+- name: grpc-1.1.4-Makefile.patch
+  version: none
+  url: https://download.sysdig.com/dependencies/grpc-1.1.4-Makefile.patch
+
+- name: grpc
+  version: 1.24.3
+  url: https://download.sysdig.com/dependencies/grpc-1.24.3.tar.gz
+
+- name: gtest
+  version: 1.7.0
+  url: https://download.sysdig.com/dependencies/gtest-1.7.0.zip
+
+- name: jdk-i586
+  version: 7u75
+  url: https://download.sysdig.com/dependencies/jdk-7u75-linux-i586.tar.bz2
+
+- name: jdk-x64
+  version: 7u75
+  url: https://download.sysdig.com/dependencies/jdk-7u75-linux-x64.tar.bz2
+
+- name: jq
+  version: 1.5
+  url: https://download.sysdig.com/dependencies/jq-1.5.tar.gz
+
+- name: kube-bench
+  version: 0.2.8
+  url: https://download.sysdig.com/dependencies/kube-bench-0.2.8.tar.gz
+
+- name: libasan2
+  version: 5.5.0-12
+  url: https://download.sysdig.com/dependencies/libasan2_5.5.0-12_amd64.deb
+
+- name: libb64
+  version: 1.2
+  url: https://download.sysdig.com/dependencies/libb64-1.2.src.zip
+
+- name: libbinutils
+  version: 2.30-22
+  url: https://download.sysdig.com/dependencies/libbinutils_2.30-22_amd64.deb
+
+- name: libgcc-5-dev
+  version: 5.5.0
+  url: https://download.sysdig.com/dependencies/libgcc-5-dev_5.5.0-12_amd64.deb
+
+- name: libisl15
+  version: 0.18-4
+  url: https://download.sysdig.com/dependencies/libisl15_0.18-4_amd64.deb
+
+- name: libmpx0
+  version: 5.5.0-12
+  url: https://download.sysdig.com/dependencies/libmpx0_5.5.0-12_amd64.deb
+
+- name: libyaml
+  version: 0.1.7
+  url: https://download.sysdig.com/dependencies/libyaml-0.1.7.tar.gz
+
+- name: linux-bench
+  version: 0.2.0.4
+  url: https://download.sysdig.com/dependencies/linux-bench-0.2.0.4.tar.gz
+
+- name: lpeg
+  version: 1.0.0
+  url: https://download.sysdig.com/dependencies/lpeg-1.0.0.tar.gz
+
+- name: LuaJIT
+  version: 2.0.3
+  url: https://download.sysdig.com/dependencies/LuaJIT-2.0.3.tar.gz
+
+- name: lyaml-release
+  version: 6.0
+  url: https://download.sysdig.com/dependencies/lyaml-release-v6.0.tar.gz
+
+- name: njson
+  version: 3.3.0
+  url: https://download.sysdig.com/dependencies/njson-3.3.0.tar.gz
+
+- name: openssl
+  version: 1.1.1h
+  url: https://download.sysdig.com/dependencies/openssl-1.1.1h.tar.gz
+
+- name: poco
+  version: 1.9.0
+  url: https://download.sysdig.com/dependencies/poco-1.9.0-all.tar.gz
+
+- name: poco
+  version: 1.9.9
+  url: https://download.sysdig.com/dependencies/poco-1.9.9-all.tar.gz
+
+- name: postgresql
+  version: 9.4.15
+  url: https://download.sysdig.com/dependencies/postgresql-9.4.15.tar.bz2
+
+- name: protobuf-cpp
+  version: 3.9.2
+  url: https://download.sysdig.com/dependencies/protobuf-cpp-3.9.2.tar.gz
+
+- name: Python
+  version: 2.7.16
+  url: https://download.sysdig.com/dependencies/Python-2.7.16.tgz
+
+- name: Python
+  version: 3.5.9
+  url: https://download.sysdig.com/dependencies/Python-3.5.9.tgz
+
+- name: Python
+  version: 3.6.9
+  url: https://download.sysdig.com/dependencies/Python-3.6.9.tgz
+
+- name: Python
+  version: 3.7.3
+  url: https://download.sysdig.com/dependencies/Python-3.7.3.tgz
+
+- name: Python
+  version: 3.8.3
+  url: https://download.sysdig.com/dependencies/Python-3.8.3.tgz
+
+- name: scons
+  version: 2.3.4
+  url: https://download.sysdig.com/dependencies/scons-2.3.4.tar.gz
+
+- name: simpleopt
+  version: 3.6
+  url: https://download.sysdig.com/dependencies/simpleopt-3.6.zip
+
+- name: sonar-scanner-cli
+  version: 4.3.0.2102
+  url: https://download.sysdig.com/dependencies/sonar-scanner-cli-4.3.0.2102-linux.zip
+
+- name: statsite-private
+  version: 0.7.0-sysdig7
+  url: https://download.sysdig.com/dependencies/statsite-private-0.7.0-sysdig7.zip
+
+- name: string-view-lite
+  version: 1.4.0
+  url: https://download.sysdig.com/dependencies/string-view-lite-1.4.0.tar.gz
+
+- name: tbb
+  version: 2018_U5
+  url: https://download.sysdig.com/dependencies/tbb-2018_U5.tar.gz
+
+- name: valgrind
+  version: 3.15.0
+  url: https://download.sysdig.com/dependencies/valgrind-3.15.0.tar.bz2
+
+- name: yaml-cpp
+  version: 0.6.3
+  url: https://download.sysdig.com/dependencies/yaml-cpp-0.6.3-fix.patch
+
+- name: yamp-cpp-yaml-cpp
+  version: 0.6.3
+  url: https://download.sysdig.com/dependencies/yaml-cpp-yaml-cpp-0.6.3.tar.gz
+
+- name: zlib
+  version: 1.2.11
+  url: https://download.sysdig.com/dependencies/zlib-1.2.11.tar.gz
+
+- name: DRAIOS-GPG-KEY
+  version: none
+  url: https://download.sysdig.com/DRAIOS-GPG-KEY.public
+
+- name: docker
+  version: 1.11.0
+  url: https://get.docker.com/builds/Linux/x86_64/docker-1.11.0.tgz
+
+- name: OpenJDK-jdk_x64_linux_hotspot
+  version: 8u202b08
+  url: https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u202-b08/OpenJDK8U-jdk_x64_linux_hotspot_8u202b08.tar.gz
+
+- name: OpenJDK8U-jre_x64_linux_hotspot
+  version: 8u275b01
+  url: https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u275-b01/OpenJDK8U-jre_x64_linux_hotspot_8u275b01.tar.gz
+
+- name: OpenJDK8U-jre_x64_linux_hotspot-sha256
+  version: 8u275b04
+  url: https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u275-b01/OpenJDK8U-jre_x64_linux_hotspot_8u275b01.tar.gz.sha256.txt
+
+- name: protobuf
+  version: 1.2.1
+  url: https://github.com/gogo/protobuf/archive/v1.2.1.tar.gz
+
+- name: protoc
+  version: 3.5.1
+  url: https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip
+
+- name: protoc
+  version: 3.10.1
+  url: https://github.com/protocolbuffers/protobuf/releases/download/v3.10.1/protoc-3.10.1-linux-x86_64.zip
+
+- name: stedolan-patch
+  version: none
+  url: https://github.com/stedolan/jq/commit/8eb1367ca44e772963e704a700ef72ae2e12babd.patch
+
+- name: lets-encrypt
+  version: 3
+  url: https://letsencrypt.org/certs/lets-encrypt-r3-cross-signed.pem
+
+- name: go-repo
+  version: none
+  url: https://mirror.go-repo.io/centos/go-repo.repo
+
+- name: devtools-2
+  version: none
+  url: https://people.centos.org/tru/devtools-2/devtools-2.repo
+
+- name: build-lpeg.sh
+  version: none
+  url: https://raw.githubusercontent.com/draios/oss-falco/master/scripts/build-lpeg.sh
+
+- name: sysdig-agent-clusterrole.yaml
+  version: none
+  url: https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-agent-clusterrole.yaml
+
+- name: sysdig-agent-configmap.yaml
+  version: none
+  url: https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-agent-configmap.yaml
+
+- name: sysdig-agent-daemonset-v2.yaml
+  version: none
+  url: https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-agent-daemonset-v2.yaml
+
+- name: sysdig-agent-slim-daemonset-v2.yaml
+  version: none
+  url: https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-agent-slim-daemonset-v2.yaml
+
+- name: sysdig-benchmark-runner-configmap.yaml
+  version: none
+  url: https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-benchmark-runner-configmap.yaml
+
+- name: sysdig-host-analyzer-configmap.yaml
+  version: none
+  url: https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-host-analyzer-configmap.yaml
+
+- name: sysdig-image-analyzer-configmap.yaml
+  version: none
+  url: https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-image-analyzer-configmap.yaml
+
+- name: sysdig-image-analyzer-daemonset.yaml
+  version: none
+  url: https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-image-analyzer-daemonset.yaml
+
+- name: sysdig-node-analyzer-daemonset.yaml
+  version: none
+  url: https://raw.githubusercontent.com/draios/sysdig-cloud-scripts/master/agent_deploy/kubernetes/sysdig-node-analyzer-daemonset.yaml
+
+- name: gradle
+  version: 5.3.1
+  url: https://services.gradle.org/distributions/gradle-5.3.1-bin.zip
+
+- name: kubectl
+  version: 1.0.6
+  url: https://storage.googleapis.com/kubernetes-release/release/v1.0.6/bin/linux/amd64/kubectl
+
+- name: kubectl
+  version: 1.11.0
+  url: https://storage.googleapis.com/kubernetes-release/release/v1.11.10/bin/linux/amd64/kubectl
+
+- name: lua
+  version: 5.2.4
+  url: https://www.lua.org/ftp/lua-5.2.4.tar.gz
+
+- name: phoronix-test-suite
+  version: 4.8.4
+  url: http://www.phoronix-test-suite.com/releases/phoronix-test-suite-4.8.4.tar.gz
