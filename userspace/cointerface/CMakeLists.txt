@@ -24,6 +24,22 @@ function(GoBuild target)
     )
 endfunction()
 
+function(GoInstall name mod moddir cgo_enabled)
+    add_custom_target(goinstall-${name}
+        COMMAND ${GOENV} CGO_ENABLED=${cgo_enabled} ${GOROOT}/bin/go install ${mod}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/${moddir}
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/${moddir}/go.mod ${ARGN}
+    )
+endfunction()
+
+function(GoLint target)
+    add_custom_target(golint-${target} ALL
+        COMMAND ${GOENV} PATH="${GOROOT}/bin:$ENV{PATH}" ${GOPATH}/bin/golangci-lint run -v --allow-parallel-runners --timeout=5m
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/${target}
+        DEPENDS goinstall-golangci-lint ${ARGN}
+    )
+endfunction()
+
 set(PROTO_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto")
 set(PROTO_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/../draiosproto")
 # This function generate pb.go files for proto files that depend on draios.proto and common.proto.
@@ -55,12 +71,26 @@ function(GoGenerate target folder pbgofile protofile)
                 ${protofile}
                 ${GOGO_PROTOBUF_VER_FILE}
                 preproc_proto
+                goinstall-protoc-gen-gofast
     )
     set("${target}_deps"
         "generate_${target}" ${OUTFILES}
         PARENT_SCOPE
     )
 endfunction()
+
+goinstall(
+    golangci-lint
+    github.com/golangci/golangci-lint/cmd/golangci-lint
+    tools
+    0
+)
+goinstall(
+    protoc-gen-gofast
+    github.com/gogo/protobuf/protoc-gen-gofast
+    tools
+    1
+)
 
 gogenerate(sdc_internal sdc_internal sdc_internal.pb.go ${PROTO_SRC_DIR}/sdc_internal.proto)
 gogenerate(promex_pb promex_pb promex.pb.go ${PROTO_SRC_DIR}/promex.proto)
@@ -124,6 +154,12 @@ gobuild(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/install_prefix/install_prefix.go
 )
 
+golint(
+    cointerface
+    ${draiosproto_deps}
+    ${sdc_internal_deps}
+)
+
 add_custom_target(
     cointerface_test ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface_test_success.txt
 )
@@ -184,6 +220,12 @@ gobuild(
     ${draiosproto_deps}
     ${sdc_internal_deps}
     ${CMAKE_CURRENT_SOURCE_DIR}/src/coclient/coclient.go
+)
+
+golint(
+    coclient
+    ${draiosproto_deps}
+    ${sdc_internal_deps}
 )
 
 add_custom_command(

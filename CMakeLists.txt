@@ -90,9 +90,6 @@ else()
     set(CPACK_STRIP_FILES "ON")
 endif()
 
-set(GOPATH "${DRAIOS_DEPENDENCIES_DIR}/go")
-set(GOENV env GOPATH=${GOPATH} GO111MODULE=on)
-
 if(NOT CYGWIN)
     set(PROMSCRAPE_DIR "${DRAIOS_DEPENDENCIES_DIR}/promscrape")
 
