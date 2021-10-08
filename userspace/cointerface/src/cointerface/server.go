@@ -5,8 +5,6 @@ import (
 	"cointerface/kubecollect_tc"
 	"errors"
 	"fmt"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"net"
 	"os"
 	"os/signal"
@@ -14,9 +12,13 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+
 	"cointerface/compliance"
 	"cointerface/k8s_audit"
 	"cointerface/kubecollect"
+
 	"github.com/draios/protorepo/sdc_internal"
 
 	log "github.com/cihub/seelog"

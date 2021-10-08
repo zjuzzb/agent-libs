@@ -1,15 +1,16 @@
 package kubecollect
 
 import (
-	"k8s.io/api/core/v1"
-	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/watch"
 	"os"
 	"sort"
 	"strconv"
 	"testing"
 	"time"
+
+	v1 "k8s.io/api/core/v1"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
 )
 
 // Create a pod with status Pending and two containers in Waiting state (reason  ContainerCreating)

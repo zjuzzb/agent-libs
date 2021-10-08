@@ -2,17 +2,18 @@ package compliance
 
 import (
 	"fmt"
-	log "github.com/cihub/seelog"
-	"github.com/draios/protorepo/sdc_internal"
-	"github.com/gogo/protobuf/proto"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"os"
 	"path"
 	"path/filepath"
 	draiosproto "protorepo/agent-be/proto"
 	"regexp"
 	"time"
+
+	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
+	"github.com/gogo/protobuf/proto"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type ModuleMgr struct {

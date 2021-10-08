@@ -2,13 +2,14 @@ package leader_lib
 
 import (
 	"context"
+	"time"
+
 	log "github.com/cihub/seelog"
 	"github.com/draios/protorepo/sdc_internal"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"time"
 )
 
 type Lease struct {

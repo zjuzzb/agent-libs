@@ -9,14 +9,16 @@ import (
 	"strings"
 	"syscall"
 
+	"promex/server"
+
 	"github.com/draios/heartbeat"
 	"github.com/draios/install_prefix"
 	pb "github.com/draios/protorepo/promex_pb"
-	"promex/server"
+
+	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
-	"net/http"
 )
 
 func main() {

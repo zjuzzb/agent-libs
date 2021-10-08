@@ -4,20 +4,21 @@ import (
 	"cointerface/kubecollect_common"
 	"context"
 	"fmt"
+	draiosproto "protorepo/agent-be/proto"
+	"sort"
+	"strings"
+	"sync"
+
 	log "github.com/cihub/seelog"
 	"github.com/draios/protorepo/sdc_internal"
 	"github.com/gogo/protobuf/proto"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/watch"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	tw "k8s.io/client-go/tools/watch"
-	draiosproto "protorepo/agent-be/proto"
-	"sort"
-	"strings"
-	"sync"
 )
 
 type podMetaData struct {

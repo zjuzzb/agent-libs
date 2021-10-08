@@ -3,6 +3,10 @@ package kubecollect
 import (
 	"cointerface/kubecollect_common"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
+	"reflect"
+	"sync"
+
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"
 	v1batch "k8s.io/api/batch/v1"
@@ -11,9 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	draiosproto "protorepo/agent-be/proto"
-	"reflect"
-	"sync"
 )
 
 // Globals are reset in startJobsSInformer

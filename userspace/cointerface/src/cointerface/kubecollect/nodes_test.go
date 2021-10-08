@@ -2,10 +2,11 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	"k8s.io/api/core/v1"
+	"testing"
+
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 // Creates two node objects that are DeepEqual

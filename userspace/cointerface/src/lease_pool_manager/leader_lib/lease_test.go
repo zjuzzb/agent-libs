@@ -2,12 +2,13 @@ package leader_lib
 
 import (
 	"fmt"
+	"testing"
+	"time"
+
 	log "github.com/cihub/seelog"
 	"github.com/draios/protorepo/sdc_internal"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	"testing"
-	"time"
 )
 
 func createClientSet() *kubernetes.Clientset {

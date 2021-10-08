@@ -3,6 +3,9 @@ package kubecollect
 import (
 	"cointerface/kubecollect_common"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
+	"sync"
+
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"
 	v1 "k8s.io/api/core/v1"
@@ -11,8 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	draiosproto "protorepo/agent-be/proto"
-	"sync"
 )
 
 var storageClassInf cache.SharedInformer

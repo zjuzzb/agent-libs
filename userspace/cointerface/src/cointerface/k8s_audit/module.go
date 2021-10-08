@@ -4,6 +4,11 @@ import (
 	"fmt"
 
 	"crypto/tls"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"time"
+
 	log "github.com/cihub/seelog"
 	"github.com/draios/protorepo/sdc_internal"
 	"github.com/gogo/protobuf/proto"
@@ -11,10 +16,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"io/ioutil"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 var (

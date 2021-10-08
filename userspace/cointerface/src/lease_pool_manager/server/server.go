@@ -3,21 +3,22 @@ package server
 import (
 	"coldstart_manager/leader_lib"
 	"context"
-	log "github.com/cihub/seelog"
-	"github.com/draios/protorepo/sdc_internal"
-	"github.com/gogo/protobuf/proto"
-	"github.com/google/uuid"
-	"google.golang.org/grpc"
 	"io/ioutil"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"net"
 	"os"
 	"os/signal"
 	"strings"
 	"sync"
 	"syscall"
+
+	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
+	"github.com/gogo/protobuf/proto"
+	"github.com/google/uuid"
+	"google.golang.org/grpc"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 type leasePoolServer struct {

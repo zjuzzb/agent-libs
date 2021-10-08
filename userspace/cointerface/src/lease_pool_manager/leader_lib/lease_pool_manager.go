@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"sync"
+	"time"
+
 	log "github.com/cihub/seelog"
 	"github.com/draios/protorepo/sdc_internal"
-	"io/ioutil"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeclient "k8s.io/client-go/kubernetes"
 	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
-	"sync"
-	"time"
 )
 
 const PODINFO_DIR = "/etc/podinfo"

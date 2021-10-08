@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"os"
+	"sync/atomic"
+	"time"
+
 	log "github.com/cihub/seelog"
 	"github.com/draios/install_prefix"
 	"github.com/draios/protorepo/sdc_internal"
 	"google.golang.org/grpc"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net"
-	"os"
-	"sync/atomic"
-	"time"
 )
 
 var cointdeleg bool = false

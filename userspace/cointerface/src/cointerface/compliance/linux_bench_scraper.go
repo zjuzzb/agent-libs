@@ -3,15 +3,16 @@ package compliance
 import (
 	"encoding/json"
 	"fmt"
-	log "github.com/cihub/seelog"
-	"github.com/draios/protorepo/sdc_internal"
-	"github.com/gogo/protobuf/proto"
 	"io/ioutil"
 	draiosproto "protorepo/agent-be/proto"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
+	"github.com/gogo/protobuf/proto"
 )
 
 func (impl *LinuxBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {

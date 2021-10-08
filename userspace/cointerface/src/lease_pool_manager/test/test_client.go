@@ -4,13 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
 	log "github.com/cihub/seelog"
 	"github.com/draios/protorepo/sdc_internal"
 	"github.com/gogo/protobuf/proto"
 	"google.golang.org/grpc"
-	"net/http"
-	"strconv"
-	"strings"
 )
 
 func setupLogger() (log.LoggerInterface, error) {

@@ -2,10 +2,11 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	. "github.com/draios/test_helpers"
 	"testing"
 
-	"k8s.io/api/core/v1"
+	. "github.com/draios/test_helpers"
+
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"

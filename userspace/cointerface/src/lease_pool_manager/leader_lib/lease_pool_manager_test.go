@@ -1,11 +1,12 @@
 package leader_lib
 
 import (
-	"github.com/draios/protorepo/sdc_internal"
-	"github.com/gogo/protobuf/proto"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/draios/protorepo/sdc_internal"
+	"github.com/gogo/protobuf/proto"
 )
 
 func TestGetLeaseNamespace(t *testing.T) {

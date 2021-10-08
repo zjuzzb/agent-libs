@@ -2,14 +2,15 @@ package kubecollect
 
 import (
 	"encoding/json"
+	draiosproto "protorepo/agent-be/proto"
+	"testing"
+	"time"
+
 	"github.com/gogo/protobuf/proto"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	draiosproto "protorepo/agent-be/proto"
-	"testing"
-	"time"
 )
 
 func TestNewStorageClassCongroup(t *testing.T) {

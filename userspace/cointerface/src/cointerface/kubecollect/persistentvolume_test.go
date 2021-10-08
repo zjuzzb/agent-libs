@@ -3,13 +3,14 @@ package kubecollect
 import (
 	"cointerface/kubecollect_common"
 	"encoding/json"
-	"github.com/gogo/protobuf/proto"
-	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	draiosproto "protorepo/agent-be/proto"
 	"reflect"
 	"testing"
+
+	"github.com/gogo/protobuf/proto"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func createV1PersistentVolume() *v1.PersistentVolume {

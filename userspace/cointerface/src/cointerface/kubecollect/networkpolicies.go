@@ -4,16 +4,18 @@ import (
 	"cointerface/kubecollect_common"
 	"context"
 	"encoding/json"
-	log "github.com/cihub/seelog"
-	"github.com/gogo/protobuf/proto"
 	draiosproto "protorepo/agent-be/proto"
 
-	"k8s.io/api/networking/v1"
+	log "github.com/cihub/seelog"
+	"github.com/gogo/protobuf/proto"
+
+	"sync"
+
+	v1 "k8s.io/api/networking/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"sync"
 )
 
 var networkPolicyInf cache.SharedInformer

@@ -4,6 +4,9 @@ import (
 	"cointerface/kubecollect"
 	"cointerface/kubecollect_common"
 	"context"
+	draiosproto "protorepo/agent-be/proto"
+	"sync"
+
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"
 	appsv1 "k8s.io/api/apps/v1"
@@ -11,8 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	draiosproto "protorepo/agent-be/proto"
-	"sync"
 )
 
 func statefulSetEvent(ss *appsv1.StatefulSet, eventType *draiosproto.CongroupEventType) draiosproto.CongroupUpdateEvent {

@@ -2,12 +2,13 @@ package kubecollect_common
 
 import (
 	"context"
-	log "github.com/cihub/seelog"
-	"github.com/draios/protorepo/sdc_internal"
-	"github.com/gogo/protobuf/proto"
 	"math/rand"
 	"testing"
 	"time"
+
+	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
+	"github.com/gogo/protobuf/proto"
 )
 
 func TestMapInsert(t *testing.T) {

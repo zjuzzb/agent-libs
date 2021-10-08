@@ -3,15 +3,16 @@ package kubecollect
 import (
 	"cointerface/kubecollect_common"
 	"encoding/json"
+	draiosproto "protorepo/agent-be/proto"
+	"testing"
+
 	"github.com/gogo/protobuf/proto"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	informers2 "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
-	draiosproto "protorepo/agent-be/proto"
-	"testing"
 )
 
 var namespaceName string

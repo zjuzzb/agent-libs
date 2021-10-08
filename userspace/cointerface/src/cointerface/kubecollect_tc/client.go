@@ -3,11 +3,12 @@ package kubecollect_tc
 import (
 	"cointerface/kubecollect"
 	"cointerface/kubecollect_common"
-	"golang.org/x/net/context"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/net/context"
 
 	log "github.com/cihub/seelog"
 	"github.com/draios/protorepo/sdc_internal"

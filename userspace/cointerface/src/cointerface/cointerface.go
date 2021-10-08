@@ -12,9 +12,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"os"
+
 	log "github.com/cihub/seelog"
 	"github.com/draios/install_prefix"
-	"os"
 )
 
 func usage() {

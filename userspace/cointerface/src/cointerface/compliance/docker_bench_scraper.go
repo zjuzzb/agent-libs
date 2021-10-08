@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	log "github.com/cihub/seelog"
-	"github.com/draios/protorepo/sdc_internal"
-	"github.com/gogo/protobuf/proto"
 	"io/ioutil"
 	"os/exec"
 	draiosproto "protorepo/agent-be/proto"
 	"strings"
 	"text/template"
+
+	log "github.com/cihub/seelog"
+	"github.com/draios/protorepo/sdc_internal"
+	"github.com/gogo/protobuf/proto"
 )
 
 func (impl *DockerBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {

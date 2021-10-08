@@ -2,10 +2,11 @@ package profile
 
 import (
 	"fmt"
-	log "github.com/cihub/seelog"
 	"os"
 	"runtime"
 	"runtime/pprof"
+
+	log "github.com/cihub/seelog"
 )
 
 var eventCount = 0

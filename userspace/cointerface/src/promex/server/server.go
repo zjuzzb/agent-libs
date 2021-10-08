@@ -1,11 +1,10 @@
 package server
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
 	"log"
 
-	pb "github.com/draios/protorepo/promex_pb"
-	"golang.org/x/net/context"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"os"
 	draiosproto "protorepo/agent-be/proto"
 	"regexp"
@@ -13,6 +12,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	pb "github.com/draios/protorepo/promex_pb"
+	"golang.org/x/net/context"
 )
 
 type prometheusMetricValue struct {

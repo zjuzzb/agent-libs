@@ -2,13 +2,14 @@ package kubecollect_common
 
 import (
 	"errors"
+	draiosproto "protorepo/agent-be/proto"
+	"regexp"
+	"strings"
+
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	draiosproto "protorepo/agent-be/proto"
-	"regexp"
-	"strings"
 )
 
 // container IDs from k8s are of the form <scheme>://<container_id>

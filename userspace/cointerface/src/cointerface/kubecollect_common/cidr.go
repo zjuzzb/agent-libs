@@ -1,10 +1,11 @@
 package kubecollect_common
 
 import (
-	"github.com/gogo/protobuf/proto"
-	"k8s.io/api/core/v1"
 	draiosproto "protorepo/agent-be/proto"
 	"strings"
+
+	"github.com/gogo/protobuf/proto"
+	v1 "k8s.io/api/core/v1"
 )
 
 // Unfortunately, kubernetes doesn't exposes networking cidr

@@ -2,13 +2,14 @@ package kubecollect
 
 import (
 	"cointerface/kubecollect_common"
-	"github.com/draios/protorepo/sdc_internal"
-	"golang.org/x/net/context"
-	kubeclient "k8s.io/client-go/kubernetes"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/draios/protorepo/sdc_internal"
+	"golang.org/x/net/context"
+	kubeclient "k8s.io/client-go/kubernetes"
 
 	log "github.com/cihub/seelog"
 )

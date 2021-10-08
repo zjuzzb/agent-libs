@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"os"
+	"strings"
+	"sync"
+
 	log "github.com/cihub/seelog"
 	"github.com/draios/install_prefix"
 	"github.com/wojas/genericr"
 	"k8s.io/klog/v2"
-	"os"
-	"strings"
-	"sync"
 )
 
 type LogMsg struct {

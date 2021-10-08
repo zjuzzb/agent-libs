@@ -3,13 +3,7 @@ package kubecollect_common
 import (
 	"errors"
 	"fmt"
-	"github.com/draios/install_prefix"
-	"github.com/google/uuid"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"io/ioutil"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
-	tw "k8s.io/client-go/tools/watch"
 	"math/rand"
 	"os"
 	"reflect"
@@ -20,7 +14,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"k8s.io/api/core/v1"
+	"github.com/draios/install_prefix"
+	"github.com/google/uuid"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	v1 "k8s.io/api/core/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	tw "k8s.io/client-go/tools/watch"
+
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -35,8 +36,9 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	"cointerface/profile"
-	"github.com/draios/protorepo/sdc_internal"
 	draiosproto "protorepo/agent-be/proto"
+
+	"github.com/draios/protorepo/sdc_internal"
 
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"
